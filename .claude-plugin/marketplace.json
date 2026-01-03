@@ -1,0 +1,14 @@
+{
+  "name": "open-prose",
+  "owner": {
+    "name": "OpenProse",
+    "url": "https://github.com/openprose"
+  },
+  "plugins": [
+    {
+      "name": "open-prose",
+      "source": ".",
+      "description": "A programming language for AI sessions - structures English into unambiguous control flow for multi-agent orchestration"
+    }
+  ]
+}
