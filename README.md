@@ -73,7 +73,7 @@ Switch platforms anytime. Your `.prose` files work everywhere.
 ## Install (Claude Code)
 
 ```bash
-/plugin marketplace add git@github.com:openprose/prose.git
+/plugin marketplace add https://github.com/openprose/prose.git
 /plugin install open-prose@prose
 ```
 
