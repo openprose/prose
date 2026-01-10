@@ -70,7 +70,31 @@ Switch platforms anytime. Your `.prose` files work everywhere.
 
 **Why not rigid frameworks?** They're inflexible. OpenProse gives you structure where it matters (control flow, agent definitions) and natural language where you want flexibility (conditions, context passing).
 
-## Install (Claude Code)
+## Install
+
+### OpenCode (Native Plugin)
+
+Add OpenProse to your `opencode.json`:
+
+```json
+{
+  "plugin": [
+    "git@github.com:openprose/prose.git"
+  ]
+}
+```
+
+Or for local development, clone the repo and link it:
+
+```json
+{
+  "plugin": [
+    "./path/to/prose/.opencode/plugin/prose.ts"
+  ]
+}
+```
+
+### Claude Code
 
 First run,
 
@@ -83,7 +107,7 @@ Followed by,
 /plugin install open-prose@prose
 ```
 
-Then **restart Claude Code** (commands load at startup), and run:
+Then **restart** your agent session, and run:
 
 ```
 /prose-boot
