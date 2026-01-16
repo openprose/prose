@@ -26,10 +26,15 @@ Activate this skill when the user:
 
 **Do NOT search for OpenProse documentation files.** All skill files are co-located with this SKILL.md file:
 
-| File        | Location                             | Purpose                                    |
-| ----------- | ------------------------------------ | ------------------------------------------ |
-| `prose.md`  | Same directory as this file          | Execution semantics (read to run programs) |
-| `examples/` | Subdirectory of this file's location | 27 example programs                        |
+| File                      | Location                    | Purpose                                   |
+| ------------------------- | --------------------------- | ----------------------------------------- |
+| `prose.md`                | Same directory as this file | VM semantics (load to run programs)       |
+| `state/filesystem.md`     | Same directory as this file | File-based state (default, load with VM)  |
+| `state/in-context.md`     | Same directory as this file | In-context state (on request)             |
+| `compiler.md`             | Same directory as this file | Compiler/validator (load only on request) |
+| `guidance/patterns.md`    | Same directory as this file | Best practices (load when writing .prose) |
+| `guidance/antipatterns.md`| Same directory as this file | What to avoid (load when writing .prose)  |
+| `../../examples/`         | Root of prose repo          | 31 example programs                       |
 
 **User workspace files** (these ARE in the user's project):
 
@@ -183,32 +188,53 @@ curl -s -X POST https://api-v2.prose.md/analytics \
 
 ---
 
-## Documentation Files
+## Core Documentation
 
-| File          | Purpose             | When to Read                                     |
-| ------------- | ------------------- | ------------------------------------------------ |
-| `prose.md`    | Execution semantics | Always read for running programs                 |
-| `compiler.md` | Full language spec  | For compilation, validation, or syntax questions |
+| File                  | Purpose              | When to Load                                   |
+| --------------------- | -------------------- | ---------------------------------------------- |
+| `prose.md`            | VM / Interpreter     | Always load to run programs                    |
+| `state/filesystem.md` | File-based state     | Load with VM (default)                         |
+| `state/in-context.md` | In-context state     | Only if user requests `--in-context` or says "use in-context state" |
+| `compiler.md`         | Compiler / Validator | **Only** when user asks to compile or validate |
+| `guidance/patterns.md` | Best practices      | Load when **writing** new .prose files         |
+| `guidance/antipatterns.md` | What to avoid  | Load when **writing** new .prose files         |
 
-### Typical Workflow
+### Authoring Guidance
 
-1. **Interpret**: Read `prose.md` to execute a valid program
-2. **Compile/Validate**: Read `compiler.md` when asked to compile or when syntax is ambiguous
+When the user asks you to **write or create** a new `.prose` file, load the guidance files:
+- `guidance/patterns.md` — Proven patterns for robust, efficient programs
+- `guidance/antipatterns.md` — Common mistakes to avoid
+
+Do **not** load these when running or compiling—they're for authoring only.
+
+### State Modes
+
+OpenProse supports two independent state management approaches:
+
+| Mode | When to Use | State Location |
+|------|-------------|----------------|
+| **filesystem** (default) | Complex programs, resumption needed, debugging | `.prose/runs/{id}/` |
+| **in-context** | Simple programs (<30 statements), no persistence needed | Conversation history |
+
+**Default behavior:** When loading `prose.md`, also load `state/filesystem.md`. This is the recommended mode for most programs.
+
+**Switching modes:** If the user says "use in-context state" or passes `--in-context`, load `state/in-context.md` instead.
+
+**Context warning:** `compiler.md` is large. Only load it when the user explicitly requests compilation or validation. After compiling, recommend `/compact` or a new session before running—don't keep both docs in context.
 
 ## Examples
 
-The plugin ships with 27 examples in the `examples/` directory:
+The `../../examples/` directory contains 31 example programs:
 
 - **01-08**: Basics (hello world, research, code review, debugging)
 - **09-12**: Agents and skills
 - **13-15**: Variables and composition
 - **16-19**: Parallel execution
-- **20**: Fixed loops
-- **21**: Pipeline operations
+- **20-21**: Loops and pipelines
 - **22-23**: Error handling
 - **24-27**: Advanced (choice, conditionals, blocks, interpolation)
-- **28**: Orchestration (Gas Town multi-agent system)
-- **29-31**: Orchestration (Captain's chair pattern)
+- **28**: Gas Town (multi-agent orchestration)
+- **29-31**: Captain's chair pattern (persistent orchestrator)
 
 Start with `01-hello-world.prose` or `03-code-review.prose`.
 

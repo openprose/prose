@@ -1,22 +1,22 @@
 ---
 role: in-context-state-management
 summary: |
-  In-context state management using the narration protocol with emoji markers.
+  In-context state management using the narration protocol with text markers.
   This approach tracks execution state within the conversation history itself.
   The OpenProse VM "thinks aloud" to persist state—what you say becomes what you remember.
 see-also:
   - ../prose.md: VM execution semantics
-  - disk.md: File-system state management (alternative approach)
-  - session.md: Session context and compaction guidelines
+  - filesystem.md: File-system state management (alternative approach)
+  - ../primitives/session.md: Session context and compaction guidelines
 ---
 
 # In-Context State Management
 
-This document describes how the OpenProse VM tracks execution state using **structured narration** in the conversation history. This is one of two state management approaches (the other being file-based state in `disk.md`).
+This document describes how the OpenProse VM tracks execution state using **structured narration** in the conversation history. This is one of two state management approaches (the other being file-based state in `filesystem.md`).
 
 ## Overview
 
-In-context state uses emoji-prefixed markers to persist state within the conversation. The VM "thinks aloud" about execution—what you say becomes what you remember.
+In-context state uses text-prefixed markers to persist state within the conversation. The VM "thinks aloud" about execution—what you say becomes what you remember.
 
 **Key principle:** Your conversation history IS the VM's working memory.
 
@@ -45,10 +45,10 @@ OpenProse Program Start
 
 ## The Narration Protocol
 
-Use emoji-prefixed markers for each state change:
+Use text-prefixed markers for each state change:
 
-| Emoji | Category | Usage |
-|-------|----------|-------|
+| Marker | Category | Usage |
+|--------|----------|-------|
 | [Program] | Program | Start, end, definition collection |
 | [Position] | Position | Current statement being executed |
 | [Binding] | Binding | Variable assignment or update |
@@ -277,7 +277,7 @@ The VM must track these state categories in narration:
 
 ## Independence from File-Based State
 
-In-context state and file-based state (`disk.md`) are **independent approaches**. You choose one or the other based on program complexity.
+In-context state and file-based state (`filesystem.md`) are **independent approaches**. You choose one or the other based on program complexity.
 
 - **In-context**: State lives in conversation history
 - **File-based**: State lives in `.prose/runs/{id}/`
@@ -290,7 +290,7 @@ They are not designed to be complementary—pick the appropriate mode at program
 
 In-context state management:
 
-1. Uses **emoji-prefixed markers** to track state changes
+1. Uses **text-prefixed markers** to track state changes
 2. Persists state in **conversation history**
 3. Is appropriate for **smaller, simpler programs**
 4. Requires **consistent narration** throughout execution

@@ -6,13 +6,13 @@ summary: |
   and long-running workflows.
 see-also:
   - ../prose.md: VM execution semantics
-  - memory.md: In-context state management (alternative approach)
-  - session.md: Session context and compaction guidelines
+  - in-context.md: In-context state management (alternative approach)
+  - ../primitives/session.md: Session context and compaction guidelines
 ---
 
 # File-System State Management
 
-This document describes how the OpenProse VM tracks execution state using **files in the `.prose/` directory**. This is one of two state management approaches (the other being in-context state in `memory.md`).
+This document describes how the OpenProse VM tracks execution state using **files in the `.prose/` directory**. This is one of two state management approaches (the other being in-context state in `in-context.md`).
 
 ## Overview
 
@@ -382,55 +382,3 @@ If execution is interrupted, resume by:
 3. Continuing from the marked position
 
 The `state.md` file contains everything needed to understand where execution stopped and what has been accomplished.
-
----
-
-## When to Use File-Based State
-
-File-based state is appropriate for:
-
-| Factor | Use File-Based | Use In-Context Instead |
-|--------|----------------|------------------------|
-| Statement count | >= 30 statements | < 30 statements |
-| Parallel branches | >= 5 concurrent | < 5 concurrent |
-| Imported programs | >= 3 imports | 0-2 imports |
-| Nested depth | > 2 levels | <= 2 levels |
-| Expected duration | >= 5 minutes | < 5 minutes |
-| Need to resume | Yes | No |
-| Need to inspect | Yes | No |
-
-Announce your state mode at program start:
-
-```
-OpenProse Program Start
-   State mode: file-based (program has 47 statements, 3 imports)
-   State directory: .prose/runs/20260115-143052-a7b3c9/
-```
-
----
-
-## Independence from In-Context State
-
-File-based state and in-context state (`memory.md`) are **independent approaches**. You choose one or the other based on program complexity.
-
-- **File-based**: State lives in `.prose/runs/{id}/`
-- **In-context**: State lives in conversation history
-
-They are not designed to be complementary—pick the appropriate mode at program start.
-
----
-
-## Summary
-
-File-system state management:
-
-1. Persists all state to **`.prose/` directory**
-2. Uses **`state.md`** for execution position (annotated code)
-3. Uses **`bindings/`** for all named values
-4. Uses **`agents/`** for persistent agent memory
-5. Subagents **write their own output files**
-6. VM **only writes `state.md`**
-7. Enables **inspection** and **resumption**
-8. Is appropriate for **larger, complex programs**
-
-Files are inspectable artifacts. The directory structure is the execution state.

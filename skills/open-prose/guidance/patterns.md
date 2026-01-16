@@ -5,7 +5,7 @@ summary: |
   Read this file when authoring new programs or reviewing existing ones.
 see-also:
   - prose.md: Execution semantics, how to run programs
-  - docs.md: Full syntax grammar, validation rules
+  - compiler.md: Full syntax grammar, validation rules
   - antipatterns.md: Patterns to avoid
 ---
 
@@ -198,31 +198,40 @@ session "Execute main workflow"
 
 #### model-tiering
 
-Match model capability to task complexity. Use haiku for simple tasks, sonnet for moderate complexity, opus for deep reasoning.
+Match model capability to task complexity:
+
+| Model | Best For | Examples |
+|-------|----------|----------|
+| **Sonnet 4.5** | Orchestration, control flow, coordination | VM execution, captain's chair, workflow routing |
+| **Opus 4.5** | Hard/difficult work requiring deep reasoning | Complex analysis, strategic decisions, novel problem-solving |
+| **Haiku** | Simple, self-evident tasks (use sparingly) | Classification, summarization, formatting |
+
+**Key insight:** Sonnet 4.5 excels at *orchestrating* agents and managing control flow—it's the ideal model for the OpenProse VM itself and for "captain" agents that coordinate work. Opus 4.5 should be reserved for agents doing genuinely difficult intellectual work. Haiku can handle simple tasks but should generally be avoided where quality matters.
 
 ```prose
-agent classifier:
-  model: haiku  # Fast, cheap classification
-  prompt: "You categorize items into predefined buckets"
+agent captain:
+  model: sonnet  # Orchestration and coordination
+  persist: true
+  prompt: "You coordinate the team and review work"
 
-agent analyst:
-  model: sonnet  # Balanced analysis
-  prompt: "You analyze data and identify patterns"
+agent researcher:
+  model: opus  # Hard analytical work
+  prompt: "You perform deep research and analysis"
 
-agent strategist:
-  model: opus  # Complex reasoning
-  prompt: "You synthesize information into strategic recommendations"
+agent formatter:
+  model: haiku  # Simple transformation (use sparingly)
+  prompt: "You format text into consistent structure"
 
-# Workflow uses appropriate model per stage
-let category = session: classifier
-  prompt: "Classify this support ticket: {ticket}"
+# Captain orchestrates, specialists do the hard work
+session: captain
+  prompt: "Plan the research approach"
 
-if **category is complex technical issue**:
-  session: strategist
-    prompt: "Develop resolution strategy"
-else:
-  session: analyst
-    prompt: "Suggest standard resolution"
+let findings = session: researcher
+  prompt: "Investigate the technical architecture"
+
+resume: captain
+  prompt: "Review findings and determine next steps"
+  context: findings
 ```
 
 #### context-minimization

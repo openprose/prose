@@ -8,7 +8,7 @@
 
 <p align="center">
   <a href="https://prose.md">Website</a> •
-  <a href="skills/open-prose/docs.md">Language Spec</a> •
+  <a href="skills/open-prose/compiler.md">Language Spec</a> •
   <a href="examples/">Examples</a>
 </p>
 
@@ -140,6 +140,7 @@ cd ~/.config/agents/skills/open-prose && git pull
 |---------|---------|
 | Agents | `agent researcher: model: sonnet` |
 | Sessions | `session "prompt"` or `session: agent` |
+| Persistent Agents | `agent captain: persist: true` / `resume: captain` |
 | Parallel | `parallel:` blocks with join strategies |
 | Variables | `let x = session "..."` |
 | Context | `context: [a, b]` or `context: { a, b }` |
@@ -149,11 +150,11 @@ cd ~/.config/agents/skills/open-prose && git pull
 | Pipelines | `items \| map: session "..."` |
 | Conditionals | `if **condition**:` / `choice **criteria**:` |
 
-See the [Language Reference](skills/open-prose/docs.md) for complete documentation.
+See the [Language Reference](skills/open-prose/compiler.md) for complete documentation.
 
 ## Examples
 
-The plugin ships with 28 ready-to-use examples:
+The `examples/` directory contains 31 example programs:
 
 | Range | Category |
 |-------|----------|
@@ -161,11 +162,11 @@ The plugin ships with 28 ready-to-use examples:
 | 09-12 | Agents and skills |
 | 13-15 | Variables and composition |
 | 16-19 | Parallel execution |
-| 20 | Fixed loops |
-| 21 | Pipeline operations |
+| 20-21 | Loops and pipelines |
 | 22-23 | Error handling |
 | 24-27 | Advanced (choice, conditionals, blocks, interpolation) |
-| 28 | Orchestration (Gas Town multi-agent system) |
+| 28 | Gas Town (multi-agent orchestration) |
+| 29-31 | Captain's chair pattern (persistent orchestrator) |
 
 Start with `01-hello-world.prose` or `03-code-review.prose`.
 
@@ -190,10 +191,10 @@ The VM maps traditional components to emergent structures:
 
 ### Documentation Files
 
-| File | Purpose | When to Read |
+| File | Purpose | When to Load |
 |------|---------|--------------|
-| `prose.md` | OpenProse VM semantics | Always, for running programs |
-| `docs.md` | Full language spec | For compilation, validation, or syntax questions |
+| `prose.md` | VM / Interpreter | Load to run programs |
+| `compiler.md` | Compiler / Validator | Only when compiling or validating |
 
 ## FAQ
 

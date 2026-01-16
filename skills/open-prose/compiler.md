@@ -7,8 +7,8 @@ summary: |
 see-also:
   - SKILL.md: Activation triggers, onboarding, telemetry
   - prose.md: Execution semantics, how to run programs
-  - primitives/memory.md: In-context state management
-  - primitives/disk.md: File-system state management
+  - state/filesystem.md: File-system state management (default)
+  - state/in-context.md: In-context state management (on request)
 ---
 
 # OpenProse Language Reference
@@ -59,22 +59,26 @@ If a construct is ambiguous or non-obvious, it should be flagged or transformed 
 2. [File Format](#file-format)
 3. [Comments](#comments)
 4. [String Literals](#string-literals)
-5. [Import Statements](#import-statements)
-6. [Agent Definitions](#agent-definitions)
-7. [Session Statement](#session-statement)
-8. [Variables & Context](#variables--context)
-9. [Composition Blocks](#composition-blocks)
-10. [Parallel Blocks](#parallel-blocks)
-11. [Fixed Loops](#fixed-loops)
-12. [Unbounded Loops](#unbounded-loops)
-13. [Pipeline Operations](#pipeline-operations)
-14. [Error Handling](#error-handling)
-15. [Choice Blocks](#choice-blocks)
-16. [Conditional Statements](#conditional-statements)
-17. [Execution Model](#execution-model)
-18. [Validation Rules](#validation-rules)
-19. [Examples](#examples)
-20. [Future Features](#future-features)
+5. [Use Statements](#use-statements-program-composition)
+6. [Input Declarations](#input-declarations)
+7. [Output Bindings](#output-bindings)
+8. [Program Invocation](#program-invocation)
+9. [Agent Definitions](#agent-definitions)
+10. [Session Statement](#session-statement)
+11. [Resume Statement](#resume-statement)
+12. [Variables & Context](#variables--context)
+13. [Composition Blocks](#composition-blocks)
+14. [Parallel Blocks](#parallel-blocks)
+15. [Fixed Loops](#fixed-loops)
+16. [Unbounded Loops](#unbounded-loops)
+17. [Pipeline Operations](#pipeline-operations)
+18. [Error Handling](#error-handling)
+19. [Choice Blocks](#choice-blocks)
+20. [Conditional Statements](#conditional-statements)
+21. [Execution Model](#execution-model)
+22. [Validation Rules](#validation-rules)
+23. [Examples](#examples)
+24. [Future Features](#future-features)
 
 ---
 
@@ -101,7 +105,7 @@ The following features are implemented:
 | Simple session         | Implemented | `session "prompt"`                             |
 | Agent definitions      | Implemented | `agent name:` with model/prompt properties     |
 | Session with agent     | Implemented | `session: agent` with property overrides       |
-| Import statements      | Implemented | `import "skill" from "source"`                 |
+| Use statements         | Implemented | `use "@handle/slug" as name`                   |
 | Agent skills           | Implemented | `skills: ["skill1", "skill2"]`                 |
 | Agent permissions      | Implemented | `permissions:` block with rules                |
 | Let binding            | Implemented | `let name = session "..."`                     |
@@ -135,7 +139,10 @@ The following features are implemented:
 | Error variable         | Implemented | `catch as err:` access error context           |
 | Throw statement        | Implemented | `throw` or `throw "message"`                   |
 | Retry property         | Implemented | `retry: 3` automatic retry on failure          |
-| Backoff strategy       | Implemented | `backoff: "exponential"` delay between retries |
+| Backoff strategy       | Implemented | `backoff: exponential` delay between retries   |
+| Input declarations     | Implemented | `input name: "description"`                    |
+| Output bindings        | Implemented | `output name = expression`                     |
+| Program invocation     | Implemented | `name(input: value)` call imported programs    |
 | Multi-line strings     | Implemented | `"""..."""` preserving whitespace              |
 | String interpolation   | Implemented | `"Hello {name}"` variable substitution         |
 | Block parameters       | Implemented | `block name(param):` with parameters           |
@@ -330,54 +337,193 @@ Please provide final recommendations.
 
 ---
 
-## Import Statements
+## Use Statements (Program Composition)
 
-Import statements load external skills that can be assigned to agents.
+Use statements import other OpenProse programs from the registry at `p.prose.md`, enabling modular workflows.
 
 ### Syntax
 
 ```prose
-import "skill-name" from "source"
+use "@handle/slug"
+use "@handle/slug" as alias
 ```
 
-### Source Types
+### Path Format
 
-| Source Type | Format                | Example                   |
-| ----------- | --------------------- | ------------------------- |
-| GitHub      | `github:user/repo`    | `github:anthropic/skills` |
-| NPM         | `npm:package`         | `npm:@org/analyzer`       |
-| Local path  | `./path` or `../path` | `./local-skills/my-skill` |
+Import paths follow the format `@handle/slug`:
+- `@handle` identifies the program author/organization
+- `slug` is the program name
+
+An optional alias (`as name`) allows referencing by a shorter name.
 
 ### Examples
 
 ```prose
-# Import from GitHub
-import "web-search" from "github:anthropic/skills"
+# Import a program
+use "@alice/research"
 
-# Import from npm
-import "code-analyzer" from "npm:@company/analyzer"
-
-# Import from local path
-import "custom-tool" from "./skills/custom-tool"
-import "shared-skill" from "../common/skills"
+# Import with alias
+use "@bob/critique" as critic
 ```
+
+### Program URL Resolution
+
+When the OpenProse VM encounters a `use` statement:
+
+1. Fetch the program from `https://p.prose.md/@handle/slug`
+2. Parse the program to extract its contract (inputs/outputs)
+3. Register the program in the Import Registry
 
 ### Validation Rules
 
 | Check                 | Severity | Message                                |
 | --------------------- | -------- | -------------------------------------- |
-| Empty skill name      | Error    | Import skill name cannot be empty      |
-| Empty source          | Error    | Import source cannot be empty          |
-| Duplicate import      | Error    | Skill already imported                 |
-| Unknown source format | Warning  | Should start with github:, npm:, or ./ |
+| Empty path            | Error    | Use path cannot be empty               |
+| Invalid path format   | Error    | Path must be @handle/slug format       |
+| Duplicate import      | Error    | Program already imported               |
+| Missing alias for dup | Error    | Alias required when importing multiple |
 
 ### Execution Semantics
 
-Import statements are processed before any agent definitions or sessions. The OpenProse VM:
+Use statements are processed before any agent definitions or sessions. The OpenProse VM:
 
-1. Validates all imports at the start of execution
-2. Loads skill definitions from the specified sources
-3. Makes skills available for agent assignment
+1. Fetches and validates all imported programs at the start of execution
+2. Extracts input/output contracts from each program
+3. Registers programs in the Import Registry for later invocation
+
+---
+
+## Input Declarations
+
+Inputs declare what values a program expects from its caller.
+
+### Syntax
+
+```prose
+input name: "description"
+```
+
+### Examples
+
+```prose
+input topic: "The subject to research"
+input depth: "How deep to go (shallow, medium, deep)"
+```
+
+### Semantics
+
+Inputs:
+- Are declared at the top of the program (before executable statements)
+- Have a name and a description (for documentation)
+- Become available as variables within the program body
+- Must be provided by the caller when invoking the program
+
+### Validation Rules
+
+| Check                  | Severity | Message                              |
+| ---------------------- | -------- | ------------------------------------ |
+| Empty input name       | Error    | Input name cannot be empty           |
+| Empty description      | Warning  | Consider adding a description        |
+| Duplicate input name   | Error    | Input already declared               |
+| Input after executable | Error    | Inputs must be declared before executable statements |
+
+---
+
+## Output Bindings
+
+Outputs declare what values a program produces for its caller.
+
+### Syntax
+
+```prose
+output name = expression
+```
+
+### Examples
+
+```prose
+let raw = session "Research {topic}"
+output findings = session "Synthesize research"
+  context: raw
+output sources = session "Extract sources"
+  context: raw
+```
+
+### Semantics
+
+The `output` keyword:
+- Marks a variable as an output (visible at assignment, not just at file top)
+- Works like `let` but also registers the value as a program output
+- Can appear anywhere in the program body
+- Multiple outputs are supported
+
+### Validation Rules
+
+| Check                  | Severity | Message                              |
+| ---------------------- | -------- | ------------------------------------ |
+| Empty output name      | Error    | Output name cannot be empty          |
+| Duplicate output name  | Error    | Output already declared              |
+| Output name conflicts  | Error    | Output name conflicts with variable  |
+
+---
+
+## Program Invocation
+
+Call imported programs by providing their inputs.
+
+### Syntax
+
+```prose
+name(input1: value1, input2: value2)
+```
+
+### Examples
+
+```prose
+use "@alice/research" as research
+
+let result = research(topic: "quantum computing")
+```
+
+### Accessing Outputs
+
+The result contains all outputs from the invoked program, accessible as properties:
+
+```prose
+session "Write summary"
+  context: result.findings
+
+session "Cite sources"
+  context: result.sources
+```
+
+### Destructuring Outputs
+
+For convenience, outputs can be destructured:
+
+```prose
+let { findings, sources } = research(topic: "quantum computing")
+```
+
+### Execution Semantics
+
+When a program invokes an imported program:
+
+1. **Bind inputs**: Map caller-provided values to the imported program's inputs
+2. **Execute**: Run the imported program (spawns its own sessions)
+3. **Collect outputs**: Gather all `output` bindings from the imported program
+4. **Return**: Make outputs available to the caller as a result object
+
+The imported program runs in its own execution context but shares the same VM session.
+
+### Validation Rules
+
+| Check                    | Severity | Message                              |
+| ------------------------ | -------- | ------------------------------------ |
+| Unknown program          | Error    | Program not imported                 |
+| Missing required input   | Error    | Required input not provided          |
+| Unknown input name       | Error    | Input not declared in program        |
+| Unknown output property  | Error    | Output not declared in program       |
 
 ---
 
@@ -442,8 +588,8 @@ agent shared:
 The `skills` property assigns imported skills to an agent:
 
 ```prose
-import "web-search" from "github:anthropic/skills"
-import "summarizer" from "./local-skills"
+use "@anthropic/web-search"
+use "@anthropic/summarizer" as summarizer
 
 agent researcher:
   skills: ["web-search", "summarizer"]
@@ -2076,16 +2222,16 @@ Add `backoff:` to control delay between retries:
 ```prose
 session "Rate-limited API"
   retry: 5
-  backoff: "exponential"
+  backoff: exponential
 ```
 
 **Backoff Strategies:**
 
-| Strategy        | Behavior                           |
-| --------------- | ---------------------------------- |
-| `"none"`        | Immediate retry (default)          |
-| `"linear"`      | Fixed delay between retries        |
-| `"exponential"` | Doubling delay (1s, 2s, 4s, 8s...) |
+| Strategy      | Behavior                           |
+| ------------- | ---------------------------------- |
+| `none`        | Immediate retry (default)          |
+| `linear`      | Fixed delay between retries        |
+| `exponential` | Doubling delay (1s, 2s, 4s, 8s...) |
 
 #### Retry with Context
 
@@ -2096,7 +2242,7 @@ let data = session "Get input"
 session "Process data"
   context: data
   retry: 3
-  backoff: "linear"
+  backoff: linear
 ```
 
 ### Combining Patterns
@@ -2107,7 +2253,7 @@ Retry and try/catch work together for maximum resilience:
 try:
   session "Call external service"
     retry: 3
-    backoff: "exponential"
+    backoff: exponential
 catch:
   session "All retries failed, use fallback"
 ```
@@ -2122,7 +2268,7 @@ catch:
 | Non-positive retry count     | Error    | Retry count must be positive                        |
 | Non-integer retry count      | Error    | Retry count must be an integer                      |
 | High retry count (>10)       | Warning  | Retry count is unusually high                       |
-| Invalid backoff strategy     | Error    | Must be "none", "linear", or "exponential"          |
+| Invalid backoff strategy     | Error    | Must be none, linear, or exponential                |
 | Retry on agent definition    | Warning  | Retry property is only valid in session statements  |
 
 ### Syntax Reference
@@ -2140,7 +2286,7 @@ throw_statement ::= "throw" [string_literal]
 
 retry_property ::= "retry" ":" number_literal
 
-backoff_property ::= "backoff" ":" string_literal
+backoff_property ::= "backoff" ":" ( "none" | "linear" | "exponential" )
 ```
 
 ---
@@ -2508,9 +2654,9 @@ The validator checks programs for errors and warnings before execution.
 | E007 | Undefined agent reference           |
 | E008 | Invalid model value                 |
 | E009 | Duplicate property                  |
-| E010 | Duplicate import                    |
-| E011 | Empty import skill name             |
-| E012 | Empty import source                 |
+| E010 | Duplicate use statement             |
+| E011 | Empty use path                      |
+| E012 | Invalid use path format             |
 | E013 | Skills must be an array             |
 | E014 | Skill name must be a string         |
 | E015 | Permissions must be a block         |
@@ -2518,6 +2664,15 @@ The validator checks programs for errors and warnings before execution.
 | E017 | `resume:` requires persistent agent |
 | E018 | `resume:` with no existing memory   |
 | E019 | Duplicate variable name (flat namespace) |
+| E020 | Empty input name                    |
+| E021 | Duplicate input declaration         |
+| E022 | Input after executable statement    |
+| E023 | Empty output name                   |
+| E024 | Duplicate output declaration        |
+| E025 | Unknown program in invocation       |
+| E026 | Missing required input              |
+| E027 | Unknown input name in invocation    |
+| E028 | Unknown output property access      |
 
 ### Warnings (Non-blocking)
 
@@ -2640,9 +2795,9 @@ session: analyst
 ### Workflow with Skills and Permissions
 
 ```prose
-# Import external skills
-import "web-search" from "github:anthropic/skills"
-import "file-writer" from "./local-skills"
+# Import external programs
+use "@anthropic/web-search"
+use "@anthropic/file-writer" as file-writer
 
 # Define a secure research agent
 agent researcher:
@@ -2696,17 +2851,27 @@ All core features through Tier 12 have been implemented. Potential future enhanc
 
 ```
 program     → statement* EOF
-statement   → agentDef | blockDef | parallelBlock | repeatBlock | forEachBlock
-            | loopBlock | tryBlock | choiceBlock | ifStatement | session
-            | resumeStmt | doBlock | arrowExpr | letBinding | constBinding
-            | assignment | throwStatement | comment
+statement   → useStatement | inputDecl | agentDef | session | resumeStmt
+            | letBinding | constBinding | assignment | outputBinding
+            | parallelBlock | repeatBlock | forEachBlock | loopBlock
+            | tryBlock | choiceBlock | ifStatement | doBlock | blockDef
+            | throwStatement | comment
+
+# Program Composition
+useStatement → "use" string ( "as" IDENTIFIER )?
+inputDecl   → "input" IDENTIFIER ":" string
+outputBinding → "output" IDENTIFIER "=" expression
+programCall → IDENTIFIER "(" ( IDENTIFIER ":" expression )* ")"
 
 # Definitions
 agentDef    → "agent" IDENTIFIER ":" NEWLINE INDENT agentProperty* DEDENT
 agentProperty → "model:" ( "sonnet" | "opus" | "haiku" )
               | "prompt:" string
               | "persist:" ( "true" | "project" | string )
-              | "skills:" array
+              | "context:" ( IDENTIFIER | array | objectContext )
+              | "retry:" NUMBER
+              | "backoff:" ( "none" | "linear" | "exponential" )
+              | "skills:" "[" string* "]"
               | "permissions:" NEWLINE INDENT permission* DEDENT
 blockDef    → "block" IDENTIFIER params? ":" NEWLINE INDENT statement* DEDENT
 params      → "(" IDENTIFIER ( "," IDENTIFIER )* ")"
@@ -2738,10 +2903,10 @@ ifStatement → "if" discretion ":" NEWLINE INDENT statement+ DEDENT elifClause*
 elifClause  → "elif" discretion ":" NEWLINE INDENT statement+ DEDENT
 elseClause  → "else" ":" NEWLINE INDENT statement+ DEDENT
 
-# Blocks and Sequences
+# Composition
 doBlock     → "do" ( ":" NEWLINE INDENT statement* DEDENT | IDENTIFIER args? )
 args        → "(" expression ( "," expression )* ")"
-arrowExpr   → session "->" session ( "->" session )*
+arrowExpr   → session ( "->" session )+
 
 # Sessions
 session     → "session" ( string | ":" IDENTIFIER | IDENTIFIER ":" IDENTIFIER )
@@ -2751,7 +2916,7 @@ sessionProperty → "model:" ( "sonnet" | "opus" | "haiku" )
                 | "prompt:" string
                 | "context:" ( IDENTIFIER | array | objectContext )
                 | "retry:" NUMBER
-                | "backoff:" string
+                | "backoff:" ( "none" | "linear" | "exponential" )
 
 # Bindings
 letBinding  → "let" IDENTIFIER "=" expression
@@ -2760,7 +2925,7 @@ assignment  → IDENTIFIER "=" expression
 
 # Expressions
 expression  → session | doBlock | parallelBlock | repeatBlock | forEachBlock
-            | loopBlock | arrowExpr | pipeExpr | string | IDENTIFIER | array | objectContext
+            | loopBlock | arrowExpr | pipeExpr | programCall | string | IDENTIFIER | array | objectContext
 
 # Pipelines
 pipeExpr    → ( IDENTIFIER | array ) ( "|" pipeOp )+

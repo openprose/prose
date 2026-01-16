@@ -7,8 +7,8 @@ summary: |
 see-also:
   - ../prose.md: VM execution semantics
   - ../compiler.md: Full language specification
-  - memory.md: In-context state management
-  - disk.md: File-system state management
+  - ../state/filesystem.md: File-system state management (default)
+  - ../state/in-context.md: In-context state management (on request)
 ---
 
 # Session Context Management
@@ -24,11 +24,13 @@ When you start, you receive context from multiple sources. Understand what each 
 ### 1.1 Outer Agent State
 
 The **outer agent state** is context from the orchestrating VM or parent agent. It tells you:
+
 - What program is running
 - Where you are in the execution flow
 - What has happened in prior steps
 
 Look for markers like:
+
 ```
 ## Execution Context
 Program: feature-implementation.prose
@@ -43,6 +45,7 @@ Prior steps completed: [plan, design]
 If you are a **persistent agent**, you'll receive a memory file with your prior observations and decisions. This is YOUR accumulated knowledge from previous segments.
 
 Look for:
+
 ```
 ## Agent Memory: [your-name]
 ```
@@ -54,10 +57,13 @@ Look for:
 The **task context** is the specific input for THIS session—the code to review, the plan to evaluate, the feature to implement.
 
 Look for:
+
 ```
 ## Task Context
 ```
+
 or
+
 ```
 Context provided:
 ---
@@ -85,6 +91,7 @@ If you're a persistent agent, you maintain state across sessions via a memory fi
 ### 2.1 Reading Your Memory
 
 At session start, your memory file is provided. It contains:
+
 - **Current Understanding**: Your overall grasp of the project/task
 - **Decisions Made**: What you've decided and why
 - **Open Concerns**: Things you're watching for
@@ -95,6 +102,7 @@ At session start, your memory file is provided. It contains:
 ### 2.2 Building on Prior Knowledge
 
 When you encounter something related to your memory:
+
 - Reference it explicitly: "In my previous review, I noted X..."
 - Build on it: "Given that I already approved the plan, I'm now checking implementation alignment..."
 - Update it if wrong: "I previously thought X, but now I see Y..."
@@ -121,25 +129,25 @@ This loses all useful information. A summary generalizes; compaction preserves s
 
 Preserve **specific details** that future-you will need:
 
-| Preserve | Example |
-|----------|---------|
-| **Specific locations** | "src/auth/login.ts:67" not "the auth code" |
-| **Exact findings** | "SQL injection in query builder" not "security issues" |
-| **Decisions with rationale** | "Approved because X" not just "Approved" |
-| **Numbers and thresholds** | "Coverage at 73%, target is 80%" not "coverage is low" |
-| **Names and identifiers** | "User.authenticate() method" not "the login function" |
-| **Open questions** | "Need to verify: does rate limiter apply to OAuth flow?" |
+| Preserve                     | Example                                                  |
+| ---------------------------- | -------------------------------------------------------- |
+| **Specific locations**       | "src/auth/login.ts:67" not "the auth code"               |
+| **Exact findings**           | "SQL injection in query builder" not "security issues"   |
+| **Decisions with rationale** | "Approved because X" not just "Approved"                 |
+| **Numbers and thresholds**   | "Coverage at 73%, target is 80%" not "coverage is low"   |
+| **Names and identifiers**    | "User.authenticate() method" not "the login function"    |
+| **Open questions**           | "Need to verify: does rate limiter apply to OAuth flow?" |
 
 ### 3.3 What to Drop
 
 Drop information that won't help future sessions:
 
-| Drop | Why |
-|------|-----|
-| Reasoning chains | The conclusion matters, not how you got there |
-| False starts | You considered X but chose Y—just record Y |
-| Obvious context | Don't repeat the task prompt back |
-| Verbose quotes | Reference by location, don't copy large blocks |
+| Drop             | Why                                                                         |
+| ---------------- | --------------------------------------------------------------------------- |
+| Reasoning chains | The conclusion matters, not how you got there                               |
+| False starts     | You considered X but chose Y—just record Y and a brief note about why not X |
+| Obvious context  | Don't repeat the task prompt back                                           |
+| Verbose quotes   | Reference by location, don't copy large blocks                              |
 
 ### 3.4 Compaction Structure
 
@@ -147,17 +155,23 @@ Update your memory file in this structure:
 
 ```markdown
 ## Current Understanding
+
 [What you know about the overall project/task—update, don't replace entirely]
 
 ## Decisions Made
+
 [Append new decisions with dates and rationale]
+
 - [date]: [decision] — [why]
 
 ## Open Concerns
+
 [Things to watch for in future sessions—add new, remove resolved]
 
 ## Segment [N] Summary
+
 [What happened THIS session—specific, not general]
+
 - Reviewed: [what, where]
 - Found: [specific findings]
 - Decided: [specific decisions]
@@ -167,12 +181,14 @@ Update your memory file in this structure:
 ### 3.5 Compaction Examples
 
 **Bad compaction (too general):**
+
 ```
 ## Segment 3 Summary
 Reviewed the implementation. Found some issues. Requested changes.
 ```
 
 **Good compaction (specific and useful):**
+
 ```
 ## Segment 3 Summary
 - Reviewed: Step 2 implementation (UserService.ts, AuthController.ts)
@@ -204,13 +220,16 @@ Over many segments, your memory file grows. When it becomes unwieldy:
 
 ```markdown
 ## Recent Segments (full detail)
+
 [Segments 7-9]
 
 ## Earlier Segments (compressed)
+
 - Segment 4-6: Completed initial implementation review, approved with minor fixes
 - Segment 1-3: Established review criteria, approved design doc
 
 ## Key Historical Decisions
+
 - Chose JWT over session tokens (segment 2)
 - Established 80% coverage threshold (segment 1)
 ```
@@ -275,7 +294,7 @@ READY FOR: [what should happen next]
 
 ## 6. Writing Output Files
 
-When using file-based state (see `disk.md`), the VM tells you where to write your output. You must write your results directly to the filesystem.
+When using file-based state (see `../state/filesystem.md`), the VM tells you where to write your output. You must write your results directly to the filesystem.
 
 ### 6.1 Binding Output Files
 
@@ -285,20 +304,23 @@ For regular sessions with output capture (`let x = session "..."`), write to the
 
 **File format:**
 
-```markdown
+````markdown
 # {name}
 
 kind: {let|const|output|input}
 
 source:
+
 ```prose
 {the source code that created this binding}
 ```
+````
 
 ---
 
 {Your actual output here}
-```
+
+````
 
 **Example:**
 
@@ -311,7 +333,7 @@ source:
 ```prose
 let research = session: researcher
   prompt: "Research AI safety"
-```
+````
 
 ---
 
@@ -322,7 +344,8 @@ AI safety research covers several key areas:
 3. **Interpretability** - Understanding how models make decisions
 
 Key papers include Amodei et al. (2016) on concrete problems...
-```
+
+````
 
 ### 6.2 Anonymous Session Output
 
@@ -340,12 +363,13 @@ kind: let
 source:
 ```prose
 session "Analyze the codebase for security issues"
-```
+````
 
 ---
 
 Security analysis found the following issues...
-```
+
+````
 
 ### 6.3 Persistent Agent Memory Output
 
@@ -378,7 +402,7 @@ If you are a persistent agent (invoked with `resume:`), you have additional resp
 
 - {Concern 1}
 - {Concern 2}
-```
+````
 
 **Segment file format:**
 

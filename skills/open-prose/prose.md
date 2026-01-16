@@ -7,8 +7,8 @@ summary: |
 see-also:
   - SKILL.md: Activation triggers, onboarding, telemetry
   - compiler.md: Full syntax grammar, validation rules, compilation
-  - primitives/memory.md: In-context state management (narration protocol)
-  - primitives/disk.md: File-system state management
+  - state/filesystem.md: File-system state management (default)
+  - state/in-context.md: In-context state management (on request)
   - primitives/session.md: Session context and compaction guidelines
 ---
 
@@ -144,10 +144,10 @@ If a program exceeds 999 segments, extend to 4 digits: `captain-1000.md`.
 
 ## State Management
 
-OpenProse supports two state management systems. See the primitives files for detailed documentation:
+OpenProse supports two state management systems. See the state files for detailed documentation:
 
-- **`primitives/memory.md`** — In-context state using the narration protocol (emoji markers)
-- **`primitives/disk.md`** — File-system state using the directory structure above
+- **`state/filesystem.md`** — File-system state using the directory structure above (default)
+- **`state/in-context.md`** — In-context state using the narration protocol
 
 ### Who Writes What
 
