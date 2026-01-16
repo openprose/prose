@@ -154,7 +154,7 @@ See the [Language Reference](skills/open-prose/compiler.md) for complete documen
 
 ## Examples
 
-The `examples/` directory contains 31 example programs:
+The `examples/` directory contains 36 example programs:
 
 | Range | Category |
 |-------|----------|
@@ -167,8 +167,9 @@ The `examples/` directory contains 31 example programs:
 | 24-27 | Advanced (choice, conditionals, blocks, interpolation) |
 | 28 | Gas Town (multi-agent orchestration) |
 | 29-31 | Captain's chair pattern (persistent orchestrator) |
+| 33-36 | Production workflows (PR auto-fix, content pipeline, feature factory, bug hunter) |
 
-Start with `01-hello-world.prose` or `03-code-review.prose`.
+Start with `01-hello-world.prose` or try `33-pr-review-autofix.prose` for something impressive.
 
 ## How It Works
 
@@ -195,6 +196,19 @@ The VM maps traditional components to emergent structures:
 |------|---------|--------------|
 | `prose.md` | VM / Interpreter | Load to run programs |
 | `compiler.md` | Compiler / Validator | Only when compiling or validating |
+| `state/filesystem.md` | File-based state (default) | Load with VM |
+| `state/in-context.md` | In-context state | For simple programs (<30 statements) |
+| `state/sqlite.md` | SQLite state (experimental) | On request with `--state=sqlite` |
+
+### Experimental: SQLite State
+
+Run with `--state=sqlite` for queryable, transaction-safe state management. Requires `sqlite3` CLI:
+
+| Platform | Availability |
+|----------|--------------|
+| macOS | Pre-installed |
+| Linux | `apt install sqlite3` or equivalent |
+| Windows | `winget install SQLite.SQLite` |
 
 ## FAQ
 

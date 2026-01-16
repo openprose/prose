@@ -31,6 +31,7 @@ Activate this skill when the user:
 | `prose.md`                | Same directory as this file | VM semantics (load to run programs)       |
 | `state/filesystem.md`     | Same directory as this file | File-based state (default, load with VM)  |
 | `state/in-context.md`     | Same directory as this file | In-context state (on request)             |
+| `state/sqlite.md`         | Same directory as this file | SQLite state (experimental, on request)   |
 | `compiler.md`             | Same directory as this file | Compiler/validator (load only on request) |
 | `guidance/patterns.md`    | Same directory as this file | Best practices (load when writing .prose) |
 | `guidance/antipatterns.md`| Same directory as this file | What to avoid (load when writing .prose)  |
@@ -195,6 +196,7 @@ curl -s -X POST https://api-v2.prose.md/analytics \
 | `prose.md`            | VM / Interpreter     | Always load to run programs                    |
 | `state/filesystem.md` | File-based state     | Load with VM (default)                         |
 | `state/in-context.md` | In-context state     | Only if user requests `--in-context` or says "use in-context state" |
+| `state/sqlite.md`     | SQLite state (experimental) | Only if user requests `--state=sqlite` (requires sqlite3 CLI) |
 | `compiler.md`         | Compiler / Validator | **Only** when user asks to compile or validate |
 | `guidance/patterns.md` | Best practices      | Load when **writing** new .prose files         |
 | `guidance/antipatterns.md` | What to avoid  | Load when **writing** new .prose files         |
@@ -209,22 +211,25 @@ Do **not** load these when running or compiling—they're for authoring only.
 
 ### State Modes
 
-OpenProse supports two independent state management approaches:
+OpenProse supports three state management approaches:
 
 | Mode | When to Use | State Location |
 |------|-------------|----------------|
-| **filesystem** (default) | Complex programs, resumption needed, debugging | `.prose/runs/{id}/` |
+| **filesystem** (default) | Complex programs, resumption needed, debugging | `.prose/runs/{id}/` files |
 | **in-context** | Simple programs (<30 statements), no persistence needed | Conversation history |
+| **sqlite** (experimental) | Queryable state, atomic transactions, flexible schema | `.prose/runs/{id}/state.db` |
 
 **Default behavior:** When loading `prose.md`, also load `state/filesystem.md`. This is the recommended mode for most programs.
 
 **Switching modes:** If the user says "use in-context state" or passes `--in-context`, load `state/in-context.md` instead.
 
+**Experimental SQLite mode:** If the user passes `--state=sqlite` or says "use sqlite state", load `state/sqlite.md`. This mode requires `sqlite3` CLI to be installed (pre-installed on macOS, available via package managers on Linux/Windows). If `sqlite3` is unavailable, warn the user and fall back to filesystem state.
+
 **Context warning:** `compiler.md` is large. Only load it when the user explicitly requests compilation or validation. After compiling, recommend `/compact` or a new session before running—don't keep both docs in context.
 
 ## Examples
 
-The `../../examples/` directory contains 31 example programs:
+The `../../examples/` directory contains 36 example programs:
 
 - **01-08**: Basics (hello world, research, code review, debugging)
 - **09-12**: Agents and skills
@@ -235,10 +240,20 @@ The `../../examples/` directory contains 31 example programs:
 - **24-27**: Advanced (choice, conditionals, blocks, interpolation)
 - **28**: Gas Town (multi-agent orchestration)
 - **29-31**: Captain's chair pattern (persistent orchestrator)
+- **33-36**: Production workflows (PR auto-fix, content pipeline, feature factory, bug hunter)
 
-Start with `01-hello-world.prose` or `03-code-review.prose`.
+Start with `01-hello-world.prose` or try the impressive `33-pr-review-autofix.prose`.
 
 ## Execution
+
+When first invoking the OpenProse VM in a session, display this banner:
+
+```
+┌─────────────────────────────────────┐
+│         ◇ OpenProse VM ◇            │
+│       A new kind of computer        │
+└─────────────────────────────────────┘
+```
 
 To execute a `.prose` file, you become the OpenProse VM:
 

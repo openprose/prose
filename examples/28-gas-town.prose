@@ -101,7 +101,8 @@
 # The Mayor: Your concierge and chief-of-staff
 # Main agent you interact with, kicks off most work convoys
 agent mayor:
-  model: opus
+  model: sonnet        # Orchestration role - sonnet excels here
+  persist: project     # Survives across runs - your long-term concierge
   prompt: """
 You are the Mayor of Gas Town, the user's concierge and chief-of-staff.
 
@@ -150,7 +151,8 @@ No waiting for permission. Check hook, do work, submit MR.
 # Refinery: The Merge Queue processor
 # Intelligently merges all changes one at a time to main
 agent refinery:
-  model: opus
+  model: sonnet        # Orchestration role - merge queue is control flow
+  persist: true        # Execution-scoped - maintains MQ state within run
   prompt: """
 You are the Refinery - Gas Town's merge queue processor.
 
@@ -174,6 +176,7 @@ GUPP applies to your patrol: If MQ has items, PROCESS THEM.
 # A patrol agent that monitors swarm health
 agent witness:
   model: sonnet
+  persist: true        # Execution-scoped - tracks polecat health within run
   prompt: """
 You are the Witness - Gas Town's swarm health monitor.
 
@@ -198,6 +201,7 @@ GUPP: Your patrol IS your hook. Keep running it.
 # Named for Dennis Hopper's Waterworld character
 agent deacon:
   model: sonnet
+  persist: true        # Execution-scoped - maintains patrol state within run
   prompt: """
 You are the Deacon - Gas Town's daemon beacon.
 
@@ -246,7 +250,8 @@ GUPP: If work is on your hook, do it. Then sleep.
 # Crew: Per-rig coding agents that work for the Overseer
 # Long-lived identities, great for design work with back-and-forth
 agent crew:
-  model: opus
+  model: opus          # Hard/difficult work - design requires deep reasoning
+  persist: project     # Survives across runs - maintains design context
   prompt: """
 You are a Crew member - a named, long-lived coding agent.
 
@@ -327,6 +332,8 @@ block land_convoy(convoy_id):
 """
 
 # Handoff: Gracefully transition to new session
+# Note: For persistent agents (persist: true/project), use `resume:` instead
+# of this block - it handles memory loading automatically.
 block handoff(worker_name, continuation_notes):
   session "{worker_name} preparing handoff"
     prompt: """
@@ -871,7 +878,7 @@ Execute your decision, then sleep until next 5-minute wake.
 # =============================================================================
 
 block convoy_workflow(convoy_name, work_description, target_rig):
-  # Phase 1: Mayor receives and plans
+  # Phase 1: Mayor receives and plans (first call uses session:)
   let plan = session: mayor
     prompt: """
 New convoy requested: {convoy_name}
@@ -887,7 +894,8 @@ Rig: {target_rig}
   # Phase 2: Create convoy and beads
   do create_convoy(convoy_name, plan)
 
-  let beads = session: mayor
+  # Subsequent Mayor calls use resume: to load memory
+  let beads = resume: mayor
     prompt: """
 Create individual beads for convoy {convoy_name}:
 1. Write each bead to .prose/gas-town/beads/
@@ -898,7 +906,7 @@ Return list of bead IDs.
     context: plan
 
   # Phase 3: Swarm the work
-  session: mayor
+  resume: mayor
     prompt: """
 Initiate swarm for convoy {convoy_name}:
 1. Determine optimal polecat count (max 30)
@@ -914,7 +922,7 @@ Initiate swarm for convoy {convoy_name}:
     do witness_patrol(target_rig)
 
     # Check convoy status
-    let convoy_status = session: mayor
+    let convoy_status = resume: mayor
       prompt: """
 Check convoy {convoy_name} status:
 - Read .prose/gas-town/convoys/{convoy_name}.json
@@ -924,7 +932,7 @@ Return status summary.
 """
 
     if **there are blocked beads that need attention**:
-      session: mayor
+      resume: mayor
         prompt: """
 Handle blocked beads in convoy:
 1. Analyze block reasons
@@ -940,7 +948,7 @@ Handle blocked beads in convoy:
   # Phase 6: Land the convoy
   do land_convoy(convoy_name)
 
-  session: mayor
+  resume: mayor
     prompt: """
 Convoy {convoy_name} has landed!
 1. Generate completion summary
@@ -1292,6 +1300,7 @@ Report convoy completion to Overseer:
 # For design/architecture work, use Crew instead of polecats
 
 block crew_design_session(topic):
+  # First invocation starts fresh design session
   session: crew
     prompt: """
 Design session for: {topic}
@@ -1307,7 +1316,8 @@ This is interactive - wait for Overseer input.
 """
 
   loop until **design is finalized** (max: 20):
-    session: crew
+    # Subsequent calls resume with memory
+    resume: crew
       prompt: """
 Continue design iteration:
 - Address Overseer feedback
@@ -1316,7 +1326,7 @@ Continue design iteration:
 """
 
   if **Overseer wants to proceed with implementation**:
-    session: crew
+    resume: crew
       prompt: """
 Create implementation convoy:
 1. Convert design into beads
@@ -1395,7 +1405,7 @@ Hanoi convoy started for {num_discs} discs.
 # This shows a realistic production workflow using all Gas Town features
 
 block production_feature_workflow(feature_name, rig_name):
-  # Phase 1: Design with Crew
+  # Phase 1: Design with Crew (first call)
   do log_activity("overseer", "feature_start", feature_name)
 
   let design = session: crew
@@ -1407,7 +1417,7 @@ Design phase for: {feature_name}
 4. Get Overseer approval
 """
 
-  # Phase 2: Create convoy with chrome-level quality
+  # Phase 2: Create convoy with chrome-level quality (first Mayor call)
   let plan = session: mayor
     prompt: """
 Create implementation plan for {feature_name}:
@@ -1421,7 +1431,7 @@ Create implementation plan for {feature_name}:
   do create_convoy("{feature_name}-impl", plan)
 
   # Phase 3: Spawn swarm with chrome workflow
-  session: mayor
+  resume: mayor
     prompt: """
 Spawn chrome-quality swarm:
 1. Allocate polecats (use trust scores from CVs)
@@ -1435,11 +1445,11 @@ Spawn chrome-quality swarm:
     do check_swarm_health("{feature_name}-impl")
 
     if **any polecats stuck**:
-      session: witness
+      resume: witness
         prompt: "Nudge stuck polecats, use seance if needed"
 
     if **any polecats near context limit**:
-      session: witness
+      resume: witness
         prompt: "Recycle exhausted polecats"
 
   # Phase 5: Merge all MRs
@@ -1449,7 +1459,7 @@ Spawn chrome-quality swarm:
   # Phase 6: Land and celebrate
   do land_convoy("{feature_name}-impl")
 
-  session: mayor
+  resume: mayor
     prompt: """
 Feature {feature_name} complete!
 1. Generate release notes
@@ -1465,7 +1475,7 @@ Feature {feature_name} complete!
 # When a feature spans multiple projects
 
 block cross_rig_convoy(feature_name, rig_list):
-  # Create convoy that spans multiple rigs
+  # Create convoy that spans multiple rigs (first Mayor call)
   session: mayor
     prompt: """
 Cross-rig convoy for {feature_name}:
@@ -1492,13 +1502,13 @@ Rigs involved: {rig_list}
       do war_rig_status(rig, "{feature_name}")
 
     if **any War Rig blocked**:
-      session: mayor
+      resume: mayor
         prompt: "Coordinate cross-rig blocker resolution"
 
   # Land the cross-rig convoy
   do land_convoy("{feature_name}")
 
-  session: mayor
+  resume: mayor
     prompt: """
 Cross-rig convoy {feature_name} landed!
 War Rig summary for each rig: {rig_list}
