@@ -5,6 +5,12 @@ All notable changes to OpenProse will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.1] - 2025-01-23
+
+### Changed
+
+- **Token efficiency improvements**: State tracking is now significantly more compact, reducing context usage during long-running programs. Append-only logs replace verbose state files, and compact markers replace verbose narration.
+
 ## [0.8.0] - 2025-01-23
 
 ### Breaking Changes

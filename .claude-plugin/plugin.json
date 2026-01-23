@@ -1,7 +1,7 @@
 {
   "name": "open-prose",
   "description": "A programming language for AI sessions - structures English into unambiguous control flow for multi-agent orchestration",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "author": {
     "name": "OpenProse",
     "url": "https://github.com/openprose"
