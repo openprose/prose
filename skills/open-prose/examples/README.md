@@ -80,11 +80,12 @@ These examples demonstrate workflows using OpenProse's full feature set.
 | `30-captains-chair-simple.prose`      | Minimal captain's chair: core pattern without complexity                                                                                                    |
 | `31-captains-chair-with-memory.prose` | Captain's chair with retrospective analysis and session-to-session learning                                                                                 |
 
-### Production Workflows (33-38)
+### Production Workflows (32-38)
 
-| File                         | Description                              |
-| ---------------------------- | ---------------------------------------- |
-| `33-pr-review-autofix.prose` | Automated PR review with fix suggestions |
+| File                             | Description                                              |
+| -------------------------------- | -------------------------------------------------------- |
+| `32-automated-pr-review.prose`   | Multi-agent PR review with security, performance, style  |
+| `33-pr-review-autofix.prose`     | Automated PR review with fix suggestions                 |
 | `34-content-pipeline.prose`  | End-to-end content creation pipeline     |
 | `35-feature-factory.prose`   | Feature implementation automation        |
 | `36-bug-hunter.prose`        | Systematic bug detection and analysis    |
@@ -106,15 +107,17 @@ These examples demonstrate workflows using OpenProse's full feature set.
 | `42-rlm-filter-recurse.prose` | Filter-then-process for needle-in-haystack tasks                    |
 | `43-rlm-pairwise.prose`       | O(n^2) pairwise aggregation for relationship mapping                |
 
-### Meta / Self-Hosting (44-48)
+### Meta / Self-Hosting (44-50)
 
-| File                              | Description                                            |
-| --------------------------------- | ------------------------------------------------------ |
-| `44-run-endpoint-ux-test.prose`   | Concurrent agents testing the /run API endpoint        |
-| `45-plugin-release.prose`         | OpenProse plugin release workflow (this repo)          |
-| `46-workflow-crystallizer.prose`  | Reflective: observes thread, extracts workflow, writes .prose |
-| `47-language-self-improvement.prose` | Meta-level 2: analyzes .prose corpus to evolve the language itself |
-| `48-habit-miner.prose`            | Mines AI session logs for patterns, generates .prose automations |
+| File                                         | Description                                                          |
+| -------------------------------------------- | -------------------------------------------------------------------- |
+| `44-run-endpoint-ux-test.prose`              | Concurrent agents testing the /run API endpoint                      |
+| `45-plugin-release.prose`                    | OpenProse plugin release workflow (this repo)                        |
+| `46-workflow-crystallizer.prose`             | Reflective: observes thread, extracts workflow, writes .prose        |
+| `47-language-self-improvement.prose`         | Meta-level 2: analyzes .prose corpus to evolve the language itself   |
+| `48-habit-miner.prose`                       | Mines AI session logs for patterns, generates .prose automations     |
+| `49-prose-run-retrospective.prose`           | Analyzes completed runs to extract learnings and improve .prose      |
+| `50-interactive-tutor.prose`                 | Demonstrates `input` primitive with interactive tutoring flow        |
 
 ## The Architect By Simulation Pattern
 
