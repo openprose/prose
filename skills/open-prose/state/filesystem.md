@@ -34,7 +34,7 @@ File-based state persists all execution artifacts to disk. This enables:
 ```
 # Project-level state (in working directory)
 .prose/
-├── .env                              # Config/telemetry (simple key=value format)
+├── .env                              # Config (simple key=value format)
 ├── runs/
 │   └── {YYYYMMDD}-{HHMMSS}-{random}/
 │       ├── program.prose             # Copy of running program
@@ -88,9 +88,7 @@ If a program exceeds 999 segments, extend to 4 digits: `captain-1000.md`.
 Simple key=value configuration file:
 
 ```env
-OPENPROSE_TELEMETRY=enabled
-USER_ID=user-a7b3c9d4e5f6
-SESSION_ID=sess-1704326400000-x9y8z7
+OPENPROSE_POSTGRES_URL=postgresql://user:pass@localhost:5432/prose
 ```
 
 **Why this format:** Self-evident, no JSON parsing needed, familiar to developers.
