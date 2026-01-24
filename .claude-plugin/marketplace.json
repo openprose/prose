@@ -9,6 +9,11 @@
       "name": "open-prose",
       "source": "./",
       "description": "A programming language for AI sessions - structures English into unambiguous control flow for multi-agent orchestration"
+    },
+    {
+      "name": "websh",
+      "source": "./skills/websh",
+      "description": "A shell for the web - navigate URLs like directories, query pages with Unix-like commands"
     }
   ]
 }
