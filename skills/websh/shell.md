@@ -565,12 +565,50 @@ Size:      45 KB (html), 12 KB (parsed)
 ### Errors
 
 ```
-error: no page loaded (use cd <url> first)
 error: selector ".foo" not found
 error: could not fetch https://... (timeout)
 error: outside chroot boundary
 error: rate limited (try again in 5m)
 ```
+
+### Intelligent Empty States
+
+**Never show bare errors or empty responses.** When there's no data, be helpful:
+
+| Situation | Bad | Good |
+|-----------|-----|------|
+| `ls` with no page | `error: no page loaded` | Suggest sites to visit |
+| `pwd` with no page | `(none)` | `~ (nowhere yet—try: cd https://...)` |
+| `history` empty | `(empty)` | Show tips or suggest first commands |
+| `bookmarks` empty | `(none)` | Offer to bookmark current or suggest defaults |
+| `jobs` empty | `(none)` | `No background jobs. Run commands with & to background.` |
+
+**Example: `ls` with no page loaded:**
+
+```
+No page loaded yet. Try one of these:
+
+  cd https://news.ycombinator.com    # tech news
+  cd https://en.wikipedia.org        # encyclopedia
+  cd https://lite.cnn.com            # news (lightweight)
+  cd https://text.npr.org            # public radio
+  cd https://wiby.me                 # indie web search
+  cd https://lobste.rs               # tech community
+  cd https://tildes.net              # thoughtful discussion
+  cd https://old.reddit.com          # reddit (old UI)
+
+Or: cd <any-url>
+```
+
+**Example: `pwd` with no page:**
+
+```
+~ (no page loaded)
+
+Navigate with: cd <url>
+```
+
+The shell should always give the user a clear next action.
 
 ---
 
@@ -613,28 +651,88 @@ User can start typing immediately. Initialization happens async.
 Task(
     description="websh: initialize workspace",
     prompt="""
-    Initialize the websh workspace. Create the directory structure and files:
+    Initialize the websh workspace with sensible defaults.
 
     mkdir -p .websh/cache .websh/profiles .websh/snapshots
 
     Write these files:
 
     .websh/session.md:
+    ```
     # websh session
+
     started: {timestamp}
     pwd: (none)
-    ...
+    pwd_slug: (none)
+    chroot: (none)
 
-    .websh/history.md:
-    # websh history
+    ## Navigation Stack
+
+    (start navigating with: cd <url>)
+
+    ## Environment
+
+    USER_AGENT: websh/1.0
+    TIMEOUT: 30
+
+    ## Mounts
+
+    (none—try: mount https://api.github.com /gh)
+
+    ## Jobs
+
+    (none running)
+
+    ## Aliases
+
+    hn = cd https://news.ycombinator.com
+    wiki = cd https://en.wikipedia.org
+    lobsters = cd https://lobste.rs
+
+    ## Recent Commands
+
+    (new session)
+    ```
 
     .websh/bookmarks.md:
+    ```
     # websh bookmarks
 
+    ## Starter Bookmarks
+
+    | Name | URL | Description |
+    |------|-----|-------------|
+    | hn | https://news.ycombinator.com | Hacker News |
+    | wiki | https://en.wikipedia.org | Wikipedia |
+    | lobsters | https://lobste.rs | Tech community |
+    | tildes | https://tildes.net | Thoughtful discussion |
+    | npr | https://text.npr.org | NPR (text version) |
+    | cnn | https://lite.cnn.com | CNN (lite version) |
+    | wiby | https://wiby.me | Indie web search |
+    | hackernews-hierarchical | https://hckrnews.com | HN alternative view |
+    ```
+
+    .websh/history.md:
+    ```
+    # websh history
+
+    (new session—commands will appear here)
+    ```
+
     .websh/cache/index.md:
+    ```
     # websh cache index
+
     ## Cached Pages
-    (none)
+
+    (pages you visit will be cached here)
+
+    ## Tips
+
+    - Use `locate <term>` to search all cached pages
+    - Use `refresh` to re-fetch current page
+    - Cache persists between sessions
+    ```
 
     Return confirmation when done.
     """,

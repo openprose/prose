@@ -12,15 +12,30 @@ A Unix-like shell for the web. Navigate URLs like directories, query pages with 
 
 ```
 websh                                # start the shell
-
-cd https://news.ycombinator.com      # go to a URL
-ls                                   # list links
+ls                                   # shows suggested sites
+go hn                                # go to Hacker News (preset bookmark)
 ls | head 5                          # first 5 links
 grep "AI"                            # search for text
 follow 1                             # click the 2nd link
 cat .title                           # extract text by selector
 back                                 # go back
 ```
+
+## Starter Bookmarks
+
+websh comes with bookmarks for accessible public sites:
+
+| Shortcut | Site |
+|----------|------|
+| `go hn` | Hacker News |
+| `go wiki` | Wikipedia |
+| `go lobsters` | Lobsters |
+| `go tildes` | Tildes |
+| `go npr` | NPR (text) |
+| `go cnn` | CNN (lite) |
+| `go wiby` | Wiby (indie search) |
+
+Add your own with `bookmark <name>`.
 
 ---
 
