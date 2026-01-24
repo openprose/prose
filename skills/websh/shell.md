@@ -226,61 +226,135 @@ Return output in shell format—plain text, one item per line where appropriate,
 
 ## The `cd` Command
 
-`cd` is the most complex command. It has two phases:
+`cd` is **fully asynchronous**. It should never block. The user gets their prompt back immediately.
 
-### Phase 1: Fetch (synchronous)
+### Flow
+
+```
+user: cd https://news.ycombinator.com
+
+websh: news.ycombinator.com> (fetching...)
+
+# User has prompt immediately. Can type next command.
+# Background task handles fetch + extract.
+```
+
+### Implementation
 
 ```python
 def cd(url):
-    # 1. Check chroot boundary
+    # 1. Check chroot boundary (instant)
     if chroot and not url.startswith(chroot):
         error("outside chroot")
         return
 
-    # 2. Resolve URL (relative to current if needed)
+    # 2. Resolve URL (instant)
     full_url = resolve(url, session.pwd)
-
-    # 3. Check if cached
     slug = url_to_slug(full_url)
-    if cached(slug) and not force:
-        print(f"(using cache)")
-    else:
-        # 4. Fetch HTML
-        html = WebFetch(full_url)
-        write(f".websh/cache/{slug}.html", html)
-        print(f"fetching... done")
 
-    # 5. Update session
+    # 3. Update session state (instant) - optimistically set pwd
     session.pwd = full_url
+    session.pwd_slug = slug
     session.nav_stack.push(full_url)
 
-    # 6. Update index
-    update_index(full_url, slug)
+    # 4. Check cache
+    if cached(slug) and not force:
+        print(f"{domain(full_url)}> (cached)")
+        return  # Done - already have content
 
-    print(f"navigated to {domain(full_url)}")
+    # 5. Spawn background task for fetch + extract
+    print(f"{domain(full_url)}> (fetching...)")
+
+    Task(
+        description=f"websh: fetch {slug}",
+        prompt=FETCH_AND_EXTRACT_PROMPT.format(
+            url=full_url,
+            slug=slug,
+        ),
+        subagent_type="general-purpose",
+        model="haiku",
+        run_in_background=True
+    )
+
+    # 6. Return immediately - user has prompt
 ```
 
-### Phase 2: Extract (asynchronous)
+### Background Fetch+Extract Task
 
-Spawn a haiku subagent for intelligent extraction:
+The haiku subagent does ALL the work:
 
-```python
-Task(
-    description="websh: extract page content",
-    prompt=EXTRACTION_PROMPT.format(
-        url=full_url,
-        slug=slug,
-        html_path=f".websh/cache/{slug}.html",
-        output_path=f".websh/cache/{slug}.parsed.md"
-    ),
-    subagent_type="general-purpose",
-    model="haiku",
-    run_in_background=True
-)
-# Track job
-session.jobs.add(Job(type="extract", target=slug))
-print("extracting... (background)")
+````
+You are fetching and extracting a webpage for websh.
+
+URL: {url}
+Slug: {slug}
+
+## Steps
+
+1. Fetch the URL using WebFetch
+2. Write raw HTML to: .websh/cache/{slug}.html
+3. Iteratively extract content to: .websh/cache/{slug}.parsed.md
+4. Update .websh/cache/index.md with the new entry
+
+## Extraction
+
+Do multiple passes to build rich .parsed.md:
+- Pass 1: Title, links (indexed), basic structure
+- Pass 2: Main content, navigation, forms
+- Pass 3: Metadata, patterns, cleanup
+
+## Output format for .parsed.md
+
+```markdown
+# {url}
+
+fetched: {timestamp}
+status: complete
+
+## Summary
+
+{2-3 sentence description}
+
+## Links
+
+[0] Link text → href
+[1] Link text → href
+...
+
+## Content
+
+{main content extracted}
+
+## Structure
+
+{page patterns, selectors}
 ```
+
+When done, your work is complete. The user may already be running other commands.
+````
+
+### Why Fully Async?
+
+1. **Instant feedback**: User sees new prompt immediately
+2. **Non-blocking**: Can queue multiple `cd` commands
+3. **Parallel fetching**: `cd url1 & cd url2 & cd url3` works naturally
+4. **Responsive**: Shell never hangs waiting for slow sites
+
+### Checking Status
+
+```
+ps                    # see if fetch is still running
+jobs                  # list background tasks
+wait                  # block until current fetches complete
+stat                  # shows if extraction is complete
+```
+
+### Graceful Degradation
+
+If user runs `ls` before fetch completes:
+- If `.parsed.md` exists → use it
+- If only `.html` exists → basic extraction on-demand
+- If nothing yet → show "fetching in progress..." with spinner or status
 
 ---
 
@@ -588,14 +662,14 @@ error: rate limited (try again in 5m)
 ```
 No page loaded yet. Try one of these:
 
-  cd https://news.ycombinator.com    # tech news
-  cd https://en.wikipedia.org        # encyclopedia
-  cd https://lite.cnn.com            # news (lightweight)
-  cd https://text.npr.org            # public radio
-  cd https://wiby.me                 # indie web search
+  cd https://news.ycombinator.com    # tech news, discussion
   cd https://lobste.rs               # tech community
   cd https://tildes.net              # thoughtful discussion
-  cd https://old.reddit.com          # reddit (old UI)
+  cd https://wiby.me                 # indie web search
+  cd https://en.wikipedia.org        # encyclopedia
+  cd https://marginalia.nu/search    # indie search engine
+  cd https://search.brave.com        # privacy search
+  cd https://sr.ht                   # sourcehut (git hosting)
 
 Or: cd <any-url>
 ```
@@ -703,13 +777,13 @@ Task(
     | Name | URL | Description |
     |------|-----|-------------|
     | hn | https://news.ycombinator.com | Hacker News |
-    | wiki | https://en.wikipedia.org | Wikipedia |
     | lobsters | https://lobste.rs | Tech community |
     | tildes | https://tildes.net | Thoughtful discussion |
-    | npr | https://text.npr.org | NPR (text version) |
-    | cnn | https://lite.cnn.com | CNN (lite version) |
     | wiby | https://wiby.me | Indie web search |
-    | hackernews-hierarchical | https://hckrnews.com | HN alternative view |
+    | marginalia | https://marginalia.nu/search | Indie search engine |
+    | wiki | https://en.wikipedia.org | Wikipedia |
+    | sourcehut | https://sr.ht | Git hosting |
+    | are.na | https://are.na | Creative communities |
     ```
 
     .websh/history.md:

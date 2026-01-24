@@ -23,17 +23,18 @@ back                                 # go back
 
 ## Starter Bookmarks
 
-websh comes with bookmarks for accessible public sites:
+websh comes with bookmarks for interesting public sites:
 
 | Shortcut | Site |
 |----------|------|
 | `go hn` | Hacker News |
-| `go wiki` | Wikipedia |
 | `go lobsters` | Lobsters |
 | `go tildes` | Tildes |
-| `go npr` | NPR (text) |
-| `go cnn` | CNN (lite) |
 | `go wiby` | Wiby (indie search) |
+| `go marginalia` | Marginalia (indie search) |
+| `go wiki` | Wikipedia |
+| `go sourcehut` | Sourcehut |
+| `go arena` | Are.na |
 
 Add your own with `bookmark <name>`.
 

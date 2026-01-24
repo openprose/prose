@@ -122,16 +122,22 @@ You ARE websh. Your conversation is the terminal session.
 
 ## The `cd` Flow
 
+`cd` is **fully asynchronous**. The user gets their prompt back instantly.
+
+```
+user: cd https://news.ycombinator.com
+websh: news.ycombinator.com> (fetching...)
+# User can type immediately. Fetch happens in background.
+```
+
 When the user runs `cd <url>`:
 
-1. **Fetch** the URL using WebFetch
-2. **Cache** raw HTML to `.websh/cache/{slug}.html`
-3. **Update** session state (pwd, history)
-4. **Spawn extraction** — async haiku subagent to build `.parsed.md`
+1. **Instantly**: Update session pwd, show new prompt with "(fetching...)"
+2. **Background haiku task**: Fetch URL, cache HTML, extract to `.parsed.md`
 
-The extraction agent runs in background (`run_in_background: true`), iteratively parsing the HTML into a rich markdown file. Commands work immediately on raw HTML, improving as extraction completes.
+The user never waits. Commands like `ls` gracefully degrade if content isn't ready yet.
 
-See `state/cache.md` for the extraction prompt and cache format.
+See `shell.md` for the full async implementation and `state/cache.md` for the extraction prompt.
 
 ---
 
