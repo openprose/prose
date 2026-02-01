@@ -9,7 +9,7 @@
 <p align="center">
   <a href="https://prose.md">Website</a> •
   <a href="skills/open-prose/compiler.md">Language Spec</a> •
-  <a href="examples/">Examples</a>
+  <a href="skills/open-prose/examples/">Examples</a>
 </p>
 
 <p align="center">
