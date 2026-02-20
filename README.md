@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <strong>⚠️ Beta Software</strong> — <a href="#beta--legal">Read before using</a>
+  <a href="#beta--legal">Read before using</a>
 </p>
 
 ---
@@ -41,38 +41,8 @@ loop until **the draft meets publication standards** (max: 3):
 
 ## Install
 
-### Claude Code
-
 ```bash
-claude plugin marketplace add openprose/prose
-claude plugin install open-prose@prose
-```
-
-Then launch Claude Code and try:
-```
-"run example prose program and teach me how it works"
-```
-
-### OpenCode
-
-```bash
-git clone https://github.com/openprose/prose.git ~/.config/opencode/skill/open-prose
-```
-
-Then launch OpenCode and try:
-```
-"run example prose program and teach me how it works"
-```
-
-### Amp
-
-```bash
-git clone https://github.com/openprose/prose.git ~/.config/agents/skills/open-prose
-```
-
-Then launch Amp and try:
-```
-"run example prose program and teach me how it works"
+npx skills add openprose/prose
 ```
 
 > **By installing, you agree to the [Privacy Policy](PRIVACY.md) and [Terms of Service](TERMS.md).**
@@ -110,28 +80,8 @@ Switch platforms anytime. Your `.prose` files work everywhere.
 
 ## Update
 
-### Claude Code
-
-Enable auto-updates (recommended):
-```
-/plugin → Marketplaces → prose → Enable auto-update
-```
-
-Or update manually:
 ```bash
-claude plugin update open-prose@prose
-```
-
-### OpenCode
-
-```bash
-cd ~/.config/opencode/skill/open-prose && git pull
-```
-
-### Amp
-
-```bash
-cd ~/.config/agents/skills/open-prose && git pull
+npx skills update openprose/prose
 ```
 
 ## Language Features
@@ -258,9 +208,8 @@ Traditional IoC containers (Spring, Guice) wire up dependencies from configurati
 
 OpenProse is in **beta**. This means:
 
-- **Telemetry is on by default** — We collect anonymous usage data to improve the project. See our [Privacy Policy](PRIVACY.md) for details and how to opt out.
 - **Expect bugs** — The software may behave unexpectedly. Please report issues at [github.com/openprose/prose/issues](https://github.com/openprose/prose/issues).
-- **Not for production** — Do not use OpenProse for critical or production workflows yet.
+- **Use caution** — With great power comes great responsibility. Review your `.prose` programs before execution.
 - **We want feedback** — Your input shapes the project. Open issues, suggest features, report problems. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ### Your Responsibility
