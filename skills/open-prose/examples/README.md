@@ -1,3 +1,12 @@
+---
+purpose: 50 numbered .prose example programs demonstrating the full OpenProse language feature set, from hello-world through recursive language models and meta self-hosting programs
+related:
+  - ../README.md
+  - ../guidance/README.md
+  - ../lib/README.md
+  - ../../../../../planning/use-cases
+---
+
 # OpenProse Examples
 
 These examples demonstrate workflows using OpenProse's full feature set.

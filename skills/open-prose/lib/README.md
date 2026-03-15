@@ -15,6 +15,7 @@ For programs that participate in the distributed Constellation, see `common/READ
 | `program-improver.prose` | Analyzes inspections and proposes PRs to improve .prose source |
 | `cost-analyzer.prose` | Token usage and cost pattern analysis |
 | `calibrator.prose` | Validates light evaluations against deep evaluations |
+| `profiler.prose` | Cost, token usage, and time profiling for completed runs |
 | `error-forensics.prose` | Root cause analysis for failed runs |
 
 ### Memory
