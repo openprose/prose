@@ -93,9 +93,8 @@ See the [Language Reference](skills/open-prose/compiler.md) for complete documen
 ## Structure
 
 - `skills/open-prose/` — the OpenProse VM skill: language spec (`prose.md`), compiler, state backends, standard library, examples, and guidance. This is the canonical definition of the VM; the hosted service at [prose.md](https://prose.md) implements it as a cloud execution environment.
-- `skills/open-prose/examples/` — 50 numbered `.prose` programs covering the full feature set, from `01-hello-world.prose` to `37-the-forge.prose` (watch AI build a web browser from scratch)
+- `skills/open-prose/examples/` — 50 numbered `.prose` programs covering the full feature set, from `01-hello-world.prose` to `50-interactive-tutor.prose`
 - `skills/open-prose/state/` — state backend specs: filesystem (default), in-context, SQLite, PostgreSQL
-- `skills/websh/` — companion skill for shell-style web navigation; composable with open-prose programs
 - `assets/` — visual assets for documentation
 
 ### Examples by Range
@@ -111,8 +110,12 @@ See the [Language Reference](skills/open-prose/compiler.md) for complete documen
 | 24–27 | Advanced (choice, conditionals, blocks, interpolation) |
 | 28 | Gas Town (multi-agent orchestration) |
 | 29–31 | Captain's chair pattern (persistent orchestrator) |
+| 32 | Automated PR review |
 | 33–36 | Production workflows (PR auto-fix, content pipeline, feature factory, bug hunter) |
 | 37 | The Forge (build a browser from scratch) |
+| 38–43 | Advanced patterns (skill scan, architect by simulation, RLM strategies) |
+| 44–46 | Release and testing (endpoint UX test, plugin release, workflow crystallizer) |
+| 47–50 | Self-improvement and learning (language self-improvement, habit miner, retrospective, interactive tutor) |
 
 ## Getting Started
 

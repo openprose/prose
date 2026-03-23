@@ -1,10 +1,9 @@
 ---
-purpose: Claude plugin configuration for the prose repo — defines the open-prose and websh skills for distribution via the Claude Code marketplace
+purpose: Claude plugin configuration for the prose repo — defines the open-prose skill for distribution via the Claude Code marketplace
 related:
   - ../README.md
   - ../skills/README.md
   - ../skills/open-prose/README.md
-  - ../skills/websh/README.md
 ---
 
 # .claude-plugin
@@ -14,4 +13,4 @@ Plugin manifest files that register the prose repo's skills with Claude Code's p
 ## Contents
 
 - `plugin.json` — primary plugin manifest; declares the `open-prose` plugin (v0.8.1) with name, description, author, repository, and keywords
-- `marketplace.json` — marketplace listing; registers both `open-prose` and `websh` skills with their source paths and descriptions for discovery via `npx skills add openprose/prose`
+- `marketplace.json` — marketplace listing; registers the `open-prose` skill with its source path and description for discovery via `npx skills add openprose/prose`
