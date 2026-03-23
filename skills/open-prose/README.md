@@ -8,8 +8,8 @@ related:
   - ./primitives/README.md
   - ../../../../platform/api-v2/README.md
   - ../../../../platform/docs/README.md
-  - ../../../../../press/.prose
-  - ../../../../../planning/use-cases
+  - ../../../press/.prose
+  - ../../../../planning/use-cases
 glossary:
   Prose Complete: An LLM that, upon reading prose.md, simulates the OpenProse VM with sufficient fidelity to act as its implementation
   VM: The virtual machine described by prose.md — a session orchestrator executing .prose programs
