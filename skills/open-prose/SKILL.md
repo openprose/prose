@@ -54,6 +54,7 @@ When a user invokes `prose <command>`, intelligently route based on intent:
 | `prose wire <file.md>` | Load `forme.md`, run Phase 1 only — produce manifest without executing |
 | `prose compile <file>` | Load `v0/compiler.md`, validate the program |
 | `prose migrate <file.prose>` | Convert `.prose` file to `.md` format |
+| `prose test <path>` | Load `prose.md` + `state/filesystem.md`, run test(s) and report results |
 | `prose update` | Run workspace migration (see Migration section below) |
 | `prose examples` | Show or run example programs from `examples/` |
 | Other | Intelligently interpret based on context |

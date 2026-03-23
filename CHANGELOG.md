@@ -5,6 +5,35 @@ All notable changes to OpenProse will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2026-03-23
+
+### Breaking Changes
+
+- **Prose v2: programs are now Markdown files** — `.md` with YAML frontmatter and contract-based semantics (`requires:`/`ensures:`) replaces imperative `.prose` syntax as the primary format. Legacy `.prose` files still run via v0 mode.
+- **Two-phase execution** — Programs with multiple services run through Forme (Phase 1: contract wiring) then the Prose VM (Phase 2: execution). Single-service programs skip Phase 1.
+- **Removed**: `websh` skill, voice alts, common library (moved elsewhere).
+
+### Added
+
+- **Forme Container (Phase 1)** — Auto-wires multi-service programs by matching `requires:`/`ensures:` contracts across components. Produces a manifest that the VM executes.
+- **Contract semantics** — Programs declare inputs (`requires:`) and outputs (`ensures:`) instead of imperative orchestration. The container figures out the wiring.
+- **Shapes** — Typed structure declarations for contract values.
+- **Strategies** — Declarative guidance for how the VM should handle edge cases during execution.
+- **Errors** — Structured error declarations for programs.
+- **Invariants** — Runtime constraints that must hold throughout execution.
+- **Test programs** — `prose test` command for running test suites against programs.
+- **Standard library** (`lib/`) — 9 utility programs: calibrator, cost-analyzer, error-forensics, inspector, profiler, program-improver, project-memory, user-memory, vm-improver.
+- **Migration tooling** — `prose migrate` converts `.prose` files to `.md` format.
+- **50 example programs** — All examples rewritten in v2 `.md` format, covering basics through complex multi-service orchestrations.
+
+### Changed
+
+- **v0 VM moved to `v0/`** — Legacy specs (`prose.md`, `compiler.md`, `state/`, `primitives/`) relocated to `v0/` subdirectory.
+- **New `prose.md`** — v2 VM execution semantics for `.md` programs.
+- **New `forme.md`** — Forme container semantics for Phase 1 wiring.
+- **New `state/filesystem.md`** — v2 file-based state with workspace/bindings model.
+- **Guidance directory** — `guidance/tenets.md`, `guidance/patterns.md`, `guidance/antipatterns.md` for program authoring.
+
 ## [0.8.1] - 2025-01-23
 
 ### Changed
