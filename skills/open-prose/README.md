@@ -27,6 +27,7 @@ The OpenProse skill for Claude Code. Activates on any `prose` command, `.prose` 
 - `compiler.md` — compilation rules: how prose source maps to execution steps
 - `help.md` — user-facing help output for the `prose help` command
 - `SOUL.md` — character and intent guidance for the VM persona
+- `adapters/codex/` — experimental Codex adapter docs, prompts, scripts, and example agent/config files
 - `lib/` — standard library programs for local evaluation and memory (inspector, vm-improver, program-improver, cost-analyzer, calibrator, error-forensics, user-memory, project-memory)
 - `../../platform/constellation/programs/` — Constellation commons programs for participating in the distributed Holon network (holon, beacon, swarm, observatory, seeker, registry, curator, publisher, sentinel, arbiter, auditor, chronicler, gardener, assessor, bounty, pollinator, prophet, philosopher)
 - `examples/` — 50 numbered .prose example programs covering the full feature set; see examples/README.md
@@ -41,6 +42,8 @@ The subdirectories form two layers:
 **Specification layer** (`prose.md`, `compiler.md`, `primitives/`, `state/`): define what the VM is and how it works. `primitives/session.md` is the atomic unit; `state/` backends determine how results persist; `compiler.md` maps source syntax to primitive dispatch.
 
 **Operational layer** (`lib/`, `examples/`, `guidance/`): define how to use the VM effectively. `examples/` demonstrates the full language; `guidance/` corrects common misuse; `lib/` provides production-ready programs for self-improvement. Constellation commons programs now live in `platform/constellation/programs/`.
+
+**Adapter layer** (`adapters/`): community-maintained guidance for running OpenProse from other agent harnesses without changing the language spec. These files are intentionally examples and installation helpers rather than normative runtime definitions.
 
 ## Cross-Repo Connections
 

@@ -1,0 +1,7 @@
+# Example alias registry for Codex OpenProse runs.
+# Generate a real version with scripts/build_aliases.py.
+
+[aliases]
+"16-parallel-reviews" = "/path/to/prose/skills/open-prose/examples/16-parallel-reviews/index.md"
+"32-automated-pr-review" = "/path/to/prose/skills/open-prose/examples/32-automated-pr-review/index.md"
+"open-prose" = "/path/to/prose/skills/open-prose/SKILL.md"

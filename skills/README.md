@@ -12,4 +12,4 @@ Claude Code skills bundled with the OpenProse language specification repo. Each 
 
 ## Contents
 
-- `open-prose/` — the OpenProse VM skill; defines the language spec, compiler, state backends, primitives, standard library, Constellation commons, examples, and VM guidance. This skill is the canonical definition of what the OpenProse VM is; `platform/api-v2` implements it as a hosted execution service.
+- `open-prose/` — the OpenProse VM skill; defines the language spec, compiler, state backends, primitives, standard library, Constellation commons, examples, VM guidance, and experimental adapter docs. This skill is the canonical definition of what the OpenProse VM is; `platform/api-v2` implements it as a hosted execution service.

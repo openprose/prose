@@ -40,6 +40,8 @@ This is the intelligent inversion of control: a container that understands conte
 
 OpenProse runs on any **Prose Complete** system — a model and harness combination capable of simulating the VM upon reading its specification. Currently supported: Claude Code + Opus, OpenCode + Opus, Amp + Opus. Your programs are portable across all of them; there is no library lock-in.
 
+Experimental Codex adapter docs and example files live in [`skills/open-prose/adapters/codex/`](skills/open-prose/adapters/codex/README.md). They are intended as a community starting point for mapping OpenProse workflows onto Codex subagents; they are not a claim of first-class built-in Codex support.
+
 Legacy `.prose` programs still run via v0 mode (`prose run file.prose`). Use `prose migrate` to convert them to the new `.md` format.
 
 ## Install
@@ -109,6 +111,7 @@ See the [Language Reference](skills/open-prose/prose.md) for the VM spec and [Fo
 - `skills/open-prose/examples/` — example programs in `.md` format, from `01-hello-world.md` to `50-interactive-tutor.md`
 - `skills/open-prose/lib/` — standard library with 9 utility programs (inspector, profiler, cost-analyzer, etc.)
 - `skills/open-prose/guidance/` — authoring guidance: tenets, patterns, antipatterns
+- `skills/open-prose/adapters/codex/` — experimental Codex adapter docs, prompts, and example agent/config files
 - `skills/open-prose/v0/` — legacy v0 VM specs for `.prose` files
 - `skills/open-prose/state/` — state backend specs
 - `assets/` — visual assets for documentation
