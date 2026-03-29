@@ -38,7 +38,7 @@ OpenProse is a programming language for AI sessions. Programs are Markdown files
 
 This is the intelligent inversion of control: a container that understands context and intent, not just configuration.
 
-OpenProse runs on any **Prose Complete** system — a model and harness combination capable of simulating the VM upon reading its specification. Currently supported: Claude Code + Opus, OpenCode + Opus, Amp + Opus. Your programs are portable across all of them; there is no library lock-in.
+OpenProse runs on any **Prose Complete** system — a model and harness combination capable of simulating the VM upon reading its specification. Currently supported: Claude Code + Opus, Codex, OpenCode + Opus, Amp + Opus. Your programs are portable across all of them; there is no library lock-in.
 
 Legacy `.prose` programs still run via v0 mode (`prose run file.prose`). Use `prose migrate` to convert them to the new `.md` format.
 
@@ -47,6 +47,8 @@ Legacy `.prose` programs still run via v0 mode (`prose run file.prose`). Use `pr
 ```bash
 npx skills add openprose/prose
 ```
+
+In Codex, open this repository in your workspace and use the bundled [`AGENTS.md`](AGENTS.md) entry point, which routes `prose` requests to the canonical OpenProse skill and specs under `skills/open-prose/`.
 
 > **By installing, you agree to the [Privacy Policy](PRIVACY.md) and [Terms of Service](TERMS.md).**
 
@@ -129,14 +131,15 @@ See the [Language Reference](skills/open-prose/prose.md) for the VM spec and [Fo
 
 ## Getting Started
 
-1. Install the skill:
+1. Make the OpenProse skill available in your assistant environment:
    ```bash
    npx skills add openprose/prose
    ```
+   In Codex, opening this repository is sufficient because [`AGENTS.md`](AGENTS.md) routes `prose` requests to the bundled skill files.
 
 2. Write an `.md` program or open one from `skills/open-prose/examples/`.
 
-3. Run it inside a Prose Complete environment (Claude Code, OpenCode, or Amp with Opus):
+3. Run it inside a Prose Complete environment (Claude Code, Codex, OpenCode, or Amp with Opus):
    ```
    prose run my-program.md
    ```

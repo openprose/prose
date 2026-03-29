@@ -1,5 +1,5 @@
 ---
-purpose: Bundled Claude Code skills distributed with the prose repo — open-prose VM
+purpose: Bundled OpenProse skill definitions distributed with the prose repo — open-prose VM
 related:
   - ../README.md
   - ./open-prose/README.md
@@ -8,7 +8,7 @@ related:
 
 # skills
 
-Claude Code skills bundled with the OpenProse language specification repo. Each subdirectory is a self-contained skill that can be installed via `npx skills add`.
+Bundled OpenProse skill definitions shipped with the language specification repo. In environments with `npx skills`, each subdirectory can be installed as a skill; in Codex, the same files can be loaded through the repository-local `AGENTS.md` entry point.
 
 ## Contents
 

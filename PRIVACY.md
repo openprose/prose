@@ -1,6 +1,6 @@
 # Privacy Policy
 
-**Last updated:** March 2025
+**Last updated:** March 2026
 
 ## Overview
 
@@ -12,7 +12,7 @@ OpenProse is an open-source programming language for AI sessions. This privacy p
 
 ## Third-Party Services
 
-OpenProse runs within AI assistant environments (Claude Code, OpenCode, Amp). Your use of those platforms is governed by their respective privacy policies. OpenProse does not control or have access to data processed by those platforms.
+OpenProse runs within AI assistant environments (Claude Code, Codex, OpenCode, Amp). Your use of those platforms is governed by their respective privacy policies. OpenProse does not control or have access to data processed by those platforms.
 
 ## Open Source
 
