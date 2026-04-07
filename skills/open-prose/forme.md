@@ -106,6 +106,10 @@ For each name in `services`, locate the corresponding `.md` file:
    - Example: `alice/tools/formatter` → `.deps/alice/tools/formatter.md`
 4. Registry shorthand (if contains `/`): fetch from `https://p.prose.md/{path}` (legacy)
 
+**Recursive resolution for `kind: program` services:**
+
+When a resolved component has `kind: program` (with its own `services` list) rather than `kind: service`, Forme recursively invokes the wiring algorithm on that sub-program. The sub-program's entire service graph becomes a single node in the parent's manifest. The sub-program's `ensures` become the node's outputs. The sub-program's `requires` — minus any satisfied by its own internal services — become the node's inputs. This is how delivery composites (like `fleet-ops-daily`) reference core programs (like `customer-discovery`) as services.
+
 If a component cannot be resolved, emit an error:
 
 ```
@@ -165,7 +169,9 @@ This is the core of your role. Match each component's `requires` entries to anot
 
 4. **Transitive dependencies.** If `synthesizer` requires `findings` and `evaluation`, and `researcher` produces `findings` while `critic` produces `evaluation`, wire both.
 
-5. **No match found.** If a component's `requires` entry cannot be satisfied by any other component's `ensures` or the caller's inputs, emit a warning:
+5. **`run`-typed inputs.** If a `requires` entry uses the `run` or `run[]` keyword (e.g., `subject: run`, `inspections: run[]`), treat it as a **caller-provided input**. Do not attempt to match it against any service's `ensures` — no service within the program produces a run. The run already exists; it was produced by a prior execution. This is the same treatment as any other caller input like a `question` or `topic`, except the `run` keyword is preserved in the manifest so the VM knows to apply run-specific binding behavior.
+
+6. **No match found.** If a component's `requires` entry cannot be satisfied by any other component's `ensures` or the caller's inputs, emit a warning:
 
 ```
 [Warning] Unresolved dependency: critic.requires.raw_data
@@ -234,6 +240,8 @@ Before producing the manifest, check:
 | Semantic match (not exact) | `[Warning] Wired caller.question → researcher.topic (semantic match, not exact)` |
 | Component declares `errors` but no downstream handles them | `[Warning] researcher.errors.no-results has no recovery path` |
 | Shape declares delegate not in services list | `[Warning] researcher.shape.delegates.summarizer not in program services` |
+| `run`-typed input on a service (not the program) | `[Warning] analyzer.requires.subject uses run type — run inputs are typically program-level, not service-level` |
+| Declared service never referenced | `[Warning] Service '{name}' is declared in services: but never called in ### Execution and no component requires its outputs` |
 
 ### Step 7: Copy Source Files
 
@@ -267,6 +275,8 @@ Source: {path to entry point}
 
 requires:
 - {name} (from user): {description}
+- {name} (from user): run — {description}        # run-typed input
+- {name} (from user): run[] — {description}       # fan-in run-typed input
 
 returns:
 - {name} (from {service}): {description}
@@ -323,7 +333,7 @@ Parallelizable: {list of services that can run concurrently, if any}
 
 ### Manifest Sections Explained
 
-**Caller Interface.** What the program needs from the user and what it returns. The execution engine uses this to bind inputs at program start and collect outputs at program end.
+**Caller Interface.** What the program needs from the user and what it returns. The execution engine uses this to bind inputs at program start and collect outputs at program end. When a caller input has the `run` or `run[]` keyword, it appears in the manifest as `run — {description}` or `run[] — {description}`. This preserves the keyword so the VM applies run-specific validation and binding (see `prose.md`).
 
 **Graph.** One section per service. Contains:
 - `source` — path to the copied source file (in `services/`)

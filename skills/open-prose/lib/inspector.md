@@ -5,7 +5,7 @@ services: [index, extractor, evaluator, synthesizer]
 ---
 
 requires:
-- run-path: path to the run to inspect (e.g., .prose/runs/20260119-100000-abc123)
+- subject: run
 - depth: inspection depth -- "light" (fast heuristic evaluation) or "deep" (thorough analysis with evidence)
 - target: evaluation target -- "vm" (runtime fidelity), "task" (program effectiveness), or "all" (both)
 
@@ -13,7 +13,6 @@ ensures:
 - inspection: structured inspection output containing a verdict JSON object (with scores and pass/fail per dimension), a mermaid flow diagram of actual execution, and a narrative summary report
 
 errors:
-- invalid-run: the specified run path does not exist or is not a valid run directory
 - no-state: the run has no state.md file (may be incomplete or corrupted)
 
 strategies:
@@ -31,13 +30,10 @@ invariants:
 ## index
 
 requires:
-- run-path: path to the run directory
+- subject: run
 
 ensures:
 - inventory: complete file listing of the run directory with file sizes and modification times, identification of which services ran, and structural validation (manifest.md exists, state.md exists, expected directories present)
-
-errors:
-- invalid-run: the specified run path does not exist or is not a valid run directory
 
 strategies:
 - validate run directory structure against the expected layout from prose.md
@@ -49,7 +45,7 @@ strategies:
 
 requires:
 - inventory: file listing and structural validation of the run
-- run-path: path to the run directory
+- subject: run
 - depth: inspection depth
 
 ensures:

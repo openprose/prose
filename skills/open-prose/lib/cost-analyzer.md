@@ -5,8 +5,8 @@ services: [collector, analyzer, tracker]
 ---
 
 requires:
-- run-path: path to a run directory, or "recent" for the latest runs
-- scope: analysis scope -- "single" (one run), "compare" (multiple runs side-by-side), or "trend" (cost patterns over time)
+- runs: run[]
+- scope: analysis scope -- "single" (exactly one run in the list), "compare" (multiple runs side-by-side), or "trend" (cost patterns over time)
 
 ensures:
 - report: cost analysis with per-agent and per-phase token breakdown, model tier efficiency ratings, cost hotspots, and optimization recommendations
@@ -29,7 +29,7 @@ invariants:
 ## collector
 
 requires:
-- run-path: path to run(s) to analyze
+- runs: run[]
 - scope: analysis scope
 
 ensures:
@@ -39,9 +39,9 @@ errors:
 - no-data: no session or token usage data found for the specified run(s)
 
 strategies:
-- for "recent" path: scan .prose/runs/ sorted by date descending, collect the latest 10 runs
-- for "compare" scope: collect sessions from all specified runs
-- for "trend" scope: collect sessions from all available runs in chronological order
+- for "compare" scope: collect sessions from all provided runs
+- for "trend" scope: collect sessions from all provided runs in chronological order
+- for "single" scope: expect exactly one run in the list
 
 ---
 

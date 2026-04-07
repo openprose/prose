@@ -5,7 +5,7 @@ services: [investigator, classifier, fixer]
 ---
 
 requires:
-- run-path: path to the failed or problematic run directory
+- subject: run
 - focus: focus area -- "vm" (VM-level issues), "program" (program logic issues), "context" (context window issues), or "external" (tool/API failures). Optional, default: auto-detect from error evidence.
 
 ensures:
@@ -30,7 +30,7 @@ invariants:
 ## investigator
 
 requires:
-- run-path: path to the failed run
+- subject: run
 - focus: focus area for investigation
 
 ensures:

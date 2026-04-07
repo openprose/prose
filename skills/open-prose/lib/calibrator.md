@@ -5,18 +5,15 @@ services: [sampler, comparator, statistician, advisor]
 ---
 
 requires:
-- run-paths: paths to runs to calibrate on (comma-separated list, or "recent" for the latest 10 runs)
-- sample-size: maximum number of runs to analyze (default: 10)
+- runs: run[]
 
 ensures:
 - report: calibration report containing agreement rates between light and deep evaluations, a disagreement analysis with categorized failure modes, and actionable recommendations for improving light evaluation reliability
 
 errors:
-- no-runs: none of the specified run paths exist or contain evaluation data
 - insufficient-data: fewer than 3 runs with both light and deep evaluations available
 
 strategies:
-- when sample size exceeds available runs: use all available runs and note the reduced sample in the report
 - when evaluations use different criteria across runs: normalize to common dimensions before comparison
 - when agreement rate is very high (>95%): look for edge cases where light evaluations might be overconfident
 
@@ -29,18 +26,13 @@ invariants:
 ## sampler
 
 requires:
-- run-paths: paths to runs to calibrate on
-- sample-size: maximum number of runs to analyze
+- runs: run[]
 
 ensures:
-- sample: list of run paths that have both light and deep evaluation data, capped at sample-size
-
-errors:
-- no-runs: none of the specified run paths exist or contain evaluation data
+- sample: list of runs that have both light and deep evaluation data
 
 strategies:
-- when "recent" is specified: scan .prose/runs/ sorted by date descending
-- when more runs available than sample-size: prefer runs with diverse outcomes (mix of pass/fail/partial)
+- prefer runs with diverse outcomes (mix of pass/fail/partial) when the provided set is large
 
 ---
 

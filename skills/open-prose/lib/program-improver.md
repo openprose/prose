@@ -5,8 +5,8 @@ services: [locator, analyst, implementer, pr-author]
 ---
 
 requires:
-- inspection-path: path to an inspection output file (e.g., bindings/inspection.md from a prior inspector run)
-- run-path: path to the inspected run directory
+- inspection: run
+- subject: run
 
 ensures:
 - result: PR or proposal with improved program source
@@ -15,7 +15,6 @@ ensures:
 - if source repo not accessible: proposal file written with recommended changes
 
 errors:
-- no-inspection: the inspection-path does not exist or is not a valid inspection output
 - no-improvements: inspection shows no program-level issues (this is a success case, not a failure)
 - source-not-found: cannot locate the original program source files from the run artifacts
 
@@ -35,7 +34,7 @@ invariants:
 ## locator
 
 requires:
-- run-path: path to the inspected run directory
+- subject: run
 
 ensures:
 - sources: paths to the original program entry point and service files, identified from the run's program.md and services/ directory, with repo root path if inside a git repository
@@ -53,7 +52,7 @@ strategies:
 ## analyst
 
 requires:
-- inspection-path: path to inspection output
+- inspection: run
 - sources: original program source file paths
 
 ensures:
@@ -63,7 +62,7 @@ errors:
 - no-improvements: inspection shows no program-level issues
 
 strategies:
-- parse the inspection verdict JSON to identify low-scoring dimensions
+- parse the inspection run's verdict JSON to identify low-scoring dimensions
 - map each finding to a specific part of the program source (frontmatter, requires, ensures, strategies, service definitions)
 - distinguish between contract improvements (clearer requires/ensures), structural improvements (better service decomposition), and behavioral improvements (better strategies/error handling)
 

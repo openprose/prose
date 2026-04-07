@@ -30,6 +30,7 @@ OpenProse is invoked via `prose` commands:
 | `prose install` | Install dependencies from `use` statements into `.deps/` |
 | `prose inspect <run-id>` | Evaluate a completed run |
 | `prose status` | Show recent runs |
+| `prose status --graph` | Show run dependency graph (sugar for `prose run std/ops/graph`) |
 | `prose help` | Show help and examples |
 | `prose examples` | List or run bundled examples |
 
@@ -331,6 +332,8 @@ The VM appends one line per event. Only the VM writes this file.
 
 ```markdown
 # run:20260317-143052-a7b3c9 deep-research
+upstream: [20260317-120000-f4e5d6]       # present when run-typed inputs exist
+program: deep-research
 
 1→ [input] question ✓
 2→ researcher ✓
@@ -338,6 +341,18 @@ The VM appends one line per event. Only the VM writes this file.
 4→ synthesizer ✓
 ---end 2026-03-17T14:35:22Z
 ```
+
+The header is the block between the `#` heading and the first event marker:
+
+```
+# run:{id} {program-name}
+upstream: [{comma-separated run IDs}]    # optional, present when run has run-typed inputs
+program: {program path or name}          # always present
+
+{event markers follow}
+```
+
+The `upstream:` field lists the run IDs of all `run`-typed inputs, written once at binding time (Step 2). On resumption, the VM reads it as context but does not re-process it. The `upstream:` field is omitted when a run has no `run`-typed inputs. The `program:` field is always present.
 
 #### Event Markers
 
@@ -358,6 +373,8 @@ The VM appends one line per event. Only the VM writes this file.
 | `---test FAIL (N/M assertions)` | Test failed |
 | `---end TIMESTAMP` | Program completed successfully |
 | `---error TIMESTAMP msg` | Program failed |
+
+**ASCII fallback:** Both `→` and `->` are valid in event markers. Models may emit either form. Parsers and inspectors should accept both.
 
 #### Resumption
 
@@ -664,6 +681,101 @@ source: caller
 
 The manifest's input mappings reference these paths: `{input} ← bindings/caller/{name}.md`
 
+### Binding `run`-Typed Inputs
+
+When a `requires` entry uses the keyword `run` or `run[]`, the VM recognizes it as a first-class type and performs additional validation and bookkeeping beyond normal input binding.
+
+#### Single Run (`run`)
+
+The caller provides a run ID or path:
+
+```bash
+prose run std/evals/inspector -- subject: 20260406-201439-1a3369
+```
+
+The VM validates:
+
+1. **Existence.** The referenced run directory exists under `.prose/runs/`. For resolution rules, see Run ID Resolution below.
+2. **Structure.** The directory contains at minimum `state.md` and `program.md`.
+3. **Completion status:**
+   - `state.md` has `---end` → the run completed successfully. Bind normally.
+   - `state.md` has `---error` → the run failed. Emit a warning but allow binding (failed runs are consumable — an inspector may specifically want to evaluate a failed run).
+   - `state.md` has neither → the run is incomplete. Error: cannot consume an in-progress run.
+
+The VM writes the binding to `bindings/caller/{name}.md` with structured metadata:
+
+```markdown
+# subject
+
+kind: input
+source: caller
+type: run
+
+---
+
+run: 20260406-201439-1a3369
+path: .prose/runs/20260406-201439-1a3369
+program: customer-discovery
+status: complete
+```
+
+#### Multiple Runs (`run[]`)
+
+For fan-in, the caller provides comma-separated run IDs:
+
+```bash
+prose run std/evals/calibrator -- runs: 20260406-201439-1a3369,20260406-202015-c5d6e7,20260406-203300-8f9a0b
+```
+
+The VM validates each run independently (same rules as single `run`). It writes a single binding listing all references:
+
+```markdown
+# runs
+
+kind: input
+source: caller
+type: run[]
+
+---
+
+- run: 20260406-201439-1a3369
+  path: .prose/runs/20260406-201439-1a3369
+  program: customer-discovery
+  status: complete
+
+- run: 20260406-202015-c5d6e7
+  path: .prose/runs/20260406-202015-c5d6e7
+  program: competitive-landscape
+  status: complete
+
+- run: 20260406-203300-8f9a0b
+  path: .prose/runs/20260406-203300-8f9a0b
+  program: grant-radar
+  status: complete
+```
+
+#### Staleness Detection
+
+When binding a `run` input, the VM compares the run's `program.md` snapshot against the current source file on disk. If they differ semantically (a whitespace change is not staleness; a changed `ensures` clause is), the VM emits a warning:
+
+```
+[Warning] Stale run: 20260406-201439-1a3369
+  Program 'customer-discovery' has changed since this run.
+```
+
+Staleness is informational, not blocking. The caller decides whether to re-run or proceed.
+
+#### Run ID Resolution
+
+Run IDs default to local `.prose/runs/`. For cross-project references:
+
+| Format | Resolves to |
+|--------|-------------|
+| Bare ID (`20260406-201439-1a3369`) | `.prose/runs/20260406-201439-1a3369` (local project) |
+| `~/{id}` | `~/.prose/runs/{id}` (user scope) |
+| Absolute path | Used as-is |
+| Future: `repo:{repo}#{id}` | Git-based resolution (team/cloud scenarios — not yet implemented) |
+
 ---
 
 ## Evaluating Contracts
@@ -804,10 +916,12 @@ function execute(manifest, inputs?):
   1. Read manifest — extract caller interface, graph, execution order
   2. Bind caller inputs:
      - From CLI args, config, or calling program
+     - For run-typed inputs (run / run[]): validate existence, structure, completion; emit staleness warning if source program changed
      - Prompt user (AskUserQuestion) for any missing required inputs
-     - Write each to bindings/caller/{name}.md
+     - Write each to bindings/caller/{name}.md (structured metadata for run types)
+     - Record upstream: field in state.md header for any run-typed inputs
   3. Create workspace/ and bindings/ directories for each service
-  4. Initialize state.md with run header
+  4. Initialize state.md with run header (program: field always; upstream: field if run-typed inputs were bound)
   5. For each service in execution order:
      a. Verify all input bindings exist (dependencies satisfied)
      b. Build session prompt:

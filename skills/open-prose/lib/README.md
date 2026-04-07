@@ -2,7 +2,7 @@
 
 Local analysis and improvement programs that ship with OpenProse. Production-quality Prose v2 programs for evaluating runs, improving code, and managing persistent memory.
 
-All programs use Prose v2 format (`.md`) with full contracts: `requires`, `ensures`, `errors`, `strategies`, and `invariants`. Multi-service programs define their services inline using `##` sections.
+All programs use Prose v2 format (`.md`) with full contracts: `requires`, `ensures`, `errors`, `strategies`, `invariants`, and `environment`. Multi-service programs define their services inline using `##` sections. Evaluation programs use the `run` and `run[]` keyword types to declare dependencies on completed runs.
 
 ## Programs
 
@@ -34,19 +34,19 @@ All programs use Prose v2 format (`.md`) with full contracts: `requires`, `ensur
 
 ```bash
 # Inspect a completed run
-prose run lib/inspector.md --run-path .prose/runs/20260323-100000-abc123 --depth deep --target all
+prose run lib/inspector.md --subject .prose/runs/20260323-100000-abc123 --depth deep --target all
 
 # Profile costs and performance
-prose run lib/profiler.md --run-path recent --scope single
+prose run lib/profiler.md --runs .prose/runs/20260323-100000-abc123 --scope single
 
 # Analyze cost patterns over time
-prose run lib/cost-analyzer.md --run-path recent --scope trend
+prose run lib/cost-analyzer.md --runs .prose/runs/20260323-100000-abc123 .prose/runs/20260324-100000-def456 --scope trend
 
 # Investigate a failed run
-prose run lib/error-forensics.md --run-path .prose/runs/20260323-100000-abc123
+prose run lib/error-forensics.md --subject .prose/runs/20260323-100000-abc123
 
 # Calibrate light vs deep evaluations
-prose run lib/calibrator.md --run-paths recent
+prose run lib/calibrator.md --runs .prose/runs/20260323-100000-abc123 .prose/runs/20260324-100000-def456 .prose/runs/20260325-100000-ghi789
 
 # Memory services
 prose run lib/user-memory.md --mode teach --content "prefer small focused services"

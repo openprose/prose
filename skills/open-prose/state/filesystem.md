@@ -197,6 +197,59 @@ What are the latest developments in quantum computing?
 
 **Written by:** The VM at program start (from CLI args, config, or user prompt)
 
+#### Run-Typed Inputs
+
+When a `requires` entry has type `run` or `run[]`, the VM writes a structured binding with metadata instead of a plain value.
+
+For a single `run`:
+
+```markdown
+# subject
+
+kind: input
+source: caller
+type: run
+
+---
+
+run: 20260406-201439-1a3369
+path: .prose/runs/20260406-201439-1a3369
+program: customer-discovery
+status: complete
+```
+
+For `run[]`:
+
+```markdown
+# runs
+
+kind: input
+source: caller
+type: run[]
+
+---
+
+- run: 20260406-201439-1a3369
+  path: .prose/runs/20260406-201439-1a3369
+  program: customer-discovery
+  status: complete
+
+- run: 20260407-031438-bf26a3
+  path: .prose/runs/20260407-031438-bf26a3
+  program: competitive-landscape
+  status: complete
+```
+
+The downstream service receives the path and can read the run's bindings, state, and manifest directly. The structured header gives the service immediate access to key metadata without traversing the filesystem.
+
+**Resolution order for run references:**
+
+- Bare ID (e.g., `20260406-201439-1a3369`): resolves to `.prose/runs/{id}`
+- `~/{id}`: resolves to `~/.prose/runs/{id}` (user scope)
+- Absolute path: used as-is
+
+**Written by:** The VM at binding time (before service execution begins)
+
 ### Service Output Files
 
 **Path:** `workspace/{service}/{output-name}.md` (working copy)
@@ -250,6 +303,8 @@ The state file is an **append-only log** of execution events. The VM appends ent
 
 ```markdown
 # run:20260317-143052-a7b3c9 deep-research
+upstream: [20260306-112233-f4a5b6]     # optional — present when run has run-typed inputs
+program: research/deep-research        # always present — the program that was executed
 
 1→ [input] question ✓
 2→ researcher ✓
@@ -260,6 +315,12 @@ The state file is an **append-only log** of execution events. The VM appends ent
 4→ synthesizer ✓
 ---end 2026-03-17T14:35:22Z
 ```
+
+The header is the block between the `#` heading and the first event marker:
+
+- `upstream:` is written once at binding time, before service execution begins. Omitted when the run has no `run`-typed inputs.
+- `program:` is always present — the program that was executed.
+- On resumption, the VM reads these as context but does not re-process them.
 
 ### Event Markers
 
@@ -315,6 +376,7 @@ To resume an interrupted run:
 | `program.md` | Forme (Phase 1) | Before execution |
 | `services/*.md` | Forme (Phase 1) | Before execution |
 | `bindings/caller/*.md` | VM | At program start |
+| `bindings/caller/*.md` (run-typed) | VM | At binding time (before service execution) |
 | `workspace/{service}/*` | Subagent | During service execution |
 | `workspace/{service}/__delegate/{delegate}/{id}.md` | Subagent | Before delegation yield |
 | `workspace/{service}/__delegate/{delegate}/{id}-response.md` | VM | After delegate completes |

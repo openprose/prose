@@ -5,7 +5,7 @@ services: [analyst, researcher, implementer, pr-author]
 ---
 
 requires:
-- inspection-path: path to an inspection output file (e.g., bindings/inspection.md from a prior inspector run)
+- inspection: run
 - prose-repo: path to the prose skill directory (e.g., prose/skills/open-prose)
 
 ensures:
@@ -13,7 +13,6 @@ ensures:
 - if no improvements needed: clean status with explanation of why the VM handled this run correctly
 
 errors:
-- no-inspection: the inspection-path does not exist or is not a valid inspection output
 - no-improvements: inspection shows no VM-level issues (this is a success case, not a failure)
 - repo-not-found: the prose-repo path does not exist or is not a valid prose skill directory
 
@@ -33,13 +32,12 @@ invariants:
 ## analyst
 
 requires:
-- inspection-path: path to inspection output
+- inspection: run
 
 ensures:
 - findings: VM-specific issues extracted from the inspection, each with: the inspection dimension and score, a description of the VM behavior that was incorrect or suboptimal, and the relevant spec section in prose.md or forme.md
 
 errors:
-- no-inspection: the inspection-path does not exist or is not valid
 - no-improvements: no VM-level issues found in the inspection
 
 strategies:

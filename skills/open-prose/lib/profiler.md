@@ -5,8 +5,8 @@ services: [detector, collector, calculator, analyzer, tracker]
 ---
 
 requires:
-- run-path: path to a run directory, or "recent" for the latest runs
-- scope: analysis scope -- "single" (one run), "compare" (multiple runs side-by-side), or "trend" (patterns over time)
+- runs: run[]
+- scope: analysis scope -- "single" (exactly one run in the list), "compare" (multiple runs side-by-side), or "trend" (patterns over time)
 
 ensures:
 - report: profiling report with cost attribution per agent, time attribution per phase, per-agent token breakdown (input/output/cache), cache efficiency metrics, identified hotspots, and optimization recommendations
@@ -30,19 +30,18 @@ invariants:
 ## detector
 
 requires:
-- run-path: path to run(s) to profile
+- runs: run[]
 - scope: analysis scope
 
 ensures:
-- runs: validated list of run directories to profile, with confirmation that each contains session data
+- validated-runs: validated list of runs to profile, with confirmation that each contains session data
 
 errors:
 - no-data: could not find session data for the specified run(s)
 
 strategies:
-- for "recent" path: scan .prose/runs/ sorted by date descending
-- validate each run directory has the expected structure before including it
-- for "compare" and "trend" scopes: collect multiple runs
+- validate each run has the expected structure before including it
+- for "single" scope: expect exactly one run in the list
 
 ---
 

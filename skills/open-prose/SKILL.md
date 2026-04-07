@@ -55,6 +55,7 @@ When a user invokes `prose <command>`, intelligently route based on intent:
 | `prose test <path>` | Load `prose.md` + `state/filesystem.md`, run test(s) and report results |
 | `prose inspect <run-id>` | Sugar for `prose run std/evals/inspector -- run_id: <run-id>`. Evaluates a completed run. |
 | `prose status` | Sugar for `prose run std/ops/status`. Shows recent runs. |
+| `prose status --graph` | Sugar for `prose run std/ops/graph`. Shows the DAG of runs with upstream/downstream edges (reconstructed from `upstream:` in `state.md` headers). |
 | `prose install` | Scan for `use` statements, clone into `.deps/`, write `prose.lock` |
 | `prose install --update` | Bump SHAs in `prose.lock` to latest |
 | `prose help` | Load `help.md`, guide user |
@@ -168,7 +169,7 @@ OpenProse supports two file formats. Detect which to use based on the file exten
 | File/Directory | Location | Purpose |
 |----------------|----------|---------|
 | `.prose/.env` | User's working directory | Config (key=value format) |
-| `.prose/runs/` | User's working directory | Runtime state for file-based mode |
+| `.prose/runs/` | User's working directory | Runtime state for file-based mode. `state.md` headers may include `upstream:` provenance metadata (run IDs of `run`-typed inputs), enabling DAG reconstruction. |
 | `.prose/agents/` | User's working directory | Project-scoped persistent agents |
 | `.deps/` | User's working directory | Cloned dependency repos (gitignored) |
 | `prose.lock` | User's working directory | Pinned dependency SHAs (committed to git) |
