@@ -187,6 +187,12 @@ If multiple components ensure something that could match a `requires` entry, pre
   Pin this in a Wiring declaration if this is wrong.
 ```
 
+### Step 4b: Recognize `each` in Ensures
+
+When a component's `ensures` section contains an `each` clause (e.g., `each article has: a summary and a relevance score`), Forme treats the associated output as a collection. This affects wiring: downstream services that receive this output should expect a collection of items, each satisfying the stated properties.
+
+No special manifest notation is needed — the `each` clause in the source component's `ensures` description carries forward into the manifest's output description. Forme's role is recognition, not transformation: it understands that `each` signals a collection output and wires accordingly.
+
 ### Step 5: Build the Dependency Graph
 
 From the wiring, derive:
@@ -202,6 +208,8 @@ After building the dependency graph, collect all `environment:` declarations fro
 1. **Gather** — for each service, extract its `environment:` section (if present). Each entry names a runtime variable the service needs (e.g., `SLACK_WEBHOOK_URL`, `OPENAI_API_KEY`).
 2. **Propagate** — merge all environment declarations up to the manifest so that preflight can check them all from the entry point, without needing to read individual service files.
 3. **Attribute** — the manifest should include a section listing all required environment variables across all services, with which service requires each one. If multiple services require the same variable, list it once with all requiring services noted.
+
+**Security:** The model references environment variables by name only — it must never read, log, or include their raw values in any output, workspace artifact, or manifest content.
 
 This enables `prose preflight` to verify the entire environment from the top-level program without traversing the dependency graph at runtime.
 
@@ -549,15 +557,14 @@ subject: synthesizer
 ---
 ```
 
-The body contains `fixtures:` (pre-supplied inputs), `expects:` (natural language assertions), and optionally `expects-not:` (negative assertions) and `mode: contract`.
+The body contains `fixtures:` (pre-supplied inputs), `expects:` (natural language assertions), and optionally `expects-not:` (negative assertions).
 
 ### Wiring Process
 
 1. **Resolve the subject.** Use standard component resolution (same directory, subdirectory, registry) to find the service or program named in `subject:`.
 2. **Bind fixtures as caller inputs.** `fixtures:` entries become the caller inputs. No AskUserQuestion prompting — tests are fully self-contained.
-3. **For `mode: contract`** — run validation only (Steps 1–6 of the wiring algorithm). Report validation results as the test output. No manifest needed, no execution.
-4. **For normal tests** — produce a test manifest. Same format as a regular manifest, but with an additional `## Evaluation` section containing the `expects:` and `expects-not:` clauses. The VM uses this section after execution to evaluate results.
-5. **Wire the subject's dependencies.** If the subject is a program with its own services, wire those normally. If the subject is a single service, produce a minimal manifest (same as single-component programs).
+3. **Produce a test manifest.** Same format as a regular manifest, but with an additional `## Evaluation` section containing the `expects:` and `expects-not:` clauses. The VM uses this section after execution to evaluate results.
+4. **Wire the subject's dependencies.** If the subject is a program with its own services, wire those normally. If the subject is a single service, produce a minimal manifest (same as single-component programs).
 
 The test manifest's additional section:
 

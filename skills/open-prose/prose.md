@@ -678,6 +678,20 @@ If the output doesn't satisfy `ensures`:
 2. If so, re-run the service with guidance from the strategy
 3. If not, treat as an implicit error
 
+### Evaluating `each` Postconditions
+
+When an `ensures` clause begins with `each`, it expresses a collection postcondition: every item in the named collection must satisfy the stated property. For example:
+
+```markdown
+ensures:
+- articles: collected articles from the feed
+- each article has: a summary, a relevance score (0-1), and key claims extracted
+```
+
+The VM evaluates `each` postconditions with the same intelligent judgment as any other `ensures` clause. After the service completes, the VM reads the output and verifies that the property holds for every item in the collection — not just some, not just most, but all.
+
+This is a contract-level construct, not an execution directive. The `each` clause says nothing about *how* the service processes items. The service (or Forme) decides whether to iterate, fan out, or batch. The contract only says: when you are done, every item must have been processed.
+
 ### Evaluating `errors`
 
 When a service signals an error, verify the error name matches a declared `errors` entry. Undeclared errors propagate as unhandled faults.

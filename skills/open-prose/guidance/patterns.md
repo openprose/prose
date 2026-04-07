@@ -112,6 +112,32 @@ do review-and-revise("the test plan", "coverage and edge cases")
 
 ---
 
+#### declarative-each
+
+Express collection processing as a postcondition rather than a loop. The `each` construct belongs in `ensures:` — it declares that every item must satisfy a property, without prescribing how to get there.
+
+**v1 imperative (execution block):**
+
+```prose
+for each article in articles:
+  session "Summarize article and score relevance"
+    context: article
+```
+
+**v2 declarative (contract):**
+
+```markdown
+ensures:
+- articles: collected articles from the feed
+- each article has: a summary, a relevance score (0-1), and key claims extracted
+```
+
+The imperative version prescribes sequential iteration. The declarative version states the end condition and lets the model (or Forme) decide whether to iterate, fan out, or batch. A smarter model can satisfy the same contract more efficiently — this is the "bitter lesson" principle (tenet 14) applied to collections.
+
+Use declarative `each` when the processing strategy doesn't matter to the caller. Use explicit iteration in an execution block when ordering, batching, or error handling per item requires author control.
+
+---
+
 ## Robustness Patterns
 
 #### bounded-iteration

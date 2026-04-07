@@ -46,7 +46,11 @@ File-based state persists all execution artifacts to disk. This enables:
 │       │   │   ├── notes.md                # Intermediate scratch work
 │       │   │   ├── raw-results.md          # Intermediate data
 │       │   │   ├── findings.md             # Ensures output (working copy)
-│       │   │   └── sources.md              # Ensures output (working copy)
+│       │   │   ├── sources.md              # Ensures output (working copy)
+│       │   │   └── __delegate/             # Runtime delegation state (if any)
+│       │   │       └── {delegate}/
+│       │   │           ├── {id}.md          # Request payload
+│       │   │           └── {id}-response.md # Response payload
 │       │   ├── critic/
 │       │   │   ├── evaluation.md
 │       │   │   └── verdict.md
@@ -267,6 +271,9 @@ The state file is an **append-only log** of execution events. The VM appends ent
 | `Na→ a ✓` | Parallel service completed | `3a→ critic ✓` |
 | `N→ ∥done` | All parallel services complete | `3→ ∥done` |
 | `N→ service ✗ error-name` | Service signaled an error | `3→ researcher ✗ no-results` |
+| `N→ service ⇒ delegate (delegate: {id})` | Service yielded to a runtime delegate | `4→ server ⇒ synthesizer (delegate: req-001)` |
+| `N→   delegate ✓` | Runtime delegate completed | `4→   synthesizer ✓` |
+| `N→ service ⟳ (resumed)` | Service resumed after delegation | `4→ server ⟳ (resumed)` |
 | `---end TIMESTAMP` | Program completed | `---end 2026-03-17T14:35:22Z` |
 | `---error TIMESTAMP msg` | Program failed | `---error 2026-03-17T... no-results` |
 
@@ -278,6 +285,9 @@ The state file is an **append-only log** of execution events. The VM appends ent
 | Service completes | Append completion marker |
 | Parallel starts/joins | Append parallel markers |
 | Error occurs | Append error marker |
+| Delegation spawned | Append `⇒` marker |
+| Delegate completes | Append delegate `✓` marker |
+| Service resumed | Append `⟳` marker |
 | Program ends | Append end marker |
 
 The VM does NOT rewrite the entire file. Each write is a single line append.
@@ -302,6 +312,8 @@ To resume an interrupted run:
 | `services/*.md` | Forme (Phase 1) | Before execution |
 | `bindings/caller/*.md` | VM | At program start |
 | `workspace/{service}/*` | Subagent | During service execution |
+| `workspace/{service}/__delegate/{delegate}/{id}.md` | Subagent | Before delegation yield |
+| `workspace/{service}/__delegate/{delegate}/{id}-response.md` | VM | After delegate completes |
 | `bindings/{service}/*` | VM (copy from workspace) | After service completes |
 | `state.md` | VM | After each event |
 | `agents/{name}/memory.md` | Persistent agent | During service execution |
