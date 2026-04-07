@@ -867,6 +867,54 @@ let observation = session: observer
 
 ---
 
+## Dependency Antipatterns
+
+#### unpinned-dependencies
+
+Running programs without committing `prose.lock` or without running `prose install`.
+
+```prose
+# Bad: No lockfile committed — different machines get different versions
+# Bad: Relying on latest HEAD without pinning
+# Bad: Deleting prose.lock and re-running prose install to "update"
+```
+
+**Why it's bad**: Builds are not reproducible. Different machines clone different SHAs. Bugs become impossible to bisect.
+
+**Fix**: Always commit `prose.lock`. Use `prose install --update` when you deliberately want to bump versions, then review and commit the updated lockfile.
+
+```
+# Good workflow:
+prose install              # Pins current versions
+git add prose.lock         # Commit the lockfile
+# ... later, deliberately update:
+prose install --update     # Bumps to latest
+git diff prose.lock        # Review what changed
+git add prose.lock         # Commit the update
+```
+
+#### vendored-copies
+
+Copying library programs into your project instead of using `use` statements.
+
+```prose
+# Bad: Copied inspector.md into your project tree
+# Now you have a stale fork that diverges from upstream
+```
+
+**Why it's bad**: You lose upstream updates, bug fixes, and improvements. Multiple projects end up with subtly different copies. No way to track provenance.
+
+**Fix**: Use `use` statements and `prose install`:
+
+```prose
+# Good: Reference the canonical source
+use "std/evals/inspector"
+```
+
+The only exception is if you genuinely need to fork and modify a program — in that case, fork the repo on GitHub and reference your fork.
+
+---
+
 ## Security Antipatterns
 
 #### unvalidated-input

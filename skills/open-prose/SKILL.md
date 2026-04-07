@@ -56,6 +56,8 @@ When a user invokes `prose <command>`, intelligently route based on intent:
 | `prose migrate <file.prose>` | Convert `.prose` file to `.md` format |
 | `prose test <path>` | Load `prose.md` + `state/filesystem.md`, run test(s) and report results |
 | `prose update` | Run workspace migration (see Migration section below) |
+| `prose install` | Scan program files for `use` statements, clone missing repos into `.deps/`, write `prose.lock` |
+| `prose install --update` | Bump pinned SHAs in `prose.lock` to latest |
 | `prose examples` | Show or run example programs from `examples/` |
 | Other | Intelligently interpret based on context |
 
@@ -94,7 +96,7 @@ prose run irl-danb/habit-miner
 prose run alice/code-review
 ```
 
-**Resolution rules:**
+**Resolution rules (CLI `prose run`):**
 
 | Input | Resolution |
 |-------|------------|
@@ -102,6 +104,8 @@ prose run alice/code-review
 | Starts with `@` | Strip the `@`, resolve to `https://p.prose.md/{path}` |
 | Contains `/` but no protocol | Resolve to `https://p.prose.md/{path}` |
 | Otherwise | Treat as local file path |
+
+**`use` statement resolution (git-native):** `use` statements inside programs resolve via `.deps/`, not p.prose.md. See `deps.md` for the full resolution algorithm. Dependencies must be installed via `prose install` before execution.
 
 ---
 
@@ -147,6 +151,7 @@ OpenProse supports two file formats. Detect which to use based on the file exten
 | `guidance/tenets.md` | Design reasoning behind the specs (load for architectural decisions) |
 | `guidance/patterns.md` | Best practices (load when writing programs) |
 | `guidance/antipatterns.md` | What to avoid (load when writing programs) |
+| `deps.md` | Dependency resolution semantics (load for `prose install` or `use` resolution) |
 | `examples/` | 50 example programs |
 | `v0/prose.md` | Legacy v0 VM semantics (load for `.prose` files) |
 | `v0/compiler.md` | Legacy v0 compiler/validator (load for `prose compile`) |
@@ -163,6 +168,8 @@ OpenProse supports two file formats. Detect which to use based on the file exten
 | `.prose/.env` | User's working directory | Config (key=value format) |
 | `.prose/runs/` | User's working directory | Runtime state for file-based mode |
 | `.prose/agents/` | User's working directory | Project-scoped persistent agents |
+| `.deps/` | User's working directory | Cloned dependency repos (gitignored) |
+| `prose.lock` | User's working directory | Pinned dependency SHAs (committed to git) |
 | `*.prose` files | User's project | Legacy v0 programs |
 | `*.md` program files | User's project | v1.0 programs (with `kind:` frontmatter) |
 
@@ -187,6 +194,7 @@ When you need to read skill files, read them from the same directory where you f
 | `guidance/tenets.md` | Design reasoning | Load when making architectural decisions |
 | `guidance/patterns.md` | Best practices | Load when **writing** new programs |
 | `guidance/antipatterns.md` | What to avoid | Load when **writing** new programs |
+| `deps.md` | Dependency resolution | Load for `prose install` or `use` resolution |
 | `v0/prose.md` | Legacy VM | Load for `.prose` files only |
 | `v0/compiler.md` | Legacy compiler | Load for `prose compile` only |
 

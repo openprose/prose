@@ -74,6 +74,19 @@ File-based state persists all execution artifacts to disk. This enables:
         ├── memory.md
         └── ...
 
+# Dependencies (in working directory, outside .prose/)
+.deps/                                      # Cloned dependency repos (gitignored)
+├── openprose/
+│   └── std/                                # Full clone of github.com/openprose/std
+│       ├── evals/
+│       │   └── inspector.md
+│       └── memory/
+│           └── project-memory.md
+└── alice/
+    └── research/
+        └── ...
+prose.lock                                  # Pinned dependency SHAs (committed to git)
+
 # User-level state (in home directory)
 ~/.prose/
 └── agents/                                 # User-scoped agent memory (cross-project)

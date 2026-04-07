@@ -687,6 +687,39 @@ let review = session: structured-reviewer
 
 ---
 
+## Dependency Management Patterns
+
+#### dependency-management
+
+Declare dependencies via `use` statements. Run `prose install` to clone repos into `.deps/`. Commit `prose.lock`, gitignore `.deps/`.
+
+```prose
+# Good: Use standard library programs
+use "std/evals/inspector"
+use "std/memory/project-memory"
+
+# Good: Use third-party programs
+use "alice/research-pipeline" as research
+
+let result = research(topic: "quantum computing")
+```
+
+Pin versions via `prose.lock`. Run `prose install --update` deliberately — don't update dependencies as a side effect of other work. Review changes to `prose.lock` in code review just like any other code change.
+
+#### std-shorthand
+
+Use the `std/` shorthand for standard library references instead of the full `openprose/std/` path.
+
+```prose
+# Good: Concise
+use "std/evals/inspector"
+
+# Unnecessary: Fully qualified (works, but verbose)
+use "openprose/std/evals/inspector"
+```
+
+---
+
 ## Summary
 
 The most effective OpenProse programs combine these patterns:
