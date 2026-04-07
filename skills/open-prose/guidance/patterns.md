@@ -5,7 +5,7 @@ summary: |
   Read this file when authoring new programs or reviewing existing ones.
 see-also:
   - prose.md: Execution semantics, how to run programs
-  - compiler.md: Full syntax grammar, validation rules
+  - v0/compiler.md: Full syntax grammar, validation rules
   - antipatterns.md: Patterns to avoid
 ---
 
@@ -116,7 +116,7 @@ do review-and-revise("the test plan", "coverage and edge cases")
 
 Express collection processing as a postcondition rather than a loop. The `each` construct belongs in `ensures:` — it declares that every item must satisfy a property, without prescribing how to get there.
 
-**v1 imperative (execution block):**
+**Legacy imperative (execution block):**
 
 ```prose
 for each article in articles:
@@ -124,7 +124,7 @@ for each article in articles:
     context: article
 ```
 
-**v2 declarative (contract):**
+**Declarative (contract):**
 
 ```markdown
 ensures:

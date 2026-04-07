@@ -27,6 +27,7 @@ OpenProse is invoked via `prose` commands:
 | `prose lint <file.md>` | Validate structure, schema, shapes, and contracts |
 | `prose preflight <file.md>` | Check dependencies and environment variables |
 | `prose test <path>` | Run test(s) and report results |
+| `prose install` | Install dependencies from `use` statements into `.deps/` |
 | `prose inspect <run-id>` | Evaluate a completed run |
 | `prose status` | Show recent runs |
 | `prose help` | Show help and examples |

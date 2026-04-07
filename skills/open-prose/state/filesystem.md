@@ -274,6 +274,10 @@ The state file is an **append-only log** of execution events. The VM appends ent
 | `N→ service ⇒ delegate (delegate: {id})` | Service yielded to a runtime delegate | `4→ server ⇒ synthesizer (delegate: req-001)` |
 | `N→   delegate ✓` | Runtime delegate completed | `4→   synthesizer ✓` |
 | `N→ service ⟳ (resumed)` | Service resumed after delegation | `4→ server ⟳ (resumed)` |
+| `N→ [eval] assertion ✓` | Test assertion passed | `5→ [eval] assertion ✓` |
+| `N→ [eval] assertion ✗` | Test assertion failed | `5→ [eval] assertion ✗` |
+| `---test PASS` | Test passed (all assertions satisfied) | `---test PASS` |
+| `---test FAIL (N/M assertions)` | Test failed | `---test FAIL (2/3 assertions)` |
 | `---end TIMESTAMP` | Program completed | `---end 2026-03-17T14:35:22Z` |
 | `---error TIMESTAMP msg` | Program failed | `---error 2026-03-17T... no-results` |
 

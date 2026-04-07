@@ -58,6 +58,7 @@ When a user invokes `prose <command>`, intelligently route based on intent:
 | `prose install` | Scan for `use` statements, clone into `.deps/`, write `prose.lock` |
 | `prose install --update` | Bump SHAs in `prose.lock` to latest |
 | `prose help` | Load `help.md`, guide user |
+| `prose update` | Migrate workspace to latest structure (see Migration section) |
 | `prose examples` | Show or run example programs from `examples/` |
 | Other | Intelligently interpret based on context |
 
@@ -78,12 +79,11 @@ There is only ONE skill: `open-prose`. There are NO separate skills like `prose-
 **Common examples by keyword:**
 | Keyword | File |
 |---------|------|
-| hello, hello world | `examples/01-hello-world.prose` |
-| captain, chair | `examples/29-captains-chair.prose` |
-| forge, browser | `examples/37-the-forge.prose` |
-| parallel | `examples/16-parallel-reviews.prose` |
-| pipeline | `examples/21-pipeline-operations.prose` |
-| error, retry | `examples/22-error-handling.prose` |
+| hello, hello world | `examples/01-hello-world.md` |
+| captain, chair | `examples/29-captains-chair/` |
+| forge, browser | `examples/37-the-forge/` |
+| parallel | `examples/16-parallel-reviews/` |
+| error, retry | `examples/22-error-handling/` |
 
 ### Remote Programs
 
@@ -228,7 +228,7 @@ For v0 state mode details (in-context, sqlite, postgres), see the respective fil
 
 ## Examples
 
-The `examples/` directory contains 50 example programs (v0 format):
+The `examples/` directory contains 50 example programs (primarily in v1 `.md` format):
 
 - **01-08**: Basics (hello world, research, code review, debugging)
 - **09-12**: Agents and skills
@@ -242,7 +242,7 @@ The `examples/` directory contains 50 example programs (v0 format):
 - **40-43**: RLM patterns (recursive processing)
 - **44-50**: Meta-programs (retrospectives, tutor, self-improvement)
 
-Start with `01-hello-world.prose` or try `37-the-forge.prose` to watch AI build a web browser.
+Start with `01-hello-world.md` or try `37-the-forge/` to watch AI build a web browser.
 
 ## Execution
 
