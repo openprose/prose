@@ -43,6 +43,8 @@ Options:
 | `prose run <file>` | Execute a .prose program |
 | `prose compile <file>` | Validate syntax without running |
 | `prose update` | Migrate legacy workspace files |
+| `prose install` | Install dependencies from `use` statements into `.deps/` |
+| `prose install --update` | Update pinned dependencies to latest |
 | `prose examples` | Browse and run example programs |
 
 ---
@@ -60,6 +62,12 @@ prose help
 → Select "Build something new"
 → Describe what you want to automate
 ```
+
+**Use a library program:**
+```prose
+use "std/evals/inspector"
+```
+Then run `prose install` to fetch it.
 
 ---
 
@@ -88,6 +96,10 @@ English is already an agent framework—we're not replacing it, we're structurin
 ### Why not YAML?
 
 We started with YAML. The problem: loops, conditionals, and variable declarations aren't self-evident in YAML—and when you try to make them self-evident, it gets verbose and ugly. More fundamentally, YAML optimizes for machine parseability. OpenProse optimizes for intelligent machine legibility. It doesn't need to be parsed—it needs to be understood. That's a different design target entirely.
+
+### How do dependencies work?
+
+OpenProse uses a git-native dependency model — GitHub is the registry. When a program contains `use "owner/repo/path"`, that refers to a file inside a GitHub repository. Run `prose install` to clone dependencies into `.deps/` and pin their versions in `prose.lock`. The lockfile is committed to git; `.deps/` is gitignored (it's a cache, reproducible from the lockfile). `std/` is shorthand for `openprose/std/` — the standard library. At runtime, dependencies are read from disk only — no network calls. If deps are missing, `prose run` errors and tells you to run `prose install`.
 
 ### Why not LangChain/CrewAI/AutoGen?
 

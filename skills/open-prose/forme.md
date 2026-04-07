@@ -99,7 +99,12 @@ For each name in `services`, locate the corresponding `.md` file:
 **Resolution order:**
 1. Same directory as the entry point: `./researcher.md`
 2. A subdirectory matching the name: `./researcher/index.md`
-3. Registry shorthand (if contains `/`): fetch from `https://p.prose.md/{path}`
+3. `.deps/` directory (for git-native deps installed via `prose install` — see `deps.md`):
+   - Expand `std/` shorthand to `openprose/std/`
+   - Map the service name to `.deps/{owner}/{repo}/{path}.md`
+   - Example: `std/evals/inspector` → `.deps/openprose/std/evals/inspector.md`
+   - Example: `alice/tools/formatter` → `.deps/alice/tools/formatter.md`
+4. Registry shorthand (if contains `/`): fetch from `https://p.prose.md/{path}` (legacy)
 
 If a component cannot be resolved, emit an error:
 
@@ -108,6 +113,7 @@ If a component cannot be resolved, emit an error:
   Searched:
     - ./researcher.md
     - ./researcher/index.md
+    - .deps/ (no matching path)
   Entry point: ./program.md
 ```
 
