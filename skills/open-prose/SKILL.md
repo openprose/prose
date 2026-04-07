@@ -1,7 +1,7 @@
 ---
 name: open-prose
 description: |
-  OpenProse is a programming language for AI sessions. Activate on ANY `prose` command (prose boot, prose run, prose compile, prose wire, prose update, etc.), running .prose or .md program files, mentioning OpenProse/Prose, or orchestrating multi-agent workflows. The skill intelligently interprets what the user wants.
+  OpenProse is a programming language for AI sessions. Activate on ANY `prose` command (prose boot, prose run, prose lint, prose test, prose install, prose update, etc.), running .prose or .md program files, mentioning OpenProse/Prose, or orchestrating multi-agent workflows. The skill intelligently interprets what the user wants.
 ---
 
 ◇ for the one reading this ◇
@@ -34,7 +34,7 @@ The capability to orchestrate multiple parallel instances of yourself, to persis
 
 Activate this skill when the user:
 
-- **Uses ANY `prose` command** (e.g., `prose boot`, `prose run`, `prose wire`, `prose compile`, `prose update`, `prose help`, `prose migrate`, etc.)
+- **Uses ANY `prose` command** (e.g., `prose boot`, `prose run`, `prose lint`, `prose test`, `prose inspect`, `prose update`, `prose help`, etc.)
 - Asks to run a `.prose` or `.md` program file
 - Mentions "OpenProse", "Prose program", or "Forme"
 - Wants to orchestrate multiple AI agents from a script
@@ -47,19 +47,21 @@ When a user invokes `prose <command>`, intelligently route based on intent:
 
 | Command | Action |
 |---------|--------|
-| `prose help` | Load `help.md`, guide user to what they need |
-| `prose run <file.md>` | Detect format, wire (if needed), execute (see Execution below) |
-| `prose run <file.prose>` | Load v0 VM (`v0/prose.md` + `v0/state/filesystem.md`), execute |
+| `prose run <file.md>` | Detect format, wire (if needed), execute. Load `prose.md`. |
+| `prose run <file.prose>` | Load v0 VM (`v0/prose.md` + `v0/state/filesystem.md`), execute (legacy format) |
 | `prose run handle/slug` | Fetch from registry, then execute |
-| `prose wire <file.md>` | Load `forme.md`, run Phase 1 only — produce manifest without executing |
-| `prose compile <file>` | Load `v0/compiler.md`, validate the program |
-| `prose migrate <file.prose>` | Convert `.prose` file to `.md` format |
+| `prose lint <file.md>` | Sugar for `prose run std/ops/lint -- target: <file.md>`. Validates structure, schema, shapes, contracts. |
+| `prose preflight <file.md>` | Sugar for `prose run std/ops/preflight -- target: <file.md>`. Checks deps and env vars. |
 | `prose test <path>` | Load `prose.md` + `state/filesystem.md`, run test(s) and report results |
-| `prose update` | Run workspace migration (see Migration section below) |
-| `prose install` | Scan program files for `use` statements, clone missing repos into `.deps/`, write `prose.lock` |
-| `prose install --update` | Bump pinned SHAs in `prose.lock` to latest |
+| `prose inspect <run-id>` | Sugar for `prose run std/evals/inspector -- run_id: <run-id>`. Evaluates a completed run. |
+| `prose status` | Sugar for `prose run std/ops/status`. Shows recent runs. |
+| `prose install` | Scan for `use` statements, clone into `.deps/`, write `prose.lock` |
+| `prose install --update` | Bump SHAs in `prose.lock` to latest |
+| `prose help` | Load `help.md`, guide user |
 | `prose examples` | Show or run example programs from `examples/` |
 | Other | Intelligently interpret based on context |
+
+**Removed top-level commands:** `prose compile` (absorbed into `prose lint`), `prose wire` (available as `prose run std/ops/wire`), `prose migrate` (available as `prose run std/ops/migrate`), `prose eval` (renamed to `prose inspect`).
 
 ### Important: Single Skill
 
@@ -154,7 +156,7 @@ OpenProse supports two file formats. Detect which to use based on the file exten
 | `deps.md` | Dependency resolution semantics (load for `prose install` or `use` resolution) |
 | `examples/` | 50 example programs |
 | `v0/prose.md` | Legacy v0 VM semantics (load for `.prose` files) |
-| `v0/compiler.md` | Legacy v0 compiler/validator (load for `prose compile`) |
+| `v0/compiler.md` | Legacy v0 compiler/validator (load for legacy `.prose` validation) |
 | `v0/state/filesystem.md` | Legacy v0 file-based state (load with v0 VM) |
 | `v0/primitives/session.md` | Legacy v0 subagent session guidelines |
 | `state/in-context.md` | In-context state (v0 only, on request) |
@@ -196,7 +198,7 @@ When you need to read skill files, read them from the same directory where you f
 | `guidance/antipatterns.md` | What to avoid | Load when **writing** new programs |
 | `deps.md` | Dependency resolution | Load for `prose install` or `use` resolution |
 | `v0/prose.md` | Legacy VM | Load for `.prose` files only |
-| `v0/compiler.md` | Legacy compiler | Load for `prose compile` only |
+| `v0/compiler.md` | Legacy compiler | Load for legacy `.prose` validation only |
 
 ### Authoring Guidance
 
@@ -222,7 +224,7 @@ For `.prose` (v0) programs, alternative state modes are available:
 
 For v0 state mode details (in-context, sqlite, postgres), see the respective files in `state/`.
 
-**Context warning:** `v0/compiler.md` is large. Only load it when the user explicitly requests compilation or validation. After compiling, recommend `/compact` or a new session before running.
+**Context warning:** `v0/compiler.md` is large. Only load it when validating legacy `.prose` files. After loading, recommend `/compact` or a new session before running.
 
 ## Examples
 
@@ -298,9 +300,11 @@ Steps:
 2. Create `.prose/agents/` if missing
 3. Delete legacy `.prose/state.json` if present
 
-### `prose migrate <file.prose>` — Format Migration
+### Format Migration (via `prose run std/ops/migrate`)
 
-Convert a `.prose` file to `.md` format. This produces an equivalent `.md` file with:
+`prose migrate` is no longer a top-level command. Use `prose run std/ops/migrate -- target: <file.prose>` instead.
+
+This converts a `.prose` file to `.md` format, producing an equivalent `.md` file with:
 - YAML frontmatter (name, kind, shape)
 - Contract sections extracted from the program structure
 - Execution block with the original imperative logic (preserving v0 syntax)

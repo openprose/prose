@@ -122,7 +122,7 @@ If a component cannot be resolved, emit an error:
 For each resolved component, extract from its `.md` file:
 
 - **Frontmatter:** `name`, `kind`, `shape` (if present)
-- **Contract sections:** `requires`, `ensures`, `errors`, `invariants`, `strategies`
+- **Contract sections:** `requires`, `ensures`, `errors`, `invariants`, `strategies`, `environment`
 
 A component has this structure:
 
@@ -194,6 +194,16 @@ From the wiring, derive:
 - **Execution order:** Topological sort of the dependency graph. Components with no unresolved dependencies can run first.
 - **Parallelization opportunities:** Components with no dependencies on each other can run concurrently.
 - **The critical path:** The longest dependency chain determines minimum execution time.
+
+### Step 5b: Collect Environment Declarations
+
+After building the dependency graph, collect all `environment:` declarations from every service in the graph:
+
+1. **Gather** — for each service, extract its `environment:` section (if present). Each entry names a runtime variable the service needs (e.g., `SLACK_WEBHOOK_URL`, `OPENAI_API_KEY`).
+2. **Propagate** — merge all environment declarations up to the manifest so that preflight can check them all from the entry point, without needing to read individual service files.
+3. **Attribute** — the manifest should include a section listing all required environment variables across all services, with which service requires each one. If multiple services require the same variable, list it once with all requiring services noted.
+
+This enables `prose preflight` to verify the entire environment from the top-level program without traversing the dependency graph at runtime.
 
 ### Step 6: Validate
 
@@ -290,6 +300,13 @@ delegates:
 3. {service} (depends on: {service}, {service})
 
 Parallelizable: {list of services that can run concurrently, if any}
+
+## Environment
+
+| Variable | Required by |
+|----------|-------------|
+| {VAR_NAME} | {service-name}, {service-name} |
+| {VAR_NAME} | {service-name} |
 
 ## Warnings
 
@@ -577,6 +594,8 @@ The runtime:
 
 For single-component programs (no `services` list), Phase 1 is skipped — the file is passed directly to the Prose VM.
 
+**Note:** `prose wire` is no longer a top-level command. Forme's wiring algorithm is available as a standard library program (`std/ops/wire`). Users who need to wire without executing should use `prose run std/ops/wire -- target: <file.md>`. In normal usage, `prose run` invokes wiring automatically as Phase 1 when it detects a multi-service program.
+
 ---
 
 ## Summary
@@ -585,7 +604,7 @@ The Forme Container:
 
 1. **Reads** the program entry point and its `services` list
 2. **Resolves** each service name to a `.md` file
-3. **Extracts** contracts (`requires`, `ensures`, `errors`, `invariants`, `strategies`) and shapes
+3. **Extracts** contracts (`requires`, `ensures`, `errors`, `invariants`, `strategies`, `environment`) and shapes
 4. **Auto-wires** by matching `requires` ↔ `ensures` using semantic understanding
 5. **Validates** the dependency graph for errors and warnings
 6. **Copies** source files into the run directory (`services/`)

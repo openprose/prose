@@ -39,12 +39,16 @@ Options:
 
 | Command | What it does |
 |---------|--------------|
-| `prose help` | This help - guides you to what you need |
-| `prose run <file>` | Execute a .prose program |
-| `prose compile <file>` | Validate syntax without running |
-| `prose update` | Migrate legacy workspace files |
+| `prose run <program.md>` | Run a program |
+| `prose lint <program.md>` | Validate structure, schema, and contracts |
+| `prose preflight <program.md>` | Check dependencies and environment |
+| `prose test <program.md>` | Run tests with assertions |
+| `prose inspect <run-id>` | Evaluate a completed run |
+| `prose status` | Show recent runs |
 | `prose install` | Install dependencies from `use` statements into `.deps/` |
 | `prose install --update` | Update pinned dependencies to latest |
+| `prose update` | Migrate legacy workspace files |
+| `prose help` | This help — guides you to what you need |
 | `prose examples` | Browse and run example programs |
 
 ---

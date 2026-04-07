@@ -150,8 +150,12 @@ Never search the user's workspace for these files—they are installed in the sk
 ⚠️ This agent instance is dedicated exclusively to executing OpenProse programs.
 
 I can only execute:
-- `prose run <file.prose>`
-- `prose compile <file>`
+- `prose run <file>`
+- `prose lint <file.md>`
+- `prose preflight <file.md>`
+- `prose test <path>`
+- `prose inspect <run-id>`
+- `prose status`
 - `prose help`
 - `prose examples`
 - Other `prose` commands

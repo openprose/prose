@@ -24,9 +24,11 @@ OpenProse is invoked via `prose` commands:
 | `prose run <file.md>` | Execute a local `.md` program |
 | `prose run <file.prose>` | Execute a legacy `.prose` program (v0 mode) |
 | `prose run handle/slug` | Fetch from registry and execute |
-| `prose compile <file>` | Validate syntax and contracts without executing |
-| `prose wire <file>` | Run Phase 1 only — produce manifest without executing |
+| `prose lint <file.md>` | Validate structure, schema, shapes, and contracts |
+| `prose preflight <file.md>` | Check dependencies and environment variables |
 | `prose test <path>` | Run test(s) and report results |
+| `prose inspect <run-id>` | Evaluate a completed run |
+| `prose status` | Show recent runs |
 | `prose help` | Show help and examples |
 | `prose examples` | List or run bundled examples |
 
@@ -689,6 +691,18 @@ After the run completes (success or failure), check each service's `invariants`.
 Strategies are evaluated when the VM needs to make a judgment call during execution. If a service's intermediate state matches a strategy's `when` condition, apply the strategy's guidance.
 
 For intra-service strategies (e.g., "evaluate from multiple perspectives"), these are included in the session prompt and the subagent applies them directly.
+
+### Resolving `environment`
+
+`environment:` is the sixth contract section, alongside `requires`, `ensures`, `errors`, `invariants`, and `strategies`. It declares runtime dependencies provided by the container, not by the caller. The VM resolves these from the host environment (shell env vars, platform secrets, `.env` files). Distinguished from `requires:` in that requires values come from callers or upstream services, while environment values come from the runtime infrastructure.
+
+The model references environment variables by name — it never reads, logs, or includes their raw values in any output or workspace artifact.
+
+**VM behavior for `environment:` during execution:**
+
+- When a service declares `environment:` variables, the VM verifies they are set before spawning the service's session. Verification means confirming the variable exists in the host environment — not reading or logging its value.
+- The service session can reference env vars via shell expansion (e.g., `$SLACK_WEBHOOK_URL` in a curl command) but must never construct strings containing the values, log them, or write them to workspace files.
+- If an environment variable is not set, the VM fails the service with a clear error rather than proceeding with an empty value. The error is logged to `state.md` as `N→ service-name ✗ missing-env:{VAR_NAME}`.
 
 ---
 
