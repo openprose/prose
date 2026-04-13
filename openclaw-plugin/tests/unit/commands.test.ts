@@ -46,10 +46,19 @@ describe("handleProseCommand", () => {
     expect(result.text).toContain("Usage");
   });
 
-  test("/prose run with target returns not-yet-available", async () => {
-    const result = await handleProseCommand(mockApi, makeCtx("run ./test.md"));
-    expect(result.text).toContain("not yet available");
-    expect(result.text).toContain("./test.md");
+  test("/prose run with nonexistent file returns error", async () => {
+    const result = await handleProseCommand(mockApi, makeCtx("run ./nonexistent.md"));
+    expect(result.text).toContain("Failed to load program");
+  });
+
+  test("/prose run with real file returns run context", async () => {
+    const result = await handleProseCommand(
+      mockApi,
+      makeCtx("run ./tests/smoke/hello-world.md"),
+    );
+    expect(result.text).toContain("Prose Run");
+    expect(result.text).toContain("hello-world");
+    expect(result.text).toContain(".prose/runs/");
   });
 
   test("/prose compile without target returns usage", async () => {

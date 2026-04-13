@@ -8,6 +8,7 @@
 import type { OpenClawPluginApi } from "openclaw/plugin-sdk/openprose";
 import { getConfig } from "../index.js";
 import { listExamples, showExample } from "../runtime/examples.js";
+import { executeProgram } from "../runtime/execute.js";
 
 interface PluginCommandContext {
   args?: string;
@@ -38,7 +39,7 @@ export async function handleProseCommand(
       return handleExamples(api, args);
 
     case "run":
-      return handleRun(args);
+      return handleRun(api, args);
 
     case "compile":
       return handleCompile(args);
@@ -103,15 +104,19 @@ async function handleExamples(
   return { text: content };
 }
 
-function handleRun(args: string): PluginCommandResult {
+async function handleRun(
+  api: OpenClawPluginApi,
+  args: string,
+): Promise<PluginCommandResult> {
   if (!args) {
     return {
       text: "Usage: `/prose run <target>`\n\nTarget can be a local file, URL, or `@owner/slug` registry reference.",
     };
   }
-  return {
-    text: `\`/prose run\` is not yet available. Target: \`${args}\``,
-  };
+  const config = getConfig(api);
+  // Use rootDir from the plugin API if available, otherwise cwd
+  const workspaceDir = api.rootDir ?? process.cwd();
+  return executeProgram(api, config, args, workspaceDir);
 }
 
 function handleCompile(args: string): PluginCommandResult {

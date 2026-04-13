@@ -60,6 +60,40 @@ declare module "openclaw/plugin-sdk/openprose" {
     stop?: (ctx: any) => void | Promise<void>;
   };
 
+  export type SubagentRunParams = {
+    sessionKey: string;
+    message: string;
+    provider?: string;
+    model?: string;
+    extraSystemPrompt?: string;
+    lane?: string;
+    deliver?: boolean;
+    idempotencyKey?: string;
+  };
+
+  export type SubagentRunResult = {
+    runId: string;
+  };
+
+  export type SubagentWaitParams = {
+    runId: string;
+    timeoutMs?: number;
+  };
+
+  export type SubagentWaitResult = {
+    status: "ok" | "error" | "timeout";
+    error?: string;
+  };
+
+  export type SubagentGetSessionMessagesParams = {
+    sessionKey: string;
+    limit?: number;
+  };
+
+  export type SubagentGetSessionMessagesResult = {
+    messages: unknown[];
+  };
+
   export type PluginRuntime = {
     version: string;
     system: {
@@ -67,6 +101,14 @@ declare module "openclaw/plugin-sdk/openprose" {
     };
     state: {
       resolveStateDir: () => string;
+    };
+    subagent: {
+      run: (params: SubagentRunParams) => Promise<SubagentRunResult>;
+      waitForRun: (params: SubagentWaitParams) => Promise<SubagentWaitResult>;
+      getSessionMessages: (
+        params: SubagentGetSessionMessagesParams,
+      ) => Promise<SubagentGetSessionMessagesResult>;
+      deleteSession: (params: { sessionKey: string }) => Promise<void>;
     };
     [key: string]: unknown;
   };

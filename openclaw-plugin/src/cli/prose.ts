@@ -6,6 +6,7 @@
 
 import type { OpenClawPluginApi } from "openclaw/plugin-sdk/openprose";
 import { listExamples, showExample } from "../runtime/examples.js";
+import { executeProgram } from "../runtime/execute.js";
 import { getConfig } from "../index.js";
 
 interface CliContext {
@@ -62,11 +63,12 @@ export function registerProseCli(ctx: CliContext, api: OpenClawPluginApi): void 
 
   prose
     .command("run <target>")
-    .description("Run a Prose program (Phase 1 — not yet implemented)")
-    .action((target: string) => {
-      console.log(
-        `prose run: Phase 1 implementation in progress. Target: ${target}`,
-      );
+    .description("Run a Prose program")
+    .action(async (target: string) => {
+      const config = getConfig(api);
+      const workspaceDir = ctx.workspaceDir ?? process.cwd();
+      const result = await executeProgram(api, config, target, workspaceDir);
+      console.log(result.text);
     });
 
   prose
