@@ -18,6 +18,7 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "sync-assets": "bun run scripts/sync-assets.ts",
+    "pretest": "test -d assets/openprose || bun run sync-assets",
     "test": "bun test",
     "prepublishOnly": "bun run sync-assets && bun run build"
   },
@@ -39,7 +40,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/openprose/prose.git",
-    "directory": "openclaw-plugin"
+    "directory": "integrations/openclaw-plugin"
   },
   "devDependencies": {
     "typescript": "^5.7.0",
