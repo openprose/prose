@@ -27,13 +27,21 @@ export async function buildVmSpec(): Promise<string> {
   ];
 
   const sections: string[] = [];
+  const missing: string[] = [];
   for (const [path, label] of files) {
+    const fullPath = join(base, path);
     try {
-      const content = await readFile(join(base, path), "utf-8");
+      const content = await readFile(fullPath, "utf-8");
       sections.push(`<!-- ${label}: ${path} -->\n\n${content}`);
     } catch {
-      sections.push(`<!-- ${label}: ${path} — NOT FOUND -->`);
+      missing.push(path);
     }
+  }
+
+  if (missing.length > 0) {
+    throw new Error(
+      `Critical VM spec files missing from vendored assets: ${missing.join(", ")}. Run: bun run sync-assets`,
+    );
   }
 
   return sections.join("\n\n---\n\n");
