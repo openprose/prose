@@ -5,7 +5,15 @@ Official OpenProse runtime plugin for OpenClaw. Runs `.md` and `.prose` programs
 ## Install
 
 ```bash
-openclaw plugins install /path/to/openclaw-plugin
+# Clone and build
+git clone https://github.com/openprose/prose.git
+cd prose/integrations/openclaw-plugin
+bun install
+bun run sync-assets   # vendors the OpenProse spec from ../../skills/open-prose/
+bun run build
+
+# Install into OpenClaw
+openclaw plugins install .
 ```
 
 Then restart the gateway:
@@ -26,14 +34,14 @@ Send these as Telegram/Discord messages to your OpenClaw bot:
 
 ```
 /prose help              — show available commands
-/prose run <file>        — run a local .md or .prose program
-/prose run <url>         — run a program from a URL
-/prose run @owner/slug   — run a program from the registry
+/prose run <file>        — run a local program
 /prose examples          — list bundled example programs
 /prose examples 01       — show a specific example
 /prose status            — show runtime config
 /prose compile <file>    — validate without executing (coming soon)
 ```
+
+Remote programs (`/prose run <url>` and `/prose run @owner/slug`) require enabling `allowRemoteHttp` in plugin config.
 
 ### Run a program
 
@@ -52,12 +60,12 @@ The plugin:
 ### Example: hello world
 
 ```
-/prose run /path/to/openclaw-plugin/tests/smoke/hello-world.md
+/prose run /path/to/prose/integrations/openclaw-plugin/tests/smoke/hello-world.md
 ```
 
 ## How it works
 
-OpenProse programs describe services with `requires:`/`ensures:` contracts. The plugin builds a system prompt from the vendored OpenProse VM specification (`prose.md`, `state/filesystem.md`, `primitives/session.md`), spawns an OpenClaw subagent via `api.runtime.subagent.run()`, and the subagent reads the spec and becomes the VM.
+OpenProse programs describe services with `requires:`/`ensures:` contracts. The plugin builds a system prompt from the OpenProse VM specification (`prose.md`, `state/filesystem.md`, `primitives/session.md`), spawns an OpenClaw subagent via `api.runtime.subagent.run()`, and the subagent reads the spec and becomes the VM.
 
 No parser. No AST. The LLM reads the spec and executes it.
 
@@ -101,14 +109,30 @@ Plugin config in your OpenClaw settings:
 }
 ```
 
+| Field | Default | Description |
+|-------|---------|-------------|
+| `registryBaseUrl` | `https://p.prose.md` | Registry for `@owner/slug` resolution |
+| `allowRemoteHttp` | `false` | Opt-in to fetch programs from URLs |
+| `allowLegacyV0` | `true` | Support legacy `.prose` v0 format |
+| `defaultTimeoutMs` | `300000` | Subagent execution timeout (5s–600s) |
+| `maxParallelServices` | `5` | Max concurrent service sessions (1–20) |
+
 ## Development
 
 ```bash
-cd openclaw-plugin
+cd prose/integrations/openclaw-plugin
 bun install
-bun run sync-assets    # vendor OpenProse spec from ../skills/open-prose/
+bun run sync-assets    # vendor OpenProse spec from ../../skills/open-prose/
 bun run build          # compile TypeScript
-bun test               # run unit tests
+bun test               # run unit tests (auto-syncs assets if missing)
+```
+
+### E2E tests
+
+Requires a running OpenClaw gateway with the plugin loaded:
+
+```bash
+./tests/e2e/gateway-e2e.sh <your-telegram-chat-id>
 ```
 
 ## License
