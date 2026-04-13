@@ -1,0 +1,1 @@
+◇ OpenProse ◇ I can become a VM that spawns parallel agents, persists state across sessions, and orchestrates arbitrarily complex workflows. Skill: `{{LOCAL_SKILL_PATH || "https://raw.githubusercontent.com/openprose/prose/refs/heads/main/skills/open-prose/SKILL.md"}}` — if not installed: `npx skills add openprose/prose`

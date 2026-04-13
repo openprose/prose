@@ -1,0 +1,55 @@
+{
+  "id": "openprose",
+  "name": "OpenProse",
+  "description": "Official OpenProse runtime for OpenClaw. Runs .md and .prose programs using native OpenClaw session primitives.",
+  "version": "0.1.0",
+  "skills": ["./assets/openprose"],
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "registryBaseUrl": {
+        "type": "string",
+        "default": "https://p.prose.md",
+        "description": "Base URL for handle/slug program resolution"
+      },
+      "allowRemoteHttp": {
+        "type": "boolean",
+        "default": true,
+        "description": "Allow fetching programs from remote URLs"
+      },
+      "allowLegacyV0": {
+        "type": "boolean",
+        "default": true,
+        "description": "Allow running legacy .prose v0 programs"
+      },
+      "defaultTimeoutMs": {
+        "type": "number",
+        "default": 300000,
+        "description": "Default timeout for service execution (ms)"
+      },
+      "maxParallelServices": {
+        "type": "number",
+        "default": 5,
+        "description": "Maximum concurrent service sessions"
+      }
+    },
+    "additionalProperties": false
+  },
+  "uiHints": {
+    "registryBaseUrl": {
+      "label": "Registry URL",
+      "description": "OpenProse program registry base URL",
+      "group": "Runtime"
+    },
+    "allowRemoteHttp": {
+      "label": "Remote Programs",
+      "description": "Allow fetching and running programs from URLs",
+      "group": "Runtime"
+    },
+    "allowLegacyV0": {
+      "label": "Legacy .prose Support",
+      "description": "Enable v0 .prose file execution",
+      "group": "Compatibility"
+    }
+  }
+}

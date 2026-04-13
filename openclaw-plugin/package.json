@@ -1,0 +1,48 @@
+{
+  "name": "@openprose/openclaw-openprose",
+  "version": "0.1.0",
+  "description": "Official OpenProse runtime plugin for OpenClaw. Implements the Prose Complete VM contract using OpenClaw-native session primitives.",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "openclaw": {
+    "extensions": [
+      "./dist/index.js"
+    ],
+    "compat": {
+      "pluginApi": ">=1.0.0",
+      "minGatewayVersion": "2026.4.0"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "sync-assets": "bun run scripts/sync-assets.ts",
+    "test": "bun test",
+    "prepublishOnly": "bun run sync-assets && bun run build"
+  },
+  "files": [
+    "dist/",
+    "assets/",
+    "openclaw.plugin.json",
+    "README.md"
+  ],
+  "keywords": [
+    "openclaw",
+    "openclaw-plugin",
+    "openprose",
+    "prose",
+    "multi-agent",
+    "orchestration"
+  ],
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/openprose/prose.git",
+    "directory": "openclaw-plugin"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "@types/node": "^22.0.0"
+  }
+}
