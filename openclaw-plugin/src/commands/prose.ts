@@ -115,8 +115,8 @@ async function handleRun(
   }
   try {
     const config = getConfig(api);
-    const workspaceDir = api.rootDir ?? process.cwd();
-    api.logger.info(`[openprose] /prose run: target="${args}" workspace="${workspaceDir}" subagent=${!!api.runtime?.subagent?.run}`);
+    const workspaceDir = resolveWorkspaceDir(api);
+    api.logger.info(`[openprose] /prose run: target="${args}" workspace="${workspaceDir}"`);
     const result = await executeProgram(api, config, args, workspaceDir);
     api.logger.info(`[openprose] /prose run: result length=${result.text.length}`);
     return result;
@@ -142,6 +142,17 @@ function handleWire(args: string): PluginCommandResult {
   return {
     text: `\`/prose wire\` is not yet available. Target: \`${args}\``,
   };
+}
+
+function resolveWorkspaceDir(api: OpenClawPluginApi): string {
+  // Try agent workspace from config
+  const cfg = api.config as any;
+  const agentWorkspace = cfg?.agents?.defaults?.workspace;
+  if (agentWorkspace && typeof agentWorkspace === "string") {
+    return agentWorkspace.replace(/^~/, process.env.HOME ?? "/root");
+  }
+  // Fallback to home directory (not plugin dir)
+  return process.env.HOME ?? "/tmp";
 }
 
 function handleStatus(api: OpenClawPluginApi): PluginCommandResult {
