@@ -82,13 +82,21 @@ describe("handleProseCommand", () => {
       makeCtx("run ../../../etc/passwd"),
     );
     expect(result.text).toContain("Rejected");
+  });
+
+  test("/prose run rejects path traversal with .md extension", async () => {
+    const result = await handleProseCommand(
+      mockApi,
+      makeCtx("run ../../../etc/shadow.md"),
+    );
+    expect(result.text).toContain("Rejected");
     expect(result.text).toContain("escapes workspace");
   });
 
   test("/prose run rejects absolute path outside workspace", async () => {
     const result = await handleProseCommand(
       mockApi,
-      makeCtx("run /etc/passwd"),
+      makeCtx("run /etc/passwd.md"),
     );
     expect(result.text).toContain("Rejected");
   });

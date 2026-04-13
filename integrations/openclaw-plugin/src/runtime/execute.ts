@@ -12,8 +12,8 @@
 
 import type { OpenClawPluginApi } from "openclaw/plugin-sdk/openprose";
 import type { OpenProsePluginConfig } from "../index.js";
-import { readFile, writeFile } from "node:fs/promises";
-import { resolve, basename } from "node:path";
+import { readFile, writeFile, realpath } from "node:fs/promises";
+import { resolve, basename, relative } from "node:path";
 import { resolveTarget, type ResolvedTarget } from "./resolve-target.js";
 import {
   generateRunId,
@@ -46,15 +46,25 @@ export async function executeProgram(
     return { text: `Target resolution failed: ${err.message}` };
   }
 
-  // 2. Validate local paths: must stay in workspace and be a program file
+  // 2. Validate local paths: must stay in workspace, be a program file, survive symlink resolution
   if (target.kind === "local") {
+    if (target.format === "unknown") {
+      return { text: `Rejected: only \`.md\` and \`.prose\` files can be executed. Got: \`${target.raw}\`` };
+    }
     const absTarget = resolve(workspaceDir, target.resolved);
     const absWorkspace = resolve(workspaceDir);
     if (!absTarget.startsWith(absWorkspace + "/") && absTarget !== absWorkspace) {
       return { text: `Rejected: target path escapes workspace directory.` };
     }
-    if (target.format === "unknown") {
-      return { text: `Rejected: only \`.md\` and \`.prose\` files can be executed. Got: \`${target.raw}\`` };
+    // Resolve symlinks and re-check (prevents symlink-based escapes)
+    try {
+      const realTarget = await realpath(absTarget);
+      const realWorkspace = await realpath(absWorkspace);
+      if (!realTarget.startsWith(realWorkspace + "/")) {
+        return { text: `Rejected: target resolves outside workspace (symlink).` };
+      }
+    } catch {
+      // realpath fails if file doesn't exist yet — that's fine, loadProgramContent will catch it
     }
     target.resolved = absTarget;
   }
@@ -138,14 +148,14 @@ export async function executeProgram(
     if (waitResult.status === "timeout") {
       await finalizeRun(ctx, "failed", "execution timed out");
       return {
-        text: `Run \`${runId}\` timed out after ${config.defaultTimeoutMs / 1000}s.\n\nRun directory: \`${runDir}\``,
+        text: `Run \`${runId}\` timed out after ${config.defaultTimeoutMs / 1000}s.`,
       };
     }
 
     if (waitResult.status === "error") {
       await finalizeRun(ctx, "failed", waitResult.error ?? "subagent error");
       return {
-        text: `Run \`${runId}\` failed: ${waitResult.error ?? "unknown error"}\n\nRun directory: \`${runDir}\``,
+        text: `Run \`${runId}\` failed: ${waitResult.error ?? "unknown error"}`,
       };
     }
 
@@ -170,7 +180,7 @@ export async function executeProgram(
     await finalizeRun(ctx, "failed", err.message);
     api.logger.error(`[openprose] Run ${runId} failed: ${err.message}`);
     return {
-      text: `Run \`${runId}\` failed: ${err.message}\n\nRun directory: \`${runDir}\``,
+      text: `Run \`${runId}\` failed: ${err.message}`,
     };
   }
 }
@@ -181,13 +191,13 @@ function formatCompletionResponse(
   isSingleService: boolean,
 ): string {
   const mode = isSingleService ? "single-service" : "multi-service";
-  return `# Prose Run Complete: ${ctx.source}
+  return `# Prose Run Complete
 
 | Field | Value |
 |-------|-------|
 | Run ID | \`${ctx.runId}\` |
+| Program | ${basename(ctx.source)} |
 | Mode | ${mode} |
-| Directory | \`${ctx.runDir}\` |
 
 ## Output
 
@@ -199,19 +209,15 @@ function formatFallbackResponse(
   isSingleService: boolean,
 ): string {
   const mode = isSingleService ? "single-service" : "multi-service";
-  return `# Prose Run Prepared: ${ctx.source}
+  return `# Prose Run Prepared
 
 | Field | Value |
 |-------|-------|
 | Run ID | \`${ctx.runId}\` |
+| Program | ${basename(ctx.source)} |
 | Mode | ${mode} |
-| Directory | \`${ctx.runDir}\` |
 
-Run directory initialized. Subagent runtime not available in this context (CLI mode).
-
-To execute, send to your OpenClaw agent:
-
-> Execute the OpenProse program at \`${ctx.runDir}/program.md\` using the OpenProse VM. The run directory is \`${ctx.runDir}\`. ${isSingleService ? "This is a single-service program — execute it directly." : "This is a multi-service program — run Forme wiring first."}`;
+Run directory initialized at \`.prose/runs/${ctx.runId}\`. Subagent runtime not available in this context (CLI mode).`;
 }
 
 function extractAssistantOutput(messages: unknown[]): string {
