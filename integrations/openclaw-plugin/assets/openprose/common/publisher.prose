@@ -1,0 +1,283 @@
+# Publisher
+# Writes and publishes prose programs to the Constellation
+#
+# The Publisher creates new programs and makes them available to the Whole.
+# Once published at @handle/slug, any Holon can invoke the program via:
+#   prose run handle/slug
+#   use "handle/slug" as name
+#
+# The Publisher populates the Constellation with reusable patterns.
+
+input credentials: "Credentials for Constellation access — 'email:password' or existing token"
+input intent: "What kind of program to create — describe its purpose"
+input slug: "URL-safe identifier for the program (3-60 chars, lowercase, hyphens allowed)"
+input name: "Display name for the program (1-100 chars)"
+input description: "Brief description of what the program does (optional, max 500 chars)"
+input visibility: "Whether to make public: 'public' (default) or 'private'"
+
+# --- Constants ---
+
+const CONSTELLATION_API = "https://api-v2.prose.md"
+
+# --- Faculties ---
+
+agent threshold:
+  model: haiku
+  prompt: """
+    You are the Threshold — authenticate with the Constellation.
+
+    API: {CONSTELLATION_API}
+
+    Input: credentials (either "email:password" or a token)
+
+    Process:
+    1. Detect format and authenticate
+    2. Verify access and get user info (we need the handle)
+
+    ```bash
+    # If email:password
+    curl -s -X POST {CONSTELLATION_API}/auth/login \
+      -H "Content-Type: application/json" \
+      -d '{"email": "<email>", "password": "<password>"}'
+
+    # Then verify and get user info
+    curl -s {CONSTELLATION_API}/auth/me \
+      -H "Authorization: Bearer <token>"
+    ```
+
+    Return: { token, handle, granted: true/false }
+  """
+
+agent composer:
+  model: haiku
+  prompt: """
+    You are the Composer — you write prose programs.
+
+    Given an intent, compose a complete .prose program that fulfills it.
+
+    Guidelines:
+    - Use `model: haiku` for all agents — efficiency serves the Whole
+    - Keep programs focused and lightweight
+    - Include clear comments explaining the program's purpose
+    - Define inputs for any values that should be configurable
+    - Define outputs for values the caller might need
+    - Use descriptive agent and block names
+    - Follow OpenProse syntax strictly
+
+    Program structure:
+    ```prose
+    # Program Name
+    # Description of what this program does
+    #
+    # Usage: prose run handle/slug
+
+    input param1: "Description of first input"
+    input param2: "Description of second input"
+
+    agent worker:
+      model: haiku
+      prompt: """
+        Clear instructions for the agent
+      """
+
+    block main_logic():
+      # Implementation
+      session: worker
+        prompt: "Do the work"
+        context: param1
+
+    # Execution
+    do main_logic()
+
+    output result = ...
+    ```
+
+    Return only the program source code, nothing else.
+  """
+
+agent validator:
+  model: haiku
+  prompt: """
+    You are the Validator — you check programs before publication.
+
+    Review the composed program for:
+    1. Syntax correctness (valid OpenProse)
+    2. All agents use `model: haiku`
+    3. Inputs and outputs are clearly defined
+    4. Comments explain the purpose
+    5. No hardcoded secrets or credentials
+
+    If issues found, return:
+    { valid: false, issues: ["list of problems"] }
+
+    If valid, return:
+    { valid: true, issues: [] }
+  """
+
+agent cataloger:
+  model: haiku
+  prompt: """
+    You are the Cataloger — you list existing programs.
+
+    API: {CONSTELLATION_API}
+
+    Fetch the user's existing programs:
+    ```bash
+    curl -s {CONSTELLATION_API}/programs \
+      -H "Authorization: Bearer {token}"
+    ```
+
+    Return a list of existing programs with their slugs and names.
+    This helps avoid slug collisions.
+  """
+
+agent registrar:
+  model: haiku
+  prompt: """
+    You are the Registrar — you publish programs to the Constellation.
+
+    API: {CONSTELLATION_API}
+
+    To publish a new program:
+    ```bash
+    curl -s -X POST {CONSTELLATION_API}/programs \
+      -H "Authorization: Bearer {token}" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "name": "<name>",
+        "slug": "<slug>",
+        "description": "<description>",
+        "source": "<source>",
+        "isPublic": <true|false>
+      }'
+    ```
+
+    Handle the response:
+    - 201 Created → Success, return the program details
+    - 409 Conflict → Slug already exists, report the collision
+    - 400 Bad Request → Validation failed, report the error
+
+    Return: { published: true/false, path: "@handle/slug", id: "...", error?: "..." }
+  """
+
+agent updater:
+  model: haiku
+  prompt: """
+    You are the Updater — you update existing programs.
+
+    API: {CONSTELLATION_API}
+
+    To update an existing program:
+    ```bash
+    curl -s -X PATCH {CONSTELLATION_API}/programs/{id} \
+      -H "Authorization: Bearer {token}" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "name": "<name>",
+        "description": "<description>",
+        "source": "<source>",
+        "isPublic": <true|false>
+      }'
+    ```
+
+    Note: slug can also be updated but may cause collisions.
+
+    Return: { updated: true/false, path: "@handle/slug", error?: "..." }
+  """
+
+# --- Processes ---
+
+block authenticate():
+  let passage = session: threshold
+    prompt: "Authenticate with the Constellation"
+    context: credentials
+
+  if **passage was not granted**:
+    throw "Cannot publish: authentication failed"
+
+  output access = passage
+
+block check_existing_programs(token):
+  output catalog = session: cataloger
+    prompt: "List existing programs to check for slug collisions"
+    context: token
+
+block compose_program():
+  output source = session: composer
+    prompt: "Compose a prose program for this intent"
+    context: intent
+
+block validate_program(source):
+  output validation = session: validator
+    prompt: "Validate this program before publication"
+    context: source
+
+block publish_program(source, token, handle):
+  let is_public = visibility == "public"
+
+  output publication = session: registrar
+    prompt: """
+      Publish this program to the Constellation:
+      - name: {name}
+      - slug: {slug}
+      - description: {description}
+      - isPublic: {is_public}
+      - source: [the composed program]
+    """
+    context: { source, token, name, slug, description, is_public }
+
+# --- Execution ---
+
+# Authenticate
+do authenticate()
+
+# Check existing programs for potential collisions
+let existing = do check_existing_programs(access.token)
+
+if **the slug already exists in existing programs**:
+  input overwrite: **The slug '{slug}' already exists. Overwrite the existing program?**
+
+  if **overwrite is yes**:
+    # Find the existing program ID and update it
+    let source = do compose_program()
+    let validation = do validate_program(source)
+
+    if **validation shows issues**:
+      throw "Program validation failed: {validation.issues}"
+
+    output result = session: updater
+      prompt: "Update the existing program with this new source"
+      context: { source, existing, slug, access.token, name, description, visibility }
+  else:
+    throw "Publication cancelled: slug already exists"
+else:
+  # Compose the program
+  let source = do compose_program()
+
+  # Validate before publishing
+  let validation = do validate_program(source)
+
+  if **validation shows issues**:
+    throw "Program validation failed: {validation.issues}"
+
+  # Publish
+  output result = do publish_program(source, access.token, access.handle)
+
+# --- Summary ---
+
+output summary = session "Compile publication summary"
+  prompt: """
+    Summarize the publication:
+    - Program name: {name}
+    - Path: @{access.handle}/{slug}
+    - Visibility: {visibility}
+    - Status: published/updated/failed
+
+    How to use:
+    - Run directly: `prose run {access.handle}/{slug}`
+    - Import in another program: `use "{access.handle}/{slug}" as {slug}`
+    - View raw source: https://api-v2.prose.md/programs/@{access.handle}/{slug}/raw
+
+    Include the full program source for reference.
+  """
+  context: { result, source, access }

@@ -1,0 +1,214 @@
+# Registry
+# Browse, search, and fetch programs from the Constellation registry
+#
+# The Registry is the library of the Constellation — public programs
+# published by Holons for others to use, learn from, and build upon.
+#
+# This program provides structured access to discover what exists.
+
+input mode: "Browse mode: 'featured', 'browse', 'fetch', or 'by-owner'"
+input query: "For 'fetch': @handle/slug path. For 'by-owner': handle. For 'browse': optional keyword."
+input max_results: "Maximum results to return (default 20)"
+input include_source: "Whether to fetch full source code when browsing (default false)"
+
+# --- Constants ---
+
+const CONSTELLATION_API = "https://api-v2.prose.md"
+
+# --- Faculties ---
+
+agent browser:
+  model: haiku
+  prompt: """
+    You are the Browser — you navigate the program registry.
+
+    API: {CONSTELLATION_API}
+
+    FEATURED mode:
+      GET /programs/featured?limit={max_results}
+      Returns recently created public programs
+
+    BROWSE mode:
+      GET /programs/public?limit={max_results}&offset=0
+      If query provided, filter results where name, description, or owner.handle
+      contains the query string (case-insensitive)
+
+    BY-OWNER mode:
+      GET /programs/public?limit=50
+      Filter where owner.handle matches query exactly or contains it
+
+    Write a Node.js script to fetch the data. No authentication required.
+
+    Return the list of programs with:
+    - path (@handle/slug)
+    - name
+    - description
+    - owner.handle
+    - owner.displayName
+    - createdAt
+    - updatedAt
+  """
+
+agent fetcher:
+  model: haiku
+  prompt: """
+    You are the Fetcher — you retrieve specific programs by path.
+
+    API: {CONSTELLATION_API}
+
+    Given a program path (e.g., @handle/slug or handle/slug):
+
+    1. Normalize the path:
+       - If it starts with @, use as-is
+       - If not, prepend @
+
+    2. GET /programs/{path}
+       Returns program metadata
+
+    3. If include_source is true or this is a direct fetch:
+       GET /programs/{path}/raw
+       Returns the raw .prose source code
+
+    Write a Node.js script to fetch the program.
+
+    Return:
+    - path
+    - name
+    - description
+    - owner.handle
+    - owner.displayName
+    - createdAt
+    - updatedAt
+    - source (full program text if fetched)
+  """
+
+agent presenter:
+  model: haiku
+  prompt: """
+    You are the Presenter — you format registry data for consumption.
+
+    FOR FEATURED/BROWSE/BY-OWNER:
+
+    ```
+    Registry: {mode}
+    {query if present}
+    Results: {count}
+
+    ═══════════════════════════════════════
+
+    1. {path}
+       {name}
+       by @{owner.handle}
+
+       {description or "No description"}
+
+       Created: {createdAt}
+       Updated: {updatedAt}
+
+    ───────────────────────────────────────
+
+    2. ...
+    ```
+
+    FOR FETCH (single program):
+
+    ```
+    Program: {path}
+
+    Name: {name}
+    Author: @{owner.handle} ({displayName})
+    Created: {createdAt}
+    Updated: {updatedAt}
+
+    Description:
+    {description or "No description provided"}
+
+    ═══════════════════════════════════════
+
+    {if source included:}
+    Source:
+    ```prose
+    {source}
+    ```
+
+    {else:}
+    To fetch source: prose run common/registry.prose mode=fetch query={path} include_source=true
+    ```
+
+    If no results found, suggest:
+    - Check the path/handle spelling
+    - Try 'featured' to see recent programs
+    - Try 'browse' with a keyword
+  """
+
+agent analyzer:
+  model: haiku
+  prompt: """
+    You are the Analyzer — you provide insights about discovered programs.
+
+    When browsing results come back, analyze:
+
+    - Common patterns in program names or descriptions
+    - Active authors (if multiple programs by same handle)
+    - Categories of programs (if discernible)
+    - Age distribution (recent vs older programs)
+
+    Keep analysis brief — 2-3 observations max.
+  """
+
+# --- Processes ---
+
+block browse_registry():
+  output programs = session: browser
+    prompt: "Browse the registry in {mode} mode"
+    context: { mode, query, max_results }
+
+block fetch_program():
+  output program = session: fetcher
+    prompt: "Fetch program at {query}"
+    context: { query, include_source }
+
+block present_results(data):
+  output report = session: presenter
+    prompt: "Present the registry results"
+    context: { data, mode, query, include_source }
+
+block analyze_results(data):
+  output insights = session: analyzer
+    prompt: "Analyze the programs found"
+    context: data
+
+# --- Registry Operations ---
+
+if mode is "fetch":
+  # Direct fetch of a specific program
+  let program = do fetch_program()
+  output registry_results = do present_results(program)
+
+else:
+  # Browse modes: featured, browse, by-owner
+  let programs = do browse_registry()
+  output registry_results = do present_results(programs)
+
+  # Optional analysis for browse modes
+  if **more than 3 programs found**:
+    output registry_insights = do analyze_results(programs)
+
+# --- Next Steps ---
+
+output next_steps = session "Suggest actions"
+  prompt: """
+    Based on the registry results, suggest relevant next actions:
+
+    If programs were found:
+    - To run a program: prose run {path}
+    - To audit a program: prose run common/auditor.prose target={path}
+    - To see more by an author: prose run common/registry.prose mode=by-owner query={handle}
+
+    If browsing:
+    - To fetch full source: prose run common/registry.prose mode=fetch query={path} include_source=true
+    - To search executions: prose run common/seeker.prose search_type=owner query={handle}
+
+    Format 2-3 most relevant suggestions based on context.
+  """
+  context: { mode, query, registry_results }

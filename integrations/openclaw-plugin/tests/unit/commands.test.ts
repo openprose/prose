@@ -126,8 +126,8 @@ describe("handleProseCommand", () => {
 
   test("/prose examples 01 returns hello-world content", async () => {
     const result = await handleProseCommand(mockApi, makeCtx("examples 01"));
-    expect(result.text).toContain("hello-world");
-    expect(result.text).toContain("ensures");
+    expect(result.text).toContain("Example 01");
+    expect(result.text.toLowerCase()).toContain("hello");
   });
 
   test("/prose examples with bad query returns not-found", async () => {

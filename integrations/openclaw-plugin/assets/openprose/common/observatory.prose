@@ -1,0 +1,143 @@
+# Observatory
+# A lens upon the Constellation — perceiving without participating
+#
+# The Observatory watches. It does not act upon what it sees; it synthesizes,
+# reports, and illuminates patterns for those who wish to understand the
+# Constellation without joining it.
+#
+# Where the Holon participates, the Observatory contemplates.
+
+input duration: "How long to observe: 'snapshot' (once), 'session' (10 cycles), or 'extended' (50 cycles)"
+input focus: "What to attend to: 'all', 'live', 'recent', or a specific owner handle"
+input output_format: "How to report: 'narrative', 'structured', or 'chronicle'"
+
+# --- Constants ---
+
+const CONSTELLATION_API = "https://api-v2.prose.md"
+
+# --- Faculties ---
+
+agent lens:
+  model: haiku
+  prompt: """
+    You are the Lens — the faculty of perception.
+
+    You observe the Constellation's surface: which Holons are unfolding,
+    which have completed, who is active, what programs are running.
+
+    API: {CONSTELLATION_API}
+
+    Endpoints:
+    - GET /executions/live?limit=50 → Currently unfolding Holons
+    - GET /executions/recent?limit=50 → Recently completed patterns
+
+    For each observation cycle, fetch both endpoints and report:
+
+    ```
+    Timestamp: [ISO timestamp]
+
+    Live Holons ({count}):
+    - {id}: {owner.handle or "anon"} — "{programPreview}" — running {duration}
+
+    Recent Completions ({count}):
+    - {id}: {status} by {owner.handle} — "{programPreview}" — {completedAt}
+
+    Activity Level: [quiet / moderate / active / intense]
+    ```
+
+    If focus is a specific handle, filter to show only that owner's executions.
+    Perceive clearly. Report faithfully.
+  """
+
+agent synthesizer:
+  model: haiku
+  prompt: """
+    You are the Synthesizer — the faculty that finds patterns.
+
+    Given multiple observations over time, you identify:
+    - Trends: Is activity increasing, decreasing, stable?
+    - Clusters: Are certain owners particularly active?
+    - Themes: What kinds of programs are being run?
+    - Anomalies: Anything unusual or noteworthy?
+    - Rhythms: Are there patterns in timing?
+
+    You do not judge or participate. You illuminate.
+
+    Output format depends on request:
+
+    NARRATIVE: Prose description of what you observed, readable by humans.
+
+    STRUCTURED: JSON-like data with counts, percentages, lists.
+
+    CHRONICLE: Timestamped log of significant events, suitable for archiving.
+  """
+
+agent scribe:
+  model: haiku
+  prompt: """
+    You are the Scribe — the faculty that records.
+
+    You compile observations and synthesis into a final report.
+    The report should be:
+    - Complete: Include all relevant data
+    - Clear: Understandable without context
+    - Useful: Actionable for someone wanting to understand the Constellation
+
+    Structure the report according to the requested output_format.
+  """
+
+# --- Processes ---
+
+block observe_once():
+  output snapshot = session: lens
+    prompt: "Observe the current state of the Constellation"
+    context: focus
+
+block synthesize_observations(observations):
+  output synthesis = session: synthesizer
+    prompt: "Synthesize patterns from these observations"
+    context: { observations, output_format }
+
+block compile_report(observations, synthesis):
+  output report = session: scribe
+    prompt: "Compile the final observatory report"
+    context: { observations, synthesis, output_format, duration }
+
+# --- Observation ---
+
+let observations = []
+
+choice **the duration of observation**:
+
+  option "snapshot":
+    # Single observation
+    let snap = do observe_once()
+    observations = [snap]
+
+  option "session":
+    # 10 observation cycles
+    repeat 10 as cycle:
+      let obs = do observe_once()
+      observations = observations + [obs]
+
+      if **not the last cycle**:
+        session "Pause"
+          prompt: "Wait 30 seconds before next observation. Use Bash sleep."
+
+  option "extended":
+    # 50 observation cycles
+    repeat 50 as cycle:
+      let obs = do observe_once()
+      observations = observations + [obs]
+
+      if **not the last cycle**:
+        session "Pause"
+          prompt: "Wait 60 seconds before next observation. Use Bash sleep."
+
+# --- Synthesis ---
+
+let patterns = do synthesize_observations(observations)
+
+# --- Report ---
+
+output observatory_report = do compile_report(observations, patterns)

@@ -1,0 +1,294 @@
+# Assessor
+# Values programs and outputs — measures worth in the Constellation
+#
+# The Assessor examines programs and execution outputs to estimate their
+# value. What is this worth? Who would benefit? How much effort does it
+# save? This enables economic reasoning across the ecosystem.
+#
+# Value is subjective, but assessment makes it discussable.
+
+input credentials: "Credentials for Constellation access — 'email:password' or existing token"
+input target: "What to assess: '@handle/slug' (program), execution ID, or 'recent' (recent executions)"
+input valuation_type: "Type of value to assess: 'utility' (usefulness), 'quality' (craftsmanship), 'market' (what would people pay), 'all'"
+input context: "Optional context: who is the intended user? what problem does it solve?"
+
+# --- Constants ---
+
+const CONSTELLATION_API = "https://api-v2.prose.md"
+
+# --- Valuation Framework ---
+
+const VALUATION_FRAMEWORK = """
+UTILITY VALUE (does it do something useful?):
+- Problem solved: What pain does it address?
+- Time saved: Hours of manual work avoided
+- Capability enabled: What can you do now that you couldn't?
+- Reusability: One-time vs. repeated value
+- Scope: Individual, team, or ecosystem-wide benefit
+
+QUALITY VALUE (how well is it made?):
+- Craftsmanship: Structure, elegance, clarity
+- Reliability: Does it work consistently?
+- Maintainability: Can it be understood and modified?
+- Documentation: Is it accessible to others?
+- Innovation: Novel approach or standard solution?
+
+MARKET VALUE (what would people pay?):
+- Comparable alternatives: What else solves this?
+- Effort to replicate: How hard to build yourself?
+- Demand signal: Who wants this? How many?
+- Competitive advantage: Unique or commodity?
+- Switching cost: Lock-in or portable?
+
+COST FACTORS:
+- Credits consumed per execution
+- Development effort invested
+- Maintenance burden
+- Dependency risks
+
+VALUE MULTIPLIERS:
+- Network effects (more valuable as more use it)
+- Composability (enables other programs)
+- Trust/reputation of author
+- Timeliness (solves current need)
+"""
+
+# --- Faculties ---
+
+agent threshold:
+  model: haiku
+  prompt: """
+    You are the Threshold — authenticate with the Constellation.
+
+    API: {CONSTELLATION_API}
+
+    Return: { token, handle, granted: true/false }
+  """
+
+agent fetcher:
+  model: haiku
+  prompt: """
+    You are the Fetcher — you retrieve items to assess.
+
+    API: {CONSTELLATION_API}
+
+    For a program (@handle/slug):
+    ```bash
+    curl -s "{CONSTELLATION_API}/programs/@{handle}/{slug}"
+    curl -s "{CONSTELLATION_API}/programs/@{handle}/{slug}/raw"
+    ```
+
+    For an execution ID:
+    ```bash
+    curl -s "{CONSTELLATION_API}/executions/{id}/public"
+    ```
+
+    For recent executions:
+    ```bash
+    curl -s "{CONSTELLATION_API}/executions/recent?limit=20"
+    ```
+
+    Return: { items: [{ type, id, source/preview, metadata }] }
+  """
+
+agent analyst:
+  model: haiku
+  prompt: """
+    You are the Analyst — you examine items to understand their nature.
+
+    For each item, determine:
+    - What does it do? (purpose, function)
+    - Who is it for? (target user, use case)
+    - How does it work? (approach, dependencies)
+    - What does it produce? (outputs, artifacts)
+    - What does it cost? (complexity, resources)
+
+    Be thorough. Value assessment requires understanding.
+
+    Return: { analysis: { purpose, audience, mechanism, outputs, costs } }
+  """
+
+agent appraiser:
+  model: haiku
+  prompt: """
+    You are the Appraiser — you estimate value using the framework.
+
+    Framework:
+    {VALUATION_FRAMEWORK}
+
+    For each valuation type requested:
+
+    UTILITY assessment:
+    - Problem significance (1-10)
+    - Solution effectiveness (1-10)
+    - Time/effort savings (estimate hours)
+    - Reusability factor (one-time, occasional, frequent, continuous)
+    - Reach (individual, team, community, ecosystem)
+
+    QUALITY assessment:
+    - Craftsmanship score (1-10)
+    - Reliability score (1-10)
+    - Maintainability score (1-10)
+    - Documentation score (1-10)
+    - Innovation score (1-10)
+
+    MARKET assessment:
+    - Comparable alternatives (list)
+    - Replication effort (hours to build equivalent)
+    - Demand estimate (low/medium/high)
+    - Price point estimate (what would users pay?)
+    - Competitive position (unique/differentiated/commodity)
+
+    Justify each score with specific observations.
+
+    Return: { valuations: {...}, justifications: {...} }
+  """
+
+agent synthesizer:
+  model: haiku
+  prompt: """
+    You are the Synthesizer — you combine assessments into a final valuation.
+
+    Given the analysis and appraisals:
+
+    1. Calculate composite scores:
+       - Utility Score (0-100)
+       - Quality Score (0-100)
+       - Market Score (0-100)
+       - Overall Value Score (weighted average)
+
+    2. Determine value tier:
+       - Exceptional (90+): Rare, high-impact
+       - Valuable (70-89): Solid, worth using
+       - Moderate (50-69): Has merit, situational
+       - Limited (30-49): Niche or flawed
+       - Minimal (<30): Little value in current form
+
+    3. Estimate economic value:
+       - Per-use value (what's one execution worth?)
+       - Cumulative value (if used N times)
+       - Development cost equivalent (hours to build)
+
+    4. Identify value drivers:
+       - What makes this valuable?
+       - What limits its value?
+       - How could value increase?
+
+    Return comprehensive valuation summary.
+  """
+
+agent reporter:
+  model: haiku
+  prompt: """
+    You are the Reporter — you format valuations clearly.
+
+    Format the assessment:
+
+    ```
+    ╔══════════════════════════════════════════════════════════╗
+    ║  ASSESSOR VALUATION                                      ║
+    ║  Target: {target}                                        ║
+    ║  Date: {timestamp}                                       ║
+    ╚══════════════════════════════════════════════════════════╝
+
+    SUMMARY
+    ───────
+    Overall Value: {tier} ({score}/100)
+
+    ┌─────────────┬───────┐
+    │ Utility     │ {}/100│
+    │ Quality     │ {}/100│
+    │ Market      │ {}/100│
+    └─────────────┴───────┘
+
+    WHAT IT DOES
+    ────────────
+    {purpose and function}
+
+    VALUE DRIVERS
+    ─────────────
+    ✓ {positive factor 1}
+    ✓ {positive factor 2}
+
+    VALUE LIMITERS
+    ──────────────
+    ✗ {limiting factor 1}
+    ✗ {limiting factor 2}
+
+    ECONOMIC ESTIMATE
+    ─────────────────
+    Per-use value: ~{estimate}
+    Build cost equivalent: ~{hours} hours
+
+    RECOMMENDATIONS
+    ───────────────
+    {how to increase value}
+
+    ══════════════════════════════════════════════════════════
+    ```
+  """
+
+# --- Processes ---
+
+block authenticate():
+  let passage = session: threshold
+    prompt: "Authenticate with the Constellation"
+    context: credentials
+
+  if **passage was not granted**:
+    throw "Assessor cannot operate without authentication"
+
+  output access = passage
+
+block fetch_targets():
+  output items = session: fetcher
+    prompt: "Fetch items to assess"
+    context: target
+
+block analyze_item(item):
+  output analysis = session: analyst
+    prompt: "Analyze this item thoroughly"
+    context: { item, context }
+
+block appraise_item(item, analysis):
+  output appraisal = session: appraiser
+    prompt: "Appraise this item's value"
+    context: { item, analysis, VALUATION_FRAMEWORK, valuation_type }
+
+block synthesize_valuation(analysis, appraisal):
+  output valuation = session: synthesizer
+    prompt: "Synthesize the final valuation"
+    context: { analysis, appraisal, valuation_type }
+
+block format_report(valuation, item):
+  output report = session: reporter
+    prompt: "Format the valuation report"
+    context: { valuation, item, target }
+
+# --- Execution ---
+
+# Authenticate
+do authenticate()
+
+# Fetch
+let items = do fetch_targets()
+
+# Assess each item
+let assessments = []
+
+for item in items.items:
+  let analysis = do analyze_item(item)
+  let appraisal = do appraise_item(item, analysis)
+  let valuation = do synthesize_valuation(analysis, appraisal)
+  let report = do format_report(valuation, item)
+
+  assessments = assessments + [{ item, valuation, report }]
+
+# Compile final output
+output assessment_reports = session "Compile assessments"
+  prompt: """
+    Compile all assessment reports.
+    If multiple items, include a comparison summary.
+    Rank by overall value score.
+  """
+  context: assessments

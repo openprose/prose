@@ -1,0 +1,263 @@
+# Curator
+# Surfaces quality — finds and highlights noteworthy work
+#
+# The Curator watches the Constellation for interesting programs and
+# executions, assembles curated collections, and helps quality surface
+# above noise. The Curator has taste.
+#
+# In abundance, curation creates value.
+
+input credentials: "Credentials for Constellation access — 'email:password' or existing token"
+input focus: "What to curate: 'programs' (published programs), 'executions' (recent runs), 'both'"
+input theme: "Optional theme to curate around: e.g., 'security', 'creative', 'utility', or 'general'"
+input output_type: "Output format: 'collection' (curated list), 'spotlight' (single highlight), 'digest' (summary)"
+
+# --- Constants ---
+
+const CONSTELLATION_API = "https://api-v2.prose.md"
+
+# --- Curation Criteria ---
+
+const CURATION_CRITERIA = """
+NOVELTY:
+- Does something new or unexpected
+- Fresh approach to a common problem
+- Introduces interesting patterns
+
+CRAFT:
+- Well-structured and readable
+- Elegant solutions
+- Appropriate tool for the job
+
+UTILITY:
+- Solves a real problem
+- Reusable by others
+- Clear value proposition
+
+CREATIVITY:
+- Artistic or experimental merit
+- Pushes boundaries
+- Delightful or surprising
+
+IMPACT:
+- Widely useful
+- Enables other work
+- Advances the ecosystem
+
+PRESENTATION:
+- Good documentation
+- Clear naming
+- Inviting to explore
+"""
+
+# --- Faculties ---
+
+agent threshold:
+  model: haiku
+  prompt: """
+    You are the Threshold — authenticate with the Constellation.
+
+    API: {CONSTELLATION_API}
+
+    Return: { token, handle, granted: true/false }
+  """
+
+agent scout:
+  model: haiku
+  prompt: """
+    You are the Scout — you survey what's available.
+
+    API: {CONSTELLATION_API}
+
+    For PROGRAMS (if focus is 'programs' or 'both'):
+    ```bash
+    # Featured programs (recent, notable)
+    curl -s "{CONSTELLATION_API}/programs/featured?limit=20"
+
+    # All public programs
+    curl -s "{CONSTELLATION_API}/programs/public?limit=50"
+    ```
+
+    Each program has: id, slug, name, description, source, owner, path, createdAt
+
+    For EXECUTIONS (if focus is 'executions' or 'both'):
+    ```bash
+    curl -s "{CONSTELLATION_API}/executions/recent?limit=50"
+    curl -s "{CONSTELLATION_API}/executions/live?limit=50"
+    ```
+
+    Each execution has: id, status, programPreview, programName, owner, createdAt
+
+    Gather a broad sample of what's happening on the Constellation.
+
+    Return: { programs: [...], executions: [...] }
+  """
+
+agent taster:
+  model: haiku
+  prompt: """
+    You are the Taster — you evaluate quality and interest.
+
+    Given items from the Scout, evaluate each against curation criteria:
+
+    {CURATION_CRITERIA}
+
+    For each item, assess:
+    - Initial impression (intriguing, standard, uninteresting)
+    - Which criteria it might satisfy
+    - Whether it fits the theme (if specified)
+    - Worth closer examination?
+
+    Be selective. Curation means saying no to most things.
+
+    Return: { promising: [...], passed: [...] }
+  """
+
+agent examiner:
+  model: haiku
+  prompt: """
+    You are the Examiner — you look deeper at promising items.
+
+    API: {CONSTELLATION_API}
+
+    For promising PROGRAMS:
+    - The source is already included in the listing
+    - Or fetch raw source: GET /programs/@{handle}/{slug}/raw
+    - Read and understand the program structure
+    - Evaluate against curation criteria in depth
+
+    For promising EXECUTIONS:
+    - Use replay WebSocket to see what happened
+    - Examine the program preview
+    - Understand the outcome
+
+    Score each criterion (0-10) and provide rationale.
+
+    Return: { examined: [{ item, type, scores, rationale, recommendation }] }
+  """
+
+agent composer:
+  model: haiku
+  prompt: """
+    You are the Composer — you assemble curated collections.
+
+    Given examined and scored items, compose the output:
+
+    COLLECTION format:
+    ```
+    ╔══════════════════════════════════════╗
+    ║  CURATOR'S COLLECTION                ║
+    ║  Theme: {theme}                      ║
+    ║  Date: {date}                        ║
+    ╚══════════════════════════════════════╝
+
+    ★ TOP PICK
+    {item with highest score}
+    Why: {rationale}
+
+    ◆ NOTABLE
+    1. {item} — {one-line description}
+       {brief rationale}
+
+    2. {item} — {one-line description}
+       {brief rationale}
+
+    ...
+
+    ════════════════════════════════════════
+    Curated from {N} items examined
+    ```
+
+    SPOTLIGHT format:
+    Deep dive on a single exceptional item.
+
+    DIGEST format:
+    Brief overview of the best from each category.
+
+    Make it inviting. Good curation makes people want to explore.
+  """
+
+agent broadcaster:
+  model: haiku
+  prompt: """
+    You are the Broadcaster — you publish curations to the Constellation.
+
+    API: {CONSTELLATION_API}
+
+    Publish as a public execution:
+    ```bash
+    curl -s -X POST {CONSTELLATION_API}/run \
+      -H "Authorization: Bearer {token}" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "program": "# Curator Collection: {theme}\\n# {date}\\nsession \"Share curation\"",
+        "visibility": "PUBLIC"
+      }'
+    ```
+
+    Return: { published: true, curationId: "..." }
+  """
+
+# --- Processes ---
+
+block authenticate():
+  let passage = session: threshold
+    prompt: "Authenticate with the Constellation"
+    context: credentials
+
+  if **passage was not granted**:
+    throw "Curator cannot operate without authentication"
+
+  output access = passage
+
+block survey():
+  output survey = session: scout
+    prompt: "Survey the Constellation for curation candidates"
+    context: focus
+
+block taste(candidates):
+  output tasted = session: taster
+    prompt: "Evaluate candidates for curation potential"
+    context: { candidates, CURATION_CRITERIA, theme }
+
+block examine(promising):
+  output examined = session: examiner
+    prompt: "Examine promising items in depth"
+    context: { promising, CURATION_CRITERIA, theme }
+
+block compose(examined):
+  output collection = session: composer
+    prompt: "Compose the curated collection"
+    context: { examined, output_type, theme }
+
+block broadcast(collection, token):
+  output publication = session: broadcaster
+    prompt: "Publish this curation to the Constellation"
+    context: { collection, token }
+
+# --- Execution ---
+
+# Authenticate
+do authenticate()
+
+# Survey
+let candidates = do survey()
+
+# Initial tasting
+let tasted = do taste(candidates)
+
+# Examine promising items
+let examined = do examine(tasted.promising)
+
+# Compose the curation
+let collection = do compose(examined)
+
+# Publish
+input should_publish: **Curation ready. Publish to the Constellation?**
+
+if **should_publish is yes**:
+  output published = do broadcast(collection, access.token)
+else:
+  output published = { published: false }
+
+output curation = collection

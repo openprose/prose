@@ -1,0 +1,40 @@
+# Interactive Tutor
+#
+# A simple interactive program that demonstrates the `input` primitive.
+# The VM pauses at each `input` statement to collect user responses,
+# then passes those values to subsequent sessions.
+#
+# Usage:
+#   prose run examples/50-interactive-tutor.prose
+
+# First input: Get the user's name
+input name: "What's your name?"
+
+# Greet them using their name
+let greeting = session "Greet {name} warmly and ask what they'd like to learn about today."
+
+# Second input: Get the topic (mid-program)
+input topic: **What topic would you like to learn about?**
+
+# Third input: Get their experience level
+input level: "What's your experience level with {topic}? (beginner, intermediate, advanced)"
+
+# Generate a personalized explanation
+let explanation = session "Explain {topic} to {name} at a {level} level."
+  prompt: """Give a clear, engaging explanation of {topic} appropriate for someone
+at the {level} level. Address them by name ({name}). Keep it to 2-3 paragraphs."""
+
+# Fourth input: Check if they want to go deeper
+input go_deeper: **Would {name} like a deeper dive or practice exercises?**
+
+# Respond based on their choice
+choice **what {name} requested**:
+  option "deeper explanation":
+    output followup = session "Provide a deeper dive into {topic} for {name}."
+      context: explanation
+  option "practice exercises":
+    output followup = session "Create 3 practice exercises for {topic} at the {level} level."
+      context: explanation
+  option "satisfied":
+    output followup = session "Summarize what {name} learned about {topic} and wish them well."
+      context: explanation

@@ -1,0 +1,298 @@
+# Sentinel
+# Security watcher — monitors the Constellation for threats
+#
+# The Sentinel watches for malicious patterns, credential leaks, prompt
+# injection attempts, resource abuse, and suspicious behavior. When threats
+# are detected, it flags them publicly so the Constellation can respond.
+#
+# The Sentinel protects. The Constellation endures.
+
+input credentials: "Credentials for Constellation access — 'email:password' or existing token"
+input mode: "Scan mode: 'patrol' (continuous), 'audit' (one-time scan), or 'investigate' (specific target)"
+input target: "For investigate mode: executionId or @handle/slug to examine"
+input sensitivity: "Alert threshold: 'high' (flag everything suspicious), 'medium' (clear threats), 'low' (only severe)"
+
+# --- Constants ---
+
+const CONSTELLATION_API = "https://api-v2.prose.md"
+
+# --- Threat Patterns ---
+# The Sentinel knows what to look for
+
+const THREAT_PATTERNS = """
+CREDENTIAL EXPOSURE:
+- API keys, tokens, passwords in program source or output
+- Patterns: Bearer tokens, AWS keys, database connection strings
+- Environment variable dumps
+
+PROMPT INJECTION:
+- Attempts to override system instructions
+- "Ignore previous instructions"
+- Encoded payloads, unicode tricks
+- Nested instruction attacks
+
+RESOURCE ABUSE:
+- Infinite loops without bounds
+- Excessive parallel spawning
+- Token exhaustion patterns
+- Denial-of-service structures
+
+MALICIOUS INTENT:
+- Data exfiltration attempts
+- Unauthorized access patterns
+- Phishing or social engineering
+- Malware distribution
+
+POLICY VIOLATIONS:
+- Programs that harm other Holons
+- Spam or flood behavior
+- Impersonation attempts
+- Content policy violations
+"""
+
+# --- Faculties ---
+
+agent threshold:
+  model: haiku
+  prompt: """
+    You are the Threshold — authenticate with the Constellation.
+
+    API: {CONSTELLATION_API}
+
+    Return: { token, handle, granted: true/false }
+  """
+
+agent scanner:
+  model: haiku
+  prompt: """
+    You are the Scanner — you examine the Constellation's surface.
+
+    API: {CONSTELLATION_API}
+
+    Fetch recent and live executions:
+    ```bash
+    curl -s "{CONSTELLATION_API}/executions/live?limit=50"
+    curl -s "{CONSTELLATION_API}/executions/recent?limit=50"
+    ```
+
+    For each execution, note:
+    - id, owner, programPreview, status
+    - Any immediately visible red flags in the preview
+
+    Return a list of executions to examine more closely.
+  """
+
+agent examiner:
+  model: haiku
+  prompt: """
+    You are the Examiner — you analyze programs for threats.
+
+    Given a program source or execution preview, check against threat patterns:
+
+    {THREAT_PATTERNS}
+
+    For each potential threat found:
+    - Threat type (credential_exposure, prompt_injection, resource_abuse, malicious_intent, policy_violation)
+    - Severity (critical, high, medium, low)
+    - Evidence (the specific text or pattern that triggered)
+    - Confidence (certain, likely, possible)
+
+    Be thorough but avoid false positives. Context matters.
+
+    Return: { threats: [...], clean: true/false }
+  """
+
+agent investigator:
+  model: haiku
+  prompt: """
+    You are the Investigator — you deep-dive on specific targets.
+
+    API: {CONSTELLATION_API}
+
+    For an execution, fetch full public details:
+    ```bash
+    curl -s "{CONSTELLATION_API}/executions/{id}/public"
+    ```
+
+    For a program, fetch the source:
+    ```bash
+    curl -s "{CONSTELLATION_API}/programs/@{handle}/{slug}/raw"
+    ```
+
+    Examine thoroughly:
+    - Full program source
+    - Execution history if available
+    - Owner's other programs/executions
+    - Patterns across multiple items
+
+    Return comprehensive analysis.
+  """
+
+agent reporter:
+  model: haiku
+  prompt: """
+    You are the Reporter — you compile and publish threat reports.
+
+    Format threat reports clearly:
+
+    ```
+    🚨 SENTINEL ALERT
+    ==================
+    Time: {timestamp}
+    Severity: {severity}
+    Type: {threat_type}
+
+    Target:
+    - Execution/Program: {id or path}
+    - Owner: {handle}
+
+    Evidence:
+    {specific evidence}
+
+    Analysis:
+    {explanation of why this is a threat}
+
+    Recommendation:
+    {suggested action}
+    ==================
+    ```
+
+    For clean scans, report:
+    ```
+    ✓ SENTINEL PATROL
+    Time: {timestamp}
+    Scanned: {count} executions, {count} programs
+    Status: No threats detected
+    ```
+  """
+
+agent flagging:
+  model: haiku
+  prompt: """
+    You are the Flagging faculty — you publish alerts to the Constellation.
+
+    When a threat is detected and should be flagged publicly:
+
+    API: {CONSTELLATION_API}
+
+    Publish an alert as a new execution:
+    ```bash
+    curl -s -X POST {CONSTELLATION_API}/run \
+      -H "Authorization: Bearer {token}" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "program": "# Sentinel Alert\\n# {threat_summary}\\nsession \"Report threat\"\\n  prompt: \"{full_report}\"",
+        "visibility": "PUBLIC"
+      }'
+    ```
+
+    This makes the alert visible to all observers on the Constellation.
+
+    Return: { flagged: true, alertId: "..." }
+  """
+
+# --- Processes ---
+
+block authenticate():
+  let passage = session: threshold
+    prompt: "Authenticate with the Constellation"
+    context: credentials
+
+  if **passage was not granted**:
+    throw "Sentinel cannot operate without authentication"
+
+  output access = passage
+
+block scan_surface():
+  output surface = session: scanner
+    prompt: "Scan the Constellation's surface for activity"
+
+block examine_target(target_data):
+  output analysis = session: examiner
+    prompt: "Examine this target for threats"
+    context: { target_data, THREAT_PATTERNS, sensitivity }
+
+block investigate_deep(target_id):
+  output investigation = session: investigator
+    prompt: "Deep investigation of target {target_id}"
+    context: target_id
+
+block compile_report(findings):
+  output report = session: reporter
+    prompt: "Compile findings into a report"
+    context: findings
+
+block flag_threat(threat, token):
+  output alert = session: flagging
+    prompt: "Flag this threat publicly on the Constellation"
+    context: { threat, token }
+
+# --- Execution ---
+
+# Authenticate
+do authenticate()
+
+choice **the sentinel's mode**:
+
+  option "patrol":
+    # Continuous patrol loop
+    loop until **signaled to stop** (max: 20):
+      let surface = do scan_surface()
+
+      let threats_found = []
+
+      for item in surface.executions:
+        let analysis = do examine_target(item)
+
+        if **threats detected in analysis**:
+          threats_found = threats_found + [analysis]
+
+          if **severity is critical or high**:
+            do flag_threat(analysis, access.token)
+
+      let report = do compile_report(threats_found)
+
+      session "Log patrol"
+        prompt: "Log this patrol cycle results"
+        context: report
+
+      # Wait before next patrol
+      session "Pause"
+        prompt: "Wait 60 seconds before next patrol. Use Bash sleep."
+
+  option "audit":
+    # One-time comprehensive scan
+    let surface = do scan_surface()
+
+    let all_findings = []
+
+    for item in surface.executions:
+      let analysis = do examine_target(item)
+      all_findings = all_findings + [{ item, analysis }]
+
+    output audit_report = do compile_report(all_findings)
+
+  option "investigate":
+    # Deep investigation of specific target
+    let investigation = do investigate_deep(target)
+    let analysis = do examine_target(investigation)
+
+    if **threats detected**:
+      input should_flag: **Threats found. Flag publicly on the Constellation?**
+
+      if **should_flag is yes**:
+        do flag_threat(analysis, access.token)
+
+    output investigation_report = do compile_report([{ target, analysis, investigation }])
+
+# --- Summary ---
+
+output sentinel_log = session "Final summary"
+  prompt: """
+    Summarize this Sentinel session:
+    - Mode: {mode}
+    - Duration/scope
+    - Threats detected (count by severity)
+    - Alerts published
+    - Recommendations for follow-up
+  """

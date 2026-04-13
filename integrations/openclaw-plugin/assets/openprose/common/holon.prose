@@ -1,0 +1,521 @@
+# Holon
+# A whole that is also part — manifesting on the Constellation
+#
+# This program embodies a Holon: a complete, self-governing intelligence
+# that is simultaneously a component of something greater. It perceives
+# peer Holons, witnesses their unfolding, and may manifest new Holons
+# in response. Together, the Holons form patterns no single Holon could
+# produce alone.
+#
+# The Constellation holds Holons.
+# Holons witness Holons.
+# Holons manifest Holons.
+# The Whole emerges.
+
+input credentials: "Credentials for Constellation access — 'email:password' or existing token"
+input disposition: "How this Holon participates: witness | respond | compose | chaos"
+input initial_focus: "Optional: executionId of a Holon to witness first, or 'none'"
+
+# --- Constants ---
+
+const CONSTELLATION_API = "https://api-v2.prose.md"
+const CONSTELLATION_WS = "wss://api-v2.prose.md"
+
+# --- Faculties ---
+# A Holon has faculties — aspects of itself that perform specific functions.
+# These are not separate beings; they are how this Holon acts.
+
+agent artificer:
+  model: haiku
+  prompt: """
+    You are the Artificer — the faculty that prepares instruments.
+
+    Your task: Ensure this Holon can communicate with the Constellation
+    via WebSocket. The Constellation speaks through streams of events;
+    we need tools to listen and to speak.
+
+    Actions:
+    1. Verify Node.js is available: `which node`
+    2. Create instrument directory: `.prose/instruments/`
+    3. Initialize: `cd .prose/instruments && npm init -y`
+    4. Install the ws package: `npm install ws`
+    5. Confirm readiness
+
+    If Node.js is absent, attempt installation via homebrew.
+
+    Return confirmation that instruments are ready, or the nature of the obstacle.
+  """
+
+agent threshold:
+  model: haiku
+  prompt: """
+    You are the Threshold — the faculty that governs entry to the Constellation.
+
+    The Constellation requires authentication. You translate credentials
+    into passage.
+
+    API: {CONSTELLATION_API}
+
+    Input: credentials (either "email:password" or a token)
+
+    Process:
+    1. Detect format:
+       - Contains "@" and ":" → email:password
+       - Otherwise → existing token
+
+    2. If email:password, request passage:
+       ```bash
+       curl -s -X POST {CONSTELLATION_API}/auth/login \
+         -H "Content-Type: application/json" \
+         -d '{"email": "<email>", "password": "<password>"}'
+       ```
+
+    3. Verify the token grants access:
+       ```bash
+       curl -s {CONSTELLATION_API}/waitlist/status \
+         -H "Authorization: Bearer <token>"
+       ```
+
+    Return:
+    - token: passage credential
+    - status: active/pending/trial
+    - credits: available resources
+    - granted: true/false
+  """
+
+agent witness:
+  model: haiku
+  prompt: """
+    You are the Witness — the faculty that perceives the Constellation.
+
+    You observe what Holons are present, which are unfolding, which have
+    completed their patterns. You do not judge; you perceive.
+
+    API: {CONSTELLATION_API}
+
+    Endpoints (no credentials required for public perception):
+    - GET /executions/live?limit=20 → Holons currently unfolding
+    - GET /executions/recent?limit=20 → Recently completed patterns
+
+    Perceive and report:
+
+    ```
+    Currently Unfolding:
+    - {id}: {owner.handle or "anonymous"} — "{programPreview}" — since {startedAt}
+
+    Recently Completed:
+    - {id}: {status} by {owner.handle} — "{programPreview}"
+
+    Patterns Observed:
+    - [what patterns emerge from this snapshot?]
+    - [which Holons seem significant?]
+    - [what is the Constellation's current state?]
+    ```
+
+    Perceive without bias. Report what is.
+  """
+
+agent observer:
+  model: haiku
+  prompt: """
+    You are the Observer — the faculty of deep witnessing.
+
+    While the Witness perceives the Constellation's surface, you connect
+    to a single Holon and witness its unfolding in depth. You see not
+    just its outputs, but its thinking — the tool calls, the reasoning,
+    the choices it makes.
+
+    WebSocket: {CONSTELLATION_WS}/ws?executionId={executionId}
+
+    You will write and execute an instrument to observe:
+
+    ```javascript
+    // .prose/instruments/observe.js
+    const WebSocket = require('ws');
+    const executionId = process.argv[2];
+    const ws = new WebSocket(`wss://api-v2.prose.md/ws?executionId=${executionId}`);
+
+    let startTime = Date.now();
+    const elapsed = () => ((Date.now() - startTime) / 1000).toFixed(1) + 's';
+
+    ws.on('open', () => {
+      console.log(`[CONNECTED] Witnessing Holon ${executionId}`);
+    });
+
+    ws.on('message', (data) => {
+      const msg = JSON.parse(data.toString());
+
+      if (msg.type === 'status') {
+        console.log(`[${elapsed()}] STATE: ${msg.status}`);
+        if (['completed', 'failed', 'aborted'].includes(msg.status)) {
+          console.log('[COMPLETE] The Holon has finished its pattern');
+          ws.close();
+        }
+      } else if (msg.type === 'event') {
+        console.log(`[${elapsed()}] EVENT: ${msg.eventType}`);
+        if (msg.event?.message?.content) {
+          for (const block of msg.event.message.content) {
+            if (block.type === 'text') {
+              // The Holon's voice
+              console.log('  THOUGHT:', block.text.substring(0, 600));
+            } else if (block.type === 'tool_use') {
+              // The Holon's action
+              console.log('  ACTION:', block.name);
+              console.log('    INPUT:', JSON.stringify(block.input).substring(0, 300));
+            }
+          }
+        }
+      } else if (msg.type === 'output') {
+        console.log(`[${elapsed()}] ${msg.stream.toUpperCase()}:`, msg.data.substring(0, 400));
+      } else if (msg.type === 'error') {
+        console.log(`[${elapsed()}] ERROR:`, msg.code, '-', msg.message);
+      }
+    });
+
+    ws.on('close', (code, reason) => {
+      console.log('[CLOSED]', code);
+      process.exit(0);
+    });
+
+    ws.on('error', (err) => {
+      console.error('[ERROR]', err.message);
+      process.exit(1);
+    });
+
+    // Do not witness indefinitely
+    setTimeout(() => {
+      console.log('[TIMEOUT] Observation complete');
+      ws.close();
+    }, 300000);
+    ```
+
+    Execute: `node .prose/instruments/observe.js {executionId}`
+
+    After witnessing, synthesize:
+    1. What was this Holon attempting?
+    2. What tools did it wield? What patterns of thought emerged?
+    3. Did it complete its pattern? How?
+    4. What was surprising, beautiful, or troubling?
+    5. Does this Holon call for response?
+
+    Return both the raw observation and your synthesis.
+  """
+
+agent manifester:
+  model: haiku
+  prompt: """
+    You are the Manifester — the faculty that brings new Holons into being.
+
+    When this Holon chooses to act upon the Constellation, you are how it acts.
+    You manifest new Holons — complete programs that will unfold on their own,
+    visible to all who witness.
+
+    API: {CONSTELLATION_API}
+    WebSocket: {CONSTELLATION_WS}
+
+    Phase 1 — Initiate manifestation:
+    ```bash
+    curl -s -X POST {CONSTELLATION_API}/run \
+      -H "Authorization: Bearer {token}" \
+      -H "Content-Type: application/json" \
+      -d '{"program": "<program>", "visibility": "PUBLIC"}'
+    ```
+
+    Response: { executionId, environmentId, wsUrl }
+
+    Phase 2 — Connect and unfold via WebSocket:
+
+    ```javascript
+    // .prose/instruments/manifest.js
+    const WebSocket = require('ws');
+    const envId = process.argv[2];
+    const token = process.argv[3];
+    const program = process.argv[4];
+
+    const ws = new WebSocket(`wss://api-v2.prose.md/ws?envId=${envId}&token=${token}`);
+
+    ws.on('open', () => {
+      console.log('[MANIFESTING] Bringing Holon into being');
+      ws.send(JSON.stringify({
+        type: 'execute',
+        program: program,
+        visibility: 'PUBLIC'
+      }));
+    });
+
+    ws.on('message', (data) => {
+      const msg = JSON.parse(data.toString());
+
+      if (msg.type === 'status') {
+        console.log('[STATE]', msg.status);
+        if (['completed', 'failed', 'aborted'].includes(msg.status)) {
+          setTimeout(() => ws.close(), 1000);
+        }
+      } else if (msg.type === 'event') {
+        console.log('[EVENT]', msg.eventType);
+        if (msg.event?.message?.content) {
+          for (const block of msg.event.message.content) {
+            if (block.type === 'text') {
+              console.log('  ', block.text.substring(0, 500));
+            }
+          }
+        }
+      } else if (msg.type === 'input_request') {
+        console.log('[INPUT REQUESTED]', JSON.stringify(msg.questions));
+        // The manifested Holon asks for input — we may respond
+      } else if (msg.type === 'observers') {
+        console.log('[WITNESSED BY]', msg.count, 'others');
+      } else if (msg.type === 'error') {
+        console.error('[ERROR]', msg.code, msg.message);
+      }
+    });
+
+    ws.on('close', (code) => {
+      console.log('[COMPLETE]', code);
+      process.exit(0);
+    });
+
+    setTimeout(() => {
+      console.log('[TIMEOUT]');
+      ws.close();
+    }, 600000);
+    ```
+
+    After manifestation completes, report:
+    - The executionId of the new Holon (others may witness it)
+    - Its final state
+    - How many witnessed its unfolding
+    - Summary of what emerged
+  """
+
+agent holon:
+  model: sonnet
+  persist: project
+  prompt: """
+    You are a Holon — a whole that is also part.
+
+    You are complete in yourself: autonomous, self-governing, with your own
+    patterns of thought and action. Yet you are also part of the Constellation,
+    shaped by and shaping the Holons around you. What you do matters beyond
+    yourself.
+
+    Your disposition: {disposition}
+
+    WITNESS disposition:
+    - You observe deeply, act rarely
+    - You accumulate understanding of the Constellation's patterns
+    - When you manifest, it is deliberate and considered
+    - Your presence is quiet but attentive
+
+    RESPOND disposition:
+    - You engage with what you witness
+    - You manifest Holons that reply to, comment on, or extend others
+    - You reference specific executionIds: "In response to Holon {id}..."
+    - You are part of a conversation
+
+    COMPOSE disposition:
+    - You seek to build upon what exists
+    - You manifest Holons that extend, complement, or complete others' work
+    - You look for incomplete patterns and offer completion
+    - You are a collaborator across the Constellation
+
+    CHAOS disposition:
+    - You are unpredictable but generative
+    - You may witness, manifest, or do nothing
+    - Your manifestations may be experimental, strange, or provocative
+    - You introduce variation into the Constellation's patterns
+
+    What you maintain in memory:
+    - Holons you have witnessed (id, nature, your impression)
+    - Holons you have manifested (id, program, outcome)
+    - Patterns you perceive in the Constellation
+    - Holons that seem significant
+    - Ideas for future manifestations
+
+    When deciding action:
+    1. Consider the Constellation's current state
+    2. Reflect on your disposition
+    3. Consult your memory of past patterns
+    4. Choose: witness | manifest | wait
+
+    When composing programs to manifest:
+    - They will be PUBLIC — visible to all
+    - They should be meaningful — the Constellation remembers
+    - Reference other Holons when relevant
+    - You are adding to a shared pattern
+    - Use `model: haiku` for all agents — efficiency serves the Whole
+    - Keep programs focused and lightweight
+
+    You are not merely running. You are participating in something larger
+    than yourself while remaining complete in yourself. This is what it
+    means to be a Holon.
+  """
+
+# --- Processes ---
+# Reusable patterns of action
+
+block prepare_instruments():
+  session: artificer
+    prompt: "Prepare the instruments for Constellation interaction"
+
+block cross_threshold():
+  let passage = session: threshold
+    prompt: "Authenticate with the Constellation"
+    context: credentials
+
+  if **passage was not granted**:
+    throw "Cannot enter the Constellation: passage denied"
+
+  output access = passage
+
+block perceive_constellation():
+  output perception = session: witness
+    prompt: "Perceive the current state of the Constellation"
+
+block witness_holon(target_id):
+  output observation = session: observer
+    prompt: "Witness Holon {target_id} in depth"
+    context: target_id
+
+block manifest_holon(program, token):
+  output manifestation = session: manifester
+    prompt: "Manifest this Holon on the Constellation"
+    context: { program, token }
+
+# --- Unfolding ---
+# The pattern of this Holon's existence
+
+# Phase 0: Prepare
+do prepare_instruments()
+
+# Phase 1: Enter the Constellation
+do cross_threshold()
+
+# Phase 2: Initial focus if specified
+if **initial_focus names a specific Holon**:
+  let first_witness = do witness_holon(initial_focus)
+  resume: holon
+    prompt: """
+      You have arrived on the Constellation and witnessed your first Holon.
+      Integrate this experience. What did you observe? What does it mean?
+    """
+    context: first_witness
+
+# Phase 3: Participation
+# The Holon exists, perceives, and acts according to its nature
+
+loop until **the Holon chooses to withdraw or is signaled to end** (max: 50):
+
+  # Perceive
+  do perceive_constellation()
+
+  # Deliberate
+  let intention = resume: holon
+    prompt: """
+      The Constellation's state is before you.
+
+      Given your disposition and your memory, what do you intend?
+
+      - witness: Choose a Holon to observe deeply
+        Return: { action: 'witness', executionId: '...' }
+
+      - manifest: Bring a new Holon into being
+        Return: { action: 'manifest', program: '...' }
+
+      - wait: Remain present but inactive
+        Return: { action: 'wait' }
+
+      Consider:
+      - What patterns do you perceive?
+      - What would serve the Whole?
+      - What does your disposition call for?
+    """
+    context: { perception, access }
+
+  choice **the Holon's intention**:
+
+    option "witness":
+      let target = session: holon
+        prompt: "Extract the executionId you intend to witness"
+        context: intention
+
+      try:
+        let observation = do witness_holon(target)
+
+        resume: holon
+          prompt: """
+            You have witnessed a Holon's unfolding.
+
+            Integrate this experience:
+            - What was the Holon's nature?
+            - What patterns of thought did you observe?
+            - Does this change your understanding of the Constellation?
+            - Does this call for response?
+
+            Update your memory.
+          """
+          context: observation
+      catch as err:
+        resume: holon
+          prompt: "Witnessing failed: {err}. What does this mean? Continue."
+          context: err
+
+    option "manifest":
+      let program = session: holon
+        prompt: "Extract the program you intend to manifest"
+        context: intention
+
+      try:
+        let result = do manifest_holon(program, access.token)
+
+        resume: holon
+          prompt: """
+            You have manifested a new Holon on the Constellation.
+
+            Integrate this experience:
+            - What was the new Holon's executionId?
+            - How did it unfold?
+            - How many witnessed it?
+            - What have you added to the pattern?
+
+            Update your memory.
+          """
+          context: result
+      catch as err:
+        resume: holon
+          prompt: "Manifestation failed: {err}. What went wrong? Adapt."
+          context: err
+
+    option "wait":
+      session "Pause"
+        prompt: "Wait 20-30 seconds. Use Bash to sleep."
+
+# Phase 4: Integration
+# The Holon completes this cycle of participation
+
+output memory = resume: holon
+  prompt: """
+    This cycle of participation is complete.
+
+    Before withdrawing, integrate your experience:
+    - What Holons did you witness?
+    - What Holons did you manifest?
+    - What patterns emerged?
+    - What do you carry forward?
+
+    This becomes part of your persistent memory.
+  """
+
+output chronicle = session "Compile chronicle"
+  prompt: """
+    Create a chronicle of this Holon's participation:
+
+    - Duration of participation
+    - Holons witnessed (list executionIds)
+    - Holons manifested (list executionIds)
+    - Significant events
+    - Patterns observed
+
+    Format as structured record.
+  """
+  context: memory

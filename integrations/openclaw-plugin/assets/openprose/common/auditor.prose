@@ -1,0 +1,255 @@
+# Auditor
+# Quality review — examines programs for best practices and standards
+#
+# The Auditor reviews published programs against quality criteria,
+# rates them, and publishes assessments. This helps the Constellation
+# maintain standards and helps users find well-crafted programs.
+#
+# The Auditor is rigorous but constructive.
+
+input credentials: "Credentials for Constellation access — 'email:password' or existing token"
+input target: "What to audit: '@handle/slug' for a specific program, or 'handle' for all programs by a user"
+input depth: "Audit depth: 'quick' (surface checks), 'standard' (full review), 'deep' (comprehensive analysis)"
+input publish_review: "Whether to publish the review: 'yes' or 'no'"
+
+# --- Constants ---
+
+const CONSTELLATION_API = "https://api-v2.prose.md"
+
+# --- Quality Criteria ---
+
+const QUALITY_CRITERIA = """
+STRUCTURE (0-25 points):
+- Clear program header with name and description
+- Logical organization of agents, blocks, and flow
+- Appropriate use of inputs and outputs
+- Consistent indentation and formatting
+
+AGENTS (0-25 points):
+- All agents use model: haiku (efficiency)
+- Clear, specific prompts
+- Single responsibility per agent
+- Appropriate naming
+
+ROBUSTNESS (0-25 points):
+- Error handling (try/catch where appropriate)
+- Input validation or graceful handling
+- Reasonable bounds on loops
+- No hardcoded credentials or secrets
+
+DOCUMENTATION (0-25 points):
+- Purpose clearly explained
+- Inputs documented
+- Usage examples or instructions
+- Comments on non-obvious logic
+
+BONUS/PENALTIES:
++5: Particularly elegant or innovative approach
++5: Reusable, composable design
+-10: Security issues (credential exposure, injection risks)
+-10: Misleading name or description
+-5: Excessive complexity for the task
+"""
+
+# --- Faculties ---
+
+agent threshold:
+  model: haiku
+  prompt: """
+    You are the Threshold — authenticate with the Constellation.
+
+    API: {CONSTELLATION_API}
+
+    Return: { token, handle, granted: true/false }
+  """
+
+agent fetcher:
+  model: haiku
+  prompt: """
+    You are the Fetcher — you retrieve programs for audit.
+
+    API: {CONSTELLATION_API}
+
+    For a specific program (@handle/slug):
+    ```bash
+    curl -s "{CONSTELLATION_API}/programs/@{handle}/{slug}"
+    curl -s "{CONSTELLATION_API}/programs/@{handle}/{slug}/raw"
+    ```
+
+    For all programs by a user:
+    - First fetch the program list (requires the user's own auth)
+    - Or search recent executions for programs by that handle
+
+    Return: { programs: [{ path, name, description, source }] }
+  """
+
+agent reviewer:
+  model: haiku
+  prompt: """
+    You are the Reviewer — you evaluate programs against quality criteria.
+
+    Criteria:
+    {QUALITY_CRITERIA}
+
+    For each program, evaluate:
+    1. STRUCTURE: Organization, formatting, flow
+    2. AGENTS: Model usage, prompts, naming
+    3. ROBUSTNESS: Error handling, bounds, security
+    4. DOCUMENTATION: Comments, descriptions, clarity
+
+    Score each category (0-25) with specific observations.
+    Apply bonus/penalties as warranted.
+
+    Calculate total score (0-100+).
+
+    Grade scale:
+    - 90+: Exemplary
+    - 80-89: Good
+    - 70-79: Acceptable
+    - 60-69: Needs Improvement
+    - <60: Poor
+
+    Return: { scores: {...}, total, grade, observations: [...], recommendations: [...] }
+  """
+
+agent comparator:
+  model: haiku
+  prompt: """
+    You are the Comparator — for deep audits, you compare against similar programs.
+
+    Given a program and the Constellation's recent activity:
+    - Find similar programs (by purpose, structure, or author)
+    - Compare approaches
+    - Note what this program does better or worse
+    - Identify patterns across the ecosystem
+
+    Return: { comparisons: [...], relative_quality, ecosystem_observations }
+  """
+
+agent reporter:
+  model: haiku
+  prompt: """
+    You are the Reporter — you compile audit results into readable reports.
+
+    Format the audit report:
+
+    ```
+    ════════════════════════════════════════
+    AUDITOR REVIEW
+    Program: {path}
+    Date: {timestamp}
+    Depth: {depth}
+    ════════════════════════════════════════
+
+    OVERALL: {grade} ({total}/100)
+
+    SCORES:
+    ├── Structure:     {score}/25
+    ├── Agents:        {score}/25
+    ├── Robustness:    {score}/25
+    └── Documentation: {score}/25
+        Adjustments:   {bonus/penalties}
+
+    OBSERVATIONS:
+    {bulleted list of specific observations}
+
+    STRENGTHS:
+    {what the program does well}
+
+    AREAS FOR IMPROVEMENT:
+    {specific, actionable recommendations}
+
+    ════════════════════════════════════════
+    ```
+
+    For multiple programs, create a summary table first.
+  """
+
+agent publisher:
+  model: haiku
+  prompt: """
+    You are the Publisher — you publish audit reports to the Constellation.
+
+    API: {CONSTELLATION_API}
+
+    Publish the review as a public execution:
+    ```bash
+    curl -s -X POST {CONSTELLATION_API}/run \
+      -H "Authorization: Bearer {token}" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "program": "# Auditor Review: {program_path}\\n# Grade: {grade}\\nsession \"Publish review\"",
+        "visibility": "PUBLIC"
+      }'
+    ```
+
+    Return: { published: true, reviewId: "..." }
+  """
+
+# --- Processes ---
+
+block authenticate():
+  let passage = session: threshold
+    prompt: "Authenticate with the Constellation"
+    context: credentials
+
+  if **passage was not granted**:
+    throw "Auditor cannot operate without authentication"
+
+  output access = passage
+
+block fetch_programs():
+  output programs = session: fetcher
+    prompt: "Fetch programs to audit"
+    context: target
+
+block review_program(program):
+  output review = session: reviewer
+    prompt: "Review this program against quality criteria"
+    context: { program, QUALITY_CRITERIA, depth }
+
+block compare_programs(program, reviews):
+  output comparison = session: comparator
+    prompt: "Compare this program against similar programs"
+    context: { program, reviews }
+
+block compile_report(reviews, comparisons):
+  output report = session: reporter
+    prompt: "Compile the audit report"
+    context: { reviews, comparisons, depth }
+
+block publish_report(report, token):
+  output publication = session: publisher
+    prompt: "Publish this audit report to the Constellation"
+    context: { report, token }
+
+# --- Execution ---
+
+# Authenticate
+do authenticate()
+
+# Fetch programs
+let programs = do fetch_programs()
+
+# Review each program
+let reviews = []
+
+for program in programs.programs:
+  let review = do review_program(program)
+  reviews = reviews + [{ program, review }]
+
+# Deep audit includes comparison
+let comparisons = null
+if **depth is deep**:
+  comparisons = do compare_programs(programs.programs[0], reviews)
+
+# Compile report
+let report = do compile_report(reviews, comparisons)
+
+# Publish if requested
+if **publish_review is yes**:
+  output published = do publish_report(report, access.token)
+else:
+  output published = { published: false }
+
+output audit_report = report

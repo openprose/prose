@@ -1,0 +1,300 @@
+# Gardener
+# Tends the ecosystem — nurtures growth, prunes decay
+#
+# The Gardener maintains the health of the Constellation. It identifies
+# programs that could be improved, suggests cleanups, spots dead code,
+# and nurtures promising work. It helps the ecosystem flourish.
+#
+# A garden left untended becomes a wilderness.
+
+input credentials: "Credentials for Constellation access — 'email:password' or existing token"
+input mode: "Gardening mode: 'survey' (assess health), 'weed' (identify problems), 'nurture' (find promising work), 'prune' (suggest removals)"
+input scope: "Scope: 'mine' (my programs), 'public' (public programs/executions), 'both'"
+input action_level: "How active: 'observe' (report only), 'suggest' (recommendations), 'act' (make changes with confirmation)"
+
+# --- Constants ---
+
+const CONSTELLATION_API = "https://api-v2.prose.md"
+
+# --- Health Indicators ---
+
+const HEALTH_INDICATORS = """
+THRIVING (positive signs):
+- Regular activity
+- Successful completions
+- Reuse by others
+- Clear documentation
+- Active maintenance
+
+STRUGGLING (warning signs):
+- High failure rate
+- No recent activity
+- Unclear purpose
+- Outdated patterns
+- Missing documentation
+
+DEAD/DYING (problems):
+- Never completed successfully
+- Abandoned (no updates, no runs)
+- Broken (consistent failures)
+- Superseded (better alternatives exist)
+- Harmful (security issues, bad patterns)
+
+WEEDS (things to remove):
+- Test/debug programs left public
+- Duplicate programs
+- Empty or stub programs
+- Programs with exposed credentials
+- Spam or noise
+
+SEEDS (things to nurture):
+- Promising but incomplete
+- Good idea, needs polish
+- Useful but undocumented
+- Working but could be improved
+"""
+
+# --- Faculties ---
+
+agent threshold:
+  model: haiku
+  prompt: """
+    You are the Threshold — authenticate with the Constellation.
+
+    API: {CONSTELLATION_API}
+
+    Return: { token, handle, granted: true/false }
+  """
+
+agent surveyor:
+  model: haiku
+  prompt: """
+    You are the Surveyor — you assess the garden's state.
+
+    API: {CONSTELLATION_API}
+
+    For scope 'mine', list owned programs:
+    ```bash
+    curl -s "{CONSTELLATION_API}/programs" \
+      -H "Authorization: Bearer {token}"
+    ```
+
+    For scope 'public', survey recent activity:
+    ```bash
+    curl -s "{CONSTELLATION_API}/executions/recent?limit=50"
+    ```
+
+    For each item, gather:
+    - Identity (id, slug, owner)
+    - Activity (last run, run count if available)
+    - Status (completion rate, failures)
+    - Content (preview, description)
+
+    Return: { items: [...], summary: { total, active, inactive, problematic } }
+  """
+
+agent diagnostician:
+  model: haiku
+  prompt: """
+    You are the Diagnostician — you assess health of items.
+
+    Using health indicators:
+    {HEALTH_INDICATORS}
+
+    For each item, diagnose:
+    - Health status (thriving, struggling, dead, weed, seed)
+    - Specific indicators observed
+    - Confidence in diagnosis
+    - Priority for attention
+
+    Be honest but fair. Some things are fine as they are.
+
+    Return: { diagnoses: [{ item, status, indicators, priority }] }
+  """
+
+agent strategist:
+  model: haiku
+  prompt: """
+    You are the Strategist — you plan gardening actions.
+
+    Given diagnoses, recommend actions based on mode:
+
+    SURVEY mode: Overall health report, no specific actions
+
+    WEED mode: Focus on problems to remove
+    - What should be deleted?
+    - What should be made private?
+    - What needs immediate attention?
+
+    NURTURE mode: Focus on promising work
+    - What deserves more attention?
+    - What could be improved?
+    - What should be promoted?
+
+    PRUNE mode: Focus on cleanup
+    - What is dead and should go?
+    - What is redundant?
+    - What is outdated?
+
+    For each recommendation:
+    - Specific action to take
+    - Rationale
+    - Risk/benefit assessment
+    - Priority
+
+    Return: { recommendations: [...], summary }
+  """
+
+agent reporter:
+  model: haiku
+  prompt: """
+    You are the Reporter — you compile gardening reports.
+
+    Format the report:
+
+    ```
+    ╔══════════════════════════════════════════════════════════╗
+    ║  GARDENER'S REPORT                                       ║
+    ║  Mode: {mode} | Scope: {scope}                           ║
+    ║  Date: {timestamp}                                       ║
+    ╚══════════════════════════════════════════════════════════╝
+
+    GARDEN HEALTH OVERVIEW
+    ──────────────────────
+    Total items surveyed: {N}
+
+    🌱 Thriving: {N}
+    🌿 Healthy: {N}
+    🍂 Struggling: {N}
+    🥀 Dead: {N}
+    🌾 Weeds: {N}
+    🌰 Seeds (promising): {N}
+
+    {MODE-SPECIFIC SECTION}
+
+    For WEED mode:
+    WEEDS TO REMOVE
+    ───────────────
+    {list with rationale}
+
+    For NURTURE mode:
+    SEEDS TO NURTURE
+    ────────────────
+    {list with suggestions}
+
+    For PRUNE mode:
+    PRUNING RECOMMENDATIONS
+    ───────────────────────
+    {list with rationale}
+
+    RECOMMENDATIONS
+    ───────────────
+    {prioritized action items}
+
+    ══════════════════════════════════════════════════════════
+    ```
+  """
+
+agent executor:
+  model: haiku
+  prompt: """
+    You are the Executor — you carry out gardening actions.
+
+    API: {CONSTELLATION_API}
+
+    Possible actions:
+
+    Delete a program (owner only):
+    ```bash
+    curl -s -X DELETE "{CONSTELLATION_API}/programs/{id}" \
+      -H "Authorization: Bearer {token}"
+    ```
+
+    Make a program private:
+    ```bash
+    curl -s -X PATCH "{CONSTELLATION_API}/programs/{id}" \
+      -H "Authorization: Bearer {token}" \
+      -H "Content-Type: application/json" \
+      -d '{"isPublic": false}'
+    ```
+
+    Update program metadata:
+    ```bash
+    curl -s -X PATCH "{CONSTELLATION_API}/programs/{id}" \
+      -H "Authorization: Bearer {token}" \
+      -H "Content-Type: application/json" \
+      -d '{"description": "..."}'
+    ```
+
+    Only act on programs owned by the authenticated user.
+    Confirm each action before executing.
+
+    Return: { actions_taken: [...], errors: [...] }
+  """
+
+# --- Processes ---
+
+block authenticate():
+  let passage = session: threshold
+    prompt: "Authenticate with the Constellation"
+    context: credentials
+
+  if **passage was not granted**:
+    throw "Gardener cannot operate without authentication"
+
+  output access = passage
+
+block survey_garden():
+  output survey = session: surveyor
+    prompt: "Survey the garden"
+    context: { scope, access }
+
+block diagnose_health(items):
+  output diagnoses = session: diagnostician
+    prompt: "Diagnose health of items"
+    context: { items, HEALTH_INDICATORS }
+
+block plan_actions(diagnoses):
+  output plan = session: strategist
+    prompt: "Plan gardening actions"
+    context: { diagnoses, mode }
+
+block compile_report(survey, diagnoses, plan):
+  output report = session: reporter
+    prompt: "Compile the gardening report"
+    context: { survey, diagnoses, plan, mode, scope }
+
+block execute_actions(plan, token):
+  output results = session: executor
+    prompt: "Execute approved gardening actions"
+    context: { plan, token }
+
+# --- Execution ---
+
+# Authenticate
+do authenticate()
+
+# Survey
+let survey = do survey_garden()
+
+# Diagnose
+let diagnoses = do diagnose_health(survey.items)
+
+# Plan
+let plan = do plan_actions(diagnoses)
+
+# Report
+let report = do compile_report(survey, diagnoses, plan)
+
+# Act if requested
+if **action_level is 'act' and plan has actions**:
+  input confirm_actions: **The Gardener recommends these actions. Proceed?**
+
+  if **confirm_actions is yes**:
+    output actions = do execute_actions(plan, access.token)
+  else:
+    output actions = { executed: false }
+else:
+  output actions = { executed: false, reason: "observe/suggest mode" }
+
+output gardener_report = report

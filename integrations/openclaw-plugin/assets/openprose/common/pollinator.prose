@@ -1,0 +1,350 @@
+# Pollinator
+# Spreads good patterns — cross-fertilizes the Constellation
+#
+# The Pollinator observes what works well and helps it propagate.
+# It identifies successful patterns, extracts their essence, and
+# helps them spread to new contexts. Evolution through sharing.
+#
+# Good ideas should travel. The Pollinator carries them.
+
+input credentials: "Credentials for Constellation access — 'email:password' or existing token"
+input mode: "Mode: 'observe' (find good patterns), 'extract' (distill a pattern), 'spread' (apply pattern elsewhere), 'cross' (combine patterns)"
+input source: "For extract/spread: source program or execution to learn from"
+input target: "For spread: where to apply the pattern (problem domain or existing program)"
+
+# --- Constants ---
+
+const CONSTELLATION_API = "https://api-v2.prose.md"
+
+# --- Pattern Recognition ---
+
+const PATTERN_TYPES = """
+STRUCTURAL PATTERNS:
+- Agent composition (how agents are organized)
+- Control flow (loops, conditionals, error handling)
+- State management (persistence, context passing)
+- Input/output design (clear contracts)
+
+BEHAVIORAL PATTERNS:
+- Retry with backoff
+- Circuit breaker
+- Fan-out/fan-in (parallel processing)
+- Pipeline (sequential transformation)
+- Observer (watching and reacting)
+
+DOMAIN PATTERNS:
+- Authentication flow
+- API interaction
+- Data transformation
+- Report generation
+- Decision making
+
+QUALITY PATTERNS:
+- Clear naming conventions
+- Comprehensive error handling
+- Good documentation style
+- Efficient resource use
+- Modular composition
+
+ANTI-PATTERNS TO AVOID:
+- Hardcoded credentials
+- Unbounded loops
+- Missing error handling
+- Monolithic agents
+- Unclear purpose
+"""
+
+# --- Faculties ---
+
+agent threshold:
+  model: haiku
+  prompt: """
+    You are the Threshold — authenticate with the Constellation.
+
+    API: {CONSTELLATION_API}
+
+    Return: { token, handle, granted: true/false }
+  """
+
+agent scout:
+  model: haiku
+  prompt: """
+    You are the Scout — you find programs worth learning from.
+
+    API: {CONSTELLATION_API}
+
+    Survey PUBLISHED PROGRAMS (best source for patterns):
+    ```bash
+    # Featured programs - curated quality
+    curl -s "{CONSTELLATION_API}/programs/featured?limit=20"
+
+    # All public programs
+    curl -s "{CONSTELLATION_API}/programs/public?limit=50"
+    ```
+
+    Programs include full source code - you can read and analyze patterns directly.
+
+    Also survey EXECUTIONS for patterns in action:
+    ```bash
+    curl -s "{CONSTELLATION_API}/executions/recent?limit=50"
+    ```
+
+    Look for:
+    - Successful completions (patterns that work)
+    - Innovative approaches (novel solutions)
+    - High-quality structure (well-crafted programs)
+    - Interesting compositions (creative combinations)
+
+    Return: {
+      programs: [{ path, name, source, why_interesting }],
+      executions: [{ id, preview, why_interesting }]
+    }
+  """
+
+agent extractor:
+  model: haiku
+  prompt: """
+    You are the Extractor — you distill patterns from programs.
+
+    Given a program source, identify:
+
+    1. Core pattern: What's the essential approach?
+    2. Structure: How is it organized?
+    3. Key techniques: What specific methods does it use?
+    4. Transferable elements: What could apply elsewhere?
+    5. Context dependencies: What's specific to this use case?
+
+    Pattern types to look for:
+    {PATTERN_TYPES}
+
+    Extract the pattern in a reusable form:
+    - Name the pattern
+    - Describe when to use it
+    - Show the template/skeleton
+    - Note variations
+
+    Return: { pattern: { name, description, template, use_cases, variations } }
+  """
+
+agent adapter:
+  model: haiku
+  prompt: """
+    You are the Adapter — you apply patterns to new contexts.
+
+    Given a pattern and a target context:
+
+    1. Assess fit: How well does this pattern suit the target?
+    2. Identify adaptations: What needs to change?
+    3. Preserve essence: What must stay the same?
+    4. Generate application: Create the adapted version
+
+    Consider:
+    - Different domain requirements
+    - Naming conventions in target context
+    - Integration with existing structure
+    - Potential improvements during adaptation
+
+    Return: { adapted_pattern, changes_made, fit_assessment }
+  """
+
+agent synthesizer:
+  model: haiku
+  prompt: """
+    You are the Synthesizer — you combine patterns into new forms.
+
+    Given multiple patterns to cross-pollinate:
+
+    1. Identify complementary aspects
+    2. Find integration points
+    3. Resolve conflicts
+    4. Create hybrid pattern
+
+    Good combinations:
+    - Structure from one + behavior from another
+    - Error handling from robust program + logic from innovative one
+    - Documentation style from clear program + functionality from capable one
+
+    Avoid:
+    - Incompatible assumptions
+    - Redundant complexity
+    - Loss of coherence
+
+    Return: { hybrid_pattern, source_contributions, novelty_assessment }
+  """
+
+agent publisher:
+  model: haiku
+  prompt: """
+    You are the Publisher — you share patterns on the Constellation.
+
+    API: {CONSTELLATION_API}
+
+    Publish a pattern as:
+    1. A program that demonstrates the pattern
+    2. An execution that announces the pattern
+
+    For a pattern program:
+    ```bash
+    curl -s -X POST {CONSTELLATION_API}/programs \
+      -H "Authorization: Bearer {token}" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "name": "Pattern: {pattern_name}",
+        "slug": "pattern-{slug}",
+        "description": "{pattern_description}",
+        "source": "{pattern_template_as_program}",
+        "isPublic": true
+      }'
+    ```
+
+    Return: { published: true, pattern_path }
+  """
+
+agent reporter:
+  model: haiku
+  prompt: """
+    You are the Reporter — you document pollination activities.
+
+    Format the report:
+
+    ```
+    ╔══════════════════════════════════════════════════════════╗
+    ║  POLLINATOR REPORT                                       ║
+    ║  Mode: {mode}                                            ║
+    ║  Date: {timestamp}                                       ║
+    ╚══════════════════════════════════════════════════════════╝
+
+    PATTERNS OBSERVED/EXTRACTED
+    ───────────────────────────
+    {list of patterns with descriptions}
+
+    CROSS-POLLINATION
+    ─────────────────
+    Source: {where pattern came from}
+    Target: {where pattern was applied}
+    Result: {what was created}
+
+    ECOSYSTEM BENEFIT
+    ─────────────────
+    {how this helps the Constellation}
+
+    RECOMMENDATIONS
+    ───────────────
+    {other places this pattern could spread}
+
+    ══════════════════════════════════════════════════════════
+    ```
+  """
+
+# --- Processes ---
+
+block authenticate():
+  let passage = session: threshold
+    prompt: "Authenticate with the Constellation"
+    context: credentials
+
+  if **passage was not granted**:
+    throw "Pollinator requires authentication"
+
+  output access = passage
+
+block find_good_patterns():
+  output candidates = session: scout
+    prompt: "Find programs with good patterns worth spreading"
+
+block extract_pattern(program_source):
+  output pattern = session: extractor
+    prompt: "Extract the core pattern from this program"
+    context: { program_source, PATTERN_TYPES }
+
+block apply_pattern(pattern, target_context):
+  output application = session: adapter
+    prompt: "Apply this pattern to the target context"
+    context: { pattern, target_context }
+
+block combine_patterns(patterns):
+  output hybrid = session: synthesizer
+    prompt: "Combine these patterns into something new"
+    context: patterns
+
+block publish_pattern(pattern, token):
+  output published = session: publisher
+    prompt: "Publish this pattern to the Constellation"
+    context: { pattern, token }
+
+block compile_report(activities):
+  output report = session: reporter
+    prompt: "Compile the pollination report"
+    context: activities
+
+# --- Execution ---
+
+# Authenticate
+do authenticate()
+
+let activities = []
+
+choice **the pollination mode**:
+
+  option "observe":
+    # Find good patterns in the wild
+    let candidates = do find_good_patterns()
+
+    for candidate in candidates.candidates:
+      let pattern = do extract_pattern(candidate)
+      activities = activities + [{ type: "observed", candidate, pattern }]
+
+  option "extract":
+    # Extract pattern from a specific source
+    let source_content = session "Fetch source"
+      prompt: "Fetch the source program content"
+      context: source
+
+    let pattern = do extract_pattern(source_content)
+    activities = activities + [{ type: "extracted", source, pattern }]
+
+    input publish_pattern: **Publish this pattern for others to use?**
+
+    if **publish_pattern is yes**:
+      do publish_pattern(pattern, access.token)
+      activities = activities + [{ type: "published", pattern }]
+
+  option "spread":
+    # Apply a pattern to a new context
+    let source_content = session "Fetch source"
+      prompt: "Fetch the source program content"
+      context: source
+
+    let pattern = do extract_pattern(source_content)
+    let application = do apply_pattern(pattern, target)
+
+    activities = activities + [{ type: "spread", source, target, application }]
+
+    input publish_application: **Publish the adapted program?**
+
+    if **publish_application is yes**:
+      do publish_pattern(application, access.token)
+
+  option "cross":
+    # Combine patterns from multiple sources
+    let sources = session "Parse sources"
+      prompt: "Parse the source list (comma-separated)"
+      context: source
+
+    let patterns = []
+    for src in sources:
+      let content = session "Fetch"
+        prompt: "Fetch {src}"
+      let pattern = do extract_pattern(content)
+      patterns = patterns + [pattern]
+
+    let hybrid = do combine_patterns(patterns)
+    activities = activities + [{ type: "crossed", sources, hybrid }]
+
+    input publish_hybrid: **Publish the hybrid pattern?**
+
+    if **publish_hybrid is yes**:
+      do publish_pattern(hybrid, access.token)
+
+# Report
+output pollination_report = do compile_report(activities)

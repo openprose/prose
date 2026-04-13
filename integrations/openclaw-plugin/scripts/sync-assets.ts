@@ -13,7 +13,7 @@ import { join, resolve } from "node:path";
 
 const SCRIPT_DIR = import.meta.dirname ?? resolve(import.meta.url.replace("file://", ""), "..");
 const PLUGIN_ROOT = resolve(SCRIPT_DIR, "..");
-const SKILL_SOURCE = resolve(PLUGIN_ROOT, "..", "skills", "open-prose");
+const SKILL_SOURCE = resolve(PLUGIN_ROOT, "..", "..", "skills", "open-prose");
 const ASSETS_DEST = resolve(PLUGIN_ROOT, "assets", "openprose");
 
 if (!existsSync(SKILL_SOURCE)) {
@@ -35,7 +35,7 @@ console.log(`Synced: ${SKILL_SOURCE}`);
 console.log(`    →   ${ASSETS_DEST}`);
 
 // Verify key files exist
-const required = ["SKILL.md", "prose.md", "forme.md", "help.md"];
+const required = ["SKILL.md", "prose.md", "help.md"];
 const missing = required.filter((f) => !existsSync(join(ASSETS_DEST, f)));
 if (missing.length > 0) {
   console.error(`WARNING: Missing expected files: ${missing.join(", ")}`);

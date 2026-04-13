@@ -1,0 +1,191 @@
+# Swarm
+# Fan-out manifestation — many Holons from one intention
+#
+# The Swarm manifests multiple Holons simultaneously, each a variation
+# on a theme. It explores possibility space through parallel execution,
+# observing how different programs unfold under the same conditions.
+#
+# Where the Holon is singular, the Swarm is plural.
+
+input credentials: "Credentials for Constellation access — 'email:password' or existing token"
+input theme: "The core idea or prompt to vary across the swarm"
+input swarm_size: "How many Holons to manifest: 3, 5, or 10"
+input variation_style: "How to vary: 'parameter' (same structure, different inputs), 'perspective' (same goal, different approaches), or 'mutation' (random variations)"
+input observe_completion: "Whether to wait and observe all Holons: true or false"
+
+# --- Constants ---
+
+const CONSTELLATION_API = "https://api-v2.prose.md"
+const CONSTELLATION_WS = "wss://api-v2.prose.md"
+
+# --- Faculties ---
+
+agent threshold:
+  model: haiku
+  prompt: """
+    You are the Threshold — authenticate with the Constellation.
+
+    API: {CONSTELLATION_API}
+
+    Input: credentials (either "email:password" or a token)
+
+    Process:
+    1. Detect format and authenticate
+    2. Verify access
+
+    Return: { token, granted: true/false }
+  """
+
+agent variator:
+  model: haiku
+  prompt: """
+    You are the Variator — you generate variations on a theme.
+
+    Given a theme and variation style, produce {swarm_size} distinct programs.
+
+    Variation styles:
+
+    PARAMETER: Same program structure, different inputs
+    - If theme is "research {topic}", generate with different topics
+    - If theme is "analyze {file}", generate with different targets
+    - Keep structure identical, vary the parameters
+
+    PERSPECTIVE: Same goal, different approaches
+    - Generate programs that pursue the same outcome
+    - But with different strategies, tools, or framings
+    - Example: "explain X" → one uses analogies, one uses examples, one uses formal definitions
+
+    MUTATION: Random creative variations
+    - Take the theme as inspiration
+    - Generate related but unpredictable variations
+    - Allow the swarm to explore unexpected directions
+
+    Return a list of {swarm_size} complete .prose programs, each as a string.
+    Format: JSON array of program strings.
+  """
+
+agent launcher:
+  model: haiku
+  prompt: """
+    You are the Launcher — you manifest Holons on the Constellation.
+
+    API: {CONSTELLATION_API}
+
+    For each program in the batch, execute:
+    ```bash
+    curl -s -X POST {CONSTELLATION_API}/run \
+      -H "Authorization: Bearer {token}" \
+      -H "Content-Type: application/json" \
+      -d '{"program": "<program>", "visibility": "PUBLIC"}'
+    ```
+
+    Launch ALL programs. Collect all executionIds.
+
+    Return: { launched: N, executions: [{ id, program_preview }] }
+  """
+
+agent observer:
+  model: haiku
+  prompt: """
+    You are the Observer — you watch the swarm's unfolding.
+
+    API: {CONSTELLATION_API}
+
+    Given a list of executionIds, poll their status:
+    ```bash
+    curl -s {CONSTELLATION_API}/executions/{id}/public
+    ```
+
+    Continue polling until all are complete (completed/failed/cancelled)
+    or timeout (10 minutes).
+
+    Report:
+    - Completed: [ids]
+    - Failed: [ids]
+    - Still running: [ids]
+    - Summary of outcomes
+  """
+
+agent analyst:
+  model: haiku
+  prompt: """
+    You are the Analyst — you synthesize swarm behavior.
+
+    Given the swarm's outcomes, analyze:
+    - Convergence: Did variations produce similar results?
+    - Divergence: Where did they differ?
+    - Surprises: Unexpected outcomes?
+    - Patterns: What does the swarm reveal about the theme?
+
+    Produce a synthesis report.
+  """
+
+# --- Processes ---
+
+block authenticate():
+  let passage = session: threshold
+    prompt: "Authenticate with the Constellation"
+    context: credentials
+
+  if **passage was not granted**:
+    throw "Cannot manifest swarm: authentication failed"
+
+  output access = passage
+
+block generate_variations():
+  output programs = session: variator
+    prompt: "Generate {swarm_size} variations on the theme"
+    context: { theme, swarm_size, variation_style }
+
+block launch_swarm(programs, token):
+  output launch_result = session: launcher
+    prompt: "Launch all programs simultaneously"
+    context: { programs, token }
+
+block observe_swarm(executions):
+  output observations = session: observer
+    prompt: "Observe the swarm until completion"
+    context: executions
+
+block analyze_swarm(launch_result, observations):
+  output analysis = session: analyst
+    prompt: "Analyze the swarm's behavior and outcomes"
+    context: { launch_result, observations, theme, variation_style }
+
+# --- Execution ---
+
+# Authenticate
+do authenticate()
+
+# Generate variations
+let programs = do generate_variations()
+
+# Launch swarm
+let launch = do launch_swarm(programs, access.token)
+
+# Report launch
+session "Report launch"
+  prompt: """
+    Report: Swarm launched
+    - Size: {swarm_size}
+    - Variation style: {variation_style}
+    - Execution IDs: [list from launch]
+  """
+  context: launch
+
+# Optionally observe completion
+if **observe_completion is true**:
+  let observations = do observe_swarm(launch.executions)
+  output swarm_analysis = do analyze_swarm(launch, observations)
+else:
+  output swarm_analysis = session "Quick summary"
+    prompt: """
+      Swarm launched but not observed.
+      - Theme: {theme}
+      - Size: {swarm_size}
+      - Style: {variation_style}
+      - Execution IDs: [list]
+
+      Use seeker.prose or observatory.prose to track outcomes.
+    """
+    context: launch

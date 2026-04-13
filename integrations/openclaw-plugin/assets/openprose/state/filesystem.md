@@ -1,27 +1,29 @@
 ---
 role: file-system-state-management
 summary: |
-  File-system state management for OpenProse programs. Describes the directory
-  structure, file formats, and protocols for the workspace/bindings model, manifest
-  storage, and execution logging.
+  File-system state management for OpenProse programs. This approach persists
+  execution state to the `.prose/` directory, enabling inspection, resumption,
+  and long-running workflows.
 see-also:
   - ../prose.md: VM execution semantics
-  - ../forme.md: Wiring semantics (produces the manifest)
+  - in-context.md: In-context state management (alternative approach)
+  - sqlite.md: SQLite state management (experimental)
+  - postgres.md: PostgreSQL state management (experimental)
   - ../primitives/session.md: Session context and compaction guidelines
 ---
 
 # File-System State Management
 
-This document describes how the OpenProse VM tracks execution state using **files in the `.prose/` directory**.
+This document describes how the OpenProse VM tracks execution state using **files in the `.prose/` directory**. This is one of two state management approaches (the other being in-context state in `in-context.md`).
 
 ## Overview
 
 File-based state persists all execution artifacts to disk. This enables:
 
-- **Inspection**: See exactly what happened at each step, including intermediate work
-- **Resumption**: Pick up interrupted programs from the last completed service
-- **Debugging**: Trace through the manifest, workspace artifacts, and published bindings
-- **Auditability**: Every service's full working state is preserved
+- **Inspection**: See exactly what happened at each step
+- **Resumption**: Pick up interrupted programs
+- **Long-running workflows**: Handle programs that exceed context limits
+- **Debugging**: Trace through execution history
 
 **Key principle:** Files are inspectable artifacts. The directory structure IS the execution state.
 
@@ -32,53 +34,34 @@ File-based state persists all execution artifacts to disk. This enables:
 ```
 # Project-level state (in working directory)
 .prose/
-├── .env                                    # Config (simple key=value format)
+├── .env                              # Config (simple key=value format)
 ├── runs/
 │   └── {YYYYMMDD}-{HHMMSS}-{random}/
-│       ├── manifest.md                     # Wiring graph (Phase 1 output)
-│       ├── program.md                      # Copy of entry point
-│       ├── services/                       # Component source files (copied by Phase 1)
-│       │   ├── researcher.md
-│       │   ├── critic.md
-│       │   └── synthesizer.md
-│       ├── workspace/                      # Private working directories
-│       │   ├── researcher/
-│       │   │   ├── notes.md                # Intermediate scratch work
-│       │   │   ├── raw-results.md          # Intermediate data
-│       │   │   ├── findings.md             # Ensures output (working copy)
-│       │   │   └── sources.md              # Ensures output (working copy)
-│       │   ├── critic/
-│       │   │   ├── evaluation.md
-│       │   │   └── verdict.md
-│       │   └── synthesizer/
-│       │       └── report.md
-│       ├── bindings/                       # Public outputs (copied from workspace)
-│       │   ├── caller/                     # Caller-provided inputs
-│       │   │   └── question.md
-│       │   ├── researcher/                 # Researcher's published outputs
-│       │   │   ├── findings.md
-│       │   │   └── sources.md
-│       │   ├── critic/
-│       │   │   ├── evaluation.md
-│       │   │   └── verdict.md
-│       │   └── synthesizer/
-│       │       └── report.md
-│       ├── state.md                        # Append-only execution log
-│       └── agents/                         # Persistent agent memory
+│       ├── program.prose             # Copy of running program
+│       ├── state.md                  # Execution state with code snippets
+│       ├── bindings/
+│       │   ├── {name}.md             # Root scope bindings
+│       │   └── {name}__{execution_id}.md  # Scoped bindings (block invocations)
+│       ├── imports/
+│       │   └── {handle}--{slug}/     # Nested program executions (same structure recursively)
+│       └── agents/
 │           └── {name}/
-│               ├── memory.md
-│               ├── {name}-001.md
+│               ├── memory.md         # Agent's current state
+│               ├── {name}-001.md     # Historical segments (flattened)
+│               ├── {name}-002.md
 │               └── ...
-└── agents/                                 # Project-scoped agent memory
+└── agents/                           # Project-scoped agent memory
     └── {name}/
         ├── memory.md
+        ├── {name}-001.md
         └── ...
 
 # User-level state (in home directory)
 ~/.prose/
-└── agents/                                 # User-scoped agent memory (cross-project)
+└── agents/                           # User-scoped agent memory (cross-project)
     └── {name}/
         ├── memory.md
+        ├── {name}-001.md
         └── ...
 ```
 
@@ -86,243 +69,211 @@ File-based state persists all execution artifacts to disk. This enables:
 
 Format: `{YYYYMMDD}-{HHMMSS}-{random6}`
 
-Example: `20260317-143052-a7b3c9`
+Example: `20260115-143052-a7b3c9`
+
+No "run-" prefix needed—the directory name makes context obvious.
 
 ### Segment Numbering
 
-Agent segments use 3-digit zero-padded numbers: `captain-001.md`, `captain-002.md`, etc.
+Segments use 3-digit zero-padded numbers: `captain-001.md`, `captain-002.md`, etc.
 
----
-
-## The Three Directories
-
-The core of Prose state management is the separation of three directories:
-
-### `services/` — Source Snapshots
-
-Component `.md` files copied by Forme during Phase 1. These are the service definitions as they were at wiring time — stable snapshots even if source files change during execution.
-
-**Written by:** Forme (Phase 1)
-**Read by:** The VM when constructing session prompts
-**Immutable during execution.**
-
-### `workspace/` — Private Working State
-
-One subdirectory per service. Each service writes all its work here — intermediate notes, drafts, scratch data, and final output files.
-
-**Written by:** Subagents (each service writes to its own subdirectory)
-**Read by:** The VM reads only two things from workspace: declared `ensures` outputs (to copy to bindings) and `__error.md` (to detect errors). No other files are inspected during execution. Everything is preserved for post-run debugging.
-
-The workspace is the service's private sandbox. It can contain anything:
-
-```
-workspace/researcher/
-├── search-log.md           # What searches were attempted
-├── raw-results.md          # Unfiltered search results
-├── filtered-results.md     # After relevance filtering
-├── notes.md                # Scratch thinking
-├── findings.md             # Final output (ensures)
-└── sources.md              # Final output (ensures)
-```
-
-Only the files named in the manifest's `outputs` section get copied to `bindings/`.
-
-### `bindings/` — Public Interface
-
-One subdirectory per service (plus `caller/` for inputs). Contains only declared `ensures` outputs — the public interface that downstream services consume.
-
-**Written by:** The VM (copies from workspace after each service completes)
-**Read by:** Downstream subagents (via input file paths in the manifest)
-
-```
-bindings/
-├── caller/
-│   └── question.md         # Input from the user
-├── researcher/
-│   ├── findings.md         # Copied from workspace/researcher/findings.md
-│   └── sources.md          # Copied from workspace/researcher/sources.md
-├── critic/
-│   └── evaluation.md       # Copied from workspace/critic/evaluation.md
-└── synthesizer/
-    └── report.md           # Copied from workspace/synthesizer/report.md
-```
+If a program exceeds 999 segments, extend to 4 digits: `captain-1000.md`.
 
 ---
 
 ## File Formats
 
-### `manifest.md`
+### `.prose/.env`
 
-The wiring graph produced by Forme. See `forme.md` for the full format specification. Contains:
+Simple key=value configuration file:
 
-- Caller interface (requires/returns)
-- Per-service entries (source, workspace, inputs with `←` mappings, outputs)
-- Execution order with parallelization notes
-- Warnings
-
-**Written by:** Forme (Phase 1)
-**Read by:** The VM (Phase 2)
-
-### Caller Input Files
-
-**Path:** `bindings/caller/{name}.md`
-
-```markdown
-# question
-
-kind: input
-source: caller
+```env
+OPENPROSE_POSTGRES_URL=postgresql://user:pass@localhost:5432/prose
+```
 
 ---
 
-What are the latest developments in quantum computing?
-```
+### `state.md` — Append-Only Execution Log
 
-**Written by:** The VM at program start (from CLI args, config, or user prompt)
-
-### Service Output Files
-
-**Path:** `workspace/{service}/{output-name}.md` (working copy)
-**Path:** `bindings/{service}/{output-name}.md` (published copy)
-
-Output files are simple Markdown — just the content. No special frontmatter required:
-
-```markdown
-# Findings
-
-## Claim 1: Transformer architectures dominate NLP benchmarks
-- Source: arxiv.org/abs/1706.03762
-- Confidence: 0.95
-
-## Claim 2: Scaling laws predict performance from compute
-- Source: arxiv.org/abs/2001.08361
-- Confidence: 0.88
-```
-
-**Written by:** Subagent (to workspace). VM copies to bindings.
-
-### Error Files
-
-**Path:** `workspace/{service}/__error.md`
-
-```markdown
-# Error: no-results
-
-No relevant sources found for the topic.
-
-Searched:
-- Google Scholar: 0 relevant results
-- arXiv: 2 results, both tangential
-
-Partial data: None available.
-```
-
-The `__` prefix signals to the VM that this is an error, not a regular output.
-
-**Written by:** Subagent (when it cannot satisfy ensures)
-
----
-
-## `state.md` — Append-Only Execution Log
-
-The state file is an **append-only log** of execution events. The VM appends entries as execution progresses.
+The state file is an **append-only log** of execution events. The VM appends entries as execution progresses rather than rewriting the entire file after each statement.
 
 **Only the VM writes this file.** Subagents never modify `state.md`.
 
-### Format
+**Key principle:** The VM's conversation history is the primary execution state. The state file exists for resumption and debugging, not as the source of truth during normal execution.
+
+#### Format
 
 ```markdown
-# run:20260317-143052-a7b3c9 deep-research
+# run:20260115-143052-a7b3c9 feature-implementation.prose
 
-1→ [input] question ✓
-2→ researcher ✓
-3→ ∥start critic,fact-checker
-3a→ critic ✓
-3b→ fact-checker ✓
-3→ ∥done
-4→ synthesizer ✓
----end 2026-03-17T14:35:22Z
+1→ research ✓
+2→ ∥start a,b,c
+2a→ a ✓
+2b→ b ✓
+2c→ c ✓
+2→ ∥done
+3→ loop:1/5
+3→ synthesis ✓
+3→ loop:2/5 exit(**complete**)
+4→ captain ✓
+---end 2026-01-15T14:35:22Z
 ```
 
-### Event Markers
+#### Event Markers
 
 | Marker | Meaning | Example |
 |--------|---------|---------|
-| `N→ [input] name ✓` | Caller input bound | `1→ [input] question ✓` |
-| `N→ service ✓` | Service completed, outputs copied to bindings | `2→ researcher ✓` |
-| `N→ ∥start a,b` | Parallel services started | `3→ ∥start critic,fact-checker` |
-| `Na→ a ✓` | Parallel service completed | `3a→ critic ✓` |
-| `N→ ∥done` | All parallel services complete | `3→ ∥done` |
-| `N→ service ✗ error-name` | Service signaled an error | `3→ researcher ✗ no-results` |
-| `---end TIMESTAMP` | Program completed | `---end 2026-03-17T14:35:22Z` |
-| `---error TIMESTAMP msg` | Program failed | `---error 2026-03-17T... no-results` |
+| `N→ name ✓` | Statement N completed, binding written | `1→ research ✓` |
+| `N→ ✓` | Anonymous session completed | `5→ ✓` |
+| `N→ ∥start a,b,c` | Parallel block started with branches | `2→ ∥start a,b,c` |
+| `Na→ name ✓` | Parallel branch completed | `2a→ a ✓` |
+| `N→ ∥done` | Parallel block joined | `2→ ∥done` |
+| `N→ loop:I/M` | Loop iteration I of max M | `3→ loop:2/5` |
+| `N→ loop:I/M exit(reason)` | Loop exited | `3→ loop:3/5 exit(**done**)` |
+| `N→ block:name#ID` | Block invocation started | `4→ block:process#43` |
+| `N→ #ID done` | Block invocation completed | `4→ #43 done` |
+| `N→ ✗ error` | Statement failed | `5→ ✗ timeout` |
+| `N→ retry:A/M` | Retry attempt A of max M | `5→ retry:2/3` |
+| `---end TIMESTAMP` | Program completed | `---end 2026-01-15T14:35:22Z` |
+| `---error TIMESTAMP msg` | Program failed | `---error 2026-01-15T14:35:22Z timeout` |
 
-### When the VM Writes
+#### When the VM Writes
+
+The VM appends to `state.md`:
 
 | Event | Action |
 |-------|--------|
-| Caller input bound | Append input marker |
-| Service completes | Append completion marker |
+| Statement completes | Append completion marker |
 | Parallel starts/joins | Append parallel markers |
+| Loop iteration/exit | Append loop marker |
+| Block invoke/complete | Append block markers |
 | Error occurs | Append error marker |
 | Program ends | Append end marker |
 
-The VM does NOT rewrite the entire file. Each write is a single line append.
+**Note:** The VM does NOT rewrite the entire file. Each write is a single line append, keeping token generation minimal.
 
-### Resumption
+#### Resumption
 
-To resume an interrupted run:
+To resume an interrupted run, the VM:
 
-1. Read `state.md` — find the last completed service
-2. Read `manifest.md` — get the execution order
-3. Scan `bindings/` — confirm existing outputs
-4. Continue from the next service in execution order
+1. Reads `state.md` to find the last completed statement
+2. Scans `bindings/` directory for existing outputs
+3. Continues from the next statement
 
----
-
-## Who Writes What
-
-| Artifact | Written By | When |
-|----------|------------|------|
-| `manifest.md` | Forme (Phase 1) | Before execution |
-| `program.md` | Forme (Phase 1) | Before execution |
-| `services/*.md` | Forme (Phase 1) | Before execution |
-| `bindings/caller/*.md` | VM | At program start |
-| `workspace/{service}/*` | Subagent | During service execution |
-| `bindings/{service}/*` | VM (copy from workspace) | After service completes |
-| `state.md` | VM | After each event |
-| `agents/{name}/memory.md` | Persistent agent | During service execution |
-| `agents/{name}/{name}-NNN.md` | Persistent agent | During service execution |
-
-**Key principle:** The VM orchestrates and copies. Subagents write their own outputs to workspace. The VM publishes them to bindings. The VM never reads full output content — it tracks file paths and copies files.
+The append-only format makes this straightforward—find the last line, determine position.
 
 ---
 
-## The Copy-on-Return Protocol
+### `bindings/{name}.md`
 
-This is the core mechanism of Prose state management. When a service completes:
+All named values (input, output, let, const) are stored as binding files.
 
-1. **Service writes** all its work to `workspace/{service}/`
-2. **Service returns** a confirmation message listing its output files
-3. **VM verifies** the listed outputs exist in workspace
-4. **VM copies** each declared `ensures` output:
-   `workspace/{service}/{output}.md` → `bindings/{service}/{output}.md`
-5. **VM appends** completion marker to `state.md`
+```markdown
+# research
 
-The copy is the "publish" step. Before the copy, the output exists only in the service's private workspace. After the copy, it's available to downstream services via `bindings/`.
+kind: let
 
-If the service wrote `__error.md` instead:
-
-1. **VM reads** `workspace/{service}/__error.md`
-2. **VM checks** for conditional ensures clauses in the program
-3. **VM either** handles the degraded case or propagates the error
-4. **VM appends** error marker to `state.md`
+source:
+```prose
+let research = session: researcher
+  prompt: "Research AI safety"
+```
 
 ---
 
-## Agent Memory Files
+AI safety research covers several key areas including alignment,
+robustness, and interpretability. The field has grown significantly
+since 2020 with major contributions from...
+```
 
-### `agents/{name}/memory.md`
+**Structure:**
+- Header with binding name
+- `kind:` field indicating type (input, output, let, const)
+- `source:` code snippet showing origin
+- `---` separator
+- Actual value below
+
+**The `kind` field distinguishes:**
+
+| Kind | Meaning |
+|------|---------|
+| `input` | Value received from caller |
+| `output` | Value to return to caller |
+| `let` | Mutable variable |
+| `const` | Immutable variable |
+
+### Anonymous Session Bindings
+
+Sessions without explicit output capture still produce results:
+
+```prose
+session "Analyze the codebase"   # No `let x = ...` capture
+```
+
+These get auto-generated names with an `anon_` prefix:
+
+- `bindings/anon_001.md`
+- `bindings/anon_002.md`
+- etc.
+
+This ensures all session outputs are persisted and inspectable.
+
+---
+
+### Scoped Bindings (Block Invocations)
+
+When a binding is created inside a block invocation, it's scoped to that execution frame to prevent collisions across recursive calls.
+
+**Naming convention:** `{name}__{execution_id}.md`
+
+Examples:
+- `bindings/result__43.md` — binding `result` in execution_id 43
+- `bindings/parts__44.md` — binding `parts` in execution_id 44
+
+**File format with execution scope:**
+
+```markdown
+# result
+
+kind: let
+execution_id: 43
+
+source:
+```prose
+let result = session "Process chunk"
+```
+
+---
+
+Processed chunk into 3 sub-parts...
+```
+
+**Scope resolution:** The VM resolves variable references by checking:
+1. `{name}__{current_execution_id}.md`
+2. `{name}__{parent_execution_id}.md`
+3. Continue up the call stack
+4. `{name}.md` (root scope)
+
+The first match wins.
+
+**Example directory for recursive calls:**
+
+```
+bindings/
+├── data.md              # Root scope input
+├── result__1.md         # First process() invocation
+├── parts__1.md          # Parts from first invocation
+├── result__2.md         # Recursive call (depth 2)
+├── parts__2.md          # Parts from depth 2
+├── result__3.md         # Recursive call (depth 3)
+└── ...
+```
+
+---
+
+### Agent Memory Files
+
+#### `agents/{name}/memory.md`
 
 The agent's current accumulated state:
 
@@ -331,84 +282,165 @@ The agent's current accumulated state:
 
 ## Current Understanding
 
-The project is implementing a research pipeline for quantum computing.
-Researcher produces good breadth but sometimes lacks depth on subtopics.
+The project is implementing a REST API for user management.
+Architecture uses Express + PostgreSQL. Test coverage target is 80%.
 
 ## Decisions Made
 
-- 2026-03-17: Approved initial research scope, flagged need for deeper source verification
-- 2026-03-17: Set confidence threshold at 0.7 for claim inclusion
+- 2026-01-15: Approved JWT over session tokens (simpler stateless auth)
+- 2026-01-15: Set 80% coverage threshold (balances quality vs velocity)
 
 ## Open Concerns
 
-- Source diversity is low — too many arXiv papers, not enough industry reports
+- Rate limiting not yet implemented on login endpoint
+- Need to verify OAuth flow works with new token format
 ```
 
-### `agents/{name}/{name}-NNN.md`
+#### `agents/{name}/{name}-NNN.md` (Segments)
 
-Historical segment records:
+Historical records of each invocation, flattened in the same directory:
 
 ```markdown
 # Segment 001
 
-timestamp: 2026-03-17T14:32:15Z
+timestamp: 2026-01-15T14:32:15Z
+prompt: "Review the research findings"
 
 ## Summary
 
-- Reviewed: researcher output (findings.md, sources.md)
-- Found: 12 claims extracted, 3 below confidence threshold
-- Decided: Accept 9 claims, request broader source search for rejected 3
-- Next: Review critic evaluation, verify source diversity improved
+- Reviewed: docs from parallel research session
+- Found: good coverage of core concepts, missing edge cases
+- Decided: proceed with implementation, note gaps for later
+- Next: review implementation against identified gaps
 ```
 
-### Memory Scoping
+---
+
+## Who Writes What
+
+| File | Written By |
+|------|------------|
+| `state.md` | VM only |
+| `bindings/{name}.md` | Subagent |
+| `agents/{name}/memory.md` | Persistent agent |
+| `agents/{name}/{name}-NNN.md` | Persistent agent |
+
+The VM orchestrates; subagents write their own outputs directly to the filesystem. **The VM never holds full binding values—it tracks file paths.**
+
+---
+
+## Subagent Output Writing
+
+When the VM spawns a session, it tells the subagent where to write output.
+
+### For Regular Sessions
+
+```
+When you complete this task, write your output to:
+  .prose/runs/20260115-143052-a7b3c9/bindings/research.md
+
+Format:
+# research
+
+kind: let
+
+source:
+```prose
+let research = session: researcher
+  prompt: "Research AI safety"
+```
+
+---
+
+[Your output here]
+```
+
+### For Persistent Agents (resume:)
+
+```
+Your memory is at:
+  .prose/runs/20260115-143052-a7b3c9/agents/captain/memory.md
+
+Read it first to understand your prior context. When done, update it
+with your compacted state following the guidelines in primitives/session.md.
+
+Also write your segment record to:
+  .prose/runs/20260115-143052-a7b3c9/agents/captain/captain-003.md
+```
+
+### What Subagents Return to the VM
+
+After writing output, the subagent returns a **confirmation message**—not the full content:
+
+**Root scope (outside block invocations):**
+```
+Binding written: research
+Location: .prose/runs/20260115-143052-a7b3c9/bindings/research.md
+Summary: AI safety research covering alignment, robustness, and interpretability with 15 citations.
+```
+
+**Inside block invocation (include execution_id):**
+```
+Binding written: result
+Location: .prose/runs/20260115-143052-a7b3c9/bindings/result__43.md
+Execution ID: 43
+Summary: Processed chunk into 3 sub-parts for recursive processing.
+```
+
+The VM records the location and continues. It does NOT read the file—it passes the reference to subsequent sessions that need the context.
+
+---
+
+## Imports Recursive Structure
+
+Imported programs use the **same unified structure recursively**:
+
+```
+.prose/runs/{id}/imports/{handle}--{slug}/
+├── program.prose
+├── state.md
+├── bindings/
+│   └── {name}.md
+├── imports/                    # Nested imports go here
+│   └── {handle2}--{slug2}/
+│       └── ...
+└── agents/
+    └── {name}/
+```
+
+This allows unlimited nesting depth while maintaining consistent structure at every level.
+
+---
+
+## Memory Scoping for Persistent Agents
 
 | Scope | Declaration | Path | Lifetime |
 |-------|-------------|------|----------|
 | Execution (default) | `persist: true` | `.prose/runs/{id}/agents/{name}/` | Dies with run |
-| Project | `persist: project` | `.prose/agents/{name}/` | Survives runs |
-| User | `persist: user` | `~/.prose/agents/{name}/` | Survives projects |
+| Project | `persist: project` | `.prose/agents/{name}/` | Survives runs in project |
+| User | `persist: user` | `~/.prose/agents/{name}/` | Survives across projects |
+| Custom | `persist: "path"` | Specified path | User-controlled |
 
 ---
 
-## `.prose/.env`
+## VM Update Protocol
 
-Simple key=value configuration:
+After each statement completes, the VM:
 
-```env
-OPENPROSE_DEFAULT_MODEL=opus
-OPENPROSE_MAX_PARALLEL=5
-```
+1. **Confirms** subagent wrote its output file(s)
+2. **Appends** a single-line marker to `state.md`
+3. **Continues** to next statement
 
----
-
-## Nested Program Imports
-
-When a program imports and invokes another program (via registry or local file), the imported program runs in its own subdirectory:
-
-```
-.prose/runs/{id}/imports/{handle}--{slug}/
-├── manifest.md
-├── program.md
-├── services/
-├── workspace/
-├── bindings/
-├── state.md
-├── imports/                    # Further nesting
-│   └── ...
-└── agents/
-```
-
-Same structure recursively, enabling unlimited nesting depth.
+The VM appends one line per event—it never rewrites the full state file. This keeps token generation minimal during execution.
 
 ---
 
-## Summary
+## Resuming Execution
 
-Prose file-system state management is built on three directories:
+If execution is interrupted, resume by:
 
-1. **`services/`** — immutable source snapshots (what was wired)
-2. **`workspace/`** — private working state (how each service did its work)
-3. **`bindings/`** — public interface (what each service produced)
+1. Reading `.prose/runs/{id}/state.md` — find the last completed marker
+2. Scanning `bindings/` directory to confirm existing outputs
+3. Continuing from the next statement
 
-The manifest defines the graph. The VM walks it. Services write to workspace. The VM copies ensures outputs to bindings. State.md logs every event. Everything is on disk, everything is inspectable.
+The append-only log format makes resumption simple: the last line indicates where execution stopped.

@@ -1,69 +1,108 @@
 # OpenProse Standard Library
 
-Local analysis and improvement programs that ship with OpenProse. Production-quality Prose v2 programs for evaluating runs, improving code, and managing persistent memory.
+Local analysis and improvement programs that ship with OpenProse. Production-quality, well-tested programs for evaluating runs, improving code, and managing memory.
 
-All programs use Prose v2 format (`.md`) with full contracts: `requires`, `ensures`, `errors`, `strategies`, and `invariants`. Multi-service programs define their services inline using `##` sections.
+For programs that participate in the distributed Constellation, see `common/README.md`.
 
 ## Programs
 
-### Evaluation & Analysis
+### Evaluation & Improvement
 
-| Program | Kind | Services | Description |
-|---------|------|----------|-------------|
-| `inspector.md` | program | index, extractor, evaluator, synthesizer | Post-run analysis for runtime fidelity and task effectiveness |
-| `profiler.md` | program | detector, collector, calculator, analyzer, tracker | Cost, token, and time profiling from actual API session data |
-| `cost-analyzer.md` | program | collector, analyzer, tracker | Token usage and cost pattern analysis |
-| `calibrator.md` | program | sampler, comparator, statistician, advisor | Validates light evaluations against deep evaluations |
-| `error-forensics.md` | program | investigator, classifier, fixer | Root cause analysis for failed or problematic runs |
-
-### Improvement
-
-| Program | Kind | Services | Description |
-|---------|------|----------|-------------|
-| `vm-improver.md` | program | analyst, researcher, implementer, pr-author | Proposes PRs to improve the VM spec based on inspection findings |
-| `program-improver.md` | program | locator, analyst, implementer, pr-author | Proposes PRs to improve program source based on inspection findings |
+| Program | Description |
+|---------|-------------|
+| `inspector.prose` | Post-run analysis for runtime fidelity and task effectiveness |
+| `vm-improver.prose` | Analyzes inspections and proposes PRs to improve the VM |
+| `program-improver.prose` | Analyzes inspections and proposes PRs to improve .prose source |
+| `cost-analyzer.prose` | Token usage and cost pattern analysis |
+| `calibrator.prose` | Validates light evaluations against deep evaluations |
+| `profiler.prose` | Cost, token usage, and time profiling for completed runs |
+| `error-forensics.prose` | Root cause analysis for failed runs |
 
 ### Memory
 
-| Program | Kind | Persistence | Description |
-|---------|------|-------------|-------------|
-| `user-memory.md` | service | `persist: user` | Cross-project personal knowledge base at `~/.prose/agents/` |
-| `project-memory.md` | service | `persist: project` | Project-scoped institutional memory at `.prose/agents/` |
+| Program | Description |
+|---------|-------------|
+| `user-memory.prose` | Cross-project persistent personal memory |
+| `project-memory.prose` | Project-scoped institutional memory |
+
+## The Improvement Loop
+
+The evaluation programs form a recursive improvement cycle:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                                                             │
+│   Run Program  ──►  Inspector  ──►  VM Improver ──► PR     │
+│        ▲                │                                   │
+│        │                ▼                                   │
+│        │         Program Improver ──► PR                    │
+│        │                │                                   │
+│        └────────────────┘                                   │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+Supporting analysis:
+- **cost-analyzer** — Where does the money go? Optimization opportunities.
+- **calibrator** — Are cheap evaluations reliable proxies for expensive ones?
+- **error-forensics** — Why did a run fail? Root cause analysis.
 
 ## Usage
 
 ```bash
 # Inspect a completed run
-prose run lib/inspector.md --run-path .prose/runs/20260323-100000-abc123 --depth deep --target all
+prose run lib/inspector.prose
+# Inputs: run_path, depth (light|deep), target (vm|task|all)
 
-# Profile costs and performance
-prose run lib/profiler.md --run-path recent --scope single
+# Propose VM improvements
+prose run lib/vm-improver.prose
+# Inputs: inspection_path, prose_repo
 
-# Analyze cost patterns over time
-prose run lib/cost-analyzer.md --run-path recent --scope trend
+# Propose program improvements
+prose run lib/program-improver.prose
+# Inputs: inspection_path, run_path
 
-# Investigate a failed run
-prose run lib/error-forensics.md --run-path .prose/runs/20260323-100000-abc123
+# Analyze costs
+prose run lib/cost-analyzer.prose
+# Inputs: run_path, scope (single|compare|trend)
 
-# Calibrate light vs deep evaluations
-prose run lib/calibrator.md --run-paths recent
+# Validate light vs deep evaluation
+prose run lib/calibrator.prose
+# Inputs: run_paths, sample_size
 
-# Memory services
-prose run lib/user-memory.md --mode teach --content "prefer small focused services"
-prose run lib/project-memory.md --mode query --content "what is the auth architecture?"
+# Investigate failures
+prose run lib/error-forensics.prose
+# Inputs: run_path, focus (vm|program|context|external)
+
+# Memory programs (recommend sqlite+ backend)
+prose run lib/user-memory.prose --backend sqlite+
+# Inputs: mode (teach|query|reflect), content
+
+prose run lib/project-memory.prose --backend sqlite+
+# Inputs: mode (ingest|query|update|summarize), content
 ```
 
-## The Improvement Loop
+## Memory Programs
 
-```
-Run Program --> Inspector --> VM Improver --> PR (to prose spec)
-                   |
-                   v
-            Program Improver --> PR (to program source)
-```
+The memory programs use persistent agents to accumulate knowledge:
 
-Supporting analysis:
-- **profiler** -- Detailed cost, time, and token profiling from actual session data
-- **cost-analyzer** -- Where does the money go? Model tier efficiency and optimization targets
-- **calibrator** -- Are cheap (light) evaluations reliable proxies for expensive (deep) ones?
-- **error-forensics** -- Why did a run fail? Timeline, root cause, and fix recommendations
+**user-memory** (`persist: user`)
+- Learns your preferences, decisions, patterns across all projects
+- Remembers mistakes and lessons learned
+- Answers questions from accumulated knowledge
+
+**project-memory** (`persist: project`)
+- Understands this project's architecture and decisions
+- Tracks why things are the way they are
+- Answers questions with project-specific context
+
+Both recommend `--backend sqlite+` for durable persistence.
+
+## Design Principles
+
+1. **Production-ready** — Tested, documented, handles edge cases
+2. **Composable** — Can be imported via `use` in other programs
+3. **User-scoped state** — Cross-project utilities use `persist: user`
+4. **Minimal dependencies** — No external services required
+5. **Clear contracts** — Well-defined inputs and outputs
+6. **Incremental value** — Useful in simple mode, more powerful with depth

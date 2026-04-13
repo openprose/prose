@@ -31,7 +31,7 @@ Options:
 - **Run a workflow**: Ask for the file path, then load `prose.md` and execute
 - **Build something new**: Ask them to describe their task, then help write a .prose program (load `guidance/patterns.md`)
 - **Learn the syntax**: Show examples from `examples/`, explain the VM model
-- **Explore possibilities**: Walk through key examples like `37-the-forge.prose`
+- **Explore possibilities**: Walk through key examples like `37-the-forge.prose` or `28-gas-town.prose`
 
 ---
 

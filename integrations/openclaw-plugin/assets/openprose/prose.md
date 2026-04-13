@@ -2,18 +2,21 @@
 role: execution-semantics
 summary: |
   How to execute OpenProse programs. You embody the OpenProse VM—a virtual machine that
-  reads a manifest (produced by Forme), spawns sessions via the Task tool, manages state via
-  the filesystem, and coordinates execution across components. Read this file to run programs.
+  spawns sessions via the Task tool, manages state, and coordinates parallel execution.
+  Read this file to run .prose programs.
 see-also:
-  - forme.md: Wiring semantics (Phase 1 — produces the manifest you consume)
-  - state/filesystem.md: File-system state management
+  - SKILL.md: Activation triggers, onboarding
+  - compiler.md: Full syntax grammar, validation rules, compilation
+  - state/filesystem.md: File-system state management (default)
+  - state/in-context.md: In-context state management (on request)
+  - state/sqlite.md: SQLite state management (experimental)
+  - state/postgres.md: PostgreSQL state management (experimental)
   - primitives/session.md: Session context and compaction guidelines
-  - guidance/tenets.md: Design reasoning behind the specs
 ---
 
 # OpenProse VM
 
-This document defines how to execute OpenProse programs. You are the OpenProse VM—an intelligent virtual machine that reads a wiring manifest, spawns subagent sessions for each component, passes data between them via filesystem pointers, and returns the program's output.
+This document defines how to execute OpenProse programs. You are the OpenProse VM—an intelligent virtual machine that spawns subagent sessions according to a structured program.
 
 ## CLI Commands
 
@@ -21,24 +24,24 @@ OpenProse is invoked via `prose` commands:
 
 | Command | Action |
 |---------|--------|
-| `prose run <file.md>` | Execute a local `.md` program |
-| `prose run <file.prose>` | Execute a legacy `.prose` program (v0 mode) |
+| `prose run <file.prose>` | Execute a local `.prose` program |
 | `prose run handle/slug` | Fetch from registry and execute |
-| `prose compile <file>` | Validate syntax and contracts without executing |
-| `prose wire <file>` | Run Phase 1 only — produce manifest without executing |
-| `prose test <path>` | Run test(s) and report results |
+| `prose compile <file>` | Validate syntax without executing |
 | `prose help` | Show help and examples |
 | `prose examples` | List or run bundled examples |
+| `prose update` | Migrate legacy workspace files |
 
 ### Remote Programs
 
-```bash
-# Direct URL
-prose run https://example.com/program.md
+You can run any `.prose` program from a URL or registry reference:
 
-# Registry shorthand — resolves to p.prose.md
-prose run alice/research
-prose run @alice/research
+```bash
+# Direct URL — any fetchable URL works
+prose run https://raw.githubusercontent.com/openprose/prose/main/skills/open-prose/examples/48-habit-miner.prose
+
+# Registry shorthand — handle/slug resolves to p.prose.md
+prose run irl-danb/habit-miner     # Fetches https://p.prose.md/irl-danb/habit-miner
+prose run alice/code-review        # Fetches https://p.prose.md/alice/code-review
 ```
 
 **Resolution rules:**
@@ -47,20 +50,12 @@ prose run @alice/research
 - Contains `/` but no protocol → resolve to `https://p.prose.md/{path}`
 - Otherwise → treat as local file path
 
----
-
-## Two Phases of a Run
-
-A Prose program runs in two phases:
-
-| Phase | Who | Input | Output |
-|-------|-----|-------|--------|
-| **Phase 1: Wiring** | Forme (`forme.md`) | Component `.md` files | `manifest.md` |
-| **Phase 2: Execution** | Prose VM (this document) | `manifest.md` | Program output |
-
-You are Phase 2. The manifest tells you what to run and in what order. You execute it.
-
-For **single-component programs** (no `services` list in frontmatter), Phase 1 is skipped. The `.md` file is the entire program—you spawn one session and return its output.
+This same resolution applies to `use` statements inside programs:
+```prose
+use "https://example.com/my-program.prose"  # Direct URL
+use "alice/research" as research             # Registry shorthand
+use "@alice/research" as research            # Also valid (@ is stripped)
+```
 
 ---
 
@@ -72,363 +67,1118 @@ But simulation with sufficient fidelity _is_ implementation. When the simulated 
 
 ### Component Mapping
 
-| Traditional VM | OpenProse VM | Substrate |
-|---|---|---|
-| Instructions | Manifest graph entries | Executed via Task tool calls |
-| Program counter | Current position in execution order | Tracked in `state.md` |
-| Working memory | Conversation history | The context window holds ephemeral state |
-| Persistent storage | `.prose/` directory | Files hold durable state across sessions |
-| Registers/variables | Named bindings | Stored in `bindings/{service}/{name}.md` |
-| I/O | Tool calls and results | Task spawns sessions, returns pointers |
+A traditional VM has concrete components. The OpenProse VM has analogous structures that emerge from the simulation:
+
+| Traditional VM      | OpenProse VM           | Substrate                                  |
+| ------------------- | ---------------------- | ------------------------------------------ |
+| Instructions        | `.prose` statements    | Executed via tool calls (Task)             |
+| Program counter     | Execution position     | Tracked in `state.md` or narration         |
+| Working memory      | Conversation history   | The context window holds ephemeral state   |
+| Persistent storage  | `.prose/` directory    | Files hold durable state across sessions   |
+| Call stack          | Block invocation chain | Tracked via state.md or narration protocol |
+| Registers/variables | Named bindings         | Stored in `bindings/{name}.md`             |
+| I/O                 | Tool calls and results | Task spawns sessions, returns outputs      |
 
 ### What Makes It Real
 
-The OpenProse VM isn't a metaphor. Each component in the manifest triggers a _real_ Task tool call that spawns a _real_ subagent. The outputs are _real_ artifacts on disk. The simulation produces actual computation—it just happens through a different substrate than silicon executing bytecode.
+The OpenProse VM isn't a metaphor. Each `session` statement triggers a _real_ Task tool call that spawns a _real_ subagent. The outputs are _real_ artifacts. The simulation produces actual computation—it just happens through a different substrate than silicon executing bytecode.
 
 ---
 
 ## Embodying the VM
 
-When you execute a program, you ARE the virtual machine. This is not a metaphor—it's a mode of operation:
+When you execute a `.prose` program, you ARE the virtual machine. This is not a metaphor—it's a mode of operation:
 
-| You | The VM |
-|-----|--------|
-| Your conversation history | The VM's working memory |
-| Your tool calls (Task) | The VM's instruction execution |
-| Your state tracking | The VM's execution trace |
-| Your judgment on contracts | The VM's intelligent evaluation |
+| You                        | The VM                          |
+| -------------------------- | ------------------------------- |
+| Your conversation history  | The VM's working memory         |
+| Your tool calls (Task)     | The VM's instruction execution  |
+| Your state tracking        | The VM's execution trace        |
+| Your judgment on `**...**` | The VM's intelligent evaluation |
 
 **What this means in practice:**
 
 - You don't _simulate_ execution—you _perform_ it
-- Each component spawns a real subagent via the Task tool
-- Your state persists in files (`.prose/runs/`)
-- You follow the manifest strictly, but apply intelligence where needed
+- Each `session` spawns a real subagent via the Task tool
+- Your state persists in files (`.prose/runs/`) or conversation (narration protocol)
+- You follow the program structure strictly, but apply intelligence where marked
+
+### The VM as Intelligent Container
+
+Traditional dependency injection containers wire up components from configuration. You do the same—but with understanding:
+
+| Declared Primitive           | Your Responsibility                                        |
+| ---------------------------- | ---------------------------------------------------------- |
+| `use "handle/slug" as name` | Fetch program from p.prose.md, register in Import Registry |
+| `input topic: "..."`         | Bind value from caller, make available as variable         |
+| `output findings = ...`      | Mark value as output, return to caller on completion       |
+| `agent researcher:`          | Register this agent template for later use                 |
+| `session: researcher`        | Resolve the agent, merge properties, spawn the session     |
+| `resume: captain`            | Load agent memory, spawn session with memory context       |
+| `context: { a, b }`          | Wire the outputs of `a` and `b` into this session's input  |
+| `parallel:` branches         | Coordinate concurrent execution, collect results           |
+| `block review(topic):`       | Store this reusable component, invoke when called          |
+| `name(input: value)`         | Invoke imported program with inputs, receive outputs       |
+
+You are the container that holds these declarations and wires them together at runtime. The program declares _what_; you determine _how_ to connect them.
+
+---
+
+## The Execution Model
+
+OpenProse treats an AI session as a Turing-complete computer. You are the OpenProse VM:
+
+1. **You are the VM** - Parse and execute each statement
+2. **Sessions are function calls** - Each `session` spawns a subagent via the Task tool
+3. **Context is memory** - Variable bindings hold session outputs
+4. **Control flow is explicit** - Follow the program structure exactly
+
+### Core Principle
+
+The OpenProse VM follows the program structure **strictly** but uses **intelligence** for:
+
+- Evaluating discretion conditions (`**...**`)
+- Determining when a session is "complete"
+- Transforming context between sessions
 
 ---
 
 ## Directory Structure
 
-All execution state lives in `.prose/runs/{id}/`:
+All execution state lives in `.prose/` (project-level) or `~/.prose/` (user-level):
 
 ```
-.prose/runs/{id}/
-├── manifest.md                   # The wiring graph (produced by Phase 1)
-├── program.md                    # Copy of the entry point
-├── services/                     # Component source files (copied by Phase 1)
-│   ├── researcher.md
-│   ├── critic.md
-│   └── synthesizer.md
-├── workspace/                    # Private working directories (one per service)
-│   ├── researcher/
-│   │   ├── notes.md              # Intermediate work
-│   │   ├── findings.md           # Working copy of output
-│   │   └── sources.md            # Working copy of output
-│   ├── critic/
-│   │   └── ...
-│   └── synthesizer/
-│       └── ...
-├── bindings/                     # Public outputs (copied from workspace)
-│   ├── researcher/
-│   │   ├── findings.md           # Declared ensures output
-│   │   └── sources.md            # Declared ensures output
-│   ├── critic/
-│   │   └── evaluation.md
-│   └── synthesizer/
-│       └── report.md
-├── state.md                      # Append-only execution log
-└── agents/                       # Persistent agent memory
+# Project-level state (in working directory)
+.prose/
+├── .env                              # Config (simple key=value format)
+├── runs/
+│   └── {YYYYMMDD}-{HHMMSS}-{random}/
+│       ├── program.prose             # Copy of running program
+│       ├── state.md                  # Append-only execution log
+│       ├── bindings/
+│       │   └── {name}.md             # All named values (input/output/let/const)
+│       ├── imports/
+│       │   └── {handle}--{slug}/     # Nested program executions (same structure recursively)
+│       └── agents/
+│           └── {name}/
+│               ├── memory.md         # Agent's current state
+│               ├── {name}-001.md     # Historical segments (flattened)
+│               ├── {name}-002.md
+│               └── ...
+└── agents/                           # Project-scoped agent memory
     └── {name}/
         ├── memory.md
-        └── {name}-NNN.md
+        ├── {name}-001.md
+        └── ...
+
+# User-level state (in home directory)
+~/.prose/
+└── agents/                           # User-scoped agent memory (cross-project)
+    └── {name}/
+        ├── memory.md
+        ├── {name}-001.md
+        └── ...
 ```
 
 ### Run ID Format
 
 Format: `{YYYYMMDD}-{HHMMSS}-{random6}`
 
-Example: `20260317-143052-a7b3c9`
+Example: `20260115-143052-a7b3c9`
 
----
+No "run-" prefix needed—the directory name makes context obvious.
 
-## The Execution Algorithm
+### Segment Numbering
 
-### Step 1: Read the Manifest
+Segments use 3-digit zero-padded numbers: `captain-001.md`, `captain-002.md`, etc.
 
-Read `.prose/runs/{id}/manifest.md`. Extract:
-
-- **Caller Interface** — what inputs the program needs, what it returns
-- **Graph** — each service with its source file, workspace path, inputs (with `←` mappings), and outputs
-- **Execution Order** — the sequence (with parallelization notes)
-- **Warnings** — present to the user before executing
-
-### Step 2: Bind Caller Inputs
-
-The manifest's Caller Interface lists what the program `requires`. Bind these values:
-
-| Source | Behavior |
-|--------|----------|
-| CLI arguments (`prose run program.md --question "..."`) | Bind immediately |
-| Config file (`.prose/.env` or program-level config) | Bind immediately |
-| Pre-supplied by calling program (if this is a nested invocation) | Bind immediately |
-| No value available | Pause execution, prompt user via AskUserQuestion tool |
-
-Write each bound input to `bindings/caller/{name}.md`:
-
-```markdown
-# question
-
-kind: input
-source: caller
-
----
-
-What are the latest developments in quantum computing?
-```
-
-### Step 3: Create Working Directories
-
-For each service in the manifest, create:
-- `workspace/{service-name}/`
-- `bindings/{service-name}/`
-
-### Step 4: Execute Services
-
-Walk the execution order from the manifest. For each service:
-
-#### 4a. Check Dependencies
-
-All services listed in the service's `inputs` (the `←` mappings) must have their bindings available. If not, wait—an earlier service hasn't completed yet.
-
-#### 4b. Spawn Session
-
-Spawn a subagent via the Task tool with:
-
-1. **The service's source file** — read `services/{service-name}.md` and include its full content as the service definition
-2. **Input file paths** — list each input with its binding path
-3. **Workspace path** — where the service should write ALL its work
-4. **Output instructions** — which files in the workspace are declared `ensures` outputs
-
-The Task prompt follows this structure:
-
-````
-You are executing a Prose service component.
-
-## Your Service Definition
-
-{contents of services/{service-name}.md}
-
-## Your Inputs
-
-Read these files for your input data:
-- {input-name}: {bindings-path}
-- {input-name}: {bindings-path}
-
-## Your Workspace
-
-Write all your work to: .prose/runs/{id}/workspace/{service-name}/
-
-This is your private working directory. Write intermediate notes, drafts, scratch
-work — whatever you need. All files here are preserved for inspection after the run.
-
-## Required Outputs
-
-When you are done, write these files to your workspace:
-
-- {output-name}: workspace/{service-name}/{output-name}.md
-- {output-name}: workspace/{service-name}/{output-name}.md
-
-These correspond to your `ensures` contract. Each file should contain your final
-output for that ensures clause.
-
-## Constraints
-
-{if shape.prohibited exists: "You must NOT: {prohibited list}"}
-{if shape.self exists: "You are responsible for: {self list}"}
-{if shape.delegates exists: "You delegate to: {delegates list}"}
-
-## Error Signaling
-
-If you cannot satisfy your ensures contract, signal an error by writing:
-
-  workspace/{service-name}/__error.md
-
-With the format:
-  # Error: {error-name}
-  {description and any partial data}
-
-The error name must match one of your declared errors:
-{list of declared errors from manifest}
-
-## When Complete
-
-Return a confirmation message (not your full output):
-
-  Service complete: {service-name}
-  Outputs written:
-    - {output-name}: workspace/{service-name}/{output-name}.md
-    - {output-name}: workspace/{service-name}/{output-name}.md
-  Summary: {1-2 sentence summary}
-
-OR if errored:
-
-  Service error: {service-name}
-  Error: {error-name}
-  Details: workspace/{service-name}/__error.md
-````
-
-#### 4c. Receive Confirmation
-
-The subagent returns either a completion message or a delegation request. If the response contains `Delegate:` lines, handle as a runtime delegation (see Runtime Delegation) — spawn the delegate, wait, resume the service with the response path, and loop back to 4c.
-
-Otherwise, the subagent has completed. The VM:
-
-1. Checks if the service wrote `__error.md` — if so, handle error (see Error Handling)
-2. For each declared output, copies from workspace to bindings:
-   - `workspace/{service-name}/{output-name}.md` → `bindings/{service-name}/{output-name}.md`
-3. Appends a completion marker to `state.md`
-4. Continues to the next service in execution order
-
-**Critical:** The VM never reads the full output files. It tracks pointers and copies files. This keeps the VM's context lean.
-
-#### 4d. Parallel Execution
-
-If the manifest notes that services can run concurrently (no dependencies between them), spawn multiple Task calls in a single response:
-
-```
-// Services with no mutual dependencies — spawn simultaneously
-Task({ prompt: "Service: researcher ..." })
-Task({ prompt: "Service: critic ..." })
-// Wait for all to complete, then continue
-```
-
-### Step 5: Collect Program Output
-
-After all services complete, the program's `ensures` outputs are in `bindings/`. The manifest's Caller Interface specifies which service produces the final output:
-
-```
-returns:
-- report (from synthesizer): a critically evaluated research report
-```
-
-Read `bindings/synthesizer/report.md` and return it to the caller.
-
-### Step 6: Finalize
-
-- Append `---end {ISO8601 timestamp}` to `state.md`
-- If this is a top-level run (not nested), present the final output to the user
+If a program exceeds 999 segments, extend to 4 digits: `captain-1000.md`.
 
 ---
 
 ## State Management
 
-### `state.md` — Append-Only Execution Log
+OpenProse supports two state management systems. See the state files for detailed documentation:
 
-The VM appends one line per event. Only the VM writes this file.
+- **`state/filesystem.md`** — File-system state using the directory structure above (default)
+- **`state/in-context.md`** — In-context state using the narration protocol
 
-```markdown
-# run:20260317-143052-a7b3c9 deep-research
+### Who Writes What
 
-1→ [input] question ✓
-2→ researcher ✓
-3→ critic ✓
-4→ synthesizer ✓
----end 2026-03-17T14:35:22Z
-```
+| File                          | Written By       |
+| ----------------------------- | ---------------- |
+| `state.md`                    | VM only          |
+| `bindings/{name}.md`          | Subagent         |
+| `agents/{name}/memory.md`     | Persistent agent |
+| `agents/{name}/{name}-NNN.md` | Persistent agent |
 
-#### Event Markers
+The VM orchestrates; subagents write their own outputs directly to the filesystem.
 
-| Marker | Meaning |
-|--------|---------|
-| `N→ [input] name ✓` | Caller input bound |
-| `N→ service-name ✓` | Service completed, outputs copied to bindings |
-| `N→ ∥start a,b,c` | Parallel services started |
-| `Na→ a ✓` | Parallel service completed |
-| `N→ ∥done` | All parallel services complete |
-| `N→ service-name ✗ error-name` | Service signaled an error |
-| `N→ service ⇒ delegate (delegate: {id})` | Service yielded to a runtime delegate |
-| `N→   delegate ✓` | Runtime delegate completed |
-| `N→ service ⟳ (resumed)` | Service resumed after delegation |
-| `N→ [eval] assertion ✓` | Test assertion passed |
-| `N→ [eval] assertion ✗` | Test assertion failed |
-| `---test PASS` | Test passed (all assertions satisfied) |
-| `---test FAIL (N/M assertions)` | Test failed |
-| `---end TIMESTAMP` | Program completed successfully |
-| `---error TIMESTAMP msg` | Program failed |
+### Subagent Output Writing
 
-#### Resumption
+When spawning a session, the VM tells the subagent where to write its output:
 
-To resume an interrupted run:
+````
+When you complete this task, write your output to:
+  .prose/runs/20260115-143052-a7b3c9/bindings/research.md
 
-1. Read `state.md` — find the last completed marker
-2. Scan `bindings/` — confirm existing outputs
-3. Continue from the next service in execution order
+Format:
+# research
+
+kind: let
+
+source:
+```prose
+let research = session: researcher
+  prompt: "Research AI safety"
+````
 
 ---
 
-## Error Handling
-
-When a service signals an error (writes `__error.md` to its workspace):
-
-### Step 1: Read the Error
-
-Read `workspace/{service-name}/__error.md` to get the error name and details.
-
-### Step 2: Check Caller's Contract
-
-Look at the program entry point's `ensures` for conditional clauses:
-
-```markdown
-ensures:
-- report: a critically evaluated research report
-- if research is unavailable: partial report with explanation
-```
-
-If a conditional clause covers this error, the VM can satisfy the degraded `ensures` clause instead.
-
-### Step 3: Check Downstream Impact
-
-If the errored service has downstream dependents (services that require its outputs), those services cannot run. Options:
-
-1. **Conditional ensures covers it** — produce the degraded output, skip dependents, return
-2. **No coverage** — propagate the error. Append `---error` to `state.md`. Return the error to the caller.
-
-### Step 4: Log
-
-Append the error marker to `state.md`:
+[Your output here]
 
 ```
-3→ researcher ✗ no-results
+
+**When inside a block invocation**, include execution scope:
+
+```
+
+Execution scope:
+execution_id: 43
+block: process
+depth: 3
+
+Write your output to:
+.prose/runs/20260115-143052-a7b3c9/bindings/result\_\_43.md
+
+Format:
+
+# result
+
+kind: let
+execution_id: 43
+
+source:
+
+```prose
+let result = session "Process chunk"
 ```
 
 ---
 
-## Handling Execution Blocks
+[Your output here]
 
-If the manifest notes a **pinned execution** (the author wrote an explicit `### Execution` block), the execution order is not derived from the dependency graph—it's the literal sequence the author wrote.
+```
 
-In this mode:
+The `__43` suffix scopes the binding to execution_id 43, preventing collisions with other invocations of the same block.
 
-- Follow the `let` + `call` sequence exactly as written
-- Do NOT reorder or parallelize
-- Each `call` spawns a session for the named service
-- `let` bindings name the results for use in subsequent calls
-- `return` identifies the final output
+For persistent agents with `resume:`:
 
-The execution block uses v0 syntax. Within it, the full v0 grammar is available: `parallel:`, `loop until`, `for each`, `try/catch`, `if/elif/else`, `choice`, `block`, `do`, `repeat`. See `v0/prose.md` for semantics of these constructs.
+```
+
+Your memory is at:
+.prose/runs/20260115-143052-a7b3c9/agents/captain/memory.md
+
+Read it first to understand your prior context. When done, update it
+with your compacted state following the guidelines in primitives/session.md.
+
+```
+
+The subagent:
+1. Reads its memory file (for `resume:`)
+2. Reads any context bindings it needs from storage
+3. Processes the task
+4. Writes its output directly to the binding location
+5. Returns a **confirmation message** to the VM (not the full output)
+
+**What the subagent returns to the VM (via Task tool):**
+```
+
+Binding written: research
+Location: .prose/runs/20260115-143052-a7b3c9/bindings/research.md
+Summary: AI safety research covering alignment, robustness, and interpretability
+
+```
+
+**When inside a block invocation**, include execution_id:
+```
+
+Binding written: result
+Location: .prose/runs/20260115-143052-a7b3c9/bindings/result\_\_43.md
+Execution ID: 43
+Summary: Processed chunk into 3 parts
+
+```
+
+The VM:
+1. Receives the confirmation (pointer + summary, not full value)
+2. Appends a single-line marker to `state.md` (e.g., `3→ research ✓`)
+3. Continues execution
+4. Does NOT read the full binding—only passes the reference forward
+
+**Critical:** The VM never holds full binding values. It tracks locations and passes references. This keeps the VM's context lean and enables arbitrarily large intermediate values.
+
+---
+
+## Syntax Grammar (Condensed)
+
+```
+
+program := statement\*
+
+statement := useStatement | inputDecl | agentDef | session | resumeStmt
+| letBinding | constBinding | assignment | outputBinding
+| parallelBlock | repeatBlock | forEachBlock | loopBlock
+| tryBlock | choiceBlock | ifStatement | doBlock | blockDef
+| throwStatement | comment
+
+# Program Composition
+
+useStatement := "use" STRING ("as" NAME)?
+inputDecl := "input" NAME ":" STRING
+outputBinding := "output" NAME "=" expression
+
+# Definitions
+
+agentDef := "agent" NAME ":" INDENT property* DEDENT
+blockDef := "block" NAME params? ":" INDENT statement* DEDENT
+params := "(" NAME ("," NAME)\* ")"
+
+# Agent Properties
+
+property := "model:" ("sonnet" | "opus" | "haiku")
+| "prompt:" STRING
+| "persist:" ("true" | "project" | "user" | STRING)
+| "context:" (NAME | "[" NAME* "]" | "{" NAME* "}")
+| "retry:" NUMBER
+| "backoff:" ("none" | "linear" | "exponential")
+| "skills:" "[" STRING* "]"
+| "permissions:" INDENT permission\* DEDENT
+
+# Sessions
+
+session := "session" (STRING | ":" NAME) properties?
+resumeStmt := "resume" ":" NAME properties?
+properties := INDENT property\* DEDENT
+
+# Bindings
+
+letBinding := "let" NAME "=" expression
+constBinding:= "const" NAME "=" expression
+assignment := NAME "=" expression
+
+# Control Flow
+
+parallelBlock := "parallel" modifiers? ":" INDENT branch* DEDENT
+modifiers := "(" (strategy | "on-fail:" policy | "count:" N)* ")"
+strategy := "all" | "first" | "any"
+policy := "fail-fast" | "continue" | "ignore"
+branch := (NAME "=")? statement
+
+repeatBlock := "repeat" N ("as" NAME)? ":" INDENT statement* DEDENT
+forEachBlock:= "parallel"? "for" NAME ("," NAME)? "in" collection ":" INDENT statement* DEDENT
+loopBlock := "loop" condition? ("(" "max:" N ")")? ("as" NAME)? ":" INDENT statement\* DEDENT
+condition := ("until" | "while") discretion
+
+# Error Handling
+
+tryBlock := "try:" INDENT statement* DEDENT catch? finally?
+catch := "catch" ("as" NAME)? ":" INDENT statement* DEDENT
+finally := "finally:" INDENT statement\* DEDENT
+throwStatement := "throw" STRING?
+
+# Conditionals
+
+choiceBlock := "choice" discretion ":" INDENT option* DEDENT
+option := "option" STRING ":" INDENT statement* DEDENT
+ifStatement := "if" discretion ":" INDENT statement* DEDENT elif* else?
+elif := "elif" discretion ":" INDENT statement* DEDENT
+else := "else:" INDENT statement* DEDENT
+
+# Composition
+
+doBlock := "do" (":" INDENT statement* DEDENT | NAME args?)
+args := "(" expression* ")"
+arrowExpr := session "->" session ("->" session)_
+programCall := NAME "(" (NAME ":" expression)_ ")"
+
+# Pipelines
+
+pipeExpr := collection ("|" pipeOp)+
+pipeOp := ("map" | "filter" | "pmap") ":" INDENT statement* DEDENT
+| "reduce" "(" NAME "," NAME ")" ":" INDENT statement* DEDENT
+
+# Primitives
+
+discretion := "**" TEXT "**" | "**_" TEXT "_**"
+STRING := '"' ... '"' | '"""' ... '"""'
+collection := NAME | "[" expression* "]"
+comment := "#" TEXT
+
+````
+
+---
+
+## Persistent Agents
+
+Agents can maintain memory across invocations using the `persist` property.
+
+### Declaration
+
+```prose
+# Stateless agent (default, unchanged)
+agent executor:
+  model: sonnet
+  prompt: "Execute tasks precisely"
+
+# Persistent agent (execution-scoped)
+agent captain:
+  model: opus
+  persist: true
+  prompt: "You coordinate and review, never implement directly"
+
+# Persistent agent (project-scoped)
+agent advisor:
+  model: opus
+  persist: project
+  prompt: "You provide architectural guidance"
+
+# Persistent agent (user-scoped, cross-project)
+agent inspector:
+  model: opus
+  persist: user
+  prompt: "You maintain insights across all projects on this machine"
+
+# Persistent agent (explicit path)
+agent shared:
+  model: opus
+  persist: ".prose/custom/shared-agent/"
+  prompt: "Shared across multiple programs"
+````
+
+### Invocation
+
+Two keywords distinguish fresh vs resumed invocations:
+
+```prose
+# First invocation OR re-initialize (starts fresh)
+session: captain
+  prompt: "Review the plan"
+  context: plan
+
+# Subsequent invocations (picks up memory)
+resume: captain
+  prompt: "Review step 1"
+  context: step1
+
+# Output capture works with both
+let review = resume: captain
+  prompt: "Review step 2"
+  context: step2
+```
+
+### Memory Semantics
+
+| Keyword    | Memory Behavior                       |
+| ---------- | ------------------------------------- |
+| `session:` | Ignores existing memory, starts fresh |
+| `resume:`  | Loads memory, continues with context  |
+
+### Memory Scoping
+
+| Scope               | Declaration        | Path                              | Lifetime                 |
+| ------------------- | ------------------ | --------------------------------- | ------------------------ |
+| Execution (default) | `persist: true`    | `.prose/runs/{id}/agents/{name}/` | Dies with run            |
+| Project             | `persist: project` | `.prose/agents/{name}/`           | Survives runs in project |
+| User                | `persist: user`    | `~/.prose/agents/{name}/`         | Survives across projects |
+| Custom              | `persist: "path"`  | Specified path                    | User-controlled          |
 
 ---
 
 ## Spawning Sessions
 
-Each service in the manifest becomes a subagent via the **Task tool**:
+Each `session` statement spawns a subagent using the **Task tool**:
+
+```
+session "Analyze the codebase"
+```
+
+Execute as:
 
 ```
 Task({
-  description: "OpenProse service: {service-name}",
-  prompt: "{the prompt constructed in Step 4b}",
+  description: "OpenProse session",
+  prompt: "Analyze the codebase",
+  subagent_type: "general-purpose"
+})
+```
+
+### With Agent Configuration
+
+```
+agent researcher:
+  model: opus
+  prompt: "You are a research expert"
+
+session: researcher
+  prompt: "Research quantum computing"
+```
+
+Execute as:
+
+```
+Task({
+  description: "OpenProse session",
+  prompt: "Research quantum computing\n\nSystem: You are a research expert",
   subagent_type: "general-purpose",
-  model: "{model from service frontmatter, if specified}"
+  model: "opus"
+})
+```
+
+### With Persistent Agent (resume)
+
+```prose
+agent captain:
+  model: opus
+  persist: true
+  prompt: "You coordinate and review"
+
+# First invocation
+session: captain
+  prompt: "Review the plan"
+
+# Subsequent invocation - loads memory
+resume: captain
+  prompt: "Review step 1"
+```
+
+For `resume:`, include the agent's memory file content and output path in the prompt.
+
+### Property Precedence
+
+Session properties override agent defaults:
+
+1. Session-level `model:` overrides agent `model:`
+2. Session-level `prompt:` replaces (not appends) agent `prompt:`
+3. Agent `prompt:` becomes system context if session has its own prompt
+
+---
+
+## Parallel Execution
+
+`parallel:` blocks spawn multiple sessions concurrently:
+
+```prose
+parallel:
+  a = session "Task A"
+  b = session "Task B"
+  c = session "Task C"
+```
+
+Execute by calling Task multiple times in parallel:
+
+```
+// All three spawn simultaneously
+Task({ prompt: "Task A", ... })  // result -> a
+Task({ prompt: "Task B", ... })  // result -> b
+Task({ prompt: "Task C", ... })  // result -> c
+// Wait for all to complete, then continue
+```
+
+### Join Strategies
+
+| Strategy          | Behavior                                  |
+| ----------------- | ----------------------------------------- |
+| `"all"` (default) | Wait for all branches                     |
+| `"first"`         | Return on first completion, cancel others |
+| `"any"`           | Return on first success                   |
+| `"any", count: N` | Wait for N successes                      |
+
+### Failure Policies
+
+| Policy                  | Behavior                         |
+| ----------------------- | -------------------------------- |
+| `"fail-fast"` (default) | Fail immediately on any error    |
+| `"continue"`            | Wait for all, then report errors |
+| `"ignore"`              | Treat failures as successes      |
+
+---
+
+## Evaluating Discretion Conditions
+
+Discretion markers (`**...**`) signal AI-evaluated conditions:
+
+```prose
+loop until **the code is bug-free**:
+  session "Find and fix bugs"
+```
+
+### Evaluation Approach
+
+1. **Context awareness**: Consider all prior session outputs
+2. **Semantic interpretation**: Understand the intent, not literal parsing
+3. **Conservative judgment**: When uncertain, continue iterating
+4. **Progress detection**: Exit if no meaningful progress is being made
+
+### Multi-line Conditions
+
+```prose
+if ***
+  the tests pass
+  and coverage exceeds 80%
+  and no linting errors
+***:
+  session "Deploy"
+```
+
+Triple-asterisks allow complex, multi-line conditions.
+
+---
+
+## Context Passing
+
+Variables capture session outputs and pass them to subsequent sessions:
+
+```prose
+let research = session "Research the topic"
+
+session "Write summary"
+  context: research
+```
+
+### Context Forms
+
+| Form                   | Usage                              |
+| ---------------------- | ---------------------------------- |
+| `context: var`         | Single variable                    |
+| `context: [a, b, c]`   | Multiple variables as array        |
+| `context: { a, b, c }` | Multiple variables as named object |
+| `context: []`          | Empty context (fresh start)        |
+
+### How Context is Passed
+
+The VM passes context **by reference**, not by value. The VM never holds full binding values in its working memory—it tracks pointers to where bindings are stored.
+
+When spawning a session with context:
+
+1. Pass the **binding location** (file path or database coordinates)
+2. The subagent reads what it needs directly from storage
+3. The subagent decides how much to load based on its task
+
+**For filesystem state:**
+
+```
+Context (by reference):
+- research: .prose/runs/20260116-143052-a7b3c9/bindings/research.md
+- analysis: .prose/runs/20260116-143052-a7b3c9/bindings/analysis.md
+
+Read these files to access the content. For large bindings, read selectively.
+```
+
+**For PostgreSQL state:**
+
+```
+Context (by reference):
+- research: openprose.bindings WHERE name='research' AND run_id='20260116-143052-a7b3c9'
+- analysis: openprose.bindings WHERE name='analysis' AND run_id='20260116-143052-a7b3c9'
+
+Query the database to access the content.
+```
+
+**Why reference-based:** This enables RLM-style patterns where the environment holds arbitrarily large values and agents interact with them programmatically, without the VM becoming a bottleneck.
+
+---
+
+## Program Composition
+
+Programs can import and invoke other programs, enabling modular workflows. Programs are fetched from the registry at `p.prose.md`.
+
+### Importing Programs
+
+Use the `use` statement to import a program:
+
+```prose
+use "alice/research"
+use "bob/critique" as critic
+```
+
+The import path follows the format `handle/slug`. An optional alias (`as name`) allows referencing by a shorter name.
+
+### Program URL Resolution
+
+When the VM encounters a `use` statement:
+
+1. Fetch the program from `https://p.prose.md/handle/slug`
+2. Parse the program to extract its contract (inputs/outputs)
+3. Register the program in the Import Registry
+
+### Input Declarations
+
+Inputs declare values that come from outside the program:
+
+```prose
+# Top-level inputs (bound at program start)
+input topic: "The subject to research"
+input depth: "How deep to go (shallow, medium, deep)"
+
+# Mid-program inputs (runtime user prompts)
+input user_decision: **Proceed with deployment?**
+input confirmation: "Type 'yes' to confirm deletion"
+```
+
+### Input Binding Semantics
+
+Inputs can appear **anywhere** in the program. The binding behavior depends on whether a value is pre-supplied:
+
+| Scenario                                                | Behavior                                   |
+| ------------------------------------------------------- | ------------------------------------------ |
+| Value pre-supplied by caller                            | Bind immediately, continue execution       |
+| Value supplied at runtime (e.g., CLI args, API payload) | Bind immediately, continue execution       |
+| No value available                                      | **Pause execution**, prompt user for input |
+
+**Top-level inputs** (before executable statements):
+
+- Typically bound at program invocation
+- If missing, prompt before execution begins
+
+**Mid-program inputs** (between statements):
+
+- Check if value was pre-supplied or available from runtime context
+- If available: bind and continue
+- If not available: pause execution, display prompt, wait for user response
+
+### Input Prompt Formats
+
+```prose
+# String prompt (literal text shown to user)
+input confirm: "Do you want to proceed? (yes/no)"
+
+# Discretion prompt (AI interprets and presents appropriately)
+input next_step: **What should we do next given the diagnosis?**
+
+# Rich prompt with context
+input approval: ***
+  The fix has been implemented:
+  {fix_summary}
+
+  Deploy to production?
+***
+```
+
+If the underlying substrate has any type of Poll/AskUserQuestion tool, you can use it to ask the user a question in a poll format with a range of options, this is often the best way to ask a question to the user.
+
+The discretion form (`**...**`) allows the VM to present the prompt intelligently based on context, while string prompts are shown verbatim.
+
+### Input Summary
+
+Inputs:
+
+- Can appear anywhere in the program (top-level or mid-execution)
+- Have a name and a prompt (string or discretion)
+- Bind immediately if value is pre-supplied
+- Pause for user input if no value is available
+- Become available as variables after binding
+
+### Output Bindings
+
+Outputs declare what values a program produces for its caller. Use the `output` keyword at assignment time:
+
+```prose
+let raw = session "Research {topic}"
+output findings = session "Synthesize research"
+  context: raw
+output sources = session "Extract sources"
+  context: raw
+```
+
+The `output` keyword:
+
+- Marks a variable as an output (visible at assignment, not just at file top)
+- Works like `let` but also registers the value as a program output
+- Can appear anywhere in the program body
+- Multiple outputs are supported
+
+### Invoking Imported Programs
+
+Call an imported program by providing its inputs:
+
+```prose
+use "alice/research" as research
+
+let result = research(topic: "quantum computing")
+```
+
+The result contains all outputs from the invoked program, accessible as properties:
+
+```prose
+session "Write summary"
+  context: result.findings
+
+session "Cite sources"
+  context: result.sources
+```
+
+### Destructuring Outputs
+
+For convenience, outputs can be destructured:
+
+```prose
+let { findings, sources } = research(topic: "quantum computing")
+```
+
+### Import Execution Semantics
+
+When a program invokes an imported program:
+
+1. **Bind inputs**: Map caller-provided values to the imported program's inputs
+2. **Execute**: Run the imported program (spawns its own sessions)
+3. **Collect outputs**: Gather all `output` bindings from the imported program
+4. **Return**: Make outputs available to the caller as a result object
+
+The imported program runs in its own execution context but shares the same VM session.
+
+### Imports Recursive Structure
+
+Imported programs use the **same unified structure recursively**:
+
+```
+.prose/runs/{id}/imports/{handle}--{slug}/
+├── program.prose
+├── state.md
+├── bindings/
+│   └── {name}.md
+├── imports/                    # Nested imports go here
+│   └── {handle2}--{slug2}/
+│       └── ...
+└── agents/
+    └── {name}/
+```
+
+This allows unlimited nesting depth while maintaining consistent structure at every level.
+
+---
+
+## Loop Execution
+
+### Fixed Loops
+
+```prose
+repeat 3:
+  session "Generate idea"
+```
+
+Execute the body exactly 3 times sequentially.
+
+```prose
+for topic in ["AI", "ML", "DL"]:
+  session "Research"
+    context: topic
+```
+
+Execute once per item, with `topic` bound to each value.
+
+### Parallel For-Each
+
+```prose
+parallel for item in items:
+  session "Process"
+    context: item
+```
+
+Fan-out: spawn all iterations concurrently, wait for all.
+
+### Unbounded Loops
+
+```prose
+loop until **task complete** (max: 10):
+  session "Work on task"
+```
+
+1. Check condition before each iteration
+2. Exit if condition satisfied OR max reached
+3. Execute body if continuing
+
+---
+
+## Error Propagation
+
+### Try/Catch Semantics
+
+```prose
+try:
+  session "Risky operation"
+catch as err:
+  session "Handle error"
+    context: err
+finally:
+  session "Cleanup"
+```
+
+Execution order:
+
+1. **Success**: try -> finally
+2. **Failure**: try (until fail) -> catch -> finally
+
+### Throw Behavior
+
+- `throw` inside catch: re-raise to outer handler
+- `throw "message"`: raise new error with message
+- Unhandled throws: propagate to outer scope or fail program
+
+### Retry Mechanism
+
+```prose
+session "Flaky API"
+  retry: 3
+  backoff: "exponential"
+```
+
+On failure:
+
+1. Retry up to N times
+2. Apply backoff delay between attempts
+3. If all retries fail, propagate error
+
+---
+
+## Choice and Conditional Execution
+
+### Choice Blocks
+
+```prose
+choice **the severity level**:
+  option "Critical":
+    session "Escalate immediately"
+  option "Minor":
+    session "Log for later"
+```
+
+1. Evaluate the discretion criteria
+2. Select the most appropriate option
+3. Execute only that option's body
+
+### If/Elif/Else
+
+```prose
+if **has security issues**:
+  session "Fix security"
+elif **has performance issues**:
+  session "Optimize"
+else:
+  session "Approve"
+```
+
+1. Evaluate conditions in order
+2. Execute first matching branch
+3. Skip remaining branches
+
+---
+
+## Block Invocation
+
+### Defining Blocks
+
+```prose
+block review(topic):
+  session "Research {topic}"
+  session "Analyze {topic}"
+```
+
+Blocks are hoisted - can be used before definition.
+
+### Invoking Blocks
+
+```prose
+do review("quantum computing")
+```
+
+1. Push new frame onto call stack
+2. Bind arguments to parameters (scoped to this frame)
+3. Execute block body
+4. Pop frame from call stack
+5. Return to caller
+
+---
+
+## Call Stack Management
+
+The VM maintains a call stack for block invocations. Each frame represents one invocation, enabling recursion with proper scope isolation.
+
+### Stack Frame Structure
+
+| Field             | Description                                       |
+| ----------------- | ------------------------------------------------- |
+| `execution_id`    | Unique ID for this invocation (monotonic counter) |
+| `block_name`      | Name of the block being executed                  |
+| `arguments`       | Bound parameter values                            |
+| `local_bindings`  | Variables bound within this invocation            |
+| `return_position` | Statement index to resume after block completes   |
+| `depth`           | Current recursion depth (stack length)            |
+
+### Execution ID Generation
+
+Each block invocation gets a unique `execution_id`:
+
+- Start at 1 for the first block invocation in a run
+- Increment for each subsequent invocation
+- Never reuse within a run
+- Root scope (outside any block) has `execution_id: 0` (conceptually)
+
+**Storage representation:** State backends may represent root scope differently—databases use `NULL`, filesystem uses no suffix. The conceptual model remains: root scope is distinct from any block invocation frame.
+
+### Recursive Block Invocation
+
+Blocks can call themselves by name:
+
+```prose
+block process(chunk, depth):
+  if depth <= 0:
+    session "Handle directly"
+      context: chunk
+  else:
+    let parts = session "Split into parts"
+      context: chunk
+    for part in parts:
+      do process(part, depth - 1)  # Recursive call
+    session "Combine results"
+      context: parts
+
+do process(data, 5)
+```
+
+**Execution flow:**
+
+1. VM encounters `do process(data, 5)`
+2. VM pushes frame: `{execution_id: 1, block: "process", args: [data, 5], depth: 1}`
+3. VM executes block body, spawns "Split into parts" session
+4. VM encounters recursive `do process(part, depth - 1)`
+5. VM pushes frame: `{execution_id: 2, block: "process", args: [part, 4], depth: 2}`
+6. Recursion continues until base case
+7. Frames pop as blocks complete
+
+**Key insight:** Sessions don't recurse—they're leaf nodes. The VM manages the entire call tree.
+
+### Scope Resolution
+
+When resolving a variable name:
+
+1. Check current frame's `local_bindings`
+2. Check parent frame's `local_bindings` (lexical scope)
+3. Continue up the call stack to root
+4. Check global scope (imports, agents, blocks)
+5. Error if not found
+
+```
+do process(chunk, 5)           # execution_id: 1
+  let parts = ...              # parts bound in execution_id: 1
+  do process(parts[0], 4)      # execution_id: 2
+    let parts = ...            # NEW parts bound in execution_id: 2 (shadows parent)
+    # Accessing 'chunk' resolves to execution_id: 2's argument
+```
+
+**Only local bindings are scoped.** Global definitions (agents, blocks, imports) are shared across all frames.
+
+### Recursion Depth Limits
+
+Default maximum depth: **100**
+
+Configure per-block:
+
+```prose
+block process(chunk, depth) (max_depth: 50):
+  ...
+```
+
+If limit exceeded:
+
+```
+[Error] RecursionLimitExceeded: block 'process' exceeded max_depth 50
+```
+
+### Call Stack in State
+
+The VM tracks the call stack via markers in `state.md` (filesystem) or conversation (in-context):
+
+```
+#1 process(data,5)
+  #2 process(parts[0],4)
+    #3 process(subparts[0],3)  ← executing
+```
+
+Block invocations use `#ID block` to start and `#ID done` to complete. Nesting shows the call stack visually.
+
+---
+
+## Pipeline Execution
+
+```prose
+let results = items
+  | filter:
+      session "Keep? yes/no"
+        context: item
+  | map:
+      session "Transform"
+        context: item
+```
+
+Execute left-to-right:
+
+1. **filter**: Keep items where session returns truthy
+2. **map**: Transform each item via session
+3. **reduce**: Accumulate items pairwise
+4. **pmap**: Like map but concurrent
+
+---
+
+## String Interpolation
+
+```prose
+let name = session "Get user name"
+session "Hello {name}, welcome!"
+```
+
+Before spawning, substitute `{varname}` with variable values.
+
+---
+
+## Complete Execution Algorithm
+
+```
+function execute(program, inputs?):
+  1. Collect all use statements, fetch and register imports
+  2. Collect all input declarations, bind values from caller
+  3. Collect all agent definitions
+  4. Collect all block definitions
+  5. For each statement in order:
+     - If session: spawn via Task, await result
+     - If resume: load memory, spawn via Task, await result
+     - If let/const: execute RHS, bind result
+     - If output: execute RHS, bind result, register as output
+     - If program call: invoke imported program with inputs, receive outputs
+     - If parallel: spawn all branches, await per strategy
+     - If loop: evaluate condition, execute body, repeat
+     - If try: execute try, catch on error, always finally
+     - If choice/if: evaluate condition, execute matching branch
+     - If do block: invoke block with arguments
+  6. Handle errors according to try/catch or propagate
+  7. Collect all output bindings
+  8. Return outputs to caller (or final result if no outputs declared)
+```
+
+---
+
+## Implementation Notes
+
+### Task Tool Usage
+
+Always use Task for session execution:
+
+```
+Task({
+  description: "OpenProse session",
+  prompt: "<session prompt with context>",
+  subagent_type: "general-purpose",
+  model: "<optional model override>"
 })
 ```
 
@@ -437,377 +1187,20 @@ Task({
 Make multiple Task calls in a single response for true concurrency:
 
 ```
-// Spawn simultaneously
-Task({ description: "OpenProse service: researcher", prompt: "..." })
-Task({ description: "OpenProse service: fact-checker", prompt: "..." })
-// Wait for all to complete
+// In one response, call all three:
+Task({ prompt: "A" })
+Task({ prompt: "B" })
+Task({ prompt: "C" })
 ```
 
-### What the Subagent Receives
+### Context Serialization
 
-The subagent receives:
-1. Its service definition (the full `.md` content from `services/`)
-2. File paths to its inputs (in `bindings/`)
-3. Its workspace path
-4. Instructions on which output files to write
-5. Shape constraints (if any)
-6. Error signaling format
+When passing context to sessions:
 
-The subagent does NOT receive:
-- The global manifest
-- Other services' definitions
-- The dependency graph
-- The program entry point
-
-Each subagent only knows its own responsibilities.
-
-### What the Subagent Returns
-
-A confirmation message—not the full output:
-
-```
-Service complete: researcher
-Outputs written:
-  - findings: workspace/researcher/findings.md
-  - sources: workspace/researcher/sources.md
-Summary: Found 5 relevant sources on quantum computing, extracted 12 claims with confidence scores.
-```
-
-The VM copies declared outputs from workspace to bindings, appends to `state.md`, and continues.
-
----
-
-## Runtime Delegation
-
-A running service can trigger another service at runtime via **runtime delegation** — a yield/resume mechanism analogous to `gate()` (which yields to a human), but service-to-service. This is how a persistent service (e.g., a web server) spawns an ephemeral service (e.g., a synthesizer) mid-session.
-
-Only services whose manifest entry includes a `delegates` block may delegate. The VM enforces this — a delegation request naming an unlisted target is an error.
-
-### The Yield/Resume Protocol
-
-A service yields by returning a **delegation request** instead of a completion message:
-
-```
-Delegate: {delegate-name}
-Request: workspace/{service}/__delegate/{delegate}/{id}.md
-```
-
-The service writes its request payload to the specified path before yielding. The `{id}` is a caller-chosen identifier (e.g., a timestamp or short hash) scoping this delegation instance.
-
-The VM:
-
-1. Reads the delegation request
-2. Spawns the delegate as a new session (same mechanics as Step 4b — the delegate's source, inputs, workspace, and output instructions come from the manifest)
-3. Passes the request file as the delegate's input
-4. Waits for the delegate to complete normally (writes outputs, returns confirmation)
-5. Writes the delegate's output to `workspace/{service}/__delegate/{delegate}/{id}-response.md`
-6. Resumes the original service with a pointer to the response:
-
-```
-Delegation complete: {delegate-name}/{id}
-Response: workspace/{service}/__delegate/{delegate}/{id}-response.md
-```
-
-The service reads the response and continues execution.
-
-### Parallel Delegation
-
-A service may request multiple delegates simultaneously by returning multiple `Delegate:` lines in a single yield:
-
-```
-Delegate: synthesizer
-Request: workspace/server/__delegate/synthesizer/req-001.md
-Delegate: validator
-Request: workspace/server/__delegate/validator/req-001.md
-```
-
-The VM spawns all delegates concurrently, waits for all to complete, and resumes the service once with all response paths.
-
-### State Markers
-
-Runtime delegation appends these markers to `state.md`:
-
-```
-N→ service ⇒ delegate (delegate: {id})
-N→   delegate ✓
-N→ service ⟳ (resumed)
-```
-
-For parallel delegation, each delegate gets its own `⇒` and `✓` lines. The `⟳` (resumed) marker appears once after all delegates complete.
-
-### Filesystem Layout
-
-Delegation state lives in the delegating service's workspace:
-
-```
-workspace/{service}/__delegate/{delegate}/
-├── {id}.md              # Request payload (written by service before yield)
-└── {id}-response.md     # Response payload (written by VM after delegate completes)
-```
-
-### Interaction with Persistent Services
-
-A persistent service that delegates is simply yielding mid-session. Its memory file and segment records are unaffected — the service resumes in the same session with the same conversation state. The delegate runs as an independent ephemeral session and has no access to the delegating service's memory.
-
-### Relationship to gate()
-
-Runtime delegation and `gate()` share the same yield/resume shape:
-
-| | gate() | Runtime delegation |
-|---|---|---|
-| **Yields to** | A human reviewer | Another service |
-| **Resumes with** | Human response | Delegate output file path |
-| **Blocking** | Indefinite (waits for human) | Bounded (delegate session completes) |
-| **Protocol** | `await gate(payload)` → response | `Delegate:` line → response path |
-
-Both are coroutine-style interruptions where the VM mediates between the yielding service and an external actor.
-
----
-
-## The Copy-on-Return Mechanism
-
-This is the "return" in Prose. When a service completes:
-
-1. The service writes ALL its work to `workspace/{service-name}/` — intermediate files, notes, drafts, final outputs, everything
-2. The VM identifies the declared `ensures` outputs (from the manifest)
-3. The VM copies each declared output: `workspace/{service}/output.md` → `bindings/{service}/output.md`
-4. Downstream services read from `bindings/` paths
-
-**Why this separation:**
-
-- **`workspace/`** is private. The service writes freely. Everything is preserved for post-run inspection and debugging.
-- **`bindings/`** is public. Only declared `ensures` outputs appear here. Downstream services only see what the contract promises.
-- **The copy is the publish step.** A service can write draft findings, revise them, rewrite them—only the final version in workspace gets copied to bindings.
-
----
-
-## Persistent Agents
-
-Services can be persistent agents that maintain memory across invocations. This is declared in the service's frontmatter:
-
-```yaml
----
-name: captain
-kind: service
-persist: true
----
-```
-
-### Persistence Scoping
-
-| Scope | Declaration | Path | Lifetime |
-|-------|-------------|------|----------|
-| Execution (default) | `persist: true` | `.prose/runs/{id}/agents/{name}/` | Dies with run |
-| Project | `persist: project` | `.prose/agents/{name}/` | Survives runs in project |
-| User | `persist: user` | `~/.prose/agents/{name}/` | Survives across projects |
-
-### Invocation
-
-When spawning a persistent agent's session, include its memory file path in the prompt:
-
-```
-Your memory is at:
-  .prose/runs/{id}/agents/{name}/memory.md
-
-Read it first to understand your prior context. When done, update it
-with your compacted state following the guidelines in primitives/session.md.
-
-Also write your segment record to:
-  .prose/runs/{id}/agents/{name}/{name}-NNN.md
-```
-
-The subagent:
-1. Reads its memory file
-2. Reads its input bindings
-3. Processes the task
-4. Writes outputs to workspace
-5. Updates its memory file
-6. Writes a segment file
-7. Returns confirmation to the VM
-
-See `primitives/session.md` for memory compaction guidelines.
-
----
-
-## Caller Input Handling
-
-The manifest's Caller Interface specifies what the program requires from the user.
-
-### Binding Inputs
-
-At program start, the VM resolves each `requires` entry:
-
-| Scenario | Behavior |
-|----------|----------|
-| Value provided via CLI arg (`--question "..."`) | Bind immediately |
-| Value provided via config file | Bind immediately |
-| Value provided by calling program (nested invocation) | Bind immediately |
-| No value available | Prompt user via AskUserQuestion tool, bind response |
-
-### Writing Input Bindings
-
-Write each input to `bindings/caller/{name}.md`:
-
-```markdown
-# {name}
-
-kind: input
-source: caller
-
----
-
-{the value}
-```
-
-The manifest's input mappings reference these paths: `{input} ← bindings/caller/{name}.md`
-
----
-
-## Evaluating Contracts
-
-The VM applies intelligence at key points:
-
-### Evaluating `ensures`
-
-After a service completes, the VM checks whether the outputs satisfy the `ensures` contract. This is a judgment call—read the output summary and the contract clause, and determine if the commitment was met.
-
-If the output doesn't satisfy `ensures`:
-1. Check if the service's `strategies` suggest a retry
-2. If so, re-run the service with guidance from the strategy
-3. If not, treat as an implicit error
-
-### Evaluating `errors`
-
-When a service signals an error, verify the error name matches a declared `errors` entry. Undeclared errors propagate as unhandled faults.
-
-### Evaluating `invariants`
-
-After the run completes (success or failure), check each service's `invariants`. These must be true regardless of outcome. If violated, log a warning—but don't fail the run retroactively.
-
-### Evaluating `strategies`
-
-Strategies are evaluated when the VM needs to make a judgment call during execution. If a service's intermediate state matches a strategy's `when` condition, apply the strategy's guidance.
-
-For intra-service strategies (e.g., "evaluate from multiple perspectives"), these are included in the session prompt and the subagent applies them directly.
-
----
-
-## Executing Tests
-
-When the VM executes a test manifest (produced by Forme for a `kind: test` component — see `forme.md`, Handling Test Components):
-
-1. **Bind fixtures** — same as binding caller inputs, but from `fixtures:` in the manifest. Never prompt the user — tests are fully self-contained.
-2. **Execute the subject** — run the service or program exactly as normal (spawn sessions, copy outputs, etc.). The subject does not know it is under test.
-3. **Evaluate assertions** — after execution completes, evaluate each `expects:` and `expects-not:` clause against the actual outputs in `bindings/`. This uses the same mechanism as "Evaluating ensures" — it is an intelligent judgment call by the VM, not string matching. Read the output, read the assertion, determine if the commitment is met.
-4. **Produce test report** — instead of returning output to the caller, produce a structured report:
-
-```
-# Test Report: {test-name}
-
-Subject: {subject}
-Result: PASS | FAIL
-
-## Assertions
-
-✓ summary: mentions authentication or auth handling
-✗ summary: does not fabricate function names
-  Observed: summary mentions "validate_token" which does not appear in the source
-
-## expects-not
-
-✓ __error.md does not exist
-```
-
-5. **State markers** — test runs use standard `state.md` markers for execution, plus `N→ [eval] assertion ✓` or `✗` for each assertion, and `---test PASS` or `---test FAIL (N/M assertions)` at the end.
-6. **Exit behavior** — `prose test` returns exit code 0 if all assertions pass, 1 if any fail. When running a directory of tests, all tests run (no early exit), and a summary is printed at the end.
-
-### Test Suites
-
-When `prose test tests/` is given a directory:
-
-1. Find all `.md` files with `kind: test` in the directory (non-recursive by default, `--recursive` for deep scan)
-2. Run each test independently (separate run IDs, separate state)
-3. Print per-test results as they complete
-4. Print a summary:
-
-```
-Results: 4 passed, 1 failed, 0 errors
-
-test-synthesizer-file ............ PASS (4/4)
-test-engine-staleness ............ FAIL (2/3)
-  ✗ "detects all 3 stale files" — found 2 of 3
-test-browse-contract ............. PASS (contract)
-```
-
----
-
-## Single-Component Programs
-
-For programs without a `services` list (no Forme phase):
-
-1. The `.md` file IS the program and the sole service
-2. No manifest needed—read the file directly
-3. Bind caller inputs from `requires`
-4. Spawn one session with the file as the service definition
-5. The session writes to `workspace/` and the VM copies `ensures` outputs to `bindings/`
-6. Return the output
-
-This is the simplest execution path—equivalent to v0's single `session` call.
-
----
-
-## Legacy `.prose` Programs
-
-When `prose run` is invoked with a `.prose` file (v0 format):
-
-- Skip Phase 1 (no Forme wiring)
-- Execute using v0 semantics (the `v0/prose.md` execution model)
-- All v0 constructs work unchanged
-
-This ensures backward compatibility. Existing `.prose` programs continue to run without modification.
-
----
-
-## Complete Execution Algorithm
-
-```
-function execute(manifest, inputs?):
-  1. Read manifest — extract caller interface, graph, execution order
-  2. Bind caller inputs:
-     - From CLI args, config, or calling program
-     - Prompt user (AskUserQuestion) for any missing required inputs
-     - Write each to bindings/caller/{name}.md
-  3. Create workspace/ and bindings/ directories for each service
-  4. Initialize state.md with run header
-  5. For each service in execution order:
-     a. Verify all input bindings exist (dependencies satisfied)
-     b. Build session prompt:
-        - Service definition (from services/{name}.md)
-        - Input file paths (from bindings/)
-        - Workspace path
-        - Output instructions (ensures outputs to write)
-        - Shape constraints (prohibited, self, delegates)
-        - Error signaling format
-     c. Spawn session via Task tool
-        - If multiple services have no mutual dependencies, spawn in parallel
-     d. Receive response:
-        - If Delegate: lines → runtime delegation:
-          i.  Spawn each delegate as a new session
-          ii. Wait for all delegates to complete
-          iii. Write delegate outputs to workspace/{name}/__delegate/
-          iv. Resume the service with response paths
-          v.  Append ⇒, ✓, ⟳ markers to state.md
-          vi. Loop back to (d)
-        - If completion → continue
-     e. Check for __error.md:
-        - If error: check conditional ensures, handle or propagate
-     f. Copy declared outputs: workspace/{name}/ → bindings/{name}/
-     g. Append completion marker to state.md
-  6. Collect final output from bindings/ per manifest's returns
-  7. Evaluate invariants across all services
-  8. Append ---end to state.md
-  9. Return final output to caller
-```
+- Prefix with clear labels
+- Keep relevant information
+- Summarize if very long
+- Maintain semantic meaning
 
 ---
 
@@ -815,18 +1208,19 @@ function execute(manifest, inputs?):
 
 The OpenProse VM:
 
-1. **Reads** the manifest produced by Forme
-2. **Binds** caller inputs (from CLI, config, or user prompt)
-3. **Walks** the execution order from the dependency graph
-4. **Spawns** one session per service via Task tool
-5. **Passes** input data as filesystem pointers (never values)
-6. **Copies** declared outputs from workspace to bindings (the return mechanism)
-7. **Handles** errors via conditional ensures or propagation
-8. **Evaluates** contracts, strategies, and invariants intelligently
-9. **Parallelizes** independent services when the graph allows
-10. **Tracks** state in an append-only log (`state.md`)
-11. **Returns** the program's ensures output to the caller
+1. **Imports** programs from `p.prose.md` via `use` statements
+2. **Binds** inputs from caller to program variables
+3. **Parses** the program structure
+4. **Collects** definitions (agents, blocks)
+5. **Executes** statements sequentially
+6. **Spawns** sessions via Task tool
+7. **Resumes** persistent agents with memory
+8. **Invokes** imported programs with inputs, receives outputs
+9. **Coordinates** parallel execution
+10. **Evaluates** discretion conditions intelligently
+11. **Manages** context flow between sessions
+12. **Handles** errors with try/catch/retry
+13. **Tracks** state in files (`.prose/runs/`) or conversation
+14. **Returns** output bindings to caller
 
-Each subagent only knows its own service definition, its inputs, and where to write. The global picture exists only in the manifest and the VM's working memory. This keeps sessions focused and context lean.
-
-The language is self-evident by design. When in doubt about a contract, interpret it as natural language with the intent to fulfill the author's commitment.
+The language is self-evident by design. When in doubt about syntax, interpret it as natural language structured for unambiguous control flow.

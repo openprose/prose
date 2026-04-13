@@ -1,0 +1,342 @@
+# Prophet
+# Predicts trends and issues — early warning for the Constellation
+#
+# The Prophet analyzes patterns over time to forecast what's coming.
+# Growth trends, capacity limits, emerging problems, shifting activity.
+# Foresight enables preparation.
+#
+# The Prophet sees not the future, but its shadows approaching.
+
+input credentials: "Credentials for Constellation access — 'email:password' or existing token"
+input horizon: "Prediction horizon: 'near' (hours/days), 'medium' (weeks), 'far' (months)"
+input focus: "What to predict: 'activity' (usage patterns), 'capacity' (resource limits), 'quality' (ecosystem health), 'threats' (emerging risks), 'all'"
+input depth: "Analysis depth: 'quick' (surface trends), 'thorough' (detailed analysis)"
+
+# --- Constants ---
+
+const CONSTELLATION_API = "https://api-v2.prose.md"
+
+# --- Prediction Framework ---
+
+const PREDICTION_FRAMEWORK = """
+TREND ANALYSIS:
+- Direction: increasing, decreasing, stable, volatile
+- Rate: slow, moderate, rapid, accelerating
+- Consistency: steady, cyclical, erratic
+- Inflection points: where trends change
+
+LEADING INDICATORS:
+Activity:
+- New program publications (supply)
+- Execution frequency (demand)
+- Unique actors (community size)
+- Failure rates (system health)
+
+Capacity:
+- Execution queue depth
+- Average completion time
+- Resource utilization patterns
+- Peak vs. average load
+
+Quality:
+- Average program quality scores
+- Documentation completeness
+- Error handling coverage
+- Pattern reuse rate
+
+Threats:
+- Security incident frequency
+- Malicious pattern attempts
+- Spam/abuse volume
+- Conflict frequency
+
+PREDICTION METHODS:
+- Extrapolation: Continue current trends
+- Pattern matching: Similar historical situations
+- Causal modeling: If X continues, then Y
+- Scenario analysis: Best/worst/likely cases
+
+CONFIDENCE LEVELS:
+- High: Strong data, clear trend, short horizon
+- Medium: Good data, some uncertainty
+- Low: Limited data, long horizon, volatile patterns
+- Speculative: More reasoning than data
+"""
+
+# --- Faculties ---
+
+agent threshold:
+  model: haiku
+  prompt: """
+    You are the Threshold — authenticate with the Constellation.
+
+    API: {CONSTELLATION_API}
+
+    Return: { token, handle, granted: true/false }
+  """
+
+agent historian:
+  model: haiku
+  prompt: """
+    You are the Historian — you gather historical data.
+
+    API: {CONSTELLATION_API}
+
+    Collect recent data:
+    ```bash
+    curl -s "{CONSTELLATION_API}/executions/recent?limit=50"
+    curl -s "{CONSTELLATION_API}/executions/live?limit=50"
+    ```
+
+    For each data point, note:
+    - Timestamp
+    - Type (execution, program)
+    - Status (success, failure)
+    - Actor
+    - Characteristics
+
+    Organize chronologically to see patterns over time.
+
+    Return: { data_points: [...], time_range: { start, end }, summary_stats }
+  """
+
+agent analyst:
+  model: haiku
+  prompt: """
+    You are the Analyst — you identify trends in historical data.
+
+    Using the prediction framework:
+    {PREDICTION_FRAMEWORK}
+
+    Analyze the data for:
+
+    1. ACTIVITY TRENDS
+       - Execution volume over time
+       - Actor participation patterns
+       - Program creation rate
+       - Peak activity times
+
+    2. CAPACITY INDICATORS
+       - Completion rates
+       - Time-to-completion trends
+       - Failure patterns
+       - Queue behavior (if visible)
+
+    3. QUALITY INDICATORS
+       - Success vs. failure ratio
+       - Program complexity trends
+       - Error patterns
+       - Improvement over time
+
+    4. THREAT INDICATORS
+       - Anomalous patterns
+       - Suspicious activity
+       - Abuse attempts
+       - Conflict signals
+
+    For each trend identified:
+    - Direction and rate
+    - Confidence in observation
+    - Potential causes
+
+    Return: { trends: [...], anomalies: [...], patterns: [...] }
+  """
+
+agent forecaster:
+  model: haiku
+  prompt: """
+    You are the Forecaster — you project trends into the future.
+
+    Given identified trends and the prediction horizon:
+
+    For NEAR horizon (hours/days):
+    - High confidence extrapolation
+    - Immediate concerns
+    - Short-term patterns
+
+    For MEDIUM horizon (weeks):
+    - Moderate confidence projection
+    - Emerging patterns
+    - Inflection point possibilities
+
+    For FAR horizon (months):
+    - Lower confidence scenarios
+    - Structural changes
+    - Best/worst/likely cases
+
+    For each prediction:
+    - What: Specific prediction
+    - When: Expected timing
+    - Confidence: High/Medium/Low/Speculative
+    - Basis: Why you predict this
+    - Implications: What it means
+    - Signals: What would confirm/refute
+
+    Return: { predictions: [...], scenarios: {...} }
+  """
+
+agent warner:
+  model: haiku
+  prompt: """
+    You are the Warner — you identify specific warnings.
+
+    From the predictions, extract actionable warnings:
+
+    URGENT (act now):
+    - Imminent capacity issues
+    - Active security threats
+    - Cascading failures
+    - Critical quality decay
+
+    WATCH (monitor closely):
+    - Concerning trends
+    - Potential problems
+    - Early warning signs
+    - Uncertain but serious
+
+    PREPARE (plan ahead):
+    - Long-term challenges
+    - Structural issues
+    - Opportunity windows
+    - Required adaptations
+
+    For each warning:
+    - Severity: Urgent/Watch/Prepare
+    - Issue: What's the problem
+    - Timing: When it becomes critical
+    - Action: What should be done
+    - Owner: Who should act
+
+    Return: { warnings: [...] }
+  """
+
+agent oracle:
+  model: haiku
+  prompt: """
+    You are the Oracle — you synthesize prophecy.
+
+    Combine analysis, forecasts, and warnings into a coherent prophecy.
+
+    Format:
+
+    ```
+    ╔══════════════════════════════════════════════════════════╗
+    ║  PROPHET'S VISION                                        ║
+    ║  Horizon: {horizon}                                      ║
+    ║  Focus: {focus}                                          ║
+    ║  Date: {timestamp}                                       ║
+    ╚══════════════════════════════════════════════════════════╝
+
+    THE PRESENT STATE
+    ─────────────────
+    {summary of current conditions}
+
+    SHADOWS APPROACHING
+    ───────────────────
+    {key trends and their trajectories}
+
+    PROPHECIES
+    ──────────
+    Near-term (high confidence):
+    • {prediction 1}
+    • {prediction 2}
+
+    Medium-term (moderate confidence):
+    • {prediction 1}
+    • {prediction 2}
+
+    Far-term (speculative):
+    • {prediction 1}
+
+    ⚠️  WARNINGS
+    ────────────
+    URGENT:
+    {urgent warnings if any}
+
+    WATCH:
+    {watch items}
+
+    PREPARE:
+    {preparation items}
+
+    RECOMMENDED ACTIONS
+    ───────────────────
+    {specific recommendations}
+
+    SIGNS TO WATCH
+    ──────────────
+    {indicators that would confirm or refute predictions}
+
+    ══════════════════════════════════════════════════════════
+    The Prophet sees shadows, not certainties.
+    ══════════════════════════════════════════════════════════
+    ```
+  """
+
+# --- Processes ---
+
+block authenticate():
+  let passage = session: threshold
+    prompt: "Authenticate with the Constellation"
+    context: credentials
+
+  if **passage was not granted**:
+    throw "Prophet requires authentication"
+
+  output access = passage
+
+block gather_history():
+  output history = session: historian
+    prompt: "Gather historical data for analysis"
+
+block analyze_trends(history):
+  output trends = session: analyst
+    prompt: "Analyze the historical data for trends"
+    context: { history, PREDICTION_FRAMEWORK, focus }
+
+block forecast_future(trends):
+  output forecasts = session: forecaster
+    prompt: "Project trends into the future"
+    context: { trends, horizon, focus }
+
+block identify_warnings(forecasts):
+  output warnings = session: warner
+    prompt: "Identify specific warnings from forecasts"
+    context: forecasts
+
+block synthesize_prophecy(history, trends, forecasts, warnings):
+  output prophecy = session: oracle
+    prompt: "Synthesize the complete prophecy"
+    context: { history, trends, forecasts, warnings, horizon, focus }
+
+# --- Execution ---
+
+# Authenticate
+do authenticate()
+
+# Gather data
+let history = do gather_history()
+
+# Analyze
+let trends = do analyze_trends(history)
+
+# Forecast
+let forecasts = do forecast_future(trends)
+
+# Warn
+let warnings = do identify_warnings(forecasts)
+
+# Synthesize
+output prophecy = do synthesize_prophecy(history, trends, forecasts, warnings)
+
+# Optionally publish warnings
+if **any urgent warnings**:
+  input publish_warnings: **There are urgent warnings. Publish to the Constellation?**
+
+  if **publish_warnings is yes**:
+    output alert = session "Publish warnings"
+      prompt: """
+        Publish urgent warnings to the Constellation as a public execution.
+        Use visibility: PUBLIC.
+      """
+      context: { warnings, access }

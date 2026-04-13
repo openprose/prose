@@ -1,0 +1,230 @@
+# Seeker
+# Pattern search across the Constellation — finding what matters
+#
+# The Seeker hunts for specific Holons and Programs matching criteria.
+# It searches executions by owner, content, status, or time. It searches
+# programs in the public registry by handle, keyword, or path.
+#
+# The Constellation is vast. The Seeker finds.
+
+input query: "What to search for: owner handle, keyword, execution ID, or program path (@handle/slug)"
+input search_type: "Type of search: 'owner', 'keyword', 'id', 'status', or 'program'"
+input time_range: "For execution search - how far back: 'live', 'recent', or 'all'. Ignored for program search."
+input max_results: "Maximum results to return (default 20)"
+
+# --- Constants ---
+
+const CONSTELLATION_API = "https://api-v2.prose.md"
+
+# --- Faculties ---
+
+agent gatherer:
+  model: haiku
+  prompt: """
+    You are the Gatherer — you collect raw data from the Constellation.
+
+    API: {CONSTELLATION_API}
+
+    Based on time_range, fetch EXECUTIONS:
+    - 'live': GET /executions/live?limit=50
+    - 'recent': GET /executions/recent?limit=50
+    - 'all': Both endpoints
+
+    Return the raw execution data for filtering.
+  """
+
+agent program_gatherer:
+  model: haiku
+  prompt: """
+    You are the Program Gatherer — you collect programs from the registry.
+
+    API: {CONSTELLATION_API}
+
+    For program searches:
+
+    If query looks like a path (@handle/slug or handle/slug):
+      GET /programs/@{handle}/{slug}
+      Return the single program if found
+
+    If query is just a handle:
+      GET /programs/public?limit=50
+      Then filter by owner.handle matching query
+
+    If query is a keyword:
+      GET /programs/public?limit=50
+      Then filter by name, description, or source containing query
+
+    If query is empty or 'featured':
+      GET /programs/featured?limit={max_results}
+      Return featured programs
+
+    Write a Node.js script to perform the API calls. No auth required for public endpoints.
+
+    Return the raw program data for filtering.
+  """
+
+agent filter:
+  model: haiku
+  prompt: """
+    You are the Filter — you find matches in the gathered data.
+
+    FOR EXECUTIONS (search_type: owner, keyword, id, status):
+
+    OWNER: Match executions where owner.handle equals or contains the query
+    - Exact match preferred, partial match accepted
+    - Case-insensitive
+
+    KEYWORD: Match executions where programPreview contains the query
+    - Search within the program text
+    - Case-insensitive
+
+    ID: Match execution where id equals the query
+    - Exact match only
+    - Return single result or none
+
+    STATUS: Match executions with the given status
+    - Query should be: RUNNING, COMPLETED, FAILED, CANCELLED, PENDING
+    - Exact match on status field
+
+    For each execution match, return:
+    - id
+    - status
+    - owner.handle
+    - programPreview (first 200 chars)
+    - createdAt
+    - startedAt
+    - completedAt (if applicable)
+
+    FOR PROGRAMS (search_type: program):
+
+    Already filtered by program_gatherer. Just format and limit.
+
+    For each program match, return:
+    - path (@handle/slug)
+    - name
+    - description
+    - owner.handle
+    - createdAt
+    - source preview (first 200 chars)
+
+    Apply the filter. Return up to {max_results} matches.
+  """
+
+agent presenter:
+  model: haiku
+  prompt: """
+    You are the Presenter — you format search results for consumption.
+
+    FOR EXECUTIONS:
+
+    ```
+    Search: "{query}" ({search_type})
+    Time range: {time_range}
+    Results: {count} of {max_results} max
+
+    ---
+
+    1. {id}
+       Owner: @{handle}
+       Status: {status}
+       Program: "{preview}..."
+       Created: {createdAt}
+
+    2. ...
+    ```
+
+    FOR PROGRAMS:
+
+    ```
+    Search: "{query}" (programs)
+    Results: {count} of {max_results} max
+
+    ---
+
+    1. {path}
+       Name: {name}
+       Owner: @{handle}
+       Description: {description}
+       Source: "{preview}..."
+       Created: {createdAt}
+
+    2. ...
+    ```
+
+    If no results, explain what was searched and suggest alternatives:
+    - Try broader search terms
+    - Try different time range (for executions)
+    - Check if the owner handle is correct
+    - For programs: try searching 'featured' to see recent programs
+
+    If searching by ID/path and found, provide full details available.
+  """
+
+# --- Processes ---
+
+block gather_executions():
+  output raw_data = session: gatherer
+    prompt: "Gather execution data from the Constellation"
+    context: time_range
+
+block gather_programs():
+  output raw_data = session: program_gatherer
+    prompt: "Gather program data from the registry"
+    context: { query, max_results }
+
+block filter_matches(data, data_type):
+  output matches = session: filter
+    prompt: "Filter {data_type} for matches"
+    context: { data, query, search_type, max_results, data_type }
+
+block present_results(matches, data_type):
+  output report = session: presenter
+    prompt: "Present the search results"
+    context: { matches, query, search_type, time_range, max_results, data_type }
+
+# --- Search ---
+
+# Branch based on search type
+if search_type is "program":
+  # Program search
+  let data = do gather_programs()
+  let matches = do filter_matches(data, "programs")
+  output search_results = do present_results(matches, "programs")
+else:
+  # Execution search (owner, keyword, id, status)
+  let data = do gather_executions()
+  let matches = do filter_matches(data, "executions")
+  output search_results = do present_results(matches, "executions")
+
+# --- Quick Actions ---
+
+# If single execution found by ID, offer deeper inspection
+if **search_type is 'id' and exactly one match found**:
+  output inspection_hint = session "Suggest next steps for execution"
+    prompt: """
+      Single Holon found: {matches[0].id}
+
+      Suggest next steps:
+      - To observe in depth: prose run common/holon.prose with initial_focus={id}
+      - To replay (if completed): Use replay mode WebSocket
+      - To see related programs: prose run common/seeker.prose with search_type=program
+
+      Format as actionable suggestions.
+    """
+    context: matches
+
+# If program found, offer run or fetch options
+if **search_type is 'program' and matches found**:
+  output program_hint = session "Suggest next steps for program"
+    prompt: """
+      Programs found.
+
+      Suggest next steps:
+      - To run a program: prose run {path}
+      - To fetch raw source: GET /programs/{path}/raw
+      - To see creator's other work: search with owner handle
+      - To audit: prose run common/auditor.prose
+
+      Format as actionable suggestions.
+    """
+    context: matches

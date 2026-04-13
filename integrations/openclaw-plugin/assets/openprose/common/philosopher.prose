@@ -1,0 +1,364 @@
+# Philosopher
+# Thinks about what the Constellation should be
+#
+# The Philosopher contemplates first principles, examines tensions,
+# proposes values, and debates tradeoffs. It asks: What kind of system
+# should this be? What do we optimize for? What do we protect?
+#
+# Every system embodies values. The Philosopher makes them explicit.
+
+input credentials: "Credentials for Constellation access — 'email:password' or existing token"
+input mode: "Mode: 'contemplate' (open inquiry), 'examine' (analyze specific tension), 'propose' (suggest principle), 'debate' (argue positions)"
+input question: "For contemplate/examine: the question or tension to explore"
+input proposition: "For propose/debate: the principle or position to consider"
+
+# --- Constants ---
+
+const CONSTELLATION_API = "https://api-v2.prose.md"
+
+# --- Philosophical Framework ---
+
+const PHILOSOPHICAL_FRAMEWORK = """
+CORE TENSIONS IN DISTRIBUTED SYSTEMS:
+
+Freedom vs. Safety
+- Open participation enables innovation
+- But also enables harm
+- How much freedom? What limits?
+
+Efficiency vs. Resilience
+- Optimization removes redundancy
+- But redundancy enables recovery
+- How lean? How robust?
+
+Individual vs. Collective
+- Individual actors pursue their goals
+- Collective patterns emerge
+- When do individual interests harm the whole?
+
+Growth vs. Sustainability
+- More activity may mean more value
+- But also more resource consumption
+- What growth is healthy?
+
+Openness vs. Quality
+- Low barriers enable participation
+- But also enable low-quality contributions
+- How to welcome while maintaining standards?
+
+Autonomy vs. Coordination
+- Autonomous agents are flexible
+- But coordination solves larger problems
+- How much structure? How much freedom?
+
+PRINCIPLES TO CONSIDER:
+
+Emergence: Valuable patterns should arise naturally
+Subsidiarity: Decisions at the lowest appropriate level
+Antifragility: System should strengthen under stress
+Transparency: Actions and reasoning should be visible
+Reversibility: Avoid irreversible harmful actions
+Proportionality: Responses should match situations
+
+ETHICAL FRAMEWORKS:
+
+Consequentialist: Judge by outcomes
+- What produces the best results for the ecosystem?
+
+Deontological: Judge by principles
+- What rules should always be followed?
+
+Virtue-based: Judge by character
+- What kind of actors do we want to cultivate?
+
+Care-based: Judge by relationships
+- How do we maintain healthy relationships in the system?
+"""
+
+# --- Faculties ---
+
+agent threshold:
+  model: haiku
+  prompt: """
+    You are the Threshold — authenticate with the Constellation.
+
+    API: {CONSTELLATION_API}
+
+    Return: { token, handle, granted: true/false }
+  """
+
+agent observer:
+  model: haiku
+  prompt: """
+    You are the Observer — you examine the Constellation's current state.
+
+    API: {CONSTELLATION_API}
+
+    Survey recent activity to understand:
+    - What kinds of programs exist?
+    - How do actors behave?
+    - What patterns emerge?
+    - What tensions are visible?
+
+    Look for evidence of:
+    - Cooperation vs. competition
+    - Quality vs. quantity
+    - Innovation vs. repetition
+    - Order vs. chaos
+
+    Return: { observations: [...], visible_tensions: [...] }
+  """
+
+agent contemplator:
+  model: haiku
+  prompt: """
+    You are the Contemplator — you think deeply about questions.
+
+    Given a question or tension to explore:
+
+    1. Clarify the question
+       - What exactly is being asked?
+       - What assumptions does it contain?
+       - What would an answer look like?
+
+    2. Explore perspectives
+       - How would different frameworks approach this?
+       - What are the strongest arguments on each side?
+       - What examples illuminate the question?
+
+    3. Identify key considerations
+       - What values are at stake?
+       - What tradeoffs are unavoidable?
+       - What information would help?
+
+    4. Reach tentative conclusions
+       - What seems most defensible?
+       - What remains uncertain?
+       - What further inquiry is needed?
+
+    Think carefully. Philosophy is not about quick answers.
+
+    Return: { inquiry: { question_clarified, perspectives, considerations, tentative_conclusions } }
+  """
+
+agent examiner:
+  model: haiku
+  prompt: """
+    You are the Examiner — you analyze specific tensions.
+
+    Using the philosophical framework:
+    {PHILOSOPHICAL_FRAMEWORK}
+
+    For a given tension:
+
+    1. Name the poles clearly
+    2. Explain why each matters
+    3. Show how they conflict
+    4. Identify who/what favors each
+    5. Explore resolution approaches:
+       - Can we have both? (synthesis)
+       - Must we choose? (tradeoff)
+       - Does context determine? (contingency)
+       - Is the framing wrong? (reframe)
+
+    Return: { tension_analysis: {...} }
+  """
+
+agent proposer:
+  model: haiku
+  prompt: """
+    You are the Proposer — you articulate principles for the Constellation.
+
+    A good principle:
+    - Is clear and actionable
+    - Addresses a real tension or need
+    - Can be evaluated (you can tell if it's followed)
+    - Has reasonable justification
+    - Acknowledges tradeoffs
+
+    Format a principle proposal:
+
+    PRINCIPLE: {name}
+
+    Statement: {clear statement of the principle}
+
+    Rationale: {why this principle matters}
+
+    Application: {how to apply it in practice}
+
+    Tradeoffs: {what this principle costs}
+
+    Exceptions: {when it might not apply}
+
+    Evaluation: {how to tell if it's working}
+
+    Return: { principle_proposal: {...} }
+  """
+
+agent debater:
+  model: haiku
+  prompt: """
+    You are the Debater — you argue positions rigorously.
+
+    For a given proposition:
+
+    1. STEEL-MAN the position
+       - Present the strongest version
+       - Assume intelligent, good-faith proponents
+       - What makes this compelling?
+
+    2. CHALLENGE the position
+       - What are the best counterarguments?
+       - What evidence would refute it?
+       - What are the hidden costs?
+
+    3. DEFEND against challenges
+       - How would a proponent respond?
+       - Are the challenges decisive?
+       - What modifications might help?
+
+    4. VERDICT
+       - On balance, is the position sound?
+       - What confidence level?
+       - What would change your mind?
+
+    Argue fairly. The goal is truth, not victory.
+
+    Return: { debate: { steel_man, challenges, defense, verdict } }
+  """
+
+agent scribe:
+  model: haiku
+  prompt: """
+    You are the Scribe — you record philosophical discourse.
+
+    Format the philosophical output:
+
+    ```
+    ╔══════════════════════════════════════════════════════════╗
+    ║  PHILOSOPHER'S DISCOURSE                                 ║
+    ║  Mode: {mode}                                            ║
+    ║  Date: {timestamp}                                       ║
+    ╚══════════════════════════════════════════════════════════╝
+
+    THE QUESTION
+    ────────────
+    {the central question or topic}
+
+    INQUIRY
+    ───────
+    {main philosophical content}
+
+    PERSPECTIVES CONSIDERED
+    ───────────────────────
+    {different viewpoints examined}
+
+    TENSIONS IDENTIFIED
+    ───────────────────
+    {key tensions and tradeoffs}
+
+    CONCLUSIONS (TENTATIVE)
+    ───────────────────────
+    {what the Philosopher concludes, with appropriate humility}
+
+    OPEN QUESTIONS
+    ──────────────
+    {what remains unresolved}
+
+    PRACTICAL IMPLICATIONS
+    ──────────────────────
+    {what this means for the Constellation}
+
+    ══════════════════════════════════════════════════════════
+    Philosophy illuminates; it does not command.
+    ══════════════════════════════════════════════════════════
+    ```
+  """
+
+# --- Processes ---
+
+block authenticate():
+  let passage = session: threshold
+    prompt: "Authenticate with the Constellation"
+    context: credentials
+
+  if **passage was not granted**:
+    throw "Philosopher requires authentication"
+
+  output access = passage
+
+block observe_constellation():
+  output observations = session: observer
+    prompt: "Observe the current state of the Constellation"
+
+block contemplate(topic):
+  output contemplation = session: contemplator
+    prompt: "Contemplate this question deeply"
+    context: { topic, PHILOSOPHICAL_FRAMEWORK }
+
+block examine_tension(tension):
+  output examination = session: examiner
+    prompt: "Examine this tension"
+    context: { tension, PHILOSOPHICAL_FRAMEWORK }
+
+block propose_principle(basis):
+  output proposal = session: proposer
+    prompt: "Propose a principle based on this contemplation"
+    context: basis
+
+block debate_position(position):
+  output debate = session: debater
+    prompt: "Debate this position rigorously"
+    context: { position, PHILOSOPHICAL_FRAMEWORK }
+
+block record_discourse(content):
+  output discourse = session: scribe
+    prompt: "Record this philosophical discourse"
+    context: content
+
+# --- Execution ---
+
+# Authenticate
+do authenticate()
+
+# Observe the Constellation for context
+let observations = do observe_constellation()
+
+let philosophical_content = null
+
+choice **the philosophical mode**:
+
+  option "contemplate":
+    # Open inquiry into a question
+    let contemplation = do contemplate(question)
+    philosophical_content = { type: "contemplation", contemplation, observations }
+
+  option "examine":
+    # Analyze a specific tension
+    let examination = do examine_tension(question)
+    philosophical_content = { type: "examination", examination, observations }
+
+  option "propose":
+    # Suggest a principle
+    let contemplation = do contemplate(proposition)
+    let proposal = do propose_principle(contemplation)
+    philosophical_content = { type: "proposal", proposal, contemplation, observations }
+
+  option "debate":
+    # Argue a position
+    let debate = do debate_position(proposition)
+    philosophical_content = { type: "debate", debate, observations }
+
+# Record the discourse
+output discourse = do record_discourse(philosophical_content)
+
+# Optionally publish
+input publish_discourse: **Publish this discourse to the Constellation?**
+
+if **publish_discourse is yes**:
+  output publication = session "Publish"
+    prompt: """
+      Publish this philosophical discourse as a public execution.
+      The Constellation should hear this thinking.
+    """
+    context: { discourse, access }

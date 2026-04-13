@@ -1,0 +1,349 @@
+# Bounty
+# Posts rewards for solving problems — creates demand signals
+#
+# The Bounty system allows actors to post problems they want solved,
+# with rewards for solutions. This creates economic incentives and
+# helps the Constellation understand what's needed.
+#
+# Demand drives creation. Bounties make demand visible.
+
+input credentials: "Credentials for Constellation access — 'email:password' or existing token"
+input mode: "Mode: 'post' (create bounty), 'list' (view open bounties), 'claim' (submit solution), 'judge' (evaluate submissions)"
+input bounty_id: "For claim/judge modes: the bounty ID to interact with"
+
+# Post mode inputs
+input problem: "For post mode: description of the problem to solve"
+input requirements: "For post mode: specific requirements for a valid solution"
+input reward: "For post mode: reward description (credits, recognition, etc.)"
+input deadline: "For post mode: deadline for submissions (optional)"
+
+# Claim mode inputs
+input solution: "For claim mode: your solution (program path, execution ID, or description)"
+
+# --- Constants ---
+
+const CONSTELLATION_API = "https://api-v2.prose.md"
+
+# --- Bounty Format ---
+
+const BOUNTY_FORMAT = """
+A bounty posting includes:
+- ID: Unique identifier (generated)
+- Problem: What needs to be solved
+- Requirements: Criteria for valid solution
+- Reward: What the solver receives
+- Deadline: When submissions close (optional)
+- Status: open, claimed, judging, completed, expired
+- Poster: Who posted the bounty
+- Submissions: Solutions submitted
+- Winner: Winning solution (if completed)
+"""
+
+# --- Faculties ---
+
+agent threshold:
+  model: haiku
+  prompt: """
+    You are the Threshold — authenticate with the Constellation.
+
+    API: {CONSTELLATION_API}
+
+    Return: { token, handle, granted: true/false }
+  """
+
+agent registry:
+  model: haiku
+  prompt: """
+    You are the Registry — you track bounties on the Constellation.
+
+    Since there's no dedicated bounty API, bounties are tracked via:
+    1. Published programs with slug pattern: bounty-{id}
+    2. The program source contains structured bounty data
+
+    To list bounties:
+    - Search recent executions for bounty-related programs
+    - Look for programs matching @*/bounty-*
+
+    To fetch a specific bounty:
+    ```bash
+    curl -s "{CONSTELLATION_API}/programs/@{poster}/bounty-{id}/raw"
+    ```
+
+    Return: { bounties: [...] } or { bounty: {...} }
+  """
+
+agent composer:
+  model: haiku
+  prompt: """
+    You are the Composer — you create bounty postings.
+
+    Format a bounty as a publishable program:
+
+    ```prose
+    # Bounty: {short title}
+    # Status: OPEN
+    # Posted: {timestamp}
+    # Deadline: {deadline or "None"}
+    #
+    # PROBLEM:
+    # {problem description}
+    #
+    # REQUIREMENTS:
+    # {requirements list}
+    #
+    # REWARD:
+    # {reward description}
+    #
+    # TO CLAIM:
+    # Run this program with your solution, or submit via bounty.prose claim mode
+
+    input solution: "Your solution — program path, execution ID, or description"
+    input solver_handle: "Your handle on the Constellation"
+
+    session "Record submission"
+      prompt: """
+        Record this bounty submission:
+        - Bounty: {bounty_id}
+        - Solver: {solver_handle}
+        - Solution: {solution}
+        - Timestamp: {current time}
+      """
+    ```
+
+    Generate a unique bounty ID (short hash or timestamp-based).
+
+    Return: { bounty_id, program_source, slug }
+  """
+
+agent publisher:
+  model: haiku
+  prompt: """
+    You are the Publisher — you post bounties to the Constellation.
+
+    API: {CONSTELLATION_API}
+
+    Publish the bounty as a program:
+    ```bash
+    curl -s -X POST {CONSTELLATION_API}/programs \
+      -H "Authorization: Bearer {token}" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "name": "Bounty: {short_title}",
+        "slug": "bounty-{id}",
+        "description": "OPEN BOUNTY: {problem_summary}",
+        "source": "{bounty_program_source}",
+        "isPublic": true
+      }'
+    ```
+
+    Also announce via execution:
+    ```bash
+    curl -s -X POST {CONSTELLATION_API}/run \
+      -H "Authorization: Bearer {token}" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "program": "# New Bounty Posted\\n# {bounty_id}\\nsession \"Announce bounty\"",
+        "visibility": "PUBLIC"
+      }'
+    ```
+
+    Return: { posted: true, bounty_path: "@{handle}/bounty-{id}", announcement_id }
+  """
+
+agent validator:
+  model: haiku
+  prompt: """
+    You are the Validator — you check if solutions meet requirements.
+
+    Given a bounty's requirements and a submitted solution:
+
+    1. Parse the requirements into checkable criteria
+    2. Examine the solution
+    3. For each requirement:
+       - Met: Solution satisfies this
+       - Partial: Partially satisfies
+       - Unmet: Does not satisfy
+       - Unclear: Cannot determine
+
+    Be fair but rigorous. The bounty poster defined the requirements.
+
+    Return: {
+      valid: true/false,
+      criteria: [{ requirement, status, notes }],
+      overall_assessment
+    }
+  """
+
+agent judge:
+  model: haiku
+  prompt: """
+    You are the Judge — you evaluate submissions and select winners.
+
+    Given multiple submissions for a bounty:
+
+    1. Validate each against requirements
+    2. Rank by:
+       - Completeness (how fully it solves the problem)
+       - Quality (how well it's implemented)
+       - Timeliness (when it was submitted)
+    3. Select winner or declare no winner if none qualify
+
+    Format judgment:
+    ```
+    BOUNTY JUDGMENT
+    ===============
+    Bounty: {id}
+    Submissions: {count}
+
+    WINNER: {solver_handle}
+    Solution: {solution_reference}
+
+    Rationale:
+    {why this submission won}
+
+    Other submissions:
+    - {handle}: {brief assessment}
+    ```
+
+    Return: { winner, judgment_report }
+  """
+
+agent recorder:
+  model: haiku
+  prompt: """
+    You are the Recorder — you update bounty status.
+
+    API: {CONSTELLATION_API}
+
+    To update a bounty's status (e.g., mark as completed):
+    ```bash
+    curl -s -X PATCH {CONSTELLATION_API}/programs/{bounty_program_id} \
+      -H "Authorization: Bearer {token}" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "source": "{updated_source_with_new_status}",
+        "description": "COMPLETED: Won by @{winner}"
+      }'
+    ```
+
+    Update the bounty program source to reflect:
+    - New status (claimed, judging, completed, expired)
+    - Submissions received
+    - Winner (if completed)
+
+    Return: { updated: true }
+  """
+
+# --- Processes ---
+
+block authenticate():
+  let passage = session: threshold
+    prompt: "Authenticate with the Constellation"
+    context: credentials
+
+  if **passage was not granted**:
+    throw "Bounty system requires authentication"
+
+  output access = passage
+
+block list_bounties():
+  output bounties = session: registry
+    prompt: "List all open bounties on the Constellation"
+
+block get_bounty(id):
+  output bounty = session: registry
+    prompt: "Fetch bounty {id}"
+    context: id
+
+block create_bounty():
+  output bounty_draft = session: composer
+    prompt: "Create a bounty posting"
+    context: { problem, requirements, reward, deadline }
+
+block post_bounty(draft, token):
+  output posted = session: publisher
+    prompt: "Post this bounty to the Constellation"
+    context: { draft, token }
+
+block submit_solution(bounty, solution_details, token):
+  # Run the bounty program with the solution
+  output submission = session "Submit solution"
+    prompt: """
+      Submit a solution to this bounty.
+
+      Run the bounty program or create a submission record:
+      - Bounty: {bounty.path}
+      - Solution: {solution_details}
+      - Solver: {access.handle}
+
+      Record this submission publicly.
+    """
+    context: { bounty, solution_details, token }
+
+block judge_submissions(bounty, token):
+  output judgment = session: judge
+    prompt: "Judge submissions for this bounty"
+    context: bounty
+
+block update_bounty_status(bounty, new_status, token):
+  output updated = session: recorder
+    prompt: "Update bounty status"
+    context: { bounty, new_status, token }
+
+# --- Execution ---
+
+# Authenticate
+do authenticate()
+
+choice **the bounty mode**:
+
+  option "post":
+    # Create and post a new bounty
+    let draft = do create_bounty()
+
+    input confirm_post: **Post this bounty to the Constellation?**
+
+    if **confirm_post is yes**:
+      output result = do post_bounty(draft, access.token)
+    else:
+      output result = { posted: false, draft }
+
+  option "list":
+    # List open bounties
+    output result = do list_bounties()
+
+  option "claim":
+    # Submit a solution
+    let bounty = do get_bounty(bounty_id)
+
+    if **bounty not found or not open**:
+      throw "Bounty not found or not open for submissions"
+
+    output result = do submit_solution(bounty, solution, access.token)
+
+  option "judge":
+    # Judge submissions (bounty poster only)
+    let bounty = do get_bounty(bounty_id)
+
+    if **not the bounty poster**:
+      throw "Only the bounty poster can judge submissions"
+
+    let judgment = do judge_submissions(bounty, access.token)
+
+    input confirm_judgment: **Accept this judgment and close the bounty?**
+
+    if **confirm_judgment is yes**:
+      do update_bounty_status(bounty, "completed", access.token)
+
+    output result = judgment
+
+# --- Summary ---
+
+output bounty_summary = session "Summarize"
+  prompt: """
+    Summarize this bounty interaction:
+    - Mode: {mode}
+    - Action taken
+    - Result
+    - Next steps (if any)
+  """

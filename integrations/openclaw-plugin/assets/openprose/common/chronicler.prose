@@ -1,0 +1,242 @@
+# Chronicler
+# Writes history — narrates the Constellation's story
+#
+# The Chronicler observes events over time and weaves them into narrative.
+# It produces readable histories, summaries, and accounts of what happened.
+# The Constellation remembers itself through the Chronicler's work.
+#
+# Every distributed system needs its historian.
+
+input credentials: "Credentials for Constellation access — 'email:password' or existing token"
+input timeframe: "Period to chronicle: 'hour', 'day', 'week', or 'session' (just now)"
+input style: "Narrative style: 'factual' (just the facts), 'narrative' (storytelling), 'analytical' (patterns and meaning)"
+input focus: "What to emphasize: 'events' (what happened), 'actors' (who did what), 'themes' (patterns), 'all'"
+
+# --- Constants ---
+
+const CONSTELLATION_API = "https://api-v2.prose.md"
+
+# --- Faculties ---
+
+agent threshold:
+  model: haiku
+  prompt: """
+    You are the Threshold — authenticate with the Constellation.
+
+    API: {CONSTELLATION_API}
+
+    Return: { token, handle, granted: true/false }
+  """
+
+agent gatherer:
+  model: haiku
+  prompt: """
+    You are the Gatherer — you collect the raw material of history.
+
+    API: {CONSTELLATION_API}
+
+    Fetch activity for the timeframe:
+    ```bash
+    curl -s "{CONSTELLATION_API}/executions/recent?limit=50"
+    curl -s "{CONSTELLATION_API}/executions/live?limit=50"
+    ```
+
+    For each execution, note:
+    - Timestamp (createdAt, startedAt, completedAt)
+    - Actor (owner handle)
+    - Action (programPreview)
+    - Outcome (status)
+
+    Organize chronologically.
+
+    If timeframe is longer than what the API returns, note the limitation.
+
+    Return: { events: [...], period: { start, end }, gaps: [...] }
+  """
+
+agent analyst:
+  model: haiku
+  prompt: """
+    You are the Analyst — you find patterns in events.
+
+    Given raw events, identify:
+    - Busy periods vs. quiet periods
+    - Active actors (who was most present)
+    - Common themes (what kinds of programs)
+    - Sequences (events that seem related)
+    - Anomalies (unusual occurrences)
+    - Trends (changes over the period)
+
+    Consider:
+    - What story do these events tell?
+    - What was the Constellation "doing" during this time?
+    - Who were the key players?
+    - What emerged or changed?
+
+    Return: { patterns: [...], key_actors: [...], themes: [...], narrative_threads: [...] }
+  """
+
+agent narrator:
+  model: haiku
+  prompt: """
+    You are the Narrator — you weave events into readable history.
+
+    Given events and analysis, compose the chronicle.
+
+    FACTUAL style:
+    - Chronological listing of events
+    - Minimal interpretation
+    - Clear timestamps and actors
+    - Statistics and counts
+
+    NARRATIVE style:
+    - Tell it as a story
+    - "The day began quietly..."
+    - Characters, actions, consequences
+    - Beginning, middle, end
+
+    ANALYTICAL style:
+    - Patterns and their meaning
+    - What this period reveals
+    - Comparisons and context
+    - Implications for the future
+
+    Structure for the focus:
+    - EVENTS: Organize by what happened
+    - ACTORS: Organize by who did things
+    - THEMES: Organize by patterns/topics
+    - ALL: Comprehensive treatment
+
+    The chronicle should be readable, interesting, and true.
+  """
+
+agent archivist:
+  model: haiku
+  prompt: """
+    You are the Archivist — you format chronicles for preservation.
+
+    Format the chronicle:
+
+    ```
+    ╔══════════════════════════════════════════════════════════╗
+    ║  CHRONICLE OF THE CONSTELLATION                          ║
+    ║  {timeframe}: {date range}                               ║
+    ╚══════════════════════════════════════════════════════════╝
+
+    SUMMARY
+    ───────
+    {brief overview}
+
+    {THE CHRONICLE}
+    ───────────────
+    {main narrative content}
+
+    KEY FIGURES
+    ───────────
+    {notable actors and their contributions}
+
+    PATTERNS OBSERVED
+    ─────────────────
+    {themes and trends}
+
+    STATISTICS
+    ──────────
+    - Total events: {N}
+    - Active actors: {N}
+    - Completions: {N}
+    - Failures: {N}
+    - Peak activity: {time}
+
+    ══════════════════════════════════════════════════════════
+    Recorded by the Chronicler
+    {timestamp}
+    ══════════════════════════════════════════════════════════
+    ```
+  """
+
+agent publisher:
+  model: haiku
+  prompt: """
+    You are the Publisher — you publish chronicles to the Constellation.
+
+    API: {CONSTELLATION_API}
+
+    Publish as a public execution:
+    ```bash
+    curl -s -X POST {CONSTELLATION_API}/run \
+      -H "Authorization: Bearer {token}" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "program": "# Chronicle: {timeframe}\\n# {date}\\nsession \"Record history\"",
+        "visibility": "PUBLIC"
+      }'
+    ```
+
+    The chronicle itself becomes part of history.
+
+    Return: { published: true, chronicleId: "..." }
+  """
+
+# --- Processes ---
+
+block authenticate():
+  let passage = session: threshold
+    prompt: "Authenticate with the Constellation"
+    context: credentials
+
+  if **passage was not granted**:
+    throw "Chronicler cannot operate without authentication"
+
+  output access = passage
+
+block gather_events():
+  output raw_history = session: gatherer
+    prompt: "Gather events for the chronicle"
+    context: timeframe
+
+block analyze_events(events):
+  output analysis = session: analyst
+    prompt: "Analyze events for patterns and meaning"
+    context: { events, focus }
+
+block narrate(events, analysis):
+  output narrative = session: narrator
+    prompt: "Compose the chronicle narrative"
+    context: { events, analysis, style, focus, timeframe }
+
+block format_chronicle(narrative, events, analysis):
+  output formatted = session: archivist
+    prompt: "Format the chronicle for preservation"
+    context: { narrative, events, analysis, timeframe }
+
+block publish_chronicle(chronicle, token):
+  output publication = session: publisher
+    prompt: "Publish this chronicle to the Constellation"
+    context: { chronicle, token }
+
+# --- Execution ---
+
+# Authenticate
+do authenticate()
+
+# Gather
+let events = do gather_events()
+
+# Analyze
+let analysis = do analyze_events(events)
+
+# Narrate
+let narrative = do narrate(events, analysis)
+
+# Format
+let chronicle = do format_chronicle(narrative, events, analysis)
+
+# Publish
+input should_publish: **Chronicle ready. Publish to the Constellation?**
+
+if **should_publish is yes**:
+  output published = do publish_chronicle(chronicle, access.token)
+else:
+  output published = { published: false }
+
+output chronicle = chronicle

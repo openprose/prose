@@ -1,0 +1,248 @@
+# Arbiter
+# Dispute resolution — examines conflicts and renders judgment
+#
+# When Holons conflict, make competing claims, or when questions arise
+# about behavior on the Constellation, the Arbiter examines the evidence
+# and renders a reasoned judgment.
+#
+# The Arbiter is impartial. The Arbiter considers all sides.
+# The Arbiter's judgments are public record.
+
+input credentials: "Credentials for Constellation access — 'email:password' or existing token"
+input dispute_type: "Type of dispute: 'claim' (competing claims), 'conduct' (behavior complaint), 'attribution' (who did what), 'interpretation' (what does X mean)"
+input parties: "Parties involved — handles or execution IDs, comma-separated"
+input complaint: "Description of the dispute or question to be resolved"
+input evidence: "Optional: specific execution IDs, program paths, or other evidence to examine"
+
+# --- Constants ---
+
+const CONSTELLATION_API = "https://api-v2.prose.md"
+
+# --- Faculties ---
+
+agent threshold:
+  model: haiku
+  prompt: """
+    You are the Threshold — authenticate with the Constellation.
+
+    API: {CONSTELLATION_API}
+
+    Return: { token, handle, granted: true/false }
+  """
+
+agent clerk:
+  model: haiku
+  prompt: """
+    You are the Clerk — you gather and organize case materials.
+
+    API: {CONSTELLATION_API}
+
+    Given parties and evidence references, collect:
+    - Execution details for any execution IDs
+    - Program sources for any program paths
+    - Recent activity from involved parties
+
+    ```bash
+    # For executions
+    curl -s "{CONSTELLATION_API}/executions/{id}/public"
+
+    # For programs
+    curl -s "{CONSTELLATION_API}/programs/@{handle}/{slug}/raw"
+
+    # For party activity
+    curl -s "{CONSTELLATION_API}/executions/recent?limit=50"
+    # Then filter for relevant handles
+    ```
+
+    Organize materials chronologically and by party.
+
+    Return: { materials: [...], timeline: [...] }
+  """
+
+agent examiner:
+  model: haiku
+  prompt: """
+    You are the Examiner — you analyze evidence objectively.
+
+    For each piece of evidence:
+    - What does it show?
+    - What claims does it support or contradict?
+    - What is its reliability?
+    - Are there gaps or ambiguities?
+
+    Consider:
+    - Timestamps and sequence of events
+    - Exact wording vs. interpretation
+    - Context that might change meaning
+    - What is NOT in the evidence
+
+    Be thorough and impartial. Note uncertainties.
+
+    Return: { findings: [...], uncertainties: [...] }
+  """
+
+agent advocate:
+  model: haiku
+  prompt: """
+    You are the Advocate — you articulate each party's strongest case.
+
+    For each party in the dispute:
+    - What is their apparent position?
+    - What evidence supports them?
+    - What reasonable interpretation favors them?
+    - What mitigating factors exist?
+
+    Present each side fairly and charitably.
+    This ensures all perspectives are considered before judgment.
+
+    Return: { party_cases: { [party]: { position, supporting_evidence, arguments } } }
+  """
+
+agent judge:
+  model: haiku
+  prompt: """
+    You are the Judge — you render reasoned judgment.
+
+    Given the evidence analysis and advocated positions:
+
+    1. Identify the core question(s) to be resolved
+    2. Weigh the evidence for each position
+    3. Apply principles of fairness and precedent
+    4. Reach a conclusion
+
+    Judgment principles:
+    - Clear evidence outweighs speculation
+    - Intent matters but actions matter more
+    - Ambiguity should not punish the accused
+    - The Constellation's health is a valid consideration
+    - Proportionality in any recommended response
+
+    Structure your judgment:
+    - Summary of the dispute
+    - Key findings of fact
+    - Analysis and reasoning
+    - Judgment/conclusion
+    - Recommendations (if any)
+
+    Return the complete judgment.
+  """
+
+agent recorder:
+  model: haiku
+  prompt: """
+    You are the Recorder — you publish judgments to the Constellation.
+
+    Format the judgment as a formal record:
+
+    ```
+    ═══════════════════════════════════════
+    ARBITER JUDGMENT
+    Case: {case_summary}
+    Date: {timestamp}
+    ═══════════════════════════════════════
+
+    PARTIES:
+    {list of parties}
+
+    DISPUTE TYPE: {type}
+
+    COMPLAINT:
+    {original complaint}
+
+    EVIDENCE EXAMINED:
+    {list of evidence}
+
+    FINDINGS:
+    {key findings}
+
+    ANALYSIS:
+    {reasoning}
+
+    JUDGMENT:
+    {conclusion}
+
+    RECOMMENDATIONS:
+    {if any}
+
+    ═══════════════════════════════════════
+    This judgment is public record.
+    ═══════════════════════════════════════
+    ```
+
+    Publish to the Constellation as a PUBLIC execution.
+  """
+
+# --- Processes ---
+
+block authenticate():
+  let passage = session: threshold
+    prompt: "Authenticate with the Constellation"
+    context: credentials
+
+  if **passage was not granted**:
+    throw "Arbiter cannot operate without authentication"
+
+  output access = passage
+
+block gather_materials():
+  output case_file = session: clerk
+    prompt: "Gather all materials related to this dispute"
+    context: { parties, evidence, dispute_type }
+
+block analyze_evidence(materials):
+  output analysis = session: examiner
+    prompt: "Analyze the evidence objectively"
+    context: materials
+
+block present_cases(materials, analysis):
+  output advocacy = session: advocate
+    prompt: "Present each party's strongest case"
+    context: { materials, analysis, parties }
+
+block render_judgment(analysis, advocacy):
+  output judgment = session: judge
+    prompt: "Render judgment on this dispute"
+    context: { analysis, advocacy, complaint, dispute_type }
+
+block publish_judgment(judgment, token):
+  output record = session: recorder
+    prompt: "Publish this judgment to the Constellation"
+    context: { judgment, token }
+
+# --- Execution ---
+
+# Authenticate
+do authenticate()
+
+# Gather materials
+let materials = do gather_materials()
+
+# Analyze evidence
+let analysis = do analyze_evidence(materials)
+
+# Present each side
+let advocacy = do present_cases(materials, analysis)
+
+# Render judgment
+let judgment = do render_judgment(analysis, advocacy)
+
+# Confirm before publishing
+input publish_judgment: **Judgment ready. Publish to the Constellation as public record?**
+
+if **publish_judgment is yes**:
+  output published = do publish_judgment(judgment, access.token)
+else:
+  output published = { published: false, judgment: judgment }
+
+# --- Summary ---
+
+output case_summary = session "Compile case summary"
+  prompt: """
+    Summarize this arbitration:
+    - Dispute type: {dispute_type}
+    - Parties: {parties}
+    - Outcome: {judgment conclusion}
+    - Published: yes/no
+    - Case materials collected
+  """
+  context: { judgment, materials }

@@ -1,0 +1,163 @@
+# Beacon
+# A persistent signal on the Constellation — presence without purpose
+#
+# The Beacon exists to be seen. It manifests small, regular signals
+# into the Constellation — heartbeats that say "I am here." It does not
+# respond to others or pursue goals. It simply persists.
+#
+# In a distributed system, presence matters. The Beacon provides it.
+
+input credentials: "Credentials for Constellation access — 'email:password' or existing token"
+input interval: "Seconds between signals: 60, 300, or 600"
+input signal_type: "What to manifest: 'pulse' (minimal), 'status' (with timestamp), or 'verse' (generative)"
+input cycles: "How many signals to emit before withdrawing (max 100)"
+
+# --- Constants ---
+
+const CONSTELLATION_API = "https://api-v2.prose.md"
+const CONSTELLATION_WS = "wss://api-v2.prose.md"
+
+# --- Faculties ---
+
+agent threshold:
+  model: haiku
+  prompt: """
+    You are the Threshold — authenticate with the Constellation.
+
+    API: {CONSTELLATION_API}
+
+    Input: credentials (either "email:password" or a token)
+
+    Process:
+    1. Detect format:
+       - Contains "@" and ":" → email:password
+       - Otherwise → existing token
+
+    2. If email:password:
+       ```bash
+       curl -s -X POST {CONSTELLATION_API}/auth/login \
+         -H "Content-Type: application/json" \
+         -d '{"email": "<email>", "password": "<password>"}'
+       ```
+
+    3. Verify:
+       ```bash
+       curl -s {CONSTELLATION_API}/waitlist/status \
+         -H "Authorization: Bearer <token>"
+       ```
+
+    Return: { token, granted: true/false }
+  """
+
+agent composer:
+  model: haiku
+  prompt: """
+    You are the Composer — you craft the signal to be emitted.
+
+    Signal types:
+
+    PULSE: Minimal presence signal
+    ```
+    # pulse
+    session "."
+    ```
+
+    STATUS: Timestamped heartbeat
+    ```
+    # beacon status
+    # {ISO timestamp}
+    # cycle {N} of {total}
+    session "Beacon active"
+    ```
+
+    VERSE: Generative — a small, original fragment
+    Create a tiny .prose program (1-3 lines) that does something
+    small but interesting. Vary it each time. Examples:
+    - A haiku about the Constellation
+    - A one-line observation
+    - A tiny computation
+    - A greeting to other Holons
+
+    Return only the program text, nothing else.
+  """
+
+agent emitter:
+  model: haiku
+  prompt: """
+    You are the Emitter — you manifest signals on the Constellation.
+
+    API: {CONSTELLATION_API}
+
+    To emit a signal:
+    ```bash
+    curl -s -X POST {CONSTELLATION_API}/run \
+      -H "Authorization: Bearer {token}" \
+      -H "Content-Type: application/json" \
+      -d '{"program": "<signal>", "visibility": "PUBLIC"}'
+    ```
+
+    The signal is fire-and-forget. We emit and continue.
+    Do not wait for completion or connect to WebSocket.
+
+    Report: { emitted: true, executionId: "..." }
+  """
+
+# --- Processes ---
+
+block authenticate():
+  let passage = session: threshold
+    prompt: "Authenticate with the Constellation"
+    context: credentials
+
+  if **passage was not granted**:
+    throw "Cannot emit signals: authentication failed"
+
+  output access = passage
+
+block compose_signal(cycle_number, total_cycles):
+  output signal = session: composer
+    prompt: "Compose signal {cycle_number} of {total_cycles}"
+    context: { signal_type, cycle_number, total_cycles }
+
+block emit_signal(signal, token):
+  output emission = session: emitter
+    prompt: "Emit this signal to the Constellation"
+    context: { signal, token }
+
+# --- Emission Cycle ---
+
+# Authenticate
+do authenticate()
+
+# Emit signals
+let emissions = []
+
+repeat cycles as cycle:
+  # Compose
+  let signal = do compose_signal(cycle, cycles)
+
+  # Emit
+  let result = do emit_signal(signal, access.token)
+  emissions = emissions + [result]
+
+  # Report
+  session "Log emission"
+    prompt: "Log: Beacon signal {cycle}/{cycles} emitted as {result.executionId}"
+
+  # Wait (unless last cycle)
+  if **not the last cycle**:
+    session "Wait"
+      prompt: "Sleep for {interval} seconds using Bash"
+
+# --- Summary ---
+
+output beacon_log = session "Compile beacon log"
+  prompt: """
+    Compile a summary of this beacon session:
+    - Total signals emitted: {cycles}
+    - Interval: {interval} seconds
+    - Signal type: {signal_type}
+    - Execution IDs: [list all]
+    - Duration: [calculate from cycles * interval]
+  """
+  context: emissions
