@@ -113,10 +113,17 @@ async function handleRun(
       text: "Usage: `/prose run <target>`\n\nTarget can be a local file, URL, or `@owner/slug` registry reference.",
     };
   }
-  const config = getConfig(api);
-  // Use rootDir from the plugin API if available, otherwise cwd
-  const workspaceDir = api.rootDir ?? process.cwd();
-  return executeProgram(api, config, args, workspaceDir);
+  try {
+    const config = getConfig(api);
+    const workspaceDir = api.rootDir ?? process.cwd();
+    api.logger.info(`[openprose] /prose run: target="${args}" workspace="${workspaceDir}" subagent=${!!api.runtime?.subagent?.run}`);
+    const result = await executeProgram(api, config, args, workspaceDir);
+    api.logger.info(`[openprose] /prose run: result length=${result.text.length}`);
+    return result;
+  } catch (err: any) {
+    api.logger.error(`[openprose] /prose run error: ${err.message}\n${err.stack}`);
+    return { text: `Error: ${err.message}` };
+  }
 }
 
 function handleCompile(args: string): PluginCommandResult {
