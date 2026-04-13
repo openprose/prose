@@ -24,7 +24,7 @@ export interface OpenProsePluginConfig {
 
 const DEFAULT_CONFIG: OpenProsePluginConfig = {
   registryBaseUrl: "https://p.prose.md",
-  allowRemoteHttp: true,
+  allowRemoteHttp: false,
   allowLegacyV0: true,
   defaultTimeoutMs: 300_000,
   maxParallelServices: 5,

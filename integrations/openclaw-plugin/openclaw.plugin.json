@@ -14,8 +14,8 @@
       },
       "allowRemoteHttp": {
         "type": "boolean",
-        "default": true,
-        "description": "Allow fetching programs from remote URLs"
+        "default": false,
+        "description": "Allow fetching and running programs from remote URLs. Opt-in to prevent SSRF."
       },
       "allowLegacyV0": {
         "type": "boolean",

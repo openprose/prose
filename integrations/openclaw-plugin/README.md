@@ -90,7 +90,7 @@ Plugin config in your OpenClaw settings:
         "enabled": true,
         "config": {
           "registryBaseUrl": "https://p.prose.md",
-          "allowRemoteHttp": true,
+          "allowRemoteHttp": false,
           "allowLegacyV0": true,
           "defaultTimeoutMs": 300000,
           "maxParallelServices": 5

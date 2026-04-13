@@ -13,7 +13,7 @@
 
 set -euo pipefail
 
-CHAT_ID="${1:-8442695675}"
+CHAT_ID="${1:?Usage: $0 <telegram-chat-id>}"
 PASS=0
 FAIL=0
 TOTAL=0
