@@ -93,6 +93,21 @@ describe("handleProseCommand", () => {
     expect(result.text).toContain("Rejected");
   });
 
+  test("/prose run rejects non-program files (.env, .json, etc)", async () => {
+    const result = await handleProseCommand(
+      mockApi,
+      makeCtx("run .env"),
+    );
+    expect(result.text).toContain("Rejected");
+    expect(result.text).toContain(".md");
+
+    const result2 = await handleProseCommand(
+      mockApi,
+      makeCtx("run config.json"),
+    );
+    expect(result2.text).toContain("Rejected");
+  });
+
   // ── compile / wire ──
   test("/prose compile without target returns usage", async () => {
     const result = await handleProseCommand(mockApi, makeCtx("compile"));

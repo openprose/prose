@@ -46,12 +46,15 @@ export async function executeProgram(
     return { text: `Target resolution failed: ${err.message}` };
   }
 
-  // 2. Validate local paths stay within workspace (path traversal protection)
+  // 2. Validate local paths: must stay in workspace and be a program file
   if (target.kind === "local") {
     const absTarget = resolve(workspaceDir, target.resolved);
     const absWorkspace = resolve(workspaceDir);
     if (!absTarget.startsWith(absWorkspace + "/") && absTarget !== absWorkspace) {
       return { text: `Rejected: target path escapes workspace directory.` };
+    }
+    if (target.format === "unknown") {
+      return { text: `Rejected: only \`.md\` and \`.prose\` files can be executed. Got: \`${target.raw}\`` };
     }
     target.resolved = absTarget;
   }
