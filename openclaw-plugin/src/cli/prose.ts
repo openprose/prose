@@ -53,11 +53,11 @@ export function registerProseCli(ctx: CliContext, api: OpenClawPluginApi): void 
     .action(() => {
       const config = getConfig(api);
       console.log("OpenProse Runtime Status");
-      console.log(`  Phase:          0 (scaffold)`);
+      console.log(`  Version:        0.1.0`);
       console.log(`  Registry:       ${config.registryBaseUrl}`);
       console.log(`  Remote:         ${config.allowRemoteHttp}`);
       console.log(`  Legacy v0:      ${config.allowLegacyV0}`);
-      console.log(`  Timeout:        ${config.defaultTimeoutMs}ms`);
+      console.log(`  Timeout:        ${config.defaultTimeoutMs / 1000}s`);
       console.log(`  Max parallel:   ${config.maxParallelServices}`);
     });
 
@@ -73,10 +73,8 @@ export function registerProseCli(ctx: CliContext, api: OpenClawPluginApi): void 
 
   prose
     .command("compile <file>")
-    .description("Validate a Prose program without executing (Phase 1)")
+    .description("Validate a Prose program without executing")
     .action((file: string) => {
-      console.log(
-        `prose compile: Phase 1 implementation in progress. File: ${file}`,
-      );
+      console.log(`prose compile is not yet available. File: ${file}`);
     });
 }

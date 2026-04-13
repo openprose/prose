@@ -25,11 +25,15 @@
       "defaultTimeoutMs": {
         "type": "number",
         "default": 300000,
+        "minimum": 5000,
+        "maximum": 600000,
         "description": "Default timeout for service execution (ms)"
       },
       "maxParallelServices": {
         "type": "number",
         "default": 5,
+        "minimum": 1,
+        "maximum": 20,
         "description": "Maximum concurrent service sessions"
       }
     },

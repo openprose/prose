@@ -55,7 +55,7 @@ You are running inside the OpenProse runtime on OpenClaw.
 - **Run ID**: ${opts.runId}
 - **Run directory**: ${opts.runDir}
 - **Program**: ${opts.programName}
-- **Mode**: ${opts.isSingleService ? "single-service (Phase 1 skipped)" : "multi-service (manifest-driven)"}
+- **Mode**: ${opts.isSingleService ? "single-service (direct execution, no wiring needed)" : "multi-service (manifest-driven)"}
 
 ### Execution Protocol
 

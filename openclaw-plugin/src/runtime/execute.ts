@@ -46,7 +46,17 @@ export async function executeProgram(
     return { text: `Target resolution failed: ${err.message}` };
   }
 
-  // 2. Load the program content
+  // 2. Validate local paths stay within workspace (path traversal protection)
+  if (target.kind === "local") {
+    const absTarget = resolve(workspaceDir, target.resolved);
+    const absWorkspace = resolve(workspaceDir);
+    if (!absTarget.startsWith(absWorkspace + "/") && absTarget !== absWorkspace) {
+      return { text: `Rejected: target path escapes workspace directory.` };
+    }
+    target.resolved = absTarget;
+  }
+
+  // 3. Load the program content
   let programContent: string;
   try {
     programContent = await loadProgramContent(target, config);

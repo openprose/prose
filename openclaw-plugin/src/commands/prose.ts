@@ -151,8 +151,24 @@ function resolveWorkspaceDir(api: OpenClawPluginApi): string {
   if (agentWorkspace && typeof agentWorkspace === "string") {
     return agentWorkspace.replace(/^~/, process.env.HOME ?? "/root");
   }
-  // Fallback to home directory (not plugin dir)
-  return process.env.HOME ?? "/tmp";
+  // Try common OpenClaw workspace locations
+  const home = process.env.HOME;
+  if (home) {
+    // Check for typical OpenClaw workspace markers
+    const candidates = [
+      process.env.OPENCLAW_WORKSPACE,
+      `${home}/clawd`,
+    ].filter(Boolean) as string[];
+    for (const dir of candidates) {
+      try {
+        const { statSync } = require("node:fs");
+        if (statSync(dir).isDirectory()) return dir;
+      } catch {}
+    }
+  }
+  throw new Error(
+    "No workspace directory configured. Set agents.defaults.workspace in your OpenClaw config, or set OPENCLAW_WORKSPACE.",
+  );
 }
 
 function handleStatus(api: OpenClawPluginApi): PluginCommandResult {
