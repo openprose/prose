@@ -35,7 +35,8 @@ console.log(`Synced: ${SKILL_SOURCE}`);
 console.log(`    →   ${ASSETS_DEST}`);
 
 // Verify key files exist
-const required = ["SKILL.md", "prose.md", "help.md"];
+// These files are loaded into the VM system prompt — they MUST be present
+const required = ["SKILL.md", "prose.md", "help.md", "state/filesystem.md", "primitives/session.md"];
 const missing = required.filter((f) => !existsSync(join(ASSETS_DEST, f)));
 if (missing.length > 0) {
   console.error(`WARNING: Missing expected files: ${missing.join(", ")}`);
