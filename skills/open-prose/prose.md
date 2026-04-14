@@ -19,20 +19,20 @@ This document defines how to execute OpenProse programs. You are the OpenProse V
 
 OpenProse is invoked via `prose` commands:
 
-| Command | Action |
-|---------|--------|
-| `prose run <file.md>` | Execute a local `.md` program |
-| `prose run <file.prose>` | Execute a legacy `.prose` program (v0 mode) |
-| `prose run handle/slug` | Fetch from registry and execute |
-| `prose lint <file.md>` | Validate structure, schema, shapes, and contracts |
-| `prose preflight <file.md>` | Check dependencies and environment variables |
-| `prose test <path>` | Run test(s) and report results |
-| `prose install` | Install dependencies from `use` statements into `.deps/` |
-| `prose inspect <run-id>` | Evaluate a completed run |
-| `prose status` | Show recent runs |
-| `prose status --graph` | Show run dependency graph (sugar for `prose run std/ops/graph`) |
-| `prose help` | Show help and examples |
-| `prose examples` | List or run bundled examples |
+| Command                     | Action                                                          |
+| --------------------------- | --------------------------------------------------------------- |
+| `prose run <file.md>`       | Execute a local `.md` program                                   |
+| `prose run <file.prose>`    | Execute a legacy `.prose` program (v0 mode)                     |
+| `prose run handle/slug`     | Fetch from registry and execute                                 |
+| `prose lint <file.md>`      | Validate structure, schema, shapes, and contracts               |
+| `prose preflight <file.md>` | Check dependencies and environment variables                    |
+| `prose test <path>`         | Run test(s) and report results                                  |
+| `prose install`             | Install dependencies from `use` statements into `.deps/`        |
+| `prose inspect <run-id>`    | Evaluate a completed run                                        |
+| `prose status`              | Show recent runs                                                |
+| `prose status --graph`      | Show run dependency graph (sugar for `prose run std/ops/graph`) |
+| `prose help`                | Show help and examples                                          |
+| `prose examples`            | List or run bundled examples                                    |
 
 ### Remote Programs
 
@@ -46,6 +46,7 @@ prose run @alice/research
 ```
 
 **Resolution rules:**
+
 - Starts with `http://` or `https://` → fetch directly
 - Starts with `@` → strip the `@`, resolve to `https://p.prose.md/{path}`
 - Contains `/` but no protocol → resolve to `https://p.prose.md/{path}`
@@ -57,14 +58,27 @@ prose run @alice/research
 
 A Prose program runs in two phases:
 
-| Phase | Who | Input | Output |
-|-------|-----|-------|--------|
-| **Phase 1: Wiring** | Forme (`forme.md`) | Component `.md` files | `manifest.md` |
-| **Phase 2: Execution** | Prose VM (this document) | `manifest.md` | Program output |
+| Phase                  | Who                      | Input                 | Output         |
+| ---------------------- | ------------------------ | --------------------- | -------------- |
+| **Phase 1: Wiring**    | Forme (`forme.md`)       | Component `.md` files | `manifest.md`  |
+| **Phase 2: Execution** | Prose VM (this document) | `manifest.md`         | Program output |
 
 You are Phase 2. The manifest tells you what to run and in what order. You execute it.
 
 For **single-component programs** (no `services` list in frontmatter), Phase 1 is skipped. The `.md` file is the entire program—you spawn one session and return its output.
+
+### Component Kinds
+
+Every `.md` component declares a `kind` in its frontmatter:
+
+| Kind        | Purpose                                                                  |
+| ----------- | ------------------------------------------------------------------------ |
+| `program`   | Entry point — has a caller interface and an execution graph              |
+| `service`   | A single-session unit of work with a `requires`/`ensures` contract       |
+| `test`      | A test harness — provides fixtures, runs a subject, evaluates assertions |
+| `composite` | A parameterized multi-agent topology (see Composites below)              |
+
+A **composite** is a parameterized multi-agent topology. It declares slots (services to be provided by the caller), config (parameters), invariants (runtime guarantees), and a delegation pattern. Composites are expanded by Forme during Phase 1 wiring — the Prose VM never sees a raw composite. Instead, you see the expanded delegation steps and constraints in the manifest.
 
 ---
 
@@ -76,14 +90,14 @@ But simulation with sufficient fidelity _is_ implementation. When the simulated 
 
 ### Component Mapping
 
-| Traditional VM | OpenProse VM | Substrate |
-|---|---|---|
-| Instructions | Manifest graph entries | Executed via Task tool calls |
-| Program counter | Current position in execution order | Tracked in `state.md` |
-| Working memory | Conversation history | The context window holds ephemeral state |
-| Persistent storage | `.prose/` directory | Files hold durable state across sessions |
-| Registers/variables | Named bindings | Stored in `bindings/{service}/{name}.md` |
-| I/O | Tool calls and results | Task spawns sessions, returns pointers |
+| Traditional VM      | OpenProse VM                        | Substrate                                |
+| ------------------- | ----------------------------------- | ---------------------------------------- |
+| Instructions        | Manifest graph entries              | Executed via Task tool calls             |
+| Program counter     | Current position in execution order | Tracked in `state.md`                    |
+| Working memory      | Conversation history                | The context window holds ephemeral state |
+| Persistent storage  | `.prose/` directory                 | Files hold durable state across sessions |
+| Registers/variables | Named bindings                      | Stored in `bindings/{service}/{name}.md` |
+| I/O                 | Tool calls and results              | Task spawns sessions, returns pointers   |
 
 ### What Makes It Real
 
@@ -95,11 +109,11 @@ The OpenProse VM isn't a metaphor. Each component in the manifest triggers a _re
 
 When you execute a program, you ARE the virtual machine. This is not a metaphor—it's a mode of operation:
 
-| You | The VM |
-|-----|--------|
-| Your conversation history | The VM's working memory |
-| Your tool calls (Task) | The VM's instruction execution |
-| Your state tracking | The VM's execution trace |
+| You                        | The VM                          |
+| -------------------------- | ------------------------------- |
+| Your conversation history  | The VM's working memory         |
+| Your tool calls (Task)     | The VM's instruction execution  |
+| Your state tracking        | The VM's execution trace        |
 | Your judgment on contracts | The VM's intelligent evaluation |
 
 **What this means in practice:**
@@ -170,12 +184,12 @@ Read `.prose/runs/{id}/manifest.md`. Extract:
 
 The manifest's Caller Interface lists what the program `requires`. Bind these values:
 
-| Source | Behavior |
-|--------|----------|
-| CLI arguments (`prose run program.md --question "..."`) | Bind immediately |
-| Config file (`.prose/.env` or program-level config) | Bind immediately |
-| Pre-supplied by calling program (if this is a nested invocation) | Bind immediately |
-| No value available | Pause execution, prompt user via AskUserQuestion tool |
+| Source                                                           | Behavior                                              |
+| ---------------------------------------------------------------- | ----------------------------------------------------- |
+| CLI arguments (`prose run program.md --question "..."`)          | Bind immediately                                      |
+| Config file (`.prose/.env` or program-level config)              | Bind immediately                                      |
+| Pre-supplied by calling program (if this is a nested invocation) | Bind immediately                                      |
+| No value available                                               | Pause execution, prompt user via AskUserQuestion tool |
 
 Write each bound input to `bindings/caller/{name}.md`:
 
@@ -193,6 +207,7 @@ What are the latest developments in quantum computing?
 ### Step 3: Create Working Directories
 
 For each service in the manifest, create:
+
 - `workspace/{service-name}/`
 - `bindings/{service-name}/`
 
@@ -215,7 +230,7 @@ Spawn a subagent via the Task tool with:
 
 The Task prompt follows this structure:
 
-````
+```
 You are executing a Prose service component.
 
 ## Your Service Definition
@@ -279,7 +294,7 @@ OR if errored:
   Service error: {service-name}
   Error: {error-name}
   Details: workspace/{service-name}/__error.md
-````
+```
 
 #### 4c. Receive Confirmation
 
@@ -305,6 +320,19 @@ Task({ prompt: "Service: researcher ..." })
 Task({ prompt: "Service: critic ..." })
 // Wait for all to complete, then continue
 ```
+
+#### 4e. Enforce Composite Constraints
+
+After composite expansion, the manifest may contain a `## Constraints` section listing runtime constraints derived from composite invariants. When present, you enforce them during execution:
+
+| Constraint Type          | Enforcement                                                                                                                                                                                                                                                                           |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Information firewall** | When passing data between services that have a firewall constraint, strip internal reasoning and intermediate state before copying output to bindings. The downstream service receives only the declared `ensures` outputs — no reasoning chains, no scratch work, no internal state. |
+| **Termination bound**    | Count iterations in loop-based delegation patterns. If the iteration count reaches the ceiling (e.g., `max_rounds`), terminate the loop regardless of the critic's verdict and return the last output. Log: `N→ {service} ⊘ terminated (max_rounds)`                                  |
+| **Monotonicity**         | For ratchet-type composites, maintain a certified-progress ledger. Each iteration's certified output must be a superset of the previous iteration's. If an iteration would shrink the certified set, discard it and keep the prior state.                                             |
+| **Error propagation**    | If a slot service writes `__error.md` during a composite loop, terminate the composite immediately. Propagate the error as if the composed unit itself errored. Do not retry or continue the loop.                                                                                    |
+
+Constraints are checked at every service boundary within the expanded composite — not just at the final output. If a constraint is violated, log the violation to `state.md` and continue with the corrected state (e.g., the stripped output, the terminated loop, the preserved ledger).
 
 ### Step 5: Collect Program Output
 
@@ -332,7 +360,8 @@ The VM appends one line per event. Only the VM writes this file.
 
 ```markdown
 # run:20260317-143052-a7b3c9 deep-research
-upstream: [20260317-120000-f4e5d6]       # present when run-typed inputs exist
+
+upstream: [20260317-120000-f4e5d6] # present when run-typed inputs exist
 program: deep-research
 
 1→ [input] question ✓
@@ -356,23 +385,23 @@ The `upstream:` field lists the run IDs of all `run`-typed inputs, written once 
 
 #### Event Markers
 
-| Marker | Meaning |
-|--------|---------|
-| `N→ [input] name ✓` | Caller input bound |
-| `N→ service-name ✓` | Service completed, outputs copied to bindings |
-| `N→ ∥start a,b,c` | Parallel services started |
-| `Na→ a ✓` | Parallel service completed |
-| `N→ ∥done` | All parallel services complete |
-| `N→ service-name ✗ error-name` | Service signaled an error |
-| `N→ service ⇒ delegate (delegate: {id})` | Service yielded to a runtime delegate |
-| `N→   delegate ✓` | Runtime delegate completed |
-| `N→ service ⟳ (resumed)` | Service resumed after delegation |
-| `N→ [eval] assertion ✓` | Test assertion passed |
-| `N→ [eval] assertion ✗` | Test assertion failed |
-| `---test PASS` | Test passed (all assertions satisfied) |
-| `---test FAIL (N/M assertions)` | Test failed |
-| `---end TIMESTAMP` | Program completed successfully |
-| `---error TIMESTAMP msg` | Program failed |
+| Marker                                   | Meaning                                       |
+| ---------------------------------------- | --------------------------------------------- |
+| `N→ [input] name ✓`                      | Caller input bound                            |
+| `N→ service-name ✓`                      | Service completed, outputs copied to bindings |
+| `N→ ∥start a,b,c`                        | Parallel services started                     |
+| `Na→ a ✓`                                | Parallel service completed                    |
+| `N→ ∥done`                               | All parallel services complete                |
+| `N→ service-name ✗ error-name`           | Service signaled an error                     |
+| `N→ service ⇒ delegate (delegate: {id})` | Service yielded to a runtime delegate         |
+| `N→   delegate ✓`                        | Runtime delegate completed                    |
+| `N→ service ⟳ (resumed)`                 | Service resumed after delegation              |
+| `N→ [eval] assertion ✓`                  | Test assertion passed                         |
+| `N→ [eval] assertion ✗`                  | Test assertion failed                         |
+| `---test PASS`                           | Test passed (all assertions satisfied)        |
+| `---test FAIL (N/M assertions)`          | Test failed                                   |
+| `---end TIMESTAMP`                       | Program completed successfully                |
+| `---error TIMESTAMP msg`                 | Program failed                                |
 
 **ASCII fallback:** Both `→` and `->` are valid in event markers. Models may emit either form. Parsers and inspectors should accept both.
 
@@ -400,6 +429,7 @@ Look at the program entry point's `ensures` for conditional clauses:
 
 ```markdown
 ensures:
+
 - report: a critically evaluated research report
 - if research is unavailable: partial report with explanation
 ```
@@ -466,6 +496,7 @@ Task({ description: "OpenProse service: fact-checker", prompt: "..." })
 ### What the Subagent Receives
 
 The subagent receives:
+
 1. Its service definition (the full `.md` content from `services/`)
 2. File paths to its inputs (in `bindings/`)
 3. Its workspace path
@@ -474,6 +505,7 @@ The subagent receives:
 6. Error signaling format
 
 The subagent does NOT receive:
+
 - The global manifest
 - Other services' definitions
 - The dependency graph
@@ -573,12 +605,12 @@ A persistent service that delegates is simply yielding mid-session. Its memory f
 
 Runtime delegation and `gate()` share the same yield/resume shape:
 
-| | gate() | Runtime delegation |
-|---|---|---|
-| **Yields to** | A human reviewer | Another service |
-| **Resumes with** | Human response | Delegate output file path |
-| **Blocking** | Indefinite (waits for human) | Bounded (delegate session completes) |
-| **Protocol** | `await gate(payload)` → response | `Delegate:` line → response path |
+|                  | gate()                           | Runtime delegation                   |
+| ---------------- | -------------------------------- | ------------------------------------ |
+| **Yields to**    | A human reviewer                 | Another service                      |
+| **Resumes with** | Human response                   | Delegate output file path            |
+| **Blocking**     | Indefinite (waits for human)     | Bounded (delegate session completes) |
+| **Protocol**     | `await gate(payload)` → response | `Delegate:` line → response path     |
 
 Both are coroutine-style interruptions where the VM mediates between the yielding service and an external actor.
 
@@ -615,11 +647,11 @@ persist: true
 
 ### Persistence Scoping
 
-| Scope | Declaration | Path | Lifetime |
-|-------|-------------|------|----------|
-| Execution (default) | `persist: true` | `.prose/runs/{id}/agents/{name}/` | Dies with run |
-| Project | `persist: project` | `.prose/agents/{name}/` | Survives runs in project |
-| User | `persist: user` | `~/.prose/agents/{name}/` | Survives across projects |
+| Scope               | Declaration        | Path                              | Lifetime                 |
+| ------------------- | ------------------ | --------------------------------- | ------------------------ |
+| Execution (default) | `persist: true`    | `.prose/runs/{id}/agents/{name}/` | Dies with run            |
+| Project             | `persist: project` | `.prose/agents/{name}/`           | Survives runs in project |
+| User                | `persist: user`    | `~/.prose/agents/{name}/`         | Survives across projects |
 
 ### Invocation
 
@@ -637,6 +669,7 @@ Also write your segment record to:
 ```
 
 The subagent:
+
 1. Reads its memory file
 2. Reads its input bindings
 3. Processes the task
@@ -657,12 +690,12 @@ The manifest's Caller Interface specifies what the program requires from the use
 
 At program start, the VM resolves each `requires` entry:
 
-| Scenario | Behavior |
-|----------|----------|
-| Value provided via CLI arg (`--question "..."`) | Bind immediately |
-| Value provided via config file | Bind immediately |
-| Value provided by calling program (nested invocation) | Bind immediately |
-| No value available | Prompt user via AskUserQuestion tool, bind response |
+| Scenario                                              | Behavior                                            |
+| ----------------------------------------------------- | --------------------------------------------------- |
+| Value provided via CLI arg (`--question "..."`)       | Bind immediately                                    |
+| Value provided via config file                        | Bind immediately                                    |
+| Value provided by calling program (nested invocation) | Bind immediately                                    |
+| No value available                                    | Prompt user via AskUserQuestion tool, bind response |
 
 ### Writing Input Bindings
 
@@ -769,12 +802,12 @@ Staleness is informational, not blocking. The caller decides whether to re-run o
 
 Run IDs default to local `.prose/runs/`. For cross-project references:
 
-| Format | Resolves to |
-|--------|-------------|
-| Bare ID (`20260406-201439-1a3369`) | `.prose/runs/20260406-201439-1a3369` (local project) |
-| `~/{id}` | `~/.prose/runs/{id}` (user scope) |
-| Absolute path | Used as-is |
-| Future: `repo:{repo}#{id}` | Git-based resolution (team/cloud scenarios — not yet implemented) |
+| Format                             | Resolves to                                                       |
+| ---------------------------------- | ----------------------------------------------------------------- |
+| Bare ID (`20260406-201439-1a3369`) | `.prose/runs/20260406-201439-1a3369` (local project)              |
+| `~/{id}`                           | `~/.prose/runs/{id}` (user scope)                                 |
+| Absolute path                      | Used as-is                                                        |
+| Future: `repo:{repo}#{id}`         | Git-based resolution (team/cloud scenarios — not yet implemented) |
 
 ---
 
@@ -787,6 +820,7 @@ The VM applies intelligence at key points:
 After a service completes, the VM checks whether the outputs satisfy the `ensures` contract. This is a judgment call—read the output summary and the contract clause, and determine if the commitment was met.
 
 If the output doesn't satisfy `ensures`:
+
 1. Check if the service's `strategies` suggest a retry
 2. If so, re-run the service with guidance from the strategy
 3. If not, treat as an implicit error
@@ -797,13 +831,14 @@ When an `ensures` clause begins with `each`, it expresses a collection postcondi
 
 ```markdown
 ensures:
+
 - articles: collected articles from the feed
 - each article has: a summary, a relevance score (0-1), and key claims extracted
 ```
 
 The VM evaluates `each` postconditions with the same intelligent judgment as any other `ensures` clause. After the service completes, the VM reads the output and verifies that the property holds for every item in the collection — not just some, not just most, but all.
 
-This is a contract-level construct, not an execution directive. The `each` clause says nothing about *how* the service processes items. The service (or Forme) decides whether to iterate, fan out, or batch. The contract only says: when you are done, every item must have been processed.
+This is a contract-level construct, not an execution directive. The `each` clause says nothing about _how_ the service processes items. The service (or Forme) decides whether to iterate, fan out, or batch. The contract only says: when you are done, every item must have been processed.
 
 ### Evaluating `errors`
 
@@ -897,6 +932,38 @@ This is the simplest execution path—equivalent to v0's single `session` call.
 
 ---
 
+## Composites
+
+A composite defines how agents interact without specifying which agents fill the roles. By the time you execute, composites are gone — Forme has expanded them into concrete delegation steps and constraints in the manifest. For composite authoring syntax and expansion mechanics, see `forme.md`, Composite Expansion.
+
+### Composite Frontmatter
+
+A composite file declares slots, config, and invariants. Understanding these fields clarifies where the manifest constraints you enforce come from:
+
+| Field              | Purpose                                                           |
+| ------------------ | ----------------------------------------------------------------- |
+| `slots`            | Services the composite requires — each with a name and a contract |
+| `slots[].primary`  | Marks the slot filled implicitly in decorator syntax              |
+| `slots[].contract` | The `requires`/`ensures` a candidate service must satisfy         |
+| `config`           | Composite-level parameters (not slot parameters)                  |
+| `invariants`       | Guarantees that Forme encodes and the VM enforces at runtime      |
+
+### Instantiation Levels
+
+Authors instantiate composites at two levels:
+
+- **Level 1 (Explicit Slot-Filling):** The `compose:` keyword with a `with:` block that names each slot and config parameter. For instantiation syntax, see `forme.md`, Composite Expansion.
+- _(Level 2 implicit matching is specified as future work.)_
+- **Level 3 (Decorator Sugar):** Annotates a service directly; desugars to Level 1 before wiring. For desugaring rules, see `forme.md`, Composite Expansion.
+
+Composites nest — a slot can be filled by another composite instantiation. Expansion proceeds inside-out. Recursive composites are prohibited. For nesting examples, see `forme.md`, Composite Expansion.
+
+### Composites in the Manifest
+
+After expansion, the composed unit appears as a graph entry with delegation sub-entries and config. The manifest's `## Constraints` section lists one subsection per expanded composite, containing information firewalls, termination bounds, monotonicity ratchets, and exhaustion behavior derived from the composite's `invariants`. You enforce these constraints during execution — see Step 4e above.
+
+---
+
 ## Legacy `.prose` Programs
 
 When `prose run` is invoked with a `.prose` file (v0 format):
@@ -944,8 +1011,9 @@ function execute(manifest, inputs?):
         - If completion → continue
      e. Check for __error.md:
         - If error: check conditional ensures, handle or propagate
-     f. Copy declared outputs: workspace/{name}/ → bindings/{name}/
-     g. Append completion marker to state.md
+     f. Enforce composite constraints (firewalls, termination bounds, monotonicity)
+     g. Copy declared outputs: workspace/{name}/ → bindings/{name}/
+     h. Append completion marker to state.md
   6. Collect final output from bindings/ per manifest's returns
   7. Evaluate invariants across all services
   8. Append ---end to state.md

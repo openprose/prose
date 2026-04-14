@@ -1,5 +1,5 @@
 ---
-purpose: The OpenProse VM skill — language spec, compiler, standard library, Constellation commons, examples, state backends, and primitives for executing .prose programs
+purpose: The OpenProse VM skill — language spec, compiler, standard library, examples, state backends, and primitives for executing .prose programs
 related:
   - ../README.md
   - ./examples/README.md
@@ -13,7 +13,6 @@ related:
 glossary:
   Prose Complete: An LLM that, upon reading prose.md, simulates the OpenProse VM with sufficient fidelity to act as its implementation
   VM: The virtual machine described by prose.md — a session orchestrator executing .prose programs
-  Constellation: The distributed network of publicly-running Holons (prose programs) accessible via api-v2.prose.md
 ---
 
 # open-prose
@@ -28,7 +27,6 @@ The OpenProse skill for Claude Code. Activates on any `prose` command, `.prose` 
 - `help.md` — user-facing help output for the `prose help` command
 - `SOUL.md` — character and intent guidance for the VM persona
 - `lib/` — standard library programs for local evaluation and memory (inspector, vm-improver, program-improver, cost-analyzer, calibrator, error-forensics, user-memory, project-memory)
-- `../../platform/constellation/programs/` — Constellation commons programs for participating in the distributed Holon network (holon, beacon, swarm, observatory, seeker, registry, curator, publisher, sentinel, arbiter, auditor, chronicler, gardener, assessor, bounty, pollinator, prophet, philosopher)
 - `examples/` — 50 numbered .prose example programs covering the full feature set; see examples/README.md
 - `guidance/` — patterns, antipatterns, and system-prompt guidance for VM behavior
 - `state/` — state backend specifications (filesystem, in-context, SQLite, Postgres)
@@ -40,7 +38,7 @@ The subdirectories form two layers:
 
 **Specification layer** (`prose.md`, `compiler.md`, `primitives/`, `state/`): define what the VM is and how it works. `primitives/session.md` is the atomic unit; `state/` backends determine how results persist; `compiler.md` maps source syntax to primitive dispatch.
 
-**Operational layer** (`lib/`, `examples/`, `guidance/`): define how to use the VM effectively. `examples/` demonstrates the full language; `guidance/` corrects common misuse; `lib/` provides production-ready programs for self-improvement. Constellation commons programs now live in `platform/constellation/programs/`.
+**Operational layer** (`lib/`, `examples/`, `guidance/`): define how to use the VM effectively. `examples/` demonstrates the full language; `guidance/` corrects common misuse; `lib/` provides production-ready programs for self-improvement.
 
 ## Cross-Repo Connections
 

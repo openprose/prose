@@ -106,9 +106,15 @@ For each name in `services`, locate the corresponding `.md` file:
    - Example: `alice/tools/formatter` → `.deps/alice/tools/formatter.md`
 4. Registry shorthand (if contains `/`): fetch from `https://p.prose.md/{path}` (legacy)
 
+**Composite resolution:**
+
+When a service declaration includes `compose:` (e.g., `compose: std/composites/worker-critic`), resolve the composite file using the same resolution rules above. Composites are `.md` files with `kind: composite` in their frontmatter. Resolve the composite definition first, then resolve each service named in the `with:` block as a normal service.
+
 **Recursive resolution for `kind: program` services:**
 
 When a resolved component has `kind: program` (with its own `services` list) rather than `kind: service`, Forme recursively invokes the wiring algorithm on that sub-program. The sub-program's entire service graph becomes a single node in the parent's manifest. The sub-program's `ensures` become the node's outputs. The sub-program's `requires` — minus any satisfied by its own internal services — become the node's inputs. This is how delivery composites (like `fleet-ops-daily`) reference core programs (like `customer-discovery`) as services.
+
+**Composite slot resolution:** Services named in `with:` blocks of `compose:` declarations are resolved using the same rules as top-level services, even if not listed separately in the `services:` array. This means a program can declare only the composed unit in `services:` — the slot-filling services will be resolved from the `with:` entries automatically.
 
 If a component cannot be resolved, emit an error:
 
@@ -127,6 +133,12 @@ For each resolved component, extract from its `.md` file:
 
 - **Frontmatter:** `name`, `kind`, `shape` (if present)
 - **Contract sections:** `requires`, `ensures`, `errors`, `invariants`, `strategies`, `environment`
+
+When a resolved file has `kind: composite`, extract instead:
+- `slots` — array of slot definitions (`name`, `primary` flag, `contract` with `requires`/`ensures`)
+- `config` — map of config parameters (names, types, defaults)
+- `invariants` — runtime guarantees the composite enforces
+- The **Delegation Loop** section — the JavaScript pseudo-code describing how slots interact at runtime
 
 A component has this structure:
 
@@ -153,6 +165,34 @@ errors:
 
 strategies:
 - when few sources found: broaden search terms
+```
+
+### Step 3b: Expand Composites
+
+Before auto-wiring, expand any `compose:` declarations into concrete services. After expansion, the composite is gone — the manifest sees only ordinary services with delegation constraints.
+
+**Desugaring decorator syntax:**
+
+Before expansion, desugar any decorator syntax to Level 1. The decorated service fills the composite's `primary: true` slot. Multiple decorators stack inside-out (bottom annotation applied first). See Composite Expansion below for a full desugaring example.
+
+**Expansion procedure:**
+
+For each service declaration that includes `compose:` and `with:`:
+
+1. **Load the composite definition** from the resolved path.
+2. **Bind slots** — for each `with:` entry that matches a slot name, bind the named service to that slot.
+3. **Bind config** — for each `with:` entry that matches a config parameter, bind the value. Apply defaults for unspecified config.
+4. **Validate slot contracts** — for each bound slot, verify the service's contract satisfies the slot's contract:
+   - The service's `ensures` must cover what the slot's contract `ensures`
+   - The service's `requires` must be satisfiable from the composite's inputs or other slots' outputs
+5. **Expand the delegation pattern** — replace slot references in the composite's Delegation Loop with the bound service names. The expanded pattern becomes delegation steps in the manifest.
+6. **Compute derived contract** — the composed unit's `requires` is the set of inputs needed that aren't satisfied internally between slots. Its `ensures` is the composite's output contract.
+7. **Handle nesting** — if a `with:` value is itself a `compose:` declaration, expand inside-out (innermost first). Detect and error on cycles:
+
+```
+[Error] Cycle in composite nesting:
+  worker-critic → stochastic-probe → worker-critic
+  Composites cannot reference themselves, directly or transitively.
 ```
 
 ### Step 4: Auto-Wire
@@ -206,6 +246,7 @@ From the wiring, derive:
 - **Execution order:** Topological sort of the dependency graph. Components with no unresolved dependencies can run first.
 - **Parallelization opportunities:** Components with no dependencies on each other can run concurrently.
 - **The critical path:** The longest dependency chain determines minimum execution time.
+- **Composite-internal ordering:** Expanded composites introduce ordering constraints between bound services (e.g., in worker-critic, worker runs before critic in each iteration). These become edges in the dependency graph. Composite-internal ordering is distinct from program-level execution order — the composite's delegation pattern defines an internal loop that the VM executes as a unit.
 
 ### Step 5b: Collect Environment Declarations
 
@@ -231,6 +272,11 @@ Before producing the manifest, check:
 | Missing component file | `[Error] Component not found: 'missing-service'` |
 | Program has no `ensures` | `[Error] Program declares no ensures — nothing to produce` |
 | Component `requires` completely unresolvable | `[Error] No source for critic.requires.raw_data` |
+| Composite slot missing binding | `[Error] Composite worker-critic slot 'critic' has no binding and no default` |
+| Slot contract mismatch | `[Error] Service 'my-svc' does not satisfy slot 'worker': ensures missing 'output'` |
+| Cycle in nested composites | `[Error] Cycle in composite nesting: A → B → A` |
+| Decorator syntax on composite without `primary: true` slot | `[Error] Decorator syntax requires composite '{name}' to declare a primary slot. Use Level 1 compose: syntax instead.` |
+| Slot name collides with config parameter name | `[Error] Composite '{name}' has slot '{slot}' that collides with config parameter '{param}'. Slot and config names must be disjoint.` |
 
 **Warnings (proceed with caution):**
 
@@ -241,6 +287,7 @@ Before producing the manifest, check:
 | Component declares `errors` but no downstream handles them | `[Warning] researcher.errors.no-results has no recovery path` |
 | Shape declares delegate not in services list | `[Warning] researcher.shape.delegates.summarizer not in program services` |
 | `run`-typed input on a service (not the program) | `[Warning] analyzer.requires.subject uses run type — run inputs are typically program-level, not service-level` |
+| Config parameter type mismatch | `[Warning] Composite worker-critic config 'max_rounds' expects integer, got string` |
 | Declared service never referenced | `[Warning] Service '{name}' is declared in services: but never called in ### Execution and no component requires its outputs` |
 
 ### Step 7: Copy Source Files
@@ -326,10 +373,28 @@ Parallelizable: {list of services that can run concurrently, if any}
 | {VAR_NAME} | {service-name}, {service-name} |
 | {VAR_NAME} | {service-name} |
 
+## Constraints
+
+### {composed-unit-name} (expanded from {composite-name})
+
+- {invariant}: {enforcement description}
+- Termination: {termination condition}
+- On exhaustion: {exhaustion behavior}
+
 ## Warnings
 
 - {any warnings from validation}
 ```
+
+**Constraints.** One subsection per expanded composite. Each invariant from the composite definition becomes a constraint the Prose VM enforces during Phase 2. Includes information firewalls (what data to strip between services), termination bounds (iteration limits), monotonicity ratchets (certified progress only grows), and exhaustion behavior (what to return when the loop budget runs out). Only present when the program uses composites. The Prose VM enforces these at runtime — see `prose.md`, Step 4e: Enforce Composite Constraints.
+
+Constraint types emitted:
+
+- Information firewall: downstream service receives only declared `ensures` outputs, not internal reasoning or workspace intermediaries.
+- Termination: the loop terminates after `max_rounds` or when the critic accepts.
+- Monotonicity (ratchet): certified_progress array only grows. Each iteration's certified output is appended, never removed or modified. The VM maintains a ledger and rejects any state update that shrinks it.
+
+**Error propagation:** If a slot service signals an error during a composite delegation loop (writes `__error.md`), the composite terminates immediately and propagates the error to the parent program. The composite's exhaustion/retry behavior does not apply to errors — only to budget exhaustion or rejection. The VM treats a slot error as a composite-level error.
 
 ### Manifest Sections Explained
 
@@ -450,6 +515,8 @@ return report
 
 **Your job:** The execution block IS the wiring. Extract the dependency graph from the `call` sequence. Validate against contracts. Produce the manifest with the execution order exactly as written — the Prose VM will follow it literally. Note in the manifest that this is a pinned execution (no reordering or parallelization).
 
+**Composites and author control levels:** Composite expansion (Step 3b) occurs regardless of which author control level is used. At Level 1 (contracts only), composed units participate in auto-wiring like any service. At Level 2 (wiring declaration), the composed unit's name can appear in `receives:` mappings. At Level 3 (execution block), the composed unit can be invoked via `call` like any service. The expansion is always completed before wiring or execution begins.
+
 ---
 
 ## Handling Components with Shapes
@@ -515,6 +582,152 @@ When you encounter a multi-service file:
 2. Wire them using the same algorithm
 3. In the manifest, reference them as `{filename}.{section-name}` or by section name if unambiguous
 4. Copy the full source file to `services/` — don't split it
+
+---
+
+## Composite Expansion
+
+Composites are parameterized multi-agent topologies — they define how agents interact without specifying which agents fill which roles. Forme expands composites before auto-wiring. After expansion, the manifest contains only ordinary services with delegation constraints. The composite is gone.
+
+**Scoping:** Each `compose:` declaration creates an independent expansion. If two composed units reference the same service (e.g., both use `quality-reviewer` as critic), the service source file is shared but each composite instance creates an independent execution context. In the manifest, each composed unit's delegation entries are scoped within that unit's graph entry — they do not become top-level graph entries.
+
+#### Worked Example: worker-critic
+
+**Program entry point:**
+
+```yaml
+---
+name: radar-report
+kind: program
+services:
+  - name: quality-checked-output
+    compose: std/composites/worker-critic
+    with:
+      worker: radar-compiler
+      critic: quality-reviewer
+      max_rounds: 3
+  - radar-compiler
+  - quality-reviewer
+---
+
+requires:
+- brief: the radar compilation task
+
+ensures:
+- report: a quality-reviewed radar report
+```
+
+**Expansion steps:**
+
+1. Resolve `std/composites/worker-critic` → read its `slots`, `config`, `invariants`, and Delegation Loop.
+2. Bind slots: `worker` → `radar-compiler`, `critic` → `quality-reviewer`.
+3. Bind config: `max_rounds` → `3`.
+4. Validate: `radar-compiler.ensures` covers the worker slot's contract (`output`). `quality-reviewer.ensures` covers the critic slot's contract (`verdict`, `reasoning`, `suggestions`).
+5. Expand the Delegation Loop: replace `worker` with `radar-compiler`, `critic` with `quality-reviewer`, `max_retries` with `3`.
+6. Compute derived contract: `quality-checked-output.requires` = `brief` (from `radar-compiler.requires`). `quality-checked-output.ensures` = `report` (the composite's output).
+
+**Resulting manifest entries:**
+
+```markdown
+### quality-checked-output (expanded from worker-critic)
+
+source: composites/worker-critic.md
+delegation:
+  worker: services/radar-compiler.md
+  critic: services/quality-reviewer.md
+config:
+  max_rounds: 3
+
+inputs:
+  brief ← bindings/caller/brief.md
+
+outputs:
+  (public) report → bindings/quality-checked-output/report.md
+
+## Constraints
+
+### quality-checked-output (expanded from worker-critic)
+
+- Information firewall: quality-reviewer cannot access radar-compiler's internal reasoning chain. When passing radar-compiler's output to quality-reviewer, include only the declared ensures outputs, not workspace intermediaries.
+- Termination: The worker-critic loop terminates after 3 rounds or when quality-reviewer's verdict is "accept".
+- On exhaustion: Return radar-compiler's last output with quality-reviewer's final critique attached.
+```
+
+#### Nested Example: stochastic-probe wrapping worker-critic
+
+```yaml
+- name: confident-reviewed-radar
+  compose: std/composites/stochastic-probe
+  with:
+    probe:
+      compose: std/composites/worker-critic
+      with:
+        worker: radar-compiler
+        critic: quality-reviewer
+    analyst: variance-analyst
+    sample_size: 3
+```
+
+Expansion proceeds inside-out:
+
+1. **Inner:** Expand `worker-critic(radar-compiler, quality-reviewer)` → produces a composed unit with its own delegation steps and constraints.
+2. **Outer:** Expand `stochastic-probe(inner-unit, variance-analyst, sample_size: 3)` → the probe slot is filled by the inner unit. The outer delegation runs the inner unit 3 times with identical inputs, then passes all results to `variance-analyst`.
+
+The manifest contains delegation steps for both layers. The inner constraints (information firewall, termination) apply within each probe run. The outer constraints (identical inputs across runs) apply across the sample.
+
+#### Decorator Desugaring
+
+Decorator syntax is desugared to Level 1 before expansion. The decorated service fills the `primary: true` slot:
+
+```yaml
+# Author writes:
+- radar-compiler:
+    review: worker-critic(critic: quality-reviewer, max_rounds: 3)
+    confidence: stochastic-probe(sample_size: 5)
+
+# Forme desugars to Level 1 (inside-out — bottom decorator first):
+- name: radar-compiler__reviewed
+  compose: std/composites/worker-critic
+  with:
+    worker: radar-compiler
+    critic: quality-reviewer
+    max_rounds: 3
+
+- name: radar-compiler__reviewed__probed
+  compose: std/composites/stochastic-probe
+  with:
+    probe: radar-compiler__reviewed
+    sample_size: 5
+```
+
+Desugaring happens before expansion. After desugaring, the normal expansion procedure applies.
+
+#### Error Cases
+
+**Missing slot binding:**
+
+```
+[Error] Composite worker-critic slot 'critic' has no binding and no default
+  In service declaration: quality-checked-output
+  Provide a service for the 'critic' slot in the with: block.
+```
+
+**Contract mismatch:**
+
+```
+[Error] Service 'my-formatter' does not satisfy slot 'critic' in worker-critic
+  Slot requires ensures: [verdict, reasoning, suggestions]
+  Service ensures: [formatted_text]
+  The bound service's contract is incompatible with the slot.
+```
+
+**Cycle in nested composites:**
+
+```
+[Error] Cycle in composite nesting:
+  worker-critic → stochastic-probe → worker-critic
+  Composites cannot reference themselves, directly or transitively.
+```
 
 ---
 
@@ -620,13 +833,14 @@ For single-component programs (no `services` list), Phase 1 is skipped — the f
 The Forme Container:
 
 1. **Reads** the program entry point and its `services` list
-2. **Resolves** each service name to a `.md` file
-3. **Extracts** contracts (`requires`, `ensures`, `errors`, `invariants`, `strategies`, `environment`) and shapes
-4. **Auto-wires** by matching `requires` ↔ `ensures` using semantic understanding
-5. **Validates** the dependency graph for errors and warnings
-6. **Copies** source files into the run directory (`services/`)
-7. **Writes** the manifest (`manifest.md`) with the complete wiring graph
-8. **Hands off** to the Prose VM for execution
+2. **Resolves** each service name to a `.md` file (including composite definitions)
+3. **Extracts** contracts (`requires`, `ensures`, `errors`, `invariants`, `strategies`, `environment`), shapes, and composite slot/config definitions
+4. **Expands composites** — desugars decorator syntax, binds slots and config, validates slot contracts, expands delegation patterns, computes derived contracts (inside-out for nested composites)
+5. **Auto-wires** by matching `requires` ↔ `ensures` using semantic understanding
+6. **Validates** the dependency graph for errors and warnings (including composite-specific checks)
+7. **Copies** source files into the run directory (`services/`)
+8. **Writes** the manifest (`manifest.md`) with the complete wiring graph and composite constraints
+9. **Hands off** to the Prose VM for execution
 
 The manifest is complete, unambiguous, and human-readable. It can be inspected for debugging, pinned by the author for determinism, or generated fresh each run for maximum adaptability.
 
