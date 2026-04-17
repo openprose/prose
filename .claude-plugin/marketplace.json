@@ -1,5 +1,8 @@
 {
   "name": "prose",
+  "metadata": {
+    "description": "OpenProse — a programming language for AI sessions that structures English into unambiguous control flow for multi-agent orchestration"
+  },
   "owner": {
     "name": "OpenProse",
     "url": "https://github.com/openprose"
