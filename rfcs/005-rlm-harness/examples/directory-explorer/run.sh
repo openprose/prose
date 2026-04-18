@@ -9,7 +9,9 @@ TARGET="${1:?usage: run.sh <path>}"
 TARGET_ABS="$(cd "$TARGET" && pwd)"
 
 EXAMPLE_DIR="$(cd "$(dirname "$0")" && pwd)"
-SKILL_DIR="$(cd "$EXAMPLE_DIR/../.." && pwd)"
+# example lives in rfcs/005-rlm-harness/examples/<name>/, skill is in skills/rlmify/
+REPO_ROOT="$(cd "$EXAMPLE_DIR/../../../.." && pwd)"
+SKILL_DIR="$REPO_ROOT/skills/rlmify"
 PROGRAMS_DIR="$EXAMPLE_DIR/programs"
 
 export RLMIFY_SKILL="$SKILL_DIR"

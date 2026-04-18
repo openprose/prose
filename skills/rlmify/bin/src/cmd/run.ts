@@ -74,10 +74,10 @@ export async function cmd(args: string[]): Promise<number> {
 
   let registry: PublicFace[] = [];
   if (flags.has("--registry-auto")) {
+    // Include ALL programs in the root registry, including the program being
+    // run (so recursive programs like walk_tree see themselves as a callee).
     const all = await listPrograms(process.env.RLMIFY_PROGRAMS);
-    registry = all
-      .filter((p) => p.publicFace.name !== program.publicFace.name)
-      .map(toPublicFace);
+    registry = all.map(toPublicFace);
   }
 
   // Root environment: parsed key=value + forwarded RLMIFY_* pointers.
@@ -111,6 +111,13 @@ export async function cmd(args: string[]): Promise<number> {
 
   await writeFile(hudFile, hudXml, "utf8");
 
+  // Root runs at layer 0. If --registry-auto is set, also tell children to
+  // inherit the full registry (so recursion and heterogeneous delegation work).
+  const rootPiEnv: Record<string, string> = { RLMIFY_LAYER: "0" };
+  if (flags.has("--registry-auto")) {
+    rootPiEnv.RLMIFY_CHILD_REGISTRY = "all";
+  }
+
   const result = await invokePi({
     hudFile,
     task: "Begin.",
@@ -118,6 +125,7 @@ export async function cmd(args: string[]): Promise<number> {
     skillPath: process.env.RLMIFY_SKILL,
     sessionFile,
     stdoutFile,
+    env: rootPiEnv,
   });
 
   if (result.delta) {

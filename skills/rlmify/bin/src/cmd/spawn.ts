@@ -9,6 +9,10 @@
 //   - argv[0]: program name (resolved via loadProgram from ../lib/program.ts).
 //   - argv[1..]: `key=value` pairs that populate the child HUD's <environment>.
 //   - env RLMIFY_PROGRAMS, RLMIFY_SKILL, RLMIFY_LOG_DIR, RLMIFY_MODEL are read.
+//   - env RLMIFY_LAYER: current node's layer (default 0 for root). Child is
+//     launched at layer+1.
+//   - env RLMIFY_CHILD_REGISTRY: "all" → populate child registry with every
+//     program (enables recursion + heterogeneous delegation). Default: empty.
 //
 // BEHAVIOR
 //   1. Load the program.
@@ -48,14 +52,16 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { loadProgram } from "../lib/program.ts";
+import { listPrograms, toPublicFace } from "../lib/registry.ts";
 import { composeHud } from "../lib/hud.ts";
 import { invokePi } from "../lib/pi.ts";
+import type { PublicFace } from "../types.ts";
 import {
   buildHudSpecForProgram,
   logSuffix,
   missingRequired,
   parseArgs,
-  readLayerFromEnv,
+  readCurrentLayer,
 } from "./_shared.ts";
 
 export async function cmd(args: string[]): Promise<number> {
@@ -76,12 +82,27 @@ export async function cmd(args: string[]): Promise<number> {
     return 2;
   }
 
+  // RLMIFY_LAYER is the CURRENT node's layer (the parent that's calling spawn).
+  // The child we're about to launch is one layer deeper.
+  const parentLayer = readCurrentLayer();
+  const childLayer = parentLayer + 1;
+
+  // Registry inheritance. `RLMIFY_CHILD_REGISTRY=all` means: give the child the
+  // full registry (all programs, including this one) so recursion and
+  // heterogeneous callees work. Default is empty (leaf).
+  let registry: PublicFace[] = [];
+  const childRegistryMode = process.env.RLMIFY_CHILD_REGISTRY;
+  if (childRegistryMode === "all") {
+    const all = await listPrograms(process.env.RLMIFY_PROGRAMS);
+    registry = all.map(toPublicFace);
+  }
+
   const hudSpec = buildHudSpecForProgram({
     program,
     env,
     role: "inner",
-    registry: [],
-    layer: readLayerFromEnv(),
+    registry,
+    layer: childLayer,
   });
   const hudXml = composeHud(hudSpec);
 
@@ -103,6 +124,13 @@ export async function cmd(args: string[]): Promise<number> {
 
   await writeFile(hudFile, hudXml, "utf8");
 
+  // Propagate the child's own layer to its pi env, so when IT calls rlmify
+  // spawn, readCurrentLayer() returns childLayer and the grandchild ends up at
+  // childLayer + 1. RLMIFY_CHILD_REGISTRY inherits naturally via process.env.
+  const childEnv: Record<string, string> = {
+    RLMIFY_LAYER: String(childLayer),
+  };
+
   const result = await invokePi({
     hudFile,
     task: "Begin.",
@@ -110,6 +138,7 @@ export async function cmd(args: string[]): Promise<number> {
     skillPath: process.env.RLMIFY_SKILL,
     sessionFile,
     stdoutFile,
+    env: childEnv,
   });
 
   if (result.exitCode !== 0) {

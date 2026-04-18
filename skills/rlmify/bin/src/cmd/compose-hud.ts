@@ -32,7 +32,7 @@ import {
   buildHudSpecForProgram,
   missingRequired,
   parseArgs,
-  readLayerFromEnv,
+  readCurrentLayer,
 } from "./_shared.ts";
 
 export async function cmd(args: string[]): Promise<number> {
@@ -54,12 +54,14 @@ export async function cmd(args: string[]): Promise<number> {
   }
 
   const asRoot = flags.has("--as-root");
+  // compose-hud simulates what spawn would build: spawn shows the CHILD's HUD,
+  // so we increment readCurrentLayer() by 1 (mirroring spawn's childLayer).
   const hudSpec = buildHudSpecForProgram({
     program,
     env,
     role: asRoot ? "root" : "inner",
     registry: [],
-    layer: asRoot ? 0 : readLayerFromEnv(),
+    layer: asRoot ? 0 : readCurrentLayer() + 1,
   });
 
   const hudXml = composeHud(hudSpec);

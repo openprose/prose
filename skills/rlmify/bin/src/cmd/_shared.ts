@@ -132,12 +132,16 @@ export function logSuffix(
   return `${safeName}-${hash}`;
 }
 
-/** Read the current inner-node layer from env, defaulting to 1. */
-export function readLayerFromEnv(): number {
+/**
+ * Read the CURRENT node's layer from env (default 0 — root).
+ * The root is launched with `RLMIFY_LAYER=0` by `run`. Each `spawn` increments
+ * this for the child it launches.
+ */
+export function readCurrentLayer(): number {
   const raw = process.env.RLMIFY_LAYER;
-  if (!raw) return 1;
+  if (!raw) return 0;
   const n = parseInt(raw, 10);
-  if (!Number.isFinite(n) || n < 1) return 1;
+  if (!Number.isFinite(n) || n < 0) return 0;
   return n;
 }
 

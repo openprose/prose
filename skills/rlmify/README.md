@@ -44,13 +44,24 @@ skills/rlmify/
 │           ├── resolve.ts        # late-bound contract lookup
 │           ├── validate.ts       # lint programs
 │           └── _shared.ts        # argv parsing, HUD spec builder
-└── examples/
-    └── directory-explorer/
-        ├── programs/
-        │   ├── explore_and_summarize.md   # root: fan-out + compose
-        │   └── summarize_directory.md     # leaf: describe one dir
-        ├── run.sh
-        └── README.md
+```
+
+Examples (proofs-of-concept validating specific RFC claims) live alongside the RFC, not inside the installed skill:
+
+```
+rfcs/005-rlm-harness/examples/
+├── README.md
+├── directory-explorer/         # depth-1 fan-out
+│   ├── programs/
+│   │   ├── explore_and_summarize.md   # root: fan-out + compose
+│   │   └── summarize_directory.md     # leaf: describe one dir
+│   ├── run.sh
+│   └── README.md
+└── tree-walker/                # depth-N recursion with a single recursive program
+    ├── programs/
+    │   └── walk_tree.md        # branches on max_depth / subdir count
+    ├── run.sh
+    └── README.md
 ```
 
 ### Component roles
@@ -96,7 +107,7 @@ echo "# Alpha" > /tmp/demo/alpha/README.md
 echo "# Beta"  > /tmp/demo/beta/README.md
 echo "# Gamma" > /tmp/demo/gamma/README.md
 
-GEMINI_API_KEY=... ./skills/rlmify/examples/directory-explorer/run.sh /tmp/demo
+GEMINI_API_KEY=... ./rfcs/005-rlm-harness/examples/directory-explorer/run.sh /tmp/demo
 ```
 
 Expected output: a single JSON delta on stdout whose `summary` is a composed paragraph plus one bullet per subdirectory, each bullet quoting the corresponding child's 1–3 sentence summary.
@@ -157,7 +168,7 @@ With (a) the binary, (b) imperative program bodies, and (c) two-path delta extra
 
 - **One skill, one harness.** Only pi is supported. SDK integration (v2) and multi-harness plugins (v3) are in the RFC backlog.
 - **Flat program registry.** Programs live in one directory; no namespaces, no versioning.
-- **Registry isn't propagated to children.** `rlmify spawn` always gives children an empty registry. Nested delegation works in principle (a child can have its own registry if its parent composes one), but the default is leaf-only.
+- **Registry propagation is all-or-nothing.** `rlmify spawn` either gives the child an empty registry (default) or the full registry (when the parent pi has `RLMIFY_CHILD_REGISTRY=all`, set by `rlmify run --registry-auto`). No per-spawn subsetting yet — e.g. "here, child, your registry is {foo,bar} but not {baz}".
 - **Last-write-wins on conflicting sibling deltas.** No merge/reconciliation strategy yet.
 - **No streaming.** Child deltas are atomic — the parent sees nothing until the child exits.
 - **`gemini-2.5-pro` default.** Smaller models drift more; we haven't systematically tested weaker models.
@@ -168,12 +179,13 @@ With (a) the binary, (b) imperative program bodies, and (c) two-path delta extra
 
 In rough priority order:
 
-1. **Deeper recursion (2–3 levels).** Depth-1 doesn't actually prove recursion; a tree-walker program that recurses until a budget is hit would exercise role-inference, registry scoping, and delta composition across more hops.
+1. ~~**Deeper recursion (2–3 levels).**~~ **Done.** See [`rfcs/005-rlm-harness/examples/tree-walker/`](../../rfcs/005-rlm-harness/examples/tree-walker/) — a single recursive program `walk_tree(path, max_depth)` that self-delegates until the depth budget is exhausted. Confirmed layer 0→1→2 with 7 pi invocations, correct `provenance.layer`, clean per-level synthesis. Supported by two binary additions: `RLMIFY_LAYER` (current node's depth, auto-incremented by `rlmify spawn`) and `RLMIFY_CHILD_REGISTRY=all` (set by `--registry-auto` on root; propagates the full registry to children so recursion is possible).
 2. **Heterogeneous fan-out.** A program that delegates to *different* callees for different subtasks (e.g. file-type-based analysis), using `rlmify resolve` to pick callees by contract rather than by name.
 3. **Higher-order programs.** `Scheduled<P>` or `Map<P>` — programs that accept other programs as arguments. Confirms that "programs as first-class values" actually works and composes.
-4. **Child-scoped registry propagation.** Let `spawn` accept a `--registry` flag so parents can hand children a narrower capability slice. Needed for anything beyond leaf fan-out.
+4. **Per-spawn scoped registry subsets.** Extend `RLMIFY_CHILD_REGISTRY` to accept a JSON list of program names (or a resolve-criteria predicate) so a parent can hand each child a narrower capability slice instead of all-or-nothing.
 5. **Retry + error policy.** A program that tolerates some children failing and retries or falls back — tests partial-status composition and the error pipeline.
-6. **v2: pi SDK integration.** Intra-process children via `@mariozechner/pi-coding-agent`'s SDK (see `rfcs/005-rlm-harness/RLM_HARNESS_DRAFT.md` §v2). Eliminates per-spawn cold start and makes the HUD a live JS object.
+6. **Depth guards.** With real recursion shipping, a misbehaving program could now loop forever. Add an `RLMIFY_MAX_LAYER` env or a `--max-layer` flag that `rlmify spawn` refuses to exceed.
+7. **v2: pi SDK integration.** Intra-process children via `@mariozechner/pi-coding-agent`'s SDK (see `rfcs/005-rlm-harness/RLM_HARNESS_DRAFT.md` §v2). Eliminates per-spawn cold start (a 7-node run is noticeably slower than it should be) and makes the HUD a live JS object.
 
 See the RFC [Open Questions](../../rfcs/005-rlm-harness/RLM_HARNESS_DRAFT.md#open-questions) for the longer list.
 
