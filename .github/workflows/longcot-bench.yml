@@ -1,0 +1,237 @@
+name: LongCoT Benchmark
+
+on:
+  workflow_dispatch:
+    inputs:
+      model:
+        description: "pi --model, e.g. anthropic/claude-opus-4-5, openai/gpt-5.2, google/gemini-3-pro, openrouter/deepseek/deepseek-v3.2"
+        type: string
+        default: "anthropic/claude-opus-4-5"
+      thinking:
+        description: "Thinking level passed to pi"
+        type: choice
+        default: "high"
+        options:
+          - "off"
+          - "minimal"
+          - "low"
+          - "medium"
+          - "high"
+          - "xhigh"
+      domain:
+        description: "LongCoT domain filter"
+        type: choice
+        default: "all"
+        options:
+          - "all"
+          - "logic"
+          - "cs"
+          - "chemistry"
+          - "chess"
+          - "math"
+      difficulty:
+        description: "LongCoT difficulty filter (longcot = paper-match ~1995q; longcot-mini ~507q for iteration)"
+        type: choice
+        default: "longcot"
+        options:
+          - "longcot"
+          - "longcot-mini"
+          - "easy"
+          - "medium"
+          - "hard"
+          - "all"
+      max_questions:
+        description: "Cap on questions (0 = no cap)"
+        type: string
+        default: "0"
+      offset:
+        description: "Resume offset applied after shuffle"
+        type: string
+        default: "0"
+      seed:
+        description: "Shuffle seed"
+        type: string
+        default: "0"
+      concurrency:
+        description: "Parallel pi subprocesses"
+        type: string
+        default: "8"
+      system_prompt:
+        description: "System prompt passed to pi"
+        type: string
+        default: "You are a helpful assistant."
+      pi_version:
+        description: "npm tag/version for @mariozechner/pi-coding-agent"
+        type: string
+        default: "latest"
+      longcot_ref:
+        description: "git ref (branch/tag/sha) of LongHorizonReasoning/longcot to clone"
+        type: string
+        default: "main"
+      run_eval:
+        description: "Run LongCoT scoring step after responses are generated"
+        type: boolean
+        default: true
+      fallback_judge:
+        description: "Allow run_eval.py fallback judge (pass --no-fallback when false)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: longcot-bench-${{ github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  longcot:
+    name: Run LongCoT via pi-mono
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - name: Checkout prose
+        uses: actions/checkout@v4
+
+      - name: Checkout LongCoT
+        uses: actions/checkout@v4
+        with:
+          repository: LongHorizonReasoning/longcot
+          ref: ${{ inputs.longcot_ref }}
+          path: longcot
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install pi-mono
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install -g "@mariozechner/pi-coding-agent@${{ inputs.pi_version }}"
+          pi --version || pi --help | head -1
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+
+      - name: Install LongCoT deps
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd longcot
+          uv sync --frozen
+
+      - name: Compute output paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "RESPONSES_PATH=responses/run_${{ github.run_id }}_${{ github.run_attempt }}.jsonl" >> "$GITHUB_ENV"
+          echo "RESULTS_PATH=results/run_${{ github.run_id }}_${{ github.run_attempt }}.json" >> "$GITHUB_ENV"
+
+      - name: Run pi shim over LongCoT
+        shell: bash
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+        run: |
+          set -euo pipefail
+          cd longcot
+          uv run python ../.github/scripts/longcot/run_pi.py \
+            --model "${{ inputs.model }}" \
+            --thinking "${{ inputs.thinking }}" \
+            --domain "${{ inputs.domain }}" \
+            --difficulty "${{ inputs.difficulty }}" \
+            --max-questions "${{ inputs.max_questions }}" \
+            --offset "${{ inputs.offset }}" \
+            --seed "${{ inputs.seed }}" \
+            --concurrency "${{ inputs.concurrency }}" \
+            --system-prompt "${{ inputs.system_prompt }}" \
+            --output "$RESPONSES_PATH"
+
+      - name: Run LongCoT eval
+        if: ${{ inputs.run_eval == true }}
+        shell: bash
+        env:
+          GEMINI_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+        run: |
+          set -euo pipefail
+          cd longcot
+          EXTRA_ARGS=""
+          if [[ "${{ inputs.fallback_judge }}" == "false" ]]; then
+            EXTRA_ARGS="--no-fallback"
+          fi
+          uv run python run_eval.py "$RESPONSES_PATH" --output "$RESULTS_PATH" $EXTRA_ARGS
+
+      - name: Write job summary
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "# LongCoT Benchmark"
+            echo ""
+            echo "| Input | Value |"
+            echo "| --- | --- |"
+            echo "| model | \`${{ inputs.model }}\` |"
+            echo "| thinking | \`${{ inputs.thinking }}\` |"
+            echo "| domain | \`${{ inputs.domain }}\` |"
+            echo "| difficulty | \`${{ inputs.difficulty }}\` |"
+            echo "| max_questions | \`${{ inputs.max_questions }}\` |"
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [[ "${{ inputs.run_eval }}" == "true" ]]; then
+            RESULTS_FILE="longcot/$RESULTS_PATH"
+            if [[ -f "$RESULTS_FILE" ]]; then
+              {
+                echo "## Results"
+                echo ""
+                echo "| Metric | Value |"
+                echo "| --- | --- |"
+                for key in total correct incorrect failed wrong_formatting accuracy overall_accuracy; do
+                  val=$(jq -r --arg k "$key" '.[$k] // (.. | objects | select(has($k)) | .[$k]) // "n/a"' "$RESULTS_FILE" | head -n1)
+                  echo "| $key | \`$val\` |"
+                done
+              } >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "_Results file not found at \`$RESULTS_FILE\`._" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          else
+            RESP_FILE="longcot/$RESPONSES_PATH"
+            if [[ -f "$RESP_FILE" ]]; then
+              LINES=$(wc -l < "$RESP_FILE" | tr -d ' ')
+              {
+                echo "## Responses"
+                echo ""
+                echo "Eval skipped (\`run_eval=false\`). Responses JSONL line count: \`$LINES\`."
+              } >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "_Responses file not found at \`$RESP_FILE\`._" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          fi
+
+      - name: Upload responses artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: longcot-responses-${{ github.run_id }}
+          path: longcot/responses/**
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Upload results artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: longcot-results-${{ github.run_id }}
+          path: longcot/results/**
+          retention-days: 30
+          if-no-files-found: warn
