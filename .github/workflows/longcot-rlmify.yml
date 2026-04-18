@@ -1,0 +1,283 @@
+name: LongCoT Benchmark (rlmified pi, smoke)
+
+on:
+  workflow_dispatch:
+    inputs:
+      model:
+        description: "Model passed via RLMIFY_MODEL, e.g. anthropic/claude-haiku-4-5"
+        type: string
+        default: "anthropic/claude-haiku-4-5"
+      domain:
+        description: "LongCoT domain filter"
+        type: choice
+        default: "all"
+        options:
+          - "all"
+          - "logic"
+          - "cs"
+          - "chemistry"
+          - "chess"
+          - "math"
+      difficulty:
+        description: "LongCoT difficulty filter (smoke default is longcot-mini)"
+        type: choice
+        default: "longcot-mini"
+        options:
+          - "longcot"
+          - "longcot-mini"
+          - "easy"
+          - "medium"
+          - "hard"
+          - "all"
+      max_questions:
+        description: "Cap on questions (smoke default is 3)"
+        type: string
+        default: "3"
+      offset:
+        description: "Resume offset applied after shuffle"
+        type: string
+        default: "0"
+      seed:
+        description: "Shuffle seed"
+        type: string
+        default: "0"
+      concurrency:
+        description: "Parallel rlmify subprocesses (smoke default is 2)"
+        type: string
+        default: "2"
+      longcot_ref:
+        description: "git ref (branch/tag/sha) of LongHorizonReasoning/longcot to clone"
+        type: string
+        default: "main"
+      run_eval:
+        description: "Run LongCoT scoring step after responses are generated"
+        type: boolean
+        default: true
+      fallback_judge:
+        description: "Allow run_eval.py fallback judge (pass --no-fallback when false)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: longcot-rlmify-${{ github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  longcot-rlmify:
+    name: Smoke-test rlmified pi against LongCoT
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - name: Checkout prose
+        uses: actions/checkout@v4
+
+      - name: Checkout LongCoT
+        uses: actions/checkout@v4
+        with:
+          repository: LongHorizonReasoning/longcot
+          ref: ${{ inputs.longcot_ref }}
+          path: longcot
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install pi-mono
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install -g "@mariozechner/pi-coding-agent@latest"
+          pi --version || pi --help | head -1
+
+      - name: Install rlmify deps
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd skills/rlmify/bin
+          bun install --frozen-lockfile
+          chmod +x "$GITHUB_WORKSPACE/skills/rlmify/bin/rlmify"
+
+      - name: Expose rlmify on PATH
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "$GITHUB_WORKSPACE/skills/rlmify/bin" >> "$GITHUB_PATH"
+
+      - name: Smoke-test rlmify on PATH
+        shell: bash
+        run: |
+          set -euo pipefail
+          rlmify --help | head -1
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+
+      - name: Install LongCoT deps
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd longcot
+          uv sync --frozen
+
+      - name: Compute output paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "RESPONSES_PATH=responses/run_${{ github.run_id }}_${{ github.run_attempt }}.jsonl" >> "$GITHUB_ENV"
+          echo "RESULTS_PATH=results/run_${{ github.run_id }}_${{ github.run_attempt }}.json" >> "$GITHUB_ENV"
+          echo "RLMIFY_LOGS=rlmify-logs/run_${{ github.run_id }}_${{ github.run_attempt }}" >> "$GITHUB_ENV"
+
+      - name: Run rlmify shim over LongCoT
+        shell: bash
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+        run: |
+          set -euo pipefail
+          cd longcot
+          uv run python ../.github/scripts/longcot/run_rlmify.py \
+            --model "${{ inputs.model }}" \
+            --domain "${{ inputs.domain }}" \
+            --difficulty "${{ inputs.difficulty }}" \
+            --max-questions "${{ inputs.max_questions }}" \
+            --offset "${{ inputs.offset }}" \
+            --seed "${{ inputs.seed }}" \
+            --concurrency "${{ inputs.concurrency }}" \
+            --repo-root "$GITHUB_WORKSPACE" \
+            --log-dir "$RLMIFY_LOGS" \
+            --output "$RESPONSES_PATH"
+
+      - name: Run LongCoT eval
+        if: ${{ inputs.run_eval == true }}
+        shell: bash
+        env:
+          GEMINI_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+        run: |
+          set -euo pipefail
+          cd longcot
+          EXTRA_ARGS=""
+          if [[ "${{ inputs.fallback_judge }}" == "false" ]]; then
+            EXTRA_ARGS="--no-fallback"
+          fi
+          uv run python run_eval.py "$RESPONSES_PATH" --output "$RESULTS_PATH" $EXTRA_ARGS
+
+      - name: Write job summary
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "# LongCoT Benchmark (rlmified pi, smoke)"
+            echo ""
+            echo "| Input | Value |"
+            echo "| --- | --- |"
+            echo "| model | \`${{ inputs.model }}\` |"
+            echo "| domain | \`${{ inputs.domain }}\` |"
+            echo "| difficulty | \`${{ inputs.difficulty }}\` |"
+            echo "| max_questions | \`${{ inputs.max_questions }}\` |"
+            echo "| concurrency | \`${{ inputs.concurrency }}\` |"
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [[ "${{ inputs.run_eval }}" == "true" ]]; then
+            RESULTS_FILE="longcot/$RESULTS_PATH"
+            if [[ -f "$RESULTS_FILE" ]]; then
+              {
+                echo "## Results"
+                echo ""
+                echo "| Metric | Value |"
+                echo "| --- | --- |"
+                for key in total correct incorrect failed wrong_formatting accuracy overall_accuracy; do
+                  val=$(jq -r --arg k "$key" '.[$k] // (.. | objects | select(has($k)) | .[$k]) // "n/a"' "$RESULTS_FILE" | head -n1)
+                  echo "| $key | \`$val\` |"
+                done
+                echo ""
+              } >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "_Results file not found at \`$RESULTS_FILE\`._" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          else
+            RESP_FILE="longcot/$RESPONSES_PATH"
+            if [[ -f "$RESP_FILE" ]]; then
+              LINES=$(wc -l < "$RESP_FILE" | tr -d ' ')
+              {
+                echo "## Responses"
+                echo ""
+                echo "Eval skipped (\`run_eval=false\`). Responses JSONL line count: \`$LINES\`."
+                echo ""
+              } >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "_Responses file not found at \`longcot/$RESPONSES_PATH\`._" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          fi
+
+          RESP_FILE="longcot/$RESPONSES_PATH"
+          if [[ -f "$RESP_FILE" ]]; then
+            TOTAL=$(wc -l < "$RESP_FILE" | tr -d ' ')
+            {
+              echo "## Per-question rlmify runs"
+              echo ""
+              echo "| question_id | successful | delta_status | wall_time_seconds | log_dir |"
+              echo "| --- | --- | --- | --- | --- |"
+            } >> "$GITHUB_STEP_SUMMARY"
+            head -n 20 "$RESP_FILE" | jq -r --arg logs "$RLMIFY_LOGS" '
+              [
+                (.question_id // .qid // "n/a"),
+                ((.successful // .success // false) | tostring),
+                (.delta_status // .delta.status // "n/a"),
+                ((.wall_time_seconds // .wall_time // "n/a") | tostring),
+                ("longcot/" + $logs + "/" + ((.question_id // .qid // "unknown") | tostring))
+              ] | "| " + join(" | ") + " |"
+            ' >> "$GITHUB_STEP_SUMMARY" || true
+            if [[ "$TOTAL" -gt 20 ]]; then
+              MORE=$((TOTAL - 20))
+              echo "" >> "$GITHUB_STEP_SUMMARY"
+              echo "… $MORE more" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          else
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "_Responses JSONL not found; skipping per-question table._" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload responses artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: longcot-rlmify-responses-${{ github.run_id }}
+          path: longcot/responses/**
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Upload results artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: longcot-rlmify-results-${{ github.run_id }}
+          path: longcot/results/**
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Upload rlmify logs artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: longcot-rlmify-logs-${{ github.run_id }}
+          path: longcot/rlmify-logs/**
+          retention-days: 30
+          if-no-files-found: warn
