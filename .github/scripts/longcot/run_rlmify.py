@@ -274,8 +274,8 @@ def process_question(
                     "reasoning_tokens": 0,
                 },
                 "reasoning": None,
-                "delta_status": delta.get("status", "unknown"),
-                "delta_summary": delta.get("summary", ""),
+                "delta_status": delta_obj.get("status", "unknown"),
+                "delta_summary": delta_obj.get("summary", ""),
                 "log_dir": str(qdir),
                 "wall_time_seconds": round(time.time() - start, 3),
             }
