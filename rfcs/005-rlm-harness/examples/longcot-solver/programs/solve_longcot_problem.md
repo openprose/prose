@@ -35,13 +35,17 @@ Spawn three independent `draft_solution` children with the same prompt. Draft `a
 
 ```bash
 mkdir -p "$RLMIFY_LOG_DIR/drafts"
-rlmify spawn draft_solution --thinking=high  prompt_file="$prompt_file" variant="a" > "$RLMIFY_LOG_DIR/drafts/a.json" &
-rlmify spawn draft_solution --thinking=low   prompt_file="$prompt_file" variant="b" > "$RLMIFY_LOG_DIR/drafts/b.json" &
-rlmify spawn draft_solution --thinking=low   prompt_file="$prompt_file" variant="c" > "$RLMIFY_LOG_DIR/drafts/c.json" &
+rlmify spawn draft_solution --thinking=high                                        prompt_file="$prompt_file" variant="a" > "$RLMIFY_LOG_DIR/drafts/a.json" &
+rlmify spawn draft_solution --thinking=high --model=anthropic/claude-sonnet-4-6    prompt_file="$prompt_file" variant="b" > "$RLMIFY_LOG_DIR/drafts/b.json" &
+rlmify spawn draft_solution --thinking=low                                         prompt_file="$prompt_file" variant="c" > "$RLMIFY_LOG_DIR/drafts/c.json" &
 wait
 ```
 
-Each child is launched in its own pi subprocess with a fresh context — they cannot see each other and cannot coordinate. The premium draft (a) is the one you trust most when drafts disagree; the cheap drafts (b, c) primarily act as a cross-check on draft a and as a format sanity check.
+Each child is launched in its own pi subprocess with a fresh context — they cannot see each other and cannot coordinate. The drafts span two axes of diversity:
+- **Thinking**: a,b at high budget; c at low for speed + format sanity.
+- **Model family**: a,c on the default (parent) family; b on a different family (`anthropic/claude-sonnet-4-6`).
+
+Mixing thinking tier *and* model family decorrelates the drafts on problems where both the parent model and shared thinking settings share systematic biases — same-family drafts at different thinking tiers converge on the same mistakes on hard state-tracking problems, so draft b is a different intelligence entirely.
 
 ### 3. Collect candidates
 
@@ -59,13 +63,14 @@ If a draft's file is missing or has no `.delta.solution`, treat it as absent. Yo
 
 Apply the decision rule in order:
 
-- **All three agree** (string-identical or meaning-identical): pick that.
-- **a agrees with at least one of b/c**: pick a's answer. The premium draft's deeper reasoning has a cheap-draft second witness.
-- **b agrees with c but disagrees with a**: two fast drafts are a weaker signal than one deep one, BUT two converging fast drafts often catch a format-shape issue the deeper draft over-engineered. Pick a only if a's answer *clearly* matches the problem's stated format better; otherwise pick the b/c answer.
-- **All three differ**: check each candidate part-by-part against the problem's stated constraints. Assemble the best per-part answer if the parts are independent; otherwise pick a (the premium draft).
-- **a is missing; b and c returned**: treat as two-draft case above.
-- **a returned; b and c both missing**: pick a.
-- **All three missing**: briefly solve the problem yourself as a single low-thinking pass — this is the degraded fallback.
+- **All three agree** (string-identical or meaning-identical): pick that. Highest-confidence case — two model families at two thinking tiers all converged.
+- **Any two agree**: pick the agreed-on answer. Prefer cross-family agreements (a+b, or a+b together against c) over same-family agreement (a+c against b) — two different intelligences converging is a stronger signal than two instances of the same intelligence.
+- **All three differ**: check each candidate part-by-part against the problem's stated constraints. Assemble the best per-part answer if the parts are independent; otherwise pick a (the premium same-family draft), noting in your summary that drafts disagreed.
+- **a is missing; b and c returned**: if b and c agree, commit that; if they disagree, pick b (cross-family premium).
+- **b is missing; a and c returned**: you've lost the architectural decorrelation. If a and c agree, commit that but tag your summary as reduced-confidence (same-family agreement only); if they disagree, pick a.
+- **c is missing; a and b returned**: if a and b agree, commit that (cross-family agreement); if they disagree, pick a, note cross-family disagreement in summary.
+- **Only one draft returned**: commit that one's answer.
+- **All three missing**: briefly solve the problem yourself as a single low-thinking pass — degraded fallback.
 
 Do NOT launch additional drafts. Your budget is the three initial draft spawns plus one verifier spawn.
 
