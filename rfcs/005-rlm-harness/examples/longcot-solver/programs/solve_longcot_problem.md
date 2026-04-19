@@ -69,14 +69,16 @@ Apply the decision rule in order:
 
 Do NOT launch additional drafts. Your budget is the three initial draft spawns plus one verifier spawn.
 
-### 5. Independent verify at elevated thinking
+### 5. Independent verify with a decorrelated model
 
-Spawn one `verify_solution` child at premium thinking to stress-test your picked candidate:
+Spawn one `verify_solution` child at premium thinking **with a different model family** to stress-test your picked candidate. Using a different architecture for the verifier is the point: a same-family verifier tends to share the solver's systematic biases, so `pass` from it adds little information beyond "one more opinion from the same mind". A different-family verifier can catch correlated-error cases that the drafts all got wrong in the same way.
 
 ```bash
 candidate='<your picked answer value, exactly as it would appear after "solution = ">'
 
-rlmify spawn verify_solution --thinking=high \
+rlmify spawn verify_solution \
+  --thinking=high \
+  --model=anthropic/claude-sonnet-4-6 \
   prompt_file="$prompt_file" candidate="$candidate" \
   > "$RLMIFY_LOG_DIR/verify.json"
 
