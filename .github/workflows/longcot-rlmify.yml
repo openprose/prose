@@ -7,6 +7,17 @@ on:
         description: "Model passed via RLMIFY_MODEL, e.g. anthropic/claude-haiku-4-5"
         type: string
         default: "anthropic/claude-haiku-4-5"
+      thinking:
+        description: "Thinking level passed to rlmify (RLMIFY_THINKING env)"
+        type: choice
+        default: "high"
+        options:
+          - "off"
+          - "minimal"
+          - "low"
+          - "medium"
+          - "high"
+          - "xhigh"
       domain:
         description: "LongCoT domain filter"
         type: choice
@@ -152,6 +163,7 @@ jobs:
           cd longcot
           uv run python ../.github/scripts/longcot/run_rlmify.py \
             --model "${{ inputs.model }}" \
+            --thinking "${{ inputs.thinking }}" \
             --domain "${{ inputs.domain }}" \
             --difficulty "${{ inputs.difficulty }}" \
             --max-questions "${{ inputs.max_questions }}" \
@@ -188,6 +200,7 @@ jobs:
             echo "| Input | Value |"
             echo "| --- | --- |"
             echo "| model | \`${{ inputs.model }}\` |"
+            echo "| thinking | \`${{ inputs.thinking }}\` |"
             echo "| domain | \`${{ inputs.domain }}\` |"
             echo "| difficulty | \`${{ inputs.difficulty }}\` |"
             echo "| max_questions | \`${{ inputs.max_questions }}\` |"

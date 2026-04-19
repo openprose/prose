@@ -55,7 +55,7 @@ import { loadProgram } from "../lib/program.ts";
 import { listPrograms, toPublicFace } from "../lib/registry.ts";
 import { composeHud } from "../lib/hud.ts";
 import { invokePi } from "../lib/pi.ts";
-import type { PublicFace } from "../types.ts";
+import type { PiOptions, PublicFace } from "../types.ts";
 import {
   buildHudSpecForProgram,
   logSuffix,
@@ -65,7 +65,8 @@ import {
 } from "./_shared.ts";
 
 export async function cmd(args: string[]): Promise<number> {
-  const { positional, env } = parseArgs(args);
+  const parsed = parseArgs(args);
+  const { positional, env } = parsed;
   const programName = positional[0];
   if (!programName) {
     process.stderr.write("rlmify spawn: missing program name\n");
@@ -127,14 +128,27 @@ export async function cmd(args: string[]): Promise<number> {
   // Propagate the child's own layer to its pi env, so when IT calls rlmify
   // spawn, readCurrentLayer() returns childLayer and the grandchild ends up at
   // childLayer + 1. RLMIFY_CHILD_REGISTRY inherits naturally via process.env.
+  //
+  // Per-spawn --thinking / --model overrides become RLMIFY_THINKING /
+  // RLMIFY_MODEL in the child's env; if absent, the child inherits whatever
+  // the parent was running with via normal env inheritance.
   const childEnv: Record<string, string> = {
     RLMIFY_LAYER: String(childLayer),
   };
+  if (parsed.thinking) childEnv.RLMIFY_THINKING = parsed.thinking;
+  if (parsed.model) childEnv.RLMIFY_MODEL = parsed.model;
+
+  // Effective model/thinking: per-spawn override beats parent env. Passed
+  // explicitly to invokePi so the values reach pi's CLI args (not just the
+  // child's env — env is for the grandchild down the line).
+  const effectiveModel = parsed.model ?? process.env.RLMIFY_MODEL;
+  const effectiveThinking = parsed.thinking ?? process.env.RLMIFY_THINKING;
 
   const result = await invokePi({
     hudFile,
     task: "Begin.",
-    model: process.env.RLMIFY_MODEL,
+    model: effectiveModel,
+    thinking: effectiveThinking as PiOptions["thinking"],
     skillPath: process.env.RLMIFY_SKILL,
     sessionFile,
     stdoutFile,

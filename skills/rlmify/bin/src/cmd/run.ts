@@ -47,6 +47,7 @@ import { loadProgram } from "../lib/program.ts";
 import { listPrograms, toPublicFace } from "../lib/registry.ts";
 import { composeHud } from "../lib/hud.ts";
 import { invokePi } from "../lib/pi.ts";
+import { findInvokedSpawns } from "../lib/session.ts";
 import type { PublicFace } from "../types.ts";
 import {
   buildHudSpecForProgram,
@@ -128,15 +129,36 @@ export async function cmd(args: string[]): Promise<number> {
     env: rootPiEnv,
   });
 
+  // Post-session lint: if the root program declared required_spawns, warn
+  // (on stderr, non-blocking) for any it didn't actually invoke. v1 is
+  // root-only; inner nodes get no post-session lint. We emit warnings AFTER
+  // surfacing any delta or no-delta fallback, so the operator-facing output
+  // order is: delta/raw output first, then warnings, then exit.
+  const requiredSpawns = program.publicFace.requiredSpawns;
+
+  let exitCode: number;
   if (result.delta) {
     process.stdout.write(JSON.stringify(result.delta, null, 2) + "\n");
-    return result.exitCode === 0 ? 0 : result.exitCode;
+    exitCode = result.exitCode === 0 ? 0 : result.exitCode;
+  } else {
+    // No delta — print raw pi output for debugging and exit 3.
+    process.stdout.write(result.rawStdout);
+    if (result.rawStderr) {
+      process.stderr.write(result.rawStderr);
+    }
+    exitCode = 3;
   }
 
-  // No delta — print raw pi output for debugging and exit 3.
-  process.stdout.write(result.rawStdout);
-  if (result.rawStderr) {
-    process.stderr.write(result.rawStderr);
+  if (requiredSpawns && requiredSpawns.length > 0 && sessionFile) {
+    const invoked = await findInvokedSpawns(sessionFile);
+    for (const name of requiredSpawns) {
+      if (!invoked.has(name)) {
+        process.stderr.write(
+          `rlmify run: WARNING: required spawn '${name}' was not invoked by the root session\n`,
+        );
+      }
+    }
   }
-  return 3;
+
+  return exitCode;
 }

@@ -25,7 +25,7 @@ import { extractDelta, extractDeltaFromSession } from "./delta.ts";
  */
 export async function invokePi(opts: PiOptions): Promise<PiResult> {
   const model = opts.model ?? process.env.RLMIFY_MODEL ?? "gemini-2.5-pro";
-  const thinking = opts.thinking ?? "low";
+  const thinking = opts.thinking ?? process.env.RLMIFY_THINKING ?? "low";
   const skillPath = opts.skillPath ?? process.env.RLMIFY_SKILL;
   if (!skillPath) {
     throw new Error("skillPath not set (pass opts.skillPath or set RLMIFY_SKILL)");

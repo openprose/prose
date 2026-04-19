@@ -78,8 +78,12 @@ export function parseProgram(raw: string, filePath: string): Program {
   const when = typeof fmObj.when === "string" ? fmObj.when : "";
   const requires = parseContractList(fmObj.requires);
   const ensures = parseContractList(fmObj.ensures);
+  const requiredSpawns = parseStringList(fmObj.required_spawns);
 
   const publicFace: PublicFace = { name, requires, ensures, when };
+  if (requiredSpawns !== undefined) {
+    publicFace.requiredSpawns = requiredSpawns;
+  }
   return {
     publicFace,
     body: body ?? "",
@@ -106,6 +110,25 @@ export function parseContractList(input: unknown): ContractClause[] {
         const desc = typeof v === "string" ? v : "";
         out.push({ name: k.trim(), description: desc.trim() });
       }
+    }
+  }
+  return out;
+}
+
+/**
+ * Parse a YAML list of program-name strings (used for `required_spawns`).
+ * Returns undefined if the field is absent (distinguishing "no requirement"
+ * from "empty requirement list"); returns a string[] otherwise, filtering
+ * out non-string entries.
+ */
+export function parseStringList(input: unknown): string[] | undefined {
+  if (input == null) return undefined;
+  if (!Array.isArray(input)) return undefined;
+  const out: string[] = [];
+  for (const entry of input) {
+    if (typeof entry === "string") {
+      const trimmed = entry.trim();
+      if (trimmed) out.push(trimmed);
     }
   }
   return out;

@@ -15,22 +15,55 @@ export interface ParsedArgs {
   env: Record<string, string>;
   /** Boolean flags actually seen (e.g. "--registry-auto", "--as-root"). */
   flags: Set<string>;
+  /** Value of `--thinking=<level>` / `--thinking <level>` if provided. */
+  thinking?: string;
+  /** Value of `--model=<model>` / `--model <model>` if provided. */
+  model?: string;
 }
+
+/** Flags that take a string value (support both `--k=v` and `--k v` forms). */
+const VALUED_FLAGS = new Set(["--thinking", "--model"]);
 
 /**
  * Split argv into flags, positional args, and `key=value` env pairs.
  *
- * A token starting with `--` is a flag (no value syntax — flags are booleans
- * in this CLI). Anything containing `=` is an env pair split on the FIRST `=`.
- * Everything else is positional.
+ * A token starting with `--` is treated as a flag. Boolean flags are recorded
+ * in `flags`. Known valued flags (`--thinking`, `--model`) accept both
+ * `--flag=value` and `--flag value` (two-token) forms and are surfaced as
+ * typed fields on the result. Anything containing `=` (without `--` prefix)
+ * is an env pair split on the FIRST `=`. Everything else is positional.
  */
 export function parseArgs(args: string[]): ParsedArgs {
   const positional: string[] = [];
   const env: Record<string, string> = {};
   const flags = new Set<string>();
+  let thinking: string | undefined;
+  let model: string | undefined;
 
-  for (const tok of args) {
+  for (let i = 0; i < args.length; i++) {
+    const tok = args[i]!;
     if (tok.startsWith("--")) {
+      // Handle --flag=value form for known valued flags.
+      const eq = tok.indexOf("=");
+      if (eq > 0) {
+        const name = tok.slice(0, eq);
+        const value = tok.slice(eq + 1);
+        if (VALUED_FLAGS.has(name)) {
+          if (name === "--thinking") thinking = value;
+          else if (name === "--model") model = value;
+          continue;
+        }
+        // Unknown `--k=v` — stash as a flag keyed by full token (legacy).
+        flags.add(tok);
+        continue;
+      }
+      // Handle --flag value form for known valued flags.
+      if (VALUED_FLAGS.has(tok) && i + 1 < args.length) {
+        const value = args[++i]!;
+        if (tok === "--thinking") thinking = value;
+        else if (tok === "--model") model = value;
+        continue;
+      }
       flags.add(tok);
       continue;
     }
@@ -44,7 +77,7 @@ export function parseArgs(args: string[]): ParsedArgs {
     }
   }
 
-  return { positional, env, flags };
+  return { positional, env, flags, thinking, model };
 }
 
 /**
@@ -86,6 +119,11 @@ export function buildHudSpecForProgram(opts: BuildHudSpecOpts): HudSpec {
   const { program, env, role, registry } = opts;
   const name = program.publicFace.name;
 
+  // required_spawns is a declarative hint to the model plus a basis for the
+  // root-only post-session lint. For v1 we only surface it on the root HUD;
+  // inner nodes could declare required_spawns too but don't currently get a
+  // post-session lint, so plumbing it through there buys nothing. Keep the
+  // inner spec stable until that story exists.
   if (role === "root") {
     return {
       responsibility: program.body,
@@ -96,6 +134,7 @@ export function buildHudSpecForProgram(opts: BuildHudSpecOpts): HudSpec {
       environment: { ...env },
       registry,
       actionHistory: "",
+      requiredSpawns: program.publicFace.requiredSpawns,
     };
   }
 

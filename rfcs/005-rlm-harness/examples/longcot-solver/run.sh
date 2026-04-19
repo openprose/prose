@@ -21,6 +21,8 @@ PROGRAMS_DIR="$EXAMPLE_DIR/programs"
 export RLMIFY_SKILL="$SKILL_DIR"
 export RLMIFY_PROGRAMS="$PROGRAMS_DIR"
 export RLMIFY_LOG_DIR="${RLMIFY_LOG_DIR:-/tmp/rlmify-runs/longcot-solver-latest}"
+# Default to paper-match thinking budget; caller can override (off/minimal/low/medium/high/xhigh).
+export RLMIFY_THINKING="${RLMIFY_THINKING:-high}"
 export PATH="$SKILL_DIR/bin:$PATH"
 
 mkdir -p "$RLMIFY_LOG_DIR"

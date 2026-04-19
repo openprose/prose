@@ -45,6 +45,17 @@ The same interpreter loads at every layer. You infer your role from the HUD:
 - `return.md` — the delta format you emit when done.
 - `bin/rlmify` — the CLI binary (Bun/TypeScript).
 
+## Environment knobs
+
+The caller (and the skill itself, recursively) can set these on the root
+invocation; children inherit them via normal env inheritance:
+
+- `RLMIFY_MODEL` — model id for pi subprocesses (default `gemini-2.5-pro`).
+- `RLMIFY_THINKING` — pi thinking level: `off|minimal|low|medium|high|xhigh`
+  (default `low`). Per-spawn `--thinking` overrides this for a single child.
+- `RLMIFY_SKILL`, `RLMIFY_PROGRAMS`, `RLMIFY_LOG_DIR`, `RLMIFY_LAYER`,
+  `RLMIFY_CHILD_REGISTRY` — see the CLI help text.
+
 ## When to delegate
 
 - A subtask matches a registered program's `ensures` contract.

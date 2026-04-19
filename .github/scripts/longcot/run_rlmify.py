@@ -2,8 +2,9 @@
 """Shim driving rlmified pi as the LongCoT inference harness.
 
 Mirrors run_pi.py's CLI surface but invokes `rlmify run` (transitively forking
-pi) instead of pi directly. Thinking level is hardcoded to "low" inside rlmify
-v1, so there is intentionally no --thinking flag here.
+pi) instead of pi directly. Thinking level is propagated to the nested pi
+subprocess via the `RLMIFY_THINKING` env var (rlmify itself has no --thinking
+flag); --system-prompt remains unavailable because rlmify composes its own HUD.
 """
 
 import argparse
@@ -32,6 +33,7 @@ DIFFICULTY_ALIASES = {
 }
 DOMAIN_CHOICES = ["logic", "cs", "chemistry", "chess", "math", "all"]
 DIFFICULTY_CHOICES = list(DIFFICULTY_ALIASES.keys())
+THINKING_CHOICES = ["off", "minimal", "low", "medium", "high", "xhigh"]
 
 PROGRAM_NAME = "solve_longcot_problem"
 PROGRAMS_SUBPATH = Path("rfcs/005-rlm-harness/examples/longcot-solver/programs")
@@ -52,16 +54,18 @@ PROVIDER_KEY_ENV_VARS = [
 
 def parse_args():
     epilog = (
-        "Note: rlmify v1 hardcodes pi's thinking level to 'low' and does not "
-        "expose --thinking or --system-prompt; those flags are intentionally "
-        "absent here. Model is passed via the RLMIFY_MODEL env var to rlmify "
-        "(rlmify itself has no --model flag)."
+        "Note: --thinking is propagated to pi via the RLMIFY_THINKING env var "
+        "(rlmify itself has no --thinking CLI flag — only env). --system-prompt "
+        "remains unavailable because rlmify composes its own HUD. Model is "
+        "passed via the RLMIFY_MODEL env var to rlmify (rlmify itself has no "
+        "--model flag)."
     )
     p = argparse.ArgumentParser(
         description="Drive rlmified pi for the LongCoT benchmark.",
         epilog=epilog,
     )
     p.add_argument("--model", required=True)
+    p.add_argument("--thinking", default="high", choices=THINKING_CHOICES)
     p.add_argument("--domain", default="all", choices=DOMAIN_CHOICES)
     p.add_argument("--difficulty", default="longcot", choices=DIFFICULTY_CHOICES)
     p.add_argument("--max-questions", type=int, default=0)
@@ -144,12 +148,21 @@ def sanitize_qid(qid: str) -> str:
     return re.sub(r"[^A-Za-z0-9_.-]", "_", qid)[:120]
 
 
-def build_env(model: str, skill_path: Path, programs_path: Path, log_dir: Path) -> dict:
+def build_env(
+    model: str,
+    skill_path: Path,
+    programs_path: Path,
+    log_dir: Path,
+    thinking: str,
+) -> dict:
     env = os.environ.copy()
     env["RLMIFY_SKILL"] = str(skill_path)
     env["RLMIFY_PROGRAMS"] = str(programs_path)
     env["RLMIFY_LOG_DIR"] = str(log_dir)
     env["RLMIFY_MODEL"] = model
+    # RLMIFY_THINKING is read by skills/rlmify/bin/src/lib/pi.ts and applied to
+    # every pi subprocess in the tree (fallback inside pi.ts is "low").
+    env["RLMIFY_THINKING"] = thinking
     # Prepend the rlmify bin to PATH so the root `rlmify` and nested spawns resolve.
     bin_dir = skill_path / "bin"
     env["PATH"] = f"{bin_dir}{os.pathsep}{env.get('PATH', '')}"
@@ -208,6 +221,7 @@ def process_question(
     programs_path: Path,
     base_log_dir: Path,
     retries: int,
+    thinking: str,
 ) -> dict:
     qid = extract_qid(q)
     prompt = extract_prompt(q)
@@ -217,7 +231,7 @@ def process_question(
     prompt_file = qdir / "prompt.txt"
     prompt_file.write_text(prompt, encoding="utf-8")
 
-    env = build_env(model, skill_path, programs_path, qdir)
+    env = build_env(model, skill_path, programs_path, qdir, thinking)
 
     max_attempts = 1 + max(0, retries)
     all_errors: list[dict] = []
@@ -374,6 +388,7 @@ def main() -> int:
         print(f"resolved repo root: {repo_root}")
         print(f"resolved skill path: {skill_path}")
         print(f"resolved programs path: {programs_path}")
+        print(f"resolved thinking level: {args.thinking} (exported as RLMIFY_THINKING)")
 
         sample_qdir = base_log_dir / "<question_id>"
         print("sample rlmify command:")
@@ -382,10 +397,12 @@ def main() -> int:
             f"prompt_file={sample_qdir / 'prompt.txt'}"
         )
 
-        sample_env = build_env(args.model, skill_path, programs_path, sample_qdir)
+        sample_env = build_env(
+            args.model, skill_path, programs_path, sample_qdir, args.thinking,
+        )
         relevant = {k: sample_env[k] for k in (
             "RLMIFY_SKILL", "RLMIFY_PROGRAMS", "RLMIFY_LOG_DIR",
-            "RLMIFY_MODEL", "PATH",
+            "RLMIFY_MODEL", "RLMIFY_THINKING", "PATH",
         )}
         for k in PROVIDER_KEY_ENV_VARS:
             if k in sample_env:
@@ -443,6 +460,7 @@ def main() -> int:
                     programs_path,
                     base_log_dir,
                     args.retries,
+                    args.thinking,
                 ): q
                 for q in questions
             }

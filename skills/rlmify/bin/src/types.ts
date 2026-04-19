@@ -19,6 +19,14 @@ export interface PublicFace {
   ensures: ContractClause[];
   /** Short description of when it's appropriate to call this program. */
   when: string;
+  /**
+   * Optional list of child program names the HUD declares MUST be invoked by
+   * a node running this program. Surfaced to the model as a hint via the
+   * HUD's `<required_spawns>` section, and (at root only, v1) warned about
+   * post-session if any entry was never spawned. Missing = undefined = no
+   * requirement.
+   */
+  requiredSpawns?: string[];
 }
 
 /** A fully loaded program file. */
@@ -44,6 +52,11 @@ export interface HudSpec {
   registry: PublicFace[];
   /** Optional action-history prose. Defaults to empty. */
   actionHistory?: string;
+  /**
+   * Optional list of child program names this node MUST invoke via
+   * `rlmify spawn`. Rendered as `<required_spawns>` only when non-empty.
+   */
+  requiredSpawns?: string[];
 }
 
 /** The structured delta a node emits when done. */

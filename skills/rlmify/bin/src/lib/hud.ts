@@ -8,7 +8,8 @@
 //   4. <environmental_context>
 //   5. <environment>          (key: value lines, one per entry)
 //   6. <registry>             (<program> children with public-face fields)
-//   7. <action_history>
+//   7. <required_spawns>      (optional; <program>name</program> children)
+//   8. <action_history>
 //
 // Indent section contents with 2 spaces for readability. Do not escape ampersands inside
 // section bodies — the model reads this as prose, not strict XML.
@@ -58,9 +59,16 @@ export function composeHud(spec: HudSpec): string {
     section("environmental_context", spec.environmentalContext),
     section("environment", envLines),
     section("registry", registryBody),
-    section("action_history", spec.actionHistory ?? ""),
-    "</rlm_hud>",
   ];
+  // Optional: only render <required_spawns> when non-empty.
+  if (spec.requiredSpawns && spec.requiredSpawns.length > 0) {
+    const body = spec.requiredSpawns
+      .map((name) => `<program>${name}</program>`)
+      .join("\n");
+    parts.push(section("required_spawns", body));
+  }
+  parts.push(section("action_history", spec.actionHistory ?? ""));
+  parts.push("</rlm_hud>");
   return parts.join("\n") + "\n";
 }
 

@@ -39,6 +39,7 @@ env:
   RLMIFY_PROGRAMS   path to the programs directory
   RLMIFY_LOG_DIR    where to write artifacts (HUDs, child outputs, deltas)
   RLMIFY_MODEL      default model id for child pi invocations
+  RLMIFY_THINKING   pi thinking level (off|minimal|low|medium|high|xhigh; default low)
 `;
 
 export async function main(argv: string[]): Promise<void> {

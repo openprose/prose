@@ -55,8 +55,31 @@ longcot-solver/
 └── README.md
 ```
 
+## Configuring thinking level
+
+`skills/rlmify/bin/src/lib/pi.ts` reads the `RLMIFY_THINKING` env var (fallback `low`) and applies it to every pi subprocess in the tree. Valid values: `off`, `minimal`, `low`, `medium`, `high`, `xhigh`.
+
+- **Locally:** `RLMIFY_THINKING=high ./run.sh /tmp/lc-problem.txt`. `run.sh` already defaults to `high` when unset, matching the paper's "highest setting if available" baseline.
+- **In CI:** the `longcot-rlmify.yml` workflow exposes a `thinking` input (default `high`) that the shim forwards via `RLMIFY_THINKING`.
+
+## Heterogeneous fan-out
+
+`rlmify spawn` now accepts per-child overrides: `--thinking <level>` and `--model <model>`. These set the child's `RLMIFY_THINKING`/`RLMIFY_MODEL` env, so a single fan-out can mix budgets — e.g. one premium draft plus two cheap drafts:
+
+```bash
+rlmify spawn draft_solution prompt_file=... variant=a --thinking=high
+rlmify spawn draft_solution prompt_file=... variant=b --thinking=low
+rlmify spawn draft_solution prompt_file=... variant=c --thinking=low
+```
+
+Asymmetric delegation addresses the correlated-error failure mode seen in same-model/same-thinking fan-outs: a higher-budget draft is less likely to replicate the systematic bias of its cheaper siblings.
+
+## Declaring required spawns
+
+Program frontmatter may declare `required_spawns: [name1, name2]`. Declared spawns are rendered in a `<required_spawns>` HUD section; after the root session completes, `rlmify run` scans `session.jsonl` and emits warnings to stderr for any declared spawn that wasn't invoked. Warn-only in v1 — no auto-retry, no error exit.
+
 ## v1 limitations / future work
 
-- **Depth 0 only.** No delegation, no subproblem decomposition, no branching. A real long-horizon harness would at minimum add `plan_then_solve` (plan at the root, delegate each plan step to a solver child, compose), plus domain-specific decomposers.
-- **Thinking budget is hardcoded.** `skills/rlmify/bin/pi.ts` currently passes `--thinking low` unconditionally. LongCoT problems are reasoning-heavy — for real benchmark runs we'd want to patch `pi.ts` to read an `RLMIFY_THINKING` env var (or make it a first-class `rlmify run` flag) and bump to `medium`/`high`. Until then, expect weak results on hard-tier problems.
-- **CI usage.** `.github/scripts/longcot/run_rlmify.py` wraps this example: for each benchmark question, it creates a per-question `RLMIFY_LOG_DIR`, writes the prompt to `prompt.txt`, runs `./run.sh`, parses the delta from stdout, pulls `.delta.solution`, and formats the result as JSONL rows that the benchmark's `run_eval.py` consumes. That shim is the actual benchmark driver; this example is the unit that runs per question.
+- **Depth 0 only (this example).** No delegation, no subproblem decomposition, no branching. Sibling examples and later iterations of `longcot-solver` layer on `plan_then_solve`, fan-out drafts, and domain-specific decomposers.
+- **Per-call usage not surfaced.** `rlmify run` doesn't aggregate pi's per-call token counts into its delta; the shim zeroes the `usage` fields rather than parsing `session.jsonl`.
+- **CI usage.** `.github/scripts/longcot/run_rlmify.py` wraps this example: for each benchmark question, it creates a per-question `RLMIFY_LOG_DIR`, writes the prompt to `prompt.txt`, invokes `rlmify run` (with `RLMIFY_THINKING` from its `--thinking` flag), parses the delta from stdout, pulls `.delta.solution`, and formats the result as JSONL rows that the benchmark's `run_eval.py` consumes. That shim is the actual benchmark driver; this example is the unit that runs per question.

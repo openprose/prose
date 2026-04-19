@@ -31,6 +31,23 @@ The program's body is **not** in the registry. Bodies are only seen by callees, 
 
 The registry is scoped to you. Your parent already narrowed it; you may narrow it further for your own children. If you discover capabilities during exploration, `rlmify list-programs` and `rlmify resolve` show what's available in the current scope.
 
+### `<required_spawns>` (optional)
+Programs the current node MUST invoke via `rlmify spawn` as part of fulfilling
+its responsibility. Only rendered when non-empty. Each `<program>` child names
+one required callee:
+
+```xml
+<required_spawns>
+  <program>draft_solution</program>
+  <program>verify_solution</program>
+</required_spawns>
+```
+
+Treat entries here as hard requirements, not suggestions — the root `rlmify
+run` performs a post-session lint and warns (to stderr) for any required
+spawn the session never actually invoked. The warning is non-blocking in v1
+but signals a contract violation.
+
 ### `<action_history>`
 Trajectory of actions taken so far in this node's lifetime: commands run, files read, child deltas received. Folded into the HUD rather than left as separate messages. When you act, mentally append to this list.
 

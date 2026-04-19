@@ -34,6 +34,33 @@ done
 
 The CLI handles the fiddly parts. You write ordinary bash.
 
+## Choosing a different model or thinking level for the child
+
+By default the child inherits the parent's model and thinking level via the
+`RLMIFY_MODEL` and `RLMIFY_THINKING` environment variables. Two per-spawn
+flags let you override them for a single child:
+
+```bash
+# Verify at a higher thinking budget than the solver.
+rlmify spawn verify_solution --thinking high draft="$draft"
+
+# Fan out with a stronger model on one branch for a second opinion.
+rlmify spawn draft_solution --model claude-opus-4-7 question_id=89
+```
+
+The flags accept both `--thinking high` and `--thinking=high` (same for
+`--model`). They set the corresponding `RLMIFY_*` env var on the child's pi
+subprocess, so the override also propagates to any grandchildren the child
+spawns — unless the child itself passes a further per-spawn override.
+
+**When to use.** Same-model same-thinking fan-out helps with sampling
+variance (format ambiguity, surface-level mistakes) but is blind to
+correlated error: two drafts of the same model at the same thinking level
+can agree confidently and wrongly. Verify passes, in particular, are most
+useful when run at higher thinking budget or on a different / stronger model
+than the solver — otherwise the verifier tends to produce correlated critiques
+rather than an independent check.
+
 ## What the child sees
 
 Each call to `rlmify spawn` produces a new child HUD where:
