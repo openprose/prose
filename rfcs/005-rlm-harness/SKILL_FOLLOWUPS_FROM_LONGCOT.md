@@ -96,3 +96,58 @@ produces a correlated second draft, not an independent check.
 
 **Status**: not implemented.
 
+## 4. Fan-out with same-model drafts: good for format disambiguation, blind to correlated error
+
+**Observed** (Iter 5 of longcot-solver, run `24616915796`): introduced a
+`draft_solution` leaf and had `solve_longcot_problem` fan out to three
+parallel drafts, then synthesize (majority / per-part reconcile).
+
+Two instructive cases from the same run:
+
+- **DistMem_easy_22** — drafts `a` and `b` both produced a long
+  `A1=16; A2=15; ...; A13=31` string; draft `c` produced `[15, 13840, 31]`
+  (the correct format). Opus-the-synthesizer correctly recognized that
+  a/b violated the problem's stated answer format and committed `c`.
+  Consensus-on-format added real value: without fan-out, a single draft
+  could easily have emitted the over-verbose answer and scored zero.
+
+- **HM_easy_26** — drafts `a` and `b` both independently produced
+  `q1=Bool, q2=Nat, q3=(Nat × Bool)`; draft `c` gave up partway. The
+  majority was confidently wrong in the same way both times. The
+  grader still scored incorrect. Consensus cannot escape correlated
+  bias — when two independent reasoning passes through the same model
+  at the same settings hit the same misstep, their agreement is not
+  evidence of correctness, only of the bias's stability.
+
+**Why this is skill-relevant**: `rlmify spawn` today gives you
+"multiple instances of the same model at the same thinking level."
+That's good for sampling variance (the DistMem case) but useless for
+systematic error (the HM case). The improvements proposed under
+findings #1 and #3 (per-spawn `--thinking` and `--model` overrides)
+directly address this: a fan-out becomes meaningfully more valuable
+if at least one draft is run at higher thinking, or with a different
+base model, than the solver.
+
+**Status**: not implemented. Both required changes are blocked on #1
+and #3.
+
+## Accuracy progression across five LongCoT-solver iterations
+
+All runs: Opus 4.7 via rlmified pi, `thinking=low` (hardcoded), 
+LongCoT-mini, seed=0, max_questions=3 → same three problems every time
+(`DistMem_easy_22`, `HM_easy_26`, `89`).
+
+| Iter | Change | correct | wall time on hardest (Q 89) |
+|---|---|---|---|
+| 1 | baseline depth-0 program | 2/3 (HM: refused) | 141s |
+| 2 | + 5-phase metacognitive scaffold + anti-refusal | 2/3 (HM: best-effort, wrong) | 119s |
+| 3 | + `verify_solution` delegation | 2/3 | 283s |
+| 4 | — verify, + procedure-based self-check | 2/3 | 159s |
+| 5 | — self-solve, + 3-draft fan-out + synthesize | 2/3 | 176s |
+
+The one failing question is the same across every iteration. `HM_easy_26`
+is Hindley-Milner type inference with 348 let-bindings; all non-trivial
+state-tracking within Opus's thinking=low budget converges on the same
+wrong answer. The plateau is at the harness level, not the program
+level — the remaining work is the three findings above.
+
