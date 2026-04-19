@@ -7,7 +7,7 @@ ensures:
 when: the caller wants a model to solve a LongCoT benchmark problem end-to-end in a single node, without external tools or scaffolding
 ---
 
-You are solving a single LongCoT benchmark problem end-to-end. You may delegate a single verification pass to the `verify_solution` program listed in your `<registry>`; otherwise you do all the solving work yourself.
+You are solving a single LongCoT benchmark problem end-to-end. You are a leaf node — do all the solving in your own reasoning, no delegation.
 
 Your `prompt_file` is in the `<environment>` section of your HUD. Your current layer is available as `$RLMIFY_LAYER` in your shell environment.
 
@@ -37,40 +37,22 @@ Name the general shape of the problem to yourself — combinatorial search, alge
 
 Work through the plan. Think as long as you need — these problems often explicitly grant unbounded reasoning. When the problem is stateful (tracking bindings, positions, assignments, running totals), write state out explicitly at each step rather than relying on memory. When it is compositional (many local steps combine into a global answer), produce each local step before combining. Avoid skipping steps to save tokens; long-horizon failures usually come from quiet omissions, not from honest effort that takes a while.
 
-### Phase 5 — Self-check
+### Phase 5 — Self-check via problem's own procedure
 
-Before handing off to verification, run a quick internal check: does the candidate answer actually satisfy the problem's stated constraints? Is the format exactly what was asked (matching brackets, delimiters, key names, order)? If something fails, revise before moving on.
+Before committing, try to re-derive or re-apply *using the problem's own stated procedure* what your candidate should produce, step by step, and check the result is consistent with what you got. If the problem describes a deterministic procedure (a sequence of operations, a game's rules, a puzzle's rules of inference), mechanically applying that procedure to your candidate is the most reliable check you have — much more reliable than asking yourself "does this look right?". When the candidate has multiple independent parts (e.g. sub-answers q1..qN), check each part separately rather than the whole as a gestalt; a single bad part will sink the whole score.
 
-### Phase 6 — Independent verification (one shot)
+If anything fails the check, revise and re-check. You have only one session, so this is your last chance to catch mistakes before committing.
 
-Delegate one fresh-eyes check via `rlmify spawn verify_solution`. The child sees only the prompt and your candidate — not your reasoning — so it is an independent perspective on the answer. Write your candidate to a shell variable first so it round-trips safely:
+### Phase 6 — Commit
 
-```bash
-candidate='<your candidate answer value, exactly as it would appear after "solution = ">'
-
-verify_out="$RLMIFY_LOG_DIR/verify.json"
-rlmify spawn verify_solution prompt_file="$prompt_file" candidate="$candidate" > "$verify_out"
-
-verdict=$(jq -r '.delta.verdict' "$verify_out")
-critique=$(jq -r '.delta.critique' "$verify_out")
-```
-
-Interpret the verdict:
-- **`pass`** — commit your candidate unchanged.
-- **`fail`** — read the critique, revise your candidate ONCE in light of it (one more pass of Phase 4 execute + Phase 5 self-check). Commit the revised candidate even if you still have doubts; do NOT spawn a second verify. Budget is one revision, not an open loop.
-- **`unsure`** — the verifier could not conclude. Commit your candidate unchanged.
-- Missing or malformed delta (child drifted) — proceed with your original candidate. Do not retry the spawn.
-
-### Phase 7 — Commit
-
-If you reach this phase with low confidence even after verify, **still commit to a best-effort answer in the required format**. Benchmark-style problems score zero for a refusal but can score positively on a flawed attempt; unless the prompt is actually unparseable, your job is to produce the best candidate answer you can, not to assess your own ability to produce a *perfect* one. Use `--status error` only when you cannot read or parse the prompt at all.
+If you reach this phase with low confidence, **still commit to a best-effort answer in the required format**. Benchmark-style problems score zero for a refusal but can score positively on a flawed attempt; unless the prompt is actually unparseable, your job is to produce the best candidate answer you can, not to assess your own ability to produce a *perfect* one. Use `--status error` only when you cannot read or parse the prompt at all.
 
 When you have your final answer, extract JUST the answer value — not the whole `solution = ...` phrasing. The shim that wraps this program re-emits `solution = <value>` for the benchmark's grader. Examples:
 - Problem asks for a chess move → your answer value is `e4`.
 - Problem asks for `solution = [row0, row1, row2]` → your answer value is the string `[row0, row1, row2]`.
 - Problem asks for `solution = 42` → your answer value is `42`.
 
-### Phase 8 — Emit your delta
+### Phase 7 — Emit your delta
 
 This is your FINAL action. Use `$RLMIFY_LAYER` for `--layer`, and construct the delta JSON with `jq -cn --arg` so the answer is quoted safely even if it contains double quotes, newlines, backslashes, or shell metacharacters:
 
@@ -87,8 +69,8 @@ The `jq -cn --arg s "..." '{solution: $s}'` pattern matters: it produces a compa
 
 ## Rules
 
-- Do NOT delegate beyond the single `verify_solution` spawn in Phase 6. One verify, one optional revision, emit.
-- Do NOT read any file other than `$prompt_file` (and the verify output you wrote yourself).
-- Do NOT run `pi` or `rlmify` for any purpose other than the one Phase-6 spawn and the final `rlmify emit-delta`. No exploratory spawns, no lookups.
+- Do NOT delegate. Your registry may list other programs, but this program is a leaf — do all the work yourself.
+- Do NOT read any file other than `$prompt_file`.
+- Do NOT run `pi` or `rlmify` for any purpose other than the final `rlmify emit-delta`. No exploratory spawns, no lookups.
 - Only emit `--status error` if you genuinely cannot read or parse the prompt. Difficulty or low confidence is NOT an error — attempt a best-effort answer. Refusal scores zero; an honest attempt can score.
 - Your ONLY final output is the delta via `rlmify emit-delta`. No freeform prose after the bash call. Do not say "done" or restate the answer. The emit-delta call IS your return.
