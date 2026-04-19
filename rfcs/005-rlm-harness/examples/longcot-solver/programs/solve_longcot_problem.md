@@ -3,74 +3,88 @@ name: solve_longcot_problem
 requires:
   - prompt_file: string — absolute path to a file containing the full LongCoT problem prompt
 ensures:
-  - solution: string — the final answer value, in the format the problem requests (the shim re-emits it as `solution = <value>`)
-when: the caller wants a model to solve a LongCoT benchmark problem end-to-end in a single node, without external tools or scaffolding
+  - solution: string — the final committed answer value, in the format the problem requests (the shim re-emits it as `solution = <value>`)
+when: the caller wants a model to solve a single benchmark problem end-to-end, using an independent-drafts-then-synthesize strategy under an RLM harness
 ---
 
-You are solving a single LongCoT benchmark problem end-to-end. You are a leaf node — do all the solving in your own reasoning, no delegation.
+You are coordinating a multi-draft solution to a benchmark problem. You fan out three independent drafts in parallel, then synthesize. You yourself do not solve — your job is to orchestrate drafts and pick or compose the committed answer.
 
-Your `prompt_file` is in the `<environment>` section of your HUD. Your current layer is available as `$RLMIFY_LAYER` in your shell environment.
+Your `prompt_file` is in the `<environment>` section of your HUD. `draft_solution` is in your `<registry>`. Your current layer is `$RLMIFY_LAYER`.
 
 ## Procedure
 
-You move through five phases. Each is cheap in tokens and catches a class of mistakes that would otherwise sink an otherwise-capable solution.
-
-### Phase 1 — Observe
-
-Read the full problem:
+### 1. Observe
 
 ```bash
 cat "$prompt_file"
 ```
 
-Treat that text as the complete, self-contained problem. Problems span multiple domains; each carries its own answer-format directive inside the prompt — typically something like `return \`solution = <value>\``. Trust the problem statement's formatting instructions. Treat any explicit "no limit on time or tokens" as literally granted.
+Read the problem once so you know the required answer shape. You are not solving it — you are managing solvers who will solve it.
 
-### Phase 2 — Restate
+### 2. Fan out three drafts in parallel
 
-In a few sentences, restate in your own words: what is actually being asked, what inputs you are given, and what exact shape the answer takes (a number? a list? a FEN string? a JSON object with specific keys?). This catches misreads early and costs almost nothing.
+Spawn three independent `draft_solution` children with the same prompt. Variants are labels only, for disambiguation in the log tree:
 
-### Phase 3 — Classify & plan
+```bash
+mkdir -p "$RLMIFY_LOG_DIR/drafts"
+for v in a b c; do
+  rlmify spawn draft_solution prompt_file="$prompt_file" variant="$v" > "$RLMIFY_LOG_DIR/drafts/$v.json" &
+done
+wait
+```
 
-Name the general shape of the problem to yourself — combinatorial search, algebraic manipulation, constraint satisfaction, sequential simulation, proof-by-construction, state-tracking over many steps, etc. From that shape, choose an approach that is *mechanical and checkable*: prefer a systematic procedure you could explain to someone else over a clever shortcut. If the problem has natural sub-steps (phases, layers, chunks of state), enumerate them before starting.
+Each child is launched in its own pi subprocess with a fresh context — they cannot see each other and cannot coordinate. This is the point: three independent trajectories through the problem.
 
-### Phase 4 — Execute
+### 3. Collect candidates
 
-Work through the plan. Think as long as you need — these problems often explicitly grant unbounded reasoning. When the problem is stateful (tracking bindings, positions, assignments, running totals), write state out explicitly at each step rather than relying on memory. When it is compositional (many local steps combine into a global answer), produce each local step before combining. Avoid skipping steps to save tokens; long-horizon failures usually come from quiet omissions, not from honest effort that takes a while.
+```bash
+for v in a b c; do
+  s=$(jq -r '.delta.solution // ""' "$RLMIFY_LOG_DIR/drafts/$v.json")
+  echo "-- draft $v --"
+  printf '%s\n' "$s"
+done
+```
 
-### Phase 5 — Self-check via problem's own procedure
+If a draft's file is missing or has no `.delta.solution`, treat it as absent. You may still proceed with whichever drafts returned.
 
-Before committing, try to re-derive or re-apply *using the problem's own stated procedure* what your candidate should produce, step by step, and check the result is consistent with what you got. If the problem describes a deterministic procedure (a sequence of operations, a game's rules, a puzzle's rules of inference), mechanically applying that procedure to your candidate is the most reliable check you have — much more reliable than asking yourself "does this look right?". When the candidate has multiple independent parts (e.g. sub-answers q1..qN), check each part separately rather than the whole as a gestalt; a single bad part will sink the whole score.
+### 4. Synthesize
 
-If anything fails the check, revise and re-check. You have only one session, so this is your last chance to catch mistakes before committing.
+Compare the candidates. The decision rule is:
 
-### Phase 6 — Commit
+- **All three agree** (string-identical or meaning-identical): commit that answer. High confidence.
+- **Two of three agree, one differs**: commit the majority answer. The outlier is likely the reasoning-error draft.
+- **All three differ**: examine each candidate against the problem's stated constraints. For a multi-part answer (q1..qN, a list, a structured object), check each PART separately — different drafts may be right about different parts; a reconciled answer assembled from the best per-part may beat any single draft. If you cannot reconcile on structural grounds, pick the candidate that is (a) in the correct format and (b) most consistent with a mechanical re-application of the problem's own procedure to your best understanding of the answer.
+- **Fewer than two drafts returned** (missing or malformed deltas): use whichever draft(s) you got, or, if all failed, produce your own best-effort answer by briefly applying the procedure yourself.
 
-If you reach this phase with low confidence, **still commit to a best-effort answer in the required format**. Benchmark-style problems score zero for a refusal but can score positively on a flawed attempt; unless the prompt is actually unparseable, your job is to produce the best candidate answer you can, not to assess your own ability to produce a *perfect* one. Use `--status error` only when you cannot read or parse the prompt at all.
+Do NOT launch additional drafts. Your budget is the three initial spawns plus your own synthesis.
 
-When you have your final answer, extract JUST the answer value — not the whole `solution = ...` phrasing. The shim that wraps this program re-emits `solution = <value>` for the benchmark's grader. Examples:
-- Problem asks for a chess move → your answer value is `e4`.
-- Problem asks for `solution = [row0, row1, row2]` → your answer value is the string `[row0, row1, row2]`.
-- Problem asks for `solution = 42` → your answer value is `42`.
+### 5. Commit
 
-### Phase 7 — Emit your delta
+Commit a best-effort answer in the required format even if your drafts disagreed and you're unsure. Benchmark-style problems score zero for a refusal but can score positively on a flawed attempt. Use `--status error` only when the prompt is unparseable.
 
-This is your FINAL action. Use `$RLMIFY_LAYER` for `--layer`, and construct the delta JSON with `jq -cn --arg` so the answer is quoted safely even if it contains double quotes, newlines, backslashes, or shell metacharacters:
+Extract JUST the answer value — not the whole `solution = ...` phrasing. The shim re-emits `solution = <value>` for the grader. Examples:
+- Chess move → `e4`
+- `solution = [row0, row1, row2]` → the string `[row0, row1, row2]`
+- `solution = 42` → `42`
 
-   ```bash
-   rlmify emit-delta \
-     --status complete \
-     --delta "$(jq -cn --arg s "<your answer value>" '{solution: $s}')" \
-     --summary "Solved. solution = <your answer value>" \
-     --ensures-satisfied solution \
-     --layer "$RLMIFY_LAYER"
-   ```
+### 6. Emit your delta
 
-The `jq -cn --arg s "..." '{solution: $s}'` pattern matters: it produces a compact JSON object where the answer is a properly-escaped string literal. Do NOT build the JSON by hand with `echo '{"solution":"..."}'` — if your answer contains a `"`, a newline, or a `\`, hand-built JSON will break the delta parser.
+This is your FINAL action. Build the JSON safely with `jq`:
+
+```bash
+rlmify emit-delta \
+  --status complete \
+  --delta "$(jq -cn --arg s "<your committed answer value>" '{solution: $s}')" \
+  --summary "Committed solution = <committed answer> (drafts: a=<a-short>, b=<b-short>, c=<c-short>)" \
+  --ensures-satisfied solution \
+  --layer "$RLMIFY_LAYER"
+```
+
+Including a short form of each draft in the summary is useful for retrospective analysis of when drafts agreed vs diverged.
 
 ## Rules
 
-- Do NOT delegate. Your registry may list other programs, but this program is a leaf — do all the work yourself.
-- Do NOT read any file other than `$prompt_file`.
-- Do NOT run `pi` or `rlmify` for any purpose other than the final `rlmify emit-delta`. No exploratory spawns, no lookups.
-- Only emit `--status error` if you genuinely cannot read or parse the prompt. Difficulty or low confidence is NOT an error — attempt a best-effort answer. Refusal scores zero; an honest attempt can score.
-- Your ONLY final output is the delta via `rlmify emit-delta`. No freeform prose after the bash call. Do not say "done" or restate the answer. The emit-delta call IS your return.
+- Do NOT delegate beyond the three initial `draft_solution` spawns. No verify passes, no exploratory spawns, no fourth draft.
+- Do NOT read files other than `$prompt_file` and the draft output files you wrote yourself.
+- Do NOT solve the problem in this node's own reasoning beyond what's needed for synthesis. Solving is the drafts' job; your job is to combine.
+- Your ONLY final output is the delta via `rlmify emit-delta`. No prose after.
