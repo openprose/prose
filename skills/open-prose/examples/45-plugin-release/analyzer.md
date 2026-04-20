@@ -5,8 +5,8 @@ kind: service
 
 ### Requires
 
-- task: what to analyze (commits, impact, version)
+- `task`: what to analyze (commits, impact, version)
 
 ### Ensures
 
-- analysis: categorized changes (breaking, features, fixes) with version recommendation
+- `analysis`: categorized changes (breaking, features, fixes) with version recommendation

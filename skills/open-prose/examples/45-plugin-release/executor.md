@@ -5,15 +5,15 @@ kind: service
 
 ### Requires
 
-- task: what to execute (pre-flight check, version update, commit, tag, push, GitHub release)
+- `task`: what to execute (pre-flight check, version update, commit, tag, push, GitHub release)
 
 ### Ensures
 
-- result: execution status with details
+- `result`: execution status with details
 
 ### Errors
 
-- execution-failed: the operation failed
+- `execution-failed`: the operation failed
 
 ### Strategies
 

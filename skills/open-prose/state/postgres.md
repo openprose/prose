@@ -716,7 +716,7 @@ UPDATE openprose.run SET status = 'failed' WHERE id = '20260116-143052-a7b3c9';
 
 ## Project-Scoped and User-Scoped Agents
 
-Execution-scoped agents (the default) use `run_id = specific value`. **Project-scoped agents** (`persist: project`) and **user-scoped agents** (`persist: user`) use `run_id IS NULL` and survive across runs.
+Execution-scoped agents (the default) use `run_id = specific value`. **Project-scoped agents** (`### Runtime` with `persist: project`) and **user-scoped agents** (`### Runtime` with `persist: user`) use `run_id IS NULL` and survive across runs.
 
 For user-scoped agents, the VM maintains a separate connection or uses a naming convention to distinguish them from project-scoped agents. One approach is to prefix user-scoped agent names with `__user__` in the same database, or use a separate user-level database configured via `OPENPROSE_POSTGRES_USER_URL`.
 

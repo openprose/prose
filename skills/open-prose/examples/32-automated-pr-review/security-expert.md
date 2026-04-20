@@ -5,9 +5,9 @@ kind: service
 
 ### Requires
 
-- changes: code changes to audit
-- overview: architectural context
+- `changes`: code changes to audit
+- `overview`: architectural context
 
 ### Ensures
 
-- security-findings: OWASP top 10 issues and other security vulnerabilities found
+- `security-findings`: OWASP top 10 issues and other security vulnerabilities found

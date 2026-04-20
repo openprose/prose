@@ -62,7 +62,7 @@ Example: `.prose/runs/20260116-143052-a7b3c9/state.db`
 
 ### Project-Scoped and User-Scoped Agents
 
-Execution-scoped agents (the default) live in the per-run `state.db`. However, **project-scoped agents** (`persist: project`) and **user-scoped agents** (`persist: user`) must survive across runs.
+Execution-scoped agents (the default) live in the per-run `state.db`. However, **project-scoped agents** (`### Runtime` with `persist: project`) and **user-scoped agents** (`### Runtime` with `persist: user`) must survive across runs.
 
 For project-scoped agents, use a separate database:
 

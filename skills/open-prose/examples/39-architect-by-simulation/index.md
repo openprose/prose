@@ -1,20 +1,25 @@
 ---
 name: architect-by-simulation
 kind: program
-services: [architect, phase-executor, reviewer]
 ---
+
+### Services
+
+- `architect`
+- `phase-executor`
+- `reviewer`
 
 ### Requires
 
-- feature: the feature or system to architect
-- context-files: comma-separated list of files to read for context
-- output-dir: directory for the BUILD_PLAN and phase handoffs
+- `feature`: the feature or system to architect
+- `context-files`: comma-separated list of files to read for context
+- `output-dir`: directory for the BUILD_PLAN and phase handoffs
 
 ### Ensures
 
-- spec: complete, implementable specification document
-- handoffs: phase-by-phase design exploration documents
-- review: independent validation of the design
+- `spec`: complete, implementable specification document
+- `handoffs`: phase-by-phase design exploration documents
+- `review`: independent validation of the design
 
 ### Execution
 

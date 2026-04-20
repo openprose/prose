@@ -1,17 +1,21 @@
 ---
 name: rlm-self-refine
 kind: program
-services: [evaluator, refiner]
 ---
+
+### Services
+
+- `evaluator`
+- `refiner`
 
 ### Requires
 
-- artifact: the artifact to refine
-- criteria: quality criteria to evaluate against
+- `artifact`: the artifact to refine
+- `criteria`: quality criteria to evaluate against
 
 ### Ensures
 
-- result: the refined artifact scoring 85+ against criteria
+- `result`: the refined artifact scoring 85+ against criteria
 
 ### Strategies
 

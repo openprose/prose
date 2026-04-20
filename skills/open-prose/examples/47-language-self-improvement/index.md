@@ -1,18 +1,26 @@
 ---
 name: language-self-improvement
 kind: program
-services: [archaeologist, clinician, architect, spec-writer, guardian, test-smith]
 ---
+
+### Services
+
+- `archaeologist`
+- `clinician`
+- `architect`
+- `spec-writer`
+- `guardian`
+- `test-smith`
 
 ### Requires
 
-- corpus-path: path to .prose files to analyze (default: examples/)
-- conversations: conversation threads where people struggled with the language (optional)
-- focus: specific area to focus on, e.g., "error handling", "parallelism" (optional)
+- `corpus-path`: path to .prose files to analyze (default: examples/)
+- `conversations`: conversation threads where people struggled with the language (optional)
+- `focus`: specific area to focus on, e.g., "error handling", "parallelism" (optional)
 
 ### Ensures
 
-- evolution: language improvement proposals with spec patches, test files, risk assessment, and migration guide
+- `evolution`: language improvement proposals with spec patches, test files, risk assessment, and migration guide
 
 ### Execution
 

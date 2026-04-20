@@ -1,17 +1,24 @@
 ---
 name: feature-factory
 kind: program
-services: [captain, architect, implementer, tester, documenter]
 ---
+
+### Services
+
+- `captain`
+- `architect`
+- `implementer`
+- `tester`
+- `documenter`
 
 ### Requires
 
-- feature: description of the feature to implement
-- codebase-context: brief description of the codebase (optional)
+- `feature`: description of the feature to implement
+- `codebase-context`: brief description of the codebase (optional)
 
 ### Ensures
 
-- summary: completed feature with implementation, tests, and documentation
+- `summary`: completed feature with implementation, tests, and documentation
 
 ### Execution
 

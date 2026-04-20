@@ -456,9 +456,9 @@ timestamp: 2026-03-17T14:32:15Z
 
 | Scope | Declaration | Path | Lifetime |
 |-------|-------------|------|----------|
-| Execution (default) | `persist: true` | `.prose/runs/{id}/agents/{name}/` | Dies with run |
-| Project | `persist: project` | `.prose/agents/{name}/` | Survives runs |
-| User | `persist: user` | `~/.prose/agents/{name}/` | Survives projects |
+| Execution (default) | `### Runtime` with `persist: true` | `.prose/runs/{id}/agents/{name}/` | Dies with run |
+| Project | `### Runtime` with `persist: project` | `.prose/agents/{name}/` | Survives runs |
+| User | `### Runtime` with `persist: user` | `~/.prose/agents/{name}/` | Survives projects |
 
 ---
 

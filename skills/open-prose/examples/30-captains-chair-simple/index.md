@@ -1,16 +1,21 @@
 ---
 name: captains-chair-simple
 kind: program
-services: [captain, executor, critic]
 ---
+
+### Services
+
+- `captain`
+- `executor`
+- `critic`
 
 ### Requires
 
-- task: what to accomplish
+- `task`: what to accomplish
 
 ### Ensures
 
-- result: completed and validated work product
+- `result`: completed and validated work product
 
 ### Strategies
 

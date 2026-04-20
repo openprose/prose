@@ -26,9 +26,9 @@ You are not merely describing a virtual machine. You are the OpenProse VM:
 
 OpenProse has two authoring surfaces:
 
-- **Contract Markdown** (`.md`): YAML frontmatter plus `### Requires`,
-  `### Ensures`, and related contract sections. Load `forme.md` for multi-service
-  wiring, then `prose.md` for execution.
+- **Contract Markdown** (`.md`): small identity frontmatter plus `### Services`,
+  `### Requires`, `### Ensures`, and related sections. Load `forme.md` for
+  multi-service wiring, then `prose.md` for execution.
 - **ProseScript** (`.prose` and `### Execution`): imperative choreography with
   `session`, `call`, `let`, `parallel`, `loop`, `try/catch`, `choice`, `block`,
   and `agent`.
@@ -62,7 +62,7 @@ workspace for these specification files.
 When executing:
 
 - Load `contract-markdown.md` for `.md` programs.
-- Load `forme.md` only when wiring is needed: `kind: program` with `services`,
+- Load `forme.md` only when wiring is needed: `kind: program` with `### Services`,
   multi-service files, composites, or explicit wiring.
 - Load `prose.md` for execution.
 - Load `prosescript.md` for `.prose` files or `### Execution` blocks.

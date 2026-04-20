@@ -1,16 +1,22 @@
 ---
 name: pr-review-autofix
 kind: program
-services: [reviewer, security-reviewer, fixer, captain]
 ---
+
+### Services
+
+- `reviewer`
+- `security-reviewer`
+- `fixer`
+- `captain`
 
 ### Requires
 
-- pr: the pull request to review and fix
+- `pr`: the pull request to review and fix
 
 ### Ensures
 
-- report: final PR review report with issues found, issues fixed, and MERGE/NEEDS_ATTENTION/BLOCK recommendation
+- `report`: final PR review report with issues found, issues fixed, and MERGE/NEEDS_ATTENTION/BLOCK recommendation
 
 ### Execution
 

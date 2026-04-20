@@ -9,7 +9,7 @@ related:
   - ./state/README.md
   - ./primitives/README.md
 glossary:
-  Contract Markdown: The `.md` program format with frontmatter and `###` contract sections.
+  Contract Markdown: The `.md` program format with tiny identity frontmatter and `###` contract sections.
   ProseScript: The imperative scripting layer used in `.prose` files and `### Execution` blocks.
   Forme: The semantic dependency-injection container described by `forme.md`.
   Prose VM: The execution engine described by `prose.md`.

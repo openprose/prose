@@ -1,16 +1,23 @@
 ---
 name: the-forge
 kind: program
-services: [smith, smelter, hammer, quench, crucible]
 ---
+
+### Services
+
+- `smith`
+- `smelter`
+- `hammer`
+- `quench`
+- `crucible`
 
 ### Requires
 
-- test-url: URL to test the browser against (default: https://prose.md)
+- `test-url`: URL to test the browser against (default: https://prose.md)
 
 ### Ensures
 
-- browser: a working web browser in Rust that can fetch, parse HTML/CSS, execute JavaScript, and render to a native window
+- `browser`: a working web browser in Rust that can fetch, parse HTML/CSS, execute JavaScript, and render to a native window
 
 ### Execution
 

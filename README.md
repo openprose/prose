@@ -32,8 +32,13 @@ The program declares **what** should happen. The runtime figures out **how**.
 ---
 name: hunter
 kind: program
-services: [analyst, ranker, compiler]
 ---
+
+### Services
+
+- `analyst`
+- `ranker`
+- `compiler`
 
 ### Requires
 
@@ -95,7 +100,9 @@ OpenProse gives agents a small set of primitives that fit naturally in a repo:
 |-----------|-------------------|
 | `### Requires` | Inputs the caller, host, or upstream services must provide |
 | `### Ensures` | Outputs the component promises to produce |
-| `services:` | Named components Forme can auto-wire by semantic contract |
+| `### Services` | Named components Forme can auto-wire by semantic contract |
+| `### Runtime` | Execution hints such as persistence or model choice |
+| `### Shape` | Capability boundaries: what a service may do, delegate, or avoid |
 | `### Strategies` | Judgment rules for edge cases and degraded conditions |
 | `### Execution` | Optional ProseScript when you want exact order, loops, branches, or retries |
 | `.prose/runs/` | Auditable filesystem state for every run |

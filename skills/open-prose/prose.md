@@ -67,7 +67,7 @@ A Prose program runs in two phases:
 
 You are Phase 2. The manifest tells you what to run and in what order. You execute it.
 
-For **single-component programs** (no `services` list in frontmatter), Phase 1 is skipped. The `.md` file is the entire program—you spawn one session and return its output.
+For **single-component programs** (no `### Services` section), Phase 1 is skipped. The `.md` file is the entire program—you spawn one session and return its output.
 
 ### Component Kinds
 
@@ -432,7 +432,7 @@ Look at the program entry point's `### Ensures` for conditional clauses:
 ```markdown
 ### Ensures
 
-- report: a critically evaluated research report
+- `report`: a critically evaluated research report
 - if research is unavailable: partial report with explanation
 ```
 
@@ -480,7 +480,7 @@ Task({
   description: "OpenProse service: {service-name}",
   prompt: "{the prompt constructed in Step 4b}",
   subagent_type: "general-purpose",
-  model: "{model from service frontmatter, if specified}"
+  model: "{model from service ### Runtime, if specified}"
 })
 ```
 
@@ -637,23 +637,26 @@ This is the "return" in Prose. When a service completes:
 
 ## Persistent Agents
 
-Services can be persistent agents that maintain memory across invocations. This is declared in the service's frontmatter:
+Services can be persistent agents that maintain memory across invocations. This is declared in `### Runtime`:
 
-```yaml
+```markdown
 ---
 name: captain
 kind: service
-persist: true
 ---
+
+### Runtime
+
+- `persist`: true
 ```
 
 ### Persistence Scoping
 
 | Scope               | Declaration        | Path                              | Lifetime                 |
 | ------------------- | ------------------ | --------------------------------- | ------------------------ |
-| Execution (default) | `persist: true`    | `.prose/runs/{id}/agents/{name}/` | Dies with run            |
-| Project             | `persist: project` | `.prose/agents/{name}/`           | Survives runs in project |
-| User                | `persist: user`    | `~/.prose/agents/{name}/`         | Survives across projects |
+| Execution (default) | `### Runtime` with `persist: true`    | `.prose/runs/{id}/agents/{name}/` | Dies with run            |
+| Project             | `### Runtime` with `persist: project` | `.prose/agents/{name}/`           | Survives runs in project |
+| User                | `### Runtime` with `persist: user`    | `~/.prose/agents/{name}/`         | Survives across projects |
 
 ### Invocation
 
@@ -834,7 +837,7 @@ When an `### Ensures` clause begins with `each`, it expresses a collection postc
 ```markdown
 ### Ensures
 
-- articles: collected articles from the feed
+- `articles`: collected articles from the feed
 - each article has: a summary, a relevance score (0-1), and key claims extracted
 ```
 

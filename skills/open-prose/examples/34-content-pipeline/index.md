@@ -1,18 +1,24 @@
 ---
 name: content-pipeline
 kind: program
-services: [researcher, writer, editor, social-strategist]
 ---
+
+### Services
+
+- `researcher`
+- `writer`
+- `editor`
+- `social-strategist`
 
 ### Requires
 
-- topic: the topic to create content about
-- audience: target audience (e.g., "developers", "executives", "general")
+- `topic`: the topic to create content about
+- `audience`: target audience (e.g., "developers", "executives", "general")
 
 ### Ensures
 
-- article: a polished, publication-ready blog post of 1500-2000 words
-- social: platform-specific social media content for Twitter/X, LinkedIn, and Hacker News
+- `article`: a polished, publication-ready blog post of 1500-2000 words
+- `social`: platform-specific social media content for Twitter/X, LinkedIn, and Hacker News
 
 ### Strategies
 

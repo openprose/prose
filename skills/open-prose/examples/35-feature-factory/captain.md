@@ -1,21 +1,26 @@
 ---
 name: captain
 kind: service
-persist: project
-shape:
-  self: [coordinate, review, make technical decisions, track progress]
-  delegates:
-    architect: [system design]
-    implementer: [code writing]
-    tester: [test creation and execution]
-    documenter: [documentation]
-  prohibited: [writing implementation code, writing tests directly]
 ---
+
+### Runtime
+
+- `persist`: project
+
+### Shape
+
+- `self`: coordinate, review, make technical decisions, track progress
+- `delegates`:
+  - `architect`: system design
+  - `implementer`: code writing
+  - `tester`: test creation and execution
+  - `documenter`: documentation
+- `prohibited`: writing implementation code, writing tests directly
 
 ### Requires
 
-- task: what to coordinate, review, or decide
+- `task`: what to coordinate, review, or decide
 
 ### Ensures
 
-- output: plan, review, or summary appropriate to the phase
+- `output`: plan, review, or summary appropriate to the phase

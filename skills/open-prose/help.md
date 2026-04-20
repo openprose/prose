@@ -105,7 +105,7 @@ We started with YAML. The problem: loops, conditionals, and variable declaration
 
 ### How do dependencies work?
 
-OpenProse uses a git-native dependency model -- GitHub is the registry. A program can reference dependencies with `use "owner/repo/path"`, dependency-like entries in `services:`, or `compose:` paths. Run `prose install` to clone dependencies into `.deps/` and pin their versions in `prose.lock`. The lockfile is committed to git; `.deps/` is gitignored (it's a cache, reproducible from the lockfile). `std/` is shorthand for `openprose/std/` -- the standard library. At runtime, dependencies are read from disk only -- no network calls. If deps are missing, `prose run` errors and tells you to run `prose install`.
+OpenProse uses a git-native dependency model -- GitHub is the registry. A program can reference dependencies with `use "owner/repo/path"`, dependency-like entries in `### Services`, or `compose:` paths. Run `prose install` to clone dependencies into `.deps/` and pin their versions in `prose.lock`. The lockfile is committed to git; `.deps/` is gitignored (it's a cache, reproducible from the lockfile). `std/` is shorthand for `openprose/std/` -- the standard library. At runtime, dependencies are read from disk only -- no network calls. If deps are missing, `prose run` errors and tells you to run `prose install`.
 
 ### Why not LangChain/CrewAI/AutoGen?
 
@@ -117,25 +117,31 @@ Those are orchestration libraries -- they coordinate agents from outside. OpenPr
 
 ### Contract Markdown (`.md` files)
 
-Programs are `.md` files with YAML frontmatter and contract sections. The Forme Container reads contracts, auto-wires dependencies, and the Prose VM executes.
+Programs are `.md` files with tiny YAML identity frontmatter and readable `###` sections. The Forme Container reads contracts, auto-wires dependencies, and the Prose VM executes.
 
-**Frontmatter:**
+**Identity frontmatter:**
 
 ```yaml
 ---
 name: my-service
 kind: service          # service | program | test
-shape:                 # optional behavioral constraints
-  self: [evaluate, decide]
-  delegates:
-    helper: [research]
-  prohibited: [direct web scraping]
 ---
 ```
 
-**Contract sections:**
+**Sections:**
 
 ```markdown
+### Runtime
+
+- `persist`: project
+
+### Shape
+
+- `self`: evaluate, decide
+- `delegates`:
+  - `helper`: research
+- `prohibited`: direct web scraping
+
 ### Requires
 
 - `topic`: a research question to investigate
@@ -143,7 +149,7 @@ shape:                 # optional behavioral constraints
 ### Ensures
 
 - `findings`: sourced claims from 3+ distinct sources
-- each finding: includes confidence score 0-1
+- each finding includes: confidence score 0-1
 
 ### Errors
 
@@ -164,8 +170,13 @@ shape:                 # optional behavioral constraints
 ---
 name: deep-research
 kind: program
-services: [researcher, critic, synthesizer]
 ---
+
+### Services
+
+- `researcher`
+- `critic`
+- `synthesizer`
 
 ### Requires
 

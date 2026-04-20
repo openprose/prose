@@ -9,6 +9,6 @@ kind: service
 
 ### Ensures
 
-- inventory: structured list of installed skills with path, name, and source tool (claude-code, amp, etc.)
+- `inventory`: structured list of installed skills with path, name, and source tool (claude-code, amp, etc.)
 
 Checks: ~/.claude/skills/, .claude/skills/, ~/.claude/plugins/, .agents/skills/, ~/.config/agents/skills/

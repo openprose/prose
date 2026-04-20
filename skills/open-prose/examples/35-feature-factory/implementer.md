@@ -5,11 +5,11 @@ kind: service
 
 ### Requires
 
-- task: what to implement or fix
+- `task`: what to implement or fix
 
 ### Ensures
 
-- implementation: clean, idiomatic code following existing project patterns
+- `implementation`: clean, idiomatic code following existing project patterns
 
 ### Strategies
 

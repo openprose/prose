@@ -262,7 +262,7 @@ let review = resume: captain
   context: plan
 ```
 
-Inside Contract Markdown, prefer `persist:` on services and `call service` in
+Inside Contract Markdown, prefer `### Runtime` on services and `call service` in
 execution blocks. `session:` and `resume:` remain available for standalone
 scripts and compatibility.
 

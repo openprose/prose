@@ -3,15 +3,17 @@ name: choice-blocks-demo
 kind: service
 ---
 
+### Description
+
 Demonstrates conditional ensures and strategies as declarative alternatives to ProseScript `choice` blocks. N-way branching becomes conditional ensures with strategies guiding behavior.
 
 ### Requires
 
-- codebase: the codebase to analyze
+- `codebase`: the codebase to analyze
 
 ### Ensures
 
-- action-plan: a prioritized plan for addressing issues found
+- `action-plan`: a prioritized plan for addressing issues found
 - if critical issues found: immediate fix plan with incident report
 - if moderate issues found: sprint-scheduled fix plan
 - if minor issues found: technical debt backlog entries

@@ -130,7 +130,7 @@ for each article in articles:
 ```markdown
 ### Ensures
 
-- articles: collected articles from the feed
+- `articles`: collected articles from the feed
 - each article has: a summary, a relevance score (0-1), and key claims extracted
 ```
 

@@ -5,12 +5,12 @@ kind: service
 
 ### Requires
 
-- scope: the chosen scope and placement
-- existing-programs: patterns to follow
+- `scope`: the chosen scope and placement
+- `existing-programs`: patterns to follow
 
 ### Ensures
 
-- program: a complete, self-reviewed .prose file following spec patterns and avoiding antipatterns
+- `program`: a complete, self-reviewed .prose file following spec patterns and avoiding antipatterns
 
 ### Strategies
 

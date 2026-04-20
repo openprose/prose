@@ -70,7 +70,7 @@ use "alice/research-pipeline" as research
 let result = research(topic: "quantum computing")
 ```
 
-In `services:` lists, use the full path — aliases are for execution blocks only.
+In `### Services`, use the full path — aliases are for execution blocks only.
 
 ---
 
@@ -97,7 +97,7 @@ Scans the project for dependency references and clones missing dependencies.
 
 1. **Scan** all `.md` and `.prose` files in the project for:
    - `use "owner/repo/path"` statements
-   - service names in `services:` that start with `std/` or `owner/repo/`
+   - service names in `### Services` that start with `std/` or `owner/repo/`
    - `compose:` paths that start with `std/` or `owner/repo/`
 2. **Parse** each dependency path to extract `owner/repo` pairs
 3. **Expand** `std/` shorthand to `openprose/std/`
@@ -236,14 +236,14 @@ If `prose.lock` exists but `.deps/` is missing or incomplete, the same error app
 
 ## Interaction with Forme
 
-When Forme resolves a service listed in `services:`, it checks `.deps/` as part of its resolution order (see `forme.md`, Step 2):
+When Forme resolves a service listed in `### Services`, it checks `.deps/` as part of its resolution order (see `forme.md`, Step 2):
 
 1. Same directory as the entry point: `./researcher.md`
 2. A subdirectory matching the name: `./researcher/index.md`
 3. **`.deps/` directory:** `.deps/{owner}/{repo}/{path}.md`
 4. Registry shorthand (if contains `/`): fetch from `https://p.prose.md/{path}` (compatibility path)
 
-A service name like `std/evals/inspector` in a `services:` list resolves to `.deps/openprose/std/evals/inspector.md` after `std/` shorthand expansion.
+A service name like `std/evals/inspector` in `### Services` resolves to `.deps/openprose/std/evals/inspector.md` after `std/` shorthand expansion.
 
 ---
 

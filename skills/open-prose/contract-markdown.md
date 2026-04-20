@@ -14,8 +14,9 @@ see-also:
 # Contract Markdown
 
 Contract Markdown is the human-facing `.md` format for OpenProse programs,
-services, tests, and composites. It combines YAML frontmatter with Markdown
-sections that describe what a component requires, ensures, and how it behaves.
+services, tests, and composites. It uses tiny YAML frontmatter for file
+identity, then Markdown sections for the human-facing language: services,
+contracts, runtime hints, shape, and execution.
 
 The format optimizes for two readers:
 
@@ -71,12 +72,16 @@ Forme and the Prose VM recognize these `###` sections case-insensitively:
 
 | Section | Applies To | Purpose |
 |---------|------------|---------|
+| `### Description` | program, service, test, composite | Human summary. Preserved for readers; not used as a contract |
+| `### Services` | program | Components Forme should resolve and wire |
 | `### Requires` | program, service, test, composite slots | Inputs or dependencies the caller/container must provide |
 | `### Ensures` | program, service, composite | Outputs or postconditions the component commits to |
 | `### Errors` | program, service | Declared failures the component may signal |
 | `### Invariants` | program, service, composite | Properties that must hold regardless of outcome |
 | `### Strategies` | program, service, test | Guidance for judgment calls and edge cases |
 | `### Environment` | program, service | Runtime variables supplied by host infrastructure |
+| `### Runtime` | program, service | Execution hints such as `persist` and `model` |
+| `### Shape` | service | Capability boundaries: self, delegates, and prohibited work |
 | `### Wiring` | program | Explicit Level 2 wiring declaration |
 | `### Execution` | program, service | ProseScript choreography that pins execution |
 | `### Fixtures` | test | Test inputs supplied without prompting |
@@ -91,7 +96,8 @@ sections unless a future spec names them.
 
 ## Compatibility Block Syntax
 
-Older OpenProse files and generated drafts may use lowercase colon blocks:
+Older OpenProse files and generated drafts may use lowercase colon blocks for
+contract sections:
 
 ```markdown
 requires:
@@ -106,19 +112,21 @@ same section in the same component, the `###` section wins and the lowercase
 block should produce a warning.
 
 Canonical docs, examples, and generated migrations should use `###` headers.
+The same rule applies to program topology and service behavior: use
+`### Services`, `### Runtime`, and `### Shape` instead of large YAML values.
 
 ## Component Extraction
 
 Forme parses a file in this order:
 
-1. Read YAML frontmatter.
+1. Read YAML frontmatter for identity metadata (`name`, `kind`) and compatibility fields.
 2. Create the file-level component from the frontmatter.
 3. Attach all `###` sections before the first `##` to the file-level component.
 4. For every `## {name}` heading, create an inline component named `{name}`.
 5. If the heading is immediately followed by a YAML block delimited by `---`,
-   parse it as inline component frontmatter. `name` must match the heading when
-   present; `kind` defaults to `service`; fields such as `shape`, `persist`,
-   `model`, and `delegates` apply only to that inline component.
+   parse it as inline component frontmatter for compatibility. `name` must match
+   the heading when present; `kind` defaults to `service`. Canonical files should
+   prefer `### Runtime` and `### Shape` sections for behavior.
 6. Attach subsequent `###` sections to that inline component until the next `##`.
 
 Example:
@@ -127,8 +135,12 @@ Example:
 ---
 name: content-pipeline
 kind: program
-services: [review, polish]
 ---
+
+### Services
+
+- `review`
+- `polish`
 
 ### Requires
 
@@ -140,11 +152,10 @@ services: [review, polish]
 
 ## review
 
----
-shape:
-  self: [read draft, write feedback]
-  prohibited: [editing final copy]
----
+### Shape
+
+- `self`: read draft, write feedback
+- `prohibited`: editing final copy
 
 ### Requires
 
@@ -169,9 +180,60 @@ shape:
 The file-level program requires `draft` and ensures `final`. It also
 contains inline services `review` and `polish`.
 
+## Services
+
+Declare a program's component graph with `### Services`:
+
+```markdown
+### Services
+
+- `researcher`
+- `writer`
+```
+
+Simple service names are Markdown list items. Structured service declarations
+use a fenced YAML list:
+
+````markdown
+### Services
+
+```yaml
+- name: reviewed-result
+  compose: std/composites/worker-critic
+  with:
+    worker: writer
+    critic: reviewer
+    max_rounds: 4
+```
+````
+
+`services:` in frontmatter remains accepted for compatibility, but canonical
+OpenProse programs should use `### Services`.
+
+## Runtime and Shape
+
+Runtime hints and behavioral boundaries are also sections:
+
+```markdown
+### Runtime
+
+- `persist`: project
+- `model`: sonnet
+
+### Shape
+
+- `self`: evaluate sources, score confidence
+- `delegates`:
+  - `summarizer`: compression
+- `prohibited`: direct web scraping
+```
+
+The old `persist:`, `model:`, and `shape:` frontmatter fields remain accepted
+for compatibility.
+
 ## Frontmatter
 
-Every component should declare:
+Every component should declare identity only:
 
 ```yaml
 ---
@@ -180,26 +242,8 @@ kind: program | service | test | composite
 ---
 ```
 
-Programs may declare:
-
-```yaml
-services: [researcher, writer]
-```
-
-Services may declare:
-
-```yaml
-shape:
-  self: [evaluate, decide]
-  delegates:
-    researcher: [source discovery]
-  prohibited: [direct web scraping]
-persist: true | project | user
-model: sonnet | opus | haiku
-```
-
-Frontmatter should stay structural. Contracts belong in Markdown sections, not
-large YAML values.
+Frontmatter should stay structural. If a field would be useful to read, review,
+or discuss, it should usually be a `###` section.
 
 ## Contract Item Style
 

@@ -1,17 +1,22 @@
 ---
 name: rlm-divide-conquer
 kind: program
-services: [chunker, analyzer, synthesizer]
 ---
+
+### Services
+
+- `chunker`
+- `analyzer`
+- `synthesizer`
 
 ### Requires
 
-- corpus: large corpus to analyze
-- query: what to find or compute
+- `corpus`: large corpus to analyze
+- `query`: what to find or compute
 
 ### Ensures
 
-- answer: comprehensive answer to the query, synthesized from analysis of the full corpus
+- `answer`: comprehensive answer to the query, synthesized from analysis of the full corpus
 
 ### Strategies
 
