@@ -19,6 +19,7 @@ The Crucible is the hottest part of The Forge. Specializes in lexical scoping, c
 ### Requires
 
 - `task`: what to coordinate or analyze in the JS engine
+- `test-results`: failing JavaScript engine test output to analyze (optional)
 
 ### Ensures
 

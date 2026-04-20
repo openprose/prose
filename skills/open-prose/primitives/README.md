@@ -14,4 +14,4 @@ Formal specifications for OpenProse primitive operations. Primitives are the ato
 
 ## Contents
 
-- `session.md` — the `session` primitive; spawns a Claude session with a prompt and optional agent, context, and skill bindings
+- `session.md` — the `session` primitive; spawns a host subagent/session with a prompt and optional agent, context, and skill bindings

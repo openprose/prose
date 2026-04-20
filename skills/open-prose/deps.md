@@ -129,6 +129,10 @@ All dependencies — direct and transitive — are pinned in the flat `prose.loc
 
 If two dependencies require the same repo at different commits, `prose install` auto-resolves to the **newer SHA** (by commit date) and emits a warning:
 
+This is a convenience policy, not a proof of compatibility. Treat the warning as
+review-required: inspect the affected dependency, run relevant tests, and commit
+the resulting `prose.lock` only when the newer version is acceptable.
+
 ```
 [Warning] Version conflict for alice/utils:
   Required by: your-project (a1b2c3d)

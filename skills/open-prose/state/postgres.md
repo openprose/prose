@@ -263,7 +263,7 @@ The VM (the orchestrating agent running the .prose program) is responsible for:
 | **Schema initialization** | Create `openprose` schema and tables at run start |
 | **Run registration** | Store the program source and metadata |
 | **Execution tracking** | Update position, status, and timing as statements execute |
-| **Subagent spawning** | Spawn sessions via Task tool with database instructions |
+| **Subagent spawning** | Spawn sessions via the host `spawn_session` primitive with database instructions |
 | **Parallel coordination** | Track branch status, implement join strategies |
 | **Loop management** | Track iteration counts, evaluate conditions |
 | **Error aggregation** | Record failures, manage retry state |
@@ -284,7 +284,7 @@ Subagents (sessions spawned by the VM) are responsible for:
 | **Attachment handling** | Write large outputs to `attachments/` directory, store path in DB |
 | **Atomic writes** | Use transactions when updating multiple related records |
 
-**Critical:** Subagents write ONLY to `bindings`, `agents`, and `agent_segments` tables. The VM owns the `execution` table entirely. Completion signaling happens through the substrate (Task tool return), not database updates.
+**Critical:** Subagents write ONLY to `bindings`, `agents`, and `agent_segments` tables. The VM owns the `execution` table entirely. Completion signaling happens through the substrate (`spawn_session` return), not database updates.
 
 **Critical:** Subagents must write their outputs directly to the database. The VM does not write subagent outputs—it only reads them after the subagent completes.
 
@@ -606,7 +606,7 @@ Even with PostgreSQL state, the VM should narrate key events in its conversation
 ```
 [Position] Statement 3: let research = session: researcher
    Spawning session, will write to state database
-   [Task tool call]
+   [spawn_session call]
 [Success] Session complete, binding written to DB
 [Binding] research = <stored in openprose.bindings>
 ```
@@ -643,7 +643,7 @@ VALUES
   ('20260116-143052-a7b3c9', 8, 'c = session "Task C"', 'executing', NOW(), 42, '{"parallel_id": "p1", "branch": "c"}'::jsonb);
 
 -- Subagents write their outputs to bindings table (see "From Subagents" section)
--- Task tool signals completion to VM via substrate
+-- spawn_session signals completion to VM via substrate
 
 -- VM marks branch complete after Task returns
 UPDATE openprose.execution SET status = 'completed', completed_at = NOW()
@@ -882,6 +882,6 @@ PostgreSQL state management:
 6. Requires the **psql CLI** and a running PostgreSQL server
 7. Is **experimental**—expect changes
 
-The core contract: the VM manages execution flow and spawns subagents; subagents write their own outputs directly to the database. Completion is signaled through the Task tool return, not database updates. External tools can query execution state in real-time.
+The core contract: the VM manages execution flow and spawns subagents; subagents write their own outputs directly to the database. Completion is signaled through the `spawn_session` return, not database updates. External tools can query execution state in real-time.
 
 **PostgreSQL state is for power users.** If you don't need concurrent writes, network access, or team collaboration, filesystem or SQLite state will be simpler and sufficient.

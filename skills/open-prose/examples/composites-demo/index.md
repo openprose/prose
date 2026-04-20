@@ -7,7 +7,7 @@ kind: program
 
 ```yaml
 - name: reviewed-result
-  compose: std/composites/worker-critic
+  compose: worker-critic
   with:
     worker: worker
     critic: critic
@@ -16,7 +16,11 @@ kind: program
 
 ### Description
 
-Demonstrates explicit worker-critic composition. The worker produces output, the critic evaluates it, and the composed unit repeats until the quality bar is met or the iteration budget is exhausted.
+Demonstrates explicit worker-critic composition with a local composite definition.
+The worker produces output, the critic evaluates it, and the composed unit repeats
+until the quality bar is met or the iteration budget is exhausted. In real
+programs, this same shape can be imported from `std/composites/worker-critic`
+after `prose install`.
 
 ### Requires
 

@@ -78,7 +78,7 @@ These examples demonstrate OpenProse's two authoring surfaces: Contract Markdown
 | `registry-import/` | Demonstrates importing services from the registry |
 | `wiring-declaration.md` | Demonstrates Level 2 explicit wiring (`### Wiring`) |
 | `multi-service-single-file.md` | Demonstrates `##` heading delimiters for multiple services |
-| `composites-demo/` | Demonstrates worker-critic composite pattern |
+| `composites-demo/` | Demonstrates a self-contained worker-critic composite pattern |
 
 ## ProseScript Archive
 

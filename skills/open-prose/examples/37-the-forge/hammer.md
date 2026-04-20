@@ -11,6 +11,8 @@ kind: service
 ### Requires
 
 - `task`: what to implement
+- `design`: technical blueprint to implement (optional; absent for mechanical fixes or project setup)
+- `test-results`: failing test output or bug evidence to address (optional)
 
 ### Ensures
 

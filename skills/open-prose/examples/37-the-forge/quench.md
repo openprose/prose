@@ -11,6 +11,7 @@ kind: service
 ### Requires
 
 - `task`: what to test
+- `test-url`: URL to use for browser integration tests (optional; required only for end-to-end browser checks)
 
 ### Ensures
 

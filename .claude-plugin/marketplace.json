@@ -8,7 +8,7 @@
     {
       "name": "open-prose",
       "source": "./",
-      "description": "A programming language for AI sessions - structures English into unambiguous control flow for multi-agent orchestration"
+      "description": "Runs Markdown contracts as multi-agent programs. When the user invokes `prose`, you read the contract, spawn subagents, pass artifacts between them, and write run state to `.prose/runs/`. Requires a subagent primitive; single-service programs run inline."
     }
   ]
 }
