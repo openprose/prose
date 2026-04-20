@@ -4,14 +4,17 @@ kind: program
 services: [smith, smelter, hammer, quench, crucible]
 ---
 
-requires:
+### Requires
+
 - test-url: URL to test the browser against (default: https://prose.md)
 
-ensures:
+### Ensures
+
 - browser: a working web browser in Rust that can fetch, parse HTML/CSS, execute JavaScript, and render to a native window
 
 ### Execution
 
+```prose
 # Phase 0: Project setup
 let project = call smith
   task: "initialize the forge and plan the browser build"
@@ -202,3 +205,4 @@ let browser = call smith
   task: "final inventory and README"
 
 return browser
+```

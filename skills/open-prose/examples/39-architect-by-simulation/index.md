@@ -4,18 +4,21 @@ kind: program
 services: [architect, phase-executor, reviewer]
 ---
 
-requires:
+### Requires
+
 - feature: the feature or system to architect
 - context-files: comma-separated list of files to read for context
 - output-dir: directory for the BUILD_PLAN and phase handoffs
 
-ensures:
+### Ensures
+
 - spec: complete, implementable specification document
 - handoffs: phase-by-phase design exploration documents
 - review: independent validation of the design
 
 ### Execution
 
+```prose
 # Phase 1: Gather context
 let context = call phase-executor
   task: "read and summarize context files for integration points"
@@ -62,4 +65,9 @@ let spec = call architect
   handoffs: accumulated-handoffs
   output-path: output-dir + "/SPEC.md"
 
-return spec
+return {
+  spec: spec
+  handoffs: accumulated-handoffs
+  review: review
+}
+```

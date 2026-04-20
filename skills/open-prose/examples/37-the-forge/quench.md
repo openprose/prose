@@ -6,9 +6,11 @@ shape:
   prohibited: [fixing bugs, implementing features]
 ---
 
-requires:
+### Requires
+
 - task: what to test
 
-ensures:
+### Ensures
+
 - test-results: pass/fail status with details on any failures
 - tests cover: unit tests, integration tests, edge cases, and regression tests

@@ -1,10 +1,9 @@
 ---
-purpose: VM behavior guidance — patterns, antipatterns, and system-prompt instructions for executing .prose programs correctly
+purpose: VM behavior guidance — patterns, antipatterns, and system-prompt instructions for executing OpenProse programs correctly
 related:
   - ../README.md
   - ../examples/README.md
   - ../state/README.md
-  - ../lib/README.md
 ---
 
 # guidance

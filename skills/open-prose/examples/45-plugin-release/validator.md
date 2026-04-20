@@ -6,8 +6,10 @@ shape:
   prohibited: [modifying files, running destructive commands]
 ---
 
-requires:
+### Requires
+
 - task: what to validate
 
-ensures:
+### Ensures
+
 - validation: pass/fail with specific issues listed

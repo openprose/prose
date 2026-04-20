@@ -6,9 +6,11 @@ shape:
   prohibited: [writing implementation code]
 ---
 
-requires:
+### Requires
+
 - task: what to design
 
-ensures:
+### Ensures
+
 - design: precise technical blueprint with Rust types, algorithms, and interface boundaries
 - design is: precise enough that implementation is mechanical

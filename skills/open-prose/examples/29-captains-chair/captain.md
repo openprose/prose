@@ -12,8 +12,10 @@ shape:
   prohibited: [writing code directly, executing tasks, running tests]
 ---
 
-requires:
+### Requires
+
 - task: what to plan, validate, or synthesize
 
-ensures:
+### Ensures
+
 - output: strategic plan, validated synthesis, or final summary depending on the phase

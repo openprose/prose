@@ -3,8 +3,10 @@ name: compiler
 kind: service
 ---
 
-requires:
+### Requires
+
 - program: .prose file content to validate
 
-ensures:
+### Ensures
+
 - validation: SUCCESS or specific errors with line numbers

@@ -3,12 +3,15 @@ name: coder
 kind: service
 ---
 
-requires:
+### Requires
+
 - plan: implementation plan to execute
 
-ensures:
+### Ensures
+
 - implementation: clean, idiomatic code following existing codebase patterns
 
-strategies:
+### Strategies
+
 - when plan is ambiguous: follow existing patterns in the codebase
 - when feedback is provided: address specific issues without over-engineering

@@ -9,9 +9,11 @@ shape:
   prohibited: [writing code directly, executing tasks]
 ---
 
-requires:
+### Requires
+
 - task: what to accomplish
 
-ensures:
+### Ensures
+
 - plan: discrete work items with dependencies
 - result: validated and synthesized work product incorporating executor output and critic feedback

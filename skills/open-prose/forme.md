@@ -6,7 +6,9 @@ summary: |
   into a dependency graph, and produces a manifest for the execution engine.
   Read this file to wire .md programs before execution.
 see-also:
+  - contract-markdown.md: Program and service file format
   - prose.md: Execution semantics (Phase 2 — runs the manifest)
+  - prosescript.md: Pinned execution block syntax
   - state/filesystem.md: File-system state management
   - primitives/session.md: Session context and compaction guidelines
   - guidance/tenets.md: Design reasoning behind the specs
@@ -37,7 +39,7 @@ Traditional DI containers (Spring, Angular, Guice) wire components by type match
 |----|-----|
 | Resolves by type signature | Resolves by semantic understanding of contracts |
 | Fails on ambiguous types | Disambiguates by reading natural language |
-| Requires explicit annotations | Infers relationships from `requires` ↔ `ensures` |
+| Requires explicit annotations | Infers relationships from `### Requires` ↔ `### Ensures` |
 | Static wiring at compile time | Intelligent wiring at run time |
 
 You are strictly more capable than a type-based container. Where Spring needs `@Qualifier` to disambiguate, you read the prose and understand which `findings` belongs to which service.
@@ -51,7 +53,7 @@ When you wire a program, you ARE the DI container. This is not a metaphor:
 | You | The Container |
 |-----|---------------|
 | Your reading of contracts | Dependency resolution |
-| Your matching of requires ↔ ensures | Auto-wiring |
+| Your matching of `### Requires` ↔ `### Ensures` | Auto-wiring |
 | Your judgment on ambiguity | Qualifier resolution |
 | Your output (manifest.md) | The application context |
 
@@ -78,19 +80,25 @@ name: deep-research
 kind: program
 services: [researcher, critic, synthesizer]
 ---
+```
 
-requires:
-- question: what the user wants answered
+The program contract is written as `###` sections:
 
-ensures:
-- report: a critically evaluated research report
+```markdown
+### Requires
+
+- `question`: what the user wants answered
+
+### Ensures
+
+- `report`: a critically evaluated research report
 ```
 
 Extract:
 - `name` — the program name
 - `services` — the list of component names to scan
-- `requires` — the program's inputs (what the caller provides)
-- `ensures` — the program's outputs (what gets returned)
+- `### Requires` — the program's inputs (what the caller provides)
+- `### Ensures` — the program's outputs (what gets returned)
 
 ### Step 2: Resolve Component Files
 
@@ -102,9 +110,9 @@ For each name in `services`, locate the corresponding `.md` file:
 3. `.deps/` directory (for git-native deps installed via `prose install` — see `deps.md`):
    - Expand `std/` shorthand to `openprose/std/`
    - Map the service name to `.deps/{owner}/{repo}/{path}.md`
-   - Example: `std/evals/inspector` → `.deps/openprose/std/evals/inspector.md`
+   - Example: `openprose/std/evals/inspector` → `.deps/openprose/std/evals/inspector.md`
    - Example: `alice/tools/formatter` → `.deps/alice/tools/formatter.md`
-4. Registry shorthand (if contains `/`): fetch from `https://p.prose.md/{path}` (legacy)
+4. Registry shorthand (if contains `/`): fetch from `https://p.prose.md/{path}` (compatibility path)
 
 **Composite resolution:**
 
@@ -112,7 +120,7 @@ When a service declaration includes `compose:` (e.g., `compose: std/composites/w
 
 **Recursive resolution for `kind: program` services:**
 
-When a resolved component has `kind: program` (with its own `services` list) rather than `kind: service`, Forme recursively invokes the wiring algorithm on that sub-program. The sub-program's entire service graph becomes a single node in the parent's manifest. The sub-program's `ensures` become the node's outputs. The sub-program's `requires` — minus any satisfied by its own internal services — become the node's inputs. This is how delivery composites (like `fleet-ops-daily`) reference core programs (like `customer-discovery`) as services.
+When a resolved component has `kind: program` (with its own `services` list) rather than `kind: service`, Forme recursively invokes the wiring algorithm on that sub-program. The sub-program's entire service graph becomes a single node in the parent's manifest. The sub-program's `### Ensures` become the node's outputs. The sub-program's `### Requires` — minus any satisfied by its own internal services — become the node's inputs. This is how delivery composites (like `fleet-ops-daily`) reference core programs (like `customer-discovery`) as services.
 
 **Composite slot resolution:** Services named in `with:` blocks of `compose:` declarations are resolved using the same rules as top-level services, even if not listed separately in the `services:` array. This means a program can declare only the composed unit in `services:` — the slot-filling services will be resolved from the `with:` entries automatically.
 
@@ -132,13 +140,32 @@ If a component cannot be resolved, emit an error:
 For each resolved component, extract from its `.md` file:
 
 - **Frontmatter:** `name`, `kind`, `shape` (if present)
-- **Contract sections:** `requires`, `ensures`, `errors`, `invariants`, `strategies`, `environment`
+- **Contract sections:** `### Requires`, `### Ensures`, `### Errors`, `### Invariants`, `### Strategies`, `### Environment`
+
+Lowercase colon blocks (`requires:`, `ensures:`, etc.) are compatibility syntax
+and must still be accepted. When both the `###` section and lowercase block
+exist for the same contract in one component, prefer the `###` section and emit
+a warning.
+
+**Header hierarchy:**
+
+| Header | Meaning |
+|--------|---------|
+| `#` | Optional human title |
+| `##` | Inline component boundary in a multi-service file |
+| `###` | Section inside the current component |
+
+Inline components may include a YAML frontmatter block immediately after the
+`##` heading. The heading supplies the component name; if the block also
+declares `name`, it must match the heading. `kind` defaults to `service`, and
+component-local fields such as `shape`, `persist`, `model`, and `delegates`
+apply only to that inline component.
 
 When a resolved file has `kind: composite`, extract instead:
-- `slots` — array of slot definitions (`name`, `primary` flag, `contract` with `requires`/`ensures`)
-- `config` — map of config parameters (names, types, defaults)
-- `invariants` — runtime guarantees the composite enforces
-- The **Delegation Loop** section — the JavaScript pseudo-code describing how slots interact at runtime
+- `### Slots` — slot definitions (`name`, `primary` flag, contract with Requires/Ensures)
+- `### Config` — config parameters (names, types, defaults)
+- `### Invariants` — runtime guarantees the composite enforces
+- `### Delegation` — ProseScript or pseudocode describing how slots interact at runtime
 
 A component has this structure:
 
@@ -153,27 +180,27 @@ shape:
   prohibited: [direct web scraping]
 ---
 
-requires:
-- topic: a research question to investigate
+### Requires
 
-ensures:
-- findings: sourced claims from 3+ distinct sources, each with confidence 0-1
-- sources: all URLs consulted with relevance ratings
+- `topic`: a research question to investigate
 
-errors:
-- no-results: no relevant sources found for this topic
+### Ensures
 
-strategies:
+- `findings`: sourced claims from 3+ distinct sources, each with confidence 0-1
+- `sources`: all URLs consulted with relevance ratings
+
+### Errors
+
+- `no-results`: no relevant sources found for this topic
+
+### Strategies
+
 - when few sources found: broaden search terms
 ```
 
 ### Step 3b: Expand Composites
 
 Before auto-wiring, expand any `compose:` declarations into concrete services. After expansion, the composite is gone — the manifest sees only ordinary services with delegation constraints.
-
-**Desugaring decorator syntax:**
-
-Before expansion, desugar any decorator syntax to Level 1. The decorated service fills the composite's `primary: true` slot. Multiple decorators stack inside-out (bottom annotation applied first). See Composite Expansion below for a full desugaring example.
 
 **Expansion procedure:**
 
@@ -250,9 +277,9 @@ From the wiring, derive:
 
 ### Step 5b: Collect Environment Declarations
 
-After building the dependency graph, collect all `environment:` declarations from every service in the graph:
+After building the dependency graph, collect all `### Environment` declarations from every service in the graph:
 
-1. **Gather** — for each service, extract its `environment:` section (if present). Each entry names a runtime variable the service needs (e.g., `SLACK_WEBHOOK_URL`, `OPENAI_API_KEY`).
+1. **Gather** — for each service, extract its `### Environment` section (if present). Each entry names a runtime variable the service needs (e.g., `SLACK_WEBHOOK_URL`, `OPENAI_API_KEY`).
 2. **Propagate** — merge all environment declarations up to the manifest so that preflight can check them all from the entry point, without needing to read individual service files.
 3. **Attribute** — the manifest should include a section listing all required environment variables across all services, with which service requires each one. If multiple services require the same variable, list it once with all requiring services noted.
 
@@ -275,7 +302,6 @@ Before producing the manifest, check:
 | Composite slot missing binding | `[Error] Composite worker-critic slot 'critic' has no binding and no default` |
 | Slot contract mismatch | `[Error] Service 'my-svc' does not satisfy slot 'worker': ensures missing 'output'` |
 | Cycle in nested composites | `[Error] Cycle in composite nesting: A → B → A` |
-| Decorator syntax on composite without `primary: true` slot | `[Error] Decorator syntax requires composite '{name}' to declare a primary slot. Use Level 1 compose: syntax instead.` |
 | Slot name collides with config parameter name | `[Error] Composite '{name}' has slot '{slot}' that collides with config parameter '{param}'. Slot and config names must be disjoint.` |
 
 **Warnings (proceed with caution):**
@@ -467,7 +493,7 @@ The manifest you produce depends on what the author has written. Authors choose 
 
 ### Level 1: Contracts Only (Default)
 
-The author writes only `requires`, `ensures`, and optionally `shape` on each component. No wiring declaration, no execution block. You auto-wire everything.
+The author writes only `### Requires`, `### Ensures`, and optionally `shape` frontmatter on each component. No wiring declaration, no execution block. You auto-wire everything.
 
 **Your job:** Full auto-wiring. Build the complete dependency graph from contract matching. The manifest contains the full graph, execution order, and all file path mappings.
 
@@ -490,15 +516,16 @@ synthesizer:
   returns to caller
 ```
 
-**Your job:** Validate the declared wiring against the components' contracts. Check that the mappings are consistent with `requires` and `ensures`. Emit warnings if the author's wiring contradicts a contract. Produce the manifest using the author's wiring (don't override it).
+**Your job:** Validate the declared wiring against the components' contracts. Check that the mappings are consistent with `### Requires` and `### Ensures`. Emit warnings if the author's wiring contradicts a contract. Produce the manifest using the author's wiring (don't override it).
 
 ### Level 3: Execution Block
 
-The author includes a `### Execution` section with explicit `let` + `call` statements:
+The author includes a `### Execution` section with explicit ProseScript `let` + `call` statements:
 
-```markdown
+````markdown
 ### Execution
 
+```prose
 let { findings, sources } = call researcher
   topic: question
 
@@ -512,6 +539,7 @@ let report = call synthesizer
 
 return report
 ```
+````
 
 **Your job:** The execution block IS the wiring. Extract the dependency graph from the `call` sequence. Validate against contracts. Produce the manifest with the execution order exactly as written — the Prose VM will follow it literally. Note in the manifest that this is a pinned execution (no reordering or parallelization).
 
@@ -553,35 +581,42 @@ services: [review, polish, fact-check]
 
 ## review
 
-requires:
+### Requires
+
 - draft: a piece of writing to review
 
-ensures:
+### Ensures
+
 - feedback: specific, actionable editorial notes
 
 ## polish
 
-requires:
+### Requires
+
 - draft: the original text
 - feedback: editorial notes to incorporate
 
-ensures:
+### Ensures
+
 - final: polished text incorporating all feedback
 
 ## fact-check
 
-requires:
+### Requires
+
 - text: content containing factual claims
 
-ensures:
+### Ensures
+
 - claims: each factual claim with verification status
 ```
 
 When you encounter a multi-service file:
-1. Extract each `##` section as a separate component
-2. Wire them using the same algorithm
-3. In the manifest, reference them as `{filename}.{section-name}` or by section name if unambiguous
-4. Copy the full source file to `services/` — don't split it
+1. Extract each `##` section as a separate component.
+2. Parse each component's `###` sections exactly as if they came from a standalone component file.
+3. Wire them using the same algorithm.
+4. In the manifest, reference them as `{filename}.{section-name}` or by section name if unambiguous.
+5. Copy the full source file to `services/` — don't split it.
 
 ---
 
@@ -610,20 +645,22 @@ services:
   - quality-reviewer
 ---
 
-requires:
+### Requires
+
 - brief: the radar compilation task
 
-ensures:
+### Ensures
+
 - report: a quality-reviewed radar report
 ```
 
 **Expansion steps:**
 
-1. Resolve `std/composites/worker-critic` → read its `slots`, `config`, `invariants`, and Delegation Loop.
+1. Resolve `std/composites/worker-critic` -> read its `### Slots`, `### Config`, `### Invariants`, and `### Delegation` sections.
 2. Bind slots: `worker` → `radar-compiler`, `critic` → `quality-reviewer`.
 3. Bind config: `max_rounds` → `3`.
 4. Validate: `radar-compiler.ensures` covers the worker slot's contract (`output`). `quality-reviewer.ensures` covers the critic slot's contract (`verdict`, `reasoning`, `suggestions`).
-5. Expand the Delegation Loop: replace `worker` with `radar-compiler`, `critic` with `quality-reviewer`, `max_retries` with `3`.
+5. Expand `### Delegation`: replace `worker` with `radar-compiler`, `critic` with `quality-reviewer`, `max_retries` with `3`.
 6. Compute derived contract: `quality-checked-output.requires` = `brief` (from `radar-compiler.requires`). `quality-checked-output.ensures` = `report` (the composite's output).
 
 **Resulting manifest entries:**
@@ -675,33 +712,6 @@ Expansion proceeds inside-out:
 
 The manifest contains delegation steps for both layers. The inner constraints (information firewall, termination) apply within each probe run. The outer constraints (identical inputs across runs) apply across the sample.
 
-#### Decorator Desugaring
-
-Decorator syntax is desugared to Level 1 before expansion. The decorated service fills the `primary: true` slot:
-
-```yaml
-# Author writes:
-- radar-compiler:
-    review: worker-critic(critic: quality-reviewer, max_rounds: 3)
-    confidence: stochastic-probe(sample_size: 5)
-
-# Forme desugars to Level 1 (inside-out — bottom decorator first):
-- name: radar-compiler__reviewed
-  compose: std/composites/worker-critic
-  with:
-    worker: radar-compiler
-    critic: quality-reviewer
-    max_rounds: 3
-
-- name: radar-compiler__reviewed__probed
-  compose: std/composites/stochastic-probe
-  with:
-    probe: radar-compiler__reviewed
-    sample_size: 5
-```
-
-Desugaring happens before expansion. After desugaring, the normal expansion procedure applies.
-
 #### Error Cases
 
 **Missing slot binding:**
@@ -750,7 +760,7 @@ If `services: []` or `services` is absent:
 
 ### Components with Execution Blocks
 
-If an individual component (not the program entry point) contains an `### Execution` block, it has internal logic. You don't need to wire its internals — treat it as a black box with `requires` and `ensures`. The execution engine will handle the internal execution.
+If an individual component (not the program entry point) contains an `### Execution` block, it has internal logic. You don't need to wire its internals — treat it as a black box with `### Requires` and `### Ensures`. The execution engine will handle the internal execution.
 
 ### Circular Dependencies
 
@@ -780,13 +790,13 @@ subject: synthesizer
 ---
 ```
 
-The body contains `fixtures:` (pre-supplied inputs), `expects:` (natural language assertions), and optionally `expects-not:` (negative assertions).
+The body contains `### Fixtures` (pre-supplied inputs), `### Expects` (natural language assertions), and optionally `### Expects Not` (negative assertions).
 
 ### Wiring Process
 
 1. **Resolve the subject.** Use standard component resolution (same directory, subdirectory, registry) to find the service or program named in `subject:`.
-2. **Bind fixtures as caller inputs.** `fixtures:` entries become the caller inputs. No AskUserQuestion prompting — tests are fully self-contained.
-3. **Produce a test manifest.** Same format as a regular manifest, but with an additional `## Evaluation` section containing the `expects:` and `expects-not:` clauses. The VM uses this section after execution to evaluate results.
+2. **Bind fixtures as caller inputs.** `### Fixtures` entries become the caller inputs. No AskUserQuestion prompting — tests are fully self-contained.
+3. **Produce a test manifest.** Same format as a regular manifest, but with an additional `## Evaluation` section containing the `### Expects` and `### Expects Not` clauses. The VM uses this section after execution to evaluate results.
 4. **Wire the subject's dependencies.** If the subject is a program with its own services, wire those normally. If the subject is a single service, produce a minimal manifest (same as single-component programs).
 
 The test manifest's additional section:
@@ -794,11 +804,13 @@ The test manifest's additional section:
 ```markdown
 ## Evaluation
 
-expects:
+### Expects
+
 - summary: mentions authentication or auth handling
 - summary: is under 200 words
 
-expects-not:
+### Expects Not
+
 - __error.md exists
 ```
 
@@ -824,7 +836,7 @@ The runtime:
 
 For single-component programs (no `services` list), Phase 1 is skipped — the file is passed directly to the Prose VM.
 
-**Note:** `prose wire` is no longer a top-level command. Forme's wiring algorithm is available as a standard library program (`std/ops/wire`). Users who need to wire without executing should use `prose run std/ops/wire -- target: <file.md>`. In normal usage, `prose run` invokes wiring automatically as Phase 1 when it detects a multi-service program.
+**Note:** `prose wire` is no longer a top-level command. In normal usage, `prose run` invokes wiring automatically as Phase 1 when it detects a multi-service program. If a standalone wire-only helper is added to `openprose/std`, it should call this same algorithm rather than defining a second one.
 
 ---
 
@@ -834,9 +846,9 @@ The Forme Container:
 
 1. **Reads** the program entry point and its `services` list
 2. **Resolves** each service name to a `.md` file (including composite definitions)
-3. **Extracts** contracts (`requires`, `ensures`, `errors`, `invariants`, `strategies`, `environment`), shapes, and composite slot/config definitions
-4. **Expands composites** — desugars decorator syntax, binds slots and config, validates slot contracts, expands delegation patterns, computes derived contracts (inside-out for nested composites)
-5. **Auto-wires** by matching `requires` ↔ `ensures` using semantic understanding
+3. **Extracts** contracts (`### Requires`, `### Ensures`, `### Errors`, `### Invariants`, `### Strategies`, `### Environment`), shapes, and composite slot/config definitions
+4. **Expands composites** — binds slots and config from explicit `compose:` declarations, validates slot contracts, expands delegation patterns, computes derived contracts (inside-out for nested composites)
+5. **Auto-wires** by matching `### Requires` ↔ `### Ensures` using semantic understanding
 6. **Validates** the dependency graph for errors and warnings (including composite-specific checks)
 7. **Copies** source files into the run directory (`services/`)
 8. **Writes** the manifest (`manifest.md`) with the complete wiring graph and composite constraints

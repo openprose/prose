@@ -3,10 +3,12 @@ name: clinician
 kind: service
 ---
 
-requires:
+### Requires
+
 - corpus: code files to analyze
 - conversations: user conversations (optional)
 - task: what pain points to diagnose
 
-ensures:
+### Ensures
+
 - pain-points: recurring errors, confusing patterns, and gaps between intent and expression, each with a hypothesized language change that would help

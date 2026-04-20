@@ -3,10 +3,12 @@ name: architect
 kind: service
 ---
 
-requires:
+### Requires
+
 - feature: what to design
 - codebase-analysis: existing patterns and structure
 
-ensures:
+### Ensures
+
 - design: technical design with file paths, interfaces, integration points, and risks
 - design is: simple, extensible, and consistent with existing patterns

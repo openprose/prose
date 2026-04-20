@@ -1,13 +1,15 @@
 ---
 name: registry-import-demo
 kind: program
-services: [local-analyzer, openprose/lib/inspector]
+services: [local-analyzer, openprose/std/evals/inspector]
 ---
 
-Demonstrates importing a service from the registry. The `openprose/lib/inspector` service is resolved from `https://p.prose.md/openprose/lib/inspector`. Local and registry services are wired together by Forme using the same contract-matching algorithm.
+Demonstrates importing a service from the external standard library. The `openprose/std/evals/inspector` service is installed and pinned by `prose install`. Local and dependency services are wired together by Forme using the same contract-matching algorithm.
 
-requires:
+### Requires
+
 - run-path: path to a completed .prose run to analyze
 
-ensures:
+### Ensures
+
 - analysis: local analysis combined with registry inspector findings

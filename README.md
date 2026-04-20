@@ -1,197 +1,231 @@
 <p align="center">
-  <img src="assets/readme-header.svg" alt="OpenProse - A new kind of language for a new kind of computer" width="100%" />
+  <img src="assets/readme-header.svg" alt="OpenProse - Engineer your agents" width="100%" />
 </p>
 
 <p align="center">
-  <em>A long-running AI session is a Turing-complete computer. OpenProse is a programming language for it.</em>
+  <strong>Contracts, composition, and version control for the Markdown your agents run on.</strong>
 </p>
 
 <p align="center">
-  <a href="https://prose.md">Website</a> •
-  <a href="skills/open-prose/prose.md">Language Spec</a> •
-  <a href="skills/open-prose/examples/">Examples</a>
+  <a href="https://prose.md">Website</a> |
+  <a href="skills/open-prose/README.md">Docs</a> |
+  <a href="skills/open-prose/examples/">Examples</a> |
+  <a href="skills/open-prose/contract-markdown.md">Spec</a> |
+  <a href="https://github.com/openprose/std">Stdlib</a>
+</p>
+
+<p align="center">
+  <code>npx skills add openprose/prose</code>
 </p>
 
 ---
+
+OpenProse is a programming language for AI sessions.
+
+Write a Markdown file with a contract. Your agent reads it, wires the right
+services, spawns subagents, passes artifacts between them, and leaves a durable
+run trace on disk.
+
+The program declares **what** should happen. The runtime figures out **how**.
 
 ```markdown
 ---
-name: research-with-agents
+name: hunter
 kind: program
-services: [researcher, writer]
+services: [analyst, ranker, compiler]
 ---
 
-requires:
-- topic: a research question to investigate
+### Requires
 
-ensures:
-- report: an executive-ready summary of research findings
+- `data_warehouse_url`: where growth data lives
+- `codebase_ref`: repository or branch to inspect
 
-strategies:
-- when initial research is shallow: deepen with more targeted queries
-- when findings are too technical for executives: simplify language while preserving accuracy
+### Ensures
+
+- `brief`: weekly growth findings ranked by confidence x impact
+
+### Strategies
+
+- prefer findings with code-level evidence
+- surface instrumentation gaps as first-class findings
 ```
 
-## Overview
+## Quickstart
 
-OpenProse is a programming language for AI sessions. Programs are Markdown files (`.md`) with YAML frontmatter and contract-based semantics — you declare what a program `requires:` and `ensures:`, and the runtime figures out the rest. Multi-service programs are auto-wired by the **Forme Container**, which matches contracts across components before the VM executes them.
-
-This is the intelligent inversion of control: a container that understands context and intent, not just configuration.
-
-OpenProse runs on any **Prose Complete** system — a model and harness combination capable of simulating the VM upon reading its specification. Currently supported: Claude Code + Opus, OpenCode + Opus, Amp + Opus. Your programs are portable across all of them; there is no library lock-in.
-
-Legacy `.prose` programs still run via v0 mode (`prose run file.prose`). Use `prose migrate` to convert them to the new `.md` format.
-
-## Install
+Install the skill in a Prose Complete agent environment:
 
 ```bash
 npx skills add openprose/prose
 ```
 
-> **By installing, you agree to the [Privacy Policy](PRIVACY.md) and [Terms of Service](TERMS.md).**
+Create `hello.md`:
 
-## Update
+```markdown
+---
+name: hello
+kind: service
+---
+
+### Ensures
+
+- `message`: a warm one-paragraph introduction to OpenProse
+```
+
+Run it:
 
 ```bash
-npx skills update openprose/prose
+prose run hello.md
 ```
+
+OpenProse writes the run state to `.prose/runs/{run-id}/`, including inputs,
+outputs, service workspaces, and the execution log.
+
+> By installing, you agree to the [Privacy Policy](PRIVACY.md) and
+> [Terms of Service](TERMS.md).
+
+## Why It Exists
+
+Plain prompts are easy to start and hard to maintain. As soon as an agent
+workflow has multiple roles, retries, memory, security boundaries, or handoffs,
+you need something more durable than "please do the right thing."
+
+OpenProse gives agents a small set of primitives that fit naturally in a repo:
+
+| Primitive | What it gives you |
+|-----------|-------------------|
+| `### Requires` | Inputs the caller, host, or upstream services must provide |
+| `### Ensures` | Outputs the component promises to produce |
+| `services:` | Named components Forme can auto-wire by semantic contract |
+| `### Strategies` | Judgment rules for edge cases and degraded conditions |
+| `### Execution` | Optional ProseScript when you want exact order, loops, branches, or retries |
+| `.prose/runs/` | Auditable filesystem state for every run |
+
+The result is agent software that can be read, reviewed, versioned, forked, and
+improved like code.
 
 ## How It Works
 
-LLMs are simulators. When given a detailed system description, they don't just describe it — they simulate it. The OpenProse specifications describe a virtual machine and a dependency injection container with enough fidelity that a Prose Complete system reading them *becomes* those systems.
+OpenProse has two authoring surfaces:
 
-This isn't metaphor: each session triggers a real subagent, outputs are real artifacts, and state persists in the filesystem. Simulation with sufficient fidelity is implementation.
+**Contract Markdown** is the default. You write components with `### Requires`,
+`### Ensures`, and optional sections like `### Strategies`, `### Environment`,
+`### Errors`, and `### Invariants`. Multi-service programs are wired by the
+Forme container.
 
-### Two-Phase Execution
+**ProseScript** is the pinning layer. Use it in `.prose` files or
+`### Execution` blocks when order matters:
 
-For multi-service programs, execution happens in two phases:
+````markdown
+### Execution
 
-| Phase | System | What It Does |
-|-------|--------|--------------|
-| **Phase 1** | Forme Container (`forme.md`) | Reads all services, matches `requires:`/`ensures:` contracts, produces a wiring manifest |
-| **Phase 2** | Prose VM (`prose.md`) | Reads the manifest, walks the dependency graph, spawns sessions, passes data |
+```prose
+let findings = call researcher
+  topic: topic
 
-Single-service programs skip Phase 1 and execute directly in the VM.
+let report = call writer
+  findings: findings
 
-| Aspect | Behavior |
-|--------|----------|
-| Contract matching | **Strict** — requires/ensures must resolve |
-| Execution order | **Strict** — follows dependency graph exactly |
-| Session creation | **Strict** — creates what program specifies |
-| Context passing | **Intelligent** — summarizes and transforms as needed |
-| Strategy application | **Intelligent** — applies declared strategies to edge cases |
-| Completion detection | **Intelligent** — determines when "done" |
-
-## Language Features
-
-| Feature | Description |
-|---------|-------------|
-| Contracts | `requires:` inputs and `ensures:` outputs for each service |
-| Shapes | Typed structure declarations for contract values |
-| Strategies | Declarative edge-case handling (`when X: do Y`) |
-| Errors | Structured error declarations |
-| Invariants | Runtime constraints that must hold throughout execution |
-| Services | Components wired by the Forme Container |
-| Sessions | Subagent spawning (`call service` or `session "prompt"`) |
-| Parallel | `parallel:` blocks with join strategies |
-| Variables | `let x = call service` |
-| Loops | `loop until condition (max: N):` and `repeat N:` |
-| Conditionals | `if condition:` / `choice criteria:` |
-| Error Handling | `try`/`catch`/`finally`, `retry` |
-| Pipelines | `items \| map: session "..."` |
-| Persistent Agents | `persist: true` / `resume: agent` |
-
-See the [Language Reference](skills/open-prose/prose.md) for the VM spec and [Forme Reference](skills/open-prose/forme.md) for the container spec.
-
-## Structure
-
-- `skills/open-prose/` — the OpenProse skill: VM spec (`prose.md`), Forme container (`forme.md`), state backends, standard library, examples, and guidance
-- `skills/open-prose/examples/` — example programs in `.md` format, from `01-hello-world.md` to `50-interactive-tutor.md`
-- `skills/open-prose/lib/` — standard library with 9 utility programs (inspector, profiler, cost-analyzer, etc.)
-- `skills/open-prose/guidance/` — authoring guidance: tenets, patterns, antipatterns
-- `skills/open-prose/v0/` — legacy v0 VM specs for `.prose` files
-- `skills/open-prose/state/` — state backend specs
-- `assets/` — visual assets for documentation
-
-### Examples
-
-| Range | Category |
-|-------|----------|
-| 01–04 | Basics (hello world, research, code review, write and refine) |
-| 09–13 | Agents, skills, variables, and composition |
-| 16–25 | Parallel execution, error handling, loops, conditionals |
-| 29–31 | Captain's chair pattern (persistent orchestrator) |
-| 32–36 | Production workflows (PR review, auto-fix, content pipeline, feature factory, bug hunter) |
-| 37 | The Forge (build a web browser from scratch with 5 agents) |
-| 38–43 | Advanced patterns (skill scan, architect by simulation, RLM strategies) |
-| 44–46 | Release and testing (endpoint UX test, plugin release, workflow crystallizer) |
-| 47–50 | Self-improvement and learning (language self-improvement, habit miner, retrospective, interactive tutor) |
-
-## Getting Started
-
-1. Install the skill:
-   ```bash
-   npx skills add openprose/prose
-   ```
-
-2. Write an `.md` program or open one from `skills/open-prose/examples/`.
-
-3. Run it inside a Prose Complete environment (Claude Code, OpenCode, or Amp with Opus):
-   ```
-   prose run my-program.md
-   ```
-
-Start with `01-hello-world.md` for the basics, or jump to `37-the-forge` to see what the language can do.
-
-### Migrating from v0
-
-If you have existing `.prose` programs:
+return report
 ```
-prose migrate my-program.prose
+````
+
+For multi-service programs, execution has two phases:
+
+| Phase | System | Job |
+|-------|--------|-----|
+| 1 | [Forme](skills/open-prose/forme.md) | Read contracts, resolve services, build the wiring manifest |
+| 2 | [Prose VM](skills/open-prose/prose.md) | Walk the manifest, spawn sessions, pass artifacts, enforce constraints |
+
+Single-service programs skip Forme and run directly in the VM.
+
+## What You Can Build
+
+- Research pipelines with specialist agents and source-grounded reports
+- Code review teams with security, performance, and style reviewers
+- Feature factories that plan, implement, test, document, and summarize
+- Persistent captains that retain project memory across runs
+- Evaluation loops, worker-critic systems, and recursive reasoning workflows
+- Reusable services published through git-native dependencies
+
+Start with:
+
+| Path | Why open it |
+|------|-------------|
+| [01-hello-world.md](skills/open-prose/examples/01-hello-world.md) | Smallest possible program |
+| [09-research-with-agents](skills/open-prose/examples/09-research-with-agents/) | First multi-agent workflow |
+| [35-feature-factory](skills/open-prose/examples/35-feature-factory/) | Production-style build loop |
+| [39-architect-by-simulation](skills/open-prose/examples/39-architect-by-simulation/) | Pinned ProseScript choreography |
+| [47-language-self-improvement](skills/open-prose/examples/47-language-self-improvement/) | OpenProse improving OpenProse |
+
+## Standard Library
+
+The standard library lives in
+[`openprose/std`](https://github.com/openprose/std), not this repository.
+
+Reference std programs with `std/...` or `openprose/std/...`, then install and
+pin them:
+
+```markdown
+use "std/evals/inspector"
 ```
 
-This produces an equivalent `.md` file with YAML frontmatter, contract sections, and an execution block preserving your original logic. Legacy `.prose` files continue to work unchanged via `prose run file.prose`.
+```bash
+prose install
+```
 
-### State Backends
+Dependencies are cloned into `.deps/`, locked in `prose.lock`, and read from
+disk at runtime. No network fetch happens during execution.
 
-`.md` programs use the filesystem for state exclusively (the workspace/bindings model requires it).
+## Project Map
 
-For legacy `.prose` (v0) programs, alternative state backends are available:
+| Path | Purpose |
+|------|---------|
+| [skills/open-prose/SKILL.md](skills/open-prose/SKILL.md) | Skill activation and command routing |
+| [skills/open-prose/contract-markdown.md](skills/open-prose/contract-markdown.md) | Canonical Markdown program format |
+| [skills/open-prose/prosescript.md](skills/open-prose/prosescript.md) | Imperative scripting syntax |
+| [skills/open-prose/forme.md](skills/open-prose/forme.md) | Semantic dependency-injection container |
+| [skills/open-prose/prose.md](skills/open-prose/prose.md) | VM execution semantics |
+| [skills/open-prose/deps.md](skills/open-prose/deps.md) | Git-native dependency resolution |
+| [skills/open-prose/examples/](skills/open-prose/examples/) | Example programs |
+| [skills/open-prose/guidance/](skills/open-prose/guidance/) | Tenets, patterns, and antipatterns |
+| [skills/open-prose/state/](skills/open-prose/state/) | State backend specs |
 
-- **SQLite** — run with `--state=sqlite` for queryable, transaction-safe state (requires `sqlite3` CLI)
-- **PostgreSQL** — run with `--state=postgres` for concurrent parallel writes and external system integration (bring your own database; see security note below)
-
-**PostgreSQL security note:** Database credentials in `OPENPROSE_POSTGRES_URL` are passed to subagent sessions and will be visible in agent context and logs. Use a dedicated database with minimal privileges and credentials you are comfortable being logged.
+Historical ProseScript-era references live in
+[skills/open-prose/v0/](skills/open-prose/v0/). Existing `.prose` programs still
+run, and `prose migrate my-program.prose` can wrap them in Contract Markdown.
 
 ## FAQ
 
-**Why not LangChain / CrewAI / AutoGen?**
-Those are orchestration libraries — they coordinate agents from outside using code. OpenProse runs inside the agent session. Zero external dependencies, portable across any Prose Complete system.
+**Where does OpenProse run?**
+
+Any Prose Complete system: an agent plus harness that can read files, write
+files, run tools, and spawn subagents. The current docs target Codex-style and
+Claude Code-style environments.
+
+**Why not LangChain, CrewAI, or AutoGen?**
+
+Those are orchestration libraries. OpenProse is an agent-native program format:
+the workflow lives in Markdown, runs inside the agent session, and stays
+portable across harnesses.
 
 **Why not just plain English?**
-Complex workflows need unambiguous structure for control flow — the AI should not have to guess whether you want sequential or parallel execution. Contracts make intent explicit.
 
-**What is "intelligent IoC"?**
-Traditional IoC containers wire up dependencies from configuration. OpenProse's Forme Container is an AI system that wires up services using *understanding*. It doesn't just match names — it understands contracts, context, and intent.
+Plain English is great for one-offs. Durable workflows need contracts, named
+components, state, tests, and a way to say "this must happen before that."
 
-**What changed in v2?**
-Programs moved from imperative `.prose` syntax to declarative `.md` files with contracts. The Forme Container auto-wires multi-service programs. All v0 programs still work unchanged. Run `prose migrate` to convert.
+**How do Contract Markdown and ProseScript fit together?**
 
-## Beta & Legal
+Contract Markdown declares promises and lets Forme wire the graph. ProseScript
+pins choreography when a workflow needs exact calls, loops, conditionals,
+parallelism, or retries. Both are first-class.
 
-OpenProse is in **beta**:
+## Beta
 
-- **Expect bugs** — Report issues at [github.com/openprose/prose/issues](https://github.com/openprose/prose/issues).
-- **Use caution** — Review your programs before execution.
-- **We want feedback** — Open issues, suggest features, report problems. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+OpenProse is early. Expect sharp edges, review programs before execution, and
+open issues when something feels clumsy or underpowered:
 
-You are responsible for all actions performed by AI agents you spawn through OpenProse.
-
+- [Issues](https://github.com/openprose/prose/issues)
+- [Contributing](CONTRIBUTING.md)
 - [MIT License](LICENSE)
 - [Privacy Policy](PRIVACY.md)
 - [Terms of Service](TERMS.md)
-
-## See Also
-
-- [prose.md](https://prose.md) — hosted execution environment for OpenProse programs
-- [openprose/platform](https://github.com/openprose/platform) — the cloud platform (NestJS API, Next.js UIs, Fly.io execution)

@@ -4,14 +4,17 @@ kind: program
 services: [detective, surgeon]
 ---
 
-requires:
+### Requires
+
 - bug-report: error message, stack trace, or bug description
 
-ensures:
+### Ensures
+
 - report: investigation report with root cause, fix applied, tests added, and lessons learned
 
 ### Execution
 
+```prose
 # Phase 1: Evidence gathering (parallel)
 let error-analysis = call detective
   task: "analyze bug report and extract error details"
@@ -64,3 +67,4 @@ let report = call detective
   diagnosis: diagnosis
 
 return report
+```

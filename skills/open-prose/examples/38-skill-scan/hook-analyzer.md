@@ -3,8 +3,10 @@ name: hook-analyzer
 kind: service
 ---
 
-requires:
+### Requires
+
 - skill-content: full contents of a skill directory
 
-ensures:
+### Ensures
+
 - findings: severity rating with hook triggers, actions, chain/escalation risk assessment

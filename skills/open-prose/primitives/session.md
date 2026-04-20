@@ -24,11 +24,11 @@ When you start, you receive context from several sources. You do NOT receive the
 
 Your service definition is a Markdown file with a contract. It tells you:
 
-- **What you require** — your inputs (the `requires` section)
-- **What you ensure** — your outputs (the `ensures` section)
-- **What errors you can signal** — declared failure conditions (the `errors` section)
-- **What is always true** — invariants regardless of outcome (the `invariants` section)
-- **How to behave** — behavioral guidance (the `strategies` section)
+- **What you require** — your inputs (`### Requires`)
+- **What you ensure** — your outputs (`### Ensures`)
+- **What errors you can signal** — declared failure conditions (`### Errors`)
+- **What is always true** — invariants regardless of outcome (`### Invariants`)
+- **How to behave** — behavioral guidance (`### Strategies`)
 
 ```markdown
 ---
@@ -39,21 +39,25 @@ shape:
   prohibited: [direct web scraping]
 ---
 
-requires:
+### Requires
+
 - topic: a research question to investigate
 
-ensures:
+### Ensures
+
 - findings: sourced claims from 3+ distinct sources, each with confidence 0-1
 - sources: all URLs consulted with relevance ratings
 
-errors:
+### Errors
+
 - no-results: no relevant sources found for this topic
 
-strategies:
+### Strategies
+
 - when few sources found: broaden search terms
 ```
 
-**Your job is to satisfy the `ensures` contract.** Everything else guides how you do it.
+**Your job is to satisfy the `### Ensures` contract.** Everything else guides how you do it.
 
 ### 1.2 Your Inputs
 

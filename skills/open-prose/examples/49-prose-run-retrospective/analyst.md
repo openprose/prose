@@ -3,8 +3,10 @@ name: analyst
 kind: service
 ---
 
-requires:
+### Requires
+
 - task: what to analyze, classify, or draft
 
-ensures:
+### Ensures
+
 - output: run classification (success/transient-error/architectural-issue/antipattern-instance), improvement opportunities, or pattern/antipattern entries

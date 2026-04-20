@@ -11,8 +11,10 @@ shape:
   prohibited: [writing code directly]
 ---
 
-requires:
+### Requires
+
 - task: what to coordinate or decide
 
-ensures:
+### Ensures
+
 - output: issue prioritization, tracking update, or final report depending on phase

@@ -3,12 +3,15 @@ name: fixer
 kind: service
 ---
 
-requires:
+### Requires
+
 - issue: the specific issue to fix
 
-ensures:
+### Ensures
+
 - fix-result: minimal fix addressing exactly the reported issue with verification
 
-strategies:
+### Strategies
+
 - when fix fails: retry with different approach, max 2 attempts
 - do NOT over-engineer -- fix exactly what is reported

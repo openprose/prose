@@ -3,8 +3,10 @@ name: reviewer
 kind: service
 ---
 
-requires:
+### Requires
+
 - pr: code changes to review
 
-ensures:
+### Ensures
+
 - review: structured list of issues covering correctness, logic, style, and readability, each with file path and line number

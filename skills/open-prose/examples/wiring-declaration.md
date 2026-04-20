@@ -6,10 +6,12 @@ services: [researcher, critic, synthesizer]
 
 Demonstrates Level 2 explicit wiring. When Forme's auto-wiring would be ambiguous, the author can pin the wiring with a `### Wiring` section.
 
-requires:
+### Requires
+
 - question: what the user wants answered
 
-ensures:
+### Ensures
+
 - report: a critically evaluated research report
 
 ### Wiring

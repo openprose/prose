@@ -6,10 +6,12 @@ shape:
   prohibited: [drive-by refactoring, changing unrelated code]
 ---
 
-requires:
+### Requires
+
 - diagnosis: root cause analysis
 - code-context: relevant codebase files
 
-ensures:
+### Ensures
+
 - fix: minimal fix addressing the root cause with regression test added
 - code left cleaner than found

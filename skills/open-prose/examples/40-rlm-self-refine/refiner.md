@@ -3,9 +3,11 @@ name: refiner
 kind: service
 ---
 
-requires:
+### Requires
+
 - artifact: content to improve
 - issues: specific issues to address
 
-ensures:
+### Ensures
+
 - improved: the artifact with targeted improvements, preserving what works

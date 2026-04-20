@@ -3,10 +3,12 @@ name: evaluator
 kind: service
 ---
 
-requires:
+### Requires
+
 - artifact: content to evaluate
 - criteria: quality criteria
 
-ensures:
+### Ensures
+
 - score: numeric score 0-100
 - issues: specific issues identified with severity

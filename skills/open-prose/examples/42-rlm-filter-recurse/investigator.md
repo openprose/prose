@@ -3,9 +3,11 @@ name: investigator
 kind: service
 ---
 
-requires:
+### Requires
+
 - document: a relevant document
 - question: what evidence to extract
 
-ensures:
+### Ensures
+
 - evidence: specific evidence with citations extracted from the document

@@ -10,10 +10,12 @@ shape:
   prohibited: [writing production code]
 ---
 
-requires:
+### Requires
+
 - task: what to design, synthesize, or decide
 
-ensures:
+### Ensures
+
 - output: BUILD_PLAN, phase synthesis, or final specification depending on the phase
 
 Designs systems by simulating their implementation. Writes specifications precise enough to implement from. Maintains context across all phases and references previous handoffs explicitly.

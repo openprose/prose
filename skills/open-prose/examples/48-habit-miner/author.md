@@ -3,8 +3,10 @@ name: author
 kind: service
 ---
 
-requires:
+### Requires
+
 - pattern: a qualified workflow pattern with examples
 
-ensures:
+### Ensures
+
 - program: a complete .prose program parameterizing what varies and hardcoding what is constant

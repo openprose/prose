@@ -3,8 +3,10 @@ name: permission-analyzer
 kind: service
 ---
 
-requires:
+### Requires
+
 - skill-content: full contents of a skill directory
 
-ensures:
+### Ensures
+
 - findings: severity rating with requested permissions, excessive permissions, and least-privilege recommendation

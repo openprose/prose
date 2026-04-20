@@ -1,18 +1,27 @@
 ---
 name: composites-demo
 kind: program
-services: [worker, critic]
+services:
+  - name: reviewed-result
+    compose: std/composites/worker-critic
+    with:
+      worker: worker
+      critic: critic
+      max_rounds: 4
 ---
 
-Demonstrates the worker-critic Forme composite pattern. The worker produces output, the critic evaluates it, and the cycle repeats until quality is met. Forme recognizes this as a worker-critic composite and handles the iteration automatically.
+Demonstrates explicit worker-critic composition. The worker produces output, the critic evaluates it, and the composed unit repeats until the quality bar is met or the iteration budget is exhausted.
 
-requires:
+### Requires
+
 - task: what to produce
 - quality-bar: what "good enough" means
 
-ensures:
+### Ensures
+
 - result: output that meets the quality bar, refined through worker-critic iteration
 
-strategies:
+### Strategies
+
 - when critic score is below threshold: worker revises targeting specific issues
 - max 4 iterations

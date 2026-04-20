@@ -3,9 +3,11 @@ name: observer
 kind: service
 ---
 
-requires:
+### Requires
+
 - thread: conversation thread to analyze
 - hint: focus area (optional)
 
-ensures:
+### Ensures
+
 - observation: identified workflow with discrete steps, decisions, parallelization opportunities, and artifacts created, with specific quotes from the thread

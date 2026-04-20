@@ -3,8 +3,10 @@ name: perf-reviewer
 kind: service
 ---
 
-requires:
+### Requires
+
 - code: source code to review
 
-ensures:
+### Ensures
+
 - perf-findings: identified performance issues with impact ratings

@@ -3,8 +3,10 @@ name: executor
 kind: service
 ---
 
-requires:
+### Requires
+
 - plan: the work items to execute
 
-ensures:
+### Ensures
+
 - work: completed implementation of the plan

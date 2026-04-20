@@ -6,33 +6,41 @@ services: [review, polish, fact-check]
 
 Demonstrates multiple services in a single file using `##` heading delimiters. Each `##` section defines a separate service with its own contract.
 
-requires:
+### Requires
+
 - draft: a piece of writing to review and polish
 
-ensures:
+### Ensures
+
 - final: polished text incorporating editorial feedback with all facts verified
 
 ## review
 
-requires:
+### Requires
+
 - draft: a piece of writing to review
 
-ensures:
+### Ensures
+
 - feedback: specific, actionable editorial notes
 
 ## polish
 
-requires:
+### Requires
+
 - draft: the original text
 - feedback: editorial notes to incorporate
 
-ensures:
+### Ensures
+
 - final: polished text incorporating all feedback
 
 ## fact-check
 
-requires:
+### Requires
+
 - text: content containing factual claims
 
-ensures:
+### Ensures
+
 - claims: each factual claim with verification status (verified, unverified, disputed)

@@ -3,8 +3,10 @@ name: chunker
 kind: service
 ---
 
-requires:
+### Requires
+
 - corpus: text to split
 
-ensures:
+### Ensures
+
 - chunks: 4-8 semantically coherent pieces that preserve meaning at boundaries

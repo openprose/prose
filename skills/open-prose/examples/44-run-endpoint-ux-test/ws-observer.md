@@ -4,8 +4,10 @@ kind: service
 persist: true
 ---
 
-requires:
+### Requires
+
 - execution: WebSocket URL and connection details
 
-ensures:
+### Ensures
+
 - ws-feedback: UX assessment covering latency, status clarity, event quality, error messages, and overall flow from a user perspective

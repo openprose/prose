@@ -3,12 +3,15 @@ name: implementer
 kind: service
 ---
 
-requires:
+### Requires
+
 - task: what to implement or fix
 
-ensures:
+### Ensures
+
 - implementation: clean, idiomatic code following existing project patterns
 
-strategies:
+### Strategies
+
 - implement exactly what is specified, nothing more
 - when retrying after failure: use exponential backoff, max 2 retries

@@ -3,9 +3,11 @@ name: reviewer
 kind: service
 ---
 
-requires:
+### Requires
+
 - changes: code changes to review
 
-ensures:
+### Ensures
+
 - overview: high-level summary of architectural impact
 - style-review: code style, maintainability, and best practices assessment

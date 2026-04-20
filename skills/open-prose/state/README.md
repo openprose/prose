@@ -11,7 +11,7 @@ glossary:
 
 # state
 
-Specifications for the state backends available to .prose programs. Each backend trades off latency, durability, and query power.
+Specifications for the state backends available to OpenProse programs. Each backend trades off latency, durability, and query power.
 
 ## Contents
 
