@@ -5,11 +5,11 @@ kind: service
 
 ### Requires
 
-- issue: the specific issue to fix
+- `issue`: the specific issue to fix
 
 ### Ensures
 
-- fix-result: minimal fix addressing exactly the reported issue with verification
+- `fix-result`: minimal fix addressing exactly the reported issue with verification
 
 ### Strategies
 

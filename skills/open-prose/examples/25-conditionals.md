@@ -3,15 +3,17 @@ name: conditionals-demo
 kind: service
 ---
 
+### Description
+
 Demonstrates conditional ensures as declarative alternatives to ProseScript `if/elif/else` patterns. Conditions become output variants.
 
 ### Requires
 
-- project: the project to evaluate
+- `project`: the project to evaluate
 
 ### Ensures
 
-- status-report: project status with recommended actions
+- `status-report`: project status with recommended actions
 - if project is ahead of schedule: report documenting success factors with stretch goal recommendations
 - if project is on track: standard status report with current plan confirmation
 - if project is slightly delayed: bottleneck analysis with adjusted timeline and stakeholder communication

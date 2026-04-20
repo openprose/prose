@@ -3,21 +3,23 @@ name: retry-with-backoff
 kind: service
 ---
 
+### Description
+
 Demonstrates strategies for resilient API calls. Retry/backoff logic is expressed declaratively via `### Strategies` rather than imperative `retry:` and `backoff:` keywords.
 
 ### Requires
 
-- api-endpoint: the API to call
-- payload: data to send
+- `api-endpoint`: the API to call
+- `payload`: data to send
 
 ### Ensures
 
-- response: successful API response data
+- `response`: successful API response data
 - if primary endpoint is unavailable: response from backup endpoint with source noted
 
 ### Errors
 
-- all-endpoints-exhausted: neither primary nor backup responded after all retries
+- `all-endpoints-exhausted`: neither primary nor backup responded after all retries
 
 ### Strategies
 

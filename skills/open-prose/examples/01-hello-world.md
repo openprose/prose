@@ -9,4 +9,4 @@ kind: service
 
 ### Ensures
 
-- greeting: a warm hello and brief self-introduction
+- `greeting`: a warm hello and brief self-introduction

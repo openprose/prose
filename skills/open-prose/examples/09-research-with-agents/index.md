@@ -1,16 +1,20 @@
 ---
 name: research-with-agents
 kind: program
-services: [researcher, writer]
 ---
+
+### Services
+
+- `researcher`
+- `writer`
 
 ### Requires
 
-- topic: a research question to investigate (default: "recent developments in renewable energy storage technologies")
+- `topic`: a research question to investigate (default: "recent developments in renewable energy storage technologies")
 
 ### Ensures
 
-- report: an executive-ready summary of research findings
+- `report`: an executive-ready summary of research findings
 
 ### Strategies
 

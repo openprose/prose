@@ -5,9 +5,9 @@ kind: service
 
 ### Requires
 
-- artifact: content to improve
-- issues: specific issues to address
+- `artifact`: content to improve
+- `issues`: specific issues to address
 
 ### Ensures
 
-- improved: the artifact with targeted improvements, preserving what works
+- `improved`: the artifact with targeted improvements, preserving what works

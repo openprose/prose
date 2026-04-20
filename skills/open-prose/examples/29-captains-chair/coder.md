@@ -5,11 +5,11 @@ kind: service
 
 ### Requires
 
-- plan: implementation plan to execute
+- `plan`: implementation plan to execute
 
 ### Ensures
 
-- implementation: clean, idiomatic code following existing codebase patterns
+- `implementation`: clean, idiomatic code following existing codebase patterns
 
 ### Strategies
 

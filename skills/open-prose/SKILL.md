@@ -65,9 +65,9 @@ There is one skill: `open-prose`. Do not look for separate `prose-run`,
 For `.md` files:
 
 1. Read YAML frontmatter.
-2. If `kind: program` has a non-empty `services:` list, load `forme.md` to produce a manifest.
+2. If `kind: program` has a non-empty `### Services` section, load `forme.md` to produce a manifest.
 3. Load `prose.md` and `state/filesystem.md` to execute the manifest.
-4. If the file is a single component (`kind: service` or `kind: program` without `services:`), skip Forme and execute the component directly.
+4. If the file is a single component (`kind: service` or `kind: program` without `### Services`), skip Forme and execute the component directly.
 
 For `.prose` files:
 
@@ -92,6 +92,14 @@ Contract Markdown uses Markdown headers as the canonical human-facing syntax:
 
 - when sources are thin: broaden search terms
 
+### Runtime
+
+- `persist`: project
+
+### Shape
+
+- `self`: research, synthesize, cite sources
+
 ### Execution
 
 ```prose
@@ -106,7 +114,8 @@ Header hierarchy:
 
 - `#` is optional human title.
 - `##` starts an inline component in multi-service files.
-- Inline components may have a YAML block immediately after the `##` heading.
+- Historical inline components may have a YAML block immediately after the `##`
+  heading; canonical files put readable behavior in `###` sections.
 - `###` starts a section inside the current component.
 - Lowercase compatibility blocks (`requires:`, `ensures:`, etc.) remain accepted, but the header form is canonical.
 

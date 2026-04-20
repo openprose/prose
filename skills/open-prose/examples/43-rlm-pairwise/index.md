@@ -1,17 +1,21 @@
 ---
 name: rlm-pairwise
 kind: program
-services: [comparator, mapper]
 ---
+
+### Services
+
+- `comparator`
+- `mapper`
 
 ### Requires
 
-- items: items to compare pairwise
-- relation: the relationship to identify between pairs
+- `items`: items to compare pairwise
+- `relation`: the relationship to identify between pairs
 
 ### Ensures
 
-- map: a relationship map showing clusters, anomalies, and relationship strengths
+- `map`: a relationship map showing clusters, anomalies, and relationship strengths
 
 ### Strategies
 

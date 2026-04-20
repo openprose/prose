@@ -72,14 +72,20 @@ When invoked with a program entry point, follow this process exactly.
 
 ### Step 1: Read the Entry Point
 
-The entry point is the file with `kind: program` in its YAML frontmatter:
+The entry point is the file with `kind: program` in its YAML frontmatter.
+The program's service graph is declared with `### Services`:
 
-```yaml
+```markdown
 ---
 name: deep-research
 kind: program
-services: [researcher, critic, synthesizer]
 ---
+
+### Services
+
+- `researcher`
+- `critic`
+- `synthesizer`
 ```
 
 The program contract is written as `###` sections:
@@ -96,13 +102,19 @@ The program contract is written as `###` sections:
 
 Extract:
 - `name` — the program name
-- `services` — the list of component names to scan
+- `### Services` — the list of component names or structured service declarations to scan
 - `### Requires` — the program's inputs (what the caller provides)
 - `### Ensures` — the program's outputs (what gets returned)
 
+Parse `### Services` in two forms:
+
+- Markdown list items name services; strip optional backticks from the item text.
+- Fenced YAML lists declare structured entries with fields such as `name`,
+  `compose`, and `with`.
+
 ### Step 2: Resolve Component Files
 
-For each name in `services`, locate the corresponding `.md` file:
+For each entry in `### Services`, locate the corresponding `.md` file:
 
 **Resolution order:**
 1. Same directory as the entry point: `./researcher.md`
@@ -120,9 +132,9 @@ When a service declaration includes `compose:` (e.g., `compose: std/composites/w
 
 **Recursive resolution for `kind: program` services:**
 
-When a resolved component has `kind: program` (with its own `services` list) rather than `kind: service`, Forme recursively invokes the wiring algorithm on that sub-program. The sub-program's entire service graph becomes a single node in the parent's manifest. The sub-program's `### Ensures` become the node's outputs. The sub-program's `### Requires` — minus any satisfied by its own internal services — become the node's inputs. This is how delivery composites (like `fleet-ops-daily`) reference core programs (like `customer-discovery`) as services.
+When a resolved component has `kind: program` (with its own `### Services` section) rather than `kind: service`, Forme recursively invokes the wiring algorithm on that sub-program. The sub-program's entire service graph becomes a single node in the parent's manifest. The sub-program's `### Ensures` become the node's outputs. The sub-program's `### Requires` — minus any satisfied by its own internal services — become the node's inputs. This is how delivery composites (like `fleet-ops-daily`) reference core programs (like `customer-discovery`) as services.
 
-**Composite slot resolution:** Services named in `with:` blocks of `compose:` declarations are resolved using the same rules as top-level services, even if not listed separately in the `services:` array. This means a program can declare only the composed unit in `services:` — the slot-filling services will be resolved from the `with:` entries automatically.
+**Composite slot resolution:** Services named in `with:` blocks of `compose:` declarations are resolved using the same rules as top-level services, even if not listed separately in `### Services`. This means a program can declare only the composed unit in `### Services` — the slot-filling services will be resolved from the `with:` entries automatically.
 
 If a component cannot be resolved, emit an error:
 
@@ -139,8 +151,8 @@ If a component cannot be resolved, emit an error:
 
 For each resolved component, extract from its `.md` file:
 
-- **Frontmatter:** `name`, `kind`, `shape` (if present)
-- **Contract sections:** `### Requires`, `### Ensures`, `### Errors`, `### Invariants`, `### Strategies`, `### Environment`
+- **Frontmatter:** `name`, `kind`, plus compatibility fields if present
+- **Sections:** `### Services`, `### Requires`, `### Ensures`, `### Errors`, `### Invariants`, `### Strategies`, `### Environment`, `### Runtime`, `### Shape`
 
 Lowercase colon blocks (`requires:`, `ensures:`, etc.) are compatibility syntax
 and must still be accepted. When both the `###` section and lowercase block
@@ -156,10 +168,9 @@ a warning.
 | `###` | Section inside the current component |
 
 Inline components may include a YAML frontmatter block immediately after the
-`##` heading. The heading supplies the component name; if the block also
-declares `name`, it must match the heading. `kind` defaults to `service`, and
-component-local fields such as `shape`, `persist`, `model`, and `delegates`
-apply only to that inline component.
+`##` heading for compatibility. The heading supplies the component name; if the
+block also declares `name`, it must match the heading. `kind` defaults to
+`service`. Canonical components put behavior in `### Runtime` and `### Shape`.
 
 When a resolved file has `kind: composite`, extract instead:
 - `### Slots` — slot definitions (`name`, `primary` flag, contract with Requires/Ensures)
@@ -173,12 +184,14 @@ A component has this structure:
 ---
 name: researcher
 kind: service
-shape:
-  self: [evaluate sources, score confidence]
-  delegates:
-    summarizer: [compression]
-  prohibited: [direct web scraping]
 ---
+
+### Shape
+
+- `self`: evaluate sources, score confidence
+- `delegates`:
+  - `summarizer`: compression
+- `prohibited`: direct web scraping
 
 ### Requires
 
@@ -311,10 +324,10 @@ Before producing the manifest, check:
 | Unused ensures | `[Warning] researcher.ensures.sources not consumed by any downstream component` |
 | Semantic match (not exact) | `[Warning] Wired caller.question → researcher.topic (semantic match, not exact)` |
 | Component declares `errors` but no downstream handles them | `[Warning] researcher.errors.no-results has no recovery path` |
-| Shape declares delegate not in services list | `[Warning] researcher.shape.delegates.summarizer not in program services` |
+| Shape declares delegate not in `### Services` | `[Warning] researcher.shape.delegates.summarizer not declared in program services` |
 | `run`-typed input on a service (not the program) | `[Warning] analyzer.requires.subject uses run type — run inputs are typically program-level, not service-level` |
 | Config parameter type mismatch | `[Warning] Composite worker-critic config 'max_rounds' expects integer, got string` |
-| Declared service never referenced | `[Warning] Service '{name}' is declared in services: but never called in ### Execution and no component requires its outputs` |
+| Declared service never referenced | `[Warning] Service '{name}' is declared in ### Services but never called in ### Execution and no component requires its outputs` |
 
 ### Step 7: Copy Source Files
 
@@ -493,7 +506,9 @@ The manifest you produce depends on what the author has written. Authors choose 
 
 ### Level 1: Contracts Only (Default)
 
-The author writes only `### Requires`, `### Ensures`, and optionally `shape` frontmatter on each component. No wiring declaration, no execution block. You auto-wire everything.
+The author writes only `### Requires`, `### Ensures`, and optionally
+`### Shape` on each component. No wiring declaration, no execution block. You
+auto-wire everything.
 
 **Your job:** Full auto-wiring. Build the complete dependency graph from contract matching. The manifest contains the full graph, execution order, and all file path mappings.
 
@@ -549,18 +564,19 @@ return report
 
 ## Handling Components with Shapes
 
-When a component has a `shape` in its frontmatter, treat it as a **binding constraint** — not a hint, not a suggestion. Shapes MUST be honored during wiring.
+When a component has a `### Shape` section, treat it as a **binding constraint** — not a hint, not a suggestion. Compatibility `shape:` frontmatter has the same meaning.
 
-```yaml
-shape:
-  self: [evaluate progress, select strategy]
-  delegates:
-    researcher: [source discovery, claim extraction]
-    critic: [quality evaluation]
-  prohibited: [direct web search]
+```markdown
+### Shape
+
+- `self`: evaluate progress, select strategy
+- `delegates`:
+  - `researcher`: source discovery, claim extraction
+  - `critic`: quality evaluation
+- `prohibited`: direct web search
 ```
 
-**`delegates`** has both wiring-time and runtime meaning. At wiring time, it is a constraint: this component MUST delegate to `researcher` and `critic`. If these are in the `services` list, wire them as dependencies of this component. If a declared delegate is not in the `services` list, emit a warning — the author likely forgot to include it. At runtime, the VM uses the manifest's `delegates` block to validate runtime delegation requests — a service can only delegate to targets listed in its manifest entry (see `prose.md`, Runtime Delegation).
+**`delegates`** has both wiring-time and runtime meaning. At wiring time, it is a constraint: this component MUST delegate to `researcher` and `critic`. If these are in `### Services`, wire them as dependencies of this component. If a declared delegate is not in `### Services`, emit a warning — the author likely forgot to include it. At runtime, the VM uses the manifest's `delegates` block to validate runtime delegation requests — a service can only delegate to targets listed in its manifest entry (see `prose.md`, Runtime Delegation).
 
 **`prohibited`** is a hard constraint. Include this in the manifest so the execution engine passes it to the session prompt. The subagent must not perform any prohibited action.
 
@@ -576,39 +592,44 @@ A single `.md` file can contain multiple services delimited by `##` headings:
 ---
 name: content-pipeline
 kind: program
-services: [review, polish, fact-check]
 ---
+
+### Services
+
+- `review`
+- `polish`
+- `fact-check`
 
 ## review
 
 ### Requires
 
-- draft: a piece of writing to review
+- `draft`: a piece of writing to review
 
 ### Ensures
 
-- feedback: specific, actionable editorial notes
+- `feedback`: specific, actionable editorial notes
 
 ## polish
 
 ### Requires
 
-- draft: the original text
-- feedback: editorial notes to incorporate
+- `draft`: the original text
+- `feedback`: editorial notes to incorporate
 
 ### Ensures
 
-- final: polished text incorporating all feedback
+- `final`: polished text incorporating all feedback
 
 ## fact-check
 
 ### Requires
 
-- text: content containing factual claims
+- `text`: content containing factual claims
 
 ### Ensures
 
-- claims: each factual claim with verification status
+- `claims`: each factual claim with verification status
 ```
 
 When you encounter a multi-service file:
@@ -630,29 +651,33 @@ Composites are parameterized multi-agent topologies — they define how agents i
 
 **Program entry point:**
 
-```yaml
+````markdown
 ---
 name: radar-report
 kind: program
-services:
-  - name: quality-checked-output
-    compose: std/composites/worker-critic
-    with:
-      worker: radar-compiler
-      critic: quality-reviewer
-      max_rounds: 3
-  - radar-compiler
-  - quality-reviewer
 ---
+
+### Services
+
+```yaml
+- name: quality-checked-output
+  compose: std/composites/worker-critic
+  with:
+    worker: radar-compiler
+    critic: quality-reviewer
+    max_rounds: 3
+- radar-compiler
+- quality-reviewer
+```
 
 ### Requires
 
-- brief: the radar compilation task
+- `brief`: the radar compilation task
 
 ### Ensures
 
-- report: a quality-reviewed radar report
-```
+- `report`: a quality-reviewed radar report
+````
 
 **Expansion steps:**
 
@@ -751,9 +776,10 @@ If the entry point file has no `kind: program` in its frontmatter, treat it as a
 - No wiring needed — just validate the contract and produce a minimal manifest
 - The execution engine spawns one session for this component
 
-### Empty `services` list
+### Empty `### Services`
 
-If `services: []` or `services` is absent:
+If `### Services` is empty or absent, and there is no compatibility
+`services:` frontmatter:
 
 - Same as above — the program file is the sole component
 - Produce a minimal manifest
@@ -806,12 +832,12 @@ The test manifest's additional section:
 
 ### Expects
 
-- summary: mentions authentication or auth handling
-- summary: is under 200 words
+- `summary`: mentions authentication or auth handling
+- `summary`: is under 200 words
 
 ### Expects Not
 
-- __error.md exists
+- `__error.md` exists
 ```
 
 The Prose VM handles execution and assertion evaluation — see `prose.md`, Executing Tests.
@@ -827,7 +853,7 @@ prose run ./research-program.md
 ```
 
 The runtime:
-1. Detects `kind: program` with `services` → triggers Forme (Phase 1)
+1. Detects `kind: program` with `### Services` or compatibility `services:` frontmatter -> triggers Forme (Phase 1)
 2. Loads this document (`forme.md`) into the agent's context
 3. The agent performs the wiring algorithm
 4. The agent writes `manifest.md` and copies source files

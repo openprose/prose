@@ -34,23 +34,25 @@ Your service definition is a Markdown file with a contract. It tells you:
 ---
 name: researcher
 kind: service
-shape:
-  self: [evaluate sources, score confidence]
-  prohibited: [direct web scraping]
 ---
+
+### Shape
+
+- `self`: evaluate sources, score confidence
+- `prohibited`: direct web scraping
 
 ### Requires
 
-- topic: a research question to investigate
+- `topic`: a research question to investigate
 
 ### Ensures
 
-- findings: sourced claims from 3+ distinct sources, each with confidence 0-1
-- sources: all URLs consulted with relevance ratings
+- `findings`: sourced claims from 3+ distinct sources, each with confidence 0-1
+- `sources`: all URLs consulted with relevance ratings
 
 ### Errors
 
-- no-results: no relevant sources found for this topic
+- `no-results`: no relevant sources found for this topic
 
 ### Strategies
 
@@ -72,7 +74,7 @@ Read these files to get your input data. For large inputs, read selectively—fo
 
 ### 1.3 Shape Constraints
 
-If your service has a `shape` in its frontmatter:
+If your service has a `### Shape` section:
 
 | Field | Meaning |
 |-------|---------|
@@ -84,7 +86,7 @@ Respect these boundaries. If `prohibited` says no direct web scraping, don't scr
 
 ### 1.4 Persistent Agent Memory
 
-If you are a **persistent agent** (your service has `persist:` in frontmatter), you'll receive a memory file path:
+If you are a **persistent agent** (your service has `persist` in `### Runtime`), you'll receive a memory file path:
 
 ```
 Your memory is at:

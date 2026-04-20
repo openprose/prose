@@ -5,8 +5,8 @@ kind: service
 
 ### Requires
 
-- code: source code to review
+- `code`: source code to review
 
 ### Ensures
 
-- perf-findings: identified performance issues with impact ratings
+- `perf-findings`: identified performance issues with impact ratings

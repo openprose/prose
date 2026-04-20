@@ -5,12 +5,12 @@ kind: service
 
 ### Requires
 
-- topic: what to write about (default: "a README.md for this project")
+- `topic`: what to write about (default: "a README.md for this project")
 
 ### Ensures
 
-- document: a polished, publication-ready document covering the topic
-- includes: overview, key sections appropriate to the topic, and code examples where relevant
+- `document`: a polished, publication-ready document covering the topic
+- `includes`: overview, key sections appropriate to the topic, and code examples where relevant
 
 ### Strategies
 

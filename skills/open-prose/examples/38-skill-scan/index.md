@@ -1,20 +1,30 @@
 ---
 name: skill-scan
 kind: program
-services: [discovery, triage, malicious-scanner, exfil-scanner, injection-scanner, permission-analyzer, hook-analyzer, synthesizer]
 ---
+
+### Services
+
+- `discovery`
+- `triage`
+- `malicious-scanner`
+- `exfil-scanner`
+- `injection-scanner`
+- `permission-analyzer`
+- `hook-analyzer`
+- `synthesizer`
 
 ### Requires
 
-- mode: scan mode -- "quick" (triage only), "standard" (triage + deep on concerns), or "deep" (full analysis)
-- focus: specific category to focus on (optional: malicious, exfiltration, injection, permissions, hooks)
-- skill-filter: specific skill name or path to scan (optional, default: all discovered)
+- `mode`: scan mode -- "quick" (triage only), "standard" (triage + deep on concerns), or "deep" (full analysis)
+- `focus`: specific category to focus on (optional: malicious, exfiltration, injection, permissions, hooks)
+- `skill-filter`: specific skill name or path to scan (optional, default: all discovered)
 
 ### Ensures
 
-- audit: security audit report with overall risk rating, findings by severity, and remediation recommendations
+- `audit`: security audit report with overall risk rating, findings by severity, and remediation recommendations
 - if no skills found: brief report listing directories checked
-- each skill scanned: has individual risk rating and safe-to-use verdict
+- each skill scanned has: individual risk rating and safe-to-use verdict
 
 ### Strategies
 

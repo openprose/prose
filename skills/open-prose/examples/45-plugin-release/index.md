@@ -1,21 +1,27 @@
 ---
 name: plugin-release
 kind: program
-services: [validator, analyzer, writer, executor]
 ---
+
+### Services
+
+- `validator`
+- `analyzer`
+- `writer`
+- `executor`
 
 ### Requires
 
-- release-type: "major", "minor", "patch", or empty for auto-detect (optional)
+- `release-type`: "major", "minor", "patch", or empty for auto-detect (optional)
 
 ### Ensures
 
-- release: completed release with version, tag, changelog, release notes, and verification status
+- `release`: completed release with version, tag, changelog, release notes, and verification status
 
 ### Errors
 
-- preflight-failed: pre-flight checks found issues that must be fixed before release
-- release-failed: release execution failed and was rolled back
+- `preflight-failed`: pre-flight checks found issues that must be fixed before release
+- `release-failed`: release execution failed and was rolled back
 
 ### Strategies
 

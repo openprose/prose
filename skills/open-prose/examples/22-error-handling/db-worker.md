@@ -5,17 +5,17 @@ kind: service
 
 ### Requires
 
-- data: data to process
-- config: database configuration
+- `data`: data to process
+- `config`: database configuration
 
 ### Ensures
 
-- result: processed and stored data with confirmation
+- `result`: processed and stored data with confirmation
 - if database is unreachable: error report with connection diagnostics
 
 ### Errors
 
-- db-failure: database connection failed after all retry attempts
+- `db-failure`: database connection failed after all retry attempts
 
 ### Strategies
 

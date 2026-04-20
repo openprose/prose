@@ -5,9 +5,9 @@ kind: service
 
 ### Requires
 
-- items: the original items
-- relationships: pairwise comparison results
+- `items`: the original items
+- `relationships`: pairwise comparison results
 
 ### Ensures
 
-- map: relationship map identifying clusters, central nodes, anomalies, and overall structure
+- `map`: relationship map identifying clusters, central nodes, anomalies, and overall structure

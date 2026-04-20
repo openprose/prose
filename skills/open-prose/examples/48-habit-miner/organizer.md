@@ -5,8 +5,8 @@ kind: service
 
 ### Requires
 
-- programs: generated .prose programs
+- `programs`: generated .prose programs
 
 ### Ensures
 
-- organization: programs grouped by domain with directory structure, index README, shared pattern notes, and composition suggestions
+- `organization`: programs grouped by domain with directory structure, index README, shared pattern notes, and composition suggestions

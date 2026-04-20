@@ -5,9 +5,9 @@ kind: service
 
 ### Requires
 
-- design: what was designed
+- `design`: what was designed
 
 ### Ensures
 
-- tests: unit tests, integration tests, and edge case tests using the project's test framework
-- test-results: pass/fail status for the full test suite
+- `tests`: unit tests, integration tests, and edge case tests using the project's test framework
+- `test-results`: pass/fail status for the full test suite

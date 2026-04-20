@@ -1,17 +1,24 @@
 ---
 name: captains-chair
 kind: program
-services: [captain, researcher, coder, critic, tester]
 ---
+
+### Services
+
+- `captain`
+- `researcher`
+- `coder`
+- `critic`
+- `tester`
 
 ### Requires
 
-- task: the feature or task to implement
-- codebase-context: brief description of the codebase and relevant files
+- `task`: the feature or task to implement
+- `codebase-context`: brief description of the codebase and relevant files
 
 ### Ensures
 
-- result: completed, reviewed, and tested implementation with summary of changes
+- `result`: completed, reviewed, and tested implementation with summary of changes
 
 ### Execution
 

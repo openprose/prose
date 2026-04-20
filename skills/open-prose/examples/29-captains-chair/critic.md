@@ -5,13 +5,13 @@ kind: service
 
 ### Requires
 
-- artifact: code or plan to review
-- focus: what aspects to prioritize
+- `artifact`: code or plan to review
+- `focus`: what aspects to prioritize
 
 ### Ensures
 
-- review: issues found prioritized by severity (critical, high, medium, low)
-- each issue: has specific location, description, and suggested fix
+- `review`: issues found prioritized by severity (critical, high, medium, low)
+- each issue has: specific location, description, and suggested fix
 
 ### Strategies
 

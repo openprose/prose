@@ -1,17 +1,22 @@
 ---
 name: rlm-filter-recurse
 kind: program
-services: [screener, investigator, reasoner]
 ---
+
+### Services
+
+- `screener`
+- `investigator`
+- `reasoner`
 
 ### Requires
 
-- documents: collection of documents to search
-- question: question requiring multi-source evidence
+- `documents`: collection of documents to search
+- `question`: question requiring multi-source evidence
 
 ### Ensures
 
-- answer: evidence-based answer with reasoning chain and source citations
+- `answer`: evidence-based answer with reasoning chain and source citations
 
 ### Strategies
 

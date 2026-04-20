@@ -5,9 +5,9 @@ kind: service
 
 ### Requires
 
-- document: a relevant document
-- question: what evidence to extract
+- `document`: a relevant document
+- `question`: what evidence to extract
 
 ### Ensures
 
-- evidence: specific evidence with citations extracted from the document
+- `evidence`: specific evidence with citations extracted from the document

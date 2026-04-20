@@ -1,16 +1,20 @@
 ---
 name: bug-hunter
 kind: program
-services: [detective, surgeon]
 ---
+
+### Services
+
+- `detective`
+- `surgeon`
 
 ### Requires
 
-- bug-report: error message, stack trace, or bug description
+- `bug-report`: error message, stack trace, or bug description
 
 ### Ensures
 
-- report: investigation report with root cause, fix applied, tests added, and lessons learned
+- `report`: investigation report with root cause, fix applied, tests added, and lessons learned
 
 ### Execution
 

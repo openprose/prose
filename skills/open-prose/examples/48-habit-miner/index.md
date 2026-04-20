@@ -1,18 +1,26 @@
 ---
 name: habit-miner
 kind: program
-services: [scout, parser, miner, qualifier, author, organizer]
 ---
+
+### Services
+
+- `scout`
+- `parser`
+- `miner`
+- `qualifier`
+- `author`
+- `organizer`
 
 ### Requires
 
-- mode: "full" (analyze everything), "incremental" (new logs only), or "check" (inventory only)
-- min-frequency: minimum times a pattern must appear to qualify (default: 3)
-- focus: filter to specific area, e.g., "git", "testing" (optional)
+- `mode`: "full" (analyze everything), "incremental" (new logs only), or "check" (inventory only)
+- `min-frequency`: minimum times a pattern must appear to qualify (default: 3)
+- `focus`: filter to specific area, e.g., "git", "testing" (optional)
 
 ### Ensures
 
-- result: generated .prose programs for mature workflow patterns, organized by domain
+- `result`: generated .prose programs for mature workflow patterns, organized by domain
 - if mode is check: inventory of available log sources
 - if no patterns are ready: status report with maturity update
 

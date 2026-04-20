@@ -5,10 +5,10 @@ kind: service
 
 ### Requires
 
-- feature: what to design
-- codebase-analysis: existing patterns and structure
+- `feature`: what to design
+- `codebase-analysis`: existing patterns and structure
 
 ### Ensures
 
-- design: technical design with file paths, interfaces, integration points, and risks
+- `design`: technical design with file paths, interfaces, integration points, and risks
 - design is: simple, extensible, and consistent with existing patterns
