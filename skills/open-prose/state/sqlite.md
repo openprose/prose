@@ -98,7 +98,7 @@ The VM (the orchestrating agent running the .prose program) is responsible for:
 | **Database creation** | Create `state.db` and initialize core tables at run start |
 | **Program registration** | Store the program source and metadata |
 | **Execution tracking** | Append completion records (not update-per-statement) |
-| **Subagent spawning** | Spawn sessions via Task tool with database path and instructions |
+| **Subagent spawning** | Spawn sessions via the host `spawn_session` primitive with database path and instructions |
 | **Parallel coordination** | Track branch status, implement join strategies |
 | **Loop management** | Track iteration counts, evaluate conditions |
 | **Error aggregation** | Record failures, manage retry state |
@@ -118,7 +118,7 @@ Subagents (sessions spawned by the VM) are responsible for:
 | **Attachment handling** | Write large outputs to `attachments/` directory, store path in DB |
 | **Atomic writes** | Use transactions when updating multiple related records |
 
-**Critical:** Subagents write ONLY to `bindings`, `agents`, and `agent_segments` tables. The VM owns the `execution` table entirely. Completion signaling happens through the substrate (Task tool return), not database updates.
+**Critical:** Subagents write ONLY to `bindings`, `agents`, and `agent_segments` tables. The VM owns the `execution` table entirely. Completion signaling happens through the substrate (`spawn_session` return), not database updates.
 
 **Critical:** Subagents must write their outputs directly to the database. The VM does not write subagent outputs—it only reads them after the subagent completes.
 
@@ -385,7 +385,7 @@ Use minimal markers in conversation (same as filesystem/in-context state):
 loop:2/5 exit
 ```
 
-The Task tool calls and results are in the conversation—no need to narrate them verbosely.
+The host `spawn_session` calls and results are in the conversation—no need to narrate them verbosely.
 
 ### Why Both Conversation and Database?
 
@@ -408,7 +408,7 @@ For parallel blocks, **append completion records** rather than updating status. 
 INSERT INTO execution (statement_index, statement_text, status, metadata)
 VALUES (5, 'parallel:', 'started', '{"parallel_id": "p1", "branches": ["a", "b", "c"]}');
 
--- Subagents write to bindings table, Task tool signals completion
+-- Subagents write to bindings table, spawn_session signals completion
 -- VM appends completion record for each branch as it returns
 INSERT INTO execution (statement_index, statement_text, status, metadata)
 VALUES (5, 'parallel:a', 'completed', '{"parallel_id": "p1", "branch": "a"}');

@@ -77,7 +77,7 @@ Use **compact markers** to track state with minimal token overhead. The VM's con
 1→ research ✓
 ```
 
-That's it. One line. The Task tool call and result are in the conversation—no need to narrate them again.
+That's it. One line. The host `spawn_session` call and result are in the conversation—no need to narrate them again.
 
 ### Parallel Blocks
 
@@ -160,7 +160,7 @@ When passing context to sessions, format appropriately:
 
 ```prose
 agent researcher:
-  model: sonnet
+  model: balanced
 
 let research = session: researcher
   prompt: "Research AI safety"
@@ -185,7 +185,7 @@ loop:2/3 exit(**complete**)
 ---end
 ```
 
-That's the entire execution trace in 7 lines instead of 40+. The Task tool calls and their results are in the conversation history—the markers just track position and completion.
+That's the entire execution trace in 7 lines instead of 40+. The host `spawn_session` calls and their results are in the conversation history—the markers just track position and completion.
 
 ---
 
@@ -196,7 +196,7 @@ The VM's conversation naturally contains:
 | Information | Where It Lives |
 |-------------|----------------|
 | Agent/block definitions | Read at program start, in early context |
-| Binding values | Task tool results in conversation |
+| Binding values | `spawn_session` results in conversation |
 | Current position | VM knows what it just executed |
 | Loop iteration | VM is counting |
 | Parallel status | VM spawned the tasks, sees returns |

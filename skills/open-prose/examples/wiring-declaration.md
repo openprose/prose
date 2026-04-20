@@ -33,3 +33,36 @@ synthesizer:
   receives: { findings } from researcher
   receives: { evaluation } from critic
   returns to caller
+
+## researcher
+
+### Requires
+
+- `topic`: what to investigate
+
+### Ensures
+
+- `findings`: sourced findings relevant to the topic
+- `sources`: source list with enough detail for critique
+
+## critic
+
+### Requires
+
+- `findings`: research findings to evaluate
+- `sources`: source list to inspect for quality and coverage
+
+### Ensures
+
+- `evaluation`: critique of the findings, including confidence and gaps
+
+## synthesizer
+
+### Requires
+
+- `findings`: research findings to summarize
+- `evaluation`: critique to incorporate
+
+### Ensures
+
+- `report`: critically evaluated research report

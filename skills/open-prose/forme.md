@@ -273,6 +273,18 @@ If multiple components ensure something that could match a `requires` entry, pre
   Pin this in a Wiring declaration if this is wrong.
 ```
 
+Use two ambiguity levels:
+
+- **Soft ambiguity** — one match is more likely after reading the contract
+  language. Warn, record the selected binding in the manifest, and proceed.
+- **Hard ambiguity** — two or more matches remain equally plausible and the
+  downstream behavior would materially differ. Emit an error and do not produce
+  a manifest until the author pins the edge in `### Wiring` or clarifies the
+  contracts.
+
+Do not fail merely because a match is semantic rather than exact. Fail only when
+the semantic evidence is insufficient to choose a responsible binding.
+
 ### Step 4b: Recognize `each` in Ensures
 
 When a component's `ensures` section contains an `each` clause (e.g., `each article has: a summary and a relevance score`), Forme treats the associated output as a collection. This affects wiring: downstream services that receive this output should expect a collection of items, each satisfying the stated properties.
@@ -821,7 +833,7 @@ The body contains `### Fixtures` (pre-supplied inputs), `### Expects` (natural l
 ### Wiring Process
 
 1. **Resolve the subject.** Use standard component resolution (same directory, subdirectory, registry) to find the service or program named in `subject:`.
-2. **Bind fixtures as caller inputs.** `### Fixtures` entries become the caller inputs. No AskUserQuestion prompting — tests are fully self-contained.
+2. **Bind fixtures as caller inputs.** `### Fixtures` entries become the caller inputs. No `ask_user` prompting — tests are fully self-contained.
 3. **Produce a test manifest.** Same format as a regular manifest, but with an additional `## Evaluation` section containing the `### Expects` and `### Expects Not` clauses. The VM uses this section after execution to evaluate results.
 4. **Wire the subject's dependencies.** If the subject is a program with its own services, wire those normally. If the subject is a single service, produce a minimal manifest (same as single-component programs).
 

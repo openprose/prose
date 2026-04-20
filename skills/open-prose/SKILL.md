@@ -1,9 +1,12 @@
 ---
 name: open-prose
 description: |
-  OpenProse is a programming language for AI sessions. Activate on any `prose`
-  command, `.md` Contract Markdown program, `.prose` ProseScript program,
-  mention of OpenProse/Forme/ProseScript, or multi-agent workflow request.
+  OpenProse is a programming language for AI sessions. This skill is the
+  progressive dispatcher for Contract Markdown programs, Forme wiring, Prose VM
+  execution, ProseScript choreography, dependency installs, and reusable
+  multi-agent workflows. Activate on any `prose` command, `.md` Contract
+  Markdown program, `.prose` ProseScript program, mention of
+  OpenProse/Forme/ProseScript, or multi-agent workflow request.
 ---
 
 # OpenProse Skill
@@ -20,6 +23,25 @@ OpenProse has four load-bearing pieces:
 Use Contract Markdown when authors want declarations and auto-wiring. Use
 ProseScript when authors want to pin choreography: order, loops, conditionals,
 parallelism, retries, and explicit service calls.
+
+## First 90 Seconds
+
+After activation, choose the narrowest path that matches the user's intent:
+
+| User Intent | Load First | Then Load If Needed |
+|-------------|------------|---------------------|
+| Explain OpenProse or answer "how do I..." | `help.md` | `examples/README.md`, then one focused example |
+| Run a `.md` program | `contract-markdown.md` | `forme.md` if it has `### Services`; `prose.md` and `state/filesystem.md` to execute |
+| Run a `.prose` program | `prosescript.md` | `prose.md` for execution behavior |
+| Write a new `.md` program | `contract-markdown.md` | `guidance/tenets.md`, `guidance/patterns.md`, `guidance/antipatterns.md` |
+| Write pinned choreography | `prosescript.md` | `contract-markdown.md` if inside `### Execution` |
+| Lint or review a program | `contract-markdown.md` | `forme.md` for multi-service wiring; `guidance/antipatterns.md` for design review |
+| Install or update dependencies | `deps.md` | `contract-markdown.md` only if dependency references are ambiguous |
+| Debug a completed run | `prose.md` | `state/filesystem.md`, then `std/evals/inspector` if available |
+
+Default to Contract Markdown for new authoring. Reach for ProseScript only when
+the author needs explicit order, loops, conditionals, retries, parallel blocks,
+or a persistent standalone script.
 
 ## Activation
 
@@ -54,6 +76,23 @@ Activate this skill when the user:
 
 There is one skill: `open-prose`. Do not look for separate `prose-run`,
 `prose-lint`, `prose-compile`, or `prose-boot` skills.
+
+## Host Primitive Adapter
+
+OpenProse specs are harness-agnostic. They describe abstract VM operations that
+the current host must map onto its available tools:
+
+| Abstract Primitive | Meaning | Host Mapping |
+|--------------------|---------|--------------|
+| `spawn_session` | Run a service, script branch, or delegate in an isolated agent/session | Use the host's subagent primitive when available; otherwise execute inline only for trivial single-component programs and report the limitation for multi-agent runs |
+| `ask_user` | Pause for missing required caller input | Use the host's user-question tool if available; otherwise ask plainly in chat |
+| `read_state` / `write_state` | Read and write `.prose/runs/{id}/` artifacts | Use filesystem tools with the active workspace permissions |
+| `copy_binding` | Publish declared outputs from `workspace/` to `bindings/` | Use a filesystem copy operation; never publish undeclared scratch files |
+| `check_env` | Verify an environment variable exists | Check only presence; never reveal or log raw values |
+
+Some older docs and examples say "Task tool" or "AskUserQuestion". Interpret
+those as `spawn_session` and `ask_user` respectively unless running inside a
+host that literally provides those names.
 
 ## Format Detection
 
@@ -126,6 +165,7 @@ user workspace for these docs.
 
 | File | Purpose |
 |------|---------|
+| `README.md` | Human orientation and map of the skill directory |
 | `contract-markdown.md` | Contract Markdown format and section hierarchy |
 | `prosescript.md` | Imperative scripting syntax for `.prose` and `### Execution` |
 | `forme.md` | Forme container wiring semantics |
@@ -137,6 +177,7 @@ user workspace for these docs.
 | `guidance/tenets.md` | Architectural tenets |
 | `guidance/patterns.md` | Authoring patterns |
 | `guidance/antipatterns.md` | Authoring antipatterns |
+| `guidance/system-prompt.md` | Dedicated OpenProse VM prompt; load only for a dedicated runtime instance |
 | `examples/` | Example programs |
 | `v0/` | Historical ProseScript-era references retained for compatibility |
 

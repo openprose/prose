@@ -6,8 +6,8 @@ kind: program
 ### Services
 
 - `review`
-- `polish`
 - `fact-check`
+- `polish`
 
 ### Description
 
@@ -37,16 +37,17 @@ Demonstrates multiple services in a single file using `##` heading delimiters. E
 
 - `draft`: the original text
 - `feedback`: editorial notes to incorporate
+- `claims`: factual claim verification results to apply
 
 ### Ensures
 
-- `final`: polished text incorporating all feedback
+- `final`: polished text incorporating all feedback and resolving or flagging every disputed claim
 
 ## fact-check
 
 ### Requires
 
-- `text`: content containing factual claims
+- `draft`: content containing factual claims
 
 ### Ensures
 

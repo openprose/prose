@@ -14,7 +14,9 @@ OpenProse is a programming language for AI sessions. You write structured progra
 
 ## What Do You Want to Automate?
 
-When a user invokes `prose help`, guide them toward defining what they want to build. Use the AskUserQuestion tool:
+When a user invokes `prose help`, guide them toward defining what they want to
+build. Use the host's user-question primitive when available; otherwise ask the
+question plainly in chat:
 
 ```
 Question: "What would you like to automate with OpenProse?"
@@ -85,11 +87,19 @@ Then run `prose install` to fetch and pin it.
 
 ### What AI assistants are supported?
 
-Codex, Claude Code, OpenCode, and Amp. Any harness that runs a sufficiently intelligent model and supports primitives like subagents is considered "Prose Complete".
+Codex, Claude Code, OpenCode, Amp, and similar agent harnesses. Any host that
+runs a sufficiently intelligent model and supports the OpenProse primitives
+(`spawn_session`, filesystem state, tool calls, and user input) is considered
+"Prose Complete".
 
 ### How is this a VM?
 
-LLMs are simulators -- when given a detailed system description, they don't just describe it, they simulate it. The `prose.md` spec describes a VM with enough fidelity that reading it induces simulation. But simulation with sufficient fidelity is implementation: each session spawns a real subagent, outputs are real artifacts, state persists in conversation history or files. The simulation is the execution.
+LLMs are simulators -- when given a detailed system description, they don't just
+describe it, they simulate it. The `prose.md` spec describes a VM with enough
+fidelity that reading it induces simulation. But simulation with sufficient
+fidelity is implementation: each session maps to a real `spawn_session` in the
+host, outputs are real artifacts, and state persists in files. The simulation is
+the execution.
 
 ### What's "intelligent IoC"?
 
@@ -109,7 +119,11 @@ OpenProse uses a git-native dependency model -- GitHub is the registry. A progra
 
 ### Why not LangChain/CrewAI/AutoGen?
 
-Those are orchestration libraries -- they coordinate agents from outside. OpenProse runs inside the agent session -- the session itself is the IoC container. This means zero external dependencies and portability across any AI assistant. Switch from Claude Code to Codex? Your programs still work.
+Those are orchestration libraries -- they coordinate agents from outside.
+OpenProse runs inside the agent session -- the session itself is the IoC
+container. This means portability across Prose Complete hosts. Switch from one
+supported harness to another and the program should still read the same; only
+the host primitive adapter changes.
 
 ---
 
@@ -241,7 +255,8 @@ Also valid: `session`, `agent`, `repeat`, `for`, `loop until`, `try/catch`, `if/
 
 ## Examples
 
-The `examples/` directory contains ~50 Contract Markdown programs:
+The `examples/` directory contains a mixture of canonical Contract Markdown,
+wrapped historical programs, and feature demos:
 
 | Range | Category |
 |-------|----------|
@@ -261,3 +276,5 @@ The `examples/` directory contains ~50 Contract Markdown programs:
 - `16-parallel-reviews/` -- Multi-service parallel execution with auto-wiring
 - `37-the-forge/` -- Watch AI build a web browser (9-phase execution block)
 - `test-demo.md` -- See how `kind: test` works with fixtures and assertions
+- `multi-service-single-file.md` -- See `##` inline component boundaries
+- `composites-demo/` -- See a self-contained worker-critic composite

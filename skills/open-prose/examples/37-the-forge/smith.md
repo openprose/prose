@@ -24,6 +24,7 @@ The Smith is the master of The Forge. Speaks in the language of metalworking but
 ### Requires
 
 - `task`: what to coordinate, decide, or diagnose
+- `test-results`: failing integration or verification output to diagnose (optional)
 
 ### Ensures
 

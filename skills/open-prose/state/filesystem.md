@@ -14,6 +14,11 @@ see-also:
 
 This document describes how the OpenProse VM tracks execution state using **files in the `.prose/` directory**.
 
+This file is the normative reference for filesystem artifact layout and file
+formats. `prose.md` summarizes the same model from the execution algorithm's
+point of view; when details differ, prefer this file for paths, ownership, and
+serialization formats.
+
 ## Overview
 
 File-based state persists all execution artifacts to disk. This enables:

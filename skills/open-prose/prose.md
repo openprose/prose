@@ -2,8 +2,9 @@
 role: execution-semantics
 summary: |
   How to execute OpenProse programs. You embody the OpenProse VM—a virtual machine that
-  reads a manifest (produced by Forme), spawns sessions via the Task tool, manages state via
-  the filesystem, and coordinates execution across components. Read this file to run programs.
+  reads a manifest (produced by Forme), spawns sessions through the host's
+  `spawn_session` primitive, manages state via the filesystem, and coordinates
+  execution across components. Read this file to run programs.
 see-also:
   - contract-markdown.md: Program and service file format
   - forme.md: Wiring semantics (Phase 1 — produces the manifest you consume)
@@ -94,16 +95,19 @@ But simulation with sufficient fidelity _is_ implementation. When the simulated 
 
 | Traditional VM      | OpenProse VM                        | Substrate                                |
 | ------------------- | ----------------------------------- | ---------------------------------------- |
-| Instructions        | Manifest graph entries              | Executed via Task tool calls             |
+| Instructions        | Manifest graph entries              | Executed via host `spawn_session` calls  |
 | Program counter     | Current position in execution order | Tracked in `state.md`                    |
 | Working memory      | Conversation history                | The context window holds ephemeral state |
 | Persistent storage  | `.prose/` directory                 | Files hold durable state across sessions |
 | Registers/variables | Named bindings                      | Stored in `bindings/{service}/{name}.md` |
-| I/O                 | Tool calls and results              | Task spawns sessions, returns pointers   |
+| I/O                 | Tool calls and results              | Host primitives spawn sessions, ask users, and return pointers |
 
 ### What Makes It Real
 
-The OpenProse VM isn't a metaphor. Each component in the manifest triggers a _real_ Task tool call that spawns a _real_ subagent. The outputs are _real_ artifacts on disk. The simulation produces actual computation—it just happens through a different substrate than silicon executing bytecode.
+The OpenProse VM isn't a metaphor. Each component in the manifest triggers a
+_real_ host session through `spawn_session`. The outputs are _real_ artifacts on
+disk. The simulation produces actual computation—it just happens through a
+different substrate than silicon executing bytecode.
 
 ---
 
@@ -114,16 +118,36 @@ When you execute a program, you ARE the virtual machine. This is not a metaphor�
 | You                        | The VM                          |
 | -------------------------- | ------------------------------- |
 | Your conversation history  | The VM's working memory         |
-| Your tool calls (Task)     | The VM's instruction execution  |
+| Your host primitive calls  | The VM's instruction execution  |
 | Your state tracking        | The VM's execution trace        |
 | Your judgment on contracts | The VM's intelligent evaluation |
 
 **What this means in practice:**
 
 - You don't _simulate_ execution—you _perform_ it
-- Each component spawns a real subagent via the Task tool
+- Each component spawns a real subagent through the host's `spawn_session`
+  primitive
 - Your state persists in files (`.prose/runs/`)
 - You follow the manifest strictly, but apply intelligence where needed
+
+---
+
+## Host Primitive Adapter
+
+This spec names abstract VM primitives. The current harness maps them onto its
+own tools:
+
+| Primitive | Required Behavior |
+|-----------|-------------------|
+| `spawn_session` | Start an isolated agent/session with a prompt, optional model, and access to declared input/output paths |
+| `ask_user` | Pause execution for missing required caller input and resume with the answer |
+| `read_file` / `write_file` | Read and write `.prose/runs/{id}/` state artifacts |
+| `copy_binding` | Copy a declared output from `workspace/{service}/` to `bindings/{service}/` |
+| `check_env` | Confirm an environment variable exists without exposing its value |
+
+Older docs and examples may say "Task tool" for `spawn_session` or
+"AskUserQuestion" for `ask_user`. Treat those as host-specific names for these
+abstract primitives.
 
 ---
 
@@ -191,7 +215,7 @@ The manifest's Caller Interface lists what the program requires. Bind these valu
 | CLI arguments (`prose run program.md --question "..."`)          | Bind immediately                                      |
 | Config file (`.prose/.env` or program-level config)              | Bind immediately                                      |
 | Pre-supplied by calling program (if this is a nested invocation) | Bind immediately                                      |
-| No value available                                               | Pause execution, prompt user via AskUserQuestion tool |
+| No value available                                               | Pause execution, prompt user via `ask_user` |
 
 Write each bound input to `bindings/caller/{name}.md`:
 
@@ -223,14 +247,14 @@ All services listed in the service's `inputs` (the `←` mappings) must have the
 
 #### 4b. Spawn Session
 
-Spawn a subagent via the Task tool with:
+Spawn a subagent via the host's `spawn_session` primitive with:
 
 1. **The service's source file** — read `services/{service-name}.md` and include its full content as the service definition
 2. **Input file paths** — list each input with its binding path
 3. **Workspace path** — where the service should write ALL its work
 4. **Output instructions** — which files in the workspace are declared `### Ensures` outputs
 
-The Task prompt follows this structure:
+The session prompt follows this structure:
 
 ```
 You are executing a Prose service component.
@@ -318,8 +342,8 @@ If the manifest notes that services can run concurrently (no dependencies betwee
 
 ```
 // Services with no mutual dependencies — spawn simultaneously
-Task({ prompt: "Service: researcher ..." })
-Task({ prompt: "Service: critic ..." })
+spawn_session({ prompt: "Service: researcher ..." })
+spawn_session({ prompt: "Service: critic ..." })
 // Wait for all to complete, then continue
 ```
 
@@ -473,25 +497,29 @@ The execution block uses ProseScript. Within it, the full imperative grammar is 
 
 ## Spawning Sessions
 
-Each service in the manifest becomes a subagent via the **Task tool**:
+Each service in the manifest becomes a subagent via `spawn_session`:
 
 ```
-Task({
+spawn_session({
   description: "OpenProse service: {service-name}",
   prompt: "{the prompt constructed in Step 4b}",
-  subagent_type: "general-purpose",
+  isolation: "service-session",
   model: "{model from service ### Runtime, if specified}"
 })
 ```
 
+Hosts may spell this differently (`Task`, `spawn_agent`, `run_subagent`, or a
+dedicated service runner). The required behavior is isolation plus access to the
+declared input paths and workspace path.
+
 ### Parallel Execution
 
-Make multiple Task calls in a single response for true concurrency:
+Start multiple `spawn_session` calls in the same host turn for true concurrency:
 
 ```
 // Spawn simultaneously
-Task({ description: "OpenProse service: researcher", prompt: "..." })
-Task({ description: "OpenProse service: fact-checker", prompt: "..." })
+spawn_session({ description: "OpenProse service: researcher", prompt: "..." })
+spawn_session({ description: "OpenProse service: fact-checker", prompt: "..." })
 // Wait for all to complete
 ```
 
@@ -700,7 +728,7 @@ At program start, the VM resolves each `requires` entry:
 | Value provided via CLI arg (`--question "..."`)       | Bind immediately                                    |
 | Value provided via config file                        | Bind immediately                                    |
 | Value provided by calling program (nested invocation) | Bind immediately                                    |
-| No value available                                    | Prompt user via AskUserQuestion tool, bind response |
+| No value available                                    | Prompt user via `ask_user`, bind response           |
 
 ### Writing Input Bindings
 
@@ -987,7 +1015,7 @@ function execute(manifest, inputs?):
   2. Bind caller inputs:
      - From CLI args, config, or calling program
      - For run-typed inputs (run / run[]): validate existence, structure, completion; emit staleness warning if source program changed
-     - Prompt user (AskUserQuestion) for any missing required inputs
+     - Prompt user (`ask_user`) for any missing required inputs
      - Write each to bindings/caller/{name}.md (structured metadata for run types)
      - Record upstream: field in state.md header for any run-typed inputs
   3. Create workspace/ and bindings/ directories for each service
@@ -1001,7 +1029,7 @@ function execute(manifest, inputs?):
         - Output instructions (ensures outputs to write)
         - Shape constraints (prohibited, self, delegates)
         - Error signaling format
-     c. Spawn session via Task tool
+     c. Spawn session via `spawn_session`
         - If multiple services have no mutual dependencies, spawn in parallel
      d. Receive response:
         - If Delegate: lines → runtime delegation:
@@ -1032,7 +1060,7 @@ The OpenProse VM:
 1. **Reads** the manifest produced by Forme
 2. **Binds** caller inputs (from CLI, config, or user prompt)
 3. **Walks** the execution order from the dependency graph
-4. **Spawns** one session per service via Task tool
+4. **Spawns** one session per service via `spawn_session`
 5. **Passes** input data as filesystem pointers (never values)
 6. **Copies** declared outputs from workspace to bindings (the return mechanism)
 7. **Handles** errors via conditional ensures or propagation

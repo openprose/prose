@@ -14,6 +14,18 @@ see-also:
 
 This document catalogs proven patterns for orchestrating AI agents effectively. Each pattern addresses specific concerns: robustness, cost efficiency, speed, maintainability, or self-improvement capability.
 
+Most examples use ProseScript because control-flow patterns are easiest to show
+imperatively. When authoring canonical Contract Markdown, translate patterns
+into contracts first:
+
+| Pattern Need | Prefer in Contract Markdown | Use ProseScript When |
+|--------------|-----------------------------|----------------------|
+| Independent services | `### Services` plus matching `### Requires` / `### Ensures` | Exact branch order or join policy matters |
+| Collection guarantees | `each ...` postconditions in `### Ensures` | Per-item ordering, batching, or recovery matters |
+| Retry or refinement | `### Strategies`, `### Errors`, conditional `### Ensures`, or a composite | The loop count, stop condition, or recovery path must be pinned |
+| Specialized roles | One service per role with `### Shape` and `### Runtime` | The role is a one-off standalone `.prose` agent |
+| Reusable topology | A `kind: composite` with slots and config | The topology is local and not worth naming |
+
 ---
 
 ## Structural Patterns
@@ -34,6 +46,34 @@ session "Synthesize findings"
 ```
 
 The synthesis session waits for all branches, but total time equals the longest branch rather than the sum of all branches.
+
+Contract Markdown equivalent:
+
+```markdown
+---
+name: landscape-review
+kind: program
+---
+
+### Services
+
+- `market-researcher`
+- `tech-researcher`
+- `competition-analyst`
+- `synthesizer`
+
+### Requires
+
+- `brief`: what landscape to investigate
+
+### Ensures
+
+- `report`: synthesized market, technology, and competition review
+```
+
+Each researcher requires `brief` and ensures a distinct output. The synthesizer
+requires those outputs. Forme can infer that the three researchers are
+parallelizable because they depend only on caller input.
 
 #### fan-out-fan-in
 
@@ -75,7 +115,7 @@ Define agents with focused expertise. Specialized agents produce better results 
 
 ```prose
 agent security-reviewer:
-  model: sonnet
+  model: balanced
   prompt: """
     You are a security expert. Focus exclusively on:
     - Authentication and authorization flaws
@@ -85,7 +125,7 @@ agent security-reviewer:
   """
 
 agent performance-reviewer:
-  model: sonnet
+  model: balanced
   prompt: """
     You are a performance engineer. Focus exclusively on:
     - Algorithmic complexity
@@ -94,6 +134,35 @@ agent performance-reviewer:
     Ignore security, style, and other concerns.
   """
 ```
+
+Contract Markdown equivalent:
+
+```markdown
+---
+name: security-reviewer
+kind: service
+---
+
+### Runtime
+
+- `model`: balanced
+
+### Shape
+
+- `self`: authentication, authorization, injection, and data exposure risks
+- `prohibited`: style review, performance review, product prioritization
+
+### Requires
+
+- `code`: code to inspect
+
+### Ensures
+
+- `security-findings`: security issues with severity and evidence
+```
+
+Use `### Shape` to create the role boundary. Use `### Runtime` only for runtime
+hints such as persistence or model tier.
 
 #### reusable-blocks
 
@@ -190,6 +259,28 @@ catch:
   session "Use fallback data source"
 ```
 
+Contract Markdown equivalent:
+
+```markdown
+### Ensures
+
+- `data`: validated data from the primary source
+- if the primary source is unavailable: validated fallback data with provenance and caveats
+
+### Errors
+
+- `no-data`: neither primary nor fallback source produced usable data
+
+### Strategies
+
+- when the primary source times out: retry with exponential backoff before using fallback
+- when fallback data is stale: include freshness caveats in `data`
+```
+
+Use this declarative form when the caller cares about the acceptable outcomes.
+Use a `### Execution` block when the exact retry count, backoff schedule, or
+fallback order must be pinned.
+
 #### error-context-capture
 
 Capture error context for intelligent recovery. The error variable provides information for diagnostic or remediation sessions.
@@ -228,45 +319,51 @@ session "Execute main workflow"
 
 Match model capability to task complexity:
 
-| Model | Best For | Examples |
-|-------|----------|----------|
-| **Sonnet 4.5** | Orchestration, control flow, coordination | VM execution, captain's chair, workflow routing |
-| **Opus 4.5** | Hard/difficult work requiring deep reasoning | Complex analysis, strategic decisions, novel problem-solving |
-| **Haiku** | Simple, self-evident tasks (use sparingly) | Classification, summarization, formatting |
+| Capability Tier | Best For | Examples |
+|-----------------|----------|----------|
+| **Balanced orchestrator** | Orchestration, control flow, coordination | VM execution, captain's chair, workflow routing |
+| **Deep reasoner** | Hard work requiring broad context or novel reasoning | Complex analysis, strategic decisions, ambiguous architecture |
+| **Fast specialist** | Simple, self-evident transformations | Classification, formatting, extraction with clear criteria |
 
-**Key insight:** Sonnet 4.5 excels at *orchestrating* agents and managing control flow—it's the ideal model for the OpenProse VM itself and for "captain" agents that coordinate work. Opus 4.5 should be reserved for agents doing genuinely difficult intellectual work. Haiku can handle simple tasks but should generally be avoided where quality matters.
+**Key insight:** orchestration usually needs reliability and structure more than
+maximum depth. Reserve the deepest model available for genuinely hard
+intellectual work. Use fast models only when the acceptance criteria are crisp
+and the cost of a mistake is low.
 
 **Detailed task-to-model mapping:**
 
-| Task Type | Model | Rationale |
-|-----------|-------|-----------|
-| Orchestration, routing, coordination | Sonnet | Fast, good at following structure |
-| Investigation, debugging, diagnosis | Sonnet | Structured analysis, checklist-style work |
-| Triage, classification, categorization | Sonnet | Clear criteria, deterministic decisions |
-| Code review, verification (checklist) | Sonnet | Following defined review criteria |
-| Simple implementation, fixes | Sonnet | Applying known patterns |
-| Complex multi-file synthesis | Opus | Needs to hold many things in context |
-| Novel architecture, strategic planning | Opus | Requires creative problem-solving |
-| Ambiguous problems, unclear requirements | Opus | Needs to reason through uncertainty |
+| Task Type | Tier | Rationale |
+|-----------|------|-----------|
+| Orchestration, routing, coordination | Balanced orchestrator | Follows structure and manages state well |
+| Investigation, debugging, diagnosis | Balanced orchestrator or deep reasoner | Escalate when evidence is sparse or ambiguous |
+| Triage, classification, categorization | Fast specialist or balanced orchestrator | Clear criteria, deterministic decisions |
+| Code review, verification checklist | Balanced orchestrator | Follows defined review criteria |
+| Simple implementation, fixes | Balanced orchestrator | Applies known patterns |
+| Complex multi-file synthesis | Deep reasoner | Needs to hold many things in context |
+| Novel architecture, strategic planning | Deep reasoner | Requires creative problem-solving |
+| Ambiguous problems, unclear requirements | Deep reasoner | Needs to reason through uncertainty |
 
-**Rule of thumb:** If you can write a checklist for the task, Sonnet can do it. If the task requires genuine creativity or navigating ambiguity, use Opus.
+Map these tiers to the models available in the current host. For example, a
+Claude host might map balanced/deep/fast to Sonnet/Opus/Haiku. A Codex host
+might map them to medium-reasoning, high-reasoning, and mini agents. The program
+should name capability intent when portability matters.
 
 ```prose
 agent captain:
-  model: sonnet  # Orchestration and coordination
+  model: balanced  # Orchestration and coordination
   persist: true  # Execution-scoped (dies with run)
   prompt: "You coordinate the team and review work"
 
 agent researcher:
-  model: opus  # Hard analytical work
+  model: deep  # Hard analytical work
   prompt: "You perform deep research and analysis"
 
 agent formatter:
-  model: haiku  # Simple transformation (use sparingly)
+  model: fast  # Simple transformation with crisp acceptance criteria
   prompt: "You format text into consistent structure"
 
 agent preferences:
-  model: sonnet
+  model: balanced
   persist: user  # User-scoped (survives across projects)
   prompt: "You remember user preferences and patterns"
 
@@ -385,7 +482,7 @@ For tasks that would otherwise require a separate verifier, include verification
 ```prose
 # Good: Combined work + self-verification
 agent investigator:
-  model: sonnet
+  model: balanced
   prompt: """Diagnose the error.
   1. Examine code paths
   2. Check logs and state
@@ -503,7 +600,7 @@ Write prompts that specify expected inputs and outputs. Clear contracts prevent 
 
 ```prose
 agent json-extractor:
-  model: haiku
+  model: fast
   prompt: """
     Extract structured data from text.
 
@@ -566,13 +663,13 @@ if **detailed analysis needed**:
   # Expensive operations only when necessary
   parallel:
     deep_analysis = session "Perform deep analysis"
-      model: opus
+      model: deep
     historical = session "Gather historical comparisons"
   session "Comprehensive report"
     context: { deep_analysis, historical }
 else:
   session "Quick summary"
-    model: haiku
+    model: fast
 ```
 
 #### progressive-disclosure
@@ -580,20 +677,20 @@ else:
 Start with fast, cheap operations. Escalate to expensive ones only when needed.
 
 ```prose
-# Tier 1: Fast screening (haiku)
+# Tier 1: Fast screening
 let initial = session "Quick assessment"
-  model: haiku
+  model: fast
 
 if **needs deeper review**:
-  # Tier 2: Moderate analysis (sonnet)
+  # Tier 2: Balanced analysis
   let detailed = session "Detailed analysis"
-    model: sonnet
+    model: balanced
     context: initial
 
   if **needs expert review**:
-    # Tier 3: Deep reasoning (opus)
+    # Tier 3: Deep reasoning
     session "Expert-level analysis"
-      model: opus
+      model: deep
       context: [initial, detailed]
 ```
 
@@ -699,7 +796,7 @@ Request structured outputs that can be reliably parsed and validated.
 
 ```prose
 agent structured-reviewer:
-  model: sonnet
+  model: balanced
   prompt: """
     Always respond with this exact JSON structure:
     {

@@ -334,14 +334,14 @@ catch as err:
 
 ## Cost Antipatterns
 
-#### opus-for-everything
+#### deep-model-for-everything
 
 Using the most powerful (expensive) model for all tasks, including trivial ones.
 
 ```prose
-# Bad: Opus for simple classification
+# Bad: Deep reasoner for simple classification
 agent classifier:
-  model: opus
+  model: deep
   prompt: "Categorize items as: spam, not-spam"
 
 # Expensive for a binary classification
@@ -350,14 +350,15 @@ for email in emails:
     prompt: "Classify: {email}"
 ```
 
-**Why it's bad**: Opus costs significantly more than haiku. Simple tasks don't benefit from advanced reasoning.
+**Why it's bad**: Deep reasoning models cost more and may be slower. Simple
+tasks with crisp criteria often do not benefit from advanced reasoning.
 
 **Fix**: Match model to task complexity:
 
 ```prose
-# Good: Haiku for simple tasks
+# Good: Fast specialist for simple tasks
 agent classifier:
-  model: haiku
+  model: fast
   prompt: "Categorize items as: spam, not-spam"
 ```
 
@@ -448,11 +449,11 @@ Computing everything upfront when only some results might be needed.
 # Bad: Compute all branches even if only one is needed
 parallel:
   simple_analysis = session "Simple analysis"
-    model: haiku
+    model: fast
   detailed_analysis = session "Detailed analysis"
-    model: sonnet
+    model: balanced
   deep_analysis = session "Deep analysis"
-    model: opus
+    model: deep
 
 # Then only use one based on some criterion
 choice **appropriate depth**:
@@ -474,18 +475,18 @@ choice **appropriate depth**:
 ```prose
 # Good: Only compute what's needed
 let initial = session "Initial assessment"
-  model: haiku
+  model: fast
 
 choice **appropriate depth based on initial assessment**:
   option "Simple":
     session "Simple analysis"
-      model: haiku
+      model: fast
   option "Detailed":
     session "Detailed analysis"
-      model: sonnet
+      model: balanced
   option "Deep":
     session "Deep analysis"
-      model: opus
+      model: deep
 ```
 
 #### over-parallelization
@@ -579,7 +580,7 @@ session "You are a helpful assistent. Analyze this code for bugs."  # Typo!
 ```prose
 # Good: Single source of truth
 agent code-analyst:
-  model: sonnet
+  model: balanced
   prompt: "You are a helpful assistant. Analyze code for bugs."
 
 session: code-analyst
@@ -660,7 +661,7 @@ Agents with prompts that cover too many responsibilities.
 ```prose
 # Bad: Jack of all trades
 agent super-agent:
-  model: opus
+  model: deep
   prompt: """
     You are an expert in:
     - Security analysis
@@ -682,15 +683,15 @@ agent super-agent:
 ```prose
 # Good: Focused expertise
 agent security-expert:
-  model: sonnet
+  model: balanced
   prompt: "You are a security analyst. Focus only on security concerns."
 
 agent performance-expert:
-  model: sonnet
+  model: balanced
   prompt: "You are a performance engineer. Focus only on optimization."
 
 agent technical-writer:
-  model: haiku
+  model: fast
   prompt: "You write clear technical documentation."
 ```
 
