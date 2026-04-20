@@ -4,16 +4,19 @@ kind: program
 services: [archaeologist, clinician, architect, spec-writer, guardian, test-smith]
 ---
 
-requires:
+### Requires
+
 - corpus-path: path to .prose files to analyze (default: examples/)
 - conversations: conversation threads where people struggled with the language (optional)
 - focus: specific area to focus on, e.g., "error handling", "parallelism" (optional)
 
-ensures:
+### Ensures
+
 - evolution: language improvement proposals with spec patches, test files, risk assessment, and migration guide
 
 ### Execution
 
+```prose
 # Phase 1: Corpus excavation (parallel)
 let patterns = call archaeologist
   corpus: corpus-path
@@ -25,7 +28,7 @@ let pain-points = call clinician
   task: "identify confusion, errors, and gaps between intent and expression"
 
 let current-spec = call archaeologist
-  corpus: "compiler.md, prose.md"
+  corpus: "contract-markdown.md, prosescript.md, forme.md, prose.md"
   task: "summarize current language capabilities and inconsistencies"
 
 # Phase 2: Synthesis
@@ -45,7 +48,7 @@ let proposals = call architect
 let spec-patches = call spec-writer
   proposals: proposals
   current-spec: current-spec
-  task: "write specification additions following compiler.md style"
+  task: "write specification additions following the OpenProse reference style"
 
 # Phase 5: Test creation
 let test-files = call test-smith
@@ -66,4 +69,13 @@ let migration = call spec-writer
   corpus-path: corpus-path
   task: "write migration guide with before/after examples and version recommendation"
 
+let evolution = call architect
+  task: "package final language evolution proposal"
+  proposals: proposals
+  spec-patches: spec-patches
+  test-files: test-files
+  risks: risks
+  migration: migration
+
 return evolution
+```

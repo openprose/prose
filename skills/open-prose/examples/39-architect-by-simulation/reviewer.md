@@ -3,9 +3,11 @@ name: reviewer
 kind: service
 ---
 
-requires:
+### Requires
+
 - handoffs: all phase handoffs to review
 
-ensures:
+### Ensures
+
 - review: assessment covering internal consistency, completeness, feasibility, trade-off honesty, and clarity
 - verdict: READY or NEEDS_REVISION with specific critical and minor issues listed

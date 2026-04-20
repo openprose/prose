@@ -3,8 +3,10 @@ name: synthesizer
 kind: service
 ---
 
-requires:
+### Requires
+
 - scan-results: findings from all scanners for all skills
 
-ensures:
+### Ensures
+
 - audit: comprehensive security audit with executive summary, skills grouped by risk level, common vulnerability patterns, and prioritized remediation actions

@@ -4,13 +4,16 @@ kind: program
 services: [comparator, mapper]
 ---
 
-requires:
+### Requires
+
 - items: items to compare pairwise
 - relation: the relationship to identify between pairs
 
-ensures:
+### Ensures
+
 - map: a relationship map showing clusters, anomalies, and relationship strengths
 
-strategies:
+### Strategies
+
 - when item count is large: batch pairs into groups of ~25 for parallel processing
 - when relationships are ambiguous: report uncertainty with evidence from both sides

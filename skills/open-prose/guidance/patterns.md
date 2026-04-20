@@ -4,8 +4,9 @@ summary: |
   Design patterns for robust, efficient, and maintainable OpenProse programs.
   Read this file when authoring new programs or reviewing existing ones.
 see-also:
-  - prose.md: Execution semantics, how to run programs
-  - v0/compiler.md: Full syntax grammar, validation rules
+  - ../prose.md: Execution semantics, how to run programs
+  - ../prosescript.md: Imperative syntax for .prose files and execution blocks
+  - ../contract-markdown.md: Contract Markdown authoring surface
   - antipatterns.md: Patterns to avoid
 ---
 
@@ -114,9 +115,9 @@ do review-and-revise("the test plan", "coverage and edge cases")
 
 #### declarative-each
 
-Express collection processing as a postcondition rather than a loop. The `each` construct belongs in `ensures:` — it declares that every item must satisfy a property, without prescribing how to get there.
+Express collection processing as a postcondition rather than a loop. The `each` construct belongs in `### Ensures` — it declares that every item must satisfy a property, without prescribing how to get there.
 
-**Legacy imperative (execution block):**
+**Pinned imperative (execution block):**
 
 ```prose
 for each article in articles:
@@ -127,7 +128,8 @@ for each article in articles:
 **Declarative (contract):**
 
 ```markdown
-ensures:
+### Ensures
+
 - articles: collected articles from the feed
 - each article has: a summary, a relevance score (0-1), and key claims extracted
 ```
@@ -721,8 +723,8 @@ Declare dependencies via `use` statements. Run `prose install` to clone repos in
 
 ```prose
 # Good: Use standard library programs
-use "std/evals/inspector"
-use "std/memory/project-memory"
+use "openprose/std/evals/inspector"
+use "openprose/std/memory/project-memory"
 
 # Good: Use third-party programs
 use "alice/research-pipeline" as research
@@ -732,16 +734,16 @@ let result = research(topic: "quantum computing")
 
 Pin versions via `prose.lock`. Run `prose install --update` deliberately — don't update dependencies as a side effect of other work. Review changes to `prose.lock` in code review just like any other code change.
 
-#### std-shorthand
+#### stable-imports
 
-Use the `std/` shorthand for standard library references instead of the full `openprose/std/` path.
+Prefer explicit, stable import paths in examples and shared programs. Shorthands can remain convenient in an interactive shell, but published docs should show the path that resolves unambiguously.
 
 ```prose
-# Good: Concise
-use "std/evals/inspector"
-
-# Unnecessary: Fully qualified (works, but verbose)
+# Good: explicit
 use "openprose/std/evals/inspector"
+
+# Also valid when the runtime supports std shorthand
+use "std/evals/inspector"
 ```
 
 ---

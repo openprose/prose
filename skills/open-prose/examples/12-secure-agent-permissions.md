@@ -4,12 +4,14 @@ kind: program
 services: [code-reviewer, doc-writer]
 ---
 
-Demonstrates v2 shapes as replacements for v1 agent permissions. In v2, `permissions:` become `shape.prohibited` and `shape.self` declarations that the VM enforces.
+Demonstrates shapes as permission boundaries. Historical `permissions:` declarations become `shape.prohibited` and `shape.self` declarations that the VM enforces.
 
-requires:
+### Requires
+
 - codebase: source code to review
 
-ensures:
+### Ensures
+
 - review: security review findings
 - documentation: updated documentation based on review findings
 
@@ -23,10 +25,12 @@ shape:
   prohibited: [modifying source files, running shell commands, writing to any directory]
 ---
 
-requires:
+### Requires
+
 - codebase: source code to review
 
-ensures:
+### Ensures
+
 - review: security issues and best practices findings with file paths cited
 
 ## doc-writer
@@ -39,8 +43,10 @@ shape:
   prohibited: [modifying source code, running shell commands, writing outside docs/]
 ---
 
-requires:
+### Requires
+
 - review: code review findings
 
-ensures:
+### Ensures
+
 - documentation: updated documentation reflecting review findings

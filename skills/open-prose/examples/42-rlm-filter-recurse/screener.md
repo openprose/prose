@@ -3,9 +3,11 @@ name: screener
 kind: service
 ---
 
-requires:
+### Requires
+
 - documents: collection to screen
 - question: what to look for
 
-ensures:
+### Ensures
+
 - relevant: documents likely relevant to the question, erring toward inclusion

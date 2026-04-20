@@ -1,16 +1,15 @@
 ---
-purpose: OpenProse example programs in both v1 (.prose) and v2 (.md) formats
+purpose: OpenProse example programs in Contract Markdown and ProseScript
 related:
   - ../README.md
   - ../guidance/README.md
-  - ../lib/README.md
 ---
 
 # OpenProse Examples
 
-These examples demonstrate programs using OpenProse's Prose v2 format (`.md` files with contracts, shapes, and strategies) and the original v1 format (`.prose` files).
+These examples demonstrate OpenProse's two authoring surfaces: Contract Markdown (`.md` files with contracts, shapes, and strategies) and ProseScript (`.prose` files or `### Execution` blocks for pinned choreography).
 
-## v2 Examples (.md)
+## Contract Markdown Examples (.md)
 
 ### Basics -- Single-Service Programs
 
@@ -45,19 +44,19 @@ These examples demonstrate programs using OpenProse's Prose v2 format (`.md` fil
 | `36-bug-hunter/` | Bug investigation: evidence, hypotheses, fix, verify |
 | `37-the-forge/` | Build a web browser from scratch -- 9-phase pipeline |
 | `39-architect-by-simulation/` | Design systems through simulated implementation phases |
-| `47-language-self-improvement/` | Analyze .prose corpus to evolve the language |
+| `47-language-self-improvement/` | Analyze a ProseScript corpus to evolve the language |
 
 ### Feature Demonstrations
 
 | File | Description |
 |------|-------------|
-| `11-skills-and-imports.md` | Registry imports (replaces v1 `import` and `skills:`) |
-| `12-secure-agent-permissions.md` | Shapes as permission boundaries (replaces v1 `permissions:`) |
-| `13-variables-and-context.md` | Auto-wiring (replaces v1 `let`/`context:`) |
-| `22-error-handling/` | Conditional ensures and declared errors (replaces v1 `try/catch`) |
-| `23-retry-with-backoff.md` | Strategies for resilient calls (replaces v1 `retry:`/`backoff:`) |
-| `24-choice-blocks.md` | Conditional ensures (replaces v1 `choice` blocks) |
-| `25-conditionals.md` | Conditional ensures (replaces v1 `if/elif/else`) |
+| `11-skills-and-imports.md` | Registry imports |
+| `12-secure-agent-permissions.md` | Shapes as permission boundaries |
+| `13-variables-and-context.md` | Auto-wiring from `### Requires` to `### Ensures` |
+| `22-error-handling/` | Conditional ensures and declared errors |
+| `23-retry-with-backoff.md` | Strategies for resilient calls |
+| `24-choice-blocks.md` | Conditional ensures as a declarative alternative to `choice` |
+| `25-conditionals.md` | Conditional ensures as a declarative alternative to `if/elif/else` |
 
 ### Production Workflows
 
@@ -71,7 +70,7 @@ These examples demonstrate programs using OpenProse's Prose v2 format (`.md` fil
 | `49-prose-run-retrospective/` | Analyze completed runs for learnings and improvements |
 | `50-interactive-tutor.md` | Interactive tutoring with conditional ensures |
 
-### v2-Native Examples (New)
+### Native Contract Markdown Examples
 
 | File | Description |
 |------|-------------|
@@ -81,13 +80,13 @@ These examples demonstrate programs using OpenProse's Prose v2 format (`.md` fil
 | `multi-service-single-file.md` | Demonstrates `##` heading delimiters for multiple services |
 | `composites-demo/` | Demonstrates worker-critic composite pattern |
 
-## v1 Archive
+## ProseScript Archive
 
-Legacy `.prose` files are preserved in `v1-archive/` for reference. They continue to run via `prose run file.prose`.
+Historical `.prose` files are preserved in the archive for reference. They continue to run via `prose run file.prose`.
 
 ## Running Examples
 
-Run any v2 example:
+Run any Contract Markdown example:
 
 ```bash
 prose run examples/01-hello-world.md
@@ -95,7 +94,7 @@ prose run examples/16-parallel-reviews/
 prose run examples/37-the-forge/
 ```
 
-Run a v2 test:
+Run a Contract Markdown test:
 
 ```bash
 prose test examples/test-demo.md
@@ -103,6 +102,6 @@ prose test examples/test-demo.md
 
 ## Counts
 
-- **Migrated to v2:** 35 programs
+- **Wrapped in Contract Markdown:** 35 programs
 - **Archived (retired):** 15 programs + roadmap/
-- **New v2-native:** 5 examples
+- **Native Contract Markdown:** 5 examples

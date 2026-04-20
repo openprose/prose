@@ -5,12 +5,12 @@ related:
   - ../state/README.md
   - ../guidance/README.md
 glossary:
-  Primitive: An atomic VM operation that cannot be decomposed further; the leaf nodes of a .prose execution tree
+  Primitive: An atomic VM operation that cannot be decomposed further; the leaf nodes of an OpenProse execution tree
 ---
 
 # primitives
 
-Formal specifications for OpenProse primitive operations. Primitives are the atomic units the VM dispatches — everything a .prose program does ultimately resolves to one or more of these.
+Formal specifications for OpenProse primitive operations. Primitives are the atomic units the VM dispatches — every Contract Markdown or ProseScript program ultimately resolves to one or more of these.
 
 ## Contents
 

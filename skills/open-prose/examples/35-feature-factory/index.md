@@ -4,15 +4,18 @@ kind: program
 services: [captain, architect, implementer, tester, documenter]
 ---
 
-requires:
+### Requires
+
 - feature: description of the feature to implement
 - codebase-context: brief description of the codebase (optional)
 
-ensures:
+### Ensures
+
 - summary: completed feature with implementation, tests, and documentation
 
 ### Execution
 
+```prose
 # Phase 1: Understand the codebase
 let codebase-analysis = call captain
   task: "analyze codebase structure, patterns, and where this feature fits"
@@ -85,3 +88,4 @@ let summary = call captain
   api-docs: api-docs
 
 return summary
+```

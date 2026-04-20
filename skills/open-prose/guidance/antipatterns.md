@@ -4,8 +4,9 @@ summary: |
   Common mistakes and patterns to avoid in OpenProse programs.
   Read this file to identify and fix problematic code patterns.
 see-also:
-  - prose.md: Execution semantics, how to run programs
-  - compiler.md: Full syntax grammar, validation rules
+  - ../prose.md: Execution semantics, how to run programs
+  - ../prosescript.md: Imperative syntax for .prose files and execution blocks
+  - ../contract-markdown.md: Contract Markdown authoring surface
   - patterns.md: Recommended design patterns
 ---
 
@@ -908,7 +909,7 @@ Copying library programs into your project instead of using `use` statements.
 
 ```prose
 # Good: Reference the canonical source
-use "std/evals/inspector"
+use "openprose/std/evals/inspector"
 ```
 
 The only exception is if you genuinely need to fork and modify a program — in that case, fork the repo on GitHub and reference your fork.

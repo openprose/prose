@@ -3,9 +3,11 @@ name: researcher
 kind: service
 ---
 
-requires:
+### Requires
+
 - topic: what to research
 - focus: specific aspect to investigate
 
-ensures:
+### Ensures
+
 - findings: concise, actionable findings with file paths and line numbers cited

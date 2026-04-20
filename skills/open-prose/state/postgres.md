@@ -60,12 +60,19 @@ PostgreSQL state provides:
 
 ---
 
-## Security Warning
+## Security Model
 
-**⚠️ Credentials are visible to subagents.** The `OPENPROSE_POSTGRES_URL` connection string is passed to spawned sessions so they can write their outputs. This means:
+`OPENPROSE_POSTGRES_URL` is an opaque host capability. The VM and Forme may
+check whether the variable is set, and tools may reference the variable by name
+when opening a database connection, but agents must never read, print, log, or
+serialize the raw connection string.
 
-- Database credentials appear in subagent context and may be logged
-- Treat these credentials as **non-sensitive**
+- Pass the variable name (`OPENPROSE_POSTGRES_URL`), not its value, through
+  prompts, manifests, run state, and artifacts
+- Run database commands with references such as `"$OPENPROSE_POSTGRES_URL"`;
+  never echo the variable or include the expanded URL in output
+- If a harness cannot provide database access without exposing the raw value to
+  agent context, do not use the PostgreSQL backend in that harness
 - Use a **dedicated database** for OpenProse, not your production systems
 - Create a **limited-privilege user** with access only to the `openprose` schema
 
@@ -195,8 +202,13 @@ For team collaboration or production:
 
 ```bash
 # Example: Neon
-echo "OPENPROSE_POSTGRES_URL=postgresql://user:pass@ep-name.us-east-2.aws.neon.tech/neondb?sslmode=require" >> .prose/.env
+mkdir -p .prose
+# Add this line to .prose/.env locally:
+# OPENPROSE_POSTGRES_URL=postgresql://<user>:<password>@<host>/<db>?sslmode=require
 ```
+
+Replace the placeholders locally. Do not paste or log the real connection
+string.
 
 ---
 

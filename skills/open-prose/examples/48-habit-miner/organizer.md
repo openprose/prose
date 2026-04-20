@@ -3,8 +3,10 @@ name: organizer
 kind: service
 ---
 
-requires:
+### Requires
+
 - programs: generated .prose programs
 
-ensures:
+### Ensures
+
 - organization: programs grouped by domain with directory structure, index README, shared pattern notes, and composition suggestions

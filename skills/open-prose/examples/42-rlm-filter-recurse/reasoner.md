@@ -3,9 +3,11 @@ name: reasoner
 kind: service
 ---
 
-requires:
+### Requires
+
 - evidence: collected evidence from multiple sources
 - question: the original question
 
-ensures:
+### Ensures
+
 - answer: reasoned answer with explicit chain of reasoning and source citations

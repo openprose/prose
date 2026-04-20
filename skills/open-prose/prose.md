@@ -5,7 +5,9 @@ summary: |
   reads a manifest (produced by Forme), spawns sessions via the Task tool, manages state via
   the filesystem, and coordinates execution across components. Read this file to run programs.
 see-also:
+  - contract-markdown.md: Program and service file format
   - forme.md: Wiring semantics (Phase 1 — produces the manifest you consume)
+  - prosescript.md: Imperative syntax for .prose files and pinned execution blocks
   - state/filesystem.md: File-system state management
   - primitives/session.md: Session context and compaction guidelines
   - guidance/tenets.md: Design reasoning behind the specs
@@ -22,7 +24,7 @@ OpenProse is invoked via `prose` commands:
 | Command                     | Action                                                          |
 | --------------------------- | --------------------------------------------------------------- |
 | `prose run <file.md>`       | Execute a local `.md` program                                   |
-| `prose run <file.prose>`    | Execute a legacy `.prose` program (v0 mode)                     |
+| `prose run <file.prose>`    | Execute a ProseScript program                                   |
 | `prose run handle/slug`     | Fetch from registry and execute                                 |
 | `prose lint <file.md>`      | Validate structure, schema, shapes, and contracts               |
 | `prose preflight <file.md>` | Check dependencies and environment variables                    |
@@ -30,7 +32,7 @@ OpenProse is invoked via `prose` commands:
 | `prose install`             | Install dependencies from `use` statements into `.deps/`        |
 | `prose inspect <run-id>`    | Evaluate a completed run                                        |
 | `prose status`              | Show recent runs                                                |
-| `prose status --graph`      | Show run dependency graph (sugar for `prose run std/ops/graph`) |
+| `prose status --graph`      | Show run dependency graph                                       |
 | `prose help`                | Show help and examples                                          |
 | `prose examples`            | List or run bundled examples                                    |
 
@@ -74,7 +76,7 @@ Every `.md` component declares a `kind` in its frontmatter:
 | Kind        | Purpose                                                                  |
 | ----------- | ------------------------------------------------------------------------ |
 | `program`   | Entry point — has a caller interface and an execution graph              |
-| `service`   | A single-session unit of work with a `requires`/`ensures` contract       |
+| `service`   | A single-session unit of work with a `### Requires` / `### Ensures` contract |
 | `test`      | A test harness — provides fixtures, runs a subject, evaluates assertions |
 | `composite` | A parameterized multi-agent topology (see Composites below)              |
 
@@ -148,8 +150,8 @@ All execution state lives in `.prose/runs/{id}/`:
 │       └── ...
 ├── bindings/                     # Public outputs (copied from workspace)
 │   ├── researcher/
-│   │   ├── findings.md           # Declared ensures output
-│   │   └── sources.md            # Declared ensures output
+│   │   ├── findings.md           # Declared Ensures output
+│   │   └── sources.md            # Declared Ensures output
 │   ├── critic/
 │   │   └── evaluation.md
 │   └── synthesizer/
@@ -182,7 +184,7 @@ Read `.prose/runs/{id}/manifest.md`. Extract:
 
 ### Step 2: Bind Caller Inputs
 
-The manifest's Caller Interface lists what the program `requires`. Bind these values:
+The manifest's Caller Interface lists what the program requires. Bind these values:
 
 | Source                                                           | Behavior                                              |
 | ---------------------------------------------------------------- | ----------------------------------------------------- |
@@ -226,7 +228,7 @@ Spawn a subagent via the Task tool with:
 1. **The service's source file** — read `services/{service-name}.md` and include its full content as the service definition
 2. **Input file paths** — list each input with its binding path
 3. **Workspace path** — where the service should write ALL its work
-4. **Output instructions** — which files in the workspace are declared `ensures` outputs
+4. **Output instructions** — which files in the workspace are declared `### Ensures` outputs
 
 The Task prompt follows this structure:
 
@@ -257,8 +259,8 @@ When you are done, write these files to your workspace:
 - {output-name}: workspace/{service-name}/{output-name}.md
 - {output-name}: workspace/{service-name}/{output-name}.md
 
-These correspond to your `ensures` contract. Each file should contain your final
-output for that ensures clause.
+These correspond to your `### Ensures` contract. Each file should contain your final
+output for that clause.
 
 ## Constraints
 
@@ -268,7 +270,7 @@ output for that ensures clause.
 
 ## Error Signaling
 
-If you cannot satisfy your ensures contract, signal an error by writing:
+If you cannot satisfy your `### Ensures` contract, signal an error by writing:
 
   workspace/{service-name}/__error.md
 
@@ -327,7 +329,7 @@ After composite expansion, the manifest may contain a `## Constraints` section l
 
 | Constraint Type          | Enforcement                                                                                                                                                                                                                                                                           |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Information firewall** | When passing data between services that have a firewall constraint, strip internal reasoning and intermediate state before copying output to bindings. The downstream service receives only the declared `ensures` outputs — no reasoning chains, no scratch work, no internal state. |
+| **Information firewall** | When passing data between services that have a firewall constraint, strip internal reasoning and intermediate state before copying output to bindings. The downstream service receives only the declared `### Ensures` outputs — no reasoning chains, no scratch work, no internal state. |
 | **Termination bound**    | Count iterations in loop-based delegation patterns. If the iteration count reaches the ceiling (e.g., `max_rounds`), terminate the loop regardless of the critic's verdict and return the last output. Log: `N→ {service} ⊘ terminated (max_rounds)`                                  |
 | **Monotonicity**         | For ratchet-type composites, maintain a certified-progress ledger. Each iteration's certified output must be a superset of the previous iteration's. If an iteration would shrink the certified set, discard it and keep the prior state.                                             |
 | **Error propagation**    | If a slot service writes `__error.md` during a composite loop, terminate the composite immediately. Propagate the error as if the composed unit itself errored. Do not retry or continue the loop.                                                                                    |
@@ -336,7 +338,7 @@ Constraints are checked at every service boundary within the expanded composite 
 
 ### Step 5: Collect Program Output
 
-After all services complete, the program's `ensures` outputs are in `bindings/`. The manifest's Caller Interface specifies which service produces the final output:
+After all services complete, the program's ensured outputs are in `bindings/`. The manifest's Caller Interface specifies which service produces the final output:
 
 ```
 returns:
@@ -425,22 +427,22 @@ Read `workspace/{service-name}/__error.md` to get the error name and details.
 
 ### Step 2: Check Caller's Contract
 
-Look at the program entry point's `ensures` for conditional clauses:
+Look at the program entry point's `### Ensures` for conditional clauses:
 
 ```markdown
-ensures:
+### Ensures
 
 - report: a critically evaluated research report
 - if research is unavailable: partial report with explanation
 ```
 
-If a conditional clause covers this error, the VM can satisfy the degraded `ensures` clause instead.
+If a conditional clause covers this error, the VM can satisfy the degraded `### Ensures` clause instead.
 
 ### Step 3: Check Downstream Impact
 
 If the errored service has downstream dependents (services that require its outputs), those services cannot run. Options:
 
-1. **Conditional ensures covers it** — produce the degraded output, skip dependents, return
+1. **Conditional `### Ensures` covers it** — produce the degraded output, skip dependents, return
 2. **No coverage** — propagate the error. Append `---error` to `state.md`. Return the error to the caller.
 
 ### Step 4: Log
@@ -465,7 +467,7 @@ In this mode:
 - `let` bindings name the results for use in subsequent calls
 - `return` identifies the final output
 
-The execution block uses v0 syntax. Within it, the full v0 grammar is available: `parallel:`, `loop until`, `for each`, `try/catch`, `if/elif/else`, `choice`, `block`, `do`, `repeat`. See `v0/prose.md` for semantics of these constructs.
+The execution block uses ProseScript. Within it, the full imperative grammar is available: `parallel:`, `loop until`, `for each`, `try/catch`, `if/elif/else`, `choice`, `block`, `do`, `repeat`, and persistent `agent` definitions. See `prosescript.md` for the canonical syntax.
 
 ---
 
@@ -815,54 +817,54 @@ Run IDs default to local `.prose/runs/`. For cross-project references:
 
 The VM applies intelligence at key points:
 
-### Evaluating `ensures`
+### Evaluating Ensures
 
-After a service completes, the VM checks whether the outputs satisfy the `ensures` contract. This is a judgment call—read the output summary and the contract clause, and determine if the commitment was met.
+After a service completes, the VM checks whether the outputs satisfy the `### Ensures` contract. This is a judgment call—read the output summary and the contract clause, and determine if the commitment was met.
 
-If the output doesn't satisfy `ensures`:
+If the output doesn't satisfy `### Ensures`:
 
-1. Check if the service's `strategies` suggest a retry
+1. Check if the service's `### Strategies` suggest a retry
 2. If so, re-run the service with guidance from the strategy
 3. If not, treat as an implicit error
 
 ### Evaluating `each` Postconditions
 
-When an `ensures` clause begins with `each`, it expresses a collection postcondition: every item in the named collection must satisfy the stated property. For example:
+When an `### Ensures` clause begins with `each`, it expresses a collection postcondition: every item in the named collection must satisfy the stated property. For example:
 
 ```markdown
-ensures:
+### Ensures
 
 - articles: collected articles from the feed
 - each article has: a summary, a relevance score (0-1), and key claims extracted
 ```
 
-The VM evaluates `each` postconditions with the same intelligent judgment as any other `ensures` clause. After the service completes, the VM reads the output and verifies that the property holds for every item in the collection — not just some, not just most, but all.
+The VM evaluates `each` postconditions with the same intelligent judgment as any other `### Ensures` clause. After the service completes, the VM reads the output and verifies that the property holds for every item in the collection — not just some, not just most, but all.
 
 This is a contract-level construct, not an execution directive. The `each` clause says nothing about _how_ the service processes items. The service (or Forme) decides whether to iterate, fan out, or batch. The contract only says: when you are done, every item must have been processed.
 
-### Evaluating `errors`
+### Evaluating Errors
 
-When a service signals an error, verify the error name matches a declared `errors` entry. Undeclared errors propagate as unhandled faults.
+When a service signals an error, verify the error name matches a declared `### Errors` entry. Undeclared errors propagate as unhandled faults.
 
-### Evaluating `invariants`
+### Evaluating Invariants
 
-After the run completes (success or failure), check each service's `invariants`. These must be true regardless of outcome. If violated, log a warning—but don't fail the run retroactively.
+After the run completes (success or failure), check each service's `### Invariants`. These must be true regardless of outcome. If violated, log a warning—but don't fail the run retroactively.
 
-### Evaluating `strategies`
+### Evaluating Strategies
 
 Strategies are evaluated when the VM needs to make a judgment call during execution. If a service's intermediate state matches a strategy's `when` condition, apply the strategy's guidance.
 
 For intra-service strategies (e.g., "evaluate from multiple perspectives"), these are included in the session prompt and the subagent applies them directly.
 
-### Resolving `environment`
+### Resolving Environment
 
-`environment:` is the sixth contract section, alongside `requires`, `ensures`, `errors`, `invariants`, and `strategies`. It declares runtime dependencies provided by the container, not by the caller. The VM resolves these from the host environment (shell env vars, platform secrets, `.env` files). Distinguished from `requires:` in that requires values come from callers or upstream services, while environment values come from the runtime infrastructure.
+`### Environment` declares runtime dependencies provided by the container, not by the caller. The VM resolves these from the host environment (shell env vars, platform secrets, `.env` files). This is distinct from `### Requires`: required values come from callers or upstream services, while environment values come from the runtime infrastructure.
 
 The model references environment variables by name — it never reads, logs, or includes their raw values in any output or workspace artifact.
 
-**VM behavior for `environment:` during execution:**
+**VM behavior for `### Environment` during execution:**
 
-- When a service declares `environment:` variables, the VM verifies they are set before spawning the service's session. Verification means confirming the variable exists in the host environment — not reading or logging its value.
+- When a service declares `### Environment` variables, the VM verifies they are set before spawning the service's session. Verification means confirming the variable exists in the host environment — not reading or logging its value.
 - The service session can reference env vars via shell expansion (e.g., `$SLACK_WEBHOOK_URL` in a curl command) but must never construct strings containing the values, log them, or write them to workspace files.
 - If an environment variable is not set, the VM fails the service with a clear error rather than proceeding with an empty value. The error is logged to `state.md` as `N→ service-name ✗ missing-env:{VAR_NAME}`.
 
@@ -872,9 +874,9 @@ The model references environment variables by name — it never reads, logs, or 
 
 When the VM executes a test manifest (produced by Forme for a `kind: test` component — see `forme.md`, Handling Test Components):
 
-1. **Bind fixtures** — same as binding caller inputs, but from `fixtures:` in the manifest. Never prompt the user — tests are fully self-contained.
+1. **Bind fixtures** — same as binding caller inputs, but from `### Fixtures` in the manifest. Never prompt the user — tests are fully self-contained.
 2. **Execute the subject** — run the service or program exactly as normal (spawn sessions, copy outputs, etc.). The subject does not know it is under test.
-3. **Evaluate assertions** — after execution completes, evaluate each `expects:` and `expects-not:` clause against the actual outputs in `bindings/`. This uses the same mechanism as "Evaluating ensures" — it is an intelligent judgment call by the VM, not string matching. Read the output, read the assertion, determine if the commitment is met.
+3. **Evaluate assertions** — after execution completes, evaluate each `### Expects` and `### Expects Not` clause against the actual outputs in `bindings/`. This uses the same mechanism as "Evaluating Ensures" — it is an intelligent judgment call by the VM, not string matching. Read the output, read the assertion, determine if the commitment is met.
 4. **Produce test report** — instead of returning output to the caller, produce a structured report:
 
 ```
@@ -889,7 +891,7 @@ Result: PASS | FAIL
 ✗ summary: does not fabricate function names
   Observed: summary mentions "validate_token" which does not appear in the source
 
-## expects-not
+## Negative Assertions
 
 ✓ __error.md does not exist
 ```
@@ -923,12 +925,12 @@ For programs without a `services` list (no Forme phase):
 
 1. The `.md` file IS the program and the sole service
 2. No manifest needed—read the file directly
-3. Bind caller inputs from `requires`
+3. Bind caller inputs from `### Requires`
 4. Spawn one session with the file as the service definition
-5. The session writes to `workspace/` and the VM copies `ensures` outputs to `bindings/`
+5. The session writes to `workspace/` and the VM copies `### Ensures` outputs to `bindings/`
 6. Return the output
 
-This is the simplest execution path—equivalent to v0's single `session` call.
+This is the simplest execution path. It is equivalent to a ProseScript file with one `session` call.
 
 ---
 
@@ -936,25 +938,23 @@ This is the simplest execution path—equivalent to v0's single `session` call.
 
 A composite defines how agents interact without specifying which agents fill the roles. By the time you execute, composites are gone — Forme has expanded them into concrete delegation steps and constraints in the manifest. For composite authoring syntax and expansion mechanics, see `forme.md`, Composite Expansion.
 
-### Composite Frontmatter
+### Composite Contract Sections
 
-A composite file declares slots, config, and invariants. Understanding these fields clarifies where the manifest constraints you enforce come from:
+A composite file declares its topology with Contract Markdown sections. Understanding these sections clarifies where the manifest constraints you enforce come from:
 
-| Field              | Purpose                                                           |
-| ------------------ | ----------------------------------------------------------------- |
-| `slots`            | Services the composite requires — each with a name and a contract |
-| `slots[].primary`  | Marks the slot filled implicitly in decorator syntax              |
-| `slots[].contract` | The `requires`/`ensures` a candidate service must satisfy         |
-| `config`           | Composite-level parameters (not slot parameters)                  |
-| `invariants`       | Guarantees that Forme encodes and the VM enforces at runtime      |
+| Section | Purpose |
+|---------|---------|
+| `### Slots` | Services the composite requires; each slot has a name and a contract |
+| `### Config` | Composite-level parameters and defaults |
+| `### Invariants` | Guarantees that Forme encodes and the VM enforces at runtime |
+| `### Delegation` | ProseScript or pseudocode for how the slots interact |
 
-### Instantiation Levels
+### Instantiation
 
-Authors instantiate composites at two levels:
-
-- **Level 1 (Explicit Slot-Filling):** The `compose:` keyword with a `with:` block that names each slot and config parameter. For instantiation syntax, see `forme.md`, Composite Expansion.
-- _(Level 2 implicit matching is specified as future work.)_
-- **Level 3 (Decorator Sugar):** Annotates a service directly; desugars to Level 1 before wiring. For desugaring rules, see `forme.md`, Composite Expansion.
+Authors instantiate composites with explicit slot-filling: a service declaration
+uses `compose:` and a `with:` block that names each slot and config parameter.
+For instantiation syntax, see `forme.md`, Composite Expansion. No shorthand
+composite syntax is accepted at runtime.
 
 Composites nest — a slot can be filled by another composite instantiation. Expansion proceeds inside-out. Recursive composites are prohibited. For nesting examples, see `forme.md`, Composite Expansion.
 
@@ -964,15 +964,15 @@ After expansion, the composed unit appears as a graph entry with delegation sub-
 
 ---
 
-## Legacy `.prose` Programs
+## ProseScript `.prose` Programs
 
-When `prose run` is invoked with a `.prose` file (v0 format):
+When `prose run` is invoked with a `.prose` file:
 
 - Skip Phase 1 (no Forme wiring)
-- Execute using v0 semantics (the `v0/prose.md` execution model)
-- All v0 constructs work unchanged
+- Execute using ProseScript semantics (`prosescript.md`)
+- All historical `.prose` constructs work unchanged
 
-This ensures backward compatibility. Existing `.prose` programs continue to run without modification.
+This keeps the old scripting language useful while giving it a clearer role: standalone orchestration, and the imperative language inside `### Execution` blocks.
 
 ---
 

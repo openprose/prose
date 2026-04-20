@@ -4,12 +4,15 @@ kind: program
 services: [captain, executor, critic]
 ---
 
-requires:
+### Requires
+
 - task: what to accomplish
 
-ensures:
+### Ensures
+
 - result: completed and validated work product
 
-strategies:
+### Strategies
+
 - when critic finds issues affecting the work: captain integrates work while addressing concerns
 - when no critical issues: captain validates and summarizes

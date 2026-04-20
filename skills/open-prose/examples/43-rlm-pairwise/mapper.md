@@ -3,9 +3,11 @@ name: mapper
 kind: service
 ---
 
-requires:
+### Requires
+
 - items: the original items
 - relationships: pairwise comparison results
 
-ensures:
+### Ensures
+
 - map: relationship map identifying clusters, central nodes, anomalies, and overall structure

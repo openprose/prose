@@ -3,8 +3,10 @@ name: hello-world
 kind: service
 ---
 
-requires:
+### Requires
+
 - (nothing -- this service has no required inputs)
 
-ensures:
+### Ensures
+
 - greeting: a warm hello and brief self-introduction

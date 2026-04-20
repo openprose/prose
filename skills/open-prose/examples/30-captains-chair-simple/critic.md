@@ -3,8 +3,10 @@ name: critic
 kind: service
 ---
 
-requires:
+### Requires
+
 - plan: the approach to critique
 
-ensures:
+### Ensures
+
 - review: identified issues and improvement suggestions, prioritized by severity

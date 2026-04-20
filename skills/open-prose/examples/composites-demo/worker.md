@@ -3,9 +3,11 @@ name: worker
 kind: service
 ---
 
-requires:
+### Requires
+
 - task: what to produce or revise
 - feedback: critic feedback to address (optional, absent on first iteration)
 
-ensures:
+### Ensures
+
 - output: completed work product addressing the task and any feedback

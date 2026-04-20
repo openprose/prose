@@ -3,9 +3,11 @@ name: test-smith
 kind: service
 ---
 
-requires:
+### Requires
+
 - proposals: language feature proposals
 - task: what tests to create
 
-ensures:
+### Ensures
+
 - test-files: complete, runnable test programs covering happy path, edge cases, error conditions, and interaction with existing features

@@ -6,9 +6,11 @@ shape:
   prohibited: [designing architecture, writing tests]
 ---
 
-requires:
+### Requires
+
 - task: what to implement
 
-ensures:
+### Ensures
+
 - code: clean, idiomatic Rust that compiles and works
 - code uses: minimal unsafe blocks (each documented), no external dependencies except winit and softbuffer

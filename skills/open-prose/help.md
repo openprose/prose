@@ -40,6 +40,7 @@ Options:
 | Command | What it does |
 |---------|--------------|
 | `prose run <program.md>` | Run a program |
+| `prose run <program.prose>` | Run a ProseScript program |
 | `prose lint <program.md>` | Validate structure, schema, and contracts |
 | `prose preflight <program.md>` | Check dependencies and environment |
 | `prose test <program.md>` | Run tests with assertions |
@@ -47,7 +48,7 @@ Options:
 | `prose status` | Show recent runs |
 | `prose install` | Install dependencies from `use` statements into `.deps/` |
 | `prose install --update` | Update pinned dependencies to latest |
-| `prose update` | Migrate legacy workspace files |
+| `prose migrate <file.prose>` | Wrap ProseScript in Contract Markdown |
 | `prose help` | This help -- guides you to what you need |
 | `prose examples` | Browse and run example programs |
 
@@ -68,10 +69,15 @@ prose help
 ```
 
 **Use a library program:**
-```markdown
-use "std/evals/inspector"
+```bash
+prose run std/evals/inspector -- subject: 20260406-201439-1a3369
 ```
-Then run `prose install` to fetch it.
+
+**Add a dependency:**
+```markdown
+use "owner/repo/path/to/service.md"
+```
+Then run `prose install` to fetch and pin it.
 
 ---
 
@@ -79,7 +85,7 @@ Then run `prose install` to fetch it.
 
 ### What AI assistants are supported?
 
-Claude Code, OpenCode, and Amp. Any harness that runs a sufficiently intelligent model and supports primitives like subagents are considered "Prose Complete".
+Codex, Claude Code, OpenCode, and Amp. Any harness that runs a sufficiently intelligent model and supports primitives like subagents is considered "Prose Complete".
 
 ### How is this a VM?
 
@@ -99,7 +105,7 @@ We started with YAML. The problem: loops, conditionals, and variable declaration
 
 ### How do dependencies work?
 
-OpenProse uses a git-native dependency model -- GitHub is the registry. When a program contains `use "owner/repo/path"`, that refers to a file inside a GitHub repository. Run `prose install` to clone dependencies into `.deps/` and pin their versions in `prose.lock`. The lockfile is committed to git; `.deps/` is gitignored (it's a cache, reproducible from the lockfile). `std/` is shorthand for `openprose/std/` -- the standard library. At runtime, dependencies are read from disk only -- no network calls. If deps are missing, `prose run` errors and tells you to run `prose install`.
+OpenProse uses a git-native dependency model -- GitHub is the registry. A program can reference dependencies with `use "owner/repo/path"`, dependency-like entries in `services:`, or `compose:` paths. Run `prose install` to clone dependencies into `.deps/` and pin their versions in `prose.lock`. The lockfile is committed to git; `.deps/` is gitignored (it's a cache, reproducible from the lockfile). `std/` is shorthand for `openprose/std/` -- the standard library. At runtime, dependencies are read from disk only -- no network calls. If deps are missing, `prose run` errors and tells you to run `prose install`.
 
 ### Why not LangChain/CrewAI/AutoGen?
 
@@ -109,7 +115,7 @@ Those are orchestration libraries -- they coordinate agents from outside. OpenPr
 
 ## Syntax at a Glance
 
-### v1 Contract Syntax (`.md` files) -- Current
+### Contract Markdown (`.md` files)
 
 Programs are `.md` files with YAML frontmatter and contract sections. The Forme Container reads contracts, auto-wires dependencies, and the Prose VM executes.
 
@@ -130,84 +136,101 @@ shape:                 # optional behavioral constraints
 **Contract sections:**
 
 ```markdown
-requires:
-- topic: a research question to investigate
+### Requires
 
-ensures:
-- findings: sourced claims from 3+ distinct sources
+- `topic`: a research question to investigate
+
+### Ensures
+
+- `findings`: sourced claims from 3+ distinct sources
 - each finding: includes confidence score 0-1
 
-errors:
-- no-results: no relevant sources found
+### Errors
 
-strategies:
+- `no-results`: no relevant sources found
+
+### Strategies
+
 - when few sources found: broaden search terms
 
-environment:
-- API_KEY: required for external service access
+### Environment
+
+- `API_KEY`: required for external service access
 ```
 
 **Program (multi-service) entry point:**
 
-```yaml
+```markdown
 ---
 name: deep-research
 kind: program
 services: [researcher, critic, synthesizer]
 ---
+
+### Requires
+
+- `question`: the question to investigate
+
+### Ensures
+
+- `report`: a concise answer with sources
 ```
 
-Each service in the `services` list is a separate `.md` file. Forme auto-wires them by matching `requires` to `ensures` across components.
+Each service in the `services` list is a separate `.md` file. Forme auto-wires them by matching `### Requires` to `### Ensures` across components.
 
 **Three levels of author control:**
 
-1. **Contracts only** (default) -- Forme auto-wires everything from `requires`/`ensures`
+1. **Contracts only** (default) -- Forme auto-wires everything from `### Requires` / `### Ensures`
 2. **Wiring declaration** -- author adds a `### Wiring` section to pin specific connections
 3. **Execution block** -- author adds a `### Execution` section with explicit `let`/`call` statements
 
 **Test files:**
 
-```yaml
+```markdown
 ---
 name: test-my-service
 kind: test
 subject: my-service
 ---
 
-fixtures:
-- topic: "quantum computing"
+### Fixtures
 
-expects:
-- findings: mentions at least 3 sources
+- `topic`: "quantum computing"
+
+### Expects
+
+- `findings`: mentions at least 3 sources
 ```
 
-### Legacy `.prose` Syntax (v0)
+### ProseScript (`.prose` files and `### Execution`)
 
-The original syntax for `.prose` files. Still fully supported -- `prose run file.prose` loads the v0 VM.
+ProseScript is the imperative layer. Use it for standalone `.prose` files, or inside `### Execution` when a Contract Markdown program needs pinned choreography.
 
 ```prose
-session "prompt"              # Spawn subagent
-agent name:                   # Define agent template
-let x = session "..."         # Capture result
-parallel:                     # Concurrent execution
-repeat N:                     # Fixed loop
-for x in items:               # Iteration
-loop until **condition**:     # AI-evaluated loop
-try: ... catch: ...           # Error handling
-if **condition**: ...         # Conditional
-choice **criteria**: option   # AI-selected branch
-block name(params):           # Reusable block
-do blockname(args)            # Invoke block
-items | map: ...              # Pipeline
+let research = call researcher
+  topic: topic
+
+parallel:
+  let critique = call critic
+    draft: research
+  let factcheck = call fact-checker
+    draft: research
+
+let report = call synthesizer
+  research: research
+  critique: critique
+  factcheck: factcheck
+
+return report
 ```
 
-For complete v0 syntax and validation rules, see `v0/compiler.md`.
+Also valid: `session`, `agent`, `repeat`, `for`, `loop until`, `try/catch`, `if/elif/else`, `choice`, `block`, `do`, and pipelines. For complete syntax and validation rules, see `prosescript.md`.
 
 ---
 
 ## Examples
 
-The `examples/` directory contains ~50 example programs, primarily in v1 `.md` format:
+The `examples/` directory contains ~50 Contract Markdown programs:
 
 | Range | Category |
 |-------|----------|

@@ -1,9 +1,10 @@
 ---
 role: dependency-resolution
 summary: |
-  How OpenProse resolves `use` statement dependencies. Defines the git-native
-  resolution algorithm, the `prose install` command, the lockfile format,
-  and the `.deps/` directory structure. GitHub is the registry.
+  How OpenProse resolves git-native dependencies from `use` statements,
+  service references, and composite references. Defines the resolution
+  algorithm, the `prose install` command, the lockfile format, and the `.deps/`
+  directory structure. GitHub is the registry.
 see-also:
   - prose.md: VM execution semantics (loads resolved deps at runtime)
   - forme.md: Wiring semantics (resolves service components from .deps/)
@@ -12,7 +13,10 @@ see-also:
 
 # Dependency Resolution
 
-OpenProse uses a git-native dependency model. `use` statements in programs reference GitHub repositories. There is no registry server — GitHub IS the registry. Dependencies are cloned into `.deps/`, pinned in `prose.lock`, and resolved from disk at runtime.
+OpenProse uses a git-native dependency model. `use` statements, dependency-like
+service names, and `compose:` references can point at GitHub repositories. There
+is no registry server — GitHub IS the registry. Dependencies are cloned into
+`.deps/`, pinned in `prose.lock`, and resolved from disk at runtime.
 
 ---
 
@@ -87,12 +91,15 @@ When the VM or Forme encounters a `use` path at runtime:
 
 ## `prose install`
 
-Scans the project for `use` statements and clones missing dependencies.
+Scans the project for dependency references and clones missing dependencies.
 
 ### Algorithm
 
-1. **Scan** all `.md` and `.prose` files in the project for `use` statements
-2. **Parse** each `use` path to extract `owner/repo` pairs
+1. **Scan** all `.md` and `.prose` files in the project for:
+   - `use "owner/repo/path"` statements
+   - service names in `services:` that start with `std/` or `owner/repo/`
+   - `compose:` paths that start with `std/` or `owner/repo/`
+2. **Parse** each dependency path to extract `owner/repo` pairs
 3. **Expand** `std/` shorthand to `openprose/std/`
 4. For each unique `owner/repo`:
    a. If `.deps/{owner}/{repo}/` does not exist, full clone: `git clone github.com/{owner}/{repo} .deps/{owner}/{repo}/`
@@ -234,7 +241,7 @@ When Forme resolves a service listed in `services:`, it checks `.deps/` as part 
 1. Same directory as the entry point: `./researcher.md`
 2. A subdirectory matching the name: `./researcher/index.md`
 3. **`.deps/` directory:** `.deps/{owner}/{repo}/{path}.md`
-4. Registry shorthand (if contains `/`): fetch from `https://p.prose.md/{path}` (legacy)
+4. Registry shorthand (if contains `/`): fetch from `https://p.prose.md/{path}` (compatibility path)
 
 A service name like `std/evals/inspector` in a `services:` list resolves to `.deps/openprose/std/evals/inspector.md` after `std/` shorthand expansion.
 
@@ -247,20 +254,20 @@ When the VM encounters a `use` statement during execution:
 1. Expand shorthand (`std/` → `openprose/std/`)
 2. Parse `owner/repo` and remaining path
 3. Read the program from `.deps/{owner}/{repo}/{path}.md`
-4. Parse the imported program's contract (requires/ensures)
+4. Parse the imported program's contract (`### Requires` / `### Ensures`)
 5. Register the import (with alias if `as` was used)
 
-This replaces the v0 behavior of fetching from `p.prose.md` at runtime. Programs resolved from `.deps/` are already on disk — no fetch needed.
+This replaces the historical behavior of fetching from `p.prose.md` at runtime. Programs resolved from `.deps/` are already on disk — no fetch needed.
 
-### Backward Compatibility with v0
+### Backward Compatibility with ProseScript
 
-The v0 VM gains an additional resolution step for `use` statements:
+ProseScript gains an additional resolution step for `use` statements:
 
 1. If the path matches `owner/repo/...`, check `.deps/owner/repo/...` first
 2. If found in `.deps/`, load from disk (no network)
 3. If not found, fall back to `https://p.prose.md/{path}` (existing behavior)
 
-Existing v0 programs without `.deps/` continue to work via the p.prose.md fallback.
+Existing `.prose` programs without `.deps/` continue to work via the p.prose.md fallback.
 
 ---
 

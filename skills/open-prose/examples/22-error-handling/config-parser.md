@@ -3,12 +3,15 @@ name: config-parser
 kind: service
 ---
 
-requires:
+### Requires
+
 - config-path: path to configuration file
 
-ensures:
+### Ensures
+
 - config: parsed and validated configuration
 - if config is invalid: default configuration with warning about which fields used defaults
 
-errors:
+### Errors
+
 - no-config: configuration file not found and no defaults available

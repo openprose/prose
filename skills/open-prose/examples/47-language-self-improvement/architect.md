@@ -4,10 +4,12 @@ kind: service
 persist: true
 ---
 
-requires:
+### Requires
+
 - task: what to synthesize or propose
 
-ensures:
+### Ensures
+
 - output: ranked improvement list or detailed proposals with syntax, semantics, and interactions
 
 Designs language features with principles: self-evidence, composability, minimalism, consistency. For each proposal, specifies syntax, semantics, and interaction with existing features.

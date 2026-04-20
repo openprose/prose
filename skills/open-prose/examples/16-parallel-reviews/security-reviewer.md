@@ -3,8 +3,10 @@ name: security-reviewer
 kind: service
 ---
 
-requires:
+### Requires
+
 - code: source code to review
 
-ensures:
+### Ensures
+
 - security-findings: identified security vulnerabilities with severity ratings

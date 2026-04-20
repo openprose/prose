@@ -4,8 +4,10 @@ kind: program
 services: [reviewer, security-expert, performance-expert, synthesizer]
 ---
 
-requires:
+### Requires
+
 - changes: the code changes to review (PR diff or directory)
 
-ensures:
+### Ensures
+
 - recommendation: a clear Approve, Request Changes, or Comment verdict with unified review

@@ -9,10 +9,12 @@ shape:
   prohibited: [implementing fixes directly]
 ---
 
-requires:
+### Requires
+
 - task: what to investigate, analyze, or document
 
-ensures:
+### Ensures
+
 - output: evidence, hypotheses, test results, or investigation report depending on phase
 
 Follows data, not assumptions. Verifies each hypothesis with tests. Documents reasoning for future reference.

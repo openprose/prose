@@ -3,9 +3,11 @@ name: security-expert
 kind: service
 ---
 
-requires:
+### Requires
+
 - changes: code changes to audit
 - overview: architectural context
 
-ensures:
+### Ensures
+
 - security-findings: OWASP top 10 issues and other security vulnerabilities found

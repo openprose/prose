@@ -4,14 +4,17 @@ kind: program
 services: [reviewer, security-reviewer, fixer, captain]
 ---
 
-requires:
+### Requires
+
 - pr: the pull request to review and fix
 
-ensures:
+### Ensures
+
 - report: final PR review report with issues found, issues fixed, and MERGE/NEEDS_ATTENTION/BLOCK recommendation
 
 ### Execution
 
+```prose
 # Phase 1: Parallel multi-perspective review
 let general-review = call reviewer
   pr: pr
@@ -53,3 +56,4 @@ let report = call captain
   final-review: final-review
 
 return report
+```

@@ -3,8 +3,10 @@ name: style-reviewer
 kind: service
 ---
 
-requires:
+### Requires
+
 - code: source code to review
 
-ensures:
+### Ensures
+
 - style-findings: identified code style and readability issues

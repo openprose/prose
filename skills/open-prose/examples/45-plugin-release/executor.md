@@ -3,14 +3,18 @@ name: executor
 kind: service
 ---
 
-requires:
+### Requires
+
 - task: what to execute (pre-flight check, version update, commit, tag, push, GitHub release)
 
-ensures:
+### Ensures
+
 - result: execution status with details
 
-errors:
+### Errors
+
 - execution-failed: the operation failed
 
-strategies:
+### Strategies
+
 - when release execution fails: rollback (delete local tag, reset commits)

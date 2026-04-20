@@ -3,8 +3,10 @@ name: spec-writer
 kind: service
 ---
 
-requires:
+### Requires
+
 - task: what specification to write
 
-ensures:
-- output: precise language specifications following compiler.md style with grammar rules, semantic descriptions, examples, and edge cases
+### Ensures
+
+- output: precise language specifications following the OpenProse reference style with grammar rules, semantic descriptions, examples, and edge cases

@@ -3,9 +3,11 @@ name: synthesizer
 kind: service
 ---
 
-requires:
+### Requires
+
 - partial-results: results from analyzing individual chunks
 - query: the original question
 
-ensures:
+### Ensures
+
 - answer: unified answer reconciling all partial results, with conflicts noted

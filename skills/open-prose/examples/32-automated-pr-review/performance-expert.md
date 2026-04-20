@@ -3,9 +3,11 @@ name: performance-expert
 kind: service
 ---
 
-requires:
+### Requires
+
 - changes: code changes to analyze
 - overview: architectural context
 
-ensures:
+### Ensures
+
 - perf-findings: performance implications, bottlenecks, and potential regressions

@@ -4,15 +4,18 @@ kind: program
 services: [captain, researcher, coder, critic, tester]
 ---
 
-requires:
+### Requires
+
 - task: the feature or task to implement
 - codebase-context: brief description of the codebase and relevant files
 
-ensures:
+### Ensures
+
 - result: completed, reviewed, and tested implementation with summary of changes
 
 ### Execution
 
+```prose
 # Phase 1: Strategic planning
 let plan = call captain
   task: task
@@ -75,3 +78,4 @@ let result = call captain
   code-review: code-review
 
 return result
+```

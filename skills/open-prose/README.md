@@ -1,48 +1,98 @@
 ---
-purpose: The OpenProse VM skill — language spec, compiler, standard library, examples, state backends, and primitives for executing .prose programs
+purpose: The OpenProse skill: Contract Markdown, ProseScript, Forme wiring, VM execution, dependency resolution, examples, state backends, and primitives.
 related:
   - ../README.md
+  - ./contract-markdown.md
+  - ./prosescript.md
   - ./examples/README.md
   - ./guidance/README.md
   - ./state/README.md
   - ./primitives/README.md
-  - ../../../../platform/api-v2/README.md
-  - ../../../../platform/docs/README.md
-  - ../../../press/.prose
-  - ../../../../planning/use-cases
 glossary:
-  Prose Complete: An LLM that, upon reading prose.md, simulates the OpenProse VM with sufficient fidelity to act as its implementation
-  VM: The virtual machine described by prose.md — a session orchestrator executing .prose programs
+  Contract Markdown: The `.md` program format with frontmatter and `###` contract sections.
+  ProseScript: The imperative scripting layer used in `.prose` files and `### Execution` blocks.
+  Forme: The semantic dependency-injection container described by `forme.md`.
+  Prose VM: The execution engine described by `prose.md`.
+  Prose Complete: An LLM and harness that can read these specs, spawn subagents, access files, and execute tool calls.
 ---
 
 # open-prose
 
-The OpenProse skill for Claude Code. Activates on any `prose` command, `.prose` file, or multi-agent orchestration request. Upon loading, the LLM reads `prose.md` and becomes the OpenProse VM — simulating the runtime rather than merely describing it.
+The OpenProse skill turns an AI session into a portable multi-agent runtime.
+It activates on `prose` commands, Contract Markdown programs, ProseScript
+programs, and requests to orchestrate reusable agent workflows.
 
 ## Contents
 
-- `SKILL.md` — skill activation rules and entry point
-- `prose.md` — the OpenProse language specification (the VM definition)
-- `compiler.md` — compilation rules: how prose source maps to execution steps
-- `help.md` — user-facing help output for the `prose help` command
-- `SOUL.md` — character and intent guidance for the VM persona
-- `lib/` — standard library programs for local evaluation and memory (inspector, vm-improver, program-improver, cost-analyzer, calibrator, error-forensics, user-memory, project-memory)
-- `examples/` — 50 numbered .prose example programs covering the full feature set; see examples/README.md
-- `guidance/` — patterns, antipatterns, and system-prompt guidance for VM behavior
-- `state/` — state backend specifications (filesystem, in-context, SQLite, Postgres)
-- `primitives/` — primitive operation specs (session, etc.)
+| File or Directory | Purpose |
+|-------------------|---------|
+| `SKILL.md` | Activation rules and command routing |
+| `contract-markdown.md` | Canonical `.md` program format and header hierarchy |
+| `prosescript.md` | Imperative syntax for `.prose` files and `### Execution` |
+| `forme.md` | Forme container: contract extraction, auto-wiring, manifest generation |
+| `prose.md` | Prose VM: manifest execution, service spawning, state handling |
+| `deps.md` | Git-native dependency resolution and `prose install` |
+| `help.md` | User-facing help output |
+| `state/` | State backend specifications |
+| `primitives/` | Primitive operation guidance, especially service sessions |
+| `guidance/` | Tenets, patterns, antipatterns, and dedicated runtime prompt text |
+| `examples/` | Contract Markdown examples from simple services to production workflows |
+| `v0/` | Historical references for the original ProseScript-era syntax |
 
-## Subdirectory Relationships
+## Layers
 
-The subdirectories form two layers:
+OpenProse is easiest to reason about as four layers:
 
-**Specification layer** (`prose.md`, `compiler.md`, `primitives/`, `state/`): define what the VM is and how it works. `primitives/session.md` is the atomic unit; `state/` backends determine how results persist; `compiler.md` maps source syntax to primitive dispatch.
+1. **Contract Markdown** declares components and promises.
+2. **Forme** wires those promises into an executable manifest.
+3. **Prose VM** walks the manifest, spawns services, and manages state.
+4. **ProseScript** pins choreography when declarations are not enough.
 
-**Operational layer** (`lib/`, `examples/`, `guidance/`): define how to use the VM effectively. `examples/` demonstrates the full language; `guidance/` corrects common misuse; `lib/` provides production-ready programs for self-improvement.
+The default path is declarative: write contracts, let Forme wire them, and let
+the VM execute. The explicit path is scripted: write ProseScript in a `.prose`
+file or `### Execution` block to control order, loops, branches, and retries.
 
-## Cross-Repo Connections
+## Directory Relationships
 
-- `platform/api-v2` implements the hosted execution service that runs .prose programs defined by this skill's spec
-- `platform/docs` contains operating guidance that cross-references language semantics
-- `press/.prose` consumes this skill's programs (true-form.prose, controlled-burn.prose, tenet-sync.prose, analyze-trajectories.prose) for RLM self-improvement
-- `planning/use-cases` documents language use cases (parallel-for result collection, shared stateful agents) that correspond directly to features in `examples/`
+The spec layer defines runtime behavior:
+
+- `contract-markdown.md`
+- `prosescript.md`
+- `forme.md`
+- `prose.md`
+- `state/`
+- `primitives/`
+
+The operational layer teaches usage and evolution:
+
+- `examples/`
+- `guidance/`
+
+Shared library programs live in the external `openprose/std` repository and are
+resolved through `deps.md`.
+
+The compatibility layer preserves older details:
+
+- `v0/`
+
+## Current Format
+
+Canonical Contract Markdown uses `###` section headers:
+
+```markdown
+### Requires
+
+- `topic`: a research question
+
+### Ensures
+
+- `report`: executive-ready answer with sources
+
+### Strategies
+
+- when sources are thin: broaden search terms
+```
+
+Lowercase compatibility blocks (`requires:`, `ensures:`, and friends) remain accepted
+for compatibility, but new examples and generated files should use the header
+form.

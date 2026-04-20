@@ -4,18 +4,22 @@ kind: program
 services: [data-fetcher, config-parser, db-worker]
 ---
 
-requires:
+### Requires
+
 - api-endpoint: the API to fetch data from
 - config-path: path to configuration file
 
-ensures:
+### Ensures
+
 - data: fetched and parsed data from the API
 - if api is unavailable: cached data with staleness warning
 - if config is invalid: partial result with default configuration applied
 - if database is unreachable: error report with connection diagnostics
 
-errors:
+### Errors
+
 - unrecoverable: all fallback paths exhausted
 
-invariants:
+### Invariants
+
 - all attempted operations are logged with timestamps

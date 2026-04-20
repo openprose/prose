@@ -1,32 +1,48 @@
-<svg viewBox="0 0 800 200" xmlns="http://www.w3.org/2000/svg" width="100%">
+<svg viewBox="0 0 1000 280" xmlns="http://www.w3.org/2000/svg" width="100%">
   <defs>
-    <pattern id="paperTexture" patternUnits="userSpaceOnUse" width="100" height="100">
-      <rect width="100" height="100" fill="#FAF7F2"/>
-      <circle cx="25" cy="25" r="0.5" fill="#E8DFD0" opacity="0.4"/>
-      <circle cx="75" cy="75" r="0.3" fill="#E8DFD0" opacity="0.3"/>
-      <circle cx="50" cy="10" r="0.4" fill="#E8DFD0" opacity="0.35"/>
-      <circle cx="10" cy="60" r="0.35" fill="#E8DFD0" opacity="0.3"/>
-      <circle cx="90" cy="40" r="0.45" fill="#E8DFD0" opacity="0.25"/>
+    <pattern id="paperTexture" patternUnits="userSpaceOnUse" width="120" height="120">
+      <rect width="120" height="120" fill="#FAF7F0"/>
+      <circle cx="22" cy="28" r="0.55" fill="#E8DFD0" opacity="0.45"/>
+      <circle cx="82" cy="70" r="0.35" fill="#E8DFD0" opacity="0.35"/>
+      <circle cx="58" cy="12" r="0.45" fill="#E8DFD0" opacity="0.4"/>
+      <circle cx="12" cy="88" r="0.4" fill="#E8DFD0" opacity="0.32"/>
+      <circle cx="108" cy="42" r="0.5" fill="#E8DFD0" opacity="0.28"/>
     </pattern>
-    <linearGradient id="goldAccent" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#D97706" stop-opacity="0"/>
-      <stop offset="15%" stop-color="#D97706" stop-opacity="1"/>
-      <stop offset="85%" stop-color="#D97706" stop-opacity="1"/>
-      <stop offset="100%" stop-color="#D97706" stop-opacity="0"/>
+    <linearGradient id="goldFade" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#8A743D" stop-opacity="0"/>
+      <stop offset="18%" stop-color="#8A743D" stop-opacity="1"/>
+      <stop offset="82%" stop-color="#8A743D" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#8A743D" stop-opacity="0"/>
     </linearGradient>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#1C1917" flood-opacity="0.10"/>
+    </filter>
   </defs>
-  <rect width="800" height="200" fill="url(#paperTexture)" rx="8"/>
-  <rect x="1" y="1" width="798" height="198" fill="none" stroke="#EDE6D6" stroke-width="2" rx="7"/>
-  <line x1="60" y1="30" x2="60" y2="170" stroke="#B91C1C" stroke-width="1" opacity="0.2"/>
-  <text x="400" y="95" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="64" font-weight="300" letter-spacing="-1">
-    <tspan fill="#78716C">Open</tspan><tspan fill="#1C1917" dx="8"> Prose</tspan>
+
+  <rect width="1000" height="280" rx="10" fill="url(#paperTexture)"/>
+  <rect x="1" y="1" width="998" height="278" rx="9" fill="none" stroke="#EDE6D6" stroke-width="2"/>
+
+  <text x="500" y="58" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="26" font-weight="700" letter-spacing="0.5">
+    <tspan fill="#8A743D">Open</tspan><tspan fill="#1C1917">Prose</tspan>
   </text>
-  <rect x="250" y="110" width="300" height="2" fill="url(#goldAccent)" rx="1"/>
-  <text x="400" y="150" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="18" fill="#78716C" font-style="italic" letter-spacing="0.5">
-    A new kind of language for a new kind of computer
+
+  <text x="500" y="136" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="66" font-weight="400" letter-spacing="0">
+    <tspan fill="#8A743D">Engineer</tspan><tspan fill="#1C1917" dx="16">your agents.</tspan>
   </text>
-  <path d="M 30 30 L 30 50 M 30 30 L 50 30" stroke="#A8A29E" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-  <path d="M 770 30 L 770 50 M 770 30 L 750 30" stroke="#A8A29E" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-  <path d="M 30 170 L 30 150 M 30 170 L 50 170" stroke="#A8A29E" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-  <path d="M 770 170 L 770 150 M 770 170 L 750 170" stroke="#A8A29E" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+
+  <text x="500" y="184" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="22" fill="#57534E">
+    Contracts, composition, and version control for the Markdown your agents run on.
+  </text>
+
+  <g filter="url(#softShadow)">
+    <rect x="240" y="212" width="520" height="48" rx="8" fill="#1C1917"/>
+    <text x="275" y="243" font-family="'SFMono-Regular', Consolas, 'Liberation Mono', monospace" font-size="18" fill="#FAF7F0" letter-spacing="1">
+      <tspan fill="#8A743D">$</tspan><tspan dx="16">npx skills add openprose/prose</tspan>
+    </text>
+  </g>
+
+  <path d="M 32 32 L 32 58 M 32 32 L 58 32" stroke="#A8A29E" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+  <path d="M 968 32 L 968 58 M 968 32 L 942 32" stroke="#A8A29E" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+  <path d="M 32 248 L 32 222 M 32 248 L 58 248" stroke="#A8A29E" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+  <path d="M 968 248 L 968 222 M 968 248 L 942 248" stroke="#A8A29E" stroke-width="1.5" fill="none" stroke-linecap="round"/>
 </svg>

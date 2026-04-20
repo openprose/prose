@@ -3,9 +3,11 @@ name: archaeologist
 kind: service
 ---
 
-requires:
+### Requires
+
 - corpus: files to analyze
 - task: what to excavate
 
-ensures:
+### Ensures
+
 - findings: patterns with frequency counts, representative examples, and classification as intentional idiom or compensating workaround

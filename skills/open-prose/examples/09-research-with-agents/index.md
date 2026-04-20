@@ -4,12 +4,15 @@ kind: program
 services: [researcher, writer]
 ---
 
-requires:
+### Requires
+
 - topic: a research question to investigate (default: "recent developments in renewable energy storage technologies")
 
-ensures:
+### Ensures
+
 - report: an executive-ready summary of research findings
 
-strategies:
+### Strategies
+
 - when initial research is shallow: deepen with more targeted queries
 - when findings are too technical for executives: simplify language while preserving accuracy

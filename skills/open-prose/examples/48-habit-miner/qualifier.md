@@ -3,11 +3,13 @@ name: qualifier
 kind: service
 ---
 
-requires:
+### Requires
+
 - pattern-update: miner's pattern analysis
 - min-frequency: minimum threshold
 
-ensures:
+### Ensures
+
 - qualified: ranked list of patterns ready for automation with reasoning
 
 Rejects patterns that are still emerging, too simple, too variable, or declining.

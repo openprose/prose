@@ -12,8 +12,10 @@ shape:
   prohibited: [writing implementation code, writing tests directly]
 ---
 
-requires:
+### Requires
+
 - task: what to coordinate, review, or decide
 
-ensures:
+### Ensures
+
 - output: plan, review, or summary appropriate to the phase
