@@ -115,7 +115,7 @@ We started with YAML. The problem: loops, conditionals, and variable declaration
 
 ### How do dependencies work?
 
-OpenProse uses a git-native dependency model -- GitHub is the registry. A program can reference dependencies with `use "owner/repo/path"`, dependency-like entries in `### Services`, or `compose:` paths. Run `prose install` to clone dependencies into `.deps/` and pin their versions in `prose.lock`. The lockfile is committed to git; `.deps/` is gitignored (it's a cache, reproducible from the lockfile). `std/` is shorthand for `openprose/std/` -- the standard library. At runtime, dependencies are read from disk only -- no network calls. If deps are missing, `prose run` errors and tells you to run `prose install`.
+OpenProse uses a git-native dependency model -- any git host works, written explicitly as `host/owner/repo/path` (e.g. `github.com/alice/research`). A program can reference dependencies with `use "host/owner/repo/path"`, dependency-like entries in `### Services`, or `compose:` paths. Run `prose install` to clone dependencies into `.deps/` and pin their versions in `prose.lock`. The lockfile is committed to git; `.deps/` is gitignored (it's a cache, reproducible from the lockfile). `std/` is shorthand for `github.com/openprose/prose/packages/std/` (the standard library) and `co/` is shorthand for `github.com/openprose/prose/packages/co/` (company-as-prose). At runtime, dependencies are read from disk only -- no network calls. If deps are missing, `prose run` errors and tells you to run `prose install`.
 
 ### Why not LangChain/CrewAI/AutoGen?
 

@@ -898,12 +898,12 @@ let review = session: structured-reviewer
 Declare dependencies via `use` statements. Run `prose install` to clone repos into `.deps/`. Commit `prose.lock`, gitignore `.deps/`.
 
 ```prose
-# Good: Use standard library programs
-use "openprose/std/evals/inspector"
-use "openprose/std/memory/project-memory"
+# Good: Use standard library programs (via shorthand)
+use "std/evals/inspector"
+use "std/memory/project-memory"
 
-# Good: Use third-party programs
-use "alice/research-pipeline" as research
+# Good: Use third-party programs with an explicit git host
+use "github.com/alice/research-pipeline" as research
 
 let result = research(topic: "quantum computing")
 ```
@@ -915,10 +915,10 @@ Pin versions via `prose.lock`. Run `prose install --update` deliberately — don
 Prefer explicit, stable import paths in examples and shared programs. Shorthands can remain convenient in an interactive shell, but published docs should show the path that resolves unambiguously.
 
 ```prose
-# Good: explicit
-use "openprose/std/evals/inspector"
+# Good: explicit git host
+use "github.com/openprose/prose/packages/std/evals/inspector"
 
-# Also valid when the runtime supports std shorthand
+# Also valid (and preferred for readability): std shorthand
 use "std/evals/inspector"
 ```
 

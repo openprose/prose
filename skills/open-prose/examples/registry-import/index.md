@@ -6,11 +6,11 @@ kind: program
 ### Services
 
 - `local-analyzer`
-- `openprose/std/evals/inspector`
+- `std/evals/inspector`
 
 ### Description
 
-Demonstrates importing a service from the external standard library. The `openprose/std/evals/inspector` service is installed and pinned by `prose install`. Local and dependency services are wired together by Forme using the same contract-matching algorithm.
+Demonstrates importing a service from the external standard library. The `std/evals/inspector` service is installed and pinned by `prose install`. Local and dependency services are wired together by Forme using the same contract-matching algorithm.
 
 ### Requires
 

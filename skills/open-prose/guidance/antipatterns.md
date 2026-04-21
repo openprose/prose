@@ -910,7 +910,7 @@ Copying library programs into your project instead of using `use` statements.
 
 ```prose
 # Good: Reference the canonical source
-use "openprose/std/evals/inspector"
+use "std/evals/inspector"
 ```
 
 The only exception is if you genuinely need to fork and modify a program — in that case, fork the repo on GitHub and reference your fork.

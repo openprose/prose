@@ -120,11 +120,12 @@ For each entry in `### Services`, locate the corresponding `.md` file:
 1. Same directory as the entry point: `./researcher.md`
 2. A subdirectory matching the name: `./researcher/index.md`
 3. `.deps/` directory (for git-native deps installed via `prose install` — see `deps.md`):
-   - Expand `std/` shorthand to `openprose/std/`
-   - Map the service name to `.deps/{owner}/{repo}/{path}.md`
-   - Example: `openprose/std/evals/inspector` → `.deps/openprose/std/evals/inspector.md`
-   - Example: `alice/tools/formatter` → `.deps/alice/tools/formatter.md`
-4. Registry shorthand (if contains `/`): fetch from `https://p.prose.md/{path}` (compatibility path)
+   - Expand `std/` shorthand to `github.com/openprose/prose/packages/std/`
+   - Expand `co/` shorthand to `github.com/openprose/prose/packages/co/`
+   - Map the service name to `.deps/{host}/{owner}/{repo}/{path}.md`
+   - Example: `std/evals/inspector` → `.deps/github.com/openprose/prose/packages/std/evals/inspector.md`
+   - Example: `github.com/alice/tools/formatter` → `.deps/github.com/alice/tools/formatter.md`
+4. Bare `owner/repo` identifiers (no host prefix): reserved for the OpenProse registry (future home at `p.prose.md`); inert today
 
 **Composite resolution:**
 
@@ -874,7 +875,7 @@ The runtime:
 
 For single-component programs (no `services` list), Phase 1 is skipped — the file is passed directly to the Prose VM.
 
-**Note:** `prose wire` is no longer a top-level command. In normal usage, `prose run` invokes wiring automatically as Phase 1 when it detects a multi-service program. If a standalone wire-only helper is added to `openprose/std`, it should call this same algorithm rather than defining a second one.
+**Note:** `prose wire` is no longer a top-level command. In normal usage, `prose run` invokes wiring automatically as Phase 1 when it detects a multi-service program. If a standalone wire-only helper is added to `packages/std/`, it should call this same algorithm rather than defining a second one.
 
 ---
 
