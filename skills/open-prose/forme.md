@@ -119,12 +119,35 @@ For each entry in `### Services`, locate the corresponding `.md` file:
 **Resolution order:**
 1. Same directory as the entry point: `./researcher.md`
 2. A subdirectory matching the name: `./researcher/index.md`
-3. `.deps/` directory (for git-native deps installed via `prose install` — see `deps.md`):
+3. **Package-bounded walk.** From the entry point, walk up the filesystem to the nearest ancestor directory carrying a package root marker. From that ancestor, recursively scan every `.md` file in the subtree (skipping excluded directories — see below). A file matches when its frontmatter `name:` equals the wanted name, or — if the file declares no `name:` frontmatter — when its filename stem matches.
+4. `.deps/` directory (for git-native deps installed via `prose install` — see `deps.md`):
    - Expand `std/` shorthand to `openprose/std/`
    - Map the service name to `.deps/{owner}/{repo}/{path}.md`
    - Example: `openprose/std/evals/inspector` → `.deps/openprose/std/evals/inspector.md`
    - Example: `alice/tools/formatter` → `.deps/alice/tools/formatter.md`
-4. Registry shorthand (if contains `/`): fetch from `https://p.prose.md/{path}` (compatibility path)
+5. Registry shorthand (if contains `/`): fetch from `https://p.prose.md/{path}` (compatibility path)
+
+A structured service entry may carry an explicit `path:` field. When present, `path:` is an absolute override — Forme resolves the entry directly against that path (relative to the program file) and skips all other rules above. Use `path:` for cross-package references or to force disambiguation when the package walk finds more than one match; the primary pattern remains plain name references resolved through the package walk.
+
+**Package root and walk scope:**
+
+The package root is the nearest ancestor directory (walking up from the entry point, inclusive) that contains any of:
+
+- `.prose/` — the runtime's workspace directory (created by the first `prose run`)
+- `prose.lock` — the dependency lockfile (created by `prose install`)
+
+If no ancestor carries a marker, the entry point's own directory is the package root. Single-file programs continue to work with no setup.
+
+The walk skips these directories wherever they appear in the subtree:
+
+- `.deps/` — dependencies are resolved through rule (4), not the walk
+- `.prose/` — runtime artifacts, not source
+- `.git/`, `node_modules/`, `.venv/`, `dist/`, `build/`, `target/` — conventional non-source directories
+- Any directory whose name begins with `_` — author convention for "ignore me"
+
+Within a package, a component name is a unique identifier. If two `.md` files in the walk resolve to the same name, Forme emits an **Ambiguity across the package walk** error (see §Step 6). Authors resolve the ambiguity by renaming one of the files or by pinning the intended file with an explicit `path:` in the service entry.
+
+The walk is bounded by the package — it never crosses into another package (a sibling tree with its own marker). Cross-package references use rule (4) (`.deps/`) or `path:`.
 
 **Composite resolution:**
 
@@ -136,15 +159,19 @@ When a resolved component has `kind: program` (with its own `### Services` secti
 
 **Composite slot resolution:** Services named in `with:` blocks of `compose:` declarations are resolved using the same rules as top-level services, even if not listed separately in `### Services`. This means a program can declare only the composed unit in `### Services` — the slot-filling services will be resolved from the `with:` entries automatically.
 
-If a component cannot be resolved, emit an error:
+If a component cannot be resolved, emit an error that lists every location Forme checked. The package walk is summarized rather than enumerated:
 
 ```
 [Error] Component not found: 'researcher'
   Searched:
     - ./researcher.md
     - ./researcher/index.md
+    - package walk rooted at ./my-project/ (47 .md files scanned, 0 matches)
     - .deps/ (no matching path)
-  Entry point: ./program.md
+  Entry point: ./my-project/programs/report.md
+
+  Hint: Forme expects 'researcher' to be the frontmatter `name:` of some .md
+  file in the package. Verify the name or add a `path:` override.
 ```
 
 ### Step 3: Read Each Component's Contract
@@ -322,6 +349,7 @@ Before producing the manifest, check:
 |-------|-------|
 | Circular dependency | `[Error] Circular dependency: A → B → C → A` |
 | Missing component file | `[Error] Component not found: 'missing-service'` |
+| Ambiguity across the package walk | `[Error] Ambiguous component 'entity-resolver' — found at ./services/entity-resolver.md and ./lib/enrichment/entity-resolver.md in package rooted at ./customers/acme/. Rename one, or pin the intended file with an explicit 'path:' in the service entry.` |
 | Program has no `ensures` | `[Error] Program declares no ensures — nothing to produce` |
 | Component `requires` completely unresolvable | `[Error] No source for critic.requires.raw_data` |
 | Composite slot missing binding | `[Error] Composite worker-critic slot 'critic' has no binding and no default` |
