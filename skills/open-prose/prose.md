@@ -665,7 +665,7 @@ This is the "return" in Prose. When a service completes:
 
 ## Persistent Agents
 
-Services can be persistent agents that maintain memory across invocations. This is declared in `### Runtime`:
+Services can be persistent agents that accumulate memory across sessions. Memory can persist *within a single run* (across the service's own turns) or *across runs* (so the next run starts where the last one left off). The scope is declared in `### Runtime`:
 
 ```markdown
 ---
@@ -675,8 +675,10 @@ kind: service
 
 ### Runtime
 
-- `persist`: true
+- `persist`: project
 ```
+
+The example above uses `persist: project`, the common case for a service whose value compounds between runs (e.g., a cumulative registry, a high-water mark, a growing classifier). Use `persist: true` when the service only needs session memory that dies with the run.
 
 ### Persistence Scoping
 
@@ -685,6 +687,8 @@ kind: service
 | Execution (default) | `### Runtime` with `persist: true`    | `.prose/runs/{id}/agents/{name}/` | Dies with run            |
 | Project             | `### Runtime` with `persist: project` | `.prose/agents/{name}/`           | Survives runs in project |
 | User                | `### Runtime` with `persist: user`    | `~/.prose/agents/{name}/`         | Survives across projects |
+
+Pick `persist: project` or `persist: user` whenever the service's contract references prior-run state — cumulative counts, watermarks, deltas, or any field whose value depends on what happened before. `persist: true` alone is *not* enough for that: its memory lives only for the duration of the current run and is discarded when the run ends.
 
 ### Invocation
 
