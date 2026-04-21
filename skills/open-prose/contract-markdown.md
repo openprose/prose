@@ -81,6 +81,7 @@ Forme and the Prose VM recognize these `###` sections case-insensitively:
 | `### Strategies` | program, service, test | Guidance for judgment calls and edge cases |
 | `### Environment` | program, service | Runtime variables supplied by host infrastructure |
 | `### Runtime` | program, service | Execution hints such as `persist` and `model` |
+| `### Memory` | service | Declared reads from and writes to persistent agent memory. Only meaningful when `### Runtime` sets `persist: project` or `persist: user` |
 | `### Shape` | service | Capability boundaries: self, delegates, and prohibited work |
 | `### Wiring` | program | Explicit Level 2 wiring declaration |
 | `### Execution` | program, service | ProseScript choreography that pins execution |
@@ -230,6 +231,47 @@ Runtime hints and behavioral boundaries are also sections:
 
 The old `persist:`, `model:`, and `shape:` frontmatter fields remain accepted
 for compatibility.
+
+## Memory
+
+A service with `persist: project` or `persist: user` in `### Runtime` reaches
+into memory files that outlive the current run. The `### Memory` section
+declares what that service *reads from* and *writes to* memory — the
+persistent equivalent of `### Requires` / `### Ensures`:
+
+````markdown
+### Memory
+
+```yaml
+reads:
+  - high_water_mark: ISO timestamp of the newest item processed in a prior run
+  - cumulative_registry: map of id → { first_seen, last_seen, hit_count }
+writes:
+  - high_water_mark: advanced to the newest item observed this run
+  - cumulative_registry: merged with items observed this run
+  - last_run_at: ISO timestamp of this run's completion
+```
+````
+
+Rules:
+
+- `### Memory` is only meaningful when `### Runtime` sets `persist: project`
+  or `persist: user`. A service with execution-scoped memory (`persist:
+  true`) does not need this section — its memory dies with the run.
+- `reads:` names fields the service expects to exist in memory; missing
+  fields should be handled as "first run" rather than as errors.
+- `writes:` names fields the service commits to update on a successful run.
+  A failed run that does not reach the memory write leaves state untouched
+  — see the `idempotent-scheduled-intake` pattern in
+  `guidance/patterns.md`.
+- Fields that downstream responsibilities also need (high-water marks,
+  cursors, run IDs) should *also* appear at the top level of `### Ensures`
+  — see `top-level-cursor-emission` in `guidance/patterns.md`. Memory is
+  for the next invocation of *this* service; the return value is for the
+  next responsibility.
+
+See `prose.md` (Persistent Agents) and `state/filesystem.md` (Memory
+Scoping) for the on-disk format of memory files.
 
 ## Frontmatter
 
