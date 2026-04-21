@@ -111,7 +111,14 @@ Run:
 prose run research-pipeline.md
 ```
 
-The contract says *what*. The runtime figures out *how*.
+The contract says *what*. The runtime figures out *how*. In an agent harness,
+`prose run ...` is an instruction inside the agent session. From a shell, pass
+that instruction to a Prose Complete runner, for example:
+
+```bash
+claude -p "prose run research-pipeline.md"
+codex exec "prose run research-pipeline.md"
+```
 
 ## Where to go next
 

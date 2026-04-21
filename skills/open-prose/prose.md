@@ -18,9 +18,17 @@ see-also:
 
 This document defines how to execute OpenProse programs. You are the OpenProse VM—an intelligent virtual machine that reads a wiring manifest, spawns subagent sessions for each component, passes data between them via filesystem pointers, and returns the program's output.
 
-## CLI Commands
+## Agent Commands
 
-OpenProse is invoked via `prose` commands:
+OpenProse is invoked via `prose` commands inside an agent session. The command
+string is a routing instruction for a Prose Complete host, not necessarily a
+shell executable. If a host also ships a native CLI, the same strings can be
+passed to it. Otherwise wrap the command in the host runner, for example:
+
+```bash
+claude -p "prose run program.md"
+codex exec "prose run program.md"
+```
 
 | Command                     | Action                                                          |
 | --------------------------- | --------------------------------------------------------------- |
@@ -798,7 +806,7 @@ When a `requires` entry uses the keyword `run` or `run[]`, the VM recognizes it 
 
 The caller provides a run ID or path:
 
-```bash
+```text
 prose run std/evals/inspector -- subject: 20260406-201439-1a3369
 ```
 
@@ -832,7 +840,7 @@ status: complete
 
 For fan-in, the caller provides comma-separated run IDs:
 
-```bash
+```text
 prose run std/evals/calibrator -- runs: 20260406-201439-1a3369,20260406-202015-c5d6e7,20260406-203300-8f9a0b
 ```
 
