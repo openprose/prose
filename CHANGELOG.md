@@ -7,9 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-04-20
+
 ### Added
 
+- **Canonical Contract Markdown section syntax** — Added `skills/open-prose/contract-markdown.md` as the source of truth for Markdown program/service files. Canonical contracts now use `### Services`, `### Requires`, `### Ensures`, `### Runtime`, `### Shape`, and related Markdown sections, while lowercase `requires:` / `ensures:` blocks remain supported as compatibility syntax.
+- **ProseScript reference** — Added `skills/open-prose/prosescript.md` to separate pinned choreography (`### Execution`, `.prose` scripts, loops, branches, retries, and explicit calls) from declarative Contract Markdown authoring.
+- **Git-native dependency resolution** — Programs declare dependencies via `use "owner/repo/path"` statements; `prose install` clones repos into `.deps/` and pins versions in `prose.lock` (committed to git). Runtime resolution reads from disk only, no network calls. Replaces the earlier `p.prose.md` registry fetch with GitHub as the authoritative source.
+- **`run` as a first-class keyword type** — Programs can now declare `run` and `run[]` in `requires:` to depend on completed runs, enabling provenance tracking, DAG reconstruction, and staleness detection across workflows.
+- **`environment:` contract section** — Added `environment:` as a contract section for declaring runtime dependencies (API keys, secrets, tool access) with VM-enforced security constraints: variables are verified at wiring time but never logged, embedded in artifacts, or passed to subagents that don't declare them.
+- **CLI commands refactored as stdlib sugar** — Added `prose lint`, `prose preflight`, `prose inspect`, and `prose status` as thin wrappers around standard-library programs. Retires the transitional `prose compile` / `prose wire` / `prose migrate` surface now that Contract Markdown is primary.
+- **Agent onboarding narrative** — Added `skills/open-prose/agent-onboarding.md` so agents can quickly learn when to propose OpenProse, how to activate the skill, and how to map host primitives to the VM.
 - **Codex entrypoint** — Added `AGENTS.md` at the repo root as Codex's native router into `skills/open-prose/SKILL.md`, with a recommended `[agents]` config block (`max_depth = 2`) for recursive multi-service programs.
+- **LongCoT benchmark automation** — Added GitHub Actions workflows and helper scripts for LongCoT benchmarking and the `longcot-rlmify` workflow dispatcher.
+
+### Changed
+
+- **Services are now a Markdown contract section** — Program topology moved from frontmatter `services:` into `### Services`, matching the rest of the human-readable contract surface.
+- **Skill docs now route by intent** — Reworked `skills/open-prose/SKILL.md`, `README.md`, `help.md`, Forme, VM, guidance, and examples around a smaller "load what you need first" flow for agents.
+- **Examples follow current Contract Markdown** — Updated bundled examples to the section-based contract style and clarified multi-service wiring, composites, runtime hints, and execution blocks.
+- **Stdlib is external** — Documentation now points to `openprose/std`; repo-local `skills/open-prose/lib/` and `std/README.md` content was removed from this package.
+- **RFCs and skill references are self-contained** — Cleaned RFC and skill docs so public references no longer depend on internal planning context.
+
+### Fixed
+
+- **Spec-to-skill documentation alignment** — Documented `each` postcondition evaluation in `ensures:` blocks, added environment security constraints to Forme wiring rules, introduced runtime delegation markers (`__delegate/` directory), and rewrote `help.md` with Contract Markdown as the primary surface and v0 as a clearly-scoped legacy subsection.
+- **Internal consistency across skill files** — Updated stale file-extension references (`.prose` → `.md`), aligned v1/v2 terminology to legacy/declarative, added the missing `prose install` command to the CLI reference, and corrected cross-file pointers.
+
+### Removed
+
+- **Legacy internal skill artifacts** — Removed `skills/open-prose/SOUL.md` and obsolete repo-local stdlib docs in favor of the current public skill and external stdlib model.
 
 ## [0.9.0] - 2026-03-23
 
