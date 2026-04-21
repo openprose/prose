@@ -5,6 +5,12 @@ All notable changes to OpenProse will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Experimental Codex adapter docs and examples** — Added a docs/examples-only adapter under `skills/open-prose/adapters/codex/` showing how to map the root Codex session to the OpenProse VM, use custom subagents for recursive component execution, resolve logical workflow ids through an alias registry, and run recursive review-style programs without machine-local paths.
+
 ## [0.9.0] - 2026-03-23
 
 ### Breaking Changes

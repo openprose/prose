@@ -11,4 +11,4 @@ Bundled OpenProse skill definitions shipped with the language specification repo
 
 ## Contents
 
-- `open-prose/` — the OpenProse VM skill; defines the language spec, compiler, state backends, primitives, standard library, examples, and VM guidance. This skill is the canonical definition of what the OpenProse VM is; OpenProse Cloud is the hosted execution service that implements this spec.
+- `open-prose/` — the OpenProse VM skill; defines the language spec, compiler, state backends, primitives, standard library, examples, VM guidance, and experimental adapter docs. This skill is the canonical definition of what the OpenProse VM is; OpenProse Cloud is the hosted execution service that implements this spec.
