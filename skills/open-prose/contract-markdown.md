@@ -268,6 +268,28 @@ accepted for compatibility:
 - each article has: a summary, relevance score, and key claims
 ```
 
+## Typed Caller Inputs
+
+Most `### Requires` entries are free-form values the caller provides at run
+time. Two keywords are reserved for passing *completed runs* as inputs — the
+typical shape for inspectors, regression checkers, and meta-programs:
+
+```markdown
+### Requires
+
+- `subject`: run — a completed run to inspect
+- `cohort`: run[] — a set of completed runs to compare
+```
+
+When an entry's type is `run` or `run[]`, the caller supplies a run ID (or a
+list of them). The Prose VM resolves each ID to its run directory and writes a
+structured binding at `bindings/caller/{name}.md` containing the run ID, path,
+program name, and status. The service reads that binding and then reaches into
+the run's own `bindings/`, `state.md`, and `manifest.md` directly.
+
+See `prose.md` (Run-Typed Inputs) for binding format, resolution order (bare
+ID, `~/{id}` for user scope, absolute path), and staleness validation.
+
 ## Execution Sections
 
 `### Execution` contains ProseScript. Use a fenced block:
