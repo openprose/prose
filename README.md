@@ -11,7 +11,8 @@
   <a href="skills/open-prose/SKILL.md">Docs</a> |
   <a href="skills/open-prose/examples/">Examples</a> |
   <a href="skills/open-prose/contract-markdown.md">Spec</a> |
-  <a href="https://github.com/openprose/std">Stdlib</a>
+  <a href="packages/std/">Stdlib</a> |
+  <a href="packages/co/">Company-as-Prose</a>
 </p>
 
 <p align="center">
@@ -220,17 +221,25 @@ Start with:
 | [39-architect-by-simulation](skills/open-prose/examples/39-architect-by-simulation/) | Pinned ProseScript choreography |
 | [47-language-self-improvement](skills/open-prose/examples/47-language-self-improvement/) | OpenProse improving OpenProse |
 
-## Standard Library
+## Libraries
 
-The standard library lives in
-[`openprose/std`](https://github.com/openprose/std), not this repository.
+Two first-party libraries ship in this repository under [`packages/`](packages/):
 
-Reference std programs with `std/...` or `openprose/std/...`, then install and
-pin them:
+- **[`packages/std/`](packages/std/)** — use-case-agnostic primitives: evals,
+  roles, controls, composites, delivery adapters, memory, ops.
+- **[`packages/co/`](packages/co/)** — company-as-prose: opinionated starter
+  patterns for running an operating company as Prose programs.
+
+Reference them with the `std/` and `co/` shorthands, then install and pin:
 
 ```markdown
 use "std/evals/inspector"
+use "co/programs/company-repo-checker"
 ```
+
+Both shorthands expand to paths inside this repo (`packages/std/...` and
+`packages/co/...`). `prose install` clones this repository into
+`.deps/github.com/openprose/prose/` and pins the SHA in `prose.lock`.
 
 ```text
 prose install
