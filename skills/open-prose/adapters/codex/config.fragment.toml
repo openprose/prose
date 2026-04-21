@@ -1,4 +1,0 @@
-[agents]
-max_threads = 12
-max_depth = 2
-job_max_runtime_seconds = 2700

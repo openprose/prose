@@ -8,7 +8,7 @@
 
 <p align="center">
   <a href="https://prose.md">Website</a> |
-  <a href="skills/open-prose/README.md">Docs</a> |
+  <a href="skills/open-prose/SKILL.md">Docs</a> |
   <a href="skills/open-prose/examples/">Examples</a> |
   <a href="skills/open-prose/contract-markdown.md">Spec</a> |
   <a href="https://github.com/openprose/std">Stdlib</a>

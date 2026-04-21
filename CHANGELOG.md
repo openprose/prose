@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Experimental Codex adapter docs and examples** — Added a docs/examples-only adapter under `skills/open-prose/adapters/codex/` showing how to map the root Codex session to the OpenProse VM, use custom subagents for recursive component execution, resolve logical workflow ids through an alias registry, and run recursive review-style programs without machine-local paths.
+- **Codex entrypoint** — Added `AGENTS.md` at the repo root as Codex's native router into `skills/open-prose/SKILL.md`, with a recommended `[agents]` config block (`max_depth = 2`) for recursive multi-service programs.
 
 ## [0.9.0] - 2026-03-23
 
