@@ -233,18 +233,36 @@ User-level persistent agents live under `~/.prose/agents/`.
 
 ## Remote Programs
 
-`prose run` accepts URLs and registry shorthands:
+`prose run` and `use` share one resolution algorithm: prefer the locally
+installed copy in `.deps/`, fetch from the source host as fallback. The
+canonical identifier is `host/owner/repo` — any git host works, written
+explicitly.
 
 | Input | Resolution |
 |-------|------------|
-| Starts with `http://` or `https://` | Fetch directly |
-| Starts with `@` | Strip `@`, resolve to `https://p.prose.md/{path}` |
-| Contains `/` but no protocol | Resolve to `https://p.prose.md/{path}` |
+| Starts with `http://` or `https://` | Fetch directly (no caching) |
+| First path segment contains a dot | Explicit git host; cache-first under `.deps/{host}/{owner}/{repo}/`, clone from that host if not cached |
+| Ends with `@{version}` | Resolve that version (SHA or tag); fetch if that version is not cached |
+| Other `/`-containing identifier | Reserved for the OpenProse registry (future home at `p.prose.md`); inert today |
 | Otherwise | Treat as local path |
 
-`use` statements inside programs use the git-native dependency model from
-`deps.md`: dependencies are installed into `.deps/` by `prose install` and read
-from disk at runtime.
+```bash
+prose run github.com/alice/research              # canonical; cached copy wins
+prose run github.com/alice/research@0.3.1        # pin to tag; fetch iff not cached
+prose run gitlab.com/alice/research              # any git host
+prose run git.company.com/team/repo              # self-hosted
+prose run github.com/alice/research --offline    # never fetch; error if not in .deps/
+```
+
+**On the bare `owner/repo` form.** Bare identifiers (no host prefix) are
+reserved for the OpenProse registry. Publication there isn't open yet, so the
+bare form doesn't resolve today — write `github.com/owner/repo` (or the
+appropriate host) explicitly. When the registry opens, the bare form gains a
+defined resolution without breaking programs that wrote explicit hosts.
+
+`use` statements inside programs follow the same rule via the git-native
+dependency model in `deps.md`: dependencies get pinned in `prose.lock` and
+installed into `.deps/` by `prose install`.
 
 ## State Modes
 

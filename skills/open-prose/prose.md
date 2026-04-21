@@ -24,9 +24,12 @@ OpenProse is invoked via `prose` commands:
 
 | Command                     | Action                                                          |
 | --------------------------- | --------------------------------------------------------------- |
-| `prose run <file.md>`       | Execute a local `.md` program                                   |
-| `prose run <file.prose>`    | Execute a ProseScript program                                   |
-| `prose run handle/slug`     | Fetch from registry and execute                                 |
+| `prose run <file.md>`            | Execute a local `.md` program                                             |
+| `prose run <file.prose>`         | Execute a ProseScript program                                             |
+| `prose run <host>/<owner>/<repo>` | Explicit git host (e.g. `github.com/alice/research`); cache in `.deps/`   |
+| `prose run <owner>/<repo>`       | Reserved for the OpenProse registry (future home at `p.prose.md`)         |
+| `prose run ...@<version>`        | Pin to a SHA or tag; fetch if that version isn't cached                   |
+| `prose run ... --offline`        | Never fetch; error if not in `.deps/`                                     |
 | `prose lint <file.md>`      | Validate structure, schema, shapes, and contracts               |
 | `prose preflight <file.md>` | Check dependencies and environment variables                    |
 | `prose test <path>`         | Run test(s) and report results                                  |
@@ -39,21 +42,61 @@ OpenProse is invoked via `prose` commands:
 
 ### Remote Programs
 
+`prose run` and `use` statements share one resolution algorithm: prefer the
+locally installed copy in `.deps/`, fetch from the source host as fallback.
+This is the cache-first behavior Deno and Go modules converged on after
+trying other shapes.
+
+The canonical identifier is `host/owner/repo`. Any git host works —
+write the host explicitly. GitHub is the 90% case but nothing in the
+resolver privileges it.
+
 ```bash
-# Direct URL
+# Raw URL — fetched every time, no caching
 prose run https://example.com/program.md
 
-# Registry shorthand — resolves to p.prose.md
-prose run alice/research
-prose run @alice/research
+# Canonical: explicit git host
+prose run github.com/alice/research              # cached copy wins; clones if missing
+prose run github.com/alice/research@0.3.1        # pin to tag; fetch iff that version isn't cached
+prose run github.com/alice/research@abc1234      # pin to SHA
+prose run gitlab.com/alice/research              # any git host
+prose run git.company.com/team/repo              # self-hosted
+
+# Flags
+prose run github.com/alice/research --offline    # never hit the network; error if not cached
 ```
 
 **Resolution rules:**
 
-- Starts with `http://` or `https://` → fetch directly
-- Starts with `@` → strip the `@`, resolve to `https://p.prose.md/{path}`
-- Contains `/` but no protocol → resolve to `https://p.prose.md/{path}`
+- Starts with `http://` or `https://` → fetch directly (no caching)
+- First path segment contains a dot (looks like a hostname) → explicit git host; cache-first under `.deps/{host}/{owner}/{repo}/`, clone from that host if not cached
+- Ends with `@{version}` → resolve that version (SHA or tag); fetch if that version is not cached
+- Otherwise contains `/` → reserved for the OpenProse registry (future home at `p.prose.md`); nothing publishes there today, so this path is spec'd but inert
 - Otherwise → treat as local file path
+
+`--offline` disables the network fallback. `prose run
+github.com/alice/research --offline` errors out rather than fetching.
+
+**When resolution fails:**
+
+When an identifier is not in `.deps/` *and* the fetch from its host returns
+no match, report:
+
+```
+Not found in `.deps/` or at github.com/alice/research.
+Did you mean to run `prose install`, or try `prose run github.com/alice/research@latest`?
+```
+
+The error must name both the identifier and the exact host URL that was
+tried, so the user can distinguish a typo from a missing install from a
+host-side outage.
+
+**On the bare `owner/repo` form.** Bare identifiers (no host prefix) are
+reserved for the OpenProse registry. That registry isn't accepting
+publications yet, so the bare form doesn't resolve today — use
+`github.com/owner/repo` (or the appropriate host) explicitly. When the
+registry opens, the bare form gains a defined resolution without breaking
+anyone who wrote explicit hosts.
 
 ---
 

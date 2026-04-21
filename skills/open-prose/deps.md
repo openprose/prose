@@ -22,42 +22,59 @@ is no registry server — GitHub IS the registry. Dependencies are cloned into
 
 ## `use` Statement Parsing
 
-A `use` statement resolves to a GitHub repository and a path within it.
+A `use` statement names an explicit git host, owner, repo, and path. The
+canonical form is `host/owner/repo/path`:
 
 ```prose
-use "openprose/std/evals/inspector"
+use "github.com/openprose/std/evals/inspector"
 ```
 
 Parsed as:
 
 | Component | Value |
 |-----------|-------|
+| Host | `github.com` |
 | Owner | `openprose` |
 | Repo | `std` |
 | Path | `evals/inspector` |
-| GitHub URL | `github.com/openprose/std` |
-| Local clone | `.deps/openprose/std/` |
-| Resolved file | `.deps/openprose/std/evals/inspector.md` |
+| Clone URL | `github.com/openprose/std` |
+| Local clone | `.deps/github.com/openprose/std/` |
+| Resolved file | `.deps/github.com/openprose/std/evals/inspector.md` |
 
-The first two segments of the `use` path are always `owner/repo`. Everything after is a path within the cloned repository.
+The first path segment is the host (must contain a dot — `github.com`,
+`gitlab.com`, `codeberg.org`, `git.company.com`). The next two segments are
+always `owner/repo`. Everything after is a path within the cloned
+repository.
+
+Any git host works. Nothing in the resolver privileges GitHub — it's the
+common case, not a default.
 
 ### `std/` Shorthand
 
-`std/` expands to `openprose/std/`:
+`std/` expands to `github.com/openprose/std/`:
 
 ```prose
 use "std/evals/inspector"
 # equivalent to:
-use "openprose/std/evals/inspector"
+use "github.com/openprose/std/evals/inspector"
 ```
+
+### Bare `owner/repo` Form
+
+Identifiers without a host prefix (e.g. `use "alice/research"`) are reserved
+for the OpenProse registry — eventually hosted at `p.prose.md`. That
+registry isn't open for publication yet, so the bare form doesn't resolve
+today. Write the host explicitly (`github.com/alice/research`) or use the
+`std/` shorthand. When the registry opens, the bare form gains a defined
+resolution without breaking programs that wrote explicit hosts.
 
 ### File Extension Resolution
 
 If the `use` path includes an explicit extension (`.md` or `.prose`), use it. If no extension, prefer `.md`:
 
 ```prose
-use "alice/tools/formatter"
-# resolves to: .deps/alice/tools/formatter.md
+use "github.com/alice/tools/formatter"
+# resolves to: .deps/github.com/alice/tools/formatter.md
 ```
 
 ### Aliasing
@@ -65,7 +82,7 @@ use "alice/tools/formatter"
 `use` statements support `as` aliases in execution blocks:
 
 ```prose
-use "alice/research-pipeline" as research
+use "github.com/alice/research-pipeline" as research
 
 let result = research(topic: "quantum computing")
 ```
@@ -78,9 +95,9 @@ In `### Services`, use the full path — aliases are for execution blocks only.
 
 When the VM or Forme encounters a `use` path at runtime:
 
-1. Expand `std/` shorthand to `openprose/std/` if applicable
-2. Parse `owner/repo` from the first two segments
-3. Check `.deps/{owner}/{repo}/` exists on disk
+1. Expand `std/` shorthand to `github.com/openprose/std/` if applicable
+2. Parse `{host}/{owner}/{repo}` from the first three segments
+3. Check `.deps/{host}/{owner}/{repo}/` exists on disk
 4. If not found, error immediately (see Error Handling below)
 5. Resolve the remaining path segments within the cloned repo
 6. Return the absolute file path
@@ -96,19 +113,19 @@ Scans the project for dependency references and clones missing dependencies.
 ### Algorithm
 
 1. **Scan** all `.md` and `.prose` files in the project for:
-   - `use "owner/repo/path"` statements
-   - service names in `### Services` that start with `std/` or `owner/repo/`
-   - `compose:` paths that start with `std/` or `owner/repo/`
-2. **Parse** each dependency path to extract `owner/repo` pairs
-3. **Expand** `std/` shorthand to `openprose/std/`
-4. For each unique `owner/repo`:
-   a. If `.deps/{owner}/{repo}/` does not exist, full clone: `git clone github.com/{owner}/{repo} .deps/{owner}/{repo}/`
+   - `use "host/owner/repo/path"` statements
+   - service names in `### Services` that start with `std/` or `host/owner/repo/`
+   - `compose:` paths that start with `std/` or `host/owner/repo/`
+2. **Parse** each dependency path to extract `{host, owner, repo}` triples (the first segment is the host if it contains a dot)
+3. **Expand** `std/` shorthand to `github.com/openprose/std/`
+4. For each unique `{host, owner, repo}`:
+   a. If `.deps/{host}/{owner}/{repo}/` does not exist, full clone: `git clone {host}/{owner}/{repo} .deps/{host}/{owner}/{repo}/`
    b. If `prose.lock` has a pinned SHA for this repo, checkout: `git checkout {sha}`
    c. If no pinned SHA exists (new dependency), use HEAD and record the SHA
 5. **Scan transitive dependencies** — scan all `.md` and `.prose` files within newly cloned repos in `.deps/` for their own `use` statements
 6. **Cycle detection** — if a newly discovered dependency is already in the resolved set, skip it. If scanning reveals a cycle (A requires B requires A), error: `[Error] Circular dependency detected: A → B → A`
 7. **Repeat** from step 2 with any newly discovered dependencies until no new deps are found
-8. **Write** `prose.lock` with all resolved SHAs (direct and transitive, flat list)
+8. **Write** `prose.lock` with all resolved `{host, owner, repo, sha}` entries (direct and transitive, flat list)
 
 ### Transitive Resolution (Multi-Pass)
 
@@ -277,15 +294,26 @@ Existing `.prose` programs without `.deps/` continue to work via the p.prose.md 
 
 ## Interaction with p.prose.md
 
-The registry at `p.prose.md` shifts to a **discovery-only** role:
+`p.prose.md` is reserved as the future home of the OpenProse registry.
+Publication there isn't open yet — no identifier actually resolves via
+`p.prose.md` today. When it opens, the bare `owner/repo` form gains a
+defined resolution and `p.prose.md` takes on a discovery role (search,
+docs, install counts, eval scores, callable runtimes).
 
 | Use case | Resolution |
 |----------|------------|
-| `use "owner/repo/path"` in a program | Git-native via `.deps/` (requires `prose install`) |
-| `prose run handle/slug` at the CLI | Still resolves via `https://p.prose.md/{path}` |
-| Browsing/searching for programs | `p.prose.md` website |
+| `use "github.com/owner/repo/path"` in a program | `.deps/github.com/owner/repo/` if cached, clone from GitHub if not |
+| `use "std/..."` in a program | Expands to `github.com/openprose/std/...` then resolves as above |
+| `prose run github.com/owner/repo/path` at the CLI | Same algorithm as `use` |
+| `prose run github.com/owner/repo/path@{version}` | That specific version — cached copy wins, fetch otherwise |
+| `prose run ... --offline` | `.deps/` only; error on miss |
+| `use "alice/research"` / `prose run alice/research` | Reserved for the OpenProse registry; inert today |
+| Browsing/searching for programs | Not yet available; `p.prose.md` will host this |
 
-`use` statements resolve via git. The CLI `prose run handle/slug` shorthand can still use p.prose.md as a convenience for ad-hoc execution.
+`use` and `prose run` share one resolution algorithm. `prose install` is the
+explicit "get me every declared dependency at its pinned SHA" command; both
+`use` and `prose run` can auto-fetch a missing identifier as a convenience
+when the declared `prose.lock` SHA is not yet on disk.
 
 ---
 
@@ -293,12 +321,12 @@ The registry at `p.prose.md` shifts to a **discovery-only** role:
 
 | Concept | Detail |
 |---------|--------|
-| Registry | GitHub (no custom registry server) |
+| Registry | Any git host, named explicitly (`github.com/...`, `gitlab.com/...`); bare `owner/repo` reserved for future `p.prose.md` |
 | Install command | `prose install` (explicit, not auto) |
 | Update command | `prose install --update` |
 | Lockfile | `prose.lock` (plaintext, committed) |
-| Cache directory | `.deps/` (gitignored) |
-| Shorthand | `std/` → `openprose/std/` |
+| Cache directory | `.deps/{host}/{owner}/{repo}/` (gitignored) |
+| Shorthand | `std/` → `github.com/openprose/std/` |
 | Clone strategy | Full clone (supports SHA checkout without refetch) |
 | Transitive deps | Multi-pass scan until stable (errors on cycles) |
 | Version conflicts | Auto-resolve to newer SHA with warning |
