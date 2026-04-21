@@ -1,0 +1,20 @@
+session ""
+
+input topic: "too late"
+
+agent researcher:
+  model: turbo
+  prompt: ""
+  prompt: "duplicate"
+  permissions: deny
+
+agent researcher:
+  model: sonnet
+
+resume: reviewer
+
+loop:
+  session "forever"
+
+gate deploy:
+  allow: ["yes", "no"]
