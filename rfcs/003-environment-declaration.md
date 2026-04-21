@@ -2,7 +2,7 @@
 
 **Status:** Proposed
 **Date:** 2026-04-08
-**Author:** Dan (via OpenProse Cloud customer programs)
+**Author:** Dan B. (OpenProse)
 
 ## Problem
 
@@ -37,6 +37,7 @@ environment:
 ```
 
 Key properties:
+
 - `environment:` variables are resolved by the VM from the host environment (`.prose/.env` or system env vars)
 - The model never sees actual values — only the variable names and descriptions
 - `required: true` means `prose preflight` will fail if the variable is not set

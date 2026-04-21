@@ -2,13 +2,14 @@
 
 **Status:** Proposed
 **Date:** 2026-04-08
-**Author:** Dan (via OpenProse Cloud customer programs)
+**Author:** Dan B. (OpenProse)
 
 ## Problem
 
 Every customer program we've built includes a `previous_feedback:` or `previous_reports:` input that allows the program to incorporate human feedback and improve over time. But the mechanism for actually feeding back is entirely manual — someone reads the output, formulates feedback, and passes it as a string to the next run.
 
 The Prose language has no formal construct for:
+
 1. Declaring that a program improves with feedback
 2. Structuring feedback so it's machine-readable
 3. Accumulating feedback across runs (feedback history)
@@ -47,13 +48,16 @@ And a `feedback_history:` file in the run directory that accumulates feedback ac
 # Feedback History
 
 ## Preferences (persist)
+
 - 2026-04-07: "weight consumer AI and creator tools higher" (via Slack reply)
 - 2026-04-08: "show quarterly numbers, not weekly" (via email)
 
 ## Exceptions (persist)
+
 - 2026-04-07: "Site 4 overnight HVAC is intentional — bakery" (via Slack)
 
 ## Corrections (one-time, applied)
+
 - 2026-04-07: "Suno revenue should be $80M" (applied in run radar-20260408-001)
 ```
 

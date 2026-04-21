@@ -2,7 +2,7 @@
 
 **Status:** Proposed
 **Date:** 2026-04-08
-**Author:** Dan (via OpenProse Cloud customer programs)
+**Author:** Dan B. (OpenProse)
 
 ## Problem
 
@@ -35,7 +35,7 @@ name: deal-radar-weekly
 kind: program
 services: [deal-flow-radar, human-gate, slack-notifier]
 schedule:
-  cron: "0 8 * * 5"  # Fridays at 8am
+  cron: "0 8 * * 5" # Fridays at 8am
   timezone: "America/Los_Angeles"
   description: "Weekly deal flow radar, delivered Friday mornings"
 ---
@@ -68,6 +68,7 @@ schedule:
 ## Impact
 
 This would affect:
+
 - `prose.md` — document the schedule field in frontmatter
 - `forme.md` — Forme should include schedule in the manifest so the runtime can read it
 - Press runtime — implement cron-based invocation

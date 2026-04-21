@@ -4,7 +4,6 @@
 **Authors:** Dan B., Claude (OpenProse build session 2026-04-08)
 **Created:** 2026-04-08
 **Related:** RFC-001 (Scheduled Execution), RFC-002 (Feedback Loops), RFC-003 (Environment Declaration)
-**Full design document:** `planning/builds/2026-04-08-composite-instantiation/00-overview.md`
 
 ---
 
@@ -69,7 +68,3 @@ with: {slots}    slots, validates,   delegation steps
 ## Prior art
 
 Haskell typeclasses (slot contracts are trait bounds), Python decorators (Level 3 is this), web middleware (composites are middleware for AI sessions), Aspect-Oriented Programming (Forme is the weaver), Terraform modules (Level 1 is this), monad transformers (composites stack like transformer layers).
-
-## Full specification
-
-See `planning/builds/2026-04-08-composite-instantiation/00-overview.md` for the complete design document including syntax specification, Forme expansion algorithm, invariant encoding, nested composition, prior art analysis, and evaluation blanket implications.
