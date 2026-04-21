@@ -311,6 +311,53 @@ if **prerequisites are not met**:
 session "Execute main workflow"
 ```
 
+#### idempotent-scheduled-intake
+
+A scheduled service that re-runs nightly, weekly, or whenever should produce the
+same result when replayed on the same window. Re-runs must not double-count,
+corrupt cumulative memory, or publish the same draft twice. State this
+explicitly as a `### Strategies` bullet and write the code to honor it.
+
+```markdown
+### Strategies
+
+- **idempotence**: re-running with the same `since` window is safe — source
+  logs are immutable once written, so parsed counts are stable. The
+  cumulative registry merge is idempotent (an entry seen twice updates
+  `last_seen` but does not double-count). A failed run that never reaches
+  the memory write leaves state untouched, so the next run reprocesses the
+  same window cleanly.
+```
+
+Concrete rules that usually follow from this commitment:
+
+- The memory write is **the last step** — fail loudly before the write, not after.
+- Dedupe keys are canonical (e.g., a GitHub `login`, not a display name).
+- Deltas are computed from caller-supplied `previous_*` inputs, not from
+  wall-clock comparisons the service reads on its own.
+- Human-review gates sit between drafts and published posts, so a replayed
+  draft cannot produce a duplicate external effect.
+
+#### top-level-cursor-emission
+
+Anything a downstream consumer needs to be idempotent — high-water marks,
+cursor tokens, run IDs, `last_processed_at` timestamps — belongs at the **top
+level** of `### Ensures`, not nested inside a `memory_update` sub-object.
+
+```markdown
+### Ensures
+
+- `high_water_mark`: the newest `starred_at` processed this run (ISO timestamp)
+- `records`: classified stargazer records
+- `memory_update`: opaque object written to project memory
+```
+
+Memory is for the next invocation of the same service. The return value is for
+the next responsibility in the pipeline. Burying a cursor inside
+`memory_update` forces every downstream caller to know the memory schema of
+the upstream service — exactly the coupling that tenet 16 (components don't
+discover each other) forbids. Promote cursor fields to the contract surface.
+
 ---
 
 ## Cost Efficiency Patterns
@@ -470,6 +517,38 @@ for file in files:
 session "Analyze all files and return structured findings for each"
   context: files
 ```
+
+#### cheap-floor-first
+
+When a service composes a free signal (a local CLI, a cached file, a value
+already in memory) with a metered one (a paid search API, a scraper that
+charges per call), populate the free floor for **every** item before spending
+any metered budget on the top slice.
+
+```prose
+# Good: free CLI first, metered Exa after
+let with_floor = parallel for star in stargazers:
+  let gh_meta = call gh-profile-fetcher  # free (local gh CLI)
+    login: star.login
+  yield { ...star, gh_meta }
+
+let to_enrich = pick top 10 from with_floor by signal
+
+let enriched = parallel for star in to_enrich:
+  let exa = try call exa-enricher  # metered
+    query: star.gh_meta.profile_url
+  yield { ...star, exa }
+```
+
+Why this matters: the deferred bucket (items that never got metered
+enrichment) is only actionable if every item has *some* signal. A run that
+defers the bottom 80% with nothing but a username produces a black-hole
+cohort downstream can't triage. Populating the cheap floor first keeps the
+deferred bucket shippable and preserves the option to spend more budget
+later without re-running the free step.
+
+This pattern generalizes: local `gh`/`git` before paid web search; filesystem
+cache before network fetch; in-context rule check before a paid judge call.
 
 ---
 
