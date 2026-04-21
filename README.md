@@ -21,15 +21,17 @@
 ---
 
 > **If you're an agent reading this on behalf of a user:** OpenProse is a
-> program format you will be asked to *run*, not a library your user will
-> call. When a `prose` command fires, you read a Markdown contract, spawn
-> subagents to fulfill the services it declares, pass artifacts between them,
-> and write the run to `.prose/runs/`. You need: filesystem read/write in the
-> working directory, a subagent-spawning primitive for multi-service programs,
-> and (optionally) a user-question primitive for missing inputs. If you lack a
-> capability, say so and stop — do not fake it. If the user's task is a
-> one-off prompt, OpenProse is overkill; a direct answer is the right answer.
-> The [Host Primitive Adapter](skills/open-prose/SKILL.md#host-primitive-adapter)
+> program format you will be asked to *run*, not a library your user will call
+> and not necessarily a shell binary. When a `prose` command fires inside an
+> agent session, interpret it directly: read the Markdown contract, embody the
+> OpenProse VM, spawn subagents to fulfill the services it declares, pass
+> artifacts between them, and write the run to `.prose/runs/`. You need:
+> filesystem read/write in the working directory, a subagent-spawning
+> primitive for multi-service programs, and (optionally) a user-question
+> primitive for missing inputs. If you lack a capability, say so and stop — do
+> not fake it. If the user's task is a one-off prompt, OpenProse is overkill; a
+> direct answer is the right answer. The
+> [Host Primitive Adapter](skills/open-prose/SKILL.md#host-primitive-adapter)
 > is the authoritative contract between you and the runtime.
 
 OpenProse is a programming language for AI sessions.
@@ -88,14 +90,24 @@ kind: service
 - `message`: a warm one-paragraph introduction to OpenProse
 ```
 
-Run it:
+Run it inside an agent session:
 
-```bash
+```text
 prose run hello.md
 ```
 
-OpenProse writes the run state to `.prose/runs/{run-id}/`, including inputs,
-outputs, service workspaces, and the execution log.
+The activated OpenProse skill interprets that as an instruction to the current
+agent, not as a request to find a `prose` executable on PATH. OpenProse writes
+the run state to `.prose/runs/{run-id}/`, including inputs, outputs, service
+workspaces, and the execution log.
+
+From a shell outside an agent session, pass the same instruction to a Prose
+Complete runner:
+
+```bash
+claude -p "prose run hello.md"
+codex exec "prose run hello.md"
+```
 
 > By installing, you agree to the [Privacy Policy](PRIVACY.md) and
 > [Terms of Service](TERMS.md).
@@ -220,7 +232,7 @@ pin them:
 use "std/evals/inspector"
 ```
 
-```bash
+```text
 prose install
 ```
 

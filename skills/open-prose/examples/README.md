@@ -86,9 +86,9 @@ Historical `.prose` files are preserved in the archive for reference. They conti
 
 ## Running Examples
 
-Run any Contract Markdown example:
+Run any Contract Markdown example from inside an agent session:
 
-```bash
+```text
 prose run examples/01-hello-world.md
 prose run examples/16-parallel-reviews/
 prose run examples/37-the-forge/
@@ -96,7 +96,7 @@ prose run examples/37-the-forge/
 
 Run a Contract Markdown test:
 
-```bash
+```text
 prose test examples/test-demo.md
 ```
 

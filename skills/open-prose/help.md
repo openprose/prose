@@ -71,7 +71,7 @@ prose help
 ```
 
 **Use a library program:**
-```bash
+```text
 prose run std/evals/inspector -- subject: 20260406-201439-1a3369
 ```
 
@@ -121,9 +121,12 @@ OpenProse uses a git-native dependency model -- GitHub is the registry. A progra
 
 Those are orchestration libraries -- they coordinate agents from outside.
 OpenProse runs inside the agent session -- the session itself is the IoC
-container. This means portability across Prose Complete hosts. Switch from one
-supported harness to another and the program should still read the same; only
-the host primitive adapter changes.
+container. `prose run ...` is therefore a command to the agent host, not
+necessarily a shell binary. From a shell, wrap it in a Prose Complete runner
+such as `claude -p "prose run program.md"` or
+`codex exec "prose run program.md"`. Switch from one supported harness to
+another and the program should still read the same; only the host primitive
+adapter changes.
 
 ---
 
