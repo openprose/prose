@@ -22,17 +22,29 @@ Which expands to `github.com/openprose/prose/packages/co/programs/company-repo-c
 packages/co/
   README.md
   programs/
+    agent-readiness.md
     company-repo-checker.md
   evals/
+    agent-readiness.eval.md
     company-repo-checker.eval.md
 ```
+
+## Programs
+
+- **`agent-readiness`** — narrow intake a founder can run in under a minute:
+  scores how accessible their site is to AI agents (well-known paths,
+  plain-HTML parseability, structured metadata) and writes a screenshot-ready
+  markdown report to `~/prose-<company>/agent-readiness.md`. Safe first-run
+  demo: three prompts, one WebFetch batch, one report.
+- **`company-repo-checker`** — static gate that verifies a company-as-prose
+  repository still matches the shared layout before expensive runtime evals
+  or fleet monitors do more work.
 
 Future additions should help a new company get started without copying
 OpenProse, Inc.'s private business logic:
 
 - starter repository architecture
 - company system map
-- native repo checker
 - customer package checker
 - eval ladder
 - fixture and run-replay conventions
