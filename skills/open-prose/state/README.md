@@ -4,7 +4,6 @@ related:
   - ../README.md
   - ../primitives/README.md
   - ../guidance/README.md
-  - ../../../../../platform/api-v2/README.md
 glossary:
   State Backend: A persistence layer the VM uses to store variables, results, and execution context between sessions
 ---
