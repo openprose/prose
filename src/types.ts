@@ -367,6 +367,8 @@ export interface PackageMetadata {
   manifest: {
     name: string;
     version: string | null;
+    catalog: string;
+    registry_ref: string | null;
     description: string | null;
     license: string | null;
     source: {
@@ -404,6 +406,9 @@ export interface PublishCheckResult {
 }
 
 export interface CatalogSearchEntry {
+  catalog: string;
+  package_registry_ref: string | null;
+  component_registry_ref: string | null;
   package_name: string;
   package_version: string | null;
   package_root: string;
@@ -428,4 +433,16 @@ export interface CatalogSearchResult {
     min_quality: number | null;
   };
   results: CatalogSearchEntry[];
+}
+
+export interface InstallResult {
+  install_version: "0.1";
+  registry_ref: string;
+  package_name: string;
+  package_version: string;
+  source_git: string;
+  source_sha: string;
+  install_dir: string;
+  component_file: string | null;
+  lockfile_path: string;
 }

@@ -7,12 +7,14 @@ import { formatPath, formatSource, renderFormatCheckText } from "../src/format";
 import { buildTextMateGrammar, renderTextMateGrammar } from "../src/grammar";
 import { graphSource, renderGraphMermaid } from "../src/graph";
 import { highlightSource, renderHighlightHtml, renderHighlightText } from "../src/highlight";
+import { installRegistryRef } from "../src/install";
 import { lintPath, lintSource, renderLintReportText, renderLintText } from "../src/lint";
 import { materializeSource } from "../src/materialize";
 import { projectManifest } from "../src/manifest";
 import { packagePath, renderPackageText } from "../src/package";
 import { planSource } from "../src/plan";
 import { publishCheckPath, renderPublishCheckText } from "../src/publish";
+import { buildRegistryRef, parseRegistryRef } from "../src/registry";
 import { renderCatalogSearchText, searchCatalog } from "../src/search";
 import { renderTraceText, traceFile } from "../src/trace";
 
@@ -26,6 +28,18 @@ function fixturePath(name: string): string {
 
 function compileFixture(name: string) {
   return compileSource(fixture(name), { path: `fixtures/compiler/${name}` });
+}
+
+function runGit(args: string[], cwd: string): string {
+  const result = Bun.spawnSync(["git", ...args], {
+    cwd,
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  if (result.exitCode !== 0) {
+    throw new Error(new TextDecoder().decode(result.stderr));
+  }
+  return new TextDecoder().decode(result.stdout).trim();
 }
 
 describe("OpenProse compiler", () => {
@@ -870,6 +884,27 @@ name: stable-format
     expect(artifact).toBe(text);
   });
 
+  test("parses and builds canonical registry refs", () => {
+    const ref = buildRegistryRef({
+      catalog: "openprose",
+      package_name: "@openprose/catalog-demo",
+      version: "0.1.0",
+      component: "brief-writer",
+    });
+    const parsed = parseRegistryRef(ref);
+
+    expect(ref).toBe(
+      "registry://openprose/@openprose/catalog-demo@0.1.0/brief-writer",
+    );
+    expect(parsed).toEqual({
+      catalog: "openprose",
+      package_name: "@openprose/catalog-demo",
+      version: "0.1.0",
+      component: "brief-writer",
+      ref,
+    });
+  });
+
   test("generates package metadata from a canonical package root", async () => {
     const metadata = await packagePath(fixturePath("package/catalog-demo"));
     const text = renderPackageText(metadata);
@@ -877,6 +912,8 @@ name: stable-format
     expect(metadata.manifest).toMatchObject({
       name: "@openprose/catalog-demo",
       version: "0.1.0",
+      catalog: "openprose",
+      registry_ref: "registry://openprose/@openprose/catalog-demo@0.1.0",
       no_evals: false,
       hosted: {
         callable: true,
@@ -896,6 +933,90 @@ name: stable-format
     expect(metadata.quality.warnings).toEqual([]);
     expect(text).toContain("Package: @openprose/catalog-demo@0.1.0");
     expect(text).toContain("brief-writer (service)");
+  });
+
+  test("installs a package from a registry ref into local deps state", async () => {
+    const sourceRepo = mkdtempSync(join(tmpdir(), "openprose-source-repo-"));
+    writeFileSync(
+      join(sourceRepo, "README.md"),
+      "# Demo source repo\n",
+    );
+    writeFileSync(
+      join(sourceRepo, "brief-writer.prose.md"),
+      `---
+name: brief-writer
+kind: service
+---
+
+### Requires
+
+- \`company\`: CompanyProfile - normalized company profile
+
+### Ensures
+
+- \`brief\`: Markdown<ExecutiveBrief> - executive summary
+
+### Effects
+
+- \`pure\`: deterministic synthesis over provided inputs
+`,
+    );
+    runGit(["init"], sourceRepo);
+    runGit(["config", "user.email", "openprose@example.com"], sourceRepo);
+    runGit(["config", "user.name", "OpenProse Test"], sourceRepo);
+    runGit(["add", "."], sourceRepo);
+    runGit(["commit", "-m", "fixture"], sourceRepo);
+    const sha = runGit(["rev-parse", "HEAD"], sourceRepo);
+
+    const catalogRoot = mkdtempSync(join(tmpdir(), "openprose-catalog-"));
+    const packageRoot = join(catalogRoot, "catalog-demo");
+    mkdirSync(packageRoot, { recursive: true });
+    writeFileSync(
+      join(packageRoot, "prose.package.json"),
+      JSON.stringify(
+        {
+          name: "@openprose/install-demo",
+          version: "1.2.3",
+          registry: {
+            catalog: "openprose",
+          },
+          source: {
+            git: sourceRepo,
+            sha,
+          },
+          evals: ["evals/demo.eval.prose.md"],
+          examples: ["examples/demo.run.json"],
+        },
+        null,
+        2,
+      ),
+    );
+    writeFileSync(
+      join(packageRoot, "brief-writer.prose.md"),
+      readFileSync(join(sourceRepo, "brief-writer.prose.md"), "utf8"),
+    );
+
+    const workspaceRoot = mkdtempSync(join(tmpdir(), "openprose-workspace-"));
+    const result = await installRegistryRef(
+      "registry://openprose/@openprose/install-demo@1.2.3/brief-writer",
+      {
+        catalogRoot,
+        workspaceRoot,
+      },
+    );
+    const clonedSha = runGit(["rev-parse", "HEAD"], result.install_dir);
+    const lockfile = readFileSync(join(workspaceRoot, "prose.lock"), "utf8");
+
+    expect(result.package_name).toBe("@openprose/install-demo");
+    expect(result.package_version).toBe("1.2.3");
+    expect(result.component_file).toBe(
+      `${result.install_dir}/brief-writer.prose.md`,
+    );
+    expect(clonedSha).toBe(sha);
+    expect(lockfile).toContain(`${sourceRepo} ${sha}`);
+    expect(lockfile).toContain(
+      `registry://openprose/@openprose/install-demo@1.2.3/brief-writer ${sourceRepo} ${sha}`,
+    );
   });
 
   test("warns when generated package metadata is missing publishing inputs", async () => {

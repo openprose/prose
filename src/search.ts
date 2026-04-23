@@ -24,6 +24,11 @@ export async function searchCatalog(
     const metadata = await packagePath(packageRoot);
     for (const component of metadata.components) {
       const entry: CatalogSearchEntry = {
+        catalog: metadata.manifest.catalog,
+        package_registry_ref: metadata.manifest.registry_ref,
+        component_registry_ref: metadata.manifest.registry_ref
+          ? `${metadata.manifest.registry_ref}/${component.name}`
+          : null,
         package_name: metadata.manifest.name,
         package_version: metadata.manifest.version,
         package_root: metadata.root,

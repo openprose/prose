@@ -4,12 +4,14 @@ export { collectSourceFiles } from "./files";
 export { buildTextMateGrammar, renderTextMateGrammar } from "./grammar";
 export { buildGraphView, graphFile, graphSource, renderGraphMermaid } from "./graph";
 export { highlightFile, highlightSource, renderHighlightHtml, renderHighlightText } from "./highlight";
+export { installRegistryRef } from "./install";
 export { lintFile, lintPath, lintSource, renderLintReportText, renderLintText } from "./lint";
 export { materializeFile, materializeSource } from "./materialize";
 export { projectManifest } from "./manifest";
 export { packagePath, renderPackageText } from "./package";
 export { planFile, planSource } from "./plan";
 export { publishCheckPath, renderPublishCheckText } from "./publish";
+export { buildRegistryRef, parseRegistryRef } from "./registry";
 export { renderCatalogSearchText, searchCatalog } from "./search";
 export { renderTraceText, traceFile } from "./trace";
 export type {
@@ -30,6 +32,7 @@ export type {
   HostedRuntimeMetadata,
   HighlightToken,
   HighlightView,
+  InstallResult,
   PackageComponentMetadata,
   PackageMetadata,
   PackageQualitySummary,

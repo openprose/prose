@@ -3,6 +3,7 @@ import { basename, dirname, relative, resolve } from "node:path";
 import { compileFile } from "./compiler";
 import { collectSourceFiles } from "./files";
 import { lintFile } from "./lint";
+import { buildRegistryRef } from "./registry";
 import type {
   ComponentIR,
   Diagnostic,
@@ -15,6 +16,9 @@ import type {
 interface PackageConfig {
   name?: string;
   version?: string;
+  registry?: {
+    catalog?: string;
+  };
   description?: string;
   license?: string;
   source?: {
@@ -92,6 +96,14 @@ export async function packagePath(path: string): Promise<PackageMetadata> {
 
   components.sort((a, b) => a.name.localeCompare(b.name) || a.path.localeCompare(b.path));
   const manifestName = config?.name?.trim() || basename(root);
+  const catalog = config?.registry?.catalog?.trim() || "openprose";
+  const registryRef = config?.version
+    ? buildRegistryRef({
+        catalog,
+        package_name: manifestName,
+        version: config.version.trim(),
+      })
+    : null;
   const quality = buildQualitySummary({
     componentCount: components.length,
     typedPorts,
@@ -110,6 +122,8 @@ export async function packagePath(path: string): Promise<PackageMetadata> {
     manifest: {
       name: manifestName,
       version: config?.version?.trim() || null,
+      catalog,
+      registry_ref: registryRef,
       description: config?.description?.trim() || null,
       license: config?.license?.trim() || null,
       source: {

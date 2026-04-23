@@ -1,11 +1,6 @@
-import { existsSync, readFileSync } from "node:fs";
-import { dirname, relative, resolve } from "node:path";
+import { relative } from "node:path";
+import { findNearestLockfileSync } from "./lockfile";
 import type { ComponentIR, Diagnostic, ProseIR } from "./types";
-
-interface LockfileInfo {
-  path: string;
-  pins: Map<string, string>;
-}
 
 export function resolvePackageDependencies(
   path: string,
@@ -30,7 +25,7 @@ export function resolvePackageDependencies(
     return [];
   }
 
-  const lockfile = findNearestLockfile(path);
+  const lockfile = findNearestLockfileSync(path);
   if (!lockfile) {
     diagnostics.push({
       severity: "warning",
@@ -44,7 +39,7 @@ export function resolvePackageDependencies(
   return Array.from(refsByPackage.entries())
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([packageRef, refs]) => {
-      const sha = lockfile?.pins.get(packageRef) ?? "";
+      const sha = lockfile?.source_pins.get(packageRef) ?? "";
       if (!sha) {
         diagnostics.push({
           severity: "warning",
@@ -102,46 +97,6 @@ function normalizeDependencyPackage(ref: string): string | null {
   }
 
   return `${segments[0]}/${segments[1]}/${segments[2]}`;
-}
-
-function findNearestLockfile(path: string): LockfileInfo | null {
-  let current = dirname(resolve(path));
-
-  while (true) {
-    const candidate = resolve(current, "prose.lock");
-    if (existsSync(candidate)) {
-      return {
-        path: candidate,
-        pins: parseLockfile(readFileSync(candidate, "utf8")),
-      };
-    }
-
-    const parent = dirname(current);
-    if (parent === current) {
-      return null;
-    }
-    current = parent;
-  }
-}
-
-function parseLockfile(source: string): Map<string, string> {
-  const pins = new Map<string, string>();
-
-  for (const rawLine of source.replace(/\r\n/g, "\n").split("\n")) {
-    const line = rawLine.trim();
-    if (!line || line.startsWith("#")) {
-      continue;
-    }
-
-    const match = line.match(/^(\S+)\s+([0-9A-Za-z]+)$/);
-    if (!match) {
-      continue;
-    }
-
-    pins.set(match[1], match[2]);
-  }
-
-  return pins;
 }
 
 function normalizePath(path: string): string {

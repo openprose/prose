@@ -1,6 +1,9 @@
 {
   "name": "@openprose/catalog-demo",
   "version": "0.1.0",
+  "registry": {
+    "catalog": "openprose"
+  },
   "description": "Fixture package for registry metadata generation.",
   "license": "MIT",
   "source": {

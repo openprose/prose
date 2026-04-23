@@ -4,6 +4,7 @@ import { formatFile, formatPath, renderFormatCheckText } from "./format";
 import { renderTextMateGrammar } from "./grammar";
 import { graphFile, renderGraphMermaid } from "./graph";
 import { highlightFile, renderHighlightHtml, renderHighlightText } from "./highlight";
+import { installRegistryRef } from "./install";
 import { lintFile, lintPath, renderLintReportText, renderLintText } from "./lint";
 import { materializeFile } from "./materialize";
 import { projectManifest } from "./manifest";
@@ -27,6 +28,7 @@ export async function runCli(args: string[]): Promise<void> {
     command !== "grammar" &&
     command !== "graph" &&
     command !== "highlight" &&
+    command !== "install" &&
     command !== "lint" &&
     command !== "manifest" &&
     command !== "materialize" &&
@@ -45,6 +47,28 @@ export async function runCli(args: string[]): Promise<void> {
   if (command === "grammar") {
     const options = parseGrammarCommandArgs(rest);
     const output = renderTextMateGrammar(options.pretty);
+    if (options.out) {
+      await writeFile(options.out, output, "utf8");
+    } else {
+      process.stdout.write(output);
+    }
+    return;
+  }
+
+  if (command === "install") {
+    const options = parseInstallCommandArgs(rest);
+    if (!options.ref) {
+      console.error("Missing registry ref.");
+      printHelp();
+      process.exitCode = 1;
+      return;
+    }
+    const result = await installRegistryRef(options.ref, {
+      catalogRoot: options.catalogRoot ?? undefined,
+      depsRoot: options.depsRoot ?? undefined,
+      workspaceRoot: options.workspaceRoot ?? undefined,
+    });
+    const output = `${JSON.stringify(result, null, options.pretty ? 2 : 0)}\n`;
     if (options.out) {
       await writeFile(options.out, output, "utf8");
     } else {
@@ -303,6 +327,15 @@ interface GrammarCommandArgs {
   pretty: boolean;
 }
 
+interface InstallCommandArgs {
+  ref: string | null;
+  out: string | null;
+  pretty: boolean;
+  catalogRoot: string | null;
+  depsRoot: string | null;
+  workspaceRoot: string | null;
+}
+
 interface FileCommandArgs {
   file: string | null;
   out: string | null;
@@ -339,6 +372,50 @@ function parseGrammarCommandArgs(args: string[]): GrammarCommandArgs {
     }
     if (arg === "--no-pretty") {
       parsed.pretty = false;
+    }
+  }
+
+  return parsed;
+}
+
+function parseInstallCommandArgs(args: string[]): InstallCommandArgs {
+  const parsed: InstallCommandArgs = {
+    ref: null,
+    out: null,
+    pretty: true,
+    catalogRoot: null,
+    depsRoot: null,
+    workspaceRoot: null,
+  };
+
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    if (arg === "--out" || arg === "-o") {
+      parsed.out = args[index + 1] ?? null;
+      index += 1;
+      continue;
+    }
+    if (arg === "--no-pretty") {
+      parsed.pretty = false;
+      continue;
+    }
+    if (arg === "--catalog-root") {
+      parsed.catalogRoot = args[index + 1] ?? null;
+      index += 1;
+      continue;
+    }
+    if (arg === "--deps-root") {
+      parsed.depsRoot = args[index + 1] ?? null;
+      index += 1;
+      continue;
+    }
+    if (arg === "--workspace-root") {
+      parsed.workspaceRoot = args[index + 1] ?? null;
+      index += 1;
+      continue;
+    }
+    if (!parsed.ref) {
+      parsed.ref = arg;
     }
   }
 
@@ -499,6 +576,7 @@ Usage:
   prose compile <file.prose.md> [--out ir.json] [--no-pretty]
   prose fmt <file.prose.md|dir> [--write|--check]
   prose grammar [--out syntaxes/openprose.tmLanguage.json] [--no-pretty]
+  prose install <registry-ref> [--catalog-root dir] [--workspace-root dir] [--deps-root dir]
   prose manifest <file.prose.md> [--out manifest.md]
   prose package <dir|file.prose.md> [--format text|json]
   prose graph <file.prose.md> [--current-run .prose/runs/{id}] [--target-output final] [--format mermaid|json]
@@ -516,6 +594,7 @@ Commands:
   grammar      Emit an editor-facing TextMate grammar artifact
   graph        Render an IR-native graph preview with optional plan overlay
   highlight    Emit first-pass syntax-highlight tokens for source tooling
+  install      Install a package from a registry ref into local .deps state
   lint         Check canonical source hygiene and structural issues
   manifest     Project canonical Prose IR into a VM-readable manifest
   plan         Preview ready and blocked graph nodes without executing

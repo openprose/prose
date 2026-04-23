@@ -70,6 +70,9 @@ bun run prose lint packages/std
 bun run prose fmt fixtures/compiler/malformed.prose.md
 bun run prose fmt packages/std --check
 bun run prose grammar --out syntaxes/openprose.tmLanguage.json
+bun run prose install registry://openprose/@openprose/catalog-demo@1.2.3/brief-writer \
+  --catalog-root fixtures/package \
+  --workspace-root /tmp/openprose-workspace
 bun run prose highlight fixtures/compiler/typed-effects.prose.md
 bun run prose highlight fixtures/compiler/typed-effects.prose.md \
   --format html \
@@ -127,6 +130,10 @@ publish policy can be tightened before any hosted registry upload exists.
 
 `prose search` prototypes local catalog discovery over generated package
 metadata, with filters for types, effects, component kind, and minimum quality.
+
+`prose install <registry-ref>` resolves a package through local catalog
+metadata, clones its pinned Git source into `.deps/`, and records both source
+and registry pins in `prose.lock`.
 
 `prose materialize` writes an RFC 005-style local run directory from IR,
 explicit caller inputs, and explicit fixture outputs. It does not pretend to
