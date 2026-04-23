@@ -12,6 +12,7 @@ import { materializeSource } from "../src/materialize";
 import { projectManifest } from "../src/manifest";
 import { packagePath, renderPackageText } from "../src/package";
 import { planSource } from "../src/plan";
+import { publishCheckPath, renderPublishCheckText } from "../src/publish";
 import { renderTraceText, traceFile } from "../src/trace";
 
 function fixture(name: string): string {
@@ -915,6 +916,80 @@ name: stable-format
     expect(metadata.quality.warnings).toContain(
       "Package has no linked evals; publish should record no_evals or add eval coverage.",
     );
+  });
+
+  test("passes publish check for a ready fixture package", async () => {
+    const result = await publishCheckPath(fixturePath("package/catalog-demo"));
+    const text = renderPublishCheckText(result);
+
+    expect(result.status).toBe("pass");
+    expect(result.blockers).toEqual([]);
+    expect(result.warnings).toEqual([]);
+    expect(text).toContain("Publish check: PASS @openprose/catalog-demo@0.1.0");
+  });
+
+  test("warns publish check when advisory quality links are missing", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "openprose-publish-warn-"));
+    writeFileSync(
+      join(dir, "prose.package.json"),
+      JSON.stringify(
+        {
+          name: "@openprose/warn-demo",
+          version: "0.1.0",
+          source: {
+            git: "github.com/openprose/warn-demo",
+            sha: "feedbeef",
+          },
+        },
+        null,
+        2,
+      ),
+    );
+    writeFileSync(
+      join(dir, "scan.prose.md"),
+      `---
+name: scan
+kind: service
+---
+
+### Requires
+
+- \`company\`: CompanyProfile - normalized company profile
+
+### Ensures
+
+- \`summary\`: Markdown<Summary> - concise company summary
+
+### Effects
+
+- \`pure\`: deterministic synthesis over provided inputs
+`,
+    );
+
+    const result = await publishCheckPath(dir);
+
+    expect(result.status).toBe("warn");
+    expect(result.blockers).toEqual([]);
+    expect(result.warnings).toContain(
+      "Package has no linked evals; publish should record no_evals or add eval coverage.",
+    );
+    expect(result.warnings).toContain("Package has no linked examples.");
+  });
+
+  test("fails publish check for missing publish blockers and strict warnings", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "openprose-publish-fail-"));
+    writeFileSync(join(dir, "hello.prose.md"), fixture("hello.prose.md"));
+
+    const result = await publishCheckPath(dir, { strict: true });
+
+    expect(result.status).toBe("fail");
+    expect(result.blockers).toContain("Missing package version in prose.package.json.");
+    expect(result.blockers).toContain("Missing source.git in prose.package.json.");
+    expect(result.blockers).toContain("Missing source.sha in prose.package.json.");
+    expect(result.blockers).toContain(
+      "Package has no linked evals; publish should record no_evals or add eval coverage.",
+    );
+    expect(result.blockers).toContain("Package has no linked examples.");
   });
 
   test("lints a directory of source files", async () => {

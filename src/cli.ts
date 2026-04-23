@@ -9,6 +9,7 @@ import { materializeFile } from "./materialize";
 import { projectManifest } from "./manifest";
 import { packagePath, renderPackageText } from "./package";
 import { planFile } from "./plan";
+import { publishCheckPath, renderPublishCheckText } from "./publish";
 import { renderTraceText, traceFile } from "./trace";
 
 export async function runCli(args: string[]): Promise<void> {
@@ -30,6 +31,7 @@ export async function runCli(args: string[]): Promise<void> {
     command !== "materialize" &&
     command !== "package" &&
     command !== "plan" &&
+    command !== "publish-check" &&
     command !== "trace"
   ) {
     console.error(`Unknown command: ${command}`);
@@ -239,6 +241,25 @@ export async function runCli(args: string[]): Promise<void> {
     return;
   }
 
+  if (command === "publish-check") {
+    const result = await publishCheckPath(options.file, {
+      strict: options.strict,
+    });
+    const output =
+      options.format === "json"
+        ? `${JSON.stringify(result, null, options.pretty ? 2 : 0)}\n`
+        : renderPublishCheckText(result);
+    if (options.out) {
+      await writeFile(options.out, output, "utf8");
+    } else {
+      process.stdout.write(output);
+    }
+    if (result.status === "fail") {
+      process.exitCode = 1;
+    }
+    return;
+  }
+
   const ir = await compileFile(options.file);
   const output =
     command === "manifest"
@@ -271,6 +292,7 @@ interface FileCommandArgs {
   targetOutputs: string[];
   format: "html" | "json" | "mermaid" | "text";
   check: boolean;
+  strict: boolean;
   write: boolean;
   inputs: Record<string, string>;
   outputs: Record<string, string>;
@@ -309,6 +331,7 @@ function parseFileCommandArgs(args: string[]): FileCommandArgs {
     targetOutputs: [],
     format: "mermaid",
     check: false,
+    strict: false,
     write: false,
     inputs: {},
     outputs: {},
@@ -328,6 +351,10 @@ function parseFileCommandArgs(args: string[]): FileCommandArgs {
     }
     if (arg === "--check") {
       parsed.check = true;
+      continue;
+    }
+    if (arg === "--strict") {
+      parsed.strict = true;
       continue;
     }
     if (arg === "--no-pretty") {
@@ -418,6 +445,7 @@ Usage:
   prose highlight <file.prose.md> [--format text|json|html]
   prose lint <file.prose.md|dir> [--format text|json]
   prose plan <file.prose.md> [--input name=value] [--current-run .prose/runs/{id}] [--target-output final]
+  prose publish-check <dir|file.prose.md> [--format text|json] [--strict]
   prose materialize <file.prose.md> [--run-root .prose/runs] [--input name=value] [--output port=value]
   prose trace <.prose/runs/{id}|run.json> [--format text|json]
 
@@ -432,6 +460,7 @@ Commands:
   plan         Preview ready and blocked graph nodes without executing
   materialize  Write local RFC 005 run records from IR and fixture outputs
   package      Generate registry/package metadata from canonical source
+  publish-check  Evaluate local publish readiness from package metadata
   trace        Summarize a materialized run directory and its node runs
 `);
 }

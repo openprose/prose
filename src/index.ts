@@ -9,6 +9,7 @@ export { materializeFile, materializeSource } from "./materialize";
 export { projectManifest } from "./manifest";
 export { packagePath, renderPackageText } from "./package";
 export { planFile, planSource } from "./plan";
+export { publishCheckPath, renderPublishCheckText } from "./publish";
 export { renderTraceText, traceFile } from "./trace";
 export type {
   AccessIR,
@@ -30,6 +31,8 @@ export type {
   PackageMetadata,
   PackageQualitySummary,
   PortIR,
+  PublishCheckItem,
+  PublishCheckResult,
   ProseIR,
   RuntimeSettingIR,
   ServiceIR,

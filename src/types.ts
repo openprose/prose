@@ -384,3 +384,21 @@ export interface PackageMetadata {
   diagnostics: Diagnostic[];
   quality: PackageQualitySummary;
 }
+
+export interface PublishCheckItem {
+  name: string;
+  status: "pass" | "warn" | "fail";
+  detail: string;
+}
+
+export interface PublishCheckResult {
+  publish_check_version: "0.1";
+  package_name: string;
+  package_version: string | null;
+  strict: boolean;
+  status: "pass" | "warn" | "fail";
+  blockers: string[];
+  warnings: string[];
+  checks: PublishCheckItem[];
+  metadata: PackageMetadata;
+}

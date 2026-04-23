@@ -75,6 +75,7 @@ bun run prose highlight fixtures/compiler/typed-effects.prose.md \
   --format html \
   --out /tmp/openprose-highlight.html
 bun run prose package fixtures/package/catalog-demo
+bun run prose publish-check fixtures/package/catalog-demo
 bun run prose materialize fixtures/compiler/hello.prose.md \
   --output message="Hello from a fixture output."
 bun run prose trace .prose/runs/20260423-180000-smoke01
@@ -119,6 +120,9 @@ plugins.
 `prose package` walks a canonical package root, compiles every `.prose.md`
 source file, and emits registry/package metadata with component summaries,
 quality warnings, and hosted metadata projection from `prose.package.json`.
+
+`prose publish-check` turns that metadata into a local pass/warn/fail report so
+publish policy can be tightened before any hosted registry upload exists.
 
 `prose materialize` writes an RFC 005-style local run directory from IR,
 explicit caller inputs, and explicit fixture outputs. It does not pretend to
