@@ -70,6 +70,9 @@ bun run prose lint packages/std
 bun run prose fmt fixtures/compiler/malformed.prose.md
 bun run prose fmt packages/std --check
 bun run prose highlight fixtures/compiler/typed-effects.prose.md
+bun run prose highlight fixtures/compiler/typed-effects.prose.md \
+  --format html \
+  --out /tmp/openprose-highlight.html
 bun run prose materialize fixtures/compiler/hello.prose.md \
   --output message="Hello from a fixture output."
 bun run prose trace .prose/runs/20260423-180000-smoke01
@@ -105,7 +108,7 @@ gate.
 
 `prose highlight` emits first-pass syntax-highlight tokens so contract fields
 and ProseScript control flow are visible to tooling instead of blending into
-plain Markdown.
+plain Markdown. It can also render those scopes as a standalone HTML preview.
 
 `prose materialize` writes an RFC 005-style local run directory from IR,
 explicit caller inputs, and explicit fixture outputs. It does not pretend to

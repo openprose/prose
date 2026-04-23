@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { compileSource } from "../src/compiler";
 import { formatPath, formatSource, renderFormatCheckText } from "../src/format";
 import { graphSource, renderGraphMermaid } from "../src/graph";
-import { highlightSource, renderHighlightText } from "../src/highlight";
+import { highlightSource, renderHighlightHtml, renderHighlightText } from "../src/highlight";
 import { lintPath, lintSource, renderLintReportText, renderLintText } from "../src/lint";
 import { materializeSource } from "../src/materialize";
 import { projectManifest } from "../src/manifest";
@@ -829,6 +829,21 @@ name: stable-format
     expect(text).toContain("component.kind: service");
     expect(text).toContain("section.header: Ensures");
     expect(text).toContain("port.name: message");
+  });
+
+  test("renders highlight tokens as html preview", () => {
+    const source = fixture("typed-effects.prose.md");
+    const html = renderHighlightHtml(
+      source,
+      highlightSource(source, "fixtures/compiler/typed-effects.prose.md"),
+    );
+
+    expect(html).toContain("<!doctype html>");
+    expect(html).toContain("OpenProse Highlight Preview");
+    expect(html).toContain('class="scope-frontmatter-key">name</span>');
+    expect(html).toContain('class="scope-port-type">CompanyProfile</span>');
+    expect(html).toContain('class="scope-effect-kind">read_external</span>');
+    expect(html).toContain('class="scope-prose-call-target">brief-writer</span>');
   });
 
   test("lints a directory of source files", async () => {

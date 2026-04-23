@@ -2,7 +2,7 @@ import { stat, writeFile } from "node:fs/promises";
 import { compileFile } from "./compiler";
 import { formatFile, formatPath, renderFormatCheckText } from "./format";
 import { graphFile, renderGraphMermaid } from "./graph";
-import { highlightFile, renderHighlightText } from "./highlight";
+import { highlightFile, renderHighlightHtml, renderHighlightText } from "./highlight";
 import { lintFile, lintPath, renderLintReportText, renderLintText } from "./lint";
 import { materializeFile } from "./materialize";
 import { projectManifest } from "./manifest";
@@ -47,6 +47,8 @@ export async function runCli(args: string[]): Promise<void> {
     const output =
       options.format === "json"
         ? `${JSON.stringify(view, null, options.pretty ? 2 : 0)}\n`
+        : options.format === "html"
+          ? renderHighlightHtml(await Bun.file(options.file).text(), view)
         : renderHighlightText(view);
     if (options.out) {
       await writeFile(options.out, output, "utf8");
@@ -230,7 +232,7 @@ interface FileCommandArgs {
   runId: string | null;
   currentRunPath: string | null;
   targetOutputs: string[];
-  format: "json" | "mermaid" | "text";
+  format: "html" | "json" | "mermaid" | "text";
   check: boolean;
   write: boolean;
   inputs: Record<string, string>;
@@ -292,7 +294,13 @@ function parseFileCommandArgs(args: string[]): FileCommandArgs {
     if (arg === "--format") {
       const value = args[index + 1];
       parsed.format =
-        value === "json" ? "json" : value === "text" ? "text" : "mermaid";
+        value === "json"
+          ? "json"
+          : value === "text"
+            ? "text"
+            : value === "html"
+              ? "html"
+              : "mermaid";
       index += 1;
       continue;
     }
@@ -347,7 +355,7 @@ Usage:
   prose fmt <file.prose.md|dir> [--write|--check]
   prose manifest <file.prose.md> [--out manifest.md]
   prose graph <file.prose.md> [--current-run .prose/runs/{id}] [--target-output final] [--format mermaid|json]
-  prose highlight <file.prose.md> [--format text|json]
+  prose highlight <file.prose.md> [--format text|json|html]
   prose lint <file.prose.md|dir> [--format text|json]
   prose plan <file.prose.md> [--input name=value] [--current-run .prose/runs/{id}] [--target-output final]
   prose materialize <file.prose.md> [--run-root .prose/runs] [--input name=value] [--output port=value]
