@@ -11,7 +11,7 @@ kind: program
 
 ### Requires
 
-- target: path to the program .md file to lint
+- target: path to the program `.prose.md` file to lint
 
 ### Ensures
 

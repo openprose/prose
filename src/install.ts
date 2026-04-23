@@ -74,7 +74,11 @@ export async function installRegistryRef(
     source_git: metadata.manifest.source.git,
     source_sha: metadata.manifest.source.sha,
     install_dir: normalizePath(installDir),
-    component_file: component ? normalizePath(join(installDir, component.path)) : null,
+    component_file: component
+      ? normalizePath(
+          join(installDir, metadata.manifest.source.subpath ?? "", component.path),
+        )
+      : null,
     lockfile_path: normalizePath(lockfile.path),
   };
 }

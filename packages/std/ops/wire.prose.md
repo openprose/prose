@@ -16,7 +16,7 @@ available as `prose run std/ops/wire`.
 
 ### Requires
 
-- target: path to the program .md file to wire
+- target: path to the program `.prose.md` file to wire
 
 ### Ensures
 

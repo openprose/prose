@@ -16,15 +16,22 @@ use "co/programs/company-repo-checker"
 
 Which expands to `github.com/openprose/prose/packages/co/programs/company-repo-checker`.
 
+```bash
+bun run prose install registry://openprose/@openprose/co@0.11.0-dev \
+  --catalog-root packages \
+  --workspace-root /tmp/openprose-workspace
+```
+
 ## Package Shape
 
 ```text
 packages/co/
   README.md
+  prose.package.json
   programs/
-    company-repo-checker.md
+    company-repo-checker.prose.md
   evals/
-    company-repo-checker.eval.md
+    company-repo-checker.eval.prose.md
 ```
 
 Future additions should help a new company get started without copying

@@ -5,7 +5,7 @@ kind: program
 
 # Program Improver
 
-Given an inspection report and the inspected program's source, analyze the program for improvement opportunities and produce ranked proposals with diffs. This program operates on Prose v1 programs (.md format) and understands the full contract surface: requires, ensures, errors, invariants, strategies, environment, and shapes.
+Given an inspection report and the inspected program's source, analyze the program for improvement opportunities and produce ranked proposals with diffs. This program operates on canonical Prose v1 `.prose.md` source and understands the full contract surface: requires, ensures, errors, invariants, strategies, environment, and shapes.
 
 ### Services
 
@@ -16,7 +16,7 @@ Given an inspection report and the inspected program's source, analyze the progr
 ### Requires
 
 - inspection: run — a completed inspector run whose output identifies issues with a program
-- source-path: path to the program's source directory (the .md files)
+- source-path: path to the program's source directory (the `.prose.md` files)
 
 ### Ensures
 
@@ -66,7 +66,7 @@ Find and read the program source files. Validate that the source path contains a
 
 ### Strategies
 
-- look for the entry point by scanning .md files for `kind: program` in frontmatter
+- look for the entry point by scanning `.prose.md` files for `kind: program` in frontmatter
 - resolve service files relative to the entry point's directory
 - read the inspection output from the run's bindings directory
 

@@ -23,18 +23,18 @@ read/search operations.
 
 ### Requires
 
-- `repo_path`: local path to the company-as-prose repository root
-- `source_roots`: optional list of source roots; default `["systems","shared"]`
-- `legacy_roots`: optional list of deprecated flat roots; default
+- `repo_path`: Path<RepositoryRoot> - local path to the company-as-prose repository root
+- `source_roots`: Path[] - optional list of source roots; default `["systems","shared"]`
+- `legacy_roots`: Path[] - optional list of deprecated flat roots; default
   `["responsibilities","services","delivery","evals","planning"]`
-- `ignored_roots`: optional list of roots ignored by the default check; default
+- `ignored_roots`: Path[] - optional list of roots ignored by the default check; default
   `[".prose","customers"]`
-- `external_prefixes`: optional service-reference prefixes that are resolved
+- `external_prefixes`: string[] - optional service-reference prefixes that are resolved
   outside this package; default `["std/","github.com/","gitlab.com/"]`
 
 ### Ensures
 
-- `report`: structured readiness report containing:
+- `report`: RepoReadinessReport - structured readiness report containing:
     - `source_layout`: legacy source roots empty, source under declared roots
     - `contract_surface`: executable components declare Requires and Ensures
     - `eval_pairing`: every program or service has a paired eval subject
@@ -43,8 +43,12 @@ read/search operations.
     - `dependency_graph`: Services references resolve and do not cross
       system-private boundaries
     - `counts`: executable component count, eval count, dependency edge count
-- `passed`: boolean true only when all hard failures are empty
-- `failures`: array of specific file-grounded failures, empty when passed
+- `passed`: boolean - true only when all hard failures are empty
+- `failures`: RepoFailure[] - array of specific file-grounded failures, empty when passed
+
+### Effects
+
+- `read_external`: reads repository source and eval files from `repo_path`
 
 ### Strategies
 
@@ -103,19 +107,23 @@ return report
 
 ### Requires
 
-- `repo_path`: local path to inspect
-- `source_roots`: source roots to treat as package-owned source
-- `legacy_roots`: deprecated roots that should not accumulate source files
-- `ignored_roots`: roots to skip in default scope
+- `repo_path`: Path<RepositoryRoot> - local path to inspect
+- `source_roots`: Path[] - source roots to treat as package-owned source
+- `legacy_roots`: Path[] - deprecated roots that should not accumulate source files
+- `ignored_roots`: Path[] - roots to skip in default scope
 
 ### Ensures
 
-- `source_layout`: report with:
+- `source_layout`: RepoSourceLayoutReport - report with:
     - `legacy_roots`: status for each deprecated root
     - `source_roots`: status for each declared source root
     - `stale_vocabulary`: file-grounded findings for source metadata that uses
       obsolete executable vocabulary
-- `failures`: array of source layout violations
+- `failures`: RepoFailure[] - array of source layout violations
+
+### Effects
+
+- `read_external`: reads repository source layout under `repo_path`
 
 ### Strategies
 
@@ -129,13 +137,13 @@ return report
 
 ### Requires
 
-- `repo_path`: local path to inspect
-- `source_roots`: source roots to treat as package-owned source
-- `ignored_roots`: roots to skip in default scope
+- `repo_path`: Path<RepositoryRoot> - local path to inspect
+- `source_roots`: Path[] - source roots to treat as package-owned source
+- `ignored_roots`: Path[] - roots to skip in default scope
 
 ### Ensures
 
-- `contract_surface`: report with:
+- `contract_surface`: ContractSurfaceReport - report with:
     - `executable_components`: every top-level `kind: program` and
       `kind: service` found under source roots
     - `missing_contract_sections`: components missing `### Requires` or
@@ -144,7 +152,11 @@ return report
     - `eval_metadata`: subject, tier, contract_version, Expects, Expects Not,
       and Performance Tracked Over Time status for each eval
     - `counts`: executable component count and eval count
-- `failures`: array of contract or eval drift violations
+- `failures`: RepoFailure[] - array of contract or eval drift violations
+
+### Effects
+
+- `read_external`: reads component and eval source under `repo_path`
 
 ### Strategies
 
@@ -163,14 +175,14 @@ return report
 
 ### Requires
 
-- `repo_path`: local path to inspect
-- `source_roots`: source roots to treat as package-owned source
-- `ignored_roots`: roots to skip in default scope
-- `external_prefixes`: service-reference prefixes resolved outside this package
+- `repo_path`: Path<RepositoryRoot> - local path to inspect
+- `source_roots`: Path[] - source roots to treat as package-owned source
+- `ignored_roots`: Path[] - roots to skip in default scope
+- `external_prefixes`: string[] - service-reference prefixes resolved outside this package
 
 ### Ensures
 
-- `dependency_graph`: report with:
+- `dependency_graph`: DependencyGraphReport - report with:
     - `component_names`: globally unique component names under source roots
     - `edges`: resolved `### Services` dependency edges
     - `unresolved`: service references that do not resolve by component name or
@@ -178,14 +190,18 @@ return report
     - `ownership_violations`: shared-to-system-private or
       system-to-system-private dependencies
     - `counts`: dependency edge count
-- `failures`: array of dependency graph violations
+- `failures`: RepoFailure[] - array of dependency graph violations
+
+### Effects
+
+- `read_external`: reads component dependency references under `repo_path`
 
 ### Strategies
 
 - resolve plain service names by component `name:` across the bounded package
   walk
 - treat `std/...`, host-qualified dependency paths, explicit relative paths,
-  and explicit `.md` paths as external references rather than unresolved local
+  and explicit `.prose.md` paths as external references rather than unresolved local
   names
 - fail when a shared component depends on a system-private component
 - fail when one system depends directly on another system's private source
@@ -197,16 +213,20 @@ return report
 
 ### Requires
 
-- `source_layout`: output from repo-structure-inspector
-- `contract_surface`: output from contract-eval-drift-inspector
-- `dependency_graph`: output from dependency-graph-inspector
+- `source_layout`: RepoSourceLayoutReport - output from repo-structure-inspector
+- `contract_surface`: ContractSurfaceReport - output from contract-eval-drift-inspector
+- `dependency_graph`: DependencyGraphReport - output from dependency-graph-inspector
 
 ### Ensures
 
-- `report`: merged readiness report with sections for source_layout,
+- `report`: RepoReadinessReport - merged readiness report with sections for source_layout,
   contract_surface, eval_pairing, eval_metadata, dependency_graph, and counts
-- `passed`: boolean true only when all failure arrays are empty
-- `failures`: concatenated file-grounded failures from all inspectors
+- `passed`: boolean - true only when all failure arrays are empty
+- `failures`: RepoFailure[] - concatenated file-grounded failures from all inspectors
+
+### Effects
+
+- `pure`: deterministic synthesis over inspector outputs
 
 ### Strategies
 

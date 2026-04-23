@@ -11,6 +11,10 @@ contract_version: v1
 
 Protects the reusable company-as-prose repository gate.
 
+### Effects
+
+- `pure`: fixture expectations and predicates are deterministic
+
 ### Fixtures
 
 - fixture: current_openprose_company_repo

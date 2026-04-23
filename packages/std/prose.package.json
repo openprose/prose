@@ -1,0 +1,22 @@
+{
+  "name": "@openprose/std",
+  "version": "0.11.0-dev",
+  "registry": {
+    "catalog": "openprose"
+  },
+  "description": "OpenProse standard library of reusable roles, controls, composites, evals, delivery adapters, memory, and ops programs.",
+  "license": "MIT",
+  "evals": [
+    "evals/contract-grader.prose.md",
+    "evals/cross-run-differ.prose.md",
+    "evals/eval-calibrator.prose.md",
+    "evals/inspector.prose.md",
+    "evals/platform-improver.prose.md",
+    "evals/program-improver.prose.md",
+    "evals/regression-tracker.prose.md"
+  ],
+  "examples": [
+    "examples/composed-reviewer/index.prose.md",
+    "examples/confident-writer/index.prose.md"
+  ]
+}

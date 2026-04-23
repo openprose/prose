@@ -1,0 +1,15 @@
+{
+  "name": "@openprose/co",
+  "version": "0.11.0-dev",
+  "registry": {
+    "catalog": "openprose"
+  },
+  "description": "OpenProse company-as-code starter package for organizing an operating company as Prose programs.",
+  "license": "MIT",
+  "evals": [
+    "evals/company-repo-checker.eval.prose.md"
+  ],
+  "examples": [
+    "programs/company-repo-checker.prose.md"
+  ]
+}

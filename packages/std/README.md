@@ -15,9 +15,15 @@ use "std/memory/project-memory"
 
 Install with `prose install`. `std/...` is the shorthand for `github.com/openprose/prose/packages/std/...`; see [deps.md](https://github.com/openprose/prose/blob/main/skills/open-prose/deps.md) for dependency resolution details.
 
+```bash
+bun run prose install registry://openprose/@openprose/std@0.11.0-dev \
+  --catalog-root packages \
+  --workspace-root /tmp/openprose-workspace
+```
+
 ## Library
 
-All Markdown entries use the current Contract Markdown section form (`### Services`, `### Requires`, `### Ensures`, and related sections). The `.prose` memory entries are legacy ProseScript variants retained for compatibility.
+All executable library entries now use the canonical `.prose.md` Contract Markdown form (`### Services`, `### Requires`, `### Ensures`, and related sections).
 
 ### evals/
 

@@ -1149,6 +1149,130 @@ return result
     );
   });
 
+  test("infers source metadata from git when package config omits source", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "openprose-package-git-"));
+    writeFileSync(
+      join(dir, "prose.package.json"),
+      JSON.stringify(
+        {
+          name: "@openprose/git-demo",
+          version: "0.1.0",
+          registry: {
+            catalog: "openprose",
+          },
+          evals: ["evals/git-demo.eval.prose.md"],
+          examples: ["examples/git-demo.prose.md"],
+        },
+        null,
+        2,
+      ),
+    );
+    writeFileSync(join(dir, "hello.prose.md"), fixture("typed-effects.prose.md"));
+
+    runGit(["init"], dir);
+    runGit(["config", "user.email", "openprose@example.com"], dir);
+    runGit(["config", "user.name", "OpenProse Test"], dir);
+    runGit(["remote", "add", "origin", "git@github.com:openprose/git-demo.git"], dir);
+    runGit(["add", "."], dir);
+    runGit(["commit", "-m", "init"], dir);
+    const sha = runGit(["rev-parse", "HEAD"], dir);
+
+    const metadata = await packagePath(dir);
+
+    expect(metadata.manifest.source.git).toBe("github.com/openprose/git-demo");
+    expect(metadata.manifest.source.sha).toBe(sha);
+    expect(metadata.manifest.source.subpath).toBeNull();
+    expect(metadata.quality.warnings).not.toContain("Missing source.git in prose.package.json.");
+    expect(metadata.quality.warnings).not.toContain("Missing source.sha in prose.package.json.");
+  });
+
+  test("installs a monorepo package component at its package subpath", async () => {
+    const sourceRepo = mkdtempSync(join(tmpdir(), "openprose-monorepo-source-"));
+    const packageSourceRoot = join(sourceRepo, "packages", "demo");
+    mkdirSync(packageSourceRoot, { recursive: true });
+    writeFileSync(
+      join(packageSourceRoot, "prose.package.json"),
+      JSON.stringify(
+        {
+          name: "@openprose/monorepo-demo",
+          version: "2.0.0",
+          registry: {
+            catalog: "openprose",
+          },
+          evals: ["evals/demo.eval.prose.md"],
+          examples: ["examples/demo.prose.md"],
+        },
+        null,
+        2,
+      ),
+    );
+    writeFileSync(
+      join(packageSourceRoot, "demo.prose.md"),
+      `---
+name: demo
+kind: service
+---
+
+### Ensures
+
+- \`result\`: Markdown<Result> - demo result
+
+### Effects
+
+- \`pure\`: deterministic synthesis over provided inputs
+`,
+    );
+    runGit(["init"], sourceRepo);
+    runGit(["config", "user.email", "openprose@example.com"], sourceRepo);
+    runGit(["config", "user.name", "OpenProse Test"], sourceRepo);
+    runGit(["remote", "add", "origin", "git@github.com:openprose/monorepo-demo.git"], sourceRepo);
+    runGit(["add", "."], sourceRepo);
+    runGit(["commit", "-m", "fixture"], sourceRepo);
+    const sha = runGit(["rev-parse", "HEAD"], sourceRepo);
+
+    const catalogRoot = mkdtempSync(join(tmpdir(), "openprose-monorepo-catalog-"));
+    const packageRoot = join(catalogRoot, "monorepo-demo");
+    mkdirSync(packageRoot, { recursive: true });
+    writeFileSync(
+      join(packageRoot, "prose.package.json"),
+      JSON.stringify(
+        {
+          name: "@openprose/monorepo-demo",
+          version: "2.0.0",
+          registry: {
+            catalog: "openprose",
+          },
+          source: {
+            git: sourceRepo,
+            sha,
+            subpath: "packages/demo",
+          },
+          evals: ["evals/demo.eval.prose.md"],
+          examples: ["examples/demo.prose.md"],
+        },
+        null,
+        2,
+      ),
+    );
+    writeFileSync(
+      join(packageRoot, "demo.prose.md"),
+      readFileSync(join(packageSourceRoot, "demo.prose.md"), "utf8"),
+    );
+
+    const workspaceRoot = mkdtempSync(join(tmpdir(), "openprose-monorepo-workspace-"));
+    const result = await installRegistryRef(
+      "registry://openprose/@openprose/monorepo-demo@2.0.0/demo",
+      {
+        catalogRoot,
+        workspaceRoot,
+      },
+    );
+
+    expect(result.component_file).toBe(
+      `${result.install_dir}/packages/demo/demo.prose.md`,
+    );
+  });
+
   test("passes publish check for a ready fixture package", async () => {
     const result = await publishCheckPath(fixturePath("package/catalog-demo"));
     const text = renderPublishCheckText(result);

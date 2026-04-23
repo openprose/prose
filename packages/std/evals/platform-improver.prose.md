@@ -21,7 +21,7 @@ Given an inspection report and a symptom description, diagnose whether the issue
 ### Ensures
 
 - diagnosis: structured analysis containing:
-    - layer: which layer owns the fix — "prose" (the program's .md files), "forme" (the wiring algorithm in std/ops/wire), or "press" (the runtime execution engine)
+    - layer: which layer owns the fix — "prose" (the program's `.prose.md` files), "forme" (the wiring algorithm in std/ops/wire), or "press" (the runtime execution engine)
     - confidence: 0-100 confidence that this is the correct layer
     - reasoning: chain of evidence from symptom to layer attribution
     - root_cause: precise description of what went wrong in the identified layer
@@ -43,7 +43,7 @@ Given an inspection report and a symptom description, diagnose whether the issue
 
 ### Strategies
 
-- when triaging to prose layer: the issue is in what the author wrote — bad contracts, missing strategies, wrong shapes, insufficient error declarations. The fix is editing the program's .md files.
+- when triaging to prose layer: the issue is in what the author wrote — bad contracts, missing strategies, wrong shapes, insufficient error declarations. The fix is editing the program's `.prose.md` files.
 - when triaging to forme layer: the issue is in how components were wired — wrong dependency resolution, incorrect execution order, missed parallelization, bad contract matching. The fix is in `std/ops/wire` or the wiring algorithm.
 - when triaging to press layer: the issue is in how the runtime executed — session spawning errors, binding copy failures, state.md corruption, context management bugs, delegation protocol errors. The fix is in the runtime spec or implementation.
 - when the symptom could be any layer: start with the most common cause (prose > forme > press — author errors are more common than framework bugs, which are more common than runtime bugs)
@@ -103,7 +103,7 @@ Deep-dive into the identified layer. Read the relevant source files and trace th
 
 ### Strategies
 
-- for prose layer: read the program's .md files from the inspection run's `services/` and `program.md`. Trace which contract clause is violated, which shape boundary is breached, or which strategy is missing.
+- for prose layer: read the program's `.prose.md` files from the inspection run's `services/` snapshot and `program.md`. Trace which contract clause is violated, which shape boundary is breached, or which strategy is missing.
 - for forme layer: read the manifest.md from the inspection run. Compare the wiring graph against what the component contracts should produce. Check if `std/ops/wire` would produce different output with a fix.
 - for press layer: read state.md event markers in detail. Compare actual execution trace against what manifest.md prescribes. Look for gaps, ordering violations, or protocol errors in the session spawning and binding copy sequence.
 - when the triage confidence was low: investigate the alternative layers too and present findings for all candidates
@@ -125,7 +125,7 @@ Generate the concrete fix: a diff against the correct source file, with side eff
 
 ### Strategies
 
-- when the fix is in prose layer: generate a diff against the program's source .md file. The program author applies this.
+- when the fix is in prose layer: generate a diff against the program's source `.prose.md` file. The program author applies this.
 - when the fix is in forme layer: generate a diff against `std/ops/wire.md`. This is a standard library change.
 - when the fix is in press layer: generate a diff against the relevant spec file (`prose.md` for execution semantics, `forme.md` for wiring semantics). This is a platform change — flag it for maintainer review.
 - for side effect analysis: consider what other programs or evals might be affected by this change. A press-layer fix affects all programs. A forme-layer fix affects all multi-service programs. A prose-layer fix affects only the specific program.

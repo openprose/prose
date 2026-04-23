@@ -8,31 +8,31 @@ Standard role definitions for OpenProse services. Each role is a reusable behavi
 
 | Role | Description |
 |------|-------------|
-| [classifier](classifier.md) | Assign a category label to an input given a defined category set |
-| [critic](critic.md) | Evaluate a work product against quality criteria and render a subjective verdict |
-| [verifier](verifier.md) | Check a result against formal constraints and report pass/fail for each |
+| [classifier](classifier.prose.md) | Assign a category label to an input given a defined category set |
+| [critic](critic.prose.md) | Evaluate a work product against quality criteria and render a subjective verdict |
+| [verifier](verifier.prose.md) | Check a result against formal constraints and report pass/fail for each |
 
 ### Transformation
 
 | Role | Description |
 |------|-------------|
-| [extractor](extractor.md) | Pull structured data from unstructured input given a target schema |
-| [summarizer](summarizer.md) | Compress content while preserving specified key information |
-| [formatter](formatter.md) | Transform structured data into a specified output format with no information loss |
+| [extractor](extractor.prose.md) | Pull structured data from unstructured input given a target schema |
+| [summarizer](summarizer.prose.md) | Compress content while preserving specified key information |
+| [formatter](formatter.prose.md) | Transform structured data into a specified output format with no information loss |
 
 ### Creation
 
 | Role | Description |
 |------|-------------|
-| [researcher](researcher.md) | Investigate a topic using available tools and return sourced, confidence-scored findings |
-| [writer](writer.md) | Produce a written artifact given requirements, audience, and constraints |
-| [planner](planner.md) | Produce an ordered plan with dependencies, decision points, and fallback paths |
+| [researcher](researcher.prose.md) | Investigate a topic using available tools and return sourced, confidence-scored findings |
+| [writer](writer.prose.md) | Produce a written artifact given requirements, audience, and constraints |
+| [planner](planner.prose.md) | Produce an ordered plan with dependencies, decision points, and fallback paths |
 
 ### Flow
 
 | Role | Description |
 |------|-------------|
-| [router](router.md) | Select the best handler for an input from a set of candidates and explain the choice |
+| [router](router.prose.md) | Select the best handler for an input from a set of candidates and explain the choice |
 
 ## Decision Matrix
 

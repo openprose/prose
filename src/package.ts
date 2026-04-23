@@ -24,6 +24,7 @@ interface PackageConfig {
   source?: {
     git?: string;
     sha?: string;
+    subpath?: string;
   };
   schemas?: string[];
   evals?: string[];
@@ -34,6 +35,7 @@ interface PackageConfig {
 export async function packagePath(path: string): Promise<PackageMetadata> {
   const root = await resolvePackageRoot(path);
   const config = await loadPackageConfig(root);
+  const resolvedConfig = await hydratePackageConfig(root, config);
   const files = await collectSourceFiles(root);
   const components: PackageComponentMetadata[] = [];
   const diagnostics: Diagnostic[] = [];
@@ -77,8 +79,8 @@ export async function packagePath(path: string): Promise<PackageMetadata> {
         file,
         ir,
         component,
-        packageExamples: config?.examples ?? [],
-        packageEvals: config?.evals ?? [],
+        packageExamples: resolvedConfig?.examples ?? [],
+        packageEvals: resolvedConfig?.evals ?? [],
       });
       components.push(componentMetadata);
 
@@ -95,13 +97,13 @@ export async function packagePath(path: string): Promise<PackageMetadata> {
   }
 
   components.sort((a, b) => a.name.localeCompare(b.name) || a.path.localeCompare(b.path));
-  const manifestName = config?.name?.trim() || basename(root);
-  const catalog = config?.registry?.catalog?.trim() || "openprose";
-  const registryRef = config?.version
+  const manifestName = resolvedConfig?.name?.trim() || basename(root);
+  const catalog = resolvedConfig?.registry?.catalog?.trim() || "openprose";
+  const registryRef = resolvedConfig?.version
     ? buildRegistryRef({
         catalog,
         package_name: manifestName,
-        version: config.version.trim(),
+        version: resolvedConfig.version.trim(),
       })
     : null;
   const quality = buildQualitySummary({
@@ -113,7 +115,7 @@ export async function packagePath(path: string): Promise<PackageMetadata> {
     componentsWithEvals,
     lintCleanComponents,
     components,
-    config,
+    config: resolvedConfig,
   });
 
   return {
@@ -121,23 +123,24 @@ export async function packagePath(path: string): Promise<PackageMetadata> {
     root: normalizePath(root),
     manifest: {
       name: manifestName,
-      version: config?.version?.trim() || null,
+      version: resolvedConfig?.version?.trim() || null,
       catalog,
       registry_ref: registryRef,
-      description: config?.description?.trim() || null,
-      license: config?.license?.trim() || null,
+      description: resolvedConfig?.description?.trim() || null,
+      license: resolvedConfig?.license?.trim() || null,
       source: {
-        git: config?.source?.git?.trim() || null,
-        sha: config?.source?.sha?.trim() || null,
+        git: resolvedConfig?.source?.git?.trim() || null,
+        sha: resolvedConfig?.source?.sha?.trim() || null,
+        subpath: resolvedConfig?.source?.subpath?.trim() || null,
       },
       dependencies: Array.from(dependencyMap.values()).sort((a, b) =>
         a.package.localeCompare(b.package) || a.sha.localeCompare(b.sha),
       ),
-      schemas: [...(config?.schemas ?? [])].sort(),
-      evals: [...(config?.evals ?? [])].sort(),
-      examples: [...(config?.examples ?? [])].sort(),
-      no_evals: (config?.evals?.length ?? 0) === 0,
-      hosted: config?.hosted ?? null,
+      schemas: [...(resolvedConfig?.schemas ?? [])].sort(),
+      evals: [...(resolvedConfig?.evals ?? [])].sort(),
+      examples: [...(resolvedConfig?.examples ?? [])].sort(),
+      no_evals: (resolvedConfig?.evals?.length ?? 0) === 0,
+      hosted: resolvedConfig?.hosted ?? null,
     },
     components,
     diagnostics: sortDiagnostics(diagnostics),
@@ -323,10 +326,82 @@ async function loadPackageConfig(root: string): Promise<PackageConfig | null> {
   }
 }
 
+async function hydratePackageConfig(
+  root: string,
+  config: PackageConfig | null,
+): Promise<PackageConfig | null> {
+  if (!config) {
+    return null;
+  }
+
+  const inferredSource = inferGitSource(root);
+  return {
+    ...config,
+    source: {
+      git: config.source?.git?.trim() || inferredSource?.git || undefined,
+      sha: config.source?.sha?.trim() || inferredSource?.sha || undefined,
+      subpath: config.source?.subpath?.trim() || inferredSource?.subpath || undefined,
+    },
+  };
+}
+
 async function resolvePackageRoot(path: string): Promise<string> {
   const resolved = resolve(path);
   const info = await stat(resolved);
   return info.isDirectory() ? resolved : dirname(resolved);
+}
+
+function inferGitSource(
+  root: string,
+): { git: string | null; sha: string | null; subpath: string | null } | null {
+  const sha = runGit(root, ["rev-parse", "HEAD"]);
+  const remote = runGit(root, ["config", "--get", "remote.origin.url"]);
+  const gitPrefix = runGit(root, ["rev-parse", "--show-prefix"]);
+  if (!sha && !remote && !gitPrefix) {
+    return null;
+  }
+
+  return {
+    git: remote ? normalizeGitRemote(remote) : null,
+    sha: sha || null,
+    subpath: gitPrefix ? normalizeGitPrefix(gitPrefix) : null,
+  };
+}
+
+function runGit(cwd: string, args: string[]): string | null {
+  const result = Bun.spawnSync(["git", ...args], {
+    cwd,
+    stderr: "pipe",
+    stdout: "pipe",
+  });
+  if (result.exitCode !== 0) {
+    return null;
+  }
+  const value = new TextDecoder().decode(result.stdout).trim();
+  return value || null;
+}
+
+function normalizeGitRemote(remote: string): string {
+  const trimmed = remote.trim().replace(/\.git$/, "");
+  const sshMatch = trimmed.match(/^git@([^:]+):(.+)$/);
+  if (sshMatch) {
+    return `${sshMatch[1]}/${sshMatch[2]}`;
+  }
+
+  const urlMatch = trimmed.match(/^(?:https?|ssh):\/\/(?:[^@/]+@)?([^/]+)\/(.+)$/);
+  if (urlMatch) {
+    return `${urlMatch[1]}/${urlMatch[2]}`;
+  }
+
+  return trimmed;
+}
+
+function normalizeGitPrefix(prefix: string): string | null {
+  const normalized = prefix.replace(/\\/g, "/").replace(/\/+$/, "").trim();
+  if (!normalized || normalized === ".") {
+    return null;
+  }
+  return normalized;
 }
 
 function summarizeComponent(component: ComponentIR): string | null {

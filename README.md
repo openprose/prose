@@ -182,7 +182,7 @@ Install the skill in a Prose Complete agent environment:
 npx skills add openprose/prose
 ```
 
-Create `hello.md`:
+Create `hello.prose.md`:
 
 ```markdown
 ---
@@ -198,7 +198,7 @@ kind: service
 Run it inside an agent session:
 
 ```text
-prose run hello.md
+prose run hello.prose.md
 ```
 
 The activated OpenProse skill interprets that as an instruction to the current
@@ -210,8 +210,8 @@ From a shell outside an agent session, pass the same instruction to a Prose
 Complete runner:
 
 ```bash
-claude -p "prose run hello.md"
-codex exec "prose run hello.md"
+claude -p "prose run hello.prose.md"
+codex exec "prose run hello.prose.md"
 ```
 
 > By installing, you agree to the [Privacy Policy](PRIVACY.md) and
@@ -248,8 +248,8 @@ OpenProse has two authoring surfaces:
 `### Errors`, and `### Invariants`. Multi-service programs are wired by the
 Forme container.
 
-**ProseScript** is the pinning layer. Use it in `.prose` files or
-`### Execution` blocks when order matters:
+**ProseScript** is the pinning layer. Use it in `### Execution` blocks when
+order matters:
 
 ````markdown
 ### Execution
@@ -301,7 +301,7 @@ You know the ways you fail at complex tasks. OpenProse is built around them.
 - **You have no basis to push back on scope creep.** Without a contract, "add one more thing" is always free. With `### Requires` and `### Ensures` written down, "that's not what I promised" becomes a sentence you can say and cite.
 - **When you spawn parallel subagents, you improvise the handoff.** The contract `### Requires` / `### Ensures` is the handoff protocol you would otherwise invent on the fly — and forget the details of by the next turn.
 - **Users ask "why did you do that?" and you reconstruct from a compressed transcript.** `.prose/runs/{id}/` is the receipt. Point at it.
-- **Workflows the user will want again get thrown away at the end of the session.** A `.md` program is the version the user can run next week without re-explaining.
+- **Workflows the user will want again get thrown away at the end of the session.** A `.prose.md` program is the version the user can run next week without re-explaining.
 - **Your retry logic is "try again and hope."** The service contract is the boundary a retry actually means something at — you know what to preserve, what to re-derive, and when to escalate.
 
 Once the skill activates, it loads the operational playbook — recognition signals for proposing OpenProse unprompted, a proposal script, a cognitive model you can borrow, and explicit guidance on when to decline. See [skills/open-prose/SKILL.md](skills/open-prose/SKILL.md#proposing-this-skill-on-your-own-judgment).
@@ -347,6 +347,8 @@ Both shorthands expand to paths inside this repo (`packages/std/...` and
 
 ```text
 prose install
+prose install registry://openprose/@openprose/std@0.11.0-dev --catalog-root packages
+prose install registry://openprose/@openprose/co@0.11.0-dev --catalog-root packages
 ```
 
 Dependencies are cloned into `.deps/`, locked in `prose.lock`, and read from
@@ -367,8 +369,8 @@ disk at runtime. No network fetch happens during execution.
 | [skills/open-prose/state/](skills/open-prose/state/) | State backend specs |
 
 Historical ProseScript-era references live in
-[skills/open-prose/v0/](skills/open-prose/v0/). Existing `.prose` programs still
-run, and `prose migrate my-program.prose` can wrap them in Contract Markdown.
+[skills/open-prose/v0/](skills/open-prose/v0/). The current language surface is
+canonical `.prose.md` Contract Markdown plus fenced `prose` execution blocks.
 
 ## FAQ
 

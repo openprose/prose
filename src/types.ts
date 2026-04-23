@@ -374,6 +374,7 @@ export interface PackageMetadata {
     source: {
       git: string | null;
       sha: string | null;
+      subpath: string | null;
     };
     dependencies: ProseIR["package"]["dependencies"];
     schemas: string[];

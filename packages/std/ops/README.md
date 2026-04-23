@@ -6,16 +6,16 @@ Operational utilities for debugging, profiling, and validating Prose programs. T
 
 | Program | CLI Command | Description |
 |---------|-------------|-------------|
-| `lint.md` | `prose lint <file>` | Validate structure, schema, shapes, and contract compatibility |
-| `preflight.md` | `prose preflight <file>` | Check that dependencies are installed and environment variables are set |
-| `wire.md` | `prose run std/ops/wire` | Run Forme wiring to produce an execution manifest |
-| `status.md` | `prose status` | Show recent runs with program name, duration, and pass/fail status |
-| `diagnose.md` | `prose run std/ops/diagnose` | Diagnose why a run failed -- root cause analysis with fix recommendations |
-| `profiler.md` | `prose run std/ops/profiler` | Profile a run for cost, tokens, and time using actual API session data |
+| `lint.prose.md` | `prose lint <file>` | Validate structure, schema, shapes, and contract compatibility |
+| `preflight.prose.md` | `prose preflight <file>` | Check that dependencies are installed and environment variables are set |
+| `wire.prose.md` | `prose run std/ops/wire` | Run Forme wiring to produce an execution manifest |
+| `status.prose.md` | `prose status` | Show recent runs with program name, duration, and pass/fail status |
+| `diagnose.prose.md` | `prose run std/ops/diagnose` | Diagnose why a run failed -- root cause analysis with fix recommendations |
+| `profiler.prose.md` | `prose run std/ops/profiler` | Profile a run for cost, tokens, and time using actual API session data |
 
 ## Two categories
 
-**Source-file tools** operate on program `.md` files before execution:
+**Source-file tools** operate on program `.prose.md` files before execution:
 - `lint` -- validates that the program is well-formed
 - `preflight` -- validates that the runtime environment is ready
 - `wire` -- produces the execution manifest (Forme wiring)
