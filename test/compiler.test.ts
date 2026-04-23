@@ -235,6 +235,40 @@ kind: program
     expect(output).toBe("Hello from a fixture output.\n");
   });
 
+  test("passes api trigger through the CLI materialize command", () => {
+    const runRoot = mkdtempSync(join(tmpdir(), "openprose-cli-run-"));
+    const fixtureFile = fixturePath("compiler/hello.prose.md");
+    const result = Bun.spawnSync(
+      [
+        "bun",
+        "bin/prose.ts",
+        "materialize",
+        fixtureFile,
+        "--run-root",
+        runRoot,
+        "--run-id",
+        "20260423-120500-api001",
+        "--trigger",
+        "api",
+        "--output",
+        "message=Hello from API.",
+      ],
+      {
+        cwd: join(import.meta.dir, ".."),
+        stdout: "pipe",
+        stderr: "pipe",
+      },
+    );
+
+    expect(result.exitCode).toBe(0);
+
+    const record = JSON.parse(
+      readFileSync(join(runRoot, "20260423-120500-api001", "run.json"), "utf8"),
+    );
+
+    expect(record.caller.trigger).toBe("api");
+  });
+
   test("materializes a graph run with node run records", async () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-graph-"));
     const result = await materializeSource(fixture("pipeline.prose.md"), {

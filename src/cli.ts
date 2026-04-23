@@ -405,7 +405,7 @@ interface FileCommandArgs {
   write: boolean;
   inputs: Record<string, string>;
   outputs: Record<string, string>;
-  trigger: "manual" | "test";
+  trigger: "manual" | "api" | "test";
 }
 
 function parseGrammarCommandArgs(args: string[]): GrammarCommandArgs {
@@ -636,7 +636,9 @@ function parseFileCommandArgs(args: string[]): FileCommandArgs {
       continue;
     }
     if (arg === "--trigger") {
-      parsed.trigger = args[index + 1] === "test" ? "test" : "manual";
+      const value = args[index + 1];
+      parsed.trigger =
+        value === "test" ? "test" : value === "api" ? "api" : "manual";
       index += 1;
       continue;
     }
