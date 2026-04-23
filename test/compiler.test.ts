@@ -16,6 +16,7 @@ import { planSource } from "../src/plan";
 import { publishCheckPath, renderPublishCheckText } from "../src/publish";
 import { buildRegistryRef, parseRegistryRef } from "../src/registry";
 import { renderCatalogSearchText, searchCatalog } from "../src/search";
+import { renderStatusText, statusPath } from "../src/status";
 import { renderTraceText, traceFile } from "../src/trace";
 
 function fixture(name: string): string {
@@ -721,6 +722,56 @@ describe("OpenProse compiler", () => {
     expect(text).toContain("Status: succeeded (accepted)");
     expect(text).toContain("Outputs: message");
     expect(text).toContain("Events:");
+  });
+
+  test("summarizes recent run materializations", async () => {
+    const runRoot = mkdtempSync(join(tmpdir(), "openprose-status-"));
+
+    await materializeSource(fixture("hello.prose.md"), {
+      path: "fixtures/compiler/hello.prose.md",
+      runRoot,
+      runId: "20260423-183000-aaa111",
+      createdAt: "2026-04-23T18:30:00.000Z",
+      outputs: {
+        message: "Earlier run output.",
+      },
+      trigger: "test",
+    });
+
+    await materializeSource(fixture("pipeline.prose.md"), {
+      path: "fixtures/compiler/pipeline.prose.md",
+      runRoot,
+      runId: "20260423-184500-bbb222",
+      createdAt: "2026-04-23T18:45:00.000Z",
+      inputs: {
+        draft: "Later run draft.",
+      },
+      outputs: {
+        "review.feedback": "Later feedback.",
+        "fact-check.claims": "Later claims.",
+        "polish.final": "Later polished draft.",
+      },
+      trigger: "test",
+    });
+
+    const status = await statusPath(runRoot);
+    const text = renderStatusText(status);
+
+    expect(status.total).toBe(2);
+    expect(status.runs.map((run) => run.run_id)).toEqual([
+      "20260423-184500-bbb222",
+      "20260423-183000-aaa111:hello",
+    ]);
+    expect(status.runs[0]).toMatchObject({
+      component_ref: "content-pipeline",
+      status: "succeeded",
+      acceptance: "accepted",
+      node_count: 3,
+      outputs: ["final"],
+    });
+    expect(text).toContain("Runs: 2");
+    expect(text).toContain("content-pipeline [graph] succeeded (accepted)");
+    expect(text).toContain("hello [component] succeeded (accepted)");
   });
 
   test("lints non-canonical source structure", () => {

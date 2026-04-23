@@ -12,6 +12,7 @@ import { packagePath, renderPackageText } from "./package";
 import { planFile } from "./plan";
 import { publishCheckPath, renderPublishCheckText } from "./publish";
 import { renderCatalogSearchText, searchCatalog } from "./search";
+import { renderStatusText, statusPath } from "./status";
 import { renderTraceText, traceFile } from "./trace";
 
 export async function runCli(args: string[]): Promise<void> {
@@ -36,6 +37,7 @@ export async function runCli(args: string[]): Promise<void> {
     command !== "plan" &&
     command !== "publish-check" &&
     command !== "search" &&
+    command !== "status" &&
     command !== "trace"
   ) {
     console.error(`Unknown command: ${command}`);
@@ -72,6 +74,23 @@ export async function runCli(args: string[]): Promise<void> {
           workspaceRoot: options.workspaceRoot ?? undefined,
         });
     const output = `${JSON.stringify(result, null, options.pretty ? 2 : 0)}\n`;
+    if (options.out) {
+      await writeFile(options.out, output, "utf8");
+    } else {
+      process.stdout.write(output);
+    }
+    return;
+  }
+
+  if (command === "status") {
+    const options = parseStatusCommandArgs(rest);
+    const view = await statusPath(options.path ?? ".prose/runs", {
+      limit: options.limit ?? undefined,
+    });
+    const output =
+      options.format === "json"
+        ? `${JSON.stringify(view, null, options.pretty ? 2 : 0)}\n`
+        : renderStatusText(view);
     if (options.out) {
       await writeFile(options.out, output, "utf8");
     } else {
@@ -341,6 +360,14 @@ interface InstallCommandArgs {
   workspaceRoot: string | null;
 }
 
+interface StatusCommandArgs {
+  path: string | null;
+  out: string | null;
+  pretty: boolean;
+  format: "json" | "text";
+  limit: number | null;
+}
+
 interface FileCommandArgs {
   file: string | null;
   out: string | null;
@@ -432,6 +459,45 @@ function parseInstallCommandArgs(args: string[]): InstallCommandArgs {
     }
     if (!parsed.ref) {
       parsed.ref = arg;
+    }
+  }
+
+  return parsed;
+}
+
+function parseStatusCommandArgs(args: string[]): StatusCommandArgs {
+  const parsed: StatusCommandArgs = {
+    path: null,
+    out: null,
+    pretty: true,
+    format: "text",
+    limit: null,
+  };
+
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    if (arg === "--out" || arg === "-o") {
+      parsed.out = args[index + 1] ?? null;
+      index += 1;
+      continue;
+    }
+    if (arg === "--no-pretty") {
+      parsed.pretty = false;
+      continue;
+    }
+    if (arg === "--format") {
+      parsed.format = args[index + 1] === "json" ? "json" : "text";
+      index += 1;
+      continue;
+    }
+    if (arg === "--limit") {
+      const value = Number(args[index + 1]);
+      parsed.limit = Number.isFinite(value) ? value : null;
+      index += 1;
+      continue;
+    }
+    if (!parsed.path) {
+      parsed.path = arg;
     }
   }
 
@@ -601,6 +667,7 @@ Usage:
   prose plan <file.prose.md> [--input name=value] [--current-run .prose/runs/{id}] [--target-output final]
   prose publish-check <dir|file.prose.md> [--format text|json] [--strict]
   prose search <dir> [--type CompanyProfile] [--effect read_external] [--kind service] [--min-quality 0.8]
+  prose status [.prose/runs] [--limit 10] [--format text|json]
   prose materialize <file.prose.md> [--run-root .prose/runs] [--input name=value] [--output port=value]
   prose trace <.prose/runs/{id}|run.json> [--format text|json]
 
@@ -618,6 +685,7 @@ Commands:
   package      Generate registry/package metadata from canonical source
   publish-check  Evaluate local publish readiness from package metadata
   search       Search local package metadata by type, effect, kind, or quality
+  status       Summarize recent local run materializations
   trace        Summarize a materialized run directory and its node runs
 `);
 }

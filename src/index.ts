@@ -13,6 +13,7 @@ export { planFile, planSource } from "./plan";
 export { publishCheckPath, renderPublishCheckText } from "./publish";
 export { buildRegistryRef, parseRegistryRef } from "./registry";
 export { renderCatalogSearchText, searchCatalog } from "./search";
+export { renderStatusText, statusPath } from "./status";
 export { renderTraceText, traceFile } from "./trace";
 export type {
   CatalogSearchEntry,
@@ -40,6 +41,8 @@ export type {
   PublishCheckItem,
   PublishCheckResult,
   ProseIR,
+  RunStatusEntry,
+  RunStatusView,
   RuntimeSettingIR,
   ServiceIR,
   SourceSpan,

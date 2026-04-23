@@ -84,6 +84,7 @@ bun run prose publish-check fixtures/package/catalog-demo
 bun run prose search fixtures/package --effect read_external
 bun run prose materialize fixtures/compiler/hello.prose.md \
   --output message="Hello from a fixture output."
+bun run prose status .prose/runs --limit 5
 bun run prose trace .prose/runs/20260423-180000-smoke01
 ```
 
@@ -146,6 +147,10 @@ testing fast without changing the canonical package identity.
 explicit caller inputs, and explicit fixture outputs. It does not pretend to
 spawn agents; missing required data and unsafe effects produce blocked run
 records.
+
+`prose status` summarizes recent local run directories so you can quickly see
+what materialized, whether it succeeded, and where the artifacts live without
+opening each run by hand.
 
 ```markdown
 ---

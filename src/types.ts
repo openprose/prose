@@ -310,6 +310,26 @@ export interface TraceView {
   events: TraceEvent[];
 }
 
+export interface RunStatusEntry {
+  run_id: string;
+  component_ref: string;
+  kind: RunRecord["kind"];
+  status: RunLifecycleStatus;
+  acceptance: RunRecord["acceptance"]["status"];
+  created_at: string;
+  completed_at: string | null;
+  outputs: string[];
+  node_count: number;
+  run_dir: string;
+}
+
+export interface RunStatusView {
+  status_version: "0.1";
+  root: string;
+  total: number;
+  runs: RunStatusEntry[];
+}
+
 export interface HighlightToken {
   line: number;
   start: number;
