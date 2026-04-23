@@ -10,6 +10,7 @@ import { projectManifest } from "./manifest";
 import { packagePath, renderPackageText } from "./package";
 import { planFile } from "./plan";
 import { publishCheckPath, renderPublishCheckText } from "./publish";
+import { renderCatalogSearchText, searchCatalog } from "./search";
 import { renderTraceText, traceFile } from "./trace";
 
 export async function runCli(args: string[]): Promise<void> {
@@ -32,6 +33,7 @@ export async function runCli(args: string[]): Promise<void> {
     command !== "package" &&
     command !== "plan" &&
     command !== "publish-check" &&
+    command !== "search" &&
     command !== "trace"
   ) {
     console.error(`Unknown command: ${command}`);
@@ -260,6 +262,25 @@ export async function runCli(args: string[]): Promise<void> {
     return;
   }
 
+  if (command === "search") {
+    const result = await searchCatalog(options.file, {
+      type: options.searchTypes,
+      effect: options.searchEffects,
+      kind: options.searchKind,
+      minQuality: options.minQuality,
+    });
+    const output =
+      options.format === "json"
+        ? `${JSON.stringify(result, null, options.pretty ? 2 : 0)}\n`
+        : renderCatalogSearchText(result);
+    if (options.out) {
+      await writeFile(options.out, output, "utf8");
+    } else {
+      process.stdout.write(output);
+    }
+    return;
+  }
+
   const ir = await compileFile(options.file);
   const output =
     command === "manifest"
@@ -292,6 +313,10 @@ interface FileCommandArgs {
   targetOutputs: string[];
   format: "html" | "json" | "mermaid" | "text";
   check: boolean;
+  minQuality: number | null;
+  searchEffects: string[];
+  searchKind: "program" | "service" | "composite" | "test" | null;
+  searchTypes: string[];
   strict: boolean;
   write: boolean;
   inputs: Record<string, string>;
@@ -331,6 +356,10 @@ function parseFileCommandArgs(args: string[]): FileCommandArgs {
     targetOutputs: [],
     format: "mermaid",
     check: false,
+    minQuality: null,
+    searchEffects: [],
+    searchKind: null,
+    searchTypes: [],
     strict: false,
     write: false,
     inputs: {},
@@ -355,6 +384,37 @@ function parseFileCommandArgs(args: string[]): FileCommandArgs {
     }
     if (arg === "--strict") {
       parsed.strict = true;
+      continue;
+    }
+    if (arg === "--type") {
+      const type = args[index + 1];
+      if (type) {
+        parsed.searchTypes.push(type);
+      }
+      index += 1;
+      continue;
+    }
+    if (arg === "--effect") {
+      const effect = args[index + 1];
+      if (effect) {
+        parsed.searchEffects.push(effect);
+      }
+      index += 1;
+      continue;
+    }
+    if (arg === "--kind") {
+      const kind = args[index + 1];
+      parsed.searchKind =
+        kind === "program" || kind === "service" || kind === "composite" || kind === "test"
+          ? kind
+          : null;
+      index += 1;
+      continue;
+    }
+    if (arg === "--min-quality") {
+      const value = Number(args[index + 1]);
+      parsed.minQuality = Number.isFinite(value) ? value : null;
+      index += 1;
       continue;
     }
     if (arg === "--no-pretty") {
@@ -446,6 +506,7 @@ Usage:
   prose lint <file.prose.md|dir> [--format text|json]
   prose plan <file.prose.md> [--input name=value] [--current-run .prose/runs/{id}] [--target-output final]
   prose publish-check <dir|file.prose.md> [--format text|json] [--strict]
+  prose search <dir> [--type CompanyProfile] [--effect read_external] [--kind service] [--min-quality 0.8]
   prose materialize <file.prose.md> [--run-root .prose/runs] [--input name=value] [--output port=value]
   prose trace <.prose/runs/{id}|run.json> [--format text|json]
 
@@ -461,6 +522,7 @@ Commands:
   materialize  Write local RFC 005 run records from IR and fixture outputs
   package      Generate registry/package metadata from canonical source
   publish-check  Evaluate local publish readiness from package metadata
+  search       Search local package metadata by type, effect, kind, or quality
   trace        Summarize a materialized run directory and its node runs
 `);
 }

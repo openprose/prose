@@ -13,6 +13,7 @@ import { projectManifest } from "../src/manifest";
 import { packagePath, renderPackageText } from "../src/package";
 import { planSource } from "../src/plan";
 import { publishCheckPath, renderPublishCheckText } from "../src/publish";
+import { renderCatalogSearchText, searchCatalog } from "../src/search";
 import { renderTraceText, traceFile } from "../src/trace";
 
 function fixture(name: string): string {
@@ -990,6 +991,33 @@ kind: service
       "Package has no linked evals; publish should record no_evals or add eval coverage.",
     );
     expect(result.blockers).toContain("Package has no linked examples.");
+  });
+
+  test("searches catalog metadata by effect", async () => {
+    const result = await searchCatalog(fixturePath("package"), {
+      effect: ["read_external"],
+    });
+    const text = renderCatalogSearchText(result);
+
+    expect(result.package_count).toBe(1);
+    expect(result.results).toHaveLength(1);
+    expect(result.results[0]).toMatchObject({
+      package_name: "@openprose/catalog-demo",
+      component_name: "market-scan",
+      component_kind: "service",
+    });
+    expect(text).toContain("market-scan (service)");
+  });
+
+  test("searches catalog metadata by type and minimum quality", async () => {
+    const result = await searchCatalog(fixturePath("package"), {
+      type: ["Markdown<ExecutiveBrief>"],
+      minQuality: 0.9,
+    });
+
+    expect(result.results).toHaveLength(1);
+    expect(result.results[0].component_name).toBe("brief-writer");
+    expect(result.results[0].quality_score).toBeGreaterThanOrEqual(0.9);
   });
 
   test("lints a directory of source files", async () => {

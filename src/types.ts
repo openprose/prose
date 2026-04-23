@@ -402,3 +402,30 @@ export interface PublishCheckResult {
   checks: PublishCheckItem[];
   metadata: PackageMetadata;
 }
+
+export interface CatalogSearchEntry {
+  package_name: string;
+  package_version: string | null;
+  package_root: string;
+  component_name: string;
+  component_kind: ComponentKind;
+  component_path: string;
+  summary: string | null;
+  inputs: Array<{ name: string; type: string }>;
+  outputs: Array<{ name: string; type: string }>;
+  effects: string[];
+  quality_score: number;
+}
+
+export interface CatalogSearchResult {
+  catalog_search_version: "0.1";
+  root: string;
+  package_count: number;
+  filters: {
+    type: string[];
+    effect: string[];
+    kind: ComponentKind | null;
+    min_quality: number | null;
+  };
+  results: CatalogSearchEntry[];
+}

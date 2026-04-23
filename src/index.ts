@@ -10,8 +10,11 @@ export { projectManifest } from "./manifest";
 export { packagePath, renderPackageText } from "./package";
 export { planFile, planSource } from "./plan";
 export { publishCheckPath, renderPublishCheckText } from "./publish";
+export { renderCatalogSearchText, searchCatalog } from "./search";
 export { renderTraceText, traceFile } from "./trace";
 export type {
+  CatalogSearchEntry,
+  CatalogSearchResult,
   AccessIR,
   ComponentIR,
   Diagnostic,

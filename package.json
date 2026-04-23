@@ -18,6 +18,7 @@
     "plan": "bun bin/prose.ts plan",
     "package": "bun bin/prose.ts package",
     "publish-check": "bun bin/prose.ts publish-check",
+    "search": "bun bin/prose.ts search",
     "materialize": "bun bin/prose.ts materialize",
     "trace": "bun bin/prose.ts trace",
     "test": "bun test",
