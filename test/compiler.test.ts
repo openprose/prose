@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { compileSource } from "../src/compiler";
 import { formatPath, formatSource, renderFormatCheckText } from "../src/format";
+import { buildTextMateGrammar, renderTextMateGrammar } from "../src/grammar";
 import { graphSource, renderGraphMermaid } from "../src/graph";
 import { highlightSource, renderHighlightHtml, renderHighlightText } from "../src/highlight";
 import { lintPath, lintSource, renderLintReportText, renderLintText } from "../src/lint";
@@ -844,6 +845,22 @@ name: stable-format
     expect(html).toContain('class="scope-port-type">CompanyProfile</span>');
     expect(html).toContain('class="scope-effect-kind">read_external</span>');
     expect(html).toContain('class="scope-prose-call-target">brief-writer</span>');
+  });
+
+  test("builds a textmate grammar artifact", () => {
+    const grammar = buildTextMateGrammar();
+    const text = renderTextMateGrammar();
+    const artifact = readFileSync(
+      new URL("../syntaxes/openprose.tmLanguage.json", import.meta.url),
+      "utf8",
+    );
+
+    expect(grammar.scopeName).toBe("text.openprose.markdown");
+    expect(grammar.fileTypes).toContain("prose.md");
+    expect(text).toContain('"storage.type.component-kind.openprose"');
+    expect(text).toContain('"entity.name.function.call-target.openprose"');
+    expect(text).toContain('"variable.parameter.port.openprose"');
+    expect(artifact).toBe(text);
   });
 
   test("lints a directory of source files", async () => {

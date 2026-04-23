@@ -1,6 +1,7 @@
 export { compileFile, compileSource } from "./compiler";
 export { formatFile, formatPath, formatSource, renderFormatCheckText } from "./format";
 export { collectSourceFiles } from "./files";
+export { buildTextMateGrammar, renderTextMateGrammar } from "./grammar";
 export { buildGraphView, graphFile, graphSource, renderGraphMermaid } from "./graph";
 export { highlightFile, highlightSource, renderHighlightHtml, renderHighlightText } from "./highlight";
 export { lintFile, lintPath, lintSource, renderLintReportText, renderLintText } from "./lint";

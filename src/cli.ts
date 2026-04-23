@@ -1,6 +1,7 @@
 import { stat, writeFile } from "node:fs/promises";
 import { compileFile } from "./compiler";
 import { formatFile, formatPath, renderFormatCheckText } from "./format";
+import { renderTextMateGrammar } from "./grammar";
 import { graphFile, renderGraphMermaid } from "./graph";
 import { highlightFile, renderHighlightHtml, renderHighlightText } from "./highlight";
 import { lintFile, lintPath, renderLintReportText, renderLintText } from "./lint";
@@ -20,6 +21,7 @@ export async function runCli(args: string[]): Promise<void> {
   if (
     command !== "compile" &&
     command !== "fmt" &&
+    command !== "grammar" &&
     command !== "graph" &&
     command !== "highlight" &&
     command !== "lint" &&
@@ -31,6 +33,17 @@ export async function runCli(args: string[]): Promise<void> {
     console.error(`Unknown command: ${command}`);
     printHelp();
     process.exitCode = 1;
+    return;
+  }
+
+  if (command === "grammar") {
+    const options = parseGrammarCommandArgs(rest);
+    const output = renderTextMateGrammar(options.pretty);
+    if (options.out) {
+      await writeFile(options.out, output, "utf8");
+    } else {
+      process.stdout.write(output);
+    }
     return;
   }
 
@@ -224,6 +237,11 @@ export async function runCli(args: string[]): Promise<void> {
   }
 }
 
+interface GrammarCommandArgs {
+  out: string | null;
+  pretty: boolean;
+}
+
 interface FileCommandArgs {
   file: string | null;
   out: string | null;
@@ -238,6 +256,27 @@ interface FileCommandArgs {
   inputs: Record<string, string>;
   outputs: Record<string, string>;
   trigger: "manual" | "test";
+}
+
+function parseGrammarCommandArgs(args: string[]): GrammarCommandArgs {
+  const parsed: GrammarCommandArgs = {
+    out: null,
+    pretty: true,
+  };
+
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    if (arg === "--out" || arg === "-o") {
+      parsed.out = args[index + 1] ?? null;
+      index += 1;
+      continue;
+    }
+    if (arg === "--no-pretty") {
+      parsed.pretty = false;
+    }
+  }
+
+  return parsed;
 }
 
 function parseFileCommandArgs(args: string[]): FileCommandArgs {
@@ -353,6 +392,7 @@ function printHelp(): void {
 Usage:
   prose compile <file.prose.md> [--out ir.json] [--no-pretty]
   prose fmt <file.prose.md|dir> [--write|--check]
+  prose grammar [--out syntaxes/openprose.tmLanguage.json] [--no-pretty]
   prose manifest <file.prose.md> [--out manifest.md]
   prose graph <file.prose.md> [--current-run .prose/runs/{id}] [--target-output final] [--format mermaid|json]
   prose highlight <file.prose.md> [--format text|json|html]
@@ -364,6 +404,7 @@ Usage:
 Commands:
   compile      Compile Contract Markdown to canonical Prose IR JSON
   fmt          Rewrite supported Contract Markdown into canonical source order
+  grammar      Emit an editor-facing TextMate grammar artifact
   graph        Render an IR-native graph preview with optional plan overlay
   highlight    Emit first-pass syntax-highlight tokens for source tooling
   lint         Check canonical source hygiene and structural issues
