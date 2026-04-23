@@ -279,4 +279,107 @@ describe("OpenProse compiler", () => {
       }),
     );
   });
+
+  test("plans matching prior materialization as current", async () => {
+    const runRoot = mkdtempSync(join(tmpdir(), "openprose-current-"));
+    const materialized = await materializeSource(fixture("pipeline.prose.md"), {
+      path: "fixtures/compiler/pipeline.prose.md",
+      runRoot,
+      runId: "20260423-131500-cur001",
+      createdAt: "2026-04-23T13:15:00.000Z",
+      inputs: {
+        draft: "The original draft.",
+      },
+      outputs: {
+        "review.feedback": "Tighten the intro.",
+        "fact-check.claims": "All claims verified.",
+        "polish.final": "The polished draft.",
+      },
+      trigger: "test",
+    });
+
+    const plan = planSource(fixture("pipeline.prose.md"), {
+      path: "fixtures/compiler/pipeline.prose.md",
+      inputs: {
+        draft: "The original draft.",
+      },
+      currentRun: {
+        graph: materialized.record,
+        nodes: materialized.node_records,
+      },
+    });
+
+    expect(plan.status).toBe("current");
+    expect(plan.graph_stale_reasons).toEqual([]);
+    expect(plan.nodes.map((node) => [node.component_ref, node.status])).toEqual([
+      ["review", "current"],
+      ["fact-check", "current"],
+      ["polish", "current"],
+    ]);
+    expect(plan.nodes.every((node) => node.stale_reasons.length === 0)).toBe(true);
+  });
+
+  test("plans changed caller input as stale but ready", async () => {
+    const runRoot = mkdtempSync(join(tmpdir(), "openprose-stale-input-"));
+    const materialized = await materializeSource(fixture("pipeline.prose.md"), {
+      path: "fixtures/compiler/pipeline.prose.md",
+      runRoot,
+      runId: "20260423-133000-sta001",
+      createdAt: "2026-04-23T13:30:00.000Z",
+      inputs: {
+        draft: "The original draft.",
+      },
+      outputs: {
+        "review.feedback": "Tighten the intro.",
+        "fact-check.claims": "All claims verified.",
+        "polish.final": "The polished draft.",
+      },
+      trigger: "test",
+    });
+
+    const plan = planSource(fixture("pipeline.prose.md"), {
+      path: "fixtures/compiler/pipeline.prose.md",
+      inputs: {
+        draft: "A changed draft.",
+      },
+      currentRun: {
+        graph: materialized.record,
+        nodes: materialized.node_records,
+      },
+    });
+
+    expect(plan.status).toBe("ready");
+    expect(plan.graph_stale_reasons).toContain("input_hash_changed:draft");
+    expect(plan.nodes[0].stale_reasons).toContain("input_hash_changed:draft");
+    expect(plan.nodes[2].stale_reasons).toContain("upstream_stale:review");
+  });
+
+  test("plans changed source semantics as stale", async () => {
+    const runRoot = mkdtempSync(join(tmpdir(), "openprose-stale-source-"));
+    const materialized = await materializeSource(fixture("hello.prose.md"), {
+      path: "fixtures/compiler/hello.prose.md",
+      runRoot,
+      runId: "20260423-134500-src001",
+      createdAt: "2026-04-23T13:45:00.000Z",
+      outputs: {
+        message: "Hello from a fixture output.",
+      },
+      trigger: "test",
+    });
+    const changedSource = fixture("hello.prose.md").replace(
+      "Markdown<Greeting>",
+      "Markdown<NewGreeting>",
+    );
+
+    const plan = planSource(changedSource, {
+      path: "fixtures/compiler/hello.prose.md",
+      currentRun: {
+        graph: null,
+        nodes: materialized.node_records,
+      },
+    });
+
+    expect(plan.status).toBe("ready");
+    expect(plan.nodes[0].stale_reasons).toContain("ir_hash_changed");
+  });
 });

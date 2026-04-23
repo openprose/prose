@@ -59,6 +59,4 @@ This slice is on track when:
 
 ## Next Slice
 
-The next implementation slice should let `prose plan` compare against existing
-run records. It should classify nodes as current versus stale when source,
-input hashes, IR hashes, dependency hashes, or effect declarations change.
+Prior-run comparison moved into Implementation Note 004.

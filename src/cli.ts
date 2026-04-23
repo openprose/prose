@@ -35,6 +35,7 @@ export async function runCli(args: string[]): Promise<void> {
   if (command === "plan") {
     const plan = await planFile(options.file, {
       inputs: options.inputs,
+      currentRunPath: options.currentRunPath ?? undefined,
     });
     const output = `${JSON.stringify(plan, null, options.pretty ? 2 : 0)}\n`;
     if (options.out) {
@@ -42,7 +43,7 @@ export async function runCli(args: string[]): Promise<void> {
     } else {
       process.stdout.write(output);
     }
-    if (plan.status !== "ready") {
+    if (plan.status === "blocked") {
       process.exitCode = 1;
     }
     return;
@@ -97,6 +98,7 @@ interface FileCommandArgs {
   pretty: boolean;
   runRoot: string | null;
   runId: string | null;
+  currentRunPath: string | null;
   inputs: Record<string, string>;
   outputs: Record<string, string>;
   trigger: "manual" | "test";
@@ -109,6 +111,7 @@ function parseFileCommandArgs(args: string[]): FileCommandArgs {
     pretty: true,
     runRoot: null,
     runId: null,
+    currentRunPath: null,
     inputs: {},
     outputs: {},
     trigger: "manual",
@@ -132,6 +135,11 @@ function parseFileCommandArgs(args: string[]): FileCommandArgs {
     }
     if (arg === "--run-id") {
       parsed.runId = args[index + 1] ?? null;
+      index += 1;
+      continue;
+    }
+    if (arg === "--current-run") {
+      parsed.currentRunPath = args[index + 1] ?? null;
       index += 1;
       continue;
     }
@@ -176,7 +184,7 @@ function printHelp(): void {
 Usage:
   prose compile <file.prose.md> [--out ir.json] [--no-pretty]
   prose manifest <file.prose.md> [--out manifest.md]
-  prose plan <file.prose.md> [--input name=value]
+  prose plan <file.prose.md> [--input name=value] [--current-run .prose/runs/{id}]
   prose materialize <file.prose.md> [--run-root .prose/runs] [--input name=value] [--output port=value]
 
 Commands:

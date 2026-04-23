@@ -204,18 +204,20 @@ export interface MaterializedRun {
 export interface PlanNode {
   node_id: string;
   component_ref: string;
-  status: "ready" | "blocked_input" | "blocked_effect" | "skipped";
+  status: "current" | "ready" | "blocked_input" | "blocked_effect" | "skipped";
   stale_reasons: string[];
   blocked_reasons: string[];
   depends_on: string[];
   effects: string[];
+  current_run_id: string | null;
 }
 
 export interface ExecutionPlan {
   plan_version: "0.1";
   component_ref: string;
   ir_hash: string;
-  status: "ready" | "blocked";
+  status: "current" | "ready" | "blocked";
+  graph_stale_reasons: string[];
   graph_blocked_reasons: string[];
   nodes: PlanNode[];
   diagnostics: Diagnostic[];

@@ -53,6 +53,9 @@ bun run prose compile fixtures/compiler/hello.prose.md
 bun run prose manifest fixtures/compiler/pipeline.prose.md
 bun run prose plan fixtures/compiler/pipeline.prose.md \
   --input draft="The original draft."
+bun run prose plan fixtures/compiler/pipeline.prose.md \
+  --input draft="The original draft." \
+  --current-run .prose/runs/20260423-140000-plan01
 bun run prose materialize fixtures/compiler/hello.prose.md \
   --output message="Hello from a fixture output."
 ```
@@ -68,7 +71,7 @@ re-parsing source Markdown.
 
 `prose plan` previews which graph nodes are ready or blocked before any run is
 materialized. The first planner handles missing caller inputs, first-run stale
-state, and side-effect gates.
+state, side-effect gates, and prior-run comparison through `--current-run`.
 
 `prose materialize` writes an RFC 005-style local run directory from IR,
 explicit caller inputs, and explicit fixture outputs. It does not pretend to
