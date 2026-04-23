@@ -56,6 +56,11 @@ bun run prose plan fixtures/compiler/pipeline.prose.md \
 bun run prose plan fixtures/compiler/pipeline.prose.md \
   --input draft="The original draft." \
   --current-run .prose/runs/20260423-140000-plan01
+bun run prose plan fixtures/compiler/selective-recompute.prose.md \
+  --input draft="A stable draft." \
+  --input company="openprose" \
+  --current-run .prose/runs/20260423-160000-sel001 \
+  --target-output summary
 bun run prose materialize fixtures/compiler/hello.prose.md \
   --output message="Hello from a fixture output."
 ```
@@ -73,7 +78,8 @@ re-parsing source Markdown.
 materialized. The planner now handles missing caller inputs, first-run stale
 state, side-effect gates, prior-run comparison through `--current-run`,
 freshness expiry for refreshable reads, and dependency-pin invalidation from
-`prose.lock`.
+`prose.lock`. It can also plan for a specific requested output and print the
+exact `materialization_set` without executing anything.
 
 `prose materialize` writes an RFC 005-style local run directory from IR,
 explicit caller inputs, and explicit fixture outputs. It does not pretend to

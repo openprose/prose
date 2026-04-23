@@ -492,4 +492,99 @@ describe("OpenProse compiler", () => {
       "dependency_sha_changed:github.com/openprose/prose",
     );
   });
+
+  test("skips stale-but-unneeded nodes for a targeted output", async () => {
+    const runRoot = mkdtempSync(join(tmpdir(), "openprose-selective-"));
+    const materialized = await materializeSource(
+      fixture("selective-recompute.prose.md"),
+      {
+        path: "fixtures/compiler/selective-recompute.prose.md",
+        runRoot,
+        runId: "20260423-160000-sel001",
+        createdAt: "2026-04-23T10:00:00.000Z",
+        inputs: {
+          draft: "A stable draft.",
+          company: "openprose",
+        },
+        outputs: {
+          "summarize.summary": "Stable summary.",
+          "market-sync.market_snapshot": "Expired market snapshot.",
+        },
+        trigger: "test",
+      },
+    );
+
+    const plan = planSource(fixture("selective-recompute.prose.md"), {
+      path: "fixtures/compiler/selective-recompute.prose.md",
+      inputs: {
+        draft: "A stable draft.",
+        company: "openprose",
+      },
+      currentRun: {
+        graph: materialized.record,
+        nodes: materialized.node_records,
+      },
+      targetOutputs: ["summary"],
+      now: "2026-04-23T12:30:00.000Z",
+    });
+
+    expect(plan.requested_outputs).toEqual(["summary"]);
+    expect(plan.status).toBe("current");
+    expect(plan.nodes.map((node) => [node.component_ref, node.status])).toEqual([
+      ["summarize", "current"],
+      ["market-sync", "skipped"],
+    ]);
+    expect(plan.nodes[1].stale_reasons).toContain("freshness_expired:1h");
+    expect(plan.materialization_set).toEqual({
+      graph: false,
+      nodes: [],
+    });
+  });
+
+  test("prints the exact materialization set for a targeted stale output", async () => {
+    const runRoot = mkdtempSync(join(tmpdir(), "openprose-selective-run-"));
+    const materialized = await materializeSource(
+      fixture("selective-recompute.prose.md"),
+      {
+        path: "fixtures/compiler/selective-recompute.prose.md",
+        runRoot,
+        runId: "20260423-161500-sel002",
+        createdAt: "2026-04-23T10:00:00.000Z",
+        inputs: {
+          draft: "A stable draft.",
+          company: "openprose",
+        },
+        outputs: {
+          "summarize.summary": "Stable summary.",
+          "market-sync.market_snapshot": "Expired market snapshot.",
+        },
+        trigger: "test",
+      },
+    );
+
+    const plan = planSource(fixture("selective-recompute.prose.md"), {
+      path: "fixtures/compiler/selective-recompute.prose.md",
+      inputs: {
+        draft: "A stable draft.",
+        company: "openprose",
+      },
+      currentRun: {
+        graph: materialized.record,
+        nodes: materialized.node_records,
+      },
+      targetOutputs: ["market_snapshot"],
+      now: "2026-04-23T12:30:00.000Z",
+    });
+
+    expect(plan.requested_outputs).toEqual(["market_snapshot"]);
+    expect(plan.status).toBe("ready");
+    expect(plan.materialization_set).toEqual({
+      graph: false,
+      nodes: ["market-sync"],
+    });
+    expect(plan.nodes.map((node) => [node.component_ref, node.status])).toEqual([
+      ["summarize", "current"],
+      ["market-sync", "ready"],
+    ]);
+  });
 });

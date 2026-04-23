@@ -21,6 +21,7 @@ export interface PlanOptions {
   inputs?: Record<string, string>;
   currentRun?: CurrentRunSet;
   currentRunPath?: string;
+  targetOutputs?: string[];
   now?: Date | string;
 }
 
@@ -45,6 +46,9 @@ export function planSource(source: string, options: PlanOptions): ExecutionPlan 
   const inputs = options.inputs ?? {};
   const currentRun = options.currentRun ?? { graph: null, nodes: [] };
   const now = resolveNow(options.now);
+  const requestedOutputs = requestedOutputsForPlan(ir, main, options.targetOutputs);
+  const selectedNodes = selectedNodeIdsForOutputs(ir, executable, main, requestedOutputs);
+  const fullGraphRequest = isFullGraphRequest(main, requestedOutputs);
   const currentByComponent = new Map(
     currentRun.nodes.map((record) => [record.component_ref, record]),
   );
@@ -82,7 +86,8 @@ export function planSource(source: string, options: PlanOptions): ExecutionPlan 
         )
       : [];
     const blockedReasons = [...missingInputs, ...upstreamBlocked, ...unsafeEffects];
-    const status = nodeStatus(staleReasons, blockedReasons, unsafeEffects);
+    const selected = selectedNodes.has(component.id);
+    const status = nodeStatus(staleReasons, blockedReasons, unsafeEffects, selected);
 
     planNodes.push({
       node_id: component.id,
@@ -96,7 +101,7 @@ export function planSource(source: string, options: PlanOptions): ExecutionPlan 
     });
   }
 
-  const graphStaleReasons = main
+  const graphStaleReasons = main && fullGraphRequest
     ? staleReasonsForGraph(
         main,
         currentRun.graph,
@@ -104,30 +109,40 @@ export function planSource(source: string, options: PlanOptions): ExecutionPlan 
         ir.semantic_hash,
         ir.package.dependencies,
         inputs,
-        now,
+      now,
       )
     : [];
-  const graphBlockedReasons = main && graphStaleReasons.length > 0
-    ? unsafeEffectKinds(main).map(
-        (effect) => `Graph effect '${effect}' requires a gate before execution.`,
-      )
-    : [];
+  const graphBlockedReasons = [
+    ...missingRequestedOutputReasons(ir, executable, main, requestedOutputs),
+    ...(
+      main && graphStaleReasons.length > 0
+        ? unsafeEffectKinds(main).map(
+            (effect) => `Graph effect '${effect}' requires a gate before execution.`,
+          )
+        : []
+    ),
+  ];
+  const materializedNodes = planNodes.filter(
+    (node) =>
+      node.status !== "current" &&
+      node.status !== "skipped" &&
+      selectedNodes.has(node.node_id),
+  );
 
   return {
     plan_version: "0.1",
     component_ref: main?.name ?? ir.components[0]?.name ?? ir.package.name,
     ir_hash: ir.semantic_hash,
+    requested_outputs: requestedOutputs,
     status: planStatus(planNodes, graphStaleReasons, graphBlockedReasons, Boolean(main)),
     graph_stale_reasons: graphStaleReasons,
     graph_blocked_reasons: graphBlockedReasons,
     materialization_set: {
       graph:
         Boolean(main) &&
-        (graphStaleReasons.length > 0 ||
-          planNodes.some((node) => node.status !== "current")),
-      nodes: planNodes
-        .filter((node) => node.status !== "current")
-        .map((node) => node.component_ref),
+        fullGraphRequest &&
+        (graphStaleReasons.length > 0 || materializedNodes.length > 0),
+      nodes: materializedNodes.map((node) => node.component_ref),
     },
     nodes: planNodes,
     diagnostics: ir.diagnostics,
@@ -138,7 +153,11 @@ function nodeStatus(
   staleReasons: string[],
   blockedReasons: string[],
   unsafeEffects: string[],
+  selected: boolean,
 ): PlanNode["status"] {
+  if (!selected && staleReasons.length > 0) {
+    return "skipped";
+  }
   if (staleReasons.length === 0 && blockedReasons.length === 0) {
     return "current";
   }
@@ -160,19 +179,137 @@ function planStatus(
   if (
     graphBlockedReasons.length > 0 ||
     nodes.some(
-      (node) => node.status === "blocked_input" || node.status === "blocked_effect",
+      (node) =>
+        node.status === "blocked_input" || node.status === "blocked_effect",
     )
   ) {
     return "blocked";
   }
   if (
     nodes.length > 0 &&
-    nodes.every((node) => node.status === "current") &&
+    nodes.every((node) => node.status === "current" || node.status === "skipped") &&
     (!hasGraphRecord || graphStaleReasons.length === 0)
   ) {
     return "current";
   }
   return "ready";
+}
+
+function requestedOutputsForPlan(
+  ir: ProseIR,
+  main: ComponentIR | undefined,
+  requested: string[] | undefined,
+): string[] {
+  if (requested && requested.length > 0) {
+    return Array.from(new Set(requested)).sort();
+  }
+
+  const source = main ?? ir.components[0];
+  return source?.ports.ensures.map((port) => port.name).sort() ?? [];
+}
+
+function isFullGraphRequest(
+  main: ComponentIR | undefined,
+  requestedOutputs: string[],
+): boolean {
+  if (!main) {
+    return false;
+  }
+
+  const expected = main.ports.ensures.map((port) => port.name).sort();
+  if (expected.length !== requestedOutputs.length) {
+    return false;
+  }
+
+  return expected.every((output, index) => output === requestedOutputs[index]);
+}
+
+function selectedNodeIdsForOutputs(
+  ir: ProseIR,
+  executable: ComponentIR[],
+  main: ComponentIR | undefined,
+  requestedOutputs: string[],
+): Set<string> {
+  const byId = new Map(executable.map((component) => [component.id, component]));
+  const selected = new Set<string>();
+
+  for (const output of requestedOutputs) {
+    const provider = providerForOutput(ir.graph.edges, executable, main, output);
+    if (!provider || !byId.has(provider)) {
+      continue;
+    }
+    collectDependencies(provider, ir.graph.edges, selected);
+  }
+
+  return selected;
+}
+
+function collectDependencies(
+  componentId: string,
+  edges: GraphEdgeIR[],
+  selected: Set<string>,
+): void {
+  if (selected.has(componentId)) {
+    return;
+  }
+  selected.add(componentId);
+  for (const dependency of dependenciesFor(componentId, edges)) {
+    collectDependencies(dependency, edges, selected);
+  }
+}
+
+function providerForOutput(
+  edges: GraphEdgeIR[],
+  executable: ComponentIR[],
+  main: ComponentIR | undefined,
+  output: string,
+): string | null {
+  if (main && executable.length > 0) {
+    const returnEdge = edges.find(
+      (edge) => edge.to.component === "$return" && edge.to.port === output,
+    );
+    return returnEdge?.from.component ?? null;
+  }
+
+  if (executable.length === 1) {
+    return executable[0]?.id ?? null;
+  }
+
+  return null;
+}
+
+function missingRequestedOutputReasons(
+  ir: ProseIR,
+  executable: ComponentIR[],
+  main: ComponentIR | undefined,
+  requestedOutputs: string[],
+): string[] {
+  return requestedOutputs
+    .filter((output) => !outputExists(ir, executable, main, output))
+    .map((output) => `Requested output '${output}' is not produced by this graph.`);
+}
+
+function outputExists(
+  ir: ProseIR,
+  executable: ComponentIR[],
+  main: ComponentIR | undefined,
+  output: string,
+): boolean {
+  if (main) {
+    if (!main.ports.ensures.some((port) => port.name === output)) {
+      return false;
+    }
+    if (executable.length === 0) {
+      return true;
+    }
+    return ir.graph.edges.some(
+      (edge) => edge.to.component === "$return" && edge.to.port === output,
+    );
+  }
+
+  return executable.some((component) =>
+    component.ports.ensures.some((port) => port.name === output),
+  );
 }
 
 function hasResolvableInput(

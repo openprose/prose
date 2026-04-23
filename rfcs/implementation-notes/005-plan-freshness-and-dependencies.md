@@ -69,7 +69,4 @@ This slice is on track when:
 
 ## Next Slice
 
-The next implementation slice should turn `prose plan` into an exact recompute
-preview: given requested outputs, it should identify the minimal node set that
-would materialize, mark stale-but-unneeded work as `skipped`, and print that
-materialization set without running it.
+Exact recompute preview moved into Implementation Note 006.

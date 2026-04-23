@@ -229,6 +229,7 @@ export interface ExecutionPlan {
   plan_version: "0.1";
   component_ref: string;
   ir_hash: string;
+  requested_outputs: string[];
   status: "current" | "ready" | "blocked";
   graph_stale_reasons: string[];
   graph_blocked_reasons: string[];
