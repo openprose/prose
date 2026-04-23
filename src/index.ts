@@ -1,5 +1,7 @@
 export { compileFile, compileSource } from "./compiler";
+export { formatFile, formatSource } from "./format";
 export { buildGraphView, graphFile, graphSource, renderGraphMermaid } from "./graph";
+export { lintFile, lintSource, renderLintText } from "./lint";
 export { materializeFile, materializeSource } from "./materialize";
 export { projectManifest } from "./manifest";
 export { planFile, planSource } from "./plan";

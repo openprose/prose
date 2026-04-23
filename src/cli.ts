@@ -1,6 +1,8 @@
 import { writeFile } from "node:fs/promises";
 import { compileFile } from "./compiler";
+import { formatFile } from "./format";
 import { graphFile, renderGraphMermaid } from "./graph";
+import { lintFile, renderLintText } from "./lint";
 import { materializeFile } from "./materialize";
 import { projectManifest } from "./manifest";
 import { planFile } from "./plan";
@@ -16,7 +18,9 @@ export async function runCli(args: string[]): Promise<void> {
 
   if (
     command !== "compile" &&
+    command !== "fmt" &&
     command !== "graph" &&
+    command !== "lint" &&
     command !== "manifest" &&
     command !== "materialize" &&
     command !== "plan" &&
@@ -33,6 +37,37 @@ export async function runCli(args: string[]): Promise<void> {
     console.error("Missing file path.");
     printHelp();
     process.exitCode = 1;
+    return;
+  }
+
+  if (command === "fmt") {
+    const formatted = await formatFile(options.file, {
+      write: options.write,
+    });
+    if (!options.write) {
+      if (options.out) {
+        await writeFile(options.out, formatted, "utf8");
+      } else {
+        process.stdout.write(formatted);
+      }
+    }
+    return;
+  }
+
+  if (command === "lint") {
+    const diagnostics = await lintFile(options.file);
+    const output =
+      options.format === "json"
+        ? `${JSON.stringify(diagnostics, null, options.pretty ? 2 : 0)}\n`
+        : renderLintText(diagnostics);
+    if (options.out) {
+      await writeFile(options.out, output, "utf8");
+    } else {
+      process.stdout.write(output);
+    }
+    if (diagnostics.some((diagnostic) => diagnostic.severity !== "info")) {
+      process.exitCode = 1;
+    }
     return;
   }
 
@@ -139,6 +174,7 @@ interface FileCommandArgs {
   currentRunPath: string | null;
   targetOutputs: string[];
   format: "json" | "mermaid" | "text";
+  write: boolean;
   inputs: Record<string, string>;
   outputs: Record<string, string>;
   trigger: "manual" | "test";
@@ -154,6 +190,7 @@ function parseFileCommandArgs(args: string[]): FileCommandArgs {
     currentRunPath: null,
     targetOutputs: [],
     format: "mermaid",
+    write: false,
     inputs: {},
     outputs: {},
     trigger: "manual",
@@ -164,6 +201,10 @@ function parseFileCommandArgs(args: string[]): FileCommandArgs {
     if (arg === "--out" || arg === "-o") {
       parsed.out = args[index + 1] ?? null;
       index += 1;
+      continue;
+    }
+    if (arg === "--write" || arg === "-w") {
+      parsed.write = true;
       continue;
     }
     if (arg === "--no-pretty") {
@@ -240,15 +281,19 @@ function printHelp(): void {
 
 Usage:
   prose compile <file.prose.md> [--out ir.json] [--no-pretty]
+  prose fmt <file.prose.md> [--write]
   prose manifest <file.prose.md> [--out manifest.md]
   prose graph <file.prose.md> [--current-run .prose/runs/{id}] [--target-output final] [--format mermaid|json]
+  prose lint <file.prose.md> [--format text|json]
   prose plan <file.prose.md> [--input name=value] [--current-run .prose/runs/{id}] [--target-output final]
   prose materialize <file.prose.md> [--run-root .prose/runs] [--input name=value] [--output port=value]
   prose trace <.prose/runs/{id}|run.json> [--format text|json]
 
 Commands:
   compile      Compile Contract Markdown to canonical Prose IR JSON
+  fmt          Rewrite supported Contract Markdown into canonical source order
   graph        Render an IR-native graph preview with optional plan overlay
+  lint         Check canonical source hygiene and structural issues
   manifest     Project canonical Prose IR into a VM-readable manifest
   plan         Preview ready and blocked graph nodes without executing
   materialize  Write local RFC 005 run records from IR and fixture outputs

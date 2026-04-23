@@ -3,7 +3,9 @@ import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { compileSource } from "../src/compiler";
+import { formatSource } from "../src/format";
 import { graphSource, renderGraphMermaid } from "../src/graph";
+import { lintSource, renderLintText } from "../src/lint";
 import { materializeSource } from "../src/materialize";
 import { projectManifest } from "../src/manifest";
 import { planSource } from "../src/plan";
@@ -696,5 +698,104 @@ describe("OpenProse compiler", () => {
     expect(text).toContain("Status: succeeded (accepted)");
     expect(text).toContain("Outputs: message");
     expect(text).toContain("Events:");
+  });
+
+  test("lints non-canonical source structure", () => {
+    const source = `---
+name: lint-me
+kind: service
+---
+
+### Ensures
+
+- \`report\`: Markdown<Report> - final report
+
+### Requires
+
+- \`input\`: string - source input
+
+### Execution
+
+let result = call worker
+  input: input
+
+return result
+`;
+
+    const diagnostics = lintSource(source, {
+      path: "fixtures/compiler/lint-me.md",
+    });
+    const text = renderLintText(diagnostics);
+
+    expect(diagnostics.map((diagnostic) => diagnostic.code)).toEqual([
+      "non_canonical_extension",
+      "non_canonical_section_order",
+      "raw_execution_body",
+    ]);
+    expect(text).toContain("non_canonical_extension");
+    expect(text).toContain("non_canonical_section_order");
+    expect(text).toContain("raw_execution_body");
+  });
+
+  test("formats supported source into canonical order and fenced execution", () => {
+    const source = `---
+kind: service
+name: tidy-me
+---
+
+### Ensures
+
+- \`report\`: Markdown<Report> - final report
+
+### Requires
+
+- \`input\`: string - source input
+
+### Execution
+
+let result = call worker
+  input: input
+
+return result
+`;
+
+    const formatted = formatSource(source, {
+      path: "fixtures/compiler/tidy-me.prose.md",
+    });
+
+    expect(formatted).toContain("name: tidy-me\nkind: service");
+    expect(formatted.indexOf("### Requires")).toBeLessThan(
+      formatted.indexOf("### Ensures"),
+    );
+    expect(formatted).toContain("```prose");
+    expect(formatted).toContain("return result");
+  });
+
+  test("formatting keeps the semantic hash stable", () => {
+    const source = `---
+kind: service
+name: stable-format
+---
+
+### Ensures
+
+- \`report\`: Markdown<Report> - final report
+
+### Requires
+
+- \`input\`: string - source input
+`;
+
+    const formatted = formatSource(source, {
+      path: "fixtures/compiler/stable-format.prose.md",
+    });
+    const before = compileSource(source, {
+      path: "fixtures/compiler/stable-format.prose.md",
+    });
+    const after = compileSource(formatted, {
+      path: "fixtures/compiler/stable-format.prose.md",
+    });
+
+    expect(before.semantic_hash).toBe(after.semantic_hash);
   });
 });

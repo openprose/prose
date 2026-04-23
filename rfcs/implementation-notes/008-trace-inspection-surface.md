@@ -58,6 +58,4 @@ This slice is on track when:
 
 ## Next Slice
 
-The next implementation slice should start the first source-oriented quality
-tooling pass: a formatter or linter that normalizes canonical `.prose.md`
-authoring and catches obvious source hygiene violations before runtime.
+Source-quality tooling moved into Implementation Note 009.

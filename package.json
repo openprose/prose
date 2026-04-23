@@ -9,7 +9,9 @@
   "scripts": {
     "prose": "bun bin/prose.ts",
     "compile": "bun bin/prose.ts compile",
+    "fmt": "bun bin/prose.ts fmt",
     "graph": "bun bin/prose.ts graph",
+    "lint": "bun bin/prose.ts lint",
     "manifest": "bun bin/prose.ts manifest",
     "plan": "bun bin/prose.ts plan",
     "materialize": "bun bin/prose.ts materialize",
