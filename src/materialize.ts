@@ -107,7 +107,7 @@ async function createComponentRunRecord(
   component: ComponentIR,
 ): Promise<RunRecord> {
   const missingInputs = component.ports.requires.filter(
-    (port) => resolveInputValue(ctx, component, port.name) === undefined,
+    (port) => port.required && resolveInputValue(ctx, component, port.name) === undefined,
   );
   const missingOutputs = component.ports.ensures.filter(
     (port) => resolveOutputValue(ctx, component, port.name) === undefined,
@@ -164,7 +164,7 @@ async function createGraphRunRecord(
   nodeRecords: RunRecord[],
 ): Promise<RunRecord> {
   const missingInputs = main.ports.requires.filter(
-    (port) => ctx.inputs[port.name] === undefined,
+    (port) => port.required && ctx.inputs[port.name] === undefined,
   );
   const missingOutputs = main.ports.ensures.filter(
     (port) => resolveGraphOutputValue(ctx, port.name) === undefined,

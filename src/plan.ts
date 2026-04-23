@@ -70,7 +70,11 @@ export function planSource(source: string, options: PlanOptions): ExecutionPlan 
       now,
     );
     const missingInputs = component.ports.requires
-      .filter((port) => !hasResolvableInput(component, port.name, ir.graph.edges, inputs))
+      .filter(
+        (port) =>
+          port.required &&
+          !hasResolvableInput(component, port.name, ir.graph.edges, inputs),
+      )
       .map((port) => `Missing required input '${port.name}'.`);
     const upstreamBlocked = dependsOn
       .map((dependency) => planNodes.find((node) => node.node_id === dependency))

@@ -112,6 +112,9 @@ function buildGraph(
   const edges: GraphEdgeIR[] = [];
   const edgeKeys = new Set<string>();
   const main = components.find((component) => component.kind === "program");
+  const hasServiceGraph = Boolean(
+    main && components.some((component) => component.id !== main.id),
+  );
   const providers = new Map<string, ComponentIR[]>();
   const programInputs = new Map<string, PortIR>();
 
@@ -198,6 +201,19 @@ function buildGraph(
     }
   }
 
+  if (main && !hasServiceGraph) {
+    for (const port of main.ports.requires) {
+      addEdge(edges, edgeKeys, {
+        from: { component: "$caller", port: port.name },
+        to: { component: main.id, port: port.name },
+        kind: "caller",
+        confidence: 1,
+        reason: `Program input '${port.name}' is caller-provided.`,
+        source: "auto",
+      });
+    }
+  }
+
   if (main) {
     for (const port of main.ports.ensures) {
       const matchingProviders = (providers.get(port.name) ?? []).filter(
@@ -210,6 +226,15 @@ function buildGraph(
           kind: "return",
           confidence: 1,
           reason: `Program output '${port.name}' is produced by '${matchingProviders[0].name}'.`,
+          source: "auto",
+        });
+      } else if (!hasServiceGraph) {
+        addEdge(edges, edgeKeys, {
+          from: { component: main.id, port: port.name },
+          to: { component: "$return", port: port.name },
+          kind: "return",
+          confidence: 1,
+          reason: `Program output '${port.name}' is produced directly by '${main.name}'.`,
           source: "auto",
         });
       }

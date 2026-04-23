@@ -84,6 +84,36 @@ describe("OpenProse compiler", () => {
     expect(ir.diagnostics).toEqual([]);
   });
 
+  test("builds caller and return edges for a single-component program", () => {
+    const ir = compileSource(
+      `---
+name: company-index
+kind: program
+---
+
+### Requires
+
+- \`focus\`: CompanyScope - optional focus area
+
+### Ensures
+
+- \`company_map\`: Markdown<CompanyMap> - company map
+
+### Effects
+
+- \`read_external\`: reads company source
+`,
+      { path: "fixtures/compiler/company-index.prose.md" },
+    );
+    const edges = ir.graph.edges.map(
+      (edge) =>
+        `${edge.from.component}.${edge.from.port}->${edge.to.component}.${edge.to.port}`,
+    );
+
+    expect(edges).toContain("$caller.focus->company-index.focus");
+    expect(edges).toContain("company-index.company_map->$return.company_map");
+  });
+
   test("parses typed ports, run inputs, effects, access, environment, and execution", () => {
     const ir = compileFixture("typed-effects.prose.md");
     const program = ir.components[0];
@@ -238,6 +268,78 @@ describe("OpenProse compiler", () => {
     expect(
       readFileSync(join(result.run_dir, "bindings", "$graph", "final.md"), "utf8"),
     ).toBe("The polished draft.\n");
+  });
+
+  test("materializes a single-component program run from direct outputs", async () => {
+    const runRoot = mkdtempSync(join(tmpdir(), "openprose-program-run-"));
+    const result = await materializeSource(
+      `---
+name: company-index
+kind: program
+---
+
+### Requires
+
+- \`focus\`: CompanyScope - optional focus area
+
+### Ensures
+
+- \`company_map\`: Markdown<CompanyMap> - company map
+
+### Effects
+
+- \`read_external\`: reads company source
+`,
+      {
+        path: "fixtures/compiler/company-index.prose.md",
+        runRoot,
+        runId: "20260423-191500-prg001",
+        createdAt: "2026-04-23T19:15:00.000Z",
+        outputs: {
+          company_map: "Local company map output.",
+        },
+        trigger: "test",
+      },
+    );
+    const record = JSON.parse(readFileSync(join(result.run_dir, "run.json"), "utf8"));
+
+    expect(record).toMatchObject({
+      run_id: "20260423-191500-prg001",
+      kind: "graph",
+      component_ref: "company-index",
+      status: "succeeded",
+      acceptance: { status: "accepted" },
+    });
+  });
+
+  test("does not block planning on optional inputs", () => {
+    const plan = planSource(
+      `---
+name: company-index
+kind: program
+---
+
+### Requires
+
+- \`focus\`: CompanyScope - optional focus area
+
+### Ensures
+
+- \`company_map\`: Markdown<CompanyMap> - company map
+
+### Effects
+
+- \`read_external\`: reads company source
+`,
+      { path: "fixtures/compiler/company-index.prose.md" },
+    );
+
+    expect(plan.status).toBe("ready");
+    expect(plan.nodes[0]).toMatchObject({
+      component_ref: "company-index",
+      status: "ready",
+      blocked_reasons: [],
+    });
   });
 
   test("materialization blocks missing fixture outputs", async () => {
