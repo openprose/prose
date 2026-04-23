@@ -38,6 +38,12 @@ export interface EnvironmentIR {
   source_span: SourceSpan;
 }
 
+export interface RuntimeSettingIR {
+  key: string;
+  value: string | number | boolean | string[];
+  source_span: SourceSpan;
+}
+
 export interface EffectIR {
   kind: string;
   description: string;
@@ -70,6 +76,7 @@ export interface ComponentIR {
   };
   services: ServiceIR[];
   schemas: unknown[];
+  runtime: RuntimeSettingIR[];
   environment: EnvironmentIR[];
   execution: ExecutionIR | null;
   effects: EffectIR[];
@@ -111,6 +118,12 @@ export interface ProseIR {
     name: string;
     source_ref: string;
     source_sha: string;
+    dependencies: Array<{
+      package: string;
+      sha: string;
+      refs: string[];
+      lock_ref: string | null;
+    }>;
   };
   components: ComponentIR[];
   graph: GraphIR;
@@ -219,6 +232,10 @@ export interface ExecutionPlan {
   status: "current" | "ready" | "blocked";
   graph_stale_reasons: string[];
   graph_blocked_reasons: string[];
+  materialization_set: {
+    graph: boolean;
+    nodes: string[];
+  };
   nodes: PlanNode[];
   diagnostics: Diagnostic[];
 }

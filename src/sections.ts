@@ -5,6 +5,7 @@ import type {
   EnvironmentIR,
   ExecutionIR,
   PortIR,
+  RuntimeSettingIR,
   ServiceIR,
 } from "./types";
 import type { SectionDraft, SourceLine } from "./markdown";
@@ -114,6 +115,38 @@ export function parseEnvironment(
   return environment;
 }
 
+export function parseRuntime(
+  section: SectionDraft | undefined,
+  diagnostics: Diagnostic[],
+): RuntimeSettingIR[] {
+  if (!section) {
+    return [];
+  }
+
+  const runtime: RuntimeSettingIR[] = [];
+  for (const line of topLevelListItems(section.lines)) {
+    const item = line.item.trim();
+    const colonIndex = item.indexOf(":");
+    if (colonIndex < 0) {
+      diagnostics.push({
+        severity: "warning",
+        code: "malformed_runtime",
+        message: `Runtime item '${item}' is missing a ':' separator.`,
+        source_span: span(section.span.path, line.number, line.number),
+      });
+      continue;
+    }
+
+    runtime.push({
+      key: stripTicks(item.slice(0, colonIndex)),
+      value: parseScalar(item.slice(colonIndex + 1).trim()),
+      source_span: span(section.span.path, line.number, line.number),
+    });
+  }
+
+  return runtime;
+}
+
 export function parseEffects(
   section: SectionDraft | undefined,
   diagnostics: Diagnostic[],
@@ -136,10 +169,13 @@ export function parseEffects(
       continue;
     }
 
+    const { description, config } = parseEffectDescription(
+      item.slice(colonIndex + 1).trim(),
+    );
     effects.push({
       kind: stripTicks(item.slice(0, colonIndex)),
-      description: item.slice(colonIndex + 1).trim(),
-      config: {},
+      description,
+      config,
       source_span: span(section.span.path, line.number, line.number),
     });
   }
@@ -271,6 +307,70 @@ function parseTypeAndDescription(value: string): {
   return { type: "Any", description: value };
 }
 
+function parseEffectDescription(value: string): {
+  description: string;
+  config: Record<string, string | number | boolean>;
+} {
+  const segments = value
+    .split(",")
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+
+  if (segments.length === 0) {
+    return { description: "", config: {} };
+  }
+
+  const [first, ...rest] = segments;
+  const config: Record<string, string | number | boolean> = {};
+
+  for (const segment of rest) {
+    const freshness = segment.match(/^freshness\s+(.+)$/i);
+    if (freshness) {
+      config.freshness = String(parseScalar(freshness[1]));
+      continue;
+    }
+
+    const keyed = segment.match(/^([A-Za-z0-9_.-]+)\s*:\s*(.+)$/);
+    if (keyed) {
+      const [, key, rawValue] = keyed;
+      const parsed = parseScalar(rawValue);
+      if (typeof parsed === "string" || typeof parsed === "number" || typeof parsed === "boolean") {
+        config[key] = parsed;
+      }
+      continue;
+    }
+  }
+
+  return {
+    description: first,
+    config,
+  };
+}
+
+function parseScalar(rawValue: string): string | number | boolean | string[] {
+  const value = stripTicks(rawValue.trim());
+  if (!value) {
+    return "";
+  }
+  if (value === "true") {
+    return true;
+  }
+  if (value === "false") {
+    return false;
+  }
+  if (/^-?\d+(\.\d+)?$/.test(value)) {
+    return Number(value);
+  }
+  if (value.startsWith("[") && value.endsWith("]")) {
+    return value
+      .slice(1, -1)
+      .split(",")
+      .map((item) => stripTicks(item.trim()))
+      .filter(Boolean);
+  }
+  return value;
+}
+
 function parseStructuredServices(section: SectionDraft): ServiceIR[] {
   const services: ServiceIR[] = [];
   let inYaml = false;
@@ -370,4 +470,3 @@ function trimTrailingBlankLines(lines: string[]): string[] {
   }
   return next;
 }
-

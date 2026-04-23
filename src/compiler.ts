@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { resolvePackageDependencies } from "./dependencies";
 import { sha256, stableStringify } from "./hash";
 import { findSection, parseContractMarkdown } from "./markdown";
 import {
@@ -8,6 +9,7 @@ import {
   parseEnvironment,
   parseExecution,
   parsePorts,
+  parseRuntime,
   parseServices,
 } from "./sections";
 import { slugify } from "./text";
@@ -54,6 +56,7 @@ export function compileSource(source: string, options: CompileOptions): ProseIR 
       },
       services: parseServices(findSection(draft, "services")),
       schemas: [],
+      runtime: parseRuntime(findSection(draft, "runtime"), diagnostics),
       environment: parseEnvironment(
         findSection(draft, "environment"),
         diagnostics,
@@ -69,6 +72,7 @@ export function compileSource(source: string, options: CompileOptions): ProseIR 
   });
 
   const graph = buildGraph(components, diagnostics);
+  const dependencies = resolvePackageDependencies(path, components, diagnostics);
   const withoutHash = {
     ir_version: "0.1" as const,
     semantic_hash: "",
@@ -76,6 +80,7 @@ export function compileSource(source: string, options: CompileOptions): ProseIR 
       name: components[0]?.name ?? "package",
       source_ref: path,
       source_sha: sha256(source),
+      dependencies,
     },
     components,
     graph,
@@ -240,6 +245,10 @@ function toSemanticProjection(ir: Omit<ProseIR, "semantic_hash">): unknown {
         with: service.with,
       })),
       schemas: component.schemas,
+      runtime: component.runtime.map((setting) => ({
+        key: setting.key,
+        value: setting.value,
+      })),
       environment: component.environment.map((environment) => ({
         name: environment.name,
         description: environment.description,
@@ -285,4 +294,3 @@ function projectPort(port: PortIR): unknown {
 function normalizePath(path: string): string {
   return path.replace(/\\/g, "/");
 }
-

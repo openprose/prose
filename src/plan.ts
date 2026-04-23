@@ -7,6 +7,7 @@ import type {
   ExecutionPlan,
   GraphEdgeIR,
   PlanNode,
+  ProseIR,
   RunRecord,
 } from "./types";
 
@@ -20,6 +21,7 @@ export interface PlanOptions {
   inputs?: Record<string, string>;
   currentRun?: CurrentRunSet;
   currentRunPath?: string;
+  now?: Date | string;
 }
 
 export async function planFile(
@@ -42,6 +44,7 @@ export function planSource(source: string, options: PlanOptions): ExecutionPlan 
       : ir.components;
   const inputs = options.inputs ?? {};
   const currentRun = options.currentRun ?? { graph: null, nodes: [] };
+  const now = resolveNow(options.now);
   const currentByComponent = new Map(
     currentRun.nodes.map((record) => [record.component_ref, record]),
   );
@@ -55,10 +58,12 @@ export function planSource(source: string, options: PlanOptions): ExecutionPlan 
       currentRecord,
       ir.package.source_sha,
       ir.semantic_hash,
+      ir.package.dependencies,
       ir.graph.edges,
       inputs,
       currentByComponent,
       planNodes,
+      now,
     );
     const missingInputs = component.ports.requires
       .filter((port) => !hasResolvableInput(component, port.name, ir.graph.edges, inputs))
@@ -97,7 +102,9 @@ export function planSource(source: string, options: PlanOptions): ExecutionPlan 
         currentRun.graph,
         ir.package.source_sha,
         ir.semantic_hash,
+        ir.package.dependencies,
         inputs,
+        now,
       )
     : [];
   const graphBlockedReasons = main && graphStaleReasons.length > 0
@@ -113,6 +120,15 @@ export function planSource(source: string, options: PlanOptions): ExecutionPlan 
     status: planStatus(planNodes, graphStaleReasons, graphBlockedReasons, Boolean(main)),
     graph_stale_reasons: graphStaleReasons,
     graph_blocked_reasons: graphBlockedReasons,
+    materialization_set: {
+      graph:
+        Boolean(main) &&
+        (graphStaleReasons.length > 0 ||
+          planNodes.some((node) => node.status !== "current")),
+      nodes: planNodes
+        .filter((node) => node.status !== "current")
+        .map((node) => node.component_ref),
+    },
     nodes: planNodes,
     diagnostics: ir.diagnostics,
   };
@@ -230,21 +246,29 @@ function staleReasonsForComponent(
   currentRecord: RunRecord | null,
   sourceSha: string,
   irHash: string,
+  dependencies: ProseIR["package"]["dependencies"],
   edges: GraphEdgeIR[],
   inputs: Record<string, string>,
   currentByComponent: Map<string, RunRecord>,
   planNodes: PlanNode[],
+  now: Date,
 ): string[] {
   if (!currentRecord) {
     return ["no_current_run"];
   }
 
-  const reasons = staleReasonsForRunRecord(currentRecord, sourceSha, irHash);
+  const reasons = staleReasonsForRunRecord(
+    currentRecord,
+    sourceSha,
+    irHash,
+    dependencies,
+  );
   const declaredEffects = component.effects.map((effect) => effect.kind).sort();
   const recordEffects = [...currentRecord.effects.declared].sort();
   if (declaredEffects.join("\n") !== recordEffects.join("\n")) {
     reasons.push("effects_changed");
   }
+  reasons.push(...freshnessReasonsForComponent(component, currentRecord, now));
 
   for (const port of component.ports.requires) {
     const expectedHash = expectedInputHash(
@@ -281,13 +305,21 @@ function staleReasonsForGraph(
   currentRecord: RunRecord | null,
   sourceSha: string,
   irHash: string,
+  dependencies: ProseIR["package"]["dependencies"],
   inputs: Record<string, string>,
+  now: Date,
 ): string[] {
   if (!currentRecord) {
     return ["no_current_run"];
   }
 
-  const reasons = staleReasonsForRunRecord(currentRecord, sourceSha, irHash);
+  const reasons = staleReasonsForRunRecord(
+    currentRecord,
+    sourceSha,
+    irHash,
+    dependencies,
+  );
+  reasons.push(...freshnessReasonsForComponent(main, currentRecord, now));
   for (const port of main.ports.requires) {
     const value = inputs[port.name];
     const recordInput = currentRecord.inputs.find((input) => input.port === port.name);
@@ -307,6 +339,7 @@ function staleReasonsForRunRecord(
   record: RunRecord,
   sourceSha: string,
   irHash: string,
+  dependencies: ProseIR["package"]["dependencies"],
 ): string[] {
   const reasons: string[] = [];
   if (record.status !== "succeeded") {
@@ -324,7 +357,109 @@ function staleReasonsForRunRecord(
   if (record.component_version.ir_hash !== irHash) {
     reasons.push("ir_hash_changed");
   }
+  reasons.push(...dependencyReasons(record, dependencies));
   return reasons;
+}
+
+function dependencyReasons(
+  record: RunRecord,
+  dependencies: ProseIR["package"]["dependencies"],
+): string[] {
+  const current = new Map(
+    dependencies.map((dependency) => [dependency.package, dependency.sha]),
+  );
+  const previous = new Map(
+    record.dependencies.map((dependency) => [dependency.package, dependency.sha]),
+  );
+  const packages = Array.from(
+    new Set([...current.keys(), ...previous.keys()]),
+  ).sort();
+
+  return packages
+    .filter((packageRef) => (current.get(packageRef) ?? "") !== (previous.get(packageRef) ?? ""))
+    .map((packageRef) => `dependency_sha_changed:${packageRef}`);
+}
+
+function freshnessReasonsForComponent(
+  component: ComponentIR,
+  record: RunRecord,
+  now: Date,
+): string[] {
+  const policy = freshnessPolicyForComponent(component);
+  if (!policy) {
+    return [];
+  }
+
+  const completedAt = Date.parse(record.completed_at ?? record.created_at);
+  if (!Number.isFinite(completedAt)) {
+    return [];
+  }
+
+  return now.getTime() - completedAt >= policy.ms
+    ? [`freshness_expired:${policy.value}`]
+    : [];
+}
+
+function freshnessPolicyForComponent(
+  component: ComponentIR,
+): { value: string; ms: number } | null {
+  const candidates: Array<{ value: string; ms: number }> = [];
+
+  for (const setting of component.runtime) {
+    if (setting.key !== "freshness" || typeof setting.value !== "string") {
+      continue;
+    }
+    const duration = parseDurationMs(setting.value);
+    if (duration !== null) {
+      candidates.push({ value: setting.value, ms: duration });
+    }
+  }
+
+  for (const effect of component.effects) {
+    const freshness = effect.config.freshness;
+    if (typeof freshness !== "string") {
+      continue;
+    }
+    const duration = parseDurationMs(freshness);
+    if (duration !== null) {
+      candidates.push({ value: freshness, ms: duration });
+    }
+  }
+
+  if (candidates.length === 0) {
+    return null;
+  }
+
+  return candidates.sort((a, b) => a.ms - b.ms)[0];
+}
+
+function parseDurationMs(value: string): number | null {
+  const match = value.trim().match(/^(\d+)\s*(ms|s|m|h|d|w)$/i);
+  if (!match) {
+    return null;
+  }
+
+  const amount = Number(match[1]);
+  const unit = match[2].toLowerCase();
+  const multipliers: Record<string, number> = {
+    ms: 1,
+    s: 1000,
+    m: 60 * 1000,
+    h: 60 * 60 * 1000,
+    d: 24 * 60 * 60 * 1000,
+    w: 7 * 24 * 60 * 60 * 1000,
+  };
+  return amount * (multipliers[unit] ?? 0);
+}
+
+function resolveNow(value: Date | string | undefined): Date {
+  if (value instanceof Date) {
+    return value;
+  }
+  if (typeof value === "string") {
+    return new Date(value);
+  }
+  return new Date();
 }
 
 function expectedInputHash(
@@ -358,7 +493,7 @@ function unsafeEffectKinds(component: ComponentIR): string[] {
   if (kinds.length === 0 || (kinds.length === 1 && kinds[0] === "pure")) {
     return [];
   }
-  return kinds.filter((kind) => kind !== "pure");
+  return kinds.filter((kind) => kind !== "pure" && kind !== "read_external");
 }
 
 async function loadCurrentRunSet(path: string): Promise<CurrentRunSet> {

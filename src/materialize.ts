@@ -247,7 +247,10 @@ function baseRunRecord(
       model: null,
       environment_ref: null,
     },
-    dependencies: [],
+    dependencies: ctx.ir.package.dependencies.map((dependency) => ({
+      package: dependency.package,
+      sha: dependency.sha,
+    })),
     evals: [],
     trace_ref: "trace.json",
     created_at: ctx.createdAt,
@@ -345,7 +348,7 @@ function unsafeEffectKinds(component: ComponentIR): string[] {
   if (kinds.length === 0 || (kinds.length === 1 && kinds[0] === "pure")) {
     return [];
   }
-  return kinds.filter((kind) => kind !== "pure");
+  return kinds.filter((kind) => kind !== "pure" && kind !== "read_external");
 }
 
 function createTrace(ctx: MaterializeContext): unknown[] {

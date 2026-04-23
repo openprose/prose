@@ -14,6 +14,7 @@ export type {
   GraphNodeIR,
   PortIR,
   ProseIR,
+  RuntimeSettingIR,
   ServiceIR,
   SourceSpan,
 } from "./types";

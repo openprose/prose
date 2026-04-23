@@ -70,8 +70,10 @@ the current execution model. The manifest is generated from IR rather than
 re-parsing source Markdown.
 
 `prose plan` previews which graph nodes are ready or blocked before any run is
-materialized. The first planner handles missing caller inputs, first-run stale
-state, side-effect gates, and prior-run comparison through `--current-run`.
+materialized. The planner now handles missing caller inputs, first-run stale
+state, side-effect gates, prior-run comparison through `--current-run`,
+freshness expiry for refreshable reads, and dependency-pin invalidation from
+`prose.lock`.
 
 `prose materialize` writes an RFC 005-style local run directory from IR,
 explicit caller inputs, and explicit fixture outputs. It does not pretend to

@@ -33,6 +33,7 @@ package:
   name: string
   source_ref: string
   source_sha: string
+  dependencies: []
 components:
   - id: string
     name: string
@@ -45,6 +46,7 @@ components:
       ensures: []
     services: []
     schemas: []
+    runtime: []
     environment: []
     execution: null | {}
     effects: []
@@ -76,6 +78,19 @@ source_span: { path: "...", start_line: 31, end_line: 44 }
 
 Untyped ports are represented as `Any` until RFC 007 makes type requirements
 stricter for published packages.
+
+## Runtime and Dependency Inputs
+
+IR must carry the non-source inputs needed for honest planning:
+
+- package dependency pins resolved from `prose.lock` or equivalent package
+  metadata
+- runtime hints such as `freshness`, `persist`, or `model`
+
+Dependency pins are part of IR because planners and hosted runtimes need them
+without reparsing package files. They are **not** part of the semantic IR hash:
+changing a lockfile should produce dependency-driven staleness, not a fake
+source edit.
 
 ## Edges
 
@@ -187,6 +202,7 @@ This is what makes graph nodes clickable in editors and run traces.
 - Every edge has source, kind, confidence, and reason.
 - Environment and composite declarations are represented in IR with source
   locations.
+- Runtime settings and resolved dependency pins are represented in IR.
 
 ### Runtime Checks
 

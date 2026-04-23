@@ -58,7 +58,4 @@ This slice is on track when:
 
 ## Next Slice
 
-The next implementation slice should add freshness and dependency/package
-comparison to the planner. After that, the local planner will have enough of
-RFC 009 to become the front door for safe recompute previews.
-
+Freshness and dependency invalidation moved into Implementation Note 005.

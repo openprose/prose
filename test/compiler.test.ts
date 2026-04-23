@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { mkdtempSync, readFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { compileSource } from "../src/compiler";
@@ -77,6 +77,31 @@ describe("OpenProse compiler", () => {
     });
     expect(program.execution?.body).toContain("call brief-writer");
     expect(ir.diagnostics).toEqual([]);
+  });
+
+  test("parses runtime freshness and pinned package dependencies", () => {
+    const freshness = compileFixture("freshness.prose.md");
+    const dependencyGraph = compileFixture("dependency-package/graph.prose.md");
+
+    expect(freshness.components[0].runtime).toContainEqual(
+      expect.objectContaining({
+        key: "freshness",
+        value: "6h",
+      }),
+    );
+    expect(freshness.components[0].effects[0]).toMatchObject({
+      kind: "read_external",
+      config: {
+        freshness: "6h",
+      },
+    });
+    expect(dependencyGraph.package.dependencies).toContainEqual(
+      expect.objectContaining({
+        package: "github.com/openprose/prose",
+        sha: "a1b2c3d4",
+        refs: ["std/evals/inspector"],
+      }),
+    );
   });
 
   test("semantic hash ignores formatting-only blank line changes", () => {
@@ -381,5 +406,90 @@ describe("OpenProse compiler", () => {
 
     expect(plan.status).toBe("ready");
     expect(plan.nodes[0].stale_reasons).toContain("ir_hash_changed");
+  });
+
+  test("plans expired freshness as stale", async () => {
+    const runRoot = mkdtempSync(join(tmpdir(), "openprose-freshness-"));
+    const materialized = await materializeSource(fixture("freshness.prose.md"), {
+      path: "fixtures/compiler/freshness.prose.md",
+      runRoot,
+      runId: "20260423-150000-frh001",
+      createdAt: "2026-04-23T00:00:00.000Z",
+      inputs: {
+        org: "openprose",
+      },
+      outputs: {
+        report: "Fresh enough report.",
+      },
+      trigger: "test",
+    });
+
+    const plan = planSource(fixture("freshness.prose.md"), {
+      path: "fixtures/compiler/freshness.prose.md",
+      inputs: {
+        org: "openprose",
+      },
+      currentRun: {
+        graph: null,
+        nodes: materialized.node_records,
+      },
+      now: "2026-04-23T07:00:00.000Z",
+    });
+
+    expect(plan.status).toBe("ready");
+    expect(plan.nodes[0].stale_reasons).toContain("freshness_expired:6h");
+  });
+
+  test("plans changed dependency pins as stale", async () => {
+    const fixtureDir = mkdtempSync(join(tmpdir(), "openprose-dependency-"));
+    const sourcePath = join(fixtureDir, "graph.prose.md");
+    const lockPath = join(fixtureDir, "prose.lock");
+    mkdirSync(fixtureDir, { recursive: true });
+    writeFileSync(sourcePath, fixture("dependency-package/graph.prose.md"));
+    writeFileSync(
+      lockPath,
+      readFileSync(
+        new URL("../fixtures/compiler/dependency-package/prose.lock", import.meta.url),
+        "utf8",
+      ),
+    );
+
+    const materialized = await materializeSource(
+      readFileSync(sourcePath, "utf8"),
+      {
+        path: sourcePath,
+        runRoot: join(fixtureDir, ".prose", "runs"),
+        runId: "20260423-153000-dep001",
+        createdAt: "2026-04-23T15:30:00.000Z",
+        inputs: {
+          draft: "Draft for dependency-aware review.",
+        },
+        outputs: {
+          "review.final": "Reviewed final brief.",
+        },
+        trigger: "test",
+      },
+    );
+
+    writeFileSync(lockPath, "github.com/openprose/prose ffffffff\n");
+
+    const plan = planSource(readFileSync(sourcePath, "utf8"), {
+      path: sourcePath,
+      inputs: {
+        draft: "Draft for dependency-aware review.",
+      },
+      currentRun: {
+        graph: materialized.record,
+        nodes: materialized.node_records,
+      },
+    });
+
+    expect(plan.status).toBe("ready");
+    expect(plan.graph_stale_reasons).toContain(
+      "dependency_sha_changed:github.com/openprose/prose",
+    );
+    expect(plan.nodes[0].stale_reasons).toContain(
+      "dependency_sha_changed:github.com/openprose/prose",
+    );
   });
 });
