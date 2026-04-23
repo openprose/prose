@@ -4,7 +4,7 @@ import { formatFile, formatPath, renderFormatCheckText } from "./format";
 import { renderTextMateGrammar } from "./grammar";
 import { graphFile, renderGraphMermaid } from "./graph";
 import { highlightFile, renderHighlightHtml, renderHighlightText } from "./highlight";
-import { installRegistryRef } from "./install";
+import { installRegistryRef, installWorkspaceDependencies } from "./install";
 import { lintFile, lintPath, renderLintReportText, renderLintText } from "./lint";
 import { materializeFile } from "./materialize";
 import { projectManifest } from "./manifest";
@@ -57,17 +57,18 @@ export async function runCli(args: string[]): Promise<void> {
 
   if (command === "install") {
     const options = parseInstallCommandArgs(rest);
-    if (!options.ref) {
-      console.error("Missing registry ref.");
-      printHelp();
-      process.exitCode = 1;
-      return;
-    }
-    const result = await installRegistryRef(options.ref, {
-      catalogRoot: options.catalogRoot ?? undefined,
-      depsRoot: options.depsRoot ?? undefined,
-      workspaceRoot: options.workspaceRoot ?? undefined,
-    });
+    const result = options.ref?.startsWith("registry://")
+      ? await installRegistryRef(options.ref, {
+          catalogRoot: options.catalogRoot ?? undefined,
+          depsRoot: options.depsRoot ?? undefined,
+          sourceOverrides: options.sourceOverrides,
+          workspaceRoot: options.workspaceRoot ?? undefined,
+        })
+      : await installWorkspaceDependencies(options.ref ?? process.cwd(), {
+          depsRoot: options.depsRoot ?? undefined,
+          sourceOverrides: options.sourceOverrides,
+          workspaceRoot: options.workspaceRoot ?? undefined,
+        });
     const output = `${JSON.stringify(result, null, options.pretty ? 2 : 0)}\n`;
     if (options.out) {
       await writeFile(options.out, output, "utf8");
@@ -333,6 +334,7 @@ interface InstallCommandArgs {
   pretty: boolean;
   catalogRoot: string | null;
   depsRoot: string | null;
+  sourceOverrides: Record<string, string>;
   workspaceRoot: string | null;
 }
 
@@ -385,6 +387,7 @@ function parseInstallCommandArgs(args: string[]): InstallCommandArgs {
     pretty: true,
     catalogRoot: null,
     depsRoot: null,
+    sourceOverrides: {},
     workspaceRoot: null,
   };
 
@@ -406,6 +409,11 @@ function parseInstallCommandArgs(args: string[]): InstallCommandArgs {
     }
     if (arg === "--deps-root") {
       parsed.depsRoot = args[index + 1] ?? null;
+      index += 1;
+      continue;
+    }
+    if (arg === "--source-override") {
+      addKeyValue(parsed.sourceOverrides, args[index + 1]);
       index += 1;
       continue;
     }
@@ -576,7 +584,7 @@ Usage:
   prose compile <file.prose.md> [--out ir.json] [--no-pretty]
   prose fmt <file.prose.md|dir> [--write|--check]
   prose grammar [--out syntaxes/openprose.tmLanguage.json] [--no-pretty]
-  prose install <registry-ref> [--catalog-root dir] [--workspace-root dir] [--deps-root dir]
+  prose install [registry-ref|path] [--catalog-root dir] [--workspace-root dir] [--deps-root dir] [--source-override package=path]
   prose manifest <file.prose.md> [--out manifest.md]
   prose package <dir|file.prose.md> [--format text|json]
   prose graph <file.prose.md> [--current-run .prose/runs/{id}] [--target-output final] [--format mermaid|json]

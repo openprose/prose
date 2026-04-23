@@ -446,3 +446,15 @@ export interface InstallResult {
   component_file: string | null;
   lockfile_path: string;
 }
+
+export interface WorkspaceInstallResult {
+  install_version: "0.1";
+  workspace_root: string;
+  deps_root: string;
+  lockfile_path: string;
+  installed_packages: Array<{
+    package: string;
+    sha: string;
+    install_dir: string;
+  }>;
+}

@@ -4,7 +4,7 @@ export { collectSourceFiles } from "./files";
 export { buildTextMateGrammar, renderTextMateGrammar } from "./grammar";
 export { buildGraphView, graphFile, graphSource, renderGraphMermaid } from "./graph";
 export { highlightFile, highlightSource, renderHighlightHtml, renderHighlightText } from "./highlight";
-export { installRegistryRef } from "./install";
+export { installRegistryRef, installWorkspaceDependencies } from "./install";
 export { lintFile, lintPath, lintSource, renderLintReportText, renderLintText } from "./lint";
 export { materializeFile, materializeSource } from "./materialize";
 export { projectManifest } from "./manifest";
@@ -46,4 +46,5 @@ export type {
   TraceEvent,
   TraceNodeView,
   TraceView,
+  WorkspaceInstallResult,
 } from "./types";

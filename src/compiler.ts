@@ -72,7 +72,7 @@ export function compileSource(source: string, options: CompileOptions): ProseIR 
   });
 
   const graph = buildGraph(components, diagnostics);
-  const dependencies = resolvePackageDependencies(path, components, diagnostics);
+  const dependencies = resolvePackageDependencies(path, source, components, diagnostics);
   const withoutHash = {
     ir_version: "0.1" as const,
     semantic_hash: "",

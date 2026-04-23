@@ -73,6 +73,8 @@ bun run prose grammar --out syntaxes/openprose.tmLanguage.json
 bun run prose install registry://openprose/@openprose/catalog-demo@1.2.3/brief-writer \
   --catalog-root fixtures/package \
   --workspace-root /tmp/openprose-workspace
+bun run prose install /tmp/openprose-workspace \
+  --source-override github.com/openprose/prose=/path/to/local/prose
 bun run prose highlight fixtures/compiler/typed-effects.prose.md
 bun run prose highlight fixtures/compiler/typed-effects.prose.md \
   --format html \
@@ -134,6 +136,11 @@ metadata, with filters for types, effects, component kind, and minimum quality.
 `prose install <registry-ref>` resolves a package through local catalog
 metadata, clones its pinned Git source into `.deps/`, and records both source
 and registry pins in `prose.lock`.
+
+`prose install <path>` scans a workspace for dependency refs, installs direct
+and transitive Git sources into `.deps/`, and writes pinned source entries to
+`prose.lock`. `--source-override package=path` keeps local development and
+testing fast without changing the canonical package identity.
 
 `prose materialize` writes an RFC 005-style local run directory from IR,
 explicit caller inputs, and explicit fixture outputs. It does not pretend to

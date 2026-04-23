@@ -4,6 +4,7 @@ import type { ComponentIR, Diagnostic, ProseIR } from "./types";
 
 export function resolvePackageDependencies(
   path: string,
+  source: string,
   components: ComponentIR[],
   diagnostics: Diagnostic[],
 ): ProseIR["package"]["dependencies"] {
@@ -11,7 +12,7 @@ export function resolvePackageDependencies(
 
   for (const component of components) {
     for (const ref of dependencyRefsForComponent(component)) {
-      const packageRef = normalizeDependencyPackage(ref);
+      const packageRef = dependencyPackageFromRef(ref);
       if (!packageRef) {
         continue;
       }
@@ -19,6 +20,16 @@ export function resolvePackageDependencies(
       refs.add(ref);
       refsByPackage.set(packageRef, refs);
     }
+  }
+
+  for (const ref of dependencyRefsFromSource(source)) {
+    const packageRef = dependencyPackageFromRef(ref);
+    if (!packageRef) {
+      continue;
+    }
+    const refs = refsByPackage.get(packageRef) ?? new Set<string>();
+    refs.add(ref);
+    refsByPackage.set(packageRef, refs);
   }
 
   if (refsByPackage.size === 0) {
@@ -86,7 +97,7 @@ function looksLikeDependencyRef(ref: string): boolean {
   return ref.startsWith("std/") || ref.startsWith("co/") || /^[^/]+\.[^/]+\/[^/]+\/[^/]+/.test(ref);
 }
 
-function normalizeDependencyPackage(ref: string): string | null {
+export function dependencyPackageFromRef(ref: string): string | null {
   if (ref.startsWith("std/") || ref.startsWith("co/")) {
     return "github.com/openprose/prose";
   }
@@ -97,6 +108,16 @@ function normalizeDependencyPackage(ref: string): string | null {
   }
 
   return `${segments[0]}/${segments[1]}/${segments[2]}`;
+}
+
+function dependencyRefsFromSource(source: string): string[] {
+  const refs = new Set<string>();
+  for (const match of source.matchAll(/use\s+"([^"]+)"/g)) {
+    if (looksLikeDependencyRef(match[1])) {
+      refs.add(match[1]);
+    }
+  }
+  return Array.from(refs).sort();
 }
 
 function normalizePath(path: string): string {

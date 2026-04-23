@@ -7,7 +7,7 @@ import { formatPath, formatSource, renderFormatCheckText } from "../src/format";
 import { buildTextMateGrammar, renderTextMateGrammar } from "../src/grammar";
 import { graphSource, renderGraphMermaid } from "../src/graph";
 import { highlightSource, renderHighlightHtml, renderHighlightText } from "../src/highlight";
-import { installRegistryRef } from "../src/install";
+import { installRegistryRef, installWorkspaceDependencies } from "../src/install";
 import { lintPath, lintSource, renderLintReportText, renderLintText } from "../src/lint";
 import { materializeSource } from "../src/materialize";
 import { projectManifest } from "../src/manifest";
@@ -1017,6 +1017,115 @@ kind: service
     expect(lockfile).toContain(
       `registry://openprose/@openprose/install-demo@1.2.3/brief-writer ${sourceRepo} ${sha}`,
     );
+  });
+
+  test("installs workspace dependencies with local source overrides and transitive scanning", async () => {
+    const commonRepo = mkdtempSync(join(tmpdir(), "openprose-common-repo-"));
+    writeFileSync(
+      join(commonRepo, "checker.prose.md"),
+      `---
+name: checker
+kind: service
+---
+
+### Requires
+
+- \`input\`: Markdown<Input> - input to check
+
+### Ensures
+
+- \`verdict\`: Markdown<Verdict> - verification verdict
+
+### Effects
+
+- \`pure\`: deterministic verification over provided inputs
+`,
+    );
+    runGit(["init"], commonRepo);
+    runGit(["config", "user.email", "openprose@example.com"], commonRepo);
+    runGit(["config", "user.name", "OpenProse Test"], commonRepo);
+    runGit(["add", "."], commonRepo);
+    runGit(["commit", "-m", "common"], commonRepo);
+    const commonSha = runGit(["rev-parse", "HEAD"], commonRepo);
+
+    const toolsRepo = mkdtempSync(join(tmpdir(), "openprose-tools-repo-"));
+    writeFileSync(
+      join(toolsRepo, "formatter.prose.md"),
+      `---
+name: formatter
+kind: service
+---
+
+### Requires
+
+- \`draft\`: Markdown<Draft> - draft to format
+
+### Ensures
+
+- \`formatted\`: Markdown<Formatted> - formatted draft
+
+### Effects
+
+- \`pure\`: deterministic formatting over provided inputs
+
+### Execution
+
+\`\`\`prose
+use "github.com/example/common/checker"
+
+return formatted
+\`\`\`
+`,
+    );
+    runGit(["init"], toolsRepo);
+    runGit(["config", "user.email", "openprose@example.com"], toolsRepo);
+    runGit(["config", "user.name", "OpenProse Test"], toolsRepo);
+    runGit(["add", "."], toolsRepo);
+    runGit(["commit", "-m", "tools"], toolsRepo);
+    const toolsSha = runGit(["rev-parse", "HEAD"], toolsRepo);
+
+    const workspaceRoot = mkdtempSync(join(tmpdir(), "openprose-install-workspace-"));
+    writeFileSync(
+      join(workspaceRoot, "flow.prose.md"),
+      `---
+name: install-demo
+kind: service
+---
+
+### Ensures
+
+- \`result\`: Markdown<Result> - formatted result
+
+### Execution
+
+\`\`\`prose
+use "github.com/example/tools/formatter"
+
+return result
+\`\`\`
+`,
+    );
+
+    const result = await installWorkspaceDependencies(workspaceRoot, {
+      sourceOverrides: {
+        "github.com/example/tools": toolsRepo,
+        "github.com/example/common": commonRepo,
+      },
+    });
+    const lockfile = readFileSync(join(workspaceRoot, "prose.lock"), "utf8");
+
+    expect(result.installed_packages.map((entry) => entry.package)).toEqual([
+      "github.com/example/common",
+      "github.com/example/tools",
+    ]);
+    expect(lockfile).toContain(`github.com/example/tools ${toolsSha}`);
+    expect(lockfile).toContain(`github.com/example/common ${commonSha}`);
+    expect(
+      readFileSync(
+        join(workspaceRoot, ".deps", "github.com", "example", "tools", "formatter.prose.md"),
+        "utf8",
+      ),
+    ).toContain("name: formatter");
   });
 
   test("warns when generated package metadata is missing publishing inputs", async () => {

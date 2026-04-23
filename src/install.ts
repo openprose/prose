@@ -1,15 +1,18 @@
 import { existsSync } from "node:fs";
-import { mkdir, readdir } from "node:fs/promises";
+import { mkdir, readFile, readdir } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
+import { compileFile } from "./compiler";
+import { collectSourceFiles } from "./files";
 import { sha256 } from "./hash";
 import { loadLockfile, writeLockfile } from "./lockfile";
 import { packagePath } from "./package";
 import { parseRegistryRef } from "./registry";
-import type { InstallResult, PackageMetadata } from "./types";
+import type { InstallResult, PackageMetadata, WorkspaceInstallResult } from "./types";
 
 export interface InstallOptions {
   catalogRoot?: string;
   depsRoot?: string;
+  sourceOverrides?: Record<string, string>;
   workspaceRoot?: string;
 }
 
@@ -44,7 +47,12 @@ export async function installRegistryRef(
 
   const installDir = resolveInstallDir(metadata.manifest.source.git, depsRoot);
   await mkdir(dirname(installDir), { recursive: true });
-  await ensureGitCheckout(metadata.manifest.source.git, metadata.manifest.source.sha, installDir);
+  await ensureGitCheckout(
+    metadata.manifest.source.git,
+    metadata.manifest.source.sha,
+    installDir,
+    options.sourceOverrides ?? {},
+  );
 
   const lockfile = await loadLockfile(join(workspaceRoot, "prose.lock"));
   lockfile.registry_pins.set(parsed.ref, {
@@ -68,6 +76,67 @@ export async function installRegistryRef(
     install_dir: normalizePath(installDir),
     component_file: component ? normalizePath(join(installDir, component.path)) : null,
     lockfile_path: normalizePath(lockfile.path),
+  };
+}
+
+export async function installWorkspaceDependencies(
+  path: string,
+  options: InstallOptions = {},
+): Promise<WorkspaceInstallResult> {
+  const workspaceRoot = resolve(options.workspaceRoot ?? path);
+  const depsRoot = resolve(options.depsRoot ?? join(workspaceRoot, ".deps"));
+  const lockfile = await loadLockfile(join(workspaceRoot, "prose.lock"));
+  const sourceOverrides = options.sourceOverrides ?? {};
+  const queue = Array.from(await scanDependencyPackages(workspaceRoot));
+  const seen = new Set<string>();
+  const installed = new Map<string, { package: string; sha: string; install_dir: string }>();
+
+  while (queue.length > 0) {
+    const packageRef = queue.shift();
+    if (!packageRef || seen.has(packageRef)) {
+      continue;
+    }
+    seen.add(packageRef);
+
+    const installDir = resolveInstallDir(packageRef, depsRoot);
+    let sha = lockfile.source_pins.get(packageRef) ?? null;
+    await mkdir(dirname(installDir), { recursive: true });
+
+    if (!sha) {
+      const cloneSource = resolveSourceForPackage(packageRef, sourceOverrides);
+      if (!existsSync(installDir)) {
+        runGit(["clone", cloneSource, installDir], dirname(installDir));
+      } else {
+        runGit(["fetch", "--all", "--tags"], installDir);
+      }
+      sha = runGit(["rev-parse", "HEAD"], installDir).trim();
+      lockfile.source_pins.set(packageRef, sha);
+    }
+
+    await ensureGitCheckout(packageRef, sha, installDir, sourceOverrides);
+    installed.set(packageRef, {
+      package: packageRef,
+      sha,
+      install_dir: normalizePath(installDir),
+    });
+
+    for (const nested of await scanDependencyPackages(installDir)) {
+      if (!seen.has(nested)) {
+        queue.push(nested);
+      }
+    }
+  }
+
+  await writeLockfile(lockfile);
+
+  return {
+    install_version: "0.1",
+    workspace_root: normalizePath(workspaceRoot),
+    deps_root: normalizePath(depsRoot),
+    lockfile_path: normalizePath(lockfile.path),
+    installed_packages: Array.from(installed.values()).sort((a, b) =>
+      a.package.localeCompare(b.package),
+    ),
   };
 }
 
@@ -119,9 +188,17 @@ async function discoverPackageRoots(path: string): Promise<string[]> {
   return roots;
 }
 
-async function ensureGitCheckout(sourceGit: string, sha: string, installDir: string): Promise<void> {
+async function ensureGitCheckout(
+  sourceGit: string,
+  sha: string,
+  installDir: string,
+  sourceOverrides: Record<string, string>,
+): Promise<void> {
   if (!existsSync(installDir)) {
-    runGit(["clone", resolveCloneSource(sourceGit), installDir], dirname(installDir));
+    runGit(
+      ["clone", resolveCloneSource(resolveSourceForPackage(sourceGit, sourceOverrides)), installDir],
+      dirname(installDir),
+    );
   } else {
     runGit(["fetch", "--all", "--tags"], installDir);
   }
@@ -144,6 +221,35 @@ function normalizeSourcePackage(sourceGit: string): string {
     return `${hostRef.host}/${hostRef.owner}/${hostRef.repo}`;
   }
   return normalizePath(sourceGit);
+}
+
+async function scanDependencyPackages(root: string): Promise<Set<string>> {
+  const files = await collectSourceFiles(root, { includeLegacyMarkdown: true });
+  const packages = new Set<string>();
+
+  for (const file of files) {
+    if (!(await looksLikeExecutableSource(file))) {
+      continue;
+    }
+    const ir = await compileFile(file);
+    for (const dependency of ir.package.dependencies) {
+      if (dependency.package) {
+        packages.add(dependency.package);
+      }
+    }
+  }
+
+  return packages;
+}
+
+async function looksLikeExecutableSource(path: string): Promise<boolean> {
+  if (path.endsWith(".prose.md")) {
+    return true;
+  }
+
+  const source = await readFile(path, "utf8");
+  const header = source.slice(0, 400);
+  return /^---\s*$/m.test(header) && /^kind:\s*(program|service|composite|test)\s*$/m.test(header);
 }
 
 function parseHostSource(sourceGit: string): { host: string; owner: string; repo: string } | null {
@@ -175,7 +281,14 @@ function resolveCloneSource(sourceGit: string): string {
   return resolve(trimmed);
 }
 
-function runGit(args: string[], cwd: string): void {
+function resolveSourceForPackage(
+  sourceGit: string,
+  sourceOverrides: Record<string, string>,
+): string {
+  return sourceOverrides[sourceGit] ?? sourceGit;
+}
+
+function runGit(args: string[], cwd: string): string {
   const result = Bun.spawnSync(["git", ...args], {
     cwd,
     stderr: "pipe",
@@ -185,6 +298,7 @@ function runGit(args: string[], cwd: string): void {
     const stderr = new TextDecoder().decode(result.stderr).trim();
     throw new Error(stderr || `git ${args.join(" ")} failed`);
   }
+  return new TextDecoder().decode(result.stdout).trim();
 }
 
 function basenameSafe(value: string): string {
