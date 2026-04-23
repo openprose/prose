@@ -1,9 +1,9 @@
-import { writeFile } from "node:fs/promises";
+import { stat, writeFile } from "node:fs/promises";
 import { compileFile } from "./compiler";
-import { formatFile } from "./format";
+import { formatFile, formatPath, renderFormatCheckText } from "./format";
 import { graphFile, renderGraphMermaid } from "./graph";
 import { highlightFile, renderHighlightText } from "./highlight";
-import { lintFile, renderLintText } from "./lint";
+import { lintFile, lintPath, renderLintReportText, renderLintText } from "./lint";
 import { materializeFile } from "./materialize";
 import { projectManifest } from "./manifest";
 import { planFile } from "./plan";
@@ -57,9 +57,28 @@ export async function runCli(args: string[]): Promise<void> {
   }
 
   if (command === "fmt") {
-    const formatted = await formatFile(options.file, {
-      write: options.write,
-    });
+    const pathIsDirectory = await isDirectory(options.file);
+    if (pathIsDirectory || options.check) {
+      const results = await formatPath(options.file, {
+        write: options.write,
+        check: options.check,
+      });
+      const output =
+        options.format === "json"
+          ? `${JSON.stringify(results, null, options.pretty ? 2 : 0)}\n`
+          : renderFormatCheckText(results);
+      if (options.out) {
+        await writeFile(options.out, output, "utf8");
+      } else {
+        process.stdout.write(output);
+      }
+      if (results.some((result) => result.changed) && !options.write) {
+        process.exitCode = 1;
+      }
+      return;
+    }
+
+    const formatted = await formatFile(options.file, { write: options.write });
     if (!options.write) {
       if (options.out) {
         await writeFile(options.out, formatted, "utf8");
@@ -71,6 +90,28 @@ export async function runCli(args: string[]): Promise<void> {
   }
 
   if (command === "lint") {
+    const pathIsDirectory = await isDirectory(options.file);
+    if (pathIsDirectory) {
+      const report = await lintPath(options.file);
+      const output =
+        options.format === "json"
+          ? `${JSON.stringify(Object.fromEntries(report), null, options.pretty ? 2 : 0)}\n`
+          : renderLintReportText(report);
+      if (options.out) {
+        await writeFile(options.out, output, "utf8");
+      } else {
+        process.stdout.write(output);
+      }
+      if (
+        Array.from(report.values()).some((diagnostics) =>
+          diagnostics.some((diagnostic) => diagnostic.severity !== "info"),
+        )
+      ) {
+        process.exitCode = 1;
+      }
+      return;
+    }
+
     const diagnostics = await lintFile(options.file);
     const output =
       options.format === "json"
@@ -190,6 +231,7 @@ interface FileCommandArgs {
   currentRunPath: string | null;
   targetOutputs: string[];
   format: "json" | "mermaid" | "text";
+  check: boolean;
   write: boolean;
   inputs: Record<string, string>;
   outputs: Record<string, string>;
@@ -206,6 +248,7 @@ function parseFileCommandArgs(args: string[]): FileCommandArgs {
     currentRunPath: null,
     targetOutputs: [],
     format: "mermaid",
+    check: false,
     write: false,
     inputs: {},
     outputs: {},
@@ -221,6 +264,10 @@ function parseFileCommandArgs(args: string[]): FileCommandArgs {
     }
     if (arg === "--write" || arg === "-w") {
       parsed.write = true;
+      continue;
+    }
+    if (arg === "--check") {
+      parsed.check = true;
       continue;
     }
     if (arg === "--no-pretty") {
@@ -297,11 +344,11 @@ function printHelp(): void {
 
 Usage:
   prose compile <file.prose.md> [--out ir.json] [--no-pretty]
-  prose fmt <file.prose.md> [--write]
+  prose fmt <file.prose.md|dir> [--write|--check]
   prose manifest <file.prose.md> [--out manifest.md]
   prose graph <file.prose.md> [--current-run .prose/runs/{id}] [--target-output final] [--format mermaid|json]
   prose highlight <file.prose.md> [--format text|json]
-  prose lint <file.prose.md> [--format text|json]
+  prose lint <file.prose.md|dir> [--format text|json]
   prose plan <file.prose.md> [--input name=value] [--current-run .prose/runs/{id}] [--target-output final]
   prose materialize <file.prose.md> [--run-root .prose/runs] [--input name=value] [--output port=value]
   prose trace <.prose/runs/{id}|run.json> [--format text|json]
@@ -317,4 +364,12 @@ Commands:
   materialize  Write local RFC 005 run records from IR and fixture outputs
   trace        Summarize a materialized run directory and its node runs
 `);
+}
+
+async function isDirectory(path: string): Promise<boolean> {
+  try {
+    return (await stat(path)).isDirectory();
+  } catch {
+    return false;
+  }
 }

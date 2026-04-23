@@ -1,8 +1,9 @@
 export { compileFile, compileSource } from "./compiler";
-export { formatFile, formatSource } from "./format";
+export { formatFile, formatPath, formatSource, renderFormatCheckText } from "./format";
+export { collectSourceFiles } from "./files";
 export { buildGraphView, graphFile, graphSource, renderGraphMermaid } from "./graph";
 export { highlightFile, highlightSource, renderHighlightText } from "./highlight";
-export { lintFile, lintSource, renderLintText } from "./lint";
+export { lintFile, lintPath, lintSource, renderLintReportText, renderLintText } from "./lint";
 export { materializeFile, materializeSource } from "./materialize";
 export { projectManifest } from "./manifest";
 export { planFile, planSource } from "./plan";

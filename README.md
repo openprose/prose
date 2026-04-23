@@ -66,7 +66,9 @@ bun run prose graph fixtures/compiler/selective-recompute.prose.md \
   --input company="openprose" \
   --target-output summary
 bun run prose lint fixtures/compiler/malformed.prose.md
+bun run prose lint packages/std
 bun run prose fmt fixtures/compiler/malformed.prose.md
+bun run prose fmt packages/std --check
 bun run prose highlight fixtures/compiler/typed-effects.prose.md
 bun run prose materialize fixtures/compiler/hello.prose.md \
   --output message="Hello from a fixture output."
@@ -97,7 +99,9 @@ fixtures or future UI work.
 can emit JSON for downstream tooling.
 
 `prose lint` checks canonical source hygiene before runtime, and `prose fmt`
-rewrites supported source into stable `.prose.md` ordering.
+rewrites supported source into stable `.prose.md` ordering. Both now support
+repo-scale directory workflows, and `prose fmt --check` acts as a formatting
+gate.
 
 `prose highlight` emits first-pass syntax-highlight tokens so contract fields
 and ProseScript control flow are visible to tooling instead of blending into

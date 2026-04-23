@@ -64,6 +64,4 @@ This slice is on track when:
 
 ## Next Slice
 
-The next implementation slice should likely move from CLI tooling into a first
-editor/web integration artifact, or deepen the formatter/linter with repo-scale
-canonicalization and `--check` support.
+Repo-scale source workflows moved into Implementation Note 011.

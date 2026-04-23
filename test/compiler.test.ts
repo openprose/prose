@@ -3,10 +3,10 @@ import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { compileSource } from "../src/compiler";
-import { formatSource } from "../src/format";
+import { formatPath, formatSource, renderFormatCheckText } from "../src/format";
 import { graphSource, renderGraphMermaid } from "../src/graph";
 import { highlightSource, renderHighlightText } from "../src/highlight";
-import { lintSource, renderLintText } from "../src/lint";
+import { lintPath, lintSource, renderLintReportText, renderLintText } from "../src/lint";
 import { materializeSource } from "../src/materialize";
 import { projectManifest } from "../src/manifest";
 import { planSource } from "../src/plan";
@@ -829,5 +829,79 @@ name: stable-format
     expect(text).toContain("component.kind: service");
     expect(text).toContain("section.header: Ensures");
     expect(text).toContain("port.name: message");
+  });
+
+  test("lints a directory of source files", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "openprose-lint-dir-"));
+    writeFileSync(
+      join(dir, "legacy.md"),
+      `---
+name: legacy
+kind: service
+---
+
+### Ensures
+
+- \`report\`: Markdown<Report> - final report
+
+### Requires
+
+- \`input\`: string - source input
+`,
+    );
+    writeFileSync(
+      join(dir, "clean.prose.md"),
+      fixture("hello.prose.md"),
+    );
+
+    const report = await lintPath(dir);
+    const text = renderLintReportText(report);
+
+    expect(Array.from(report.keys()).length).toBe(2);
+    expect(report.get(join(dir, "legacy.md").replace(/\\/g, "/"))?.map((d) => d.code)).toContain(
+      "non_canonical_extension",
+    );
+    expect(text).toContain("legacy.md: 2 diagnostics");
+    expect(text).toContain("clean.prose.md: 0 diagnostics");
+  });
+
+  test("checks formatting across a directory of canonical files", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "openprose-fmt-dir-"));
+    const tidyPath = join(dir, "tidy.prose.md");
+    const cleanPath = join(dir, "clean.prose.md");
+    writeFileSync(
+      tidyPath,
+      `---
+kind: service
+name: tidy
+---
+
+### Ensures
+
+- \`report\`: Markdown<Report> - final report
+
+### Requires
+
+- \`input\`: string - source input
+`,
+    );
+    writeFileSync(
+      cleanPath,
+      formatSource(fixture("hello.prose.md"), { path: cleanPath }),
+    );
+
+    const results = await formatPath(dir, { check: true });
+    const text = renderFormatCheckText(results);
+
+    expect(results).toContainEqual({
+      path: tidyPath.replace(/\\/g, "/"),
+      changed: true,
+    });
+    expect(results).toContainEqual({
+      path: cleanPath.replace(/\\/g, "/"),
+      changed: false,
+    });
+    expect(text).toContain("Needs formatting");
+    expect(text).toContain("tidy.prose.md");
   });
 });

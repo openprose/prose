@@ -1,5 +1,6 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile, stat, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { collectSourceFiles } from "./files";
 import { findSection, parseContractMarkdown } from "./markdown";
 import type { ComponentDraft, SectionDraft } from "./markdown";
 
@@ -19,6 +20,11 @@ export interface FormatOptions {
   write?: boolean;
 }
 
+export interface FormatCheckResult {
+  path: string;
+  changed: boolean;
+}
+
 export async function formatFile(
   path: string,
   options: Omit<FormatOptions, "path"> = {},
@@ -29,6 +35,36 @@ export async function formatFile(
     await writeFile(resolve(path), formatted, "utf8");
   }
   return formatted;
+}
+
+export async function formatPath(
+  path: string,
+  options: Omit<FormatOptions, "path"> & { check?: boolean } = {},
+): Promise<FormatCheckResult[]> {
+  const resolved = resolve(path);
+  const info = await stat(resolved);
+  if (!info.isDirectory()) {
+    const source = await readFile(resolved, "utf8");
+    const formatted = formatSource(source, { path: resolved });
+    const changed = source !== formatted;
+    if (options.write && changed) {
+      await writeFile(resolved, formatted, "utf8");
+    }
+    return [{ path: normalizePath(resolved), changed }];
+  }
+
+  const files = await collectSourceFiles(resolved);
+  const results: FormatCheckResult[] = [];
+  for (const file of files) {
+    const source = await readFile(file, "utf8");
+    const formatted = formatSource(source, { path: file });
+    const changed = source !== formatted;
+    if (options.write && changed) {
+      await writeFile(file, formatted, "utf8");
+    }
+    results.push({ path: normalizePath(file), changed });
+  }
+  return results;
 }
 
 export function formatSource(source: string, options: FormatOptions): string {
@@ -156,4 +192,18 @@ function trimBlankLines(lines: string[]): string[] {
 
 function normalizePath(path: string): string {
   return path.replace(/\\/g, "/");
+}
+
+export function renderFormatCheckText(results: FormatCheckResult[]): string {
+  if (results.length === 0) {
+    return "No source files found.\n";
+  }
+
+  const changed = results.filter((result) => result.changed);
+  if (changed.length === 0) {
+    return "All checked files are already formatted.\n";
+  }
+
+  const lines = changed.map((result) => `Needs formatting: ${result.path}`);
+  return `${lines.join("\n")}\n`;
 }

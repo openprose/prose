@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { compileSource } from "./compiler";
+import { collectSourceFiles } from "./files";
 import { parseContractMarkdown } from "./markdown";
 import type { ComponentDraft } from "./markdown";
 import type { Diagnostic } from "./types";
@@ -27,6 +28,17 @@ export async function lintFile(path: string): Promise<Diagnostic[]> {
   return lintSource(source, { path });
 }
 
+export async function lintPath(path: string): Promise<Map<string, Diagnostic[]>> {
+  const files = await collectSourceFiles(path, { includeLegacyMarkdown: true });
+  const report = new Map<string, Diagnostic[]>();
+
+  for (const file of files) {
+    report.set(normalizePath(file), await lintFile(file));
+  }
+
+  return report;
+}
+
 export function lintSource(source: string, options: LintOptions): Diagnostic[] {
   const ir = compileSource(source, { path: options.path });
   const diagnostics = [...ir.diagnostics];
@@ -49,6 +61,25 @@ export function renderLintText(diagnostics: Diagnostic[]): string {
       : "(unknown)";
     return `${location} [${diagnostic.severity}] ${diagnostic.code}: ${diagnostic.message}`;
   });
+  return `${lines.join("\n")}\n`;
+}
+
+export function renderLintReportText(report: Map<string, Diagnostic[]>): string {
+  const files = Array.from(report.keys()).sort();
+  if (files.length === 0) {
+    return "No source files found.\n";
+  }
+
+  const lines: string[] = [];
+  for (const file of files) {
+    const diagnostics = report.get(file) ?? [];
+    lines.push(`${file}: ${diagnostics.length} diagnostic${diagnostics.length === 1 ? "" : "s"}`);
+    for (const diagnostic of diagnostics) {
+      const line = diagnostic.source_span?.start_line;
+      const location = line ? `${file}:${line}` : file;
+      lines.push(`  - ${location} [${diagnostic.severity}] ${diagnostic.code}: ${diagnostic.message}`);
+    }
+  }
   return `${lines.join("\n")}\n`;
 }
 
