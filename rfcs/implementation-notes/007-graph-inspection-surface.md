@@ -60,6 +60,4 @@ This slice is on track when:
 
 ## Next Slice
 
-The next implementation slice should add a lightweight `prose trace` surface
-over local run materializations so users can inspect graph state and run state
-together.
+Trace inspection moved into Implementation Note 008.

@@ -1,0 +1,134 @@
+import { readdir, readFile, stat } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
+import type { RunRecord, TraceEvent, TraceView } from "./types";
+
+export interface TraceOptions {
+  path: string;
+}
+
+export async function traceFile(
+  path: string,
+  _options: Omit<TraceOptions, "path"> = {},
+): Promise<TraceView> {
+  const resolved = resolve(path);
+  const info = await stat(resolved);
+  const runDir = info.isDirectory() ? resolved : dirname(resolved);
+
+  const record = JSON.parse(
+    await readFile(
+      info.isDirectory() ? resolve(runDir, "run.json") : resolved,
+      "utf8",
+    ),
+  ) as RunRecord;
+
+  const nodeRecords = await loadNodeRecords(runDir);
+  const events = await loadTraceEvents(runDir, record.trace_ref);
+
+  return {
+    trace_version: "0.1",
+    run_id: record.run_id,
+    component_ref: record.component_ref,
+    kind: record.kind,
+    status: record.status,
+    acceptance: record.acceptance.status,
+    runtime: record.runtime,
+    created_at: record.created_at,
+    completed_at: record.completed_at,
+    inputs: record.inputs.map((input) => input.port).sort(),
+    outputs: record.outputs.map((output) => output.port).sort(),
+    dependencies: record.dependencies
+      .map((dependency) => `${dependency.package}@${dependency.sha || "unresolved"}`)
+      .sort(),
+    nodes: nodeRecords
+      .map((node) => ({
+        run_id: node.run_id,
+        component_ref: node.component_ref,
+        status: node.status,
+        acceptance: node.acceptance.status,
+        outputs: node.outputs.map((output) => output.port).sort(),
+        effects: node.effects.declared.sort(),
+      }))
+      .sort((a, b) => a.component_ref.localeCompare(b.component_ref)),
+    events,
+  };
+}
+
+export function renderTraceText(trace: TraceView): string {
+  const lines: string[] = [];
+  lines.push(`Run: ${trace.run_id}`);
+  lines.push(`Component: ${trace.component_ref} [${trace.kind}]`);
+  lines.push(`Status: ${trace.status} (${trace.acceptance})`);
+  lines.push(
+    `Runtime: ${trace.runtime.harness}${
+      trace.runtime.worker_ref ? ` / ${trace.runtime.worker_ref}` : ""
+    }`,
+  );
+  lines.push(`Created: ${trace.created_at}`);
+  if (trace.completed_at) {
+    lines.push(`Completed: ${trace.completed_at}`);
+  }
+  lines.push("");
+
+  lines.push(`Inputs: ${trace.inputs.length ? trace.inputs.join(", ") : "(none)"}`);
+  lines.push(`Outputs: ${trace.outputs.length ? trace.outputs.join(", ") : "(none)"}`);
+  lines.push(
+    `Dependencies: ${trace.dependencies.length ? trace.dependencies.join(", ") : "(none)"}`,
+  );
+
+  if (trace.nodes.length > 0) {
+    lines.push("");
+    lines.push("Nodes:");
+    for (const node of trace.nodes) {
+      lines.push(
+        `- ${node.component_ref}: ${node.status} (${node.acceptance})` +
+          `${node.outputs.length ? ` outputs[${node.outputs.join(", ")}]` : ""}` +
+          `${node.effects.length ? ` effects[${node.effects.join(", ")}]` : ""}`,
+      );
+    }
+  }
+
+  if (trace.events.length > 0) {
+    lines.push("");
+    lines.push("Events:");
+    for (const event of trace.events) {
+      lines.push(`- ${event.at}: ${event.event}`);
+    }
+  }
+
+  return `${lines.join("\n")}\n`;
+}
+
+async function loadNodeRecords(runDir: string): Promise<RunRecord[]> {
+  try {
+    const files = (await readdir(resolve(runDir, "nodes")))
+      .filter((file) => file.endsWith(".run.json"))
+      .sort();
+    const records: RunRecord[] = [];
+    for (const file of files) {
+      records.push(
+        JSON.parse(await readFile(resolve(runDir, "nodes", file), "utf8")) as RunRecord,
+      );
+    }
+    return records;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return [];
+    }
+    throw error;
+  }
+}
+
+async function loadTraceEvents(
+  runDir: string,
+  traceRef: string,
+): Promise<TraceEvent[]> {
+  try {
+    const source = await readFile(resolve(runDir, traceRef), "utf8");
+    return JSON.parse(source) as TraceEvent[];
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return [];
+    }
+    throw error;
+  }
+}

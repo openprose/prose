@@ -276,3 +276,36 @@ export interface GraphView {
   edges: GraphViewEdge[];
   diagnostics: Diagnostic[];
 }
+
+export interface TraceEvent {
+  event: string;
+  at: string;
+  run_id: string;
+  [key: string]: unknown;
+}
+
+export interface TraceNodeView {
+  run_id: string;
+  component_ref: string;
+  status: RunLifecycleStatus;
+  acceptance: RunRecord["acceptance"]["status"];
+  outputs: string[];
+  effects: string[];
+}
+
+export interface TraceView {
+  trace_version: "0.1";
+  run_id: string;
+  component_ref: string;
+  kind: RunRecord["kind"];
+  status: RunLifecycleStatus;
+  acceptance: RunRecord["acceptance"]["status"];
+  runtime: RunRecord["runtime"];
+  created_at: string;
+  completed_at: string | null;
+  inputs: string[];
+  outputs: string[];
+  dependencies: string[];
+  nodes: TraceNodeView[];
+  events: TraceEvent[];
+}

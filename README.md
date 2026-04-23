@@ -67,6 +67,7 @@ bun run prose graph fixtures/compiler/selective-recompute.prose.md \
   --target-output summary
 bun run prose materialize fixtures/compiler/hello.prose.md \
   --output message="Hello from a fixture output."
+bun run prose trace .prose/runs/20260423-180000-smoke01
 ```
 
 `prose compile` emits canonical Prose IR JSON with source spans, diagnostics,
@@ -88,6 +89,9 @@ exact `materialization_set` without executing anything.
 `prose graph` renders the same IR and planner state as a graph preview instead
 of raw JSON. The first version emits Mermaid by default and can emit JSON for
 fixtures or future UI work.
+
+`prose trace` summarizes a materialized run directory in text by default and
+can emit JSON for downstream tooling.
 
 `prose materialize` writes an RFC 005-style local run directory from IR,
 explicit caller inputs, and explicit fixture outputs. It does not pretend to

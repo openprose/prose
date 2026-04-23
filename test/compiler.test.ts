@@ -7,6 +7,7 @@ import { graphSource, renderGraphMermaid } from "../src/graph";
 import { materializeSource } from "../src/materialize";
 import { projectManifest } from "../src/manifest";
 import { planSource } from "../src/plan";
+import { renderTraceText, traceFile } from "../src/trace";
 
 function fixture(name: string): string {
   return readFileSync(new URL(`../fixtures/compiler/${name}`, import.meta.url), "utf8");
@@ -637,5 +638,63 @@ describe("OpenProse compiler", () => {
     expect(mermaid).toContain("selected");
     expect(mermaid).toContain("classDef ready");
     expect(mermaid).toContain("classDef skipped");
+  });
+
+  test("loads a trace view from a materialized run directory", async () => {
+    const runRoot = mkdtempSync(join(tmpdir(), "openprose-trace-"));
+    const materialized = await materializeSource(fixture("pipeline.prose.md"), {
+      path: "fixtures/compiler/pipeline.prose.md",
+      runRoot,
+      runId: "20260423-170000-trc001",
+      createdAt: "2026-04-23T17:00:00.000Z",
+      inputs: {
+        draft: "The original draft.",
+      },
+      outputs: {
+        "review.feedback": "Tighten the intro.",
+        "fact-check.claims": "All claims verified.",
+        "polish.final": "The polished draft.",
+      },
+      trigger: "test",
+    });
+
+    const trace = await traceFile(materialized.run_dir);
+
+    expect(trace.run_id).toBe("20260423-170000-trc001");
+    expect(trace.component_ref).toBe("content-pipeline");
+    expect(trace.status).toBe("succeeded");
+    expect(trace.outputs).toEqual(["final"]);
+    expect(trace.nodes.map((node) => [node.component_ref, node.status])).toEqual([
+      ["fact-check", "succeeded"],
+      ["polish", "succeeded"],
+      ["review", "succeeded"],
+    ]);
+    expect(trace.events[0]).toMatchObject({
+      event: "materialize.started",
+      run_id: "20260423-170000-trc001",
+    });
+  });
+
+  test("renders a text trace summary", async () => {
+    const runRoot = mkdtempSync(join(tmpdir(), "openprose-trace-text-"));
+    const materialized = await materializeSource(fixture("hello.prose.md"), {
+      path: "fixtures/compiler/hello.prose.md",
+      runRoot,
+      runId: "20260423-171500-trc002",
+      createdAt: "2026-04-23T17:15:00.000Z",
+      outputs: {
+        message: "Hello from a fixture output.",
+      },
+      trigger: "test",
+    });
+
+    const trace = await traceFile(materialized.run_dir);
+    const text = renderTraceText(trace);
+
+    expect(text).toContain("Run: 20260423-171500-trc002:hello");
+    expect(text).toContain("Component: hello [component]");
+    expect(text).toContain("Status: succeeded (accepted)");
+    expect(text).toContain("Outputs: message");
+    expect(text).toContain("Events:");
   });
 });

@@ -3,6 +3,7 @@ export { buildGraphView, graphFile, graphSource, renderGraphMermaid } from "./gr
 export { materializeFile, materializeSource } from "./materialize";
 export { projectManifest } from "./manifest";
 export { planFile, planSource } from "./plan";
+export { renderTraceText, traceFile } from "./trace";
 export type {
   AccessIR,
   ComponentIR,
@@ -21,4 +22,7 @@ export type {
   RuntimeSettingIR,
   ServiceIR,
   SourceSpan,
+  TraceEvent,
+  TraceNodeView,
+  TraceView,
 } from "./types";
