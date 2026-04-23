@@ -240,3 +240,39 @@ export interface ExecutionPlan {
   nodes: PlanNode[];
   diagnostics: Diagnostic[];
 }
+
+export interface GraphViewNode {
+  id: string;
+  label: string;
+  component_ref: string;
+  kind: ComponentKind | "boundary";
+  source: string | null;
+  requires: string[];
+  ensures: string[];
+  effects: string[];
+  access_labels: string[];
+  status: PlanNode["status"] | "boundary";
+  stale_reasons: string[];
+  blocked_reasons: string[];
+  selected: boolean;
+}
+
+export interface GraphViewEdge {
+  from: string;
+  to: string;
+  from_port: string;
+  to_port: string;
+  kind: GraphEdgeIR["kind"];
+  reason: string;
+  confidence: number;
+  source: GraphEdgeIR["source"];
+}
+
+export interface GraphView {
+  graph_version: "0.1";
+  component_ref: string;
+  requested_outputs: string[];
+  nodes: GraphViewNode[];
+  edges: GraphViewEdge[];
+  diagnostics: Diagnostic[];
+}

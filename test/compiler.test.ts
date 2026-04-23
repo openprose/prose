@@ -3,6 +3,7 @@ import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { compileSource } from "../src/compiler";
+import { graphSource, renderGraphMermaid } from "../src/graph";
 import { materializeSource } from "../src/materialize";
 import { projectManifest } from "../src/manifest";
 import { planSource } from "../src/plan";
@@ -586,5 +587,55 @@ describe("OpenProse compiler", () => {
       ["summarize", "current"],
       ["market-sync", "ready"],
     ]);
+  });
+
+  test("builds a graph preview JSON with plan overlay", () => {
+    const graph = graphSource(fixture("pipeline.prose.md"), {
+      path: "fixtures/compiler/pipeline.prose.md",
+      inputs: {
+        draft: "The original draft.",
+      },
+      targetOutputs: ["final"],
+      format: "json",
+    });
+
+    expect(graph.component_ref).toBe("content-pipeline");
+    expect(graph.requested_outputs).toEqual(["final"]);
+    expect(graph.nodes.map((node) => [node.component_ref, node.status])).toEqual([
+      ["Caller", "boundary"],
+      ["review", "ready"],
+      ["fact-check", "ready"],
+      ["polish", "ready"],
+      ["Return", "boundary"],
+    ]);
+    expect(graph.edges).toContainEqual(
+      expect.objectContaining({
+        from: "review",
+        to: "polish",
+        from_port: "feedback",
+        to_port: "feedback",
+        kind: "exact",
+      }),
+    );
+  });
+
+  test("renders a mermaid graph preview", () => {
+    const graph = graphSource(fixture("selective-recompute.prose.md"), {
+      path: "fixtures/compiler/selective-recompute.prose.md",
+      inputs: {
+        draft: "A stable draft.",
+        company: "openprose",
+      },
+      targetOutputs: ["summary"],
+      format: "mermaid",
+    });
+    const mermaid = renderGraphMermaid(graph);
+
+    expect(mermaid).toContain("flowchart LR");
+    expect(mermaid).toContain("summarize");
+    expect(mermaid).toContain("market-sync");
+    expect(mermaid).toContain("selected");
+    expect(mermaid).toContain("classDef ready");
+    expect(mermaid).toContain("classDef skipped");
   });
 });

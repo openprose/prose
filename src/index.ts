@@ -1,4 +1,5 @@
 export { compileFile, compileSource } from "./compiler";
+export { buildGraphView, graphFile, graphSource, renderGraphMermaid } from "./graph";
 export { materializeFile, materializeSource } from "./materialize";
 export { projectManifest } from "./manifest";
 export { planFile, planSource } from "./plan";
@@ -12,6 +13,9 @@ export type {
   GraphEdgeIR,
   GraphIR,
   GraphNodeIR,
+  GraphView,
+  GraphViewEdge,
+  GraphViewNode,
   PortIR,
   ProseIR,
   RuntimeSettingIR,

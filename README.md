@@ -61,6 +61,10 @@ bun run prose plan fixtures/compiler/selective-recompute.prose.md \
   --input company="openprose" \
   --current-run .prose/runs/20260423-160000-sel001 \
   --target-output summary
+bun run prose graph fixtures/compiler/selective-recompute.prose.md \
+  --input draft="A stable draft." \
+  --input company="openprose" \
+  --target-output summary
 bun run prose materialize fixtures/compiler/hello.prose.md \
   --output message="Hello from a fixture output."
 ```
@@ -80,6 +84,10 @@ state, side-effect gates, prior-run comparison through `--current-run`,
 freshness expiry for refreshable reads, and dependency-pin invalidation from
 `prose.lock`. It can also plan for a specific requested output and print the
 exact `materialization_set` without executing anything.
+
+`prose graph` renders the same IR and planner state as a graph preview instead
+of raw JSON. The first version emits Mermaid by default and can emit JSON for
+fixtures or future UI work.
 
 `prose materialize` writes an RFC 005-style local run directory from IR,
 explicit caller inputs, and explicit fixture outputs. It does not pretend to

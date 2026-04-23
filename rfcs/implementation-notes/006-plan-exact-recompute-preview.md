@@ -63,6 +63,4 @@ This slice is on track when:
 
 ## Next Slice
 
-The next implementation slice should add source-level graph and trace inspection
-surfaces on top of the IR and plan output, so users can see the structure and
-the stale/current reasons without reading raw JSON.
+Graph inspection moved into Implementation Note 007.
