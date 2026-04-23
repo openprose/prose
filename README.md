@@ -43,6 +43,25 @@ run trace on disk.
 
 The program declares **what** should happen. The runtime figures out **how**.
 
+## Compiler Preview
+
+OpenProse is growing a Bun-based `prose` binary. The first implemented command
+is the compiler:
+
+```bash
+bun run prose compile fixtures/compiler/hello.prose.md
+bun run prose manifest fixtures/compiler/pipeline.prose.md
+```
+
+`prose compile` emits canonical Prose IR JSON with source spans, diagnostics,
+graph edges, and a semantic hash. This is the substrate for manifest
+projection, run materialization, graph previews, registry metadata, and hosted
+reactive execution.
+
+`prose manifest` projects that IR into a VM-readable `manifest.md` bridge for
+the current execution model. The manifest is generated from IR rather than
+re-parsing source Markdown.
+
 ```markdown
 ---
 name: hunter

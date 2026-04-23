@@ -1,0 +1,20 @@
+{
+  "name": "@openprose/prose",
+  "version": "0.11.0-dev",
+  "description": "OpenProse compiler and runtime tooling.",
+  "type": "module",
+  "bin": {
+    "prose": "./bin/prose.ts"
+  },
+  "scripts": {
+    "prose": "bun bin/prose.ts",
+    "compile": "bun bin/prose.ts compile",
+    "manifest": "bun bin/prose.ts manifest",
+    "test": "bun test",
+    "typecheck": "bunx tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "latest"
+  }
+}

@@ -1,1 +1,4 @@
 .prose
+node_modules/
+dist/
+coverage/
