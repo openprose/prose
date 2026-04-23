@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { readFile, stat } from "node:fs/promises";
 import { basename, dirname, relative, resolve } from "node:path";
 import { compileFile } from "./compiler";
@@ -36,10 +37,13 @@ export async function packagePath(path: string): Promise<PackageMetadata> {
   const root = await resolvePackageRoot(path);
   const config = await loadPackageConfig(root);
   const resolvedConfig = await hydratePackageConfig(root, config);
-  const files = await collectSourceFiles(root);
+  const files = await collectSourceFiles(root, {
+    excludeNestedPackageRoots: true,
+  });
   const components: PackageComponentMetadata[] = [];
   const diagnostics: Diagnostic[] = [];
   const dependencyMap = new Map<string, ProseIR["package"]["dependencies"][number]>();
+  let qualityComponentCount = 0;
   let typedPorts = 0;
   let totalPorts = 0;
   let componentsWithEffects = 0;
@@ -51,10 +55,6 @@ export async function packagePath(path: string): Promise<PackageMetadata> {
     const ir = await compileFile(file);
     const lintDiagnostics = await lintFile(file);
     diagnostics.push(...lintDiagnostics);
-    if (!lintDiagnostics.some((diagnostic) => diagnostic.severity !== "info")) {
-      lintCleanComponents += ir.components.length;
-    }
-
     for (const dependency of ir.package.dependencies) {
       const key = `${dependency.package}@${dependency.sha}`;
       const existing = dependencyMap.get(key);
@@ -69,10 +69,20 @@ export async function packagePath(path: string): Promise<PackageMetadata> {
     }
 
     for (const component of ir.components) {
+      const countsForPublishQuality = component.kind !== "test";
+      if (
+        countsForPublishQuality &&
+        !lintDiagnostics.some((diagnostic) => diagnostic.severity !== "info")
+      ) {
+        lintCleanComponents += 1;
+      }
       const allPorts = [...component.ports.requires, ...component.ports.ensures];
       const typedCount = allPorts.filter((port) => port.type !== "Any").length;
-      typedPorts += typedCount;
-      totalPorts += allPorts.length;
+      if (countsForPublishQuality) {
+        qualityComponentCount += 1;
+        typedPorts += typedCount;
+        totalPorts += allPorts.length;
+      }
 
       const componentMetadata = buildComponentMetadata({
         root,
@@ -84,13 +94,13 @@ export async function packagePath(path: string): Promise<PackageMetadata> {
       });
       components.push(componentMetadata);
 
-      if (component.effects.length > 0) {
+      if (countsForPublishQuality && component.effects.length > 0) {
         componentsWithEffects += 1;
       }
-      if (componentMetadata.examples.length > 0) {
+      if (countsForPublishQuality && componentMetadata.examples.length > 0) {
         componentsWithExamples += 1;
       }
-      if (componentMetadata.evals.length > 0) {
+      if (countsForPublishQuality && componentMetadata.evals.length > 0) {
         componentsWithEvals += 1;
       }
     }
@@ -107,7 +117,7 @@ export async function packagePath(path: string): Promise<PackageMetadata> {
       })
     : null;
   const quality = buildQualitySummary({
-    componentCount: components.length,
+    componentCount: qualityComponentCount,
     typedPorts,
     totalPorts,
     componentsWithEffects,
@@ -205,18 +215,19 @@ function buildComponentMetadata(options: {
   const allPorts = [...component.ports.requires, ...component.ports.ensures];
   const typedCount = allPorts.filter((port) => port.type !== "Any").length;
   const typedCoverage = allPorts.length === 0 ? 1 : typedCount / allPorts.length;
-  const hasEffects = component.effects.length > 0;
-  const hasExamples = packageExamples.length > 0;
-  const hasEvals = packageEvals.length > 0;
+  const publishable = component.kind !== "test";
+  const hasEffects = publishable ? component.effects.length > 0 : true;
+  const hasExamples = publishable ? packageExamples.length > 0 : true;
+  const hasEvals = publishable ? packageEvals.length > 0 : true;
   const warnings: string[] = [];
 
-  if (typedCoverage < 1) {
+  if (publishable && typedCoverage < 1) {
     warnings.push("Component has untyped ports; add explicit type names for registry search and composition.");
   }
-  if (!hasEffects) {
+  if (publishable && !hasEffects) {
     warnings.push("Component does not declare effects; add explicit pure/read_external/etc.");
   }
-  if (!hasEvals) {
+  if (publishable && !hasEvals) {
     warnings.push("Component has no linked evals; publishing should record no_evals or add eval coverage.");
   }
 
@@ -290,7 +301,7 @@ function buildQualitySummary(options: {
   if ((config?.evals?.length ?? 0) === 0) {
     warnings.push("Package has no linked evals; publish should record no_evals or add eval coverage.");
   }
-  if (components.some((component) => component.effects.length === 0)) {
+  if (components.some((component) => component.kind !== "test" && component.effects.length === 0)) {
     warnings.push("One or more components do not declare effects.");
   }
   if (typedPortCoverage < 1) {
@@ -348,7 +359,20 @@ async function hydratePackageConfig(
 async function resolvePackageRoot(path: string): Promise<string> {
   const resolved = resolve(path);
   const info = await stat(resolved);
-  return info.isDirectory() ? resolved : dirname(resolved);
+  const fallback = info.isDirectory() ? resolved : dirname(resolved);
+  let current = fallback;
+
+  while (true) {
+    if (existsSync(resolve(current, "prose.package.json"))) {
+      return current;
+    }
+
+    const parent = dirname(current);
+    if (parent === current) {
+      return fallback;
+    }
+    current = parent;
+  }
 }
 
 function inferGitSource(

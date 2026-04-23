@@ -175,24 +175,35 @@ async function discoverPackageRoots(path: string): Promise<string[]> {
   if (!existsSync(path)) {
     return [];
   }
-  const entries = await readdir(path, { withFileTypes: true });
   const roots: string[] = [];
+  await walkPackageRoots(path, roots, false);
+  return roots;
+}
 
+async function walkPackageRoots(
+  directory: string,
+  roots: string[],
+  insideConfiguredPackage: boolean,
+): Promise<void> {
+  const entries = (await readdir(directory, { withFileTypes: true })).sort((a, b) =>
+    a.name.localeCompare(b.name),
+  );
   const hasConfig = entries.some((entry) => entry.isFile() && entry.name === "prose.package.json");
   const hasSource = entries.some((entry) => entry.isFile() && entry.name.endsWith(".prose.md"));
-  if (hasConfig || hasSource) {
-    roots.push(path);
-    return roots;
+
+  if (hasConfig) {
+    roots.push(directory);
+  } else if (hasSource && !insideConfiguredPackage) {
+    roots.push(directory);
+    return;
   }
 
-  for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
+  for (const entry of entries) {
     if (!entry.isDirectory() || entry.name === ".git" || entry.name === ".deps" || entry.name === ".prose" || entry.name === "node_modules") {
       continue;
     }
-    roots.push(...(await discoverPackageRoots(resolve(path, entry.name))));
+    await walkPackageRoots(resolve(directory, entry.name), roots, insideConfiguredPackage || hasConfig);
   }
-
-  return roots;
 }
 
 async function ensureGitCheckout(

@@ -104,25 +104,33 @@ export function renderCatalogSearchText(result: CatalogSearchResult): string {
 
 async function discoverPackageRoots(path: string): Promise<string[]> {
   const roots: string[] = [];
-  await walk(path, roots);
+  await walk(path, roots, false);
   return roots.sort();
 }
 
-async function walk(directory: string, roots: string[]): Promise<void> {
-  const entries = await readdir(directory, { withFileTypes: true });
+async function walk(
+  directory: string,
+  roots: string[],
+  insideConfiguredPackage: boolean,
+): Promise<void> {
+  const entries = (await readdir(directory, { withFileTypes: true })).sort((a, b) =>
+    a.name.localeCompare(b.name),
+  );
   const hasConfig = entries.some((entry) => entry.isFile() && entry.name === "prose.package.json");
   const hasLocalSource = entries.some((entry) => entry.isFile() && entry.name.endsWith(".prose.md"));
 
-  if (hasConfig || hasLocalSource) {
+  if (hasConfig) {
+    roots.push(directory);
+  } else if (hasLocalSource && !insideConfiguredPackage) {
     roots.push(directory);
     return;
   }
 
-  for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
+  for (const entry of entries) {
     if (!entry.isDirectory() || IGNORED_DIRS.has(entry.name)) {
       continue;
     }
-    await walk(resolve(directory, entry.name), roots);
+    await walk(resolve(directory, entry.name), roots, insideConfiguredPackage || hasConfig);
   }
 }
 
@@ -136,7 +144,11 @@ function matches(
   component: CatalogSearchEntry,
   options: SearchCatalogOptions,
 ): boolean {
-  if (options.kind && component.component_kind !== options.kind) {
+  if (options.kind) {
+    if (component.component_kind !== options.kind) {
+      return false;
+    }
+  } else if (component.component_kind === "test") {
     return false;
   }
   if (

@@ -935,6 +935,96 @@ name: stable-format
     expect(text).toContain("brief-writer (service)");
   });
 
+  test("keeps nested package files out of the parent package metadata", async () => {
+    const root = mkdtempSync(join(tmpdir(), "openprose-nested-root-"));
+    const nested = join(root, "customers", "nested");
+    mkdirSync(nested, { recursive: true });
+    writeFileSync(
+      join(root, "prose.package.json"),
+      JSON.stringify(
+        {
+          name: "@openprose/root",
+          version: "0.1.0",
+          registry: {
+            catalog: "openprose",
+          },
+          source: {
+            git: "github.com/openprose/root",
+            sha: "abc12345",
+          },
+          evals: ["evals/root.eval.prose.md"],
+          examples: ["examples/root.prose.md"],
+        },
+        null,
+        2,
+      ),
+    );
+    writeFileSync(
+      join(root, "root.prose.md"),
+      `---
+name: root-service
+kind: service
+---
+
+### Ensures
+
+- \`result\`: Markdown<Result> - root result
+
+### Effects
+
+- \`pure\`: deterministic synthesis over provided inputs
+`,
+    );
+    writeFileSync(
+      join(nested, "prose.package.json"),
+      JSON.stringify(
+        {
+          name: "@openprose/nested",
+          version: "0.1.0",
+          registry: {
+            catalog: "openprose",
+          },
+          source: {
+            git: "github.com/openprose/nested",
+            sha: "def67890",
+          },
+          evals: ["evals/nested.eval.prose.md"],
+          examples: ["examples/nested.prose.md"],
+        },
+        null,
+        2,
+      ),
+    );
+    writeFileSync(
+      join(nested, "nested.prose.md"),
+      `---
+name: nested-service
+kind: service
+---
+
+### Ensures
+
+- \`result\`: Markdown<Result> - nested result
+
+### Effects
+
+- \`pure\`: deterministic synthesis over provided inputs
+`,
+    );
+
+    const metadata = await packagePath(root);
+    const nestedMetadata = await packagePath(join(nested, "nested.prose.md"));
+
+    expect(metadata.manifest.name).toBe("@openprose/root");
+    expect(metadata.components.map((component) => component.name)).toEqual([
+      "root-service",
+    ]);
+    expect(nestedMetadata.manifest.name).toBe("@openprose/nested");
+    expect(nestedMetadata.components.map((component) => component.name)).toEqual([
+      "nested-service",
+    ]);
+  });
+
   test("installs a package from a registry ref into local deps state", async () => {
     const sourceRepo = mkdtempSync(join(tmpdir(), "openprose-source-repo-"));
     writeFileSync(
@@ -1423,6 +1513,63 @@ kind: service
     expect(result.warnings).toContain("Package has no linked examples.");
   });
 
+  test("ignores test components in publish quality warnings", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "openprose-publish-tests-"));
+    writeFileSync(
+      join(dir, "prose.package.json"),
+      JSON.stringify(
+        {
+          name: "@openprose/test-scope",
+          version: "0.1.0",
+          registry: {
+            catalog: "openprose",
+          },
+          source: {
+            git: "github.com/openprose/test-scope",
+            sha: "beadfeed",
+          },
+          evals: ["evals/demo.eval.prose.md"],
+          examples: ["examples/demo.prose.md"],
+        },
+        null,
+        2,
+      ),
+    );
+    writeFileSync(
+      join(dir, "service.prose.md"),
+      `---
+name: publishable
+kind: service
+---
+
+### Ensures
+
+- \`result\`: Markdown<Result> - publishable result
+
+### Effects
+
+- \`pure\`: deterministic synthesis over provided inputs
+`,
+    );
+    writeFileSync(
+      join(dir, "service.eval.prose.md"),
+      `---
+name: publishable.eval
+kind: test
+---
+
+### Ensures
+
+- \`verdict\`: Verdict - evaluation verdict
+`,
+    );
+
+    const result = await publishCheckPath(dir);
+
+    expect(result.status).toBe("pass");
+    expect(result.warnings).toEqual([]);
+  });
+
   test("fails publish check for missing publish blockers and strict warnings", async () => {
     const dir = mkdtempSync(join(tmpdir(), "openprose-publish-fail-"));
     writeFileSync(join(dir, "hello.prose.md"), fixture("hello.prose.md"));
@@ -1464,6 +1611,157 @@ kind: service
     expect(result.results).toHaveLength(1);
     expect(result.results[0].component_name).toBe("brief-writer");
     expect(result.results[0].quality_score).toBeGreaterThanOrEqual(0.9);
+  });
+
+  test("search discovers nested configured packages in a monorepo catalog", async () => {
+    const catalogRoot = mkdtempSync(join(tmpdir(), "openprose-catalog-nested-"));
+    const packageRoot = join(catalogRoot, "company");
+    const nestedRoot = join(packageRoot, "customers", "child");
+    mkdirSync(nestedRoot, { recursive: true });
+    writeFileSync(
+      join(packageRoot, "prose.package.json"),
+      JSON.stringify(
+        {
+          name: "@openprose/company",
+          version: "0.1.0",
+          registry: {
+            catalog: "openprose",
+          },
+          source: {
+            git: "github.com/openprose/company",
+            sha: "11111111",
+          },
+          evals: ["evals/company.eval.prose.md"],
+          examples: ["examples/company.prose.md"],
+        },
+        null,
+        2,
+      ),
+    );
+    writeFileSync(
+      join(packageRoot, "company.prose.md"),
+      `---
+name: company-map
+kind: service
+---
+
+### Ensures
+
+- \`company_map\`: Markdown<CompanyMap> - source-grounded company map
+
+### Effects
+
+- \`pure\`: deterministic synthesis over provided inputs
+`,
+    );
+    writeFileSync(
+      join(nestedRoot, "prose.package.json"),
+      JSON.stringify(
+        {
+          name: "@openprose/child",
+          version: "0.1.0",
+          registry: {
+            catalog: "openprose",
+          },
+          source: {
+            git: "github.com/openprose/child",
+            sha: "22222222",
+          },
+          evals: ["evals/child.eval.prose.md"],
+          examples: ["examples/child.prose.md"],
+        },
+        null,
+        2,
+      ),
+    );
+    writeFileSync(
+      join(nestedRoot, "child.prose.md"),
+      `---
+name: child-map
+kind: service
+---
+
+### Ensures
+
+- \`child_map\`: Markdown<ChildMap> - source-grounded child map
+
+### Effects
+
+- \`pure\`: deterministic synthesis over provided inputs
+`,
+    );
+
+    const result = await searchCatalog(catalogRoot);
+
+    expect(result.package_count).toBe(2);
+    expect(result.results.map((entry) => entry.package_name)).toEqual([
+      "@openprose/child",
+      "@openprose/company",
+    ]);
+  });
+
+  test("search excludes test components unless explicitly requested", async () => {
+    const catalogRoot = mkdtempSync(join(tmpdir(), "openprose-search-tests-"));
+    writeFileSync(
+      join(catalogRoot, "prose.package.json"),
+      JSON.stringify(
+        {
+          name: "@openprose/search-tests",
+          version: "0.1.0",
+          registry: {
+            catalog: "openprose",
+          },
+          source: {
+            git: "github.com/openprose/search-tests",
+            sha: "33333333",
+          },
+          evals: ["evals/demo.eval.prose.md"],
+          examples: ["examples/demo.prose.md"],
+        },
+        null,
+        2,
+      ),
+    );
+    writeFileSync(
+      join(catalogRoot, "service.prose.md"),
+      `---
+name: search-service
+kind: service
+---
+
+### Ensures
+
+- \`result\`: Markdown<Result> - service result
+
+### Effects
+
+- \`pure\`: deterministic synthesis over provided inputs
+`,
+    );
+    writeFileSync(
+      join(catalogRoot, "service.eval.prose.md"),
+      `---
+name: search-service.eval
+kind: test
+---
+
+### Ensures
+
+- \`verdict\`: Verdict - evaluation verdict
+`,
+    );
+
+    const defaultResult = await searchCatalog(catalogRoot);
+    const testResult = await searchCatalog(catalogRoot, {
+      kind: "test",
+    });
+
+    expect(defaultResult.results.map((entry) => entry.component_name)).toEqual([
+      "search-service",
+    ]);
+    expect(testResult.results.map((entry) => entry.component_name)).toEqual([
+      "search-service.eval",
+    ]);
   });
 
   test("lints a directory of source files", async () => {
