@@ -2,6 +2,7 @@ import { writeFile } from "node:fs/promises";
 import { compileFile } from "./compiler";
 import { materializeFile } from "./materialize";
 import { projectManifest } from "./manifest";
+import { planFile } from "./plan";
 
 export async function runCli(args: string[]): Promise<void> {
   const [command, ...rest] = args;
@@ -14,7 +15,8 @@ export async function runCli(args: string[]): Promise<void> {
   if (
     command !== "compile" &&
     command !== "manifest" &&
-    command !== "materialize"
+    command !== "materialize" &&
+    command !== "plan"
   ) {
     console.error(`Unknown command: ${command}`);
     printHelp();
@@ -27,6 +29,22 @@ export async function runCli(args: string[]): Promise<void> {
     console.error("Missing file path.");
     printHelp();
     process.exitCode = 1;
+    return;
+  }
+
+  if (command === "plan") {
+    const plan = await planFile(options.file, {
+      inputs: options.inputs,
+    });
+    const output = `${JSON.stringify(plan, null, options.pretty ? 2 : 0)}\n`;
+    if (options.out) {
+      await writeFile(options.out, output, "utf8");
+    } else {
+      process.stdout.write(output);
+    }
+    if (plan.status !== "ready") {
+      process.exitCode = 1;
+    }
     return;
   }
 
@@ -158,11 +176,13 @@ function printHelp(): void {
 Usage:
   prose compile <file.prose.md> [--out ir.json] [--no-pretty]
   prose manifest <file.prose.md> [--out manifest.md]
+  prose plan <file.prose.md> [--input name=value]
   prose materialize <file.prose.md> [--run-root .prose/runs] [--input name=value] [--output port=value]
 
 Commands:
   compile      Compile Contract Markdown to canonical Prose IR JSON
   manifest     Project canonical Prose IR into a VM-readable manifest
+  plan         Preview ready and blocked graph nodes without executing
   materialize  Write local RFC 005 run records from IR and fixture outputs
 `);
 }

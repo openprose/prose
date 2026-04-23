@@ -200,3 +200,23 @@ export interface MaterializedRun {
   record: RunRecord;
   node_records: RunRecord[];
 }
+
+export interface PlanNode {
+  node_id: string;
+  component_ref: string;
+  status: "ready" | "blocked_input" | "blocked_effect" | "skipped";
+  stale_reasons: string[];
+  blocked_reasons: string[];
+  depends_on: string[];
+  effects: string[];
+}
+
+export interface ExecutionPlan {
+  plan_version: "0.1";
+  component_ref: string;
+  ir_hash: string;
+  status: "ready" | "blocked";
+  graph_blocked_reasons: string[];
+  nodes: PlanNode[];
+  diagnostics: Diagnostic[];
+}

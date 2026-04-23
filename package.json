@@ -10,6 +10,7 @@
     "prose": "bun bin/prose.ts",
     "compile": "bun bin/prose.ts compile",
     "manifest": "bun bin/prose.ts manifest",
+    "plan": "bun bin/prose.ts plan",
     "materialize": "bun bin/prose.ts materialize",
     "test": "bun test",
     "typecheck": "bunx tsc --noEmit"

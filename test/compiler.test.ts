@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { compileSource } from "../src/compiler";
 import { materializeSource } from "../src/materialize";
 import { projectManifest } from "../src/manifest";
+import { planSource } from "../src/plan";
 
 function fixture(name: string): string {
   return readFileSync(new URL(`../fixtures/compiler/${name}`, import.meta.url), "utf8");
@@ -222,6 +223,60 @@ describe("OpenProse compiler", () => {
     expect(result.record.status).toBe("blocked");
     expect(result.record.acceptance.reason).toContain(
       "Local materializer does not perform effect 'delivers'.",
+    );
+  });
+
+  test("plans a pure graph as ready when caller inputs are available", () => {
+    const plan = planSource(fixture("pipeline.prose.md"), {
+      path: "fixtures/compiler/pipeline.prose.md",
+      inputs: {
+        draft: "The original draft.",
+      },
+    });
+
+    expect(plan.status).toBe("ready");
+    expect(plan.nodes.map((node) => [node.component_ref, node.status])).toEqual([
+      ["review", "ready"],
+      ["fact-check", "ready"],
+      ["polish", "ready"],
+    ]);
+    expect(plan.nodes[0].stale_reasons).toEqual(["no_current_run"]);
+  });
+
+  test("plans missing caller inputs as blocked", () => {
+    const plan = planSource(fixture("pipeline.prose.md"), {
+      path: "fixtures/compiler/pipeline.prose.md",
+    });
+
+    expect(plan.status).toBe("blocked");
+    expect(plan.nodes.map((node) => [node.component_ref, node.status])).toEqual([
+      ["review", "blocked_input"],
+      ["fact-check", "blocked_input"],
+      ["polish", "blocked_input"],
+    ]);
+    expect(plan.nodes[0].blocked_reasons).toContain(
+      "Missing required input 'draft'.",
+    );
+  });
+
+  test("plans side-effecting graphs as blocked by effect", () => {
+    const plan = planSource(fixture("typed-effects.prose.md"), {
+      path: "fixtures/compiler/typed-effects.prose.md",
+      inputs: {
+        company: "Acme profile",
+        subject: "run: prior-run",
+      },
+    });
+
+    expect(plan.status).toBe("blocked");
+    expect(plan.graph_blocked_reasons).toContain(
+      "Graph effect 'delivers' requires a gate before execution.",
+    );
+    expect(plan.nodes).toContainEqual(
+      expect.objectContaining({
+        component_ref: "brief-writer",
+        status: "ready",
+      }),
     );
   });
 });
