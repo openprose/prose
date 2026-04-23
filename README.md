@@ -66,6 +66,7 @@ bun run prose graph fixtures/compiler/selective-recompute.prose.md \
   --input company="openprose" \
   --target-output summary
 bun run prose lint fixtures/compiler/malformed.prose.md
+bun run prose preflight packages/co/programs/company-repo-checker.prose.md
 bun run prose lint packages/std
 bun run prose fmt fixtures/compiler/malformed.prose.md
 bun run prose fmt packages/std --check
@@ -115,6 +116,10 @@ can emit JSON for downstream tooling.
 rewrites supported source into stable `.prose.md` ordering. Both now support
 repo-scale directory workflows, and `prose fmt --check` acts as a formatting
 gate.
+
+`prose preflight` checks whether a program's declared environment variables are
+present locally and whether its pinned package dependencies are installed in
+`.deps/`, without ever printing secret values.
 
 `prose highlight` emits first-pass syntax-highlight tokens so contract fields
 and ProseScript control flow are visible to tooling instead of blending into

@@ -10,6 +10,7 @@ import { materializeFile } from "./materialize";
 import { projectManifest } from "./manifest";
 import { packagePath, renderPackageText } from "./package";
 import { planFile } from "./plan";
+import { preflightPath, renderPreflightText } from "./preflight";
 import { publishCheckPath, renderPublishCheckText } from "./publish";
 import { renderCatalogSearchText, searchCatalog } from "./search";
 import { renderStatusText, statusPath } from "./status";
@@ -35,6 +36,7 @@ export async function runCli(args: string[]): Promise<void> {
     command !== "materialize" &&
     command !== "package" &&
     command !== "plan" &&
+    command !== "preflight" &&
     command !== "publish-check" &&
     command !== "search" &&
     command !== "status" &&
@@ -205,6 +207,23 @@ export async function runCli(args: string[]): Promise<void> {
       await writeFile(options.out, output, "utf8");
     } else {
       process.stdout.write(output);
+    }
+    return;
+  }
+
+  if (command === "preflight") {
+    const result = await preflightPath(options.file);
+    const output =
+      options.format === "json"
+        ? `${JSON.stringify(result, null, options.pretty ? 2 : 0)}\n`
+        : renderPreflightText(result);
+    if (options.out) {
+      await writeFile(options.out, output, "utf8");
+    } else {
+      process.stdout.write(output);
+    }
+    if (result.status === "fail") {
+      process.exitCode = 1;
     }
     return;
   }
@@ -665,6 +684,7 @@ Usage:
   prose highlight <file.prose.md> [--format text|json|html]
   prose lint <file.prose.md|dir> [--format text|json]
   prose plan <file.prose.md> [--input name=value] [--current-run .prose/runs/{id}] [--target-output final]
+  prose preflight <file.prose.md> [--format text|json]
   prose publish-check <dir|file.prose.md> [--format text|json] [--strict]
   prose search <dir> [--type CompanyProfile] [--effect read_external] [--kind service] [--min-quality 0.8]
   prose status [.prose/runs] [--limit 10] [--format text|json]
@@ -681,6 +701,7 @@ Commands:
   lint         Check canonical source hygiene and structural issues
   manifest     Project canonical Prose IR into a VM-readable manifest
   plan         Preview ready and blocked graph nodes without executing
+  preflight    Check dependency installs and environment readiness for a program
   materialize  Write local RFC 005 run records from IR and fixture outputs
   package      Generate registry/package metadata from canonical source
   publish-check  Evaluate local publish readiness from package metadata

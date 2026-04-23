@@ -10,6 +10,7 @@ export { materializeFile, materializeSource } from "./materialize";
 export { projectManifest } from "./manifest";
 export { packagePath, renderPackageText } from "./package";
 export { planFile, planSource } from "./plan";
+export { preflightPath, renderPreflightText } from "./preflight";
 export { publishCheckPath, renderPublishCheckText } from "./publish";
 export { buildRegistryRef, parseRegistryRef } from "./registry";
 export { renderCatalogSearchText, searchCatalog } from "./search";
@@ -37,6 +38,9 @@ export type {
   PackageComponentMetadata,
   PackageMetadata,
   PackageQualitySummary,
+  PreflightDependencyCheck,
+  PreflightEnvironmentCheck,
+  PreflightResult,
   PortIR,
   PublishCheckItem,
   PublishCheckResult,

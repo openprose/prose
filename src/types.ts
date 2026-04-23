@@ -330,6 +330,35 @@ export interface RunStatusView {
   runs: RunStatusEntry[];
 }
 
+export interface PreflightEnvironmentCheck {
+  name: string;
+  status: "set" | "missing";
+  declared_by: string[];
+}
+
+export interface PreflightDependencyCheck {
+  package: string;
+  sha: string;
+  pinned: boolean;
+  installed: boolean;
+  install_dir: string | null;
+  lockfile_path: string | null;
+  refs: string[];
+}
+
+export interface PreflightResult {
+  preflight_version: "0.1";
+  target: string;
+  package_root: string;
+  component_refs: string[];
+  status: "pass" | "fail";
+  environment: PreflightEnvironmentCheck[];
+  dependencies: PreflightDependencyCheck[];
+  diagnostics: Diagnostic[];
+  missing: string[];
+  warnings: string[];
+}
+
 export interface HighlightToken {
   line: number;
   start: number;

@@ -7,6 +7,7 @@ Operational utilities for debugging, profiling, and validating Prose programs. T
 | Program | CLI Command | Description |
 |---------|-------------|-------------|
 | `lint.prose.md` | `prose lint <file>` | Validate structure, schema, shapes, and contract compatibility |
+| `preflight.prose.md` | `prose preflight <file>` | Check that pinned dependencies are installed and required environment variables are set |
 | `wire.prose.md` | `prose manifest <file>` | Produce the current VM-readable manifest projection from canonical IR |
 | `status.prose.md` | `prose status [.prose/runs]` | Show recent local run materializations with status, outputs, and run paths |
 | `diagnose.prose.md` | `prose run std/ops/diagnose` | Diagnose why a run failed -- root cause analysis with fix recommendations |
@@ -16,6 +17,7 @@ Operational utilities for debugging, profiling, and validating Prose programs. T
 
 **Source-file tools** operate on program `.prose.md` files before execution:
 - `lint` -- validates that the program is well-formed
+- `preflight` -- validates local dependency and environment readiness
 - `manifest` -- produces the current manifest projection (bridge until IR-native execution fully replaces it)
 
 **Run-artifact tools** operate on completed runs in `.prose/runs/`:
