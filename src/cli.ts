@@ -7,6 +7,7 @@ import { highlightFile, renderHighlightHtml, renderHighlightText } from "./highl
 import { lintFile, lintPath, renderLintReportText, renderLintText } from "./lint";
 import { materializeFile } from "./materialize";
 import { projectManifest } from "./manifest";
+import { packagePath, renderPackageText } from "./package";
 import { planFile } from "./plan";
 import { renderTraceText, traceFile } from "./trace";
 
@@ -27,6 +28,7 @@ export async function runCli(args: string[]): Promise<void> {
     command !== "lint" &&
     command !== "manifest" &&
     command !== "materialize" &&
+    command !== "package" &&
     command !== "plan" &&
     command !== "trace"
   ) {
@@ -220,6 +222,23 @@ export async function runCli(args: string[]): Promise<void> {
     return;
   }
 
+  if (command === "package") {
+    const metadata = await packagePath(options.file);
+    const output =
+      options.format === "json"
+        ? `${JSON.stringify(metadata, null, options.pretty ? 2 : 0)}\n`
+        : renderPackageText(metadata);
+    if (options.out) {
+      await writeFile(options.out, output, "utf8");
+    } else {
+      process.stdout.write(output);
+    }
+    if (metadata.diagnostics.some((diagnostic) => diagnostic.severity === "error")) {
+      process.exitCode = 1;
+    }
+    return;
+  }
+
   const ir = await compileFile(options.file);
   const output =
     command === "manifest"
@@ -394,6 +413,7 @@ Usage:
   prose fmt <file.prose.md|dir> [--write|--check]
   prose grammar [--out syntaxes/openprose.tmLanguage.json] [--no-pretty]
   prose manifest <file.prose.md> [--out manifest.md]
+  prose package <dir|file.prose.md> [--format text|json]
   prose graph <file.prose.md> [--current-run .prose/runs/{id}] [--target-output final] [--format mermaid|json]
   prose highlight <file.prose.md> [--format text|json|html]
   prose lint <file.prose.md|dir> [--format text|json]
@@ -411,6 +431,7 @@ Commands:
   manifest     Project canonical Prose IR into a VM-readable manifest
   plan         Preview ready and blocked graph nodes without executing
   materialize  Write local RFC 005 run records from IR and fixture outputs
+  package      Generate registry/package metadata from canonical source
   trace        Summarize a materialized run directory and its node runs
 `);
 }

@@ -10,11 +10,16 @@ import { highlightSource, renderHighlightHtml, renderHighlightText } from "../sr
 import { lintPath, lintSource, renderLintReportText, renderLintText } from "../src/lint";
 import { materializeSource } from "../src/materialize";
 import { projectManifest } from "../src/manifest";
+import { packagePath, renderPackageText } from "../src/package";
 import { planSource } from "../src/plan";
 import { renderTraceText, traceFile } from "../src/trace";
 
 function fixture(name: string): string {
   return readFileSync(new URL(`../fixtures/compiler/${name}`, import.meta.url), "utf8");
+}
+
+function fixturePath(name: string): string {
+  return new URL(`../fixtures/${name}`, import.meta.url).pathname;
 }
 
 function compileFixture(name: string) {
@@ -861,6 +866,55 @@ name: stable-format
     expect(text).toContain('"entity.name.function.call-target.openprose"');
     expect(text).toContain('"variable.parameter.port.openprose"');
     expect(artifact).toBe(text);
+  });
+
+  test("generates package metadata from a canonical package root", async () => {
+    const metadata = await packagePath(fixturePath("package/catalog-demo"));
+    const text = renderPackageText(metadata);
+
+    expect(metadata.manifest).toMatchObject({
+      name: "@openprose/catalog-demo",
+      version: "0.1.0",
+      no_evals: false,
+      hosted: {
+        callable: true,
+        auth_required: true,
+      },
+    });
+    expect(metadata.components.map((component) => component.name)).toEqual([
+      "brief-writer",
+      "market-scan",
+    ]);
+    expect(metadata.components[0].inputs).toContainEqual({
+      name: "company",
+      type: "CompanyProfile",
+    });
+    expect(metadata.components[0].effects).toEqual(["pure"]);
+    expect(metadata.quality.score).toBeGreaterThan(0.8);
+    expect(metadata.quality.warnings).toEqual([]);
+    expect(text).toContain("Package: @openprose/catalog-demo@0.1.0");
+    expect(text).toContain("brief-writer (service)");
+  });
+
+  test("warns when generated package metadata is missing publishing inputs", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "openprose-package-"));
+    writeFileSync(join(dir, "hello.prose.md"), fixture("hello.prose.md"));
+
+    const metadata = await packagePath(dir);
+
+    expect(metadata.manifest.name).toContain("openprose-package-");
+    expect(metadata.manifest.version).toBeNull();
+    expect(metadata.manifest.source.sha).toBeNull();
+    expect(metadata.manifest.no_evals).toBe(true);
+    expect(metadata.quality.warnings).toContain(
+      "Missing package version in prose.package.json.",
+    );
+    expect(metadata.quality.warnings).toContain(
+      "Missing source.git in prose.package.json.",
+    );
+    expect(metadata.quality.warnings).toContain(
+      "Package has no linked evals; publish should record no_evals or add eval coverage.",
+    );
   });
 
   test("lints a directory of source files", async () => {

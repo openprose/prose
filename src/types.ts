@@ -323,3 +323,64 @@ export interface HighlightView {
   path: string;
   tokens: HighlightToken[];
 }
+
+export interface HostedRuntimeMetadata {
+  callable: boolean;
+  endpoint: string;
+  pricing: string;
+  auth_required: boolean;
+  auth_modes: string[];
+  trace_available: boolean;
+}
+
+export interface PackageComponentMetadata {
+  name: string;
+  kind: ComponentKind;
+  path: string;
+  summary: string | null;
+  inputs: Array<{ name: string; type: string }>;
+  outputs: Array<{ name: string; type: string }>;
+  effects: string[];
+  access: Record<string, string[]>;
+  evals: string[];
+  examples: string[];
+  quality_score: number;
+  ir_version: ProseIR["ir_version"];
+  semantic_hash: string;
+  source_sha: string;
+  warnings: string[];
+}
+
+export interface PackageQualitySummary {
+  score: number;
+  component_count: number;
+  typed_port_coverage: number;
+  effect_declaration_ratio: number;
+  eval_link_ratio: number;
+  example_link_ratio: number;
+  warnings: string[];
+}
+
+export interface PackageMetadata {
+  package_version: "0.1";
+  root: string;
+  manifest: {
+    name: string;
+    version: string | null;
+    description: string | null;
+    license: string | null;
+    source: {
+      git: string | null;
+      sha: string | null;
+    };
+    dependencies: ProseIR["package"]["dependencies"];
+    schemas: string[];
+    evals: string[];
+    examples: string[];
+    no_evals: boolean;
+    hosted: HostedRuntimeMetadata | null;
+  };
+  components: PackageComponentMetadata[];
+  diagnostics: Diagnostic[];
+  quality: PackageQualitySummary;
+}

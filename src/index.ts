@@ -7,6 +7,7 @@ export { highlightFile, highlightSource, renderHighlightHtml, renderHighlightTex
 export { lintFile, lintPath, lintSource, renderLintReportText, renderLintText } from "./lint";
 export { materializeFile, materializeSource } from "./materialize";
 export { projectManifest } from "./manifest";
+export { packagePath, renderPackageText } from "./package";
 export { planFile, planSource } from "./plan";
 export { renderTraceText, traceFile } from "./trace";
 export type {
@@ -22,8 +23,12 @@ export type {
   GraphView,
   GraphViewEdge,
   GraphViewNode,
+  HostedRuntimeMetadata,
   HighlightToken,
   HighlightView,
+  PackageComponentMetadata,
+  PackageMetadata,
+  PackageQualitySummary,
   PortIR,
   ProseIR,
   RuntimeSettingIR,

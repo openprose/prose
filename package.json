@@ -16,6 +16,7 @@
     "lint": "bun bin/prose.ts lint",
     "manifest": "bun bin/prose.ts manifest",
     "plan": "bun bin/prose.ts plan",
+    "package": "bun bin/prose.ts package",
     "materialize": "bun bin/prose.ts materialize",
     "trace": "bun bin/prose.ts trace",
     "test": "bun test",
