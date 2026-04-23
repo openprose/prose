@@ -84,6 +84,4 @@ The first slice is on track when:
 
 ## Next Slice
 
-The next implementation slice should add local run materialization for simple
-pure components and graphs. It should consume IR and manifest projection, then
-write RFC 005-style run records for fixture programs.
+Local run materialization moved into Implementation Note 002.

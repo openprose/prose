@@ -1,6 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { compileSource } from "../src/compiler";
+import { materializeSource } from "../src/materialize";
 import { projectManifest } from "../src/manifest";
 
 function fixture(name: string): string {
@@ -116,5 +119,109 @@ describe("OpenProse compiler", () => {
     expect(manifest).toContain("feedback <- bindings/review/feedback.md");
     expect(manifest).toContain("claims <- bindings/fact-check/claims.md");
     expect(manifest).toContain("polish (depends on: fact-check, review)");
+  });
+
+  test("materializes a succeeded pure single-service run record", async () => {
+    const runRoot = mkdtempSync(join(tmpdir(), "openprose-run-"));
+    const result = await materializeSource(fixture("hello.prose.md"), {
+      path: "fixtures/compiler/hello.prose.md",
+      runRoot,
+      runId: "20260423-120000-abc123",
+      createdAt: "2026-04-23T12:00:00.000Z",
+      outputs: {
+        message: "Hello from a fixture output.",
+      },
+      trigger: "test",
+    });
+    const record = JSON.parse(readFileSync(join(result.run_dir, "run.json"), "utf8"));
+    const output = readFileSync(
+      join(result.run_dir, "bindings", "hello", "message.md"),
+      "utf8",
+    );
+
+    expect(record).toMatchObject({
+      run_id: "20260423-120000-abc123:hello",
+      kind: "component",
+      component_ref: "hello",
+      status: "succeeded",
+      acceptance: { status: "accepted" },
+      runtime: { harness: "openprose-bun-local", worker_ref: "fixture-output" },
+    });
+    expect(output).toBe("Hello from a fixture output.\n");
+  });
+
+  test("materializes a graph run with node run records", async () => {
+    const runRoot = mkdtempSync(join(tmpdir(), "openprose-graph-"));
+    const result = await materializeSource(fixture("pipeline.prose.md"), {
+      path: "fixtures/compiler/pipeline.prose.md",
+      runRoot,
+      runId: "20260423-121500-def456",
+      createdAt: "2026-04-23T12:15:00.000Z",
+      inputs: {
+        draft: "The original draft.",
+      },
+      outputs: {
+        "review.feedback": "Tighten the intro.",
+        "fact-check.claims": "All claims verified.",
+        "polish.final": "The polished draft.",
+      },
+      trigger: "test",
+    });
+    const record = JSON.parse(readFileSync(join(result.run_dir, "run.json"), "utf8"));
+
+    expect(record).toMatchObject({
+      run_id: "20260423-121500-def456",
+      kind: "graph",
+      component_ref: "content-pipeline",
+      status: "succeeded",
+    });
+    expect(result.node_records.map((node) => [node.component_ref, node.status])).toEqual([
+      ["review", "succeeded"],
+      ["fact-check", "succeeded"],
+      ["polish", "succeeded"],
+    ]);
+    expect(
+      readFileSync(join(result.run_dir, "bindings", "$graph", "final.md"), "utf8"),
+    ).toBe("The polished draft.\n");
+  });
+
+  test("materialization blocks missing fixture outputs", async () => {
+    const runRoot = mkdtempSync(join(tmpdir(), "openprose-blocked-"));
+    const result = await materializeSource(fixture("hello.prose.md"), {
+      path: "fixtures/compiler/hello.prose.md",
+      runRoot,
+      runId: "20260423-123000-fed987",
+      createdAt: "2026-04-23T12:30:00.000Z",
+      trigger: "test",
+    });
+
+    expect(result.record.status).toBe("blocked");
+    expect(result.record.acceptance).toMatchObject({
+      status: "pending",
+      reason: "Missing fixture output 'message'.",
+    });
+  });
+
+  test("materialization blocks side-effecting graphs by default", async () => {
+    const runRoot = mkdtempSync(join(tmpdir(), "openprose-effect-"));
+    const result = await materializeSource(fixture("typed-effects.prose.md"), {
+      path: "fixtures/compiler/typed-effects.prose.md",
+      runRoot,
+      runId: "20260423-124500-abc987",
+      createdAt: "2026-04-23T12:45:00.000Z",
+      inputs: {
+        company: "Acme profile",
+        subject: "run: prior-run",
+      },
+      outputs: {
+        "brief-writer.brief": "Executive brief",
+      },
+      trigger: "test",
+    });
+
+    expect(result.record.status).toBe("blocked");
+    expect(result.record.acceptance.reason).toContain(
+      "Local materializer does not perform effect 'delivers'.",
+    );
   });
 });

@@ -51,6 +51,8 @@ is the compiler:
 ```bash
 bun run prose compile fixtures/compiler/hello.prose.md
 bun run prose manifest fixtures/compiler/pipeline.prose.md
+bun run prose materialize fixtures/compiler/hello.prose.md \
+  --output message="Hello from a fixture output."
 ```
 
 `prose compile` emits canonical Prose IR JSON with source spans, diagnostics,
@@ -61,6 +63,11 @@ reactive execution.
 `prose manifest` projects that IR into a VM-readable `manifest.md` bridge for
 the current execution model. The manifest is generated from IR rather than
 re-parsing source Markdown.
+
+`prose materialize` writes an RFC 005-style local run directory from IR,
+explicit caller inputs, and explicit fixture outputs. It does not pretend to
+spawn agents; missing required data and unsafe effects produce blocked run
+records.
 
 ```markdown
 ---

@@ -117,3 +117,86 @@ export interface ProseIR {
   diagnostics: Diagnostic[];
 }
 
+export type RunLifecycleStatus =
+  | "pending"
+  | "running"
+  | "succeeded"
+  | "failed"
+  | "cancelled"
+  | "blocked";
+
+export interface RunBindingRecord {
+  port: string;
+  value_hash: string;
+  source_run_id: string | null;
+  policy_labels: string[];
+}
+
+export interface RunOutputRecord {
+  port: string;
+  value_hash: string;
+  artifact_ref: string;
+  policy_labels: string[];
+}
+
+export interface RunEvalRecord {
+  eval_ref: string;
+  required: boolean;
+  status: "passed" | "failed" | "skipped" | "pending";
+}
+
+export interface RunRecord {
+  run_id: string;
+  kind: "component" | "graph";
+  component_ref: string;
+  component_version: {
+    source_sha: string;
+    package_ref: string;
+    ir_hash: string;
+  };
+  caller: {
+    principal_id: string;
+    tenant_id: string;
+    roles: string[];
+    trigger:
+      | "manual"
+      | "api"
+      | "schedule"
+      | "webhook"
+      | "graph_recompute"
+      | "human_gate"
+      | "test";
+  };
+  runtime: {
+    harness: string;
+    worker_ref: string | null;
+    model: string | null;
+    environment_ref: string | null;
+  };
+  inputs: RunBindingRecord[];
+  dependencies: Array<{
+    package: string;
+    sha: string;
+  }>;
+  effects: {
+    declared: string[];
+    performed: string[];
+  };
+  outputs: RunOutputRecord[];
+  evals: RunEvalRecord[];
+  acceptance: {
+    status: "accepted" | "rejected" | "pending" | "not_required";
+    reason: string | null;
+  };
+  trace_ref: string;
+  status: RunLifecycleStatus;
+  created_at: string;
+  completed_at: string | null;
+}
+
+export interface MaterializedRun {
+  run_id: string;
+  run_dir: string;
+  record: RunRecord;
+  node_records: RunRecord[];
+}

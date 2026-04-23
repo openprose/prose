@@ -1,4 +1,5 @@
 export { compileFile, compileSource } from "./compiler";
+export { materializeFile, materializeSource } from "./materialize";
 export { projectManifest } from "./manifest";
 export type {
   AccessIR,
