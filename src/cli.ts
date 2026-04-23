@@ -2,6 +2,7 @@ import { writeFile } from "node:fs/promises";
 import { compileFile } from "./compiler";
 import { formatFile } from "./format";
 import { graphFile, renderGraphMermaid } from "./graph";
+import { highlightFile, renderHighlightText } from "./highlight";
 import { lintFile, renderLintText } from "./lint";
 import { materializeFile } from "./materialize";
 import { projectManifest } from "./manifest";
@@ -20,6 +21,7 @@ export async function runCli(args: string[]): Promise<void> {
     command !== "compile" &&
     command !== "fmt" &&
     command !== "graph" &&
+    command !== "highlight" &&
     command !== "lint" &&
     command !== "manifest" &&
     command !== "materialize" &&
@@ -37,6 +39,20 @@ export async function runCli(args: string[]): Promise<void> {
     console.error("Missing file path.");
     printHelp();
     process.exitCode = 1;
+    return;
+  }
+
+  if (command === "highlight") {
+    const view = await highlightFile(options.file);
+    const output =
+      options.format === "json"
+        ? `${JSON.stringify(view, null, options.pretty ? 2 : 0)}\n`
+        : renderHighlightText(view);
+    if (options.out) {
+      await writeFile(options.out, output, "utf8");
+    } else {
+      process.stdout.write(output);
+    }
     return;
   }
 
@@ -284,6 +300,7 @@ Usage:
   prose fmt <file.prose.md> [--write]
   prose manifest <file.prose.md> [--out manifest.md]
   prose graph <file.prose.md> [--current-run .prose/runs/{id}] [--target-output final] [--format mermaid|json]
+  prose highlight <file.prose.md> [--format text|json]
   prose lint <file.prose.md> [--format text|json]
   prose plan <file.prose.md> [--input name=value] [--current-run .prose/runs/{id}] [--target-output final]
   prose materialize <file.prose.md> [--run-root .prose/runs] [--input name=value] [--output port=value]
@@ -293,6 +310,7 @@ Commands:
   compile      Compile Contract Markdown to canonical Prose IR JSON
   fmt          Rewrite supported Contract Markdown into canonical source order
   graph        Render an IR-native graph preview with optional plan overlay
+  highlight    Emit first-pass syntax-highlight tokens for source tooling
   lint         Check canonical source hygiene and structural issues
   manifest     Project canonical Prose IR into a VM-readable manifest
   plan         Preview ready and blocked graph nodes without executing

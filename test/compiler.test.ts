@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { compileSource } from "../src/compiler";
 import { formatSource } from "../src/format";
 import { graphSource, renderGraphMermaid } from "../src/graph";
+import { highlightSource, renderHighlightText } from "../src/highlight";
 import { lintSource, renderLintText } from "../src/lint";
 import { materializeSource } from "../src/materialize";
 import { projectManifest } from "../src/manifest";
@@ -797,5 +798,36 @@ name: stable-format
     });
 
     expect(before.semantic_hash).toBe(after.semantic_hash);
+  });
+
+  test("highlights canonical source tokens", () => {
+    const view = highlightSource(
+      fixture("typed-effects.prose.md"),
+      "fixtures/compiler/typed-effects.prose.md",
+    );
+    const scopes = view.tokens.map((token) => [token.scope, token.text]);
+
+    expect(scopes).toContainEqual(["frontmatter.key", "name"]);
+    expect(scopes).toContainEqual(["component.kind", "program"]);
+    expect(scopes).toContainEqual(["section.header", "Requires"]);
+    expect(scopes).toContainEqual(["port.name", "company"]);
+    expect(scopes).toContainEqual(["port.type", "CompanyProfile"]);
+    expect(scopes).toContainEqual(["env.name", "SLACK_WEBHOOK_URL"]);
+    expect(scopes).toContainEqual(["effect.kind", "read_external"]);
+    expect(scopes).toContainEqual(["access.label", "company_private.leads"]);
+    expect(scopes).toContainEqual(["prose.keyword", "call"]);
+    expect(scopes).toContainEqual(["prose.call_target", "brief-writer"]);
+    expect(scopes).toContainEqual(["prose.keyword", "return"]);
+  });
+
+  test("renders highlight tokens as text", () => {
+    const text = renderHighlightText(
+      highlightSource(fixture("hello.prose.md"), "fixtures/compiler/hello.prose.md"),
+    );
+
+    expect(text).toContain("frontmatter.key: name");
+    expect(text).toContain("component.kind: service");
+    expect(text).toContain("section.header: Ensures");
+    expect(text).toContain("port.name: message");
   });
 });

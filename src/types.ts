@@ -309,3 +309,17 @@ export interface TraceView {
   nodes: TraceNodeView[];
   events: TraceEvent[];
 }
+
+export interface HighlightToken {
+  line: number;
+  start: number;
+  end: number;
+  scope: string;
+  text: string;
+}
+
+export interface HighlightView {
+  highlight_version: "0.1";
+  path: string;
+  tokens: HighlightToken[];
+}

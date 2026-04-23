@@ -64,6 +64,4 @@ This slice is on track when:
 
 ## Next Slice
 
-The next implementation slice should start the first syntax-highlighting
-surface so ports, types, effects, and ProseScript control flow become
-token-visible instead of just parse-visible.
+Syntax highlighting moved into Implementation Note 010.

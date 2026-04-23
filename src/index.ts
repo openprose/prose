@@ -1,6 +1,7 @@
 export { compileFile, compileSource } from "./compiler";
 export { formatFile, formatSource } from "./format";
 export { buildGraphView, graphFile, graphSource, renderGraphMermaid } from "./graph";
+export { highlightFile, highlightSource, renderHighlightText } from "./highlight";
 export { lintFile, lintSource, renderLintText } from "./lint";
 export { materializeFile, materializeSource } from "./materialize";
 export { projectManifest } from "./manifest";
@@ -19,6 +20,8 @@ export type {
   GraphView,
   GraphViewEdge,
   GraphViewNode,
+  HighlightToken,
+  HighlightView,
   PortIR,
   ProseIR,
   RuntimeSettingIR,

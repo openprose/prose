@@ -67,6 +67,7 @@ bun run prose graph fixtures/compiler/selective-recompute.prose.md \
   --target-output summary
 bun run prose lint fixtures/compiler/malformed.prose.md
 bun run prose fmt fixtures/compiler/malformed.prose.md
+bun run prose highlight fixtures/compiler/typed-effects.prose.md
 bun run prose materialize fixtures/compiler/hello.prose.md \
   --output message="Hello from a fixture output."
 bun run prose trace .prose/runs/20260423-180000-smoke01
@@ -97,6 +98,10 @@ can emit JSON for downstream tooling.
 
 `prose lint` checks canonical source hygiene before runtime, and `prose fmt`
 rewrites supported source into stable `.prose.md` ordering.
+
+`prose highlight` emits first-pass syntax-highlight tokens so contract fields
+and ProseScript control flow are visible to tooling instead of blending into
+plain Markdown.
 
 `prose materialize` writes an RFC 005-style local run directory from IR,
 explicit caller inputs, and explicit fixture outputs. It does not pretend to
