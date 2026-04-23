@@ -1,8 +1,29 @@
 # RFC 001: Scheduled Execution Syntax
 
-**Status:** Proposed
+**Status:** Superseded by RFC 005, RFC 006, and RFC 009
 **Date:** 2026-04-08
 **Author:** Dan B. (OpenProse)
+**Disposition Date:** 2026-04-23
+
+## Disposition
+
+Do not implement this RFC as written.
+
+The scheduling problem is still real, but the proposed `schedule:` frontmatter
+shape predates the current reactive graph and universal run materialization
+model. In the current direction, schedules are outside the language/framework
+core:
+
+- scheduled invocation is a hosted runtime/platform concern
+- every scheduled invocation produces a normal `run`
+- caller provenance records the triggering source as `schedule`
+- hosted OpenProse owns durable scheduling, retries, backpressure, and audit
+- local and generic harnesses are not required to provide a scheduler
+
+This is intentionally punted from the current OSS RFC set. The framework needs
+to represent that a run was caused by a schedule; it does not need source-level
+schedule syntax yet. The historical frontmatter examples below should be read
+as motivation, not current syntax.
 
 ## Problem
 
@@ -25,7 +46,10 @@ This means the runtime (Press) cannot automatically schedule programs — schedu
 
 4. **Customer onboarding**: When setting up a new customer, the schedule is communicated verbally and configured manually. A `schedule:` field in the program frontmatter would make the intended cadence part of the program definition.
 
-## Proposed Solution
+## Historical Proposal
+
+The following proposal is not current. It is retained only to preserve the
+original motivation.
 
 Add an optional `schedule:` field to program frontmatter:
 
@@ -65,7 +89,7 @@ schedule:
 - `schedule:` should coexist with event-driven triggers (future RFC).
 - The `description:` subfield ensures the human-readable cadence stays in sync with the cron expression.
 
-## Impact
+## Historical Impact
 
 This would affect:
 

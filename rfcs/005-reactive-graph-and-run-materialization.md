@@ -12,8 +12,9 @@ dependency set, policy set, and runtime environment.
 
 Reactive execution then becomes a runtime behavior over the compiled graph:
 nodes point at their current valid `run`; when upstream data, source, schemas,
-dependencies, policies, or freshness windows change, the runtime invalidates
-affected nodes and plans recomputation subject to effects and safety policy.
+dependencies, policies, eval requirements, or freshness windows change, the
+runtime invalidates affected nodes and plans recomputation subject to effects
+and safety policy.
 
 The source language remains contract-first. Authors write components and
 contracts. Forme compiles those contracts into a graph. The runtime materializes
@@ -45,6 +46,10 @@ the graph into runs.
   valid run for a component plus bound inputs.
 - **Current pointer:** The node's pointer to the latest run considered valid
   under source, input, dependency, freshness, effect, and policy checks.
+- **Latest pointer:** The node's pointer to the most recent materialized run,
+  even if that run is blocked, failed, or not accepted for downstream use.
+- **Acceptance:** The decision that a succeeded run is allowed to flow
+  downstream under eval and policy requirements.
 - **Provenance:** Metadata that records caller identity, source component,
   source run, input bindings, policy labels, and generated outputs.
 - **Effect:** A declaration of what a component may touch or mutate outside
@@ -62,7 +67,7 @@ Source (.prose.md / .prose)
   -> Prose IR
   -> reactive graph
   -> run materializations
-  -> current pointers, traces, evals, registry metadata
+  -> current/latest pointers, traces, evals, registry metadata
 ```
 
 A component is the formula. A graph node is the cell. A binding is the value. A
@@ -80,9 +85,10 @@ A run record must be able to answer:
 - Which inputs and upstream runs were consumed?
 - Which dependency SHAs and package versions were used?
 - Which environment variable names were required?
+- Which runtime, harness, model, and worker executed it?
 - Which effect and access policies applied?
 - Which outputs were produced?
-- Which evals were run and what did they decide?
+- Which evals were run and did the run become accepted?
 - Which trace events occurred?
 
 Minimum fields:
@@ -99,6 +105,12 @@ caller:
   principal_id: string
   tenant_id: string
   roles: string[]
+  trigger: manual | api | schedule | webhook | graph_recompute | human_gate | test
+runtime:
+  harness: string
+  worker_ref: string | null
+  model: string | null
+  environment_ref: string | null
 inputs:
   - port: string
     value_hash: string
@@ -115,8 +127,15 @@ outputs:
     value_hash: string
     artifact_ref: string
     policy_labels: string[]
+evals:
+  - eval_ref: string
+    required: boolean
+    status: passed | failed | skipped | pending
+acceptance:
+  status: accepted | rejected | pending | not_required
+  reason: string | null
 trace_ref: string
-status: succeeded | failed | cancelled | blocked
+status: pending | running | succeeded | failed | cancelled | blocked
 created_at: string
 completed_at: string | null
 ```
@@ -131,11 +150,18 @@ component_ref: string
 bound_inputs:
   input_name: upstream_node | literal | run_ref
 current_run_id: string | null
-stale_reason: string | null
+latest_run_id: string | null
+stale_reasons: string[]
+blocked_reasons: string[]
 recompute_policy:
   mode: automatic | gated | manual
   freshness: string | null
 ```
+
+`current_run_id` is the run allowed to flow downstream. `latest_run_id` is the
+most recent materialization for observability and debugging. They may differ
+when a run succeeds but required evals, policy checks, or approvals have not
+accepted it.
 
 Reactive nodes are not required for one-off local execution, but the IR and run
 record must make them possible.
@@ -154,6 +180,23 @@ model. A component may still declare:
 
 The runtime resolves those to run records, validates status and staleness, and
 records them as upstream provenance.
+
+## Feedback and Memory Inputs
+
+Feedback does not need a special source-level section in the current model.
+Feedback is data:
+
+- a caller input binding
+- an upstream run reference
+- a memory component output
+- an event-ingestion run
+- a graph-node input update
+
+Persistent preferences, exceptions, and corrections should therefore be
+materialized, typed, labeled, and traced like other inputs. Reactive invalidation
+follows from the changed binding hash or upstream run pointer. Hosted products
+may provide feedback UI and ingestion endpoints, but those endpoints create
+ordinary runs and bindings.
 
 ## Follow-Up RFCs
 
@@ -188,10 +231,12 @@ not in OSS RFCs.
 ### Runtime Checks
 
 - A single-service program creates a run record with source hash, inputs,
-  outputs, and trace.
+  outputs, runtime metadata, eval state, acceptance state, and trace.
 - A multi-service program creates graph-level and node-level run records.
 - A program consuming `run` and `run[]` inputs records upstream provenance.
 - An interrupted run can be resumed or marked failed without losing provenance.
+- A succeeded run with failed required evals updates `latest_run_id` but not
+  `current_run_id`.
 
 ### Golden Fixtures
 
@@ -216,4 +261,3 @@ backend work until the OSS run record shape is stable.
 - Existing run-typed inputs are expressible as upstream materialization refs.
 - Reactive graph nodes can be derived from IR plus run records.
 - A seeded stale-source fixture marks the old run invalid without deleting it.
-

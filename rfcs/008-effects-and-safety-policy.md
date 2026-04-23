@@ -30,6 +30,9 @@ Canonical section:
 - `human_gate`: approval before irreversible publish
 ```
 
+`pure` is exclusive. A component that declares any external read, mutation,
+host call, private-data read, delivery, or gate is not pure.
+
 Effects may be paired with access policy:
 
 ```markdown
@@ -72,6 +75,7 @@ The vocabulary should stay small and policy-relevant.
 | `mutates_external` | human-gated |
 | `calls_host` | host-policy gated |
 | `human_gate` | blocks |
+| `reads_private_data` | policy-gated |
 | `declassifies` | policy-gated |
 
 ## Policy Labels
@@ -84,6 +88,10 @@ Inputs and outputs may carry labels:
 - `customer_private`
 - `secret_derived`
 - package-defined labels
+
+Built-in labels have framework-defined meaning. Package and organization labels
+should be namespaced so a public package cannot redefine a tenant's private
+policy vocabulary by accident.
 
 Outputs inherit the most restrictive labels of inputs unless the component
 declares and is authorized for `declassifies`.
@@ -142,4 +150,3 @@ must define the expected policy decisions.
 - Reactive planner reads effects before recomputing.
 - Policy labels propagate through bindings and run records.
 - Seeded unsafe recompute cases are blocked.
-

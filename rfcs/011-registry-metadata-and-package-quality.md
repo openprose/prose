@@ -63,6 +63,7 @@ For each component:
 - examples
 - quality score
 - latest compatible IR version
+- semantic IR hash
 - source SHA
 
 ## Quality Signals
@@ -86,7 +87,7 @@ Publishing should:
 
 1. Compile package source to IR.
 2. Run static lint.
-3. Run required evals or record `no-evals: true`.
+3. Run required evals or record `no_evals: true`.
 4. Generate registry metadata.
 5. Sign source SHA and metadata.
 6. Upload metadata to catalog.
@@ -102,8 +103,9 @@ hosted:
   callable: true
   endpoint: string
   pricing: string
-  required_auth: string
-  run_trace_available: true
+  auth_required: true
+  auth_modes: string[]
+  trace_available: true
 ```
 
 The OSS RFC defines metadata shape and invariants only. Backend API and storage
@@ -149,4 +151,3 @@ make packages searchable and installable; only then wire hosted callable runs.
 - Publishing fails or warns on missing evals, missing types, or missing effects
   according to package policy.
 - Local `prose install` remains Git-native and does not require hosted runtime.
-

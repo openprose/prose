@@ -1,8 +1,30 @@
 # RFC 002: Feedback Loop Syntax
 
-**Status:** Proposed
+**Status:** Superseded by RFC 005, RFC 006, RFC 008, and RFC 009
 **Date:** 2026-04-08
 **Author:** Dan B. (OpenProse)
+**Disposition Date:** 2026-04-23
+
+## Disposition
+
+Do not implement this RFC as written.
+
+The feedback problem remains central to Company as Code, but the proposed
+implicit `feedback:` section plus auto-loaded `feedback_history.md` conflicts
+with the current direction. Feedback should be explicit, materialized, typed,
+and provenance-preserving:
+
+- feedback is an input binding, upstream run, memory component output, or
+  event-ingestion run
+- persistent preferences and exceptions are materialized as runs or memory
+  artifacts with policy labels
+- one-time corrections are run inputs or graph-node updates
+- feedback ingestion is a component with declared effects, caller provenance,
+  and access policy
+- reactive graphs invalidate downstream nodes when the feedback or memory
+  binding hash changes
+
+The historical proposal below should be read as motivation, not current syntax.
 
 ## Problem
 
@@ -25,7 +47,10 @@ The Prose language has no formal construct for:
 
 4. **Value Reporter**: CEO says "show me quarterly numbers, not weekly." This is a format preference for all future runs.
 
-## Proposed Solution
+## Historical Proposal
+
+The following proposal is not current. It is retained only to preserve the
+original motivation.
 
 Add a `feedback:` section to the program contract:
 
@@ -68,7 +93,7 @@ And a `feedback_history:` file in the run directory that accumulates feedback ac
 - The Slack reply box in delivery composites should route replies to a feedback ingestion endpoint
 - Feedback types help the model decide whether to apply the feedback once or permanently
 
-## Impact
+## Historical Impact
 
 - `prose.md` — document feedback section in contracts
 - `state/filesystem.md` — define feedback_history.md location and format

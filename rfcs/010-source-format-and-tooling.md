@@ -61,6 +61,7 @@ Renders:
 Shows executed runs over the graph:
 
 - success/failure/block status
+- acceptance state
 - duration
 - cost/budget
 - model/harness
@@ -146,4 +147,3 @@ historical spelling; migrate canonical examples instead.
 - `prose graph` makes a nontrivial program understandable without reading the
   whole Markdown file.
 - Syntax highlighting exists for both Contract Markdown and ProseScript.
-

@@ -44,10 +44,13 @@ components:
       requires: []
       ensures: []
     services: []
+    schemas: []
+    environment: []
     execution: null | {}
     effects: []
     access: {}
     evals: []
+    expansions: []
 graph:
   nodes: []
   edges: []
@@ -94,6 +97,26 @@ source: auto | wiring | execution
 Hard ambiguity remains an error. Soft ambiguity becomes an edge with warning,
 confidence, and reason.
 
+## Manifest Projection
+
+IR is canonical. The execution manifest is a projection generated from IR for
+human inspection, existing VM execution, and compatibility with current skill
+docs.
+
+Implementations should compile source to IR first, then derive any manifest
+from that IR. The manifest must not contain semantic information that is absent
+from IR. If a manifest and IR disagree, IR wins and the manifest is a stale
+artifact.
+
+This makes the current two-phase model stricter rather than deferred:
+
+```text
+source -> Forme -> IR -> manifest projection -> VM/local runner
+                         -> graph preview
+                         -> hosted runtime
+                         -> registry metadata
+```
+
 ## Execution Blocks
 
 `### Execution` compiles into structured control flow inside the component IR:
@@ -107,6 +130,22 @@ confidence, and reason.
 
 The runtime may still use the ProseScript text for human review, but execution
 planning should read the structured representation.
+
+## Compatibility With Earlier RFCs
+
+The IR is the convergence point for earlier source-level constructs:
+
+- RFC 001 is superseded as written. Scheduling is outside the current language
+  core. A scheduled invocation appears in run caller provenance, not component
+  IR.
+- RFC 002 is superseded as written. Feedback and feedback history enter the
+  graph as ordinary input bindings, upstream run references, memory artifacts,
+  or event-ingestion runs rather than implicit auto-loaded files.
+- RFC 003 environment declarations compile into component `environment` with
+  variable names and requirements, never secret values.
+- RFC 004 composite instantiations compile into `expansions` plus expanded graph
+  nodes. The runtime may execute the expanded nodes, but source maps and graph
+  views must preserve the parent composite for traceability.
 
 ## Diagnostics
 
@@ -132,6 +171,8 @@ Every IR item that came from source should carry source location:
 - effect declaration
 - access declaration
 - execution statement
+- environment declaration
+- composite expansion parent and generated child nodes
 
 This is what makes graph nodes clickable in editors and run traces.
 
@@ -144,11 +185,15 @@ This is what makes graph nodes clickable in editors and run traces.
 - Changing a port name, port type, effect, service reference, or execution
   statement changes the semantic IR hash.
 - Every edge has source, kind, confidence, and reason.
+- Environment and composite declarations are represented in IR with source
+  locations.
 
 ### Runtime Checks
 
 - The VM can execute from IR without rereading source Markdown except for
   service prompt rendering.
+- Manifest generation reads IR, not source, and fails if requested manifest
+  fields are not represented in IR.
 - Graph preview can render from IR alone.
 - Run materialization records include the IR hash that was executed.
 
@@ -173,7 +218,7 @@ hash changed or stayed stable.
 ### Done Criteria
 
 - `prose compile` or equivalent emits IR for canonical examples.
+- Manifest output is generated from IR as a projection.
 - `prose graph` reads IR, not Markdown.
 - Local execution can read IR and create run records.
 - Seeded ambiguous wiring appears as a diagnostic with source location.
-

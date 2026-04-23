@@ -26,12 +26,15 @@ A node becomes stale when any of these change:
 - port type or schema
 - effect declaration or policy
 - access policy
-- environment presence requirement
+- environment binding identity or presence requirement
+- feedback or memory binding hash
 - freshness window for external reads
 - eval requirement or eval result policy
 
 The old run remains immutable. The node's current pointer changes only after a
-new run succeeds or a policy chooses to accept stale data.
+new run succeeds and is accepted, or a policy explicitly chooses to accept stale
+data. The node's latest pointer may still advance to a succeeded-but-unaccepted
+run for debugging and audit.
 
 ## Recompute Planner
 
@@ -104,9 +107,10 @@ expensive or side-effecting work.
 
 ## Evals
 
-Evals participate in freshness. A node can be "materialized but not accepted"
-if its run succeeded but required evals failed. Downstream policy decides
-whether failed-eval outputs may flow.
+Evals participate in freshness and acceptance. A node can be "materialized but
+not accepted" if its run succeeded but required evals failed. In that case the
+latest pointer records the run, while the current pointer remains on the last
+accepted run unless policy explicitly permits failed-eval outputs to flow.
 
 Default:
 
@@ -131,6 +135,8 @@ Default:
 - Pure stale nodes rerun automatically.
 - Side-effect stale nodes produce recompute preview and block.
 - Failed eval marks node unaccepted even when run status is succeeded.
+- Failed required eval updates the latest pointer but leaves the current pointer
+  unchanged by default.
 
 ### Golden Fixtures
 
@@ -155,5 +161,5 @@ be covered by snapshot fixtures.
 - `prose plan` or equivalent can explain stale nodes and blocked nodes.
 - Reactive execution recomputes minimal pure subgraphs.
 - Side-effecting nodes never rerun silently.
-- Run records preserve old materializations after new runs succeed.
-
+- Run records preserve old materializations after new runs succeed or fail
+  acceptance.
