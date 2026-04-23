@@ -1128,6 +1128,98 @@ return result
     ).toContain("name: formatter");
   });
 
+  test("refreshes workspace dependency pins against the latest source head", async () => {
+    const toolsRepo = mkdtempSync(join(tmpdir(), "openprose-refresh-tools-"));
+    writeFileSync(
+      join(toolsRepo, "formatter.prose.md"),
+      `---
+name: formatter
+kind: service
+---
+
+### Ensures
+
+- \`formatted\`: Markdown<Formatted> - formatted draft
+
+### Effects
+
+- \`pure\`: deterministic formatting over provided inputs
+`,
+    );
+    runGit(["init"], toolsRepo);
+    runGit(["config", "user.email", "openprose@example.com"], toolsRepo);
+    runGit(["config", "user.name", "OpenProse Test"], toolsRepo);
+    runGit(["add", "."], toolsRepo);
+    runGit(["commit", "-m", "tools v1"], toolsRepo);
+    const firstSha = runGit(["rev-parse", "HEAD"], toolsRepo);
+
+    const workspaceRoot = mkdtempSync(join(tmpdir(), "openprose-refresh-workspace-"));
+    writeFileSync(
+      join(workspaceRoot, "flow.prose.md"),
+      `---
+name: install-demo
+kind: service
+---
+
+### Ensures
+
+- \`result\`: Markdown<Result> - formatted result
+
+### Execution
+
+\`\`\`prose
+use "github.com/example/tools/formatter"
+
+return result
+\`\`\`
+`,
+    );
+
+    await installWorkspaceDependencies(workspaceRoot, {
+      sourceOverrides: {
+        "github.com/example/tools": toolsRepo,
+      },
+    });
+
+    writeFileSync(
+      join(toolsRepo, "formatter.prose.md"),
+      `---
+name: formatter
+kind: service
+---
+
+### Ensures
+
+- \`formatted\`: Markdown<Formatted> - refreshed formatted draft
+
+### Effects
+
+- \`pure\`: deterministic formatting over provided inputs
+`,
+    );
+    runGit(["add", "."], toolsRepo);
+    runGit(["commit", "-m", "tools v2"], toolsRepo);
+    const secondSha = runGit(["rev-parse", "HEAD"], toolsRepo);
+
+    await installWorkspaceDependencies(workspaceRoot, {
+      refresh: true,
+      sourceOverrides: {
+        "github.com/example/tools": toolsRepo,
+      },
+    });
+
+    const lockfile = readFileSync(join(workspaceRoot, "prose.lock"), "utf8");
+
+    expect(firstSha).not.toBe(secondSha);
+    expect(lockfile).toContain(`github.com/example/tools ${secondSha}`);
+    expect(
+      readFileSync(
+        join(workspaceRoot, ".deps", "github.com", "example", "tools", "formatter.prose.md"),
+        "utf8",
+      ),
+    ).toContain("refreshed formatted draft");
+  });
+
   test("warns when generated package metadata is missing publishing inputs", async () => {
     const dir = mkdtempSync(join(tmpdir(), "openprose-package-"));
     writeFileSync(join(dir, "hello.prose.md"), fixture("hello.prose.md"));
@@ -1406,6 +1498,117 @@ kind: service
     );
     expect(text).toContain("legacy.md: 2 diagnostics");
     expect(text).toContain("clean.prose.md: 0 diagnostics");
+  });
+
+  test("lints a directory with package-local service references", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "openprose-lint-package-"));
+    writeFileSync(
+      join(dir, "pipeline.prose.md"),
+      `---
+name: package-pipeline
+kind: program
+---
+
+### Services
+
+- \`summarize\`
+
+### Ensures
+
+- \`brief\`: Markdown<Brief> - package brief
+`,
+    );
+    writeFileSync(
+      join(dir, "summarize.prose.md"),
+      `---
+name: summarize
+kind: service
+---
+
+### Ensures
+
+- \`brief\`: Markdown<Brief> - package brief
+
+### Effects
+
+- \`pure\`: deterministic synthesis over provided inputs
+`,
+    );
+
+    const report = await lintPath(dir);
+
+    expect(
+      report
+        .get(join(dir, "pipeline.prose.md").replace(/\\/g, "/"))
+        ?.map((diagnostic) => diagnostic.code),
+    ).toEqual([]);
+    expect(
+      report
+        .get(join(dir, "summarize.prose.md").replace(/\\/g, "/"))
+        ?.map((diagnostic) => diagnostic.code),
+    ).toEqual([]);
+  });
+
+  test("lints a package subdirectory with package-wide service context", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "openprose-lint-scope-"));
+    const systemsDir = join(dir, "systems");
+    const sharedDir = join(dir, "shared");
+    mkdirSync(systemsDir, { recursive: true });
+    mkdirSync(sharedDir, { recursive: true });
+    writeFileSync(
+      join(dir, "prose.package.json"),
+      JSON.stringify(
+        {
+          name: "@openprose/lint-scope",
+          version: "0.1.0",
+          registry: {
+            catalog: "openprose",
+          },
+        },
+        null,
+        2,
+      ),
+    );
+    writeFileSync(
+      join(systemsDir, "pipeline.prose.md"),
+      `---
+name: package-pipeline
+kind: program
+---
+
+### Services
+
+- \`summarize\`
+
+### Ensures
+
+- \`brief\`: Markdown<Brief> - package brief
+`,
+    );
+    writeFileSync(
+      join(sharedDir, "summarize.prose.md"),
+      `---
+name: summarize
+kind: service
+---
+
+### Ensures
+
+- \`brief\`: Markdown<Brief> - package brief
+
+### Effects
+
+- \`pure\`: deterministic synthesis over provided inputs
+`,
+    );
+
+    const report = await lintPath(systemsDir);
+
+    expect(
+      report
+        .get(join(systemsDir, "pipeline.prose.md").replace(/\\/g, "/"))
+        ?.map((diagnostic) => diagnostic.code),
+    ).toEqual([]);
   });
 
   test("checks formatting across a directory of canonical files", async () => {

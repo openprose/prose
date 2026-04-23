@@ -1,5 +1,6 @@
+import { existsSync, statSync } from "node:fs";
 import { readFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 import { compileSource } from "./compiler";
 import { collectSourceFiles } from "./files";
 import { parseContractMarkdown } from "./markdown";
@@ -21,6 +22,7 @@ const CANONICAL_SECTION_ORDER = new Map(
 
 export interface LintOptions {
   path: string;
+  availableComponentNames?: Iterable<string>;
 }
 
 export async function lintFile(path: string): Promise<Diagnostic[]> {
@@ -31,16 +33,44 @@ export async function lintFile(path: string): Promise<Diagnostic[]> {
 export async function lintPath(path: string): Promise<Map<string, Diagnostic[]>> {
   const files = await collectSourceFiles(path, { includeLegacyMarkdown: true });
   const report = new Map<string, Diagnostic[]>();
+  const scopeRoot = resolvePackageScopeRoot(path);
+  const scopeFiles =
+    normalizePath(scopeRoot) === normalizePath(resolve(path))
+      ? files
+      : await collectSourceFiles(scopeRoot, { includeLegacyMarkdown: true });
+  const sources = new Map<string, string>();
+  const availableComponentNames = new Set<string>();
+
+  for (const file of scopeFiles) {
+    const normalized = normalizePath(file);
+    const source = await readFile(resolve(file), "utf8");
+    sources.set(normalized, source);
+
+    const drafts = parseContractMarkdown(source, normalized, []);
+    for (const draft of drafts) {
+      availableComponentNames.add(draft.name);
+    }
+  }
 
   for (const file of files) {
-    report.set(normalizePath(file), await lintFile(file));
+    const normalized = normalizePath(file);
+    report.set(
+      normalized,
+      lintSource(sources.get(normalized) ?? "", {
+        path: normalized,
+        availableComponentNames,
+      }),
+    );
   }
 
   return report;
 }
 
 export function lintSource(source: string, options: LintOptions): Diagnostic[] {
-  const ir = compileSource(source, { path: options.path });
+  const ir = compileSource(source, {
+    path: options.path,
+    availableComponentNames: options.availableComponentNames,
+  });
   const diagnostics = [...ir.diagnostics];
   const drafts = parseContractMarkdown(source, normalizePath(options.path), []);
 
@@ -171,6 +201,37 @@ function sortDiagnostics(diagnostics: Diagnostic[]): Diagnostic[] {
     }
     return a.code.localeCompare(b.code);
   });
+}
+
+function resolvePackageScopeRoot(path: string): string {
+  let current = resolve(path);
+  if (!existsSync(current)) {
+    return current;
+  }
+
+  if (!isDirectory(current)) {
+    current = dirname(current);
+  }
+
+  while (true) {
+    if (existsSync(resolve(current, "prose.package.json"))) {
+      return current;
+    }
+
+    const parent = dirname(current);
+    if (parent === current) {
+      return resolve(path);
+    }
+    current = parent;
+  }
+}
+
+function isDirectory(path: string): boolean {
+  try {
+    return statSync(path).isDirectory();
+  } catch {
+    return false;
+  }
 }
 
 function normalizePath(path: string): string {

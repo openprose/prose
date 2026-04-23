@@ -12,6 +12,7 @@ import type { InstallResult, PackageMetadata, WorkspaceInstallResult } from "./t
 export interface InstallOptions {
   catalogRoot?: string;
   depsRoot?: string;
+  refresh?: boolean;
   sourceOverrides?: Record<string, string>;
   workspaceRoot?: string;
 }
@@ -103,7 +104,7 @@ export async function installWorkspaceDependencies(
     seen.add(packageRef);
 
     const installDir = resolveInstallDir(packageRef, depsRoot);
-    let sha = lockfile.source_pins.get(packageRef) ?? null;
+    let sha = options.refresh ? null : lockfile.source_pins.get(packageRef) ?? null;
     await mkdir(dirname(installDir), { recursive: true });
 
     if (!sha) {
@@ -113,7 +114,9 @@ export async function installWorkspaceDependencies(
       } else {
         runGit(["fetch", "--all", "--tags"], installDir);
       }
-      sha = runGit(["rev-parse", "HEAD"], installDir).trim();
+      sha = options.refresh
+        ? resolveLatestSourceSha(packageRef, sourceOverrides, installDir)
+        : runGit(["rev-parse", "HEAD"], installDir).trim();
       lockfile.source_pins.set(packageRef, sha);
     }
 
@@ -290,6 +293,20 @@ function resolveSourceForPackage(
   sourceOverrides: Record<string, string>,
 ): string {
   return sourceOverrides[sourceGit] ?? sourceGit;
+}
+
+function resolveLatestSourceSha(
+  sourceGit: string,
+  sourceOverrides: Record<string, string>,
+  installDir: string,
+): string {
+  const cloneSource = resolveCloneSource(resolveSourceForPackage(sourceGit, sourceOverrides));
+  const output = runGit(["ls-remote", cloneSource, "HEAD"], dirname(installDir));
+  const sha = output.split(/\s+/)[0]?.trim();
+  if (!sha) {
+    throw new Error(`Could not resolve HEAD for ${sourceGit}.`);
+  }
+  return sha;
 }
 
 function runGit(args: string[], cwd: string): string {

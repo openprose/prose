@@ -24,6 +24,7 @@ import type {
 
 export interface CompileOptions {
   path: string;
+  availableComponentNames?: Iterable<string>;
 }
 
 export async function compileFile(path: string): Promise<ProseIR> {
@@ -71,7 +72,10 @@ export function compileSource(source: string, options: CompileOptions): ProseIR 
     return component;
   });
 
-  const graph = buildGraph(components, diagnostics);
+  const availableComponentNames = options.availableComponentNames
+    ? new Set(options.availableComponentNames)
+    : null;
+  const graph = buildGraph(components, diagnostics, availableComponentNames);
   const dependencies = resolvePackageDependencies(path, source, components, diagnostics);
   const withoutHash = {
     ir_version: "0.1" as const,
@@ -96,6 +100,7 @@ export function compileSource(source: string, options: CompileOptions): ProseIR 
 function buildGraph(
   components: ComponentIR[],
   diagnostics: Diagnostic[],
+  availableComponentNames: Set<string> | null,
 ): GraphIR {
   const nodes = components.map((component) => ({
     id: component.id,
@@ -116,12 +121,19 @@ function buildGraph(
     }
 
     const inlineIds = new Set(components.map((component) => component.name));
+    if (availableComponentNames) {
+      for (const name of availableComponentNames) {
+        inlineIds.add(name);
+      }
+    }
     for (const service of main.services) {
       if (!inlineIds.has(service.name) && !service.compose) {
         diagnostics.push({
           severity: "warning",
           code: "unresolved_service_reference",
-          message: `Service '${service.name}' is declared but no inline component was found in this compile unit.`,
+          message: availableComponentNames
+            ? `Service '${service.name}' is declared but no component was found in the current package scope.`
+            : `Service '${service.name}' is declared but no inline component was found in this compile unit.`,
           source_span: service.source_span,
         });
       }

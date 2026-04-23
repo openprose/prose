@@ -61,11 +61,13 @@ export async function runCli(args: string[]): Promise<void> {
       ? await installRegistryRef(options.ref, {
           catalogRoot: options.catalogRoot ?? undefined,
           depsRoot: options.depsRoot ?? undefined,
+          refresh: options.refresh,
           sourceOverrides: options.sourceOverrides,
           workspaceRoot: options.workspaceRoot ?? undefined,
         })
       : await installWorkspaceDependencies(options.ref ?? process.cwd(), {
           depsRoot: options.depsRoot ?? undefined,
+          refresh: options.refresh,
           sourceOverrides: options.sourceOverrides,
           workspaceRoot: options.workspaceRoot ?? undefined,
         });
@@ -334,6 +336,7 @@ interface InstallCommandArgs {
   pretty: boolean;
   catalogRoot: string | null;
   depsRoot: string | null;
+  refresh: boolean;
   sourceOverrides: Record<string, string>;
   workspaceRoot: string | null;
 }
@@ -387,6 +390,7 @@ function parseInstallCommandArgs(args: string[]): InstallCommandArgs {
     pretty: true,
     catalogRoot: null,
     depsRoot: null,
+    refresh: false,
     sourceOverrides: {},
     workspaceRoot: null,
   };
@@ -410,6 +414,10 @@ function parseInstallCommandArgs(args: string[]): InstallCommandArgs {
     if (arg === "--deps-root") {
       parsed.depsRoot = args[index + 1] ?? null;
       index += 1;
+      continue;
+    }
+    if (arg === "--refresh") {
+      parsed.refresh = true;
       continue;
     }
     if (arg === "--source-override") {
@@ -584,7 +592,7 @@ Usage:
   prose compile <file.prose.md> [--out ir.json] [--no-pretty]
   prose fmt <file.prose.md|dir> [--write|--check]
   prose grammar [--out syntaxes/openprose.tmLanguage.json] [--no-pretty]
-  prose install [registry-ref|path] [--catalog-root dir] [--workspace-root dir] [--deps-root dir] [--source-override package=path]
+  prose install [registry-ref|path] [--catalog-root dir] [--workspace-root dir] [--deps-root dir] [--refresh] [--source-override package=path]
   prose manifest <file.prose.md> [--out manifest.md]
   prose package <dir|file.prose.md> [--format text|json]
   prose graph <file.prose.md> [--current-run .prose/runs/{id}] [--target-output final] [--format mermaid|json]
