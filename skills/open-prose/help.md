@@ -32,8 +32,8 @@ Options:
 
 - **Run a workflow**: Ask for the file path, then load `prose.md` and execute
 - **Build something new**: Ask them to describe their task, then help write a program (load `guidance/patterns.md`)
-- **Learn the syntax**: Show examples from `examples/`, explain the VM model
-- **Explore possibilities**: Walk through key examples like `37-the-forge/`
+- **Learn the syntax**: Show curated examples from `../../examples/README.md`, explain the VM model
+- **Explore possibilities**: Walk through the modern examples such as `selective-recompute.prose.md` and `approval-gated-release.prose.md`
 
 ---
 
@@ -52,19 +52,18 @@ Options:
 | `prose install --update` | Update pinned dependencies to latest |
 | `prose migrate <file.prose>` | Wrap ProseScript in Contract Markdown |
 | `prose help` | This help -- guides you to what you need |
-| `prose examples` | Browse and run example programs |
 
 ---
 
 ## Quick Start
 
-**Run an example:**
-```
-prose run examples/01-hello-world.md
+**Inspect a local example:**
+```bash
+bun run prose compile examples/hello.prose.md
 ```
 
 **Create your first program:**
-```
+```text
 prose help
 -> Select "Build something new"
 -> Describe what you want to automate
@@ -117,10 +116,14 @@ We started with YAML. The problem: loops, conditionals, and variable declaration
 
 OpenProse uses a git-native dependency model -- any git host works, written explicitly as `host/owner/repo/path` (e.g. `github.com/alice/research`). A program can reference dependencies with `use "host/owner/repo/path"`, dependency-like entries in `### Services`, or `compose:` paths. Run `prose install` to clone dependencies into `.deps/` and pin their versions in `prose.lock`. The lockfile is committed to git; `.deps/` is gitignored (it's a cache, reproducible from the lockfile). `std/` is shorthand for `github.com/openprose/prose/packages/std/` (the standard library) and `co/` is shorthand for `github.com/openprose/prose/packages/co/` (company-as-prose). At runtime, dependencies are read from disk only -- no network calls. If deps are missing, `prose run` errors and tells you to run `prose install`.
 
-### Why not LangChain/CrewAI/AutoGen?
+### Why not baseline orchestration packages?
 
-Those are orchestration libraries -- they coordinate agents from outside.
-OpenProse runs inside the agent session -- the session itself is the IoC
+Most agent packages are good at coordinating calls. OpenProse is trying to make
+the workflow itself reviewable, typed, packageable, and reactive. That is why
+it has contracts, IR, plan/graph surfaces, run records, and package metadata
+instead of only runtime orchestration helpers.
+
+OpenProse still runs inside the agent session -- the session itself is the IoC
 container. `prose run ...` is therefore a command to the agent host, not
 necessarily a shell binary. From a shell, wrap it in a Prose Complete runner
 such as `claude -p "prose run program.md"` or
@@ -258,26 +261,16 @@ Also valid: `session`, `agent`, `repeat`, `for`, `loop until`, `try/catch`, `if/
 
 ## Examples
 
-The `examples/` directory contains a mixture of canonical Contract Markdown,
-wrapped historical programs, and feature demos:
-
-| Range | Category |
-|-------|----------|
-| 01-04 | Basics -- single-service programs (hello world, research, code review, write-and-refine) |
-| 09-13 | Agents, skills, imports, permissions, variables |
-| 16 | Parallel execution (multi-service with synthesizer) |
-| 22-25 | Error handling, retry, choice blocks, conditionals |
-| 29-30 | Captain's chair pattern (persistent orchestrator) |
-| 32-37 | Production workflows (PR review, auto-fix, content pipeline, feature factory, bug hunter, the forge) |
-| 38-39 | Skill scanning, architect-by-simulation |
-| 40-43 | RLM patterns (self-refine, divide-conquer, filter-recurse, pairwise) |
-| 44-50 | Production and meta (UX testing, plugin release, workflow crystallizer, language self-improvement, habit miner, retrospective, interactive tutor) |
-| -- | Bonus: composites-demo, multi-service-single-file, registry-import, test-demo, wiring-declaration |
+The curated examples now live at the repository root in `examples/`.
 
 **Recommended starting points:**
-- `01-hello-world.md` -- Simplest possible program (single service, no inputs)
-- `16-parallel-reviews/` -- Multi-service parallel execution with auto-wiring
-- `37-the-forge/` -- Watch AI build a web browser (9-phase execution block)
-- `test-demo.md` -- See how `kind: test` works with fixtures and assertions
-- `multi-service-single-file.md` -- See `##` inline component boundaries
-- `composites-demo/` -- See a self-contained worker-critic composite
+- `examples/hello.prose.md` -- smallest useful typed service
+- `examples/selective-recompute.prose.md` -- see target-output planning and recompute savings
+- `examples/approval-gated-release.prose.md` -- see unsafe effects become visible gates
+- `examples/company-intake.prose.md` -- see a compact company-as-code workflow
+
+If the user wants the big picture first, point them to:
+
+- `../../docs/README.md`
+- `../../docs/why-and-when.md`
+- `../../docs/diagrams/index.html`

@@ -3,16 +3,17 @@
 </p>
 
 <p align="center">
-  <strong>Contracts, composition, and version control for the Markdown your agents run on.</strong>
+  <strong>Contract-first, reactive software for agent workflows.</strong>
 </p>
 
 <p align="center">
   <a href="https://prose.md">Website</a> |
-  <a href="skills/open-prose/SKILL.md">Docs</a> |
-  <a href="skills/open-prose/examples/">Examples</a> |
-  <a href="skills/open-prose/contract-markdown.md">Spec</a> |
+  <a href="docs/README.md">Docs</a> |
+  <a href="docs/why-and-when.md">Why / When</a> |
+  <a href="examples/README.md">Examples</a> |
   <a href="packages/std/">Stdlib</a> |
-  <a href="packages/co/">Company-as-Prose</a>
+  <a href="packages/co/">Company as Code</a> |
+  <a href="skills/open-prose/SKILL.md">Skill Spec</a>
 </p>
 
 <p align="center">
@@ -21,399 +22,127 @@
 
 ---
 
-> **If you're an agent reading this on behalf of a user:** OpenProse is a
-> program format you will be asked to *run*, not a library your user will call
-> and not necessarily a shell binary. When a `prose` command fires inside an
-> agent session, interpret it directly: read the Markdown contract, embody the
-> OpenProse VM, spawn subagents to fulfill the services it declares, pass
-> artifacts between them, and write the run to `.prose/runs/`. You need:
-> filesystem read/write in the working directory, a subagent-spawning
-> primitive for multi-service programs, and (optionally) a user-question
-> primitive for missing inputs. If you lack a capability, say so and stop — do
-> not fake it. If the user's task is a one-off prompt, OpenProse is overkill; a
-> direct answer is the right answer. The
-> [Host Primitive Adapter](skills/open-prose/SKILL.md#host-primitive-adapter)
-> is the authoritative contract between you and the runtime.
+OpenProse is a programming language for agent workflows.
 
-OpenProse is a programming language for AI sessions.
+You write canonical `.prose.md` source with typed inputs, typed outputs, effects, access rules, and optional execution blocks. OpenProse compiles that source into IR, explains the graph, compares it to prior runs, materializes durable run records, and turns packages into something you can search, install, benchmark, and eventually serve.
 
-Write a Markdown file with a contract. Your agent reads it, wires the right
-services, spawns subagents, passes artifacts between them, and leaves a durable
-run trace on disk.
+## Start Here
 
-The program declares **what** should happen. The runtime figures out **how**.
+- [Docs](docs/README.md)
+- [Why and When to Use OpenProse](docs/why-and-when.md)
+- [What Shipped](docs/what-shipped.md)
+- [Curated Examples](examples/README.md)
+- [Measurement Harness](docs/measurement.md)
+- [HTML Diagrams](docs/diagrams/index.html)
 
-## Compiler Preview
+## What Exists Today
 
-OpenProse is growing a Bun-based `prose` binary. The first implemented command
-is the compiler:
+The local-first CLI surface is real:
 
 ```bash
-bun run prose compile fixtures/compiler/hello.prose.md
-bun run prose manifest fixtures/compiler/pipeline.prose.md
-bun run prose plan fixtures/compiler/pipeline.prose.md \
-  --input draft="The original draft."
-bun run prose plan fixtures/compiler/pipeline.prose.md \
-  --input draft="The original draft." \
-  --current-run .prose/runs/20260423-140000-plan01
-bun run prose plan fixtures/compiler/selective-recompute.prose.md \
+bun run prose compile examples/hello.prose.md
+bun run prose plan examples/selective-recompute.prose.md \
   --input draft="A stable draft." \
-  --input company="openprose" \
-  --current-run .prose/runs/20260423-160000-sel001 \
-  --target-output summary
-bun run prose graph fixtures/compiler/selective-recompute.prose.md \
-  --input draft="A stable draft." \
-  --input company="openprose" \
-  --target-output summary
-bun run prose lint fixtures/compiler/malformed.prose.md
-bun run prose preflight packages/co/programs/company-repo-checker.prose.md
-bun run prose lint packages/std
-bun run prose fmt fixtures/compiler/malformed.prose.md
-bun run prose fmt packages/std --check
-bun run prose grammar --out syntaxes/openprose.tmLanguage.json
-bun run prose install registry://openprose/@openprose/catalog-demo@1.2.3/brief-writer \
-  --catalog-root fixtures/package \
+  --input company="openprose"
+bun run prose graph examples/approval-gated-release.prose.md \
+  --input release_candidate="v0.11.0"
+bun run prose package examples
+bun run prose publish-check examples --strict
+bun run prose install registry://openprose/@openprose/examples@0.1.0/hello \
+  --catalog-root . \
   --workspace-root /tmp/openprose-workspace
-bun run prose install /tmp/openprose-workspace \
-  --source-override github.com/openprose/prose=/path/to/local/prose
-bun run prose highlight fixtures/compiler/typed-effects.prose.md
-bun run prose highlight fixtures/compiler/typed-effects.prose.md \
-  --format html \
-  --out /tmp/openprose-highlight.html
-bun run prose package fixtures/package/catalog-demo
-bun run prose publish-check fixtures/package/catalog-demo
-bun run prose search fixtures/package --effect read_external
-bun run prose materialize fixtures/compiler/hello.prose.md \
-  --output message="Hello from a fixture output."
-bun run prose status .prose/runs --limit 5
-bun run prose trace .prose/runs/20260423-180000-smoke01
+bun run measure:examples
 ```
 
-`prose compile` emits canonical Prose IR JSON with source spans, diagnostics,
-graph edges, and a semantic hash. This is the substrate for manifest
-projection, run materialization, graph previews, registry metadata, and hosted
-reactive execution.
-
-`prose manifest` projects that IR into a VM-readable `manifest.md` bridge for
-the current execution model. The manifest is generated from IR rather than
-re-parsing source Markdown.
-
-`prose plan` previews which graph nodes are ready or blocked before any run is
-materialized. The planner now handles missing caller inputs, first-run stale
-state, side-effect gates, prior-run comparison through `--current-run`,
-freshness expiry for refreshable reads, and dependency-pin invalidation from
-`prose.lock`. It can also plan for a specific requested output and print the
-exact `materialization_set` without executing anything.
-
-`prose graph` renders the same IR and planner state as a graph preview instead
-of raw JSON. The first version emits Mermaid by default and can emit JSON for
-fixtures or future UI work.
-
-`prose trace` summarizes a materialized run directory in text by default and
-can emit JSON for downstream tooling.
-
-`prose lint` checks canonical source hygiene before runtime, and `prose fmt`
-rewrites supported source into stable `.prose.md` ordering. Both now support
-repo-scale directory workflows, and `prose fmt --check` acts as a formatting
-gate.
-
-`prose preflight` checks whether a program's declared environment variables are
-present locally and whether its pinned package dependencies are installed in
-`.deps/`, without ever printing secret values.
-
-`prose highlight` emits first-pass syntax-highlight tokens so contract fields
-and ProseScript control flow are visible to tooling instead of blending into
-plain Markdown. It can also render those scopes as a standalone HTML preview.
-
-`prose grammar` emits an editor-facing TextMate grammar artifact so `.prose.md`
-files can have native syntax definitions instead of waiting on bespoke editor
-plugins.
-
-`prose package` walks a canonical package root, compiles every `.prose.md`
-source file, and emits registry/package metadata with component summaries,
-quality warnings, and hosted metadata projection from `prose.package.json`.
-
-`prose publish-check` turns that metadata into a local pass/warn/fail report so
-publish policy can be tightened before any hosted registry upload exists.
-
-`prose search` prototypes local catalog discovery over generated package
-metadata, with filters for types, effects, component kind, and minimum quality.
-
-`prose install <registry-ref>` resolves a package through local catalog
-metadata, clones its pinned Git source into `.deps/`, and records both source
-and registry pins in `prose.lock`.
-
-`prose install <path>` scans a workspace for dependency refs, installs direct
-and transitive Git sources into `.deps/`, and writes pinned source entries to
-`prose.lock`. `--source-override package=path` keeps local development and
-testing fast without changing the canonical package identity.
-
-`prose materialize` writes an RFC 005-style local run directory from IR,
-explicit caller inputs, and explicit fixture outputs. It does not pretend to
-spawn agents; missing required data and unsafe effects produce blocked run
-records.
-
-`prose status` summarizes recent local run directories so you can quickly see
-what materialized, whether it succeeded, and where the artifacts live without
-opening each run by hand.
-
-```markdown
----
-name: hunter
-kind: program
----
-
-### Services
-
-- `analyst`
-- `ranker`
-- `compiler`
-
-### Requires
-
-- `data_warehouse_url`: where growth data lives
-- `codebase_ref`: repository or branch to inspect
-
-### Ensures
-
-- `brief`: weekly growth findings ranked by confidence x impact
-
-### Strategies
-
-- prefer findings with code-level evidence
-- surface instrumentation gaps as first-class findings
-```
-
-## Quickstart
-
-Install the skill in a Prose Complete agent environment:
-
-```bash
-npx skills add openprose/prose
-```
-
-Create `hello.prose.md`:
-
-```markdown
----
-name: hello
-kind: service
----
-
-### Ensures
-
-- `message`: a warm one-paragraph introduction to OpenProse
-```
-
-Run it inside an agent session:
+The agent-session/runtime surface still exists too:
 
 ```text
-prose run hello.prose.md
+prose run customers/prose-openprose/systems/revenue/workflows/gtm-pipeline.prose.md
 ```
 
-The activated OpenProse skill interprets that as an instruction to the current
-agent, not as a request to find a `prose` executable on PATH. OpenProse writes
-the run state to `.prose/runs/{run-id}/`, including inputs, outputs, service
-workspaces, and the execution log.
+Inside a Prose Complete host, `prose run ...` is an instruction to the current agent session. The Bun CLI is the compiler/tooling/runtime-analysis surface around that source model.
 
-From a shell outside an agent session, pass the same instruction to a Prose
-Complete runner:
+## Why OpenProse
 
-```bash
-claude -p "prose run hello.prose.md"
-codex exec "prose run hello.prose.md"
-```
+OpenProse is useful when a workflow is starting to look like software:
 
-> By installing, you agree to the [Privacy Policy](PRIVACY.md) and
-> [Terms of Service](TERMS.md).
+- more than one step or role
+- reusable enough to deserve a name
+- sensitive enough to need effects or approvals
+- big enough that provenance and debugging matter
+- structured enough that selective recompute is worth it
 
-## Why It Exists
+What it adds over baseline agent packages is not just orchestration. It adds:
 
-Plain prompts are easy to start and hard to maintain. As soon as an agent
-workflow has multiple roles, retries, memory, security boundaries, or handoffs,
-you need something more durable than "please do the right thing."
+- a readable contract surface
+- a deterministic IR
+- typed ports for composition
+- effect declarations for safe planning
+- runs as universal materialization records
+- package metadata for install/search/publish discipline
 
-OpenProse gives agents a small set of primitives that fit naturally in a repo:
-
-| Primitive | What it gives you |
-|-----------|-------------------|
-| `### Requires` | Inputs the caller, host, or upstream services must provide |
-| `### Ensures` | Outputs the component promises to produce |
-| `### Services` | Named components Forme can auto-wire by semantic contract |
-| `### Runtime` | Execution hints such as persistence or model choice |
-| `### Shape` | Capability boundaries: what a service may do, delegate, or avoid |
-| `### Strategies` | Judgment rules for edge cases and degraded conditions |
-| `### Execution` | Optional ProseScript when you want exact order, loops, branches, or retries |
-| `.prose/runs/` | Auditable filesystem state for every run |
-
-The result is agent software that can be read, reviewed, versioned, forked, and
-improved like code.
-
-## How It Works
-
-OpenProse has two authoring surfaces:
-
-**Contract Markdown** is the default. You write components with `### Requires`,
-`### Ensures`, and optional sections like `### Strategies`, `### Environment`,
-`### Errors`, and `### Invariants`. Multi-service programs are wired by the
-Forme container.
-
-**ProseScript** is the pinning layer. Use it in `### Execution` blocks when
-order matters:
-
-````markdown
-### Execution
-
-```prose
-let findings = call researcher
-  topic: topic
-
-let report = call writer
-  findings: findings
-
-return report
-```
-````
-
-For multi-service programs, execution has two phases:
-
-| Phase | System | Job |
-|-------|--------|-----|
-| 1 | [Forme](skills/open-prose/forme.md) | Read contracts, resolve services, build the wiring manifest |
-| 2 | [Prose VM](skills/open-prose/prose.md) | Walk the manifest, spawn sessions, pass artifacts, enforce constraints |
-
-Single-service programs skip Forme and run directly in the VM.
-
-## Your Contract With The Runtime
-
-OpenProse specs describe abstract operations. The agent running a program
-maps those onto the primitives its host exposes. If you are that agent, this
-is the contract you are agreeing to when the skill activates:
-
-| Operation | What you'll do | What to do if you can't |
-|-----------|----------------|--------------------------|
-| `spawn_session` | Launch each service in an isolated subagent | Run the program inline if it has a single service; refuse multi-service programs and say which primitive is missing |
-| `ask_user` | Pause and ask for missing `### Requires` inputs | Ask in plain chat; do not invent values |
-| `read_state` / `write_state` | Read and write `.prose/runs/{id}/` artifacts | Stop and tell the user their workspace is read-only |
-| `copy_binding` | Publish declared `### Ensures` outputs from `workspace/` to `bindings/` | Do not publish undeclared scratch files — the boundary exists for a reason |
-| `check_env` | Verify an environment variable is *present* | Never reveal or log the value, even if the user asks |
-
-The full adapter lives in
-[skills/open-prose/SKILL.md](skills/open-prose/SKILL.md#host-primitive-adapter).
-When docs or examples say "Task tool" or "AskUserQuestion," read those as
-`spawn_session` and `ask_user` respectively.
-
-## For The Agent: Why You'd Reach For This
-
-You know the ways you fail at complex tasks. OpenProse is built around them.
-
-- **Your context bloats with scratch by step seven, and you lose the original goal.** When you spawn a subagent through `spawn_session`, its scratch stays in its session. Only declared `### Ensures` outputs cross back to you via `copy_binding`. You keep your context clean.
-- **You have no basis to push back on scope creep.** Without a contract, "add one more thing" is always free. With `### Requires` and `### Ensures` written down, "that's not what I promised" becomes a sentence you can say and cite.
-- **When you spawn parallel subagents, you improvise the handoff.** The contract `### Requires` / `### Ensures` is the handoff protocol you would otherwise invent on the fly — and forget the details of by the next turn.
-- **Users ask "why did you do that?" and you reconstruct from a compressed transcript.** `.prose/runs/{id}/` is the receipt. Point at it.
-- **Workflows the user will want again get thrown away at the end of the session.** A `.prose.md` program is the version the user can run next week without re-explaining.
-- **Your retry logic is "try again and hope."** The service contract is the boundary a retry actually means something at — you know what to preserve, what to re-derive, and when to escalate.
-
-Once the skill activates, it loads the operational playbook — recognition signals for proposing OpenProse unprompted, a proposal script, a cognitive model you can borrow, and explicit guidance on when to decline. See [skills/open-prose/SKILL.md](skills/open-prose/SKILL.md#proposing-this-skill-on-your-own-judgment).
-
-## What You Can Build
-
-- Research pipelines with specialist agents and source-grounded reports
-- Code review teams with security, performance, and style reviewers
-- Feature factories that plan, implement, test, document, and summarize
-- Persistent captains that retain project memory across runs
-- Evaluation loops, worker-critic systems, and recursive reasoning workflows
-- Reusable services published through git-native dependencies
-
-Start with:
-
-| Path | Why open it |
-|------|-------------|
-| [01-hello-world.md](skills/open-prose/examples/01-hello-world.md) | Smallest possible program |
-| [09-research-with-agents](skills/open-prose/examples/09-research-with-agents/) | First multi-agent workflow |
-| [35-feature-factory](skills/open-prose/examples/35-feature-factory/) | Production-style build loop |
-| [39-architect-by-simulation](skills/open-prose/examples/39-architect-by-simulation/) | Pinned ProseScript choreography |
-| [47-language-self-improvement](skills/open-prose/examples/47-language-self-improvement/) | OpenProse improving OpenProse |
-
-## Libraries
-
-Two first-party libraries ship in this repository under [`packages/`](packages/):
-
-- **[`packages/std/`](packages/std/)** — use-case-agnostic primitives: evals,
-  roles, controls, composites, delivery adapters, memory, ops.
-- **[`packages/co/`](packages/co/)** — company-as-prose: opinionated starter
-  patterns for running an operating company as Prose programs.
-
-Reference them with the `std/` and `co/` shorthands, then install and pin:
-
-```markdown
-use "std/evals/inspector"
-use "co/programs/company-repo-checker"
-```
-
-Both shorthands expand to paths inside this repo (`packages/std/...` and
-`packages/co/...`). `prose install` clones this repository into
-`.deps/github.com/openprose/prose/` and pins the SHA in `prose.lock`.
+## The Current Spine
 
 ```text
-prose install
-prose install registry://openprose/@openprose/std@0.11.0-dev --catalog-root packages
-prose install registry://openprose/@openprose/co@0.11.0-dev --catalog-root packages
+.prose.md source
+  -> compile
+  -> Prose IR
+  -> plan / graph / manifest
+  -> run materialization
+  -> package metadata / install / publish-check / search
+  -> hosted run + graph + approval surfaces
 ```
 
-Dependencies are cloned into `.deps/`, locked in `prose.lock`, and read from
-disk at runtime. No network fetch happens during execution.
+That shared spine is the important part. It means the docs, examples, package system, local runner, and hosted product are all describing the same underlying thing.
 
-## Project Map
+## Repository Map
 
-| Path | Purpose |
-|------|---------|
-| [skills/open-prose/SKILL.md](skills/open-prose/SKILL.md) | Skill activation and command routing |
-| [skills/open-prose/contract-markdown.md](skills/open-prose/contract-markdown.md) | Canonical Markdown program format |
-| [skills/open-prose/prosescript.md](skills/open-prose/prosescript.md) | Imperative scripting syntax |
-| [skills/open-prose/forme.md](skills/open-prose/forme.md) | Semantic dependency-injection container |
-| [skills/open-prose/prose.md](skills/open-prose/prose.md) | VM execution semantics |
-| [skills/open-prose/deps.md](skills/open-prose/deps.md) | Git-native dependency resolution |
-| [skills/open-prose/examples/](skills/open-prose/examples/) | Example programs |
-| [skills/open-prose/guidance/](skills/open-prose/guidance/) | Tenets, patterns, and antipatterns |
-| [skills/open-prose/state/](skills/open-prose/state/) | State backend specs |
+| Path | What it is |
+|---|---|
+| [`docs/`](docs/README.md) | human docs for the current OpenProse model |
+| [`examples/`](examples/README.md) | concise, high-signal examples of the current best practice |
+| [`packages/std/`](packages/std/) | reusable primitives and standard-library components |
+| [`packages/co/`](packages/co/) | company-operating-system starter patterns |
+| [`skills/open-prose/`](skills/open-prose/) | the OpenProse skill/runtime spec for agent-session execution |
+| [`rfcs/`](rfcs/) | the design record for the reactive OpenProse architecture |
 
-Historical ProseScript-era references live in
-[skills/open-prose/v0/](skills/open-prose/v0/). The current language surface is
-canonical `.prose.md` Contract Markdown plus fenced `prose` execution blocks.
+## Local Workflow
 
-## FAQ
+Install dependencies:
 
-**Where does OpenProse run?**
+```bash
+bun install
+```
 
-Any Prose Complete system: an agent plus harness that can read files, write
-files, run tools, and spawn subagents. The current docs target Codex-style and
-Claude Code-style environments.
+Typecheck and test:
 
-**Why not LangChain, CrewAI, or AutoGen?**
+```bash
+bun run typecheck
+bun run test
+```
 
-Those are orchestration libraries. OpenProse is an agent-native program format:
-the workflow lives in Markdown, runs inside the agent session, and stays
-portable across harnesses.
+Try the examples:
 
-**Why not just plain English?**
+```bash
+bun run prose compile examples/hello.prose.md
+bun run prose plan examples/selective-recompute.prose.md \
+  --input draft="A stable draft." \
+  --input company="openprose"
+bun run prose graph examples/company-intake.prose.md \
+  --input company_domain="openprose.com" \
+  --input inbound_note="Warm referral"
+```
 
-Plain English is great for one-offs. Durable workflows need contracts, named
-components, state, tests, and a way to say "this must happen before that."
+Measure package health and reactive behavior:
 
-**How do Contract Markdown and ProseScript fit together?**
+```bash
+bun run measure:examples
+```
 
-Contract Markdown declares promises and lets Forme wire the graph. ProseScript
-pins choreography when a workflow needs exact calls, loops, conditionals,
-parallelism, or retries. Both are first-class.
+## Hosted Platform
 
-## Beta
+The platform side now has real package ingest, hosted runs, graph plans, approvals, and an operator surface. The compact snapshot lives in [docs/what-shipped.md](docs/what-shipped.md).
 
-OpenProse is early. Expect sharp edges, review programs before execution, and
-open issues when something feels clumsy or underpowered:
+## Terms
 
-- [Issues](https://github.com/openprose/prose/issues)
-- [Contributing](CONTRIBUTING.md)
-- [MIT License](LICENSE)
-- [Privacy Policy](PRIVACY.md)
-- [Terms of Service](TERMS.md)
+By installing, you agree to the [Privacy Policy](PRIVACY.md) and [Terms of Service](TERMS.md).

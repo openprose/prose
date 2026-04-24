@@ -45,8 +45,7 @@ codex exec "prose run program.md"
 | `prose inspect <run-id>`    | Evaluate a completed run                                        |
 | `prose status`              | Show recent runs                                                |
 | `prose status --graph`      | Show run dependency graph                                       |
-| `prose help`                | Show help and examples                                          |
-| `prose examples`            | List or run bundled examples                                    |
+| `prose help`                | Show help and point to the curated root `examples/` directory   |
 
 ### Remote Programs
 

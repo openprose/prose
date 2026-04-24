@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>OpenProse Hosted Approval Loop</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main>
+      <section class="page-header">
+        <h1>Hosted Approval Loop</h1>
+        <p>
+          Unsafe effects are now explicit enough that the platform can treat them as approval objects
+          instead of burying them in runtime logs.
+        </p>
+        <nav class="nav">
+          <a href="index.html">Overview</a>
+          <a href="compiler-and-runs.html">Compiler and Runs</a>
+          <a href="reactive-planning.html">Reactive Planning</a>
+          <a href="packages-and-registry.html">Packages and Registry</a>
+          <a class="active" href="hosted-approval-loop.html">Hosted Approval Loop</a>
+        </nav>
+      </section>
+
+      <section class="diagram">
+        <div class="row">
+          <div class="card span-3">
+            <h2>1. Ingest</h2>
+            <div class="node">
+              <strong>compiled package + graph plan</strong>
+              <span class="meta">stored in hosted catalog/runtime tables</span>
+            </div>
+          </div>
+          <div class="card span-3">
+            <h2>2. Detect gate</h2>
+            <div class="node">
+              <strong>blocked_effect node</strong>
+              <span class="meta">`delivers`, `human_gate`, repo mutation, or other unsafe effect</span>
+            </div>
+          </div>
+          <div class="card span-3">
+            <h2>3. Approval record</h2>
+            <div class="node">
+              <strong>OpenProseApproval</strong>
+              <span class="meta">links graph, node, effect context, requester, and decision state</span>
+            </div>
+          </div>
+          <div class="card span-3">
+            <h2>4. Refresh</h2>
+            <div class="node">
+              <strong>explicit graph refresh</strong>
+              <span class="meta">operator re-plans after approval using the same stored request context</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="legend span-12">
+            <h2>Why the approval object exists</h2>
+            <ul>
+              <li>it gives blocked work a first-class queue instead of a vague runtime error</li>
+              <li>it makes the decision reviewable in the operator surface</li>
+              <li>it preserves provenance between the planned node and the human/operator who unblocked it</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

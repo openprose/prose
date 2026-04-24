@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>OpenProse Reactive Planning</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main>
+      <section class="page-header">
+        <h1>Reactive Planning and Selective Recompute</h1>
+        <p>
+          OpenProse does not need to replay an entire workflow every time an upstream value changes.
+          The planner compares requested outputs against prior materializations and only selects the slice that matters.
+        </p>
+        <nav class="nav">
+          <a href="index.html">Overview</a>
+          <a href="compiler-and-runs.html">Compiler and Runs</a>
+          <a class="active" href="reactive-planning.html">Reactive Planning</a>
+          <a href="packages-and-registry.html">Packages and Registry</a>
+          <a href="hosted-approval-loop.html">Hosted Approval Loop</a>
+        </nav>
+      </section>
+
+      <section class="diagram">
+        <div class="row">
+          <div class="card span-8">
+            <h2>Selective Recompute Example</h2>
+            <div class="cols-3">
+              <div class="node">
+                <strong>summarize</strong>
+                <span class="meta">depends on `draft` only</span>
+                <span class="state"><span class="dot current"></span>current</span>
+              </div>
+              <div class="node">
+                <strong>market-sync</strong>
+                <span class="meta">depends on `company`, freshness, external reads</span>
+                <span class="state"><span class="dot ready"></span>ready</span>
+              </div>
+              <div class="node">
+                <strong>requested output: `summary`</strong>
+                <span class="meta">planner drops unrelated recompute</span>
+                <span class="state"><span class="dot current"></span>current</span>
+              </div>
+            </div>
+          </div>
+          <div class="legend span-4">
+            <h2>Planner states</h2>
+            <ul>
+              <li class="state"><span class="dot current"></span>current: prior run is still valid</li>
+              <li class="state"><span class="dot ready"></span>ready: stale and safe to re-run</li>
+              <li class="state"><span class="dot blocked"></span>blocked: missing inputs or gated effect</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="card span-12">
+            <h2>What the planner compares</h2>
+            <div class="cols-4">
+              <div class="node">
+                <strong>IR hash</strong>
+                <span class="meta">did the program semantics change?</span>
+              </div>
+              <div class="node">
+                <strong>source hash</strong>
+                <span class="meta">did the source materialization change?</span>
+              </div>
+              <div class="node">
+                <strong>input hashes</strong>
+                <span class="meta">did the caller or upstream bindings change?</span>
+              </div>
+              <div class="node">
+                <strong>freshness / deps</strong>
+                <span class="meta">did external-read windows or pinned packages move?</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

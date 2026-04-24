@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>OpenProse Diagrams</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main>
+      <section class="page-header">
+        <h1>OpenProse Diagrams</h1>
+        <p>
+          These HTML diagrams are the visual companion to the new local-first OpenProse stack:
+          source, IR, plan, runs, packages, and hosted approvals rendered as concrete system shapes.
+        </p>
+        <nav class="nav">
+          <a class="active" href="index.html">Overview</a>
+          <a href="compiler-and-runs.html">Compiler and Runs</a>
+          <a href="reactive-planning.html">Reactive Planning</a>
+          <a href="packages-and-registry.html">Packages and Registry</a>
+          <a href="hosted-approval-loop.html">Hosted Approval Loop</a>
+        </nav>
+      </section>
+
+      <section class="cols-4">
+        <a class="card" href="compiler-and-runs.html">
+          <h2>Compiler and Runs</h2>
+          <p>How `.prose.md` becomes IR, manifests, graphs, plans, and durable run materializations.</p>
+        </a>
+        <a class="card" href="reactive-planning.html">
+          <h2>Reactive Planning</h2>
+          <p>How prior runs, requested outputs, and stale reasons determine the exact recompute set.</p>
+        </a>
+        <a class="card" href="packages-and-registry.html">
+          <h2>Packages and Registry</h2>
+          <p>How package metadata, install refs, publish checks, and local catalog search fit together.</p>
+        </a>
+        <a class="card" href="hosted-approval-loop.html">
+          <h2>Hosted Approval Loop</h2>
+          <p>How unsafe effects become approval records and how operators re-plan a graph after approval.</p>
+        </a>
+      </section>
+
+      <section class="diagram">
+        <div class="callout">
+          <h2>Why these exist</h2>
+          <p>
+            One of the original OpenProse pain points was that the system became hard to explain once it
+            started doing real work. These diagrams are meant to replace "trust the text wall" with a visual
+            explanation of what the runtime believes is true.
+          </p>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

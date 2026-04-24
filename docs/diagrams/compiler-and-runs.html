@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>OpenProse Compiler and Runs</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main>
+      <section class="page-header">
+        <h1>Compiler and Run Materialization</h1>
+        <p>
+          The core OpenProse loop is no longer "read markdown and hope." The compiler produces deterministic IR,
+          and every execution shape resolves back to a run record.
+        </p>
+        <nav class="nav">
+          <a href="index.html">Overview</a>
+          <a class="active" href="compiler-and-runs.html">Compiler and Runs</a>
+          <a href="reactive-planning.html">Reactive Planning</a>
+          <a href="packages-and-registry.html">Packages and Registry</a>
+          <a href="hosted-approval-loop.html">Hosted Approval Loop</a>
+        </nav>
+      </section>
+
+      <section class="diagram">
+        <div class="row">
+          <div class="card span-3">
+            <h2>Authoring</h2>
+            <div class="stack">
+              <div class="node">
+                <strong>.prose.md source</strong>
+                <span class="meta">typed ports, effects, access, services, execution blocks</span>
+              </div>
+              <div class="node">
+                <strong>lint / fmt / highlight / grammar</strong>
+                <span class="meta">canonical authoring and editor visibility</span>
+              </div>
+            </div>
+          </div>
+          <div class="card span-3">
+            <h2>Compile</h2>
+            <div class="stack">
+              <div class="node">
+                <strong>Prose IR</strong>
+                <span class="meta">semantic hash, source spans, graph edges, diagnostics</span>
+              </div>
+              <div class="node">
+                <strong>manifest projection</strong>
+                <span class="meta">bridge for today’s VM/runtime surface</span>
+              </div>
+            </div>
+          </div>
+          <div class="card span-3">
+            <h2>Plan</h2>
+            <div class="stack">
+              <div class="node">
+                <strong>plan</strong>
+                <span class="meta">current, ready, blocked, skipped</span>
+              </div>
+              <div class="node">
+                <strong>graph</strong>
+                <span class="meta">visual view over the same IR and plan state</span>
+              </div>
+            </div>
+          </div>
+          <div class="card span-3">
+            <h2>Materialize</h2>
+            <div class="stack">
+              <div class="node">
+                <strong>run.json</strong>
+                <span class="meta">graph run record</span>
+              </div>
+              <div class="node">
+                <strong>nodes/*.run.json</strong>
+                <span class="meta">per-component records, bindings, outputs, acceptance</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="card span-12">
+            <h2>One Narrow Waist</h2>
+            <div class="cols-4">
+              <div class="node">
+                <strong>compile</strong>
+                <span class="meta">all tooling starts from canonical IR</span>
+              </div>
+              <div class="node">
+                <strong>package</strong>
+                <span class="meta">registry metadata is derived, not handwritten</span>
+              </div>
+              <div class="node">
+                <strong>plan</strong>
+                <span class="meta">staleness is computed against prior runs</span>
+              </div>
+              <div class="node">
+                <strong>trace</strong>
+                <span class="meta">every execution points back to a run</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

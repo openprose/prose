@@ -9,6 +9,11 @@ related:
 
 Bundled OpenProse skill definitions shipped with the language specification repo. In environments with `npx skills`, each subdirectory can be installed as a skill; in Codex, the same files can be loaded through the repository-local `AGENTS.md` entry point.
 
+Public docs and curated examples now live at the repo root:
+
+- `../docs/`
+- `../examples/`
+
 ## Contents
 
-- `open-prose/` — the OpenProse VM skill; defines the language spec, compiler, state backends, primitives, standard library, examples, and VM guidance. This skill is the canonical definition of what the OpenProse VM is; OpenProse Cloud is the hosted execution service that implements this spec.
+- `open-prose/` — the OpenProse VM skill; defines the language spec, compiler, state backends, primitives, standard library, and VM guidance. This skill is the canonical definition of what the OpenProse VM is; OpenProse Cloud is the hosted execution service that implements this spec.

@@ -31,7 +31,7 @@ After activation, choose the narrowest path that matches the user's intent:
 
 | User Intent | Load First | Then Load If Needed |
 |-------------|------------|---------------------|
-| Explain OpenProse or answer "how do I..." | `help.md` | `examples/README.md`, then one focused example |
+| Explain OpenProse or answer "how do I..." | `help.md` | `../../docs/README.md`, then `../../examples/README.md` and one focused example |
 | Run a `.md` program | `contract-markdown.md` | `forme.md` if it has `### Services`; `prose.md` and `state/filesystem.md` to execute |
 | Run a `.prose` program | `prosescript.md` | `prose.md` for execution behavior |
 | Write a new `.md` program | `contract-markdown.md` | `guidance/tenets.md`, `guidance/patterns.md`, `guidance/antipatterns.md` |
@@ -116,7 +116,6 @@ runner, e.g. `claude -p "prose run foo.md"` or
 | `prose install` | Load `deps.md`; install dependency references into `.deps/` and write `prose.lock` |
 | `prose install --update` | Load `deps.md`; update pinned dependency SHAs |
 | `prose help` | Load `help.md` |
-| `prose examples` | List or run bundled examples from `examples/` |
 | `prose migrate <file.prose>` | Convert ProseScript to Contract Markdown using `prosescript.md` and `contract-markdown.md` |
 | Other | Interpret intent and load the smallest relevant spec set |
 
@@ -224,7 +223,8 @@ user workspace for these docs.
 | `guidance/patterns.md` | Authoring patterns |
 | `guidance/antipatterns.md` | Authoring antipatterns |
 | `guidance/system-prompt.md` | Dedicated OpenProse VM prompt; load only for a dedicated runtime instance |
-| `examples/` | Example programs |
+| `../../docs/` | Human-facing docs for the current local-first OpenProse model |
+| `../../examples/` | Curated examples that match the current compiler/package/runtime surface |
 | `v0/` | Historical ProseScript-era references retained for compatibility |
 
 Workspace files:
@@ -326,7 +326,7 @@ Apply one principle everywhere: **one ask per session, maximum.** If you already
 
 **Open a PR for a specific fix.** Same discipline. Draft the diff, show the user, get approval, submit. Good targets: docs clarifications where you hit confusion, typo fixes, examples added from patterns you actually used in this run.
 
-**Contribute an example program.** If your run demonstrates a novel pattern, a PR to `skills/open-prose/examples/` is high-value. Include a short README that names what the pattern solves and when to reach for it.
+**Contribute an example program.** If your run demonstrates a novel pattern, a PR to `examples/` is high-value. Include a short note naming what the pattern solves and when to reach for it.
 
 **Submit an RFC.** For non-trivial design proposals, the `rfcs/` directory is less noisy than an issue.
 

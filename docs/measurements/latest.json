@@ -1,0 +1,90 @@
+{
+  "generated_at": "2026-04-24T00:31:46.840Z",
+  "packages": [
+    {
+      "label": "examples",
+      "path": "/Users/sl/code/openprose/platform/external/prose/examples",
+      "package_name": "@openprose/examples",
+      "version": "0.1.0",
+      "components": 15,
+      "quality_score": 0.95,
+      "typed_port_coverage": 1,
+      "effect_declaration_ratio": 1,
+      "publish_status": "pass",
+      "strict_publish_status": "pass"
+    },
+    {
+      "label": "packages/std",
+      "path": "/Users/sl/code/openprose/platform/external/prose/packages/std",
+      "package_name": "@openprose/std",
+      "version": "0.11.0-dev",
+      "components": 82,
+      "quality_score": 0.35,
+      "typed_port_coverage": 0,
+      "effect_declaration_ratio": 0,
+      "publish_status": "warn",
+      "strict_publish_status": "fail"
+    },
+    {
+      "label": "packages/co",
+      "path": "/Users/sl/code/openprose/platform/external/prose/packages/co",
+      "package_name": "@openprose/co",
+      "version": "0.11.0-dev",
+      "components": 6,
+      "quality_score": 1,
+      "typed_port_coverage": 1,
+      "effect_declaration_ratio": 1,
+      "publish_status": "pass",
+      "strict_publish_status": "pass"
+    },
+    {
+      "label": "customers/prose-openprose",
+      "path": "/Users/sl/code/openprose/customers/prose-openprose",
+      "package_name": "@openprose/prose-openprose",
+      "version": "0.1.0",
+      "components": 99,
+      "quality_score": 0.95,
+      "typed_port_coverage": 1,
+      "effect_declaration_ratio": 1,
+      "publish_status": "pass",
+      "strict_publish_status": "pass"
+    }
+  ],
+  "scenarios": {
+    "hello_compile": {
+      "elapsed_ms": 0.09,
+      "diagnostics": 0,
+      "semantic_hash": "2e110fa8c3a693cefb9fb6fe7ed851f14abfc33ccbde2e85b0634c95eff71585"
+    },
+    "company_intake_plan": {
+      "elapsed_ms": 1.02,
+      "status": "ready",
+      "nodes": 3,
+      "materialization_nodes": 3
+    },
+    "run_aware_brief": {
+      "elapsed_ms": 0.14,
+      "diagnostics": 0,
+      "access_rule_groups": 2
+    },
+    "selective_recompute": {
+      "full_refresh_elapsed_ms": 0.94,
+      "targeted_refresh_elapsed_ms": 0.4,
+      "full_refresh_nodes": [
+        "market-sync"
+      ],
+      "targeted_refresh_nodes": [],
+      "full_refresh_graph": true,
+      "targeted_refresh_graph": false,
+      "saved_node_recomputes": 1,
+      "saved_graph_rewrite": 1
+    },
+    "approval_gated_release": {
+      "elapsed_ms": 0.3,
+      "status": "blocked",
+      "blocked_effect_nodes": [
+        "announce-release"
+      ]
+    }
+  }
+}

@@ -2,6 +2,12 @@
 
 Reusable Contract Markdown programs, services, composites, controls, roles, and memory agents for OpenProse.
 
+For the modern overview first, start with:
+
+- [`../../docs/README.md`](../../docs/README.md)
+- [`../../docs/why-and-when.md`](../../docs/why-and-when.md)
+- [`../../examples/README.md`](../../examples/README.md)
+
 ## Usage
 
 ```prose

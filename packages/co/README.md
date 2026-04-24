@@ -3,6 +3,12 @@
 Reusable starter contracts for organizing an operating company as an
 OpenProse-native repository.
 
+If you are orienting from scratch, read these first:
+
+- [`../../docs/README.md`](../../docs/README.md)
+- [`../../docs/what-shipped.md`](../../docs/what-shipped.md)
+- [`../../examples/README.md`](../../examples/README.md)
+
 `co` sits next to `std` under `packages/`, not inside it. `std` is the
 low-level standard library: roles, controls, delivery adapters, memory, evals,
 and ops primitives. `co` is an opinionated starter kit for a specific domain:

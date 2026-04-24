@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>OpenProse Packages and Registry</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main>
+      <section class="page-header">
+        <h1>Packages, Install, and Registry Metadata</h1>
+        <p>
+          OpenProse packages are not just folders of prompts. They carry install identity, source pins,
+          component metadata, examples, eval links, and publish-readiness checks.
+        </p>
+        <nav class="nav">
+          <a href="index.html">Overview</a>
+          <a href="compiler-and-runs.html">Compiler and Runs</a>
+          <a href="reactive-planning.html">Reactive Planning</a>
+          <a class="active" href="packages-and-registry.html">Packages and Registry</a>
+          <a href="hosted-approval-loop.html">Hosted Approval Loop</a>
+        </nav>
+      </section>
+
+      <section class="diagram">
+        <div class="row">
+          <div class="card span-4">
+            <h2>Package source</h2>
+            <div class="stack">
+              <div class="node">
+                <strong>prose.package.json</strong>
+                <span class="meta">name, version, catalog, source.git, source.sha</span>
+              </div>
+              <div class="node">
+                <strong>.prose.md files</strong>
+                <span class="meta">compiled into component metadata</span>
+              </div>
+            </div>
+          </div>
+          <div class="card span-4">
+            <h2>Generated metadata</h2>
+            <div class="stack">
+              <div class="node">
+                <strong>registry ref</strong>
+                <span class="meta">`registry://catalog/package@version/component`</span>
+              </div>
+              <div class="node">
+                <strong>quality surface</strong>
+                <span class="meta">typed ports, effects, examples, evals, warnings</span>
+              </div>
+            </div>
+          </div>
+          <div class="card span-4">
+            <h2>Local workflows</h2>
+            <div class="stack">
+              <div class="node">
+                <strong>publish-check</strong>
+                <span class="meta">local pass / warn / fail gate</span>
+              </div>
+              <div class="node">
+                <strong>search + install</strong>
+                <span class="meta">discover and pin packages into `.deps/`</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="callout">
+          <h2>Why this matters</h2>
+          <p>
+            Registry quality should come from compiled truth, not a second handwritten metadata system.
+            OpenProse now treats package metadata as a projection over canonical source and IR.
+          </p>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
