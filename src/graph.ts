@@ -16,6 +16,7 @@ export interface GraphOptions {
   inputs?: Record<string, string>;
   currentRunPath?: string;
   targetOutputs?: string[];
+  approvedEffects?: string[];
   format?: "mermaid" | "json";
 }
 
@@ -34,6 +35,7 @@ export function graphSource(source: string, options: GraphOptions): GraphView {
     inputs: options.inputs,
     currentRunPath: options.currentRunPath,
     targetOutputs: options.targetOutputs,
+    approvedEffects: options.approvedEffects,
   });
   return buildGraphView(ir, plan);
 }

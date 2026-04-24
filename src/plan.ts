@@ -22,6 +22,7 @@ export interface PlanOptions {
   currentRun?: CurrentRunSet;
   currentRunPath?: string;
   targetOutputs?: string[];
+  approvedEffects?: string[];
   now?: Date | string;
 }
 
@@ -49,6 +50,7 @@ export function planSource(source: string, options: PlanOptions): ExecutionPlan 
   const requestedOutputs = requestedOutputsForPlan(ir, main, options.targetOutputs);
   const selectedNodes = selectedNodeIdsForOutputs(ir, executable, main, requestedOutputs);
   const fullGraphRequest = isFullGraphRequest(main, requestedOutputs);
+  const approvedEffects = normalizeApprovedEffects(options.approvedEffects);
   const currentByComponent = new Map(
     currentRun.nodes.map((record) => [record.component_ref, record]),
   );
@@ -85,7 +87,7 @@ export function planSource(source: string, options: PlanOptions): ExecutionPlan 
       )
       .map((node) => `Upstream node '${node.component_ref}' is ${node.status}.`);
     const unsafeEffects = staleReasons.length > 0
-      ? unsafeEffectKinds(component).map(
+      ? unsafeEffectKinds(component, approvedEffects).map(
           (effect) => `Effect '${effect}' requires a gate before execution.`,
         )
       : [];
@@ -120,7 +122,7 @@ export function planSource(source: string, options: PlanOptions): ExecutionPlan 
     ...missingRequestedOutputReasons(ir, executable, main, requestedOutputs),
     ...(
       main && graphStaleReasons.length > 0
-        ? unsafeEffectKinds(main).map(
+        ? unsafeEffectKinds(main, approvedEffects).map(
             (effect) => `Graph effect '${effect}' requires a gate before execution.`,
           )
         : []
@@ -138,6 +140,7 @@ export function planSource(source: string, options: PlanOptions): ExecutionPlan 
     component_ref: main?.name ?? ir.components[0]?.name ?? ir.package.name,
     ir_hash: ir.semantic_hash,
     requested_outputs: requestedOutputs,
+    approved_effects: [...approvedEffects].sort(),
     status: planStatus(planNodes, graphStaleReasons, graphBlockedReasons, Boolean(main)),
     graph_stale_reasons: graphStaleReasons,
     graph_blocked_reasons: graphBlockedReasons,
@@ -629,12 +632,22 @@ function expectedInputHash(
   return output?.value_hash ?? null;
 }
 
-function unsafeEffectKinds(component: ComponentIR): string[] {
+function unsafeEffectKinds(component: ComponentIR, approvedEffects = new Set<string>()): string[] {
   const kinds = component.effects.map((effect) => effect.kind);
   if (kinds.length === 0 || (kinds.length === 1 && kinds[0] === "pure")) {
     return [];
   }
-  return kinds.filter((kind) => kind !== "pure" && kind !== "read_external");
+  return kinds.filter(
+    (kind) => kind !== "pure" && kind !== "read_external" && !approvedEffects.has(kind),
+  );
+}
+
+function normalizeApprovedEffects(effects: string[] | undefined): Set<string> {
+  return new Set(
+    (effects ?? [])
+      .map((effect) => effect.trim())
+      .filter((effect) => effect.length > 0),
+  );
 }
 
 async function loadCurrentRunSet(path: string): Promise<CurrentRunSet> {

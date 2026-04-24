@@ -416,6 +416,96 @@ kind: program
     );
   });
 
+  test("approved effects unblock planning and gated fixture materialization", async () => {
+    const plan = planSource(fixture("typed-effects.prose.md"), {
+      path: "fixtures/compiler/typed-effects.prose.md",
+      inputs: {
+        company: "Acme profile",
+        subject: "run: prior-run",
+      },
+      approvedEffects: ["delivers"],
+    });
+
+    expect(plan.status).toBe("ready");
+    expect(plan.approved_effects).toEqual(["delivers"]);
+    expect(plan.graph_blocked_reasons).toEqual([]);
+
+    const runRoot = mkdtempSync(join(tmpdir(), "openprose-approved-effect-"));
+    const result = await materializeSource(fixture("typed-effects.prose.md"), {
+      path: "fixtures/compiler/typed-effects.prose.md",
+      runRoot,
+      runId: "20260423-125000-gate01",
+      createdAt: "2026-04-23T12:50:00.000Z",
+      inputs: {
+        company: "Acme profile",
+        subject: "run: prior-run",
+      },
+      outputs: {
+        "brief-writer.brief": "Approved delivery brief",
+      },
+      approvedEffects: ["delivers"],
+      trigger: "human_gate",
+    });
+
+    expect(result.record).toMatchObject({
+      run_id: "20260423-125000-gate01",
+      kind: "graph",
+      component_ref: "publish-brief",
+      status: "succeeded",
+      caller: {
+        trigger: "human_gate",
+      },
+      effects: {
+        declared: ["read_external", "delivers"],
+        performed: [],
+      },
+    });
+  });
+
+  test("passes approved effects through the CLI materialize command", () => {
+    const runRoot = mkdtempSync(join(tmpdir(), "openprose-cli-approved-"));
+    const fixtureFile = fixturePath("compiler/typed-effects.prose.md");
+    const result = Bun.spawnSync(
+      [
+        "bun",
+        "bin/prose.ts",
+        "materialize",
+        fixtureFile,
+        "--run-root",
+        runRoot,
+        "--run-id",
+        "20260423-125500-gate02",
+        "--trigger",
+        "human_gate",
+        "--approved-effect",
+        "delivers",
+        "--input",
+        "company=Acme profile",
+        "--input",
+        "subject=run: prior-run",
+        "--output",
+        "brief-writer.brief=Approved CLI brief.",
+      ],
+      {
+        cwd: join(import.meta.dir, ".."),
+        stdout: "pipe",
+        stderr: "pipe",
+      },
+    );
+
+    expect(result.exitCode).toBe(0);
+
+    const record = JSON.parse(
+      readFileSync(join(runRoot, "20260423-125500-gate02", "run.json"), "utf8"),
+    );
+    expect(record).toMatchObject({
+      status: "succeeded",
+      caller: {
+        trigger: "human_gate",
+      },
+    });
+  });
+
   test("plans a pure graph as ready when caller inputs are available", () => {
     const plan = planSource(fixture("pipeline.prose.md"), {
       path: "fixtures/compiler/pipeline.prose.md",

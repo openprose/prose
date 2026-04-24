@@ -15,6 +15,7 @@ import { publishCheckPath, renderPublishCheckText } from "./publish";
 import { renderCatalogSearchText, searchCatalog } from "./search";
 import { renderStatusText, statusPath } from "./status";
 import { renderTraceText, traceFile } from "./trace";
+import type { RunRecord } from "./types";
 
 export async function runCli(args: string[]): Promise<void> {
   const [command, ...rest] = args;
@@ -233,6 +234,7 @@ export async function runCli(args: string[]): Promise<void> {
       inputs: options.inputs,
       currentRunPath: options.currentRunPath ?? undefined,
       targetOutputs: options.targetOutputs,
+      approvedEffects: options.approvedEffects,
       format: options.format === "json" ? "json" : "mermaid",
     });
     const output =
@@ -252,6 +254,7 @@ export async function runCli(args: string[]): Promise<void> {
       inputs: options.inputs,
       currentRunPath: options.currentRunPath ?? undefined,
       targetOutputs: options.targetOutputs,
+      approvedEffects: options.approvedEffects,
     });
     const output = `${JSON.stringify(plan, null, options.pretty ? 2 : 0)}\n`;
     if (options.out) {
@@ -271,6 +274,7 @@ export async function runCli(args: string[]): Promise<void> {
       runId: options.runId ?? undefined,
       inputs: options.inputs,
       outputs: options.outputs,
+      approvedEffects: options.approvedEffects,
       trigger: options.trigger,
     });
     const summary = {
@@ -405,7 +409,8 @@ interface FileCommandArgs {
   write: boolean;
   inputs: Record<string, string>;
   outputs: Record<string, string>;
-  trigger: "manual" | "api" | "test";
+  approvedEffects: string[];
+  trigger: RunRecord["caller"]["trigger"];
 }
 
 function parseGrammarCommandArgs(args: string[]): GrammarCommandArgs {
@@ -542,6 +547,7 @@ function parseFileCommandArgs(args: string[]): FileCommandArgs {
     write: false,
     inputs: {},
     outputs: {},
+    approvedEffects: [],
     trigger: "manual",
   };
 
@@ -635,10 +641,17 @@ function parseFileCommandArgs(args: string[]): FileCommandArgs {
       index += 1;
       continue;
     }
+    if (arg === "--approved-effect") {
+      const effect = args[index + 1];
+      if (effect) {
+        parsed.approvedEffects.push(effect);
+      }
+      index += 1;
+      continue;
+    }
     if (arg === "--trigger") {
       const value = args[index + 1];
-      parsed.trigger =
-        value === "test" ? "test" : value === "api" ? "api" : "manual";
+      parsed.trigger = parseTrigger(value);
       index += 1;
       continue;
     }
@@ -672,6 +685,21 @@ function addKeyValue(target: Record<string, string>, raw: string | undefined): v
   target[raw.slice(0, separator)] = raw.slice(separator + 1);
 }
 
+function parseTrigger(value: string | undefined): RunRecord["caller"]["trigger"] {
+  if (
+    value === "api" ||
+    value === "test" ||
+    value === "schedule" ||
+    value === "webhook" ||
+    value === "graph_recompute" ||
+    value === "human_gate"
+  ) {
+    return value;
+  }
+
+  return "manual";
+}
+
 function printHelp(): void {
   console.log(`OpenProse
 
@@ -682,15 +710,15 @@ Usage:
   prose install [registry-ref|path] [--catalog-root dir] [--workspace-root dir] [--deps-root dir] [--refresh] [--source-override package=path]
   prose manifest <file.prose.md> [--out manifest.md]
   prose package <dir|file.prose.md> [--format text|json]
-  prose graph <file.prose.md> [--current-run .prose/runs/{id}] [--target-output final] [--format mermaid|json]
+  prose graph <file.prose.md> [--current-run .prose/runs/{id}] [--target-output final] [--approved-effect delivers] [--format mermaid|json]
   prose highlight <file.prose.md> [--format text|json|html]
   prose lint <file.prose.md|dir> [--format text|json]
-  prose plan <file.prose.md> [--input name=value] [--current-run .prose/runs/{id}] [--target-output final]
+  prose plan <file.prose.md> [--input name=value] [--current-run .prose/runs/{id}] [--target-output final] [--approved-effect delivers]
   prose preflight <file.prose.md> [--format text|json]
   prose publish-check <dir|file.prose.md> [--format text|json] [--strict]
   prose search <dir> [--type CompanyProfile] [--effect read_external] [--kind service] [--min-quality 0.8]
   prose status [.prose/runs] [--limit 10] [--format text|json]
-  prose materialize <file.prose.md> [--run-root .prose/runs] [--input name=value] [--output port=value]
+  prose materialize <file.prose.md> [--run-root .prose/runs] [--input name=value] [--output port=value] [--approved-effect delivers]
   prose trace <.prose/runs/{id}|run.json> [--format text|json]
 
 Commands:

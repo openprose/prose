@@ -20,6 +20,7 @@ export interface MaterializeOptions {
   createdAt?: string;
   inputs?: Record<string, string>;
   outputs?: Record<string, string>;
+  approvedEffects?: string[];
   trigger?: RunRecord["caller"]["trigger"];
 }
 
@@ -30,6 +31,7 @@ interface MaterializeContext {
   createdAt: string;
   inputs: Record<string, string>;
   outputs: Record<string, string>;
+  approvedEffects: Set<string>;
   trigger: RunRecord["caller"]["trigger"];
 }
 
@@ -57,6 +59,7 @@ export async function materializeSource(
     createdAt,
     inputs: options.inputs ?? {},
     outputs: options.outputs ?? {},
+    approvedEffects: normalizeApprovedEffects(options.approvedEffects),
     trigger: options.trigger ?? "manual",
   };
 
@@ -112,7 +115,7 @@ async function createComponentRunRecord(
   const missingOutputs = component.ports.ensures.filter(
     (port) => resolveOutputValue(ctx, component, port.name) === undefined,
   );
-  const unsafeEffects = unsafeEffectKinds(component);
+  const unsafeEffects = unsafeEffectKinds(component, ctx.approvedEffects);
   const blockedReasons = [
     ...missingInputs.map((port) => `Missing required input '${port.name}'.`),
     ...missingOutputs.map((port) => `Missing fixture output '${port.name}'.`),
@@ -171,7 +174,7 @@ async function createGraphRunRecord(
   );
   const blockedNodes = nodeRecords.filter((record) => record.status !== "succeeded");
   const unsafeGraphEffects = ctx.ir.components.flatMap((component) =>
-    unsafeEffectKinds(component),
+    unsafeEffectKinds(component, ctx.approvedEffects),
   );
   const blockedReasons = [
     ...missingInputs.map((port) => `Missing required input '${port.name}'.`),
@@ -343,12 +346,22 @@ function resolveGraphOutputValue(
   return ctx.outputs[portName];
 }
 
-function unsafeEffectKinds(component: ComponentIR): string[] {
+function unsafeEffectKinds(component: ComponentIR, approvedEffects = new Set<string>()): string[] {
   const kinds = component.effects.map((effect) => effect.kind);
   if (kinds.length === 0 || (kinds.length === 1 && kinds[0] === "pure")) {
     return [];
   }
-  return kinds.filter((kind) => kind !== "pure" && kind !== "read_external");
+  return kinds.filter(
+    (kind) => kind !== "pure" && kind !== "read_external" && !approvedEffects.has(kind),
+  );
+}
+
+function normalizeApprovedEffects(effects: string[] | undefined): Set<string> {
+  return new Set(
+    (effects ?? [])
+      .map((effect) => effect.trim())
+      .filter((effect) => effect.length > 0),
+  );
 }
 
 function createTrace(ctx: MaterializeContext): unknown[] {

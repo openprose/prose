@@ -230,6 +230,7 @@ export interface ExecutionPlan {
   component_ref: string;
   ir_hash: string;
   requested_outputs: string[];
+  approved_effects: string[];
   status: "current" | "ready" | "blocked";
   graph_stale_reasons: string[];
   graph_blocked_reasons: string[];
