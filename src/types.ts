@@ -56,9 +56,65 @@ export interface AccessIR {
   source_span?: SourceSpan;
 }
 
+export type ExecutionStepIR =
+  | ExecutionCallStepIR
+  | ExecutionParallelStepIR
+  | ExecutionLoopStepIR
+  | ExecutionConditionStepIR
+  | ExecutionTryStepIR
+  | ExecutionReturnStepIR
+  | ExecutionTextStepIR;
+
+export interface ExecutionStepBaseIR {
+  kind: string;
+  raw: string;
+  source_span: SourceSpan;
+}
+
+export interface ExecutionCallStepIR extends ExecutionStepBaseIR {
+  kind: "call";
+  target: string;
+  assign: string | null;
+  bindings: Record<string, string>;
+}
+
+export interface ExecutionParallelStepIR extends ExecutionStepBaseIR {
+  kind: "parallel";
+  steps: ExecutionStepIR[];
+}
+
+export interface ExecutionLoopStepIR extends ExecutionStepBaseIR {
+  kind: "loop";
+  iterator: string | null;
+  iterable: string | null;
+  body: ExecutionStepIR[];
+}
+
+export interface ExecutionConditionStepIR extends ExecutionStepBaseIR {
+  kind: "condition";
+  condition: string;
+  body: ExecutionStepIR[];
+}
+
+export interface ExecutionTryStepIR extends ExecutionStepBaseIR {
+  kind: "try";
+  body: ExecutionStepIR[];
+}
+
+export interface ExecutionReturnStepIR extends ExecutionStepBaseIR {
+  kind: "return";
+  value: string;
+}
+
+export interface ExecutionTextStepIR extends ExecutionStepBaseIR {
+  kind: "text";
+  text: string;
+}
+
 export interface ExecutionIR {
   language: "prose";
   body: string;
+  steps: ExecutionStepIR[];
   source_span: SourceSpan;
 }
 

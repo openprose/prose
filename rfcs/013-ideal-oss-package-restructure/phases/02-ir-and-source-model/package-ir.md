@@ -42,7 +42,8 @@ contract drift.
 ## Current Gaps
 
 - The package graph uses package-wide exact port matching and service reference
-  edges, but it does not yet understand structured execution IR.
+  edges. Structured execution IR now exists, but the package graph does not yet
+  fully derive dependency edges from every structured control construct.
 - Duplicate common port names can produce package-wide ambiguity warnings.
   Phase 02.5 should replace this with accepted intelligent wiring proposals.
 - `schemas`, eval declarations, examples, and policy details are represented

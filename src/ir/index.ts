@@ -6,6 +6,7 @@ export type {
   ComponentKind,
   EnvironmentIR,
   ExecutionIR,
+  ExecutionStepIR,
   GraphEdgeEndpointIR,
   GraphEdgeIR,
   GraphIR,

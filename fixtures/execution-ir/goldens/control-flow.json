@@ -1,0 +1,119 @@
+{
+  "diagnostics": [
+    "unresolved_service_reference",
+    "unresolved_service_reference",
+    "unresolved_service_reference",
+    "unresolved_service_reference"
+  ],
+  "steps": [
+    {
+      "kind": "condition",
+      "raw": "if approved:",
+      "source_span": {
+        "path": "fixtures/execution-ir/control-flow.prose.md",
+        "start_line": 25,
+        "end_line": 26
+      },
+      "condition": "approved",
+      "body": [
+        {
+          "kind": "call",
+          "raw": "call guard",
+          "source_span": {
+            "path": "fixtures/execution-ir/control-flow.prose.md",
+            "start_line": 26,
+            "end_line": 26
+          },
+          "target": "guard",
+          "assign": null,
+          "bindings": {}
+        }
+      ]
+    },
+    {
+      "kind": "loop",
+      "raw": "for each item in items:",
+      "source_span": {
+        "path": "fixtures/execution-ir/control-flow.prose.md",
+        "start_line": 28,
+        "end_line": 30
+      },
+      "iterator": "item",
+      "iterable": "items",
+      "body": [
+        {
+          "kind": "call",
+          "raw": "let result = call worker",
+          "source_span": {
+            "path": "fixtures/execution-ir/control-flow.prose.md",
+            "start_line": 29,
+            "end_line": 30
+          },
+          "target": "worker",
+          "assign": "result",
+          "bindings": {
+            "item": "item"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "loop",
+      "raw": "loop:",
+      "source_span": {
+        "path": "fixtures/execution-ir/control-flow.prose.md",
+        "start_line": 32,
+        "end_line": 33
+      },
+      "iterator": null,
+      "iterable": null,
+      "body": [
+        {
+          "kind": "call",
+          "raw": "call poller",
+          "source_span": {
+            "path": "fixtures/execution-ir/control-flow.prose.md",
+            "start_line": 33,
+            "end_line": 33
+          },
+          "target": "poller",
+          "assign": null,
+          "bindings": {}
+        }
+      ]
+    },
+    {
+      "kind": "try",
+      "raw": "try:",
+      "source_span": {
+        "path": "fixtures/execution-ir/control-flow.prose.md",
+        "start_line": 35,
+        "end_line": 36
+      },
+      "body": [
+        {
+          "kind": "call",
+          "raw": "call finisher",
+          "source_span": {
+            "path": "fixtures/execution-ir/control-flow.prose.md",
+            "start_line": 36,
+            "end_line": 36
+          },
+          "target": "finisher",
+          "assign": null,
+          "bindings": {}
+        }
+      ]
+    },
+    {
+      "kind": "return",
+      "raw": "return result",
+      "source_span": {
+        "path": "fixtures/execution-ir/control-flow.prose.md",
+        "start_line": 38,
+        "end_line": 38
+      },
+      "value": "result"
+    }
+  ]
+}

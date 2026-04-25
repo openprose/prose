@@ -4,6 +4,7 @@ import type {
   EffectIR,
   EnvironmentIR,
   ExecutionIR,
+  ExecutionStepIR,
   PortIR,
   RuntimeSettingIR,
   ServiceIR,
@@ -239,11 +240,11 @@ export function parseExecution(
       }
 
       if (fenceStart) {
+        const trimmedBody = trimTrailingBlankLines(body);
         return {
           language: "prose",
-          body: trimTrailingBlankLines(body.map((bodyLine) => bodyLine.text)).join(
-            "\n",
-          ),
+          body: trimmedBody.map((bodyLine) => bodyLine.text).join("\n"),
+          steps: parseExecutionSteps(trimmedBody, diagnostics, section.span.path),
           source_span: span(
             section.span.path,
             fenceStart.number + 1,
@@ -269,6 +270,219 @@ export function parseExecution(
 
   return null;
 }
+
+function parseExecutionSteps(
+  lines: SourceLine[],
+  diagnostics: Diagnostic[],
+  path: string,
+): ExecutionStepIR[] {
+  return parseExecutionBlock(lines, 0, diagnostics, path).steps;
+}
+
+function parseExecutionBlock(
+  lines: SourceLine[],
+  startIndex: number,
+  diagnostics: Diagnostic[],
+  path: string,
+  baseIndent = 0,
+): { steps: ExecutionStepIR[]; nextIndex: number } {
+  const steps: ExecutionStepIR[] = [];
+  let index = startIndex;
+
+  while (index < lines.length) {
+    const line = lines[index];
+    if (!line.text.trim()) {
+      index += 1;
+      continue;
+    }
+
+    const indent = indentation(line.text);
+    if (indent < baseIndent) {
+      break;
+    }
+
+    const raw = line.text.trim();
+    if (raw === "parallel:") {
+      const child = collectIndentedBlock(lines, index + 1, indent);
+      const parsed = parseExecutionBlock(child.lines, 0, diagnostics, path, indent + 2);
+      steps.push({
+        kind: "parallel",
+        raw,
+        steps: parsed.steps,
+        source_span: span(path, line.number, child.endLine ?? line.number),
+      });
+      index = child.nextIndex;
+      continue;
+    }
+
+    const call = parseCallLine(raw);
+    if (call) {
+      const bindings: Record<string, string> = {};
+      let endLine = line.number;
+      index += 1;
+      while (index < lines.length) {
+        const bindingLine = lines[index];
+        if (!bindingLine.text.trim()) {
+          index += 1;
+          continue;
+        }
+        if (indentation(bindingLine.text) <= indent) {
+          break;
+        }
+        const binding = bindingLine.text.trim().match(/^`?([A-Za-z0-9_-]+)`?:\s*(.+)$/);
+        if (binding) {
+          bindings[binding[1]] = binding[2].trim();
+        } else {
+          diagnostics.push({
+            severity: "warning",
+            code: "unparsed_execution_binding",
+            message: `Execution binding '${bindingLine.text.trim()}' could not be parsed.`,
+            source_span: span(path, bindingLine.number, bindingLine.number),
+          });
+        }
+        endLine = bindingLine.number;
+        index += 1;
+      }
+      steps.push({
+        kind: "call",
+        raw,
+        target: call.target,
+        assign: call.assign,
+        bindings,
+        source_span: span(path, line.number, endLine),
+      });
+      continue;
+    }
+
+    const returnValue = raw.match(/^return\s+(.+)$/);
+    if (returnValue) {
+      steps.push({
+        kind: "return",
+        raw,
+        value: returnValue[1].trim(),
+        source_span: span(path, line.number, line.number),
+      });
+      index += 1;
+      continue;
+    }
+
+    const condition = raw.match(/^if\s+(.+):$/);
+    if (condition) {
+      const child = collectIndentedBlock(lines, index + 1, indent);
+      const parsed = parseExecutionBlock(child.lines, 0, diagnostics, path, indent + 2);
+      steps.push({
+        kind: "condition",
+        raw,
+        condition: condition[1].trim(),
+        body: parsed.steps,
+        source_span: span(path, line.number, child.endLine ?? line.number),
+      });
+      index = child.nextIndex;
+      continue;
+    }
+
+    const forEach = raw.match(/^for\s+each\s+([A-Za-z_][A-Za-z0-9_]*)\s+in\s+(.+):$/);
+    if (forEach) {
+      const child = collectIndentedBlock(lines, index + 1, indent);
+      const parsed = parseExecutionBlock(child.lines, 0, diagnostics, path, indent + 2);
+      steps.push({
+        kind: "loop",
+        raw,
+        iterator: forEach[1],
+        iterable: forEach[2].trim(),
+        body: parsed.steps,
+        source_span: span(path, line.number, child.endLine ?? line.number),
+      });
+      index = child.nextIndex;
+      continue;
+    }
+
+    if (raw === "loop:") {
+      const child = collectIndentedBlock(lines, index + 1, indent);
+      const parsed = parseExecutionBlock(child.lines, 0, diagnostics, path, indent + 2);
+      steps.push({
+        kind: "loop",
+        raw,
+        iterator: null,
+        iterable: null,
+        body: parsed.steps,
+        source_span: span(path, line.number, child.endLine ?? line.number),
+      });
+      index = child.nextIndex;
+      continue;
+    }
+
+    if (raw === "try:") {
+      const child = collectIndentedBlock(lines, index + 1, indent);
+      const parsed = parseExecutionBlock(child.lines, 0, diagnostics, path, indent + 2);
+      steps.push({
+        kind: "try",
+        raw,
+        body: parsed.steps,
+        source_span: span(path, line.number, child.endLine ?? line.number),
+      });
+      index = child.nextIndex;
+      continue;
+    }
+
+    diagnostics.push({
+      severity: "warning",
+      code: "unparsed_execution_line",
+      message: `Execution line '${raw}' could not be parsed into structured IR.`,
+      source_span: span(path, line.number, line.number),
+    });
+    steps.push({
+      kind: "text",
+      raw,
+      text: raw,
+      source_span: span(path, line.number, line.number),
+    });
+    index += 1;
+  }
+
+  return { steps, nextIndex: index };
+}
+
+function collectIndentedBlock(
+  lines: SourceLine[],
+  startIndex: number,
+  parentIndent: number,
+): { lines: SourceLine[]; nextIndex: number; endLine: number | null } {
+  const block: SourceLine[] = [];
+  let index = startIndex;
+  let endLine: number | null = null;
+  while (index < lines.length) {
+    const line = lines[index];
+    if (line.text.trim() && indentation(line.text) <= parentIndent) {
+      break;
+    }
+    block.push(line);
+    if (line.text.trim()) {
+      endLine = line.number;
+    }
+    index += 1;
+  }
+  return { lines: block, nextIndex: index, endLine };
+}
+
+function parseCallLine(raw: string): { assign: string | null; target: string } | null {
+  const assigned = raw.match(/^let\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*call\s+([A-Za-z0-9_.-]+)$/);
+  if (assigned) {
+    return { assign: assigned[1], target: assigned[2] };
+  }
+
+  const direct = raw.match(/^call\s+([A-Za-z0-9_.-]+)$/);
+  if (direct) {
+    return { assign: null, target: direct[1] };
+  }
+
+  return null;
+}
+
+function indentation(value: string): number {
+  return value.match(/^\s*/)?.[0].length ?? 0;
+}
+
 
 interface ListItem {
   item: string;
@@ -476,10 +690,14 @@ function parseInlineValue(value: string): string | number | boolean {
   return trimmed.replace(/^["']|["']$/g, "");
 }
 
-function trimTrailingBlankLines(lines: string[]): string[] {
+function trimTrailingBlankLines<T extends string | SourceLine>(lines: T[]): T[] {
   const next = [...lines];
-  while (next.length && next[next.length - 1].trim() === "") {
+  while (next.length && sourceLineText(next[next.length - 1]).trim() === "") {
     next.pop();
   }
   return next;
+}
+
+function sourceLineText(line: string | SourceLine): string {
+  return typeof line === "string" ? line : line.text;
 }

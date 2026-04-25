@@ -1,0 +1,69 @@
+{
+  "diagnostics": [],
+  "steps": [
+    {
+      "kind": "parallel",
+      "raw": "parallel:",
+      "source_span": {
+        "path": "fixtures/execution-ir/parallel.prose.md",
+        "start_line": 23,
+        "end_line": 28
+      },
+      "steps": [
+        {
+          "kind": "call",
+          "raw": "let first = call first-worker",
+          "source_span": {
+            "path": "fixtures/execution-ir/parallel.prose.md",
+            "start_line": 24,
+            "end_line": 25
+          },
+          "target": "first-worker",
+          "assign": "first",
+          "bindings": {
+            "topic": "topic"
+          }
+        },
+        {
+          "kind": "call",
+          "raw": "let second = call second-worker",
+          "source_span": {
+            "path": "fixtures/execution-ir/parallel.prose.md",
+            "start_line": 27,
+            "end_line": 28
+          },
+          "target": "second-worker",
+          "assign": "second",
+          "bindings": {
+            "topic": "topic"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "call",
+      "raw": "let brief = call joiner",
+      "source_span": {
+        "path": "fixtures/execution-ir/parallel.prose.md",
+        "start_line": 30,
+        "end_line": 32
+      },
+      "target": "joiner",
+      "assign": "brief",
+      "bindings": {
+        "first": "first",
+        "second": "second"
+      }
+    },
+    {
+      "kind": "return",
+      "raw": "return brief",
+      "source_span": {
+        "path": "fixtures/execution-ir/parallel.prose.md",
+        "start_line": 34,
+        "end_line": 34
+      },
+      "value": "brief"
+    }
+  ]
+}

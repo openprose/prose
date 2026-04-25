@@ -1,0 +1,29 @@
+{
+  "diagnostics": [],
+  "steps": [
+    {
+      "kind": "call",
+      "raw": "let brief = call worker",
+      "source_span": {
+        "path": "fixtures/execution-ir/simple-call-return.prose.md",
+        "start_line": 21,
+        "end_line": 22
+      },
+      "target": "worker",
+      "assign": "brief",
+      "bindings": {
+        "topic": "topic"
+      }
+    },
+    {
+      "kind": "return",
+      "raw": "return brief",
+      "source_span": {
+        "path": "fixtures/execution-ir/simple-call-return.prose.md",
+        "start_line": 24,
+        "end_line": 24
+      },
+      "value": "brief"
+    }
+  ]
+}
