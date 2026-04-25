@@ -35,7 +35,6 @@ export async function runCli(args: string[]): Promise<void> {
     command !== "install" &&
     command !== "lint" &&
     command !== "manifest" &&
-    command !== "materialize" &&
     command !== "package" &&
     command !== "plan" &&
     command !== "preflight" &&
@@ -43,11 +42,53 @@ export async function runCli(args: string[]): Promise<void> {
     command !== "remote" &&
     command !== "search" &&
     command !== "status" &&
-    command !== "trace"
+    command !== "trace" &&
+    command !== "fixture"
   ) {
     console.error(`Unknown command: ${command}`);
     printHelp();
     process.exitCode = 1;
+    return;
+  }
+
+  if (command === "fixture") {
+    const [action, ...fixtureRest] = rest;
+    if (action !== "materialize") {
+      console.error("Missing fixture action. Use: prose fixture materialize <file.prose.md>");
+      process.exitCode = 1;
+      return;
+    }
+
+    const options = parseFileCommandArgs(fixtureRest);
+    if (!options.file) {
+      console.error("Missing file path.");
+      process.exitCode = 1;
+      return;
+    }
+
+    const result = await materializeFile(options.file, {
+      runRoot: options.runRoot ?? undefined,
+      runId: options.runId ?? undefined,
+      inputs: options.inputs,
+      outputs: options.outputs,
+      approvedEffects: options.approvedEffects,
+      trigger: options.trigger,
+    });
+    const summary = {
+      run_id: result.run_id,
+      run_dir: result.run_dir,
+      status: result.record.status,
+      node_runs: result.node_records.length,
+    };
+    const output = `${JSON.stringify(summary, null, options.pretty ? 2 : 0)}\n`;
+    if (options.out) {
+      await writeFile(options.out, output, "utf8");
+    } else {
+      process.stdout.write(output);
+    }
+    if (result.record.status !== "succeeded") {
+      process.exitCode = 1;
+    }
     return;
   }
 
@@ -300,33 +341,6 @@ export async function runCli(args: string[]): Promise<void> {
       process.stdout.write(output);
     }
     if (plan.status === "blocked") {
-      process.exitCode = 1;
-    }
-    return;
-  }
-
-  if (command === "materialize") {
-    const result = await materializeFile(options.file, {
-      runRoot: options.runRoot ?? undefined,
-      runId: options.runId ?? undefined,
-      inputs: options.inputs,
-      outputs: options.outputs,
-      approvedEffects: options.approvedEffects,
-      trigger: options.trigger,
-    });
-    const summary = {
-      run_id: result.run_id,
-      run_dir: result.run_dir,
-      status: result.record.status,
-      node_runs: result.node_records.length,
-    };
-    const output = `${JSON.stringify(summary, null, options.pretty ? 2 : 0)}\n`;
-    if (options.out) {
-      await writeFile(options.out, output, "utf8");
-    } else {
-      process.stdout.write(output);
-    }
-    if (result.record.status !== "succeeded") {
       process.exitCode = 1;
     }
     return;
@@ -851,9 +865,9 @@ Usage:
   prose preflight <file.prose.md> [--format text|json]
   prose publish-check <dir|file.prose.md> [--format text|json] [--strict]
   prose remote execute <file.prose.md> [--out-dir .openprose/remote-runs] [--run-id id] [--input name=value] [--output port=value] [--approved-effect delivers]
+  prose fixture materialize <file.prose.md> [--run-root .prose/runs] [--input name=value] [--output port=value] [--approved-effect delivers]
   prose search <dir> [--type CompanyProfile] [--effect read_external] [--kind service] [--min-quality 0.8]
   prose status [.prose/runs] [--limit 10] [--format text|json]
-  prose materialize <file.prose.md> [--run-root .prose/runs] [--input name=value] [--output port=value] [--approved-effect delivers]
   prose trace <.prose/runs/{id}|run.json> [--format text|json]
 
 Commands:
@@ -868,7 +882,7 @@ Commands:
   plan         Preview ready and blocked graph nodes without executing
   preflight    Check dependency installs and environment readiness for a program
   remote       Execute through the hosted runtime envelope/artifact contract
-  materialize  Write local RFC 005 run records from IR and fixture outputs
+  fixture      Run deterministic fixture-only development commands
   package      Generate registry/package metadata from canonical source
   publish-check  Evaluate local publish readiness from package metadata
   search       Search local package metadata by type, effect, kind, or quality

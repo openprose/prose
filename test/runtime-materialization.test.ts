@@ -81,11 +81,12 @@ describe("OpenProse fixture materialization and remote envelope", () => {
     expect(output).toBe("Hello from a fixture output.\n");
   });
 
-  test("passes api trigger through the CLI materialize command", () => {
+  test("passes api trigger through the CLI fixture materialize command", () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-cli-run-"));
     const fixtureFile = fixturePath("compiler/hello.prose.md");
     const result = runProseCli(
       [
+        "fixture",
         "materialize",
         fixtureFile,
         "--run-root",
@@ -106,6 +107,16 @@ describe("OpenProse fixture materialization and remote envelope", () => {
     );
 
     expect(record.caller.trigger).toBe("api");
+  });
+
+  test("does not expose fixture materialization as the top-level runtime command", () => {
+    const fixtureFile = fixturePath("compiler/hello.prose.md");
+    const result = runProseCli(["materialize", fixtureFile]);
+
+    expect(result.exitCode).toBe(1);
+    expect(new TextDecoder().decode(result.stderr)).toContain(
+      "Unknown command: materialize",
+    );
   });
 
   test("materializes a graph run with node run records", async () => {
@@ -271,13 +282,14 @@ kind: program
     });
   });
 
-  test("passes approved effects through the CLI materialize command", () => {
+  test("passes approved effects through the CLI fixture materialize command", () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-cli-approved-"));
     const fixtureFile = fixturePath("compiler/typed-effects.prose.md");
     const result = Bun.spawnSync(
       [
         "bun",
         "bin/prose.ts",
+        "fixture",
         "materialize",
         fixtureFile,
         "--run-root",
