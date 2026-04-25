@@ -9,6 +9,11 @@ export {
   writeLocalArtifactRecord,
 } from "./artifacts.js";
 export {
+  listRunAttemptRecords,
+  readRunAttemptRecord,
+  writeRunAttemptRecord,
+} from "./attempts.js";
+export {
   initLocalStore,
   LOCAL_STORE_VERSION,
   readLocalStoreMetadata,
@@ -29,6 +34,10 @@ export type {
   LocalArtifactSchemaStatus,
   LocalArtifactStorage,
   LocalGraphNodePointer,
+  LocalRunAttemptFailure,
+  LocalRunAttemptRecord,
+  LocalRunAttemptRetry,
+  LocalRunResumePoint,
   LocalStoreLayout,
   LocalStoreMetadata,
   LocalStoreRunIndexEntry,

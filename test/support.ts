@@ -27,6 +27,7 @@ export { renderStatusText, statusPath } from "../src/status";
 export {
   listArtifactRecordsByHash,
   listArtifactRecordsForRun,
+  listRunAttemptRecords,
   readArtifactRecordForOutput,
   readGraphNodePointer,
   readLocalArtifactContent,
@@ -40,6 +41,7 @@ export {
   updateGraphNodePointer,
   upsertRunIndexEntry,
   writeLocalArtifactRecord,
+  writeRunAttemptRecord,
   writeStoreJsonRecord,
 } from "../src/store";
 export { renderTraceText, traceFile } from "../src/trace";

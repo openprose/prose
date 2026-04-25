@@ -455,6 +455,39 @@ export interface LocalGraphNodePointer {
   updated_at: string;
 }
 
+export interface LocalRunAttemptFailure {
+  code: string;
+  message: string;
+  retryable: boolean;
+}
+
+export interface LocalRunAttemptRetry {
+  max_attempts: number;
+  next_attempt_after: string | null;
+  reason: string | null;
+}
+
+export interface LocalRunResumePoint {
+  checkpoint_ref: string;
+  reason: string | null;
+}
+
+export interface LocalRunAttemptRecord {
+  attempt_record_version: "0.1";
+  attempt_id: string;
+  run_id: string;
+  component_ref: string;
+  attempt_number: number;
+  status: RunLifecycleStatus;
+  provider_session_ref: string | null;
+  started_at: string;
+  finished_at: string | null;
+  diagnostics: Diagnostic[];
+  failure: LocalRunAttemptFailure | null;
+  retry: LocalRunAttemptRetry | null;
+  resume: LocalRunResumePoint | null;
+}
+
 export type RunLifecycleStatus =
   | "pending"
   | "running"
@@ -722,6 +755,8 @@ export interface RunStatusEntry {
   completed_at: string | null;
   outputs: string[];
   node_count: number;
+  attempt_count: number;
+  latest_attempt_status: RunLifecycleStatus | null;
   run_dir: string;
 }
 

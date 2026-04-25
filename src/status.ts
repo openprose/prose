@@ -1,6 +1,7 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
 import { readLocalStoreMetadata, readRunIndex } from "./store/local.js";
+import { listRunAttemptRecords } from "./store/attempts.js";
 import type {
   LocalStoreRunIndexEntry,
   RunRecord,
@@ -22,8 +23,10 @@ export async function statusPath(
   const limit = normalizeLimit(options.limit);
 
   if (info.isDirectory() && (await readLocalStoreMetadata(resolved))) {
-    const entries = (await readRunIndex(resolved)).map((entry) =>
-      statusEntryFromStoreIndex(resolved, entry),
+    const entries = await Promise.all(
+      (await readRunIndex(resolved)).map((entry) =>
+        statusEntryFromStoreIndex(resolved, entry),
+      ),
     );
     return buildStatusView(resolved, limit ? entries.slice(0, limit) : entries);
   }
@@ -71,8 +74,14 @@ export function renderStatusText(view: RunStatusView): string {
   for (const run of view.runs) {
     const outputs = run.outputs.length > 0 ? ` outputs[${run.outputs.join(", ")}]` : "";
     const nodes = run.node_count > 0 ? ` nodes=${run.node_count}` : "";
+    const attempts =
+      run.attempt_count > 0
+        ? ` attempts=${run.attempt_count}${
+            run.latest_attempt_status ? ` latest_attempt=${run.latest_attempt_status}` : ""
+          }`
+        : "";
     lines.push(
-      `- ${run.run_id}: ${run.component_ref} [${run.kind}] ${run.status} (${run.acceptance})${outputs}${nodes}`,
+      `- ${run.run_id}: ${run.component_ref} [${run.kind}] ${run.status} (${run.acceptance})${outputs}${nodes}${attempts}`,
     );
     lines.push(`  created ${run.created_at}`);
     if (run.completed_at) {
@@ -101,6 +110,8 @@ async function loadRunEntry(runDir: string): Promise<RunStatusEntry | null> {
     completed_at: record.completed_at,
     outputs: record.outputs.map((output) => output.port).sort(),
     node_count: await countNodeRuns(runDir),
+    attempt_count: 0,
+    latest_attempt_status: null,
     run_dir: runDir.replace(/\\/g, "/"),
   };
 }
@@ -135,10 +146,12 @@ function buildStatusView(root: string, runs: RunStatusEntry[]): RunStatusView {
   };
 }
 
-function statusEntryFromStoreIndex(
+async function statusEntryFromStoreIndex(
   root: string,
   entry: LocalStoreRunIndexEntry,
-): RunStatusEntry {
+): Promise<RunStatusEntry> {
+  const attempts = await listRunAttemptRecords(root, entry.run_id);
+  const latestAttempt = attempts[attempts.length - 1] ?? null;
   return {
     run_id: entry.run_id,
     component_ref: entry.component_ref,
@@ -149,6 +162,8 @@ function statusEntryFromStoreIndex(
     completed_at: entry.completed_at,
     outputs: [],
     node_count: 0,
+    attempt_count: attempts.length,
+    latest_attempt_status: latestAttempt?.status ?? null,
     run_dir: join(root, entry.record_ref).replace(/\\/g, "/"),
   };
 }
