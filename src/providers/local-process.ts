@@ -1,8 +1,6 @@
-import { readFile } from "node:fs/promises";
-import { isAbsolute, relative, resolve } from "node:path";
 import { performance } from "node:perf_hooks";
-import { sha256 } from "../hash.js";
 import type { ComponentIR, Diagnostic, EffectIR } from "../types.js";
+import { readProviderOutputFileArtifacts } from "./output-files.js";
 import type {
   ProviderArtifactResult,
   ProviderEnvironmentBinding,
@@ -112,7 +110,16 @@ export class LocalProcessProvider implements RuntimeProvider {
 
     const artifacts =
       diagnostics.length === 0
-        ? await this.readOutputArtifacts(request, diagnostics)
+        ? await readProviderOutputFileArtifacts(
+            {
+              workspacePath: request.workspace_path,
+              component: request.component,
+              expectedOutputs: request.expected_outputs,
+              outputFiles: this.outputFiles,
+              diagnosticCodePrefix: "local_process",
+            },
+            diagnostics,
+          )
         : [];
     const status = diagnostics.length === 0 ? "succeeded" : "failed";
 
@@ -126,57 +133,6 @@ export class LocalProcessProvider implements RuntimeProvider {
       timedOut: execution.timedOut,
       durationMs: execution.durationMs,
     });
-  }
-
-  private async readOutputArtifacts(
-    request: ProviderRequest,
-    diagnostics: Diagnostic[],
-  ): Promise<ProviderArtifactResult[]> {
-    const artifacts: ProviderArtifactResult[] = [];
-
-    for (const output of request.expected_outputs) {
-      const outputPath = this.outputFiles[output.port] ?? `${output.port}.md`;
-      const resolved = resolveOutputPath(request.workspace_path, outputPath);
-      if (!resolved) {
-        diagnostics.push({
-          severity: "error",
-          code: "local_process_invalid_output_path",
-          message: `Output file for '${output.port}' must stay inside the workspace.`,
-        });
-        continue;
-      }
-
-      try {
-        const content = await readFile(resolved.absolutePath, "utf8");
-        artifacts.push({
-          port: output.port,
-          content,
-          content_type: inferContentType(outputPath),
-          artifact_ref: resolved.relativePath,
-          content_hash: sha256(content),
-          policy_labels: [...output.policy_labels].sort(),
-        });
-      } catch (error) {
-        if (output.required) {
-          diagnostics.push({
-            severity: "error",
-            code: "local_process_output_missing",
-            message: `Local process did not write required output '${output.port}' at '${outputPath}'.`,
-            source_span: request.component.ports.ensures.find(
-              (port) => port.name === output.port,
-            )?.source_span,
-          });
-        } else if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-          diagnostics.push({
-            severity: "error",
-            code: "local_process_output_unreadable",
-            message: `Local process output '${output.port}' could not be read at '${outputPath}'.`,
-          });
-        }
-      }
-    }
-
-    return diagnostics.length === 0 ? artifacts : [];
   }
 
   private result(
@@ -307,33 +263,6 @@ function unsafeEffectKinds(
       effect.kind !== "read_external" &&
       !approved.has(effect.kind),
   );
-}
-
-function resolveOutputPath(
-  workspacePath: string,
-  outputPath: string,
-): { absolutePath: string; relativePath: string } | null {
-  if (isAbsolute(outputPath)) {
-    return null;
-  }
-
-  const workspace = resolve(workspacePath);
-  const absolutePath = resolve(workspace, outputPath);
-  const relativePath = relative(workspace, absolutePath).replace(/\\/g, "/");
-  if (relativePath === "" || relativePath.startsWith("..")) {
-    return null;
-  }
-  return { absolutePath, relativePath };
-}
-
-function inferContentType(path: string): string {
-  if (path.endsWith(".json")) {
-    return "application/json";
-  }
-  if (path.endsWith(".txt")) {
-    return "text/plain";
-  }
-  return "text/markdown";
 }
 
 function elapsed(started: number): number {

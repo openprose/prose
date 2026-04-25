@@ -10,6 +10,18 @@ export {
   createLocalProcessProvider,
 } from "./local-process.js";
 export {
+  PiProvider,
+  createPiProvider,
+  renderPiPrompt,
+} from "./pi.js";
+export {
+  inferProviderOutputContentType,
+  providerOutputFileForPort,
+  readProviderOutputFileArtifacts,
+  renderProviderOutputFileInstructions,
+  resolveProviderOutputPath,
+} from "./output-files.js";
+export {
   deserializeProviderSessionRef,
   normalizeProviderSessionRef,
   serializeProviderSessionRef,
@@ -23,6 +35,17 @@ export type {
 export type {
   LocalProcessProviderOptions,
 } from "./local-process.js";
+export type {
+  PiAgentSessionLike,
+  PiProviderOptions,
+  PiSessionFactory,
+  PiSessionFactoryContext,
+  PiThinkingLevel,
+} from "./pi.js";
+export type {
+  ProviderOutputFileMap,
+  ReadProviderOutputFileArtifactsOptions,
+} from "./output-files.js";
 export type {
   ProviderArtifactResult,
   ProviderCostTelemetry,

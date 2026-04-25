@@ -28,5 +28,8 @@
   "devDependencies": {
     "@types/bun": "latest",
     "typescript": "latest"
+  },
+  "dependencies": {
+    "@mariozechner/pi-coding-agent": "0.70.2"
   }
 }
