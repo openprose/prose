@@ -49,37 +49,43 @@
       "id": "evals-company-repo-checker-eval--company-repo-checker-eval",
       "name": "company-repo-checker.eval",
       "kind": "test",
-      "path": "evals/company-repo-checker.eval.prose.md"
+      "path": "evals/company-repo-checker.eval.prose.md",
+      "expansions": []
     },
     {
       "id": "programs-company-repo-checker--company-repo-checker",
       "name": "company-repo-checker",
       "kind": "program",
-      "path": "programs/company-repo-checker.prose.md"
+      "path": "programs/company-repo-checker.prose.md",
+      "expansions": []
     },
     {
       "id": "programs-company-repo-checker--contract-eval-drift-inspector",
       "name": "contract-eval-drift-inspector",
       "kind": "service",
-      "path": "programs/company-repo-checker.prose.md"
+      "path": "programs/company-repo-checker.prose.md",
+      "expansions": []
     },
     {
       "id": "programs-company-repo-checker--dependency-graph-inspector",
       "name": "dependency-graph-inspector",
       "kind": "service",
-      "path": "programs/company-repo-checker.prose.md"
+      "path": "programs/company-repo-checker.prose.md",
+      "expansions": []
     },
     {
       "id": "programs-company-repo-checker--repo-readiness-reporter",
       "name": "repo-readiness-reporter",
       "kind": "service",
-      "path": "programs/company-repo-checker.prose.md"
+      "path": "programs/company-repo-checker.prose.md",
+      "expansions": []
     },
     {
       "id": "programs-company-repo-checker--repo-structure-inspector",
       "name": "repo-structure-inspector",
       "kind": "service",
-      "path": "programs/company-repo-checker.prose.md"
+      "path": "programs/company-repo-checker.prose.md",
+      "expansions": []
     }
   ],
   "graph": {

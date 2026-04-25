@@ -70,9 +70,13 @@ export function parseServices(
     return [];
   }
 
-  const services: ServiceIR[] = [];
+  const shorthand = parseCompositeServiceShorthand(section);
+  const services: ServiceIR[] = [...shorthand.services];
 
   for (const line of topLevelListItems(section.lines, { skipFences: true })) {
+    if (shorthand.consumedLines.has(line.number)) {
+      continue;
+    }
     const name = stripTicks(line.item.trim());
     services.push({
       name,
@@ -85,6 +89,54 @@ export function parseServices(
 
   services.push(...parseStructuredServices(section));
   return services;
+}
+
+function parseCompositeServiceShorthand(section: SectionDraft): {
+  services: ServiceIR[];
+  consumedLines: Set<number>;
+} {
+  const services: ServiceIR[] = [];
+  const consumedLines = new Set<number>();
+
+  for (let index = 0; index < section.lines.length; index += 1) {
+    const line = section.lines[index];
+    const match = line.text.match(/^-\s+`?([^`:]+)`?:\s*`?([^`]+)`?\s*$/);
+    if (!match) {
+      continue;
+    }
+
+    const [, rawName, rawCompose] = match;
+    const withValues: Record<string, string | number | boolean> = {};
+    let endLine = line.number;
+    consumedLines.add(line.number);
+
+    let childIndex = index + 1;
+    while (childIndex < section.lines.length) {
+      const child = section.lines[childIndex];
+      if (/^-\s+/.test(child.text)) {
+        break;
+      }
+      const childMatch = child.text.match(/^\s{2,}-\s+`?([^`:]+)`?:\s*`?([^`]+)`?\s*$/);
+      if (childMatch) {
+        withValues[stripTicks(childMatch[1])] = parseInlineValue(stripTicks(childMatch[2]));
+        consumedLines.add(child.number);
+        endLine = child.number;
+      }
+      childIndex += 1;
+    }
+
+    const name = stripTicks(rawName);
+    const compose = stripTicks(rawCompose);
+    services.push({
+      name,
+      ref: compose,
+      compose,
+      with: withValues,
+      source_span: span(section.span.path, line.number, endLine),
+    });
+  }
+
+  return { services, consumedLines };
 }
 
 export function parseEnvironment(

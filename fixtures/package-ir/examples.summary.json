@@ -86,91 +86,106 @@
       "id": "approval-gated-release--announce-release",
       "name": "announce-release",
       "kind": "service",
-      "path": "approval-gated-release.prose.md"
+      "path": "approval-gated-release.prose.md",
+      "expansions": []
     },
     {
       "id": "approval-gated-release--approval-gated-release",
       "name": "approval-gated-release",
       "kind": "program",
-      "path": "approval-gated-release.prose.md"
+      "path": "approval-gated-release.prose.md",
+      "expansions": []
     },
     {
       "id": "approval-gated-release--qa-check",
       "name": "qa-check",
       "kind": "service",
-      "path": "approval-gated-release.prose.md"
+      "path": "approval-gated-release.prose.md",
+      "expansions": []
     },
     {
       "id": "approval-gated-release--release-note-writer",
       "name": "release-note-writer",
       "kind": "service",
-      "path": "approval-gated-release.prose.md"
+      "path": "approval-gated-release.prose.md",
+      "expansions": []
     },
     {
       "id": "company-intake--account-brief",
       "name": "account-brief",
       "kind": "service",
-      "path": "company-intake.prose.md"
+      "path": "company-intake.prose.md",
+      "expansions": []
     },
     {
       "id": "company-intake--company-intake",
       "name": "company-intake",
       "kind": "program",
-      "path": "company-intake.prose.md"
+      "path": "company-intake.prose.md",
+      "expansions": []
     },
     {
       "id": "company-intake--company-normalizer",
       "name": "company-normalizer",
       "kind": "service",
-      "path": "company-intake.prose.md"
+      "path": "company-intake.prose.md",
+      "expansions": []
     },
     {
       "id": "company-intake--signal-triage",
       "name": "signal-triage",
       "kind": "service",
-      "path": "company-intake.prose.md"
+      "path": "company-intake.prose.md",
+      "expansions": []
     },
     {
       "id": "evals-examples-quality-eval--examples-quality",
       "name": "examples-quality",
       "kind": "test",
-      "path": "evals/examples-quality.eval.prose.md"
+      "path": "evals/examples-quality.eval.prose.md",
+      "expansions": []
     },
     {
       "id": "hello--hello",
       "name": "hello",
       "kind": "service",
-      "path": "hello.prose.md"
+      "path": "hello.prose.md",
+      "expansions": []
     },
     {
       "id": "run-aware-brief--brief-writer",
       "name": "brief-writer",
       "kind": "service",
-      "path": "run-aware-brief.prose.md"
+      "path": "run-aware-brief.prose.md",
+      "expansions": []
     },
     {
       "id": "run-aware-brief--run-aware-brief",
       "name": "run-aware-brief",
       "kind": "program",
-      "path": "run-aware-brief.prose.md"
+      "path": "run-aware-brief.prose.md",
+      "expansions": []
     },
     {
       "id": "selective-recompute--market-sync",
       "name": "market-sync",
       "kind": "service",
-      "path": "selective-recompute.prose.md"
+      "path": "selective-recompute.prose.md",
+      "expansions": []
     },
     {
       "id": "selective-recompute--selective-recompute",
       "name": "selective-recompute",
       "kind": "program",
-      "path": "selective-recompute.prose.md"
+      "path": "selective-recompute.prose.md",
+      "expansions": []
     },
     {
       "id": "selective-recompute--summarize",
       "name": "summarize",
       "kind": "service",
-      "path": "selective-recompute.prose.md"
+      "path": "selective-recompute.prose.md",
+      "expansions": []
     }
   ],
   "graph": {

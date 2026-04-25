@@ -101,6 +101,7 @@ export async function compilePackagePath(path: string): Promise<PackageIR> {
     }
   }
 
+  resolveCompositeExpansions(components);
   const manifest = buildPackageManifest(root, config);
   const graph = buildPackageGraph(components, diagnostics);
   const sortedDiagnostics = sortDiagnostics(diagnostics);
@@ -202,10 +203,17 @@ function buildPackageGraph(components: ComponentIR[], diagnostics: Diagnostic[])
 
   for (const component of components) {
     for (const service of component.services) {
+      const targetName = serviceTargetName(service);
       const matches = (componentsByName.get(service.name) ?? []).filter(
         (candidate) => candidate.id !== component.id,
       );
-      if (matches.length > 1) {
+      const composeMatches = targetName === service.name
+        ? matches
+        : (componentsByName.get(targetName) ?? []).filter(
+            (candidate) => candidate.id !== component.id,
+          );
+      const resolvedMatches = service.compose ? composeMatches : matches;
+      if (resolvedMatches.length > 1) {
         diagnostics.push({
           severity: "warning",
           code: "ambiguous_package_service_reference",
@@ -213,13 +221,15 @@ function buildPackageGraph(components: ComponentIR[], diagnostics: Diagnostic[])
           source_span: service.source_span,
         });
       }
-      if (matches.length > 0) {
+      if (resolvedMatches.length > 0) {
         addEdge(edges, edgeKeys, {
-          from: { component: component.id, port: "$call" },
-          to: { component: matches[0].id, port: "$entry" },
+          from: { component: component.id, port: service.compose ? "$compose" : "$call" },
+          to: { component: resolvedMatches[0].id, port: "$entry" },
           kind: "execution",
           confidence: 1,
-          reason: `Package service reference '${service.name}'.`,
+          reason: service.compose
+            ? `Composite expansion '${service.name}' uses '${service.compose}'.`
+            : `Package service reference '${service.name}'.`,
           source: "execution",
         });
       }
@@ -291,6 +301,33 @@ function buildPackageGraph(components: ComponentIR[], diagnostics: Diagnostic[])
   };
 }
 
+function resolveCompositeExpansions(components: ComponentIR[]): void {
+  const byName = new Map<string, ComponentIR[]>();
+  for (const component of components) {
+    const existing = byName.get(component.name) ?? [];
+    existing.push(component);
+    byName.set(component.name, existing);
+  }
+
+  for (const component of components) {
+    component.expansions = component.expansions.map((expansion) => {
+      const targetName = composeRefName(expansion.compose_ref);
+      const resolved = (byName.get(targetName) ?? []).find(
+        (candidate) => candidate.kind === "composite",
+      );
+      if (!resolved) {
+        return expansion;
+      }
+      return {
+        ...expansion,
+        status: "resolved",
+        resolved_component_id: resolved.id,
+        definition_source_span: resolved.source.span,
+      };
+    });
+  }
+}
+
 function rebaseComponent(component: ComponentIR, relativePath: string, id: string): ComponentIR {
   return {
     ...component,
@@ -337,6 +374,15 @@ function rebaseComponent(component: ComponentIR, relativePath: string, id: strin
         ? rebaseSpan(component.access.source_span, relativePath)
         : undefined,
     },
+    expansions: component.expansions.map((expansion) => ({
+      ...expansion,
+      id: `${id}--${slugify(expansion.service_name)}--expansion`,
+      parent_component_id: id,
+      source_span: rebaseSpan(expansion.source_span, relativePath),
+      definition_source_span: expansion.definition_source_span
+        ? rebaseSpan(expansion.definition_source_span, relativePath)
+        : null,
+    })),
   };
 }
 
@@ -416,7 +462,15 @@ function packageSemanticProjection(ir: Omit<PackageIR, "semantic_hash">): unknow
       })),
       access: component.access.rules,
       evals: component.evals,
-      expansions: component.expansions,
+      expansions: component.expansions.map((expansion) => ({
+        id: expansion.id,
+        parent_component_id: expansion.parent_component_id,
+        service_name: expansion.service_name,
+        compose_ref: expansion.compose_ref,
+        with: expansion.with,
+        status: expansion.status,
+        resolved_component_id: expansion.resolved_component_id,
+      })),
     })),
     graph: {
       nodes: ir.graph.nodes.map((node) => ({
@@ -481,6 +535,17 @@ function fileComponentPrefix(path: string): string {
 
 function isRunType(type: string): boolean {
   return type === "run" || type === "run[]" || /^run<.+>(\[\])?$/.test(type);
+}
+
+function serviceTargetName(service: ComponentIR["services"][number]): string {
+  return service.compose ? composeRefName(service.compose) : service.name;
+}
+
+function composeRefName(ref: string): string {
+  const normalized = ref.replace(/^registry:\/\/[^/]+\//, "");
+  const pathPart = normalized.split("@")[0] ?? normalized;
+  const segments = pathPart.split("/").filter(Boolean);
+  return segments[segments.length - 1] ?? pathPart;
 }
 
 function sortDiagnostics(diagnostics: Diagnostic[]): Diagnostic[] {

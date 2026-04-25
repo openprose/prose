@@ -34,6 +34,14 @@ function summarizePackageIR(ir: PackageIR) {
       name: component.name,
       kind: component.kind,
       path: component.source.path,
+      expansions: component.expansions.map((expansion) => ({
+        id: expansion.id,
+        service_name: expansion.service_name,
+        compose_ref: expansion.compose_ref,
+        with: expansion.with,
+        status: expansion.status,
+        resolved_component_id: expansion.resolved_component_id,
+      })),
     })),
     graph: {
       node_count: ir.graph.nodes.length,

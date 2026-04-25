@@ -1,0 +1,48 @@
+{
+  "component": {
+    "id": "examples-composed-reviewer-index--composed-reviewer",
+    "name": "composed-reviewer",
+    "path": "examples/composed-reviewer/index.prose.md",
+    "expansions": [
+      {
+        "id": "examples-composed-reviewer-index--composed-reviewer--reviewed-draft--expansion",
+        "parent_component_id": "examples-composed-reviewer-index--composed-reviewer",
+        "service_name": "reviewed-draft",
+        "compose_ref": "std/composites/worker-critic",
+        "with": {
+          "worker": "writer",
+          "critic": "reviewer",
+          "max_rounds": 2
+        },
+        "status": "resolved",
+        "resolved_component_id": "composites-worker-critic--worker-critic",
+        "source_span": {
+          "path": "examples/composed-reviewer/index.prose.md",
+          "start_line": 12,
+          "end_line": 15
+        },
+        "definition_source_span": {
+          "path": "composites/worker-critic.prose.md",
+          "start_line": 1,
+          "end_line": 115
+        }
+      }
+    ]
+  },
+  "expansion_edges": [
+    {
+      "from": {
+        "component": "examples-composed-reviewer-index--composed-reviewer",
+        "port": "$compose"
+      },
+      "to": {
+        "component": "composites-worker-critic--worker-critic",
+        "port": "$entry"
+      },
+      "kind": "execution",
+      "confidence": 1,
+      "reason": "Composite expansion 'reviewed-draft' uses 'std/composites/worker-critic'.",
+      "source": "execution"
+    }
+  ]
+}

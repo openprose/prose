@@ -15,11 +15,13 @@ import {
 import { slugify } from "./text";
 import type {
   ComponentIR,
+  CompositeExpansionIR,
   Diagnostic,
   GraphEdgeIR,
   GraphIR,
   PortIR,
   ProseIR,
+  ServiceIR,
 } from "./types";
 
 export interface CompileOptions {
@@ -43,6 +45,7 @@ export function compileSource(source: string, options: CompileOptions): ProseIR 
     idCounts.set(baseId, count + 1);
     const id = count === 0 ? baseId : `${baseId}-${count + 1}`;
 
+    const services = parseServices(findSection(draft, "services"));
     const component: ComponentIR = {
       id,
       name: draft.name,
@@ -55,7 +58,7 @@ export function compileSource(source: string, options: CompileOptions): ProseIR 
         requires: parsePorts(findSection(draft, "requires"), "input", diagnostics),
         ensures: parsePorts(findSection(draft, "ensures"), "output", diagnostics),
       },
-      services: parseServices(findSection(draft, "services")),
+      services,
       schemas: [],
       runtime: parseRuntime(findSection(draft, "runtime"), diagnostics),
       environment: parseEnvironment(
@@ -66,7 +69,7 @@ export function compileSource(source: string, options: CompileOptions): ProseIR 
       effects: parseEffects(findSection(draft, "effects"), diagnostics),
       access: parseAccess(findSection(draft, "access")),
       evals: [],
-      expansions: [],
+      expansions: buildCompositeExpansions(id, services),
     };
 
     return component;
@@ -95,6 +98,25 @@ export function compileSource(source: string, options: CompileOptions): ProseIR 
     ...withoutHash,
     semantic_hash: sha256(stableStringify(toSemanticProjection(withoutHash))),
   };
+}
+
+function buildCompositeExpansions(
+  parentComponentId: string,
+  services: ServiceIR[],
+): CompositeExpansionIR[] {
+  return services
+    .filter((service) => service.compose)
+    .map((service) => ({
+      id: `${parentComponentId}--${slugify(service.name)}--expansion`,
+      parent_component_id: parentComponentId,
+      service_name: service.name,
+      compose_ref: service.compose ?? service.ref,
+      with: service.with,
+      status: "unresolved",
+      resolved_component_id: null,
+      source_span: service.source_span,
+      definition_source_span: null,
+    }));
 }
 
 function buildGraph(
@@ -306,7 +328,15 @@ function toSemanticProjection(ir: Omit<ProseIR, "semantic_hash">): unknown {
       })),
       access: component.access.rules,
       evals: component.evals,
-      expansions: component.expansions,
+      expansions: component.expansions.map((expansion) => ({
+        id: expansion.id,
+        parent_component_id: expansion.parent_component_id,
+        service_name: expansion.service_name,
+        compose_ref: expansion.compose_ref,
+        with: expansion.with,
+        status: expansion.status,
+        resolved_component_id: expansion.resolved_component_id,
+      })),
     })),
     graph: {
       nodes: ir.graph.nodes.map((node) => ({

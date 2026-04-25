@@ -1,6 +1,6 @@
 {
   "package_ir_version": "0.1",
-  "semantic_hash": "3449f2547917d945505700a1f718c36bc2138e1ef2090bef321b1165e66ca0e6",
+  "semantic_hash": "a5225aa0915bacb548dd05df77101bbf64179e7726f4ca52d617d623a03eed98",
   "manifest": {
     "name": "@openprose/std",
     "version": "0.11.0-dev",
@@ -292,7 +292,8 @@
         "examples-composed-reviewer-index--composed-reviewer"
       ],
       "diagnostics": [
-        "unresolved_service_reference"
+        "dependency_lock_missing",
+        "dependency_sha_missing"
       ]
     },
     {
@@ -486,514 +487,620 @@
       "diagnostics": []
     }
   ],
-  "dependencies": [],
+  "dependencies": [
+    {
+      "package": "github.com/openprose/prose",
+      "sha": "",
+      "refs": [
+        "std/composites/worker-critic"
+      ],
+      "lock_ref": null
+    }
+  ],
   "components": [
     {
       "id": "composites-assumption-miner--assumption-miner",
       "name": "assumption-miner",
       "kind": "composite",
-      "path": "composites/assumption-miner.prose.md"
+      "path": "composites/assumption-miner.prose.md",
+      "expansions": []
     },
     {
       "id": "composites-blind-review--blind-review",
       "name": "blind-review",
       "kind": "composite",
-      "path": "composites/blind-review.prose.md"
+      "path": "composites/blind-review.prose.md",
+      "expansions": []
     },
     {
       "id": "composites-coherence-probe--coherence-probe",
       "name": "coherence-probe",
       "kind": "composite",
-      "path": "composites/coherence-probe.prose.md"
+      "path": "composites/coherence-probe.prose.md",
+      "expansions": []
     },
     {
       "id": "composites-contrastive-probe--contrastive-probe",
       "name": "contrastive-probe",
       "kind": "composite",
-      "path": "composites/contrastive-probe.prose.md"
+      "path": "composites/contrastive-probe.prose.md",
+      "expansions": []
     },
     {
       "id": "composites-dialectic--dialectic",
       "name": "dialectic",
       "kind": "composite",
-      "path": "composites/dialectic.prose.md"
+      "path": "composites/dialectic.prose.md",
+      "expansions": []
     },
     {
       "id": "composites-ensemble-synthesizer--ensemble-synthesizer",
       "name": "ensemble-synthesizer",
       "kind": "composite",
-      "path": "composites/ensemble-synthesizer.prose.md"
+      "path": "composites/ensemble-synthesizer.prose.md",
+      "expansions": []
     },
     {
       "id": "composites-oversight--oversight",
       "name": "oversight",
       "kind": "composite",
-      "path": "composites/oversight.prose.md"
+      "path": "composites/oversight.prose.md",
+      "expansions": []
     },
     {
       "id": "composites-proposer-adversary--proposer-adversary",
       "name": "proposer-adversary",
       "kind": "composite",
-      "path": "composites/proposer-adversary.prose.md"
+      "path": "composites/proposer-adversary.prose.md",
+      "expansions": []
     },
     {
       "id": "composites-ratchet--ratchet",
       "name": "ratchet",
       "kind": "composite",
-      "path": "composites/ratchet.prose.md"
+      "path": "composites/ratchet.prose.md",
+      "expansions": []
     },
     {
       "id": "composites-stochastic-probe--stochastic-probe",
       "name": "stochastic-probe",
       "kind": "composite",
-      "path": "composites/stochastic-probe.prose.md"
+      "path": "composites/stochastic-probe.prose.md",
+      "expansions": []
     },
     {
       "id": "composites-worker-critic--worker-critic",
       "name": "worker-critic",
       "kind": "composite",
-      "path": "composites/worker-critic.prose.md"
+      "path": "composites/worker-critic.prose.md",
+      "expansions": []
     },
     {
       "id": "controls-fallback-chain--fallback-chain",
       "name": "fallback-chain",
       "kind": "composite",
-      "path": "controls/fallback-chain.prose.md"
+      "path": "controls/fallback-chain.prose.md",
+      "expansions": []
     },
     {
       "id": "controls-fan-out--fan-out",
       "name": "fan-out",
       "kind": "composite",
-      "path": "controls/fan-out.prose.md"
+      "path": "controls/fan-out.prose.md",
+      "expansions": []
     },
     {
       "id": "controls-guard--guard",
       "name": "guard",
       "kind": "composite",
-      "path": "controls/guard.prose.md"
+      "path": "controls/guard.prose.md",
+      "expansions": []
     },
     {
       "id": "controls-map-reduce--map-reduce",
       "name": "map-reduce",
       "kind": "composite",
-      "path": "controls/map-reduce.prose.md"
+      "path": "controls/map-reduce.prose.md",
+      "expansions": []
     },
     {
       "id": "controls-pipeline--pipeline",
       "name": "pipeline",
       "kind": "composite",
-      "path": "controls/pipeline.prose.md"
+      "path": "controls/pipeline.prose.md",
+      "expansions": []
     },
     {
       "id": "controls-race--race",
       "name": "race",
       "kind": "composite",
-      "path": "controls/race.prose.md"
+      "path": "controls/race.prose.md",
+      "expansions": []
     },
     {
       "id": "controls-refine--refine",
       "name": "refine",
       "kind": "composite",
-      "path": "controls/refine.prose.md"
+      "path": "controls/refine.prose.md",
+      "expansions": []
     },
     {
       "id": "controls-retry-with-learning--retry-with-learning",
       "name": "retry-with-learning",
       "kind": "composite",
-      "path": "controls/retry-with-learning.prose.md"
+      "path": "controls/retry-with-learning.prose.md",
+      "expansions": []
     },
     {
       "id": "delivery-email-notifier--email-notifier",
       "name": "email-notifier",
       "kind": "service",
-      "path": "delivery/email-notifier.prose.md"
+      "path": "delivery/email-notifier.prose.md",
+      "expansions": []
     },
     {
       "id": "delivery-email-renderer--email-renderer",
       "name": "email-renderer",
       "kind": "service",
-      "path": "delivery/email-renderer.prose.md"
+      "path": "delivery/email-renderer.prose.md",
+      "expansions": []
     },
     {
       "id": "delivery-file-writer--file-writer",
       "name": "file-writer",
       "kind": "service",
-      "path": "delivery/file-writer.prose.md"
+      "path": "delivery/file-writer.prose.md",
+      "expansions": []
     },
     {
       "id": "delivery-html-renderer--html-renderer",
       "name": "html-renderer",
       "kind": "service",
-      "path": "delivery/html-renderer.prose.md"
+      "path": "delivery/html-renderer.prose.md",
+      "expansions": []
     },
     {
       "id": "delivery-human-gate--human-gate",
       "name": "human-gate",
       "kind": "service",
-      "path": "delivery/human-gate.prose.md"
+      "path": "delivery/human-gate.prose.md",
+      "expansions": []
     },
     {
       "id": "delivery-slack-notifier--slack-notifier",
       "name": "slack-notifier",
       "kind": "service",
-      "path": "delivery/slack-notifier.prose.md"
+      "path": "delivery/slack-notifier.prose.md",
+      "expansions": []
     },
     {
       "id": "delivery-webhook-notifier--webhook-notifier",
       "name": "webhook-notifier",
       "kind": "service",
-      "path": "delivery/webhook-notifier.prose.md"
+      "path": "delivery/webhook-notifier.prose.md",
+      "expansions": []
     },
     {
       "id": "evals-contract-grader--contract-grader",
       "name": "contract-grader",
       "kind": "program",
-      "path": "evals/contract-grader.prose.md"
+      "path": "evals/contract-grader.prose.md",
+      "expansions": []
     },
     {
       "id": "evals-contract-grader--extractor",
       "name": "extractor",
       "kind": "service",
-      "path": "evals/contract-grader.prose.md"
+      "path": "evals/contract-grader.prose.md",
+      "expansions": []
     },
     {
       "id": "evals-contract-grader--grader",
       "name": "grader",
       "kind": "service",
-      "path": "evals/contract-grader.prose.md"
+      "path": "evals/contract-grader.prose.md",
+      "expansions": []
     },
     {
       "id": "evals-contract-grader--scorer",
       "name": "scorer",
       "kind": "service",
-      "path": "evals/contract-grader.prose.md"
+      "path": "evals/contract-grader.prose.md",
+      "expansions": []
     },
     {
       "id": "evals-cross-run-differ--collector",
       "name": "collector",
       "kind": "service",
-      "path": "evals/cross-run-differ.prose.md"
+      "path": "evals/cross-run-differ.prose.md",
+      "expansions": []
     },
     {
       "id": "evals-cross-run-differ--cross-run-differ",
       "name": "cross-run-differ",
       "kind": "program",
-      "path": "evals/cross-run-differ.prose.md"
+      "path": "evals/cross-run-differ.prose.md",
+      "expansions": []
     },
     {
       "id": "evals-cross-run-differ--differ",
       "name": "differ",
       "kind": "service",
-      "path": "evals/cross-run-differ.prose.md"
+      "path": "evals/cross-run-differ.prose.md",
+      "expansions": []
     },
     {
       "id": "evals-cross-run-differ--recommender",
       "name": "recommender",
       "kind": "service",
-      "path": "evals/cross-run-differ.prose.md"
+      "path": "evals/cross-run-differ.prose.md",
+      "expansions": []
     },
     {
       "id": "evals-eval-calibrator--advisor",
       "name": "advisor",
       "kind": "service",
-      "path": "evals/eval-calibrator.prose.md"
+      "path": "evals/eval-calibrator.prose.md",
+      "expansions": []
     },
     {
       "id": "evals-eval-calibrator--comparator",
       "name": "comparator",
       "kind": "service",
-      "path": "evals/eval-calibrator.prose.md"
+      "path": "evals/eval-calibrator.prose.md",
+      "expansions": []
     },
     {
       "id": "evals-eval-calibrator--eval-calibrator",
       "name": "eval-calibrator",
       "kind": "program",
-      "path": "evals/eval-calibrator.prose.md"
+      "path": "evals/eval-calibrator.prose.md",
+      "expansions": []
     },
     {
       "id": "evals-eval-calibrator--runner",
       "name": "runner",
       "kind": "service",
-      "path": "evals/eval-calibrator.prose.md"
+      "path": "evals/eval-calibrator.prose.md",
+      "expansions": []
     },
     {
       "id": "evals-eval-calibrator--sampler",
       "name": "sampler",
       "kind": "service",
-      "path": "evals/eval-calibrator.prose.md"
+      "path": "evals/eval-calibrator.prose.md",
+      "expansions": []
     },
     {
       "id": "evals-eval-calibrator--statistician",
       "name": "statistician",
       "kind": "service",
-      "path": "evals/eval-calibrator.prose.md"
+      "path": "evals/eval-calibrator.prose.md",
+      "expansions": []
     },
     {
       "id": "evals-inspector--evaluator",
       "name": "evaluator",
       "kind": "service",
-      "path": "evals/inspector.prose.md"
+      "path": "evals/inspector.prose.md",
+      "expansions": []
     },
     {
       "id": "evals-inspector--extractor",
       "name": "extractor",
       "kind": "service",
-      "path": "evals/inspector.prose.md"
+      "path": "evals/inspector.prose.md",
+      "expansions": []
     },
     {
       "id": "evals-inspector--index",
       "name": "index",
       "kind": "service",
-      "path": "evals/inspector.prose.md"
+      "path": "evals/inspector.prose.md",
+      "expansions": []
     },
     {
       "id": "evals-inspector--inspector",
       "name": "inspector",
       "kind": "program",
-      "path": "evals/inspector.prose.md"
+      "path": "evals/inspector.prose.md",
+      "expansions": []
     },
     {
       "id": "evals-inspector--synthesizer",
       "name": "synthesizer",
       "kind": "service",
-      "path": "evals/inspector.prose.md"
+      "path": "evals/inspector.prose.md",
+      "expansions": []
     },
     {
       "id": "evals-platform-improver--analyst",
       "name": "analyst",
       "kind": "service",
-      "path": "evals/platform-improver.prose.md"
+      "path": "evals/platform-improver.prose.md",
+      "expansions": []
     },
     {
       "id": "evals-platform-improver--platform-improver",
       "name": "platform-improver",
       "kind": "program",
-      "path": "evals/platform-improver.prose.md"
+      "path": "evals/platform-improver.prose.md",
+      "expansions": []
     },
     {
       "id": "evals-platform-improver--proposer",
       "name": "proposer",
       "kind": "service",
-      "path": "evals/platform-improver.prose.md"
+      "path": "evals/platform-improver.prose.md",
+      "expansions": []
     },
     {
       "id": "evals-platform-improver--triager",
       "name": "triager",
       "kind": "service",
-      "path": "evals/platform-improver.prose.md"
+      "path": "evals/platform-improver.prose.md",
+      "expansions": []
     },
     {
       "id": "evals-program-improver--analyst",
       "name": "analyst",
       "kind": "service",
-      "path": "evals/program-improver.prose.md"
+      "path": "evals/program-improver.prose.md",
+      "expansions": []
     },
     {
       "id": "evals-program-improver--implementer",
       "name": "implementer",
       "kind": "service",
-      "path": "evals/program-improver.prose.md"
+      "path": "evals/program-improver.prose.md",
+      "expansions": []
     },
     {
       "id": "evals-program-improver--locator",
       "name": "locator",
       "kind": "service",
-      "path": "evals/program-improver.prose.md"
+      "path": "evals/program-improver.prose.md",
+      "expansions": []
     },
     {
       "id": "evals-program-improver--program-improver",
       "name": "program-improver",
       "kind": "program",
-      "path": "evals/program-improver.prose.md"
+      "path": "evals/program-improver.prose.md",
+      "expansions": []
     },
     {
       "id": "evals-regression-tracker--comparator",
       "name": "comparator",
       "kind": "service",
-      "path": "evals/regression-tracker.prose.md"
+      "path": "evals/regression-tracker.prose.md",
+      "expansions": []
     },
     {
       "id": "evals-regression-tracker--registry",
       "name": "registry",
       "kind": "service",
-      "path": "evals/regression-tracker.prose.md"
+      "path": "evals/regression-tracker.prose.md",
+      "expansions": []
     },
     {
       "id": "evals-regression-tracker--regression-tracker",
       "name": "regression-tracker",
       "kind": "program",
-      "path": "evals/regression-tracker.prose.md"
+      "path": "evals/regression-tracker.prose.md",
+      "expansions": []
     },
     {
       "id": "evals-regression-tracker--reporter",
       "name": "reporter",
       "kind": "service",
-      "path": "evals/regression-tracker.prose.md"
+      "path": "evals/regression-tracker.prose.md",
+      "expansions": []
     },
     {
       "id": "examples-composed-reviewer-index--composed-reviewer",
       "name": "composed-reviewer",
       "kind": "program",
-      "path": "examples/composed-reviewer/index.prose.md"
+      "path": "examples/composed-reviewer/index.prose.md",
+      "expansions": [
+        {
+          "id": "examples-composed-reviewer-index--composed-reviewer--reviewed-draft--expansion",
+          "service_name": "reviewed-draft",
+          "compose_ref": "std/composites/worker-critic",
+          "with": {
+            "worker": "writer",
+            "critic": "reviewer",
+            "max_rounds": 2
+          },
+          "status": "resolved",
+          "resolved_component_id": "composites-worker-critic--worker-critic"
+        }
+      ]
     },
     {
       "id": "examples-composed-reviewer-reviewer--reviewer",
       "name": "reviewer",
       "kind": "service",
-      "path": "examples/composed-reviewer/reviewer.prose.md"
+      "path": "examples/composed-reviewer/reviewer.prose.md",
+      "expansions": []
     },
     {
       "id": "examples-composed-reviewer-writer--writer",
       "name": "writer",
       "kind": "service",
-      "path": "examples/composed-reviewer/writer.prose.md"
+      "path": "examples/composed-reviewer/writer.prose.md",
+      "expansions": []
     },
     {
       "id": "examples-confident-writer-index--confident-writer",
       "name": "confident-writer",
       "kind": "program",
-      "path": "examples/confident-writer/index.prose.md"
+      "path": "examples/confident-writer/index.prose.md",
+      "expansions": []
     },
     {
       "id": "examples-confident-writer-reviewer--reviewer",
       "name": "reviewer",
       "kind": "service",
-      "path": "examples/confident-writer/reviewer.prose.md"
+      "path": "examples/confident-writer/reviewer.prose.md",
+      "expansions": []
     },
     {
       "id": "examples-confident-writer-variance-analyst--variance-analyst",
       "name": "variance-analyst",
       "kind": "service",
-      "path": "examples/confident-writer/variance-analyst.prose.md"
+      "path": "examples/confident-writer/variance-analyst.prose.md",
+      "expansions": []
     },
     {
       "id": "examples-confident-writer-writer--writer",
       "name": "writer",
       "kind": "service",
-      "path": "examples/confident-writer/writer.prose.md"
+      "path": "examples/confident-writer/writer.prose.md",
+      "expansions": []
     },
     {
       "id": "memory-project-memory--project-memory",
       "name": "project-memory",
       "kind": "service",
-      "path": "memory/project-memory.prose.md"
+      "path": "memory/project-memory.prose.md",
+      "expansions": []
     },
     {
       "id": "memory-user-memory--user-memory",
       "name": "user-memory",
       "kind": "service",
-      "path": "memory/user-memory.prose.md"
+      "path": "memory/user-memory.prose.md",
+      "expansions": []
     },
     {
       "id": "ops-diagnose--diagnose",
       "name": "diagnose",
       "kind": "program",
-      "path": "ops/diagnose.prose.md"
+      "path": "ops/diagnose.prose.md",
+      "expansions": []
     },
     {
       "id": "ops-lint--lint",
       "name": "lint",
       "kind": "program",
-      "path": "ops/lint.prose.md"
+      "path": "ops/lint.prose.md",
+      "expansions": []
     },
     {
       "id": "ops-preflight--preflight",
       "name": "preflight",
       "kind": "program",
-      "path": "ops/preflight.prose.md"
+      "path": "ops/preflight.prose.md",
+      "expansions": []
     },
     {
       "id": "ops-profiler--profiler",
       "name": "profiler",
       "kind": "program",
-      "path": "ops/profiler.prose.md"
+      "path": "ops/profiler.prose.md",
+      "expansions": []
     },
     {
       "id": "ops-status--status",
       "name": "status",
       "kind": "program",
-      "path": "ops/status.prose.md"
+      "path": "ops/status.prose.md",
+      "expansions": []
     },
     {
       "id": "ops-wire--wire",
       "name": "wire",
       "kind": "program",
-      "path": "ops/wire.prose.md"
+      "path": "ops/wire.prose.md",
+      "expansions": []
     },
     {
       "id": "roles-classifier--classifier",
       "name": "classifier",
       "kind": "service",
-      "path": "roles/classifier.prose.md"
+      "path": "roles/classifier.prose.md",
+      "expansions": []
     },
     {
       "id": "roles-critic--critic",
       "name": "critic",
       "kind": "service",
-      "path": "roles/critic.prose.md"
+      "path": "roles/critic.prose.md",
+      "expansions": []
     },
     {
       "id": "roles-extractor--extractor",
       "name": "extractor",
       "kind": "service",
-      "path": "roles/extractor.prose.md"
+      "path": "roles/extractor.prose.md",
+      "expansions": []
     },
     {
       "id": "roles-formatter--formatter",
       "name": "formatter",
       "kind": "service",
-      "path": "roles/formatter.prose.md"
+      "path": "roles/formatter.prose.md",
+      "expansions": []
     },
     {
       "id": "roles-planner--planner",
       "name": "planner",
       "kind": "service",
-      "path": "roles/planner.prose.md"
+      "path": "roles/planner.prose.md",
+      "expansions": []
     },
     {
       "id": "roles-researcher--researcher",
       "name": "researcher",
       "kind": "service",
-      "path": "roles/researcher.prose.md"
+      "path": "roles/researcher.prose.md",
+      "expansions": []
     },
     {
       "id": "roles-router--router",
       "name": "router",
       "kind": "service",
-      "path": "roles/router.prose.md"
+      "path": "roles/router.prose.md",
+      "expansions": []
     },
     {
       "id": "roles-summarizer--summarizer",
       "name": "summarizer",
       "kind": "service",
-      "path": "roles/summarizer.prose.md"
+      "path": "roles/summarizer.prose.md",
+      "expansions": []
     },
     {
       "id": "roles-verifier--verifier",
       "name": "verifier",
       "kind": "service",
-      "path": "roles/verifier.prose.md"
+      "path": "roles/verifier.prose.md",
+      "expansions": []
     },
     {
       "id": "roles-writer--writer",
       "name": "writer",
       "kind": "service",
-      "path": "roles/writer.prose.md"
+      "path": "roles/writer.prose.md",
+      "expansions": []
     }
   ],
   "graph": {
     "node_count": 82,
-    "edge_count": 97,
+    "edge_count": 98,
     "edge_kinds": {
       "caller": 20,
       "exact": 38,
-      "execution": 28,
+      "execution": 29,
       "return": 11
     }
   },
   "diagnostics": {
     "ambiguous_package_exact_wiring": 14,
     "ambiguous_package_service_reference": 7,
-    "unresolved_service_reference": 17
+    "dependency_lock_missing": 1,
+    "dependency_sha_missing": 1,
+    "unresolved_service_reference": 16
   }
 }

@@ -4,6 +4,7 @@ export { projectManifest } from "../manifest.js";
 export type {
   ComponentIR,
   ComponentKind,
+  CompositeExpansionIR,
   EnvironmentIR,
   ExecutionIR,
   ExecutionStepIR,

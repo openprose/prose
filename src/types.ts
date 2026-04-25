@@ -31,6 +31,18 @@ export interface ServiceIR {
   source_span: SourceSpan;
 }
 
+export interface CompositeExpansionIR {
+  id: string;
+  parent_component_id: string;
+  service_name: string;
+  compose_ref: string;
+  with: Record<string, string | number | boolean>;
+  status: "resolved" | "unresolved";
+  resolved_component_id: string | null;
+  source_span: SourceSpan;
+  definition_source_span: SourceSpan | null;
+}
+
 export interface EnvironmentIR {
   name: string;
   description: string;
@@ -138,7 +150,7 @@ export interface ComponentIR {
   effects: EffectIR[];
   access: AccessIR;
   evals: unknown[];
-  expansions: unknown[];
+  expansions: CompositeExpansionIR[];
 }
 
 export interface GraphNodeIR {

@@ -1,0 +1,11 @@
+{
+  "name": "@openprose/composite-fixture",
+  "version": "0.1.0",
+  "registry": {
+    "catalog": "openprose"
+  },
+  "evals": [],
+  "examples": [
+    "program.prose.md"
+  ]
+}
