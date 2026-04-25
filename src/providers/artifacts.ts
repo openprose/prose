@@ -1,11 +1,12 @@
 import { writeLocalArtifactRecord } from "../store/artifacts.js";
-import type { LocalArtifactRecord } from "../types.js";
+import type { LocalArtifactRecord, LocalArtifactSchemaStatus } from "../types.js";
 import type { ProviderResult } from "./protocol.js";
 
 export interface WriteProviderArtifactRecordsOptions {
   runId: string;
   nodeId: string | null;
   createdAt?: string;
+  schemas?: Record<string, Partial<LocalArtifactSchemaStatus>>;
 }
 
 export async function writeProviderArtifactRecords(
@@ -29,6 +30,7 @@ export async function writeProviderArtifactRecords(
         content: artifact.content,
         contentType: artifact.content_type,
         policyLabels: artifact.policy_labels,
+        schema: options.schemas?.[artifact.port],
         createdAt: options.createdAt,
       }),
     );
@@ -36,4 +38,3 @@ export async function writeProviderArtifactRecords(
 
   return records;
 }
-

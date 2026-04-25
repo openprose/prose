@@ -1,4 +1,9 @@
-import type { Diagnostic, SourceSpan, TypeExpressionIR } from "../types.js";
+import type {
+  Diagnostic,
+  LocalArtifactSchemaStatus,
+  SourceSpan,
+  TypeExpressionIR,
+} from "../types.js";
 
 export interface TypeExpressionParseResult {
   expression: TypeExpressionIR;
@@ -88,6 +93,19 @@ export function portSchemaProjection(options: {
     title: options.name,
     required: options.required,
     schema: typeExpressionToJsonSchema(options.type),
+  };
+}
+
+export function validateTextAgainstTypeExpression(
+  expression: TypeExpressionIR,
+  content: string,
+): LocalArtifactSchemaStatus {
+  const diagnostics: Diagnostic[] = [];
+  const status = validateExpression(expression, content.trim(), diagnostics);
+  return {
+    status,
+    schema_ref: schemaRefForExpression(expression),
+    diagnostics,
   };
 }
 
@@ -219,4 +237,107 @@ function primitiveSchema(name: string): unknown {
 
 function namedSchema(name: string): unknown {
   return { $ref: `#/$defs/${name}` };
+}
+
+function validateExpression(
+  expression: TypeExpressionIR,
+  content: string,
+  diagnostics: Diagnostic[],
+): LocalArtifactSchemaStatus["status"] {
+  if (expression.kind === "generic" && expression.name === "Markdown") {
+    return "unchecked";
+  }
+  if (expression.kind === "named") {
+    return "unchecked";
+  }
+  if (expression.kind === "array") {
+    const parsed = parseJson(content, diagnostics, expression.raw);
+    if (!Array.isArray(parsed)) {
+      diagnostics.push({
+        severity: "error",
+        code: "schema_array_expected",
+        message: `Expected '${expression.raw}' to be a JSON array.`,
+      });
+      return "invalid";
+    }
+    return "valid";
+  }
+  if (expression.kind === "generic" && expression.name === "Json") {
+    return parseJson(content, diagnostics, expression.raw) === undefined ? "invalid" : "valid";
+  }
+  if (expression.kind === "generic" && expression.name === "run") {
+    const parsed = parseJson(content, diagnostics, expression.raw);
+    if (!parsed || typeof parsed !== "object" || !("run_id" in parsed)) {
+      diagnostics.push({
+        severity: "error",
+        code: "schema_run_ref_expected",
+        message: `Expected '${expression.raw}' to be a JSON run reference with run_id.`,
+      });
+      return "invalid";
+    }
+    return "valid";
+  }
+  if (expression.kind === "primitive") {
+    if (expression.name === "Any") {
+      return "unchecked";
+    }
+    if (expression.name === "string") {
+      return "valid";
+    }
+    if (expression.name === "number" || expression.name === "integer") {
+      const value = Number(content);
+      const valid =
+        Number.isFinite(value) &&
+        (expression.name === "number" || Number.isInteger(value));
+      if (!valid) {
+        diagnostics.push({
+          severity: "error",
+          code: "schema_number_expected",
+          message: `Expected '${expression.raw}' to be ${expression.name}.`,
+        });
+      }
+      return valid ? "valid" : "invalid";
+    }
+    if (expression.name === "boolean") {
+      const valid = content === "true" || content === "false";
+      if (!valid) {
+        diagnostics.push({
+          severity: "error",
+          code: "schema_boolean_expected",
+          message: `Expected '${expression.raw}' to be boolean.`,
+        });
+      }
+      return valid ? "valid" : "invalid";
+    }
+  }
+  return "unchecked";
+}
+
+function parseJson(
+  content: string,
+  diagnostics: Diagnostic[],
+  type: string,
+): unknown {
+  try {
+    return JSON.parse(content);
+  } catch (error) {
+    diagnostics.push({
+      severity: "error",
+      code: "schema_json_parse_failed",
+      message: `Expected '${type}' to contain valid JSON: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    });
+    return undefined;
+  }
+}
+
+function schemaRefForExpression(expression: TypeExpressionIR): string | null {
+  if (expression.kind === "named") {
+    return `#/$defs/${expression.name}`;
+  }
+  if (expression.kind === "generic" && expression.args[0]?.kind === "named") {
+    return `#/$defs/${expression.args[0].name}`;
+  }
+  return null;
 }

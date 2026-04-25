@@ -12,6 +12,7 @@ import {
   loadEffectApprovalRecords,
   type EffectApprovalRecord,
 } from "./policy/index.js";
+import { validateTextAgainstTypeExpression } from "./schema/index.js";
 import {
   createFixtureProvider,
   serializeProviderSessionRef,
@@ -30,6 +31,7 @@ import type {
   Diagnostic,
   ExecutionPlan,
   LocalArtifactRecord,
+  LocalArtifactSchemaStatus,
   MaterializedRun,
   ProseIR,
   RunBindingRecord,
@@ -195,6 +197,20 @@ export async function runSource(
     };
   }
 
+  const inputValidation = await inputValidationReasons(ctx, component);
+  if (inputValidation.length > 0) {
+    const record = await writeBlockedRun(ctx, component, inputValidation);
+    return {
+      run_id: runId,
+      run_dir: runDir,
+      record,
+      node_records: [],
+      provider: ctx.provider.kind,
+      plan,
+      diagnostics: recordDiagnostics(record),
+    };
+  }
+
   const request = await createProviderRequest(ctx, component);
   const providerResult = await ctx.provider.execute(request);
   const record = await materializeProviderResult(ctx, component, providerResult);
@@ -335,6 +351,25 @@ async function executeGraphRun(
       continue;
     }
 
+    const inputValidation = await inputValidationReasons(ctx, component, nodeRecordsById);
+    if (inputValidation.length > 0) {
+      const record = await writeBlockedRun(
+        ctx,
+        component,
+        inputValidation,
+        {
+          runId,
+          recordPath: nodeRunRecordPath(component),
+          writeTraceFile: false,
+          inputs: componentInputBindings(ctx, component, nodeRecordsById),
+        },
+      );
+      nodeRecords.push(record);
+      nodeRecordsById.set(component.id, record);
+      diagnostics.push(...recordDiagnostics(record));
+      continue;
+    }
+
     const request = await createProviderRequest(ctx, component, runId, nodeRecordsById);
     const providerResult = await ctx.provider.execute(request);
     const record = await materializeProviderResult(ctx, component, providerResult, {
@@ -447,7 +482,16 @@ async function materializeProviderResult(
   const recordPath = options.recordPath ?? "run.json";
   const completedAt = new Date().toISOString();
   const outputs = await writeRunOutputArtifacts(ctx, component, result.artifacts);
-  const status = result.status;
+  const validationByPort = validateProviderArtifacts(component, result.artifacts);
+  const validationDiagnostics = Object.values(validationByPort).flatMap(
+    (schema) => schema.diagnostics,
+  );
+  const status =
+    result.status === "succeeded" &&
+    Object.values(validationByPort).some((schema) => schema.status === "invalid")
+      ? "failed"
+      : result.status;
+  const diagnostics = [...result.diagnostics, ...validationDiagnostics];
   const record: RunRecord = {
     ...baseRunRecord(ctx, component, "component", runId),
     inputs:
@@ -467,7 +511,7 @@ async function materializeProviderResult(
         ? { status: "accepted", reason: "No required evals declared." }
         : {
             status: "pending",
-            reason: diagnosticsReason(result.diagnostics) ?? `Provider ended with ${status}.`,
+            reason: diagnosticsReason(diagnostics) ?? `Provider ended with ${status}.`,
           },
     trace_ref: "trace.json",
     status,
@@ -482,8 +526,9 @@ async function materializeProviderResult(
     runId: record.run_id,
     nodeId: component.id,
     createdAt: record.created_at,
+    schemas: validationByPort,
   });
-  await writeProviderAttemptRecord(ctx, record, result);
+  await writeProviderAttemptRecord(ctx, record, result, diagnostics);
   await indexRunRecord(ctx, record, recordPath);
 
   return record;
@@ -816,6 +861,28 @@ function componentInputBindings(
   });
 }
 
+function validateProviderArtifacts(
+  component: ComponentIR,
+  artifacts: ProviderArtifactResult[],
+): Record<string, LocalArtifactSchemaStatus> {
+  const ports = new Map(component.ports.ensures.map((port) => [port.name, port]));
+  const validation: Record<string, LocalArtifactSchemaStatus> = {};
+  for (const artifact of artifacts) {
+    if (artifact.content === null) {
+      continue;
+    }
+    const port = ports.get(artifact.port);
+    if (!port) {
+      continue;
+    }
+    validation[artifact.port] = validateTextAgainstTypeExpression(
+      port.type_expr,
+      artifact.content,
+    );
+  }
+  return validation;
+}
+
 async function providerInputState(
   ctx: RunContext,
   component: ComponentIR,
@@ -870,6 +937,31 @@ async function providerInputState(
   return { bindings, upstreamArtifacts };
 }
 
+async function inputValidationReasons(
+  ctx: RunContext,
+  component: ComponentIR,
+  recordsById = new Map<string, RunRecord>(),
+): Promise<string[]> {
+  const state = await providerInputState(ctx, component, recordsById);
+  const ports = new Map(component.ports.requires.map((port) => [port.name, port]));
+  return state.bindings.flatMap((binding) => {
+    if (binding.value === null) {
+      return [];
+    }
+    const port = ports.get(binding.port);
+    if (!port || isRunShorthand(port.type_expr, binding.value)) {
+      return [];
+    }
+    const schema = validateTextAgainstTypeExpression(port.type_expr, binding.value);
+    if (schema.status !== "invalid") {
+      return [];
+    }
+    return schema.diagnostics.map(
+      (diagnostic) => `Input '${component.name}.${binding.port}' failed validation: ${diagnostic.message}`,
+    );
+  });
+}
+
 function upstreamEdgeForInput(
   ctx: RunContext,
   component: ComponentIR,
@@ -883,6 +975,10 @@ function upstreamEdgeForInput(
         candidate.from.component !== "$caller",
     ) ?? null
   );
+}
+
+function isRunShorthand(type: ComponentIR["ports"]["requires"][number]["type_expr"], value: string): boolean {
+  return type.kind === "generic" && type.name === "run" && /^run:\s*\S+/.test(value.trim());
 }
 
 async function writeRunRecordFile(
@@ -909,6 +1005,7 @@ async function writeProviderAttemptRecord(
   ctx: RunContext,
   record: RunRecord,
   result: ProviderResult,
+  diagnostics = result.diagnostics,
 ): Promise<void> {
   await writeRunAttemptRecord(ctx.storeRoot, {
     runId: record.run_id,
@@ -918,7 +1015,7 @@ async function writeProviderAttemptRecord(
     providerSessionRef: result.session ? serializeProviderSessionRef(result.session) : null,
     startedAt: record.created_at,
     finishedAt: record.completed_at,
-    diagnostics: result.diagnostics,
+    diagnostics,
     failure:
       record.status === "succeeded"
         ? null

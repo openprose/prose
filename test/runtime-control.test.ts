@@ -21,7 +21,7 @@ describe("OpenProse runtime controls", () => {
     const calls: string[] = [];
     const provider = controlledProvider(calls, {
       review: { feedback: "Tighten the intro." },
-      "fact-check": { claims: "All claims verified." },
+      "fact-check": { claims: "[{\"claim\":\"All claims verified.\"}]" },
       polish: { final: "The polished draft." },
     }, (request) => request.component.name === "polish" && failPolish);
 

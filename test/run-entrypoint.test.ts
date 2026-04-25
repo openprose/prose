@@ -7,6 +7,7 @@ import {
   join,
   listRunAttemptRecords,
   mkdtempSync,
+  readArtifactRecordForOutput,
   runProseCli,
   statusPath,
   test,
@@ -64,7 +65,7 @@ describe("OpenProse run entry point", () => {
       },
       outputs: {
         "review.feedback": "Tighten the intro.",
-        "fact-check.claims": "All claims verified.",
+        "fact-check.claims": "[{\"claim\":\"All claims verified.\"}]",
         "polish.final": "The polished draft.",
       },
       createdAt: "2026-04-25T00:10:00.000Z",
@@ -108,7 +109,7 @@ describe("OpenProse run entry point", () => {
     const requests: ProviderRequest[] = [];
     const provider = recordingProvider(requests, {
       review: { feedback: "Tighten the intro." },
-      "fact-check": { claims: "All claims verified." },
+      "fact-check": { claims: "[{\"claim\":\"All claims verified.\"}]" },
       polish: { final: "The polished draft." },
     });
 
@@ -144,7 +145,7 @@ describe("OpenProse run entry point", () => {
         }),
         expect.objectContaining({
           port: "claims",
-          value: "All claims verified.\n",
+          value: "[{\"claim\":\"All claims verified.\"}]\n",
           source_run_id: "upstream-run:fact-check",
           artifact: expect.objectContaining({
             provenance: expect.objectContaining({
@@ -193,6 +194,77 @@ describe("OpenProse run entry point", () => {
         source_run_id: "prior-run",
       }),
     );
+  });
+
+  test("blocks invalid JSON-shaped inputs before provider execution", async () => {
+    const runRoot = mkdtempSync(join(tmpdir(), "openprose-run-invalid-input-"));
+    let calls = 0;
+    const result = await runSource(`---
+name: json-input
+kind: program
+---
+
+### Requires
+
+- \`payload\`: Json<Payload> - structured payload
+
+### Ensures
+
+- \`result\`: Markdown<Result> - result
+`, {
+      path: "fixtures/compiler/json-input.prose.md",
+      runRoot,
+      runId: "invalid-input",
+      provider: {
+        kind: "fixture",
+        async execute() {
+          calls += 1;
+          throw new Error("provider should not be called for invalid input");
+        },
+      },
+      inputs: {
+        payload: "{ not json",
+      },
+      createdAt: "2026-04-25T00:32:00.000Z",
+    });
+
+    expect(calls).toBe(0);
+    expect(result.record.status).toBe("blocked");
+    expect(result.record.acceptance.reason).toContain("failed validation");
+  });
+
+  test("fails and records invalid output artifact schema status", async () => {
+    const runRoot = mkdtempSync(join(tmpdir(), "openprose-run-invalid-output-"));
+    const result = await runSource(`---
+name: numeric-output
+kind: program
+---
+
+### Ensures
+
+- \`count\`: number - numeric output
+`, {
+      path: "fixtures/compiler/numeric-output.prose.md",
+      runRoot,
+      runId: "invalid-output",
+      provider: "fixture",
+      outputs: {
+        count: "not a number",
+      },
+      createdAt: "2026-04-25T00:33:00.000Z",
+    });
+
+    expect(result.record.status).toBe("failed");
+    expect(result.record.acceptance.reason).toContain("Expected 'number' to be number.");
+    const artifact = await readArtifactRecordForOutput(
+      join(runRoot, ".prose-store"),
+      "invalid-output",
+      "numeric-output",
+      "count",
+    );
+    expect(artifact?.schema).toMatchObject({
+      status: "invalid",
+    });
   });
 
   test("assembles targeted graph runs from only requested outputs", async () => {
@@ -366,7 +438,7 @@ describe("OpenProse run entry point", () => {
       },
       outputs: {
         "review.feedback": "Tighten the intro.",
-        "fact-check.claims": "All claims verified.",
+        "fact-check.claims": "[{\"claim\":\"All claims verified.\"}]",
         "polish.final": "The polished draft.",
       },
       createdAt: "2026-04-25T00:30:00.000Z",
