@@ -1,6 +1,13 @@
 {
   "package_ir_version": "0.1",
-  "semantic_hash": "e7ad40ea855dab871951eef8b4436b767547d84be7cea6a27d4e0c38d7d93fbb",
+  "semantic_hash": "a17872398cf9ef8fc8e81fb1e05c7d967456c6ae8f2c319ed92fb1168569f8a7",
+  "hashes": {
+    "source_hash": "b2f9b6975b6617ab3ebf1199d105c5230044ecbe5c0172fb3495218d2e38e001",
+    "semantic_hash": "a17872398cf9ef8fc8e81fb1e05c7d967456c6ae8f2c319ed92fb1168569f8a7",
+    "dependency_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "policy_hash": "0d315963d18576daa778336d34f290b66921325ffabea7120dd93fdddfb2b6b5",
+    "runtime_config_hash": "41d1f386c3cf25400e2a4f3800bb700013374a2da0b7ba00c06a3eb191955b5c"
+  },
   "manifest": {
     "name": "@openprose/co",
     "version": "0.11.0-dev",
@@ -43,7 +50,39 @@
       "diagnostics": []
     }
   ],
+  "resources": [
+    {
+      "kind": "eval",
+      "path": "evals/company-repo-checker.eval.prose.md",
+      "exists": true,
+      "component_ids": [
+        "evals-company-repo-checker-eval--company-repo-checker-eval"
+      ],
+      "diagnostics": []
+    },
+    {
+      "kind": "example",
+      "path": "programs/company-repo-checker.prose.md",
+      "exists": true,
+      "component_ids": [
+        "programs-company-repo-checker--company-repo-checker",
+        "programs-company-repo-checker--repo-structure-inspector",
+        "programs-company-repo-checker--contract-eval-drift-inspector",
+        "programs-company-repo-checker--dependency-graph-inspector",
+        "programs-company-repo-checker--repo-readiness-reporter"
+      ],
+      "diagnostics": []
+    }
+  ],
   "dependencies": [],
+  "policy": {
+    "effects": {
+      "pure": 2,
+      "read_external": 4
+    },
+    "access": [],
+    "labels": {}
+  },
   "components": [
     {
       "id": "evals-company-repo-checker-eval--company-repo-checker-eval",

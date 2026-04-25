@@ -3,9 +3,14 @@ import {
   describe,
   expect,
   fixturePath,
+  join,
+  mkdirSync,
+  mkdtempSync,
   readFileSync,
   runProseCli,
   test,
+  tmpdir,
+  writeFileSync,
 } from "./support";
 
 type PackageIR = Awaited<ReturnType<typeof compilePackagePath>>;
@@ -22,13 +27,30 @@ function summarizePackageIR(ir: PackageIR) {
   return {
     package_ir_version: ir.package_ir_version,
     semantic_hash: ir.semantic_hash,
+    hashes: ir.hashes,
     manifest: ir.manifest,
     files: ir.files.map((file) => ({
       path: file.path,
       component_ids: file.component_ids,
       diagnostics: file.diagnostics.map((diagnostic) => diagnostic.code),
     })),
+    resources: ir.resources.map((resource) => ({
+      kind: resource.kind,
+      path: resource.path,
+      exists: resource.exists,
+      component_ids: resource.component_ids,
+      diagnostics: resource.diagnostics.map((diagnostic) => diagnostic.code),
+    })),
     dependencies: ir.dependencies,
+    policy: {
+      effects: counts(ir.policy.effects.map((effect) => effect.kind)),
+      access: ir.policy.access.map((entry) => ({
+        component_id: entry.component_id,
+        key: entry.key,
+        labels: entry.labels,
+      })),
+      labels: counts(ir.policy.labels.map((label) => label.label)),
+    },
     components: ir.components.map((component) => ({
       id: component.id,
       name: component.name,
@@ -85,5 +107,94 @@ describe("OpenProse package IR", () => {
 
     expect(summarizePackageIR(ir)).toEqual(golden("co"));
     expect(ir.graph.edges.some((edge) => edge.kind === "execution")).toBe(true);
+  });
+
+  test("captures package resources, policy, and split hashes", async () => {
+    const ir = await compilePackagePath(fixturePath("package-ir/contract-metadata"));
+
+    expect(ir.resources.map((resource) => [resource.kind, resource.path, resource.exists])).toEqual([
+      ["eval", "evals/brief.eval.prose.md", true],
+      ["example", "examples/brief.run.json", true],
+      ["schema", "schemas/brief.schema.json", true],
+    ]);
+    expect(ir.resources.find((resource) => resource.kind === "eval")?.component_ids).toEqual([
+      "evals-brief-eval--brief-eval",
+    ]);
+    expect(ir.policy.effects.map((effect) => effect.kind)).toEqual([
+      "read_external",
+      "pure",
+    ]);
+    expect(ir.policy.access.map((entry) => entry.key)).toEqual([
+      "callable_by",
+      "reads",
+    ]);
+    expect(ir.policy.labels.map((label) => label.label)).toEqual([
+      "admin",
+      "company_private.accounts",
+      "revenue",
+    ]);
+    expect(ir.hashes.semantic_hash).toBe(ir.semantic_hash);
+    for (const hash of Object.values(ir.hashes)) {
+      expect(hash).toMatch(/^[a-f0-9]{64}$/);
+    }
+  });
+
+  test("keeps source hash distinct from package semantic hash", async () => {
+    const root = mkdtempSync(join(tmpdir(), "openprose-package-hashes-"));
+    mkdirSync(root, { recursive: true });
+    writeFileSync(
+      join(root, "prose.package.json"),
+      JSON.stringify(
+        {
+          name: "@openprose/hash-demo",
+          version: "0.1.0",
+          registry: {
+            catalog: "openprose",
+          },
+        },
+        null,
+        2,
+      ),
+    );
+    writeFileSync(
+      join(root, "brief.prose.md"),
+      `---
+name: brief
+kind: service
+---
+
+### Ensures
+
+- \`brief\`: Markdown<Brief> - brief output
+
+### Effects
+
+- \`pure\`: deterministic synthesis
+`,
+    );
+
+    const before = await compilePackagePath(root);
+    writeFileSync(
+      join(root, "brief.prose.md"),
+      `---
+name: brief
+kind: service
+---
+
+
+### Ensures
+
+- \`brief\`: Markdown<Brief> - brief output
+
+### Effects
+
+- \`pure\`: deterministic synthesis
+`,
+    );
+    const after = await compilePackagePath(root);
+
+    expect(after.hashes.source_hash).not.toBe(before.hashes.source_hash);
+    expect(after.hashes.semantic_hash).toBe(before.hashes.semantic_hash);
+    expect(after.semantic_hash).toBe(before.semantic_hash);
   });
 });

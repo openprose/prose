@@ -206,9 +206,64 @@ export interface PackageIRFile {
   diagnostics: Diagnostic[];
 }
 
+export type PackageResourceKindIR = "schema" | "eval" | "example";
+
+export interface PackageResourceIR {
+  kind: PackageResourceKindIR;
+  path: string;
+  source: "manifest";
+  exists: boolean;
+  source_sha: string | null;
+  component_ids: string[];
+  diagnostics: Diagnostic[];
+}
+
+export interface PackagePolicyEffectIR {
+  component_id: string;
+  component_name: string;
+  kind: string;
+  description: string;
+  config: Record<string, string | number | boolean>;
+  source_span: SourceSpan;
+}
+
+export interface PackagePolicyAccessIR {
+  component_id: string;
+  component_name: string;
+  key: string;
+  labels: string[];
+  source_span?: SourceSpan;
+}
+
+export interface PackagePolicyLabelIR {
+  label: string;
+  source: "access" | "port";
+  component_id: string;
+  component_name: string;
+  port: string | null;
+  direction: "input" | "output" | null;
+  access_key: string | null;
+  source_span?: SourceSpan;
+}
+
+export interface PackagePolicyIR {
+  effects: PackagePolicyEffectIR[];
+  access: PackagePolicyAccessIR[];
+  labels: PackagePolicyLabelIR[];
+}
+
+export interface PackageHashSetIR {
+  source_hash: string;
+  semantic_hash: string;
+  dependency_hash: string;
+  policy_hash: string;
+  runtime_config_hash: string;
+}
+
 export interface PackageIR {
   package_ir_version: "0.1";
   semantic_hash: string;
+  hashes: PackageHashSetIR;
   root: string;
   manifest: {
     name: string;
@@ -229,7 +284,9 @@ export interface PackageIR {
     hosted: HostedRuntimeMetadata | null;
   };
   files: PackageIRFile[];
+  resources: PackageResourceIR[];
   dependencies: ProseIR["package"]["dependencies"];
+  policy: PackagePolicyIR;
   components: ComponentIR[];
   graph: GraphIR;
   diagnostics: Diagnostic[];

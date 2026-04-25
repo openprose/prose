@@ -1,0 +1,22 @@
+{
+  "name": "@openprose/contract-metadata",
+  "version": "0.1.0",
+  "registry": {
+    "catalog": "openprose"
+  },
+  "description": "Fixture package for package IR contract metadata.",
+  "license": "MIT",
+  "source": {
+    "git": "github.com/openprose/contract-metadata",
+    "sha": "0123456789abcdef"
+  },
+  "schemas": [
+    "schemas/brief.schema.json"
+  ],
+  "evals": [
+    "evals/brief.eval.prose.md"
+  ],
+  "examples": [
+    "examples/brief.run.json"
+  ]
+}

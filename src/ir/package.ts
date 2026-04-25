@@ -12,8 +12,12 @@ import type {
   Diagnostic,
   GraphEdgeIR,
   GraphIR,
+  PackageHashSetIR,
   PackageIR,
   PackageIRFile,
+  PackagePolicyIR,
+  PackageResourceIR,
+  PackageResourceKindIR,
   ProseIR,
   SourceSpan,
 } from "../types.js";
@@ -103,27 +107,51 @@ export async function compilePackagePath(path: string): Promise<PackageIR> {
 
   resolveCompositeExpansions(components);
   const manifest = buildPackageManifest(root, config);
+  const sortedPackageFiles = packageFiles.sort((a, b) => a.path.localeCompare(b.path));
+  const sortedDependencies = Array.from(dependencies.values()).sort((a, b) =>
+    a.package.localeCompare(b.package) || a.sha.localeCompare(b.sha),
+  );
+  const resources = await buildPackageResources(root, config, sortedPackageFiles);
+  diagnostics.push(...resources.flatMap((resource) => resource.diagnostics));
+  const policy = buildPackagePolicy(components);
   const graph = buildPackageGraph(components, diagnostics);
   const sortedDiagnostics = sortDiagnostics(diagnostics);
+  const baseHashes = buildPackageHashes({
+    files: sortedPackageFiles,
+    resources,
+    dependencies: sortedDependencies,
+    policy,
+    components,
+    manifest,
+  });
   const withoutHash = {
     package_ir_version: "0.1" as const,
     semantic_hash: "",
+    hashes: {
+      ...baseHashes,
+      semantic_hash: "",
+    },
     root: normalizePath(root),
     manifest,
-    files: packageFiles.sort((a, b) => a.path.localeCompare(b.path)),
-    dependencies: Array.from(dependencies.values()).sort((a, b) =>
-      a.package.localeCompare(b.package) || a.sha.localeCompare(b.sha),
-    ),
+    files: sortedPackageFiles,
+    resources,
+    dependencies: sortedDependencies,
+    policy,
     components: components.sort(
       (a, b) => a.source.path.localeCompare(b.source.path) || a.id.localeCompare(b.id),
     ),
     graph,
     diagnostics: sortedDiagnostics,
   };
+  const semanticHash = sha256(stableStringify(packageSemanticProjection(withoutHash)));
 
   return {
     ...withoutHash,
-    semantic_hash: sha256(stableStringify(packageSemanticProjection(withoutHash))),
+    semantic_hash: semanticHash,
+    hashes: {
+      ...withoutHash.hashes,
+      semantic_hash: semanticHash,
+    },
   };
 }
 
@@ -174,6 +202,176 @@ function buildPackageManifest(root: string, config: PackageConfig | null): Packa
     examples: [...(config?.examples ?? [])].sort(),
     no_evals: (config?.evals?.length ?? 0) === 0,
     hosted: config?.hosted ?? null,
+  };
+}
+
+async function buildPackageResources(
+  root: string,
+  config: PackageConfig | null,
+  files: PackageIRFile[],
+): Promise<PackageResourceIR[]> {
+  const componentIdsByPath = new Map(files.map((file) => [file.path, file.component_ids]));
+  const links: Array<{ kind: PackageResourceKindIR; path: string }> = [
+    ...(config?.schemas ?? []).map((path) => ({ kind: "schema" as const, path })),
+    ...(config?.evals ?? []).map((path) => ({ kind: "eval" as const, path })),
+    ...(config?.examples ?? []).map((path) => ({ kind: "example" as const, path })),
+  ];
+  const resources: PackageResourceIR[] = [];
+
+  for (const link of links) {
+    const path = normalizePath(link.path.trim());
+    const absolutePath = resolve(root, path);
+    const diagnostics: Diagnostic[] = [];
+    let sourceSha: string | null = null;
+    let exists = false;
+
+    if (existsSync(absolutePath)) {
+      exists = true;
+      sourceSha = sha256(await readFile(absolutePath, "utf8"));
+    } else {
+      diagnostics.push({
+        severity: "warning",
+        code: `missing_${link.kind}_resource`,
+        message: `Manifest ${link.kind} resource '${path}' does not exist.`,
+        source_span: spanForManifest(root),
+      });
+    }
+
+    resources.push({
+      kind: link.kind,
+      path,
+      source: "manifest",
+      exists,
+      source_sha: sourceSha,
+      component_ids: componentIdsByPath.get(path) ?? [],
+      diagnostics,
+    });
+  }
+
+  return resources.sort(
+    (a, b) => a.kind.localeCompare(b.kind) || a.path.localeCompare(b.path),
+  );
+}
+
+function buildPackagePolicy(components: ComponentIR[]): PackagePolicyIR {
+  const effects: PackagePolicyIR["effects"] = [];
+  const access: PackagePolicyIR["access"] = [];
+  const labels: PackagePolicyIR["labels"] = [];
+
+  for (const component of components) {
+    for (const effect of component.effects) {
+      effects.push({
+        component_id: component.id,
+        component_name: component.name,
+        kind: effect.kind,
+        description: effect.description,
+        config: effect.config,
+        source_span: effect.source_span,
+      });
+    }
+
+    for (const [key, ruleLabels] of Object.entries(component.access.rules)) {
+      access.push({
+        component_id: component.id,
+        component_name: component.name,
+        key,
+        labels: [...ruleLabels].sort(),
+        source_span: component.access.source_span,
+      });
+
+      for (const label of ruleLabels) {
+        labels.push({
+          label,
+          source: "access",
+          component_id: component.id,
+          component_name: component.name,
+          port: null,
+          direction: null,
+          access_key: key,
+          source_span: component.access.source_span,
+        });
+      }
+    }
+
+    for (const port of [...component.ports.requires, ...component.ports.ensures]) {
+      for (const label of port.policy_labels) {
+        labels.push({
+          label,
+          source: "port",
+          component_id: component.id,
+          component_name: component.name,
+          port: port.name,
+          direction: port.direction,
+          access_key: null,
+          source_span: port.source_span,
+        });
+      }
+    }
+  }
+
+  return {
+    effects: effects.sort(
+      (a, b) =>
+        a.component_id.localeCompare(b.component_id) ||
+        a.kind.localeCompare(b.kind),
+    ),
+    access: access.sort(
+      (a, b) =>
+        a.component_id.localeCompare(b.component_id) ||
+        a.key.localeCompare(b.key),
+    ),
+    labels: labels.sort(
+      (a, b) =>
+        a.label.localeCompare(b.label) ||
+        a.component_id.localeCompare(b.component_id) ||
+        (a.access_key ?? "").localeCompare(b.access_key ?? "") ||
+        (a.port ?? "").localeCompare(b.port ?? ""),
+    ),
+  };
+}
+
+function buildPackageHashes(input: {
+  files: PackageIRFile[];
+  resources: PackageResourceIR[];
+  dependencies: PackageIR["dependencies"];
+  policy: PackagePolicyIR;
+  components: ComponentIR[];
+  manifest: PackageIR["manifest"];
+}): PackageHashSetIR {
+  return {
+    source_hash: sha256(
+      stableStringify({
+        files: input.files.map((file) => ({
+          path: file.path,
+          source_sha: file.source_sha,
+        })),
+        resources: input.resources.map((resource) => ({
+          kind: resource.kind,
+          path: resource.path,
+          source_sha: resource.source_sha,
+        })),
+      }),
+    ),
+    semantic_hash: "",
+    dependency_hash: sha256(stableStringify(input.dependencies)),
+    policy_hash: sha256(stableStringify(projectPackagePolicy(input.policy))),
+    runtime_config_hash: sha256(
+      stableStringify({
+        hosted: input.manifest.hosted,
+        components: input.components.map((component) => ({
+          id: component.id,
+          runtime: component.runtime.map((setting) => ({
+            key: setting.key,
+            value: setting.value,
+          })),
+          environment: component.environment.map((environment) => ({
+            name: environment.name,
+            description: environment.description,
+            required: environment.required,
+          })),
+        })),
+      }),
+    ),
   };
 }
 
@@ -421,18 +619,29 @@ function packageSemanticProjection(ir: Omit<PackageIR, "semantic_hash">): unknow
     manifest: ir.manifest,
     files: ir.files.map((file) => ({
       path: file.path,
-      source_sha: file.source_sha,
       semantic_hash: file.semantic_hash,
       component_ids: file.component_ids,
       diagnostics: file.diagnostics.map(projectDiagnostic),
     })),
+    resources: ir.resources.map((resource) => ({
+      kind: resource.kind,
+      path: resource.path,
+      source: resource.source,
+      exists: resource.exists,
+      component_ids: resource.component_ids,
+      diagnostics: resource.diagnostics.map(projectDiagnostic),
+    })),
     dependencies: ir.dependencies,
+    policy: projectPackagePolicy(ir.policy),
     components: ir.components.map((component) => ({
       id: component.id,
       name: component.name,
       kind: component.kind,
       source: component.source.path,
-      ports: component.ports,
+      ports: {
+        requires: component.ports.requires.map(projectPort),
+        ensures: component.ports.ensures.map(projectPort),
+      },
       services: component.services.map((service) => ({
         name: service.name,
         ref: service.ref,
@@ -493,6 +702,44 @@ function projectDiagnostic(diagnostic: Diagnostic): unknown {
   };
 }
 
+function projectPort(port: ComponentIR["ports"]["requires"][number]): unknown {
+  return {
+    name: port.name,
+    direction: port.direction,
+    type: port.type,
+    description: port.description,
+    required: port.required,
+    policy_labels: port.policy_labels,
+  };
+}
+
+function projectPackagePolicy(policy: PackagePolicyIR): unknown {
+  return {
+    effects: policy.effects.map((effect) => ({
+      component_id: effect.component_id,
+      component_name: effect.component_name,
+      kind: effect.kind,
+      description: effect.description,
+      config: effect.config,
+    })),
+    access: policy.access.map((entry) => ({
+      component_id: entry.component_id,
+      component_name: entry.component_name,
+      key: entry.key,
+      labels: entry.labels,
+    })),
+    labels: policy.labels.map((label) => ({
+      label: label.label,
+      source: label.source,
+      component_id: label.component_id,
+      component_name: label.component_name,
+      port: label.port,
+      direction: label.direction,
+      access_key: label.access_key,
+    })),
+  };
+}
+
 async function resolvePackageRoot(path: string): Promise<string> {
   const resolved = resolve(path);
   const info = await stat(resolved);
@@ -546,6 +793,14 @@ function composeRefName(ref: string): string {
   const pathPart = normalized.split("@")[0] ?? normalized;
   const segments = pathPart.split("/").filter(Boolean);
   return segments[segments.length - 1] ?? pathPart;
+}
+
+function spanForManifest(root: string): SourceSpan {
+  return {
+    path: normalizePath(relative(root, resolve(root, "prose.package.json"))),
+    start_line: 1,
+    end_line: 1,
+  };
 }
 
 function sortDiagnostics(diagnostics: Diagnostic[]): Diagnostic[] {

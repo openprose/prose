@@ -1,6 +1,13 @@
 {
   "package_ir_version": "0.1",
-  "semantic_hash": "a5225aa0915bacb548dd05df77101bbf64179e7726f4ca52d617d623a03eed98",
+  "semantic_hash": "ebd75f4c1e9d46ead3bde7ab29d19f45e59671ac3b64a8cb4c96a104eb06c8ea",
+  "hashes": {
+    "source_hash": "330ac5158755395e56e03bcc42b2fb548114ff85151c3f3cbd26f8d692a7a5db",
+    "semantic_hash": "ebd75f4c1e9d46ead3bde7ab29d19f45e59671ac3b64a8cb4c96a104eb06c8ea",
+    "dependency_hash": "274e424f01b65e9042abc2e220cb92a3c67f471429616deafea5ea8423053ba5",
+    "policy_hash": "73f2ed9874e6a6b059e9f27f7a2386a02f0ec1cd1e7d6543cb312b7dd3703583",
+    "runtime_config_hash": "6e1a8389e7b39bf02a2edb0cadac3dc6b4815804a275021d82cea48efc5a3d7e"
+  },
   "manifest": {
     "name": "@openprose/std",
     "version": "0.11.0-dev",
@@ -487,6 +494,113 @@
       "diagnostics": []
     }
   ],
+  "resources": [
+    {
+      "kind": "eval",
+      "path": "evals/contract-grader.prose.md",
+      "exists": true,
+      "component_ids": [
+        "evals-contract-grader--contract-grader",
+        "evals-contract-grader--extractor",
+        "evals-contract-grader--grader",
+        "evals-contract-grader--scorer"
+      ],
+      "diagnostics": []
+    },
+    {
+      "kind": "eval",
+      "path": "evals/cross-run-differ.prose.md",
+      "exists": true,
+      "component_ids": [
+        "evals-cross-run-differ--cross-run-differ",
+        "evals-cross-run-differ--collector",
+        "evals-cross-run-differ--differ",
+        "evals-cross-run-differ--recommender"
+      ],
+      "diagnostics": []
+    },
+    {
+      "kind": "eval",
+      "path": "evals/eval-calibrator.prose.md",
+      "exists": true,
+      "component_ids": [
+        "evals-eval-calibrator--eval-calibrator",
+        "evals-eval-calibrator--sampler",
+        "evals-eval-calibrator--runner",
+        "evals-eval-calibrator--comparator",
+        "evals-eval-calibrator--statistician",
+        "evals-eval-calibrator--advisor"
+      ],
+      "diagnostics": []
+    },
+    {
+      "kind": "eval",
+      "path": "evals/inspector.prose.md",
+      "exists": true,
+      "component_ids": [
+        "evals-inspector--inspector",
+        "evals-inspector--index",
+        "evals-inspector--extractor",
+        "evals-inspector--evaluator",
+        "evals-inspector--synthesizer"
+      ],
+      "diagnostics": []
+    },
+    {
+      "kind": "eval",
+      "path": "evals/platform-improver.prose.md",
+      "exists": true,
+      "component_ids": [
+        "evals-platform-improver--platform-improver",
+        "evals-platform-improver--triager",
+        "evals-platform-improver--analyst",
+        "evals-platform-improver--proposer"
+      ],
+      "diagnostics": []
+    },
+    {
+      "kind": "eval",
+      "path": "evals/program-improver.prose.md",
+      "exists": true,
+      "component_ids": [
+        "evals-program-improver--program-improver",
+        "evals-program-improver--locator",
+        "evals-program-improver--analyst",
+        "evals-program-improver--implementer"
+      ],
+      "diagnostics": []
+    },
+    {
+      "kind": "eval",
+      "path": "evals/regression-tracker.prose.md",
+      "exists": true,
+      "component_ids": [
+        "evals-regression-tracker--regression-tracker",
+        "evals-regression-tracker--registry",
+        "evals-regression-tracker--comparator",
+        "evals-regression-tracker--reporter"
+      ],
+      "diagnostics": []
+    },
+    {
+      "kind": "example",
+      "path": "examples/composed-reviewer/index.prose.md",
+      "exists": true,
+      "component_ids": [
+        "examples-composed-reviewer-index--composed-reviewer"
+      ],
+      "diagnostics": []
+    },
+    {
+      "kind": "example",
+      "path": "examples/confident-writer/index.prose.md",
+      "exists": true,
+      "component_ids": [
+        "examples-confident-writer-index--confident-writer"
+      ],
+      "diagnostics": []
+    }
+  ],
   "dependencies": [
     {
       "package": "github.com/openprose/prose",
@@ -497,6 +611,18 @@
       "lock_ref": null
     }
   ],
+  "policy": {
+    "effects": {
+      "delivers": 3,
+      "human_gate": 1,
+      "mutates_repo": 1,
+      "pure": 68,
+      "read_external": 7,
+      "writes_memory": 2
+    },
+    "access": [],
+    "labels": {}
+  },
   "components": [
     {
       "id": "composites-assumption-miner--assumption-miner",
