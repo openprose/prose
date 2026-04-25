@@ -1,6 +1,14 @@
 export { renderStatusText, statusPath } from "../status.js";
 export { renderTraceText, traceFile } from "../trace.js";
 export {
+  listArtifactRecordsByHash,
+  listArtifactRecordsForRun,
+  readArtifactRecordForOutput,
+  readLocalArtifactContent,
+  readLocalArtifactRecord,
+  writeLocalArtifactRecord,
+} from "./artifacts.js";
+export {
   initLocalStore,
   LOCAL_STORE_VERSION,
   readLocalStoreMetadata,
@@ -11,6 +19,10 @@ export {
   writeStoreJsonRecord,
 } from "./local.js";
 export type {
+  LocalArtifactProvenance,
+  LocalArtifactRecord,
+  LocalArtifactSchemaStatus,
+  LocalArtifactStorage,
   LocalStoreLayout,
   LocalStoreMetadata,
   LocalStoreRunIndexEntry,

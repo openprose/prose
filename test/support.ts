@@ -25,14 +25,20 @@ export { buildArtifactManifest, executeRemoteFile } from "../src/remote";
 export { renderCatalogSearchText, searchCatalog } from "../src/search";
 export { renderStatusText, statusPath } from "../src/status";
 export {
+  listArtifactRecordsByHash,
+  listArtifactRecordsForRun,
+  readArtifactRecordForOutput,
+  readLocalArtifactContent,
+  readLocalArtifactRecord,
   initLocalStore,
   readLocalStoreMetadata,
   readRunIndex,
   readStoreJsonRecord,
   resolveLocalStoreLayout,
   upsertRunIndexEntry,
+  writeLocalArtifactRecord,
   writeStoreJsonRecord,
-} from "../src/store/local";
+} from "../src/store";
 export { renderTraceText, traceFile } from "../src/trace";
 
 export function fixture(name: string): string {

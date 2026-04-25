@@ -411,6 +411,38 @@ export interface LocalStoreRunIndexEntry {
   record_ref: string;
 }
 
+export interface LocalArtifactSchemaStatus {
+  status: "unchecked" | "valid" | "invalid";
+  schema_ref: string | null;
+  diagnostics: Diagnostic[];
+}
+
+export interface LocalArtifactProvenance {
+  run_id: string;
+  node_id: string | null;
+  port: string | null;
+  direction: "input" | "output" | "runtime" | "diagnostic" | "artifact";
+  source_run_id: string | null;
+}
+
+export interface LocalArtifactStorage {
+  provider: "local";
+  path: string;
+}
+
+export interface LocalArtifactRecord {
+  artifact_record_version: "0.1";
+  artifact_id: string;
+  content_hash: string;
+  content_type: string;
+  size_bytes: number;
+  schema: LocalArtifactSchemaStatus;
+  policy_labels: string[];
+  provenance: LocalArtifactProvenance;
+  storage: LocalArtifactStorage;
+  created_at: string;
+}
+
 export type RunLifecycleStatus =
   | "pending"
   | "running"
