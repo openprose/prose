@@ -197,6 +197,8 @@ export async function runCli(args: string[]): Promise<void> {
         outputs: options.outputs,
         approvedEffects: options.approvedEffects,
         approvalPaths: options.approvalPaths,
+        requiredEvals: options.requiredEvals,
+        advisoryEvals: options.advisoryEvals,
         trigger: options.trigger,
         provider: options.provider ?? undefined,
         currentRunPath: options.currentRunPath ?? undefined,
@@ -579,6 +581,8 @@ interface FileCommandArgs {
   outputs: Record<string, string>;
   approvedEffects: string[];
   approvalPaths: string[];
+  requiredEvals: string[];
+  advisoryEvals: string[];
   trigger: RunRecord["caller"]["trigger"];
   provider: string | null;
 }
@@ -735,6 +739,8 @@ function parseFileCommandArgs(args: string[]): FileCommandArgs {
     outputs: {},
     approvedEffects: [],
     approvalPaths: [],
+    requiredEvals: [],
+    advisoryEvals: [],
     trigger: "manual",
     provider: null,
   };
@@ -846,6 +852,22 @@ function parseFileCommandArgs(args: string[]): FileCommandArgs {
       const path = args[index + 1];
       if (path) {
         parsed.approvalPaths.push(path);
+      }
+      index += 1;
+      continue;
+    }
+    if (arg === "--required-eval") {
+      const path = args[index + 1];
+      if (path) {
+        parsed.requiredEvals.push(path);
+      }
+      index += 1;
+      continue;
+    }
+    if (arg === "--advisory-eval") {
+      const path = args[index + 1];
+      if (path) {
+        parsed.advisoryEvals.push(path);
       }
       index += 1;
       continue;
@@ -1003,7 +1025,7 @@ Usage:
   prose highlight <file.prose.md> [--format text|json|html]
   prose lint <file.prose.md|dir> [--format text|json]
   prose plan <file.prose.md> [--input name=value] [--current-run .prose/runs/{id}] [--target-output final] [--approved-effect delivers]
-  prose run <file.prose.md> [--provider fixture] [--run-root .prose/runs] [--input name=value] [--output port=value] [--approved-effect delivers] [--approval approval.json]
+  prose run <file.prose.md> [--provider fixture] [--run-root .prose/runs] [--input name=value] [--output port=value] [--approved-effect delivers] [--approval approval.json] [--required-eval eval.prose.md]
   prose preflight <file.prose.md> [--format text|json]
   prose publish-check <dir|file.prose.md> [--format text|json] [--strict]
   prose remote execute <file.prose.md> [--out-dir .openprose/remote-runs] [--run-id id] [--input name=value] [--output port=value] [--approved-effect delivers]

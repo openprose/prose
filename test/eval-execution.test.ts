@@ -5,6 +5,7 @@ import {
   expect,
   fixture,
   join,
+  listGraphNodePointers,
   mkdtempSync,
   readEvalResultRecords,
   runProseCli,
@@ -120,6 +121,52 @@ describe("OpenProse executable evals", () => {
       status: "passed",
       score: 0.81,
     });
+  });
+
+  test("required eval failures prevent graph current pointer updates", async () => {
+    const root = mkdtempSync(join(tmpdir(), "openprose-eval-gate-"));
+    const evalPath = writeEvalContract(root);
+    const result = await runSource(fixture("pipeline.prose.md"), {
+      path: "fixtures/compiler/pipeline.prose.md",
+      runRoot: join(root, "runs"),
+      runId: "eval-gated-graph",
+      provider: "fixture",
+      inputs: {
+        draft: "The original draft.",
+      },
+      outputs: {
+        "review.feedback": "Tighten the intro.",
+        "fact-check.claims": "[{\"claim\":\"All claims verified.\"}]",
+        "polish.final": "The polished draft.",
+        "quality-eval.result": "{\"passed\":false,\"score\":0.2,\"verdict\":\"fail\"}",
+      },
+      requiredEvals: [evalPath],
+      createdAt: "2026-04-25T01:05:00.000Z",
+    });
+
+    expect(result.record.status).toBe("succeeded");
+    expect(result.record.acceptance).toMatchObject({
+      status: "rejected",
+    });
+    expect(result.record.evals).toEqual([
+      expect.objectContaining({
+        eval_ref: evalPath,
+        required: true,
+        status: "failed",
+        score: 0.2,
+      }),
+    ]);
+    const pointers = await listGraphNodePointers(root, result.run_id);
+    expect(pointers.map((pointer) => pointer.current_run_id)).toEqual([
+      null,
+      null,
+      null,
+    ]);
+    expect(pointers.map((pointer) => pointer.latest_run_id).sort()).toEqual([
+      "eval-gated-graph:fact-check",
+      "eval-gated-graph:polish",
+      "eval-gated-graph:review",
+    ]);
   });
 });
 

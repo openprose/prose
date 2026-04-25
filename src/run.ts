@@ -40,6 +40,7 @@ import type {
   MaterializedRun,
   ProseIR,
   RunBindingRecord,
+  RunEvalRecord,
   RunOutputRecord,
   RunRecord,
   TypeExpressionIR,
@@ -63,6 +64,8 @@ export interface RunOptions {
   approvedEffects?: string[];
   approvalRecords?: EffectApprovalRecord[];
   approvalPaths?: string[];
+  requiredEvals?: string[];
+  advisoryEvals?: string[];
   trigger?: RunRecord["caller"]["trigger"];
   provider?: ProviderKind | RuntimeProvider;
   currentRun?: CurrentRunSet;
@@ -90,6 +93,8 @@ interface RunContext {
   approvedEffects: string[];
   approvalRecords: EffectApprovalRecord[];
   deniedEffects: string[];
+  requiredEvals: string[];
+  advisoryEvals: string[];
   trigger: RunRecord["caller"]["trigger"];
   currentRun: CurrentRunSet;
 }
@@ -154,6 +159,8 @@ export async function runSource(
     approvedEffects,
     approvalRecords,
     deniedEffects,
+    requiredEvals: options.requiredEvals ?? [],
+    advisoryEvals: options.advisoryEvals ?? [],
     trigger: options.trigger ?? "manual",
     currentRun,
   };
@@ -219,7 +226,10 @@ export async function runSource(
 
   const request = await createProviderRequest(ctx, component);
   const providerResult = await ctx.provider.execute(request);
-  const record = await materializeProviderResult(ctx, component, providerResult);
+  const record = await applyEvalAcceptance(
+    ctx,
+    await materializeProviderResult(ctx, component, providerResult),
+  );
 
   return {
     run_id: runId,
@@ -389,7 +399,10 @@ async function executeGraphRun(
     diagnostics.push(...providerResult.diagnostics);
   }
 
-  const graphRecord = await assembleGraphRunRecord(ctx, main, nodeRecordsById);
+  const graphRecord = await applyEvalAcceptance(
+    ctx,
+    await assembleGraphRunRecord(ctx, main, nodeRecordsById),
+  );
   await writeRunRecordFile(ctx, "run.json", graphRecord);
   await writeGraphTrace(ctx, graphRecord, nodeRecords);
   await writeGraphStoreRecords(ctx, graphRecord, nodeRecords);
@@ -842,10 +855,71 @@ async function writeGraphStoreRecords(
       componentRef: nodeRecord.component_ref,
       runId: nodeRecord.run_id,
       status: nodeRecord.status,
-      acceptance: nodeRecord.acceptance.status,
+      acceptance:
+        graphRecord.acceptance.status === "accepted"
+          ? nodeRecord.acceptance.status
+          : graphRecord.acceptance.status,
       updatedAt: nodeRecord.completed_at ?? nodeRecord.created_at,
     });
   }
+}
+
+async function applyEvalAcceptance(
+  ctx: RunContext,
+  record: RunRecord,
+  recordPath = "run.json",
+): Promise<RunRecord> {
+  const evalSpecs = [
+    ...ctx.requiredEvals.map((path) => ({ path, required: true })),
+    ...ctx.advisoryEvals.map((path) => ({ path, required: false })),
+  ];
+  if (record.status !== "succeeded" || evalSpecs.length === 0) {
+    return record;
+  }
+
+  await writeRunRecordFile(ctx, recordPath, record);
+  const { executeEvalFile } = await import("./eval/index.js");
+  const evals: RunEvalRecord[] = [];
+
+  for (const spec of evalSpecs) {
+    const result = await executeEvalFile(spec.path, ctx.runDir, {
+      provider: ctx.provider,
+      inputs: ctx.inputs,
+      outputs: ctx.outputs,
+      approvedEffects: ctx.approvedEffects,
+      required: spec.required,
+      trigger: "test",
+      createdAt: ctx.createdAt,
+    });
+    evals.push({
+      eval_ref: result.eval_record.eval_ref,
+      required: spec.required,
+      status: result.eval_record.status,
+      eval_run_id: result.eval_record.eval_run_id,
+      score: result.eval_record.score,
+    });
+  }
+
+  const failedRequired = evals.find(
+    (evalRecord) => evalRecord.required && evalRecord.status !== "passed",
+  );
+  const next: RunRecord = {
+    ...record,
+    evals: [...record.evals, ...evals],
+    acceptance: failedRequired
+      ? {
+          status: "rejected",
+          reason: `Required eval '${failedRequired.eval_ref}' ${failedRequired.status}.`,
+        }
+      : {
+          status: "accepted",
+          reason: `${evals.filter((evalRecord) => evalRecord.required).length} required eval(s) passed.`,
+        },
+  };
+
+  await writeRunRecordFile(ctx, recordPath, next);
+  await indexRunRecord(ctx, next, recordPath);
+  return next;
 }
 
 function firstUnavailableUpstream(
