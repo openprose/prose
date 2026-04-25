@@ -11,6 +11,7 @@ import type {
 } from "./types";
 import type { SectionDraft, SourceLine } from "./markdown";
 import { span } from "./markdown";
+import { parseTypeExpression } from "./schema/index.js";
 import { splitCsv, stripTicks } from "./text";
 
 export function parsePorts(
@@ -48,15 +49,19 @@ export function parsePorts(
     }
     const remainder = item.slice(colonIndex + 1).trim();
     const { type, description } = parseTypeAndDescription(remainder);
+    const source_span = span(section.span.path, line.number, line.number);
+    const typeResult = parseTypeExpression(type, source_span);
+    diagnostics.push(...typeResult.diagnostics);
 
     ports.push({
       name: stripTicks(rawName),
       direction,
       type,
+      type_expr: typeResult.expression,
       description,
       required: !/\boptional\b/i.test(description),
       policy_labels: [],
-      source_span: span(section.span.path, line.number, line.number),
+      source_span,
     });
   }
 

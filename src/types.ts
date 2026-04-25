@@ -17,10 +17,22 @@ export interface PortIR {
   name: string;
   direction: "input" | "output";
   type: string;
+  type_expr: TypeExpressionIR;
   description: string;
   required: boolean;
   policy_labels: string[];
   source_span: SourceSpan;
+}
+
+export type TypeExpressionKind = "primitive" | "named" | "array" | "generic";
+
+export interface TypeExpressionIR {
+  type_expr_version: "0.1";
+  kind: TypeExpressionKind;
+  raw: string;
+  name: string;
+  args: TypeExpressionIR[];
+  element: TypeExpressionIR | null;
 }
 
 export interface ServiceIR {

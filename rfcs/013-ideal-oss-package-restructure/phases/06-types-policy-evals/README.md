@@ -25,7 +25,7 @@ Commit:
 
 Signpost:
 
-- Add `signposts/026-schema-resolution.md` with supported syntax and schema
+- Add `signposts/027-schema-resolution.md` with supported syntax and schema
   projection decisions.
 
 ## 06.2 Validate Inputs, Outputs, And Artifacts
@@ -49,7 +49,7 @@ Commit:
 
 Signpost:
 
-- Add `signposts/027-artifact-validation.md` with rejection examples.
+- Add `signposts/028-artifact-validation.md` with rejection examples.
 
 ## 06.3 Validate `run<T>` Provenance
 
@@ -71,7 +71,7 @@ Commit:
 
 Signpost:
 
-- Add `signposts/028-run-provenance-validation.md` with provenance rules.
+- Add `signposts/029-run-provenance-validation.md` with provenance rules.
 
 ## 06.4 Implement The Local Policy Engine
 
@@ -94,7 +94,7 @@ Commit:
 
 Signpost:
 
-- Add `signposts/029-policy-engine.md` with local-vs-hosted responsibility
+- Add `signposts/030-policy-engine.md` with local-vs-hosted responsibility
   notes.
 
 ## 06.5 Make Evals Executable
@@ -119,7 +119,7 @@ Commit:
 
 Signpost:
 
-- Add `signposts/030-executable-evals.md` with eval record examples.
+- Add `signposts/031-executable-evals.md` with eval record examples.
 
 ## 06.6 Gate Current Pointer Updates On Required Evals
 
@@ -141,7 +141,7 @@ Commit:
 
 Signpost:
 
-- Add `signposts/031-eval-acceptance.md` with acceptance matrix examples.
+- Add `signposts/032-eval-acceptance.md` with acceptance matrix examples.
 
 ## Phase Exit Criteria
 

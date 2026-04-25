@@ -354,6 +354,7 @@ function projectPort(port: PortIR): unknown {
     name: port.name,
     direction: port.direction,
     type: port.type,
+    type_expr: port.type_expr,
     description: port.description,
     required: port.required,
     policy_labels: port.policy_labels,
