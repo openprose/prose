@@ -1,9 +1,13 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, join, relative, resolve } from "node:path";
 import { randomBytes } from "node:crypto";
 import { compileSource } from "./compiler";
 import { sha256 } from "./hash";
 import { projectManifest } from "./manifest";
+import { writeLocalArtifactRecord } from "./store/artifacts.js";
+import { writeRunAttemptRecord } from "./store/attempts.js";
+import { upsertRunIndexEntry } from "./store/local.js";
+import { updateGraphNodePointer } from "./store/pointers.js";
 import type {
   ComponentIR,
   GraphEdgeIR,
@@ -16,6 +20,7 @@ import type {
 
 export interface MaterializeOptions {
   runRoot?: string;
+  storeRoot?: string;
   runId?: string;
   createdAt?: string;
   inputs?: Record<string, string>;
@@ -28,6 +33,7 @@ interface MaterializeContext {
   ir: ProseIR;
   runId: string;
   runDir: string;
+  storeRoot: string;
   createdAt: string;
   inputs: Record<string, string>;
   outputs: Record<string, string>;
@@ -52,10 +58,12 @@ export async function materializeSource(
   const runId = options.runId ?? createRunId(createdAt);
   const runRoot = options.runRoot ?? ".prose/runs";
   const runDir = join(runRoot, runId);
+  const storeRoot = options.storeRoot ?? inferStoreRoot(runRoot);
   const ctx: MaterializeContext = {
     ir,
     runId,
     runDir,
+    storeRoot,
     createdAt,
     inputs: options.inputs ?? {},
     outputs: options.outputs ?? {},
@@ -96,6 +104,7 @@ export async function materializeSource(
       : nodeRecords[0];
 
   await writeFile(join(runDir, "run.json"), `${JSON.stringify(graphRecord, null, 2)}\n`);
+  await writeFixtureStoreRecords(ctx, graphRecord, nodeRecords);
 
   return {
     run_id: runId,
@@ -103,6 +112,94 @@ export async function materializeSource(
     record: graphRecord,
     node_records: nodeRecords,
   };
+}
+
+async function writeFixtureStoreRecords(
+  ctx: MaterializeContext,
+  graphRecord: RunRecord,
+  nodeRecords: RunRecord[],
+): Promise<void> {
+  const records = uniqueRunRecords([graphRecord, ...nodeRecords]);
+  for (const record of records) {
+    await upsertRunIndexEntry(ctx.storeRoot, {
+      run_id: record.run_id,
+      kind: record.kind,
+      component_ref: record.component_ref,
+      status: record.status,
+      acceptance: record.acceptance.status,
+      created_at: record.created_at,
+      completed_at: record.completed_at,
+      record_ref: normalizePath(relative(ctx.storeRoot, join(ctx.runDir, recordPath(record)))),
+    });
+
+    await writeRunAttemptRecord(ctx.storeRoot, {
+      runId: record.run_id,
+      componentRef: record.component_ref,
+      attemptNumber: 1,
+      status: record.status,
+      providerSessionRef: "fixture-output",
+      startedAt: record.created_at,
+      finishedAt: record.completed_at,
+      failure:
+        record.status === "succeeded"
+          ? null
+          : {
+              code: "fixture_blocked",
+              message: record.acceptance.reason ?? "Fixture materialization was blocked.",
+              retryable: false,
+            },
+    });
+
+    for (const output of record.outputs) {
+      const content = await readFile(join(ctx.runDir, output.artifact_ref), "utf8");
+      await writeLocalArtifactRecord(ctx.storeRoot, {
+        runId: record.run_id,
+        nodeId: record.kind === "graph" ? "$graph" : record.component_ref,
+        port: output.port,
+        direction: "output",
+        content,
+        contentType: "text/markdown",
+        policyLabels: output.policy_labels,
+        createdAt: record.created_at,
+      });
+    }
+  }
+
+  for (const nodeRecord of nodeRecords) {
+    await updateGraphNodePointer(ctx.storeRoot, {
+      graphId: graphRecord.run_id,
+      nodeId: nodeRecord.component_ref,
+      componentRef: nodeRecord.component_ref,
+      runId: nodeRecord.run_id,
+      status: nodeRecord.status,
+      acceptance: nodeRecord.acceptance.status,
+      updatedAt: nodeRecord.completed_at ?? nodeRecord.created_at,
+    });
+  }
+
+  for (const [port, value] of Object.entries(ctx.inputs)) {
+    await writeLocalArtifactRecord(ctx.storeRoot, {
+      runId: graphRecord.run_id,
+      nodeId: "$caller",
+      port,
+      direction: "input",
+      content: value.endsWith("\n") ? value : `${value}\n`,
+      contentType: "text/markdown",
+      policyLabels: [],
+      createdAt: graphRecord.created_at,
+    });
+  }
+}
+
+function uniqueRunRecords(records: RunRecord[]): RunRecord[] {
+  const seen = new Set<string>();
+  return records.filter((record) => {
+    if (seen.has(record.run_id)) {
+      return false;
+    }
+    seen.add(record.run_id);
+    return true;
+  });
 }
 
 async function createComponentRunRecord(
@@ -383,4 +480,20 @@ function createRunId(createdAt: string): string {
     .replace(/\.\d{3}Z$/, "")
     .replace("T", "-");
   return `${stamp}-${randomBytes(3).toString("hex")}`;
+}
+
+function recordPath(record: RunRecord): string {
+  return record.kind === "graph"
+    ? "run.json"
+    : join("nodes", `${record.component_ref}.run.json`);
+}
+
+function inferStoreRoot(runRoot: string): string {
+  return basename(normalizePath(runRoot)) === "runs"
+    ? dirname(runRoot)
+    : join(runRoot, ".prose-store");
+}
+
+function normalizePath(path: string): string {
+  return path.replace(/\\/g, "/");
 }

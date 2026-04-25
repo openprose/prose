@@ -16,6 +16,9 @@ import {
   installRegistryRef,
   installWorkspaceDependencies,
   join,
+  listArtifactRecordsForRun,
+  listGraphNodePointers,
+  listRunAttemptRecords,
   lintPath,
   lintSource,
   materializeSource,
@@ -152,6 +155,48 @@ describe("OpenProse fixture materialization and remote envelope", () => {
     expect(
       readFileSync(join(result.run_dir, "bindings", "$graph", "final.md"), "utf8"),
     ).toBe("The polished draft.\n");
+  });
+
+  test("fixture materialization writes through local store indexes", async () => {
+    const storeRoot = mkdtempSync(join(tmpdir(), "openprose-store-backed-"));
+    const result = await materializeSource(fixture("pipeline.prose.md"), {
+      path: "fixtures/compiler/pipeline.prose.md",
+      runRoot: join(storeRoot, "runs"),
+      runId: "20260423-121700-store1",
+      createdAt: "2026-04-23T12:17:00.000Z",
+      inputs: {
+        draft: "The original draft.",
+      },
+      outputs: {
+        "review.feedback": "Tighten the intro.",
+        "fact-check.claims": "All claims verified.",
+        "polish.final": "The polished draft.",
+      },
+      trigger: "test",
+    });
+    const status = await statusPath(storeRoot);
+
+    expect(status.runs.map((run) => run.run_id)).toEqual([
+      "20260423-121700-store1:review",
+      "20260423-121700-store1:polish",
+      "20260423-121700-store1:fact-check",
+      "20260423-121700-store1",
+    ]);
+    expect(await listRunAttemptRecords(storeRoot, result.run_id)).toHaveLength(1);
+    expect((await listGraphNodePointers(storeRoot, result.run_id)).map((pointer) => pointer.node_id)).toEqual([
+      "fact-check",
+      "polish",
+      "review",
+    ]);
+    expect(
+      (await listArtifactRecordsForRun(storeRoot, result.run_id)).map(
+        (record) => `${record.provenance.direction}:${record.provenance.port}`,
+      ),
+    ).toEqual(["input:draft", "output:final"]);
+    expect(status.runs[0]).toMatchObject({
+      attempt_count: 1,
+      latest_attempt_status: "succeeded",
+    });
   });
 
   test("materializes a single-component program run from direct outputs", async () => {
