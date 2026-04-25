@@ -5,7 +5,8 @@ OpenProse is now split into a few clean surfaces:
 - [Why and When to Use OpenProse](why-and-when.md): what it is for, when it wins, and when not to reach for it
 - [What Shipped](what-shipped.md): a compact snapshot of the compiler, planner, package, runtime, and hosted surfaces that exist today
 - [Measuring OpenProse](measurement.md): reproducible ways to measure package quality, selective recompute, approval gating, and reference-company health
-- [Diagrams](diagrams/index.html): HTML diagrams for the compiler, reactive planning, packages, and approval flows
+- [Diagrams](diagrams/index.html): HTML diagrams for the compiler, reactive
+  planning, packages, approvals, and runtime backpressure
 - [Examples](../examples/README.md): the curated example set that matches the current local-first/runtime model
 
 ## Quickstart
