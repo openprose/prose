@@ -12,6 +12,7 @@ import { lintPath, lintSource, renderLintReportText, renderLintText } from "../s
 import { materializeSource } from "../src/materialize";
 import { projectManifest } from "../src/manifest";
 import { packagePath, renderPackageText } from "../src/package";
+import { buildArtifactManifest, executeRemoteFile } from "../src/remote";
 import { planSource } from "../src/plan";
 import { preflightPath, renderPreflightText } from "../src/preflight";
 import { publishCheckPath, renderPublishCheckText } from "../src/publish";
@@ -563,6 +564,156 @@ kind: program
         trigger: "human_gate",
       },
     });
+  });
+
+  test("executes through the remote runner envelope contract", async () => {
+    const outDir = mkdtempSync(join(tmpdir(), "openprose-remote-"));
+    const envelope = await executeRemoteFile(fixturePath("compiler/hello.prose.md"), {
+      outDir,
+      runId: "20260423-130000-rmt001",
+      outputs: {
+        message: "Hello from the remote contract.",
+      },
+      trigger: "api",
+    });
+
+    expect(envelope).toMatchObject({
+      schema_version: "0.1",
+      run_id: "20260423-130000-rmt001",
+      component_ref: "hello",
+      status: "succeeded",
+      trigger: "api",
+      effect_declarations: ["pure"],
+      approved_effects: [],
+      package_metadata_path: null,
+      artifact_manifest_path: "artifact_manifest.json",
+      trace_path: "trace.json",
+      ir_path: "ir.json",
+      stdout_path: "stdout.txt",
+      stderr_path: "stderr.txt",
+      exit_code: 0,
+      error: null,
+    });
+    expect(envelope.artifact_manifest.artifacts.map((artifact) => artifact.kind)).toEqual(
+      expect.arrayContaining([
+        "runtime_ir",
+        "runtime_trace",
+        "runtime_manifest",
+        "runtime_run_record",
+        "runtime_stdout",
+        "runtime_stderr",
+        "output_binding",
+      ]),
+    );
+    expect(
+      readFileSync(join(envelope.run_dir, "artifact_manifest.json"), "utf8"),
+    ).toContain('"artifact_manifest_version": "0.1"');
+    expect(readFileSync(join(envelope.run_dir, "result.json"), "utf8")).toContain(
+      '"schema_version": "0.1"',
+    );
+  });
+
+  test("remote CLI emits an envelope and preserves approved effects", () => {
+    const outDir = mkdtempSync(join(tmpdir(), "openprose-remote-cli-"));
+    const fixtureFile = fixturePath("compiler/typed-effects.prose.md");
+    const result = Bun.spawnSync(
+      [
+        "bun",
+        "bin/prose.ts",
+        "remote",
+        "execute",
+        fixtureFile,
+        "--out-dir",
+        outDir,
+        "--run-id",
+        "20260423-130500-rmt002",
+        "--trigger",
+        "human_gate",
+        "--approved-effect",
+        "delivers",
+        "--input",
+        "company=Acme profile",
+        "--input",
+        "subject=run: prior-run",
+        "--output",
+        "brief-writer.brief=Approved remote CLI brief.",
+      ],
+      {
+        cwd: join(import.meta.dir, ".."),
+        stdout: "pipe",
+        stderr: "pipe",
+      },
+    );
+
+    expect(result.exitCode).toBe(0);
+    const envelope = JSON.parse(result.stdout.toString("utf8"));
+    expect(envelope).toMatchObject({
+      run_id: "20260423-130500-rmt002",
+      status: "succeeded",
+      trigger: "human_gate",
+      approved_effects: ["delivers"],
+      effect_declarations: ["read_external", "delivers"],
+    });
+    expect(
+      readFileSync(
+        join(outDir, "20260423-130500-rmt002", "result.json"),
+        "utf8",
+      ),
+    ).toContain('"approved_effects": [');
+  });
+
+  test("remote CLI writes a blocked envelope before returning non-zero", () => {
+    const outDir = mkdtempSync(join(tmpdir(), "openprose-remote-blocked-"));
+    const result = Bun.spawnSync(
+      [
+        "bun",
+        "bin/prose.ts",
+        "remote",
+        "execute",
+        fixturePath("compiler/hello.prose.md"),
+        "--out-dir",
+        outDir,
+        "--run-id",
+        "20260423-131000-rmt003",
+      ],
+      {
+        cwd: join(import.meta.dir, ".."),
+        stdout: "pipe",
+        stderr: "pipe",
+      },
+    );
+
+    expect(result.exitCode).toBe(1);
+    const envelope = JSON.parse(result.stdout.toString("utf8"));
+    expect(envelope).toMatchObject({
+      status: "blocked",
+      exit_code: 1,
+      error: {
+        code: "run_blocked",
+        message: "Missing fixture output 'message'.",
+      },
+    });
+    expect(
+      readFileSync(join(outDir, "20260423-131000-rmt003", "result.json"), "utf8"),
+    ).toContain('"status": "blocked"');
+  });
+
+  test("artifact manifests reject malformed runtime-owned JSON", async () => {
+    const runRoot = mkdtempSync(join(tmpdir(), "openprose-bad-artifact-"));
+    const result = await materializeSource(fixture("hello.prose.md"), {
+      path: "fixtures/compiler/hello.prose.md",
+      runRoot,
+      runId: "20260423-131500-rmt004",
+      outputs: {
+        message: "Hello before corruption.",
+      },
+      trigger: "test",
+    });
+    writeFileSync(join(result.run_dir, "ir.json"), "{ not json");
+
+    await expect(
+      buildArtifactManifest(result, "2026-04-23T13:15:00.000Z"),
+    ).rejects.toThrow('Runtime-owned JSON artifact "ir.json" is malformed.');
   });
 
   test("plans a pure graph as ready when caller inputs are available", () => {

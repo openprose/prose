@@ -37,4 +37,4 @@ protocols.
 | 009: Reactive Execution Semantics | Draft/current | Invalidation, recompute planning, freshness, eval acceptance, and backpressure. |
 | 010: Source Format and Tooling | Draft/current | `.prose.md`, syntax highlighting, formatter, linter, graph preview, and trace overlays. |
 | 011: Registry Metadata and Package Quality | Draft/current | Git-native packages plus hosted catalog/search/quality metadata. |
-| 012: Hosted Runtime Contract and Artifact Semantics | Draft/planned | Host-neutral remote runner contract, result envelope, artifact semantics, registry metadata ingest contract, provenance fields, and std quality ratchet. |
+| 012: Hosted Runtime Contract and Artifact Semantics | In implementation | Host-neutral remote runner contract, result envelope, artifact semantics, registry metadata ingest contract, provenance fields, and std quality ratchet. Remote runner/envelope/artifact manifest slice landed in implementation note 030. |

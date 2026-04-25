@@ -214,6 +214,80 @@ export interface MaterializedRun {
   node_records: RunRecord[];
 }
 
+export type RemoteArtifactKind =
+  | "runtime_ir"
+  | "runtime_trace"
+  | "runtime_plan"
+  | "runtime_manifest"
+  | "runtime_run_record"
+  | "runtime_node_run_record"
+  | "runtime_stdout"
+  | "runtime_stderr"
+  | "input_binding"
+  | "output_binding"
+  | "diagnostic"
+  | "artifact";
+
+export type RemoteArtifactParsePolicy =
+  | "must_parse_json"
+  | "preserve_text"
+  | "preserve_bytes"
+  | "declared_content";
+
+export interface RemoteArtifactBinding {
+  direction: "input" | "output";
+  component_ref: string | null;
+  port: string;
+  binding_path: string;
+}
+
+export interface RemoteArtifactManifestEntry {
+  path: string;
+  kind: RemoteArtifactKind;
+  content_type: string;
+  parse_policy: RemoteArtifactParsePolicy;
+  sha256: string;
+  size_bytes: number;
+  binding: RemoteArtifactBinding | null;
+  policy_labels: string[];
+  warnings: string[];
+}
+
+export interface RemoteArtifactManifest {
+  artifact_manifest_version: "0.1";
+  run_id: string;
+  generated_at: string;
+  artifacts: RemoteArtifactManifestEntry[];
+  diagnostics: Diagnostic[];
+}
+
+export interface RemoteExecutionEnvelope {
+  schema_version: "0.1";
+  run_id: string;
+  run_dir: string;
+  component_ref: string;
+  status: RunLifecycleStatus;
+  trigger: RunRecord["caller"]["trigger"];
+  inputs: RunBindingRecord[];
+  outputs: RunOutputRecord[];
+  effect_declarations: string[];
+  approved_effects: string[];
+  package_metadata_path: string | null;
+  artifact_manifest: RemoteArtifactManifest;
+  artifact_manifest_path: string;
+  trace_path: string;
+  ir_path: string;
+  stdout_path: string;
+  stderr_path: string;
+  started_at: string;
+  finished_at: string;
+  exit_code: number;
+  error: {
+    message: string;
+    code: string;
+  } | null;
+}
+
 export interface PlanNode {
   node_id: string;
   component_ref: string;

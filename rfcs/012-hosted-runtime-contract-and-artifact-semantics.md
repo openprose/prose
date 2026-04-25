@@ -1,7 +1,10 @@
 # RFC 012: Hosted Runtime Contract And Artifact Semantics
 
-**Status:** Draft/planned  
+**Status:** In implementation
 **Date:** 2026-04-25
+
+**Latest Implementation Note:**
+[`030-hosted-runtime-runner-contract`](implementation-notes/030-hosted-runtime-runner-contract.md)
 
 ## Summary
 
@@ -219,6 +222,24 @@ Exit criteria:
 - approved effects appear only when explicitly supplied
 - unsafe effects are gated unless supplied through approved-effect inputs
 
+Status: implemented for the provider-neutral fixture/materialization runner.
+The landed command is:
+
+```bash
+prose remote execute <file.prose.md> \
+  --out-dir .openprose/remote-runs \
+  --run-id run_id \
+  --input name=value \
+  --output port=value \
+  --approved-effect delivers
+```
+
+The command writes `result.json`, `artifact_manifest.json`, `run.json`,
+`trace.json`, `ir.json`, `manifest.md`, runtime stdout/stderr artifacts, node
+run records, and binding artifacts under the run directory. It prints the
+result envelope to stdout and exits non-zero when the OpenProse run status is
+not `succeeded`, while still preserving the envelope for host ingestion.
+
 ### Phase 3: Artifact Manifest And Parse Policy
 
 Define artifact kinds and parsing rules in code and docs.
@@ -235,6 +256,10 @@ Exit criteria:
 - runtime-owned malformed JSON fails clearly
 - user output malformed JSON follows declared content-type/schema behavior
 - generated artifact manifests are stable
+
+Status: initial artifact manifest and runtime-owned JSON parse policy landed
+with Phase 2. User output JSON/schema rejection remains a metadata/schema
+ratchet item for the next RFC 012 slice.
 
 ### Phase 4: Registry Metadata V2
 
@@ -296,4 +321,3 @@ contract and become thin adapters around:
    or a separate `prose registry manifest` command?
 4. Should the hosted provenance contract live in RFC 005, RFC 011, or this RFC
    as the bridge between both?
-

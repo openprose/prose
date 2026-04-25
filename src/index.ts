@@ -13,6 +13,7 @@ export { planFile, planSource } from "./plan";
 export { preflightPath, renderPreflightText } from "./preflight";
 export { publishCheckPath, renderPublishCheckText } from "./publish";
 export { buildRegistryRef, parseRegistryRef } from "./registry";
+export { buildArtifactManifest, executeRemoteFile } from "./remote";
 export { renderCatalogSearchText, searchCatalog } from "./search";
 export { renderStatusText, statusPath } from "./status";
 export { renderTraceText, traceFile } from "./trace";
@@ -45,6 +46,12 @@ export type {
   PublishCheckItem,
   PublishCheckResult,
   ProseIR,
+  RemoteArtifactBinding,
+  RemoteArtifactKind,
+  RemoteArtifactManifest,
+  RemoteArtifactManifestEntry,
+  RemoteArtifactParsePolicy,
+  RemoteExecutionEnvelope,
   RunStatusEntry,
   RunStatusView,
   RuntimeSettingIR,

@@ -12,6 +12,7 @@ import { packagePath, renderPackageText } from "./package";
 import { planFile } from "./plan";
 import { preflightPath, renderPreflightText } from "./preflight";
 import { publishCheckPath, renderPublishCheckText } from "./publish";
+import { executeRemoteFile } from "./remote";
 import { renderCatalogSearchText, searchCatalog } from "./search";
 import { renderStatusText, statusPath } from "./status";
 import { renderTraceText, traceFile } from "./trace";
@@ -39,6 +40,7 @@ export async function runCli(args: string[]): Promise<void> {
     command !== "plan" &&
     command !== "preflight" &&
     command !== "publish-check" &&
+    command !== "remote" &&
     command !== "search" &&
     command !== "status" &&
     command !== "trace"
@@ -46,6 +48,41 @@ export async function runCli(args: string[]): Promise<void> {
     console.error(`Unknown command: ${command}`);
     printHelp();
     process.exitCode = 1;
+    return;
+  }
+
+  if (command === "remote") {
+    const options = parseRemoteCommandArgs(rest);
+    if (options.action !== "execute") {
+      console.error("Missing remote action. Use: prose remote execute <file.prose.md>");
+      process.exitCode = 1;
+      return;
+    }
+    if (!options.file) {
+      console.error("Missing file path.");
+      process.exitCode = 1;
+      return;
+    }
+
+    const envelope = await executeRemoteFile(options.file, {
+      outDir: options.outDir ?? undefined,
+      runId: options.runId ?? undefined,
+      inputs: options.inputs,
+      outputs: options.outputs,
+      approvedEffects: options.approvedEffects,
+      trigger: options.trigger,
+      componentRef: options.componentRef,
+      packageMetadataPath: options.packageMetadataPath,
+    });
+    const output = `${JSON.stringify(envelope, null, options.pretty ? 2 : 0)}\n`;
+    if (options.out) {
+      await writeFile(options.out, output, "utf8");
+    } else {
+      process.stdout.write(output);
+    }
+    if (envelope.status !== "succeeded") {
+      process.exitCode = 1;
+    }
     return;
   }
 
@@ -413,6 +450,21 @@ interface FileCommandArgs {
   trigger: RunRecord["caller"]["trigger"];
 }
 
+interface RemoteCommandArgs {
+  action: "execute" | null;
+  file: string | null;
+  out: string | null;
+  outDir: string | null;
+  pretty: boolean;
+  runId: string | null;
+  componentRef: string | null;
+  packageMetadataPath: string | null;
+  inputs: Record<string, string>;
+  outputs: Record<string, string>;
+  approvedEffects: string[];
+  trigger: RunRecord["caller"]["trigger"];
+}
+
 function parseGrammarCommandArgs(args: string[]): GrammarCommandArgs {
   const parsed: GrammarCommandArgs = {
     out: null,
@@ -673,6 +725,88 @@ function parseFileCommandArgs(args: string[]): FileCommandArgs {
   return parsed;
 }
 
+function parseRemoteCommandArgs(args: string[]): RemoteCommandArgs {
+  const parsed: RemoteCommandArgs = {
+    action: null,
+    file: null,
+    out: null,
+    outDir: null,
+    pretty: true,
+    runId: null,
+    componentRef: null,
+    packageMetadataPath: null,
+    inputs: {},
+    outputs: {},
+    approvedEffects: [],
+    trigger: "manual",
+  };
+
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    if (arg === "execute" && !parsed.action) {
+      parsed.action = "execute";
+      continue;
+    }
+    if (arg === "--out" || arg === "-o") {
+      parsed.out = args[index + 1] ?? null;
+      index += 1;
+      continue;
+    }
+    if (arg === "--out-dir") {
+      parsed.outDir = args[index + 1] ?? null;
+      index += 1;
+      continue;
+    }
+    if (arg === "--no-pretty") {
+      parsed.pretty = false;
+      continue;
+    }
+    if (arg === "--run-id") {
+      parsed.runId = args[index + 1] ?? null;
+      index += 1;
+      continue;
+    }
+    if (arg === "--component" || arg === "--component-ref") {
+      parsed.componentRef = args[index + 1] ?? null;
+      index += 1;
+      continue;
+    }
+    if (arg === "--package-metadata") {
+      parsed.packageMetadataPath = args[index + 1] ?? null;
+      index += 1;
+      continue;
+    }
+    if (arg === "--trigger") {
+      parsed.trigger = parseTrigger(args[index + 1]);
+      index += 1;
+      continue;
+    }
+    if (arg === "--approved-effect") {
+      const effect = args[index + 1];
+      if (effect) {
+        parsed.approvedEffects.push(effect);
+      }
+      index += 1;
+      continue;
+    }
+    if (arg === "--input") {
+      addKeyValue(parsed.inputs, args[index + 1]);
+      index += 1;
+      continue;
+    }
+    if (arg === "--output") {
+      addKeyValue(parsed.outputs, args[index + 1]);
+      index += 1;
+      continue;
+    }
+    if (!parsed.file && parsed.action) {
+      parsed.file = arg;
+    }
+  }
+
+  return parsed;
+}
+
 function addKeyValue(target: Record<string, string>, raw: string | undefined): void {
   if (!raw) {
     return;
@@ -716,6 +850,7 @@ Usage:
   prose plan <file.prose.md> [--input name=value] [--current-run .prose/runs/{id}] [--target-output final] [--approved-effect delivers]
   prose preflight <file.prose.md> [--format text|json]
   prose publish-check <dir|file.prose.md> [--format text|json] [--strict]
+  prose remote execute <file.prose.md> [--out-dir .openprose/remote-runs] [--run-id id] [--input name=value] [--output port=value] [--approved-effect delivers]
   prose search <dir> [--type CompanyProfile] [--effect read_external] [--kind service] [--min-quality 0.8]
   prose status [.prose/runs] [--limit 10] [--format text|json]
   prose materialize <file.prose.md> [--run-root .prose/runs] [--input name=value] [--output port=value] [--approved-effect delivers]
@@ -732,6 +867,7 @@ Commands:
   manifest     Project canonical Prose IR into a VM-readable manifest
   plan         Preview ready and blocked graph nodes without executing
   preflight    Check dependency installs and environment readiness for a program
+  remote       Execute through the hosted runtime envelope/artifact contract
   materialize  Write local RFC 005 run records from IR and fixture outputs
   package      Generate registry/package metadata from canonical source
   publish-check  Evaluate local publish readiness from package metadata
