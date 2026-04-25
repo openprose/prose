@@ -26,6 +26,7 @@ import {
 import { writeRunAttemptRecord } from "./store/attempts.js";
 import { upsertRunIndexEntry } from "./store/local.js";
 import { updateGraphNodePointer } from "./store/pointers.js";
+import { readRunRecordById } from "./store/runs.js";
 import type {
   ComponentIR,
   Diagnostic,
@@ -37,6 +38,7 @@ import type {
   RunBindingRecord,
   RunOutputRecord,
   RunRecord,
+  TypeExpressionIR,
 } from "./types.js";
 import type {
   ProviderArtifactResult,
@@ -944,22 +946,36 @@ async function inputValidationReasons(
 ): Promise<string[]> {
   const state = await providerInputState(ctx, component, recordsById);
   const ports = new Map(component.ports.requires.map((port) => [port.name, port]));
-  return state.bindings.flatMap((binding) => {
+  const reasons: string[] = [];
+
+  for (const binding of state.bindings) {
     if (binding.value === null) {
-      return [];
+      continue;
     }
     const port = ports.get(binding.port);
-    if (!port || isRunShorthand(port.type_expr, binding.value)) {
-      return [];
+    if (!port) {
+      continue;
     }
-    const schema = validateTextAgainstTypeExpression(port.type_expr, binding.value);
-    if (schema.status !== "invalid") {
-      return [];
-    }
-    return schema.diagnostics.map(
-      (diagnostic) => `Input '${component.name}.${binding.port}' failed validation: ${diagnostic.message}`,
+
+    reasons.push(
+      ...(await runReferenceValidationReasons(ctx, component, port, binding)),
     );
-  });
+
+    if (isRunShorthand(port.type_expr, binding.value)) {
+      continue;
+    }
+
+    const schema = validateTextAgainstTypeExpression(port.type_expr, binding.value);
+    if (schema.status === "invalid") {
+      reasons.push(
+        ...schema.diagnostics.map(
+          (diagnostic) => `Input '${component.name}.${binding.port}' failed validation: ${diagnostic.message}`,
+        ),
+      );
+    }
+  }
+
+  return reasons;
 }
 
 function upstreamEdgeForInput(
@@ -979,6 +995,97 @@ function upstreamEdgeForInput(
 
 function isRunShorthand(type: ComponentIR["ports"]["requires"][number]["type_expr"], value: string): boolean {
   return type.kind === "generic" && type.name === "run" && /^run:\s*\S+/.test(value.trim());
+}
+
+async function runReferenceValidationReasons(
+  ctx: RunContext,
+  component: ComponentIR,
+  port: ComponentIR["ports"]["requires"][number],
+  binding: ProviderInputBinding,
+): Promise<string[]> {
+  const expected = expectedRunTarget(port.type_expr);
+  if (!expected) {
+    return [];
+  }
+
+  const runId = binding.source_run_id ?? parseRunReference(binding.value, port.type);
+  const inputRef = `${component.name}.${port.name}`;
+  if (!runId) {
+    return [`Input '${inputRef}' must reference a materialized run id.`];
+  }
+
+  const upstream = await readRunRecordById(ctx.storeRoot, runId);
+  if (!upstream) {
+    return [`Run reference '${runId}' for input '${inputRef}' was not found in the local store.`];
+  }
+
+  const reasons: string[] = [];
+  if (upstream.status !== "succeeded") {
+    reasons.push(
+      `Run reference '${runId}' for input '${inputRef}' points at ${upstream.status} run '${upstream.component_ref}'.`,
+    );
+  }
+  if (upstream.acceptance.status !== "accepted") {
+    reasons.push(
+      `Run reference '${runId}' for input '${inputRef}' is ${upstream.acceptance.status}, not accepted.`,
+    );
+  }
+  if (
+    expected.componentRef &&
+    expected.componentRef !== "Any" &&
+    upstream.component_ref !== expected.componentRef
+  ) {
+    reasons.push(
+      `Run reference '${runId}' for input '${inputRef}' expected component '${expected.componentRef}' but found '${upstream.component_ref}'.`,
+    );
+  }
+  if (
+    expected.packageRef &&
+    upstream.component_version.package_ref !== expected.packageRef
+  ) {
+    reasons.push(
+      `Run reference '${runId}' for input '${inputRef}' expected package '${expected.packageRef}' but found '${upstream.component_version.package_ref}'.`,
+    );
+  }
+
+  return reasons;
+}
+
+function expectedRunTarget(
+  expression: TypeExpressionIR,
+): { packageRef: string | null; componentRef: string | null } | null {
+  if (expression.kind !== "generic" || expression.name !== "run") {
+    return null;
+  }
+
+  const raw = expression.args[0]?.raw?.trim();
+  if (!raw) {
+    return {
+      packageRef: null,
+      componentRef: null,
+    };
+  }
+
+  if (raw.includes("#")) {
+    const [packageRef, componentRef] = raw.split("#", 2);
+    return {
+      packageRef: packageRef || null,
+      componentRef: componentRef || null,
+    };
+  }
+
+  if (raw.includes("/")) {
+    const parts = raw.split("/");
+    return {
+      packageRef: parts.slice(0, -1).join("/") || null,
+      componentRef: parts.at(-1) || null,
+    };
+  }
+
+  return {
+    packageRef: null,
+    componentRef: raw,
+  };
 }
 
 async function writeRunRecordFile(
@@ -1227,7 +1334,25 @@ function parseRunReference(value: string | null, type: string | undefined): stri
     return null;
   }
   const match = value.trim().match(/^run:\s*(.+)$/);
-  return match?.[1]?.trim() || null;
+  if (match?.[1]?.trim()) {
+    return match[1].trim();
+  }
+
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    if (
+      parsed &&
+      typeof parsed === "object" &&
+      "run_id" in parsed &&
+      typeof parsed.run_id === "string"
+    ) {
+      return parsed.run_id;
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
 }
 
 function diagnosticsReason(diagnostics: Diagnostic[]): string | null {

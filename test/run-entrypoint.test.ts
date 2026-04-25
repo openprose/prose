@@ -160,6 +160,25 @@ describe("OpenProse run entry point", () => {
 
   test("records run-typed caller inputs as run provenance", async () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-run-ref-"));
+    await runSource(`---
+name: company-enrichment
+kind: program
+---
+
+### Ensures
+
+- \`profile\`: Markdown<CompanyProfile> - enriched company profile
+`, {
+      path: "fixtures/compiler/company-enrichment.prose.md",
+      runRoot,
+      runId: "prior-run",
+      provider: "fixture",
+      outputs: {
+        profile: "Prior enrichment profile.",
+      },
+      createdAt: "2026-04-25T00:17:00.000Z",
+    });
+
     const requests: ProviderRequest[] = [];
     const provider = recordingProvider(requests, {
       "brief-writer": { brief: "A concise brief." },
@@ -193,6 +212,84 @@ describe("OpenProse run entry point", () => {
         port: "subject",
         source_run_id: "prior-run",
       }),
+    );
+  });
+
+  test("blocks run-typed caller inputs when the referenced run is missing", async () => {
+    const runRoot = mkdtempSync(join(tmpdir(), "openprose-run-ref-missing-"));
+    let calls = 0;
+    const result = await runSource(fixture("typed-effects.prose.md"), {
+      path: "fixtures/compiler/typed-effects.prose.md",
+      runRoot,
+      runId: "missing-run-ref",
+      provider: {
+        kind: "fixture",
+        async execute() {
+          calls += 1;
+          throw new Error("provider should not run for missing run<T> references");
+        },
+      },
+      inputs: {
+        company: "Acme profile",
+        subject: "run: missing-prior-run",
+      },
+      approvedEffects: ["delivers"],
+      createdAt: "2026-04-25T00:19:00.000Z",
+    });
+
+    expect(calls).toBe(0);
+    expect(result.record.status).toBe("blocked");
+    expect(result.record.acceptance.reason).toContain(
+      "Run reference 'missing-prior-run'",
+    );
+    expect(result.record.acceptance.reason).toContain("was not found in the local store");
+  });
+
+  test("blocks run-typed caller inputs when the referenced component is incompatible", async () => {
+    const runRoot = mkdtempSync(join(tmpdir(), "openprose-run-ref-mismatch-"));
+    await runSource(`---
+name: unrelated-enrichment
+kind: program
+---
+
+### Ensures
+
+- \`profile\`: Markdown<CompanyProfile> - unrelated company profile
+`, {
+      path: "fixtures/compiler/unrelated-enrichment.prose.md",
+      runRoot,
+      runId: "wrong-prior-run",
+      provider: "fixture",
+      outputs: {
+        profile: "Wrong prior profile.",
+      },
+      createdAt: "2026-04-25T00:20:00.000Z",
+    });
+
+    let calls = 0;
+    const result = await runSource(fixture("typed-effects.prose.md"), {
+      path: "fixtures/compiler/typed-effects.prose.md",
+      runRoot,
+      runId: "mismatched-run-ref",
+      provider: {
+        kind: "fixture",
+        async execute() {
+          calls += 1;
+          throw new Error("provider should not run for incompatible run<T> references");
+        },
+      },
+      inputs: {
+        company: "Acme profile",
+        subject: "run: wrong-prior-run",
+      },
+      approvedEffects: ["delivers"],
+      createdAt: "2026-04-25T00:21:00.000Z",
+    });
+
+    expect(calls).toBe(0);
+    expect(result.record.status).toBe("blocked");
+    expect(result.record.acceptance.reason).toContain(
+      "expected component 'company-enrichment' but found 'unrelated-enrichment'",
     );
   });
 

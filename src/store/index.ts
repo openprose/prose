@@ -28,6 +28,9 @@ export {
   readGraphNodePointer,
   updateGraphNodePointer,
 } from "./pointers.js";
+export {
+  readRunRecordById,
+} from "./runs.js";
 export type {
   LocalArtifactProvenance,
   LocalArtifactRecord,
