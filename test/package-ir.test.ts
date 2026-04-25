@@ -51,6 +51,9 @@ function summarizePackageIR(ir: PackageIR) {
       })),
       labels: counts(ir.policy.labels.map((label) => label.label)),
     },
+    meta: {
+      accepted_proposals: ir.meta.accepted_proposals.map((proposal) => proposal.id),
+    },
     components: ir.components.map((component) => ({
       id: component.id,
       name: component.name,

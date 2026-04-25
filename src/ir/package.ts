@@ -5,6 +5,10 @@ import { compileSource } from "../compiler.js";
 import { collectSourceFiles } from "../files.js";
 import { sha256, stableStringify } from "../hash.js";
 import { parseContractMarkdown } from "../markdown.js";
+import {
+  acceptedMetaProposals,
+  metaProposalSemanticProjection,
+} from "../meta/proposals.js";
 import { buildRegistryRef } from "../registry.js";
 import { slugify } from "../text.js";
 import type {
@@ -12,6 +16,7 @@ import type {
   Diagnostic,
   GraphEdgeIR,
   GraphIR,
+  MetaOperationProposalIR,
   PackageHashSetIR,
   PackageIR,
   PackageIRFile,
@@ -48,9 +53,17 @@ interface SourceEntry {
   componentNames: string[];
 }
 
-export async function compilePackagePath(path: string): Promise<PackageIR> {
+export interface CompilePackageOptions {
+  proposals?: MetaOperationProposalIR[];
+}
+
+export async function compilePackagePath(
+  path: string,
+  options: CompilePackageOptions = {},
+): Promise<PackageIR> {
   const root = await resolvePackageRoot(path);
   const config = await loadPackageConfig(root);
+  const acceptedProposals = acceptedMetaProposals(options.proposals ?? []);
   const files = await collectSourceFiles(root, {
     excludeNestedPackageRoots: true,
   });
@@ -114,7 +127,7 @@ export async function compilePackagePath(path: string): Promise<PackageIR> {
   const resources = await buildPackageResources(root, config, sortedPackageFiles);
   diagnostics.push(...resources.flatMap((resource) => resource.diagnostics));
   const policy = buildPackagePolicy(components);
-  const graph = buildPackageGraph(components, diagnostics);
+  const graph = buildPackageGraph(components, diagnostics, acceptedProposals);
   const sortedDiagnostics = sortDiagnostics(diagnostics);
   const baseHashes = buildPackageHashes({
     files: sortedPackageFiles,
@@ -137,6 +150,9 @@ export async function compilePackagePath(path: string): Promise<PackageIR> {
     resources,
     dependencies: sortedDependencies,
     policy,
+    meta: {
+      accepted_proposals: acceptedProposals,
+    },
     components: components.sort(
       (a, b) => a.source.path.localeCompare(b.source.path) || a.id.localeCompare(b.id),
     ),
@@ -375,7 +391,11 @@ function buildPackageHashes(input: {
   };
 }
 
-function buildPackageGraph(components: ComponentIR[], diagnostics: Diagnostic[]): GraphIR {
+function buildPackageGraph(
+  components: ComponentIR[],
+  diagnostics: Diagnostic[],
+  acceptedProposals: MetaOperationProposalIR[],
+): GraphIR {
   const nodes = components.map((component) => ({
     id: component.id,
     component: component.id,
@@ -487,6 +507,8 @@ function buildPackageGraph(components: ComponentIR[], diagnostics: Diagnostic[])
     }
   }
 
+  applyAcceptedGraphProposals(edges, edgeKeys, components, diagnostics, acceptedProposals);
+
   return {
     nodes,
     edges: edges.sort(
@@ -497,6 +519,55 @@ function buildPackageGraph(components: ComponentIR[], diagnostics: Diagnostic[])
         a.to.port.localeCompare(b.to.port),
     ),
   };
+}
+
+function applyAcceptedGraphProposals(
+  edges: GraphEdgeIR[],
+  edgeKeys: Set<string>,
+  components: ComponentIR[],
+  diagnostics: Diagnostic[],
+  acceptedProposals: MetaOperationProposalIR[],
+): void {
+  const componentIds = new Set(components.map((component) => component.id));
+  for (const proposal of acceptedProposals) {
+    if (proposal.kind !== "intelligent_wiring" || proposal.payload.kind !== "graph_wiring") {
+      continue;
+    }
+
+    const edge = proposal.payload.edge;
+    if (!isKnownGraphEndpoint(edge.from.component, componentIds, "$caller")) {
+      diagnostics.push({
+        severity: "warning",
+        code: "invalid_accepted_wiring_proposal",
+        message: `Accepted wiring proposal '${proposal.id}' references unknown source component '${edge.from.component}'.`,
+        source_span: proposal.source_span,
+      });
+      continue;
+    }
+    if (!isKnownGraphEndpoint(edge.to.component, componentIds, "$return")) {
+      diagnostics.push({
+        severity: "warning",
+        code: "invalid_accepted_wiring_proposal",
+        message: `Accepted wiring proposal '${proposal.id}' references unknown target component '${edge.to.component}'.`,
+        source_span: proposal.source_span,
+      });
+      continue;
+    }
+
+    addEdge(edges, edgeKeys, {
+      ...edge,
+      source: "wiring",
+      reason: `Accepted meta proposal '${proposal.id}': ${edge.reason}`,
+    });
+  }
+}
+
+function isKnownGraphEndpoint(
+  component: string,
+  componentIds: Set<string>,
+  boundary: "$caller" | "$return",
+): boolean {
+  return component === boundary || componentIds.has(component);
 }
 
 function resolveCompositeExpansions(components: ComponentIR[]): void {
@@ -633,6 +704,11 @@ function packageSemanticProjection(ir: Omit<PackageIR, "semantic_hash">): unknow
     })),
     dependencies: ir.dependencies,
     policy: projectPackagePolicy(ir.policy),
+    meta: {
+      accepted_proposals: ir.meta.accepted_proposals.map(
+        metaProposalSemanticProjection,
+      ),
+    },
     components: ir.components.map((component) => ({
       id: component.id,
       name: component.name,

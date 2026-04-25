@@ -1,9 +1,9 @@
 {
   "package_ir_version": "0.1",
-  "semantic_hash": "aa6706ddad2e76be8e942f7951672ae6cda5dbe1e8cdf1e3c28ded402f8745f4",
+  "semantic_hash": "4b902272b74a260d9a46a8b680ba91f993cccf400a1ff11db26d677322b82cb8",
   "hashes": {
     "source_hash": "d81422b42d6e148c9bb4f47e59c71c7e76f8fa7edc2588941ef6e36dd66eaea6",
-    "semantic_hash": "aa6706ddad2e76be8e942f7951672ae6cda5dbe1e8cdf1e3c28ded402f8745f4",
+    "semantic_hash": "4b902272b74a260d9a46a8b680ba91f993cccf400a1ff11db26d677322b82cb8",
     "dependency_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
     "policy_hash": "97e9613b0813bb6b7924cbb82264119ef722db10a6e3c820d3fd73873b842935",
     "runtime_config_hash": "31d097fcfcf20b5aaa25db9bcda544587e3a6cacf3a17b60d0accee7db2aac8d"
@@ -197,6 +197,9 @@
       "company_private.accounts": 2,
       "revenue": 2
     }
+  },
+  "meta": {
+    "accepted_proposals": []
   },
   "components": [
     {

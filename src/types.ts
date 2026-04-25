@@ -179,6 +179,88 @@ export interface GraphIR {
   edges: GraphEdgeIR[];
 }
 
+export type MetaOperationKindIR =
+  | "intelligent_wiring"
+  | "contract_repair"
+  | "missing_metadata"
+  | "eval_generation"
+  | "failure_diagnosis";
+
+export type MetaOperationProposalStateIR = "pending" | "accepted" | "rejected";
+
+export type MetaOperationProposalPayloadIR =
+  | MetaWiringProposalPayloadIR
+  | MetaContractRepairProposalPayloadIR
+  | MetaMissingMetadataProposalPayloadIR
+  | MetaEvalGenerationProposalPayloadIR
+  | MetaFailureDiagnosisProposalPayloadIR;
+
+export interface MetaWiringProposalPayloadIR {
+  kind: "graph_wiring";
+  edge: GraphEdgeIR;
+}
+
+export interface MetaContractRepairProposalPayloadIR {
+  kind: "contract_repair";
+  component_id: string;
+  summary: string;
+  patch: string | null;
+}
+
+export interface MetaMissingMetadataProposalPayloadIR {
+  kind: "missing_metadata";
+  target: "package" | "component" | "port" | "effect" | "eval" | "example";
+  component_id: string | null;
+  field: string;
+  suggested_value: unknown;
+}
+
+export interface MetaEvalGenerationProposalPayloadIR {
+  kind: "eval_generation";
+  subject_component_id: string;
+  eval_name: string;
+  criteria: string[];
+}
+
+export interface MetaFailureDiagnosisProposalPayloadIR {
+  kind: "failure_diagnosis";
+  run_id: string | null;
+  component_id: string | null;
+  diagnosis: string;
+  suggested_next_step: string | null;
+}
+
+export interface MetaOperationEvidenceIR {
+  kind: string;
+  ref: string;
+  summary: string;
+}
+
+export interface MetaOperationDecisionIR {
+  decided_by: string;
+  decided_at: string | null;
+  reason: string;
+}
+
+export interface MetaOperationProposalIR {
+  proposal_version: "0.1";
+  id: string;
+  kind: MetaOperationKindIR;
+  state: MetaOperationProposalStateIR;
+  title: string;
+  rationale: string;
+  created_by: "agent" | "human" | "runtime";
+  created_at: string | null;
+  evidence: MetaOperationEvidenceIR[];
+  decision: MetaOperationDecisionIR | null;
+  payload: MetaOperationProposalPayloadIR;
+  source_span?: SourceSpan;
+}
+
+export interface PackageMetaIR {
+  accepted_proposals: MetaOperationProposalIR[];
+}
+
 export interface ProseIR {
   ir_version: "0.1";
   semantic_hash: string;
@@ -287,6 +369,7 @@ export interface PackageIR {
   resources: PackageResourceIR[];
   dependencies: ProseIR["package"]["dependencies"];
   policy: PackagePolicyIR;
+  meta: PackageMetaIR;
   components: ComponentIR[];
   graph: GraphIR;
   diagnostics: Diagnostic[];
