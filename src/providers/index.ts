@@ -6,6 +6,10 @@ export {
   createFixtureProvider,
 } from "./fixture.js";
 export {
+  LocalProcessProvider,
+  createLocalProcessProvider,
+} from "./local-process.js";
+export {
   deserializeProviderSessionRef,
   normalizeProviderSessionRef,
   serializeProviderSessionRef,
@@ -16,6 +20,9 @@ export type {
 export type {
   FixtureProviderOptions,
 } from "./fixture.js";
+export type {
+  LocalProcessProviderOptions,
+} from "./local-process.js";
 export type {
   ProviderArtifactResult,
   ProviderCostTelemetry,
