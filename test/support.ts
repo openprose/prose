@@ -24,6 +24,15 @@ export { buildRegistryRef, parseRegistryRef } from "../src/registry";
 export { buildArtifactManifest, executeRemoteFile } from "../src/remote";
 export { renderCatalogSearchText, searchCatalog } from "../src/search";
 export { renderStatusText, statusPath } from "../src/status";
+export {
+  initLocalStore,
+  readLocalStoreMetadata,
+  readRunIndex,
+  readStoreJsonRecord,
+  resolveLocalStoreLayout,
+  upsertRunIndexEntry,
+  writeStoreJsonRecord,
+} from "../src/store/local";
 export { renderTraceText, traceFile } from "../src/trace";
 
 export function fixture(name: string): string {

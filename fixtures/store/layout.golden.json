@@ -1,0 +1,10 @@
+{
+  "store_version": "0.1",
+  "root": "/tmp/openprose-store",
+  "runs_dir": "/tmp/openprose-store/runs",
+  "artifacts_dir": "/tmp/openprose-store/artifacts",
+  "graphs_dir": "/tmp/openprose-store/graphs",
+  "indexes_dir": "/tmp/openprose-store/indexes",
+  "meta_dir": "/tmp/openprose-store/meta",
+  "metadata_path": "/tmp/openprose-store/meta/store.json"
+}

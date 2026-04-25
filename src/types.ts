@@ -375,6 +375,42 @@ export interface PackageIR {
   diagnostics: Diagnostic[];
 }
 
+export interface LocalStoreLayout {
+  store_version: "0.1";
+  root: string;
+  runs_dir: string;
+  artifacts_dir: string;
+  graphs_dir: string;
+  indexes_dir: string;
+  meta_dir: string;
+  metadata_path: string;
+}
+
+export interface LocalStoreMetadata {
+  store_version: "0.1";
+  created_at: string;
+  updated_at: string;
+  layout: {
+    runs: "runs";
+    artifacts: "artifacts";
+    graphs: "graphs";
+    indexes: "indexes";
+    meta: "meta";
+  };
+  migrations: string[];
+}
+
+export interface LocalStoreRunIndexEntry {
+  run_id: string;
+  kind: "component" | "graph";
+  component_ref: string;
+  status: RunLifecycleStatus;
+  acceptance: RunAcceptanceStatus;
+  created_at: string;
+  completed_at: string | null;
+  record_ref: string;
+}
+
 export type RunLifecycleStatus =
   | "pending"
   | "running"
@@ -382,6 +418,8 @@ export type RunLifecycleStatus =
   | "failed"
   | "cancelled"
   | "blocked";
+
+export type RunAcceptanceStatus = "accepted" | "rejected" | "pending" | "not_required";
 
 export interface RunBindingRecord {
   port: string;
@@ -443,7 +481,7 @@ export interface RunRecord {
   outputs: RunOutputRecord[];
   evals: RunEvalRecord[];
   acceptance: {
-    status: "accepted" | "rejected" | "pending" | "not_required";
+    status: RunAcceptanceStatus;
     reason: string | null;
   };
   trace_ref: string;
