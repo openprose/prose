@@ -1,5 +1,6 @@
 import { stat, writeFile } from "node:fs/promises";
 import { compileFile } from "./compiler";
+import { executeEvalFile } from "./eval/index.js";
 import { formatFile, formatPath, renderFormatCheckText } from "./format";
 import { renderTextMateGrammar } from "./grammar";
 import { graphFile, renderGraphMermaid } from "./graph";
@@ -30,6 +31,7 @@ export async function runCli(args: string[]): Promise<void> {
 
   if (
     command !== "compile" &&
+    command !== "eval" &&
     command !== "fmt" &&
     command !== "grammar" &&
     command !== "graph" &&
@@ -90,6 +92,55 @@ export async function runCli(args: string[]): Promise<void> {
       process.stdout.write(output);
     }
     if (result.record.status !== "succeeded") {
+      process.exitCode = 1;
+    }
+    return;
+  }
+
+  if (command === "eval") {
+    const options = parseFileCommandArgs(rest);
+    if (!options.file) {
+      console.error("Missing eval file path.");
+      process.exitCode = 1;
+      return;
+    }
+    if (!options.subjectRunPath) {
+      console.error("Missing subject run path. Use --subject-run <run-dir|run.json>.");
+      process.exitCode = 1;
+      return;
+    }
+
+    try {
+      const result = await executeEvalFile(options.file, options.subjectRunPath, {
+        runRoot: options.runRoot ?? undefined,
+        runId: options.runId ?? undefined,
+        inputs: options.inputs,
+        outputs: options.outputs,
+        approvedEffects: options.approvedEffects,
+        trigger: options.trigger,
+        provider: options.provider ?? undefined,
+      });
+      const summary = {
+        eval_id: result.eval_record.eval_id,
+        eval_ref: result.eval_record.eval_ref,
+        subject_run_id: result.eval_record.subject_run_id,
+        eval_run_id: result.eval_record.eval_run_id,
+        status: result.eval_record.status,
+        score: result.eval_record.score,
+        verdict: result.eval_record.verdict,
+        record_path: result.record_path,
+      };
+      const output = `${JSON.stringify(summary, null, options.pretty ? 2 : 0)}\n`;
+      if (options.out) {
+        await writeFile(options.out, output, "utf8");
+      } else {
+        process.stdout.write(output);
+      }
+      if (result.eval_record.status === "failed" && result.eval_record.required) {
+        process.exitCode = 1;
+      }
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : String(error));
       process.exitCode = 1;
     }
     return;
@@ -509,6 +560,7 @@ interface StatusCommandArgs {
 
 interface FileCommandArgs {
   file: string | null;
+  subjectRunPath: string | null;
   out: string | null;
   pretty: boolean;
   runRoot: string | null;
@@ -664,6 +716,7 @@ function parseStatusCommandArgs(args: string[]): StatusCommandArgs {
 function parseFileCommandArgs(args: string[]): FileCommandArgs {
   const parsed: FileCommandArgs = {
     file: null,
+    subjectRunPath: null,
     out: null,
     pretty: true,
     runRoot: null,
@@ -752,6 +805,11 @@ function parseFileCommandArgs(args: string[]): FileCommandArgs {
     }
     if (arg === "--current-run") {
       parsed.currentRunPath = args[index + 1] ?? null;
+      index += 1;
+      continue;
+    }
+    if (arg === "--subject-run" || arg === "--subject") {
+      parsed.subjectRunPath = args[index + 1] ?? null;
       index += 1;
       continue;
     }
@@ -935,6 +993,7 @@ function printHelp(): void {
 
 Usage:
   prose compile <file.prose.md|dir> [--out ir.json] [--no-pretty]
+  prose eval <eval.prose.md> --subject-run .prose/runs/{id} [--provider fixture] [--output result='{"passed":true,"score":0.9}']
   prose fmt <file.prose.md|dir> [--write|--check]
   prose grammar [--out syntaxes/openprose.tmLanguage.json] [--no-pretty]
   prose install [registry-ref|path] [--catalog-root dir] [--workspace-root dir] [--deps-root dir] [--refresh] [--source-override package=path]
@@ -955,6 +1014,7 @@ Usage:
 
 Commands:
   compile      Compile Contract Markdown to canonical Prose IR JSON
+  eval         Execute an eval contract against a materialized subject run
   fmt          Rewrite supported Contract Markdown into canonical source order
   grammar      Emit an editor-facing TextMate grammar artifact
   graph        Render an IR-native graph preview with optional plan overlay

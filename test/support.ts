@@ -7,6 +7,12 @@ export { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 export { tmpdir } from "node:os";
 export { join } from "node:path";
 export { compileSource } from "../src/compiler";
+export {
+  discoverPackageEvals,
+  executeEvalFile,
+  executeEvalSource,
+  readEvalResultRecords,
+} from "../src/eval";
 export { formatPath, formatSource, renderFormatCheckText } from "../src/format";
 export { buildTextMateGrammar, renderTextMateGrammar } from "../src/grammar";
 export { graphSource, renderGraphMermaid } from "../src/graph";
@@ -22,6 +28,7 @@ export { preflightPath, renderPreflightText } from "../src/preflight";
 export { publishCheckPath, renderPublishCheckText } from "../src/publish";
 export { buildRegistryRef, parseRegistryRef } from "../src/registry";
 export { buildArtifactManifest, executeRemoteFile } from "../src/remote";
+export { runSource } from "../src/run";
 export { renderCatalogSearchText, searchCatalog } from "../src/search";
 export { renderStatusText, statusPath } from "../src/status";
 export {

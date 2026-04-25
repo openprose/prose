@@ -528,6 +528,23 @@ export interface RunEvalRecord {
   eval_ref: string;
   required: boolean;
   status: "passed" | "failed" | "skipped" | "pending";
+  eval_run_id?: string;
+  score?: number | null;
+}
+
+export interface LocalEvalResultRecord {
+  eval_record_version: "0.1";
+  eval_id: string;
+  eval_ref: string;
+  subject_run_id: string;
+  eval_run_id: string;
+  required: boolean;
+  status: RunEvalRecord["status"];
+  score: number | null;
+  verdict: string | null;
+  output_refs: RunOutputRecord[];
+  diagnostics: Diagnostic[];
+  created_at: string;
 }
 
 export interface RunPolicyDeclassificationRecord {
