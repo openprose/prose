@@ -419,21 +419,29 @@ provenance, events, bindings, memory artifacts, or graph-node input updates.
 - Make every intelligent meta-operation automatic.
 - Require all providers to support every advanced runtime feature at once.
 
-## Open Decisions For The Next Planning Pass
+## Decisions Carried Into The Phase Plan
 
-These decisions should be resolved before slicing implementation:
+The recursive phase plan resolves the initial slicing questions this way:
 
-1. Which provider should be the first real OSS harness provider: OpenCode, Pi,
-   Codex CLI, Claude Code, or a minimal local process provider?
-2. Should `prose run` default to fixture mode until a real provider is
-   configured, or should it require an explicit provider?
-3. What exact on-disk shape should the local run store use?
-4. What type/schema representation should be canonical: JSON Schema, TypeBox,
-   Zod-like schemas, or a small OpenProse schema IR that can emit JSON Schema?
-5. How should accepted intelligent wiring proposals be represented in source
-   versus lock/state files?
-6. Which std controls must be executable in v1, and which should be demoted to
-   documented patterns until the control IR supports them?
+1. The Pi SDK is the default first real OSS harness provider because it is
+   TypeScript-native and should fit the package without crossing language
+   boundaries. The provider protocol must still keep Pi as an adapter, not the
+   core architecture.
+2. `fixture` remains the deterministic test provider. `prose run` should use it
+   only when explicitly selected or when fixture execution is clearly requested.
+3. The local run store is a first-class phase, with immutable runs, artifacts,
+   graph-node pointers, attempts, indexes, and migration metadata.
+4. Type/schema work should bias toward a small OpenProse schema IR that can emit
+   JSON Schema for interop rather than binding authoring semantics to one
+   TypeScript schema library.
+5. Intelligent wiring and repair should produce proposal records. Accepted
+   proposals become deterministic runtime inputs; pending and rejected proposals
+   remain outside source unless explicitly applied.
+6. Std controls must either compile into executable control IR or be demoted to
+   documented patterns until the runtime supports them.
+
+Remaining open decisions should be resolved inside the relevant phase docs as
+implementation reality appears, then signposted before the slice is committed.
 
 ## Initial Validation Plan
 
@@ -466,3 +474,21 @@ Each future implementation slice should:
 
 The current RFC only sets the high-level restructure target. It should be
 expanded recursively before large implementation begins.
+
+## Implementation Plan
+
+The recursive implementation plan now lives in
+[`phases/README.md`](phases/README.md). That plan is the working map for
+turning this RFC into the ideal OSS runtime.
+
+Use it as the source of truth for:
+
+- phase order
+- sub-phase boundaries
+- validation and backpressure checks
+- commit expectations
+- signpost expectations
+- where to record implementation notes as the runtime evolves
+
+Every implementation slice should end with a signpost in
+[`signposts/`](signposts/) before the next slice begins.
