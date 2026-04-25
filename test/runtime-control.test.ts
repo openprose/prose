@@ -4,6 +4,7 @@ import {
   expect,
   fixture,
   join,
+  listGraphNodePointers,
   listRunAttemptRecords,
   mkdtempSync,
   test,
@@ -36,6 +37,17 @@ describe("OpenProse runtime controls", () => {
     });
     expect(first.record.status).toBe("failed");
     expect(calls).toEqual(["review", "fact-check", "polish"]);
+    const failedPointers = await listGraphNodePointers(
+      join(runRoot, ".prose-store"),
+      "retry-original",
+    );
+    expect(
+      failedPointers.find((pointer) => pointer.node_id === "polish"),
+    ).toMatchObject({
+      current_run_id: null,
+      failed_run_id: "retry-original:polish",
+      latest_run_id: "retry-original:polish",
+    });
 
     calls.length = 0;
     failPolish = false;

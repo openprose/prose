@@ -583,7 +583,8 @@ async function assembleGraphRunRecord(
   const blockedNodes = records.filter(
     (record) => record.status !== "succeeded" && record.status !== "failed",
   );
-  const missingOutputs = main.ports.ensures
+  const graphPorts = requestedGraphPorts(ctx, main);
+  const missingOutputs = graphPorts
     .filter((port) => !findGraphOutputSource(ctx, port.name, nodeRecordsById))
     .map((port) => `Missing graph output '${port.name}'.`);
   const reasons = [
@@ -597,7 +598,7 @@ async function assembleGraphRunRecord(
       ? "blocked"
       : "succeeded";
   const outputs = status === "succeeded"
-    ? await writeGraphOutputArtifacts(ctx, main, nodeRecordsById)
+    ? await writeGraphOutputArtifacts(ctx, graphPorts, nodeRecordsById)
     : [];
 
   return {
@@ -632,11 +633,11 @@ async function assembleGraphRunRecord(
 
 async function writeGraphOutputArtifacts(
   ctx: RunContext,
-  main: ComponentIR,
+  ports: ComponentIR["ports"]["ensures"],
   nodeRecordsById: Map<string, RunRecord>,
 ): Promise<RunOutputRecord[]> {
   const outputs: RunOutputRecord[] = [];
-  for (const port of main.ports.ensures) {
+  for (const port of ports) {
     const source = findGraphOutputSource(ctx, port.name, nodeRecordsById);
     if (!source) {
       continue;
@@ -672,6 +673,14 @@ function findGraphOutputSource(
     (candidate) => candidate.port === edge.from.port,
   );
   return record && output ? { record, output } : null;
+}
+
+function requestedGraphPorts(
+  ctx: RunContext,
+  main: ComponentIR,
+): ComponentIR["ports"]["ensures"] {
+  const requested = new Set(ctx.plan.requested_outputs);
+  return main.ports.ensures.filter((port) => requested.has(port.name));
 }
 
 async function writeGraphStoreRecords(
@@ -1051,6 +1060,9 @@ async function writeGraphTrace(
       at: ctx.createdAt,
       ir_hash: ctx.ir.semantic_hash,
       planned_nodes: ctx.plan.materialization_set.nodes,
+      skipped_nodes: ctx.plan.nodes
+        .filter((node) => node.status === "skipped")
+        .map((node) => node.component_ref),
     },
     ...nodeRecords.map((node) => ({
       event: "node.finished",

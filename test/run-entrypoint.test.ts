@@ -195,6 +195,32 @@ describe("OpenProse run entry point", () => {
     );
   });
 
+  test("assembles targeted graph runs from only requested outputs", async () => {
+    const runRoot = mkdtempSync(join(tmpdir(), "openprose-run-targeted-"));
+    const result = await runSource(fixture("selective-recompute.prose.md"), {
+      path: "fixtures/compiler/selective-recompute.prose.md",
+      runRoot,
+      runId: "targeted-run",
+      provider: "fixture",
+      inputs: {
+        draft: "A stable draft.",
+        company: "openprose",
+      },
+      outputs: {
+        "summarize.summary": "Stable summary.",
+      },
+      targetOutputs: ["summary"],
+      createdAt: "2026-04-25T00:35:00.000Z",
+    });
+
+    expect(result.record.status).toBe("succeeded");
+    expect(result.record.outputs.map((output) => output.port)).toEqual(["summary"]);
+    expect(result.node_records.map((record) => record.component_ref)).toEqual(["summarize"]);
+    expect(readFileSync(join(result.run_dir, "bindings", "$graph", "summary.md"), "utf8")).toBe(
+      "Stable summary.\n",
+    );
+  });
+
   test("pauses effecting graphs with a resumable human gate before provider calls", async () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-run-gate-"));
     const sourcePath = join(import.meta.dir, "..", "examples", "approval-gated-release.prose.md");
