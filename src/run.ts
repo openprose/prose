@@ -6,6 +6,13 @@ import { sha256 } from "./hash.js";
 import { projectManifest } from "./manifest.js";
 import { loadCurrentRunSet, planSource, type CurrentRunSet } from "./plan.js";
 import {
+  approvedEffectsFromRecords,
+  createLocalEffectApprovalRecord,
+  deniedEffectsFromRecords,
+  loadEffectApprovalRecords,
+  type EffectApprovalRecord,
+} from "./policy/index.js";
+import {
   createFixtureProvider,
   serializeProviderSessionRef,
   writeProviderArtifactRecords,
@@ -46,6 +53,8 @@ export interface RunOptions {
   inputs?: Record<string, string>;
   outputs?: Record<string, string>;
   approvedEffects?: string[];
+  approvalRecords?: EffectApprovalRecord[];
+  approvalPaths?: string[];
   trigger?: RunRecord["caller"]["trigger"];
   provider?: ProviderKind | RuntimeProvider;
   currentRun?: CurrentRunSet;
@@ -71,6 +80,8 @@ interface RunContext {
   inputs: Record<string, string>;
   outputs: Record<string, string>;
   approvedEffects: string[];
+  approvalRecords: EffectApprovalRecord[];
+  deniedEffects: string[];
   trigger: RunRecord["caller"]["trigger"];
   currentRun: CurrentRunSet;
 }
@@ -88,20 +99,23 @@ export async function runSource(
   options: RunOptions & { path: string },
 ): Promise<OpenProseRunResult> {
   const ir = compileSource(source, { path: options.path });
+  const createdAt = options.createdAt ?? new Date().toISOString();
+  const runId = options.runId ?? createRunId(createdAt);
+  const runRoot = options.runRoot ?? ".prose/runs";
+  const runDir = join(runRoot, runId);
+  const approvalRecords = await resolveApprovalRecords(options, runId, createdAt);
+  const approvedEffects = approvedEffectsFromRecords(approvalRecords, new Date(createdAt));
+  const deniedEffects = deniedEffectsFromRecords(approvalRecords);
   const currentRun = options.currentRunPath
     ? await loadCurrentRunSet(options.currentRunPath)
     : options.currentRun ?? { graph: null, nodes: [] };
   const plan = planSource(source, {
     path: options.path,
     inputs: options.inputs,
-    approvedEffects: options.approvedEffects,
+    approvedEffects,
     currentRun,
     targetOutputs: options.targetOutputs,
   });
-  const createdAt = options.createdAt ?? new Date().toISOString();
-  const runId = options.runId ?? createRunId(createdAt);
-  const runRoot = options.runRoot ?? ".prose/runs";
-  const runDir = join(runRoot, runId);
 
   if (plan.status === "current") {
     const current = currentRun.graph ?? currentRun.nodes[0] ?? null;
@@ -129,7 +143,9 @@ export async function runSource(
     createdAt,
     inputs: options.inputs ?? {},
     outputs: options.outputs ?? {},
-    approvedEffects: normalizeList(options.approvedEffects),
+    approvedEffects,
+    approvalRecords,
+    deniedEffects,
     trigger: options.trigger ?? "manual",
     currentRun,
   };
@@ -138,6 +154,12 @@ export async function runSource(
   await writeFile(join(runDir, "ir.json"), `${JSON.stringify(ir, null, 2)}\n`);
   await writeFile(join(runDir, "manifest.md"), projectManifest(ir));
   await writeFile(join(runDir, "plan.json"), `${JSON.stringify(plan, null, 2)}\n`);
+  if (approvalRecords.length > 0) {
+    await writeFile(
+      join(runDir, "approvals.json"),
+      `${JSON.stringify(approvalRecords, null, 2)}\n`,
+    );
+  }
 
   const executable = executableComponents(ir);
   if (executable.length > 1) {
@@ -161,7 +183,7 @@ export async function runSource(
 
   const component = executable[0];
   if (plan.status === "blocked") {
-    const record = await writeBlockedRun(ctx, component, blockedPlanReasons(plan));
+    const record = await writeBlockedRun(ctx, component, blockedPlanReasons(plan, ctx));
     return {
       run_id: runId,
       run_dir: runDir,
@@ -212,7 +234,7 @@ async function executeGraphRun(
     const record = await writeBlockedRun(
       ctx,
       main,
-      blockedPlanReasons(ctx.plan),
+      blockedPlanReasons(ctx.plan, ctx),
       { kind: "graph" },
     );
     return {
@@ -917,7 +939,21 @@ async function writeBlockedAttemptRecord(
       message: record.acceptance.reason ?? "Run blocked.",
       retryable: false,
     },
+    resume: resumePointForBlockedRecord(record),
   });
+}
+
+function resumePointForBlockedRecord(record: RunRecord) {
+  const gated = record.effects.declared.some(
+    (effect) => effect !== "pure" && effect !== "read_external",
+  );
+  if (!gated) {
+    return null;
+  }
+  return {
+    checkpoint_ref: "plan.json",
+    reason: record.acceptance.reason,
+  };
 }
 
 async function indexRunRecord(
@@ -1091,8 +1127,11 @@ function diagnosticsReason(diagnostics: Diagnostic[]): string | null {
     : null;
 }
 
-function blockedPlanReasons(plan: ExecutionPlan): string[] {
+function blockedPlanReasons(plan: ExecutionPlan, ctx?: RunContext): string[] {
   const reasons = [
+    ...(ctx?.deniedEffects ?? []).map(
+      (effect) => `Effect approval denied for '${effect}'.`,
+    ),
     ...plan.graph_blocked_reasons,
     ...plan.nodes.flatMap((node) => node.blocked_reasons),
   ];
@@ -1113,6 +1152,28 @@ function recordDiagnostics(record: RunRecord): Diagnostic[] {
 
 function hasFixtureOutputs(outputs: Record<string, string> | undefined): boolean {
   return Object.keys(outputs ?? {}).length > 0;
+}
+
+async function resolveApprovalRecords(
+  options: RunOptions,
+  runId: string,
+  createdAt: string,
+): Promise<EffectApprovalRecord[]> {
+  const explicit = [
+    ...(options.approvalRecords ?? []),
+    ...(await loadEffectApprovalRecords(options.approvalPaths ?? [])),
+  ];
+  const existingEffects = new Set(explicit.flatMap((record) => record.effects));
+  const local = normalizeList(options.approvedEffects)
+    .filter((effect) => !existingEffects.has(effect))
+    .map((effect) =>
+      createLocalEffectApprovalRecord({
+        runId,
+        effect,
+        createdAt,
+      }),
+    );
+  return [...explicit, ...local];
 }
 
 function normalizeList(values: string[] | undefined): string[] {

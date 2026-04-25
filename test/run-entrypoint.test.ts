@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import {
   describe,
   expect,
@@ -193,6 +193,112 @@ describe("OpenProse run entry point", () => {
         source_run_id: "prior-run",
       }),
     );
+  });
+
+  test("pauses effecting graphs with a resumable human gate before provider calls", async () => {
+    const runRoot = mkdtempSync(join(tmpdir(), "openprose-run-gate-"));
+    const sourcePath = join(import.meta.dir, "..", "examples", "approval-gated-release.prose.md");
+    let calls = 0;
+    const result = await runSource(readFileSync(sourcePath, "utf8"), {
+      path: sourcePath,
+      runRoot,
+      runId: "gate-required",
+      provider: {
+        kind: "fixture",
+        async execute() {
+          calls += 1;
+          throw new Error("provider should not be called without approvals");
+        },
+      },
+      inputs: {
+        release_candidate: "v1.2.3",
+      },
+      createdAt: "2026-04-25T00:40:00.000Z",
+    });
+
+    expect(calls).toBe(0);
+    expect(result.record.status).toBe("blocked");
+    expect(result.record.acceptance.reason).toContain("Graph effect 'human_gate'");
+    const attempts = await listRunAttemptRecords(join(runRoot, ".prose-store"), "gate-required");
+    expect(attempts[0]?.resume).toEqual({
+      checkpoint_ref: "plan.json",
+      reason: result.record.acceptance.reason,
+    });
+  });
+
+  test("approval records unblock effects and are persisted with the run", async () => {
+    const runRoot = mkdtempSync(join(tmpdir(), "openprose-run-approved-"));
+    const sourcePath = join(import.meta.dir, "..", "examples", "approval-gated-release.prose.md");
+    const requests: ProviderRequest[] = [];
+    const result = await runSource(readFileSync(sourcePath, "utf8"), {
+      path: sourcePath,
+      runRoot,
+      runId: "gate-approved",
+      provider: recordingProvider(requests, {
+        "qa-check": { qa_report: "QA passed." },
+        "release-note-writer": { release_summary: "Release summary." },
+        "announce-release": { delivery_receipt: "Delivered to releases." },
+      }),
+      inputs: {
+        release_candidate: "v1.2.3",
+      },
+      approvedEffects: ["human_gate", "delivers"],
+      createdAt: "2026-04-25T00:45:00.000Z",
+    });
+
+    expect(result.record.status).toBe("succeeded");
+    expect(
+      requests.find((request) => request.component.name === "announce-release")?.approved_effects,
+    ).toEqual(["delivers", "human_gate"]);
+    const approvals = JSON.parse(
+      readFileSync(join(result.run_dir, "approvals.json"), "utf8"),
+    );
+    expect(approvals.map((approval: { effects: string[] }) => approval.effects[0]).sort()).toEqual([
+      "delivers",
+      "human_gate",
+    ]);
+  });
+
+  test("denied approval records keep effects blocked", async () => {
+    const runRoot = mkdtempSync(join(tmpdir(), "openprose-run-denied-"));
+    const sourcePath = join(import.meta.dir, "..", "examples", "approval-gated-release.prose.md");
+    const approvalPath = join(runRoot, "denied-approval.json");
+    writeFileSync(
+      approvalPath,
+      `${JSON.stringify({
+        approval_record_version: "0.1",
+        approval_id: "deny-delivery",
+        status: "denied",
+        effects: ["delivers"],
+        principal_id: "release-manager",
+        reason: "Release is not ready.",
+        approved_at: "2026-04-25T00:50:00.000Z",
+        expires_at: null,
+        run_id: "gate-denied",
+        component_ref: null,
+      }, null, 2)}\n`,
+    );
+
+    const result = await runSource(readFileSync(sourcePath, "utf8"), {
+      path: sourcePath,
+      runRoot,
+      runId: "gate-denied",
+      provider: "fixture",
+      inputs: {
+        release_candidate: "v1.2.3",
+      },
+      outputs: {
+        "qa-check.qa_report": "QA passed.",
+        "release-note-writer.release_summary": "Release summary.",
+        "announce-release.delivery_receipt": "Delivered to releases.",
+      },
+      approvedEffects: ["human_gate", "delivers"],
+      approvalPaths: [approvalPath],
+      createdAt: "2026-04-25T00:50:00.000Z",
+    });
+
+    expect(result.record.status).toBe("blocked");
+    expect(result.record.acceptance.reason).toContain("Effect approval denied for 'delivers'.");
   });
 
   test("blocks graph execution before provider calls when caller input is missing", async () => {
