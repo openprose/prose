@@ -443,6 +443,18 @@ export interface LocalArtifactRecord {
   created_at: string;
 }
 
+export interface LocalGraphNodePointer {
+  pointer_version: "0.1";
+  graph_id: string;
+  node_id: string;
+  component_ref: string;
+  current_run_id: string | null;
+  latest_run_id: string | null;
+  failed_run_id: string | null;
+  pending_run_id: string | null;
+  updated_at: string;
+}
+
 export type RunLifecycleStatus =
   | "pending"
   | "running"

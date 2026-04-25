@@ -18,11 +18,17 @@ export {
   upsertRunIndexEntry,
   writeStoreJsonRecord,
 } from "./local.js";
+export {
+  listGraphNodePointers,
+  readGraphNodePointer,
+  updateGraphNodePointer,
+} from "./pointers.js";
 export type {
   LocalArtifactProvenance,
   LocalArtifactRecord,
   LocalArtifactSchemaStatus,
   LocalArtifactStorage,
+  LocalGraphNodePointer,
   LocalStoreLayout,
   LocalStoreMetadata,
   LocalStoreRunIndexEntry,

@@ -1,6 +1,12 @@
 import { readdir, readFile, stat } from "node:fs/promises";
-import { basename, dirname, resolve } from "node:path";
-import type { RunRecord, RunStatusEntry, RunStatusView } from "./types";
+import { basename, dirname, join, resolve } from "node:path";
+import { readLocalStoreMetadata, readRunIndex } from "./store/local.js";
+import type {
+  LocalStoreRunIndexEntry,
+  RunRecord,
+  RunStatusEntry,
+  RunStatusView,
+} from "./types";
 
 export interface StatusOptions {
   limit?: number;
@@ -14,6 +20,13 @@ export async function statusPath(
   const resolved = resolve(path);
   const info = await stat(resolved);
   const limit = normalizeLimit(options.limit);
+
+  if (info.isDirectory() && (await readLocalStoreMetadata(resolved))) {
+    const entries = (await readRunIndex(resolved)).map((entry) =>
+      statusEntryFromStoreIndex(resolved, entry),
+    );
+    return buildStatusView(resolved, limit ? entries.slice(0, limit) : entries);
+  }
 
   if (!info.isDirectory()) {
     const entry = await loadRunEntry(dirname(resolved));
@@ -119,6 +132,24 @@ function buildStatusView(root: string, runs: RunStatusEntry[]): RunStatusView {
     root: root.replace(/\\/g, "/"),
     total: runs.length,
     runs,
+  };
+}
+
+function statusEntryFromStoreIndex(
+  root: string,
+  entry: LocalStoreRunIndexEntry,
+): RunStatusEntry {
+  return {
+    run_id: entry.run_id,
+    component_ref: entry.component_ref,
+    kind: entry.kind,
+    status: entry.status,
+    acceptance: entry.acceptance,
+    created_at: entry.created_at,
+    completed_at: entry.completed_at,
+    outputs: [],
+    node_count: 0,
+    run_dir: join(root, entry.record_ref).replace(/\\/g, "/"),
   };
 }
 
