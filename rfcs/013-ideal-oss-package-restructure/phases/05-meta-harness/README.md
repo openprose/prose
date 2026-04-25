@@ -24,7 +24,7 @@ Commit:
 
 Signpost:
 
-- Add `signposts/020-prose-run-entrypoint.md` with CLI examples and provider
+- Add `signposts/021-prose-run-entrypoint.md` with CLI examples and provider
   defaults.
 
 ## 05.2 Execute Nodes In Dependency Order
@@ -48,7 +48,7 @@ Commit:
 
 Signpost:
 
-- Add `signposts/021-dependency-executor.md` with scheduling rules and edge
+- Add `signposts/022-dependency-executor.md` with scheduling rules and edge
   cases.
 
 ## 05.3 Propagate Upstream Runs And Outputs Downstream
@@ -73,7 +73,7 @@ Commit:
 
 Signpost:
 
-- Add `signposts/022-upstream-binding.md` with binding examples and failure
+- Add `signposts/023-upstream-binding.md` with binding examples and failure
   modes.
 
 ## 05.4 Enforce Effect Gates Before Provider Calls
@@ -97,7 +97,7 @@ Commit:
 
 Signpost:
 
-- Add `signposts/023-effect-gates.md` with approval record shape and resume
+- Add `signposts/024-effect-gates.md` with approval record shape and resume
   behavior.
 
 ## 05.5 Add Retry, Cancel, And Resume Semantics
@@ -120,7 +120,7 @@ Commit:
 
 Signpost:
 
-- Add `signposts/024-runtime-control.md` with command examples and known
+- Add `signposts/025-runtime-control.md` with command examples and known
   limitations.
 
 ## 05.6 Assemble Graph Runs And Update Current Pointers
@@ -145,7 +145,7 @@ Commit:
 
 Signpost:
 
-- Add `signposts/025-graph-run-assembly.md` with acceptance rules and examples.
+- Add `signposts/026-graph-run-assembly.md` with acceptance rules and examples.
 
 ## Phase Exit Criteria
 

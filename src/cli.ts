@@ -14,6 +14,7 @@ import { planFile } from "./plan";
 import { preflightPath, renderPreflightText } from "./preflight";
 import { publishCheckPath, renderPublishCheckText } from "./publish";
 import { executeRemoteFile } from "./remote";
+import { runFile } from "./run";
 import { renderCatalogSearchText, searchCatalog } from "./search";
 import { renderStatusText, statusPath } from "./status";
 import { renderTraceText, traceFile } from "./trace";
@@ -41,6 +42,7 @@ export async function runCli(args: string[]): Promise<void> {
     command !== "preflight" &&
     command !== "publish-check" &&
     command !== "remote" &&
+    command !== "run" &&
     command !== "search" &&
     command !== "status" &&
     command !== "trace" &&
@@ -123,6 +125,48 @@ export async function runCli(args: string[]): Promise<void> {
       process.stdout.write(output);
     }
     if (envelope.status !== "succeeded") {
+      process.exitCode = 1;
+    }
+    return;
+  }
+
+  if (command === "run") {
+    const options = parseFileCommandArgs(rest);
+    if (!options.file) {
+      console.error("Missing file path.");
+      process.exitCode = 1;
+      return;
+    }
+
+    try {
+      const result = await runFile(options.file, {
+        runRoot: options.runRoot ?? undefined,
+        runId: options.runId ?? undefined,
+        inputs: options.inputs,
+        outputs: options.outputs,
+        approvedEffects: options.approvedEffects,
+        trigger: options.trigger,
+        provider: options.provider ?? undefined,
+      });
+      const summary = {
+        run_id: result.run_id,
+        run_dir: result.run_dir,
+        status: result.record.status,
+        provider: result.provider,
+        plan_status: result.plan.status,
+        outputs: result.record.outputs.map((output) => output.port),
+      };
+      const output = `${JSON.stringify(summary, null, options.pretty ? 2 : 0)}\n`;
+      if (options.out) {
+        await writeFile(options.out, output, "utf8");
+      } else {
+        process.stdout.write(output);
+      }
+      if (result.record.status !== "succeeded") {
+        process.exitCode = 1;
+      }
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : String(error));
       process.exitCode = 1;
     }
     return;
@@ -480,6 +524,7 @@ interface FileCommandArgs {
   outputs: Record<string, string>;
   approvedEffects: string[];
   trigger: RunRecord["caller"]["trigger"];
+  provider: string | null;
 }
 
 interface RemoteCommandArgs {
@@ -633,6 +678,7 @@ function parseFileCommandArgs(args: string[]): FileCommandArgs {
     outputs: {},
     approvedEffects: [],
     trigger: "manual",
+    provider: null,
   };
 
   for (let index = 0; index < args.length; index += 1) {
@@ -736,6 +782,11 @@ function parseFileCommandArgs(args: string[]): FileCommandArgs {
     if (arg === "--trigger") {
       const value = args[index + 1];
       parsed.trigger = parseTrigger(value);
+      index += 1;
+      continue;
+    }
+    if (arg === "--provider") {
+      parsed.provider = args[index + 1] ?? null;
       index += 1;
       continue;
     }
@@ -880,6 +931,7 @@ Usage:
   prose highlight <file.prose.md> [--format text|json|html]
   prose lint <file.prose.md|dir> [--format text|json]
   prose plan <file.prose.md> [--input name=value] [--current-run .prose/runs/{id}] [--target-output final] [--approved-effect delivers]
+  prose run <file.prose.md> [--provider fixture] [--run-root .prose/runs] [--input name=value] [--output port=value] [--approved-effect delivers]
   prose preflight <file.prose.md> [--format text|json]
   prose publish-check <dir|file.prose.md> [--format text|json] [--strict]
   prose remote execute <file.prose.md> [--out-dir .openprose/remote-runs] [--run-id id] [--input name=value] [--output port=value] [--approved-effect delivers]
@@ -900,6 +952,7 @@ Commands:
   plan         Preview ready and blocked graph nodes without executing
   preflight    Check dependency installs and environment readiness for a program
   remote       Execute through the hosted runtime envelope/artifact contract
+  run          Execute an OpenProse contract through the local meta-harness
   fixture      Run deterministic fixture-only development commands
   package      Generate registry/package metadata from canonical source
   publish-check  Evaluate local publish readiness from package metadata
