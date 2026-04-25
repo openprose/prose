@@ -10,7 +10,11 @@ import {
   serializeProviderSessionRef,
   writeProviderArtifactRecords,
 } from "./providers/index.js";
-import { writeLocalArtifactRecord } from "./store/artifacts.js";
+import {
+  readArtifactRecordForOutput,
+  readLocalArtifactContent,
+  writeLocalArtifactRecord,
+} from "./store/artifacts.js";
 import { writeRunAttemptRecord } from "./store/attempts.js";
 import { upsertRunIndexEntry } from "./store/local.js";
 import { updateGraphNodePointer } from "./store/pointers.js";
@@ -18,6 +22,7 @@ import type {
   ComponentIR,
   Diagnostic,
   ExecutionPlan,
+  LocalArtifactRecord,
   MaterializedRun,
   ProseIR,
   RunBindingRecord,
@@ -26,6 +31,7 @@ import type {
 } from "./types.js";
 import type {
   ProviderArtifactResult,
+  ProviderInputBinding,
   ProviderKind,
   ProviderRequest,
   ProviderResult,
@@ -167,7 +173,7 @@ export async function runSource(
     };
   }
 
-  const request = createProviderRequest(ctx, component);
+  const request = await createProviderRequest(ctx, component);
   const providerResult = await ctx.provider.execute(request);
   const record = await materializeProviderResult(ctx, component, providerResult);
 
@@ -288,7 +294,26 @@ async function executeGraphRun(
     }
 
     const runId = nodeRunId(ctx, component);
-    const request = createProviderRequest(ctx, component, runId);
+    const missingUpstream = missingUpstreamOutputReasons(ctx, component, nodeRecordsById);
+    if (missingUpstream.length > 0) {
+      const record = await writeBlockedRun(
+        ctx,
+        component,
+        missingUpstream,
+        {
+          runId,
+          recordPath: nodeRunRecordPath(component),
+          writeTraceFile: false,
+          inputs: componentInputBindings(ctx, component, nodeRecordsById),
+        },
+      );
+      nodeRecords.push(record);
+      nodeRecordsById.set(component.id, record);
+      diagnostics.push(...recordDiagnostics(record));
+      continue;
+    }
+
+    const request = await createProviderRequest(ctx, component, runId, nodeRecordsById);
     const providerResult = await ctx.provider.execute(request);
     const record = await materializeProviderResult(ctx, component, providerResult, {
       runId,
@@ -341,25 +366,21 @@ function resolveRuntimeProvider(
   );
 }
 
-function createProviderRequest(
+async function createProviderRequest(
   ctx: RunContext,
   component: ComponentIR,
   runId = ctx.runId,
-): ProviderRequest {
+  recordsById = new Map<string, RunRecord>(),
+): Promise<ProviderRequest> {
+  const inputState = await providerInputState(ctx, component, recordsById);
   return {
     provider_request_version: "0.1",
     request_id: runId,
     provider: ctx.provider.kind,
     component,
     rendered_contract: renderComponentContract(ctx.ir, component),
-    input_bindings: component.ports.requires.map((port) => ({
-      port: port.name,
-      value: ctx.inputs[port.name] ?? null,
-      artifact: null,
-      source_run_id: null,
-      policy_labels: port.policy_labels,
-    })),
-    upstream_artifacts: [],
+    input_bindings: inputState.bindings,
+    upstream_artifacts: inputState.upstreamArtifacts,
     workspace_path: ctx.runDir,
     environment: component.environment.map((binding) => ({
       name: binding.name,
@@ -410,7 +431,7 @@ async function materializeProviderResult(
     inputs:
       options.inputs ??
       component.ports.requires.map((port) =>
-        inputBinding(ctx, port.name, port.policy_labels),
+        inputBinding(ctx, port.name, port.policy_labels, port.type),
       ),
     dependencies: dependencyRecords(ctx),
     effects: {
@@ -470,7 +491,7 @@ async function writeBlockedRun(
     inputs:
       options.inputs ??
       fallback.ports.requires.map((port) =>
-        inputBinding(ctx, port.name, port.policy_labels),
+        inputBinding(ctx, port.name, port.policy_labels, port.type),
       ),
     dependencies: dependencyRecords(ctx),
     effects: {
@@ -560,7 +581,7 @@ async function assembleGraphRunRecord(
   return {
     ...baseRunRecord(ctx, main, "graph"),
     inputs: main.ports.requires.map((port) =>
-      inputBinding(ctx, port.name, port.policy_labels),
+      inputBinding(ctx, port.name, port.policy_labels, port.type),
     ),
     dependencies: dependencyRecords(ctx),
     effects: {
@@ -709,18 +730,43 @@ function firstUnavailableUpstream(
   return null;
 }
 
+function missingUpstreamOutputReasons(
+  ctx: RunContext,
+  component: ComponentIR,
+  recordsById: Map<string, RunRecord>,
+): string[] {
+  return component.ports.requires.flatMap((port) => {
+    if (!port.required) {
+      return [];
+    }
+    const edge = upstreamEdgeForInput(ctx, component, port.name);
+    if (!edge) {
+      return [];
+    }
+    const upstream = recordsById.get(edge.from.component);
+    if (!upstream) {
+      return [
+        `Upstream node '${edge.from.component}' has not materialized for '${component.name}.${port.name}'.`,
+      ];
+    }
+    const output = upstream.outputs.find(
+      (candidate) => candidate.port === edge.from.port,
+    );
+    return output
+      ? []
+      : [
+          `Upstream output '${edge.from.component}.${edge.from.port}' is missing for '${component.name}.${port.name}'.`,
+        ];
+  });
+}
+
 function componentInputBindings(
   ctx: RunContext,
   component: ComponentIR,
   recordsById: Map<string, RunRecord>,
 ): RunBindingRecord[] {
   return component.ports.requires.map((port) => {
-    const edge = ctx.ir.graph.edges.find(
-      (candidate) =>
-        candidate.to.component === component.id &&
-        candidate.to.port === port.name &&
-        candidate.from.component !== "$caller",
-    );
+    const edge = upstreamEdgeForInput(ctx, component, port.name);
     const upstream = edge ? recordsById.get(edge.from.component) : null;
     const output = upstream?.outputs.find(
       (candidate) => candidate.port === edge?.from.port,
@@ -735,8 +781,77 @@ function componentInputBindings(
       };
     }
 
-    return inputBinding(ctx, port.name, port.policy_labels);
+    return inputBinding(ctx, port.name, port.policy_labels, port.type);
   });
+}
+
+async function providerInputState(
+  ctx: RunContext,
+  component: ComponentIR,
+  recordsById: Map<string, RunRecord>,
+): Promise<{
+  bindings: ProviderInputBinding[];
+  upstreamArtifacts: LocalArtifactRecord[];
+}> {
+  const bindings: ProviderInputBinding[] = [];
+  const upstreamArtifacts: LocalArtifactRecord[] = [];
+
+  for (const port of component.ports.requires) {
+    const edge = upstreamEdgeForInput(ctx, component, port.name);
+    const upstream = edge ? recordsById.get(edge.from.component) : null;
+    const output = upstream?.outputs.find(
+      (candidate) => candidate.port === edge?.from.port,
+    );
+
+    if (edge && upstream && output) {
+      const artifact = await readArtifactRecordForOutput(
+        ctx.storeRoot,
+        upstream.run_id,
+        edge.from.component,
+        edge.from.port,
+      );
+      const value = artifact
+        ? await readLocalArtifactContent(ctx.storeRoot, artifact)
+        : await readFile(join(ctx.runDir, output.artifact_ref), "utf8").catch(() => null);
+      if (artifact) {
+        upstreamArtifacts.push(artifact);
+      }
+      bindings.push({
+        port: port.name,
+        value,
+        artifact,
+        source_run_id: upstream.run_id,
+        policy_labels: port.policy_labels,
+      });
+      continue;
+    }
+
+    const value = ctx.inputs[port.name] ?? null;
+    bindings.push({
+      port: port.name,
+      value,
+      artifact: null,
+      source_run_id: parseRunReference(value, port.type),
+      policy_labels: port.policy_labels,
+    });
+  }
+
+  return { bindings, upstreamArtifacts };
+}
+
+function upstreamEdgeForInput(
+  ctx: RunContext,
+  component: ComponentIR,
+  portName: string,
+): ProseIR["graph"]["edges"][number] | null {
+  return (
+    ctx.ir.graph.edges.find(
+      (candidate) =>
+        candidate.to.component === component.id &&
+        candidate.to.port === portName &&
+        candidate.from.component !== "$caller",
+    ) ?? null
+  );
 }
 
 async function writeRunRecordFile(
@@ -951,14 +1066,23 @@ function inputBinding(
   ctx: RunContext,
   port: string,
   policyLabels: string[],
+  type?: string,
 ): RunBindingRecord {
   const value = ctx.inputs[port] ?? "";
   return {
     port,
     value_hash: sha256(value),
-    source_run_id: null,
+    source_run_id: parseRunReference(value, type),
     policy_labels: policyLabels,
   };
+}
+
+function parseRunReference(value: string | null, type: string | undefined): string | null {
+  if (!value || !type || !/^run(<.+>)?(\[\])?$/.test(type)) {
+    return null;
+  }
+  const match = value.trim().match(/^run:\s*(.+)$/);
+  return match?.[1]?.trim() || null;
 }
 
 function diagnosticsReason(diagnostics: Diagnostic[]): string | null {

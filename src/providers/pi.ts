@@ -224,10 +224,43 @@ export function renderPiPrompt(
     request.rendered_contract,
     "",
     "---",
+    renderProviderInputInstructions(request),
+    "",
+    "---",
     renderProviderOutputFileInstructions(request.expected_outputs, outputFiles),
     "",
     "When finished, make sure the files exist in the workspace and contain only the declared artifact content.",
   ].join("\n");
+}
+
+function renderProviderInputInstructions(request: ProviderRequest): string {
+  const lines = ["OpenProse input bindings:"];
+  if (request.input_bindings.length === 0) {
+    lines.push("- none");
+    return lines.join("\n");
+  }
+
+  for (const binding of request.input_bindings) {
+    const metadata = [
+      binding.source_run_id ? `source run ${binding.source_run_id}` : null,
+      binding.artifact ? `artifact ${binding.artifact.content_hash}` : null,
+    ].filter(Boolean);
+    lines.push(`- ${binding.port}${metadata.length > 0 ? ` (${metadata.join(", ")})` : ""}`);
+    if (binding.value !== null) {
+      lines.push("  ```");
+      lines.push(indentInputValue(binding.value));
+      lines.push("  ```");
+    }
+  }
+  return lines.join("\n");
+}
+
+function indentInputValue(value: string): string {
+  return value
+    .replace(/\s+$/g, "")
+    .split("\n")
+    .map((line) => `  ${line}`)
+    .join("\n");
 }
 
 async function createDefaultPiSession(

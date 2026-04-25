@@ -111,11 +111,24 @@ describe("OpenProse Pi runtime provider", () => {
   test("renders a stable prompt wrapper", () => {
     const component = compileFixture("hello.prose.md").components[0];
     const workspace = mkdtempSync(join(tmpdir(), "openprose-pi-provider-render-"));
-    const prompt = renderPiPrompt(providerRequest(component, workspace), {
+    const request = providerRequest(component, workspace);
+    request.input_bindings = [
+      {
+        port: "subject",
+        value: "run: prior-run",
+        artifact: null,
+        source_run_id: "prior-run",
+        policy_labels: [],
+      },
+    ];
+    const prompt = renderPiPrompt(request, {
       message: "outputs/message.md",
     });
 
     expect(prompt).toContain("# hello");
+    expect(prompt).toContain("OpenProse input bindings:");
+    expect(prompt).toContain("- subject (source run prior-run)");
+    expect(prompt).toContain("run: prior-run");
     expect(prompt).toContain("- message (Markdown<Greeting>, required): outputs/message.md");
   });
 });
