@@ -1,91 +1,112 @@
 # Why and When to Use OpenProse
 
-OpenProse is for workflows where a plain prompt is too loose, but a full custom orchestration codebase is too heavy.
+OpenProse is for agent workflows that have started to look like software:
+repeatable, typed, inspectable, packaged, and safe enough to run again later.
 
-## Use OpenProse When
+It sits between two familiar options:
 
-Use it when you want an agent workflow to be:
+- looser than a custom orchestration codebase
+- more structured than a prompt, notebook, or skill bundle
 
-- reusable instead of one-off
-- inspectable instead of hidden in prompts
-- typed enough to compose safely
-- traceable enough to debug later
-- selective enough to avoid re-running the whole graph
-- packaged enough to install, search, benchmark, and serve
+Use OpenProse when the workflow matters after the first run.
 
-The sweet spot is a workflow with real structure:
+## What It Is
 
-- more than one role or step
-- explicit inputs and outputs
-- external reads or side effects that need to be declared
-- approvals or policy boundaries
-- a desire to turn today’s successful prompt into tomorrow’s stable component
+OpenProse is a contract-first system for agent programs. A `.prose.md` source
+file can carry the workflow contract, graph shape, typed inputs and outputs,
+effect declarations, access labels, package identity, and run materialization
+model in one reviewable artifact.
 
-## Why It Beats Baseline Agent Packages Here
+Implemented today:
 
-Many AI packages help you *call* models or *coordinate* agents. OpenProse is trying to help you **engineer agent programs**.
+- local CLI tools for `compile`, `plan`, `graph`, `materialize`, `status`,
+  `trace`, `package`, `publish-check`, `search`, and `install`
+- curated examples for typed services, selective recompute, run-aware
+  composition, approval-gated delivery, and company workflows
+- local measurement for package quality, recompute savings, approval
+  visibility, and reference-company health
+- hosted platform surfaces in this repo for package ingest, registry reads,
+  package install/resolve, runs, artifacts, traces, graphs, approvals, and
+  operator inspection
 
-That means the source artifact itself carries:
+See [What Shipped](what-shipped.md), [Examples](../examples/README.md), and
+[Measuring OpenProse](measurement.md) for the current surfaces.
 
-- the contract
-- the graph shape
-- the effect model
-- the access model
-- the package identity
-- the run materialization model
+## Use It When
 
-That gives you some concrete advantages:
+Choose OpenProse when several of these are true:
 
-### 1. The source is reviewable
+- the workflow will run more than once
+- the inputs and outputs deserve names and types
+- more than one role, step, or reusable component is involved
+- external reads or side effects need to be declared
+- approvals, policy boundaries, or delivery receipts need to be visible
+- debugging later requires runs, artifacts, traces, or graph provenance
+- teams need package install, search, publish checks, or registry discipline
+- a downstream result should update without replaying the whole workflow
 
-A `.prose.md` file is close to the problem domain. People can read the contract, the required inputs, the promised outputs, and the effects without digging through a framework-specific code path.
+The practical threshold is simple: if you would be nervous to keep the workflow
+as a long prompt, but writing a bespoke orchestration service feels too heavy,
+OpenProse is probably the right level of structure.
 
-### 2. Composition becomes safer
+## What It Improves Over Plain Skills
 
-Typed ports and declared effects make it much easier to connect programs without the usual "hope these prompts line up" behavior.
+Skills are good at giving an agent extra instructions and local know-how.
+OpenProse is better when the work needs durable structure.
 
-### 3. Planning becomes visible
+| Need        | Plain skill                   | OpenProse                                           |
+| ----------- | ----------------------------- | --------------------------------------------------- |
+| Review      | Read instruction text         | Review typed `.prose.md` contracts and effects      |
+| Composition | Hope prompts line up          | Connect named, typed ports                          |
+| Planning    | Infer steps from prose        | Compile and inspect graph plans                     |
+| Safety      | Rely on convention            | Declare effects and approval gates                  |
+| Reuse       | Copy or invoke instructions   | Package, install, resolve, and search components    |
+| Debugging   | Reconstruct from chat history | Inspect runs, artifacts, traces, and graph state    |
+| Measurement | Mostly qualitative            | Emit local package, recompute, and approval metrics |
 
-Instead of a text wall of commands, we can compile to IR, render graphs, inspect stale reasons, and explain exactly what would re-run and why.
+That does not make skills obsolete. Skills remain the right shell for agent
+behavior, tool instructions, and host-specific guidance. OpenProse is the layer
+to reach for when a skill starts carrying an implicit workflow API.
 
-### 4. Reactivity becomes tractable
+## Good Fits
 
-Because every execution is a run and every plan compares current state against prior materializations, OpenProse can support selective recompute instead of blindly replaying the whole workflow.
+OpenProse is especially useful for:
 
-### 5. Sharing becomes cleaner
+- content and research pipelines with reusable roles
+- approval-gated release, publishing, or delivery flows
+- company-operating-system workflows with explicit inputs and outputs
+- packageable agent services that need install and publish discipline
+- workflows where selective recompute saves time, cost, or review effort
+- teams that want repo-native provenance before scaling to hosted execution
 
-Packages can be installed by registry ref, quality-checked locally, searched by types and effects, and eventually served in a hosted registry without inventing a separate metadata system.
+Concrete starting points:
 
-## When Not to Use It
+- [`hello.prose.md`](../examples/hello.prose.md) for the smallest typed service
+- [`selective-recompute.prose.md`](../examples/selective-recompute.prose.md)
+  for target-output planning
+- [`approval-gated-release.prose.md`](../examples/approval-gated-release.prose.md)
+  for unsafe effects and human approval
+- [`company-intake.prose.md`](../examples/company-intake.prose.md) for a
+  compact company workflow
 
-Do not use OpenProse for:
+## Poor Fits
 
-- one-shot questions
-- tiny tasks you would finish in one reply
-- highly interactive back-and-forth editing where contract boundaries add friction
-- prototypes where you still do not know the shape of the workflow
+Do not start with OpenProse when:
 
-OpenProse is a good fit once a workflow starts to look like software.
+- the task is a one-shot question
+- the fastest path is a short interactive conversation
+- the workflow shape is still unknown
+- the work has no reusable contract, provenance need, or policy boundary
+- ordinary application code is already the simpler, clearer abstraction
 
-## What OpenProse Is Especially Good At
+OpenProse earns its keep when the contract matters.
 
-Right now it is particularly strong for:
+## Near-Term Work
 
-- multi-step content and research pipelines
-- approval-gated delivery flows
-- company-operating-system workflows
-- packageable agent services that need install/search/publish discipline
-- workflows that benefit from re-running only the affected downstream slice
-- teams that want repo-native review, provenance, and reuse
+These areas are active product-shaping work, not claims of finished product:
 
-## The Practical Test
-
-Ask these questions:
-
-1. Will we want to run this more than once?
-2. Would we benefit from named inputs and outputs?
-3. Will debugging provenance matter?
-4. Could parts of this be reused elsewhere?
-5. Are there effects, approvals, or policy boundaries we need to see?
-
-If the answer is "yes" to several of those, OpenProse is usually the right level of structure.
+- production-like deployed dev interop for the hosted API and Run app
+- richer hosted publish/install ergonomics
+- clearer policy and provenance UX for approvals and artifact visibility
+- broader measurement harnesses comparing OpenProse workflows with baseline
+  prompt or skill implementations
