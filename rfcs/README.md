@@ -14,10 +14,13 @@ The current architecture is defined by:
 - RFC 009: Reactive Execution Semantics
 - RFC 010: Source Format and Tooling
 - RFC 011: Registry Metadata and Package Quality
+- RFC 012: Hosted Runtime Contract and Artifact Semantics
 
 Together these define the direction: canonical `.prose.md` source compiles to
 IR, IR materializes into immutable runs, reactive graph nodes point at accepted
-current runs, and hosted/runtime/registry systems build on that substrate.
+current runs, hosted registries ingest generated metadata, and hosted runtimes
+use an OSS-owned runner/artifact contract rather than host-specific execution
+protocols.
 
 ## Status Table
 
@@ -34,3 +37,4 @@ current runs, and hosted/runtime/registry systems build on that substrate.
 | 009: Reactive Execution Semantics | Draft/current | Invalidation, recompute planning, freshness, eval acceptance, and backpressure. |
 | 010: Source Format and Tooling | Draft/current | `.prose.md`, syntax highlighting, formatter, linter, graph preview, and trace overlays. |
 | 011: Registry Metadata and Package Quality | Draft/current | Git-native packages plus hosted catalog/search/quality metadata. |
+| 012: Hosted Runtime Contract and Artifact Semantics | Draft/planned | Host-neutral remote runner contract, result envelope, artifact semantics, registry metadata ingest contract, provenance fields, and std quality ratchet. |
