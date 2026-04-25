@@ -1,4 +1,5 @@
 export { compileFile, compileSource } from "../compiler.js";
+export { compilePackagePath } from "./package.js";
 export { projectManifest } from "../manifest.js";
 export type {
   ComponentIR,
@@ -9,6 +10,8 @@ export type {
   GraphEdgeIR,
   GraphIR,
   GraphNodeIR,
+  PackageIR,
+  PackageIRFile,
   PortIR,
   ProseIR,
   RuntimeSettingIR,

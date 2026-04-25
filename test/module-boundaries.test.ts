@@ -6,6 +6,7 @@ describe("OpenProse module boundaries", () => {
     expect(typeof prose.core.sha256).toBe("function");
     expect(typeof prose.source.formatSource).toBe("function");
     expect(typeof prose.ir.compileSource).toBe("function");
+    expect(typeof prose.ir.compilePackagePath).toBe("function");
     expect(typeof prose.graph.graphSource).toBe("function");
     expect(typeof prose.store.statusPath).toBe("function");
     expect(typeof prose.runtime.planSource).toBe("function");

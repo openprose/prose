@@ -1,0 +1,189 @@
+{
+  "package_ir_version": "0.1",
+  "semantic_hash": "6be165a4ef406978d93b7fb910deeab48b1e7cb8b5c6bfc37eeab065f8644aaa",
+  "manifest": {
+    "name": "@openprose/examples",
+    "version": "0.1.0",
+    "catalog": "openprose",
+    "registry_ref": "registry://openprose/@openprose/examples@0.1.0",
+    "description": "Curated examples for the local-first OpenProse runtime.",
+    "license": "MIT",
+    "source": {
+      "git": "github.com/openprose/prose",
+      "sha": "54dab36d04f57e7343615d2263c91df69a069a64",
+      "subpath": "examples"
+    },
+    "schemas": [],
+    "evals": [
+      "evals/examples-quality.eval.prose.md"
+    ],
+    "examples": [
+      "approval-gated-release.prose.md",
+      "company-intake.prose.md",
+      "hello.prose.md",
+      "run-aware-brief.prose.md",
+      "selective-recompute.prose.md"
+    ],
+    "no_evals": false,
+    "hosted": null
+  },
+  "files": [
+    {
+      "path": "approval-gated-release.prose.md",
+      "component_ids": [
+        "approval-gated-release--approval-gated-release",
+        "approval-gated-release--qa-check",
+        "approval-gated-release--release-note-writer",
+        "approval-gated-release--announce-release"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "company-intake.prose.md",
+      "component_ids": [
+        "company-intake--company-intake",
+        "company-intake--company-normalizer",
+        "company-intake--signal-triage",
+        "company-intake--account-brief"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "evals/examples-quality.eval.prose.md",
+      "component_ids": [
+        "evals-examples-quality-eval--examples-quality"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "hello.prose.md",
+      "component_ids": [
+        "hello--hello"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "run-aware-brief.prose.md",
+      "component_ids": [
+        "run-aware-brief--run-aware-brief",
+        "run-aware-brief--brief-writer"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "selective-recompute.prose.md",
+      "component_ids": [
+        "selective-recompute--selective-recompute",
+        "selective-recompute--summarize",
+        "selective-recompute--market-sync"
+      ],
+      "diagnostics": []
+    }
+  ],
+  "dependencies": [],
+  "components": [
+    {
+      "id": "approval-gated-release--announce-release",
+      "name": "announce-release",
+      "kind": "service",
+      "path": "approval-gated-release.prose.md"
+    },
+    {
+      "id": "approval-gated-release--approval-gated-release",
+      "name": "approval-gated-release",
+      "kind": "program",
+      "path": "approval-gated-release.prose.md"
+    },
+    {
+      "id": "approval-gated-release--qa-check",
+      "name": "qa-check",
+      "kind": "service",
+      "path": "approval-gated-release.prose.md"
+    },
+    {
+      "id": "approval-gated-release--release-note-writer",
+      "name": "release-note-writer",
+      "kind": "service",
+      "path": "approval-gated-release.prose.md"
+    },
+    {
+      "id": "company-intake--account-brief",
+      "name": "account-brief",
+      "kind": "service",
+      "path": "company-intake.prose.md"
+    },
+    {
+      "id": "company-intake--company-intake",
+      "name": "company-intake",
+      "kind": "program",
+      "path": "company-intake.prose.md"
+    },
+    {
+      "id": "company-intake--company-normalizer",
+      "name": "company-normalizer",
+      "kind": "service",
+      "path": "company-intake.prose.md"
+    },
+    {
+      "id": "company-intake--signal-triage",
+      "name": "signal-triage",
+      "kind": "service",
+      "path": "company-intake.prose.md"
+    },
+    {
+      "id": "evals-examples-quality-eval--examples-quality",
+      "name": "examples-quality",
+      "kind": "test",
+      "path": "evals/examples-quality.eval.prose.md"
+    },
+    {
+      "id": "hello--hello",
+      "name": "hello",
+      "kind": "service",
+      "path": "hello.prose.md"
+    },
+    {
+      "id": "run-aware-brief--brief-writer",
+      "name": "brief-writer",
+      "kind": "service",
+      "path": "run-aware-brief.prose.md"
+    },
+    {
+      "id": "run-aware-brief--run-aware-brief",
+      "name": "run-aware-brief",
+      "kind": "program",
+      "path": "run-aware-brief.prose.md"
+    },
+    {
+      "id": "selective-recompute--market-sync",
+      "name": "market-sync",
+      "kind": "service",
+      "path": "selective-recompute.prose.md"
+    },
+    {
+      "id": "selective-recompute--selective-recompute",
+      "name": "selective-recompute",
+      "kind": "program",
+      "path": "selective-recompute.prose.md"
+    },
+    {
+      "id": "selective-recompute--summarize",
+      "name": "summarize",
+      "kind": "service",
+      "path": "selective-recompute.prose.md"
+    }
+  ],
+  "graph": {
+    "node_count": 15,
+    "edge_count": 29,
+    "edge_kinds": {
+      "caller": 8,
+      "exact": 5,
+      "execution": 9,
+      "return": 7
+    }
+  },
+  "diagnostics": {
+    "ambiguous_package_exact_wiring": 3
+  }
+}

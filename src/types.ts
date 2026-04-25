@@ -130,6 +130,43 @@ export interface ProseIR {
   diagnostics: Diagnostic[];
 }
 
+export interface PackageIRFile {
+  path: string;
+  source_sha: string;
+  semantic_hash: string;
+  component_ids: string[];
+  diagnostics: Diagnostic[];
+}
+
+export interface PackageIR {
+  package_ir_version: "0.1";
+  semantic_hash: string;
+  root: string;
+  manifest: {
+    name: string;
+    version: string | null;
+    catalog: string;
+    registry_ref: string | null;
+    description: string | null;
+    license: string | null;
+    source: {
+      git: string | null;
+      sha: string | null;
+      subpath: string | null;
+    };
+    schemas: string[];
+    evals: string[];
+    examples: string[];
+    no_evals: boolean;
+    hosted: HostedRuntimeMetadata | null;
+  };
+  files: PackageIRFile[];
+  dependencies: ProseIR["package"]["dependencies"];
+  components: ComponentIR[];
+  graph: GraphIR;
+  diagnostics: Diagnostic[];
+}
+
 export type RunLifecycleStatus =
   | "pending"
   | "running"

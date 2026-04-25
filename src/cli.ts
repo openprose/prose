@@ -5,6 +5,7 @@ import { renderTextMateGrammar } from "./grammar";
 import { graphFile, renderGraphMermaid } from "./graph";
 import { highlightFile, renderHighlightHtml, renderHighlightText } from "./highlight";
 import { installRegistryRef, installWorkspaceDependencies } from "./install";
+import { compilePackagePath } from "./ir/package.js";
 import { lintFile, lintPath, renderLintReportText, renderLintText } from "./lint";
 import { materializeFile } from "./materialize";
 import { projectManifest } from "./manifest";
@@ -397,6 +398,23 @@ export async function runCli(args: string[]): Promise<void> {
       await writeFile(options.out, output, "utf8");
     } else {
       process.stdout.write(output);
+    }
+    return;
+  }
+
+  if (command === "compile") {
+    const pathIsDirectory = await isDirectory(options.file);
+    const compiled = pathIsDirectory
+      ? await compilePackagePath(options.file)
+      : await compileFile(options.file);
+    const output = `${JSON.stringify(compiled, null, options.pretty ? 2 : 0)}\n`;
+    if (options.out) {
+      await writeFile(options.out, output, "utf8");
+    } else {
+      process.stdout.write(output);
+    }
+    if (compiled.diagnostics.some((diagnostic) => diagnostic.severity === "error")) {
+      process.exitCode = 1;
     }
     return;
   }
@@ -852,7 +870,7 @@ function printHelp(): void {
   console.log(`OpenProse
 
 Usage:
-  prose compile <file.prose.md> [--out ir.json] [--no-pretty]
+  prose compile <file.prose.md|dir> [--out ir.json] [--no-pretty]
   prose fmt <file.prose.md|dir> [--write|--check]
   prose grammar [--out syntaxes/openprose.tmLanguage.json] [--no-pretty]
   prose install [registry-ref|path] [--catalog-root dir] [--workspace-root dir] [--deps-root dir] [--refresh] [--source-override package=path]

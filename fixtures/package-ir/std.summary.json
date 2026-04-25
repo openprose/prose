@@ -1,0 +1,999 @@
+{
+  "package_ir_version": "0.1",
+  "semantic_hash": "3449f2547917d945505700a1f718c36bc2138e1ef2090bef321b1165e66ca0e6",
+  "manifest": {
+    "name": "@openprose/std",
+    "version": "0.11.0-dev",
+    "catalog": "openprose",
+    "registry_ref": "registry://openprose/@openprose/std@0.11.0-dev",
+    "description": "OpenProse standard library of reusable roles, controls, composites, evals, delivery adapters, memory, and ops programs.",
+    "license": "MIT",
+    "source": {
+      "git": null,
+      "sha": null,
+      "subpath": null
+    },
+    "schemas": [],
+    "evals": [
+      "evals/contract-grader.prose.md",
+      "evals/cross-run-differ.prose.md",
+      "evals/eval-calibrator.prose.md",
+      "evals/inspector.prose.md",
+      "evals/platform-improver.prose.md",
+      "evals/program-improver.prose.md",
+      "evals/regression-tracker.prose.md"
+    ],
+    "examples": [
+      "examples/composed-reviewer/index.prose.md",
+      "examples/confident-writer/index.prose.md"
+    ],
+    "no_evals": false,
+    "hosted": null
+  },
+  "files": [
+    {
+      "path": "composites/assumption-miner.prose.md",
+      "component_ids": [
+        "composites-assumption-miner--assumption-miner"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "composites/blind-review.prose.md",
+      "component_ids": [
+        "composites-blind-review--blind-review"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "composites/coherence-probe.prose.md",
+      "component_ids": [
+        "composites-coherence-probe--coherence-probe"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "composites/contrastive-probe.prose.md",
+      "component_ids": [
+        "composites-contrastive-probe--contrastive-probe"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "composites/dialectic.prose.md",
+      "component_ids": [
+        "composites-dialectic--dialectic"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "composites/ensemble-synthesizer.prose.md",
+      "component_ids": [
+        "composites-ensemble-synthesizer--ensemble-synthesizer"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "composites/oversight.prose.md",
+      "component_ids": [
+        "composites-oversight--oversight"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "composites/proposer-adversary.prose.md",
+      "component_ids": [
+        "composites-proposer-adversary--proposer-adversary"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "composites/ratchet.prose.md",
+      "component_ids": [
+        "composites-ratchet--ratchet"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "composites/stochastic-probe.prose.md",
+      "component_ids": [
+        "composites-stochastic-probe--stochastic-probe"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "composites/worker-critic.prose.md",
+      "component_ids": [
+        "composites-worker-critic--worker-critic"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "controls/fallback-chain.prose.md",
+      "component_ids": [
+        "controls-fallback-chain--fallback-chain"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "controls/fan-out.prose.md",
+      "component_ids": [
+        "controls-fan-out--fan-out"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "controls/guard.prose.md",
+      "component_ids": [
+        "controls-guard--guard"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "controls/map-reduce.prose.md",
+      "component_ids": [
+        "controls-map-reduce--map-reduce"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "controls/pipeline.prose.md",
+      "component_ids": [
+        "controls-pipeline--pipeline"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "controls/race.prose.md",
+      "component_ids": [
+        "controls-race--race"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "controls/refine.prose.md",
+      "component_ids": [
+        "controls-refine--refine"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "controls/retry-with-learning.prose.md",
+      "component_ids": [
+        "controls-retry-with-learning--retry-with-learning"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "delivery/email-notifier.prose.md",
+      "component_ids": [
+        "delivery-email-notifier--email-notifier"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "delivery/email-renderer.prose.md",
+      "component_ids": [
+        "delivery-email-renderer--email-renderer"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "delivery/file-writer.prose.md",
+      "component_ids": [
+        "delivery-file-writer--file-writer"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "delivery/html-renderer.prose.md",
+      "component_ids": [
+        "delivery-html-renderer--html-renderer"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "delivery/human-gate.prose.md",
+      "component_ids": [
+        "delivery-human-gate--human-gate"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "delivery/slack-notifier.prose.md",
+      "component_ids": [
+        "delivery-slack-notifier--slack-notifier"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "delivery/webhook-notifier.prose.md",
+      "component_ids": [
+        "delivery-webhook-notifier--webhook-notifier"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "evals/contract-grader.prose.md",
+      "component_ids": [
+        "evals-contract-grader--contract-grader",
+        "evals-contract-grader--extractor",
+        "evals-contract-grader--grader",
+        "evals-contract-grader--scorer"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "evals/cross-run-differ.prose.md",
+      "component_ids": [
+        "evals-cross-run-differ--cross-run-differ",
+        "evals-cross-run-differ--collector",
+        "evals-cross-run-differ--differ",
+        "evals-cross-run-differ--recommender"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "evals/eval-calibrator.prose.md",
+      "component_ids": [
+        "evals-eval-calibrator--eval-calibrator",
+        "evals-eval-calibrator--sampler",
+        "evals-eval-calibrator--runner",
+        "evals-eval-calibrator--comparator",
+        "evals-eval-calibrator--statistician",
+        "evals-eval-calibrator--advisor"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "evals/inspector.prose.md",
+      "component_ids": [
+        "evals-inspector--inspector",
+        "evals-inspector--index",
+        "evals-inspector--extractor",
+        "evals-inspector--evaluator",
+        "evals-inspector--synthesizer"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "evals/platform-improver.prose.md",
+      "component_ids": [
+        "evals-platform-improver--platform-improver",
+        "evals-platform-improver--triager",
+        "evals-platform-improver--analyst",
+        "evals-platform-improver--proposer"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "evals/program-improver.prose.md",
+      "component_ids": [
+        "evals-program-improver--program-improver",
+        "evals-program-improver--locator",
+        "evals-program-improver--analyst",
+        "evals-program-improver--implementer"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "evals/regression-tracker.prose.md",
+      "component_ids": [
+        "evals-regression-tracker--regression-tracker",
+        "evals-regression-tracker--registry",
+        "evals-regression-tracker--comparator",
+        "evals-regression-tracker--reporter"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "examples/composed-reviewer/index.prose.md",
+      "component_ids": [
+        "examples-composed-reviewer-index--composed-reviewer"
+      ],
+      "diagnostics": [
+        "unresolved_service_reference"
+      ]
+    },
+    {
+      "path": "examples/composed-reviewer/reviewer.prose.md",
+      "component_ids": [
+        "examples-composed-reviewer-reviewer--reviewer"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "examples/composed-reviewer/writer.prose.md",
+      "component_ids": [
+        "examples-composed-reviewer-writer--writer"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "examples/confident-writer/index.prose.md",
+      "component_ids": [
+        "examples-confident-writer-index--confident-writer"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "examples/confident-writer/reviewer.prose.md",
+      "component_ids": [
+        "examples-confident-writer-reviewer--reviewer"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "examples/confident-writer/variance-analyst.prose.md",
+      "component_ids": [
+        "examples-confident-writer-variance-analyst--variance-analyst"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "examples/confident-writer/writer.prose.md",
+      "component_ids": [
+        "examples-confident-writer-writer--writer"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "memory/project-memory.prose.md",
+      "component_ids": [
+        "memory-project-memory--project-memory"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "memory/user-memory.prose.md",
+      "component_ids": [
+        "memory-user-memory--user-memory"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "ops/diagnose.prose.md",
+      "component_ids": [
+        "ops-diagnose--diagnose"
+      ],
+      "diagnostics": [
+        "unresolved_service_reference",
+        "unresolved_service_reference"
+      ]
+    },
+    {
+      "path": "ops/lint.prose.md",
+      "component_ids": [
+        "ops-lint--lint"
+      ],
+      "diagnostics": [
+        "unresolved_service_reference",
+        "unresolved_service_reference",
+        "unresolved_service_reference"
+      ]
+    },
+    {
+      "path": "ops/preflight.prose.md",
+      "component_ids": [
+        "ops-preflight--preflight"
+      ],
+      "diagnostics": [
+        "unresolved_service_reference",
+        "unresolved_service_reference",
+        "unresolved_service_reference"
+      ]
+    },
+    {
+      "path": "ops/profiler.prose.md",
+      "component_ids": [
+        "ops-profiler--profiler"
+      ],
+      "diagnostics": [
+        "unresolved_service_reference",
+        "unresolved_service_reference",
+        "unresolved_service_reference",
+        "unresolved_service_reference"
+      ]
+    },
+    {
+      "path": "ops/status.prose.md",
+      "component_ids": [
+        "ops-status--status"
+      ],
+      "diagnostics": [
+        "unresolved_service_reference"
+      ]
+    },
+    {
+      "path": "ops/wire.prose.md",
+      "component_ids": [
+        "ops-wire--wire"
+      ],
+      "diagnostics": [
+        "unresolved_service_reference",
+        "unresolved_service_reference",
+        "unresolved_service_reference"
+      ]
+    },
+    {
+      "path": "roles/classifier.prose.md",
+      "component_ids": [
+        "roles-classifier--classifier"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "roles/critic.prose.md",
+      "component_ids": [
+        "roles-critic--critic"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "roles/extractor.prose.md",
+      "component_ids": [
+        "roles-extractor--extractor"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "roles/formatter.prose.md",
+      "component_ids": [
+        "roles-formatter--formatter"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "roles/planner.prose.md",
+      "component_ids": [
+        "roles-planner--planner"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "roles/researcher.prose.md",
+      "component_ids": [
+        "roles-researcher--researcher"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "roles/router.prose.md",
+      "component_ids": [
+        "roles-router--router"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "roles/summarizer.prose.md",
+      "component_ids": [
+        "roles-summarizer--summarizer"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "roles/verifier.prose.md",
+      "component_ids": [
+        "roles-verifier--verifier"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "roles/writer.prose.md",
+      "component_ids": [
+        "roles-writer--writer"
+      ],
+      "diagnostics": []
+    }
+  ],
+  "dependencies": [],
+  "components": [
+    {
+      "id": "composites-assumption-miner--assumption-miner",
+      "name": "assumption-miner",
+      "kind": "composite",
+      "path": "composites/assumption-miner.prose.md"
+    },
+    {
+      "id": "composites-blind-review--blind-review",
+      "name": "blind-review",
+      "kind": "composite",
+      "path": "composites/blind-review.prose.md"
+    },
+    {
+      "id": "composites-coherence-probe--coherence-probe",
+      "name": "coherence-probe",
+      "kind": "composite",
+      "path": "composites/coherence-probe.prose.md"
+    },
+    {
+      "id": "composites-contrastive-probe--contrastive-probe",
+      "name": "contrastive-probe",
+      "kind": "composite",
+      "path": "composites/contrastive-probe.prose.md"
+    },
+    {
+      "id": "composites-dialectic--dialectic",
+      "name": "dialectic",
+      "kind": "composite",
+      "path": "composites/dialectic.prose.md"
+    },
+    {
+      "id": "composites-ensemble-synthesizer--ensemble-synthesizer",
+      "name": "ensemble-synthesizer",
+      "kind": "composite",
+      "path": "composites/ensemble-synthesizer.prose.md"
+    },
+    {
+      "id": "composites-oversight--oversight",
+      "name": "oversight",
+      "kind": "composite",
+      "path": "composites/oversight.prose.md"
+    },
+    {
+      "id": "composites-proposer-adversary--proposer-adversary",
+      "name": "proposer-adversary",
+      "kind": "composite",
+      "path": "composites/proposer-adversary.prose.md"
+    },
+    {
+      "id": "composites-ratchet--ratchet",
+      "name": "ratchet",
+      "kind": "composite",
+      "path": "composites/ratchet.prose.md"
+    },
+    {
+      "id": "composites-stochastic-probe--stochastic-probe",
+      "name": "stochastic-probe",
+      "kind": "composite",
+      "path": "composites/stochastic-probe.prose.md"
+    },
+    {
+      "id": "composites-worker-critic--worker-critic",
+      "name": "worker-critic",
+      "kind": "composite",
+      "path": "composites/worker-critic.prose.md"
+    },
+    {
+      "id": "controls-fallback-chain--fallback-chain",
+      "name": "fallback-chain",
+      "kind": "composite",
+      "path": "controls/fallback-chain.prose.md"
+    },
+    {
+      "id": "controls-fan-out--fan-out",
+      "name": "fan-out",
+      "kind": "composite",
+      "path": "controls/fan-out.prose.md"
+    },
+    {
+      "id": "controls-guard--guard",
+      "name": "guard",
+      "kind": "composite",
+      "path": "controls/guard.prose.md"
+    },
+    {
+      "id": "controls-map-reduce--map-reduce",
+      "name": "map-reduce",
+      "kind": "composite",
+      "path": "controls/map-reduce.prose.md"
+    },
+    {
+      "id": "controls-pipeline--pipeline",
+      "name": "pipeline",
+      "kind": "composite",
+      "path": "controls/pipeline.prose.md"
+    },
+    {
+      "id": "controls-race--race",
+      "name": "race",
+      "kind": "composite",
+      "path": "controls/race.prose.md"
+    },
+    {
+      "id": "controls-refine--refine",
+      "name": "refine",
+      "kind": "composite",
+      "path": "controls/refine.prose.md"
+    },
+    {
+      "id": "controls-retry-with-learning--retry-with-learning",
+      "name": "retry-with-learning",
+      "kind": "composite",
+      "path": "controls/retry-with-learning.prose.md"
+    },
+    {
+      "id": "delivery-email-notifier--email-notifier",
+      "name": "email-notifier",
+      "kind": "service",
+      "path": "delivery/email-notifier.prose.md"
+    },
+    {
+      "id": "delivery-email-renderer--email-renderer",
+      "name": "email-renderer",
+      "kind": "service",
+      "path": "delivery/email-renderer.prose.md"
+    },
+    {
+      "id": "delivery-file-writer--file-writer",
+      "name": "file-writer",
+      "kind": "service",
+      "path": "delivery/file-writer.prose.md"
+    },
+    {
+      "id": "delivery-html-renderer--html-renderer",
+      "name": "html-renderer",
+      "kind": "service",
+      "path": "delivery/html-renderer.prose.md"
+    },
+    {
+      "id": "delivery-human-gate--human-gate",
+      "name": "human-gate",
+      "kind": "service",
+      "path": "delivery/human-gate.prose.md"
+    },
+    {
+      "id": "delivery-slack-notifier--slack-notifier",
+      "name": "slack-notifier",
+      "kind": "service",
+      "path": "delivery/slack-notifier.prose.md"
+    },
+    {
+      "id": "delivery-webhook-notifier--webhook-notifier",
+      "name": "webhook-notifier",
+      "kind": "service",
+      "path": "delivery/webhook-notifier.prose.md"
+    },
+    {
+      "id": "evals-contract-grader--contract-grader",
+      "name": "contract-grader",
+      "kind": "program",
+      "path": "evals/contract-grader.prose.md"
+    },
+    {
+      "id": "evals-contract-grader--extractor",
+      "name": "extractor",
+      "kind": "service",
+      "path": "evals/contract-grader.prose.md"
+    },
+    {
+      "id": "evals-contract-grader--grader",
+      "name": "grader",
+      "kind": "service",
+      "path": "evals/contract-grader.prose.md"
+    },
+    {
+      "id": "evals-contract-grader--scorer",
+      "name": "scorer",
+      "kind": "service",
+      "path": "evals/contract-grader.prose.md"
+    },
+    {
+      "id": "evals-cross-run-differ--collector",
+      "name": "collector",
+      "kind": "service",
+      "path": "evals/cross-run-differ.prose.md"
+    },
+    {
+      "id": "evals-cross-run-differ--cross-run-differ",
+      "name": "cross-run-differ",
+      "kind": "program",
+      "path": "evals/cross-run-differ.prose.md"
+    },
+    {
+      "id": "evals-cross-run-differ--differ",
+      "name": "differ",
+      "kind": "service",
+      "path": "evals/cross-run-differ.prose.md"
+    },
+    {
+      "id": "evals-cross-run-differ--recommender",
+      "name": "recommender",
+      "kind": "service",
+      "path": "evals/cross-run-differ.prose.md"
+    },
+    {
+      "id": "evals-eval-calibrator--advisor",
+      "name": "advisor",
+      "kind": "service",
+      "path": "evals/eval-calibrator.prose.md"
+    },
+    {
+      "id": "evals-eval-calibrator--comparator",
+      "name": "comparator",
+      "kind": "service",
+      "path": "evals/eval-calibrator.prose.md"
+    },
+    {
+      "id": "evals-eval-calibrator--eval-calibrator",
+      "name": "eval-calibrator",
+      "kind": "program",
+      "path": "evals/eval-calibrator.prose.md"
+    },
+    {
+      "id": "evals-eval-calibrator--runner",
+      "name": "runner",
+      "kind": "service",
+      "path": "evals/eval-calibrator.prose.md"
+    },
+    {
+      "id": "evals-eval-calibrator--sampler",
+      "name": "sampler",
+      "kind": "service",
+      "path": "evals/eval-calibrator.prose.md"
+    },
+    {
+      "id": "evals-eval-calibrator--statistician",
+      "name": "statistician",
+      "kind": "service",
+      "path": "evals/eval-calibrator.prose.md"
+    },
+    {
+      "id": "evals-inspector--evaluator",
+      "name": "evaluator",
+      "kind": "service",
+      "path": "evals/inspector.prose.md"
+    },
+    {
+      "id": "evals-inspector--extractor",
+      "name": "extractor",
+      "kind": "service",
+      "path": "evals/inspector.prose.md"
+    },
+    {
+      "id": "evals-inspector--index",
+      "name": "index",
+      "kind": "service",
+      "path": "evals/inspector.prose.md"
+    },
+    {
+      "id": "evals-inspector--inspector",
+      "name": "inspector",
+      "kind": "program",
+      "path": "evals/inspector.prose.md"
+    },
+    {
+      "id": "evals-inspector--synthesizer",
+      "name": "synthesizer",
+      "kind": "service",
+      "path": "evals/inspector.prose.md"
+    },
+    {
+      "id": "evals-platform-improver--analyst",
+      "name": "analyst",
+      "kind": "service",
+      "path": "evals/platform-improver.prose.md"
+    },
+    {
+      "id": "evals-platform-improver--platform-improver",
+      "name": "platform-improver",
+      "kind": "program",
+      "path": "evals/platform-improver.prose.md"
+    },
+    {
+      "id": "evals-platform-improver--proposer",
+      "name": "proposer",
+      "kind": "service",
+      "path": "evals/platform-improver.prose.md"
+    },
+    {
+      "id": "evals-platform-improver--triager",
+      "name": "triager",
+      "kind": "service",
+      "path": "evals/platform-improver.prose.md"
+    },
+    {
+      "id": "evals-program-improver--analyst",
+      "name": "analyst",
+      "kind": "service",
+      "path": "evals/program-improver.prose.md"
+    },
+    {
+      "id": "evals-program-improver--implementer",
+      "name": "implementer",
+      "kind": "service",
+      "path": "evals/program-improver.prose.md"
+    },
+    {
+      "id": "evals-program-improver--locator",
+      "name": "locator",
+      "kind": "service",
+      "path": "evals/program-improver.prose.md"
+    },
+    {
+      "id": "evals-program-improver--program-improver",
+      "name": "program-improver",
+      "kind": "program",
+      "path": "evals/program-improver.prose.md"
+    },
+    {
+      "id": "evals-regression-tracker--comparator",
+      "name": "comparator",
+      "kind": "service",
+      "path": "evals/regression-tracker.prose.md"
+    },
+    {
+      "id": "evals-regression-tracker--registry",
+      "name": "registry",
+      "kind": "service",
+      "path": "evals/regression-tracker.prose.md"
+    },
+    {
+      "id": "evals-regression-tracker--regression-tracker",
+      "name": "regression-tracker",
+      "kind": "program",
+      "path": "evals/regression-tracker.prose.md"
+    },
+    {
+      "id": "evals-regression-tracker--reporter",
+      "name": "reporter",
+      "kind": "service",
+      "path": "evals/regression-tracker.prose.md"
+    },
+    {
+      "id": "examples-composed-reviewer-index--composed-reviewer",
+      "name": "composed-reviewer",
+      "kind": "program",
+      "path": "examples/composed-reviewer/index.prose.md"
+    },
+    {
+      "id": "examples-composed-reviewer-reviewer--reviewer",
+      "name": "reviewer",
+      "kind": "service",
+      "path": "examples/composed-reviewer/reviewer.prose.md"
+    },
+    {
+      "id": "examples-composed-reviewer-writer--writer",
+      "name": "writer",
+      "kind": "service",
+      "path": "examples/composed-reviewer/writer.prose.md"
+    },
+    {
+      "id": "examples-confident-writer-index--confident-writer",
+      "name": "confident-writer",
+      "kind": "program",
+      "path": "examples/confident-writer/index.prose.md"
+    },
+    {
+      "id": "examples-confident-writer-reviewer--reviewer",
+      "name": "reviewer",
+      "kind": "service",
+      "path": "examples/confident-writer/reviewer.prose.md"
+    },
+    {
+      "id": "examples-confident-writer-variance-analyst--variance-analyst",
+      "name": "variance-analyst",
+      "kind": "service",
+      "path": "examples/confident-writer/variance-analyst.prose.md"
+    },
+    {
+      "id": "examples-confident-writer-writer--writer",
+      "name": "writer",
+      "kind": "service",
+      "path": "examples/confident-writer/writer.prose.md"
+    },
+    {
+      "id": "memory-project-memory--project-memory",
+      "name": "project-memory",
+      "kind": "service",
+      "path": "memory/project-memory.prose.md"
+    },
+    {
+      "id": "memory-user-memory--user-memory",
+      "name": "user-memory",
+      "kind": "service",
+      "path": "memory/user-memory.prose.md"
+    },
+    {
+      "id": "ops-diagnose--diagnose",
+      "name": "diagnose",
+      "kind": "program",
+      "path": "ops/diagnose.prose.md"
+    },
+    {
+      "id": "ops-lint--lint",
+      "name": "lint",
+      "kind": "program",
+      "path": "ops/lint.prose.md"
+    },
+    {
+      "id": "ops-preflight--preflight",
+      "name": "preflight",
+      "kind": "program",
+      "path": "ops/preflight.prose.md"
+    },
+    {
+      "id": "ops-profiler--profiler",
+      "name": "profiler",
+      "kind": "program",
+      "path": "ops/profiler.prose.md"
+    },
+    {
+      "id": "ops-status--status",
+      "name": "status",
+      "kind": "program",
+      "path": "ops/status.prose.md"
+    },
+    {
+      "id": "ops-wire--wire",
+      "name": "wire",
+      "kind": "program",
+      "path": "ops/wire.prose.md"
+    },
+    {
+      "id": "roles-classifier--classifier",
+      "name": "classifier",
+      "kind": "service",
+      "path": "roles/classifier.prose.md"
+    },
+    {
+      "id": "roles-critic--critic",
+      "name": "critic",
+      "kind": "service",
+      "path": "roles/critic.prose.md"
+    },
+    {
+      "id": "roles-extractor--extractor",
+      "name": "extractor",
+      "kind": "service",
+      "path": "roles/extractor.prose.md"
+    },
+    {
+      "id": "roles-formatter--formatter",
+      "name": "formatter",
+      "kind": "service",
+      "path": "roles/formatter.prose.md"
+    },
+    {
+      "id": "roles-planner--planner",
+      "name": "planner",
+      "kind": "service",
+      "path": "roles/planner.prose.md"
+    },
+    {
+      "id": "roles-researcher--researcher",
+      "name": "researcher",
+      "kind": "service",
+      "path": "roles/researcher.prose.md"
+    },
+    {
+      "id": "roles-router--router",
+      "name": "router",
+      "kind": "service",
+      "path": "roles/router.prose.md"
+    },
+    {
+      "id": "roles-summarizer--summarizer",
+      "name": "summarizer",
+      "kind": "service",
+      "path": "roles/summarizer.prose.md"
+    },
+    {
+      "id": "roles-verifier--verifier",
+      "name": "verifier",
+      "kind": "service",
+      "path": "roles/verifier.prose.md"
+    },
+    {
+      "id": "roles-writer--writer",
+      "name": "writer",
+      "kind": "service",
+      "path": "roles/writer.prose.md"
+    }
+  ],
+  "graph": {
+    "node_count": 82,
+    "edge_count": 97,
+    "edge_kinds": {
+      "caller": 20,
+      "exact": 38,
+      "execution": 28,
+      "return": 11
+    }
+  },
+  "diagnostics": {
+    "ambiguous_package_exact_wiring": 14,
+    "ambiguous_package_service_reference": 7,
+    "unresolved_service_reference": 17
+  }
+}

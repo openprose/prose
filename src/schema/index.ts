@@ -1,1 +1,1 @@
-export type { PackageMetadata, PortIR, ProseIR } from "../types.js";
+export type { PackageIR, PackageMetadata, PortIR, ProseIR } from "../types.js";

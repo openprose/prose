@@ -12,6 +12,7 @@ export { buildTextMateGrammar, renderTextMateGrammar } from "../src/grammar";
 export { graphSource, renderGraphMermaid } from "../src/graph";
 export { highlightSource, renderHighlightHtml, renderHighlightText } from "../src/highlight";
 export { installRegistryRef, installWorkspaceDependencies } from "../src/install";
+export { compilePackagePath } from "../src/ir/package";
 export { lintPath, lintSource, renderLintReportText, renderLintText } from "../src/lint";
 export { materializeSource } from "../src/materialize";
 export { projectManifest } from "../src/manifest";

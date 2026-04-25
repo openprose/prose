@@ -1,0 +1,96 @@
+{
+  "package_ir_version": "0.1",
+  "semantic_hash": "e7ad40ea855dab871951eef8b4436b767547d84be7cea6a27d4e0c38d7d93fbb",
+  "manifest": {
+    "name": "@openprose/co",
+    "version": "0.11.0-dev",
+    "catalog": "openprose",
+    "registry_ref": "registry://openprose/@openprose/co@0.11.0-dev",
+    "description": "OpenProse company-as-code starter package for organizing an operating company as Prose programs.",
+    "license": "MIT",
+    "source": {
+      "git": null,
+      "sha": null,
+      "subpath": null
+    },
+    "schemas": [],
+    "evals": [
+      "evals/company-repo-checker.eval.prose.md"
+    ],
+    "examples": [
+      "programs/company-repo-checker.prose.md"
+    ],
+    "no_evals": false,
+    "hosted": null
+  },
+  "files": [
+    {
+      "path": "evals/company-repo-checker.eval.prose.md",
+      "component_ids": [
+        "evals-company-repo-checker-eval--company-repo-checker-eval"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "programs/company-repo-checker.prose.md",
+      "component_ids": [
+        "programs-company-repo-checker--company-repo-checker",
+        "programs-company-repo-checker--repo-structure-inspector",
+        "programs-company-repo-checker--contract-eval-drift-inspector",
+        "programs-company-repo-checker--dependency-graph-inspector",
+        "programs-company-repo-checker--repo-readiness-reporter"
+      ],
+      "diagnostics": []
+    }
+  ],
+  "dependencies": [],
+  "components": [
+    {
+      "id": "evals-company-repo-checker-eval--company-repo-checker-eval",
+      "name": "company-repo-checker.eval",
+      "kind": "test",
+      "path": "evals/company-repo-checker.eval.prose.md"
+    },
+    {
+      "id": "programs-company-repo-checker--company-repo-checker",
+      "name": "company-repo-checker",
+      "kind": "program",
+      "path": "programs/company-repo-checker.prose.md"
+    },
+    {
+      "id": "programs-company-repo-checker--contract-eval-drift-inspector",
+      "name": "contract-eval-drift-inspector",
+      "kind": "service",
+      "path": "programs/company-repo-checker.prose.md"
+    },
+    {
+      "id": "programs-company-repo-checker--dependency-graph-inspector",
+      "name": "dependency-graph-inspector",
+      "kind": "service",
+      "path": "programs/company-repo-checker.prose.md"
+    },
+    {
+      "id": "programs-company-repo-checker--repo-readiness-reporter",
+      "name": "repo-readiness-reporter",
+      "kind": "service",
+      "path": "programs/company-repo-checker.prose.md"
+    },
+    {
+      "id": "programs-company-repo-checker--repo-structure-inspector",
+      "name": "repo-structure-inspector",
+      "kind": "service",
+      "path": "programs/company-repo-checker.prose.md"
+    }
+  ],
+  "graph": {
+    "node_count": 6,
+    "edge_count": 15,
+    "edge_kinds": {
+      "caller": 5,
+      "exact": 3,
+      "execution": 4,
+      "return": 3
+    }
+  },
+  "diagnostics": {}
+}
