@@ -1,6 +1,6 @@
 # OpenProse Measurement Report
 
-Generated: 2026-04-24T00:31:46.840Z
+Generated: 2026-04-25T06:53:17.438Z
 
 ## Package Health
 
@@ -14,7 +14,7 @@ Generated: 2026-04-24T00:31:46.840Z
 ## Scenario Checks
 
 ### Hello
-- compile time: 0.09 ms
+- compile time: 0.40 ms
 - diagnostics: 0
 
 ### Company Intake
@@ -23,7 +23,7 @@ Generated: 2026-04-24T00:31:46.840Z
 - materialization set size: 3
 
 ### Run-Aware Brief
-- compile time: 0.14 ms
+- compile time: 0.37 ms
 - access rule groups: 2
 
 ### Selective Recompute
@@ -35,4 +35,24 @@ Generated: 2026-04-24T00:31:46.840Z
 ### Approval-Gated Release
 - plan status: blocked
 - blocked nodes: announce-release
+
+## Baseline Skill Folder Comparison
+
+Baseline: plain skill folder
+
+Assumptions:
+- instruction files expose no machine-readable typed ports
+- effects and approvals are conventions unless parsed by a separate system
+- there is no canonical graph/run materialization record
+- targeted recompute requires manual operator judgment
+
+| Signal | OpenProse advantage |
+|---|---:|
+| examples quality score | 0.95 |
+| typed port coverage delta | 100% |
+| effect declaration delta | 100% |
+| selective node recomputes avoided | 1 |
+| selective graph rewrites avoided | 1 |
+| approval gate visible to planner | yes |
+| graph trace available | yes |
 

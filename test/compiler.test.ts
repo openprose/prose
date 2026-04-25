@@ -84,6 +84,65 @@ describe("OpenProse compiler", () => {
     expect(ir.diagnostics).toEqual([]);
   });
 
+  test("does not use program ensures as providers for service graph inputs", () => {
+    const ir = compileSource(
+      `---
+name: company-intake
+kind: program
+---
+
+### Services
+
+- \`company-normalizer\`
+- \`account-brief\`
+
+### Requires
+
+- \`company_domain\`: string - company domain
+
+### Ensures
+
+- \`company_record\`: CompanyProfile - normalized profile returned by the graph
+- \`brief\`: Markdown<AccountBrief> - brief returned by the graph
+
+## company-normalizer
+
+### Requires
+
+- \`company_domain\`: string - company domain
+
+### Ensures
+
+- \`company_record\`: CompanyProfile - normalized profile
+
+## account-brief
+
+### Requires
+
+- \`company_record\`: CompanyProfile - normalized profile
+
+### Ensures
+
+- \`brief\`: Markdown<AccountBrief> - account brief
+`,
+      { path: "fixtures/compiler/program-output-provider.prose.md" },
+    );
+    const edges = ir.graph.edges.map(
+      (edge) =>
+        `${edge.from.component}.${edge.from.port}->${edge.to.component}.${edge.to.port}`,
+    );
+
+    expect(edges).toContain(
+      "company-normalizer.company_record->account-brief.company_record",
+    );
+    expect(edges).not.toContain(
+      "company-intake.company_record->account-brief.company_record",
+    );
+    expect(edges).toContain("company-normalizer.company_record->$return.company_record");
+    expect(edges).toContain("account-brief.brief->$return.brief");
+    expect(ir.diagnostics).toEqual([]);
+  });
+
   test("builds caller and return edges for a single-component program", () => {
     const ir = compileSource(
       `---
@@ -1314,6 +1373,7 @@ name: stable-format
     expect(metadata.components.map((component) => component.name)).toEqual([
       "brief-writer",
       "market-scan",
+      "release-gate",
     ]);
     expect(metadata.components[0].inputs).toContainEqual({
       name: "company",

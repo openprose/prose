@@ -27,6 +27,18 @@ interface PackageSnapshot {
   strict_publish_status: string;
 }
 
+interface BaselineComparison {
+  baseline_label: string;
+  assumptions: string[];
+  openprose_examples_quality_score: number;
+  typed_port_coverage_delta: number;
+  effect_declaration_ratio_delta: number;
+  selective_recompute_saved_nodes: number;
+  selective_recompute_saved_graph_rewrite: number;
+  approval_gate_visible: boolean;
+  graph_trace_available: boolean;
+}
+
 async function main(): Promise<void> {
   const repoRoot = resolve(import.meta.dir, "..");
   const docsRoot = resolve(repoRoot, "docs", "measurements");
@@ -125,6 +137,17 @@ async function main(): Promise<void> {
         },
       }),
     );
+    const examplesPackage = packages.find((snapshot) => snapshot.label === "examples");
+    if (!examplesPackage) {
+      throw new Error("Examples package measurement was not produced.");
+    }
+
+    const selectiveRecomputeSavedNodes =
+      fullRefresh.value.materialization_set.nodes.length -
+      targetedRefresh.value.materialization_set.nodes.length;
+    const selectiveRecomputeSavedGraphRewrite =
+      Number(fullRefresh.value.materialization_set.graph) -
+      Number(targetedRefresh.value.materialization_set.graph);
 
     const report = {
       generated_at: new Date().toISOString(),
@@ -155,12 +178,8 @@ async function main(): Promise<void> {
           targeted_refresh_nodes: targetedRefresh.value.materialization_set.nodes,
           full_refresh_graph: fullRefresh.value.materialization_set.graph,
           targeted_refresh_graph: targetedRefresh.value.materialization_set.graph,
-          saved_node_recomputes:
-            fullRefresh.value.materialization_set.nodes.length -
-            targetedRefresh.value.materialization_set.nodes.length,
-          saved_graph_rewrite:
-            Number(fullRefresh.value.materialization_set.graph) -
-            Number(targetedRefresh.value.materialization_set.graph),
+          saved_node_recomputes: selectiveRecomputeSavedNodes,
+          saved_graph_rewrite: selectiveRecomputeSavedGraphRewrite,
         },
         approval_gated_release: {
           elapsed_ms: round2(approvalPlan.elapsed_ms),
@@ -170,6 +189,24 @@ async function main(): Promise<void> {
             .map((node) => node.component_ref),
         },
       },
+      baseline_comparison: {
+        baseline_label: "plain skill folder",
+        assumptions: [
+          "instruction files expose no machine-readable typed ports",
+          "effects and approvals are conventions unless parsed by a separate system",
+          "there is no canonical graph/run materialization record",
+          "targeted recompute requires manual operator judgment",
+        ],
+        openprose_examples_quality_score: examplesPackage.quality_score,
+        typed_port_coverage_delta: examplesPackage.typed_port_coverage,
+        effect_declaration_ratio_delta: examplesPackage.effect_declaration_ratio,
+        selective_recompute_saved_nodes: selectiveRecomputeSavedNodes,
+        selective_recompute_saved_graph_rewrite: selectiveRecomputeSavedGraphRewrite,
+        approval_gate_visible: approvalPlan.value.nodes.some(
+          (node) => node.status === "blocked_effect",
+        ),
+        graph_trace_available: companyGraphPlan.value.nodes.length > 0,
+      } satisfies BaselineComparison,
     };
 
     await mkdir(docsRoot, { recursive: true });
@@ -227,6 +264,7 @@ function renderMarkdownReport(report: {
       blocked_effect_nodes: string[];
     };
   };
+  baseline_comparison: BaselineComparison;
 }): string {
   const lines: string[] = [];
   lines.push("# OpenProse Measurement Report");
@@ -267,6 +305,39 @@ function renderMarkdownReport(report: {
   lines.push("### Approval-Gated Release");
   lines.push(`- plan status: ${report.scenarios.approval_gated_release.status}`);
   lines.push(`- blocked nodes: ${listOrNone(report.scenarios.approval_gated_release.blocked_effect_nodes)}`);
+  lines.push("");
+  lines.push("## Baseline Skill Folder Comparison");
+  lines.push("");
+  lines.push(`Baseline: ${report.baseline_comparison.baseline_label}`);
+  lines.push("");
+  lines.push("Assumptions:");
+  for (const assumption of report.baseline_comparison.assumptions) {
+    lines.push(`- ${assumption}`);
+  }
+  lines.push("");
+  lines.push("| Signal | OpenProse advantage |");
+  lines.push("|---|---:|");
+  lines.push(
+    `| examples quality score | ${report.baseline_comparison.openprose_examples_quality_score.toFixed(2)} |`,
+  );
+  lines.push(
+    `| typed port coverage delta | ${formatPercent(report.baseline_comparison.typed_port_coverage_delta)} |`,
+  );
+  lines.push(
+    `| effect declaration delta | ${formatPercent(report.baseline_comparison.effect_declaration_ratio_delta)} |`,
+  );
+  lines.push(
+    `| selective node recomputes avoided | ${report.baseline_comparison.selective_recompute_saved_nodes} |`,
+  );
+  lines.push(
+    `| selective graph rewrites avoided | ${report.baseline_comparison.selective_recompute_saved_graph_rewrite} |`,
+  );
+  lines.push(
+    `| approval gate visible to planner | ${report.baseline_comparison.approval_gate_visible ? "yes" : "no"} |`,
+  );
+  lines.push(
+    `| graph trace available | ${report.baseline_comparison.graph_trace_available ? "yes" : "no"} |`,
+  );
   lines.push("");
   return `${lines.join("\n")}\n`;
 }

@@ -158,7 +158,9 @@ function buildGraph(
 
     for (const port of consumer.ports.requires) {
       const matchingProviders = (providers.get(port.name) ?? []).filter(
-        (provider) => provider.id !== consumer.id,
+        (provider) =>
+          provider.id !== consumer.id &&
+          !(hasServiceGraph && main && provider.id === main.id),
       );
 
       if (matchingProviders.length > 1) {

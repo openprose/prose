@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-24T00:31:46.840Z",
+  "generated_at": "2026-04-25T06:53:17.438Z",
   "packages": [
     {
       "label": "examples",
@@ -52,24 +52,24 @@
   ],
   "scenarios": {
     "hello_compile": {
-      "elapsed_ms": 0.09,
+      "elapsed_ms": 0.4,
       "diagnostics": 0,
       "semantic_hash": "2e110fa8c3a693cefb9fb6fe7ed851f14abfc33ccbde2e85b0634c95eff71585"
     },
     "company_intake_plan": {
-      "elapsed_ms": 1.02,
+      "elapsed_ms": 3.19,
       "status": "ready",
       "nodes": 3,
       "materialization_nodes": 3
     },
     "run_aware_brief": {
-      "elapsed_ms": 0.14,
+      "elapsed_ms": 0.37,
       "diagnostics": 0,
       "access_rule_groups": 2
     },
     "selective_recompute": {
-      "full_refresh_elapsed_ms": 0.94,
-      "targeted_refresh_elapsed_ms": 0.4,
+      "full_refresh_elapsed_ms": 1.32,
+      "targeted_refresh_elapsed_ms": 0.5,
       "full_refresh_nodes": [
         "market-sync"
       ],
@@ -80,11 +80,27 @@
       "saved_graph_rewrite": 1
     },
     "approval_gated_release": {
-      "elapsed_ms": 0.3,
+      "elapsed_ms": 0.59,
       "status": "blocked",
       "blocked_effect_nodes": [
         "announce-release"
       ]
     }
+  },
+  "baseline_comparison": {
+    "baseline_label": "plain skill folder",
+    "assumptions": [
+      "instruction files expose no machine-readable typed ports",
+      "effects and approvals are conventions unless parsed by a separate system",
+      "there is no canonical graph/run materialization record",
+      "targeted recompute requires manual operator judgment"
+    ],
+    "openprose_examples_quality_score": 0.95,
+    "typed_port_coverage_delta": 1,
+    "effect_declaration_ratio_delta": 1,
+    "selective_recompute_saved_nodes": 1,
+    "selective_recompute_saved_graph_rewrite": 1,
+    "approval_gate_visible": true,
+    "graph_trace_available": true
   }
 }

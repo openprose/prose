@@ -25,6 +25,11 @@ The current measurement harness focuses on four things:
 4. **Reference-company health**
    - the same package/publish metrics applied to the best-practice company repo
 
+5. **Baseline skill-folder comparison**
+   - typed-port and effect-coverage deltas versus unstructured instructions
+   - selective recompute avoided by graph planning
+   - whether approval gates and graph traces are visible to the planner
+
 ## Run It
 
 ```bash
@@ -44,6 +49,8 @@ These are not vanity metrics. They are leading indicators of whether OpenProse i
 - selective recompute shows whether the run/plan model is buying actual savings
 - publish checks tell us whether packages are shareable with discipline
 - reference-company scores tell us whether the pattern scales beyond toy examples
+- baseline comparison keeps the "better than a skill folder" claim measurable
+  instead of purely rhetorical
 
 ## Current Shape
 
