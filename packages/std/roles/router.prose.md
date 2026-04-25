@@ -17,16 +17,21 @@ Select the best handler for an input from a set of candidates and explain the ch
 
 ### Requires
 
-- input: the request, message, or data to be routed
-- handlers: a list of possible handlers, each with a name and description of what it handles well
+- `input`: Input - the request, message, or data to be routed
+- `handlers`: JSON<Handlers> - a list of possible handlers, each with a name and description of what it handles well
 
 ### Ensures
 
-- routing: a structured decision containing:
+- `routing`: Markdown<Routing> - a structured decision containing:
     - selected: the name of the chosen handler
     - rationale: why this handler is the best match for this input, referencing specific features of the input and the handler's description
     - confidence: 0 to 1, reflecting how clearly the input matches the selected handler versus alternatives
     - runner_up: (if confidence is below 0.8) the second-best handler and why it was not chosen
+
+
+### Effects
+
+- `pure`: deterministic transformation over declared inputs
 
 ### Errors
 

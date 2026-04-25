@@ -17,19 +17,24 @@ Produce an ordered plan with dependencies, decision points, and fallback paths.
 
 ### Requires
 
-- goal: what the plan should achieve
-- constraints: limits on time, resources, tools, or scope
-- context: (optional) current state, prior attempts, or known blockers
+- `goal`: Goal - what the plan should achieve
+- `constraints`: Markdown<Constraints> - limits on time, resources, tools, or scope
+- `context`: Markdown<Context> - (optional) current state, prior attempts, or known blockers
 
 ### Ensures
 
-- plan: an ordered sequence of steps, each with:
+- `plan`: Markdown<Plan> - an ordered sequence of steps, each with:
     - step: what to do
     - depends_on: which prior steps must complete before this one can start
     - success_criteria: how to know this step is done
     - fallback: what to do if this step fails
-- assumptions: explicit statements about what the plan takes for granted (if any assumption is wrong, the plan may need revision)
-- decision_points: moments where the path forward depends on information not yet available, with the options and how to choose between them
+- `assumptions`: Markdown<Assumptions> - explicit statements about what the plan takes for granted (if any assumption is wrong, the plan may need revision)
+- `decision_points`: Markdown<DecisionPoints> - moments where the path forward depends on information not yet available, with the options and how to choose between them
+
+
+### Effects
+
+- `pure`: deterministic transformation over declared inputs
 
 ### Errors
 

@@ -17,17 +17,22 @@ Produce a written artifact given requirements, audience, and constraints.
 
 ### Requires
 
-- brief: what to write, including the purpose and key points to cover
-- audience: who will read this and what they need from it
-- format: (optional) structural requirements -- length, sections, tone, style guide
+- `brief`: Markdown<Brief> - what to write, including the purpose and key points to cover
+- `audience`: string - who will read this and what they need from it
+- `format`: string - (optional) structural requirements -- length, sections, tone, style guide
 
 ### Ensures
 
-- artifact: the written document where:
+- `artifact`: Markdown<Artifact> - the written document where:
     - every claim is specific rather than vague ("revenue grew 40% YoY" not "revenue grew significantly")
     - structure follows the format requirements if provided, or uses a sensible default structure
     - content addresses the audience's needs and knowledge level
     - no filler -- every sentence earns its place
+
+
+### Effects
+
+- `pure`: deterministic transformation over declared inputs
 
 ### Errors
 

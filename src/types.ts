@@ -486,7 +486,9 @@ export interface PackageQualitySummary {
 }
 
 export interface PackageMetadata {
-  package_version: "0.1";
+  schema_version: "openprose.package.v2";
+  package_version: "0.2";
+  metadata_digest: string;
   root: string;
   manifest: {
     name: string;
@@ -510,6 +512,20 @@ export interface PackageMetadata {
   components: PackageComponentMetadata[];
   diagnostics: Diagnostic[];
   quality: PackageQualitySummary;
+  hosted_ingest: {
+    contract_version: "0.1";
+    package: {
+      name: string;
+      version: string | null;
+      catalog: string;
+      registry_ref: string | null;
+      description: string | null;
+      license: string | null;
+    };
+    source: PackageMetadata["manifest"]["source"];
+    components: PackageComponentMetadata[];
+    quality: PackageQualitySummary;
+  };
 }
 
 export interface PublishCheckItem {

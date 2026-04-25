@@ -15,12 +15,12 @@ Given an inspection report and a symptom description, diagnose whether the issue
 
 ### Requires
 
-- inspection: run — a completed inspector run showing the problematic behavior
-- symptom: description of what went wrong or what should be better (e.g., "services ran sequentially despite no dependencies", "output was empty despite no errors", "wrong model was used for the critic service")
+- `inspection`: Markdown<Inspection> - run — a completed inspector run showing the problematic behavior
+- `symptom`: Symptom - description of what went wrong or what should be better (e.g., "services ran sequentially despite no dependencies", "output was empty despite no errors", "wrong model was used for the critic service")
 
 ### Ensures
 
-- diagnosis: structured analysis containing:
+- `diagnosis`: Markdown<Diagnosis> - structured analysis containing:
     - layer: which layer owns the fix — "prose" (the program's `.prose.md` files), "forme" (the wiring algorithm in std/ops/wire), or "press" (the runtime execution engine)
     - confidence: 0-100 confidence that this is the correct layer
     - reasoning: chain of evidence from symptom to layer attribution
@@ -30,6 +30,11 @@ Given an inspection report and a symptom description, diagnose whether the issue
     - side_effects: what else might change if this fix is applied
     - verification: how to verify the fix works (which eval to run, what to look for)
 - if symptom is ambiguous: diagnosis includes alternative hypotheses ranked by likelihood
+
+
+### Effects
+
+- `pure`: deterministic transformation over declared inputs
 
 ### Errors
 
@@ -56,17 +61,22 @@ Read the inspection output and symptom, determine which layer most likely owns t
 
 ### Requires
 
-- inspection: the inspection run binding
-- symptom: the symptom description
+- `inspection`: Markdown<Inspection> - the inspection run binding
+- `symptom`: Symptom - the symptom description
 
 ### Ensures
 
-- triage: layer attribution containing:
+- `triage`: JSON<Triage> - layer attribution containing:
     - primary_layer: "prose", "forme", or "press"
     - confidence: 0-100
     - evidence: list of specific inspection findings that point to this layer
     - alternative_layers: list of other plausible layers with lower confidence and reasoning
     - symptom_category: classification of the symptom type (e.g., "execution_order", "missing_output", "wrong_model", "contract_violation", "state_corruption", "delegation_failure")
+
+
+### Effects
+
+- `pure`: deterministic evaluation over declared inputs
 
 ### Strategies
 
@@ -83,19 +93,24 @@ Deep-dive into the identified layer. Read the relevant source files and trace th
 
 ### Requires
 
-- triage: layer attribution from triager
-- inspection: the inspection run binding
-- symptom: the symptom description
+- `triage`: JSON<Triage> - layer attribution from triager
+- `inspection`: Markdown<Inspection> - the inspection run binding
+- `symptom`: Symptom - the symptom description
 
 ### Ensures
 
-- analysis: detailed root cause analysis containing:
+- `analysis`: Markdown<Analysis> - detailed root cause analysis containing:
     - root_cause: precise description of the bug or deficiency
     - causal_chain: ordered list of events from root cause to observed symptom
     - affected_file: path to the file that needs changing
     - affected_section: specific section or lines within the file
     - current_behavior: what the affected code/spec currently does
     - desired_behavior: what it should do instead
+
+
+### Effects
+
+- `pure`: deterministic evaluation over declared inputs
 
 ### Errors
 
@@ -116,12 +131,17 @@ Generate the concrete fix: a diff against the correct source file, with side eff
 
 ### Requires
 
-- analysis: root cause analysis from analyst
-- triage: layer attribution from triager
+- `analysis`: Markdown<Analysis> - root cause analysis from analyst
+- `triage`: JSON<Triage> - layer attribution from triager
 
 ### Ensures
 
-- diagnosis: the final output matching the program's top-level ensures schema, with diff and verification plan
+- `diagnosis`: Markdown<Diagnosis> - the final output matching the program's top-level ensures schema, with diff and verification plan
+
+
+### Effects
+
+- `pure`: deterministic evaluation over declared inputs
 
 ### Strategies
 

@@ -48,6 +48,11 @@ Split input, delegate chunks to mappers in parallel, merge results with a reduce
 - &controlState.result contains the merged output
 - &controlState.mapper_results contains individual mapper outputs
 
+
+### Effects
+
+- `pure`: deterministic transformation over declared inputs
+
 ### Delegation
 
 ```javascript

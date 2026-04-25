@@ -64,6 +64,11 @@ Heterogeneous agents independently surface unstated assumptions; cross-tier disa
 - &compositeState.result contains the comparator's classified assumption map
 - &compositeState.raw_assumptions contains per-miner assumption lists
 
+
+### Effects
+
+- `pure`: deterministic transformation over declared inputs
+
 ### Delegation Loop
 
 ```javascript

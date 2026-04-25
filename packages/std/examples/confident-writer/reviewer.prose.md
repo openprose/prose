@@ -13,13 +13,18 @@ Evaluate a piece of writing against quality criteria and return a structured ver
 
 ### Requires
 
-- output: the article to review
+- `output`: Markdown<Output> - the article to review
 
 ### Ensures
 
-- verdict: "accept" or "reject"
-- reasoning: why the verdict was reached
-- suggestions: specific, actionable improvements (empty list if accepted)
+- `verdict`: Markdown<Verdict> - "accept" or "reject"
+- `reasoning`: Markdown<Reasoning> - why the verdict was reached
+- `suggestions`: Markdown<Suggestions> - specific, actionable improvements (empty list if accepted)
+
+
+### Effects
+
+- `pure`: deterministic transformation over declared inputs
 
 ### Strategies
 

@@ -15,11 +15,11 @@ Given 2 or more runs of the same program (different models, inputs, or program v
 
 ### Requires
 
-- subjects: run[] — completed runs to compare (minimum 2, must be runs of the same program or explicitly related programs)
+- `subjects`: JSON<Subjects> - run[] — completed runs to compare (minimum 2, must be runs of the same program or explicitly related programs)
 
 ### Ensures
 
-- comparison: structured diff report containing:
+- `comparison`: Markdown<Comparison> - structured diff report containing:
     - program: the program name (or names if comparing across versions)
     - runs: list of run metadata (run_id, model, timestamp, duration, status)
     - output_diff: per-service structured comparison of outputs across runs, highlighting semantic differences (not just textual diffs)
@@ -28,6 +28,11 @@ Given 2 or more runs of the same program (different models, inputs, or program v
     - quality_diff: if inspector results are available for these runs, compare scores; otherwise note "no inspection data"
     - summary: narrative comparison highlighting the most significant differences and their likely causes
     - recommendation: which run produced the best result and why, or "inconclusive" with reasoning
+
+
+### Effects
+
+- `pure`: deterministic transformation over declared inputs
 
 ### Errors
 
@@ -56,11 +61,11 @@ Read all runs and extract comparable data. Validate that the runs are meaningful
 
 ### Requires
 
-- subjects: the run[] binding
+- `subjects`: JSON<Subjects> - the run[] binding
 
 ### Ensures
 
-- run-data: for each run, a structured record containing:
+- `run-data`: JSON<RunData> - for each run, a structured record containing:
     - run_id: string
     - program_name: from program.md
     - program_hash: content hash of program.md (to detect version differences)
@@ -70,7 +75,12 @@ Read all runs and extract comparable data. Validate that the runs are meaningful
     - services: list of service names with per-service completion status and duration
     - outputs: map of service name to binding content (truncated to 2000 chars per binding)
     - token_count: total tokens if available from events or cost.json
-- comparability: assessment of whether these runs are meaningfully comparable, with explanation
+- `comparability`: JSON<Comparability> - assessment of whether these runs are meaningfully comparable, with explanation
+
+
+### Effects
+
+- `pure`: deterministic evaluation over declared inputs
 
 ### Errors
 
@@ -92,16 +102,21 @@ Produce structured diffs across all dimensions: output content, timing, cost, an
 
 ### Requires
 
-- run-data: collected data from collector
+- `run-data`: JSON<RunData> - collected data from collector
 
 ### Ensures
 
-- diffs: structured comparison containing:
+- `diffs`: JSON<Diffs> - structured comparison containing:
     - output_diff: per-service comparison with semantic similarity assessment and highlighted divergences
     - timing_diff: per-service duration comparison with relative percentages
     - cost_diff: token comparison with relative percentages (or "unavailable")
     - quality_diff: inspector score comparison if available
     - key_differences: ranked list of the most significant differences across all dimensions
+
+
+### Effects
+
+- `pure`: deterministic evaluation over declared inputs
 
 ### Strategies
 
@@ -119,12 +134,17 @@ Synthesize the diffs into actionable recommendations.
 
 ### Requires
 
-- diffs: structured comparison from differ
-- run-data: from collector (for context)
+- `diffs`: JSON<Diffs> - structured comparison from differ
+- `run-data`: JSON<RunData> - from collector (for context)
 
 ### Ensures
 
-- comparison: the final output matching the program's top-level ensures schema, with recommendation and summary
+- `comparison`: Markdown<Comparison> - the final output matching the program's top-level ensures schema, with recommendation and summary
+
+
+### Effects
+
+- `pure`: deterministic evaluation over declared inputs
 
 ### Strategies
 

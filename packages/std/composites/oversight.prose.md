@@ -68,6 +68,11 @@ Actor executes, observer independently analyzes outcomes, arbiter decides whethe
 - &compositeState.result contains the final outcome
 - &compositeState.cycles contains the number of cycles run
 
+
+### Effects
+
+- `pure`: deterministic transformation over declared inputs
+
 ### Delegation Loop
 
 ```javascript

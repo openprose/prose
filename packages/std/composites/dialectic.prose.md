@@ -60,6 +60,11 @@ Thesis and antithesis argue opposing positions; the unresolved tension is the ou
 - &compositeState.result contains the full exchange
 - &compositeState.exchange contains the structured round-by-round arguments
 
+
+### Effects
+
+- `pure`: deterministic transformation over declared inputs
+
 ### Delegation Loop
 
 ```javascript

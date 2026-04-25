@@ -15,15 +15,20 @@ kind: service
 
 ### Requires
 
-- report: structured report data to render (domain-specific, opaque to this contract)
-- slot_definitions: list of named slots the email shell exposes (e.g., `summary`, `detail`, `footer_cta`)
-- slot_catalog: reference to the component catalog — defines which json-render components are available and their accepted props
+- `report`: Markdown<Report> - structured report data to render (domain-specific, opaque to this contract)
+- `slot_definitions`: JSON<SlotDefinitions> - list of named slots the email shell exposes (e.g., `summary`, `detail`, `footer_cta`)
+- `slot_catalog`: JSON<SlotCatalog> - reference to the component catalog — defines which json-render components are available and their accepted props
 
 ### Ensures
 
-- slots: dict of slot_name → json-render spec, one entry per slot defined in slot_definitions
+- `slots`: JSON<Slots> - dict of slot_name → json-render spec, one entry per slot defined in slot_definitions
 - every spec is a valid json-render object (`{ root, elements }`) referencing only catalog components
 - slots adapt to report content — empty or irrelevant sections get appropriate alternative content, not blank space
+
+
+### Effects
+
+- `pure`: deterministic transformation over declared inputs
 
 ### Errors
 

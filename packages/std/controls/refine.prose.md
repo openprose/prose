@@ -51,6 +51,11 @@ Iteratively improve a result through delegation rounds until a quality threshold
 - &controlState.score contains the final score
 - &controlState.rounds_used contains the number of rounds
 
+
+### Effects
+
+- `pure`: deterministic transformation over declared inputs
+
 ### Delegation Loop
 
 ```javascript

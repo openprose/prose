@@ -17,11 +17,11 @@ Contract grading is distinct from inspection. The inspector evaluates runtime fi
 
 ### Requires
 
-- subject: run — the completed run to grade
+- `subject`: string - run — the completed run to grade
 
 ### Ensures
 
-- grade: structured contract satisfaction report containing:
+- `grade`: Markdown<Grade> - structured contract satisfaction report containing:
     - run_id: string
     - program: string
     - overall_score: 0-100 percentage of contract clauses satisfied
@@ -34,6 +34,11 @@ Contract grading is distinct from inspection. The inspector evaluates runtime fi
     - conditional_ensures: list of conditional ensures clauses (if X: Y) with whether the condition was triggered and whether the degraded output was provided
     - unevaluable_clauses: list of ensures clauses that are too vague to grade, with explanation of why
     - recommendations: suggestions for making unevaluable clauses more specific
+
+
+### Effects
+
+- `pure`: deterministic transformation over declared inputs
 
 ### Errors
 
@@ -64,19 +69,24 @@ Read the run's artifacts and extract all contract information: what each service
 
 ### Requires
 
-- subject: the run binding
+- `subject`: string - the run binding
 
 ### Ensures
 
-- contracts: for each service in the run, a structured record containing:
+- `contracts`: JSON<Contracts> - for each service in the run, a structured record containing:
     - name: service name
     - ensures_clauses: list of ensures clauses from the service's source file in `services/`
     - conditional_ensures: list of conditional ensures clauses
     - actual_output: content of the service's bindings (truncated to 2000 chars per binding if longer)
     - had_error: boolean (whether `__error.md` exists in workspace)
     - error_name: the error name if errored, null otherwise
-- program_ensures: the top-level program's ensures clauses
-- program_output: the final output binding content
+- `program_ensures`: Markdown<ProgramEnsures> - the top-level program's ensures clauses
+- `program_output`: Markdown<ProgramOutput> - the final output binding content
+
+
+### Effects
+
+- `pure`: deterministic evaluation over declared inputs
 
 ### Errors
 
@@ -98,12 +108,17 @@ Evaluate each ensures clause against the actual output. This is the core judgmen
 
 ### Requires
 
-- contracts: extracted contract information from extractor
+- `contracts`: JSON<Contracts> - extracted contract information from extractor
 
 ### Ensures
 
-- grades: for each service, for each ensures clause: verdict, evidence, and confidence
+- `grades`: JSON<Grades> - for each service, for each ensures clause: verdict, evidence, and confidence
 - each grade has: service_name, clause_text, verdict ("satisfied" / "partially_satisfied" / "violated" / "not_evaluable"), evidence (quoted output content or absence thereof), confidence (0-100)
+
+
+### Effects
+
+- `pure`: deterministic evaluation over declared inputs
 
 ### Strategies
 
@@ -122,12 +137,17 @@ Aggregate per-clause grades into per-service and overall scores. Format the fina
 
 ### Requires
 
-- grades: per-clause verdicts from grader
-- contracts: from extractor (for context and recommendations)
+- `grades`: JSON<Grades> - per-clause verdicts from grader
+- `contracts`: JSON<Contracts> - from extractor (for context and recommendations)
 
 ### Ensures
 
-- grade: the final output matching the program's top-level ensures schema exactly
+- `grade`: Markdown<Grade> - the final output matching the program's top-level ensures schema exactly
+
+
+### Effects
+
+- `pure`: deterministic evaluation over declared inputs
 
 ### Strategies
 

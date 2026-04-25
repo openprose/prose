@@ -9,12 +9,17 @@ kind: service
 
 ### Requires
 
-- mode: "teach" (add knowledge), "query" (ask questions), or "reflect" (summarize topic)
-- content: what to teach, ask, or reflect on
+- `mode`: string - "teach" (add knowledge), "query" (ask questions), or "reflect" (summarize topic)
+- `content`: Markdown<Content> - what to teach, ask, or reflect on
 
 ### Ensures
 
-- result: learning confirmation, answer from accumulated knowledge, or reflection with confidence levels and knowledge gaps
+- `result`: Markdown<Result> - learning confirmation, answer from accumulated knowledge, or reflection with confidence levels and knowledge gaps
+
+
+### Effects
+
+- `writes_memory`: reads or writes scoped memory state
 
 ### Errors
 

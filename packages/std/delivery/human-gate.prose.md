@@ -16,15 +16,20 @@ kind: service
 
 ### Requires
 
-- content: the output to review
-- gate_level: one of "all", "external", "none"
-- review_channel: where to present the review request — e.g. Slack channel ID or email address
+- `content`: Markdown<Content> - the output to review
+- `gate_level`: string - one of "all", "external", "none"
+- `review_channel`: string - where to present the review request — e.g. Slack channel ID or email address
 
 ### Ensures
 
-- approved: boolean — true if the reviewer approved, or if gate_level is "none" (auto-approved without review)
-- feedback: (optional) structured edits from the reviewer, suitable for `apply(content, feedback)` — present only when the reviewer provides modifications
+- `approved`: boolean - boolean — true if the reviewer approved, or if gate_level is "none" (auto-approved without review)
+- `feedback`: Markdown<Feedback> - (optional) structured edits from the reviewer, suitable for `apply(content, feedback)` — present only when the reviewer provides modifications
 - if gate_level is "none": approved is true immediately with no human review and no feedback
+
+
+### Effects
+
+- `human_gate`: requires explicit human approval before continuing
 
 ### Errors
 

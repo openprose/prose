@@ -11,11 +11,16 @@ kind: program
 
 ### Requires
 
-- target: path to the program `.prose.md` file to lint
+- `target`: string - path to the program `.prose.md` file to lint
 
 ### Ensures
 
-- report: structured lint report with file-level validation results, contract compatibility checks, shape consistency checks, and warnings
+- `report`: Markdown<Report> - structured lint report with file-level validation results, contract compatibility checks, shape consistency checks, and warnings
+
+
+### Effects
+
+- `read_external`: reads workspace, package, or run artifacts for operational analysis
 
 ### Errors
 

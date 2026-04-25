@@ -66,6 +66,11 @@ Run the same agent on identical inputs N times; variance in responses measures h
 - &compositeState.result contains the analyst's classification and variance map
 - &compositeState.responses contains the N raw responses
 
+
+### Effects
+
+- `pure`: deterministic transformation over declared inputs
+
 ### Delegation Loop
 
 ```javascript

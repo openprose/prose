@@ -15,12 +15,12 @@ Given an inspection report and the inspected program's source, analyze the progr
 
 ### Requires
 
-- inspection: run — a completed inspector run whose output identifies issues with a program
-- source-path: path to the program's source directory (the `.prose.md` files)
+- `inspection`: Markdown<Inspection> - run — a completed inspector run whose output identifies issues with a program
+- `source-path`: string - path to the program's source directory (the `.prose.md` files)
 
 ### Ensures
 
-- improvements: ranked list of improvement opportunities, each containing:
+- `improvements`: Markdown<Improvements> - ranked list of improvement opportunities, each containing:
     - rank: priority position (1 = highest impact)
     - category: one of "contract" (ensures/requires quality), "strategy" (missing or vague strategies), "shape" (delegation boundary violations), "structure" (service decomposition issues), "error-handling" (missing error declarations or conditional ensures), "efficiency" (unnecessary services or missing parallelization)
     - description: what the problem is
@@ -28,6 +28,11 @@ Given an inspection report and the inspected program's source, analyze the progr
     - diff: proposed change as a unified diff against the source file
     - risk: "low" (safe refactor), "medium" (changes contract surface), or "high" (changes program behavior)
 - if no improvements found: empty list with explanation of why the program is sound
+
+
+### Effects
+
+- `pure`: deterministic transformation over declared inputs
 
 ### Errors
 
@@ -50,14 +55,19 @@ Find and read the program source files. Validate that the source path contains a
 
 ### Requires
 
-- source-path: path to the program's source directory
-- inspection: the inspection run binding
+- `source-path`: string - path to the program's source directory
+- `inspection`: Markdown<Inspection> - the inspection run binding
 
 ### Ensures
 
-- program-source: the entry point file content (the file with `kind: program`)
-- service-sources: map of service name to file content for each service in the program
-- inspection-output: the inspection report extracted from the inspection run's bindings
+- `program-source`: Markdown<ProgramSource> - the entry point file content (the file with `kind: program`)
+- `service-sources`: JSON<ServiceSources> - map of service name to file content for each service in the program
+- `inspection-output`: Markdown<InspectionOutput> - the inspection report extracted from the inspection run's bindings
+
+
+### Effects
+
+- `pure`: deterministic evaluation over declared inputs
 
 ### Errors
 
@@ -78,14 +88,19 @@ Examine the program source against the inspection findings. Identify every impro
 
 ### Requires
 
-- program-source: entry point content from locator
-- service-sources: service file contents from locator
-- inspection-output: inspection report from locator
+- `program-source`: ProgramSource - entry point content from locator
+- `service-sources`: JSON<ServiceSources> - service file contents from locator
+- `inspection-output`: Markdown<InspectionOutput> - inspection report from locator
 
 ### Ensures
 
-- analysis: list of improvement opportunities, each with category, description, evidence, affected file, and estimated impact
+- `analysis`: Markdown<Analysis> - list of improvement opportunities, each with category, description, evidence, affected file, and estimated impact
 - each opportunity has: a reference to the specific inspection finding that motivates it AND a reference to the specific source location that needs changing
+
+
+### Effects
+
+- `pure`: deterministic evaluation over declared inputs
 
 ### Strategies
 
@@ -105,13 +120,18 @@ Transform analysis results into concrete diffs. Each diff must be minimal, corre
 
 ### Requires
 
-- analysis: improvement opportunities from analyst
-- program-source: entry point content from locator
-- service-sources: service file contents from locator
+- `analysis`: Markdown<Analysis> - improvement opportunities from analyst
+- `program-source`: ProgramSource - entry point content from locator
+- `service-sources`: JSON<ServiceSources> - service file contents from locator
 
 ### Ensures
 
-- improvements: the final ranked list matching the program's top-level ensures schema, with diffs generated for each opportunity
+- `improvements`: Markdown<Improvements> - the final ranked list matching the program's top-level ensures schema, with diffs generated for each opportunity
+
+
+### Effects
+
+- `pure`: deterministic evaluation over declared inputs
 
 ### Strategies
 

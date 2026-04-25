@@ -65,6 +65,11 @@ Iteratively refines a worker's output by looping through critic evaluation until
 - &compositeState.result contains the final output
 - &compositeState.attempts contains the count
 
+
+### Effects
+
+- `pure`: deterministic transformation over declared inputs
+
 ### Delegation Loop
 
 ```javascript

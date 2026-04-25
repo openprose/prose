@@ -10,11 +10,16 @@ kind: program
 
 ### Requires
 
-- runs_dir: (optional, default ".prose/runs/") path to the runs directory
+- `runs_dir`: string - (optional, default ".prose/runs/") path to the runs directory
 
 ### Ensures
 
-- summary: summary of recent runs showing run ID, program name, timestamp, duration, cost estimate, and pass/fail status
+- `summary`: Markdown<Summary> - summary of recent runs showing run ID, program name, timestamp, duration, cost estimate, and pass/fail status
+
+
+### Effects
+
+- `read_external`: reads workspace, package, or run artifacts for operational analysis
 
 ### Errors
 

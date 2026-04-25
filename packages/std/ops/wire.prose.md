@@ -16,11 +16,16 @@ available as `prose run std/ops/wire`.
 
 ### Requires
 
-- target: path to the program `.prose.md` file to wire
+- `target`: string - path to the program `.prose.md` file to wire
 
 ### Ensures
 
-- manifest: manifest.md written to .prose/runs/{id}/ containing the full wiring graph
+- `manifest`: Markdown<Manifest> - manifest.md written to .prose/runs/{id}/ containing the full wiring graph
+
+
+### Effects
+
+- `read_external`: reads workspace, package, or run artifacts for operational analysis
 
 ### Errors
 

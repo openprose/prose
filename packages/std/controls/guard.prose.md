@@ -46,6 +46,11 @@ Check before delegating. Fail-fast pattern.
 - &controlState.result contains the target's output (if proceeded) or guard's reason (if blocked)
 - &controlState.proceeded is true/false
 
+
+### Effects
+
+- `pure`: deterministic transformation over declared inputs
+
 ### Delegation
 
 ```javascript

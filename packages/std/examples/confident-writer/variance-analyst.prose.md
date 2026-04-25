@@ -13,14 +13,19 @@ Analyze N identical-input responses for variance, classifying the material's det
 
 ### Requires
 
-- responses: a set of N responses produced by identical runs of the same agent on the same material
+- `responses`: JSON<Responses> - a set of N responses produced by identical runs of the same agent on the same material
 
 ### Ensures
 
-- analysis: a structured assessment containing:
+- `analysis`: Markdown<Analysis> - a structured assessment containing:
     - classification: one of DETERMINISTIC, UNDERDETERMINED, or CHAOTIC
     - variance_map: which aspects of the responses are stable vs. varying
     - summary: a brief explanation of the classification
+
+
+### Effects
+
+- `pure`: deterministic transformation over declared inputs
 
 ### Strategies
 

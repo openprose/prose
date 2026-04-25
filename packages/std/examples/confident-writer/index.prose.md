@@ -17,11 +17,16 @@ Demonstrates Level 3 decorator syntax — a writer with stacked review and confi
 
 ### Requires
 
-- task_brief: a combined brief describing the topic and audience for the article
+- `task_brief`: Markdown<TaskBrief> - a combined brief describing the topic and audience for the article
 
 ### Ensures
 
-- article: a polished article that has been quality-reviewed and confidence-scored
+- `article`: Markdown<Article> - a polished article that has been quality-reviewed and confidence-scored
+
+
+### Effects
+
+- `pure`: deterministic transformation over declared inputs
 
 ### Notes
 

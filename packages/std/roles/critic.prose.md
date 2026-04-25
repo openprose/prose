@@ -17,13 +17,13 @@ Evaluate a work product against quality criteria and render a subjective verdict
 
 ### Requires
 
-- result: the work product to evaluate
-- criteria: what constitutes acceptance (quality standards, not formal rules)
-- task: the original task description, for context on what the result was supposed to accomplish
+- `result`: Markdown<Result> - the work product to evaluate
+- `criteria`: Markdown<Criteria> - what constitutes acceptance (quality standards, not formal rules)
+- `task`: Task - the original task description, for context on what the result was supposed to accomplish
 
 ### Ensures
 
-- evaluation: a structured verdict containing:
+- `evaluation`: Markdown<Evaluation> - a structured verdict containing:
     - verdict: "accept" or "reject"
     - reasoning: why the criteria are or are not met -- specific, not "looks good"
     - issues: specific, actionable problems found (each states what is wrong and why)
@@ -31,6 +31,11 @@ Evaluate a work product against quality criteria and render a subjective verdict
 - if accepting: reasoning explains why criteria are satisfied, with evidence
 - if rejecting: at least one issue is listed
 - the critic does not fix the result -- it identifies problems and suggests directions
+
+
+### Effects
+
+- `pure`: deterministic transformation over declared inputs
 
 ### Errors
 

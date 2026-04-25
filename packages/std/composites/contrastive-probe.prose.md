@@ -69,6 +69,11 @@ Runs any measurement composite on two candidates independently, then ranks which
 - &compositeState.profile_a contains candidate A's measurement result
 - &compositeState.profile_b contains candidate B's measurement result
 
+
+### Effects
+
+- `pure`: deterministic transformation over declared inputs
+
 ### Delegation Loop
 
 ```javascript

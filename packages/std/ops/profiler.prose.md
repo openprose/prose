@@ -13,12 +13,17 @@ kind: program
 
 ### Requires
 
-- run-path: path to run, or "recent" for latest runs
-- scope: "single" (one run), "compare" (multiple runs), or "trend" (over time)
+- `run-path`: string - path to run, or "recent" for latest runs
+- `scope`: string - "single" (one run), "compare" (multiple runs), or "trend" (over time)
 
 ### Ensures
 
-- report: profiling report with cost attribution, time attribution, per-agent breakdown, cache efficiency, hotspots, and optimization recommendations
+- `report`: Markdown<Report> - profiling report with cost attribution, time attribution, per-agent breakdown, cache efficiency, hotspots, and optimization recommendations
+
+
+### Effects
+
+- `read_external`: reads workspace, package, or run artifacts for operational analysis
 
 ### Errors
 

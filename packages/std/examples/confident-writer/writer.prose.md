@@ -13,11 +13,16 @@ Produce a well-structured article on a given topic for a specified audience.
 
 ### Requires
 
-- task_brief: a combined brief describing the topic and audience for the article
+- `task_brief`: Markdown<TaskBrief> - a combined brief describing the topic and audience for the article
 
 ### Ensures
 
-- output: a clear, well-structured article based on the brief
+- `output`: Markdown<Output> - a clear, well-structured article based on the brief
+
+
+### Effects
+
+- `pure`: deterministic transformation over declared inputs
 
 ### Strategies
 

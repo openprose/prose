@@ -11,12 +11,17 @@ kind: program
 
 ### Requires
 
-- run-path: path to the failed or problematic run (e.g. `.prose/runs/20260408-...`)
-- focus: focus area -- "vm", "program", "context", or "external" (optional, default: auto-detect)
+- `run-path`: string - path to the failed or problematic run (e.g. `.prose/runs/20260408-...`)
+- `focus`: string - focus area -- "vm", "program", "context", or "external" (optional, default: auto-detect)
 
 ### Ensures
 
-- report: diagnostic analysis with timeline, root cause, causal chain, and prioritized fix recommendations (immediate, permanent, prevention)
+- `report`: Markdown<Report> - diagnostic analysis with timeline, root cause, causal chain, and prioritized fix recommendations (immediate, permanent, prevention)
+
+
+### Effects
+
+- `read_external`: reads workspace, package, or run artifacts for operational analysis
 
 ### Errors
 

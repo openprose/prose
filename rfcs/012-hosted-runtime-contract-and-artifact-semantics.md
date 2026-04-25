@@ -4,7 +4,7 @@
 **Date:** 2026-04-25
 
 **Latest Implementation Note:**
-[`030-hosted-runtime-runner-contract`](implementation-notes/030-hosted-runtime-runner-contract.md)
+[`031-package-metadata-v2-and-std-quality`](implementation-notes/031-package-metadata-v2-and-std-quality.md)
 
 ## Summary
 
@@ -279,6 +279,12 @@ Exit criteria:
 - component catalog includes ports, effects, examples, and quality signals
 - install/publish checks preserve pinned Git source identity
 
+Status: implemented for the hosted-ingest package metadata contract.
+`prose package` now emits `schema_version: openprose.package.v2`, a
+deterministic `metadata_digest`, and a `hosted_ingest` projection containing the
+package identity, source identity, component catalog, effects, ports, examples,
+evals, and quality report.
+
 ### Phase 5: Standard Library Quality Ratchet
 
 Improve `packages/std` until it is suitable as a canonical hosted registry
@@ -297,6 +303,11 @@ Exit criteria:
 - strict publish readiness passes or has an explicit documented exception list
 - effect declarations and typed ports improve monotonically
 - examples demonstrate hosted-safe composition patterns
+
+Status: implemented for the current standard library package. `packages/std`
+now passes strict publish readiness with full typed-port coverage, full effect
+declaration coverage, linked evals, linked examples, and no strict quality
+warnings.
 
 ## Platform Backpressure
 

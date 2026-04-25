@@ -11,11 +11,16 @@ kind: program
 
 ### Requires
 
-- target: path to the program `.prose.md` file to preflight
+- `target`: string - path to the program `.prose.md` file to preflight
 
 ### Ensures
 
-- report: preflight report listing dependency installation status and environment variable status (set/not set, never revealing values)
+- `report`: Markdown<Report> - preflight report listing dependency installation status and environment variable status (set/not set, never revealing values)
+
+
+### Effects
+
+- `read_external`: reads workspace, package, or run artifacts for operational analysis
 
 ### Errors
 

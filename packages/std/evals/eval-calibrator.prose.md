@@ -17,11 +17,11 @@ Validate that light inspections reliably predict deep inspection outcomes. This 
 
 ### Requires
 
-- subjects: run[] — completed runs to calibrate on (minimum 3, recommended 10+)
+- `subjects`: JSON<Subjects> - run[] — completed runs to calibrate on (minimum 3, recommended 10+)
 
 ### Ensures
 
-- report: calibration report containing:
+- `report`: Markdown<Report> - calibration report containing:
     - sample_size: number of runs analyzed
     - agreement_rate: percentage of runs where light and deep verdicts match (pass/partial/fail)
     - score_correlation: Pearson correlation between light and deep scores for runtime_fidelity and task_effectiveness
@@ -29,6 +29,11 @@ Validate that light inspections reliably predict deep inspection outcomes. This 
     - bias_direction: whether light tends to be optimistic (scores higher than deep) or pessimistic (scores lower) or neutral
     - confidence: "high" (20+ runs, agreement > 90%), "medium" (10+ runs, agreement > 75%), or "low" (fewer runs or lower agreement)
     - recommendations: prioritized list of improvements to light eval criteria based on disagreement patterns
+
+
+### Effects
+
+- `pure`: deterministic transformation over declared inputs
 
 ### Errors
 
@@ -54,12 +59,17 @@ Select and validate the sample of runs for calibration. Ensure diversity across 
 
 ### Requires
 
-- subjects: the run[] binding from the caller
+- `subjects`: JSON<Subjects> - the run[] binding from the caller
 
 ### Ensures
 
-- sample: validated list of run paths with metadata (program name, completion status, service count) sorted by diversity score
-- sample-stats: summary of sample composition (programs represented, success/failure ratio, size distribution)
+- `sample`: JSON<Sample> - validated list of run paths with metadata (program name, completion status, service count) sorted by diversity score
+- `sample-stats`: JSON<SampleStats> - summary of sample composition (programs represented, success/failure ratio, size distribution)
+
+
+### Effects
+
+- `pure`: deterministic evaluation over declared inputs
 
 ### Errors
 
@@ -91,12 +101,17 @@ Execute the inspector on each sampled run at both depths. This service composes 
 
 ### Requires
 
-- sample: validated run list from sampler
+- `sample`: JSON<Sample> - validated run list from sampler
 
 ### Ensures
 
-- inspections: for each run in the sample, a pair of inspection results — one from `depth: light` and one from `depth: deep`
+- `inspections`: JSON<Inspections> - for each run in the sample, a pair of inspection results — one from `depth: light` and one from `depth: deep`
 - each inspection pair has: run_id, light_inspection (full inspector output), deep_inspection (full inspector output)
+
+
+### Effects
+
+- `pure`: deterministic evaluation over declared inputs
 
 ### Errors
 
@@ -116,11 +131,11 @@ Compare light and deep inspection results for each run. Identify agreements, dis
 
 ### Requires
 
-- inspections: paired light/deep results from runner
+- `inspections`: JSON<Inspections> - paired light/deep results from runner
 
 ### Ensures
 
-- comparisons: for each run, a structured comparison containing:
+- `comparisons`: JSON<Comparisons> - for each run, a structured comparison containing:
     - run_id: string
     - verdict_match: boolean (light verdict == deep verdict)
     - runtime_fidelity_delta: deep score minus light score (positive means light underestimated)
@@ -128,6 +143,11 @@ Compare light and deep inspection results for each run. Identify agreements, dis
     - flag_overlap: flags found by both, flags found only by light, flags found only by deep
     - disagreement_type: null if agree, or one of "false_positive" (light flagged, deep did not), "false_negative" (light missed, deep caught), "severity_mismatch" (same flag, different severity), "verdict_split" (different verdict category)
     - notes: explanation of significant differences
+
+
+### Effects
+
+- `pure`: deterministic evaluation over declared inputs
 
 ### Strategies
 
@@ -151,17 +171,22 @@ Compute aggregate statistics from the comparisons. All calculations must be perf
 
 ### Requires
 
-- comparisons: per-run comparison data from comparator
+- `comparisons`: JSON<Comparisons> - per-run comparison data from comparator
 
 ### Ensures
 
-- statistics: computed metrics containing:
+- `statistics`: JSON<Statistics> - computed metrics containing:
     - agreement_rate: percentage of verdict matches (with 95% confidence interval)
     - score_correlation: Pearson r for runtime_fidelity scores and task_effectiveness scores between light and deep
     - mean_score_delta: average (deep - light) for each score type
     - bias_direction: "optimistic" if mean delta < -5 (light scores higher), "pessimistic" if > 5, "neutral" otherwise
     - disagreement_breakdown: count by disagreement_type
     - confidence_level: "high", "medium", or "low" per the program's ensures criteria
+
+
+### Effects
+
+- `pure`: deterministic evaluation over declared inputs
 
 ### Errors
 
@@ -181,17 +206,22 @@ Analyze disagreement patterns and recommend improvements to the light evaluation
 
 ### Requires
 
-- comparisons: from comparator
-- statistics: from statistician
+- `comparisons`: JSON<Comparisons> - from comparator
+- `statistics`: JSON<Statistics> - from statistician
 
 ### Ensures
 
-- recommendations: prioritized list of improvements, each with:
+- `recommendations`: Markdown<Recommendations> - prioritized list of improvements, each with:
     - priority: 1 (highest) through N
     - target: which aspect of light eval to change
     - rationale: what disagreement pattern motivates this
     - proposed_change: specific description of what to adjust
     - expected_impact: how much this would improve agreement rate
+
+
+### Effects
+
+- `pure`: deterministic evaluation over declared inputs
 
 ### Strategies
 

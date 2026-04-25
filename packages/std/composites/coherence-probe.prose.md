@@ -69,6 +69,11 @@ Detects drift between two corpora by having independent readers predict what the
 - &compositeState.result contains the sync analyst's bidirectional drift report
 - &compositeState.predictions contains raw predictions from both directions
 
+
+### Effects
+
+- `pure`: deterministic transformation over declared inputs
+
 ### Delegation Loop
 
 ```javascript

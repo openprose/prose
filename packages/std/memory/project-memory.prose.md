@@ -9,12 +9,17 @@ kind: service
 
 ### Requires
 
-- mode: "ingest" (learn from content), "query" (answer questions), "update" (record decisions), or "summarize" (overview)
-- content: what to ingest, ask, record, or summarize
+- `mode`: string - "ingest" (learn from content), "query" (answer questions), "update" (record decisions), or "summarize" (overview)
+- `content`: Markdown<Content> - what to ingest, ask, record, or summarize
 
 ### Ensures
 
-- result: ingestion confirmation, answer from project knowledge, update acknowledgment, or project summary depending on mode
+- `result`: Markdown<Result> - ingestion confirmation, answer from project knowledge, update acknowledgment, or project summary depending on mode
+
+
+### Effects
+
+- `writes_memory`: reads or writes scoped memory state
 
 ### Errors
 

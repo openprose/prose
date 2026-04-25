@@ -3,6 +3,7 @@ import { readFile, stat } from "node:fs/promises";
 import { basename, dirname, relative, resolve } from "node:path";
 import { compileFile } from "./compiler";
 import { collectSourceFiles } from "./files";
+import { sha256, stableStringify } from "./hash";
 import { lintFile } from "./lint";
 import { buildRegistryRef } from "./registry";
 import type {
@@ -128,33 +129,64 @@ export async function packagePath(path: string): Promise<PackageMetadata> {
     config: resolvedConfig,
   });
 
-  return {
-    package_version: "0.1",
-    root: normalizePath(root),
-    manifest: {
-      name: manifestName,
-      version: resolvedConfig?.version?.trim() || null,
-      catalog,
-      registry_ref: registryRef,
-      description: resolvedConfig?.description?.trim() || null,
-      license: resolvedConfig?.license?.trim() || null,
-      source: {
-        git: resolvedConfig?.source?.git?.trim() || null,
-        sha: resolvedConfig?.source?.sha?.trim() || null,
-        subpath: resolvedConfig?.source?.subpath?.trim() || null,
-      },
-      dependencies: Array.from(dependencyMap.values()).sort((a, b) =>
-        a.package.localeCompare(b.package) || a.sha.localeCompare(b.sha),
-      ),
-      schemas: [...(resolvedConfig?.schemas ?? [])].sort(),
-      evals: [...(resolvedConfig?.evals ?? [])].sort(),
-      examples: [...(resolvedConfig?.examples ?? [])].sort(),
-      no_evals: (resolvedConfig?.evals?.length ?? 0) === 0,
-      hosted: resolvedConfig?.hosted ?? null,
+  const manifest = {
+    name: manifestName,
+    version: resolvedConfig?.version?.trim() || null,
+    catalog,
+    registry_ref: registryRef,
+    description: resolvedConfig?.description?.trim() || null,
+    license: resolvedConfig?.license?.trim() || null,
+    source: {
+      git: resolvedConfig?.source?.git?.trim() || null,
+      sha: resolvedConfig?.source?.sha?.trim() || null,
+      subpath: resolvedConfig?.source?.subpath?.trim() || null,
     },
+    dependencies: Array.from(dependencyMap.values()).sort((a, b) =>
+      a.package.localeCompare(b.package) || a.sha.localeCompare(b.sha),
+    ),
+    schemas: [...(resolvedConfig?.schemas ?? [])].sort(),
+    evals: [...(resolvedConfig?.evals ?? [])].sort(),
+    examples: [...(resolvedConfig?.examples ?? [])].sort(),
+    no_evals: (resolvedConfig?.evals?.length ?? 0) === 0,
+    hosted: resolvedConfig?.hosted ?? null,
+  };
+  const sortedDiagnostics = sortDiagnostics(diagnostics);
+  const hostedIngest = {
+    contract_version: "0.1" as const,
+    package: {
+      name: manifest.name,
+      version: manifest.version,
+      catalog: manifest.catalog,
+      registry_ref: manifest.registry_ref,
+      description: manifest.description,
+      license: manifest.license,
+    },
+    source: manifest.source,
     components,
-    diagnostics: sortDiagnostics(diagnostics),
     quality,
+  };
+  const digest = sha256(
+    stableStringify({
+      schema_version: "openprose.package.v2",
+      package_version: "0.2",
+      manifest,
+      components,
+      diagnostics: sortedDiagnostics,
+      quality,
+      hosted_ingest: hostedIngest,
+    }),
+  );
+
+  return {
+    schema_version: "openprose.package.v2",
+    package_version: "0.2",
+    metadata_digest: digest,
+    root: normalizePath(root),
+    manifest,
+    components,
+    diagnostics: sortedDiagnostics,
+    quality,
+    hosted_ingest: hostedIngest,
   };
 }
 

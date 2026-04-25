@@ -51,6 +51,11 @@ Retry a component, passing failure analysis to each subsequent attempt. Each ret
 - &controlState.attempts contains the attempt count
 - &controlState.failure_history contains analysis of each failed attempt
 
+
+### Effects
+
+- `pure`: deterministic transformation over declared inputs
+
 ### Delegation Loop
 
 ```javascript

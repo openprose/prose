@@ -16,14 +16,19 @@ kind: service
 
 ### Requires
 
-- content: structured output to write
-- destination: file path or URI — local path, s3:// URI, or gs:// URI
-- format: (optional, default "md") output format — one of "md", "json", "csv", "html"
+- `content`: Markdown<Content> - structured output to write
+- `destination`: string - file path or URI — local path, s3:// URI, or gs:// URI
+- `format`: string - (optional, default "md") output format — one of "md", "json", "csv", "html"
 
 ### Ensures
 
-- written_path: the resolved path or URI where the file was written
-- bytes_written: the size of the written file in bytes
+- `written_path`: string - the resolved path or URI where the file was written
+- `bytes_written`: number - the size of the written file in bytes
+
+
+### Effects
+
+- `mutates_repo`: writes content to a requested file path
 
 ### Errors
 

@@ -58,6 +58,11 @@ One agent proposes, another attacks the proposal, and the unresolved tension is 
 - Returns { proposal, attack } — the parent reasons about the disagreement
 - &compositeState.result contains { proposal, attack }
 
+
+### Effects
+
+- `pure`: deterministic transformation over declared inputs
+
 ### Delegation
 
 ```javascript

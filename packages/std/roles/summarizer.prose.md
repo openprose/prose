@@ -17,17 +17,22 @@ Compress content while preserving specified key information.
 
 ### Requires
 
-- content: the material to summarize
-- preserve: what must survive compression (key facts, decisions, open questions, specific entities, etc.)
+- `content`: Markdown<Content> - the material to summarize
+- `preserve`: Preserve - what must survive compression (key facts, decisions, open questions, specific entities, etc.)
 
 ### Ensures
 
-- summary: a compressed version of the content where:
+- `summary`: Markdown<Summary> - a compressed version of the content where:
     - length is proportional to information density, not input length
     - everything in the output was in the input -- no fabrication
     - all items listed in "preserve" appear in the summary
     - structure of the original is maintained where it carries meaning (e.g., a list of decisions stays a list, not a paragraph)
 - if the input is already concise: return it mostly unchanged rather than rephrasing for the sake of rephrasing
+
+
+### Effects
+
+- `pure`: deterministic transformation over declared inputs
 
 ### Errors
 

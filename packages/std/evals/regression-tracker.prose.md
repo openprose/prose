@@ -17,13 +17,13 @@ The registry is persistent at the project level, so baselines survive across run
 
 ### Requires
 
-- subject: run — the new run to compare against baseline
-- program-name: the program name to look up the baseline for (e.g., "deep-research", "anomaly-detective")
-- action: "check" (compare against baseline), "set-baseline" (register this run as the new baseline), or "list" (show all registered baselines)
+- `subject`: string - run — the new run to compare against baseline
+- `program-name`: string - the program name to look up the baseline for (e.g., "deep-research", "anomaly-detective")
+- `action`: string - "check" (compare against baseline), "set-baseline" (register this run as the new baseline), or "list" (show all registered baselines)
 
 ### Ensures
 
-- report: regression report containing:
+- `report`: Markdown<Report> - regression report containing:
     - program: the program name
     - action: which action was performed
     - (for check) status: "pass" (no regressions), "regressed" (worse than baseline), or "improved" (better than baseline)
@@ -35,6 +35,11 @@ The registry is persistent at the project level, so baselines survive across run
     - (for set-baseline) confirmation: which run was registered as baseline for which program
     - (for list) baselines: list of all registered baselines with program name, run_id, timestamp, and scores
 - if no baseline exists for this program: report notes "no baseline — registering this run as initial baseline" and performs set-baseline automatically
+
+
+### Effects
+
+- `pure`: deterministic transformation over declared inputs
 
 ### Errors
 
@@ -62,18 +67,23 @@ Persistent agent that maintains the baseline registry. Maps program names to bas
 
 ### Requires
 
-- subject: the run binding
-- program-name: the program name
-- action: "check", "set-baseline", or "list"
+- `subject`: string - the run binding
+- `program-name`: string - the program name
+- `action`: string - "check", "set-baseline", or "list"
 
 ### Ensures
 
-- registry-state: current state of the registry for this program, containing:
+- `registry-state`: JSON<RegistryState> - current state of the registry for this program, containing:
     - has_baseline: boolean
     - baseline_run_id: string or null
     - baseline_scores: object with contract_satisfaction, runtime_fidelity, task_effectiveness scores (or null if no baseline)
     - baseline_timestamp: when the baseline was registered
     - all_baselines: (for "list" action) complete registry contents
+
+
+### Effects
+
+- `pure`: deterministic evaluation over declared inputs
 
 ### Strategies
 
@@ -92,12 +102,12 @@ Compare the new run against the baseline across all quality dimensions. This ser
 
 ### Requires
 
-- subject: the new run binding
-- registry-state: from registry (contains baseline run ID and scores)
+- `subject`: string - the new run binding
+- `registry-state`: JSON<RegistryState> - from registry (contains baseline run ID and scores)
 
 ### Ensures
 
-- comparison: structured comparison containing:
+- `comparison`: Markdown<Comparison> - structured comparison containing:
     - baseline_run_id: string
     - new_run_id: string
     - dimensions: list of dimension comparisons, each with:
@@ -109,6 +119,11 @@ Compare the new run against the baseline across all quality dimensions. This ser
         - evidence: specific observations supporting the verdict
     - overall_status: "pass", "regressed", or "improved" (regressed if any dimension regressed and delta exceeds threshold)
 - if no baseline: comparison is null (registry will handle auto-registration)
+
+
+### Effects
+
+- `pure`: deterministic evaluation over declared inputs
 
 ### Errors
 
@@ -131,15 +146,20 @@ Synthesize the comparison into the final regression report. Handle all three act
 
 ### Requires
 
-- registry-state: from registry
-- comparison: from comparator (may be null for set-baseline and list actions)
-- action: the requested action
-- subject: the run binding
-- program-name: the program name
+- `registry-state`: JSON<RegistryState> - from registry
+- `comparison`: Comparison - from comparator (may be null for set-baseline and list actions)
+- `action`: string - the requested action
+- `subject`: string - the run binding
+- `program-name`: string - the program name
 
 ### Ensures
 
-- report: the final output matching the program's top-level ensures schema
+- `report`: Markdown<Report> - the final output matching the program's top-level ensures schema
+
+
+### Effects
+
+- `pure`: deterministic evaluation over declared inputs
 
 ### Strategies
 

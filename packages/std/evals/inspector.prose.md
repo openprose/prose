@@ -16,12 +16,12 @@ Analyze a completed Prose run for runtime fidelity (did Press execute the progra
 
 ### Requires
 
-- subject: run — the completed run to inspect
-- depth: inspection depth — "light" (fast, checks structure and outputs exist) or "deep" (thorough, reads all artifacts, traces execution against program spec)
+- `subject`: string - run — the completed run to inspect
+- `depth`: Depth - inspection depth — "light" (fast, checks structure and outputs exist) or "deep" (thorough, reads all artifacts, traces execution against program spec)
 
 ### Ensures
 
-- inspection: structured inspection report containing:
+- `inspection`: Markdown<Inspection> - structured inspection report containing:
     - run_id: the inspected run's identifier
     - program: the program that was run
     - depth: which depth was performed
@@ -31,6 +31,11 @@ Analyze a completed Prose run for runtime fidelity (did Press execute the progra
     - flags: list of specific issues found, each with severity (info / warning / critical) and evidence
     - verdict: overall assessment — "pass", "partial", or "fail"
     - summary: 2-3 sentence human-readable summary
+
+
+### Effects
+
+- `pure`: deterministic transformation over declared inputs
 
 ### Errors
 
@@ -62,11 +67,16 @@ The index is a persistent agent that maintains a registry of all inspections per
 
 ### Requires
 
-- subject: the run binding from the caller
+- `subject`: string - the run binding from the caller
 
 ### Ensures
 
-- prior-inspections: JSON list of any prior inspections of this run, with their depth and verdict. Empty list if none found.
+- `prior-inspections`: Markdown<PriorInspections> - JSON list of any prior inspections of this run, with their depth and verdict. Empty list if none found.
+
+
+### Effects
+
+- `pure`: deterministic evaluation over declared inputs
 
 ### Strategies
 
@@ -82,13 +92,13 @@ Read the run's artifacts and produce a structured extraction suitable for evalua
 
 ### Requires
 
-- subject: the run binding
-- depth: "light" or "deep"
-- prior-inspections: from index
+- `subject`: string - the run binding
+- `depth`: Depth - "light" or "deep"
+- `prior-inspections`: Markdown<PriorInspections> - from index
 
 ### Ensures
 
-- extraction: structured data containing:
+- `extraction`: JSON<Extraction> - structured data containing:
     - run_id: string
     - program_name: string
     - completed: boolean (state.md has `---end`)
@@ -104,6 +114,11 @@ Read the run's artifacts and produce a structured extraction suitable for evalua
     - (deep only) service_outputs: map of service name to first 500 chars of each binding
     - (deep only) workspace_artifacts: map of service name to list of files in workspace
     - (deep only) error_details: contents of any `__error.md` files
+
+
+### Effects
+
+- `pure`: deterministic evaluation over declared inputs
 
 ### Errors
 
@@ -123,16 +138,21 @@ Apply judgment to the extraction. Score runtime fidelity and task effectiveness 
 
 ### Requires
 
-- extraction: structured extraction from extractor
-- depth: "light" or "deep"
+- `extraction`: JSON<Extraction> - structured extraction from extractor
+- `depth`: Depth - "light" or "deep"
 
 ### Ensures
 
-- evaluation: structured judgment containing:
+- `evaluation`: Markdown<Evaluation> - structured judgment containing:
     - runtime_fidelity: object with score (0-100), breakdown (execution_order, binding_integrity, state_completeness, error_handling — each 0-100), and evidence (list of specific observations)
     - task_effectiveness: object with score (0-100), breakdown (output_existence, output_substance, contract_satisfaction, goal_alignment — each 0-100), and evidence (list of specific observations)
     - flags: list of issues, each with id, severity (info / warning / critical), description, and evidence
     - verdict: "pass" (both scores >= 70, no critical flags), "partial" (one score < 70 or critical flags present but run completed), or "fail" (either score < 40 or run did not complete)
+
+
+### Effects
+
+- `pure`: deterministic evaluation over declared inputs
 
 ### Errors
 
@@ -154,13 +174,18 @@ Combine evaluation results into the final inspection report. Format for both mac
 
 ### Requires
 
-- extraction: from extractor
-- evaluation: from evaluator
-- prior-inspections: from index
+- `extraction`: JSON<Extraction> - from extractor
+- `evaluation`: Evaluation - from evaluator
+- `prior-inspections`: Markdown<PriorInspections> - from index
 
 ### Ensures
 
-- inspection: the final inspection report matching the program's top-level ensures schema exactly
+- `inspection`: Markdown<Inspection> - the final inspection report matching the program's top-level ensures schema exactly
+
+
+### Effects
+
+- `pure`: deterministic evaluation over declared inputs
 
 ### Strategies
 

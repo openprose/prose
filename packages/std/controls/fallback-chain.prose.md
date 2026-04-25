@@ -47,6 +47,11 @@ Try delegate A. If it fails, try B. If B fails, try C. Ordered list of fallbacks
 - &controlState.attempts contains the number of delegates tried
 - &controlState.failure_history contains reasons for each failed attempt
 
+
+### Effects
+
+- `pure`: deterministic transformation over declared inputs
+
 ### Delegation
 
 ```javascript

@@ -61,6 +61,11 @@ Fans out the same task to K independent agents and synthesizes their results by 
 - &compositeState.result contains the synthesis
 - &compositeState.member_results contains the K individual results
 
+
+### Effects
+
+- `pure`: deterministic transformation over declared inputs
+
 ### Delegation
 
 ```javascript

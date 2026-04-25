@@ -11,20 +11,25 @@ kind: service
 
 ### Requires
 
-- html: rendered HTML email body, ready to send
-- to: recipient email address, or list of addresses
-- subject: email subject line
-- cc: (optional) additional recipients to copy — address or list of addresses
-- bcc: (optional) additional recipients to blind copy — address or list of addresses
-- from_name: (optional, default from EMAIL_FROM_NAME) display name for the sender
-- from_email: (optional, default from EMAIL_FROM_ADDRESS) sender email address
-- reply_to: (optional) reply-to address — this is how recipients give feedback, always set it when provided
-- attachments: (optional) list of attachments, each with filename, content (base64), and mime_type
+- `html`: Html - rendered HTML email body, ready to send
+- `to`: string - recipient email address, or list of addresses
+- `subject`: string - email subject line
+- `cc`: string - (optional) additional recipients to copy — address or list of addresses
+- `bcc`: string - (optional) additional recipients to blind copy — address or list of addresses
+- `from_name`: string - (optional, default from EMAIL_FROM_NAME) display name for the sender
+- `from_email`: string - (optional, default from EMAIL_FROM_ADDRESS) sender email address
+- `reply_to`: string - (optional) reply-to address — this is how recipients give feedback, always set it when provided
+- `attachments`: JSON<Attachments> - (optional) list of attachments, each with filename, content (base64), and mime_type
 
 ### Ensures
 
-- sent: confirmation with message ID and timestamp
-- provider: which email provider handled the send
+- `sent`: boolean - confirmation with message ID and timestamp
+- `provider`: Markdown<Provider> - which email provider handled the send
+
+
+### Effects
+
+- `delivers`: sends content to an external delivery channel
 
 ### Errors
 

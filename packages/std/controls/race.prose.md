@@ -47,6 +47,11 @@ Multiple delegates work on the same task in parallel. First acceptable result wi
 - &controlState.winner contains the winning candidate's name (or null)
 - &controlState.attempts contains the number of candidates that completed before a winner
 
+
+### Effects
+
+- `pure`: deterministic transformation over declared inputs
+
 ### Delegation
 
 ```javascript

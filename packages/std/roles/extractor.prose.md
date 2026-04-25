@@ -17,16 +17,21 @@ Pull structured data from unstructured input given a target schema.
 
 ### Requires
 
-- input: the unstructured data (text, log output, raw observations, HTML, etc.)
-- schema: the target structure with field names, types, and descriptions of what each field should contain
+- `input`: Input - the unstructured data (text, log output, raw observations, HTML, etc.)
+- `schema`: Schema - the target structure with field names, types, and descriptions of what each field should contain
 
 ### Ensures
 
-- extracted: an object conforming to the target schema where:
+- `extracted`: Markdown<Extracted> - an object conforming to the target schema where:
     - each field has a confidence indicator (high, medium, low)
     - fields that cannot be confidently extracted are null with a reason -- never hallucinated
     - no information in the output that was not in the input
 - if the input contains multiple valid extractions: all are returned, or the ambiguity is flagged, depending on the schema's cardinality
+
+
+### Effects
+
+- `pure`: deterministic transformation over declared inputs
 
 ### Errors
 

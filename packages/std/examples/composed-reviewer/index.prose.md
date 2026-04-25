@@ -16,8 +16,13 @@ Demonstrates Level 1 composite instantiation — a writer with worker-critic rev
 
 ### Requires
 
-- task_brief: a combined brief describing the topic and audience for the article
+- `task_brief`: Markdown<TaskBrief> - a combined brief describing the topic and audience for the article
 
 ### Ensures
 
-- article: a polished article that has passed quality review
+- `article`: Markdown<Article> - a polished article that has passed quality review
+
+
+### Effects
+
+- `pure`: deterministic transformation over declared inputs

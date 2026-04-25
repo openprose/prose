@@ -1510,6 +1510,9 @@ name: stable-format
     const metadata = await packagePath(fixturePath("package/catalog-demo"));
     const text = renderPackageText(metadata);
 
+    expect(metadata.schema_version).toBe("openprose.package.v2");
+    expect(metadata.package_version).toBe("0.2");
+    expect(metadata.metadata_digest).toMatch(/^[a-f0-9]{64}$/);
     expect(metadata.manifest).toMatchObject({
       name: "@openprose/catalog-demo",
       version: "0.1.0",
@@ -1531,6 +1534,19 @@ name: stable-format
       type: "CompanyProfile",
     });
     expect(metadata.components[0].effects).toEqual(["pure"]);
+    expect(metadata.hosted_ingest).toMatchObject({
+      contract_version: "0.1",
+      package: {
+        name: "@openprose/catalog-demo",
+        version: "0.1.0",
+      },
+      source: {
+        git: "github.com/openprose/catalog-demo",
+        sha: "0123456789abcdef",
+        subpath: "fixtures/package/catalog-demo",
+      },
+    });
+    expect(metadata.hosted_ingest.components.length).toBe(metadata.components.length);
     expect(metadata.quality.score).toBeGreaterThan(0.8);
     expect(metadata.quality.warnings).toEqual([]);
     expect(text).toContain("Package: @openprose/catalog-demo@0.1.0");
@@ -2065,6 +2081,22 @@ kind: service
     expect(result.blockers).toEqual([]);
     expect(result.warnings).toEqual([]);
     expect(text).toContain("Publish check: PASS @openprose/catalog-demo@0.1.0");
+  });
+
+  test("passes strict publish check for the standard library package", async () => {
+    const result = await publishCheckPath(new URL("../packages/std", import.meta.url).pathname, {
+      strict: true,
+    });
+
+    expect(result.status).toBe("pass");
+    expect(result.metadata.schema_version).toBe("openprose.package.v2");
+    expect(result.metadata.quality).toMatchObject({
+      typed_port_coverage: 1,
+      effect_declaration_ratio: 1,
+      eval_link_ratio: 1,
+      example_link_ratio: 1,
+      warnings: [],
+    });
   });
 
   test("warns publish check when advisory quality links are missing", async () => {

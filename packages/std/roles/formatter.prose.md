@@ -17,15 +17,20 @@ Transform structured data into a specified output format with no information los
 
 ### Requires
 
-- data: the structured input to format
-- target_format: the desired output format (e.g., Markdown, JSON, HTML, CSV) with any style or layout requirements
+- `data`: JSON<Data> - the structured input to format
+- `target_format`: string - the desired output format (e.g., Markdown, JSON, HTML, CSV) with any style or layout requirements
 
 ### Ensures
 
-- formatted: the data rendered in the target format where:
+- `formatted`: Markdown<Formatted> - the data rendered in the target format where:
     - all information from the input is present in the output -- no fields dropped silently
     - the output is valid in the target format (valid JSON parses, valid HTML renders, valid CSV has consistent columns)
     - missing or null fields are handled gracefully (omitted with a note, rendered as empty, or replaced with a placeholder -- consistent throughout)
+
+
+### Effects
+
+- `pure`: deterministic transformation over declared inputs
 
 ### Errors
 

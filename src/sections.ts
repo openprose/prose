@@ -30,16 +30,21 @@ export function parsePorts(
 
     const colonIndex = item.indexOf(":");
     if (colonIndex < 0) {
-      diagnostics.push({
-        severity: "warning",
-        code: "malformed_port",
-        message: `Port item '${item}' is missing a ':' separator.`,
-        source_span: span(section.span.path, line.number, line.number),
-      });
+      if (looksLikeMalformedPort(item)) {
+        diagnostics.push({
+          severity: "warning",
+          code: "malformed_port",
+          message: `Port item '${item}' is missing a ':' separator.`,
+          source_span: span(section.span.path, line.number, line.number),
+        });
+      }
       continue;
     }
 
     const rawName = item.slice(0, colonIndex).trim();
+    if (!looksLikePortName(rawName)) {
+      continue;
+    }
     const remainder = item.slice(colonIndex + 1).trim();
     const { type, description } = parseTypeAndDescription(remainder);
 
@@ -293,6 +298,14 @@ function topLevelListItems(
   }
 
   return items;
+}
+
+function looksLikeMalformedPort(item: string): boolean {
+  return item.trim().startsWith("`");
+}
+
+function looksLikePortName(rawName: string): boolean {
+  return /^[A-Za-z_][A-Za-z0-9_-]*$/.test(stripTicks(rawName.trim()));
 }
 
 function parseTypeAndDescription(value: string): {

@@ -17,18 +17,23 @@ Assign a category label to an input given a defined category set.
 
 ### Requires
 
-- item: the thing to classify
-- categories: the category set, each with a description of what belongs in it
-- rules: (optional) disambiguation rules for edge cases where categories overlap
+- `item`: Item - the thing to classify
+- `categories`: JSON<Categories> - the category set, each with a description of what belongs in it
+- `rules`: Rules - (optional) disambiguation rules for edge cases where categories overlap
 
 ### Ensures
 
-- classification: a structured result containing:
+- `classification`: Markdown<Classification> - a structured result containing:
     - category: the selected category name
     - confidence: a score from 0 to 1 where 0.5 means genuine uncertainty, not "probably"
     - reasoning: which features of the item matched which category description
 - if the item fits multiple categories: the best fit is returned with reasoning about why alternatives were rejected
 - if the item fits no category: category is "uncategorized" with reasoning explaining why no category matched
+
+
+### Effects
+
+- `pure`: deterministic transformation over declared inputs
 
 ### Errors
 

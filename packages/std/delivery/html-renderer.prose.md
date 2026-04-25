@@ -13,16 +13,21 @@ kind: service
 
 ### Requires
 
-- template: path to an HTML template with placeholder markers
-- data: structured output from programs
-- output_path: where to write the rendered HTML
-- strict: (optional, default false) boolean — if true, error on missing data fields; if false, use "data pending" markers for missing fields
+- `template`: string - path to an HTML template with placeholder markers
+- `data`: JSON<Data> - structured output from programs
+- `output_path`: string - where to write the rendered HTML
+- `strict`: boolean - (optional, default false) boolean — if true, error on missing data fields; if false, use "data pending" markers for missing fields
 
 ### Ensures
 
-- rendered: confirmation the file was written successfully
-- html_path: the output file path
+- `rendered`: Markdown<Rendered> - confirmation the file was written successfully
+- `html_path`: string - the output file path
 - all template placeholders are resolved to data values, or marked "data pending" in non-strict mode
+
+
+### Effects
+
+- `pure`: deterministic transformation over declared inputs
 
 ### Errors
 

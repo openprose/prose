@@ -13,17 +13,22 @@ kind: service
 
 ### Requires
 
-- content: structured output to deliver
-- url: the destination HTTP endpoint
-- method: (optional, default "POST") HTTP method — one of "POST", "PUT", "PATCH"
-- headers: (optional) additional HTTP headers as key-value pairs (e.g. Content-Type, X-Custom-Header)
-- auth: (optional) authentication configuration — one of: bearer token string, basic auth credentials, or header-based API key
+- `content`: Markdown<Content> - structured output to deliver
+- `url`: string - the destination HTTP endpoint
+- `method`: string - (optional, default "POST") HTTP method — one of "POST", "PUT", "PATCH"
+- `headers`: JSON<Headers> - (optional) additional HTTP headers as key-value pairs (e.g. Content-Type, X-Custom-Header)
+- `auth`: JSON<Auth> - (optional) authentication configuration — one of: bearer token string, basic auth credentials, or header-based API key
 
 ### Ensures
 
-- response_status: the HTTP status code returned by the endpoint
-- response_body: the response body from the endpoint (may be empty)
-- delivered: confirmation with timestamp
+- `response_status`: number - the HTTP status code returned by the endpoint
+- `response_body`: Markdown<ResponseBody> - the response body from the endpoint (may be empty)
+- `delivered`: boolean - confirmation with timestamp
+
+
+### Effects
+
+- `delivers`: sends content to an external delivery channel
 
 ### Errors
 

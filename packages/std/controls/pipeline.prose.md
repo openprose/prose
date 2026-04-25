@@ -44,6 +44,11 @@ Sequential transformation through multiple stages. Each stage sees only its pred
 - &controlState.result contains the final stage's output
 - &controlState.stage_outputs contains each stage's output
 
+
+### Effects
+
+- `pure`: deterministic transformation over declared inputs
+
 ### Delegation
 
 ```javascript

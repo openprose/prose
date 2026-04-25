@@ -17,16 +17,21 @@ Check a result against formal constraints and report pass/fail for each.
 
 ### Requires
 
-- result: the work product to verify
-- constraints: formal rules the result must satisfy (as executable assertions, declarative rules, a schema, or a checklist of objective conditions)
+- `result`: Markdown<Result> - the work product to verify
+- `constraints`: Markdown<Constraints> - formal rules the result must satisfy (as executable assertions, declarative rules, a schema, or a checklist of objective conditions)
 
 ### Ensures
 
-- verification: a structured result containing:
+- `verification`: Markdown<Verification> - a structured result containing:
     - valid: true if all constraints pass, false if any are violated
     - violations: list of failed checks, each stating which constraint failed, what the actual value was, and what was expected
     - checks_passed: list of constraints that were satisfied
 - every constraint appears in either checks_passed or violations -- none are skipped
+
+
+### Effects
+
+- `pure`: deterministic transformation over declared inputs
 
 ### Errors
 

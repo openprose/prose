@@ -66,6 +66,11 @@ Heterogeneous reviewers build understanding progressively; cross-tier divergence
 - &compositeState.reviews contains the structured per-reviewer, per-stage reports
 - &compositeState.divergences contains points of disagreement with tier and stage metadata
 
+
+### Effects
+
+- `pure`: deterministic transformation over declared inputs
+
 ### Delegation Loop
 
 ```javascript

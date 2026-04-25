@@ -63,6 +63,11 @@ Advancer proposes incremental steps; certifier validates each one; certified pro
 - Progress is monotonic: the certified_progress array only grows
 - &compositeState.result contains the final certified progress
 
+
+### Effects
+
+- `pure`: deterministic transformation over declared inputs
+
 ### Delegation Loop
 
 ```javascript

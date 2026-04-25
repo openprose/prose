@@ -15,14 +15,19 @@ kind: service
 
 ### Requires
 
-- content: structured output to deliver
-- channel: Slack channel name
-- format: (optional, default "summary+attachment") one of "summary+attachment", "full", "alert"
+- `content`: Markdown<Content> - structured output to deliver
+- `channel`: string - Slack channel name
+- `format`: string - (optional, default "summary+attachment") one of "summary+attachment", "full", "alert"
 
 ### Ensures
 
-- delivered: confirmation with timestamp and permalink
-- attachment_url: link to the uploaded file — present only when format is "summary+attachment"
+- `delivered`: boolean - confirmation with timestamp and permalink
+- `attachment_url`: string - link to the uploaded file — present only when format is "summary+attachment"
+
+
+### Effects
+
+- `delivers`: sends content to an external delivery channel
 
 ### Errors
 

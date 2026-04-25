@@ -45,6 +45,11 @@ Parallel delegation without reduction. Send briefs to N delegates, collect all r
 - &controlState.result contains the array of all delegate outputs
 - &controlState.results contains the same array (keyed alias)
 
+
+### Effects
+
+- `pure`: deterministic transformation over declared inputs
+
 ### Delegation
 
 ```javascript

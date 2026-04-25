@@ -17,18 +17,23 @@ Investigate a topic using available tools and return sourced, confidence-scored 
 
 ### Requires
 
-- topic: the question or subject to investigate
-- scope: (optional) constraints on the investigation -- time period, geography, source types, depth
+- `topic`: string - the question or subject to investigate
+- `scope`: string - (optional) constraints on the investigation -- time period, geography, source types, depth
 
 ### Ensures
 
-- findings: a list of sourced claims, each with:
+- `findings`: Markdown<Findings> - a list of sourced claims, each with:
     - claim: a specific, falsifiable statement
     - source: where the claim came from (URL, document name, or tool output)
     - date: when the source was published or accessed
     - confidence: 0 to 1, reflecting source quality and corroboration
-- sources: all sources consulted, including those that did not yield useful findings, with a relevance note for each
+- `sources`: Markdown<Sources> - all sources consulted, including those that did not yield useful findings, with a relevance note for each
 - if sources are unavailable or insufficient: partial findings flagged as incomplete, with an explanation of what could not be determined
+
+
+### Effects
+
+- `read_external`: uses external research sources and citations
 
 ### Errors
 
