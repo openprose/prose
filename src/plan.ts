@@ -650,7 +650,7 @@ function normalizeApprovedEffects(effects: string[] | undefined): Set<string> {
   );
 }
 
-async function loadCurrentRunSet(path: string): Promise<CurrentRunSet> {
+export async function loadCurrentRunSet(path: string): Promise<CurrentRunSet> {
   const resolved = resolve(path);
   const info = await stat(resolved);
   if (!info.isDirectory()) {

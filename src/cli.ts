@@ -147,6 +147,8 @@ export async function runCli(args: string[]): Promise<void> {
         approvedEffects: options.approvedEffects,
         trigger: options.trigger,
         provider: options.provider ?? undefined,
+        currentRunPath: options.currentRunPath ?? undefined,
+        targetOutputs: options.targetOutputs,
       });
       const summary = {
         run_id: result.run_id,
