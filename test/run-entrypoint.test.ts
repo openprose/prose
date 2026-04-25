@@ -364,6 +364,184 @@ kind: program
     });
   });
 
+  test("propagates private input policy labels to outputs and artifact records", async () => {
+    const runRoot = mkdtempSync(join(tmpdir(), "openprose-run-policy-labels-"));
+    const result = await runSource(`---
+name: private-summary
+kind: program
+---
+
+### Requires
+
+- \`secret\`: string [company_private.accounts] - private account data
+
+### Ensures
+
+- \`summary\`: Markdown<Summary> - private summary
+`, {
+      path: "fixtures/compiler/private-summary.prose.md",
+      runRoot,
+      runId: "private-policy",
+      provider: "fixture",
+      inputs: {
+        secret: "Confidential account note.",
+      },
+      outputs: {
+        summary: "Private summary.",
+      },
+      createdAt: "2026-04-25T00:34:00.000Z",
+    });
+
+    expect(result.record.status).toBe("succeeded");
+    expect(result.record.inputs[0]?.policy_labels).toEqual(["company_private.accounts"]);
+    expect(result.record.outputs[0]?.policy_labels).toEqual(["company_private.accounts"]);
+    expect(result.record.policy?.labels).toEqual(["company_private.accounts"]);
+    const artifact = await readArtifactRecordForOutput(
+      join(runRoot, ".prose-store"),
+      "private-policy",
+      "private-summary",
+      "summary",
+    );
+    expect(artifact?.policy_labels).toEqual(["company_private.accounts"]);
+  });
+
+  test("blocks policy label lowering without approved declassification", async () => {
+    const runRoot = mkdtempSync(join(tmpdir(), "openprose-run-policy-block-"));
+    let calls = 0;
+    const result = await runSource(`---
+name: public-summary
+kind: program
+---
+
+### Requires
+
+- \`secret\`: string [company_private.accounts] - private account data
+
+### Ensures
+
+- \`summary\`: Markdown<Summary> [public] - public summary
+`, {
+      path: "fixtures/compiler/public-summary.prose.md",
+      runRoot,
+      runId: "blocked-declassification",
+      provider: {
+        kind: "fixture",
+        async execute() {
+          calls += 1;
+          throw new Error("provider should not run when policy blocks");
+        },
+      },
+      inputs: {
+        secret: "Confidential account note.",
+      },
+      createdAt: "2026-04-25T00:34:30.000Z",
+    });
+
+    expect(calls).toBe(0);
+    expect(result.record.status).toBe("blocked");
+    expect(result.record.acceptance.reason).toContain("lowers labels");
+    expect(result.record.policy?.diagnostics[0]?.code).toBe(
+      "policy_declassification_required",
+    );
+  });
+
+  test("allows policy label lowering with approved declassification records", async () => {
+    const runRoot = mkdtempSync(join(tmpdir(), "openprose-run-policy-declass-"));
+    const result = await runSource(`---
+name: public-summary
+kind: program
+---
+
+### Requires
+
+- \`secret\`: string [company_private.accounts] - private account data
+
+### Ensures
+
+- \`summary\`: Markdown<Summary> [public] - public summary
+
+### Effects
+
+- \`declassifies\`: approved account summary export
+`, {
+      path: "fixtures/compiler/public-summary-approved.prose.md",
+      runRoot,
+      runId: "approved-declassification",
+      provider: "fixture",
+      inputs: {
+        secret: "Confidential account note.",
+      },
+      outputs: {
+        summary: "Public summary.",
+      },
+      approvedEffects: ["declassifies"],
+      createdAt: "2026-04-25T00:35:30.000Z",
+    });
+
+    expect(result.record.status).toBe("succeeded");
+    expect(result.record.outputs[0]?.policy_labels).toEqual(["public"]);
+    expect(result.record.policy?.declassifications).toEqual([
+      {
+        from_labels: ["company_private.accounts"],
+        to_labels: ["public"],
+        component_ref: "public-summary",
+        authorized_by: "approved_effect",
+      },
+    ]);
+  });
+
+  test("fails when providers report undeclared performed effects", async () => {
+    const runRoot = mkdtempSync(join(tmpdir(), "openprose-run-policy-effects-"));
+    const result = await runSource(`---
+name: effect-audit
+kind: program
+---
+
+### Ensures
+
+- \`message\`: string - message
+
+### Effects
+
+- \`pure\`: deterministic output
+`, {
+      path: "fixtures/compiler/effect-audit.prose.md",
+      runRoot,
+      runId: "effect-audit",
+      provider: {
+        kind: "fixture",
+        async execute(request): Promise<ProviderResult> {
+          return {
+            provider_result_version: "0.1",
+            request_id: request.request_id,
+            status: "succeeded",
+            artifacts: [
+              {
+                port: "message",
+                content: "hello\n",
+                content_type: "text/markdown",
+                artifact_ref: null,
+                content_hash: null,
+                policy_labels: [],
+              },
+            ],
+            performed_effects: ["delivers"],
+            logs: { stdout: null, stderr: null, transcript: null },
+            diagnostics: [],
+            session: null,
+            cost: null,
+            duration_ms: 0,
+          };
+        },
+      },
+      createdAt: "2026-04-25T00:36:00.000Z",
+    });
+
+    expect(result.record.status).toBe("failed");
+    expect(result.record.acceptance.reason).toContain("undeclared effect 'delivers'");
+    expect(result.record.policy?.performed_effects).toEqual(["delivers"]);
+  });
+
   test("assembles targeted graph runs from only requested outputs", async () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-run-targeted-"));
     const result = await runSource(fixture("selective-recompute.prose.md"), {

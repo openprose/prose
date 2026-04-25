@@ -48,7 +48,7 @@ export function parsePorts(
       continue;
     }
     const remainder = item.slice(colonIndex + 1).trim();
-    const { type, description } = parseTypeAndDescription(remainder);
+    const { type, description, policyLabels } = parseTypeAndDescription(remainder);
     const source_span = span(section.span.path, line.number, line.number);
     const typeResult = parseTypeExpression(type, source_span);
     diagnostics.push(...typeResult.diagnostics);
@@ -60,7 +60,7 @@ export function parsePorts(
       type_expr: typeResult.expression,
       description,
       required: !/\boptional\b/i.test(description),
-      policy_labels: [],
+      policy_labels: policyLabels,
       source_span,
     });
   }
@@ -582,13 +582,20 @@ function looksLikePortName(rawName: string): boolean {
 function parseTypeAndDescription(value: string): {
   type: string;
   description: string;
+  policyLabels: string[];
 } {
-  const typed = value.match(/^([A-Za-z][A-Za-z0-9_./<>,\-\[\]]*)\s+-\s+(.+)$/);
+  const typed = value.match(
+    /^([A-Za-z][A-Za-z0-9_./<>,\-\[\]]*)(?:\s+\[([^\]]+)\])?\s+-\s+(.+)$/,
+  );
   if (typed) {
-    return { type: typed[1], description: typed[2].trim() };
+    return {
+      type: typed[1],
+      policyLabels: splitCsv(typed[2] ?? ""),
+      description: typed[3].trim(),
+    };
   }
 
-  return { type: "Any", description: value };
+  return { type: "Any", description: value, policyLabels: [] };
 }
 
 function parseEffectDescription(value: string): {

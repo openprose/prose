@@ -203,6 +203,32 @@ kind: program
     expect(ir.diagnostics).toEqual([]);
   });
 
+  test("parses source-level policy labels on ports", () => {
+    const ir = compileSource(`---
+name: labeled-policy
+kind: program
+---
+
+### Requires
+
+- \`secret\`: string [company_private.accounts, secret_derived] - sensitive input
+
+### Ensures
+
+- \`summary\`: Markdown<Summary> [company_internal] - sanitized summary
+`, {
+      path: "fixtures/compiler/labeled-policy.prose.md",
+    });
+
+    expect(ir.components[0].ports.requires[0]?.policy_labels).toEqual([
+      "company_private.accounts",
+      "secret_derived",
+    ]);
+    expect(ir.components[0].ports.ensures[0]?.policy_labels).toEqual([
+      "company_internal",
+    ]);
+  });
+
   test("parses runtime freshness and pinned package dependencies", () => {
     const freshness = compileFixture("freshness.prose.md");
     const dependencyGraph = compileFixture("dependency-package/graph.prose.md");

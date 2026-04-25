@@ -7,9 +7,13 @@ import { projectManifest } from "./manifest.js";
 import { loadCurrentRunSet, planSource, type CurrentRunSet } from "./plan.js";
 import {
   approvedEffectsFromRecords,
+  componentInputPolicyLabels,
   createLocalEffectApprovalRecord,
   deniedEffectsFromRecords,
+  evaluateRuntimePolicy,
   loadEffectApprovalRecords,
+  mergePolicyLabels,
+  runPolicyRecord,
   type EffectApprovalRecord,
 } from "./policy/index.js";
 import { validateTextAgainstTypeExpression } from "./schema/index.js";
@@ -432,6 +436,11 @@ async function createProviderRequest(
   recordsById = new Map<string, RunRecord>(),
 ): Promise<ProviderRequest> {
   const inputState = await providerInputState(ctx, component, recordsById);
+  const policy = evaluateRuntimePolicy({
+    component,
+    inputBindings: inputState.bindings,
+    approvedEffects: ctx.approvedEffects,
+  });
   return {
     provider_request_version: "0.1",
     request_id: runId,
@@ -447,19 +456,12 @@ async function createProviderRequest(
       value: Bun.env[binding.name] ?? null,
     })),
     approved_effects: ctx.approvedEffects,
-    policy_labels: Array.from(
-      new Set(
-        [
-          ...component.ports.requires.flatMap((port) => port.policy_labels),
-          ...component.ports.ensures.flatMap((port) => port.policy_labels),
-        ].sort(),
-      ),
-    ),
+    policy_labels: policy.labels,
     expected_outputs: component.ports.ensures.map((port) => ({
       port: port.name,
       type: port.type,
       required: port.required,
-      policy_labels: port.policy_labels,
+      policy_labels: policy.output_labels[port.name] ?? port.policy_labels,
     })),
     validation: component.ports.ensures.map((port) => ({
       kind: "output",
@@ -483,24 +485,42 @@ async function materializeProviderResult(
   const runId = options.runId ?? ctx.runId;
   const recordPath = options.recordPath ?? "run.json";
   const completedAt = new Date().toISOString();
-  const outputs = await writeRunOutputArtifacts(ctx, component, result.artifacts);
+  const inputs =
+    options.inputs ??
+    component.ports.requires.map((port) => callerInputBinding(ctx, component, port));
+  const policyDecision = evaluateRuntimePolicy({
+    component,
+    inputBindings: inputs,
+    approvedEffects: ctx.approvedEffects,
+    performedEffects: result.performed_effects,
+  });
+  const outputs = await writeRunOutputArtifacts(
+    ctx,
+    component,
+    result.artifacts,
+    policyDecision.output_labels,
+  );
   const validationByPort = validateProviderArtifacts(component, result.artifacts);
   const validationDiagnostics = Object.values(validationByPort).flatMap(
     (schema) => schema.diagnostics,
   );
+  const policyDiagnostics = policyDecision.diagnostics;
   const status =
     result.status === "succeeded" &&
-    Object.values(validationByPort).some((schema) => schema.status === "invalid")
+    (
+      Object.values(validationByPort).some((schema) => schema.status === "invalid") ||
+      policyDiagnostics.some((diagnostic) => diagnostic.severity === "error")
+    )
       ? "failed"
       : result.status;
-  const diagnostics = [...result.diagnostics, ...validationDiagnostics];
+  const diagnostics = [
+    ...result.diagnostics,
+    ...validationDiagnostics,
+    ...policyDiagnostics,
+  ];
   const record: RunRecord = {
     ...baseRunRecord(ctx, component, "component", runId),
-    inputs:
-      options.inputs ??
-      component.ports.requires.map((port) =>
-        inputBinding(ctx, port.name, port.policy_labels, port.type),
-      ),
+    inputs,
     dependencies: dependencyRecords(ctx),
     effects: {
       declared: component.effects.map((effect) => effect.kind),
@@ -508,6 +528,7 @@ async function materializeProviderResult(
     },
     outputs: status === "succeeded" ? outputs : [],
     evals: [],
+    policy: runPolicyRecord(policyDecision, result.performed_effects),
     acceptance:
       status === "succeeded"
         ? { status: "accepted", reason: "No required evals declared." }
@@ -529,6 +550,7 @@ async function materializeProviderResult(
     nodeId: component.id,
     createdAt: record.created_at,
     schemas: validationByPort,
+    policyLabelsByPort: policyDecision.output_labels,
   });
   await writeProviderAttemptRecord(ctx, record, result, diagnostics);
   await indexRunRecord(ctx, record, recordPath);
@@ -555,13 +577,17 @@ async function writeBlockedRun(
   const kind = options.kind ?? "component";
   const runId = options.runId ?? ctx.runId;
   const recordPath = options.recordPath ?? "run.json";
+  const inputs =
+    options.inputs ??
+    fallback.ports.requires.map((port) => callerInputBinding(ctx, fallback, port));
+  const policyDecision = evaluateRuntimePolicy({
+    component: fallback,
+    inputBindings: inputs,
+    approvedEffects: ctx.approvedEffects,
+  });
   const record: RunRecord = {
     ...baseRunRecord(ctx, fallback, kind, runId),
-    inputs:
-      options.inputs ??
-      fallback.ports.requires.map((port) =>
-        inputBinding(ctx, port.name, port.policy_labels, port.type),
-      ),
+    inputs,
     dependencies: dependencyRecords(ctx),
     effects: {
       declared: fallback.effects.map((effect) => effect.kind),
@@ -569,6 +595,7 @@ async function writeBlockedRun(
     },
     outputs: [],
     evals: [],
+    policy: runPolicyRecord(policyDecision, [], recordDiagnosticsReason(reasons)),
     acceptance: {
       status: "pending",
       reason: reasons.join(" "),
@@ -647,12 +674,31 @@ async function assembleGraphRunRecord(
   const outputs = status === "succeeded"
     ? await writeGraphOutputArtifacts(ctx, graphPorts, nodeRecordsById)
     : [];
+  const inputs = main.ports.requires.map((port) =>
+    callerInputBinding(ctx, main, port),
+  );
+  const policyDecision = evaluateRuntimePolicy({
+    component: main,
+    inputBindings: inputs,
+    approvedEffects: ctx.approvedEffects,
+    performedEffects: Array.from(
+      new Set(records.flatMap((record) => record.effects.performed)),
+    ).sort(),
+  });
+  for (const output of outputs) {
+    policyDecision.output_labels[output.port] = mergePolicyLabels(
+      policyDecision.output_labels[output.port] ?? [],
+      output.policy_labels,
+    );
+  }
+  policyDecision.labels = mergePolicyLabels(
+    policyDecision.labels,
+    ...Object.values(policyDecision.output_labels),
+  );
 
   return {
     ...baseRunRecord(ctx, main, "graph"),
-    inputs: main.ports.requires.map((port) =>
-      inputBinding(ctx, port.name, port.policy_labels, port.type),
-    ),
+    inputs,
     dependencies: dependencyRecords(ctx),
     effects: {
       declared: Array.from(
@@ -668,6 +714,11 @@ async function assembleGraphRunRecord(
     },
     outputs,
     evals: [],
+    policy: runPolicyRecord(
+      policyDecision,
+      Array.from(new Set(records.flatMap((record) => record.effects.performed))).sort(),
+      recordDiagnosticsReason(reasons),
+    ),
     acceptance:
       status === "succeeded"
         ? { status: "accepted", reason: "No required evals declared." }
@@ -696,7 +747,7 @@ async function writeGraphOutputArtifacts(
       port: port.name,
       value_hash: source.output.value_hash,
       artifact_ref: normalizePath(artifactRef),
-      policy_labels: port.policy_labels,
+      policy_labels: mergePolicyLabels(port.policy_labels, source.output.policy_labels),
     });
   }
   return outputs;
@@ -770,6 +821,7 @@ async function writeGraphStoreRecords(
   }
 
   for (const [port, value] of Object.entries(ctx.inputs)) {
+    const binding = graphRecord.inputs.find((input) => input.port === port);
     await writeLocalArtifactRecord(ctx.storeRoot, {
       runId: graphRecord.run_id,
       nodeId: "$caller",
@@ -777,7 +829,8 @@ async function writeGraphStoreRecords(
       direction: "input",
       content: value.endsWith("\n") ? value : `${value}\n`,
       contentType: "text/markdown",
-      policyLabels: [],
+      policyLabels: binding?.policy_labels ?? [],
+      sourceRunId: binding?.source_run_id ?? null,
       createdAt: graphRecord.created_at,
     });
   }
@@ -855,11 +908,15 @@ function componentInputBindings(
         port: port.name,
         value_hash: output.value_hash,
         source_run_id: upstream.run_id,
-        policy_labels: port.policy_labels,
+        policy_labels: componentInputPolicyLabels(
+          component,
+          port.policy_labels,
+          output.policy_labels,
+        ),
       };
     }
 
-    return inputBinding(ctx, port.name, port.policy_labels, port.type);
+    return callerInputBinding(ctx, component, port);
   });
 }
 
@@ -921,7 +978,11 @@ async function providerInputState(
         value,
         artifact,
         source_run_id: upstream.run_id,
-        policy_labels: port.policy_labels,
+        policy_labels: componentInputPolicyLabels(
+          component,
+          port.policy_labels,
+          output.policy_labels,
+        ),
       });
       continue;
     }
@@ -932,7 +993,7 @@ async function providerInputState(
       value,
       artifact: null,
       source_run_id: parseRunReference(value, port.type),
-      policy_labels: port.policy_labels,
+      policy_labels: componentInputPolicyLabels(component, port.policy_labels),
     });
   }
 
@@ -946,7 +1007,14 @@ async function inputValidationReasons(
 ): Promise<string[]> {
   const state = await providerInputState(ctx, component, recordsById);
   const ports = new Map(component.ports.requires.map((port) => [port.name, port]));
-  const reasons: string[] = [];
+  const policy = evaluateRuntimePolicy({
+    component,
+    inputBindings: state.bindings,
+    approvedEffects: ctx.approvedEffects,
+  });
+  const reasons = policy.diagnostics
+    .filter((diagnostic) => diagnostic.severity === "error")
+    .map((diagnostic) => diagnostic.message);
 
   for (const binding of state.bindings) {
     if (binding.value === null) {
@@ -1205,6 +1273,7 @@ async function writeRunOutputArtifacts(
   ctx: RunContext,
   component: ComponentIR,
   artifacts: ProviderArtifactResult[],
+  policyLabelsByPort: Record<string, string[]> = {},
 ): Promise<RunOutputRecord[]> {
   const outputs: RunOutputRecord[] = [];
   for (const artifact of artifacts) {
@@ -1219,7 +1288,10 @@ async function writeRunOutputArtifacts(
       port: artifact.port,
       value_hash: artifact.content_hash ?? sha256(artifact.content),
       artifact_ref: normalizePath(artifactRef),
-      policy_labels: artifact.policy_labels,
+      policy_labels: mergePolicyLabels(
+        policyLabelsByPort[artifact.port] ?? [],
+        artifact.policy_labels,
+      ),
     });
   }
   return outputs;
@@ -1314,18 +1386,17 @@ function executableComponents(ir: ProseIR): ComponentIR[] {
     : ir.components;
 }
 
-function inputBinding(
+function callerInputBinding(
   ctx: RunContext,
-  port: string,
-  policyLabels: string[],
-  type?: string,
+  component: ComponentIR,
+  port: ComponentIR["ports"]["requires"][number],
 ): RunBindingRecord {
-  const value = ctx.inputs[port] ?? "";
+  const value = ctx.inputs[port.name] ?? "";
   return {
-    port,
+    port: port.name,
     value_hash: sha256(value),
-    source_run_id: parseRunReference(value, type),
-    policy_labels: policyLabels,
+    source_run_id: parseRunReference(value, port.type),
+    policy_labels: componentInputPolicyLabels(component, port.policy_labels),
   };
 }
 
@@ -1382,6 +1453,14 @@ function recordDiagnostics(record: RunRecord): Diagnostic[] {
         },
       ]
     : [];
+}
+
+function recordDiagnosticsReason(reasons: string[]): Diagnostic[] {
+  return reasons.map((reason) => ({
+    severity: "error",
+    code: "run_blocked",
+    message: reason,
+  }));
 }
 
 function hasFixtureOutputs(outputs: Record<string, string> | undefined): boolean {

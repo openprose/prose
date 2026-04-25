@@ -7,6 +7,7 @@ export interface WriteProviderArtifactRecordsOptions {
   nodeId: string | null;
   createdAt?: string;
   schemas?: Record<string, Partial<LocalArtifactSchemaStatus>>;
+  policyLabelsByPort?: Record<string, string[]>;
 }
 
 export async function writeProviderArtifactRecords(
@@ -29,7 +30,10 @@ export async function writeProviderArtifactRecords(
         direction: "output",
         content: artifact.content,
         contentType: artifact.content_type,
-        policyLabels: artifact.policy_labels,
+        policyLabels: mergeLabels(
+          options.policyLabelsByPort?.[artifact.port] ?? [],
+          artifact.policy_labels,
+        ),
         schema: options.schemas?.[artifact.port],
         createdAt: options.createdAt,
       }),
@@ -37,4 +41,10 @@ export async function writeProviderArtifactRecords(
   }
 
   return records;
+}
+
+function mergeLabels(...groups: string[][]): string[] {
+  return Array.from(
+    new Set(groups.flat().map((label) => label.trim()).filter(Boolean)),
+  ).sort();
 }

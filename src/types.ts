@@ -530,6 +530,37 @@ export interface RunEvalRecord {
   status: "passed" | "failed" | "skipped" | "pending";
 }
 
+export interface RunPolicyDeclassificationRecord {
+  from_labels: string[];
+  to_labels: string[];
+  component_ref: string;
+  authorized_by: "approved_effect" | "hosted_policy";
+}
+
+export interface RunPolicyBudgetRecord {
+  effect: string;
+  limit: number | null;
+  unit: string | null;
+  status: "declared" | "not_declared";
+}
+
+export interface RunPolicyIdempotencyRecord {
+  effect: string;
+  key: string | null;
+  status: "declared" | "missing" | "not_required";
+}
+
+export interface RunPolicyRecord {
+  labels: string[];
+  input_labels: Record<string, string[]>;
+  output_labels: Record<string, string[]>;
+  declassifications: RunPolicyDeclassificationRecord[];
+  budgets: RunPolicyBudgetRecord[];
+  idempotency_keys: RunPolicyIdempotencyRecord[];
+  performed_effects: string[];
+  diagnostics: Diagnostic[];
+}
+
 export interface RunRecord {
   run_id: string;
   kind: "component" | "graph";
@@ -569,6 +600,7 @@ export interface RunRecord {
   };
   outputs: RunOutputRecord[];
   evals: RunEvalRecord[];
+  policy?: RunPolicyRecord;
   acceptance: {
     status: RunAcceptanceStatus;
     reason: string | null;
