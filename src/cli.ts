@@ -1,6 +1,12 @@
 import { stat, writeFile } from "node:fs/promises";
 import { compileFile } from "./compiler";
-import { preflightDeployment, renderDeploymentPreflightText } from "./deployment/index.js";
+import {
+  buildPackageEntrypointGraphView,
+  planPackageEntrypoint,
+  preflightDeployment,
+  renderDeploymentPreflightText,
+  type PackageEntrypointPlanResult,
+} from "./deployment/index.js";
 import { executeEvalFile } from "./eval/index.js";
 import { formatFile, formatPath, renderFormatCheckText } from "./format";
 import { renderTextMateGrammar } from "./grammar";
@@ -263,7 +269,11 @@ async function runCliInner(args: string[]): Promise<void> {
   }
 
   if (command === "deployment") {
-    const options = parseFileCommandArgs(rest);
+    const action =
+      rest[0] === "preflight" || rest[0] === "plan" || rest[0] === "graph"
+        ? rest[0]
+        : "preflight";
+    const options = parseFileCommandArgs(action === "preflight" && rest[0] !== "preflight" ? rest : rest.slice(1));
     if (!options.file) {
       console.error("Missing package path.");
       process.exitCode = 1;
@@ -271,6 +281,39 @@ async function runCliInner(args: string[]): Promise<void> {
     }
 
     try {
+      if (action === "plan" || action === "graph") {
+        const entrypoint = options.entrypointRef ?? options.enabledEntrypoints[0] ?? null;
+        if (!entrypoint) {
+          console.error("Missing deployment entrypoint. Use --entrypoint <component>.");
+          process.exitCode = 1;
+          return;
+        }
+        const packageIr = await compilePackagePath(options.file);
+        const result = await planPackageEntrypoint(packageIr, {
+          entrypoint,
+          inputs: options.inputs,
+          currentRunPath: options.currentRunPath ?? undefined,
+          targetOutputs: options.targetOutputs,
+          approvedEffects: options.approvedEffects,
+        });
+        const payload = action === "graph" ? buildPackageEntrypointGraphView(result) : result;
+        const output =
+          options.format === "json"
+            ? `${JSON.stringify(payload, null, options.pretty ? 2 : 0)}\n`
+            : action === "graph"
+              ? renderGraphMermaid(buildPackageEntrypointGraphView(result))
+              : renderDeploymentPlanText(result);
+        if (options.out) {
+          await writeFile(options.out, output, "utf8");
+        } else {
+          process.stdout.write(output);
+        }
+        if (result.plan.status === "blocked") {
+          process.exitCode = 1;
+        }
+        return;
+      }
+
       const result = await preflightDeployment(options.file, {
         name: options.deploymentName,
         slug: options.deploymentSlug,
@@ -712,6 +755,7 @@ interface FileCommandArgs {
   deploymentMode: "local" | "dev" | "staging" | "production" | null;
   stateRoot: string | null;
   enabledEntrypoints: string[];
+  entrypointRef: string | null;
   environmentBindings: Record<string, string>;
 }
 
@@ -885,6 +929,7 @@ function parseFileCommandArgs(args: string[]): FileCommandArgs {
     deploymentMode: null,
     stateRoot: null,
     enabledEntrypoints: [],
+    entrypointRef: null,
     environmentBindings: {},
   };
 
@@ -1099,6 +1144,11 @@ function parseFileCommandArgs(args: string[]): FileCommandArgs {
       if (entrypoint) {
         parsed.enabledEntrypoints.push(entrypoint);
       }
+      index += 1;
+      continue;
+    }
+    if (arg === "--entrypoint") {
+      parsed.entrypointRef = args[index + 1] ?? null;
       index += 1;
       continue;
     }
@@ -1336,12 +1386,49 @@ function validateDeprecatedProviderFlag(value: string | null): string | null {
   return "The --provider flag has been removed from the public graph runtime surface. Use --graph-vm pi, and configure model providers through OPENPROSE_PI_MODEL_PROVIDER.";
 }
 
+function renderDeploymentPlanText(result: PackageEntrypointPlanResult): string {
+  const lines = [
+    `Deployment plan: ${result.entrypoint.name}`,
+    `Status: ${result.plan.status}`,
+    `Package IR: ${result.plan.ir_hash}`,
+    `Requested outputs: ${
+      result.plan.requested_outputs.length > 0 ? result.plan.requested_outputs.join(", ") : "(none)"
+    }`,
+    "Nodes:",
+  ];
+
+  if (result.plan.nodes.length === 0) {
+    lines.push("  - (none)");
+  } else {
+    for (const node of result.plan.nodes) {
+      lines.push(`  - ${node.component_ref}: ${node.status}`);
+      for (const reason of node.blocked_reasons) {
+        lines.push(`    blocked: ${reason}`);
+      }
+      for (const reason of node.stale_reasons) {
+        lines.push(`    stale: ${reason}`);
+      }
+    }
+  }
+
+  if (result.plan.graph_blocked_reasons.length > 0) {
+    lines.push("Graph blockers:");
+    for (const reason of result.plan.graph_blocked_reasons) {
+      lines.push(`  - ${reason}`);
+    }
+  }
+
+  return `${lines.join("\n")}\n`;
+}
+
 function printHelp(): void {
   console.log(`OpenProse
 
 Usage:
   prose compile <file.prose.md|dir> [--out ir.json] [--no-pretty]
   prose deployment <dir> [--deployment-name name] [--org-id org] [--environment dev] [--mode dev] [--enable component] [--env KEY=value] [--format text|json]
+  prose deployment plan <dir> --entrypoint component [--input name=value] [--target-output output] [--approved-effect effect] [--format text|json]
+  prose deployment graph <dir> --entrypoint component [--target-output output] [--approved-effect effect] [--format mermaid|json]
   prose eval <eval.prose.md> --subject-run .prose/runs/{id} [--graph-vm pi] [--output result='{"passed":true,"score":0.9}']
   prose fmt <file.prose.md|dir> [--write|--check]
   prose grammar [--out syntaxes/openprose.tmLanguage.json] [--no-pretty]

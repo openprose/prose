@@ -14,6 +14,13 @@ import type {
   PreflightDependencyCheck,
   RuntimeSettingIR,
 } from "../types.js";
+export {
+  buildPackageEntrypointGraphView,
+  planPackageEntrypoint,
+  planPackageEntrypointSync,
+  type PackageEntrypointPlanOptions,
+  type PackageEntrypointPlanResult,
+} from "./plan.js";
 
 export type DeploymentMode = "local" | "dev" | "staging" | "production";
 

@@ -2,9 +2,11 @@ import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { describe, expect, test } from "bun:test";
+import { compilePackagePath } from "../src/ir/package.js";
 import {
   buildDeploymentManifest,
   discoverDeploymentEntrypointsForPackage,
+  planPackageEntrypoint,
   preflightDeployment,
 } from "../src/deployment/index.js";
 import { runProseCli } from "./support";
@@ -158,6 +160,81 @@ describe("OpenProse deployments", () => {
       id: "org-acme",
     });
   });
+
+  test("plans a package entrypoint graph through resolved service nodes", async () => {
+    const root = createDeploymentFixture({
+      version: "0.1.0",
+      sourceSha: "ffffffffffffffffffffffffffffffffffffffff",
+    });
+    const ir = await compilePackagePath(root);
+    const blocked = await planPackageEntrypoint(ir, {
+      entrypoint: "daily-intel",
+    });
+
+    expect(blocked.plan.nodes.map((node) => [node.component_ref, node.status])).toEqual([
+      ["daily-intel", "blocked_effect"],
+      ["competitor-intelligence", "ready"],
+      ["mention-intelligence", "ready"],
+    ]);
+    expect(blocked.edges.filter((edge) => edge.kind === "execution").map((edge) => edge.to.component).sort()).toEqual([
+      "services-competitor-intelligence--competitor-intelligence",
+      "services-mention-intelligence--mention-intelligence",
+    ]);
+
+    const approved = await planPackageEntrypoint(ir, {
+      entrypoint: "daily-intel",
+      approvedEffects: ["delivers"],
+    });
+
+    expect(approved.plan.status).toBe("ready");
+    expect(approved.plan.materialization_set.nodes).toEqual([
+      "daily-intel",
+      "competitor-intelligence",
+      "mention-intelligence",
+    ]);
+  });
+
+  test("CLI plans and graphs a package deployment entrypoint", () => {
+    const root = createDeploymentFixture({
+      version: "0.1.0",
+      sourceSha: "1212121212121212121212121212121212121212",
+    });
+    const plan = runProseCli([
+      "deployment",
+      "plan",
+      root,
+      "--entrypoint",
+      "daily-intel",
+      "--approved-effect",
+      "delivers",
+      "--format",
+      "json",
+      "--no-pretty",
+    ]);
+    const graph = runProseCli([
+      "deployment",
+      "graph",
+      root,
+      "--entrypoint",
+      "daily-intel",
+      "--approved-effect",
+      "delivers",
+      "--format",
+      "json",
+      "--no-pretty",
+    ]);
+
+    expect(plan.exitCode).toBe(0);
+    expect(graph.exitCode).toBe(0);
+    expect(JSON.parse(new TextDecoder().decode(plan.stdout)).plan.nodes).toHaveLength(3);
+    expect(JSON.parse(new TextDecoder().decode(graph.stdout)).edges).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: "execution",
+        }),
+      ]),
+    );
+  });
 });
 
 function createDeploymentFixture(options: {
@@ -199,6 +276,11 @@ kind: program
 
 - \`previous\`: Markdown<Briefing> - optional prior briefing
 
+### Services
+
+- \`mention-intelligence\`
+- \`competitor-intelligence\`
+
 ### Ensures
 
 - \`briefing\`: Markdown<Briefing> - daily briefing
@@ -215,6 +297,39 @@ kind: program
 
 - \`read_external\`: reads public sources
 - \`delivers\`: posts a dry-run delivery receipt
+`,
+  );
+  mkdirSync(join(root, "services"), { recursive: true });
+  writeFileSync(
+    join(root, "services", "mention-intelligence.prose.md"),
+    `---
+name: mention-intelligence
+kind: service
+---
+
+### Ensures
+
+- \`mentions\`: Markdown<Mentions> - mention summary
+
+### Effects
+
+- \`read_external\`: reads public mentions
+`,
+  );
+  writeFileSync(
+    join(root, "services", "competitor-intelligence.prose.md"),
+    `---
+name: competitor-intelligence
+kind: service
+---
+
+### Ensures
+
+- \`competitors\`: Markdown<Competitors> - competitor summary
+
+### Effects
+
+- \`read_external\`: reads public competitor sources
 `,
   );
   return root;
