@@ -232,6 +232,35 @@ Signpost:
 - Add `signposts/052-runtime-trace-boundary.md` with the reporting boundary
   and checks.
 
+## 05.10 Extract Runtime Provider Request Boundary
+
+Build:
+
+- Move provider request shaping out of the top-level run coordinator.
+- Keep rendered component contracts, input binding state, environment binding,
+  approved effects, expected outputs, and policy labels together as one
+  provider-facing boundary.
+- Preserve provider protocol behavior across fixture, local process, and Pi
+  adapters.
+
+Tests:
+
+- Run strict source unused-symbol scan for `src/`.
+- Run focused provider-protocol, run-entrypoint, fixture-provider,
+  local-process-provider, and Pi-provider tests.
+- Run `bun run typecheck`.
+- Run `bun test`.
+- Run `bun run confidence:runtime`.
+
+Commit:
+
+- Commit as `refactor: extract runtime provider request helpers`.
+
+Signpost:
+
+- Add `signposts/053-runtime-provider-request-boundary.md` with the provider
+  request boundary and checks.
+
 ## Phase Exit Criteria
 
 - `prose run` can execute at least one multi-node graph locally.
