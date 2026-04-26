@@ -3,10 +3,6 @@ name: project-memory
 kind: service
 ---
 
-### Runtime
-
-- `persist`: project
-
 ### Requires
 
 - `mode`: string - "ingest" (learn from content), "query" (answer questions), "update" (record decisions), or "summarize" (overview)
@@ -16,6 +12,9 @@ kind: service
 
 - `result`: Markdown<Result> - ingestion confirmation, answer from project knowledge, update acknowledgment, or project summary depending on mode
 
+### Runtime
+
+- `persist`: project
 
 ### Effects
 

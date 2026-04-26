@@ -9,7 +9,7 @@ Demonstrates Level 1 composite instantiation — a writer with worker-critic rev
 
 ### Services
 
-- `reviewed-draft`: `std/composites/worker-critic`
+- `reviewed-draft`: `composites/worker-critic`
   - `worker`: `writer`
   - `critic`: `reviewer`
   - `max_rounds`: 2

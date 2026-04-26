@@ -500,25 +500,30 @@ Checks:
 
 ## P1: Example And Stdlib Quality
 
-### [todo] Stdlib programs may still read as imperative scripts
+### [done] Stdlib programs may still read as imperative scripts
 
 Finding: some stdlib components, especially delivery/ops adapters, still carry
 old "write a script/use Bash/curl" phrasing. That can be okay for mutating
 adapter contracts, but the public standard library should showcase contract
 quality rather than ad hoc agent instructions.
 
-Proposed fix:
+Resolved:
 
-- audit `packages/std` for imperative host-specific instructions
-- keep environment/capability requirements explicit
-- rewrite components toward typed inputs/outputs, declared effects, and
-  acceptance criteria
+- audited `packages/std` and `packages/co` for host-specific script recipes
+- kept legitimate adapter language for filesystem/object-storage/email
+  capabilities
+- added a package-wide regression over public `.prose.md` contracts so Bash,
+  Python, curl, Claude/Codex/OpenCode, and SDK recipe language does not return
+- fixed the last std lint warnings by ignoring ordinary README docs as
+  executable legacy Markdown, normalizing memory section order, and removing a
+  self-referential std example dependency
 
 Checks:
 
 - `bun run prose lint packages/std`
 - `bun run prose publish-check packages/std --strict`
-- `bun test test/std-roles.test.ts test/std-evals.test.ts`
+- `bun run prose publish-check packages/co --strict`
+- `bun test test/std-contract-language.test.ts test/std-roles.test.ts test/std-evals.test.ts`
 
 ### [done] Stdlib controls and composites may overpromise runtime semantics
 

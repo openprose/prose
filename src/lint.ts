@@ -98,15 +98,16 @@ function isLintableSource(
   if (path.endsWith(".prose.md")) {
     return true;
   }
+  if (path.endsWith("/README.md") || path.endsWith("\\README.md")) {
+    return false;
+  }
 
   const trimmed = source.trimStart();
   if (trimmed.startsWith("---")) {
     return true;
   }
 
-  return drafts.some(
-    (draft) => Object.keys(draft.frontmatter).length > 0 || draft.sections.length > 0,
-  );
+  return drafts.some((draft) => Object.keys(draft.frontmatter).length > 0);
 }
 
 export function renderLintText(diagnostics: Diagnostic[]): string {

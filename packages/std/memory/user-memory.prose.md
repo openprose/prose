@@ -3,10 +3,6 @@ name: user-memory
 kind: service
 ---
 
-### Runtime
-
-- `persist`: user
-
 ### Requires
 
 - `mode`: string - "teach" (add knowledge), "query" (ask questions), or "reflect" (summarize topic)
@@ -16,6 +12,9 @@ kind: service
 
 - `result`: Markdown<Result> - learning confirmation, answer from accumulated knowledge, or reflection with confidence levels and knowledge gaps
 
+### Runtime
+
+- `persist`: user
 
 ### Effects
 
