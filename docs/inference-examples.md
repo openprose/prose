@@ -7,9 +7,15 @@ OpenProse has one real local graph runtime:
   OpenProse materialize those artifacts as runs.
 
 OpenProse is the meta-harness. It plans the graph, invokes Pi sessions for the
-selected nodes, validates outputs, stores artifacts, and passes accepted
-upstream artifacts downstream. Model providers such as OpenRouter are configured
-inside the Pi runtime profile; they are not OpenProse graph VMs.
+selected nodes, validates structured output submissions, stores artifacts, and
+passes accepted upstream artifacts downstream. Model providers such as
+OpenRouter are configured inside the Pi runtime profile; they are not OpenProse
+graph VMs.
+
+Single-run harnesses can still be useful for one-off execution. They are not
+the reactive graph VM. Multi-node OpenProse graphs use Pi node sessions because
+the runtime needs durable inter-run coordination, dependency-ordered execution,
+artifact handoff, effect gates, and traceable materialization.
 
 ## Lead Program Designer
 
@@ -51,6 +57,17 @@ bun run prose run examples/north-star/lead-program-designer.prose.md \
 
 The repository test suite keeps deterministic coverage with scripted Pi
 sessions while live runs exercise the real harness boundary.
+
+## Structured Output Tool
+
+Live and scripted Pi sessions are expected to submit declared outputs through
+`openprose_submit_outputs`. File outputs remain useful for scratch artifacts and
+fallback development paths, but the north-star runtime contract is tool-first:
+
+- OpenProse tells the node which typed outputs it must produce.
+- Pi calls the output tool with those outputs.
+- OpenProse validates required outputs before accepting the node run.
+- Accepted outputs become upstream artifacts for later graph nodes.
 
 ## Live Pi Smoke Ladder
 

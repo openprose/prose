@@ -12,7 +12,8 @@
         <h1>OpenProse Diagrams</h1>
         <p>
           These HTML diagrams are the visual companion to the new local-first OpenProse stack:
-          source, IR, plan, runs, packages, and hosted approvals rendered as concrete system shapes.
+          source, IR, Pi-backed graph execution, runs, packages, confidence gates, and hosted approvals
+          rendered as concrete system shapes.
         </p>
         <nav class="nav">
           <a class="active" href="index.html">Overview</a>
@@ -22,6 +23,7 @@
           <a href="packages-and-registry.html">Packages and Registry</a>
           <a href="hosted-approval-loop.html">Hosted Approval Loop</a>
           <a href="runtime-backpressure.html">Runtime Backpressure</a>
+          <a href="confidence-ladder.html">Confidence Ladder</a>
         </nav>
       </section>
 
@@ -36,7 +38,7 @@
         </a>
         <a class="card" href="inference-meta-harness.html">
           <h2>Inference Meta-Harness</h2>
-          <p>How model-backed graph nodes become separate provider sessions and durable run artifacts.</p>
+          <p>How model-backed graph nodes become separate Pi sessions and durable run artifacts.</p>
         </a>
         <a class="card" href="packages-and-registry.html">
           <h2>Packages and Registry</h2>
@@ -48,7 +50,11 @@
         </a>
         <a class="card" href="runtime-backpressure.html">
           <h2>Runtime Backpressure</h2>
-          <p>How capacity, providers, storage, approvals, and workspaces explain whether execution can start.</p>
+          <p>How capacity, graph VM readiness, storage, approvals, and workspaces explain whether execution can start.</p>
+        </a>
+        <a class="card" href="confidence-ladder.html">
+          <h2>Confidence Ladder</h2>
+          <p>How the north-star examples turn package quality, runtime behavior, and live Pi interop into release gates.</p>
         </a>
       </section>
 

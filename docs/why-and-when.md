@@ -28,8 +28,8 @@ Implemented today:
   visibility, and reference-company health
 - hosted platform surfaces in this repo for package ingest, registry reads,
   package install/resolve, runs, artifacts, traces, graphs, approvals, and
-  operator inspection, including runtime backpressure for capacity, providers,
-  storage, approvals, and Sprite-backed workspaces
+  operator inspection, including runtime backpressure for capacity, graph VM
+  readiness, storage, approvals, and Sprite-backed workspaces
 
 See [What Shipped](what-shipped.md), [Examples](../examples/README.md), and
 [Measuring OpenProse](measurement.md) for the current surfaces.

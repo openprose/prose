@@ -12,7 +12,7 @@
         <h1>Runtime Backpressure</h1>
         <p>
           A managed agent runtime should explain why work can or cannot proceed before an operator clicks run.
-          OpenProse keeps those reasons separate so capacity, providers, artifacts, approvals, and workspaces do
+          OpenProse keeps those reasons separate so capacity, graph VM readiness, artifacts, approvals, and workspaces do
           not collapse into one vague failure state.
         </p>
         <nav class="nav">
@@ -23,6 +23,7 @@
           <a href="packages-and-registry.html">Packages and Registry</a>
           <a href="hosted-approval-loop.html">Hosted Approval Loop</a>
           <a class="active" href="runtime-backpressure.html">Runtime Backpressure</a>
+          <a href="confidence-ladder.html">Confidence Ladder</a>
         </nav>
       </section>
 
@@ -33,7 +34,7 @@
             <div class="stack">
               <div class="node">
                 <strong>Create run</strong>
-                <span class="meta">component, inputs, provider, optional environment</span>
+                <span class="meta">component, inputs, runtime profile, optional environment</span>
               </div>
               <div class="node">
                 <strong>Continue graph</strong>
@@ -49,8 +50,8 @@
                 <span class="meta">credits and concurrent run slots</span>
               </div>
               <div class="node">
-                <strong>provider readiness</strong>
-                <span class="meta">local-safe, Sprites, future hosted providers</span>
+                <strong>graph VM readiness</strong>
+                <span class="meta">Pi runtime profile, model-provider credentials, hosted worker</span>
               </div>
               <div class="node">
                 <strong>artifact storage</strong>
@@ -67,7 +68,7 @@
               </div>
               <div class="node">
                 <strong>attention</strong>
-                <span class="meta">non-blocking issue: pending approvals, low Sprite pool, partial provider outage</span>
+                <span class="meta">non-blocking issue: pending approvals, low Sprite pool, partial model-provider outage</span>
               </div>
               <div class="node">
                 <strong>blocked</strong>
@@ -87,8 +88,8 @@
                 <span class="state"><span class="dot current"></span>ready</span>
               </div>
               <div class="node">
-                <strong>Providers</strong>
-                <span class="meta">Which harnesses are available, default, or unavailable?</span>
+                <strong>Graph VM</strong>
+                <span class="meta">Can Pi start node sessions with the requested model profile?</span>
                 <span class="state"><span class="dot current"></span>ready</span>
               </div>
               <div class="node">
@@ -114,13 +115,13 @@
             </div>
           </div>
           <div class="legend span-4">
-            <h2>Provider rows answer</h2>
+            <h2>Runtime rows answer</h2>
             <ul>
-              <li>which provider is default</li>
-              <li>which harness, worker, or model will execute</li>
+              <li>which graph VM will coordinate execution</li>
+              <li>which worker and model profile will execute node sessions</li>
               <li>whether a Sprite-backed environment is required</li>
               <li>whether a git-backed source is required</li>
-              <li>the exact reason an unavailable provider is disabled</li>
+              <li>the exact reason an unavailable runtime path is disabled</li>
             </ul>
           </div>
         </div>
@@ -130,7 +131,7 @@
           <p>
             Backpressure turns a managed agent runtime from a text wall into an operating surface. Operators can
             see whether the next fix is adding inputs, approving an effect, waiting for capacity, allocating a
-            workspace, fixing storage, or choosing a different provider.
+            workspace, fixing storage, or choosing a different model profile.
           </p>
         </div>
       </section>

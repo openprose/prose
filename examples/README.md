@@ -59,6 +59,26 @@ the real graph runtime contract: output files are fallback behavior, while the
 north-star scenarios exercise the structured tool path that live Pi sessions
 should use.
 
+## Release Backpressure
+
+The examples now participate in the release gate:
+
+```bash
+bun run measure:examples
+bun run confidence:runtime
+bun run smoke:live-pi
+```
+
+`measure:examples` records package quality, selective recompute savings,
+approval visibility, and baseline skill-folder comparison. `confidence:runtime`
+proves the public CLI can compile, plan, run, inspect, package, install, and
+publish-check these examples. `smoke:live-pi` stays skipped by default, then
+becomes the opt-in rung for real Pi SDK and model-provider interop.
+
+That combination keeps the examples from becoming decorative. If a runtime
+change weakens typed props, node sessions, approval gates, structured output
+submission, or package metadata, the north-star suite should complain.
+
 ## Smallest Run
 
 ```bash

@@ -28,6 +28,8 @@ These surfaces share one model:
 - deterministic IR
 - run materialization as the universal execution record
 - deterministic `--output` fixtures as a development/test path, not the runtime center
+- Pi-backed graph VM execution with one persisted session per selected node
+- structured output submission through `openprose_submit_outputs`
 - package and hosted metadata as projections over the same executable contract
 
 ## What the Current Patterns Buy Us
@@ -49,6 +51,10 @@ The repo now carries three important local package surfaces:
 - `packages/co/`: company-operating-system starter patterns
 
 The `customers/prose-openprose` reference company has also been hardened into a real, locally validated package tree with publish-pass quality.
+
+The `examples/` package also participates in release confidence through
+`measure:examples`, `confidence:runtime`, deterministic scripted Pi scenarios,
+and the skipped-by-default `smoke:live-pi` ladder.
 
 ## Hosted Platform Surfaces
 

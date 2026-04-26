@@ -24,7 +24,7 @@
 
 OpenProse is a programming language for agent workflows.
 
-You write canonical `.prose.md` source with typed inputs, typed outputs, effects, access rules, and optional execution blocks. OpenProse compiles that source into IR, explains the graph, compares it to prior runs, materializes durable run records, and turns packages into something you can search, install, benchmark, and eventually serve.
+You write canonical `.prose.md` source with typed inputs, typed outputs, effects, access rules, and optional execution blocks. OpenProse compiles that source into IR, explains the graph, compares it to prior runs, materializes durable run records through the local graph VM, and turns packages into something you can search, install, benchmark, and eventually serve.
 
 ## Start Here
 
@@ -60,15 +60,17 @@ bun run prose install registry://openprose/@openprose/examples@0.1.0/company-sig
   --catalog-root . \
   --workspace-root /tmp/openprose-workspace
 bun run measure:examples
+bun run confidence:runtime
+bun run smoke:live-pi
 ```
 
-The agent-session/runtime surface still exists too:
+Single-run agent harnesses still matter for one-off programs:
 
 ```text
 prose run customers/prose-openprose/systems/revenue/workflows/gtm-pipeline.prose.md
 ```
 
-Inside a Prose Complete host, `prose run ...` is an instruction to the current agent session. The Bun CLI is the compiler/tooling/runtime-analysis surface around that source model.
+Inside a Prose Complete host, `prose run ...` can still be an instruction to the current agent session. For reactive graphs, the Bun CLI is the compiler/tooling/runtime-analysis surface and Pi is the local graph VM that OpenProse coordinates one persisted node session at a time.
 
 ## Why OpenProse
 
@@ -96,7 +98,7 @@ What it adds over baseline agent packages is not just orchestration. It adds:
   -> compile
   -> Prose IR
   -> plan / graph / manifest
-  -> provider-backed run materialization
+  -> Pi-backed graph VM run materialization
   -> package metadata / install / publish-check / search
   -> hosted run + graph + approval surfaces
 ```
@@ -146,7 +148,12 @@ Measure package health and reactive behavior:
 ```bash
 bun run measure:examples
 bun run confidence:runtime
+bun run smoke:binary
+bun run smoke:live-pi
 ```
+
+`smoke:live-pi` skips by default. Set `OPENPROSE_LIVE_PI_SMOKE=1` and
+Pi/OpenRouter credentials when you want opt-in model-backed evidence.
 
 ## Hosted Platform
 

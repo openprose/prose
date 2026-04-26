@@ -41,6 +41,18 @@ That writes:
 - [measurements/latest.md](measurements/latest.md)
 - [measurements/latest.json](measurements/latest.json)
 
+For release confidence:
+
+```bash
+bun run confidence:runtime
+bun run smoke:binary
+```
+
+The confidence matrix folds the north-star examples into the CLI release gate.
+It includes strict publish checks, deterministic run materialization, release
+approval backpressure, measurement generation, hosted envelope fixtures, binary
+smoke, and a skipped-by-default live Pi rung.
+
 For opt-in live Pi coverage:
 
 ```bash
@@ -76,3 +88,7 @@ The measurement harness intentionally stays local-first:
 - it can optionally include the local reference company if it is present in the workspace
 
 That keeps the signal fast and reproducible while the hosted product continues to mature.
+
+The live ladder is deliberately separate from the required local gate. It is
+the place to catch Pi SDK, model-provider, billing, timeout, and output-tool
+interop issues without making every contributor spend inference dollars.
