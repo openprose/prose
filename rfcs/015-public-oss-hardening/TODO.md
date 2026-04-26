@@ -151,23 +151,24 @@ Checks:
 - `bun run prose publish-check packages/co --strict`
 - `bun test test/package-registry.test.ts`
 
-### [todo] Distribution packaging is not obviously npm-ready
+### [done] Distribution packaging is not obviously npm-ready
 
 Finding: `package.json` publishes `bin/prose.ts` as the executable while the
 primary target is a Bun-compiled binary. `dist/package.json` is copied but still
 points at the TypeScript entrypoint.
 
-Proposed fix:
+Resolved:
 
-- define the intended OSS distribution story clearly: source package, Bun
-  binary artifact, npm package, or all of the above
-- make `dist/package.json` point at `./prose` if `dist/` is the binary package
-- add a local pack/install smoke if npm-style distribution is intended
+- `build:binary` now writes a binary-specific `dist/package.json`
+- the dist package exposes `bin.prose` as `./prose`
+- the dist package includes only the compiled binary in `files`
+
+Commit target: `build: write binary package metadata`
 
 Checks:
 
 - `bun run smoke:binary`
-- optional local package smoke using a temp install directory
+- inspect `dist/package.json`
 - `git diff --check`
 
 ### [todo] README and docs need a public-first pass
