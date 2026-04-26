@@ -2,9 +2,17 @@ import {
   compileFixture,
   describe,
   expect,
+  join,
+  mkdirSync,
+  mkdtempSync,
+  readArtifactRecordForOutput,
+  runSource,
   test,
+  tmpdir,
+  writeFileSync,
 } from "./support";
 import {
+  loadPackageSchemaDefinitionsForPath,
   parseTypeExpression,
   portSchemaProjection,
   typeExpressionToJsonSchema,
@@ -113,7 +121,7 @@ describe("OpenProse type expressions and schema projection", () => {
     });
   });
 
-  test("validates run reference shape without pretending named schemas are resolved", () => {
+  test("validates run reference shape and marks unresolved named schemas as unchecked", () => {
     const runRef = parseTypeExpression("run<company-intake>").expression;
 
     expect(
@@ -134,8 +142,141 @@ describe("OpenProse type expressions and schema projection", () => {
 
     const namedJson = parseTypeExpression("Json<CompanyProfile>").expression;
     expect(validateTextAgainstTypeExpression(namedJson, '{"name":"Acme"}')).toMatchObject({
-      status: "valid",
+      status: "unchecked",
       schema_ref: "#/$defs/CompanyProfile",
+      diagnostics: [expect.objectContaining({ code: "schema_definition_unresolved" })],
+    });
+  });
+
+  test("validates named Json<T> when definitions are supplied", () => {
+    const namedJson = parseTypeExpression("Json<CompanyProfile>").expression;
+    const definitions = {
+      CompanyProfile: {
+        type: "object",
+        required: ["name", "employee_count"],
+        additionalProperties: false,
+        properties: {
+          name: { type: "string" },
+          employee_count: { type: "integer" },
+          segment: { enum: ["startup", "enterprise"] },
+        },
+      },
+    };
+
+    expect(
+      validateTextAgainstTypeExpression(
+        namedJson,
+        '{"name":"Acme","employee_count":42,"segment":"startup"}',
+        { definitions },
+      ),
+    ).toMatchObject({ status: "valid" });
+    expect(
+      validateTextAgainstTypeExpression(
+        namedJson,
+        '{"name":"Acme","segment":"other"}',
+        { definitions },
+      ),
+    ).toMatchObject({
+      status: "invalid",
+      diagnostics: [
+        expect.objectContaining({ code: "schema_required_property_missing" }),
+        expect.objectContaining({ code: "schema_enum_mismatch" }),
+      ],
+    });
+  });
+
+  test("loads package-local $defs for runtime input and output validation", async () => {
+    const root = mkdtempSync(join(tmpdir(), "openprose-schema-package-"));
+    mkdirSync(join(root, "schemas"), { recursive: true });
+    writeFileSync(
+      join(root, "prose.package.json"),
+      JSON.stringify({
+        name: "@test/schema-package",
+        version: "0.1.0",
+        schemas: ["schemas/types.schema.json"],
+      }, null, 2),
+    );
+    writeFileSync(
+      join(root, "schemas/types.schema.json"),
+      JSON.stringify({
+        $defs: {
+          LeadProfile: {
+            type: "object",
+            required: ["name", "employee_count"],
+            additionalProperties: false,
+            properties: {
+              name: { type: "string" },
+              employee_count: { type: "integer" },
+            },
+          },
+        },
+      }, null, 2),
+    );
+    const sourcePath = join(root, "profile-normalizer.prose.md");
+    const source = `---
+name: profile-normalizer
+kind: service
+---
+
+### Requires
+
+- \`profile\`: Json<LeadProfile> - account profile
+
+### Ensures
+
+- \`normalized_profile\`: Json<LeadProfile> - normalized profile
+
+### Effects
+
+- \`pure\`: deterministic normalization
+`;
+    writeFileSync(sourcePath, source);
+
+    const loaded = await loadPackageSchemaDefinitionsForPath(sourcePath);
+    expect(Object.keys(loaded.definitions)).toContain("LeadProfile");
+
+    const blockedInput = await runSource(source, {
+      path: sourcePath,
+      runId: "schema-input",
+      runRoot: join(root, ".prose/runs"),
+      inputs: {
+        profile: '{"name":"Acme"}',
+      },
+      outputs: {
+        normalized_profile: '{"name":"Acme","employee_count":42}',
+      },
+    });
+    expect(blockedInput.record.status).toBe("blocked");
+    expect(blockedInput.diagnostics.map((diagnostic) => diagnostic.message).join("\n")).toContain(
+      "required property 'employee_count'",
+    );
+
+    const invalidOutput = await runSource(source, {
+      path: sourcePath,
+      runId: "schema-output",
+      runRoot: join(root, ".prose/runs"),
+      inputs: {
+        profile: '{"name":"Acme","employee_count":42}',
+      },
+      outputs: {
+        normalized_profile: '{"name":"Acme"}',
+      },
+    });
+    expect(invalidOutput.record.status).toBe("failed");
+    expect(invalidOutput.record.acceptance.reason).toContain(
+      "required property 'employee_count'",
+    );
+    const invalidArtifact = await readArtifactRecordForOutput(
+      join(root, ".prose/store"),
+      invalidOutput.record.run_id,
+      "profile-normalizer",
+      "normalized_profile",
+    );
+    expect(invalidArtifact?.schema).toMatchObject({
+      status: "invalid",
+      diagnostics: [
+        expect.objectContaining({ code: "schema_required_property_missing" }),
+      ],
     });
   });
 });

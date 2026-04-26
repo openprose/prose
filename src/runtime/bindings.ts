@@ -10,6 +10,7 @@ import type {
   NodeInputBinding,
 } from "../node-runners/index.js";
 import { validateTextAgainstTypeExpression } from "../schema/index.js";
+import type { SchemaDefinitionMap } from "../schema/types.js";
 import {
   readArtifactRecordForOutput,
   readLocalArtifactContent,
@@ -31,6 +32,7 @@ export interface RuntimeBindingContext {
   storeRoot: string;
   inputs: Record<string, string>;
   approvedEffects: string[];
+  schemaDefinitions?: SchemaDefinitionMap;
 }
 
 export function componentInputBindings(
@@ -65,6 +67,7 @@ export function componentInputBindings(
 export function validateNodeArtifacts(
   component: ComponentIR,
   artifacts: NodeArtifactResult[],
+  schemaDefinitions: SchemaDefinitionMap = {},
 ): Record<string, LocalArtifactSchemaStatus> {
   const ports = new Map(component.ports.ensures.map((port) => [port.name, port]));
   const validation: Record<string, LocalArtifactSchemaStatus> = {};
@@ -79,6 +82,7 @@ export function validateNodeArtifacts(
     validation[artifact.port] = validateTextAgainstTypeExpression(
       port.type_expr,
       artifact.content,
+      { definitions: schemaDefinitions },
     );
   }
   return validation;
@@ -175,7 +179,9 @@ export async function inputValidationReasons(
       continue;
     }
 
-    const schema = validateTextAgainstTypeExpression(port.type_expr, binding.value);
+    const schema = validateTextAgainstTypeExpression(port.type_expr, binding.value, {
+      definitions: ctx.schemaDefinitions,
+    });
     if (schema.status === "invalid") {
       reasons.push(
         ...schema.diagnostics.map(

@@ -35,6 +35,7 @@ These surfaces share one model:
 - Pi-backed graph VM execution with one persisted session per selected node
 - structured output submission through `openprose_submit_outputs`
 - structured node-session records in attempts and trace output
+- package-local named JSON Schema validation for `Json<T>` ports
 - package and hosted metadata as projections over the same executable contract
 
 `remote execute` keeps deterministic `--output` fixtures for repeatable hosted
@@ -47,6 +48,7 @@ does not silently become a separate runtime architecture.
 The new model already gives us real advantages over ad hoc skill bundles:
 
 - typed ports improve composition and registry search
+- package-local schemas make selected named port types executable contracts
 - declared effects make planning and approvals legible
 - prior-run comparison makes selective recompute possible
 - graph/trace surfaces make the workflow inspectable

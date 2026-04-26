@@ -4,6 +4,13 @@ import type {
   SourceSpan,
   TypeExpressionIR,
 } from "../types.js";
+import { validateJsonValueAgainstSchema } from "./json-schema.js";
+
+export type SchemaDefinitionMap = Record<string, unknown>;
+
+export interface TypeValidationOptions {
+  definitions?: SchemaDefinitionMap;
+}
 
 export interface TypeExpressionParseResult {
   expression: TypeExpressionIR;
@@ -99,9 +106,10 @@ export function portSchemaProjection(options: {
 export function validateTextAgainstTypeExpression(
   expression: TypeExpressionIR,
   content: string,
+  options: TypeValidationOptions = {},
 ): LocalArtifactSchemaStatus {
   const diagnostics: Diagnostic[] = [];
-  const status = validateExpression(expression, content.trim(), diagnostics);
+  const status = validateExpression(expression, content.trim(), diagnostics, options);
   return {
     status,
     schema_ref: schemaRefForExpression(expression),
@@ -243,6 +251,7 @@ function validateExpression(
   expression: TypeExpressionIR,
   content: string,
   diagnostics: Diagnostic[],
+  options: TypeValidationOptions,
 ): LocalArtifactSchemaStatus["status"] {
   if (expression.kind === "generic" && expression.name === "Markdown") {
     return "unchecked";
@@ -254,7 +263,13 @@ function validateExpression(
     const parsed = parseJson(content, diagnostics, expression.raw);
     return parsed === undefined
       ? "invalid"
-      : validateJsonValueAgainstExpression(expression, parsed, diagnostics, expression.raw);
+      : validateJsonValueAgainstExpression(
+          expression,
+          parsed,
+          diagnostics,
+          expression.raw,
+          options,
+        );
   }
   if (expression.kind === "generic" && expression.name === "Json") {
     const parsed = parseJson(content, diagnostics, expression.raw);
@@ -263,14 +278,26 @@ function validateExpression(
     }
     const [inner] = expression.args;
     return inner
-      ? validateJsonValueAgainstExpression(inner, parsed, diagnostics, expression.raw)
+      ? validateJsonValueAgainstExpression(
+          inner,
+          parsed,
+          diagnostics,
+          expression.raw,
+          options,
+        )
       : "valid";
   }
   if (expression.kind === "generic" && expression.name === "run") {
     const parsed = parseJson(content, diagnostics, expression.raw);
     return parsed === undefined
       ? "invalid"
-      : validateJsonValueAgainstExpression(expression, parsed, diagnostics, expression.raw);
+      : validateJsonValueAgainstExpression(
+          expression,
+          parsed,
+          diagnostics,
+          expression.raw,
+          options,
+        );
   }
   if (expression.kind === "primitive") {
     if (expression.name === "Any") {
@@ -314,9 +341,26 @@ function validateJsonValueAgainstExpression(
   value: unknown,
   diagnostics: Diagnostic[],
   parentType: string,
+  options: TypeValidationOptions,
 ): LocalArtifactSchemaStatus["status"] {
-  if (expression.kind === "named" || expression.name === "Any") {
+  if (expression.name === "Any") {
     return "valid";
+  }
+
+  if (expression.kind === "named") {
+    const schema = options.definitions?.[expression.name];
+    if (!schema) {
+      diagnostics.push({
+        severity: "warning",
+        code: "schema_definition_unresolved",
+        message: `Named schema '${expression.name}' is not available; '${parentType}' was parsed as JSON but not structurally checked.`,
+      });
+      return "unchecked";
+    }
+    return validateJsonValueAgainstSchema(schema, value, diagnostics, {
+      parentType,
+      definitions: options.definitions ?? {},
+    });
   }
 
   if (expression.kind === "primitive") {
@@ -371,24 +415,26 @@ function validateJsonValueAgainstExpression(
     if (!element) {
       return "valid";
     }
-    let valid = true;
+    let status: LocalArtifactSchemaStatus["status"] = "valid";
     value.forEach((item, index) => {
-      const before = diagnostics.length;
-      const status = validateJsonValueAgainstExpression(
-        element,
-        item,
-        diagnostics,
-        `${parentType}[${index}]`,
+      status = combineStatus(
+        status,
+        validateJsonValueAgainstExpression(
+          element,
+          item,
+          diagnostics,
+          `${parentType}[${index}]`,
+          options,
+        ),
       );
-      valid = valid && status !== "invalid" && diagnostics.length === before;
     });
-    return valid ? "valid" : "invalid";
+    return status;
   }
 
   if (expression.kind === "generic" && expression.name === "Json") {
     const [inner] = expression.args;
     return inner
-      ? validateJsonValueAgainstExpression(inner, value, diagnostics, parentType)
+      ? validateJsonValueAgainstExpression(inner, value, diagnostics, parentType, options)
       : "valid";
   }
 
@@ -432,6 +478,19 @@ function validateJsonValueAgainstExpression(
     );
   }
 
+  return "valid";
+}
+
+function combineStatus(
+  current: LocalArtifactSchemaStatus["status"],
+  next: LocalArtifactSchemaStatus["status"],
+): LocalArtifactSchemaStatus["status"] {
+  if (current === "invalid" || next === "invalid") {
+    return "invalid";
+  }
+  if (current === "unchecked" || next === "unchecked") {
+    return "unchecked";
+  }
   return "valid";
 }
 

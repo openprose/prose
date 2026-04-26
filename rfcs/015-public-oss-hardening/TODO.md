@@ -477,23 +477,26 @@ Checks:
 - `bun test test/schema-resolution.test.ts test/run-entrypoint.test.ts test/package-registry.test.ts`
 - add focused tests for any newly enforced type behavior
 
-### [todo] Named schema definitions are still mostly semantic metadata
+### [done] Named schema definitions are still mostly semantic metadata
 
 Finding: the docs now honestly state that named aliases such as
 `Json<CompanyProfile>` are not structurally enforced without resolved schema
 definitions. For registry-scale composition, that likely needs to become real
 resolution instead of only documentation.
 
-Proposed fix:
+Resolved:
 
-- load package-local schema resources and `$defs` during validation
-- validate named `Json<T>` inputs/outputs when the schema is available
-- keep unresolved names as warnings or semantic labels, not false guarantees
+- added a package-local schema definition loader for `prose.package.json`
+  `schemas`
+- loads `$defs`, `definitions`, top-level `title`, and schema filename names
+- validates named `Json<T>` inputs and outputs when a definition is available
+- keeps unresolved names explicitly `unchecked` with a warning diagnostic
+- documents the supported local JSON Schema subset
 
 Checks:
 
 - `bun test test/schema-resolution.test.ts test/package-registry.test.ts`
-- add package-local schema fixtures with pass/fail payloads
+- `bun test test/schema-resolution.test.ts test/run-entrypoint.test.ts test/package-registry.test.ts`
 
 ## P1: Example And Stdlib Quality
 

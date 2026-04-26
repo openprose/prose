@@ -51,6 +51,7 @@ import {
   resolveRuntimeProfile,
   type RuntimeProfileInput,
 } from "./runtime/profiles.js";
+import { loadPackageSchemaDefinitionsForPath } from "./schema/index.js";
 import {
   createReactiveGraphRuntime,
   type ReactiveGraphRuntime,
@@ -72,6 +73,7 @@ import type {
   RunRecord,
   RuntimeProfile,
 } from "./types.js";
+import type { SchemaDefinitionMap } from "./schema/types.js";
 import type {
   GraphVmKind,
   NodeRunResult,
@@ -120,6 +122,7 @@ interface RunContext {
   completedAt?: string;
   inputs: Record<string, string>;
   outputs: Record<string, string>;
+  schemaDefinitions: SchemaDefinitionMap;
   approvedEffects: string[];
   approvalRecords: EffectApprovalRecord[];
   deniedEffects: string[];
@@ -168,6 +171,7 @@ export async function runSource(
     selectedGraphVm: selectedRuntime,
     deterministicOutputs: options.outputs,
   });
+  const schemaDefinitions = (await loadPackageSchemaDefinitionsForPath(options.path)).definitions;
 
   if (plan.status === "current") {
     const current = currentRun.graph ?? currentRun.nodes[0] ?? null;
@@ -204,6 +208,7 @@ export async function runSource(
     completedAt: options.completedAt,
     inputs: options.inputs ?? {},
     outputs: options.outputs ?? {},
+    schemaDefinitions,
     approvedEffects,
     approvalRecords,
     deniedEffects,
@@ -521,7 +526,11 @@ async function materializeNodeRunResult(
     result.artifacts,
     policyDecision.output_labels,
   );
-  const validationByPort = validateNodeArtifacts(component, result.artifacts);
+  const validationByPort = validateNodeArtifacts(
+    component,
+    result.artifacts,
+    ctx.schemaDefinitions,
+  );
   const validationDiagnostics = Object.values(validationByPort).flatMap(
     (schema) => schema.diagnostics,
   );
