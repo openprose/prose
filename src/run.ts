@@ -59,6 +59,7 @@ export interface RunOptions {
   storeRoot?: string;
   runId?: string;
   createdAt?: string;
+  completedAt?: string;
   inputs?: Record<string, string>;
   outputs?: Record<string, string>;
   approvedEffects?: string[];
@@ -88,6 +89,7 @@ interface RunContext {
   runDir: string;
   storeRoot: string;
   createdAt: string;
+  completedAt?: string;
   inputs: Record<string, string>;
   outputs: Record<string, string>;
   approvedEffects: string[];
@@ -154,6 +156,7 @@ export async function runSource(
     runDir,
     storeRoot: options.storeRoot ?? inferStoreRoot(runRoot),
     createdAt,
+    completedAt: options.completedAt,
     inputs: options.inputs ?? {},
     outputs: options.outputs ?? {},
     approvedEffects,
@@ -497,7 +500,7 @@ async function materializeProviderResult(
 ): Promise<RunRecord> {
   const runId = options.runId ?? ctx.runId;
   const recordPath = options.recordPath ?? "run.json";
-  const completedAt = new Date().toISOString();
+  const completedAt = completionTimestamp(ctx);
   const inputs =
     options.inputs ??
     component.ports.requires.map((port) => callerInputBinding(ctx, component, port));
@@ -738,7 +741,7 @@ async function assembleGraphRunRecord(
         : { status: "pending", reason: reasons.join(" ") },
     trace_ref: "trace.json",
     status,
-    completed_at: new Date().toISOString(),
+    completed_at: completionTimestamp(ctx),
   };
 }
 
@@ -1333,6 +1336,10 @@ function dependencyRecords(ctx: RunContext): RunRecord["dependencies"] {
     package: dependency.package,
     sha: dependency.sha,
   }));
+}
+
+function completionTimestamp(ctx: RunContext): string {
+  return ctx.completedAt ?? new Date().toISOString();
 }
 
 function nodeRunId(ctx: RunContext, component: ComponentIR): string {

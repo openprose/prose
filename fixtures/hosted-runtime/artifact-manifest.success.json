@@ -1,0 +1,101 @@
+{
+  "artifact_manifest_version": "0.1",
+  "run_id": "hosted-contract-success",
+  "generated_at": "2026-04-26T00:00:00.000Z",
+  "artifacts": [
+    {
+      "path": "bindings/hello/message.md",
+      "kind": "output_binding",
+      "content_type": "text/markdown",
+      "parse_policy": "declared_content",
+      "sha256": "48894f9a67846a271edc86166d757bf17db58ef66f7b3fbc9981392db96e2536",
+      "size_bytes": 49,
+      "binding": {
+        "direction": "output",
+        "component_ref": "hello",
+        "port": "message",
+        "binding_path": "hello/message"
+      },
+      "policy_labels": [],
+      "warnings": []
+    },
+    {
+      "path": "ir.json",
+      "kind": "runtime_ir",
+      "content_type": "application/json",
+      "parse_policy": "must_parse_json",
+      "sha256": "385377fda9e8602c0b1da406a1710921dc70f6dd796ed37b908df8f2c59a8efb",
+      "size_bytes": 2510,
+      "binding": null,
+      "policy_labels": [],
+      "warnings": []
+    },
+    {
+      "path": "manifest.md",
+      "kind": "runtime_manifest",
+      "content_type": "text/markdown",
+      "parse_policy": "preserve_text",
+      "sha256": "4a6bbca435599ed2994a00cac7bdf426e278e28914ef168188fa853fc9d5d335",
+      "size_bytes": 619,
+      "binding": null,
+      "policy_labels": [],
+      "warnings": []
+    },
+    {
+      "path": "plan.json",
+      "kind": "runtime_plan",
+      "content_type": "application/json",
+      "parse_policy": "must_parse_json",
+      "sha256": "b3e1142575ad759900e2ae557274df16830c840388af8ae087df5c46aa8d3401",
+      "size_bytes": 693,
+      "binding": null,
+      "policy_labels": [],
+      "warnings": []
+    },
+    {
+      "path": "run.json",
+      "kind": "runtime_run_record",
+      "content_type": "application/json",
+      "parse_policy": "must_parse_json",
+      "sha256": "08e888ed53569f644e5f4a6781a7d5988b754c8bf4d89e2cb10c9888592adb46",
+      "size_bytes": 1441,
+      "binding": null,
+      "policy_labels": [],
+      "warnings": []
+    },
+    {
+      "path": "stderr.txt",
+      "kind": "runtime_stderr",
+      "content_type": "text/plain",
+      "parse_policy": "preserve_text",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size_bytes": 0,
+      "binding": null,
+      "policy_labels": [],
+      "warnings": []
+    },
+    {
+      "path": "stdout.txt",
+      "kind": "runtime_stdout",
+      "content_type": "text/plain",
+      "parse_policy": "preserve_text",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size_bytes": 0,
+      "binding": null,
+      "policy_labels": [],
+      "warnings": []
+    },
+    {
+      "path": "trace.json",
+      "kind": "runtime_trace",
+      "content_type": "application/json",
+      "parse_policy": "must_parse_json",
+      "sha256": "1c975042d933c27d7334b09ae33541e8cea08831a4550710b7a2ed5f8e942613",
+      "size_bytes": 448,
+      "binding": null,
+      "policy_labels": [],
+      "warnings": []
+    }
+  ],
+  "diagnostics": []
+}

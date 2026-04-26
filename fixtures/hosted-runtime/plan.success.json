@@ -1,0 +1,35 @@
+{
+  "plan_version": "0.1",
+  "component_ref": "hello",
+  "ir_hash": "7de6dc8e0299b8c21cc7cf35101a9338bf31d8e84fd4af9141ced805b9e47a81",
+  "requested_outputs": [
+    "message"
+  ],
+  "approved_effects": [],
+  "status": "ready",
+  "graph_stale_reasons": [],
+  "graph_blocked_reasons": [],
+  "materialization_set": {
+    "graph": false,
+    "nodes": [
+      "hello"
+    ]
+  },
+  "nodes": [
+    {
+      "node_id": "hello",
+      "component_ref": "hello",
+      "status": "ready",
+      "stale_reasons": [
+        "no_current_run"
+      ],
+      "blocked_reasons": [],
+      "depends_on": [],
+      "effects": [
+        "pure"
+      ],
+      "current_run_id": null
+    }
+  ],
+  "diagnostics": []
+}

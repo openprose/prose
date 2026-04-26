@@ -1,0 +1,61 @@
+{
+  "run_id": "hosted-contract-success",
+  "kind": "component",
+  "component_ref": "hello",
+  "component_version": {
+    "source_sha": "61d5209a84f2e1b3bb9cdb80138dbe30fe6ab70d5c7e97823b04e7b0282dcee8",
+    "package_ref": "fixtures/compiler/hello.prose.md",
+    "ir_hash": "7de6dc8e0299b8c21cc7cf35101a9338bf31d8e84fd4af9141ced805b9e47a81"
+  },
+  "caller": {
+    "principal_id": "local",
+    "tenant_id": "local",
+    "roles": [
+      "local"
+    ],
+    "trigger": "manual"
+  },
+  "runtime": {
+    "harness": "openprose-provider",
+    "worker_ref": "fixture",
+    "model": null,
+    "environment_ref": null
+  },
+  "created_at": "2026-04-26T00:00:00.000Z",
+  "inputs": [],
+  "dependencies": [],
+  "effects": {
+    "declared": [
+      "pure"
+    ],
+    "performed": []
+  },
+  "outputs": [
+    {
+      "port": "message",
+      "value_hash": "48894f9a67846a271edc86166d757bf17db58ef66f7b3fbc9981392db96e2536",
+      "artifact_ref": "bindings/hello/message.md",
+      "policy_labels": []
+    }
+  ],
+  "evals": [],
+  "policy": {
+    "labels": [],
+    "input_labels": {},
+    "output_labels": {
+      "message": []
+    },
+    "declassifications": [],
+    "budgets": [],
+    "idempotency_keys": [],
+    "performed_effects": [],
+    "diagnostics": []
+  },
+  "acceptance": {
+    "status": "accepted",
+    "reason": "No required evals declared."
+  },
+  "trace_ref": "trace.json",
+  "status": "succeeded",
+  "completed_at": "2026-04-26T00:00:00.000Z"
+}

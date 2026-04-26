@@ -1,0 +1,235 @@
+{
+  "contract_version": "0.2",
+  "package": {
+    "name": "@openprose/catalog-demo",
+    "version": "0.1.0",
+    "catalog": "openprose",
+    "registry_ref": "registry://openprose/@openprose/catalog-demo@0.1.0",
+    "description": "Fixture package for registry metadata generation.",
+    "license": "MIT"
+  },
+  "source": {
+    "git": "github.com/openprose/catalog-demo",
+    "sha": "0123456789abcdef",
+    "subpath": "fixtures/package/catalog-demo"
+  },
+  "package_ir": {
+    "version": "0.1",
+    "semantic_hash": "510baa7bbcb41ce3dab4741f208b3b8d51a1dd53dc58406d84b23ef93d804c74",
+    "hashes": {
+      "source_hash": "177edde528d8139766b8b6885d97edb3c48b5f3f9cbaa8a35ab7e47b9efa37d6",
+      "semantic_hash": "510baa7bbcb41ce3dab4741f208b3b8d51a1dd53dc58406d84b23ef93d804c74",
+      "dependency_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "policy_hash": "fa584faf59e84ce13ca0adc2e7ba3ebd50c857df1d42414ba920fce6c6bd5b0c",
+      "runtime_config_hash": "6458e9036bb06a808c79e133ac8c625ce512547189b309d123e534dc5366d9e4"
+    }
+  },
+  "runtime": {
+    "providers": [
+      "fixture",
+      "pi"
+    ],
+    "default_provider": "fixture",
+    "required_effects": [
+      "mutates_repo",
+      "read_external"
+    ],
+    "environment": []
+  },
+  "components": [
+    {
+      "name": "brief-writer",
+      "kind": "service",
+      "path": "brief-writer.prose.md",
+      "registry_ref": "registry://openprose/@openprose/catalog-demo@0.1.0/brief-writer",
+      "summary": "executive summary with recommended priorities",
+      "inputs": [
+        {
+          "name": "company",
+          "type": "CompanyProfile",
+          "required": true,
+          "policy_labels": []
+        }
+      ],
+      "outputs": [
+        {
+          "name": "brief",
+          "type": "Markdown<ExecutiveBrief>",
+          "required": true,
+          "policy_labels": []
+        }
+      ],
+      "artifact_contract": [
+        {
+          "port": "brief",
+          "type": "Markdown<ExecutiveBrief>",
+          "required": true,
+          "default_path": "brief.md",
+          "content_type": "text/markdown",
+          "policy_labels": []
+        }
+      ],
+      "runtime": {
+        "providers": [
+          "fixture",
+          "pi"
+        ],
+        "effects": [
+          "pure"
+        ],
+        "environment": []
+      },
+      "effects": [
+        "pure"
+      ],
+      "access": {},
+      "evals": [
+        "evals/catalog-demo.eval.prose.md"
+      ],
+      "examples": [
+        "examples/catalog-demo.run.json"
+      ],
+      "quality_score": 1,
+      "ir_version": "0.1",
+      "semantic_hash": "c9184093e310760de02e6b542933ab3de189a1e50b55e004bde834bbf60159f7",
+      "source_sha": "8918cf5d2c3e8bba1e534b774078119a07df82cc3c4c28ccef6720e77ce36196",
+      "warnings": []
+    },
+    {
+      "name": "market-scan",
+      "kind": "service",
+      "path": "market-scan.prose.md",
+      "registry_ref": "registry://openprose/@openprose/catalog-demo@0.1.0/market-scan",
+      "summary": "current market and competitor snapshot",
+      "inputs": [
+        {
+          "name": "company",
+          "type": "CompanyProfile",
+          "required": true,
+          "policy_labels": []
+        }
+      ],
+      "outputs": [
+        {
+          "name": "market_snapshot",
+          "type": "Markdown<MarketSnapshot>",
+          "required": true,
+          "policy_labels": []
+        }
+      ],
+      "artifact_contract": [
+        {
+          "port": "market_snapshot",
+          "type": "Markdown<MarketSnapshot>",
+          "required": true,
+          "default_path": "market_snapshot.md",
+          "content_type": "text/markdown",
+          "policy_labels": []
+        }
+      ],
+      "runtime": {
+        "providers": [
+          "fixture",
+          "pi"
+        ],
+        "effects": [
+          "read_external"
+        ],
+        "environment": []
+      },
+      "effects": [
+        "read_external"
+      ],
+      "access": {},
+      "evals": [
+        "evals/catalog-demo.eval.prose.md"
+      ],
+      "examples": [
+        "examples/catalog-demo.run.json"
+      ],
+      "quality_score": 1,
+      "ir_version": "0.1",
+      "semantic_hash": "273c6aafdde3fb46a62c9c511fab9184a4e6ff62a1c02b5140471c5650f665fb",
+      "source_sha": "ebd46853e09a923072055c562e4e243ba682e8eaebb681b5b5bcaeaff99f0d67",
+      "warnings": []
+    },
+    {
+      "name": "release-gate",
+      "kind": "service",
+      "path": "release-gate.prose.md",
+      "registry_ref": "registry://openprose/@openprose/catalog-demo@0.1.0/release-gate",
+      "summary": "immutable release publication receipt",
+      "inputs": [
+        {
+          "name": "release_notes",
+          "type": "Markdown<ReleaseNotes>",
+          "required": true,
+          "policy_labels": []
+        }
+      ],
+      "outputs": [
+        {
+          "name": "published_release",
+          "type": "ReleaseRecord",
+          "required": true,
+          "policy_labels": []
+        }
+      ],
+      "artifact_contract": [
+        {
+          "port": "published_release",
+          "type": "ReleaseRecord",
+          "required": true,
+          "default_path": "published_release.md",
+          "content_type": "text/markdown",
+          "policy_labels": []
+        }
+      ],
+      "runtime": {
+        "providers": [
+          "fixture",
+          "pi"
+        ],
+        "effects": [
+          "mutates_repo"
+        ],
+        "environment": []
+      },
+      "effects": [
+        "mutates_repo"
+      ],
+      "access": {
+        "reads": [
+          "repo.private.release_notes"
+        ],
+        "writes": [
+          "repo.private.releases"
+        ],
+        "callable_by": [
+          "release_manager",
+          "admin"
+        ]
+      },
+      "evals": [
+        "evals/catalog-demo.eval.prose.md"
+      ],
+      "examples": [
+        "examples/catalog-demo.run.json"
+      ],
+      "quality_score": 1,
+      "ir_version": "0.1",
+      "semantic_hash": "ccafd5bc0c905924a87bd967e1d6f8d395d9a5db37c07e2309a0712d8b11f997",
+      "source_sha": "8494ac77de13c0a516ff2c36b2746c4826669b75c544e6ce56212a0a25349a81",
+      "warnings": []
+    }
+  ],
+  "quality": {
+    "score": 1,
+    "component_count": 3,
+    "typed_port_coverage": 1,
+    "effect_declaration_ratio": 1,
+    "eval_link_ratio": 1,
+    "example_link_ratio": 1,
+    "warnings": []
+  }
+}

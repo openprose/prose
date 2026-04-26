@@ -16,6 +16,8 @@ import type {
 export interface RemoteExecuteOptions {
   outDir?: string;
   runId?: string;
+  createdAt?: string;
+  completedAt?: string;
   inputs?: Record<string, string>;
   outputs?: Record<string, string>;
   approvedEffects?: string[];
@@ -29,10 +31,12 @@ export async function executeRemoteFile(
   path: string,
   options: RemoteExecuteOptions = {},
 ): Promise<RemoteExecutionEnvelope> {
-  const startedAt = new Date().toISOString();
+  const startedAt = options.createdAt ?? new Date().toISOString();
   const result = await runFile(path, {
     runRoot: options.outDir ?? ".openprose/remote-runs",
     runId: options.runId,
+    createdAt: startedAt,
+    completedAt: options.completedAt ?? options.createdAt,
     inputs: options.inputs,
     outputs: options.outputs,
     approvedEffects: options.approvedEffects,
@@ -43,14 +47,14 @@ export async function executeRemoteFile(
   await writeFile(join(result.run_dir, "stdout.txt"), "");
   await writeFile(join(result.run_dir, "stderr.txt"), "");
 
-  const generatedAt = new Date().toISOString();
+  const generatedAt = options.completedAt ?? options.createdAt ?? new Date().toISOString();
   const artifactManifest = await buildArtifactManifest(result, generatedAt);
   await writeFile(
     join(result.run_dir, "artifact_manifest.json"),
     `${JSON.stringify(artifactManifest, null, 2)}\n`,
   );
 
-  const finishedAt = new Date().toISOString();
+  const finishedAt = options.completedAt ?? options.createdAt ?? new Date().toISOString();
   const error = errorForRecord(result.record);
   const envelope: RemoteExecutionEnvelope = {
     schema_version: "0.2",
