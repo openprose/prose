@@ -1,8 +1,8 @@
 import { readdir, readFile, writeFile } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
 import { sha256 } from "./hash";
-import { createScriptedPiRuntime } from "./runtime/pi/scripted.js";
 import { runFile, type RunOptions } from "./run";
+import type { RuntimeProfileInput } from "./runtime/profiles.js";
 import type {
   MaterializedRun,
   RemoteArtifactBinding,
@@ -25,6 +25,7 @@ export interface RemoteExecuteOptions {
   trigger?: RunRecord["caller"]["trigger"];
   graphVm?: RunOptions["graphVm"];
   nodeRunner?: RunOptions["nodeRunner"];
+  runtimeProfile?: RuntimeProfileInput;
   componentRef?: string | null;
   packageMetadataPath?: string | null;
 }
@@ -44,13 +45,8 @@ export async function executeRemoteFile(
     approvedEffects: options.approvedEffects,
     trigger: options.trigger,
     graphVm: options.graphVm,
-    nodeRunner: options.nodeRunner ?? createScriptedPiRuntime({ outputs: options.outputs ?? {} }),
-    runtimeProfile: {
-      graph_vm: "pi",
-      model_provider: "scripted",
-      model: "deterministic-output",
-      thinking: "off",
-    },
+    nodeRunner: options.nodeRunner,
+    runtimeProfile: options.runtimeProfile,
   });
 
   await writeFile(join(result.run_dir, "stdout.txt"), "");

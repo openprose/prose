@@ -53,6 +53,7 @@ import {
   traceFile,
   writeFileSync,
 } from "./support";
+import { scriptedPiRuntime } from "./support/scripted-pi-session";
 
 describe("OpenProse deterministic materialization and remote envelope", () => {
   test("materializes a succeeded pure single-service run record", async () => {
@@ -411,6 +412,11 @@ kind: service
       component_ref: "hello",
       status: "succeeded",
       graph_vm: "pi",
+      runtime_profile: {
+        graph_vm: "pi",
+        model_provider: "scripted",
+        model: "deterministic-output",
+      },
       plan_status: "ready",
       acceptance: {
         status: "accepted",
@@ -449,6 +455,42 @@ kind: service
     );
   });
 
+  test("remote runner can use an explicit Pi runtime profile instead of forcing scripted mode", async () => {
+    const outDir = mkdtempSync(join(tmpdir(), "openprose-remote-profile-"));
+    const envelope = await executeRemoteFile(fixturePath("compiler/hello.prose.md"), {
+      outDir,
+      runId: "20260423-130250-rmt-profile",
+      nodeRunner: scriptedPiRuntime({
+        outputs: {
+          message: "Hello from a profile-backed hosted contract.",
+        },
+      }),
+      runtimeProfile: {
+        graph_vm: "pi",
+        model_provider: "openrouter",
+        model: "google/gemini-3-flash-preview",
+        thinking: "low",
+        tools: ["read", "write"],
+        persist_sessions: true,
+      },
+      trigger: "api",
+    });
+
+    expect(envelope).toMatchObject({
+      status: "succeeded",
+      graph_vm: "pi",
+      runtime_profile: {
+        graph_vm: "pi",
+        model_provider: "openrouter",
+        model: "google/gemini-3-flash-preview",
+        thinking: "low",
+      },
+    });
+    expect(readFileSync(join(envelope.run_dir, "run.json"), "utf8")).toContain(
+      '"model_provider": "openrouter"',
+    );
+  });
+
   test("remote CLI emits an envelope and preserves approved effects", () => {
     const outDir = mkdtempSync(join(tmpdir(), "openprose-remote-cli-"));
     const fixtureFile = join(
@@ -465,6 +507,8 @@ kind: service
         "remote",
         "execute",
         fixtureFile,
+        "--graph-vm",
+        "pi",
         "--out-dir",
         outDir,
         "--run-id",
@@ -512,7 +556,7 @@ kind: service
     ).toContain('"approved_effects": [');
   });
 
-  test("remote CLI writes a blocked envelope before returning non-zero", () => {
+  test("remote CLI requires a graph VM or deterministic outputs without dumping a stack", () => {
     const outDir = mkdtempSync(join(tmpdir(), "openprose-remote-blocked-"));
     const result = Bun.spawnSync(
       [
@@ -534,20 +578,9 @@ kind: service
     );
 
     expect(result.exitCode).toBe(1);
-    const envelope = JSON.parse(result.stdout.toString("utf8"));
-    expect(envelope).toMatchObject({
-      status: "failed",
-      graph_vm: "pi",
-      plan_status: "ready",
-      exit_code: 1,
-      error: {
-        code: "run_failed",
-        message: "Node runner did not write required output 'message' at 'message.md'.",
-      },
-    });
-    expect(
-      readFileSync(join(outDir, "20260423-131000-rmt003", "result.json"), "utf8"),
-    ).toContain('"status": "failed"');
+    expect(result.stdout.toString("utf8")).toBe("");
+    expect(result.stderr.toString("utf8")).toContain("No OpenProse graph VM selected.");
+    expect(result.stderr.toString("utf8")).not.toContain("at async");
   });
 
   test("artifact manifests reject malformed runtime-owned JSON", async () => {

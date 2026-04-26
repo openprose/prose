@@ -112,6 +112,23 @@ describe("OpenProse CLI UX", () => {
     expect(decode(result.stderr)).toContain("--provider flag has been removed");
     expect(decode(result.stderr)).toContain("--graph-vm pi");
   });
+
+  test("remote execute shares graph VM vocabulary with local runs", () => {
+    const result = runProseCli([
+      "remote",
+      "execute",
+      "fixtures/compiler/hello.prose.md",
+      "--graph-vm",
+      "openrouter",
+      "--output",
+      "message=This should not run.",
+    ]);
+
+    expect(result.exitCode).toBe(1);
+    expect(decode(result.stderr)).toContain(
+      "is a model provider profile, not an OpenProse graph VM",
+    );
+  });
 });
 
 function decode(bytes: Uint8Array): string {

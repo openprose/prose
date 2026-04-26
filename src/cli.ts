@@ -127,24 +127,42 @@ export async function runCli(args: string[]): Promise<void> {
       process.exitCode = 1;
       return;
     }
-
-    const envelope = await executeRemoteFile(options.file, {
-      outDir: options.outDir ?? undefined,
-      runId: options.runId ?? undefined,
-      inputs: options.inputs,
-      outputs: options.outputs,
-      approvedEffects: options.approvedEffects,
-      trigger: options.trigger,
-      componentRef: options.componentRef,
-      packageMetadataPath: options.packageMetadataPath,
-    });
-    const output = `${JSON.stringify(envelope, null, options.pretty ? 2 : 0)}\n`;
-    if (options.out) {
-      await writeFile(options.out, output, "utf8");
-    } else {
-      process.stdout.write(output);
+    const flagError = validateDeprecatedProviderFlag(options.deprecatedProvider);
+    if (flagError) {
+      console.error(flagError);
+      process.exitCode = 1;
+      return;
     }
-    if (envelope.status !== "succeeded") {
+    const graphVmError = validateCliGraphVm(options.graphVm);
+    if (graphVmError) {
+      console.error(graphVmError);
+      process.exitCode = 1;
+      return;
+    }
+
+    try {
+      const envelope = await executeRemoteFile(options.file, {
+        outDir: options.outDir ?? undefined,
+        runId: options.runId ?? undefined,
+        inputs: options.inputs,
+        outputs: options.outputs,
+        approvedEffects: options.approvedEffects,
+        trigger: options.trigger,
+        graphVm: options.graphVm ?? undefined,
+        componentRef: options.componentRef,
+        packageMetadataPath: options.packageMetadataPath,
+      });
+      const output = `${JSON.stringify(envelope, null, options.pretty ? 2 : 0)}\n`;
+      if (options.out) {
+        await writeFile(options.out, output, "utf8");
+      } else {
+        process.stdout.write(output);
+      }
+      if (envelope.status !== "succeeded") {
+        process.exitCode = 1;
+      }
+    } catch (error) {
+      console.error(formatError(error));
       process.exitCode = 1;
     }
     return;
@@ -593,6 +611,8 @@ interface RemoteCommandArgs {
   outputs: Record<string, string>;
   approvedEffects: string[];
   trigger: RunRecord["caller"]["trigger"];
+  graphVm: string | null;
+  deprecatedProvider: string | null;
 }
 
 function parseGrammarCommandArgs(args: string[]): GrammarCommandArgs {
@@ -914,6 +934,8 @@ function parseRemoteCommandArgs(args: string[]): RemoteCommandArgs {
     outputs: {},
     approvedEffects: [],
     trigger: "manual",
+    graphVm: null,
+    deprecatedProvider: null,
   };
 
   for (let index = 0; index < args.length; index += 1) {
@@ -953,6 +975,16 @@ function parseRemoteCommandArgs(args: string[]): RemoteCommandArgs {
     }
     if (arg === "--trigger") {
       parsed.trigger = parseTrigger(args[index + 1]);
+      index += 1;
+      continue;
+    }
+    if (arg === "--graph-vm") {
+      parsed.graphVm = args[index + 1] ?? null;
+      index += 1;
+      continue;
+    }
+    if (arg === "--provider") {
+      parsed.deprecatedProvider = args[index + 1] ?? "";
       index += 1;
       continue;
     }
@@ -1053,7 +1085,7 @@ Usage:
   prose run <file.prose.md> [--graph-vm pi] [--run-root .prose/runs] [--input name=value] [--output port=value] [--approved-effect delivers] [--approval approval.json] [--required-eval eval.prose.md]
   prose preflight <file.prose.md> [--format text|json]
   prose publish-check <dir|file.prose.md> [--format text|json] [--strict]
-  prose remote execute <file.prose.md> [--out-dir .openprose/remote-runs] [--run-id id] [--input name=value] [--output port=value] [--approved-effect delivers]
+  prose remote execute <file.prose.md> [--graph-vm pi] [--out-dir .openprose/remote-runs] [--run-id id] [--input name=value] [--output port=value] [--approved-effect delivers]
   prose search <dir> [--type CompanyProfile] [--effect read_external] [--kind service] [--min-quality 0.8]
   prose status [.prose/runs] [--limit 10] [--format text|json]
   prose trace <.prose/runs/{id}|run.json> [--format text|json]

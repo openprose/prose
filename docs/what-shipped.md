@@ -15,7 +15,8 @@ The Bun CLI now provides a coherent authoring and local-runtime surface:
 - `prose graph`: graph rendering with plan overlay
 - `prose run`: graph-VM local execution through the meta-harness
 - `prose eval`: executable eval contracts over materialized runs
-- `prose remote execute`: hosted-compatible envelope and artifact manifest
+- `prose remote execute`: hosted-compatible envelope and artifact manifest,
+  using the same graph-VM/runtime-profile vocabulary as `prose run`
 - `prose status` / `prose trace`: inspect local runs
 - `prose package`: generate package metadata
 - `prose publish-check`: local publish gate
@@ -31,6 +32,11 @@ These surfaces share one model:
 - Pi-backed graph VM execution with one persisted session per selected node
 - structured output submission through `openprose_submit_outputs`
 - package and hosted metadata as projections over the same executable contract
+
+`remote execute` keeps deterministic `--output` fixtures for repeatable hosted
+contract tests. Real hosted workers can select `--graph-vm pi` and provide the
+Pi runtime profile through environment variables, so the remote envelope path
+does not silently become a separate runtime architecture.
 
 ## What the Current Patterns Buy Us
 

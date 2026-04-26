@@ -58,6 +58,19 @@ bun run prose run examples/north-star/lead-program-designer.prose.md \
 The repository test suite keeps deterministic coverage with scripted Pi
 sessions while live runs exercise the real harness boundary.
 
+## Hosted-Compatible Remote Execution
+
+`prose remote execute` emits the host-ingestion envelope and artifact manifest.
+It uses the same runtime vocabulary as `prose run`:
+
+- deterministic `--output` values run through the internal scripted Pi session
+  used by contract tests
+- real remote workers can pass `--graph-vm pi` and configure model providers
+  through the Pi runtime profile environment
+
+That keeps the hosted boundary honest: remote workers get a stable envelope
+without turning hosted execution into a second runtime model.
+
 ## Structured Output Tool
 
 Live and scripted Pi sessions are expected to submit declared outputs through

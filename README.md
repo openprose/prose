@@ -24,7 +24,7 @@
 
 OpenProse is a programming language for agent workflows.
 
-You write canonical `.prose.md` source with typed inputs, typed outputs, effects, access rules, and optional execution blocks. OpenProse compiles that source into IR, explains the graph, compares it to prior runs, materializes durable run records through the local graph VM, and turns packages into something you can search, install, benchmark, and eventually serve.
+You write canonical `.prose.md` source with typed inputs, typed outputs, effects, access rules, and optional execution blocks. OpenProse compiles that source into IR, explains the graph, compares it to prior runs, materializes durable run records through the local graph VM, and turns packages into something you can search, install, benchmark, and serve through the hosted platform.
 
 ## Start Here
 
@@ -70,7 +70,7 @@ Single-run agent harnesses still matter for one-off programs:
 prose run customers/prose-openprose/systems/revenue/workflows/gtm-pipeline.prose.md
 ```
 
-Inside a Prose Complete host, `prose run ...` can still be an instruction to the current agent session. For reactive graphs, the Bun CLI is the compiler/tooling/runtime-analysis surface and Pi is the local graph VM that OpenProse coordinates one persisted node session at a time.
+A single component contract can still be handed to a compatible agent harness as a one-off task. For reactive graphs, the Bun CLI is the compiler/tooling/runtime-analysis surface and Pi is the local graph VM that OpenProse coordinates one persisted node session at a time.
 
 ## Why OpenProse
 
