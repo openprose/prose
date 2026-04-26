@@ -10,7 +10,6 @@ import {
   tmpdir,
 } from "./support";
 import { scriptedPiRuntime } from "./support/scripted-pi-session";
-import { createLocalProcessProvider } from "../src/providers";
 
 const programPath = "packages/co/programs/company-repo-checker.prose.md";
 const evalPath = "packages/co/evals/company-repo-checker.eval.prose.md";
@@ -106,40 +105,4 @@ describe("OpenProse co package", () => {
     ]);
   });
 
-  test("company repo checker can run through the local process provider", async () => {
-    const runRoot = join(mkdtempSync(join(tmpdir(), "openprose-co-local-process-")), "runs");
-    const provider = createLocalProcessProvider({
-      command: [
-        "bun",
-        "--eval",
-        [
-          "await Bun.write('source_layout.md', '{\"source_roots\":[\"systems\",\"shared\"]}');",
-          "await Bun.write('source_layout_failures.md', '[]');",
-          "await Bun.write('contract_surface.md', '{\"executable_components\":4,\"evals\":4}');",
-          "await Bun.write('contract_surface_failures.md', '[]');",
-          "await Bun.write('dependency_graph.md', '{\"edges\":[],\"unresolved\":[]}');",
-          "await Bun.write('dependency_graph_failures.md', '[]');",
-          "await Bun.write('report.md', '{\"passed\":true,\"failures\":[]}');",
-          "await Bun.write('passed.md', 'true');",
-          "await Bun.write('failures.md', '[]');",
-        ].join(" "),
-      ],
-      timeoutMs: 2_000,
-    });
-
-    const result = await runSource(readFileSync(join(import.meta.dir, "..", programPath), "utf8"), {
-      path: programPath,
-      provider,
-      runRoot,
-      runId: "co-local-process-smoke",
-      inputs: {
-        repo_path: "/tmp/company-as-code",
-      },
-      approvedEffects: ["read_external"],
-    });
-
-    expect(result.record.status).toBe("succeeded");
-    expect(result.record.acceptance.status).toBe("accepted");
-    expect(result.provider).toBe("local_process");
-  });
 });

@@ -1,7 +1,7 @@
 # Phase 04: Provider Protocol And Pi SDK Default Path
 
-Goal: make harness sessions pluggable behind one TypeScript provider protocol,
-with the Pi SDK as the default real provider target.
+Goal: make node execution pluggable behind one TypeScript protocol, with the
+Pi SDK as the default real graph VM substrate.
 
 ## 04.1 Define The Provider Interface
 
@@ -12,8 +12,8 @@ Build:
   policy labels, expected outputs, and validation rules.
 - Define provider outputs: status, artifacts, performed effects, logs,
   diagnostics, provider session refs, cost, and duration.
-- Keep provider records generic enough for Pi, OpenCode, Codex CLI, Claude
-  Code, local process, and fixture providers.
+- Keep execution records generic enough for Pi, future OpenCode/Codex
+  CLI/Claude Code single-run adapters, and internal scripted Pi sessions.
 
 Tests:
 
@@ -32,51 +32,55 @@ Signpost:
 - Add `signposts/015-provider-protocol.md` with provider contract examples and
   fields intentionally left optional.
 
-## 04.2 Implement Fixture Provider
+## 04.2 Implement Scripted Pi Determinism
 
 Build:
 
-- Implement a deterministic fixture provider using the protocol.
-- Use it for fast local tests and golden fixtures.
-- Ensure it exercises the same store write path as real providers.
+- Implement deterministic scripted Pi sessions using the protocol.
+- Use them for fast local tests, deterministic `--output`, and golden
+  fixtures.
+- Ensure they exercise the same store write path as real Pi execution.
 
 Tests:
 
-- Add fixture provider success, missing output, and malformed output tests.
+- Add scripted Pi success, missing output, malformed output, model error, and
+  timeout tests.
 - Run `bun test`.
 - Run `bunx tsc --noEmit`.
 
 Commit:
 
-- Commit as `feat: add fixture runtime provider`.
+- Commit as `test: add scripted pi runtime support`.
 
 Signpost:
 
-- Add `signposts/016-fixture-provider.md` with fixture authoring rules.
+- Add `signposts/016-scripted-pi-scenarios.md` with deterministic-runtime
+  authoring rules.
 
-## 04.3 Implement Local Process Provider
+## 04.3 Superseded: Local Process Provider
 
 Build:
 
-- Add a simple local process provider for command-style experiments.
-- Capture stdout, stderr, exit code, duration, and output files.
-- Keep this provider explicitly non-agentic.
+- Do not keep a local process provider in the ideal package. It was useful
+  scaffolding, but it is not an agent harness and it teaches the wrong runtime
+  abstraction.
+- Revisit command-style execution later only if it becomes a clearly-scoped
+  single-run harness adapter.
 
 Tests:
 
-- Add command success/failure/timeouts tests.
+- Remove local process provider tests when the adapter is deleted.
 - Run `bun test`.
 - Run `bunx tsc --noEmit`.
-- Run a local process smoke with a temporary fixture component.
 
 Commit:
 
-- Commit as `feat: add local process runtime provider`.
+- Commit as `refactor: remove local process runtime adapter`.
 
 Signpost:
 
-- Add `signposts/017-local-process-provider.md` with safety limitations and
-  local-only expectations.
+- Add a signpost explaining why the adapter was removed instead of preserved
+  as legacy substrate.
 
 ## 04.4 Spike The Pi SDK Integration
 
@@ -160,15 +164,15 @@ Build:
 
 - Keep provider selection and environment parsing inside the provider module
   boundary rather than in the meta-harness executor.
-- Support deterministic fixture defaults, env-backed Pi, env-backed
-  local-process, and programmatic providers through one resolver.
+- Support deterministic scripted Pi defaults, env-backed Pi, and programmatic
+  test providers through one resolver.
 - Preserve helpful configuration errors for CLI users.
 
 Tests:
 
-- Add provider-registry unit tests for fixture defaults, programmatic providers,
-  Pi env configuration, local-process env configuration, invalid env values,
-  and unknown provider names.
+- Add provider-registry unit tests for scripted Pi defaults, programmatic
+  providers, Pi env configuration, invalid env values, and unknown graph VM
+  names.
 - Run targeted provider/runtime tests.
 - Run `bun test`.
 - Run `bunx tsc --noEmit`.
@@ -185,6 +189,5 @@ Signpost:
 ## Phase Exit Criteria
 
 - The provider protocol is stable enough for the meta-harness.
-- Fixture and local process providers work without credentials.
-- Pi is either implemented as the default real provider or explicitly rejected
-  with a documented alternate plan.
+- Scripted Pi works without credentials for deterministic tests.
+- Pi is implemented as the default real graph VM substrate.

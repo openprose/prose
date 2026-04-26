@@ -68,9 +68,6 @@ export function compileFixture(name: string) {
 
 export function testRuntimeProfile(graphVm = "pi"): RuntimeProfile {
   const isSingleRunHarness = [
-    "local_process",
-    "openai_compatible",
-    "openrouter",
     "opencode",
     "codex_cli",
     "claude_code",

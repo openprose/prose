@@ -61,8 +61,8 @@ The RFC 013 implementation pass completed the initial ideal-package
 restructure:
 
 - `prose run` is the canonical execution entrypoint.
-- The fixture provider exercises the same provider/runtime path as future real
-  harness providers.
+- Deterministic `--output` runs execute through the same scripted Pi-shaped
+  runtime path as real graph execution.
 - The meta-harness plans, gates, executes, validates, writes run records, and
   updates local status/trace surfaces.
 - `prose eval` executes eval contracts over materialized runs and records
@@ -76,7 +76,8 @@ Remaining work should be treated as follow-up, not as unimplemented RFC 013
 foundation:
 
 - live Pi provider smoke once credentials/cost posture is acceptable
-- additional real harness providers
+- future single-run harness adapters after they prove they can satisfy the
+  node execution contract cleanly
 - richer schema/policy engines beyond the release-candidate minimum
 - platform Workstream 03 adaptation to the finalized OSS contracts
 
@@ -105,7 +106,11 @@ The current implementation has several foundations worth keeping:
 These pieces should be treated as validated prototypes of the target shape, not
 as final module boundaries.
 
-### What Is Still Scaffolding
+### What Was Still Scaffolding In The Original Scan
+
+This section is retained as the original pre-implementation scan. The current
+status is summarized above; later RFC 014 slices replaced the fixture-provider
+and direct-chat scaffolding with Pi-first runtime support.
 
 The current implementation falls short of the North Star in specific ways:
 
@@ -160,13 +165,13 @@ Recommended shape:
 
 - `prose compile`: source/package -> canonical IR
 - `prose plan`: IR plus run store -> reactive plan
-- `prose run`: plan plus provider -> materialized runs
+- `prose run`: plan plus graph VM -> materialized runs
 - `prose eval`: eval contracts plus runs -> acceptance results
 - `prose status` / `prose trace` / `prose graph`: views over the run store
 - `prose package` / `prose publish-check` / `prose install`: package lifecycle
 
-`materialize` should become either an internal library primitive or an explicit
-fixture provider command, not the main runtime surface.
+`materialize` should remain an internal library primitive, not the main runtime
+surface.
 
 ### 2. Introduce Clear Package Architecture
 
@@ -182,8 +187,8 @@ Target module families:
 - `meta`: intelligent meta-operation request/result records
 - `store`: local run/artifact/graph-node store
 - `runtime`: planner, executor, meta-harness, run lifecycle
-- `providers`: fixture, local process, Codex CLI, Claude Code, OpenCode, Pi,
-  and future harness adapters
+- `providers`: Pi graph VM support and future single-run harness adapters that
+  prove they can satisfy the node execution contract
 - `policy`: effects, approvals, policy labels, declassification, idempotency
 - `eval`: eval discovery, execution, scoring, acceptance
 - `package`: package metadata, dependency resolution, registry refs, lockfiles
@@ -252,13 +257,12 @@ And how it returns:
 - diagnostics
 - cost/duration telemetry when available
 
-Initial providers should include:
+Initial runtime support should include:
 
-- `fixture`: deterministic test provider replacing today's fixture materializer
-- `local-process`: simple provider for command-style experiments
-- `codex-cli` and/or `claude-code`: one-off local harness sessions
-- `opencode` and/or `pi`: preferred open harness integrations if their package
-  APIs are suitable
+- `pi`: the default reactive graph VM and local meta-harness substrate
+- scripted Pi sessions: deterministic internal test/local-output support
+- future `codex-cli`, `claude-code`, or `opencode` single-run adapters only if
+  they can satisfy the node execution contract without distorting the graph VM
 
 The provider interface must be narrow enough that new harnesses can be added
 without changing IR or run records.
@@ -431,9 +435,9 @@ Important clarifications:
   current/latest pointers.
 - RFC 010's tooling remains useful, but should read the new IR/store APIs.
 - RFC 011's package metadata remains useful, but must include executable evals,
-  schemas, provider requirements, and hosted/local parity fields.
+  schemas, runtime requirements, and hosted/local parity fields.
 - RFC 012's hosted envelope remains useful, but should wrap the real execution
-  kernel rather than fixture materialization.
+  kernel rather than direct fixture materialization.
 
 Earlier superseded RFCs should stay marked superseded. Scheduling and feedback
 remain outside the source-language core and should enter through caller
@@ -452,12 +456,12 @@ provenance, events, bindings, memory artifacts, or graph-node input updates.
 
 The recursive phase plan resolves the initial slicing questions this way:
 
-1. The Pi SDK is the default first real OSS harness provider because it is
+1. The Pi SDK is the default OSS graph VM substrate because it is
    TypeScript-native and should fit the package without crossing language
-   boundaries. The provider protocol must still keep Pi as an adapter, not the
-   core architecture.
-2. `fixture` remains the deterministic test provider. `prose run` should use it
-   only when explicitly selected or when fixture execution is clearly requested.
+   boundaries. OpenProse owns the graph semantics; Pi owns node-session
+   execution.
+2. Deterministic local output belongs behind internal scripted Pi sessions, not
+   a public `fixture` runtime.
 3. The local run store is a first-class phase, with immutable runs, artifacts,
    graph-node pointers, attempts, indexes, and migration metadata.
 4. Type/schema work should bias toward a small OpenProse schema IR that can emit

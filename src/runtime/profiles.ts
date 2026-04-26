@@ -24,8 +24,6 @@ export interface ResolveRuntimeProfileOptions {
 
 const MODEL_PROVIDER_GRAPH_VMS = new Set(["openrouter", "openai_compatible"]);
 const SINGLE_RUN_HARNESS_GRAPH_VMS = new Set([
-  "local_process",
-  "local-process",
   "opencode",
   "codex_cli",
   "claude_code",

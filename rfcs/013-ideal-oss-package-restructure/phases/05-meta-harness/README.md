@@ -8,13 +8,13 @@ reactive plan into many provider-backed component sessions.
 Build:
 
 - Implement `prose run` as compile -> plan -> execute -> store -> report.
-- Support explicit provider selection.
-- Default to fixture provider only when fixtures are present or explicitly
-  requested; avoid pretending fixture output is a real run.
+- Support explicit graph VM selection.
+- Route deterministic `--output` values through internal scripted Pi sessions;
+  avoid exposing a fake graph VM.
 
 Tests:
 
-- Add CLI smoke tests for `prose run --provider fixture`.
+- Add CLI smoke tests for deterministic `prose run --output`.
 - Run `bun test`.
 - Run `bunx tsc --noEmit`.
 
@@ -37,7 +37,7 @@ Build:
 
 Tests:
 
-- Add multi-node graph execution tests using fixture provider.
+- Add multi-node graph execution tests using scripted Pi.
 - Add current/reuse/block tests.
 - Run `bun test`.
 - Run `bunx tsc --noEmit`.
@@ -65,7 +65,7 @@ Tests:
 - Add output propagation tests.
 - Run `bun test`.
 - Run `bunx tsc --noEmit`.
-- Run a fixture smoke for `examples/run-aware-brief.prose.md`.
+- Run a scripted Pi smoke for a run-aware example.
 
 Commit:
 
@@ -89,7 +89,7 @@ Tests:
 - Add approval-required, approval-present, and denied-effect tests.
 - Run `bun test`.
 - Run `bunx tsc --noEmit`.
-- Run a fixture smoke for `examples/approval-gated-release.prose.md`.
+- Run a scripted Pi smoke for an approval-gated example.
 
 Commit:
 
@@ -110,7 +110,7 @@ Build:
 
 Tests:
 
-- Add retry/cancel/resume tests against fixture provider.
+- Add retry/cancel/resume tests against scripted Pi.
 - Run `bun test`.
 - Run `bunx tsc --noEmit`.
 
@@ -240,14 +240,13 @@ Build:
 - Keep rendered component contracts, input binding state, environment binding,
   approved effects, expected outputs, and policy labels together as one
   provider-facing boundary.
-- Preserve provider protocol behavior across fixture, local process, and Pi
-  adapters.
+- Preserve node execution protocol behavior across scripted Pi and Pi.
 
 Tests:
 
 - Run strict source unused-symbol scan for `src/`.
-- Run focused provider-protocol, run-entrypoint, fixture-provider,
-  local-process-provider, and Pi-provider tests.
+- Run focused provider-protocol, run-entrypoint, scripted-Pi, and Pi-provider
+  tests.
 - Run `bun run typecheck`.
 - Run `bun test`.
 - Run `bun run confidence:runtime`.

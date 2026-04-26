@@ -2,15 +2,6 @@ export {
   writeProviderArtifactRecords,
 } from "./artifacts.js";
 export {
-  LocalProcessProvider,
-  createLocalProcessProvider,
-} from "./local-process.js";
-export {
-  OpenAICompatibleProvider,
-  createOpenAICompatibleProvider,
-  renderOpenAICompatiblePrompt,
-} from "./openai-compatible.js";
-export {
   PiProvider,
   createPiProvider,
   renderPiPrompt,
@@ -33,12 +24,6 @@ export {
 export type {
   WriteProviderArtifactRecordsOptions,
 } from "./artifacts.js";
-export type {
-  LocalProcessProviderOptions,
-} from "./local-process.js";
-export type {
-  OpenAICompatibleProviderOptions,
-} from "./openai-compatible.js";
 export type {
   PiAgentSessionLike,
   PiCustomToolDefinition,

@@ -25,13 +25,12 @@ Do not add dedicated one-off CLI adapters yet.
 
 The package now has:
 
-- `FixtureProvider` for deterministic tests
-- `LocalProcessProvider` for explicit command-style local experiments
-- `PiProvider` for the first real TypeScript agent harness
+- internal scripted Pi sessions for deterministic tests
+- `PiProvider` for the TypeScript graph VM substrate
 
 Adding `CodexCliProvider`, `ClaudeCodeProvider`, or `OpenCodeProvider` before
-the meta-harness exists would mostly duplicate local-process execution while
-introducing weaker and less consistent semantics for:
+their SDK/process boundaries can satisfy the node execution contract would
+introduce weaker and less consistent semantics for:
 
 - durable session references
 - structured transcript capture
@@ -41,10 +40,9 @@ introducing weaker and less consistent semantics for:
 - output-file enforcement
 - effect-to-tool mapping
 
-The better sequence is to finish Phase 05 with fixture, local process, and Pi.
-Once the meta-harness has real provider pressure, CLI adapters can be added as
-thin wrappers around a shared agent-process provider if they still satisfy the
-protocol cleanly.
+The better sequence is to keep Pi as the graph VM, then add single-run harness
+adapters only when they can be thin, well-tested wrappers that do not distort
+the graph runtime.
 
 ## Future Adapter Requirements
 
@@ -68,4 +66,3 @@ This slice is complete when:
 - the reasons are concrete
 - Phase 05 can proceed without adapter ambiguity
 - the provider protocol is not distorted by CLI-specific behavior
-

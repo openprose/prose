@@ -1,17 +1,21 @@
-# Local Process Runtime Provider
+# Superseded: Local Process Runtime Provider
 
-Phase 04.3 adds a small provider for command-style local experiments. It is
-explicitly non-agentic: it runs one command array in a workspace, captures
-process facts, and reads declared output files.
+Phase 04.3 originally added a small provider for command-style local
+experiments. RFC 014 supersedes that decision: the local process adapter was
+removed from the ideal package because it is not an agent harness and it taught
+the wrong abstraction at the graph-runtime boundary.
 
-This provider is useful for:
+The adapter was useful as scaffolding for:
 
 - testing the provider protocol without credentials
 - wrapping deterministic local tools
 - proving artifact capture and timeout semantics
 - giving the meta-harness a second provider shape before Pi
 
-It is not a substitute for an agent harness.
+Those needs are now covered by internal scripted Pi sessions and focused store
+tests. Command-style execution should return only if it becomes a clearly
+scoped single-run harness adapter with sandboxing, effect mapping, and
+traceable session semantics.
 
 ## Configuration
 
@@ -56,10 +60,6 @@ The meta-harness must continue to own:
 
 ## Backpressure
 
-This slice is complete when:
-
-- command success captures stdout, stderr, exit code, duration, and files
-- command failure captures stderr and non-zero exit diagnostics
-- timeouts produce deterministic failed results
-- provider artifacts write through the shared provider artifact helper
-
+This slice is complete when the adapter and its tests are removed, the public
+registry rejects command-style adapters as graph VMs, and a signpost records
+why the package kept Pi/scripted Pi instead.

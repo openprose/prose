@@ -1,20 +1,21 @@
-# Fixture Runtime Provider
+# Superseded: Fixture Runtime Provider
 
-Phase 04.2 adds the deterministic provider used for fast local development,
-golden fixtures, and runtime backpressure tests.
+Phase 04.2 originally added a deterministic fixture provider for fast local
+development, golden fixtures, and runtime backpressure tests.
 
-The fixture provider is not a special runtime path. It implements the same
-`RuntimeProvider` contract that Pi, OpenCode, local process, Codex CLI, and
-Claude Code providers must implement.
+RFC 014 supersedes that decision. Deterministic behavior now lives behind
+internal scripted Pi sessions so local `--output` runs, hosted envelope smoke
+tests, and unit tests exercise the same Pi-shaped graph VM boundary as real
+execution.
 
 ## Authoring Rules
 
-Fixture outputs are plain strings keyed by output port:
+Deterministic outputs are still plain strings keyed by output port:
 
 ```ts
-createFixtureProvider({
+createScriptedPiRuntime({
   outputs: {
-    message: "Hello from the fixture provider.",
+    message: "Hello from scripted Pi.",
   },
 });
 ```
@@ -23,7 +24,7 @@ For graph or package-level tests, outputs may also be scoped by component id or
 component name:
 
 ```ts
-createFixtureProvider({
+createScriptedPiRuntime({
   outputs: {
     "summarize.brief": "Short brief.",
     "Summarize brief.brief": "Short brief.",
@@ -31,36 +32,27 @@ createFixtureProvider({
 });
 ```
 
-The provider normalizes text artifacts with a trailing newline and defaults the
-content type to `text/markdown`.
+The scripted Pi runtime submits outputs through `openprose_submit_outputs`,
+which lets the normal Pi validation/materialization path accept or reject them.
 
 ## Failure Semantics
 
-- Missing required outputs produce `blocked` results with
-  `fixture_output_missing` diagnostics.
-- Non-string outputs produce `failed` results with
-  `fixture_output_malformed` diagnostics.
-- Provider mismatches produce `failed` results with
-  `fixture_provider_mismatch` diagnostics.
-- Unapproved side effects produce `blocked` results with
-  `fixture_effect_not_approved` diagnostics.
+- Missing required outputs produce normal Pi/output validation diagnostics.
+- Malformed submissions are rejected by the structured output tool.
+- Provider mismatches fail before execution.
+- Unapproved side effects block before session creation.
 
 This keeps fixture failures useful as authoring feedback while still matching
 the status vocabulary used by real providers.
 
 ## Store Path
 
-`writeProviderArtifactRecords` writes provider result artifacts through the
-same local artifact store API real providers will use. The fixture provider
-does not write run records itself; the meta-harness will own run and attempt
-materialization in Phase 05.
+`writeProviderArtifactRecords` still writes provider result artifacts through
+the same local artifact store API. The difference is that deterministic tests
+now produce Pi-shaped provider results rather than fixture-shaped ones.
 
 ## Backpressure
 
-This slice is complete when:
-
-- the fixture provider returns protocol-shaped results
-- success, missing output, and malformed output cases are covered
-- provider artifacts can be written into the local store
-- no fixture-only assumptions enter the protocol
-
+This slice is complete when the public fixture provider is removed, scripted Pi
+covers success/failure scenarios, and no fixture-only assumptions remain in the
+protocol.

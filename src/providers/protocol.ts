@@ -7,15 +7,7 @@ import type {
   RunLifecycleStatus,
 } from "../types.js";
 
-export type ProviderKind =
-  | "local_process"
-  | "openai_compatible"
-  | "openrouter"
-  | "pi"
-  | "opencode"
-  | "codex_cli"
-  | "claude_code"
-  | (string & {});
+export type ProviderKind = "pi" | (string & {});
 
 export interface ProviderSessionRef {
   provider: ProviderKind;

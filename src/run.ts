@@ -1055,10 +1055,6 @@ function implicitRuntimeProfile(
 
 function isSingleRunHarnessRuntime(kind: string): boolean {
   return [
-    "local_process",
-    "local-process",
-    "openai_compatible",
-    "openrouter",
     "opencode",
     "codex_cli",
     "claude_code",

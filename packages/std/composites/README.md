@@ -128,7 +128,8 @@ Supported today:
 
 - package-local composite references in package IR
 - fixed service graphs expanded from declared `compose:` references
-- fixture/provider execution of a composite as a single harness session
+- scripted Pi execution of expanded composite graphs through normal run
+  materialization
 
 Pattern-only until a later runtime slice:
 
