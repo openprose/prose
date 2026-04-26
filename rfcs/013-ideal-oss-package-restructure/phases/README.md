@@ -3,6 +3,11 @@
 This directory is the working plan for turning OpenProse into the ideal OSS
 runtime described by RFC 013.
 
+**Current status:** completed through the local runtime release candidate. See
+[`../signposts/042-runtime-release-candidate.md`](../signposts/042-runtime-release-candidate.md)
+for the final implementation slice and [`../../../docs/release-candidate.md`](../../../docs/release-candidate.md)
+for the current confidence matrix.
+
 The phases are intentionally ordered as a confidence ladder. Each phase should
 leave the package more runnable, more testable, and closer to the core loop:
 
@@ -35,14 +40,14 @@ replacement over a bolt-on compatibility layer.
 
 | Phase | Focus | Confidence gained |
 | --- | --- | --- |
-| [01](01-contract-baseline/README.md) | Contract baseline and test harness | We know what exists, what is deleted, and how slices will be tested. |
-| [02](02-ir-and-source-model/README.md) | Executable IR and source model | Source compiles into a package-wide executable contract. |
-| [03](03-run-store/README.md) | Local run and artifact store | Runs, artifacts, graph nodes, attempts, and indexes have one local model. |
-| [04](04-provider-protocol/README.md) | Provider protocol and Pi SDK path | Harness sessions sit behind one TypeScript provider contract. |
-| [05](05-meta-harness/README.md) | Meta-harness and reactive execution | OpenProse coordinates many harness sessions into one reactive graph run. |
-| [06](06-types-policy-evals/README.md) | Types, policy, evals | Outputs become validated, policy-aware, and acceptance-bearing. |
-| [07](07-stdlib-examples/README.md) | Std, co, examples migration | The public package surface demonstrates only executable patterns. |
-| [08](08-package-ux-release/README.md) | Package UX and release readiness | CLI, metadata, docs, and hosted contracts align around the new runtime. |
+| [01](01-contract-baseline/README.md) | Contract baseline and test harness | Completed; see signposts 001-004. |
+| [02](02-ir-and-source-model/README.md) | Executable IR and source model | Completed; see signposts 005-009. |
+| [03](03-run-store/README.md) | Local run and artifact store | Completed; see signposts 010-014. |
+| [04](04-provider-protocol/README.md) | Provider protocol and Pi SDK path | Completed for fixture/local/Pi contract path; see signposts 015-020. |
+| [05](05-meta-harness/README.md) | Meta-harness and reactive execution | Completed for release-candidate runtime; see signposts 021-026. |
+| [06](06-types-policy-evals/README.md) | Types, policy, evals | Completed for release-candidate validation/acceptance; see signposts 027-032. |
+| [07](07-stdlib-examples/README.md) | Std, co, examples migration | Completed; see signposts 033-037. |
+| [08](08-package-ux-release/README.md) | Package UX and release readiness | Completed; see signposts 038-042. |
 
 ## Cross-Phase Backpressure
 

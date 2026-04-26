@@ -22,7 +22,8 @@ IR, IR materializes into immutable runs, reactive graph nodes point at accepted
 current runs, hosted registries ingest generated metadata, and hosted runtimes
 use an OSS-owned runner/artifact contract rather than host-specific execution
 protocols. RFC 013 captures the next restructuring pass needed to turn the
-current validated prototypes into the ideal local framework and meta-harness.
+validated prototypes into the ideal local framework and meta-harness; that pass
+is now implemented as the local runtime release candidate.
 
 ## Status Table
 
@@ -40,4 +41,4 @@ current validated prototypes into the ideal local framework and meta-harness.
 | 010: Source Format and Tooling | Draft/current | `.prose.md`, syntax highlighting, formatter, linter, graph preview, and trace overlays. |
 | 011: Registry Metadata and Package Quality | Draft/current | Git-native packages plus hosted catalog/search/quality metadata. |
 | 012: Hosted Runtime Contract and Artifact Semantics | In implementation | Host-neutral remote runner contract, result envelope, artifact semantics, registry metadata ingest contract, provenance fields, and std quality ratchet. Runner/envelope/artifact manifest landed in note 030; metadata v2 and std strict readiness landed in note 031. |
-| 013: Ideal OSS Package Restructure | Proposed | High-level restructuring required to make `openprose/prose` the local reactive framework and meta-harness for agent outcomes. Break into child phase/slice docs before implementation. |
+| 013: Ideal OSS Package Restructure | Implemented as release candidate | Phase tree completed through signpost 042. `prose run`, provider-backed local execution, evals, hosted fixtures, package metadata, docs, and the confidence matrix are in place. Remaining follow-up belongs either to platform Workstream 03 or future provider integrations such as live Pi. |

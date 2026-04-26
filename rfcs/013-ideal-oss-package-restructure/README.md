@@ -1,6 +1,6 @@
 # RFC 013: Ideal OSS Package Restructure
 
-**Status:** Proposed
+**Status:** Implemented as local runtime release candidate
 **Date:** 2026-04-25
 **Scope:** `openprose/prose` open-source package
 
@@ -27,10 +27,14 @@ source package
   -> eval acceptance and current/latest pointers
 ```
 
-This RFC records the high-level restructuring required to reach that state. It
-is intentionally not a phase-by-phase implementation plan yet. Once this
-direction is accepted, child docs should recursively break the work into
-phases, sub-phases, slices, tests, commits, and signposts.
+This RFC records the high-level restructuring required to reach that state. The
+phase tree has now been implemented through the local runtime release
+candidate. See:
+
+- [`phases/`](phases/)
+- [`signposts/042-runtime-release-candidate.md`](signposts/042-runtime-release-candidate.md)
+- [`../../docs/release-candidate.md`](../../docs/release-candidate.md)
+- [`../../docs/what-shipped.md`](../../docs/what-shipped.md)
 
 ## North Star
 
@@ -51,7 +55,32 @@ harnesses. A harness executes one component session; OpenProse is the
 meta-harness that plans and coordinates many such sessions across a reactive
 graph.
 
-## Current Package Scan
+## Implementation Status
+
+The RFC 013 implementation pass completed the initial ideal-package
+restructure:
+
+- `prose run` is the canonical execution entrypoint.
+- The fixture provider exercises the same provider/runtime path as future real
+  harness providers.
+- The meta-harness plans, gates, executes, validates, writes run records, and
+  updates local status/trace surfaces.
+- `prose eval` executes eval contracts over materialized runs and records
+  acceptance.
+- `remote execute` emits hosted-compatible envelope and artifact fixtures.
+- `examples`, `packages/std`, and `packages/co` pass strict publish checks.
+- `bun run confidence:runtime`, `bun run typecheck`, and `bun run test` form
+  the current release-candidate backpressure set.
+
+Remaining work should be treated as follow-up, not as unimplemented RFC 013
+foundation:
+
+- live Pi provider smoke once credentials/cost posture is acceptable
+- additional real harness providers
+- richer schema/policy engines beyond the release-candidate minimum
+- platform Workstream 03 adaptation to the finalized OSS contracts
+
+## Original Package Scan
 
 ### What Is Strong
 
