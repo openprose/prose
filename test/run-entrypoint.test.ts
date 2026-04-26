@@ -19,7 +19,6 @@ import {
 import { scriptedPiRuntime, nodeRunnerShouldNotRun } from "./support/scripted-pi-session";
 import { approvalReleaseOutputs, pipelineOutputs } from "./support/runtime-scenarios";
 import { runSource } from "../src/run";
-import { deserializeNodeSessionRef } from "../src/node-runners";
 import type { NodeRunRequest, NodeRunResult } from "../src/node-runners";
 
 describe("OpenProse run entry point", () => {
@@ -137,10 +136,7 @@ describe("OpenProse run entry point", () => {
       ),
     );
     const sessionFiles = nodeAttempts.map((records) =>
-      String(
-        deserializeNodeSessionRef(records[0]?.node_session_ref ?? "{}").metadata
-          .session_file,
-      ),
+      String(records[0]?.node_session?.metadata.session_file),
     );
     expect(sessionFiles).toEqual([
       ".pi/scripted-pi-1.jsonl",
@@ -613,8 +609,9 @@ kind: program
       join(runRoot, ".prose-store"),
       "targeted-run:summarize",
     );
-    const session = deserializeNodeSessionRef(attempts[0]?.node_session_ref ?? "{}");
-    expect(String(session.metadata.session_file)).toBe(".pi/scripted-pi-1.jsonl");
+    expect(String(attempts[0]?.node_session?.metadata.session_file)).toBe(
+      ".pi/scripted-pi-1.jsonl",
+    );
   });
 
   test("pauses effecting graphs with a resumable human gate before node-runner calls", async () => {
@@ -644,7 +641,7 @@ kind: program
     expect(result.record.status).toBe("blocked");
     expect(result.record.acceptance.reason).toContain("Graph effect 'human_gate'");
     const attempts = await listRunAttemptRecords(join(runRoot, ".prose-store"), "gate-required");
-    expect(attempts[0]?.node_session_ref).toBeNull();
+    expect(attempts[0]?.node_session).toBeNull();
     expect(attempts[0]?.resume).toEqual({
       checkpoint_ref: "plan.json",
       reason: result.record.acceptance.reason,
@@ -699,7 +696,7 @@ kind: program
       join(runRoot, ".prose-store"),
       "gate-approved:announce-release",
     );
-    expect(attempts[0]?.node_session_ref).toContain("scripted-pi");
+    expect(attempts[0]?.node_session?.session_id).toContain("scripted-pi");
   });
 
   test("denied approval records keep effects blocked", async () => {
@@ -748,7 +745,7 @@ kind: program
     expect(result.record.status).toBe("blocked");
     expect(result.record.acceptance.reason).toContain("Effect approval denied for 'delivers'.");
     const attempts = await listRunAttemptRecords(join(runRoot, ".prose-store"), "gate-denied");
-    expect(attempts[0]?.node_session_ref).toBeNull();
+    expect(attempts[0]?.node_session).toBeNull();
   });
 
   test("blocks graph execution before node-runner calls when caller input is missing", async () => {

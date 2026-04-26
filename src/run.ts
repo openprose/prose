@@ -788,7 +788,7 @@ async function writeGraphStoreRecords(
     attemptNumber: 1,
     status: graphRecord.status,
     runtimeProfile: ctx.runtimeProfile,
-    nodeSessionRef: null,
+    nodeSession: null,
     startedAt: graphRecord.created_at,
     finishedAt: graphRecord.completed_at,
     diagnostics: recordDiagnostics(graphRecord),

@@ -2,11 +2,10 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join, relative } from "node:path";
 import { sha256 } from "../hash.js";
 import { mergePolicyLabels } from "../policy/index.js";
-import {
-  serializeNodeSessionRef,
-  type NodeArtifactResult,
-  type GraphVmKind,
-  type NodeRunResult,
+import type {
+  NodeArtifactResult,
+  GraphVmKind,
+  NodeRunResult,
 } from "../node-runners/index.js";
 import { writeRunAttemptRecord } from "../store/attempts.js";
 import { upsertRunIndexEntry } from "../store/local.js";
@@ -91,7 +90,7 @@ export async function writeNodeAttemptRecord(
     attemptNumber: 1,
     status: record.status,
     runtimeProfile: ctx.runtimeProfile,
-    nodeSessionRef: result.session ? serializeNodeSessionRef(result.session) : null,
+    nodeSession: result.session,
     startedAt: record.created_at,
     finishedAt: record.completed_at,
     diagnostics,
@@ -116,7 +115,7 @@ export async function writeBlockedAttemptRecord(
     attemptNumber: 1,
     status: record.status,
     runtimeProfile: ctx.runtimeProfile,
-    nodeSessionRef: null,
+    nodeSession: null,
     startedAt: record.created_at,
     finishedAt: record.completed_at,
     diagnostics: recordDiagnostics(record),

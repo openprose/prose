@@ -351,23 +351,27 @@ Checks:
 - manual `bun run prose preflight examples/north-star/lead-program-designer.prose.md`
 - `bun run typecheck`
 
-### [todo] Pi session persistence is not visibly tied to the OpenProse run/store model
+### [done] Pi session persistence is not visibly tied to the OpenProse run/store model
 
 Finding: Pi sessions are persisted when `persist_sessions` is true, but the
 default session path and the relationship between Pi session files, run
 records, and `.prose/store` are not obvious from records or docs.
 
-Proposed fix:
+Resolved:
 
-- verify Pi default session storage behavior
-- prefer run-scoped or store-scoped session directories when possible
-- ensure traces point to relative, inspectable session refs without leaking
-  local absolute paths
+- replaced serialized attempt `node_session_ref` strings with structured
+  `node_session` objects
+- kept session file metadata relative to the node workspace when possible
+- made trace text render session id and session file for recorded attempts
+- documented the graph node / attempt / Pi session relationship in inference
+  docs
+- kept pre-session gates explicit with `node_session: null`
 
 Checks:
 
-- `bun test test/pi-node-runner.test.ts test/pi-events.test.ts test/trace-artifacts.test.ts`
-- optional cheap live Pi smoke
+- `bun test test/run-attempts.test.ts test/run-entrypoint.test.ts test/scripted-pi-session.test.ts test/runtime-planning.test.ts`
+- `bun run typecheck`
+- manual `prose trace` smoke over a deterministic graph run
 
 ### [done] Hash helpers are string-only while manifests walk bytes
 

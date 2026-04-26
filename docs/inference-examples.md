@@ -77,6 +77,11 @@ Preflight classifies scripted Pi, live model profile, live auth, session
 persistence, and timeout readiness without printing API key values. Missing live
 credentials do not block deterministic scripted-Pi runs.
 
+Successful node attempts persist a structured `node_session` object in the local
+store. `prose trace` renders the session id and session file, so a user can
+connect the graph node, run attempt, and Pi session artifact without decoding a
+serialized blob.
+
 ## Hosted-Compatible Remote Execution
 
 `prose remote execute` emits the host-ingestion envelope and artifact manifest.

@@ -94,7 +94,7 @@ export async function cancelRunPath(
     attemptNumber,
     status: "cancelled",
     runtimeProfile: record.runtime.profile,
-    nodeSessionRef: null,
+    nodeSession: null,
     startedAt: cancelledAt,
     finishedAt: cancelledAt,
     diagnostics: [],

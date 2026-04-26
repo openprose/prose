@@ -40,7 +40,13 @@ describe("scripted Pi runtime test helper", () => {
       join(runRoot, ".prose-store"),
       "scripted-pi-success",
     );
-    expect(attempts[0]?.node_session_ref).toContain("scripted-pi-1");
+    expect(attempts[0]?.node_session?.session_id).toContain("scripted-pi-1");
+    expect(attempts[0]?.node_session?.metadata.session_file).toBe(
+      ".pi/scripted-pi-1.jsonl",
+    );
+    expect(renderTraceText(await traceFile(result.run_dir))).toContain(
+      "session[scripted-pi-1 file:.pi/scripted-pi-1.jsonl]",
+    );
   });
 
   test("materializes outputs submitted through the OpenProse Pi output tool", async () => {

@@ -3,18 +3,13 @@ import type {
   ComponentIR,
   Diagnostic,
   LocalArtifactRecord,
+  NodeSessionRef,
   RuntimeProfile,
   RunLifecycleStatus,
 } from "../types.js";
 
 export type GraphVmKind = "pi" | (string & {});
-
-export interface NodeSessionRef {
-  graph_vm: GraphVmKind;
-  session_id: string;
-  url: string | null;
-  metadata: Record<string, string | number | boolean | null>;
-}
+export type { NodeSessionRef } from "../types.js";
 
 export interface NodeInputBinding {
   port: string;

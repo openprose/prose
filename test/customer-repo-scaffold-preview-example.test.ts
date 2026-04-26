@@ -86,7 +86,7 @@ describe("customer-repo-scaffold-preview north-star example", () => {
       join(runRoot, ".prose-store"),
       "scaffold-needs-approval",
     );
-    expect(attempts[0]?.node_session_ref).toBeNull();
+    expect(attempts[0]?.node_session).toBeNull();
   });
 
   test("writes a package-shaped customer repo preview into the scratch workspace", async () => {

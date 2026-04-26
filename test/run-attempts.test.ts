@@ -23,7 +23,7 @@ describe("OpenProse run attempts", () => {
       componentRef: "writer",
       attemptNumber: 1,
       status: "failed",
-      nodeSessionRef: "pi:session-1",
+      nodeSession: testSession("session-1"),
       startedAt: "2026-04-25T12:00:00.000Z",
       finishedAt: "2026-04-25T12:01:00.000Z",
       failure: {
@@ -46,7 +46,7 @@ describe("OpenProse run attempts", () => {
       componentRef: "writer",
       attemptNumber: 2,
       status: "succeeded",
-      nodeSessionRef: "pi:session-2",
+      nodeSession: testSession("session-2"),
       startedAt: "2026-04-25T12:02:00.000Z",
       finishedAt: "2026-04-25T12:03:00.000Z",
     });
@@ -120,7 +120,7 @@ describe("OpenProse run attempts", () => {
       componentRef: "writer",
       attemptNumber: 1,
       status: "failed",
-      nodeSessionRef: "scripted-pi:failed",
+      nodeSession: testSession("scripted-pi-failed"),
       startedAt: "2026-04-25T12:05:00.000Z",
       finishedAt: "2026-04-25T12:06:00.000Z",
       failure: {
@@ -154,3 +154,14 @@ describe("OpenProse run attempts", () => {
     expect(renderStatusText(status)).toContain("attempts=1 latest_attempt=failed");
   });
 });
+
+function testSession(sessionId: string) {
+  return {
+    graph_vm: "pi",
+    session_id: sessionId,
+    url: null,
+    metadata: {
+      session_file: `.pi/${sessionId}.jsonl`,
+    },
+  };
+}

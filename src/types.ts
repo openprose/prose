@@ -503,7 +503,7 @@ export interface LocalRunAttemptRecord {
   attempt_number: number;
   status: RunLifecycleStatus;
   runtime_profile: RuntimeProfile | null;
-  node_session_ref: string | null;
+  node_session: NodeSessionRef | null;
   started_at: string;
   finished_at: string | null;
   diagnostics: Diagnostic[];
@@ -599,6 +599,13 @@ export interface RuntimeProfile {
   thinking: string | null;
   tools: string[];
   persist_sessions: boolean;
+}
+
+export interface NodeSessionRef {
+  graph_vm: string;
+  session_id: string;
+  url: string | null;
+  metadata: Record<string, string | number | boolean | null>;
 }
 
 export interface RunRecord {
@@ -831,7 +838,7 @@ export interface TraceAttemptView {
   attempt_number: number;
   status: RunLifecycleStatus;
   runtime_profile: RuntimeProfile | null;
-  node_session_ref: string | null;
+  node_session: NodeSessionRef | null;
   diagnostic_codes: string[];
   failure: string | null;
   started_at: string;

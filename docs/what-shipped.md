@@ -34,6 +34,7 @@ These surfaces share one model:
 - deterministic `--output` fixtures as a development/test path, not the runtime center
 - Pi-backed graph VM execution with one persisted session per selected node
 - structured output submission through `openprose_submit_outputs`
+- structured node-session records in attempts and trace output
 - package and hosted metadata as projections over the same executable contract
 
 `remote execute` keeps deterministic `--output` fixtures for repeatable hosted

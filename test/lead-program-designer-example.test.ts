@@ -66,7 +66,7 @@ describe("lead-program-designer north-star example", () => {
         join(runRoot, ".prose-store"),
         `lead-program-accepted:${component}`,
       );
-      expect(attempts[0]?.node_session_ref, component).toContain("scripted-pi");
+      expect(attempts[0]?.node_session?.session_id, component).toContain("scripted-pi");
     }
     expect(prompts.get("lead-qualification-scorer")).toContain("lead_normalized_profile");
     expect(prompts.get("lead-qualification-scorer")).toContain("Acme Robotics");

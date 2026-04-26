@@ -84,7 +84,7 @@ describe("release-proposal-dry-run north-star example", () => {
       join(runRoot, ".prose-store"),
       "release-needs-approval",
     );
-    expect(attempts[0]?.node_session_ref).toBeNull();
+    expect(attempts[0]?.node_session).toBeNull();
     const trace = await traceFile(result.run_dir);
     expect(renderTraceText(trace)).toContain("gate[effect_approval]");
   });
