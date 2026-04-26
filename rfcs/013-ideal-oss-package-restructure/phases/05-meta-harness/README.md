@@ -205,6 +205,33 @@ Signpost:
 - Add `signposts/051-runtime-record-boundary.md` with the lifecycle boundary
   and checks.
 
+## 05.9 Extract Runtime Trace Boundary
+
+Build:
+
+- Move blocked, provider, and graph trace-file writers out of the top-level run
+  coordinator.
+- Keep trace event shapes stable for `prose trace`, status views, hosted
+  fixtures, and future platform ingestion.
+- Preserve the existing CLI and library behavior.
+
+Tests:
+
+- Run strict source unused-symbol scan for `src/`.
+- Run focused runtime-planning, CLI UX, and run-entrypoint tests.
+- Run `bun run typecheck`.
+- Run `bun test`.
+- Run `bun run confidence:runtime`.
+
+Commit:
+
+- Commit as `refactor: extract runtime trace helpers`.
+
+Signpost:
+
+- Add `signposts/052-runtime-trace-boundary.md` with the reporting boundary
+  and checks.
+
 ## Phase Exit Criteria
 
 - `prose run` can execute at least one multi-node graph locally.

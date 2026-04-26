@@ -42,6 +42,11 @@ import {
   writeRunOutputArtifacts,
   writeRunRecordFile,
 } from "./runtime/records.js";
+import {
+  writeBlockedTrace,
+  writeGraphTrace,
+  writeProviderTrace,
+} from "./runtime/traces.js";
 import { writeLocalArtifactRecord } from "./store/artifacts.js";
 import { writeRunAttemptRecord } from "./store/attempts.js";
 import { updateGraphNodePointer } from "./store/pointers.js";
@@ -547,7 +552,7 @@ async function materializeProviderResult(
 
   await writeRunRecordFile(ctx, recordPath, record);
   if (options.writeTraceFile ?? true) {
-    await writeTrace(ctx, result, record);
+    await writeProviderTrace(ctx, result, record);
   }
   await writeProviderArtifactRecords(ctx.storeRoot, result, {
     runId: record.run_id,
@@ -610,10 +615,7 @@ async function writeBlockedRun(
   };
   await writeRunRecordFile(ctx, recordPath, record);
   if (options.writeTraceFile ?? true) {
-    await writeFile(
-      join(ctx.runDir, "trace.json"),
-      `${JSON.stringify([{ event: "run.blocked", run_id: runId, reasons }], null, 2)}\n`,
-    );
+    await writeBlockedTrace(ctx, runId, reasons);
   }
   await writeBlockedAttemptRecord(ctx, record);
   await indexRunRecord(ctx, record, recordPath);
@@ -933,69 +935,6 @@ async function writeArtifactFile(
   const path = join(ctx.runDir, artifactRef);
   await mkdir(dirname(path), { recursive: true });
   await writeFile(path, content.endsWith("\n") ? content : `${content}\n`, "utf8");
-}
-
-async function writeTrace(
-  ctx: RunContext,
-  result: ProviderResult,
-  record: RunRecord,
-): Promise<void> {
-  const events = [
-    {
-      event: "run.started",
-      run_id: ctx.runId,
-      provider: ctx.provider.kind,
-      at: ctx.createdAt,
-      ir_hash: ctx.ir.semantic_hash,
-    },
-    {
-      event: "provider.finished",
-      run_id: ctx.runId,
-      provider: ctx.provider.kind,
-      status: result.status,
-      diagnostics: result.diagnostics,
-      duration_ms: result.duration_ms,
-      at: record.completed_at,
-    },
-  ];
-  await writeFile(join(ctx.runDir, "trace.json"), `${JSON.stringify(events, null, 2)}\n`);
-}
-
-async function writeGraphTrace(
-  ctx: RunContext,
-  record: RunRecord,
-  nodeRecords: RunRecord[],
-): Promise<void> {
-  const events = [
-    {
-      event: "graph.started",
-      run_id: ctx.runId,
-      provider: ctx.provider.kind,
-      at: ctx.createdAt,
-      ir_hash: ctx.ir.semantic_hash,
-      planned_nodes: ctx.plan.materialization_set.nodes,
-      skipped_nodes: ctx.plan.nodes
-        .filter((node) => node.status === "skipped")
-        .map((node) => node.component_ref),
-    },
-    ...nodeRecords.map((node) => ({
-      event: "node.finished",
-      run_id: node.run_id,
-      graph_run_id: ctx.runId,
-      component_ref: node.component_ref,
-      status: node.status,
-      acceptance: node.acceptance.status,
-      at: node.completed_at,
-    })),
-    {
-      event: "graph.finished",
-      run_id: ctx.runId,
-      status: record.status,
-      acceptance: record.acceptance.status,
-      at: record.completed_at,
-    },
-  ];
-  await writeFile(join(ctx.runDir, "trace.json"), `${JSON.stringify(events, null, 2)}\n`);
 }
 
 function renderComponentContract(ir: ProseIR, component: ComponentIR): string {
