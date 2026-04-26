@@ -177,23 +177,28 @@ Checks:
 - inspect `dist/package.json`
 - `git diff --check`
 
-### [todo] README and docs need a public-first pass
+### [done] README and docs need a public-first pass
 
 Finding: core docs are much better, but some pages still carry release-candidate
 history, old "near-term" language, or confusing local/hosted phrasing.
 
-Proposed fix:
+Resolved:
 
-- read `README.md`, `docs/why-and-when.md`, `docs/what-shipped.md`,
+- read `README.md`, `docs/README.md`, `docs/why-and-when.md`,
+  `docs/what-shipped.md`,
   `docs/inference-examples.md`, `docs/measurement.md`, and `docs/release-candidate.md`
   as a first-time OSS user
-- remove stale "not yet" language where the feature now works
-- keep hosted-platform ambitions distinct from OSS runtime guarantees
+- replaced stale single-run examples with `prose handoff`
+- renamed the public release-candidate surface to the runtime confidence gate
+- removed old "near-term" and release-diary phrasing from authored docs
+- added a docs regression test that blocks stale architecture vocabulary in
+  public docs
 
 Checks:
 
-- `rg -n "eventually|future work|near-term|Prose Complete|--provider|openai_compatible|direct provider" README.md docs`
+- `rg -n "eventually|future work|near-term|Prose Complete|--provider|openai_compatible|direct provider|fixture provider|local process|provider protocol" README.md docs -S`
 - `bun test test/cli-ux.test.ts test/examples-tour.test.ts`
+- `bun test test/docs-public.test.ts test/cli-ux.test.ts test/examples-tour.test.ts`
 
 ### [todo] Historical provider RFCs are still too easy to mistake for current architecture
 

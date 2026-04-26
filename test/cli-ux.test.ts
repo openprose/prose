@@ -18,6 +18,7 @@ describe("OpenProse CLI UX", () => {
     expect(stdout).toContain("compile source/package -> plan against prior runs");
     expect(stdout).toContain("Runtime:");
     expect(stdout).toContain("meta-harness");
+    expect(stdout).toContain("handoff");
     expect(stdout).toContain("OpenRouter");
     expect(stdout).toContain("--graph-vm pi");
     expect(stdout).not.toContain("--provider fixture");

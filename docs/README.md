@@ -11,8 +11,8 @@ OpenProse is now split into a few clean surfaces:
   component contract to a compatible one-off harness
 - [Schema Validation](schema-validation.md): what typed ports enforce today
   versus what remains semantic package metadata
-- [Runtime Release Candidate](release-candidate.md): confidence matrix,
-  release criteria, and generated RC evidence
+- [Runtime Confidence Gate](release-candidate.md): confidence matrix,
+  release criteria, and generated confidence evidence
 - [Diagrams](diagrams/index.html): HTML diagrams for the compiler, reactive
   planning, inference meta-harness, packages, approvals, and runtime backpressure
 - [Examples](../examples/README.md): the curated example set that matches the current local-first/runtime model
@@ -30,6 +30,9 @@ bun run prose plan examples/north-star/lead-program-designer.prose.md \
   --target-output lead_program_plan
 bun run prose graph examples/north-star/release-proposal-dry-run.prose.md \
   --input release_candidate="v0.11.0"
+bun run prose handoff examples/north-star/company-signal-brief.prose.md \
+  --input signal_notes="Customer teams want durable agent workflows." \
+  --input brand_context="OpenProse is React for agent outcomes."
 bun run prose run examples/north-star/company-signal-brief.prose.md \
   --run-id docs-company-signal \
   --input signal_notes="Customer teams want durable agent workflows." \

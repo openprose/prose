@@ -1,6 +1,6 @@
-# OpenProse Runtime Release Candidate
+# OpenProse Runtime Confidence Gate
 
-This is the release-candidate checklist for the local-first OpenProse runtime.
+This is the confidence checklist for the local-first OpenProse runtime.
 
 ## Confidence Matrix
 
@@ -50,27 +50,16 @@ Latest generated reports:
 - Remaining hosted/platform-specific follow-up is documented outside the OSS
   package workstream.
 
-## Follow-Up After RC
+## Platform Follow-Up
 
 - Wire platform tests directly to the OSS hosted-runtime fixtures.
-- Decide the hosted runtime contract for Sprites/Pi once the platform
-  Workstream 03 pass begins.
+- Keep hosted workers on the same graph-VM/runtime-profile vocabulary as
+  `prose run` and `prose remote execute`.
+- Preserve OpenProse run records, artifact manifests, and traces as the shared
+  contract between OSS execution and hosted execution.
 
 ## Live Pi Smoke Notes
 
-- 2026-04-26: `prose run examples/north-star/company-signal-brief.prose.md
-  --graph-vm pi` reached the Pi graph VM through an OpenRouter model profile
-  and correctly surfaced the upstream model error as the run acceptance reason.
-- The smoke did not yet produce an accepted run because the available
-  OpenRouter account returned an insufficient-credits response.
-- The adapter now records Pi event-level model errors before output validation,
-  so future live failures should point at auth, billing, model, or runtime issues
-  instead of collapsing into missing-output diagnostics.
-- 2026-04-26: Retested the opt-in Pi smoke with OpenRouter
-  `google/gemini-3-flash-preview`. The Pi session again reached OpenRouter and
-  produced a `pi_model_error`; OpenRouter reported that the account has not
-  purchased credits. This remains billing/account configuration evidence, not
-  an OpenProse runtime failure.
 - 2026-04-26: The runtime boundary was clarified: OpenRouter is a Pi model
   provider profile, not an OpenProse graph VM. The real graph VM path remains
   Pi, with deterministic `--output` fixtures for repeatable smoke tests.

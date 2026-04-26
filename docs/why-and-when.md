@@ -20,8 +20,8 @@ model in one reviewable artifact.
 Implemented today:
 
 - local CLI tools for `compile`, `plan`, `graph`, `run`, `eval`, `remote
-  execute`, `status`, `trace`, `package`, `publish-check`, `search`, and
-  `install`
+  execute`, `handoff`, `status`, `trace`, `package`, `publish-check`,
+  `search`, and `install`
 - curated examples for typed services, selective recompute, run-aware
   composition, approval-gated delivery, and company workflows
 - local measurement for package quality, recompute savings, approval
@@ -104,9 +104,11 @@ Do not start with OpenProse when:
 
 OpenProse earns its keep when the contract matters.
 
-## Near-Term Work
+## Hosted and Enterprise Work
 
-These areas are active product-shaping work, not claims of finished product:
+The OSS package is the local compiler, package, graph-planning, run, and
+confidence spine. Hosted OpenProse builds on that spine with enterprise
+control-plane features:
 
 - production-like deployed dev interop for the hosted API and Run app
 - richer hosted publish/install ergonomics

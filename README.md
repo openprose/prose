@@ -33,7 +33,7 @@ You write canonical `.prose.md` source with typed inputs, typed outputs, effects
 - [What Shipped](docs/what-shipped.md)
 - [Curated Examples](examples/README.md)
 - [Measurement Harness](docs/measurement.md)
-- [Runtime Release Candidate](docs/release-candidate.md)
+- [Runtime Confidence Gate](docs/release-candidate.md)
 - [HTML Diagrams](docs/diagrams/index.html)
 
 ## What Exists Today
@@ -67,10 +67,13 @@ bun run confidence:runtime
 bun run smoke:live-pi
 ```
 
-Single-run agent harnesses still matter for one-off programs:
+Single components can be exported as one-off handoffs for compatible agent
+harnesses:
 
-```text
-prose run customers/prose-openprose/systems/revenue/workflows/gtm-pipeline.prose.md
+```bash
+bun run prose handoff examples/north-star/company-signal-brief.prose.md \
+  --input signal_notes="Customer teams want durable agent workflows." \
+  --input brand_context="OpenProse is React for agent outcomes."
 ```
 
 A single component contract can still be handed to a compatible agent harness as a one-off task. For reactive graphs, the Bun CLI is the compiler/tooling/runtime-analysis surface and Pi is the local graph VM that OpenProse coordinates one persisted node session at a time.

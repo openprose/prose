@@ -16,6 +16,15 @@ Single-run harnesses can still be useful for one-off execution. They are not
 the reactive graph VM. Multi-node OpenProse graphs use Pi node sessions because
 the runtime needs durable inter-run coordination, dependency-ordered execution,
 artifact handoff, effect gates, and traceable materialization.
+Use [`prose handoff`](single-run-handoff.md) when you want to export a single
+component contract for a compatible one-off harness without pretending that
+harness can coordinate a reactive graph.
+
+```bash
+bun run prose handoff examples/north-star/company-signal-brief.prose.md \
+  --input signal_notes="Customer teams want durable agent workflows." \
+  --input brand_context="OpenProse is React for agent outcomes."
+```
 
 ## Lead Program Designer
 

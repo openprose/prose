@@ -87,7 +87,9 @@ The measurement harness intentionally stays local-first:
 - it records live Pi status separately from deterministic scripted Pi checks
 - it can optionally include the local reference company if it is present in the workspace
 
-That keeps the signal fast and reproducible while the hosted product continues to mature.
+That keeps the signal fast and reproducible. Hosted systems can consume the
+same reports and fixtures, but they are not required for local package
+confidence.
 
 The live ladder is deliberately separate from the required local gate. It is
 the place to catch Pi SDK, model provider, billing, timeout, and output-tool

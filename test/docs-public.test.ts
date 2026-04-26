@@ -1,0 +1,69 @@
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join, relative } from "node:path";
+import { describe, expect, test } from "./support";
+
+const repoRoot = join(import.meta.dir, "..");
+
+describe("public docs", () => {
+  test("top-level docs describe the current handoff and runtime vocabulary", () => {
+    const readme = readFileSync(join(repoRoot, "README.md"), "utf8");
+    const docsIndex = readFileSync(join(repoRoot, "docs/README.md"), "utf8");
+    const whatShipped = readFileSync(join(repoRoot, "docs/what-shipped.md"), "utf8");
+
+    expect(readme).toContain("bun run prose handoff");
+    expect(docsIndex).toContain("bun run prose handoff");
+    expect(whatShipped).toContain("`prose handoff`");
+    expect(readme).not.toContain("prose run customers/prose-openprose");
+  });
+
+  test("public docs avoid stale architecture and release-diary phrasing", () => {
+    const staleTerms = [
+      /eventually/i,
+      /future work/i,
+      /near-term/i,
+      /active product-shaping/i,
+      /Runtime Release Candidate/i,
+      /Prose Complete/i,
+      /--provider/,
+      /openai_compatible/i,
+      /direct provider/i,
+      /fixture provider/i,
+      /local process/i,
+      /provider protocol/i,
+    ];
+
+    for (const file of publicMarkdownFiles()) {
+      const text = readFileSync(file, "utf8");
+      for (const pattern of staleTerms) {
+        expect(
+          pattern.test(text),
+          `${relative(repoRoot, file)} contains stale public-docs term ${pattern}`,
+        ).toBe(false);
+      }
+    }
+  });
+});
+
+function publicMarkdownFiles(): string[] {
+  const files = [join(repoRoot, "README.md")];
+  visit(join(repoRoot, "docs"), files);
+  return files;
+}
+
+function visit(dir: string, files: string[]): void {
+  for (const entry of readdirSync(dir)) {
+    const path = join(dir, entry);
+    const rel = relative(repoRoot, path);
+    if (rel.startsWith("docs/measurements/")) {
+      continue;
+    }
+    const stat = statSync(path);
+    if (stat.isDirectory()) {
+      visit(path, files);
+      continue;
+    }
+    if (entry.endsWith(".md")) {
+      files.push(path);
+    }
+  }
+}
