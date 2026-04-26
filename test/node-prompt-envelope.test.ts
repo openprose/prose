@@ -9,7 +9,7 @@ import {
   tmpdir,
 } from "./support";
 import { scriptedPiRuntime } from "./support/scripted-pi-session";
-import { pipelineOutputs } from "./support/runtime-scenarios";
+import { approvalReleaseOutputs, pipelineOutputs } from "./support/runtime-scenarios";
 import { runSource } from "../src/run";
 import type { NodePromptEnvelope } from "../src/runtime";
 
@@ -83,6 +83,42 @@ describe("OpenProse Pi node prompt envelope", () => {
       "claims",
       "feedback",
     ]);
+  });
+
+  test("includes approved effects for an effecting graph node", async () => {
+    const runRoot = mkdtempSync(join(tmpdir(), "openprose-envelope-effects-"));
+    const sourcePath = join(
+      import.meta.dir,
+      "..",
+      "examples",
+      "north-star",
+      "release-proposal-dry-run.prose.md",
+    );
+    const prompts = new Map<string, string>();
+    const result = await runSource(readFileSync(sourcePath, "utf8"), {
+      path: sourcePath,
+      runRoot,
+      runId: "envelope-approved-effects",
+      provider: scriptedPiRuntime({
+        outputsByComponent: approvalReleaseOutputs,
+        onPrompt: (prompt, request) => prompts.set(request.component.name, prompt),
+      }),
+      inputs: {
+        release_candidate: "v1.2.3 with changelog",
+      },
+      approvedEffects: ["human_gate", "delivers"],
+      createdAt: "2026-04-26T17:08:00.000Z",
+    });
+
+    const envelope = readNodeEnvelope(result.run_dir, "announce-release");
+
+    expect(envelope.policy.approved_effects).toEqual(["delivers", "human_gate"]);
+    expect(envelope.component.effects.map((effect) => effect.kind)).toEqual([
+      "human_gate",
+      "delivers",
+    ]);
+    expect(prompts.get("announce-release")).toContain('"approved_effects"');
+    expect(prompts.get("announce-release")).toContain('"delivers"');
   });
 
   test("includes prior run provenance for run-typed caller inputs", async () => {

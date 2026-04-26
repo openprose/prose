@@ -12,6 +12,7 @@ import type {
   RuntimeProfile,
   TraceEvent,
 } from "../types.js";
+import type { EffectApprovalRecord } from "../policy/index.js";
 
 export interface RuntimeTraceContext {
   ir: ProseIR;
@@ -21,6 +22,7 @@ export interface RuntimeTraceContext {
   runId: string;
   runDir: string;
   createdAt: string;
+  approvalRecords?: EffectApprovalRecord[];
 }
 
 export async function writeBlockedTrace(
@@ -40,6 +42,7 @@ export async function writeBlockedTrace(
         failure_class: "pre_session_gate",
         gate: gateKind(reasons),
         reasons,
+        approval_records: approvalTraceRecords(ctx),
       },
     ], null, 2)}\n`,
   );
@@ -58,6 +61,7 @@ export async function writeProviderTrace(
       runtime_profile: ctx.runtimeProfile,
       at: ctx.createdAt,
       ir_hash: ctx.ir.semantic_hash,
+      approval_records: approvalTraceRecords(ctx),
     },
     ...providerTraceEvents(result, record),
     {
@@ -89,6 +93,7 @@ export async function writeGraphTrace(
       at: ctx.createdAt,
       ir_hash: ctx.ir.semantic_hash,
       planned_nodes: ctx.plan.materialization_set.nodes,
+      approval_records: approvalTraceRecords(ctx),
       skipped_nodes: ctx.plan.nodes
         .filter((node) => node.status === "skipped")
         .map((node) => node.component_ref),
@@ -103,6 +108,17 @@ export async function writeGraphTrace(
     },
   ];
   await writeFile(join(ctx.runDir, "trace.json"), `${JSON.stringify(events, null, 2)}\n`);
+}
+
+function approvalTraceRecords(ctx: RuntimeTraceContext) {
+  return (ctx.approvalRecords ?? []).map((record) => ({
+    approval_id: record.approval_id,
+    status: record.status,
+    effects: record.effects,
+    principal_id: record.principal_id,
+    component_ref: record.component_ref,
+    expires_at: record.expires_at,
+  }));
 }
 
 function nodeTraceEvents(

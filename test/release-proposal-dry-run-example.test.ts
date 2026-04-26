@@ -126,6 +126,13 @@ describe("release-proposal-dry-run north-star example", () => {
       status: "passed",
       score: 0.9,
     });
+    const trace = await traceFile(result.run_dir);
+    expect(trace.events.find((event) => event.event === "graph.started")).toMatchObject({
+      approval_records: expect.arrayContaining([
+        expect.objectContaining({ status: "approved", effects: ["human_gate"] }),
+        expect.objectContaining({ status: "approved", effects: ["delivers"] }),
+      ]),
+    });
   });
 
   test("no-op release targets only the decision and skips the gated branch", async () => {
@@ -217,6 +224,31 @@ describe("release-proposal-dry-run north-star example", () => {
       status: "failed",
       score: 0.31,
     });
+  });
+
+  test("delivery fails when it reports an undeclared performed effect", async () => {
+    const runRoot = mkdtempSync(join(tmpdir(), "openprose-release-undeclared-effect-"));
+    const result = await runRelease({
+      runRoot,
+      runId: "release-undeclared-effect",
+      approvedEffects: ["human_gate", "delivers", "mutates_repo"],
+      submissionsByComponent: {
+        ...releaseSubmissions("release-needed"),
+        "announce-release": submission(
+          {
+            delivery_receipt: "Dry-run delivery recorded for #releases.",
+          },
+          ["human_gate", "delivers", "mutates_repo"],
+        ),
+      },
+    });
+
+    expect(result.record.status).toBe("failed");
+    expect(
+      result.node_records.find((record) => record.component_ref === "announce-release")
+        ?.acceptance.reason,
+    ).toContain("openprose_submit_outputs reported undeclared effect 'mutates_repo'");
+    expect(result.record.outputs).toEqual([]);
   });
 });
 

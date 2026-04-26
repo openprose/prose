@@ -90,8 +90,8 @@
       "kind": "runtime_trace",
       "content_type": "application/json",
       "parse_policy": "must_parse_json",
-      "sha256": "621a562b642e4b4460408ff3122e63d102bfbe799eff06a0f36e7afba78c0dd3",
-      "size_bytes": 1384,
+      "sha256": "65155851a8e6265aabd10a89b83588c9f24f4e2223edb7e8ce24d47f7a540991",
+      "size_bytes": 1412,
       "binding": null,
       "policy_labels": [],
       "warnings": []
