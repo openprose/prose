@@ -24,6 +24,7 @@
     "prose": "bun bin/prose.ts",
     "build:binary": "bun build --compile --target=bun --outfile dist/prose ./bin/prose.ts && bun scripts/write-dist-package.ts",
     "smoke:binary": "bun run build:binary && ./dist/prose help >/dev/null && ./dist/prose compile examples/north-star/company-signal-brief.prose.md --no-pretty >/dev/null",
+    "smoke:company:local": "bun scripts/openprose-native-company-smoke.ts",
     "compile": "bun bin/prose.ts compile",
     "fmt": "bun bin/prose.ts fmt",
     "grammar": "bun bin/prose.ts grammar",
