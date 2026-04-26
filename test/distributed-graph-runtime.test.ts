@@ -128,6 +128,61 @@ describe("distributed hosted graph VM", () => {
     });
   });
 
+  test("executes a serialized scripted node request without external Pi model lookup", async () => {
+    const runRoot = mkdtempSync(join(tmpdir(), "openprose-scripted-node-protocol-"));
+    let captured: NodeExecutionRequest | null = null;
+    const graphRuntime = createDelegatedGraphRuntime({
+      delegate: {
+        async executeNode(request) {
+          captured = request;
+          return successfulNodeResult(request, { message: "Captured." });
+        },
+      },
+    });
+
+    await runSource(fixture("hello.prose.md"), {
+      path: "fixtures/compiler/hello.prose.md",
+      runRoot,
+      runId: "capture-scripted-node-request",
+      outputs: {
+        message: "Graph-level deterministic output.",
+      },
+      nodeRunner: nodeRunnerShouldNotRun(),
+      graphRuntime,
+      runtimeProfile: {
+        execution_placement: "distributed",
+      },
+      createdAt: "2026-04-26T02:07:00.000Z",
+    });
+
+    const scriptedRequest = captured as NodeExecutionRequest | null;
+    expect(scriptedRequest).not.toBeNull();
+    expect(scriptedRequest!.runtime_profile).toMatchObject({
+      graph_vm: "pi",
+      model_provider: "scripted",
+      model: "deterministic-output",
+    });
+
+    const result = await executeNodeExecutionRequest(scriptedRequest!);
+
+    expect(result).toMatchObject({
+      run_id: "capture-scripted-node-request",
+      component_ref: "hello",
+      graph_vm: "pi",
+      node_run_result: {
+        status: "succeeded",
+      },
+    });
+    expect(result.node_run_result.artifacts[0]).toMatchObject({
+      port: "message",
+      content: "hello.message\n",
+    });
+    expect(result.node_run_result.session?.metadata).toMatchObject({
+      model_provider: "scripted",
+      model_id: "deterministic-output",
+    });
+  });
+
   test("delegates graph nodes through external request/result files", async () => {
     const root = mkdtempSync(join(tmpdir(), "openprose-external-node-"));
     const runRoot = join(root, "runs");

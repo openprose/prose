@@ -20,6 +20,7 @@ export async function executeNodeExecutionRequest(
     resolveNodeRunner({
       graphVm: request.runtime_profile.graph_vm,
       runtimeProfile: request.runtime_profile,
+      deterministicOutputs: scriptedNodeOutputs(request),
     });
   const runtime = createReactiveGraphRuntime({ nodeRunner });
   return runtime.executeNode(request);
@@ -39,3 +40,20 @@ export async function executeNodeExecutionRequestFile(
   return result;
 }
 
+function scriptedNodeOutputs(
+  request: NodeExecutionRequest,
+): Record<string, string> | undefined {
+  if (
+    request.runtime_profile.model_provider !== "scripted" ||
+    request.runtime_profile.model !== "deterministic-output"
+  ) {
+    return undefined;
+  }
+
+  return Object.fromEntries(
+    request.node_run_request.expected_outputs.map((output) => [
+      output.port,
+      `${request.component.name}.${output.port}`,
+    ]),
+  );
+}
