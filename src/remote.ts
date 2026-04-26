@@ -136,7 +136,7 @@ export async function buildArtifactManifest(
       kind,
       content_type: contentType,
       parse_policy: parsePolicy,
-      sha256: sha256(raw.toString("utf8")),
+      sha256: sha256(raw),
       size_bytes: raw.byteLength,
       binding,
       policy_labels: bindingLabels ?? [],

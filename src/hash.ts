@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-export function sha256(value: string): string {
+export function sha256(value: string | Uint8Array): string {
   return createHash("sha256").update(value).digest("hex");
 }
 
@@ -20,4 +20,3 @@ export function stableStringify(value: unknown): string {
 
   return `{${entries.join(",")}}`;
 }
-

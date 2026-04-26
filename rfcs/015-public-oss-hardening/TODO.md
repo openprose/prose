@@ -188,17 +188,19 @@ Checks:
 
 ## P1: Runtime Robustness
 
-### [todo] Hash helpers are string-only while manifests walk bytes
+### [done] Hash helpers are string-only while manifests walk bytes
 
 Finding: `sha256(value: string)` hashes strings. Remote artifact manifests read
 files as bytes but convert them to UTF-8 before hashing. This is wrong for
 binary artifacts and makes the `size_bytes` / hash contract less trustworthy.
 
-Proposed fix:
+Resolved:
 
-- let `sha256` accept `string | Uint8Array | Buffer`
-- hash raw bytes in `buildArtifactManifest`
-- add a remote artifact fixture with non-UTF8/binary content
+- `sha256` now accepts strings and byte arrays
+- `buildArtifactManifest` hashes raw bytes directly
+- added a non-UTF8 binary artifact regression test
+
+Commit target: `fix: hash remote artifact bytes directly`
 
 Checks:
 

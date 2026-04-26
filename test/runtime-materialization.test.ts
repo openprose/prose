@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import {
   buildArtifactManifest,
   buildRegistryRef,
@@ -599,5 +600,31 @@ kind: service
     await expect(
       buildArtifactManifest(result, "2026-04-23T13:15:00.000Z"),
     ).rejects.toThrow('Runtime-owned JSON artifact "ir.json" is malformed.');
+  });
+
+  test("artifact manifests hash raw bytes for preserved binary artifacts", async () => {
+    const runRoot = mkdtempSync(join(tmpdir(), "openprose-binary-artifact-"));
+    const result = await materializeSource(fixture("hello.prose.md"), {
+      path: "fixtures/compiler/hello.prose.md",
+      runRoot,
+      runId: "20260423-132000-rmt005",
+      outputs: {
+        message: "Hello before binary artifact.",
+      },
+      trigger: "test",
+    });
+    const raw = Buffer.from([0xff, 0x00, 0x41, 0x80, 0xfe]);
+    writeFileSync(join(result.run_dir, "payload.bin"), raw);
+
+    const manifest = await buildArtifactManifest(result, "2026-04-23T13:20:00.000Z");
+    const binary = manifest.artifacts.find((artifact) => artifact.path === "payload.bin");
+
+    expect(binary).toMatchObject({
+      path: "payload.bin",
+      content_type: "application/octet-stream",
+      parse_policy: "preserve_bytes",
+      size_bytes: raw.byteLength,
+      sha256: createHash("sha256").update(raw).digest("hex"),
+    });
   });
 });
