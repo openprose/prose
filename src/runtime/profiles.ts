@@ -100,7 +100,7 @@ function graphVmFromSelectedRuntime(
 function assertGraphVm(graphVm: string): void {
   if (MODEL_PROVIDER_GRAPH_VMS.has(graphVm)) {
     throw new Error(
-      `Runtime profile graph_vm '${graphVm}' is a model provider, not an OpenProse graph VM. Configure it as model_provider inside a Pi runtime profile.`,
+      `Runtime profile graph_vm '${graphVm}' is a model provider profile, not an OpenProse graph VM. Configure it as model_provider inside a Pi runtime profile.`,
     );
   }
   if (SINGLE_RUN_HARNESS_GRAPH_VMS.has(graphVm)) {

@@ -19,6 +19,8 @@ describe("OpenProse module boundaries", () => {
     expect(prose.schema).toBeDefined();
     expect(prose.meta).toBeDefined();
     expect(prose.nodeRunners).toBeDefined();
+    expect("providers" in prose).toBe(false);
+    expect("providerProtocol" in prose).toBe(false);
     expect(prose.policy).toBeDefined();
     expect(prose.evals).toBeDefined();
   });

@@ -98,7 +98,7 @@ describe("OpenProse runtime profiles", () => {
           graph_vm: "openrouter",
         },
       }),
-    ).toThrow("is a model provider, not an OpenProse graph VM");
+    ).toThrow("is a model provider profile, not an OpenProse graph VM");
 
     expect(() =>
       resolveRuntimeProfile({

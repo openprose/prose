@@ -712,23 +712,29 @@ Checks:
 - `bun test test/cli-ux.test.ts`
 - `bun run typecheck`
 
-### [todo] Public API vocabulary should finish the provider-to-node-runner cleanup
+### [done] Public API vocabulary should finish the provider-to-node-runner cleanup
 
 Finding: source files now live under `node-runners`, but some public types,
 historical docs, and error-path names still use provider/protocol vocabulary.
 Some of that is acceptable history; public API exports should be intentional.
 
-Proposed fix:
+Resolved:
 
-- audit exported names and docs for provider/protocol vocabulary
-- keep `model_provider` where it means model vendor
-- prefer graph VM, node runner, runtime profile, and single-run handoff for
-  runtime architecture
+- audited source, public docs, skill/command sidecars, and tests for
+  provider/protocol vocabulary
+- kept `model_provider` only where it means model vendor/profile metadata
+- normalized model-provider-as-graph-VM errors to the same public phrase
+- added module-boundary coverage that the public package exports
+  `nodeRunners`, not provider namespaces
+- refreshed the OpenProse skill live-inference route to the explicit runtime
+  profile flags
 
 Checks:
 
 - `rg -n -- "provider protocol|OpenProse provider|provider interfaces|Graph VM|node runner" src docs README.md skills commands`
 - `bun test test/module-boundaries.test.ts test/node-runner-protocol.test.ts`
+- `bun test test/module-boundaries.test.ts test/node-runner-protocol.test.ts test/runtime-profiles.test.ts test/cli-ux.test.ts test/docs-public.test.ts test/agent-entrypoints.test.ts`
+- `bun run typecheck`
 
 ## Intake Queue
 

@@ -84,9 +84,9 @@ async function runCliInner(args: string[]): Promise<void> {
       process.exitCode = 1;
       return;
     }
-    const providerError = validateCliGraphVm(options.graphVm);
-    if (providerError) {
-      console.error(providerError);
+    const graphVmError = validateCliGraphVm(options.graphVm);
+    if (graphVmError) {
+      console.error(graphVmError);
       process.exitCode = 1;
       return;
     }
@@ -195,9 +195,9 @@ async function runCliInner(args: string[]): Promise<void> {
       process.exitCode = 1;
       return;
     }
-    const providerError = validateCliGraphVm(options.graphVm);
-    if (providerError) {
-      console.error(providerError);
+    const graphVmError = validateCliGraphVm(options.graphVm);
+    if (graphVmError) {
+      console.error(graphVmError);
       process.exitCode = 1;
       return;
     }

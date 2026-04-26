@@ -41,7 +41,7 @@ When the user asks for OpenProse work:
 | Compile or inspect source | Use `bun run prose compile`, `manifest`, `graph`, `plan`, or `highlight` |
 | Run locally | Use `bun run prose run <file.prose.md> --graph-vm pi` |
 | Deterministic fixture run | Use `--output port=value` on `prose run` or `prose remote execute` |
-| Live inference run | Use `--graph-vm pi` with `OPENPROSE_PI_*` runtime-profile env vars |
+| Live inference run | Use `--graph-vm pi` with `--model-provider`, `--model`, and `--thinking`; env vars are CI-friendly defaults |
 | Hosted contract fixture | Use `bun run prose remote execute ...` |
 | Package or registry work | Use `prose package`, `publish-check`, `search`, and `install` |
 | Debug a run | Use `prose status` and `prose trace` against the run root |
