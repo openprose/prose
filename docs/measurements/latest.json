@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-04-26T13:36:08.582Z",
+  "generated_at": "2026-04-26T13:53:26.072Z",
   "packages": [
     {
       "label": "examples",
       "path": "/Users/sl/code/openprose/platform/external/prose/examples",
       "package_name": "@openprose/examples",
       "version": "0.1.0",
-      "components": 39,
+      "components": 41,
       "quality_score": 1,
       "typed_port_coverage": 1,
       "effect_declaration_ratio": 1,
@@ -52,7 +52,7 @@
   ],
   "scenarios": {
     "company_signal_brief": {
-      "compile_ms": 0.25,
+      "compile_ms": 1.18,
       "status": "succeeded",
       "eval_status": "passed",
       "eval_score": 0.93,
@@ -60,7 +60,7 @@
       "scripted_session_count": 1
     },
     "lead_program_designer": {
-      "compile_ms": 0.37,
+      "compile_ms": 0.41,
       "status": "succeeded",
       "eval_status": "passed",
       "eval_score": 0.91,
@@ -87,8 +87,51 @@
       ],
       "profile_change_reused_nodes": []
     },
+    "stargazer_intake_lite": {
+      "compile_ms": 0.5,
+      "status": "succeeded",
+      "eval_status": "passed",
+      "eval_score": 0.94,
+      "trace_events": 47,
+      "scripted_session_count": 5,
+      "graph_nodes": 5,
+      "memory_artifact_count": 1,
+      "duplicate_suppression_count": 1,
+      "skipped_count": 2,
+      "high_water_mark_result": "2026-04-26T08:15:00Z",
+      "replay_status": "current",
+      "replay_saved_nodes": 5,
+      "stale_reason_summaries": []
+    },
+    "opportunity_discovery_lite": {
+      "compile_ms": 0.36,
+      "status": "succeeded",
+      "eval_status": "passed",
+      "eval_score": 0.92,
+      "trace_events": 38,
+      "scripted_session_count": 4,
+      "graph_nodes": 4,
+      "rejected_stale_count": 1,
+      "rejected_missing_provenance_count": 1,
+      "duplicate_suppression_count": 1,
+      "winning_source_url": "https://x.example/status/1003",
+      "brand_change_executed_nodes": [
+        "opportunity-classifier",
+        "opportunity-deduplicator",
+        "opportunity-summary-writer"
+      ],
+      "brand_change_reused_nodes": [
+        "platform-scan-reader"
+      ],
+      "brand_change_saved_nodes": 1,
+      "stale_reason_summaries": [
+        "input_hash_changed:brand_context",
+        "upstream_stale:opportunity-classifier",
+        "upstream_stale:opportunity-deduplicator"
+      ]
+    },
     "approval_gated_release": {
-      "elapsed_ms": 0.43,
+      "elapsed_ms": 0.55,
       "status": "blocked",
       "blocked_effect_nodes": [
         "announce-release"
@@ -108,6 +151,8 @@
     "effect_declaration_ratio_delta": 1,
     "brand_change_saved_nodes": 2,
     "brand_change_saved_sessions": 2,
+    "reactive_loop_saved_nodes": 6,
+    "duplicate_suppression_count": 2,
     "approval_gate_visible": true,
     "graph_trace_available": true,
     "runtime_trace_event_count": 29

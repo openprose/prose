@@ -1,12 +1,12 @@
 # OpenProse Measurement Report
 
-Generated: 2026-04-26T13:36:08.582Z
+Generated: 2026-04-26T13:53:26.072Z
 
 ## Package Health
 
 | Target | Components | Quality | Typed Ports | Effects | Publish | Strict |
 |---|---:|---:|---:|---:|---|---|
-| examples | 39 | 1.00 | 100% | 100% | pass | pass |
+| examples | 41 | 1.00 | 100% | 100% | pass | pass |
 | packages/std | 58 | 0.97 | 100% | 100% | pass | pass |
 | packages/co | 6 | 1.00 | 100% | 100% | pass | pass |
 | customers/prose-openprose | 99 | 0.95 | 100% | 100% | pass | pass |
@@ -15,7 +15,7 @@ Generated: 2026-04-26T13:36:08.582Z
 
 ### Company Signal Brief
 - status: succeeded
-- compile time: 0.25 ms
+- compile time: 1.18 ms
 - eval: passed (0.93)
 - scripted Pi sessions: 1
 - trace events: 9
@@ -31,6 +31,32 @@ Generated: 2026-04-26T13:36:08.582Z
 - brand-change sessions: 1
 - profile-change executed nodes: lead-profile-normalizer, lead-qualification-scorer, save-grow-program-drafter
 - profile-change reused nodes: (none)
+
+### Stargazer Intake Lite
+- status: succeeded
+- graph nodes: 5
+- eval: passed (0.94)
+- scripted Pi sessions: 5
+- memory artifacts: 1
+- skipped rows: 2
+- duplicate suppressions: 1
+- high-water mark: 2026-04-26T08:15:00Z
+- replay status: current
+- replay saved nodes: 5
+
+### Opportunity Discovery Lite
+- status: succeeded
+- graph nodes: 4
+- eval: passed (0.92)
+- scripted Pi sessions: 4
+- stale rows rejected: 1
+- missing-provenance rows rejected: 1
+- duplicate suppressions: 1
+- winning source: https://x.example/status/1003
+- brand-change executed nodes: opportunity-classifier, opportunity-deduplicator, opportunity-summary-writer
+- brand-change reused nodes: platform-scan-reader
+- brand-change saved nodes: 1
+- stale reasons: input_hash_changed:brand_context, upstream_stale:opportunity-classifier, upstream_stale:opportunity-deduplicator
 
 ### Approval-Gated Release
 - plan status: blocked
@@ -53,6 +79,8 @@ Assumptions:
 | effect declaration delta | 100% |
 | brand-change node recomputes avoided | 2 |
 | brand-change sessions avoided | 2 |
+| reactive-loop node recomputes avoided | 6 |
+| duplicate suppressions measured | 2 |
 | approval gate visible to planner | yes |
 | graph trace available | yes |
 | lead graph trace event count | 29 |

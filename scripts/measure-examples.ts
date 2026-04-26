@@ -50,6 +50,29 @@ interface LeadProgramSnapshot extends ExampleScenarioSnapshot {
   profile_change_reused_nodes: string[];
 }
 
+interface StargazerLoopSnapshot extends ExampleScenarioSnapshot {
+  graph_nodes: number;
+  memory_artifact_count: number;
+  duplicate_suppression_count: number;
+  skipped_count: number;
+  high_water_mark_result: string | null;
+  replay_status: string;
+  replay_saved_nodes: number;
+  stale_reason_summaries: string[];
+}
+
+interface OpportunityLoopSnapshot extends ExampleScenarioSnapshot {
+  graph_nodes: number;
+  rejected_stale_count: number;
+  rejected_missing_provenance_count: number;
+  duplicate_suppression_count: number;
+  winning_source_url: string | null;
+  brand_change_executed_nodes: string[];
+  brand_change_reused_nodes: string[];
+  brand_change_saved_nodes: number;
+  stale_reason_summaries: string[];
+}
+
 interface BaselineComparison {
   baseline_label: string;
   assumptions: string[];
@@ -58,6 +81,8 @@ interface BaselineComparison {
   effect_declaration_ratio_delta: number;
   brand_change_saved_nodes: number;
   brand_change_saved_sessions: number;
+  reactive_loop_saved_nodes: number;
+  duplicate_suppression_count: number;
   approval_gate_visible: boolean;
   graph_trace_available: boolean;
   runtime_trace_event_count: number;
@@ -91,6 +116,20 @@ async function main(): Promise<void> {
       "evals",
       "north-star",
       "lead-program-designer.eval.prose.md",
+    );
+    const stargazerPath = resolve(northStarRoot, "stargazer-intake-lite.prose.md");
+    const stargazerEvalPath = resolve(
+      examplesRoot,
+      "evals",
+      "north-star",
+      "stargazer-intake-lite.eval.prose.md",
+    );
+    const opportunityPath = resolve(northStarRoot, "opportunity-discovery-lite.prose.md");
+    const opportunityEvalPath = resolve(
+      examplesRoot,
+      "evals",
+      "north-star",
+      "opportunity-discovery-lite.eval.prose.md",
     );
     const releasePath = resolve(northStarRoot, "release-proposal-dry-run.prose.md");
 
@@ -188,11 +227,128 @@ async function main(): Promise<void> {
       }),
     );
 
+    const stargazerCompile = await time(() => compileFile(stargazerPath));
+    const stargazerBase = await time(async () =>
+      runFile(stargazerPath, {
+        runRoot: tempRoot,
+        runId: "measure-stargazer-base",
+        createdAt: "2026-04-26T15:15:00.000Z",
+        inputs: {
+          stargazer_batch: await fixture(
+            fixturesRoot,
+            "stargazer-intake-lite/duplicate-high-water.stargazer-batch.json",
+          ),
+          prior_stargazer_memory: await fixture(
+            fixturesRoot,
+            "stargazer-intake-lite/happy.prior-stargazer-memory.json",
+          ),
+          fixture_root: fixturesRoot,
+        },
+        approvedEffects: ["writes_memory"],
+        requiredEvals: [stargazerEvalPath],
+        provider: scriptedPiRuntime({
+          submissionsByComponent: {
+            ...stargazerSubmissions(),
+            "stargazer-intake-lite-eval": evalSubmission(true, 0.94, "pass"),
+          },
+        }),
+      }),
+    );
+    const stargazerTrace = await traceFile(stargazerBase.value.run_dir);
+    const stargazerReplay = await time(async () =>
+      runFile(stargazerPath, {
+        runRoot: tempRoot,
+        runId: "measure-stargazer-replay-unused",
+        currentRunPath: stargazerBase.value.run_dir,
+        createdAt: "2026-04-26T15:20:00.000Z",
+        inputs: {
+          stargazer_batch: await fixture(
+            fixturesRoot,
+            "stargazer-intake-lite/duplicate-high-water.stargazer-batch.json",
+          ),
+          prior_stargazer_memory: await fixture(
+            fixturesRoot,
+            "stargazer-intake-lite/happy.prior-stargazer-memory.json",
+          ),
+        },
+        approvedEffects: ["writes_memory"],
+      }),
+    );
+    const stargazerBatchDelta = await readRunJsonOutput<{
+      skipped?: Array<{ reason?: string }>;
+    }>(stargazerBase.value.run_dir, stargazerBase.value.record, "stargazer_batch_delta");
+    const stargazerMemoryDelta = await readRunJsonOutput<{
+      high_water_mark?: string;
+    }>(stargazerBase.value.run_dir, stargazerBase.value.record, "stargazer_memory_delta");
+
+    const opportunityCompile = await time(() => compileFile(opportunityPath));
+    const opportunityBase = await time(async () =>
+      runFile(opportunityPath, {
+        runRoot: tempRoot,
+        runId: "measure-opportunity-base",
+        createdAt: "2026-04-26T15:25:00.000Z",
+        inputs: {
+          platform_scan_results: await fixture(
+            fixturesRoot,
+            "opportunity-discovery-lite/duplicate-crossposts.platform-scan-results.json",
+          ),
+          brand_context: await fixture(
+            fixturesRoot,
+            "opportunity-discovery-lite/happy.brand-context.md",
+          ),
+          fixture_root: fixturesRoot,
+        },
+        requiredEvals: [opportunityEvalPath],
+        provider: scriptedPiRuntime({
+          submissionsByComponent: {
+            ...opportunitySubmissions("source-aware"),
+            "opportunity-discovery-lite-eval": evalSubmission(true, 0.92, "pass"),
+          },
+        }),
+      }),
+    );
+    const opportunityTrace = await traceFile(opportunityBase.value.run_dir);
+    const opportunityBrandRefresh = await time(async () =>
+      runFile(opportunityPath, {
+        runRoot: tempRoot,
+        runId: "measure-opportunity-brand-refresh",
+        currentRunPath: opportunityBase.value.run_dir,
+        createdAt: "2026-04-26T15:30:00.000Z",
+        inputs: {
+          platform_scan_results: await fixture(
+            fixturesRoot,
+            "opportunity-discovery-lite/duplicate-crossposts.platform-scan-results.json",
+          ),
+          brand_context: "# Brand Context\n\nOpenProse now leads with enterprise provenance.",
+        },
+        targetOutputs: ["opportunity_summary"],
+        provider: scriptedPiRuntime({
+          submissionsByComponent: downstreamOpportunitySubmissions("enterprise"),
+        }),
+      }),
+    );
+    const opportunityWindow = await readRunJsonOutput<{
+      rejected_rows?: Array<{ reason?: string }>;
+    }>(opportunityBase.value.run_dir, opportunityBase.value.record, "platform_scan_window");
+    const opportunityDedupe = await readRunJsonOutput<{
+      clusters?: Array<{ winner?: string; duplicates?: string[] }>;
+    }>(opportunityBase.value.run_dir, opportunityBase.value.record, "opportunity_dedupe_report");
+
     const brandSavedNodes =
       leadBase.value.node_records.length -
       leadBrandRefresh.value.plan.materialization_set.nodes.length;
     const brandSavedSessions =
       sessionCount(leadBaseTrace.events) - sessionCount(leadBrandTrace.events);
+    const stargazerReplaySavedNodes =
+      stargazerBase.value.node_records.length -
+      stargazerReplay.value.plan.materialization_set.nodes.length;
+    const opportunityBrandSavedNodes =
+      opportunityBase.value.node_records.length -
+      opportunityBrandRefresh.value.plan.materialization_set.nodes.length;
+    const reactiveLoopSavedNodes = stargazerReplaySavedNodes + opportunityBrandSavedNodes;
+    const duplicateSuppressionCount =
+      duplicateSkipCount(stargazerBatchDelta.skipped ?? []) +
+      duplicateClusterSuppressionCount(opportunityDedupe.clusters ?? []);
 
     const report = {
       generated_at: new Date().toISOString(),
@@ -221,6 +377,46 @@ async function main(): Promise<void> {
           profile_change_executed_nodes: leadProfilePlan.value.materialization_set.nodes,
           profile_change_reused_nodes: reusedNodes(leadProfilePlan.value),
         } satisfies LeadProgramSnapshot,
+        stargazer_intake_lite: {
+          compile_ms: round2(stargazerCompile.elapsed_ms),
+          status: stargazerBase.value.record.status,
+          eval_status: evalStatus(stargazerBase.value.record),
+          eval_score: evalScore(stargazerBase.value.record),
+          trace_events: stargazerTrace.events.length,
+          scripted_session_count: sessionCount(stargazerTrace.events),
+          graph_nodes: stargazerBase.value.node_records.length,
+          memory_artifact_count: stargazerBase.value.record.outputs.filter((output) =>
+            output.port.includes("memory"),
+          ).length,
+          duplicate_suppression_count: duplicateSkipCount(stargazerBatchDelta.skipped ?? []),
+          skipped_count: stargazerBatchDelta.skipped?.length ?? 0,
+          high_water_mark_result: stargazerMemoryDelta.high_water_mark ?? null,
+          replay_status: stargazerReplay.value.plan.status,
+          replay_saved_nodes: stargazerReplaySavedNodes,
+          stale_reason_summaries: staleReasons(stargazerReplay.value.plan),
+        } satisfies StargazerLoopSnapshot,
+        opportunity_discovery_lite: {
+          compile_ms: round2(opportunityCompile.elapsed_ms),
+          status: opportunityBase.value.record.status,
+          eval_status: evalStatus(opportunityBase.value.record),
+          eval_score: evalScore(opportunityBase.value.record),
+          trace_events: opportunityTrace.events.length,
+          scripted_session_count: sessionCount(opportunityTrace.events),
+          graph_nodes: opportunityBase.value.node_records.length,
+          rejected_stale_count: reasonCount(opportunityWindow.rejected_rows ?? [], "older than"),
+          rejected_missing_provenance_count: reasonCount(
+            opportunityWindow.rejected_rows ?? [],
+            "missing url",
+          ),
+          duplicate_suppression_count: duplicateClusterSuppressionCount(
+            opportunityDedupe.clusters ?? [],
+          ),
+          winning_source_url: opportunityDedupe.clusters?.[0]?.winner ?? null,
+          brand_change_executed_nodes: opportunityBrandRefresh.value.plan.materialization_set.nodes,
+          brand_change_reused_nodes: reusedNodes(opportunityBrandRefresh.value.plan),
+          brand_change_saved_nodes: opportunityBrandSavedNodes,
+          stale_reason_summaries: staleReasons(opportunityBrandRefresh.value.plan),
+        } satisfies OpportunityLoopSnapshot,
         approval_gated_release: {
           elapsed_ms: round2(approvalPlan.elapsed_ms),
           status: approvalPlan.value.status,
@@ -242,6 +438,8 @@ async function main(): Promise<void> {
         effect_declaration_ratio_delta: examplesPackage.effect_declaration_ratio,
         brand_change_saved_nodes: brandSavedNodes,
         brand_change_saved_sessions: brandSavedSessions,
+        reactive_loop_saved_nodes: reactiveLoopSavedNodes,
+        duplicate_suppression_count: duplicateSuppressionCount,
         approval_gate_visible: approvalPlan.value.nodes.some(
           (node) => node.status === "blocked_effect",
         ),
@@ -311,6 +509,8 @@ function renderMarkdownReport(report: {
   scenarios: {
     company_signal_brief: ExampleScenarioSnapshot;
     lead_program_designer: LeadProgramSnapshot;
+    stargazer_intake_lite: StargazerLoopSnapshot;
+    opportunity_discovery_lite: OpportunityLoopSnapshot;
     approval_gated_release: {
       elapsed_ms: number;
       status: string;
@@ -355,6 +555,32 @@ function renderMarkdownReport(report: {
   lines.push(`- profile-change executed nodes: ${listOrNone(report.scenarios.lead_program_designer.profile_change_executed_nodes)}`);
   lines.push(`- profile-change reused nodes: ${listOrNone(report.scenarios.lead_program_designer.profile_change_reused_nodes)}`);
   lines.push("");
+  lines.push("### Stargazer Intake Lite");
+  lines.push(`- status: ${report.scenarios.stargazer_intake_lite.status}`);
+  lines.push(`- graph nodes: ${report.scenarios.stargazer_intake_lite.graph_nodes}`);
+  lines.push(`- eval: ${report.scenarios.stargazer_intake_lite.eval_status} (${scoreText(report.scenarios.stargazer_intake_lite.eval_score)})`);
+  lines.push(`- scripted Pi sessions: ${report.scenarios.stargazer_intake_lite.scripted_session_count}`);
+  lines.push(`- memory artifacts: ${report.scenarios.stargazer_intake_lite.memory_artifact_count}`);
+  lines.push(`- skipped rows: ${report.scenarios.stargazer_intake_lite.skipped_count}`);
+  lines.push(`- duplicate suppressions: ${report.scenarios.stargazer_intake_lite.duplicate_suppression_count}`);
+  lines.push(`- high-water mark: ${report.scenarios.stargazer_intake_lite.high_water_mark_result ?? "n/a"}`);
+  lines.push(`- replay status: ${report.scenarios.stargazer_intake_lite.replay_status}`);
+  lines.push(`- replay saved nodes: ${report.scenarios.stargazer_intake_lite.replay_saved_nodes}`);
+  lines.push("");
+  lines.push("### Opportunity Discovery Lite");
+  lines.push(`- status: ${report.scenarios.opportunity_discovery_lite.status}`);
+  lines.push(`- graph nodes: ${report.scenarios.opportunity_discovery_lite.graph_nodes}`);
+  lines.push(`- eval: ${report.scenarios.opportunity_discovery_lite.eval_status} (${scoreText(report.scenarios.opportunity_discovery_lite.eval_score)})`);
+  lines.push(`- scripted Pi sessions: ${report.scenarios.opportunity_discovery_lite.scripted_session_count}`);
+  lines.push(`- stale rows rejected: ${report.scenarios.opportunity_discovery_lite.rejected_stale_count}`);
+  lines.push(`- missing-provenance rows rejected: ${report.scenarios.opportunity_discovery_lite.rejected_missing_provenance_count}`);
+  lines.push(`- duplicate suppressions: ${report.scenarios.opportunity_discovery_lite.duplicate_suppression_count}`);
+  lines.push(`- winning source: ${report.scenarios.opportunity_discovery_lite.winning_source_url ?? "n/a"}`);
+  lines.push(`- brand-change executed nodes: ${listOrNone(report.scenarios.opportunity_discovery_lite.brand_change_executed_nodes)}`);
+  lines.push(`- brand-change reused nodes: ${listOrNone(report.scenarios.opportunity_discovery_lite.brand_change_reused_nodes)}`);
+  lines.push(`- brand-change saved nodes: ${report.scenarios.opportunity_discovery_lite.brand_change_saved_nodes}`);
+  lines.push(`- stale reasons: ${listOrNone(report.scenarios.opportunity_discovery_lite.stale_reason_summaries)}`);
+  lines.push("");
   lines.push("### Approval-Gated Release");
   lines.push(`- plan status: ${report.scenarios.approval_gated_release.status}`);
   lines.push(`- blocked nodes: ${listOrNone(report.scenarios.approval_gated_release.blocked_effect_nodes)}`);
@@ -384,6 +610,12 @@ function renderMarkdownReport(report: {
   );
   lines.push(
     `| brand-change sessions avoided | ${report.baseline_comparison.brand_change_saved_sessions} |`,
+  );
+  lines.push(
+    `| reactive-loop node recomputes avoided | ${report.baseline_comparison.reactive_loop_saved_nodes} |`,
+  );
+  lines.push(
+    `| duplicate suppressions measured | ${report.baseline_comparison.duplicate_suppression_count} |`,
   );
   lines.push(
     `| approval gate visible to planner | ${report.baseline_comparison.approval_gate_visible ? "yes" : "no"} |`,
@@ -419,6 +651,158 @@ function leadProgramSubmissions(label: string): Record<string, OutputSubmissionP
   };
 }
 
+function stargazerSubmissions(): Record<string, OutputSubmissionPayload> {
+  return {
+    "stargazer-batch-reader": submission({
+      stargazer_batch_delta: JSON.stringify({
+        repo: "openprose/prose",
+        high_water_before: "2026-04-25T23:59:59Z",
+        new_stargazers: [
+          {
+            login: "ops-builder",
+            starred_at: "2026-04-26T08:15:00Z",
+            company: "Northwind Ops",
+          },
+        ],
+        skipped: [
+          { login: "prior-founder", reason: "already handled" },
+          { login: "ops-builder", reason: "duplicate row" },
+        ],
+      }),
+    }),
+    "stargazer-prioritizer": submission({
+      prioritized_stargazers: JSON.stringify({
+        rows: [
+          {
+            login: "ops-builder",
+            rank: 1,
+            reason: "strong agent platform signal",
+          },
+        ],
+      }),
+    }),
+    "stargazer-profile-classifier": submission({
+      stargazer_enrichment_records: JSON.stringify({
+        rows: [
+          {
+            login: "ops-builder",
+            repo: "openprose/prose",
+            starred_at: "2026-04-26T08:15:00Z",
+            public_reason: "building internal agent platforms",
+            private_note: "internal platform buyer",
+          },
+        ],
+      }),
+    }),
+    "stargazer-memory-writer": submission(
+      {
+        stargazer_memory_delta: JSON.stringify({
+          high_water_mark: "2026-04-26T08:15:00Z",
+          handled_logins: ["ops-builder"],
+          skipped_logins: ["prior-founder"],
+        }),
+      },
+      ["writes_memory"],
+    ),
+    "stargazer-digest-writer": submission({
+      stargazer_digest: "# Stargazer Digest\n\nFollow up with ops-builder.",
+    }),
+  };
+}
+
+function opportunitySubmissions(
+  variant: "source-aware",
+): Record<string, OutputSubmissionPayload> {
+  return {
+    "platform-scan-reader": submission({
+      platform_scan_window: JSON.stringify({
+        scanned_at: "2026-04-26T12:35:00Z",
+        accepted_rows: [
+          {
+            source: "hn",
+            url: "https://news.ycombinator.com/item?id=1003",
+            canonical_topic: "agent-audit-trails",
+            posted_at: "2026-04-26T10:00:00Z",
+            reach: 180,
+          },
+          {
+            source: "x",
+            url: "https://x.example/status/1003",
+            canonical_topic: "agent-audit-trails",
+            posted_at: "2026-04-26T10:15:00Z",
+            reach: 420,
+          },
+        ],
+        rejected_rows: [
+          {
+            url: "https://reddit.example/r/aiops/comments/old-audit-thread",
+            reason: "older than 7 days",
+          },
+          {
+            source: "mastodon",
+            reason: "missing url provenance",
+          },
+        ],
+      }),
+    }),
+    ...downstreamOpportunitySubmissions(variant),
+  };
+}
+
+function downstreamOpportunitySubmissions(
+  variant: "source-aware" | "enterprise",
+): Record<string, OutputSubmissionPayload> {
+  return {
+    "opportunity-classifier": submission({
+      opportunity_classifications: JSON.stringify({
+        rows: [
+          {
+            url: "https://news.ycombinator.com/item?id=1003",
+            canonical_topic: "agent-audit-trails",
+            relevance: "high",
+            urgency: "medium",
+            audience: "platform engineering leaders",
+            quality_reason: "operator asks directly about auditable agent workflows",
+          },
+          {
+            url: "https://x.example/status/1003",
+            canonical_topic: "agent-audit-trails",
+            relevance: "high",
+            urgency: "high",
+            audience: "AI operations buyers",
+            quality_reason: "active thread with higher reach and clear audit pain",
+          },
+        ],
+      }),
+    }),
+    "opportunity-deduplicator": submission({
+      opportunity_dedupe_report: JSON.stringify({
+        clusters: [
+          {
+            topic: "agent-audit-trails",
+            winner: "https://x.example/status/1003",
+            winner_reason: "highest reach among fresh duplicates",
+            duplicates: [
+              "https://news.ycombinator.com/item?id=1003",
+              "https://x.example/status/1003",
+            ],
+          },
+        ],
+      }),
+    }),
+    "opportunity-summary-writer": submission({
+      opportunity_summary: [
+        "# Opportunity Summary",
+        "",
+        variant === "enterprise"
+          ? "Lead with a helpful answer on provenance controls for enterprise registries."
+          : "Lead with a helpful answer on audit trails before mentioning OpenProse.",
+        "Source: https://x.example/status/1003",
+      ].join("\n"),
+    }),
+  };
+}
+
 function evalSubmission(
   passed: boolean,
   score: number,
@@ -429,15 +813,38 @@ function evalSubmission(
   });
 }
 
-function submission(outputs: Record<string, string>): OutputSubmissionPayload {
+function submission(
+  outputs: Record<string, string>,
+  performedEffects: string[] = ["pure"],
+): OutputSubmissionPayload {
   return {
     outputs: Object.entries(outputs).map(([port, content]) => ({ port, content })),
-    performed_effects: ["pure"],
+    performed_effects: performedEffects,
   };
 }
 
 async function fixture(root: string, path: string): Promise<string> {
   return readFile(resolve(root, path), "utf8");
+}
+
+async function readRunJsonOutput<T>(
+  runDir: string,
+  record: RunRecord,
+  port: string,
+): Promise<T> {
+  return JSON.parse(await readRunOutput(runDir, record, port)) as T;
+}
+
+async function readRunOutput(
+  runDir: string,
+  record: RunRecord,
+  port: string,
+): Promise<string> {
+  const output = record.outputs.find((candidate) => candidate.port === port);
+  if (!output) {
+    throw new Error(`Missing output '${port}' in ${record.run_id}.`);
+  }
+  return readFile(resolve(runDir, output.artifact_ref), "utf8");
 }
 
 function sessionCount(events: Array<{ event: string }>): number {
@@ -448,6 +855,30 @@ function reusedNodes(plan: ExecutionPlan): string[] {
   return plan.nodes
     .filter((node) => node.status === "current")
     .map((node) => node.component_ref);
+}
+
+function staleReasons(plan: ExecutionPlan): string[] {
+  return Array.from(
+    new Set(plan.nodes.flatMap((node) => node.stale_reasons)),
+  ).sort();
+}
+
+function duplicateSkipCount(rows: Array<{ reason?: string }>): number {
+  return reasonCount(rows, "duplicate");
+}
+
+function duplicateClusterSuppressionCount(
+  clusters: Array<{ duplicates?: string[] }>,
+): number {
+  return clusters.reduce(
+    (total, cluster) => total + Math.max(0, (cluster.duplicates?.length ?? 0) - 1),
+    0,
+  );
+}
+
+function reasonCount(rows: Array<{ reason?: string }>, needle: string): number {
+  const normalized = needle.toLowerCase();
+  return rows.filter((row) => row.reason?.toLowerCase().includes(normalized)).length;
 }
 
 function evalStatus(record: RunRecord): string | null {
