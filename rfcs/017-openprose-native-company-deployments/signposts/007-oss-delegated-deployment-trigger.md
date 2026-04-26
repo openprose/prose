@@ -6,6 +6,7 @@ Date: 2026-04-26
 
 - Extended `triggerLocalDeployment` so a package deployment entrypoint can run through an injected graph runtime or node runner, instead of only the local scripted Pi runner.
 - Added CLI support for `prose deployment trigger ... --graph-vm pi --node-executor-command <cmd>`.
+- Added caller-supplied deployment run ids through `--run-id`, so a hosted `OpenProseRun` id can match the materialized OSS runtime run id.
 - Preserved the scripted Pi path as the default local dry-run mode.
 - Added coverage proving a deployment entrypoint graph is planned by OpenProse while each selected node is delegated through an external executor process.
 

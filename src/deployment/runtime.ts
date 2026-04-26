@@ -45,6 +45,7 @@ export interface TriggerLocalDeploymentOptions {
   targetOutputs?: string[];
   approvedEffects?: string[];
   createdAt?: string;
+  runId?: string;
   graphVm?: GraphVmKind;
   nodeRunner?: NodeRunner;
   graphRuntime?: ReactiveGraphRuntime;
@@ -89,7 +90,7 @@ export async function triggerLocalDeployment(
     targetOutputs: options.targetOutputs,
     approvedEffects: options.approvedEffects,
   });
-  const runId = deploymentRunId(options.entrypoint, createdAt);
+  const runId = options.runId ?? deploymentRunId(options.entrypoint, createdAt);
   const runtimeIr = buildPackageEntrypointRuntimeIr(packageIr, packagePlan);
   const restoreEnvironment = bindDeploymentEnvironment(manifest.environment_bindings);
   const scriptedNodeRunner = options.nodeRunner || options.graphRuntime

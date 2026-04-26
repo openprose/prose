@@ -330,6 +330,7 @@ async function runCliInner(args: string[]): Promise<void> {
           inputs: options.inputs,
           targetOutputs: options.targetOutputs,
           approvedEffects: options.approvedEffects,
+          runId: options.runId ?? undefined,
           graphVm: options.graphVm ?? undefined,
           graphRuntime: options.nodeExecutorCommand
             ? createDelegatedGraphRuntime({

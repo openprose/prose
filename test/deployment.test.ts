@@ -364,6 +364,8 @@ await Bun.write(Bun.env.OPENPROSE_NODE_RESULT_PATH, JSON.stringify({
       "daily-intel",
       "--approved-effect",
       "delivers",
+      "--run-id",
+      "hosted-deployment-run-1",
       "--graph-vm",
       "pi",
       "--node-executor-command",
@@ -373,6 +375,7 @@ await Bun.write(Bun.env.OPENPROSE_NODE_RESULT_PATH, JSON.stringify({
 
     expect(triggered.exitCode).toBe(0);
     const parsed = JSON.parse(new TextDecoder().decode(triggered.stdout));
+    expect(parsed.run.run_id).toBe("hosted-deployment-run-1");
     expect(parsed.run.status).toBe("succeeded");
     expect(parsed.run.node_run_count).toBe(3);
     expect(parsed.run.openprose_run_ref).toBe(
