@@ -12,7 +12,8 @@ If you are orienting from scratch, read these first:
 `co` sits next to `std` under `packages/`, not inside it. `std` is the
 low-level standard library: roles, controls, delivery adapters, memory, evals,
 and ops primitives. `co` is an opinionated starter kit for a specific domain:
-a company whose operating system is made of Prose programs.
+a company whose operating system is made of OpenProse programs and run-store
+acceptance gates.
 
 Reference programs in `co` with the `co/` shorthand (analogous to `std/`):
 
@@ -61,24 +62,38 @@ OpenProse, Inc.'s private business logic:
 
 ## Running Programs
 
-`prose run` is an agent-session command. It is not assumed to be a shell binary.
-If a host provides a native Prose CLI, use it. Otherwise wrap the command in an
-agent runner that has the OpenProse skill loaded.
+The package is designed for the Bun-backed `prose` CLI and for hosted runtimes
+that execute the same package IR. Use the fixture provider for deterministic
+smokes, then use a configured harness provider for real repository inspection.
 
-Claude Code:
-
-```bash
-claude -p "prose run co/programs/company-repo-checker --repo_path customers/prose-openprose"
-```
-
-Codex:
+Compile and publish-check the package:
 
 ```bash
-codex exec -C <workspace-root> "prose run co/programs/company-repo-checker --repo_path customers/prose-openprose"
+bun run prose compile packages/co --no-pretty
+bun run prose publish-check packages/co --strict --no-pretty
 ```
 
-The shell executable is `claude` or `codex`. The `prose run ...` string is the
-instruction the agent session interprets as the OpenProse VM.
+Run the checker through a deterministic fixture:
+
+```bash
+bun run prose run packages/co/programs/company-repo-checker.prose.md \
+  --provider fixture \
+  --approved-effect read_external \
+  --input repo_path=customers/prose-openprose \
+  --output repo-structure-inspector.source_layout='{"source_roots":["systems","shared"]}' \
+  --output repo-structure-inspector.source_layout_failures='[]' \
+  --output contract-eval-drift-inspector.contract_surface='{"evals":[]}' \
+  --output contract-eval-drift-inspector.contract_surface_failures='[]' \
+  --output dependency-graph-inspector.dependency_graph='{"edges":[]}' \
+  --output dependency-graph-inspector.dependency_graph_failures='[]' \
+  --output repo-readiness-reporter.report='{"passed":true,"failures":[]}' \
+  --output repo-readiness-reporter.passed=true \
+  --output repo-readiness-reporter.failures='[]'
+```
+
+The fixture shape mirrors the runtime contract: inspector nodes produce JSON
+artifacts, the reporter returns the public JSON report, and the package eval can
+gate the final run by reading the materialized run payload.
 
 ## Design Notes
 

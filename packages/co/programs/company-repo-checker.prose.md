@@ -3,6 +3,15 @@ name: company-repo-checker
 kind: program
 ---
 
+# Company Repo Checker
+
+Ensures a company-as-code repository is still organized as an
+OpenProse-native package before runtime evals, scheduled workflows, or hosted
+fleet monitors do more expensive work.
+
+This is a reusable public contract. It describes what a company-native source
+tree should preserve; the runtime provider supplies the concrete read/search
+operations.
 
 ### Services
 
@@ -11,67 +20,47 @@ kind: program
 - `dependency-graph-inspector`
 - `repo-readiness-reporter`
 
-
-# Company Repo Checker
-
-Ensures a company-as-prose repository is still organized as an OpenProse-native
-package before runtime evals or fleet monitors do more expensive work.
-
-This is a reusable public contract. It describes what a company-native repo
-should preserve; the agent host executing `prose run` supplies the concrete
-read/search operations.
-
 ### Requires
 
-- `repo_path`: Path<RepositoryRoot> - local path to the company-as-prose repository root
-- `source_roots`: Path[] - optional list of source roots; default `["systems","shared"]`
-- `legacy_roots`: Path[] - optional list of deprecated flat roots; default
-  `["responsibilities","services","delivery","evals","planning"]`
-- `ignored_roots`: Path[] - optional list of roots ignored by the default check; default
-  `[".prose","customers"]`
-- `external_prefixes`: string[] - optional service-reference prefixes that are resolved
-  outside this package; default `["std/","github.com/","gitlab.com/"]`
+- `repo_path`: Path<RepositoryRoot> - local path to the company-as-code repository root
+- `source_roots`: Path[] - optional source roots; default `["systems","shared"]`
+- `legacy_roots`: Path[] - optional deprecated roots; default `["responsibilities","services","delivery","evals","planning"]`
+- `ignored_roots`: Path[] - optional roots ignored by the default check; default `[".prose","customers"]`
+- `external_prefixes`: string[] - optional dependency prefixes resolved outside this package; default `["std/","co/","github.com/","gitlab.com/","registry://"]`
 
 ### Ensures
 
-- `report`: RepoReadinessReport - structured readiness report containing:
-    - `source_layout`: legacy source roots empty, source under declared roots
-    - `contract_surface`: executable components declare Requires and Ensures
-    - `eval_pairing`: every program or service has a paired eval subject
-    - `eval_metadata`: evals declare subject, tier, contract_version, Expects,
-      Expects Not, and Performance Tracked Over Time
-    - `dependency_graph`: Services references resolve and do not cross
-      system-private boundaries
-    - `counts`: executable component count, eval count, dependency edge count
+- `report`: Json<RepoReadinessReport> - structured readiness report containing:
+  - source_layout: legacy source roots empty, source under declared roots
+  - contract_surface: executable components declare Requires and Ensures
+  - eval_pairing: every program or service has a paired eval subject when expected
+  - eval_metadata: evals declare subject, tier, contract_version, expectations, and tracked metrics
+  - dependency_graph: service references resolve without crossing system-private boundaries
+  - counts: executable component count, eval count, dependency edge count, and warning count
 - `passed`: boolean - true only when all hard failures are empty
-- `failures`: RepoFailure[] - array of specific file-grounded failures, empty when passed
+- `failures`: Json<RepoFailure[]> - file-grounded failures, empty when passed
 
 ### Effects
 
 - `read_external`: reads repository source and eval files from `repo_path`
 
-### Strategies
-
-- inspect the repo as a bounded package walk rooted at `repo_path`
-- ignore `.prose/runs/` and nested customer packages unless explicitly asked;
-  runtime traces and customer packages have their own migration tracks
-- fail on stale architecture vocabulary when it affects executable metadata,
-  such as `kind: delivery` or `tier: delivery`
-- treat cross-system private dependencies as source ownership bugs; promote the
-  shared primitive or keep the helper local
-- produce file-grounded failures that a maintainer can act on directly
-- avoid quality scoring here; runtime fleet evals own probabilistic and
-  semantic judgments
-
 ### Errors
 
 - `parse_failed`: a Contract Markdown file cannot be read or parsed
 - `unresolved_service`: a Services entry does not resolve in the package walk
-- `eval_drift`: a component lacks a paired eval or an eval subject does not
-  resolve
+- `eval_drift`: a component lacks a paired eval or an eval subject does not resolve
 - `source_layout_violation`: source appears under a deprecated flat root
-- `ownership_violation`: shared code depends on system-private code, or one
-  system depends directly on another system's private source
+- `ownership_violation`: shared code depends on system-private code, or one system depends directly on another system's private source
+
+### Strategies
+
+- inspect the repo as a bounded package walk rooted at `repo_path`
+- apply defaults when optional root inputs are empty
+- ignore `.prose/runs/` and nested customer packages unless explicitly asked
+- fail on stale architecture vocabulary when it affects executable metadata
+- treat cross-system private dependencies as source ownership bugs
+- produce file-grounded failures that a maintainer can act on directly
+- avoid probabilistic quality scoring here; runtime fleet evals own semantic judgments
 
 ### Execution
 
@@ -96,30 +85,34 @@ parallel:
 
 let report = call repo-readiness-reporter
   source_layout: source_layout
+  source_layout_failures: source_layout_failures
   contract_surface: contract_surface
+  contract_surface_failures: contract_surface_failures
   dependency_graph: dependency_graph
+  dependency_graph_failures: dependency_graph_failures
 
 return report
 ```
 
+---
 
 ## repo-structure-inspector
 
 ### Requires
 
 - `repo_path`: Path<RepositoryRoot> - local path to inspect
-- `source_roots`: Path[] - source roots to treat as package-owned source
-- `legacy_roots`: Path[] - deprecated roots that should not accumulate source files
-- `ignored_roots`: Path[] - roots to skip in default scope
+- `source_roots`: Path[] - optional source roots to treat as package-owned source
+- `legacy_roots`: Path[] - optional deprecated roots that should not accumulate source files
+- `ignored_roots`: Path[] - optional roots to skip in default scope
 
 ### Ensures
 
-- `source_layout`: RepoSourceLayoutReport - report with:
-    - `legacy_roots`: status for each deprecated root
-    - `source_roots`: status for each declared source root
-    - `stale_vocabulary`: file-grounded findings for source metadata that uses
-      obsolete executable vocabulary
-- `failures`: RepoFailure[] - array of source layout violations
+- `source_layout`: Json<RepoSourceLayoutReport> - source layout report containing:
+  - source_roots: status for each declared source root
+  - legacy_roots: status for each deprecated root
+  - ignored_roots: roots excluded from the default check
+  - stale_vocabulary: file-grounded findings for obsolete executable vocabulary
+- `source_layout_failures`: Json<RepoFailure[]> - source layout violations
 
 ### Effects
 
@@ -128,31 +121,30 @@ return report
 ### Strategies
 
 - use the package root as the boundary
-- allow historical migration maps in docs to mention old roots; fail only when
-  executable source or eval metadata reintroduces old roots or kinds
-- flag any committed source file under a deprecated flat root
+- apply the program defaults when optional root inputs are empty
+- allow historical migration maps in docs to mention old roots
+- fail only when executable source or eval metadata reintroduces old roots or kinds
+- flag committed `.prose.md` source files under deprecated flat roots
 
+---
 
 ## contract-eval-drift-inspector
 
 ### Requires
 
 - `repo_path`: Path<RepositoryRoot> - local path to inspect
-- `source_roots`: Path[] - source roots to treat as package-owned source
-- `ignored_roots`: Path[] - roots to skip in default scope
+- `source_roots`: Path[] - optional source roots to treat as package-owned source
+- `ignored_roots`: Path[] - optional roots to skip in default scope
 
 ### Ensures
 
-- `contract_surface`: ContractSurfaceReport - report with:
-    - `executable_components`: every top-level `kind: program` and
-      `kind: service` found under source roots
-    - `missing_contract_sections`: components missing `### Requires` or
-      `### Ensures`
-    - `eval_pairing`: paired eval subject status for each executable component
-    - `eval_metadata`: subject, tier, contract_version, Expects, Expects Not,
-      and Performance Tracked Over Time status for each eval
-    - `counts`: executable component count and eval count
-- `failures`: RepoFailure[] - array of contract or eval drift violations
+- `contract_surface`: Json<ContractSurfaceReport> - contract surface report containing:
+  - executable_components: every top-level `kind: program` and `kind: service`
+  - missing_contract_sections: components missing `### Requires` or `### Ensures`
+  - eval_pairing: paired eval subject status for each executable component
+  - eval_metadata: subject, tier, contract_version, expectations, and tracked metrics
+  - counts: executable component count and eval count
+- `contract_surface_failures`: Json<RepoFailure[]> - contract or eval drift violations
 
 ### Effects
 
@@ -160,37 +152,33 @@ return report
 
 ### Strategies
 
-- parse Contract Markdown according to the OpenProse spec: frontmatter for
-  identity, `###` sections for contracts, `#` headings as human titles
-- treat `kind: service` plus `### Services` as a kind mismatch; the component
-  should be a program or inline components should be used
-- require workflow evals to use `tier: workflow`, not `tier: delivery`
-- require eval subjects to resolve to a component in the same system or shared
-  package
-- allow shared capabilities to use `tier: service`, `tier: responsibility`, or
-  `tier: capability` depending on the component's role
+- parse Contract Markdown according to the OpenProse spec
+- apply the program defaults when optional root inputs are empty
+- treat `kind: service` plus `### Services` as a kind mismatch
+- require workflow evals to use `tier: workflow`
+- require eval subjects to resolve to a component in the same system or shared package
+- allow shared capabilities to use the tier that matches their component role
 
+---
 
 ## dependency-graph-inspector
 
 ### Requires
 
 - `repo_path`: Path<RepositoryRoot> - local path to inspect
-- `source_roots`: Path[] - source roots to treat as package-owned source
-- `ignored_roots`: Path[] - roots to skip in default scope
-- `external_prefixes`: string[] - service-reference prefixes resolved outside this package
+- `source_roots`: Path[] - optional source roots to treat as package-owned source
+- `ignored_roots`: Path[] - optional roots to skip in default scope
+- `external_prefixes`: string[] - optional dependency prefixes resolved outside this package
 
 ### Ensures
 
-- `dependency_graph`: DependencyGraphReport - report with:
-    - `component_names`: globally unique component names under source roots
-    - `edges`: resolved `### Services` dependency edges
-    - `unresolved`: service references that do not resolve by component name or
-      explicit external path
-    - `ownership_violations`: shared-to-system-private or
-      system-to-system-private dependencies
-    - `counts`: dependency edge count
-- `failures`: RepoFailure[] - array of dependency graph violations
+- `dependency_graph`: Json<DependencyGraphReport> - dependency graph report containing:
+  - component_names: globally unique component names under source roots
+  - edges: resolved `### Services` dependency edges
+  - unresolved: service references that do not resolve locally or externally
+  - ownership_violations: shared-to-system-private or system-to-system-private dependencies
+  - counts: dependency edge count
+- `dependency_graph_failures`: Json<RepoFailure[]> - dependency graph violations
 
 ### Effects
 
@@ -198,31 +186,31 @@ return report
 
 ### Strategies
 
-- resolve plain service names by component `name:` across the bounded package
-  walk
-- treat `std/...`, host-qualified dependency paths, explicit relative paths,
-  and explicit `.prose.md` paths as external references rather than unresolved local
-  names
+- resolve plain service names by component `name:` across the bounded package walk
+- apply the program defaults when optional root inputs are empty
+- treat `std/...`, `co/...`, registry refs, host-qualified paths, and explicit `.prose.md` paths as external references
 - fail when a shared component depends on a system-private component
 - fail when one system depends directly on another system's private source
-- if a cross-system dependency is intentional, require promotion into shared or
-  an explicit path plus TODO naming the promotion condition
+- require cross-system reuse to move into `shared/` unless explicitly documented as a transition
 
+---
 
 ## repo-readiness-reporter
 
 ### Requires
 
-- `source_layout`: RepoSourceLayoutReport - output from repo-structure-inspector
-- `contract_surface`: ContractSurfaceReport - output from contract-eval-drift-inspector
-- `dependency_graph`: DependencyGraphReport - output from dependency-graph-inspector
+- `source_layout`: Json<RepoSourceLayoutReport> - output from repo-structure-inspector
+- `source_layout_failures`: Json<RepoFailure[]> - source layout failures
+- `contract_surface`: Json<ContractSurfaceReport> - output from contract-eval-drift-inspector
+- `contract_surface_failures`: Json<RepoFailure[]> - contract surface failures
+- `dependency_graph`: Json<DependencyGraphReport> - output from dependency-graph-inspector
+- `dependency_graph_failures`: Json<RepoFailure[]> - dependency graph failures
 
 ### Ensures
 
-- `report`: RepoReadinessReport - merged readiness report with sections for source_layout,
-  contract_surface, eval_pairing, eval_metadata, dependency_graph, and counts
+- `report`: Json<RepoReadinessReport> - merged readiness report with source layout, contract surface, eval metadata, dependency graph, counts, and recommendation
 - `passed`: boolean - true only when all failure arrays are empty
-- `failures`: RepoFailure[] - concatenated file-grounded failures from all inspectors
+- `failures`: Json<RepoFailure[]> - concatenated file-grounded failures from all inspectors
 
 ### Effects
 
@@ -230,7 +218,8 @@ return report
 
 ### Strategies
 
-- keep the summary short enough for CI or PR review
+- keep the summary short enough for CI, PR review, or hosted registry checks
 - list failures before counts
 - preserve exact file paths and component names from inspector outputs
 - do not downgrade hard failures to warnings
+- return a single JSON report suitable for eval acceptance and platform display

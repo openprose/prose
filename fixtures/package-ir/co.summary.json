@@ -1,11 +1,11 @@
 {
   "package_ir_version": "0.1",
-  "semantic_hash": "859e5748a0b20802944a97585e777509d1b46aad8e39c8550fd3432968453ac7",
+  "semantic_hash": "0716fc26a7b73367ca56c796d5a5d075bd8b633d5b2ad856dac8af7947c2f96d",
   "hashes": {
-    "source_hash": "b2f9b6975b6617ab3ebf1199d105c5230044ecbe5c0172fb3495218d2e38e001",
-    "semantic_hash": "859e5748a0b20802944a97585e777509d1b46aad8e39c8550fd3432968453ac7",
+    "source_hash": "424f6c7be86cc33923848d0a1898cf5a7cdf2930b840e5e7d7482f2ec03486d5",
+    "semantic_hash": "0716fc26a7b73367ca56c796d5a5d075bd8b633d5b2ad856dac8af7947c2f96d",
     "dependency_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-    "policy_hash": "0d315963d18576daa778336d34f290b66921325ffabea7120dd93fdddfb2b6b5",
+    "policy_hash": "ae848f3ccd9d2437445c910c6dd2135d09dd47a3c239ac57bb94f5870eb3e7eb",
     "runtime_config_hash": "41d1f386c3cf25400e2a4f3800bb700013374a2da0b7ba00c06a3eb191955b5c"
   },
   "manifest": {
@@ -89,7 +89,7 @@
   "components": [
     {
       "id": "evals-company-repo-checker-eval--company-repo-checker-eval",
-      "name": "company-repo-checker.eval",
+      "name": "company-repo-checker-eval",
       "kind": "test",
       "path": "evals/company-repo-checker.eval.prose.md",
       "expansions": []
@@ -132,10 +132,10 @@
   ],
   "graph": {
     "node_count": 6,
-    "edge_count": 15,
+    "edge_count": 18,
     "edge_kinds": {
       "caller": 5,
-      "exact": 3,
+      "exact": 6,
       "execution": 4,
       "return": 3
     }
