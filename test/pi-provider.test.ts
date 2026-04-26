@@ -188,6 +188,20 @@ integrationTest("runs a live Pi SDK smoke when explicitly enabled", async () => 
 
   const result = await provider.execute(providerRequest(component, workspace));
 
+  if (result.status !== "succeeded") {
+    throw new Error(
+      `Live Pi SDK smoke failed: ${JSON.stringify(
+        {
+          status: result.status,
+          diagnostics: result.diagnostics,
+          session: result.session,
+        },
+        null,
+        2,
+      )}`,
+    );
+  }
+
   expect(result.status).toBe("succeeded");
   expect(result.artifacts[0]?.port).toBe("message");
 });
