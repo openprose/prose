@@ -86,12 +86,10 @@ async function main(): Promise<void> {
       expectStdout: ["%% OpenProse graph: selective-recompute", "flowchart LR"],
     },
     {
-      label: "run hello through fixture provider",
+      label: "run hello with deterministic outputs",
       args: [
         "run",
         "examples/hello.prose.md",
-        "--provider",
-        "fixture",
         "--run-root",
         runRoot,
         "--run-id",
@@ -119,8 +117,6 @@ async function main(): Promise<void> {
         "examples/evals/examples-quality.eval.prose.md",
         "--subject-run",
         join(runRoot, "confidence-hello"),
-        "--provider",
-        "fixture",
         "--input",
         "package_root=examples",
         "--output",

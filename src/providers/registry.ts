@@ -3,14 +3,6 @@ import {
   type FixtureProviderOptions,
 } from "./fixture.js";
 import {
-  createLocalProcessProvider,
-  type LocalProcessProviderOptions,
-} from "./local-process.js";
-import {
-  createOpenAICompatibleProvider,
-  type OpenAICompatibleProviderOptions,
-} from "./openai-compatible.js";
-import {
   createPiProvider,
   type PiProviderOptions,
   type PiThinkingLevel,
@@ -34,7 +26,7 @@ export function resolveRuntimeProvider(
   const requested = provider ?? (hasFixtureOutputs(fixtureOutputs) ? "fixture" : null);
   if (!requested) {
     throw new Error(
-      "No runtime provider selected. Use --provider fixture with --output fixtures for deterministic local runs.",
+      "No OpenProse graph VM selected. Configure the Pi runtime profile, or provide deterministic outputs for internal tests.",
     );
   }
 
@@ -46,20 +38,20 @@ export function resolveRuntimeProvider(
     return createPiProvider(piOptionsFromEnv(env));
   }
 
-  if (requested === "openai_compatible") {
-    return createOpenAICompatibleProvider(openAICompatibleOptionsFromEnv(env));
-  }
-
-  if (requested === "openrouter") {
-    return createOpenAICompatibleProvider(openRouterOptionsFromEnv(env));
+  if (requested === "openrouter" || requested === "openai_compatible") {
+    throw new Error(
+      `Provider '${requested}' is a model-provider profile, not an OpenProse graph VM. Configure it through OPENPROSE_PI_MODEL_PROVIDER and run with the Pi graph VM.`,
+    );
   }
 
   if (requested === "local_process" || requested === "local-process") {
-    return createLocalProcessProvider(localProcessOptionsFromEnv(env));
+    throw new Error(
+      "Command-style adapters are single-run harness integrations, not OpenProse graph VMs. Use the Pi graph VM for reactive graph execution.",
+    );
   }
 
   throw new Error(
-    `Provider '${requested}' is not registered. Available CLI providers: fixture, local_process, openai_compatible, openrouter, pi.`,
+    `OpenProse graph VM '${requested}' is not registered. Available graph VMs: pi.`,
   );
 }
 
@@ -84,107 +76,6 @@ function piOptionsFromEnv(env: Record<string, string | undefined>): PiProviderOp
   };
 }
 
-function localProcessOptionsFromEnv(
-  env: Record<string, string | undefined>,
-): LocalProcessProviderOptions {
-  const command = envJsonArray(env, "OPENPROSE_LOCAL_PROCESS_COMMAND");
-  if (!command) {
-    throw new Error(
-      "Provider 'local_process' requires OPENPROSE_LOCAL_PROCESS_COMMAND as a JSON string array.",
-    );
-  }
-  return {
-    command,
-    timeoutMs: envNumber(env, "OPENPROSE_LOCAL_PROCESS_TIMEOUT_MS"),
-    env: envJsonRecord(env, "OPENPROSE_LOCAL_PROCESS_ENV") ?? {},
-    outputFiles: envJsonRecord(env, "OPENPROSE_PROVIDER_OUTPUT_FILES") ?? {},
-    performedEffects: envList(env, "OPENPROSE_LOCAL_PROCESS_PERFORMED_EFFECTS") ?? [],
-  };
-}
-
-function openAICompatibleOptionsFromEnv(
-  env: Record<string, string | undefined>,
-): OpenAICompatibleProviderOptions {
-  const apiKey =
-    envString(env, "OPENPROSE_OPENAI_COMPATIBLE_API_KEY") ??
-    envString(env, "OPENAI_API_KEY") ??
-    envString(env, "OPENROUTER_API_KEY");
-  const model =
-    envString(env, "OPENPROSE_OPENAI_COMPATIBLE_MODEL") ??
-    envString(env, "OPENAI_MODEL") ??
-    envString(env, "OPENROUTER_MODEL");
-  const baseUrl =
-    envString(env, "OPENPROSE_OPENAI_COMPATIBLE_BASE_URL") ??
-    envString(env, "OPENAI_BASE_URL") ??
-    (envString(env, "OPENROUTER_API_KEY") ? "https://openrouter.ai/api/v1" : undefined);
-  if (!apiKey) {
-    throw new Error(
-      "Provider 'openai_compatible' requires OPENPROSE_OPENAI_COMPATIBLE_API_KEY, OPENAI_API_KEY, or OPENROUTER_API_KEY.",
-    );
-  }
-  if (!model) {
-    throw new Error(
-      "Provider 'openai_compatible' requires OPENPROSE_OPENAI_COMPATIBLE_MODEL, OPENAI_MODEL, or OPENROUTER_MODEL.",
-    );
-  }
-  if (!baseUrl) {
-    throw new Error(
-      "Provider 'openai_compatible' requires OPENPROSE_OPENAI_COMPATIBLE_BASE_URL or OPENAI_BASE_URL.",
-    );
-  }
-  return {
-    kind: "openai_compatible",
-    apiKey,
-    model,
-    baseUrl,
-    timeoutMs: envNumber(env, "OPENPROSE_OPENAI_COMPATIBLE_TIMEOUT_MS"),
-    temperature: envOptionalNumber(env, "OPENPROSE_OPENAI_COMPATIBLE_TEMPERATURE"),
-    maxTokens: envNumber(env, "OPENPROSE_OPENAI_COMPATIBLE_MAX_TOKENS"),
-    appTitle: envString(env, "OPENPROSE_OPENAI_COMPATIBLE_APP_TITLE"),
-    siteUrl: envString(env, "OPENPROSE_OPENAI_COMPATIBLE_SITE_URL"),
-  };
-}
-
-function openRouterOptionsFromEnv(
-  env: Record<string, string | undefined>,
-): OpenAICompatibleProviderOptions {
-  const apiKey =
-    envString(env, "OPENROUTER_API_KEY") ??
-    envString(env, "OPENPROSE_OPENAI_COMPATIBLE_API_KEY");
-  if (!apiKey) {
-    throw new Error(
-      "Provider 'openrouter' requires OPENROUTER_API_KEY or OPENPROSE_OPENAI_COMPATIBLE_API_KEY.",
-    );
-  }
-  return {
-    kind: "openrouter",
-    apiKey,
-    model:
-      envString(env, "OPENROUTER_MODEL") ??
-      envString(env, "OPENPROSE_OPENAI_COMPATIBLE_MODEL") ??
-      "google/gemini-3-flash-preview",
-    baseUrl:
-      envString(env, "OPENROUTER_BASE_URL") ??
-      envString(env, "OPENPROSE_OPENAI_COMPATIBLE_BASE_URL") ??
-      "https://openrouter.ai/api/v1",
-    timeoutMs:
-      envNumber(env, "OPENROUTER_TIMEOUT_MS") ??
-      envNumber(env, "OPENPROSE_OPENAI_COMPATIBLE_TIMEOUT_MS"),
-    temperature:
-      envOptionalNumber(env, "OPENROUTER_TEMPERATURE") ??
-      envOptionalNumber(env, "OPENPROSE_OPENAI_COMPATIBLE_TEMPERATURE"),
-    maxTokens:
-      envNumber(env, "OPENROUTER_MAX_TOKENS") ??
-      envNumber(env, "OPENPROSE_OPENAI_COMPATIBLE_MAX_TOKENS"),
-    appTitle:
-      envString(env, "OPENROUTER_APP_TITLE") ??
-      envString(env, "OPENPROSE_OPENAI_COMPATIBLE_APP_TITLE"),
-    siteUrl:
-      envString(env, "OPENROUTER_SITE_URL") ??
-      envString(env, "OPENPROSE_OPENAI_COMPATIBLE_SITE_URL"),
-  };
-}
-
 function envString(
   env: Record<string, string | undefined>,
   name: string,
@@ -204,21 +95,6 @@ function envNumber(
   const parsed = Number(value);
   if (!Number.isFinite(parsed) || parsed <= 0) {
     throw new Error(`${name} must be a positive number.`);
-  }
-  return parsed;
-}
-
-function envOptionalNumber(
-  env: Record<string, string | undefined>,
-  name: string,
-): number | undefined {
-  const value = envString(env, name);
-  if (!value) {
-    return undefined;
-  }
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed)) {
-    throw new Error(`${name} must be a number.`);
   }
   return parsed;
 }
@@ -289,25 +165,6 @@ function envThinkingLevel(
     return value;
   }
   throw new Error(`${name} must be one of off, minimal, low, medium, high, xhigh.`);
-}
-
-function envJsonArray(
-  env: Record<string, string | undefined>,
-  name: string,
-): string[] | undefined {
-  const value = envString(env, name);
-  if (!value) {
-    return undefined;
-  }
-  const parsed = JSON.parse(value) as unknown;
-  if (
-    Array.isArray(parsed) &&
-    parsed.length > 0 &&
-    parsed.every((entry) => typeof entry === "string")
-  ) {
-    return parsed;
-  }
-  throw new Error(`${name} must be a non-empty JSON array of strings.`);
 }
 
 function envJsonRecord(

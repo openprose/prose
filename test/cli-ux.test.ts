@@ -9,15 +9,18 @@ import {
 } from "./support";
 
 describe("OpenProse CLI UX", () => {
-  test("help explains the runtime loop and provider model", () => {
+  test("help explains the runtime loop and graph VM model", () => {
     const result = runProseCli(["--help"]);
     const stdout = decode(result.stdout);
 
     expect(result.exitCode).toBe(0);
     expect(stdout).toContain("Core runtime loop:");
     expect(stdout).toContain("compile source/package -> plan against prior runs");
-    expect(stdout).toContain("Providers:");
+    expect(stdout).toContain("Runtime:");
     expect(stdout).toContain("meta-harness");
+    expect(stdout).toContain("OpenRouter");
+    expect(stdout).not.toContain("--provider fixture");
+    expect(stdout).not.toContain("prose fixture");
   });
 
   test("status and trace failures are actionable instead of stack dumps", () => {
@@ -39,8 +42,6 @@ describe("OpenProse CLI UX", () => {
     const run = runProseCli([
       "run",
       "fixtures/compiler/hello.prose.md",
-      "--provider",
-      "fixture",
       "--run-root",
       runRoot,
       "--run-id",
@@ -78,6 +79,22 @@ describe("OpenProse CLI UX", () => {
     expect(decode(graph.stdout)).toContain("%% OpenProse graph: content-pipeline");
     expect(decode(graph.stdout)).toContain("%% requested outputs: final");
     expect(decode(graph.stdout)).toContain("stale: no_current_run");
+  });
+
+  test("rejects model providers as graph VM selections", () => {
+    const result = runProseCli([
+      "run",
+      "fixtures/compiler/hello.prose.md",
+      "--provider",
+      "openrouter",
+      "--output",
+      "message=This should not run.",
+    ]);
+
+    expect(result.exitCode).toBe(1);
+    expect(decode(result.stderr)).toContain(
+      "is a model-provider profile, not an OpenProse graph VM",
+    );
   });
 });
 

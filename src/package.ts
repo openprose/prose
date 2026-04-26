@@ -38,8 +38,12 @@ interface PackageConfig {
   evals?: string[];
   examples?: string[];
   runtime?: {
-    providers?: string[];
-    default_provider?: string;
+    graph_vm?: string;
+    model_providers?: string[];
+    default_model_provider?: string;
+    default_model?: string;
+    thinking?: string;
+    persist_sessions?: boolean;
   };
   hosted?: HostedRuntimeMetadata;
 }
@@ -226,7 +230,8 @@ export function renderPackageText(metadata: PackageMetadata): string {
     `Root: ${metadata.root}`,
     `Components: ${metadata.components.length}`,
     `Quality score: ${metadata.quality.score.toFixed(2)}`,
-    `Runtime providers: ${metadata.runtime.providers.length > 0 ? metadata.runtime.providers.join(", ") : "(unspecified)"}`,
+    `Runtime graph VM: ${metadata.runtime.graph_vm ?? "(unspecified)"}`,
+    `Model providers: ${metadata.runtime.model_providers.length > 0 ? metadata.runtime.model_providers.join(", ") : "(unspecified)"}`,
   ];
 
   if (metadata.quality.warnings.length > 0) {
@@ -274,11 +279,16 @@ function normalizeRuntimeManifest(
   }
 
   return {
-    providers: [...new Set(runtime.providers ?? [])]
+    graph_vm: runtime.graph_vm?.trim() || null,
+    model_providers: [...new Set(runtime.model_providers ?? [])]
       .map((provider) => provider.trim())
       .filter(Boolean)
       .sort(),
-    default_provider: runtime.default_provider?.trim() || null,
+    default_model_provider: runtime.default_model_provider?.trim() || null,
+    default_model: runtime.default_model?.trim() || null,
+    thinking: runtime.thinking?.trim() || null,
+    persist_sessions:
+      typeof runtime.persist_sessions === "boolean" ? runtime.persist_sessions : null,
   };
 }
 
@@ -301,8 +311,12 @@ function buildRuntimeSummary(options: {
   }
 
   return {
-    providers: options.manifest?.providers ?? [],
-    default_provider: options.manifest?.default_provider ?? null,
+    graph_vm: options.manifest?.graph_vm ?? null,
+    model_providers: options.manifest?.model_providers ?? [],
+    default_model_provider: options.manifest?.default_model_provider ?? null,
+    default_model: options.manifest?.default_model ?? null,
+    thinking: options.manifest?.thinking ?? null,
+    persist_sessions: options.manifest?.persist_sessions ?? null,
     required_effects: [...requiredEffects].sort(),
     environment: [...environment.entries()]
       .map(([name, required]) => ({ name, required }))
@@ -379,7 +393,8 @@ function buildComponentMetadata(options: {
       };
     }),
     runtime: {
-      providers: runtime?.providers ?? [],
+      graph_vm: runtime?.graph_vm ?? null,
+      model_providers: runtime?.model_providers ?? [],
       effects: component.effects.map((effect) => effect.kind).sort(),
       environment: component.environment
         .map((binding) => ({ name: binding.name, required: binding.required }))

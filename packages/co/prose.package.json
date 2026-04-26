@@ -10,12 +10,14 @@
     "evals/company-repo-checker.eval.prose.md"
   ],
   "runtime": {
-    "providers": [
-      "fixture",
-      "local_process",
-      "pi"
+    "graph_vm": "pi",
+    "model_providers": [
+      "openrouter"
     ],
-    "default_provider": "fixture"
+    "default_model_provider": "openrouter",
+    "default_model": "google/gemini-3-flash-preview",
+    "thinking": "low",
+    "persist_sessions": true
   },
   "examples": [
     "programs/company-repo-checker.prose.md"

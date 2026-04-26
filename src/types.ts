@@ -355,8 +355,12 @@ export interface PackageHashSetIR {
 }
 
 export interface PackageRuntimeManifest {
-  providers: string[];
-  default_provider: string | null;
+  graph_vm: string | null;
+  model_providers: string[];
+  default_model_provider: string | null;
+  default_model: string | null;
+  thinking: string | null;
+  persist_sessions: boolean | null;
 }
 
 export interface PackageIR {
@@ -936,7 +940,8 @@ export interface PackageArtifactContractMetadata {
 }
 
 export interface PackageComponentRuntimeMetadata {
-  providers: string[];
+  graph_vm: string | null;
+  model_providers: string[];
   effects: string[];
   environment: Array<{ name: string; required: boolean }>;
 }

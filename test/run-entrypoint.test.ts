@@ -742,13 +742,11 @@ kind: program
     ]);
   });
 
-  test("CLI runs fixture provider and writes inspectable run files", async () => {
+  test("CLI deterministic outputs write inspectable run files", async () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-run-cli-"));
     const result = runProseCli([
       "run",
       fixturePath("compiler/hello.prose.md"),
-      "--provider",
-      "fixture",
       "--run-root",
       runRoot,
       "--run-id",
@@ -805,7 +803,7 @@ kind: program
     ]);
     expect(blocked.exitCode).toBe(1);
     expect(new TextDecoder().decode(blocked.stderr)).toContain(
-      "No runtime provider selected.",
+      "No OpenProse graph VM selected.",
     );
   });
 

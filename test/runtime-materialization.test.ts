@@ -84,13 +84,12 @@ describe("OpenProse fixture materialization and remote envelope", () => {
     expect(output).toBe("Hello from a fixture output.\n");
   });
 
-  test("passes api trigger through the CLI fixture materialize command", () => {
+  test("passes api trigger through the CLI deterministic run path", () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-cli-run-"));
     const fixtureFile = fixturePath("compiler/hello.prose.md");
     const result = runProseCli(
       [
-        "fixture",
-        "materialize",
+        "run",
         fixtureFile,
         "--run-root",
         runRoot,
@@ -327,15 +326,38 @@ kind: program
     });
   });
 
-  test("passes approved effects through the CLI fixture materialize command", () => {
+  test("passes approved effects through the CLI deterministic run path", async () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-cli-approved-"));
+    await materializeSource(
+      `---
+name: company-enrichment
+kind: service
+---
+
+### Ensures
+
+- \`profile\`: CompanyProfile - prior enrichment profile
+
+### Effects
+
+- \`pure\`: deterministic fixture setup
+`,
+      {
+        path: "fixtures/compiler/company-enrichment.prose.md",
+        runRoot,
+        runId: "prior-run",
+        outputs: {
+          profile: "Prior enrichment profile.",
+        },
+        trigger: "test",
+      },
+    );
     const fixtureFile = fixturePath("compiler/typed-effects.prose.md");
     const result = Bun.spawnSync(
       [
         "bun",
         "bin/prose.ts",
-        "fixture",
-        "materialize",
+        "run",
         fixtureFile,
         "--run-root",
         runRoot,
@@ -348,7 +370,7 @@ kind: program
         "--input",
         "company=Acme profile",
         "--input",
-        "subject=run: prior-run",
+        "subject=run:prior-run:company-enrichment",
         "--output",
         "brief-writer.brief=Approved CLI brief.",
       ],

@@ -52,8 +52,6 @@ describe("OpenProse examples capability tour", () => {
     expectCliSuccess([
       "run",
       "examples/hello.prose.md",
-      "--provider",
-      "fixture",
       "--run-root",
       runRoot,
       "--run-id",
@@ -66,8 +64,6 @@ describe("OpenProse examples capability tour", () => {
     expectCliSuccess([
       "run",
       "examples/selective-recompute.prose.md",
-      "--provider",
-      "fixture",
       "--run-root",
       runRoot,
       "--run-id",
@@ -86,8 +82,6 @@ describe("OpenProse examples capability tour", () => {
     expectCliSuccess([
       "run",
       "examples/inference-decision-brief.prose.md",
-      "--provider",
-      "fixture",
       "--run-root",
       runRoot,
       "--run-id",
@@ -108,8 +102,6 @@ describe("OpenProse examples capability tour", () => {
     expectCliSuccess([
       "run",
       "examples/company-intake.prose.md",
-      "--provider",
-      "fixture",
       "--run-root",
       runRoot,
       "--run-id",
@@ -130,8 +122,6 @@ describe("OpenProse examples capability tour", () => {
     expectCliSuccess([
       "run",
       "examples/run-aware-brief.prose.md",
-      "--provider",
-      "fixture",
       "--run-root",
       runRoot,
       "--run-id",
@@ -148,8 +138,6 @@ describe("OpenProse examples capability tour", () => {
     expectCliSuccess([
       "run",
       "examples/approval-gated-release.prose.md",
-      "--provider",
-      "fixture",
       "--run-root",
       runRoot,
       "--run-id",
@@ -175,8 +163,6 @@ describe("OpenProse examples capability tour", () => {
     expectCliSuccess([
       "run",
       "examples/selective-recompute.prose.md",
-      "--provider",
-      "fixture",
       "--run-root",
       runRoot,
       "--run-id",
@@ -220,8 +206,6 @@ describe("OpenProse examples capability tour", () => {
     const result = expectCliSuccess([
       "run",
       "examples/hello.prose.md",
-      "--provider",
-      "fixture",
       "--run-root",
       runRoot,
       "--run-id",

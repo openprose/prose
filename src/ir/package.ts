@@ -44,8 +44,12 @@ interface PackageConfig {
   evals?: string[];
   examples?: string[];
   runtime?: {
-    providers?: string[];
-    default_provider?: string;
+    graph_vm?: string;
+    model_providers?: string[];
+    default_model_provider?: string;
+    default_model?: string;
+    thinking?: string;
+    persist_sessions?: boolean;
   };
   hosted?: PackageIR["manifest"]["hosted"];
 }
@@ -233,14 +237,19 @@ function normalizeRuntimeManifest(
     return null;
   }
 
-  const providers = [...new Set(runtime.providers ?? [])]
+  const modelProviders = [...new Set(runtime.model_providers ?? [])]
     .map((provider) => provider.trim())
     .filter(Boolean)
     .sort();
-  const defaultProvider = runtime.default_provider?.trim() || null;
+
   return {
-    providers,
-    default_provider: defaultProvider,
+    graph_vm: runtime.graph_vm?.trim() || null,
+    model_providers: modelProviders,
+    default_model_provider: runtime.default_model_provider?.trim() || null,
+    default_model: runtime.default_model?.trim() || null,
+    thinking: runtime.thinking?.trim() || null,
+    persist_sessions:
+      typeof runtime.persist_sessions === "boolean" ? runtime.persist_sessions : null,
   };
 }
 

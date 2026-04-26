@@ -15,21 +15,24 @@
   },
   "package_ir": {
     "version": "0.1",
-    "semantic_hash": "510baa7bbcb41ce3dab4741f208b3b8d51a1dd53dc58406d84b23ef93d804c74",
+    "semantic_hash": "80be0fc54aca77576edfcfe57996876b014c4ee213db4ce553a3a6e016a85b76",
     "hashes": {
       "source_hash": "177edde528d8139766b8b6885d97edb3c48b5f3f9cbaa8a35ab7e47b9efa37d6",
-      "semantic_hash": "510baa7bbcb41ce3dab4741f208b3b8d51a1dd53dc58406d84b23ef93d804c74",
+      "semantic_hash": "80be0fc54aca77576edfcfe57996876b014c4ee213db4ce553a3a6e016a85b76",
       "dependency_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
       "policy_hash": "fa584faf59e84ce13ca0adc2e7ba3ebd50c857df1d42414ba920fce6c6bd5b0c",
-      "runtime_config_hash": "6458e9036bb06a808c79e133ac8c625ce512547189b309d123e534dc5366d9e4"
+      "runtime_config_hash": "9f42939a4cfdfbe7a0c1821a56bc17bc82feefc20b14d2fffd861f72b8ebe275"
     }
   },
   "runtime": {
-    "providers": [
-      "fixture",
-      "pi"
+    "graph_vm": "pi",
+    "model_providers": [
+      "openrouter"
     ],
-    "default_provider": "fixture",
+    "default_model_provider": "openrouter",
+    "default_model": "google/gemini-3-flash-preview",
+    "thinking": "low",
+    "persist_sessions": true,
     "required_effects": [
       "mutates_repo",
       "read_external"
@@ -70,9 +73,9 @@
         }
       ],
       "runtime": {
-        "providers": [
-          "fixture",
-          "pi"
+        "graph_vm": "pi",
+        "model_providers": [
+          "openrouter"
         ],
         "effects": [
           "pure"
@@ -128,9 +131,9 @@
         }
       ],
       "runtime": {
-        "providers": [
-          "fixture",
-          "pi"
+        "graph_vm": "pi",
+        "model_providers": [
+          "openrouter"
         ],
         "effects": [
           "read_external"
@@ -186,9 +189,9 @@
         }
       ],
       "runtime": {
-        "providers": [
-          "fixture",
-          "pi"
+        "graph_vm": "pi",
+        "model_providers": [
+          "openrouter"
         ],
         "effects": [
           "mutates_repo"

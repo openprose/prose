@@ -87,8 +87,12 @@ describe("OpenProse package, registry, install, publish, and search", () => {
       registry_ref: "registry://openprose/@openprose/catalog-demo@0.1.0",
       no_evals: false,
       runtime: {
-        providers: ["fixture", "pi"],
-        default_provider: "fixture",
+        graph_vm: "pi",
+        model_providers: ["openrouter"],
+        default_model_provider: "openrouter",
+        default_model: "google/gemini-3-flash-preview",
+        thinking: "low",
+        persist_sessions: true,
       },
       hosted: {
         callable: true,
@@ -130,8 +134,12 @@ describe("OpenProse package, registry, install, publish, and search", () => {
         subpath: "fixtures/package/catalog-demo",
       },
       runtime: {
-        providers: ["fixture", "pi"],
-        default_provider: "fixture",
+        graph_vm: "pi",
+        model_providers: ["openrouter"],
+        default_model_provider: "openrouter",
+        default_model: "google/gemini-3-flash-preview",
+        thinking: "low",
+        persist_sessions: true,
         required_effects: ["mutates_repo", "read_external"],
       },
     });

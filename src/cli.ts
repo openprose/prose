@@ -8,7 +8,6 @@ import { highlightFile, renderHighlightHtml, renderHighlightText } from "./highl
 import { installRegistryRef, installWorkspaceDependencies } from "./install";
 import { compilePackagePath } from "./ir/package.js";
 import { lintFile, lintPath, renderLintReportText, renderLintText } from "./lint";
-import { materializeFile } from "./materialize";
 import { projectManifest } from "./manifest";
 import { packagePath, renderPackageText } from "./package";
 import { planFile } from "./plan";
@@ -47,53 +46,11 @@ export async function runCli(args: string[]): Promise<void> {
     command !== "run" &&
     command !== "search" &&
     command !== "status" &&
-    command !== "trace" &&
-    command !== "fixture"
+    command !== "trace"
   ) {
     console.error(`Unknown command: ${command}`);
     printHelp();
     process.exitCode = 1;
-    return;
-  }
-
-  if (command === "fixture") {
-    const [action, ...fixtureRest] = rest;
-    if (action !== "materialize") {
-      console.error("Missing fixture action. Use: prose fixture materialize <file.prose.md>");
-      process.exitCode = 1;
-      return;
-    }
-
-    const options = parseFileCommandArgs(fixtureRest);
-    if (!options.file) {
-      console.error("Missing file path.");
-      process.exitCode = 1;
-      return;
-    }
-
-    const result = await materializeFile(options.file, {
-      runRoot: options.runRoot ?? undefined,
-      runId: options.runId ?? undefined,
-      inputs: options.inputs,
-      outputs: options.outputs,
-      approvedEffects: options.approvedEffects,
-      trigger: options.trigger,
-    });
-    const summary = {
-      run_id: result.run_id,
-      run_dir: result.run_dir,
-      status: result.record.status,
-      node_runs: result.node_records.length,
-    };
-    const output = `${JSON.stringify(summary, null, options.pretty ? 2 : 0)}\n`;
-    if (options.out) {
-      await writeFile(options.out, output, "utf8");
-    } else {
-      process.stdout.write(output);
-    }
-    if (result.record.status !== "succeeded") {
-      process.exitCode = 1;
-    }
     return;
   }
 
@@ -106,6 +63,12 @@ export async function runCli(args: string[]): Promise<void> {
     }
     if (!options.subjectRunPath) {
       console.error("Missing subject run path. Use --subject-run <run-dir|run.json>.");
+      process.exitCode = 1;
+      return;
+    }
+    const providerError = validateCliGraphVm(options.provider);
+    if (providerError) {
+      console.error(providerError);
       process.exitCode = 1;
       return;
     }
@@ -185,6 +148,12 @@ export async function runCli(args: string[]): Promise<void> {
     const options = parseFileCommandArgs(rest);
     if (!options.file) {
       console.error("Missing file path.");
+      process.exitCode = 1;
+      return;
+    }
+    const providerError = validateCliGraphVm(options.provider);
+    if (providerError) {
+      console.error(providerError);
       process.exitCode = 1;
       return;
     }
@@ -1020,12 +989,31 @@ function parseTrigger(value: string | undefined): RunRecord["caller"]["trigger"]
   return "manual";
 }
 
+function validateCliGraphVm(provider: string | null): string | null {
+  if (!provider) {
+    return null;
+  }
+  if (provider === "pi") {
+    return null;
+  }
+  if (provider === "openrouter" || provider === "openai_compatible") {
+    return `Provider '${provider}' is a model-provider profile, not an OpenProse graph VM. Configure it through OPENPROSE_PI_MODEL_PROVIDER and run with the Pi graph VM.`;
+  }
+  if (provider === "fixture") {
+    return "The fixture provider is an internal scripted test helper, not a public graph VM. Use --output fixtures without --provider for deterministic local tests, or run the Pi graph VM for real execution.";
+  }
+  if (provider === "local_process" || provider === "local-process") {
+    return "Command-style adapters are single-run harness integrations, not OpenProse graph VMs. Use the Pi graph VM for reactive graph execution.";
+  }
+  return `OpenProse graph VM '${provider}' is not registered. Available graph VMs: pi.`;
+}
+
 function printHelp(): void {
   console.log(`OpenProse
 
 Usage:
   prose compile <file.prose.md|dir> [--out ir.json] [--no-pretty]
-  prose eval <eval.prose.md> --subject-run .prose/runs/{id} [--provider fixture] [--output result='{"passed":true,"score":0.9}']
+  prose eval <eval.prose.md> --subject-run .prose/runs/{id} [--output result='{"passed":true,"score":0.9}']
   prose fmt <file.prose.md|dir> [--write|--check]
   prose grammar [--out syntaxes/openprose.tmLanguage.json] [--no-pretty]
   prose install [registry-ref|path] [--catalog-root dir] [--workspace-root dir] [--deps-root dir] [--refresh] [--source-override package=path]
@@ -1035,27 +1023,23 @@ Usage:
   prose highlight <file.prose.md> [--format text|json|html]
   prose lint <file.prose.md|dir> [--format text|json]
   prose plan <file.prose.md> [--input name=value] [--current-run .prose/runs/{id}] [--target-output final] [--approved-effect delivers]
-  prose run <file.prose.md> [--provider fixture] [--run-root .prose/runs] [--input name=value] [--output port=value] [--approved-effect delivers] [--approval approval.json] [--required-eval eval.prose.md]
+  prose run <file.prose.md> [--run-root .prose/runs] [--input name=value] [--output port=value] [--approved-effect delivers] [--approval approval.json] [--required-eval eval.prose.md]
   prose preflight <file.prose.md> [--format text|json]
   prose publish-check <dir|file.prose.md> [--format text|json] [--strict]
   prose remote execute <file.prose.md> [--out-dir .openprose/remote-runs] [--run-id id] [--input name=value] [--output port=value] [--approved-effect delivers]
-  prose fixture materialize <file.prose.md> [--run-root .prose/runs] [--input name=value] [--output port=value] [--approved-effect delivers]
   prose search <dir> [--type CompanyProfile] [--effect read_external] [--kind service] [--min-quality 0.8]
   prose status [.prose/runs] [--limit 10] [--format text|json]
   prose trace <.prose/runs/{id}|run.json> [--format text|json]
 
 Core runtime loop:
-  compile source/package -> plan against prior runs -> run through a provider
+  compile source/package -> plan against prior runs -> run through the graph VM
   -> validate artifacts -> write run records -> inspect status/trace/graph
 
-Providers:
-  fixture is deterministic for tests, local-process runs command-style adapters,
-  openai_compatible/openrouter call chat-completion endpoints, and pi is the
-  first TypeScript harness adapter. OpenProse coordinates provider sessions as
-  the meta-harness; it does not replace the harness.
-  CLI provider configuration is read from OPENPROSE_PI_*,
-  OPENPROSE_LOCAL_PROCESS_*, OPENPROSE_OPENAI_COMPATIBLE_*, and OPENROUTER_*
-  environment variables.
+Runtime:
+  OpenProse owns the reactive meta-harness. The real local graph VM is Pi:
+  each selected graph node runs in a persisted Pi session, while model
+  providers such as OpenRouter are configured under the Pi runtime profile.
+  Deterministic --output fixtures remain available for tests and examples.
 
 Commands:
   compile      Compile Contract Markdown to canonical Prose IR JSON
@@ -1071,7 +1055,6 @@ Commands:
   preflight    Check dependency installs and environment readiness for a program
   remote       Execute through the hosted runtime envelope/artifact contract
   run          Execute an OpenProse contract through the local meta-harness
-  fixture      Run deterministic fixture-only development commands
   package      Generate registry/package metadata from canonical source
   publish-check  Evaluate local publish readiness from package metadata
   search       Search local package metadata by type, effect, kind, or quality

@@ -26,7 +26,6 @@ bun run prose plan examples/selective-recompute.prose.md \
 bun run prose graph examples/approval-gated-release.prose.md \
   --input release_candidate="v0.11.0"
 bun run prose run examples/hello.prose.md \
-  --provider fixture \
   --run-id docs-hello \
   --output message="Hello from the local runtime."
 bun run prose status .prose/runs

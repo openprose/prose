@@ -23,11 +23,10 @@ agent applications as typed, reactive, inspectable services.
 bun run prose compile examples/hello.prose.md
 ```
 
-Run it through the deterministic fixture provider:
+Run it with deterministic outputs:
 
 ```bash
 bun run prose run examples/hello.prose.md \
-  --provider fixture \
   --run-root /tmp/openprose-tour/runs \
   --run-id hello-tour \
   --output message="Hello from OpenProse."
@@ -45,7 +44,6 @@ Materialize a baseline run:
 
 ```bash
 bun run prose run examples/selective-recompute.prose.md \
-  --provider fixture \
   --run-root /tmp/openprose-tour/runs \
   --run-id selective-base \
   --input draft="A stable draft." \
@@ -68,27 +66,24 @@ bun run prose plan examples/selective-recompute.prose.md \
 ## 3. Run A Model-Backed Decision Graph
 
 `inference-decision-brief.prose.md` is the smallest interesting local
-inference graph. OpenProse plans three typed nodes, calls the selected provider
+inference graph. OpenProse plans three typed nodes, calls the Pi graph VM
 once per stale node, materializes each node as a run, and passes upstream
 artifacts into the downstream prompt.
 
-Use any OpenAI-compatible endpoint:
+Use Pi with OpenRouter as the model provider:
 
 ```bash
-OPENPROSE_OPENAI_COMPATIBLE_API_KEY="$OPENROUTER_API_KEY" \
-OPENPROSE_OPENAI_COMPATIBLE_BASE_URL=https://openrouter.ai/api/v1 \
-OPENPROSE_OPENAI_COMPATIBLE_MODEL=google/gemini-3-flash-preview \
+OPENPROSE_PI_MODEL_PROVIDER=openrouter \
+OPENPROSE_PI_MODEL_ID=google/gemini-3-flash-preview \
+OPENPROSE_PI_API_KEY="$OPENROUTER_API_KEY" \
+OPENPROSE_PI_THINKING_LEVEL=low \
 bun run prose run examples/inference-decision-brief.prose.md \
-  --provider openai_compatible \
+  --provider pi \
   --run-root /tmp/openprose-tour/runs \
   --run-id inference-brief \
   --input decision_question="Should we prioritize hosted OpenProse registry before hosted runtime?" \
   --input raw_signals="Registry semantics are stable. Runtime provider choice is still high-risk. Users can already publish and install locally."
 ```
-
-If you prefer the OpenRouter alias, `--provider openrouter` defaults to
-`https://openrouter.ai/api/v1` and `google/gemini-3-flash-preview` when only
-`OPENROUTER_API_KEY` is set.
 
 Inspect the resulting graph trace:
 
@@ -100,7 +95,6 @@ bun run prose trace /tmp/openprose-tour/runs/inference-brief --format text
 
 ```bash
 bun run prose run examples/company-intake.prose.md \
-  --provider fixture \
   --run-root /tmp/openprose-tour/runs \
   --run-id intake-seed \
   --input company_domain=openprose.com \
@@ -117,7 +111,6 @@ as a typed input:
 
 ```bash
 bun run prose run examples/run-aware-brief.prose.md \
-  --provider fixture \
   --run-root /tmp/openprose-tour/runs \
   --run-id run-aware-tour \
   --input company="OpenProse profile." \
@@ -138,7 +131,6 @@ With explicit approval scopes, the same graph can run:
 
 ```bash
 bun run prose run examples/approval-gated-release.prose.md \
-  --provider fixture \
   --run-root /tmp/openprose-tour/runs \
   --run-id release-tour \
   --input release_candidate=v0.11.0 \
@@ -156,7 +148,6 @@ acceptance without hiding the run artifact.
 
 ```bash
 bun run prose run examples/hello.prose.md \
-  --provider fixture \
   --run-root /tmp/openprose-tour/runs \
   --run-id eval-accepted \
   --input package_root=examples \
@@ -185,11 +176,9 @@ bun run prose install registry://openprose/@openprose/examples@0.1.0/hello \
   --source-override "github.com/openprose/prose=$(pwd)"
 ```
 
-## Provider Selection
+## Runtime Profile
 
-`fixture` is the deterministic provider used by repeatable tests.
-`openai_compatible` and `openrouter` are minimal inference adapters for local
-model-backed examples. Full harnesses such as Pi, OpenCode, Codex CLI, and
-Claude Code sit behind the same provider contract, so `prose run` remains the
-meta-harness: it plans the graph, invokes component sessions, validates
-artifacts, writes runs, and updates current pointers.
+OpenProse owns the reactive meta-harness. The real local graph VM is Pi: each
+selected node runs as a persisted Pi session, and model providers such as
+OpenRouter are configured inside that Pi runtime profile. Deterministic
+`--output` fixtures remain available for repeatable tests and concise examples.

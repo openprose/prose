@@ -10,15 +10,14 @@ component:
 
 ```bash
 bun run prose run packages/std/roles/summarizer.prose.md \
-  --provider fixture \
   --input content="Decision: ship the examples tour." \
   --input preserve='{"items":["Decision"]}' \
   --output summary="Decision: ship the examples tour."
 ```
 
-The fixture provider is deterministic and exists for development/testing. Real
-harness providers receive the same typed port contract and the role's
-`### Execution` instructions.
+Deterministic `--output` fixtures exist for development/testing. Real execution
+runs the same typed port contract and the role's `### Execution` instructions
+through the Pi graph VM.
 
 ## Roles by Category
 

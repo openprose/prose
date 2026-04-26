@@ -1,12 +1,12 @@
 {
   "package_ir_version": "0.1",
-  "semantic_hash": "6e734b406c9c4bb2f1c3c37f746e8ea992a5890cf5a624ea255e1e0ec7e1047f",
+  "semantic_hash": "5069ffeb95a2afaf4f04c25468baa6620426b37640ce22319bfc25eeb4e7b49e",
   "hashes": {
     "source_hash": "a3a89e7460016d0fa6fc6d57878fafe555e8d270ed735d6e23f2dfecb078dd7e",
-    "semantic_hash": "6e734b406c9c4bb2f1c3c37f746e8ea992a5890cf5a624ea255e1e0ec7e1047f",
+    "semantic_hash": "5069ffeb95a2afaf4f04c25468baa6620426b37640ce22319bfc25eeb4e7b49e",
     "dependency_hash": "274e424f01b65e9042abc2e220cb92a3c67f471429616deafea5ea8423053ba5",
     "policy_hash": "ffe076367b3b0d0143198d146e8ec1fb9f1cfc18e30ae5a8d548198407135e28",
-    "runtime_config_hash": "34ecfbab3b681034776d0db3e1714541e2309dc606018c120b56cc4328d32a82"
+    "runtime_config_hash": "867616cf663fc00b94529efb481181ed849fb0633f81586ad50576decc13f8d3"
   },
   "manifest": {
     "name": "@openprose/std",
@@ -36,12 +36,14 @@
     ],
     "no_evals": false,
     "runtime": {
-      "providers": [
-        "fixture",
-        "local_process",
-        "pi"
+      "graph_vm": "pi",
+      "model_providers": [
+        "openrouter"
       ],
-      "default_provider": "fixture"
+      "default_model_provider": "openrouter",
+      "default_model": "google/gemini-3-flash-preview",
+      "thinking": "low",
+      "persist_sessions": true
     },
     "hosted": null
   },

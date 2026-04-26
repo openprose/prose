@@ -15,14 +15,14 @@
     "evals/examples-quality.eval.prose.md"
   ],
   "runtime": {
-    "providers": [
-      "fixture",
-      "local_process",
-      "openai_compatible",
-      "openrouter",
-      "pi"
+    "graph_vm": "pi",
+    "model_providers": [
+      "openrouter"
     ],
-    "default_provider": "fixture"
+    "default_model_provider": "openrouter",
+    "default_model": "google/gemini-3-flash-preview",
+    "thinking": "low",
+    "persist_sessions": true
   },
   "examples": [
     "hello.prose.md",

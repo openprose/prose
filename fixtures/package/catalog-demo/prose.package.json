@@ -17,11 +17,14 @@
     "examples/catalog-demo.run.json"
   ],
   "runtime": {
-    "providers": [
-      "fixture",
-      "pi"
+    "graph_vm": "pi",
+    "model_providers": [
+      "openrouter"
     ],
-    "default_provider": "fixture"
+    "default_model_provider": "openrouter",
+    "default_model": "google/gemini-3-flash-preview",
+    "thinking": "low",
+    "persist_sessions": true
   },
   "hosted": {
     "callable": true,

@@ -1,17 +1,15 @@
 # Inference Examples
 
-OpenProse now has two local inference paths:
+OpenProse has one real local graph runtime:
 
-- `openai_compatible` / `openrouter`: a minimal adapter for OpenAI-compatible
-  chat completion endpoints. It is useful for small local examples and smoke
-  tests where the provider returns typed output artifacts as JSON.
-- `pi`: a harness-backed provider. It runs a real agent harness session for
-  each selected graph node, writes declared output files, and lets OpenProse
-  materialize those files as runs.
+- `pi`: a harness-backed graph VM. It runs a real agent harness session for
+  each selected graph node, writes declared output artifacts, and lets
+  OpenProse materialize those artifacts as runs.
 
-The important shape is the same in both cases: OpenProse is the meta-harness.
-It plans the graph, invokes one provider session per selected node, validates
-outputs, stores artifacts, and passes accepted upstream artifacts downstream.
+OpenProse is the meta-harness. It plans the graph, invokes one Pi session per
+selected node, validates outputs, stores artifacts, and passes accepted
+upstream artifacts downstream. Model providers such as OpenRouter are configured
+inside the Pi runtime profile; they are not OpenProse graph VMs.
 
 ## Decision Brief
 
@@ -29,24 +27,25 @@ The graph is deliberately compact:
 2. `risk-synthesizer` receives the accepted evidence artifact.
 3. `decision-brief-writer` receives the evidence and risk artifacts.
 
-## Local OpenAI-Compatible Run
+## Local Pi Run With OpenRouter
 
-Use this when you have a funded OpenAI-compatible endpoint:
+Use this when you have a funded OpenRouter key:
 
 ```bash
-OPENPROSE_OPENAI_COMPATIBLE_API_KEY="$OPENROUTER_API_KEY" \
-OPENPROSE_OPENAI_COMPATIBLE_BASE_URL=https://openrouter.ai/api/v1 \
-OPENPROSE_OPENAI_COMPATIBLE_MODEL=google/gemini-3-flash-preview \
+OPENPROSE_PI_MODEL_PROVIDER=openrouter \
+OPENPROSE_PI_MODEL_ID=google/gemini-3-flash-preview \
+OPENPROSE_PI_API_KEY="$OPENROUTER_API_KEY" \
+OPENPROSE_PI_THINKING_LEVEL=low \
 bun run prose run examples/inference-decision-brief.prose.md \
-  --provider openai_compatible \
+  --provider pi \
   --run-root /tmp/openprose-live-inference/runs \
-  --run-id openai-compatible-decision-brief \
+  --run-id openrouter-pi-decision-brief \
   --input decision_question="Should OpenProse prioritize a hosted registry before a hosted runtime?" \
   --input raw_signals="Registry package metadata is stable locally. Runtime provider interop still has risk. Users can already publish, install, test, and compose package components locally."
 ```
 
-The repository test suite covers this path against a local mock
-OpenAI-compatible endpoint so it remains deterministic.
+The repository test suite keeps deterministic coverage with scripted outputs
+while the Pi integration tests exercise the real harness boundary.
 
 ## Local Pi Harness Run
 
@@ -92,6 +91,6 @@ Nodes:
 ## Current Live Credential State
 
 The available OpenRouter key reaches the provider but returns HTTP 402
-insufficient credits. That is useful evidence: both the Pi OpenRouter path and
-the direct OpenAI-compatible adapter surface the provider/account failure
-clearly, without collapsing it into a missing-output runtime error.
+insufficient credits. That is useful evidence: the Pi OpenRouter profile
+surfaces provider/account failure clearly, without collapsing it into a
+missing-output runtime error.

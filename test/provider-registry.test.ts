@@ -27,7 +27,7 @@ describe("OpenProse runtime provider registry", () => {
   });
 
   test("requires explicit provider selection without fixture outputs", () => {
-    expect(() => resolveRuntimeProvider()).toThrow("No runtime provider selected.");
+    expect(() => resolveRuntimeProvider()).toThrow("No OpenProse graph VM selected.");
   });
 
   test("configures the Pi provider from environment records", () => {
@@ -47,53 +47,32 @@ describe("OpenProse runtime provider registry", () => {
     expect(provider.kind).toBe("pi");
   });
 
-  test("configures local-process provider from environment records", () => {
-    const provider = resolveRuntimeProvider({
-      provider: "local-process",
-      env: {
-        OPENPROSE_LOCAL_PROCESS_COMMAND: JSON.stringify(["bun", "--version"]),
-        OPENPROSE_LOCAL_PROCESS_TIMEOUT_MS: "1000",
-        OPENPROSE_LOCAL_PROCESS_ENV: JSON.stringify({ EXAMPLE: "yes" }),
-        OPENPROSE_PROVIDER_OUTPUT_FILES: JSON.stringify({ message: "message.md" }),
-        OPENPROSE_LOCAL_PROCESS_PERFORMED_EFFECTS: "pure",
-      },
-    });
+  test("rejects model providers as graph VMs", () => {
+    expect(() =>
+      resolveRuntimeProvider({
+        provider: "openrouter",
+        env: {
+          OPENROUTER_API_KEY: "test-key",
+        },
+      }),
+    ).toThrow("model-provider profile, not an OpenProse graph VM");
 
-    expect(provider.kind).toBe("local_process");
+    expect(() =>
+      resolveRuntimeProvider({
+        provider: "openai_compatible",
+      }),
+    ).toThrow("model-provider profile, not an OpenProse graph VM");
   });
 
-  test("configures OpenAI-compatible providers from environment records", () => {
-    const compatible = resolveRuntimeProvider({
-      provider: "openai_compatible",
-      env: {
-        OPENPROSE_OPENAI_COMPATIBLE_API_KEY: "test-key",
-        OPENPROSE_OPENAI_COMPATIBLE_MODEL: "test/model",
-        OPENPROSE_OPENAI_COMPATIBLE_BASE_URL: "http://localhost:1234/v1",
-        OPENPROSE_OPENAI_COMPATIBLE_TIMEOUT_MS: "1000",
-        OPENPROSE_OPENAI_COMPATIBLE_TEMPERATURE: "0",
-      },
-    });
-    const openrouter = resolveRuntimeProvider({
-      provider: "openrouter",
-      env: {
-        OPENROUTER_API_KEY: "test-key",
-      },
-    });
-
-    expect(compatible.kind).toBe("openai_compatible");
-    expect(openrouter.kind).toBe("openrouter");
+  test("rejects command-style adapters as graph VMs", () => {
+    expect(() =>
+      resolveRuntimeProvider({
+        provider: "local-process",
+      }),
+    ).toThrow("Command-style adapters are single-run harness integrations");
   });
 
   test("rejects invalid provider environment configuration", () => {
-    expect(() =>
-      resolveRuntimeProvider({
-        provider: "local_process",
-        env: {
-          OPENPROSE_LOCAL_PROCESS_COMMAND: JSON.stringify("bun --version"),
-        },
-      }),
-    ).toThrow("OPENPROSE_LOCAL_PROCESS_COMMAND must be a non-empty JSON array");
-
     expect(() =>
       resolveRuntimeProvider({
         provider: "pi",
@@ -103,15 +82,6 @@ describe("OpenProse runtime provider registry", () => {
       }),
     ).toThrow("OPENPROSE_PI_THINKING_LEVEL must be one of");
 
-    expect(() =>
-      resolveRuntimeProvider({
-        provider: "openai_compatible",
-        env: {
-          OPENPROSE_OPENAI_COMPATIBLE_MODEL: "test/model",
-          OPENPROSE_OPENAI_COMPATIBLE_BASE_URL: "http://localhost:1234/v1",
-        },
-      }),
-    ).toThrow("Provider 'openai_compatible' requires");
   });
 
   test("rejects unknown provider names", () => {
@@ -119,6 +89,6 @@ describe("OpenProse runtime provider registry", () => {
       resolveRuntimeProvider({
         provider: "unknown-provider",
       }),
-    ).toThrow("Available CLI providers: fixture, local_process, openai_compatible, openrouter, pi");
+    ).toThrow("Available graph VMs: pi");
   });
 });

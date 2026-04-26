@@ -13,10 +13,9 @@ The Bun CLI now provides a coherent authoring and local-runtime surface:
 - `prose preflight`: environment and dependency readiness checks
 - `prose plan`: stale/current/blocked reasoning against prior runs
 - `prose graph`: graph rendering with plan overlay
-- `prose run`: provider-backed local execution through the meta-harness
+- `prose run`: graph-VM local execution through the meta-harness
 - `prose eval`: executable eval contracts over materialized runs
 - `prose remote execute`: hosted-compatible envelope and artifact manifest
-- `prose fixture materialize`: deterministic fixture-only RFC 005-style run materialization
 - `prose status` / `prose trace`: inspect local runs
 - `prose package`: generate package metadata
 - `prose publish-check`: local publish gate
@@ -28,7 +27,7 @@ These surfaces share one model:
 - `.prose.md` source
 - deterministic IR
 - run materialization as the universal execution record
-- fixture materialization as a deterministic development path, not the runtime center
+- deterministic `--output` fixtures as a development/test path, not the runtime center
 - package and hosted metadata as projections over the same executable contract
 
 ## What the Current Patterns Buy Us

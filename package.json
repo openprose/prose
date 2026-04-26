@@ -23,7 +23,6 @@
     "package": "bun bin/prose.ts package",
     "publish-check": "bun bin/prose.ts publish-check",
     "search": "bun bin/prose.ts search",
-    "fixture:materialize": "bun bin/prose.ts fixture materialize",
     "trace": "bun bin/prose.ts trace",
     "test": "bun test",
     "typecheck": "bunx tsc --noEmit"

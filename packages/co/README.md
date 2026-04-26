@@ -63,8 +63,8 @@ OpenProse, Inc.'s private business logic:
 ## Running Programs
 
 The package is designed for the Bun-backed `prose` CLI and for hosted runtimes
-that execute the same package IR. Use the fixture provider for deterministic
-smokes, then use a configured harness provider for real repository inspection.
+that execute the same package IR. Use deterministic `--output` fixtures for
+smokes, then use a configured Pi runtime profile for real repository inspection.
 
 Compile and publish-check the package:
 
@@ -73,11 +73,10 @@ bun run prose compile packages/co --no-pretty
 bun run prose publish-check packages/co --strict --no-pretty
 ```
 
-Run the checker through a deterministic fixture:
+Run the checker with deterministic outputs:
 
 ```bash
 bun run prose run packages/co/programs/company-repo-checker.prose.md \
-  --provider fixture \
   --approved-effect read_external \
   --input repo_path=customers/prose-openprose \
   --output repo-structure-inspector.source_layout='{"source_roots":["systems","shared"]}' \

@@ -107,8 +107,6 @@ describe("OpenProse executable evals", () => {
       evalPath,
       "--subject-run",
       subject.run_dir,
-      "--provider",
-      "fixture",
       "--output",
       "result={\"passed\":true,\"score\":0.81,\"verdict\":\"pass\"}",
       "--no-pretty",
