@@ -17,6 +17,7 @@ The current architecture is defined by:
 - RFC 012: Hosted Runtime Contract and Artifact Semantics
 - RFC 013: Ideal OSS Package Restructure
 - RFC 014: Company Example Backpressure Suite
+- RFC 015: Public OSS Hardening TODO
 
 Together these define the direction: canonical `.prose.md` source compiles to
 IR, IR materializes into immutable runs, reactive graph nodes point at accepted
@@ -27,7 +28,9 @@ historical implementation record. RFC 014 is the active OSS runtime spine:
 Pi is the reactive graph VM, per-node execution happens through node runners,
 model providers live inside the Pi runtime profile, and real-world examples
 backpressure the package as it becomes the ideal React-like framework for agent
-outcomes.
+outcomes. RFC 015 is the active public-release hardening queue: add findings
+there before fixing them so the last pre-release pass stays deliberate and
+traceable.
 
 ## Status Table
 
@@ -47,3 +50,4 @@ outcomes.
 | 012: Hosted Runtime Contract and Artifact Semantics | In implementation | Host-neutral remote runner contract, result envelope, artifact semantics, registry metadata ingest contract, provenance fields, and std quality ratchet. Runner/envelope/artifact manifest landed in note 030; metadata v2 and std strict readiness landed in note 031. |
 | 013: Ideal OSS Package Restructure | Implemented / historical | Phase tree completed through signpost 042. `prose run`, local graph execution, evals, hosted fixtures, package metadata, docs, and the confidence matrix are in place. Where RFC 013 mentions flat providers, fixture providers, or provider protocols, treat that wording as superseded by RFC 014's graph VM/node-runner vocabulary. |
 | 014: Company Example Backpressure Suite | Draft/current | Required Pi runtime changes plus graduated real-world examples drawn from `customers/prose-openprose`, designed to pressure single-run portability, Pi-backed reactive graph execution, memory, effect gates, mutating scratch workspaces, evals, measurements, and release confidence. |
+| 015: Public OSS Hardening TODO | Draft/current | Active public-release cleanup queue for docs, skills, runtime robustness, release packaging, stdlib quality, and ergonomics. Add findings here before fixing them; signpost/commit/push each slice. |
