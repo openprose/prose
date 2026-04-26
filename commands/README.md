@@ -14,7 +14,8 @@ route to the repository CLI and current graph-VM model.
 
 - `prose-boot.md` — `/prose-boot`: orient the user to the current OpenProse CLI and examples
 - `prose-run.md` — `/prose-run <file>`: execute a `.prose.md` program through `prose run`
+- `prose-handoff.md` — `/prose-handoff <file>`: export a single component contract for a compatible one-off harness
 - `prose-lint.md` — `/prose-lint <file.prose.md>`: validate structure, schema, shapes, and contracts without executing
 - `prose-preflight.md` — `/prose-preflight <file.prose.md>`: check dependencies and environment variables before a run
-- `prose-inspect.md` — `/prose-inspect <run-id>`: evaluate a completed run
+- `prose-inspect.md` — `/prose-inspect <run-id>`: inspect a completed run and decide whether to run evals
 - `prose-status.md` — `/prose-status`: show recent runs

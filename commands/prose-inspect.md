@@ -1,9 +1,9 @@
 ---
-description: Evaluate a completed OpenProse run
+description: Inspect a completed OpenProse run
 argument-hint: <run-id>
 ---
 
-Inspect and evaluate the completed run: $ARGUMENTS
+Inspect the completed run: $ARGUMENTS
 
 Use `status` and `trace` against the local run root:
 
@@ -13,6 +13,7 @@ bun run prose trace .prose/runs/$ARGUMENTS
 ```
 
 The trace reads the run record, plan, artifact records, node records, and
-runtime trace. Eval programs can be run separately with `bun run prose eval`.
+runtime trace. If the user wants a formal judgment, run the appropriate eval
+program separately with `bun run prose eval`.
 
 If no run ID is specified, show recent runs and ask which one to inspect (equivalent to `prose status` followed by selection).

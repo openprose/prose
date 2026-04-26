@@ -13,7 +13,8 @@ Preferred command:
 bun run prose run "$ARGUMENTS" --graph-vm pi
 ```
 
-For deterministic fixture runs, pass declared outputs:
+For deterministic local tests, pass declared outputs. OpenProse routes those
+through an internal scripted Pi session:
 
 ```bash
 bun run prose run "$ARGUMENTS" --graph-vm pi --output port=value

@@ -1,5 +1,5 @@
 ---
-purpose: Bundled OpenProse skill definitions distributed with the prose repo — open-prose VM
+purpose: Bundled OpenProse skill definitions distributed with the prose repo
 related:
   - ../README.md
   - ./open-prose/SKILL.md
@@ -7,7 +7,10 @@ related:
 
 # skills
 
-Bundled OpenProse skill definitions shipped with the language specification repo. In environments with `npx skills`, each subdirectory can be installed as a skill; in Codex, the same files can be loaded through the repository-local `AGENTS.md` entry point.
+Bundled OpenProse skill definitions shipped with the language repo. In
+environments with `npx skills`, each subdirectory can be installed as a skill;
+in Codex, the same files can be loaded through the repository-local
+`AGENTS.md` entry point.
 
 Public docs and curated examples now live at the repo root:
 
@@ -16,4 +19,6 @@ Public docs and curated examples now live at the repo root:
 
 ## Contents
 
-- `open-prose/` — the OpenProse VM skill; defines the language spec, compiler, state backends, primitives, standard library, and VM guidance. This skill is the canonical definition of what the OpenProse VM is; OpenProse Cloud is the hosted execution service that implements this spec.
+- `open-prose/` — the current OpenProse skill router. It orients agents to
+  `.prose.md` source, the Bun CLI, Pi graph-VM execution, single-component
+  handoff, package metadata, and hosted-compatible run/artifact contracts.

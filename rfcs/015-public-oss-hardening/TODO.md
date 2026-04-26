@@ -114,42 +114,45 @@ Checks:
 
 ## P1: Public Release Quality
 
-### [todo] Changelog still describes removed runtime architecture as current
+### [done] Changelog still describes removed runtime architecture as current
 
 Finding: `CHANGELOG.md` says the unreleased local runtime materializes through
 fixture, local-process, and Pi-compatible provider interfaces, and says
 `prose fixture materialize` remains available. That is no longer true after
 the Pi graph-VM and scripted-Pi cleanup.
 
-Proposed fix:
+Resolved:
 
 - rewrite the unreleased section around the current graph-VM/node-runner model
 - keep older dated sections as history, but make the unreleased section match
   the actual public CLI
-- add a docs/public regression if useful
+- added an agent-entrypoint regression over the unreleased changelog
 
 Checks:
 
 - `rg -n -- "local-process|fixture materialize|prose fixture|provider interfaces" CHANGELOG.md`
 - `bun test test/docs-public.test.ts`
+- `bun test test/agent-entrypoints.test.ts test/docs-public.test.ts test/cli-ux.test.ts`
 
-### [todo] Skill and command sidecars lag the public docs
+### [done] Skill and command sidecars lag the public docs
 
 Finding: `skills/README.md` still describes the OpenProse VM skill as the
 canonical VM definition, and `commands/` does not yet mention the new
 `handoff` boundary. These are small files, but they are entry points for agents.
 
-Proposed fix:
+Resolved:
 
 - refresh `skills/README.md` around the current skill router, CLI, and Pi graph
   VM
 - add a `commands/prose-handoff.md` slash-command sidecar
 - adjust command descriptions where they overstate eval/inspect behavior
+- add regression coverage for skill/command sidecar vocabulary
 
 Checks:
 
 - `rg -n -- "old OpenProse VM|canonical definition|prose-handoff|handoff" skills commands`
 - `bun test test/docs-public.test.ts test/cli-ux.test.ts`
+- `bun test test/agent-entrypoints.test.ts test/docs-public.test.ts test/cli-ux.test.ts`
 
 ### [done] Measurement reports contain absolute local paths
 

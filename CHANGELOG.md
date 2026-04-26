@@ -10,8 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **Local runtime meta-harness** — `prose run` is now the canonical local
-  execution command, materializing provider-backed run records through fixture,
-  local-process, and Pi-compatible provider interfaces.
+  execution command. It plans reactive graphs, coordinates the Pi graph VM one
+  node session at a time, and materializes durable run records, artifacts,
+  traces, and eval acceptance through the shared run-store model.
+- **Single-component handoff** — `prose handoff` exports one component contract
+  for compatible one-off agent harnesses without treating those harnesses as
+  reactive graph VMs.
 - **Reactive run store and eval acceptance** — Runs, graph nodes, attempts,
   artifact records, policy labels, approvals, current/latest pointers, and
   executable eval results now share one local store model.
@@ -26,20 +30,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **Package metadata is executable** — Package metadata now includes package IR
-  hashes, registry refs, runtime/provider metadata, artifact contracts, quality
+  hashes, registry refs, runtime profile metadata, artifact contracts, quality
   status, hosted ingest metadata, examples, and eval links.
 - **Std, co, and examples align with runtime semantics** — The canonical
-  packages compile, run locally through deterministic providers, and pass strict
-  publish checks.
+  packages compile, run locally through scripted Pi deterministic outputs or
+  live Pi runtime profiles, and pass strict publish checks.
 - **CLI inspection is human-readable** — Help explains the runtime loop, graph
   output annotates planning context, and status/trace output includes acceptance
   reasons.
 
 ### Removed
 
-- **Top-level fixture-centered runtime path** — Fixture materialization remains
-  available as `prose fixture materialize` for deterministic development, but
-  the runtime center is now `prose run`.
+- **Top-level fixture-centered runtime path** — The old materialization command
+  family is gone from the public CLI. Deterministic `--output` values now run
+  through an internal scripted Pi session under `prose run` or
+  `prose remote execute`.
 
 ## [0.10.0] - 2026-04-20
 
