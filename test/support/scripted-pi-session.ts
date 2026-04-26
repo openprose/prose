@@ -5,8 +5,11 @@ import {
   providerOutputFileForPort,
   resolveProviderOutputPath,
 } from "../../src/providers";
+import { OPENPROSE_SUBMIT_OUTPUTS_TOOL_NAME } from "../../src/runtime/pi/output-tool";
+import type { OutputSubmissionPayload } from "../../src/runtime/output-submission";
 import type {
   PiAgentSessionLike,
+  PiProviderOptions,
   PiSessionFactory,
   ProviderRequest,
   RuntimeProvider,
@@ -15,6 +18,8 @@ import type {
 export interface ScriptedPiRuntimeOptions {
   outputs?: Record<string, string>;
   outputsByComponent?: Record<string, Record<string, string>>;
+  submission?: OutputSubmissionPayload;
+  submissionsByComponent?: Record<string, OutputSubmissionPayload>;
   onRequest?: (request: ProviderRequest) => void;
   onPrompt?: (prompt: string, request: ProviderRequest) => void;
   modelError?: string;
@@ -47,11 +52,12 @@ export function providerShouldNotRun(onCall?: () => void): RuntimeProvider {
 
 function scriptedPiSessionFactory(options: ScriptedPiRuntimeOptions): PiSessionFactory {
   let counter = 0;
-  return async ({ request }) => {
+  return async ({ request, options: piOptions }) => {
     counter += 1;
     return new ScriptedPiSession(
       `${options.sessionIdPrefix ?? "scripted-pi"}-${counter}`,
       request,
+      piOptions,
       options,
     );
   };
@@ -65,6 +71,7 @@ class ScriptedPiSession implements PiAgentSessionLike {
   constructor(
     sessionId: string,
     private readonly request: ProviderRequest,
+    private readonly piOptions: PiProviderOptions,
     private readonly options: ScriptedPiRuntimeOptions,
   ) {
     this.sessionId = sessionId;
@@ -115,7 +122,12 @@ class ScriptedPiSession implements PiAgentSessionLike {
     }
 
     this.emit({ type: "tool_start", name: "openprose_submit_outputs" });
-    await this.writeOutputs();
+    const submission = submissionValue(this.request, this.options);
+    if (submission) {
+      await this.submitOutputs(submission);
+    } else {
+      await this.writeOutputs();
+    }
     this.emit({ type: "tool_end", name: "openprose_submit_outputs" });
     this.emit({ type: "agent_end", sessionId: this.sessionId });
   }
@@ -142,11 +154,37 @@ class ScriptedPiSession implements PiAgentSessionLike {
     }
   }
 
+  private async submitOutputs(submission: OutputSubmissionPayload): Promise<void> {
+    const tool = this.piOptions.customTools?.find(
+      (candidate) => candidate.name === OPENPROSE_SUBMIT_OUTPUTS_TOOL_NAME,
+    );
+    if (!tool) {
+      throw new Error("scripted Pi runtime expected openprose_submit_outputs tool");
+    }
+    await (
+      tool.execute as (
+        toolCallId: string,
+        params: OutputSubmissionPayload,
+      ) => Promise<unknown>
+    )("scripted-openprose-submit-outputs", submission);
+  }
+
   private emit(event: unknown): void {
     for (const listener of this.listeners) {
       listener(event);
     }
   }
+}
+
+function submissionValue(
+  request: ProviderRequest,
+  options: ScriptedPiRuntimeOptions,
+): OutputSubmissionPayload | undefined {
+  return (
+    options.submissionsByComponent?.[request.component.name] ??
+    options.submissionsByComponent?.[request.component.id] ??
+    options.submission
+  );
 }
 
 function outputValue(

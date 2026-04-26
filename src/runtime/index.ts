@@ -16,11 +16,28 @@ export {
   buildPiNodePromptEnvelope,
   renderPiNodePrompt,
 } from "./pi/prompt.js";
+export {
+  OPENPROSE_SUBMIT_OUTPUTS_TOOL_NAME,
+  createOpenProseSubmitOutputsTool,
+} from "./pi/output-tool.js";
+export {
+  evaluateOutputSubmission,
+  parseOutputSubmissionPayload,
+} from "./output-submission.js";
 export type { RuntimeProfileInput } from "./profiles.js";
 export type { ReactiveGraphRuntime } from "./graph-runtime.js";
 export type { NodePromptEnvelope } from "./node-envelope.js";
 export type { NodeExecutionRequest } from "./node-request.js";
 export type { NodeExecutionResult } from "./node-result.js";
+export type {
+  OpenProseSubmitOutputsDetails,
+  OutputSubmissionCollector,
+} from "./pi/output-tool.js";
+export type {
+  OutputSubmissionOutput,
+  OutputSubmissionPayload,
+  OutputSubmissionResult,
+} from "./output-submission.js";
 export {
   cancelRunPath,
   currentRunSetForRetry,

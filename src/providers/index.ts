@@ -48,6 +48,7 @@ export type {
 } from "./openai-compatible.js";
 export type {
   PiAgentSessionLike,
+  PiCustomToolDefinition,
   PiProviderOptions,
   PiSessionFactory,
   PiSessionFactoryContext,

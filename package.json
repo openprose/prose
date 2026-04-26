@@ -32,6 +32,7 @@
     "typescript": "latest"
   },
   "dependencies": {
-    "@mariozechner/pi-coding-agent": "0.70.2"
+    "@mariozechner/pi-coding-agent": "0.70.2",
+    "typebox": "^1.1.24"
   }
 }

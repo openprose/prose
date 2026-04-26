@@ -40,6 +40,37 @@ describe("scripted Pi runtime test helper", () => {
     expect(attempts[0]?.provider_session_ref).toContain("scripted-pi-1");
   });
 
+  test("materializes outputs submitted through the OpenProse Pi output tool", async () => {
+    const runRoot = mkdtempSync(join(tmpdir(), "openprose-scripted-pi-tool-"));
+    const result = await runSource(fixture("hello.prose.md"), {
+      path: "fixtures/compiler/hello.prose.md",
+      runRoot,
+      runId: "scripted-pi-tool-success",
+      provider: scriptedPiRuntime({
+        submission: {
+          outputs: [
+            {
+              port: "message",
+              content: "Hello from the structured output tool.",
+            },
+          ],
+          performed_effects: ["pure"],
+        },
+      }),
+      createdAt: "2026-04-26T12:10:30.000Z",
+    });
+
+    expect(result.record.status).toBe("succeeded");
+    expect(result.record.effects.performed).toEqual(["pure"]);
+    expect(readFileSync(join(result.run_dir, "bindings", "hello", "message.md"), "utf8")).toBe(
+      "Hello from the structured output tool.\n",
+    );
+    expect(result.record.outputs[0]).toMatchObject({
+      port: "message",
+      artifact_ref: "bindings/hello/message.md",
+    });
+  });
+
   test("surfaces missing output failures like the real Pi provider", async () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-scripted-pi-missing-"));
     const result = await runSource(fixture("hello.prose.md"), {
@@ -53,6 +84,26 @@ describe("scripted Pi runtime test helper", () => {
     expect(result.record.status).toBe("failed");
     expect(result.record.acceptance.reason).toContain(
       "Provider did not write required output 'message'",
+    );
+  });
+
+  test("surfaces rejected structured output submissions without falling back to files", async () => {
+    const runRoot = mkdtempSync(join(tmpdir(), "openprose-scripted-pi-tool-rejected-"));
+    const result = await runSource(fixture("hello.prose.md"), {
+      path: "fixtures/compiler/hello.prose.md",
+      runRoot,
+      runId: "scripted-pi-tool-rejected",
+      provider: scriptedPiRuntime({
+        submission: {
+          outputs: [],
+        },
+      }),
+      createdAt: "2026-04-26T12:11:30.000Z",
+    });
+
+    expect(result.record.status).toBe("failed");
+    expect(result.record.acceptance.reason).toContain(
+      "openprose_submit_outputs did not include required output 'message'",
     );
   });
 

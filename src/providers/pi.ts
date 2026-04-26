@@ -1,5 +1,11 @@
 import { join } from "node:path";
 import { performance } from "node:perf_hooks";
+import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
+import {
+  createOpenProseSubmitOutputsTool,
+  OPENPROSE_SUBMIT_OUTPUTS_TOOL_NAME,
+} from "../runtime/pi/output-tool.js";
+import type { OutputSubmissionResult } from "../runtime/output-submission.js";
 import type { ComponentIR, Diagnostic, EffectIR } from "../types.js";
 import {
   readProviderOutputFileArtifacts,
@@ -15,6 +21,7 @@ import type {
 } from "./protocol.js";
 
 export type PiThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhigh";
+export type PiCustomToolDefinition = ToolDefinition<any, any, any>;
 
 export interface PiAgentSessionLike {
   sessionId: string;
@@ -49,6 +56,7 @@ export interface PiProviderOptions {
   thinkingLevel?: PiThinkingLevel;
   tools?: string[];
   noTools?: "all" | "builtin";
+  customTools?: PiCustomToolDefinition[];
 }
 
 export class PiProvider implements RuntimeProvider {
@@ -111,6 +119,19 @@ export class PiProvider implements RuntimeProvider {
     }
 
     const prompt = renderPiPrompt(request, this.outputFiles);
+    const outputSubmission = {
+      current: null as OutputSubmissionResult | null,
+    };
+    const runtimeOptions: PiProviderOptions = {
+      ...this.options,
+      tools: piToolsWithOutputSubmission(this.options.tools),
+      customTools: [
+        ...(this.options.customTools ?? []),
+        createOpenProseSubmitOutputsTool(request, (result) => {
+          outputSubmission.current = result;
+        }),
+      ],
+    };
     let session: PiAgentSessionLike | null = null;
     const events: string[] = [];
     let unsubscribe: (() => void) | undefined;
@@ -119,7 +140,7 @@ export class PiProvider implements RuntimeProvider {
       session = await this.createSession({
         request,
         prompt,
-        options: this.options,
+        options: runtimeOptions,
       });
       unsubscribe = session.subscribe?.((event) => {
         events.push(safeEventLine(event));
@@ -150,9 +171,15 @@ export class PiProvider implements RuntimeProvider {
       session?.dispose?.();
     }
 
-    const artifacts =
-      diagnostics.length === 0
-        ? await readProviderOutputFileArtifacts(
+    const submitted = outputSubmission.current;
+    if (submitted?.status === "rejected") {
+      diagnostics.push(...submitted.diagnostics);
+    }
+
+    const artifacts = diagnostics.length === 0
+      ? submitted?.status === "accepted"
+        ? submitted.artifacts
+        : await readProviderOutputFileArtifacts(
             {
               workspacePath: request.workspace_path,
               component: request.component,
@@ -162,12 +189,16 @@ export class PiProvider implements RuntimeProvider {
             },
             diagnostics,
           )
-        : [];
+      : [];
     const status = diagnostics.length === 0 ? "succeeded" : "failed";
 
     return this.result(request, {
       status,
       artifacts: status === "succeeded" ? artifacts : [],
+      performedEffects:
+        status === "succeeded" && submitted?.status === "accepted"
+          ? submitted.performed_effects
+          : [],
       diagnostics,
       transcript: events.length > 0 ? events.join("\n") : null,
       session,
@@ -180,6 +211,7 @@ export class PiProvider implements RuntimeProvider {
     options: {
       status: ProviderResult["status"];
       artifacts: ProviderArtifactResult[];
+      performedEffects?: string[];
       diagnostics: Diagnostic[];
       transcript: string | null;
       session: PiAgentSessionLike | null;
@@ -191,7 +223,7 @@ export class PiProvider implements RuntimeProvider {
       request_id: request.request_id,
       status: options.status,
       artifacts: options.artifacts,
-      performed_effects: [],
+      performed_effects: options.performedEffects ?? [],
       logs: {
         stdout: null,
         stderr: null,
@@ -218,6 +250,11 @@ export class PiProvider implements RuntimeProvider {
 
 export function createPiProvider(options: PiProviderOptions = {}): PiProvider {
   return new PiProvider(options);
+}
+
+function piToolsWithOutputSubmission(tools: string[] | undefined): string[] {
+  const selected = tools ?? ["read", "write"];
+  return Array.from(new Set([...selected, OPENPROSE_SUBMIT_OUTPUTS_TOOL_NAME]));
 }
 
 export function renderPiPrompt(
@@ -316,6 +353,7 @@ async function createDefaultPiSession(
     thinkingLevel: context.options.thinkingLevel,
     tools: context.options.tools ?? ["read", "write"],
     noTools: context.options.noTools,
+    customTools: context.options.customTools,
   });
 
   return result.session;
