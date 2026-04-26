@@ -3,6 +3,12 @@
 Phase 07 updates the reference company only after OSS examples prove the
 pattern.
 
+Current status:
+
+- 07.1 Crosswalk: complete.
+- 07.2 Company Source Sync: complete.
+- 07.3 Golden Runs: not started.
+
 ## 07.1 Crosswalk
 
 Implementation:
@@ -41,12 +47,33 @@ Commit/signpost:
 - `docs: align company programs with north star examples`
 - `signposts/031-company-source-sync.md`
 
+Completed source-sync signposts:
+
+- `031-company-source-sync.md`
+- `031b-stargazer-intake-source-sync.md`
+- `031c-release-source-sync.md`
+- `031d-merged-pr-review-source-sync.md`
+- `031e-opportunity-discovery-source-sync.md`
+- `031f-agent-ecosystem-index-source-sync.md`
+- `031g-agents-site-analytics-source-sync.md`
+- `031h-customer-repo-scaffolder-source-sync.md`
+
+Closeout validation:
+
+- full customer `systems` lint passes with 0 diagnostics
+- customer publish-check passes with 99 components
+- OSS suite passes with 240 pass and 2 live-smoke skips
+
 ## 07.3 Golden Runs
 
 Implementation:
 
 - Promote only useful successful runs into replay fixtures.
 - Keep generated run state out of the main source navigation path.
+- Treat dirty `.prose/` runtime files as non-golden unless they were produced
+  after the current source contracts and are intentionally curated.
+- Store golden evidence as small semantic snapshots first; promote full run
+  directories only when they are necessary for replay debugging.
 
 Tests:
 
