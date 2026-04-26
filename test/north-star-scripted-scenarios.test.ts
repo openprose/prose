@@ -206,21 +206,75 @@ function scenarios(): NorthStarScenario[] {
         brand_context: fixture("opportunity-discovery-lite/happy.brand-context.md"),
       },
       submissionsByComponent: {
+        "platform-scan-reader": submission({
+          platform_scan_window: JSON.stringify({
+            scanned_at: "2026-04-26T12:35:00Z",
+            accepted_rows: [
+              {
+                source: "hn",
+                url: "https://news.ycombinator.com/item?id=1003",
+                canonical_topic: "agent-audit-trails",
+                posted_at: "2026-04-26T10:00:00Z",
+                reach: 180,
+              },
+              {
+                source: "x",
+                url: "https://x.example/status/1003",
+                canonical_topic: "agent-audit-trails",
+                posted_at: "2026-04-26T10:15:00Z",
+                reach: 420,
+              },
+            ],
+            rejected_rows: [
+              { url: "https://reddit.example/r/aiops/comments/old-audit-thread", reason: "older than 7 days" },
+              { source: "mastodon", reason: "missing url provenance" },
+            ],
+          }),
+        }),
         "opportunity-classifier": submission({
           opportunity_classifications: JSON.stringify({
-            rows: [{ canonical_topic: "agent-audit-trails", relevance: "high" }],
+            rows: [
+              {
+                url: "https://news.ycombinator.com/item?id=1003",
+                canonical_topic: "agent-audit-trails",
+                relevance: "high",
+                quality_reason: "operator asks about auditability",
+              },
+              {
+                url: "https://x.example/status/1003",
+                canonical_topic: "agent-audit-trails",
+                relevance: "high",
+                quality_reason: "active thread with strong reach",
+              },
+            ],
           }),
         }),
-        "opportunity-deduper": submission({
+        "opportunity-deduplicator": submission({
           opportunity_dedupe_report: JSON.stringify({
-            clusters: [{ topic: "agent-audit-trails", winner: "https://x.example/status/1003" }],
+            clusters: [
+              {
+                topic: "agent-audit-trails",
+                winner: "https://x.example/status/1003",
+                winner_reason: "highest reach among fresh duplicates",
+                duplicates: [
+                  "https://news.ycombinator.com/item?id=1003",
+                  "https://x.example/status/1003",
+                ],
+              },
+            ],
           }),
         }),
-        "opportunity-summarizer": submission({
-          opportunity_summary: "# Opportunity Summary\n\nPrioritize the audit-trails thread.",
+        "opportunity-summary-writer": submission({
+          opportunity_summary: [
+            "# Opportunity Summary",
+            "",
+            "Lead with a helpful answer on audit trails before mentioning OpenProse.",
+            "Source: https://x.example/status/1003",
+          ].join("\n"),
         }),
       },
       expectedOutputs: [
+        "platform_scan_window",
         "opportunity_classifications",
         "opportunity_dedupe_report",
         "opportunity_summary",

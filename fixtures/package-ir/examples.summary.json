@@ -1,12 +1,12 @@
 {
   "package_ir_version": "0.1",
-  "semantic_hash": "124930eaa27b36f9947f79f451e0b87136e4bbf0b075c3a251eec5e1751ce82a",
+  "semantic_hash": "74ed64893435bfd696b2a946550967290af26b347791a3c4b0eba135a1889a77",
   "hashes": {
-    "source_hash": "7f216b62b689ba99b65dc9c55166110a8a977c5d67521888f4317c23aaaf01f2",
-    "semantic_hash": "124930eaa27b36f9947f79f451e0b87136e4bbf0b075c3a251eec5e1751ce82a",
+    "source_hash": "aa8eb9dccd8dd7b868d3f38622cdf4f7926e82972ce9d4216f686e4b80e97109",
+    "semantic_hash": "74ed64893435bfd696b2a946550967290af26b347791a3c4b0eba135a1889a77",
     "dependency_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-    "policy_hash": "cd4258bde5e2bbc59c07816a6aefb7d56ccc82cbb3a2647e3fdc13048728d1d1",
-    "runtime_config_hash": "21963025473f23c224fe949bd7aa1ccbce78f53458758b04fd3dca59e8bb7620"
+    "policy_hash": "de55f4ce5bb290da1a7fe3fe804e8780ba5d6736031ff54093d1c37bf8b8d712",
+    "runtime_config_hash": "5113546edb4da969b54a93b22b5c77ee387e487db3b679868b18ea604b678cef"
   },
   "manifest": {
     "name": "@openprose/examples",
@@ -174,9 +174,10 @@
       "path": "north-star/opportunity-discovery-lite.prose.md",
       "component_ids": [
         "north-star-opportunity-discovery-lite--opportunity-discovery-lite",
+        "north-star-opportunity-discovery-lite--platform-scan-reader",
         "north-star-opportunity-discovery-lite--opportunity-classifier",
-        "north-star-opportunity-discovery-lite--opportunity-deduper",
-        "north-star-opportunity-discovery-lite--opportunity-summarizer"
+        "north-star-opportunity-discovery-lite--opportunity-deduplicator",
+        "north-star-opportunity-discovery-lite--opportunity-summary-writer"
       ],
       "diagnostics": []
     },
@@ -348,9 +349,10 @@
       "exists": true,
       "component_ids": [
         "north-star-opportunity-discovery-lite--opportunity-discovery-lite",
+        "north-star-opportunity-discovery-lite--platform-scan-reader",
         "north-star-opportunity-discovery-lite--opportunity-classifier",
-        "north-star-opportunity-discovery-lite--opportunity-deduper",
-        "north-star-opportunity-discovery-lite--opportunity-summarizer"
+        "north-star-opportunity-discovery-lite--opportunity-deduplicator",
+        "north-star-opportunity-discovery-lite--opportunity-summary-writer"
       ],
       "diagnostics": []
     },
@@ -387,7 +389,7 @@
       "delivers": 2,
       "human_gate": 2,
       "mutates_repo": 2,
-      "pure": 30,
+      "pure": 31,
       "read_external": 2,
       "writes_memory": 4
     },
@@ -588,8 +590,8 @@
       "expansions": []
     },
     {
-      "id": "north-star-opportunity-discovery-lite--opportunity-deduper",
-      "name": "opportunity-deduper",
+      "id": "north-star-opportunity-discovery-lite--opportunity-deduplicator",
+      "name": "opportunity-deduplicator",
       "kind": "service",
       "path": "north-star/opportunity-discovery-lite.prose.md",
       "expansions": []
@@ -602,8 +604,15 @@
       "expansions": []
     },
     {
-      "id": "north-star-opportunity-discovery-lite--opportunity-summarizer",
-      "name": "opportunity-summarizer",
+      "id": "north-star-opportunity-discovery-lite--opportunity-summary-writer",
+      "name": "opportunity-summary-writer",
+      "kind": "service",
+      "path": "north-star/opportunity-discovery-lite.prose.md",
+      "expansions": []
+    },
+    {
+      "id": "north-star-opportunity-discovery-lite--platform-scan-reader",
+      "name": "platform-scan-reader",
       "kind": "service",
       "path": "north-star/opportunity-discovery-lite.prose.md",
       "expansions": []
@@ -680,16 +689,16 @@
     }
   ],
   "graph": {
-    "node_count": 40,
-    "edge_count": 82,
+    "node_count": 41,
+    "edge_count": 86,
     "edge_kinds": {
       "caller": 11,
-      "exact": 25,
-      "execution": 23,
-      "return": 23
+      "exact": 27,
+      "execution": 24,
+      "return": 24
     }
   },
   "diagnostics": {
-    "ambiguous_package_exact_wiring": 25
+    "ambiguous_package_exact_wiring": 27
   }
 }

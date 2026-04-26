@@ -16,6 +16,22 @@
       "posted_at": "2026-04-26T10:15:00Z",
       "text": "Thread: agent workflow audit trails",
       "reach": 420
+    },
+    {
+      "source": "reddit",
+      "url": "https://reddit.example/r/aiops/comments/old-audit-thread",
+      "canonical_topic": "agent-audit-trails",
+      "posted_at": "2026-04-10T09:00:00Z",
+      "text": "Old thread about agent workflow audit trails",
+      "reach": 900
+    },
+    {
+      "source": "mastodon",
+      "url": "",
+      "canonical_topic": "agent-audit-trails",
+      "posted_at": "2026-04-26T11:00:00Z",
+      "text": "No URL provenance",
+      "reach": 80
     }
   ]
 }
