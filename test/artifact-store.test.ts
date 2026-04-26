@@ -47,7 +47,7 @@ describe("OpenProse local artifact records", () => {
         schema_ref: "schemas/brief.schema.json",
       },
       storage: {
-        provider: "local",
+        backend: "local",
       },
     });
     expect(record.content_hash).toMatch(/^[a-f0-9]{64}$/);

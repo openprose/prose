@@ -21,7 +21,7 @@ describe("OpenProse runtime controls", () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-retry-"));
     let failPolish = true;
     const calls: string[] = [];
-    const provider = controlledNodeRunner(calls, {
+    const runner = controlledNodeRunner(calls, {
       review: { feedback: "Tighten the intro." },
       "fact-check": { claims: "[{\"claim\":\"All claims verified.\"}]" },
       polish: { final: "The polished draft." },
@@ -31,7 +31,7 @@ describe("OpenProse runtime controls", () => {
       path: "fixtures/compiler/pipeline.prose.md",
       runRoot,
       runId: "retry-original",
-      nodeRunner: provider,
+      nodeRunner: runner,
       inputs: {
         draft: "The original draft.",
       },
@@ -58,7 +58,7 @@ describe("OpenProse runtime controls", () => {
       currentRunPath: first.run_dir,
       runRoot,
       runId: "retry-second",
-      nodeRunner: provider,
+      nodeRunner: runner,
       inputs: {
         draft: "The original draft.",
       },

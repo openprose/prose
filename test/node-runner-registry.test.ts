@@ -8,11 +8,11 @@ import type { NodeRunner } from "../src/node-runners";
 
 describe("OpenProse node runner registry", () => {
   test("selects scripted Pi when deterministic outputs are supplied", () => {
-    const provider = resolveNodeRunner({
+    const runner = resolveNodeRunner({
       deterministicOutputs: { message: "Hello from deterministic output." },
     });
 
-    expect(provider.kind).toBe("pi");
+    expect(runner.kind).toBe("pi");
   });
 
   test("returns programmatic node runners unchanged", () => {
@@ -31,7 +31,7 @@ describe("OpenProse node runner registry", () => {
   });
 
   test("configures the Pi node runner from environment records", () => {
-    const provider = resolveNodeRunner({
+    const runner = resolveNodeRunner({
       graphVm: "pi",
       env: {
         OPENPROSE_PI_MODEL_PROVIDER: "openrouter",
@@ -44,7 +44,7 @@ describe("OpenProse node runner registry", () => {
       },
     });
 
-    expect(provider.kind).toBe("pi");
+    expect(runner.kind).toBe("pi");
   });
 
   test("rejects model providers as graph VMs", () => {
@@ -95,7 +95,7 @@ describe("OpenProse node runner registry", () => {
   test("rejects unknown graph VM names", () => {
     expect(() =>
       resolveNodeRunner({
-        graphVm: "unknown-provider",
+        graphVm: "unknown-vm",
       }),
     ).toThrow("Available graph VMs: pi");
   });

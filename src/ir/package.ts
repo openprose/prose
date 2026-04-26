@@ -239,7 +239,7 @@ function normalizeRuntimeManifest(
   }
 
   const modelProviders = [...new Set(runtime.model_providers ?? [])]
-    .map((provider) => provider.trim())
+    .map((modelProvider) => modelProvider.trim())
     .filter(Boolean)
     .sort();
 
@@ -442,7 +442,7 @@ function buildPackageGraph(
   }));
   const edges: GraphEdgeIR[] = [];
   const edgeKeys = new Set<string>();
-  const providersByPort = new Map<string, ComponentIR[]>();
+  const producersByPort = new Map<string, ComponentIR[]>();
   const componentsByName = new Map<string, ComponentIR[]>();
 
   for (const component of components) {
@@ -451,9 +451,9 @@ function buildPackageGraph(
     componentsByName.set(component.name, named);
 
     for (const port of component.ports.ensures) {
-      const providers = providersByPort.get(port.name) ?? [];
-      providers.push(component);
-      providersByPort.set(port.name, providers);
+      const producers = producersByPort.get(port.name) ?? [];
+      producers.push(component);
+      producersByPort.set(port.name, producers);
     }
   }
 
@@ -492,10 +492,10 @@ function buildPackageGraph(
     }
 
     for (const port of component.ports.requires) {
-      const matchingProviders = (providersByPort.get(port.name) ?? []).filter(
-        (provider) => provider.id !== component.id,
+      const matchingProducers = (producersByPort.get(port.name) ?? []).filter(
+        (producer) => producer.id !== component.id,
       );
-      if (matchingProviders.length > 1) {
+      if (matchingProducers.length > 1) {
         diagnostics.push({
           severity: "warning",
           code: "ambiguous_package_exact_wiring",
@@ -503,9 +503,9 @@ function buildPackageGraph(
           source_span: port.source_span,
         });
       }
-      if (matchingProviders.length > 0) {
+      if (matchingProducers.length > 0) {
         addEdge(edges, edgeKeys, {
-          from: { component: matchingProviders[0].id, port: port.name },
+          from: { component: matchingProducers[0].id, port: port.name },
           to: { component: component.id, port: port.name },
           kind: "exact",
           confidence: 1,
@@ -526,19 +526,19 @@ function buildPackageGraph(
 
     if (component.kind === "program") {
       for (const port of component.ports.ensures) {
-        const matchingProviders = (providersByPort.get(port.name) ?? []).filter(
-          (provider) => provider.id !== component.id,
+        const matchingProducers = (producersByPort.get(port.name) ?? []).filter(
+          (producer) => producer.id !== component.id,
         );
-        const provider = matchingProviders[0] ?? component;
+        const producer = matchingProducers[0] ?? component;
         addEdge(edges, edgeKeys, {
-          from: { component: provider.id, port: port.name },
+          from: { component: producer.id, port: port.name },
           to: { component: "$return", port: port.name },
           kind: "return",
-          confidence: provider.id === component.id ? 0.8 : 1,
+          confidence: producer.id === component.id ? 0.8 : 1,
           reason:
-            provider.id === component.id
+            producer.id === component.id
               ? `Program output '${port.name}' is produced directly by '${component.name}'.`
-              : `Program output '${port.name}' is produced by '${provider.name}'.`,
+              : `Program output '${port.name}' is produced by '${producer.name}'.`,
           source: "auto",
         });
       }

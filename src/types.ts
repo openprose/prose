@@ -449,7 +449,7 @@ export interface LocalArtifactProvenance {
 }
 
 export interface LocalArtifactStorage {
-  provider: "local";
+  backend: "local";
   path: string;
 }
 

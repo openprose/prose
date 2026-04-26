@@ -137,7 +137,7 @@ function buildGraph(
   const hasServiceGraph = Boolean(
     main && components.some((component) => component.id !== main.id),
   );
-  const providers = new Map<string, ComponentIR[]>();
+  const producers = new Map<string, ComponentIR[]>();
   const programInputs = new Map<string, PortIR>();
 
   if (main) {
@@ -167,9 +167,9 @@ function buildGraph(
 
   for (const component of components) {
     for (const port of component.ports.ensures) {
-      const existing = providers.get(port.name) ?? [];
+      const existing = producers.get(port.name) ?? [];
       existing.push(component);
-      providers.set(port.name, existing);
+      producers.set(port.name, existing);
     }
   }
 
@@ -179,13 +179,13 @@ function buildGraph(
     }
 
     for (const port of consumer.ports.requires) {
-      const matchingProviders = (providers.get(port.name) ?? []).filter(
-        (provider) =>
-          provider.id !== consumer.id &&
-          !(hasServiceGraph && main && provider.id === main.id),
+      const matchingProducers = (producers.get(port.name) ?? []).filter(
+        (producer) =>
+          producer.id !== consumer.id &&
+          !(hasServiceGraph && main && producer.id === main.id),
       );
 
-      if (matchingProviders.length > 1) {
+      if (matchingProducers.length > 1) {
         diagnostics.push({
           severity: "warning",
           code: "ambiguous_exact_wiring",
@@ -194,9 +194,9 @@ function buildGraph(
         });
       }
 
-      if (matchingProviders.length > 0) {
+      if (matchingProducers.length > 0) {
         addEdge(edges, edgeKeys, {
-          from: { component: matchingProviders[0].id, port: port.name },
+          from: { component: matchingProducers[0].id, port: port.name },
           to: { component: consumer.id, port: port.name },
           kind: "exact",
           confidence: 1,
@@ -218,7 +218,7 @@ function buildGraph(
         diagnostics.push({
           severity: "warning",
           code: "unresolved_dependency",
-          message: `No exact provider found for '${consumer.name}.${port.name}'. Semantic wiring is not implemented in this compiler slice.`,
+          message: `No exact producer found for '${consumer.name}.${port.name}'. Semantic wiring is not implemented in this compiler slice.`,
           source_span: port.source_span,
         });
       }
@@ -240,16 +240,16 @@ function buildGraph(
 
   if (main) {
     for (const port of main.ports.ensures) {
-      const matchingProviders = (providers.get(port.name) ?? []).filter(
-        (provider) => provider.id !== main.id,
+      const matchingProducers = (producers.get(port.name) ?? []).filter(
+        (producer) => producer.id !== main.id,
       );
-      if (matchingProviders.length > 0) {
+      if (matchingProducers.length > 0) {
         addEdge(edges, edgeKeys, {
-          from: { component: matchingProviders[0].id, port: port.name },
+          from: { component: matchingProducers[0].id, port: port.name },
           to: { component: "$return", port: port.name },
           kind: "return",
           confidence: 1,
-          reason: `Program output '${port.name}' is produced by '${matchingProviders[0].name}'.`,
+          reason: `Program output '${port.name}' is produced by '${matchingProducers[0].name}'.`,
           source: "auto",
         });
       } else if (!hasServiceGraph) {

@@ -241,11 +241,11 @@ function selectedNodeIdsForOutputs(
   const selected = new Set<string>();
 
   for (const output of requestedOutputs) {
-    const provider = providerForOutput(ir.graph.edges, executable, main, output);
-    if (!provider || !byId.has(provider)) {
+    const producer = producerForOutput(ir.graph.edges, executable, main, output);
+    if (!producer || !byId.has(producer)) {
       continue;
     }
-    collectDependencies(provider, ir.graph.edges, selected);
+    collectDependencies(producer, ir.graph.edges, selected);
   }
 
   return selected;
@@ -265,7 +265,7 @@ function collectDependencies(
   }
 }
 
-function providerForOutput(
+function producerForOutput(
   edges: GraphEdgeIR[],
   executable: ComponentIR[],
   main: ComponentIR | undefined,
@@ -625,8 +625,8 @@ function expectedInputHash(
     return null;
   }
 
-  const provider = currentByComponent.get(edge.from.component);
-  const output = provider?.outputs.find(
+  const producerRun = currentByComponent.get(edge.from.component);
+  const output = producerRun?.outputs.find(
     (candidate) => candidate.port === edge.from.port,
   );
   return output?.value_hash ?? null;

@@ -90,7 +90,7 @@ describe("OpenProse source and IR", () => {
     expect(ir.diagnostics).toEqual([]);
   });
 
-  test("does not use program ensures as providers for service graph inputs", () => {
+  test("does not use program ensures as producers for service graph inputs", () => {
     const ir = compileSource(
       `---
 name: company-intake
@@ -131,7 +131,7 @@ kind: program
 
 - \`brief\`: Markdown<AccountBrief> - account brief
 `,
-      { path: "fixtures/compiler/program-output-provider.prose.md" },
+      { path: "fixtures/compiler/program-output-producer.prose.md" },
     );
     const edges = ir.graph.edges.map(
       (edge) =>

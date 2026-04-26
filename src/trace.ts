@@ -183,12 +183,12 @@ function stringListDetail(label: string, value: unknown): string | null {
 }
 
 function modelDetail(event: TraceEvent): string | null {
-  const provider = typeof event.model_provider === "string" ? event.model_provider : null;
+  const modelProvider = typeof event.model_provider === "string" ? event.model_provider : null;
   const model = typeof event.model === "string" ? event.model : null;
-  if (!provider && !model) {
+  if (!modelProvider && !model) {
     return null;
   }
-  return `model[${[provider, model].filter(Boolean).join("/")}]`;
+  return `model[${[modelProvider, model].filter(Boolean).join("/")}]`;
 }
 
 function usageDetail(event: TraceEvent): string | null {

@@ -46,7 +46,7 @@ describe("OpenProse Pi runtime telemetry", () => {
     expect(events).toEqual([
       expect.objectContaining({
         event: "pi.session.started",
-      graph_vm: "pi",
+        graph_vm: "pi",
         session_id: "session-1",
         model_provider: "scripted",
         model: "test-model",

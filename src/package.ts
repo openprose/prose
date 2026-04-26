@@ -282,7 +282,7 @@ function normalizeRuntimeManifest(
   return {
     graph_vm: runtime.graph_vm?.trim() || null,
     model_providers: [...new Set(runtime.model_providers ?? [])]
-      .map((provider) => provider.trim())
+      .map((modelProvider) => modelProvider.trim())
       .filter(Boolean)
       .sort(),
     default_model_provider: runtime.default_model_provider?.trim() || null,

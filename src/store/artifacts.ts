@@ -67,7 +67,7 @@ export async function writeLocalArtifactRecord(
       source_run_id: options.sourceRunId ?? null,
     },
     storage: {
-      provider: "local",
+      backend: "local",
       path: joinNormalized("artifacts", blobRef),
     },
     created_at: options.createdAt ?? new Date().toISOString(),

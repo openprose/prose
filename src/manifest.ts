@@ -26,8 +26,8 @@ export function projectManifest(ir: ProseIR): string {
   lines.push("");
   lines.push("returns:");
   for (const port of (main ?? ir.components[0])?.ports.ensures ?? []) {
-    const provider = findReturnProvider(ir.graph.edges, port.name);
-    const from = provider ? `from ${provider}` : "from component";
+    const producer = findReturnProducer(ir.graph.edges, port.name);
+    const from = producer ? `from ${producer}` : "from component";
     const type = port.type === "Any" ? "" : `${port.type} - `;
     lines.push(`- ${port.name} (${from}): ${type}${port.description}`);
   }
@@ -160,7 +160,7 @@ function formatInputMapping(
   return `  ${portName} <- bindings/${edge.from.component}/${edge.from.port}.md`;
 }
 
-function findReturnProvider(edges: GraphEdgeIR[], portName: string): string | null {
+function findReturnProducer(edges: GraphEdgeIR[], portName: string): string | null {
   const edge = edges.find(
     (candidate) =>
       candidate.to.component === "$return" && candidate.to.port === portName,
@@ -237,4 +237,3 @@ function collectEnvironment(components: ComponentIR[]): Map<string, Set<string>>
   }
   return environment;
 }
-

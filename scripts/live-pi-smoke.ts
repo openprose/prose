@@ -17,7 +17,7 @@ type FailureClass =
   | "billing_or_quota"
   | "policy_blocked"
   | "model_error"
-  | "provider_error"
+  | "graph_vm_error"
   | "timeout"
   | "runtime_contract"
   | "runtime_exception";
@@ -436,7 +436,7 @@ function failureClass(record: RunRecord, diagnostics: Diagnostic[]): FailureClas
     return "runtime_contract";
   }
   if (codes.some((code) => code.startsWith("pi_"))) {
-    return "provider_error";
+    return "graph_vm_error";
   }
   return "runtime_contract";
 }
@@ -456,7 +456,7 @@ function exceptionFailureClass(message: string): FailureClass {
     return "timeout";
   }
   if (normalized.includes("pi")) {
-    return "provider_error";
+    return "graph_vm_error";
   }
   return "runtime_exception";
 }

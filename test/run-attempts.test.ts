@@ -26,18 +26,18 @@ describe("OpenProse run attempts", () => {
       startedAt: "2026-04-25T12:00:00.000Z",
       finishedAt: "2026-04-25T12:01:00.000Z",
       failure: {
-        code: "provider_error",
-        message: "Provider session failed before producing outputs.",
+        code: "node_runner_error",
+        message: "Node runner session failed before producing outputs.",
         retryable: true,
       },
       retry: {
         max_attempts: 3,
         next_attempt_after: "2026-04-25T12:02:00.000Z",
-        reason: "retryable provider error",
+        reason: "retryable node runner error",
       },
       resume: {
         checkpoint_ref: "checkpoints/run-1/attempt-1.json",
-        reason: "provider returned partial transcript",
+        reason: "node runner returned partial transcript",
       },
     });
     const retry = await writeRunAttemptRecord(root, {

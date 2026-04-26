@@ -74,10 +74,10 @@ const roleCases: RoleCase[] = [
   {
     file: "researcher",
     inputs: {
-      topic: "OpenProse runtime providers",
+      topic: "OpenProse graph runtimes",
     },
     outputs: {
-      findings: '{"claims":[{"claim":"Pi is a TypeScript provider candidate","confidence":0.8}]}',
+      findings: '{"claims":[{"claim":"Pi is a TypeScript graph VM candidate","confidence":0.8}]}',
       sources: '{"sources":[],"gaps":["live web disabled in fixture smoke"]}',
     },
   },

@@ -49,7 +49,7 @@ describe("OpenProse node runner protocol", () => {
       ],
     } satisfies NodeRunRequest;
 
-    const provider: NodeRunner = {
+    const runner: NodeRunner = {
       kind: "pi",
       async execute(input) {
         return {
@@ -74,7 +74,7 @@ describe("OpenProse node runner protocol", () => {
           },
           diagnostics: [],
           session: {
-      graph_vm: "pi",
+            graph_vm: "pi",
             session_id: "scripted-pi:request-1",
             url: null,
             metadata: {},
@@ -85,7 +85,7 @@ describe("OpenProse node runner protocol", () => {
       },
     };
 
-    const result = await provider.execute(request);
+    const result = await runner.execute(request);
 
     expect(result.status).toBe("succeeded");
     expect(result.artifacts[0].port).toBe("message");

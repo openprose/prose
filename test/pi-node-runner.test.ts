@@ -26,7 +26,7 @@ describe("OpenProse Pi node runner", () => {
     const component = compileFixture("hello.prose.md").components[0];
     const workspace = mkdtempSync(join(tmpdir(), "openprose-pi-node-runner-"));
     const prompts: string[] = [];
-    const provider = createPiNodeRunner({
+    const runner = createPiNodeRunner({
       createSession: fakePiSessionFactory(async ({ prompt }) => {
         prompts.push(prompt);
         await writeFile(join(workspace, "message.md"), "Hello from Pi.\n");
@@ -34,7 +34,7 @@ describe("OpenProse Pi node runner", () => {
       timeoutMs: 2_000,
     });
 
-    const result = await provider.execute(nodeRunRequest(component, workspace));
+    const result = await runner.execute(nodeRunRequest(component, workspace));
 
     expect(result.status).toBe("succeeded");
     expect(result.session).toMatchObject({
@@ -69,12 +69,12 @@ describe("OpenProse Pi node runner", () => {
   test("fails when Pi does not write required outputs", async () => {
     const component = compileFixture("hello.prose.md").components[0];
     const workspace = mkdtempSync(join(tmpdir(), "openprose-pi-node-runner-missing-"));
-    const provider = createPiNodeRunner({
+    const runner = createPiNodeRunner({
       createSession: fakePiSessionFactory(async () => {}),
       timeoutMs: 2_000,
     });
 
-    const result = await provider.execute(nodeRunRequest(component, workspace));
+    const result = await runner.execute(nodeRunRequest(component, workspace));
 
     expect(result.status).toBe("failed");
     expect(result.artifacts).toEqual([]);
@@ -90,14 +90,14 @@ describe("OpenProse Pi node runner", () => {
   test("fails when Pi prompt execution throws", async () => {
     const component = compileFixture("hello.prose.md").components[0];
     const workspace = mkdtempSync(join(tmpdir(), "openprose-pi-node-runner-error-"));
-    const provider = createPiNodeRunner({
+    const runner = createPiNodeRunner({
       createSession: fakePiSessionFactory(async () => {
         throw new Error("model unavailable");
       }),
       timeoutMs: 2_000,
     });
 
-    const result = await provider.execute(nodeRunRequest(component, workspace));
+    const result = await runner.execute(nodeRunRequest(component, workspace));
 
     expect(result.status).toBe("failed");
     expect(result.diagnostics).toEqual([
@@ -112,7 +112,7 @@ describe("OpenProse Pi node runner", () => {
   test("fails with model diagnostics when Pi reports an event error", async () => {
     const component = compileFixture("hello.prose.md").components[0];
     const workspace = mkdtempSync(join(tmpdir(), "openprose-pi-node-runner-event-error-"));
-    const provider = createPiNodeRunner({
+    const runner = createPiNodeRunner({
       createSession: fakePiSessionFactory(async ({ emit }) => {
         emit({
           type: "message_start",
@@ -133,7 +133,7 @@ describe("OpenProse Pi node runner", () => {
       timeoutMs: 2_000,
     });
 
-    const result = await provider.execute(nodeRunRequest(component, workspace));
+    const result = await runner.execute(nodeRunRequest(component, workspace));
 
     expect(result.status).toBe("failed");
     expect(result.artifacts).toEqual([]);
@@ -180,14 +180,14 @@ integrationTest("runs a live Pi SDK smoke when explicitly enabled", async () => 
   const workspace = mkdtempSync(join(tmpdir(), "openprose-pi-live-"));
   await mkdir(workspace, { recursive: true });
 
-  const provider = createPiNodeRunner({
+  const runner = createPiNodeRunner({
     modelProvider: Bun.env.OPENPROSE_PI_MODEL_PROVIDER ?? "anthropic",
     modelId: Bun.env.OPENPROSE_PI_MODEL_ID,
     apiKey: Bun.env.OPENPROSE_PI_API_KEY,
     timeoutMs: 120_000,
   });
 
-  const result = await provider.execute(nodeRunRequest(component, workspace));
+  const result = await runner.execute(nodeRunRequest(component, workspace));
 
   if (result.status !== "succeeded") {
     throw new Error(

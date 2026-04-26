@@ -127,7 +127,7 @@ describe("OpenProse run entry point", () => {
   test("propagates upstream artifacts into downstream node-run requests", async () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-run-upstream-"));
     const requests: NodeRunRequest[] = [];
-    const provider = scriptedPiRuntime({
+    const runner = scriptedPiRuntime({
       outputsByComponent: pipelineOutputs,
       onRequest: (request) => requests.push(request),
     });
@@ -136,7 +136,7 @@ describe("OpenProse run entry point", () => {
       path: "fixtures/compiler/pipeline.prose.md",
       runRoot,
       runId: "upstream-run",
-      nodeRunner: provider,
+      nodeRunner: runner,
       inputs: {
         draft: "The original draft.",
       },
@@ -200,7 +200,7 @@ kind: program
     });
 
     const requests: NodeRunRequest[] = [];
-    const provider = scriptedPiRuntime({
+    const runner = scriptedPiRuntime({
       outputsByComponent: {
         "brief-writer": { brief: "A concise brief." },
       },
@@ -211,7 +211,7 @@ kind: program
       path: "fixtures/compiler/typed-effects.prose.md",
       runRoot,
       runId: "run-ref",
-      nodeRunner: provider,
+      nodeRunner: runner,
       inputs: {
         company: "Acme profile",
         subject: "run: prior-run",
@@ -859,7 +859,7 @@ kind: program
       "--run-root",
       runRoot,
       "--run-id",
-      "no-provider-run",
+      "no-runner-run",
       "--no-pretty",
     ]);
     expect(blocked.exitCode).toBe(1);
@@ -878,7 +878,7 @@ kind: program
       "--run-root",
       runRoot,
       "--run-id",
-      "pi-provider-selected",
+      "pi-runner-selected",
       "--no-pretty",
     ]);
 
