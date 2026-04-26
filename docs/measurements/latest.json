@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-25T06:53:17.438Z",
+  "generated_at": "2026-04-26T00:47:41.738Z",
   "packages": [
     {
       "label": "examples",
@@ -19,11 +19,11 @@
       "package_name": "@openprose/std",
       "version": "0.11.0-dev",
       "components": 82,
-      "quality_score": 0.35,
-      "typed_port_coverage": 0,
-      "effect_declaration_ratio": 0,
-      "publish_status": "warn",
-      "strict_publish_status": "fail"
+      "quality_score": 0.96,
+      "typed_port_coverage": 1,
+      "effect_declaration_ratio": 1,
+      "publish_status": "pass",
+      "strict_publish_status": "pass"
     },
     {
       "label": "packages/co",
@@ -52,24 +52,24 @@
   ],
   "scenarios": {
     "hello_compile": {
-      "elapsed_ms": 0.4,
+      "elapsed_ms": 0.23,
       "diagnostics": 0,
-      "semantic_hash": "2e110fa8c3a693cefb9fb6fe7ed851f14abfc33ccbde2e85b0634c95eff71585"
+      "semantic_hash": "3b645b59679d009f7498b977325873b8a56894591072aaa77eca83721988d872"
     },
     "company_intake_plan": {
-      "elapsed_ms": 3.19,
+      "elapsed_ms": 1.17,
       "status": "ready",
       "nodes": 3,
       "materialization_nodes": 3
     },
     "run_aware_brief": {
-      "elapsed_ms": 0.37,
+      "elapsed_ms": 0.2,
       "diagnostics": 0,
       "access_rule_groups": 2
     },
     "selective_recompute": {
-      "full_refresh_elapsed_ms": 1.32,
-      "targeted_refresh_elapsed_ms": 0.5,
+      "full_refresh_elapsed_ms": 1.29,
+      "targeted_refresh_elapsed_ms": 0.57,
       "full_refresh_nodes": [
         "market-sync"
       ],
@@ -80,7 +80,7 @@
       "saved_graph_rewrite": 1
     },
     "approval_gated_release": {
-      "elapsed_ms": 0.59,
+      "elapsed_ms": 0.44,
       "status": "blocked",
       "blocked_effect_nodes": [
         "announce-release"

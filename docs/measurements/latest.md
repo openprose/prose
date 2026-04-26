@@ -1,20 +1,20 @@
 # OpenProse Measurement Report
 
-Generated: 2026-04-25T06:53:17.438Z
+Generated: 2026-04-26T00:47:41.738Z
 
 ## Package Health
 
 | Target | Components | Quality | Typed Ports | Effects | Publish | Strict |
 |---|---:|---:|---:|---:|---|---|
 | examples | 15 | 0.95 | 100% | 100% | pass | pass |
-| packages/std | 82 | 0.35 | 0% | 0% | warn | fail |
+| packages/std | 82 | 0.96 | 100% | 100% | pass | pass |
 | packages/co | 6 | 1.00 | 100% | 100% | pass | pass |
 | customers/prose-openprose | 99 | 0.95 | 100% | 100% | pass | pass |
 
 ## Scenario Checks
 
 ### Hello
-- compile time: 0.40 ms
+- compile time: 0.23 ms
 - diagnostics: 0
 
 ### Company Intake
@@ -23,7 +23,7 @@ Generated: 2026-04-25T06:53:17.438Z
 - materialization set size: 3
 
 ### Run-Aware Brief
-- compile time: 0.37 ms
+- compile time: 0.20 ms
 - access rule groups: 2
 
 ### Selective Recompute

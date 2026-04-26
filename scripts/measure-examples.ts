@@ -4,10 +4,10 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { performance } from "node:perf_hooks";
 import { compileFile } from "../src/compiler";
-import { materializeFile } from "../src/materialize";
 import { packagePath } from "../src/package";
 import { planFile } from "../src/plan";
 import { publishCheckPath } from "../src/publish";
+import { runFile } from "../src/run";
 
 interface Timed<T> {
   elapsed_ms: number;
@@ -95,17 +95,18 @@ async function main(): Promise<void> {
     );
     const runAwareCompile = await time(() => compileFile(runAwarePath));
 
-    const baselineRun = await materializeFile(selectivePath, {
+    const baselineRun = await runFile(selectivePath, {
       runRoot: tempRoot,
       runId: "baseline-selective",
       createdAt: "2026-04-23T18:00:00.000Z",
+      provider: "fixture",
       inputs: {
         draft: "A stable draft.",
         company: "openprose",
       },
       outputs: {
-        summary: "A stable summary.",
-        market_snapshot: "A stable market snapshot.",
+        "summarize.summary": "A stable summary.",
+        "market-sync.market_snapshot": "A stable market snapshot.",
       },
     });
 

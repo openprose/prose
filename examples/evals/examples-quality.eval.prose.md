@@ -5,12 +5,13 @@ kind: test
 
 ### Requires
 
-- `package_root`: string - path to the example package root
+- `subject`: Json<RunSubject> - materialized run payload being evaluated
+- `package_root`: string - optional package root to inspect alongside the subject run
 
 ### Ensures
 
-- `verdict`: Markdown<EvalVerdict> - whether the curated examples package still represents current OpenProse best practice
+- `verdict`: Json<EvalVerdict> - pass/fail verdict, score, and concise reason
 
 ### Effects
 
-- `pure`: deterministic evaluation over package metadata and publish-check outputs
+- `pure`: deterministic evaluation over subject run metadata and package quality signals

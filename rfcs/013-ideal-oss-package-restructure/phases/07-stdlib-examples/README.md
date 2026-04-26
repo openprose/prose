@@ -24,7 +24,7 @@ Commit:
 
 Signpost:
 
-- Add `signposts/032-examples-tour.md` with example list and commands.
+- Add `signposts/033-examples-tour.md` with example list and commands.
 
 ## 07.2 Harden Std Roles
 
@@ -47,7 +47,7 @@ Commit:
 
 Signpost:
 
-- Add `signposts/033-std-roles.md` with role quality matrix.
+- Add `signposts/034-std-roles.md` with role quality matrix.
 
 ## 07.3 Convert Std Controls And Composites To Executable Semantics
 
@@ -71,7 +71,7 @@ Commit:
 
 Signpost:
 
-- Add `signposts/034-std-controls-composites.md` with supported vs pattern-only
+- Add `signposts/035-std-controls-composites.md` with supported vs pattern-only
   controls.
 
 ## 07.4 Update Std Evals To The New Run Store
@@ -95,7 +95,7 @@ Commit:
 
 Signpost:
 
-- Add `signposts/035-std-evals.md` with eval coverage and gaps.
+- Add `signposts/036-std-evals.md` with eval coverage and gaps.
 
 ## 07.5 Align Co Package With The Reference Pattern
 
@@ -118,7 +118,7 @@ Commit:
 
 Signpost:
 
-- Add `signposts/036-co-package.md` with local commands and reference
+- Add `signposts/037-co-package.md` with local commands and reference
   implementation notes.
 
 ## Phase Exit Criteria
