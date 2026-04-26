@@ -61,20 +61,21 @@ Checks:
 - `bun run prose preflight examples/north-star/lead-program-designer.prose.md`
 - `bun run prose run examples/north-star/company-signal-brief.prose.md --graph-vm pi ...`
 
-### [todo] Historical RFC notes still read like future implementation guides
+### [done] Historical RFC notes still read like future implementation guides
 
 Finding: `rfcs/013-*` signposts and phase docs intentionally preserve history,
 but several files still advertise obsolete commands and provider concepts in
 ways a new contributor could implement by mistake.
 
-Proposed fix:
+Resolved:
 
-- keep historical signposts intact when they are clearly past-tense evidence
-- add top-level warning banners to RFC 013 phase docs that mention flat
-  providers, fixture providers, local-process providers, or `--provider`
-- update `rfcs/README.md` to make RFC 015 the active hardening queue
-- avoid rewriting historical commit evidence unless it is linked from current
-  docs as guidance
+- kept historical signposts intact as past-tense evidence
+- added current-architecture warning text to RFC 013 phase docs
+- refreshed the RFC 013 phase index command examples to use `--graph-vm pi`
+- added an implementation-notes README that explains older notes as an
+  implementation diary, not current guidance
+
+Commit target: `docs: mark historical runtime notes as superseded`
 
 Checks:
 

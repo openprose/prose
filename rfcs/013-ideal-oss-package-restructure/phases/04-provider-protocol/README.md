@@ -1,4 +1,16 @@
-# Phase 04: Provider Protocol And Pi SDK Default Path
+# Phase 04: Historical Provider Protocol And Pi SDK Path
+
+**Status:** historical and superseded in vocabulary.
+
+This phase records the path that led to the current runtime. Do not implement
+new flat providers from this document. The active architecture is:
+
+- Pi is the graph VM.
+- Node runners execute individual graph nodes.
+- Model providers, including OpenRouter, are configured inside the Pi runtime
+  profile.
+- Deterministic `--output` values use a scripted Pi-shaped node runner for
+  tests and hosted fixtures.
 
 Goal: make node execution pluggable behind one TypeScript protocol, with the
 Pi SDK as the default real graph VM substrate.
