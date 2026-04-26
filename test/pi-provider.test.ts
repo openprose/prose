@@ -108,6 +108,44 @@ describe("OpenProse Pi runtime provider", () => {
     ]);
   });
 
+  test("fails with model diagnostics when Pi reports an event error", async () => {
+    const component = compileFixture("hello.prose.md").components[0];
+    const workspace = mkdtempSync(join(tmpdir(), "openprose-pi-provider-event-error-"));
+    const provider = createPiProvider({
+      createSession: fakePiSessionFactory(async ({ emit }) => {
+        emit({
+          type: "message_start",
+          message: {
+            role: "assistant",
+            stopReason: "error",
+            errorMessage: "402 Insufficient credits.",
+          },
+        });
+        emit({
+          type: "turn_end",
+          message: {
+            stopReason: "error",
+            errorMessage: "402 Insufficient credits.",
+          },
+        });
+      }),
+      timeoutMs: 2_000,
+    });
+
+    const result = await provider.execute(providerRequest(component, workspace));
+
+    expect(result.status).toBe("failed");
+    expect(result.artifacts).toEqual([]);
+    expect(result.logs.transcript).toContain("402 Insufficient credits.");
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({
+        severity: "error",
+        code: "pi_model_error",
+        message: "402 Insufficient credits.",
+      }),
+    ]);
+  });
+
   test("renders a stable prompt wrapper", () => {
     const component = compileFixture("hello.prose.md").components[0];
     const workspace = mkdtempSync(join(tmpdir(), "openprose-pi-provider-render-"));
@@ -155,10 +193,18 @@ integrationTest("runs a live Pi SDK smoke when explicitly enabled", async () => 
 });
 
 function fakePiSessionFactory(
-  onPrompt: (context: { prompt: string }) => Promise<void>,
+  onPrompt: (context: {
+    prompt: string;
+    emit: (event: unknown) => void;
+  }) => Promise<void>,
 ): PiSessionFactory {
   return async () => {
     const listeners: Array<(event: unknown) => void> = [];
+    const emit = (event: unknown) => {
+      for (const listener of listeners) {
+        listener(event);
+      }
+    };
     return {
       sessionId: "pi-session-1",
       sessionFile: "/tmp/pi-session.jsonl",
@@ -172,13 +218,9 @@ function fakePiSessionFactory(
         };
       },
       async prompt(prompt) {
-        for (const listener of listeners) {
-          listener({ type: "agent_start" });
-        }
-        await onPrompt({ prompt });
-        for (const listener of listeners) {
-          listener({ type: "agent_end" });
-        }
+        emit({ type: "agent_start" });
+        await onPrompt({ prompt, emit });
+        emit({ type: "agent_end" });
       },
       async abort() {},
       dispose() {},

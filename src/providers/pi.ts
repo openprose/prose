@@ -123,6 +123,10 @@ export class PiProvider implements RuntimeProvider {
       });
       unsubscribe = session.subscribe?.((event) => {
         events.push(safeEventLine(event));
+        const diagnostic = diagnosticFromPiEvent(event, request);
+        if (diagnostic) {
+          pushUniqueDiagnostic(diagnostics, diagnostic);
+        }
       });
 
       const promptResult = await runPromptWithTimeout(session, prompt, this.timeoutMs);
@@ -371,6 +375,63 @@ function safeEventLine(event: unknown): string {
   } catch {
     return String(event);
   }
+}
+
+function diagnosticFromPiEvent(
+  event: unknown,
+  request: ProviderRequest,
+): Diagnostic | null {
+  if (!event || typeof event !== "object") {
+    return null;
+  }
+
+  const candidates = candidateEventPayloads(event);
+  for (const candidate of candidates) {
+    const errorMessage = readString(candidate, "errorMessage");
+    const stopReason = readString(candidate, "stopReason");
+    if (errorMessage || stopReason === "error") {
+      return {
+        severity: "error",
+        code: "pi_model_error",
+        message: errorMessage ?? "Pi provider reported a model error.",
+        source_span: request.component.source.span,
+      };
+    }
+  }
+
+  return null;
+}
+
+function candidateEventPayloads(event: object): object[] {
+  const candidates = [event];
+  for (const key of ["message", "assistantMessageEvent", "error"]) {
+    const value = (event as Record<string, unknown>)[key];
+    if (value && typeof value === "object") {
+      candidates.push(value);
+    }
+  }
+  return candidates;
+}
+
+function readString(value: object, key: string): string | null {
+  const entry = (value as Record<string, unknown>)[key];
+  return typeof entry === "string" && entry.length > 0 ? entry : null;
+}
+
+function pushUniqueDiagnostic(
+  diagnostics: Diagnostic[],
+  diagnostic: Diagnostic,
+): void {
+  if (
+    diagnostics.some(
+      (existing) =>
+        existing.code === diagnostic.code &&
+        existing.message === diagnostic.message,
+    )
+  ) {
+    return;
+  }
+  diagnostics.push(diagnostic);
 }
 
 function elapsed(started: number): number {

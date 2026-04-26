@@ -47,3 +47,14 @@ Latest generated reports:
   cost are acceptable.
 - Decide the hosted provider contract for Sprites/Pi once the platform
   Workstream 03 pass begins.
+
+## Live Provider Smoke Notes
+
+- 2026-04-26: `prose run examples/hello.prose.md --provider pi` reached the Pi
+  provider through OpenRouter and correctly surfaced the upstream model error as
+  the run acceptance reason.
+- The smoke did not yet produce an accepted run because the available
+  OpenRouter account returned an insufficient-credits response.
+- The adapter now records Pi event-level model errors before output validation,
+  so future live provider failures should point at provider/auth/model issues
+  instead of collapsing into missing-output diagnostics.
