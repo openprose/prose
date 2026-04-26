@@ -8,7 +8,7 @@
         "id": "examples-composed-reviewer-index--composed-reviewer--reviewed-draft--expansion",
         "parent_component_id": "examples-composed-reviewer-index--composed-reviewer",
         "service_name": "reviewed-draft",
-        "compose_ref": "std/composites/worker-critic",
+        "compose_ref": "composites/worker-critic",
         "with": {
           "worker": "writer",
           "critic": "reviewer",
@@ -41,7 +41,7 @@
       },
       "kind": "execution",
       "confidence": 1,
-      "reason": "Composite expansion 'reviewed-draft' uses 'std/composites/worker-critic'.",
+      "reason": "Composite expansion 'reviewed-draft' uses 'composites/worker-critic'.",
       "source": "execution"
     }
   ]
