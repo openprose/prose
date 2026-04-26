@@ -359,7 +359,7 @@ Checks:
 - `bun run prose publish-check packages/std --strict`
 - `bun test test/std-patterns.test.ts`
 
-### [todo] Delivery adapters embed host-specific shell/Python implementation recipes
+### [done] Delivery adapters embed host-specific shell/Python implementation recipes
 
 Finding: delivery adapters should be reusable contracts with declared effects
 and environment requirements. `email-notifier` currently includes a full Python
@@ -367,12 +367,16 @@ SMTP script and `curl` recipes aimed at a specific chat/tool host. That makes
 the standard library look like skill spaghetti instead of contract-first agent
 software.
 
-Proposed fix:
+Resolved:
 
-- replace long host-specific scripts with concise protocol requirements,
+- replaced long host-specific scripts with concise protocol requirements,
   invariants, provider options, and acceptance criteria
-- preserve enough operational detail for an agent to send correctly
-- keep mutating effects explicit and approval-friendly
+- preserved enough operational detail for an agent to send correctly
+- kept mutating effects explicit and approval-friendly
+- added a focused test that delivery contracts compile, lint, and avoid
+  host-specific implementation recipes
+
+Commit target: `docs: simplify std delivery adapters`
 
 Checks:
 

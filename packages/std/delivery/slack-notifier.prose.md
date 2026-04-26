@@ -25,6 +25,11 @@ kind: service
 - `attachment_url`: string - link to the uploaded file — present only when format is "summary+attachment"
 
 
+### Environment
+
+- SLACK_WEBHOOK_URL: webhook for posting messages
+- SLACK_BOT_TOKEN: (required for "summary+attachment" format which uploads files via the Slack API; optional for "full" and "alert" which use webhook only)
+
 ### Effects
 
 - `delivers`: sends content to an external delivery channel
@@ -33,11 +38,6 @@ kind: service
 
 - webhook-failed: the Slack webhook returned a non-2xx status or was unreachable
 - channel-not-found: the specified channel does not exist or the bot lacks permission to post there
-
-### Environment
-
-- SLACK_WEBHOOK_URL: webhook for posting messages
-- SLACK_BOT_TOKEN: (required for "summary+attachment" format which uploads files via the Slack API; optional for "full" and "alert" which use webhook only)
 
 ### Strategies
 

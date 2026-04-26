@@ -26,6 +26,12 @@ kind: service
 - `bytes_written`: number - the size of the written file in bytes
 
 
+### Environment
+
+- AWS_ACCESS_KEY_ID: (optional) required for S3 destinations
+- AWS_SECRET_ACCESS_KEY: (optional) required for S3 destinations
+- GOOGLE_APPLICATION_CREDENTIALS: (optional) required for GCS destinations
+
 ### Effects
 
 - `mutates_repo`: writes content to a requested file path
@@ -35,12 +41,6 @@ kind: service
 - write-failed: the write operation failed (disk full, network error, service unavailable)
 - path-not-found: the parent directory or bucket does not exist
 - permission-denied: insufficient permissions to write to the destination
-
-### Environment
-
-- AWS_ACCESS_KEY_ID: (optional) required for S3 destinations
-- AWS_SECRET_ACCESS_KEY: (optional) required for S3 destinations
-- GOOGLE_APPLICATION_CREDENTIALS: (optional) required for GCS destinations
 
 ### Invariants
 
@@ -53,6 +53,7 @@ kind: service
 - when format is "csv": serialize the content as CSV with headers derived from the data structure
 - when format is "html": write the content as an HTML document
 - when format is "md": write the content as Markdown
-- when destination is an S3 URI: use AWS SDK or CLI to upload
-- when destination is a GCS URI: use Google Cloud SDK or CLI to upload
-- when destination is a local path: write directly to the filesystem
+- when destination is an S3 URI: use the configured S3-compatible object storage adapter and return the final object URI
+- when destination is a GCS URI: use the configured GCS object storage adapter and return the final object URI
+- when destination is a local path: write through the host filesystem adapter and return the normalized path
+- never include storage credentials in written artifacts, receipts, traces, or error text
