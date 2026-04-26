@@ -11,7 +11,15 @@ related:
 
 Flow control patterns used to structure Prose program execution.
 
-Controls are delegation coordinators. Each one takes a `__controlState` object that specifies which components to delegate to and how. The control manages the delegation loop — dispatching briefs, collecting results, tracking state — so the parent program doesn't have to.
+Controls are delegation coordinators. Each one is a typed pattern contract: it
+accepts a `control_state` JSON input and returns a `control_result` JSON output.
+The contract describes the reusable flow shape without pretending that the OSS
+runtime has native dynamic scheduling for every pattern yet.
+
+Today, controls are executable as agent-facing contracts and as registry-visible
+composition patterns. When you need deterministic native graph execution, write
+an explicit `### Execution` block with concrete `call`, `parallel`, and `return`
+steps.
 
 ## When to Use a Control vs. an Explicit Execution Block
 
@@ -21,15 +29,20 @@ Write an **explicit execution block** (`let` + `call`) when the logic is specifi
 
 Rule of thumb: if the delegation logic is about *flow* (sequence, parallel, retry, gate), use a control. If it's about *decisions* (inspect this result, choose that path), use an execution block.
 
-## The `__controlState` Convention
+## The `control_state` Convention
 
-Every control reads and writes a `__controlState` object. This is the control's interface to its parent:
+Every control reads one JSON object and returns one JSON object:
 
-- **Input:** The parent populates `__controlState` with the control's `requires` fields — component names, briefs, configuration.
-- **Output:** The control writes results back to `__controlState` — the final result, metadata (scores, attempt counts, failure history), and any intermediate data.
-- **During execution:** The control uses `__controlState` for internal bookkeeping (e.g., `_lastSuggestions` in refine). Fields prefixed with `_` are private to the control.
+- **Input:** `control_state` declares component names, briefs, thresholds,
+  budgets, chunks, or candidate lists.
+- **Output:** `control_result` contains the result plus metadata such as scores,
+  attempts, failure history, or selected winners.
+- **Runtime status:** variable-width fan-out, race cancellation, dynamic retry,
+  and fallback scheduling are pattern semantics until native control IR grows
+  first-class support for them.
 
-The `__controlState` object is the control's entire world. It does not read from or write to any other shared state.
+The state object is the control's entire world. It does not imply hidden global
+state, shared mutable memory, or JavaScript runtime hooks.
 
 ## Controls
 
@@ -68,6 +81,23 @@ The `__controlState` object is the control's entire world. It does not read from
 **retry-with-learning vs. fallback-chain:** Both handle failure. Retry retries the SAME component with enriched context. Fallback-chain tries DIFFERENT components with the original brief.
 
 **retry-with-learning vs. refine:** Both iterate. Retry recovers from failure (broken results). Refine improves mediocrity (working but insufficient results).
+
+## Native Runtime Support
+
+Supported today:
+
+- fixed service calls through explicit `### Execution` blocks
+- fixed `parallel:` groups in execution IR
+- package-local composite references for documented topology expansion
+- fixture/provider execution of a control as a single harness session
+
+Pattern-only until a later runtime slice:
+
+- variable-width fan-out
+- dynamic map-reduce partitioning
+- first-winner race cancellation
+- retry loops with live attempt resumption
+- fallback chains with dynamic delegate failure handling
 
 ## Future Work
 

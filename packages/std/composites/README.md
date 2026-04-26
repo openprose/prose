@@ -9,7 +9,11 @@ related:
 
 # std/composites
 
-Composites are named multi-agent patterns (`kind: composite`). Each one defines a topology: which slots exist, how information flows between them, and what structural guarantee the pattern provides.
+Composites are named multi-agent patterns (`kind: composite`). Each one defines
+a topology: which roles exist, how information flows between them, and what
+structural guarantee the pattern provides. In the current OSS runtime they are
+typed, executable pattern contracts: `composite_state` in, `composite_result`
+out.
 
 ## Two Categories
 
@@ -54,24 +58,24 @@ These composites measure properties of artifacts — clarity, determinism, hidde
 | Check if code and docs (or any two corpora) are in sync | `coherence-probe` |
 | Compare two candidates on any measured dimension | `contrastive-probe` |
 
-## The `&compositeState` Convention
+## The `composite_state` Convention
 
-Every composite reads and writes `&compositeState`, a YAML anchor resolved at runtime to the object stored at `__compositeState`. This is how the parent program configures a composite: it writes slot assignments, task briefs, and options into `__compositeState`, then delegates to the composite, which reads its configuration from the same location and writes its results back.
+Every composite reads one JSON input and returns one JSON output.
 
-```yaml
-state:
-  reads: [&compositeState]
-  writes: [&compositeState]
-```
+The parent provides `composite_state` with:
 
-The parent provides `__compositeState` with at minimum:
-- Slot assignments (which component fills each slot)
-- A `task_brief` (what to work on)
-- Composite-specific options (rounds, max_retries, tiers, etc.)
+- role assignments
+- a task brief or measured artifact
+- composite-specific options such as rounds, sample size, criteria, or tiers
 
-The composite writes back:
-- `__compositeState.result` — the primary output
-- Any composite-specific secondary outputs (reviews, predictions, exchange history, etc.)
+The composite returns `composite_result` with:
+
+- the primary result
+- intermediate outputs such as reviews, attacks, observations, or member results
+- metadata such as confidence, rounds used, or unresolved tensions
+
+This avoids hidden mutable state and keeps local runs close to hosted run
+records.
 
 ## Using Composites
 
@@ -117,3 +121,18 @@ This is equivalent to the Level 1 form above — `my-writer` fills the primary `
 | `contrastive-probe` | `measurement` | Yes |
 
 Composites without a primary slot (currently only `dialectic`) require the Level 1 `compose:` form because there is no single "main" service to decorate.
+
+## Native Runtime Support
+
+Supported today:
+
+- package-local composite references in package IR
+- fixed service graphs expanded from declared `compose:` references
+- fixture/provider execution of a composite as a single harness session
+
+Pattern-only until a later runtime slice:
+
+- variable-width ensembles
+- iterative worker/critic, ratchet, oversight, and dialectic loops
+- cancellation or resumption of sub-sessions inside a composite
+- measurement probes that require repeated live model invocations

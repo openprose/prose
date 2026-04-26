@@ -5,80 +5,27 @@ kind: composite
 
 # Map-Reduce
 
-Split input, delegate chunks to mappers in parallel, merge results with a reducer.
-
-### Metadata
-
-- `version`: 0.2.0
-- `role`: coordinator
-
-### Runtime
-
-- `state.reads`: &controlState
-- `state.writes`: &controlState
-
-### Slots
-
-- `mapper`
-- `reducer`
-
-### Shape
-
-- `self`: partition input into chunks, fan out to mappers, collect results, delegate to reducer
-- `delegates`:
-  - `mapper`: process one chunk of the input
-  - `reducer`: merge all mapper outputs into a single result
-- `prohibited`: none
+Split work across mapper calls, then merge mapper outputs through a reducer.
 
 ### Requires
 
-- &controlState exists at __controlState with:
-    mapper: string         -- component name for each mapper
-    reducer: string        -- component name for the reducer
-    task_brief: string     -- overall task description
-    chunks: any[]          -- the pre-partitioned input chunks
+- `control_state`: Json<MapReduceControlState> - mapper, reducer, task brief, chunks, and merge requirements
 
 ### Ensures
 
-- Each mapper receives one chunk and the overall task brief as context
-- Mapper does not know other mappers exist or what chunks they received
-- All mappers execute in parallel
-- Reducer receives ALL mapper outputs and the overall task brief
-- Reducer reasons about how to merge — handles conflicts and overlaps
-- &controlState.result contains the merged output
-- &controlState.mapper_results contains individual mapper outputs
-
+- `control_result`: Json<MapReduceControlResult> - merged result, mapper outputs, and reducer notes
 
 ### Effects
 
-- `pure`: deterministic transformation over declared inputs
+- `pure`: deterministic coordination pattern over declared state
 
-### Delegation
+### Execution
 
-```javascript
-const { mapper, reducer, task_brief, chunks } = __controlState;
-
-// Map phase — all mappers run in parallel
-const mapperResults = await Promise.all(
-  chunks.map((chunk, i) => {
-    const mapBrief = `${task_brief}\n\nProcess this chunk (${i + 1} of ${chunks.length}):\n${typeof chunk === 'string' ? chunk : JSON.stringify(chunk)}`;
-    return rlm(mapBrief, null, { use: mapper });
-  })
-);
-
-// Reduce phase
-const reduceBrief = `Merge these ${mapperResults.length} results into a single coherent output. Handle conflicts and overlaps.\n\nOverall task: ${task_brief}\n\nResults to merge:\n${mapperResults.map((r, i) => `--- Chunk ${i + 1} ---\n${r}`).join("\n\n")}`;
-const merged = await rlm(reduceBrief, null, { use: reducer });
-
-__controlState.result = merged;
-__controlState.mapper_results = mapperResults;
-return(merged);
+```prose
+Validate that chunks is non-empty.
+Give each mapper one chunk plus the overall task context.
+Keep mapper calls independent.
+Give the reducer every mapper output, the task brief, and merge requirements.
+Require the reducer to resolve conflicts or mark unresolved disagreements.
+Return the reducer output plus mapper provenance.
 ```
-
-### Notes
-
-The parent is responsible for partitioning the input into chunks before delegating to map-reduce. Mappers do not know other mappers exist. The reducer does not know it is part of a map-reduce pipeline.
-
-Mappers run in parallel by default (`Promise.all`). For sequential execution (e.g., when mappers share rate-limited resources), replace `Promise.all` with a `for` loop — but this sacrifices the primary advantage of map-reduce.
-
-Different from `fan-out`: map-reduce includes a reducer that merges results into a single output. Fan-out returns all results to the parent, which decides how to use them.
