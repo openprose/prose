@@ -1,7 +1,7 @@
 # OpenProse Measurement Report
 
 Version: 0.2
-Generated: 2026-04-26T17:49:02.883Z
+Generated: 2026-04-26T18:37:04.996Z
 
 ## Release Checks
 
@@ -18,7 +18,7 @@ Generated: 2026-04-26T17:49:02.883Z
 | Target | Components | Quality | Typed Ports | Effects | Publish | Strict |
 |---|---:|---:|---:|---:|---|---|
 | examples | 42 | 1.00 | 100% | 100% | pass | pass |
-| packages/std | 58 | 0.97 | 100% | 100% | pass | pass |
+| packages/std | 58 | 0.99 | 100% | 100% | pass | pass |
 | packages/co | 6 | 1.00 | 100% | 100% | pass | pass |
 | customers/prose-openprose | 99 | 0.95 | 100% | 100% | pass | pass |
 
@@ -26,8 +26,8 @@ Generated: 2026-04-26T17:49:02.883Z
 
 ### Company Signal Brief
 - status: succeeded
-- compile time: 0.17 ms
-- run time: 25.49 ms
+- compile time: 0.18 ms
+- run time: 22.64 ms
 - eval: passed (0.93)
 - scripted Pi sessions: 1
 - estimated cost: n/a (scripted Pi)
@@ -36,7 +36,7 @@ Generated: 2026-04-26T17:49:02.883Z
 ### Lead Program Designer
 - status: succeeded
 - graph nodes: 3
-- run time: 43.28 ms
+- run time: 53.72 ms
 - eval: passed (0.91)
 - first-run sessions: 3
 - first-run executed nodes: lead-profile-normalizer, lead-qualification-scorer, save-grow-program-drafter
@@ -49,7 +49,7 @@ Generated: 2026-04-26T17:49:02.883Z
 ### Stargazer Intake Lite
 - status: succeeded
 - graph nodes: 5
-- run time: 97.81 ms
+- run time: 52.57 ms
 - eval: passed (0.94)
 - scripted Pi sessions: 5
 - memory artifacts: 1
@@ -62,7 +62,7 @@ Generated: 2026-04-26T17:49:02.883Z
 ### Opportunity Discovery Lite
 - status: succeeded
 - graph nodes: 4
-- run time: 43.26 ms
+- run time: 42.01 ms
 - eval: passed (0.92)
 - scripted Pi sessions: 4
 - stale rows rejected: 1

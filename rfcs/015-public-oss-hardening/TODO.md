@@ -293,26 +293,34 @@ Checks:
 
 ## P1: Runtime Robustness
 
-### [todo] Old fixture materializer remains a public API seam
+### [done] Old fixture materializer remains a public API seam
 
 Finding: `src/materialize.ts` still implements the older caller-output
 materializer, `src/runtime/index.ts` exports it, and several tests use it
 directly. The public CLI path is correct, but the source API still exposes the
 pre-Pi mental model.
 
-Proposed fix:
+Resolved:
 
-- migrate tests that need deterministic runs to `runSource` with scripted Pi
-  outputs
-- either delete `src/materialize.ts` or quarantine it under a clearly internal
-  fixture helper
-- remove public exports that imply materialization is a separate runtime path
+- migrated deterministic runtime/planning tests to `runSource` with scripted
+  Pi outputs
+- deleted `src/materialize.ts` instead of quarantining it as a fixture helper
+- removed `materializeFile` / `materializeSource` from the public runtime
+  barrel and test support
+- added a module-boundary regression that keeps the old seam out of
+  `src/index.ts`
+- fixed the real behavior gap exposed by the migration: a one-component
+  `kind: program` source now executes as a graph run, not a direct component
+  run
 
 Checks:
 
 - `rg -n "materializeFile|materializeSource" src test`
 - `bun test test/runtime-materialization.test.ts test/runtime-planning.test.ts test/package-registry.test.ts`
+- `bun test test/runtime-materialization.test.ts test/runtime-planning.test.ts test/runtime-profiles.test.ts test/module-boundaries.test.ts test/package-registry.test.ts`
+- `bun test`
 - `bun run confidence:runtime`
+- `bun run typecheck`
 
 ### [todo] Runtime preflight does not verify Pi runtime-profile readiness
 

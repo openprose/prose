@@ -225,7 +225,7 @@ export async function runSource(
   }
 
   const executable = executableComponents(ir);
-  if (executable.length > 1) {
+  if (ir.components.some((component) => component.kind === "program") && executable.length > 0) {
     return executeGraphRun(ctx, executable);
   }
 
@@ -649,8 +649,8 @@ async function assembleGraphRunRecord(
     .filter((port) => !findGraphOutputSource(ctx, port.name, nodeRecordsById))
     .map((port) => `Missing graph output '${port.name}'.`);
   const reasons = [
-    ...failedNodes.map((record) => `Node '${record.component_ref}' failed.`),
-    ...blockedNodes.map((record) => `Node '${record.component_ref}' is ${record.status}.`),
+    ...failedNodes.map(nodeStatusReason),
+    ...blockedNodes.map(nodeStatusReason),
     ...missingOutputs,
   ];
   const status = failedNodes.length > 0
@@ -714,6 +714,14 @@ async function assembleGraphRunRecord(
     status,
     completed_at: completionTimestamp(ctx),
   };
+}
+
+function nodeStatusReason(record: RunRecord): string {
+  const detail = record.acceptance.reason ? ` ${record.acceptance.reason}` : "";
+  if (record.status === "failed") {
+    return `Node '${record.component_ref}' failed.${detail}`;
+  }
+  return `Node '${record.component_ref}' is ${record.status}.${detail}`;
 }
 
 async function writeGraphOutputArtifacts(

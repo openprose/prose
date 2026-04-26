@@ -162,7 +162,10 @@ describe("OpenProse executable evals", () => {
         score: 0.2,
       }),
     ]);
-    const pointers = await listGraphNodePointers(root, result.run_id);
+    const pointers = await listGraphNodePointers(
+      join(root, "runs", ".prose-store"),
+      result.run_id,
+    );
     expect(pointers.map((pointer) => pointer.current_run_id)).toEqual([
       null,
       null,

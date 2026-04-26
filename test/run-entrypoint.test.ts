@@ -392,7 +392,7 @@ kind: program
     expect(result.record.acceptance.reason).toContain("Expected 'number' to be number.");
     const artifact = await readArtifactRecordForOutput(
       join(runRoot, ".prose-store"),
-      "invalid-output",
+      "invalid-output:numeric-output",
       "numeric-output",
       "count",
     );
@@ -437,7 +437,7 @@ kind: program
     const artifact = await readArtifactRecordForOutput(
       join(runRoot, ".prose-store"),
       "private-policy",
-      "private-summary",
+      "$graph",
       "summary",
     );
     expect(artifact?.policy_labels).toEqual(["company_private.accounts"]);

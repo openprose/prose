@@ -22,7 +22,7 @@ import {
   listRunAttemptRecords,
   lintPath,
   lintSource,
-  materializeSource,
+  runSource,
   mkdirSync,
   mkdtempSync,
   packagePath,
@@ -59,7 +59,7 @@ import { scriptedPiRuntime } from "./support/scripted-pi-session";
 describe("OpenProse deterministic materialization and remote envelope", () => {
   test("materializes a succeeded pure single-service run record", async () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-run-"));
-    const result = await materializeSource(fixture("hello.prose.md"), {
+    const result = await runSource(fixture("hello.prose.md"), {
       path: "fixtures/compiler/hello.prose.md",
       runRoot,
       runId: "20260423-120000-abc123",
@@ -76,12 +76,16 @@ describe("OpenProse deterministic materialization and remote envelope", () => {
     );
 
     expect(record).toMatchObject({
-      run_id: "20260423-120000-abc123:hello",
+      run_id: "20260423-120000-abc123",
       kind: "component",
       component_ref: "hello",
       status: "succeeded",
       acceptance: { status: "accepted" },
-      runtime: { harness: "openprose-bun-local", worker_ref: "scripted-pi-output" },
+      runtime: {
+        harness: "openprose-node-runner",
+        worker_ref: "pi",
+        model_provider: "scripted",
+      },
     });
     expect(output).toBe("Hello from a deterministic output.\n");
   });
@@ -125,7 +129,7 @@ describe("OpenProse deterministic materialization and remote envelope", () => {
 
   test("materializes a graph run with node run records", async () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-graph-"));
-    const result = await materializeSource(fixture("pipeline.prose.md"), {
+    const result = await runSource(fixture("pipeline.prose.md"), {
       path: "fixtures/compiler/pipeline.prose.md",
       runRoot,
       runId: "20260423-121500-def456",
@@ -135,7 +139,7 @@ describe("OpenProse deterministic materialization and remote envelope", () => {
       },
       outputs: {
         "review.feedback": "Tighten the intro.",
-        "fact-check.claims": "All claims verified.",
+        "fact-check.claims": "[]",
         "polish.final": "The polished draft.",
       },
       trigger: "test",
@@ -160,7 +164,7 @@ describe("OpenProse deterministic materialization and remote envelope", () => {
 
   test("deterministic materialization writes through local store indexes", async () => {
     const storeRoot = mkdtempSync(join(tmpdir(), "openprose-store-backed-"));
-    const result = await materializeSource(fixture("pipeline.prose.md"), {
+    const result = await runSource(fixture("pipeline.prose.md"), {
       path: "fixtures/compiler/pipeline.prose.md",
       runRoot: join(storeRoot, "runs"),
       storeRoot,
@@ -171,7 +175,7 @@ describe("OpenProse deterministic materialization and remote envelope", () => {
       },
       outputs: {
         "review.feedback": "Tighten the intro.",
-        "fact-check.claims": "All claims verified.",
+        "fact-check.claims": "[]",
         "polish.final": "The polished draft.",
       },
       trigger: "test",
@@ -203,7 +207,7 @@ describe("OpenProse deterministic materialization and remote envelope", () => {
 
   test("materializes a single-component program run from direct outputs", async () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-program-run-"));
-    const result = await materializeSource(
+    const result = await runSource(
       `---
 name: company-index
 kind: program
@@ -245,24 +249,25 @@ kind: program
 
   test("materialization blocks missing deterministic outputs", async () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-blocked-"));
-    const result = await materializeSource(fixture("hello.prose.md"), {
+    const result = await runSource(fixture("hello.prose.md"), {
       path: "fixtures/compiler/hello.prose.md",
       runRoot,
       runId: "20260423-123000-fed987",
       createdAt: "2026-04-23T12:30:00.000Z",
+      nodeRunner: scriptedPiRuntime({ outputs: {} }),
       trigger: "test",
     });
 
-    expect(result.record.status).toBe("blocked");
+    expect(result.record.status).toBe("failed");
     expect(result.record.acceptance).toMatchObject({
       status: "pending",
-      reason: "Missing deterministic output 'message'.",
+      reason: "Node runner did not write required output 'message' at 'message.md'.",
     });
   });
 
   test("materialization blocks side-effecting graphs by default", async () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-effect-"));
-    const result = await materializeSource(fixture("typed-effects.prose.md"), {
+    const result = await runSource(fixture("typed-effects.prose.md"), {
       path: "fixtures/compiler/typed-effects.prose.md",
       runRoot,
       runId: "20260423-124500-abc987",
@@ -279,7 +284,7 @@ kind: program
 
     expect(result.record.status).toBe("blocked");
     expect(result.record.acceptance.reason).toContain(
-      "Local materializer does not perform effect 'delivers'.",
+      "Graph effect 'delivers' requires a gate before execution.",
     );
   });
 
@@ -298,7 +303,31 @@ kind: program
     expect(plan.graph_blocked_reasons).toEqual([]);
 
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-approved-effect-"));
-    const result = await materializeSource(fixture("typed-effects.prose.md"), {
+    await runSource(
+      `---
+name: company-enrichment
+kind: service
+---
+
+### Ensures
+
+- \`profile\`: CompanyProfile - prior enrichment profile
+
+### Effects
+
+- \`pure\`: deterministic fixture setup
+`,
+      {
+        path: "fixtures/compiler/company-enrichment.prose.md",
+        runRoot,
+        runId: "prior-run",
+        outputs: {
+          profile: "Prior enrichment profile.",
+        },
+        trigger: "test",
+      },
+    );
+    const result = await runSource(fixture("typed-effects.prose.md"), {
       path: "fixtures/compiler/typed-effects.prose.md",
       runRoot,
       runId: "20260423-125000-gate01",
@@ -323,7 +352,7 @@ kind: program
         trigger: "human_gate",
       },
       effects: {
-        declared: ["read_external", "delivers"],
+        declared: ["delivers", "read_external"],
         performed: [],
       },
     });
@@ -331,7 +360,7 @@ kind: program
 
   test("passes approved effects through the CLI deterministic run path", async () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-cli-approved-"));
-    await materializeSource(
+    await runSource(
       `---
 name: company-enrichment
 kind: service
@@ -373,7 +402,7 @@ kind: service
         "--input",
         "company=Acme profile",
         "--input",
-        "subject=run:prior-run:company-enrichment",
+        "subject=run:prior-run",
         "--output",
         "brief-writer.brief=Approved CLI brief.",
       ],
@@ -622,7 +651,7 @@ kind: service
 
   test("artifact manifests reject malformed runtime-owned JSON", async () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-bad-artifact-"));
-    const result = await materializeSource(fixture("hello.prose.md"), {
+    const result = await runSource(fixture("hello.prose.md"), {
       path: "fixtures/compiler/hello.prose.md",
       runRoot,
       runId: "20260423-131500-rmt004",
@@ -640,7 +669,7 @@ kind: service
 
   test("artifact manifests hash raw bytes for preserved binary artifacts", async () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-binary-artifact-"));
-    const result = await materializeSource(fixture("hello.prose.md"), {
+    const result = await runSource(fixture("hello.prose.md"), {
       path: "fixtures/compiler/hello.prose.md",
       runRoot,
       runId: "20260423-132000-rmt005",

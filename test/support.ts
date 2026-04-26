@@ -22,7 +22,6 @@ export { highlightSource, renderHighlightHtml, renderHighlightText } from "../sr
 export { installRegistryRef, installWorkspaceDependencies } from "../src/install";
 export { compilePackagePath } from "../src/ir/package";
 export { lintPath, lintSource, renderLintReportText, renderLintText } from "../src/lint";
-export { materializeSource } from "../src/materialize";
 export { projectManifest } from "../src/manifest";
 export { packagePath, renderPackageText } from "../src/package";
 export { planSource } from "../src/plan";

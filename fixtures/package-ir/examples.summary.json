@@ -1,9 +1,9 @@
 {
   "package_ir_version": "0.1",
-  "semantic_hash": "8b93b56e0c3ad85ac01f872ffbc2517964fbe09f076187e5aa2317c34ed03aa1",
+  "semantic_hash": "8f33bb9330afabeb7e0895c8cc0696bee9aac87d77449ba84e71919d5f479f62",
   "hashes": {
     "source_hash": "8b17573a40315c661f15c04504659ff7b0c79bd0157458ce45c81b9a167934e1",
-    "semantic_hash": "8b93b56e0c3ad85ac01f872ffbc2517964fbe09f076187e5aa2317c34ed03aa1",
+    "semantic_hash": "8f33bb9330afabeb7e0895c8cc0696bee9aac87d77449ba84e71919d5f479f62",
     "dependency_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
     "policy_hash": "2471c0dad52c2228c0ab35c42fb6b800db84182176ce27ba21744ab4f1c5d4c5",
     "runtime_config_hash": "880a23323d31bc275663edd195d070673eeb25af2e233f3fedb597e8e20592d5"
@@ -16,9 +16,9 @@
     "description": "North-star runtime backpressure examples for OpenProse.",
     "license": "MIT",
     "source": {
-      "git": "github.com/openprose/prose",
-      "sha": "54dab36d04f57e7343615d2263c91df69a069a64",
-      "subpath": "examples"
+      "git": null,
+      "sha": null,
+      "subpath": null
     },
     "schemas": [],
     "evals": [

@@ -1,9 +1,9 @@
 {
   "package_ir_version": "0.1",
-  "semantic_hash": "997c0f878900d35c3a4b8b15c9cf007c18a28638fca3c03802d0856716d6f355",
+  "semantic_hash": "86a4adf5f81dce2343c7e125e6be10ba7f575906d9f9be7f2f0b2379bd3e6911",
   "hashes": {
-    "source_hash": "a3a89e7460016d0fa6fc6d57878fafe555e8d270ed735d6e23f2dfecb078dd7e",
-    "semantic_hash": "997c0f878900d35c3a4b8b15c9cf007c18a28638fca3c03802d0856716d6f355",
+    "source_hash": "4a2770f31e95b13d8c7f06dfe95087cdad7c9824ed8023fb670124151007d8a4",
+    "semantic_hash": "86a4adf5f81dce2343c7e125e6be10ba7f575906d9f9be7f2f0b2379bd3e6911",
     "dependency_hash": "274e424f01b65e9042abc2e220cb92a3c67f471429616deafea5ea8423053ba5",
     "policy_hash": "ffe076367b3b0d0143198d146e8ec1fb9f1cfc18e30ae5a8d548198407135e28",
     "runtime_config_hash": "9568e60e2ea35652447bd7fb2f7e9f04a7b38ea6902fdaa85cec402a5f96107b"
@@ -354,65 +354,42 @@
       "component_ids": [
         "ops-diagnose--diagnose"
       ],
-      "diagnostics": [
-        "unresolved_service_reference",
-        "unresolved_service_reference"
-      ]
+      "diagnostics": []
     },
     {
       "path": "ops/lint.prose.md",
       "component_ids": [
         "ops-lint--lint"
       ],
-      "diagnostics": [
-        "unresolved_service_reference",
-        "unresolved_service_reference",
-        "unresolved_service_reference"
-      ]
+      "diagnostics": []
     },
     {
       "path": "ops/preflight.prose.md",
       "component_ids": [
         "ops-preflight--preflight"
       ],
-      "diagnostics": [
-        "unresolved_service_reference",
-        "unresolved_service_reference",
-        "unresolved_service_reference"
-      ]
+      "diagnostics": []
     },
     {
       "path": "ops/profiler.prose.md",
       "component_ids": [
         "ops-profiler--profiler"
       ],
-      "diagnostics": [
-        "unresolved_service_reference",
-        "unresolved_service_reference",
-        "unresolved_service_reference",
-        "unresolved_service_reference",
-        "unresolved_service_reference"
-      ]
+      "diagnostics": []
     },
     {
       "path": "ops/status.prose.md",
       "component_ids": [
         "ops-status--status"
       ],
-      "diagnostics": [
-        "unresolved_service_reference"
-      ]
+      "diagnostics": []
     },
     {
       "path": "ops/wire.prose.md",
       "component_ids": [
         "ops-wire--wire"
       ],
-      "diagnostics": [
-        "unresolved_service_reference",
-        "unresolved_service_reference",
-        "unresolved_service_reference"
-      ]
+      "diagnostics": []
     },
     {
       "path": "roles/classifier.prose.md",
@@ -1018,9 +995,9 @@
     "node_count": 58,
     "edge_count": 26,
     "edge_kinds": {
-      "caller": 10,
+      "caller": 12,
       "exact": 7,
-      "execution": 4,
+      "execution": 2,
       "return": 5
     }
   },
@@ -1028,7 +1005,6 @@
     "ambiguous_package_exact_wiring": 5,
     "ambiguous_package_service_reference": 1,
     "dependency_lock_missing": 1,
-    "dependency_sha_missing": 1,
-    "unresolved_service_reference": 17
+    "dependency_sha_missing": 1
   }
 }

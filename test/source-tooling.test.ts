@@ -18,7 +18,6 @@ import {
   join,
   lintPath,
   lintSource,
-  materializeSource,
   mkdirSync,
   mkdtempSync,
   packagePath,

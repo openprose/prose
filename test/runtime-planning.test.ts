@@ -18,7 +18,7 @@ import {
   join,
   lintPath,
   lintSource,
-  materializeSource,
+  runSource,
   mkdirSync,
   mkdtempSync,
   packagePath,
@@ -137,7 +137,7 @@ kind: program
 
   test("plans matching prior materialization as current", async () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-current-"));
-    const materialized = await materializeSource(fixture("pipeline.prose.md"), {
+    const materialized = await runSource(fixture("pipeline.prose.md"), {
       path: "fixtures/compiler/pipeline.prose.md",
       runRoot,
       runId: "20260423-131500-cur001",
@@ -147,7 +147,7 @@ kind: program
       },
       outputs: {
         "review.feedback": "Tighten the intro.",
-        "fact-check.claims": "All claims verified.",
+        "fact-check.claims": "[]",
         "polish.final": "The polished draft.",
       },
       trigger: "test",
@@ -176,7 +176,7 @@ kind: program
 
   test("plans changed caller input as stale but ready", async () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-stale-input-"));
-    const materialized = await materializeSource(fixture("pipeline.prose.md"), {
+    const materialized = await runSource(fixture("pipeline.prose.md"), {
       path: "fixtures/compiler/pipeline.prose.md",
       runRoot,
       runId: "20260423-133000-sta001",
@@ -186,7 +186,7 @@ kind: program
       },
       outputs: {
         "review.feedback": "Tighten the intro.",
-        "fact-check.claims": "All claims verified.",
+        "fact-check.claims": "[]",
         "polish.final": "The polished draft.",
       },
       trigger: "test",
@@ -211,7 +211,7 @@ kind: program
 
   test("plans changed source semantics as stale", async () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-stale-source-"));
-    const materialized = await materializeSource(fixture("hello.prose.md"), {
+    const materialized = await runSource(fixture("hello.prose.md"), {
       path: "fixtures/compiler/hello.prose.md",
       runRoot,
       runId: "20260423-134500-src001",
@@ -230,7 +230,7 @@ kind: program
       path: "fixtures/compiler/hello.prose.md",
       currentRun: {
         graph: null,
-        nodes: materialized.node_records,
+        nodes: [materialized.record],
       },
     });
 
@@ -240,11 +240,12 @@ kind: program
 
   test("plans expired freshness as stale", async () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-freshness-"));
-    const materialized = await materializeSource(fixture("freshness.prose.md"), {
+    const materialized = await runSource(fixture("freshness.prose.md"), {
       path: "fixtures/compiler/freshness.prose.md",
       runRoot,
       runId: "20260423-150000-frh001",
       createdAt: "2026-04-23T00:00:00.000Z",
+      completedAt: "2026-04-23T00:00:00.000Z",
       inputs: {
         org: "openprose",
       },
@@ -261,7 +262,7 @@ kind: program
       },
       currentRun: {
         graph: null,
-        nodes: materialized.node_records,
+        nodes: [materialized.record],
       },
       now: "2026-04-23T07:00:00.000Z",
     });
@@ -284,7 +285,7 @@ kind: program
       ),
     );
 
-    const materialized = await materializeSource(
+    const materialized = await runSource(
       readFileSync(sourcePath, "utf8"),
       {
         path: sourcePath,
@@ -325,13 +326,14 @@ kind: program
 
   test("skips stale-but-unneeded nodes for a targeted output", async () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-selective-"));
-    const materialized = await materializeSource(
+    const materialized = await runSource(
       fixture("selective-recompute.prose.md"),
       {
         path: "fixtures/compiler/selective-recompute.prose.md",
         runRoot,
         runId: "20260423-160000-sel001",
         createdAt: "2026-04-23T10:00:00.000Z",
+        completedAt: "2026-04-23T10:00:00.000Z",
         inputs: {
           draft: "A stable draft.",
           company: "openprose",
@@ -373,13 +375,14 @@ kind: program
 
   test("prints the exact materialization set for a targeted stale output", async () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-selective-run-"));
-    const materialized = await materializeSource(
+    const materialized = await runSource(
       fixture("selective-recompute.prose.md"),
       {
         path: "fixtures/compiler/selective-recompute.prose.md",
         runRoot,
         runId: "20260423-161500-sel002",
         createdAt: "2026-04-23T10:00:00.000Z",
+        completedAt: "2026-04-23T10:00:00.000Z",
         inputs: {
           draft: "A stable draft.",
           company: "openprose",
@@ -470,7 +473,7 @@ kind: program
 
   test("loads a trace view from a materialized run directory", async () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-trace-"));
-    const materialized = await materializeSource(fixture("pipeline.prose.md"), {
+    const materialized = await runSource(fixture("pipeline.prose.md"), {
       path: "fixtures/compiler/pipeline.prose.md",
       runRoot,
       runId: "20260423-170000-trc001",
@@ -480,7 +483,7 @@ kind: program
       },
       outputs: {
         "review.feedback": "Tighten the intro.",
-        "fact-check.claims": "All claims verified.",
+        "fact-check.claims": "[]",
         "polish.final": "The polished draft.",
       },
       trigger: "test",
@@ -500,7 +503,7 @@ kind: program
     expect(trace.attempts).toContainEqual(
       expect.objectContaining({
         status: "succeeded",
-        diagnostic_codes: [],
+        diagnostic_codes: ["run_succeeded"],
       }),
     );
     expect(trace.artifacts).toContainEqual(
@@ -511,14 +514,14 @@ kind: program
       }),
     );
     expect(trace.events[0]).toMatchObject({
-      event: "materialize.started",
+      event: "graph.started",
       run_id: "20260423-170000-trc001",
     });
   });
 
   test("renders a text trace summary", async () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-trace-text-"));
-    const materialized = await materializeSource(fixture("hello.prose.md"), {
+    const materialized = await runSource(fixture("hello.prose.md"), {
       path: "fixtures/compiler/hello.prose.md",
       runRoot,
       runId: "20260423-171500-trc002",
@@ -532,7 +535,7 @@ kind: program
     const trace = await traceFile(materialized.run_dir);
     const text = renderTraceText(trace);
 
-    expect(text).toContain("Run: 20260423-171500-trc002:hello");
+    expect(text).toContain("Run: 20260423-171500-trc002");
     expect(text).toContain("Component: hello [component]");
     expect(text).toContain("Status: succeeded (accepted)");
     expect(text).toContain("Outputs: message");
@@ -546,7 +549,7 @@ kind: program
   test("summarizes recent run materializations", async () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-status-"));
 
-    await materializeSource(fixture("hello.prose.md"), {
+    await runSource(fixture("hello.prose.md"), {
       path: "fixtures/compiler/hello.prose.md",
       runRoot,
       runId: "20260423-183000-aaa111",
@@ -557,7 +560,7 @@ kind: program
       trigger: "test",
     });
 
-    await materializeSource(fixture("pipeline.prose.md"), {
+    await runSource(fixture("pipeline.prose.md"), {
       path: "fixtures/compiler/pipeline.prose.md",
       runRoot,
       runId: "20260423-184500-bbb222",
@@ -567,7 +570,7 @@ kind: program
       },
       outputs: {
         "review.feedback": "Later feedback.",
-        "fact-check.claims": "Later claims.",
+        "fact-check.claims": "[]",
         "polish.final": "Later polished draft.",
       },
       trigger: "test",
@@ -579,7 +582,7 @@ kind: program
     expect(status.total).toBe(2);
     expect(status.runs.map((run) => run.run_id)).toEqual([
       "20260423-184500-bbb222",
-      "20260423-183000-aaa111:hello",
+      "20260423-183000-aaa111",
     ]);
     expect(status.runs[0]).toMatchObject({
       component_ref: "content-pipeline",

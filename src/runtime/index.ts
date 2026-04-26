@@ -1,4 +1,3 @@
-export { materializeFile, materializeSource } from "../materialize.js";
 export { loadCurrentRunSet, planFile, planSource } from "../plan.js";
 export type { CurrentRunSet } from "../plan.js";
 export {
