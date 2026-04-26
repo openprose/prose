@@ -211,19 +211,22 @@ Checks:
 - focused new test for binary artifact hash preservation
 - `bun run typecheck`
 
-### [todo] Runtime stdout/stderr artifacts are empty in remote envelopes
+### [done] Runtime stdout/stderr artifacts are empty in remote envelopes
 
 Finding: `executeRemoteFile` writes empty `stdout.txt` and `stderr.txt`.
 That is stable for contract fixtures, but real hosted workers will need useful
 logs or a clear reason why traces are the only runtime log source.
 
-Proposed fix:
+Resolved:
 
-- decide whether `runFile` should return captured runner logs or whether remote
-  workers append their own logs outside the OSS runner
-- if OSS owns logs, thread optional stdout/stderr through the remote API
-- if host owns logs, document that `stdout.txt` / `stderr.txt` are host-filled
-  artifacts and keep OSS fixtures empty
+- kept deterministic fixtures empty by default
+- added optional `stdout` / `stderr` content to the remote envelope writer API
+- documented that hosted workers should fill these artifacts with host logs
+  while OpenProse traces remain the canonical runtime timeline
+- added a regression test proving host-provided logs are preserved in the
+  artifact manifest
+
+Commit target: `feat: allow remote envelopes to include host logs`
 
 Checks:
 

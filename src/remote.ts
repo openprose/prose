@@ -26,6 +26,8 @@ export interface RemoteExecuteOptions {
   graphVm?: RunOptions["graphVm"];
   nodeRunner?: RunOptions["nodeRunner"];
   runtimeProfile?: RuntimeProfileInput;
+  stdout?: string;
+  stderr?: string;
   componentRef?: string | null;
   packageMetadataPath?: string | null;
 }
@@ -49,8 +51,8 @@ export async function executeRemoteFile(
     runtimeProfile: options.runtimeProfile,
   });
 
-  await writeFile(join(result.run_dir, "stdout.txt"), "");
-  await writeFile(join(result.run_dir, "stderr.txt"), "");
+  await writeFile(join(result.run_dir, "stdout.txt"), options.stdout ?? "");
+  await writeFile(join(result.run_dir, "stderr.txt"), options.stderr ?? "");
 
   const generatedAt = options.completedAt ?? options.createdAt ?? new Date().toISOString();
   const artifactManifest = await buildArtifactManifest(result, generatedAt);

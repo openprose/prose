@@ -71,6 +71,11 @@ It uses the same runtime vocabulary as `prose run`:
 That keeps the hosted boundary honest: remote workers get a stable envelope
 without turning hosted execution into a second runtime model.
 
+When a host captures worker logs, it can pass stdout/stderr content to the
+remote envelope writer. Deterministic local fixtures leave those artifacts
+empty; hosted workers should fill them with host logs while OpenProse traces
+remain the canonical runtime timeline.
+
 ## Structured Output Tool
 
 Live and scripted Pi sessions are expected to submit declared outputs through

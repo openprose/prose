@@ -163,6 +163,7 @@ describe("OpenProse deterministic materialization and remote envelope", () => {
     const result = await materializeSource(fixture("pipeline.prose.md"), {
       path: "fixtures/compiler/pipeline.prose.md",
       runRoot: join(storeRoot, "runs"),
+      storeRoot,
       runId: "20260423-121700-store1",
       createdAt: "2026-04-23T12:17:00.000Z",
       inputs: {
@@ -489,6 +490,41 @@ kind: service
     });
     expect(readFileSync(join(envelope.run_dir, "run.json"), "utf8")).toContain(
       '"model_provider": "openrouter"',
+    );
+  });
+
+  test("remote runner can preserve host-provided stdout and stderr artifacts", async () => {
+    const outDir = mkdtempSync(join(tmpdir(), "openprose-remote-logs-"));
+    const envelope = await executeRemoteFile(fixturePath("compiler/hello.prose.md"), {
+      outDir,
+      runId: "20260423-130350-rmt-logs",
+      outputs: {
+        message: "Hello with hosted logs.",
+      },
+      stdout: "host worker stdout\n",
+      stderr: "host worker warning\n",
+      trigger: "api",
+    });
+
+    expect(readFileSync(join(envelope.run_dir, envelope.stdout_path), "utf8")).toBe(
+      "host worker stdout\n",
+    );
+    expect(readFileSync(join(envelope.run_dir, envelope.stderr_path), "utf8")).toBe(
+      "host worker warning\n",
+    );
+    expect(envelope.artifact_manifest.artifacts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          path: "stdout.txt",
+          kind: "runtime_stdout",
+          size_bytes: "host worker stdout\n".length,
+        }),
+        expect.objectContaining({
+          path: "stderr.txt",
+          kind: "runtime_stderr",
+          size_bytes: "host worker warning\n".length,
+        }),
+      ]),
     );
   });
 
