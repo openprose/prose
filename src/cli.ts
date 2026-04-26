@@ -4,6 +4,7 @@ import { executeEvalFile } from "./eval/index.js";
 import { formatFile, formatPath, renderFormatCheckText } from "./format";
 import { renderTextMateGrammar } from "./grammar";
 import { graphFile, renderGraphMermaid } from "./graph";
+import { handoffFile, renderSingleRunHandoffMarkdown } from "./handoff";
 import { highlightFile, renderHighlightHtml, renderHighlightText } from "./highlight";
 import { installRegistryRef, installWorkspaceDependencies } from "./install";
 import { compilePackagePath } from "./ir/package.js";
@@ -34,6 +35,7 @@ export async function runCli(args: string[]): Promise<void> {
     command !== "fmt" &&
     command !== "grammar" &&
     command !== "graph" &&
+    command !== "handoff" &&
     command !== "highlight" &&
     command !== "install" &&
     command !== "lint" &&
@@ -235,6 +237,33 @@ export async function runCli(args: string[]): Promise<void> {
       await writeFile(options.out, output, "utf8");
     } else {
       process.stdout.write(output);
+    }
+    return;
+  }
+
+  if (command === "handoff") {
+    const options = parseFileCommandArgs(rest);
+    if (!options.file) {
+      console.error("Missing file path.");
+      process.exitCode = 1;
+      return;
+    }
+    try {
+      const handoff = await handoffFile(options.file, {
+        inputs: options.inputs,
+      });
+      const output =
+        options.format === "json"
+          ? `${JSON.stringify(handoff, null, options.pretty ? 2 : 0)}\n`
+          : renderSingleRunHandoffMarkdown(handoff);
+      if (options.out) {
+        await writeFile(options.out, output, "utf8");
+      } else {
+        process.stdout.write(output);
+      }
+    } catch (error) {
+      console.error(formatError(error));
+      process.exitCode = 1;
     }
     return;
   }
@@ -1079,6 +1108,7 @@ Usage:
   prose manifest <file.prose.md> [--out manifest.md]
   prose package <dir|file.prose.md> [--format text|json]
   prose graph <file.prose.md> [--current-run .prose/runs/{id}] [--target-output final] [--approved-effect delivers] [--format mermaid|json]
+  prose handoff <file.prose.md> [--input name=value] [--format text|json]
   prose highlight <file.prose.md> [--format text|json|html]
   prose lint <file.prose.md|dir> [--format text|json]
   prose plan <file.prose.md> [--input name=value] [--current-run .prose/runs/{id}] [--target-output final] [--approved-effect delivers]
@@ -1107,6 +1137,7 @@ Commands:
   fmt          Rewrite supported Contract Markdown into canonical source order
   grammar      Emit an editor-facing TextMate grammar artifact
   graph        Render an IR-native graph preview with optional plan overlay
+  handoff      Export a single-component contract for a one-off harness session
   highlight    Emit first-pass syntax-highlight tokens for source tooling
   install      Install a package from a registry ref into local .deps state
   lint         Check canonical source hygiene and structural issues

@@ -82,25 +82,31 @@ Checks:
 - `rg -n "--provider|fixture provider|local-process provider|provider protocol|fixture materialize|prose materialize" rfcs`
 - `bun test test/cli-ux.test.ts`
 
-### [todo] Single-run portability is conceptual but not implemented as a crisp contract
+### [done] Single-run portability is conceptual but not implemented as a crisp contract
 
 Finding: the North Star says a single component can still be handed to a
 compatible one-off harness, while reactive graphs are Pi-backed. The code now
 correctly rejects model providers as graph VMs, but the one-off harness contract
 is not expressed as a first-class API or doc page.
 
-Proposed fix:
+Resolved:
 
-- define the single-run harness boundary separately from graph VMs
-- document what the OSS package supports today: Pi graph VM plus one-off
+- defined the single-run harness boundary separately from graph VMs
+- added `prose handoff` to export a single executable component contract for a
+  compatible one-off harness
+- documented what the OSS package supports today: Pi graph VM plus one-off
   component prompt/contract handoff
-- avoid adding shell-out adapters unless they pass a concrete example and test
+- avoided shell-out adapters; handoff exports a contract and does not pretend
+  external processes are graph VMs
   gate
+
+Commit target: `feat: add single-run handoff`
 
 Checks:
 
-- compile and run a single-component example through `prose run --graph-vm pi`
-- add docs/tests only if the contract is executable today
+- `bun test test/single-run-handoff.test.ts test/module-boundaries.test.ts test/cli-ux.test.ts`
+- `bun run prose handoff examples/north-star/company-signal-brief.prose.md --input signal_notes=test --input brand_context=test`
+- `bun run prose run examples/north-star/company-signal-brief.prose.md --graph-vm pi --output company_signal_brief=test`
 
 ## P1: Public Release Quality
 

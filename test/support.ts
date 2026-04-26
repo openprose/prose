@@ -17,6 +17,7 @@ export {
 export { formatPath, formatSource, renderFormatCheckText } from "../src/format";
 export { buildTextMateGrammar, renderTextMateGrammar } from "../src/grammar";
 export { graphSource, renderGraphMermaid } from "../src/graph";
+export { handoffFile, handoffSource, renderSingleRunHandoffMarkdown } from "../src/handoff";
 export { highlightSource, renderHighlightHtml, renderHighlightText } from "../src/highlight";
 export { installRegistryRef, installWorkspaceDependencies } from "../src/install";
 export { compilePackagePath } from "../src/ir/package";

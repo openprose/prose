@@ -1,6 +1,8 @@
 export { collectSourceFiles } from "../files.js";
 export { formatFile, formatPath, formatSource, renderFormatCheckText } from "../format.js";
 export { buildTextMateGrammar, renderTextMateGrammar } from "../grammar.js";
+export { handoffFile, handoffSource, renderSingleRunHandoffMarkdown } from "../handoff.js";
+export type { SingleRunHandoff, SingleRunHandoffOptions } from "../handoff.js";
 export { highlightFile, highlightSource, renderHighlightHtml, renderHighlightText } from "../highlight.js";
 export { lintFile, lintPath, lintSource, renderLintReportText, renderLintText } from "../lint.js";
 export {

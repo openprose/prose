@@ -48,6 +48,9 @@ bun run prose plan examples/north-star/lead-program-designer.prose.md \
   --target-output lead_program_plan
 bun run prose graph examples/north-star/release-proposal-dry-run.prose.md \
   --input release_candidate="v0.11.0"
+bun run prose handoff examples/north-star/company-signal-brief.prose.md \
+  --input signal_notes="Customer teams want durable agent workflows." \
+  --input brand_context="OpenProse is React for agent outcomes."
 bun run prose run examples/north-star/company-signal-brief.prose.md \
   --input signal_notes="Customer teams want durable agent workflows." \
   --input brand_context="OpenProse is React for agent outcomes." \

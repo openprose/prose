@@ -5,6 +5,7 @@ describe("OpenProse module boundaries", () => {
   test("exposes architectural namespaces from the public entry point", () => {
     expect(typeof prose.core.sha256).toBe("function");
     expect(typeof prose.source.formatSource).toBe("function");
+    expect(typeof prose.source.handoffSource).toBe("function");
     expect(typeof prose.ir.compileSource).toBe("function");
     expect(typeof prose.ir.compilePackagePath).toBe("function");
     expect(typeof prose.graph.graphSource).toBe("function");
