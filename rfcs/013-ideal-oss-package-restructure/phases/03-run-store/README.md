@@ -154,6 +154,32 @@ Signpost:
 - Add `signposts/047-trace-attempt-visibility.md` with the store lookup
   behavior and test results.
 
+## 03.7 Project Artifacts Into Trace Views
+
+Build:
+
+- Make `trace` read adjacent local-store artifact records when available.
+- Project artifact direction, port, node id, content hash, content type, schema
+  status, policy labels, and storage path into the trace view.
+- Render compact artifact summaries in CLI trace output.
+
+Tests:
+
+- Add trace view/text assertions for artifact summaries.
+- Add CLI trace assertions that output artifact context is visible.
+- Run targeted trace/artifact/runtime tests.
+- Run `bun test`.
+- Run `bunx tsc --noEmit`.
+
+Commit:
+
+- Commit as `feat: show artifacts in trace views`.
+
+Signpost:
+
+- Add `signposts/048-trace-artifact-visibility.md` with the projected fields
+  and test results.
+
 ## Phase Exit Criteria
 
 - Every execution-like path writes through the same local store.

@@ -71,6 +71,8 @@ describe("OpenProse CLI UX", () => {
     );
     expect(decode(trace.stdout)).toContain("Attempts:");
     expect(decode(trace.stdout)).toContain("- #1: succeeded");
+    expect(decode(trace.stdout)).toContain("Artifacts:");
+    expect(decode(trace.stdout)).toContain("- output message:");
 
     expect(graph.exitCode).toBe(0);
     expect(decode(graph.stdout)).toContain("%% OpenProse graph: content-pipeline");

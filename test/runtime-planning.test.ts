@@ -503,6 +503,13 @@ kind: program
         diagnostic_codes: [],
       }),
     );
+    expect(trace.artifacts).toContainEqual(
+      expect.objectContaining({
+        direction: "output",
+        port: "final",
+        schema_status: "unchecked",
+      }),
+    );
     expect(trace.events[0]).toMatchObject({
       event: "materialize.started",
       run_id: "20260423-170000-trc001",
@@ -531,6 +538,8 @@ kind: program
     expect(text).toContain("Outputs: message");
     expect(text).toContain("Attempts:");
     expect(text).toContain("- #1: succeeded");
+    expect(text).toContain("Artifacts:");
+    expect(text).toContain("- output message:");
     expect(text).toContain("Events:");
   });
 

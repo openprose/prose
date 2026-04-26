@@ -812,6 +812,18 @@ export interface TraceAttemptView {
   finished_at: string | null;
 }
 
+export interface TraceArtifactView {
+  artifact_id: string;
+  direction: LocalArtifactProvenance["direction"];
+  port: string | null;
+  node_id: string | null;
+  content_hash: string;
+  content_type: string;
+  schema_status: LocalArtifactSchemaStatus["status"];
+  policy_labels: string[];
+  storage_path: string;
+}
+
 export interface TraceView {
   trace_version: "0.1";
   run_id: string;
@@ -828,6 +840,7 @@ export interface TraceView {
   dependencies: string[];
   nodes: TraceNodeView[];
   attempts: TraceAttemptView[];
+  artifacts: TraceArtifactView[];
   events: TraceEvent[];
 }
 

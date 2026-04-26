@@ -1,10 +1,13 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
+import { listArtifactRecordsForRun } from "./store/artifacts.js";
 import { listRunAttemptRecords } from "./store/attempts.js";
 import { readLocalStoreMetadata } from "./store/local.js";
 import type {
+  LocalArtifactRecord,
   LocalRunAttemptRecord,
   RunRecord,
+  TraceArtifactView,
   TraceAttemptView,
   TraceEvent,
   TraceView,
@@ -31,7 +34,9 @@ export async function traceFile(
 
   const nodeRecords = await loadNodeRecords(runDir);
   const events = await loadTraceEvents(runDir, record.trace_ref);
-  const attempts = await loadTraceAttempts(runDir, record.run_id);
+  const storeRoot = await findAdjacentStoreRoot(runDir);
+  const attempts = storeRoot ? await loadTraceAttempts(storeRoot, record.run_id) : [];
+  const artifacts = storeRoot ? await loadTraceArtifacts(storeRoot, record.run_id) : [];
 
   return {
     trace_version: "0.1",
@@ -61,6 +66,7 @@ export async function traceFile(
       }))
       .sort((a, b) => a.component_ref.localeCompare(b.component_ref)),
     attempts: attempts.map(traceAttemptView),
+    artifacts: artifacts.map(traceArtifactView),
     events,
   };
 }
@@ -118,6 +124,21 @@ export function renderTraceText(trace: TraceView): string {
     }
   }
 
+  if (trace.artifacts.length > 0) {
+    lines.push("");
+    lines.push("Artifacts:");
+    for (const artifact of trace.artifacts) {
+      const port = artifact.port ? ` ${artifact.port}` : "";
+      const labels = artifact.policy_labels.length
+        ? ` labels[${artifact.policy_labels.join(", ")}]`
+        : "";
+      lines.push(
+        `- ${artifact.direction}${port}: ${artifact.content_type} ${artifact.schema_status}` +
+          ` hash[${artifact.content_hash.slice(0, 12)}]${labels}`,
+      );
+    }
+  }
+
   if (trace.events.length > 0) {
     lines.push("");
     lines.push("Events:");
@@ -150,14 +171,17 @@ async function loadNodeRecords(runDir: string): Promise<RunRecord[]> {
 }
 
 async function loadTraceAttempts(
-  runDir: string,
+  storeRoot: string,
   runId: string,
 ): Promise<LocalRunAttemptRecord[]> {
-  const storeRoot = await findAdjacentStoreRoot(runDir);
-  if (!storeRoot) {
-    return [];
-  }
   return listRunAttemptRecords(storeRoot, runId);
+}
+
+async function loadTraceArtifacts(
+  storeRoot: string,
+  runId: string,
+): Promise<LocalArtifactRecord[]> {
+  return listArtifactRecordsForRun(storeRoot, runId);
 }
 
 async function findAdjacentStoreRoot(runDir: string): Promise<string | null> {
@@ -184,6 +208,20 @@ function traceAttemptView(attempt: LocalRunAttemptRecord): TraceAttemptView {
     failure: attempt.failure?.message ?? null,
     started_at: attempt.started_at,
     finished_at: attempt.finished_at,
+  };
+}
+
+function traceArtifactView(artifact: LocalArtifactRecord): TraceArtifactView {
+  return {
+    artifact_id: artifact.artifact_id,
+    direction: artifact.provenance.direction,
+    port: artifact.provenance.port,
+    node_id: artifact.provenance.node_id,
+    content_hash: artifact.content_hash,
+    content_type: artifact.content_type,
+    schema_status: artifact.schema.status,
+    policy_labels: artifact.policy_labels,
+    storage_path: artifact.storage.path,
   };
 }
 
