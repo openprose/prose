@@ -53,8 +53,6 @@ Latest generated reports:
 ## Follow-Up After RC
 
 - Wire platform tests directly to the OSS hosted-runtime fixtures.
-- Capture a successful opt-in live Pi smoke once model provider credits are
-  available.
 - Decide the hosted runtime contract for Sprites/Pi once the platform
   Workstream 03 pass begins.
 
@@ -79,3 +77,11 @@ Latest generated reports:
 - 2026-04-26: Ran a model-backed decision graph through the Pi SDK with
   Anthropic `claude-haiku-4-5`. That proof point has now been folded into the
   north-star `lead-program-designer` ladder example.
+- 2026-04-26: After OpenRouter credits were added, the full opt-in live Pi
+  ladder passed with the canonical OpenRouter
+  `google/gemini-3-flash-preview` profile:
+  - cheap `company-signal-brief`: 1 Pi session, 44 trace events
+  - medium `lead-program-designer`: 3 Pi sessions, 122 trace events
+  - complex `stargazer-intake-lite`: 5 Pi sessions, 186 trace events
+  The committed report is
+  [`measurements/live-pi.latest.md`](measurements/live-pi.latest.md).

@@ -86,6 +86,7 @@ async function main(): Promise<void> {
     );
     const results = options.enabled
       ? await runLiveScenarios({
+          repoRoot,
           scenarios: selected,
           runRoot,
           modelProvider,
@@ -118,6 +119,7 @@ async function main(): Promise<void> {
 }
 
 async function runLiveScenarios(options: {
+  repoRoot: string;
   scenarios: LiveSmokeScenario[];
   runRoot: string;
   modelProvider: string;
@@ -136,6 +138,11 @@ async function runLiveScenarios(options: {
     );
   }
 
+  const agentDir = await prepareLivePiAgentDir({
+    repoRoot: options.repoRoot,
+    modelProvider: options.modelProvider,
+    model: options.defaultModel,
+  });
   const results: LiveSmokeResult[] = [];
   for (const scenario of options.scenarios) {
     results.push(
@@ -145,6 +152,7 @@ async function runLiveScenarios(options: {
         modelProvider: options.modelProvider,
         model: scenario.model ?? options.defaultModel,
         apiKey,
+        agentDir,
       }),
     );
   }
@@ -157,6 +165,7 @@ async function runLiveScenario(options: {
   modelProvider: string;
   model: string;
   apiKey: string;
+  agentDir: string | undefined;
 }): Promise<LiveSmokeResult> {
   const started = performance.now();
   const runId = [
@@ -177,7 +186,7 @@ async function runLiveScenario(options: {
         apiKey: options.apiKey,
         apiKeyProvider: options.modelProvider,
         timeoutMs: envNumber("OPENPROSE_LIVE_PI_TIMEOUT_MS") ?? 180_000,
-        agentDir: envString("OPENPROSE_PI_AGENT_DIR"),
+        agentDir: options.agentDir,
         sessionDir: envString("OPENPROSE_PI_SESSION_DIR"),
         persistSessions: true,
       }),
@@ -339,6 +348,57 @@ function runtimeProfile(modelProvider: string, model: string): RuntimeProfileInp
   };
 }
 
+async function prepareLivePiAgentDir(options: {
+  repoRoot: string;
+  modelProvider: string;
+  model: string;
+}): Promise<string | undefined> {
+  const explicitAgentDir = envString("OPENPROSE_PI_AGENT_DIR");
+  if (explicitAgentDir) {
+    return explicitAgentDir;
+  }
+  if (options.modelProvider !== "openrouter") {
+    return undefined;
+  }
+
+  const agentDir = resolve(options.repoRoot, ".prose", "live-pi-agent");
+  await mkdir(agentDir, { recursive: true });
+  await writeFile(
+    join(agentDir, "models.json"),
+    `${JSON.stringify(openRouterModelsJson(options.model), null, 2)}\n`,
+    "utf8",
+  );
+  return agentDir;
+}
+
+function openRouterModelsJson(model: string): object {
+  return {
+    providers: {
+      openrouter: {
+        baseUrl: "https://openrouter.ai/api/v1",
+        apiKey: "OPENROUTER_API_KEY",
+        api: "openai-completions",
+        models: [
+          {
+            id: model,
+            name: `OpenRouter ${model}`,
+            input: ["text"],
+            reasoning: false,
+            contextWindow: 128000,
+            maxTokens: 8192,
+            cost: {
+              input: 0,
+              output: 0,
+              cacheRead: 0,
+              cacheWrite: 0,
+            },
+          },
+        ],
+      },
+    },
+  };
+}
+
 function apiKeyForProvider(modelProvider: string): string | null {
   return envString("OPENPROSE_PI_API_KEY")
     ?? (modelProvider === "openrouter" ? envString("OPENROUTER_API_KEY") : null)
@@ -472,10 +532,12 @@ function isBillingOrQuota(message: string): boolean {
 }
 
 function diagnostics(input: Diagnostic[]): LiveSmokeResult["diagnostics"] {
-  return input.map((diagnostic) => ({
-    code: diagnostic.code,
-    message: diagnostic.message,
-  }));
+  return input
+    .filter((diagnostic) => diagnostic.severity !== "info")
+    .map((diagnostic) => ({
+      code: diagnostic.code,
+      message: diagnostic.message,
+    }));
 }
 
 function sessionCount(events: Array<{ event: string }>): number {

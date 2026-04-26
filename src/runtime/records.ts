@@ -206,7 +206,7 @@ export function recordDiagnostics(record: RunRecord): Diagnostic[] {
   return record.acceptance.reason
     ? [
         {
-          severity: "error",
+          severity: record.status === "succeeded" ? "info" : "error",
           code: `run_${record.status}`,
           message: record.acceptance.reason,
         },

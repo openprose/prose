@@ -153,7 +153,13 @@ bun run smoke:live-pi
 ```
 
 `smoke:live-pi` skips by default. Set `OPENPROSE_LIVE_PI_SMOKE=1` and
-Pi/OpenRouter credentials when you want opt-in model-backed evidence.
+Pi/OpenRouter credentials when you want opt-in model-backed evidence:
+
+```bash
+OPENPROSE_LIVE_PI_SMOKE=1 \
+OPENPROSE_PI_API_KEY="$OPENROUTER_API_KEY" \
+bun run smoke:live-pi -- --tier all --run-root .prose/live-pi-runs
+```
 
 ## Hosted Platform
 

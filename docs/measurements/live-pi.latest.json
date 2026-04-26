@@ -1,9 +1,11 @@
 {
   "live_pi_smoke_version": "0.1",
-  "generated_at": "2026-04-26T14:25:51.717Z",
-  "enabled": false,
+  "generated_at": "2026-04-26T16:57:59.534Z",
+  "enabled": true,
   "selected_tiers": [
-    "cheap"
+    "cheap",
+    "medium",
+    "complex"
   ],
   "model_provider": "openrouter",
   "model": "google/gemini-3-flash-preview",
@@ -13,15 +15,41 @@
       "tier": "cheap",
       "label": "company-signal-brief",
       "source": "examples/north-star/company-signal-brief.prose.md",
-      "status": "skipped",
+      "status": "succeeded",
       "failure_class": null,
-      "duration_ms": 0,
-      "run_id": null,
-      "run_dir": "/Users/sl/code/openprose/platform/external/prose/.prose/live-pi-runs",
-      "session_count": 0,
-      "trace_events": 0,
+      "duration_ms": 8596,
+      "run_id": "live-pi-cheap-company-signal-brief-20260426165702",
+      "run_dir": "/Users/sl/code/openprose/platform/external/prose/.prose/live-pi-runs/live-pi-cheap-company-signal-brief-20260426165702",
+      "session_count": 1,
+      "trace_events": 44,
+      "diagnostics": []
+    },
+    {
+      "tier": "medium",
+      "label": "lead-program-designer",
+      "source": "examples/north-star/lead-program-designer.prose.md",
+      "status": "succeeded",
+      "failure_class": null,
+      "duration_ms": 23581,
+      "run_id": "live-pi-medium-lead-program-designer-20260426165711",
+      "run_dir": "/Users/sl/code/openprose/platform/external/prose/.prose/live-pi-runs/live-pi-medium-lead-program-designer-20260426165711",
+      "session_count": 3,
+      "trace_events": 122,
+      "diagnostics": []
+    },
+    {
+      "tier": "complex",
+      "label": "stargazer-intake-lite",
+      "source": "examples/north-star/stargazer-intake-lite.prose.md",
+      "status": "succeeded",
+      "failure_class": null,
+      "duration_ms": 24726,
+      "run_id": "live-pi-complex-stargazer-intake-lite-20260426165734",
+      "run_dir": "/Users/sl/code/openprose/platform/external/prose/.prose/live-pi-runs/live-pi-complex-stargazer-intake-lite-20260426165734",
+      "session_count": 5,
+      "trace_events": 186,
       "diagnostics": []
     }
   ],
-  "status": "skipped"
+  "status": "succeeded"
 }

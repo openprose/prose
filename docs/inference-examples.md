@@ -96,6 +96,11 @@ Defaults:
 - output: `docs/measurements/live-pi.latest.json` and
   `docs/measurements/live-pi.latest.md`
 
+When using OpenRouter, the smoke script writes a temporary Pi `models.json`
+under `.prose/live-pi-agent/` for the selected model. This keeps live smoke
+testing independent of how quickly Pi's bundled model registry learns new
+OpenRouter model IDs.
+
 Useful overrides:
 
 ```bash
