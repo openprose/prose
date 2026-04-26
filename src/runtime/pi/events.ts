@@ -142,25 +142,81 @@ function usageEvent(
   event: object,
   context: PiRuntimeEventContext,
 ): NodeTelemetryEvent | null {
-  const usage = objectValue(event, "usage") ?? objectValue(event, "tokenUsage");
+  const usage = usageObject(event);
   if (!usage) {
     return null;
   }
-  const promptTokens = numberValue(usage, "prompt_tokens") ?? numberValue(usage, "input_tokens");
+  const promptTokens = firstNumberValue(usage, [
+    "prompt_tokens",
+    "input_tokens",
+    "input",
+  ]);
   const completionTokens =
-    numberValue(usage, "completion_tokens") ?? numberValue(usage, "output_tokens");
-  const totalTokens = numberValue(usage, "total_tokens") ??
-    (promptTokens !== null && completionTokens !== null
-      ? promptTokens + completionTokens
-      : null);
-  if (promptTokens === null && completionTokens === null && totalTokens === null) {
+    firstNumberValue(usage, ["completion_tokens", "output_tokens", "output"]);
+  const cacheReadTokens = firstNumberValue(usage, ["cache_read_tokens", "cacheRead"]);
+  const cacheWriteTokens = firstNumberValue(usage, ["cache_write_tokens", "cacheWrite"]);
+  const totalTokens = firstNumberValue(usage, ["total_tokens", "totalTokens"]) ??
+    sumIfAny([promptTokens, completionTokens, cacheReadTokens, cacheWriteTokens]);
+  const costUsd = costTotal(usage);
+  if (
+    promptTokens === null &&
+    completionTokens === null &&
+    cacheReadTokens === null &&
+    cacheWriteTokens === null &&
+    totalTokens === null &&
+    costUsd === null
+  ) {
     return null;
   }
   return baseEvent("pi.usage", context, {
     prompt_tokens: promptTokens,
     completion_tokens: completionTokens,
+    cache_read_tokens: cacheReadTokens,
+    cache_write_tokens: cacheWriteTokens,
     total_tokens: totalTokens,
+    cost_usd: costUsd,
   });
+}
+
+function usageObject(event: object): Record<string, unknown> | null {
+  const direct = objectValue(event, "usage") ?? objectValue(event, "tokenUsage");
+  if (direct) {
+    return direct;
+  }
+  return objectValue(objectValue(event, "message") ?? {}, "usage");
+}
+
+function firstNumberValue(value: object, keys: string[]): number | null {
+  for (const key of keys) {
+    const entry = numberValue(value, key);
+    if (entry !== null) {
+      return entry;
+    }
+  }
+  return null;
+}
+
+function sumIfAny(values: Array<number | null>): number | null {
+  let total = 0;
+  let found = false;
+  for (const value of values) {
+    if (value !== null) {
+      total += value;
+      found = true;
+    }
+  }
+  return found ? total : null;
+}
+
+function costTotal(usage: Record<string, unknown>): number | null {
+  const cost = usage.cost;
+  if (typeof cost === "number" && Number.isFinite(cost)) {
+    return cost;
+  }
+  if (!cost || typeof cost !== "object" || Array.isArray(cost)) {
+    return null;
+  }
+  return firstNumberValue(cost as Record<string, unknown>, ["total", "usd"]);
 }
 
 function assistantMessagePreview(event: object): string | null {

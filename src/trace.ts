@@ -168,6 +168,7 @@ function renderTraceEvent(event: TraceEvent): string {
     stringDetail("failure", event.failure_class),
     stringDetail("gate", event.gate),
     usageDetail(event),
+    costDetail(event),
     stringDetail("message", event.message ?? event.content_preview ?? event.reason),
   ].filter(Boolean);
   return [event.event, ...details].join(" ");
@@ -198,18 +199,41 @@ function usageDetail(event: TraceEvent): string | null {
   const total = numberDetail(event.total_tokens);
   const prompt = numberDetail(event.prompt_tokens);
   const completion = numberDetail(event.completion_tokens);
-  if (total === null && prompt === null && completion === null) {
+  const cacheRead = numberDetail(event.cache_read_tokens);
+  const cacheWrite = numberDetail(event.cache_write_tokens);
+  if (
+    total === null &&
+    prompt === null &&
+    completion === null &&
+    cacheRead === null &&
+    cacheWrite === null
+  ) {
     return null;
   }
   return `tokens[${[
     prompt !== null ? `in:${prompt}` : null,
     completion !== null ? `out:${completion}` : null,
+    cacheRead !== null ? `cache_read:${cacheRead}` : null,
+    cacheWrite !== null ? `cache_write:${cacheWrite}` : null,
     total !== null ? `total:${total}` : null,
   ].filter(Boolean).join(", ")}]`;
 }
 
 function numberDetail(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function costDetail(event: TraceEvent): string | null {
+  const costUsd = numberDetail(event.cost_usd);
+  if (costUsd !== null) {
+    return `cost[$${costUsd}]`;
+  }
+  const amount = numberDetail(event.amount);
+  const currency = typeof event.currency === "string" ? event.currency : null;
+  if (amount === null) {
+    return null;
+  }
+  return `cost[${currency ? `${currency} ` : ""}${amount}]`;
 }
 
 async function loadNodeRecords(runDir: string): Promise<RunRecord[]> {

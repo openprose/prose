@@ -652,21 +652,25 @@ Checks:
 
 - `bun test test/runtime-profiles.test.ts test/cli-ux.test.ts test/run-entrypoint.test.ts`
 
-### [todo] Trace telemetry may omit cost/token details that Pi exposes
+### [done] Trace telemetry may omit cost/token details that Pi exposes
 
 Finding: Pi events are normalized well, but cost/token usage may still be null
 or unavailable in traces. This is important for measuring reactive graph wins.
 
-Proposed fix:
+Resolved:
 
-- inspect Pi SDK event payloads from live runs
-- add token/cost capture when available
-- keep traces stable when providers omit usage
+- aligned telemetry normalization with Pi SDK usage payloads that expose
+  `input`, `output`, cache reads/writes, nested `message.usage`, and
+  `cost.total`
+- kept OpenAI-style `prompt_tokens` / `completion_tokens` compatibility for
+  provider payloads that use those names
+- rendered cache and cost telemetry in text traces when present
+- kept traces stable when providers omit usage
 
 Checks:
 
-- `bun test test/pi-events.test.ts test/live-pi-smoke.test.ts`
-- optional live cheap smoke
+- `bun test test/pi-events.test.ts test/runtime-planning.test.ts test/scripted-pi-session.test.ts`
+- `bun run typecheck`
 
 ### [todo] Error handling should be consistent across commands
 
