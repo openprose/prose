@@ -1,10 +1,10 @@
 {
-  "measurement_version": "0.2",
-  "generated_at": "2026-04-26T18:37:04.996Z",
+  "measurement_version": "0.3",
+  "generated_at": "2026-04-26T19:29:35.600Z",
   "release_checks": {
     "examples_compile": {
       "status": "pass",
-      "elapsed_ms": 8.17,
+      "elapsed_ms": 6.86,
       "component_count": 42,
       "diagnostic_count": 30,
       "error_count": 0
@@ -12,14 +12,14 @@
     "examples_publish_check": {
       "status": "pass",
       "strict": false,
-      "elapsed_ms": 67.57,
+      "elapsed_ms": 70.79,
       "blocker_count": 0,
       "warning_count": 0
     },
     "examples_strict_publish_check": {
       "status": "pass",
       "strict": true,
-      "elapsed_ms": 66.35,
+      "elapsed_ms": 81.54,
       "blocker_count": 0,
       "warning_count": 0
     },
@@ -34,6 +34,41 @@
       "enabled": false,
       "model_provider": "openrouter",
       "model": "google/gemini-3-flash-preview",
+      "reason": "Run OPENPROSE_LIVE_PI_SMOKE=1 bun run smoke:live-pi -- --tier cheap."
+    }
+  },
+  "evidence": {
+    "deterministic_fixtures": {
+      "status": "pass",
+      "required": true,
+      "source": "examples/north-star/fixtures",
+      "scenarios": [
+        "company_signal_brief",
+        "lead_program_designer",
+        "stargazer_intake_lite",
+        "opportunity_discovery_lite"
+      ]
+    },
+    "scripted_pi": {
+      "status": "pass",
+      "required": true,
+      "scenarios": [
+        "company_signal_brief",
+        "lead_program_designer",
+        "stargazer_intake_lite",
+        "opportunity_discovery_lite"
+      ],
+      "session_count": 13,
+      "telemetry_source": "scripted_pi_unmetered",
+      "report": "docs/measurements/latest.json"
+    },
+    "live_pi": {
+      "status": "skipped",
+      "required": false,
+      "enabled": false,
+      "model_provider": "openrouter",
+      "model": "google/gemini-3-flash-preview",
+      "report": "docs/measurements/live-pi.latest.json",
       "reason": "Run OPENPROSE_LIVE_PI_SMOKE=1 bun run smoke:live-pi -- --tier cheap."
     }
   },
@@ -56,7 +91,7 @@
       "package_name": "@openprose/std",
       "version": "0.11.0-dev",
       "components": 58,
-      "quality_score": 0.99,
+      "quality_score": 1,
       "typed_port_coverage": 1,
       "effect_declaration_ratio": 1,
       "publish_status": "pass",
@@ -67,7 +102,7 @@
       "path": "packages/co",
       "package_name": "@openprose/co",
       "version": "0.11.0-dev",
-      "components": 6,
+      "components": 12,
       "quality_score": 1,
       "typed_port_coverage": 1,
       "effect_declaration_ratio": 1,
@@ -89,15 +124,15 @@
   ],
   "scenarios": {
     "company_signal_brief": {
-      "compile_ms": 0.18,
-      "run_ms": 22.64,
+      "compile_ms": 0.23,
+      "run_ms": 26.27,
       "status": "succeeded",
       "eval_status": "passed",
       "eval_score": 0.93,
       "trace_events": 9,
       "scripted_session_count": 1,
       "runtime_telemetry": {
-        "duration_ms": 22.64,
+        "duration_ms": 26.27,
         "session_count": 1,
         "token_usage": null,
         "estimated_cost_usd": null,
@@ -106,14 +141,14 @@
     },
     "lead_program_designer": {
       "compile_ms": 0.4,
-      "run_ms": 53.72,
+      "run_ms": 45.09,
       "status": "succeeded",
       "eval_status": "passed",
       "eval_score": 0.91,
       "trace_events": 29,
       "scripted_session_count": 3,
       "runtime_telemetry": {
-        "duration_ms": 53.72,
+        "duration_ms": 45.09,
         "session_count": 3,
         "token_usage": null,
         "estimated_cost_usd": null,
@@ -141,15 +176,15 @@
       "profile_change_reused_nodes": []
     },
     "stargazer_intake_lite": {
-      "compile_ms": 0.41,
-      "run_ms": 52.57,
+      "compile_ms": 0.48,
+      "run_ms": 58.89,
       "status": "succeeded",
       "eval_status": "passed",
       "eval_score": 0.94,
       "trace_events": 47,
       "scripted_session_count": 5,
       "runtime_telemetry": {
-        "duration_ms": 52.57,
+        "duration_ms": 58.89,
         "session_count": 5,
         "token_usage": null,
         "estimated_cost_usd": null,
@@ -165,15 +200,15 @@
       "stale_reason_summaries": []
     },
     "opportunity_discovery_lite": {
-      "compile_ms": 0.31,
-      "run_ms": 42.01,
+      "compile_ms": 0.42,
+      "run_ms": 54.6,
       "status": "succeeded",
       "eval_status": "passed",
       "eval_score": 0.92,
       "trace_events": 38,
       "scripted_session_count": 4,
       "runtime_telemetry": {
-        "duration_ms": 42.01,
+        "duration_ms": 54.6,
         "session_count": 4,
         "token_usage": null,
         "estimated_cost_usd": null,
@@ -200,7 +235,7 @@
       ]
     },
     "approval_gated_release": {
-      "elapsed_ms": 0.62,
+      "elapsed_ms": 0.65,
       "status": "blocked",
       "blocked_effect_nodes": [
         "announce-release"

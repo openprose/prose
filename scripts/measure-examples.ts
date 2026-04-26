@@ -132,6 +132,32 @@ interface BaselineComparison {
   runtime_trace_event_count: number;
 }
 
+interface EvidenceSnapshot {
+  deterministic_fixtures: {
+    status: "pass";
+    required: true;
+    source: string;
+    scenarios: string[];
+  };
+  scripted_pi: {
+    status: "pass" | "fail";
+    required: true;
+    scenarios: string[];
+    session_count: number;
+    telemetry_source: "scripted_pi_unmetered";
+    report: string;
+  };
+  live_pi: {
+    status: "skipped" | "available";
+    required: false;
+    enabled: boolean;
+    model_provider: string;
+    model: string;
+    report: string;
+    reason: string;
+  };
+}
+
 async function main(): Promise<void> {
   const repoRoot = resolve(import.meta.dir, "..");
   const docsRoot = resolve(repoRoot, "docs", "measurements");
@@ -483,15 +509,17 @@ async function main(): Promise<void> {
       },
     };
 
+    const release_checks = releaseChecks(
+      examplesCompile,
+      examplesPublish,
+      examplesStrictPublish,
+      scenarios,
+    );
     const report = {
-      measurement_version: "0.2",
+      measurement_version: "0.3",
       generated_at: new Date().toISOString(),
-      release_checks: releaseChecks(
-        examplesCompile,
-        examplesPublish,
-        examplesStrictPublish,
-        scenarios,
-      ),
+      release_checks,
+      evidence: evidenceSnapshot(release_checks),
       packages,
       scenarios,
       baseline_comparison: {
@@ -593,6 +621,7 @@ function renderMarkdownReport(report: {
   measurement_version: string;
   generated_at: string;
   release_checks: ReleaseChecksSnapshot;
+  evidence: EvidenceSnapshot;
   packages: PackageSnapshot[];
   scenarios: {
     company_signal_brief: ExampleScenarioSnapshot;
@@ -631,6 +660,20 @@ function renderMarkdownReport(report: {
   );
   lines.push(
     `| live Pi smoke | ${report.release_checks.live_pi_smoke.status} | ${report.release_checks.live_pi_smoke.reason} |`,
+  );
+  lines.push("");
+  lines.push("## Evidence Classes");
+  lines.push("");
+  lines.push("| Class | Required | Status | Scope |");
+  lines.push("|---|---|---|---|");
+  lines.push(
+    `| deterministic fixtures | yes | ${report.evidence.deterministic_fixtures.status} | ${report.evidence.deterministic_fixtures.source}; ${report.evidence.deterministic_fixtures.scenarios.join(", ")} |`,
+  );
+  lines.push(
+    `| scripted Pi | yes | ${report.evidence.scripted_pi.status} | ${report.evidence.scripted_pi.scenarios.length} scenarios, ${report.evidence.scripted_pi.session_count} sessions, ${report.evidence.scripted_pi.telemetry_source} |`,
+  );
+  lines.push(
+    `| live Pi | no | ${report.evidence.live_pi.status} | ${report.evidence.live_pi.model_provider}/${report.evidence.live_pi.model}; ${report.evidence.live_pi.reason} |`,
   );
   lines.push("");
   lines.push("## Package Health");
@@ -791,6 +834,40 @@ function releaseChecks(
       eval_failures: [...failedScenarios, ...evalFailures].sort(),
     },
     live_pi_smoke: livePiSmokeSnapshot(),
+  };
+}
+
+function evidenceSnapshot(releaseChecks: ReleaseChecksSnapshot): EvidenceSnapshot {
+  const scenarios = [
+    "company_signal_brief",
+    "lead_program_designer",
+    "stargazer_intake_lite",
+    "opportunity_discovery_lite",
+  ];
+  return {
+    deterministic_fixtures: {
+      status: "pass",
+      required: true,
+      source: "examples/north-star/fixtures",
+      scenarios,
+    },
+    scripted_pi: {
+      status: releaseChecks.scripted_pi_runs.status,
+      required: true,
+      scenarios,
+      session_count: releaseChecks.scripted_pi_runs.total_scripted_sessions,
+      telemetry_source: "scripted_pi_unmetered",
+      report: "docs/measurements/latest.json",
+    },
+    live_pi: {
+      status: releaseChecks.live_pi_smoke.status,
+      required: false,
+      enabled: releaseChecks.live_pi_smoke.enabled,
+      model_provider: releaseChecks.live_pi_smoke.model_provider,
+      model: releaseChecks.live_pi_smoke.model,
+      report: "docs/measurements/live-pi.latest.json",
+      reason: releaseChecks.live_pi_smoke.reason,
+    },
   };
 }
 

@@ -217,7 +217,7 @@ async function main(): Promise<void> {
       label: "measure north-star examples",
       command: "bun",
       args: ["scripts/measure-examples.ts"],
-      expectStdout: ['"measurement_version": "0.2"', '"scripted_pi_runs"', '"status": "pass"'],
+      expectStdout: ['"measurement_version": "0.3"', '"scripted_pi_runs"', '"status": "pass"'],
     },
     {
       label: "live Pi smoke skips by default",

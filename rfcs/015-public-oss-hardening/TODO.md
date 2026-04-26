@@ -624,21 +624,28 @@ Checks:
 - `bun test test/package-ir.test.ts test/co-package.test.ts`
 - `bun run typecheck`
 
-### [todo] Example evidence should separate stable fixtures from live evidence
+### [done] Example evidence should separate stable fixtures from live evidence
 
 Finding: examples now have good live Pi evidence, but generated reports and
 fixtures can blur deterministic backpressure with live inference confidence.
 
-Proposed fix:
+Resolved:
 
-- make docs label deterministic, scripted Pi, and live Pi evidence consistently
-- keep live reports opt-in and low-cost
-- consider a generated index of "known-good example ladders"
+- added a machine-readable `evidence` section to generated example
+  measurements that separates deterministic fixtures, scripted Pi runs, and
+  opt-in live Pi smoke
+- updated measurement docs and the measurements directory README with the same
+  evidence taxonomy
+- bumped the measurement schema to `0.3` and updated the runtime confidence
+  matrix to enforce it
+- regenerated measurement and runtime-confidence reports
 
 Checks:
 
 - `bun run confidence:runtime`
-- `OPENPROSE_LIVE_PI_SMOKE=1 ... bun run smoke:live-pi -- --tier cheap`
+- `bun run measure:examples`
+- `bun test test/measure-examples.test.ts test/docs-public.test.ts`
+- `bun run typecheck`
 
 ## P2: API And Ergonomics
 

@@ -1,7 +1,7 @@
 # OpenProse Measurement Report
 
-Version: 0.2
-Generated: 2026-04-26T18:37:04.996Z
+Version: 0.3
+Generated: 2026-04-26T19:29:35.600Z
 
 ## Release Checks
 
@@ -13,21 +13,29 @@ Generated: 2026-04-26T18:37:04.996Z
 | scripted Pi runs | pass | 4 scenarios, 13 sessions |
 | live Pi smoke | skipped | Run OPENPROSE_LIVE_PI_SMOKE=1 bun run smoke:live-pi -- --tier cheap. |
 
+## Evidence Classes
+
+| Class | Required | Status | Scope |
+|---|---|---|---|
+| deterministic fixtures | yes | pass | examples/north-star/fixtures; company_signal_brief, lead_program_designer, stargazer_intake_lite, opportunity_discovery_lite |
+| scripted Pi | yes | pass | 4 scenarios, 13 sessions, scripted_pi_unmetered |
+| live Pi | no | skipped | openrouter/google/gemini-3-flash-preview; Run OPENPROSE_LIVE_PI_SMOKE=1 bun run smoke:live-pi -- --tier cheap. |
+
 ## Package Health
 
 | Target | Components | Quality | Typed Ports | Effects | Publish | Strict |
 |---|---:|---:|---:|---:|---|---|
 | examples | 42 | 1.00 | 100% | 100% | pass | pass |
-| packages/std | 58 | 0.99 | 100% | 100% | pass | pass |
-| packages/co | 6 | 1.00 | 100% | 100% | pass | pass |
+| packages/std | 58 | 1.00 | 100% | 100% | pass | pass |
+| packages/co | 12 | 1.00 | 100% | 100% | pass | pass |
 | customers/prose-openprose | 99 | 0.95 | 100% | 100% | pass | pass |
 
 ## Scenario Checks
 
 ### Company Signal Brief
 - status: succeeded
-- compile time: 0.18 ms
-- run time: 22.64 ms
+- compile time: 0.23 ms
+- run time: 26.27 ms
 - eval: passed (0.93)
 - scripted Pi sessions: 1
 - estimated cost: n/a (scripted Pi)
@@ -36,7 +44,7 @@ Generated: 2026-04-26T18:37:04.996Z
 ### Lead Program Designer
 - status: succeeded
 - graph nodes: 3
-- run time: 53.72 ms
+- run time: 45.09 ms
 - eval: passed (0.91)
 - first-run sessions: 3
 - first-run executed nodes: lead-profile-normalizer, lead-qualification-scorer, save-grow-program-drafter
@@ -49,7 +57,7 @@ Generated: 2026-04-26T18:37:04.996Z
 ### Stargazer Intake Lite
 - status: succeeded
 - graph nodes: 5
-- run time: 52.57 ms
+- run time: 58.89 ms
 - eval: passed (0.94)
 - scripted Pi sessions: 5
 - memory artifacts: 1
@@ -62,7 +70,7 @@ Generated: 2026-04-26T18:37:04.996Z
 ### Opportunity Discovery Lite
 - status: succeeded
 - graph nodes: 4
-- run time: 42.01 ms
+- run time: 54.60 ms
 - eval: passed (0.92)
 - scripted Pi sessions: 4
 - stale rows rejected: 1

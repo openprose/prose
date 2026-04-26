@@ -2,9 +2,25 @@
 
 OpenProse should not just *feel* more structured. We should be able to measure what the structure buys us.
 
+## Evidence Classes
+
+OpenProse keeps three evidence classes separate:
+
+- **Deterministic fixtures** are committed inputs and expected properties. They
+  are stable, cheap, and required for local confidence.
+- **Scripted Pi runs** execute the same graph VM and output-submission path as
+  live runs, but use deterministic node outputs. They are stable, cheap, and
+  required for local confidence.
+- **Live Pi smoke** exercises the real Pi SDK and model-provider boundary. It
+  is opt-in, may spend inference dollars, and is never treated as a required
+  local fixture.
+
+Generated measurement reports expose this split in an `evidence` section so
+local deterministic confidence and live inference confidence do not blur.
+
 ## What We Measure Locally Right Now
 
-The current measurement harness focuses on four things:
+The current measurement harness focuses on five things:
 
 1. **Package quality**
    - component count
@@ -40,6 +56,7 @@ That writes:
 
 - [measurements/latest.md](measurements/latest.md)
 - [measurements/latest.json](measurements/latest.json)
+- [measurements/README.md](measurements/README.md)
 
 For release confidence:
 

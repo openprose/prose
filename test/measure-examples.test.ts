@@ -38,6 +38,26 @@ describe("OpenProse example measurements", () => {
         model: "google/gemini-3-flash-preview",
       },
     });
+    expect(report.evidence).toMatchObject({
+      deterministic_fixtures: {
+        status: "pass",
+        required: true,
+        source: "examples/north-star/fixtures",
+      },
+      scripted_pi: {
+        status: "pass",
+        required: true,
+        session_count: 13,
+        telemetry_source: "scripted_pi_unmetered",
+        report: "docs/measurements/latest.json",
+      },
+      live_pi: {
+        status: "skipped",
+        required: false,
+        enabled: false,
+        report: "docs/measurements/live-pi.latest.json",
+      },
+    });
     expect(report.scenarios.company_signal_brief).toMatchObject({
       status: "succeeded",
       eval_status: "passed",
@@ -111,9 +131,12 @@ describe("OpenProse example measurements", () => {
 });
 
 function expectMeasurementReportSchema(report: any) {
-  expect(report.measurement_version).toBe("0.2");
+  expect(report.measurement_version).toBe("0.3");
   expect(typeof report.generated_at).toBe("string");
   expect(Array.isArray(report.packages)).toBe(true);
+  expect(Array.isArray(report.evidence.deterministic_fixtures.scenarios)).toBe(true);
+  expect(Array.isArray(report.evidence.scripted_pi.scenarios)).toBe(true);
+  expect(typeof report.evidence.live_pi.reason).toBe("string");
   expect(typeof report.baseline_comparison).toBe("object");
 
   expectCompileCheckShape(report.release_checks.examples_compile);
