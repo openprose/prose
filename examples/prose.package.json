@@ -12,7 +12,15 @@
     "subpath": "examples"
   },
   "evals": [
-    "evals/examples-quality.eval.prose.md"
+    "evals/examples-quality.eval.prose.md",
+    "evals/north-star/company-signal-brief.eval.prose.md",
+    "evals/north-star/lead-program-designer.eval.prose.md",
+    "evals/north-star/stargazer-intake-lite.eval.prose.md",
+    "evals/north-star/opportunity-discovery-lite.eval.prose.md",
+    "evals/north-star/release-proposal-dry-run.eval.prose.md",
+    "evals/north-star/customer-repo-scaffold-preview.eval.prose.md",
+    "evals/north-star/agent-ecosystem-index-refresh.eval.prose.md",
+    "evals/north-star/merged-pr-fit-review-lite.eval.prose.md"
   ],
   "runtime": {
     "graph_vm": "pi",

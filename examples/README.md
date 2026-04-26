@@ -43,6 +43,14 @@ Fixtures use the pattern
 The corpus currently covers happy paths, stale-input recompute pressure,
 duplicate rows, gated release cases, no-op release cases, and seeded-bad inputs.
 
+## Eval Rubrics
+
+Each north-star example has a paired eval contract in `examples/evals/north-star/`.
+These rubrics are intentionally lightweight today: they define the expected
+subject run shape, name what good output must include, name what must be
+rejected, and specify measurable assertions that later executable evals should
+enforce.
+
 ## Smallest Run
 
 ```bash

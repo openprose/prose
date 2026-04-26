@@ -1,12 +1,12 @@
 {
   "package_ir_version": "0.1",
-  "semantic_hash": "d5dcc2791da07caa3fa17132fda177ec9db473a7c7d01225d19d73f5b99b42fd",
+  "semantic_hash": "efdb60b24d81235e340d65d85cea6d38d768536eb30fe8356045c8eca98681fc",
   "hashes": {
-    "source_hash": "5e1c71d027f2fa6b9e6bc27d92f88d328398ea38e3ad38e2e0eef1b278dab2ff",
-    "semantic_hash": "d5dcc2791da07caa3fa17132fda177ec9db473a7c7d01225d19d73f5b99b42fd",
+    "source_hash": "1947878003c3bad46a9d3f05df18add50016186e60d6e5c33dabba4d110bf8cb",
+    "semantic_hash": "efdb60b24d81235e340d65d85cea6d38d768536eb30fe8356045c8eca98681fc",
     "dependency_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-    "policy_hash": "50c3eddab2aa9dd9a54897e10a623287fe5b35a64ddb142c1075e6aa9b31f28c",
-    "runtime_config_hash": "c008409e802a061fdb6f74931deb1633d44df2eee93fd85cdabd6d37df1ffc0f"
+    "policy_hash": "4489b6b03cd9216f4d24b8b77db73486883b7234faabd931e06871cb62bef36c",
+    "runtime_config_hash": "c33775a60cd0bc535cd5134d4ae8521e9666efd67a511df512dd7e7329541151"
   },
   "manifest": {
     "name": "@openprose/examples",
@@ -22,7 +22,15 @@
     },
     "schemas": [],
     "evals": [
-      "evals/examples-quality.eval.prose.md"
+      "evals/examples-quality.eval.prose.md",
+      "evals/north-star/agent-ecosystem-index-refresh.eval.prose.md",
+      "evals/north-star/company-signal-brief.eval.prose.md",
+      "evals/north-star/customer-repo-scaffold-preview.eval.prose.md",
+      "evals/north-star/lead-program-designer.eval.prose.md",
+      "evals/north-star/merged-pr-fit-review-lite.eval.prose.md",
+      "evals/north-star/opportunity-discovery-lite.eval.prose.md",
+      "evals/north-star/release-proposal-dry-run.eval.prose.md",
+      "evals/north-star/stargazer-intake-lite.eval.prose.md"
     ],
     "examples": [
       "north-star/agent-ecosystem-index-refresh.prose.md",
@@ -56,6 +64,62 @@
       "path": "evals/examples-quality.eval.prose.md",
       "component_ids": [
         "evals-examples-quality-eval--examples-quality"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "evals/north-star/agent-ecosystem-index-refresh.eval.prose.md",
+      "component_ids": [
+        "evals-north-star-agent-ecosystem-index-refresh-eval--agent-ecosystem-index-refresh-eval"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "evals/north-star/company-signal-brief.eval.prose.md",
+      "component_ids": [
+        "evals-north-star-company-signal-brief-eval--company-signal-brief-eval"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "evals/north-star/customer-repo-scaffold-preview.eval.prose.md",
+      "component_ids": [
+        "evals-north-star-customer-repo-scaffold-preview-eval--customer-repo-scaffold-preview-eval"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "evals/north-star/lead-program-designer.eval.prose.md",
+      "component_ids": [
+        "evals-north-star-lead-program-designer-eval--lead-program-designer-eval"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "evals/north-star/merged-pr-fit-review-lite.eval.prose.md",
+      "component_ids": [
+        "evals-north-star-merged-pr-fit-review-lite-eval--merged-pr-fit-review-lite-eval"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "evals/north-star/opportunity-discovery-lite.eval.prose.md",
+      "component_ids": [
+        "evals-north-star-opportunity-discovery-lite-eval--opportunity-discovery-lite-eval"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "evals/north-star/release-proposal-dry-run.eval.prose.md",
+      "component_ids": [
+        "evals-north-star-release-proposal-dry-run-eval--release-proposal-dry-run-eval"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "evals/north-star/stargazer-intake-lite.eval.prose.md",
+      "component_ids": [
+        "evals-north-star-stargazer-intake-lite-eval--stargazer-intake-lite-eval"
       ],
       "diagnostics": []
     },
@@ -145,6 +209,78 @@
       "exists": true,
       "component_ids": [
         "evals-examples-quality-eval--examples-quality"
+      ],
+      "diagnostics": []
+    },
+    {
+      "kind": "eval",
+      "path": "evals/north-star/agent-ecosystem-index-refresh.eval.prose.md",
+      "exists": true,
+      "component_ids": [
+        "evals-north-star-agent-ecosystem-index-refresh-eval--agent-ecosystem-index-refresh-eval"
+      ],
+      "diagnostics": []
+    },
+    {
+      "kind": "eval",
+      "path": "evals/north-star/company-signal-brief.eval.prose.md",
+      "exists": true,
+      "component_ids": [
+        "evals-north-star-company-signal-brief-eval--company-signal-brief-eval"
+      ],
+      "diagnostics": []
+    },
+    {
+      "kind": "eval",
+      "path": "evals/north-star/customer-repo-scaffold-preview.eval.prose.md",
+      "exists": true,
+      "component_ids": [
+        "evals-north-star-customer-repo-scaffold-preview-eval--customer-repo-scaffold-preview-eval"
+      ],
+      "diagnostics": []
+    },
+    {
+      "kind": "eval",
+      "path": "evals/north-star/lead-program-designer.eval.prose.md",
+      "exists": true,
+      "component_ids": [
+        "evals-north-star-lead-program-designer-eval--lead-program-designer-eval"
+      ],
+      "diagnostics": []
+    },
+    {
+      "kind": "eval",
+      "path": "evals/north-star/merged-pr-fit-review-lite.eval.prose.md",
+      "exists": true,
+      "component_ids": [
+        "evals-north-star-merged-pr-fit-review-lite-eval--merged-pr-fit-review-lite-eval"
+      ],
+      "diagnostics": []
+    },
+    {
+      "kind": "eval",
+      "path": "evals/north-star/opportunity-discovery-lite.eval.prose.md",
+      "exists": true,
+      "component_ids": [
+        "evals-north-star-opportunity-discovery-lite-eval--opportunity-discovery-lite-eval"
+      ],
+      "diagnostics": []
+    },
+    {
+      "kind": "eval",
+      "path": "evals/north-star/release-proposal-dry-run.eval.prose.md",
+      "exists": true,
+      "component_ids": [
+        "evals-north-star-release-proposal-dry-run-eval--release-proposal-dry-run-eval"
+      ],
+      "diagnostics": []
+    },
+    {
+      "kind": "eval",
+      "path": "evals/north-star/stargazer-intake-lite.eval.prose.md",
+      "exists": true,
+      "component_ids": [
+        "evals-north-star-stargazer-intake-lite-eval--stargazer-intake-lite-eval"
       ],
       "diagnostics": []
     },
@@ -249,7 +385,7 @@
       "delivers": 2,
       "human_gate": 2,
       "mutates_repo": 2,
-      "pure": 21,
+      "pure": 29,
       "read_external": 2,
       "writes_memory": 4
     },
@@ -265,6 +401,62 @@
       "name": "examples-quality",
       "kind": "test",
       "path": "evals/examples-quality.eval.prose.md",
+      "expansions": []
+    },
+    {
+      "id": "evals-north-star-agent-ecosystem-index-refresh-eval--agent-ecosystem-index-refresh-eval",
+      "name": "agent-ecosystem-index-refresh-eval",
+      "kind": "test",
+      "path": "evals/north-star/agent-ecosystem-index-refresh.eval.prose.md",
+      "expansions": []
+    },
+    {
+      "id": "evals-north-star-company-signal-brief-eval--company-signal-brief-eval",
+      "name": "company-signal-brief-eval",
+      "kind": "test",
+      "path": "evals/north-star/company-signal-brief.eval.prose.md",
+      "expansions": []
+    },
+    {
+      "id": "evals-north-star-customer-repo-scaffold-preview-eval--customer-repo-scaffold-preview-eval",
+      "name": "customer-repo-scaffold-preview-eval",
+      "kind": "test",
+      "path": "evals/north-star/customer-repo-scaffold-preview.eval.prose.md",
+      "expansions": []
+    },
+    {
+      "id": "evals-north-star-lead-program-designer-eval--lead-program-designer-eval",
+      "name": "lead-program-designer-eval",
+      "kind": "test",
+      "path": "evals/north-star/lead-program-designer.eval.prose.md",
+      "expansions": []
+    },
+    {
+      "id": "evals-north-star-merged-pr-fit-review-lite-eval--merged-pr-fit-review-lite-eval",
+      "name": "merged-pr-fit-review-lite-eval",
+      "kind": "test",
+      "path": "evals/north-star/merged-pr-fit-review-lite.eval.prose.md",
+      "expansions": []
+    },
+    {
+      "id": "evals-north-star-opportunity-discovery-lite-eval--opportunity-discovery-lite-eval",
+      "name": "opportunity-discovery-lite-eval",
+      "kind": "test",
+      "path": "evals/north-star/opportunity-discovery-lite.eval.prose.md",
+      "expansions": []
+    },
+    {
+      "id": "evals-north-star-release-proposal-dry-run-eval--release-proposal-dry-run-eval",
+      "name": "release-proposal-dry-run-eval",
+      "kind": "test",
+      "path": "evals/north-star/release-proposal-dry-run.eval.prose.md",
+      "expansions": []
+    },
+    {
+      "id": "evals-north-star-stargazer-intake-lite-eval--stargazer-intake-lite-eval",
+      "name": "stargazer-intake-lite-eval",
+      "kind": "test",
+      "path": "evals/north-star/stargazer-intake-lite.eval.prose.md",
       "expansions": []
     },
     {
@@ -479,7 +671,7 @@
     }
   ],
   "graph": {
-    "node_count": 31,
+    "node_count": 39,
     "edge_count": 79,
     "edge_kinds": {
       "caller": 11,
