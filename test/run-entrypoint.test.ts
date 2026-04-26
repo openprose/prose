@@ -8,9 +8,11 @@ import {
   listRunAttemptRecords,
   mkdtempSync,
   readArtifactRecordForOutput,
+  renderTraceText,
   runProseCli,
   statusPath,
   test,
+  traceFile,
   tmpdir,
 } from "./support";
 import { scriptedPiRuntime, providerShouldNotRun } from "./support/scripted-pi-session";
@@ -613,10 +615,19 @@ kind: program
     expect(result.record.status).toBe("blocked");
     expect(result.record.acceptance.reason).toContain("Graph effect 'human_gate'");
     const attempts = await listRunAttemptRecords(join(runRoot, ".prose-store"), "gate-required");
+    expect(attempts[0]?.provider_session_ref).toBeNull();
     expect(attempts[0]?.resume).toEqual({
       checkpoint_ref: "plan.json",
       reason: result.record.acceptance.reason,
     });
+    const trace = await traceFile(result.run_dir);
+    expect(trace.events[0]).toMatchObject({
+      event: "run.blocked",
+      failure_class: "pre_session_gate",
+      gate: "effect_approval",
+    });
+    expect(renderTraceText(trace)).toContain("run.blocked provider[pi]");
+    expect(renderTraceText(trace)).toContain("gate[effect_approval]");
   });
 
   test("approval records unblock effects and are persisted with the run", async () => {
@@ -649,6 +660,11 @@ kind: program
       "delivers",
       "human_gate",
     ]);
+    const attempts = await listRunAttemptRecords(
+      join(runRoot, ".prose-store"),
+      "gate-approved:announce-release",
+    );
+    expect(attempts[0]?.provider_session_ref).toContain("scripted-pi");
   });
 
   test("denied approval records keep effects blocked", async () => {
@@ -671,12 +687,13 @@ kind: program
       }, null, 2)}\n`,
     );
 
+    let calls = 0;
     const result = await runSource(readFileSync(sourcePath, "utf8"), {
       path: sourcePath,
       runRoot,
       runId: "gate-denied",
-      provider: scriptedPiRuntime({
-        outputsByComponent: approvalReleaseOutputs,
+      provider: providerShouldNotRun(() => {
+        calls += 1;
       }),
       inputs: {
         release_candidate: "v1.2.3",
@@ -686,8 +703,11 @@ kind: program
       createdAt: "2026-04-25T00:50:00.000Z",
     });
 
+    expect(calls).toBe(0);
     expect(result.record.status).toBe("blocked");
     expect(result.record.acceptance.reason).toContain("Effect approval denied for 'delivers'.");
+    const attempts = await listRunAttemptRecords(join(runRoot, ".prose-store"), "gate-denied");
+    expect(attempts[0]?.provider_session_ref).toBeNull();
   });
 
   test("blocks graph execution before provider calls when caller input is missing", async () => {

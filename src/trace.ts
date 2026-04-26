@@ -163,8 +163,9 @@ function renderTraceEvent(event: TraceEvent): string {
     stringDetail("tool", event.tool_name),
     stringListDetail("outputs", event.output_ports),
     stringDetail("failure", event.failure_class),
+    stringDetail("gate", event.gate),
     usageDetail(event),
-    stringDetail("message", event.message ?? event.content_preview),
+    stringDetail("message", event.message ?? event.content_preview ?? event.reason),
   ].filter(Boolean);
   return [event.event, ...details].join(" ");
 }

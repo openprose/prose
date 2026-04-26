@@ -30,7 +30,18 @@ export async function writeBlockedTrace(
 ): Promise<void> {
   await writeFile(
     join(ctx.runDir, "trace.json"),
-    `${JSON.stringify([{ event: "run.blocked", run_id: runId, reasons }], null, 2)}\n`,
+    `${JSON.stringify([
+      {
+        event: "run.blocked",
+        at: ctx.createdAt,
+        run_id: runId,
+        provider: ctx.provider.kind,
+        runtime_profile: ctx.runtimeProfile,
+        failure_class: "pre_session_gate",
+        gate: gateKind(reasons),
+        reasons,
+      },
+    ], null, 2)}\n`,
   );
 }
 
@@ -113,6 +124,20 @@ function nodeTraceEvents(
           graph_run_id: ctx.runId,
           component_ref: node.component_ref,
         })
+      : []),
+    ...(node.status === "blocked"
+      ? [
+          {
+            event: "node.blocked",
+            run_id: node.run_id,
+            graph_run_id: ctx.runId,
+            component_ref: node.component_ref,
+            at: node.completed_at ?? node.created_at,
+            failure_class: "pre_session_gate",
+            gate: gateKind([node.acceptance.reason ?? ""]),
+            reason: node.acceptance.reason,
+          },
+        ]
       : []),
     {
       event: "node.finished",
@@ -209,4 +234,18 @@ function failureClass(result: ProviderResult): string {
     return "output_contract";
   }
   return result.status === "blocked" ? "blocked" : "provider_error";
+}
+
+function gateKind(reasons: string[]): string {
+  const text = reasons.join(" ").toLowerCase();
+  if (text.includes("effect") || text.includes("approval") || text.includes("gate")) {
+    return "effect_approval";
+  }
+  if (text.includes("input")) {
+    return "input";
+  }
+  if (text.includes("upstream")) {
+    return "upstream";
+  }
+  return "pre_session";
 }
