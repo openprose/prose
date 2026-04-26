@@ -19,8 +19,9 @@ model in one reviewable artifact.
 
 Implemented today:
 
-- local CLI tools for `compile`, `plan`, `graph`, `fixture materialize`,
-  `status`, `trace`, `package`, `publish-check`, `search`, and `install`
+- local CLI tools for `compile`, `plan`, `graph`, `run`, `eval`, `remote
+  execute`, `status`, `trace`, `package`, `publish-check`, `search`, and
+  `install`
 - curated examples for typed services, selective recompute, run-aware
   composition, approval-gated delivery, and company workflows
 - local measurement for package quality, recompute savings, approval

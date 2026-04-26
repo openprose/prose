@@ -85,6 +85,12 @@ export function buildGraphView(ir: ProseIR, plan: ExecutionPlan): GraphView {
 
 export function renderGraphMermaid(view: GraphView): string {
   const lines: string[] = [];
+  lines.push(`%% OpenProse graph: ${view.component_ref}`);
+  lines.push(
+    `%% requested outputs: ${
+      view.requested_outputs.length ? view.requested_outputs.join(", ") : "(none)"
+    }`,
+  );
   lines.push("flowchart LR");
 
   for (const node of view.nodes) {
@@ -171,6 +177,12 @@ function buildNodeLabel(node: GraphViewNode): string {
   }
   if (node.effects.length > 0) {
     lines.push(`effects: ${node.effects.join(", ")}`);
+  }
+  if (node.stale_reasons.length > 0) {
+    lines.push(`stale: ${node.stale_reasons.join(", ")}`);
+  }
+  if (node.blocked_reasons.length > 0) {
+    lines.push(`blocked: ${node.blocked_reasons.join(", ")}`);
   }
   if (node.selected) {
     lines.push("selected");

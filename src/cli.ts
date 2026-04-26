@@ -266,17 +266,22 @@ export async function runCli(args: string[]): Promise<void> {
 
   if (command === "status") {
     const options = parseStatusCommandArgs(rest);
-    const view = await statusPath(options.path ?? ".prose/runs", {
-      limit: options.limit ?? undefined,
-    });
-    const output =
-      options.format === "json"
-        ? `${JSON.stringify(view, null, options.pretty ? 2 : 0)}\n`
-        : renderStatusText(view);
-    if (options.out) {
-      await writeFile(options.out, output, "utf8");
-    } else {
-      process.stdout.write(output);
+    try {
+      const view = await statusPath(options.path ?? ".prose/runs", {
+        limit: options.limit ?? undefined,
+      });
+      const output =
+        options.format === "json"
+          ? `${JSON.stringify(view, null, options.pretty ? 2 : 0)}\n`
+          : renderStatusText(view);
+      if (options.out) {
+        await writeFile(options.out, output, "utf8");
+      } else {
+        process.stdout.write(output);
+      }
+    } catch (error) {
+      console.error(`Unable to read OpenProse run status: ${formatError(error)}`);
+      process.exitCode = 1;
     }
     return;
   }
@@ -378,15 +383,20 @@ export async function runCli(args: string[]): Promise<void> {
   }
 
   if (command === "trace") {
-    const trace = await traceFile(options.file);
-    const output =
-      options.format === "json"
-        ? `${JSON.stringify(trace, null, options.pretty ? 2 : 0)}\n`
-        : renderTraceText(trace);
-    if (options.out) {
-      await writeFile(options.out, output, "utf8");
-    } else {
-      process.stdout.write(output);
+    try {
+      const trace = await traceFile(options.file);
+      const output =
+        options.format === "json"
+          ? `${JSON.stringify(trace, null, options.pretty ? 2 : 0)}\n`
+          : renderTraceText(trace);
+      if (options.out) {
+        await writeFile(options.out, output, "utf8");
+      } else {
+        process.stdout.write(output);
+      }
+    } catch (error) {
+      console.error(`Unable to read OpenProse run trace: ${formatError(error)}`);
+      process.exitCode = 1;
     }
     return;
   }
@@ -1034,6 +1044,15 @@ Usage:
   prose status [.prose/runs] [--limit 10] [--format text|json]
   prose trace <.prose/runs/{id}|run.json> [--format text|json]
 
+Core runtime loop:
+  compile source/package -> plan against prior runs -> run through a provider
+  -> validate artifacts -> write run records -> inspect status/trace/graph
+
+Providers:
+  fixture is deterministic for tests, local-process runs command-style adapters,
+  and pi is the first TypeScript harness adapter. OpenProse coordinates harness
+  sessions as the meta-harness; it does not replace the harness.
+
 Commands:
   compile      Compile Contract Markdown to canonical Prose IR JSON
   eval         Execute an eval contract against a materialized subject run
@@ -1055,6 +1074,10 @@ Commands:
   status       Summarize recent local run materializations
   trace        Summarize a materialized run directory and its node runs
 `);
+}
+
+function formatError(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 async function isDirectory(path: string): Promise<boolean> {

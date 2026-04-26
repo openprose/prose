@@ -83,6 +83,9 @@ export function renderStatusText(view: RunStatusView): string {
     lines.push(
       `- ${run.run_id}: ${run.component_ref} [${run.kind}] ${run.status} (${run.acceptance})${outputs}${nodes}${attempts}`,
     );
+    if (run.acceptance_reason) {
+      lines.push(`  reason ${run.acceptance_reason}`);
+    }
     lines.push(`  created ${run.created_at}`);
     if (run.completed_at) {
       lines.push(`  completed ${run.completed_at}`);
@@ -106,6 +109,7 @@ async function loadRunEntry(runDir: string): Promise<RunStatusEntry | null> {
     kind: record.kind,
     status: record.status,
     acceptance: record.acceptance.status,
+    acceptance_reason: record.acceptance.reason,
     created_at: record.created_at,
     completed_at: record.completed_at,
     outputs: record.outputs.map((output) => output.port).sort(),
@@ -158,6 +162,7 @@ async function statusEntryFromStoreIndex(
     kind: entry.kind,
     status: entry.status,
     acceptance: entry.acceptance,
+    acceptance_reason: null,
     created_at: entry.created_at,
     completed_at: entry.completed_at,
     outputs: [],

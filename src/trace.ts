@@ -31,6 +31,7 @@ export async function traceFile(
     kind: record.kind,
     status: record.status,
     acceptance: record.acceptance.status,
+    acceptance_reason: record.acceptance.reason,
     runtime: record.runtime,
     created_at: record.created_at,
     completed_at: record.completed_at,
@@ -45,6 +46,7 @@ export async function traceFile(
         component_ref: node.component_ref,
         status: node.status,
         acceptance: node.acceptance.status,
+        acceptance_reason: node.acceptance.reason,
         outputs: node.outputs.map((output) => output.port).sort(),
         effects: node.effects.declared.sort(),
       }))
@@ -58,6 +60,9 @@ export function renderTraceText(trace: TraceView): string {
   lines.push(`Run: ${trace.run_id}`);
   lines.push(`Component: ${trace.component_ref} [${trace.kind}]`);
   lines.push(`Status: ${trace.status} (${trace.acceptance})`);
+  if (trace.acceptance_reason) {
+    lines.push(`Acceptance reason: ${trace.acceptance_reason}`);
+  }
   lines.push(
     `Runtime: ${trace.runtime.harness}${
       trace.runtime.worker_ref ? ` / ${trace.runtime.worker_ref}` : ""
@@ -81,6 +86,7 @@ export function renderTraceText(trace: TraceView): string {
     for (const node of trace.nodes) {
       lines.push(
         `- ${node.component_ref}: ${node.status} (${node.acceptance})` +
+          `${node.acceptance_reason ? ` reason[${node.acceptance_reason}]` : ""}` +
           `${node.outputs.length ? ` outputs[${node.outputs.join(", ")}]` : ""}` +
           `${node.effects.length ? ` effects[${node.effects.join(", ")}]` : ""}`,
       );

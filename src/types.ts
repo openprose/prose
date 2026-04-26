@@ -796,6 +796,7 @@ export interface TraceNodeView {
   component_ref: string;
   status: RunLifecycleStatus;
   acceptance: RunRecord["acceptance"]["status"];
+  acceptance_reason: string | null;
   outputs: string[];
   effects: string[];
 }
@@ -807,6 +808,7 @@ export interface TraceView {
   kind: RunRecord["kind"];
   status: RunLifecycleStatus;
   acceptance: RunRecord["acceptance"]["status"];
+  acceptance_reason: string | null;
   runtime: RunRecord["runtime"];
   created_at: string;
   completed_at: string | null;
@@ -823,6 +825,7 @@ export interface RunStatusEntry {
   kind: RunRecord["kind"];
   status: RunLifecycleStatus;
   acceptance: RunRecord["acceptance"]["status"];
+  acceptance_reason: string | null;
   created_at: string;
   completed_at: string | null;
   outputs: string[];

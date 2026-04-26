@@ -21,6 +21,12 @@ bun run prose plan examples/selective-recompute.prose.md \
   --input company="openprose"
 bun run prose graph examples/approval-gated-release.prose.md \
   --input release_candidate="v0.11.0"
+bun run prose run examples/hello.prose.md \
+  --provider fixture \
+  --run-id docs-hello \
+  --output message="Hello from the local runtime."
+bun run prose status .prose/runs
+bun run prose trace .prose/runs/docs-hello
 bun run measure:examples
 ```
 
@@ -33,7 +39,7 @@ It is a contract-first system for agent programs with:
 - canonical `.prose.md` source
 - a deterministic Prose IR
 - graph planning and selective recompute
-- durable run materialization
+- durable run materialization through the local meta-harness
 - package metadata, install, search, and publish checks
 - hosted graph/run/approval surfaces built on the same IR and run model
 

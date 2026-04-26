@@ -46,6 +46,11 @@ bun run prose plan examples/selective-recompute.prose.md \
   --input company="openprose"
 bun run prose graph examples/approval-gated-release.prose.md \
   --input release_candidate="v0.11.0"
+bun run prose run examples/hello.prose.md \
+  --provider fixture \
+  --output message="Hello from the local runtime."
+bun run prose status .prose/runs
+bun run prose trace .prose/runs/{run-id}
 bun run prose package examples
 bun run prose publish-check examples --strict
 bun run prose install registry://openprose/@openprose/examples@0.1.0/hello \
@@ -88,7 +93,7 @@ What it adds over baseline agent packages is not just orchestration. It adds:
   -> compile
   -> Prose IR
   -> plan / graph / manifest
-  -> run materialization
+  -> provider-backed run materialization
   -> package metadata / install / publish-check / search
   -> hosted run + graph + approval surfaces
 ```
