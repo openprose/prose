@@ -3,8 +3,10 @@ import {
   describe,
   expect,
   fixturePath,
+  inferLocalStoreRootForRunRoot,
   initLocalStore,
   join,
+  localStoreRootCandidatesForRunDir,
   mkdtempSync,
   readLocalStoreMetadata,
   readRunIndex,
@@ -23,6 +25,20 @@ describe("OpenProse local run store", () => {
     const golden = JSON.parse(readFileSync(fixturePath("store/layout.golden.json"), "utf8"));
 
     expect(layout).toEqual(golden);
+  });
+
+  test("keeps default .prose runs and store data separated", () => {
+    const workspace = mkdtempSync(join(tmpdir(), "openprose-layout-"));
+    const runRoot = join(workspace, ".prose", "runs");
+    const runDir = join(runRoot, "run-1");
+
+    expect(inferLocalStoreRootForRunRoot(runRoot)).toBe(join(workspace, ".prose", "store"));
+    expect(inferLocalStoreRootForRunRoot(join(workspace, "custom-runs"))).toBe(
+      join(workspace, "custom-runs", ".prose-store"),
+    );
+    expect(localStoreRootCandidatesForRunDir(runDir)).toContain(
+      join(workspace, ".prose", "store"),
+    );
   });
 
   test("initializes versioned store metadata and directories", async () => {

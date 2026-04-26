@@ -46,6 +46,8 @@ export {
   readRunIndex,
   readStoreJsonRecord,
   resolveLocalStoreLayout,
+  inferLocalStoreRootForRunRoot,
+  localStoreRootCandidatesForRunDir,
   updateGraphNodePointer,
   upsertRunIndexEntry,
   writeLocalArtifactRecord,

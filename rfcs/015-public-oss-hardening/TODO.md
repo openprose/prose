@@ -230,17 +230,20 @@ Checks:
 - `bun test test/hosted-contract-fixtures.test.ts test/runtime-materialization.test.ts`
 - inspect generated `fixtures/hosted-runtime/*`
 
-### [todo] Local run-store layout is surprising
+### [done] Local run-store layout is surprising
 
 Finding: using `.prose/runs` as `runRoot` creates adjacent `.prose-store`.
 The layout is functional, but a public user may expect all OpenProse state under
 `.prose/`.
 
-Proposed fix:
+Resolved:
 
-- either document the layout explicitly or migrate to `.prose/store`
-- keep migration-free semantics acceptable because there are no users yet
-- update tests that currently join `runRoot, ".prose-store"`
+- default `.prose/runs` now stores local store metadata under `.prose/store`
+- arbitrary custom run roots still use `<runRoot>/.prose-store`
+- trace lookup understands the new `.prose/store` default layout
+- added unit and integration tests for the default layout
+
+Commit target: `refactor: separate default prose store layout`
 
 Checks:
 

@@ -1,9 +1,10 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { basename, dirname, join, relative, resolve } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import { loadCurrentRunSet } from "./plan.js";
 import { runFile, runSource, type OpenProseRunResult, type RunOptions } from "./run.js";
 import { listRunAttemptRecords, writeRunAttemptRecord } from "./store/attempts.js";
 import { upsertRunIndexEntry } from "./store/local.js";
+import { inferLocalStoreRootForRunRoot } from "./store/roots.js";
 import type { RunRecord } from "./types.js";
 
 export interface RetryRunOptions extends RunOptions {
@@ -137,9 +138,7 @@ export async function currentRunSetForRetry(path: string) {
 }
 
 function inferStoreRoot(runRoot: string): string {
-  return basename(normalizePath(runRoot)) === "runs"
-    ? dirname(runRoot)
-    : join(runRoot, ".prose-store");
+  return inferLocalStoreRootForRunRoot(runRoot);
 }
 
 function normalizePath(path: string): string {

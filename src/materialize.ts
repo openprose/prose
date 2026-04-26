@@ -1,5 +1,5 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { basename, dirname, join, relative, resolve } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import { randomBytes } from "node:crypto";
 import { compileSource } from "./compiler";
 import { sha256 } from "./hash";
@@ -9,6 +9,7 @@ import { writeLocalArtifactRecord } from "./store/artifacts.js";
 import { writeRunAttemptRecord } from "./store/attempts.js";
 import { upsertRunIndexEntry } from "./store/local.js";
 import { updateGraphNodePointer } from "./store/pointers.js";
+import { inferLocalStoreRootForRunRoot } from "./store/roots.js";
 import type {
   ComponentIR,
   MaterializedRun,
@@ -502,9 +503,7 @@ function recordPath(record: RunRecord): string {
 }
 
 function inferStoreRoot(runRoot: string): string {
-  return basename(normalizePath(runRoot)) === "runs"
-    ? dirname(runRoot)
-    : join(runRoot, ".prose-store");
+  return inferLocalStoreRootForRunRoot(runRoot);
 }
 
 function normalizePath(path: string): string {

@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { randomBytes } from "node:crypto";
-import { basename, dirname, join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { compileSource } from "./compiler.js";
 import { projectManifest } from "./manifest.js";
 import { loadCurrentRunSet, planSource, type CurrentRunSet } from "./plan.js";
@@ -59,6 +59,7 @@ import { createNodeExecutionRequest } from "./runtime/node-request.js";
 import { writeLocalArtifactRecord } from "./store/artifacts.js";
 import { writeRunAttemptRecord } from "./store/attempts.js";
 import { updateGraphNodePointer } from "./store/pointers.js";
+import { inferLocalStoreRootForRunRoot } from "./store/roots.js";
 import type {
   ComponentIR,
   Diagnostic,
@@ -1009,9 +1010,7 @@ function createRunId(createdAt: string): string {
 }
 
 function inferStoreRoot(runRoot: string): string {
-  return basename(normalizePath(runRoot)) === "runs"
-    ? dirname(runRoot)
-    : join(runRoot, ".prose-store");
+  return inferLocalStoreRootForRunRoot(runRoot);
 }
 
 function selectedGraphVmName(

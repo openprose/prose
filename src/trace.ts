@@ -3,6 +3,7 @@ import { dirname, resolve } from "node:path";
 import { listArtifactRecordsForRun } from "./store/artifacts.js";
 import { listRunAttemptRecords } from "./store/attempts.js";
 import { readLocalStoreMetadata } from "./store/local.js";
+import { localStoreRootCandidatesForRunDir } from "./store/roots.js";
 import type {
   LocalArtifactRecord,
   LocalRunAttemptRecord,
@@ -244,12 +245,7 @@ async function loadTraceArtifacts(
 }
 
 async function findAdjacentStoreRoot(runDir: string): Promise<string | null> {
-  const candidates = [
-    resolve(runDir, ".prose-store"),
-    resolve(dirname(runDir), ".prose-store"),
-    resolve(dirname(dirname(runDir)), ".prose-store"),
-  ];
-  for (const candidate of candidates) {
+  for (const candidate of localStoreRootCandidatesForRunDir(runDir)) {
     if (await readLocalStoreMetadata(candidate)) {
       return candidate;
     }

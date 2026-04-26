@@ -29,6 +29,10 @@ export {
   updateGraphNodePointer,
 } from "./pointers.js";
 export {
+  inferLocalStoreRootForRunRoot,
+  localStoreRootCandidatesForRunDir,
+} from "./roots.js";
+export {
   readRunRecordById,
 } from "./runs.js";
 export type {

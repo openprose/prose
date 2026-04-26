@@ -8,6 +8,7 @@ import {
   listRunAttemptRecords,
   mkdtempSync,
   readArtifactRecordForOutput,
+  readLocalStoreMetadata,
   renderTraceText,
   runProseCli,
   statusPath,
@@ -57,6 +58,30 @@ describe("OpenProse run entry point", () => {
       run_id: "programmatic-run",
       status: "succeeded",
     });
+  });
+
+  test("stores metadata under .prose/store for the default run-root shape", async () => {
+    const workspace = mkdtempSync(join(tmpdir(), "openprose-default-store-"));
+    const runRoot = join(workspace, ".prose", "runs");
+
+    await runSource(fixture("hello.prose.md"), {
+      path: "fixtures/compiler/hello.prose.md",
+      runRoot,
+      runId: "default-store-run",
+      nodeRunner: scriptedPiRuntime({
+        outputs: {
+          message: "Hello from the default store layout.",
+        },
+      }),
+      createdAt: "2026-04-25T00:02:00.000Z",
+    });
+
+    expect(await readLocalStoreMetadata(join(workspace, ".prose", "store"))).toMatchObject({
+      store_version: "0.1",
+    });
+    expect(await readLocalStoreMetadata(join(workspace, ".prose"))).toBeNull();
+    const trace = await traceFile(join(runRoot, "default-store-run"));
+    expect(renderTraceText(trace)).toContain("Attempts:");
   });
 
   test("executes a multi-node graph in dependency order", async () => {
