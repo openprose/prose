@@ -1,0 +1,26 @@
+{
+  "repo": "openprose/prose",
+  "head": "121ff04",
+  "pull_requests": [
+    {
+      "number": 42,
+      "title": "Add Pi structured output tool",
+      "merged_at": "2026-04-26T09:30:00Z",
+      "files": [
+        "src/runtime/pi/output-tool.ts",
+        "test/output-submission.test.ts"
+      ],
+      "summary": "Adds structured output submission through a Pi custom tool."
+    },
+    {
+      "number": 43,
+      "title": "Normalize Pi telemetry",
+      "merged_at": "2026-04-26T10:15:00Z",
+      "files": [
+        "src/runtime/pi/events.ts",
+        "src/runtime/traces.ts"
+      ],
+      "summary": "Adds Pi lifecycle events to OpenProse traces."
+    }
+  ]
+}

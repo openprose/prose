@@ -1,0 +1,24 @@
+{
+  "repo": "openprose/prose",
+  "fetched_at": "2026-04-26T12:05:00Z",
+  "stargazers": [
+    {
+      "login": "prior-founder",
+      "starred_at": "2026-04-25T18:00:00Z",
+      "bio": "Already handled",
+      "company": "OldCo"
+    },
+    {
+      "login": "ops-builder",
+      "starred_at": "2026-04-26T08:15:00Z",
+      "bio": "Building internal agent platforms",
+      "company": "Northwind Ops"
+    },
+    {
+      "login": "ops-builder",
+      "starred_at": "2026-04-26T08:15:00Z",
+      "bio": "Duplicate API row",
+      "company": "Northwind Ops"
+    }
+  ]
+}

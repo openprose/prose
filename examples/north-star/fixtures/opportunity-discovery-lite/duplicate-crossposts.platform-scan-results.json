@@ -1,0 +1,21 @@
+{
+  "scanned_at": "2026-04-26T12:35:00Z",
+  "rows": [
+    {
+      "source": "hn",
+      "url": "https://news.ycombinator.com/item?id=1003",
+      "canonical_topic": "agent-audit-trails",
+      "posted_at": "2026-04-26T10:00:00Z",
+      "text": "How are teams making agent workflows auditable?",
+      "reach": 180
+    },
+    {
+      "source": "x",
+      "url": "https://x.example/status/1003",
+      "canonical_topic": "agent-audit-trails",
+      "posted_at": "2026-04-26T10:15:00Z",
+      "text": "Thread: agent workflow audit trails",
+      "reach": 420
+    }
+  ]
+}

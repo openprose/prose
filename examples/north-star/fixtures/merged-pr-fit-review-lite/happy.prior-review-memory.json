@@ -1,0 +1,11 @@
+{
+  "reviewed_pr_numbers": [
+    40,
+    41
+  ],
+  "spirit_anchors": [
+    "OpenProse owns the meta-harness.",
+    "Pi is the default graph VM.",
+    "Policy gates block before sessions start."
+  ]
+}

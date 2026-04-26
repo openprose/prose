@@ -1,0 +1,15 @@
+{
+  "generated_at": "2026-04-26T13:00:00Z",
+  "platforms": [
+    {
+      "name": "Pi SDK",
+      "homepage": "https://pi.dev",
+      "repo": "https://github.com/withpi/pi"
+    },
+    {
+      "name": "OpenCode",
+      "homepage": "https://opencode.ai",
+      "repo": "https://github.com/sst/opencode"
+    }
+  ]
+}

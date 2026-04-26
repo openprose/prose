@@ -1,0 +1,14 @@
+{
+  "version": "0.12.0",
+  "commit_range": "121ff04..HEAD",
+  "changes": [
+    "replace examples with north-star ladder",
+    "add Pi-first structured output telemetry",
+    "tighten pre-session gate traces"
+  ],
+  "coverage": {
+    "typecheck": "pass",
+    "tests": "202 pass, 2 skip"
+  },
+  "user_visible": true
+}

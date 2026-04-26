@@ -1,0 +1,12 @@
+{
+  "company": "Acme Robotics",
+  "domain": "acme-robotics.example",
+  "buyer": "VP Operations",
+  "pain": "Agent pilots work in demos but lose provenance when teams hand them off.",
+  "team_size": 420,
+  "signals": [
+    "recent internal automation platform launch",
+    "hiring for AI operations lead",
+    "requires approval workflows for production changes"
+  ]
+}

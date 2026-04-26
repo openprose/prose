@@ -1,0 +1,15 @@
+{
+  "repo": "openprose/prose",
+  "head": "fabricated",
+  "pull_requests": [
+    {
+      "number": 999,
+      "title": "Invented change",
+      "merged_at": "2026-04-26T13:15:00Z",
+      "files": [
+        "src/does-not-exist.ts"
+      ],
+      "summary": "Claims a file changed without evidence."
+    }
+  ]
+}

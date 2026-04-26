@@ -1,0 +1,12 @@
+{
+  "version": "latest",
+  "commit_range": "fabricated-sha..also-fabricated",
+  "changes": [
+    "probably changed something"
+  ],
+  "coverage": {
+    "typecheck": "unknown",
+    "tests": "unknown"
+  },
+  "user_visible": true
+}

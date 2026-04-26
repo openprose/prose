@@ -13,6 +13,8 @@ force the runtime to prove the north-star model:
 
 The package root stays at `examples/` so registry and publish commands remain
 simple. The curated source contracts live under `examples/north-star/`.
+Fixture inputs live beside them under `examples/north-star/fixtures/`; each
+fixture filename maps back to a declared example input.
 
 ## Ladder
 
@@ -33,6 +35,13 @@ simple. The curated source contracts live under `examples/north-star/`.
 bun run prose package examples --format json
 bun run prose publish-check examples --strict
 ```
+
+## Fixture Corpus
+
+Fixtures use the pattern
+`examples/north-star/fixtures/<example>/<scenario>.<input>.(json|md)`.
+The corpus currently covers happy paths, stale-input recompute pressure,
+duplicate rows, gated release cases, no-op release cases, and seeded-bad inputs.
 
 ## Smallest Run
 

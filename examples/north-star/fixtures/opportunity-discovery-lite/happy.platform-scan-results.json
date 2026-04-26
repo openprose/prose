@@ -1,0 +1,19 @@
+{
+  "scanned_at": "2026-04-26T12:30:00Z",
+  "rows": [
+    {
+      "source": "hn",
+      "url": "https://news.ycombinator.com/item?id=1001",
+      "posted_at": "2026-04-26T10:00:00Z",
+      "text": "How are teams making agent workflows auditable?",
+      "reach": 180
+    },
+    {
+      "source": "reddit",
+      "url": "https://reddit.example/r/aiops/comments/1002",
+      "posted_at": "2026-04-26T11:10:00Z",
+      "text": "Looking for a way to version and rerun multi-agent outputs.",
+      "reach": 95
+    }
+  ]
+}

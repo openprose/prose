@@ -1,0 +1,10 @@
+{
+  "company": "Acme Robotics",
+  "slug": "acme-robotics",
+  "buyer": "VP Operations",
+  "needs": [
+    "approval gates",
+    "run provenance",
+    "reusable agent workflow components"
+  ]
+}

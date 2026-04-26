@@ -1,0 +1,15 @@
+{
+  "repo": "openprose/prose",
+  "head": "121ff04",
+  "pull_requests": [
+    {
+      "number": 40,
+      "title": "Already reviewed runtime profile change",
+      "merged_at": "2026-04-25T18:30:00Z",
+      "files": [
+        "src/runtime/profiles.ts"
+      ],
+      "summary": "Already handled in prior review memory."
+    }
+  ]
+}

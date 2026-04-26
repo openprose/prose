@@ -1,0 +1,10 @@
+{
+  "version": "0.12.0",
+  "commit_range": "HEAD..HEAD",
+  "changes": [],
+  "coverage": {
+    "typecheck": "pass",
+    "tests": "not run because no release is required"
+  },
+  "user_visible": false
+}
