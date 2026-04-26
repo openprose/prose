@@ -1,13 +1,13 @@
 {
-  "generated_at": "2026-04-26T12:59:03.950Z",
+  "generated_at": "2026-04-26T13:36:08.582Z",
   "packages": [
     {
       "label": "examples",
       "path": "/Users/sl/code/openprose/platform/external/prose/examples",
       "package_name": "@openprose/examples",
       "version": "0.1.0",
-      "components": 19,
-      "quality_score": 0.96,
+      "components": 39,
+      "quality_score": 1,
       "typed_port_coverage": 1,
       "effect_declaration_ratio": 1,
       "publish_status": "pass",
@@ -51,44 +51,44 @@
     }
   ],
   "scenarios": {
-    "hello_compile": {
-      "elapsed_ms": 0.18,
-      "diagnostics": 0,
-      "semantic_hash": "3b645b59679d009f7498b977325873b8a56894591072aaa77eca83721988d872"
+    "company_signal_brief": {
+      "compile_ms": 0.25,
+      "status": "succeeded",
+      "eval_status": "passed",
+      "eval_score": 0.93,
+      "trace_events": 9,
+      "scripted_session_count": 1
     },
-    "company_intake_plan": {
-      "elapsed_ms": 1.19,
-      "status": "ready",
-      "nodes": 3,
-      "materialization_nodes": 3
-    },
-    "run_aware_brief": {
-      "elapsed_ms": 0.19,
-      "diagnostics": 0,
-      "access_rule_groups": 2
-    },
-    "selective_recompute": {
-      "full_refresh_elapsed_ms": 1.16,
-      "targeted_refresh_elapsed_ms": 0.45,
-      "full_refresh_nodes": [
-        "market-sync"
+    "lead_program_designer": {
+      "compile_ms": 0.37,
+      "status": "succeeded",
+      "eval_status": "passed",
+      "eval_score": 0.91,
+      "trace_events": 29,
+      "scripted_session_count": 3,
+      "graph_nodes": 3,
+      "first_run_executed_nodes": [
+        "lead-profile-normalizer",
+        "lead-qualification-scorer",
+        "save-grow-program-drafter"
       ],
-      "targeted_refresh_nodes": [],
-      "full_refresh_graph": true,
-      "targeted_refresh_graph": false,
-      "saved_node_recomputes": 1,
-      "saved_graph_rewrite": 1,
-      "baseline_trace_events": 8,
-      "baseline_trace_event_kinds": [
-        "graph.finished",
-        "graph.started",
-        "node.finished",
-        "node.started",
-        "provider.session"
-      ]
+      "brand_change_executed_nodes": [
+        "save-grow-program-drafter"
+      ],
+      "brand_change_reused_nodes": [
+        "lead-profile-normalizer",
+        "lead-qualification-scorer"
+      ],
+      "brand_change_session_count": 1,
+      "profile_change_executed_nodes": [
+        "lead-profile-normalizer",
+        "lead-qualification-scorer",
+        "save-grow-program-drafter"
+      ],
+      "profile_change_reused_nodes": []
     },
     "approval_gated_release": {
-      "elapsed_ms": 0.28,
+      "elapsed_ms": 0.43,
       "status": "blocked",
       "blocked_effect_nodes": [
         "announce-release"
@@ -103,13 +103,13 @@
       "there is no canonical graph/run materialization record",
       "targeted recompute requires manual operator judgment"
     ],
-    "openprose_examples_quality_score": 0.96,
+    "openprose_examples_quality_score": 1,
     "typed_port_coverage_delta": 1,
     "effect_declaration_ratio_delta": 1,
-    "selective_recompute_saved_nodes": 1,
-    "selective_recompute_saved_graph_rewrite": 1,
+    "brand_change_saved_nodes": 2,
+    "brand_change_saved_sessions": 2,
     "approval_gate_visible": true,
     "graph_trace_available": true,
-    "runtime_trace_event_count": 8
+    "runtime_trace_event_count": 29
   }
 }

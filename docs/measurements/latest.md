@@ -1,38 +1,36 @@
 # OpenProse Measurement Report
 
-Generated: 2026-04-26T12:59:03.950Z
+Generated: 2026-04-26T13:36:08.582Z
 
 ## Package Health
 
 | Target | Components | Quality | Typed Ports | Effects | Publish | Strict |
 |---|---:|---:|---:|---:|---|---|
-| examples | 19 | 0.96 | 100% | 100% | pass | pass |
+| examples | 39 | 1.00 | 100% | 100% | pass | pass |
 | packages/std | 58 | 0.97 | 100% | 100% | pass | pass |
 | packages/co | 6 | 1.00 | 100% | 100% | pass | pass |
 | customers/prose-openprose | 99 | 0.95 | 100% | 100% | pass | pass |
 
 ## Scenario Checks
 
-### Hello
-- compile time: 0.18 ms
-- diagnostics: 0
+### Company Signal Brief
+- status: succeeded
+- compile time: 0.25 ms
+- eval: passed (0.93)
+- scripted Pi sessions: 1
+- trace events: 9
 
-### Company Intake
-- plan status: ready
+### Lead Program Designer
+- status: succeeded
 - graph nodes: 3
-- materialization set size: 3
-
-### Run-Aware Brief
-- compile time: 0.19 ms
-- access rule groups: 2
-
-### Selective Recompute
-- full refresh nodes: market-sync
-- targeted summary nodes: (none)
-- saved node recomputes: 1
-- saved graph rewrites: 1
-- baseline trace events: 8
-- baseline trace event kinds: graph.finished, graph.started, node.finished, node.started, provider.session
+- eval: passed (0.91)
+- first-run sessions: 3
+- first-run executed nodes: lead-profile-normalizer, lead-qualification-scorer, save-grow-program-drafter
+- brand-change executed nodes: save-grow-program-drafter
+- brand-change reused nodes: lead-profile-normalizer, lead-qualification-scorer
+- brand-change sessions: 1
+- profile-change executed nodes: lead-profile-normalizer, lead-qualification-scorer, save-grow-program-drafter
+- profile-change reused nodes: (none)
 
 ### Approval-Gated Release
 - plan status: blocked
@@ -50,12 +48,12 @@ Assumptions:
 
 | Signal | OpenProse advantage |
 |---|---:|
-| examples quality score | 0.96 |
+| examples quality score | 1.00 |
 | typed port coverage delta | 100% |
 | effect declaration delta | 100% |
-| selective node recomputes avoided | 1 |
-| selective graph rewrites avoided | 1 |
+| brand-change node recomputes avoided | 2 |
+| brand-change sessions avoided | 2 |
 | approval gate visible to planner | yes |
 | graph trace available | yes |
-| runtime trace event count | 8 |
+| lead graph trace event count | 29 |
 
