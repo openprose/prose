@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { describe, expect, test } from "bun:test";
@@ -286,6 +286,110 @@ describe("OpenProse deployments", () => {
       latest_run_id: triggered.run.run_id,
     });
     expect(await readDeploymentRunIndex(stateRoot)).toHaveLength(1);
+  });
+
+  test("CLI deployment trigger can delegate package entrypoint nodes through an external executor", () => {
+    const root = createDeploymentFixture({
+      version: "0.1.0",
+      sourceSha: "5656565656565656565656565656565656565656",
+    });
+    const stateRoot = mkdtempSync(join(tmpdir(), "openprose-deployment-delegated-"));
+    const scriptPath = join(stateRoot, "node-executor.ts");
+    const callsPath = join(stateRoot, "calls.jsonl");
+    writeFileSync(
+      scriptPath,
+      `
+import { appendFile } from "node:fs/promises";
+const request = JSON.parse(await Bun.file(Bun.env.OPENPROSE_NODE_REQUEST_PATH).text());
+await appendFile(${JSON.stringify(callsPath)}, JSON.stringify({
+  run_id: request.run_id,
+  component_ref: request.component_ref,
+  expected_outputs: request.node_run_request.expected_outputs.map((output) => output.port),
+}) + "\\n", "utf8");
+const artifacts = request.node_run_request.expected_outputs.map((output) => ({
+  port: output.port,
+  content: "# " + request.component.name + "." + output.port + "\\n\\nDelegated deployment output.\\n",
+  content_type: "text/markdown",
+  artifact_ref: null,
+  content_hash: null,
+  policy_labels: output.policy_labels,
+}));
+await Bun.write(Bun.env.OPENPROSE_NODE_RESULT_PATH, JSON.stringify({
+  node_execution_result_version: "0.1",
+  run_id: request.run_id,
+  component_ref: request.component_ref,
+  graph_vm: "pi",
+  runtime_profile: request.runtime_profile,
+  node_run_result: {
+    node_run_result_version: "0.1",
+    request_id: request.node_run_request.request_id,
+    status: "succeeded",
+    artifacts,
+    performed_effects: [],
+    logs: { stdout: null, stderr: null, transcript: null },
+    diagnostics: [],
+    session: {
+      graph_vm: "pi",
+      session_id: "deployment-" + request.component.name,
+      url: null,
+      metadata: { worker: "external-process-test" },
+    },
+    cost: null,
+    duration_ms: 1,
+  },
+}, null, 2) + "\\n");
+`,
+      "utf8",
+    );
+
+    const init = runProseCli([
+      "deployment",
+      "init",
+      root,
+      "--state-root",
+      stateRoot,
+      "--enable",
+      "daily-intel",
+      "--env",
+      "ACME_SECRET=env:ACME_SECRET",
+      "--no-pretty",
+    ]);
+    expect(init.exitCode).toBe(0);
+
+    const triggered = runProseCli([
+      "deployment",
+      "trigger",
+      stateRoot,
+      "--entrypoint",
+      "daily-intel",
+      "--approved-effect",
+      "delivers",
+      "--graph-vm",
+      "pi",
+      "--node-executor-command",
+      `bun ${JSON.stringify(scriptPath)}`,
+      "--no-pretty",
+    ]);
+
+    expect(triggered.exitCode).toBe(0);
+    const parsed = JSON.parse(new TextDecoder().decode(triggered.stdout));
+    expect(parsed.run.status).toBe("succeeded");
+    expect(parsed.run.node_run_count).toBe(3);
+    expect(parsed.run.openprose_run_ref).toBe(
+      `runtime-runs/${parsed.run.run_id}/run.json`,
+    );
+    expect(existsSync(join(stateRoot, parsed.run.openprose_run_ref))).toBe(true);
+    expect(
+      readFileSync(callsPath, "utf8")
+        .trim()
+        .split("\n")
+        .map((line: string) => JSON.parse(line).component_ref)
+        .sort(),
+    ).toEqual([
+      "competitor-intelligence",
+      "daily-intel",
+      "mention-intelligence",
+    ]);
   });
 });
 

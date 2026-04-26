@@ -3,6 +3,11 @@ import { runIr } from "../run.js";
 import { createScriptedPiRuntime } from "../runtime/pi/scripted.js";
 import { slugify } from "../text.js";
 import type { ComponentIR, PortIR, RunLifecycleStatus } from "../types.js";
+import type { RuntimeProfileInput, ReactiveGraphRuntime } from "../runtime/index.js";
+import type {
+  GraphVmKind,
+  NodeRunner,
+} from "../node-runners/index.js";
 import {
   buildDeploymentManifest,
   preflightDeployment,
@@ -40,6 +45,10 @@ export interface TriggerLocalDeploymentOptions {
   targetOutputs?: string[];
   approvedEffects?: string[];
   createdAt?: string;
+  graphVm?: GraphVmKind;
+  nodeRunner?: NodeRunner;
+  graphRuntime?: ReactiveGraphRuntime;
+  runtimeProfile?: RuntimeProfileInput;
 }
 
 export interface TriggerLocalDeploymentResult {
@@ -83,6 +92,13 @@ export async function triggerLocalDeployment(
   const runId = deploymentRunId(options.entrypoint, createdAt);
   const runtimeIr = buildPackageEntrypointRuntimeIr(packageIr, packagePlan);
   const restoreEnvironment = bindDeploymentEnvironment(manifest.environment_bindings);
+  const scriptedNodeRunner = options.nodeRunner || options.graphRuntime
+    ? null
+    : createScriptedPiRuntime({
+        outputsByComponent: deterministicOutputsForComponents(runtimeIr.ir.components),
+        sessionIdPrefix: `deployment-${slugify(options.entrypoint)}`,
+        eventAt: createdAt,
+      });
   const runtimeResult = packagePlan.plan.status === "blocked"
     ? null
     : await runIr(runtimeIr.ir, {
@@ -94,17 +110,20 @@ export async function triggerLocalDeployment(
         inputs: options.inputs,
         approvedEffects: options.approvedEffects,
         executeProgramNodes: true,
-        nodeRunner: createScriptedPiRuntime({
-          outputsByComponent: deterministicOutputsForComponents(runtimeIr.ir.components),
-          sessionIdPrefix: `deployment-${slugify(options.entrypoint)}`,
-          eventAt: createdAt,
-        }),
+        graphVm: options.graphVm,
+        nodeRunner: options.nodeRunner ?? scriptedNodeRunner ?? undefined,
+        graphRuntime: options.graphRuntime,
         runtimeProfile: {
-          graph_vm: "pi",
-          model_provider: "scripted",
-          model: "deterministic-output",
-          thinking: "off",
-          persist_sessions: true,
+          ...(scriptedNodeRunner
+            ? {
+                graph_vm: "pi",
+                model_provider: "scripted",
+                model: "deterministic-output",
+                thinking: "off",
+                persist_sessions: true,
+              } satisfies RuntimeProfileInput
+            : {}),
+          ...(options.runtimeProfile ?? {}),
         },
       }).finally(restoreEnvironment);
   if (packagePlan.plan.status === "blocked") {

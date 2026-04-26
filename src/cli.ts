@@ -24,7 +24,11 @@ import { planFile } from "./plan";
 import { preflightPath, renderPreflightText } from "./preflight";
 import { publishCheckPath, renderPublishCheckText } from "./publish";
 import { executeRemoteFile } from "./remote";
-import { executeNodeExecutionRequestFile } from "./runtime/index.js";
+import {
+  createDelegatedGraphRuntime,
+  createExternalProcessNodeDelegate,
+  executeNodeExecutionRequestFile,
+} from "./runtime/index.js";
 import { runFile } from "./run";
 import { renderCatalogSearchText, searchCatalog } from "./search";
 import { renderStatusText, statusPath } from "./status";
@@ -326,6 +330,17 @@ async function runCliInner(args: string[]): Promise<void> {
           inputs: options.inputs,
           targetOutputs: options.targetOutputs,
           approvedEffects: options.approvedEffects,
+          graphVm: options.graphVm ?? undefined,
+          graphRuntime: options.nodeExecutorCommand
+            ? createDelegatedGraphRuntime({
+                delegate: createExternalProcessNodeDelegate({
+                  command: options.nodeExecutorCommand,
+                }),
+              })
+            : undefined,
+          runtimeProfile: options.nodeExecutorCommand
+            ? { ...options.runtimeProfile, execution_placement: "distributed" }
+            : options.runtimeProfile,
         });
         const output = `${JSON.stringify(result, null, options.pretty ? 2 : 0)}\n`;
         if (options.out) {
@@ -804,6 +819,7 @@ interface FileCommandArgs {
   trigger: RunRecord["caller"]["trigger"];
   graphVm: string | null;
   runtimeProfile: RuntimeProfileInput;
+  nodeExecutorCommand: string | null;
   deprecatedProvider: string | null;
   deploymentName: string | null;
   deploymentSlug: string | null;
@@ -978,6 +994,7 @@ function parseFileCommandArgs(args: string[]): FileCommandArgs {
     trigger: "manual",
     graphVm: null,
     runtimeProfile: {},
+    nodeExecutorCommand: null,
     deprecatedProvider: null,
     deploymentName: null,
     deploymentSlug: null,
@@ -1126,6 +1143,20 @@ function parseFileCommandArgs(args: string[]): FileCommandArgs {
     }
     if (arg === "--graph-vm") {
       parsed.graphVm = args[index + 1] ?? null;
+      index += 1;
+      continue;
+    }
+    if (arg === "--execution-placement") {
+      const value = args[index + 1];
+      parsed.runtimeProfile.execution_placement =
+        value === "local" || value === "workspace_capsule" || value === "distributed"
+          ? value
+          : null;
+      index += 1;
+      continue;
+    }
+    if (arg === "--node-executor-command") {
+      parsed.nodeExecutorCommand = args[index + 1] ?? null;
       index += 1;
       continue;
     }
@@ -1498,7 +1529,7 @@ Usage:
   prose compile <file.prose.md|dir> [--out ir.json] [--no-pretty]
   prose deployment <dir> [--deployment-name name] [--org-id org] [--environment dev] [--mode dev] [--enable component] [--env KEY=value] [--format text|json]
   prose deployment init <dir> [--deployment-name name] [--state-root .prose/deployments/id] [--enable component] [--env KEY=value]
-  prose deployment trigger <state-root> --entrypoint component [--input name=value] [--approved-effect effect]
+  prose deployment trigger <state-root> --entrypoint component [--input name=value] [--approved-effect effect] [--graph-vm pi] [--node-executor-command cmd]
   prose deployment plan <dir> --entrypoint component [--input name=value] [--target-output output] [--approved-effect effect] [--format text|json]
   prose deployment graph <dir> --entrypoint component [--target-output output] [--approved-effect effect] [--format mermaid|json]
   prose eval <eval.prose.md> --subject-run .prose/runs/{id} [--graph-vm pi] [--output result='{"passed":true,"score":0.9}']
