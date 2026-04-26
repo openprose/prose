@@ -79,12 +79,17 @@ describe("OpenProse package, registry, install, publish, and search", () => {
     expect(metadata.schema_version).toBe("openprose.package.v2");
     expect(metadata.package_version).toBe("0.2");
     expect(metadata.metadata_digest).toMatch(/^[a-f0-9]{64}$/);
+    expect(metadata.package_ir.semantic_hash).toMatch(/^[a-f0-9]{64}$/);
     expect(metadata.manifest).toMatchObject({
       name: "@openprose/catalog-demo",
       version: "0.1.0",
       catalog: "openprose",
       registry_ref: "registry://openprose/@openprose/catalog-demo@0.1.0",
       no_evals: false,
+      runtime: {
+        providers: ["fixture", "pi"],
+        default_provider: "fixture",
+      },
       hosted: {
         callable: true,
         auth_required: true,
@@ -95,13 +100,26 @@ describe("OpenProse package, registry, install, publish, and search", () => {
       "market-scan",
       "release-gate",
     ]);
+    expect(metadata.components[0].registry_ref).toBe(
+      "registry://openprose/@openprose/catalog-demo@0.1.0/brief-writer",
+    );
     expect(metadata.components[0].inputs).toContainEqual({
       name: "company",
       type: "CompanyProfile",
+      required: true,
+      policy_labels: [],
+    });
+    expect(metadata.components[0].artifact_contract).toContainEqual({
+      port: "brief",
+      type: "Markdown<ExecutiveBrief>",
+      required: true,
+      default_path: "brief.md",
+      content_type: "text/markdown",
+      policy_labels: [],
     });
     expect(metadata.components[0].effects).toEqual(["pure"]);
     expect(metadata.hosted_ingest).toMatchObject({
-      contract_version: "0.1",
+      contract_version: "0.2",
       package: {
         name: "@openprose/catalog-demo",
         version: "0.1.0",
@@ -110,6 +128,11 @@ describe("OpenProse package, registry, install, publish, and search", () => {
         git: "github.com/openprose/catalog-demo",
         sha: "0123456789abcdef",
         subpath: "fixtures/package/catalog-demo",
+      },
+      runtime: {
+        providers: ["fixture", "pi"],
+        default_provider: "fixture",
+        required_effects: ["mutates_repo", "read_external"],
       },
     });
     expect(metadata.hosted_ingest.components.length).toBe(metadata.components.length);

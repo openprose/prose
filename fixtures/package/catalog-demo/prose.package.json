@@ -16,6 +16,13 @@
   "examples": [
     "examples/catalog-demo.run.json"
   ],
+  "runtime": {
+    "providers": [
+      "fixture",
+      "pi"
+    ],
+    "default_provider": "fixture"
+  },
   "hosted": {
     "callable": true,
     "endpoint": "https://api.openprose.dev/packages/catalog-demo",

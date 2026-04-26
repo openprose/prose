@@ -1,12 +1,12 @@
 {
   "package_ir_version": "0.1",
-  "semantic_hash": "0716fc26a7b73367ca56c796d5a5d075bd8b633d5b2ad856dac8af7947c2f96d",
+  "semantic_hash": "19e565e14228604c7e7f973e3d19c24d0f366c8d8816c3b6cf21aeaea078bb49",
   "hashes": {
     "source_hash": "424f6c7be86cc33923848d0a1898cf5a7cdf2930b840e5e7d7482f2ec03486d5",
-    "semantic_hash": "0716fc26a7b73367ca56c796d5a5d075bd8b633d5b2ad856dac8af7947c2f96d",
+    "semantic_hash": "19e565e14228604c7e7f973e3d19c24d0f366c8d8816c3b6cf21aeaea078bb49",
     "dependency_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
     "policy_hash": "ae848f3ccd9d2437445c910c6dd2135d09dd47a3c239ac57bb94f5870eb3e7eb",
-    "runtime_config_hash": "41d1f386c3cf25400e2a4f3800bb700013374a2da0b7ba00c06a3eb191955b5c"
+    "runtime_config_hash": "fd6440e52eef74fb9a2728a1dffcc598681a6ca7dfbcba9ce688034d6ae7ced6"
   },
   "manifest": {
     "name": "@openprose/co",
@@ -28,6 +28,14 @@
       "programs/company-repo-checker.prose.md"
     ],
     "no_evals": false,
+    "runtime": {
+      "providers": [
+        "fixture",
+        "local_process",
+        "pi"
+      ],
+      "default_provider": "fixture"
+    },
     "hosted": null
   },
   "files": [

@@ -4,14 +4,20 @@ import { basename, dirname, relative, resolve } from "node:path";
 import { compileFile } from "./compiler";
 import { collectSourceFiles } from "./files";
 import { sha256, stableStringify } from "./hash";
+import { compilePackagePath } from "./ir/package";
 import { lintFile } from "./lint";
 import { buildRegistryRef } from "./registry";
+import {
+  inferProviderOutputContentType,
+  providerOutputFileForPort,
+} from "./providers/output-files";
 import type {
   ComponentIR,
   Diagnostic,
   HostedRuntimeMetadata,
   PackageComponentMetadata,
   PackageMetadata,
+  PackageRuntimeManifest,
   ProseIR,
 } from "./types";
 
@@ -31,6 +37,10 @@ interface PackageConfig {
   schemas?: string[];
   evals?: string[];
   examples?: string[];
+  runtime?: {
+    providers?: string[];
+    default_provider?: string;
+  };
   hosted?: HostedRuntimeMetadata;
 }
 
@@ -38,12 +48,23 @@ export async function packagePath(path: string): Promise<PackageMetadata> {
   const root = await resolvePackageRoot(path);
   const config = await loadPackageConfig(root);
   const resolvedConfig = await hydratePackageConfig(root, config);
+  const packageIr = await compilePackagePath(root);
   const files = await collectSourceFiles(root, {
     excludeNestedPackageRoots: true,
   });
   const components: PackageComponentMetadata[] = [];
   const diagnostics: Diagnostic[] = [];
   const dependencyMap = new Map<string, ProseIR["package"]["dependencies"][number]>();
+  const manifestName = resolvedConfig?.name?.trim() || basename(root);
+  const catalog = resolvedConfig?.registry?.catalog?.trim() || "openprose";
+  const registryRef = resolvedConfig?.version
+    ? buildRegistryRef({
+        catalog,
+        package_name: manifestName,
+        version: resolvedConfig.version.trim(),
+      })
+    : null;
+  const runtimeManifest = normalizeRuntimeManifest(resolvedConfig?.runtime);
   let qualityComponentCount = 0;
   let typedPorts = 0;
   let totalPorts = 0;
@@ -90,6 +111,8 @@ export async function packagePath(path: string): Promise<PackageMetadata> {
         file,
         ir,
         component,
+        packageRegistryRef: registryRef,
+        runtime: runtimeManifest,
         packageExamples: resolvedConfig?.examples ?? [],
         packageEvals: resolvedConfig?.evals ?? [],
       });
@@ -108,15 +131,6 @@ export async function packagePath(path: string): Promise<PackageMetadata> {
   }
 
   components.sort((a, b) => a.name.localeCompare(b.name) || a.path.localeCompare(b.path));
-  const manifestName = resolvedConfig?.name?.trim() || basename(root);
-  const catalog = resolvedConfig?.registry?.catalog?.trim() || "openprose";
-  const registryRef = resolvedConfig?.version
-    ? buildRegistryRef({
-        catalog,
-        package_name: manifestName,
-        version: resolvedConfig.version.trim(),
-      })
-    : null;
   const quality = buildQualitySummary({
     componentCount: qualityComponentCount,
     typedPorts,
@@ -148,11 +162,21 @@ export async function packagePath(path: string): Promise<PackageMetadata> {
     evals: [...(resolvedConfig?.evals ?? [])].sort(),
     examples: [...(resolvedConfig?.examples ?? [])].sort(),
     no_evals: (resolvedConfig?.evals?.length ?? 0) === 0,
+    runtime: runtimeManifest,
     hosted: resolvedConfig?.hosted ?? null,
   };
   const sortedDiagnostics = sortDiagnostics(diagnostics);
+  const runtime = buildRuntimeSummary({
+    manifest: runtimeManifest,
+    components,
+  });
+  const packageIrSummary = {
+    version: packageIr.package_ir_version,
+    semantic_hash: packageIr.semantic_hash,
+    hashes: packageIr.hashes,
+  };
   const hostedIngest = {
-    contract_version: "0.1" as const,
+    contract_version: "0.2" as const,
     package: {
       name: manifest.name,
       version: manifest.version,
@@ -162,6 +186,8 @@ export async function packagePath(path: string): Promise<PackageMetadata> {
       license: manifest.license,
     },
     source: manifest.source,
+    package_ir: packageIrSummary,
+    runtime,
     components,
     quality,
   };
@@ -169,10 +195,12 @@ export async function packagePath(path: string): Promise<PackageMetadata> {
     stableStringify({
       schema_version: "openprose.package.v2",
       package_version: "0.2",
+      package_ir: packageIrSummary,
       manifest,
       components,
       diagnostics: sortedDiagnostics,
       quality,
+      runtime,
       hosted_ingest: hostedIngest,
     }),
   );
@@ -182,10 +210,12 @@ export async function packagePath(path: string): Promise<PackageMetadata> {
     package_version: "0.2",
     metadata_digest: digest,
     root: normalizePath(root),
+    package_ir: packageIrSummary,
     manifest,
     components,
     diagnostics: sortedDiagnostics,
     quality,
+    runtime,
     hosted_ingest: hostedIngest,
   };
 }
@@ -196,6 +226,7 @@ export function renderPackageText(metadata: PackageMetadata): string {
     `Root: ${metadata.root}`,
     `Components: ${metadata.components.length}`,
     `Quality score: ${metadata.quality.score.toFixed(2)}`,
+    `Runtime providers: ${metadata.runtime.providers.length > 0 ? metadata.runtime.providers.join(", ") : "(unspecified)"}`,
   ];
 
   if (metadata.quality.warnings.length > 0) {
@@ -235,15 +266,62 @@ export function renderPackageText(metadata: PackageMetadata): string {
   return `${lines.join("\n")}\n`;
 }
 
+function normalizeRuntimeManifest(
+  runtime: PackageConfig["runtime"] | undefined,
+): PackageRuntimeManifest | null {
+  if (!runtime) {
+    return null;
+  }
+
+  return {
+    providers: [...new Set(runtime.providers ?? [])]
+      .map((provider) => provider.trim())
+      .filter(Boolean)
+      .sort(),
+    default_provider: runtime.default_provider?.trim() || null,
+  };
+}
+
+function buildRuntimeSummary(options: {
+  manifest: PackageRuntimeManifest | null;
+  components: PackageComponentMetadata[];
+}): PackageMetadata["runtime"] {
+  const requiredEffects = new Set<string>();
+  const environment = new Map<string, boolean>();
+
+  for (const component of options.components) {
+    for (const effect of component.effects) {
+      if (effect !== "pure") {
+        requiredEffects.add(effect);
+      }
+    }
+    for (const binding of component.runtime.environment) {
+      environment.set(binding.name, (environment.get(binding.name) ?? false) || binding.required);
+    }
+  }
+
+  return {
+    providers: options.manifest?.providers ?? [],
+    default_provider: options.manifest?.default_provider ?? null,
+    required_effects: [...requiredEffects].sort(),
+    environment: [...environment.entries()]
+      .map(([name, required]) => ({ name, required }))
+      .sort((a, b) => a.name.localeCompare(b.name)),
+  };
+}
+
 function buildComponentMetadata(options: {
   root: string;
   file: string;
   ir: ProseIR;
   component: ComponentIR;
+  packageRegistryRef: string | null;
+  runtime: PackageRuntimeManifest | null;
   packageExamples: string[];
   packageEvals: string[];
 }): PackageComponentMetadata {
-  const { root, file, ir, component, packageExamples, packageEvals } = options;
+  const { root, file, ir, component, packageRegistryRef, runtime, packageExamples, packageEvals } =
+    options;
   const allPorts = [...component.ports.requires, ...component.ports.ensures];
   const typedCount = allPorts.filter((port) => port.type !== "Any").length;
   const typedCoverage = allPorts.length === 0 ? 1 : typedCount / allPorts.length;
@@ -275,9 +353,38 @@ function buildComponentMetadata(options: {
     name: component.name,
     kind: component.kind,
     path: normalizePath(relative(root, file)),
+    registry_ref: packageRegistryRef ? `${packageRegistryRef}/${component.name}` : null,
     summary: summarizeComponent(component),
-    inputs: component.ports.requires.map((port) => ({ name: port.name, type: port.type })),
-    outputs: component.ports.ensures.map((port) => ({ name: port.name, type: port.type })),
+    inputs: component.ports.requires.map((port) => ({
+      name: port.name,
+      type: port.type,
+      required: port.required,
+      policy_labels: [...port.policy_labels].sort(),
+    })),
+    outputs: component.ports.ensures.map((port) => ({
+      name: port.name,
+      type: port.type,
+      required: port.required,
+      policy_labels: [...port.policy_labels].sort(),
+    })),
+    artifact_contract: component.ports.ensures.map((port) => {
+      const defaultPath = providerOutputFileForPort(undefined, port.name);
+      return {
+        port: port.name,
+        type: port.type,
+        required: port.required,
+        default_path: defaultPath,
+        content_type: inferProviderOutputContentType(defaultPath),
+        policy_labels: [...port.policy_labels].sort(),
+      };
+    }),
+    runtime: {
+      providers: runtime?.providers ?? [],
+      effects: component.effects.map((effect) => effect.kind).sort(),
+      environment: component.environment
+        .map((binding) => ({ name: binding.name, required: binding.required }))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    },
     effects: component.effects.map((effect) => effect.kind),
     access: component.access.rules,
     evals: [...packageEvals].sort(),

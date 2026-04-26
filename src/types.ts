@@ -354,6 +354,11 @@ export interface PackageHashSetIR {
   runtime_config_hash: string;
 }
 
+export interface PackageRuntimeManifest {
+  providers: string[];
+  default_provider: string | null;
+}
+
 export interface PackageIR {
   package_ir_version: "0.1";
   semantic_hash: string;
@@ -375,6 +380,7 @@ export interface PackageIR {
     evals: string[];
     examples: string[];
     no_evals: boolean;
+    runtime: PackageRuntimeManifest | null;
     hosted: HostedRuntimeMetadata | null;
   };
   files: PackageIRFile[];
@@ -880,13 +886,38 @@ export interface HostedRuntimeMetadata {
   trace_available: boolean;
 }
 
+export interface PackagePortMetadata {
+  name: string;
+  type: string;
+  required: boolean;
+  policy_labels: string[];
+}
+
+export interface PackageArtifactContractMetadata {
+  port: string;
+  type: string;
+  required: boolean;
+  default_path: string;
+  content_type: string;
+  policy_labels: string[];
+}
+
+export interface PackageComponentRuntimeMetadata {
+  providers: string[];
+  effects: string[];
+  environment: Array<{ name: string; required: boolean }>;
+}
+
 export interface PackageComponentMetadata {
   name: string;
   kind: ComponentKind;
   path: string;
+  registry_ref: string | null;
   summary: string | null;
-  inputs: Array<{ name: string; type: string }>;
-  outputs: Array<{ name: string; type: string }>;
+  inputs: PackagePortMetadata[];
+  outputs: PackagePortMetadata[];
+  artifact_contract: PackageArtifactContractMetadata[];
+  runtime: PackageComponentRuntimeMetadata;
   effects: string[];
   access: Record<string, string[]>;
   evals: string[];
@@ -913,6 +944,11 @@ export interface PackageMetadata {
   package_version: "0.2";
   metadata_digest: string;
   root: string;
+  package_ir: {
+    version: PackageIR["package_ir_version"];
+    semantic_hash: string;
+    hashes: PackageHashSetIR;
+  };
   manifest: {
     name: string;
     version: string | null;
@@ -930,13 +966,18 @@ export interface PackageMetadata {
     evals: string[];
     examples: string[];
     no_evals: boolean;
+    runtime: PackageRuntimeManifest | null;
     hosted: HostedRuntimeMetadata | null;
   };
   components: PackageComponentMetadata[];
   diagnostics: Diagnostic[];
   quality: PackageQualitySummary;
+  runtime: PackageRuntimeManifest & {
+    required_effects: string[];
+    environment: Array<{ name: string; required: boolean }>;
+  };
   hosted_ingest: {
-    contract_version: "0.1";
+    contract_version: "0.2";
     package: {
       name: string;
       version: string | null;
@@ -946,6 +987,8 @@ export interface PackageMetadata {
       license: string | null;
     };
     source: PackageMetadata["manifest"]["source"];
+    package_ir: PackageMetadata["package_ir"];
+    runtime: PackageMetadata["runtime"];
     components: PackageComponentMetadata[];
     quality: PackageQualitySummary;
   };

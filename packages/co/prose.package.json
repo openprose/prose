@@ -9,6 +9,14 @@
   "evals": [
     "evals/company-repo-checker.eval.prose.md"
   ],
+  "runtime": {
+    "providers": [
+      "fixture",
+      "local_process",
+      "pi"
+    ],
+    "default_provider": "fixture"
+  },
   "examples": [
     "programs/company-repo-checker.prose.md"
   ]

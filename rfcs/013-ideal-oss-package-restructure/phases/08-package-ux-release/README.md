@@ -26,7 +26,7 @@ Commit:
 
 Signpost:
 
-- Add `signposts/037-package-metadata.md` with registry contract examples.
+- Add `signposts/038-package-metadata.md` with registry contract examples.
 
 ## 08.2 Make Remote Execution Wrap The Real Runtime Kernel
 
@@ -49,7 +49,7 @@ Commit:
 
 Signpost:
 
-- Add `signposts/038-remote-runtime-envelope.md` with hosted integration notes.
+- Add `signposts/039-remote-runtime-envelope.md` with hosted integration notes.
 
 ## 08.3 Reconcile Hosted Client Compatibility
 
@@ -72,7 +72,7 @@ Commit:
 
 Signpost:
 
-- Add `signposts/039-hosted-contract-fixtures.md` with platform handoff notes.
+- Add `signposts/040-hosted-contract-fixtures.md` with platform handoff notes.
 
 ## 08.4 Polish CLI UX, Generated Docs, And Diagrams
 
@@ -96,7 +96,7 @@ Commit:
 
 Signpost:
 
-- Add `signposts/040-cli-docs-diagrams.md` with generated output examples.
+- Add `signposts/041-cli-docs-diagrams.md` with generated output examples.
 
 ## 08.5 Run The Final Confidence Matrix
 
@@ -121,7 +121,7 @@ Commit:
 
 Signpost:
 
-- Add `signposts/041-release-candidate.md` with full command output summary,
+- Add `signposts/042-release-candidate.md` with full command output summary,
   remaining risks, and platform follow-up.
 
 ## Phase Exit Criteria

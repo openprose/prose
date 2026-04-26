@@ -43,6 +43,10 @@ interface PackageConfig {
   schemas?: string[];
   evals?: string[];
   examples?: string[];
+  runtime?: {
+    providers?: string[];
+    default_provider?: string;
+  };
   hosted?: PackageIR["manifest"]["hosted"];
 }
 
@@ -217,7 +221,26 @@ function buildPackageManifest(root: string, config: PackageConfig | null): Packa
     evals: [...(config?.evals ?? [])].sort(),
     examples: [...(config?.examples ?? [])].sort(),
     no_evals: (config?.evals?.length ?? 0) === 0,
+    runtime: normalizeRuntimeManifest(config?.runtime),
     hosted: config?.hosted ?? null,
+  };
+}
+
+function normalizeRuntimeManifest(
+  runtime: PackageConfig["runtime"] | undefined,
+): PackageIR["manifest"]["runtime"] {
+  if (!runtime) {
+    return null;
+  }
+
+  const providers = [...new Set(runtime.providers ?? [])]
+    .map((provider) => provider.trim())
+    .filter(Boolean)
+    .sort();
+  const defaultProvider = runtime.default_provider?.trim() || null;
+  return {
+    providers,
+    default_provider: defaultProvider,
   };
 }
 
@@ -374,6 +397,7 @@ function buildPackageHashes(input: {
     runtime_config_hash: sha256(
       stableStringify({
         hosted: input.manifest.hosted,
+        runtime: input.manifest.runtime,
         components: input.components.map((component) => ({
           id: component.id,
           runtime: component.runtime.map((setting) => ({

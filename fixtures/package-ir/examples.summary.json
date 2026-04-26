@@ -1,12 +1,12 @@
 {
   "package_ir_version": "0.1",
-  "semantic_hash": "2e247b939e1099c766d614944570319a2e8fdcb504f2ecd5bac03d4a35036fac",
+  "semantic_hash": "212bbba3fd238f329998636c162733ea20027537e21b641ab51fcb2bc783f22b",
   "hashes": {
     "source_hash": "37c6570af7a702dcfb05f56e0ea2983c25cc0bc59dc281f5ef36eee50634b80c",
-    "semantic_hash": "2e247b939e1099c766d614944570319a2e8fdcb504f2ecd5bac03d4a35036fac",
+    "semantic_hash": "212bbba3fd238f329998636c162733ea20027537e21b641ab51fcb2bc783f22b",
     "dependency_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
     "policy_hash": "36f746f1d50584b3d96602c256828ed33114dfb8d8e2ac358a8f1e6e4adff56e",
-    "runtime_config_hash": "31d097fcfcf20b5aaa25db9bcda544587e3a6cacf3a17b60d0accee7db2aac8d"
+    "runtime_config_hash": "0230a43f713c4bf8f87e7879b57628a68f53a2a3c50de5e59e7c70e757bbead6"
   },
   "manifest": {
     "name": "@openprose/examples",
@@ -32,6 +32,14 @@
       "selective-recompute.prose.md"
     ],
     "no_evals": false,
+    "runtime": {
+      "providers": [
+        "fixture",
+        "local_process",
+        "pi"
+      ],
+      "default_provider": "fixture"
+    },
     "hosted": null
   },
   "files": [

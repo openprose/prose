@@ -1,12 +1,12 @@
 {
   "package_ir_version": "0.1",
-  "semantic_hash": "a5d91f9dc8dadaf46857a151256b5dc32a231109d4a8bfeb972f7fe0191e2e5a",
+  "semantic_hash": "6e734b406c9c4bb2f1c3c37f746e8ea992a5890cf5a624ea255e1e0ec7e1047f",
   "hashes": {
     "source_hash": "a3a89e7460016d0fa6fc6d57878fafe555e8d270ed735d6e23f2dfecb078dd7e",
-    "semantic_hash": "a5d91f9dc8dadaf46857a151256b5dc32a231109d4a8bfeb972f7fe0191e2e5a",
+    "semantic_hash": "6e734b406c9c4bb2f1c3c37f746e8ea992a5890cf5a624ea255e1e0ec7e1047f",
     "dependency_hash": "274e424f01b65e9042abc2e220cb92a3c67f471429616deafea5ea8423053ba5",
     "policy_hash": "ffe076367b3b0d0143198d146e8ec1fb9f1cfc18e30ae5a8d548198407135e28",
-    "runtime_config_hash": "f21569f10044621a5f507469cc38e1b284f70f6c8eefcfb1dfabe86b3924ef51"
+    "runtime_config_hash": "34ecfbab3b681034776d0db3e1714541e2309dc606018c120b56cc4328d32a82"
   },
   "manifest": {
     "name": "@openprose/std",
@@ -35,6 +35,14 @@
       "examples/confident-writer/index.prose.md"
     ],
     "no_evals": false,
+    "runtime": {
+      "providers": [
+        "fixture",
+        "local_process",
+        "pi"
+      ],
+      "default_provider": "fixture"
+    },
     "hosted": null
   },
   "files": [

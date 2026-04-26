@@ -14,6 +14,14 @@
   "evals": [
     "evals/examples-quality.eval.prose.md"
   ],
+  "runtime": {
+    "providers": [
+      "fixture",
+      "local_process",
+      "pi"
+    ],
+    "default_provider": "fixture"
+  },
   "examples": [
     "hello.prose.md",
     "selective-recompute.prose.md",
