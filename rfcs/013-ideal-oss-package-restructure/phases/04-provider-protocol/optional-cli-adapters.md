@@ -1,68 +1,24 @@
-# Optional CLI Provider Adapters
+# Superseded: Optional CLI Adapters
 
-Phase 04.6 evaluated Codex CLI, Claude Code, and OpenCode as optional one-off
-provider adapters.
+This page is a historical stub. Phase 04.6 considered Codex CLI, Claude Code,
+OpenCode, and similar tools as optional runtime adapters.
 
-## Local Availability Checked
+The current package does not implement those tools as graph VMs.
 
-Observed local commands:
+## Current Reading
 
-- `codex`
-- `claude`
-- `opencode`
-- `pi`
+Single-run harness portability remains part of the North Star, but it is a
+different layer from reactive graph execution:
 
-Each can run in a non-interactive or headless mode:
+- `prose handoff` exports a single component contract
+- the receiving harness owns its own one-off session
+- OpenProse does not pretend that shelling out to a CLI can coordinate a
+  multi-node reactive graph
 
-- `codex exec`
-- `claude --print`
-- `opencode run`
-- `pi -p`
+Revisit CLI adapters only if they can provide a tested, non-interactive,
+effect-aware single-run boundary without distorting the graph runtime.
 
-## Decision
+Historical evidence remains in:
 
-Do not add dedicated one-off CLI adapters yet.
-
-The package now has:
-
-- internal scripted Pi sessions for deterministic tests
-- `PiProvider` for the TypeScript graph VM substrate
-
-Adding `CodexCliProvider`, `ClaudeCodeProvider`, or `OpenCodeProvider` before
-their SDK/process boundaries can satisfy the node execution contract would
-introduce weaker and less consistent semantics for:
-
-- durable session references
-- structured transcript capture
-- cost telemetry
-- auth discovery
-- resume behavior
-- output-file enforcement
-- effect-to-tool mapping
-
-The better sequence is to keep Pi as the graph VM, then add single-run harness
-adapters only when they can be thin, well-tested wrappers that do not distort
-the graph runtime.
-
-## Future Adapter Requirements
-
-A CLI adapter is acceptable only if it can:
-
-- receive the rendered OpenProse contract plus output-file instructions
-- run without an interactive prompt
-- execute inside a prepared workspace
-- keep output artifacts file-based and validated
-- return provider session refs that can be inspected or resumed
-- capture stdout/stderr/transcript without brittle parsing
-- avoid shell interpolation by default
-- respect effect gates through tool flags or sandbox settings
-- run in opt-in integration tests without disturbing normal CI
-
-## Backpressure
-
-This slice is complete when:
-
-- the deferral is explicit
-- the reasons are concrete
-- Phase 05 can proceed without adapter ambiguity
-- the provider protocol is not distorted by CLI-specific behavior
+- `../../signposts/020-optional-cli-adapters.md`
+- `../../../015-public-oss-hardening/signposts/014-single-run-handoff.md`

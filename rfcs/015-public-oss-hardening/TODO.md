@@ -244,7 +244,7 @@ Checks:
 - `bun test test/cli-ux.test.ts test/examples-tour.test.ts`
 - `bun test test/docs-public.test.ts test/cli-ux.test.ts test/examples-tour.test.ts`
 
-### [todo] Historical provider RFCs are still too easy to mistake for current architecture
+### [done] Historical provider RFCs are still too easy to mistake for current architecture
 
 Finding: the active docs now distinguish Pi graph VM, model providers, and
 single-run harnesses, but older RFC 013 provider-protocol phase pages still
@@ -252,17 +252,21 @@ contain detailed implementation language for fixture/local-process/providers.
 Even with guardrail headers, they show up in repository search and can look
 like instructions for new contributors.
 
-Proposed fix:
+Resolved:
 
 - keep the historical record but make the current architecture impossible to
   miss at the phase-directory entry points
 - rename or summarize obsolete provider-protocol pages where a short historical
   stub is safer than a full stale implementation guide
 - preserve signposts as evidence, not instructions
+- added a regression test that keeps the RFC 013 provider phase pages as
+  historical stubs instead of implementation playbooks
 
 Checks:
 
 - `rg -n "fixture provider|local process provider|provider protocol|optional CLI adapters" rfcs/013-ideal-oss-package-restructure/phases/04-provider-protocol`
+- `rg -n 'Commit as|Build:|Tests:|ProviderRequest|ProviderResult' rfcs/013-ideal-oss-package-restructure/phases/04-provider-protocol`
+- `bun test test/rfc-history.test.ts test/docs-public.test.ts`
 - manual read-through of the Phase 04 entry point from a first-time contributor perspective
 
 ### [todo] Package publication surface is still split between source package and binary package
