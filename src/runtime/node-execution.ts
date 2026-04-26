@@ -53,7 +53,30 @@ function scriptedNodeOutputs(
   return Object.fromEntries(
     request.node_run_request.expected_outputs.map((output) => [
       output.port,
-      `${request.component.name}.${output.port}`,
+      scriptedOutputValue(request, output),
     ]),
   );
+}
+
+function scriptedOutputValue(
+  request: NodeExecutionRequest,
+  output: NodeExecutionRequest["node_run_request"]["expected_outputs"][number],
+): string {
+  const type = output.type.trim().toLowerCase();
+  if (type.startsWith("json<") || type === "json") {
+    return `${JSON.stringify({
+      scripted: true,
+      component: request.component.name,
+      port: output.port,
+    })}\n`;
+  }
+  if (type.startsWith("markdown<") || type === "markdown") {
+    return [
+      `# ${request.component.name} ${output.port}`,
+      "",
+      `Scripted distributed output for ${request.component.name}.${output.port}.`,
+      "",
+    ].join("\n");
+  }
+  return `${request.component.name}.${output.port}`;
 }

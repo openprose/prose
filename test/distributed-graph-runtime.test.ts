@@ -175,11 +175,65 @@ describe("distributed hosted graph VM", () => {
     });
     expect(result.node_run_result.artifacts[0]).toMatchObject({
       port: "message",
-      content: "hello.message\n",
+      content:
+        "# hello message\n\nScripted distributed output for hello.message.\n",
     });
     expect(result.node_run_result.session?.metadata).toMatchObject({
       model_provider: "scripted",
       model_id: "deterministic-output",
+    });
+  });
+
+  test("scripted serialized node requests emit valid JSON for JSON ports", async () => {
+    const runRoot = mkdtempSync(join(tmpdir(), "openprose-scripted-json-node-"));
+    const source = readFileSync(
+      new URL("../examples/north-star/lead-program-designer.prose.md", import.meta.url),
+      "utf8",
+    );
+    const requests: NodeExecutionRequest[] = [];
+    const graphRuntime = createDelegatedGraphRuntime({
+      delegate: {
+        async executeNode(request) {
+          requests.push(request);
+          return successfulNodeResult(request, outputsForComponent(request.component.name));
+        },
+      },
+    });
+
+    await runSource(source, {
+      path: "examples/north-star/lead-program-designer.prose.md",
+      runRoot,
+      runId: "capture-scripted-json-node-request",
+      inputs: {
+        lead_profile: "{\"company\":\"Acme\"}",
+        brand_context: "Acme sells infrastructure software.",
+      },
+      outputs: {
+        lead_program_plan: "Graph-level deterministic output.",
+      },
+      nodeRunner: nodeRunnerShouldNotRun(),
+      graphRuntime,
+      runtimeProfile: {
+        execution_placement: "distributed",
+      },
+      createdAt: "2026-04-26T02:08:00.000Z",
+    });
+
+    const normalizer = requests.find(
+      (request) => request.component.name === "lead-profile-normalizer",
+    );
+    expect(normalizer).toBeDefined();
+
+    const result = await executeNodeExecutionRequest(normalizer!);
+    const artifact = result.node_run_result.artifacts.find(
+      (candidate) => candidate.port === "lead_normalized_profile",
+    );
+
+    expect(artifact?.content_type).toBe("application/json");
+    expect(JSON.parse(artifact?.content ?? "")).toMatchObject({
+      scripted: true,
+      component: "lead-profile-normalizer",
+      port: "lead_normalized_profile",
     });
   });
 

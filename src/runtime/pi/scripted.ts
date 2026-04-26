@@ -208,7 +208,7 @@ function submissionFromOutputs(
     outputs.push({
       port: output.port,
       content: normalizeText(value),
-      content_type: "text/markdown",
+      content_type: contentTypeForOutputType(output.type),
     });
   }
   return outputs.length > 0 ? { outputs } : undefined;
@@ -233,4 +233,15 @@ function outputValue(
 
 function normalizeText(value: string): string {
   return value.endsWith("\n") ? value : `${value}\n`;
+}
+
+function contentTypeForOutputType(type: string): string {
+  const normalized = type.trim().toLowerCase();
+  if (normalized.startsWith("json<") || normalized === "json") {
+    return "application/json";
+  }
+  if (normalized.startsWith("markdown<") || normalized === "markdown") {
+    return "text/markdown";
+  }
+  return "text/plain";
 }
