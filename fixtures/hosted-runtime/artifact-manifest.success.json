@@ -53,6 +53,17 @@
       "warnings": []
     },
     {
+      "path": "openprose-node-envelope.json",
+      "kind": "artifact",
+      "content_type": "application/json",
+      "parse_policy": "preserve_text",
+      "sha256": "1bc37f9692a903a554d6173f003ad68b09316fefbddadf01a57dd93bf31b555c",
+      "size_bytes": 2115,
+      "binding": null,
+      "policy_labels": [],
+      "warnings": []
+    },
+    {
       "path": "plan.json",
       "kind": "runtime_plan",
       "content_type": "application/json",
@@ -68,8 +79,8 @@
       "kind": "runtime_run_record",
       "content_type": "application/json",
       "parse_policy": "must_parse_json",
-      "sha256": "f841b6e054c7ba190602e2c2568927f12c69dde73c5b0f2d59a32d1e62b7df85",
-      "size_bytes": 1951,
+      "sha256": "f1770faa1c3fb91e5e81d58efda124577fd66cc23e16c4d766722a7d98a42c35",
+      "size_bytes": 1989,
       "binding": null,
       "policy_labels": [],
       "warnings": []
@@ -101,8 +112,8 @@
       "kind": "runtime_trace",
       "content_type": "application/json",
       "parse_policy": "must_parse_json",
-      "sha256": "314c3536552e8e64c792e2191f0db97d282742672c6ba4d3c016d5d086bcad81",
-      "size_bytes": 3793,
+      "sha256": "e4776ad5ba2b163268e6723dbc003675146bd70ad9ec728bb410fc8b1f80eea7",
+      "size_bytes": 3870,
       "binding": null,
       "policy_labels": [],
       "warnings": []

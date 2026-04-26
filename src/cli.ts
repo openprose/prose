@@ -1,5 +1,6 @@
 import { stat, writeFile } from "node:fs/promises";
 import { compileFile } from "./compiler";
+import { preflightDeployment, renderDeploymentPreflightText } from "./deployment/index.js";
 import { executeEvalFile } from "./eval/index.js";
 import { formatFile, formatPath, renderFormatCheckText } from "./format";
 import { renderTextMateGrammar } from "./grammar";
@@ -42,6 +43,7 @@ async function runCliInner(args: string[]): Promise<void> {
 
   if (
     command !== "compile" &&
+    command !== "deployment" &&
     command !== "eval" &&
     command !== "fmt" &&
     command !== "grammar" &&
@@ -255,6 +257,50 @@ async function runCliInner(args: string[]): Promise<void> {
       }
     } catch (error) {
       console.error(error instanceof Error ? error.message : String(error));
+      process.exitCode = 1;
+    }
+    return;
+  }
+
+  if (command === "deployment") {
+    const options = parseFileCommandArgs(rest);
+    if (!options.file) {
+      console.error("Missing package path.");
+      process.exitCode = 1;
+      return;
+    }
+
+    try {
+      const result = await preflightDeployment(options.file, {
+        name: options.deploymentName,
+        slug: options.deploymentSlug,
+        owner: options.orgId
+          ? { kind: "organization", id: options.orgId, name: options.orgName }
+          : { kind: "local", id: "local", name: null },
+        environment: {
+          name: options.environmentName,
+          mode: options.deploymentMode,
+        },
+        stateRoot: options.stateRoot,
+        enabledEntrypoints: options.enabledEntrypoints,
+        environmentBindings: options.environmentBindings,
+        approvedEffects: options.approvedEffects,
+        dryRun: true,
+      });
+      const output =
+        options.format === "json"
+          ? `${JSON.stringify(result, null, options.pretty ? 2 : 0)}\n`
+          : renderDeploymentPreflightText(result);
+      if (options.out) {
+        await writeFile(options.out, output, "utf8");
+      } else {
+        process.stdout.write(output);
+      }
+      if (result.status === "fail") {
+        process.exitCode = 1;
+      }
+    } catch (error) {
+      console.error(formatError(error));
       process.exitCode = 1;
     }
     return;
@@ -658,6 +704,15 @@ interface FileCommandArgs {
   graphVm: string | null;
   runtimeProfile: RuntimeProfileInput;
   deprecatedProvider: string | null;
+  deploymentName: string | null;
+  deploymentSlug: string | null;
+  orgId: string | null;
+  orgName: string | null;
+  environmentName: string | null;
+  deploymentMode: "local" | "dev" | "staging" | "production" | null;
+  stateRoot: string | null;
+  enabledEntrypoints: string[];
+  environmentBindings: Record<string, string>;
 }
 
 interface RemoteCommandArgs {
@@ -822,6 +877,15 @@ function parseFileCommandArgs(args: string[]): FileCommandArgs {
     graphVm: null,
     runtimeProfile: {},
     deprecatedProvider: null,
+    deploymentName: null,
+    deploymentSlug: null,
+    orgId: null,
+    orgName: null,
+    environmentName: null,
+    deploymentMode: null,
+    stateRoot: null,
+    enabledEntrypoints: [],
+    environmentBindings: {},
   };
 
   for (let index = 0; index < args.length; index += 1) {
@@ -992,6 +1056,54 @@ function parseFileCommandArgs(args: string[]): FileCommandArgs {
     }
     if (arg === "--provider") {
       parsed.deprecatedProvider = args[index + 1] ?? "";
+      index += 1;
+      continue;
+    }
+    if (arg === "--deployment-name") {
+      parsed.deploymentName = args[index + 1] ?? null;
+      index += 1;
+      continue;
+    }
+    if (arg === "--deployment-slug") {
+      parsed.deploymentSlug = args[index + 1] ?? null;
+      index += 1;
+      continue;
+    }
+    if (arg === "--org-id") {
+      parsed.orgId = args[index + 1] ?? null;
+      index += 1;
+      continue;
+    }
+    if (arg === "--org-name") {
+      parsed.orgName = args[index + 1] ?? null;
+      index += 1;
+      continue;
+    }
+    if (arg === "--environment" || arg === "--env-name") {
+      parsed.environmentName = args[index + 1] ?? null;
+      index += 1;
+      continue;
+    }
+    if (arg === "--mode") {
+      parsed.deploymentMode = parseDeploymentMode(args[index + 1]);
+      index += 1;
+      continue;
+    }
+    if (arg === "--state-root") {
+      parsed.stateRoot = args[index + 1] ?? null;
+      index += 1;
+      continue;
+    }
+    if (arg === "--enable") {
+      const entrypoint = args[index + 1];
+      if (entrypoint) {
+        parsed.enabledEntrypoints.push(entrypoint);
+      }
+      index += 1;
+      continue;
+    }
+    if (arg === "--env" || arg === "--environment-binding") {
+      addKeyValue(parsed.environmentBindings, args[index + 1]);
       index += 1;
       continue;
     }
@@ -1189,6 +1301,15 @@ function parseTrigger(value: string | undefined): RunRecord["caller"]["trigger"]
   return "manual";
 }
 
+function parseDeploymentMode(
+  value: string | undefined,
+): "local" | "dev" | "staging" | "production" | null {
+  if (value === "local" || value === "dev" || value === "staging" || value === "production") {
+    return value;
+  }
+  return null;
+}
+
 function validateCliGraphVm(graphVm: string | null): string | null {
   if (!graphVm) {
     return null;
@@ -1220,6 +1341,7 @@ function printHelp(): void {
 
 Usage:
   prose compile <file.prose.md|dir> [--out ir.json] [--no-pretty]
+  prose deployment <dir> [--deployment-name name] [--org-id org] [--environment dev] [--mode dev] [--enable component] [--env KEY=value] [--format text|json]
   prose eval <eval.prose.md> --subject-run .prose/runs/{id} [--graph-vm pi] [--output result='{"passed":true,"score":0.9}']
   prose fmt <file.prose.md|dir> [--write|--check]
   prose grammar [--out syntaxes/openprose.tmLanguage.json] [--no-pretty]
@@ -1262,6 +1384,7 @@ Runtime profile flags:
 
 Commands:
   compile      Compile Contract Markdown to canonical Prose IR JSON
+  deployment   Preflight an org-scoped OpenProse deployment for a package
   eval         Execute an eval contract against a materialized subject run
   fmt          Rewrite supported Contract Markdown into canonical source order
   grammar      Emit an editor-facing TextMate grammar artifact

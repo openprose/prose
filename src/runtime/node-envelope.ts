@@ -116,7 +116,7 @@ export function buildNodePromptEnvelope(
       run_id: request.run_id,
       graph_run_id: request.graph_run_id,
       component_ref: request.component_ref,
-      workspace_path: request.workspace_path,
+      workspace_path: ".",
     },
     package: request.package,
     runtime: request.runtime_profile,

@@ -13,6 +13,8 @@
   - deployment mode: `local`, `dev`, `staging`, `production`
   - state root
 - Add docs explaining that Git is provenance, not deployment identity.
+- Keep `deployment_id` stable across package promotion. Put active package
+  version and semantic hash in a separate release key.
 
 ## Tests
 
@@ -29,4 +31,3 @@ Commit as `feat: add openprose deployment identity`.
 ## Signpost
 
 Record the identity decision and examples of valid deployment ids.
-

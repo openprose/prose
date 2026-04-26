@@ -2,6 +2,7 @@ export * as core from "./core/index.js";
 export * as source from "./source/index.js";
 export * as ir from "./ir/index.js";
 export * as schema from "./schema/index.js";
+export * as deployment from "./deployment/index.js";
 export * as graph from "./graph/index.js";
 export * as meta from "./meta/index.js";
 export * as store from "./store/index.js";

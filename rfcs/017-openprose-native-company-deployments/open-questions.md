@@ -5,13 +5,17 @@ earnest. Each includes the recommended answer so review can be quick.
 
 ## 1. Does a deployment map to a Git repository?
 
-Recommended: no. A deployment maps to an org-scoped immutable package version
-plus environment, policy, triggers, and mutable state/current pointers.
+Recommended: no. A deployment maps to an org-scoped running installation with a
+stable owner/slug/environment identity, an active immutable package version,
+policy, triggers, and mutable state/current pointers.
 
 Git is source provenance and a source transport. It is not the live object. This
 lets one repo publish multiple packages, one package have multiple deployments,
 and one deployment promote from one source SHA to another without losing run
 history.
+
+Implementation note: `deployment_id` is stable across promotions. The package
+version, source SHA, and semantic hash are captured in a separate release key.
 
 ## 2. Should a deployment have exactly one root package?
 
@@ -83,4 +87,3 @@ Recommended: dev-safe dry-run mode with fixture and sandbox bindings.
 The first proof should demonstrate service composition, reactive current
 pointers, approvals, traces, and recompute savings without risking real Slack
 posts, GitHub changes, or customer-facing artifacts.
-

@@ -68,17 +68,18 @@ deployment is the live operational object:
 - immutable runs, attempts, artifacts, traces, and eval results
 - deployment health and operator history
 
-Recommended identity:
+Recommended stable identity:
 
 ```text
-org_id + deployment_slug + package_version_id + environment_id
+org_id + deployment_slug + environment_id
 ```
 
-The same Git repository may publish multiple packages. The same package version
-may have multiple deployments. A deployment may be promoted to a newer package
-version without losing its state history. This keeps the system useful for real
-companies with dev/staging/prod environments, demos, customer forks, and
-private/public package boundaries.
+The active package version belongs to a deployment release key, not the stable
+deployment id. The same Git repository may publish multiple packages. The same
+package version may have multiple deployments. A deployment may be promoted to
+a newer package version without losing its state history. This keeps the system
+useful for real companies with dev/staging/prod environments, demos, customer
+forks, and private/public package boundaries.
 
 ## What This RFC Adds
 
@@ -149,4 +150,3 @@ Each phase has sub-phases with test, commit, and signpost requirements.
 ## Open Questions
 
 See [`open-questions.md`](open-questions.md).
-
