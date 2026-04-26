@@ -111,7 +111,7 @@ describe("OpenProse execution IR", () => {
     }).toEqual(golden("control-flow"));
   });
 
-  test("warns when prose execution lines cannot be structured", () => {
+  test("keeps prose execution lines as text steps", () => {
     const ir = compileSource(
       `---
 name: unknown-execution
@@ -133,8 +133,6 @@ delegate somehow to worker
         text: "delegate somehow to worker",
       }),
     ]);
-    expect(ir.diagnostics.map((diagnostic) => diagnostic.code)).toContain(
-      "unparsed_execution_line",
-    );
+    expect(ir.diagnostics).toEqual([]);
   });
 });

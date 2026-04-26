@@ -1,6 +1,24 @@
 # std/roles
 
-Standard role definitions for OpenProse services. Each role is a reusable behavioral contract that defines what a service does, what it requires, and what it guarantees. Roles are the atoms -- everything else is molecules.
+Standard role definitions for OpenProse services. Each role is a reusable
+behavioral contract that declares typed ports, effects, and executable prose
+instructions. Roles are the atoms; programs, controls, and composites are
+assembled from them.
+
+Every role is runnable through the same local meta-harness as an application
+component:
+
+```bash
+bun run prose run packages/std/roles/summarizer.prose.md \
+  --provider fixture \
+  --input content="Decision: ship the examples tour." \
+  --input preserve='{"items":["Decision"]}' \
+  --output summary="Decision: ship the examples tour."
+```
+
+The fixture provider is deterministic and exists for development/testing. Real
+harness providers receive the same typed port contract and the role's
+`### Execution` instructions.
 
 ## Roles by Category
 
@@ -8,31 +26,31 @@ Standard role definitions for OpenProse services. Each role is a reusable behavi
 
 | Role | Description |
 |------|-------------|
-| [classifier](classifier.prose.md) | Assign a category label to an input given a defined category set |
-| [critic](critic.prose.md) | Evaluate a work product against quality criteria and render a subjective verdict |
-| [verifier](verifier.prose.md) | Check a result against formal constraints and report pass/fail for each |
+| [classifier](classifier.prose.md) | Assign a category label and confidence from a declared taxonomy |
+| [critic](critic.prose.md) | Evaluate a work product against subjective quality criteria |
+| [verifier](verifier.prose.md) | Check a result against objective constraints and return pass/fail evidence |
 
 ### Transformation
 
 | Role | Description |
 |------|-------------|
-| [extractor](extractor.prose.md) | Pull structured data from unstructured input given a target schema |
-| [summarizer](summarizer.prose.md) | Compress content while preserving specified key information |
-| [formatter](formatter.prose.md) | Transform structured data into a specified output format with no information loss |
+| [extractor](extractor.prose.md) | Pull JSON-structured evidence from unstructured input |
+| [summarizer](summarizer.prose.md) | Compress content while preserving caller-declared information |
+| [formatter](formatter.prose.md) | Render structured data into a target presentation format |
 
 ### Creation
 
 | Role | Description |
 |------|-------------|
-| [researcher](researcher.prose.md) | Investigate a topic using available tools and return sourced, confidence-scored findings |
-| [writer](writer.prose.md) | Produce a written artifact given requirements, audience, and constraints |
-| [planner](planner.prose.md) | Produce an ordered plan with dependencies, decision points, and fallback paths |
+| [researcher](researcher.prose.md) | Investigate a topic and return sourced, confidence-scored findings |
+| [writer](writer.prose.md) | Produce a written artifact for a specific audience and format |
+| [planner](planner.prose.md) | Produce ordered work with dependencies, decisions, and fallbacks |
 
 ### Flow
 
 | Role | Description |
 |------|-------------|
-| [router](router.prose.md) | Select the best handler for an input from a set of candidates and explain the choice |
+| [router](router.prose.md) | Select the best handler from candidate capabilities and explain the choice |
 
 ## Decision Matrix
 

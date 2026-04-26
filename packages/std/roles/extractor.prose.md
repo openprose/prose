@@ -5,45 +5,30 @@ kind: service
 
 # Extractor
 
-Extract structured data from unstructured input according to a target schema. Use extractor when you need to transform raw text, logs, or observations into a defined data structure. Distinct from formatter (which transforms already-structured data into a different output format) -- extractor finds and lifts information from unstructured content.
-
-### Description
-
-Pull structured data from unstructured input given a target schema.
-
-### Metadata
-
-- `version`: 0.1.0
+Lift structured fields from unstructured input. Use this role when the source
+already contains the information and the job is to recover it faithfully.
 
 ### Requires
 
-- `input`: Input - the unstructured data (text, log output, raw observations, HTML, etc.)
-- `schema`: Schema - the target structure with field names, types, and descriptions of what each field should contain
+- `input`: Markdown<Input> - source text, log, transcript, page, note, or observation
+- `schema`: Json<ExtractionSchema> - target fields, cardinality, descriptions, and confidence requirements
 
 ### Ensures
 
-- `extracted`: Markdown<Extracted> - an object conforming to the target schema where:
-    - each field has a confidence indicator (high, medium, low)
-    - fields that cannot be confidently extracted are null with a reason -- never hallucinated
-    - no information in the output that was not in the input
-- if the input contains multiple valid extractions: all are returned, or the ambiguity is flagged, depending on the schema's cardinality
-
+- `extracted`: Json<ExtractionResult> - extracted fields with evidence, confidence, null reasons, and ambiguity notes
 
 ### Effects
 
-- `pure`: deterministic transformation over declared inputs
+- `pure`: deterministic extraction over declared inputs
 
-### Errors
+### Execution
 
-- no-match: the input contains no information matching any field in the schema
-- format-unreadable: the input is corrupted, truncated, or in a format that cannot be parsed
-
-### Strategies
-
-- when evidence is ambiguous: prefer null over guessing -- a null with a reason is more useful than a fabricated value
-- when multiple interpretations exist: note all candidates and select the one with strongest textual evidence
-- when the input is large: scan for schema-relevant sections first, then extract from those sections rather than processing the entire input linearly
-
-### Notes
-
-Extractor is a strict information-lifting function. Its core invariant is that no information appears in the output that was not present in the input. For compressing existing content, use summarizer. For reshaping structured data into a different format, use formatter. For investigating a topic and producing new findings, use researcher.
+```prose
+Read schema before scanning input.
+Find evidence spans in input for each requested field.
+Populate a field only when the value is supported by source evidence.
+Use null with a reason when evidence is absent or too ambiguous.
+Return multiple candidates only when schema cardinality allows it.
+Never introduce information that is not present in input.
+Return extracted.
+```

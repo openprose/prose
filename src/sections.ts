@@ -482,12 +482,6 @@ function parseExecutionBlock(
       continue;
     }
 
-    diagnostics.push({
-      severity: "warning",
-      code: "unparsed_execution_line",
-      message: `Execution line '${raw}' could not be parsed into structured IR.`,
-      source_span: span(path, line.number, line.number),
-    });
     steps.push({
       kind: "text",
       raw,
