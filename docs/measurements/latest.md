@@ -1,7 +1,7 @@
 # OpenProse Measurement Report
 
 Version: 0.2
-Generated: 2026-04-26T14:26:13.964Z
+Generated: 2026-04-26T14:32:26.707Z
 
 ## Release Checks
 
@@ -26,8 +26,8 @@ Generated: 2026-04-26T14:26:13.964Z
 
 ### Company Signal Brief
 - status: succeeded
-- compile time: 0.26 ms
-- run time: 26.31 ms
+- compile time: 0.20 ms
+- run time: 38.13 ms
 - eval: passed (0.93)
 - scripted Pi sessions: 1
 - estimated cost: n/a (scripted Pi)
@@ -36,7 +36,7 @@ Generated: 2026-04-26T14:26:13.964Z
 ### Lead Program Designer
 - status: succeeded
 - graph nodes: 3
-- run time: 44.99 ms
+- run time: 55.33 ms
 - eval: passed (0.91)
 - first-run sessions: 3
 - first-run executed nodes: lead-profile-normalizer, lead-qualification-scorer, save-grow-program-drafter
@@ -49,7 +49,7 @@ Generated: 2026-04-26T14:26:13.964Z
 ### Stargazer Intake Lite
 - status: succeeded
 - graph nodes: 5
-- run time: 59.75 ms
+- run time: 56.24 ms
 - eval: passed (0.94)
 - scripted Pi sessions: 5
 - memory artifacts: 1
@@ -62,7 +62,7 @@ Generated: 2026-04-26T14:26:13.964Z
 ### Opportunity Discovery Lite
 - status: succeeded
 - graph nodes: 4
-- run time: 48.96 ms
+- run time: 47.30 ms
 - eval: passed (0.92)
 - scripted Pi sessions: 4
 - stale rows rejected: 1

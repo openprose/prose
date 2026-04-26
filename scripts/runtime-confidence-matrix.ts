@@ -1,11 +1,13 @@
-import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { performance } from "node:perf_hooks";
 
 interface ConfidenceStep {
   label: string;
+  command?: "prose" | "bun";
   args: string[];
+  allowExitCodes?: number[];
   expectStdout?: string[];
 }
 
@@ -19,7 +21,7 @@ interface ConfidenceResult {
 }
 
 interface ConfidenceReport {
-  report_version: "0.1";
+  report_version: "0.2";
   generated_at: string;
   repo_root: string;
   temp_root: string;
@@ -38,6 +40,18 @@ async function main(): Promise<void> {
   const runRoot = join(tempRoot, "runs");
   const remoteRoot = join(tempRoot, "remote");
   const workspaceRoot = join(tempRoot, "workspace");
+  const liveSmokeOut = join(tempRoot, "live-pi-smoke.json");
+  const releaseCandidate = await readFile(
+    resolve(
+      repoRoot,
+      "examples",
+      "north-star",
+      "fixtures",
+      "release-proposal-dry-run",
+      "release-needed.release-candidate.json",
+    ),
+    "utf8",
+  );
   const startedAt = performance.now();
 
   const steps: ConfidenceStep[] = [
@@ -84,6 +98,18 @@ async function main(): Promise<void> {
         "lead_program_plan",
       ],
       expectStdout: ["%% OpenProse graph: lead-program-designer", "flowchart LR"],
+    },
+    {
+      label: "plan release proposal approval gate",
+      args: [
+        "plan",
+        "examples/north-star/release-proposal-dry-run.prose.md",
+        "--input",
+        `release_candidate=${releaseCandidate}`,
+        "--no-pretty",
+      ],
+      allowExitCodes: [1],
+      expectStdout: ['"status":"blocked"', '"blocked_effect"'],
     },
     {
       label: "run company signal brief with deterministic outputs",
@@ -186,11 +212,30 @@ async function main(): Promise<void> {
       ],
       expectStdout: ['"install_version":"0.1"', '"component_file"'],
     },
+    {
+      label: "measure north-star examples",
+      command: "bun",
+      args: ["scripts/measure-examples.ts"],
+      expectStdout: ['"measurement_version": "0.2"', '"scripted_pi_runs"', '"status": "pass"'],
+    },
+    {
+      label: "live Pi smoke skips by default",
+      command: "bun",
+      args: [
+        "scripts/live-pi-smoke.ts",
+        "--tier",
+        "cheap",
+        "--skip",
+        "--out",
+        liveSmokeOut,
+      ],
+      expectStdout: ['"live_pi_smoke_version": "0.1"', '"status": "skipped"'],
+    },
   ];
 
   const checks = steps.map((step) => runStep(repoRoot, tempRoot, step));
   const report: ConfidenceReport = {
-    report_version: "0.1",
+    report_version: "0.2",
     generated_at: new Date().toISOString(),
     repo_root: ".",
     temp_root: "$TMP",
@@ -213,7 +258,12 @@ async function main(): Promise<void> {
 
 function runStep(repoRoot: string, tempRoot: string, step: ConfidenceStep): ConfidenceResult {
   const startedAt = performance.now();
-  const result = Bun.spawnSync(["bun", "bin/prose.ts", ...step.args], {
+  const command = step.command ?? "prose";
+  const processArgs =
+    command === "prose"
+      ? ["bun", "bin/prose.ts", ...step.args]
+      : ["bun", ...step.args];
+  const result = Bun.spawnSync(processArgs, {
     cwd: repoRoot,
     stdout: "pipe",
     stderr: "pipe",
@@ -222,9 +272,10 @@ function runStep(repoRoot: string, tempRoot: string, step: ConfidenceStep): Conf
   const stdout = normalize(new TextDecoder().decode(result.stdout), repoRoot, tempRoot);
   const stderr = normalize(new TextDecoder().decode(result.stderr), repoRoot, tempRoot);
 
-  if (result.exitCode !== 0) {
+  const allowedExitCodes = new Set([0, ...(step.allowExitCodes ?? [])]);
+  if (!allowedExitCodes.has(result.exitCode)) {
     throw new Error(
-      `Confidence step failed: ${step.label}\n${renderCommand(step.args)}\n${stderr || stdout}`,
+      `Confidence step failed: ${step.label}\n${renderCommand(step)}\n${stderr || stdout}`,
     );
   }
 
@@ -238,7 +289,7 @@ function runStep(repoRoot: string, tempRoot: string, step: ConfidenceStep): Conf
 
   return {
     label: step.label,
-    command: normalize(renderCommand(step.args), repoRoot, tempRoot),
+    command: normalize(renderCommand(step), repoRoot, tempRoot),
     exit_code: result.exitCode,
     elapsed_ms: elapsedMs,
     stdout_preview: preview(stdout),
@@ -271,8 +322,10 @@ function renderSummary(report: ConfidenceReport): string {
   return `Runtime confidence: ${report.status} (${report.summary.checks} checks, ${report.summary.elapsed_ms}ms)\n`;
 }
 
-function renderCommand(args: string[]): string {
-  return `prose ${args.map(shellToken).join(" ")}`;
+function renderCommand(step: ConfidenceStep): string {
+  const command = step.command ?? "prose";
+  const executable = command === "prose" ? "prose" : "bun";
+  return `${executable} ${step.args.map(shellToken).join(" ")}`;
 }
 
 function shellToken(value: string): string {
