@@ -67,6 +67,16 @@ bun run prose run examples/north-star/lead-program-designer.prose.md \
 The repository test suite keeps deterministic coverage with scripted Pi
 sessions while live runs exercise the real harness boundary.
 
+Check live readiness before spending inference:
+
+```bash
+bun run prose preflight examples/north-star/lead-program-designer.prose.md
+```
+
+Preflight classifies scripted Pi, live model profile, live auth, session
+persistence, and timeout readiness without printing API key values. Missing live
+credentials do not block deterministic scripted-Pi runs.
+
 ## Hosted-Compatible Remote Execution
 
 `prose remote execute` emits the host-ingestion envelope and artifact manifest.

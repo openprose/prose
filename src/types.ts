@@ -909,6 +909,13 @@ export interface PreflightDependencyCheck {
   refs: string[];
 }
 
+export interface PreflightRuntimeCheck {
+  name: string;
+  status: "ready" | "missing" | "warning";
+  detail: string;
+  env: string[];
+}
+
 export interface PreflightResult {
   preflight_version: "0.1";
   target: string;
@@ -917,6 +924,14 @@ export interface PreflightResult {
   status: "pass" | "fail";
   environment: PreflightEnvironmentCheck[];
   dependencies: PreflightDependencyCheck[];
+  runtime: {
+    graph_vm: string;
+    model_provider: string | null;
+    model: string | null;
+    thinking: string | null;
+    persist_sessions: boolean;
+    checks: PreflightRuntimeCheck[];
+  };
   diagnostics: Diagnostic[];
   missing: string[];
   warnings: string[];

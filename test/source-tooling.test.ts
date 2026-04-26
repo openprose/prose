@@ -127,6 +127,9 @@ kind: service
     ]);
     expect(text).toContain("Preflight: PASS");
     expect(text).toContain("SLACK_WEBHOOK_URL: set");
+    expect(text).toContain("Runtime:");
+    expect(text).toContain("scripted_pi: ready");
+    expect(text).toContain("live_model_profile: missing");
   });
 
   test("fails preflight when environment or dependency installs are missing", async () => {
@@ -161,6 +164,53 @@ kind: program
     expect(result.missing).toContain(
       "Dependency 'github.com/openprose/prose' is not pinned in prose.lock.",
     );
+  });
+
+  test("classifies live Pi readiness without leaking secrets", async () => {
+    const root = mkdtempSync(join(tmpdir(), "openprose-preflight-runtime-"));
+    writeFileSync(
+      join(root, "program.prose.md"),
+      `---
+name: runtime-ready
+kind: program
+---
+
+### Ensures
+
+- \`report\`: Markdown<Report> - final report
+`,
+    );
+
+    const result = await preflightPath(join(root, "program.prose.md"), {
+      environment: {
+        OPENPROSE_PI_MODEL_PROVIDER: "openrouter",
+        OPENPROSE_PI_MODEL_ID: "google/gemini-3-flash-preview",
+        OPENROUTER_API_KEY: "sk-test-secret",
+        OPENPROSE_PI_SESSION_DIR: "/tmp/openprose-pi-sessions",
+        OPENPROSE_PI_TIMEOUT_MS: "90000",
+      },
+    });
+    const text = renderPreflightText(result);
+
+    expect(result.status).toBe("pass");
+    expect(result.runtime).toMatchObject({
+      graph_vm: "pi",
+      model_provider: "openrouter",
+      model: "google/gemini-3-flash-preview",
+      persist_sessions: true,
+    });
+    expect(
+      result.runtime.checks.map((check) => [check.name, check.status]),
+    ).toEqual([
+      ["scripted_pi", "ready"],
+      ["live_model_profile", "ready"],
+      ["live_auth", "ready"],
+      ["session_persistence", "ready"],
+      ["runtime_timeout", "ready"],
+    ]);
+    expect(text).toContain("live_auth: ready");
+    expect(text).toContain("OPENROUTER_API_KEY");
+    expect(text).not.toContain("sk-test-secret");
   });
 
   test("lints non-canonical source structure", () => {

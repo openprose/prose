@@ -10,7 +10,8 @@ The Bun CLI now provides a coherent authoring and local-runtime surface:
 - `prose manifest`: readable/runtime projection from the canonical IR
 - `prose lint` / `prose fmt`: canonical source hygiene
 - `prose highlight` / `prose grammar`: syntax visibility and editor grammar artifacts
-- `prose preflight`: environment and dependency readiness checks
+- `prose preflight`: environment, dependency, and runtime-profile readiness
+  checks without secret values
 - `prose plan`: stale/current/blocked reasoning against prior runs
 - `prose graph`: graph rendering with plan overlay
 - `prose run`: graph-VM local execution through the meta-harness

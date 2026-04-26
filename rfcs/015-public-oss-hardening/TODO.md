@@ -326,24 +326,30 @@ Checks:
 - `bun run confidence:runtime`
 - `bun run typecheck`
 
-### [todo] Runtime preflight does not verify Pi runtime-profile readiness
+### [done] Runtime preflight does not verify Pi runtime-profile readiness
 
 Finding: `prose preflight` checks package dependencies and declared component
 environment variables, but it does not classify missing Pi model-provider
 settings, API key setup, model availability, session persistence paths, or live
 runtime timeout configuration.
 
-Proposed fix:
+Resolved:
 
-- extend preflight with runtime-profile checks without making live inference a
-  required local gate
-- classify deterministic, scripted-Pi, and live-Pi readiness separately
-- keep secrets out of output
+- added a structured runtime section to `PreflightResult`
+- classified scripted Pi, live model profile, live auth, session persistence,
+  and timeout readiness
+- kept missing live inference credentials advisory so deterministic scripted-Pi
+  runs still pass when source/dependency checks pass
+- redacted secret values by reporting only environment variable names
+- documented the new runtime readiness surface in the preflight command sidecar
+  and public inference docs
 
 Checks:
 
 - `bun test test/runtime-profiles.test.ts test/cli-ux.test.ts`
+- `bun test test/source-tooling.test.ts test/runtime-profiles.test.ts test/cli-ux.test.ts`
 - manual `bun run prose preflight examples/north-star/lead-program-designer.prose.md`
+- `bun run typecheck`
 
 ### [todo] Pi session persistence is not visibly tied to the OpenProse run/store model
 

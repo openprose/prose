@@ -5,16 +5,23 @@ import { compileFile, compileSource } from "./compiler";
 import { collectSourceFiles } from "./files";
 import { sha256 } from "./hash";
 import { findNearestLockfileSync } from "./lockfile";
+import {
+  resolveRuntimeProfile,
+  type RuntimeProfileInput,
+} from "./runtime/profiles";
 import type {
   ComponentIR,
   PreflightDependencyCheck,
   PreflightEnvironmentCheck,
+  PreflightRuntimeCheck,
   PreflightResult,
+  RuntimeProfile,
 } from "./types";
 
 export interface PreflightOptions {
   environment?: Record<string, string | undefined>;
   path: string;
+  runtimeProfile?: RuntimeProfileInput;
 }
 
 interface ComponentEntry {
@@ -55,6 +62,8 @@ export async function preflightPath(
 
   const environmentChecks = collectEnvironmentChecks(components, env);
   const dependencyChecks = collectDependencyChecks(components, target);
+  const runtime = collectRuntimeChecks(env, options.runtimeProfile);
+  diagnostics.push(...runtime.diagnostics);
   const missing = [
     ...environmentChecks
       .filter((check) => check.status === "missing")
@@ -81,6 +90,7 @@ export async function preflightPath(
     status: missing.length === 0 ? "pass" : "fail",
     environment: environmentChecks,
     dependencies: dependencyChecks,
+    runtime: runtime.result,
     diagnostics,
     missing,
     warnings,
@@ -120,6 +130,19 @@ export function renderPreflightText(result: PreflightResult): string {
     }
   }
 
+  lines.push("");
+  lines.push("Runtime:");
+  lines.push(`- graph_vm: ${result.runtime.graph_vm}`);
+  lines.push(
+    `- model_profile: ${result.runtime.model_provider && result.runtime.model ? `${result.runtime.model_provider}/${result.runtime.model}` : "not configured"}`,
+  );
+  lines.push(
+    `- persist_sessions: ${result.runtime.persist_sessions ? "enabled" : "disabled"}`,
+  );
+  for (const check of result.runtime.checks) {
+    lines.push(`- ${check.name}: ${check.status} - ${check.detail}`);
+  }
+
   if (result.missing.length > 0) {
     lines.push("");
     lines.push("Missing:");
@@ -137,6 +160,183 @@ export function renderPreflightText(result: PreflightResult): string {
   }
 
   return `${lines.join("\n")}\n`;
+}
+
+function collectRuntimeChecks(
+  environment: Record<string, string | undefined>,
+  input?: RuntimeProfileInput,
+): {
+  result: PreflightResult["runtime"];
+  diagnostics: PreflightResult["diagnostics"];
+} {
+  try {
+    const profile = resolveRuntimeProfile({
+      profile: input,
+      selectedGraphVm: "pi",
+      env: environment,
+    });
+    const checks = runtimeChecksForProfile(profile, environment);
+    return {
+      result: {
+        graph_vm: profile.graph_vm,
+        model_provider: profile.model_provider,
+        model: profile.model,
+        thinking: profile.thinking,
+        persist_sessions: profile.persist_sessions,
+        checks,
+      },
+      diagnostics: [],
+    };
+  } catch (error) {
+    return {
+      result: {
+        graph_vm: "pi",
+        model_provider: null,
+        model: null,
+        thinking: null,
+        persist_sessions: true,
+        checks: [
+          {
+            name: "runtime_profile",
+            status: "missing",
+            detail: error instanceof Error ? error.message : String(error),
+            env: [],
+          },
+        ],
+      },
+      diagnostics: [
+        {
+          severity: "error",
+          code: "preflight_runtime_profile_invalid",
+          message: error instanceof Error ? error.message : String(error),
+        },
+      ],
+    };
+  }
+}
+
+function runtimeChecksForProfile(
+  profile: RuntimeProfile,
+  environment: Record<string, string | undefined>,
+): PreflightRuntimeCheck[] {
+  return [
+    {
+      name: "scripted_pi",
+      status: "ready",
+      detail: "Deterministic --output runs use the internal scripted Pi session.",
+      env: [],
+    },
+    liveModelProfileCheck(profile),
+    liveAuthCheck(profile, environment),
+    sessionPersistenceCheck(profile, environment),
+    timeoutCheck(environment),
+  ];
+}
+
+function liveModelProfileCheck(profile: RuntimeProfile): PreflightRuntimeCheck {
+  const env = ["OPENPROSE_PI_MODEL_PROVIDER", "OPENPROSE_PI_MODEL_ID"];
+  if (profile.model_provider && profile.model) {
+    return {
+      name: "live_model_profile",
+      status: "ready",
+      detail: `${profile.model_provider}/${profile.model}`,
+      env,
+    };
+  }
+  return {
+    name: "live_model_profile",
+    status: "missing",
+    detail: "Set OPENPROSE_PI_MODEL_PROVIDER and OPENPROSE_PI_MODEL_ID for live Pi runs.",
+    env,
+  };
+}
+
+function liveAuthCheck(
+  profile: RuntimeProfile,
+  environment: Record<string, string | undefined>,
+): PreflightRuntimeCheck {
+  const env = authEnvironmentNames(profile.model_provider);
+  const ready = env.some((name) => isSet(environment, name));
+  return {
+    name: "live_auth",
+    status: ready ? "ready" : "missing",
+    detail: ready
+      ? `Found ${env.find((name) => isSet(environment, name))}.`
+      : `Set ${env.join(" or ")} before live Pi runs.`,
+    env,
+  };
+}
+
+function sessionPersistenceCheck(
+  profile: RuntimeProfile,
+  environment: Record<string, string | undefined>,
+): PreflightRuntimeCheck {
+  if (!profile.persist_sessions) {
+    return {
+      name: "session_persistence",
+      status: "warning",
+      detail: "OPENPROSE_PI_PERSIST_SESSIONS disables persisted Pi sessions.",
+      env: ["OPENPROSE_PI_PERSIST_SESSIONS"],
+    };
+  }
+  const sessionDir = environment.OPENPROSE_PI_SESSION_DIR?.trim();
+  return {
+    name: "session_persistence",
+    status: "ready",
+    detail: sessionDir
+      ? "Persisted Pi sessions will use OPENPROSE_PI_SESSION_DIR."
+      : "Persisted Pi sessions default to each node workspace .pi directory.",
+    env: ["OPENPROSE_PI_SESSION_DIR", "OPENPROSE_PI_PERSIST_SESSIONS"],
+  };
+}
+
+function timeoutCheck(
+  environment: Record<string, string | undefined>,
+): PreflightRuntimeCheck {
+  const value = environment.OPENPROSE_PI_TIMEOUT_MS?.trim();
+  if (!value) {
+    return {
+      name: "runtime_timeout",
+      status: "ready",
+      detail: "Using the default Pi node timeout.",
+      env: ["OPENPROSE_PI_TIMEOUT_MS"],
+    };
+  }
+  const parsed = Number(value);
+  if (Number.isFinite(parsed) && parsed > 0) {
+    return {
+      name: "runtime_timeout",
+      status: "ready",
+      detail: `Using OPENPROSE_PI_TIMEOUT_MS=${Math.round(parsed)}.`,
+      env: ["OPENPROSE_PI_TIMEOUT_MS"],
+    };
+  }
+  return {
+    name: "runtime_timeout",
+    status: "warning",
+    detail: "OPENPROSE_PI_TIMEOUT_MS should be a positive number.",
+    env: ["OPENPROSE_PI_TIMEOUT_MS"],
+  };
+}
+
+function authEnvironmentNames(modelProvider: string | null): string[] {
+  if (modelProvider === "openrouter") {
+    return ["OPENPROSE_PI_API_KEY", "OPENROUTER_API_KEY"];
+  }
+  if (modelProvider === "openai" || modelProvider === "openai_compatible") {
+    return ["OPENPROSE_PI_API_KEY", "OPENAI_API_KEY"];
+  }
+  if (modelProvider === "anthropic") {
+    return ["OPENPROSE_PI_API_KEY", "ANTHROPIC_API_KEY"];
+  }
+  return ["OPENPROSE_PI_API_KEY"];
+}
+
+function isSet(
+  environment: Record<string, string | undefined>,
+  name: string,
+): boolean {
+  return typeof environment[name] === "string" && environment[name]!.trim().length > 0;
 }
 
 async function buildComponentEntries(files: string[]): Promise<ComponentEntry[]> {
