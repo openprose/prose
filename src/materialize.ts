@@ -71,8 +71,8 @@ export async function materializeSource(
     approvedEffects: normalizeApprovedEffects(options.approvedEffects),
     trigger: options.trigger ?? "manual",
     runtimeProfile: resolveRuntimeProfile({
-      selectedGraphVm: "fixture",
-      fixtureOutputs: options.outputs,
+      selectedGraphVm: "pi",
+      deterministicOutputs: options.outputs,
     }),
   };
 
@@ -109,7 +109,7 @@ export async function materializeSource(
       : nodeRecords[0];
 
   await writeFile(join(runDir, "run.json"), `${JSON.stringify(graphRecord, null, 2)}\n`);
-  await writeFixtureStoreRecords(ctx, graphRecord, nodeRecords);
+  await writeMaterializedStoreRecords(ctx, graphRecord, nodeRecords);
 
   return {
     run_id: runId,
@@ -119,7 +119,7 @@ export async function materializeSource(
   };
 }
 
-async function writeFixtureStoreRecords(
+async function writeMaterializedStoreRecords(
   ctx: MaterializeContext,
   graphRecord: RunRecord,
   nodeRecords: RunRecord[],
@@ -143,15 +143,15 @@ async function writeFixtureStoreRecords(
       attemptNumber: 1,
       status: record.status,
       runtimeProfile: ctx.runtimeProfile,
-      providerSessionRef: "fixture-output",
+      providerSessionRef: "scripted-pi-output",
       startedAt: record.created_at,
       finishedAt: record.completed_at,
       failure:
         record.status === "succeeded"
           ? null
           : {
-              code: "fixture_blocked",
-              message: record.acceptance.reason ?? "Fixture materialization was blocked.",
+              code: "scripted_pi_blocked",
+              message: record.acceptance.reason ?? "Deterministic materialization was blocked.",
               retryable: false,
             },
     });
@@ -221,7 +221,7 @@ async function createComponentRunRecord(
   const unsafeEffects = unsafeEffectKinds(component, ctx.approvedEffects);
   const blockedReasons = [
     ...missingInputs.map((port) => `Missing required input '${port.name}'.`),
-    ...missingOutputs.map((port) => `Missing fixture output '${port.name}'.`),
+    ...missingOutputs.map((port) => `Missing deterministic output '${port.name}'.`),
     ...unsafeEffects.map(
       (effect) => `Local materializer does not perform effect '${effect}'.`,
     ),
@@ -349,7 +349,7 @@ function baseRunRecord(
     },
     runtime: {
       harness: "openprose-bun-local",
-      worker_ref: "fixture-output",
+      worker_ref: "scripted-pi-output",
       graph_vm: ctx.runtimeProfile.graph_vm,
       single_run_harness: ctx.runtimeProfile.single_run_harness,
       model_provider: ctx.runtimeProfile.model_provider,

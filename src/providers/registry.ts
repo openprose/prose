@@ -1,12 +1,11 @@
 import {
-  createFixtureProvider,
-  type FixtureProviderOptions,
-} from "./fixture.js";
-import {
   createPiProvider,
   type PiProviderOptions,
   type PiThinkingLevel,
 } from "./pi.js";
+import {
+  createScriptedPiRuntime,
+} from "../runtime/pi/scripted.js";
 import {
   resolveRuntimeProfile,
   type RuntimeProfileInput,
@@ -16,7 +15,7 @@ import type { RuntimeProfile } from "../types.js";
 
 export interface ResolveRuntimeProviderOptions {
   provider?: ProviderKind | RuntimeProvider;
-  fixtureOutputs?: FixtureProviderOptions["outputs"];
+  deterministicOutputs?: Record<string, string>;
   runtimeProfile?: RuntimeProfile | RuntimeProfileInput | null;
   env?: Record<string, string | undefined>;
 }
@@ -24,29 +23,35 @@ export interface ResolveRuntimeProviderOptions {
 export function resolveRuntimeProvider(
   options: ResolveRuntimeProviderOptions = {},
 ): RuntimeProvider {
-  const { provider, fixtureOutputs, env = Bun.env } = options;
+  const { provider, env = Bun.env } = options;
+  const deterministicOutputs = options.deterministicOutputs;
   if (typeof provider === "object" && provider) {
     return provider;
   }
 
-  const requested = provider ?? (hasFixtureOutputs(fixtureOutputs) ? "fixture" : null);
+  const requested = provider ?? (hasDeterministicOutputs(deterministicOutputs) ? "pi" : null);
   if (!requested) {
     throw new Error(
-      "No OpenProse graph VM selected. Configure the Pi runtime profile, or provide deterministic outputs for internal tests.",
+      "No OpenProse graph VM selected. Configure the Pi runtime profile, or provide deterministic --output values for local tests.",
     );
   }
 
   if (requested === "fixture") {
-    return createFixtureProvider({ outputs: fixtureOutputs ?? {} });
+    throw new Error(
+      "The fixture graph VM has been removed. Deterministic --output values now run through an internal scripted Pi session.",
+    );
   }
 
   if (requested === "pi") {
+    if (hasDeterministicOutputs(deterministicOutputs)) {
+      return createScriptedPiRuntime({ outputs: deterministicOutputs });
+    }
     return createPiProvider(
       piOptionsFromProfile(
         resolveRuntimeProfile({
           profile: runtimeProfileInput(options.runtimeProfile),
           selectedGraphVm: "pi",
-          fixtureOutputs,
+          deterministicOutputs,
           env,
         }),
         env,
@@ -71,7 +76,7 @@ export function resolveRuntimeProvider(
   );
 }
 
-function hasFixtureOutputs(outputs: FixtureProviderOptions["outputs"]): boolean {
+function hasDeterministicOutputs(outputs: Record<string, string> | undefined): boolean {
   return Boolean(outputs && Object.keys(outputs).length > 0);
 }
 

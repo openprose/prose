@@ -1,4 +1,4 @@
-import { join } from "node:path";
+import { isAbsolute, join, relative } from "node:path";
 import { performance } from "node:perf_hooks";
 import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import {
@@ -62,6 +62,8 @@ export interface PiProviderOptions {
   tools?: string[];
   noTools?: "all" | "builtin";
   customTools?: PiCustomToolDefinition[];
+  now?: () => string;
+  durationMs?: number;
 }
 
 export class PiProvider implements RuntimeProvider {
@@ -119,7 +121,7 @@ export class PiProvider implements RuntimeProvider {
         diagnostics,
         transcript: null,
         session: null,
-        durationMs: elapsed(started),
+        durationMs: this.options.durationMs ?? elapsed(started),
       });
     }
 
@@ -149,6 +151,7 @@ export class PiProvider implements RuntimeProvider {
         options: runtimeOptions,
       });
       unsubscribe = session.subscribe?.((event) => {
+        const sessionFile = sessionFileRef(session, request);
         events.push(safeEventLine(event));
         telemetry.push(
           ...normalizePiRuntimeEvent(event, {
@@ -157,7 +160,8 @@ export class PiProvider implements RuntimeProvider {
               this.options.modelProvider ?? request.runtime_profile.model_provider,
             model: this.options.modelId ?? request.runtime_profile.model,
             session_id: session?.sessionId ?? null,
-            session_file: session?.sessionFile ?? null,
+            session_file: sessionFile,
+            now: this.options.now,
           }),
         );
         const diagnostic = diagnosticFromPiEvent(event, request);
@@ -189,6 +193,7 @@ export class PiProvider implements RuntimeProvider {
 
     const submitted = outputSubmission.current;
     if (submitted) {
+      const sessionFile = sessionFileRef(session, request);
       telemetry.push(
         outputSubmissionTelemetryEvent(submitted, {
           provider: this.kind,
@@ -196,7 +201,8 @@ export class PiProvider implements RuntimeProvider {
             this.options.modelProvider ?? request.runtime_profile.model_provider,
           model: this.options.modelId ?? request.runtime_profile.model,
           session_id: session?.sessionId ?? null,
-          session_file: session?.sessionFile ?? null,
+          session_file: sessionFile,
+          now: this.options.now,
         }),
       );
     }
@@ -231,7 +237,7 @@ export class PiProvider implements RuntimeProvider {
       transcript: events.length > 0 ? events.join("\n") : null,
       telemetry,
       session,
-      durationMs: elapsed(started),
+      durationMs: this.options.durationMs ?? elapsed(started),
     });
   }
 
@@ -266,7 +272,7 @@ export class PiProvider implements RuntimeProvider {
             session_id: options.session.sessionId,
             url: null,
             metadata: {
-              session_file: options.session.sessionFile ?? null,
+              session_file: sessionFileRef(options.session, request),
               model_provider: this.options.modelProvider ?? null,
               model_id: this.options.modelId ?? null,
             },
@@ -277,6 +283,20 @@ export class PiProvider implements RuntimeProvider {
       telemetry: options.telemetry ?? [],
     };
   }
+}
+
+function sessionFileRef(
+  session: PiAgentSessionLike | null,
+  request: ProviderRequest,
+): string | null {
+  if (!session?.sessionFile) {
+    return null;
+  }
+  const ref = relative(request.workspace_path, session.sessionFile).replace(/\\/g, "/");
+  if (ref && !ref.startsWith("..") && !isAbsolute(ref)) {
+    return ref;
+  }
+  return session.sessionFile;
 }
 
 export function createPiProvider(options: PiProviderOptions = {}): PiProvider {

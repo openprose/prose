@@ -54,7 +54,7 @@ import {
   writeFileSync,
 } from "./support";
 
-describe("OpenProse fixture materialization and remote envelope", () => {
+describe("OpenProse deterministic materialization and remote envelope", () => {
   test("materializes a succeeded pure single-service run record", async () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-run-"));
     const result = await materializeSource(fixture("hello.prose.md"), {
@@ -63,7 +63,7 @@ describe("OpenProse fixture materialization and remote envelope", () => {
       runId: "20260423-120000-abc123",
       createdAt: "2026-04-23T12:00:00.000Z",
       outputs: {
-        message: "Hello from a fixture output.",
+        message: "Hello from a deterministic output.",
       },
       trigger: "test",
     });
@@ -79,18 +79,18 @@ describe("OpenProse fixture materialization and remote envelope", () => {
       component_ref: "hello",
       status: "succeeded",
       acceptance: { status: "accepted" },
-      runtime: { harness: "openprose-bun-local", worker_ref: "fixture-output" },
+      runtime: { harness: "openprose-bun-local", worker_ref: "scripted-pi-output" },
     });
-    expect(output).toBe("Hello from a fixture output.\n");
+    expect(output).toBe("Hello from a deterministic output.\n");
   });
 
   test("passes api trigger through the CLI deterministic run path", () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-cli-run-"));
-    const fixtureFile = fixturePath("compiler/hello.prose.md");
+    const sourceFile = fixturePath("compiler/hello.prose.md");
     const result = runProseCli(
       [
         "run",
-        fixtureFile,
+        sourceFile,
         "--run-root",
         runRoot,
         "--run-id",
@@ -111,9 +111,9 @@ describe("OpenProse fixture materialization and remote envelope", () => {
     expect(record.caller.trigger).toBe("api");
   });
 
-  test("does not expose fixture materialization as the top-level runtime command", () => {
-    const fixtureFile = fixturePath("compiler/hello.prose.md");
-    const result = runProseCli(["materialize", fixtureFile]);
+  test("does not expose legacy materialization as the top-level runtime command", () => {
+    const sourceFile = fixturePath("compiler/hello.prose.md");
+    const result = runProseCli(["materialize", sourceFile]);
 
     expect(result.exitCode).toBe(1);
     expect(new TextDecoder().decode(result.stderr)).toContain(
@@ -156,7 +156,7 @@ describe("OpenProse fixture materialization and remote envelope", () => {
     ).toBe("The polished draft.\n");
   });
 
-  test("fixture materialization writes through local store indexes", async () => {
+  test("deterministic materialization writes through local store indexes", async () => {
     const storeRoot = mkdtempSync(join(tmpdir(), "openprose-store-backed-"));
     const result = await materializeSource(fixture("pipeline.prose.md"), {
       path: "fixtures/compiler/pipeline.prose.md",
@@ -240,7 +240,7 @@ kind: program
     });
   });
 
-  test("materialization blocks missing fixture outputs", async () => {
+  test("materialization blocks missing deterministic outputs", async () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-blocked-"));
     const result = await materializeSource(fixture("hello.prose.md"), {
       path: "fixtures/compiler/hello.prose.md",
@@ -253,7 +253,7 @@ kind: program
     expect(result.record.status).toBe("blocked");
     expect(result.record.acceptance).toMatchObject({
       status: "pending",
-      reason: "Missing fixture output 'message'.",
+      reason: "Missing deterministic output 'message'.",
     });
   });
 
@@ -280,7 +280,7 @@ kind: program
     );
   });
 
-  test("approved effects unblock planning and gated fixture materialization", async () => {
+  test("approved effects unblock planning and gated deterministic materialization", async () => {
     const plan = planSource(fixture("typed-effects.prose.md"), {
       path: "fixtures/compiler/typed-effects.prose.md",
       inputs: {
@@ -410,7 +410,7 @@ kind: service
       run_id: "20260423-130000-rmt001",
       component_ref: "hello",
       status: "succeeded",
-      provider: "fixture",
+      provider: "pi",
       plan_status: "ready",
       acceptance: {
         status: "accepted",
@@ -498,7 +498,7 @@ kind: service
     expect(envelope).toMatchObject({
       run_id: "20260423-130500-rmt002",
       status: "succeeded",
-      provider: "fixture",
+      provider: "pi",
       plan_status: "ready",
       trigger: "human_gate",
       approved_effects: ["delivers", "human_gate"],
@@ -536,18 +536,18 @@ kind: service
     expect(result.exitCode).toBe(1);
     const envelope = JSON.parse(result.stdout.toString("utf8"));
     expect(envelope).toMatchObject({
-      status: "blocked",
-      provider: "fixture",
+      status: "failed",
+      provider: "pi",
       plan_status: "ready",
       exit_code: 1,
       error: {
-        code: "run_blocked",
-        message: "Missing fixture output 'message'.",
+        code: "run_failed",
+        message: "Provider did not write required output 'message' at 'message.md'.",
       },
     });
     expect(
       readFileSync(join(outDir, "20260423-131000-rmt003", "result.json"), "utf8"),
-    ).toContain('"status": "blocked"');
+    ).toContain('"status": "failed"');
   });
 
   test("artifact manifests reject malformed runtime-owned JSON", async () => {

@@ -1001,7 +1001,7 @@ function validateCliGraphVm(provider: string | null): string | null {
     return `Provider '${provider}' is a model-provider profile, not an OpenProse graph VM. Configure it through OPENPROSE_PI_MODEL_PROVIDER and run with the Pi graph VM.`;
   }
   if (provider === "fixture") {
-    return "The fixture provider is an internal scripted test helper, not a public graph VM. Use --output fixtures without --provider for deterministic local tests, or run the Pi graph VM for real execution.";
+    return "The fixture graph VM has been removed. Use --output without --provider for deterministic local tests, or run the Pi graph VM for real execution.";
   }
   if (provider === "local_process" || provider === "local-process") {
     return "Command-style adapters are single-run harness integrations, not OpenProse graph VMs. Use the Pi graph VM for reactive graph execution.";
@@ -1040,7 +1040,8 @@ Runtime:
   OpenProse owns the reactive meta-harness. The real local graph VM is Pi:
   each selected graph node runs in a persisted Pi session, while model
   providers such as OpenRouter are configured under the Pi runtime profile.
-  Deterministic --output fixtures remain available for tests and examples.
+  Deterministic --output values run through an internal scripted Pi session for
+  tests and examples.
 
 Commands:
   compile      Compile Contract Markdown to canonical Prose IR JSON

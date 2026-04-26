@@ -15,7 +15,7 @@ import { createLocalProcessProvider } from "../src/providers";
 const programPath = "packages/co/programs/company-repo-checker.prose.md";
 const evalPath = "packages/co/evals/company-repo-checker.eval.prose.md";
 
-const fixtureOutputs = {
+const deterministicOutputs = {
   "repo-structure-inspector.source_layout": JSON.stringify({
     source_roots: ["systems", "shared"],
     legacy_roots: [],
@@ -75,14 +75,14 @@ describe("OpenProse co package", () => {
   });
 
   test("company repo checker runs through scripted Pi with required eval acceptance", async () => {
-    const runRoot = join(mkdtempSync(join(tmpdir(), "openprose-co-fixture-")), "runs");
+    const runRoot = join(mkdtempSync(join(tmpdir(), "openprose-co-scripted-")), "runs");
     const result = await runSource(readFileSync(join(import.meta.dir, "..", programPath), "utf8"), {
       path: programPath,
       provider: scriptedPiRuntime({
-        outputs: fixtureOutputs,
+        outputs: deterministicOutputs,
       }),
       runRoot,
-      runId: "co-fixture-smoke",
+      runId: "co-scripted-smoke",
       inputs: {
         repo_path: "/tmp/company-as-code",
       },

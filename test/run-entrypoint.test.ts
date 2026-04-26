@@ -44,10 +44,10 @@ describe("OpenProse run entry point", () => {
     expect(result.record.outputs).toEqual([
       expect.objectContaining({
         port: "message",
-        artifact_ref: "message.md",
+        artifact_ref: "bindings/hello/message.md",
       }),
     ]);
-    expect(readFileSync(join(result.run_dir, "message.md"), "utf8")).toBe(
+    expect(readFileSync(join(result.run_dir, "bindings", "hello", "message.md"), "utf8")).toBe(
       "Hello from prose run.\n",
     );
 
@@ -118,9 +118,9 @@ describe("OpenProse run entry point", () => {
       ),
     );
     expect(sessionFiles).toEqual([
-      join(result.run_dir, "nodes", "review", "workspace", ".pi", "scripted-pi-1.jsonl"),
-      join(result.run_dir, "nodes", "fact-check", "workspace", ".pi", "scripted-pi-2.jsonl"),
-      join(result.run_dir, "nodes", "polish", "workspace", ".pi", "scripted-pi-3.jsonl"),
+      ".pi/scripted-pi-1.jsonl",
+      ".pi/scripted-pi-2.jsonl",
+      ".pi/scripted-pi-3.jsonl",
     ]);
   });
 
@@ -589,9 +589,7 @@ kind: program
       "targeted-run:summarize",
     );
     const session = deserializeProviderSessionRef(attempts[0]?.provider_session_ref ?? "{}");
-    expect(String(session.metadata.session_file)).toBe(
-      join(result.run_dir, "nodes", "summarize", "workspace", ".pi", "scripted-pi-1.jsonl"),
-    );
+    expect(String(session.metadata.session_file)).toBe(".pi/scripted-pi-1.jsonl");
   });
 
   test("pauses effecting graphs with a resumable human gate before provider calls", async () => {
@@ -811,9 +809,14 @@ kind: program
     expect(summary).toMatchObject({
       run_id: "cli-run",
       status: "succeeded",
-      provider: "fixture",
+      provider: "pi",
       plan_status: "ready",
       outputs: ["message"],
+    });
+    expect(summary.runtime_profile).toMatchObject({
+      graph_vm: "pi",
+      model_provider: "scripted",
+      model: "deterministic-output",
     });
 
     const status = await statusPath(runRoot);
@@ -823,7 +826,7 @@ kind: program
     });
   });
 
-  test("CLI only defaults to fixture provider when fixture outputs are present", () => {
+  test("CLI only defaults to scripted Pi when deterministic outputs are present", () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-run-cli-default-"));
     const success = runProseCli([
       "run",
@@ -831,15 +834,23 @@ kind: program
       "--run-root",
       runRoot,
       "--run-id",
-      "default-fixture-run",
+      "default-scripted-run",
       "--output",
-      "message=Hello from default fixture.",
+      "message=Hello from default deterministic output.",
       "--no-pretty",
     ]);
     expect(success.exitCode).toBe(0);
     expect(JSON.parse(new TextDecoder().decode(success.stdout))).toMatchObject({
-      provider: "fixture",
+      provider: "pi",
       status: "succeeded",
+      runtime_profile: {
+        graph_vm: "pi",
+        model_provider: "scripted",
+        model: "deterministic-output",
+        thinking: "off",
+        tools: ["read", "write"],
+        persist_sessions: true,
+      },
     });
 
     const blocked = runProseCli([

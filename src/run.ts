@@ -164,7 +164,7 @@ export async function runSource(
       ...(options.runtimeProfile ?? {}),
     },
     selectedGraphVm: selectedRuntime,
-    fixtureOutputs: options.outputs,
+    deterministicOutputs: options.outputs,
   });
 
   if (plan.status === "current") {
@@ -184,7 +184,7 @@ export async function runSource(
 
   const provider = resolveRuntimeProvider({
     provider: options.provider,
-    fixtureOutputs: options.outputs,
+    deterministicOutputs: options.outputs,
     runtimeProfile,
   });
   const ctx: RunContext = {
@@ -1028,7 +1028,7 @@ function selectedGraphVmName(
     }
     return provider.kind;
   }
-  return outputs && Object.keys(outputs).length > 0 ? "fixture" : null;
+  return outputs && Object.keys(outputs).length > 0 ? "pi" : null;
 }
 
 function implicitRuntimeProfile(
@@ -1044,7 +1044,10 @@ function implicitRuntimeProfile(
   }
   if (!kind && outputs && Object.keys(outputs).length > 0) {
     return {
-      graph_vm: "fixture",
+      graph_vm: "pi",
+      model_provider: "scripted",
+      model: "deterministic-output",
+      thinking: "off",
     };
   }
   return {};

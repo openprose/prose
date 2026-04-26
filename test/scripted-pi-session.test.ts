@@ -33,7 +33,7 @@ describe("scripted Pi runtime test helper", () => {
     expect(result.record.status).toBe("succeeded");
     expect(result.record.runtime.worker_ref).toBe("pi");
     expect(result.provider).toBe("pi");
-    expect(readFileSync(join(result.run_dir, "message.md"), "utf8")).toBe(
+    expect(readFileSync(join(result.run_dir, "bindings", "hello", "message.md"), "utf8")).toBe(
       "Hello from scripted Pi.\n",
     );
     const attempts = await listRunAttemptRecords(

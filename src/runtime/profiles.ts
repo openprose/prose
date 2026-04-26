@@ -18,7 +18,7 @@ export interface RuntimeProfileInput {
 export interface ResolveRuntimeProfileOptions {
   profile?: RuntimeProfileInput | null;
   selectedGraphVm?: string | null;
-  fixtureOutputs?: Record<string, unknown> | undefined;
+  deterministicOutputs?: Record<string, unknown> | undefined;
   env?: Record<string, string | undefined>;
 }
 
@@ -36,6 +36,7 @@ export function resolveRuntimeProfile(
 ): RuntimeProfile {
   const env = options.env ?? Bun.env;
   const input = options.profile ?? {};
+  const hasDeterministicOutputs = hasOutputs(options.deterministicOutputs);
   const selectedGraphVm = normalizeString(options.selectedGraphVm);
   const requestedGraphVm = normalizeString(input.graph_vm ?? input.graphVm);
   if (requestedGraphVm && selectedGraphVm && requestedGraphVm !== selectedGraphVm) {
@@ -45,7 +46,7 @@ export function resolveRuntimeProfile(
   }
   const graphVm =
     requestedGraphVm ??
-    graphVmFromSelectedRuntime(selectedGraphVm, options.fixtureOutputs) ??
+    graphVmFromSelectedRuntime(selectedGraphVm) ??
     "pi";
 
   assertGraphVm(graphVm);
@@ -55,15 +56,18 @@ export function resolveRuntimeProfile(
     graph_vm: graphVm,
     single_run_harness:
       normalizeString(input.single_run_harness ?? input.singleRunHarness) ?? null,
-    model_provider:
-      normalizeString(input.model_provider ?? input.modelProvider) ??
-      envString(env, "OPENPROSE_PI_MODEL_PROVIDER"),
-    model:
-      normalizeString(input.model) ??
-      envString(env, "OPENPROSE_PI_MODEL_ID"),
-    thinking:
-      normalizeString(input.thinking) ??
-      envString(env, "OPENPROSE_PI_THINKING_LEVEL"),
+    model_provider: hasDeterministicOutputs
+      ? "scripted"
+      : normalizeString(input.model_provider ?? input.modelProvider) ??
+        envString(env, "OPENPROSE_PI_MODEL_PROVIDER"),
+    model: hasDeterministicOutputs
+      ? "deterministic-output"
+      : normalizeString(input.model) ??
+        envString(env, "OPENPROSE_PI_MODEL_ID"),
+    thinking: hasDeterministicOutputs
+      ? "off"
+      : normalizeString(input.thinking) ??
+        envString(env, "OPENPROSE_PI_THINKING_LEVEL"),
     tools:
       normalizeStringList(input.tools) ??
       envList(env, "OPENPROSE_PI_TOOLS") ??
@@ -88,13 +92,9 @@ export function runtimeProfileSummary(profile: RuntimeProfile): string {
 
 function graphVmFromSelectedRuntime(
   selected: string | null,
-  fixtureOutputs: Record<string, unknown> | undefined,
 ): string | null {
   if (selected) {
     return selected;
-  }
-  if (fixtureOutputs && Object.keys(fixtureOutputs).length > 0) {
-    return "fixture";
   }
   return null;
 }
@@ -110,6 +110,15 @@ function assertGraphVm(graphVm: string): void {
       `Runtime profile graph_vm '${graphVm}' is a single-run harness, not the reactive graph VM. Use graph_vm 'pi' and configure single_run_harness separately when needed.`,
     );
   }
+  if (graphVm === "fixture") {
+    throw new Error(
+      "Runtime profile graph_vm 'fixture' has been removed. Use graph_vm 'pi'; deterministic --output runs use an internal scripted Pi session.",
+    );
+  }
+}
+
+function hasOutputs(outputs: Record<string, unknown> | undefined): boolean {
+  return Boolean(outputs && Object.keys(outputs).length > 0);
 }
 
 function assertThinking(value: string | null): void {

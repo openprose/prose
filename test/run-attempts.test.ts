@@ -95,7 +95,7 @@ describe("OpenProse run attempts", () => {
       componentRef: "writer",
       attemptNumber: 1,
       status: "failed",
-      providerSessionRef: "fixture:failed",
+      providerSessionRef: "scripted-pi:failed",
       startedAt: "2026-04-25T12:05:00.000Z",
       finishedAt: "2026-04-25T12:06:00.000Z",
       failure: {

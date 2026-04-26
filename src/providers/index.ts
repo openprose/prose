@@ -2,10 +2,6 @@ export {
   writeProviderArtifactRecords,
 } from "./artifacts.js";
 export {
-  FixtureProvider,
-  createFixtureProvider,
-} from "./fixture.js";
-export {
   LocalProcessProvider,
   createLocalProcessProvider,
 } from "./local-process.js";
@@ -37,9 +33,6 @@ export {
 export type {
   WriteProviderArtifactRecordsOptions,
 } from "./artifacts.js";
-export type {
-  FixtureProviderOptions,
-} from "./fixture.js";
 export type {
   LocalProcessProviderOptions,
 } from "./local-process.js";

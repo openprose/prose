@@ -1,6 +1,7 @@
 import { readdir, readFile, writeFile } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
 import { sha256 } from "./hash";
+import { createScriptedPiRuntime } from "./runtime/pi/scripted.js";
 import { runFile, type RunOptions } from "./run";
 import type {
   MaterializedRun,
@@ -41,7 +42,13 @@ export async function executeRemoteFile(
     outputs: options.outputs,
     approvedEffects: options.approvedEffects,
     trigger: options.trigger,
-    provider: options.provider ?? "fixture",
+    provider: options.provider ?? createScriptedPiRuntime({ outputs: options.outputs ?? {} }),
+    runtimeProfile: {
+      graph_vm: "pi",
+      model_provider: "scripted",
+      model: "deterministic-output",
+      thinking: "off",
+    },
   });
 
   await writeFile(join(result.run_dir, "stdout.txt"), "");

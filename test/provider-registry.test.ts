@@ -7,12 +7,12 @@ import { resolveRuntimeProvider } from "../src/providers";
 import type { RuntimeProvider } from "../src/providers";
 
 describe("OpenProse runtime provider registry", () => {
-  test("selects fixture provider when fixture outputs are supplied", () => {
+  test("selects scripted Pi when deterministic outputs are supplied", () => {
     const provider = resolveRuntimeProvider({
-      fixtureOutputs: { message: "Hello from fixtures." },
+      deterministicOutputs: { message: "Hello from deterministic output." },
     });
 
-    expect(provider.kind).toBe("fixture");
+    expect(provider.kind).toBe("pi");
   });
 
   test("returns programmatic providers unchanged", () => {
@@ -26,7 +26,7 @@ describe("OpenProse runtime provider registry", () => {
     expect(resolveRuntimeProvider({ provider })).toBe(provider);
   });
 
-  test("requires explicit provider selection without fixture outputs", () => {
+  test("requires explicit provider selection without deterministic outputs", () => {
     expect(() => resolveRuntimeProvider()).toThrow("No OpenProse graph VM selected.");
   });
 
@@ -70,6 +70,14 @@ describe("OpenProse runtime provider registry", () => {
         provider: "local-process",
       }),
     ).toThrow("Command-style adapters are single-run harness integrations");
+  });
+
+  test("rejects the removed fixture graph VM", () => {
+    expect(() =>
+      resolveRuntimeProvider({
+        provider: "fixture",
+      }),
+    ).toThrow("fixture graph VM has been removed");
   });
 
   test("rejects invalid provider environment configuration", () => {

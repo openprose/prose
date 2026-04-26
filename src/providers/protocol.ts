@@ -8,7 +8,6 @@ import type {
 } from "../types.js";
 
 export type ProviderKind =
-  | "fixture"
   | "local_process"
   | "openai_compatible"
   | "openrouter"

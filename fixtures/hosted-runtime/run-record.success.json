@@ -17,12 +17,12 @@
   },
   "runtime": {
     "harness": "openprose-provider",
-    "worker_ref": "fixture",
-    "graph_vm": "fixture",
+    "worker_ref": "pi",
+    "graph_vm": "pi",
     "single_run_harness": null,
-    "model_provider": null,
-    "model": null,
-    "thinking": null,
+    "model_provider": "scripted",
+    "model": "deterministic-output",
+    "thinking": "off",
     "tools": [
       "read",
       "write"
@@ -30,11 +30,11 @@
     "persist_sessions": true,
     "profile": {
       "profile_version": "0.1",
-      "graph_vm": "fixture",
+      "graph_vm": "pi",
       "single_run_harness": null,
-      "model_provider": null,
-      "model": null,
-      "thinking": null,
+      "model_provider": "scripted",
+      "model": "deterministic-output",
+      "thinking": "off",
       "tools": [
         "read",
         "write"

@@ -22,8 +22,8 @@ describe("OpenProse provider protocol", () => {
     const request = {
       provider_request_version: "0.1",
       request_id: "request-1",
-      provider: "fixture",
-      runtime_profile: testRuntimeProfile("fixture"),
+      provider: "pi",
+      runtime_profile: testRuntimeProfile("pi"),
       component,
       rendered_contract: "# hello\n\nProduce the message output.",
       input_bindings: [],
@@ -50,7 +50,7 @@ describe("OpenProse provider protocol", () => {
     } satisfies ProviderRequest;
 
     const provider: RuntimeProvider = {
-      kind: "fixture",
+      kind: "pi",
       async execute(input) {
         return {
           provider_result_version: "0.1",
@@ -74,8 +74,8 @@ describe("OpenProse provider protocol", () => {
           },
           diagnostics: [],
           session: {
-            provider: "fixture",
-            session_id: "fixture:request-1",
+            provider: "pi",
+            session_id: "scripted-pi:request-1",
             url: null,
             metadata: {},
           },

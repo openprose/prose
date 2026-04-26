@@ -69,12 +69,11 @@ describe("OpenProse runtime profiles", () => {
   test("rejects profiles that conflict with an explicitly selected graph VM", () => {
     expect(() =>
       resolveRuntimeProfile({
-        selectedGraphVm: "pi",
         profile: {
           graph_vm: "fixture",
         },
       }),
-    ).toThrow("conflicts with selected graph VM 'pi'");
+    ).toThrow("graph_vm 'fixture' has been removed");
   });
 
   test("records runtime profile fields on provider requests, runs, and attempts", async () => {

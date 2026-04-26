@@ -7,7 +7,7 @@ They are generated from:
 
 - `fixtures/package/catalog-demo`
 - `fixtures/compiler/hello.prose.md`
-- fixture provider output for run `hosted-contract-success`
+- scripted Pi deterministic output for run `hosted-contract-success`
 - deterministic timestamp `2026-04-26T00:00:00.000Z`
 
 The hosted platform may vendor or snapshot these files to verify that package

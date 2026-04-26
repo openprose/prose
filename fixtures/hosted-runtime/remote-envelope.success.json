@@ -4,14 +4,14 @@
   "run_dir": "fixtures/hosted-runtime/runs/hosted-contract-success",
   "component_ref": "registry://openprose/@openprose/catalog-demo@0.1.0/brief-writer",
   "status": "succeeded",
-  "provider": "fixture",
+  "provider": "pi",
   "runtime_profile": {
     "profile_version": "0.1",
-    "graph_vm": "fixture",
+    "graph_vm": "pi",
     "single_run_harness": null,
-    "model_provider": null,
-    "model": null,
-    "thinking": null,
+    "model_provider": "scripted",
+    "model": "deterministic-output",
+    "thinking": "off",
     "tools": [
       "read",
       "write"
@@ -43,6 +43,17 @@
     "run_id": "hosted-contract-success",
     "generated_at": "2026-04-26T00:00:00.000Z",
     "artifacts": [
+      {
+        "path": ".pi/scripted-pi-1.jsonl",
+        "kind": "artifact",
+        "content_type": "application/octet-stream",
+        "parse_policy": "preserve_text",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0,
+        "binding": null,
+        "policy_labels": [],
+        "warnings": []
+      },
       {
         "path": "bindings/hello/message.md",
         "kind": "output_binding",
@@ -97,8 +108,8 @@
         "kind": "runtime_run_record",
         "content_type": "application/json",
         "parse_policy": "must_parse_json",
-        "sha256": "0b96f921ffbd06728e04fd28c9c705831caaa14fb5df9e94dfefbd164825fb1d",
-        "size_bytes": 1913,
+        "sha256": "72e619294d7202b87b788561c222a5cba3c3523dc65a0a72ba7a634d59ad4e10",
+        "size_bytes": 1948,
         "binding": null,
         "policy_labels": [],
         "warnings": []
@@ -130,8 +141,8 @@
         "kind": "runtime_trace",
         "content_type": "application/json",
         "parse_policy": "must_parse_json",
-        "sha256": "65155851a8e6265aabd10a89b83588c9f24f4e2223edb7e8ce24d47f7a540991",
-        "size_bytes": 1412,
+        "sha256": "2138ff29a6bd89a339628124500b0e3ec1d2d292147a0a9dcd27ec4e414f8256",
+        "size_bytes": 3789,
         "binding": null,
         "policy_labels": [],
         "warnings": []
