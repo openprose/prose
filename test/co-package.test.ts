@@ -9,6 +9,7 @@ import {
   test,
   tmpdir,
 } from "./support";
+import { scriptedPiRuntime } from "./support/scripted-pi-session";
 import { createLocalProcessProvider } from "../src/providers";
 
 const programPath = "packages/co/programs/company-repo-checker.prose.md";
@@ -73,17 +74,18 @@ describe("OpenProse co package", () => {
     ]);
   });
 
-  test("company repo checker runs through fixture provider with required eval acceptance", async () => {
+  test("company repo checker runs through scripted Pi with required eval acceptance", async () => {
     const runRoot = join(mkdtempSync(join(tmpdir(), "openprose-co-fixture-")), "runs");
     const result = await runSource(readFileSync(join(import.meta.dir, "..", programPath), "utf8"), {
       path: programPath,
-      provider: "fixture",
+      provider: scriptedPiRuntime({
+        outputs: fixtureOutputs,
+      }),
       runRoot,
       runId: "co-fixture-smoke",
       inputs: {
         repo_path: "/tmp/company-as-code",
       },
-      outputs: fixtureOutputs,
       approvedEffects: ["read_external"],
       requiredEvals: [join(import.meta.dir, "..", evalPath)],
     });

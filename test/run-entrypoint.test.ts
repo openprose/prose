@@ -13,37 +13,40 @@ import {
   test,
   tmpdir,
 } from "./support";
+import { scriptedPiRuntime, providerShouldNotRun } from "./support/scripted-pi-session";
+import { approvalReleaseOutputs, pipelineOutputs } from "./support/runtime-scenarios";
 import { runSource } from "../src/run";
-import type { ProviderRequest, ProviderResult, RuntimeProvider } from "../src/providers";
+import type { ProviderRequest, ProviderResult } from "../src/providers";
 
 describe("OpenProse run entry point", () => {
-  test("executes a single-component contract through the fixture provider", async () => {
+  test("executes a single-component contract through scripted Pi", async () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-run-entry-"));
     const result = await runSource(fixture("hello.prose.md"), {
       path: "fixtures/compiler/hello.prose.md",
       runRoot,
       runId: "programmatic-run",
-      provider: "fixture",
-      outputs: {
-        message: "Hello from prose run.",
-      },
+      provider: scriptedPiRuntime({
+        outputs: {
+          message: "Hello from prose run.",
+        },
+      }),
       createdAt: "2026-04-25T00:00:00.000Z",
     });
 
     expect(result.record.status).toBe("succeeded");
     expect(result.record.runtime).toMatchObject({
       harness: "openprose-provider",
-      worker_ref: "fixture",
+      worker_ref: "pi",
     });
     expect(result.record.outputs).toEqual([
       expect.objectContaining({
         port: "message",
-        artifact_ref: "bindings/hello/message.md",
+        artifact_ref: "message.md",
       }),
     ]);
-    expect(
-      readFileSync(join(result.run_dir, "bindings", "hello", "message.md"), "utf8"),
-    ).toBe("Hello from prose run.\n");
+    expect(readFileSync(join(result.run_dir, "message.md"), "utf8")).toBe(
+      "Hello from prose run.\n",
+    );
 
     const attempts = await listRunAttemptRecords(join(runRoot, ".prose-store"), result.run_id);
     expect(attempts).toHaveLength(1);
@@ -59,14 +62,11 @@ describe("OpenProse run entry point", () => {
       path: "fixtures/compiler/pipeline.prose.md",
       runRoot,
       runId: "graph-run",
-      provider: "fixture",
+      provider: scriptedPiRuntime({
+        outputsByComponent: pipelineOutputs,
+      }),
       inputs: {
         draft: "The original draft.",
-      },
-      outputs: {
-        "review.feedback": "Tighten the intro.",
-        "fact-check.claims": "[{\"claim\":\"All claims verified.\"}]",
-        "polish.final": "The polished draft.",
       },
       createdAt: "2026-04-25T00:10:00.000Z",
       trigger: "test",
@@ -107,10 +107,9 @@ describe("OpenProse run entry point", () => {
   test("propagates upstream artifacts into downstream provider requests", async () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-run-upstream-"));
     const requests: ProviderRequest[] = [];
-    const provider = recordingProvider(requests, {
-      review: { feedback: "Tighten the intro." },
-      "fact-check": { claims: "[{\"claim\":\"All claims verified.\"}]" },
-      polish: { final: "The polished draft." },
+    const provider = scriptedPiRuntime({
+      outputsByComponent: pipelineOutputs,
+      onRequest: (request) => requests.push(request),
     });
 
     const result = await runSource(fixture("pipeline.prose.md"), {
@@ -172,16 +171,20 @@ kind: program
       path: "fixtures/compiler/company-enrichment.prose.md",
       runRoot,
       runId: "prior-run",
-      provider: "fixture",
-      outputs: {
-        profile: "Prior enrichment profile.",
-      },
+      provider: scriptedPiRuntime({
+        outputs: {
+          profile: "Prior enrichment profile.",
+        },
+      }),
       createdAt: "2026-04-25T00:17:00.000Z",
     });
 
     const requests: ProviderRequest[] = [];
-    const provider = recordingProvider(requests, {
-      "brief-writer": { brief: "A concise brief." },
+    const provider = scriptedPiRuntime({
+      outputsByComponent: {
+        "brief-writer": { brief: "A concise brief." },
+      },
+      onRequest: (request) => requests.push(request),
     });
 
     const result = await runSource(fixture("typed-effects.prose.md"), {
@@ -193,7 +196,6 @@ kind: program
         company: "Acme profile",
         subject: "run: prior-run",
       },
-      outputs: {},
       approvedEffects: ["delivers"],
       createdAt: "2026-04-25T00:18:00.000Z",
     });
@@ -222,13 +224,9 @@ kind: program
       path: "fixtures/compiler/typed-effects.prose.md",
       runRoot,
       runId: "missing-run-ref",
-      provider: {
-        kind: "fixture",
-        async execute() {
-          calls += 1;
-          throw new Error("provider should not run for missing run<T> references");
-        },
-      },
+      provider: providerShouldNotRun(() => {
+        calls += 1;
+      }),
       inputs: {
         company: "Acme profile",
         subject: "run: missing-prior-run",
@@ -259,10 +257,11 @@ kind: program
       path: "fixtures/compiler/unrelated-enrichment.prose.md",
       runRoot,
       runId: "wrong-prior-run",
-      provider: "fixture",
-      outputs: {
-        profile: "Wrong prior profile.",
-      },
+      provider: scriptedPiRuntime({
+        outputs: {
+          profile: "Wrong prior profile.",
+        },
+      }),
       createdAt: "2026-04-25T00:20:00.000Z",
     });
 
@@ -271,13 +270,9 @@ kind: program
       path: "fixtures/compiler/typed-effects.prose.md",
       runRoot,
       runId: "mismatched-run-ref",
-      provider: {
-        kind: "fixture",
-        async execute() {
-          calls += 1;
-          throw new Error("provider should not run for incompatible run<T> references");
-        },
-      },
+      provider: providerShouldNotRun(() => {
+        calls += 1;
+      }),
       inputs: {
         company: "Acme profile",
         subject: "run: wrong-prior-run",
@@ -312,13 +307,9 @@ kind: program
       path: "fixtures/compiler/json-input.prose.md",
       runRoot,
       runId: "invalid-input",
-      provider: {
-        kind: "fixture",
-        async execute() {
-          calls += 1;
-          throw new Error("provider should not be called for invalid input");
-        },
-      },
+      provider: providerShouldNotRun(() => {
+        calls += 1;
+      }),
       inputs: {
         payload: "{ not json",
       },
@@ -344,10 +335,11 @@ kind: program
       path: "fixtures/compiler/numeric-output.prose.md",
       runRoot,
       runId: "invalid-output",
-      provider: "fixture",
-      outputs: {
-        count: "not a number",
-      },
+      provider: scriptedPiRuntime({
+        outputs: {
+          count: "not a number",
+        },
+      }),
       createdAt: "2026-04-25T00:33:00.000Z",
     });
 
@@ -382,12 +374,13 @@ kind: program
       path: "fixtures/compiler/private-summary.prose.md",
       runRoot,
       runId: "private-policy",
-      provider: "fixture",
+      provider: scriptedPiRuntime({
+        outputs: {
+          summary: "Private summary.",
+        },
+      }),
       inputs: {
         secret: "Confidential account note.",
-      },
-      outputs: {
-        summary: "Private summary.",
       },
       createdAt: "2026-04-25T00:34:00.000Z",
     });
@@ -424,13 +417,9 @@ kind: program
       path: "fixtures/compiler/public-summary.prose.md",
       runRoot,
       runId: "blocked-declassification",
-      provider: {
-        kind: "fixture",
-        async execute() {
-          calls += 1;
-          throw new Error("provider should not run when policy blocks");
-        },
-      },
+      provider: providerShouldNotRun(() => {
+        calls += 1;
+      }),
       inputs: {
         secret: "Confidential account note.",
       },
@@ -467,12 +456,13 @@ kind: program
       path: "fixtures/compiler/public-summary-approved.prose.md",
       runRoot,
       runId: "approved-declassification",
-      provider: "fixture",
+      provider: scriptedPiRuntime({
+        outputs: {
+          summary: "Public summary.",
+        },
+      }),
       inputs: {
         secret: "Confidential account note.",
-      },
-      outputs: {
-        summary: "Public summary.",
       },
       approvedEffects: ["declassifies"],
       createdAt: "2026-04-25T00:35:30.000Z",
@@ -490,7 +480,7 @@ kind: program
     ]);
   });
 
-  test("fails when providers report undeclared performed effects", async () => {
+  test("fails when the runtime reports undeclared performed effects", async () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-run-policy-effects-"));
     const result = await runSource(`---
 name: effect-audit
@@ -509,7 +499,7 @@ kind: program
       runRoot,
       runId: "effect-audit",
       provider: {
-        kind: "fixture",
+        kind: "pi",
         async execute(request): Promise<ProviderResult> {
           return {
             provider_result_version: "0.1",
@@ -548,13 +538,14 @@ kind: program
       path: "fixtures/compiler/selective-recompute.prose.md",
       runRoot,
       runId: "targeted-run",
-      provider: "fixture",
+      provider: scriptedPiRuntime({
+        outputsByComponent: {
+          summarize: { summary: "Stable summary." },
+        },
+      }),
       inputs: {
         draft: "A stable draft.",
         company: "openprose",
-      },
-      outputs: {
-        "summarize.summary": "Stable summary.",
       },
       targetOutputs: ["summary"],
       createdAt: "2026-04-25T00:35:00.000Z",
@@ -576,13 +567,9 @@ kind: program
       path: sourcePath,
       runRoot,
       runId: "gate-required",
-      provider: {
-        kind: "fixture",
-        async execute() {
-          calls += 1;
-          throw new Error("provider should not be called without approvals");
-        },
-      },
+      provider: providerShouldNotRun(() => {
+        calls += 1;
+      }),
       inputs: {
         release_candidate: "v1.2.3",
       },
@@ -607,10 +594,9 @@ kind: program
       path: sourcePath,
       runRoot,
       runId: "gate-approved",
-      provider: recordingProvider(requests, {
-        "qa-check": { qa_report: "QA passed." },
-        "release-note-writer": { release_summary: "Release summary." },
-        "announce-release": { delivery_receipt: "Delivered to releases." },
+      provider: scriptedPiRuntime({
+        outputsByComponent: approvalReleaseOutputs,
+        onRequest: (request) => requests.push(request),
       }),
       inputs: {
         release_candidate: "v1.2.3",
@@ -656,14 +642,11 @@ kind: program
       path: sourcePath,
       runRoot,
       runId: "gate-denied",
-      provider: "fixture",
+      provider: scriptedPiRuntime({
+        outputsByComponent: approvalReleaseOutputs,
+      }),
       inputs: {
         release_candidate: "v1.2.3",
-      },
-      outputs: {
-        "qa-check.qa_report": "QA passed.",
-        "release-note-writer.release_summary": "Release summary.",
-        "announce-release.delivery_receipt": "Delivered to releases.",
       },
       approvedEffects: ["human_gate", "delivers"],
       approvalPaths: [approvalPath],
@@ -681,13 +664,9 @@ kind: program
       path: "fixtures/compiler/pipeline.prose.md",
       runRoot,
       runId: "blocked-graph-run",
-      provider: {
-        kind: "fixture",
-        async execute() {
-          calls += 1;
-          throw new Error("provider should not be called for a blocked plan");
-        },
-      },
+      provider: providerShouldNotRun(() => {
+        calls += 1;
+      }),
       createdAt: "2026-04-25T00:20:00.000Z",
     });
 
@@ -707,14 +686,11 @@ kind: program
       path: "fixtures/compiler/pipeline.prose.md",
       runRoot,
       runId: "current-graph-run",
-      provider: "fixture",
+      provider: scriptedPiRuntime({
+        outputsByComponent: pipelineOutputs,
+      }),
       inputs: {
         draft: "The original draft.",
-      },
-      outputs: {
-        "review.feedback": "Tighten the intro.",
-        "fact-check.claims": "[{\"claim\":\"All claims verified.\"}]",
-        "polish.final": "The polished draft.",
       },
       createdAt: "2026-04-25T00:30:00.000Z",
     });
@@ -830,43 +806,3 @@ kind: program
     });
   });
 });
-
-function recordingProvider(
-  requests: ProviderRequest[],
-  outputsByComponent: Record<string, Record<string, string>>,
-): RuntimeProvider {
-  return {
-    kind: "fixture",
-    async execute(request): Promise<ProviderResult> {
-      requests.push(request);
-      const outputs = outputsByComponent[request.component.name] ?? {};
-      return {
-        provider_result_version: "0.1",
-        request_id: request.request_id,
-        status: "succeeded",
-        artifacts: request.expected_outputs.map((output) => ({
-          port: output.port,
-          content: normalizeText(outputs[output.port] ?? `${request.component.name}.${output.port}`),
-          content_type: "text/markdown",
-          artifact_ref: null,
-          content_hash: null,
-          policy_labels: output.policy_labels,
-        })),
-        performed_effects: [],
-        logs: {
-          stdout: null,
-          stderr: null,
-          transcript: `recording:${request.component.name}`,
-        },
-        diagnostics: [],
-        session: null,
-        cost: null,
-        duration_ms: 0,
-      };
-    },
-  };
-}
-
-function normalizeText(value: string): string {
-  return value.endsWith("\n") ? value : `${value}\n`;
-}

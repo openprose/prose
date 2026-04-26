@@ -10,6 +10,8 @@ import {
   test,
   tmpdir,
 } from "./support";
+import { scriptedPiRuntime, providerShouldNotRun } from "./support/scripted-pi-session";
+import { approvalReleaseOutputs } from "./support/runtime-scenarios";
 import { cancelRunPath, resumeRunSource, retryRunSource } from "../src/control";
 import { runSource } from "../src/run";
 import type { ProviderRequest, ProviderResult, RuntimeProvider } from "../src/providers";
@@ -75,7 +77,7 @@ describe("OpenProse runtime controls", () => {
       path: sourcePath,
       runRoot,
       runId: "cancel-target",
-      provider: "fixture",
+      provider: providerShouldNotRun(),
       inputs: {
         release_candidate: "v1.2.3",
       },
@@ -104,7 +106,7 @@ describe("OpenProse runtime controls", () => {
       path: sourcePath,
       runRoot,
       runId: "resume-blocked",
-      provider: "fixture",
+      provider: providerShouldNotRun(),
       inputs: {
         release_candidate: "v1.2.3",
       },
@@ -116,14 +118,11 @@ describe("OpenProse runtime controls", () => {
       currentRunPath: blocked.run_dir,
       runRoot,
       runId: "resume-approved",
-      provider: "fixture",
+      provider: scriptedPiRuntime({
+        outputsByComponent: approvalReleaseOutputs,
+      }),
       inputs: {
         release_candidate: "v1.2.3",
-      },
-      outputs: {
-        "qa-check.qa_report": "QA passed.",
-        "release-note-writer.release_summary": "Release summary.",
-        "announce-release.delivery_receipt": "Delivered to releases.",
       },
       approvedEffects: ["human_gate", "delivers"],
       createdAt: "2026-04-25T01:25:00.000Z",
@@ -140,7 +139,7 @@ function controlledProvider(
   shouldFail: (request: ProviderRequest) => boolean,
 ): RuntimeProvider {
   return {
-    kind: "fixture",
+    kind: "pi",
     async execute(request): Promise<ProviderResult> {
       calls.push(request.component.name);
       if (shouldFail(request)) {

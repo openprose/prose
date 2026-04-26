@@ -9,6 +9,7 @@ import {
   test,
   tmpdir,
 } from "./support";
+import { scriptedPiRuntime } from "./support/scripted-pi-session";
 
 const controls = [
   "fallback-chain",
@@ -66,7 +67,7 @@ describe("OpenProse std controls and composites", () => {
     }
   });
 
-  test("pattern contracts run through the fixture provider", async () => {
+  test("pattern contracts run through scripted Pi", async () => {
     const runRoot = join(mkdtempSync(join(tmpdir(), "openprose-std-patterns-")), "runs");
 
     for (const pattern of patternCases()) {
@@ -74,14 +75,15 @@ describe("OpenProse std controls and composites", () => {
       const outputPort = pattern.kind === "control" ? "control_result" : "composite_result";
       const result = await runSource(patternSource(pattern), {
         path: patternPath(pattern),
-        provider: "fixture",
+        provider: scriptedPiRuntime({
+          outputs: {
+            [outputPort]: '{"result":"Fixture result","status":"ok"}',
+          },
+        }),
         runRoot,
         runId: `${pattern.name}-smoke`,
         inputs: {
           [inputPort]: '{"task_brief":"Fixture smoke","delegates":[]}',
-        },
-        outputs: {
-          [outputPort]: '{"result":"Fixture result","status":"ok"}',
         },
       });
 

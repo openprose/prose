@@ -14,6 +14,8 @@ import {
   tmpdir,
   writeFileSync,
 } from "./support";
+import { scriptedPiRuntime } from "./support/scripted-pi-session";
+import { pipelineOutputs } from "./support/runtime-scenarios";
 
 describe("OpenProse executable evals", () => {
   test("discovers eval files from package metadata", async () => {
@@ -31,19 +33,21 @@ describe("OpenProse executable evals", () => {
       path: "fixtures/compiler/hello.prose.md",
       runRoot: join(root, "runs"),
       runId: "subject-run",
-      provider: "fixture",
-      outputs: {
-        message: "Hello from eval subject.",
-      },
+      provider: scriptedPiRuntime({
+        outputs: {
+          message: "Hello from eval subject.",
+        },
+      }),
       createdAt: "2026-04-25T01:00:00.000Z",
     });
     const evalPath = writeEvalContract(root);
 
     const result = await executeEvalFile(evalPath, subject.run_dir, {
-      provider: "fixture",
-      outputs: {
-        result: "{\"passed\":true,\"score\":0.92,\"verdict\":\"pass\"}",
-      },
+      provider: scriptedPiRuntime({
+        outputs: {
+          result: "{\"passed\":true,\"score\":0.92,\"verdict\":\"pass\"}",
+        },
+      }),
       createdAt: "2026-04-25T01:01:00.000Z",
     });
 
@@ -64,19 +68,21 @@ describe("OpenProse executable evals", () => {
       path: "fixtures/compiler/hello.prose.md",
       runRoot: join(root, "runs"),
       runId: "failing-subject",
-      provider: "fixture",
-      outputs: {
-        message: "Hello from eval subject.",
-      },
+      provider: scriptedPiRuntime({
+        outputs: {
+          message: "Hello from eval subject.",
+        },
+      }),
       createdAt: "2026-04-25T01:02:00.000Z",
     });
     const evalPath = writeEvalContract(root);
 
     const result = await executeEvalFile(evalPath, subject.run_dir, {
-      provider: "fixture",
-      outputs: {
-        result: "{\"passed\":false,\"score\":42,\"verdict\":\"fail\"}",
-      },
+      provider: scriptedPiRuntime({
+        outputs: {
+          result: "{\"passed\":false,\"score\":42,\"verdict\":\"fail\"}",
+        },
+      }),
       createdAt: "2026-04-25T01:03:00.000Z",
     });
 
@@ -95,10 +101,11 @@ describe("OpenProse executable evals", () => {
       path: "fixtures/compiler/hello.prose.md",
       runRoot: join(root, "runs"),
       runId: "cli-subject",
-      provider: "fixture",
-      outputs: {
-        message: "Hello from CLI eval subject.",
-      },
+      provider: scriptedPiRuntime({
+        outputs: {
+          message: "Hello from CLI eval subject.",
+        },
+      }),
       createdAt: "2026-04-25T01:04:00.000Z",
     });
     const evalPath = writeEvalContract(root);
@@ -128,15 +135,16 @@ describe("OpenProse executable evals", () => {
       path: "fixtures/compiler/pipeline.prose.md",
       runRoot: join(root, "runs"),
       runId: "eval-gated-graph",
-      provider: "fixture",
+      provider: scriptedPiRuntime({
+        outputsByComponent: {
+          ...pipelineOutputs,
+          "quality-eval": {
+            result: "{\"passed\":false,\"score\":0.2,\"verdict\":\"fail\"}",
+          },
+        },
+      }),
       inputs: {
         draft: "The original draft.",
-      },
-      outputs: {
-        "review.feedback": "Tighten the intro.",
-        "fact-check.claims": "[{\"claim\":\"All claims verified.\"}]",
-        "polish.final": "The polished draft.",
-        "quality-eval.result": "{\"passed\":false,\"score\":0.2,\"verdict\":\"fail\"}",
       },
       requiredEvals: [evalPath],
       createdAt: "2026-04-25T01:05:00.000Z",

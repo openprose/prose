@@ -9,6 +9,7 @@ import {
   test,
   tmpdir,
 } from "./support";
+import { scriptedPiRuntime } from "./support/scripted-pi-session";
 
 interface RoleCase {
   file: string;
@@ -142,17 +143,18 @@ describe("OpenProse std roles", () => {
     }
   });
 
-  test("role contracts run through the fixture provider", async () => {
+  test("role contracts run through scripted Pi", async () => {
     const runRoot = join(mkdtempSync(join(tmpdir(), "openprose-std-roles-")), "runs");
 
     for (const role of roleCases) {
       const result = await runSource(roleSource(role.file), {
         path: rolePath(role.file),
-        provider: "fixture",
+        provider: scriptedPiRuntime({
+          outputs: role.outputs,
+        }),
         runRoot,
         runId: `${role.file}-smoke`,
         inputs: role.inputs,
-        outputs: role.outputs,
       });
 
       expect(result.record.status, role.file).toBe("succeeded");

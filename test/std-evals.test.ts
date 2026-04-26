@@ -9,6 +9,7 @@ import {
   test,
   tmpdir,
 } from "./support";
+import { scriptedPiRuntime } from "./support/scripted-pi-session";
 
 interface EvalCase {
   file: string;
@@ -165,24 +166,25 @@ describe("OpenProse std evals", () => {
     }
   });
 
-  test("eval contracts run through the fixture provider", async () => {
+  test("eval contracts run through scripted Pi", async () => {
     const runRoot = join(mkdtempSync(join(tmpdir(), "openprose-std-evals-")), "runs");
 
     for (const evalCase of evalCases) {
       const result = await runSource(evalSource(evalCase.file), {
         path: evalPath(evalCase.file),
-        provider: "fixture",
+        provider: scriptedPiRuntime({
+          outputs: {
+            [evalCase.output]: JSON.stringify({
+              passed: true,
+              score: 0.88,
+              verdict: "pass",
+              subject_run_id: "subject-run",
+            }),
+          },
+        }),
         runRoot,
         runId: `${evalCase.file}-smoke`,
         inputs: evalCase.inputs,
-        outputs: {
-          [evalCase.output]: JSON.stringify({
-            passed: true,
-            score: 0.88,
-            verdict: "pass",
-            subject_run_id: "subject-run",
-          }),
-        },
       });
 
       expect(result.record.status, evalCase.file).toBe("succeeded");
