@@ -48,7 +48,7 @@ OPENPROSE_PI_MODEL_ID=google/gemini-3-flash-preview \
 OPENPROSE_PI_API_KEY="$OPENROUTER_API_KEY" \
 OPENPROSE_PI_THINKING_LEVEL=low \
 bun run prose run examples/north-star/lead-program-designer.prose.md \
-  --provider pi \
+  --graph-vm pi \
   --run-root /tmp/openprose-live-inference/runs \
   --run-id openrouter-pi-lead-program \
   --input lead_profile='{"company":"Acme Robotics","pain":"manual handoffs between AI pilots and production workflows","buyer":"VP Operations"}' \

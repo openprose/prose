@@ -66,7 +66,13 @@ export async function runCli(args: string[]): Promise<void> {
       process.exitCode = 1;
       return;
     }
-    const providerError = validateCliGraphVm(options.provider);
+    const flagError = validateDeprecatedProviderFlag(options.deprecatedProvider);
+    if (flagError) {
+      console.error(flagError);
+      process.exitCode = 1;
+      return;
+    }
+    const providerError = validateCliGraphVm(options.graphVm);
     if (providerError) {
       console.error(providerError);
       process.exitCode = 1;
@@ -81,7 +87,7 @@ export async function runCli(args: string[]): Promise<void> {
         outputs: options.outputs,
         approvedEffects: options.approvedEffects,
         trigger: options.trigger,
-        provider: options.provider ?? undefined,
+        provider: options.graphVm ?? undefined,
       });
       const summary = {
         eval_id: result.eval_record.eval_id,
@@ -151,7 +157,13 @@ export async function runCli(args: string[]): Promise<void> {
       process.exitCode = 1;
       return;
     }
-    const providerError = validateCliGraphVm(options.provider);
+    const flagError = validateDeprecatedProviderFlag(options.deprecatedProvider);
+    if (flagError) {
+      console.error(flagError);
+      process.exitCode = 1;
+      return;
+    }
+    const providerError = validateCliGraphVm(options.graphVm);
     if (providerError) {
       console.error(providerError);
       process.exitCode = 1;
@@ -169,7 +181,7 @@ export async function runCli(args: string[]): Promise<void> {
         requiredEvals: options.requiredEvals,
         advisoryEvals: options.advisoryEvals,
         trigger: options.trigger,
-        provider: options.provider ?? undefined,
+        provider: options.graphVm ?? undefined,
         currentRunPath: options.currentRunPath ?? undefined,
         targetOutputs: options.targetOutputs,
       });
@@ -177,7 +189,7 @@ export async function runCli(args: string[]): Promise<void> {
         run_id: result.run_id,
         run_dir: result.run_dir,
         status: result.record.status,
-        provider: result.provider,
+        graph_vm: result.provider,
         runtime_profile: result.record.runtime.profile,
         plan_status: result.plan.status,
         outputs: result.record.outputs.map((output) => output.port),
@@ -564,7 +576,8 @@ interface FileCommandArgs {
   requiredEvals: string[];
   advisoryEvals: string[];
   trigger: RunRecord["caller"]["trigger"];
-  provider: string | null;
+  graphVm: string | null;
+  deprecatedProvider: string | null;
 }
 
 interface RemoteCommandArgs {
@@ -722,7 +735,8 @@ function parseFileCommandArgs(args: string[]): FileCommandArgs {
     requiredEvals: [],
     advisoryEvals: [],
     trigger: "manual",
-    provider: null,
+    graphVm: null,
+    deprecatedProvider: null,
   };
 
   for (let index = 0; index < args.length; index += 1) {
@@ -858,8 +872,13 @@ function parseFileCommandArgs(args: string[]): FileCommandArgs {
       index += 1;
       continue;
     }
+    if (arg === "--graph-vm") {
+      parsed.graphVm = args[index + 1] ?? null;
+      index += 1;
+      continue;
+    }
     if (arg === "--provider") {
-      parsed.provider = args[index + 1] ?? null;
+      parsed.deprecatedProvider = args[index + 1] ?? "";
       index += 1;
       continue;
     }
@@ -1001,7 +1020,7 @@ function validateCliGraphVm(provider: string | null): string | null {
     return `Provider '${provider}' is a model-provider profile, not an OpenProse graph VM. Configure it through OPENPROSE_PI_MODEL_PROVIDER and run with the Pi graph VM.`;
   }
   if (provider === "fixture") {
-    return "The fixture graph VM has been removed. Use --output without --provider for deterministic local tests, or run the Pi graph VM for real execution.";
+    return "The fixture graph VM has been removed. Use --output without --graph-vm for deterministic local tests, or run the Pi graph VM for real execution.";
   }
   if (provider === "local_process" || provider === "local-process") {
     return "Command-style adapters are single-run harness integrations, not OpenProse graph VMs. Use the Pi graph VM for reactive graph execution.";
@@ -1009,12 +1028,19 @@ function validateCliGraphVm(provider: string | null): string | null {
   return `OpenProse graph VM '${provider}' is not registered. Available graph VMs: pi.`;
 }
 
+function validateDeprecatedProviderFlag(value: string | null): string | null {
+  if (value === null) {
+    return null;
+  }
+  return "The --provider flag has been removed from the public graph runtime surface. Use --graph-vm pi, and configure model providers through OPENPROSE_PI_MODEL_PROVIDER.";
+}
+
 function printHelp(): void {
   console.log(`OpenProse
 
 Usage:
   prose compile <file.prose.md|dir> [--out ir.json] [--no-pretty]
-  prose eval <eval.prose.md> --subject-run .prose/runs/{id} [--output result='{"passed":true,"score":0.9}']
+  prose eval <eval.prose.md> --subject-run .prose/runs/{id} [--graph-vm pi] [--output result='{"passed":true,"score":0.9}']
   prose fmt <file.prose.md|dir> [--write|--check]
   prose grammar [--out syntaxes/openprose.tmLanguage.json] [--no-pretty]
   prose install [registry-ref|path] [--catalog-root dir] [--workspace-root dir] [--deps-root dir] [--refresh] [--source-override package=path]
@@ -1024,7 +1050,7 @@ Usage:
   prose highlight <file.prose.md> [--format text|json|html]
   prose lint <file.prose.md|dir> [--format text|json]
   prose plan <file.prose.md> [--input name=value] [--current-run .prose/runs/{id}] [--target-output final] [--approved-effect delivers]
-  prose run <file.prose.md> [--run-root .prose/runs] [--input name=value] [--output port=value] [--approved-effect delivers] [--approval approval.json] [--required-eval eval.prose.md]
+  prose run <file.prose.md> [--graph-vm pi] [--run-root .prose/runs] [--input name=value] [--output port=value] [--approved-effect delivers] [--approval approval.json] [--required-eval eval.prose.md]
   prose preflight <file.prose.md> [--format text|json]
   prose publish-check <dir|file.prose.md> [--format text|json] [--strict]
   prose remote execute <file.prose.md> [--out-dir .openprose/remote-runs] [--run-id id] [--input name=value] [--output port=value] [--approved-effect delivers]

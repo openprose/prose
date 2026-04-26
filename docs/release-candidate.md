@@ -61,7 +61,7 @@ Latest generated reports:
 ## Live Pi Smoke Notes
 
 - 2026-04-26: `prose run examples/north-star/company-signal-brief.prose.md
-  --provider pi` reached the Pi graph VM through an OpenRouter model profile
+  --graph-vm pi` reached the Pi graph VM through an OpenRouter model profile
   and correctly surfaced the upstream model error as the run acceptance reason.
 - The smoke did not yet produce an accepted run because the available
   OpenRouter account returned an insufficient-credits response.

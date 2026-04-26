@@ -19,6 +19,7 @@ describe("OpenProse CLI UX", () => {
     expect(stdout).toContain("Runtime:");
     expect(stdout).toContain("meta-harness");
     expect(stdout).toContain("OpenRouter");
+    expect(stdout).toContain("--graph-vm pi");
     expect(stdout).not.toContain("--provider fixture");
     expect(stdout).not.toContain("prose fixture");
   });
@@ -85,7 +86,7 @@ describe("OpenProse CLI UX", () => {
     const result = runProseCli([
       "run",
       "fixtures/compiler/hello.prose.md",
-      "--provider",
+      "--graph-vm",
       "openrouter",
       "--output",
       "message=This should not run.",
@@ -95,6 +96,21 @@ describe("OpenProse CLI UX", () => {
     expect(decode(result.stderr)).toContain(
       "is a model-provider profile, not an OpenProse graph VM",
     );
+  });
+
+  test("rejects the old provider flag with graph VM vocabulary", () => {
+    const result = runProseCli([
+      "run",
+      "fixtures/compiler/hello.prose.md",
+      "--provider",
+      "pi",
+      "--output",
+      "message=This should not run.",
+    ]);
+
+    expect(result.exitCode).toBe(1);
+    expect(decode(result.stderr)).toContain("--provider flag has been removed");
+    expect(decode(result.stderr)).toContain("--graph-vm pi");
   });
 });
 

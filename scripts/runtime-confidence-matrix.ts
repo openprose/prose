@@ -128,7 +128,7 @@ async function main(): Promise<void> {
         "company_signal_brief=Lead with durable agent workflows.",
         "--no-pretty",
       ],
-      expectStdout: ['"status":"succeeded"', '"provider":"pi"'],
+      expectStdout: ['"status":"succeeded"', '"graph_vm":"pi"'],
     },
     {
       label: "status run store",

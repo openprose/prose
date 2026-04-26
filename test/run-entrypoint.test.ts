@@ -809,7 +809,7 @@ kind: program
     expect(summary).toMatchObject({
       run_id: "cli-run",
       status: "succeeded",
-      provider: "pi",
+      graph_vm: "pi",
       plan_status: "ready",
       outputs: ["message"],
     });
@@ -841,7 +841,7 @@ kind: program
     ]);
     expect(success.exitCode).toBe(0);
     expect(JSON.parse(new TextDecoder().decode(success.stdout))).toMatchObject({
-      provider: "pi",
+      graph_vm: "pi",
       status: "succeeded",
       runtime_profile: {
         graph_vm: "pi",
@@ -873,7 +873,7 @@ kind: program
     const result = runProseCli([
       "run",
       fixturePath("compiler/pipeline.prose.md"),
-      "--provider",
+      "--graph-vm",
       "pi",
       "--run-root",
       runRoot,
@@ -885,7 +885,7 @@ kind: program
     expect(result.exitCode).toBe(1);
     expect(new TextDecoder().decode(result.stderr)).not.toContain("not registered");
     expect(JSON.parse(new TextDecoder().decode(result.stdout))).toMatchObject({
-      provider: "pi",
+      graph_vm: "pi",
       status: "blocked",
       plan_status: "blocked",
     });
