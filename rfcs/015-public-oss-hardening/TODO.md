@@ -741,9 +741,18 @@ Checks:
 Use this area for newly discovered issues before promoting them into a priority
 section.
 
-- [todo] Review whether `.prose/live-pi-agent/models.json` and live run
+- [done] Review whether `.prose/live-pi-agent/models.json` and live run
   directories are fully ignored and never leak secrets.
-- [todo] Review whether generated HTML diagrams should be included in the
+  - Resolved: `.prose/` is ignored, live Pi auth/model/run artifacts are not
+    staged, and `test/live-pi-smoke.test.ts` now checks representative live Pi
+    generated paths with `git check-ignore`.
+- [done] Review whether generated HTML diagrams should be included in the
   public docs index or moved under a release/demo area.
-- [todo] Consider a small `prose doctor` command only if repeated local setup
+  - Resolved: diagrams live under `docs/diagrams/`, have an `index.html`, and
+    are linked from both `README.md` and `docs/README.md`; keep them in public
+    docs.
+- [done] Consider a small `prose doctor` command only if repeated local setup
   problems appear during hardening.
+  - Resolved: do not add `doctor` yet. `preflight`, `confidence:runtime`,
+    `smoke:binary`, `smoke:live-pi`, and the measurement evidence split cover
+    the repeated setup checks without adding another command surface.

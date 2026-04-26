@@ -74,6 +74,22 @@ describe("OpenProse live Pi smoke ladder", () => {
       ],
     });
   });
+
+  test("keeps live Pi agent and run artifacts ignored", () => {
+    const paths = [
+      ".prose/live-pi-agent/auth.json",
+      ".prose/live-pi-agent/models.json",
+      ".prose/live-pi-runs/example/run.json",
+    ];
+    const result = Bun.spawnSync(["git", "check-ignore", ...paths], {
+      cwd: join(import.meta.dir, ".."),
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(new TextDecoder().decode(result.stdout).trim().split("\n")).toEqual(paths);
+  });
 });
 
 function runSmoke(args: string[], env: Record<string, string>) {
