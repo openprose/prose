@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import {
   describe,
   expect,
@@ -88,5 +89,42 @@ describe("OpenProse local artifact records", () => {
       (await readArtifactRecordForOutput(root, "run-2", "reviewer", "brief"))
         ?.artifact_id,
     ).toBe(second.artifact_id);
+  });
+
+  test("encodes provenance ids before using them as artifact record paths", async () => {
+    const root = mkdtempSync(join(tmpdir(), "openprose-artifact-ids-"));
+    const record = await writeLocalArtifactRecord(root, {
+      runId: "graph-run:writer",
+      nodeId: "review/node",
+      port: "final/brief",
+      direction: "output",
+      content: "Path-safe provenance.",
+      contentType: "text/plain",
+      createdAt: "2026-04-25T12:00:00.000Z",
+    });
+
+    const stored = JSON.parse(
+      readFileSync(
+        join(
+          root,
+          "artifacts",
+          "records",
+          "graph-run%3Awriter",
+          "review%2Fnode",
+          "final%2Fbrief",
+          `${record.content_hash}.json`,
+        ),
+        "utf8",
+      ),
+    );
+
+    expect(stored).toMatchObject({
+      artifact_id: record.artifact_id,
+      provenance: {
+        run_id: "graph-run:writer",
+        node_id: "review/node",
+        port: "final/brief",
+      },
+    });
   });
 });

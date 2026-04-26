@@ -1,4 +1,5 @@
 import {
+  readFileSync,
   describe,
   expect,
   join,
@@ -67,6 +68,30 @@ describe("OpenProse run attempts", () => {
       failed.attempt_id,
       retry.attempt_id,
     ]);
+  });
+
+  test("encodes run ids before using them as attempt store paths", async () => {
+    const root = mkdtempSync(join(tmpdir(), "openprose-attempt-ids-"));
+    await writeRunAttemptRecord(root, {
+      runId: "graph-run:review/node",
+      componentRef: "review/node",
+      attemptNumber: 1,
+      status: "succeeded",
+      startedAt: "2026-04-25T12:00:00.000Z",
+      finishedAt: "2026-04-25T12:01:00.000Z",
+    });
+
+    const stored = JSON.parse(
+      readFileSync(
+        join(root, "runs", "graph-run%3Areview%2Fnode", "attempts", "attempt-1.json"),
+        "utf8",
+      ),
+    );
+
+    expect(stored).toMatchObject({
+      attempt_id: "graph-run:review/node:attempt-1",
+      run_id: "graph-run:review/node",
+    });
   });
 
   test("failed attempts do not replace current graph node pointers and appear in status", async () => {

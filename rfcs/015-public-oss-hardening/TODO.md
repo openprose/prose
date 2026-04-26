@@ -251,18 +251,20 @@ Checks:
 - `bun test test/run-entrypoint.test.ts test/runtime-planning.test.ts test/trace-artifacts.test.ts`
 - `bun run confidence:runtime`
 
-### [todo] Run IDs and artifact IDs should be path/API safe
+### [done] Run IDs and artifact IDs should be path/API safe
 
 Finding: graph node run IDs and artifact IDs use colon-separated identifiers
 such as `graph-run:review`. Store paths URL-encode them, but hosted APIs,
 object storage keys, and logs may benefit from a stricter canonical ID format.
 
-Proposed fix:
+Resolved:
 
-- define a canonical safe ID encoding for graph runs, node runs, attempts, and
-  artifacts
-- preserve human readability in display fields rather than filesystem/API IDs
-- add tests that IDs are stable and safe across local store and remote envelope
+- kept human-readable run, attempt, and artifact IDs stable in records
+- confirmed local store paths URL-encode run IDs, node IDs, and port IDs before
+  using them as path segments
+- added explicit attempt/artifact path-encoding regressions
+
+Commit target: `test: lock path-safe store ids`
 
 Checks:
 
