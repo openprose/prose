@@ -21,6 +21,30 @@ export {
   type PackageEntrypointPlanOptions,
   type PackageEntrypointPlanResult,
 } from "./plan.js";
+export {
+  appendDeploymentEvent,
+  initLocalDeploymentStore,
+  readDeploymentEntrypointPointer,
+  readDeploymentRunIndex,
+  readLocalDeploymentManifest,
+  readLocalDeploymentMetadata,
+  resolveLocalDeploymentStoreLayout,
+  updateDeploymentEntrypointPointer,
+  writeDeploymentRunRecord,
+  type DeploymentEntrypointPointer,
+  type DeploymentEventRecord,
+  type DeploymentRunRecord,
+  type LocalDeploymentStoreLayout,
+  type LocalDeploymentStoreMetadata,
+} from "./store.js";
+export {
+  createDeploymentManifestOnly,
+  initLocalDeployment,
+  triggerLocalDeployment,
+  type InitLocalDeploymentResult,
+  type TriggerLocalDeploymentOptions,
+  type TriggerLocalDeploymentResult,
+} from "./runtime.js";
 
 export type DeploymentMode = "local" | "dev" | "staging" | "production";
 

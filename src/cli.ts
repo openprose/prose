@@ -2,9 +2,11 @@ import { stat, writeFile } from "node:fs/promises";
 import { compileFile } from "./compiler";
 import {
   buildPackageEntrypointGraphView,
+  initLocalDeployment,
   planPackageEntrypoint,
   preflightDeployment,
   renderDeploymentPreflightText,
+  triggerLocalDeployment,
   type PackageEntrypointPlanResult,
 } from "./deployment/index.js";
 import { executeEvalFile } from "./eval/index.js";
@@ -271,6 +273,7 @@ async function runCliInner(args: string[]): Promise<void> {
   if (command === "deployment") {
     const action =
       rest[0] === "preflight" || rest[0] === "plan" || rest[0] === "graph"
+        || rest[0] === "init" || rest[0] === "trigger"
         ? rest[0]
         : "preflight";
     const options = parseFileCommandArgs(action === "preflight" && rest[0] !== "preflight" ? rest : rest.slice(1));
@@ -281,6 +284,61 @@ async function runCliInner(args: string[]): Promise<void> {
     }
 
     try {
+      if (action === "init") {
+        const result = await initLocalDeployment(options.file, {
+          name: options.deploymentName,
+          slug: options.deploymentSlug,
+          owner: options.orgId
+            ? { kind: "organization", id: options.orgId, name: options.orgName }
+            : { kind: "local", id: "local", name: null },
+          environment: {
+            name: options.environmentName,
+            mode: options.deploymentMode,
+          },
+          stateRoot: options.stateRoot,
+          enabledEntrypoints: options.enabledEntrypoints,
+          environmentBindings: options.environmentBindings,
+          approvedEffects: options.approvedEffects,
+          dryRun: true,
+        });
+        const output = `${JSON.stringify(result, null, options.pretty ? 2 : 0)}\n`;
+        if (options.out) {
+          await writeFile(options.out, output, "utf8");
+        } else {
+          process.stdout.write(output);
+        }
+        if (result.preflight.status === "fail") {
+          process.exitCode = 1;
+        }
+        return;
+      }
+
+      if (action === "trigger") {
+        const entrypoint = options.entrypointRef ?? options.enabledEntrypoints[0] ?? null;
+        if (!entrypoint) {
+          console.error("Missing deployment entrypoint. Use --entrypoint <component>.");
+          process.exitCode = 1;
+          return;
+        }
+        const result = await triggerLocalDeployment(options.file, {
+          entrypoint,
+          trigger: deploymentTrigger(options.trigger),
+          inputs: options.inputs,
+          targetOutputs: options.targetOutputs,
+          approvedEffects: options.approvedEffects,
+        });
+        const output = `${JSON.stringify(result, null, options.pretty ? 2 : 0)}\n`;
+        if (options.out) {
+          await writeFile(options.out, output, "utf8");
+        } else {
+          process.stdout.write(output);
+        }
+        if (result.run.status === "blocked" || result.run.status === "failed") {
+          process.exitCode = 1;
+        }
+        return;
+      }
+
       if (action === "plan" || action === "graph") {
         const entrypoint = options.entrypointRef ?? options.enabledEntrypoints[0] ?? null;
         if (!entrypoint) {
@@ -1360,6 +1418,18 @@ function parseDeploymentMode(
   return null;
 }
 
+function deploymentTrigger(
+  trigger: RunRecord["caller"]["trigger"],
+): "manual" | "schedule" | "webhook" | "event" {
+  if (trigger === "schedule" || trigger === "webhook") {
+    return trigger;
+  }
+  if (trigger === "api" || trigger === "graph_recompute") {
+    return "event";
+  }
+  return "manual";
+}
+
 function validateCliGraphVm(graphVm: string | null): string | null {
   if (!graphVm) {
     return null;
@@ -1427,6 +1497,8 @@ function printHelp(): void {
 Usage:
   prose compile <file.prose.md|dir> [--out ir.json] [--no-pretty]
   prose deployment <dir> [--deployment-name name] [--org-id org] [--environment dev] [--mode dev] [--enable component] [--env KEY=value] [--format text|json]
+  prose deployment init <dir> [--deployment-name name] [--state-root .prose/deployments/id] [--enable component] [--env KEY=value]
+  prose deployment trigger <state-root> --entrypoint component [--input name=value] [--approved-effect effect]
   prose deployment plan <dir> --entrypoint component [--input name=value] [--target-output output] [--approved-effect effect] [--format text|json]
   prose deployment graph <dir> --entrypoint component [--target-output output] [--approved-effect effect] [--format mermaid|json]
   prose eval <eval.prose.md> --subject-run .prose/runs/{id} [--graph-vm pi] [--output result='{"passed":true,"score":0.9}']

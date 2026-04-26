@@ -6,8 +6,13 @@ import { compilePackagePath } from "../src/ir/package.js";
 import {
   buildDeploymentManifest,
   discoverDeploymentEntrypointsForPackage,
+  initLocalDeployment,
   planPackageEntrypoint,
   preflightDeployment,
+  readDeploymentEntrypointPointer,
+  readDeploymentRunIndex,
+  readLocalDeploymentManifest,
+  triggerLocalDeployment,
 } from "../src/deployment/index.js";
 import { runProseCli } from "./support";
 
@@ -234,6 +239,47 @@ describe("OpenProse deployments", () => {
         }),
       ]),
     );
+  });
+
+  test("local deployment store initializes, redacts bindings, and records triggers", async () => {
+    const root = createDeploymentFixture({
+      version: "0.1.0",
+      sourceSha: "3434343434343434343434343434343434343434",
+    });
+    const stateRoot = mkdtempSync(join(tmpdir(), "openprose-deployment-state-"));
+    const initialized = await initLocalDeployment(root, {
+      name: "Fixture Deployment",
+      stateRoot,
+      enabledEntrypoints: ["daily-intel"],
+      environmentBindings: {
+        ACME_SECRET: "super-secret-value",
+      },
+      generatedAt: "2026-04-26T01:00:00.000Z",
+    });
+
+    expect(initialized.layout.root).toBe(stateRoot);
+    const manifest = await readLocalDeploymentManifest(stateRoot);
+    expect(manifest.environment_bindings).toEqual({
+      ACME_SECRET: "[bound]",
+    });
+
+    const triggered = await triggerLocalDeployment(stateRoot, {
+      entrypoint: "daily-intel",
+      approvedEffects: ["delivers"],
+      createdAt: "2026-04-26T01:01:00.000Z",
+    });
+
+    expect(triggered.run).toMatchObject({
+      entrypoint_ref: "daily-intel",
+      status: "succeeded",
+      plan_status: "ready",
+    });
+    expect(triggered.pointer.current_run_id).toBe(triggered.run.run_id);
+    expect(await readDeploymentEntrypointPointer(stateRoot, "daily-intel")).toMatchObject({
+      current_run_id: triggered.run.run_id,
+      latest_run_id: triggered.run.run_id,
+    });
+    expect(await readDeploymentRunIndex(stateRoot)).toHaveLength(1);
   });
 });
 
