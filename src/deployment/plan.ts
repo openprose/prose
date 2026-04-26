@@ -8,6 +8,8 @@ import type {
   GraphViewNode,
   PackageIR,
   PlanNode,
+  PortIR,
+  ProseIR,
   RunRecord,
 } from "../types.js";
 import { loadCurrentRunSet, type CurrentRunSet } from "../plan.js";
@@ -32,6 +34,13 @@ export interface PackageEntrypointPlanResult {
   plan: ExecutionPlan;
   components: ComponentIR[];
   edges: GraphEdgeIR[];
+  diagnostics: Diagnostic[];
+}
+
+export interface PackageEntrypointRuntimeIrResult {
+  runtime_ir_version: "0.1";
+  entrypoint: PackageEntrypointPlanResult["entrypoint"];
+  ir: ProseIR;
   diagnostics: Diagnostic[];
 }
 
@@ -175,6 +184,174 @@ export function buildPackageEntrypointGraphView(
     nodes,
     edges,
     diagnostics: result.plan.diagnostics,
+  };
+}
+
+export function buildPackageEntrypointRuntimeIr(
+  packageIr: PackageIR,
+  result: PackageEntrypointPlanResult,
+): PackageEntrypointRuntimeIrResult {
+  const componentIds = new Set(result.components.map((component) => component.id));
+  const runtimeEdges = runtimeEdgesForEntrypoint(result, componentIds);
+  const runtimeComponents = result.components.map((component) =>
+    runtimeComponentForEntrypoint(component, {
+      entrypointId: result.entrypoint.component_id,
+      edges: runtimeEdges,
+    }),
+  );
+
+  return {
+    runtime_ir_version: "0.1",
+    entrypoint: result.entrypoint,
+    ir: {
+      ir_version: "0.1",
+      semantic_hash: packageIr.semantic_hash,
+      package: {
+        name: packageIr.manifest.name,
+        source_ref: packageIr.manifest.registry_ref ?? packageIr.manifest.name,
+        source_sha: packageIr.hashes.source_hash,
+        dependencies: packageIr.dependencies,
+      },
+      components: runtimeComponents,
+      graph: {
+        nodes: runtimeComponents.map((component) => ({
+          id: component.id,
+          component: component.id,
+          kind: component.kind,
+          source_span: component.source.span,
+        })),
+        edges: runtimeEdges,
+      },
+      diagnostics: result.diagnostics,
+    },
+    diagnostics: result.diagnostics,
+  };
+}
+
+function runtimeEdgesForEntrypoint(
+  result: PackageEntrypointPlanResult,
+  componentIds: Set<string>,
+): GraphEdgeIR[] {
+  const requestedOutputs = new Set(result.plan.requested_outputs);
+  const edges = result.edges
+    .flatMap((edge): GraphEdgeIR[] => {
+      if (edge.kind === "caller") {
+        return edge.to.component === result.entrypoint.component_id ? [edge] : [];
+      }
+      if (edge.kind === "return") {
+        return requestedOutputs.has(edge.to.port) ? [edge] : [];
+      }
+      if (edge.kind === "execution") {
+        if (!componentIds.has(edge.from.component) || !componentIds.has(edge.to.component)) {
+          return [];
+        }
+        return [{
+          from: {
+            component: edge.to.component,
+            port: "$complete",
+          },
+          to: {
+            component: edge.from.component,
+            port: edge.from.port,
+          },
+          kind: "execution",
+          confidence: edge.confidence,
+          reason: `Runtime dependency for ${edge.reason}`,
+          source: edge.source,
+        }];
+      }
+      if (componentIds.has(edge.from.component) && componentIds.has(edge.to.component)) {
+        return [edge];
+      }
+      return [];
+    })
+    .sort(sortEdges);
+
+  for (const output of requestedOutputs) {
+    const exists = edges.some(
+      (edge) => edge.to.component === "$return" && edge.to.port === output,
+    );
+    if (!exists) {
+      edges.push({
+        from: {
+          component: result.entrypoint.component_id,
+          port: output,
+        },
+        to: {
+          component: "$return",
+          port: output,
+        },
+        kind: "return",
+        confidence: 0.8,
+        reason: `Entrypoint output '${output}' is returned by '${result.entrypoint.name}'.`,
+        source: "auto",
+      });
+    }
+  }
+
+  return edges.sort(sortEdges);
+}
+
+function sortEdges(a: GraphEdgeIR, b: GraphEdgeIR): number {
+  return (
+    a.from.component.localeCompare(b.from.component) ||
+    a.from.port.localeCompare(b.from.port) ||
+    a.to.component.localeCompare(b.to.component) ||
+    a.to.port.localeCompare(b.to.port)
+  );
+}
+
+function runtimeComponentForEntrypoint(
+  component: ComponentIR,
+  options: {
+    entrypointId: string;
+    edges: GraphEdgeIR[];
+  },
+): ComponentIR {
+  const isEntrypoint = component.id === options.entrypointId;
+  return {
+    ...component,
+    ports: {
+      requires: component.ports.requires.map((port) =>
+        runtimePortForEntrypoint(port, {
+          componentId: component.id,
+          isEntrypoint,
+          edges: options.edges,
+        }),
+      ),
+      ensures: component.ports.ensures,
+    },
+  };
+}
+
+function runtimePortForEntrypoint(
+  port: PortIR,
+  options: {
+    componentId: string;
+    isEntrypoint: boolean;
+    edges: GraphEdgeIR[];
+  },
+): PortIR {
+  if (!port.required || options.isEntrypoint) {
+    return port;
+  }
+
+  const hasDataDependency = options.edges.some(
+    (edge) =>
+      edge.to.component === options.componentId &&
+      edge.to.port === port.name &&
+      edge.from.component !== "$caller",
+  );
+  if (hasDataDependency) {
+    return port;
+  }
+
+  return {
+    ...port,
+    required: false,
+    description: port.description
+      ? `${port.description} Resolved by the package entrypoint at runtime.`
+      : "Resolved by the package entrypoint at runtime.",
   };
 }
 

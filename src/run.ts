@@ -3,7 +3,7 @@ import { randomBytes } from "node:crypto";
 import { dirname, join, resolve } from "node:path";
 import { compileSource } from "./compiler.js";
 import { projectManifest } from "./manifest.js";
-import { loadCurrentRunSet, planSource, type CurrentRunSet } from "./plan.js";
+import { loadCurrentRunSet, planIr, type CurrentRunSet } from "./plan.js";
 import {
   approvedEffectsFromRecords,
   createLocalEffectApprovalRecord,
@@ -101,6 +101,7 @@ export interface RunOptions {
   currentRun?: CurrentRunSet;
   currentRunPath?: string;
   targetOutputs?: string[];
+  executeProgramNodes?: boolean;
 }
 
 export interface OpenProseRunResult extends MaterializedRun {
@@ -146,6 +147,13 @@ export async function runSource(
   options: RunOptions & { path: string },
 ): Promise<OpenProseRunResult> {
   const ir = compileSource(source, { path: options.path });
+  return runIr(ir, options);
+}
+
+export async function runIr(
+  ir: ProseIR,
+  options: RunOptions & { path: string },
+): Promise<OpenProseRunResult> {
   const createdAt = options.createdAt ?? new Date().toISOString();
   const runId = options.runId ?? createRunId(createdAt);
   const runRoot = options.runRoot ?? ".prose/runs";
@@ -156,12 +164,13 @@ export async function runSource(
   const currentRun = options.currentRunPath
     ? await loadCurrentRunSet(options.currentRunPath)
     : options.currentRun ?? { graph: null, nodes: [] };
-  const plan = planSource(source, {
+  const plan = planIr(ir, {
     path: options.path,
     inputs: options.inputs,
     approvedEffects,
     currentRun,
     targetOutputs: options.targetOutputs,
+    executeProgramNodes: options.executeProgramNodes,
   });
   const selectedRuntime = selectedGraphVmName(options.graphVm, options.nodeRunner, options.outputs);
   const runtimeProfile = resolveRuntimeProfile({
@@ -230,7 +239,7 @@ export async function runSource(
     );
   }
 
-  const executable = executableComponents(ir);
+  const executable = executableComponents(ir, options.executeProgramNodes);
   if (ir.components.some((component) => component.kind === "program") && executable.length > 0) {
     return executeGraphRun(ctx, executable);
   }
@@ -994,9 +1003,12 @@ async function writeArtifactFile(
   await writeFile(path, content.endsWith("\n") ? content : `${content}\n`, "utf8");
 }
 
-function executableComponents(ir: ProseIR): ComponentIR[] {
+function executableComponents(
+  ir: ProseIR,
+  executeProgramNodes = false,
+): ComponentIR[] {
   const main = ir.components.find((component) => component.kind === "program");
-  return main && ir.components.length > 1
+  return main && ir.components.length > 1 && !executeProgramNodes
     ? ir.components.filter((component) => component.id !== main.id)
     : ir.components;
 }

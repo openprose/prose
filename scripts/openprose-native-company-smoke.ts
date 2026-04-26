@@ -135,6 +135,8 @@ const summary = {
     entrypoint_ref: run.run.entrypoint_ref,
     status: run.run.status,
     plan_status: run.run.plan_status,
+    node_run_count: run.run.node_run_count,
+    output_count: run.run.output_count,
     current_run_id: run.pointer.current_run_id,
     latest_run_id: run.pointer.latest_run_id,
   })),

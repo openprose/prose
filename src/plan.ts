@@ -24,6 +24,7 @@ export interface PlanOptions {
   targetOutputs?: string[];
   approvedEffects?: string[];
   now?: Date | string;
+  executeProgramNodes?: boolean;
 }
 
 export async function planFile(
@@ -39,9 +40,13 @@ export async function planFile(
 
 export function planSource(source: string, options: PlanOptions): ExecutionPlan {
   const ir = compileSource(source, { path: options.path });
+  return planIr(ir, options);
+}
+
+export function planIr(ir: ProseIR, options: PlanOptions): ExecutionPlan {
   const main = ir.components.find((component) => component.kind === "program");
   const executable =
-    main && ir.components.length > 1
+    main && ir.components.length > 1 && !options.executeProgramNodes
       ? ir.components.filter((component) => component.id !== main.id)
       : ir.components;
   const inputs = options.inputs ?? {};

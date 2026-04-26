@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { describe, expect, test } from "bun:test";
@@ -273,7 +273,13 @@ describe("OpenProse deployments", () => {
       entrypoint_ref: "daily-intel",
       status: "succeeded",
       plan_status: "ready",
+      node_run_count: 3,
+      output_count: 1,
     });
+    expect(triggered.run.openprose_run_ref).toBe(
+      `runtime-runs/${triggered.run.run_id}/run.json`,
+    );
+    expect(existsSync(join(stateRoot, triggered.run.openprose_run_ref!))).toBe(true);
     expect(triggered.pointer.current_run_id).toBe(triggered.run.run_id);
     expect(await readDeploymentEntrypointPointer(stateRoot, "daily-intel")).toMatchObject({
       current_run_id: triggered.run.run_id,

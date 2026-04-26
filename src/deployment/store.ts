@@ -10,6 +10,8 @@ export interface LocalDeploymentStoreLayout {
   manifest_path: string;
   events_path: string;
   runs_dir: string;
+  runtime_runs_dir: string;
+  runtime_store_dir: string;
   pointers_dir: string;
   indexes_dir: string;
 }
@@ -39,6 +41,11 @@ export interface DeploymentRunRecord {
   status: RunLifecycleStatus;
   plan_status: ExecutionPlan["status"];
   plan_ref: string;
+  openprose_run_id: string | null;
+  openprose_run_ref: string | null;
+  openprose_plan_ref: string | null;
+  node_run_count: number;
+  output_count: number;
   created_at: string;
   completed_at: string | null;
   diagnostics: string[];
@@ -62,6 +69,8 @@ export function resolveLocalDeploymentStoreLayout(root: string): LocalDeployment
     manifest_path: joinNormalized(resolved, "deployment.json"),
     events_path: joinNormalized(resolved, "events.jsonl"),
     runs_dir: joinNormalized(resolved, "runs"),
+    runtime_runs_dir: joinNormalized(resolved, "runtime-runs"),
+    runtime_store_dir: joinNormalized(resolved, "runtime-store"),
     pointers_dir: joinNormalized(resolved, "pointers"),
     indexes_dir: joinNormalized(resolved, "indexes"),
   };
@@ -73,6 +82,8 @@ export async function initLocalDeploymentStore(
 ): Promise<{ layout: LocalDeploymentStoreLayout; metadata: LocalDeploymentStoreMetadata }> {
   const layout = resolveLocalDeploymentStoreLayout(manifest.identity.state_root);
   await mkdir(layout.runs_dir, { recursive: true });
+  await mkdir(layout.runtime_runs_dir, { recursive: true });
+  await mkdir(layout.runtime_store_dir, { recursive: true });
   await mkdir(layout.pointers_dir, { recursive: true });
   await mkdir(layout.indexes_dir, { recursive: true });
 
