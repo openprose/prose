@@ -41,6 +41,19 @@ That writes:
 - [measurements/latest.md](measurements/latest.md)
 - [measurements/latest.json](measurements/latest.json)
 
+For opt-in live Pi coverage:
+
+```bash
+OPENPROSE_LIVE_PI_SMOKE=1 \
+OPENPROSE_PI_API_KEY="$OPENROUTER_API_KEY" \
+bun run smoke:live-pi -- --tier cheap
+```
+
+That writes:
+
+- [measurements/live-pi.latest.md](measurements/live-pi.latest.md)
+- [measurements/live-pi.latest.json](measurements/live-pi.latest.json)
+
 ## Why These Metrics Matter
 
 These are not vanity metrics. They are leading indicators of whether OpenProse is delivering on its core promises:
@@ -59,6 +72,7 @@ The measurement harness intentionally stays local-first:
 - it compiles source directly
 - it plans against locally materialized runs
 - it uses package metadata generated from source
+- it records live Pi status separately from deterministic scripted Pi checks
 - it can optionally include the local reference company if it is present in the workspace
 
 That keeps the signal fast and reproducible while the hosted product continues to mature.

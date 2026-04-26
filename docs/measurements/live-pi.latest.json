@@ -1,0 +1,27 @@
+{
+  "live_pi_smoke_version": "0.1",
+  "generated_at": "2026-04-26T14:25:51.717Z",
+  "enabled": false,
+  "selected_tiers": [
+    "cheap"
+  ],
+  "model_provider": "openrouter",
+  "model": "google/gemini-3-flash-preview",
+  "run_root": "/Users/sl/code/openprose/platform/external/prose/.prose/live-pi-runs",
+  "results": [
+    {
+      "tier": "cheap",
+      "label": "company-signal-brief",
+      "source": "examples/north-star/company-signal-brief.prose.md",
+      "status": "skipped",
+      "failure_class": null,
+      "duration_ms": 0,
+      "run_id": null,
+      "run_dir": "/Users/sl/code/openprose/platform/external/prose/.prose/live-pi-runs",
+      "session_count": 0,
+      "trace_events": 0,
+      "diagnostics": []
+    }
+  ],
+  "status": "skipped"
+}

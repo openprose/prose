@@ -68,7 +68,7 @@ interface ReleaseChecksSnapshot {
     eval_failures: string[];
   };
   live_pi_smoke: {
-    status: "skipped" | "pending_implementation";
+    status: "skipped" | "available";
     enabled: boolean;
     model_provider: string;
     model: string;
@@ -790,13 +790,19 @@ function publishCheckSnapshot(result: Timed<PublishCheckResult>): PublishCheckSn
 function livePiSmokeSnapshot(): ReleaseChecksSnapshot["live_pi_smoke"] {
   const enabled = process.env.OPENPROSE_LIVE_PI_SMOKE === "1";
   return {
-    status: enabled ? "pending_implementation" : "skipped",
+    status: enabled ? "available" : "skipped",
     enabled,
-    model_provider: process.env.OPENPROSE_MODEL_PROVIDER ?? "openrouter",
-    model: process.env.OPENPROSE_MODEL ?? "google/gemini-3-flash-preview",
+    model_provider:
+      process.env.OPENPROSE_LIVE_PI_MODEL_PROVIDER ??
+      process.env.OPENPROSE_PI_MODEL_PROVIDER ??
+      "openrouter",
+    model:
+      process.env.OPENPROSE_LIVE_PI_MODEL_ID ??
+      process.env.OPENPROSE_PI_MODEL_ID ??
+      "google/gemini-3-flash-preview",
     reason: enabled
-      ? "Phase 06.2 owns the live Pi smoke ladder implementation."
-      : "Set OPENPROSE_LIVE_PI_SMOKE=1 after Phase 06.2 is implemented.",
+      ? "Run bun run smoke:live-pi to write the live Pi smoke report."
+      : "Run OPENPROSE_LIVE_PI_SMOKE=1 bun run smoke:live-pi -- --tier cheap.",
   };
 }
 

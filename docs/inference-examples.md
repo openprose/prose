@@ -52,6 +52,45 @@ bun run prose run examples/north-star/lead-program-designer.prose.md \
 The repository test suite keeps deterministic coverage with scripted Pi
 sessions while live runs exercise the real harness boundary.
 
+## Live Pi Smoke Ladder
+
+Use the smoke ladder when you want to exercise the real Pi SDK boundary without
+turning live inference into a required local test.
+
+```bash
+OPENPROSE_LIVE_PI_SMOKE=1 \
+OPENPROSE_PI_API_KEY="$OPENROUTER_API_KEY" \
+bun run smoke:live-pi -- --tier cheap
+```
+
+Tiers:
+
+- `cheap`: `company-signal-brief`, one Pi session over caller-provided notes
+- `medium`: `lead-program-designer`, three Pi node sessions with upstream
+  artifact handoff
+- `complex`: `stargazer-intake-lite`, five Pi node sessions with
+  `writes_memory` approval
+- `all`: runs all three tiers in order
+
+Defaults:
+
+- model provider: `openrouter`
+- model: `google/gemini-3-flash-preview`
+- output: `docs/measurements/live-pi.latest.json` and
+  `docs/measurements/live-pi.latest.md`
+
+Useful overrides:
+
+```bash
+OPENPROSE_LIVE_PI_MODEL_ID=openai/gpt-5.5 \
+OPENPROSE_LIVE_PI_THINKING_LEVEL=medium \
+OPENPROSE_LIVE_PI_TIMEOUT_MS=240000 \
+bun run smoke:live-pi -- --tier all --run-root /tmp/openprose-live-pi/runs
+```
+
+The script skips cleanly unless `OPENPROSE_LIVE_PI_SMOKE=1` or `--enable` is
+set. Missing auth is reported as `auth_missing` before any Pi session starts.
+
 ## Expected Trace Shape
 
 ```text
