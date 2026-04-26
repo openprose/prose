@@ -45,6 +45,13 @@ bun run confidence:runtime
 bun run smoke:live-pi
 ```
 
+## Distribution
+
+The repo root is a source workspace, not the public npm artifact. Use
+`bun run prose ...` while developing here. `bun run build:binary` creates
+`dist/prose` and writes a dist-specific `package.json` whose `bin.prose` points
+at the compiled binary.
+
 ## Mental Model
 
 OpenProse is not "just markdown."

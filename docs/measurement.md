@@ -53,6 +53,10 @@ It includes strict publish checks, deterministic run materialization, release
 approval backpressure, measurement generation, hosted envelope fixtures, binary
 smoke, and a skipped-by-default live Pi rung.
 
+`smoke:binary` builds the public CLI artifact under `dist/`. The repository
+root package remains private because it is the development workspace; the dist
+package is the one with a package-manager `bin`.
+
 For opt-in live Pi coverage:
 
 ```bash

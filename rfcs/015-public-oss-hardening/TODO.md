@@ -269,7 +269,7 @@ Checks:
 - `bun test test/rfc-history.test.ts test/docs-public.test.ts`
 - manual read-through of the Phase 04 entry point from a first-time contributor perspective
 
-### [todo] Package publication surface is still split between source package and binary package
+### [done] Package publication surface is still split between source package and binary package
 
 Finding: `build:binary` writes a clean `dist/package.json`, but source
 `package.json` still points `bin.prose` at `./bin/prose.ts` and has no public
@@ -277,18 +277,22 @@ Finding: `build:binary` writes a clean `dist/package.json`, but source
 binary, the source package should make that explicit and avoid ambiguous Node
 package expectations.
 
-Proposed fix:
+Resolved:
 
-- decide whether the root package is source-only, Bun-only, or publishable
-  directly
-- make `package.json`, `dist/package.json`, README install instructions, and
-  smoke tests agree
-- avoid advertising an import surface that is not intentionally supported
+- made the repository root package an explicit private source workspace
+- removed the root package-manager `bin` so direct npm publication from the
+  source tree is not implied
+- kept `bun run prose` as the source-workspace developer entry point
+- expanded generated `dist/package.json` metadata as the publishable binary
+  package surface
+- documented the source-workspace versus dist-binary distinction in public docs
+- added a regression test for both package surfaces
 
 Checks:
 
 - `bun run smoke:binary`
 - inspect root `package.json` and `dist/package.json`
+- `bun test test/binary-package.test.ts test/docs-public.test.ts`
 - `bun run typecheck`
 
 ## P1: Runtime Robustness

@@ -5,6 +5,29 @@ interface RootPackageJson {
   name: string;
   version: string;
   description?: string;
+  license?: string;
+  homepage?: string;
+  repository?: unknown;
+  bugs?: unknown;
+  keywords?: string[];
+}
+
+export function createDistPackageJson(rootPackage: RootPackageJson) {
+  return {
+    name: rootPackage.name,
+    version: rootPackage.version,
+    description:
+      rootPackage.description ?? "OpenProse compiler and local reactive runtime.",
+    license: rootPackage.license ?? "MIT",
+    homepage: rootPackage.homepage,
+    repository: rootPackage.repository,
+    bugs: rootPackage.bugs,
+    keywords: rootPackage.keywords ?? [],
+    bin: {
+      prose: "./prose",
+    },
+    files: ["prose"],
+  };
 }
 
 async function main(): Promise<void> {
@@ -12,15 +35,7 @@ async function main(): Promise<void> {
   const rootPackage = JSON.parse(
     await readFile(resolve(repoRoot, "package.json"), "utf8"),
   ) as RootPackageJson;
-  const distPackage = {
-    name: rootPackage.name,
-    version: rootPackage.version,
-    description: rootPackage.description ?? "OpenProse compiler and runtime tooling.",
-    bin: {
-      prose: "./prose",
-    },
-    files: ["prose"],
-  };
+  const distPackage = createDistPackageJson(rootPackage);
 
   await mkdir(resolve(repoRoot, "dist"), { recursive: true });
   await writeFile(
@@ -30,4 +45,6 @@ async function main(): Promise<void> {
   );
 }
 
-await main();
+if (import.meta.main) {
+  await main();
+}

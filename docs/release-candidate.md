@@ -44,6 +44,9 @@ Latest generated reports:
   opt-in live report when credentials are present.
 - Package metadata and hosted contract fixtures are stable.
 - `examples`, `packages/std`, and `packages/co` pass strict publish checks.
+- The root source package stays private and does not advertise a package-manager
+  `bin`.
+- The generated `dist/package.json` is the publishable binary package surface.
 - `dist/prose` can render help and compile
   `examples/north-star/company-signal-brief.prose.md`.
 - CLI help, status, trace, and graph output explain the runtime loop clearly.

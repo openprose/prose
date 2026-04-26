@@ -1,11 +1,25 @@
 {
   "name": "@openprose/prose",
   "version": "0.11.0-dev",
-  "description": "OpenProse compiler and runtime tooling.",
-  "type": "module",
-  "bin": {
-    "prose": "./bin/prose.ts"
+  "description": "OpenProse compiler and local reactive runtime.",
+  "private": true,
+  "license": "MIT",
+  "homepage": "https://github.com/openprose/prose#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/openprose/prose.git"
   },
+  "bugs": {
+    "url": "https://github.com/openprose/prose/issues"
+  },
+  "keywords": [
+    "agents",
+    "openprose",
+    "reactive-runtime",
+    "pi",
+    "workflow"
+  ],
+  "type": "module",
   "scripts": {
     "prose": "bun bin/prose.ts",
     "build:binary": "bun build --compile --target=bun --outfile dist/prose ./bin/prose.ts && bun scripts/write-dist-package.ts",

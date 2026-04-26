@@ -158,6 +158,18 @@ bun run smoke:binary
 bun run smoke:live-pi
 ```
 
+Build the distributable CLI:
+
+```bash
+bun run build:binary
+./dist/prose help
+```
+
+The repository root package is marked private because it is the source
+workspace, not the install artifact. Run it with `bun run prose ...` while
+developing. The publishable package is generated in `dist/` and contains the
+compiled `prose` binary plus its own package metadata.
+
 `smoke:live-pi` skips by default. Set `OPENPROSE_LIVE_PI_SMOKE=1` and
 Pi/OpenRouter credentials when you want opt-in model-backed evidence:
 
