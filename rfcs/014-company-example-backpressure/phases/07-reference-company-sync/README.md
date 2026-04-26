@@ -82,6 +82,8 @@ Closeout checks:
   components.
 - `platform/external/prose`: `bun test` passes with 240 pass and 2 live-smoke
   skips after the source-sync sequence.
+- `customers/prose-openprose`: `scripts/validate-openprose-local.sh` passes
+  after updating its runtime smoke from `prose materialize` to `prose run`.
 
 ## 07.3 Promote Golden Runs Carefully
 
@@ -109,3 +111,8 @@ Commit:
 Signpost:
 
 - Add `signposts/032-golden-run-promotion.md`.
+
+Open question:
+
+- Promote semantic golden snapshots now, or defer until the Pi-first runtime
+  replaces the temporary fixture provider in local smoke tests.

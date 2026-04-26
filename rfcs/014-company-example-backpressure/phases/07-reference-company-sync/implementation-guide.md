@@ -63,6 +63,8 @@ Closeout validation:
 - full customer `systems` lint passes with 0 diagnostics
 - customer publish-check passes with 99 components
 - OSS suite passes with 240 pass and 2 live-smoke skips
+- customer `scripts/validate-openprose-local.sh` passes after switching the
+  runtime smoke from `prose materialize` to `prose run`
 
 ## 07.3 Golden Runs
 
@@ -85,3 +87,10 @@ Commit/signpost:
 
 - `test: add golden company example runs`
 - `signposts/032-golden-run-promotion.md`
+
+Decision to make before implementation:
+
+- If the runtime is still using the temporary fixture provider, prefer semantic
+  snapshots over full run directories. If the Pi-first runtime has landed, add
+  replay fixtures that prove persisted Pi sessions, typed artifacts, and graph
+  invalidation together.
