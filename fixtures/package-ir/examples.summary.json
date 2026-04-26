@@ -1,12 +1,12 @@
 {
   "package_ir_version": "0.1",
-  "semantic_hash": "efdb60b24d81235e340d65d85cea6d38d768536eb30fe8356045c8eca98681fc",
+  "semantic_hash": "124930eaa27b36f9947f79f451e0b87136e4bbf0b075c3a251eec5e1751ce82a",
   "hashes": {
-    "source_hash": "1947878003c3bad46a9d3f05df18add50016186e60d6e5c33dabba4d110bf8cb",
-    "semantic_hash": "efdb60b24d81235e340d65d85cea6d38d768536eb30fe8356045c8eca98681fc",
+    "source_hash": "7f216b62b689ba99b65dc9c55166110a8a977c5d67521888f4317c23aaaf01f2",
+    "semantic_hash": "124930eaa27b36f9947f79f451e0b87136e4bbf0b075c3a251eec5e1751ce82a",
     "dependency_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-    "policy_hash": "4489b6b03cd9216f4d24b8b77db73486883b7234faabd931e06871cb62bef36c",
-    "runtime_config_hash": "c33775a60cd0bc535cd5134d4ae8521e9666efd67a511df512dd7e7329541151"
+    "policy_hash": "cd4258bde5e2bbc59c07816a6aefb7d56ccc82cbb3a2647e3fdc13048728d1d1",
+    "runtime_config_hash": "21963025473f23c224fe949bd7aa1ccbce78f53458758b04fd3dca59e8bb7620"
   },
   "manifest": {
     "name": "@openprose/examples",
@@ -194,8 +194,9 @@
       "path": "north-star/stargazer-intake-lite.prose.md",
       "component_ids": [
         "north-star-stargazer-intake-lite--stargazer-intake-lite",
-        "north-star-stargazer-intake-lite--stargazer-ranker",
-        "north-star-stargazer-intake-lite--stargazer-enricher",
+        "north-star-stargazer-intake-lite--stargazer-batch-reader",
+        "north-star-stargazer-intake-lite--stargazer-prioritizer",
+        "north-star-stargazer-intake-lite--stargazer-profile-classifier",
         "north-star-stargazer-intake-lite--stargazer-memory-writer",
         "north-star-stargazer-intake-lite--stargazer-digest-writer"
       ],
@@ -371,8 +372,9 @@
       "exists": true,
       "component_ids": [
         "north-star-stargazer-intake-lite--stargazer-intake-lite",
-        "north-star-stargazer-intake-lite--stargazer-ranker",
-        "north-star-stargazer-intake-lite--stargazer-enricher",
+        "north-star-stargazer-intake-lite--stargazer-batch-reader",
+        "north-star-stargazer-intake-lite--stargazer-prioritizer",
+        "north-star-stargazer-intake-lite--stargazer-profile-classifier",
         "north-star-stargazer-intake-lite--stargazer-memory-writer",
         "north-star-stargazer-intake-lite--stargazer-digest-writer"
       ],
@@ -385,7 +387,7 @@
       "delivers": 2,
       "human_gate": 2,
       "mutates_repo": 2,
-      "pure": 29,
+      "pure": 30,
       "read_external": 2,
       "writes_memory": 4
     },
@@ -635,15 +637,15 @@
       "expansions": []
     },
     {
-      "id": "north-star-stargazer-intake-lite--stargazer-digest-writer",
-      "name": "stargazer-digest-writer",
+      "id": "north-star-stargazer-intake-lite--stargazer-batch-reader",
+      "name": "stargazer-batch-reader",
       "kind": "service",
       "path": "north-star/stargazer-intake-lite.prose.md",
       "expansions": []
     },
     {
-      "id": "north-star-stargazer-intake-lite--stargazer-enricher",
-      "name": "stargazer-enricher",
+      "id": "north-star-stargazer-intake-lite--stargazer-digest-writer",
+      "name": "stargazer-digest-writer",
       "kind": "service",
       "path": "north-star/stargazer-intake-lite.prose.md",
       "expansions": []
@@ -663,24 +665,31 @@
       "expansions": []
     },
     {
-      "id": "north-star-stargazer-intake-lite--stargazer-ranker",
-      "name": "stargazer-ranker",
+      "id": "north-star-stargazer-intake-lite--stargazer-prioritizer",
+      "name": "stargazer-prioritizer",
+      "kind": "service",
+      "path": "north-star/stargazer-intake-lite.prose.md",
+      "expansions": []
+    },
+    {
+      "id": "north-star-stargazer-intake-lite--stargazer-profile-classifier",
+      "name": "stargazer-profile-classifier",
       "kind": "service",
       "path": "north-star/stargazer-intake-lite.prose.md",
       "expansions": []
     }
   ],
   "graph": {
-    "node_count": 39,
-    "edge_count": 79,
+    "node_count": 40,
+    "edge_count": 82,
     "edge_kinds": {
       "caller": 11,
-      "exact": 24,
-      "execution": 22,
-      "return": 22
+      "exact": 25,
+      "execution": 23,
+      "return": 23
     }
   },
   "diagnostics": {
-    "ambiguous_package_exact_wiring": 24
+    "ambiguous_package_exact_wiring": 25
   }
 }

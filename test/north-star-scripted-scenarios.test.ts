@@ -140,14 +140,39 @@ function scenarios(): NorthStarScenario[] {
       },
       approvedEffects: ["writes_memory"],
       submissionsByComponent: {
-        "stargazer-ranker": submission({
-          ranked_stargazers: JSON.stringify({
+        "stargazer-batch-reader": submission({
+          stargazer_batch_delta: JSON.stringify({
+            repo: "openprose/prose",
+            high_water_before: "2026-04-25T23:59:59Z",
+            new_stargazers: [
+              {
+                login: "ops-builder",
+                starred_at: "2026-04-26T08:15:00Z",
+                company: "Northwind Ops",
+              },
+            ],
+            skipped: [
+              { login: "prior-founder", reason: "already handled" },
+              { login: "ops-builder", reason: "duplicate row" },
+            ],
+          }),
+        }),
+        "stargazer-prioritizer": submission({
+          prioritized_stargazers: JSON.stringify({
             rows: [{ login: "ops-builder", rank: 1, reason: "agent platform signal" }],
           }),
         }),
-        "stargazer-enricher": submission({
+        "stargazer-profile-classifier": submission({
           stargazer_enrichment_records: JSON.stringify({
-            rows: [{ login: "ops-builder", private_note: "internal platform buyer" }],
+            rows: [
+              {
+                login: "ops-builder",
+                repo: "openprose/prose",
+                starred_at: "2026-04-26T08:15:00Z",
+                public_reason: "building internal agent platforms",
+                private_note: "internal platform buyer",
+              },
+            ],
           }),
         }),
         "stargazer-memory-writer": submission(
@@ -164,7 +189,8 @@ function scenarios(): NorthStarScenario[] {
         }),
       },
       expectedOutputs: [
-        "ranked_stargazers",
+        "stargazer_batch_delta",
+        "prioritized_stargazers",
         "stargazer_enrichment_records",
         "stargazer_memory_delta",
         "stargazer_digest",

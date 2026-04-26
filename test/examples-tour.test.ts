@@ -53,12 +53,13 @@ describe("OpenProse north-star examples", () => {
       "release-proposal-dry-run",
       "release-proposal-dry-run-eval",
       "save-grow-program-drafter",
+      "stargazer-batch-reader",
       "stargazer-digest-writer",
-      "stargazer-enricher",
       "stargazer-intake-lite",
       "stargazer-intake-lite-eval",
       "stargazer-memory-writer",
-      "stargazer-ranker",
+      "stargazer-prioritizer",
+      "stargazer-profile-classifier",
     ]);
     expect(metadata.manifest.examples).toEqual([
       "north-star/agent-ecosystem-index-refresh.prose.md",
