@@ -1,5 +1,42 @@
 {
-  "generated_at": "2026-04-26T14:00:28.993Z",
+  "measurement_version": "0.2",
+  "generated_at": "2026-04-26T14:18:48.894Z",
+  "release_checks": {
+    "examples_compile": {
+      "status": "pass",
+      "elapsed_ms": 6.07,
+      "component_count": 42,
+      "diagnostic_count": 30,
+      "error_count": 0
+    },
+    "examples_publish_check": {
+      "status": "pass",
+      "strict": false,
+      "elapsed_ms": 73.05,
+      "blocker_count": 0,
+      "warning_count": 0
+    },
+    "examples_strict_publish_check": {
+      "status": "pass",
+      "strict": true,
+      "elapsed_ms": 68.94,
+      "blocker_count": 0,
+      "warning_count": 0
+    },
+    "scripted_pi_runs": {
+      "status": "pass",
+      "scenario_count": 4,
+      "total_scripted_sessions": 13,
+      "eval_failures": []
+    },
+    "live_pi_smoke": {
+      "status": "skipped",
+      "enabled": false,
+      "model_provider": "openrouter",
+      "model": "google/gemini-3-flash-preview",
+      "reason": "Set OPENPROSE_LIVE_PI_SMOKE=1 after Phase 06.2 is implemented."
+    }
+  },
   "packages": [
     {
       "label": "examples",
@@ -52,20 +89,36 @@
   ],
   "scenarios": {
     "company_signal_brief": {
-      "compile_ms": 2.94,
+      "compile_ms": 0.31,
+      "run_ms": 39.78,
       "status": "succeeded",
       "eval_status": "passed",
       "eval_score": 0.93,
       "trace_events": 9,
-      "scripted_session_count": 1
+      "scripted_session_count": 1,
+      "runtime_telemetry": {
+        "duration_ms": 39.78,
+        "session_count": 1,
+        "token_usage": null,
+        "estimated_cost_usd": null,
+        "telemetry_source": "scripted_pi_unmetered"
+      }
     },
     "lead_program_designer": {
-      "compile_ms": 0.38,
+      "compile_ms": 0.42,
+      "run_ms": 44.19,
       "status": "succeeded",
       "eval_status": "passed",
       "eval_score": 0.91,
       "trace_events": 29,
       "scripted_session_count": 3,
+      "runtime_telemetry": {
+        "duration_ms": 44.19,
+        "session_count": 3,
+        "token_usage": null,
+        "estimated_cost_usd": null,
+        "telemetry_source": "scripted_pi_unmetered"
+      },
       "graph_nodes": 3,
       "first_run_executed_nodes": [
         "lead-profile-normalizer",
@@ -89,11 +142,19 @@
     },
     "stargazer_intake_lite": {
       "compile_ms": 0.44,
+      "run_ms": 59.47,
       "status": "succeeded",
       "eval_status": "passed",
       "eval_score": 0.94,
       "trace_events": 47,
       "scripted_session_count": 5,
+      "runtime_telemetry": {
+        "duration_ms": 59.47,
+        "session_count": 5,
+        "token_usage": null,
+        "estimated_cost_usd": null,
+        "telemetry_source": "scripted_pi_unmetered"
+      },
       "graph_nodes": 5,
       "memory_artifact_count": 1,
       "duplicate_suppression_count": 1,
@@ -104,12 +165,20 @@
       "stale_reason_summaries": []
     },
     "opportunity_discovery_lite": {
-      "compile_ms": 0.37,
+      "compile_ms": 0.4,
+      "run_ms": 50.24,
       "status": "succeeded",
       "eval_status": "passed",
       "eval_score": 0.92,
       "trace_events": 38,
       "scripted_session_count": 4,
+      "runtime_telemetry": {
+        "duration_ms": 50.24,
+        "session_count": 4,
+        "token_usage": null,
+        "estimated_cost_usd": null,
+        "telemetry_source": "scripted_pi_unmetered"
+      },
       "graph_nodes": 4,
       "rejected_stale_count": 1,
       "rejected_missing_provenance_count": 1,
@@ -131,7 +200,7 @@
       ]
     },
     "approval_gated_release": {
-      "elapsed_ms": 0.63,
+      "elapsed_ms": 0.78,
       "status": "blocked",
       "blocked_effect_nodes": [
         "announce-release"

@@ -4,13 +4,14 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { performance } from "node:perf_hooks";
 import { compileFile } from "../src/compiler";
+import { compilePackagePath } from "../src/ir";
 import { packagePath } from "../src/package";
 import { planFile } from "../src/plan";
 import { publishCheckPath } from "../src/publish";
 import { runFile } from "../src/run";
 import { traceFile } from "../src/trace";
 import { scriptedPiRuntime } from "../test/support/scripted-pi-session";
-import type { ExecutionPlan, RunRecord } from "../src/types";
+import type { ExecutionPlan, PackageIR, PublishCheckResult, RunRecord } from "../src/types";
 import type { OutputSubmissionPayload } from "../src/runtime/output-submission";
 
 interface Timed<T> {
@@ -33,11 +34,54 @@ interface PackageSnapshot {
 
 interface ExampleScenarioSnapshot {
   compile_ms?: number;
+  run_ms: number;
   status: string;
   eval_status: string | null;
   eval_score: number | null;
   trace_events: number;
   scripted_session_count: number;
+  runtime_telemetry: RuntimeTelemetrySnapshot;
+}
+
+interface RuntimeTelemetrySnapshot {
+  duration_ms: number;
+  session_count: number;
+  token_usage: null;
+  estimated_cost_usd: null;
+  telemetry_source: "scripted_pi_unmetered";
+}
+
+interface ReleaseChecksSnapshot {
+  examples_compile: {
+    status: "pass" | "fail";
+    elapsed_ms: number;
+    component_count: number;
+    diagnostic_count: number;
+    error_count: number;
+  };
+  examples_publish_check: PublishCheckSnapshot;
+  examples_strict_publish_check: PublishCheckSnapshot;
+  scripted_pi_runs: {
+    status: "pass" | "fail";
+    scenario_count: number;
+    total_scripted_sessions: number;
+    eval_failures: string[];
+  };
+  live_pi_smoke: {
+    status: "skipped" | "pending_implementation";
+    enabled: boolean;
+    model_provider: string;
+    model: string;
+    reason: string;
+  };
+}
+
+interface PublishCheckSnapshot {
+  status: "pass" | "warn" | "fail";
+  strict: boolean;
+  elapsed_ms: number;
+  blocker_count: number;
+  warning_count: number;
 }
 
 interface LeadProgramSnapshot extends ExampleScenarioSnapshot {
@@ -102,6 +146,11 @@ async function main(): Promise<void> {
     if (!examplesPackage) {
       throw new Error("Examples package measurement was not produced.");
     }
+    const examplesCompile = await time(() => compilePackagePath(examplesRoot));
+    const examplesPublish = await time(() => publishCheckPath(examplesRoot));
+    const examplesStrictPublish = await time(() =>
+      publishCheckPath(examplesRoot, { strict: true }),
+    );
 
     const companySignalPath = resolve(northStarRoot, "company-signal-brief.prose.md");
     const companySignalEvalPath = resolve(
@@ -350,81 +399,101 @@ async function main(): Promise<void> {
       duplicateSkipCount(stargazerBatchDelta.skipped ?? []) +
       duplicateClusterSuppressionCount(opportunityDedupe.clusters ?? []);
 
-    const report = {
-      generated_at: new Date().toISOString(),
-      packages,
-      scenarios: {
-        company_signal_brief: {
-          compile_ms: round2(companyCompile.elapsed_ms),
-          status: companyRun.value.record.status,
-          eval_status: evalStatus(companyRun.value.record),
-          eval_score: evalScore(companyRun.value.record),
-          trace_events: companyTrace.events.length,
-          scripted_session_count: sessionCount(companyTrace.events),
-        } satisfies ExampleScenarioSnapshot,
-        lead_program_designer: {
-          compile_ms: round2(leadCompile.elapsed_ms),
-          status: leadBase.value.record.status,
-          eval_status: evalStatus(leadBase.value.record),
-          eval_score: evalScore(leadBase.value.record),
-          trace_events: leadBaseTrace.events.length,
-          scripted_session_count: sessionCount(leadBaseTrace.events),
-          graph_nodes: leadBase.value.node_records.length,
-          first_run_executed_nodes: leadBase.value.node_records.map((record) => record.component_ref),
-          brand_change_executed_nodes: leadBrandRefresh.value.plan.materialization_set.nodes,
-          brand_change_reused_nodes: reusedNodes(leadBrandRefresh.value.plan),
-          brand_change_session_count: sessionCount(leadBrandTrace.events),
-          profile_change_executed_nodes: leadProfilePlan.value.materialization_set.nodes,
-          profile_change_reused_nodes: reusedNodes(leadProfilePlan.value),
-        } satisfies LeadProgramSnapshot,
-        stargazer_intake_lite: {
-          compile_ms: round2(stargazerCompile.elapsed_ms),
-          status: stargazerBase.value.record.status,
-          eval_status: evalStatus(stargazerBase.value.record),
-          eval_score: evalScore(stargazerBase.value.record),
-          trace_events: stargazerTrace.events.length,
-          scripted_session_count: sessionCount(stargazerTrace.events),
-          graph_nodes: stargazerBase.value.node_records.length,
-          memory_artifact_count: stargazerBase.value.record.outputs.filter((output) =>
-            output.port.includes("memory"),
-          ).length,
-          duplicate_suppression_count: duplicateSkipCount(stargazerBatchDelta.skipped ?? []),
-          skipped_count: stargazerBatchDelta.skipped?.length ?? 0,
-          high_water_mark_result: stargazerMemoryDelta.high_water_mark ?? null,
-          replay_status: stargazerReplay.value.plan.status,
-          replay_saved_nodes: stargazerReplaySavedNodes,
-          stale_reason_summaries: staleReasons(stargazerReplay.value.plan),
-        } satisfies StargazerLoopSnapshot,
-        opportunity_discovery_lite: {
-          compile_ms: round2(opportunityCompile.elapsed_ms),
-          status: opportunityBase.value.record.status,
-          eval_status: evalStatus(opportunityBase.value.record),
-          eval_score: evalScore(opportunityBase.value.record),
-          trace_events: opportunityTrace.events.length,
-          scripted_session_count: sessionCount(opportunityTrace.events),
-          graph_nodes: opportunityBase.value.node_records.length,
-          rejected_stale_count: reasonCount(opportunityWindow.rejected_rows ?? [], "older than"),
-          rejected_missing_provenance_count: reasonCount(
-            opportunityWindow.rejected_rows ?? [],
-            "missing url",
-          ),
-          duplicate_suppression_count: duplicateClusterSuppressionCount(
-            opportunityDedupe.clusters ?? [],
-          ),
-          winning_source_url: opportunityDedupe.clusters?.[0]?.winner ?? null,
-          brand_change_executed_nodes: opportunityBrandRefresh.value.plan.materialization_set.nodes,
-          brand_change_reused_nodes: reusedNodes(opportunityBrandRefresh.value.plan),
-          brand_change_saved_nodes: opportunityBrandSavedNodes,
-          stale_reason_summaries: staleReasons(opportunityBrandRefresh.value.plan),
-        } satisfies OpportunityLoopSnapshot,
-        approval_gated_release: {
-          elapsed_ms: round2(approvalPlan.elapsed_ms),
-          status: approvalPlan.value.status,
-          blocked_effect_nodes: approvalPlan.value.nodes
-            .filter((node) => node.status === "blocked_effect")
-            .map((node) => node.component_ref),
-        },
+    const scenarios = {
+      company_signal_brief: {
+        compile_ms: round2(companyCompile.elapsed_ms),
+        run_ms: round2(companyRun.elapsed_ms),
+        status: companyRun.value.record.status,
+        eval_status: evalStatus(companyRun.value.record),
+        eval_score: evalScore(companyRun.value.record),
+        trace_events: companyTrace.events.length,
+        scripted_session_count: sessionCount(companyTrace.events),
+        runtime_telemetry: runtimeTelemetry(companyRun.elapsed_ms, sessionCount(companyTrace.events)),
+      } satisfies ExampleScenarioSnapshot,
+      lead_program_designer: {
+        compile_ms: round2(leadCompile.elapsed_ms),
+        run_ms: round2(leadBase.elapsed_ms),
+        status: leadBase.value.record.status,
+        eval_status: evalStatus(leadBase.value.record),
+        eval_score: evalScore(leadBase.value.record),
+        trace_events: leadBaseTrace.events.length,
+        scripted_session_count: sessionCount(leadBaseTrace.events),
+        runtime_telemetry: runtimeTelemetry(leadBase.elapsed_ms, sessionCount(leadBaseTrace.events)),
+        graph_nodes: leadBase.value.node_records.length,
+        first_run_executed_nodes: leadBase.value.node_records.map((record) => record.component_ref),
+        brand_change_executed_nodes: leadBrandRefresh.value.plan.materialization_set.nodes,
+        brand_change_reused_nodes: reusedNodes(leadBrandRefresh.value.plan),
+        brand_change_session_count: sessionCount(leadBrandTrace.events),
+        profile_change_executed_nodes: leadProfilePlan.value.materialization_set.nodes,
+        profile_change_reused_nodes: reusedNodes(leadProfilePlan.value),
+      } satisfies LeadProgramSnapshot,
+      stargazer_intake_lite: {
+        compile_ms: round2(stargazerCompile.elapsed_ms),
+        run_ms: round2(stargazerBase.elapsed_ms),
+        status: stargazerBase.value.record.status,
+        eval_status: evalStatus(stargazerBase.value.record),
+        eval_score: evalScore(stargazerBase.value.record),
+        trace_events: stargazerTrace.events.length,
+        scripted_session_count: sessionCount(stargazerTrace.events),
+        runtime_telemetry: runtimeTelemetry(stargazerBase.elapsed_ms, sessionCount(stargazerTrace.events)),
+        graph_nodes: stargazerBase.value.node_records.length,
+        memory_artifact_count: stargazerBase.value.record.outputs.filter((output) =>
+          output.port.includes("memory"),
+        ).length,
+        duplicate_suppression_count: duplicateSkipCount(stargazerBatchDelta.skipped ?? []),
+        skipped_count: stargazerBatchDelta.skipped?.length ?? 0,
+        high_water_mark_result: stargazerMemoryDelta.high_water_mark ?? null,
+        replay_status: stargazerReplay.value.plan.status,
+        replay_saved_nodes: stargazerReplaySavedNodes,
+        stale_reason_summaries: staleReasons(stargazerReplay.value.plan),
+      } satisfies StargazerLoopSnapshot,
+      opportunity_discovery_lite: {
+        compile_ms: round2(opportunityCompile.elapsed_ms),
+        run_ms: round2(opportunityBase.elapsed_ms),
+        status: opportunityBase.value.record.status,
+        eval_status: evalStatus(opportunityBase.value.record),
+        eval_score: evalScore(opportunityBase.value.record),
+        trace_events: opportunityTrace.events.length,
+        scripted_session_count: sessionCount(opportunityTrace.events),
+        runtime_telemetry: runtimeTelemetry(
+          opportunityBase.elapsed_ms,
+          sessionCount(opportunityTrace.events),
+        ),
+        graph_nodes: opportunityBase.value.node_records.length,
+        rejected_stale_count: reasonCount(opportunityWindow.rejected_rows ?? [], "older than"),
+        rejected_missing_provenance_count: reasonCount(
+          opportunityWindow.rejected_rows ?? [],
+          "missing url",
+        ),
+        duplicate_suppression_count: duplicateClusterSuppressionCount(
+          opportunityDedupe.clusters ?? [],
+        ),
+        winning_source_url: opportunityDedupe.clusters?.[0]?.winner ?? null,
+        brand_change_executed_nodes: opportunityBrandRefresh.value.plan.materialization_set.nodes,
+        brand_change_reused_nodes: reusedNodes(opportunityBrandRefresh.value.plan),
+        brand_change_saved_nodes: opportunityBrandSavedNodes,
+        stale_reason_summaries: staleReasons(opportunityBrandRefresh.value.plan),
+      } satisfies OpportunityLoopSnapshot,
+      approval_gated_release: {
+        elapsed_ms: round2(approvalPlan.elapsed_ms),
+        status: approvalPlan.value.status,
+        blocked_effect_nodes: approvalPlan.value.nodes
+          .filter((node) => node.status === "blocked_effect")
+          .map((node) => node.component_ref),
       },
+    };
+
+    const report = {
+      measurement_version: "0.2",
+      generated_at: new Date().toISOString(),
+      release_checks: releaseChecks(
+        examplesCompile,
+        examplesPublish,
+        examplesStrictPublish,
+        scenarios,
+      ),
+      packages,
+      scenarios,
       baseline_comparison: {
         baseline_label: "plain skill folder",
         assumptions: [
@@ -504,7 +573,9 @@ async function time<T>(work: () => Promise<T>): Promise<Timed<T>> {
 }
 
 function renderMarkdownReport(report: {
+  measurement_version: string;
   generated_at: string;
+  release_checks: ReleaseChecksSnapshot;
   packages: PackageSnapshot[];
   scenarios: {
     company_signal_brief: ExampleScenarioSnapshot;
@@ -522,7 +593,28 @@ function renderMarkdownReport(report: {
   const lines: string[] = [];
   lines.push("# OpenProse Measurement Report");
   lines.push("");
+  lines.push(`Version: ${report.measurement_version}`);
   lines.push(`Generated: ${report.generated_at}`);
+  lines.push("");
+  lines.push("## Release Checks");
+  lines.push("");
+  lines.push("| Check | Status | Detail |");
+  lines.push("|---|---|---|");
+  lines.push(
+    `| examples compile | ${report.release_checks.examples_compile.status} | ${report.release_checks.examples_compile.component_count} components, ${report.release_checks.examples_compile.error_count} errors |`,
+  );
+  lines.push(
+    `| examples publish-check | ${report.release_checks.examples_publish_check.status} | ${report.release_checks.examples_publish_check.warning_count} warnings, ${report.release_checks.examples_publish_check.blocker_count} blockers |`,
+  );
+  lines.push(
+    `| examples strict publish-check | ${report.release_checks.examples_strict_publish_check.status} | ${report.release_checks.examples_strict_publish_check.warning_count} warnings, ${report.release_checks.examples_strict_publish_check.blocker_count} blockers |`,
+  );
+  lines.push(
+    `| scripted Pi runs | ${report.release_checks.scripted_pi_runs.status} | ${report.release_checks.scripted_pi_runs.scenario_count} scenarios, ${report.release_checks.scripted_pi_runs.total_scripted_sessions} sessions |`,
+  );
+  lines.push(
+    `| live Pi smoke | ${report.release_checks.live_pi_smoke.status} | ${report.release_checks.live_pi_smoke.reason} |`,
+  );
   lines.push("");
   lines.push("## Package Health");
   lines.push("");
@@ -539,13 +631,16 @@ function renderMarkdownReport(report: {
   lines.push("### Company Signal Brief");
   lines.push(`- status: ${report.scenarios.company_signal_brief.status}`);
   lines.push(`- compile time: ${report.scenarios.company_signal_brief.compile_ms?.toFixed(2)} ms`);
+  lines.push(`- run time: ${report.scenarios.company_signal_brief.run_ms.toFixed(2)} ms`);
   lines.push(`- eval: ${report.scenarios.company_signal_brief.eval_status} (${scoreText(report.scenarios.company_signal_brief.eval_score)})`);
   lines.push(`- scripted Pi sessions: ${report.scenarios.company_signal_brief.scripted_session_count}`);
+  lines.push("- estimated cost: n/a (scripted Pi)");
   lines.push(`- trace events: ${report.scenarios.company_signal_brief.trace_events}`);
   lines.push("");
   lines.push("### Lead Program Designer");
   lines.push(`- status: ${report.scenarios.lead_program_designer.status}`);
   lines.push(`- graph nodes: ${report.scenarios.lead_program_designer.graph_nodes}`);
+  lines.push(`- run time: ${report.scenarios.lead_program_designer.run_ms.toFixed(2)} ms`);
   lines.push(`- eval: ${report.scenarios.lead_program_designer.eval_status} (${scoreText(report.scenarios.lead_program_designer.eval_score)})`);
   lines.push(`- first-run sessions: ${report.scenarios.lead_program_designer.scripted_session_count}`);
   lines.push(`- first-run executed nodes: ${listOrNone(report.scenarios.lead_program_designer.first_run_executed_nodes)}`);
@@ -558,6 +653,7 @@ function renderMarkdownReport(report: {
   lines.push("### Stargazer Intake Lite");
   lines.push(`- status: ${report.scenarios.stargazer_intake_lite.status}`);
   lines.push(`- graph nodes: ${report.scenarios.stargazer_intake_lite.graph_nodes}`);
+  lines.push(`- run time: ${report.scenarios.stargazer_intake_lite.run_ms.toFixed(2)} ms`);
   lines.push(`- eval: ${report.scenarios.stargazer_intake_lite.eval_status} (${scoreText(report.scenarios.stargazer_intake_lite.eval_score)})`);
   lines.push(`- scripted Pi sessions: ${report.scenarios.stargazer_intake_lite.scripted_session_count}`);
   lines.push(`- memory artifacts: ${report.scenarios.stargazer_intake_lite.memory_artifact_count}`);
@@ -570,6 +666,7 @@ function renderMarkdownReport(report: {
   lines.push("### Opportunity Discovery Lite");
   lines.push(`- status: ${report.scenarios.opportunity_discovery_lite.status}`);
   lines.push(`- graph nodes: ${report.scenarios.opportunity_discovery_lite.graph_nodes}`);
+  lines.push(`- run time: ${report.scenarios.opportunity_discovery_lite.run_ms.toFixed(2)} ms`);
   lines.push(`- eval: ${report.scenarios.opportunity_discovery_lite.eval_status} (${scoreText(report.scenarios.opportunity_discovery_lite.eval_score)})`);
   lines.push(`- scripted Pi sessions: ${report.scenarios.opportunity_discovery_lite.scripted_session_count}`);
   lines.push(`- stale rows rejected: ${report.scenarios.opportunity_discovery_lite.rejected_stale_count}`);
@@ -628,6 +725,92 @@ function renderMarkdownReport(report: {
   );
   lines.push("");
   return `${lines.join("\n")}\n`;
+}
+
+function releaseChecks(
+  examplesCompile: Timed<PackageIR>,
+  examplesPublish: Timed<PublishCheckResult>,
+  examplesStrictPublish: Timed<PublishCheckResult>,
+  scenarios: {
+    company_signal_brief: ExampleScenarioSnapshot;
+    lead_program_designer: LeadProgramSnapshot;
+    stargazer_intake_lite: StargazerLoopSnapshot;
+    opportunity_discovery_lite: OpportunityLoopSnapshot;
+  },
+): ReleaseChecksSnapshot {
+  const exampleScenarios = {
+    company_signal_brief: scenarios.company_signal_brief,
+    lead_program_designer: scenarios.lead_program_designer,
+    stargazer_intake_lite: scenarios.stargazer_intake_lite,
+    opportunity_discovery_lite: scenarios.opportunity_discovery_lite,
+  };
+  const evalFailures = Object.entries(exampleScenarios)
+    .filter(([, scenario]) => scenario.eval_status !== "passed")
+    .map(([name]) => name);
+  const failedScenarios = Object.entries(exampleScenarios)
+    .filter(([, scenario]) => scenario.status !== "succeeded")
+    .map(([name]) => name);
+  const errorCount = examplesCompile.value.diagnostics.filter(
+    (diagnostic) => diagnostic.severity === "error",
+  ).length;
+
+  return {
+    examples_compile: {
+      status: errorCount === 0 ? "pass" : "fail",
+      elapsed_ms: round2(examplesCompile.elapsed_ms),
+      component_count: examplesCompile.value.components.length,
+      diagnostic_count: examplesCompile.value.diagnostics.length,
+      error_count: errorCount,
+    },
+    examples_publish_check: publishCheckSnapshot(examplesPublish),
+    examples_strict_publish_check: publishCheckSnapshot(examplesStrictPublish),
+    scripted_pi_runs: {
+      status: evalFailures.length === 0 && failedScenarios.length === 0 ? "pass" : "fail",
+      scenario_count: Object.keys(exampleScenarios).length,
+      total_scripted_sessions: Object.values(exampleScenarios).reduce(
+        (total, scenario) => total + scenario.scripted_session_count,
+        0,
+      ),
+      eval_failures: [...failedScenarios, ...evalFailures].sort(),
+    },
+    live_pi_smoke: livePiSmokeSnapshot(),
+  };
+}
+
+function publishCheckSnapshot(result: Timed<PublishCheckResult>): PublishCheckSnapshot {
+  return {
+    status: result.value.status,
+    strict: result.value.strict,
+    elapsed_ms: round2(result.elapsed_ms),
+    blocker_count: result.value.blockers.length,
+    warning_count: result.value.warnings.length,
+  };
+}
+
+function livePiSmokeSnapshot(): ReleaseChecksSnapshot["live_pi_smoke"] {
+  const enabled = process.env.OPENPROSE_LIVE_PI_SMOKE === "1";
+  return {
+    status: enabled ? "pending_implementation" : "skipped",
+    enabled,
+    model_provider: process.env.OPENPROSE_MODEL_PROVIDER ?? "openrouter",
+    model: process.env.OPENPROSE_MODEL ?? "google/gemini-3-flash-preview",
+    reason: enabled
+      ? "Phase 06.2 owns the live Pi smoke ladder implementation."
+      : "Set OPENPROSE_LIVE_PI_SMOKE=1 after Phase 06.2 is implemented.",
+  };
+}
+
+function runtimeTelemetry(
+  elapsedMs: number,
+  session_count: number,
+): RuntimeTelemetrySnapshot {
+  return {
+    duration_ms: round2(elapsedMs),
+    session_count,
+    token_usage: null,
+    estimated_cost_usd: null,
+    telemetry_source: "scripted_pi_unmetered",
+  };
 }
 
 function leadProgramSubmissions(label: string): Record<string, OutputSubmissionPayload> {

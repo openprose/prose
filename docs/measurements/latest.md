@@ -1,6 +1,17 @@
 # OpenProse Measurement Report
 
-Generated: 2026-04-26T14:00:28.993Z
+Version: 0.2
+Generated: 2026-04-26T14:18:48.894Z
+
+## Release Checks
+
+| Check | Status | Detail |
+|---|---|---|
+| examples compile | pass | 42 components, 0 errors |
+| examples publish-check | pass | 0 warnings, 0 blockers |
+| examples strict publish-check | pass | 0 warnings, 0 blockers |
+| scripted Pi runs | pass | 4 scenarios, 13 sessions |
+| live Pi smoke | skipped | Set OPENPROSE_LIVE_PI_SMOKE=1 after Phase 06.2 is implemented. |
 
 ## Package Health
 
@@ -15,14 +26,17 @@ Generated: 2026-04-26T14:00:28.993Z
 
 ### Company Signal Brief
 - status: succeeded
-- compile time: 2.94 ms
+- compile time: 0.31 ms
+- run time: 39.78 ms
 - eval: passed (0.93)
 - scripted Pi sessions: 1
+- estimated cost: n/a (scripted Pi)
 - trace events: 9
 
 ### Lead Program Designer
 - status: succeeded
 - graph nodes: 3
+- run time: 44.19 ms
 - eval: passed (0.91)
 - first-run sessions: 3
 - first-run executed nodes: lead-profile-normalizer, lead-qualification-scorer, save-grow-program-drafter
@@ -35,6 +49,7 @@ Generated: 2026-04-26T14:00:28.993Z
 ### Stargazer Intake Lite
 - status: succeeded
 - graph nodes: 5
+- run time: 59.47 ms
 - eval: passed (0.94)
 - scripted Pi sessions: 5
 - memory artifacts: 1
@@ -47,6 +62,7 @@ Generated: 2026-04-26T14:00:28.993Z
 ### Opportunity Discovery Lite
 - status: succeeded
 - graph nodes: 4
+- run time: 50.24 ms
 - eval: passed (0.92)
 - scripted Pi sessions: 4
 - stale rows rejected: 1
