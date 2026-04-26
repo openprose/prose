@@ -93,7 +93,7 @@ async function main(): Promise<void> {
           defaultModel: model,
         })
       : selected.map((scenario) => skippedResult(scenario, runRoot));
-    const report: LiveSmokeReport = {
+    const report: LiveSmokeReport = normalizeReportPaths({
       live_pi_smoke_version: "0.1",
       generated_at: new Date().toISOString(),
       enabled: options.enabled,
@@ -103,7 +103,7 @@ async function main(): Promise<void> {
       run_root: runRoot,
       results,
       status: aggregateStatus(results),
-    };
+    }, repoRoot);
 
     await writeReport(options.out, report);
     process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
@@ -456,6 +456,39 @@ function renderMarkdown(report: LiveSmokeReport): string {
   }
   lines.push("");
   return `${lines.join("\n")}\n`;
+}
+
+function normalizeReportPaths(report: LiveSmokeReport, repoRoot: string): LiveSmokeReport {
+  return {
+    ...report,
+    run_root: publicPath(report.run_root, repoRoot),
+    results: report.results.map((result) => ({
+      ...result,
+      run_dir: result.run_dir ? publicPath(result.run_dir, repoRoot) : null,
+    })),
+  };
+}
+
+function publicPath(path: string, repoRoot: string): string {
+  const normalizedPath = path.replace(/\\/g, "/");
+  const normalizedRepo = repoRoot.replace(/\\/g, "/");
+  const normalizedTmp = tmpdir().replace(/\\/g, "/");
+  if (normalizedPath === normalizedRepo) {
+    return ".";
+  }
+  if (normalizedPath.startsWith(`${normalizedRepo}/`)) {
+    return normalizedPath.slice(normalizedRepo.length + 1);
+  }
+  if (normalizedPath === normalizedTmp) {
+    return "$TMP";
+  }
+  if (normalizedPath.startsWith(`${normalizedTmp}/`)) {
+    return `$TMP/${normalizedPath.slice(normalizedTmp.length + 1)}`;
+  }
+  if (normalizedPath.startsWith("/tmp/")) {
+    return `$TMP/${normalizedPath.slice("/tmp/".length)}`;
+  }
+  return "$ABSOLUTE_PATH";
 }
 
 function markdownPath(path: string): string {

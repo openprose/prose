@@ -9,7 +9,7 @@
   ],
   "model_provider": "openrouter",
   "model": "google/gemini-3-flash-preview",
-  "run_root": "/Users/sl/code/openprose/platform/external/prose/.prose/live-pi-runs",
+  "run_root": ".prose/live-pi-runs",
   "results": [
     {
       "tier": "cheap",
@@ -19,7 +19,7 @@
       "failure_class": null,
       "duration_ms": 8596,
       "run_id": "live-pi-cheap-company-signal-brief-20260426165702",
-      "run_dir": "/Users/sl/code/openprose/platform/external/prose/.prose/live-pi-runs/live-pi-cheap-company-signal-brief-20260426165702",
+      "run_dir": ".prose/live-pi-runs/live-pi-cheap-company-signal-brief-20260426165702",
       "session_count": 1,
       "trace_events": 44,
       "diagnostics": []
@@ -32,7 +32,7 @@
       "failure_class": null,
       "duration_ms": 23581,
       "run_id": "live-pi-medium-lead-program-designer-20260426165711",
-      "run_dir": "/Users/sl/code/openprose/platform/external/prose/.prose/live-pi-runs/live-pi-medium-lead-program-designer-20260426165711",
+      "run_dir": ".prose/live-pi-runs/live-pi-medium-lead-program-designer-20260426165711",
       "session_count": 3,
       "trace_events": 122,
       "diagnostics": []
@@ -45,7 +45,7 @@
       "failure_class": null,
       "duration_ms": 24726,
       "run_id": "live-pi-complex-stargazer-intake-lite-20260426165734",
-      "run_dir": "/Users/sl/code/openprose/platform/external/prose/.prose/live-pi-runs/live-pi-complex-stargazer-intake-lite-20260426165734",
+      "run_dir": ".prose/live-pi-runs/live-pi-complex-stargazer-intake-lite-20260426165734",
       "session_count": 5,
       "trace_events": 186,
       "diagnostics": []

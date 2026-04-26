@@ -104,24 +104,29 @@ Checks:
 
 ## P1: Public Release Quality
 
-### [todo] Measurement reports contain absolute local paths
+### [done] Measurement reports contain absolute local paths
 
 Finding: committed measurement JSON/Markdown files include
 `/Users/sl/code/openprose/...` paths. That makes the package look local and
 agent-generated even though the evidence is useful.
 
-Proposed fix:
+Resolved:
 
-- normalize generated reports to repo-relative paths or `$REPO`
-- update measurement scripts so future reports do not reintroduce local paths
-- regenerate `docs/measurements/*.latest.*`
+- normalized generated package paths to repo/workspace-relative paths
+- normalized live Pi run roots and run directories to repo-relative or `$TMP`
+  display paths
+- regenerated deterministic measurement and runtime-confidence reports
+- preserved the committed successful live Pi evidence while normalizing its
+  paths manually
+
+Commit target: `docs: normalize measurement report paths`
 
 Checks:
 
 - `rg -n "/Users/sl|/var/folders|/tmp/openprose" docs/measurements`
 - `bun run measure:examples`
 - `bun run confidence:runtime`
-- `bun run smoke:live-pi`
+- `bun scripts/live-pi-smoke.ts --tier cheap --skip --out /tmp/openprose-live-pi-skip.json`
 
 ### [todo] Package metadata source SHAs are stale after recent commits
 

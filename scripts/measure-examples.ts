@@ -549,7 +549,7 @@ async function measurePackages(repoRoot: string, examplesRoot: string): Promise<
     const strictPublish = await publishCheckPath(target.path, { strict: true });
     packages.push({
       label: target.label,
-      path: target.path,
+      path: publicPath(target.path, repoRoot),
       package_name: metadata.manifest.name,
       version: metadata.manifest.version,
       components: metadata.components.length,
@@ -570,6 +570,23 @@ async function time<T>(work: () => Promise<T>): Promise<Timed<T>> {
     elapsed_ms: performance.now() - start,
     value,
   };
+}
+
+function publicPath(path: string, repoRoot: string): string {
+  const workspaceRoot = resolve(repoRoot, "..", "..", "..");
+  const normalizedPath = path.replace(/\\/g, "/");
+  const normalizedRepo = repoRoot.replace(/\\/g, "/");
+  const normalizedWorkspace = workspaceRoot.replace(/\\/g, "/");
+  if (normalizedPath === normalizedRepo) {
+    return ".";
+  }
+  if (normalizedPath.startsWith(`${normalizedRepo}/`)) {
+    return normalizedPath.slice(normalizedRepo.length + 1);
+  }
+  if (normalizedPath.startsWith(`${normalizedWorkspace}/`)) {
+    return normalizedPath.slice(normalizedWorkspace.length + 1);
+  }
+  return "$ABSOLUTE_PATH";
 }
 
 function renderMarkdownReport(report: {
