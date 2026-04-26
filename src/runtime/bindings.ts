@@ -6,9 +6,9 @@ import {
   evaluateRuntimePolicy,
 } from "../policy/index.js";
 import type {
-  ProviderArtifactResult,
-  ProviderInputBinding,
-} from "../providers/index.js";
+  NodeArtifactResult,
+  NodeInputBinding,
+} from "../node-runners/index.js";
 import { validateTextAgainstTypeExpression } from "../schema/index.js";
 import {
   readArtifactRecordForOutput,
@@ -62,9 +62,9 @@ export function componentInputBindings(
   });
 }
 
-export function validateProviderArtifacts(
+export function validateNodeArtifacts(
   component: ComponentIR,
-  artifacts: ProviderArtifactResult[],
+  artifacts: NodeArtifactResult[],
 ): Record<string, LocalArtifactSchemaStatus> {
   const ports = new Map(component.ports.ensures.map((port) => [port.name, port]));
   const validation: Record<string, LocalArtifactSchemaStatus> = {};
@@ -84,15 +84,15 @@ export function validateProviderArtifacts(
   return validation;
 }
 
-export async function providerInputState(
+export async function nodeInputState(
   ctx: RuntimeBindingContext,
   component: ComponentIR,
   recordsById: Map<string, RunRecord>,
 ): Promise<{
-  bindings: ProviderInputBinding[];
+  bindings: NodeInputBinding[];
   upstreamArtifacts: LocalArtifactRecord[];
 }> {
-  const bindings: ProviderInputBinding[] = [];
+  const bindings: NodeInputBinding[] = [];
   const upstreamArtifacts: LocalArtifactRecord[] = [];
 
   for (const port of component.ports.requires) {
@@ -147,7 +147,7 @@ export async function inputValidationReasons(
   component: ComponentIR,
   recordsById = new Map<string, RunRecord>(),
 ): Promise<string[]> {
-  const state = await providerInputState(ctx, component, recordsById);
+  const state = await nodeInputState(ctx, component, recordsById);
   const ports = new Map(component.ports.requires.map((port) => [port.name, port]));
   const policy = evaluateRuntimePolicy({
     component,
@@ -230,7 +230,7 @@ async function runReferenceValidationReasons(
   ctx: RuntimeBindingContext,
   component: ComponentIR,
   port: ComponentIR["ports"]["requires"][number],
-  binding: ProviderInputBinding,
+  binding: NodeInputBinding,
 ): Promise<string[]> {
   const expected = expectedRunTarget(port.type_expr);
   if (!expected) {

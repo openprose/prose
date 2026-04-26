@@ -118,7 +118,7 @@ export function renderTraceText(trace: TraceView): string {
         ? ` diagnostics[${attempt.diagnostic_codes.join(", ")}]`
         : "";
       const failure = attempt.failure ? ` failure[${attempt.failure}]` : "";
-      const session = attempt.provider_session_ref ? " session[recorded]" : "";
+      const session = attempt.node_session_ref ? " session[recorded]" : "";
       const runtime = attempt.runtime_profile
         ? ` runtime[${attempt.runtime_profile.graph_vm}]`
         : "";
@@ -156,7 +156,7 @@ export function renderTraceText(trace: TraceView): string {
 
 function renderTraceEvent(event: TraceEvent): string {
   const details = [
-    stringDetail("provider", event.provider),
+    stringDetail("graph_vm", event.graph_vm),
     modelDetail(event),
     stringDetail("session", event.session_id),
     stringDetail("session_file", event.session_file),
@@ -263,7 +263,7 @@ function traceAttemptView(attempt: LocalRunAttemptRecord): TraceAttemptView {
     attempt_number: attempt.attempt_number,
     status: attempt.status,
     runtime_profile: attempt.runtime_profile,
-    provider_session_ref: attempt.provider_session_ref,
+    node_session_ref: attempt.node_session_ref,
     diagnostic_codes: attempt.diagnostics.map((diagnostic) => diagnostic.code).sort(),
     failure: attempt.failure?.message ?? null,
     started_at: attempt.started_at,

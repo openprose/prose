@@ -16,7 +16,7 @@
     "trigger": "manual"
   },
   "runtime": {
-    "harness": "openprose-provider",
+    "harness": "openprose-node-runner",
     "worker_ref": "pi",
     "graph_vm": "pi",
     "single_run_harness": null,

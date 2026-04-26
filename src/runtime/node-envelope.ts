@@ -1,9 +1,9 @@
 import type {
-  ProviderEnvironmentBinding,
-  ProviderExpectedOutput,
-  ProviderInputBinding,
-  ProviderValidationRule,
-} from "../providers/index.js";
+  NodeEnvironmentBinding,
+  NodeExpectedOutput,
+  NodeInputBinding,
+  NodeValidationRule,
+} from "../node-runners/index.js";
 import type {
   ComponentIR,
   EffectIR,
@@ -52,7 +52,7 @@ export interface NodePromptEnvelope {
     policy_labels: string[];
   };
   outputs: NodeEnvelopeOutput[];
-  validation: ProviderValidationRule[];
+  validation: NodeValidationRule[];
   instructions: {
     output_tool: "openprose_submit_outputs";
     fallback_output_files: boolean;
@@ -109,7 +109,7 @@ export interface NodeEnvelopeOutput {
 export function buildNodePromptEnvelope(
   request: NodeExecutionRequest,
 ): NodePromptEnvelope {
-  const providerRequest = request.provider_request;
+  const nodeRunRequest = request.node_run_request;
   return {
     envelope_version: "0.1",
     run: {
@@ -131,15 +131,15 @@ export function buildNodePromptEnvelope(
       effects: request.component.effects.map(effectEnvelope),
       execution: request.component.execution?.body ?? null,
     },
-    inputs: providerRequest.input_bindings.map(inputEnvelope),
-    upstream_artifacts: providerRequest.upstream_artifacts.map(artifactEnvelope),
-    environment: providerRequest.environment.map(environmentEnvelope),
+    inputs: nodeRunRequest.input_bindings.map(inputEnvelope),
+    upstream_artifacts: nodeRunRequest.upstream_artifacts.map(artifactEnvelope),
+    environment: nodeRunRequest.environment.map(environmentEnvelope),
     policy: {
-      approved_effects: providerRequest.approved_effects,
-      policy_labels: providerRequest.policy_labels,
+      approved_effects: nodeRunRequest.approved_effects,
+      policy_labels: nodeRunRequest.policy_labels,
     },
-    outputs: providerRequest.expected_outputs.map(outputEnvelope),
-    validation: providerRequest.validation,
+    outputs: nodeRunRequest.expected_outputs.map(outputEnvelope),
+    validation: nodeRunRequest.validation,
     instructions: {
       output_tool: "openprose_submit_outputs",
       fallback_output_files: true,
@@ -180,7 +180,7 @@ function effectEnvelope(effect: EffectIR): NodeEnvelopeEffect {
   };
 }
 
-function inputEnvelope(input: ProviderInputBinding): NodeEnvelopeInput {
+function inputEnvelope(input: NodeInputBinding): NodeEnvelopeInput {
   return {
     port: input.port,
     value: input.value,
@@ -204,7 +204,7 @@ function artifactEnvelope(artifact: LocalArtifactRecord): NodeEnvelopeArtifact {
 }
 
 function environmentEnvelope(
-  binding: ProviderEnvironmentBinding,
+  binding: NodeEnvironmentBinding,
 ): NodeEnvelopeEnvironment {
   return {
     name: binding.name,
@@ -213,7 +213,7 @@ function environmentEnvelope(
   };
 }
 
-function outputEnvelope(output: ProviderExpectedOutput): NodeEnvelopeOutput {
+function outputEnvelope(output: NodeExpectedOutput): NodeEnvelopeOutput {
   return {
     port: output.port,
     type: output.type,

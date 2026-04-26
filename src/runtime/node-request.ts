@@ -1,4 +1,4 @@
-import type { ProviderRequest } from "../providers/index.js";
+import type { NodeRunRequest } from "../node-runners/index.js";
 import type { ComponentIR, RuntimeProfile } from "../types.js";
 
 export interface NodeExecutionRequest {
@@ -20,7 +20,7 @@ export interface NodeExecutionRequest {
   };
   workspace_path: string;
   runtime_profile: RuntimeProfile;
-  provider_request: ProviderRequest;
+  node_run_request: NodeRunRequest;
 }
 
 export function createNodeExecutionRequest(options: {
@@ -31,7 +31,7 @@ export function createNodeExecutionRequest(options: {
   planning: NodeExecutionRequest["planning"];
   workspacePath: string;
   runtimeProfile: RuntimeProfile;
-  providerRequest: ProviderRequest;
+  nodeRunRequest: NodeRunRequest;
 }): NodeExecutionRequest {
   return {
     node_execution_request_version: "0.1",
@@ -43,8 +43,8 @@ export function createNodeExecutionRequest(options: {
     planning: options.planning,
     workspace_path: options.workspacePath,
     runtime_profile: options.runtimeProfile,
-    provider_request: {
-      ...options.providerRequest,
+    node_run_request: {
+      ...options.nodeRunRequest,
       workspace_path: options.workspacePath,
       runtime_profile: options.runtimeProfile,
     },

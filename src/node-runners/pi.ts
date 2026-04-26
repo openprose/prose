@@ -12,17 +12,17 @@ import {
 import type { OutputSubmissionResult } from "../runtime/output-submission.js";
 import type { ComponentIR, Diagnostic, EffectIR } from "../types.js";
 import {
-  readProviderOutputFileArtifacts,
-  renderProviderOutputFileInstructions,
-  type ProviderOutputFileMap,
+  readNodeOutputFileArtifacts,
+  renderNodeOutputFileInstructions,
+  type NodeOutputFileMap,
 } from "./output-files.js";
 import type {
-  ProviderArtifactResult,
-  ProviderEnvironmentBinding,
-  ProviderRequest,
-  ProviderResult,
-  ProviderTelemetryEvent,
-  RuntimeProvider,
+  NodeArtifactResult,
+  NodeEnvironmentBinding,
+  NodeRunRequest,
+  NodeRunResult,
+  NodeTelemetryEvent,
+  NodeRunner,
 } from "./protocol.js";
 
 export type PiThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhigh";
@@ -38,18 +38,18 @@ export interface PiAgentSessionLike {
 }
 
 export interface PiSessionFactoryContext {
-  request: ProviderRequest;
+  request: NodeRunRequest;
   prompt: string;
-  options: PiProviderOptions;
+  options: PiNodeRunnerOptions;
 }
 
 export type PiSessionFactory = (
   context: PiSessionFactoryContext,
 ) => Promise<PiAgentSessionLike>;
 
-export interface PiProviderOptions {
+export interface PiNodeRunnerOptions {
   createSession?: PiSessionFactory;
-  outputFiles?: ProviderOutputFileMap;
+  outputFiles?: NodeOutputFileMap;
   timeoutMs?: number;
   agentDir?: string;
   sessionDir?: string;
@@ -66,30 +66,30 @@ export interface PiProviderOptions {
   durationMs?: number;
 }
 
-export class PiProvider implements RuntimeProvider {
+export class PiNodeRunner implements NodeRunner {
   readonly kind = "pi";
 
   private readonly createSession: PiSessionFactory;
-  private readonly outputFiles: ProviderOutputFileMap;
+  private readonly outputFiles: NodeOutputFileMap;
   private readonly timeoutMs: number;
-  private readonly options: PiProviderOptions;
+  private readonly options: PiNodeRunnerOptions;
 
-  constructor(options: PiProviderOptions = {}) {
+  constructor(options: PiNodeRunnerOptions = {}) {
     this.options = { ...options };
     this.createSession = options.createSession ?? createDefaultPiSession;
     this.outputFiles = options.outputFiles ?? {};
     this.timeoutMs = options.timeoutMs ?? 120_000;
   }
 
-  async execute(request: ProviderRequest): Promise<ProviderResult> {
+  async execute(request: NodeRunRequest): Promise<NodeRunResult> {
     const started = performance.now();
     const diagnostics: Diagnostic[] = [];
 
-    if (request.provider !== this.kind) {
+    if (request.graph_vm !== this.kind) {
       diagnostics.push({
         severity: "error",
-        code: "pi_provider_mismatch",
-        message: `Pi provider cannot execute provider '${request.provider}'.`,
+        code: "pi_graph_vm_mismatch",
+        message: `Pi node runner cannot execute graph VM '${request.graph_vm}'.`,
         source_span: request.component.source.span,
       });
     }
@@ -106,13 +106,13 @@ export class PiProvider implements RuntimeProvider {
       diagnostics.push({
         severity: "error",
         code: "pi_effect_not_approved",
-        message: `Pi provider cannot run effect '${effect.kind}' without approval.`,
+        message: `Pi node runner cannot run effect '${effect.kind}' without approval.`,
         source_span: effect.source_span,
       });
     }
 
     if (diagnostics.length > 0) {
-      const status = diagnostics.some((diagnostic) => diagnostic.code === "pi_provider_mismatch")
+      const status = diagnostics.some((diagnostic) => diagnostic.code === "pi_graph_vm_mismatch")
         ? "failed"
         : "blocked";
       return this.result(request, {
@@ -129,7 +129,7 @@ export class PiProvider implements RuntimeProvider {
     const outputSubmission = {
       current: null as OutputSubmissionResult | null,
     };
-    const runtimeOptions: PiProviderOptions = {
+    const runtimeOptions: PiNodeRunnerOptions = {
       ...this.options,
       tools: piToolsWithOutputSubmission(this.options.tools),
       customTools: [
@@ -141,7 +141,7 @@ export class PiProvider implements RuntimeProvider {
     };
     let session: PiAgentSessionLike | null = null;
     const events: string[] = [];
-    const telemetry: ProviderTelemetryEvent[] = [];
+    const telemetry: NodeTelemetryEvent[] = [];
     let unsubscribe: (() => void) | undefined;
 
     try {
@@ -155,7 +155,7 @@ export class PiProvider implements RuntimeProvider {
         events.push(safeEventLine(event));
         telemetry.push(
           ...normalizePiRuntimeEvent(event, {
-            provider: this.kind,
+            graph_vm: this.kind,
             model_provider:
               this.options.modelProvider ?? request.runtime_profile.model_provider,
             model: this.options.modelId ?? request.runtime_profile.model,
@@ -175,7 +175,7 @@ export class PiProvider implements RuntimeProvider {
         diagnostics.push({
           severity: "error",
           code: "pi_prompt_timeout",
-          message: `Pi provider timed out after ${this.timeoutMs}ms.`,
+          message: `Pi node runner timed out after ${this.timeoutMs}ms.`,
           source_span: request.component.source.span,
         });
       }
@@ -196,7 +196,7 @@ export class PiProvider implements RuntimeProvider {
       const sessionFile = sessionFileRef(session, request);
       telemetry.push(
         outputSubmissionTelemetryEvent(submitted, {
-          provider: this.kind,
+          graph_vm: this.kind,
           model_provider:
             this.options.modelProvider ?? request.runtime_profile.model_provider,
           model: this.options.modelId ?? request.runtime_profile.model,
@@ -213,7 +213,7 @@ export class PiProvider implements RuntimeProvider {
     const artifacts = diagnostics.length === 0
       ? submitted?.status === "accepted"
         ? submitted.artifacts
-        : await readProviderOutputFileArtifacts(
+        : await readNodeOutputFileArtifacts(
             {
               workspacePath: request.workspace_path,
               component: request.component,
@@ -242,20 +242,20 @@ export class PiProvider implements RuntimeProvider {
   }
 
   private result(
-    request: ProviderRequest,
+    request: NodeRunRequest,
     options: {
-      status: ProviderResult["status"];
-      artifacts: ProviderArtifactResult[];
+      status: NodeRunResult["status"];
+      artifacts: NodeArtifactResult[];
       performedEffects?: string[];
       diagnostics: Diagnostic[];
       transcript: string | null;
-      telemetry?: ProviderTelemetryEvent[];
+      telemetry?: NodeTelemetryEvent[];
       session: PiAgentSessionLike | null;
       durationMs: number;
     },
-  ): ProviderResult {
+  ): NodeRunResult {
     return {
-      provider_result_version: "0.1",
+      node_run_result_version: "0.1",
       request_id: request.request_id,
       status: options.status,
       artifacts: options.artifacts,
@@ -268,7 +268,7 @@ export class PiProvider implements RuntimeProvider {
       diagnostics: options.diagnostics,
       session: options.session
         ? {
-            provider: this.kind,
+            graph_vm: this.kind,
             session_id: options.session.sessionId,
             url: null,
             metadata: {
@@ -287,7 +287,7 @@ export class PiProvider implements RuntimeProvider {
 
 function sessionFileRef(
   session: PiAgentSessionLike | null,
-  request: ProviderRequest,
+  request: NodeRunRequest,
 ): string | null {
   if (!session?.sessionFile) {
     return null;
@@ -299,8 +299,8 @@ function sessionFileRef(
   return session.sessionFile;
 }
 
-export function createPiProvider(options: PiProviderOptions = {}): PiProvider {
-  return new PiProvider(options);
+export function createPiNodeRunner(options: PiNodeRunnerOptions = {}): PiNodeRunner {
+  return new PiNodeRunner(options);
 }
 
 function piToolsWithOutputSubmission(tools: string[] | undefined): string[] {
@@ -309,8 +309,8 @@ function piToolsWithOutputSubmission(tools: string[] | undefined): string[] {
 }
 
 export function renderPiPrompt(
-  request: ProviderRequest,
-  outputFiles?: ProviderOutputFileMap,
+  request: NodeRunRequest,
+  outputFiles?: NodeOutputFileMap,
 ): string {
   if (request.runtime_prompt?.kind === "node_envelope") {
     return request.runtime_prompt.text;
@@ -322,13 +322,13 @@ export function renderPiPrompt(
     renderProviderInputInstructions(request),
     "",
     "---",
-    renderProviderOutputFileInstructions(request.expected_outputs, outputFiles),
+    renderNodeOutputFileInstructions(request.expected_outputs, outputFiles),
     "",
     "When finished, make sure the files exist in the workspace and contain only the declared artifact content.",
   ].join("\n");
 }
 
-function renderProviderInputInstructions(request: ProviderRequest): string {
+function renderProviderInputInstructions(request: NodeRunRequest): string {
   const lines = ["OpenProse input bindings:"];
   if (request.input_bindings.length === 0) {
     lines.push("- none");
@@ -442,8 +442,8 @@ async function runPromptWithTimeout(
 }
 
 function missingEnvironment(
-  bindings: ProviderEnvironmentBinding[],
-): ProviderEnvironmentBinding[] {
+  bindings: NodeEnvironmentBinding[],
+): NodeEnvironmentBinding[] {
   return bindings.filter((binding) => binding.required && binding.value === null);
 }
 
@@ -471,7 +471,7 @@ function safeEventLine(event: unknown): string {
 
 function diagnosticFromPiEvent(
   event: unknown,
-  request: ProviderRequest,
+  request: NodeRunRequest,
 ): Diagnostic | null {
   if (!event || typeof event !== "object") {
     return null;
@@ -485,7 +485,7 @@ function diagnosticFromPiEvent(
       return {
         severity: "error",
         code: "pi_model_error",
-        message: errorMessage ?? "Pi provider reported a model error.",
+        message: errorMessage ?? "Pi node runner reported a model error.",
         source_span: request.component.source.span,
       };
     }

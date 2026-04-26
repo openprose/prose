@@ -1,11 +1,11 @@
 import type {
-  ProviderKind,
-  ProviderTelemetryEvent,
-} from "../../providers/protocol.js";
+  GraphVmKind,
+  NodeTelemetryEvent,
+} from "../../node-runners/protocol.js";
 import type { OutputSubmissionResult } from "../output-submission.js";
 
 export interface PiRuntimeEventContext {
-  provider: ProviderKind;
+  graph_vm: GraphVmKind;
   model_provider: string | null;
   model: string | null;
   session_id: string | null;
@@ -16,7 +16,7 @@ export interface PiRuntimeEventContext {
 export function normalizePiRuntimeEvent(
   event: unknown,
   context: PiRuntimeEventContext,
-): ProviderTelemetryEvent[] {
+): NodeTelemetryEvent[] {
   if (!event || typeof event !== "object") {
     return [
       baseEvent("pi.event.unknown", context, {
@@ -34,7 +34,7 @@ export function normalizePiRuntimeEvent(
 export function outputSubmissionTelemetryEvent(
   result: OutputSubmissionResult,
   context: PiRuntimeEventContext,
-): ProviderTelemetryEvent {
+): NodeTelemetryEvent {
   return baseEvent(`pi.output_submission.${result.status}`, context, {
     output_ports: result.artifacts.map((artifact) => artifact.port).sort(),
     performed_effects: result.performed_effects,
@@ -47,7 +47,7 @@ function normalizeKnownPiEvent(
   type: string,
   event: object,
   context: PiRuntimeEventContext,
-): ProviderTelemetryEvent[] {
+): NodeTelemetryEvent[] {
   if (type === "agent_start") {
     return [
       baseEvent("pi.session.started", context, {
@@ -125,11 +125,11 @@ function baseEvent(
   event: string,
   context: PiRuntimeEventContext,
   extra: Record<string, unknown> = {},
-): ProviderTelemetryEvent {
+): NodeTelemetryEvent {
   return {
     event,
     at: context.now?.() ?? new Date().toISOString(),
-    provider: context.provider,
+    graph_vm: context.graph_vm,
     session_id: context.session_id,
     session_file: context.session_file,
     model_provider: context.model_provider,
@@ -141,7 +141,7 @@ function baseEvent(
 function usageEvent(
   event: object,
   context: PiRuntimeEventContext,
-): ProviderTelemetryEvent | null {
+): NodeTelemetryEvent | null {
   const usage = objectValue(event, "usage") ?? objectValue(event, "tokenUsage");
   if (!usage) {
     return null;
@@ -215,7 +215,7 @@ function errorMessage(event: object): string | null {
     const message = readString(candidate, "errorMessage") ?? readString(candidate, "message");
     const stopReason = readString(candidate, "stopReason");
     if (message || stopReason === "error") {
-      return message ?? "Pi provider reported a model error.";
+      return message ?? "Pi node runner reported a model error.";
     }
   }
   return null;

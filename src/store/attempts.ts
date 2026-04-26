@@ -19,7 +19,7 @@ export interface WriteRunAttemptOptions {
   attemptNumber: number;
   status: RunLifecycleStatus;
   runtimeProfile?: RuntimeProfile | null;
-  providerSessionRef?: string | null;
+  nodeSessionRef?: string | null;
   startedAt: string;
   finishedAt?: string | null;
   diagnostics?: Diagnostic[];
@@ -40,7 +40,7 @@ export async function writeRunAttemptRecord(
     attempt_number: options.attemptNumber,
     status: options.status,
     runtime_profile: options.runtimeProfile ?? null,
-    provider_session_ref: options.providerSessionRef ?? null,
+    node_session_ref: options.nodeSessionRef ?? null,
     started_at: options.startedAt,
     finished_at: options.finishedAt ?? null,
     diagnostics: options.diagnostics ?? [],

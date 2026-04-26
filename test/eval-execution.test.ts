@@ -33,7 +33,7 @@ describe("OpenProse executable evals", () => {
       path: "fixtures/compiler/hello.prose.md",
       runRoot: join(root, "runs"),
       runId: "subject-run",
-      provider: scriptedPiRuntime({
+      nodeRunner: scriptedPiRuntime({
         outputs: {
           message: "Hello from eval subject.",
         },
@@ -43,7 +43,7 @@ describe("OpenProse executable evals", () => {
     const evalPath = writeEvalContract(root);
 
     const result = await executeEvalFile(evalPath, subject.run_dir, {
-      provider: scriptedPiRuntime({
+      nodeRunner: scriptedPiRuntime({
         outputs: {
           result: "{\"passed\":true,\"score\":0.92,\"verdict\":\"pass\"}",
         },
@@ -68,7 +68,7 @@ describe("OpenProse executable evals", () => {
       path: "fixtures/compiler/hello.prose.md",
       runRoot: join(root, "runs"),
       runId: "failing-subject",
-      provider: scriptedPiRuntime({
+      nodeRunner: scriptedPiRuntime({
         outputs: {
           message: "Hello from eval subject.",
         },
@@ -78,7 +78,7 @@ describe("OpenProse executable evals", () => {
     const evalPath = writeEvalContract(root);
 
     const result = await executeEvalFile(evalPath, subject.run_dir, {
-      provider: scriptedPiRuntime({
+      nodeRunner: scriptedPiRuntime({
         outputs: {
           result: "{\"passed\":false,\"score\":42,\"verdict\":\"fail\"}",
         },
@@ -101,7 +101,7 @@ describe("OpenProse executable evals", () => {
       path: "fixtures/compiler/hello.prose.md",
       runRoot: join(root, "runs"),
       runId: "cli-subject",
-      provider: scriptedPiRuntime({
+      nodeRunner: scriptedPiRuntime({
         outputs: {
           message: "Hello from CLI eval subject.",
         },
@@ -135,7 +135,7 @@ describe("OpenProse executable evals", () => {
       path: "fixtures/compiler/pipeline.prose.md",
       runRoot: join(root, "runs"),
       runId: "eval-gated-graph",
-      provider: scriptedPiRuntime({
+      nodeRunner: scriptedPiRuntime({
         outputsByComponent: {
           ...pipelineOutputs,
           "quality-eval": {

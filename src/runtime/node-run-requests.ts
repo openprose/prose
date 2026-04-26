@@ -1,14 +1,14 @@
 import { evaluateRuntimePolicy } from "../policy/index.js";
 import type {
-  ProviderKind,
-  ProviderRequest,
-} from "../providers/index.js";
-import { providerInputState } from "./bindings.js";
+  GraphVmKind,
+  NodeRunRequest,
+} from "../node-runners/index.js";
+import { nodeInputState } from "./bindings.js";
 import type { ComponentIR, ProseIR, RunRecord, RuntimeProfile } from "../types.js";
 
-export interface RuntimeProviderRequestContext {
+export interface NodeRunnerRequestContext {
   ir: ProseIR;
-  provider: { kind: ProviderKind };
+  nodeRunner: { kind: GraphVmKind };
   runtimeProfile: RuntimeProfile;
   runDir: string;
   storeRoot: string;
@@ -17,22 +17,22 @@ export interface RuntimeProviderRequestContext {
   approvedEffects: string[];
 }
 
-export async function createProviderRequest(
-  ctx: RuntimeProviderRequestContext,
+export async function createNodeRunRequest(
+  ctx: NodeRunnerRequestContext,
   component: ComponentIR,
   runId = ctx.runId,
   recordsById = new Map<string, RunRecord>(),
-): Promise<ProviderRequest> {
-  const inputState = await providerInputState(ctx, component, recordsById);
+): Promise<NodeRunRequest> {
+  const inputState = await nodeInputState(ctx, component, recordsById);
   const policy = evaluateRuntimePolicy({
     component,
     inputBindings: inputState.bindings,
     approvedEffects: ctx.approvedEffects,
   });
   return {
-    provider_request_version: "0.1",
+    node_run_request_version: "0.1",
     request_id: runId,
-    provider: ctx.provider.kind,
+    graph_vm: ctx.nodeRunner.kind,
     runtime_profile: ctx.runtimeProfile,
     component,
     rendered_contract: renderComponentContract(ctx.ir, component),

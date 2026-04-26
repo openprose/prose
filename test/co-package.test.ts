@@ -77,7 +77,7 @@ describe("OpenProse co package", () => {
     const runRoot = join(mkdtempSync(join(tmpdir(), "openprose-co-scripted-")), "runs");
     const result = await runSource(readFileSync(join(import.meta.dir, "..", programPath), "utf8"), {
       path: programPath,
-      provider: scriptedPiRuntime({
+      nodeRunner: scriptedPiRuntime({
         outputs: deterministicOutputs,
       }),
       runRoot,

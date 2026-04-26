@@ -15,11 +15,11 @@ import {
   traceFile,
   tmpdir,
 } from "./support";
-import { scriptedPiRuntime, providerShouldNotRun } from "./support/scripted-pi-session";
+import { scriptedPiRuntime, nodeRunnerShouldNotRun } from "./support/scripted-pi-session";
 import { approvalReleaseOutputs, pipelineOutputs } from "./support/runtime-scenarios";
 import { runSource } from "../src/run";
-import { deserializeProviderSessionRef } from "../src/providers";
-import type { ProviderRequest, ProviderResult } from "../src/providers";
+import { deserializeNodeSessionRef } from "../src/node-runners";
+import type { NodeRunRequest, NodeRunResult } from "../src/node-runners";
 
 describe("OpenProse run entry point", () => {
   test("executes a single-component contract through scripted Pi", async () => {
@@ -28,7 +28,7 @@ describe("OpenProse run entry point", () => {
       path: "fixtures/compiler/hello.prose.md",
       runRoot,
       runId: "programmatic-run",
-      provider: scriptedPiRuntime({
+      nodeRunner: scriptedPiRuntime({
         outputs: {
           message: "Hello from prose run.",
         },
@@ -38,7 +38,7 @@ describe("OpenProse run entry point", () => {
 
     expect(result.record.status).toBe("succeeded");
     expect(result.record.runtime).toMatchObject({
-      harness: "openprose-provider",
+      harness: "openprose-node-runner",
       worker_ref: "pi",
     });
     expect(result.record.outputs).toEqual([
@@ -65,7 +65,7 @@ describe("OpenProse run entry point", () => {
       path: "fixtures/compiler/pipeline.prose.md",
       runRoot,
       runId: "graph-run",
-      provider: scriptedPiRuntime({
+      nodeRunner: scriptedPiRuntime({
         outputsByComponent: pipelineOutputs,
       }),
       inputs: {
@@ -113,7 +113,7 @@ describe("OpenProse run entry point", () => {
     );
     const sessionFiles = nodeAttempts.map((records) =>
       String(
-        deserializeProviderSessionRef(records[0]?.provider_session_ref ?? "{}").metadata
+        deserializeNodeSessionRef(records[0]?.node_session_ref ?? "{}").metadata
           .session_file,
       ),
     );
@@ -124,9 +124,9 @@ describe("OpenProse run entry point", () => {
     ]);
   });
 
-  test("propagates upstream artifacts into downstream provider requests", async () => {
+  test("propagates upstream artifacts into downstream node-run requests", async () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-run-upstream-"));
-    const requests: ProviderRequest[] = [];
+    const requests: NodeRunRequest[] = [];
     const provider = scriptedPiRuntime({
       outputsByComponent: pipelineOutputs,
       onRequest: (request) => requests.push(request),
@@ -136,7 +136,7 @@ describe("OpenProse run entry point", () => {
       path: "fixtures/compiler/pipeline.prose.md",
       runRoot,
       runId: "upstream-run",
-      provider,
+      nodeRunner: provider,
       inputs: {
         draft: "The original draft.",
       },
@@ -191,7 +191,7 @@ kind: program
       path: "fixtures/compiler/company-enrichment.prose.md",
       runRoot,
       runId: "prior-run",
-      provider: scriptedPiRuntime({
+      nodeRunner: scriptedPiRuntime({
         outputs: {
           profile: "Prior enrichment profile.",
         },
@@ -199,7 +199,7 @@ kind: program
       createdAt: "2026-04-25T00:17:00.000Z",
     });
 
-    const requests: ProviderRequest[] = [];
+    const requests: NodeRunRequest[] = [];
     const provider = scriptedPiRuntime({
       outputsByComponent: {
         "brief-writer": { brief: "A concise brief." },
@@ -211,7 +211,7 @@ kind: program
       path: "fixtures/compiler/typed-effects.prose.md",
       runRoot,
       runId: "run-ref",
-      provider,
+      nodeRunner: provider,
       inputs: {
         company: "Acme profile",
         subject: "run: prior-run",
@@ -244,7 +244,7 @@ kind: program
       path: "fixtures/compiler/typed-effects.prose.md",
       runRoot,
       runId: "missing-run-ref",
-      provider: providerShouldNotRun(() => {
+      nodeRunner: nodeRunnerShouldNotRun(() => {
         calls += 1;
       }),
       inputs: {
@@ -277,7 +277,7 @@ kind: program
       path: "fixtures/compiler/unrelated-enrichment.prose.md",
       runRoot,
       runId: "wrong-prior-run",
-      provider: scriptedPiRuntime({
+      nodeRunner: scriptedPiRuntime({
         outputs: {
           profile: "Wrong prior profile.",
         },
@@ -290,7 +290,7 @@ kind: program
       path: "fixtures/compiler/typed-effects.prose.md",
       runRoot,
       runId: "mismatched-run-ref",
-      provider: providerShouldNotRun(() => {
+      nodeRunner: nodeRunnerShouldNotRun(() => {
         calls += 1;
       }),
       inputs: {
@@ -308,7 +308,7 @@ kind: program
     );
   });
 
-  test("blocks invalid JSON-shaped inputs before provider execution", async () => {
+  test("blocks invalid JSON-shaped inputs before node-runner execution", async () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-run-invalid-input-"));
     let calls = 0;
     const result = await runSource(`---
@@ -327,7 +327,7 @@ kind: program
       path: "fixtures/compiler/json-input.prose.md",
       runRoot,
       runId: "invalid-input",
-      provider: providerShouldNotRun(() => {
+      nodeRunner: nodeRunnerShouldNotRun(() => {
         calls += 1;
       }),
       inputs: {
@@ -355,7 +355,7 @@ kind: program
       path: "fixtures/compiler/numeric-output.prose.md",
       runRoot,
       runId: "invalid-output",
-      provider: scriptedPiRuntime({
+      nodeRunner: scriptedPiRuntime({
         outputs: {
           count: "not a number",
         },
@@ -394,7 +394,7 @@ kind: program
       path: "fixtures/compiler/private-summary.prose.md",
       runRoot,
       runId: "private-policy",
-      provider: scriptedPiRuntime({
+      nodeRunner: scriptedPiRuntime({
         outputs: {
           summary: "Private summary.",
         },
@@ -437,7 +437,7 @@ kind: program
       path: "fixtures/compiler/public-summary.prose.md",
       runRoot,
       runId: "blocked-declassification",
-      provider: providerShouldNotRun(() => {
+      nodeRunner: nodeRunnerShouldNotRun(() => {
         calls += 1;
       }),
       inputs: {
@@ -476,7 +476,7 @@ kind: program
       path: "fixtures/compiler/public-summary-approved.prose.md",
       runRoot,
       runId: "approved-declassification",
-      provider: scriptedPiRuntime({
+      nodeRunner: scriptedPiRuntime({
         outputs: {
           summary: "Public summary.",
         },
@@ -518,11 +518,11 @@ kind: program
       path: "fixtures/compiler/effect-audit.prose.md",
       runRoot,
       runId: "effect-audit",
-      provider: {
+      nodeRunner: {
         kind: "pi",
-        async execute(request): Promise<ProviderResult> {
+        async execute(request): Promise<NodeRunResult> {
           return {
-            provider_result_version: "0.1",
+            node_run_result_version: "0.1",
             request_id: request.request_id,
             status: "succeeded",
             artifacts: [
@@ -554,12 +554,12 @@ kind: program
 
   test("assembles targeted graph runs from only requested outputs", async () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-run-targeted-"));
-    const requests: ProviderRequest[] = [];
+    const requests: NodeRunRequest[] = [];
     const result = await runSource(fixture("selective-recompute.prose.md"), {
       path: "fixtures/compiler/selective-recompute.prose.md",
       runRoot,
       runId: "targeted-run",
-      provider: scriptedPiRuntime({
+      nodeRunner: scriptedPiRuntime({
         outputsByComponent: {
           summarize: { summary: "Stable summary." },
         },
@@ -588,11 +588,11 @@ kind: program
       join(runRoot, ".prose-store"),
       "targeted-run:summarize",
     );
-    const session = deserializeProviderSessionRef(attempts[0]?.provider_session_ref ?? "{}");
+    const session = deserializeNodeSessionRef(attempts[0]?.node_session_ref ?? "{}");
     expect(String(session.metadata.session_file)).toBe(".pi/scripted-pi-1.jsonl");
   });
 
-  test("pauses effecting graphs with a resumable human gate before provider calls", async () => {
+  test("pauses effecting graphs with a resumable human gate before node-runner calls", async () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-run-gate-"));
     const sourcePath = join(
       import.meta.dir,
@@ -606,7 +606,7 @@ kind: program
       path: sourcePath,
       runRoot,
       runId: "gate-required",
-      provider: providerShouldNotRun(() => {
+      nodeRunner: nodeRunnerShouldNotRun(() => {
         calls += 1;
       }),
       inputs: {
@@ -619,7 +619,7 @@ kind: program
     expect(result.record.status).toBe("blocked");
     expect(result.record.acceptance.reason).toContain("Graph effect 'human_gate'");
     const attempts = await listRunAttemptRecords(join(runRoot, ".prose-store"), "gate-required");
-    expect(attempts[0]?.provider_session_ref).toBeNull();
+    expect(attempts[0]?.node_session_ref).toBeNull();
     expect(attempts[0]?.resume).toEqual({
       checkpoint_ref: "plan.json",
       reason: result.record.acceptance.reason,
@@ -630,7 +630,7 @@ kind: program
       failure_class: "pre_session_gate",
       gate: "effect_approval",
     });
-    expect(renderTraceText(trace)).toContain("run.blocked provider[pi]");
+    expect(renderTraceText(trace)).toContain("run.blocked graph_vm[pi]");
     expect(renderTraceText(trace)).toContain("gate[effect_approval]");
   });
 
@@ -643,12 +643,12 @@ kind: program
       "north-star",
       "release-proposal-dry-run.prose.md",
     );
-    const requests: ProviderRequest[] = [];
+    const requests: NodeRunRequest[] = [];
     const result = await runSource(readFileSync(sourcePath, "utf8"), {
       path: sourcePath,
       runRoot,
       runId: "gate-approved",
-      provider: scriptedPiRuntime({
+      nodeRunner: scriptedPiRuntime({
         outputsByComponent: approvalReleaseOutputs,
         onRequest: (request) => requests.push(request),
       }),
@@ -674,7 +674,7 @@ kind: program
       join(runRoot, ".prose-store"),
       "gate-approved:announce-release",
     );
-    expect(attempts[0]?.provider_session_ref).toContain("scripted-pi");
+    expect(attempts[0]?.node_session_ref).toContain("scripted-pi");
   });
 
   test("denied approval records keep effects blocked", async () => {
@@ -708,7 +708,7 @@ kind: program
       path: sourcePath,
       runRoot,
       runId: "gate-denied",
-      provider: providerShouldNotRun(() => {
+      nodeRunner: nodeRunnerShouldNotRun(() => {
         calls += 1;
       }),
       inputs: {
@@ -723,17 +723,17 @@ kind: program
     expect(result.record.status).toBe("blocked");
     expect(result.record.acceptance.reason).toContain("Effect approval denied for 'delivers'.");
     const attempts = await listRunAttemptRecords(join(runRoot, ".prose-store"), "gate-denied");
-    expect(attempts[0]?.provider_session_ref).toBeNull();
+    expect(attempts[0]?.node_session_ref).toBeNull();
   });
 
-  test("blocks graph execution before provider calls when caller input is missing", async () => {
+  test("blocks graph execution before node-runner calls when caller input is missing", async () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-run-graph-blocked-"));
     let calls = 0;
     const result = await runSource(fixture("pipeline.prose.md"), {
       path: "fixtures/compiler/pipeline.prose.md",
       runRoot,
       runId: "blocked-graph-run",
-      provider: providerShouldNotRun(() => {
+      nodeRunner: nodeRunnerShouldNotRun(() => {
         calls += 1;
       }),
       createdAt: "2026-04-25T00:20:00.000Z",
@@ -749,13 +749,13 @@ kind: program
     expect(result.node_records).toEqual([]);
   });
 
-  test("reuses a current graph without selecting a provider", async () => {
+  test("reuses a current graph without selecting a node runner", async () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-run-current-"));
     const first = await runSource(fixture("pipeline.prose.md"), {
       path: "fixtures/compiler/pipeline.prose.md",
       runRoot,
       runId: "current-graph-run",
-      provider: scriptedPiRuntime({
+      nodeRunner: scriptedPiRuntime({
         outputsByComponent: pipelineOutputs,
       }),
       inputs: {
@@ -868,7 +868,7 @@ kind: program
     );
   });
 
-  test("CLI can select the env-backed Pi provider before execution", () => {
+  test("CLI can select the env-backed Pi node runner before execution", () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-run-cli-pi-"));
     const result = runProseCli([
       "run",

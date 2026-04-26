@@ -11,7 +11,7 @@ import {
 } from "./support";
 import { scriptedPiRuntime } from "./support/scripted-pi-session";
 import type { OutputSubmissionPayload } from "../src/runtime/output-submission";
-import type { ProviderRequest } from "../src/providers";
+import type { NodeRunRequest } from "../src/node-runners";
 
 const examplePath = join(
   import.meta.dir,
@@ -66,7 +66,7 @@ describe("lead-program-designer north-star example", () => {
         join(runRoot, ".prose-store"),
         `lead-program-accepted:${component}`,
       );
-      expect(attempts[0]?.provider_session_ref, component).toContain("scripted-pi");
+      expect(attempts[0]?.node_session_ref, component).toContain("scripted-pi");
     }
     expect(prompts.get("lead-qualification-scorer")).toContain("lead_normalized_profile");
     expect(prompts.get("lead-qualification-scorer")).toContain("Acme Robotics");
@@ -178,8 +178,8 @@ async function runLeadProgram(options: {
   targetOutputs?: string[];
   submissionsByComponent: Record<string, OutputSubmissionPayload>;
   requiredEvals?: string[];
-  onRequest?: (request: ProviderRequest) => void;
-  onPrompt?: (prompt: string, request: ProviderRequest) => void;
+  onRequest?: (request: NodeRunRequest) => void;
+  onPrompt?: (prompt: string, request: NodeRunRequest) => void;
 }) {
   return runSource(readFileSync(examplePath, "utf8"), {
     path: examplePath,
@@ -194,7 +194,7 @@ async function runLeadProgram(options: {
     },
     targetOutputs: options.targetOutputs,
     requiredEvals: options.requiredEvals,
-    provider: scriptedPiRuntime({
+    nodeRunner: scriptedPiRuntime({
       submissionsByComponent: options.submissionsByComponent,
       onRequest: options.onRequest,
       onPrompt: options.onPrompt,

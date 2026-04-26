@@ -1,10 +1,10 @@
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type {
-  ProviderKind,
-  ProviderResult,
-  ProviderTelemetryEvent,
-} from "../providers/index.js";
+  GraphVmKind,
+  NodeRunResult,
+  NodeTelemetryEvent,
+} from "../node-runners/index.js";
 import type {
   ExecutionPlan,
   ProseIR,
@@ -17,7 +17,7 @@ import type { EffectApprovalRecord } from "../policy/index.js";
 export interface RuntimeTraceContext {
   ir: ProseIR;
   plan: ExecutionPlan;
-  provider: { kind: ProviderKind };
+  nodeRunner: { kind: GraphVmKind };
   runtimeProfile: RuntimeProfile;
   runId: string;
   runDir: string;
@@ -37,7 +37,7 @@ export async function writeBlockedTrace(
         event: "run.blocked",
         at: ctx.createdAt,
         run_id: runId,
-        provider: ctx.provider.kind,
+        graph_vm: ctx.nodeRunner.kind,
         runtime_profile: ctx.runtimeProfile,
         failure_class: "pre_session_gate",
         gate: gateKind(reasons),
@@ -48,26 +48,26 @@ export async function writeBlockedTrace(
   );
 }
 
-export async function writeProviderTrace(
+export async function writeNodeTrace(
   ctx: RuntimeTraceContext,
-  result: ProviderResult,
+  result: NodeRunResult,
   record: RunRecord,
 ): Promise<void> {
   const events = [
     {
       event: "run.started",
       run_id: ctx.runId,
-      provider: ctx.provider.kind,
+      graph_vm: ctx.nodeRunner.kind,
       runtime_profile: ctx.runtimeProfile,
       at: ctx.createdAt,
       ir_hash: ctx.ir.semantic_hash,
       approval_records: approvalTraceRecords(ctx),
     },
-    ...providerTraceEvents(result, record),
+    ...nodeRunTraceEvents(result, record),
     {
-      event: "provider.finished",
+      event: "node_run.finished",
       run_id: ctx.runId,
-      provider: ctx.provider.kind,
+      graph_vm: ctx.nodeRunner.kind,
       runtime_profile: ctx.runtimeProfile,
       status: result.status,
       diagnostics: result.diagnostics,
@@ -82,13 +82,13 @@ export async function writeGraphTrace(
   ctx: RuntimeTraceContext,
   record: RunRecord,
   nodeRecords: RunRecord[],
-  providerResultsByRunId: Map<string, ProviderResult> = new Map(),
+  nodeRunResultsByRunId: Map<string, NodeRunResult> = new Map(),
 ): Promise<void> {
   const events = [
     {
       event: "graph.started",
       run_id: ctx.runId,
-      provider: ctx.provider.kind,
+      graph_vm: ctx.nodeRunner.kind,
       runtime_profile: ctx.runtimeProfile,
       at: ctx.createdAt,
       ir_hash: ctx.ir.semantic_hash,
@@ -98,7 +98,7 @@ export async function writeGraphTrace(
         .filter((node) => node.status === "skipped")
         .map((node) => node.component_ref),
     },
-    ...nodeRecords.flatMap((node) => nodeTraceEvents(ctx, node, providerResultsByRunId)),
+    ...nodeRecords.flatMap((node) => nodeTraceEvents(ctx, node, nodeRunResultsByRunId)),
     {
       event: "graph.finished",
       run_id: ctx.runId,
@@ -124,9 +124,9 @@ function approvalTraceRecords(ctx: RuntimeTraceContext) {
 function nodeTraceEvents(
   ctx: RuntimeTraceContext,
   node: RunRecord,
-  providerResultsByRunId: Map<string, ProviderResult>,
+  nodeRunResultsByRunId: Map<string, NodeRunResult>,
 ): TraceEvent[] {
-  const providerResult = providerResultsByRunId.get(node.run_id);
+  const nodeRunResult = nodeRunResultsByRunId.get(node.run_id);
   return [
     {
       event: "node.started",
@@ -135,8 +135,8 @@ function nodeTraceEvents(
       component_ref: node.component_ref,
       at: node.created_at,
     },
-    ...(providerResult
-      ? providerTraceEvents(providerResult, node, {
+    ...(nodeRunResult
+      ? nodeRunTraceEvents(nodeRunResult, node, {
           graph_run_id: ctx.runId,
           component_ref: node.component_ref,
         })
@@ -167,18 +167,18 @@ function nodeTraceEvents(
   ];
 }
 
-function providerTraceEvents(
-  result: ProviderResult,
+function nodeRunTraceEvents(
+  result: NodeRunResult,
   record: RunRecord,
   extra: Record<string, unknown> = {},
 ): TraceEvent[] {
   const events: TraceEvent[] = [];
   if (result.session) {
     events.push({
-      event: "provider.session",
+      event: "node_session.started",
       run_id: record.run_id,
       at: record.created_at,
-      provider: result.session.provider,
+      graph_vm: result.session.graph_vm,
       session_id: result.session.session_id,
       session_file: result.session.metadata.session_file ?? null,
       model_provider: result.session.metadata.model_provider ?? null,
@@ -190,16 +190,16 @@ function providerTraceEvents(
 
   events.push(
     ...(result.telemetry ?? []).map((event) =>
-      providerTelemetryTraceEvent(event, record, extra),
+      nodeTelemetryTraceEvent(event, record, extra),
     ),
   );
 
   if (result.cost) {
     events.push({
-      event: "provider.cost",
+      event: "node_run.cost",
       run_id: record.run_id,
       at: record.completed_at ?? record.created_at,
-      provider: result.session?.provider ?? "unknown",
+      graph_vm: result.session?.graph_vm ?? "unknown",
       currency: result.cost.currency,
       amount: result.cost.amount,
       items: result.cost.items,
@@ -209,10 +209,10 @@ function providerTraceEvents(
 
   if (result.status !== "succeeded") {
     events.push({
-      event: "provider.failure",
+      event: "node_run.failure",
       run_id: record.run_id,
       at: record.completed_at ?? record.created_at,
-      provider: result.session?.provider ?? "unknown",
+      graph_vm: result.session?.graph_vm ?? "unknown",
       failure_class: failureClass(result),
       diagnostic_codes: result.diagnostics.map((diagnostic) => diagnostic.code).sort(),
       ...extra,
@@ -222,8 +222,8 @@ function providerTraceEvents(
   return events;
 }
 
-function providerTelemetryTraceEvent(
-  event: ProviderTelemetryEvent,
+function nodeTelemetryTraceEvent(
+  event: NodeTelemetryEvent,
   record: RunRecord,
   extra: Record<string, unknown>,
 ): TraceEvent {
@@ -235,7 +235,7 @@ function providerTelemetryTraceEvent(
   };
 }
 
-function failureClass(result: ProviderResult): string {
+function failureClass(result: NodeRunResult): string {
   const codes = result.diagnostics.map((diagnostic) => diagnostic.code);
   if (codes.some((code) => code.includes("timeout"))) {
     return "timeout";
@@ -249,7 +249,7 @@ function failureClass(result: ProviderResult): string {
   if (codes.some((code) => code.includes("output"))) {
     return "output_contract";
   }
-  return result.status === "blocked" ? "blocked" : "provider_error";
+  return result.status === "blocked" ? "blocked" : "node_runner_error";
 }
 
 function gateKind(reasons: string[]): string {

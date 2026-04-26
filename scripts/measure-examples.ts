@@ -194,7 +194,7 @@ async function main(): Promise<void> {
           fixture_root: fixturesRoot,
         },
         requiredEvals: [companySignalEvalPath],
-        provider: scriptedPiRuntime({
+        nodeRunner: scriptedPiRuntime({
           submissionsByComponent: {
             "company-signal-brief": submission({
               company_signal_brief: "# Company Signal Brief\n\nDurable agent workflows need typed runs, gates, and traces.",
@@ -218,7 +218,7 @@ async function main(): Promise<void> {
           fixture_root: fixturesRoot,
         },
         requiredEvals: [leadProgramEvalPath],
-        provider: scriptedPiRuntime({
+        nodeRunner: scriptedPiRuntime({
           submissionsByComponent: {
             ...leadProgramSubmissions("base"),
             "lead-program-designer-eval": evalSubmission(true, 0.91, "pass"),
@@ -239,7 +239,7 @@ async function main(): Promise<void> {
           brand_context: await fixture(fixturesRoot, "lead-program-designer/stale.brand-context.md"),
         },
         targetOutputs: ["lead_program_plan"],
-        provider: scriptedPiRuntime({
+        nodeRunner: scriptedPiRuntime({
           submissionsByComponent: {
             "save-grow-program-drafter": submission({
               lead_program_plan: "# Save/Grow Program\n\nUpdated for enterprise registry positioning.",
@@ -295,7 +295,7 @@ async function main(): Promise<void> {
         },
         approvedEffects: ["writes_memory"],
         requiredEvals: [stargazerEvalPath],
-        provider: scriptedPiRuntime({
+        nodeRunner: scriptedPiRuntime({
           submissionsByComponent: {
             ...stargazerSubmissions(),
             "stargazer-intake-lite-eval": evalSubmission(true, 0.94, "pass"),
@@ -348,7 +348,7 @@ async function main(): Promise<void> {
           fixture_root: fixturesRoot,
         },
         requiredEvals: [opportunityEvalPath],
-        provider: scriptedPiRuntime({
+        nodeRunner: scriptedPiRuntime({
           submissionsByComponent: {
             ...opportunitySubmissions("source-aware"),
             "opportunity-discovery-lite-eval": evalSubmission(true, 0.92, "pass"),
@@ -371,7 +371,7 @@ async function main(): Promise<void> {
           brand_context: "# Brand Context\n\nOpenProse now leads with enterprise provenance.",
         },
         targetOutputs: ["opportunity_summary"],
-        provider: scriptedPiRuntime({
+        nodeRunner: scriptedPiRuntime({
           submissionsByComponent: downstreamOpportunitySubmissions("enterprise"),
         }),
       }),
@@ -1037,7 +1037,7 @@ async function readRunOutput(
 }
 
 function sessionCount(events: Array<{ event: string }>): number {
-  return events.filter((event) => event.event === "provider.session").length;
+  return events.filter((event) => event.event === "node_session.started").length;
 }
 
 function reusedNodes(plan: ExecutionPlan): string[] {

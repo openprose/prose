@@ -172,7 +172,7 @@ describe("OpenProse std evals", () => {
     for (const evalCase of evalCases) {
       const result = await runSource(evalSource(evalCase.file), {
         path: evalPath(evalCase.file),
-        provider: scriptedPiRuntime({
+        nodeRunner: scriptedPiRuntime({
           outputs: {
             [evalCase.output]: JSON.stringify({
               passed: true,

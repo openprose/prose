@@ -20,7 +20,7 @@ describe("OpenProse Pi node prompt envelope", () => {
       path: "fixtures/compiler/selective-recompute.prose.md",
       runRoot,
       runId: "envelope-single",
-      provider: scriptedPiRuntime({
+      nodeRunner: scriptedPiRuntime({
         outputsByComponent: {
           summarize: { summary: "Stable summary." },
         },
@@ -59,7 +59,7 @@ describe("OpenProse Pi node prompt envelope", () => {
       path: "fixtures/compiler/pipeline.prose.md",
       runRoot,
       runId: "envelope-upstream",
-      provider: scriptedPiRuntime({
+      nodeRunner: scriptedPiRuntime({
         outputsByComponent: pipelineOutputs,
       }),
       inputs: {
@@ -99,7 +99,7 @@ describe("OpenProse Pi node prompt envelope", () => {
       path: sourcePath,
       runRoot,
       runId: "envelope-approved-effects",
-      provider: scriptedPiRuntime({
+      nodeRunner: scriptedPiRuntime({
         outputsByComponent: approvalReleaseOutputs,
         onPrompt: (prompt, request) => prompts.set(request.component.name, prompt),
       }),
@@ -135,7 +135,7 @@ kind: program
       path: "fixtures/compiler/company-enrichment.prose.md",
       runRoot,
       runId: "prior-run",
-      provider: scriptedPiRuntime({
+      nodeRunner: scriptedPiRuntime({
         outputs: {
           profile: "Prior enrichment profile.",
         },
@@ -147,7 +147,7 @@ kind: program
       path: "fixtures/compiler/prior-run-graph.prose.md",
       runRoot,
       runId: "envelope-run-input",
-      provider: scriptedPiRuntime({
+      nodeRunner: scriptedPiRuntime({
         outputsByComponent: {
           prepare: { context: "Prepared company context." },
           "brief-writer": { brief: "A concise brief." },
@@ -181,7 +181,7 @@ kind: program
         path: "fixtures/compiler/redaction.prose.md",
         runRoot,
         runId: "envelope-redaction",
-        provider: scriptedPiRuntime({
+        nodeRunner: scriptedPiRuntime({
           outputsByComponent: {
             secure: { secret_summary: "Secret was handled." },
             finish: { result: "Redacted." },

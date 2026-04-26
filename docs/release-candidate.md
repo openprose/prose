@@ -53,7 +53,7 @@ Latest generated reports:
 ## Follow-Up After RC
 
 - Wire platform tests directly to the OSS hosted-runtime fixtures.
-- Capture a successful opt-in live Pi smoke once model-provider credits are
+- Capture a successful opt-in live Pi smoke once model provider credits are
   available.
 - Decide the hosted runtime contract for Sprites/Pi once the platform
   Workstream 03 pass begins.

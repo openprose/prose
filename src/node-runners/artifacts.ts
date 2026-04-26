@@ -1,8 +1,8 @@
 import { writeLocalArtifactRecord } from "../store/artifacts.js";
 import type { LocalArtifactRecord, LocalArtifactSchemaStatus } from "../types.js";
-import type { ProviderResult } from "./protocol.js";
+import type { NodeRunResult } from "./protocol.js";
 
-export interface WriteProviderArtifactRecordsOptions {
+export interface WriteNodeArtifactRecordsOptions {
   runId: string;
   nodeId: string | null;
   createdAt?: string;
@@ -10,10 +10,10 @@ export interface WriteProviderArtifactRecordsOptions {
   policyLabelsByPort?: Record<string, string[]>;
 }
 
-export async function writeProviderArtifactRecords(
+export async function writeNodeArtifactRecords(
   storeRoot: string,
-  result: ProviderResult,
-  options: WriteProviderArtifactRecordsOptions,
+  result: NodeRunResult,
+  options: WriteNodeArtifactRecordsOptions,
 ): Promise<LocalArtifactRecord[]> {
   const records: LocalArtifactRecord[] = [];
 

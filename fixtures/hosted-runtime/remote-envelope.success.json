@@ -4,7 +4,7 @@
   "run_dir": "fixtures/hosted-runtime/runs/hosted-contract-success",
   "component_ref": "registry://openprose/@openprose/catalog-demo@0.1.0/brief-writer",
   "status": "succeeded",
-  "provider": "pi",
+  "graph_vm": "pi",
   "runtime_profile": {
     "profile_version": "0.1",
     "graph_vm": "pi",
@@ -108,8 +108,8 @@
         "kind": "runtime_run_record",
         "content_type": "application/json",
         "parse_policy": "must_parse_json",
-        "sha256": "72e619294d7202b87b788561c222a5cba3c3523dc65a0a72ba7a634d59ad4e10",
-        "size_bytes": 1948,
+        "sha256": "f841b6e054c7ba190602e2c2568927f12c69dde73c5b0f2d59a32d1e62b7df85",
+        "size_bytes": 1951,
         "binding": null,
         "policy_labels": [],
         "warnings": []
@@ -141,8 +141,8 @@
         "kind": "runtime_trace",
         "content_type": "application/json",
         "parse_policy": "must_parse_json",
-        "sha256": "2138ff29a6bd89a339628124500b0e3ec1d2d292147a0a9dcd27ec4e414f8256",
-        "size_bytes": 3789,
+        "sha256": "314c3536552e8e64c792e2191f0db97d282742672c6ba4d3c016d5d086bcad81",
+        "size_bytes": 3793,
         "binding": null,
         "policy_labels": [],
         "warnings": []

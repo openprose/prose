@@ -3,11 +3,11 @@ import { dirname, join, relative } from "node:path";
 import { sha256 } from "../hash.js";
 import { mergePolicyLabels } from "../policy/index.js";
 import {
-  serializeProviderSessionRef,
-  type ProviderArtifactResult,
-  type ProviderKind,
-  type ProviderResult,
-} from "../providers/index.js";
+  serializeNodeSessionRef,
+  type NodeArtifactResult,
+  type GraphVmKind,
+  type NodeRunResult,
+} from "../node-runners/index.js";
 import { writeRunAttemptRecord } from "../store/attempts.js";
 import { upsertRunIndexEntry } from "../store/local.js";
 import type {
@@ -21,7 +21,7 @@ import type {
 
 export interface RuntimeRecordContext {
   ir: ProseIR;
-  provider: { kind: ProviderKind };
+  nodeRunner: { kind: GraphVmKind };
   runtimeProfile: RuntimeProfile;
   runId: string;
   runDir: string;
@@ -53,8 +53,8 @@ export function baseRunRecord(
       trigger: ctx.trigger,
     },
     runtime: {
-      harness: "openprose-provider",
-      worker_ref: ctx.provider.kind,
+      harness: "openprose-node-runner",
+      worker_ref: ctx.nodeRunner.kind,
       graph_vm: ctx.runtimeProfile.graph_vm,
       single_run_harness: ctx.runtimeProfile.single_run_harness,
       model_provider: ctx.runtimeProfile.model_provider,
@@ -79,10 +79,10 @@ export async function writeRunRecordFile(
   await writeFile(path, `${JSON.stringify(record, null, 2)}\n`);
 }
 
-export async function writeProviderAttemptRecord(
+export async function writeNodeAttemptRecord(
   ctx: RuntimeRecordContext,
   record: RunRecord,
-  result: ProviderResult,
+  result: NodeRunResult,
   diagnostics = result.diagnostics,
 ): Promise<void> {
   await writeRunAttemptRecord(ctx.storeRoot, {
@@ -91,7 +91,7 @@ export async function writeProviderAttemptRecord(
     attemptNumber: 1,
     status: record.status,
     runtimeProfile: ctx.runtimeProfile,
-    providerSessionRef: result.session ? serializeProviderSessionRef(result.session) : null,
+    nodeSessionRef: result.session ? serializeNodeSessionRef(result.session) : null,
     startedAt: record.created_at,
     finishedAt: record.completed_at,
     diagnostics,
@@ -99,8 +99,8 @@ export async function writeProviderAttemptRecord(
       record.status === "succeeded"
         ? null
         : {
-            code: "provider_run_failed",
-            message: record.acceptance.reason ?? "Provider run failed.",
+            code: "node_run_failed",
+            message: record.acceptance.reason ?? "Node run failed.",
             retryable: record.status === "failed",
           },
   });
@@ -116,7 +116,7 @@ export async function writeBlockedAttemptRecord(
     attemptNumber: 1,
     status: record.status,
     runtimeProfile: ctx.runtimeProfile,
-    providerSessionRef: null,
+    nodeSessionRef: null,
     startedAt: record.created_at,
     finishedAt: record.completed_at,
     diagnostics: recordDiagnostics(record),
@@ -171,7 +171,7 @@ export function nodeRunRecordPath(component: ComponentIR): string {
 export async function writeRunOutputArtifacts(
   ctx: RuntimeRecordContext,
   component: ComponentIR,
-  artifacts: ProviderArtifactResult[],
+  artifacts: NodeArtifactResult[],
   policyLabelsByPort: Record<string, string[]> = {},
 ): Promise<RunOutputRecord[]> {
   const outputs: RunOutputRecord[] = [];

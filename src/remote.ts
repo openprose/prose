@@ -23,7 +23,8 @@ export interface RemoteExecuteOptions {
   outputs?: Record<string, string>;
   approvedEffects?: string[];
   trigger?: RunRecord["caller"]["trigger"];
-  provider?: RunOptions["provider"];
+  graphVm?: RunOptions["graphVm"];
+  nodeRunner?: RunOptions["nodeRunner"];
   componentRef?: string | null;
   packageMetadataPath?: string | null;
 }
@@ -42,7 +43,8 @@ export async function executeRemoteFile(
     outputs: options.outputs,
     approvedEffects: options.approvedEffects,
     trigger: options.trigger,
-    provider: options.provider ?? createScriptedPiRuntime({ outputs: options.outputs ?? {} }),
+    graphVm: options.graphVm,
+    nodeRunner: options.nodeRunner ?? createScriptedPiRuntime({ outputs: options.outputs ?? {} }),
     runtimeProfile: {
       graph_vm: "pi",
       model_provider: "scripted",
@@ -69,7 +71,7 @@ export async function executeRemoteFile(
     run_dir: result.run_dir,
     component_ref: options.componentRef ?? result.record.component_ref,
     status: result.record.status,
-    provider: result.provider,
+    graph_vm: result.graph_vm,
     runtime_profile: result.record.runtime.profile,
     plan_status: result.plan.status,
     acceptance: result.record.acceptance,

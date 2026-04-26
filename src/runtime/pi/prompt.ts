@@ -4,9 +4,9 @@ import {
   type NodePromptEnvelope,
 } from "../node-envelope.js";
 import {
-  renderProviderOutputFileInstructions,
-  type ProviderOutputFileMap,
-} from "../../providers/output-files.js";
+  renderNodeOutputFileInstructions,
+  type NodeOutputFileMap,
+} from "../../node-runners/output-files.js";
 import type { NodeExecutionRequest } from "../node-request.js";
 
 export function buildPiNodePromptEnvelope(
@@ -17,7 +17,7 @@ export function buildPiNodePromptEnvelope(
 
 export function renderPiNodePrompt(
   request: NodeExecutionRequest,
-  outputFiles?: ProviderOutputFileMap,
+  outputFiles?: NodeOutputFileMap,
 ): string {
   const envelope = buildPiNodePromptEnvelope(request);
   return [
@@ -28,8 +28,8 @@ export function renderPiNodePrompt(
     "If the openprose_submit_outputs tool is available, use it to submit declared outputs and performed effects.",
     "If that tool is not available, write the fallback output files exactly as instructed below.",
     "",
-    renderProviderOutputFileInstructions(
-      request.provider_request.expected_outputs,
+    renderNodeOutputFileInstructions(
+      request.node_run_request.expected_outputs,
       outputFiles,
     ),
   ].join("\n");

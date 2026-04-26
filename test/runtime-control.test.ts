@@ -10,18 +10,18 @@ import {
   test,
   tmpdir,
 } from "./support";
-import { scriptedPiRuntime, providerShouldNotRun } from "./support/scripted-pi-session";
+import { scriptedPiRuntime, nodeRunnerShouldNotRun } from "./support/scripted-pi-session";
 import { approvalReleaseOutputs } from "./support/runtime-scenarios";
 import { cancelRunPath, resumeRunSource, retryRunSource } from "../src/control";
 import { runSource } from "../src/run";
-import type { ProviderRequest, ProviderResult, RuntimeProvider } from "../src/providers";
+import type { NodeRunRequest, NodeRunResult, NodeRunner } from "../src/node-runners";
 
 describe("OpenProse runtime controls", () => {
   test("retries only stale failed graph nodes", async () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-retry-"));
     let failPolish = true;
     const calls: string[] = [];
-    const provider = controlledProvider(calls, {
+    const provider = controlledNodeRunner(calls, {
       review: { feedback: "Tighten the intro." },
       "fact-check": { claims: "[{\"claim\":\"All claims verified.\"}]" },
       polish: { final: "The polished draft." },
@@ -31,7 +31,7 @@ describe("OpenProse runtime controls", () => {
       path: "fixtures/compiler/pipeline.prose.md",
       runRoot,
       runId: "retry-original",
-      provider,
+      nodeRunner: provider,
       inputs: {
         draft: "The original draft.",
       },
@@ -58,7 +58,7 @@ describe("OpenProse runtime controls", () => {
       currentRunPath: first.run_dir,
       runRoot,
       runId: "retry-second",
-      provider,
+      nodeRunner: provider,
       inputs: {
         draft: "The original draft.",
       },
@@ -83,7 +83,7 @@ describe("OpenProse runtime controls", () => {
       path: sourcePath,
       runRoot,
       runId: "cancel-target",
-      provider: providerShouldNotRun(),
+      nodeRunner: nodeRunnerShouldNotRun(),
       inputs: {
         release_candidate: "v1.2.3",
       },
@@ -118,7 +118,7 @@ describe("OpenProse runtime controls", () => {
       path: sourcePath,
       runRoot,
       runId: "resume-blocked",
-      provider: providerShouldNotRun(),
+      nodeRunner: nodeRunnerShouldNotRun(),
       inputs: {
         release_candidate: "v1.2.3",
       },
@@ -130,7 +130,7 @@ describe("OpenProse runtime controls", () => {
       currentRunPath: blocked.run_dir,
       runRoot,
       runId: "resume-approved",
-      provider: scriptedPiRuntime({
+      nodeRunner: scriptedPiRuntime({
         outputsByComponent: approvalReleaseOutputs,
       }),
       inputs: {
@@ -145,18 +145,18 @@ describe("OpenProse runtime controls", () => {
   });
 });
 
-function controlledProvider(
+function controlledNodeRunner(
   calls: string[],
   outputsByComponent: Record<string, Record<string, string>>,
-  shouldFail: (request: ProviderRequest) => boolean,
-): RuntimeProvider {
+  shouldFail: (request: NodeRunRequest) => boolean,
+): NodeRunner {
   return {
     kind: "pi",
-    async execute(request): Promise<ProviderResult> {
+    async execute(request): Promise<NodeRunResult> {
       calls.push(request.component.name);
       if (shouldFail(request)) {
         return {
-          provider_result_version: "0.1",
+          node_run_result_version: "0.1",
           request_id: request.request_id,
           status: "failed",
           artifacts: [],
@@ -177,7 +177,7 @@ function controlledProvider(
 
       const outputs = outputsByComponent[request.component.name] ?? {};
       return {
-        provider_result_version: "0.1",
+        node_run_result_version: "0.1",
         request_id: request.request_id,
         status: "succeeded",
         artifacts: request.expected_outputs.map((output) => ({

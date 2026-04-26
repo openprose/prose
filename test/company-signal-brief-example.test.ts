@@ -57,7 +57,7 @@ describe("company-signal-brief north-star example", () => {
         fixture_root: fixtureRoot,
       },
       requiredEvals: [evalPath],
-      provider: scriptedPiRuntime({
+      nodeRunner: scriptedPiRuntime({
         submissionsByComponent: {
           "company-signal-brief": {
             outputs: [
@@ -122,7 +122,7 @@ describe("company-signal-brief north-star example", () => {
         fixture_root: fixtureRoot,
       },
       requiredEvals: [evalPath],
-      provider: scriptedPiRuntime({
+      nodeRunner: scriptedPiRuntime({
         submissionsByComponent: {
           "company-signal-brief": {
             outputs: [

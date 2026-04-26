@@ -75,7 +75,7 @@ describe("OpenProse std controls and composites", () => {
       const outputPort = pattern.kind === "control" ? "control_result" : "composite_result";
       const result = await runSource(patternSource(pattern), {
         path: patternPath(pattern),
-        provider: scriptedPiRuntime({
+        nodeRunner: scriptedPiRuntime({
           outputs: {
             [outputPort]: '{"result":"Fixture result","status":"ok"}',
           },

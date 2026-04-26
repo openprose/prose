@@ -3,10 +3,10 @@ import { sha256 } from "../hash.js";
 import { mergePolicyLabels } from "../policy/runtime.js";
 import type { Diagnostic } from "../types.js";
 import type {
-  ProviderArtifactResult,
-  ProviderExpectedOutput,
-  ProviderRequest,
-} from "../providers/protocol.js";
+  NodeArtifactResult,
+  NodeExpectedOutput,
+  NodeRunRequest,
+} from "../node-runners/protocol.js";
 
 export interface OutputSubmissionOutput {
   port: string;
@@ -27,7 +27,7 @@ export interface OutputSubmissionPayload {
 
 export interface OutputSubmissionResult {
   status: "accepted" | "rejected";
-  artifacts: ProviderArtifactResult[];
+  artifacts: NodeArtifactResult[];
   performed_effects: string[];
   diagnostics: Diagnostic[];
   citations: string[];
@@ -36,7 +36,7 @@ export interface OutputSubmissionResult {
 }
 
 export function evaluateOutputSubmission(
-  request: ProviderRequest,
+  request: NodeRunRequest,
   rawPayload: unknown,
 ): OutputSubmissionResult {
   const diagnostics: Diagnostic[] = [];
@@ -99,7 +99,7 @@ export function parseOutputSubmissionPayload(rawPayload: unknown): OutputSubmiss
 }
 
 function validateOutputEntries(
-  request: ProviderRequest,
+  request: NodeRunRequest,
   payload: OutputSubmissionPayload,
   diagnostics: Diagnostic[],
 ): void {
@@ -164,7 +164,7 @@ function validateOutputEntries(
 }
 
 function validatePerformedEffects(
-  request: ProviderRequest,
+  request: NodeRunRequest,
   payload: OutputSubmissionPayload,
   diagnostics: Diagnostic[],
 ): void {
@@ -183,9 +183,9 @@ function validatePerformedEffects(
 }
 
 function artifactsFromSubmission(
-  request: ProviderRequest,
+  request: NodeRunRequest,
   payload: OutputSubmissionPayload,
-): ProviderArtifactResult[] {
+): NodeArtifactResult[] {
   const expectedByPort = new Map(
     request.expected_outputs.map((output) => [output.port, output]),
   );
@@ -289,7 +289,7 @@ function validArtifactRef(value: string | null | undefined): boolean {
   return !isAbsolute(value) && normalized !== "." && !normalized.startsWith("../");
 }
 
-function inferSubmissionContentType(output: ProviderExpectedOutput): string {
+function inferSubmissionContentType(output: NodeExpectedOutput): string {
   const type = output.type.toLowerCase();
   if (type.includes("json") || type.includes("record") || type.includes("object")) {
     return "application/json";
@@ -301,8 +301,8 @@ function inferSubmissionContentType(output: ProviderExpectedOutput): string {
 }
 
 function portSourceSpan(
-  request: ProviderRequest,
-  output: ProviderExpectedOutput,
+  request: NodeRunRequest,
+  output: NodeExpectedOutput,
 ): Diagnostic["source_span"] {
   return request.component.ports.ensures.find((port) => port.name === output.port)
     ?.source_span;

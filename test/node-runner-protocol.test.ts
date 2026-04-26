@@ -6,29 +6,29 @@ import {
   testRuntimeProfile,
 } from "./support";
 import {
-  deserializeProviderSessionRef,
-  serializeProviderSessionRef,
-} from "../src/providers/protocol";
+  deserializeNodeSessionRef,
+  serializeNodeSessionRef,
+} from "../src/node-runners/protocol";
 import type {
-  ProviderRequest,
-  ProviderResult,
-  ProviderSessionRef,
-  RuntimeProvider,
-} from "../src/providers/protocol";
+  NodeRunRequest,
+  NodeRunResult,
+  NodeSessionRef,
+  NodeRunner,
+} from "../src/node-runners/protocol";
 
-describe("OpenProse provider protocol", () => {
-  test("accepts typed provider request and response shapes", async () => {
+describe("OpenProse node runner protocol", () => {
+  test("accepts typed node-run request and response shapes", async () => {
     const component = compileFixture("hello.prose.md").components[0];
     const request = {
-      provider_request_version: "0.1",
+      node_run_request_version: "0.1",
       request_id: "request-1",
-      provider: "pi",
+      graph_vm: "pi",
       runtime_profile: testRuntimeProfile("pi"),
       component,
       rendered_contract: "# hello\n\nProduce the message output.",
       input_bindings: [],
       upstream_artifacts: [],
-      workspace_path: "/tmp/openprose-provider",
+      workspace_path: "/tmp/openprose-node-runner",
       environment: [],
       approved_effects: [],
       policy_labels: [],
@@ -47,13 +47,13 @@ describe("OpenProse provider protocol", () => {
           required: true,
         },
       ],
-    } satisfies ProviderRequest;
+    } satisfies NodeRunRequest;
 
-    const provider: RuntimeProvider = {
+    const provider: NodeRunner = {
       kind: "pi",
       async execute(input) {
         return {
-          provider_result_version: "0.1",
+          node_run_result_version: "0.1",
           request_id: input.request_id,
           status: "succeeded",
           artifacts: [
@@ -74,14 +74,14 @@ describe("OpenProse provider protocol", () => {
           },
           diagnostics: [],
           session: {
-            provider: "pi",
+      graph_vm: "pi",
             session_id: "scripted-pi:request-1",
             url: null,
             metadata: {},
           },
           cost: null,
           duration_ms: 0,
-        } satisfies ProviderResult;
+        } satisfies NodeRunResult;
       },
     };
 
@@ -91,9 +91,9 @@ describe("OpenProse provider protocol", () => {
     expect(result.artifacts[0].port).toBe("message");
   });
 
-  test("serializes provider session refs stably", () => {
-    const ref: ProviderSessionRef = {
-      provider: "pi",
+  test("serializes node session refs stably", () => {
+    const ref: NodeSessionRef = {
+      graph_vm: "pi",
       session_id: "session-123",
       url: "https://pi.example/sessions/session-123",
       metadata: {
@@ -102,11 +102,11 @@ describe("OpenProse provider protocol", () => {
         resumable: true,
       },
     };
-    const serialized = serializeProviderSessionRef(ref);
-    const parsed = deserializeProviderSessionRef(serialized);
+    const serialized = serializeNodeSessionRef(ref);
+    const parsed = deserializeNodeSessionRef(serialized);
 
     expect(serialized).toBe(
-      '{"metadata":{"attempt":2,"resumable":true,"worker":"alpha"},"provider":"pi","session_id":"session-123","url":"https://pi.example/sessions/session-123"}',
+      '{"graph_vm":"pi","metadata":{"attempt":2,"resumable":true,"worker":"alpha"},"session_id":"session-123","url":"https://pi.example/sessions/session-123"}',
     );
     expect(parsed).toEqual(ref);
   });

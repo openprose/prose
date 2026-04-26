@@ -7,16 +7,16 @@ import type {
   RunLifecycleStatus,
 } from "../types.js";
 
-export type ProviderKind = "pi" | (string & {});
+export type GraphVmKind = "pi" | (string & {});
 
-export interface ProviderSessionRef {
-  provider: ProviderKind;
+export interface NodeSessionRef {
+  graph_vm: GraphVmKind;
   session_id: string;
   url: string | null;
   metadata: Record<string, string | number | boolean | null>;
 }
 
-export interface ProviderInputBinding {
+export interface NodeInputBinding {
   port: string;
   value: string | null;
   artifact: LocalArtifactRecord | null;
@@ -24,50 +24,50 @@ export interface ProviderInputBinding {
   policy_labels: string[];
 }
 
-export interface ProviderExpectedOutput {
+export interface NodeExpectedOutput {
   port: string;
   type: string;
   required: boolean;
   policy_labels: string[];
 }
 
-export interface ProviderEnvironmentBinding {
+export interface NodeEnvironmentBinding {
   name: string;
   required: boolean;
   value: string | null;
 }
 
-export interface ProviderValidationRule {
+export interface NodeValidationRule {
   kind: "schema" | "effect" | "policy" | "output";
   ref: string;
   required: boolean;
 }
 
-export interface ProviderRuntimePrompt {
+export interface NodeRuntimePrompt {
   prompt_version: "0.1";
   kind: "node_envelope";
   text: string;
 }
 
-export interface ProviderRequest {
-  provider_request_version: "0.1";
+export interface NodeRunRequest {
+  node_run_request_version: "0.1";
   request_id: string;
-  provider: ProviderKind;
+  graph_vm: GraphVmKind;
   runtime_profile: RuntimeProfile;
-  runtime_prompt?: ProviderRuntimePrompt | null;
+  runtime_prompt?: NodeRuntimePrompt | null;
   component: ComponentIR;
   rendered_contract: string;
-  input_bindings: ProviderInputBinding[];
+  input_bindings: NodeInputBinding[];
   upstream_artifacts: LocalArtifactRecord[];
   workspace_path: string;
-  environment: ProviderEnvironmentBinding[];
+  environment: NodeEnvironmentBinding[];
   approved_effects: string[];
   policy_labels: string[];
-  expected_outputs: ProviderExpectedOutput[];
-  validation: ProviderValidationRule[];
+  expected_outputs: NodeExpectedOutput[];
+  validation: NodeValidationRule[];
 }
 
-export interface ProviderArtifactResult {
+export interface NodeArtifactResult {
   port: string;
   content: string | null;
   content_type: string;
@@ -76,7 +76,7 @@ export interface ProviderArtifactResult {
   policy_labels: string[];
 }
 
-export interface ProviderCostTelemetry {
+export interface NodeCostTelemetry {
   currency: string;
   amount: number;
   items: Array<{
@@ -86,43 +86,43 @@ export interface ProviderCostTelemetry {
   }>;
 }
 
-export interface ProviderLogs {
+export interface NodeLogs {
   stdout: string | null;
   stderr: string | null;
   transcript: string | null;
 }
 
-export interface ProviderTelemetryEvent {
+export interface NodeTelemetryEvent {
   event: string;
   at: string;
-  provider: ProviderKind;
+  graph_vm: GraphVmKind;
   [key: string]: unknown;
 }
 
-export interface ProviderResult {
-  provider_result_version: "0.1";
+export interface NodeRunResult {
+  node_run_result_version: "0.1";
   request_id: string;
   status: RunLifecycleStatus;
-  artifacts: ProviderArtifactResult[];
+  artifacts: NodeArtifactResult[];
   performed_effects: string[];
-  logs: ProviderLogs;
+  logs: NodeLogs;
   diagnostics: Diagnostic[];
-  session: ProviderSessionRef | null;
-  cost: ProviderCostTelemetry | null;
+  session: NodeSessionRef | null;
+  cost: NodeCostTelemetry | null;
   duration_ms: number | null;
-  telemetry?: ProviderTelemetryEvent[];
+  telemetry?: NodeTelemetryEvent[];
 }
 
-export interface RuntimeProvider {
-  kind: ProviderKind;
-  execute(request: ProviderRequest): Promise<ProviderResult>;
+export interface NodeRunner {
+  kind: GraphVmKind;
+  execute(request: NodeRunRequest): Promise<NodeRunResult>;
 }
 
-export function normalizeProviderSessionRef(
-  ref: ProviderSessionRef,
-): ProviderSessionRef {
+export function normalizeNodeSessionRef(
+  ref: NodeSessionRef,
+): NodeSessionRef {
   return {
-    provider: ref.provider,
+    graph_vm: ref.graph_vm,
     session_id: ref.session_id,
     url: ref.url ?? null,
     metadata: Object.fromEntries(
@@ -133,10 +133,10 @@ export function normalizeProviderSessionRef(
   };
 }
 
-export function serializeProviderSessionRef(ref: ProviderSessionRef): string {
-  return stableStringify(normalizeProviderSessionRef(ref));
+export function serializeNodeSessionRef(ref: NodeSessionRef): string {
+  return stableStringify(normalizeNodeSessionRef(ref));
 }
 
-export function deserializeProviderSessionRef(source: string): ProviderSessionRef {
-  return normalizeProviderSessionRef(JSON.parse(source) as ProviderSessionRef);
+export function deserializeNodeSessionRef(source: string): NodeSessionRef {
+  return normalizeNodeSessionRef(JSON.parse(source) as NodeSessionRef);
 }

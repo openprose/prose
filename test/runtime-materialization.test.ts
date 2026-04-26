@@ -410,7 +410,7 @@ kind: service
       run_id: "20260423-130000-rmt001",
       component_ref: "hello",
       status: "succeeded",
-      provider: "pi",
+      graph_vm: "pi",
       plan_status: "ready",
       acceptance: {
         status: "accepted",
@@ -498,7 +498,7 @@ kind: service
     expect(envelope).toMatchObject({
       run_id: "20260423-130500-rmt002",
       status: "succeeded",
-      provider: "pi",
+      graph_vm: "pi",
       plan_status: "ready",
       trigger: "human_gate",
       approved_effects: ["delivers", "human_gate"],
@@ -537,12 +537,12 @@ kind: service
     const envelope = JSON.parse(result.stdout.toString("utf8"));
     expect(envelope).toMatchObject({
       status: "failed",
-      provider: "pi",
+      graph_vm: "pi",
       plan_status: "ready",
       exit_code: 1,
       error: {
         code: "run_failed",
-        message: "Provider did not write required output 'message' at 'message.md'.",
+        message: "Node runner did not write required output 'message' at 'message.md'.",
       },
     });
     expect(

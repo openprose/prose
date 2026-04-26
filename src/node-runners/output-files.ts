@@ -2,27 +2,27 @@ import { readFile } from "node:fs/promises";
 import { isAbsolute, relative, resolve } from "node:path";
 import { sha256 } from "../hash.js";
 import type { ComponentIR, Diagnostic } from "../types.js";
-import type { ProviderArtifactResult, ProviderExpectedOutput } from "./protocol.js";
+import type { NodeArtifactResult, NodeExpectedOutput } from "./protocol.js";
 
-export type ProviderOutputFileMap = Record<string, string>;
+export type NodeOutputFileMap = Record<string, string>;
 
-export interface ReadProviderOutputFileArtifactsOptions {
+export interface ReadNodeOutputFileArtifactsOptions {
   workspacePath: string;
   component: ComponentIR;
-  expectedOutputs: ProviderExpectedOutput[];
-  outputFiles?: ProviderOutputFileMap;
+  expectedOutputs: NodeExpectedOutput[];
+  outputFiles?: NodeOutputFileMap;
   diagnosticCodePrefix: string;
 }
 
-export async function readProviderOutputFileArtifacts(
-  options: ReadProviderOutputFileArtifactsOptions,
+export async function readNodeOutputFileArtifacts(
+  options: ReadNodeOutputFileArtifactsOptions,
   diagnostics: Diagnostic[],
-): Promise<ProviderArtifactResult[]> {
-  const artifacts: ProviderArtifactResult[] = [];
+): Promise<NodeArtifactResult[]> {
+  const artifacts: NodeArtifactResult[] = [];
 
   for (const output of options.expectedOutputs) {
-    const outputPath = providerOutputFileForPort(options.outputFiles, output.port);
-    const resolved = resolveProviderOutputPath(options.workspacePath, outputPath);
+    const outputPath = nodeOutputFileForPort(options.outputFiles, output.port);
+    const resolved = resolveNodeOutputPath(options.workspacePath, outputPath);
     if (!resolved) {
       diagnostics.push({
         severity: "error",
@@ -37,7 +37,7 @@ export async function readProviderOutputFileArtifacts(
       artifacts.push({
         port: output.port,
         content,
-        content_type: inferProviderOutputContentType(outputPath),
+        content_type: inferNodeOutputContentType(outputPath),
         artifact_ref: resolved.relativePath,
         content_hash: sha256(content),
         policy_labels: [...output.policy_labels].sort(),
@@ -47,7 +47,7 @@ export async function readProviderOutputFileArtifacts(
         diagnostics.push({
           severity: "error",
           code: `${options.diagnosticCodePrefix}_output_missing`,
-          message: `Provider did not write required output '${output.port}' at '${outputPath}'.`,
+          message: `Node runner did not write required output '${output.port}' at '${outputPath}'.`,
           source_span: options.component.ports.ensures.find(
             (port) => port.name === output.port,
           )?.source_span,
@@ -56,7 +56,7 @@ export async function readProviderOutputFileArtifacts(
         diagnostics.push({
           severity: "error",
           code: `${options.diagnosticCodePrefix}_output_unreadable`,
-          message: `Provider output '${output.port}' could not be read at '${outputPath}'.`,
+          message: `Node runner output '${output.port}' could not be read at '${outputPath}'.`,
         });
       }
     }
@@ -65,13 +65,13 @@ export async function readProviderOutputFileArtifacts(
   return diagnostics.length === 0 ? artifacts : [];
 }
 
-export function renderProviderOutputFileInstructions(
-  expectedOutputs: ProviderExpectedOutput[],
-  outputFiles?: ProviderOutputFileMap,
+export function renderNodeOutputFileInstructions(
+  expectedOutputs: NodeExpectedOutput[],
+  outputFiles?: NodeOutputFileMap,
 ): string {
   const lines = expectedOutputs.map((output) => {
     const required = output.required ? "required" : "optional";
-    return `- ${output.port} (${output.type}, ${required}): ${providerOutputFileForPort(
+    return `- ${output.port} (${output.type}, ${required}): ${nodeOutputFileForPort(
       outputFiles,
       output.port,
     )}`;
@@ -85,14 +85,14 @@ export function renderProviderOutputFileInstructions(
   ].join("\n");
 }
 
-export function providerOutputFileForPort(
-  outputFiles: ProviderOutputFileMap | undefined,
+export function nodeOutputFileForPort(
+  outputFiles: NodeOutputFileMap | undefined,
   port: string,
 ): string {
   return outputFiles?.[port] ?? `${port}.md`;
 }
 
-export function resolveProviderOutputPath(
+export function resolveNodeOutputPath(
   workspacePath: string,
   outputPath: string,
 ): { absolutePath: string; relativePath: string } | null {
@@ -109,7 +109,7 @@ export function resolveProviderOutputPath(
   return { absolutePath, relativePath };
 }
 
-export function inferProviderOutputContentType(path: string): string {
+export function inferNodeOutputContentType(path: string): string {
   if (path.endsWith(".json")) {
     return "application/json";
   }

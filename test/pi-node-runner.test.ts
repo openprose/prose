@@ -10,23 +10,23 @@ import {
   tmpdir,
 } from "./support";
 import {
-  createPiProvider,
+  createPiNodeRunner,
   renderPiPrompt,
-  writeProviderArtifactRecords,
-} from "../src/providers";
+  writeNodeArtifactRecords,
+} from "../src/node-runners";
 import type {
   PiAgentSessionLike,
   PiSessionFactory,
-  ProviderRequest,
-} from "../src/providers";
+  NodeRunRequest,
+} from "../src/node-runners";
 import type { ComponentIR } from "../src/types";
 
-describe("OpenProse Pi runtime provider", () => {
+describe("OpenProse Pi node runner", () => {
   test("wraps contracts with output instructions and reads Pi-written artifacts", async () => {
     const component = compileFixture("hello.prose.md").components[0];
-    const workspace = mkdtempSync(join(tmpdir(), "openprose-pi-provider-"));
+    const workspace = mkdtempSync(join(tmpdir(), "openprose-pi-node-runner-"));
     const prompts: string[] = [];
-    const provider = createPiProvider({
+    const provider = createPiNodeRunner({
       createSession: fakePiSessionFactory(async ({ prompt }) => {
         prompts.push(prompt);
         await writeFile(join(workspace, "message.md"), "Hello from Pi.\n");
@@ -34,11 +34,11 @@ describe("OpenProse Pi runtime provider", () => {
       timeoutMs: 2_000,
     });
 
-    const result = await provider.execute(providerRequest(component, workspace));
+    const result = await provider.execute(nodeRunRequest(component, workspace));
 
     expect(result.status).toBe("succeeded");
     expect(result.session).toMatchObject({
-      provider: "pi",
+      graph_vm: "pi",
       session_id: "pi-session-1",
     });
     expect(result.logs.transcript).toContain('"type":"agent_start"');
@@ -53,7 +53,7 @@ describe("OpenProse Pi runtime provider", () => {
     ]);
 
     const storeRoot = mkdtempSync(join(tmpdir(), "openprose-pi-store-"));
-    const records = await writeProviderArtifactRecords(storeRoot, result, {
+    const records = await writeNodeArtifactRecords(storeRoot, result, {
       runId: "run-pi",
       nodeId: component.id,
       createdAt: "2026-04-25T00:00:00.000Z",
@@ -68,13 +68,13 @@ describe("OpenProse Pi runtime provider", () => {
 
   test("fails when Pi does not write required outputs", async () => {
     const component = compileFixture("hello.prose.md").components[0];
-    const workspace = mkdtempSync(join(tmpdir(), "openprose-pi-provider-missing-"));
-    const provider = createPiProvider({
+    const workspace = mkdtempSync(join(tmpdir(), "openprose-pi-node-runner-missing-"));
+    const provider = createPiNodeRunner({
       createSession: fakePiSessionFactory(async () => {}),
       timeoutMs: 2_000,
     });
 
-    const result = await provider.execute(providerRequest(component, workspace));
+    const result = await provider.execute(nodeRunRequest(component, workspace));
 
     expect(result.status).toBe("failed");
     expect(result.artifacts).toEqual([]);
@@ -82,22 +82,22 @@ describe("OpenProse Pi runtime provider", () => {
       expect.objectContaining({
         severity: "error",
         code: "pi_output_missing",
-        message: "Provider did not write required output 'message' at 'message.md'.",
+        message: "Node runner did not write required output 'message' at 'message.md'.",
       }),
     ]);
   });
 
   test("fails when Pi prompt execution throws", async () => {
     const component = compileFixture("hello.prose.md").components[0];
-    const workspace = mkdtempSync(join(tmpdir(), "openprose-pi-provider-error-"));
-    const provider = createPiProvider({
+    const workspace = mkdtempSync(join(tmpdir(), "openprose-pi-node-runner-error-"));
+    const provider = createPiNodeRunner({
       createSession: fakePiSessionFactory(async () => {
         throw new Error("model unavailable");
       }),
       timeoutMs: 2_000,
     });
 
-    const result = await provider.execute(providerRequest(component, workspace));
+    const result = await provider.execute(nodeRunRequest(component, workspace));
 
     expect(result.status).toBe("failed");
     expect(result.diagnostics).toEqual([
@@ -111,8 +111,8 @@ describe("OpenProse Pi runtime provider", () => {
 
   test("fails with model diagnostics when Pi reports an event error", async () => {
     const component = compileFixture("hello.prose.md").components[0];
-    const workspace = mkdtempSync(join(tmpdir(), "openprose-pi-provider-event-error-"));
-    const provider = createPiProvider({
+    const workspace = mkdtempSync(join(tmpdir(), "openprose-pi-node-runner-event-error-"));
+    const provider = createPiNodeRunner({
       createSession: fakePiSessionFactory(async ({ emit }) => {
         emit({
           type: "message_start",
@@ -133,7 +133,7 @@ describe("OpenProse Pi runtime provider", () => {
       timeoutMs: 2_000,
     });
 
-    const result = await provider.execute(providerRequest(component, workspace));
+    const result = await provider.execute(nodeRunRequest(component, workspace));
 
     expect(result.status).toBe("failed");
     expect(result.artifacts).toEqual([]);
@@ -149,8 +149,8 @@ describe("OpenProse Pi runtime provider", () => {
 
   test("renders a stable prompt wrapper", () => {
     const component = compileFixture("hello.prose.md").components[0];
-    const workspace = mkdtempSync(join(tmpdir(), "openprose-pi-provider-render-"));
-    const request = providerRequest(component, workspace);
+    const workspace = mkdtempSync(join(tmpdir(), "openprose-pi-node-runner-render-"));
+    const request = nodeRunRequest(component, workspace);
     request.input_bindings = [
       {
         port: "subject",
@@ -180,14 +180,14 @@ integrationTest("runs a live Pi SDK smoke when explicitly enabled", async () => 
   const workspace = mkdtempSync(join(tmpdir(), "openprose-pi-live-"));
   await mkdir(workspace, { recursive: true });
 
-  const provider = createPiProvider({
+  const provider = createPiNodeRunner({
     modelProvider: Bun.env.OPENPROSE_PI_MODEL_PROVIDER ?? "anthropic",
     modelId: Bun.env.OPENPROSE_PI_MODEL_ID,
     apiKey: Bun.env.OPENPROSE_PI_API_KEY,
     timeoutMs: 120_000,
   });
 
-  const result = await provider.execute(providerRequest(component, workspace));
+  const result = await provider.execute(nodeRunRequest(component, workspace));
 
   if (result.status !== "succeeded") {
     throw new Error(
@@ -243,11 +243,11 @@ function fakePiSessionFactory(
   };
 }
 
-function providerRequest(component: ComponentIR, workspacePath: string): ProviderRequest {
+function nodeRunRequest(component: ComponentIR, workspacePath: string): NodeRunRequest {
   return {
-    provider_request_version: "0.1",
+    node_run_request_version: "0.1",
     request_id: "request-1",
-    provider: "pi",
+      graph_vm: "pi",
     runtime_profile: testRuntimeProfile("pi"),
     component,
     rendered_contract: "# hello\n\nProduce the message output.",

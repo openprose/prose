@@ -11,7 +11,7 @@ import {
 } from "./support";
 import { scriptedPiRuntime } from "./support/scripted-pi-session";
 import type { OutputSubmissionPayload } from "../src/runtime/output-submission";
-import type { ProviderRequest } from "../src/providers";
+import type { NodeRunRequest } from "../src/node-runners";
 import type { OpenProseRunResult } from "../src/run";
 
 const examplePath = join(
@@ -193,7 +193,7 @@ async function runOpportunity(options: {
   targetOutputs?: string[];
   requiredEvals?: string[];
   submissionsByComponent: Record<string, OutputSubmissionPayload>;
-  onRequest?: (request: ProviderRequest) => void;
+  onRequest?: (request: NodeRunRequest) => void;
 }): Promise<OpenProseRunResult> {
   return runSource(readFileSync(examplePath, "utf8"), {
     path: examplePath,
@@ -210,7 +210,7 @@ async function runOpportunity(options: {
     },
     targetOutputs: options.targetOutputs,
     requiredEvals: options.requiredEvals,
-    provider: scriptedPiRuntime({
+    nodeRunner: scriptedPiRuntime({
       submissionsByComponent: options.submissionsByComponent,
       onRequest: options.onRequest,
     }),

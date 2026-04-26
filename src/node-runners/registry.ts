@@ -1,6 +1,6 @@
 import {
-  createPiProvider,
-  type PiProviderOptions,
+  createPiNodeRunner,
+  type PiNodeRunnerOptions,
   type PiThinkingLevel,
 } from "./pi.js";
 import {
@@ -10,26 +10,27 @@ import {
   resolveRuntimeProfile,
   type RuntimeProfileInput,
 } from "../runtime/profiles.js";
-import type { ProviderKind, RuntimeProvider } from "./protocol.js";
+import type { GraphVmKind, NodeRunner } from "./protocol.js";
 import type { RuntimeProfile } from "../types.js";
 
-export interface ResolveRuntimeProviderOptions {
-  provider?: ProviderKind | RuntimeProvider;
+export interface ResolveNodeRunnerOptions {
+  graphVm?: GraphVmKind;
+  nodeRunner?: NodeRunner;
   deterministicOutputs?: Record<string, string>;
   runtimeProfile?: RuntimeProfile | RuntimeProfileInput | null;
   env?: Record<string, string | undefined>;
 }
 
-export function resolveRuntimeProvider(
-  options: ResolveRuntimeProviderOptions = {},
-): RuntimeProvider {
-  const { provider, env = Bun.env } = options;
+export function resolveNodeRunner(
+  options: ResolveNodeRunnerOptions = {},
+): NodeRunner {
+  const { graphVm, nodeRunner, env = Bun.env } = options;
   const deterministicOutputs = options.deterministicOutputs;
-  if (typeof provider === "object" && provider) {
-    return provider;
+  if (nodeRunner) {
+    return nodeRunner;
   }
 
-  const requested = provider ?? (hasDeterministicOutputs(deterministicOutputs) ? "pi" : null);
+  const requested = graphVm ?? (hasDeterministicOutputs(deterministicOutputs) ? "pi" : null);
   if (!requested) {
     throw new Error(
       "No OpenProse graph VM selected. Configure the Pi runtime profile, or provide deterministic --output values for local tests.",
@@ -46,7 +47,7 @@ export function resolveRuntimeProvider(
     if (hasDeterministicOutputs(deterministicOutputs)) {
       return createScriptedPiRuntime({ outputs: deterministicOutputs });
     }
-    return createPiProvider(
+    return createPiNodeRunner(
       piOptionsFromProfile(
         resolveRuntimeProfile({
           profile: runtimeProfileInput(options.runtimeProfile),
@@ -61,7 +62,7 @@ export function resolveRuntimeProvider(
 
   if (requested === "openrouter" || requested === "openai_compatible") {
     throw new Error(
-      `Provider '${requested}' is a model-provider profile, not an OpenProse graph VM. Configure it through OPENPROSE_PI_MODEL_PROVIDER and run with the Pi graph VM.`,
+      `Graph VM '${requested}' is a model provider profile, not an OpenProse graph VM. Configure it through OPENPROSE_PI_MODEL_PROVIDER and run with the Pi graph VM.`,
     );
   }
 
@@ -89,7 +90,7 @@ function runtimeProfileInput(
 function piOptionsFromProfile(
   profile: RuntimeProfile,
   env: Record<string, string | undefined>,
-): PiProviderOptions {
+): PiNodeRunnerOptions {
   return {
     agentDir: envString(env, "OPENPROSE_PI_AGENT_DIR"),
     sessionDir: envString(env, "OPENPROSE_PI_SESSION_DIR"),
@@ -101,7 +102,7 @@ function piOptionsFromProfile(
     thinkingLevel: piThinkingLevel(profile.thinking),
     tools: profile.tools,
     noTools: envNoTools(env, "OPENPROSE_PI_NO_TOOLS"),
-    outputFiles: envJsonRecord(env, "OPENPROSE_PROVIDER_OUTPUT_FILES"),
+    outputFiles: envJsonRecord(env, "OPENPROSE_NODE_OUTPUT_FILES"),
     timeoutMs: envNumber(env, "OPENPROSE_PI_TIMEOUT_MS"),
   };
 }

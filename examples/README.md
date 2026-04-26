@@ -73,7 +73,7 @@ bun run smoke:live-pi
 approval visibility, and baseline skill-folder comparison. `confidence:runtime`
 proves the public CLI can compile, plan, run, inspect, package, install, and
 publish-check these examples. `smoke:live-pi` stays skipped by default, then
-becomes the opt-in rung for real Pi SDK and model-provider interop.
+becomes the opt-in rung for real Pi SDK and model provider interop.
 
 That combination keeps the examples from becoming decorative. If a runtime
 change weakens typed props, node sessions, approval gates, structured output

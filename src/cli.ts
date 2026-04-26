@@ -87,7 +87,7 @@ export async function runCli(args: string[]): Promise<void> {
         outputs: options.outputs,
         approvedEffects: options.approvedEffects,
         trigger: options.trigger,
-        provider: options.graphVm ?? undefined,
+        graphVm: options.graphVm ?? undefined,
       });
       const summary = {
         eval_id: result.eval_record.eval_id,
@@ -181,7 +181,7 @@ export async function runCli(args: string[]): Promise<void> {
         requiredEvals: options.requiredEvals,
         advisoryEvals: options.advisoryEvals,
         trigger: options.trigger,
-        provider: options.graphVm ?? undefined,
+        graphVm: options.graphVm ?? undefined,
         currentRunPath: options.currentRunPath ?? undefined,
         targetOutputs: options.targetOutputs,
       });
@@ -189,7 +189,7 @@ export async function runCli(args: string[]): Promise<void> {
         run_id: result.run_id,
         run_dir: result.run_dir,
         status: result.record.status,
-        graph_vm: result.provider,
+        graph_vm: result.graph_vm,
         runtime_profile: result.record.runtime.profile,
         plan_status: result.plan.status,
         outputs: result.record.outputs.map((output) => output.port),
@@ -1009,23 +1009,23 @@ function parseTrigger(value: string | undefined): RunRecord["caller"]["trigger"]
   return "manual";
 }
 
-function validateCliGraphVm(provider: string | null): string | null {
-  if (!provider) {
+function validateCliGraphVm(graphVm: string | null): string | null {
+  if (!graphVm) {
     return null;
   }
-  if (provider === "pi") {
+  if (graphVm === "pi") {
     return null;
   }
-  if (provider === "openrouter" || provider === "openai_compatible") {
-    return `Provider '${provider}' is a model-provider profile, not an OpenProse graph VM. Configure it through OPENPROSE_PI_MODEL_PROVIDER and run with the Pi graph VM.`;
+  if (graphVm === "openrouter" || graphVm === "openai_compatible") {
+    return `Graph VM '${graphVm}' is a model provider profile, not an OpenProse graph VM. Configure it through OPENPROSE_PI_MODEL_PROVIDER and run with the Pi graph VM.`;
   }
-  if (provider === "fixture") {
+  if (graphVm === "fixture") {
     return "The fixture graph VM has been removed. Use --output without --graph-vm for deterministic local tests, or run the Pi graph VM for real execution.";
   }
-  if (provider === "local_process" || provider === "local-process") {
+  if (graphVm === "local_process" || graphVm === "local-process") {
     return "Command-style adapters are single-run harness integrations, not OpenProse graph VMs. Use the Pi graph VM for reactive graph execution.";
   }
-  return `OpenProse graph VM '${provider}' is not registered. Available graph VMs: pi.`;
+  return `OpenProse graph VM '${graphVm}' is not registered. Available graph VMs: pi.`;
 }
 
 function validateDeprecatedProviderFlag(value: string | null): string | null {

@@ -36,7 +36,7 @@ describe("OpenProse north-star scripted Pi scenarios", () => {
         runId: scenario.name,
         inputs: scenario.inputs,
         approvedEffects: scenario.approvedEffects,
-        provider: scriptedPiRuntime({
+        nodeRunner: scriptedPiRuntime({
           submissionsByComponent: scenario.submissionsByComponent,
         }),
         createdAt: "2026-04-26T13:30:00.000Z",
@@ -68,7 +68,7 @@ describe("OpenProse north-star scripted Pi scenarios", () => {
         signal_notes: fixture("company-signal-brief/happy.signal-notes.md"),
         brand_context: fixture("company-signal-brief/happy.brand-context.md"),
       },
-      provider: scriptedPiRuntime({
+      nodeRunner: scriptedPiRuntime({
         submission: {
           outputs: [],
         },

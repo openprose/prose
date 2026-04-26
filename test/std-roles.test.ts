@@ -149,7 +149,7 @@ describe("OpenProse std roles", () => {
     for (const role of roleCases) {
       const result = await runSource(roleSource(role.file), {
         path: rolePath(role.file),
-        provider: scriptedPiRuntime({
+        nodeRunner: scriptedPiRuntime({
           outputs: role.outputs,
         }),
         runRoot,

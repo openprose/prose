@@ -8,9 +8,9 @@ import { compilePackagePath } from "./ir/package";
 import { lintFile } from "./lint";
 import { buildRegistryRef } from "./registry";
 import {
-  inferProviderOutputContentType,
-  providerOutputFileForPort,
-} from "./providers/output-files";
+  inferNodeOutputContentType,
+  nodeOutputFileForPort,
+} from "./node-runners/output-files";
 import type {
   ComponentIR,
   Diagnostic,
@@ -388,13 +388,13 @@ function buildComponentMetadata(options: {
       policy_labels: [...port.policy_labels].sort(),
     })),
     artifact_contract: component.ports.ensures.map((port) => {
-      const defaultPath = providerOutputFileForPort(undefined, port.name);
+      const defaultPath = nodeOutputFileForPort(undefined, port.name);
       return {
         port: port.name,
         type: port.type,
         required: port.required,
         default_path: defaultPath,
-        content_type: inferProviderOutputContentType(defaultPath),
+        content_type: inferNodeOutputContentType(defaultPath),
         policy_labels: [...port.policy_labels].sort(),
       };
     }),

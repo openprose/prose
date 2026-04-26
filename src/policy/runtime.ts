@@ -178,7 +178,7 @@ function performedEffectDiagnostics(
       diagnostics.push({
         severity: "error",
         code: "policy_performed_effect_undeclared",
-        message: `Provider reported undeclared effect '${effect}' for '${component.name}'.`,
+        message: `Node runner reported undeclared effect '${effect}' for '${component.name}'.`,
         source_span: component.source.span,
       });
       continue;
@@ -188,7 +188,7 @@ function performedEffectDiagnostics(
       diagnostics.push({
         severity: "error",
         code: "policy_performed_effect_unapproved",
-        message: `Provider reported unapproved effect '${effect}' for '${component.name}'.`,
+        message: `Node runner reported unapproved effect '${effect}' for '${component.name}'.`,
         source_span: component.effects.find((candidate) => candidate.kind === effect)
           ?.source_span,
       });

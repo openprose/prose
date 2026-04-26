@@ -503,7 +503,7 @@ export interface LocalRunAttemptRecord {
   attempt_number: number;
   status: RunLifecycleStatus;
   runtime_profile: RuntimeProfile | null;
-  provider_session_ref: string | null;
+  node_session_ref: string | null;
   started_at: string;
   finished_at: string | null;
   diagnostics: Diagnostic[];
@@ -718,7 +718,7 @@ export interface RemoteExecutionEnvelope {
   run_dir: string;
   component_ref: string;
   status: RunLifecycleStatus;
-  provider: string;
+  graph_vm: string;
   runtime_profile: RuntimeProfile;
   plan_status: ExecutionPlan["status"];
   acceptance: RunRecord["acceptance"];
@@ -831,7 +831,7 @@ export interface TraceAttemptView {
   attempt_number: number;
   status: RunLifecycleStatus;
   runtime_profile: RuntimeProfile | null;
-  provider_session_ref: string | null;
+  node_session_ref: string | null;
   diagnostic_codes: string[];
   failure: string | null;
   started_at: string;

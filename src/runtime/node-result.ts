@@ -1,4 +1,4 @@
-import type { ProviderResult } from "../providers/index.js";
+import type { NodeRunResult } from "../node-runners/index.js";
 import type { RuntimeProfile } from "../types.js";
 
 export interface NodeExecutionResult {
@@ -7,5 +7,5 @@ export interface NodeExecutionResult {
   component_ref: string;
   graph_vm: string;
   runtime_profile: RuntimeProfile;
-  provider_result: ProviderResult;
+  node_run_result: NodeRunResult;
 }

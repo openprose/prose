@@ -22,7 +22,7 @@ describe("OpenProse run attempts", () => {
       componentRef: "writer",
       attemptNumber: 1,
       status: "failed",
-      providerSessionRef: "pi:session-1",
+      nodeSessionRef: "pi:session-1",
       startedAt: "2026-04-25T12:00:00.000Z",
       finishedAt: "2026-04-25T12:01:00.000Z",
       failure: {
@@ -45,7 +45,7 @@ describe("OpenProse run attempts", () => {
       componentRef: "writer",
       attemptNumber: 2,
       status: "succeeded",
-      providerSessionRef: "pi:session-2",
+      nodeSessionRef: "pi:session-2",
       startedAt: "2026-04-25T12:02:00.000Z",
       finishedAt: "2026-04-25T12:03:00.000Z",
     });
@@ -95,7 +95,7 @@ describe("OpenProse run attempts", () => {
       componentRef: "writer",
       attemptNumber: 1,
       status: "failed",
-      providerSessionRef: "scripted-pi:failed",
+      nodeSessionRef: "scripted-pi:failed",
       startedAt: "2026-04-25T12:05:00.000Z",
       finishedAt: "2026-04-25T12:06:00.000Z",
       failure: {

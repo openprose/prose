@@ -11,7 +11,7 @@ import {
 import { scriptedPiRuntime } from "./support/scripted-pi-session";
 import { resolveRuntimeProfile } from "../src/runtime";
 import { runSource } from "../src/run";
-import type { ProviderRequest } from "../src/providers";
+import type { NodeRunRequest } from "../src/node-runners";
 
 describe("OpenProse runtime profiles", () => {
   test("defaults graph execution to a persistent Pi runtime profile", () => {
@@ -76,14 +76,14 @@ describe("OpenProse runtime profiles", () => {
     ).toThrow("graph_vm 'fixture' has been removed");
   });
 
-  test("records runtime profile fields on provider requests, runs, and attempts", async () => {
+  test("records runtime profile fields on node-run requests, runs, and attempts", async () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-runtime-profile-"));
-    const requests: ProviderRequest[] = [];
+    const requests: NodeRunRequest[] = [];
     const result = await runSource(fixture("hello.prose.md"), {
       path: "fixtures/compiler/hello.prose.md",
       runRoot,
       runId: "runtime-profile-run",
-      provider: scriptedPiRuntime({
+      nodeRunner: scriptedPiRuntime({
         outputs: {
           message: "Hello from profiled Pi.",
         },

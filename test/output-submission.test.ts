@@ -14,11 +14,11 @@ import {
   OPENPROSE_SUBMIT_OUTPUTS_TOOL_NAME,
 } from "../src/runtime/pi/output-tool";
 import type { ComponentIR } from "../src/types";
-import type { ProviderRequest } from "../src/providers";
+import type { NodeRunRequest } from "../src/node-runners";
 
 describe("OpenProse structured output submission", () => {
   test("defines the Pi custom tool schema and accepts valid submissions", async () => {
-    const request = providerRequest(multiOutputComponent());
+    const request = nodeRunRequest(multiOutputComponent());
     let collected = null as ReturnType<typeof evaluateOutputSubmission> | null;
     const tool = createOpenProseSubmitOutputsTool(request, (result) => {
       collected = result;
@@ -68,7 +68,7 @@ describe("OpenProse structured output submission", () => {
   });
 
   test("fails when required output is missing", () => {
-    const result = evaluateOutputSubmission(providerRequest(multiOutputComponent()), {
+    const result = evaluateOutputSubmission(nodeRunRequest(multiOutputComponent()), {
       outputs: [
         {
           port: "brief",
@@ -87,7 +87,7 @@ describe("OpenProse structured output submission", () => {
   });
 
   test("fails when output port is unknown", () => {
-    const result = evaluateOutputSubmission(providerRequest(multiOutputComponent()), {
+    const result = evaluateOutputSubmission(nodeRunRequest(multiOutputComponent()), {
       outputs: [
         {
           port: "brief",
@@ -119,7 +119,7 @@ describe("OpenProse structured output submission", () => {
     );
 
     const result = evaluateOutputSubmission(
-      providerRequest(multiOutputComponent()),
+      nodeRunRequest(multiOutputComponent()),
       "{not json",
     );
     expect(result.status).toBe("rejected");
@@ -129,7 +129,7 @@ describe("OpenProse structured output submission", () => {
   });
 
   test("fails undeclared performed effects", () => {
-    const result = evaluateOutputSubmission(providerRequest(multiOutputComponent()), {
+    const result = evaluateOutputSubmission(nodeRunRequest(multiOutputComponent()), {
       outputs: [
         {
           port: "brief",
@@ -153,7 +153,7 @@ describe("OpenProse structured output submission", () => {
   });
 
   test("accepts multi-output submissions with typed content", () => {
-    const result = evaluateOutputSubmission(providerRequest(multiOutputComponent()), {
+    const result = evaluateOutputSubmission(nodeRunRequest(multiOutputComponent()), {
       outputs: [
         {
           port: "brief",
@@ -207,11 +207,11 @@ kind: service
 `, { path: "fixtures/compiler/multi-output.prose.md" }).components[0];
 }
 
-function providerRequest(component: ComponentIR): ProviderRequest {
+function nodeRunRequest(component: ComponentIR): NodeRunRequest {
   return {
-    provider_request_version: "0.1",
+    node_run_request_version: "0.1",
     request_id: "request-1",
-    provider: "pi",
+      graph_vm: "pi",
     runtime_profile: testRuntimeProfile("pi"),
     component,
     rendered_contract: "# multi-output\n\nProduce declared outputs.",

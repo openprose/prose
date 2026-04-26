@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { performance } from "node:perf_hooks";
-import { createPiProvider } from "../src/providers";
+import { createPiNodeRunner } from "../src/node-runners";
 import { runFile } from "../src/run";
 import { traceFile } from "../src/trace";
 import type { RuntimeProfileInput } from "../src/runtime/profiles";
@@ -171,7 +171,7 @@ async function runLiveScenario(options: {
       runId,
       inputs: options.scenario.inputs,
       approvedEffects: options.scenario.approvedEffects ?? [],
-      provider: createPiProvider({
+      nodeRunner: createPiNodeRunner({
         modelProvider: options.modelProvider,
         modelId: options.model,
         apiKey: options.apiKey,
@@ -479,7 +479,7 @@ function diagnostics(input: Diagnostic[]): LiveSmokeResult["diagnostics"] {
 }
 
 function sessionCount(events: Array<{ event: string }>): number {
-  return events.filter((event) => event.event === "provider.session").length;
+  return events.filter((event) => event.event === "node_session.started").length;
 }
 
 async function fixture(root: string, path: string): Promise<string> {

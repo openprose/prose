@@ -12,11 +12,11 @@ import {
   tmpdir,
 } from "./support";
 import {
-  providerShouldNotRun,
+  nodeRunnerShouldNotRun,
   scriptedPiRuntime,
 } from "./support/scripted-pi-session";
 import type { OutputSubmissionPayload } from "../src/runtime/output-submission";
-import type { ProviderRequest } from "../src/providers";
+import type { NodeRunRequest } from "../src/node-runners";
 import type { OpenProseRunResult } from "../src/run";
 
 const examplePath = join(
@@ -190,7 +190,7 @@ describe("stargazer-intake-lite north-star example", () => {
       currentRunPath: first.run_dir,
       inputs: defaultInputs(),
       approvedEffects: ["writes_memory"],
-      provider: providerShouldNotRun(() => {
+      nodeRunner: nodeRunnerShouldNotRun(() => {
         calls += 1;
       }),
       createdAt: "2026-04-26T14:40:00.000Z",
@@ -213,8 +213,8 @@ async function runStargazer(options: {
   runId: string;
   submissionsByComponent: Record<string, OutputSubmissionPayload>;
   requiredEvals?: string[];
-  onRequest?: (request: ProviderRequest) => void;
-  onPrompt?: (prompt: string, request: ProviderRequest) => void;
+  onRequest?: (request: NodeRunRequest) => void;
+  onPrompt?: (prompt: string, request: NodeRunRequest) => void;
 }): Promise<OpenProseRunResult> {
   return runSource(readFileSync(examplePath, "utf8"), {
     path: examplePath,
@@ -223,7 +223,7 @@ async function runStargazer(options: {
     inputs: defaultInputs(),
     approvedEffects: ["writes_memory"],
     requiredEvals: options.requiredEvals,
-    provider: scriptedPiRuntime({
+    nodeRunner: scriptedPiRuntime({
       submissionsByComponent: options.submissionsByComponent,
       onRequest: options.onRequest,
       onPrompt: options.onPrompt,

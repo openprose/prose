@@ -1,4 +1,4 @@
-import type { RuntimeProvider } from "../../src/providers";
+import type { NodeRunner } from "../../src/node-runners";
 import {
   createScriptedPiRuntime,
   type ScriptedPiRuntimeOptions,
@@ -8,19 +8,19 @@ export type { ScriptedPiRuntimeOptions };
 
 export function scriptedPiRuntime(
   options: ScriptedPiRuntimeOptions = {},
-): RuntimeProvider {
+): NodeRunner {
   return createScriptedPiRuntime({
     modelId: "test-model",
     ...options,
   });
 }
 
-export function providerShouldNotRun(onCall?: () => void): RuntimeProvider {
+export function nodeRunnerShouldNotRun(onCall?: () => void): NodeRunner {
   return {
     kind: "pi",
     async execute() {
       onCall?.();
-      throw new Error("provider should not be called");
+      throw new Error("node runner should not be called");
     },
   };
 }

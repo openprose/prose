@@ -143,7 +143,7 @@ async function writeMaterializedStoreRecords(
       attemptNumber: 1,
       status: record.status,
       runtimeProfile: ctx.runtimeProfile,
-      providerSessionRef: "scripted-pi-output",
+      nodeSessionRef: "scripted-pi-output",
       startedAt: record.created_at,
       finishedAt: record.completed_at,
       failure:

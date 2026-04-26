@@ -3,36 +3,36 @@ import {
   expect,
   test,
 } from "./support";
-import { resolveRuntimeProvider } from "../src/providers";
-import type { RuntimeProvider } from "../src/providers";
+import { resolveNodeRunner } from "../src/node-runners";
+import type { NodeRunner } from "../src/node-runners";
 
-describe("OpenProse runtime provider registry", () => {
+describe("OpenProse node runner registry", () => {
   test("selects scripted Pi when deterministic outputs are supplied", () => {
-    const provider = resolveRuntimeProvider({
+    const provider = resolveNodeRunner({
       deterministicOutputs: { message: "Hello from deterministic output." },
     });
 
     expect(provider.kind).toBe("pi");
   });
 
-  test("returns programmatic providers unchanged", () => {
-    const provider = {
+  test("returns programmatic node runners unchanged", () => {
+    const nodeRunner = {
       kind: "custom",
       async execute() {
         throw new Error("not used");
       },
-    } satisfies RuntimeProvider;
+    } satisfies NodeRunner;
 
-    expect(resolveRuntimeProvider({ provider })).toBe(provider);
+    expect(resolveNodeRunner({ nodeRunner })).toBe(nodeRunner);
   });
 
-  test("requires explicit provider selection without deterministic outputs", () => {
-    expect(() => resolveRuntimeProvider()).toThrow("No OpenProse graph VM selected.");
+  test("requires explicit graph VM selection without deterministic outputs", () => {
+    expect(() => resolveNodeRunner()).toThrow("No OpenProse graph VM selected.");
   });
 
-  test("configures the Pi provider from environment records", () => {
-    const provider = resolveRuntimeProvider({
-      provider: "pi",
+  test("configures the Pi node runner from environment records", () => {
+    const provider = resolveNodeRunner({
+      graphVm: "pi",
       env: {
         OPENPROSE_PI_MODEL_PROVIDER: "openrouter",
         OPENPROSE_PI_MODEL_ID: "moonshotai/kimi-k2.6",
@@ -40,7 +40,7 @@ describe("OpenProse runtime provider registry", () => {
         OPENPROSE_PI_THINKING_LEVEL: "off",
         OPENPROSE_PI_TOOLS: "read, write",
         OPENPROSE_PI_TIMEOUT_MS: "12345",
-        OPENPROSE_PROVIDER_OUTPUT_FILES: JSON.stringify({ message: "out/message.md" }),
+        OPENPROSE_NODE_OUTPUT_FILES: JSON.stringify({ message: "out/message.md" }),
       },
     });
 
@@ -49,41 +49,41 @@ describe("OpenProse runtime provider registry", () => {
 
   test("rejects model providers as graph VMs", () => {
     expect(() =>
-      resolveRuntimeProvider({
-        provider: "openrouter",
+      resolveNodeRunner({
+        graphVm: "openrouter",
         env: {
           OPENROUTER_API_KEY: "test-key",
         },
       }),
-    ).toThrow("model-provider profile, not an OpenProse graph VM");
+    ).toThrow("model provider profile, not an OpenProse graph VM");
 
     expect(() =>
-      resolveRuntimeProvider({
-        provider: "openai_compatible",
+      resolveNodeRunner({
+        graphVm: "openai_compatible",
       }),
-    ).toThrow("model-provider profile, not an OpenProse graph VM");
+    ).toThrow("model provider profile, not an OpenProse graph VM");
   });
 
   test("rejects command-style adapters as graph VMs", () => {
     expect(() =>
-      resolveRuntimeProvider({
-        provider: "local-process",
+      resolveNodeRunner({
+        graphVm: "local-process",
       }),
     ).toThrow("Command-style adapters are single-run harness integrations");
   });
 
   test("rejects the removed fixture graph VM", () => {
     expect(() =>
-      resolveRuntimeProvider({
-        provider: "fixture",
+      resolveNodeRunner({
+        graphVm: "fixture",
       }),
     ).toThrow("fixture graph VM has been removed");
   });
 
-  test("rejects invalid provider environment configuration", () => {
+  test("rejects invalid node runner environment configuration", () => {
     expect(() =>
-      resolveRuntimeProvider({
-        provider: "pi",
+      resolveNodeRunner({
+        graphVm: "pi",
         env: {
           OPENPROSE_PI_THINKING_LEVEL: "maximum",
         },
@@ -92,10 +92,10 @@ describe("OpenProse runtime provider registry", () => {
 
   });
 
-  test("rejects unknown provider names", () => {
+  test("rejects unknown graph VM names", () => {
     expect(() =>
-      resolveRuntimeProvider({
-        provider: "unknown-provider",
+      resolveNodeRunner({
+        graphVm: "unknown-provider",
       }),
     ).toThrow("Available graph VMs: pi");
   });

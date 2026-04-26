@@ -1,19 +1,19 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import {
-  createPiProvider,
+  createPiNodeRunner,
   type PiAgentSessionLike,
-  type PiProviderOptions,
+  type PiNodeRunnerOptions,
   type PiSessionFactory,
-} from "../../providers/pi.js";
+} from "../../node-runners/pi.js";
 import {
-  providerOutputFileForPort,
-  resolveProviderOutputPath,
-} from "../../providers/output-files.js";
+  nodeOutputFileForPort,
+  resolveNodeOutputPath,
+} from "../../node-runners/output-files.js";
 import type {
-  ProviderRequest,
-  RuntimeProvider,
-} from "../../providers/protocol.js";
+  NodeRunRequest,
+  NodeRunner,
+} from "../../node-runners/protocol.js";
 import {
   OPENPROSE_SUBMIT_OUTPUTS_TOOL_NAME,
 } from "./output-tool.js";
@@ -27,8 +27,8 @@ export interface ScriptedPiRuntimeOptions {
   outputsByComponent?: Record<string, Record<string, string>>;
   submission?: OutputSubmissionPayload;
   submissionsByComponent?: Record<string, OutputSubmissionPayload>;
-  onRequest?: (request: ProviderRequest) => void;
-  onPrompt?: (prompt: string, request: ProviderRequest) => void;
+  onRequest?: (request: NodeRunRequest) => void;
+  onPrompt?: (prompt: string, request: NodeRunRequest) => void;
   modelError?: string;
   promptError?: string;
   timeout?: boolean;
@@ -41,8 +41,8 @@ export interface ScriptedPiRuntimeOptions {
 
 export function createScriptedPiRuntime(
   options: ScriptedPiRuntimeOptions = {},
-): RuntimeProvider {
-  return createPiProvider({
+): NodeRunner {
+  return createPiNodeRunner({
     createSession: scriptedPiSessionFactory(options),
     timeoutMs: options.timeoutMs ?? 2_000,
     modelProvider: options.modelProvider ?? "scripted",
@@ -76,8 +76,8 @@ class ScriptedPiSession implements PiAgentSessionLike {
 
   constructor(
     sessionId: string,
-    private readonly request: ProviderRequest,
-    private readonly piOptions: PiProviderOptions,
+    private readonly request: NodeRunRequest,
+    private readonly piOptions: PiNodeRunnerOptions,
     private readonly options: ScriptedPiRuntimeOptions,
   ) {
     this.sessionId = sessionId;
@@ -152,8 +152,8 @@ class ScriptedPiSession implements PiAgentSessionLike {
       if (value === undefined) {
         continue;
       }
-      const path = providerOutputFileForPort(undefined, output.port);
-      const resolved = resolveProviderOutputPath(this.request.workspace_path, path);
+      const path = nodeOutputFileForPort(undefined, output.port);
+      const resolved = resolveNodeOutputPath(this.request.workspace_path, path);
       if (!resolved) {
         continue;
       }
@@ -185,7 +185,7 @@ class ScriptedPiSession implements PiAgentSessionLike {
 }
 
 function submissionValue(
-  request: ProviderRequest,
+  request: NodeRunRequest,
   options: ScriptedPiRuntimeOptions,
 ): OutputSubmissionPayload | undefined {
   return (
@@ -196,7 +196,7 @@ function submissionValue(
 }
 
 function submissionFromOutputs(
-  request: ProviderRequest,
+  request: NodeRunRequest,
   options: ScriptedPiRuntimeOptions,
 ): OutputSubmissionPayload | undefined {
   const outputs: OutputSubmissionOutput[] = [];
@@ -215,7 +215,7 @@ function submissionFromOutputs(
 }
 
 function outputValue(
-  request: ProviderRequest,
+  request: NodeRunRequest,
   port: string,
   options: ScriptedPiRuntimeOptions,
 ): string | undefined {

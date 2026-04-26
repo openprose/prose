@@ -21,15 +21,15 @@ import {
   tmpdir,
 } from "./support";
 import {
-  providerShouldNotRun,
+  nodeRunnerShouldNotRun,
   scriptedPiRuntime,
 } from "./support/scripted-pi-session";
 import type { OutputSubmissionPayload } from "../src/runtime/output-submission";
 import type {
-  ProviderRequest,
-  ProviderResult,
-  RuntimeProvider,
-} from "../src/providers";
+  NodeRunRequest,
+  NodeRunResult,
+  NodeRunner,
+} from "../src/node-runners";
 import type { OpenProseRunResult } from "../src/run";
 
 const examplePath = join(
@@ -72,7 +72,7 @@ describe("customer-repo-scaffold-preview north-star example", () => {
       runRoot,
       runId: "scaffold-needs-approval",
       inputs: defaultInputs(),
-      provider: providerShouldNotRun(() => {
+      nodeRunner: nodeRunnerShouldNotRun(() => {
         calls += 1;
       }),
       createdAt: "2026-04-26T16:00:00.000Z",
@@ -86,7 +86,7 @@ describe("customer-repo-scaffold-preview north-star example", () => {
       join(runRoot, ".prose-store"),
       "scaffold-needs-approval",
     );
-    expect(attempts[0]?.provider_session_ref).toBeNull();
+    expect(attempts[0]?.node_session_ref).toBeNull();
   });
 
   test("writes a package-shaped customer repo preview into the scratch workspace", async () => {
@@ -98,7 +98,7 @@ describe("customer-repo-scaffold-preview north-star example", () => {
       inputs: defaultInputs(),
       approvedEffects: ["mutates_repo"],
       requiredEvals: [evalPath],
-      provider: scaffoldRuntime({
+      nodeRunner: scaffoldRuntime({
         evalSubmission: evalSubmission(true, 0.91, "pass"),
       }),
       createdAt: "2026-04-26T16:05:00.000Z",
@@ -154,7 +154,7 @@ describe("customer-repo-scaffold-preview north-star example", () => {
       runId: "scaffold-overwrite-refused",
       inputs: defaultInputs(),
       approvedEffects: ["mutates_repo"],
-      provider: scaffoldRuntime({ seedExistingSlug: true }),
+      nodeRunner: scaffoldRuntime({ seedExistingSlug: true }),
       createdAt: "2026-04-26T16:10:00.000Z",
     });
 
@@ -226,7 +226,7 @@ async function runScaffoldWithScriptedPi(options: {
     },
     approvedEffects: ["mutates_repo"],
     requiredEvals: options.requiredEvals,
-    provider: scriptedPiRuntime({
+    nodeRunner: scriptedPiRuntime({
       submissionsByComponent: options.submissionsByComponent,
     }),
     createdAt: "2026-04-26T16:15:00.000Z",
@@ -236,12 +236,12 @@ async function runScaffoldWithScriptedPi(options: {
 function scaffoldRuntime(options: {
   seedExistingSlug?: boolean;
   evalSubmission?: OutputSubmissionPayload;
-} = {}): RuntimeProvider {
+} = {}): NodeRunner {
   return {
     kind: "pi",
-    async execute(request): Promise<ProviderResult> {
+    async execute(request): Promise<NodeRunResult> {
       if (request.component.name === "customer-repo-planner") {
-        return providerSuccess(request, {
+        return nodeRunnerSuccess(request, {
           customer_repo_plan: JSON.stringify(customerRepoPlan()),
         }, ["pure"]);
       }
@@ -251,10 +251,10 @@ function scaffoldRuntime(options: {
           mkdirSync(root, { recursive: true });
         }
         if (existsSync(root)) {
-          return providerFailure(request, "Existing customer slug 'acme-robotics' was refused.");
+          return nodeRunnerFailure(request, "Existing customer slug 'acme-robotics' was refused.");
         }
         const files = writeCustomerRepo(root);
-        return providerSuccess(request, {
+        return nodeRunnerSuccess(request, {
           customer_repo_preview: JSON.stringify({
             workspace_root: root,
             files,
@@ -262,9 +262,9 @@ function scaffoldRuntime(options: {
         }, ["mutates_repo"]);
       }
       if (request.component.name === "customer-repo-scaffold-preview-eval") {
-        return providerSuccess(request, payloadByPort(options.evalSubmission), ["pure"]);
+        return nodeRunnerSuccess(request, payloadByPort(options.evalSubmission), ["pure"]);
       }
-      return providerFailure(request, `Unexpected component '${request.component.name}'.`);
+      return nodeRunnerFailure(request, `Unexpected component '${request.component.name}'.`);
     },
   };
 }
@@ -397,13 +397,13 @@ function writeCustomerRepo(root: string): Array<{ path: string; sha256: string; 
   return previews;
 }
 
-function providerSuccess(
-  request: ProviderRequest,
+function nodeRunnerSuccess(
+  request: NodeRunRequest,
   outputs: Record<string, string>,
   performedEffects: string[],
-): ProviderResult {
+): NodeRunResult {
   return {
-    provider_result_version: "0.1",
+    node_run_result_version: "0.1",
     request_id: request.request_id,
     status: "succeeded",
     artifacts: Object.entries(outputs).map(([port, content]) => ({
@@ -423,9 +423,9 @@ function providerSuccess(
   };
 }
 
-function providerFailure(request: ProviderRequest, message: string): ProviderResult {
+function nodeRunnerFailure(request: NodeRunRequest, message: string): NodeRunResult {
   return {
-    provider_result_version: "0.1",
+    node_run_result_version: "0.1",
     request_id: request.request_id,
     status: "failed",
     artifacts: [],

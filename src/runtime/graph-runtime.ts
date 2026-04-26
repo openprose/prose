@@ -1,5 +1,5 @@
 import { PiGraphRuntime } from "./pi/graph-vm.js";
-import type { RuntimeProvider } from "../providers/index.js";
+import type { NodeRunner } from "../node-runners/index.js";
 import type { NodeExecutionRequest } from "./node-request.js";
 import type { NodeExecutionResult } from "./node-result.js";
 
@@ -9,30 +9,30 @@ export interface ReactiveGraphRuntime {
 }
 
 export function createReactiveGraphRuntime(options: {
-  provider: RuntimeProvider;
+  nodeRunner: NodeRunner;
 }): ReactiveGraphRuntime {
-  if (options.provider.kind === "pi") {
-    return new PiGraphRuntime(options.provider);
+  if (options.nodeRunner.kind === "pi") {
+    return new PiGraphRuntime(options.nodeRunner);
   }
-  return new ProviderBackedGraphRuntime(options.provider);
+  return new NodeRunnerBackedGraphRuntime(options.nodeRunner);
 }
 
-class ProviderBackedGraphRuntime implements ReactiveGraphRuntime {
+class NodeRunnerBackedGraphRuntime implements ReactiveGraphRuntime {
   readonly kind: string;
 
-  constructor(private readonly provider: RuntimeProvider) {
-    this.kind = provider.kind;
+  constructor(private readonly nodeRunner: NodeRunner) {
+    this.kind = nodeRunner.kind;
   }
 
   async executeNode(request: NodeExecutionRequest): Promise<NodeExecutionResult> {
-    const providerResult = await this.provider.execute(request.provider_request);
+    const nodeRunResult = await this.nodeRunner.execute(request.node_run_request);
     return {
       node_execution_result_version: "0.1",
       run_id: request.run_id,
       component_ref: request.component_ref,
       graph_vm: this.kind,
       runtime_profile: request.runtime_profile,
-      provider_result: providerResult,
+      node_run_result: nodeRunResult,
     };
   }
 }

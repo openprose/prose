@@ -90,5 +90,5 @@ The measurement harness intentionally stays local-first:
 That keeps the signal fast and reproducible while the hosted product continues to mature.
 
 The live ladder is deliberately separate from the required local gate. It is
-the place to catch Pi SDK, model-provider, billing, timeout, and output-tool
+the place to catch Pi SDK, model provider, billing, timeout, and output-tool
 interop issues without making every contributor spend inference dollars.

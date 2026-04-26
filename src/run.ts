@@ -15,17 +15,17 @@ import {
   type EffectApprovalRecord,
 } from "./policy/index.js";
 import {
-  resolveRuntimeProvider,
-  writeProviderArtifactRecords,
-} from "./providers/index.js";
+  resolveNodeRunner,
+  writeNodeArtifactRecords,
+} from "./node-runners/index.js";
 import {
   callerInputBinding,
   componentInputBindings,
   inputValidationReasons,
   upstreamEdgeForInput,
-  validateProviderArtifacts,
+  validateNodeArtifacts,
 } from "./runtime/bindings.js";
-import { createProviderRequest } from "./runtime/provider-requests.js";
+import { createNodeRunRequest } from "./runtime/node-run-requests.js";
 import {
   baseRunRecord,
   completionTimestamp,
@@ -38,14 +38,14 @@ import {
   recordDiagnostics,
   recordDiagnosticsReason,
   writeBlockedAttemptRecord,
-  writeProviderAttemptRecord,
+  writeNodeAttemptRecord,
   writeRunOutputArtifacts,
   writeRunRecordFile,
 } from "./runtime/records.js";
 import {
   writeBlockedTrace,
   writeGraphTrace,
-  writeProviderTrace,
+  writeNodeTrace,
 } from "./runtime/traces.js";
 import {
   resolveRuntimeProfile,
@@ -72,10 +72,10 @@ import type {
   RuntimeProfile,
 } from "./types.js";
 import type {
-  ProviderKind,
-  ProviderResult,
-  RuntimeProvider,
-} from "./providers/index.js";
+  GraphVmKind,
+  NodeRunResult,
+  NodeRunner,
+} from "./node-runners/index.js";
 
 export interface RunOptions {
   runRoot?: string;
@@ -91,7 +91,8 @@ export interface RunOptions {
   requiredEvals?: string[];
   advisoryEvals?: string[];
   trigger?: RunRecord["caller"]["trigger"];
-  provider?: ProviderKind | RuntimeProvider;
+  graphVm?: GraphVmKind;
+  nodeRunner?: NodeRunner;
   runtimeProfile?: RuntimeProfileInput;
   currentRun?: CurrentRunSet;
   currentRunPath?: string;
@@ -99,7 +100,7 @@ export interface RunOptions {
 }
 
 export interface OpenProseRunResult extends MaterializedRun {
-  provider: ProviderKind;
+  graph_vm: GraphVmKind;
   plan: ExecutionPlan;
   diagnostics: Diagnostic[];
 }
@@ -107,7 +108,7 @@ export interface OpenProseRunResult extends MaterializedRun {
 interface RunContext {
   ir: ProseIR;
   plan: ExecutionPlan;
-  provider: RuntimeProvider;
+  nodeRunner: NodeRunner;
   graphRuntime: ReactiveGraphRuntime;
   runtimeProfile: RuntimeProfile;
   runId: string;
@@ -157,10 +158,10 @@ export async function runSource(
     currentRun,
     targetOutputs: options.targetOutputs,
   });
-  const selectedRuntime = selectedGraphVmName(options.provider, options.outputs);
+  const selectedRuntime = selectedGraphVmName(options.graphVm, options.nodeRunner, options.outputs);
   const runtimeProfile = resolveRuntimeProfile({
     profile: {
-      ...implicitRuntimeProfile(options.provider, options.outputs),
+      ...implicitRuntimeProfile(options.graphVm, options.nodeRunner, options.outputs),
       ...(options.runtimeProfile ?? {}),
     },
     selectedGraphVm: selectedRuntime,
@@ -175,23 +176,24 @@ export async function runSource(
         run_dir: options.currentRunPath ?? runDir,
         record: current,
         node_records: currentRun.nodes,
-        provider: current.runtime.worker_ref ?? "current",
+        graph_vm: current.runtime.worker_ref ?? "current",
         plan,
         diagnostics: [],
       };
     }
   }
 
-  const provider = resolveRuntimeProvider({
-    provider: options.provider,
+  const nodeRunner = resolveNodeRunner({
+    graphVm: options.graphVm,
+    nodeRunner: options.nodeRunner,
     deterministicOutputs: options.outputs,
     runtimeProfile,
   });
   const ctx: RunContext = {
     ir,
     plan,
-    provider,
-    graphRuntime: createReactiveGraphRuntime({ provider }),
+    nodeRunner,
+    graphRuntime: createReactiveGraphRuntime({ nodeRunner }),
     runtimeProfile,
     runId,
     runRoot,
@@ -235,7 +237,7 @@ export async function runSource(
       run_dir: runDir,
       record,
       node_records: [],
-      provider: ctx.provider.kind,
+      graph_vm: ctx.nodeRunner.kind,
       plan,
       diagnostics: recordDiagnostics(record),
     };
@@ -249,7 +251,7 @@ export async function runSource(
       run_dir: runDir,
       record,
       node_records: [],
-      provider: ctx.provider.kind,
+      graph_vm: ctx.nodeRunner.kind,
       plan,
       diagnostics: recordDiagnostics(record),
     };
@@ -263,17 +265,17 @@ export async function runSource(
       run_dir: runDir,
       record,
       node_records: [],
-      provider: ctx.provider.kind,
+      graph_vm: ctx.nodeRunner.kind,
       plan,
       diagnostics: recordDiagnostics(record),
     };
   }
 
-  const request = await createProviderRequest(ctx, component);
-  const providerResult = await ctx.provider.execute(request);
+  const request = await createNodeRunRequest(ctx, component);
+  const nodeRunResult = await ctx.nodeRunner.execute(request);
   const record = await applyEvalAcceptance(
     ctx,
-    await materializeProviderResult(ctx, component, providerResult),
+    await materializeNodeRunResult(ctx, component, nodeRunResult),
   );
 
   return {
@@ -281,9 +283,9 @@ export async function runSource(
     run_dir: runDir,
     record,
     node_records: [],
-    provider: ctx.provider.kind,
+    graph_vm: ctx.nodeRunner.kind,
     plan,
-    diagnostics: providerResult.diagnostics,
+    diagnostics: nodeRunResult.diagnostics,
   };
 }
 
@@ -301,7 +303,7 @@ async function executeGraphRun(
       run_dir: ctx.runDir,
       record,
       node_records: [],
-      provider: ctx.provider.kind,
+      graph_vm: ctx.nodeRunner.kind,
       plan: ctx.plan,
       diagnostics: recordDiagnostics(record),
     };
@@ -319,7 +321,7 @@ async function executeGraphRun(
       run_dir: ctx.runDir,
       record,
       node_records: [],
-      provider: ctx.provider.kind,
+      graph_vm: ctx.nodeRunner.kind,
       plan: ctx.plan,
       diagnostics: recordDiagnostics(record),
     };
@@ -333,7 +335,7 @@ async function executeGraphRun(
   );
   const nodeRecords: RunRecord[] = [];
   const nodeRecordsById = new Map<string, RunRecord>();
-  const providerResultsByRunId = new Map<string, ProviderResult>();
+  const nodeRunResultsByRunId = new Map<string, NodeRunResult>();
   const diagnostics: Diagnostic[] = [];
 
   for (const planNode of ctx.plan.nodes) {
@@ -432,7 +434,7 @@ async function executeGraphRun(
       continue;
     }
 
-    const providerRequest = await createProviderRequest(ctx, component, runId, nodeRecordsById);
+    const nodeRunRequest = await createNodeRunRequest(ctx, component, runId, nodeRecordsById);
     const workspacePath = nodeWorkspacePath(ctx, component);
     await mkdir(workspacePath, { recursive: true });
     const nodeResult = await ctx.graphRuntime.executeNode(
@@ -455,10 +457,10 @@ async function executeGraphRun(
         },
         workspacePath,
         runtimeProfile: ctx.runtimeProfile,
-        providerRequest,
+        nodeRunRequest,
       }),
     );
-    const record = await materializeProviderResult(ctx, component, nodeResult.provider_result, {
+    const record = await materializeNodeRunResult(ctx, component, nodeResult.node_run_result, {
       runId,
       recordPath: nodeRunRecordPath(component),
       writeTraceFile: false,
@@ -466,8 +468,8 @@ async function executeGraphRun(
     });
     nodeRecords.push(record);
     nodeRecordsById.set(component.id, record);
-    providerResultsByRunId.set(record.run_id, nodeResult.provider_result);
-    diagnostics.push(...nodeResult.provider_result.diagnostics);
+    nodeRunResultsByRunId.set(record.run_id, nodeResult.node_run_result);
+    diagnostics.push(...nodeResult.node_run_result.diagnostics);
   }
 
   const graphRecord = await applyEvalAcceptance(
@@ -475,7 +477,7 @@ async function executeGraphRun(
     await assembleGraphRunRecord(ctx, main, nodeRecordsById),
   );
   await writeRunRecordFile(ctx, "run.json", graphRecord);
-  await writeGraphTrace(ctx, graphRecord, nodeRecords, providerResultsByRunId);
+  await writeGraphTrace(ctx, graphRecord, nodeRecords, nodeRunResultsByRunId);
   await writeGraphStoreRecords(ctx, graphRecord, nodeRecords);
 
   return {
@@ -483,16 +485,16 @@ async function executeGraphRun(
     run_dir: ctx.runDir,
     record: graphRecord,
     node_records: nodeRecords,
-    provider: ctx.provider.kind,
+    graph_vm: ctx.nodeRunner.kind,
     plan: ctx.plan,
     diagnostics: [...diagnostics, ...recordDiagnostics(graphRecord)],
   };
 }
 
-async function materializeProviderResult(
+async function materializeNodeRunResult(
   ctx: RunContext,
   component: ComponentIR,
-  result: ProviderResult,
+  result: NodeRunResult,
   options: {
     runId?: string;
     recordPath?: string;
@@ -518,7 +520,7 @@ async function materializeProviderResult(
     result.artifacts,
     policyDecision.output_labels,
   );
-  const validationByPort = validateProviderArtifacts(component, result.artifacts);
+  const validationByPort = validateNodeArtifacts(component, result.artifacts);
   const validationDiagnostics = Object.values(validationByPort).flatMap(
     (schema) => schema.diagnostics,
   );
@@ -552,7 +554,7 @@ async function materializeProviderResult(
         ? { status: "accepted", reason: "No required evals declared." }
         : {
             status: "pending",
-            reason: diagnosticsReason(diagnostics) ?? `Provider ended with ${status}.`,
+            reason: diagnosticsReason(diagnostics) ?? `Node run ended with ${status}.`,
           },
     trace_ref: "trace.json",
     status,
@@ -561,16 +563,16 @@ async function materializeProviderResult(
 
   await writeRunRecordFile(ctx, recordPath, record);
   if (options.writeTraceFile ?? true) {
-    await writeProviderTrace(ctx, result, record);
+    await writeNodeTrace(ctx, result, record);
   }
-  await writeProviderArtifactRecords(ctx.storeRoot, result, {
+  await writeNodeArtifactRecords(ctx.storeRoot, result, {
     runId: record.run_id,
     nodeId: component.id,
     createdAt: record.created_at,
     schemas: validationByPort,
     policyLabelsByPort: policyDecision.output_labels,
   });
-  await writeProviderAttemptRecord(ctx, record, result, diagnostics);
+  await writeNodeAttemptRecord(ctx, record, result, diagnostics);
   await indexRunRecord(ctx, record, recordPath);
 
   return record;
@@ -777,7 +779,7 @@ async function writeGraphStoreRecords(
     attemptNumber: 1,
     status: graphRecord.status,
     runtimeProfile: ctx.runtimeProfile,
-    providerSessionRef: null,
+    nodeSessionRef: null,
     startedAt: graphRecord.created_at,
     finishedAt: graphRecord.completed_at,
     diagnostics: recordDiagnostics(graphRecord),
@@ -855,7 +857,7 @@ async function applyEvalAcceptance(
 
   for (const spec of evalSpecs) {
     const result = await executeEvalFile(spec.path, ctx.runDir, {
-      provider: ctx.provider,
+      nodeRunner: ctx.nodeRunner,
       runtimeProfile: ctx.runtimeProfile,
       inputs: ctx.inputs,
       outputs: ctx.outputs,
@@ -1013,29 +1015,31 @@ function inferStoreRoot(runRoot: string): string {
 }
 
 function selectedGraphVmName(
-  provider: ProviderKind | RuntimeProvider | undefined,
+  graphVm: GraphVmKind | undefined,
+  nodeRunner: NodeRunner | undefined,
   outputs: Record<string, string> | undefined,
 ): string | null {
-  if (typeof provider === "string") {
-    if (isSingleRunHarnessRuntime(provider)) {
+  if (graphVm) {
+    if (isSingleRunHarnessRuntime(graphVm)) {
       return null;
     }
-    return provider;
+    return graphVm;
   }
-  if (provider) {
-    if (isSingleRunHarnessRuntime(provider.kind)) {
+  if (nodeRunner) {
+    if (isSingleRunHarnessRuntime(nodeRunner.kind)) {
       return null;
     }
-    return provider.kind;
+    return nodeRunner.kind;
   }
   return outputs && Object.keys(outputs).length > 0 ? "pi" : null;
 }
 
 function implicitRuntimeProfile(
-  provider: ProviderKind | RuntimeProvider | undefined,
+  graphVm: GraphVmKind | undefined,
+  nodeRunner: NodeRunner | undefined,
   outputs: Record<string, string> | undefined,
 ): RuntimeProfileInput {
-  const kind = typeof provider === "string" ? provider : provider?.kind;
+  const kind = graphVm ?? nodeRunner?.kind;
   if (kind && isSingleRunHarnessRuntime(kind)) {
     return {
       graph_vm: "pi",

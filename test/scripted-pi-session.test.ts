@@ -22,7 +22,7 @@ describe("scripted Pi runtime test helper", () => {
       path: "fixtures/compiler/hello.prose.md",
       runRoot,
       runId: "scripted-pi-success",
-      provider: scriptedPiRuntime({
+      nodeRunner: scriptedPiRuntime({
         outputs: {
           message: "Hello from scripted Pi.",
         },
@@ -32,7 +32,7 @@ describe("scripted Pi runtime test helper", () => {
 
     expect(result.record.status).toBe("succeeded");
     expect(result.record.runtime.worker_ref).toBe("pi");
-    expect(result.provider).toBe("pi");
+    expect(result.graph_vm).toBe("pi");
     expect(readFileSync(join(result.run_dir, "bindings", "hello", "message.md"), "utf8")).toBe(
       "Hello from scripted Pi.\n",
     );
@@ -40,7 +40,7 @@ describe("scripted Pi runtime test helper", () => {
       join(runRoot, ".prose-store"),
       "scripted-pi-success",
     );
-    expect(attempts[0]?.provider_session_ref).toContain("scripted-pi-1");
+    expect(attempts[0]?.node_session_ref).toContain("scripted-pi-1");
   });
 
   test("materializes outputs submitted through the OpenProse Pi output tool", async () => {
@@ -49,7 +49,7 @@ describe("scripted Pi runtime test helper", () => {
       path: "fixtures/compiler/hello.prose.md",
       runRoot,
       runId: "scripted-pi-tool-success",
-      provider: scriptedPiRuntime({
+      nodeRunner: scriptedPiRuntime({
         submission: {
           outputs: [
             {
@@ -77,7 +77,7 @@ describe("scripted Pi runtime test helper", () => {
     const traceText = renderTraceText(trace);
     expect(trace.events).toContainEqual(
       expect.objectContaining({
-        event: "provider.session",
+        event: "node_session.started",
         session_id: "scripted-pi-1",
         model_provider: "scripted",
         model: "test-model",
@@ -95,25 +95,25 @@ describe("scripted Pi runtime test helper", () => {
         output_ports: ["message"],
       }),
     );
-    expect(traceText).toContain("provider.session provider[pi] model[scripted/test-model]");
-    expect(traceText).toContain("pi.tool.started provider[pi]");
+    expect(traceText).toContain("node_session.started graph_vm[pi] model[scripted/test-model]");
+    expect(traceText).toContain("pi.tool.started graph_vm[pi]");
     expect(traceText).toContain("tool[openprose_submit_outputs]");
     expect(traceText).toContain("pi.output_submission.accepted");
   });
 
-  test("surfaces missing output failures like the real Pi provider", async () => {
+  test("surfaces missing output failures like the real Pi node runner", async () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-scripted-pi-missing-"));
     const result = await runSource(fixture("hello.prose.md"), {
       path: "fixtures/compiler/hello.prose.md",
       runRoot,
       runId: "scripted-pi-missing",
-      provider: scriptedPiRuntime(),
+      nodeRunner: scriptedPiRuntime(),
       createdAt: "2026-04-26T12:11:00.000Z",
     });
 
     expect(result.record.status).toBe("failed");
     expect(result.record.acceptance.reason).toContain(
-      "Provider did not write required output 'message'",
+      "Node runner did not write required output 'message'",
     );
   });
 
@@ -123,7 +123,7 @@ describe("scripted Pi runtime test helper", () => {
       path: "fixtures/compiler/hello.prose.md",
       runRoot,
       runId: "scripted-pi-tool-rejected",
-      provider: scriptedPiRuntime({
+      nodeRunner: scriptedPiRuntime({
         submission: {
           outputs: [],
         },
@@ -146,7 +146,7 @@ describe("scripted Pi runtime test helper", () => {
       inputs: {
         draft: "Draft with a claim.",
       },
-      provider: scriptedPiRuntime({
+      nodeRunner: scriptedPiRuntime({
         submissionsByComponent: {
           review: {
             outputs: [
@@ -209,7 +209,7 @@ describe("scripted Pi runtime test helper", () => {
       path: "fixtures/compiler/hello.prose.md",
       runRoot: modelErrorRoot,
       runId: "scripted-pi-model-error",
-      provider: scriptedPiRuntime({
+      nodeRunner: scriptedPiRuntime({
         modelError: "402 Insufficient credits.",
       }),
       createdAt: "2026-04-26T12:12:00.000Z",
@@ -223,7 +223,7 @@ describe("scripted Pi runtime test helper", () => {
       path: "fixtures/compiler/hello.prose.md",
       runRoot: timeoutRoot,
       runId: "scripted-pi-timeout",
-      provider: scriptedPiRuntime({
+      nodeRunner: scriptedPiRuntime({
         timeout: true,
         timeoutMs: 5,
       }),
@@ -231,6 +231,6 @@ describe("scripted Pi runtime test helper", () => {
     });
 
     expect(timeout.record.status).toBe("failed");
-    expect(timeout.record.acceptance.reason).toContain("Pi provider timed out");
+    expect(timeout.record.acceptance.reason).toContain("Pi node runner timed out");
   });
 });

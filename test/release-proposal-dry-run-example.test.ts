@@ -13,11 +13,11 @@ import {
   traceFile,
 } from "./support";
 import {
-  providerShouldNotRun,
+  nodeRunnerShouldNotRun,
   scriptedPiRuntime,
 } from "./support/scripted-pi-session";
 import type { OutputSubmissionPayload } from "../src/runtime/output-submission";
-import type { ProviderRequest } from "../src/providers";
+import type { NodeRunRequest } from "../src/node-runners";
 import type { OpenProseRunResult } from "../src/run";
 
 const examplePath = join(
@@ -70,7 +70,7 @@ describe("release-proposal-dry-run north-star example", () => {
       inputs: {
         release_candidate: fixture("release-proposal-dry-run/release-needed.release-candidate.json"),
       },
-      provider: providerShouldNotRun(() => {
+      nodeRunner: nodeRunnerShouldNotRun(() => {
         calls += 1;
       }),
       createdAt: "2026-04-26T15:40:00.000Z",
@@ -84,14 +84,14 @@ describe("release-proposal-dry-run north-star example", () => {
       join(runRoot, ".prose-store"),
       "release-needs-approval",
     );
-    expect(attempts[0]?.provider_session_ref).toBeNull();
+    expect(attempts[0]?.node_session_ref).toBeNull();
     const trace = await traceFile(result.run_dir);
     expect(renderTraceText(trace)).toContain("gate[effect_approval]");
   });
 
   test("release-needed path proceeds with approval and passes eval", async () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-release-approved-"));
-    const requests: ProviderRequest[] = [];
+    const requests: NodeRunRequest[] = [];
     const result = await runRelease({
       runRoot,
       runId: "release-approved",
@@ -260,7 +260,7 @@ async function runRelease(options: {
   approvedEffects?: string[];
   requiredEvals?: string[];
   submissionsByComponent: Record<string, OutputSubmissionPayload>;
-  onRequest?: (request: ProviderRequest) => void;
+  onRequest?: (request: NodeRunRequest) => void;
 }): Promise<OpenProseRunResult> {
   return runSource(readFileSync(examplePath, "utf8"), {
     path: examplePath,
@@ -274,7 +274,7 @@ async function runRelease(options: {
     targetOutputs: options.targetOutputs,
     approvedEffects: options.approvedEffects,
     requiredEvals: options.requiredEvals,
-    provider: scriptedPiRuntime({
+    nodeRunner: scriptedPiRuntime({
       submissionsByComponent: options.submissionsByComponent,
       onRequest: options.onRequest,
     }),

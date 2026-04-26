@@ -94,7 +94,7 @@ describe("OpenProse CLI UX", () => {
 
     expect(result.exitCode).toBe(1);
     expect(decode(result.stderr)).toContain(
-      "is a model-provider profile, not an OpenProse graph VM",
+      "is a model provider profile, not an OpenProse graph VM",
     );
   });
 

@@ -6,7 +6,7 @@ export * as graph from "./graph/index.js";
 export * as meta from "./meta/index.js";
 export * as store from "./store/index.js";
 export * as runtime from "./runtime/index.js";
-export * as providers from "./providers/index.js";
+export * as nodeRunners from "./node-runners/index.js";
 export * as policy from "./policy/index.js";
 export * as evals from "./eval/index.js";
 export * as packageLifecycle from "./package/index.js";

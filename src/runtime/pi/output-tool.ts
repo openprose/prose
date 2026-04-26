@@ -5,8 +5,8 @@ import {
   evaluateOutputSubmission,
   type OutputSubmissionResult,
 } from "../output-submission.js";
-import type { PiCustomToolDefinition } from "../../providers/pi.js";
-import type { ProviderRequest } from "../../providers/protocol.js";
+import type { PiCustomToolDefinition } from "../../node-runners/pi.js";
+import type { NodeRunRequest } from "../../node-runners/protocol.js";
 
 export type OutputSubmissionCollector = (result: OutputSubmissionResult) => void;
 
@@ -83,7 +83,7 @@ const outputSubmissionParameters = Type.Object({
 type OutputSubmissionParameters = typeof outputSubmissionParameters;
 
 export function createOpenProseSubmitOutputsTool(
-  request: ProviderRequest,
+  request: NodeRunRequest,
   collect: OutputSubmissionCollector,
 ): ToolDefinition<OutputSubmissionParameters, OpenProseSubmitOutputsDetails> &
   PiCustomToolDefinition {
