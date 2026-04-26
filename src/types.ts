@@ -593,6 +593,7 @@ export interface RunPolicyRecord {
 export interface RuntimeProfile {
   profile_version: "0.1";
   graph_vm: string;
+  execution_placement: "local" | "workspace_capsule" | "distributed";
   single_run_harness: string | null;
   model_provider: string | null;
   model: string | null;

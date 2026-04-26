@@ -1,0 +1,41 @@
+import { readFile, writeFile } from "node:fs/promises";
+import {
+  resolveNodeRunner,
+  type NodeRunner,
+} from "../node-runners/index.js";
+import { createReactiveGraphRuntime } from "./graph-runtime.js";
+import type { NodeExecutionRequest } from "./node-request.js";
+import type { NodeExecutionResult } from "./node-result.js";
+
+export interface ExecuteNodeExecutionRequestOptions {
+  nodeRunner?: NodeRunner;
+}
+
+export async function executeNodeExecutionRequest(
+  request: NodeExecutionRequest,
+  options: ExecuteNodeExecutionRequestOptions = {},
+): Promise<NodeExecutionResult> {
+  const nodeRunner =
+    options.nodeRunner ??
+    resolveNodeRunner({
+      graphVm: request.runtime_profile.graph_vm,
+      runtimeProfile: request.runtime_profile,
+    });
+  const runtime = createReactiveGraphRuntime({ nodeRunner });
+  return runtime.executeNode(request);
+}
+
+export async function executeNodeExecutionRequestFile(
+  requestPath: string,
+  options: ExecuteNodeExecutionRequestOptions & { outPath?: string | null } = {},
+): Promise<NodeExecutionResult> {
+  const request = JSON.parse(
+    await readFile(requestPath, "utf8"),
+  ) as NodeExecutionRequest;
+  const result = await executeNodeExecutionRequest(request, options);
+  if (options.outPath) {
+    await writeFile(options.outPath, `${JSON.stringify(result, null, 2)}\n`, "utf8");
+  }
+  return result;
+}
+

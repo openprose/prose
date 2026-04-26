@@ -162,6 +162,7 @@ describe("OpenProse Pi runtime telemetry", () => {
         profile: {
           profile_version: "0.1",
           graph_vm: "pi",
+          execution_placement: "local",
           single_run_harness: null,
           model_provider: "openrouter",
           model: "google/gemini-3-flash-preview",

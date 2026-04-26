@@ -78,6 +78,7 @@ export function testRuntimeProfile(graphVm = "pi"): RuntimeProfile {
   return {
     profile_version: "0.1",
     graph_vm: profileGraphVm,
+    execution_placement: "local",
     single_run_harness: isSingleRunHarness ? graphVm : null,
     model_provider: profileGraphVm === "pi" ? "scripted" : null,
     model: profileGraphVm === "pi" ? "test-model" : null,

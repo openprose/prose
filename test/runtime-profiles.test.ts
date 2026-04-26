@@ -20,6 +20,7 @@ describe("OpenProse runtime profiles", () => {
     expect(profile).toEqual({
       profile_version: "0.1",
       graph_vm: "pi",
+      execution_placement: "local",
       single_run_harness: null,
       model_provider: null,
       model: null,
@@ -51,6 +52,7 @@ describe("OpenProse runtime profiles", () => {
   test("accepts explicit runtime profile input without environment variables", () => {
     const profile = resolveRuntimeProfile({
       profile: {
+        execution_placement: "distributed",
         model_provider: "openrouter",
         model: "google/gemini-3-flash-preview",
         thinking: "medium",
@@ -62,6 +64,7 @@ describe("OpenProse runtime profiles", () => {
 
     expect(profile).toMatchObject({
       graph_vm: "pi",
+      execution_placement: "distributed",
       model_provider: "openrouter",
       model: "google/gemini-3-flash-preview",
       thinking: "medium",

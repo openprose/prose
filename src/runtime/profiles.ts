@@ -4,6 +4,8 @@ export interface RuntimeProfileInput {
   profile_version?: "0.1";
   graph_vm?: string | null;
   graphVm?: string | null;
+  execution_placement?: RuntimeProfile["execution_placement"] | null;
+  executionPlacement?: RuntimeProfile["execution_placement"] | null;
   single_run_harness?: string | null;
   singleRunHarness?: string | null;
   model_provider?: string | null;
@@ -52,6 +54,9 @@ export function resolveRuntimeProfile(
   const profile: RuntimeProfile = {
     profile_version: "0.1",
     graph_vm: graphVm,
+    execution_placement:
+      normalizeExecutionPlacement(input.execution_placement ?? input.executionPlacement) ??
+      "local",
     single_run_harness:
       normalizeString(input.single_run_harness ?? input.singleRunHarness) ?? null,
     model_provider: hasDeterministicOutputs
@@ -132,6 +137,24 @@ function assertThinking(value: string | null): void {
     return;
   }
   throw new Error("Runtime profile thinking must be one of off, minimal, low, medium, high, xhigh.");
+}
+
+function normalizeExecutionPlacement(
+  value: RuntimeProfile["execution_placement"] | null | undefined,
+): RuntimeProfile["execution_placement"] | null {
+  if (
+    value === "local" ||
+    value === "workspace_capsule" ||
+    value === "distributed"
+  ) {
+    return value;
+  }
+  if (value === null || value === undefined) {
+    return null;
+  }
+  throw new Error(
+    "Runtime profile execution_placement must be one of local, workspace_capsule, distributed.",
+  );
 }
 
 function normalizeString(value: string | null | undefined): string | null {

@@ -2,6 +2,10 @@ import { readdir, readFile, writeFile } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
 import { sha256 } from "./hash";
 import { runFile, type RunOptions } from "./run";
+import {
+  createDelegatedGraphRuntime,
+  createExternalProcessNodeDelegate,
+} from "./runtime/index.js";
 import type { RuntimeProfileInput } from "./runtime/profiles.js";
 import type {
   MaterializedRun,
@@ -26,6 +30,7 @@ export interface RemoteExecuteOptions {
   graphVm?: RunOptions["graphVm"];
   nodeRunner?: RunOptions["nodeRunner"];
   runtimeProfile?: RuntimeProfileInput;
+  nodeExecutorCommand?: string | null;
   stdout?: string;
   stderr?: string;
   componentRef?: string | null;
@@ -37,6 +42,13 @@ export async function executeRemoteFile(
   options: RemoteExecuteOptions = {},
 ): Promise<RemoteExecutionEnvelope> {
   const startedAt = options.createdAt ?? new Date().toISOString();
+  const graphRuntime = options.nodeExecutorCommand
+    ? createDelegatedGraphRuntime({
+        delegate: createExternalProcessNodeDelegate({
+          command: options.nodeExecutorCommand,
+        }),
+      })
+    : undefined;
   const result = await runFile(path, {
     runRoot: options.outDir ?? ".openprose/remote-runs",
     runId: options.runId,
@@ -48,6 +60,7 @@ export async function executeRemoteFile(
     trigger: options.trigger,
     graphVm: options.graphVm,
     nodeRunner: options.nodeRunner,
+    graphRuntime,
     runtimeProfile: options.runtimeProfile,
   });
 

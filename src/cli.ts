@@ -15,6 +15,7 @@ import { planFile } from "./plan";
 import { preflightPath, renderPreflightText } from "./preflight";
 import { publishCheckPath, renderPublishCheckText } from "./publish";
 import { executeRemoteFile } from "./remote";
+import { executeNodeExecutionRequestFile } from "./runtime/index.js";
 import { runFile } from "./run";
 import { renderCatalogSearchText, searchCatalog } from "./search";
 import { renderStatusText, statusPath } from "./status";
@@ -130,8 +131,8 @@ async function runCliInner(args: string[]): Promise<void> {
 
   if (command === "remote") {
     const options = parseRemoteCommandArgs(rest);
-    if (options.action !== "execute") {
-      console.error("Missing remote action. Use: prose remote execute <file.prose.md>");
+    if (options.action !== "execute" && options.action !== "execute-node") {
+      console.error("Missing remote action. Use: prose remote execute <file.prose.md> or prose remote execute-node <request.json>");
       process.exitCode = 1;
       return;
     }
@@ -154,6 +155,19 @@ async function runCliInner(args: string[]): Promise<void> {
     }
 
     try {
+      if (options.action === "execute-node") {
+        const result = await executeNodeExecutionRequestFile(options.file, {
+          outPath: options.out,
+        });
+        if (!options.out) {
+          process.stdout.write(`${JSON.stringify(result, null, options.pretty ? 2 : 0)}\n`);
+        }
+        if (result.node_run_result.status !== "succeeded") {
+          process.exitCode = 1;
+        }
+        return;
+      }
+
       const envelope = await executeRemoteFile(options.file, {
         outDir: options.outDir ?? undefined,
         runId: options.runId ?? undefined,
@@ -162,7 +176,10 @@ async function runCliInner(args: string[]): Promise<void> {
         approvedEffects: options.approvedEffects,
         trigger: options.trigger,
         graphVm: options.graphVm ?? undefined,
-        runtimeProfile: options.runtimeProfile,
+        runtimeProfile: options.nodeExecutorCommand
+          ? { ...options.runtimeProfile, execution_placement: "distributed" }
+          : options.runtimeProfile,
+        nodeExecutorCommand: options.nodeExecutorCommand,
         componentRef: options.componentRef,
         packageMetadataPath: options.packageMetadataPath,
       });
@@ -644,7 +661,7 @@ interface FileCommandArgs {
 }
 
 interface RemoteCommandArgs {
-  action: "execute" | null;
+  action: "execute" | "execute-node" | null;
   file: string | null;
   out: string | null;
   outDir: string | null;
@@ -658,6 +675,7 @@ interface RemoteCommandArgs {
   trigger: RunRecord["caller"]["trigger"];
   graphVm: string | null;
   runtimeProfile: RuntimeProfileInput;
+  nodeExecutorCommand: string | null;
   deprecatedProvider: string | null;
 }
 
@@ -1011,6 +1029,7 @@ function parseRemoteCommandArgs(args: string[]): RemoteCommandArgs {
     trigger: "manual",
     graphVm: null,
     runtimeProfile: {},
+    nodeExecutorCommand: null,
     deprecatedProvider: null,
   };
 
@@ -1018,6 +1037,10 @@ function parseRemoteCommandArgs(args: string[]): RemoteCommandArgs {
     const arg = args[index];
     if (arg === "execute" && !parsed.action) {
       parsed.action = "execute";
+      continue;
+    }
+    if (arg === "execute-node" && !parsed.action) {
+      parsed.action = "execute-node";
       continue;
     }
     if (arg === "--out" || arg === "-o") {
@@ -1056,6 +1079,20 @@ function parseRemoteCommandArgs(args: string[]): RemoteCommandArgs {
     }
     if (arg === "--graph-vm") {
       parsed.graphVm = args[index + 1] ?? null;
+      index += 1;
+      continue;
+    }
+    if (arg === "--execution-placement") {
+      const value = args[index + 1];
+      parsed.runtimeProfile.execution_placement =
+        value === "local" || value === "workspace_capsule" || value === "distributed"
+          ? value
+          : null;
+      index += 1;
+      continue;
+    }
+    if (arg === "--node-executor-command") {
+      parsed.nodeExecutorCommand = args[index + 1] ?? null;
       index += 1;
       continue;
     }
@@ -1197,7 +1234,8 @@ Usage:
   prose run <file.prose.md> [--graph-vm pi] [--model-provider openrouter] [--model model-id] [--thinking low] [--run-root .prose/runs] [--input name=value] [--output port=value] [--approved-effect delivers] [--approval approval.json] [--required-eval eval.prose.md]
   prose preflight <file.prose.md> [--format text|json]
   prose publish-check <dir|file.prose.md> [--format text|json] [--strict]
-  prose remote execute <file.prose.md> [--graph-vm pi] [--model-provider openrouter] [--model model-id] [--thinking low] [--out-dir .openprose/remote-runs] [--run-id id] [--input name=value] [--output port=value] [--approved-effect delivers]
+  prose remote execute <file.prose.md> [--graph-vm pi] [--model-provider openrouter] [--model model-id] [--thinking low] [--out-dir .openprose/remote-runs] [--run-id id] [--input name=value] [--output port=value] [--approved-effect delivers] [--node-executor-command cmd]
+  prose remote execute-node <node-execution-request.json> [--out node-execution-result.json]
   prose search <dir> [--type CompanyProfile] [--effect read_external] [--kind service] [--min-quality 0.8]
   prose status [.prose/runs] [--limit 10] [--format text|json]
   prose trace <.prose/runs/{id}|run.json> [--format text|json]
@@ -1218,6 +1256,7 @@ Runtime profile flags:
   --model id              Override OPENPROSE_PI_MODEL_ID for this command
   --thinking level        Override OPENPROSE_PI_THINKING_LEVEL (off|minimal|low|medium|high|xhigh)
   --tools read,write      Override OPENPROSE_PI_TOOLS
+  --execution-placement   local|workspace_capsule|distributed
   --persist-sessions      Persist Pi sessions for node attempts
   --no-persist-sessions   Disable Pi session persistence for this command
 

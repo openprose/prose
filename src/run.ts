@@ -96,6 +96,7 @@ export interface RunOptions {
   trigger?: RunRecord["caller"]["trigger"];
   graphVm?: GraphVmKind;
   nodeRunner?: NodeRunner;
+  graphRuntime?: ReactiveGraphRuntime;
   runtimeProfile?: RuntimeProfileInput;
   currentRun?: CurrentRunSet;
   currentRunPath?: string;
@@ -198,7 +199,7 @@ export async function runSource(
     ir,
     plan,
     nodeRunner,
-    graphRuntime: createReactiveGraphRuntime({ nodeRunner }),
+    graphRuntime: options.graphRuntime ?? createReactiveGraphRuntime({ nodeRunner }),
     runtimeProfile,
     runId,
     runRoot,
@@ -278,7 +279,28 @@ export async function runSource(
   }
 
   const request = await createNodeRunRequest(ctx, component);
-  const nodeRunResult = await ctx.nodeRunner.execute(request);
+  const nodeExecutionResult = await ctx.graphRuntime.executeNode(
+    createNodeExecutionRequest({
+      graphRunId: ctx.runId,
+      runId: ctx.runId,
+      component,
+      package: {
+        name: ctx.ir.package.name,
+        source_ref: ctx.ir.package.source_ref,
+        ir_hash: ctx.ir.semantic_hash,
+      },
+      planning: {
+        requested_outputs: ctx.plan.requested_outputs,
+        stale_reasons: ctx.plan.graph_stale_reasons,
+        current_run_id: null,
+        recompute_scope: "selected",
+      },
+      workspacePath: ctx.runDir,
+      runtimeProfile: ctx.runtimeProfile,
+      nodeRunRequest: request,
+    }),
+  );
+  const nodeRunResult = nodeExecutionResult.node_run_result;
   const record = await applyEvalAcceptance(
     ctx,
     await materializeNodeRunResult(ctx, component, nodeRunResult),

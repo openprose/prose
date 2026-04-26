@@ -8,6 +8,18 @@ export {
   createReactiveGraphRuntime,
 } from "./graph-runtime.js";
 export {
+  DelegatedGraphRuntime,
+  createDelegatedGraphRuntime,
+} from "./delegated-graph-runtime.js";
+export {
+  ExternalProcessNodeDelegate,
+  createExternalProcessNodeDelegate,
+} from "./external-process-node-delegate.js";
+export {
+  executeNodeExecutionRequest,
+  executeNodeExecutionRequestFile,
+} from "./node-execution.js";
+export {
   buildNodePromptEnvelope,
   renderNodePromptEnvelope,
 } from "./node-envelope.js";
@@ -29,6 +41,14 @@ export {
 } from "./output-submission.js";
 export type { RuntimeProfileInput } from "./profiles.js";
 export type { ReactiveGraphRuntime } from "./graph-runtime.js";
+export type {
+  DelegatedGraphRuntimeOptions,
+  NodeExecutionDelegate,
+} from "./delegated-graph-runtime.js";
+export type {
+  ExternalProcessNodeDelegateOptions,
+} from "./external-process-node-delegate.js";
+export type { ExecuteNodeExecutionRequestOptions } from "./node-execution.js";
 export type { NodePromptEnvelope } from "./node-envelope.js";
 export type { NodeExecutionRequest } from "./node-request.js";
 export type { NodeExecutionResult } from "./node-result.js";
