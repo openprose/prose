@@ -6,10 +6,13 @@ import {
   listRunAttemptRecords,
   mkdtempSync,
   readFileSync,
+  renderTraceText,
   test,
+  traceFile,
   tmpdir,
 } from "./support";
 import { scriptedPiRuntime } from "./support/scripted-pi-session";
+import { OPENPROSE_SUBMIT_OUTPUTS_TOOL_NAME } from "../src/runtime/pi/output-tool";
 import { runSource } from "../src/run";
 
 describe("scripted Pi runtime test helper", () => {
@@ -69,6 +72,33 @@ describe("scripted Pi runtime test helper", () => {
       port: "message",
       artifact_ref: "bindings/hello/message.md",
     });
+
+    const trace = await traceFile(result.run_dir);
+    const traceText = renderTraceText(trace);
+    expect(trace.events).toContainEqual(
+      expect.objectContaining({
+        event: "provider.session",
+        session_id: "scripted-pi-1",
+        model_provider: "scripted",
+        model: "test-model",
+      }),
+    );
+    expect(trace.events).toContainEqual(
+      expect.objectContaining({
+        event: "pi.tool.started",
+        tool_name: OPENPROSE_SUBMIT_OUTPUTS_TOOL_NAME,
+      }),
+    );
+    expect(trace.events).toContainEqual(
+      expect.objectContaining({
+        event: "pi.output_submission.accepted",
+        output_ports: ["message"],
+      }),
+    );
+    expect(traceText).toContain("provider.session provider[pi] model[scripted/test-model]");
+    expect(traceText).toContain("pi.tool.started provider[pi]");
+    expect(traceText).toContain("tool[openprose_submit_outputs]");
+    expect(traceText).toContain("pi.output_submission.accepted");
   });
 
   test("surfaces missing output failures like the real Pi provider", async () => {
@@ -105,6 +135,72 @@ describe("scripted Pi runtime test helper", () => {
     expect(result.record.acceptance.reason).toContain(
       "openprose_submit_outputs did not include required output 'message'",
     );
+  });
+
+  test("records per-node Pi telemetry in graph traces", async () => {
+    const runRoot = mkdtempSync(join(tmpdir(), "openprose-scripted-pi-graph-telemetry-"));
+    const result = await runSource(fixture("pipeline.prose.md"), {
+      path: "fixtures/compiler/pipeline.prose.md",
+      runRoot,
+      runId: "scripted-pi-graph-telemetry",
+      inputs: {
+        draft: "Draft with a claim.",
+      },
+      provider: scriptedPiRuntime({
+        submissionsByComponent: {
+          review: {
+            outputs: [
+              {
+                port: "feedback",
+                content: "Tighten the intro.",
+              },
+            ],
+          },
+          "fact-check": {
+            outputs: [
+              {
+                port: "claims",
+                content: '[{"claim":"Draft has a claim","status":"checked"}]',
+              },
+            ],
+          },
+          polish: {
+            outputs: [
+              {
+                port: "final",
+                content: "Polished draft.",
+              },
+            ],
+          },
+        },
+      }),
+      createdAt: "2026-04-26T12:11:45.000Z",
+    });
+
+    expect(result.record.status).toBe("succeeded");
+    const trace = await traceFile(result.run_dir);
+    const toolStarts = trace.events.filter((event) => event.event === "pi.tool.started");
+    expect(toolStarts).toHaveLength(3);
+    expect(toolStarts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          graph_run_id: "scripted-pi-graph-telemetry",
+          component_ref: "review",
+          tool_name: OPENPROSE_SUBMIT_OUTPUTS_TOOL_NAME,
+        }),
+        expect.objectContaining({
+          graph_run_id: "scripted-pi-graph-telemetry",
+          component_ref: "fact-check",
+          tool_name: OPENPROSE_SUBMIT_OUTPUTS_TOOL_NAME,
+        }),
+        expect.objectContaining({
+          graph_run_id: "scripted-pi-graph-telemetry",
+          component_ref: "polish",
+          tool_name: OPENPROSE_SUBMIT_OUTPUTS_TOOL_NAME,
+        }),
+      ]),
+    );
+    expect(renderTraceText(trace)).toContain("node.started");
   });
 
   test("surfaces model errors and timeouts as Pi diagnostics", async () => {

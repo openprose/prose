@@ -1,0 +1,244 @@
+import type {
+  ProviderKind,
+  ProviderTelemetryEvent,
+} from "../../providers/protocol.js";
+import type { OutputSubmissionResult } from "../output-submission.js";
+
+export interface PiRuntimeEventContext {
+  provider: ProviderKind;
+  model_provider: string | null;
+  model: string | null;
+  session_id: string | null;
+  session_file: string | null;
+  now?: () => string;
+}
+
+export function normalizePiRuntimeEvent(
+  event: unknown,
+  context: PiRuntimeEventContext,
+): ProviderTelemetryEvent[] {
+  if (!event || typeof event !== "object") {
+    return [
+      baseEvent("pi.event.unknown", context, {
+        raw_event: String(event),
+      }),
+    ];
+  }
+
+  const type = readString(event, "type") ?? "unknown";
+  const normalized = normalizeKnownPiEvent(type, event, context);
+  const usage = usageEvent(event, context);
+  return usage ? [...normalized, usage] : normalized;
+}
+
+export function outputSubmissionTelemetryEvent(
+  result: OutputSubmissionResult,
+  context: PiRuntimeEventContext,
+): ProviderTelemetryEvent {
+  return baseEvent(`pi.output_submission.${result.status}`, context, {
+    output_ports: result.artifacts.map((artifact) => artifact.port).sort(),
+    performed_effects: result.performed_effects,
+    diagnostic_codes: result.diagnostics.map((diagnostic) => diagnostic.code).sort(),
+    failure_class: result.status === "rejected" ? "output_submission_rejected" : null,
+  });
+}
+
+function normalizeKnownPiEvent(
+  type: string,
+  event: object,
+  context: PiRuntimeEventContext,
+): ProviderTelemetryEvent[] {
+  if (type === "agent_start") {
+    return [
+      baseEvent("pi.session.started", context, {
+        source_event: type,
+      }),
+    ];
+  }
+  if (type === "agent_end") {
+    return [
+      baseEvent("pi.session.finished", context, {
+        source_event: type,
+      }),
+    ];
+  }
+  if (type === "agent_abort") {
+    return [
+      baseEvent("pi.session.aborted", context, {
+        source_event: type,
+        failure_class: "aborted",
+      }),
+    ];
+  }
+  if (type === "assistant_message") {
+    return [
+      baseEvent("pi.assistant.message", context, {
+        source_event: type,
+        content_preview: assistantMessagePreview(event),
+      }),
+    ];
+  }
+  if (type === "tool_start") {
+    return [
+      baseEvent("pi.tool.started", context, {
+        source_event: type,
+        tool_name: toolName(event),
+      }),
+    ];
+  }
+  if (type === "tool_end") {
+    return [
+      baseEvent("pi.tool.finished", context, {
+        source_event: type,
+        tool_name: toolName(event),
+      }),
+    ];
+  }
+  if (type.includes("retry")) {
+    return [
+      baseEvent("pi.retry", context, {
+        source_event: type,
+        reason: readString(event, "reason") ?? readString(event, "message"),
+      }),
+    ];
+  }
+
+  const error = errorMessage(event);
+  if (error) {
+    return [
+      baseEvent("pi.model.error", context, {
+        source_event: type,
+        failure_class: "model_error",
+        message: error,
+      }),
+    ];
+  }
+
+  return [
+    baseEvent("pi.event", context, {
+      source_event: type,
+    }),
+  ];
+}
+
+function baseEvent(
+  event: string,
+  context: PiRuntimeEventContext,
+  extra: Record<string, unknown> = {},
+): ProviderTelemetryEvent {
+  return {
+    event,
+    at: context.now?.() ?? new Date().toISOString(),
+    provider: context.provider,
+    session_id: context.session_id,
+    session_file: context.session_file,
+    model_provider: context.model_provider,
+    model: context.model,
+    ...extra,
+  };
+}
+
+function usageEvent(
+  event: object,
+  context: PiRuntimeEventContext,
+): ProviderTelemetryEvent | null {
+  const usage = objectValue(event, "usage") ?? objectValue(event, "tokenUsage");
+  if (!usage) {
+    return null;
+  }
+  const promptTokens = numberValue(usage, "prompt_tokens") ?? numberValue(usage, "input_tokens");
+  const completionTokens =
+    numberValue(usage, "completion_tokens") ?? numberValue(usage, "output_tokens");
+  const totalTokens = numberValue(usage, "total_tokens") ??
+    (promptTokens !== null && completionTokens !== null
+      ? promptTokens + completionTokens
+      : null);
+  if (promptTokens === null && completionTokens === null && totalTokens === null) {
+    return null;
+  }
+  return baseEvent("pi.usage", context, {
+    prompt_tokens: promptTokens,
+    completion_tokens: completionTokens,
+    total_tokens: totalTokens,
+  });
+}
+
+function assistantMessagePreview(event: object): string | null {
+  const message = objectValue(event, "message");
+  const content = message
+    ? readString(message, "content") ?? normalizeContent(message["content"])
+    : null;
+  if (!content) {
+    return null;
+  }
+  return content.length > 180 ? `${content.slice(0, 180)}...` : content;
+}
+
+function normalizeContent(value: unknown): string | null {
+  if (typeof value === "string") {
+    return value;
+  }
+  if (!Array.isArray(value)) {
+    return null;
+  }
+  const text = value
+    .map((entry) => {
+      if (!entry || typeof entry !== "object") {
+        return null;
+      }
+      return readString(entry, "text");
+    })
+    .filter((entry): entry is string => Boolean(entry))
+    .join("\n")
+    .trim();
+  return text.length > 0 ? text : null;
+}
+
+function toolName(event: object): string | null {
+  return (
+    readString(event, "name") ??
+    readString(event, "tool") ??
+    readString(event, "toolName") ??
+    objectName(event, "tool")
+  );
+}
+
+function errorMessage(event: object): string | null {
+  const candidates = [event];
+  for (const key of ["message", "assistantMessageEvent", "error"]) {
+    const value = objectValue(event, key);
+    if (value) {
+      candidates.push(value);
+    }
+  }
+  for (const candidate of candidates) {
+    const message = readString(candidate, "errorMessage") ?? readString(candidate, "message");
+    const stopReason = readString(candidate, "stopReason");
+    if (message || stopReason === "error") {
+      return message ?? "Pi provider reported a model error.";
+    }
+  }
+  return null;
+}
+
+function objectValue(value: object, key: string): Record<string, unknown> | null {
+  const entry = (value as Record<string, unknown>)[key];
+  return entry && typeof entry === "object" && !Array.isArray(entry)
+    ? entry as Record<string, unknown>
+    : null;
+}
+
+function objectName(value: object, key: string): string | null {
+  const entry = objectValue(value, key);
+  return entry ? readString(entry, "name") : null;
+}
+
+function readString(value: object, key: string): string | null {
+  const entry = (value as Record<string, unknown>)[key];
+  return typeof entry === "string" && entry.length > 0 ? entry : null;
+}
+
+function numberValue(value: object, key: string): number | null {
+  const entry = (value as Record<string, unknown>)[key];
+  return typeof entry === "number" && Number.isFinite(entry) ? entry : null;
+}

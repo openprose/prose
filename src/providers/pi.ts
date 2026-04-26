@@ -5,6 +5,10 @@ import {
   createOpenProseSubmitOutputsTool,
   OPENPROSE_SUBMIT_OUTPUTS_TOOL_NAME,
 } from "../runtime/pi/output-tool.js";
+import {
+  normalizePiRuntimeEvent,
+  outputSubmissionTelemetryEvent,
+} from "../runtime/pi/events.js";
 import type { OutputSubmissionResult } from "../runtime/output-submission.js";
 import type { ComponentIR, Diagnostic, EffectIR } from "../types.js";
 import {
@@ -17,6 +21,7 @@ import type {
   ProviderEnvironmentBinding,
   ProviderRequest,
   ProviderResult,
+  ProviderTelemetryEvent,
   RuntimeProvider,
 } from "./protocol.js";
 
@@ -134,6 +139,7 @@ export class PiProvider implements RuntimeProvider {
     };
     let session: PiAgentSessionLike | null = null;
     const events: string[] = [];
+    const telemetry: ProviderTelemetryEvent[] = [];
     let unsubscribe: (() => void) | undefined;
 
     try {
@@ -144,6 +150,16 @@ export class PiProvider implements RuntimeProvider {
       });
       unsubscribe = session.subscribe?.((event) => {
         events.push(safeEventLine(event));
+        telemetry.push(
+          ...normalizePiRuntimeEvent(event, {
+            provider: this.kind,
+            model_provider:
+              this.options.modelProvider ?? request.runtime_profile.model_provider,
+            model: this.options.modelId ?? request.runtime_profile.model,
+            session_id: session?.sessionId ?? null,
+            session_file: session?.sessionFile ?? null,
+          }),
+        );
         const diagnostic = diagnosticFromPiEvent(event, request);
         if (diagnostic) {
           pushUniqueDiagnostic(diagnostics, diagnostic);
@@ -172,6 +188,18 @@ export class PiProvider implements RuntimeProvider {
     }
 
     const submitted = outputSubmission.current;
+    if (submitted) {
+      telemetry.push(
+        outputSubmissionTelemetryEvent(submitted, {
+          provider: this.kind,
+          model_provider:
+            this.options.modelProvider ?? request.runtime_profile.model_provider,
+          model: this.options.modelId ?? request.runtime_profile.model,
+          session_id: session?.sessionId ?? null,
+          session_file: session?.sessionFile ?? null,
+        }),
+      );
+    }
     if (submitted?.status === "rejected") {
       diagnostics.push(...submitted.diagnostics);
     }
@@ -201,6 +229,7 @@ export class PiProvider implements RuntimeProvider {
           : [],
       diagnostics,
       transcript: events.length > 0 ? events.join("\n") : null,
+      telemetry,
       session,
       durationMs: elapsed(started),
     });
@@ -214,6 +243,7 @@ export class PiProvider implements RuntimeProvider {
       performedEffects?: string[];
       diagnostics: Diagnostic[];
       transcript: string | null;
+      telemetry?: ProviderTelemetryEvent[];
       session: PiAgentSessionLike | null;
       durationMs: number;
     },
@@ -244,6 +274,7 @@ export class PiProvider implements RuntimeProvider {
         : null,
       cost: null,
       duration_ms: Math.max(0, Math.round(options.durationMs)),
+      telemetry: options.telemetry ?? [],
     };
   }
 }

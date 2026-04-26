@@ -147,11 +147,65 @@ export function renderTraceText(trace: TraceView): string {
     lines.push("");
     lines.push("Events:");
     for (const event of trace.events) {
-      lines.push(`- ${event.at}: ${event.event}`);
+      lines.push(`- ${event.at}: ${renderTraceEvent(event)}`);
     }
   }
 
   return `${lines.join("\n")}\n`;
+}
+
+function renderTraceEvent(event: TraceEvent): string {
+  const details = [
+    stringDetail("provider", event.provider),
+    modelDetail(event),
+    stringDetail("session", event.session_id),
+    stringDetail("session_file", event.session_file),
+    stringDetail("tool", event.tool_name),
+    stringListDetail("outputs", event.output_ports),
+    stringDetail("failure", event.failure_class),
+    usageDetail(event),
+    stringDetail("message", event.message ?? event.content_preview),
+  ].filter(Boolean);
+  return [event.event, ...details].join(" ");
+}
+
+function stringDetail(label: string, value: unknown): string | null {
+  return typeof value === "string" && value.length > 0 ? `${label}[${value}]` : null;
+}
+
+function stringListDetail(label: string, value: unknown): string | null {
+  if (!Array.isArray(value) || value.length === 0) {
+    return null;
+  }
+  const values = value.filter((entry): entry is string => typeof entry === "string");
+  return values.length > 0 ? `${label}[${values.join(", ")}]` : null;
+}
+
+function modelDetail(event: TraceEvent): string | null {
+  const provider = typeof event.model_provider === "string" ? event.model_provider : null;
+  const model = typeof event.model === "string" ? event.model : null;
+  if (!provider && !model) {
+    return null;
+  }
+  return `model[${[provider, model].filter(Boolean).join("/")}]`;
+}
+
+function usageDetail(event: TraceEvent): string | null {
+  const total = numberDetail(event.total_tokens);
+  const prompt = numberDetail(event.prompt_tokens);
+  const completion = numberDetail(event.completion_tokens);
+  if (total === null && prompt === null && completion === null) {
+    return null;
+  }
+  return `tokens[${[
+    prompt !== null ? `in:${prompt}` : null,
+    completion !== null ? `out:${completion}` : null,
+    total !== null ? `total:${total}` : null,
+  ].filter(Boolean).join(", ")}]`;
+}
+
+function numberDetail(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
 async function loadNodeRecords(runDir: string): Promise<RunRecord[]> {

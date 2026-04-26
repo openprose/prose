@@ -17,6 +17,10 @@ export {
   renderPiNodePrompt,
 } from "./pi/prompt.js";
 export {
+  normalizePiRuntimeEvent,
+  outputSubmissionTelemetryEvent,
+} from "./pi/events.js";
+export {
   OPENPROSE_SUBMIT_OUTPUTS_TOOL_NAME,
   createOpenProseSubmitOutputsTool,
 } from "./pi/output-tool.js";
@@ -33,6 +37,7 @@ export type {
   OpenProseSubmitOutputsDetails,
   OutputSubmissionCollector,
 } from "./pi/output-tool.js";
+export type { PiRuntimeEventContext } from "./pi/events.js";
 export type {
   OutputSubmissionOutput,
   OutputSubmissionPayload,

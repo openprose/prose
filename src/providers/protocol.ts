@@ -101,6 +101,13 @@ export interface ProviderLogs {
   transcript: string | null;
 }
 
+export interface ProviderTelemetryEvent {
+  event: string;
+  at: string;
+  provider: ProviderKind;
+  [key: string]: unknown;
+}
+
 export interface ProviderResult {
   provider_result_version: "0.1";
   request_id: string;
@@ -112,6 +119,7 @@ export interface ProviderResult {
   session: ProviderSessionRef | null;
   cost: ProviderCostTelemetry | null;
   duration_ms: number | null;
+  telemetry?: ProviderTelemetryEvent[];
 }
 
 export interface RuntimeProvider {

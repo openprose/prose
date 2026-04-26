@@ -1,20 +1,20 @@
 # OpenProse Measurement Report
 
-Generated: 2026-04-26T00:47:41.738Z
+Generated: 2026-04-26T12:59:03.950Z
 
 ## Package Health
 
 | Target | Components | Quality | Typed Ports | Effects | Publish | Strict |
 |---|---:|---:|---:|---:|---|---|
-| examples | 15 | 0.95 | 100% | 100% | pass | pass |
-| packages/std | 82 | 0.96 | 100% | 100% | pass | pass |
+| examples | 19 | 0.96 | 100% | 100% | pass | pass |
+| packages/std | 58 | 0.97 | 100% | 100% | pass | pass |
 | packages/co | 6 | 1.00 | 100% | 100% | pass | pass |
 | customers/prose-openprose | 99 | 0.95 | 100% | 100% | pass | pass |
 
 ## Scenario Checks
 
 ### Hello
-- compile time: 0.23 ms
+- compile time: 0.18 ms
 - diagnostics: 0
 
 ### Company Intake
@@ -23,7 +23,7 @@ Generated: 2026-04-26T00:47:41.738Z
 - materialization set size: 3
 
 ### Run-Aware Brief
-- compile time: 0.20 ms
+- compile time: 0.19 ms
 - access rule groups: 2
 
 ### Selective Recompute
@@ -31,6 +31,8 @@ Generated: 2026-04-26T00:47:41.738Z
 - targeted summary nodes: (none)
 - saved node recomputes: 1
 - saved graph rewrites: 1
+- baseline trace events: 8
+- baseline trace event kinds: graph.finished, graph.started, node.finished, node.started, provider.session
 
 ### Approval-Gated Release
 - plan status: blocked
@@ -48,11 +50,12 @@ Assumptions:
 
 | Signal | OpenProse advantage |
 |---|---:|
-| examples quality score | 0.95 |
+| examples quality score | 0.96 |
 | typed port coverage delta | 100% |
 | effect declaration delta | 100% |
 | selective node recomputes avoided | 1 |
 | selective graph rewrites avoided | 1 |
 | approval gate visible to planner | yes |
 | graph trace available | yes |
+| runtime trace event count | 8 |
 

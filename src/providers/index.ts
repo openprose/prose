@@ -70,6 +70,7 @@ export type {
   ProviderResult,
   ProviderRuntimePrompt,
   ProviderSessionRef,
+  ProviderTelemetryEvent,
   ProviderValidationRule,
   RuntimeProvider,
 } from "./protocol.js";

@@ -8,6 +8,7 @@ import { packagePath } from "../src/package";
 import { planFile } from "../src/plan";
 import { publishCheckPath } from "../src/publish";
 import { runFile } from "../src/run";
+import { traceFile } from "../src/trace";
 
 interface Timed<T> {
   elapsed_ms: number;
@@ -37,6 +38,7 @@ interface BaselineComparison {
   selective_recompute_saved_graph_rewrite: number;
   approval_gate_visible: boolean;
   graph_trace_available: boolean;
+  runtime_trace_event_count: number;
 }
 
 async function main(): Promise<void> {
@@ -109,6 +111,7 @@ async function main(): Promise<void> {
         "market-sync.market_snapshot": "A stable market snapshot.",
       },
     });
+    const baselineTrace = await traceFile(baselineRun.run_dir);
 
     const fullRefresh = await time(() =>
       planFile(selectivePath, {
@@ -181,6 +184,10 @@ async function main(): Promise<void> {
           targeted_refresh_graph: targetedRefresh.value.materialization_set.graph,
           saved_node_recomputes: selectiveRecomputeSavedNodes,
           saved_graph_rewrite: selectiveRecomputeSavedGraphRewrite,
+          baseline_trace_events: baselineTrace.events.length,
+          baseline_trace_event_kinds: Array.from(
+            new Set(baselineTrace.events.map((event) => event.event)),
+          ).sort(),
         },
         approval_gated_release: {
           elapsed_ms: round2(approvalPlan.elapsed_ms),
@@ -207,6 +214,7 @@ async function main(): Promise<void> {
           (node) => node.status === "blocked_effect",
         ),
         graph_trace_available: companyGraphPlan.value.nodes.length > 0,
+        runtime_trace_event_count: baselineTrace.events.length,
       } satisfies BaselineComparison,
     };
 
@@ -258,6 +266,8 @@ function renderMarkdownReport(report: {
       targeted_refresh_graph: boolean;
       saved_node_recomputes: number;
       saved_graph_rewrite: number;
+      baseline_trace_events: number;
+      baseline_trace_event_kinds: string[];
     };
     approval_gated_release: {
       elapsed_ms: number;
@@ -302,6 +312,10 @@ function renderMarkdownReport(report: {
   lines.push(`- targeted summary nodes: ${listOrNone(report.scenarios.selective_recompute.targeted_refresh_nodes)}`);
   lines.push(`- saved node recomputes: ${report.scenarios.selective_recompute.saved_node_recomputes}`);
   lines.push(`- saved graph rewrites: ${report.scenarios.selective_recompute.saved_graph_rewrite}`);
+  lines.push(`- baseline trace events: ${report.scenarios.selective_recompute.baseline_trace_events}`);
+  lines.push(
+    `- baseline trace event kinds: ${listOrNone(report.scenarios.selective_recompute.baseline_trace_event_kinds)}`,
+  );
   lines.push("");
   lines.push("### Approval-Gated Release");
   lines.push(`- plan status: ${report.scenarios.approval_gated_release.status}`);
@@ -338,6 +352,9 @@ function renderMarkdownReport(report: {
   );
   lines.push(
     `| graph trace available | ${report.baseline_comparison.graph_trace_available ? "yes" : "no"} |`,
+  );
+  lines.push(
+    `| runtime trace event count | ${report.baseline_comparison.runtime_trace_event_count} |`,
   );
   lines.push("");
   return `${lines.join("\n")}\n`;

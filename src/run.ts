@@ -333,6 +333,7 @@ async function executeGraphRun(
   );
   const nodeRecords: RunRecord[] = [];
   const nodeRecordsById = new Map<string, RunRecord>();
+  const providerResultsByRunId = new Map<string, ProviderResult>();
   const diagnostics: Diagnostic[] = [];
 
   for (const planNode of ctx.plan.nodes) {
@@ -465,6 +466,7 @@ async function executeGraphRun(
     });
     nodeRecords.push(record);
     nodeRecordsById.set(component.id, record);
+    providerResultsByRunId.set(record.run_id, nodeResult.provider_result);
     diagnostics.push(...nodeResult.provider_result.diagnostics);
   }
 
@@ -473,7 +475,7 @@ async function executeGraphRun(
     await assembleGraphRunRecord(ctx, main, nodeRecordsById),
   );
   await writeRunRecordFile(ctx, "run.json", graphRecord);
-  await writeGraphTrace(ctx, graphRecord, nodeRecords);
+  await writeGraphTrace(ctx, graphRecord, nodeRecords, providerResultsByRunId);
   await writeGraphStoreRecords(ctx, graphRecord, nodeRecords);
 
   return {
