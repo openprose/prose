@@ -58,3 +58,8 @@ Latest generated reports:
 - The adapter now records Pi event-level model errors before output validation,
   so future live provider failures should point at provider/auth/model issues
   instead of collapsing into missing-output diagnostics.
+- 2026-04-26: Retested the opt-in Pi provider smoke with OpenRouter
+  `google/gemini-3-flash-preview`. The provider again reached OpenRouter and
+  produced a `pi_model_error`; OpenRouter reported that the account has not
+  purchased credits. This remains provider/account configuration evidence, not
+  an OpenProse runtime failure.
