@@ -175,6 +175,36 @@ Signpost:
 - Add `signposts/050-runtime-binding-boundary.md` with the module boundary and
   checks.
 
+## 05.8 Extract Runtime Record Boundary
+
+Build:
+
+- Move run-record construction, output artifact writes, attempt records,
+  run-index updates, node run IDs, and diagnostic projections out of the
+  top-level run coordinator.
+- Leave graph-store assembly in the coordinator until it has a clean graph
+  lifecycle boundary of its own.
+- Preserve `prose run`, `prose status`, `prose trace`, retries, resumes, and
+  hosted envelope behavior exactly.
+
+Tests:
+
+- Run strict source unused-symbol scan for `src/`.
+- Run focused run-entrypoint, runtime-control, run-attempt, and materialization
+  tests.
+- Run `bun run typecheck`.
+- Run `bun test`.
+- Run `bun run confidence:runtime`.
+
+Commit:
+
+- Commit as `refactor: extract runtime record helpers`.
+
+Signpost:
+
+- Add `signposts/051-runtime-record-boundary.md` with the lifecycle boundary
+  and checks.
+
 ## Phase Exit Criteria
 
 - `prose run` can execute at least one multi-node graph locally.

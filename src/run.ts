@@ -1,8 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { randomBytes } from "node:crypto";
-import { basename, dirname, join, relative, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { compileSource } from "./compiler.js";
-import { sha256 } from "./hash.js";
 import { projectManifest } from "./manifest.js";
 import { loadCurrentRunSet, planSource, type CurrentRunSet } from "./plan.js";
 import {
@@ -17,7 +16,6 @@ import {
 } from "./policy/index.js";
 import {
   resolveRuntimeProvider,
-  serializeProviderSessionRef,
   writeProviderArtifactRecords,
 } from "./providers/index.js";
 import {
@@ -28,9 +26,24 @@ import {
   upstreamEdgeForInput,
   validateProviderArtifacts,
 } from "./runtime/bindings.js";
+import {
+  baseRunRecord,
+  completionTimestamp,
+  dependencyRecords,
+  diagnosticsReason,
+  indexRunRecord,
+  nodeRunId,
+  nodeRunRecordPath,
+  normalizePath,
+  recordDiagnostics,
+  recordDiagnosticsReason,
+  writeBlockedAttemptRecord,
+  writeProviderAttemptRecord,
+  writeRunOutputArtifacts,
+  writeRunRecordFile,
+} from "./runtime/records.js";
 import { writeLocalArtifactRecord } from "./store/artifacts.js";
 import { writeRunAttemptRecord } from "./store/attempts.js";
-import { upsertRunIndexEntry } from "./store/local.js";
 import { updateGraphNodePointer } from "./store/pointers.js";
 import type {
   ComponentIR,
@@ -44,7 +57,6 @@ import type {
   RunRecord,
 } from "./types.js";
 import type {
-  ProviderArtifactResult,
   ProviderKind,
   ProviderRequest,
   ProviderResult,
@@ -608,37 +620,6 @@ async function writeBlockedRun(
   return record;
 }
 
-function baseRunRecord(
-  ctx: RunContext,
-  component: ComponentIR,
-  kind: "component" | "graph",
-  runId = ctx.runId,
-): Omit<RunRecord, "inputs" | "dependencies" | "effects" | "outputs" | "evals" | "acceptance" | "trace_ref" | "status" | "completed_at"> {
-  return {
-    run_id: runId,
-    kind,
-    component_ref: component.name,
-    component_version: {
-      source_sha: ctx.ir.package.source_sha,
-      package_ref: ctx.ir.package.source_ref,
-      ir_hash: ctx.ir.semantic_hash,
-    },
-    caller: {
-      principal_id: "local",
-      tenant_id: "local",
-      roles: ["local"],
-      trigger: ctx.trigger,
-    },
-    runtime: {
-      harness: "openprose-provider",
-      worker_ref: ctx.provider.kind,
-      model: null,
-      environment_ref: null,
-    },
-    created_at: ctx.createdAt,
-  };
-}
-
 async function assembleGraphRunRecord(
   ctx: RunContext,
   main: ComponentIR,
@@ -944,16 +925,6 @@ function missingUpstreamOutputReasons(
   });
 }
 
-async function writeRunRecordFile(
-  ctx: RunContext,
-  recordPath: string,
-  record: RunRecord,
-): Promise<void> {
-  const path = join(ctx.runDir, recordPath);
-  await mkdir(dirname(path), { recursive: true });
-  await writeFile(path, `${JSON.stringify(record, null, 2)}\n`);
-}
-
 async function writeArtifactFile(
   ctx: RunContext,
   artifactRef: string,
@@ -962,131 +933,6 @@ async function writeArtifactFile(
   const path = join(ctx.runDir, artifactRef);
   await mkdir(dirname(path), { recursive: true });
   await writeFile(path, content.endsWith("\n") ? content : `${content}\n`, "utf8");
-}
-
-async function writeProviderAttemptRecord(
-  ctx: RunContext,
-  record: RunRecord,
-  result: ProviderResult,
-  diagnostics = result.diagnostics,
-): Promise<void> {
-  await writeRunAttemptRecord(ctx.storeRoot, {
-    runId: record.run_id,
-    componentRef: record.component_ref,
-    attemptNumber: 1,
-    status: record.status,
-    providerSessionRef: result.session ? serializeProviderSessionRef(result.session) : null,
-    startedAt: record.created_at,
-    finishedAt: record.completed_at,
-    diagnostics,
-    failure:
-      record.status === "succeeded"
-        ? null
-        : {
-            code: "provider_run_failed",
-            message: record.acceptance.reason ?? "Provider run failed.",
-            retryable: record.status === "failed",
-          },
-  });
-}
-
-async function writeBlockedAttemptRecord(
-  ctx: RunContext,
-  record: RunRecord,
-): Promise<void> {
-  await writeRunAttemptRecord(ctx.storeRoot, {
-    runId: record.run_id,
-    componentRef: record.component_ref,
-    attemptNumber: 1,
-    status: record.status,
-    providerSessionRef: null,
-    startedAt: record.created_at,
-    finishedAt: record.completed_at,
-    diagnostics: recordDiagnostics(record),
-    failure: {
-      code: "run_blocked",
-      message: record.acceptance.reason ?? "Run blocked.",
-      retryable: false,
-    },
-    resume: resumePointForBlockedRecord(record),
-  });
-}
-
-function resumePointForBlockedRecord(record: RunRecord) {
-  const gated = record.effects.declared.some(
-    (effect) => effect !== "pure" && effect !== "read_external",
-  );
-  if (!gated) {
-    return null;
-  }
-  return {
-    checkpoint_ref: "plan.json",
-    reason: record.acceptance.reason,
-  };
-}
-
-async function indexRunRecord(
-  ctx: RunContext,
-  record: RunRecord,
-  recordPath: string,
-): Promise<void> {
-  await upsertRunIndexEntry(ctx.storeRoot, {
-    run_id: record.run_id,
-    kind: record.kind,
-    component_ref: record.component_ref,
-    status: record.status,
-    acceptance: record.acceptance.status,
-    created_at: record.created_at,
-    completed_at: record.completed_at,
-    record_ref: normalizePath(relative(ctx.storeRoot, join(ctx.runDir, recordPath))),
-  });
-}
-
-function dependencyRecords(ctx: RunContext): RunRecord["dependencies"] {
-  return ctx.ir.package.dependencies.map((dependency) => ({
-    package: dependency.package,
-    sha: dependency.sha,
-  }));
-}
-
-function completionTimestamp(ctx: RunContext): string {
-  return ctx.completedAt ?? new Date().toISOString();
-}
-
-function nodeRunId(ctx: RunContext, component: ComponentIR): string {
-  return `${ctx.runId}:${component.name}`;
-}
-
-function nodeRunRecordPath(component: ComponentIR): string {
-  return join("nodes", `${component.id}.run.json`);
-}
-
-async function writeRunOutputArtifacts(
-  ctx: RunContext,
-  component: ComponentIR,
-  artifacts: ProviderArtifactResult[],
-  policyLabelsByPort: Record<string, string[]> = {},
-): Promise<RunOutputRecord[]> {
-  const outputs: RunOutputRecord[] = [];
-  for (const artifact of artifacts) {
-    if (artifact.content === null) {
-      continue;
-    }
-    const artifactRef = artifact.artifact_ref ?? join("bindings", component.id, `${artifact.port}.md`);
-    const path = join(ctx.runDir, artifactRef);
-    await mkdir(dirname(path), { recursive: true });
-    await writeFile(path, artifact.content, "utf8");
-    outputs.push({
-      port: artifact.port,
-      value_hash: artifact.content_hash ?? sha256(artifact.content),
-      artifact_ref: normalizePath(artifactRef),
-      policy_labels: mergePolicyLabels(
-        policyLabelsByPort[artifact.port] ?? [],
-        artifact.policy_labels,
-      ),
-    });
-  }
-  return outputs;
 }
 
 async function writeTrace(
@@ -1178,12 +1024,6 @@ function executableComponents(ir: ProseIR): ComponentIR[] {
     : ir.components;
 }
 
-function diagnosticsReason(diagnostics: Diagnostic[]): string | null {
-  return diagnostics.length > 0
-    ? diagnostics.map((diagnostic) => diagnostic.message).join(" ")
-    : null;
-}
-
 function blockedPlanReasons(plan: ExecutionPlan, ctx?: RunContext): string[] {
   const reasons = [
     ...(ctx?.deniedEffects ?? []).map(
@@ -1193,26 +1033,6 @@ function blockedPlanReasons(plan: ExecutionPlan, ctx?: RunContext): string[] {
     ...plan.nodes.flatMap((node) => node.blocked_reasons),
   ];
   return reasons.length > 0 ? reasons : ["Execution plan is blocked."];
-}
-
-function recordDiagnostics(record: RunRecord): Diagnostic[] {
-  return record.acceptance.reason
-    ? [
-        {
-          severity: "error",
-          code: `run_${record.status}`,
-          message: record.acceptance.reason,
-        },
-      ]
-    : [];
-}
-
-function recordDiagnosticsReason(reasons: string[]): Diagnostic[] {
-  return reasons.map((reason) => ({
-    severity: "error",
-    code: "run_blocked",
-    message: reason,
-  }));
 }
 
 async function resolveApprovalRecords(
@@ -1255,8 +1075,4 @@ function inferStoreRoot(runRoot: string): string {
   return basename(normalizePath(runRoot)) === "runs"
     ? dirname(runRoot)
     : join(runRoot, ".prose-store");
-}
-
-function normalizePath(path: string): string {
-  return path.replace(/\\/g, "/");
 }
