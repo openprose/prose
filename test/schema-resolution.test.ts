@@ -8,6 +8,7 @@ import {
   parseTypeExpression,
   portSchemaProjection,
   typeExpressionToJsonSchema,
+  validateTextAgainstTypeExpression,
 } from "../src/schema";
 
 describe("OpenProse type expressions and schema projection", () => {
@@ -83,6 +84,58 @@ describe("OpenProse type expressions and schema projection", () => {
         type: "string",
         contentMediaType: "text/markdown",
       },
+    });
+  });
+
+  test("validates enforceable JSON primitive and array shapes", () => {
+    const number = parseTypeExpression("number").expression;
+    expect(validateTextAgainstTypeExpression(number, "")).toMatchObject({
+      status: "invalid",
+      diagnostics: [expect.objectContaining({ code: "schema_number_expected" })],
+    });
+
+    const jsonNumber = parseTypeExpression("Json<number>").expression;
+    expect(validateTextAgainstTypeExpression(jsonNumber, "42")).toMatchObject({
+      status: "valid",
+    });
+    expect(validateTextAgainstTypeExpression(jsonNumber, '"forty-two"')).toMatchObject({
+      status: "invalid",
+      diagnostics: [expect.objectContaining({ code: "schema_number_expected" })],
+    });
+
+    const integers = parseTypeExpression("integer[]").expression;
+    expect(validateTextAgainstTypeExpression(integers, "[1, 2, 3]")).toMatchObject({
+      status: "valid",
+    });
+    expect(validateTextAgainstTypeExpression(integers, "[1, 2.5]")).toMatchObject({
+      status: "invalid",
+      diagnostics: [expect.objectContaining({ code: "schema_number_expected" })],
+    });
+  });
+
+  test("validates run reference shape without pretending named schemas are resolved", () => {
+    const runRef = parseTypeExpression("run<company-intake>").expression;
+
+    expect(
+      validateTextAgainstTypeExpression(
+        runRef,
+        '{"run_id":"run-1","type":"company-intake"}',
+      ),
+    ).toMatchObject({ status: "valid" });
+    expect(
+      validateTextAgainstTypeExpression(
+        runRef,
+        '{"run_id":"run-1","type":"other-component"}',
+      ),
+    ).toMatchObject({
+      status: "invalid",
+      diagnostics: [expect.objectContaining({ code: "schema_run_ref_type_mismatch" })],
+    });
+
+    const namedJson = parseTypeExpression("Json<CompanyProfile>").expression;
+    expect(validateTextAgainstTypeExpression(namedJson, '{"name":"Acme"}')).toMatchObject({
+      status: "valid",
+      schema_ref: "#/$defs/CompanyProfile",
     });
   });
 });

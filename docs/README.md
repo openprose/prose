@@ -7,6 +7,8 @@ OpenProse is now split into a few clean surfaces:
 - [Measuring OpenProse](measurement.md): reproducible ways to measure package quality, selective recompute, approval gating, and reference-company health
 - [Inference Examples](inference-examples.md): Pi-backed graph VM examples,
   model provider setup, and live harness evidence
+- [Schema Validation](schema-validation.md): what typed ports enforce today
+  versus what remains semantic package metadata
 - [Runtime Release Candidate](release-candidate.md): confidence matrix,
   release criteria, and generated RC evidence
 - [Diagrams](diagrams/index.html): HTML diagrams for the compiler, reactive

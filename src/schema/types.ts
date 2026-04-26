@@ -252,30 +252,25 @@ function validateExpression(
   }
   if (expression.kind === "array") {
     const parsed = parseJson(content, diagnostics, expression.raw);
-    if (!Array.isArray(parsed)) {
-      diagnostics.push({
-        severity: "error",
-        code: "schema_array_expected",
-        message: `Expected '${expression.raw}' to be a JSON array.`,
-      });
-      return "invalid";
-    }
-    return "valid";
+    return parsed === undefined
+      ? "invalid"
+      : validateJsonValueAgainstExpression(expression, parsed, diagnostics, expression.raw);
   }
   if (expression.kind === "generic" && expression.name === "Json") {
-    return parseJson(content, diagnostics, expression.raw) === undefined ? "invalid" : "valid";
+    const parsed = parseJson(content, diagnostics, expression.raw);
+    if (parsed === undefined) {
+      return "invalid";
+    }
+    const [inner] = expression.args;
+    return inner
+      ? validateJsonValueAgainstExpression(inner, parsed, diagnostics, expression.raw)
+      : "valid";
   }
   if (expression.kind === "generic" && expression.name === "run") {
     const parsed = parseJson(content, diagnostics, expression.raw);
-    if (!parsed || typeof parsed !== "object" || !("run_id" in parsed)) {
-      diagnostics.push({
-        severity: "error",
-        code: "schema_run_ref_expected",
-        message: `Expected '${expression.raw}' to be a JSON run reference with run_id.`,
-      });
-      return "invalid";
-    }
-    return "valid";
+    return parsed === undefined
+      ? "invalid"
+      : validateJsonValueAgainstExpression(expression, parsed, diagnostics, expression.raw);
   }
   if (expression.kind === "primitive") {
     if (expression.name === "Any") {
@@ -287,6 +282,7 @@ function validateExpression(
     if (expression.name === "number" || expression.name === "integer") {
       const value = Number(content);
       const valid =
+        content.length > 0 &&
         Number.isFinite(value) &&
         (expression.name === "number" || Number.isInteger(value));
       if (!valid) {
@@ -311,6 +307,149 @@ function validateExpression(
     }
   }
   return "unchecked";
+}
+
+function validateJsonValueAgainstExpression(
+  expression: TypeExpressionIR,
+  value: unknown,
+  diagnostics: Diagnostic[],
+  parentType: string,
+): LocalArtifactSchemaStatus["status"] {
+  if (expression.kind === "named" || expression.name === "Any") {
+    return "valid";
+  }
+
+  if (expression.kind === "primitive") {
+    if (expression.name === "string") {
+      return validateJsonPredicate(
+        typeof value === "string",
+        diagnostics,
+        parentType,
+        "schema_string_expected",
+        "string",
+      );
+    }
+    if (expression.name === "number") {
+      return validateJsonPredicate(
+        typeof value === "number" && Number.isFinite(value),
+        diagnostics,
+        parentType,
+        "schema_number_expected",
+        "number",
+      );
+    }
+    if (expression.name === "integer") {
+      return validateJsonPredicate(
+        typeof value === "number" && Number.isInteger(value),
+        diagnostics,
+        parentType,
+        "schema_number_expected",
+        "integer",
+      );
+    }
+    if (expression.name === "boolean") {
+      return validateJsonPredicate(
+        typeof value === "boolean",
+        diagnostics,
+        parentType,
+        "schema_boolean_expected",
+        "boolean",
+      );
+    }
+  }
+
+  if (expression.kind === "array") {
+    if (!Array.isArray(value)) {
+      diagnostics.push({
+        severity: "error",
+        code: "schema_array_expected",
+        message: `Expected '${parentType}' to be a JSON array.`,
+      });
+      return "invalid";
+    }
+    const element = expression.element;
+    if (!element) {
+      return "valid";
+    }
+    let valid = true;
+    value.forEach((item, index) => {
+      const before = diagnostics.length;
+      const status = validateJsonValueAgainstExpression(
+        element,
+        item,
+        diagnostics,
+        `${parentType}[${index}]`,
+      );
+      valid = valid && status !== "invalid" && diagnostics.length === before;
+    });
+    return valid ? "valid" : "invalid";
+  }
+
+  if (expression.kind === "generic" && expression.name === "Json") {
+    const [inner] = expression.args;
+    return inner
+      ? validateJsonValueAgainstExpression(inner, value, diagnostics, parentType)
+      : "valid";
+  }
+
+  if (expression.kind === "generic" && expression.name === "run") {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      diagnostics.push({
+        severity: "error",
+        code: "schema_run_ref_expected",
+        message: `Expected '${parentType}' to be a JSON run reference object.`,
+      });
+      return "invalid";
+    }
+    const record = value as Record<string, unknown>;
+    if (typeof record.run_id !== "string" || record.run_id.trim().length === 0) {
+      diagnostics.push({
+        severity: "error",
+        code: "schema_run_ref_expected",
+        message: `Expected '${parentType}' to include a string run_id.`,
+      });
+      return "invalid";
+    }
+    const expected = expression.args[0]?.raw;
+    if (expected && typeof record.type === "string" && record.type !== expected) {
+      diagnostics.push({
+        severity: "error",
+        code: "schema_run_ref_type_mismatch",
+        message: `Expected '${parentType}' to reference run type '${expected}' but found '${record.type}'.`,
+      });
+      return "invalid";
+    }
+    return "valid";
+  }
+
+  if (expression.kind === "generic" && expression.name === "Markdown") {
+    return validateJsonPredicate(
+      typeof value === "string",
+      diagnostics,
+      parentType,
+      "schema_string_expected",
+      "markdown string",
+    );
+  }
+
+  return "valid";
+}
+
+function validateJsonPredicate(
+  valid: boolean,
+  diagnostics: Diagnostic[],
+  type: string,
+  code: string,
+  expected: string,
+): LocalArtifactSchemaStatus["status"] {
+  if (!valid) {
+    diagnostics.push({
+      severity: "error",
+      code,
+      message: `Expected '${type}' to be ${expected}.`,
+    });
+  }
+  return valid ? "valid" : "invalid";
 }
 
 function parseJson(

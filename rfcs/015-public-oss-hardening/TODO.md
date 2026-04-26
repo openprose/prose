@@ -294,23 +294,26 @@ Checks:
 
 - `bun test test/run-entrypoint.test.ts test/runtime-control.test.ts test/runtime-materialization.test.ts`
 
-### [todo] Schema validation depth needs a public contract
+### [done] Schema validation depth needs a public contract
 
 Finding: typed ports exist and many simple JSON/Markdown checks work, but the
 package needs an explicit statement of which types are enforceable today and
 which are registry/search labels only.
 
-Proposed fix:
+Resolved:
 
-- audit `src/schema`, `src/runtime/bindings`, output validation, and package
+- audited `src/schema`, `src/runtime/bindings`, output validation, and package
   artifact contracts
-- add docs for enforceable vs semantic types
-- strengthen JSON schema validation if the TypeBox dependency can already do it
-  cleanly
+- added public docs for enforceable vs semantic types
+- strengthened deterministic validation for primitive `Json<T>`, primitive
+  arrays, and run reference type tags
+- added regression tests for the enforceable/schema-label boundary
+
+Commit target: `feat: strengthen schema validation contract`
 
 Checks:
 
-- `bun test test/schema-validation.test.ts test/run-entrypoint.test.ts test/package-registry.test.ts`
+- `bun test test/schema-resolution.test.ts test/run-entrypoint.test.ts test/package-registry.test.ts`
 - add focused tests for any newly enforced type behavior
 
 ## P1: Example And Stdlib Quality
