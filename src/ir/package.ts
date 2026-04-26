@@ -49,6 +49,7 @@ interface PackageConfig {
     default_model_provider?: string;
     default_model?: string;
     thinking?: string;
+    tools?: string[];
     persist_sessions?: boolean;
   };
   hosted?: PackageIR["manifest"]["hosted"];
@@ -248,6 +249,10 @@ function normalizeRuntimeManifest(
     default_model_provider: runtime.default_model_provider?.trim() || null,
     default_model: runtime.default_model?.trim() || null,
     thinking: runtime.thinking?.trim() || null,
+    tools: [...new Set(runtime.tools ?? [])]
+      .map((tool) => tool.trim())
+      .filter(Boolean)
+      .sort(),
     persist_sessions:
       typeof runtime.persist_sessions === "boolean" ? runtime.persist_sessions : null,
   };

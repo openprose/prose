@@ -360,6 +360,7 @@ export interface PackageRuntimeManifest {
   default_model_provider: string | null;
   default_model: string | null;
   thinking: string | null;
+  tools: string[];
   persist_sessions: boolean | null;
 }
 
@@ -501,6 +502,7 @@ export interface LocalRunAttemptRecord {
   component_ref: string;
   attempt_number: number;
   status: RunLifecycleStatus;
+  runtime_profile: RuntimeProfile | null;
   provider_session_ref: string | null;
   started_at: string;
   finished_at: string | null;
@@ -588,6 +590,17 @@ export interface RunPolicyRecord {
   diagnostics: Diagnostic[];
 }
 
+export interface RuntimeProfile {
+  profile_version: "0.1";
+  graph_vm: string;
+  single_run_harness: string | null;
+  model_provider: string | null;
+  model: string | null;
+  thinking: string | null;
+  tools: string[];
+  persist_sessions: boolean;
+}
+
 export interface RunRecord {
   run_id: string;
   kind: "component" | "graph";
@@ -613,7 +626,14 @@ export interface RunRecord {
   runtime: {
     harness: string;
     worker_ref: string | null;
+    graph_vm: string;
+    single_run_harness: string | null;
+    model_provider: string | null;
     model: string | null;
+    thinking: string | null;
+    tools: string[];
+    persist_sessions: boolean;
+    profile: RuntimeProfile;
     environment_ref: string | null;
   };
   inputs: RunBindingRecord[];
@@ -699,6 +719,7 @@ export interface RemoteExecutionEnvelope {
   component_ref: string;
   status: RunLifecycleStatus;
   provider: string;
+  runtime_profile: RuntimeProfile;
   plan_status: ExecutionPlan["status"];
   acceptance: RunRecord["acceptance"];
   trigger: RunRecord["caller"]["trigger"];
@@ -809,6 +830,7 @@ export interface TraceAttemptView {
   attempt_id: string;
   attempt_number: number;
   status: RunLifecycleStatus;
+  runtime_profile: RuntimeProfile | null;
   provider_session_ref: string | null;
   diagnostic_codes: string[];
   failure: string | null;

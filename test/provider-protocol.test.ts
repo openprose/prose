@@ -3,6 +3,7 @@ import {
   describe,
   expect,
   test,
+  testRuntimeProfile,
 } from "./support";
 import {
   deserializeProviderSessionRef,
@@ -22,6 +23,7 @@ describe("OpenProse provider protocol", () => {
       provider_request_version: "0.1",
       request_id: "request-1",
       provider: "fixture",
+      runtime_profile: testRuntimeProfile("fixture"),
       component,
       rendered_contract: "# hello\n\nProduce the message output.",
       input_bindings: [],

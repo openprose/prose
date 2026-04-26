@@ -1,12 +1,13 @@
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { ProviderKind, ProviderResult } from "../providers/index.js";
-import type { ExecutionPlan, ProseIR, RunRecord } from "../types.js";
+import type { ExecutionPlan, ProseIR, RunRecord, RuntimeProfile } from "../types.js";
 
 export interface RuntimeTraceContext {
   ir: ProseIR;
   plan: ExecutionPlan;
   provider: { kind: ProviderKind };
+  runtimeProfile: RuntimeProfile;
   runId: string;
   runDir: string;
   createdAt: string;
@@ -33,6 +34,7 @@ export async function writeProviderTrace(
       event: "run.started",
       run_id: ctx.runId,
       provider: ctx.provider.kind,
+      runtime_profile: ctx.runtimeProfile,
       at: ctx.createdAt,
       ir_hash: ctx.ir.semantic_hash,
     },
@@ -40,6 +42,7 @@ export async function writeProviderTrace(
       event: "provider.finished",
       run_id: ctx.runId,
       provider: ctx.provider.kind,
+      runtime_profile: ctx.runtimeProfile,
       status: result.status,
       diagnostics: result.diagnostics,
       duration_ms: result.duration_ms,
@@ -59,6 +62,7 @@ export async function writeGraphTrace(
       event: "graph.started",
       run_id: ctx.runId,
       provider: ctx.provider.kind,
+      runtime_profile: ctx.runtimeProfile,
       at: ctx.createdAt,
       ir_hash: ctx.ir.semantic_hash,
       planned_nodes: ctx.plan.materialization_set.nodes,

@@ -4,6 +4,7 @@ import { randomBytes } from "node:crypto";
 import { compileSource } from "./compiler";
 import { sha256 } from "./hash";
 import { projectManifest } from "./manifest";
+import { resolveRuntimeProfile } from "./runtime/profiles.js";
 import { writeLocalArtifactRecord } from "./store/artifacts.js";
 import { writeRunAttemptRecord } from "./store/attempts.js";
 import { upsertRunIndexEntry } from "./store/local.js";
@@ -14,6 +15,7 @@ import type {
   ProseIR,
   RunOutputRecord,
   RunRecord,
+  RuntimeProfile,
 } from "./types";
 
 export interface MaterializeOptions {
@@ -37,6 +39,7 @@ interface MaterializeContext {
   outputs: Record<string, string>;
   approvedEffects: Set<string>;
   trigger: RunRecord["caller"]["trigger"];
+  runtimeProfile: RuntimeProfile;
 }
 
 export async function materializeFile(
@@ -67,6 +70,10 @@ export async function materializeSource(
     outputs: options.outputs ?? {},
     approvedEffects: normalizeApprovedEffects(options.approvedEffects),
     trigger: options.trigger ?? "manual",
+    runtimeProfile: resolveRuntimeProfile({
+      selectedGraphVm: "fixture",
+      fixtureOutputs: options.outputs,
+    }),
   };
 
   await mkdir(runDir, { recursive: true });
@@ -135,6 +142,7 @@ async function writeFixtureStoreRecords(
       componentRef: record.component_ref,
       attemptNumber: 1,
       status: record.status,
+      runtimeProfile: ctx.runtimeProfile,
       providerSessionRef: "fixture-output",
       startedAt: record.created_at,
       finishedAt: record.completed_at,
@@ -342,7 +350,14 @@ function baseRunRecord(
     runtime: {
       harness: "openprose-bun-local",
       worker_ref: "fixture-output",
-      model: null,
+      graph_vm: ctx.runtimeProfile.graph_vm,
+      single_run_harness: ctx.runtimeProfile.single_run_harness,
+      model_provider: ctx.runtimeProfile.model_provider,
+      model: ctx.runtimeProfile.model,
+      thinking: ctx.runtimeProfile.thinking,
+      tools: ctx.runtimeProfile.tools,
+      persist_sessions: ctx.runtimeProfile.persist_sessions,
+      profile: ctx.runtimeProfile,
       environment_ref: null,
     },
     dependencies: ctx.ir.package.dependencies.map((dependency) => ({

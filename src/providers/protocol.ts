@@ -3,6 +3,7 @@ import type {
   ComponentIR,
   Diagnostic,
   LocalArtifactRecord,
+  RuntimeProfile,
   RunLifecycleStatus,
 } from "../types.js";
 
@@ -55,6 +56,7 @@ export interface ProviderRequest {
   provider_request_version: "0.1";
   request_id: string;
   provider: ProviderKind;
+  runtime_profile: RuntimeProfile;
   component: ComponentIR;
   rendered_contract: string;
   input_bindings: ProviderInputBinding[];

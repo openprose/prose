@@ -22,6 +22,10 @@
     "default_model_provider": "openrouter",
     "default_model": "google/gemini-3-flash-preview",
     "thinking": "low",
+    "tools": [
+      "read",
+      "write"
+    ],
     "persist_sessions": true
   },
   "examples": [

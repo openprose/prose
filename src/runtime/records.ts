@@ -16,11 +16,13 @@ import type {
   ProseIR,
   RunOutputRecord,
   RunRecord,
+  RuntimeProfile,
 } from "../types.js";
 
 export interface RuntimeRecordContext {
   ir: ProseIR;
   provider: { kind: ProviderKind };
+  runtimeProfile: RuntimeProfile;
   runId: string;
   runDir: string;
   storeRoot: string;
@@ -53,7 +55,14 @@ export function baseRunRecord(
     runtime: {
       harness: "openprose-provider",
       worker_ref: ctx.provider.kind,
-      model: null,
+      graph_vm: ctx.runtimeProfile.graph_vm,
+      single_run_harness: ctx.runtimeProfile.single_run_harness,
+      model_provider: ctx.runtimeProfile.model_provider,
+      model: ctx.runtimeProfile.model,
+      thinking: ctx.runtimeProfile.thinking,
+      tools: ctx.runtimeProfile.tools,
+      persist_sessions: ctx.runtimeProfile.persist_sessions,
+      profile: ctx.runtimeProfile,
       environment_ref: null,
     },
     created_at: ctx.createdAt,
@@ -81,6 +90,7 @@ export async function writeProviderAttemptRecord(
     componentRef: record.component_ref,
     attemptNumber: 1,
     status: record.status,
+    runtimeProfile: ctx.runtimeProfile,
     providerSessionRef: result.session ? serializeProviderSessionRef(result.session) : null,
     startedAt: record.created_at,
     finishedAt: record.completed_at,
@@ -105,6 +115,7 @@ export async function writeBlockedAttemptRecord(
     componentRef: record.component_ref,
     attemptNumber: 1,
     status: record.status,
+    runtimeProfile: ctx.runtimeProfile,
     providerSessionRef: null,
     startedAt: record.created_at,
     finishedAt: record.completed_at,

@@ -1,12 +1,12 @@
 {
   "package_ir_version": "0.1",
-  "semantic_hash": "8dc8734a449f05e00874e0e2469acc49b83c2a9b82accf3d95df3cccafcc3b48",
+  "semantic_hash": "271ae2818f90ca518115a72c4277da2cb57709630debe04fa32ab38ea3abfc1c",
   "hashes": {
     "source_hash": "424f6c7be86cc33923848d0a1898cf5a7cdf2930b840e5e7d7482f2ec03486d5",
-    "semantic_hash": "8dc8734a449f05e00874e0e2469acc49b83c2a9b82accf3d95df3cccafcc3b48",
+    "semantic_hash": "271ae2818f90ca518115a72c4277da2cb57709630debe04fa32ab38ea3abfc1c",
     "dependency_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
     "policy_hash": "ae848f3ccd9d2437445c910c6dd2135d09dd47a3c239ac57bb94f5870eb3e7eb",
-    "runtime_config_hash": "d43e9bde7d60079eb4b164cd16ad78e6ee95b0884e3c630e832d4f75701f0153"
+    "runtime_config_hash": "72870c52bb0068ca4de9de1a856f1fd4bfc744c3882087d5e8622b19aea92371"
   },
   "manifest": {
     "name": "@openprose/co",
@@ -36,6 +36,10 @@
       "default_model_provider": "openrouter",
       "default_model": "google/gemini-3-flash-preview",
       "thinking": "low",
+      "tools": [
+        "read",
+        "write"
+      ],
       "persist_sessions": true
     },
     "hosted": null

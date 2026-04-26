@@ -57,8 +57,8 @@
       "kind": "runtime_run_record",
       "content_type": "application/json",
       "parse_policy": "must_parse_json",
-      "sha256": "08e888ed53569f644e5f4a6781a7d5988b754c8bf4d89e2cb10c9888592adb46",
-      "size_bytes": 1441,
+      "sha256": "0b96f921ffbd06728e04fd28c9c705831caaa14fb5df9e94dfefbd164825fb1d",
+      "size_bytes": 1913,
       "binding": null,
       "policy_labels": [],
       "warnings": []
@@ -90,8 +90,8 @@
       "kind": "runtime_trace",
       "content_type": "application/json",
       "parse_policy": "must_parse_json",
-      "sha256": "1c975042d933c27d7334b09ae33541e8cea08831a4550710b7a2ed5f8e942613",
-      "size_bytes": 448,
+      "sha256": "360b74e3d19d56ea87930d7c6a175d974f7a4266d8751f8a3db2df4cc5c54dd3",
+      "size_bytes": 1030,
       "binding": null,
       "policy_labels": [],
       "warnings": []

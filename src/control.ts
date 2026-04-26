@@ -92,6 +92,7 @@ export async function cancelRunPath(
     componentRef: record.component_ref,
     attemptNumber,
     status: "cancelled",
+    runtimeProfile: record.runtime.profile,
     providerSessionRef: null,
     startedAt: cancelledAt,
     finishedAt: cancelledAt,

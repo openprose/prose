@@ -4,11 +4,12 @@ import type {
   ProviderRequest,
 } from "../providers/index.js";
 import { providerInputState } from "./bindings.js";
-import type { ComponentIR, ProseIR, RunRecord } from "../types.js";
+import type { ComponentIR, ProseIR, RunRecord, RuntimeProfile } from "../types.js";
 
 export interface RuntimeProviderRequestContext {
   ir: ProseIR;
   provider: { kind: ProviderKind };
+  runtimeProfile: RuntimeProfile;
   runDir: string;
   storeRoot: string;
   runId: string;
@@ -32,6 +33,7 @@ export async function createProviderRequest(
     provider_request_version: "0.1",
     request_id: runId,
     provider: ctx.provider.kind,
+    runtime_profile: ctx.runtimeProfile,
     component,
     rendered_contract: renderComponentContract(ctx.ir, component),
     input_bindings: inputState.bindings,

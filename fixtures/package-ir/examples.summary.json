@@ -1,12 +1,12 @@
 {
   "package_ir_version": "0.1",
-  "semantic_hash": "222b8c1a2a14f7589fd08ac81f1b7611e573b86f41188629a67e303ccc9ae91a",
+  "semantic_hash": "0afaa067cc728f551831cfc84bbb6635eb6dec7172d9da2591effb5fe74097d4",
   "hashes": {
     "source_hash": "c0c852f22ed641bda3aab8d755129ba2d4138f72a9e55c1bc54892838ced3363",
-    "semantic_hash": "222b8c1a2a14f7589fd08ac81f1b7611e573b86f41188629a67e303ccc9ae91a",
+    "semantic_hash": "0afaa067cc728f551831cfc84bbb6635eb6dec7172d9da2591effb5fe74097d4",
     "dependency_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
     "policy_hash": "302fc3285b87d20e66098d588269f206eeaa4acf2e2f5582b42e4b0fc2b80424",
-    "runtime_config_hash": "2510c3d6b551bb445960f30b5abf75b9dd784a12d37ffc22b94654fc4653a47c"
+    "runtime_config_hash": "e90118e871dd70545b24ed65f9486a6495d6084fc8a339549fdfee2e095de121"
   },
   "manifest": {
     "name": "@openprose/examples",
@@ -41,6 +41,10 @@
       "default_model_provider": "openrouter",
       "default_model": "google/gemini-3-flash-preview",
       "thinking": "low",
+      "tools": [
+        "read",
+        "write"
+      ],
       "persist_sessions": true
     },
     "hosted": null

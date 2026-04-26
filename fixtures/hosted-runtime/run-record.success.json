@@ -18,7 +18,29 @@
   "runtime": {
     "harness": "openprose-provider",
     "worker_ref": "fixture",
+    "graph_vm": "fixture",
+    "single_run_harness": null,
+    "model_provider": null,
     "model": null,
+    "thinking": null,
+    "tools": [
+      "read",
+      "write"
+    ],
+    "persist_sessions": true,
+    "profile": {
+      "profile_version": "0.1",
+      "graph_vm": "fixture",
+      "single_run_harness": null,
+      "model_provider": null,
+      "model": null,
+      "thinking": null,
+      "tools": [
+        "read",
+        "write"
+      ],
+      "persist_sessions": true
+    },
     "environment_ref": null
   },
   "created_at": "2026-04-26T00:00:00.000Z",

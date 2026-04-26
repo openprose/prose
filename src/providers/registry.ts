@@ -7,11 +7,17 @@ import {
   type PiProviderOptions,
   type PiThinkingLevel,
 } from "./pi.js";
+import {
+  resolveRuntimeProfile,
+  type RuntimeProfileInput,
+} from "../runtime/profiles.js";
 import type { ProviderKind, RuntimeProvider } from "./protocol.js";
+import type { RuntimeProfile } from "../types.js";
 
 export interface ResolveRuntimeProviderOptions {
   provider?: ProviderKind | RuntimeProvider;
   fixtureOutputs?: FixtureProviderOptions["outputs"];
+  runtimeProfile?: RuntimeProfile | RuntimeProfileInput | null;
   env?: Record<string, string | undefined>;
 }
 
@@ -35,7 +41,17 @@ export function resolveRuntimeProvider(
   }
 
   if (requested === "pi") {
-    return createPiProvider(piOptionsFromEnv(env));
+    return createPiProvider(
+      piOptionsFromProfile(
+        resolveRuntimeProfile({
+          profile: runtimeProfileInput(options.runtimeProfile),
+          selectedGraphVm: "pi",
+          fixtureOutputs,
+          env,
+        }),
+        env,
+      ),
+    );
   }
 
   if (requested === "openrouter" || requested === "openai_compatible") {
@@ -59,21 +75,47 @@ function hasFixtureOutputs(outputs: FixtureProviderOptions["outputs"]): boolean 
   return Boolean(outputs && Object.keys(outputs).length > 0);
 }
 
-function piOptionsFromEnv(env: Record<string, string | undefined>): PiProviderOptions {
+function runtimeProfileInput(
+  profile: RuntimeProfile | RuntimeProfileInput | null | undefined,
+): RuntimeProfileInput | null {
+  return profile ?? null;
+}
+
+function piOptionsFromProfile(
+  profile: RuntimeProfile,
+  env: Record<string, string | undefined>,
+): PiProviderOptions {
   return {
     agentDir: envString(env, "OPENPROSE_PI_AGENT_DIR"),
     sessionDir: envString(env, "OPENPROSE_PI_SESSION_DIR"),
-    persistSessions: envBoolean(env, "OPENPROSE_PI_PERSIST_SESSIONS", false),
-    modelProvider: envString(env, "OPENPROSE_PI_MODEL_PROVIDER"),
-    modelId: envString(env, "OPENPROSE_PI_MODEL_ID"),
+    persistSessions: profile.persist_sessions,
+    modelProvider: profile.model_provider ?? undefined,
+    modelId: profile.model ?? undefined,
     apiKey: envString(env, "OPENPROSE_PI_API_KEY"),
-    apiKeyProvider: envString(env, "OPENPROSE_PI_API_KEY_PROVIDER"),
-    thinkingLevel: envThinkingLevel(env, "OPENPROSE_PI_THINKING_LEVEL"),
-    tools: envList(env, "OPENPROSE_PI_TOOLS"),
+    apiKeyProvider: envString(env, "OPENPROSE_PI_API_KEY_PROVIDER") ?? undefined,
+    thinkingLevel: piThinkingLevel(profile.thinking),
+    tools: profile.tools,
     noTools: envNoTools(env, "OPENPROSE_PI_NO_TOOLS"),
     outputFiles: envJsonRecord(env, "OPENPROSE_PROVIDER_OUTPUT_FILES"),
     timeoutMs: envNumber(env, "OPENPROSE_PI_TIMEOUT_MS"),
   };
+}
+
+function piThinkingLevel(value: string | null): PiThinkingLevel | undefined {
+  if (!value) {
+    return undefined;
+  }
+  if (
+    value === "off" ||
+    value === "minimal" ||
+    value === "low" ||
+    value === "medium" ||
+    value === "high" ||
+    value === "xhigh"
+  ) {
+    return value;
+  }
+  throw new Error("Runtime profile thinking must be one of off, minimal, low, medium, high, xhigh.");
 }
 
 function envString(

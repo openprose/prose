@@ -7,6 +7,7 @@ import {
   readArtifactRecordForOutput,
   readLocalArtifactContent,
   test,
+  testRuntimeProfile,
   tmpdir,
 } from "./support";
 import {
@@ -95,6 +96,7 @@ function providerRequest(component: ComponentIR): ProviderRequest {
     provider_request_version: "0.1",
     request_id: "request-1",
     provider: "fixture",
+    runtime_profile: testRuntimeProfile("fixture"),
     component,
     rendered_contract: "# hello\n\nProduce the message output.",
     input_bindings: [],
@@ -116,4 +118,3 @@ function providerRequest(component: ComponentIR): ProviderRequest {
     })),
   };
 }
-

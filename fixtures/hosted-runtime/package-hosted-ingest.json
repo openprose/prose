@@ -15,13 +15,13 @@
   },
   "package_ir": {
     "version": "0.1",
-    "semantic_hash": "80be0fc54aca77576edfcfe57996876b014c4ee213db4ce553a3a6e016a85b76",
+    "semantic_hash": "e379282f6039a5f0a704ced99fb72eec58845a5d78601a71de0e264427ece468",
     "hashes": {
       "source_hash": "177edde528d8139766b8b6885d97edb3c48b5f3f9cbaa8a35ab7e47b9efa37d6",
-      "semantic_hash": "80be0fc54aca77576edfcfe57996876b014c4ee213db4ce553a3a6e016a85b76",
+      "semantic_hash": "e379282f6039a5f0a704ced99fb72eec58845a5d78601a71de0e264427ece468",
       "dependency_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
       "policy_hash": "fa584faf59e84ce13ca0adc2e7ba3ebd50c857df1d42414ba920fce6c6bd5b0c",
-      "runtime_config_hash": "9f42939a4cfdfbe7a0c1821a56bc17bc82feefc20b14d2fffd861f72b8ebe275"
+      "runtime_config_hash": "51d8481ec87328f40fc4cbfa062ad94d06f68052f40d9439d40894ed2209dc7b"
     }
   },
   "runtime": {
@@ -32,6 +32,10 @@
     "default_model_provider": "openrouter",
     "default_model": "google/gemini-3-flash-preview",
     "thinking": "low",
+    "tools": [
+      "read",
+      "write"
+    ],
     "persist_sessions": true,
     "required_effects": [
       "mutates_repo",

@@ -92,6 +92,7 @@ describe("OpenProse package, registry, install, publish, and search", () => {
         default_model_provider: "openrouter",
         default_model: "google/gemini-3-flash-preview",
         thinking: "low",
+        tools: ["read", "write"],
         persist_sessions: true,
       },
       hosted: {
@@ -139,6 +140,7 @@ describe("OpenProse package, registry, install, publish, and search", () => {
         default_model_provider: "openrouter",
         default_model: "google/gemini-3-flash-preview",
         thinking: "low",
+        tools: ["read", "write"],
         persist_sessions: true,
         required_effects: ["mutates_repo", "read_external"],
       },

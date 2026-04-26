@@ -80,9 +80,10 @@ export function renderTraceText(trace: TraceView): string {
     lines.push(`Acceptance reason: ${trace.acceptance_reason}`);
   }
   lines.push(
-    `Runtime: ${trace.runtime.harness}${
-      trace.runtime.worker_ref ? ` / ${trace.runtime.worker_ref}` : ""
-    }`,
+    `Runtime: ${trace.runtime.graph_vm}` +
+      `${trace.runtime.model_provider ? ` / ${trace.runtime.model_provider}` : ""}` +
+      `${trace.runtime.model ? ` / ${trace.runtime.model}` : ""}` +
+      ` (${trace.runtime.harness}${trace.runtime.worker_ref ? ` / ${trace.runtime.worker_ref}` : ""})`,
   );
   lines.push(`Created: ${trace.created_at}`);
   if (trace.completed_at) {
@@ -118,8 +119,11 @@ export function renderTraceText(trace: TraceView): string {
         : "";
       const failure = attempt.failure ? ` failure[${attempt.failure}]` : "";
       const session = attempt.provider_session_ref ? " session[recorded]" : "";
+      const runtime = attempt.runtime_profile
+        ? ` runtime[${attempt.runtime_profile.graph_vm}]`
+        : "";
       lines.push(
-        `- #${attempt.attempt_number}: ${attempt.status}${diagnostics}${failure}${session}`,
+        `- #${attempt.attempt_number}: ${attempt.status}${runtime}${diagnostics}${failure}${session}`,
       );
     }
   }
@@ -203,6 +207,7 @@ function traceAttemptView(attempt: LocalRunAttemptRecord): TraceAttemptView {
     attempt_id: attempt.attempt_id,
     attempt_number: attempt.attempt_number,
     status: attempt.status,
+    runtime_profile: attempt.runtime_profile,
     provider_session_ref: attempt.provider_session_ref,
     diagnostic_codes: attempt.diagnostics.map((diagnostic) => diagnostic.code).sort(),
     failure: attempt.failure?.message ?? null,

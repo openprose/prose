@@ -9,6 +9,7 @@ import type {
   LocalRunAttemptRecord,
   LocalRunAttemptRetry,
   LocalRunResumePoint,
+  RuntimeProfile,
   RunLifecycleStatus,
 } from "../types.js";
 
@@ -17,6 +18,7 @@ export interface WriteRunAttemptOptions {
   componentRef: string;
   attemptNumber: number;
   status: RunLifecycleStatus;
+  runtimeProfile?: RuntimeProfile | null;
   providerSessionRef?: string | null;
   startedAt: string;
   finishedAt?: string | null;
@@ -37,6 +39,7 @@ export async function writeRunAttemptRecord(
     component_ref: options.componentRef,
     attempt_number: options.attemptNumber,
     status: options.status,
+    runtime_profile: options.runtimeProfile ?? null,
     provider_session_ref: options.providerSessionRef ?? null,
     started_at: options.startedAt,
     finished_at: options.finishedAt ?? null,

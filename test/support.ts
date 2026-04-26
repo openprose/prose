@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { compileSource } from "../src/compiler";
+import type { RuntimeProfile } from "../src/runtime";
 
 export { describe, expect, test } from "bun:test";
 export { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
@@ -63,6 +64,28 @@ export function fixturePath(name: string): string {
 
 export function compileFixture(name: string) {
   return compileSource(fixture(name), { path: `fixtures/compiler/${name}` });
+}
+
+export function testRuntimeProfile(graphVm = "pi"): RuntimeProfile {
+  const isSingleRunHarness = [
+    "local_process",
+    "openai_compatible",
+    "openrouter",
+    "opencode",
+    "codex_cli",
+    "claude_code",
+  ].includes(graphVm);
+  const profileGraphVm = isSingleRunHarness ? "pi" : graphVm;
+  return {
+    profile_version: "0.1",
+    graph_vm: profileGraphVm,
+    single_run_harness: isSingleRunHarness ? graphVm : null,
+    model_provider: profileGraphVm === "pi" ? "scripted" : null,
+    model: profileGraphVm === "pi" ? "test-model" : null,
+    thinking: profileGraphVm === "pi" ? "off" : null,
+    tools: ["read", "write"],
+    persist_sessions: true,
+  };
 }
 
 export function runGit(args: string[], cwd: string): string {

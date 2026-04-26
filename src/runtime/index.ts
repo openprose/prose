@@ -2,6 +2,11 @@ export { materializeFile, materializeSource } from "../materialize.js";
 export { loadCurrentRunSet, planFile, planSource } from "../plan.js";
 export type { CurrentRunSet } from "../plan.js";
 export {
+  resolveRuntimeProfile,
+  runtimeProfileSummary,
+} from "./profiles.js";
+export type { RuntimeProfileInput } from "./profiles.js";
+export {
   cancelRunPath,
   currentRunSetForRetry,
   resumeRunFile,
@@ -27,4 +32,5 @@ export type {
   RemoteArtifactManifestEntry,
   RemoteArtifactParsePolicy,
   RemoteExecutionEnvelope,
+  RuntimeProfile,
 } from "../types.js";

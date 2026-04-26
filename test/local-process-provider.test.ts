@@ -6,6 +6,7 @@ import {
   mkdtempSync,
   readLocalArtifactContent,
   test,
+  testRuntimeProfile,
   tmpdir,
 } from "./support";
 import {
@@ -102,6 +103,7 @@ function providerRequest(component: ComponentIR, workspacePath: string): Provide
     provider_request_version: "0.1",
     request_id: "request-1",
     provider: "local_process",
+    runtime_profile: testRuntimeProfile("local_process"),
     component,
     rendered_contract: "# hello\n\nProduce the message output.",
     input_bindings: [],

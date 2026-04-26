@@ -47,6 +47,10 @@ import {
   writeGraphTrace,
   writeProviderTrace,
 } from "./runtime/traces.js";
+import {
+  resolveRuntimeProfile,
+  type RuntimeProfileInput,
+} from "./runtime/profiles.js";
 import { writeLocalArtifactRecord } from "./store/artifacts.js";
 import { writeRunAttemptRecord } from "./store/attempts.js";
 import { updateGraphNodePointer } from "./store/pointers.js";
@@ -60,6 +64,7 @@ import type {
   RunEvalRecord,
   RunOutputRecord,
   RunRecord,
+  RuntimeProfile,
 } from "./types.js";
 import type {
   ProviderKind,
@@ -82,6 +87,7 @@ export interface RunOptions {
   advisoryEvals?: string[];
   trigger?: RunRecord["caller"]["trigger"];
   provider?: ProviderKind | RuntimeProvider;
+  runtimeProfile?: RuntimeProfileInput;
   currentRun?: CurrentRunSet;
   currentRunPath?: string;
   targetOutputs?: string[];
@@ -97,6 +103,7 @@ interface RunContext {
   ir: ProseIR;
   plan: ExecutionPlan;
   provider: RuntimeProvider;
+  runtimeProfile: RuntimeProfile;
   runId: string;
   runRoot: string;
   runDir: string;
@@ -144,6 +151,15 @@ export async function runSource(
     currentRun,
     targetOutputs: options.targetOutputs,
   });
+  const selectedRuntime = selectedGraphVmName(options.provider, options.outputs);
+  const runtimeProfile = resolveRuntimeProfile({
+    profile: {
+      ...implicitRuntimeProfile(options.provider, options.outputs),
+      ...(options.runtimeProfile ?? {}),
+    },
+    selectedGraphVm: selectedRuntime,
+    fixtureOutputs: options.outputs,
+  });
 
   if (plan.status === "current") {
     const current = currentRun.graph ?? currentRun.nodes[0] ?? null;
@@ -166,7 +182,9 @@ export async function runSource(
     provider: resolveRuntimeProvider({
       provider: options.provider,
       fixtureOutputs: options.outputs,
+      runtimeProfile,
     }),
+    runtimeProfile,
     runId,
     runRoot,
     runDir,
@@ -724,6 +742,7 @@ async function writeGraphStoreRecords(
     componentRef: graphRecord.component_ref,
     attemptNumber: 1,
     status: graphRecord.status,
+    runtimeProfile: ctx.runtimeProfile,
     providerSessionRef: null,
     startedAt: graphRecord.created_at,
     finishedAt: graphRecord.completed_at,
@@ -803,6 +822,7 @@ async function applyEvalAcceptance(
   for (const spec of evalSpecs) {
     const result = await executeEvalFile(spec.path, ctx.runDir, {
       provider: ctx.provider,
+      runtimeProfile: ctx.runtimeProfile,
       inputs: ctx.inputs,
       outputs: ctx.outputs,
       approvedEffects: ctx.approvedEffects,
@@ -952,4 +972,54 @@ function inferStoreRoot(runRoot: string): string {
   return basename(normalizePath(runRoot)) === "runs"
     ? dirname(runRoot)
     : join(runRoot, ".prose-store");
+}
+
+function selectedGraphVmName(
+  provider: ProviderKind | RuntimeProvider | undefined,
+  outputs: Record<string, string> | undefined,
+): string | null {
+  if (typeof provider === "string") {
+    if (isSingleRunHarnessRuntime(provider)) {
+      return null;
+    }
+    return provider;
+  }
+  if (provider) {
+    if (isSingleRunHarnessRuntime(provider.kind)) {
+      return null;
+    }
+    return provider.kind;
+  }
+  return outputs && Object.keys(outputs).length > 0 ? "fixture" : null;
+}
+
+function implicitRuntimeProfile(
+  provider: ProviderKind | RuntimeProvider | undefined,
+  outputs: Record<string, string> | undefined,
+): RuntimeProfileInput {
+  const kind = typeof provider === "string" ? provider : provider?.kind;
+  if (kind && isSingleRunHarnessRuntime(kind)) {
+    return {
+      graph_vm: "pi",
+      single_run_harness: kind,
+    };
+  }
+  if (!kind && outputs && Object.keys(outputs).length > 0) {
+    return {
+      graph_vm: "fixture",
+    };
+  }
+  return {};
+}
+
+function isSingleRunHarnessRuntime(kind: string): boolean {
+  return [
+    "local_process",
+    "local-process",
+    "openai_compatible",
+    "openrouter",
+    "opencode",
+    "codex_cli",
+    "claude_code",
+  ].includes(kind);
 }

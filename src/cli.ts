@@ -178,6 +178,7 @@ export async function runCli(args: string[]): Promise<void> {
         run_dir: result.run_dir,
         status: result.record.status,
         provider: result.provider,
+        runtime_profile: result.record.runtime.profile,
         plan_status: result.plan.status,
         outputs: result.record.outputs.map((output) => output.port),
       };

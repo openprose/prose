@@ -63,6 +63,7 @@ export async function executeRemoteFile(
     component_ref: options.componentRef ?? result.record.component_ref,
     status: result.record.status,
     provider: result.provider,
+    runtime_profile: result.record.runtime.profile,
     plan_status: result.plan.status,
     acceptance: result.record.acceptance,
     trigger: options.trigger ?? "manual",

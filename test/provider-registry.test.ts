@@ -80,7 +80,7 @@ describe("OpenProse runtime provider registry", () => {
           OPENPROSE_PI_THINKING_LEVEL: "maximum",
         },
       }),
-    ).toThrow("OPENPROSE_PI_THINKING_LEVEL must be one of");
+    ).toThrow("Runtime profile thinking must be one of");
 
   });
 
