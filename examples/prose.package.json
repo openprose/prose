@@ -6,11 +6,6 @@
   },
   "description": "North-star runtime backpressure examples for OpenProse.",
   "license": "MIT",
-  "source": {
-    "git": "github.com/openprose/prose",
-    "sha": "54dab36d04f57e7343615d2263c91df69a069a64",
-    "subpath": "examples"
-  },
   "evals": [
     "evals/examples-quality.eval.prose.md",
     "evals/north-star/company-signal-brief.eval.prose.md",

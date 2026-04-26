@@ -128,18 +128,20 @@ Checks:
 - `bun run confidence:runtime`
 - `bun scripts/live-pi-smoke.ts --tier cheap --skip --out /tmp/openprose-live-pi-skip.json`
 
-### [todo] Package metadata source SHAs are stale after recent commits
+### [done] Package metadata source SHAs are stale after recent commits
 
-Finding: `examples/prose.package.json` still references source SHA
-`54dab36...`, and package metadata for `std` / `co` may also need either a real
-SHA or an explicit policy for omitted source SHA during pre-release.
+Finding: `examples/prose.package.json` still referenced source SHA
+`54dab36...`, while `std` and `co` already used inferred git source metadata.
+Branch-tip SHAs inside source manifests become stale on every commit.
 
-Proposed fix:
+Resolved:
 
-- decide whether local package manifests should track the current branch SHA or
-  omit `source.sha` until release tagging
-- update manifests and publish-check expectations accordingly
-- add a helper/check if current-branch SHA drift should be caught
+- removed the explicit source block from the examples package manifest
+- kept generated package metadata responsible for current source git, SHA, and
+  package subpath
+- verified strict publish checks still pass for examples, std, and co
+
+Commit target: `chore: infer examples package source metadata`
 
 Checks:
 

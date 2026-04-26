@@ -41,6 +41,7 @@ async function main(): Promise<void> {
   const remoteRoot = join(tempRoot, "remote");
   const workspaceRoot = join(tempRoot, "workspace");
   const liveSmokeOut = join(tempRoot, "live-pi-smoke.json");
+  const repoSha = gitSha(repoRoot);
   const releaseCandidate = await readFile(
     resolve(
       repoRoot,
@@ -233,7 +234,7 @@ async function main(): Promise<void> {
     },
   ];
 
-  const checks = steps.map((step) => runStep(repoRoot, tempRoot, step));
+  const checks = steps.map((step) => runStep(repoRoot, tempRoot, repoSha, step));
   const report: ConfidenceReport = {
     report_version: "0.2",
     generated_at: new Date().toISOString(),
@@ -256,7 +257,12 @@ async function main(): Promise<void> {
   process.stdout.write(renderSummary(report));
 }
 
-function runStep(repoRoot: string, tempRoot: string, step: ConfidenceStep): ConfidenceResult {
+function runStep(
+  repoRoot: string,
+  tempRoot: string,
+  repoSha: string | null,
+  step: ConfidenceStep,
+): ConfidenceResult {
   const startedAt = performance.now();
   const command = step.command ?? "prose";
   const processArgs =
@@ -269,8 +275,8 @@ function runStep(repoRoot: string, tempRoot: string, step: ConfidenceStep): Conf
     stderr: "pipe",
   });
   const elapsedMs = Math.round(performance.now() - startedAt);
-  const stdout = normalize(new TextDecoder().decode(result.stdout), repoRoot, tempRoot);
-  const stderr = normalize(new TextDecoder().decode(result.stderr), repoRoot, tempRoot);
+  const stdout = normalize(new TextDecoder().decode(result.stdout), repoRoot, tempRoot, repoSha);
+  const stderr = normalize(new TextDecoder().decode(result.stderr), repoRoot, tempRoot, repoSha);
 
   const allowedExitCodes = new Set([0, ...(step.allowExitCodes ?? [])]);
   if (!allowedExitCodes.has(result.exitCode)) {
@@ -289,7 +295,7 @@ function runStep(repoRoot: string, tempRoot: string, step: ConfidenceStep): Conf
 
   return {
     label: step.label,
-    command: normalize(renderCommand(step), repoRoot, tempRoot),
+    command: normalize(renderCommand(step), repoRoot, tempRoot, repoSha),
     exit_code: result.exitCode,
     elapsed_ms: elapsedMs,
     stdout_preview: preview(stdout),
@@ -332,8 +338,30 @@ function shellToken(value: string): string {
   return /^[A-Za-z0-9_./:@=-]+$/.test(value) ? value : JSON.stringify(value);
 }
 
-function normalize(value: string, repoRoot: string, tempRoot: string): string {
-  return value.replaceAll(repoRoot, ".").replaceAll(tempRoot, "$TMP");
+function normalize(
+  value: string,
+  repoRoot: string,
+  tempRoot: string,
+  repoSha: string | null,
+): string {
+  let normalized = value.replaceAll(repoRoot, ".").replaceAll(tempRoot, "$TMP");
+  if (repoSha) {
+    normalized = normalized.replaceAll(repoSha, "$GIT_SHA");
+  }
+  return normalized;
+}
+
+function gitSha(repoRoot: string): string | null {
+  const result = Bun.spawnSync(["git", "rev-parse", "HEAD"], {
+    cwd: repoRoot,
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  if (result.exitCode !== 0) {
+    return null;
+  }
+  const value = new TextDecoder().decode(result.stdout).trim();
+  return value.length > 0 ? value : null;
 }
 
 function preview(value: string): string {
