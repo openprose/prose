@@ -41,6 +41,20 @@ describe("OpenProse CLI UX", () => {
     expect(decode(trace.stderr)).not.toContain("at async");
   });
 
+  test("unhandled command failures are formatted without stack dumps", () => {
+    const missingSource = join(tmpdir(), "openprose-missing-source.prose.md");
+    const compile = runProseCli(["compile", missingSource]);
+    const install = runProseCli(["install", "registry://bad"]);
+
+    expect(compile.exitCode).toBe(1);
+    expect(decode(compile.stderr)).toContain("no such file");
+    expect(decode(compile.stderr)).not.toContain("at async");
+
+    expect(install.exitCode).toBe(1);
+    expect(decode(install.stderr)).toContain("Invalid registry ref");
+    expect(decode(install.stderr)).not.toContain("at async");
+  });
+
   test("status, trace, and graph text expose acceptance and planning context", () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-cli-ux-"));
     const run = runProseCli([

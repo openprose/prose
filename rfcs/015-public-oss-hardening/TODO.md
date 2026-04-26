@@ -692,21 +692,25 @@ Checks:
 - `bun test test/pi-events.test.ts test/runtime-planning.test.ts test/scripted-pi-session.test.ts`
 - `bun run typecheck`
 
-### [todo] Error handling should be consistent across commands
+### [done] Error handling should be consistent across commands
 
 Finding: `remote execute` now uses `formatError`, but other CLI paths may still
 print raw stack traces or inconsistent actionable text.
 
-Proposed fix:
+Resolved:
 
-- audit command branches in `src/cli.ts`
-- add CLI UX tests for representative blocked/failure cases
-- prefer concise errors with no stack unless debugging is explicitly requested
+- audited command branches in `src/cli.ts`
+- added a top-level CLI guard so compile/install/other uncaught command errors
+  print concise messages instead of Bun stack dumps
+- kept existing command-specific messages for status, trace, run, remote, and
+  graph-VM validation
+- added representative CLI UX coverage for missing source and invalid registry
+  install failures
 
 Checks:
 
 - `bun test test/cli-ux.test.ts`
-- manual CLI probes for `compile`, `run`, `remote execute`, `publish-check`
+- `bun run typecheck`
 
 ### [todo] Public API vocabulary should finish the provider-to-node-runner cleanup
 

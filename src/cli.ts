@@ -23,6 +23,15 @@ import type { RunRecord } from "./types";
 import type { RuntimeProfileInput } from "./runtime";
 
 export async function runCli(args: string[]): Promise<void> {
+  try {
+    await runCliInner(args);
+  } catch (error) {
+    console.error(formatError(error));
+    process.exitCode = 1;
+  }
+}
+
+async function runCliInner(args: string[]): Promise<void> {
   const [command, ...rest] = args;
 
   if (!command || command === "help" || command === "--help" || command === "-h") {
