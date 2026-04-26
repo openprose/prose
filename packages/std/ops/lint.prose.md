@@ -3,12 +3,6 @@ name: lint
 kind: program
 ---
 
-### Services
-
-- resolver
-- validator
-- checker
-
 ### Requires
 
 - `target`: string - path to the program `.prose.md` file to lint
@@ -29,8 +23,8 @@ kind: program
 
 ### Strategies
 
-- recursively resolve all services declared in the program's `services:` list, following nested service trees
-- validate each file's frontmatter against the Prose schema — valid `kind`, valid contract sections, valid shape structure
-- check that all services referenced in `services:` lists exist as files
-- verify that shape `delegates` entries reference known services
-- attempt basic contract matching — does each service's `requires` have a plausible match in another service's `ensures`
+- compile the target and its package scope into canonical Prose IR
+- validate frontmatter, component kind, section spelling, duplicate sections, and canonical section order
+- check that component references in `Services` sections resolve within the package scope
+- flag non-canonical executable source that does not use `.prose.md`
+- report diagnostics with file, line, severity, code, and actionable message

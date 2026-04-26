@@ -3,16 +3,8 @@ name: wire
 kind: program
 ---
 
-### Services
-
-- resolver
-- matcher
-- manifest-writer
-
-Run Forme wiring to produce a manifest. This program implements the Forme container's
-wiring algorithm — reading component contracts, auto-wiring dependencies by semantic
-matching, and producing an execution manifest. Previously a top-level command, now
-available as `prose run std/ops/wire`.
+Project canonical OpenProse IR into the readable manifest view used by tools,
+reviews, and hosted ingest.
 
 ### Requires
 
@@ -20,7 +12,7 @@ available as `prose run std/ops/wire`.
 
 ### Ensures
 
-- `manifest`: Markdown<Manifest> - manifest.md written to .prose/runs/{id}/ containing the full wiring graph
+- `manifest`: Markdown<Manifest> - manifest projection with components, ports, effects, dependencies, and graph edges
 
 
 ### Effects
@@ -34,7 +26,7 @@ available as `prose run std/ops/wire`.
 
 ### Strategies
 
-- recursively resolve all services from the program's `services:` list
-- for each service, read its contract and build a dependency graph by matching `requires` entries to `ensures` entries from other services using semantic matching
-- detect cycles and report them as errors
-- write the execution manifest to .prose/runs/{id}/manifest.md with the full wiring graph and execution order
+- compile the target source into canonical Prose IR
+- project component contracts, typed ports, effects, access labels, package dependencies, and graph edges into a readable manifest
+- include diagnostics and unresolved references rather than inventing missing wiring
+- keep the manifest a projection of IR; do not make it a second source of truth

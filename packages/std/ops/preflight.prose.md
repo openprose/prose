@@ -3,12 +3,6 @@ name: preflight
 kind: program
 ---
 
-### Services
-
-- resolver
-- env-checker
-- dep-checker
-
 ### Requires
 
 - `target`: string - path to the program `.prose.md` file to preflight
@@ -29,8 +23,9 @@ kind: program
 
 ### Strategies
 
-- resolve all services transitively from the program's `services:` list
-- collect all `environment:` declarations across the service tree
-- check each env var with `test -n "${VAR+x}"` via Bash — this returns whether the variable exists without ever reading its value. Never log, print, or include environment variable values in any output
-- check that all `use` dependencies are installed in `.deps/`
+- compile the target and package scope into canonical Prose IR
+- resolve referenced components from the program's `Services` section across the package scope
+- collect all required and optional `Environment` declarations from referenced components
+- check only whether required environment names are present; never read, log, print, or include values
+- check that pinned dependencies are present in `prose.lock` and installed under `.deps/`
 - report readiness as pass (all satisfied) or fail (with missing items listed)

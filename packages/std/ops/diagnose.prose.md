@@ -3,16 +3,10 @@ name: diagnose
 kind: program
 ---
 
-### Services
-
-- investigator
-- classifier
-- fixer
-
 ### Requires
 
 - `run-path`: string - path to the failed or problematic run (e.g. `.prose/runs/20260408-...`)
-- `focus`: string - focus area -- "vm", "program", "context", or "external" (optional, default: auto-detect)
+- `focus`: string - focus area -- "graph", "node", "artifact", "policy", or "external" (optional, default: auto-detect)
 
 ### Ensures
 
@@ -25,15 +19,17 @@ kind: program
 
 ### Errors
 
-- no-run: run directory does not exist or is missing state.md
-- incomplete-run: run is still in progress (no `---end` or `---error` marker)
+- no-run: run directory does not exist or is missing `run.json`
+- malformed-run: run record, trace, artifact manifest, or node record cannot be parsed
+- incomplete-run: run status is `running`, `queued`, or missing a terminal attempt
 
 ### Strategies
 
-- read the run's `state.md` execution log to identify the failure point from event markers
-- examine `workspace/` directories for `__error.md` files and intermediate artifacts
-- examine `bindings/` directories for missing or malformed outputs
-- read `services/*.md` component definitions to understand what each service was supposed to do
-- read `program.md` (the entry point snapshot) to understand the program's intent
+- read `run.json` for graph/component status, acceptance, caller, inputs, outputs, and runtime profile
+- read `trace.json` for node lifecycle events, Pi session events, output submissions, retries, and approval gates
+- read `artifact-manifest.json` when present to confirm file hashes, sizes, and runtime-owned artifacts
+- examine `nodes/*.run.json` to find the first failed, rejected, blocked, or stale node
+- examine `bindings/` and store artifact records for missing, malformed, or policy-labeled inputs and outputs
+- inspect adjacent `.prose/store` or `.prose-store` attempts when available to distinguish retry, cancellation, and approval states
 - classify the root cause by asking "why" iteratively until reaching the earliest intervention point
-- propose concrete fixes: show diffs for program errors, describe process changes for external errors
+- propose concrete fixes: source-contract changes for program errors, approval/policy changes for gated effects, and operational changes for external failures

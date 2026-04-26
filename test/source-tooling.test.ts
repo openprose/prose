@@ -347,6 +347,10 @@ kind: service
       join(dir, "clean.prose.md"),
       fixture("hello.prose.md"),
     );
+    writeFileSync(
+      join(dir, "README.md"),
+      "# Package Docs\n\nThis is ordinary documentation, not executable source.\n",
+    );
 
     const report = await lintPath(dir);
     const text = renderLintReportText(report);
@@ -406,6 +410,41 @@ kind: service
         .get(join(dir, "summarize.prose.md").replace(/\\/g, "/"))
         ?.map((diagnostic) => diagnostic.code),
     ).toEqual([]);
+  });
+
+  test("does not resolve service references from ordinary markdown headings", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "openprose-lint-doc-headings-"));
+    writeFileSync(
+      join(dir, "pipeline.prose.md"),
+      `---
+name: package-pipeline
+kind: program
+---
+
+### Services
+
+- \`docs-only-helper\`
+
+### Ensures
+
+- \`brief\`: Markdown<Brief> - package brief
+`,
+    );
+    writeFileSync(
+      join(dir, "README.md"),
+      "# Package Docs\n\n## docs-only-helper\n\nThis is documentation, not a component.\n",
+    );
+
+    const report = await lintPath(dir);
+
+    expect(Array.from(report.keys())).toEqual([
+      join(dir, "pipeline.prose.md").replace(/\\/g, "/"),
+    ]);
+    expect(
+      report
+        .get(join(dir, "pipeline.prose.md").replace(/\\/g, "/"))
+        ?.map((diagnostic) => diagnostic.code),
+    ).toEqual(["unresolved_service_reference"]);
   });
 
   test("lints a package subdirectory with package-wide service context", async () => {

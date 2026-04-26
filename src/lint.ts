@@ -39,6 +39,7 @@ export async function lintPath(path: string): Promise<Map<string, Diagnostic[]>>
       ? files
       : await collectSourceFiles(scopeRoot, { includeLegacyMarkdown: true });
   const sources = new Map<string, string>();
+  const draftsByPath = new Map<string, ComponentDraft[]>();
   const availableComponentNames = new Set<string>();
 
   for (const file of scopeFiles) {
@@ -47,6 +48,10 @@ export async function lintPath(path: string): Promise<Map<string, Diagnostic[]>>
     sources.set(normalized, source);
 
     const drafts = parseContractMarkdown(source, normalized, []);
+    draftsByPath.set(normalized, drafts);
+    if (!isLintableSource(normalized, source, drafts)) {
+      continue;
+    }
     for (const draft of drafts) {
       availableComponentNames.add(draft.name);
     }
@@ -54,9 +59,14 @@ export async function lintPath(path: string): Promise<Map<string, Diagnostic[]>>
 
   for (const file of files) {
     const normalized = normalizePath(file);
+    const source = sources.get(normalized) ?? "";
+    const drafts = draftsByPath.get(normalized) ?? [];
+    if (!isLintableSource(normalized, source, drafts)) {
+      continue;
+    }
     report.set(
       normalized,
-      lintSource(sources.get(normalized) ?? "", {
+      lintSource(source, {
         path: normalized,
         availableComponentNames,
       }),
@@ -78,6 +88,25 @@ export function lintSource(source: string, options: LintOptions): Diagnostic[] {
   diagnostics.push(...sectionDiagnostics(drafts));
 
   return sortDiagnostics(diagnostics);
+}
+
+function isLintableSource(
+  path: string,
+  source: string,
+  drafts: ComponentDraft[],
+): boolean {
+  if (path.endsWith(".prose.md")) {
+    return true;
+  }
+
+  const trimmed = source.trimStart();
+  if (trimmed.startsWith("---")) {
+    return true;
+  }
+
+  return drafts.some(
+    (draft) => Object.keys(draft.frontmatter).length > 0 || draft.sections.length > 0,
+  );
 }
 
 export function renderLintText(diagnostics: Diagnostic[]): string {

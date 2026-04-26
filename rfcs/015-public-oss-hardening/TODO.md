@@ -335,19 +335,23 @@ Checks:
 - `bun run prose publish-check packages/std --strict`
 - `bun test test/std-roles.test.ts test/std-evals.test.ts`
 
-### [todo] Stdlib ops programs still target `state.md`-era run folders
+### [done] Stdlib ops programs still target `state.md`-era run folders
 
 Finding: `packages/std/ops/diagnose.prose.md` still says failed runs are
 missing `state.md`, looks for `---end` / `---error` markers, and reads
 `services/*.md` snapshots. Current OpenProse runs are `run.json`, `trace.json`,
 store attempts, artifacts, node records, and bindings.
 
-Proposed fix:
+Resolved:
 
-- rewrite ops contracts around current run, trace, store, and artifact files
-- keep the outputs typed and operationally useful
-- add a focused test that public std ops sources do not mention obsolete
+- rewrote ops contracts around current run, trace, store, and artifact files
+- removed unresolved internal `Services` lists from self-contained ops programs
+- adjusted directory linting so ordinary docs like `README.md` are not treated
+  as legacy executable source unless they contain a contract
+- added a focused test that public std ops sources do not mention obsolete
   `state.md` runtime artifacts
+
+Commit target: `docs: update std ops run artifacts`
 
 Checks:
 
