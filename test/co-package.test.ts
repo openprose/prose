@@ -50,6 +50,9 @@ const deterministicOutputs = {
 
 describe("OpenProse co package", () => {
   test("package IR has clean public returns and executable eval metadata", async () => {
+    expect(readFileSync(join(import.meta.dir, "..", programPath), "utf8")).not.toContain(
+      "runtime provider",
+    );
     const ir = await compilePackagePath("packages/co");
     const evalComponent = ir.components.find((component) =>
       component.id.includes("company-repo-checker-eval"),

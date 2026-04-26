@@ -131,7 +131,7 @@ Supported today:
 - scripted Pi execution of expanded composite graphs through normal run
   materialization
 
-Pattern-only until a later runtime slice:
+Pattern-only in the current OSS runtime:
 
 - variable-width ensembles
 - iterative worker/critic, ratchet, oversight, and dialectic loops

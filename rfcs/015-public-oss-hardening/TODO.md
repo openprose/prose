@@ -520,7 +520,7 @@ Checks:
 - `bun run prose publish-check packages/std --strict`
 - `bun test test/std-roles.test.ts test/std-evals.test.ts`
 
-### [todo] Stdlib controls and composites may overpromise runtime semantics
+### [done] Stdlib controls and composites may overpromise runtime semantics
 
 Finding: `packages/std/controls` and `packages/std/composites` define useful
 agent topology patterns, but the runtime currently executes compiled graph
@@ -528,17 +528,23 @@ nodes rather than native map/reduce, race, retry, fallback, or composite control
 semantics. The docs should either mark those as contract patterns or the
 runtime should implement the semantics they imply.
 
-Proposed fix:
+Resolved:
 
-- audit each control/composite for claims that exceed runtime behavior
-- decide which patterns remain declarative contracts versus native runtime
-  operators
-- add tests for any pattern that claims executable semantics
+- kept controls and composites framed as executable pattern contracts
+- clarified README runtime support around fixed graph execution versus
+  pattern-only dynamic semantics
+- removed stale fixture/provider wording in favor of scripted Pi graph-node
+  execution
+- added regression coverage for README runtime-semantics wording
+- tightened std eval and co starter vocabulary around runtime profiles, graph
+  VMs, node runners, and model providers
 
 Checks:
 
 - `bun run prose publish-check packages/std --strict`
+- `bun run prose publish-check packages/co --strict`
 - `bun test test/composite-expansion.test.ts test/std-patterns.test.ts`
+- `bun test test/std-patterns.test.ts test/std-evals.test.ts test/co-package.test.ts`
 
 ### [done] Stdlib ops programs still target `state.md`-era run folders
 

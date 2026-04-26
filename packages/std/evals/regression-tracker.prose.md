@@ -52,7 +52,7 @@ runtime promotion gates.
 ```prose
 For `action: check`, compare `subject` with `baseline` across run status,
 acceptance, output artifacts, schema status, required eval records, policy
-outcome, runtime provider, timing or attempt metadata, and trace summaries.
+outcome, runtime profile, timing or attempt metadata, and trace summaries.
 Prefer explicit baseline scores when present, but fall back to artifact and eval
 evidence inside the baseline payload.
 

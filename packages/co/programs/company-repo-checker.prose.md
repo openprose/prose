@@ -10,7 +10,7 @@ OpenProse-native package before runtime evals, scheduled workflows, or hosted
 fleet monitors do more expensive work.
 
 This is a reusable public contract. It describes what a company-native source
-tree should preserve; the runtime provider supplies the concrete read/search
+tree should preserve; the runtime profile supplies the concrete read/search
 operations.
 
 ### Services

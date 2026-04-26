@@ -6,14 +6,14 @@ kind: test
 # Platform Improver
 
 Diagnose whether an observed OpenProse failure belongs to the source contract,
-compiler/IR, graph planner, meta-harness, provider adapter, run store, registry,
+compiler/IR, graph planner, meta-harness, node runner, run store, registry,
 or hosted platform integration layer.
 
 ### Requires
 
 - `inspection`: Json<RunInspection> - inspector output for the problematic run
 - `symptom`: Markdown<Symptom> - description of what went wrong or should become simpler
-- `platform_context`: Json<PlatformContext> - optional implementation context, logs, deployment metadata, or provider details
+- `platform_context`: Json<PlatformContext> - optional implementation context, logs, deployment metadata, or runtime-profile details
 
 ### Ensures
 
@@ -21,7 +21,7 @@ or hosted platform integration layer.
   - passed: boolean
   - score: 0-1 confidence that the diagnosis is actionable
   - verdict: "pass", "partial", or "fail"
-  - primary_layer: "source", "compiler_ir", "planner", "meta_harness", "provider", "run_store", "registry", or "hosted_platform"
+  - primary_layer: "source", "compiler_ir", "planner", "meta_harness", "node_runner", "run_store", "registry", or "hosted_platform"
   - confidence: 0-1 layer-attribution confidence
   - evidence: ordered evidence chain from symptom to layer
   - alternatives: plausible lower-confidence explanations
@@ -48,15 +48,15 @@ or hosted platform integration layer.
 
 ```prose
 Start from the inspection evidence: run status, acceptance state, output refs,
-artifact schema status, trace refs, provider attempts, eval records, and flags.
+artifact schema status, trace refs, node attempt records, eval records, and flags.
 Then read `symptom` and `platform_context` for implementation-specific clues.
 
 Attribute source issues to author contracts, typed ports, effects, examples, or
 evals. Attribute compiler/IR issues to parsing, source normalization, dependency
 inference, package IR, or diagnostics. Attribute planner and meta-harness issues
 to graph invalidation, current-run pointers, dependency scheduling, run
-sequencing, or provider session orchestration. Attribute provider issues to the
-harness adapter. Attribute store, registry, or hosted platform issues to durable
+sequencing, or node-session orchestration. Attribute node-runner issues to the
+adapter that executes one graph node. Attribute store, registry, or hosted platform issues to durable
 materialization, package versioning, access policy, organization scope, or cloud
 deployment.
 

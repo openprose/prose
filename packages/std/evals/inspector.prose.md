@@ -50,7 +50,7 @@ standard library's foundational eval contract for run-store records.
 
 ```prose
 Treat `subject` as the canonical materialization. Inspect the run record fields:
-run id, component ref, kind, status, caller, runtime provider, policy, inputs,
+run id, component ref, kind, status, caller, runtime profile, policy, inputs,
 outputs, attempts, trace refs, eval records, and acceptance state. Use only
 declared run-store records and artifact references.
 
@@ -60,7 +60,7 @@ eval failures. Cap the score below perfect because light mode does not inspect
 artifact content.
 
 For `depth: deep`, inspect artifact metadata, schema validation status, trace
-summaries, provider attempt records, and output content snippets when available.
+summaries, node attempt records, and output content snippets when available.
 Compare these signals against the source or package contract embedded in the run
 record or supplied alongside the subject. Separate runtime fidelity from task
 effectiveness: a run may be faithfully executed but ineffective, or useful even

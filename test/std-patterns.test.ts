@@ -37,6 +37,20 @@ const composites = [
 ];
 
 describe("OpenProse std controls and composites", () => {
+  test("pattern README files describe current runtime semantics", () => {
+    for (const path of [
+      "packages/std/controls/README.md",
+      "packages/std/composites/README.md",
+    ]) {
+      const source = readFileSync(join(import.meta.dir, "..", path), "utf8");
+
+      expect(source, path).not.toContain("fixture/provider");
+      expect(source, path).not.toContain("until a later runtime slice");
+      expect(source, path).not.toContain("Future Work");
+      expect(source, path).toContain("Pattern-only in the current OSS runtime");
+    }
+  });
+
   test("pattern contracts are typed, effectful, and free of JavaScript sketches", () => {
     for (const pattern of patternCases()) {
       const source = patternSource(pattern);

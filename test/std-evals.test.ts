@@ -143,6 +143,8 @@ const evalCases: EvalCase[] = [
 
 const staleRunVocabulary =
   /\b(state\.md|program\.md|manifest\.md|services\/|bindings|__error\.md|Press|press layer|Forme layer|run directory)\b/;
+const staleRuntimeVocabulary =
+  /\b(runtime provider|provider attempts?|provider adapter|runtime\/provider|primary_layer:.*provider|providers, package|When provider,|provider details)\b/;
 
 describe("OpenProse std evals", () => {
   test("eval contracts are run-store native executable tests", () => {
@@ -153,6 +155,7 @@ describe("OpenProse std evals", () => {
       const outputPorts = component?.ports.ensures ?? [];
 
       expect(source.match(staleRunVocabulary), evalCase.file).toBeNull();
+      expect(source.match(staleRuntimeVocabulary), evalCase.file).toBeNull();
       expect(source.includes("run-store") || source.includes("run store"), evalCase.file).toBe(
         true,
       );

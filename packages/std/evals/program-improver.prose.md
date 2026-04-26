@@ -39,7 +39,7 @@ layout.
 
 - proposals are minimal and independently reviewable
 - each proposal cites both inspection evidence and a specific source location
-- no proposal changes runtime/provider semantics to compensate for a source contract problem
+- no proposal changes runtime profile or graph VM semantics to compensate for a source contract problem
 
 ### Execution
 
@@ -51,7 +51,7 @@ package metadata, schemas, examples, eval links, and package IR when available.
 Classify issues into contract shape, port typing, effect declaration, dependency
 wiring, acceptance policy, eval coverage, artifact schema, or source ergonomics.
 Prefer changes to the author-owned component when inspection evidence indicates
-bad source. Escalate runtime, provider, or store issues only when the inspection
+bad source. Escalate runtime, node-runner, or store issues only when the inspection
 shows the source contract was sound.
 
 Generate focused diffs with verification commands. The output must remain JSON

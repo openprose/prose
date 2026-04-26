@@ -89,9 +89,9 @@ Supported today:
 - fixed service calls through explicit `### Execution` blocks
 - fixed `parallel:` groups in execution IR
 - package-local composite references for documented topology expansion
-- fixture/provider execution of a control as a single harness session
+- scripted Pi execution of a control contract as a single graph node
 
-Pattern-only until a later runtime slice:
+Pattern-only in the current OSS runtime:
 
 - variable-width fan-out
 - dynamic map-reduce partitioning
@@ -99,6 +99,6 @@ Pattern-only until a later runtime slice:
 - retry loops with live attempt resumption
 - fallback chains with dynamic delegate failure handling
 
-## Future Work
+## Candidate Additional Pattern
 
 - **accumulator** — Streaming aggregation: process items one at a time, maintaining a running aggregate that grows with each item. Different from map-reduce (no final merge step — the aggregate *is* the result) and pipeline (items don't transform through stages — they contribute to a single evolving state).
