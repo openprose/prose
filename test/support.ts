@@ -77,9 +77,17 @@ export function runGit(args: string[], cwd: string): string {
   return new TextDecoder().decode(result.stdout).trim();
 }
 
-export function runProseCli(args: string[], cwd = join(import.meta.dir, "..")) {
+export function runProseCli(
+  args: string[],
+  cwd = join(import.meta.dir, ".."),
+  options: { env?: Record<string, string> } = {},
+) {
   return Bun.spawnSync(["bun", "bin/prose.ts", ...args], {
     cwd,
+    env: {
+      ...Bun.env,
+      ...(options.env ?? {}),
+    },
     stdout: "pipe",
     stderr: "pipe",
   });

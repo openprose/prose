@@ -9,6 +9,8 @@ import type {
 export type ProviderKind =
   | "fixture"
   | "local_process"
+  | "openai_compatible"
+  | "openrouter"
   | "pi"
   | "opencode"
   | "codex_cli"

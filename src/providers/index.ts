@@ -10,6 +10,11 @@ export {
   createLocalProcessProvider,
 } from "./local-process.js";
 export {
+  OpenAICompatibleProvider,
+  createOpenAICompatibleProvider,
+  renderOpenAICompatiblePrompt,
+} from "./openai-compatible.js";
+export {
   PiProvider,
   createPiProvider,
   renderPiPrompt,
@@ -38,6 +43,9 @@ export type {
 export type {
   LocalProcessProviderOptions,
 } from "./local-process.js";
+export type {
+  OpenAICompatibleProviderOptions,
+} from "./openai-compatible.js";
 export type {
   PiAgentSessionLike,
   PiProviderOptions,

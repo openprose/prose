@@ -66,3 +66,11 @@ Latest generated reports:
   produced a `pi_model_error`; OpenRouter reported that the account has not
   purchased credits. This remains provider/account configuration evidence, not
   an OpenProse runtime failure.
+- 2026-04-26: Added `openai_compatible` and `openrouter` providers for
+  OpenAI-compatible chat completion endpoints. The deterministic tests run
+  against a local mock endpoint; the live OpenRouter smoke reaches OpenRouter
+  but currently returns the same insufficient-credits account error.
+- 2026-04-26: Ran the new `examples/inference-decision-brief.prose.md` graph
+  through the Pi SDK with Anthropic `claude-haiku-4-5`. The graph succeeded
+  locally with three node materializations: `evidence_map`, `risk_register`,
+  and `decision_brief`.

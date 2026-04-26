@@ -1050,10 +1050,12 @@ Core runtime loop:
 
 Providers:
   fixture is deterministic for tests, local-process runs command-style adapters,
-  and pi is the first TypeScript harness adapter. OpenProse coordinates harness
-  sessions as the meta-harness; it does not replace the harness.
-  CLI provider configuration is read from OPENPROSE_PI_* and
-  OPENPROSE_LOCAL_PROCESS_* environment variables.
+  openai_compatible/openrouter call chat-completion endpoints, and pi is the
+  first TypeScript harness adapter. OpenProse coordinates provider sessions as
+  the meta-harness; it does not replace the harness.
+  CLI provider configuration is read from OPENPROSE_PI_*,
+  OPENPROSE_LOCAL_PROCESS_*, OPENPROSE_OPENAI_COMPATIBLE_*, and OPENROUTER_*
+  environment variables.
 
 Commands:
   compile      Compile Contract Markdown to canonical Prose IR JSON

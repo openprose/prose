@@ -18,6 +18,8 @@
     "providers": [
       "fixture",
       "local_process",
+      "openai_compatible",
+      "openrouter",
       "pi"
     ],
     "default_provider": "fixture"
@@ -25,6 +27,7 @@
   "examples": [
     "hello.prose.md",
     "selective-recompute.prose.md",
+    "inference-decision-brief.prose.md",
     "run-aware-brief.prose.md",
     "approval-gated-release.prose.md",
     "company-intake.prose.md"

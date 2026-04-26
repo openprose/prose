@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>OpenProse Inference Meta-Harness</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main>
+      <section class="page-header">
+        <h1>Inference Meta-Harness</h1>
+        <p>
+          A model-backed OpenProse graph is not one long prompt. The runtime plans the graph,
+          launches one provider session per selected node, persists each outcome as a run, and feeds
+          accepted upstream artifacts into downstream sessions.
+        </p>
+        <nav class="nav">
+          <a href="index.html">Overview</a>
+          <a href="compiler-and-runs.html">Compiler and Runs</a>
+          <a href="reactive-planning.html">Reactive Planning</a>
+          <a class="active" href="inference-meta-harness.html">Inference Meta-Harness</a>
+          <a href="packages-and-registry.html">Packages and Registry</a>
+          <a href="hosted-approval-loop.html">Hosted Approval Loop</a>
+          <a href="runtime-backpressure.html">Runtime Backpressure</a>
+        </nav>
+      </section>
+
+      <section class="diagram">
+        <div class="row">
+          <div class="card span-12">
+            <h2>Decision Brief Example</h2>
+            <div class="cols-3">
+              <div class="node">
+                <strong>evidence-extractor</strong>
+                <span class="meta">inputs: question, raw signals</span>
+                <span class="state"><span class="dot current"></span>run: evidence_map</span>
+              </div>
+              <div class="node">
+                <strong>risk-synthesizer</strong>
+                <span class="meta">inputs: question, evidence_map</span>
+                <span class="state"><span class="dot current"></span>run: risk_register</span>
+              </div>
+              <div class="node">
+                <strong>decision-brief-writer</strong>
+                <span class="meta">inputs: question, evidence_map, risk_register</span>
+                <span class="state"><span class="dot current"></span>run: decision_brief</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="rail span-5">
+            <h2>Provider Session</h2>
+            <div class="stack">
+              <div class="node">
+                <strong>OpenProse request</strong>
+                <span class="meta">contract, typed bindings, expected outputs, effects</span>
+              </div>
+              <div class="arrow"><span>execute</span></div>
+              <div class="node">
+                <strong>Harness or adapter</strong>
+                <span class="meta">Pi, OpenCode, Codex CLI, Claude Code, OpenAI-compatible endpoint</span>
+              </div>
+              <div class="arrow"><span>return artifacts</span></div>
+              <div class="node">
+                <strong>Provider result</strong>
+                <span class="meta">outputs, diagnostics, logs, session ref, usage</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="rail span-7">
+            <h2>Meta-Harness Responsibilities</h2>
+            <div class="cols-3">
+              <div class="node">
+                <strong>Plan</strong>
+                <span class="meta">current, stale, blocked, skipped</span>
+              </div>
+              <div class="node">
+                <strong>Invoke</strong>
+                <span class="meta">one selected node at a time, dependency ordered</span>
+              </div>
+              <div class="node">
+                <strong>Materialize</strong>
+                <span class="meta">run records, artifacts, traces, pointers</span>
+              </div>
+              <div class="node">
+                <strong>Validate</strong>
+                <span class="meta">required outputs, declared effects, policy labels</span>
+              </div>
+              <div class="node">
+                <strong>Propagate</strong>
+                <span class="meta">accepted artifacts become downstream bindings</span>
+              </div>
+              <div class="node">
+                <strong>Explain</strong>
+                <span class="meta">trace shows why each node ran and what it produced</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="callout">
+          <h2>Boundary</h2>
+          <p>
+            OpenProse orchestrates runs, not thoughts. The provider owns one model or harness session;
+            the meta-harness owns dependency order, stale checks, durable state, and provenance.
+          </p>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

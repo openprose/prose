@@ -7,9 +7,11 @@ import {
   publishCheckPath,
   readFileSync,
   runProseCli,
+  runSource,
   test,
   tmpdir,
 } from "./support";
+import { createOpenAICompatibleProvider } from "../src/providers";
 
 const repoRoot = join(import.meta.dir, "..");
 const examplesRoot = join(repoRoot, "examples");
@@ -26,11 +28,15 @@ describe("OpenProse examples capability tour", () => {
       "brief-writer",
       "company-intake",
       "company-normalizer",
+      "decision-brief-writer",
+      "evidence-extractor",
       "examples-quality",
       "hello",
+      "inference-decision-brief",
       "market-sync",
       "qa-check",
       "release-note-writer",
+      "risk-synthesizer",
       "run-aware-brief",
       "selective-recompute",
       "signal-triage",
@@ -74,6 +80,28 @@ describe("OpenProse examples capability tour", () => {
       "summarize.summary=A stable summary.",
       "--output",
       "market-sync.market_snapshot=A stable market snapshot.",
+      "--no-pretty",
+    ]);
+
+    expectCliSuccess([
+      "run",
+      "examples/inference-decision-brief.prose.md",
+      "--provider",
+      "fixture",
+      "--run-root",
+      runRoot,
+      "--run-id",
+      "inference-tour",
+      "--input",
+      "decision_question=Should we prioritize registry first?",
+      "--input",
+      "raw_signals=Registry semantics are stable. Runtime provider choice is still high-risk.",
+      "--output",
+      "evidence-extractor.evidence_map=Evidence map.",
+      "--output",
+      "risk-synthesizer.risk_register=Risk register.",
+      "--output",
+      "decision-brief-writer.decision_brief=Decision brief.",
       "--no-pretty",
     ]);
 
@@ -223,6 +251,50 @@ describe("OpenProse examples capability tour", () => {
     });
   });
 
+  test("the inference decision graph runs through an OpenAI-compatible endpoint", async () => {
+    const runRoot = join(mkdtempSync(join(tmpdir(), "openprose-examples-inference-")), "runs");
+    const server = mockOpenAICompatibleServer();
+
+    try {
+      const result = await runSource(
+        readFileSync(join(examplesRoot, "inference-decision-brief.prose.md"), "utf8"),
+        {
+          path: "examples/inference-decision-brief.prose.md",
+          runRoot,
+          runId: "model-backed-brief",
+          provider: createOpenAICompatibleProvider({
+            baseUrl: server.baseUrl,
+            apiKey: "test-key",
+            model: "test/model",
+          }),
+          inputs: {
+            decision_question: "Should we prioritize the hosted registry before the hosted runtime?",
+            raw_signals: "Registry semantics are stable. Runtime provider choice remains high risk. Local package install already works.",
+          },
+        },
+      );
+
+      expect(result.record.status).toBe("succeeded");
+      expect(result.record.outputs.map((output) => output.port)).toEqual([
+        "evidence_map",
+        "risk_register",
+        "decision_brief",
+      ]);
+      expect(
+        result.record.outputs.find((output) => output.port === "decision_brief"),
+      ).toBeDefined();
+      expect(result.node_records.map((record) => record.component_ref)).toEqual([
+        "evidence-extractor",
+        "risk-synthesizer",
+        "decision-brief-writer",
+      ]);
+      expect(server.seenPrompts()).toHaveLength(3);
+      expect(server.seenPrompts()[2]).toContain("## Risk Register");
+    } finally {
+      server.stop();
+    }
+  });
+
   test("the package metadata advertises registry install inputs", async () => {
     const metadata = await packagePath(examplesRoot);
 
@@ -236,10 +308,82 @@ describe("OpenProse examples capability tour", () => {
   });
 });
 
-function expectCliSuccess(args: string[]): { stdoutText: string; stderrText: string } {
-  const result = runProseCli(args);
+function expectCliSuccess(
+  args: string[],
+  env: Record<string, string> = {},
+): { stdoutText: string; stderrText: string } {
+  const result = runProseCli(args, undefined, { env });
   const stdoutText = new TextDecoder().decode(result.stdout);
   const stderrText = new TextDecoder().decode(result.stderr);
   expect(result.exitCode, stderrText || stdoutText).toBe(0);
   return { stdoutText, stderrText };
+}
+
+function mockOpenAICompatibleServer(): {
+  baseUrl: string;
+  seenPrompts: () => string[];
+  stop: () => void;
+} {
+  const prompts: string[] = [];
+  const server = Bun.serve({
+    port: 0,
+    async fetch(request) {
+      const body = JSON.parse(await request.text()) as {
+        messages?: Array<{ content?: string }>;
+      };
+      const prompt = body.messages?.[1]?.content ?? "";
+      prompts.push(prompt);
+      return Response.json({
+        id: `mock-${prompts.length}`,
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                outputs: outputForPrompt(prompt),
+                performed_effects: [],
+              }),
+            },
+          },
+        ],
+        usage: {
+          prompt_tokens: 10,
+          completion_tokens: 10,
+          total_tokens: 20,
+        },
+      });
+    },
+  });
+
+  return {
+    baseUrl: `http://${server.hostname}:${server.port}/v1`,
+    seenPrompts: () => prompts,
+    stop: () => server.stop(true),
+  };
+}
+
+function outputForPrompt(prompt: string): Record<string, string> {
+  if (prompt.includes("# evidence-extractor")) {
+    return {
+      evidence_map: [
+        "## Evidence Map",
+        "- Stable: registry semantics and local package install are working.",
+        "- Uncertain: runtime provider selection remains high-risk.",
+      ].join("\n"),
+    };
+  }
+  if (prompt.includes("# risk-synthesizer")) {
+    return {
+      risk_register: [
+        "## Risk Register",
+        "- Runtime interop could change provider boundaries.",
+        "- Registry-first sequencing lowers product and package risk.",
+      ].join("\n"),
+    };
+  }
+  return {
+    decision_brief: [
+      "## Decision Brief",
+      "Prioritize the hosted registry first, while keeping runtime provider experiments active behind the provider contract.",
+    ].join("\n"),
+  };
 }

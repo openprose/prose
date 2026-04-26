@@ -62,6 +62,28 @@ describe("OpenProse runtime provider registry", () => {
     expect(provider.kind).toBe("local_process");
   });
 
+  test("configures OpenAI-compatible providers from environment records", () => {
+    const compatible = resolveRuntimeProvider({
+      provider: "openai_compatible",
+      env: {
+        OPENPROSE_OPENAI_COMPATIBLE_API_KEY: "test-key",
+        OPENPROSE_OPENAI_COMPATIBLE_MODEL: "test/model",
+        OPENPROSE_OPENAI_COMPATIBLE_BASE_URL: "http://localhost:1234/v1",
+        OPENPROSE_OPENAI_COMPATIBLE_TIMEOUT_MS: "1000",
+        OPENPROSE_OPENAI_COMPATIBLE_TEMPERATURE: "0",
+      },
+    });
+    const openrouter = resolveRuntimeProvider({
+      provider: "openrouter",
+      env: {
+        OPENROUTER_API_KEY: "test-key",
+      },
+    });
+
+    expect(compatible.kind).toBe("openai_compatible");
+    expect(openrouter.kind).toBe("openrouter");
+  });
+
   test("rejects invalid provider environment configuration", () => {
     expect(() =>
       resolveRuntimeProvider({
@@ -80,6 +102,16 @@ describe("OpenProse runtime provider registry", () => {
         },
       }),
     ).toThrow("OPENPROSE_PI_THINKING_LEVEL must be one of");
+
+    expect(() =>
+      resolveRuntimeProvider({
+        provider: "openai_compatible",
+        env: {
+          OPENPROSE_OPENAI_COMPATIBLE_MODEL: "test/model",
+          OPENPROSE_OPENAI_COMPATIBLE_BASE_URL: "http://localhost:1234/v1",
+        },
+      }),
+    ).toThrow("Provider 'openai_compatible' requires");
   });
 
   test("rejects unknown provider names", () => {
@@ -87,6 +119,6 @@ describe("OpenProse runtime provider registry", () => {
       resolveRuntimeProvider({
         provider: "unknown-provider",
       }),
-    ).toThrow("Available CLI providers: fixture, pi, local_process");
+    ).toThrow("Available CLI providers: fixture, local_process, openai_compatible, openrouter, pi");
   });
 });

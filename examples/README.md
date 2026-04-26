@@ -10,11 +10,12 @@ agent applications as typed, reactive, inspectable services.
 |---:|---|---|
 | 1 | [`hello.prose.md`](hello.prose.md) | smallest useful typed service |
 | 2 | [`selective-recompute.prose.md`](selective-recompute.prose.md) | graph planning, freshness, and targeted recompute |
-| 3 | [`company-intake.prose.md`](company-intake.prose.md) | compact multi-node company workflow |
-| 4 | [`run-aware-brief.prose.md`](run-aware-brief.prose.md) | `run<T>` provenance and downstream reuse |
-| 5 | [`approval-gated-release.prose.md`](approval-gated-release.prose.md) | effect gates and human approval |
-| 6 | [`evals/examples-quality.eval.prose.md`](evals/examples-quality.eval.prose.md) | required eval acceptance |
-| 7 | [`prose.package.json`](prose.package.json) | registry refs, install metadata, examples, and eval links |
+| 3 | [`inference-decision-brief.prose.md`](inference-decision-brief.prose.md) | multi-node inference graph over typed artifacts |
+| 4 | [`company-intake.prose.md`](company-intake.prose.md) | compact multi-node company workflow |
+| 5 | [`run-aware-brief.prose.md`](run-aware-brief.prose.md) | `run<T>` provenance and downstream reuse |
+| 6 | [`approval-gated-release.prose.md`](approval-gated-release.prose.md) | effect gates and human approval |
+| 7 | [`evals/examples-quality.eval.prose.md`](evals/examples-quality.eval.prose.md) | required eval acceptance |
+| 8 | [`prose.package.json`](prose.package.json) | registry refs, install metadata, examples, and eval links |
 
 ## 1. Compile A Service Contract
 
@@ -64,7 +65,38 @@ bun run prose plan examples/selective-recompute.prose.md \
   --input company=openprose-enterprise
 ```
 
-## 3. Run A Company Workflow
+## 3. Run A Model-Backed Decision Graph
+
+`inference-decision-brief.prose.md` is the smallest interesting local
+inference graph. OpenProse plans three typed nodes, calls the selected provider
+once per stale node, materializes each node as a run, and passes upstream
+artifacts into the downstream prompt.
+
+Use any OpenAI-compatible endpoint:
+
+```bash
+OPENPROSE_OPENAI_COMPATIBLE_API_KEY="$OPENROUTER_API_KEY" \
+OPENPROSE_OPENAI_COMPATIBLE_BASE_URL=https://openrouter.ai/api/v1 \
+OPENPROSE_OPENAI_COMPATIBLE_MODEL=google/gemini-3-flash-preview \
+bun run prose run examples/inference-decision-brief.prose.md \
+  --provider openai_compatible \
+  --run-root /tmp/openprose-tour/runs \
+  --run-id inference-brief \
+  --input decision_question="Should we prioritize hosted OpenProse registry before hosted runtime?" \
+  --input raw_signals="Registry semantics are stable. Runtime provider choice is still high-risk. Users can already publish and install locally."
+```
+
+If you prefer the OpenRouter alias, `--provider openrouter` defaults to
+`https://openrouter.ai/api/v1` and `google/gemini-3-flash-preview` when only
+`OPENROUTER_API_KEY` is set.
+
+Inspect the resulting graph trace:
+
+```bash
+bun run prose trace /tmp/openprose-tour/runs/inference-brief --format text
+```
+
+## 4. Run A Company Workflow
 
 ```bash
 bun run prose run examples/company-intake.prose.md \
@@ -78,7 +110,7 @@ bun run prose run examples/company-intake.prose.md \
   --output account-brief.brief="Account brief."
 ```
 
-## 4. Compose With A Prior Run
+## 5. Compose With A Prior Run
 
 `run-aware-brief.prose.md` receives the prior `company-intake` materialization
 as a typed input:
@@ -93,7 +125,7 @@ bun run prose run examples/run-aware-brief.prose.md \
   --output brief-writer.brief="Run-aware executive brief."
 ```
 
-## 5. Gate Effects
+## 6. Gate Effects
 
 Without approvals, the release graph plans as effect-blocked:
 
@@ -117,7 +149,7 @@ bun run prose run examples/approval-gated-release.prose.md \
   --output announce-release.delivery_receipt="Delivered to #releases."
 ```
 
-## 6. Require Eval Acceptance
+## 7. Require Eval Acceptance
 
 Required evals run after provider success. A failed required eval rejects
 acceptance without hiding the run artifact.
@@ -133,7 +165,7 @@ bun run prose run examples/hello.prose.md \
   --required-eval examples/evals/examples-quality.eval.prose.md
 ```
 
-## 7. Package And Install
+## 8. Package And Install
 
 This directory is a package root, not a loose demo folder:
 
@@ -155,8 +187,9 @@ bun run prose install registry://openprose/@openprose/examples@0.1.0/hello \
 
 ## Provider Selection
 
-`fixture` is the deterministic provider used by tests and examples. Real
-harnesses such as Pi and CLI-based adapters sit behind the same provider
-contract, so `prose run` remains the meta-harness: it plans the graph, invokes
-component sessions, validates artifacts, writes runs, and updates current
-pointers.
+`fixture` is the deterministic provider used by repeatable tests.
+`openai_compatible` and `openrouter` are minimal inference adapters for local
+model-backed examples. Full harnesses such as Pi, OpenCode, Codex CLI, and
+Claude Code sit behind the same provider contract, so `prose run` remains the
+meta-harness: it plans the graph, invokes component sessions, validates
+artifacts, writes runs, and updates current pointers.
