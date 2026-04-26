@@ -1,12 +1,12 @@
 # OpenProse Measurement Report
 
-Generated: 2026-04-26T13:53:26.072Z
+Generated: 2026-04-26T14:00:28.993Z
 
 ## Package Health
 
 | Target | Components | Quality | Typed Ports | Effects | Publish | Strict |
 |---|---:|---:|---:|---:|---|---|
-| examples | 41 | 1.00 | 100% | 100% | pass | pass |
+| examples | 42 | 1.00 | 100% | 100% | pass | pass |
 | packages/std | 58 | 0.97 | 100% | 100% | pass | pass |
 | packages/co | 6 | 1.00 | 100% | 100% | pass | pass |
 | customers/prose-openprose | 99 | 0.95 | 100% | 100% | pass | pass |
@@ -15,7 +15,7 @@ Generated: 2026-04-26T13:53:26.072Z
 
 ### Company Signal Brief
 - status: succeeded
-- compile time: 1.18 ms
+- compile time: 2.94 ms
 - eval: passed (0.93)
 - scripted Pi sessions: 1
 - trace events: 9

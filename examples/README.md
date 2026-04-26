@@ -89,6 +89,7 @@ bun run prose run examples/north-star/release-proposal-dry-run.prose.md \
   --input release_candidate=v0.11.0 \
   --approved-effect human_gate \
   --approved-effect delivers \
+  --output 'release-decision-check.release_decision={"release_required":true,"status":"ready_for_approval","gate_required":true}' \
   --output qa-check.qa_report="QA report." \
   --output release-note-writer.release_summary="Release notes." \
   --output announce-release.delivery_receipt="Delivered to #releases." \

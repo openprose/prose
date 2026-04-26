@@ -5,6 +5,9 @@ export const pipelineOutputs = {
 };
 
 export const approvalReleaseOutputs = {
+  "release-decision-check": {
+    release_decision: "{\"release_required\":true,\"status\":\"ready_for_approval\",\"gate_required\":true}",
+  },
   "qa-check": { qa_report: "QA passed." },
   "release-note-writer": { release_summary: "Release summary." },
   "announce-release": { delivery_receipt: "Delivered to releases." },

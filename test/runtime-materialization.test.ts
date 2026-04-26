@@ -478,6 +478,8 @@ kind: service
         "--input",
         "release_candidate=v1.2.3 with changelog",
         "--output",
+        "release-decision-check.release_decision={\"release_required\":true,\"status\":\"ready_for_approval\",\"gate_required\":true}",
+        "--output",
         "qa-check.qa_report=QA passed.",
         "--output",
         "release-note-writer.release_summary=Release summary.",

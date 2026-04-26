@@ -1,12 +1,12 @@
 {
   "package_ir_version": "0.1",
-  "semantic_hash": "74ed64893435bfd696b2a946550967290af26b347791a3c4b0eba135a1889a77",
+  "semantic_hash": "8b93b56e0c3ad85ac01f872ffbc2517964fbe09f076187e5aa2317c34ed03aa1",
   "hashes": {
-    "source_hash": "aa8eb9dccd8dd7b868d3f38622cdf4f7926e82972ce9d4216f686e4b80e97109",
-    "semantic_hash": "74ed64893435bfd696b2a946550967290af26b347791a3c4b0eba135a1889a77",
+    "source_hash": "8b17573a40315c661f15c04504659ff7b0c79bd0157458ce45c81b9a167934e1",
+    "semantic_hash": "8b93b56e0c3ad85ac01f872ffbc2517964fbe09f076187e5aa2317c34ed03aa1",
     "dependency_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-    "policy_hash": "de55f4ce5bb290da1a7fe3fe804e8780ba5d6736031ff54093d1c37bf8b8d712",
-    "runtime_config_hash": "5113546edb4da969b54a93b22b5c77ee387e487db3b679868b18ea604b678cef"
+    "policy_hash": "2471c0dad52c2228c0ab35c42fb6b800db84182176ce27ba21744ab4f1c5d4c5",
+    "runtime_config_hash": "880a23323d31bc275663edd195d070673eeb25af2e233f3fedb597e8e20592d5"
   },
   "manifest": {
     "name": "@openprose/examples",
@@ -185,6 +185,7 @@
       "path": "north-star/release-proposal-dry-run.prose.md",
       "component_ids": [
         "north-star-release-proposal-dry-run--release-proposal-dry-run",
+        "north-star-release-proposal-dry-run--release-decision-check",
         "north-star-release-proposal-dry-run--qa-check",
         "north-star-release-proposal-dry-run--release-note-writer",
         "north-star-release-proposal-dry-run--announce-release"
@@ -362,6 +363,7 @@
       "exists": true,
       "component_ids": [
         "north-star-release-proposal-dry-run--release-proposal-dry-run",
+        "north-star-release-proposal-dry-run--release-decision-check",
         "north-star-release-proposal-dry-run--qa-check",
         "north-star-release-proposal-dry-run--release-note-writer",
         "north-star-release-proposal-dry-run--announce-release"
@@ -389,7 +391,7 @@
       "delivers": 2,
       "human_gate": 2,
       "mutates_repo": 2,
-      "pure": 31,
+      "pure": 32,
       "read_external": 2,
       "writes_memory": 4
     },
@@ -632,6 +634,13 @@
       "expansions": []
     },
     {
+      "id": "north-star-release-proposal-dry-run--release-decision-check",
+      "name": "release-decision-check",
+      "kind": "service",
+      "path": "north-star/release-proposal-dry-run.prose.md",
+      "expansions": []
+    },
+    {
       "id": "north-star-release-proposal-dry-run--release-note-writer",
       "name": "release-note-writer",
       "kind": "service",
@@ -689,16 +698,16 @@
     }
   ],
   "graph": {
-    "node_count": 41,
-    "edge_count": 86,
+    "node_count": 42,
+    "edge_count": 91,
     "edge_kinds": {
       "caller": 11,
-      "exact": 27,
-      "execution": 24,
-      "return": 24
+      "exact": 30,
+      "execution": 25,
+      "return": 25
     }
   },
   "diagnostics": {
-    "ambiguous_package_exact_wiring": 27
+    "ambiguous_package_exact_wiring": 30
   }
 }

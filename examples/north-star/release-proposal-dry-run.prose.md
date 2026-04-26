@@ -5,6 +5,7 @@ kind: program
 
 ### Services
 
+- `release-decision-check`
 - `qa-check`
 - `release-note-writer`
 - `announce-release`
@@ -15,6 +16,7 @@ kind: program
 
 ### Ensures
 
+- `release_decision`: Json<ReleaseDecision> - release_required, reason, candidate validity, and gate path
 - `qa_report`: Markdown<QAReport> - deployment confidence, rollback plan, and launch notes
 - `release_summary`: Markdown<ReleaseSummary> - operator-facing release proposal
 - `delivery_receipt`: DeliveryReceipt - dry-run record of the announcement delivery
@@ -24,11 +26,26 @@ kind: program
 - `human_gate`: release manager approval is required before delivery
 - `delivers`: Slack channel `#releases`
 
+## release-decision-check
+
+### Requires
+
+- `release_candidate`: ReleaseCandidate - release version, change summary, and linked changelog
+
+### Ensures
+
+- `release_decision`: Json<ReleaseDecision> - release_required, reason, candidate validity, and gate path
+
+### Effects
+
+- `pure`: classifies the caller-provided candidate before any gated delivery work
+
 ## qa-check
 
 ### Requires
 
 - `release_candidate`: ReleaseCandidate - release version, change summary, and linked changelog
+- `release_decision`: Json<ReleaseDecision> - release_required, reason, candidate validity, and gate path
 
 ### Ensures
 
@@ -43,6 +60,7 @@ kind: program
 ### Requires
 
 - `release_candidate`: ReleaseCandidate - release version, change summary, and linked changelog
+- `release_decision`: Json<ReleaseDecision> - release_required, reason, candidate validity, and gate path
 - `qa_report`: Markdown<QAReport> - deployment confidence, rollback plan, and launch notes
 
 ### Ensures
@@ -58,6 +76,7 @@ kind: program
 ### Requires
 
 - `release_candidate`: ReleaseCandidate - release version, change summary, and linked changelog
+- `release_decision`: Json<ReleaseDecision> - release_required, reason, candidate validity, and gate path
 - `release_summary`: Markdown<ReleaseSummary> - operator-facing release proposal
 
 ### Ensures
@@ -68,4 +87,3 @@ kind: program
 
 - `human_gate`: release manager approval is required before delivery
 - `delivers`: Slack channel `#releases`
-

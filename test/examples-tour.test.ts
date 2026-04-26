@@ -50,6 +50,7 @@ describe("OpenProse north-star examples", () => {
       "pr-fit-summary-writer",
       "pr-review-memory-writer",
       "qa-check",
+      "release-decision-check",
       "release-note-writer",
       "release-proposal-dry-run",
       "release-proposal-dry-run-eval",

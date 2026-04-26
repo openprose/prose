@@ -288,6 +288,14 @@ function scenarios(): NorthStarScenario[] {
       },
       approvedEffects: ["human_gate", "delivers"],
       submissionsByComponent: {
+        "release-decision-check": submission({
+          release_decision: JSON.stringify({
+            release_required: true,
+            status: "ready_for_approval",
+            gate_required: true,
+            reason: "User-visible changes require release manager approval.",
+          }),
+        }),
         "qa-check": submission({
           qa_report: "# QA Report\n\nTypecheck and tests passed.",
         }),
@@ -301,7 +309,7 @@ function scenarios(): NorthStarScenario[] {
           ["human_gate", "delivers"],
         ),
       },
-      expectedOutputs: ["qa_report", "release_summary", "delivery_receipt"],
+      expectedOutputs: ["release_decision", "qa_report", "release_summary", "delivery_receipt"],
     },
     {
       name: "customer-repo-scaffold-preview",
