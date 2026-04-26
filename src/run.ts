@@ -51,6 +51,11 @@ import {
   resolveRuntimeProfile,
   type RuntimeProfileInput,
 } from "./runtime/profiles.js";
+import {
+  createReactiveGraphRuntime,
+  type ReactiveGraphRuntime,
+} from "./runtime/graph-runtime.js";
+import { createNodeExecutionRequest } from "./runtime/node-request.js";
 import { writeLocalArtifactRecord } from "./store/artifacts.js";
 import { writeRunAttemptRecord } from "./store/attempts.js";
 import { updateGraphNodePointer } from "./store/pointers.js";
@@ -103,6 +108,7 @@ interface RunContext {
   ir: ProseIR;
   plan: ExecutionPlan;
   provider: RuntimeProvider;
+  graphRuntime: ReactiveGraphRuntime;
   runtimeProfile: RuntimeProfile;
   runId: string;
   runRoot: string;
@@ -176,14 +182,16 @@ export async function runSource(
     }
   }
 
+  const provider = resolveRuntimeProvider({
+    provider: options.provider,
+    fixtureOutputs: options.outputs,
+    runtimeProfile,
+  });
   const ctx: RunContext = {
     ir,
     plan,
-    provider: resolveRuntimeProvider({
-      provider: options.provider,
-      fixtureOutputs: options.outputs,
-      runtimeProfile,
-    }),
+    provider,
+    graphRuntime: createReactiveGraphRuntime({ provider }),
     runtimeProfile,
     runId,
     runRoot,
@@ -423,9 +431,20 @@ async function executeGraphRun(
       continue;
     }
 
-    const request = await createProviderRequest(ctx, component, runId, nodeRecordsById);
-    const providerResult = await ctx.provider.execute(request);
-    const record = await materializeProviderResult(ctx, component, providerResult, {
+    const providerRequest = await createProviderRequest(ctx, component, runId, nodeRecordsById);
+    const workspacePath = nodeWorkspacePath(ctx, component);
+    await mkdir(workspacePath, { recursive: true });
+    const nodeResult = await ctx.graphRuntime.executeNode(
+      createNodeExecutionRequest({
+        graphRunId: ctx.runId,
+        runId,
+        component,
+        workspacePath,
+        runtimeProfile: ctx.runtimeProfile,
+        providerRequest,
+      }),
+    );
+    const record = await materializeProviderResult(ctx, component, nodeResult.provider_result, {
       runId,
       recordPath: nodeRunRecordPath(component),
       writeTraceFile: false,
@@ -433,7 +452,7 @@ async function executeGraphRun(
     });
     nodeRecords.push(record);
     nodeRecordsById.set(component.id, record);
-    diagnostics.push(...providerResult.diagnostics);
+    diagnostics.push(...nodeResult.provider_result.diagnostics);
   }
 
   const graphRecord = await applyEvalAcceptance(
@@ -900,8 +919,12 @@ function missingUpstreamOutputReasons(
       ? []
       : [
           `Upstream output '${edge.from.component}.${edge.from.port}' is missing for '${component.name}.${port.name}'.`,
-        ];
+      ];
   });
+}
+
+function nodeWorkspacePath(ctx: RunContext, component: ComponentIR): string {
+  return join(ctx.runDir, "nodes", component.id, "workspace");
 }
 
 async function writeArtifactFile(

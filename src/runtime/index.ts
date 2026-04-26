@@ -5,7 +5,13 @@ export {
   resolveRuntimeProfile,
   runtimeProfileSummary,
 } from "./profiles.js";
+export {
+  createReactiveGraphRuntime,
+} from "./graph-runtime.js";
 export type { RuntimeProfileInput } from "./profiles.js";
+export type { ReactiveGraphRuntime } from "./graph-runtime.js";
+export type { NodeExecutionRequest } from "./node-request.js";
+export type { NodeExecutionResult } from "./node-result.js";
 export {
   cancelRunPath,
   currentRunSetForRetry,

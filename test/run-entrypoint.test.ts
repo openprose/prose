@@ -16,6 +16,7 @@ import {
 import { scriptedPiRuntime, providerShouldNotRun } from "./support/scripted-pi-session";
 import { approvalReleaseOutputs, pipelineOutputs } from "./support/runtime-scenarios";
 import { runSource } from "../src/run";
+import { deserializeProviderSessionRef } from "../src/providers";
 import type { ProviderRequest, ProviderResult } from "../src/providers";
 
 describe("OpenProse run entry point", () => {
@@ -102,6 +103,23 @@ describe("OpenProse run entry point", () => {
       run_id: "graph-run:review",
       status: "succeeded",
     });
+
+    const nodeAttempts = await Promise.all(
+      ["review", "fact-check", "polish"].map((component) =>
+        listRunAttemptRecords(join(runRoot, ".prose-store"), `graph-run:${component}`),
+      ),
+    );
+    const sessionFiles = nodeAttempts.map((records) =>
+      String(
+        deserializeProviderSessionRef(records[0]?.provider_session_ref ?? "{}").metadata
+          .session_file,
+      ),
+    );
+    expect(sessionFiles).toEqual([
+      join(result.run_dir, "nodes", "review", "workspace", ".pi", "scripted-pi-1.jsonl"),
+      join(result.run_dir, "nodes", "fact-check", "workspace", ".pi", "scripted-pi-2.jsonl"),
+      join(result.run_dir, "nodes", "polish", "workspace", ".pi", "scripted-pi-3.jsonl"),
+    ]);
   });
 
   test("propagates upstream artifacts into downstream provider requests", async () => {
@@ -534,6 +552,7 @@ kind: program
 
   test("assembles targeted graph runs from only requested outputs", async () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-run-targeted-"));
+    const requests: ProviderRequest[] = [];
     const result = await runSource(fixture("selective-recompute.prose.md"), {
       path: "fixtures/compiler/selective-recompute.prose.md",
       runRoot,
@@ -542,6 +561,7 @@ kind: program
         outputsByComponent: {
           summarize: { summary: "Stable summary." },
         },
+        onRequest: (request) => requests.push(request),
       }),
       inputs: {
         draft: "A stable draft.",
@@ -554,8 +574,21 @@ kind: program
     expect(result.record.status).toBe("succeeded");
     expect(result.record.outputs.map((output) => output.port)).toEqual(["summary"]);
     expect(result.node_records.map((record) => record.component_ref)).toEqual(["summarize"]);
+    expect(requests.map((request) => request.component.name)).toEqual(["summarize"]);
+    expect(requests[0]?.workspace_path).toBe(
+      join(result.run_dir, "nodes", "summarize", "workspace"),
+    );
     expect(readFileSync(join(result.run_dir, "bindings", "$graph", "summary.md"), "utf8")).toBe(
       "Stable summary.\n",
+    );
+
+    const attempts = await listRunAttemptRecords(
+      join(runRoot, ".prose-store"),
+      "targeted-run:summarize",
+    );
+    const session = deserializeProviderSessionRef(attempts[0]?.provider_session_ref ?? "{}");
+    expect(String(session.metadata.session_file)).toBe(
+      join(result.run_dir, "nodes", "summarize", "workspace", ".pi", "scripted-pi-1.jsonl"),
     );
   });
 
@@ -716,6 +749,9 @@ kind: program
       "fact-check",
       "polish",
     ]);
+    expect(
+      await listRunAttemptRecords(join(runRoot, ".prose-store"), "unused-current-run-id"),
+    ).toEqual([]);
   });
 
   test("CLI deterministic outputs write inspectable run files", async () => {

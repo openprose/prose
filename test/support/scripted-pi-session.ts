@@ -81,6 +81,8 @@ class ScriptedPiSession implements PiAgentSessionLike {
   }
 
   async prompt(prompt: string): Promise<void> {
+    await mkdir(dirname(this.sessionFile), { recursive: true });
+    await writeFile(this.sessionFile, "", "utf8");
     this.emit({ type: "agent_start", sessionId: this.sessionId });
     this.emit({
       type: "assistant_message",
