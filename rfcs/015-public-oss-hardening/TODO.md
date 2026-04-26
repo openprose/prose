@@ -7,6 +7,10 @@ This file is the working queue for the public OSS hardening pass. Add findings
 here before fixing them so the package converges deliberately instead of
 through scattered one-off edits.
 
+The stable audit inventory lives in [`FINDINGS.md`](FINDINGS.md). This TODO is
+the execution queue; promote or refine findings here before implementing a
+slice.
+
 ## Slice Protocol
 
 For each slice:
@@ -109,6 +113,43 @@ Checks:
 - `bun run prose run examples/north-star/company-signal-brief.prose.md --graph-vm pi --output company_signal_brief=test`
 
 ## P1: Public Release Quality
+
+### [todo] Changelog still describes removed runtime architecture as current
+
+Finding: `CHANGELOG.md` says the unreleased local runtime materializes through
+fixture, local-process, and Pi-compatible provider interfaces, and says
+`prose fixture materialize` remains available. That is no longer true after
+the Pi graph-VM and scripted-Pi cleanup.
+
+Proposed fix:
+
+- rewrite the unreleased section around the current graph-VM/node-runner model
+- keep older dated sections as history, but make the unreleased section match
+  the actual public CLI
+- add a docs/public regression if useful
+
+Checks:
+
+- `rg -n -- "local-process|fixture materialize|prose fixture|provider interfaces" CHANGELOG.md`
+- `bun test test/docs-public.test.ts`
+
+### [todo] Skill and command sidecars lag the public docs
+
+Finding: `skills/README.md` still describes the OpenProse VM skill as the
+canonical VM definition, and `commands/` does not yet mention the new
+`handoff` boundary. These are small files, but they are entry points for agents.
+
+Proposed fix:
+
+- refresh `skills/README.md` around the current skill router, CLI, and Pi graph
+  VM
+- add a `commands/prose-handoff.md` slash-command sidecar
+- adjust command descriptions where they overstate eval/inspect behavior
+
+Checks:
+
+- `rg -n -- "old OpenProse VM|canonical definition|prose-handoff|handoff" skills commands`
+- `bun test test/docs-public.test.ts test/cli-ux.test.ts`
 
 ### [done] Measurement reports contain absolute local paths
 
@@ -221,7 +262,87 @@ Checks:
 - `rg -n "fixture provider|local process provider|provider protocol|optional CLI adapters" rfcs/013-ideal-oss-package-restructure/phases/04-provider-protocol`
 - manual read-through of the Phase 04 entry point from a first-time contributor perspective
 
+### [todo] Package publication surface is still split between source package and binary package
+
+Finding: `build:binary` writes a clean `dist/package.json`, but source
+`package.json` still points `bin.prose` at `./bin/prose.ts` and has no public
+`exports`/`files` boundary. If the OSS package is shipped primarily as a Bun
+binary, the source package should make that explicit and avoid ambiguous Node
+package expectations.
+
+Proposed fix:
+
+- decide whether the root package is source-only, Bun-only, or publishable
+  directly
+- make `package.json`, `dist/package.json`, README install instructions, and
+  smoke tests agree
+- avoid advertising an import surface that is not intentionally supported
+
+Checks:
+
+- `bun run smoke:binary`
+- inspect root `package.json` and `dist/package.json`
+- `bun run typecheck`
+
 ## P1: Runtime Robustness
+
+### [todo] Old fixture materializer remains a public API seam
+
+Finding: `src/materialize.ts` still implements the older caller-output
+materializer, `src/runtime/index.ts` exports it, and several tests use it
+directly. The public CLI path is correct, but the source API still exposes the
+pre-Pi mental model.
+
+Proposed fix:
+
+- migrate tests that need deterministic runs to `runSource` with scripted Pi
+  outputs
+- either delete `src/materialize.ts` or quarantine it under a clearly internal
+  fixture helper
+- remove public exports that imply materialization is a separate runtime path
+
+Checks:
+
+- `rg -n "materializeFile|materializeSource" src test`
+- `bun test test/runtime-materialization.test.ts test/runtime-planning.test.ts test/package-registry.test.ts`
+- `bun run confidence:runtime`
+
+### [todo] Runtime preflight does not verify Pi runtime-profile readiness
+
+Finding: `prose preflight` checks package dependencies and declared component
+environment variables, but it does not classify missing Pi model-provider
+settings, API key setup, model availability, session persistence paths, or live
+runtime timeout configuration.
+
+Proposed fix:
+
+- extend preflight with runtime-profile checks without making live inference a
+  required local gate
+- classify deterministic, scripted-Pi, and live-Pi readiness separately
+- keep secrets out of output
+
+Checks:
+
+- `bun test test/runtime-profiles.test.ts test/cli-ux.test.ts`
+- manual `bun run prose preflight examples/north-star/lead-program-designer.prose.md`
+
+### [todo] Pi session persistence is not visibly tied to the OpenProse run/store model
+
+Finding: Pi sessions are persisted when `persist_sessions` is true, but the
+default session path and the relationship between Pi session files, run
+records, and `.prose/store` are not obvious from records or docs.
+
+Proposed fix:
+
+- verify Pi default session storage behavior
+- prefer run-scoped or store-scoped session directories when possible
+- ensure traces point to relative, inspectable session refs without leaking
+  local absolute paths
+
+Checks:
+
+- `bun test test/pi-node-runner.test.ts test/pi-events.test.ts test/trace-artifacts.test.ts`
+- optional cheap live Pi smoke
 
 ### [done] Hash helpers are string-only while manifests walk bytes
 
@@ -327,6 +448,24 @@ Checks:
 - `bun test test/schema-resolution.test.ts test/run-entrypoint.test.ts test/package-registry.test.ts`
 - add focused tests for any newly enforced type behavior
 
+### [todo] Named schema definitions are still mostly semantic metadata
+
+Finding: the docs now honestly state that named aliases such as
+`Json<CompanyProfile>` are not structurally enforced without resolved schema
+definitions. For registry-scale composition, that likely needs to become real
+resolution instead of only documentation.
+
+Proposed fix:
+
+- load package-local schema resources and `$defs` during validation
+- validate named `Json<T>` inputs/outputs when the schema is available
+- keep unresolved names as warnings or semantic labels, not false guarantees
+
+Checks:
+
+- `bun test test/schema-resolution.test.ts test/package-registry.test.ts`
+- add package-local schema fixtures with pass/fail payloads
+
 ## P1: Example And Stdlib Quality
 
 ### [todo] Stdlib programs may still read as imperative scripts
@@ -348,6 +487,26 @@ Checks:
 - `bun run prose lint packages/std`
 - `bun run prose publish-check packages/std --strict`
 - `bun test test/std-roles.test.ts test/std-evals.test.ts`
+
+### [todo] Stdlib controls and composites may overpromise runtime semantics
+
+Finding: `packages/std/controls` and `packages/std/composites` define useful
+agent topology patterns, but the runtime currently executes compiled graph
+nodes rather than native map/reduce, race, retry, fallback, or composite control
+semantics. The docs should either mark those as contract patterns or the
+runtime should implement the semantics they imply.
+
+Proposed fix:
+
+- audit each control/composite for claims that exceed runtime behavior
+- decide which patterns remain declarative contracts versus native runtime
+  operators
+- add tests for any pattern that claims executable semantics
+
+Checks:
+
+- `bun run prose publish-check packages/std --strict`
+- `bun test test/composite-expansion.test.ts test/std-patterns.test.ts`
 
 ### [done] Stdlib ops programs still target `state.md`-era run folders
 
@@ -481,6 +640,24 @@ Checks:
 
 - `bun test test/cli-ux.test.ts`
 - manual CLI probes for `compile`, `run`, `remote execute`, `publish-check`
+
+### [todo] Public API vocabulary should finish the provider-to-node-runner cleanup
+
+Finding: source files now live under `node-runners`, but some public types,
+historical docs, and error-path names still use provider/protocol vocabulary.
+Some of that is acceptable history; public API exports should be intentional.
+
+Proposed fix:
+
+- audit exported names and docs for provider/protocol vocabulary
+- keep `model_provider` where it means model vendor
+- prefer graph VM, node runner, runtime profile, and single-run handoff for
+  runtime architecture
+
+Checks:
+
+- `rg -n -- "provider protocol|OpenProse provider|provider interfaces|Graph VM|node runner" src docs README.md skills commands`
+- `bun test test/module-boundaries.test.ts test/node-runner-protocol.test.ts`
 
 ## Intake Queue
 
