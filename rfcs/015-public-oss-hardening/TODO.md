@@ -189,6 +189,27 @@ Checks:
 - `rg -n "eventually|future work|near-term|Prose Complete|--provider|openai_compatible|direct provider" README.md docs`
 - `bun test test/cli-ux.test.ts test/examples-tour.test.ts`
 
+### [todo] Historical provider RFCs are still too easy to mistake for current architecture
+
+Finding: the active docs now distinguish Pi graph VM, model providers, and
+single-run harnesses, but older RFC 013 provider-protocol phase pages still
+contain detailed implementation language for fixture/local-process/providers.
+Even with guardrail headers, they show up in repository search and can look
+like instructions for new contributors.
+
+Proposed fix:
+
+- keep the historical record but make the current architecture impossible to
+  miss at the phase-directory entry points
+- rename or summarize obsolete provider-protocol pages where a short historical
+  stub is safer than a full stale implementation guide
+- preserve signposts as evidence, not instructions
+
+Checks:
+
+- `rg -n "fixture provider|local process provider|provider protocol|optional CLI adapters" rfcs/013-ideal-oss-package-restructure/phases/04-provider-protocol`
+- manual read-through of the Phase 04 entry point from a first-time contributor perspective
+
 ## P1: Runtime Robustness
 
 ### [done] Hash helpers are string-only while manifests walk bytes
@@ -313,6 +334,47 @@ Checks:
 - `bun run prose lint packages/std`
 - `bun run prose publish-check packages/std --strict`
 - `bun test test/std-roles.test.ts test/std-evals.test.ts`
+
+### [todo] Stdlib ops programs still target `state.md`-era run folders
+
+Finding: `packages/std/ops/diagnose.prose.md` still says failed runs are
+missing `state.md`, looks for `---end` / `---error` markers, and reads
+`services/*.md` snapshots. Current OpenProse runs are `run.json`, `trace.json`,
+store attempts, artifacts, node records, and bindings.
+
+Proposed fix:
+
+- rewrite ops contracts around current run, trace, store, and artifact files
+- keep the outputs typed and operationally useful
+- add a focused test that public std ops sources do not mention obsolete
+  `state.md` runtime artifacts
+
+Checks:
+
+- `bun run prose lint packages/std/ops`
+- `bun run prose publish-check packages/std --strict`
+- `bun test test/std-patterns.test.ts`
+
+### [todo] Delivery adapters embed host-specific shell/Python implementation recipes
+
+Finding: delivery adapters should be reusable contracts with declared effects
+and environment requirements. `email-notifier` currently includes a full Python
+SMTP script and `curl` recipes aimed at a specific chat/tool host. That makes
+the standard library look like skill spaghetti instead of contract-first agent
+software.
+
+Proposed fix:
+
+- replace long host-specific scripts with concise protocol requirements,
+  invariants, provider options, and acceptance criteria
+- preserve enough operational detail for an agent to send correctly
+- keep mutating effects explicit and approval-friendly
+
+Checks:
+
+- `rg -n "Bash tool|write a Python script|curl via|Claude Code|/tmp/send_email.py" packages/std/delivery`
+- `bun run prose lint packages/std/delivery`
+- `bun run prose publish-check packages/std --strict`
 
 ### [todo] The company starter package should match the new best-practice shape
 
