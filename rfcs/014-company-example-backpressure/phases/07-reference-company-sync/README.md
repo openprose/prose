@@ -1,6 +1,6 @@
 # Phase 07: Reference Company Sync
 
-Status: 07.1 and 07.2 complete; 07.3 not started.
+Status: 07.1, 07.2, and 07.3 complete.
 
 Goal: feed the example-suite learnings back into `customers/prose-openprose`
 without making the customer repo itself the runtime test harness.
@@ -112,7 +112,12 @@ Signpost:
 
 - Add `signposts/032-golden-run-promotion.md`.
 
-Open question:
+Completed:
 
-- Promote semantic golden snapshots now, or defer until the Pi-first runtime
-  replaces the temporary fixture provider in local smoke tests.
+- Promoted curated semantic goldens in `customers/prose-openprose` instead of
+  whole `.prose/runs/` directories.
+- Golden validation now compiles the package, snapshots selected component
+  contracts/effects, runs a deterministic `--graph-vm pi` company-map smoke,
+  and compares stable JSON semantics.
+- Customer validation includes the semantic golden check after compile,
+  publish, preflight, run, status, and trace checks.

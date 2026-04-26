@@ -7,7 +7,7 @@ Current status:
 
 - 07.1 Crosswalk: complete.
 - 07.2 Company Source Sync: complete.
-- 07.3 Golden Runs: not started.
+- 07.3 Golden Runs: complete as semantic goldens.
 
 ## 07.1 Crosswalk
 
@@ -88,9 +88,12 @@ Commit/signpost:
 - `test: add golden company example runs`
 - `signposts/032-golden-run-promotion.md`
 
-Decision to make before implementation:
+Completed implementation:
 
-- If the runtime is still using the temporary fixture provider, prefer semantic
-  snapshots over full run directories. If the Pi-first runtime has landed, add
-  replay fixtures that prove persisted Pi sessions, typed artifacts, and graph
-  invalidation together.
+- Added `customers/prose-openprose/goldens/semantic/company-package.snapshot.json`.
+- Added `customers/prose-openprose/scripts/validate-semantic-goldens.ts`.
+- The snapshot records package hashes, selected component contracts/effects,
+  publish-check status, and a deterministic `--graph-vm pi` company-map run.
+- The customer validation script now runs the semantic golden check.
+- Whole `.prose/runs/` directories remain unpromoted unless a future replay
+  debugging slice needs them.
