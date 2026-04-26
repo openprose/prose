@@ -154,6 +154,34 @@ Signpost:
 
 - Add one signpost per adapter with installation requirements and gaps.
 
+## 04.7 Harden The Provider Registry
+
+Build:
+
+- Keep provider selection and environment parsing inside the provider module
+  boundary rather than in the meta-harness executor.
+- Support deterministic fixture defaults, env-backed Pi, env-backed
+  local-process, and programmatic providers through one resolver.
+- Preserve helpful configuration errors for CLI users.
+
+Tests:
+
+- Add provider-registry unit tests for fixture defaults, programmatic providers,
+  Pi env configuration, local-process env configuration, invalid env values,
+  and unknown provider names.
+- Run targeted provider/runtime tests.
+- Run `bun test`.
+- Run `bunx tsc --noEmit`.
+
+Commit:
+
+- Commit as `refactor: extract runtime provider registry`.
+
+Signpost:
+
+- Add `signposts/046-provider-registry-boundary.md` with the moved boundary,
+  test results, and next architecture cleanup.
+
 ## Phase Exit Criteria
 
 - The provider protocol is stable enough for the meta-harness.

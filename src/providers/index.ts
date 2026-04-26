@@ -26,6 +26,9 @@ export {
   normalizeProviderSessionRef,
   serializeProviderSessionRef,
 } from "./protocol.js";
+export {
+  resolveRuntimeProvider,
+} from "./registry.js";
 export type {
   WriteProviderArtifactRecordsOptions,
 } from "./artifacts.js";
@@ -60,3 +63,6 @@ export type {
   ProviderValidationRule,
   RuntimeProvider,
 } from "./protocol.js";
+export type {
+  ResolveRuntimeProviderOptions,
+} from "./registry.js";

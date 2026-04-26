@@ -18,9 +18,7 @@ import {
 } from "./policy/index.js";
 import { validateTextAgainstTypeExpression } from "./schema/index.js";
 import {
-  createLocalProcessProvider,
-  createFixtureProvider,
-  createPiProvider,
+  resolveRuntimeProvider,
   serializeProviderSessionRef,
   writeProviderArtifactRecords,
 } from "./providers/index.js";
@@ -152,7 +150,10 @@ export async function runSource(
   const ctx: RunContext = {
     ir,
     plan,
-    provider: resolveRuntimeProvider(options.provider, options.outputs),
+    provider: resolveRuntimeProvider({
+      provider: options.provider,
+      fixtureOutputs: options.outputs,
+    }),
     runId,
     runRoot,
     runDir,
@@ -421,169 +422,6 @@ async function executeGraphRun(
     plan: ctx.plan,
     diagnostics: [...diagnostics, ...recordDiagnostics(graphRecord)],
   };
-}
-
-function resolveRuntimeProvider(
-  provider: RunOptions["provider"],
-  fixtureOutputs: Record<string, string> | undefined,
-): RuntimeProvider {
-  if (typeof provider === "object" && provider) {
-    return provider;
-  }
-
-  const requested = provider ?? (hasFixtureOutputs(fixtureOutputs) ? "fixture" : null);
-  if (!requested) {
-    throw new Error(
-      "No runtime provider selected. Use --provider fixture with --output fixtures for deterministic local runs.",
-    );
-  }
-
-  if (requested === "fixture") {
-    return createFixtureProvider({ outputs: fixtureOutputs ?? {} });
-  }
-
-  if (requested === "pi") {
-    return createPiProvider({
-      agentDir: envString("OPENPROSE_PI_AGENT_DIR"),
-      sessionDir: envString("OPENPROSE_PI_SESSION_DIR"),
-      persistSessions: envBoolean("OPENPROSE_PI_PERSIST_SESSIONS", false),
-      modelProvider: envString("OPENPROSE_PI_MODEL_PROVIDER"),
-      modelId: envString("OPENPROSE_PI_MODEL_ID"),
-      apiKey: envString("OPENPROSE_PI_API_KEY"),
-      apiKeyProvider: envString("OPENPROSE_PI_API_KEY_PROVIDER"),
-      thinkingLevel: envThinkingLevel("OPENPROSE_PI_THINKING_LEVEL"),
-      tools: envList("OPENPROSE_PI_TOOLS"),
-      noTools: envNoTools("OPENPROSE_PI_NO_TOOLS"),
-      outputFiles: envJsonRecord("OPENPROSE_PROVIDER_OUTPUT_FILES"),
-      timeoutMs: envNumber("OPENPROSE_PI_TIMEOUT_MS"),
-    });
-  }
-
-  if (requested === "local_process" || requested === "local-process") {
-    const command = envJsonArray("OPENPROSE_LOCAL_PROCESS_COMMAND");
-    if (!command) {
-      throw new Error(
-        "Provider 'local_process' requires OPENPROSE_LOCAL_PROCESS_COMMAND as a JSON string array.",
-      );
-    }
-    return createLocalProcessProvider({
-      command,
-      timeoutMs: envNumber("OPENPROSE_LOCAL_PROCESS_TIMEOUT_MS"),
-      env: envJsonRecord("OPENPROSE_LOCAL_PROCESS_ENV") ?? {},
-      outputFiles: envJsonRecord("OPENPROSE_PROVIDER_OUTPUT_FILES") ?? {},
-      performedEffects: envList("OPENPROSE_LOCAL_PROCESS_PERFORMED_EFFECTS") ?? [],
-    });
-  }
-
-  throw new Error(
-    `Provider '${requested}' is not registered. Available CLI providers: fixture, pi, local_process.`,
-  );
-}
-
-function envString(name: string): string | undefined {
-  const value = Bun.env[name];
-  return value && value.trim().length > 0 ? value : undefined;
-}
-
-function envNumber(name: string): number | undefined {
-  const value = envString(name);
-  if (!value) {
-    return undefined;
-  }
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    throw new Error(`${name} must be a positive number.`);
-  }
-  return parsed;
-}
-
-function envBoolean(name: string, fallback: boolean): boolean {
-  const value = envString(name);
-  if (!value) {
-    return fallback;
-  }
-  const normalized = value.toLowerCase();
-  if (["1", "true", "yes", "on"].includes(normalized)) {
-    return true;
-  }
-  if (["0", "false", "no", "off"].includes(normalized)) {
-    return false;
-  }
-  throw new Error(`${name} must be a boolean.`);
-}
-
-function envList(name: string): string[] | undefined {
-  const value = envString(name);
-  if (!value) {
-    return undefined;
-  }
-  return value
-    .split(",")
-    .map((entry) => entry.trim())
-    .filter(Boolean);
-}
-
-function envNoTools(name: string): "all" | "builtin" | undefined {
-  const value = envString(name);
-  if (!value) {
-    return undefined;
-  }
-  if (value === "all" || value === "builtin") {
-    return value;
-  }
-  throw new Error(`${name} must be "all" or "builtin".`);
-}
-
-function envThinkingLevel(
-  name: string,
-): "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | undefined {
-  const value = envString(name);
-  if (!value) {
-    return undefined;
-  }
-  if (
-    value === "off" ||
-    value === "minimal" ||
-    value === "low" ||
-    value === "medium" ||
-    value === "high" ||
-    value === "xhigh"
-  ) {
-    return value;
-  }
-  throw new Error(`${name} must be one of off, minimal, low, medium, high, xhigh.`);
-}
-
-function envJsonArray(name: string): string[] | undefined {
-  const value = envString(name);
-  if (!value) {
-    return undefined;
-  }
-  const parsed = JSON.parse(value) as unknown;
-  if (
-    Array.isArray(parsed) &&
-    parsed.length > 0 &&
-    parsed.every((entry) => typeof entry === "string")
-  ) {
-    return parsed;
-  }
-  throw new Error(`${name} must be a non-empty JSON array of strings.`);
-}
-
-function envJsonRecord(name: string): Record<string, string> | undefined {
-  const value = envString(name);
-  if (!value) {
-    return undefined;
-  }
-  const parsed = JSON.parse(value) as unknown;
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    throw new Error(`${name} must be a JSON object of strings.`);
-  }
-  const entries = Object.entries(parsed);
-  if (entries.every(([, entry]) => typeof entry === "string")) {
-    return Object.fromEntries(entries) as Record<string, string>;
-  }
-  throw new Error(`${name} must be a JSON object of strings.`);
 }
 
 async function createProviderRequest(

@@ -1,0 +1,220 @@
+import {
+  createFixtureProvider,
+  type FixtureProviderOptions,
+} from "./fixture.js";
+import {
+  createLocalProcessProvider,
+  type LocalProcessProviderOptions,
+} from "./local-process.js";
+import {
+  createPiProvider,
+  type PiProviderOptions,
+  type PiThinkingLevel,
+} from "./pi.js";
+import type { ProviderKind, RuntimeProvider } from "./protocol.js";
+
+export interface ResolveRuntimeProviderOptions {
+  provider?: ProviderKind | RuntimeProvider;
+  fixtureOutputs?: FixtureProviderOptions["outputs"];
+  env?: Record<string, string | undefined>;
+}
+
+export function resolveRuntimeProvider(
+  options: ResolveRuntimeProviderOptions = {},
+): RuntimeProvider {
+  const { provider, fixtureOutputs, env = Bun.env } = options;
+  if (typeof provider === "object" && provider) {
+    return provider;
+  }
+
+  const requested = provider ?? (hasFixtureOutputs(fixtureOutputs) ? "fixture" : null);
+  if (!requested) {
+    throw new Error(
+      "No runtime provider selected. Use --provider fixture with --output fixtures for deterministic local runs.",
+    );
+  }
+
+  if (requested === "fixture") {
+    return createFixtureProvider({ outputs: fixtureOutputs ?? {} });
+  }
+
+  if (requested === "pi") {
+    return createPiProvider(piOptionsFromEnv(env));
+  }
+
+  if (requested === "local_process" || requested === "local-process") {
+    return createLocalProcessProvider(localProcessOptionsFromEnv(env));
+  }
+
+  throw new Error(
+    `Provider '${requested}' is not registered. Available CLI providers: fixture, pi, local_process.`,
+  );
+}
+
+function hasFixtureOutputs(outputs: FixtureProviderOptions["outputs"]): boolean {
+  return Boolean(outputs && Object.keys(outputs).length > 0);
+}
+
+function piOptionsFromEnv(env: Record<string, string | undefined>): PiProviderOptions {
+  return {
+    agentDir: envString(env, "OPENPROSE_PI_AGENT_DIR"),
+    sessionDir: envString(env, "OPENPROSE_PI_SESSION_DIR"),
+    persistSessions: envBoolean(env, "OPENPROSE_PI_PERSIST_SESSIONS", false),
+    modelProvider: envString(env, "OPENPROSE_PI_MODEL_PROVIDER"),
+    modelId: envString(env, "OPENPROSE_PI_MODEL_ID"),
+    apiKey: envString(env, "OPENPROSE_PI_API_KEY"),
+    apiKeyProvider: envString(env, "OPENPROSE_PI_API_KEY_PROVIDER"),
+    thinkingLevel: envThinkingLevel(env, "OPENPROSE_PI_THINKING_LEVEL"),
+    tools: envList(env, "OPENPROSE_PI_TOOLS"),
+    noTools: envNoTools(env, "OPENPROSE_PI_NO_TOOLS"),
+    outputFiles: envJsonRecord(env, "OPENPROSE_PROVIDER_OUTPUT_FILES"),
+    timeoutMs: envNumber(env, "OPENPROSE_PI_TIMEOUT_MS"),
+  };
+}
+
+function localProcessOptionsFromEnv(
+  env: Record<string, string | undefined>,
+): LocalProcessProviderOptions {
+  const command = envJsonArray(env, "OPENPROSE_LOCAL_PROCESS_COMMAND");
+  if (!command) {
+    throw new Error(
+      "Provider 'local_process' requires OPENPROSE_LOCAL_PROCESS_COMMAND as a JSON string array.",
+    );
+  }
+  return {
+    command,
+    timeoutMs: envNumber(env, "OPENPROSE_LOCAL_PROCESS_TIMEOUT_MS"),
+    env: envJsonRecord(env, "OPENPROSE_LOCAL_PROCESS_ENV") ?? {},
+    outputFiles: envJsonRecord(env, "OPENPROSE_PROVIDER_OUTPUT_FILES") ?? {},
+    performedEffects: envList(env, "OPENPROSE_LOCAL_PROCESS_PERFORMED_EFFECTS") ?? [],
+  };
+}
+
+function envString(
+  env: Record<string, string | undefined>,
+  name: string,
+): string | undefined {
+  const value = env[name];
+  return value && value.trim().length > 0 ? value : undefined;
+}
+
+function envNumber(
+  env: Record<string, string | undefined>,
+  name: string,
+): number | undefined {
+  const value = envString(env, name);
+  if (!value) {
+    return undefined;
+  }
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    throw new Error(`${name} must be a positive number.`);
+  }
+  return parsed;
+}
+
+function envBoolean(
+  env: Record<string, string | undefined>,
+  name: string,
+  fallback: boolean,
+): boolean {
+  const value = envString(env, name);
+  if (!value) {
+    return fallback;
+  }
+  const normalized = value.toLowerCase();
+  if (["1", "true", "yes", "on"].includes(normalized)) {
+    return true;
+  }
+  if (["0", "false", "no", "off"].includes(normalized)) {
+    return false;
+  }
+  throw new Error(`${name} must be a boolean.`);
+}
+
+function envList(
+  env: Record<string, string | undefined>,
+  name: string,
+): string[] | undefined {
+  const value = envString(env, name);
+  if (!value) {
+    return undefined;
+  }
+  return value
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+}
+
+function envNoTools(
+  env: Record<string, string | undefined>,
+  name: string,
+): "all" | "builtin" | undefined {
+  const value = envString(env, name);
+  if (!value) {
+    return undefined;
+  }
+  if (value === "all" || value === "builtin") {
+    return value;
+  }
+  throw new Error(`${name} must be "all" or "builtin".`);
+}
+
+function envThinkingLevel(
+  env: Record<string, string | undefined>,
+  name: string,
+): PiThinkingLevel | undefined {
+  const value = envString(env, name);
+  if (!value) {
+    return undefined;
+  }
+  if (
+    value === "off" ||
+    value === "minimal" ||
+    value === "low" ||
+    value === "medium" ||
+    value === "high" ||
+    value === "xhigh"
+  ) {
+    return value;
+  }
+  throw new Error(`${name} must be one of off, minimal, low, medium, high, xhigh.`);
+}
+
+function envJsonArray(
+  env: Record<string, string | undefined>,
+  name: string,
+): string[] | undefined {
+  const value = envString(env, name);
+  if (!value) {
+    return undefined;
+  }
+  const parsed = JSON.parse(value) as unknown;
+  if (
+    Array.isArray(parsed) &&
+    parsed.length > 0 &&
+    parsed.every((entry) => typeof entry === "string")
+  ) {
+    return parsed;
+  }
+  throw new Error(`${name} must be a non-empty JSON array of strings.`);
+}
+
+function envJsonRecord(
+  env: Record<string, string | undefined>,
+  name: string,
+): Record<string, string> | undefined {
+  const value = envString(env, name);
+  if (!value) {
+    return undefined;
+  }
+  const parsed = JSON.parse(value) as unknown;
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error(`${name} must be a JSON object of strings.`);
+  }
+  const entries = Object.entries(parsed);
+  if (entries.every(([, entry]) => typeof entry === "string")) {
+    return Object.fromEntries(entries) as Record<string, string>;
+  }
+  throw new Error(`${name} must be a JSON object of strings.`);
+}
