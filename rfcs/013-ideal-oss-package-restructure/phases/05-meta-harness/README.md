@@ -147,6 +147,34 @@ Signpost:
 
 - Add `signposts/026-graph-run-assembly.md` with acceptance rules and examples.
 
+## 05.7 Extract Runtime Binding Boundary
+
+Build:
+
+- Move upstream artifact binding, caller input binding, run-reference
+  validation, and provider artifact schema validation out of the top-level run
+  coordinator.
+- Keep the helper internal to the runtime package boundary unless a later API
+  review decides these contracts should be public.
+- Preserve `prose run` behavior exactly.
+
+Tests:
+
+- Run strict source unused-symbol scan for `src/`.
+- Run focused run-entrypoint, planning, and artifact-store tests.
+- Run `bun run typecheck`.
+- Run `bun test`.
+- Run `bun run confidence:runtime`.
+
+Commit:
+
+- Commit as `refactor: extract runtime binding helpers`.
+
+Signpost:
+
+- Add `signposts/050-runtime-binding-boundary.md` with the module boundary and
+  checks.
+
 ## Phase Exit Criteria
 
 - `prose run` can execute at least one multi-node graph locally.
