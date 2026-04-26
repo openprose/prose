@@ -48,6 +48,49 @@ describe("OpenProse runtime profiles", () => {
     });
   });
 
+  test("accepts explicit runtime profile input without environment variables", () => {
+    const profile = resolveRuntimeProfile({
+      profile: {
+        model_provider: "openrouter",
+        model: "google/gemini-3-flash-preview",
+        thinking: "medium",
+        tools: ["write", "read"],
+        persist_sessions: false,
+      },
+      env: {},
+    });
+
+    expect(profile).toMatchObject({
+      graph_vm: "pi",
+      model_provider: "openrouter",
+      model: "google/gemini-3-flash-preview",
+      thinking: "medium",
+      tools: ["read", "write"],
+      persist_sessions: false,
+    });
+  });
+
+  test("deterministic outputs keep the scripted Pi profile even when model flags are supplied", () => {
+    const profile = resolveRuntimeProfile({
+      profile: {
+        model_provider: "openrouter",
+        model: "google/gemini-3-flash-preview",
+        thinking: "low",
+      },
+      deterministicOutputs: {
+        message: "Hello.",
+      },
+      env: {},
+    });
+
+    expect(profile).toMatchObject({
+      graph_vm: "pi",
+      model_provider: "scripted",
+      model: "deterministic-output",
+      thinking: "off",
+    });
+  });
+
   test("rejects model providers and single-run harnesses as graph VMs", () => {
     expect(() =>
       resolveRuntimeProfile({

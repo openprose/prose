@@ -649,22 +649,28 @@ Checks:
 
 ## P2: API And Ergonomics
 
-### [todo] Runtime-profile CLI ergonomics are env-heavy
+### [done] Runtime-profile CLI ergonomics are env-heavy
 
 Finding: `prose run` and `prose remote execute` can select `--graph-vm pi`, but
 model provider/model/thinking/session persistence are primarily configured by
 environment. That is safe for now but can feel hidden.
 
-Proposed fix:
+Resolved:
 
-- decide whether to add explicit `--model-provider`, `--model`, `--thinking`,
-  and `--persist-sessions` flags
-- keep env vars as CI-friendly defaults
-- ensure flags never reintroduce model providers as graph VMs
+- added explicit `--model-provider`, `--model`, `--thinking`, `--tools`,
+  `--persist-sessions`, and `--no-persist-sessions` flags for run, eval,
+  preflight, and remote execute commands
+- kept `OPENPROSE_PI_*` environment variables as CI-friendly defaults
+- preserved deterministic `--output` behavior as scripted Pi even when model
+  flags are present
+- updated help text, command sidecars, and inference docs around the new
+  runtime-profile surface
 
 Checks:
 
 - `bun test test/runtime-profiles.test.ts test/cli-ux.test.ts test/run-entrypoint.test.ts`
+- `bun test test/runtime-profiles.test.ts test/run-entrypoint.test.ts test/cli-ux.test.ts test/source-tooling.test.ts`
+- `bun run typecheck`
 
 ### [done] Trace telemetry may omit cost/token details that Pi exposes
 

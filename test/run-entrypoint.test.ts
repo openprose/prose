@@ -897,6 +897,15 @@ kind: program
       fixturePath("compiler/pipeline.prose.md"),
       "--graph-vm",
       "pi",
+      "--model-provider",
+      "openrouter",
+      "--model",
+      "google/gemini-3-flash-preview",
+      "--thinking",
+      "low",
+      "--tools",
+      "write,read",
+      "--no-persist-sessions",
       "--run-root",
       runRoot,
       "--run-id",
@@ -910,6 +919,14 @@ kind: program
       graph_vm: "pi",
       status: "blocked",
       plan_status: "blocked",
+      runtime_profile: {
+        graph_vm: "pi",
+        model_provider: "openrouter",
+        model: "google/gemini-3-flash-preview",
+        thinking: "low",
+        tools: ["read", "write"],
+        persist_sessions: false,
+      },
     });
   });
 });

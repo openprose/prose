@@ -20,7 +20,17 @@ through an internal scripted Pi session:
 bun run prose run "$ARGUMENTS" --graph-vm pi --output port=value
 ```
 
-For live inference, set the `OPENPROSE_PI_*` runtime profile environment
-variables before running.
+For live inference, prefer explicit runtime profile flags when running
+interactively:
+
+```bash
+bun run prose run "$ARGUMENTS" --graph-vm pi \
+  --model-provider openrouter \
+  --model google/gemini-3-flash-preview \
+  --thinking low
+```
+
+The `OPENPROSE_PI_*` environment variables remain useful for CI and repeated
+local defaults.
 
 If no file is specified, look for `.prose.md` files in the current directory and ask which one to run.

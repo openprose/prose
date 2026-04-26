@@ -39,9 +39,10 @@ These surfaces share one model:
 - package and hosted metadata as projections over the same executable contract
 
 `remote execute` keeps deterministic `--output` fixtures for repeatable hosted
-contract tests. Real hosted workers can select `--graph-vm pi` and provide the
-Pi runtime profile through environment variables, so the remote envelope path
-does not silently become a separate runtime architecture.
+contract tests. Real hosted workers can select `--graph-vm pi` and pass
+`--model-provider`, `--model`, and `--thinking` flags, or provide the same Pi
+runtime profile through environment variables. The remote envelope path does
+not silently become a separate runtime architecture.
 
 ## What the Current Patterns Buy Us
 

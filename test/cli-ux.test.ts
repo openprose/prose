@@ -21,6 +21,8 @@ describe("OpenProse CLI UX", () => {
     expect(stdout).toContain("handoff");
     expect(stdout).toContain("OpenRouter");
     expect(stdout).toContain("--graph-vm pi");
+    expect(stdout).toContain("--model-provider");
+    expect(stdout).toContain("--no-persist-sessions");
     expect(stdout).not.toContain("--provider fixture");
     expect(stdout).not.toContain("prose fixture");
   });

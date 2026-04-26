@@ -52,12 +52,12 @@ example exists to keep honest.
 Use this when you have a funded OpenRouter key:
 
 ```bash
-OPENPROSE_PI_MODEL_PROVIDER=openrouter \
-OPENPROSE_PI_MODEL_ID=google/gemini-3-flash-preview \
 OPENPROSE_PI_API_KEY="$OPENROUTER_API_KEY" \
-OPENPROSE_PI_THINKING_LEVEL=low \
 bun run prose run examples/north-star/lead-program-designer.prose.md \
   --graph-vm pi \
+  --model-provider openrouter \
+  --model google/gemini-3-flash-preview \
+  --thinking low \
   --run-root /tmp/openprose-live-inference/runs \
   --run-id openrouter-pi-lead-program \
   --input lead_profile='{"company":"Acme Robotics","pain":"manual handoffs between AI pilots and production workflows","buyer":"VP Operations"}' \
@@ -70,7 +70,10 @@ sessions while live runs exercise the real harness boundary.
 Check live readiness before spending inference:
 
 ```bash
-bun run prose preflight examples/north-star/lead-program-designer.prose.md
+bun run prose preflight examples/north-star/lead-program-designer.prose.md \
+  --model-provider openrouter \
+  --model google/gemini-3-flash-preview \
+  --thinking low
 ```
 
 Preflight classifies scripted Pi, live model profile, live auth, session
@@ -89,8 +92,9 @@ It uses the same runtime vocabulary as `prose run`:
 
 - deterministic `--output` values run through the internal scripted Pi session
   used by contract tests
-- real remote workers can pass `--graph-vm pi` and configure model providers
-  through the Pi runtime profile environment
+- real remote workers can pass `--graph-vm pi`, `--model-provider`, `--model`,
+  and `--thinking`, or set the same values through the Pi runtime profile
+  environment
 
 That keeps the hosted boundary honest: remote workers get a stable envelope
 without turning hosted execution into a second runtime model.

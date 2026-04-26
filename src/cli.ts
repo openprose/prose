@@ -20,6 +20,7 @@ import { renderCatalogSearchText, searchCatalog } from "./search";
 import { renderStatusText, statusPath } from "./status";
 import { renderTraceText, traceFile } from "./trace";
 import type { RunRecord } from "./types";
+import type { RuntimeProfileInput } from "./runtime";
 
 export async function runCli(args: string[]): Promise<void> {
   const [command, ...rest] = args;
@@ -90,6 +91,7 @@ export async function runCli(args: string[]): Promise<void> {
         approvedEffects: options.approvedEffects,
         trigger: options.trigger,
         graphVm: options.graphVm ?? undefined,
+        runtimeProfile: options.runtimeProfile,
       });
       const summary = {
         eval_id: result.eval_record.eval_id,
@@ -151,6 +153,7 @@ export async function runCli(args: string[]): Promise<void> {
         approvedEffects: options.approvedEffects,
         trigger: options.trigger,
         graphVm: options.graphVm ?? undefined,
+        runtimeProfile: options.runtimeProfile,
         componentRef: options.componentRef,
         packageMetadataPath: options.packageMetadataPath,
       });
@@ -202,6 +205,7 @@ export async function runCli(args: string[]): Promise<void> {
         advisoryEvals: options.advisoryEvals,
         trigger: options.trigger,
         graphVm: options.graphVm ?? undefined,
+        runtimeProfile: options.runtimeProfile,
         currentRunPath: options.currentRunPath ?? undefined,
         targetOutputs: options.targetOutputs,
       });
@@ -431,7 +435,9 @@ export async function runCli(args: string[]): Promise<void> {
   }
 
   if (command === "preflight") {
-    const result = await preflightPath(options.file);
+    const result = await preflightPath(options.file, {
+      runtimeProfile: options.runtimeProfile,
+    });
     const output =
       options.format === "json"
         ? `${JSON.stringify(result, null, options.pretty ? 2 : 0)}\n`
@@ -624,6 +630,7 @@ interface FileCommandArgs {
   advisoryEvals: string[];
   trigger: RunRecord["caller"]["trigger"];
   graphVm: string | null;
+  runtimeProfile: RuntimeProfileInput;
   deprecatedProvider: string | null;
 }
 
@@ -641,6 +648,7 @@ interface RemoteCommandArgs {
   approvedEffects: string[];
   trigger: RunRecord["caller"]["trigger"];
   graphVm: string | null;
+  runtimeProfile: RuntimeProfileInput;
   deprecatedProvider: string | null;
 }
 
@@ -785,6 +793,7 @@ function parseFileCommandArgs(args: string[]): FileCommandArgs {
     advisoryEvals: [],
     trigger: "manual",
     graphVm: null,
+    runtimeProfile: {},
     deprecatedProvider: null,
   };
 
@@ -926,6 +935,34 @@ function parseFileCommandArgs(args: string[]): FileCommandArgs {
       index += 1;
       continue;
     }
+    if (arg === "--model-provider") {
+      parsed.runtimeProfile.model_provider = args[index + 1] ?? null;
+      index += 1;
+      continue;
+    }
+    if (arg === "--model") {
+      parsed.runtimeProfile.model = args[index + 1] ?? null;
+      index += 1;
+      continue;
+    }
+    if (arg === "--thinking") {
+      parsed.runtimeProfile.thinking = args[index + 1] ?? null;
+      index += 1;
+      continue;
+    }
+    if (arg === "--tools") {
+      parsed.runtimeProfile.tools = parseToolList(args[index + 1]);
+      index += 1;
+      continue;
+    }
+    if (arg === "--persist-sessions") {
+      parsed.runtimeProfile.persist_sessions = true;
+      continue;
+    }
+    if (arg === "--no-persist-sessions") {
+      parsed.runtimeProfile.persist_sessions = false;
+      continue;
+    }
     if (arg === "--provider") {
       parsed.deprecatedProvider = args[index + 1] ?? "";
       index += 1;
@@ -964,6 +1001,7 @@ function parseRemoteCommandArgs(args: string[]): RemoteCommandArgs {
     approvedEffects: [],
     trigger: "manual",
     graphVm: null,
+    runtimeProfile: {},
     deprecatedProvider: null,
   };
 
@@ -1012,6 +1050,34 @@ function parseRemoteCommandArgs(args: string[]): RemoteCommandArgs {
       index += 1;
       continue;
     }
+    if (arg === "--model-provider") {
+      parsed.runtimeProfile.model_provider = args[index + 1] ?? null;
+      index += 1;
+      continue;
+    }
+    if (arg === "--model") {
+      parsed.runtimeProfile.model = args[index + 1] ?? null;
+      index += 1;
+      continue;
+    }
+    if (arg === "--thinking") {
+      parsed.runtimeProfile.thinking = args[index + 1] ?? null;
+      index += 1;
+      continue;
+    }
+    if (arg === "--tools") {
+      parsed.runtimeProfile.tools = parseToolList(args[index + 1]);
+      index += 1;
+      continue;
+    }
+    if (arg === "--persist-sessions") {
+      parsed.runtimeProfile.persist_sessions = true;
+      continue;
+    }
+    if (arg === "--no-persist-sessions") {
+      parsed.runtimeProfile.persist_sessions = false;
+      continue;
+    }
     if (arg === "--provider") {
       parsed.deprecatedProvider = args[index + 1] ?? "";
       index += 1;
@@ -1053,6 +1119,13 @@ function addKeyValue(target: Record<string, string>, raw: string | undefined): v
     return;
   }
   target[raw.slice(0, separator)] = raw.slice(separator + 1);
+}
+
+function parseToolList(raw: string | undefined): string[] {
+  return (raw ?? "")
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
 }
 
 function parseTrigger(value: string | undefined): RunRecord["caller"]["trigger"] {
@@ -1112,10 +1185,10 @@ Usage:
   prose highlight <file.prose.md> [--format text|json|html]
   prose lint <file.prose.md|dir> [--format text|json]
   prose plan <file.prose.md> [--input name=value] [--current-run .prose/runs/{id}] [--target-output final] [--approved-effect delivers]
-  prose run <file.prose.md> [--graph-vm pi] [--run-root .prose/runs] [--input name=value] [--output port=value] [--approved-effect delivers] [--approval approval.json] [--required-eval eval.prose.md]
+  prose run <file.prose.md> [--graph-vm pi] [--model-provider openrouter] [--model model-id] [--thinking low] [--run-root .prose/runs] [--input name=value] [--output port=value] [--approved-effect delivers] [--approval approval.json] [--required-eval eval.prose.md]
   prose preflight <file.prose.md> [--format text|json]
   prose publish-check <dir|file.prose.md> [--format text|json] [--strict]
-  prose remote execute <file.prose.md> [--graph-vm pi] [--out-dir .openprose/remote-runs] [--run-id id] [--input name=value] [--output port=value] [--approved-effect delivers]
+  prose remote execute <file.prose.md> [--graph-vm pi] [--model-provider openrouter] [--model model-id] [--thinking low] [--out-dir .openprose/remote-runs] [--run-id id] [--input name=value] [--output port=value] [--approved-effect delivers]
   prose search <dir> [--type CompanyProfile] [--effect read_external] [--kind service] [--min-quality 0.8]
   prose status [.prose/runs] [--limit 10] [--format text|json]
   prose trace <.prose/runs/{id}|run.json> [--format text|json]
@@ -1130,6 +1203,14 @@ Runtime:
   providers such as OpenRouter are configured under the Pi runtime profile.
   Deterministic --output values run through an internal scripted Pi session for
   tests and examples.
+
+Runtime profile flags:
+  --model-provider name    Override OPENPROSE_PI_MODEL_PROVIDER for this command
+  --model id              Override OPENPROSE_PI_MODEL_ID for this command
+  --thinking level        Override OPENPROSE_PI_THINKING_LEVEL (off|minimal|low|medium|high|xhigh)
+  --tools read,write      Override OPENPROSE_PI_TOOLS
+  --persist-sessions      Persist Pi sessions for node attempts
+  --no-persist-sessions   Disable Pi session persistence for this command
 
 Commands:
   compile      Compile Contract Markdown to canonical Prose IR JSON
