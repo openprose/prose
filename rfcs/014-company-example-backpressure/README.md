@@ -84,6 +84,11 @@ changes:
 The fuller runtime-change plan is in
 [`pi-runtime-changes.md`](pi-runtime-changes.md).
 
+The implementation-readiness scan is in
+[`implementation-readiness.md`](implementation-readiness.md). It records what
+to keep, what to delete, and why implementation should start with Phase 02
+before the example suite grows.
+
 ## Company Source Material Reviewed
 
 - `customers/prose-openprose/README.md`
@@ -136,6 +141,7 @@ mutation.
 
 ## Phase Tree
 
+- [`phases/README.md`](phases/README.md)
 - [`phases/01-example-ladder-and-fixtures`](phases/01-example-ladder-and-fixtures/)
 - [`phases/02-pi-first-runtime-backpressure`](phases/02-pi-first-runtime-backpressure/)
 - [`phases/03-simple-company-graphs`](phases/03-simple-company-graphs/)

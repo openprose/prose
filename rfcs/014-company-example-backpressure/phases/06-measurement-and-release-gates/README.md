@@ -29,7 +29,7 @@ Commit:
 
 Signpost:
 
-- Add `signposts/021-north-star-measurements.md`.
+- Add `signposts/026-north-star-measurements.md`.
 
 ## 06.2 Add Live Pi Smoke Ladder
 
@@ -57,7 +57,7 @@ Commit:
 
 Signpost:
 
-- Add `signposts/022-live-pi-smoke-ladder.md` with exact commands and observed
+- Add `signposts/027-live-pi-smoke-ladder.md` with exact commands and observed
   model/cost posture.
 
 ## 06.3 Add Confidence Matrix Integration
@@ -81,7 +81,7 @@ Commit:
 
 Signpost:
 
-- Add `signposts/023-confidence-matrix-integration.md`.
+- Add `signposts/028-confidence-matrix-integration.md`.
 
 ## 06.4 Update Docs And Diagrams
 
@@ -104,4 +104,4 @@ Commit:
 
 Signpost:
 
-- Add `signposts/024-docs-and-diagrams.md`.
+- Add `signposts/029-docs-and-diagrams.md`.

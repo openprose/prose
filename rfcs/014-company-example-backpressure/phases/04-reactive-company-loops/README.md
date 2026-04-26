@@ -32,7 +32,7 @@ Commit:
 
 Signpost:
 
-- Add `signposts/015-stargazer-intake-lite.md` with idempotence evidence.
+- Add `signposts/020-stargazer-intake-lite.md` with idempotence evidence.
 
 ## 04.2 Implement `opportunity-discovery-lite`
 
@@ -61,7 +61,7 @@ Commit:
 
 Signpost:
 
-- Add `signposts/016-opportunity-discovery-lite.md` with seeded-bad failures.
+- Add `signposts/021-opportunity-discovery-lite.md` with seeded-bad failures.
 
 ## 04.3 Add Reactive Loop Measurements
 
@@ -86,4 +86,4 @@ Commit:
 
 Signpost:
 
-- Add `signposts/017-reactive-loop-measurements.md`.
+- Add `signposts/022-reactive-loop-measurements.md`.

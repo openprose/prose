@@ -27,7 +27,7 @@ Commit:
 
 Signpost:
 
-- Add `signposts/012-company-signal-brief.md` with sample output and live-smoke
+- Add `signposts/017-company-signal-brief.md` with sample output and live-smoke
   instructions.
 
 ## 03.2 Implement `lead-program-designer`
@@ -58,7 +58,7 @@ Commit:
 
 Signpost:
 
-- Add `signposts/013-lead-program-designer.md` with graph and recompute
+- Add `signposts/018-lead-program-designer.md` with graph and recompute
   evidence.
 
 ## 03.3 Promote Simple Examples Into Measurements
@@ -81,5 +81,5 @@ Commit:
 
 Signpost:
 
-- Add `signposts/014-simple-example-measurements.md` with measurement output
+- Add `signposts/019-simple-example-measurements.md` with measurement output
   paths.

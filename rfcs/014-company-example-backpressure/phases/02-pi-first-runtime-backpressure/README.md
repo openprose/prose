@@ -36,6 +36,29 @@ Signpost:
 - Add `signposts/005-runtime-layer-boundary.md` with old names, new names,
   and platform follow-up notes.
 
+## 02.1B Preserve Determinism As Test Infrastructure
+
+Build:
+
+- Move deterministic execution helpers into scripted Pi-session test support.
+- Remove `fixture` from public runtime language.
+- Ensure scripted sessions can emit lifecycle events, tool events, output
+  submissions, model errors, timeouts, aborts, and retries.
+
+Tests:
+
+- Add scripted Pi helper tests.
+- Migrate provider tests that only need determinism.
+- Run `bun run typecheck`.
+
+Commit:
+
+- Commit as `test: replace fixture provider with scripted pi sessions`.
+
+Signpost:
+
+- Add `signposts/006-scripted-pi-tests.md`.
+
 ## 02.2 Introduce Runtime Profiles
 
 Build:
@@ -66,7 +89,7 @@ Commit:
 
 Signpost:
 
-- Add `signposts/006-runtime-profiles.md` with example local and live Pi
+- Add `signposts/007-runtime-profiles.md` with example local and live Pi
   profiles.
 
 ## 02.3 Make Pi The Reactive Graph VM
@@ -95,7 +118,7 @@ Commit:
 
 Signpost:
 
-- Add `signposts/007-pi-graph-vm.md` with session layout and trace examples.
+- Add `signposts/008-pi-graph-vm.md` with session layout and trace examples.
 
 ## 02.4 Define The Pi Node Prompt Envelope
 
@@ -121,7 +144,7 @@ Commit:
 
 Signpost:
 
-- Add `signposts/008-pi-node-envelope.md` with a representative redacted
+- Add `signposts/009-pi-node-envelope.md` with a representative redacted
   prompt envelope.
 
 ## 02.5 Add Structured Output Submission
@@ -150,7 +173,7 @@ Commit:
 
 Signpost:
 
-- Add `signposts/009-pi-output-tool.md` with prompt/tool examples and failure
+- Add `signposts/010-pi-output-tool.md` with prompt/tool examples and failure
   modes.
 
 ## 02.6 Capture Runtime Telemetry
@@ -176,7 +199,7 @@ Commit:
 
 Signpost:
 
-- Add `signposts/010-pi-telemetry.md` with a sample trace excerpt.
+- Add `signposts/011-pi-telemetry.md` with a sample trace excerpt.
 
 ## 02.7 Gate Before Session Launch
 
@@ -202,4 +225,4 @@ Commit:
 
 Signpost:
 
-- Add `signposts/011-pre-session-gates.md`.
+- Add `signposts/012-pre-session-gates.md`.

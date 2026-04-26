@@ -29,7 +29,7 @@ Commit:
 
 Signpost:
 
-- Add `signposts/018-release-proposal-dry-run.md` with approval behavior.
+- Add `signposts/023-release-proposal-dry-run.md` with approval behavior.
 
 ## 05.2 Implement `customer-repo-scaffold-preview`
 
@@ -57,7 +57,7 @@ Commit:
 
 Signpost:
 
-- Add `signposts/019-customer-repo-scaffold-preview.md` with temp workspace
+- Add `signposts/024-customer-repo-scaffold-preview.md` with temp workspace
   output tree.
 
 ## 05.3 Harden Effect Policy Backpressure
@@ -83,4 +83,4 @@ Commit:
 
 Signpost:
 
-- Add `signposts/020-effect-policy-backpressure.md`.
+- Add `signposts/025-effect-policy-backpressure.md`.

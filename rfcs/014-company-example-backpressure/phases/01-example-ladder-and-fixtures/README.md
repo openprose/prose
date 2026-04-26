@@ -26,7 +26,7 @@ Commit:
 
 Signpost:
 
-- Add `signposts/001-example-ladder.md` with the final example list and any
+- Add `signposts/013-example-package-placement.md` with the final example list and any
   renamed examples.
 
 ## 01.2 Create Fixture Corpus
@@ -56,7 +56,7 @@ Commit:
 
 Signpost:
 
-- Add `signposts/002-fixture-corpus.md` with fixture coverage and known gaps.
+- Add `signposts/014-fixture-corpus.md` with fixture coverage and known gaps.
 
 ## 01.3 Define Example Quality Rubrics
 
@@ -80,7 +80,7 @@ Commit:
 
 Signpost:
 
-- Add `signposts/003-example-eval-rubrics.md` with which evals are executable
+- Add `signposts/015-example-eval-rubrics.md` with which evals are executable
   and which are placeholders.
 
 ## 01.4 Add Scripted Pi Session Test Double
@@ -107,6 +107,5 @@ Commit:
 
 Signpost:
 
-- Add `signposts/004-scripted-pi-helper.md` explaining how deterministic
+- Add `signposts/016-scripted-pi-scenarios.md` explaining how deterministic
   runtime tests avoid a public fake runtime.
-

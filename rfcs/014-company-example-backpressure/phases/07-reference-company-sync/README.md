@@ -24,7 +24,7 @@ Commit:
 
 Signpost:
 
-- Add `signposts/025-company-crosswalk.md`.
+- Add `signposts/030-company-crosswalk.md`.
 
 ## 07.2 Update Company Source Patterns
 
@@ -51,7 +51,7 @@ Commit:
 
 Signpost:
 
-- Add `signposts/026-company-source-sync.md` in the OSS RFC and, if the
+- Add `signposts/031-company-source-sync.md` in the OSS RFC and, if the
   customer repo has its own planning area, mirror the summary there.
 
 ## 07.3 Promote Golden Runs Carefully
@@ -75,4 +75,4 @@ Commit:
 
 Signpost:
 
-- Add `signposts/027-golden-run-promotion.md`.
+- Add `signposts/032-golden-run-promotion.md`.
