@@ -25,14 +25,23 @@ This phase tree is implementation order, not just document order.
 
 ## Implementation Discipline
 
-Each slice must include:
+Every slice must be treated as a checkpoint. Do not batch multiple slices into
+one large commit unless the earlier slice is impossible to verify on its own.
 
-- code or docs change
-- focused test
-- broader test command where feasible
-- signpost
-- commit
-- push
+### Per-Slice Checklist
+
+1. Re-read the current phase README and implementation guide.
+2. State the slice being started in the working notes or signpost draft.
+3. Make the smallest coherent code/docs change for that slice.
+4. Run the focused tests named by the slice.
+5. Run broader backpressure:
+   - `bun run typecheck`
+   - `bun test` when feasible
+   - any package/confidence command named by the slice
+6. Add a signpost in `rfcs/014-company-example-backpressure/signposts/`.
+7. Commit with the slice message or a narrower message.
+8. Push the branch.
+9. Begin the next slice only after the repository is clean.
 
 If a slice intentionally breaks old provider tests while deleting obsolete
 architecture, the signpost must say which replacement tests restore coverage in

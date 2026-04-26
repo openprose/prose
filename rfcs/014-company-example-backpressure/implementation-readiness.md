@@ -128,12 +128,22 @@ They should not rely on public `--provider fixture`.
 
 ## Commit And Signpost Rule
 
-After every code slice:
+After every code or documentation slice:
 
-1. Add or update a signpost in `rfcs/014-company-example-backpressure/signposts/`.
-2. Record files changed, tests run, and next slice.
-3. Commit with a narrow message.
-4. Push the branch.
+1. Run the focused tests named by the slice.
+2. Run broader checks where feasible:
+   - `bun run typecheck`
+   - `bun test`
+   - package/confidence scripts named by the slice
+3. Add or update a signpost in `rfcs/014-company-example-backpressure/signposts/`.
+4. Record files changed, tests run, tests intentionally not run, and next slice.
+5. Commit with a narrow message.
+6. Push the branch.
+7. Confirm the repo is clean before starting the next slice.
+
+If a deletion/refactor slice temporarily breaks tests because the replacement
+test harness lands in the immediately following slice, the signpost must name
+the broken tests and the slice that restores coverage.
 
 ## Open Questions
 
