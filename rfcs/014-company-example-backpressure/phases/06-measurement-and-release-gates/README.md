@@ -47,7 +47,7 @@ Tests:
 
 - Live tests are opt-in and skipped by default.
 - When env vars are present, smoke writes run artifacts and measurement report.
-- Failure surfaces model/provider/auth errors distinctly.
+- Failure surfaces model provider, auth, graph VM, and runtime-contract errors distinctly.
 - Run `bun run typecheck`.
 - Run full deterministic suite.
 

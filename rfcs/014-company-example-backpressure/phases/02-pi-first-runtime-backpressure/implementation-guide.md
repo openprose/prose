@@ -6,7 +6,7 @@ OpenProse.
 
 ## 02.1A Inventory And Delete Public Provider Entrypoints
 
-Files to inspect:
+Original files to inspect during the deletion slice:
 
 - `src/providers/protocol.ts`
 - `src/providers/registry.ts`
@@ -55,8 +55,8 @@ Implementation:
 
 - Move deterministic output scripting into Pi-session-shaped test helpers.
 - Ensure the helper emits realistic Pi lifecycle/tool events.
-- Replace tests that pass `provider: "fixture"` with injected scripted Pi graph
-  runtime/session factories.
+- Replace tests that pass old fixture runtime options with injected scripted Pi
+  graph runtime/session factories.
 
 Tests:
 
@@ -67,7 +67,7 @@ Tests:
 
 Commit:
 
-- `test: replace fixture provider with scripted pi sessions`
+- `test: replace fixture runtime with scripted pi sessions`
 
 Signpost:
 
@@ -127,7 +127,7 @@ Files to create or reshape:
 
 Implementation:
 
-- Replace `RuntimeProvider.execute(request)` inside graph execution with a
+- Replace old runtime-provider execution inside graph execution with a
   `ReactiveGraphRuntime.executeNode(request)` boundary.
 - Make the Pi graph VM execute each stale selected node.
 - Persist one Pi session per executed node under the OpenProse run directory.
@@ -234,7 +234,7 @@ Implementation:
 
 - Normalize Pi events into OpenProse events:
   - session start/end
-  - model/provider/model id
+  - graph VM, model provider, and model id
   - assistant message
   - tool start/end
   - output submission

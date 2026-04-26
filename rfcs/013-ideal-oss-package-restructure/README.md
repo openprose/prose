@@ -1,6 +1,6 @@
 # RFC 013: Ideal OSS Package Restructure
 
-**Status:** Implemented as local runtime release candidate
+**Status:** Implemented / historical
 **Date:** 2026-04-25
 **Scope:** `openprose/prose` open-source package
 
@@ -13,7 +13,7 @@ The current package has a strong compiler, graph preview, planner, package
 metadata surface, local run materialization format, and hosted runner envelope.
 Those pieces prove the design spine. They do not yet form the ideal package.
 
-The ideal package should be reorganized around one core loop:
+The ideal package has been reorganized around one core loop:
 
 ```text
 source package
@@ -21,7 +21,7 @@ source package
   -> typed/effect/policy analysis
   -> deterministic graph plus accepted intelligent proposals
   -> reactive plan
-  -> meta-harness execution through provider sessions
+  -> meta-harness execution through graph node sessions
   -> validated artifacts
   -> durable run store
   -> eval acceptance and current/latest pointers
@@ -75,11 +75,29 @@ restructure:
 Remaining work should be treated as follow-up, not as unimplemented RFC 013
 foundation:
 
-- live Pi provider smoke once credentials/cost posture is acceptable
+- live Pi smoke once credentials/cost posture is acceptable
 - future single-run harness adapters after they prove they can satisfy the
-  node execution contract cleanly
+  node-runner contract cleanly
 - richer schema/policy engines beyond the release-candidate minimum
 - platform Workstream 03 adaptation to the finalized OSS contracts
+
+## Supersession Note
+
+RFC 013 predates the final vocabulary split. Historical sections below may
+still mention provider protocols, fixture providers, local-process providers,
+or provider sessions. Do not implement those literally.
+
+The current active vocabulary is:
+
+- graph VM: Pi-backed reactive graph execution substrate
+- node runner: per-node execution adapter used by the meta-harness
+- model provider: OpenRouter or another inference provider inside the Pi
+  runtime profile
+- producer: graph component that produces an output port
+- artifact storage backend: local store or future object/object-storage
+  backend
+
+Use RFC 014 and its signposts for active implementation decisions.
 
 ## Original Package Scan
 
@@ -110,7 +128,7 @@ as final module boundaries.
 
 This section is retained as the original pre-implementation scan. The current
 status is summarized above; later RFC 014 slices replaced the fixture-provider
-and direct-chat scaffolding with Pi-first runtime support.
+and direct-chat scaffolding with Pi-first graph VM and node-runner support.
 
 The current implementation falls short of the North Star in specific ways:
 

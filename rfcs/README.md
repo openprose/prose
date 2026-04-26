@@ -21,11 +21,11 @@ The current architecture is defined by:
 Together these define the direction: canonical `.prose.md` source compiles to
 IR, IR materializes into immutable runs, reactive graph nodes point at accepted
 current runs, hosted registries ingest generated metadata, and hosted runtimes
-use an OSS-owned runner/artifact contract rather than host-specific execution
-protocols. RFC 013 captures the next restructuring pass needed to turn the
-validated prototypes into the ideal local framework and meta-harness; that pass
-is now implemented as the local runtime release candidate. RFC 014 defines the
-Pi-backed graph VM changes and real-world example ladder that should
+use an OSS-owned run/artifact contract rather than host-specific execution
+protocols. RFC 013 captured the first broad restructuring pass and is now a
+historical implementation record. RFC 014 is the active OSS runtime spine:
+Pi is the reactive graph VM, per-node execution happens through node runners,
+model providers live inside the Pi runtime profile, and real-world examples
 backpressure the package as it becomes the ideal React-like framework for agent
 outcomes.
 
@@ -45,5 +45,5 @@ outcomes.
 | 010: Source Format and Tooling | Draft/current | `.prose.md`, syntax highlighting, formatter, linter, graph preview, and trace overlays. |
 | 011: Registry Metadata and Package Quality | Draft/current | Git-native packages plus hosted catalog/search/quality metadata. |
 | 012: Hosted Runtime Contract and Artifact Semantics | In implementation | Host-neutral remote runner contract, result envelope, artifact semantics, registry metadata ingest contract, provenance fields, and std quality ratchet. Runner/envelope/artifact manifest landed in note 030; metadata v2 and std strict readiness landed in note 031. |
-| 013: Ideal OSS Package Restructure | Implemented as release candidate | Phase tree completed through signpost 042. `prose run`, provider-backed local execution, evals, hosted fixtures, package metadata, docs, and the confidence matrix are in place. Remaining follow-up belongs either to platform Workstream 03 or future provider integrations such as live Pi. |
+| 013: Ideal OSS Package Restructure | Implemented / historical | Phase tree completed through signpost 042. `prose run`, local graph execution, evals, hosted fixtures, package metadata, docs, and the confidence matrix are in place. Where RFC 013 mentions flat providers, fixture providers, or provider protocols, treat that wording as superseded by RFC 014's graph VM/node-runner vocabulary. |
 | 014: Company Example Backpressure Suite | Draft/current | Required Pi runtime changes plus graduated real-world examples drawn from `customers/prose-openprose`, designed to pressure single-run portability, Pi-backed reactive graph execution, memory, effect gates, mutating scratch workspaces, evals, measurements, and release confidence. |

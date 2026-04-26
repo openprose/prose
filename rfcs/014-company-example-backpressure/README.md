@@ -20,6 +20,7 @@ stop treating "provider" as one flat concept, and must instead distinguish:
 
 - the harness that can execute one component
 - the Pi SDK-backed graph VM that coordinates many component runs
+- the node runner that executes one selected graph node
 - the model provider used inside that VM, such as OpenRouter
 - the model and reasoning posture selected per run or node
 - the durable OpenProse run store that materializes node outcomes
@@ -63,8 +64,8 @@ The examples in this RFC are deliberately chosen to force these OSS package
 changes:
 
 1. Replace the flat public `provider` model with explicit runtime layers:
-   single-run harness, reactive graph VM, model provider, model, tools, and
-   persistence.
+   single-run harness, reactive graph VM, node runner, model provider, model,
+   tools, and persistence.
 2. Promote Pi SDK from "one possible provider" into the default graph VM for
    reactive execution.
 3. Introduce a Pi session factory owned by OpenProse, with one persisted
@@ -80,6 +81,20 @@ changes:
    creates no stray agent state.
 8. Keep deterministic scripted Pi sessions internal to tests; do not expose a
    fake runtime as an author-facing provider.
+
+## Current Vocabulary
+
+Active source, tests, fixtures, and hosted envelopes now use:
+
+- `graph_vm` for the reactive execution substrate.
+- `node_runner` / `node_run_*` for per-node execution requests, results, and
+  sessions.
+- `model_provider` for inference routing inside the Pi runtime profile.
+- producer for graph components that produce output ports.
+- storage backend for artifact storage implementation details.
+
+Older RFC 013 signposts may still use provider-era wording as historical
+evidence; do not use them as current API guidance.
 
 The fuller runtime-change plan is in
 [`pi-runtime-changes.md`](pi-runtime-changes.md).

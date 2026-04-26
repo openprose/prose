@@ -12,6 +12,7 @@ OpenProse should model these axes separately:
 | --- | --- | --- |
 | Single-run harness | Something that can execute one component/run. | Keep the source model portable; implement only what is useful now. |
 | Reactive graph VM | The substrate used by OpenProse to coordinate many node runs. | Pi SDK. |
+| Node runner | The per-node adapter the meta-harness invokes for one selected graph node. | Pi-backed node runner plus scripted Pi tests. |
 | Model provider | Where inference comes from inside the VM. | OpenRouter first for local smoke, others later. |
 | Model | The specific model used for a run or node. | Runtime profile default with optional node override. |
 | Tools | Capabilities exposed to a node session. | Start with OpenProse output/effect submission. |
@@ -51,7 +52,7 @@ OpenProse should own a graph runtime boundary roughly shaped like:
 
 ```ts
 interface ReactiveGraphRuntime {
-  executeNode(request: NodeExecutionRequest): Promise<NodeExecutionResult>;
+  executeNode(request: NodeRunRequest): Promise<NodeRunResult>;
 }
 ```
 
@@ -60,7 +61,8 @@ The first real implementation is Pi-backed:
 ```text
 OpenProse planner
   -> selected stale graph node
-  -> PiGraphRuntime
+  -> Pi graph VM
+  -> Pi node runner
   -> PiSessionFactory
   -> persisted Pi session
   -> typed OpenProse run materialization
@@ -128,7 +130,7 @@ primary way a graph node tells OpenProse what it produced.
 Pi events should become OpenProse trace events:
 
 - session started/ended
-- model/provider/model id
+- graph VM, model provider, and model id
 - assistant message
 - tool call start/end
 - output submission
@@ -150,7 +152,7 @@ materialized in stray agent state.
 
 Deterministic tests should use scripted Pi sessions that mimic the Pi
 `AgentSession` surface OpenProse uses. This is a test double, not a public
-runtime provider.
+runtime node runner.
 
 ## Anti-Goals
 

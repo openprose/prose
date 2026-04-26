@@ -18,8 +18,8 @@ The current package already has the hard parts that should be preserved:
 - a Pi SDK integration spike that can create sessions, subscribe to events,
   select models, and persist session files
 
-The current package also has older experiments that should be removed or
-collapsed before they shape the next runtime:
+The original package scan found older experiments that needed to be removed or
+collapsed before they shaped the next runtime:
 
 - public `provider` as a flat graph-runtime concept
 - public `fixture` as a runtime/provider
@@ -37,10 +37,10 @@ Useful foundations:
 | --- | --- | --- |
 | Compiler and IR | `src/compiler.ts`, `src/types.ts`, `src/ir/*` | Keep. Add runtime profile/package metadata changes. |
 | Planner | `src/plan.ts`, `src/graph.ts` | Keep. Later add richer stale reasons from runtime profiles and memory artifacts. |
-| Run materialization | `src/run.ts`, `src/runtime/*`, `src/store/*` | Keep core behavior. Rename provider-shaped seams to runtime/node execution. |
+| Run materialization | `src/run.ts`, `src/runtime/*`, `src/store/*` | Keep core behavior. Rename provider-shaped seams to graph VM/node runner/producer vocabulary. |
 | Policy gates | `src/policy/*`, graph blocked-effect planning | Keep. Strengthen pre-session gate tests. |
-| Pi spike | `src/providers/pi.ts`, `test/pi-provider.test.ts` | Reshape into Pi graph VM and structured output tool. |
-| Test harness | object-injected `RuntimeProvider` tests | Keep the pattern, but rename to scripted Pi session helpers. |
+| Pi spike | `src/node-runners/pi.ts`, `test/pi-node-runner.test.ts` | Reshaped into Pi node runner plus structured output tool. |
+| Test harness | object-injected `NodeRunner` tests | Keep the pattern as scripted Pi session helpers. |
 
 Warts to remove:
 
@@ -102,9 +102,9 @@ test/support/
   runtime-scenarios.ts
 ```
 
-The old `src/providers/` directory should either disappear or become limited to
-single-run harness adapters once those are genuinely needed. It should not own
-reactive graph execution.
+The old `src/providers/` directory should stay gone. Future single-run harness
+adapters should be introduced only when needed and must not own reactive graph
+execution.
 
 ## Testing Posture
 

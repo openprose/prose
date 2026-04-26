@@ -16,7 +16,7 @@ Build:
 - Make OpenRouter and OpenAI-compatible endpoints model-provider choices
   inside the Pi-backed graph VM, not graph runtimes themselves.
 - Keep any deterministic execution helpers internal to tests; do not expose
-  `fixture` as a public runtime/provider.
+  `fixture` as a public runtime.
 
 Tests:
 
@@ -48,12 +48,12 @@ Build:
 Tests:
 
 - Add scripted Pi helper tests.
-- Migrate provider tests that only need determinism.
+- Migrate old runtime tests that only need determinism.
 - Run `bun run typecheck`.
 
 Commit:
 
-- Commit as `test: replace fixture provider with scripted pi sessions`.
+- Commit as `test: replace fixture runtime with scripted pi sessions`.
 
 Signpost:
 
