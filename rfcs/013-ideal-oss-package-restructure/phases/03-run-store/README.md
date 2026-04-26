@@ -127,6 +127,33 @@ Signpost:
 
 - Add `signposts/014-fixture-store-provider.md` with old/new command mapping.
 
+## 03.6 Project Attempts Into Trace Views
+
+Build:
+
+- Make `trace` read adjacent local-store attempt records when available.
+- Project attempt number, status, session presence, diagnostic codes, and
+  failure reason into the trace view.
+- Keep loose run-directory trace loading working for old or exported runs that
+  do not have an adjacent store.
+
+Tests:
+
+- Add trace view/text assertions for attempt summaries.
+- Add CLI trace assertions that attempt context is visible.
+- Run targeted trace/runtime tests.
+- Run `bun test`.
+- Run `bunx tsc --noEmit`.
+
+Commit:
+
+- Commit as `feat: show attempts in trace views`.
+
+Signpost:
+
+- Add `signposts/047-trace-attempt-visibility.md` with the store lookup
+  behavior and test results.
+
 ## Phase Exit Criteria
 
 - Every execution-like path writes through the same local store.

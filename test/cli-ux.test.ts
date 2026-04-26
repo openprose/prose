@@ -69,6 +69,8 @@ describe("OpenProse CLI UX", () => {
     expect(decode(trace.stdout)).toContain(
       "Acceptance reason: No required evals declared.",
     );
+    expect(decode(trace.stdout)).toContain("Attempts:");
+    expect(decode(trace.stdout)).toContain("- #1: succeeded");
 
     expect(graph.exitCode).toBe(0);
     expect(decode(graph.stdout)).toContain("%% OpenProse graph: content-pipeline");

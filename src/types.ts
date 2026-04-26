@@ -801,6 +801,17 @@ export interface TraceNodeView {
   effects: string[];
 }
 
+export interface TraceAttemptView {
+  attempt_id: string;
+  attempt_number: number;
+  status: RunLifecycleStatus;
+  provider_session_ref: string | null;
+  diagnostic_codes: string[];
+  failure: string | null;
+  started_at: string;
+  finished_at: string | null;
+}
+
 export interface TraceView {
   trace_version: "0.1";
   run_id: string;
@@ -816,6 +827,7 @@ export interface TraceView {
   outputs: string[];
   dependencies: string[];
   nodes: TraceNodeView[];
+  attempts: TraceAttemptView[];
   events: TraceEvent[];
 }
 

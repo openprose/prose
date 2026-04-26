@@ -1,6 +1,14 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
-import type { RunRecord, TraceEvent, TraceView } from "./types";
+import { listRunAttemptRecords } from "./store/attempts.js";
+import { readLocalStoreMetadata } from "./store/local.js";
+import type {
+  LocalRunAttemptRecord,
+  RunRecord,
+  TraceAttemptView,
+  TraceEvent,
+  TraceView,
+} from "./types";
 
 export interface TraceOptions {
   path: string;
@@ -23,6 +31,7 @@ export async function traceFile(
 
   const nodeRecords = await loadNodeRecords(runDir);
   const events = await loadTraceEvents(runDir, record.trace_ref);
+  const attempts = await loadTraceAttempts(runDir, record.run_id);
 
   return {
     trace_version: "0.1",
@@ -51,6 +60,7 @@ export async function traceFile(
         effects: node.effects.declared.sort(),
       }))
       .sort((a, b) => a.component_ref.localeCompare(b.component_ref)),
+    attempts: attempts.map(traceAttemptView),
     events,
   };
 }
@@ -93,6 +103,21 @@ export function renderTraceText(trace: TraceView): string {
     }
   }
 
+  if (trace.attempts.length > 0) {
+    lines.push("");
+    lines.push("Attempts:");
+    for (const attempt of trace.attempts) {
+      const diagnostics = attempt.diagnostic_codes.length
+        ? ` diagnostics[${attempt.diagnostic_codes.join(", ")}]`
+        : "";
+      const failure = attempt.failure ? ` failure[${attempt.failure}]` : "";
+      const session = attempt.provider_session_ref ? " session[recorded]" : "";
+      lines.push(
+        `- #${attempt.attempt_number}: ${attempt.status}${diagnostics}${failure}${session}`,
+      );
+    }
+  }
+
   if (trace.events.length > 0) {
     lines.push("");
     lines.push("Events:");
@@ -122,6 +147,44 @@ async function loadNodeRecords(runDir: string): Promise<RunRecord[]> {
     }
     throw error;
   }
+}
+
+async function loadTraceAttempts(
+  runDir: string,
+  runId: string,
+): Promise<LocalRunAttemptRecord[]> {
+  const storeRoot = await findAdjacentStoreRoot(runDir);
+  if (!storeRoot) {
+    return [];
+  }
+  return listRunAttemptRecords(storeRoot, runId);
+}
+
+async function findAdjacentStoreRoot(runDir: string): Promise<string | null> {
+  const candidates = [
+    resolve(runDir, ".prose-store"),
+    resolve(dirname(runDir), ".prose-store"),
+    resolve(dirname(dirname(runDir)), ".prose-store"),
+  ];
+  for (const candidate of candidates) {
+    if (await readLocalStoreMetadata(candidate)) {
+      return candidate;
+    }
+  }
+  return null;
+}
+
+function traceAttemptView(attempt: LocalRunAttemptRecord): TraceAttemptView {
+  return {
+    attempt_id: attempt.attempt_id,
+    attempt_number: attempt.attempt_number,
+    status: attempt.status,
+    provider_session_ref: attempt.provider_session_ref,
+    diagnostic_codes: attempt.diagnostics.map((diagnostic) => diagnostic.code).sort(),
+    failure: attempt.failure?.message ?? null,
+    started_at: attempt.started_at,
+    finished_at: attempt.finished_at,
+  };
 }
 
 async function loadTraceEvents(

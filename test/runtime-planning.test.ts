@@ -497,6 +497,12 @@ kind: program
       ["polish", "succeeded"],
       ["review", "succeeded"],
     ]);
+    expect(trace.attempts).toContainEqual(
+      expect.objectContaining({
+        status: "succeeded",
+        diagnostic_codes: [],
+      }),
+    );
     expect(trace.events[0]).toMatchObject({
       event: "materialize.started",
       run_id: "20260423-170000-trc001",
@@ -523,6 +529,8 @@ kind: program
     expect(text).toContain("Component: hello [component]");
     expect(text).toContain("Status: succeeded (accepted)");
     expect(text).toContain("Outputs: message");
+    expect(text).toContain("Attempts:");
+    expect(text).toContain("- #1: succeeded");
     expect(text).toContain("Events:");
   });
 
