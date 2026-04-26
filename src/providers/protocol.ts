@@ -52,11 +52,18 @@ export interface ProviderValidationRule {
   required: boolean;
 }
 
+export interface ProviderRuntimePrompt {
+  prompt_version: "0.1";
+  kind: "node_envelope";
+  text: string;
+}
+
 export interface ProviderRequest {
   provider_request_version: "0.1";
   request_id: string;
   provider: ProviderKind;
   runtime_profile: RuntimeProfile;
+  runtime_prompt?: ProviderRuntimePrompt | null;
   component: ComponentIR;
   rendered_contract: string;
   input_bindings: ProviderInputBinding[];

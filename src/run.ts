@@ -439,6 +439,19 @@ async function executeGraphRun(
         graphRunId: ctx.runId,
         runId,
         component,
+        package: {
+          name: ctx.ir.package.name,
+          source_ref: ctx.ir.package.source_ref,
+          ir_hash: ctx.ir.semantic_hash,
+        },
+        planning: {
+          requested_outputs: ctx.plan.requested_outputs,
+          stale_reasons: planNode.stale_reasons,
+          current_run_id: planNode.current_run_id,
+          recompute_scope: ctx.plan.materialization_set.nodes.includes(component.id)
+            ? "selected"
+            : "unselected",
+        },
         workspacePath,
         runtimeProfile: ctx.runtimeProfile,
         providerRequest,

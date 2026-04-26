@@ -16,6 +16,7 @@ export interface ScriptedPiRuntimeOptions {
   outputs?: Record<string, string>;
   outputsByComponent?: Record<string, Record<string, string>>;
   onRequest?: (request: ProviderRequest) => void;
+  onPrompt?: (prompt: string, request: ProviderRequest) => void;
   modelError?: string;
   promptError?: string;
   timeout?: boolean;
@@ -92,6 +93,7 @@ class ScriptedPiSession implements PiAgentSessionLike {
       },
     });
     this.options.onRequest?.(this.request);
+    this.options.onPrompt?.(prompt, this.request);
 
     if (this.options.modelError) {
       this.emit({

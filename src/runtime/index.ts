@@ -8,8 +8,17 @@ export {
 export {
   createReactiveGraphRuntime,
 } from "./graph-runtime.js";
+export {
+  buildNodePromptEnvelope,
+  renderNodePromptEnvelope,
+} from "./node-envelope.js";
+export {
+  buildPiNodePromptEnvelope,
+  renderPiNodePrompt,
+} from "./pi/prompt.js";
 export type { RuntimeProfileInput } from "./profiles.js";
 export type { ReactiveGraphRuntime } from "./graph-runtime.js";
+export type { NodePromptEnvelope } from "./node-envelope.js";
 export type { NodeExecutionRequest } from "./node-request.js";
 export type { NodeExecutionResult } from "./node-result.js";
 export {

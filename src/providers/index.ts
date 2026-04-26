@@ -67,6 +67,7 @@ export type {
   ProviderLogs,
   ProviderRequest,
   ProviderResult,
+  ProviderRuntimePrompt,
   ProviderSessionRef,
   ProviderValidationRule,
   RuntimeProvider,

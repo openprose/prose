@@ -224,6 +224,9 @@ export function renderPiPrompt(
   request: ProviderRequest,
   outputFiles?: ProviderOutputFileMap,
 ): string {
+  if (request.runtime_prompt?.kind === "node_envelope") {
+    return request.runtime_prompt.text;
+  }
   return [
     request.rendered_contract,
     "",
