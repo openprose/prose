@@ -37,7 +37,7 @@ Checks:
 - `bun run typecheck`
 - `git diff --check`
 
-### [todo] Public skills still describe the old VM model
+### [done] Public skills still describe the old VM model
 
 Finding: `skills/open-prose/` still contains older Prose Complete, `state.md`,
 harness-agnostic VM, and imperative filesystem-runtime docs. Those files are
@@ -46,18 +46,20 @@ do not match the Pi graph-VM/node-runner/run-record architecture.
 
 Proposed fix:
 
-- decide whether `skills/open-prose/` is still shipped as a skill or should be
-  replaced with a much thinner current onboarding skill
-- remove or rewrite old `state.md` / Prose Complete / universal-subagent
-  language
-- point skill users at `.prose.md`, IR, `prose run`, graph VM profiles, typed
-  ports, effects, run materialization, and evals
+Resolved: replaced the large historical skill tree with a thin current skill
+router plus README, and updated Claude command/plugin docs to route to the
+actual CLI/graph-VM model.
+
+Commit target: `docs: replace legacy open-prose skill surface`
 
 Checks:
 
 - `rg -n "Prose Complete|state\\.md|harness-agnostic|subagent|--provider|fixture materialize" skills/open-prose`
 - `bun test test/source-tooling.test.ts test/cli-ux.test.ts`
 - manual read-through of `skills/open-prose/SKILL.md`
+- `bun run prose lint examples/north-star/company-signal-brief.prose.md`
+- `bun run prose preflight examples/north-star/lead-program-designer.prose.md`
+- `bun run prose run examples/north-star/company-signal-brief.prose.md --graph-vm pi ...`
 
 ### [todo] Historical RFC notes still read like future implementation guides
 

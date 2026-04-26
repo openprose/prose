@@ -1,6 +1,6 @@
 {
   "name": "open-prose",
-  "description": "Runs Markdown contracts as multi-agent programs. When the user invokes `prose`, you read the contract, spawn subagents, pass artifacts between them, and write run state to `.prose/runs/`. Requires a subagent primitive; single-service programs run inline.",
+  "description": "Routes OpenProse work to the current .prose.md compiler, Pi graph VM, run-store, eval, and package tooling.",
   "version": "0.10.0",
   "author": {
     "name": "OpenProse",

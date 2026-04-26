@@ -1,11 +1,17 @@
 ---
 description: Check dependencies and environment variables for an OpenProse program
-argument-hint: <file.md>
+argument-hint: <file.prose.md>
 ---
 
 Run preflight checks on the OpenProse program at: $ARGUMENTS
 
-This command is sugar for `prose run std/ops/preflight -- target: <file.md>`. It checks:
+Use:
+
+```bash
+bun run prose preflight "$ARGUMENTS"
+```
+
+It checks:
 
 1. **Dependencies** — all `use` statements resolve to installed packages in `.deps/`; `prose.lock` is present and up to date
 2. **Environment** — all `environment:` variables declared across the program's dependency graph are set in the host environment (shell env vars, platform secrets, `.env` files)
@@ -13,4 +19,4 @@ This command is sugar for `prose run std/ops/preflight -- target: <file.md>`. It
 
 Reports missing dependencies, unset environment variables, and unresolvable services. Does NOT execute the program.
 
-If no file is specified, look for `.md` program files in the current directory and ask which one to check.
+If no file is specified, look for `.prose.md` program files in the current directory and ask which one to check.

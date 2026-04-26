@@ -113,7 +113,7 @@ That shared spine is the important part. It means the docs, examples, package sy
 | [`examples/`](examples/README.md) | concise, high-signal examples of the current best practice |
 | [`packages/std/`](packages/std/) | reusable primitives and standard-library components |
 | [`packages/co/`](packages/co/) | company-operating-system starter patterns |
-| [`skills/open-prose/`](skills/open-prose/) | the OpenProse skill/runtime spec for agent-session execution |
+| [`skills/open-prose/`](skills/open-prose/) | the current OpenProse agent-skill router and onboarding surface |
 | [`rfcs/`](rfcs/) | the design record for the reactive OpenProse architecture |
 
 ## Local Workflow

@@ -1,16 +1,20 @@
 ---
-description: Initialize OpenProse and prepare the VM
+description: Orient to OpenProse and the local CLI
 ---
 
-Invoke the open-prose skill to boot the OpenProse VM.
+Invoke the open-prose skill and orient the user to the current OpenProse CLI.
 
-1. Check for `.prose/state.json` to detect if this is a returning user
-2. Search for any `.prose` files in the current directory
-3. If first time:
-   - Welcome the user to OpenProse
-   - Show the curated examples from the repository root `examples/` directory
-4. If returning user:
-   - Show any existing `.prose` files found
-   - Offer to run one or create a new workflow
+1. Check whether `bun install` has been run.
+2. Show the curated examples from `examples/`.
+3. Suggest `bun run prose help`.
+4. Suggest one runnable local command, such as:
 
-Read the SKILL.md file for full onboarding instructions.
+```bash
+bun run prose run examples/north-star/company-signal-brief.prose.md \
+  --graph-vm pi \
+  --input signal_notes="A customer asked for durable agent workflows." \
+  --input brand_context="OpenProse helps teams compose typed agent outcomes." \
+  --output company_signal_brief="Signals noted."
+```
+
+Read `skills/open-prose/SKILL.md` for current routing instructions.
