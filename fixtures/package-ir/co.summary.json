@@ -1,12 +1,12 @@
 {
   "package_ir_version": "0.1",
-  "semantic_hash": "271ae2818f90ca518115a72c4277da2cb57709630debe04fa32ab38ea3abfc1c",
+  "semantic_hash": "0d05deb2f7d9d4d5cb669d8009ad6cab74d085b5723597da8dd903c9deb78ce0",
   "hashes": {
-    "source_hash": "e467061b5378bdbcbc755e77d33d1529147bc3e0cc7ea98df96d6ce0a372e100",
-    "semantic_hash": "271ae2818f90ca518115a72c4277da2cb57709630debe04fa32ab38ea3abfc1c",
+    "source_hash": "c6683273aca2eb075e151c21767e6b538b776fbf26957d34a5a8c01f7e2a7138",
+    "semantic_hash": "0d05deb2f7d9d4d5cb669d8009ad6cab74d085b5723597da8dd903c9deb78ce0",
     "dependency_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-    "policy_hash": "ae848f3ccd9d2437445c910c6dd2135d09dd47a3c239ac57bb94f5870eb3e7eb",
-    "runtime_config_hash": "72870c52bb0068ca4de9de1a856f1fd4bfc744c3882087d5e8622b19aea92371"
+    "policy_hash": "c187c3f0ccca2645bd9860e35048dee3ab24d8daba7229f216a9b7d60323f522",
+    "runtime_config_hash": "a0bdc7e1c3ab5f7a1763bd95c1b3bead1a42b7ba6bcf53ffbd57984e3433d6b8"
   },
   "manifest": {
     "name": "@openprose/co",
@@ -22,10 +22,12 @@
     },
     "schemas": [],
     "evals": [
-      "evals/company-repo-checker.eval.prose.md"
+      "evals/company-repo-checker.eval.prose.md",
+      "evals/company-system-map.eval.prose.md"
     ],
     "examples": [
-      "programs/company-repo-checker.prose.md"
+      "programs/company-repo-checker.prose.md",
+      "programs/company-system-map.prose.md"
     ],
     "no_evals": false,
     "runtime": {
@@ -53,6 +55,13 @@
       "diagnostics": []
     },
     {
+      "path": "evals/company-system-map.eval.prose.md",
+      "component_ids": [
+        "evals-company-system-map-eval--company-system-map-eval"
+      ],
+      "diagnostics": []
+    },
+    {
       "path": "programs/company-repo-checker.prose.md",
       "component_ids": [
         "programs-company-repo-checker--company-repo-checker",
@@ -60,6 +69,17 @@
         "programs-company-repo-checker--contract-eval-drift-inspector",
         "programs-company-repo-checker--dependency-graph-inspector",
         "programs-company-repo-checker--repo-readiness-reporter"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "programs/company-system-map.prose.md",
+      "component_ids": [
+        "programs-company-system-map--company-system-map",
+        "programs-company-system-map--source-inventory-builder",
+        "programs-company-system-map--company-system-boundary-mapper",
+        "programs-company-system-map--workflow-surface-planner",
+        "programs-company-system-map--company-starter-reporter"
       ],
       "diagnostics": []
     }
@@ -75,6 +95,15 @@
       "diagnostics": []
     },
     {
+      "kind": "eval",
+      "path": "evals/company-system-map.eval.prose.md",
+      "exists": true,
+      "component_ids": [
+        "evals-company-system-map-eval--company-system-map-eval"
+      ],
+      "diagnostics": []
+    },
+    {
       "kind": "example",
       "path": "programs/company-repo-checker.prose.md",
       "exists": true,
@@ -86,13 +115,26 @@
         "programs-company-repo-checker--repo-readiness-reporter"
       ],
       "diagnostics": []
+    },
+    {
+      "kind": "example",
+      "path": "programs/company-system-map.prose.md",
+      "exists": true,
+      "component_ids": [
+        "programs-company-system-map--company-system-map",
+        "programs-company-system-map--source-inventory-builder",
+        "programs-company-system-map--company-system-boundary-mapper",
+        "programs-company-system-map--workflow-surface-planner",
+        "programs-company-system-map--company-starter-reporter"
+      ],
+      "diagnostics": []
     }
   ],
   "dependencies": [],
   "policy": {
     "effects": {
-      "pure": 2,
-      "read_external": 4
+      "pure": 6,
+      "read_external": 6
     },
     "access": [],
     "labels": {}
@@ -106,6 +148,13 @@
       "name": "company-repo-checker-eval",
       "kind": "test",
       "path": "evals/company-repo-checker.eval.prose.md",
+      "expansions": []
+    },
+    {
+      "id": "evals-company-system-map-eval--company-system-map-eval",
+      "name": "company-system-map-eval",
+      "kind": "test",
+      "path": "evals/company-system-map.eval.prose.md",
       "expansions": []
     },
     {
@@ -142,16 +191,51 @@
       "kind": "service",
       "path": "programs/company-repo-checker.prose.md",
       "expansions": []
+    },
+    {
+      "id": "programs-company-system-map--company-starter-reporter",
+      "name": "company-starter-reporter",
+      "kind": "service",
+      "path": "programs/company-system-map.prose.md",
+      "expansions": []
+    },
+    {
+      "id": "programs-company-system-map--company-system-boundary-mapper",
+      "name": "company-system-boundary-mapper",
+      "kind": "service",
+      "path": "programs/company-system-map.prose.md",
+      "expansions": []
+    },
+    {
+      "id": "programs-company-system-map--company-system-map",
+      "name": "company-system-map",
+      "kind": "program",
+      "path": "programs/company-system-map.prose.md",
+      "expansions": []
+    },
+    {
+      "id": "programs-company-system-map--source-inventory-builder",
+      "name": "source-inventory-builder",
+      "kind": "service",
+      "path": "programs/company-system-map.prose.md",
+      "expansions": []
+    },
+    {
+      "id": "programs-company-system-map--workflow-surface-planner",
+      "name": "workflow-surface-planner",
+      "kind": "service",
+      "path": "programs/company-system-map.prose.md",
+      "expansions": []
     }
   ],
   "graph": {
-    "node_count": 6,
-    "edge_count": 18,
+    "node_count": 12,
+    "edge_count": 32,
     "edge_kinds": {
-      "caller": 5,
-      "exact": 6,
-      "execution": 4,
-      "return": 3
+      "caller": 8,
+      "exact": 11,
+      "execution": 8,
+      "return": 5
     }
   },
   "diagnostics": {}

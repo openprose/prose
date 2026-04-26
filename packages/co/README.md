@@ -37,20 +37,27 @@ packages/co/
   prose.package.json
   programs/
     company-repo-checker.prose.md
+    company-system-map.prose.md
   evals/
     company-repo-checker.eval.prose.md
+    company-system-map.eval.prose.md
 ```
 
-Future additions should help a new company get started without copying
+The starter package now has two reusable entry points:
+
+- `programs/company-system-map.prose.md` designs the system-first operating
+  map for a company repo: systems, responsibilities, shared capabilities,
+  adapters, records, workflows, gates, and next actions.
+- `programs/company-repo-checker.prose.md` gates a repo that already exists:
+  source layout, contract/eval drift, dependency ownership, and readiness.
+
+Future additions should keep helping a new company get started without copying
 OpenProse, Inc.'s private business logic:
 
-- starter repository architecture
-- company system map
-- native repo checker
 - customer package checker
-- eval ladder
 - fixture and run-replay conventions
 - onboarding workflow for the first operating responsibilities
+- starter hosted-runtime confidence ladder
 
 ## std vs co — the split
 
@@ -93,6 +100,25 @@ bun run prose run packages/co/programs/company-repo-checker.prose.md \
 The fixture shape mirrors the runtime contract: inspector nodes produce JSON
 artifacts, the reporter returns the public JSON report, and the package eval can
 gate the final run by reading the materialized run payload.
+
+Run the system map starter with deterministic outputs:
+
+```bash
+bun run prose run packages/co/programs/company-system-map.prose.md \
+  --approved-effect read_external \
+  --input repo_path=customers/prose-openprose \
+  --input company_context='OpenProse builds managed agent systems.' \
+  --input system_hints='[{"name":"distribution"},{"name":"revenue"}]' \
+  --output source-inventory-builder.source_inventory='{"source_roots":["systems","shared"],"systems":["distribution","revenue"],"runtime_state":[".prose/runs"]}' \
+  --output company-system-boundary-mapper.company_system_map='{"systems":[{"name":"distribution","responsibilities":["adoption intelligence"]},{"name":"revenue","responsibilities":["lead enrichment"]}],"shared_capabilities":["enrichment"],"adapters":["github"],"records":["decisions"],"ambiguous_boundaries":[]}' \
+  --output workflow-surface-planner.workflow_surface='{"workflows":[{"name":"intelligence-daily","trigger":"schedule","gate":"human_review","outputs":["brief"]}]}' \
+  --output company-starter-reporter.starter_map='{"source_inventory":{"source_roots":["systems","shared"],"runtime_state":[".prose/runs"]},"company_system_map":{"systems":[{"name":"distribution"},{"name":"revenue"}]},"workflow_surface":{"workflows":[{"name":"intelligence-daily"}]},"unresolved_decisions":[]}' \
+  --output company-starter-reporter.starter_next_actions='Start with distribution and revenue system READMEs, then add paired evals for the first workflows.'
+```
+
+The map starter is the reusable design companion to the checker. It gives a
+new company a source-grounded graph of what should exist; the checker then keeps
+that graph honest as source, evals, runs, and hosted registry gates evolve.
 
 ## Design Notes
 

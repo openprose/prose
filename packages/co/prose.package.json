@@ -7,7 +7,8 @@
   "description": "OpenProse company-as-code starter package for organizing an operating company as Prose programs.",
   "license": "MIT",
   "evals": [
-    "evals/company-repo-checker.eval.prose.md"
+    "evals/company-repo-checker.eval.prose.md",
+    "evals/company-system-map.eval.prose.md"
   ],
   "runtime": {
     "graph_vm": "pi",
@@ -24,6 +25,7 @@
     "persist_sessions": true
   },
   "examples": [
-    "programs/company-repo-checker.prose.md"
+    "programs/company-repo-checker.prose.md",
+    "programs/company-system-map.prose.md"
   ]
 }

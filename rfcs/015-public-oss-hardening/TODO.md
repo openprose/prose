@@ -600,22 +600,29 @@ Checks:
 - `bun run prose lint packages/std/delivery`
 - `bun run prose publish-check packages/std --strict`
 
-### [todo] The company starter package should match the new best-practice shape
+### [done] The company starter package should match the new best-practice shape
 
 Finding: `packages/co` is useful but thin. It should be clearly positioned as
 the reusable starter kit for Company as Code and stay aligned with the richer
 `customers/prose-openprose` reference repo.
 
-Proposed fix:
+Resolved:
 
-- compare `packages/co` with the current customer reference implementation
-- add only reusable starter surfaces, not customer-specific content
-- keep examples runnable through scripted Pi and eventually live Pi
+- compared `packages/co` against the current system-first customer reference
+  repo shape
+- added `company-system-map`, a reusable Company as Code starter program that
+  turns company context and repo evidence into a composed system/workflow map
+- added a paired eval for the starter map without copying OpenProse, Inc.
+  private systems or customer content
+- updated package metadata, README examples, package IR goldens, and scripted
+  Pi coverage
 
 Checks:
 
+- `bun run prose lint packages/co`
 - `bun run prose publish-check packages/co --strict`
-- `bun test test/co-package.test.ts`
+- `bun test test/package-ir.test.ts test/co-package.test.ts`
+- `bun run typecheck`
 
 ### [todo] Example evidence should separate stable fixtures from live evidence
 
