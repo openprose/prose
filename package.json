@@ -8,6 +8,8 @@
   },
   "scripts": {
     "prose": "bun bin/prose.ts",
+    "build:binary": "bun build --compile --target=bun --outfile dist/prose ./bin/prose.ts",
+    "smoke:binary": "bun run build:binary && ./dist/prose help >/dev/null && ./dist/prose compile examples/hello.prose.md --no-pretty >/dev/null",
     "compile": "bun bin/prose.ts compile",
     "fmt": "bun bin/prose.ts fmt",
     "grammar": "bun bin/prose.ts grammar",

@@ -10,6 +10,7 @@ Run:
 bun run confidence:runtime
 bun run typecheck
 bun run test
+bun run smoke:binary
 ```
 
 The confidence script exercises the public CLI across:
@@ -34,8 +35,10 @@ Latest generated reports:
 - Full OSS test suite passes.
 - Typecheck passes.
 - Runtime confidence matrix passes.
+- Compiled Bun binary smoke passes.
 - Package metadata and hosted contract fixtures are stable.
 - `examples`, `packages/std`, and `packages/co` pass strict publish checks.
+- `dist/prose` can render help and compile `examples/hello.prose.md`.
 - CLI help, status, trace, and graph output explain the runtime loop clearly.
 - Remaining hosted/platform-specific follow-up is documented outside the OSS
   package workstream.
