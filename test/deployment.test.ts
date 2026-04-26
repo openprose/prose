@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { describe, expect, test } from "bun:test";
 import {
   buildDeploymentManifest,
+  discoverDeploymentEntrypointsForPackage,
   preflightDeployment,
 } from "../src/deployment/index.js";
 import { runProseCli } from "./support";
@@ -85,6 +86,44 @@ describe("OpenProse deployments", () => {
         declared_by: ["registry://openprose/@openprose/deployment-fixture@0.1.0#daily-intel"],
       },
     ]);
+    expect(ready.effects).toEqual([
+      {
+        kind: "delivers",
+        status: "dry_run",
+        declared_by: ["registry://openprose/@openprose/deployment-fixture@0.1.0#daily-intel"],
+      },
+      {
+        kind: "read_external",
+        status: "dry_run",
+        declared_by: ["registry://openprose/@openprose/deployment-fixture@0.1.0#daily-intel"],
+      },
+    ]);
+  });
+
+  test("prefers explicit package deployment entrypoint metadata", async () => {
+    const root = createDeploymentFixture({
+      version: "0.1.0",
+      sourceSha: "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      deployment: {
+        entrypoints: [
+          {
+            component: "daily-intel",
+            kind: "responsibility",
+            triggers: [{ kind: "event", value: "github.star.created", source: "runtime" }],
+          },
+        ],
+      },
+    });
+
+    const entrypoints = await discoverDeploymentEntrypointsForPackage(root);
+    const daily = entrypoints.find((entrypoint) => entrypoint.name === "daily-intel");
+
+    expect(daily?.kind).toBe("responsibility");
+    expect(daily?.trigger_proposals).toContainEqual({
+      kind: "event",
+      value: "github.star.created",
+      source: "runtime",
+    });
   });
 
   test("CLI preflights a package deployment", () => {
@@ -121,7 +160,11 @@ describe("OpenProse deployments", () => {
   });
 });
 
-function createDeploymentFixture(options: { version: string; sourceSha: string }): string {
+function createDeploymentFixture(options: {
+  version: string;
+  sourceSha: string;
+  deployment?: unknown;
+}): string {
   const root = mkdtempSync(join(tmpdir(), "openprose-deployment-"));
   mkdirSync(join(root, "systems", "distribution", "workflows"), { recursive: true });
   writePackageConfig(root, options);
@@ -177,7 +220,11 @@ kind: program
   return root;
 }
 
-function writePackageConfig(root: string, options: { version: string; sourceSha: string }): void {
+function writePackageConfig(root: string, options: {
+  version: string;
+  sourceSha: string;
+  deployment?: unknown;
+}): void {
   writeFileSync(
     join(root, "prose.package.json"),
     JSON.stringify(
@@ -191,6 +238,7 @@ function writePackageConfig(root: string, options: { version: string; sourceSha:
           git: "https://github.com/openprose/deployment-fixture.git",
           sha: options.sourceSha,
         },
+        deployment: "deployment" in options ? options.deployment : undefined,
       },
       null,
       2,

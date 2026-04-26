@@ -1,8 +1,9 @@
 import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { basename, join, relative, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { sha256, stableStringify } from "../hash.js";
 import { compilePackagePath } from "../ir/package.js";
+import { findNearestLockfileSync } from "../lockfile.js";
 import { packagePath } from "../package.js";
 import { slugify } from "../text.js";
 import type {
@@ -10,6 +11,7 @@ import type {
   Diagnostic,
   PackageIR,
   PackageMetadata,
+  PreflightDependencyCheck,
   RuntimeSettingIR,
 } from "../types.js";
 
@@ -84,6 +86,7 @@ export interface DeploymentManifest {
   identity: DeploymentIdentity;
   package_root: string;
   package_ir_hash: string;
+  package_dependencies: PackageIR["dependencies"];
   generated_at: string;
   enabled_entrypoints: string[];
   entrypoints: DeploymentEntrypoint[];
@@ -109,12 +112,20 @@ export interface DeploymentPreflightEntrypointCheck {
   trigger_proposals: DeploymentTriggerProposal[];
 }
 
+export interface DeploymentPreflightEffectCheck {
+  kind: string;
+  status: "approved" | "dry_run" | "requires_approval";
+  declared_by: string[];
+}
+
 export interface DeploymentPreflightResult {
   deployment_preflight_version: "0.1";
   status: "pass" | "fail";
   manifest: DeploymentManifest;
   entrypoints: DeploymentPreflightEntrypointCheck[];
   environment: DeploymentPreflightEnvironmentCheck[];
+  dependencies: PreflightDependencyCheck[];
+  effects: DeploymentPreflightEffectCheck[];
   diagnostics: Diagnostic[];
   warnings: string[];
   missing: string[];
@@ -141,6 +152,26 @@ interface LoadedDeploymentPackage {
   root: string;
   metadata: PackageMetadata;
   ir: PackageIR;
+  config: DeploymentPackageConfig | null;
+}
+
+interface DeploymentPackageConfig {
+  deployment?: {
+    entrypoints?: DeploymentEntrypointConfig[];
+  };
+}
+
+interface DeploymentEntrypointConfig {
+  component?: string;
+  ref?: string;
+  kind?: DeploymentEntrypointKind;
+  triggers?: DeploymentTriggerProposal[];
+}
+
+export async function discoverDeploymentEntrypointsForPackage(
+  path: string,
+): Promise<DeploymentEntrypoint[]> {
+  return discoverDeploymentEntrypoints(await loadDeploymentPackage(path));
 }
 
 export async function buildDeploymentManifest(
@@ -157,6 +188,7 @@ export async function buildDeploymentManifest(
     identity,
     package_root: loaded.root,
     package_ir_hash: loaded.ir.semantic_hash,
+    package_dependencies: loaded.ir.dependencies,
     generated_at: options.generatedAt ?? new Date().toISOString(),
     enabled_entrypoints: enabled,
     entrypoints,
@@ -180,9 +212,19 @@ export async function preflightDeployment(
   );
   const selected = manifest.entrypoints.filter((entrypoint) => selectedEntryRefs.has(entrypoint.ref));
   const environment = buildEnvironmentChecks(manifest, selected);
+  const dependencies = buildDependencyChecks(manifest);
+  const effects = buildEffectChecks(manifest, selected);
   const missingRequired = environment
     .filter((check) => check.required && check.status === "missing")
     .map((check) => check.name)
+    .sort();
+  const missingDependencies = dependencies
+    .filter((check) => !check.pinned || !check.installed)
+    .map((check) => check.package)
+    .sort();
+  const unapprovedEffects = effects
+    .filter((check) => check.status === "requires_approval")
+    .map((check) => check.kind)
     .sort();
   const missingByEntrypoint = new Map<string, string[]>();
 
@@ -216,16 +258,30 @@ export async function preflightDeployment(
   if (manifest.entrypoints.length === 0) {
     warnings.push("Deployment package has no program entrypoints.");
   }
+  for (const effect of effects.filter((check) => check.status === "dry_run")) {
+    warnings.push(`Effect '${effect.kind}' is held in dry-run mode for this deployment preflight.`);
+  }
 
   return {
     deployment_preflight_version: "0.1",
-    status: missingRequired.length === 0 ? "pass" : "fail",
+    status:
+      missingRequired.length === 0 &&
+      missingDependencies.length === 0 &&
+      unapprovedEffects.length === 0
+        ? "pass"
+        : "fail",
     manifest,
     entrypoints: entrypointChecks,
     environment,
+    dependencies,
+    effects,
     diagnostics: [],
     warnings,
-    missing: missingRequired,
+    missing: [
+      ...missingRequired,
+      ...missingDependencies.map((dependency) => `dependency:${dependency}`),
+      ...unapprovedEffects.map((effect) => `effect:${effect}`),
+    ],
   };
 }
 
@@ -274,6 +330,22 @@ export function renderDeploymentPreflightText(result: DeploymentPreflightResult)
       lines.push(
         `  - ${check.name}: ${check.status}${check.required ? " required" : " optional"}`,
       );
+    }
+  }
+
+  if (result.dependencies.length > 0) {
+    lines.push("Dependencies:");
+    for (const check of result.dependencies) {
+      lines.push(
+        `  - ${check.package}@${check.sha || "unresolved"}: ${check.installed ? "installed" : "missing"}`,
+      );
+    }
+  }
+
+  if (result.effects.length > 0) {
+    lines.push("Effects:");
+    for (const check of result.effects) {
+      lines.push(`  - ${check.kind}: ${check.status}`);
     }
   }
 
@@ -336,17 +408,19 @@ function createDeploymentIdentity(
 }
 
 function discoverDeploymentEntrypoints(loaded: LoadedDeploymentPackage): DeploymentEntrypoint[] {
+  const explicit = explicitEntrypointConfig(loaded.config);
   return loaded.ir.components
     .filter((component) => component.kind === "program")
     .map((component) => {
       const path = component.source.path;
       const ref = componentRef(loaded.metadata, component);
+      const config = explicit.get(component.name) ?? explicit.get(ref) ?? explicit.get(path) ?? null;
       return {
         entrypoint_version: "0.1" as const,
         ref,
         component_id: component.id,
         name: component.name,
-        kind: classifyEntrypoint(component),
+        kind: config?.kind ?? classifyEntrypoint(component),
         component_kind: component.kind,
         path,
         summary: component.execution?.body.trim().split("\n").find(Boolean) ?? null,
@@ -364,7 +438,7 @@ function discoverDeploymentEntrypoints(loaded: LoadedDeploymentPackage): Deploym
         environment: component.environment
           .map((binding) => ({ name: binding.name, required: binding.required }))
           .sort((a, b) => a.name.localeCompare(b.name)),
-        trigger_proposals: triggerProposalsFor(component),
+        trigger_proposals: mergeTriggerProposals(triggerProposalsFor(component), config?.triggers ?? []),
       };
     })
     .sort((a, b) => a.path.localeCompare(b.path) || a.name.localeCompare(b.name));
@@ -377,6 +451,7 @@ async function loadDeploymentPackage(path: string): Promise<LoadedDeploymentPack
     root: metadata.root,
     metadata,
     ir,
+    config: await loadDeploymentConfig(metadata.root),
   };
 }
 
@@ -463,6 +538,69 @@ function buildEnvironmentChecks(
   return [...checks.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 
+function buildDependencyChecks(manifest: DeploymentManifest): PreflightDependencyCheck[] {
+  const packageRoot = manifest.package_root;
+  const lockfile = findNearestLockfileSync(packageRoot);
+  const workspaceRoot = lockfile ? dirname(lockfile.path) : packageRoot;
+  const depsRoot = resolve(workspaceRoot, ".deps");
+  const dependencyRefs = new Map<string, PreflightDependencyCheck>();
+
+  for (const dependency of dependencyRecordsFromManifest(manifest)) {
+    const installDir = resolveInstallDir(dependency.package, depsRoot);
+    dependencyRefs.set(dependency.package, {
+      package: dependency.package,
+      sha: dependency.sha,
+      pinned: dependency.sha.length > 0,
+      installed: dependency.sha.length > 0 ? existsSync(installDir) : false,
+      install_dir: dependency.sha.length > 0 ? normalizePath(installDir) : null,
+      lockfile_path: lockfile ? normalizePath(lockfile.path) : dependency.lock_ref,
+      refs: [...dependency.refs].sort(),
+    });
+  }
+
+  return [...dependencyRefs.values()].sort((a, b) => a.package.localeCompare(b.package));
+}
+
+function buildEffectChecks(
+  manifest: DeploymentManifest,
+  entrypoints: DeploymentEntrypoint[],
+): DeploymentPreflightEffectCheck[] {
+  const checks = new Map<string, DeploymentPreflightEffectCheck>();
+  const approved = new Set(manifest.effect_policy.approved_effects);
+
+  for (const entrypoint of entrypoints) {
+    for (const effect of entrypoint.effects) {
+      if (effect === "pure") {
+        continue;
+      }
+      const existing = checks.get(effect);
+      const status = approved.has(effect)
+        ? "approved"
+        : manifest.effect_policy.dry_run
+          ? "dry_run"
+          : "requires_approval";
+      if (!existing) {
+        checks.set(effect, {
+          kind: effect,
+          status,
+          declared_by: [entrypoint.ref],
+        });
+        continue;
+      }
+      existing.status = existing.status === "approved" ? existing.status : status;
+      existing.declared_by = [...new Set([...existing.declared_by, entrypoint.ref])].sort();
+    }
+  }
+
+  return [...checks.values()].sort((a, b) => a.kind.localeCompare(b.kind));
+}
+
+function dependencyRecordsFromManifest(
+  manifest: DeploymentManifest,
+): PackageIR["dependencies"] {
+  return manifest.package_dependencies;
+}
+
 function environmentStatus(
   name: string,
   bindings: Record<string, string>,
@@ -511,6 +649,37 @@ function triggerProposalsFor(component: ComponentIR): DeploymentTriggerProposal[
   return proposals;
 }
 
+function mergeTriggerProposals(
+  inferred: DeploymentTriggerProposal[],
+  explicit: DeploymentTriggerProposal[],
+): DeploymentTriggerProposal[] {
+  const byKey = new Map<string, DeploymentTriggerProposal>();
+  for (const proposal of [...inferred, ...explicit]) {
+    byKey.set(`${proposal.kind}:${proposal.value}`, proposal);
+  }
+  return [...byKey.values()].sort((a, b) => a.kind.localeCompare(b.kind) || a.value.localeCompare(b.value));
+}
+
+function explicitEntrypointConfig(
+  config: DeploymentPackageConfig | null,
+): Map<string, DeploymentEntrypointConfig> {
+  const map = new Map<string, DeploymentEntrypointConfig>();
+  for (const entrypoint of config?.deployment?.entrypoints ?? []) {
+    for (const key of [entrypoint.component, entrypoint.ref].filter(Boolean)) {
+      map.set(key!, entrypoint);
+    }
+  }
+  return map;
+}
+
+async function loadDeploymentConfig(root: string): Promise<DeploymentPackageConfig | null> {
+  const path = resolve(root, "prose.package.json");
+  if (!existsSync(path)) {
+    return null;
+  }
+  return JSON.parse(await readFile(path, "utf8")) as DeploymentPackageConfig;
+}
+
 function runtimeSetting(
   settings: RuntimeSettingIR[],
   key: string,
@@ -534,4 +703,31 @@ function stableDeploymentKey(options: {
     environment_id: options.environment.id,
     slug: options.slug,
   });
+}
+
+function resolveInstallDir(sourceGit: string, depsRoot: string): string {
+  const hostRef = parseHostSource(sourceGit);
+  if (hostRef) {
+    return resolve(depsRoot, hostRef.host, hostRef.owner, hostRef.repo);
+  }
+
+  const slug = sourceGit
+    .split(/[\\/]/)
+    .filter(Boolean)
+    .pop()
+    ?.replace(/[^A-Za-z0-9._-]+/g, "-") || "source";
+  return resolve(depsRoot, "_sources", `${slug}-${sha256(sourceGit).slice(0, 8)}`);
+}
+
+function parseHostSource(sourceGit: string): { host: string; owner: string; repo: string } | null {
+  const trimmed = sourceGit.trim().replace(/\.git$/, "");
+  if (/^[^/]+\.[^/]+\/[^/]+\/[^/]+$/.test(trimmed)) {
+    const [host, owner, repo] = trimmed.split("/");
+    return { host, owner, repo };
+  }
+  return null;
+}
+
+function normalizePath(path: string): string {
+  return path.replace(/\\/g, "/");
 }
