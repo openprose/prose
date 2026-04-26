@@ -7,7 +7,6 @@ import { sha256 } from "./hash";
 import { findNearestLockfileSync } from "./lockfile";
 import type {
   ComponentIR,
-  Diagnostic,
   PreflightDependencyCheck,
   PreflightEnvironmentCheck,
   PreflightResult,

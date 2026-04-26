@@ -1,19 +1,19 @@
 {
   "report_version": "0.1",
-  "generated_at": "2026-04-26T02:52:11.036Z",
+  "generated_at": "2026-04-26T02:56:45.282Z",
   "repo_root": ".",
   "temp_root": "$TMP",
   "status": "pass",
   "summary": {
     "checks": 15,
-    "elapsed_ms": 1741
+    "elapsed_ms": 1639
   },
   "checks": [
     {
       "label": "compile examples package",
       "command": "prose compile examples --no-pretty",
       "exit_code": 0,
-      "elapsed_ms": 45,
+      "elapsed_ms": 44,
       "stdout_preview": "{\"package_ir_version\":\"0.1\",\"semantic_hash\":\"212bbba3fd238f329998636c162733ea20027537e21b641ab51fcb2bc783f22b\",\"hashes\":{\"source_hash\":\"37c6570af7a702dcfb05f56e0ea2983c25cc0bc59dc281f5ef36eee50634b80c\",\"semantic_hash\":\"212bbba3fd238f3299...",
       "stderr_preview": ""
     },
@@ -21,7 +21,7 @@
       "label": "compile std package",
       "command": "prose compile packages/std --no-pretty",
       "exit_code": 0,
-      "elapsed_ms": 63,
+      "elapsed_ms": 71,
       "stdout_preview": "{\"package_ir_version\":\"0.1\",\"semantic_hash\":\"6e734b406c9c4bb2f1c3c37f746e8ea992a5890cf5a624ea255e1e0ec7e1047f\",\"hashes\":{\"source_hash\":\"a3a89e7460016d0fa6fc6d57878fafe555e8d270ed735d6e23f2dfecb078dd7e\",\"semantic_hash\":\"6e734b406c9c4bb2f1...",
       "stderr_preview": ""
     },
@@ -29,7 +29,7 @@
       "label": "compile co package",
       "command": "prose compile packages/co --no-pretty",
       "exit_code": 0,
-      "elapsed_ms": 44,
+      "elapsed_ms": 45,
       "stdout_preview": "{\"package_ir_version\":\"0.1\",\"semantic_hash\":\"19e565e14228604c7e7f973e3d19c24d0f366c8d8816c3b6cf21aeaea078bb49\",\"hashes\":{\"source_hash\":\"424f6c7be86cc33923848d0a1898cf5a7cdf2930b840e5e7d7482f2ec03486d5\",\"semantic_hash\":\"19e565e14228604c7e...",
       "stderr_preview": ""
     },
@@ -37,7 +37,7 @@
       "label": "plan selective recompute",
       "command": "prose plan examples/selective-recompute.prose.md --input \"draft=A stable draft.\" --input company=openprose --target-output summary --no-pretty",
       "exit_code": 0,
-      "elapsed_ms": 36,
+      "elapsed_ms": 39,
       "stdout_preview": "{\"plan_version\":\"0.1\",\"component_ref\":\"selective-recompute\",\"ir_hash\":\"40aed244d2ff07a2aa5d2f29ab62d06d6905406efc4f7a8d51d13354d1a0428f\",\"requested_outputs\":[\"summary\"],\"approved_effects\":[],\"status\":\"ready\",\"graph_stale_reasons\":[],\"gra...",
       "stderr_preview": ""
     },
@@ -45,7 +45,7 @@
       "label": "graph selective recompute",
       "command": "prose graph examples/selective-recompute.prose.md --input \"draft=A stable draft.\" --input company=openprose --target-output summary",
       "exit_code": 0,
-      "elapsed_ms": 40,
+      "elapsed_ms": 41,
       "stdout_preview": "%% OpenProse graph: selective-recompute %% requested outputs: summary flowchart LR _caller[\"Caller<br/>[boundary]\"] summarize[\"summarize<br/>[service]<br/>status: ready<br/>effects: pure<br/>stale: no_current_run<br/>selected<br/>example...",
       "stderr_preview": ""
     },
@@ -53,7 +53,7 @@
       "label": "run hello through fixture provider",
       "command": "prose run examples/hello.prose.md --provider fixture --run-root $TMP/runs --run-id confidence-hello --output \"message=Hello from the runtime confidence matrix.\" --no-pretty",
       "exit_code": 0,
-      "elapsed_ms": 49,
+      "elapsed_ms": 53,
       "stdout_preview": "{\"run_id\":\"confidence-hello\",\"run_dir\":\"$TMP/runs/confidence-hello\",\"status\":\"succeeded\",\"provider\":\"fixture\",\"plan_status\":\"ready\",\"outputs\":[\"message\"]}",
       "stderr_preview": ""
     },
@@ -62,22 +62,22 @@
       "command": "prose status $TMP/runs",
       "exit_code": 0,
       "elapsed_ms": 34,
-      "stdout_preview": "Runs: 1 Root: $TMP/runs - confidence-hello: hello [component] succeeded (accepted) outputs[message] reason No required evals declared. created 2026-04-26T02:52:09.556Z completed 2026-04-26T02:52:09.562Z path $TMP/runs/confidence-hello",
+      "stdout_preview": "Runs: 1 Root: $TMP/runs - confidence-hello: hello [component] succeeded (accepted) outputs[message] reason No required evals declared. created 2026-04-26T02:56:43.918Z completed 2026-04-26T02:56:43.923Z path $TMP/runs/confidence-hello",
       "stderr_preview": ""
     },
     {
       "label": "trace run",
       "command": "prose trace $TMP/runs/confidence-hello",
       "exit_code": 0,
-      "elapsed_ms": 34,
-      "stdout_preview": "Run: confidence-hello Component: hello [component] Status: succeeded (accepted) Acceptance reason: No required evals declared. Runtime: openprose-provider / fixture Created: 2026-04-26T02:52:09.556Z Completed: 2026-04-26T02:52:09.562Z In...",
+      "elapsed_ms": 40,
+      "stdout_preview": "Run: confidence-hello Component: hello [component] Status: succeeded (accepted) Acceptance reason: No required evals declared. Runtime: openprose-provider / fixture Created: 2026-04-26T02:56:43.918Z Completed: 2026-04-26T02:56:43.923Z In...",
       "stderr_preview": ""
     },
     {
       "label": "eval subject run",
       "command": "prose eval examples/evals/examples-quality.eval.prose.md --subject-run $TMP/runs/confidence-hello --provider fixture --input package_root=examples --output \"verdict={\\\"passed\\\":true,\\\"score\\\":0.97,\\\"verdict\\\":\\\"pass\\\"}\" --no-pretty",
       "exit_code": 0,
-      "elapsed_ms": 69,
+      "elapsed_ms": 53,
       "stdout_preview": "{\"eval_id\":\"confidence-hello:examples-quality-eval-prose-md:confidence-hello:eval:examples-quality-eval-prose-md\",\"eval_ref\":\"examples/evals/examples-quality.eval.prose.md\",\"subject_run_id\":\"confidence-hello\",\"eval_run_id\":\"confidence-he...",
       "stderr_preview": ""
     },
@@ -85,7 +85,7 @@
       "label": "remote hosted envelope",
       "command": "prose remote execute examples/hello.prose.md --out-dir $TMP/remote --run-id confidence-remote --output \"message=Hello from the hosted envelope smoke.\" --component-ref registry://openprose/@openprose/examples@0.1.0/hello --package-metadata package-hosted-ingest.json --no-pretty",
       "exit_code": 0,
-      "elapsed_ms": 56,
+      "elapsed_ms": 52,
       "stdout_preview": "{\"schema_version\":\"0.2\",\"run_id\":\"confidence-remote\",\"run_dir\":\"$TMP/remote/confidence-remote\",\"component_ref\":\"registry://openprose/@openprose/examples@0.1.0/hello\",\"status\":\"succeeded\",\"provider\":\"fixture\",\"plan_status\":\"ready\",\"accept...",
       "stderr_preview": ""
     },
@@ -93,7 +93,7 @@
       "label": "package examples",
       "command": "prose package examples --format json --no-pretty",
       "exit_code": 0,
-      "elapsed_ms": 113,
+      "elapsed_ms": 111,
       "stdout_preview": "{\"schema_version\":\"openprose.package.v2\",\"package_version\":\"0.2\",\"metadata_digest\":\"e9f1efed397107450c5369cd6ba969e74355f79e7636c9d92602073aa200eb93\",\"root\":\"./examples\",\"package_ir\":{\"version\":\"0.1\",\"semantic_hash\":\"212bbba3fd238f329998...",
       "stderr_preview": ""
     },
@@ -101,7 +101,7 @@
       "label": "strict publish-check examples",
       "command": "prose publish-check examples --strict --format json --no-pretty",
       "exit_code": 0,
-      "elapsed_ms": 106,
+      "elapsed_ms": 107,
       "stdout_preview": "{\"publish_check_version\":\"0.1\",\"package_name\":\"@openprose/examples\",\"package_version\":\"0.1.0\",\"strict\":true,\"status\":\"pass\",\"blockers\":[],\"warnings\":[],\"checks\":[{\"name\":\"components_present\",\"status\":\"pass\",\"detail\":\"15 component(s) foun...",
       "stderr_preview": ""
     },
@@ -109,7 +109,7 @@
       "label": "strict publish-check std",
       "command": "prose publish-check packages/std --strict --format json --no-pretty",
       "exit_code": 0,
-      "elapsed_ms": 146,
+      "elapsed_ms": 135,
       "stdout_preview": "{\"publish_check_version\":\"0.1\",\"package_name\":\"@openprose/std\",\"package_version\":\"0.11.0-dev\",\"strict\":true,\"status\":\"pass\",\"blockers\":[],\"warnings\":[],\"checks\":[{\"name\":\"components_present\",\"status\":\"pass\",\"detail\":\"58 component(s) foun...",
       "stderr_preview": ""
     },
@@ -117,7 +117,7 @@
       "label": "strict publish-check co",
       "command": "prose publish-check packages/co --strict --format json --no-pretty",
       "exit_code": 0,
-      "elapsed_ms": 116,
+      "elapsed_ms": 108,
       "stdout_preview": "{\"publish_check_version\":\"0.1\",\"package_name\":\"@openprose/co\",\"package_version\":\"0.11.0-dev\",\"strict\":true,\"status\":\"pass\",\"blockers\":[],\"warnings\":[],\"checks\":[{\"name\":\"components_present\",\"status\":\"pass\",\"detail\":\"6 component(s) found....",
       "stderr_preview": ""
     },
@@ -125,7 +125,7 @@
       "label": "install examples component",
       "command": "prose install registry://openprose/@openprose/examples@0.1.0/hello --catalog-root . --workspace-root $TMP/workspace --no-pretty",
       "exit_code": 0,
-      "elapsed_ms": 787,
+      "elapsed_ms": 701,
       "stdout_preview": "{\"install_version\":\"0.1\",\"registry_ref\":\"registry://openprose/@openprose/examples@0.1.0/hello\",\"package_name\":\"@openprose/examples\",\"package_version\":\"0.1.0\",\"source_git\":\"github.com/openprose/prose\",\"source_sha\":\"54dab36d04f57e7343615d2...",
       "stderr_preview": ""
     }

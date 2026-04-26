@@ -1523,10 +1523,6 @@ function recordDiagnosticsReason(reasons: string[]): Diagnostic[] {
   }));
 }
 
-function hasFixtureOutputs(outputs: Record<string, string> | undefined): boolean {
-  return Object.keys(outputs ?? {}).length > 0;
-}
-
 async function resolveApprovalRecords(
   options: RunOptions,
   runId: string,

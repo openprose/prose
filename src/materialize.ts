@@ -10,10 +10,8 @@ import { upsertRunIndexEntry } from "./store/local.js";
 import { updateGraphNodePointer } from "./store/pointers.js";
 import type {
   ComponentIR,
-  GraphEdgeIR,
   MaterializedRun,
   ProseIR,
-  RunBindingRecord,
   RunOutputRecord,
   RunRecord,
 } from "./types";

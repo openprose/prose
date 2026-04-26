@@ -2,7 +2,7 @@ import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
 import { compilePackagePath } from "../ir/package.js";
 import { loadCurrentRunSet } from "../plan.js";
-import { runFile, runSource, type RunOptions } from "../run.js";
+import { runSource, type RunOptions } from "../run.js";
 import { slugify } from "../text.js";
 import type {
   Diagnostic,
