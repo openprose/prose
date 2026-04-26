@@ -1,12 +1,12 @@
 {
   "package_ir_version": "0.1",
-  "semantic_hash": "37ebccd33c2bc73653cb6802c5abdb36362db4547b52ca405c1e8ee209ebd94d",
+  "semantic_hash": "a5d91f9dc8dadaf46857a151256b5dc32a231109d4a8bfeb972f7fe0191e2e5a",
   "hashes": {
-    "source_hash": "88ad02f6449cb2b2d60d6ea2e45ed87b8cedb49ae5135ac5fe7315d16b9b4e6c",
-    "semantic_hash": "37ebccd33c2bc73653cb6802c5abdb36362db4547b52ca405c1e8ee209ebd94d",
+    "source_hash": "a3a89e7460016d0fa6fc6d57878fafe555e8d270ed735d6e23f2dfecb078dd7e",
+    "semantic_hash": "a5d91f9dc8dadaf46857a151256b5dc32a231109d4a8bfeb972f7fe0191e2e5a",
     "dependency_hash": "274e424f01b65e9042abc2e220cb92a3c67f471429616deafea5ea8423053ba5",
-    "policy_hash": "3e98daf373da3beafd214486b68cb72f0a971093c3f9ad015914641ef7f1b1ed",
-    "runtime_config_hash": "1256c45ce3bf9f640e004f98068003d223a1e9d5bd42de4e5f430056bcab3788"
+    "policy_hash": "ffe076367b3b0d0143198d146e8ec1fb9f1cfc18e30ae5a8d548198407135e28",
+    "runtime_config_hash": "f21569f10044621a5f507469cc38e1b284f70f6c8eefcfb1dfabe86b3924ef51"
   },
   "manifest": {
     "name": "@openprose/std",
@@ -223,73 +223,49 @@
     {
       "path": "evals/contract-grader.prose.md",
       "component_ids": [
-        "evals-contract-grader--contract-grader",
-        "evals-contract-grader--extractor",
-        "evals-contract-grader--grader",
-        "evals-contract-grader--scorer"
+        "evals-contract-grader--contract-grader"
       ],
       "diagnostics": []
     },
     {
       "path": "evals/cross-run-differ.prose.md",
       "component_ids": [
-        "evals-cross-run-differ--cross-run-differ",
-        "evals-cross-run-differ--collector",
-        "evals-cross-run-differ--differ",
-        "evals-cross-run-differ--recommender"
+        "evals-cross-run-differ--cross-run-differ"
       ],
       "diagnostics": []
     },
     {
       "path": "evals/eval-calibrator.prose.md",
       "component_ids": [
-        "evals-eval-calibrator--eval-calibrator",
-        "evals-eval-calibrator--sampler",
-        "evals-eval-calibrator--runner",
-        "evals-eval-calibrator--comparator",
-        "evals-eval-calibrator--statistician",
-        "evals-eval-calibrator--advisor"
+        "evals-eval-calibrator--eval-calibrator"
       ],
       "diagnostics": []
     },
     {
       "path": "evals/inspector.prose.md",
       "component_ids": [
-        "evals-inspector--inspector",
-        "evals-inspector--index",
-        "evals-inspector--extractor",
-        "evals-inspector--evaluator",
-        "evals-inspector--synthesizer"
+        "evals-inspector--inspector"
       ],
       "diagnostics": []
     },
     {
       "path": "evals/platform-improver.prose.md",
       "component_ids": [
-        "evals-platform-improver--platform-improver",
-        "evals-platform-improver--triager",
-        "evals-platform-improver--analyst",
-        "evals-platform-improver--proposer"
+        "evals-platform-improver--platform-improver"
       ],
       "diagnostics": []
     },
     {
       "path": "evals/program-improver.prose.md",
       "component_ids": [
-        "evals-program-improver--program-improver",
-        "evals-program-improver--locator",
-        "evals-program-improver--analyst",
-        "evals-program-improver--implementer"
+        "evals-program-improver--program-improver"
       ],
       "diagnostics": []
     },
     {
       "path": "evals/regression-tracker.prose.md",
       "component_ids": [
-        "evals-regression-tracker--regression-tracker",
-        "evals-regression-tracker--registry",
-        "evals-regression-tracker--comparator",
-        "evals-regression-tracker--reporter"
+        "evals-regression-tracker--regression-tracker"
       ],
       "diagnostics": []
     },
@@ -400,6 +376,7 @@
         "unresolved_service_reference",
         "unresolved_service_reference",
         "unresolved_service_reference",
+        "unresolved_service_reference",
         "unresolved_service_reference"
       ]
     },
@@ -500,10 +477,7 @@
       "path": "evals/contract-grader.prose.md",
       "exists": true,
       "component_ids": [
-        "evals-contract-grader--contract-grader",
-        "evals-contract-grader--extractor",
-        "evals-contract-grader--grader",
-        "evals-contract-grader--scorer"
+        "evals-contract-grader--contract-grader"
       ],
       "diagnostics": []
     },
@@ -512,10 +486,7 @@
       "path": "evals/cross-run-differ.prose.md",
       "exists": true,
       "component_ids": [
-        "evals-cross-run-differ--cross-run-differ",
-        "evals-cross-run-differ--collector",
-        "evals-cross-run-differ--differ",
-        "evals-cross-run-differ--recommender"
+        "evals-cross-run-differ--cross-run-differ"
       ],
       "diagnostics": []
     },
@@ -524,12 +495,7 @@
       "path": "evals/eval-calibrator.prose.md",
       "exists": true,
       "component_ids": [
-        "evals-eval-calibrator--eval-calibrator",
-        "evals-eval-calibrator--sampler",
-        "evals-eval-calibrator--runner",
-        "evals-eval-calibrator--comparator",
-        "evals-eval-calibrator--statistician",
-        "evals-eval-calibrator--advisor"
+        "evals-eval-calibrator--eval-calibrator"
       ],
       "diagnostics": []
     },
@@ -538,11 +504,7 @@
       "path": "evals/inspector.prose.md",
       "exists": true,
       "component_ids": [
-        "evals-inspector--inspector",
-        "evals-inspector--index",
-        "evals-inspector--extractor",
-        "evals-inspector--evaluator",
-        "evals-inspector--synthesizer"
+        "evals-inspector--inspector"
       ],
       "diagnostics": []
     },
@@ -551,10 +513,7 @@
       "path": "evals/platform-improver.prose.md",
       "exists": true,
       "component_ids": [
-        "evals-platform-improver--platform-improver",
-        "evals-platform-improver--triager",
-        "evals-platform-improver--analyst",
-        "evals-platform-improver--proposer"
+        "evals-platform-improver--platform-improver"
       ],
       "diagnostics": []
     },
@@ -563,10 +522,7 @@
       "path": "evals/program-improver.prose.md",
       "exists": true,
       "component_ids": [
-        "evals-program-improver--program-improver",
-        "evals-program-improver--locator",
-        "evals-program-improver--analyst",
-        "evals-program-improver--implementer"
+        "evals-program-improver--program-improver"
       ],
       "diagnostics": []
     },
@@ -575,10 +531,7 @@
       "path": "evals/regression-tracker.prose.md",
       "exists": true,
       "component_ids": [
-        "evals-regression-tracker--regression-tracker",
-        "evals-regression-tracker--registry",
-        "evals-regression-tracker--comparator",
-        "evals-regression-tracker--reporter"
+        "evals-regression-tracker--regression-tracker"
       ],
       "diagnostics": []
     },
@@ -616,7 +569,7 @@
       "delivers": 3,
       "human_gate": 1,
       "mutates_repo": 1,
-      "pure": 68,
+      "pure": 44,
       "read_external": 7,
       "writes_memory": 2
     },
@@ -812,217 +765,49 @@
     {
       "id": "evals-contract-grader--contract-grader",
       "name": "contract-grader",
-      "kind": "program",
+      "kind": "test",
       "path": "evals/contract-grader.prose.md",
-      "expansions": []
-    },
-    {
-      "id": "evals-contract-grader--extractor",
-      "name": "extractor",
-      "kind": "service",
-      "path": "evals/contract-grader.prose.md",
-      "expansions": []
-    },
-    {
-      "id": "evals-contract-grader--grader",
-      "name": "grader",
-      "kind": "service",
-      "path": "evals/contract-grader.prose.md",
-      "expansions": []
-    },
-    {
-      "id": "evals-contract-grader--scorer",
-      "name": "scorer",
-      "kind": "service",
-      "path": "evals/contract-grader.prose.md",
-      "expansions": []
-    },
-    {
-      "id": "evals-cross-run-differ--collector",
-      "name": "collector",
-      "kind": "service",
-      "path": "evals/cross-run-differ.prose.md",
       "expansions": []
     },
     {
       "id": "evals-cross-run-differ--cross-run-differ",
       "name": "cross-run-differ",
-      "kind": "program",
+      "kind": "test",
       "path": "evals/cross-run-differ.prose.md",
-      "expansions": []
-    },
-    {
-      "id": "evals-cross-run-differ--differ",
-      "name": "differ",
-      "kind": "service",
-      "path": "evals/cross-run-differ.prose.md",
-      "expansions": []
-    },
-    {
-      "id": "evals-cross-run-differ--recommender",
-      "name": "recommender",
-      "kind": "service",
-      "path": "evals/cross-run-differ.prose.md",
-      "expansions": []
-    },
-    {
-      "id": "evals-eval-calibrator--advisor",
-      "name": "advisor",
-      "kind": "service",
-      "path": "evals/eval-calibrator.prose.md",
-      "expansions": []
-    },
-    {
-      "id": "evals-eval-calibrator--comparator",
-      "name": "comparator",
-      "kind": "service",
-      "path": "evals/eval-calibrator.prose.md",
       "expansions": []
     },
     {
       "id": "evals-eval-calibrator--eval-calibrator",
       "name": "eval-calibrator",
-      "kind": "program",
+      "kind": "test",
       "path": "evals/eval-calibrator.prose.md",
-      "expansions": []
-    },
-    {
-      "id": "evals-eval-calibrator--runner",
-      "name": "runner",
-      "kind": "service",
-      "path": "evals/eval-calibrator.prose.md",
-      "expansions": []
-    },
-    {
-      "id": "evals-eval-calibrator--sampler",
-      "name": "sampler",
-      "kind": "service",
-      "path": "evals/eval-calibrator.prose.md",
-      "expansions": []
-    },
-    {
-      "id": "evals-eval-calibrator--statistician",
-      "name": "statistician",
-      "kind": "service",
-      "path": "evals/eval-calibrator.prose.md",
-      "expansions": []
-    },
-    {
-      "id": "evals-inspector--evaluator",
-      "name": "evaluator",
-      "kind": "service",
-      "path": "evals/inspector.prose.md",
-      "expansions": []
-    },
-    {
-      "id": "evals-inspector--extractor",
-      "name": "extractor",
-      "kind": "service",
-      "path": "evals/inspector.prose.md",
-      "expansions": []
-    },
-    {
-      "id": "evals-inspector--index",
-      "name": "index",
-      "kind": "service",
-      "path": "evals/inspector.prose.md",
       "expansions": []
     },
     {
       "id": "evals-inspector--inspector",
       "name": "inspector",
-      "kind": "program",
+      "kind": "test",
       "path": "evals/inspector.prose.md",
-      "expansions": []
-    },
-    {
-      "id": "evals-inspector--synthesizer",
-      "name": "synthesizer",
-      "kind": "service",
-      "path": "evals/inspector.prose.md",
-      "expansions": []
-    },
-    {
-      "id": "evals-platform-improver--analyst",
-      "name": "analyst",
-      "kind": "service",
-      "path": "evals/platform-improver.prose.md",
       "expansions": []
     },
     {
       "id": "evals-platform-improver--platform-improver",
       "name": "platform-improver",
-      "kind": "program",
+      "kind": "test",
       "path": "evals/platform-improver.prose.md",
-      "expansions": []
-    },
-    {
-      "id": "evals-platform-improver--proposer",
-      "name": "proposer",
-      "kind": "service",
-      "path": "evals/platform-improver.prose.md",
-      "expansions": []
-    },
-    {
-      "id": "evals-platform-improver--triager",
-      "name": "triager",
-      "kind": "service",
-      "path": "evals/platform-improver.prose.md",
-      "expansions": []
-    },
-    {
-      "id": "evals-program-improver--analyst",
-      "name": "analyst",
-      "kind": "service",
-      "path": "evals/program-improver.prose.md",
-      "expansions": []
-    },
-    {
-      "id": "evals-program-improver--implementer",
-      "name": "implementer",
-      "kind": "service",
-      "path": "evals/program-improver.prose.md",
-      "expansions": []
-    },
-    {
-      "id": "evals-program-improver--locator",
-      "name": "locator",
-      "kind": "service",
-      "path": "evals/program-improver.prose.md",
       "expansions": []
     },
     {
       "id": "evals-program-improver--program-improver",
       "name": "program-improver",
-      "kind": "program",
+      "kind": "test",
       "path": "evals/program-improver.prose.md",
-      "expansions": []
-    },
-    {
-      "id": "evals-regression-tracker--comparator",
-      "name": "comparator",
-      "kind": "service",
-      "path": "evals/regression-tracker.prose.md",
-      "expansions": []
-    },
-    {
-      "id": "evals-regression-tracker--registry",
-      "name": "registry",
-      "kind": "service",
-      "path": "evals/regression-tracker.prose.md",
       "expansions": []
     },
     {
       "id": "evals-regression-tracker--regression-tracker",
       "name": "regression-tracker",
-      "kind": "program",
-      "path": "evals/regression-tracker.prose.md",
-      "expansions": []
-    },
-    {
-      "id": "evals-regression-tracker--reporter",
-      "name": "reporter",
-      "kind": "service",
+      "kind": "test",
       "path": "evals/regression-tracker.prose.md",
       "expansions": []
     },
@@ -1216,20 +1001,20 @@
     }
   ],
   "graph": {
-    "node_count": 82,
-    "edge_count": 98,
+    "node_count": 58,
+    "edge_count": 26,
     "edge_kinds": {
-      "caller": 20,
-      "exact": 38,
-      "execution": 29,
-      "return": 11
+      "caller": 10,
+      "exact": 7,
+      "execution": 4,
+      "return": 5
     }
   },
   "diagnostics": {
-    "ambiguous_package_exact_wiring": 14,
-    "ambiguous_package_service_reference": 7,
+    "ambiguous_package_exact_wiring": 5,
+    "ambiguous_package_service_reference": 1,
     "dependency_lock_missing": 1,
     "dependency_sha_missing": 1,
-    "unresolved_service_reference": 16
+    "unresolved_service_reference": 17
   }
 }

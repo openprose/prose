@@ -1,194 +1,68 @@
 ---
 name: inspector
-kind: program
+kind: test
 ---
 
-# Post-Run Inspector
+# Run Inspector
 
-Analyze a completed Prose run for runtime fidelity (did Press execute the program correctly?) and task effectiveness (did the program accomplish its goal?). This is the foundational eval — every other eval in the standard library depends on inspector output.
-
-### Services
-
-- index
-- extractor
-- evaluator
-- synthesizer
+Inspect a completed OpenProse run for runtime fidelity, task effectiveness,
+artifact integrity, trace integrity, and acceptance readiness. This is the
+standard library's foundational eval contract for run-store records.
 
 ### Requires
 
-- `subject`: string - run — the completed run to inspect
-- `depth`: Depth - inspection depth — "light" (fast, checks structure and outputs exist) or "deep" (thorough, reads all artifacts, traces execution against program spec)
+- `subject`: Json<RunSubject> - materialized run payload being inspected
+- `depth`: string - "light" for structural checks or "deep" for artifact and trace review
 
 ### Ensures
 
-- `inspection`: Markdown<Inspection> - structured inspection report containing:
-    - run_id: the inspected run's identifier
-    - program: the program that was run
-    - depth: which depth was performed
-    - runtime_fidelity: score (0-100) measuring how faithfully Press executed the program
-    - task_effectiveness: score (0-100) measuring how well the program accomplished its stated goal
-    - services: per-service breakdown with status, timing, contract satisfaction
-    - flags: list of specific issues found, each with severity (info / warning / critical) and evidence
-    - verdict: overall assessment — "pass", "partial", or "fail"
-    - summary: 2-3 sentence human-readable summary
-
+- `inspection`: Json<RunInspection> - structured inspection containing:
+  - passed: boolean
+  - score: 0-1 normalized score for eval gates
+  - verdict: "pass", "partial", or "fail"
+  - subject_run_id: string
+  - depth: "light" or "deep"
+  - runtime_fidelity: score and evidence
+  - task_effectiveness: score and evidence
+  - artifact_integrity: score and evidence
+  - trace_integrity: score and evidence
+  - acceptance: summary of accepted, rejected, gated, or skipped state
+  - flags: issue list with severity, evidence, and suggested owner
+  - summary: concise human-readable explanation
 
 ### Effects
 
-- `pure`: deterministic transformation over declared inputs
+- `pure`: deterministic evaluation over declared run-store inputs
 
 ### Errors
 
-- missing-artifacts: the run directory is missing critical files (state.md, program.md, or manifest.md)
-- corrupted-state: state.md exists but cannot be parsed (no event markers, no header)
+- missing-run-record: the subject payload is not a valid run record projection
+- missing-outputs: the subject declares success but has no output artifact references
+- unsupported-depth: `depth` is not "light" or "deep"
 
 ### Invariants
 
-- inspection output is deterministic for a given run and depth — the same run inspected twice at the same depth produces the same scores and verdict
+- light inspections never claim content quality that was not observed
+- deep inspections account for every output reference and every available trace or attempt record
+- `passed`, `score`, and `verdict` are always top-level fields in the output JSON
 
-### Strategies
+### Execution
 
-- when depth is light: check structural completeness only — state.md has `---end` or `---error`, all declared services have bindings, output files are non-empty, no `__error.md` files. Do not read output content in detail. Target: under 30 seconds, under 10K tokens.
-- when depth is deep: read program.md to understand intent, read manifest.md to understand expected wiring, trace state.md event markers against the manifest's execution order, read each service's workspace artifacts and bindings, evaluate output quality against the program's ensures clauses. Target: thorough analysis, no shortcuts.
-- when a service has `__error.md`: read it, classify the error, check whether the program's conditional ensures handled the degradation correctly
-- when scoring runtime fidelity: weight heavily on execution order correctness (did services run in the right order?), binding integrity (did outputs get copied correctly?), and state.md completeness (are all markers present?)
-- when scoring task effectiveness: weight heavily on whether the program's top-level ensures clauses are satisfied by the final output in bindings
+```prose
+Treat `subject` as the canonical materialization. Inspect the run record fields:
+run id, component ref, kind, status, caller, runtime provider, policy, inputs,
+outputs, attempts, trace refs, eval records, and acceptance state. Use only
+declared run-store records and artifact references.
 
----
+For `depth: light`, check that the run completed, accepted required policy gates,
+materialized every declared output, and has no blocking diagnostics or required
+eval failures. Cap the score below perfect because light mode does not inspect
+artifact content.
 
-## index
-
-The index is a persistent agent that maintains a registry of all inspections performed. It enables deduplication (skip re-inspecting the same run at the same depth) and cross-inspection queries.
-
-### Runtime
-
-- `persist`: user
-
-
-### Requires
-
-- `subject`: string - the run binding from the caller
-
-### Ensures
-
-- `prior-inspections`: Markdown<PriorInspections> - JSON list of any prior inspections of this run, with their depth and verdict. Empty list if none found.
-
-
-### Effects
-
-- `pure`: deterministic evaluation over declared inputs
-
-### Strategies
-
-- maintain a compact registry: run_id, program, depth, verdict, timestamp
-- when queried about a run: return all matching entries
-- keep the registry under 500 entries by evicting oldest entries
-
----
-
-## extractor
-
-Read the run's artifacts and produce a structured extraction suitable for evaluation. The extractor does not judge — it reads and organizes.
-
-### Requires
-
-- `subject`: string - the run binding
-- `depth`: Depth - "light" or "deep"
-- `prior-inspections`: Markdown<PriorInspections> - from index
-
-### Ensures
-
-- `extraction`: JSON<Extraction> - structured data containing:
-    - run_id: string
-    - program_name: string
-    - completed: boolean (state.md has `---end`)
-    - failed: boolean (state.md has `---error`)
-    - error_count: number of `✗` markers in state.md
-    - services_declared: list of service names from manifest
-    - services_completed: list of service names with `✓` markers
-    - services_errored: list of service names with `✗` markers
-    - bindings_present: list of binding paths that exist and are non-empty
-    - bindings_missing: list of expected bindings that are absent or empty
-    - (deep only) program_source: full content of program.md
-    - (deep only) manifest_summary: execution order and wiring from manifest.md
-    - (deep only) service_outputs: map of service name to first 500 chars of each binding
-    - (deep only) workspace_artifacts: map of service name to list of files in workspace
-    - (deep only) error_details: contents of any `__error.md` files
-
-
-### Effects
-
-- `pure`: deterministic evaluation over declared inputs
-
-### Errors
-
-- unreadable-run: cannot read required files from the run directory
-
-### Strategies
-
-- when depth is light and a prior deep inspection exists: note "prior deep available" in extraction but do not skip light extraction (light is cheap, always re-run)
-- when reading large files: truncate to relevant portions, never attempt to load entire multi-MB outputs
-- when state.md uses `->` instead of `→`: accept both forms per spec
-
----
-
-## evaluator
-
-Apply judgment to the extraction. Score runtime fidelity and task effectiveness independently. The evaluator is the most critical service — it must be precise, evidence-based, and calibrated.
-
-### Requires
-
-- `extraction`: JSON<Extraction> - structured extraction from extractor
-- `depth`: Depth - "light" or "deep"
-
-### Ensures
-
-- `evaluation`: Markdown<Evaluation> - structured judgment containing:
-    - runtime_fidelity: object with score (0-100), breakdown (execution_order, binding_integrity, state_completeness, error_handling — each 0-100), and evidence (list of specific observations)
-    - task_effectiveness: object with score (0-100), breakdown (output_existence, output_substance, contract_satisfaction, goal_alignment — each 0-100), and evidence (list of specific observations)
-    - flags: list of issues, each with id, severity (info / warning / critical), description, and evidence
-    - verdict: "pass" (both scores >= 70, no critical flags), "partial" (one score < 70 or critical flags present but run completed), or "fail" (either score < 40 or run did not complete)
-
-
-### Effects
-
-- `pure`: deterministic evaluation over declared inputs
-
-### Errors
-
-- insufficient-data: extraction is too sparse to evaluate (e.g., light extraction of a failed run with no bindings)
-
-### Strategies
-
-- when depth is light: evaluate only structural metrics — completion, binding existence, error absence. Score conservatively (cap at 85 for runtime fidelity, 80 for task effectiveness) since light cannot verify content quality.
-- when depth is deep: evaluate everything — trace execution against manifest, read outputs against ensures, check for shape violations, assess output quality
-- when scoring: use the full 0-100 range. A perfect run scores 95-100, not 100 (reserve 100 for extraordinary cases). A run with minor issues scores 70-85. A run with significant problems scores 40-69. A fundamentally broken run scores below 40.
-- when a run failed but produced partial output: evaluate what exists. A failed run can still have high task effectiveness if the partial output is useful.
-- when evidence conflicts: note the conflict explicitly in flags rather than silently resolving it
-
----
-
-## synthesizer
-
-Combine evaluation results into the final inspection report. Format for both machine consumption (structured JSON) and human readability (summary text).
-
-### Requires
-
-- `extraction`: JSON<Extraction> - from extractor
-- `evaluation`: Evaluation - from evaluator
-- `prior-inspections`: Markdown<PriorInspections> - from index
-
-### Ensures
-
-- `inspection`: Markdown<Inspection> - the final inspection report matching the program's top-level ensures schema exactly
-
-
-### Effects
-
-- `pure`: deterministic evaluation over declared inputs
-
-### Strategies
-
-- when prior inspections exist: note trends (e.g., "this run scored higher/lower than previous inspections of the same program")
-- when formatting: the inspection must be valid JSON with a `summary` field containing markdown prose — machine-parseable with a human-readable summary embedded
-- when the verdict is "fail": the summary must lead with the most critical issue and its evidence, not with boilerplate
+For `depth: deep`, inspect artifact metadata, schema validation status, trace
+summaries, provider attempt records, and output content snippets when available.
+Compare these signals against the source or package contract embedded in the run
+record or supplied alongside the subject. Separate runtime fidelity from task
+effectiveness: a run may be faithfully executed but ineffective, or useful even
+when an advisory trace warns about the process.
+```

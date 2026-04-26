@@ -33,10 +33,12 @@ All executable library entries now use the canonical `.prose.md` Contract Markdo
 
 ### evals/
 
-Programs for evaluating and improving OpenProse runs, contracts, and platform behavior.
+Run-store-native eval contracts for checking OpenProse runs, packages, and
+platform behavior. These are `kind: test` components with JSON verdict outputs
+that can be used as acceptance gates for local and hosted runs.
 
-| Program | Purpose |
-|---------|---------|
+| Eval | Purpose |
+|------|---------|
 | `inspector` | Post-run analysis — runtime fidelity and task effectiveness |
 | `contract-grader` | Scores a program against its declared contract |
 | `regression-tracker` | Tracks quality regressions across runs |
