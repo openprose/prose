@@ -7,213 +7,151 @@ import {
   publishCheckPath,
   readFileSync,
   runProseCli,
-  runSource,
   test,
   tmpdir,
 } from "./support";
-import { createOpenAICompatibleProvider } from "../src/providers";
 
 const repoRoot = join(import.meta.dir, "..");
 const examplesRoot = join(repoRoot, "examples");
 
-describe("OpenProse examples capability tour", () => {
+describe("OpenProse north-star examples", () => {
   test("the examples package compiles and passes strict publish checks", async () => {
     const metadata = await packagePath(examplesRoot);
     const publish = await publishCheckPath(examplesRoot, { strict: true });
 
     expect(metadata.components.map((component) => component.name).sort()).toEqual([
-      "account-brief",
+      "agent-crawl-batch-reader",
+      "agent-crawl-target-builder",
+      "agent-ecosystem-index-refresh",
+      "agent-ecosystem-scorer",
+      "agent-index-report-writer",
       "announce-release",
-      "approval-gated-release",
-      "brief-writer",
-      "company-intake",
-      "company-normalizer",
-      "decision-brief-writer",
-      "evidence-extractor",
+      "company-signal-brief",
+      "customer-repo-planner",
+      "customer-repo-preview-writer",
+      "customer-repo-scaffold-preview",
       "examples-quality",
-      "hello",
-      "inference-decision-brief",
-      "market-sync",
+      "lead-profile-normalizer",
+      "lead-program-designer",
+      "lead-qualification-scorer",
+      "merged-pr-auditor",
+      "merged-pr-fit-review-lite",
+      "opportunity-classifier",
+      "opportunity-deduper",
+      "opportunity-discovery-lite",
+      "opportunity-summarizer",
+      "pr-fit-summary-writer",
+      "pr-review-memory-writer",
       "qa-check",
       "release-note-writer",
-      "risk-synthesizer",
-      "run-aware-brief",
-      "selective-recompute",
-      "signal-triage",
-      "summarize",
+      "release-proposal-dry-run",
+      "save-grow-program-drafter",
+      "stargazer-digest-writer",
+      "stargazer-enricher",
+      "stargazer-intake-lite",
+      "stargazer-memory-writer",
+      "stargazer-ranker",
+    ]);
+    expect(metadata.manifest.examples).toEqual([
+      "north-star/agent-ecosystem-index-refresh.prose.md",
+      "north-star/company-signal-brief.prose.md",
+      "north-star/customer-repo-scaffold-preview.prose.md",
+      "north-star/lead-program-designer.prose.md",
+      "north-star/merged-pr-fit-review-lite.prose.md",
+      "north-star/opportunity-discovery-lite.prose.md",
+      "north-star/release-proposal-dry-run.prose.md",
+      "north-star/stargazer-intake-lite.prose.md",
     ]);
     expect(publish.status).toBe("pass");
     expect(publish.blockers).toEqual([]);
   });
 
-  test("each source example has an executable fixture smoke", () => {
-    const runRoot = join(mkdtempSync(join(tmpdir(), "openprose-examples-tour-")), "runs");
+  test("the smallest north-star service has an executable fixture smoke", () => {
+    const runRoot = join(mkdtempSync(join(tmpdir(), "openprose-north-star-")), "runs");
 
-    expectCliSuccess([
+    const result = expectCliSuccess([
       "run",
-      "examples/hello.prose.md",
+      "examples/north-star/company-signal-brief.prose.md",
       "--run-root",
       runRoot,
       "--run-id",
-      "hello-tour",
+      "company-signal-brief",
+      "--input",
+      "signal_notes=Customer teams want durable agent workflows.",
+      "--input",
+      "brand_context=OpenProse is React for agent outcomes.",
       "--output",
-      "message=Hello from OpenProse.",
+      "company_signal_brief=Lead with durable agent workflows.",
       "--no-pretty",
     ]);
 
-    expectCliSuccess([
-      "run",
-      "examples/selective-recompute.prose.md",
-      "--run-root",
-      runRoot,
-      "--run-id",
-      "selective-base",
-      "--input",
-      "draft=A stable draft.",
-      "--input",
-      "company=openprose",
-      "--output",
-      "summarize.summary=A stable summary.",
-      "--output",
-      "market-sync.market_snapshot=A stable market snapshot.",
-      "--no-pretty",
-    ]);
-
-    expectCliSuccess([
-      "run",
-      "examples/inference-decision-brief.prose.md",
-      "--run-root",
-      runRoot,
-      "--run-id",
-      "inference-tour",
-      "--input",
-      "decision_question=Should we prioritize registry first?",
-      "--input",
-      "raw_signals=Registry semantics are stable. Runtime provider choice is still high-risk.",
-      "--output",
-      "evidence-extractor.evidence_map=Evidence map.",
-      "--output",
-      "risk-synthesizer.risk_register=Risk register.",
-      "--output",
-      "decision-brief-writer.decision_brief=Decision brief.",
-      "--no-pretty",
-    ]);
-
-    expectCliSuccess([
-      "run",
-      "examples/company-intake.prose.md",
-      "--run-root",
-      runRoot,
-      "--run-id",
-      "intake-seed",
-      "--input",
-      "company_domain=openprose.com",
-      "--input",
-      "inbound_note=Warm referral.",
-      "--output",
-      "company-normalizer.company_record=OpenProse profile.",
-      "--output",
-      "signal-triage.priority_score=High priority.",
-      "--output",
-      "account-brief.brief=Account brief.",
-      "--no-pretty",
-    ]);
-
-    expectCliSuccess([
-      "run",
-      "examples/run-aware-brief.prose.md",
-      "--run-root",
-      runRoot,
-      "--run-id",
-      "run-aware-tour",
-      "--input",
-      "company=OpenProse profile.",
-      "--input",
-      "subject=run:intake-seed",
-      "--output",
-      "brief-writer.brief=Run-aware executive brief.",
-      "--no-pretty",
-    ]);
-
-    expectCliSuccess([
-      "run",
-      "examples/approval-gated-release.prose.md",
-      "--run-root",
-      runRoot,
-      "--run-id",
-      "release-tour",
-      "--input",
-      "release_candidate=v0.11.0",
-      "--approved-effect",
-      "human_gate",
-      "--approved-effect",
-      "delivers",
-      "--output",
-      "qa-check.qa_report=QA report.",
-      "--output",
-      "release-note-writer.release_summary=Release notes.",
-      "--output",
-      "announce-release.delivery_receipt=Delivered to #releases.",
-      "--no-pretty",
-    ]);
+    const summary = JSON.parse(result.stdoutText);
+    expect(summary.status).toBe("succeeded");
+    expect(summary.outputs).toEqual(["company_signal_brief"]);
   });
 
-  test("selective recompute skips stale nodes that do not feed the target", () => {
-    const runRoot = join(mkdtempSync(join(tmpdir(), "openprose-examples-selective-")), "runs");
+  test("lead program selective recompute only re-runs the changed downstream node", () => {
+    const runRoot = join(mkdtempSync(join(tmpdir(), "openprose-lead-recompute-")), "runs");
     expectCliSuccess([
       "run",
-      "examples/selective-recompute.prose.md",
+      "examples/north-star/lead-program-designer.prose.md",
       "--run-root",
       runRoot,
       "--run-id",
-      "selective-base",
+      "lead-program-base",
       "--input",
-      "draft=A stable draft.",
+      'lead_profile={"company":"Acme","pain":"manual agent handoffs"}',
       "--input",
-      "company=openprose",
+      "brand_context=OpenProse is React for agent outcomes.",
       "--output",
-      "summarize.summary=A stable summary.",
+      'lead-profile-normalizer.lead_normalized_profile={"company":"Acme","pain":"manual agent handoffs"}',
       "--output",
-      "market-sync.market_snapshot=A stable market snapshot.",
+      'lead-qualification-scorer.lead_qualification_score={"score":88,"confidence":"high"}',
+      "--output",
+      "save-grow-program-drafter.lead_program_plan=Save/Grow plan v1.",
       "--no-pretty",
     ]);
 
     const planResult = expectCliSuccess([
       "plan",
-      "examples/selective-recompute.prose.md",
+      "examples/north-star/lead-program-designer.prose.md",
       "--current-run",
-      join(runRoot, "selective-base"),
+      join(runRoot, "lead-program-base"),
       "--target-output",
-      "summary",
+      "lead_program_plan",
       "--input",
-      "draft=A stable draft.",
+      'lead_profile={"company":"Acme","pain":"manual agent handoffs"}',
       "--input",
-      "company=openprose-enterprise",
+      "brand_context=OpenProse now emphasizes enterprise registries.",
       "--no-pretty",
     ]);
     const plan = JSON.parse(planResult.stdoutText);
 
-    expect(plan.status).toBe("current");
-    expect(plan.materialization_set.nodes).toEqual([]);
-    const marketSync = (plan.nodes as Array<{ node_id: string; status: string }>).find(
-      (node) => node.node_id === "market-sync",
+    expect(plan.status).toBe("ready");
+    expect(plan.materialization_set.nodes).toEqual(["save-grow-program-drafter"]);
+    const scorer = (plan.nodes as Array<{ node_id: string; status: string }>).find(
+      (node) => node.node_id === "lead-qualification-scorer",
     );
-    expect(marketSync?.status).toBe("skipped");
+    expect(scorer?.status).toBe("current");
   });
 
   test("required evals can accept a successful subject run", () => {
     const runRoot = join(mkdtempSync(join(tmpdir(), "openprose-examples-eval-")), "runs");
     const result = expectCliSuccess([
       "run",
-      "examples/hello.prose.md",
+      "examples/north-star/company-signal-brief.prose.md",
       "--run-root",
       runRoot,
       "--run-id",
       "eval-accepted",
       "--input",
+      "signal_notes=Signals.",
+      "--input",
+      "brand_context=Brand.",
+      "--input",
       "package_root=examples",
       "--output",
-      "message=Hello with eval acceptance.",
+      "company_signal_brief=Brief with eval acceptance.",
       "--output",
       'examples-quality.verdict={"passed":true,"score":0.95,"verdict":"pass"}',
       "--required-eval",
@@ -235,48 +173,22 @@ describe("OpenProse examples capability tour", () => {
     });
   });
 
-  test("the inference decision graph runs through an OpenAI-compatible endpoint", async () => {
-    const runRoot = join(mkdtempSync(join(tmpdir(), "openprose-examples-inference-")), "runs");
-    const server = mockOpenAICompatibleServer();
+  test("release proposal gates block before effecting sessions", () => {
+    const result = runProseCli([
+      "plan",
+      "examples/north-star/release-proposal-dry-run.prose.md",
+      "--input",
+      "release_candidate=v0.11.0",
+      "--no-pretty",
+    ]);
+    const stdoutText = new TextDecoder().decode(result.stdout);
+    const plan = JSON.parse(stdoutText);
 
-    try {
-      const result = await runSource(
-        readFileSync(join(examplesRoot, "inference-decision-brief.prose.md"), "utf8"),
-        {
-          path: "examples/inference-decision-brief.prose.md",
-          runRoot,
-          runId: "model-backed-brief",
-          provider: createOpenAICompatibleProvider({
-            baseUrl: server.baseUrl,
-            apiKey: "test-key",
-            model: "test/model",
-          }),
-          inputs: {
-            decision_question: "Should we prioritize the hosted registry before the hosted runtime?",
-            raw_signals: "Registry semantics are stable. Runtime provider choice remains high risk. Local package install already works.",
-          },
-        },
-      );
-
-      expect(result.record.status).toBe("succeeded");
-      expect(result.record.outputs.map((output) => output.port)).toEqual([
-        "evidence_map",
-        "risk_register",
-        "decision_brief",
-      ]);
-      expect(
-        result.record.outputs.find((output) => output.port === "decision_brief"),
-      ).toBeDefined();
-      expect(result.node_records.map((record) => record.component_ref)).toEqual([
-        "evidence-extractor",
-        "risk-synthesizer",
-        "decision-brief-writer",
-      ]);
-      expect(server.seenPrompts()).toHaveLength(3);
-      expect(server.seenPrompts()[2]).toContain("## Risk Register");
-    } finally {
-      server.stop();
-    }
+    expect(result.exitCode).toBe(1);
+    expect(plan.status).toBe("blocked");
+    expect(plan.graph_blocked_reasons).toContain(
+      "Graph effect 'human_gate' requires a gate before execution.",
+    );
   });
 
   test("the package metadata advertises registry install inputs", async () => {
@@ -286,8 +198,8 @@ describe("OpenProse examples capability tour", () => {
       "registry://openprose/@openprose/examples@0.1.0",
     );
     expect(metadata.manifest.source.git).toBe("github.com/openprose/prose");
-    expect(metadata.components.find((component) => component.name === "hello")?.path).toBe(
-      "hello.prose.md",
+    expect(metadata.components.find((component) => component.name === "company-signal-brief")?.path).toBe(
+      "north-star/company-signal-brief.prose.md",
     );
   });
 });
@@ -301,73 +213,4 @@ function expectCliSuccess(
   const stderrText = new TextDecoder().decode(result.stderr);
   expect(result.exitCode, stderrText || stdoutText).toBe(0);
   return { stdoutText, stderrText };
-}
-
-function mockOpenAICompatibleServer(): {
-  baseUrl: string;
-  seenPrompts: () => string[];
-  stop: () => void;
-} {
-  const prompts: string[] = [];
-  const server = Bun.serve({
-    port: 0,
-    async fetch(request) {
-      const body = JSON.parse(await request.text()) as {
-        messages?: Array<{ content?: string }>;
-      };
-      const prompt = body.messages?.[1]?.content ?? "";
-      prompts.push(prompt);
-      return Response.json({
-        id: `mock-${prompts.length}`,
-        choices: [
-          {
-            message: {
-              content: JSON.stringify({
-                outputs: outputForPrompt(prompt),
-                performed_effects: [],
-              }),
-            },
-          },
-        ],
-        usage: {
-          prompt_tokens: 10,
-          completion_tokens: 10,
-          total_tokens: 20,
-        },
-      });
-    },
-  });
-
-  return {
-    baseUrl: `http://${server.hostname}:${server.port}/v1`,
-    seenPrompts: () => prompts,
-    stop: () => server.stop(true),
-  };
-}
-
-function outputForPrompt(prompt: string): Record<string, string> {
-  if (prompt.includes("# evidence-extractor")) {
-    return {
-      evidence_map: [
-        "## Evidence Map",
-        "- Stable: registry semantics and local package install are working.",
-        "- Uncertain: runtime provider selection remains high-risk.",
-      ].join("\n"),
-    };
-  }
-  if (prompt.includes("# risk-synthesizer")) {
-    return {
-      risk_register: [
-        "## Risk Register",
-        "- Runtime interop could change provider boundaries.",
-        "- Registry-first sequencing lowers product and package risk.",
-      ].join("\n"),
-    };
-  }
-  return {
-    decision_brief: [
-      "## Decision Brief",
-      "Prioritize the hosted registry first, while keeping runtime provider experiments active behind the provider contract.",
-    ].join("\n"),
-  };
 }

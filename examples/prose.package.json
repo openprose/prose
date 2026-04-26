@@ -4,7 +4,7 @@
   "registry": {
     "catalog": "openprose"
   },
-  "description": "Curated examples for the local-first OpenProse runtime.",
+  "description": "North-star runtime backpressure examples for OpenProse.",
   "license": "MIT",
   "source": {
     "git": "github.com/openprose/prose",
@@ -29,11 +29,13 @@
     "persist_sessions": true
   },
   "examples": [
-    "hello.prose.md",
-    "selective-recompute.prose.md",
-    "inference-decision-brief.prose.md",
-    "run-aware-brief.prose.md",
-    "approval-gated-release.prose.md",
-    "company-intake.prose.md"
+    "north-star/company-signal-brief.prose.md",
+    "north-star/lead-program-designer.prose.md",
+    "north-star/stargazer-intake-lite.prose.md",
+    "north-star/opportunity-discovery-lite.prose.md",
+    "north-star/release-proposal-dry-run.prose.md",
+    "north-star/customer-repo-scaffold-preview.prose.md",
+    "north-star/agent-ecosystem-index-refresh.prose.md",
+    "north-star/merged-pr-fit-review-lite.prose.md"
   ]
 }

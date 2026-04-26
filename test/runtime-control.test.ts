@@ -72,7 +72,13 @@ describe("OpenProse runtime controls", () => {
 
   test("cancels a blocked run by writing a cancellation attempt", async () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-cancel-"));
-    const sourcePath = join(import.meta.dir, "..", "examples", "approval-gated-release.prose.md");
+    const sourcePath = join(
+      import.meta.dir,
+      "..",
+      "examples",
+      "north-star",
+      "release-proposal-dry-run.prose.md",
+    );
     const blocked = await runSource(readFileSync(sourcePath, "utf8"), {
       path: sourcePath,
       runRoot,
@@ -100,7 +106,13 @@ describe("OpenProse runtime controls", () => {
 
   test("resumes a human-gated run with approval records", async () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-resume-"));
-    const sourcePath = join(import.meta.dir, "..", "examples", "approval-gated-release.prose.md");
+    const sourcePath = join(
+      import.meta.dir,
+      "..",
+      "examples",
+      "north-star",
+      "release-proposal-dry-run.prose.md",
+    );
     const source = readFileSync(sourcePath, "utf8");
     const blocked = await runSource(source, {
       path: sourcePath,

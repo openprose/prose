@@ -596,7 +596,13 @@ kind: program
 
   test("pauses effecting graphs with a resumable human gate before provider calls", async () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-run-gate-"));
-    const sourcePath = join(import.meta.dir, "..", "examples", "approval-gated-release.prose.md");
+    const sourcePath = join(
+      import.meta.dir,
+      "..",
+      "examples",
+      "north-star",
+      "release-proposal-dry-run.prose.md",
+    );
     let calls = 0;
     const result = await runSource(readFileSync(sourcePath, "utf8"), {
       path: sourcePath,
@@ -632,7 +638,13 @@ kind: program
 
   test("approval records unblock effects and are persisted with the run", async () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-run-approved-"));
-    const sourcePath = join(import.meta.dir, "..", "examples", "approval-gated-release.prose.md");
+    const sourcePath = join(
+      import.meta.dir,
+      "..",
+      "examples",
+      "north-star",
+      "release-proposal-dry-run.prose.md",
+    );
     const requests: ProviderRequest[] = [];
     const result = await runSource(readFileSync(sourcePath, "utf8"), {
       path: sourcePath,
@@ -669,7 +681,13 @@ kind: program
 
   test("denied approval records keep effects blocked", async () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-run-denied-"));
-    const sourcePath = join(import.meta.dir, "..", "examples", "approval-gated-release.prose.md");
+    const sourcePath = join(
+      import.meta.dir,
+      "..",
+      "examples",
+      "north-star",
+      "release-proposal-dry-run.prose.md",
+    );
     const approvalPath = join(runRoot, "denied-approval.json");
     writeFileSync(
       approvalPath,

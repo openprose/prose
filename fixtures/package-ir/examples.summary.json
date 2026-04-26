@@ -1,19 +1,19 @@
 {
   "package_ir_version": "0.1",
-  "semantic_hash": "0afaa067cc728f551831cfc84bbb6635eb6dec7172d9da2591effb5fe74097d4",
+  "semantic_hash": "d5dcc2791da07caa3fa17132fda177ec9db473a7c7d01225d19d73f5b99b42fd",
   "hashes": {
-    "source_hash": "c0c852f22ed641bda3aab8d755129ba2d4138f72a9e55c1bc54892838ced3363",
-    "semantic_hash": "0afaa067cc728f551831cfc84bbb6635eb6dec7172d9da2591effb5fe74097d4",
+    "source_hash": "5e1c71d027f2fa6b9e6bc27d92f88d328398ea38e3ad38e2e0eef1b278dab2ff",
+    "semantic_hash": "d5dcc2791da07caa3fa17132fda177ec9db473a7c7d01225d19d73f5b99b42fd",
     "dependency_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-    "policy_hash": "302fc3285b87d20e66098d588269f206eeaa4acf2e2f5582b42e4b0fc2b80424",
-    "runtime_config_hash": "e90118e871dd70545b24ed65f9486a6495d6084fc8a339549fdfee2e095de121"
+    "policy_hash": "50c3eddab2aa9dd9a54897e10a623287fe5b35a64ddb142c1075e6aa9b31f28c",
+    "runtime_config_hash": "c008409e802a061fdb6f74931deb1633d44df2eee93fd85cdabd6d37df1ffc0f"
   },
   "manifest": {
     "name": "@openprose/examples",
     "version": "0.1.0",
     "catalog": "openprose",
     "registry_ref": "registry://openprose/@openprose/examples@0.1.0",
-    "description": "Curated examples for the local-first OpenProse runtime.",
+    "description": "North-star runtime backpressure examples for OpenProse.",
     "license": "MIT",
     "source": {
       "git": "github.com/openprose/prose",
@@ -25,12 +25,14 @@
       "evals/examples-quality.eval.prose.md"
     ],
     "examples": [
-      "approval-gated-release.prose.md",
-      "company-intake.prose.md",
-      "hello.prose.md",
-      "inference-decision-brief.prose.md",
-      "run-aware-brief.prose.md",
-      "selective-recompute.prose.md"
+      "north-star/agent-ecosystem-index-refresh.prose.md",
+      "north-star/company-signal-brief.prose.md",
+      "north-star/customer-repo-scaffold-preview.prose.md",
+      "north-star/lead-program-designer.prose.md",
+      "north-star/merged-pr-fit-review-lite.prose.md",
+      "north-star/opportunity-discovery-lite.prose.md",
+      "north-star/release-proposal-dry-run.prose.md",
+      "north-star/stargazer-intake-lite.prose.md"
     ],
     "no_evals": false,
     "runtime": {
@@ -51,26 +53,6 @@
   },
   "files": [
     {
-      "path": "approval-gated-release.prose.md",
-      "component_ids": [
-        "approval-gated-release--approval-gated-release",
-        "approval-gated-release--qa-check",
-        "approval-gated-release--release-note-writer",
-        "approval-gated-release--announce-release"
-      ],
-      "diagnostics": []
-    },
-    {
-      "path": "company-intake.prose.md",
-      "component_ids": [
-        "company-intake--company-intake",
-        "company-intake--company-normalizer",
-        "company-intake--signal-triage",
-        "company-intake--account-brief"
-      ],
-      "diagnostics": []
-    },
-    {
       "path": "evals/examples-quality.eval.prose.md",
       "component_ids": [
         "evals-examples-quality-eval--examples-quality"
@@ -78,36 +60,80 @@
       "diagnostics": []
     },
     {
-      "path": "hello.prose.md",
+      "path": "north-star/agent-ecosystem-index-refresh.prose.md",
       "component_ids": [
-        "hello--hello"
+        "north-star-agent-ecosystem-index-refresh--agent-ecosystem-index-refresh",
+        "north-star-agent-ecosystem-index-refresh--agent-crawl-target-builder",
+        "north-star-agent-ecosystem-index-refresh--agent-crawl-batch-reader",
+        "north-star-agent-ecosystem-index-refresh--agent-ecosystem-scorer",
+        "north-star-agent-ecosystem-index-refresh--agent-index-report-writer"
       ],
       "diagnostics": []
     },
     {
-      "path": "inference-decision-brief.prose.md",
+      "path": "north-star/company-signal-brief.prose.md",
       "component_ids": [
-        "inference-decision-brief--inference-decision-brief",
-        "inference-decision-brief--evidence-extractor",
-        "inference-decision-brief--risk-synthesizer",
-        "inference-decision-brief--decision-brief-writer"
+        "north-star-company-signal-brief--company-signal-brief"
       ],
       "diagnostics": []
     },
     {
-      "path": "run-aware-brief.prose.md",
+      "path": "north-star/customer-repo-scaffold-preview.prose.md",
       "component_ids": [
-        "run-aware-brief--run-aware-brief",
-        "run-aware-brief--brief-writer"
+        "north-star-customer-repo-scaffold-preview--customer-repo-scaffold-preview",
+        "north-star-customer-repo-scaffold-preview--customer-repo-planner",
+        "north-star-customer-repo-scaffold-preview--customer-repo-preview-writer"
       ],
       "diagnostics": []
     },
     {
-      "path": "selective-recompute.prose.md",
+      "path": "north-star/lead-program-designer.prose.md",
       "component_ids": [
-        "selective-recompute--selective-recompute",
-        "selective-recompute--summarize",
-        "selective-recompute--market-sync"
+        "north-star-lead-program-designer--lead-program-designer",
+        "north-star-lead-program-designer--lead-profile-normalizer",
+        "north-star-lead-program-designer--lead-qualification-scorer",
+        "north-star-lead-program-designer--save-grow-program-drafter"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "north-star/merged-pr-fit-review-lite.prose.md",
+      "component_ids": [
+        "north-star-merged-pr-fit-review-lite--merged-pr-fit-review-lite",
+        "north-star-merged-pr-fit-review-lite--merged-pr-auditor",
+        "north-star-merged-pr-fit-review-lite--pr-review-memory-writer",
+        "north-star-merged-pr-fit-review-lite--pr-fit-summary-writer"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "north-star/opportunity-discovery-lite.prose.md",
+      "component_ids": [
+        "north-star-opportunity-discovery-lite--opportunity-discovery-lite",
+        "north-star-opportunity-discovery-lite--opportunity-classifier",
+        "north-star-opportunity-discovery-lite--opportunity-deduper",
+        "north-star-opportunity-discovery-lite--opportunity-summarizer"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "north-star/release-proposal-dry-run.prose.md",
+      "component_ids": [
+        "north-star-release-proposal-dry-run--release-proposal-dry-run",
+        "north-star-release-proposal-dry-run--qa-check",
+        "north-star-release-proposal-dry-run--release-note-writer",
+        "north-star-release-proposal-dry-run--announce-release"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "north-star/stargazer-intake-lite.prose.md",
+      "component_ids": [
+        "north-star-stargazer-intake-lite--stargazer-intake-lite",
+        "north-star-stargazer-intake-lite--stargazer-ranker",
+        "north-star-stargazer-intake-lite--stargazer-enricher",
+        "north-star-stargazer-intake-lite--stargazer-memory-writer",
+        "north-star-stargazer-intake-lite--stargazer-digest-writer"
       ],
       "diagnostics": []
     }
@@ -124,67 +150,95 @@
     },
     {
       "kind": "example",
-      "path": "approval-gated-release.prose.md",
+      "path": "north-star/agent-ecosystem-index-refresh.prose.md",
       "exists": true,
       "component_ids": [
-        "approval-gated-release--approval-gated-release",
-        "approval-gated-release--qa-check",
-        "approval-gated-release--release-note-writer",
-        "approval-gated-release--announce-release"
+        "north-star-agent-ecosystem-index-refresh--agent-ecosystem-index-refresh",
+        "north-star-agent-ecosystem-index-refresh--agent-crawl-target-builder",
+        "north-star-agent-ecosystem-index-refresh--agent-crawl-batch-reader",
+        "north-star-agent-ecosystem-index-refresh--agent-ecosystem-scorer",
+        "north-star-agent-ecosystem-index-refresh--agent-index-report-writer"
       ],
       "diagnostics": []
     },
     {
       "kind": "example",
-      "path": "company-intake.prose.md",
+      "path": "north-star/company-signal-brief.prose.md",
       "exists": true,
       "component_ids": [
-        "company-intake--company-intake",
-        "company-intake--company-normalizer",
-        "company-intake--signal-triage",
-        "company-intake--account-brief"
+        "north-star-company-signal-brief--company-signal-brief"
       ],
       "diagnostics": []
     },
     {
       "kind": "example",
-      "path": "hello.prose.md",
+      "path": "north-star/customer-repo-scaffold-preview.prose.md",
       "exists": true,
       "component_ids": [
-        "hello--hello"
+        "north-star-customer-repo-scaffold-preview--customer-repo-scaffold-preview",
+        "north-star-customer-repo-scaffold-preview--customer-repo-planner",
+        "north-star-customer-repo-scaffold-preview--customer-repo-preview-writer"
       ],
       "diagnostics": []
     },
     {
       "kind": "example",
-      "path": "inference-decision-brief.prose.md",
+      "path": "north-star/lead-program-designer.prose.md",
       "exists": true,
       "component_ids": [
-        "inference-decision-brief--inference-decision-brief",
-        "inference-decision-brief--evidence-extractor",
-        "inference-decision-brief--risk-synthesizer",
-        "inference-decision-brief--decision-brief-writer"
+        "north-star-lead-program-designer--lead-program-designer",
+        "north-star-lead-program-designer--lead-profile-normalizer",
+        "north-star-lead-program-designer--lead-qualification-scorer",
+        "north-star-lead-program-designer--save-grow-program-drafter"
       ],
       "diagnostics": []
     },
     {
       "kind": "example",
-      "path": "run-aware-brief.prose.md",
+      "path": "north-star/merged-pr-fit-review-lite.prose.md",
       "exists": true,
       "component_ids": [
-        "run-aware-brief--run-aware-brief",
-        "run-aware-brief--brief-writer"
+        "north-star-merged-pr-fit-review-lite--merged-pr-fit-review-lite",
+        "north-star-merged-pr-fit-review-lite--merged-pr-auditor",
+        "north-star-merged-pr-fit-review-lite--pr-review-memory-writer",
+        "north-star-merged-pr-fit-review-lite--pr-fit-summary-writer"
       ],
       "diagnostics": []
     },
     {
       "kind": "example",
-      "path": "selective-recompute.prose.md",
+      "path": "north-star/opportunity-discovery-lite.prose.md",
       "exists": true,
       "component_ids": [
-        "selective-recompute--selective-recompute",
-        "selective-recompute--summarize",
-        "selective-recompute--market-sync"
+        "north-star-opportunity-discovery-lite--opportunity-discovery-lite",
+        "north-star-opportunity-discovery-lite--opportunity-classifier",
+        "north-star-opportunity-discovery-lite--opportunity-deduper",
+        "north-star-opportunity-discovery-lite--opportunity-summarizer"
+      ],
+      "diagnostics": []
+    },
+    {
+      "kind": "example",
+      "path": "north-star/release-proposal-dry-run.prose.md",
+      "exists": true,
+      "component_ids": [
+        "north-star-release-proposal-dry-run--release-proposal-dry-run",
+        "north-star-release-proposal-dry-run--qa-check",
+        "north-star-release-proposal-dry-run--release-note-writer",
+        "north-star-release-proposal-dry-run--announce-release"
+      ],
+      "diagnostics": []
+    },
+    {
+      "kind": "example",
+      "path": "north-star/stargazer-intake-lite.prose.md",
+      "exists": true,
+      "component_ids": [
+        "north-star-stargazer-intake-lite--stargazer-intake-lite",
+        "north-star-stargazer-intake-lite--stargazer-ranker",
+        "north-star-stargazer-intake-lite--stargazer-enricher",
+        "north-star-stargazer-intake-lite--stargazer-memory-writer",
+        "north-star-stargazer-intake-lite--stargazer-digest-writer"
       ],
       "diagnostics": []
     }
@@ -194,107 +248,18 @@
     "effects": {
       "delivers": 2,
       "human_gate": 2,
-      "pure": 12,
-      "read_external": 5
+      "mutates_repo": 2,
+      "pure": 21,
+      "read_external": 2,
+      "writes_memory": 4
     },
-    "access": [
-      {
-        "component_id": "company-intake--account-brief",
-        "key": "callable_by",
-        "labels": [
-          "admin",
-          "revenue"
-        ]
-      },
-      {
-        "component_id": "company-intake--account-brief",
-        "key": "reads",
-        "labels": [
-          "company_private.accounts"
-        ]
-      },
-      {
-        "component_id": "run-aware-brief--run-aware-brief",
-        "key": "callable_by",
-        "labels": [
-          "admin",
-          "revenue"
-        ]
-      },
-      {
-        "component_id": "run-aware-brief--run-aware-brief",
-        "key": "reads",
-        "labels": [
-          "company_private.accounts"
-        ]
-      }
-    ],
-    "labels": {
-      "admin": 2,
-      "company_private.accounts": 2,
-      "revenue": 2
-    }
+    "access": [],
+    "labels": {}
   },
   "meta": {
     "accepted_proposals": []
   },
   "components": [
-    {
-      "id": "approval-gated-release--announce-release",
-      "name": "announce-release",
-      "kind": "service",
-      "path": "approval-gated-release.prose.md",
-      "expansions": []
-    },
-    {
-      "id": "approval-gated-release--approval-gated-release",
-      "name": "approval-gated-release",
-      "kind": "program",
-      "path": "approval-gated-release.prose.md",
-      "expansions": []
-    },
-    {
-      "id": "approval-gated-release--qa-check",
-      "name": "qa-check",
-      "kind": "service",
-      "path": "approval-gated-release.prose.md",
-      "expansions": []
-    },
-    {
-      "id": "approval-gated-release--release-note-writer",
-      "name": "release-note-writer",
-      "kind": "service",
-      "path": "approval-gated-release.prose.md",
-      "expansions": []
-    },
-    {
-      "id": "company-intake--account-brief",
-      "name": "account-brief",
-      "kind": "service",
-      "path": "company-intake.prose.md",
-      "expansions": []
-    },
-    {
-      "id": "company-intake--company-intake",
-      "name": "company-intake",
-      "kind": "program",
-      "path": "company-intake.prose.md",
-      "expansions": []
-    },
-    {
-      "id": "company-intake--company-normalizer",
-      "name": "company-normalizer",
-      "kind": "service",
-      "path": "company-intake.prose.md",
-      "expansions": []
-    },
-    {
-      "id": "company-intake--signal-triage",
-      "name": "signal-triage",
-      "kind": "service",
-      "path": "company-intake.prose.md",
-      "expansions": []
-    },
     {
       "id": "evals-examples-quality-eval--examples-quality",
       "name": "examples-quality",
@@ -303,87 +268,227 @@
       "expansions": []
     },
     {
-      "id": "hello--hello",
-      "name": "hello",
+      "id": "north-star-agent-ecosystem-index-refresh--agent-crawl-batch-reader",
+      "name": "agent-crawl-batch-reader",
       "kind": "service",
-      "path": "hello.prose.md",
+      "path": "north-star/agent-ecosystem-index-refresh.prose.md",
       "expansions": []
     },
     {
-      "id": "inference-decision-brief--decision-brief-writer",
-      "name": "decision-brief-writer",
+      "id": "north-star-agent-ecosystem-index-refresh--agent-crawl-target-builder",
+      "name": "agent-crawl-target-builder",
       "kind": "service",
-      "path": "inference-decision-brief.prose.md",
+      "path": "north-star/agent-ecosystem-index-refresh.prose.md",
       "expansions": []
     },
     {
-      "id": "inference-decision-brief--evidence-extractor",
-      "name": "evidence-extractor",
-      "kind": "service",
-      "path": "inference-decision-brief.prose.md",
-      "expansions": []
-    },
-    {
-      "id": "inference-decision-brief--inference-decision-brief",
-      "name": "inference-decision-brief",
+      "id": "north-star-agent-ecosystem-index-refresh--agent-ecosystem-index-refresh",
+      "name": "agent-ecosystem-index-refresh",
       "kind": "program",
-      "path": "inference-decision-brief.prose.md",
+      "path": "north-star/agent-ecosystem-index-refresh.prose.md",
       "expansions": []
     },
     {
-      "id": "inference-decision-brief--risk-synthesizer",
-      "name": "risk-synthesizer",
+      "id": "north-star-agent-ecosystem-index-refresh--agent-ecosystem-scorer",
+      "name": "agent-ecosystem-scorer",
       "kind": "service",
-      "path": "inference-decision-brief.prose.md",
+      "path": "north-star/agent-ecosystem-index-refresh.prose.md",
       "expansions": []
     },
     {
-      "id": "run-aware-brief--brief-writer",
-      "name": "brief-writer",
+      "id": "north-star-agent-ecosystem-index-refresh--agent-index-report-writer",
+      "name": "agent-index-report-writer",
       "kind": "service",
-      "path": "run-aware-brief.prose.md",
+      "path": "north-star/agent-ecosystem-index-refresh.prose.md",
       "expansions": []
     },
     {
-      "id": "run-aware-brief--run-aware-brief",
-      "name": "run-aware-brief",
+      "id": "north-star-company-signal-brief--company-signal-brief",
+      "name": "company-signal-brief",
+      "kind": "service",
+      "path": "north-star/company-signal-brief.prose.md",
+      "expansions": []
+    },
+    {
+      "id": "north-star-customer-repo-scaffold-preview--customer-repo-planner",
+      "name": "customer-repo-planner",
+      "kind": "service",
+      "path": "north-star/customer-repo-scaffold-preview.prose.md",
+      "expansions": []
+    },
+    {
+      "id": "north-star-customer-repo-scaffold-preview--customer-repo-preview-writer",
+      "name": "customer-repo-preview-writer",
+      "kind": "service",
+      "path": "north-star/customer-repo-scaffold-preview.prose.md",
+      "expansions": []
+    },
+    {
+      "id": "north-star-customer-repo-scaffold-preview--customer-repo-scaffold-preview",
+      "name": "customer-repo-scaffold-preview",
       "kind": "program",
-      "path": "run-aware-brief.prose.md",
+      "path": "north-star/customer-repo-scaffold-preview.prose.md",
       "expansions": []
     },
     {
-      "id": "selective-recompute--market-sync",
-      "name": "market-sync",
+      "id": "north-star-lead-program-designer--lead-profile-normalizer",
+      "name": "lead-profile-normalizer",
       "kind": "service",
-      "path": "selective-recompute.prose.md",
+      "path": "north-star/lead-program-designer.prose.md",
       "expansions": []
     },
     {
-      "id": "selective-recompute--selective-recompute",
-      "name": "selective-recompute",
+      "id": "north-star-lead-program-designer--lead-program-designer",
+      "name": "lead-program-designer",
       "kind": "program",
-      "path": "selective-recompute.prose.md",
+      "path": "north-star/lead-program-designer.prose.md",
       "expansions": []
     },
     {
-      "id": "selective-recompute--summarize",
-      "name": "summarize",
+      "id": "north-star-lead-program-designer--lead-qualification-scorer",
+      "name": "lead-qualification-scorer",
       "kind": "service",
-      "path": "selective-recompute.prose.md",
+      "path": "north-star/lead-program-designer.prose.md",
+      "expansions": []
+    },
+    {
+      "id": "north-star-lead-program-designer--save-grow-program-drafter",
+      "name": "save-grow-program-drafter",
+      "kind": "service",
+      "path": "north-star/lead-program-designer.prose.md",
+      "expansions": []
+    },
+    {
+      "id": "north-star-merged-pr-fit-review-lite--merged-pr-auditor",
+      "name": "merged-pr-auditor",
+      "kind": "service",
+      "path": "north-star/merged-pr-fit-review-lite.prose.md",
+      "expansions": []
+    },
+    {
+      "id": "north-star-merged-pr-fit-review-lite--merged-pr-fit-review-lite",
+      "name": "merged-pr-fit-review-lite",
+      "kind": "program",
+      "path": "north-star/merged-pr-fit-review-lite.prose.md",
+      "expansions": []
+    },
+    {
+      "id": "north-star-merged-pr-fit-review-lite--pr-fit-summary-writer",
+      "name": "pr-fit-summary-writer",
+      "kind": "service",
+      "path": "north-star/merged-pr-fit-review-lite.prose.md",
+      "expansions": []
+    },
+    {
+      "id": "north-star-merged-pr-fit-review-lite--pr-review-memory-writer",
+      "name": "pr-review-memory-writer",
+      "kind": "service",
+      "path": "north-star/merged-pr-fit-review-lite.prose.md",
+      "expansions": []
+    },
+    {
+      "id": "north-star-opportunity-discovery-lite--opportunity-classifier",
+      "name": "opportunity-classifier",
+      "kind": "service",
+      "path": "north-star/opportunity-discovery-lite.prose.md",
+      "expansions": []
+    },
+    {
+      "id": "north-star-opportunity-discovery-lite--opportunity-deduper",
+      "name": "opportunity-deduper",
+      "kind": "service",
+      "path": "north-star/opportunity-discovery-lite.prose.md",
+      "expansions": []
+    },
+    {
+      "id": "north-star-opportunity-discovery-lite--opportunity-discovery-lite",
+      "name": "opportunity-discovery-lite",
+      "kind": "program",
+      "path": "north-star/opportunity-discovery-lite.prose.md",
+      "expansions": []
+    },
+    {
+      "id": "north-star-opportunity-discovery-lite--opportunity-summarizer",
+      "name": "opportunity-summarizer",
+      "kind": "service",
+      "path": "north-star/opportunity-discovery-lite.prose.md",
+      "expansions": []
+    },
+    {
+      "id": "north-star-release-proposal-dry-run--announce-release",
+      "name": "announce-release",
+      "kind": "service",
+      "path": "north-star/release-proposal-dry-run.prose.md",
+      "expansions": []
+    },
+    {
+      "id": "north-star-release-proposal-dry-run--qa-check",
+      "name": "qa-check",
+      "kind": "service",
+      "path": "north-star/release-proposal-dry-run.prose.md",
+      "expansions": []
+    },
+    {
+      "id": "north-star-release-proposal-dry-run--release-note-writer",
+      "name": "release-note-writer",
+      "kind": "service",
+      "path": "north-star/release-proposal-dry-run.prose.md",
+      "expansions": []
+    },
+    {
+      "id": "north-star-release-proposal-dry-run--release-proposal-dry-run",
+      "name": "release-proposal-dry-run",
+      "kind": "program",
+      "path": "north-star/release-proposal-dry-run.prose.md",
+      "expansions": []
+    },
+    {
+      "id": "north-star-stargazer-intake-lite--stargazer-digest-writer",
+      "name": "stargazer-digest-writer",
+      "kind": "service",
+      "path": "north-star/stargazer-intake-lite.prose.md",
+      "expansions": []
+    },
+    {
+      "id": "north-star-stargazer-intake-lite--stargazer-enricher",
+      "name": "stargazer-enricher",
+      "kind": "service",
+      "path": "north-star/stargazer-intake-lite.prose.md",
+      "expansions": []
+    },
+    {
+      "id": "north-star-stargazer-intake-lite--stargazer-intake-lite",
+      "name": "stargazer-intake-lite",
+      "kind": "program",
+      "path": "north-star/stargazer-intake-lite.prose.md",
+      "expansions": []
+    },
+    {
+      "id": "north-star-stargazer-intake-lite--stargazer-memory-writer",
+      "name": "stargazer-memory-writer",
+      "kind": "service",
+      "path": "north-star/stargazer-intake-lite.prose.md",
+      "expansions": []
+    },
+    {
+      "id": "north-star-stargazer-intake-lite--stargazer-ranker",
+      "name": "stargazer-ranker",
+      "kind": "service",
+      "path": "north-star/stargazer-intake-lite.prose.md",
       "expansions": []
     }
   ],
   "graph": {
-    "node_count": 19,
-    "edge_count": 40,
+    "node_count": 31,
+    "edge_count": 79,
     "edge_kinds": {
-      "caller": 10,
-      "exact": 8,
-      "execution": 12,
-      "return": 10
+      "caller": 11,
+      "exact": 24,
+      "execution": 22,
+      "return": 22
     }
   },
   "diagnostics": {
-    "ambiguous_package_exact_wiring": 6
+    "ambiguous_package_exact_wiring": 24
   }
 }

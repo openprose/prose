@@ -83,13 +83,14 @@ OpenProse is especially useful for:
 
 Concrete starting points:
 
-- [`hello.prose.md`](../examples/hello.prose.md) for the smallest typed service
-- [`selective-recompute.prose.md`](../examples/selective-recompute.prose.md)
-  for target-output planning
-- [`approval-gated-release.prose.md`](../examples/approval-gated-release.prose.md)
+- [`company-signal-brief.prose.md`](../examples/north-star/company-signal-brief.prose.md)
+  for the smallest useful typed service
+- [`lead-program-designer.prose.md`](../examples/north-star/lead-program-designer.prose.md)
+  for target-output planning and selective recompute
+- [`release-proposal-dry-run.prose.md`](../examples/north-star/release-proposal-dry-run.prose.md)
   for unsafe effects and human approval
-- [`company-intake.prose.md`](../examples/company-intake.prose.md) for a
-  compact company workflow
+- [`stargazer-intake-lite.prose.md`](../examples/north-star/stargazer-intake-lite.prose.md)
+  for memory-oriented operating loops
 
 ## Poor Fits
 

@@ -451,7 +451,13 @@ kind: service
 
   test("remote CLI emits an envelope and preserves approved effects", () => {
     const outDir = mkdtempSync(join(tmpdir(), "openprose-remote-cli-"));
-    const fixtureFile = join(import.meta.dir, "..", "examples", "approval-gated-release.prose.md");
+    const fixtureFile = join(
+      import.meta.dir,
+      "..",
+      "examples",
+      "north-star",
+      "release-proposal-dry-run.prose.md",
+    );
     const result = Bun.spawnSync(
       [
         "bun",

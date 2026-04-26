@@ -41,19 +41,22 @@ You write canonical `.prose.md` source with typed inputs, typed outputs, effects
 The local-first CLI surface is real:
 
 ```bash
-bun run prose compile examples/hello.prose.md
-bun run prose plan examples/selective-recompute.prose.md \
-  --input draft="A stable draft." \
-  --input company="openprose"
-bun run prose graph examples/approval-gated-release.prose.md \
+bun run prose compile examples/north-star/company-signal-brief.prose.md
+bun run prose plan examples/north-star/lead-program-designer.prose.md \
+  --input lead_profile='{"company":"Acme","pain":"manual agent handoffs"}' \
+  --input brand_context="OpenProse is React for agent outcomes." \
+  --target-output lead_program_plan
+bun run prose graph examples/north-star/release-proposal-dry-run.prose.md \
   --input release_candidate="v0.11.0"
-bun run prose run examples/hello.prose.md \
-  --output message="Hello from the local runtime."
+bun run prose run examples/north-star/company-signal-brief.prose.md \
+  --input signal_notes="Customer teams want durable agent workflows." \
+  --input brand_context="OpenProse is React for agent outcomes." \
+  --output company_signal_brief="Hello from the local runtime."
 bun run prose status .prose/runs
 bun run prose trace .prose/runs/{run-id}
 bun run prose package examples
 bun run prose publish-check examples --strict
-bun run prose install registry://openprose/@openprose/examples@0.1.0/hello \
+bun run prose install registry://openprose/@openprose/examples@0.1.0/company-signal-brief \
   --catalog-root . \
   --workspace-root /tmp/openprose-workspace
 bun run measure:examples
@@ -129,13 +132,13 @@ bun run test
 Try the examples:
 
 ```bash
-bun run prose compile examples/hello.prose.md
-bun run prose plan examples/selective-recompute.prose.md \
-  --input draft="A stable draft." \
-  --input company="openprose"
-bun run prose graph examples/company-intake.prose.md \
-  --input company_domain="openprose.com" \
-  --input inbound_note="Warm referral"
+bun run prose compile examples/north-star/company-signal-brief.prose.md
+bun run prose plan examples/north-star/lead-program-designer.prose.md \
+  --input lead_profile='{"company":"Acme","pain":"manual agent handoffs"}' \
+  --input brand_context="OpenProse is React for agent outcomes." \
+  --target-output lead_program_plan
+bun run prose graph examples/north-star/release-proposal-dry-run.prose.md \
+  --input release_candidate="v0.11.0"
 ```
 
 Measure package health and reactive behavior:

@@ -38,7 +38,8 @@ Latest generated reports:
 - Compiled Bun binary smoke passes.
 - Package metadata and hosted contract fixtures are stable.
 - `examples`, `packages/std`, and `packages/co` pass strict publish checks.
-- `dist/prose` can render help and compile `examples/hello.prose.md`.
+- `dist/prose` can render help and compile
+  `examples/north-star/company-signal-brief.prose.md`.
 - CLI help, status, trace, and graph output explain the runtime loop clearly.
 - Remaining hosted/platform-specific follow-up is documented outside the OSS
   package workstream.
@@ -53,9 +54,9 @@ Latest generated reports:
 
 ## Live Provider Smoke Notes
 
-- 2026-04-26: `prose run examples/hello.prose.md --provider pi` reached the Pi
-  provider through OpenRouter and correctly surfaced the upstream model error as
-  the run acceptance reason.
+- 2026-04-26: `prose run examples/north-star/company-signal-brief.prose.md
+  --provider pi` reached the Pi provider through OpenRouter and correctly
+  surfaced the upstream model error as the run acceptance reason.
 - The smoke did not yet produce an accepted run because the available
   OpenRouter account returned an insufficient-credits response.
 - The adapter now records Pi event-level model errors before output validation,
@@ -69,7 +70,6 @@ Latest generated reports:
 - 2026-04-26: The runtime boundary was clarified: OpenRouter is a Pi model
   provider profile, not an OpenProse graph VM. The real graph VM path remains
   Pi, with deterministic `--output` fixtures for repeatable smoke tests.
-- 2026-04-26: Ran the new `examples/inference-decision-brief.prose.md` graph
-  through the Pi SDK with Anthropic `claude-haiku-4-5`. The graph succeeded
-  locally with three node materializations: `evidence_map`, `risk_register`,
-  and `decision_brief`.
+- 2026-04-26: Ran a model-backed decision graph through the Pi SDK with
+  Anthropic `claude-haiku-4-5`. That proof point has now been folded into the
+  north-star `lead-program-designer` ladder example.

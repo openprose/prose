@@ -1,115 +1,115 @@
 {
   "report_version": "0.1",
-  "generated_at": "2026-04-26T12:07:57.089Z",
+  "generated_at": "2026-04-26T13:12:49.290Z",
   "repo_root": ".",
   "temp_root": "$TMP",
   "status": "pass",
   "summary": {
     "checks": 15,
-    "elapsed_ms": 1617
+    "elapsed_ms": 6321
   },
   "checks": [
     {
       "label": "compile examples package",
       "command": "prose compile examples --no-pretty",
       "exit_code": 0,
-      "elapsed_ms": 45,
-      "stdout_preview": "{\"package_ir_version\":\"0.1\",\"semantic_hash\":\"222b8c1a2a14f7589fd08ac81f1b7611e573b86f41188629a67e303ccc9ae91a\",\"hashes\":{\"source_hash\":\"c0c852f22ed641bda3aab8d755129ba2d4138f72a9e55c1bc54892838ced3363\",\"semantic_hash\":\"222b8c1a2a14f7589f...",
+      "elapsed_ms": 504,
+      "stdout_preview": "{\"package_ir_version\":\"0.1\",\"semantic_hash\":\"d5dcc2791da07caa3fa17132fda177ec9db473a7c7d01225d19d73f5b99b42fd\",\"hashes\":{\"source_hash\":\"5e1c71d027f2fa6b9e6bc27d92f88d328398ea38e3ad38e2e0eef1b278dab2ff\",\"semantic_hash\":\"d5dcc2791da07caa3f...",
       "stderr_preview": ""
     },
     {
       "label": "compile std package",
       "command": "prose compile packages/std --no-pretty",
       "exit_code": 0,
-      "elapsed_ms": 59,
-      "stdout_preview": "{\"package_ir_version\":\"0.1\",\"semantic_hash\":\"5069ffeb95a2afaf4f04c25468baa6620426b37640ce22319bfc25eeb4e7b49e\",\"hashes\":{\"source_hash\":\"a3a89e7460016d0fa6fc6d57878fafe555e8d270ed735d6e23f2dfecb078dd7e\",\"semantic_hash\":\"5069ffeb95a2afaf4f...",
+      "elapsed_ms": 351,
+      "stdout_preview": "{\"package_ir_version\":\"0.1\",\"semantic_hash\":\"997c0f878900d35c3a4b8b15c9cf007c18a28638fca3c03802d0856716d6f355\",\"hashes\":{\"source_hash\":\"a3a89e7460016d0fa6fc6d57878fafe555e8d270ed735d6e23f2dfecb078dd7e\",\"semantic_hash\":\"997c0f878900d35c3a...",
       "stderr_preview": ""
     },
     {
       "label": "compile co package",
       "command": "prose compile packages/co --no-pretty",
       "exit_code": 0,
-      "elapsed_ms": 46,
-      "stdout_preview": "{\"package_ir_version\":\"0.1\",\"semantic_hash\":\"8dc8734a449f05e00874e0e2469acc49b83c2a9b82accf3d95df3cccafcc3b48\",\"hashes\":{\"source_hash\":\"424f6c7be86cc33923848d0a1898cf5a7cdf2930b840e5e7d7482f2ec03486d5\",\"semantic_hash\":\"8dc8734a449f05e008...",
+      "elapsed_ms": 343,
+      "stdout_preview": "{\"package_ir_version\":\"0.1\",\"semantic_hash\":\"271ae2818f90ca518115a72c4277da2cb57709630debe04fa32ab38ea3abfc1c\",\"hashes\":{\"source_hash\":\"424f6c7be86cc33923848d0a1898cf5a7cdf2930b840e5e7d7482f2ec03486d5\",\"semantic_hash\":\"271ae2818f90ca5181...",
       "stderr_preview": ""
     },
     {
-      "label": "plan selective recompute",
-      "command": "prose plan examples/selective-recompute.prose.md --input \"draft=A stable draft.\" --input company=openprose --target-output summary --no-pretty",
+      "label": "plan lead program recompute",
+      "command": "prose plan examples/north-star/lead-program-designer.prose.md --input \"lead_profile={\\\"company\\\":\\\"Acme\\\",\\\"pain\\\":\\\"manual agent handoffs\\\"}\" --input \"brand_context=OpenProse is React for agent outcomes.\" --target-output lead_program_plan --no-pretty",
       "exit_code": 0,
-      "elapsed_ms": 37,
-      "stdout_preview": "{\"plan_version\":\"0.1\",\"component_ref\":\"selective-recompute\",\"ir_hash\":\"40aed244d2ff07a2aa5d2f29ab62d06d6905406efc4f7a8d51d13354d1a0428f\",\"requested_outputs\":[\"summary\"],\"approved_effects\":[],\"status\":\"ready\",\"graph_stale_reasons\":[],\"gra...",
+      "elapsed_ms": 339,
+      "stdout_preview": "{\"plan_version\":\"0.1\",\"component_ref\":\"lead-program-designer\",\"ir_hash\":\"8196310ffb864d815156eb5bd98a295a9f23db39aa3b5c5beb7e3c99cf649290\",\"requested_outputs\":[\"lead_program_plan\"],\"approved_effects\":[],\"status\":\"ready\",\"graph_stale_reas...",
       "stderr_preview": ""
     },
     {
-      "label": "graph selective recompute",
-      "command": "prose graph examples/selective-recompute.prose.md --input \"draft=A stable draft.\" --input company=openprose --target-output summary",
+      "label": "graph lead program recompute",
+      "command": "prose graph examples/north-star/lead-program-designer.prose.md --input \"lead_profile={\\\"company\\\":\\\"Acme\\\",\\\"pain\\\":\\\"manual agent handoffs\\\"}\" --input \"brand_context=OpenProse is React for agent outcomes.\" --target-output lead_program_plan",
       "exit_code": 0,
-      "elapsed_ms": 37,
-      "stdout_preview": "%% OpenProse graph: selective-recompute %% requested outputs: summary flowchart LR _caller[\"Caller<br/>[boundary]\"] summarize[\"summarize<br/>[service]<br/>status: ready<br/>effects: pure<br/>stale: no_current_run<br/>selected<br/>example...",
+      "elapsed_ms": 327,
+      "stdout_preview": "%% OpenProse graph: lead-program-designer %% requested outputs: lead_program_plan flowchart LR _caller[\"Caller<br/>[boundary]\"] lead_profile_normalizer[\"lead-profile-normalizer<br/>[service]<br/>status: ready<br/>effects: pure<br/>stale:...",
       "stderr_preview": ""
     },
     {
-      "label": "run hello with deterministic outputs",
-      "command": "prose run examples/hello.prose.md --run-root $TMP/runs --run-id confidence-hello --output \"message=Hello from the runtime confidence matrix.\" --no-pretty",
+      "label": "run company signal brief with deterministic outputs",
+      "command": "prose run examples/north-star/company-signal-brief.prose.md --run-root $TMP/runs --run-id confidence-company-signal --input \"signal_notes=Customer teams want durable agent workflows.\" --input \"brand_context=OpenProse is React for agent outcomes.\" --output \"company_signal_brief=Lead with durable agent workflows.\" --no-pretty",
       "exit_code": 0,
-      "elapsed_ms": 55,
-      "stdout_preview": "{\"run_id\":\"confidence-hello\",\"run_dir\":\"$TMP/runs/confidence-hello\",\"status\":\"succeeded\",\"provider\":\"fixture\",\"plan_status\":\"ready\",\"outputs\":[\"message\"]}",
+      "elapsed_ms": 358,
+      "stdout_preview": "{\"run_id\":\"confidence-company-signal\",\"run_dir\":\"$TMP/runs/confidence-company-signal\",\"status\":\"succeeded\",\"provider\":\"fixture\",\"runtime_profile\":{\"profile_version\":\"0.1\",\"graph_vm\":\"fixture\",\"single_run_harness\":null,\"model_provider\":nu...",
       "stderr_preview": ""
     },
     {
       "label": "status run store",
       "command": "prose status $TMP/runs",
       "exit_code": 0,
-      "elapsed_ms": 35,
-      "stdout_preview": "Runs: 1 Root: $TMP/runs - confidence-hello: hello [component] succeeded (accepted) outputs[message] reason No required evals declared. created 2026-04-26T12:07:55.733Z completed 2026-04-26T12:07:55.738Z path $TMP/runs/confidence-hello",
+      "elapsed_ms": 345,
+      "stdout_preview": "Runs: 1 Root: $TMP/runs - confidence-company-signal: company-signal-brief [component] succeeded (accepted) outputs[company_signal_brief] reason No required evals declared. created 2026-04-26T13:12:45.173Z completed 2026-04-26T13:12:45.18...",
       "stderr_preview": ""
     },
     {
       "label": "trace run",
-      "command": "prose trace $TMP/runs/confidence-hello",
+      "command": "prose trace $TMP/runs/confidence-company-signal",
       "exit_code": 0,
-      "elapsed_ms": 32,
-      "stdout_preview": "Run: confidence-hello Component: hello [component] Status: succeeded (accepted) Acceptance reason: No required evals declared. Runtime: openprose-provider / fixture Created: 2026-04-26T12:07:55.733Z Completed: 2026-04-26T12:07:55.738Z In...",
+      "elapsed_ms": 327,
+      "stdout_preview": "Run: confidence-company-signal Component: company-signal-brief [component] Status: succeeded (accepted) Acceptance reason: No required evals declared. Runtime: fixture (openprose-provider / fixture) Created: 2026-04-26T13:12:45.173Z Comp...",
       "stderr_preview": ""
     },
     {
       "label": "eval subject run",
-      "command": "prose eval examples/evals/examples-quality.eval.prose.md --subject-run $TMP/runs/confidence-hello --input package_root=examples --output \"verdict={\\\"passed\\\":true,\\\"score\\\":0.97,\\\"verdict\\\":\\\"pass\\\"}\" --no-pretty",
+      "command": "prose eval examples/evals/examples-quality.eval.prose.md --subject-run $TMP/runs/confidence-company-signal --input package_root=examples --output \"verdict={\\\"passed\\\":true,\\\"score\\\":0.97,\\\"verdict\\\":\\\"pass\\\"}\" --no-pretty",
       "exit_code": 0,
-      "elapsed_ms": 50,
-      "stdout_preview": "{\"eval_id\":\"confidence-hello:examples-quality-eval-prose-md:confidence-hello:eval:examples-quality-eval-prose-md\",\"eval_ref\":\"examples/evals/examples-quality.eval.prose.md\",\"subject_run_id\":\"confidence-hello\",\"eval_run_id\":\"confidence-he...",
+      "elapsed_ms": 348,
+      "stdout_preview": "{\"eval_id\":\"confidence-company-signal:examples-quality-eval-prose-md:confidence-company-signal:eval:examples-quality-eval-prose-md\",\"eval_ref\":\"examples/evals/examples-quality.eval.prose.md\",\"subject_run_id\":\"confidence-company-signal\",\"...",
       "stderr_preview": ""
     },
     {
       "label": "remote hosted envelope",
-      "command": "prose remote execute examples/hello.prose.md --out-dir $TMP/remote --run-id confidence-remote --output \"message=Hello from the hosted envelope smoke.\" --component-ref registry://openprose/@openprose/examples@0.1.0/hello --package-metadata package-hosted-ingest.json --no-pretty",
+      "command": "prose remote execute examples/north-star/company-signal-brief.prose.md --out-dir $TMP/remote --run-id confidence-remote --input \"signal_notes=Remote hosted envelope smoke.\" --input \"brand_context=OpenProse is React for agent outcomes.\" --output \"company_signal_brief=Hello from the hosted envelope smoke.\" --component-ref registry://openprose/@openprose/examples@0.1.0/company-signal-brief --package-metadata package-hosted-ingest.json --no-pretty",
       "exit_code": 0,
-      "elapsed_ms": 50,
-      "stdout_preview": "{\"schema_version\":\"0.2\",\"run_id\":\"confidence-remote\",\"run_dir\":\"$TMP/remote/confidence-remote\",\"component_ref\":\"registry://openprose/@openprose/examples@0.1.0/hello\",\"status\":\"succeeded\",\"provider\":\"fixture\",\"plan_status\":\"ready\",\"accept...",
+      "elapsed_ms": 339,
+      "stdout_preview": "{\"schema_version\":\"0.2\",\"run_id\":\"confidence-remote\",\"run_dir\":\"$TMP/remote/confidence-remote\",\"component_ref\":\"registry://openprose/@openprose/examples@0.1.0/company-signal-brief\",\"status\":\"succeeded\",\"provider\":\"fixture\",\"runtime_profi...",
       "stderr_preview": ""
     },
     {
       "label": "package examples",
       "command": "prose package examples --format json --no-pretty",
       "exit_code": 0,
-      "elapsed_ms": 104,
-      "stdout_preview": "{\"schema_version\":\"openprose.package.v2\",\"package_version\":\"0.2\",\"metadata_digest\":\"2ce739be64dacacb265fea565a7c005c1fa950dbc3970adc7f372893a4101704\",\"root\":\"./examples\",\"package_ir\":{\"version\":\"0.1\",\"semantic_hash\":\"222b8c1a2a14f7589fd0...",
+      "elapsed_ms": 397,
+      "stdout_preview": "{\"schema_version\":\"openprose.package.v2\",\"package_version\":\"0.2\",\"metadata_digest\":\"d168aa8080377087c492dd916f1948e08c1c85965c64c07564fbb76bf2e692e5\",\"root\":\"./examples\",\"package_ir\":{\"version\":\"0.1\",\"semantic_hash\":\"d5dcc2791da07caa3fa1...",
       "stderr_preview": ""
     },
     {
       "label": "strict publish-check examples",
       "command": "prose publish-check examples --strict --format json --no-pretty",
       "exit_code": 0,
-      "elapsed_ms": 105,
-      "stdout_preview": "{\"publish_check_version\":\"0.1\",\"package_name\":\"@openprose/examples\",\"package_version\":\"0.1.0\",\"strict\":true,\"status\":\"pass\",\"blockers\":[],\"warnings\":[],\"checks\":[{\"name\":\"components_present\",\"status\":\"pass\",\"detail\":\"19 component(s) foun...",
+      "elapsed_ms": 401,
+      "stdout_preview": "{\"publish_check_version\":\"0.1\",\"package_name\":\"@openprose/examples\",\"package_version\":\"0.1.0\",\"strict\":true,\"status\":\"pass\",\"blockers\":[],\"warnings\":[],\"checks\":[{\"name\":\"components_present\",\"status\":\"pass\",\"detail\":\"31 component(s) foun...",
       "stderr_preview": ""
     },
     {
       "label": "strict publish-check std",
       "command": "prose publish-check packages/std --strict --format json --no-pretty",
       "exit_code": 0,
-      "elapsed_ms": 139,
+      "elapsed_ms": 427,
       "stdout_preview": "{\"publish_check_version\":\"0.1\",\"package_name\":\"@openprose/std\",\"package_version\":\"0.11.0-dev\",\"strict\":true,\"status\":\"pass\",\"blockers\":[],\"warnings\":[],\"checks\":[{\"name\":\"components_present\",\"status\":\"pass\",\"detail\":\"58 component(s) foun...",
       "stderr_preview": ""
     },
@@ -117,16 +117,16 @@
       "label": "strict publish-check co",
       "command": "prose publish-check packages/co --strict --format json --no-pretty",
       "exit_code": 0,
-      "elapsed_ms": 99,
+      "elapsed_ms": 380,
       "stdout_preview": "{\"publish_check_version\":\"0.1\",\"package_name\":\"@openprose/co\",\"package_version\":\"0.11.0-dev\",\"strict\":true,\"status\":\"pass\",\"blockers\":[],\"warnings\":[],\"checks\":[{\"name\":\"components_present\",\"status\":\"pass\",\"detail\":\"6 component(s) found....",
       "stderr_preview": ""
     },
     {
       "label": "install examples component",
-      "command": "prose install registry://openprose/@openprose/examples@0.1.0/hello --catalog-root . --workspace-root $TMP/workspace --no-pretty",
+      "command": "prose install registry://openprose/@openprose/examples@0.1.0/company-signal-brief --catalog-root . --workspace-root $TMP/workspace --no-pretty",
       "exit_code": 0,
-      "elapsed_ms": 720,
-      "stdout_preview": "{\"install_version\":\"0.1\",\"registry_ref\":\"registry://openprose/@openprose/examples@0.1.0/hello\",\"package_name\":\"@openprose/examples\",\"package_version\":\"0.1.0\",\"source_git\":\"github.com/openprose/prose\",\"source_sha\":\"54dab36d04f57e7343615d2...",
+      "elapsed_ms": 1132,
+      "stdout_preview": "{\"install_version\":\"0.1\",\"registry_ref\":\"registry://openprose/@openprose/examples@0.1.0/company-signal-brief\",\"package_name\":\"@openprose/examples\",\"package_version\":\"0.1.0\",\"source_git\":\"github.com/openprose/prose\",\"source_sha\":\"54dab36d...",
       "stderr_preview": ""
     }
   ]
