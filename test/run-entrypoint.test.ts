@@ -808,6 +808,29 @@ kind: program
       "No runtime provider selected.",
     );
   });
+
+  test("CLI can select the env-backed Pi provider before execution", () => {
+    const runRoot = mkdtempSync(join(tmpdir(), "openprose-run-cli-pi-"));
+    const result = runProseCli([
+      "run",
+      fixturePath("compiler/pipeline.prose.md"),
+      "--provider",
+      "pi",
+      "--run-root",
+      runRoot,
+      "--run-id",
+      "pi-provider-selected",
+      "--no-pretty",
+    ]);
+
+    expect(result.exitCode).toBe(1);
+    expect(new TextDecoder().decode(result.stderr)).not.toContain("not registered");
+    expect(JSON.parse(new TextDecoder().decode(result.stdout))).toMatchObject({
+      provider: "pi",
+      status: "blocked",
+      plan_status: "blocked",
+    });
+  });
 });
 
 function recordingProvider(
