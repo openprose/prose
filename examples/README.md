@@ -51,6 +51,14 @@ subject run shape, name what good output must include, name what must be
 rejected, and specify measurable assertions that later executable evals should
 enforce.
 
+## Scripted Pi Scenarios
+
+The test suite runs every north-star example through a scripted Pi-shaped
+session that calls `openprose_submit_outputs`. These are deterministic tests of
+the real graph runtime contract: output files are fallback behavior, while the
+north-star scenarios exercise the structured tool path that live Pi sessions
+should use.
+
 ## Smallest Run
 
 ```bash
