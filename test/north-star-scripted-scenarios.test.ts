@@ -325,12 +325,26 @@ function scenarios(): NorthStarScenario[] {
         "customer-repo-planner": submission({
           customer_repo_plan: JSON.stringify({
             directories: ["responsibilities", "services", "workflows", "evals"],
+            files: [
+              "README.md",
+              "responsibilities/intake.prose.md",
+              "services/lead-intake.prose.md",
+              "workflows/save-grow.prose.md",
+              "evals/intake.eval.prose.md",
+            ],
           }),
         }),
         "customer-repo-preview-writer": submission(
           {
             customer_repo_preview: JSON.stringify({
-              files: ["responsibilities/intake.prose.md", "evals/intake.eval.prose.md"],
+              workspace_root: "/tmp/openprose-customer-preview/acme-robotics",
+              files: [
+                { path: "README.md", sha256: "1".repeat(64) },
+                { path: "responsibilities/intake.prose.md", sha256: "2".repeat(64) },
+                { path: "services/lead-intake.prose.md", sha256: "3".repeat(64) },
+                { path: "workflows/save-grow.prose.md", sha256: "4".repeat(64) },
+                { path: "evals/intake.eval.prose.md", sha256: "5".repeat(64) },
+              ],
             }),
           },
           ["mutates_repo"],
