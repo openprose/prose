@@ -15,6 +15,7 @@
     "highlight": "bun bin/prose.ts highlight",
     "lint": "bun bin/prose.ts lint",
     "measure:examples": "bun scripts/measure-examples.ts",
+    "confidence:runtime": "bun scripts/runtime-confidence-matrix.ts",
     "manifest": "bun bin/prose.ts manifest",
     "plan": "bun bin/prose.ts plan",
     "package": "bun bin/prose.ts package",

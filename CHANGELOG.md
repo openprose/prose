@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Local runtime meta-harness** — `prose run` is now the canonical local
+  execution command, materializing provider-backed run records through fixture,
+  local-process, and Pi-compatible provider interfaces.
+- **Reactive run store and eval acceptance** — Runs, graph nodes, attempts,
+  artifact records, policy labels, approvals, current/latest pointers, and
+  executable eval results now share one local store model.
+- **Hosted registry/runtime contract fixtures** — Added vendorable
+  hosted-ingest, remote-envelope, artifact-manifest, run-record, and plan
+  fixtures under `fixtures/hosted-runtime/`.
+- **Runtime confidence matrix** — Added `bun run confidence:runtime`, which
+  smokes compile, plan, graph, run, eval, remote envelopes, package metadata,
+  strict publish checks, install, status, and trace across the canonical package
+  surfaces.
+
+### Changed
+
+- **Package metadata is executable** — Package metadata now includes package IR
+  hashes, registry refs, runtime/provider metadata, artifact contracts, quality
+  status, hosted ingest metadata, examples, and eval links.
+- **Std, co, and examples align with runtime semantics** — The canonical
+  packages compile, run locally through deterministic providers, and pass strict
+  publish checks.
+- **CLI inspection is human-readable** — Help explains the runtime loop, graph
+  output annotates planning context, and status/trace output includes acceptance
+  reasons.
+
+### Removed
+
+- **Top-level fixture-centered runtime path** — Fixture materialization remains
+  available as `prose fixture materialize` for deterministic development, but
+  the runtime center is now `prose run`.
+
 ## [0.10.0] - 2026-04-20
 
 ### Added

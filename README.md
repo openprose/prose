@@ -33,6 +33,7 @@ You write canonical `.prose.md` source with typed inputs, typed outputs, effects
 - [What Shipped](docs/what-shipped.md)
 - [Curated Examples](examples/README.md)
 - [Measurement Harness](docs/measurement.md)
+- [Runtime Release Candidate](docs/release-candidate.md)
 - [HTML Diagrams](docs/diagrams/index.html)
 
 ## What Exists Today
@@ -142,6 +143,7 @@ Measure package health and reactive behavior:
 
 ```bash
 bun run measure:examples
+bun run confidence:runtime
 ```
 
 ## Hosted Platform
