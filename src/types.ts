@@ -689,11 +689,14 @@ export interface RemoteArtifactManifest {
 }
 
 export interface RemoteExecutionEnvelope {
-  schema_version: "0.1";
+  schema_version: "0.2";
   run_id: string;
   run_dir: string;
   component_ref: string;
   status: RunLifecycleStatus;
+  provider: string;
+  plan_status: ExecutionPlan["status"];
+  acceptance: RunRecord["acceptance"];
   trigger: RunRecord["caller"]["trigger"];
   inputs: RunBindingRecord[];
   outputs: RunOutputRecord[];
@@ -702,6 +705,8 @@ export interface RemoteExecutionEnvelope {
   package_metadata_path: string | null;
   artifact_manifest: RemoteArtifactManifest;
   artifact_manifest_path: string;
+  run_record_path: string;
+  plan_path: string;
   trace_path: string;
   ir_path: string;
   stdout_path: string;

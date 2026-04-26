@@ -384,15 +384,22 @@ kind: program
     });
 
     expect(envelope).toMatchObject({
-      schema_version: "0.1",
+      schema_version: "0.2",
       run_id: "20260423-130000-rmt001",
       component_ref: "hello",
       status: "succeeded",
+      provider: "fixture",
+      plan_status: "ready",
+      acceptance: {
+        status: "accepted",
+      },
       trigger: "api",
       effect_declarations: ["pure"],
       approved_effects: [],
       package_metadata_path: null,
       artifact_manifest_path: "artifact_manifest.json",
+      run_record_path: "run.json",
+      plan_path: "plan.json",
       trace_path: "trace.json",
       ir_path: "ir.json",
       stdout_path: "stdout.txt",
@@ -404,6 +411,7 @@ kind: program
       expect.arrayContaining([
         "runtime_ir",
         "runtime_trace",
+        "runtime_plan",
         "runtime_manifest",
         "runtime_run_record",
         "runtime_stdout",
@@ -415,13 +423,13 @@ kind: program
       readFileSync(join(envelope.run_dir, "artifact_manifest.json"), "utf8"),
     ).toContain('"artifact_manifest_version": "0.1"');
     expect(readFileSync(join(envelope.run_dir, "result.json"), "utf8")).toContain(
-      '"schema_version": "0.1"',
+      '"schema_version": "0.2"',
     );
   });
 
   test("remote CLI emits an envelope and preserves approved effects", () => {
     const outDir = mkdtempSync(join(tmpdir(), "openprose-remote-cli-"));
-    const fixtureFile = fixturePath("compiler/typed-effects.prose.md");
+    const fixtureFile = join(import.meta.dir, "..", "examples", "approval-gated-release.prose.md");
     const result = Bun.spawnSync(
       [
         "bun",
@@ -436,13 +444,17 @@ kind: program
         "--trigger",
         "human_gate",
         "--approved-effect",
+        "human_gate",
+        "--approved-effect",
         "delivers",
         "--input",
-        "company=Acme profile",
-        "--input",
-        "subject=run: prior-run",
+        "release_candidate=v1.2.3 with changelog",
         "--output",
-        "brief-writer.brief=Approved remote CLI brief.",
+        "qa-check.qa_report=QA passed.",
+        "--output",
+        "release-note-writer.release_summary=Release summary.",
+        "--output",
+        "announce-release.delivery_receipt=Announced.",
       ],
       {
         cwd: join(import.meta.dir, ".."),
@@ -456,9 +468,11 @@ kind: program
     expect(envelope).toMatchObject({
       run_id: "20260423-130500-rmt002",
       status: "succeeded",
+      provider: "fixture",
+      plan_status: "ready",
       trigger: "human_gate",
-      approved_effects: ["delivers"],
-      effect_declarations: ["read_external", "delivers"],
+      approved_effects: ["delivers", "human_gate"],
+      effect_declarations: ["delivers", "human_gate", "pure"],
     });
     expect(
       readFileSync(
@@ -493,6 +507,8 @@ kind: program
     const envelope = JSON.parse(result.stdout.toString("utf8"));
     expect(envelope).toMatchObject({
       status: "blocked",
+      provider: "fixture",
+      plan_status: "ready",
       exit_code: 1,
       error: {
         code: "run_blocked",

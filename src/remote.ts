@@ -1,7 +1,7 @@
 import { readdir, readFile, writeFile } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
 import { sha256 } from "./hash";
-import { materializeFile } from "./materialize";
+import { runFile, type RunOptions } from "./run";
 import type {
   MaterializedRun,
   RemoteArtifactBinding,
@@ -20,6 +20,7 @@ export interface RemoteExecuteOptions {
   outputs?: Record<string, string>;
   approvedEffects?: string[];
   trigger?: RunRecord["caller"]["trigger"];
+  provider?: RunOptions["provider"];
   componentRef?: string | null;
   packageMetadataPath?: string | null;
 }
@@ -29,13 +30,14 @@ export async function executeRemoteFile(
   options: RemoteExecuteOptions = {},
 ): Promise<RemoteExecutionEnvelope> {
   const startedAt = new Date().toISOString();
-  const result = await materializeFile(path, {
+  const result = await runFile(path, {
     runRoot: options.outDir ?? ".openprose/remote-runs",
     runId: options.runId,
     inputs: options.inputs,
     outputs: options.outputs,
     approvedEffects: options.approvedEffects,
     trigger: options.trigger,
+    provider: options.provider ?? "fixture",
   });
 
   await writeFile(join(result.run_dir, "stdout.txt"), "");
@@ -51,11 +53,14 @@ export async function executeRemoteFile(
   const finishedAt = new Date().toISOString();
   const error = errorForRecord(result.record);
   const envelope: RemoteExecutionEnvelope = {
-    schema_version: "0.1",
+    schema_version: "0.2",
     run_id: result.run_id,
     run_dir: result.run_dir,
     component_ref: options.componentRef ?? result.record.component_ref,
     status: result.record.status,
+    provider: result.provider,
+    plan_status: result.plan.status,
+    acceptance: result.record.acceptance,
     trigger: options.trigger ?? "manual",
     inputs: result.record.inputs,
     outputs: result.record.outputs,
@@ -64,6 +69,8 @@ export async function executeRemoteFile(
     package_metadata_path: options.packageMetadataPath ?? null,
     artifact_manifest: artifactManifest,
     artifact_manifest_path: "artifact_manifest.json",
+    run_record_path: "run.json",
+    plan_path: "plan.json",
     trace_path: result.record.trace_ref,
     ir_path: "ir.json",
     stdout_path: "stdout.txt",
@@ -142,6 +149,9 @@ function artifactKindForPath(path: string): RemoteArtifactKind {
   }
   if (path === "trace.json") {
     return "runtime_trace";
+  }
+  if (path === "plan.json") {
+    return "runtime_plan";
   }
   if (path === "manifest.md") {
     return "runtime_manifest";
