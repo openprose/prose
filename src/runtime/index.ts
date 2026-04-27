@@ -39,6 +39,9 @@ export {
   evaluateOutputSubmission,
   parseOutputSubmissionPayload,
 } from "./output-submission.js";
+export {
+  createFilesystemNodePrivateStateStore,
+} from "./private-state.js";
 export type { RuntimeProfileInput } from "./profiles.js";
 export type { ReactiveGraphRuntime } from "./graph-runtime.js";
 export type {
@@ -62,6 +65,15 @@ export type {
   OutputSubmissionPayload,
   OutputSubmissionResult,
 } from "./output-submission.js";
+export type {
+  AllocatedNodePrivateState,
+  FilesystemNodePrivateStateStoreOptions,
+  NodePrivateStateDiagnostic,
+  NodePrivateStateManifest,
+  NodePrivateStateRecord,
+  NodePrivateStateRecordInput,
+  NodePrivateStateStore,
+} from "./private-state.js";
 export {
   cancelRunPath,
   currentRunSetForRetry,
