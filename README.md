@@ -159,6 +159,7 @@ bun run confidence:runtime
 bun run smoke:binary
 bun run smoke:cold-start
 bun run smoke:agent-onboarding
+bun run evidence:launch
 bun run smoke:live-pi
 ```
 

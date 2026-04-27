@@ -34,6 +34,7 @@
     "highlight": "bun bin/prose.ts highlight",
     "lint": "bun bin/prose.ts lint",
     "measure:examples": "bun scripts/measure-examples.ts",
+    "evidence:launch": "bun scripts/export-launch-evidence.ts",
     "smoke:live-pi": "bun scripts/live-pi-smoke.ts",
     "confidence:runtime": "bun scripts/runtime-confidence-matrix.ts",
     "manifest": "bun bin/prose.ts manifest",

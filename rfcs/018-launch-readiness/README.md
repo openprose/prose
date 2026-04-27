@@ -91,8 +91,14 @@ The technical report in the private platform repo needs tables from the OSS
 measurement reports plus the hosted Native Company dev proof. Manual copying
 will drift.
 
-Recommended slice: add a small evidence-export command or documented JSON
-contract that the platform report can consume from `docs/measurements/*.json`.
+Status: done in signpost 004 for OSS evidence.
+
+Resolved slice: added `bun run evidence:launch`, which reads generated
+measurement reports and writes `docs/measurements/launch-evidence.latest.*`
+for the technical report. The artifact rolls up package health, confidence
+gates, evidence classes, scenario signals, baseline comparison, and report-safe
+claim candidates. Platform-side evidence aggregation remains a separate launch
+plan slice because hosted dev proof lives in the private platform repo.
 
 ### R004: Live Inference Evidence Needs A Public Narrative
 

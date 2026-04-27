@@ -65,6 +65,7 @@ bun run confidence:runtime
 bun run smoke:binary
 bun run smoke:cold-start
 bun run smoke:agent-onboarding
+bun run evidence:launch
 ```
 
 The confidence matrix folds the north-star examples into the CLI release gate.
@@ -91,6 +92,12 @@ package, and strict publish-check. It writes:
 
 - [measurements/agent-onboarding.latest.md](measurements/agent-onboarding.latest.md)
 - [measurements/agent-onboarding.latest.json](measurements/agent-onboarding.latest.json)
+
+`evidence:launch` rolls the stable generated reports into a compact launch
+evidence bundle for the technical report:
+
+- [measurements/launch-evidence.latest.md](measurements/launch-evidence.latest.md)
+- [measurements/launch-evidence.latest.json](measurements/launch-evidence.latest.json)
 
 For opt-in live Pi coverage:
 

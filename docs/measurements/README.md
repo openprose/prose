@@ -13,6 +13,8 @@ reports, not source contracts.
 - `cold-start.latest.md`
 - `agent-onboarding.latest.json`
 - `agent-onboarding.latest.md`
+- `launch-evidence.latest.json`
+- `launch-evidence.latest.md`
 
 These files are deterministic or skipped-by-default. They are safe to use as
 release gates because they do not require live model calls.
