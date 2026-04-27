@@ -11,6 +11,8 @@ reports, not source contracts.
 - `runtime-confidence.latest.md`
 - `cold-start.latest.json`
 - `cold-start.latest.md`
+- `agent-onboarding.latest.json`
+- `agent-onboarding.latest.md`
 
 These files are deterministic or skipped-by-default. They are safe to use as
 release gates because they do not require live model calls.

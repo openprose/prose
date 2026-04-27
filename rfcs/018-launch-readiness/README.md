@@ -77,8 +77,13 @@ The skill and docs are much cleaner now, but the launch claim includes that a
 coding agent can onboard quickly. That deserves a tiny empirical harness rather
 than a vibes-only assertion.
 
-Recommended slice: add a checked `docs/agent-onboarding.md` with a 5-minute
-path and a matching smoke command that exercises the same commands.
+Status: done in signpost 003.
+
+Resolved slice: added `docs/agent-onboarding.md` and
+`bun run smoke:agent-onboarding`. The smoke checks the public onboarding docs
+exist and runs the first operator loop: help, lint, preflight, graph, run,
+status, trace, package, and strict publish-check. The runtime confidence matrix
+now includes this as a required deterministic check.
 
 ### R003: Technical Report Evidence Should Be Generated, Not Hand-Copied
 

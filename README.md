@@ -9,6 +9,7 @@
 <p align="center">
   <a href="https://prose.md">Website</a> |
   <a href="docs/README.md">Docs</a> |
+  <a href="docs/agent-onboarding.md">Agent Onboarding</a> |
   <a href="docs/why-and-when.md">Why / When</a> |
   <a href="examples/README.md">Examples</a> |
   <a href="packages/std/">Stdlib</a> |
@@ -31,6 +32,7 @@ You write canonical `.prose.md` source with typed inputs, typed outputs, effects
 - [Docs](docs/README.md)
 - [Why and When to Use OpenProse](docs/why-and-when.md)
 - [What Shipped](docs/what-shipped.md)
+- [Agent Onboarding](docs/agent-onboarding.md)
 - [Curated Examples](examples/README.md)
 - [Measurement Harness](docs/measurement.md)
 - [Runtime Confidence Gate](docs/release-candidate.md)
@@ -156,6 +158,7 @@ bun run measure:examples
 bun run confidence:runtime
 bun run smoke:binary
 bun run smoke:cold-start
+bun run smoke:agent-onboarding
 bun run smoke:live-pi
 ```
 

@@ -238,6 +238,12 @@ async function main(): Promise<void> {
       args: ["scripts/cold-start-smoke.ts"],
       expectStdout: ['"status": "pass"', '"checks": 6'],
     },
+    {
+      label: "agent onboarding smoke",
+      command: "bun",
+      args: ["scripts/agent-onboarding-smoke.ts"],
+      expectStdout: ['"status": "pass"', '"checks": 9'],
+    },
   ];
 
   const checks = steps.map((step) => runStep(repoRoot, tempRoot, repoSha, step));

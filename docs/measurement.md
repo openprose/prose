@@ -64,13 +64,14 @@ For release confidence:
 bun run confidence:runtime
 bun run smoke:binary
 bun run smoke:cold-start
+bun run smoke:agent-onboarding
 ```
 
 The confidence matrix folds the north-star examples into the CLI release gate.
 It includes strict publish checks, deterministic run materialization, release
 approval backpressure, measurement generation, hosted envelope fixtures, binary
-smoke, a cold-start publishable-package smoke, and a skipped-by-default live Pi
-rung.
+smoke, a cold-start publishable-package smoke, an agent-onboarding smoke, and a
+skipped-by-default live Pi rung.
 
 `smoke:binary` builds the public CLI artifact under `dist/`. The repository
 root package remains private because it is the development workspace; the dist
@@ -83,6 +84,13 @@ installed binary. It writes:
 
 - [measurements/cold-start.latest.md](measurements/cold-start.latest.md)
 - [measurements/cold-start.latest.json](measurements/cold-start.latest.json)
+
+`smoke:agent-onboarding` runs the short operator loop a coding agent should use
+when entering the repo: help, lint, preflight, graph, run, status, trace,
+package, and strict publish-check. It writes:
+
+- [measurements/agent-onboarding.latest.md](measurements/agent-onboarding.latest.md)
+- [measurements/agent-onboarding.latest.json](measurements/agent-onboarding.latest.json)
 
 For opt-in live Pi coverage:
 

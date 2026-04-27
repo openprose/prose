@@ -1,0 +1,92 @@
+{
+  "report_version": "0.1",
+  "generated_at": "2026-04-27T01:52:14.275Z",
+  "status": "pass",
+  "repo_root": ".",
+  "temp_root": "$TMP",
+  "summary": {
+    "checks": 9,
+    "elapsed_ms": 3178
+  },
+  "docs_checked": [
+    "README.md",
+    "docs/README.md",
+    "docs/agent-onboarding.md",
+    "examples/README.md",
+    "skills/open-prose/SKILL.md"
+  ],
+  "checks": [
+    {
+      "label": "help explains runtime loop",
+      "command": "prose help",
+      "exit_code": 0,
+      "elapsed_ms": 320,
+      "stdout_preview": "OpenProse Usage: prose compile <file.prose.md|dir> [--out ir.json] [--no-pretty] prose deployment <dir> [--deployment-name name] [--org-id org] [--environment dev] [--mode dev] [--enable component] [--env KEY=value] [--format text|json] ...",
+      "stderr_preview": ""
+    },
+    {
+      "label": "lint smallest useful service",
+      "command": "prose lint examples/north-star/company-signal-brief.prose.md --format json --no-pretty",
+      "exit_code": 0,
+      "elapsed_ms": 344,
+      "stdout_preview": "[]",
+      "stderr_preview": ""
+    },
+    {
+      "label": "preflight reactive graph",
+      "command": "prose preflight examples/north-star/lead-program-designer.prose.md --format json --no-pretty",
+      "exit_code": 0,
+      "elapsed_ms": 338,
+      "stdout_preview": "{\"preflight_version\":\"0.1\",\"target\":\"./examples/north-star/lead-program-designer.prose.md\",\"package_root\":\"./examples\",\"component_refs\":[\"lead-profile-normalizer\",\"lead-program-designer\",\"lead-qualification-scorer\",\"save-grow-program-dra...",
+      "stderr_preview": ""
+    },
+    {
+      "label": "graph selective recompute target",
+      "command": "prose graph examples/north-star/lead-program-designer.prose.md --input \"lead_profile={\\\"company\\\":\\\"Acme\\\",\\\"pain\\\":\\\"manual handoffs\\\"}\" --input \"brand_context=OpenProse is React for agent outcomes.\" --target-output lead_program_plan",
+      "exit_code": 0,
+      "elapsed_ms": 333,
+      "stdout_preview": "%% OpenProse graph: lead-program-designer %% requested outputs: lead_program_plan flowchart LR _caller[\"Caller<br/>[boundary]\"] lead_profile_normalizer[\"lead-profile-normalizer<br/>[service]<br/>status: ready<br/>effects: pure<br/>stale:...",
+      "stderr_preview": ""
+    },
+    {
+      "label": "run typed service",
+      "command": "prose run examples/north-star/company-signal-brief.prose.md --run-root $TMP/runs --run-id agent-onboarding --input \"signal_notes=Customer teams want durable agent workflows.\" --input \"brand_context=OpenProse is React for agent outcomes.\" --output \"company_signal_brief=OpenProse turns agent work into typed, inspectable runs.\" --no-pretty",
+      "exit_code": 0,
+      "elapsed_ms": 337,
+      "stdout_preview": "{\"run_id\":\"agent-onboarding\",\"run_dir\":\"$TMP/runs/agent-onboarding\",\"status\":\"succeeded\",\"graph_vm\":\"pi\",\"runtime_profile\":{\"profile_version\":\"0.1\",\"graph_vm\":\"pi\",\"execution_placement\":\"local\",\"single_run_harness\":null,\"model_provider\":...",
+      "stderr_preview": ""
+    },
+    {
+      "label": "inspect run status",
+      "command": "prose status $TMP/runs",
+      "exit_code": 0,
+      "elapsed_ms": 333,
+      "stdout_preview": "Runs: 1 Root: $TMP/runs - agent-onboarding: company-signal-brief [component] succeeded (accepted) outputs[company_signal_brief] reason No required evals declared. created 2026-04-27T01:52:12.748Z completed 2026-04-27T01:52:12.758Z path $...",
+      "stderr_preview": ""
+    },
+    {
+      "label": "inspect run trace",
+      "command": "prose trace $TMP/runs/agent-onboarding",
+      "exit_code": 0,
+      "elapsed_ms": 323,
+      "stdout_preview": "Run: agent-onboarding Component: company-signal-brief [component] Status: succeeded (accepted) Acceptance reason: No required evals declared. Runtime: pi / scripted / deterministic-output (openprose-node-runner / pi) Created: 2026-04-27T...",
+      "stderr_preview": ""
+    },
+    {
+      "label": "package examples",
+      "command": "prose package examples --format json --no-pretty",
+      "exit_code": 0,
+      "elapsed_ms": 430,
+      "stdout_preview": "{\"schema_version\":\"openprose.package.v2\",\"package_version\":\"0.2\",\"metadata_digest\":\"72501f5f09545ca235cd8efc184389176b5fa380ba8712a4340558c65347d1a4\",\"root\":\"./examples\",\"package_ir\":{\"version\":\"0.1\",\"semantic_hash\":\"8f33bb9330afabeb7e08...",
+      "stderr_preview": ""
+    },
+    {
+      "label": "strict publish-check examples",
+      "command": "prose publish-check examples --strict --format json --no-pretty",
+      "exit_code": 0,
+      "elapsed_ms": 419,
+      "stdout_preview": "{\"publish_check_version\":\"0.1\",\"package_name\":\"@openprose/examples\",\"package_version\":\"0.1.0\",\"strict\":true,\"status\":\"pass\",\"blockers\":[],\"warnings\":[],\"checks\":[{\"name\":\"components_present\",\"status\":\"pass\",\"detail\":\"42 component(s) foun...",
+      "stderr_preview": ""
+    }
+  ]
+}

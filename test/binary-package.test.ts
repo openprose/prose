@@ -17,6 +17,9 @@ describe("OpenProse binary package surface", () => {
     expect(rootPackage.scripts["smoke:cold-start"]).toBe(
       "bun scripts/cold-start-smoke.ts",
     );
+    expect(rootPackage.scripts["smoke:agent-onboarding"]).toBe(
+      "bun scripts/agent-onboarding-smoke.ts",
+    );
     expect(rootPackage.scripts["build:binary"]).toContain(
       "scripts/write-dist-package.ts",
     );

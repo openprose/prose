@@ -3,6 +3,7 @@
 OpenProse is now split into a few clean surfaces:
 
 - [Why and When to Use OpenProse](why-and-when.md): what it is for, when it wins, and when not to reach for it
+- [Agent Onboarding](agent-onboarding.md): the checked path for a coding agent entering the repo cold
 - [What Shipped](what-shipped.md): a compact snapshot of the compiler, planner, package, runtime, and hosted surfaces that exist today
 - [Measuring OpenProse](measurement.md): reproducible ways to measure package quality, selective recompute, approval gating, and reference-company health
 - [Inference Examples](inference-examples.md): Pi-backed graph VM examples,
@@ -43,6 +44,7 @@ bun run prose trace .prose/runs/docs-company-signal
 bun run measure:examples
 bun run confidence:runtime
 bun run smoke:cold-start
+bun run smoke:agent-onboarding
 bun run smoke:live-pi
 ```
 
