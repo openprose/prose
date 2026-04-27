@@ -20,6 +20,7 @@ The current architecture is defined by:
 - RFC 015: Public OSS Hardening TODO
 - RFC 016: Distributed Hosted Graph VM
 - RFC 017: OpenProse Native Company Deployments
+- RFC 018: Launch Readiness
 
 Together these define the direction: canonical `.prose.md` source compiles to
 IR, IR materializes into immutable runs, reactive graph nodes point at accepted
@@ -57,3 +58,4 @@ deliberate and traceable.
 | 015: Public OSS Hardening TODO | Draft/current | Active public-release cleanup queue for docs, skills, runtime robustness, release packaging, stdlib quality, and ergonomics. Add findings here before fixing them; signpost/commit/push each slice. |
 | 016: Distributed Hosted Graph VM | Active implementation | Separates graph VM placement from node execution placement. The OSS graph VM can run in a hosted control plane and delegate atomic node execution to remote workers through `NodeExecutionRequest`/`NodeExecutionResult`. |
 | 017: OpenProse Native Company Deployments | Draft/current | Adds the missing deployment layer above packages, graphs, and runs so `@openprose/prose-openprose` can run as an org-scoped native company in dev: package entrypoint discovery, local deployment state, platform deployment models/APIs, cockpit, triggers, and dev acceptance. |
+| 018: Launch Readiness | Active | Launch-level readiness layer above RFC 015. Tracks fresh install confidence, agent onboarding confidence, generated technical-report evidence, live-versus-deterministic evidence separation, publishable package checks, and hosted contract drift prevention. |
