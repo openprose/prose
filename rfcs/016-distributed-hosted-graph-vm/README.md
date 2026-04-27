@@ -31,9 +31,14 @@ This keeps the OSS package as the real meta-harness while letting hosted deploym
    - Workers return a complete `NodeExecutionResult`.
    - The graph VM does not depend on Sprites, Fly, Postgres, or platform-specific state.
 
-4. **Hosted control planes should embed or invoke OSS OpenProse as the graph VM.**
-   - Direct library embedding is the eventual packaging goal.
-   - A CLI-backed external node executor is acceptable as the first complete interop path.
+4. **Hosted control planes must run OSS OpenProse as the graph VM.**
+   - Library embedding is the preferred in-process shape when the host can safely
+     load the pinned OSS package version.
+   - CLI invocation is also a first-class control-plane boundary when the host
+     wants version isolation, process isolation, stdout/stderr capture,
+     cancellation, or exact commit pinning.
+   - Both shapes must invoke the same OSS graph VM and node execution protocol;
+     neither should become a second hosted runtime model.
 
 5. **Single-workspace graph execution remains useful but is not the end state.**
    - Local developer runs and smoke tests may still execute the whole graph in one process/workspace.
@@ -64,6 +69,22 @@ The implementation is only on track if these tests pass:
    - provider records graph-level attempt state in Postgres
    - provider dispatches node envelopes to the worker provider boundary
    - node-level artifacts and events are persisted with worker identity
+
+## Current Implementation State
+
+The OSS package already implements the core distributed graph-VM boundary:
+
+- `runtime_profile.execution_placement`
+- `NodeExecutionRequest` and `NodeExecutionResult`
+- `DelegatedGraphRuntime`
+- `ExternalProcessNodeDelegate`
+- `prose remote execute-node <request.json>`
+- `prose remote execute --node-executor-command <cmd>`
+
+That is enough for a hosted control plane to run the OpenProse graph VM and
+delegate atomic node runs to worker capsules. Platform integration should keep
+using this contract directly rather than recreating graph semantics in the
+platform.
 
 ## Phases
 
@@ -145,4 +166,3 @@ Tests:
 - Sprites distributed smoke when credentials are configured
 
 Commit and signpost after this phase.
-
