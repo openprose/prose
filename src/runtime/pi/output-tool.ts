@@ -14,6 +14,7 @@ export interface OpenProseSubmitOutputsDetails {
   status: OutputSubmissionResult["status"];
   artifact_ports: string[];
   performed_effects: string[];
+  finally: OutputSubmissionResult["finally"];
   diagnostics: Array<{ code: string; message: string }>;
   citations: string[];
   notes: string | null;
@@ -68,6 +69,30 @@ const outputSubmissionParameters = Type.Object({
       description: "Declared OpenProse effects actually performed by this node.",
     }),
   ),
+  finally: Type.Optional(
+    Type.Object({
+      summary: Type.Optional(
+        Type.String({
+          description: "What was still guaranteed or cleaned up before completing.",
+        }),
+      ),
+      state_refs: Type.Optional(
+        Type.Array(Type.String(), {
+          description: "Workspace-relative private-state refs that support finalization evidence.",
+        }),
+      ),
+      cleanup_performed: Type.Optional(
+        Type.Array(Type.String(), {
+          description: "Cleanup or finalization actions performed before completing.",
+        }),
+      ),
+      unresolved: Type.Optional(
+        Type.Array(Type.String(), {
+          description: "Finalization obligations that remain unresolved.",
+        }),
+      ),
+    }),
+  ),
   citations: Type.Optional(
     Type.Array(Type.String(), {
       description: "Run-level citations for the submitted outputs.",
@@ -98,6 +123,7 @@ export function createOpenProseSubmitOutputsTool(
       "Use openprose_submit_outputs as the final action once every required output is ready.",
       "Submit only declared outputs; do not invent output ports.",
       "Include performed_effects only for effects declared by this OpenProse component.",
+      "Include finally evidence when the component declares Finally obligations.",
       "After openprose_submit_outputs, do not emit another assistant response in the same turn.",
     ],
     parameters: outputSubmissionParameters,
@@ -122,6 +148,7 @@ export function createOpenProseSubmitOutputsTool(
           status: result.status,
           artifact_ports: result.artifacts.map((artifact) => artifact.port).sort(),
           performed_effects: result.performed_effects,
+          finally: result.finally,
           diagnostics: result.diagnostics.map((diagnostic) => ({
             code: diagnostic.code,
             message: diagnostic.message,

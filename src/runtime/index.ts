@@ -48,6 +48,11 @@ export {
   parseErrorSubmissionPayload,
 } from "./error-submission.js";
 export {
+  missingFinallyEvidenceDiagnostic,
+  normalizeFinallyEvidence,
+  validateFinallyEvidenceStateRefs,
+} from "./finally-evidence.js";
+export {
   createFilesystemNodePrivateStateStore,
   defaultNodePrivateStateRunRef,
   NODE_PRIVATE_STATE_MANIFEST_REF,

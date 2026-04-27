@@ -1,4 +1,8 @@
 import { isAbsolute, normalize } from "node:path";
+import {
+  missingFinallyEvidenceDiagnostic,
+  normalizeFinallyEvidence,
+} from "./finally-evidence.js";
 import type { DeclaredErrorRecord, Diagnostic } from "../types.js";
 import type { NodeRunRequest } from "../node-runners/protocol.js";
 
@@ -52,7 +56,7 @@ export function evaluateErrorSubmission(
   validatePerformedEffects(request, payload, diagnostics);
   validateStateRefs(request, payload, diagnostics);
 
-  if (diagnostics.length > 0 || !declaredError) {
+  if (diagnostics.some((diagnostic) => diagnostic.severity === "error") || !declaredError) {
     return {
       ...rejected(diagnostics),
       performed_effects: payload.performed_effects,
@@ -70,6 +74,12 @@ export function evaluateErrorSubmission(
     performed_effects: payload.performed_effects,
     finally: payload.finally,
   };
+  const finallyDiagnostic = payload.finally
+    ? null
+    : missingFinallyEvidenceDiagnostic(request, "openprose_report_error");
+  if (finallyDiagnostic) {
+    diagnostics.push(finallyDiagnostic);
+  }
 
   return {
     status: "accepted",
@@ -82,6 +92,7 @@ export function evaluateErrorSubmission(
         message: `openprose_report_error accepted declared error '${payload.code}': ${payload.message}`,
         source_span: declaredError.source_span ?? request.component.errors?.source_span,
       },
+      ...diagnostics,
     ],
     payload,
   };
@@ -110,7 +121,7 @@ export function parseErrorSubmissionPayload(rawPayload: unknown): ErrorSubmissio
     details: normalizeDetails(record.details),
     state_refs: normalizeStringList(record.state_refs),
     performed_effects: normalizeStringList(record.performed_effects),
-    finally: normalizeFinallyEvidence(record.finally),
+    finally: normalizeFinallyEvidence(record.finally, "openprose_report_error"),
   };
 }
 
@@ -215,22 +226,6 @@ function normalizeDetails(value: unknown): Record<string, unknown> {
     throw new Error("openprose_report_error payload.details must be a JSON object.");
   }
   return value as Record<string, unknown>;
-}
-
-function normalizeFinallyEvidence(value: unknown): ErrorSubmissionFinallyEvidence | null {
-  if (value === undefined || value === null) {
-    return null;
-  }
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    throw new Error("openprose_report_error payload.finally must be a JSON object.");
-  }
-  const record = value as Record<string, unknown>;
-  return {
-    summary: normalizeNullableString(record.summary),
-    state_refs: normalizeStringList(record.state_refs),
-    cleanup_performed: normalizeStringList(record.cleanup_performed),
-    unresolved: normalizeStringList(record.unresolved),
-  };
 }
 
 function normalizeStringList(values: unknown): string[] {

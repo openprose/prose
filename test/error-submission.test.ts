@@ -83,6 +83,7 @@ describe("OpenProse declared error submission", () => {
     expect(collected?.error).toMatchObject({
       code: "delivery_failed",
       message: "Delivery adapter rejected the request.",
+      declared: true,
       retryable: true,
       state_refs: ["__subagents/delivery/notes.md"],
       performed_effects: ["pure"],
@@ -91,6 +92,27 @@ describe("OpenProse declared error submission", () => {
         state_refs: ["__subagents/delivery/finally.md"],
       },
     });
+  });
+
+  test("warns without rejecting when Finally evidence is missing", () => {
+    const result = evaluateErrorSubmission(nodeRunRequest(finallyErroringComponent()), {
+      code: "delivery_failed",
+      message: "Delivery adapter rejected the request.",
+    });
+
+    expect(result.status).toBe("accepted");
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({
+        severity: "warning",
+        code: "openprose_finally_evidence_missing",
+      }),
+    );
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({
+        severity: "error",
+        code: "openprose_declared_error",
+      }),
+    );
   });
 
   test("rejects undeclared error codes", () => {
@@ -183,6 +205,26 @@ kind: service
 
 - \`pure\`: deterministic synthesis
 `, { path: "fixtures/compiler/delivery-node.prose.md" }).components[0];
+}
+
+function finallyErroringComponent(): ComponentIR {
+  return compileSource(`---
+name: finally-delivery-node
+kind: service
+---
+
+### Ensures
+
+- \`receipt\`: Markdown<Receipt> - delivery receipt
+
+### Errors
+
+- \`delivery_failed\`: Delivery adapter rejected the request.
+
+### Finally
+
+- Record delivery attempt refs even when delivery fails.
+`, { path: "fixtures/compiler/finally-delivery-node.prose.md" }).components[0];
 }
 
 function nodeRunRequest(component: ComponentIR): NodeRunRequest {

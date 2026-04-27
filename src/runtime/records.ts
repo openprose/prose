@@ -105,6 +105,7 @@ export async function writeNodeAttemptRecord(
     diagnostics,
     failure,
     declaredError: result.declared_error ?? null,
+    finallyEvidence: result.finally_evidence ?? null,
   });
 }
 

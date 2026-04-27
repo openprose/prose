@@ -30,6 +30,7 @@ import type {
   DeclaredErrorRecord,
   Diagnostic,
   EffectIR,
+  FinallyEvidenceRecord,
   RuntimeProfile,
 } from "../types.js";
 import {
@@ -262,6 +263,7 @@ export class PiNodeRunner implements NodeRunner {
         artifacts: [],
         performedEffects: reportedError.performed_effects,
         declaredError: reportedError.error,
+        finallyEvidence: reportedError.error?.finally ?? null,
         diagnostics: [...diagnostics, ...reportedError.diagnostics],
         transcript: events.length > 0 ? events.join("\n") : null,
         telemetry,
@@ -271,12 +273,15 @@ export class PiNodeRunner implements NodeRunner {
     }
     if (submitted?.status === "rejected") {
       diagnostics.push(...submitted.diagnostics);
+    } else if (submitted?.status === "accepted") {
+      diagnostics.push(...submitted.diagnostics);
     }
     if (reportedError?.status === "rejected" && submitted?.status !== "accepted") {
       diagnostics.push(...reportedError.diagnostics);
     }
 
-    const artifacts = diagnostics.length === 0
+    const runnerHadErrors = hasErrorDiagnostics(diagnostics);
+    const artifacts = !runnerHadErrors
       ? submitted?.status === "accepted"
         ? submitted.artifacts
         : await readNodeOutputFileArtifacts(
@@ -290,7 +295,7 @@ export class PiNodeRunner implements NodeRunner {
             diagnostics,
           )
       : [];
-    const status = diagnostics.length === 0 ? "succeeded" : "failed";
+    const status = hasErrorDiagnostics(diagnostics) ? "failed" : "succeeded";
 
     return this.result(request, {
       status,
@@ -299,6 +304,10 @@ export class PiNodeRunner implements NodeRunner {
         status === "succeeded" && submitted?.status === "accepted"
           ? submitted.performed_effects
           : [],
+      finallyEvidence:
+        status === "succeeded" && submitted?.status === "accepted"
+          ? submitted.finally
+          : null,
       diagnostics,
       transcript: events.length > 0 ? events.join("\n") : null,
       telemetry,
@@ -314,6 +323,7 @@ export class PiNodeRunner implements NodeRunner {
       artifacts: NodeArtifactResult[];
       performedEffects?: string[];
       declaredError?: DeclaredErrorRecord | null;
+      finallyEvidence?: FinallyEvidenceRecord | null;
       diagnostics: Diagnostic[];
       transcript: string | null;
       telemetry?: NodeTelemetryEvent[];
@@ -328,6 +338,7 @@ export class PiNodeRunner implements NodeRunner {
       artifacts: options.artifacts,
       performed_effects: options.performedEffects ?? [],
       ...(options.declaredError ? { declared_error: options.declaredError } : {}),
+      ...(options.finallyEvidence ? { finally_evidence: options.finallyEvidence } : {}),
       logs: {
         stdout: null,
         stderr: null,
@@ -410,6 +421,7 @@ export function renderPiPrompt(
     renderProviderInputInstructions(request),
     "",
     "If this node reaches a terminal failure declared in its Errors section, call openprose_report_error instead of submitting placeholder outputs.",
+    "If this node declares Finally obligations, include finally evidence in the terminal tool call.",
     "",
     "---",
     renderNodeOutputFileInstructions(request.expected_outputs, outputFiles),
@@ -614,6 +626,10 @@ function pushUniqueDiagnostic(
     return;
   }
   diagnostics.push(diagnostic);
+}
+
+function hasErrorDiagnostics(diagnostics: Diagnostic[]): boolean {
+  return diagnostics.some((diagnostic) => diagnostic.severity === "error");
 }
 
 function elapsed(started: number): number {

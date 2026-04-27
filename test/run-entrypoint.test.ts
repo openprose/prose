@@ -105,6 +105,10 @@ describe("OpenProse run entry point", () => {
         state_refs: ["__subagents/delivery/finally.md"],
       },
     });
+    expect(result.record.finally_evidence).toMatchObject({
+      summary: "Captured delivery attempt refs.",
+      state_refs: ["__subagents/delivery/finally.md"],
+    });
     expect(result.record.acceptance.reason).toBe(
       "Declared error 'delivery_failed': Delivery adapter rejected the request.",
     );
@@ -119,10 +123,17 @@ describe("OpenProse run entry point", () => {
       retryable: true,
     });
     expect(attempts[0]?.declared_error?.code).toBe("delivery_failed");
+    expect(attempts[0]?.finally_evidence?.summary).toBe(
+      "Captured delivery attempt refs.",
+    );
 
     const trace = await traceFile(result.run_dir);
     expect(trace.attempts[0]?.declared_error?.code).toBe("delivery_failed");
+    expect(trace.attempts[0]?.finally_evidence?.summary).toBe(
+      "Captured delivery attempt refs.",
+    );
     expect(renderTraceText(trace)).toContain("declared_error[delivery_failed]");
+    expect(renderTraceText(trace)).toContain("finally[Captured delivery attempt refs.]");
 
     const events = JSON.parse(
       readFileSync(join(result.run_dir, "trace.json"), "utf8"),
@@ -134,11 +145,59 @@ describe("OpenProse run entry point", () => {
         declared_error: expect.objectContaining({
           code: "delivery_failed",
         }),
+        finally_evidence: expect.objectContaining({
+          summary: "Captured delivery attempt refs.",
+        }),
       }),
     );
 
     const status = await statusPath(result.run_dir);
     expect(status.runs[0]?.declared_error?.code).toBe("delivery_failed");
+    expect(status.runs[0]?.finally_evidence?.summary).toBe(
+      "Captured delivery attempt refs.",
+    );
+  });
+
+  test("records Finally evidence on successful output completion", async () => {
+    const runRoot = mkdtempSync(join(tmpdir(), "openprose-run-finally-success-"));
+    const result = await runSource(finallySuccessSource(), {
+      path: "fixtures/compiler/finally-success.prose.md",
+      runRoot,
+      runId: "finally-success-run",
+      nodeRunner: scriptedPiRuntime({
+        submission: {
+          outputs: [
+            {
+              port: "summary",
+              content: "Cleanup completed.",
+            },
+          ],
+          finally: {
+            summary: "Removed temporary notes.",
+            state_refs: [],
+            cleanup_performed: ["deleted scratch plan"],
+            unresolved: [],
+          },
+        },
+      }),
+      createdAt: "2026-04-27T10:03:00.000Z",
+    });
+
+    expect(result.record.status).toBe("succeeded");
+    expect(result.record.finally_evidence).toMatchObject({
+      summary: "Removed temporary notes.",
+      cleanup_performed: ["deleted scratch plan"],
+    });
+    const attempts = await listRunAttemptRecords(
+      join(runRoot, ".prose-store"),
+      result.run_id,
+    );
+    expect(attempts[0]?.finally_evidence?.summary).toBe(
+      "Removed temporary notes.",
+    );
+    expect(renderTraceText(await traceFile(result.run_dir))).toContain(
+      "finally[Removed temporary notes.]",
+    );
   });
 
   test("includes declared error codes in graph failure reasons", async () => {
@@ -1155,6 +1214,22 @@ kind: service
 ### Effects
 
 - \`pure\`: deterministic synthesis
+`;
+}
+
+function finallySuccessSource(): string {
+  return `---
+name: finally-success
+kind: service
+---
+
+### Ensures
+
+- \`summary\`: Markdown<Summary> - final summary
+
+### Finally
+
+- Remove temporary notes before returning.
 `;
 }
 

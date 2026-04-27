@@ -72,6 +72,7 @@ export async function writeNodeTrace(
       status: result.status,
       diagnostics: result.diagnostics,
       ...(result.declared_error ? { declared_error: result.declared_error } : {}),
+      ...(result.finally_evidence ? { finally_evidence: result.finally_evidence } : {}),
       duration_ms: result.duration_ms,
       at: record.completed_at,
     },
@@ -230,6 +231,7 @@ function nodeRunTraceEvents(
       failure_class: failureClass(result),
       diagnostic_codes: result.diagnostics.map((diagnostic) => diagnostic.code).sort(),
       ...(result.declared_error ? { declared_error: result.declared_error } : {}),
+      ...(result.finally_evidence ? { finally_evidence: result.finally_evidence } : {}),
       ...extra,
     });
   }

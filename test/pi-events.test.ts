@@ -220,6 +220,7 @@ describe("OpenProse Pi runtime telemetry", () => {
           },
         ],
         performed_effects: ["pure"],
+        finally: null,
         diagnostics: [],
         citations: [],
         notes: null,

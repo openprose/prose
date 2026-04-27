@@ -3,6 +3,7 @@ import type {
   ComponentIR,
   DeclaredErrorRecord,
   Diagnostic,
+  FinallyEvidenceRecord,
   LocalArtifactRecord,
   NodePrivateStateRunRef,
   NodeSessionRef,
@@ -105,6 +106,7 @@ export interface NodeRunResult {
   logs: NodeLogs;
   diagnostics: Diagnostic[];
   declared_error?: DeclaredErrorRecord | null;
+  finally_evidence?: FinallyEvidenceRecord | null;
   session: NodeSessionRef | null;
   private_state?: NodePrivateStateRunRef | null;
   cost: NodeCostTelemetry | null;

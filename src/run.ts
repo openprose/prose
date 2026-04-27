@@ -591,6 +591,7 @@ async function materializeNodeRunResult(
     evals: [],
     policy: runPolicyRecord(policyDecision, result.performed_effects),
     ...(result.declared_error ? { error: result.declared_error } : {}),
+    ...(result.finally_evidence ? { finally_evidence: result.finally_evidence } : {}),
     acceptance:
       status === "succeeded"
         ? { status: "accepted", reason: "No required evals declared." }

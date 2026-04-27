@@ -141,6 +141,46 @@ describe("OpenProse Pi node runner", () => {
     );
   });
 
+  test("keeps successful output submissions with missing Finally evidence as warnings", async () => {
+    const component = finallyComponent();
+    const workspace = mkdtempSync(join(tmpdir(), "openprose-pi-finally-warning-"));
+    const runner = createPiNodeRunner({
+      createSession: async (context) =>
+        fakeSession(async () => {
+          const outputTool = context.options.customTools?.find(
+            (tool) => tool.name === OPENPROSE_SUBMIT_OUTPUTS_TOOL_NAME,
+          );
+          expect(outputTool).toBeDefined();
+          await outputTool!.execute(
+            "submit-without-finally",
+            {
+              outputs: [
+                {
+                  port: "message",
+                  content: "Hello with a warning.",
+                },
+              ],
+            },
+            undefined,
+            undefined,
+            undefined as never,
+          );
+        }),
+      timeoutMs: 2_000,
+    });
+
+    const result = await runner.execute(nodeRunRequest(component, workspace));
+
+    expect(result.status).toBe("succeeded");
+    expect(result.artifacts.map((artifact) => artifact.port)).toEqual(["message"]);
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({
+        severity: "warning",
+        code: "openprose_finally_evidence_missing",
+      }),
+    );
+  });
+
   test("fails when Pi prompt execution throws", async () => {
     const component = compileFixture("hello.prose.md").components[0];
     const workspace = mkdtempSync(join(tmpdir(), "openprose-pi-node-runner-error-"));
@@ -514,4 +554,20 @@ kind: service
 
 - \`pure\`: deterministic synthesis
 `, { path: "fixtures/compiler/delivery-node.prose.md" }).components[0];
+}
+
+function finallyComponent(): ComponentIR {
+  return compileSource(`---
+name: finally-node
+kind: service
+---
+
+### Ensures
+
+- \`message\`: Markdown<Greeting> - greeting message
+
+### Finally
+
+- Record cleanup performed before returning.
+`, { path: "fixtures/compiler/finally-node.prose.md" }).components[0];
 }

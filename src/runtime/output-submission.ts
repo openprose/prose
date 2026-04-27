@@ -1,7 +1,12 @@
 import { isAbsolute, normalize } from "node:path";
 import { sha256 } from "../hash.js";
 import { mergePolicyLabels } from "../policy/runtime.js";
-import type { Diagnostic } from "../types.js";
+import {
+  missingFinallyEvidenceDiagnostic,
+  normalizeFinallyEvidence,
+  validateFinallyEvidenceStateRefs,
+} from "./finally-evidence.js";
+import type { Diagnostic, FinallyEvidenceRecord } from "../types.js";
 import type {
   NodeArtifactResult,
   NodeExpectedOutput,
@@ -21,6 +26,7 @@ export interface OutputSubmissionOutput {
 export interface OutputSubmissionPayload {
   outputs: OutputSubmissionOutput[];
   performed_effects?: string[];
+  finally?: FinallyEvidenceRecord | null;
   citations?: string[];
   notes?: string | null;
 }
@@ -29,6 +35,7 @@ export interface OutputSubmissionResult {
   status: "accepted" | "rejected";
   artifacts: NodeArtifactResult[];
   performed_effects: string[];
+  finally: FinallyEvidenceRecord | null;
   diagnostics: Diagnostic[];
   citations: string[];
   notes: string | null;
@@ -56,21 +63,36 @@ export function evaluateOutputSubmission(
 
   validateOutputEntries(request, payload, diagnostics);
   validatePerformedEffects(request, payload, diagnostics);
-  if (diagnostics.length > 0) {
+  validateFinallyEvidenceStateRefs(
+    request,
+    payload.finally ?? null,
+    "openprose_submit_outputs",
+    diagnostics,
+  );
+  if (diagnostics.some((diagnostic) => diagnostic.severity === "error")) {
     return {
       ...rejected(diagnostics),
       performed_effects: normalizeStringList(payload.performed_effects),
+      finally: payload.finally ?? null,
       citations: normalizeStringList(payload.citations),
       notes: normalizeNullableString(payload.notes),
       payload,
     };
   }
 
+  const finallyDiagnostic = payload.finally
+    ? null
+    : missingFinallyEvidenceDiagnostic(request, "openprose_submit_outputs");
+  if (finallyDiagnostic) {
+    diagnostics.push(finallyDiagnostic);
+  }
+
   return {
     status: "accepted",
     artifacts: artifactsFromSubmission(request, payload),
     performed_effects: normalizeStringList(payload.performed_effects),
-    diagnostics: [],
+    finally: payload.finally ?? null,
+    diagnostics,
     citations: normalizeStringList(payload.citations),
     notes: normalizeNullableString(payload.notes),
     payload,
@@ -92,6 +114,10 @@ export function parseOutputSubmissionPayload(rawPayload: unknown): OutputSubmiss
     outputs: outputs.map((entry, index) => normalizeOutputEntry(entry, index)),
     performed_effects: normalizeStringList(
       (parsed as Record<string, unknown>).performed_effects,
+    ),
+    finally: normalizeFinallyEvidence(
+      (parsed as Record<string, unknown>).finally,
+      "openprose_submit_outputs",
     ),
     citations: normalizeStringList((parsed as Record<string, unknown>).citations),
     notes: normalizeNullableString((parsed as Record<string, unknown>).notes),
@@ -254,6 +280,7 @@ function rejected(diagnostics: Diagnostic[]): OutputSubmissionResult {
     status: "rejected",
     artifacts: [],
     performed_effects: [],
+    finally: null,
     diagnostics,
     citations: [],
     notes: null,

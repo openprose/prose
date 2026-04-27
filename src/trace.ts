@@ -122,6 +122,9 @@ export function renderTraceText(trace: TraceView): string {
       const declaredError = attempt.declared_error
         ? ` declared_error[${attempt.declared_error.code}]`
         : "";
+      const finallyEvidence = attempt.finally_evidence
+        ? ` finally[${attempt.finally_evidence.summary ?? "recorded"}]`
+        : "";
       const session = attempt.node_session
         ? ` session[${attempt.node_session.session_id}${sessionFileText(attempt.node_session)}]`
         : "";
@@ -129,7 +132,7 @@ export function renderTraceText(trace: TraceView): string {
         ? ` runtime[${attempt.runtime_profile.graph_vm}]`
         : "";
       lines.push(
-        `- #${attempt.attempt_number}: ${attempt.status}${runtime}${diagnostics}${failure}${declaredError}${session}`,
+        `- #${attempt.attempt_number}: ${attempt.status}${runtime}${diagnostics}${failure}${declaredError}${finallyEvidence}${session}`,
       );
     }
   }
@@ -172,6 +175,7 @@ function renderTraceEvent(event: TraceEvent): string {
     stringListDetail("outputs", event.output_ports),
     stringDetail("failure", event.failure_class),
     declaredErrorDetail(event),
+    finallyEvidenceDetail(event),
     stringDetail("gate", event.gate),
     usageDetail(event),
     costDetail(event),
@@ -210,6 +214,17 @@ function declaredErrorDetail(event: TraceEvent): string | null {
   return typeof code === "string" && code.length > 0
     ? `declared_error[${code}]`
     : null;
+}
+
+function finallyEvidenceDetail(event: TraceEvent): string | null {
+  const evidence = event.finally_evidence;
+  if (!evidence || typeof evidence !== "object") {
+    return null;
+  }
+  const summary = (evidence as Record<string, unknown>).summary;
+  return typeof summary === "string" && summary.length > 0
+    ? `finally[${summary}]`
+    : "finally[recorded]";
 }
 
 function usageDetail(event: TraceEvent): string | null {
@@ -306,6 +321,9 @@ function traceAttemptView(attempt: LocalRunAttemptRecord): TraceAttemptView {
     diagnostic_codes: attempt.diagnostics.map((diagnostic) => diagnostic.code).sort(),
     failure: attempt.failure?.message ?? null,
     ...(attempt.declared_error ? { declared_error: attempt.declared_error } : {}),
+    ...(attempt.finally_evidence
+      ? { finally_evidence: attempt.finally_evidence }
+      : {}),
     started_at: attempt.started_at,
     finished_at: attempt.finished_at,
   };

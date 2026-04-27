@@ -188,6 +188,72 @@ describe("OpenProse structured output submission", () => {
       }),
     ]);
   });
+
+  test("accepts finally evidence when a component declares Finally", () => {
+    const result = evaluateOutputSubmission(nodeRunRequest(finallyComponent()), {
+      outputs: [
+        {
+          port: "brief",
+          content: "Ship it.",
+        },
+      ],
+      finally: {
+        summary: "Released temporary notes.",
+        state_refs: ["__subagents/final/notes.md"],
+        cleanup_performed: ["removed draft scratch"],
+      },
+    });
+
+    expect(result.status).toBe("accepted");
+    expect(result.finally).toMatchObject({
+      summary: "Released temporary notes.",
+      state_refs: ["__subagents/final/notes.md"],
+      cleanup_performed: ["removed draft scratch"],
+    });
+    expect(result.diagnostics).toEqual([]);
+  });
+
+  test("warns without failing when Finally evidence is missing", () => {
+    const result = evaluateOutputSubmission(nodeRunRequest(finallyComponent()), {
+      outputs: [
+        {
+          port: "brief",
+          content: "Ship it.",
+        },
+      ],
+    });
+
+    expect(result.status).toBe("accepted");
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({
+        severity: "warning",
+        code: "openprose_finally_evidence_missing",
+      }),
+    );
+  });
+
+  test("rejects Finally evidence state refs that escape the node workspace", () => {
+    const result = evaluateOutputSubmission(nodeRunRequest(finallyComponent()), {
+      outputs: [
+        {
+          port: "brief",
+          content: "Ship it.",
+        },
+      ],
+      finally: {
+        state_refs: ["../outside.md"],
+      },
+    });
+
+    expect(result.status).toBe("rejected");
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({
+        code: "openprose_finally_evidence_invalid_state_ref",
+        message:
+          "openprose_submit_outputs finally state ref '../outside.md' must be workspace-relative and stay inside the node workspace.",
+      }),
+    );
+  });
 });
 
 function multiOutputComponent(): ComponentIR {
@@ -205,6 +271,22 @@ kind: service
 
 - \`pure\`: deterministic synthesis
 `, { path: "fixtures/compiler/multi-output.prose.md" }).components[0];
+}
+
+function finallyComponent(): ComponentIR {
+  return compileSource(`---
+name: finally-output
+kind: service
+---
+
+### Ensures
+
+- \`brief\`: Markdown<Brief> - concise recommendation
+
+### Finally
+
+- Release temporary notes and summarize cleanup.
+`, { path: "fixtures/compiler/finally-output.prose.md" }).components[0];
 }
 
 function nodeRunRequest(component: ComponentIR): NodeRunRequest {

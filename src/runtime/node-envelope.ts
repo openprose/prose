@@ -192,7 +192,7 @@ export function buildNodePromptEnvelope(
         ? PROSESCRIPT_INTERPRETER_GUIDELINES
         : null,
       summary:
-        "Produce only declared outputs. Prefer openprose_submit_outputs when available; report declared terminal failures with openprose_report_error; otherwise write the requested fallback output files.",
+        "Produce only declared outputs. Prefer openprose_submit_outputs when available; report declared terminal failures with openprose_report_error; include finally evidence when Finally is declared; otherwise write the requested fallback output files.",
     },
   };
 }

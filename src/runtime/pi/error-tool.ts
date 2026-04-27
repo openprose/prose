@@ -7,6 +7,7 @@ import {
 } from "../error-submission.js";
 import type { PiCustomToolDefinition } from "../../node-runners/pi.js";
 import type { NodeRunRequest } from "../../node-runners/protocol.js";
+import type { FinallyEvidenceRecord } from "../../types.js";
 
 export type ErrorSubmissionCollector = (result: ErrorSubmissionResult) => void;
 
@@ -16,6 +17,7 @@ export interface OpenProseReportErrorDetails {
   retryable: boolean | null;
   state_refs: string[];
   performed_effects: string[];
+  finally: FinallyEvidenceRecord | null;
   diagnostics: Array<{ code: string; message: string }>;
 }
 
@@ -118,6 +120,7 @@ export function createOpenProseReportErrorTool(
           retryable: result.error?.retryable ?? result.payload?.retryable ?? null,
           state_refs: result.error?.state_refs ?? result.payload?.state_refs ?? [],
           performed_effects: result.performed_effects,
+          finally: result.error?.finally ?? result.payload?.finally ?? null,
           diagnostics: result.diagnostics.map((diagnostic) => ({
             code: diagnostic.code,
             message: diagnostic.message,

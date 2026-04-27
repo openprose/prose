@@ -6,6 +6,7 @@ import {
 import type {
   Diagnostic,
   DeclaredErrorRecord,
+  FinallyEvidenceRecord,
   LocalRunAttemptFailure,
   LocalRunAttemptRecord,
   LocalRunAttemptRetry,
@@ -27,6 +28,7 @@ export interface WriteRunAttemptOptions {
   diagnostics?: Diagnostic[];
   failure?: LocalRunAttemptFailure | null;
   declaredError?: DeclaredErrorRecord | null;
+  finallyEvidence?: FinallyEvidenceRecord | null;
   retry?: LocalRunAttemptRetry | null;
   resume?: LocalRunResumePoint | null;
 }
@@ -49,6 +51,7 @@ export async function writeRunAttemptRecord(
     diagnostics: options.diagnostics ?? [],
     failure: options.failure ?? null,
     ...(options.declaredError ? { declared_error: options.declaredError } : {}),
+    ...(options.finallyEvidence ? { finally_evidence: options.finallyEvidence } : {}),
     retry: options.retry ?? null,
     resume: options.resume ?? null,
   };

@@ -508,12 +508,14 @@ export interface LocalRunAttemptFailure {
   retryable: boolean;
 }
 
-export interface DeclaredErrorFinallyRecord {
+export interface FinallyEvidenceRecord {
   summary: string | null;
   state_refs: string[];
   cleanup_performed: string[];
   unresolved: string[];
 }
+
+export interface DeclaredErrorFinallyRecord extends FinallyEvidenceRecord {}
 
 export interface DeclaredErrorRecord {
   code: string;
@@ -551,6 +553,7 @@ export interface LocalRunAttemptRecord {
   diagnostics: Diagnostic[];
   failure: LocalRunAttemptFailure | null;
   declared_error?: DeclaredErrorRecord | null;
+  finally_evidence?: FinallyEvidenceRecord | null;
   retry: LocalRunAttemptRetry | null;
   resume: LocalRunResumePoint | null;
 }
@@ -709,6 +712,7 @@ export interface RunRecord {
   evals: RunEvalRecord[];
   policy?: RunPolicyRecord;
   error?: DeclaredErrorRecord | null;
+  finally_evidence?: FinallyEvidenceRecord | null;
   acceptance: {
     status: RunAcceptanceStatus;
     reason: string | null;
@@ -896,6 +900,7 @@ export interface TraceAttemptView {
   diagnostic_codes: string[];
   failure: string | null;
   declared_error?: DeclaredErrorRecord | null;
+  finally_evidence?: FinallyEvidenceRecord | null;
   started_at: string;
   finished_at: string | null;
 }
@@ -943,6 +948,7 @@ export interface RunStatusEntry {
   completed_at: string | null;
   outputs: string[];
   declared_error?: DeclaredErrorRecord | null;
+  finally_evidence?: FinallyEvidenceRecord | null;
   node_count: number;
   attempt_count: number;
   latest_attempt_status: RunLifecycleStatus | null;
