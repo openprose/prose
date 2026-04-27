@@ -134,8 +134,12 @@ The platform now successfully runs the Native Company in dev, but OSS release
 readiness should keep hosted contract fixtures and remote envelopes visible so
 the hosted product cannot become a separate execution model.
 
-Recommended slice: keep `prose remote execute`, hosted fixtures, and platform
-fixture consumption in the launch readiness matrix.
+Status: done in signpost 007.
+
+Resolved slice: added `docs/hosted-contract.md` and
+`bun run smoke:hosted-contract`. The OSS package now documents the golden
+fixture boundary and has a combined canary for hosted-runtime fixtures plus
+distributed node request/result behavior.
 
 ## Per-Slice Discipline
 

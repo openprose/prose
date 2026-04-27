@@ -13,6 +13,7 @@ bun run test
 bun run smoke:binary
 bun run smoke:cold-start
 bun run smoke:agent-onboarding
+bun run smoke:hosted-contract
 bun run evidence:launch
 bun run smoke:live-pi
 ```
@@ -34,6 +35,7 @@ The confidence script exercises the public CLI across:
 - cold-start execution through the publishable binary package outside the source
   checkout
 - agent onboarding through the documented first operator loop
+- hosted contract fixtures and distributed node request/result canaries
 - launch evidence export for the technical report
 
 See [Evidence Classes](evidence-classes.md) for the distinction between
@@ -53,6 +55,7 @@ Latest generated reports:
 - Compiled Bun binary smoke passes.
 - Cold-start publishable-package smoke passes.
 - Agent-onboarding smoke passes.
+- Hosted contract smoke passes.
 - Launch evidence export passes and cites only generated source reports.
 - `smoke:live-pi` produces a clean skipped report by default and a classified
   opt-in live report when credentials are present.

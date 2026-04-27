@@ -26,6 +26,7 @@
     "smoke:binary": "bun run build:binary && ./dist/prose help >/dev/null && ./dist/prose compile examples/north-star/company-signal-brief.prose.md --no-pretty >/dev/null",
     "smoke:cold-start": "bun scripts/cold-start-smoke.ts",
     "smoke:agent-onboarding": "bun scripts/agent-onboarding-smoke.ts",
+    "smoke:hosted-contract": "bun test test/hosted-contract-fixtures.test.ts test/distributed-graph-runtime.test.ts",
     "smoke:company:local": "bun scripts/openprose-native-company-smoke.ts",
     "compile": "bun bin/prose.ts compile",
     "fmt": "bun bin/prose.ts fmt",

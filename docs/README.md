@@ -13,6 +13,8 @@ OpenProse is now split into a few clean surfaces:
   component contract to a compatible one-off harness
 - [Package Publication](package-publication.md): the source workspace versus
   generated CLI artifact boundary
+- [Hosted Runtime Contract](hosted-contract.md): the fixture boundary shared
+  by OSS and the hosted platform
 - [Schema Validation](schema-validation.md): what typed ports enforce today
   versus what remains semantic package metadata
 - [Runtime Confidence Gate](release-candidate.md): confidence matrix,
