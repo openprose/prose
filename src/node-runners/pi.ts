@@ -11,7 +11,7 @@ import {
 } from "../runtime/pi/events.js";
 import { defaultNodePrivateStateRunRef } from "../runtime/private-state.js";
 import type { OutputSubmissionResult } from "../runtime/output-submission.js";
-import type { ComponentIR, Diagnostic, EffectIR } from "../types.js";
+import type { ComponentIR, Diagnostic, EffectIR, RuntimeProfile } from "../types.js";
 import {
   readNodeOutputFileArtifacts,
   renderNodeOutputFileInstructions,
@@ -61,6 +61,8 @@ export interface PiNodeRunnerOptions {
   apiKeyProvider?: string;
   thinkingLevel?: PiThinkingLevel;
   tools?: string[];
+  subagentsEnabled?: boolean;
+  subagentBackend?: RuntimeProfile["subagent_backend"];
   noTools?: "all" | "builtin";
   customTools?: PiCustomToolDefinition[];
   now?: () => string;

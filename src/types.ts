@@ -370,6 +370,8 @@ export interface PackageRuntimeManifest {
   thinking: string | null;
   tools: string[];
   persist_sessions: boolean | null;
+  subagents_enabled?: boolean | null;
+  subagent_backend?: "pi" | "disabled" | null;
 }
 
 export interface PackageIR {
@@ -608,6 +610,8 @@ export interface RuntimeProfile {
   thinking: string | null;
   tools: string[];
   persist_sessions: boolean;
+  subagents_enabled: boolean;
+  subagent_backend: "pi" | "disabled";
 }
 
 export interface NodeSessionRef {
@@ -654,6 +658,8 @@ export interface RunRecord {
     thinking: string | null;
     tools: string[];
     persist_sessions: boolean;
+    subagents_enabled: boolean;
+    subagent_backend: "pi" | "disabled";
     profile: RuntimeProfile;
     environment_ref: string | null;
   };
@@ -951,6 +957,8 @@ export interface PreflightResult {
     model: string | null;
     thinking: string | null;
     persist_sessions: boolean;
+    subagents_enabled: boolean;
+    subagent_backend: "pi" | "disabled";
     checks: PreflightRuntimeCheck[];
   };
   diagnostics: Diagnostic[];

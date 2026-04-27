@@ -200,4 +200,66 @@ kind: service
     expect(after.hashes.semantic_hash).toBe(before.hashes.semantic_hash);
     expect(after.semantic_hash).toBe(before.semantic_hash);
   });
+
+  test("package runtime subagent settings participate in runtime config hashes", async () => {
+    const root = mkdtempSync(join(tmpdir(), "openprose-package-subagents-"));
+    mkdirSync(root, { recursive: true });
+    writeFileSync(
+      join(root, "brief.prose.md"),
+      `---
+name: brief
+kind: service
+---
+
+### Ensures
+
+- \`brief\`: Markdown<Brief> - brief output
+
+### Effects
+
+- \`pure\`: deterministic synthesis
+`,
+    );
+    writeFileSync(
+      join(root, "prose.package.json"),
+      JSON.stringify(
+        {
+          name: "@openprose/subagent-runtime-demo",
+          runtime: {
+            graph_vm: "pi",
+            subagents_enabled: false,
+          },
+        },
+        null,
+        2,
+      ),
+    );
+    const disabled = await compilePackagePath(root);
+
+    writeFileSync(
+      join(root, "prose.package.json"),
+      JSON.stringify(
+        {
+          name: "@openprose/subagent-runtime-demo",
+          runtime: {
+            graph_vm: "pi",
+            subagents_enabled: true,
+          },
+        },
+        null,
+        2,
+      ),
+    );
+    const enabled = await compilePackagePath(root);
+
+    expect(disabled.manifest.runtime).toMatchObject({
+      subagents_enabled: false,
+      subagent_backend: "disabled",
+    });
+    expect(enabled.manifest.runtime).toMatchObject({
+      subagents_enabled: true,
+      subagent_backend: "pi",
+    });
+    expect(enabled.hashes.runtime_config_hash).not.toBe(disabled.hashes.runtime_config_hash);
+  });
 });

@@ -1189,6 +1189,14 @@ function parseFileCommandArgs(args: string[]): FileCommandArgs {
       parsed.runtimeProfile.persist_sessions = false;
       continue;
     }
+    if (arg === "--subagents") {
+      parsed.runtimeProfile.subagents = true;
+      continue;
+    }
+    if (arg === "--no-subagents") {
+      parsed.runtimeProfile.subagents = false;
+      continue;
+    }
     if (arg === "--deployment-name") {
       parsed.deploymentName = args[index + 1] ?? null;
       index += 1;
@@ -1373,6 +1381,14 @@ function parseRemoteCommandArgs(args: string[]): RemoteCommandArgs {
     }
     if (arg === "--no-persist-sessions") {
       parsed.runtimeProfile.persist_sessions = false;
+      continue;
+    }
+    if (arg === "--subagents") {
+      parsed.runtimeProfile.subagents = true;
+      continue;
+    }
+    if (arg === "--no-subagents") {
+      parsed.runtimeProfile.subagents = false;
       continue;
     }
     if (arg === "--approved-effect") {
@@ -1563,6 +1579,7 @@ Runtime profile flags:
   --execution-placement   local|workspace_capsule|distributed
   --persist-sessions      Persist Pi sessions for node attempts
   --no-persist-sessions   Disable Pi session persistence for this command
+  --no-subagents          Disable Pi child sessions for this command
 
 Commands:
   compile      Compile Contract Markdown to canonical Prose IR JSON

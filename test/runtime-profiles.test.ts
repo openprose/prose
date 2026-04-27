@@ -27,6 +27,8 @@ describe("OpenProse runtime profiles", () => {
       thinking: null,
       tools: ["read", "write"],
       persist_sessions: true,
+      subagents_enabled: true,
+      subagent_backend: "pi",
     });
   });
 
@@ -37,6 +39,7 @@ describe("OpenProse runtime profiles", () => {
         OPENPROSE_PI_MODEL_ID: "google/gemini-3-flash-preview",
         OPENPROSE_PI_THINKING_LEVEL: "low",
         OPENPROSE_PI_TOOLS: "write,read",
+        OPENPROSE_PI_SUBAGENTS: "0",
       },
     });
 
@@ -46,6 +49,8 @@ describe("OpenProse runtime profiles", () => {
       model: "google/gemini-3-flash-preview",
       thinking: "low",
       tools: ["read", "write"],
+      subagents_enabled: false,
+      subagent_backend: "disabled",
     });
   });
 
@@ -58,6 +63,7 @@ describe("OpenProse runtime profiles", () => {
         thinking: "medium",
         tools: ["write", "read"],
         persist_sessions: false,
+        subagents: false,
       },
       env: {},
     });
@@ -70,6 +76,8 @@ describe("OpenProse runtime profiles", () => {
       thinking: "medium",
       tools: ["read", "write"],
       persist_sessions: false,
+      subagents_enabled: false,
+      subagent_backend: "disabled",
     });
   });
 
@@ -135,6 +143,7 @@ describe("OpenProse runtime profiles", () => {
         thinking: "low",
         tools: ["read", "write"],
         persist_sessions: true,
+        subagents: false,
       },
       createdAt: "2026-04-26T16:20:00.000Z",
     });
@@ -145,8 +154,14 @@ describe("OpenProse runtime profiles", () => {
       model: "google/gemini-3-flash-preview",
       thinking: "low",
       persist_sessions: true,
+      subagents_enabled: false,
+      subagent_backend: "disabled",
     });
     expect(result.record.runtime.profile).toEqual(requests[0]?.runtime_profile);
+    expect(requests[0]?.runtime_profile).toMatchObject({
+      subagents_enabled: false,
+      subagent_backend: "disabled",
+    });
 
     const attempts = await listRunAttemptRecords(
       join(runRoot, ".prose-store"),
@@ -156,6 +171,57 @@ describe("OpenProse runtime profiles", () => {
       graph_vm: "pi",
       model_provider: "openrouter",
       model: "google/gemini-3-flash-preview",
+      subagents_enabled: false,
+      subagent_backend: "disabled",
+    });
+  });
+
+  test("component runtime can opt a node out of subagents", async () => {
+    const runRoot = mkdtempSync(join(tmpdir(), "openprose-node-subagents-"));
+    const requests: NodeRunRequest[] = [];
+    const result = await runSource(`---
+name: no-subagents
+kind: service
+---
+
+### Runtime
+
+- \`subagents\`: false
+
+### Ensures
+
+- \`message\`: Markdown<Message> - generated message
+
+### Effects
+
+- \`pure\`: deterministic synthesis
+`, {
+      path: "fixtures/compiler/no-subagents.prose.md",
+      runRoot,
+      runId: "component-subagent-opt-out",
+      nodeRunner: scriptedPiRuntime({
+        outputs: {
+          message: "Hello without child sessions.",
+        },
+        onRequest: (request) => requests.push(request),
+      }),
+      runtimeProfile: {
+        graph_vm: "pi",
+        model_provider: "openrouter",
+        model: "google/gemini-3-flash-preview",
+        thinking: "low",
+        tools: ["read", "write"],
+      },
+      createdAt: "2026-04-26T16:30:00.000Z",
+    });
+
+    expect(result.record.runtime.profile).toMatchObject({
+      subagents_enabled: false,
+      subagent_backend: "disabled",
+    });
+    expect(requests[0]?.runtime_profile).toMatchObject({
+      subagents_enabled: false,
+      subagent_backend: "disabled",
     });
   });
 });

@@ -159,6 +159,8 @@ describe("OpenProse Pi runtime telemetry", () => {
         thinking: null,
         tools: [],
         persist_sessions: true,
+        subagents_enabled: true,
+        subagent_backend: "pi",
         profile: {
           profile_version: "0.1",
           graph_vm: "pi",
@@ -169,6 +171,8 @@ describe("OpenProse Pi runtime telemetry", () => {
           thinking: null,
           tools: [],
           persist_sessions: true,
+          subagents_enabled: true,
+          subagent_backend: "pi",
         },
         environment_ref: null,
       },

@@ -906,6 +906,7 @@ kind: program
       "--tools",
       "write,read",
       "--no-persist-sessions",
+      "--no-subagents",
       "--run-root",
       runRoot,
       "--run-id",
@@ -926,6 +927,8 @@ kind: program
         thinking: "low",
         tools: ["read", "write"],
         persist_sessions: false,
+        subagents_enabled: false,
+        subagent_backend: "disabled",
       },
     });
   });

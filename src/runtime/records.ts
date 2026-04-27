@@ -17,6 +17,7 @@ import type {
   RunRecord,
   RuntimeProfile,
 } from "../types.js";
+import { runtimeProfileForComponentRuntime } from "./profiles.js";
 
 export interface RuntimeRecordContext {
   ir: ProseIR;
@@ -36,6 +37,10 @@ export function baseRunRecord(
   kind: "component" | "graph",
   runId = ctx.runId,
 ): Omit<RunRecord, "inputs" | "dependencies" | "effects" | "outputs" | "evals" | "acceptance" | "trace_ref" | "status" | "completed_at"> {
+  const runtimeProfile = runtimeProfileForComponentRuntime(
+    ctx.runtimeProfile,
+    component.runtime,
+  );
   return {
     run_id: runId,
     kind,
@@ -54,14 +59,16 @@ export function baseRunRecord(
     runtime: {
       harness: "openprose-node-runner",
       worker_ref: ctx.nodeRunner.kind,
-      graph_vm: ctx.runtimeProfile.graph_vm,
-      single_run_harness: ctx.runtimeProfile.single_run_harness,
-      model_provider: ctx.runtimeProfile.model_provider,
-      model: ctx.runtimeProfile.model,
-      thinking: ctx.runtimeProfile.thinking,
-      tools: ctx.runtimeProfile.tools,
-      persist_sessions: ctx.runtimeProfile.persist_sessions,
-      profile: ctx.runtimeProfile,
+      graph_vm: runtimeProfile.graph_vm,
+      single_run_harness: runtimeProfile.single_run_harness,
+      model_provider: runtimeProfile.model_provider,
+      model: runtimeProfile.model,
+      thinking: runtimeProfile.thinking,
+      tools: runtimeProfile.tools,
+      persist_sessions: runtimeProfile.persist_sessions,
+      subagents_enabled: runtimeProfile.subagents_enabled,
+      subagent_backend: runtimeProfile.subagent_backend,
+      profile: runtimeProfile,
       environment_ref: null,
     },
     created_at: ctx.createdAt,
@@ -89,7 +96,7 @@ export async function writeNodeAttemptRecord(
     componentRef: record.component_ref,
     attemptNumber: 1,
     status: record.status,
-    runtimeProfile: ctx.runtimeProfile,
+    runtimeProfile: record.runtime.profile,
     nodeSession: result.session,
     startedAt: record.created_at,
     finishedAt: record.completed_at,
@@ -114,7 +121,7 @@ export async function writeBlockedAttemptRecord(
     componentRef: record.component_ref,
     attemptNumber: 1,
     status: record.status,
-    runtimeProfile: ctx.runtimeProfile,
+    runtimeProfile: record.runtime.profile,
     nodeSession: null,
     startedAt: record.created_at,
     finishedAt: record.completed_at,

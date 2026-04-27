@@ -1,4 +1,4 @@
-import type { RuntimeProfile } from "../types.js";
+import type { RuntimeProfile, RuntimeSettingIR } from "../types.js";
 
 export interface RuntimeProfileInput {
   profile_version?: "0.1";
@@ -15,6 +15,11 @@ export interface RuntimeProfileInput {
   tools?: string[] | null;
   persist_sessions?: boolean | null;
   persistSessions?: boolean | null;
+  subagents?: boolean | null;
+  subagents_enabled?: boolean | null;
+  subagentsEnabled?: boolean | null;
+  subagent_backend?: RuntimeProfile["subagent_backend"] | null;
+  subagentBackend?: RuntimeProfile["subagent_backend"] | null;
 }
 
 export interface ResolveRuntimeProfileOptions {
@@ -43,6 +48,15 @@ export function resolveRuntimeProfile(
     "pi";
 
   assertGraphVm(graphVm);
+  const requestedSubagentBackend = normalizeSubagentBackend(
+    input.subagent_backend ?? input.subagentBackend,
+  );
+  const requestedSubagentsEnabled =
+    normalizeBoolean(input.subagents_enabled ?? input.subagentsEnabled ?? input.subagents) ??
+    envBoolean(env, "OPENPROSE_PI_SUBAGENTS") ??
+    (requestedSubagentBackend === "disabled" ? false : true);
+  const subagentsEnabled =
+    requestedSubagentBackend === "disabled" ? false : requestedSubagentsEnabled;
 
   const profile: RuntimeProfile = {
     profile_version: "0.1",
@@ -72,10 +86,29 @@ export function resolveRuntimeProfile(
       normalizeBoolean(input.persist_sessions ?? input.persistSessions) ??
       envBoolean(env, "OPENPROSE_PI_PERSIST_SESSIONS") ??
       true,
+    subagents_enabled: subagentsEnabled,
+    subagent_backend: subagentsEnabled
+      ? requestedSubagentBackend ?? "pi"
+      : "disabled",
   };
 
   assertThinking(profile.thinking);
   return profile;
+}
+
+export function runtimeProfileForComponentRuntime(
+  profile: RuntimeProfile,
+  settings: RuntimeSettingIR[],
+): RuntimeProfile {
+  const subagents = runtimeBooleanSetting(settings, "subagents");
+  if (subagents !== false) {
+    return profile;
+  }
+  return {
+    ...profile,
+    subagents_enabled: false,
+    subagent_backend: "disabled",
+  };
 }
 
 export function runtimeProfileSummary(profile: RuntimeProfile): string {
@@ -140,6 +173,18 @@ function normalizeExecutionPlacement(
   );
 }
 
+function normalizeSubagentBackend(
+  value: RuntimeProfile["subagent_backend"] | null | undefined,
+): RuntimeProfile["subagent_backend"] | null {
+  if (value === "pi" || value === "disabled") {
+    return value;
+  }
+  if (value === null || value === undefined) {
+    return null;
+  }
+  throw new Error("Runtime profile subagent_backend must be one of pi, disabled.");
+}
+
 function normalizeString(value: string | null | undefined): string | null {
   if (typeof value !== "string") {
     return null;
@@ -159,6 +204,14 @@ function normalizeStringList(values: string[] | null | undefined): string[] | nu
 
 function normalizeBoolean(value: boolean | null | undefined): boolean | null {
   return typeof value === "boolean" ? value : null;
+}
+
+function runtimeBooleanSetting(
+  settings: RuntimeSettingIR[],
+  key: string,
+): boolean | null {
+  const setting = settings.find((candidate) => candidate.key === key);
+  return typeof setting?.value === "boolean" ? setting.value : null;
 }
 
 function envString(

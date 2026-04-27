@@ -305,7 +305,7 @@ export async function runIr(
         recompute_scope: "selected",
       },
       workspacePath: ctx.runDir,
-      runtimeProfile: ctx.runtimeProfile,
+      runtimeProfile: request.runtime_profile,
       nodeRunRequest: request,
     }),
   );
@@ -493,7 +493,7 @@ async function executeGraphRun(
             : "unselected",
         },
         workspacePath,
-        runtimeProfile: ctx.runtimeProfile,
+        runtimeProfile: nodeRunRequest.runtime_profile,
         nodeRunRequest,
       }),
     );

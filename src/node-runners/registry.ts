@@ -83,6 +83,8 @@ function piOptionsFromProfile(
     apiKeyProvider: envString(env, "OPENPROSE_PI_API_KEY_PROVIDER") ?? undefined,
     thinkingLevel: piThinkingLevel(profile.thinking),
     tools: profile.tools,
+    subagentsEnabled: profile.subagents_enabled,
+    subagentBackend: profile.subagent_backend,
     noTools: envNoTools(env, "OPENPROSE_PI_NO_TOOLS"),
     outputFiles: envJsonRecord(env, "OPENPROSE_NODE_OUTPUT_FILES"),
     timeoutMs: envNumber(env, "OPENPROSE_PI_TIMEOUT_MS"),

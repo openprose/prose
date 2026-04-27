@@ -85,6 +85,8 @@ export function testRuntimeProfile(graphVm = "pi"): RuntimeProfile {
     thinking: profileGraphVm === "pi" ? "off" : null,
     tools: ["read", "write"],
     persist_sessions: true,
+    subagents_enabled: true,
+    subagent_backend: "pi",
   };
 }
 

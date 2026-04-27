@@ -1,4 +1,5 @@
 import { evaluateRuntimePolicy } from "../policy/index.js";
+import { runtimeProfileForComponentRuntime } from "./profiles.js";
 import type {
   GraphVmKind,
   NodeRunRequest,
@@ -24,6 +25,10 @@ export async function createNodeRunRequest(
   recordsById = new Map<string, RunRecord>(),
 ): Promise<NodeRunRequest> {
   const inputState = await nodeInputState(ctx, component, recordsById);
+  const runtimeProfile = runtimeProfileForComponentRuntime(
+    ctx.runtimeProfile,
+    component.runtime,
+  );
   const policy = evaluateRuntimePolicy({
     component,
     inputBindings: inputState.bindings,
@@ -33,7 +38,7 @@ export async function createNodeRunRequest(
     node_run_request_version: "0.1",
     request_id: runId,
     graph_vm: ctx.nodeRunner.kind,
-    runtime_profile: ctx.runtimeProfile,
+    runtime_profile: runtimeProfile,
     component,
     rendered_contract: renderComponentContract(ctx.ir, component),
     input_bindings: inputState.bindings,

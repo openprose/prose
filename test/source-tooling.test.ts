@@ -206,6 +206,7 @@ kind: program
       ["live_model_profile", "ready"],
       ["live_auth", "ready"],
       ["session_persistence", "ready"],
+      ["subagents", "ready"],
       ["runtime_timeout", "ready"],
     ]);
     expect(text).toContain("live_auth: ready");

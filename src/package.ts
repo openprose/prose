@@ -45,6 +45,9 @@ interface PackageConfig {
     thinking?: string;
     tools?: string[];
     persist_sessions?: boolean;
+    subagents?: boolean;
+    subagents_enabled?: boolean;
+    subagent_backend?: "pi" | "disabled";
   };
   hosted?: HostedRuntimeMetadata;
 }
@@ -294,6 +297,27 @@ function normalizeRuntimeManifest(
       .sort(),
     persist_sessions:
       typeof runtime.persist_sessions === "boolean" ? runtime.persist_sessions : null,
+    ...normalizedPackageSubagents(runtime),
+  };
+}
+
+function normalizedPackageSubagents(
+  runtime: NonNullable<PackageConfig["runtime"]>,
+): Pick<PackageRuntimeManifest, "subagents_enabled" | "subagent_backend"> {
+  const enabled =
+    typeof runtime.subagents_enabled === "boolean"
+      ? runtime.subagents_enabled
+      : typeof runtime.subagents === "boolean"
+        ? runtime.subagents
+        : runtime.subagent_backend === "disabled"
+          ? false
+          : runtime.subagent_backend === "pi"
+            ? true
+            : null;
+  const backend = enabled === true ? "pi" : enabled === false ? "disabled" : null;
+  return {
+    ...(enabled !== null ? { subagents_enabled: enabled } : {}),
+    ...(backend !== null ? { subagent_backend: backend } : {}),
   };
 }
 
@@ -323,6 +347,12 @@ function buildRuntimeSummary(options: {
     thinking: options.manifest?.thinking ?? null,
     tools: options.manifest?.tools ?? [],
     persist_sessions: options.manifest?.persist_sessions ?? null,
+    ...(options.manifest?.subagents_enabled !== undefined
+      ? { subagents_enabled: options.manifest.subagents_enabled }
+      : {}),
+    ...(options.manifest?.subagent_backend !== undefined
+      ? { subagent_backend: options.manifest.subagent_backend }
+      : {}),
     required_effects: [...requiredEffects].sort(),
     environment: [...environment.entries()]
       .map(([name, required]) => ({ name, required }))

@@ -139,6 +139,9 @@ export function renderPreflightText(result: PreflightResult): string {
   lines.push(
     `- persist_sessions: ${result.runtime.persist_sessions ? "enabled" : "disabled"}`,
   );
+  lines.push(
+    `- subagents: ${result.runtime.subagents_enabled ? result.runtime.subagent_backend : "disabled"}`,
+  );
   for (const check of result.runtime.checks) {
     lines.push(`- ${check.name}: ${check.status} - ${check.detail}`);
   }
@@ -183,6 +186,8 @@ function collectRuntimeChecks(
         model: profile.model,
         thinking: profile.thinking,
         persist_sessions: profile.persist_sessions,
+        subagents_enabled: profile.subagents_enabled,
+        subagent_backend: profile.subagent_backend,
         checks,
       },
       diagnostics: [],
@@ -195,6 +200,8 @@ function collectRuntimeChecks(
         model: null,
         thinking: null,
         persist_sessions: true,
+        subagents_enabled: true,
+        subagent_backend: "pi",
         checks: [
           {
             name: "runtime_profile",
@@ -229,6 +236,7 @@ function runtimeChecksForProfile(
     liveModelProfileCheck(profile),
     liveAuthCheck(profile, environment),
     sessionPersistenceCheck(profile, environment),
+    subagentCapabilityCheck(profile),
     timeoutCheck(environment),
   ];
 }
@@ -287,6 +295,23 @@ function sessionPersistenceCheck(
       ? "Persisted Pi sessions will use OPENPROSE_PI_SESSION_DIR."
       : "Persisted Pi sessions default to each node workspace .pi directory.",
     env: ["OPENPROSE_PI_SESSION_DIR", "OPENPROSE_PI_PERSIST_SESSIONS"],
+  };
+}
+
+function subagentCapabilityCheck(profile: RuntimeProfile): PreflightRuntimeCheck {
+  if (!profile.subagents_enabled) {
+    return {
+      name: "subagents",
+      status: "warning",
+      detail: "OPENPROSE_PI_SUBAGENTS disables Pi child sessions for node attempts.",
+      env: ["OPENPROSE_PI_SUBAGENTS"],
+    };
+  }
+  return {
+    name: "subagents",
+    status: "ready",
+    detail: `Child sessions will use the ${profile.subagent_backend} backend.`,
+    env: ["OPENPROSE_PI_SUBAGENTS"],
   };
 }
 
