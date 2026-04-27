@@ -11,6 +11,8 @@ OpenProse is now split into a few clean surfaces:
   model provider setup, and live harness evidence
 - [Single-Run Handoff](single-run-handoff.md): the boundary for exporting one
   component contract to a compatible one-off harness
+- [Package Publication](package-publication.md): the source workspace versus
+  generated CLI artifact boundary
 - [Schema Validation](schema-validation.md): what typed ports enforce today
   versus what remains semantic package metadata
 - [Runtime Confidence Gate](release-candidate.md): confidence matrix,

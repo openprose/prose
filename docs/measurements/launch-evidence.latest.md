@@ -1,6 +1,6 @@
 # OpenProse Launch Evidence
 
-Generated: 2026-04-27T01:54:25.545Z
+Generated: 2026-04-27T01:57:38.298Z
 Status: PASS
 
 ## Confidence Gates
@@ -8,7 +8,7 @@ Status: PASS
 | Gate | Status | Checks | Elapsed | Detail |
 |---|---|---:|---:|---|
 | runtime confidence | pass | 20 | 15710ms |  |
-| cold-start package smoke | pass | 6 | 3534ms |  |
+| cold-start package smoke | pass | 6 | 3777ms |  |
 | agent onboarding smoke | pass | 9 | 3178ms |  |
 | live Pi smoke | succeeded |  |  | openrouter/google/gemini-3-flash-preview |
 

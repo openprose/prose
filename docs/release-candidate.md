@@ -63,6 +63,8 @@ Latest generated reports:
 - The generated `dist/package.json` is the publishable binary package surface.
 - `dist/prose` can render help and compile
   `examples/north-star/company-signal-brief.prose.md`.
+- [Package Publication](package-publication.md) matches the actual generated
+  artifact boundary.
 - CLI help, status, trace, and graph output explain the runtime loop clearly.
 - Remaining hosted/platform-specific follow-up is documented outside the OSS
   package workstream.

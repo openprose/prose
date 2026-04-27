@@ -122,7 +122,11 @@ surface. This is a good architecture, but a public launch should have one
 artifact-level publication check that verifies package metadata, files, binary,
 README expectations, and install instructions all agree.
 
-Recommended slice: extend `smoke:binary` or add `smoke:publishable-package`.
+Status: done in signpost 006.
+
+Resolved slice: documented the source-workspace versus generated-CLI-artifact
+boundary in `docs/package-publication.md`. The artifact-level check is
+`smoke:cold-start`, backed by `smoke:binary` and `test/binary-package.test.ts`.
 
 ### R006: Hosted Contract Drift Must Stay Visible
 

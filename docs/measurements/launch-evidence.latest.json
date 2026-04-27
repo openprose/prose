@@ -1,6 +1,6 @@
 {
   "report_version": "0.1",
-  "generated_at": "2026-04-27T01:54:25.545Z",
+  "generated_at": "2026-04-27T01:57:38.298Z",
   "status": "pass",
   "source_reports": [
     "docs/measurements/latest.json",
@@ -54,7 +54,7 @@
       "label": "cold-start package smoke",
       "status": "pass",
       "checks": 6,
-      "elapsed_ms": 3534
+      "elapsed_ms": 3777
     },
     {
       "label": "agent onboarding smoke",
