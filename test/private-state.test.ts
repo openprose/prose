@@ -1,13 +1,16 @@
 import {
+  compileFixture,
   describe,
   expect,
   join,
   mkdtempSync,
   readFileSync,
   test,
+  testRuntimeProfile,
   tmpdir,
 } from "./support";
 import { createFilesystemNodePrivateStateStore } from "../src/runtime";
+import { createOpenProseSubagentTool } from "../src/node-runners";
 
 describe("OpenProse node private state", () => {
   test("allocates child state under the node workspace", async () => {
@@ -115,5 +118,60 @@ describe("OpenProse node private state", () => {
       state_refs: ["__subagents/other/notes.md"],
     });
   });
-});
 
+  test("subagent tool rejects private refs that escape the child root", async () => {
+    const workspace = mkdtempSync(join(tmpdir(), "openprose-subagent-containment-"));
+    const store = createFilesystemNodePrivateStateStore({ workspacePath: workspace });
+    const component = compileFixture("hello.prose.md").components[0];
+    let launched = false;
+    const tool = createOpenProseSubagentTool({
+      request: {
+        node_run_request_version: "0.1",
+        request_id: "request-1",
+        graph_vm: "pi",
+        runtime_profile: testRuntimeProfile("pi"),
+        component,
+        rendered_contract: "# hello",
+        input_bindings: [],
+        upstream_artifacts: [],
+        workspace_path: workspace,
+        environment: [],
+        approved_effects: [],
+        policy_labels: [],
+        expected_outputs: [],
+        validation: [],
+      },
+      store,
+      inheritedOptions: () => ({ tools: ["read", "write"], customTools: [] }),
+      launch: async () => {
+        launched = true;
+        return {};
+      },
+    });
+
+    const result = await tool.execute(
+      "call-subagent",
+      {
+        task: "Write notes.",
+        purpose: "worker",
+        expected_refs: ["../outside.md"],
+      },
+      undefined,
+      undefined,
+      undefined as never,
+    );
+
+    expect(launched).toBe(false);
+    expect(result.details.status).toBe("failed");
+    expect(result.details.diagnostics).toContainEqual(
+      expect.objectContaining({
+        code: "subagent_expected_ref_invalid",
+      }),
+    );
+    const manifest = JSON.parse(readFileSync(store.manifestPath, "utf8"));
+    expect(manifest.entries[0]).toMatchObject({
+      child_id: "worker",
+      state_refs: ["__subagents/worker"],
+    });
+  });
+});

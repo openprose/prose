@@ -6,10 +6,19 @@ import {
   OPENPROSE_SUBMIT_OUTPUTS_TOOL_NAME,
 } from "../runtime/pi/output-tool.js";
 import {
+  createDefaultPiSubagentLauncher,
+  createOpenProseSubagentTool,
+  OPENPROSE_SUBAGENT_TOOL_NAME,
+  type SubagentLauncher,
+} from "../runtime/pi/subagent-tool.js";
+import {
   normalizePiRuntimeEvent,
   outputSubmissionTelemetryEvent,
 } from "../runtime/pi/events.js";
-import { defaultNodePrivateStateRunRef } from "../runtime/private-state.js";
+import {
+  createFilesystemNodePrivateStateStore,
+  defaultNodePrivateStateRunRef,
+} from "../runtime/private-state.js";
 import type { OutputSubmissionResult } from "../runtime/output-submission.js";
 import type { ComponentIR, Diagnostic, EffectIR, RuntimeProfile } from "../types.js";
 import {
@@ -63,6 +72,7 @@ export interface PiNodeRunnerOptions {
   tools?: string[];
   subagentsEnabled?: boolean;
   subagentBackend?: RuntimeProfile["subagent_backend"];
+  subagentLauncher?: SubagentLauncher;
   noTools?: "all" | "builtin";
   customTools?: PiCustomToolDefinition[];
   now?: () => string;
@@ -132,15 +142,34 @@ export class PiNodeRunner implements NodeRunner {
     const outputSubmission = {
       current: null as OutputSubmissionResult | null,
     };
-    const runtimeOptions: PiNodeRunnerOptions = {
-      ...this.options,
-      tools: piToolsWithOutputSubmission(this.options.tools),
-      customTools: [
-        ...(this.options.customTools ?? []),
-        createOpenProseSubmitOutputsTool(request, (result) => {
-          outputSubmission.current = result;
+    const outputTool = createOpenProseSubmitOutputsTool(request, (result) => {
+      outputSubmission.current = result;
+    });
+    const customTools = [...(this.options.customTools ?? [])];
+    const subagentsEnabled = shouldEnableSubagents(request, this.options);
+    let runtimeOptions: PiNodeRunnerOptions;
+    if (subagentsEnabled) {
+      customTools.push(
+        createOpenProseSubagentTool({
+          request,
+          store: createFilesystemNodePrivateStateStore({
+            workspacePath: request.workspace_path,
+            now: this.options.now,
+          }),
+          launch:
+            this.options.subagentLauncher ??
+            createDefaultPiSubagentLauncher(this.createSession),
+          inheritedOptions: () => runtimeOptions,
         }),
-      ],
+      );
+    }
+    customTools.push(outputTool);
+    runtimeOptions = {
+      ...this.options,
+      tools: piToolsWithOpenProseTools(this.options.tools, {
+        subagents: subagentsEnabled,
+      }),
+      customTools,
     };
     let session: PiAgentSessionLike | null = null;
     const events: string[] = [];
@@ -307,9 +336,27 @@ export function createPiNodeRunner(options: PiNodeRunnerOptions = {}): PiNodeRun
   return new PiNodeRunner(options);
 }
 
-function piToolsWithOutputSubmission(tools: string[] | undefined): string[] {
+function piToolsWithOpenProseTools(
+  tools: string[] | undefined,
+  options: { subagents: boolean },
+): string[] {
   const selected = tools ?? ["read", "write"];
-  return Array.from(new Set([...selected, OPENPROSE_SUBMIT_OUTPUTS_TOOL_NAME]));
+  const openProseTools = [
+    options.subagents ? OPENPROSE_SUBAGENT_TOOL_NAME : null,
+    OPENPROSE_SUBMIT_OUTPUTS_TOOL_NAME,
+  ].filter((tool): tool is string => tool !== null);
+  return Array.from(new Set([...selected, ...openProseTools]));
+}
+
+function shouldEnableSubagents(
+  request: NodeRunRequest,
+  options: PiNodeRunnerOptions,
+): boolean {
+  if (options.subagentsEnabled === false || options.subagentBackend === "disabled") {
+    return false;
+  }
+  return request.runtime_profile.subagents_enabled &&
+    request.runtime_profile.subagent_backend !== "disabled";
 }
 
 export function renderPiPrompt(

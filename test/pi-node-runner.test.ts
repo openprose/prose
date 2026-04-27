@@ -5,19 +5,23 @@ import {
   expect,
   join,
   mkdtempSync,
+  readFileSync,
   test,
   testRuntimeProfile,
   tmpdir,
 } from "./support";
 import {
+  OPENPROSE_SUBAGENT_TOOL_NAME,
   createPiNodeRunner,
   renderPiPrompt,
   writeNodeArtifactRecords,
 } from "../src/node-runners";
+import { OPENPROSE_SUBMIT_OUTPUTS_TOOL_NAME } from "../src/runtime/pi/output-tool";
 import type {
   PiAgentSessionLike,
   PiSessionFactory,
   NodeRunRequest,
+  SubagentLaunchRequest,
 } from "../src/node-runners";
 import type { ComponentIR } from "../src/types";
 
@@ -170,6 +174,136 @@ describe("OpenProse Pi node runner", () => {
     expect(prompt).toContain("run: prior-run");
     expect(prompt).toContain("- message (Markdown<Greeting>, required): outputs/message.md");
   });
+
+  test("registers the subagent tool by default", async () => {
+    const component = compileFixture("hello.prose.md").components[0];
+    const workspace = mkdtempSync(join(tmpdir(), "openprose-pi-subagent-default-"));
+    let toolNames: string[] = [];
+    let toolAllowlist: string[] = [];
+    const runner = createPiNodeRunner({
+      createSession: async (context) => {
+        toolNames = context.options.customTools?.map((tool) => tool.name).sort() ?? [];
+        toolAllowlist = context.options.tools ?? [];
+        return fakeSession(async () => {
+          await writeFile(join(workspace, "message.md"), "Hello with tools.\n");
+        });
+      },
+      timeoutMs: 2_000,
+    });
+
+    const result = await runner.execute(nodeRunRequest(component, workspace));
+
+    expect(result.status).toBe("succeeded");
+    expect(toolNames).toEqual(
+      expect.arrayContaining([
+        OPENPROSE_SUBAGENT_TOOL_NAME,
+        OPENPROSE_SUBMIT_OUTPUTS_TOOL_NAME,
+      ]),
+    );
+    expect(toolAllowlist).toContain(OPENPROSE_SUBAGENT_TOOL_NAME);
+  });
+
+  test("omits the subagent tool when runtime disables subagents", async () => {
+    const component = compileFixture("hello.prose.md").components[0];
+    const workspace = mkdtempSync(join(tmpdir(), "openprose-pi-subagent-disabled-"));
+    let toolNames: string[] = [];
+    let toolAllowlist: string[] = [];
+    const request = nodeRunRequest(component, workspace);
+    request.runtime_profile = {
+      ...request.runtime_profile,
+      subagents_enabled: false,
+      subagent_backend: "disabled",
+    };
+    const runner = createPiNodeRunner({
+      createSession: async (context) => {
+        toolNames = context.options.customTools?.map((tool) => tool.name).sort() ?? [];
+        toolAllowlist = context.options.tools ?? [];
+        await writeFile(join(workspace, "message.md"), "Hello without subagents.\n");
+        return fakeSession(async () => {});
+      },
+      timeoutMs: 2_000,
+    });
+
+    const result = await runner.execute(request);
+
+    expect(result.status).toBe("succeeded");
+    expect(toolNames).not.toContain(OPENPROSE_SUBAGENT_TOOL_NAME);
+    expect(toolAllowlist).not.toContain(OPENPROSE_SUBAGENT_TOOL_NAME);
+    expect(toolNames).toContain(OPENPROSE_SUBMIT_OUTPUTS_TOOL_NAME);
+  });
+
+  test("runs subagents as private child sessions without output submission", async () => {
+    const component = compileFixture("hello.prose.md").components[0];
+    const workspace = mkdtempSync(join(tmpdir(), "openprose-pi-subagent-launch-"));
+    let launch: SubagentLaunchRequest | null = null;
+    const runner = createPiNodeRunner({
+      modelProvider: "openrouter",
+      modelId: "google/gemini-3-flash-preview",
+      thinkingLevel: "low",
+      createSession: async (context) =>
+        fakeSession(async () => {
+          const subagentTool = context.options.customTools?.find(
+            (tool) => tool.name === OPENPROSE_SUBAGENT_TOOL_NAME,
+          );
+          expect(subagentTool).toBeDefined();
+          await subagentTool!.execute(
+            "call-subagent",
+            {
+              task: "Inspect the draft and write concise notes.",
+              purpose: "draft review",
+              expected_refs: ["__subagents/draft-review/notes.md"],
+              agent: "Draft Reviewer",
+            },
+            undefined,
+            undefined,
+            undefined as never,
+          );
+          await writeFile(join(workspace, "message.md"), "Parent output only.\n");
+        }),
+      subagentLauncher: async (request) => {
+        launch = request;
+        await writeFile(join(request.child.root_path, "notes.md"), "Private child notes.\n");
+        return {
+          summary: "Reviewed draft.",
+          stateRefs: [`${request.child.root_ref}/notes.md`],
+          sessionRef: ".pi/subagents/draft-review.jsonl",
+        };
+      },
+      timeoutMs: 2_000,
+    });
+
+    const result = await runner.execute(nodeRunRequest(component, workspace));
+
+    expect(result.status).toBe("succeeded");
+    expect(result.artifacts.map((artifact) => artifact.port)).toEqual(["message"]);
+    expect(result.private_state).toMatchObject({
+      manifest_ref: "openprose-private-state.json",
+      subagents_root_ref: "__subagents",
+    });
+    expect(launch).toMatchObject({
+      task: "Inspect the draft and write concise notes.",
+      policy_labels: [],
+      options: {
+        modelProvider: "openrouter",
+        modelId: "google/gemini-3-flash-preview",
+        thinkingLevel: "low",
+      },
+    });
+    expect(launch!.options.customTools?.map((tool) => tool.name)).not.toContain(
+      OPENPROSE_SUBMIT_OUTPUTS_TOOL_NAME,
+    );
+    expect(launch!.options.tools).not.toContain(OPENPROSE_SUBMIT_OUTPUTS_TOOL_NAME);
+    const manifest = JSON.parse(
+      readFileSync(join(workspace, "openprose-private-state.json"), "utf8"),
+    );
+    expect(manifest.entries[0]).toMatchObject({
+      child_id: "draft-review",
+      purpose: "draft review",
+      state_refs: ["__subagents/draft-review/notes.md"],
+      session_ref: ".pi/subagents/draft-review.jsonl",
+      summary: "Reviewed draft.",
+    });
+  });
 });
 
 const integrationTest =
@@ -240,6 +374,40 @@ function fakePiSessionFactory(
       async abort() {},
       dispose() {},
     } satisfies PiAgentSessionLike;
+  };
+}
+
+function fakeSession(
+  onPrompt: (context: {
+    prompt: string;
+    emit: (event: unknown) => void;
+  }) => Promise<void>,
+): PiAgentSessionLike {
+  const listeners: Array<(event: unknown) => void> = [];
+  const emit = (event: unknown) => {
+    for (const listener of listeners) {
+      listener(event);
+    }
+  };
+  return {
+    sessionId: "pi-session-1",
+    sessionFile: "/tmp/pi-session.jsonl",
+    subscribe(listener) {
+      listeners.push(listener);
+      return () => {
+        const index = listeners.indexOf(listener);
+        if (index >= 0) {
+          listeners.splice(index, 1);
+        }
+      };
+    },
+    async prompt(prompt) {
+      emit({ type: "agent_start" });
+      await onPrompt({ prompt, emit });
+      emit({ type: "agent_end" });
+    },
+    async abort() {},
+    dispose() {},
   };
 }
 

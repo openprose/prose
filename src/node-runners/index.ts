@@ -7,6 +7,11 @@ export {
   renderPiPrompt,
 } from "./pi.js";
 export {
+  OPENPROSE_SUBAGENT_TOOL_NAME,
+  createOpenProseSubagentTool,
+  withoutOutputSubmission,
+} from "../runtime/pi/subagent-tool.js";
+export {
   inferNodeOutputContentType,
   nodeOutputFileForPort,
   readNodeOutputFileArtifacts,
@@ -32,6 +37,12 @@ export type {
   PiSessionFactoryContext,
   PiThinkingLevel,
 } from "./pi.js";
+export type {
+  OpenProseSubagentDetails,
+  SubagentLaunchRequest,
+  SubagentLaunchResult,
+  SubagentLauncher,
+} from "../runtime/pi/subagent-tool.js";
 export type {
   NodeOutputFileMap,
   ReadNodeOutputFileArtifactsOptions,
