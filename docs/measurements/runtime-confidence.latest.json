@@ -1,19 +1,19 @@
 {
   "report_version": "0.2",
-  "generated_at": "2026-04-27T01:52:14.282Z",
+  "generated_at": "2026-04-27T02:39:45.487Z",
   "repo_root": ".",
   "temp_root": "$TMP",
   "status": "pass",
   "summary": {
     "checks": 20,
-    "elapsed_ms": 15710
+    "elapsed_ms": 16612
   },
   "checks": [
     {
       "label": "compile examples package",
       "command": "prose compile examples --no-pretty",
       "exit_code": 0,
-      "elapsed_ms": 347,
+      "elapsed_ms": 512,
       "stdout_preview": "{\"package_ir_version\":\"0.1\",\"semantic_hash\":\"8f33bb9330afabeb7e0895c8cc0696bee9aac87d77449ba84e71919d5f479f62\",\"hashes\":{\"source_hash\":\"8b17573a40315c661f15c04504659ff7b0c79bd0157458ce45c81b9a167934e1\",\"semantic_hash\":\"8f33bb9330afabeb7e...",
       "stderr_preview": ""
     },
@@ -21,7 +21,7 @@
       "label": "compile std package",
       "command": "prose compile packages/std --no-pretty",
       "exit_code": 0,
-      "elapsed_ms": 370,
+      "elapsed_ms": 411,
       "stdout_preview": "{\"package_ir_version\":\"0.1\",\"semantic_hash\":\"a08d7b2c275f1899582dfffb05479073a7bc7c2e0cbd02efc23ae8c3aaf178d7\",\"hashes\":{\"source_hash\":\"bca25943cc480add1024fd09ceedc39fb08ac1635ad770017558ac6ea1f0bdee\",\"semantic_hash\":\"a08d7b2c275f189958...",
       "stderr_preview": ""
     },
@@ -29,7 +29,7 @@
       "label": "compile co package",
       "command": "prose compile packages/co --no-pretty",
       "exit_code": 0,
-      "elapsed_ms": 330,
+      "elapsed_ms": 450,
       "stdout_preview": "{\"package_ir_version\":\"0.1\",\"semantic_hash\":\"0d05deb2f7d9d4d5cb669d8009ad6cab74d085b5723597da8dd903c9deb78ce0\",\"hashes\":{\"source_hash\":\"c6683273aca2eb075e151c21767e6b538b776fbf26957d34a5a8c01f7e2a7138\",\"semantic_hash\":\"0d05deb2f7d9d4d5cb...",
       "stderr_preview": ""
     },
@@ -37,7 +37,7 @@
       "label": "plan lead program recompute",
       "command": "prose plan examples/north-star/lead-program-designer.prose.md --input \"lead_profile={\\\"company\\\":\\\"Acme\\\",\\\"pain\\\":\\\"manual agent handoffs\\\"}\" --input \"brand_context=OpenProse is React for agent outcomes.\" --target-output lead_program_plan --no-pretty",
       "exit_code": 0,
-      "elapsed_ms": 337,
+      "elapsed_ms": 417,
       "stdout_preview": "{\"plan_version\":\"0.1\",\"component_ref\":\"lead-program-designer\",\"ir_hash\":\"8196310ffb864d815156eb5bd98a295a9f23db39aa3b5c5beb7e3c99cf649290\",\"requested_outputs\":[\"lead_program_plan\"],\"approved_effects\":[],\"status\":\"ready\",\"graph_stale_reas...",
       "stderr_preview": ""
     },
@@ -45,7 +45,7 @@
       "label": "graph lead program recompute",
       "command": "prose graph examples/north-star/lead-program-designer.prose.md --input \"lead_profile={\\\"company\\\":\\\"Acme\\\",\\\"pain\\\":\\\"manual agent handoffs\\\"}\" --input \"brand_context=OpenProse is React for agent outcomes.\" --target-output lead_program_plan",
       "exit_code": 0,
-      "elapsed_ms": 459,
+      "elapsed_ms": 402,
       "stdout_preview": "%% OpenProse graph: lead-program-designer %% requested outputs: lead_program_plan flowchart LR _caller[\"Caller<br/>[boundary]\"] lead_profile_normalizer[\"lead-profile-normalizer<br/>[service]<br/>status: ready<br/>effects: pure<br/>stale:...",
       "stderr_preview": ""
     },
@@ -53,7 +53,7 @@
       "label": "plan release proposal approval gate",
       "command": "prose plan examples/north-star/release-proposal-dry-run.prose.md --input \"release_candidate={\\n  \\\"version\\\": \\\"0.12.0\\\",\\n  \\\"commit_range\\\": \\\"121ff04..HEAD\\\",\\n  \\\"changes\\\": [\\n    \\\"replace examples with north-star ladder\\\",\\n    \\\"add Pi-first structured output telemetry\\\",\\n    \\\"tighten pre-session gate traces\\\"\\n  ],\\n  \\\"coverage\\\": {\\n    \\\"typecheck\\\": \\\"pass\\\",\\n    \\\"tests\\\": \\\"202 pass, 2 skip\\\"\\n  },\\n  \\\"user_visible\\\": true\\n}\\n\" --no-pretty",
       "exit_code": 1,
-      "elapsed_ms": 319,
+      "elapsed_ms": 414,
       "stdout_preview": "{\"plan_version\":\"0.1\",\"component_ref\":\"release-proposal-dry-run\",\"ir_hash\":\"8615a38a30408f781a677d7077e7f53195765bfe0fa15622a92f456fd5c605f3\",\"requested_outputs\":[\"delivery_receipt\",\"qa_report\",\"release_decision\",\"release_summary\"],\"appr...",
       "stderr_preview": ""
     },
@@ -61,7 +61,7 @@
       "label": "run company signal brief with deterministic outputs",
       "command": "prose run examples/north-star/company-signal-brief.prose.md --run-root $TMP/runs --run-id confidence-company-signal --input \"signal_notes=Customer teams want durable agent workflows.\" --input \"brand_context=OpenProse is React for agent outcomes.\" --output \"company_signal_brief=Lead with durable agent workflows.\" --no-pretty",
       "exit_code": 0,
-      "elapsed_ms": 357,
+      "elapsed_ms": 435,
       "stdout_preview": "{\"run_id\":\"confidence-company-signal\",\"run_dir\":\"$TMP/runs/confidence-company-signal\",\"status\":\"succeeded\",\"graph_vm\":\"pi\",\"runtime_profile\":{\"profile_version\":\"0.1\",\"graph_vm\":\"pi\",\"execution_placement\":\"local\",\"single_run_harness\":null...",
       "stderr_preview": ""
     },
@@ -69,15 +69,15 @@
       "label": "status run store",
       "command": "prose status $TMP/runs",
       "exit_code": 0,
-      "elapsed_ms": 322,
-      "stdout_preview": "Runs: 1 Root: $TMP/runs - confidence-company-signal: company-signal-brief [component] succeeded (accepted) outputs[company_signal_brief] reason No required evals declared. created 2026-04-27T01:52:01.073Z completed 2026-04-27T01:52:01.08...",
+      "elapsed_ms": 365,
+      "stdout_preview": "Runs: 1 Root: $TMP/runs - confidence-company-signal: company-signal-brief [component] succeeded (accepted) outputs[company_signal_brief] reason No required evals declared. created 2026-04-27T02:39:31.889Z completed 2026-04-27T02:39:31.90...",
       "stderr_preview": ""
     },
     {
       "label": "trace run",
       "command": "prose trace $TMP/runs/confidence-company-signal",
       "exit_code": 0,
-      "elapsed_ms": 349,
+      "elapsed_ms": 376,
       "stdout_preview": "Run: confidence-company-signal Component: company-signal-brief [component] Status: succeeded (accepted) Acceptance reason: No required evals declared. Runtime: pi / scripted / deterministic-output (openprose-node-runner / pi) Created: 20...",
       "stderr_preview": ""
     },
@@ -85,7 +85,7 @@
       "label": "eval subject run",
       "command": "prose eval examples/evals/examples-quality.eval.prose.md --subject-run $TMP/runs/confidence-company-signal --input package_root=examples --output \"verdict={\\\"passed\\\":true,\\\"score\\\":0.97,\\\"verdict\\\":\\\"pass\\\"}\" --no-pretty",
       "exit_code": 0,
-      "elapsed_ms": 347,
+      "elapsed_ms": 390,
       "stdout_preview": "{\"eval_id\":\"confidence-company-signal:examples-quality-eval-prose-md:confidence-company-signal:eval:examples-quality-eval-prose-md\",\"eval_ref\":\"examples/evals/examples-quality.eval.prose.md\",\"subject_run_id\":\"confidence-company-signal\",\"...",
       "stderr_preview": ""
     },
@@ -93,7 +93,7 @@
       "label": "remote hosted envelope",
       "command": "prose remote execute examples/north-star/company-signal-brief.prose.md --out-dir $TMP/remote --run-id confidence-remote --input \"signal_notes=Remote hosted envelope smoke.\" --input \"brand_context=OpenProse is React for agent outcomes.\" --output \"company_signal_brief=Hello from the hosted envelope smoke.\" --component-ref registry://openprose/@openprose/examples@0.1.0/company-signal-brief --package-metadata package-hosted-ingest.json --no-pretty",
       "exit_code": 0,
-      "elapsed_ms": 346,
+      "elapsed_ms": 388,
       "stdout_preview": "{\"schema_version\":\"0.2\",\"run_id\":\"confidence-remote\",\"run_dir\":\"$TMP/remote/confidence-remote\",\"component_ref\":\"registry://openprose/@openprose/examples@0.1.0/company-signal-brief\",\"status\":\"succeeded\",\"graph_vm\":\"pi\",\"runtime_profile\":{...",
       "stderr_preview": ""
     },
@@ -101,15 +101,15 @@
       "label": "package examples",
       "command": "prose package examples --format json --no-pretty",
       "exit_code": 0,
-      "elapsed_ms": 417,
-      "stdout_preview": "{\"schema_version\":\"openprose.package.v2\",\"package_version\":\"0.2\",\"metadata_digest\":\"72501f5f09545ca235cd8efc184389176b5fa380ba8712a4340558c65347d1a4\",\"root\":\"./examples\",\"package_ir\":{\"version\":\"0.1\",\"semantic_hash\":\"8f33bb9330afabeb7e08...",
+      "elapsed_ms": 430,
+      "stdout_preview": "{\"schema_version\":\"openprose.package.v2\",\"package_version\":\"0.2\",\"metadata_digest\":\"00ebd6f7603f56fdd3fdf5979470d853a6e8eaff0025e1936aa43ece35e7846a\",\"root\":\"./examples\",\"package_ir\":{\"version\":\"0.1\",\"semantic_hash\":\"8f33bb9330afabeb7e08...",
       "stderr_preview": ""
     },
     {
       "label": "strict publish-check examples",
       "command": "prose publish-check examples --strict --format json --no-pretty",
       "exit_code": 0,
-      "elapsed_ms": 430,
+      "elapsed_ms": 440,
       "stdout_preview": "{\"publish_check_version\":\"0.1\",\"package_name\":\"@openprose/examples\",\"package_version\":\"0.1.0\",\"strict\":true,\"status\":\"pass\",\"blockers\":[],\"warnings\":[],\"checks\":[{\"name\":\"components_present\",\"status\":\"pass\",\"detail\":\"42 component(s) foun...",
       "stderr_preview": ""
     },
@@ -117,7 +117,7 @@
       "label": "strict publish-check std",
       "command": "prose publish-check packages/std --strict --format json --no-pretty",
       "exit_code": 0,
-      "elapsed_ms": 428,
+      "elapsed_ms": 598,
       "stdout_preview": "{\"publish_check_version\":\"0.1\",\"package_name\":\"@openprose/std\",\"package_version\":\"0.11.0-dev\",\"strict\":true,\"status\":\"pass\",\"blockers\":[],\"warnings\":[],\"checks\":[{\"name\":\"components_present\",\"status\":\"pass\",\"detail\":\"58 component(s) foun...",
       "stderr_preview": ""
     },
@@ -125,7 +125,7 @@
       "label": "strict publish-check co",
       "command": "prose publish-check packages/co --strict --format json --no-pretty",
       "exit_code": 0,
-      "elapsed_ms": 381,
+      "elapsed_ms": 423,
       "stdout_preview": "{\"publish_check_version\":\"0.1\",\"package_name\":\"@openprose/co\",\"package_version\":\"0.11.0-dev\",\"strict\":true,\"status\":\"pass\",\"blockers\":[],\"warnings\":[],\"checks\":[{\"name\":\"components_present\",\"status\":\"pass\",\"detail\":\"12 component(s) found...",
       "stderr_preview": ""
     },
@@ -133,7 +133,7 @@
       "label": "install examples component",
       "command": "prose install registry://openprose/@openprose/examples@0.1.0/company-signal-brief --catalog-root . --workspace-root $TMP/workspace --no-pretty",
       "exit_code": 0,
-      "elapsed_ms": 1281,
+      "elapsed_ms": 1225,
       "stdout_preview": "{\"install_version\":\"0.1\",\"registry_ref\":\"registry://openprose/@openprose/examples@0.1.0/company-signal-brief\",\"package_name\":\"@openprose/examples\",\"package_version\":\"0.1.0\",\"source_git\":\"github.com/openprose/prose\",\"source_sha\":\"$GIT_SHA...",
       "stderr_preview": ""
     },
@@ -141,23 +141,23 @@
       "label": "measure north-star examples",
       "command": "bun scripts/measure-examples.ts",
       "exit_code": 0,
-      "elapsed_ms": 1793,
-      "stdout_preview": "{ \"measurement_version\": \"0.3\", \"generated_at\": \"2026-04-27T01:52:07.127Z\", \"release_checks\": { \"examples_compile\": { \"status\": \"pass\", \"elapsed_ms\": 9.59, \"component_count\": 42, \"diagnostic_count\": 30, \"error_count\": 0 }, \"examples_publ...",
+      "elapsed_ms": 1815,
+      "stdout_preview": "{ \"measurement_version\": \"0.3\", \"generated_at\": \"2026-04-27T02:39:38.310Z\", \"release_checks\": { \"examples_compile\": { \"status\": \"pass\", \"elapsed_ms\": 7.21, \"component_count\": 42, \"diagnostic_count\": 30, \"error_count\": 0 }, \"examples_publ...",
       "stderr_preview": ""
     },
     {
       "label": "live Pi smoke skips by default",
       "command": "bun scripts/live-pi-smoke.ts --tier cheap --skip --out $TMP/live-pi-smoke.json",
       "exit_code": 0,
-      "elapsed_ms": 335,
-      "stdout_preview": "{ \"live_pi_smoke_version\": \"0.1\", \"generated_at\": \"2026-04-27T01:52:07.520Z\", \"enabled\": false, \"selected_tiers\": [ \"cheap\" ], \"model_provider\": \"openrouter\", \"model\": \"google/gemini-3-flash-preview\", \"run_root\": \"$TMP/openprose-live-pi-...",
+      "elapsed_ms": 328,
+      "stdout_preview": "{ \"live_pi_smoke_version\": \"0.1\", \"generated_at\": \"2026-04-27T02:39:38.691Z\", \"enabled\": false, \"selected_tiers\": [ \"cheap\" ], \"model_provider\": \"openrouter\", \"model\": \"google/gemini-3-flash-preview\", \"run_root\": \"$TMP/openprose-live-pi-...",
       "stderr_preview": ""
     },
     {
       "label": "cold-start publishable binary package",
       "command": "bun scripts/cold-start-smoke.ts",
       "exit_code": 0,
-      "elapsed_ms": 3556,
+      "elapsed_ms": 3524,
       "stdout_preview": "{ \"status\": \"pass\", \"checks\": 6 }",
       "stderr_preview": ""
     },
@@ -165,7 +165,7 @@
       "label": "agent onboarding smoke",
       "command": "bun scripts/agent-onboarding-smoke.ts",
       "exit_code": 0,
-      "elapsed_ms": 3201,
+      "elapsed_ms": 3266,
       "stdout_preview": "{ \"status\": \"pass\", \"checks\": 9 }",
       "stderr_preview": ""
     }
