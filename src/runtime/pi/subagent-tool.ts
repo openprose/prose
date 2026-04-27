@@ -15,6 +15,7 @@ import type {
   NodePrivateStateStore,
 } from "../private-state.js";
 import { OPENPROSE_SUBMIT_OUTPUTS_TOOL_NAME } from "./output-tool.js";
+import { OPENPROSE_REPORT_ERROR_TOOL_NAME } from "./error-tool.js";
 
 export const OPENPROSE_SUBAGENT_TOOL_NAME = "openprose_subagent";
 
@@ -262,9 +263,15 @@ export function withoutOutputSubmission(
 ): PiNodeRunnerOptions {
   return {
     ...options,
-    tools: options.tools?.filter((name) => name !== OPENPROSE_SUBMIT_OUTPUTS_TOOL_NAME),
+    tools: options.tools?.filter(
+      (name) =>
+        name !== OPENPROSE_SUBMIT_OUTPUTS_TOOL_NAME &&
+        name !== OPENPROSE_REPORT_ERROR_TOOL_NAME,
+    ),
     customTools: options.customTools?.filter(
-      (tool) => tool.name !== OPENPROSE_SUBMIT_OUTPUTS_TOOL_NAME,
+      (tool) =>
+        tool.name !== OPENPROSE_SUBMIT_OUTPUTS_TOOL_NAME &&
+        tool.name !== OPENPROSE_REPORT_ERROR_TOOL_NAME,
     ),
   };
 }

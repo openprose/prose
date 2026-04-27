@@ -60,6 +60,7 @@ describe("OpenProse Pi node prompt envelope", () => {
       ["summary", "Markdown<Summary>"],
     ]);
     expect(envelope.instructions.output_tool).toBe("openprose_submit_outputs");
+    expect(envelope.instructions.error_tool).toBe("openprose_report_error");
   });
 
   test("includes strategies and ProseScript interpreter guidance for scripted nodes", async () => {
@@ -104,6 +105,7 @@ describe("OpenProse Pi node prompt envelope", () => {
     expect(renderedPrompt).toContain("Keep the parent context light.");
     expect(renderedPrompt).toContain("delivery-failed");
     expect(renderedPrompt).toContain("Record child refs inspected.");
+    expect(renderedPrompt).toContain("openprose_report_error");
     expect(renderedPrompt).toContain("openprose_subagent");
   });
 

@@ -6,6 +6,10 @@ import {
   OPENPROSE_SUBMIT_OUTPUTS_TOOL_NAME,
 } from "../runtime/pi/output-tool.js";
 import {
+  createOpenProseReportErrorTool,
+  OPENPROSE_REPORT_ERROR_TOOL_NAME,
+} from "../runtime/pi/error-tool.js";
+import {
   createDefaultPiSubagentLauncher,
   createOpenProseSubagentTool,
   OPENPROSE_SUBAGENT_TOOL_NAME,
@@ -20,6 +24,7 @@ import {
   defaultNodePrivateStateRunRef,
 } from "../runtime/private-state.js";
 import type { OutputSubmissionResult } from "../runtime/output-submission.js";
+import type { ErrorSubmissionResult } from "../runtime/error-submission.js";
 import type { ComponentIR, Diagnostic, EffectIR, RuntimeProfile } from "../types.js";
 import {
   readNodeOutputFileArtifacts,
@@ -142,8 +147,14 @@ export class PiNodeRunner implements NodeRunner {
     const outputSubmission = {
       current: null as OutputSubmissionResult | null,
     };
+    const errorSubmission = {
+      current: null as ErrorSubmissionResult | null,
+    };
     const outputTool = createOpenProseSubmitOutputsTool(request, (result) => {
       outputSubmission.current = result;
+    });
+    const errorTool = createOpenProseReportErrorTool(request, (result) => {
+      errorSubmission.current = result;
     });
     const customTools = [...(this.options.customTools ?? [])];
     const subagentsEnabled = shouldEnableSubagents(request, this.options);
@@ -163,7 +174,7 @@ export class PiNodeRunner implements NodeRunner {
         }),
       );
     }
-    customTools.push(outputTool);
+    customTools.push(errorTool, outputTool);
     runtimeOptions = {
       ...this.options,
       tools: piToolsWithOpenProseTools(this.options.tools, {
@@ -238,8 +249,24 @@ export class PiNodeRunner implements NodeRunner {
         }),
       );
     }
+    const reportedError = errorSubmission.current;
+    if (reportedError?.status === "accepted") {
+      return this.result(request, {
+        status: "failed",
+        artifacts: [],
+        performedEffects: reportedError.performed_effects,
+        diagnostics: [...diagnostics, ...reportedError.diagnostics],
+        transcript: events.length > 0 ? events.join("\n") : null,
+        telemetry,
+        session,
+        durationMs: this.options.durationMs ?? elapsed(started),
+      });
+    }
     if (submitted?.status === "rejected") {
       diagnostics.push(...submitted.diagnostics);
+    }
+    if (reportedError?.status === "rejected" && submitted?.status !== "accepted") {
+      diagnostics.push(...reportedError.diagnostics);
     }
 
     const artifacts = diagnostics.length === 0
@@ -343,6 +370,7 @@ function piToolsWithOpenProseTools(
   const selected = tools ?? ["read", "write"];
   const openProseTools = [
     options.subagents ? OPENPROSE_SUBAGENT_TOOL_NAME : null,
+    OPENPROSE_REPORT_ERROR_TOOL_NAME,
     OPENPROSE_SUBMIT_OUTPUTS_TOOL_NAME,
   ].filter((tool): tool is string => tool !== null);
   return Array.from(new Set([...selected, ...openProseTools]));
@@ -371,6 +399,8 @@ export function renderPiPrompt(
     "",
     "---",
     renderProviderInputInstructions(request),
+    "",
+    "If this node reaches a terminal failure declared in its Errors section, call openprose_report_error instead of submitting placeholder outputs.",
     "",
     "---",
     renderNodeOutputFileInstructions(request.expected_outputs, outputFiles),

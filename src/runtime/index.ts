@@ -36,9 +36,17 @@ export {
   createOpenProseSubmitOutputsTool,
 } from "./pi/output-tool.js";
 export {
+  OPENPROSE_REPORT_ERROR_TOOL_NAME,
+  createOpenProseReportErrorTool,
+} from "./pi/error-tool.js";
+export {
   evaluateOutputSubmission,
   parseOutputSubmissionPayload,
 } from "./output-submission.js";
+export {
+  evaluateErrorSubmission,
+  parseErrorSubmissionPayload,
+} from "./error-submission.js";
 export {
   createFilesystemNodePrivateStateStore,
   defaultNodePrivateStateRunRef,
@@ -63,12 +71,22 @@ export type {
   OpenProseSubmitOutputsDetails,
   OutputSubmissionCollector,
 } from "./pi/output-tool.js";
+export type {
+  ErrorSubmissionCollector,
+  OpenProseReportErrorDetails,
+} from "./pi/error-tool.js";
 export type { PiRuntimeEventContext } from "./pi/events.js";
 export type {
   OutputSubmissionOutput,
   OutputSubmissionPayload,
   OutputSubmissionResult,
 } from "./output-submission.js";
+export type {
+  DeclaredErrorReport,
+  ErrorSubmissionFinallyEvidence,
+  ErrorSubmissionPayload,
+  ErrorSubmissionResult,
+} from "./error-submission.js";
 export type {
   AllocatedNodePrivateState,
   FilesystemNodePrivateStateStoreOptions,

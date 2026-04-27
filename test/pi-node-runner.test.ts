@@ -1,5 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import {
+  compileSource,
   compileFixture,
   describe,
   expect,
@@ -17,6 +18,7 @@ import {
   writeNodeArtifactRecords,
 } from "../src/node-runners";
 import { OPENPROSE_SUBMIT_OUTPUTS_TOOL_NAME } from "../src/runtime/pi/output-tool";
+import { OPENPROSE_REPORT_ERROR_TOOL_NAME } from "../src/runtime/pi/error-tool";
 import type {
   PiAgentSessionLike,
   PiSessionFactory,
@@ -89,6 +91,54 @@ describe("OpenProse Pi node runner", () => {
         message: "Node runner did not write required output 'message' at 'message.md'.",
       }),
     ]);
+  });
+
+  test("fails through accepted declared errors without missing-output diagnostics", async () => {
+    const component = erroringComponent();
+    const workspace = mkdtempSync(join(tmpdir(), "openprose-pi-declared-error-"));
+    let toolResult = null as { terminate?: boolean } | null;
+    const runner = createPiNodeRunner({
+      createSession: async (context) =>
+        fakeSession(async ({ emit }) => {
+          const errorTool = context.options.customTools?.find(
+            (tool) => tool.name === OPENPROSE_REPORT_ERROR_TOOL_NAME,
+          );
+          expect(errorTool).toBeDefined();
+          emit({ type: "tool_start", name: OPENPROSE_REPORT_ERROR_TOOL_NAME });
+          toolResult = await errorTool!.execute(
+            "report-declared-error",
+            {
+              code: "delivery_failed",
+              message: "Delivery adapter rejected the request.",
+              retryable: false,
+              performed_effects: ["pure"],
+              state_refs: ["__subagents/delivery/notes.md"],
+            },
+            undefined,
+            undefined,
+            undefined as never,
+          ) as { terminate?: boolean };
+          emit({ type: "tool_end", name: OPENPROSE_REPORT_ERROR_TOOL_NAME });
+        }),
+      timeoutMs: 2_000,
+    });
+
+    const result = await runner.execute(nodeRunRequest(component, workspace));
+
+    expect(toolResult?.terminate).toBe(true);
+    expect(result.status).toBe("failed");
+    expect(result.artifacts).toEqual([]);
+    expect(result.performed_effects).toEqual(["pure"]);
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({
+        code: "openprose_declared_error",
+        message:
+          "openprose_report_error accepted declared error 'delivery_failed': Delivery adapter rejected the request.",
+      }),
+    );
+    expect(result.diagnostics.map((diagnostic) => diagnostic.code)).not.toContain(
+      "pi_output_missing",
+    );
   });
 
   test("fails when Pi prompt execution throws", async () => {
@@ -197,10 +247,12 @@ describe("OpenProse Pi node runner", () => {
     expect(toolNames).toEqual(
       expect.arrayContaining([
         OPENPROSE_SUBAGENT_TOOL_NAME,
+        OPENPROSE_REPORT_ERROR_TOOL_NAME,
         OPENPROSE_SUBMIT_OUTPUTS_TOOL_NAME,
       ]),
     );
     expect(toolAllowlist).toContain(OPENPROSE_SUBAGENT_TOOL_NAME);
+    expect(toolAllowlist).toContain(OPENPROSE_REPORT_ERROR_TOOL_NAME);
   });
 
   test("omits the subagent tool when runtime disables subagents", async () => {
@@ -229,6 +281,7 @@ describe("OpenProse Pi node runner", () => {
     expect(result.status).toBe("succeeded");
     expect(toolNames).not.toContain(OPENPROSE_SUBAGENT_TOOL_NAME);
     expect(toolAllowlist).not.toContain(OPENPROSE_SUBAGENT_TOOL_NAME);
+    expect(toolNames).toContain(OPENPROSE_REPORT_ERROR_TOOL_NAME);
     expect(toolNames).toContain(OPENPROSE_SUBMIT_OUTPUTS_TOOL_NAME);
   });
 
@@ -292,7 +345,11 @@ describe("OpenProse Pi node runner", () => {
     expect(launch!.options.customTools?.map((tool) => tool.name)).not.toContain(
       OPENPROSE_SUBMIT_OUTPUTS_TOOL_NAME,
     );
+    expect(launch!.options.customTools?.map((tool) => tool.name)).not.toContain(
+      OPENPROSE_REPORT_ERROR_TOOL_NAME,
+    );
     expect(launch!.options.tools).not.toContain(OPENPROSE_SUBMIT_OUTPUTS_TOOL_NAME);
+    expect(launch!.options.tools).not.toContain(OPENPROSE_REPORT_ERROR_TOOL_NAME);
     const manifest = JSON.parse(
       readFileSync(join(workspace, "openprose-private-state.json"), "utf8"),
     );
@@ -437,4 +494,24 @@ function nodeRunRequest(component: ComponentIR, workspacePath: string): NodeRunR
       required: port.required,
     })),
   };
+}
+
+function erroringComponent(): ComponentIR {
+  return compileSource(`---
+name: delivery-node
+kind: service
+---
+
+### Ensures
+
+- \`receipt\`: Markdown<Receipt> - delivery receipt
+
+### Errors
+
+- \`delivery_failed\`: Delivery adapter rejected the request.
+
+### Effects
+
+- \`pure\`: deterministic synthesis
+`, { path: "fixtures/compiler/delivery-node.prose.md" }).components[0];
 }

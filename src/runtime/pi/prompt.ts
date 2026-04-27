@@ -26,7 +26,8 @@ export function renderPiNodePrompt(
     "## Output Submission",
     "",
     "If the openprose_submit_outputs tool is available, use it to submit declared outputs and performed effects.",
-    "If that tool is not available, write the fallback output files exactly as instructed below.",
+    "If the node reaches a declared terminal failure, use openprose_report_error instead of submitting placeholder outputs.",
+    "If the output tool is not available, write the fallback output files exactly as instructed below.",
     "",
     renderNodeOutputFileInstructions(
       request.node_run_request.expected_outputs,

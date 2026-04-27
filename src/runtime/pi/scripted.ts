@@ -17,6 +17,7 @@ import type {
 import {
   OPENPROSE_SUBMIT_OUTPUTS_TOOL_NAME,
 } from "./output-tool.js";
+import { OPENPROSE_REPORT_ERROR_TOOL_NAME } from "./error-tool.js";
 import type {
   OutputSubmissionOutput,
   OutputSubmissionPayload,
@@ -27,6 +28,8 @@ export interface ScriptedPiRuntimeOptions {
   outputsByComponent?: Record<string, Record<string, string>>;
   submission?: OutputSubmissionPayload;
   submissionsByComponent?: Record<string, OutputSubmissionPayload>;
+  errorSubmission?: unknown;
+  errorSubmissionsByComponent?: Record<string, unknown>;
   onRequest?: (request: NodeRunRequest) => void;
   onPrompt?: (prompt: string, request: NodeRunRequest) => void;
   modelError?: string;
@@ -127,6 +130,15 @@ class ScriptedPiSession implements PiAgentSessionLike {
       return;
     }
 
+    const errorSubmission = errorSubmissionValue(this.request, this.options);
+    if (errorSubmission) {
+      this.emit({ type: "tool_start", name: OPENPROSE_REPORT_ERROR_TOOL_NAME });
+      await this.reportError(errorSubmission);
+      this.emit({ type: "tool_end", name: OPENPROSE_REPORT_ERROR_TOOL_NAME });
+      this.emit({ type: "agent_end", sessionId: this.sessionId });
+      return;
+    }
+
     this.emit({ type: "tool_start", name: OPENPROSE_SUBMIT_OUTPUTS_TOOL_NAME });
     const submission =
       submissionValue(this.request, this.options) ??
@@ -177,6 +189,21 @@ class ScriptedPiSession implements PiAgentSessionLike {
     )("scripted-openprose-submit-outputs", submission);
   }
 
+  private async reportError(submission: unknown): Promise<void> {
+    const tool = this.piOptions.customTools?.find(
+      (candidate) => candidate.name === OPENPROSE_REPORT_ERROR_TOOL_NAME,
+    );
+    if (!tool) {
+      throw new Error("scripted Pi runtime expected openprose_report_error tool");
+    }
+    await (
+      tool.execute as (
+        toolCallId: string,
+        params: unknown,
+      ) => Promise<unknown>
+    )("scripted-openprose-report-error", submission);
+  }
+
   private emit(event: unknown): void {
     for (const listener of this.listeners) {
       listener(event);
@@ -192,6 +219,17 @@ function submissionValue(
     options.submissionsByComponent?.[request.component.name] ??
     options.submissionsByComponent?.[request.component.id] ??
     options.submission
+  );
+}
+
+function errorSubmissionValue(
+  request: NodeRunRequest,
+  options: ScriptedPiRuntimeOptions,
+): unknown {
+  return (
+    options.errorSubmissionsByComponent?.[request.component.name] ??
+    options.errorSubmissionsByComponent?.[request.component.id] ??
+    options.errorSubmission
   );
 }
 

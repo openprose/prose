@@ -65,6 +65,7 @@ export interface NodePromptEnvelope {
   validation: NodeValidationRule[];
   instructions: {
     output_tool: "openprose_submit_outputs";
+    error_tool: "openprose_report_error";
     fallback_output_files: boolean;
     prosescript_interpreter: string[] | null;
     summary: string;
@@ -185,12 +186,13 @@ export function buildNodePromptEnvelope(
     validation: nodeRunRequest.validation,
     instructions: {
       output_tool: "openprose_submit_outputs",
+      error_tool: "openprose_report_error",
       fallback_output_files: true,
       prosescript_interpreter: request.component.execution
         ? PROSESCRIPT_INTERPRETER_GUIDELINES
         : null,
       summary:
-        "Produce only declared outputs. Prefer openprose_submit_outputs when available; otherwise write the requested fallback output files.",
+        "Produce only declared outputs. Prefer openprose_submit_outputs when available; report declared terminal failures with openprose_report_error; otherwise write the requested fallback output files.",
     },
   };
 }
