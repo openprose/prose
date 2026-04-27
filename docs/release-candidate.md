@@ -36,6 +36,10 @@ The confidence script exercises the public CLI across:
 - agent onboarding through the documented first operator loop
 - launch evidence export for the technical report
 
+See [Evidence Classes](evidence-classes.md) for the distinction between
+required deterministic release confidence and opt-in live/hosted interop
+evidence.
+
 Latest generated reports:
 
 - [`measurements/runtime-confidence.latest.md`](measurements/runtime-confidence.latest.md)

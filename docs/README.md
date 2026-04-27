@@ -6,6 +6,7 @@ OpenProse is now split into a few clean surfaces:
 - [Agent Onboarding](agent-onboarding.md): the checked path for a coding agent entering the repo cold
 - [What Shipped](what-shipped.md): a compact snapshot of the compiler, planner, package, runtime, and hosted surfaces that exist today
 - [Measuring OpenProse](measurement.md): reproducible ways to measure package quality, selective recompute, approval gating, and reference-company health
+- [Evidence Classes](evidence-classes.md): what each confidence rung proves and what it does not prove
 - [Inference Examples](inference-examples.md): Pi-backed graph VM examples,
   model provider setup, and live harness evidence
 - [Single-Run Handoff](single-run-handoff.md): the boundary for exporting one

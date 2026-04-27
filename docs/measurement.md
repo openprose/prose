@@ -18,6 +18,9 @@ OpenProse keeps three evidence classes separate:
 Generated measurement reports expose this split in an `evidence` section so
 local deterministic confidence and live inference confidence do not blur.
 
+See [Evidence Classes](evidence-classes.md) for the launch reporting rule and
+the broader distinction between local, live, and hosted evidence.
+
 ## What We Measure Locally Right Now
 
 The current measurement harness focuses on five things:

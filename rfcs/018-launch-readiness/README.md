@@ -107,8 +107,13 @@ evidence. The launch docs should explain that split crisply: deterministic
 evidence is required for every contributor, live inference evidence proves the
 agent path when credentials are present.
 
-Recommended slice: tighten `docs/measurement.md`, `docs/release-candidate.md`,
-and the report appendix around evidence classes.
+Status: done in signpost 005 for OSS docs.
+
+Resolved slice: added `docs/evidence-classes.md` and linked it from the docs
+index, measurement guide, release confidence gate, and private report evidence
+index. The rule is explicit: deterministic fixtures, scripted Pi, cold-start,
+and agent onboarding are required local confidence; live Pi and hosted dev
+smokes are interop evidence and must be cited with context.
 
 ### R005: Package Publication Story Needs One More End-To-End Check
 
