@@ -209,6 +209,8 @@ async function main(): Promise<void> {
         repoRoot,
         "--workspace-root",
         workspaceRoot,
+        "--source-override",
+        `github.com/openprose/prose=${repoRoot}`,
         "--no-pretty",
       ],
       expectStdout: ['"install_version":"0.1"', '"component_file"'],

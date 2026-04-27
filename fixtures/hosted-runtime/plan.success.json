@@ -1,7 +1,7 @@
 {
   "plan_version": "0.1",
   "component_ref": "hello",
-  "ir_hash": "7de6dc8e0299b8c21cc7cf35101a9338bf31d8e84fd4af9141ced805b9e47a81",
+  "ir_hash": "77c59f8848a8aeeca98ea196d5976ee065da38be41718fcde1c3a0e12f3d7e25",
   "requested_outputs": [
     "message"
   ],
