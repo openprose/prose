@@ -47,6 +47,38 @@ describe("OpenProse node runner registry", () => {
     expect(runner.kind).toBe("pi");
   });
 
+  test("uses provider-specific API keys for Pi model providers", () => {
+    const runner = resolveNodeRunner({
+      graphVm: "pi",
+      env: {
+        OPENPROSE_PI_MODEL_PROVIDER: "openrouter",
+        OPENPROSE_PI_MODEL_ID: "google/gemini-3-flash-preview",
+        OPENROUTER_API_KEY: "openrouter-key",
+      },
+    });
+
+    expect(runner.kind).toBe("pi");
+    expect((runner as { options?: { apiKey?: string } }).options?.apiKey).toBe(
+      "openrouter-key",
+    );
+  });
+
+  test("prefers explicit Pi API keys over provider-specific keys", () => {
+    const runner = resolveNodeRunner({
+      graphVm: "pi",
+      env: {
+        OPENPROSE_PI_MODEL_PROVIDER: "openrouter",
+        OPENPROSE_PI_MODEL_ID: "google/gemini-3-flash-preview",
+        OPENPROSE_PI_API_KEY: "explicit-key",
+        OPENROUTER_API_KEY: "openrouter-key",
+      },
+    });
+
+    expect((runner as { options?: { apiKey?: string } }).options?.apiKey).toBe(
+      "explicit-key",
+    );
+  });
+
   test("rejects model providers as graph VMs", () => {
     expect(() =>
       resolveNodeRunner({

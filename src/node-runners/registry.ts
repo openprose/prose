@@ -97,7 +97,7 @@ function piOptionsFromProfile(
     persistSessions: profile.persist_sessions,
     modelProvider: profile.model_provider ?? undefined,
     modelId: profile.model ?? undefined,
-    apiKey: envString(env, "OPENPROSE_PI_API_KEY"),
+    apiKey: resolvePiApiKey(profile.model_provider, env),
     apiKeyProvider: envString(env, "OPENPROSE_PI_API_KEY_PROVIDER") ?? undefined,
     thinkingLevel: piThinkingLevel(profile.thinking),
     tools: profile.tools,
@@ -105,6 +105,26 @@ function piOptionsFromProfile(
     outputFiles: envJsonRecord(env, "OPENPROSE_NODE_OUTPUT_FILES"),
     timeoutMs: envNumber(env, "OPENPROSE_PI_TIMEOUT_MS"),
   };
+}
+
+function resolvePiApiKey(
+  modelProvider: string | null,
+  env: Record<string, string | undefined>,
+): string | undefined {
+  const explicit = envString(env, "OPENPROSE_PI_API_KEY");
+  if (explicit) {
+    return explicit;
+  }
+  if (modelProvider === "openrouter") {
+    return envString(env, "OPENROUTER_API_KEY");
+  }
+  if (modelProvider === "openai" || modelProvider === "openai_compatible") {
+    return envString(env, "OPENAI_API_KEY");
+  }
+  if (modelProvider === "anthropic") {
+    return envString(env, "ANTHROPIC_API_KEY");
+  }
+  return undefined;
 }
 
 function piThinkingLevel(value: string | null): PiThinkingLevel | undefined {
