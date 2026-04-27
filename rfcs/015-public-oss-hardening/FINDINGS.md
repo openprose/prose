@@ -37,7 +37,14 @@ Anything that still teaches "flat providers," "fixture materialization,"
 - Remote host logs can be preserved in hosted envelopes.
 - Schema validation has a public enforced-versus-semantic contract.
 
-## Open Findings
+## Current Open Findings
+
+None. The findings below were promoted into [`TODO.md`](TODO.md), resolved
+slice-by-slice, and signposted under
+[`signposts/`](signposts/). They remain here as the original audit archive, not
+as an active work queue.
+
+## Resolved Findings Archive
 
 ### F001: Historical RFC provider pages are still too detailed
 
