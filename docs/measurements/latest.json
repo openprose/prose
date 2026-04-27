@@ -1,10 +1,10 @@
 {
   "measurement_version": "0.3",
-  "generated_at": "2026-04-27T18:31:18.740Z",
+  "generated_at": "2026-04-27T20:40:40.452Z",
   "release_checks": {
     "examples_compile": {
       "status": "pass",
-      "elapsed_ms": 6.47,
+      "elapsed_ms": 6.8,
       "component_count": 42,
       "diagnostic_count": 30,
       "error_count": 0
@@ -12,14 +12,14 @@
     "examples_publish_check": {
       "status": "pass",
       "strict": false,
-      "elapsed_ms": 91.25,
+      "elapsed_ms": 71.06,
       "blocker_count": 0,
       "warning_count": 0
     },
     "examples_strict_publish_check": {
       "status": "pass",
       "strict": true,
-      "elapsed_ms": 110.23,
+      "elapsed_ms": 71.69,
       "blocker_count": 0,
       "warning_count": 0
     },
@@ -115,7 +115,7 @@
       "package_name": "@openprose/prose-openprose",
       "version": "0.1.0",
       "components": 99,
-      "quality_score": 0.95,
+      "quality_score": 0.9,
       "typed_port_coverage": 1,
       "effect_declaration_ratio": 1,
       "publish_status": "pass",
@@ -124,15 +124,15 @@
   ],
   "scenarios": {
     "company_signal_brief": {
-      "compile_ms": 0.26,
-      "run_ms": 34.76,
+      "compile_ms": 0.17,
+      "run_ms": 38.54,
       "status": "succeeded",
       "eval_status": "passed",
       "eval_score": 0.93,
       "trace_events": 10,
       "scripted_session_count": 1,
       "runtime_telemetry": {
-        "duration_ms": 34.76,
+        "duration_ms": 38.54,
         "session_count": 1,
         "token_usage": null,
         "estimated_cost_usd": null,
@@ -141,14 +141,14 @@
     },
     "lead_program_designer": {
       "compile_ms": 0.39,
-      "run_ms": 128.57,
+      "run_ms": 43.39,
       "status": "succeeded",
       "eval_status": "passed",
       "eval_score": 0.91,
       "trace_events": 32,
       "scripted_session_count": 3,
       "runtime_telemetry": {
-        "duration_ms": 128.57,
+        "duration_ms": 43.39,
         "session_count": 3,
         "token_usage": null,
         "estimated_cost_usd": null,
@@ -176,15 +176,15 @@
       "profile_change_reused_nodes": []
     },
     "stargazer_intake_lite": {
-      "compile_ms": 0.45,
-      "run_ms": 57.03,
+      "compile_ms": 0.75,
+      "run_ms": 54.26,
       "status": "succeeded",
       "eval_status": "passed",
       "eval_score": 0.94,
       "trace_events": 52,
       "scripted_session_count": 5,
       "runtime_telemetry": {
-        "duration_ms": 57.03,
+        "duration_ms": 54.26,
         "session_count": 5,
         "token_usage": null,
         "estimated_cost_usd": null,
@@ -200,15 +200,15 @@
       "stale_reason_summaries": []
     },
     "opportunity_discovery_lite": {
-      "compile_ms": 0.38,
-      "run_ms": 48.61,
+      "compile_ms": 0.43,
+      "run_ms": 47,
       "status": "succeeded",
       "eval_status": "passed",
       "eval_score": 0.92,
       "trace_events": 42,
       "scripted_session_count": 4,
       "runtime_telemetry": {
-        "duration_ms": 48.61,
+        "duration_ms": 47,
         "session_count": 4,
         "token_usage": null,
         "estimated_cost_usd": null,
@@ -235,7 +235,7 @@
       ]
     },
     "approval_gated_release": {
-      "elapsed_ms": 1.81,
+      "elapsed_ms": 0.63,
       "status": "blocked",
       "blocked_effect_nodes": [
         "announce-release"

@@ -1,15 +1,15 @@
 # OpenProse Launch Evidence
 
-Generated: 2026-04-27T20:37:48.002Z
+Generated: 2026-04-27T20:40:54.943Z
 Status: PASS
 
 ## Confidence Gates
 
 | Gate | Status | Checks | Elapsed | Detail |
 |---|---|---:|---:|---|
-| runtime confidence | pass | 20 | 18802ms |  |
-| cold-start package smoke | pass | 6 | 3735ms |  |
-| agent onboarding smoke | pass | 9 | 3337ms |  |
+| runtime confidence | pass | 20 | 19247ms |  |
+| cold-start package smoke | pass | 6 | 3570ms |  |
+| agent onboarding smoke | pass | 9 | 3283ms |  |
 | live Pi smoke | succeeded |  |  | openrouter/google/gemini-3-flash-preview |
 
 ## Package Health
@@ -19,7 +19,7 @@ Status: PASS
 | examples | 42 | 1.00 | 100% | 100% | pass |
 | packages/std | 58 | 1.00 | 100% | 100% | pass |
 | packages/co | 12 | 1.00 | 100% | 100% | pass |
-| customers/prose-openprose | 99 | 0.95 | 100% | 100% | pass |
+| customers/prose-openprose | 99 | 0.90 | 100% | 100% | pass |
 
 ## Non-Happy-Path Semantics
 

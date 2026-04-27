@@ -1,6 +1,6 @@
 {
   "report_version": "0.1",
-  "generated_at": "2026-04-27T18:31:22.909Z",
+  "generated_at": "2026-04-27T20:40:44.511Z",
   "status": "pass",
   "package_name": "@openprose/prose",
   "package_version": "0.11.0-dev",
@@ -9,14 +9,14 @@
   "workspace_root": "$TMP/workspace",
   "summary": {
     "checks": 6,
-    "elapsed_ms": 3735
+    "elapsed_ms": 3570
   },
   "checks": [
     {
       "label": "installed binary help",
       "command": "prose help",
       "exit_code": 0,
-      "elapsed_ms": 1806,
+      "elapsed_ms": 1617,
       "stdout_preview": "OpenProse Usage: prose compile <file.prose.md|dir> [--out ir.json] [--no-pretty] prose deployment <dir> [--deployment-name name] [--org-id org] [--environment dev] [--mode dev] [--enable component] [--env KEY=value] [--format text|json] ...",
       "stderr_preview": ""
     },
@@ -24,7 +24,7 @@
       "label": "compile temp program",
       "command": "prose compile cold-start-brief.prose.md --no-pretty",
       "exit_code": 0,
-      "elapsed_ms": 300,
+      "elapsed_ms": 313,
       "stdout_preview": "{\"ir_version\":\"0.1\",\"semantic_hash\":\"c2d2a692b2be353d404208856b6b47a0f09efb0467350e96b7a8da8a1c260f43\",\"package\":{\"name\":\"cold-start-brief\",\"source_ref\":\"cold-start-brief.prose.md\",\"source_sha\":\"3e3b56abafb475b66fa4f094269990b38ebbf59bae...",
       "stderr_preview": ""
     },
@@ -32,7 +32,7 @@
       "label": "plan temp program",
       "command": "prose plan cold-start-brief.prose.md --input \"topic=Fresh install smoke\" --target-output brief --no-pretty",
       "exit_code": 0,
-      "elapsed_ms": 287,
+      "elapsed_ms": 306,
       "stdout_preview": "{\"plan_version\":\"0.1\",\"component_ref\":\"cold-start-brief\",\"ir_hash\":\"c2d2a692b2be353d404208856b6b47a0f09efb0467350e96b7a8da8a1c260f43\",\"requested_outputs\":[\"brief\"],\"approved_effects\":[],\"status\":\"ready\",\"graph_stale_reasons\":[],\"graph_bl...",
       "stderr_preview": ""
     },
@@ -40,7 +40,7 @@
       "label": "run temp program",
       "command": "prose run cold-start-brief.prose.md --run-root $TMP/workspace/runs --run-id cold-start --input \"topic=Fresh install smoke\" --output \"brief=OpenProse can run outside its source checkout.\" --no-pretty",
       "exit_code": 0,
-      "elapsed_ms": 312,
+      "elapsed_ms": 364,
       "stdout_preview": "{\"run_id\":\"cold-start\",\"run_dir\":\"$TMP/workspace/runs/cold-start\",\"status\":\"succeeded\",\"graph_vm\":\"pi\",\"runtime_profile\":{\"profile_version\":\"0.1\",\"graph_vm\":\"pi\",\"execution_placement\":\"local\",\"single_run_harness\":null,\"model_provider\":\"s...",
       "stderr_preview": ""
     },
@@ -48,16 +48,16 @@
       "label": "inspect temp run store",
       "command": "prose status $TMP/workspace/runs",
       "exit_code": 0,
-      "elapsed_ms": 298,
-      "stdout_preview": "Runs: 1 Root: $TMP/workspace/runs - cold-start: cold-start-brief [component] succeeded (accepted) outputs[brief] reason No required evals declared. created 2026-04-27T18:31:22.295Z completed 2026-04-27T18:31:22.307Z path $TMP/workspace/r...",
+      "elapsed_ms": 313,
+      "stdout_preview": "Runs: 1 Root: $TMP/workspace/runs - cold-start: cold-start-brief [component] succeeded (accepted) outputs[brief] reason No required evals declared. created 2026-04-27T20:40:43.864Z completed 2026-04-27T20:40:43.878Z path $TMP/workspace/r...",
       "stderr_preview": ""
     },
     {
       "label": "trace temp run",
       "command": "prose trace $TMP/workspace/runs/cold-start",
       "exit_code": 0,
-      "elapsed_ms": 292,
-      "stdout_preview": "Run: cold-start Component: cold-start-brief [component] Status: succeeded (accepted) Acceptance reason: No required evals declared. Runtime: pi / scripted / deterministic-output (openprose-node-runner / pi) Created: 2026-04-27T18:31:22.2...",
+      "elapsed_ms": 306,
+      "stdout_preview": "Run: cold-start Component: cold-start-brief [component] Status: succeeded (accepted) Acceptance reason: No required evals declared. Runtime: pi / scripted / deterministic-output (openprose-node-runner / pi) Created: 2026-04-27T20:40:43.8...",
       "stderr_preview": ""
     }
   ]

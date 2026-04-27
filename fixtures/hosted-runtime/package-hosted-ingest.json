@@ -15,10 +15,10 @@
   },
   "package_ir": {
     "version": "0.1",
-    "semantic_hash": "7113116a66790a542b91b0f957fcc93b66d1762bf00429c887d24cfd91c6bc27",
+    "semantic_hash": "9088458048d421811d225078e8b8596d3a9fd775152cfa84ceafbc02d86bed63",
     "hashes": {
-      "source_hash": "177edde528d8139766b8b6885d97edb3c48b5f3f9cbaa8a35ab7e47b9efa37d6",
-      "semantic_hash": "7113116a66790a542b91b0f957fcc93b66d1762bf00429c887d24cfd91c6bc27",
+      "source_hash": "7ccde53c35fab32abaa5414a45312412869d21c87fc1f72a0f684e306ab203ae",
+      "semantic_hash": "9088458048d421811d225078e8b8596d3a9fd775152cfa84ceafbc02d86bed63",
       "dependency_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
       "policy_hash": "fa584faf59e84ce13ca0adc2e7ba3ebd50c857df1d42414ba920fce6c6bd5b0c",
       "runtime_config_hash": "51d8481ec87328f40fc4cbfa062ad94d06f68052f40d9439d40894ed2209dc7b"
@@ -76,6 +76,25 @@
           "policy_labels": []
         }
       ],
+      "contract": {
+        "strategies": "- Preserve citation pointers from the company profile in the final brief.",
+        "errors": {
+          "body": "- `input_unusable`: company profile is missing the facts needed to write a sourced brief\n- `scope_unclear`: priorities cannot be chosen without a narrower launch or audience frame",
+          "declarations": [
+            {
+              "code": "input_unusable",
+              "description": "company profile is missing the facts needed to write a sourced brief"
+            },
+            {
+              "code": "scope_unclear",
+              "description": "priorities cannot be chosen without a narrower launch or audience frame"
+            }
+          ]
+        },
+        "finally": "- Record whether the brief was produced or withheld, including the evidence refs inspected.",
+        "catch": "- If market context is incomplete, produce a caveated brief only when the missing context is explicit in the output.",
+        "legacy_invariants": null
+      },
       "runtime": {
         "graph_vm": "pi",
         "model_providers": [
@@ -98,8 +117,8 @@
       ],
       "quality_score": 1,
       "ir_version": "0.1",
-      "semantic_hash": "95960808c4d471cc94358cd73c0ccc7a00bae500e3bdaee27a73b9febd817c81",
-      "source_sha": "8918cf5d2c3e8bba1e534b774078119a07df82cc3c4c28ccef6720e77ce36196",
+      "semantic_hash": "521f28d482a759e2db6baf20a32691bc0df49b465cf4209d437930f735716316",
+      "source_sha": "19824110451c9344678609f284fad5695810aa01135d054dcb09a75b9d3af7f0",
       "warnings": []
     },
     {
@@ -134,6 +153,13 @@
           "policy_labels": []
         }
       ],
+      "contract": {
+        "strategies": null,
+        "errors": null,
+        "finally": null,
+        "catch": null,
+        "legacy_invariants": null
+      },
       "runtime": {
         "graph_vm": "pi",
         "model_providers": [
@@ -192,6 +218,13 @@
           "policy_labels": []
         }
       ],
+      "contract": {
+        "strategies": null,
+        "errors": null,
+        "finally": null,
+        "catch": null,
+        "legacy_invariants": null
+      },
       "runtime": {
         "graph_vm": "pi",
         "model_providers": [
