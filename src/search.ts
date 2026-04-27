@@ -38,6 +38,7 @@ export async function searchCatalog(
         summary: component.summary,
         inputs: component.inputs,
         outputs: component.outputs,
+        contract: component.contract,
         effects: component.effects,
         quality_score: component.quality_score,
       };
@@ -97,6 +98,16 @@ export function renderCatalogSearchText(result: CatalogSearchResult): string {
     lines.push(
       `  effects: ${entry.effects.length > 0 ? entry.effects.join(", ") : "(none declared)"}`,
     );
+    const errorCodes = entry.contract.errors?.declarations.map((error) => error.code) ?? [];
+    if (errorCodes.length > 0) {
+      lines.push(`  errors: ${errorCodes.join(", ")}`);
+    }
+    if (entry.contract.finally) {
+      lines.push("  finally: declared");
+    }
+    if (entry.contract.catch) {
+      lines.push("  catch: declared");
+    }
   }
 
   return `${lines.join("\n")}\n`;

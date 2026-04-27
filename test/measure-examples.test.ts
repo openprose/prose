@@ -128,6 +128,29 @@ describe("OpenProse example measurements", () => {
     expect(report.baseline_comparison.reactive_loop_saved_nodes).toBe(6);
     expect(report.baseline_comparison.duplicate_suppression_count).toBe(2);
   });
+
+  test("launch evidence names non-happy-path contract semantics", () => {
+    const report = JSON.parse(
+      readFileSync(
+        join(import.meta.dir, "..", "docs", "measurements", "launch-evidence.latest.json"),
+        "utf8",
+      ),
+    );
+
+    expect(report.report_version).toBe("0.2");
+    expect(report.non_happy_path_semantics.package_metadata).toContain(
+      "component contract metadata exposes strategies, declared terminal errors, finally obligations, catch guidance, and legacy invariant text when present",
+    );
+    expect(report.non_happy_path_semantics.runtime_channels).toContain(
+      "openprose_report_error records typed declared terminal failures",
+    );
+    expect(report.non_happy_path_semantics.hash_surface).toContain(
+      "strategies, errors, finally, catch, and legacy invariants participate in source and package semantic hashes",
+    );
+    expect(report.technical_report_claims).toContain(
+      "OpenProse package metadata exposes declared terminal errors, finally obligations, catch recovery guidance, and strategies for each component.",
+    );
+  });
 });
 
 function expectMeasurementReportSchema(report: any) {

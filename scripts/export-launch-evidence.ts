@@ -20,7 +20,7 @@ interface GateRow {
 }
 
 interface LaunchEvidenceReport {
-  report_version: "0.1";
+  report_version: "0.2";
   generated_at: string;
   status: "pass" | "fail";
   source_reports: string[];
@@ -29,6 +29,11 @@ interface LaunchEvidenceReport {
   evidence_classes: unknown;
   scenario_signals: Record<string, unknown>;
   baseline_comparison: unknown;
+  non_happy_path_semantics: {
+    package_metadata: string[];
+    runtime_channels: string[];
+    hash_surface: string[];
+  };
   technical_report_claims: string[];
 }
 
@@ -92,7 +97,7 @@ async function main(): Promise<void> {
   });
 
   const report: LaunchEvidenceReport = {
-    report_version: "0.1",
+    report_version: "0.2",
     generated_at: new Date().toISOString(),
     status: failed ? "fail" : "pass",
     source_reports: [
@@ -107,8 +112,24 @@ async function main(): Promise<void> {
     evidence_classes: measurement.evidence,
     scenario_signals: measurement.scenarios ?? {},
     baseline_comparison: measurement.baseline_comparison,
+    non_happy_path_semantics: {
+      package_metadata: [
+        "component contract metadata exposes strategies, declared terminal errors, finally obligations, catch guidance, and legacy invariant text when present",
+        "catalog search entries include the same compact contract metadata so consumers can inspect non-happy-path semantics before install",
+      ],
+      runtime_channels: [
+        "openprose_report_error records typed declared terminal failures",
+        "openprose_submit_outputs and openprose_report_error both accept finally evidence",
+        "catch remains intra-node recovery guidance rather than a graph-level scheduling edge",
+      ],
+      hash_surface: [
+        "strategies, errors, finally, catch, and legacy invariants participate in source and package semantic hashes",
+      ],
+    },
     technical_report_claims: [
       "OpenProse packages expose typed ports and effect declarations at package scale.",
+      "OpenProse package metadata exposes declared terminal errors, finally obligations, catch recovery guidance, and strategies for each component.",
+      "Declared error/finally/catch/strategy sections participate in semantic hashes so registry consumers can detect behavior-changing contract updates.",
       "The runtime confidence gate exercises compile, plan, graph, run, trace, eval, remote envelope, package, publish-check, install, cold-start, and agent-onboarding paths.",
       "The examples measure selective recompute savings, approval visibility, duplicate suppression, and baseline skill-folder deltas.",
       "Live inference evidence is explicitly separated from deterministic local confidence.",
@@ -164,6 +185,20 @@ function renderMarkdown(report: LaunchEvidenceReport): string {
     lines.push(
       `| ${row.label} | ${row.components} | ${row.quality_score.toFixed(2)} | ${percent(row.typed_port_coverage)} | ${percent(row.effect_declaration_ratio)} | ${row.strict_publish_status} |`,
     );
+  }
+
+  lines.push("", "## Non-Happy-Path Semantics", "");
+  lines.push("Package metadata:");
+  for (const item of report.non_happy_path_semantics.package_metadata) {
+    lines.push(`- ${item}`);
+  }
+  lines.push("", "Runtime channels:");
+  for (const item of report.non_happy_path_semantics.runtime_channels) {
+    lines.push(`- ${item}`);
+  }
+  lines.push("", "Hash surface:");
+  for (const item of report.non_happy_path_semantics.hash_surface) {
+    lines.push(`- ${item}`);
   }
 
   lines.push("", "## Technical Report Claims", "");

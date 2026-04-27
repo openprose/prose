@@ -264,6 +264,16 @@ export function renderPackageText(metadata: PackageMetadata): string {
       lines.push(
         `    effects: ${component.effects.length > 0 ? component.effects.join(", ") : "(none declared)"}`,
       );
+      const errorCodes = component.contract.errors?.declarations.map((error) => error.code) ?? [];
+      if (errorCodes.length > 0) {
+        lines.push(`    errors: ${errorCodes.join(", ")}`);
+      }
+      if (component.contract.finally) {
+        lines.push("    finally: declared");
+      }
+      if (component.contract.catch) {
+        lines.push("    catch: declared");
+      }
       if (component.warnings.length > 0) {
         for (const warning of component.warnings) {
           lines.push(`    warning: ${warning}`);
@@ -273,6 +283,24 @@ export function renderPackageText(metadata: PackageMetadata): string {
   }
 
   return `${lines.join("\n")}\n`;
+}
+
+function buildContractMetadata(component: ComponentIR): PackageComponentMetadata["contract"] {
+  return {
+    strategies: component.strategies?.body ?? null,
+    errors: component.errors
+      ? {
+          body: component.errors.body,
+          declarations: component.errors.declarations.map((error) => ({
+            code: error.code,
+            description: error.description,
+          })),
+        }
+      : null,
+    finally: component.finally?.body ?? null,
+    catch: component.catch?.body ?? null,
+    legacy_invariants: component.invariants?.body ?? null,
+  };
 }
 
 function normalizeRuntimeManifest(
@@ -428,6 +456,7 @@ function buildComponentMetadata(options: {
         policy_labels: [...port.policy_labels].sort(),
       };
     }),
+    contract: buildContractMetadata(component),
     runtime: {
       graph_vm: runtime?.graph_vm ?? null,
       model_providers: runtime?.model_providers ?? [],

@@ -121,6 +121,24 @@ describe("OpenProse package, registry, install, publish, and search", () => {
       content_type: "text/markdown",
       policy_labels: [],
     });
+    expect(metadata.components[0].contract).toMatchObject({
+      strategies: expect.stringContaining("Preserve citation pointers"),
+      errors: {
+        declarations: [
+          {
+            code: "input_unusable",
+            description: "company profile is missing the facts needed to write a sourced brief",
+          },
+          {
+            code: "scope_unclear",
+            description: "priorities cannot be chosen without a narrower launch or audience frame",
+          },
+        ],
+      },
+      finally: expect.stringContaining("Record whether the brief was produced or withheld"),
+      catch: expect.stringContaining("produce a caveated brief"),
+      legacy_invariants: null,
+    });
     expect(metadata.components[0].effects).toEqual(["pure"]);
     expect(metadata.hosted_ingest).toMatchObject({
       contract_version: "0.2",
@@ -149,6 +167,9 @@ describe("OpenProse package, registry, install, publish, and search", () => {
     expect(metadata.quality.warnings).toEqual([]);
     expect(text).toContain("Package: @openprose/catalog-demo@0.1.0");
     expect(text).toContain("brief-writer (service)");
+    expect(text).toContain("errors: input_unusable, scope_unclear");
+    expect(text).toContain("finally: declared");
+    expect(text).toContain("catch: declared");
   });
 
   test("keeps nested package files out of the parent package metadata", async () => {
@@ -839,10 +860,18 @@ kind: test
       type: ["Markdown<ExecutiveBrief>"],
       minQuality: 0.9,
     });
+    const text = renderCatalogSearchText(result);
 
     expect(result.results).toHaveLength(1);
     expect(result.results[0].component_name).toBe("brief-writer");
     expect(result.results[0].quality_score).toBeGreaterThanOrEqual(0.9);
+    expect(result.results[0].contract.errors?.declarations.map((error) => error.code)).toEqual([
+      "input_unusable",
+      "scope_unclear",
+    ]);
+    expect(text).toContain("errors: input_unusable, scope_unclear");
+    expect(text).toContain("finally: declared");
+    expect(text).toContain("catch: declared");
   });
 
   test("search discovers nested configured packages in a monorepo catalog", async () => {

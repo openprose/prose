@@ -1,6 +1,6 @@
 {
-  "report_version": "0.1",
-  "generated_at": "2026-04-27T05:45:12.052Z",
+  "report_version": "0.2",
+  "generated_at": "2026-04-27T20:37:48.002Z",
   "status": "pass",
   "source_reports": [
     "docs/measurements/latest.json",
@@ -48,19 +48,19 @@
       "label": "runtime confidence",
       "status": "pass",
       "checks": 20,
-      "elapsed_ms": 15798
+      "elapsed_ms": 18802
     },
     {
       "label": "cold-start package smoke",
       "status": "pass",
       "checks": 6,
-      "elapsed_ms": 4957
+      "elapsed_ms": 3735
     },
     {
       "label": "agent onboarding smoke",
       "status": "pass",
       "checks": 9,
-      "elapsed_ms": 3715
+      "elapsed_ms": 3337
     },
     {
       "label": "live Pi smoke",
@@ -105,15 +105,15 @@
   },
   "scenario_signals": {
     "company_signal_brief": {
-      "compile_ms": 0.24,
-      "run_ms": 26.74,
+      "compile_ms": 0.26,
+      "run_ms": 34.76,
       "status": "succeeded",
       "eval_status": "passed",
       "eval_score": 0.93,
-      "trace_events": 9,
+      "trace_events": 10,
       "scripted_session_count": 1,
       "runtime_telemetry": {
-        "duration_ms": 26.74,
+        "duration_ms": 34.76,
         "session_count": 1,
         "token_usage": null,
         "estimated_cost_usd": null,
@@ -121,15 +121,15 @@
       }
     },
     "lead_program_designer": {
-      "compile_ms": 0.4,
-      "run_ms": 42.45,
+      "compile_ms": 0.39,
+      "run_ms": 128.57,
       "status": "succeeded",
       "eval_status": "passed",
       "eval_score": 0.91,
-      "trace_events": 29,
+      "trace_events": 32,
       "scripted_session_count": 3,
       "runtime_telemetry": {
-        "duration_ms": 42.45,
+        "duration_ms": 128.57,
         "session_count": 3,
         "token_usage": null,
         "estimated_cost_usd": null,
@@ -157,15 +157,15 @@
       "profile_change_reused_nodes": []
     },
     "stargazer_intake_lite": {
-      "compile_ms": 0.42,
-      "run_ms": 58.8,
+      "compile_ms": 0.45,
+      "run_ms": 57.03,
       "status": "succeeded",
       "eval_status": "passed",
       "eval_score": 0.94,
-      "trace_events": 47,
+      "trace_events": 52,
       "scripted_session_count": 5,
       "runtime_telemetry": {
-        "duration_ms": 58.8,
+        "duration_ms": 57.03,
         "session_count": 5,
         "token_usage": null,
         "estimated_cost_usd": null,
@@ -181,15 +181,15 @@
       "stale_reason_summaries": []
     },
     "opportunity_discovery_lite": {
-      "compile_ms": 0.35,
-      "run_ms": 40.22,
+      "compile_ms": 0.38,
+      "run_ms": 48.61,
       "status": "succeeded",
       "eval_status": "passed",
       "eval_score": 0.92,
-      "trace_events": 38,
+      "trace_events": 42,
       "scripted_session_count": 4,
       "runtime_telemetry": {
-        "duration_ms": 40.22,
+        "duration_ms": 48.61,
         "session_count": 4,
         "token_usage": null,
         "estimated_cost_usd": null,
@@ -216,7 +216,7 @@
       ]
     },
     "approval_gated_release": {
-      "elapsed_ms": 0.53,
+      "elapsed_ms": 1.81,
       "status": "blocked",
       "blocked_effect_nodes": [
         "announce-release"
@@ -240,10 +240,26 @@
     "duplicate_suppression_count": 2,
     "approval_gate_visible": true,
     "graph_trace_available": true,
-    "runtime_trace_event_count": 29
+    "runtime_trace_event_count": 32
+  },
+  "non_happy_path_semantics": {
+    "package_metadata": [
+      "component contract metadata exposes strategies, declared terminal errors, finally obligations, catch guidance, and legacy invariant text when present",
+      "catalog search entries include the same compact contract metadata so consumers can inspect non-happy-path semantics before install"
+    ],
+    "runtime_channels": [
+      "openprose_report_error records typed declared terminal failures",
+      "openprose_submit_outputs and openprose_report_error both accept finally evidence",
+      "catch remains intra-node recovery guidance rather than a graph-level scheduling edge"
+    ],
+    "hash_surface": [
+      "strategies, errors, finally, catch, and legacy invariants participate in source and package semantic hashes"
+    ]
   },
   "technical_report_claims": [
     "OpenProse packages expose typed ports and effect declarations at package scale.",
+    "OpenProse package metadata exposes declared terminal errors, finally obligations, catch recovery guidance, and strategies for each component.",
+    "Declared error/finally/catch/strategy sections participate in semantic hashes so registry consumers can detect behavior-changing contract updates.",
     "The runtime confidence gate exercises compile, plan, graph, run, trace, eval, remote envelope, package, publish-check, install, cold-start, and agent-onboarding paths.",
     "The examples measure selective recompute savings, approval visibility, duplicate suppression, and baseline skill-folder deltas.",
     "Live inference evidence is explicitly separated from deterministic local confidence."

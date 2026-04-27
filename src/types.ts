@@ -1063,6 +1063,24 @@ export interface PackageComponentRuntimeMetadata {
   environment: Array<{ name: string; required: boolean }>;
 }
 
+export interface PackageContractErrorDeclarationMetadata {
+  code: string;
+  description: string;
+}
+
+export interface PackageContractErrorSectionMetadata {
+  body: string;
+  declarations: PackageContractErrorDeclarationMetadata[];
+}
+
+export interface PackageComponentContractMetadata {
+  strategies: string | null;
+  errors: PackageContractErrorSectionMetadata | null;
+  finally: string | null;
+  catch: string | null;
+  legacy_invariants: string | null;
+}
+
 export interface PackageComponentMetadata {
   name: string;
   kind: ComponentKind;
@@ -1072,6 +1090,7 @@ export interface PackageComponentMetadata {
   inputs: PackagePortMetadata[];
   outputs: PackagePortMetadata[];
   artifact_contract: PackageArtifactContractMetadata[];
+  contract: PackageComponentContractMetadata;
   runtime: PackageComponentRuntimeMetadata;
   effects: string[];
   access: Record<string, string[]>;
@@ -1180,6 +1199,7 @@ export interface CatalogSearchEntry {
   summary: string | null;
   inputs: Array<{ name: string; type: string }>;
   outputs: Array<{ name: string; type: string }>;
+  contract: PackageComponentContractMetadata;
   effects: string[];
   quality_score: number;
 }
