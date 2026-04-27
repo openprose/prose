@@ -79,7 +79,7 @@
       ]
     },
     "sectionHeader": {
-      "match": "^(###)(\\s+)(Requires|Ensures|Services|Environment|Effects|Access|Execution|Runtime|Strategies|Shape|Errors|Invariants)\\b.*$",
+      "match": "^(###)(\\s+)(Requires|Ensures|Services|Environment|Effects|Access|Execution|Runtime|Strategies|Shape|Errors|Finally|Catch|Invariants)\\b.*$",
       "captures": {
         "1": {
           "name": "punctuation.definition.heading.openprose"
@@ -287,7 +287,7 @@
     "prosescript": {
       "patterns": [
         {
-          "match": "\\b(let|call|return|parallel|loop|condition|try)\\b",
+          "match": "\\b(let|call|return|parallel|loop|condition|try|catch|finally)\\b",
           "name": "keyword.control.prose.openprose"
         },
         {

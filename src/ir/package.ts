@@ -702,6 +702,34 @@ function rebaseComponent(component: ComponentIR, relativePath: string, id: strin
           source_span: rebaseSpan(component.strategies.source_span, relativePath),
         }
       : null,
+    errors: component.errors
+      ? {
+          ...component.errors,
+          source_span: rebaseSpan(component.errors.source_span, relativePath),
+          declarations: component.errors.declarations.map((error) => ({
+            ...error,
+            source_span: rebaseSpan(error.source_span, relativePath),
+          })),
+        }
+      : null,
+    finally: component.finally
+      ? {
+          ...component.finally,
+          source_span: rebaseSpan(component.finally.source_span, relativePath),
+        }
+      : null,
+    catch: component.catch
+      ? {
+          ...component.catch,
+          source_span: rebaseSpan(component.catch.source_span, relativePath),
+        }
+      : null,
+    invariants: component.invariants
+      ? {
+          ...component.invariants,
+          source_span: rebaseSpan(component.invariants.source_span, relativePath),
+        }
+      : null,
     effects: component.effects.map((effect) => ({
       ...effect,
       source_span: rebaseSpan(effect.source_span, relativePath),
@@ -814,6 +842,38 @@ function packageSemanticProjection(ir: Omit<PackageIR, "semantic_hash">): unknow
             body: component.strategies.body,
           }
         : null,
+      ...(component.errors
+        ? {
+            errors: {
+              body: component.errors.body,
+              declarations: component.errors.declarations.map((error) => ({
+                code: error.code,
+                description: error.description,
+              })),
+            },
+          }
+        : {}),
+      ...(component.finally
+        ? {
+            finally: {
+              body: component.finally.body,
+            },
+          }
+        : {}),
+      ...(component.catch
+        ? {
+            catch: {
+              body: component.catch.body,
+            },
+          }
+        : {}),
+      ...(component.invariants
+        ? {
+            invariants: {
+              body: component.invariants.body,
+            },
+          }
+        : {}),
       effects: component.effects.map((effect) => ({
         kind: effect.kind,
         description: effect.description,

@@ -77,6 +77,21 @@ function renderComponentContract(ir: ProseIR, component: ComponentIR): string {
     ...component.ports.ensures.map((port) => `- ${port.name}: ${port.type}`),
   ];
 
+  if (component.strategies) {
+    sections.push("", "## Strategies", component.strategies.body);
+  }
+  if (component.errors) {
+    sections.push("", "## Errors", component.errors.body);
+  }
+  if (component.finally) {
+    sections.push("", "## Finally", component.finally.body);
+  }
+  if (component.catch) {
+    sections.push("", "## Catch", component.catch.body);
+  }
+  if (component.invariants) {
+    sections.push("", "## Legacy Invariants", component.invariants.body);
+  }
   if (component.execution) {
     sections.push("", "## Execution", component.execution.body);
   }

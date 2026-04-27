@@ -87,6 +87,16 @@ export interface ContractTextSectionIR {
   source_span: SourceSpan;
 }
 
+export interface ContractErrorDeclarationIR {
+  code: string;
+  description: string;
+  source_span: SourceSpan;
+}
+
+export interface ContractErrorSectionIR extends ContractTextSectionIR {
+  declarations: ContractErrorDeclarationIR[];
+}
+
 export type ExecutionStepIR =
   | ExecutionCallStepIR
   | ExecutionParallelStepIR
@@ -167,6 +177,10 @@ export interface ComponentIR {
   environment: EnvironmentIR[];
   execution: ExecutionIR | null;
   strategies: ContractTextSectionIR | null;
+  errors: ContractErrorSectionIR | null;
+  finally: ContractTextSectionIR | null;
+  catch: ContractTextSectionIR | null;
+  invariants: ContractTextSectionIR | null;
   effects: EffectIR[];
   access: AccessIR;
   evals: unknown[];

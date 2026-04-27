@@ -47,6 +47,10 @@ export interface NodePromptEnvelope {
     ensures: NodeEnvelopePort[];
     effects: NodeEnvelopeEffect[];
     strategies: string | null;
+    errors: NodeEnvelopeErrorSection | null;
+    finally: string | null;
+    catch: string | null;
+    invariants: string | null;
     execution: string | null;
   };
   inputs: NodeEnvelopeInput[];
@@ -87,6 +91,16 @@ export interface NodeEnvelopeEffect {
   kind: string;
   description: string;
   config: Record<string, string | number | boolean>;
+}
+
+export interface NodeEnvelopeErrorSection {
+  body: string;
+  declarations: NodeEnvelopeError[];
+}
+
+export interface NodeEnvelopeError {
+  code: string;
+  description: string;
 }
 
 export interface NodeEnvelopeInput {
@@ -145,6 +159,18 @@ export function buildNodePromptEnvelope(
       ensures: request.component.ports.ensures.map(portEnvelope),
       effects: request.component.effects.map(effectEnvelope),
       strategies: request.component.strategies?.body ?? null,
+      errors: request.component.errors
+        ? {
+            body: request.component.errors.body,
+            declarations: request.component.errors.declarations.map((error) => ({
+              code: error.code,
+              description: error.description,
+            })),
+          }
+        : null,
+      finally: request.component.finally?.body ?? null,
+      catch: request.component.catch?.body ?? null,
+      invariants: request.component.invariants?.body ?? null,
       execution: request.component.execution?.body ?? null,
     },
     inputs: nodeRunRequest.input_bindings.map(inputEnvelope),

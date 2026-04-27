@@ -85,6 +85,14 @@ describe("OpenProse Pi node prompt envelope", () => {
     const envelope = readNodeEnvelope(result.run_dir, "worker");
 
     expect(envelope.component.strategies).toContain("Keep the parent context light.");
+    expect(envelope.component.errors?.body).toContain("delivery-failed");
+    expect(envelope.component.errors?.declarations).toContainEqual({
+      code: "delivery-failed",
+      description: "Delivery failed after child research.",
+    });
+    expect(envelope.component.finally).toContain("Record child refs inspected.");
+    expect(envelope.component.catch).toContain("Use the child research ref");
+    expect(envelope.component.invariants).toContain("Do not delete private state");
     expect(envelope.component.execution).toContain("session \"Research in a child context\"");
     expect(envelope.instructions.prosescript_interpreter).toEqual(
       expect.arrayContaining([
@@ -94,6 +102,8 @@ describe("OpenProse Pi node prompt envelope", () => {
       ]),
     );
     expect(renderedPrompt).toContain("Keep the parent context light.");
+    expect(renderedPrompt).toContain("delivery-failed");
+    expect(renderedPrompt).toContain("Record child refs inspected.");
     expect(renderedPrompt).toContain("openprose_subagent");
   });
 
@@ -299,6 +309,22 @@ kind: program
 
 - Keep the parent context light.
 - Prefer private state refs for long child work products.
+
+### Errors
+
+- \`delivery-failed\`: Delivery failed after child research.
+
+### Finally
+
+- Record child refs inspected.
+
+### Catch
+
+- Use the child research ref if delivery fails.
+
+### Invariants
+
+- Do not delete private state during recovery.
 
 ### Execution
 

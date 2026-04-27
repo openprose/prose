@@ -269,6 +269,22 @@ name: tidy-me
 
 - \`input\`: string - source input
 
+### Catch
+
+- If delivery fails, keep the draft ref.
+
+### Finally
+
+- Record cleanup evidence.
+
+### Errors
+
+- \`delivery-failed\`: delivery failed
+
+### Strategies
+
+- Keep scratch work private.
+
 ### Execution
 
 let result = call worker
@@ -284,6 +300,15 @@ return result
     expect(formatted).toContain("name: tidy-me\nkind: service");
     expect(formatted.indexOf("### Requires")).toBeLessThan(
       formatted.indexOf("### Ensures"),
+    );
+    expect(formatted.indexOf("### Errors")).toBeLessThan(
+      formatted.indexOf("### Finally"),
+    );
+    expect(formatted.indexOf("### Finally")).toBeLessThan(
+      formatted.indexOf("### Catch"),
+    );
+    expect(formatted.indexOf("### Catch")).toBeLessThan(
+      formatted.indexOf("### Strategies"),
     );
     expect(formatted.indexOf("### Strategies")).toBeLessThan(
       formatted.indexOf("### Execution"),
@@ -379,6 +404,8 @@ name: stable-format
     expect(text).toContain('"storage.type.component-kind.openprose"');
     expect(text).toContain('"entity.name.function.call-target.openprose"');
     expect(text).toContain('"variable.parameter.port.openprose"');
+    expect(text).toContain("Finally");
+    expect(text).toContain("Catch");
     expect(artifact).toBe(text);
   });
 

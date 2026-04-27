@@ -7,6 +7,7 @@ import {
   parseAccess,
   parseEffects,
   parseEnvironment,
+  parseErrors,
   parseExecution,
   parsePorts,
   parseRuntime,
@@ -68,6 +69,10 @@ export function compileSource(source: string, options: CompileOptions): ProseIR 
       ),
       execution: parseExecution(findSection(draft, "execution"), diagnostics),
       strategies: parseTextSection(findSection(draft, "strategies")),
+      errors: parseErrors(findSection(draft, "errors"), diagnostics),
+      finally: parseTextSection(findSection(draft, "finally")),
+      catch: parseTextSection(findSection(draft, "catch")),
+      invariants: parseTextSection(findSection(draft, "invariants")),
       effects: parseEffects(findSection(draft, "effects"), diagnostics),
       access: parseAccess(findSection(draft, "access")),
       evals: [],
@@ -328,6 +333,38 @@ function toSemanticProjection(ir: Omit<ProseIR, "semantic_hash">): unknown {
             body: component.strategies.body,
           }
         : null,
+      ...(component.errors
+        ? {
+            errors: {
+              body: component.errors.body,
+              declarations: component.errors.declarations.map((error) => ({
+                code: error.code,
+                description: error.description,
+              })),
+            },
+          }
+        : {}),
+      ...(component.finally
+        ? {
+            finally: {
+              body: component.finally.body,
+            },
+          }
+        : {}),
+      ...(component.catch
+        ? {
+            catch: {
+              body: component.catch.body,
+            },
+          }
+        : {}),
+      ...(component.invariants
+        ? {
+            invariants: {
+              body: component.invariants.body,
+            },
+          }
+        : {}),
       effects: component.effects.map((effect) => ({
         kind: effect.kind,
         description: effect.description,

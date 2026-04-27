@@ -1,5 +1,6 @@
 import type {
   AccessIR,
+  ContractErrorSectionIR,
   ContractTextSectionIR,
   Diagnostic,
   EffectIR,
@@ -292,6 +293,55 @@ export function parseTextSection(
       .join("\n")
       .trim(),
     source_span: section.span,
+  };
+}
+
+export function parseErrors(
+  section: SectionDraft | undefined,
+  diagnostics: Diagnostic[],
+): ContractErrorSectionIR | null {
+  const text = parseTextSection(section);
+  if (!section || !text) {
+    return null;
+  }
+
+  const declarations: ContractErrorSectionIR["declarations"] = [];
+  for (const line of topLevelListItems(section.lines)) {
+    const item = line.item.trim();
+    const colonIndex = item.indexOf(":");
+    if (colonIndex < 0) {
+      if (item.startsWith("`")) {
+        diagnostics.push({
+          severity: "warning",
+          code: "malformed_error",
+          message: `Error item '${item}' is missing a ':' separator.`,
+          source_span: span(section.span.path, line.number, line.number),
+        });
+      }
+      continue;
+    }
+
+    const code = stripTicks(item.slice(0, colonIndex).trim());
+    if (!looksLikeErrorCode(code)) {
+      diagnostics.push({
+        severity: "warning",
+        code: "malformed_error",
+        message: `Error code '${code}' should use lowercase words separated by hyphens.`,
+        source_span: span(section.span.path, line.number, line.number),
+      });
+      continue;
+    }
+
+    declarations.push({
+      code,
+      description: item.slice(colonIndex + 1).trim(),
+      source_span: span(section.span.path, line.number, line.number),
+    });
+  }
+
+  return {
+    ...text,
+    declarations,
   };
 }
 
@@ -590,6 +640,10 @@ function looksLikeMalformedPort(item: string): boolean {
 
 function looksLikePortName(rawName: string): boolean {
   return /^[A-Za-z_][A-Za-z0-9_-]*$/.test(stripTicks(rawName.trim()));
+}
+
+function looksLikeErrorCode(code: string): boolean {
+  return /^[a-z][a-z0-9]*(?:[-_][a-z0-9]+)*$/.test(code);
 }
 
 function parseTypeAndDescription(value: string): {

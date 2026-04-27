@@ -8,11 +8,15 @@ const CANONICAL_SECTIONS = [
   "services",
   "requires",
   "ensures",
+  "errors",
+  "finally",
+  "catch",
   "runtime",
   "environment",
   "effects",
   "access",
   "strategies",
+  "invariants",
   "execution",
 ];
 

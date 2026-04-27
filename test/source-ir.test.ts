@@ -230,6 +230,57 @@ kind: service
     });
   });
 
+  test("preserves errors, finally, catch, and legacy invariants as contract text", () => {
+    const ir = compileSource(`---
+name: error-contract-demo
+kind: service
+---
+
+### Ensures
+
+- \`report\`: Markdown<Report> - final report
+
+### Errors
+
+- \`delivery-failed\`: Message could not be delivered.
+- \`provider-timeout\`: Provider timed out before completion.
+
+### Finally
+
+- Record what cleanup was attempted.
+
+### Catch
+
+- If delivery fails after rendering, preserve the rendered draft ref.
+
+### Invariants
+
+- Never delete private state while recovering.
+`, {
+      path: "fixtures/compiler/error-contract-demo.prose.md",
+    });
+
+    const component = ir.components[0];
+    expect(component.errors).toMatchObject({
+      key: "errors",
+      title: "Errors",
+      declarations: [
+        {
+          code: "delivery-failed",
+          description: "Message could not be delivered.",
+        },
+        {
+          code: "provider-timeout",
+          description: "Provider timed out before completion.",
+        },
+      ],
+    });
+    expect(component.errors?.body).toContain("delivery-failed");
+    expect(component.finally?.body).toContain("Record what cleanup was attempted.");
+    expect(component.catch?.body).toContain("preserve the rendered draft ref");
+    expect(component.invariants?.body).toContain("Never delete private state");
+  });
+
   test("parses source-level policy labels on ports", () => {
     const ir = compileSource(`---
 name: labeled-policy
@@ -319,6 +370,46 @@ kind: service
     });
 
     expect(a.semantic_hash).not.toBe(b.semantic_hash);
+  });
+
+  test("semantic hash changes when non-happy-path contract sections change", () => {
+    const source = `---
+name: error-hash
+kind: service
+---
+
+### Ensures
+
+- \`report\`: Markdown<Report> - final report
+
+### Errors
+
+- \`delivery-failed\`: Message could not be delivered.
+
+### Finally
+
+- Record cleanup evidence.
+
+### Catch
+
+- Recover delivery failures with a draft ref.
+
+### Invariants
+
+- Preserve scratch refs.
+`;
+    const base = compileSource(source, { path: "fixtures/compiler/error-hash.prose.md" });
+    const variants = [
+      source.replace("Message could not be delivered.", "Message delivery was rejected."),
+      source.replace("Record cleanup evidence.", "Record cleanup and unresolved work."),
+      source.replace("Recover delivery failures", "Recover provider failures"),
+      source.replace("Preserve scratch refs.", "Preserve all private refs."),
+    ];
+
+    for (const variant of variants) {
+      const next = compileSource(variant, { path: "fixtures/compiler/error-hash.prose.md" });
+      expect(next.semantic_hash).not.toBe(base.semantic_hash);
+    }
   });
 
   test("malformed source produces source-located diagnostics", () => {
