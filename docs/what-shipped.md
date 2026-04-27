@@ -92,7 +92,8 @@ The local package now has an executable runtime spine and a repeatable
 confidence matrix. The remaining work is about hardening the hosted product
 around that spine:
 
-- platform tests that vendor the OSS hosted-runtime fixtures directly
+- keep platform tests vendoring the OSS hosted-runtime fixtures directly so
+  contract drift fails mechanically
 - approval semantics and continuation behavior
 - richer policy and provenance UX
 - hosted publish/install UX

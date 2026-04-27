@@ -74,7 +74,8 @@ Latest generated reports:
 
 ## Platform Follow-Up
 
-- Wire platform tests directly to the OSS hosted-runtime fixtures.
+- Keep platform tests wired directly to the OSS hosted-runtime fixtures so
+  fixture drift is caught before hosted runtime changes land.
 - Keep hosted workers on the same graph-VM/runtime-profile vocabulary as
   `prose run` and `prose remote execute`.
 - Preserve OpenProse run records, artifact manifests, and traces as the shared
