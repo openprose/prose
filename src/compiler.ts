@@ -11,6 +11,7 @@ import {
   parsePorts,
   parseRuntime,
   parseServices,
+  parseTextSection,
 } from "./sections";
 import { slugify } from "./text";
 import type {
@@ -66,6 +67,7 @@ export function compileSource(source: string, options: CompileOptions): ProseIR 
         diagnostics,
       ),
       execution: parseExecution(findSection(draft, "execution"), diagnostics),
+      strategies: parseTextSection(findSection(draft, "strategies")),
       effects: parseEffects(findSection(draft, "effects"), diagnostics),
       access: parseAccess(findSection(draft, "access")),
       evals: [],
@@ -319,6 +321,11 @@ function toSemanticProjection(ir: Omit<ProseIR, "semantic_hash">): unknown {
         ? {
             language: component.execution.language,
             body: component.execution.body,
+          }
+        : null,
+      strategies: component.strategies
+        ? {
+            body: component.strategies.body,
           }
         : null,
       effects: component.effects.map((effect) => ({

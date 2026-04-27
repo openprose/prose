@@ -202,6 +202,34 @@ kind: program
     expect(ir.diagnostics).toEqual([]);
   });
 
+  test("preserves strategies as semantic contract text", () => {
+    const ir = compileSource(`---
+name: strategy-demo
+kind: service
+---
+
+### Ensures
+
+- \`report\`: Markdown<Report> - final report
+
+### Strategies
+
+- Keep the parent context light.
+- Delegate deep research and return file refs.
+`, {
+      path: "fixtures/compiler/strategy-demo.prose.md",
+    });
+
+    expect(ir.components[0].strategies).toMatchObject({
+      key: "strategies",
+      title: "Strategies",
+      body: [
+        "- Keep the parent context light.",
+        "- Delegate deep research and return file refs.",
+      ].join("\n"),
+    });
+  });
+
   test("parses source-level policy labels on ports", () => {
     const ir = compileSource(`---
 name: labeled-policy
@@ -266,6 +294,28 @@ kind: program
     const a = compileSource(source, { path: "fixtures/compiler/whitespace-a.prose.md" });
     const b = compileSource(source.replace("string - question", "number - question"), {
       path: "fixtures/compiler/whitespace-a.prose.md",
+    });
+
+    expect(a.semantic_hash).not.toBe(b.semantic_hash);
+  });
+
+  test("semantic hash changes when strategies change", () => {
+    const source = `---
+name: strategy-hash
+kind: service
+---
+
+### Ensures
+
+- \`report\`: Markdown<Report> - final report
+
+### Strategies
+
+- Prefer concise synthesis.
+`;
+    const a = compileSource(source, { path: "fixtures/compiler/strategy-hash.prose.md" });
+    const b = compileSource(source.replace("concise synthesis", "deep delegation"), {
+      path: "fixtures/compiler/strategy-hash.prose.md",
     });
 
     expect(a.semantic_hash).not.toBe(b.semantic_hash);

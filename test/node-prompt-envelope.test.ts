@@ -53,6 +53,41 @@ describe("OpenProse Pi node prompt envelope", () => {
     expect(envelope.instructions.output_tool).toBe("openprose_submit_outputs");
   });
 
+  test("includes strategies and ProseScript interpreter guidance for scripted nodes", async () => {
+    const runRoot = mkdtempSync(join(tmpdir(), "openprose-envelope-prosescript-"));
+    let renderedPrompt = "";
+    const result = await runSource(proseScriptStrategySource(), {
+      path: "fixtures/compiler/prosescript-strategy.prose.md",
+      runRoot,
+      runId: "envelope-prosescript",
+      nodeRunner: scriptedPiRuntime({
+        outputsByComponent: {
+          worker: {
+            report: "Delegated report.",
+          },
+        },
+        onPrompt: (prompt) => {
+          renderedPrompt = prompt;
+        },
+      }),
+      createdAt: "2026-04-26T17:02:00.000Z",
+    });
+
+    const envelope = readNodeEnvelope(result.run_dir, "worker");
+
+    expect(envelope.component.strategies).toContain("Keep the parent context light.");
+    expect(envelope.component.execution).toContain("session \"Research in a child context\"");
+    expect(envelope.instructions.prosescript_interpreter).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("semantic ProseScript instructions"),
+        expect.stringContaining("openprose_subagent"),
+        expect.stringContaining("parent node remains responsible"),
+      ]),
+    );
+    expect(renderedPrompt).toContain("Keep the parent context light.");
+    expect(renderedPrompt).toContain("openprose_subagent");
+  });
+
   test("includes upstream run refs and artifact summaries for downstream nodes", async () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-envelope-upstream-"));
     const result = await runSource(fixture("pipeline.prose.md"), {
@@ -229,6 +264,40 @@ function readNodeEnvelope(runDir: string, componentId: string): NodePromptEnvelo
       "utf8",
     ),
   ) as NodePromptEnvelope;
+}
+
+function proseScriptStrategySource(): string {
+  return `---
+name: prosescript-strategy
+kind: program
+---
+
+### Services
+
+- \`worker\`
+
+### Ensures
+
+- \`report\`: Markdown<Report> - delegated report
+
+## worker
+
+### Ensures
+
+- \`report\`: Markdown<Report> - delegated report
+
+### Strategies
+
+- Keep the parent context light.
+- Prefer private state refs for long child work products.
+
+### Execution
+
+\`\`\`prose
+let findings = session "Research in a child context"
+return findings
+\`\`\`
+`;
 }
 
 function redactionSource(): string {

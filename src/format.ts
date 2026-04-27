@@ -12,6 +12,7 @@ const CANONICAL_SECTIONS = [
   "environment",
   "effects",
   "access",
+  "strategies",
   "execution",
 ];
 

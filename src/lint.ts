@@ -16,6 +16,7 @@ const CANONICAL_SECTION_ORDER = new Map(
     "environment",
     "effects",
     "access",
+    "strategies",
     "execution",
   ].map((key, index) => [key, index]),
 );

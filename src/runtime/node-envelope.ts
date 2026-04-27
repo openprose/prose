@@ -42,6 +42,7 @@ export interface NodePromptEnvelope {
     requires: NodeEnvelopePort[];
     ensures: NodeEnvelopePort[];
     effects: NodeEnvelopeEffect[];
+    strategies: string | null;
     execution: string | null;
   };
   inputs: NodeEnvelopeInput[];
@@ -56,6 +57,7 @@ export interface NodePromptEnvelope {
   instructions: {
     output_tool: "openprose_submit_outputs";
     fallback_output_files: boolean;
+    prosescript_interpreter: string[] | null;
     summary: string;
   };
 }
@@ -129,6 +131,7 @@ export function buildNodePromptEnvelope(
       requires: request.component.ports.requires.map(portEnvelope),
       ensures: request.component.ports.ensures.map(portEnvelope),
       effects: request.component.effects.map(effectEnvelope),
+      strategies: request.component.strategies?.body ?? null,
       execution: request.component.execution?.body ?? null,
     },
     inputs: nodeRunRequest.input_bindings.map(inputEnvelope),
@@ -143,11 +146,22 @@ export function buildNodePromptEnvelope(
     instructions: {
       output_tool: "openprose_submit_outputs",
       fallback_output_files: true,
+      prosescript_interpreter: request.component.execution
+        ? PROSESCRIPT_INTERPRETER_GUIDELINES
+        : null,
       summary:
         "Produce only declared outputs. Prefer openprose_submit_outputs when available; otherwise write the requested fallback output files.",
     },
   };
 }
+
+const PROSESCRIPT_INTERPRETER_GUIDELINES = [
+  "Treat the fenced prose execution body as semantic ProseScript instructions for this node, not as a deterministic host-compiled program.",
+  "Follow calls, sessions, parallel blocks, loops, conditionals, try/catch/finally, and returns according to their ordinary workflow meaning.",
+  "When openprose_subagent is available, prefer it for delegated child work that benefits from isolated context.",
+  "Keep child-session work products in private workspace files and pass back concise summaries plus workspace-relative refs when possible.",
+  "The parent node remains responsible for final declared output submission through openprose_submit_outputs.",
+];
 
 export function renderNodePromptEnvelope(envelope: NodePromptEnvelope): string {
   return [

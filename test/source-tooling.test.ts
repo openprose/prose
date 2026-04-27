@@ -227,6 +227,10 @@ kind: service
 
 - \`input\`: string - source input
 
+### Strategies
+
+- Keep scratch work private.
+
 ### Execution
 
 let result = call worker
@@ -279,6 +283,9 @@ return result
     expect(formatted).toContain("name: tidy-me\nkind: service");
     expect(formatted.indexOf("### Requires")).toBeLessThan(
       formatted.indexOf("### Ensures"),
+    );
+    expect(formatted.indexOf("### Strategies")).toBeLessThan(
+      formatted.indexOf("### Execution"),
     );
     expect(formatted).toContain("```prose");
     expect(formatted).toContain("return result");

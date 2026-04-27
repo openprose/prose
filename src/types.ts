@@ -80,6 +80,13 @@ export interface AccessIR {
   source_span?: SourceSpan;
 }
 
+export interface ContractTextSectionIR {
+  key: string;
+  title: string;
+  body: string;
+  source_span: SourceSpan;
+}
+
 export type ExecutionStepIR =
   | ExecutionCallStepIR
   | ExecutionParallelStepIR
@@ -159,6 +166,7 @@ export interface ComponentIR {
   runtime: RuntimeSettingIR[];
   environment: EnvironmentIR[];
   execution: ExecutionIR | null;
+  strategies: ContractTextSectionIR | null;
   effects: EffectIR[];
   access: AccessIR;
   evals: unknown[];

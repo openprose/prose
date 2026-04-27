@@ -671,6 +671,12 @@ function rebaseComponent(component: ComponentIR, relativePath: string, id: strin
           source_span: rebaseSpan(component.execution.source_span, relativePath),
         }
       : null,
+    strategies: component.strategies
+      ? {
+          ...component.strategies,
+          source_span: rebaseSpan(component.strategies.source_span, relativePath),
+        }
+      : null,
     effects: component.effects.map((effect) => ({
       ...effect,
       source_span: rebaseSpan(effect.source_span, relativePath),
@@ -776,6 +782,11 @@ function packageSemanticProjection(ir: Omit<PackageIR, "semantic_hash">): unknow
         ? {
             language: component.execution.language,
             body: component.execution.body,
+          }
+        : null,
+      strategies: component.strategies
+        ? {
+            body: component.strategies.body,
           }
         : null,
       effects: component.effects.map((effect) => ({

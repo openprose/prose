@@ -1,5 +1,6 @@
 import type {
   AccessIR,
+  ContractTextSectionIR,
   Diagnostic,
   EffectIR,
   EnvironmentIR,
@@ -274,6 +275,24 @@ export function parseAccess(section: SectionDraft | undefined): AccessIR {
   }
 
   return { rules, source_span: section.span };
+}
+
+export function parseTextSection(
+  section: SectionDraft | undefined,
+): ContractTextSectionIR | null {
+  if (!section) {
+    return null;
+  }
+
+  return {
+    key: section.key,
+    title: section.title,
+    body: trimTrailingBlankLines(section.lines)
+      .map((line) => line.text)
+      .join("\n")
+      .trim(),
+    source_span: section.span,
+  };
 }
 
 export function parseExecution(
