@@ -135,4 +135,31 @@ delegate somehow to worker
     ]);
     expect(ir.diagnostics).toEqual([]);
   });
+
+  test("preserves rich ProseScript delegation without requiring full compilation", () => {
+    const source = readFileSync(fixturePath("compiler/prosescript-subagent.prose.md"), "utf8");
+    const ir = compileSource(source, {
+      path: "fixtures/compiler/prosescript-subagent.prose.md",
+    });
+    const execution = ir.components[0].execution;
+
+    expect(execution?.body).toContain("session `draft-review`");
+    expect(execution?.body).toContain("call openprose_subagent");
+    expect(execution?.steps).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: "text",
+          text: "session `draft-review`:",
+        }),
+        expect.objectContaining({
+          kind: "call",
+          target: "openprose_subagent",
+          bindings: {
+            task: "\"Review the draft and write notes under private state\"",
+          },
+        }),
+      ]),
+    );
+    expect(ir.diagnostics).toEqual([]);
+  });
 });

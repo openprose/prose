@@ -19,7 +19,16 @@ import {
 import { scriptedPiRuntime, nodeRunnerShouldNotRun } from "./support/scripted-pi-session";
 import { approvalReleaseOutputs, pipelineOutputs } from "./support/runtime-scenarios";
 import { runSource } from "../src/run";
-import type { NodeRunRequest, NodeRunResult } from "../src/node-runners";
+import {
+  OPENPROSE_SUBAGENT_TOOL_NAME,
+  createPiNodeRunner,
+} from "../src/node-runners";
+import { OPENPROSE_SUBMIT_OUTPUTS_TOOL_NAME } from "../src/runtime/pi/output-tool";
+import type {
+  NodeRunRequest,
+  NodeRunResult,
+  PiAgentSessionLike,
+} from "../src/node-runners";
 
 describe("OpenProse run entry point", () => {
   test("executes a single-component contract through scripted Pi", async () => {
@@ -57,6 +66,95 @@ describe("OpenProse run entry point", () => {
       run_id: "programmatic-run",
       status: "succeeded",
     });
+  });
+
+  test("executes ProseScript subagent delegation with parent output submission", async () => {
+    const runRoot = mkdtempSync(join(tmpdir(), "openprose-prosescript-subagent-"));
+    const result = await runSource(fixture("prosescript-subagent.prose.md"), {
+      path: "fixtures/compiler/prosescript-subagent.prose.md",
+      runRoot,
+      runId: "prosescript-subagent-run",
+      inputs: {
+        draft: "A draft that needs a small review.",
+      },
+      nodeRunner: createPiNodeRunner({
+        createSession: async (context) =>
+          fakePiSession(async () => {
+            const subagentTool = context.options.customTools?.find(
+              (tool) => tool.name === OPENPROSE_SUBAGENT_TOOL_NAME,
+            );
+            const outputTool = context.options.customTools?.find(
+              (tool) => tool.name === OPENPROSE_SUBMIT_OUTPUTS_TOOL_NAME,
+            );
+            expect(subagentTool).toBeDefined();
+            expect(outputTool).toBeDefined();
+
+            const child = await subagentTool!.execute(
+              "delegate-review",
+              {
+                task: "Review the draft and write notes under private state.",
+                purpose: "draft review",
+                expected_refs: ["__subagents/draft-review/notes.md"],
+              },
+              undefined,
+              undefined,
+              undefined as never,
+            );
+            await outputTool!.execute(
+              "submit-parent-output",
+              {
+                outputs: [
+                  {
+                    port: "message",
+                    content: `Parent summarized private notes at ${child.details.state_refs[0]}.`,
+                  },
+                ],
+                performed_effects: ["pure"],
+              },
+              undefined,
+              undefined,
+              undefined as never,
+            );
+          }),
+        subagentLauncher: async (request) => {
+          writeFileSync(join(request.child.root_path, "notes.md"), "Private draft review notes.\n");
+          return {
+            summary: "Draft reviewed in child context.",
+            stateRefs: [`${request.child.root_ref}/notes.md`],
+            sessionRef: ".pi/subagents/draft-review.jsonl",
+          };
+        },
+        timeoutMs: 2_000,
+      }),
+      createdAt: "2026-04-27T12:20:00.000Z",
+    });
+
+    expect(result.record.status).toBe("succeeded");
+    expect(result.record.effects.performed).toEqual(["pure"]);
+    expect(
+      readFileSync(
+        join(result.run_dir, "bindings", "prosescript-subagent", "message.md"),
+        "utf8",
+      ),
+    ).toContain("__subagents/draft-review/notes.md");
+    const manifest = JSON.parse(
+      readFileSync(join(result.run_dir, "openprose-private-state.json"), "utf8"),
+    );
+    expect(manifest.entries[0]).toMatchObject({
+      child_id: "draft-review",
+      state_refs: ["__subagents/draft-review/notes.md"],
+      summary: "Draft reviewed in child context.",
+    });
+    const envelope = JSON.parse(
+      readFileSync(join(result.run_dir, "openprose-node-envelope.json"), "utf8"),
+    );
+    expect(envelope.component.execution).toContain("session `draft-review`");
+    expect(envelope.instructions.prosescript_interpreter).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("semantic ProseScript instructions"),
+        expect.stringContaining("openprose_subagent"),
+      ]),
+    );
   });
 
   test("stores metadata under .prose/store for the default run-root shape", async () => {
@@ -933,3 +1031,37 @@ kind: program
     });
   });
 });
+
+function fakePiSession(
+  onPrompt: (context: {
+    prompt: string;
+    emit: (event: unknown) => void;
+  }) => Promise<void>,
+): PiAgentSessionLike {
+  const listeners: Array<(event: unknown) => void> = [];
+  const emit = (event: unknown) => {
+    for (const listener of listeners) {
+      listener(event);
+    }
+  };
+  return {
+    sessionId: "pi-session-1",
+    sessionFile: "/tmp/pi-session.jsonl",
+    subscribe(listener) {
+      listeners.push(listener);
+      return () => {
+        const index = listeners.indexOf(listener);
+        if (index >= 0) {
+          listeners.splice(index, 1);
+        }
+      };
+    },
+    async prompt(prompt) {
+      emit({ type: "agent_start" });
+      await onPrompt({ prompt, emit });
+      emit({ type: "agent_end" });
+    },
+    async abort() {},
+    dispose() {},
+  };
+}
