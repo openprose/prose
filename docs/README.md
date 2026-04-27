@@ -42,6 +42,7 @@ bun run prose status .prose/runs
 bun run prose trace .prose/runs/docs-company-signal
 bun run measure:examples
 bun run confidence:runtime
+bun run smoke:cold-start
 bun run smoke:live-pi
 ```
 

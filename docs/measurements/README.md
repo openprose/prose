@@ -9,6 +9,8 @@ reports, not source contracts.
 - `latest.md`
 - `runtime-confidence.latest.json`
 - `runtime-confidence.latest.md`
+- `cold-start.latest.json`
+- `cold-start.latest.md`
 
 These files are deterministic or skipped-by-default. They are safe to use as
 release gates because they do not require live model calls.

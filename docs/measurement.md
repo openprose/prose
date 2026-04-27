@@ -63,16 +63,26 @@ For release confidence:
 ```bash
 bun run confidence:runtime
 bun run smoke:binary
+bun run smoke:cold-start
 ```
 
 The confidence matrix folds the north-star examples into the CLI release gate.
 It includes strict publish checks, deterministic run materialization, release
 approval backpressure, measurement generation, hosted envelope fixtures, binary
-smoke, and a skipped-by-default live Pi rung.
+smoke, a cold-start publishable-package smoke, and a skipped-by-default live Pi
+rung.
 
 `smoke:binary` builds the public CLI artifact under `dist/`. The repository
 root package remains private because it is the development workspace; the dist
 package is the one with a package-manager `bin`.
+
+`smoke:cold-start` then copies only that dist package into a temporary
+workspace, creates a tiny `.prose.md` program outside the source checkout, and
+verifies `help`, `compile`, `plan`, `run`, `status`, and `trace` through the
+installed binary. It writes:
+
+- [measurements/cold-start.latest.md](measurements/cold-start.latest.md)
+- [measurements/cold-start.latest.json](measurements/cold-start.latest.json)
 
 For opt-in live Pi coverage:
 

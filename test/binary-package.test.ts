@@ -14,6 +14,9 @@ describe("OpenProse binary package surface", () => {
     expect(rootPackage.private).toBe(true);
     expect(rootPackage.bin).toBeUndefined();
     expect(rootPackage.scripts.prose).toBe("bun bin/prose.ts");
+    expect(rootPackage.scripts["smoke:cold-start"]).toBe(
+      "bun scripts/cold-start-smoke.ts",
+    );
     expect(rootPackage.scripts["build:binary"]).toContain(
       "scripts/write-dist-package.ts",
     );

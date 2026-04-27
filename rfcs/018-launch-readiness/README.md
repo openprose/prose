@@ -63,9 +63,13 @@ The repo-local gates are green, but the launch needs a simulated fresh user
 path that starts from a clean temp directory and proves the publishable binary
 or package artifact works without repo-local assumptions.
 
-Recommended slice: add a cold-start smoke script that builds the binary package,
-copies or installs it into a temp workspace, runs `prose help`, compiles the
-smallest example, runs one deterministic example, and prints a compact report.
+Status: done in signpost 002.
+
+Resolved slice: added `bun run smoke:cold-start`, which builds the binary
+package, copies only the dist artifact into a temp workspace, runs `prose help`,
+compiles a tiny temp program, plans it, runs it, and inspects `status` and
+`trace` outside the source checkout. The runtime confidence matrix now includes
+this as a required deterministic check.
 
 ### R002: Agent Onboarding Should Become A Measured Surface
 
@@ -143,4 +147,3 @@ Opt-in live evidence:
 ```bash
 OPENPROSE_LIVE_PI_SMOKE=1 bun run smoke:live-pi -- --tier cheap
 ```
-

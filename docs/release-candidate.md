@@ -11,6 +11,7 @@ bun run confidence:runtime
 bun run typecheck
 bun run test
 bun run smoke:binary
+bun run smoke:cold-start
 bun run smoke:live-pi
 ```
 
@@ -28,6 +29,8 @@ The confidence script exercises the public CLI across:
 - package metadata generation
 - strict publish checks for `examples`, `std`, and `co`
 - registry-ref install into a temporary workspace
+- cold-start execution through the publishable binary package outside the source
+  checkout
 
 Latest generated reports:
 
@@ -40,6 +43,7 @@ Latest generated reports:
 - Typecheck passes.
 - Runtime confidence matrix passes.
 - Compiled Bun binary smoke passes.
+- Cold-start publishable-package smoke passes.
 - `smoke:live-pi` produces a clean skipped report by default and a classified
   opt-in live report when credentials are present.
 - Package metadata and hosted contract fixtures are stable.

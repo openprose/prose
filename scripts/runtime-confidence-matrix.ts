@@ -232,6 +232,12 @@ async function main(): Promise<void> {
       ],
       expectStdout: ['"live_pi_smoke_version": "0.1"', '"status": "skipped"'],
     },
+    {
+      label: "cold-start publishable binary package",
+      command: "bun",
+      args: ["scripts/cold-start-smoke.ts"],
+      expectStdout: ['"status": "pass"', '"checks": 6'],
+    },
   ];
 
   const checks = steps.map((step) => runStep(repoRoot, tempRoot, repoSha, step));
