@@ -1,10 +1,10 @@
 {
   "measurement_version": "0.3",
-  "generated_at": "2026-04-27T02:39:38.310Z",
+  "generated_at": "2026-04-27T03:17:15.546Z",
   "release_checks": {
     "examples_compile": {
       "status": "pass",
-      "elapsed_ms": 7.21,
+      "elapsed_ms": 6.58,
       "component_count": 42,
       "diagnostic_count": 30,
       "error_count": 0
@@ -12,14 +12,14 @@
     "examples_publish_check": {
       "status": "pass",
       "strict": false,
-      "elapsed_ms": 77.22,
+      "elapsed_ms": 72.54,
       "blocker_count": 0,
       "warning_count": 0
     },
     "examples_strict_publish_check": {
       "status": "pass",
       "strict": true,
-      "elapsed_ms": 69.14,
+      "elapsed_ms": 68.3,
       "blocker_count": 0,
       "warning_count": 0
     },
@@ -124,15 +124,15 @@
   ],
   "scenarios": {
     "company_signal_brief": {
-      "compile_ms": 0.18,
-      "run_ms": 30.08,
+      "compile_ms": 0.16,
+      "run_ms": 37.86,
       "status": "succeeded",
       "eval_status": "passed",
       "eval_score": 0.93,
       "trace_events": 9,
       "scripted_session_count": 1,
       "runtime_telemetry": {
-        "duration_ms": 30.08,
+        "duration_ms": 37.86,
         "session_count": 1,
         "token_usage": null,
         "estimated_cost_usd": null,
@@ -140,15 +140,15 @@
       }
     },
     "lead_program_designer": {
-      "compile_ms": 0.38,
-      "run_ms": 41.3,
+      "compile_ms": 0.42,
+      "run_ms": 42.26,
       "status": "succeeded",
       "eval_status": "passed",
       "eval_score": 0.91,
       "trace_events": 29,
       "scripted_session_count": 3,
       "runtime_telemetry": {
-        "duration_ms": 41.3,
+        "duration_ms": 42.26,
         "session_count": 3,
         "token_usage": null,
         "estimated_cost_usd": null,
@@ -177,14 +177,14 @@
     },
     "stargazer_intake_lite": {
       "compile_ms": 0.5,
-      "run_ms": 53.06,
+      "run_ms": 54.16,
       "status": "succeeded",
       "eval_status": "passed",
       "eval_score": 0.94,
       "trace_events": 47,
       "scripted_session_count": 5,
       "runtime_telemetry": {
-        "duration_ms": 53.06,
+        "duration_ms": 54.16,
         "session_count": 5,
         "token_usage": null,
         "estimated_cost_usd": null,
@@ -200,15 +200,15 @@
       "stale_reason_summaries": []
     },
     "opportunity_discovery_lite": {
-      "compile_ms": 0.46,
-      "run_ms": 50.17,
+      "compile_ms": 0.43,
+      "run_ms": 47.42,
       "status": "succeeded",
       "eval_status": "passed",
       "eval_score": 0.92,
       "trace_events": 38,
       "scripted_session_count": 4,
       "runtime_telemetry": {
-        "duration_ms": 50.17,
+        "duration_ms": 47.42,
         "session_count": 4,
         "token_usage": null,
         "estimated_cost_usd": null,

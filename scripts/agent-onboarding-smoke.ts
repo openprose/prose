@@ -18,19 +18,105 @@ interface SmokeResult {
   stderr_preview: string;
 }
 
+interface DocExpectation {
+  path: string;
+  required_phrases: string[];
+}
+
+interface DocContractCheck {
+  path: string;
+  phrases_checked: number;
+}
+
 interface AgentOnboardingReport {
-  report_version: "0.1";
+  report_version: "0.2";
   generated_at: string;
   status: "pass";
   repo_root: ".";
   temp_root: "$TMP";
   summary: {
     checks: number;
+    doc_contract_checks: number;
     elapsed_ms: number;
   };
   docs_checked: string[];
+  doc_contract: DocContractCheck[];
   checks: SmokeResult[];
 }
+
+const DOC_EXPECTATIONS: DocExpectation[] = [
+  {
+    path: "README.md",
+    required_phrases: [
+      "Contract-first, reactive software for agent workflows.",
+      "Pi is the local graph VM",
+      "A single component contract can still be handed to a compatible agent harness",
+      "bun run smoke:agent-onboarding",
+      "bun run smoke:cold-start",
+      "bun run smoke:live-pi",
+      "bun run build:binary",
+    ],
+  },
+  {
+    path: "docs/README.md",
+    required_phrases: [
+      "OpenProse is not \"just markdown.\"",
+      "durable run materialization through the local Pi-backed meta-harness",
+      "bun run smoke:agent-onboarding",
+      "bun run smoke:cold-start",
+      "bun run smoke:live-pi",
+    ],
+  },
+  {
+    path: "docs/agent-onboarding.md",
+    required_phrases: [
+      "run through the Pi graph VM",
+      "bun run smoke:agent-onboarding",
+      "the run succeeds with `graph_vm: \"pi\"`",
+      "status and trace can explain the run after the fact",
+      "Model providers such as OpenRouter are runtime-profile settings inside Pi.",
+    ],
+  },
+  {
+    path: "docs/inference-examples.md",
+    required_phrases: [
+      "OpenProse is the meta-harness.",
+      "Model providers such as OpenRouter are configured inside the Pi runtime profile",
+      "Use [`prose handoff`](single-run-handoff.md)",
+      "openprose_submit_outputs",
+      "prose trace",
+    ],
+  },
+  {
+    path: "docs/why-and-when.md",
+    required_phrases: [
+      "OpenProse earns its keep when the contract matters.",
+      "Plain skill",
+      "Review typed `.prose.md` contracts and effects",
+      "Inspect runs, artifacts, traces, and graph state",
+    ],
+  },
+  {
+    path: "examples/README.md",
+    required_phrases: [
+      "typed props flow from upstream materialized runs into downstream graph nodes",
+      "every executed graph node maps to a persisted Pi session",
+      "package metadata advertises the graph VM separately from model providers",
+      "bun run confidence:runtime",
+      "bun run smoke:live-pi",
+    ],
+  },
+  {
+    path: "skills/open-prose/SKILL.md",
+    required_phrases: [
+      "OpenProse is a React-like framework for agent outcomes.",
+      "Local reactive graph VM: `pi`",
+      "Model providers: configured inside the Pi runtime profile",
+      "Use `prose status` and `prose trace` against the run root",
+      "Do not claim that Codex CLI, Claude Code, OpenCode, or another shell process is the graph VM",
+    ],
+  },
+];
 
 async function main(): Promise<void> {
   const repoRoot = resolve(import.meta.dir, "..");
@@ -39,7 +125,11 @@ async function main(): Promise<void> {
   const runRoot = join(tempRoot, "runs");
   const startedAt = performance.now();
 
-  await assertDocs(repoRoot);
+  const docContract = await assertDocs(repoRoot);
+  const docContractChecks = docContract.reduce(
+    (total, check) => total + check.phrases_checked,
+    0,
+  );
 
   const steps: SmokeStep[] = [
     {
@@ -126,22 +216,18 @@ async function main(): Promise<void> {
 
   const checks = steps.map((step) => runStep(repoRoot, tempRoot, step));
   const report: AgentOnboardingReport = {
-    report_version: "0.1",
+    report_version: "0.2",
     generated_at: new Date().toISOString(),
     status: "pass",
     repo_root: ".",
     temp_root: "$TMP",
     summary: {
       checks: checks.length,
+      doc_contract_checks: docContractChecks,
       elapsed_ms: Math.round(performance.now() - startedAt),
     },
-    docs_checked: [
-      "README.md",
-      "docs/README.md",
-      "docs/agent-onboarding.md",
-      "examples/README.md",
-      "skills/open-prose/SKILL.md",
-    ],
+    docs_checked: docContract.map((check) => check.path),
+    doc_contract: docContract,
     checks,
   };
 
@@ -159,22 +245,23 @@ async function main(): Promise<void> {
   process.stdout.write(`${JSON.stringify({ status: report.status, checks: checks.length }, null, 2)}\n`);
 }
 
-async function assertDocs(repoRoot: string): Promise<void> {
-  const docs = [
-    "README.md",
-    "docs/README.md",
-    "docs/agent-onboarding.md",
-    "examples/README.md",
-    "skills/open-prose/SKILL.md",
-  ];
-  for (const path of docs) {
+async function assertDocs(repoRoot: string): Promise<DocContractCheck[]> {
+  const checks: DocContractCheck[] = [];
+  for (const expectation of DOC_EXPECTATIONS) {
+    const { path, required_phrases } = expectation;
     const text = await readFile(resolve(repoRoot, path), "utf8");
-    for (const expected of ["OpenProse", "prose"]) {
-      if (!text.includes(expected)) {
-        throw new Error(`${path} does not look like an OpenProse onboarding doc.`);
+    const normalizedText = text.replace(/\s+/g, " ");
+    for (const expected of required_phrases) {
+      if (!text.includes(expected) && !normalizedText.includes(expected)) {
+        throw new Error(`${path} is missing required launch doc contract phrase: ${expected}`);
       }
     }
+    checks.push({
+      path,
+      phrases_checked: required_phrases.length,
+    });
   }
+  return checks;
 }
 
 function runStep(repoRoot: string, tempRoot: string, step: SmokeStep): SmokeResult {
@@ -217,6 +304,7 @@ function renderMarkdown(report: AgentOnboardingReport): string {
     `Generated: ${report.generated_at}`,
     `Status: ${report.status.toUpperCase()}`,
     `Checks: ${report.summary.checks}`,
+    `Doc contract checks: ${report.summary.doc_contract_checks}`,
     `Elapsed: ${report.summary.elapsed_ms}ms`,
     "",
     "Docs checked:",

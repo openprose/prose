@@ -85,6 +85,12 @@ exist and runs the first operator loop: help, lint, preflight, graph, run,
 status, trace, package, and strict publish-check. The runtime confidence matrix
 now includes this as a required deterministic check.
 
+Strengthened in signpost 008: the smoke now checks the public launch-doc
+contract across the README, docs index, agent onboarding guide, inference
+examples, why/when guide, examples guide, and OpenProse skill. That keeps the
+first-ten-minute narrative aligned with the current Pi graph VM, model-provider
+profile, handoff, run, trace, package, and binary-publication vocabulary.
+
 ### R003: Technical Report Evidence Should Be Generated, Not Hand-Copied
 
 The technical report in the private platform repo needs tables from the OSS
@@ -140,6 +146,23 @@ Resolved slice: added `docs/hosted-contract.md` and
 `bun run smoke:hosted-contract`. The OSS package now documents the golden
 fixture boundary and has a combined canary for hosted-runtime fixtures plus
 distributed node request/result behavior.
+
+### R007: First-Ten-Minute Documentation Must Stay Aligned
+
+The public docs are now strong enough to onboard a person or coding agent, but
+the launch cannot rely on manual review to keep that surface coherent. The
+README, docs index, agent onboarding guide, inference examples, why/when guide,
+examples guide, and skill router must continue to describe the same runtime
+model: OpenProse owns the reactive meta-harness, Pi is the local graph VM,
+OpenRouter is a model-provider profile, single-run handoff is separate from
+graph execution, and runs/traces/packages are durable product surfaces.
+
+Status: done in signpost 008.
+
+Resolved slice: upgraded `bun run smoke:agent-onboarding` from existence checks
+to a launch-doc contract with 36 required phrases across the seven public
+onboarding surfaces. The generated report now records both the executable
+operator-loop checks and the doc-contract checks.
 
 ## Per-Slice Discipline
 
