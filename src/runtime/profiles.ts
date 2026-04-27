@@ -24,13 +24,6 @@ export interface ResolveRuntimeProfileOptions {
   env?: Record<string, string | undefined>;
 }
 
-const MODEL_PROVIDER_GRAPH_VMS = new Set(["openrouter", "openai_compatible"]);
-const SINGLE_RUN_HARNESS_GRAPH_VMS = new Set([
-  "opencode",
-  "codex_cli",
-  "claude_code",
-]);
-
 export function resolveRuntimeProfile(
   options: ResolveRuntimeProfileOptions = {},
 ): RuntimeProfile {
@@ -103,19 +96,9 @@ function graphVmFromSelectedRuntime(
 }
 
 function assertGraphVm(graphVm: string): void {
-  if (MODEL_PROVIDER_GRAPH_VMS.has(graphVm)) {
+  if (graphVm !== "pi") {
     throw new Error(
-      `Runtime profile graph_vm '${graphVm}' is a model provider profile, not an OpenProse graph VM. Configure it as model_provider inside a Pi runtime profile.`,
-    );
-  }
-  if (SINGLE_RUN_HARNESS_GRAPH_VMS.has(graphVm)) {
-    throw new Error(
-      `Runtime profile graph_vm '${graphVm}' is a single-run harness, not the reactive graph VM. Use graph_vm 'pi' and configure single_run_harness separately when needed.`,
-    );
-  }
-  if (graphVm === "fixture") {
-    throw new Error(
-      "Runtime profile graph_vm 'fixture' has been removed. Use graph_vm 'pi'; deterministic --output runs use an internal scripted Pi session.",
+      `Runtime profile graph_vm '${graphVm}' is not registered. Available graph VMs: pi.`,
     );
   }
 }

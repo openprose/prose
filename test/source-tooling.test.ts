@@ -377,9 +377,9 @@ name: stable-format
   test("lints a directory of source files", async () => {
     const dir = mkdtempSync(join(tmpdir(), "openprose-lint-dir-"));
     writeFileSync(
-      join(dir, "legacy.md"),
+      join(dir, "notes.md"),
       `---
-name: legacy
+name: notes
 kind: service
 ---
 
@@ -404,11 +404,8 @@ kind: service
     const report = await lintPath(dir);
     const text = renderLintReportText(report);
 
-    expect(Array.from(report.keys()).length).toBe(2);
-    expect(report.get(join(dir, "legacy.md").replace(/\\/g, "/"))?.map((d) => d.code)).toContain(
-      "non_canonical_extension",
-    );
-    expect(text).toContain("legacy.md: 2 diagnostics");
+    expect(Array.from(report.keys()).length).toBe(1);
+    expect(report.has(join(dir, "notes.md").replace(/\\/g, "/"))).toBe(false);
     expect(text).toContain("clean.prose.md: 0 diagnostics");
   });
 

@@ -11,8 +11,8 @@ describe("OpenProse module boundaries", () => {
     expect(typeof prose.graph.graphSource).toBe("function");
     expect(typeof prose.store.statusPath).toBe("function");
     expect(typeof prose.runtime.planSource).toBe("function");
-    for (const legacyExport of ["materialize" + "Source", "materialize" + "File"]) {
-      expect(legacyExport in prose.runtime).toBe(false);
+    for (const removedExport of ["materialize" + "Source", "materialize" + "File"]) {
+      expect(removedExport in prose.runtime).toBe(false);
     }
     expect(typeof prose.packageLifecycle.packagePath).toBe("function");
     expect(typeof prose.runCli).toBe("function");

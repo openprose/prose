@@ -93,10 +93,7 @@ async function runCliInner(args: string[]): Promise<void> {
       process.exitCode = 1;
       return;
     }
-    const flagError = validateDeprecatedProviderFlag(options.deprecatedProvider);
-    if (flagError) {
-      console.error(flagError);
-      process.exitCode = 1;
+    if (reportUnknownOptions(options.unknownOptions)) {
       return;
     }
     const graphVmError = validateCliGraphVm(options.graphVm);
@@ -155,10 +152,7 @@ async function runCliInner(args: string[]): Promise<void> {
       process.exitCode = 1;
       return;
     }
-    const flagError = validateDeprecatedProviderFlag(options.deprecatedProvider);
-    if (flagError) {
-      console.error(flagError);
-      process.exitCode = 1;
+    if (reportUnknownOptions(options.unknownOptions)) {
       return;
     }
     const graphVmError = validateCliGraphVm(options.graphVm);
@@ -220,10 +214,7 @@ async function runCliInner(args: string[]): Promise<void> {
       process.exitCode = 1;
       return;
     }
-    const flagError = validateDeprecatedProviderFlag(options.deprecatedProvider);
-    if (flagError) {
-      console.error(flagError);
-      process.exitCode = 1;
+    if (reportUnknownOptions(options.unknownOptions)) {
       return;
     }
     const graphVmError = validateCliGraphVm(options.graphVm);
@@ -281,6 +272,9 @@ async function runCliInner(args: string[]): Promise<void> {
         ? rest[0]
         : "preflight";
     const options = parseFileCommandArgs(action === "preflight" && rest[0] !== "preflight" ? rest : rest.slice(1));
+    if (reportUnknownOptions(options.unknownOptions)) {
+      return;
+    }
     if (!options.file) {
       console.error("Missing package path.");
       process.exitCode = 1;
@@ -436,6 +430,9 @@ async function runCliInner(args: string[]): Promise<void> {
 
   if (command === "handoff") {
     const options = parseFileCommandArgs(rest);
+    if (reportUnknownOptions(options.unknownOptions)) {
+      return;
+    }
     if (!options.file) {
       console.error("Missing file path.");
       process.exitCode = 1;
@@ -509,6 +506,9 @@ async function runCliInner(args: string[]): Promise<void> {
   }
 
   const options = parseFileCommandArgs(rest);
+  if (reportUnknownOptions(options.unknownOptions)) {
+    return;
+  }
   if (!options.file) {
     console.error("Missing file path.");
     printHelp();
@@ -821,7 +821,7 @@ interface FileCommandArgs {
   graphVm: string | null;
   runtimeProfile: RuntimeProfileInput;
   nodeExecutorCommand: string | null;
-  deprecatedProvider: string | null;
+  unknownOptions: string[];
   deploymentName: string | null;
   deploymentSlug: string | null;
   orgId: string | null;
@@ -850,7 +850,7 @@ interface RemoteCommandArgs {
   graphVm: string | null;
   runtimeProfile: RuntimeProfileInput;
   nodeExecutorCommand: string | null;
-  deprecatedProvider: string | null;
+  unknownOptions: string[];
 }
 
 function parseGrammarCommandArgs(args: string[]): GrammarCommandArgs {
@@ -996,7 +996,7 @@ function parseFileCommandArgs(args: string[]): FileCommandArgs {
     graphVm: null,
     runtimeProfile: {},
     nodeExecutorCommand: null,
-    deprecatedProvider: null,
+    unknownOptions: [],
     deploymentName: null,
     deploymentSlug: null,
     orgId: null,
@@ -1189,11 +1189,6 @@ function parseFileCommandArgs(args: string[]): FileCommandArgs {
       parsed.runtimeProfile.persist_sessions = false;
       continue;
     }
-    if (arg === "--provider") {
-      parsed.deprecatedProvider = args[index + 1] ?? "";
-      index += 1;
-      continue;
-    }
     if (arg === "--deployment-name") {
       parsed.deploymentName = args[index + 1] ?? null;
       index += 1;
@@ -1257,6 +1252,10 @@ function parseFileCommandArgs(args: string[]): FileCommandArgs {
       index += 1;
       continue;
     }
+    if (arg.startsWith("-")) {
+      parsed.unknownOptions.push(arg);
+      continue;
+    }
     if (!parsed.file) {
       parsed.file = arg;
     }
@@ -1282,7 +1281,7 @@ function parseRemoteCommandArgs(args: string[]): RemoteCommandArgs {
     graphVm: null,
     runtimeProfile: {},
     nodeExecutorCommand: null,
-    deprecatedProvider: null,
+    unknownOptions: [],
   };
 
   for (let index = 0; index < args.length; index += 1) {
@@ -1376,11 +1375,6 @@ function parseRemoteCommandArgs(args: string[]): RemoteCommandArgs {
       parsed.runtimeProfile.persist_sessions = false;
       continue;
     }
-    if (arg === "--provider") {
-      parsed.deprecatedProvider = args[index + 1] ?? "";
-      index += 1;
-      continue;
-    }
     if (arg === "--approved-effect") {
       const effect = args[index + 1];
       if (effect) {
@@ -1397,6 +1391,10 @@ function parseRemoteCommandArgs(args: string[]): RemoteCommandArgs {
     if (arg === "--output") {
       addKeyValue(parsed.outputs, args[index + 1]);
       index += 1;
+      continue;
+    }
+    if (arg.startsWith("-")) {
+      parsed.unknownOptions.push(arg);
       continue;
     }
     if (!parsed.file && parsed.action) {
@@ -1469,23 +1467,16 @@ function validateCliGraphVm(graphVm: string | null): string | null {
   if (graphVm === "pi") {
     return null;
   }
-  if (graphVm === "openrouter" || graphVm === "openai_compatible") {
-    return `Graph VM '${graphVm}' is a model provider profile, not an OpenProse graph VM. Configure it through OPENPROSE_PI_MODEL_PROVIDER and run with the Pi graph VM.`;
-  }
-  if (graphVm === "fixture") {
-    return "The fixture graph VM has been removed. Use --output without --graph-vm for deterministic local tests, or run the Pi graph VM for real execution.";
-  }
-  if (graphVm === "local_process" || graphVm === "local-process") {
-    return "Command-style adapters are single-run harness integrations, not OpenProse graph VMs. Use the Pi graph VM for reactive graph execution.";
-  }
   return `OpenProse graph VM '${graphVm}' is not registered. Available graph VMs: pi.`;
 }
 
-function validateDeprecatedProviderFlag(value: string | null): string | null {
-  if (value === null) {
-    return null;
+function reportUnknownOptions(options: string[]): boolean {
+  if (options.length === 0) {
+    return false;
   }
-  return "The --provider flag has been removed from the public graph runtime surface. Use --graph-vm pi, and configure model providers through OPENPROSE_PI_MODEL_PROVIDER.";
+  console.error(`Unknown option: ${options[0]}`);
+  process.exitCode = 1;
+  return true;
 }
 
 function renderDeploymentPlanText(result: PackageEntrypointPlanResult): string {

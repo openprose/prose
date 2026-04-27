@@ -23,7 +23,6 @@ describe("OpenProse CLI UX", () => {
     expect(stdout).toContain("--graph-vm pi");
     expect(stdout).toContain("--model-provider");
     expect(stdout).toContain("--no-persist-sessions");
-    expect(stdout).not.toContain("--provider fixture");
     expect(stdout).not.toContain("prose fixture");
   });
 
@@ -99,35 +98,32 @@ describe("OpenProse CLI UX", () => {
     expect(decode(graph.stdout)).toContain("stale: no_current_run");
   });
 
-  test("rejects model providers as graph VM selections", () => {
+  test("rejects unregistered graph VM selections", () => {
     const result = runProseCli([
       "run",
       "fixtures/compiler/hello.prose.md",
       "--graph-vm",
-      "openrouter",
+      "unknown-vm",
       "--output",
       "message=This should not run.",
     ]);
 
     expect(result.exitCode).toBe(1);
-    expect(decode(result.stderr)).toContain(
-      "is a model provider profile, not an OpenProse graph VM",
-    );
+    expect(decode(result.stderr)).toContain("OpenProse graph VM 'unknown-vm' is not registered");
   });
 
-  test("rejects the old provider flag with graph VM vocabulary", () => {
+  test("rejects unknown options", () => {
     const result = runProseCli([
       "run",
       "fixtures/compiler/hello.prose.md",
-      "--provider",
+      "--bogus",
       "pi",
       "--output",
       "message=This should not run.",
     ]);
 
     expect(result.exitCode).toBe(1);
-    expect(decode(result.stderr)).toContain("--provider flag has been removed");
-    expect(decode(result.stderr)).toContain("--graph-vm pi");
+    expect(decode(result.stderr)).toContain("Unknown option: --bogus");
   });
 
   test("remote execute shares graph VM vocabulary with local runs", () => {
@@ -136,15 +132,13 @@ describe("OpenProse CLI UX", () => {
       "execute",
       "fixtures/compiler/hello.prose.md",
       "--graph-vm",
-      "openrouter",
+      "unknown-vm",
       "--output",
       "message=This should not run.",
     ]);
 
     expect(result.exitCode).toBe(1);
-    expect(decode(result.stderr)).toContain(
-      "is a model provider profile, not an OpenProse graph VM",
-    );
+    expect(decode(result.stderr)).toContain("OpenProse graph VM 'unknown-vm' is not registered");
   });
 });
 

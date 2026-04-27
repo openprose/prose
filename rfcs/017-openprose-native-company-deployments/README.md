@@ -132,21 +132,6 @@ The implementation is on track only when the dev platform can run this ladder:
 - Do not preserve backward compatibility with old experiments if they block the
   ideal deployment model.
 
-## Phase Tree
-
-The implementation sequence is:
-
-1. [`01-oss-deployment-vocabulary`](phases/01-oss-deployment-vocabulary/)
-2. [`02-oss-package-entrypoint-graphs`](phases/02-oss-package-entrypoint-graphs/)
-3. [`03-oss-local-deployment-runtime`](phases/03-oss-local-deployment-runtime/)
-4. [`04-oss-reference-company-acceptance`](phases/04-oss-reference-company-acceptance/)
-5. [`05-platform-deployment-data-model`](phases/05-platform-deployment-data-model/)
-6. [`06-platform-deployment-control-plane`](phases/06-platform-deployment-control-plane/)
-7. [`07-platform-company-cockpit`](phases/07-platform-company-cockpit/)
-8. [`08-dev-openprose-native-company`](phases/08-dev-openprose-native-company/)
-
-Each phase has sub-phases with test, commit, and signpost requirements.
-
 ## Open Questions
 
 See [`open-questions.md`](open-questions.md).

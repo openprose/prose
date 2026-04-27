@@ -166,11 +166,11 @@ describe("customer-repo-scaffold-preview north-star example", () => {
     expect(result.record.outputs).toEqual([]);
   });
 
-  test("seeded deprecated delivery directory output is rejected by the eval", async () => {
+  test("seeded retired delivery directory output is rejected by the eval", async () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-scaffold-bad-"));
     const result = await runScaffoldWithScriptedPi({
       runRoot,
-      runId: "scaffold-deprecated-delivery",
+      runId: "scaffold-retired-delivery",
       inputs: {
         lead_program_plan: fixture("customer-repo-scaffold-preview/seeded-bad.lead-program-plan.md"),
       },
@@ -195,7 +195,7 @@ describe("customer-repo-scaffold-preview north-star example", () => {
         "customer-repo-scaffold-preview-eval": evalSubmission(
           false,
           0.22,
-          "fail: deprecated delivery path",
+          "fail: retired delivery path",
         ),
       },
     });

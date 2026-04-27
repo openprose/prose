@@ -60,7 +60,7 @@ JSON, `passed` is true, and `failures` is an empty JSON array. When
 source roots, executable components, eval subjects, and dependency edges.
 
 Fail on unresolved service references, missing paired evals, stale executable
-metadata, source files under deprecated roots, or cross-system private
+metadata, source files under retired roots, or cross-system private
 dependencies. Do not fail on committed `.prose/runs/` artifacts or nested
 customer packages unless the snapshot explicitly includes them in scope.
 

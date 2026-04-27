@@ -7,7 +7,6 @@ export async function collectSourceFiles(
   path: string,
   options: {
     excludeNestedPackageRoots?: boolean;
-    includeLegacyMarkdown?: boolean;
   } = {},
 ): Promise<string[]> {
   const resolved = resolve(path);
@@ -29,7 +28,6 @@ async function walk(
   files: string[],
   options: {
     excludeNestedPackageRoots?: boolean;
-    includeLegacyMarkdown?: boolean;
     root: string;
   },
 ): Promise<void> {
@@ -53,25 +51,10 @@ async function walk(
       continue;
     }
 
-    if (matchesSourceFile(entry.name, options)) {
+    if (entry.name.endsWith(".prose.md")) {
       files.push(fullPath);
     }
   }
-}
-
-function matchesSourceFile(
-  name: string,
-  options: { includeLegacyMarkdown?: boolean },
-): boolean {
-  if (name.endsWith(".prose.md")) {
-    return true;
-  }
-
-  if (options.includeLegacyMarkdown) {
-    return name.endsWith(".md") && !name.endsWith(".prose.md");
-  }
-
-  return false;
 }
 
 export function isDirectoryPath(path: string): boolean {

@@ -94,32 +94,25 @@ describe("OpenProse runtime profiles", () => {
     });
   });
 
-  test("rejects model providers and single-run harnesses as graph VMs", () => {
+  test("rejects unregistered graph VMs", () => {
     expect(() =>
       resolveRuntimeProfile({
         profile: {
-          graph_vm: "openrouter",
+          graph_vm: "unknown-vm",
         },
       }),
-    ).toThrow("is a model provider profile, not an OpenProse graph VM");
-
-    expect(() =>
-      resolveRuntimeProfile({
-        profile: {
-          graph_vm: "codex_cli",
-        },
-      }),
-    ).toThrow("is a single-run harness, not the reactive graph VM");
+    ).toThrow("Runtime profile graph_vm 'unknown-vm' is not registered");
   });
 
   test("rejects profiles that conflict with an explicitly selected graph VM", () => {
     expect(() =>
       resolveRuntimeProfile({
         profile: {
-          graph_vm: "fixture",
+          graph_vm: "pi",
         },
+        selectedGraphVm: "custom-vm",
       }),
-    ).toThrow("graph_vm 'fixture' has been removed");
+    ).toThrow("graph_vm 'pi' conflicts with selected graph VM 'custom-vm'");
   });
 
   test("records runtime profile fields on node-run requests, runs, and attempts", async () => {

@@ -31,13 +31,13 @@ export async function lintFile(path: string): Promise<Diagnostic[]> {
 }
 
 export async function lintPath(path: string): Promise<Map<string, Diagnostic[]>> {
-  const files = await collectSourceFiles(path, { includeLegacyMarkdown: true });
+  const files = await collectSourceFiles(path);
   const report = new Map<string, Diagnostic[]>();
   const scopeRoot = resolvePackageScopeRoot(path);
   const scopeFiles =
     normalizePath(scopeRoot) === normalizePath(resolve(path))
       ? files
-      : await collectSourceFiles(scopeRoot, { includeLegacyMarkdown: true });
+      : await collectSourceFiles(scopeRoot);
   const sources = new Map<string, string>();
   const draftsByPath = new Map<string, ComponentDraft[]>();
   const availableComponentNames = new Set<string>();

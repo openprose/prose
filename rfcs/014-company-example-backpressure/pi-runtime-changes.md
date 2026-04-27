@@ -18,20 +18,15 @@ OpenProse should model these axes separately:
 | Tools | Capabilities exposed to a node session. | Start with OpenProse output/effect submission. |
 | Persistence | Where sessions, run records, artifacts, and traces land. | OpenProse run store, persisted by default. |
 
-This avoids the confusing statement that `pi`, `openrouter`, `codex_cli`, and
-`openai_compatible` are all the same kind of thing. They are not.
+This avoids the confusing shape where runtime selection, model routing, and
+one-off harness portability are treated as the same axis. They are not.
 
 ## Required Package Changes
 
 ### 1. Remove Flat Public Provider Semantics
 
-The author-facing runtime surface should no longer present graph execution as:
-
-```text
---provider fixture|openrouter|openai_compatible|pi|opencode|codex_cli|claude_code
-```
-
-Instead, graph execution should be configured as a runtime profile:
+The author-facing runtime surface should configure graph execution through a
+runtime profile:
 
 ```yaml
 runtime:

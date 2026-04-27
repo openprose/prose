@@ -56,7 +56,6 @@ has drifted away from its North Star.
   runs are validated as typed materializations, not scraped text transcripts.
 - Every example needs an eval, a measurement, and at least one seeded-bad case
   by the time it graduates into the release matrix.
-- Commit and signpost after every implementation slice.
 
 ## Required Pi Runtime Changes
 
@@ -93,16 +92,8 @@ Active source, tests, fixtures, and hosted envelopes now use:
 - producer for graph components that produce output ports.
 - storage backend for artifact storage implementation details.
 
-Older RFC 013 signposts may still use provider-era wording as historical
-evidence; do not use them as current API guidance.
-
 The fuller runtime-change plan is in
 [`pi-runtime-changes.md`](pi-runtime-changes.md).
-
-The implementation-readiness scan is in
-[`implementation-readiness.md`](implementation-readiness.md). It records what
-to keep, what to delete, and why implementation should start with Phase 02
-before the example suite grows.
 
 ## Company Source Material Reviewed
 
@@ -154,17 +145,6 @@ artifacts that update when upstream facts change, materialized subresults that
 can be reused, multi-node deliberation, durable memory, and policy-gated
 mutation.
 
-## Phase Tree
-
-- [`phases/README.md`](phases/README.md)
-- [`phases/01-example-ladder-and-fixtures`](phases/01-example-ladder-and-fixtures/)
-- [`phases/02-pi-first-runtime-backpressure`](phases/02-pi-first-runtime-backpressure/)
-- [`phases/03-simple-company-graphs`](phases/03-simple-company-graphs/)
-- [`phases/04-reactive-company-loops`](phases/04-reactive-company-loops/)
-- [`phases/05-gated-and-mutating-workflows`](phases/05-gated-and-mutating-workflows/)
-- [`phases/06-measurement-and-release-gates`](phases/06-measurement-and-release-gates/)
-- [`phases/07-reference-company-sync`](phases/07-reference-company-sync/)
-
 ## Backpressure Matrix
 
 | Capability | First Example | Pi Runtime Requirement |
@@ -181,22 +161,6 @@ mutation.
 | Model tier routing | `agent-ecosystem-index-refresh` | Separate model provider/model selection from harness/runtime selection. |
 | Seeded-bad evals | `lead-program-designer` | Validate structured outputs semantically, not by transcript shape. |
 | Live inference smoke | `company-signal-brief` | Exercise Pi + OpenRouter as graph substrate/model provider layers. |
-
-## Commit And Signpost Discipline
-
-Every sub-phase must end with:
-
-1. Tests run and recorded.
-2. A signpost in `rfcs/014-company-example-backpressure/signposts/`.
-3. A commit with a narrow message.
-
-Signposts should include:
-
-- what changed
-- what example or runtime capability it advances
-- how it was tested
-- what remains next
-- any runtime/RFC learnings discovered while implementing
 
 ## Exit Criteria
 

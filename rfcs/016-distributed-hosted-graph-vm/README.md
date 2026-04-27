@@ -99,7 +99,6 @@ Tests:
 - model providers remain separate from graph VMs
 - node request execution produces a `NodeExecutionResult`
 
-Commit and signpost after this phase.
 
 ### Phase 02: OSS Delegated Graph Runtime
 
@@ -112,7 +111,6 @@ Tests:
 - upstream artifacts are present in downstream node requests
 - fallback node runner is never called
 
-Commit and signpost after this phase.
 
 ### Phase 03: OSS External Node Executor CLI
 
@@ -124,7 +122,6 @@ Tests:
 - `prose remote execute --node-executor-command <cmd>` executes a graph through request/result files
 - command failure produces an actionable diagnostic
 
-Commit and signpost after this phase.
 
 ### Phase 04: Platform Distributed Provider Contract
 
@@ -137,7 +134,6 @@ Tests:
 - unit test node result parsing and event projection
 - integration test with a fake worker provider
 
-Commit and signpost after this phase.
 
 ### Phase 05: Sprites Worker Implementation
 
@@ -150,7 +146,6 @@ Tests:
 - result JSON is parsed even when logs are noisy
 - failed worker execution is materialized as node failure
 
-Commit and signpost after this phase.
 
 ### Phase 06: Evidence And Cutover
 
@@ -164,5 +159,3 @@ Tests:
 - platform typecheck
 - local distributed smoke
 - Sprites distributed smoke when credentials are configured
-
-Commit and signpost after this phase.

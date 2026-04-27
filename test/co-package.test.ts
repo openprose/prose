@@ -19,7 +19,7 @@ const systemMapEvalPath = "packages/co/evals/company-system-map.eval.prose.md";
 const deterministicOutputs = {
   "repo-structure-inspector.source_layout": JSON.stringify({
     source_roots: ["systems", "shared"],
-    legacy_roots: [],
+    retired_roots: [],
   }),
   "repo-structure-inspector.source_layout_failures": "[]",
   "contract-eval-drift-inspector.contract_surface": JSON.stringify({

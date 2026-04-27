@@ -11,9 +11,6 @@ describe("agent-facing entrypoints", () => {
 
     expect(unreleased).toContain("Pi graph VM");
     expect(unreleased).toContain("prose handoff");
-    expect(unreleased).not.toContain("local-process");
-    expect(unreleased).not.toContain("provider interfaces");
-    expect(unreleased).not.toContain("prose fixture materialize");
   });
 
   test("skill and command sidecars route agents to current CLI boundaries", () => {

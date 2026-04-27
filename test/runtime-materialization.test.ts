@@ -117,7 +117,7 @@ describe("OpenProse deterministic materialization and remote envelope", () => {
     expect(record.caller.trigger).toBe("api");
   });
 
-  test("does not expose legacy materialization as the top-level runtime command", () => {
+  test("does not expose materialize as the top-level runtime command", () => {
     const sourceFile = fixturePath("compiler/hello.prose.md");
     const result = runProseCli(["materialize", sourceFile]);
 

@@ -3,9 +3,6 @@
 **Status:** In implementation
 **Date:** 2026-04-25
 
-**Latest Implementation Note:**
-[`031-package-metadata-v2-and-std-quality`](implementation-notes/031-package-metadata-v2-and-std-quality.md)
-
 ## Summary
 
 OpenProse now has a local-first compiler, planner, materializer, package
@@ -72,7 +69,7 @@ Open naming to decide during implementation:
 - `prose remote prepare`
 - `prose remote execute`
 - `prose runner bundle`
-- `prose materialize --hosted-envelope`
+- `prose remote execute`
 
 The contract should accept:
 

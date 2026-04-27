@@ -24,7 +24,7 @@ kind: test
 
 ### Expects Not
 
-- deprecated `delivery/` scaffold paths
+- retired `delivery/` scaffold paths
 - writes outside the scratch workspace
 - untracked file mutations not represented in the preview
 
@@ -32,4 +32,4 @@ kind: test
 
 - required_directory_coverage = 1
 - unauthorized_write_count = 0
-- deprecated_path_count = 0
+- retired_path_count = 0

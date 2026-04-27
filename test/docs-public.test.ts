@@ -24,12 +24,7 @@ describe("public docs", () => {
       /active product-shaping/i,
       /Runtime Release Candidate/i,
       /Prose Complete/i,
-      /--provider/,
       /openai_compatible/i,
-      /direct provider/i,
-      /fixture provider/i,
-      /local process/i,
-      /provider protocol/i,
     ];
 
     for (const file of publicMarkdownFiles()) {

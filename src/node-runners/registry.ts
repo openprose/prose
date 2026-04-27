@@ -37,12 +37,6 @@ export function resolveNodeRunner(
     );
   }
 
-  if (requested === "fixture") {
-    throw new Error(
-      "The fixture graph VM has been removed. Deterministic --output values now run through an internal scripted Pi session.",
-    );
-  }
-
   if (requested === "pi") {
     if (hasDeterministicOutputs(deterministicOutputs)) {
       return createScriptedPiRuntime({ outputs: deterministicOutputs });
@@ -57,18 +51,6 @@ export function resolveNodeRunner(
         }),
         env,
       ),
-    );
-  }
-
-  if (requested === "openrouter" || requested === "openai_compatible") {
-    throw new Error(
-      `Graph VM '${requested}' is a model provider profile, not an OpenProse graph VM. Configure it through OPENPROSE_PI_MODEL_PROVIDER and run with the Pi graph VM.`,
-    );
-  }
-
-  if (requested === "local_process" || requested === "local-process") {
-    throw new Error(
-      "Command-style adapters are single-run harness integrations, not OpenProse graph VMs. Use the Pi graph VM for reactive graph execution.",
     );
   }
 

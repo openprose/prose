@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { mkdir, readFile, readdir } from "node:fs/promises";
+import { mkdir, readdir } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { compileFile } from "./compiler";
 import { collectSourceFiles } from "./files";
@@ -242,13 +242,10 @@ function normalizeSourcePackage(sourceGit: string): string {
 }
 
 async function scanDependencyPackages(root: string): Promise<Set<string>> {
-  const files = await collectSourceFiles(root, { includeLegacyMarkdown: true });
+  const files = await collectSourceFiles(root);
   const packages = new Set<string>();
 
   for (const file of files) {
-    if (!(await looksLikeExecutableSource(file))) {
-      continue;
-    }
     const ir = await compileFile(file);
     for (const dependency of ir.package.dependencies) {
       if (dependency.package) {
@@ -258,16 +255,6 @@ async function scanDependencyPackages(root: string): Promise<Set<string>> {
   }
 
   return packages;
-}
-
-async function looksLikeExecutableSource(path: string): Promise<boolean> {
-  if (path.endsWith(".prose.md")) {
-    return true;
-  }
-
-  const source = await readFile(path, "utf8");
-  const header = source.slice(0, 400);
-  return /^---\s*$/m.test(header) && /^kind:\s*(program|service|composite|test)\s*$/m.test(header);
 }
 
 function parseHostSource(sourceGit: string): { host: string; owner: string; repo: string } | null {

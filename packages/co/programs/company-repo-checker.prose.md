@@ -24,14 +24,14 @@ operations.
 
 - `repo_path`: Path<RepositoryRoot> - local path to the company-as-code repository root
 - `source_roots`: Path[] - optional source roots; default `["systems","shared"]`
-- `legacy_roots`: Path[] - optional deprecated roots; default `["responsibilities","services","delivery","evals","planning"]`
+- `retired_roots`: Path[] - optional retired roots that should not contain source files; default `["responsibilities","services","delivery","evals","planning"]`
 - `ignored_roots`: Path[] - optional roots ignored by the default check; default `[".prose","customers"]`
 - `external_prefixes`: string[] - optional dependency prefixes resolved outside this package; default `["std/","co/","github.com/","gitlab.com/","registry://"]`
 
 ### Ensures
 
 - `report`: Json<RepoReadinessReport> - structured readiness report containing:
-  - source_layout: legacy source roots empty, source under declared roots
+  - source_layout: retired source roots empty, source under declared roots
   - contract_surface: executable components declare Requires and Ensures
   - eval_pairing: every program or service has a paired eval subject when expected
   - eval_metadata: evals declare subject, tier, contract_version, expectations, and tracked metrics
@@ -49,7 +49,7 @@ operations.
 - `parse_failed`: a Contract Markdown file cannot be read or parsed
 - `unresolved_service`: a Services entry does not resolve in the package walk
 - `eval_drift`: a component lacks a paired eval or an eval subject does not resolve
-- `source_layout_violation`: source appears under a deprecated flat root
+- `source_layout_violation`: source appears under a retired flat root
 - `ownership_violation`: shared code depends on system-private code, or one system depends directly on another system's private source
 
 ### Strategies
@@ -69,7 +69,7 @@ parallel:
   let source_layout = call repo-structure-inspector
     repo_path: repo_path
     source_roots: source_roots
-    legacy_roots: legacy_roots
+    retired_roots: retired_roots
     ignored_roots: ignored_roots
 
   let contract_surface = call contract-eval-drift-inspector
@@ -102,14 +102,14 @@ return report
 
 - `repo_path`: Path<RepositoryRoot> - local path to inspect
 - `source_roots`: Path[] - optional source roots to treat as package-owned source
-- `legacy_roots`: Path[] - optional deprecated roots that should not accumulate source files
+- `retired_roots`: Path[] - optional retired roots that should not contain source files
 - `ignored_roots`: Path[] - optional roots to skip in default scope
 
 ### Ensures
 
 - `source_layout`: Json<RepoSourceLayoutReport> - source layout report containing:
   - source_roots: status for each declared source root
-  - legacy_roots: status for each deprecated root
+  - retired_roots: status for each retired root
   - ignored_roots: roots excluded from the default check
   - stale_vocabulary: file-grounded findings for obsolete executable vocabulary
 - `source_layout_failures`: Json<RepoFailure[]> - source layout violations
@@ -122,9 +122,9 @@ return report
 
 - use the package root as the boundary
 - apply the program defaults when optional root inputs are empty
-- allow historical migration maps in docs to mention old roots
-- fail only when executable source or eval metadata reintroduces old roots or kinds
-- flag committed `.prose.md` source files under deprecated flat roots
+- allow architecture history in docs to mention old roots
+- fail only when executable source or eval metadata reintroduces retired roots or kinds
+- flag committed `.prose.md` source files under retired flat roots
 
 ---
 

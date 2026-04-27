@@ -60,7 +60,7 @@ When the fixture contract intentionally changes:
 1. Update the OSS runtime and fixtures together.
 2. Run `bun run smoke:hosted-contract` in the OSS package.
 3. Update platform tests that vendor the fixtures.
-4. Record the migration in an OSS signpost and a platform signpost.
+4. Refresh the generated OSS and platform evidence that guards the fixture.
 
 ## Drift Rule
 
@@ -70,4 +70,3 @@ fixtures, first decide whether it is:
 - a portable OpenProse runtime field, which belongs in the OSS contract; or
 - hosted platform state, which belongs in platform models and must not leak
   into `.prose.md` source or the OSS runtime contract.
-

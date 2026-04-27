@@ -79,37 +79,15 @@ describe("OpenProse node runner registry", () => {
     );
   });
 
-  test("rejects model providers as graph VMs", () => {
+  test("rejects unregistered graph VMs", () => {
     expect(() =>
       resolveNodeRunner({
-        graphVm: "openrouter",
+        graphVm: "unknown-vm",
         env: {
           OPENROUTER_API_KEY: "test-key",
         },
       }),
-    ).toThrow("model provider profile, not an OpenProse graph VM");
-
-    expect(() =>
-      resolveNodeRunner({
-        graphVm: "openai_compatible",
-      }),
-    ).toThrow("model provider profile, not an OpenProse graph VM");
-  });
-
-  test("rejects command-style adapters as graph VMs", () => {
-    expect(() =>
-      resolveNodeRunner({
-        graphVm: "local-process",
-      }),
-    ).toThrow("Command-style adapters are single-run harness integrations");
-  });
-
-  test("rejects the removed fixture graph VM", () => {
-    expect(() =>
-      resolveNodeRunner({
-        graphVm: "fixture",
-      }),
-    ).toThrow("fixture graph VM has been removed");
+    ).toThrow("OpenProse graph VM 'unknown-vm' is not registered");
   });
 
   test("rejects invalid node runner environment configuration", () => {
