@@ -46,6 +46,13 @@ function summarizeStep(step: any): any {
     return {
       ...base,
       body: step.body.map(summarizeStep),
+      catch: step.catch.map((clause: any) => ({
+        raw: clause.raw,
+        error: clause.error,
+        source_span: clause.source_span,
+        body: clause.body.map(summarizeStep),
+      })),
+      finally: step.finally.map(summarizeStep),
     };
   }
   if (step.kind === "return") {

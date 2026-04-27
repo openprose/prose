@@ -101,7 +101,7 @@ export function createOpenProseSubagentTool(
     promptGuidelines: [
       "Use openprose_subagent for focused child-session research, review, or transformation work inside this node.",
       "Ask child sessions to write large notes or artifacts under their private state root and return refs instead of large text blobs.",
-      "Child sessions cannot submit graph outputs; the parent node must call openprose_submit_outputs.",
+      "Child sessions cannot submit graph outputs or graph errors; the parent node must call openprose_submit_outputs or openprose_report_error.",
     ],
     parameters: subagentParameters,
     async execute(_toolCallId, params) {
@@ -305,7 +305,7 @@ function renderSubagentPrompt(options: {
     "",
     "Rules:",
     "- Inherit the parent node permissions and policy constraints.",
-    "- Do not submit graph outputs. The parent session is responsible for openprose_submit_outputs.",
+    "- Do not submit graph outputs or graph errors. The parent session is responsible for openprose_submit_outputs and openprose_report_error.",
     "- Write durable notes, scratch work, and artifacts under the private state root.",
     "- Return concise pointers and a short summary to the parent.",
     "",

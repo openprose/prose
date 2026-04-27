@@ -211,9 +211,11 @@ function privateStateEnvelope(): NodeEnvelopePrivateState {
 const PROSESCRIPT_INTERPRETER_GUIDELINES = [
   "Treat the fenced prose execution body as semantic ProseScript instructions for this node, not as a deterministic host-compiled program.",
   "Follow calls, sessions, parallel blocks, loops, conditionals, try/catch/finally, and returns according to their ordinary workflow meaning.",
+  "Treat catch blocks as intra-node recovery guidance, not as graph-level catch edges or downstream scheduling instructions.",
+  "If catch recovery still satisfies the output contract, submit declared outputs; if recovery cannot satisfy it, report a declared terminal error.",
   "When openprose_subagent is available, prefer it for delegated child work that benefits from isolated context.",
   "Keep child-session work products in private workspace files and pass back concise summaries plus workspace-relative refs when possible.",
-  "The parent node remains responsible for final declared output submission through openprose_submit_outputs.",
+  "The parent node remains responsible for final declared output submission through openprose_submit_outputs or declared error reporting through openprose_report_error.",
 ];
 
 export function renderNodePromptEnvelope(envelope: NodePromptEnvelope): string {

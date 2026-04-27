@@ -541,13 +541,26 @@ function parseExecutionBlock(
     if (raw === "try:") {
       const child = collectIndentedBlock(lines, index + 1, indent);
       const parsed = parseExecutionBlock(child.lines, 0, diagnostics, path, indent + 2);
+      const recovery = parseTryRecoveryClauses(
+        lines,
+        child.nextIndex,
+        diagnostics,
+        path,
+        indent,
+      );
       steps.push({
         kind: "try",
         raw,
         body: parsed.steps,
-        source_span: span(path, line.number, child.endLine ?? line.number),
+        catch: recovery.catchClauses,
+        finally: recovery.finallySteps,
+        source_span: span(
+          path,
+          line.number,
+          recovery.endLine ?? child.endLine ?? line.number,
+        ),
       });
-      index = child.nextIndex;
+      index = recovery.nextIndex;
       continue;
     }
 
@@ -561,6 +574,69 @@ function parseExecutionBlock(
   }
 
   return { steps, nextIndex: index };
+}
+
+function parseTryRecoveryClauses(
+  lines: SourceLine[],
+  startIndex: number,
+  diagnostics: Diagnostic[],
+  path: string,
+  indent: number,
+): {
+  catchClauses: Extract<ExecutionStepIR, { kind: "try" }>["catch"];
+  finallySteps: ExecutionStepIR[];
+  nextIndex: number;
+  endLine: number | null;
+} {
+  const catchClauses: Extract<ExecutionStepIR, { kind: "try" }>["catch"] = [];
+  let finallySteps: ExecutionStepIR[] = [];
+  let index = startIndex;
+  let endLine: number | null = null;
+
+  while (index < lines.length) {
+    const line = lines[index];
+    if (!line.text.trim()) {
+      index += 1;
+      continue;
+    }
+    if (indentation(line.text) !== indent) {
+      break;
+    }
+
+    const raw = line.text.trim();
+    const catchMatch = raw.match(/^catch(?:\s+(.+?))?:$/);
+    if (catchMatch) {
+      const child = collectIndentedBlock(lines, index + 1, indent);
+      const parsed = parseExecutionBlock(child.lines, 0, diagnostics, path, indent + 2);
+      catchClauses.push({
+        raw,
+        error: catchMatch[1]?.trim() ?? null,
+        body: parsed.steps,
+        source_span: span(path, line.number, child.endLine ?? line.number),
+      });
+      endLine = child.endLine ?? line.number;
+      index = child.nextIndex;
+      continue;
+    }
+
+    if (raw === "finally:") {
+      const child = collectIndentedBlock(lines, index + 1, indent);
+      const parsed = parseExecutionBlock(child.lines, 0, diagnostics, path, indent + 2);
+      finallySteps = parsed.steps;
+      endLine = child.endLine ?? line.number;
+      index = child.nextIndex;
+      continue;
+    }
+
+    break;
+  }
+
+  return {
+    catchClauses,
+    finallySteps,
+    nextIndex: index,
+    endLine,
+  };
 }
 
 function collectIndentedBlock(

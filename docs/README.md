@@ -12,7 +12,7 @@ OpenProse is now split into a few clean surfaces:
 - [Single-Run Handoff](single-run-handoff.md): the boundary for exporting one
   component contract to a compatible one-off harness
 - [Subagents and Private State](subagents-private-state.md): intra-node child
-  sessions, private state refs, and harness portability
+  sessions, private state refs, `Catch` recovery, and harness portability
 - [Package Publication](package-publication.md): the source workspace versus
   generated CLI artifact boundary
 - [Hosted Runtime Contract](hosted-contract.md): the fixture boundary shared

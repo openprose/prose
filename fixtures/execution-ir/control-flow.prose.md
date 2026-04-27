@@ -34,6 +34,10 @@ loop:
 
 try:
   call finisher
+catch delivery_failed:
+  call fallback
+finally:
+  call cleanup
 
 return result
 ```

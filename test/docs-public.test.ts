@@ -13,6 +13,7 @@ describe("public docs", () => {
     expect(readme).toContain("bun run prose handoff");
     expect(docsIndex).toContain("bun run prose handoff");
     expect(whatShipped).toContain("`prose handoff`");
+    expect(docsIndex).toContain("`Catch` recovery");
     expect(readme).not.toContain("prose run customers/prose-openprose");
   });
 

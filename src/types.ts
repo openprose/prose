@@ -140,6 +140,15 @@ export interface ExecutionConditionStepIR extends ExecutionStepBaseIR {
 export interface ExecutionTryStepIR extends ExecutionStepBaseIR {
   kind: "try";
   body: ExecutionStepIR[];
+  catch: ExecutionCatchClauseIR[];
+  finally: ExecutionStepIR[];
+}
+
+export interface ExecutionCatchClauseIR {
+  raw: string;
+  error: string | null;
+  body: ExecutionStepIR[];
+  source_span: SourceSpan;
 }
 
 export interface ExecutionReturnStepIR extends ExecutionStepBaseIR {

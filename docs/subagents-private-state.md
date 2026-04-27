@@ -7,8 +7,9 @@ OpenProse supports two execution scopes that work together:
   `openprose_subagent`.
 
 The child sessions are internal to the node. They are not graph nodes, they do
-not create downstream bindings, and they cannot submit graph outputs. The
-parent node stays responsible for `openprose_submit_outputs`.
+not create downstream bindings, and they cannot submit graph outputs or graph
+errors. The parent node stays responsible for `openprose_submit_outputs` and
+`openprose_report_error`.
 
 ## Runtime Boundary
 
@@ -24,8 +25,9 @@ component runtime setting:
 
 When enabled, the tool launches a child session with the parent node's model,
 thinking, tools, approved effects, environment boundary, and policy labels. The
-child tool set removes `openprose_submit_outputs` so only the parent can accept
-declared outputs into the graph.
+child tool set removes `openprose_submit_outputs` and `openprose_report_error`
+so only the parent can accept declared outputs or declared terminal failures
+into the graph.
 
 ## Private State Protocol
 
@@ -43,7 +45,8 @@ The intended protocol is:
    `__subagents/<child-id>/`.
 3. The child returns concise private-state refs to the parent.
 4. The parent reads or summarizes those refs as needed.
-5. The parent submits only declared outputs through `openprose_submit_outputs`.
+5. The parent submits only declared outputs through `openprose_submit_outputs`
+   or reports a declared terminal failure through `openprose_report_error`.
 
 The runtime records child id, purpose, state refs, session ref, policy labels,
 summary, diagnostics, and timestamp in `openprose-private-state.json`. The
@@ -64,13 +67,29 @@ session `draft-review`:
     task: "Review the draft and write notes under private state"
 try:
   call `draft-review`
+catch delivery_failed:
+  call `delivery-fallback`
 finally:
   return `message`
 ```
 
 The shallow IR can recognize simple affordances such as `call` and `return`,
-but the runtime meaning is carried by the prompt, the available tools, and the
-agent's execution of the contract.
+and it can group `try`, `catch`, and `finally` blocks for linting, editor, and
+trace affordances. The runtime meaning is still carried by the prompt, the
+available tools, and the agent's execution of the contract.
+
+## Catch
+
+`Catch` is intra-node recovery. It is for failures inside one node session,
+inside a child session, or inside a composite service call that the same node
+can recover from. It does not create graph-level catch edges, and it does not
+make downstream nodes run after an upstream declared failure.
+
+Use `catch` when the parent node can still satisfy its declared `Ensures` after
+recovering internally. If recovery cannot satisfy the output contract, the
+parent should call `openprose_report_error` with a declared error code. If
+cleanup or final accounting is required in either path, include `finally`
+evidence in the terminal tool call.
 
 ## Harness Portability
 

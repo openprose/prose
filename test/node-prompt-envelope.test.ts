@@ -98,6 +98,7 @@ describe("OpenProse Pi node prompt envelope", () => {
     expect(envelope.instructions.prosescript_interpreter).toEqual(
       expect.arrayContaining([
         expect.stringContaining("semantic ProseScript instructions"),
+        expect.stringContaining("intra-node recovery"),
         expect.stringContaining("openprose_subagent"),
         expect.stringContaining("parent node remains responsible"),
       ]),
