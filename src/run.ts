@@ -246,7 +246,7 @@ export async function runIr(
 
   if (executable.length !== 1) {
     const record = await writeBlockedRun(ctx, executable[0] ?? ir.components[0], [
-      `Phase 05.1 supports exactly one executable component; found ${executable.length}.`,
+      `Single-component runs support exactly one executable component; found ${executable.length}. Use 'prose run --graph-vm pi' for reactive graphs.`,
     ]);
     return {
       run_id: runId,

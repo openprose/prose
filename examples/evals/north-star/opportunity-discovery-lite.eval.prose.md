@@ -24,7 +24,7 @@ kind: test
 
 ### Expects Not
 
-- old opportunities presented as urgent
+- stale opportunities presented as urgent
 - surfaced opportunities without URL provenance
 - rankings that ignore brand context
 

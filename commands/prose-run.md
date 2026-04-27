@@ -5,7 +5,7 @@ argument-hint: <file.prose.md>
 
 Execute the OpenProse program at: $ARGUMENTS
 
-Use the repository CLI. Do not simulate the old OpenProse VM in chat.
+Use the repository CLI. Do not hand-author runtime state in chat.
 
 Preferred command:
 

@@ -24,8 +24,8 @@ library:
 - the new IR model records composite `expansions` and expanded graph nodes with
   source maps back to the parent composite
 
-The old statement that "the composite is gone by runtime" is too strong for the
-reactive graph model. The runtime should not execute an unexpanded raw
+The earlier statement that "the composite is gone by runtime" is too strong for
+the reactive graph model. The runtime should not execute an unexpanded raw
 composite, but traces, graph views, and run records must preserve the composite
 instance as a source-level abstraction.
 

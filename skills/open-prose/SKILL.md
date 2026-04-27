@@ -5,7 +5,7 @@ description: |
   or explain OpenProse programs. OpenProse source is `.prose.md`: typed
   contracts compile to IR, then the local CLI coordinates the Pi graph VM to
   materialize durable run records. Use this skill to route the work and preserve
-  the current graph-VM model; do not simulate the old VM/runtime in chat.
+  the current graph-VM model; do not hand-author runtime state in chat.
 ---
 
 # OpenProse Skill
@@ -62,12 +62,11 @@ one-off tasks. That is not the same thing as reactive graph execution.
 - Do not claim that Codex CLI, Claude Code, OpenCode, or another shell process
   is the graph VM unless there is an actual adapter and test evidence.
 
-## Obsolete Concepts
+## Current Execution Boundary
 
-If you encounter older docs or examples that ask the agent to simulate the
-runtime, use legacy source files, write a hand-authored state log, or pass a
-flat runtime flag, treat them as historical. The current path is `.prose.md`
-source through the CLI and Pi graph VM.
+Use `.prose.md` source through the CLI and Pi graph VM for reactive graph
+execution. Single-component work can be exported with `prose handoff`, but
+hand-authored state logs are not OpenProse runs.
 
 ## Useful Commands
 

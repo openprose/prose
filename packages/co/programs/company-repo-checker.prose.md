@@ -122,7 +122,7 @@ return report
 
 - use the package root as the boundary
 - apply the program defaults when optional root inputs are empty
-- allow architecture history in docs to mention old roots
+- allow architecture history in docs to mention retired roots
 - fail only when executable source or eval metadata reintroduces retired roots or kinds
 - flag committed `.prose.md` source files under retired flat roots
 

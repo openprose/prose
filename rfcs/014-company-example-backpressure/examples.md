@@ -129,7 +129,7 @@ Why it matters:
 
 Backpressure:
 
-- old opportunities are rejected
+- stale opportunities are rejected
 - duplicate cross-posts collapse to highest-reach source
 - each surfaced opportunity includes quality reasoning
 - trace links every surfaced opportunity to the source scan rows it consumed
@@ -185,7 +185,7 @@ Backpressure:
 
 - refuses to overwrite existing customer slug
 - produces `responsibilities/`, `services/`, `workflows/`, and `evals/`
-- seeded-bad output using old `delivery/` path fails
+- seeded-bad output using a retired `delivery/` path fails
 - performed file effects must match declared/allowed effects
 
 ## 7. `agent-ecosystem-index-refresh`
