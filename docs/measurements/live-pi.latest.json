@@ -1,6 +1,6 @@
 {
   "live_pi_smoke_version": "0.1",
-  "generated_at": "2026-04-26T16:57:59.534Z",
+  "generated_at": "2026-04-27T04:42:34.727Z",
   "enabled": true,
   "selected_tiers": [
     "cheap",
@@ -17,11 +17,11 @@
       "source": "examples/north-star/company-signal-brief.prose.md",
       "status": "succeeded",
       "failure_class": null,
-      "duration_ms": 8596,
-      "run_id": "live-pi-cheap-company-signal-brief-20260426165702",
-      "run_dir": ".prose/live-pi-runs/live-pi-cheap-company-signal-brief-20260426165702",
+      "duration_ms": 9054,
+      "run_id": "live-pi-cheap-company-signal-brief-20260427044156",
+      "run_dir": ".prose/live-pi-runs/live-pi-cheap-company-signal-brief-20260427044156",
       "session_count": 1,
-      "trace_events": 44,
+      "trace_events": 65,
       "diagnostics": []
     },
     {
@@ -30,11 +30,11 @@
       "source": "examples/north-star/lead-program-designer.prose.md",
       "status": "succeeded",
       "failure_class": null,
-      "duration_ms": 23581,
-      "run_id": "live-pi-medium-lead-program-designer-20260426165711",
-      "run_dir": ".prose/live-pi-runs/live-pi-medium-lead-program-designer-20260426165711",
+      "duration_ms": 16094,
+      "run_id": "live-pi-medium-lead-program-designer-20260427044205",
+      "run_dir": ".prose/live-pi-runs/live-pi-medium-lead-program-designer-20260427044205",
       "session_count": 3,
-      "trace_events": 122,
+      "trace_events": 140,
       "diagnostics": []
     },
     {
@@ -43,11 +43,11 @@
       "source": "examples/north-star/stargazer-intake-lite.prose.md",
       "status": "succeeded",
       "failure_class": null,
-      "duration_ms": 24726,
-      "run_id": "live-pi-complex-stargazer-intake-lite-20260426165734",
-      "run_dir": ".prose/live-pi-runs/live-pi-complex-stargazer-intake-lite-20260426165734",
+      "duration_ms": 13004,
+      "run_id": "live-pi-complex-stargazer-intake-lite-20260427044221",
+      "run_dir": ".prose/live-pi-runs/live-pi-complex-stargazer-intake-lite-20260427044221",
       "session_count": 5,
-      "trace_events": 186,
+      "trace_events": 175,
       "diagnostics": []
     }
   ],

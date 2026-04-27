@@ -1,13 +1,13 @@
 {
   "report_version": "0.2",
-  "generated_at": "2026-04-27T03:17:22.712Z",
+  "generated_at": "2026-04-27T04:41:31.893Z",
   "status": "pass",
   "repo_root": ".",
   "temp_root": "$TMP",
   "summary": {
     "checks": 9,
     "doc_contract_checks": 36,
-    "elapsed_ms": 3155
+    "elapsed_ms": 3715
   },
   "docs_checked": [
     "README.md",
@@ -53,7 +53,7 @@
       "label": "help explains runtime loop",
       "command": "prose help",
       "exit_code": 0,
-      "elapsed_ms": 317,
+      "elapsed_ms": 416,
       "stdout_preview": "OpenProse Usage: prose compile <file.prose.md|dir> [--out ir.json] [--no-pretty] prose deployment <dir> [--deployment-name name] [--org-id org] [--environment dev] [--mode dev] [--enable component] [--env KEY=value] [--format text|json] ...",
       "stderr_preview": ""
     },
@@ -61,7 +61,7 @@
       "label": "lint smallest useful service",
       "command": "prose lint examples/north-star/company-signal-brief.prose.md --format json --no-pretty",
       "exit_code": 0,
-      "elapsed_ms": 329,
+      "elapsed_ms": 530,
       "stdout_preview": "[]",
       "stderr_preview": ""
     },
@@ -69,7 +69,7 @@
       "label": "preflight reactive graph",
       "command": "prose preflight examples/north-star/lead-program-designer.prose.md --format json --no-pretty",
       "exit_code": 0,
-      "elapsed_ms": 338,
+      "elapsed_ms": 386,
       "stdout_preview": "{\"preflight_version\":\"0.1\",\"target\":\"./examples/north-star/lead-program-designer.prose.md\",\"package_root\":\"./examples\",\"component_refs\":[\"lead-profile-normalizer\",\"lead-program-designer\",\"lead-qualification-scorer\",\"save-grow-program-dra...",
       "stderr_preview": ""
     },
@@ -77,7 +77,7 @@
       "label": "graph selective recompute target",
       "command": "prose graph examples/north-star/lead-program-designer.prose.md --input \"lead_profile={\\\"company\\\":\\\"Acme\\\",\\\"pain\\\":\\\"manual handoffs\\\"}\" --input \"brand_context=OpenProse is React for agent outcomes.\" --target-output lead_program_plan",
       "exit_code": 0,
-      "elapsed_ms": 339,
+      "elapsed_ms": 349,
       "stdout_preview": "%% OpenProse graph: lead-program-designer %% requested outputs: lead_program_plan flowchart LR _caller[\"Caller<br/>[boundary]\"] lead_profile_normalizer[\"lead-profile-normalizer<br/>[service]<br/>status: ready<br/>effects: pure<br/>stale:...",
       "stderr_preview": ""
     },
@@ -85,7 +85,7 @@
       "label": "run typed service",
       "command": "prose run examples/north-star/company-signal-brief.prose.md --run-root $TMP/runs --run-id agent-onboarding --input \"signal_notes=Customer teams want durable agent workflows.\" --input \"brand_context=OpenProse is React for agent outcomes.\" --output \"company_signal_brief=OpenProse turns agent work into typed, inspectable runs.\" --no-pretty",
       "exit_code": 0,
-      "elapsed_ms": 344,
+      "elapsed_ms": 372,
       "stdout_preview": "{\"run_id\":\"agent-onboarding\",\"run_dir\":\"$TMP/runs/agent-onboarding\",\"status\":\"succeeded\",\"graph_vm\":\"pi\",\"runtime_profile\":{\"profile_version\":\"0.1\",\"graph_vm\":\"pi\",\"execution_placement\":\"local\",\"single_run_harness\":null,\"model_provider\":...",
       "stderr_preview": ""
     },
@@ -93,15 +93,15 @@
       "label": "inspect run status",
       "command": "prose status $TMP/runs",
       "exit_code": 0,
-      "elapsed_ms": 335,
-      "stdout_preview": "Runs: 1 Root: $TMP/runs - agent-onboarding: company-signal-brief [component] succeeded (accepted) outputs[company_signal_brief] reason No required evals declared. created 2026-04-27T03:17:21.204Z completed 2026-04-27T03:17:21.213Z path $...",
+      "elapsed_ms": 358,
+      "stdout_preview": "Runs: 1 Root: $TMP/runs - agent-onboarding: company-signal-brief [component] succeeded (accepted) outputs[company_signal_brief] reason No required evals declared. created 2026-04-27T04:41:30.208Z completed 2026-04-27T04:41:30.219Z path $...",
       "stderr_preview": ""
     },
     {
       "label": "inspect run trace",
       "command": "prose trace $TMP/runs/agent-onboarding",
       "exit_code": 0,
-      "elapsed_ms": 324,
+      "elapsed_ms": 462,
       "stdout_preview": "Run: agent-onboarding Component: company-signal-brief [component] Status: succeeded (accepted) Acceptance reason: No required evals declared. Runtime: pi / scripted / deterministic-output (openprose-node-runner / pi) Created: 2026-04-27T...",
       "stderr_preview": ""
     },
@@ -109,15 +109,15 @@
       "label": "package examples",
       "command": "prose package examples --format json --no-pretty",
       "exit_code": 0,
-      "elapsed_ms": 415,
-      "stdout_preview": "{\"schema_version\":\"openprose.package.v2\",\"package_version\":\"0.2\",\"metadata_digest\":\"0ec6a0f93b4a82d4ad2f6c01928382807ff89eec16897e7342f346c2c88fd7a1\",\"root\":\"./examples\",\"package_ir\":{\"version\":\"0.1\",\"semantic_hash\":\"8f33bb9330afabeb7e08...",
+      "elapsed_ms": 416,
+      "stdout_preview": "{\"schema_version\":\"openprose.package.v2\",\"package_version\":\"0.2\",\"metadata_digest\":\"fbb6c32b0222ffa3bad5f707363dab3d38fb3364f08f46c582fc7e0a59a2843a\",\"root\":\"./examples\",\"package_ir\":{\"version\":\"0.1\",\"semantic_hash\":\"8f33bb9330afabeb7e08...",
       "stderr_preview": ""
     },
     {
       "label": "strict publish-check examples",
       "command": "prose publish-check examples --strict --format json --no-pretty",
       "exit_code": 0,
-      "elapsed_ms": 410,
+      "elapsed_ms": 423,
       "stdout_preview": "{\"publish_check_version\":\"0.1\",\"package_name\":\"@openprose/examples\",\"package_version\":\"0.1.0\",\"strict\":true,\"status\":\"pass\",\"blockers\":[],\"warnings\":[],\"checks\":[{\"name\":\"components_present\",\"status\":\"pass\",\"detail\":\"42 component(s) foun...",
       "stderr_preview": ""
     }
