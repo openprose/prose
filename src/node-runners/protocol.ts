@@ -3,6 +3,7 @@ import type {
   ComponentIR,
   Diagnostic,
   LocalArtifactRecord,
+  NodePrivateStateRunRef,
   NodeSessionRef,
   RuntimeProfile,
   RunLifecycleStatus,
@@ -103,6 +104,7 @@ export interface NodeRunResult {
   logs: NodeLogs;
   diagnostics: Diagnostic[];
   session: NodeSessionRef | null;
+  private_state?: NodePrivateStateRunRef | null;
   cost: NodeCostTelemetry | null;
   duration_ms: number | null;
   telemetry?: NodeTelemetryEvent[];

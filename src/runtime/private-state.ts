@@ -1,8 +1,11 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
+import type { NodePrivateStateRunRef } from "../types.js";
 
-const PRIVATE_STATE_MANIFEST = "openprose-private-state.json";
-const SUBAGENTS_DIR = "__subagents";
+export type { NodePrivateStateRunRef } from "../types.js";
+
+export const NODE_PRIVATE_STATE_MANIFEST_REF = "openprose-private-state.json";
+export const NODE_PRIVATE_SUBAGENTS_ROOT_REF = "__subagents";
 
 export interface NodePrivateStateDiagnostic {
   code: string;
@@ -65,21 +68,37 @@ export function createFilesystemNodePrivateStateStore(
   return new FilesystemNodePrivateStateStore(options);
 }
 
+export function defaultNodePrivateStateRunRef(): NodePrivateStateRunRef {
+  return {
+    manifest_ref: NODE_PRIVATE_STATE_MANIFEST_REF,
+    subagents_root_ref: NODE_PRIVATE_SUBAGENTS_ROOT_REF,
+  };
+}
+
+export function nodePrivateStateInstructions(): string[] {
+  return [
+    "Use private state for scratch files, child-session notes, intermediate artifacts, and post-run analysis material that should not become graph-visible output.",
+    "Private state is retained under the node workspace by default but is not passed downstream unless the parent explicitly submits it as a declared output.",
+    `Child session state belongs under ${NODE_PRIVATE_SUBAGENTS_ROOT_REF}/<child-id>/ and should be returned to the parent as concise workspace-relative refs.`,
+    `Runtime private-state metadata is indexed in ${NODE_PRIVATE_STATE_MANIFEST_REF}; do not put large private file contents into final outputs unless the contract declares them.`,
+  ];
+}
+
 class FilesystemNodePrivateStateStore implements NodePrivateStateStore {
   readonly workspacePath: string;
-  readonly manifestRef = PRIVATE_STATE_MANIFEST;
+  readonly manifestRef = NODE_PRIVATE_STATE_MANIFEST_REF;
   readonly manifestPath: string;
   private readonly now: () => string;
 
   constructor(options: FilesystemNodePrivateStateStoreOptions) {
     this.workspacePath = resolve(options.workspacePath);
-    this.manifestPath = join(this.workspacePath, PRIVATE_STATE_MANIFEST);
+    this.manifestPath = join(this.workspacePath, NODE_PRIVATE_STATE_MANIFEST_REF);
     this.now = options.now ?? (() => new Date().toISOString());
   }
 
   async allocateChildState(childId: string): Promise<AllocatedNodePrivateState> {
     const normalizedChildId = normalizeChildId(childId);
-    const rootRef = `${SUBAGENTS_DIR}/${normalizedChildId}`;
+    const rootRef = `${NODE_PRIVATE_SUBAGENTS_ROOT_REF}/${normalizedChildId}`;
     const resolved = this.resolveRef(rootRef);
     if (!resolved) {
       throw new Error(`Private state child id '${childId}' resolves outside the workspace.`);
@@ -236,4 +255,3 @@ function compareDiagnostics(
     left.message.localeCompare(right.message)
   );
 }
-

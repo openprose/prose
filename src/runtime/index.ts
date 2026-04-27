@@ -41,6 +41,10 @@ export {
 } from "./output-submission.js";
 export {
   createFilesystemNodePrivateStateStore,
+  defaultNodePrivateStateRunRef,
+  NODE_PRIVATE_STATE_MANIFEST_REF,
+  NODE_PRIVATE_SUBAGENTS_ROOT_REF,
+  nodePrivateStateInstructions,
 } from "./private-state.js";
 export type { RuntimeProfileInput } from "./profiles.js";
 export type { ReactiveGraphRuntime } from "./graph-runtime.js";
@@ -72,6 +76,7 @@ export type {
   NodePrivateStateManifest,
   NodePrivateStateRecord,
   NodePrivateStateRecordInput,
+  NodePrivateStateRunRef,
   NodePrivateStateStore,
 } from "./private-state.js";
 export {

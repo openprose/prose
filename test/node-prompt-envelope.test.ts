@@ -47,6 +47,15 @@ describe("OpenProse Pi node prompt envelope", () => {
     expect(envelope.component.requires.map((port) => [port.name, port.type])).toEqual([
       ["draft", "Markdown<Draft>"],
     ]);
+    expect(envelope.private_state).toMatchObject({
+      manifest_ref: "openprose-private-state.json",
+      subagents_root_ref: "__subagents",
+      visibility: "node_private",
+      retained_by_default: true,
+    });
+    expect(envelope.private_state.instructions.join(" ")).toContain(
+      "not passed downstream",
+    );
     expect(envelope.outputs.map((output) => [output.port, output.type])).toEqual([
       ["summary", "Markdown<Summary>"],
     ]);

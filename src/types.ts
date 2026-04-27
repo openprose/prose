@@ -617,6 +617,11 @@ export interface NodeSessionRef {
   metadata: Record<string, string | number | boolean | null>;
 }
 
+export interface NodePrivateStateRunRef {
+  manifest_ref: string;
+  subagents_root_ref: string;
+}
+
 export interface RunRecord {
   run_id: string;
   kind: "component" | "graph";

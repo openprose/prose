@@ -163,6 +163,8 @@ function renderTraceEvent(event: TraceEvent): string {
     modelDetail(event),
     stringDetail("session", event.session_id),
     stringDetail("session_file", event.session_file),
+    stringDetail("private_state_manifest", event.manifest_ref),
+    stringDetail("private_state_root", event.subagents_root_ref),
     stringDetail("tool", event.tool_name),
     stringListDetail("outputs", event.output_ports),
     stringDetail("failure", event.failure_class),

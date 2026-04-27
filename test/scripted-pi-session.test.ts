@@ -91,6 +91,14 @@ describe("scripted Pi runtime test helper", () => {
     );
     expect(trace.events).toContainEqual(
       expect.objectContaining({
+        event: "node_private_state.available",
+        manifest_ref: "openprose-private-state.json",
+        subagents_root_ref: "__subagents",
+        visibility: "node_private",
+      }),
+    );
+    expect(trace.events).toContainEqual(
+      expect.objectContaining({
         event: "pi.tool.started",
         tool_name: OPENPROSE_SUBMIT_OUTPUTS_TOOL_NAME,
       }),
@@ -102,6 +110,9 @@ describe("scripted Pi runtime test helper", () => {
       }),
     );
     expect(traceText).toContain("node_session.started graph_vm[pi] model[scripted/test-model]");
+    expect(traceText).toContain(
+      "node_private_state.available private_state_manifest[openprose-private-state.json]",
+    );
     expect(traceText).toContain("pi.tool.started graph_vm[pi]");
     expect(traceText).toContain("tool[openprose_submit_outputs]");
     expect(traceText).toContain("pi.output_submission.accepted");

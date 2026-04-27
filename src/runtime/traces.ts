@@ -188,6 +188,19 @@ function nodeRunTraceEvents(
     });
   }
 
+  if (result.private_state) {
+    events.push({
+      event: "node_private_state.available",
+      run_id: record.run_id,
+      at: record.created_at,
+      manifest_ref: result.private_state.manifest_ref,
+      subagents_root_ref: result.private_state.subagents_root_ref,
+      visibility: "node_private",
+      retained_by_default: true,
+      ...extra,
+    });
+  }
+
   events.push(
     ...(result.telemetry ?? []).map((event) =>
       nodeTelemetryTraceEvent(event, record, extra),

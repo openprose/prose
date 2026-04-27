@@ -13,6 +13,10 @@ import type {
   SourceSpan,
 } from "../types.js";
 import type { NodeExecutionRequest } from "./node-request.js";
+import {
+  defaultNodePrivateStateRunRef,
+  nodePrivateStateInstructions,
+} from "./private-state.js";
 
 export interface NodePromptEnvelope {
   envelope_version: "0.1";
@@ -48,6 +52,7 @@ export interface NodePromptEnvelope {
   inputs: NodeEnvelopeInput[];
   upstream_artifacts: NodeEnvelopeArtifact[];
   environment: NodeEnvelopeEnvironment[];
+  private_state: NodeEnvelopePrivateState;
   policy: {
     approved_effects: string[];
     policy_labels: string[];
@@ -60,6 +65,14 @@ export interface NodePromptEnvelope {
     prosescript_interpreter: string[] | null;
     summary: string;
   };
+}
+
+export interface NodeEnvelopePrivateState {
+  manifest_ref: string;
+  subagents_root_ref: string;
+  visibility: "node_private";
+  retained_by_default: boolean;
+  instructions: string[];
 }
 
 export interface NodeEnvelopePort {
@@ -137,6 +150,7 @@ export function buildNodePromptEnvelope(
     inputs: nodeRunRequest.input_bindings.map(inputEnvelope),
     upstream_artifacts: nodeRunRequest.upstream_artifacts.map(artifactEnvelope),
     environment: nodeRunRequest.environment.map(environmentEnvelope),
+    private_state: privateStateEnvelope(),
     policy: {
       approved_effects: nodeRunRequest.approved_effects,
       policy_labels: nodeRunRequest.policy_labels,
@@ -152,6 +166,17 @@ export function buildNodePromptEnvelope(
       summary:
         "Produce only declared outputs. Prefer openprose_submit_outputs when available; otherwise write the requested fallback output files.",
     },
+  };
+}
+
+function privateStateEnvelope(): NodeEnvelopePrivateState {
+  const ref = defaultNodePrivateStateRunRef();
+  return {
+    manifest_ref: ref.manifest_ref,
+    subagents_root_ref: ref.subagents_root_ref,
+    visibility: "node_private",
+    retained_by_default: true,
+    instructions: nodePrivateStateInstructions(),
   };
 }
 

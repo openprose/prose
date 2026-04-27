@@ -9,6 +9,7 @@ import {
   normalizePiRuntimeEvent,
   outputSubmissionTelemetryEvent,
 } from "../runtime/pi/events.js";
+import { defaultNodePrivateStateRunRef } from "../runtime/private-state.js";
 import type { OutputSubmissionResult } from "../runtime/output-submission.js";
 import type { ComponentIR, Diagnostic, EffectIR } from "../types.js";
 import {
@@ -278,6 +279,7 @@ export class PiNodeRunner implements NodeRunner {
             },
           }
         : null,
+      private_state: defaultNodePrivateStateRunRef(),
       cost: null,
       duration_ms: Math.max(0, Math.round(options.durationMs)),
       telemetry: options.telemetry ?? [],
