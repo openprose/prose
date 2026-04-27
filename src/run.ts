@@ -590,12 +590,16 @@ async function materializeNodeRunResult(
     outputs: status === "succeeded" ? outputs : [],
     evals: [],
     policy: runPolicyRecord(policyDecision, result.performed_effects),
+    ...(result.declared_error ? { error: result.declared_error } : {}),
     acceptance:
       status === "succeeded"
         ? { status: "accepted", reason: "No required evals declared." }
         : {
             status: "pending",
-            reason: diagnosticsReason(diagnostics) ?? `Node run ended with ${status}.`,
+            reason:
+              declaredErrorReason(result) ??
+              diagnosticsReason(diagnostics) ??
+              `Node run ended with ${status}.`,
           },
     trace_ref: "trace.json",
     status,
@@ -757,11 +761,20 @@ async function assembleGraphRunRecord(
 }
 
 function nodeStatusReason(record: RunRecord): string {
+  const declaredError = record.error
+    ? ` with declared error '${record.error.code}'`
+    : "";
   const detail = record.acceptance.reason ? ` ${record.acceptance.reason}` : "";
   if (record.status === "failed") {
-    return `Node '${record.component_ref}' failed.${detail}`;
+    return `Node '${record.component_ref}' failed${declaredError}.${detail}`;
   }
   return `Node '${record.component_ref}' is ${record.status}.${detail}`;
+}
+
+function declaredErrorReason(result: NodeRunResult): string | null {
+  return result.declared_error
+    ? `Declared error '${result.declared_error.code}': ${result.declared_error.message}`
+    : null;
 }
 
 async function writeGraphOutputArtifacts(

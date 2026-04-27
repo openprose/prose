@@ -25,7 +25,13 @@ import {
 } from "../runtime/private-state.js";
 import type { OutputSubmissionResult } from "../runtime/output-submission.js";
 import type { ErrorSubmissionResult } from "../runtime/error-submission.js";
-import type { ComponentIR, Diagnostic, EffectIR, RuntimeProfile } from "../types.js";
+import type {
+  ComponentIR,
+  DeclaredErrorRecord,
+  Diagnostic,
+  EffectIR,
+  RuntimeProfile,
+} from "../types.js";
 import {
   readNodeOutputFileArtifacts,
   renderNodeOutputFileInstructions,
@@ -255,6 +261,7 @@ export class PiNodeRunner implements NodeRunner {
         status: "failed",
         artifacts: [],
         performedEffects: reportedError.performed_effects,
+        declaredError: reportedError.error,
         diagnostics: [...diagnostics, ...reportedError.diagnostics],
         transcript: events.length > 0 ? events.join("\n") : null,
         telemetry,
@@ -306,6 +313,7 @@ export class PiNodeRunner implements NodeRunner {
       status: NodeRunResult["status"];
       artifacts: NodeArtifactResult[];
       performedEffects?: string[];
+      declaredError?: DeclaredErrorRecord | null;
       diagnostics: Diagnostic[];
       transcript: string | null;
       telemetry?: NodeTelemetryEvent[];
@@ -319,6 +327,7 @@ export class PiNodeRunner implements NodeRunner {
       status: options.status,
       artifacts: options.artifacts,
       performed_effects: options.performedEffects ?? [],
+      ...(options.declaredError ? { declared_error: options.declaredError } : {}),
       logs: {
         stdout: null,
         stderr: null,

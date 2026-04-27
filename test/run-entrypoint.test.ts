@@ -68,6 +68,112 @@ describe("OpenProse run entry point", () => {
     });
   });
 
+  test("records accepted declared errors as typed run data", async () => {
+    const runRoot = mkdtempSync(join(tmpdir(), "openprose-run-declared-error-"));
+    const result = await runSource(declaredErrorSource(), {
+      path: "fixtures/compiler/declared-error.prose.md",
+      runRoot,
+      runId: "declared-error-run",
+      nodeRunner: scriptedPiRuntime({
+        errorSubmission: {
+          code: "delivery_failed",
+          message: "Delivery adapter rejected the request.",
+          retryable: true,
+          performed_effects: ["pure"],
+          state_refs: ["__subagents/delivery/notes.md"],
+          finally: {
+            summary: "Captured delivery attempt refs.",
+            state_refs: ["__subagents/delivery/finally.md"],
+          },
+        },
+      }),
+      createdAt: "2026-04-27T10:00:00.000Z",
+    });
+
+    expect(result.record.status).toBe("failed");
+    expect(result.record.outputs).toEqual([]);
+    expect(result.record.effects.performed).toEqual(["pure"]);
+    expect(result.record.error).toMatchObject({
+      code: "delivery_failed",
+      message: "Delivery adapter rejected the request.",
+      declared: true,
+      retryable: true,
+      state_refs: ["__subagents/delivery/notes.md"],
+      performed_effects: ["pure"],
+      finally: {
+        summary: "Captured delivery attempt refs.",
+        state_refs: ["__subagents/delivery/finally.md"],
+      },
+    });
+    expect(result.record.acceptance.reason).toBe(
+      "Declared error 'delivery_failed': Delivery adapter rejected the request.",
+    );
+
+    const attempts = await listRunAttemptRecords(
+      join(runRoot, ".prose-store"),
+      result.run_id,
+    );
+    expect(attempts[0]?.failure).toMatchObject({
+      code: "delivery_failed",
+      message: "Delivery adapter rejected the request.",
+      retryable: true,
+    });
+    expect(attempts[0]?.declared_error?.code).toBe("delivery_failed");
+
+    const trace = await traceFile(result.run_dir);
+    expect(trace.attempts[0]?.declared_error?.code).toBe("delivery_failed");
+    expect(renderTraceText(trace)).toContain("declared_error[delivery_failed]");
+
+    const events = JSON.parse(
+      readFileSync(join(result.run_dir, "trace.json"), "utf8"),
+    ) as Array<Record<string, unknown>>;
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        event: "node_run.failure",
+        failure_class: "declared_error",
+        declared_error: expect.objectContaining({
+          code: "delivery_failed",
+        }),
+      }),
+    );
+
+    const status = await statusPath(result.run_dir);
+    expect(status.runs[0]?.declared_error?.code).toBe("delivery_failed");
+  });
+
+  test("includes declared error codes in graph failure reasons", async () => {
+    const runRoot = mkdtempSync(join(tmpdir(), "openprose-graph-declared-error-"));
+    const result = await runSource(declaredErrorGraphSource(), {
+      path: "fixtures/compiler/declared-error-graph.prose.md",
+      runRoot,
+      runId: "declared-error-graph",
+      inputs: {
+        topic: "Delivery reliability",
+      },
+      nodeRunner: scriptedPiRuntime({
+        errorSubmissionsByComponent: {
+          writer: {
+            code: "delivery_failed",
+            message: "Delivery adapter rejected the request.",
+          },
+        },
+        outputsByComponent: {
+          polisher: {
+            final: "This should not be used if writer fails.",
+          },
+        },
+      }),
+      createdAt: "2026-04-27T10:05:00.000Z",
+    });
+
+    expect(result.record.status).toBe("failed");
+    expect(result.record.acceptance.reason).toContain(
+      "Node 'writer' failed with declared error 'delivery_failed'.",
+    );
+    expect(result.node_records.find((record) => record.component_ref === "writer")?.error?.code)
+      .toBe("delivery_failed");
+  });
+
   test("executes ProseScript subagent delegation with parent output submission", async () => {
     const runRoot = mkdtempSync(join(tmpdir(), "openprose-prosescript-subagent-"));
     const result = await runSource(fixture("prosescript-subagent.prose.md"), {
@@ -1031,6 +1137,71 @@ kind: program
     });
   });
 });
+
+function declaredErrorSource(): string {
+  return `---
+name: declared-error
+kind: service
+---
+
+### Ensures
+
+- \`receipt\`: Markdown<Receipt> - delivery receipt
+
+### Errors
+
+- \`delivery_failed\`: Delivery adapter rejected the request.
+
+### Effects
+
+- \`pure\`: deterministic synthesis
+`;
+}
+
+function declaredErrorGraphSource(): string {
+  return `---
+name: declared-error-flow
+kind: program
+---
+
+### Services
+
+- writer
+- polisher
+
+### Requires
+
+- \`topic\`: Text - topic to draft
+
+### Ensures
+
+- \`final\`: Markdown<Final> - final brief
+
+## writer
+
+### Requires
+
+- \`topic\`: Text - topic to draft
+
+### Ensures
+
+- \`draft\`: Markdown<Draft> - draft brief
+
+### Errors
+
+- \`delivery_failed\`: Delivery adapter rejected the request.
+
+## polisher
+
+### Requires
+
+- \`draft\`: Markdown<Draft> - draft brief
+
+### Ensures
+
+- \`final\`: Markdown<Final> - final brief
+`;
+}
 
 function fakePiSession(
   onPrompt: (context: {

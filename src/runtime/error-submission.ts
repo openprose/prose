@@ -1,5 +1,5 @@
 import { isAbsolute, normalize } from "node:path";
-import type { Diagnostic } from "../types.js";
+import type { DeclaredErrorRecord, Diagnostic } from "../types.js";
 import type { NodeRunRequest } from "../node-runners/protocol.js";
 
 export interface ErrorSubmissionFinallyEvidence {
@@ -19,19 +19,11 @@ export interface ErrorSubmissionPayload {
   finally: ErrorSubmissionFinallyEvidence | null;
 }
 
-export interface DeclaredErrorReport {
-  code: string;
-  message: string;
-  retryable: boolean;
-  details: Record<string, unknown>;
-  state_refs: string[];
-  performed_effects: string[];
-  finally: ErrorSubmissionFinallyEvidence | null;
-}
+export type DeclaredErrorReport = DeclaredErrorRecord;
 
 export interface ErrorSubmissionResult {
   status: "accepted" | "rejected";
-  error: DeclaredErrorReport | null;
+  error: DeclaredErrorRecord | null;
   performed_effects: string[];
   diagnostics: Diagnostic[];
   payload: ErrorSubmissionPayload | null;
@@ -68,9 +60,10 @@ export function evaluateErrorSubmission(
     };
   }
 
-  const errorReport: DeclaredErrorReport = {
+  const errorReport: DeclaredErrorRecord = {
     code: payload.code,
     message: payload.message,
+    declared: true,
     retryable: payload.retryable,
     details: payload.details,
     state_refs: payload.state_refs,

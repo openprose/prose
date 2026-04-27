@@ -119,6 +119,9 @@ export function renderTraceText(trace: TraceView): string {
         ? ` diagnostics[${attempt.diagnostic_codes.join(", ")}]`
         : "";
       const failure = attempt.failure ? ` failure[${attempt.failure}]` : "";
+      const declaredError = attempt.declared_error
+        ? ` declared_error[${attempt.declared_error.code}]`
+        : "";
       const session = attempt.node_session
         ? ` session[${attempt.node_session.session_id}${sessionFileText(attempt.node_session)}]`
         : "";
@@ -126,7 +129,7 @@ export function renderTraceText(trace: TraceView): string {
         ? ` runtime[${attempt.runtime_profile.graph_vm}]`
         : "";
       lines.push(
-        `- #${attempt.attempt_number}: ${attempt.status}${runtime}${diagnostics}${failure}${session}`,
+        `- #${attempt.attempt_number}: ${attempt.status}${runtime}${diagnostics}${failure}${declaredError}${session}`,
       );
     }
   }
@@ -168,6 +171,7 @@ function renderTraceEvent(event: TraceEvent): string {
     stringDetail("tool", event.tool_name),
     stringListDetail("outputs", event.output_ports),
     stringDetail("failure", event.failure_class),
+    declaredErrorDetail(event),
     stringDetail("gate", event.gate),
     usageDetail(event),
     costDetail(event),
@@ -195,6 +199,17 @@ function modelDetail(event: TraceEvent): string | null {
     return null;
   }
   return `model[${[modelProvider, model].filter(Boolean).join("/")}]`;
+}
+
+function declaredErrorDetail(event: TraceEvent): string | null {
+  const declaredError = event.declared_error;
+  if (!declaredError || typeof declaredError !== "object") {
+    return null;
+  }
+  const code = (declaredError as Record<string, unknown>).code;
+  return typeof code === "string" && code.length > 0
+    ? `declared_error[${code}]`
+    : null;
 }
 
 function usageDetail(event: TraceEvent): string | null {
@@ -290,6 +305,7 @@ function traceAttemptView(attempt: LocalRunAttemptRecord): TraceAttemptView {
     node_session: attempt.node_session,
     diagnostic_codes: attempt.diagnostics.map((diagnostic) => diagnostic.code).sort(),
     failure: attempt.failure?.message ?? null,
+    ...(attempt.declared_error ? { declared_error: attempt.declared_error } : {}),
     started_at: attempt.started_at,
     finished_at: attempt.finished_at,
   };

@@ -71,6 +71,7 @@ export async function writeNodeTrace(
       runtime_profile: record.runtime.profile,
       status: result.status,
       diagnostics: result.diagnostics,
+      ...(result.declared_error ? { declared_error: result.declared_error } : {}),
       duration_ms: result.duration_ms,
       at: record.completed_at,
     },
@@ -228,6 +229,7 @@ function nodeRunTraceEvents(
       graph_vm: result.session?.graph_vm ?? "unknown",
       failure_class: failureClass(result),
       diagnostic_codes: result.diagnostics.map((diagnostic) => diagnostic.code).sort(),
+      ...(result.declared_error ? { declared_error: result.declared_error } : {}),
       ...extra,
     });
   }
@@ -255,6 +257,9 @@ function failureClass(result: NodeRunResult): string {
   }
   if (codes.some((code) => code.includes("model_error"))) {
     return "model_error";
+  }
+  if (result.declared_error || codes.some((code) => code === "openprose_declared_error")) {
+    return "declared_error";
   }
   if (codes.some((code) => code.includes("output_submission"))) {
     return "output_submission";

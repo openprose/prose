@@ -12,6 +12,7 @@ import { upsertRunIndexEntry } from "../store/local.js";
 import type {
   ComponentIR,
   Diagnostic,
+  LocalRunAttemptFailure,
   ProseIR,
   RunOutputRecord,
   RunRecord,
@@ -91,6 +92,7 @@ export async function writeNodeAttemptRecord(
   result: NodeRunResult,
   diagnostics = result.diagnostics,
 ): Promise<void> {
+  const failure = nodeAttemptFailure(record, result);
   await writeRunAttemptRecord(ctx.storeRoot, {
     runId: record.run_id,
     componentRef: record.component_ref,
@@ -101,15 +103,30 @@ export async function writeNodeAttemptRecord(
     startedAt: record.created_at,
     finishedAt: record.completed_at,
     diagnostics,
-    failure:
-      record.status === "succeeded"
-        ? null
-        : {
-            code: "node_run_failed",
-            message: record.acceptance.reason ?? "Node run failed.",
-            retryable: record.status === "failed",
-          },
+    failure,
+    declaredError: result.declared_error ?? null,
   });
+}
+
+function nodeAttemptFailure(
+  record: RunRecord,
+  result: NodeRunResult,
+): LocalRunAttemptFailure | null {
+  if (record.status === "succeeded") {
+    return null;
+  }
+  if (result.declared_error) {
+    return {
+      code: result.declared_error.code,
+      message: result.declared_error.message,
+      retryable: result.declared_error.retryable,
+    };
+  }
+  return {
+    code: "node_run_failed",
+    message: record.acceptance.reason ?? "Node run failed.",
+    retryable: record.status === "failed",
+  };
 }
 
 export async function writeBlockedAttemptRecord(

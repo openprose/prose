@@ -5,6 +5,7 @@ import {
 } from "./local.js";
 import type {
   Diagnostic,
+  DeclaredErrorRecord,
   LocalRunAttemptFailure,
   LocalRunAttemptRecord,
   LocalRunAttemptRetry,
@@ -25,6 +26,7 @@ export interface WriteRunAttemptOptions {
   finishedAt?: string | null;
   diagnostics?: Diagnostic[];
   failure?: LocalRunAttemptFailure | null;
+  declaredError?: DeclaredErrorRecord | null;
   retry?: LocalRunAttemptRetry | null;
   resume?: LocalRunResumePoint | null;
 }
@@ -46,6 +48,7 @@ export async function writeRunAttemptRecord(
     finished_at: options.finishedAt ?? null,
     diagnostics: options.diagnostics ?? [],
     failure: options.failure ?? null,
+    ...(options.declaredError ? { declared_error: options.declaredError } : {}),
     retry: options.retry ?? null,
     resume: options.resume ?? null,
   };

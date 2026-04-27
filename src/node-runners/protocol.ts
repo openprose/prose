@@ -1,6 +1,7 @@
 import { stableStringify } from "../hash.js";
 import type {
   ComponentIR,
+  DeclaredErrorRecord,
   Diagnostic,
   LocalArtifactRecord,
   NodePrivateStateRunRef,
@@ -103,6 +104,7 @@ export interface NodeRunResult {
   performed_effects: string[];
   logs: NodeLogs;
   diagnostics: Diagnostic[];
+  declared_error?: DeclaredErrorRecord | null;
   session: NodeSessionRef | null;
   private_state?: NodePrivateStateRunRef | null;
   cost: NodeCostTelemetry | null;

@@ -73,6 +73,9 @@ export function renderStatusText(view: RunStatusView): string {
   lines.push("");
   for (const run of view.runs) {
     const outputs = run.outputs.length > 0 ? ` outputs[${run.outputs.join(", ")}]` : "";
+    const declaredError = run.declared_error
+      ? ` declared_error[${run.declared_error.code}]`
+      : "";
     const nodes = run.node_count > 0 ? ` nodes=${run.node_count}` : "";
     const attempts =
       run.attempt_count > 0
@@ -81,7 +84,7 @@ export function renderStatusText(view: RunStatusView): string {
           }`
         : "";
     lines.push(
-      `- ${run.run_id}: ${run.component_ref} [${run.kind}] ${run.status} (${run.acceptance})${outputs}${nodes}${attempts}`,
+      `- ${run.run_id}: ${run.component_ref} [${run.kind}] ${run.status} (${run.acceptance})${outputs}${declaredError}${nodes}${attempts}`,
     );
     if (run.acceptance_reason) {
       lines.push(`  reason ${run.acceptance_reason}`);
@@ -113,6 +116,7 @@ async function loadRunEntry(runDir: string): Promise<RunStatusEntry | null> {
     created_at: record.created_at,
     completed_at: record.completed_at,
     outputs: record.outputs.map((output) => output.port).sort(),
+    ...(record.error ? { declared_error: record.error } : {}),
     node_count: await countNodeRuns(runDir),
     attempt_count: 0,
     latest_attempt_status: null,
@@ -166,6 +170,9 @@ async function statusEntryFromStoreIndex(
     created_at: entry.created_at,
     completed_at: entry.completed_at,
     outputs: [],
+    ...(latestAttempt?.declared_error
+      ? { declared_error: latestAttempt.declared_error }
+      : {}),
     node_count: 0,
     attempt_count: attempts.length,
     latest_attempt_status: latestAttempt?.status ?? null,
