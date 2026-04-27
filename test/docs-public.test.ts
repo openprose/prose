@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, test } from "./support";
 
@@ -45,8 +45,32 @@ describe("public docs", () => {
 });
 
 function publicMarkdownFiles(): string[] {
-  const files = [join(repoRoot, "README.md")];
-  visit(join(repoRoot, "docs"), files);
+  const files: string[] = [];
+  const roots = [
+    "README.md",
+    "AGENTS.md",
+    "docs",
+    "examples",
+    "packages/co",
+    "packages/std",
+    "skills/open-prose",
+    "commands",
+    ".claude-plugin",
+  ];
+
+  for (const root of roots) {
+    const path = join(repoRoot, root);
+    if (!existsSync(path)) {
+      continue;
+    }
+    const stat = statSync(path);
+    if (stat.isDirectory()) {
+      visit(path, files);
+    } else if (isPublicMarkdownFile(path)) {
+      files.push(path);
+    }
+  }
+
   return files;
 }
 
@@ -62,8 +86,12 @@ function visit(dir: string, files: string[]): void {
       visit(path, files);
       continue;
     }
-    if (entry.endsWith(".md")) {
+    if (isPublicMarkdownFile(path)) {
       files.push(path);
     }
   }
+}
+
+function isPublicMarkdownFile(path: string): boolean {
+  return path.endsWith(".md") && !path.endsWith(".prose.md");
 }
