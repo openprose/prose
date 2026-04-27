@@ -12,16 +12,15 @@ kind: program
 
 - `report`: Markdown<Report> - diagnostic analysis with timeline, root cause, causal chain, and prioritized fix recommendations (immediate, permanent, prevention)
 
-
-### Effects
-
-- `read_external`: reads workspace, package, or run artifacts for operational analysis
-
 ### Errors
 
 - no-run: run directory does not exist or is missing `run.json`
 - malformed-run: run record, trace, artifact manifest, or node record cannot be parsed
 - incomplete-run: run status is `running`, `queued`, or missing a terminal attempt
+
+### Effects
+
+- `read_external`: reads workspace, package, or run artifacts for operational analysis
 
 ### Strategies
 

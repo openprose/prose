@@ -28,17 +28,17 @@ model policies, or source revisions.
   - quality_diff: acceptance and eval-record differences
   - recommendation: preferred run or "inconclusive" with reasoning
 
-### Effects
-
-- `pure`: deterministic evaluation over declared run-store inputs
-
 ### Errors
 
 - insufficient-runs: fewer than two subjects are provided
 - incomparable-runs: subjects do not share a component ref, package family, or explicit comparison goal
 - missing-output-artifacts: no subjects have comparable output artifacts
 
-### Invariants
+### Effects
+
+- `pure`: deterministic evaluation over declared run-store inputs
+
+### Strategies
 
 - every input run appears in the comparison even when it is incomplete
 - missing cost, trace, or artifact data is reported as unavailable, not invented

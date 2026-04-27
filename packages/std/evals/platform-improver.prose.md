@@ -29,16 +29,16 @@ or hosted platform integration layer.
   - side_effects: expected blast radius
   - verification: tests and smoke checks that prove the fix
 
-### Effects
-
-- `pure`: deterministic evaluation over declared inspection and context inputs
-
 ### Errors
 
 - insufficient-evidence: inspection and platform context cannot support a layer attribution
 - symptom-not-reproduced: available evidence does not show the described symptom
 
-### Invariants
+### Effects
+
+- `pure`: deterministic evaluation over declared inspection and context inputs
+
+### Strategies
 
 - the diagnosis names one primary owning layer
 - fixes must reduce or preserve system complexity

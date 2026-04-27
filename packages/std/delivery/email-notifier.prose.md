@@ -26,6 +26,13 @@ kind: service
 - `sent`: boolean - confirmation with message ID and timestamp
 - `provider`: Markdown<Provider> - which email provider handled the send
 
+### Errors
+
+- delivery-failed: the email provider rejected the send request or returned a non-success status
+- invalid-recipient: one or more addresses in to, cc, or bcc are malformed or undeliverable
+- auth-failed: the EMAIL_API_KEY is invalid, expired, or lacks send permission
+- provider-not-configured: EMAIL_PROVIDER is not set or is not a recognized value
+- missing-from: neither from_email nor EMAIL_FROM_ADDRESS is set — cannot send without a sender
 
 ### Environment
 
@@ -43,20 +50,10 @@ kind: service
 
 - `delivers`: sends content to an external delivery channel
 
-### Errors
-
-- delivery-failed: the email provider rejected the send request or returned a non-success status
-- invalid-recipient: one or more addresses in to, cc, or bcc are malformed or undeliverable
-- auth-failed: the EMAIL_API_KEY is invalid, expired, or lacks send permission
-- provider-not-configured: EMAIL_PROVIDER is not set or is not a recognized value
-- missing-from: neither from_email nor EMAIL_FROM_ADDRESS is set — cannot send without a sender
-
-### Invariants
+### Strategies
 
 - the html body is sent exactly as provided — no rewriting, no stripping, no wrapping
 - if reply_to is provided, the Reply-To header is always set — never silently drop it
-
-### Strategies
 
 - SMTP is the default and recommended provider — it works with any email service (Loops, Postmark, SendGrid, SES, Mailpit) via standard credentials
 - for local development, pair with Mailpit (localhost:1025, no auth, SMTP_SECURE=false) for a local inbox UI at http://localhost:8025

@@ -91,6 +91,19 @@ parent should call `openprose_report_error` with a declared error code. If
 cleanup or final accounting is required in either path, include `finally`
 evidence in the terminal tool call.
 
+## Legacy Invariants
+
+`### Invariants` is still parsed for older contracts, but new std/co contracts
+should prefer sharper sections:
+
+- Use `### Ensures` for typed outputs and explicit degraded-success shapes.
+- Use `### Errors` for terminal failure modes.
+- Use `### Finally` for obligations that should be accounted for on success or
+  declared error.
+- Use `### Effects` and `### Access` for runtime policy constraints.
+- Use `### Strategies` for semantic behavioral guidance that the agent should
+  follow while producing the node result.
+
 ## Harness Portability
 
 Single-component handoff still works as a portable contract export. The

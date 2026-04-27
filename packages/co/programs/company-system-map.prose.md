@@ -30,15 +30,15 @@ OpenProse, Inc. private systems or customer assumptions.
 - `starter_map`: Json<CompanyStarterMap> - composed starter map containing source inventory, system boundaries, workflow surface, records boundary, runtime boundary, and unresolved decisions
 - `starter_next_actions`: Markdown<CompanyStarterNextActions> - concise setup plan for the next repo changes and evals
 
-### Effects
-
-- `read_external`: reads repository source under `repo_path`
-
 ### Errors
 
 - `repo_unreadable`: the repository path cannot be inspected
 - `boundary_ambiguous`: a responsibility or adapter cannot be assigned without a human decision
 - `workflow_overfit`: a proposed workflow bakes in a channel, vendor, or cadence before the responsibility boundary is clear
+
+### Effects
+
+- `read_external`: reads repository source under `repo_path`
 
 ### Strategies
 

@@ -26,22 +26,19 @@ kind: service
 - `feedback`: Markdown<Feedback> - (optional) structured edits from the reviewer, suitable for `apply(content, feedback)` — present only when the reviewer provides modifications
 - if gate_level is "none": approved is true immediately with no human review and no feedback
 
-
-### Effects
-
-- `human_gate`: requires explicit human approval before continuing
-
 ### Errors
 
 - reviewer-timeout: the reviewer did not respond within the configured review window
 - channel-unreachable: the review channel could not be contacted (invalid channel, permissions issue, or service unavailable)
 
-### Invariants
+### Effects
+
+- `human_gate`: requires explicit human approval before continuing
+
+### Strategies
 
 - content substance is preserved unless feedback explicitly modifies it
 - when gate_level is "all" or "external", a human must have explicitly approved before approved is true
-
-### Strategies
 
 - when gate_level is "all": post every output for review, block until the reviewer responds
 - when gate_level is "external": only review content that will be sent outside the org (outreach emails, reports to customers)

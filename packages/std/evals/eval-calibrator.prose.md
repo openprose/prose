@@ -27,17 +27,17 @@ for CI, package publish gates, and reactive graph acceptance.
   - disagreements: ranked list of run ids where evals diverged
   - recommendations: changes to eval thresholds, required evals, or evidence capture
 
-### Effects
-
-- `pure`: deterministic evaluation over declared run-store inputs
-
 ### Errors
 
 - insufficient-runs: fewer than three subjects are provided
 - missing-eval-records: subjects do not contain enough paired eval evidence
 - insufficient-pairs: fewer than three comparable fast/deep eval pairs are available
 
-### Invariants
+### Effects
+
+- `pure`: deterministic evaluation over declared run-store inputs
+
+### Strategies
 
 - arithmetic is computed from explicit numeric fields in eval records
 - runs without paired eval records remain visible in the report as coverage gaps

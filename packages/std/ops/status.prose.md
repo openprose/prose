@@ -12,14 +12,13 @@ kind: program
 
 - `summary`: Markdown<Summary> - summary of recent materialized runs showing run ID, component, kind, status, acceptance, outputs, node count, attempts, timestamps, and run path
 
+### Errors
+
+- no-runs: no run data found in the runs directory
 
 ### Effects
 
 - `read_external`: reads workspace, package, or run artifacts for operational analysis
-
-### Errors
-
-- no-runs: no run data found in the runs directory
 
 ### Strategies
 

@@ -30,17 +30,17 @@ standard library's foundational eval contract for run-store records.
   - flags: issue list with severity, evidence, and suggested owner
   - summary: concise human-readable explanation
 
-### Effects
-
-- `pure`: deterministic evaluation over declared run-store inputs
-
 ### Errors
 
 - missing-run-record: the subject payload is not a valid run record projection
 - missing-outputs: the subject declares success but has no output artifact references
 - unsupported-depth: `depth` is not "light" or "deep"
 
-### Invariants
+### Effects
+
+- `pure`: deterministic evaluation over declared run-store inputs
+
+### Strategies
 
 - light inspections never claim content quality that was not observed
 - deep inspections account for every output reference and every available trace or attempt record

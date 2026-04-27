@@ -11,15 +11,14 @@ kind: program
 
 - `report`: Markdown<Report> - structured lint report with file-level validation results, contract compatibility checks, shape consistency checks, and warnings
 
-
-### Effects
-
-- `read_external`: reads workspace, package, or run artifacts for operational analysis
-
 ### Errors
 
 - not-found: target file does not exist
 - not-program: target file is not a valid program (missing or invalid `kind`)
+
+### Effects
+
+- `read_external`: reads workspace, package, or run artifacts for operational analysis
 
 ### Strategies
 

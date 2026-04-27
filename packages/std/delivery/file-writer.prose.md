@@ -25,6 +25,11 @@ kind: service
 - `written_path`: string - the resolved path or URI where the file was written
 - `bytes_written`: number - the size of the written file in bytes
 
+### Errors
+
+- write-failed: the write operation failed (disk full, network error, service unavailable)
+- path-not-found: the parent directory or bucket does not exist
+- permission-denied: insufficient permissions to write to the destination
 
 ### Environment
 
@@ -36,18 +41,10 @@ kind: service
 
 - `mutates_repo`: writes content to a requested file path
 
-### Errors
-
-- write-failed: the write operation failed (disk full, network error, service unavailable)
-- path-not-found: the parent directory or bucket does not exist
-- permission-denied: insufficient permissions to write to the destination
-
-### Invariants
+### Strategies
 
 - content is serialized faithfully in the requested format — no fields added, removed, or transformed beyond format encoding
 - if the destination already exists, it is overwritten (not appended)
-
-### Strategies
 
 - when format is "json": serialize the content as formatted JSON
 - when format is "csv": serialize the content as CSV with headers derived from the data structure

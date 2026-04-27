@@ -13,16 +13,15 @@ kind: program
 
 - `report`: Markdown<Report> - profiling report with graph/node duration, retry count, model usage, token and cost telemetry when available, artifact volume, cache/recompute notes, hotspots, and optimization recommendations
 
-
-### Effects
-
-- `read_external`: reads workspace, package, or run artifacts for operational analysis
-
 ### Errors
 
 - no-run: run directory does not exist or is missing `run.json`
 - no-trace: trace data is unavailable for the requested run
 - no-telemetry: trace exists but contains no usage, duration, or model telemetry
+
+### Effects
+
+- `read_external`: reads workspace, package, or run artifacts for operational analysis
 
 ### Strategies
 

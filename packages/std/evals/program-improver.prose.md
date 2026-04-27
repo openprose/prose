@@ -25,17 +25,17 @@ layout.
   - rejected_options: alternatives considered and why they were not chosen
   - follow_up_evals: eval refs that should run after applying the proposals
 
-### Effects
-
-- `pure`: deterministic evaluation over declared inspection and source inputs
-
 ### Errors
 
 - missing-inspection: inspection is absent or lacks flags/evidence
 - missing-source-tree: source tree does not include the inspected component
 - unsafe-diff: a proposed diff cannot be scoped to the supplied source files
 
-### Invariants
+### Effects
+
+- `pure`: deterministic evaluation over declared inspection and source inputs
+
+### Strategies
 
 - proposals are minimal and independently reviewable
 - each proposal cites both inspection evidence and a specific source location

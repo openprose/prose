@@ -11,15 +11,14 @@ kind: program
 
 - `report`: Markdown<Report> - preflight report listing dependency installation status and environment variable status (set/not set, never revealing values)
 
-
-### Effects
-
-- `read_external`: reads workspace, package, or run artifacts for operational analysis
-
 ### Errors
 
 - not-found: target file does not exist
 - not-program: target file is not a valid program
+
+### Effects
+
+- `read_external`: reads workspace, package, or run artifacts for operational analysis
 
 ### Strategies
 

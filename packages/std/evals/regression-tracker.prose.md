@@ -31,17 +31,17 @@ runtime promotion gates.
   - evidence: specific run-store evidence behind the status
   - recommendation: next action for CI or a human reviewer
 
-### Effects
-
-- `pure`: deterministic evaluation over declared run-store inputs
-
 ### Errors
 
 - missing-subject: subject run payload is absent or malformed
 - unsupported-action: action is not one of the supported values
 - incompatible-baseline: baseline exists but cannot be compared to the subject
 
-### Invariants
+### Effects
+
+- `pure`: deterministic evaluation over declared run-store inputs
+
+### Strategies
 
 - the eval never mutates persistent baseline state by itself
 - a missing baseline returns a registration recommendation rather than inventing history

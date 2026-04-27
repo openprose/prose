@@ -25,22 +25,19 @@ kind: service
 - `response_body`: Markdown<ResponseBody> - the response body from the endpoint (may be empty)
 - `delivered`: boolean - confirmation with timestamp
 
-
-### Effects
-
-- `delivers`: sends content to an external delivery channel
-
 ### Errors
 
 - request-failed: the HTTP request could not be completed (DNS failure, connection refused, non-2xx status)
 - timeout: the endpoint did not respond within the configured timeout window
 - auth-failed: the provided authentication credentials were rejected (401/403)
 
-### Invariants
+### Effects
 
-- content is serialized faithfully — no fields added, removed, or transformed beyond format encoding
+- `delivers`: sends content to an external delivery channel
 
 ### Strategies
+
+- content is serialized faithfully — no fields added, removed, or transformed beyond format encoding
 
 - when auth is a bearer token: include it as Authorization: Bearer header
 - when auth is basic credentials: include it as Authorization: Basic header

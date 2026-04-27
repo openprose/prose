@@ -24,22 +24,19 @@ kind: service
 - `html_path`: string - the output file path
 - all template placeholders are resolved to data values, or marked "data pending" in non-strict mode
 
-
-### Effects
-
-- `pure`: deterministic transformation over declared inputs
-
 ### Errors
 
 - template-not-found: the template path does not exist or is not readable
 - data-incomplete: (strict mode only) one or more template placeholders have no corresponding data field
 
-### Invariants
+### Effects
+
+- `pure`: deterministic transformation over declared inputs
+
+### Strategies
 
 - template structure, styling, and layout are preserved exactly — only placeholder markers are replaced
 - output HTML is valid if the input template was valid
-
-### Strategies
 
 - when rendering: replace all placeholder markers in the template with corresponding values from the data. Preserve the template's structure, styling, and layout.
 - when strict is true and a data field is missing: signal data-incomplete error listing all unresolved placeholders

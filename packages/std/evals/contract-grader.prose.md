@@ -27,17 +27,17 @@ any attached eval records.
   - unevaluable: list of clauses that need sharper source contracts before they can be graded
   - recommendations: concrete source changes that would make future grading more reliable
 
-### Effects
-
-- `pure`: deterministic evaluation over declared run-store inputs
-
 ### Errors
 
 - missing-run-record: `subject.run_id`, `subject.status`, or `subject.outputs` is missing
 - missing-contract: no contract snapshot or source-derived ensures are available
 - missing-output-artifacts: the run declares successful execution but has no output artifact references
 
-### Invariants
+### Effects
+
+- `pure`: deterministic evaluation over declared run-store inputs
+
+### Strategies
 
 - every available ensures clause is either graded or listed as unevaluable
 - a failed subject run cannot receive a passing verdict unless the contract explicitly defines a degraded success path

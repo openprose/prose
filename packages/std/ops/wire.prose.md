@@ -14,15 +14,14 @@ reviews, and hosted ingest.
 
 - `manifest`: Markdown<Manifest> - manifest projection with components, ports, effects, dependencies, and graph edges
 
-
-### Effects
-
-- `read_external`: reads workspace, package, or run artifacts for operational analysis
-
 ### Errors
 
 - not-found: target file does not exist
 - unresolvable: one or more services could not be wired — no contract match found
+
+### Effects
+
+- `read_external`: reads workspace, package, or run artifacts for operational analysis
 
 ### Strategies
 

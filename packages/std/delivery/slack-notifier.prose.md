@@ -24,6 +24,10 @@ kind: service
 - `delivered`: boolean - confirmation with timestamp and permalink
 - `attachment_url`: string - link to the uploaded file — present only when format is "summary+attachment"
 
+### Errors
+
+- webhook-failed: the Slack webhook returned a non-2xx status or was unreachable
+- channel-not-found: the specified channel does not exist or the bot lacks permission to post there
 
 ### Environment
 
@@ -33,11 +37,6 @@ kind: service
 ### Effects
 
 - `delivers`: sends content to an external delivery channel
-
-### Errors
-
-- webhook-failed: the Slack webhook returned a non-2xx status or was unreachable
-- channel-not-found: the specified channel does not exist or the bot lacks permission to post there
 
 ### Strategies
 

@@ -25,23 +25,20 @@ kind: service
 - every spec is a valid json-render object (`{ root, elements }`) referencing only catalog components
 - slots adapt to report content — empty or irrelevant sections get appropriate alternative content, not blank space
 
-
-### Effects
-
-- `pure`: deterministic transformation over declared inputs
-
 ### Errors
 
 - empty-report: the report contains no data to render
 - unknown-slot: a slot_name is not present in slot_definitions
 - unknown-component: a spec references a component not in the catalog
 
-### Invariants
+### Effects
+
+- `pure`: deterministic transformation over declared inputs
+
+### Strategies
 
 - the email shell structure is never modified — only slot contents are produced
 - output is pure json-render specs — never raw HTML, never inline styles, never layout markup
-
-### Strategies
 
 - generate a json-render spec per slot — each spec is a `{ root, elements }` object where elements reference components from the catalog; the rendering infrastructure handles converting specs to email-safe HTML
 - adapt slot content to the report — when a section has no relevant data, produce an appropriate alternative (e.g., a placeholder or positive-status message) rather than an empty spec

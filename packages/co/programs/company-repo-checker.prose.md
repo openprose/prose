@@ -40,10 +40,6 @@ operations.
 - `passed`: boolean - true only when all hard failures are empty
 - `failures`: Json<RepoFailure[]> - file-grounded failures, empty when passed
 
-### Effects
-
-- `read_external`: reads repository source and eval files from `repo_path`
-
 ### Errors
 
 - `parse_failed`: a Contract Markdown file cannot be read or parsed
@@ -51,6 +47,10 @@ operations.
 - `eval_drift`: a component lacks a paired eval or an eval subject does not resolve
 - `source_layout_violation`: source appears under a retired flat root
 - `ownership_violation`: shared code depends on system-private code, or one system depends directly on another system's private source
+
+### Effects
+
+- `read_external`: reads repository source and eval files from `repo_path`
 
 ### Strategies
 
