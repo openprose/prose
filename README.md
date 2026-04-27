@@ -33,6 +33,7 @@ You write canonical `.prose.md` source with typed inputs, typed outputs, effects
 - [Why and When to Use OpenProse](docs/why-and-when.md)
 - [What Shipped](docs/what-shipped.md)
 - [Agent Onboarding](docs/agent-onboarding.md)
+- [Subagents and Private State](docs/subagents-private-state.md)
 - [Curated Examples](examples/README.md)
 - [Measurement Harness](docs/measurement.md)
 - [Runtime Confidence Gate](docs/release-candidate.md)
@@ -79,6 +80,10 @@ bun run prose handoff examples/north-star/company-signal-brief.prose.md \
 ```
 
 A single component contract can still be handed to a compatible agent harness as a one-off task. For reactive graphs, the Bun CLI is the compiler/tooling/runtime-analysis surface and Pi is the local graph VM that OpenProse coordinates one persisted node session at a time.
+
+Inside a Pi node, `openprose_subagent` supports private child-session
+delegation. Child sessions write under node-private state and return refs to
+the parent; only the parent submits declared graph outputs.
 
 ## Why OpenProse
 

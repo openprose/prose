@@ -33,6 +33,8 @@ These surfaces share one model:
 - run materialization as the universal execution record
 - deterministic `--output` fixtures as a development/test path, not the runtime center
 - Pi-backed graph VM execution with one persisted session per selected node
+- intra-node child-session delegation through `openprose_subagent`, retained
+  as node-private state rather than graph output
 - structured output submission through `openprose_submit_outputs`
 - structured node-session records in attempts and trace output
 - package-local named JSON Schema validation for `Json<T>` ports

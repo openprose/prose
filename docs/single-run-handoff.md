@@ -23,6 +23,12 @@ It does not run the component, create a run record, or coordinate a graph. The
 receiving harness is responsible for doing the work and returning the declared
 outputs.
 
+`### Execution` content is preserved as semantic instruction text. If it uses
+delegation language such as `session` or `call openprose_subagent`, a harness
+with child-session support can map that shape to its own child primitive. A
+harness without child sessions can still complete the one-off handoff by doing
+the work in the parent session and returning the declared outputs.
+
 ## Usage
 
 ```bash
@@ -57,3 +63,6 @@ a graph VM.
 - reactive graph: run through Pi as the OpenProse graph VM
 - hosted platform: consume the same IR, package metadata, run records, and
   artifact contracts
+
+For the Pi-native child-session protocol, see
+[Subagents and Private State](subagents-private-state.md).

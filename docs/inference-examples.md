@@ -115,6 +115,21 @@ fallback development paths, but the north-star runtime contract is tool-first:
 - OpenProse validates required outputs before accepting the node run.
 - Accepted outputs become upstream artifacts for later graph nodes.
 
+## Intra-Node Delegation
+
+Pi nodes also expose `openprose_subagent` for private child-session work inside
+one graph node. The child writes notes and intermediate artifacts under
+`__subagents/<child-id>/` and returns refs to the parent. The parent remains the
+only session that can call `openprose_submit_outputs`.
+
+This keeps delegation from becoming accidental graph structure. If the work
+deserves caching, selective recompute, or downstream reuse, model it as another
+OpenProse graph node instead. If it is scratch research, critique, or
+context-splitting for one node, keep it in private state.
+
+See [Subagents and Private State](subagents-private-state.md) for the exact
+node-private state protocol.
+
 ## Live Pi Smoke Ladder
 
 Use the smoke ladder when you want to exercise the real Pi SDK boundary without
