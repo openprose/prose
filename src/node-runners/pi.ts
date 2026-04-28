@@ -460,7 +460,7 @@ function indentInputValue(value: string): string {
     .join("\n");
 }
 
-async function createDefaultPiSession(
+export async function createDefaultPiSession(
   context: PiSessionFactoryContext,
 ): Promise<PiAgentSessionLike> {
   const pi = await import("@mariozechner/pi-coding-agent");

@@ -1,0 +1,41 @@
+{
+  "name": "@openprose/pi-harness-dev",
+  "version": "0.1.0",
+  "registry": {
+    "catalog": "openprose"
+  },
+  "description": "Dev-environment Pi harness canaries for output submission and subagent private state.",
+  "license": "MIT",
+  "source": {
+    "git": "github.com/openprose/prose",
+    "sha": "0000000000000000000000000000000000000000",
+    "subpath": "fixtures/package/pi-harness-dev"
+  },
+  "evals": [],
+  "examples": [],
+  "runtime": {
+    "graph_vm": "pi",
+    "model_providers": [
+      "openrouter"
+    ],
+    "default_model_provider": "openrouter",
+    "default_model": "google/gemini-3-flash-preview",
+    "thinking": "low",
+    "tools": [
+      "read",
+      "write"
+    ],
+    "persist_sessions": true,
+    "subagents": true,
+    "subagent_backend": "pi"
+  },
+  "hosted": {
+    "callable": true,
+    "pricing": "metered",
+    "auth_required": true,
+    "auth_modes": [
+      "api_key"
+    ],
+    "trace_available": true
+  }
+}

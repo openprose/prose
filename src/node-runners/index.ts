@@ -4,6 +4,7 @@ export {
 export {
   PiNodeRunner,
   createPiNodeRunner,
+  createDefaultPiSession,
   renderPiPrompt,
 } from "./pi.js";
 export {

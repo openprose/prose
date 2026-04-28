@@ -172,6 +172,62 @@ describe("OpenProse package, registry, install, publish, and search", () => {
     expect(text).toContain("catch: declared");
   });
 
+  test("generates package metadata for the Pi harness dev canaries", async () => {
+    const metadata = await packagePath(fixturePath("package/pi-harness-dev"));
+
+    expect(metadata.manifest).toMatchObject({
+      name: "@openprose/pi-harness-dev",
+      version: "0.1.0",
+      catalog: "openprose",
+      registry_ref: "registry://openprose/@openprose/pi-harness-dev@0.1.0",
+      runtime: {
+        graph_vm: "pi",
+        model_providers: ["openrouter"],
+        default_model_provider: "openrouter",
+        default_model: "google/gemini-3-flash-preview",
+        thinking: "low",
+        tools: ["read", "write"],
+        persist_sessions: true,
+        subagents_enabled: true,
+        subagent_backend: "pi",
+      },
+      hosted: {
+        callable: true,
+        auth_required: true,
+        trace_available: true,
+      },
+    });
+    expect(metadata.components.map((component) => component.name)).toEqual([
+      "pi-harness-output-tool",
+      "pi-harness-subagent-review",
+    ]);
+    expect(metadata.components.map((component) => component.kind)).toEqual([
+      "service",
+      "service",
+    ]);
+    const outputTool = metadata.components.find(
+      (component) => component.name === "pi-harness-output-tool",
+    );
+    const subagentReview = metadata.components.find(
+      (component) => component.name === "pi-harness-subagent-review",
+    );
+    expect(outputTool?.artifact_contract).toContainEqual(
+      expect.objectContaining({
+        port: "message",
+        default_path: "message.md",
+      }),
+    );
+    expect(subagentReview?.artifact_contract).toContainEqual(
+      expect.objectContaining({
+        port: "message",
+        default_path: "message.md",
+      }),
+    );
+    expect(readFileSync(fixturePath("package/pi-harness-dev/subagent-review.prose.md"), "utf8")).toContain(
+      "openprose_subagent",
+    );
+  });
+
   test("keeps nested package files out of the parent package metadata", async () => {
     const root = mkdtempSync(join(tmpdir(), "openprose-nested-root-"));
     const nested = join(root, "customers", "nested");
@@ -845,7 +901,7 @@ kind: test
     });
     const text = renderCatalogSearchText(result);
 
-    expect(result.package_count).toBe(1);
+    expect(result.package_count).toBe(2);
     expect(result.results).toHaveLength(1);
     expect(result.results[0]).toMatchObject({
       package_name: "@openprose/catalog-demo",
