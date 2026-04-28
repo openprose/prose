@@ -1,0 +1,106 @@
+name: OpenProse Smoke
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "Optional PR number to run after maintainer review"
+        required: false
+        type: string
+      ref:
+        description: "Optional ref to check out when pr_number is not set"
+        required: false
+        type: string
+      tier:
+        description: "Smoke tier"
+        required: false
+        default: "required"
+        type: choice
+        options:
+          - required
+          - advisory
+      model:
+        description: "Claude model override"
+        required: false
+        type: string
+      force:
+        description: "Run even if changed-path detection would skip"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: openprose-smoke-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  OPENPROSE_SMOKE_MODEL: claude-sonnet-4-6
+
+jobs:
+  smoke:
+    name: Run OpenProse smoke fixtures
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.pr_number != '' && format('refs/pull/{0}/merge', inputs.pr_number) || github.event_name == 'workflow_dispatch' && inputs.ref != '' && inputs.ref || github.ref }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Claude Code CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install -g @anthropic-ai/claude-code
+          claude --version
+
+      - name: Install tsx
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install -g tsx@4.20.5
+          tsx --version
+
+      - name: Run OpenProse smoke
+        shell: bash
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SMOKE_TIER: ${{ github.event_name == 'workflow_dispatch' && inputs.tier || 'required' }}
+          SMOKE_MODEL: ${{ github.event_name == 'workflow_dispatch' && inputs.model != '' && inputs.model || env.OPENPROSE_SMOKE_MODEL }}
+          SMOKE_FORCE: ${{ github.event_name == 'workflow_dispatch' && inputs.force || false }}
+        run: |
+          set -euo pipefail
+          args=(
+            --tier "$SMOKE_TIER"
+            --model "$SMOKE_MODEL"
+            --results-dir openprose-smoke-results
+            --max-concurrency 2
+          )
+          if [[ "$SMOKE_FORCE" == "true" ]]; then
+            args+=(--force)
+          fi
+          tsx .github/scripts/openprose-smoke/run.ts "${args[@]}"
+
+      - name: Upload smoke artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: openprose-smoke-${{ github.run_id }}-${{ github.run_attempt }}
+          path: openprose-smoke-results/**
+          retention-days: 30
+          if-no-files-found: warn
