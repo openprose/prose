@@ -1,0 +1,96 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "id": "single-service",
+      "tier": "required",
+      "command": "run",
+      "program": "01-single-service.md",
+      "expectedOutputs": ["message"],
+      "timeoutSeconds": 360,
+      "maxTurns": 24
+    },
+    {
+      "id": "caller-input",
+      "tier": "required",
+      "command": "run",
+      "program": "02-caller-input.md",
+      "inputs": { "topic": "caller input smoke fixture" },
+      "expectedOutputs": ["echo"],
+      "timeoutSeconds": 360,
+      "maxTurns": 24
+    },
+    {
+      "id": "auto-wiring",
+      "tier": "required",
+      "command": "run",
+      "program": "03-auto-wiring.md",
+      "inputs": { "subject": "auto wiring smoke fixture" },
+      "expectedOutputs": ["summary"],
+      "timeoutSeconds": 480,
+      "maxTurns": 24
+    },
+    {
+      "id": "inline-services",
+      "tier": "required",
+      "command": "run",
+      "program": "04-inline-services.md",
+      "inputs": { "draft": "OpenProse smoke tests should be small, stable, and diagnostic." },
+      "expectedOutputs": ["final"],
+      "timeoutSeconds": 480,
+      "maxTurns": 24
+    },
+    {
+      "id": "explicit-wiring",
+      "tier": "required",
+      "command": "run",
+      "program": "05-explicit-wiring.md",
+      "inputs": { "seed": "explicit wiring smoke fixture" },
+      "expectedOutputs": ["joined"],
+      "timeoutSeconds": 480,
+      "maxTurns": 24
+    },
+    {
+      "id": "execution-block",
+      "tier": "required",
+      "command": "run",
+      "program": "06-execution-block.md",
+      "inputs": { "request": "produce a short smoke result" },
+      "expectedOutputs": ["result"],
+      "timeoutSeconds": 480,
+      "maxTurns": 24
+    },
+    {
+      "id": "errors-strategies",
+      "tier": "required",
+      "command": "run",
+      "program": "07-errors-strategies.md",
+      "inputs": { "incident": "A smoke check lacks detail but needs a conservative recovery note." },
+      "expectedOutputs": ["response"],
+      "timeoutSeconds": 360,
+      "maxTurns": 24
+    },
+    {
+      "id": "kind-test",
+      "tier": "required",
+      "command": "test",
+      "program": "08-kind-test.md",
+      "expectedOutputs": ["echo"],
+      "timeoutSeconds": 480,
+      "maxTurns": 24
+    },
+    {
+      "id": "local-composite",
+      "tier": "required",
+      "command": "run",
+      "program": "09-local-composite.md",
+      "inputs": {
+        "task": "produce a one sentence smoke result",
+        "quality-bar": "The output contains local-composite-smoke-pass and is under 80 words."
+      },
+      "expectedOutputs": ["result"],
+      "timeoutSeconds": 600,
+      "maxTurns": 24
+    }
+  ]
+}
