@@ -1,6 +1,6 @@
 # OpenProse Runtime Confidence Gate
 
-This is the confidence checklist for the local-first OpenProse runtime.
+Confidence checklist for the local-first OpenProse runtime.
 
 ## Confidence Matrix
 
@@ -69,10 +69,10 @@ Latest generated reports:
 - [Package Publication](package-publication.md) matches the actual generated
   artifact boundary.
 - CLI help, status, trace, and graph output explain the runtime loop clearly.
-- Remaining hosted/platform-specific follow-up is documented outside the OSS
-  package workstream.
+- Hosted/platform-specific work is documented outside the OSS package
+  workstream.
 
-## Platform Follow-Up
+## Platform Contract
 
 - Keep platform tests wired directly to the OSS hosted-runtime fixtures so
   fixture drift is caught before hosted runtime changes land.

@@ -1,9 +1,9 @@
 # Evidence Classes
 
-OpenProse launch evidence is split deliberately. Do not compare or cite these
-classes as if they prove the same thing.
+OpenProse launch evidence has separate classes. Cite each class for the behavior
+it covers.
 
-| Evidence Class | Required Locally | Spends Inference | What It Proves | What It Does Not Prove |
+| Evidence Class | Required Locally | Spends Inference | Covers | Does Not Cover |
 | --- | --- | --- | --- | --- |
 | Deterministic fixtures | yes | no | source, compiler, planner, eval, and package behavior are stable | real model output quality |
 | Scripted Pi runs | yes | no | OpenProse graph VM, node sessions, output submission, artifacts, traces, and selective recompute work through the Pi-shaped contract | provider auth, billing, latency, or model reliability |
@@ -17,9 +17,8 @@ classes as if they prove the same thing.
 Use deterministic fixtures, scripted Pi runs, cold-start, and agent onboarding
 as required local release confidence.
 
-Use live Pi and hosted dev smokes as interop evidence. They are important, but
-they are opt-in, environment-sensitive, and should be cited with date, model,
-provider, and run context.
+Use live Pi and hosted dev smokes as interop evidence. They are opt-in and
+environment-sensitive; cite date, model, provider, and run context.
 
 ## Generated Sources
 
@@ -29,4 +28,3 @@ provider, and run context.
 - [`measurements/agent-onboarding.latest.md`](measurements/agent-onboarding.latest.md)
 - [`measurements/live-pi.latest.md`](measurements/live-pi.latest.md)
 - [`measurements/launch-evidence.latest.md`](measurements/launch-evidence.latest.md)
-

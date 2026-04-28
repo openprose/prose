@@ -11,9 +11,8 @@ related:
 
 Composites are named multi-agent patterns (`kind: composite`). Each one defines
 a topology: which roles exist, how information flows between them, and what
-structural guarantee the pattern provides. In the current OSS runtime they are
-typed, executable pattern contracts: `composite_state` in, `composite_result`
-out.
+structural guarantee the pattern provides. They are typed, executable pattern
+contracts: `composite_state` in, `composite_result` out.
 
 ## Two Categories
 
@@ -124,14 +123,14 @@ Composites without a primary slot (currently only `dialectic`) require the Level
 
 ## Native Runtime Support
 
-Supported today:
+Supported:
 
 - package-local composite references in package IR
 - fixed service graphs expanded from declared `compose:` references
 - scripted Pi execution of expanded composite graphs through normal run
   materialization
 
-Pattern-only in the current OSS runtime:
+Pattern contracts:
 
 - variable-width ensembles
 - iterative worker/critic, ratchet, oversight, and dialectic loops

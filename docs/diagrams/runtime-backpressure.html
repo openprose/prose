@@ -11,9 +11,9 @@
       <section class="page-header">
         <h1>Runtime Backpressure</h1>
         <p>
-          A managed agent runtime should explain why work can or cannot proceed before an operator clicks run.
-          OpenProse keeps those reasons separate so capacity, graph VM readiness, artifacts, approvals, and workspaces do
-          not collapse into one vague failure state.
+          A managed agent runtime explains whether work can proceed before an operator clicks run. OpenProse keeps
+          capacity, graph VM readiness, artifacts, approvals, and workspaces separate so each blocked state has a clear
+          next step.
         </p>
         <nav class="nav">
           <a href="index.html">Overview</a>
@@ -60,7 +60,7 @@
             </div>
           </div>
           <div class="card span-4">
-            <h2>Decision surface</h2>
+            <h2>Run Readiness</h2>
             <div class="stack">
               <div class="node">
                 <strong>ready</strong>
@@ -129,9 +129,8 @@
         <div class="callout">
           <h2>Why this matters</h2>
           <p>
-            Backpressure turns a managed agent runtime from a text wall into an operating surface. Operators can
-            see whether the next fix is adding inputs, approving an effect, waiting for capacity, allocating a
-            workspace, fixing storage, or choosing a different model profile.
+            Backpressure turns a run request into a readable operating state. Operators can see which dependency is
+            missing, which approval is pending, and which runtime resource needs attention.
           </p>
         </div>
       </section>

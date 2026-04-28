@@ -24,8 +24,8 @@ dist/
 - `files`: `["prose"]`
 - no `private` field
 
-This keeps the open source repo clean as a development workspace while making
-the public package an executable CLI artifact.
+The source repo stays a development workspace. The public package is the
+compiled CLI artifact.
 
 ## Required Checks
 
@@ -37,11 +37,11 @@ bun run smoke:cold-start
 bun test test/binary-package.test.ts
 ```
 
-What they prove:
+Checks:
 
 - `smoke:binary` builds `dist/prose`, renders help, and compiles a repo example.
 - `smoke:cold-start` copies only the generated dist package into a temp install
-  root, creates a program outside the source checkout, then proves `help`,
+  root, creates a program outside the source checkout, then runs `help`,
   `compile`, `plan`, `run`, `status`, and `trace` through that copied binary.
 - `test/binary-package.test.ts` verifies the root package stays private and the
   generated dist metadata points `bin.prose` at the compiled artifact.
@@ -55,8 +55,6 @@ bun run evidence:launch
 
 ## What Not To Publish
 
-Do not publish the source workspace directly until the package boundary is
-deliberately changed. The source workspace contains development scripts,
+Do not publish the source workspace directly. It contains development scripts,
 examples, docs, tests, and RFCs. The launch artifact is the compiled CLI
 package.
-

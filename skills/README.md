@@ -19,6 +19,6 @@ Public docs and curated examples live at the repo root:
 
 ## Contents
 
-- `open-prose/` — the current OpenProse skill router. It orients agents to
+- `open-prose/` — the OpenProse skill router. It orients agents to
   `.prose.md` source, the Bun CLI, Pi graph-VM execution, single-component
   handoff, package metadata, and hosted-compatible run/artifact contracts.

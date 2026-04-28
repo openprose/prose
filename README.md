@@ -25,13 +25,17 @@
 
 OpenProse is a programming language for agent workflows.
 
-You write canonical `.prose.md` source with typed inputs, typed outputs, effects, access rules, and optional execution blocks. OpenProse compiles that source into IR, explains the graph, compares it to prior runs, materializes durable run records through the local graph VM, and turns packages into something you can search, install, benchmark, and serve through the hosted platform.
+Write `.prose.md` contracts with typed inputs, typed outputs, effects, access
+rules, and optional execution blocks. OpenProse compiles them into IR, plans
+the graph, compares it to prior runs, materializes durable run records through
+the local graph VM, and packages the result for search, install, benchmarks,
+and hosted execution.
 
 ## Start Here
 
 - [Docs](docs/README.md)
 - [Why and When to Use OpenProse](docs/why-and-when.md)
-- [Current Surface](docs/current-surface.md)
+- [Public Surface](docs/current-surface.md)
 - [Agent Onboarding](docs/agent-onboarding.md)
 - [Subagents and Private State](docs/subagents-private-state.md)
 - [Curated Examples](examples/README.md)
@@ -71,8 +75,7 @@ bun run confidence:runtime
 bun run smoke:live-pi
 ```
 
-Single components can be exported as one-off handoffs for compatible agent
-harnesses:
+Single components can be exported as one-off handoffs:
 
 ```bash
 bun run prose handoff examples/north-star/company-signal-brief.prose.md \
@@ -80,7 +83,9 @@ bun run prose handoff examples/north-star/company-signal-brief.prose.md \
   --input brand_context="OpenProse is React for agent outcomes."
 ```
 
-A single component contract can still be handed to a compatible agent harness as a one-off task. For reactive graphs, the Bun CLI is the compiler/tooling/runtime-analysis surface and Pi is the local graph VM that OpenProse coordinates one persisted node session at a time.
+A handoff is one component, one task, and no graph coordination. Reactive graphs
+run through Pi, with OpenProse coordinating one persisted node session at a
+time.
 
 Inside a Pi node, `openprose_subagent` supports private child-session
 delegation. Child sessions write under node-private state and return refs to
@@ -88,7 +93,7 @@ the parent; only the parent submits declared graph outputs.
 
 ## Why OpenProse
 
-OpenProse is useful when a workflow is starting to look like software:
+Use OpenProse when an agent workflow starts to look like software:
 
 - more than one step or role
 - reusable enough to deserve a name
@@ -96,7 +101,7 @@ OpenProse is useful when a workflow is starting to look like software:
 - big enough that provenance and debugging matter
 - structured enough that selective recompute is worth it
 
-What it adds over baseline agent packages is not just orchestration. It adds:
+OpenProse adds:
 
 - a readable contract surface
 - a deterministic IR
@@ -105,7 +110,7 @@ What it adds over baseline agent packages is not just orchestration. It adds:
 - runs as universal materialization records
 - package metadata for install/search/publish discipline
 
-## The Current Spine
+## Runtime Path
 
 ```text
 .prose.md source
@@ -117,17 +122,18 @@ What it adds over baseline agent packages is not just orchestration. It adds:
   -> hosted run + graph + approval surfaces
 ```
 
-That shared spine is the important part. It means the docs, examples, package system, local runner, and hosted product are all describing the same underlying thing.
+The docs, examples, package system, local runner, and hosted platform all use
+this same path.
 
 ## Repository Map
 
 | Path | What it is |
 |---|---|
-| [`docs/`](docs/README.md) | human docs for the current OpenProse model |
-| [`examples/`](examples/README.md) | concise, high-signal examples of the current best practice |
+| [`docs/`](docs/README.md) | guides for the language, runtime, and package model |
+| [`examples/`](examples/README.md) | compact examples that exercise the runtime |
 | [`packages/std/`](packages/std/) | reusable primitives and standard-library components |
 | [`packages/co/`](packages/co/) | company-operating-system starter patterns |
-| [`skills/open-prose/`](skills/open-prose/) | the current OpenProse agent-skill router and onboarding surface |
+| [`skills/open-prose/`](skills/open-prose/) | the OpenProse agent-skill router and onboarding surface |
 | [`rfcs/`](rfcs/) | the design record for the reactive OpenProse architecture |
 
 ## Local Workflow
@@ -192,8 +198,8 @@ bun run smoke:live-pi -- --tier all --run-root .prose/live-pi-runs
 
 ## Hosted Platform
 
-The hosted platform uses the same package, run, graph, approval, and artifact
-contracts described in [Current Surface](docs/current-surface.md).
+The hosted platform uses the package, run, graph, approval, and artifact
+contracts in [Public Surface](docs/current-surface.md).
 
 ## Terms
 

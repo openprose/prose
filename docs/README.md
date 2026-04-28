@@ -1,10 +1,10 @@
 # OpenProse Docs
 
-OpenProse docs are split into a few clean surfaces:
+Start here:
 
 - [Why and When to Use OpenProse](why-and-when.md): what it is for, when it wins, and when not to reach for it
 - [Agent Onboarding](agent-onboarding.md): the checked path for a coding agent entering the repo cold
-- [Current Surface](current-surface.md): a compact map of the compiler, planner, package, runtime, and hosted surfaces
+- [Public Surface](current-surface.md): a compact map of the compiler, planner, package, runtime, and hosted surfaces
 - [Measuring OpenProse](measurement.md): reproducible ways to measure package quality, selective recompute, approval gating, and reference-company health
 - [Evidence Classes](evidence-classes.md): what each confidence rung proves and what it does not prove
 - [Inference Examples](inference-examples.md): Pi-backed graph VM examples,
@@ -64,15 +64,14 @@ at the compiled binary.
 
 ## Mental Model
 
-OpenProse is not "just markdown."
-
-It is a contract-first system for agent programs with:
+OpenProse source is readable Markdown, but it compiles into an executable
+contract:
 
 - canonical `.prose.md` source
 - a deterministic Prose IR
 - graph planning and selective recompute
 - durable run materialization through the local Pi-backed meta-harness
 - package metadata, install, search, and publish checks
-- hosted graph/run/approval surfaces built on the same IR and run model
+- hosted graph/run/approval surfaces over the same IR and run model
 
-The docs in this directory are meant to make that visible without asking readers to reconstruct it from RFCs and source code.
+RFCs are design history. These docs describe the system a user runs.

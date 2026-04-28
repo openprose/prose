@@ -2,8 +2,7 @@
 
 This is the short path for a coding agent entering the repository cold.
 
-The goal is not to memorize OpenProse. The goal is to empirically confirm the
-runtime model in a few minutes:
+Confirm the runtime loop in a few minutes:
 
 ```text
 .prose.md source
@@ -23,7 +22,7 @@ Read these files in order:
 3. [`examples/README.md`](../examples/README.md)
 4. [`skills/open-prose/SKILL.md`](../skills/open-prose/SKILL.md)
 
-Use RFCs only when you need design history. The current public model is in the
+Use RFCs for design history. The public model is in the
 README, docs, examples, and skill router.
 
 ## Prove The Local Loop
@@ -63,7 +62,7 @@ That writes:
 - [`measurements/agent-onboarding.latest.md`](measurements/agent-onboarding.latest.md)
 - [`measurements/agent-onboarding.latest.json`](measurements/agent-onboarding.latest.json)
 
-## What Good Looks Like
+## Expected Result
 
 You should see:
 
@@ -79,6 +78,5 @@ You should see:
 - Pi is the graph VM substrate for reactive graph execution.
 - Model providers such as OpenRouter are runtime-profile settings inside Pi.
 - A single component can be exported as a handoff contract for a one-off harness.
-- Durable runs, artifacts, traces, and package metadata are the product surface,
-  not incidental logs.
-
+- Durable runs, artifacts, traces, and package metadata are the product
+  surface.

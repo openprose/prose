@@ -1,8 +1,7 @@
 # OpenProse North-Star Examples
 
-This package is executable runtime backpressure for OpenProse. The examples are
-not a gallery of syntax snippets; they are small company operating systems that
-force the runtime to prove the north-star model:
+This package exercises the OpenProse runtime. The examples are not syntax
+snippets; they are small company operating workflows:
 
 - typed props flow from upstream materialized runs into downstream graph nodes
 - only selected stale nodes execute
@@ -12,7 +11,7 @@ force the runtime to prove the north-star model:
 - package metadata advertises the graph VM separately from model providers
 
 The package root stays at `examples/` so registry and publish commands remain
-simple. The curated source contracts live under `examples/north-star/`.
+short. Source contracts live under `examples/north-star/`.
 Fixture inputs live beside them under `examples/north-star/fixtures/`; each
 fixture filename maps back to a declared example input.
 
@@ -40,16 +39,14 @@ bun run prose publish-check examples --strict
 
 Fixtures use the pattern
 `examples/north-star/fixtures/<example>/<scenario>.<input>.(json|md)`.
-The corpus currently covers happy paths, stale-input recompute pressure,
-duplicate rows, gated release cases, no-op release cases, and seeded-bad inputs.
+The corpus covers happy paths, stale-input recompute pressure, duplicate rows,
+gated release cases, no-op release cases, and seeded-bad inputs.
 
 ## Eval Rubrics
 
-Each north-star example has a paired eval contract in `examples/evals/north-star/`.
-These rubrics are intentionally lightweight today: they define the expected
-subject run shape, name what good output must include, name what must be
-rejected, and specify measurable assertions that later executable evals should
-enforce.
+Each example has a paired eval contract in `examples/evals/north-star/`. The
+rubrics define the expected subject run shape, what good output includes, what
+must be rejected, and the assertions executable evals enforce.
 
 ## Scripted Pi Scenarios
 
@@ -61,7 +58,7 @@ should use.
 
 ## Release Backpressure
 
-The examples now participate in the release gate:
+The examples participate in the release gate:
 
 ```bash
 bun run measure:examples
@@ -71,13 +68,12 @@ bun run smoke:live-pi
 
 `measure:examples` records package quality, selective recompute savings,
 approval visibility, and baseline skill-folder comparison. `confidence:runtime`
-proves the public CLI can compile, plan, run, inspect, package, install, and
-publish-check these examples. `smoke:live-pi` stays skipped by default, then
-becomes the opt-in rung for real Pi SDK and model provider interop.
+runs the public CLI across compile, plan, run, inspect, package, install, and
+publish-check. `smoke:live-pi` is skipped by default and becomes the opt-in
+rung for real Pi SDK and model-provider interop.
 
-That combination keeps the examples from becoming decorative. If a runtime
-change weakens typed props, node sessions, approval gates, structured output
-submission, or package metadata, the north-star suite should complain.
+If a runtime change weakens typed props, node sessions, approval gates,
+structured output submission, or package metadata, this suite fails.
 
 ## Smallest Run
 

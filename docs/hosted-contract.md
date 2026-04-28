@@ -1,6 +1,6 @@
 # Hosted Runtime Contract
 
-The hosted platform must not invent a second OpenProse runtime contract.
+The hosted platform uses the OpenProse runtime contract.
 
 The OSS package owns the portable boundary:
 
@@ -50,10 +50,9 @@ bun run smoke:hosted-contract
 
 ## Platform Consumption
 
-The platform should consume these fixtures directly from
-`external/prose/fixtures/hosted-runtime` in tests. That keeps package ingest,
-artifact storage, run persistence, and remote envelope parsing aligned with the
-OSS package.
+Platform tests consume these fixtures directly from
+`external/prose/fixtures/hosted-runtime`. Package ingest, artifact storage, run
+persistence, and remote envelope parsing stay aligned with the OSS package.
 
 When the fixture contract intentionally changes:
 

@@ -13,13 +13,10 @@ Flow control patterns used to structure Prose program execution.
 
 Controls are delegation coordinators. Each one is a typed pattern contract: it
 accepts a `control_state` JSON input and returns a `control_result` JSON output.
-The contract describes the reusable flow shape without pretending that the OSS
-runtime has native dynamic scheduling for every pattern yet.
-
-Today, controls are executable as agent-facing contracts and as registry-visible
-composition patterns. When you need deterministic native graph execution, write
-an explicit `### Execution` block with concrete `call`, `parallel`, and `return`
-steps.
+The contract describes the reusable flow shape. Controls are executable as
+agent-facing contracts and registry-visible composition patterns. Deterministic
+native graph execution uses an explicit `### Execution` block with concrete
+`call`, `parallel`, and `return` steps.
 
 ## When to Use a Control vs. an Explicit Execution Block
 
@@ -84,14 +81,14 @@ state, shared mutable memory, or JavaScript runtime hooks.
 
 ## Native Runtime Support
 
-Supported today:
+Supported:
 
 - fixed service calls through explicit `### Execution` blocks
 - fixed `parallel:` groups in execution IR
 - package-local composite references for documented topology expansion
 - scripted Pi execution of a control contract as a single graph node
 
-Pattern-only in the current OSS runtime:
+Pattern contracts:
 
 - variable-width fan-out
 - dynamic map-reduce partitioning

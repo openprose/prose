@@ -12,13 +12,12 @@ passes accepted upstream artifacts downstream. Model providers such as
 OpenRouter are configured inside the Pi runtime profile; they are not OpenProse
 graph VMs.
 
-Single-run harnesses can still be useful for one-off execution. They are not
-the reactive graph VM. Multi-node OpenProse graphs use Pi node sessions because
-the runtime needs durable inter-run coordination, dependency-ordered execution,
-artifact handoff, effect gates, and traceable materialization.
+Single-run harnesses are useful for one-off execution. Multi-node OpenProse
+graphs use Pi node sessions because the runtime needs durable inter-run
+coordination, dependency-ordered execution, artifact handoff, effect gates, and
+traceable materialization.
 Use [`prose handoff`](single-run-handoff.md) when you want to export a single
-component contract for a compatible one-off harness without pretending that
-harness can coordinate a reactive graph.
+component contract for a compatible one-off harness.
 
 ```bash
 bun run prose handoff examples/north-star/company-signal-brief.prose.md \
@@ -29,23 +28,21 @@ bun run prose handoff examples/north-star/company-signal-brief.prose.md \
 ## Lead Program Designer
 
 [`examples/north-star/lead-program-designer.prose.md`](../examples/north-star/lead-program-designer.prose.md)
-is the first compact model-backed graph in the north-star ladder. It turns a
-lead profile and brand context into:
+is a compact model-backed graph. It turns a lead profile and brand context into:
 
 - `lead_normalized_profile`
 - `lead_qualification_score`
 - `lead_program_plan`
 
-The graph is deliberately inspectable:
+The graph is easy to inspect:
 
 1. `lead-profile-normalizer` receives the raw lead profile.
 2. `lead-qualification-scorer` receives the accepted normalized profile.
 3. `save-grow-program-drafter` receives the normalized profile, score, and
    brand context.
 
-Changing only `brand_context` should re-run the drafter while reusing the
-normalizer and scorer. That is the "React for agent outcomes" pressure this
-example exists to keep honest.
+Changing only `brand_context` re-runs the drafter while reusing the normalizer
+and scorer.
 
 ## Local Pi Run With OpenRouter
 
@@ -96,8 +93,8 @@ It uses the same runtime vocabulary as `prose run`:
   and `--thinking`, or set the same values through the Pi runtime profile
   environment
 
-That keeps the hosted boundary honest: remote workers get a stable envelope
-without turning hosted execution into a second runtime model.
+Remote workers get a stable envelope without turning hosted execution into a
+second runtime model.
 
 When a host captures worker logs, it can pass stdout/stderr content to the
 remote envelope writer. Deterministic local fixtures leave those artifacts
@@ -106,9 +103,9 @@ remain the canonical runtime timeline.
 
 ## Structured Output Tool
 
-Live and scripted Pi sessions are expected to submit declared outputs through
-`openprose_submit_outputs`. File outputs remain useful for scratch artifacts and
-fallback development paths, but the north-star runtime contract is tool-first:
+Live and scripted Pi sessions submit declared outputs through
+`openprose_submit_outputs`. File outputs remain useful for scratch artifacts
+and fallback development paths, but the runtime contract is tool-first:
 
 - OpenProse tells the node which typed outputs it must produce.
 - Pi calls the output tool with those outputs.
@@ -122,10 +119,10 @@ one graph node. The child writes notes and intermediate artifacts under
 `__subagents/<child-id>/` and returns refs to the parent. The parent remains the
 only session that can call `openprose_submit_outputs`.
 
-This keeps delegation from becoming accidental graph structure. If the work
-deserves caching, selective recompute, or downstream reuse, model it as another
-OpenProse graph node instead. If it is scratch research, critique, or
-context-splitting for one node, keep it in private state.
+Private delegation stays inside one graph node. If the work needs caching,
+selective recompute, or downstream reuse, model it as another OpenProse graph
+node. If it is scratch research, critique, or context-splitting for one node,
+keep it in private state.
 
 See [Subagents and Private State](subagents-private-state.md) for the exact
 node-private state protocol.
@@ -158,9 +155,8 @@ Defaults:
   `docs/measurements/live-pi.latest.md`
 
 When using OpenRouter, the smoke script writes a temporary Pi `models.json`
-under `.prose/live-pi-agent/` for the selected model. This keeps live smoke
-testing independent of how quickly Pi's bundled model registry learns new
-OpenRouter model IDs.
+under `.prose/live-pi-agent/` for the selected model. This decouples live smoke
+testing from Pi's bundled model registry.
 
 Useful overrides:
 

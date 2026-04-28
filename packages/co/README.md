@@ -51,7 +51,7 @@ The starter package has two reusable entry points:
 - `programs/company-repo-checker.prose.md` gates a repo that already exists:
   source layout, contract/eval drift, dependency ownership, and readiness.
 
-Future additions should keep helping a new company get started without copying
+Additions belong here when they help a new company get started without copying
 OpenProse, Inc.'s private business logic:
 
 - customer package checker
@@ -116,9 +116,9 @@ bun run prose run packages/co/programs/company-system-map.prose.md \
   --output company-starter-reporter.starter_next_actions='Start with distribution and revenue system READMEs, then add paired evals for the first workflows.'
 ```
 
-The map starter is the reusable design companion to the checker. It gives a
-new company a source-grounded graph of what should exist; the checker then keeps
-that graph honest as source, evals, runs, and hosted registry gates evolve.
+The map starter is the design companion to the checker. It gives a new company
+a source-grounded operating map; the checker keeps that map aligned with
+source, evals, runs, and hosted registry gates.
 
 ## Design Notes
 

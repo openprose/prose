@@ -38,7 +38,7 @@ openprose-private-state.json
 __subagents/<child-id>/
 ```
 
-The intended protocol is:
+Protocol:
 
 1. The parent calls `openprose_subagent` with a focused task.
 2. The child writes notes, scratch work, and intermediate artifacts under
@@ -73,10 +73,10 @@ finally:
   return `message`
 ```
 
-The shallow IR can recognize simple affordances such as `call` and `return`,
-and it can group `try`, `catch`, and `finally` blocks for linting, editor, and
-trace affordances. The runtime meaning is still carried by the prompt, the
-available tools, and the agent's execution of the contract.
+The shallow IR recognizes simple affordances such as `call` and `return`, and
+groups `try`, `catch`, and `finally` blocks for linting, editor, and trace
+affordances. The runtime meaning stays in the prompt, available tools, and the
+agent's execution of the contract.
 
 ## Catch
 
@@ -87,7 +87,7 @@ make downstream nodes run after an upstream declared failure.
 
 Use `catch` when the parent node can still satisfy its declared `Ensures` after
 recovering internally. If recovery cannot satisfy the output contract, the
-parent should call `openprose_report_error` with a declared error code. If
+parent calls `openprose_report_error` with a declared error code. If
 cleanup or final accounting is required in either path, include `finally`
 evidence in the terminal tool call.
 

@@ -53,11 +53,9 @@ refuses and points you back to:
 bun run prose run path/to/graph.prose.md --graph-vm pi
 ```
 
-## Why This Exists
+## Use The Right Boundary
 
-This keeps the original OpenProse single-run portability idea without making
-reactive execution harness-agnostic by pretending every CLI process can become
-a graph VM.
+Single-run portability and reactive graph execution are different boundaries.
 
 - single component: export a contract handoff
 - reactive graph: run through Pi as the OpenProse graph VM

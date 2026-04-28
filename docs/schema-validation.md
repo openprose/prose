@@ -1,9 +1,8 @@
 # Schema Validation
 
 OpenProse typed ports are both a composition surface and a runtime backstop.
-The package is intentionally honest about which type claims are enforced by the
-local runtime and which remain semantic labels for registry, search, docs, and
-agent judgment.
+Some type claims are enforced locally; others remain semantic labels for
+registry, search, docs, and agent judgment.
 
 ## Enforced Today
 
@@ -41,7 +40,7 @@ OpenProse loads package-local schema resources for runtime validation. A
 schema resource can define named contracts through `$defs`, `definitions`, a
 top-level `title`, or a filename such as `LeadProfile.schema.json`.
 
-The enforced subset is intentionally small and portable:
+The enforced subset is small and portable:
 
 - `$ref` to package-local `#/$defs/Name` or `#/definitions/Name`
 - `type` for `object`, `array`, `string`, `number`, `integer`, `boolean`, and
@@ -67,13 +66,12 @@ For those cases OpenProse still records `schema_ref` values like
 `#/$defs/CompanyProfile` and emits an unchecked schema diagnostic when a named
 `Json<T>` definition is unavailable.
 
-## Why This Line
+## Boundary
 
-The goal is not to pretend prose refinements are already formal schemas. The
-goal is to enforce cheap, deterministic failures immediately while preserving
+The runtime enforces cheap, deterministic failures immediately while preserving
 the richer semantic contract that agents and registries need for composition.
 
-That gives authors useful backpressure now:
+Authors get useful backpressure:
 
 - malformed JSON does not reach a node session
 - numeric, boolean, array, and run-reference mistakes fail fast

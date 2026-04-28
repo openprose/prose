@@ -1,6 +1,6 @@
 # Why and When to Use OpenProse
 
-OpenProse is for agent workflows that have started to look like software:
+OpenProse is for agent workflows that have started to behave like software:
 repeatable, typed, inspectable, packaged, and safe enough to run again later.
 
 It sits between two familiar options:
@@ -8,7 +8,7 @@ It sits between two familiar options:
 - looser than a custom orchestration codebase
 - more structured than a prompt, notebook, or skill bundle
 
-Use OpenProse when the workflow matters after the first run.
+Use it when the workflow matters after the first run.
 
 ## What It Is
 
@@ -17,7 +17,7 @@ file can carry the workflow contract, graph shape, typed inputs and outputs,
 effect declarations, access labels, package identity, and run materialization
 model in one reviewable artifact.
 
-Implemented today:
+Main surfaces:
 
 - local CLI tools for `compile`, `plan`, `graph`, `run`, `eval`, `remote
   execute`, `handoff`, `status`, `trace`, `package`, `publish-check`,
@@ -31,8 +31,8 @@ Implemented today:
   operator inspection, including runtime backpressure for capacity, graph VM
   readiness, storage, approvals, and Sprite-backed workspaces
 
-See [Current Surface](current-surface.md), [Examples](../examples/README.md), and
-[Measuring OpenProse](measurement.md) for the current surfaces.
+See [Public Surface](current-surface.md), [Examples](../examples/README.md),
+and [Measuring OpenProse](measurement.md).
 
 ## Use It When
 
@@ -47,7 +47,7 @@ Choose OpenProse when several of these are true:
 - teams need package install, search, publish checks, or registry discipline
 - a downstream result should update without replaying the whole workflow
 
-The practical threshold is simple: if you would be nervous to keep the workflow
+The threshold is simple: if you would be nervous to keep the workflow
 as a long prompt, but writing a bespoke orchestration service feels too heavy,
 OpenProse is probably the right level of structure.
 
@@ -66,7 +66,7 @@ OpenProse is better when the work needs durable structure.
 | Debugging   | Reconstruct from chat history | Inspect runs, artifacts, traces, and graph state    |
 | Measurement | Mostly qualitative            | Emit local package, recompute, and approval metrics |
 
-That does not make skills obsolete. Skills remain the right shell for agent
+Skills remain the right shell for agent
 behavior, tool instructions, and host-specific guidance. OpenProse is the layer
 to reach for when a skill starts carrying an implicit workflow API.
 
@@ -102,12 +102,12 @@ Do not start with OpenProse when:
 - the work has no reusable contract, provenance need, or policy boundary
 - ordinary application code is already the simpler, clearer abstraction
 
-OpenProse earns its keep when the contract matters.
+OpenProse fits when the contract matters.
 
 ## Hosted and Enterprise Work
 
 The OSS package is the local compiler, package, graph-planning, run, and
-confidence spine. Hosted OpenProse builds on that spine with enterprise
+confidence path. Hosted OpenProse builds on that path with enterprise
 control-plane features:
 
 - production-like deployed dev interop for the hosted API and Run app

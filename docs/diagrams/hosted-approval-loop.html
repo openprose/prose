@@ -11,8 +11,7 @@
       <section class="page-header">
         <h1>Hosted Approval Loop</h1>
         <p>
-          Unsafe effects are now explicit enough that the platform can treat them as approval objects
-          instead of burying them in runtime logs.
+          Unsafe effects become approval objects before execution starts.
         </p>
         <nav class="nav">
           <a href="index.html">Overview</a>
@@ -60,11 +59,11 @@
 
         <div class="row">
           <div class="legend span-12">
-            <h2>Why the approval object exists</h2>
+            <h2>Approval Record</h2>
             <ul>
-              <li>it gives blocked work a first-class queue instead of a vague runtime error</li>
-              <li>it makes the decision reviewable in the operator surface</li>
-              <li>it preserves provenance between the planned node and the human/operator who unblocked it</li>
+              <li>blocked work lands in a queue instead of a vague runtime error</li>
+              <li>the operator decision is reviewable</li>
+              <li>provenance links the planned node to the person who unblocked it</li>
             </ul>
           </div>
         </div>

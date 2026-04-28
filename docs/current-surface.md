@@ -1,10 +1,10 @@
-# Current Surface
+# Public Surface
 
-This is the compact map of the public OpenProse surface.
+This is the public OpenProse API and runtime map.
 
 ## OSS: Local-First OpenProse
 
-The Bun CLI provides a coherent authoring and local-runtime surface:
+The Bun CLI covers authoring and local runtime:
 
 - `prose compile`: canonical `.prose.md -> Prose IR`
 - `prose manifest`: readable/runtime projection from the canonical IR
@@ -26,7 +26,7 @@ The Bun CLI provides a coherent authoring and local-runtime surface:
 - `prose search`: local package discovery
 - `prose install`: install local or registry-addressed packages into `.deps/`
 
-These surfaces share one model:
+All commands use the same model:
 
 - `.prose.md` source
 - deterministic IR
@@ -41,14 +41,13 @@ These surfaces share one model:
 - package and hosted metadata as projections over the same executable contract
 
 `remote execute` keeps deterministic `--output` fixtures for repeatable hosted
-contract tests. Real hosted workers can select `--graph-vm pi` and pass
+contract tests. Hosted workers can select `--graph-vm pi` and pass
 `--model-provider`, `--model`, and `--thinking` flags, or provide the same Pi
-runtime profile through environment variables. The remote envelope path does
-not silently become a separate runtime architecture.
+runtime profile through environment variables.
 
-## Why It Matters
+## Capabilities
 
-The model gives OpenProse advantages over ad hoc skill bundles:
+The model gives agent workflows durable structure:
 
 - typed ports improve composition and registry search
 - package-local schemas make selected named port types executable contracts
@@ -59,15 +58,16 @@ The model gives OpenProse advantages over ad hoc skill bundles:
 
 ## Reference Packages
 
-The repo carries three important local package surfaces:
+The repo carries three local packages:
 
-- `examples/`: concise, high-signal examples of the current model
+- `examples/`: concise, high-signal examples of the runtime model
 - `packages/std/`: reusable primitives
 - `packages/co/`: company-operating-system starter patterns
 
-The `customers/prose-openprose` reference company has also been hardened into a real, locally validated package tree with publish-pass quality.
+The `customers/prose-openprose` reference company is a locally validated
+package tree with publish-pass quality.
 
-The `examples/` package also participates in release confidence through
+The `examples/` package participates in release confidence through
 `measure:examples`, `confidence:runtime`, deterministic scripted Pi scenarios,
 and the skipped-by-default `smoke:live-pi` ladder.
 
@@ -81,18 +81,17 @@ The hosted platform consumes the same concepts the OSS package emits:
 - approval recording and resolution
 - the operator UI at `/ops/openprose` can inspect packages, runs, graphs, and approvals
 
-The important part is that the hosted surfaces sit on the same conceptual spine:
+Hosted surfaces use the same records:
 
 - compiled components
 - run records
 - graph plans
 - approvals
 
-## Platform Follow-Up
+## Platform Work
 
-The local package has an executable runtime spine and a repeatable
-confidence matrix. The remaining work is about hardening the hosted product
-around that spine:
+The local package has an executable runtime path and a repeatable confidence
+matrix. Platform work builds on that path:
 
 - keep platform tests vendoring the OSS hosted-runtime fixtures directly so
   contract drift fails mechanically

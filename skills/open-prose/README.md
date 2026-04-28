@@ -1,10 +1,6 @@
 # OpenProse Skill
 
-This directory intentionally contains a small current skill surface.
-
-Older versions bundled long VM, imperative-script, Forme, and filesystem-state specs.
-Those specs predate the current package architecture and were removed to avoid
-teaching obsolete behavior. The authoritative current model is:
+This directory contains the OpenProse skill router:
 
 - `.prose.md` source
 - compiler-owned IR
@@ -13,7 +9,7 @@ teaching obsolete behavior. The authoritative current model is:
 - durable run, node, artifact, trace, eval, and package records
 - hosted-compatible remote envelopes generated from the same runtime contract
 
-Start with `SKILL.md`, then use the repository docs:
+Start with `SKILL.md`, then use:
 
 - `../../README.md`
 - `../../docs/README.md`

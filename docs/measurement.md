@@ -1,6 +1,6 @@
 # Measuring OpenProse
 
-OpenProse should not just *feel* more structured. We should be able to measure what the structure buys us.
+OpenProse structure should show up in measurements.
 
 ## Evidence Classes
 
@@ -21,9 +21,9 @@ local deterministic confidence and live inference confidence do not blur.
 See [Evidence Classes](evidence-classes.md) for the launch reporting rule and
 the broader distinction between local, live, and hosted evidence.
 
-## What We Measure Locally Right Now
+## Local Measurements
 
-The current measurement harness focuses on five things:
+The measurement harness focuses on five things:
 
 1. **Package quality**
    - component count
@@ -71,10 +71,9 @@ bun run smoke:agent-onboarding
 bun run evidence:launch
 ```
 
-The confidence matrix folds the north-star examples into the CLI release gate.
-It includes strict publish checks, deterministic run materialization, release
-approval backpressure, measurement generation, hosted envelope fixtures, binary
-smoke, a cold-start publishable-package smoke, an agent-onboarding smoke, and a
+The confidence matrix runs strict publish checks, deterministic run
+materialization, approval gates, measurement generation, hosted envelope
+fixtures, binary smoke, cold-start package smoke, agent onboarding, and a
 skipped-by-default live Pi rung.
 
 `smoke:binary` builds the public CLI artifact under `dist/`. The repository
@@ -117,7 +116,7 @@ That writes:
 
 ## Why These Metrics Matter
 
-These are not vanity metrics. They are leading indicators of whether OpenProse is delivering on its core promises:
+These metrics track the promises OpenProse makes:
 
 - typed ports and effects tell us whether packages are really composable
 - selective recompute shows whether the run/plan model is buying actual savings
@@ -128,7 +127,7 @@ These are not vanity metrics. They are leading indicators of whether OpenProse i
 
 ## Current Shape
 
-The measurement harness intentionally stays local-first:
+The measurement harness stays local-first:
 
 - it compiles source directly
 - it plans against locally materialized runs
@@ -140,6 +139,6 @@ That keeps the signal fast and reproducible. Hosted systems can consume the
 same reports and fixtures, but they are not required for local package
 confidence.
 
-The live ladder is deliberately separate from the required local gate. It is
-the place to catch Pi SDK, model provider, billing, timeout, and output-tool
-interop issues without making every contributor spend inference dollars.
+The live ladder sits outside the required local gate. It catches Pi SDK, model
+provider, billing, timeout, and output-tool interop issues without making every
+contributor spend inference dollars.

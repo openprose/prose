@@ -2,7 +2,7 @@
 description: Orient to OpenProse and the local CLI
 ---
 
-Invoke the open-prose skill and orient the user to the current OpenProse CLI.
+Invoke the open-prose skill and orient the user to the OpenProse CLI.
 
 1. Check whether `bun install` has been run.
 2. Show the curated examples from `examples/`.
@@ -17,4 +17,4 @@ bun run prose run examples/north-star/company-signal-brief.prose.md \
   --output company_signal_brief="Signals noted."
 ```
 
-Read `skills/open-prose/SKILL.md` for current routing instructions.
+Read `skills/open-prose/SKILL.md` for routing instructions.

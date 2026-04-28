@@ -5,7 +5,7 @@ import { describe, expect, test } from "./support";
 const repoRoot = join(import.meta.dir, "..");
 
 describe("agent-facing entrypoints", () => {
-  test("unreleased changelog describes the current runtime model", () => {
+  test("unreleased changelog describes the runtime model", () => {
     const changelog = readFileSync(join(repoRoot, "CHANGELOG.md"), "utf8");
     const unreleased = changelog.split("## [0.10.0]")[0] ?? changelog;
 
@@ -13,14 +13,14 @@ describe("agent-facing entrypoints", () => {
     expect(unreleased).toContain("prose handoff");
   });
 
-  test("skill and command sidecars route agents to current CLI boundaries", () => {
+  test("skill and command sidecars route agents to CLI boundaries", () => {
     const skillsReadme = readFileSync(join(repoRoot, "skills/README.md"), "utf8");
     const commandsReadme = readFileSync(join(repoRoot, "commands/README.md"), "utf8");
     const handoffCommandPath = join(repoRoot, "commands/prose-handoff.md");
     const handoffCommand = readFileSync(handoffCommandPath, "utf8");
     const preflightCommand = readFileSync(join(repoRoot, "commands/prose-preflight.md"), "utf8");
 
-    expect(skillsReadme).toContain("current OpenProse skill router");
+    expect(skillsReadme).toContain("OpenProse skill router");
     expect(skillsReadme).toContain("Pi graph-VM execution");
     expect(skillsReadme).not.toContain("canonical definition of what the OpenProse VM is");
     expect(commandsReadme).toContain("prose-handoff.md");

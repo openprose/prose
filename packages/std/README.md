@@ -32,7 +32,8 @@ bun run prose install registry://openprose/@openprose/std@0.11.0-dev \
 
 ## Library
 
-All executable library entries now use the canonical `.prose.md` Contract Markdown form (`### Services`, `### Requires`, `### Ensures`, and related sections).
+Executable library entries use canonical `.prose.md` Contract Markdown:
+`### Services`, `### Requires`, `### Ensures`, and related sections.
 
 ### evals/
 
