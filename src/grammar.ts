@@ -57,7 +57,7 @@ export function buildTextMateGrammar(): TextMateGrammar {
       },
       sectionHeader: {
         match:
-          "^(###)(\\s+)(Requires|Ensures|Services|Environment|Effects|Access|Execution|Runtime|Strategies|Shape|Errors|Finally|Catch|Invariants)\\b.*$",
+          "^(###)(\\s+)(Requires|Ensures|Services|Environment|Effects|Access|Execution|Runtime|Strategies|Shape|Errors|Finally|Catch)\\b.*$",
         captures: {
           "1": { name: "punctuation.definition.heading.openprose" },
           "3": { name: "entity.name.section.openprose" },

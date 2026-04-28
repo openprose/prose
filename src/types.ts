@@ -189,7 +189,6 @@ export interface ComponentIR {
   errors: ContractErrorSectionIR | null;
   finally: ContractTextSectionIR | null;
   catch: ContractTextSectionIR | null;
-  invariants: ContractTextSectionIR | null;
   effects: EffectIR[];
   access: AccessIR;
   evals: unknown[];
@@ -1078,7 +1077,7 @@ export interface PackageComponentContractMetadata {
   errors: PackageContractErrorSectionMetadata | null;
   finally: string | null;
   catch: string | null;
-  legacy_invariants: string | null;
+  execution: string | null;
 }
 
 export interface PackageComponentMetadata {

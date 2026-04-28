@@ -79,7 +79,7 @@
       ]
     },
     "sectionHeader": {
-      "match": "^(###)(\\s+)(Requires|Ensures|Services|Environment|Effects|Access|Execution|Runtime|Strategies|Shape|Errors|Finally|Catch|Invariants)\\b.*$",
+      "match": "^(###)(\\s+)(Requires|Ensures|Services|Environment|Effects|Access|Execution|Runtime|Strategies|Shape|Errors|Finally|Catch)\\b.*$",
       "captures": {
         "1": {
           "name": "punctuation.definition.heading.openprose"

@@ -50,7 +50,6 @@ export interface NodePromptEnvelope {
     errors: NodeEnvelopeErrorSection | null;
     finally: string | null;
     catch: string | null;
-    invariants: string | null;
     execution: string | null;
   };
   inputs: NodeEnvelopeInput[];
@@ -171,7 +170,6 @@ export function buildNodePromptEnvelope(
         : null,
       finally: request.component.finally?.body ?? null,
       catch: request.component.catch?.body ?? null,
-      invariants: request.component.invariants?.body ?? null,
       execution: request.component.execution?.body ?? null,
     },
     inputs: nodeRunRequest.input_bindings.map(inputEnvelope),

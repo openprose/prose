@@ -91,10 +91,7 @@ parent should call `openprose_report_error` with a declared error code. If
 cleanup or final accounting is required in either path, include `finally`
 evidence in the terminal tool call.
 
-## Legacy Invariants
-
-`### Invariants` is still parsed for older contracts, but new std/co contracts
-should prefer sharper sections:
+## Contract Sections
 
 - Use `### Ensures` for typed outputs and explicit degraded-success shapes.
 - Use `### Errors` for terminal failure modes.

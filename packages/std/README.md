@@ -19,7 +19,10 @@ use "std/delivery/email-notifier"
 use "std/memory/project-memory"
 ```
 
-Install with `prose install`. `std/...` is the shorthand for `github.com/openprose/prose/packages/std/...`; see [deps.md](https://github.com/openprose/prose/blob/main/skills/open-prose/deps.md) for dependency resolution details.
+Install with `prose install`. `std/...` is the shorthand for
+`github.com/openprose/prose/packages/std/...`; see
+[`docs/package-publication.md`](../../docs/package-publication.md) for the
+source-workspace and generated-package boundary.
 
 ```bash
 bun run prose install registry://openprose/@openprose/std@0.11.0-dev \

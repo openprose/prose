@@ -31,7 +31,7 @@ Implemented today:
   operator inspection, including runtime backpressure for capacity, graph VM
   readiness, storage, approvals, and Sprite-backed workspaces
 
-See [What Shipped](what-shipped.md), [Examples](../examples/README.md), and
+See [Current Surface](current-surface.md), [Examples](../examples/README.md), and
 [Measuring OpenProse](measurement.md) for the current surfaces.
 
 ## Use It When

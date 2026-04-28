@@ -137,7 +137,6 @@ describe("OpenProse package, registry, install, publish, and search", () => {
       },
       finally: expect.stringContaining("Record whether the brief was produced or withheld"),
       catch: expect.stringContaining("produce a caveated brief"),
-      legacy_invariants: null,
     });
     expect(metadata.components[0].effects).toEqual(["pure"]);
     expect(metadata.hosted_ingest).toMatchObject({

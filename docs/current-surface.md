@@ -1,10 +1,10 @@
-# What Shipped
+# Current Surface
 
-This is the compact "show me what exists now" snapshot.
+This is the compact map of the public OpenProse surface.
 
 ## OSS: Local-First OpenProse
 
-The Bun CLI now provides a coherent authoring and local-runtime surface:
+The Bun CLI provides a coherent authoring and local-runtime surface:
 
 - `prose compile`: canonical `.prose.md -> Prose IR`
 - `prose manifest`: readable/runtime projection from the canonical IR
@@ -46,9 +46,9 @@ contract tests. Real hosted workers can select `--graph-vm pi` and pass
 runtime profile through environment variables. The remote envelope path does
 not silently become a separate runtime architecture.
 
-## What the Current Patterns Buy Us
+## Why It Matters
 
-The new model already gives us real advantages over ad hoc skill bundles:
+The model gives OpenProse advantages over ad hoc skill bundles:
 
 - typed ports improve composition and registry search
 - package-local schemas make selected named port types executable contracts
@@ -57,9 +57,9 @@ The new model already gives us real advantages over ad hoc skill bundles:
 - graph/trace surfaces make the workflow inspectable
 - package metadata makes sharing and publish discipline possible
 
-## Reference Package Surfaces
+## Reference Packages
 
-The repo now carries three important local package surfaces:
+The repo carries three important local package surfaces:
 
 - `examples/`: concise, high-signal examples of the current model
 - `packages/std/`: reusable primitives
@@ -71,14 +71,14 @@ The `examples/` package also participates in release confidence through
 `measure:examples`, `confidence:runtime`, deterministic scripted Pi scenarios,
 and the skipped-by-default `smoke:live-pi` ladder.
 
-## Hosted Platform Surfaces
+## Hosted Platform
 
-The hosted platform already consumes the same concepts the OSS package emits:
+The hosted platform consumes the same concepts the OSS package emits:
 
-- package ingest exists
+- package ingest
 - hosted runs can be created and inspected
-- graph plans and graph snapshots are persisted
-- approvals are recorded and resolved
+- persisted graph plans and graph snapshots
+- approval recording and resolution
 - the operator UI at `/ops/openprose` can inspect packages, runs, graphs, and approvals
 
 The important part is that the hosted surfaces sit on the same conceptual spine:
@@ -88,9 +88,9 @@ The important part is that the hosted surfaces sit on the same conceptual spine:
 - graph plans
 - approvals
 
-## What Still Matters Next
+## Platform Follow-Up
 
-The local package now has an executable runtime spine and a repeatable
+The local package has an executable runtime spine and a repeatable
 confidence matrix. The remaining work is about hardening the hosted product
 around that spine:
 

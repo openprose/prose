@@ -7,12 +7,12 @@ related:
 
 # skills
 
-Bundled OpenProse skill definitions shipped with the language repo. In
+Bundled OpenProse skill definitions distributed with the language repo. In
 environments with `npx skills`, each subdirectory can be installed as a skill;
 in Codex, the same files can be loaded through the repository-local
 `AGENTS.md` entry point.
 
-Public docs and curated examples now live at the repo root:
+Public docs and curated examples live at the repo root:
 
 - `../docs/`
 - `../examples/`

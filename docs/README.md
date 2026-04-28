@@ -1,10 +1,10 @@
 # OpenProse Docs
 
-OpenProse is now split into a few clean surfaces:
+OpenProse docs are split into a few clean surfaces:
 
 - [Why and When to Use OpenProse](why-and-when.md): what it is for, when it wins, and when not to reach for it
 - [Agent Onboarding](agent-onboarding.md): the checked path for a coding agent entering the repo cold
-- [What Shipped](what-shipped.md): a compact snapshot of the compiler, planner, package, runtime, and hosted surfaces that exist today
+- [Current Surface](current-surface.md): a compact map of the compiler, planner, package, runtime, and hosted surfaces
 - [Measuring OpenProse](measurement.md): reproducible ways to measure package quality, selective recompute, approval gating, and reference-company health
 - [Evidence Classes](evidence-classes.md): what each confidence rung proves and what it does not prove
 - [Inference Examples](inference-examples.md): Pi-backed graph VM examples,

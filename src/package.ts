@@ -299,7 +299,7 @@ function buildContractMetadata(component: ComponentIR): PackageComponentMetadata
       : null,
     finally: component.finally?.body ?? null,
     catch: component.catch?.body ?? null,
-    legacy_invariants: component.invariants?.body ?? null,
+    execution: component.execution?.body ?? null,
   };
 }
 

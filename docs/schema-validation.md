@@ -61,7 +61,7 @@ structurally enforced without a package-local schema definition:
 
 - named object aliases such as `CompanyProfile`
 - `Markdown<Brief>` document structure
-- domain-specific invariants expressed in prose
+- domain-specific requirements expressed in prose
 
 For those cases OpenProse still records `schema_ref` values like
 `#/$defs/CompanyProfile` and emits an unchecked schema diagnostic when a named

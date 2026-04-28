@@ -93,7 +93,6 @@ describe("OpenProse Pi node prompt envelope", () => {
     });
     expect(envelope.component.finally).toContain("Record child refs inspected.");
     expect(envelope.component.catch).toContain("Use the child research ref");
-    expect(envelope.component.invariants).toContain("Do not delete private state");
     expect(envelope.component.execution).toContain("session \"Research in a child context\"");
     expect(envelope.instructions.prosescript_interpreter).toEqual(
       expect.arrayContaining([
@@ -324,10 +323,6 @@ kind: program
 ### Catch
 
 - Use the child research ref if delivery fails.
-
-### Invariants
-
-- Do not delete private state during recovery.
 
 ### Execution
 

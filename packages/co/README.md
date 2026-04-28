@@ -6,7 +6,7 @@ OpenProse-native repository.
 If you are orienting from scratch, read these first:
 
 - [`../../docs/README.md`](../../docs/README.md)
-- [`../../docs/what-shipped.md`](../../docs/what-shipped.md)
+- [`../../docs/current-surface.md`](../../docs/current-surface.md)
 - [`../../examples/README.md`](../../examples/README.md)
 
 `co` sits next to `std` under `packages/`, not inside it. `std` is the
@@ -43,7 +43,7 @@ packages/co/
     company-system-map.eval.prose.md
 ```
 
-The starter package now has two reusable entry points:
+The starter package has two reusable entry points:
 
 - `programs/company-system-map.prose.md` designs the system-first operating
   map for a company repo: systems, responsibilities, shared capabilities,

@@ -81,20 +81,18 @@ Latest generated reports:
 - Preserve OpenProse run records, artifact manifests, and traces as the shared
   contract between OSS execution and hosted execution.
 
-## Live Pi Smoke Notes
+## Live Pi Smoke
 
-- 2026-04-26: The runtime boundary was clarified: OpenRouter is a Pi
-  model-provider profile, not an OpenProse graph VM. The real graph VM path
-  remains Pi, with deterministic `--output` fixtures for repeatable smoke
-  tests.
-- 2026-04-26: Ran a model-backed decision graph through the Pi SDK with
-  Anthropic `claude-haiku-4-5`. That proof point has now been folded into the
-  north-star `lead-program-designer` ladder example.
-- 2026-04-26: After OpenRouter credits were added, the full opt-in live Pi
-  ladder passed with the canonical OpenRouter
-  `google/gemini-3-flash-preview` profile:
-  - cheap `company-signal-brief`: 1 Pi session, 44 trace events
-  - medium `lead-program-designer`: 3 Pi sessions, 122 trace events
-  - complex `stargazer-intake-lite`: 5 Pi sessions, 186 trace events
-  The committed report is
-  [`measurements/live-pi.latest.md`](measurements/live-pi.latest.md).
+OpenRouter is a Pi model-provider profile, not an OpenProse graph VM. The
+graph VM path remains Pi, with deterministic `--output` fixtures for repeatable
+smoke tests and an opt-in live ladder for funded model-backed evidence.
+
+The live ladder exercises:
+
+- cheap `company-signal-brief`: one Pi session
+- medium `lead-program-designer`: three Pi sessions with upstream artifact
+  handoff
+- complex `stargazer-intake-lite`: five Pi sessions with approval backpressure
+
+The latest committed live report is
+[`measurements/live-pi.latest.md`](measurements/live-pi.latest.md).

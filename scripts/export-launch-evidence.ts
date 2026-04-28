@@ -114,7 +114,7 @@ async function main(): Promise<void> {
     baseline_comparison: measurement.baseline_comparison,
     non_happy_path_semantics: {
       package_metadata: [
-        "component contract metadata exposes strategies, declared terminal errors, finally obligations, catch guidance, and legacy invariant text when present",
+        "component contract metadata exposes strategies, declared terminal errors, finally obligations, and catch guidance",
         "catalog search entries include the same compact contract metadata so consumers can inspect non-happy-path semantics before install",
       ],
       runtime_channels: [
@@ -123,7 +123,7 @@ async function main(): Promise<void> {
         "catch remains intra-node recovery guidance rather than a graph-level scheduling edge",
       ],
       hash_surface: [
-        "strategies, errors, finally, catch, and legacy invariants participate in source and package semantic hashes",
+        "strategies, errors, finally, and catch participate in source and package semantic hashes",
       ],
     },
     technical_report_claims: [

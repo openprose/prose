@@ -1,6 +1,6 @@
 # OpenProse Launch Evidence
 
-Generated: 2026-04-27T20:40:54.943Z
+Generated: 2026-04-28T00:08:14.606Z
 Status: PASS
 
 ## Confidence Gates
@@ -24,7 +24,7 @@ Status: PASS
 ## Non-Happy-Path Semantics
 
 Package metadata:
-- component contract metadata exposes strategies, declared terminal errors, finally obligations, catch guidance, and legacy invariant text when present
+- component contract metadata exposes strategies, declared terminal errors, finally obligations, and catch guidance
 - catalog search entries include the same compact contract metadata so consumers can inspect non-happy-path semantics before install
 
 Runtime channels:
@@ -33,7 +33,7 @@ Runtime channels:
 - catch remains intra-node recovery guidance rather than a graph-level scheduling edge
 
 Hash surface:
-- strategies, errors, finally, catch, and legacy invariants participate in source and package semantic hashes
+- strategies, errors, finally, and catch participate in source and package semantic hashes
 
 ## Technical Report Claims
 

@@ -230,7 +230,7 @@ kind: service
     });
   });
 
-  test("preserves errors, finally, catch, and legacy invariants as contract text", () => {
+  test("preserves errors, finally, and catch as contract text", () => {
     const ir = compileSource(`---
 name: error-contract-demo
 kind: service
@@ -252,10 +252,6 @@ kind: service
 ### Catch
 
 - If delivery fails after rendering, preserve the rendered draft ref.
-
-### Invariants
-
-- Never delete private state while recovering.
 `, {
       path: "fixtures/compiler/error-contract-demo.prose.md",
     });
@@ -278,7 +274,6 @@ kind: service
     expect(component.errors?.body).toContain("delivery-failed");
     expect(component.finally?.body).toContain("Record what cleanup was attempted.");
     expect(component.catch?.body).toContain("preserve the rendered draft ref");
-    expect(component.invariants?.body).toContain("Never delete private state");
   });
 
   test("parses source-level policy labels on ports", () => {
@@ -393,17 +388,12 @@ kind: service
 ### Catch
 
 - Recover delivery failures with a draft ref.
-
-### Invariants
-
-- Preserve scratch refs.
 `;
     const base = compileSource(source, { path: "fixtures/compiler/error-hash.prose.md" });
     const variants = [
       source.replace("Message could not be delivered.", "Message delivery was rejected."),
       source.replace("Record cleanup evidence.", "Record cleanup and unresolved work."),
       source.replace("Recover delivery failures", "Recover provider failures"),
-      source.replace("Preserve scratch refs.", "Preserve all private refs."),
     ];
 
     for (const variant of variants) {

@@ -16,7 +16,6 @@ const CANONICAL_SECTIONS = [
   "effects",
   "access",
   "strategies",
-  "invariants",
   "execution",
 ];
 

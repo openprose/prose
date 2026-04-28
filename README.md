@@ -31,7 +31,7 @@ You write canonical `.prose.md` source with typed inputs, typed outputs, effects
 
 - [Docs](docs/README.md)
 - [Why and When to Use OpenProse](docs/why-and-when.md)
-- [What Shipped](docs/what-shipped.md)
+- [Current Surface](docs/current-surface.md)
 - [Agent Onboarding](docs/agent-onboarding.md)
 - [Subagents and Private State](docs/subagents-private-state.md)
 - [Curated Examples](examples/README.md)
@@ -39,9 +39,10 @@ You write canonical `.prose.md` source with typed inputs, typed outputs, effects
 - [Runtime Confidence Gate](docs/release-candidate.md)
 - [HTML Diagrams](docs/diagrams/index.html)
 
-## What Exists Today
+## Try The CLI
 
-The local-first CLI surface is real:
+The local-first CLI covers authoring, graph inspection, local execution,
+package checks, install, and runtime confidence:
 
 ```bash
 bun run prose compile examples/north-star/company-signal-brief.prose.md
@@ -191,7 +192,8 @@ bun run smoke:live-pi -- --tier all --run-root .prose/live-pi-runs
 
 ## Hosted Platform
 
-The platform side now has real package ingest, hosted runs, graph plans, approvals, and an operator surface. The compact snapshot lives in [docs/what-shipped.md](docs/what-shipped.md).
+The hosted platform uses the same package, run, graph, approval, and artifact
+contracts described in [Current Surface](docs/current-surface.md).
 
 ## Terms
 

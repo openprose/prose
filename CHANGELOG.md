@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Local runtime meta-harness** — `prose run` is now the canonical local
+- **Local runtime meta-harness** — `prose run` is the canonical local
   execution command. It plans reactive graphs, coordinates the Pi graph VM one
   node session at a time, and materializes durable run records, artifacts,
   traces, and eval acceptance through the shared run-store model.
@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   reactive graph VMs.
 - **Reactive run store and eval acceptance** — Runs, graph nodes, attempts,
   artifact records, policy labels, approvals, current/latest pointers, and
-  executable eval results now share one local store model.
+  executable eval results share one local store model.
 - **Hosted registry/runtime contract fixtures** — Added vendorable
   hosted-ingest, remote-envelope, artifact-manifest, run-record, and plan
   fixtures under `fixtures/hosted-runtime/`.
@@ -29,7 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Package metadata is executable** — Package metadata now includes package IR
+- **Package metadata is executable** — Package metadata includes package IR
   hashes, registry refs, runtime profile metadata, artifact contracts, quality
   status, hosted ingest metadata, examples, and eval links.
 - **Std, co, and examples align with runtime semantics** — The canonical
@@ -39,8 +39,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   output annotates planning context, and status/trace output includes acceptance
   reasons.
 
-### Removed
-
-- **Fixture-centered runtime path** — Deterministic `--output` values now run
-  through an internal scripted Pi session under `prose run` or
-  `prose remote execute`.
+Deterministic `--output` values use the same graph-VM-shaped execution path as
+local and remote runs, which keeps fixture tests aligned with the real runtime
+contract.

@@ -89,9 +89,6 @@ function renderComponentContract(ir: ProseIR, component: ComponentIR): string {
   if (component.catch) {
     sections.push("", "## Catch", component.catch.body);
   }
-  if (component.invariants) {
-    sections.push("", "## Legacy Invariants", component.invariants.body);
-  }
   if (component.execution) {
     sections.push("", "## Execution", component.execution.body);
   }
