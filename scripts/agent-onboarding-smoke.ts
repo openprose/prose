@@ -49,8 +49,8 @@ const DOC_EXPECTATIONS: DocExpectation[] = [
     path: "README.md",
     required_phrases: [
       "Contract-first, reactive software for agent workflows.",
-      "Pi is the local graph VM",
-      "A single component contract can still be handed to a compatible agent harness",
+      "Reactive graphs run through Pi",
+      "Single components can be exported as one-off handoffs",
       "bun run smoke:agent-onboarding",
       "bun run smoke:cold-start",
       "bun run smoke:live-pi",
@@ -60,7 +60,7 @@ const DOC_EXPECTATIONS: DocExpectation[] = [
   {
     path: "docs/README.md",
     required_phrases: [
-      "OpenProse is not \"just markdown.\"",
+      "OpenProse source is readable Markdown",
       "durable run materialization through the local Pi-backed meta-harness",
       "bun run smoke:agent-onboarding",
       "bun run smoke:cold-start",
@@ -90,7 +90,7 @@ const DOC_EXPECTATIONS: DocExpectation[] = [
   {
     path: "docs/why-and-when.md",
     required_phrases: [
-      "OpenProse earns its keep when the contract matters.",
+      "Use it when the workflow matters after the first run.",
       "Plain skill",
       "Review typed `.prose.md` contracts and effects",
       "Inspect runs, artifacts, traces, and graph state",

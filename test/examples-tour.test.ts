@@ -133,7 +133,7 @@ describe("OpenProse north-star examples", () => {
       "--input",
       'lead_profile={"company":"Acme","pain":"manual agent handoffs"}',
       "--input",
-      "brand_context=OpenProse now emphasizes enterprise registries.",
+      "brand_context=OpenProse emphasizes enterprise registries.",
       "--no-pretty",
     ]);
     const plan = JSON.parse(planResult.stdoutText);

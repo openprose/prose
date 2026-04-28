@@ -5,17 +5,17 @@ import { describe, expect, test } from "./support";
 const repoRoot = join(import.meta.dir, "..");
 
 describe("public docs", () => {
-  test("top-level docs describe the current handoff and runtime vocabulary", () => {
+  test("top-level docs describe handoff and runtime vocabulary", () => {
     const readme = readFileSync(join(repoRoot, "README.md"), "utf8");
     const docsIndex = readFileSync(join(repoRoot, "docs/README.md"), "utf8");
-    const currentSurface = readFileSync(
+    const publicSurface = readFileSync(
       join(repoRoot, "docs/current-surface.md"),
       "utf8",
     );
 
     expect(readme).toContain("bun run prose handoff");
     expect(docsIndex).toContain("bun run prose handoff");
-    expect(currentSurface).toContain("`prose handoff`");
+    expect(publicSurface).toContain("`prose handoff`");
     expect(docsIndex).toContain("`Catch` recovery");
     expect(readme).not.toContain("prose run customers/prose-openprose");
   });

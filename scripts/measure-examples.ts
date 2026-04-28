@@ -394,7 +394,7 @@ async function main(): Promise<void> {
             fixturesRoot,
             "opportunity-discovery-lite/duplicate-crossposts.platform-scan-results.json",
           ),
-          brand_context: "# Brand Context\n\nOpenProse now leads with enterprise provenance.",
+          brand_context: "# Brand Context\n\nOpenProse leads with enterprise provenance.",
         },
         targetOutputs: ["opportunity_summary"],
         nodeRunner: scriptedPiRuntime({

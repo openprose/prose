@@ -37,7 +37,7 @@ const composites = [
 ];
 
 describe("OpenProse std controls and composites", () => {
-  test("pattern README files describe current runtime semantics", () => {
+  test("pattern README files describe runtime semantics", () => {
     for (const path of [
       "packages/std/controls/README.md",
       "packages/std/composites/README.md",
@@ -47,7 +47,7 @@ describe("OpenProse std controls and composites", () => {
       expect(source, path).not.toContain("fixture/provider");
       expect(source, path).not.toContain("until a later runtime slice");
       expect(source, path).not.toContain("Future Work");
-      expect(source, path).toContain("Pattern-only in the current OSS runtime");
+      expect(source, path).toContain("Pattern contracts:");
     }
   });
 

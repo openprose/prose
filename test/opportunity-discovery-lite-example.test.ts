@@ -138,7 +138,7 @@ describe("opportunity-discovery-lite north-star example", () => {
         brand_context: [
           "# Brand Context",
           "",
-          "OpenProse now leads with enterprise provenance and registry adoption.",
+          "OpenProse leads with enterprise provenance and registry adoption.",
         ].join("\n"),
       },
       targetOutputs: ["opportunity_summary"],

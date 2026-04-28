@@ -25,7 +25,7 @@ describe("OpenProse std ops", () => {
     }
   });
 
-  test("run-artifact ops describe current OpenProse run records", () => {
+  test("run-artifact ops describe OpenProse run records", () => {
     for (const file of ["diagnose.prose.md", "status.prose.md", "profiler.prose.md"]) {
       const source = readFileSync(join(opsRoot, file), "utf8");
 

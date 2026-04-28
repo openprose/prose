@@ -18,7 +18,7 @@ Operational utilities for debugging, profiling, and validating Prose programs. T
 **Source-file tools** operate on program `.prose.md` files before execution:
 - `lint` -- validates that the program is well-formed
 - `preflight` -- validates local dependency and environment readiness
-- `manifest` -- produces the current manifest projection from canonical IR
+- `manifest` -- produces the manifest projection from canonical IR
 
 **Run-artifact tools** operate on completed runs in `.prose/runs/`:
 - `status` -- lists recent runs and their outcomes

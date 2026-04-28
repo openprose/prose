@@ -6,7 +6,7 @@ Start here:
 - [Agent Onboarding](agent-onboarding.md): the checked path for a coding agent entering the repo cold
 - [Public Surface](current-surface.md): a compact map of the compiler, planner, package, runtime, and hosted surfaces
 - [Measuring OpenProse](measurement.md): reproducible ways to measure package quality, selective recompute, approval gating, and reference-company health
-- [Evidence Classes](evidence-classes.md): what each confidence rung proves and what it does not prove
+- [Evidence Classes](evidence-classes.md): what each confidence rung covers
 - [Inference Examples](inference-examples.md): Pi-backed graph VM examples,
   model provider setup, and live harness evidence
 - [Single-Run Handoff](single-run-handoff.md): the boundary for exporting one
@@ -17,13 +17,13 @@ Start here:
   generated CLI artifact boundary
 - [Hosted Runtime Contract](hosted-contract.md): the fixture boundary shared
   by OSS and the hosted platform
-- [Schema Validation](schema-validation.md): what typed ports enforce today
+- [Schema Validation](schema-validation.md): what typed ports enforce
   versus what remains semantic package metadata
 - [Runtime Confidence Gate](release-candidate.md): confidence matrix,
   release criteria, and generated confidence evidence
 - [Diagrams](diagrams/index.html): HTML diagrams for the compiler, reactive
   planning, inference meta-harness, packages, approvals, and runtime backpressure
-- [Examples](../examples/README.md): the curated example set that matches the current local-first/runtime model
+- [Examples](../examples/README.md): the curated example set for the local-first runtime model
 
 ## Quickstart
 

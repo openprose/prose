@@ -5,7 +5,7 @@ description: |
   or explain OpenProse programs. OpenProse source is `.prose.md`: typed
   contracts compile to IR, then the local CLI coordinates the Pi graph VM to
   materialize durable run records. Use this skill to route the work and preserve
-  the current graph-VM model; do not hand-author runtime state in chat.
+  the graph-VM model; do not hand-author runtime state in chat.
 ---
 
 # OpenProse Skill
@@ -18,7 +18,7 @@ those contracts into IR, plans the reactive graph, coordinates Pi as the graph
 VM, materializes immutable run records, and projects registry/package metadata
 from the same source of truth.
 
-## Current Model
+## Runtime Model
 
 - Source format: `.prose.md`
 - Compiler target: OpenProse IR
@@ -62,7 +62,7 @@ one-off tasks. That is not the same thing as reactive graph execution.
 - Do not claim that Codex CLI, Claude Code, OpenCode, or another shell process
   is the graph VM unless there is an actual adapter and test evidence.
 
-## Current Execution Boundary
+## Execution Boundary
 
 Use `.prose.md` source through the CLI and Pi graph VM for reactive graph
 execution. Single-component work can be exported with `prose handoff`, but
