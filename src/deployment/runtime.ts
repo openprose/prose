@@ -111,6 +111,7 @@ export async function triggerLocalDeployment(
         inputs: options.inputs,
         approvedEffects: options.approvedEffects,
         executeProgramNodes: true,
+        targetOutputs: packagePlan.plan.requested_outputs,
         graphVm: options.graphVm,
         nodeRunner: options.nodeRunner ?? scriptedNodeRunner ?? undefined,
         graphRuntime: options.graphRuntime,

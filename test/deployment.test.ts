@@ -14,7 +14,8 @@ import {
   readLocalDeploymentManifest,
   triggerLocalDeployment,
 } from "../src/deployment/index.js";
-import { runProseCli } from "./support";
+import { fixturePath, runProseCli } from "./support";
+import { scriptedPiRuntime } from "./support/scripted-pi-session";
 
 describe("OpenProse deployments", () => {
   test("keeps deployment id stable across package promotion", async () => {
@@ -286,6 +287,90 @@ describe("OpenProse deployments", () => {
       latest_run_id: triggered.run.run_id,
     });
     expect(await readDeploymentRunIndex(stateRoot)).toHaveLength(1);
+  });
+
+  test("deployment triggers preserve target outputs when running the entrypoint graph", async () => {
+    const root = fixturePath("package/dataflow-complex");
+    const stateRoot = mkdtempSync(join(tmpdir(), "openprose-deployment-targeted-"));
+    const accountRecord = JSON.stringify({
+      company: "Acme Industrial",
+      segment: "enterprise",
+      employees: 3200,
+      region: "NA",
+      signals: ["security-review", "expansion"],
+    });
+
+    await initLocalDeployment(root, {
+      name: "Dataflow Complex",
+      stateRoot,
+      enabledEntrypoints: ["dataflow-complex"],
+      generatedAt: "2026-04-26T01:10:00.000Z",
+    });
+
+    const triggered = await triggerLocalDeployment(stateRoot, {
+      entrypoint: "dataflow-complex",
+      inputs: {
+        account_record: accountRecord,
+        research_question: "Should we prioritize the account this quarter?",
+        market_window: "last 30 days",
+      },
+      targetOutputs: ["scorecard"],
+      approvedEffects: ["read_external"],
+      nodeRunner: scriptedPiRuntime({
+        outputsByComponent: {
+          "normalize-account": {
+            normalized_account: accountRecord,
+          },
+          "market-research": {
+            market_signals: JSON.stringify({
+              summary: "Industrial accounts are prioritizing auditable AI systems.",
+              confidence: 0.82,
+              items: ["auditability", "enterprise automation"],
+            }),
+          },
+          "customer-research": {
+            customer_signals: JSON.stringify({
+              summary: "Acme has expansion pressure and security review needs.",
+              confidence: 0.9,
+              items: ["security-review", "expansion"],
+            }),
+          },
+          "risk-review": {
+            risk_digest: "Primary risks are security review depth and rollout sequencing.",
+          },
+          "scorecard-builder": {
+            scorecard: JSON.stringify({
+              fit: "high",
+              score: 86,
+              rationale: "Acme has strong workflow pressure and review needs.",
+              risks: ["security review", "rollout sequencing"],
+            }),
+          },
+        },
+      }),
+      createdAt: "2026-04-26T01:11:00.000Z",
+    });
+
+    expect(triggered.run).toMatchObject({
+      entrypoint_ref: "dataflow-complex",
+      status: "succeeded",
+      plan_status: "ready",
+      node_run_count: 5,
+      output_count: 1,
+    });
+    expect(triggered.run.diagnostics).not.toContain(
+      "Requested output 'final_brief' is not produced by this graph.",
+    );
+    expect(triggered.run.openprose_run_ref).toBe(
+      `runtime-runs/${triggered.run.run_id}/run.json`,
+    );
+
+    const runtimeRecord = JSON.parse(
+      readFileSync(join(stateRoot, triggered.run.openprose_run_ref!), "utf8"),
+    );
+    expect(runtimeRecord.outputs.map((output: { port: string }) => output.port)).toEqual([
+      "scorecard",
+    ]);
   });
 
   test("CLI deployment trigger can delegate package entrypoint nodes through an external executor", () => {
