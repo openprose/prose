@@ -1,0 +1,126 @@
+name: OpenProse Inference Smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: "Which live inference suite to run."
+        required: true
+        type: choice
+        default: pi-harness
+        options:
+          - live-pi
+          - pi-harness
+          - both
+      live_pi_tier:
+        description: "Tier for scripts/live-pi-smoke.ts."
+        required: true
+        type: choice
+        default: cheap
+        options:
+          - cheap
+          - medium
+          - complex
+          - all
+      pi_harness_tier:
+        description: "Tier for scripts/pi-harness-live-suite.ts."
+        required: true
+        type: choice
+        default: cheap
+        options:
+          - cheap
+          - advanced
+          - all
+      model_provider:
+        description: "Pi model provider."
+        required: true
+        type: string
+        default: openrouter
+      cheap_model:
+        description: "Cheap/default model id."
+        required: true
+        type: string
+        default: google/gemini-3-flash-preview
+      advanced_model:
+        description: "Advanced model id for the harness suite."
+        required: true
+        type: string
+        default: google/gemini-3-pro-preview
+      allow_failure:
+        description: "Collect reports without failing the workflow on suite failure."
+        required: true
+        type: boolean
+        default: false
+
+concurrency:
+  group: openprose-inference-smoke-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  inference:
+    name: Run gated inference smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: openprose-inference
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Verify OpenRouter secret is available
+        run: |
+          if [ -z "${OPENROUTER_API_KEY:-}" ]; then
+            echo "::error::OPENROUTER_API_KEY is required for live inference smokes."
+            exit 1
+          fi
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+
+      - name: Prepare report directory
+        run: mkdir -p .prose/ci-reports .prose/ci-runs
+
+      - name: Run live Pi smoke
+        if: inputs.suite == 'live-pi' || inputs.suite == 'both'
+        run: |
+          set -euo pipefail
+          args=(--enable --tier "${{ inputs.live_pi_tier }}" --out .prose/ci-reports/live-pi.json --run-root .prose/ci-runs/live-pi)
+          if [ "${{ inputs.allow_failure }}" = "true" ]; then
+            args+=(--allow-failure)
+          fi
+          bun run smoke:live-pi -- "${args[@]}"
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          OPENPROSE_LIVE_PI_MODEL_PROVIDER: ${{ inputs.model_provider }}
+          OPENPROSE_LIVE_PI_MODEL_ID: ${{ inputs.cheap_model }}
+
+      - name: Run Pi harness live suite
+        if: inputs.suite == 'pi-harness' || inputs.suite == 'both'
+        run: |
+          set -euo pipefail
+          args=(--enable --tier "${{ inputs.pi_harness_tier }}" --out .prose/ci-reports/pi-harness-live.json --run-root .prose/ci-runs/pi-harness-live)
+          if [ "${{ inputs.allow_failure }}" = "true" ]; then
+            args+=(--allow-failure)
+          fi
+          bun run smoke:pi-harness-live -- "${args[@]}"
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          OPENPROSE_PI_HARNESS_MODEL_PROVIDER: ${{ inputs.model_provider }}
+          OPENPROSE_PI_HARNESS_CHEAP_MODEL_ID: ${{ inputs.cheap_model }}
+          OPENPROSE_PI_HARNESS_ADVANCED_MODEL_ID: ${{ inputs.advanced_model }}
+
+      - name: Upload inference reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: openprose-inference-smoke-${{ github.run_id }}
+          path: |
+            .prose/ci-reports/**

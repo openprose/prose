@@ -1,0 +1,59 @@
+name: OpenProse OSS CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - rfc/reactive-openprose
+  workflow_dispatch:
+
+concurrency:
+  group: openprose-oss-ci-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Typecheck and local tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Test
+        run: bun test --timeout 10000
+
+  package-smoke:
+    name: Binary and hosted-contract smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Hosted contract smoke
+        run: bun run smoke:hosted-contract
+
+      - name: Binary smoke
+        run: bun run smoke:binary
