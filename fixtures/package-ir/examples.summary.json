@@ -1,9 +1,9 @@
 {
   "package_ir_version": "0.1",
-  "semantic_hash": "778e2506efbd70ae0f1bb83ce42817325688d46cd01e21078552a729116906d5",
+  "semantic_hash": "8237cc6bcac2337dbfe4139050b08b8d79c9f08cd4c40763f46de90868a743c4",
   "hashes": {
     "source_hash": "9a7264a2af22e48e9141275e41009e48a74a6e4e121474baa49bdebe2f54b5bd",
-    "semantic_hash": "778e2506efbd70ae0f1bb83ce42817325688d46cd01e21078552a729116906d5",
+    "semantic_hash": "8237cc6bcac2337dbfe4139050b08b8d79c9f08cd4c40763f46de90868a743c4",
     "dependency_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
     "policy_hash": "2471c0dad52c2228c0ab35c42fb6b800db84182176ce27ba21744ab4f1c5d4c5",
     "runtime_config_hash": "880a23323d31bc275663edd195d070673eeb25af2e233f3fedb597e8e20592d5"
@@ -708,6 +708,6 @@
     }
   },
   "diagnostics": {
-    "ambiguous_package_exact_wiring": 30
+    "ambiguous_package_exact_wiring": 2
   }
 }

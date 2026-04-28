@@ -900,14 +900,27 @@ kind: test
     });
     const text = renderCatalogSearchText(result);
 
-    expect(result.package_count).toBe(2);
-    expect(result.results).toHaveLength(1);
+    expect(result.package_count).toBe(3);
+    expect(result.results).toHaveLength(2);
+    expect(result.results).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        package_name: "@openprose/catalog-demo",
+        component_name: "market-scan",
+        component_kind: "service",
+      }),
+      expect.objectContaining({
+        package_name: "@openprose/dataflow-complex",
+        component_name: "market-research",
+        component_kind: "service",
+      }),
+    ]));
     expect(result.results[0]).toMatchObject({
       package_name: "@openprose/catalog-demo",
       component_name: "market-scan",
       component_kind: "service",
     });
     expect(text).toContain("market-scan (service)");
+    expect(text).toContain("market-research (service)");
   });
 
   test("searches catalog metadata by type and minimum quality", async () => {
@@ -917,12 +930,21 @@ kind: test
     });
     const text = renderCatalogSearchText(result);
 
-    expect(result.results).toHaveLength(1);
-    expect(result.results[0].component_name).toBe("brief-writer");
-    expect(result.results[0].quality_score).toBeGreaterThanOrEqual(0.9);
-    expect(result.results[0].contract.errors?.declarations.map((error) => error.code)).toEqual([
+    expect(result.results).toHaveLength(3);
+    const catalogDemoBrief = result.results.find(
+      (entry) => entry.package_name === "@openprose/catalog-demo" &&
+        entry.component_name === "brief-writer",
+    );
+    expect(catalogDemoBrief).toBeDefined();
+    expect(catalogDemoBrief?.quality_score).toBeGreaterThanOrEqual(0.9);
+    expect(catalogDemoBrief?.contract.errors?.declarations.map((error) => error.code)).toEqual([
       "input_unusable",
       "scope_unclear",
+    ]);
+    expect(result.results.map((entry) => entry.component_name)).toEqual([
+      "brief-writer",
+      "brief-writer",
+      "final-assembler",
     ]);
     expect(text).toContain("errors: input_unusable, scope_unclear");
     expect(text).toContain("finally: declared");

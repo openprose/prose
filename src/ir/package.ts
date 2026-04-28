@@ -517,9 +517,15 @@ function buildPackageGraph(
     }
 
     for (const port of component.ports.requires) {
-      const matchingProducers = (producersByPort.get(port.name) ?? []).filter(
-        (producer) => producer.id !== component.id,
-      );
+      const matchingProducers = (producersByPort.get(port.name) ?? []).filter((producer) => {
+        if (producer.id === component.id) {
+          return false;
+        }
+        if (component.kind !== "program" && producer.kind === "program") {
+          return false;
+        }
+        return true;
+      });
       if (matchingProducers.length > 1) {
         diagnostics.push({
           severity: "warning",

@@ -727,6 +727,7 @@ async function assembleGraphRunRecord(
     policyDecision.labels,
     ...Object.values(policyDecision.output_labels),
   );
+  const graphFinallyEvidence = nodeRecordsById.get(main.id)?.finally_evidence ?? null;
 
   return {
     ...baseRunRecord(ctx, main, "graph"),
@@ -755,6 +756,7 @@ async function assembleGraphRunRecord(
       status === "succeeded"
         ? { status: "accepted", reason: "No required evals declared." }
         : { status: "pending", reason: reasons.join(" ") },
+    ...(graphFinallyEvidence ? { finally_evidence: graphFinallyEvidence } : {}),
     trace_ref: "trace.json",
     status,
     completed_at: completionTimestamp(ctx),
@@ -846,6 +848,7 @@ async function writeGraphStoreRecords(
     startedAt: graphRecord.created_at,
     finishedAt: graphRecord.completed_at,
     diagnostics: recordDiagnostics(graphRecord),
+    finallyEvidence: graphRecord.finally_evidence ?? null,
     failure:
       graphRecord.status === "succeeded"
         ? null

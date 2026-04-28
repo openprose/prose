@@ -1,0 +1,46 @@
+{
+  "name": "@openprose/dataflow-complex",
+  "version": "0.1.0",
+  "registry": {
+    "catalog": "openprose"
+  },
+  "description": "Complex OpenProse dataflow fixture for compiler, planner, materialization, and hosted runtime confidence.",
+  "license": "MIT",
+  "source": {
+    "git": "github.com/openprose/prose",
+    "sha": "0123456789abcdef",
+    "subpath": "fixtures/package/dataflow-complex"
+  },
+  "schemas": [
+    "schemas/account-record.schema.json",
+    "schemas/signals.schema.json",
+    "schemas/scorecard.schema.json"
+  ],
+  "evals": [
+    "evals/dataflow-complex.eval.prose.md"
+  ],
+  "examples": [
+    "examples/dataflow-complex.run.json"
+  ],
+  "runtime": {
+    "graph_vm": "pi",
+    "model_providers": [
+      "openrouter"
+    ],
+    "default_model_provider": "openrouter",
+    "default_model": "google/gemini-3-flash-preview",
+    "thinking": "low",
+    "tools": [
+      "read",
+      "write"
+    ],
+    "persist_sessions": true,
+    "subagents_enabled": true,
+    "subagent_backend": "pi"
+  },
+  "hosted": {
+    "callable": true,
+    "auth_required": true,
+    "trace_available": true
+  }
+}

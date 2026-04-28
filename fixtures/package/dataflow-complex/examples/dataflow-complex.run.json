@@ -1,0 +1,32 @@
+{
+  "run_id": "example-dataflow-complex",
+  "component_ref": "dataflow-complex",
+  "status": "succeeded",
+  "inputs": {
+    "account_record": {
+      "company": "ExampleCo",
+      "segment": "mid-market",
+      "employees": 250,
+      "region": "NA",
+      "signals": [
+        "workflow-heavy",
+        "compliance-sensitive"
+      ]
+    },
+    "research_question": "Should ExampleCo adopt OpenProse for cross-functional workflow automation?",
+    "market_window": "last 30 days"
+  },
+  "outputs": {
+    "final_brief": "ExampleCo is a strong fit when workflow evidence remains auditable.",
+    "scorecard": {
+      "fit": "high",
+      "score": 87,
+      "rationale": "Complex workflow needs and compliance pressure align with OpenProse.",
+      "risks": [
+        "security review",
+        "change management"
+      ]
+    },
+    "risk_digest": "Primary risks are review depth and rollout sequencing."
+  }
+}
