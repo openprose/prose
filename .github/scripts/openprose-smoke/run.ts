@@ -77,6 +77,24 @@ const DEFAULT_WORKSPACE_ROOT = "/tmp/openprose-smoke";
 const DEFAULT_MODEL = process.env.OPENPROSE_SMOKE_MODEL ?? "claude-sonnet-4-6";
 const DEFAULT_TIMEOUT_SECONDS = 360;
 const DEFAULT_MAX_TURNS = 10;
+const CLAUDE_TOOLS = "Edit,Read,Write,Glob,Grep,Task,Skill";
+const CLAUDE_DISALLOWED_TOOLS = [
+  "Read(//proc/**)",
+  "Grep(//proc/**)",
+  "Glob(//proc/**)",
+  "Read(//sys/**)",
+  "Grep(//sys/**)",
+  "Glob(//sys/**)",
+  "Read(//dev/**)",
+  "Grep(//dev/**)",
+  "Glob(//dev/**)",
+  "Read(//run/**)",
+  "Grep(//run/**)",
+  "Glob(//run/**)",
+  "Read(//var/run/**)",
+  "Grep(//var/run/**)",
+  "Glob(//var/run/**)",
+].join(",");
 const REPO_ROOT = process.cwd();
 const TEMP_ROOTS = unique([
   path.resolve(tmpdir()),
@@ -560,6 +578,7 @@ async function runCase(
       (smokeCase.timeoutSeconds ?? DEFAULT_TIMEOUT_SECONDS) * 1000,
       stdoutPath,
       stderrPath,
+      buildClaudeEnv(),
     );
     exitCode = run.exitCode;
     timedOut = run.timedOut;
@@ -652,6 +671,7 @@ function buildPrompt(smokeCase: SmokeCase): string {
 function buildClaudeArgs(smokeCase: SmokeCase, options: RunnerOptions, prompt: string): string[] {
   return [
     "--print",
+    "--bare",
     "--model",
     options.model,
     "--max-turns",
@@ -662,12 +682,27 @@ function buildClaudeArgs(smokeCase: SmokeCase, options: RunnerOptions, prompt: s
     "--output-format",
     "text",
     "--tools",
-    "Bash,Edit,Read,Write,Glob,Grep,Task,Skill",
+    CLAUDE_TOOLS,
     "--allowedTools",
-    "Bash(*),Edit,Read,Write,Glob,Grep,Task,Skill",
+    CLAUDE_TOOLS,
+    "--disallowedTools",
+    CLAUDE_DISALLOWED_TOOLS,
     "--",
     prompt,
   ];
+}
+
+function buildClaudeEnv(): Record<string, string> {
+  const env: Record<string, string> = {
+    ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY ?? "",
+  };
+  for (const key of ["PATH", "TMPDIR", "TMP", "TEMP", "CI", "GITHUB_ACTIONS"]) {
+    const value = process.env[key];
+    if (value) {
+      env[key] = value;
+    }
+  }
+  return env;
 }
 
 function buildDryRunOutput(
@@ -878,6 +913,7 @@ async function runProcessToFiles(
   timeoutMs: number,
   stdoutPath: string,
   stderrPath: string,
+  env: Record<string, string> = process.env as Record<string, string>,
 ): Promise<{ exitCode: number | null; timedOut: boolean }> {
   await fs.mkdir(path.dirname(stdoutPath), { recursive: true });
 
@@ -886,7 +922,7 @@ async function runProcessToFiles(
     const stderrStream = createWriteStream(stderrPath);
     const child = spawn(command, args, {
       cwd,
-      env: process.env,
+      env,
       stdio: ["ignore", "pipe", "pipe"],
     });
     let timedOut = false;

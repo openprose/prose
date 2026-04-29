@@ -66,7 +66,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          npm install -g @anthropic-ai/claude-code
+          npm install -g @anthropic-ai/claude-code@2.1.121
           claude --version
 
       - name: Install tsx
@@ -89,7 +89,7 @@ jobs:
             --tier "$SMOKE_TIER"
             --model "$SMOKE_MODEL"
             --results-dir openprose-smoke-results
-            --max-concurrency 2
+            --max-concurrency 1
           )
           if [[ "$SMOKE_FORCE" == "true" ]]; then
             args+=(--force)
