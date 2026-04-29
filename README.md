@@ -11,6 +11,7 @@
   <a href="skills/open-prose/SKILL.md">Docs</a> |
   <a href="skills/open-prose/examples/">Examples</a> |
   <a href="skills/open-prose/contract-markdown.md">Spec</a> |
+  <a href="cli/">CLI</a> |
   <a href="packages/std/">Stdlib</a> |
   <a href="packages/co/">Company-as-Prose</a>
 </p>
@@ -109,6 +110,10 @@ Complete runner:
 claude -p "prose run hello.md"
 codex exec "prose run hello.md"
 ```
+
+The optional [CLI package](cli/) wraps that same pattern in a `prose` shell
+command for authenticated harnesses. It is a prompt-forwarding wrapper around
+OpenProse agent execution, not a separate VM.
 
 > By installing, you agree to the [Privacy Policy](PRIVACY.md) and
 > [Terms of Service](TERMS.md).
@@ -259,6 +264,7 @@ disk at runtime. No network fetch happens during execution.
 | [skills/open-prose/prose.md](skills/open-prose/prose.md) | VM execution semantics |
 | [skills/open-prose/deps.md](skills/open-prose/deps.md) | Git-native dependency resolution |
 | [skills/open-prose/examples/](skills/open-prose/examples/) | Example programs |
+| [cli/](cli/) | Optional shell wrapper for sending `prose ...` commands to agent harnesses |
 | [skills/open-prose/guidance/](skills/open-prose/guidance/) | Tenets, patterns, and antipatterns |
 | [skills/open-prose/state/](skills/open-prose/state/) | State backend specs |
 

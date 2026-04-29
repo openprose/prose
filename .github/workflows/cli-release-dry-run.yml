@@ -1,0 +1,119 @@
+name: CLI Release Dry Run
+
+on:
+  pull_request:
+    paths:
+      - "cli/**"
+      - ".github/workflows/cli-release-dry-run.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "cli/**"
+      - ".github/workflows/cli-release-dry-run.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cli-release-dry-run-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate CLI package
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: cli
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: cli/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Dry-run npm package
+        run: npm pack --dry-run --json | tee npm-pack-dry-run.json
+
+      - name: Validate npm pack manifest
+        run: |
+          node --input-type=module <<'EOF'
+          import { readFileSync } from "node:fs";
+
+          const [pack] = JSON.parse(readFileSync("npm-pack-dry-run.json", "utf8"));
+          const paths = new Set(pack.files.map((file) => file.path));
+          const required = ["package.json", "README.md", "LICENSE", "dist/index.js", "dist/index.d.ts"];
+          const forbiddenPrefixes = ["src/", "tests/", "node_modules/"];
+
+          for (const path of required) {
+            if (!paths.has(path)) {
+              throw new Error(`npm pack manifest is missing ${path}`);
+            }
+          }
+
+          for (const path of paths) {
+            if (forbiddenPrefixes.some((prefix) => path.startsWith(prefix))) {
+              throw new Error(`npm pack manifest includes ${path}`);
+            }
+            if (path.endsWith(".map")) {
+              throw new Error(`npm pack manifest includes sourcemap ${path}`);
+            }
+          }
+          EOF
+
+      - name: Check installer script syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$GITHUB_WORKSPACE"
+          shopt -s nullglob
+
+          candidates=(
+            cli/install.sh
+            cli/installer.sh
+            cli/scripts/install*.sh
+            cli/scripts/*installer*.sh
+          )
+          scripts=()
+
+          for candidate in "${candidates[@]}"; do
+            if [[ -f "$candidate" ]]; then
+              scripts+=("$candidate")
+            fi
+          done
+
+          if (( ${#scripts[@]} == 0 )); then
+            echo "No installer shell scripts found; skipping syntax check."
+            exit 0
+          fi
+
+          for script in "${scripts[@]}"; do
+            echo "Checking $script"
+            bash -n "$script"
+          done
+
+      - name: Upload npm pack dry-run manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: cli-npm-pack-dry-run
+          path: cli/npm-pack-dry-run.json
+          if-no-files-found: error

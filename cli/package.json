@@ -1,0 +1,66 @@
+{
+  "name": "@openprose/prose-cli",
+  "version": "0.1.0",
+  "description": "Run OpenProse commands through Codex, Claude, or SDK-backed agent harnesses.",
+  "type": "module",
+  "packageManager": "npm@10.9.2",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/openprose/prose.git",
+    "directory": "cli"
+  },
+  "bugs": {
+    "url": "https://github.com/openprose/prose/issues"
+  },
+  "homepage": "https://github.com/openprose/prose/tree/main/cli#readme",
+  "license": "MIT",
+  "bin": {
+    "prose": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "npm run clean && tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest --run",
+    "dev": "tsx src/index.ts",
+    "clean": "rm -rf dist",
+    "release:tarball": "node scripts/build-release-tarball.mjs",
+    "release:homebrew": "node scripts/build-homebrew-tarball.mjs",
+    "prepack": "npm run build"
+  },
+  "keywords": [
+    "ai",
+    "cli",
+    "codex",
+    "openprose",
+    "prose"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@openai/codex-sdk": "^0.125.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.39",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.4"
+  }
+}
