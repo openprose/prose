@@ -1,0 +1,45 @@
+name: CLI Skills Smoke
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 9 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cli-skills-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  skills-install:
+    name: Install OpenProse skill with skills CLI
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install skill in a disposable home
+        run: |
+          set -euo pipefail
+          temp_home="$RUNNER_TEMP/home"
+          mkdir -p "$temp_home"
+
+          env \
+            HOME="$temp_home" \
+            XDG_CONFIG_HOME="$temp_home/.config" \
+            npx -y skills@1.5.3 add openprose/prose \
+              --skill open-prose \
+              --global \
+              --yes \
+              --copy \
+              --full-depth \
+              --agent codex \
+              --agent claude-code
+
+          test -f "$temp_home/.agents/skills/open-prose/SKILL.md"
+          test -f "$temp_home/.claude/skills/open-prose/SKILL.md"
+          grep -q "name: open-prose" "$temp_home/.agents/skills/open-prose/SKILL.md"
+          grep -q "name: open-prose" "$temp_home/.claude/skills/open-prose/SKILL.md"

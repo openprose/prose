@@ -1,6 +1,16 @@
 import { createHash } from "node:crypto";
 import { execFileSync, spawnSync } from "node:child_process";
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+	chmodSync,
+	existsSync,
+	linkSync,
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	symlinkSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -200,6 +210,123 @@ describe("install.sh", () => {
 
 			expect(result.status).not.toBe(0);
 			expect(result.stderr).toContain("archive contains an unsafe symlink");
+			expect(existsSync(join(temp, "install", packageName))).toBe(false);
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
+
+	it("rejects checksum mismatches before installing", () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-install-bad-checksum-"));
+		const version = "9.9.9";
+		const targetOs = "linux";
+		const targetArch = "x64";
+		const packageName = `prose-${version}-${targetOs}-${targetArch}`;
+		const releaseDir = join(temp, "release");
+		const packageRoot = join(temp, "stage", packageName);
+		const distDir = join(packageRoot, "dist");
+		const tarballPath = join(releaseDir, `${packageName}.tar.gz`);
+
+		try {
+			mkdirSync(distDir, { recursive: true });
+			mkdirSync(releaseDir, { recursive: true });
+			writeFileSync(join(distDir, "index.js"), "console.log('checksum');\n");
+			execFileSync("tar", ["-czf", tarballPath, "-C", join(temp, "stage"), packageName]);
+
+			const result = run("sh", [installScript], {
+				env: {
+					...process.env,
+					PROSE_VERSION: version,
+					PROSE_OS: targetOs,
+					PROSE_ARCH: targetArch,
+					PROSE_INSTALL_DIR: join(temp, "install"),
+					PROSE_BIN_DIR: join(temp, "bin"),
+					PROSE_BASE_URL: `file://${releaseDir}`,
+					PROSE_SHA256: "0".repeat(64),
+				},
+			});
+
+			expect(result.status).not.toBe(0);
+			expect(result.stderr).toContain("archive checksum mismatch");
+			expect(existsSync(join(temp, "install", packageName))).toBe(false);
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
+
+	it("rejects archives with the wrong root directory", () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-install-wrong-root-"));
+		const version = "9.9.9";
+		const targetOs = "linux";
+		const targetArch = "x64";
+		const packageName = `prose-${version}-${targetOs}-${targetArch}`;
+		const wrongRoot = "not-prose";
+		const releaseDir = join(temp, "release");
+		const packageRoot = join(temp, "stage", wrongRoot);
+		const distDir = join(packageRoot, "dist");
+		const tarballPath = join(releaseDir, `${packageName}.tar.gz`);
+
+		try {
+			mkdirSync(distDir, { recursive: true });
+			mkdirSync(releaseDir, { recursive: true });
+			writeFileSync(join(distDir, "index.js"), "console.log('wrong-root');\n");
+			execFileSync("tar", ["-czf", tarballPath, "-C", join(temp, "stage"), wrongRoot]);
+
+			const result = run("sh", [installScript], {
+				env: {
+					...process.env,
+					PROSE_VERSION: version,
+					PROSE_OS: targetOs,
+					PROSE_ARCH: targetArch,
+					PROSE_INSTALL_DIR: join(temp, "install"),
+					PROSE_BIN_DIR: join(temp, "bin"),
+					PROSE_BASE_URL: `file://${releaseDir}`,
+					PROSE_SHA256: sha256(tarballPath),
+				},
+			});
+
+			expect(result.status).not.toBe(0);
+			expect(result.stderr).toContain(`archive root must be ${packageName}/`);
+			expect(existsSync(join(temp, "install", packageName))).toBe(false);
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
+
+	it("rejects archives with hardlinked files", () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-install-hardlink-"));
+		const version = "9.9.9";
+		const targetOs = "linux";
+		const targetArch = "x64";
+		const packageName = `prose-${version}-${targetOs}-${targetArch}`;
+		const releaseDir = join(temp, "release");
+		const packageRoot = join(temp, "stage", packageName);
+		const distDir = join(packageRoot, "dist");
+		const tarballPath = join(releaseDir, `${packageName}.tar.gz`);
+		const indexPath = join(distDir, "index.js");
+
+		try {
+			mkdirSync(distDir, { recursive: true });
+			mkdirSync(releaseDir, { recursive: true });
+			writeFileSync(indexPath, "console.log('hardlink');\n");
+			linkSync(indexPath, join(packageRoot, "linked-index.js"));
+			execFileSync("tar", ["-czf", tarballPath, "-C", join(temp, "stage"), packageName]);
+
+			const result = run("sh", [installScript], {
+				env: {
+					...process.env,
+					PROSE_VERSION: version,
+					PROSE_OS: targetOs,
+					PROSE_ARCH: targetArch,
+					PROSE_INSTALL_DIR: join(temp, "install"),
+					PROSE_BIN_DIR: join(temp, "bin"),
+					PROSE_BASE_URL: `file://${releaseDir}`,
+					PROSE_SHA256: sha256(tarballPath),
+				},
+			});
+
+			expect(result.status).not.toBe(0);
+			expect(result.stderr).toContain("hardlink");
 			expect(existsSync(join(temp, "install", packageName))).toBe(false);
 		} finally {
 			rmSync(temp, { recursive: true, force: true });

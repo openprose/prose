@@ -28,7 +28,7 @@
   "homepage": "https://github.com/openprose/prose/tree/main/cli#readme",
   "license": "MIT",
   "bin": {
-    "prose": "./dist/index.js"
+    "prose": "dist/index.js"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

@@ -5,12 +5,16 @@ on:
     paths:
       - "cli/**"
       - ".github/workflows/cli-release-check.yml"
+      - ".github/workflows/cli-real-harness-smoke.yml"
+      - ".github/workflows/cli-skills-smoke.yml"
   push:
     branches:
       - main
     paths:
       - "cli/**"
       - ".github/workflows/cli-release-check.yml"
+      - ".github/workflows/cli-real-harness-smoke.yml"
+      - ".github/workflows/cli-skills-smoke.yml"
   workflow_dispatch:
 
 permissions:
@@ -21,15 +25,42 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  validate:
-    name: Validate CLI package on Node ${{ matrix.node-version }}
+  lint-shell-and-actions:
+    name: Lint shell and workflow files
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go for actionlint
+        uses: actions/setup-go@v5
+        with:
+          go-version: stable
+          cache: false
+
+      - name: Install actionlint
+        run: go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.7
+
+      - name: Lint GitHub Actions workflows
+        run: actionlint .github/workflows/cli-*.yml
+
+      - name: Check installer shell syntax
+        run: bash -n cli/install.sh
+
+      - name: Check release helper syntax
+        run: node --check cli/scripts/build-release-tarball.mjs
+
+  node-checks:
+    name: Node ${{ matrix.node-version }} checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
         node-version:
           - 18
+          - 20
           - 22
     defaults:
       run:
@@ -57,8 +88,39 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Smoke built CLI
+        run: |
+          set -euo pipefail
+
+          node dist/index.js --help
+          node dist/index.js help
+          node dist/index.js run hello.md --harness mock
+          PROSE_HARNESS=mock node dist/index.js status --graph
+
+  npm-package-smoke:
+    name: npm package smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: cli
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: cli/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
       - name: Pack npm artifact
         run: |
+          set -euo pipefail
           mkdir -p "$RUNNER_TEMP/npm-pack"
           npm pack --pack-destination "$RUNNER_TEMP/npm-pack" --json | tee npm-pack.json
 
@@ -103,6 +165,53 @@ jobs:
           "$prefix/bin/prose" --version
           "$prefix/bin/prose" run hello.md --harness mock
 
+          import_dir="$RUNNER_TEMP/npm-import-smoke"
+          mkdir -p "$import_dir"
+          cd "$import_dir"
+          npm init -y
+          npm install "$pack_file"
+          node --input-type=module -e "await import('@openprose/prose-cli')"
+
+      - name: Dry-run npm publish
+        run: npm publish --dry-run
+
+      - name: Upload npm package metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: cli-npm-pack
+          path: cli/npm-pack.json
+          if-no-files-found: error
+
+  release-tarball-smoke:
+    name: Release tarball smoke on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+    defaults:
+      run:
+        working-directory: cli
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: cli/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
       - name: Build and smoke release tarball
         run: |
           set -euo pipefail
@@ -114,8 +223,6 @@ jobs:
 
           env \
             PROSE_VERSION="$(node -p 'require("./package.json").version')" \
-            PROSE_OS=linux \
-            PROSE_ARCH=x64 \
             PROSE_BASE_URL="file://$release_dir" \
             PROSE_INSTALL_DIR="$install_dir" \
             PROSE_BIN_DIR="$bin_dir" \
@@ -124,9 +231,33 @@ jobs:
           "$bin_dir/prose" --version
           "$bin_dir/prose" run hello.md --harness mock
 
-      - name: Upload npm package metadata
+      - name: Upload release tarball
         uses: actions/upload-artifact@v4
         with:
-          name: cli-npm-pack-node-${{ matrix.node-version }}
-          path: cli/npm-pack.json
+          name: cli-release-${{ runner.os }}-${{ runner.arch }}
+          path: ${{ runner.temp }}/prose-release/*
           if-no-files-found: error
+
+  production-audit:
+    name: Production dependency audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: cli
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: cli/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev

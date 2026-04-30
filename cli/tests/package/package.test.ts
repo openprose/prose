@@ -22,7 +22,7 @@ describe("package smoke", () => {
 	it("publishes a single built CLI entrypoint through bin, main, and exports", () => {
 		const packageJson = readPackageJson();
 
-		expect(packageJson.bin?.prose).toBe("./dist/index.js");
+		expect(packageJson.bin?.prose).toBe("dist/index.js");
 		expect(packageJson.main).toBe("./dist/index.js");
 		expect(packageJson.types).toBe("./dist/index.d.ts");
 		expect(packageJson.exports?.["."]).toEqual({
