@@ -19,6 +19,7 @@ been published yet. For now, use a local checkout or a private release source.
 - Node.js 18 or newer
 - Credentials for the selected provider
 - Codex SDK/OpenAI credentials for the default `codex-sdk` harness
+- `npx`, used by the CLI to install the `open-prose` skill when needed
 
 ## Install
 
@@ -70,6 +71,26 @@ to the release tarball.
 Select a harness with `--harness <name>`, `PROSE_HARNESS`, or
 `OPENPROSE_HARNESS`.
 
+## Skill Setup
+
+OpenProse execution depends on the `open-prose` agent skill. Before running a
+real harness, the CLI checks whether that skill is installed for the selected
+provider and installs the missing global skill target with:
+
+```bash
+npx --yes skills@1.5.3 add openprose/prose --skill open-prose --global --yes --copy --full-depth --agent <agent>
+```
+
+Automatic setup only installs the provider you selected for that run, prints a
+short status line on success, and only shows the full `skills` installer output
+if setup fails. Use `prose doctor` to inspect local skill availability without
+running a program:
+
+```bash
+prose doctor
+prose doctor --harness claude-sdk --install
+```
+
 ## Behavior
 
 - stdout and stderr are streamed rather than buffered.
@@ -87,6 +108,7 @@ root docs:
 ```bash
 prose run programs/reviewer.md
 prose run programs/reviewer.md --harness claude-sdk
+prose doctor
 prose lint programs/reviewer.md
 prose status --graph
 ```

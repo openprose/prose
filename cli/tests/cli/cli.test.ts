@@ -146,4 +146,53 @@ describe("runForwardedProseCommand", () => {
 
 		expect(sawSignal).toBe(true);
 	});
+
+	it("runs explicit skill preflight before harness execution", async () => {
+		const io = memoryStreams();
+		const calls: string[] = [];
+
+		await runForwardedProseCommand({
+			command: "status",
+			argv: ["--harness", "mock"],
+			cwd: "/repo",
+			env: {},
+			stdout: io.streams.stdout,
+			stderr: io.streams.stderr,
+			skillPreflight: async ({ harness, cwd }) => void calls.push(`preflight:${harness}:${cwd}`),
+			harnessFactory: () => ({
+				name: "mock",
+				async run() {
+					calls.push("harness");
+					return 0;
+				},
+			}),
+		});
+
+		expect(calls).toEqual(["preflight:mock:/repo", "harness"]);
+	});
+
+	it("validates command arguments before skill preflight", async () => {
+		const io = memoryStreams();
+		let preflightCalled = false;
+
+		await expect(
+			runForwardedProseCommand({
+				command: "run",
+				argv: [],
+				cwd: "/repo",
+				env: {},
+				stdout: io.streams.stdout,
+				stderr: io.streams.stderr,
+				skillPreflight: async () => void (preflightCalled = true),
+				harnessFactory: () => ({
+					name: "mock",
+					async run() {
+						return 0;
+					},
+				}),
+			}),
+		).rejects.toThrow("Missing required argument");
+
+		expect(preflightCalled).toBe(false);
+	});
 });

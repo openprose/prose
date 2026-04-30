@@ -1,4 +1,5 @@
 import type { Command } from "@oclif/core";
+import Doctor from "./doctor.js";
 import Examples from "./examples.js";
 import Help from "./help.js";
 import Inspect from "./inspect.js";
@@ -11,6 +12,7 @@ import Status from "./status.js";
 import Test from "./test.js";
 
 export default {
+	doctor: Doctor,
 	examples: Examples,
 	help: Help,
 	inspect: Inspect,

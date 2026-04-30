@@ -3,6 +3,17 @@ import type { CommandName } from "../prose/index.js";
 import { canonicalPrompt, CommandModelError, usageFor } from "../prose/index.js";
 import { createHarness, HARNESS_NAMES, type HarnessName } from "../harnesses/index.js";
 import type { Harness, WritableStreamLike } from "../harnesses/types.js";
+import { ensureOpenProseSkill } from "../skills/open-prose.js";
+
+export interface SkillPreflightOptions {
+	harness: string;
+	cwd: string;
+	env: Readonly<Record<string, string | undefined>>;
+	stderr: WritableStreamLike;
+	signal?: AbortSignal;
+}
+
+export type SkillPreflight = (options: SkillPreflightOptions) => Promise<void>;
 
 export interface ForwardRunOptions {
 	command: CommandName;
@@ -13,6 +24,7 @@ export interface ForwardRunOptions {
 	stderr: WritableStreamLike;
 	signal?: AbortSignal;
 	harnessFactory?: (name: string) => Harness;
+	skillPreflight?: SkillPreflight | false;
 }
 
 export const harnessFlag = Flags.string({
@@ -66,11 +78,44 @@ function isOclifExit(error: unknown): boolean {
 export async function runForwardedProseCommand(options: ForwardRunOptions): Promise<number> {
 	const { harness, args } = splitHarnessArgs(options.argv, options.env, options.command);
 	const prompt = canonicalPrompt(options.command, args);
+	if (shouldRunSkillPreflight(options)) {
+		await runSkillPreflight(harness, options);
+	}
+
 	const selectedHarness = (options.harnessFactory ?? createHarness)(harness);
 	return selectedHarness.run(prompt, {
 		cwd: options.cwd,
 		env: { ...options.env },
 		stdout: options.stdout,
+		stderr: options.stderr,
+		...(options.signal === undefined ? {} : { signal: options.signal }),
+	});
+}
+
+function shouldRunSkillPreflight(options: ForwardRunOptions): boolean {
+	if (options.skillPreflight === false) {
+		return false;
+	}
+
+	return options.skillPreflight !== undefined || options.harnessFactory === undefined;
+}
+
+async function runSkillPreflight(harness: string, options: ForwardRunOptions): Promise<void> {
+	if (options.skillPreflight !== undefined && options.skillPreflight !== false) {
+		await options.skillPreflight({
+			harness,
+			cwd: options.cwd,
+			env: options.env,
+			stderr: options.stderr,
+			...(options.signal === undefined ? {} : { signal: options.signal }),
+		});
+		return;
+	}
+
+	await ensureOpenProseSkill({
+		harness,
+		cwd: options.cwd,
+		env: options.env,
 		stderr: options.stderr,
 		...(options.signal === undefined ? {} : { signal: options.signal }),
 	});

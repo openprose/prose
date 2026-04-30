@@ -113,7 +113,9 @@ codex exec "prose run hello.md"
 
 The [CLI package](cli/) is the shell entrypoint for that same command language.
 It defaults to the Codex SDK harness and remains a prompt-forwarding wrapper
-around OpenProse agent execution, not a separate VM.
+around OpenProse agent execution, not a separate VM. The CLI checks for the
+`open-prose` skill before invoking a harness and can install it for Codex or
+Claude Code automatically; run `prose doctor` to inspect the local setup.
 
 > By installing, you agree to the [Privacy Policy](PRIVACY.md) and
 > [Terms of Service](TERMS.md).

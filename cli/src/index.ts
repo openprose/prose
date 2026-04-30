@@ -9,6 +9,13 @@ import { normalizeEntrypointArgv } from "./commands/base.js";
 export { normalizeEntrypointArgv, runForwardedProseCommand, splitHarnessArgs } from "./commands/base.js";
 export { supportedCommands, canonicalPrompt, CommandModelError, usageFor } from "./prose/index.js";
 export { createHarness, HARNESS_NAMES } from "./harnesses/index.js";
+export {
+	buildOpenProseSkillInstallCommand,
+	checkOpenProseSkill,
+	ensureOpenProseSkill,
+	installOpenProseSkill,
+	skillAgentsForHarness,
+} from "./skills/open-prose.js";
 
 if (isDirectEntrypoint(import.meta.url, process.argv[1])) {
 	await execute({
