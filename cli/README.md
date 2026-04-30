@@ -94,6 +94,11 @@ to the release tarball.
 
 Select a harness with `--harness <name>` or `PROSE_HARNESS`.
 
+For externally sandboxed CI environments, Codex harnesses also honor
+`PROSE_CODEX_SANDBOX_MODE` (`read-only`, `workspace-write`, or
+`danger-full-access`) and `PROSE_CODEX_APPROVAL_POLICY` (`never`, `on-request`,
+`on-failure`, or `untrusted`) and forward those values to Codex.
+
 ## Skill Setup
 
 OpenProse execution depends on the `open-prose` agent skill. Before running a

@@ -87,6 +87,28 @@ describe("process harnesses", () => {
 		expect(env?.CODEX_API_KEY).toBe("openai-key");
 	});
 
+	test("codex CLI forwards requested sandbox and approval settings", async () => {
+		const calls: Array<{ command: string; args: string[] }> = [];
+		const io = memoryStreams();
+		const prompt = "prose run inspector.md";
+		const harness = createHarness("codex", { runner: recordingRunner(calls) });
+
+		await harness.run(prompt, {
+			...io.options,
+			env: {
+				PROSE_CODEX_APPROVAL_POLICY: "never",
+				PROSE_CODEX_SANDBOX_MODE: "danger-full-access",
+			},
+		});
+
+		expect(calls).toEqual([
+			{
+				command: "codex",
+				args: ["exec", "--sandbox", "danger-full-access", "--config", 'approval_policy="never"', prompt],
+			},
+		]);
+	});
+
 	test("node runner streams stdout/stderr and reports signal exits", async () => {
 		const io = memoryStreams();
 		const result = await nodeProcessRunner(process.execPath, ["-e", "console.log('before'); process.kill(process.pid, 'SIGTERM')"], {
@@ -170,6 +192,34 @@ describe("codex-sdk harness", () => {
 		expect(io.stdout).toBe("sdk output\n");
 		expect(starts).toEqual([{ workingDirectory: "/repo" }]);
 		expect(factoryOptions).toEqual([{ apiKey: "test", env: { OPENAI_API_KEY: "test" } }]);
+	});
+
+	test("forwards requested sandbox and approval settings to Codex SDK threads", async () => {
+		const io = memoryStreams();
+		const starts: unknown[] = [];
+		const factory: CodexSdkFactory = () => ({
+			startThread: (options) => {
+				starts.push(options);
+				return {
+					runStreamed: async () => ({
+						events: events([
+							{ type: "item.completed", item: { id: "item-1", type: "agent_message", text: "sdk output" } },
+						]),
+					}),
+				};
+			},
+		});
+
+		const exitCode = await createCodexSdkHarness({ factory }).run("prose run inspector.md", {
+			...io.options,
+			env: {
+				PROSE_CODEX_APPROVAL_POLICY: "never",
+				PROSE_CODEX_SANDBOX_MODE: "danger-full-access",
+			},
+		});
+
+		expect(exitCode).toBe(0);
+		expect(starts).toEqual([{ approvalPolicy: "never", sandboxMode: "danger-full-access" }]);
 	});
 
 	test("maps failed turns to stderr and nonzero exit", async () => {

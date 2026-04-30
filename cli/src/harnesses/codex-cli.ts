@@ -1,12 +1,13 @@
+import { codexCliRuntimeArgs } from "./codex-options.js";
 import { createProcessHarness, type ProcessHarnessOptions } from "./process-harness.js";
 import type { HarnessRunOptions } from "./types.js";
 
 export function createCodexCliHarness(options: ProcessHarnessOptions = {}) {
 	const harness = createProcessHarness(
 		"codex",
-		(prompt) => ({
+		(prompt, runOptions) => ({
 			command: "codex",
-			args: ["exec", prompt],
+			args: ["exec", ...codexCliRuntimeArgs(runOptions.env), prompt],
 		}),
 		options,
 	);

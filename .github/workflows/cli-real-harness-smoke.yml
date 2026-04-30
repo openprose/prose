@@ -44,6 +44,8 @@ jobs:
       REQUESTED_HARNESS: ${{ github.event_name == 'workflow_dispatch' && inputs.harness || 'all' }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      PROSE_CODEX_APPROVAL_POLICY: never
+      PROSE_CODEX_SANDBOX_MODE: danger-full-access
     steps:
       - name: Checkout
         uses: actions/checkout@v4
