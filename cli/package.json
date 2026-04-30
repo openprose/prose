@@ -4,6 +4,19 @@
   "description": "Run OpenProse commands through Codex, Claude, or SDK-backed agent harnesses.",
   "type": "module",
   "packageManager": "npm@10.9.2",
+  "oclif": {
+    "bin": "prose",
+    "commands": {
+      "strategy": "explicit",
+      "target": "./dist/commands/index.js"
+    },
+    "additionalHelpFlags": [
+      "-h"
+    ],
+    "additionalVersionFlags": [
+      "-V"
+    ]
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/openprose/prose.git",
@@ -41,7 +54,6 @@
     "dev": "tsx src/index.ts",
     "clean": "rm -rf dist",
     "release:tarball": "node scripts/build-release-tarball.mjs",
-    "release:homebrew": "node scripts/build-homebrew-tarball.mjs",
     "prepack": "npm run build"
   },
   "keywords": [
@@ -55,6 +67,8 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.2.90",
+    "@oclif/core": "^4.10.6",
     "@openai/codex-sdk": "^0.125.0"
   },
   "devDependencies": {

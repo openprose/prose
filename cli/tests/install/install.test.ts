@@ -10,9 +10,6 @@ const testDir = dirname(fileURLToPath(import.meta.url));
 const cliDir = resolve(testDir, "..", "..");
 const installScript = join(cliDir, "install.sh");
 const buildScript = join(cliDir, "scripts", "build-release-tarball.mjs");
-const buildHomebrewScript = join(cliDir, "scripts", "build-homebrew-tarball.mjs");
-const generateFormulaScript = join(cliDir, "homebrew", "generate_formula.rb");
-const checkedInFormula = join(cliDir, "homebrew", "Formula", "openprose-cli.rb");
 
 function run(command: string, args: string[], options: Parameters<typeof spawnSync>[2] = {}) {
 	return spawnSync(command, args, {
@@ -23,6 +20,10 @@ function run(command: string, args: string[], options: Parameters<typeof spawnSy
 
 function sha256(path: string) {
 	return createHash("sha256").update(readFileSync(path)).digest("hex");
+}
+
+function commandPath(command: string) {
+	return execFileSync("sh", ["-c", `command -v ${command}`], { encoding: "utf8" }).trim();
 }
 
 describe("install.sh", () => {
@@ -78,6 +79,38 @@ describe("install.sh", () => {
 
 			expect(result.status).not.toBe(0);
 			expect(result.stderr).toContain("PROSE_VERSION may only contain letters, numbers, dots, underscores, and dashes");
+			expect(existsSync(join(temp, "bin", "prose"))).toBe(false);
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
+
+	it("requires Node.js before installing the shim", () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-install-node-"));
+		const pathDir = join(temp, "path");
+
+		try {
+			mkdirSync(pathDir, { recursive: true });
+			for (const command of ["dirname", "find", "mkdir", "mktemp", "rm", "sed", "sh", "tar", "uname"]) {
+				symlinkSync(commandPath(command), join(pathDir, command));
+			}
+
+			const result = run("sh", [installScript], {
+				env: {
+					PATH: pathDir,
+					HOME: temp,
+					PROSE_VERSION: "9.9.9",
+					PROSE_OS: "linux",
+					PROSE_ARCH: "x64",
+					PROSE_INSTALL_DIR: join(temp, "install"),
+					PROSE_BIN_DIR: join(temp, "bin"),
+					PROSE_BASE_URL: "file:///tmp/no-release",
+					PROSE_SKIP_SHA256: "1",
+				},
+			});
+
+			expect(result.status).not.toBe(0);
+			expect(result.stderr).toContain("required command not found: node");
 			expect(existsSync(join(temp, "bin", "prose"))).toBe(false);
 		} finally {
 			rmSync(temp, { recursive: true, force: true });
@@ -181,8 +214,6 @@ describe("build-release-tarball.mjs", () => {
 		try {
 			const result = run(process.execPath, [
 				buildScript,
-				"--version",
-				"9.9.9",
 				"--os",
 				"linux",
 				"--arch",
@@ -194,52 +225,11 @@ describe("build-release-tarball.mjs", () => {
 			]);
 
 			expect(result.status).toBe(0);
-			expect(result.stdout).toContain("Package name: prose-9.9.9-linux-x64");
-			expect(result.stdout).toContain(`Archive path: ${join(temp, "prose-9.9.9-linux-x64.tar.gz")}`);
+			expect(result.stdout).toContain("Package name: prose-0.1.0-linux-x64");
+			expect(result.stdout).toContain(`Archive path: ${join(temp, "prose-0.1.0-linux-x64.tar.gz")}`);
+			expect(result.stdout).toContain(`Checksum path: ${join(temp, "prose-0.1.0-linux-x64.tar.gz.sha256")}`);
 			expect(result.stdout).toContain("Production npm target: linux/x64");
-			expect(existsSync(join(temp, "prose-9.9.9-linux-x64.tar.gz"))).toBe(false);
-		} finally {
-			rmSync(temp, { recursive: true, force: true });
-		}
-	});
-});
-
-describe("build-homebrew-tarball.mjs", () => {
-	it("reports the Homebrew archive it would build in dry-run mode", () => {
-		const temp = mkdtempSync(join(tmpdir(), "prose-homebrew-dry-run-"));
-
-		try {
-			const result = run(process.execPath, [
-				buildHomebrewScript,
-				"--version",
-				"9.9.9",
-				"--out-dir",
-				temp,
-				"--skip-build",
-				"--dry-run",
-			]);
-
-			expect(result.status).toBe(0);
-			expect(result.stdout).toContain("Package name: openprose-prose-cli-9.9.9-homebrew");
-			expect(result.stdout).toContain(`Archive path: ${join(temp, "openprose-prose-cli-9.9.9-homebrew.tgz")}`);
-			expect(existsSync(join(temp, "openprose-prose-cli-9.9.9-homebrew.tgz"))).toBe(false);
-		} finally {
-			rmSync(temp, { recursive: true, force: true });
-		}
-	});
-});
-
-describe("generate_formula.rb", () => {
-	it("matches the checked-in Homebrew formula", () => {
-		const temp = mkdtempSync(join(tmpdir(), "prose-formula-"));
-		const output = join(temp, "openprose-cli.rb");
-
-		try {
-			const result = run("ruby", [generateFormulaScript, "--output", output]);
-
-			expect(result.status).toBe(0);
-			expect(result.stderr).toBe("");
-			expect(readFileSync(output, "utf8")).toBe(readFileSync(checkedInFormula, "utf8"));
+			expect(existsSync(join(temp, "prose-0.1.0-linux-x64.tar.gz"))).toBe(false);
 		} finally {
 			rmSync(temp, { recursive: true, force: true });
 		}

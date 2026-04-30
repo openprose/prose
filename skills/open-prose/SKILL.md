@@ -101,8 +101,6 @@ binary on PATH. If a host does provide a native Prose CLI, the same command
 strings may be passed to that CLI; otherwise the shell executable is the agent
 runner, e.g. `claude -p "prose run foo.md"` or
 `codex exec "prose run foo.md"`.
-This repository's optional Node shell wrapper lives in `../../cli/` and forwards
-these same command strings to a selected harness.
 
 | Command | Action |
 |---------|--------|

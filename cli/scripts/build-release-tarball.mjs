@@ -2,9 +2,9 @@
 
 import { createHash } from "node:crypto";
 import { createReadStream, existsSync } from "node:fs";
-import { chmod, cp, mkdir, mkdtemp, readFile, rm, stat } from "node:fs/promises";
+import { chmod, cp, mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
@@ -16,7 +16,7 @@ const usage = `Usage: node scripts/build-release-tarball.mjs [options]
 Builds a self-contained Prose CLI release archive for curl-based installs.
 
 Options:
-  --version <version>  Version to place in the archive name (default: package.json)
+  --version <version>  Version to use for the archive name; must match package.json
   --os <os>            Target OS label: darwin or linux (default: current OS)
   --arch <arch>        Target arch label: arm64 or x64 (default: current arch)
   --out-dir <dir>      Directory for the .tar.gz (default: ./release)
@@ -163,6 +163,9 @@ async function main() {
 	const packageJsonPath = join(cliDir, "package.json");
 	const packageJson = JSON.parse(await readFile(packageJsonPath, "utf8"));
 	const version = options.version ?? packageJson.version;
+	if (options.version !== undefined && options.version !== packageJson.version) {
+		throw new Error(`--version (${options.version}) must match package.json version (${packageJson.version})`);
+	}
 	const targetOs = normalizeOs(options.os ?? process.platform);
 	const targetArch = normalizeArch(options.arch ?? process.arch);
 
@@ -180,6 +183,7 @@ async function main() {
 				`CLI directory: ${cliDir}`,
 				`Package name: ${packageName}`,
 				`Archive path: ${tarballPath}`,
+				`Checksum path: ${tarballPath}.sha256`,
 				`Build step: ${options.skipBuild ? "skip" : "npm run build"}`,
 				`Production npm target: ${targetOs}/${targetArch}`,
 				"Dry run only: no files were written.",
@@ -225,6 +229,7 @@ async function main() {
 			"--ignore-scripts",
 			"--no-audit",
 			"--no-fund",
+			"--no-bin-links",
 			...npmTargetArgs(targetOs, targetArch),
 		];
 
@@ -239,11 +244,13 @@ async function main() {
 		run("tar", ["-czf", tarballPath, "-C", stageParent, packageName]);
 
 		const digest = await sha256(tarballPath);
+		await writeFile(`${tarballPath}.sha256`, `${digest}  ${basename(tarballPath)}\n`);
 		process.stdout.write(
 			[
 				`Created ${tarballPath}`,
 				`Package root: ${packageName}/`,
 				`SHA256: ${digest}`,
+				`Checksum: ${tarballPath}.sha256`,
 				options.keepStage ? `Stage kept at ${stageParent}` : "",
 			]
 				.filter(Boolean)

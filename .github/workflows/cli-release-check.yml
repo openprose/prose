@@ -1,0 +1,132 @@
+name: CLI Release Check
+
+on:
+  pull_request:
+    paths:
+      - "cli/**"
+      - ".github/workflows/cli-release-check.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "cli/**"
+      - ".github/workflows/cli-release-check.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cli-release-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate CLI package on Node ${{ matrix.node-version }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version:
+          - 18
+          - 22
+    defaults:
+      run:
+        working-directory: cli
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+          cache-dependency-path: cli/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Pack npm artifact
+        run: |
+          mkdir -p "$RUNNER_TEMP/npm-pack"
+          npm pack --pack-destination "$RUNNER_TEMP/npm-pack" --json | tee npm-pack.json
+
+      - name: Validate npm package manifest
+        run: |
+          node --input-type=module <<'EOF'
+          import { readFileSync } from "node:fs";
+
+          const [pack] = JSON.parse(readFileSync("npm-pack.json", "utf8"));
+          const paths = new Set(pack.files.map((file) => file.path));
+          const required = ["package.json", "README.md", "LICENSE", "dist/index.js", "dist/index.d.ts"];
+          const forbiddenPrefixes = ["src/", "tests/", "node_modules/"];
+
+          for (const path of required) {
+            if (!paths.has(path)) {
+              throw new Error(`npm package is missing ${path}`);
+            }
+          }
+
+          for (const path of paths) {
+            if (forbiddenPrefixes.some((prefix) => path.startsWith(prefix))) {
+              throw new Error(`npm package includes ${path}`);
+            }
+            if (path.endsWith(".map")) {
+              throw new Error(`npm package includes sourcemap ${path}`);
+            }
+          }
+          EOF
+
+      - name: Smoke npm package artifact
+        run: |
+          set -euo pipefail
+          pack_file="$(node --input-type=module <<'EOF'
+          import { readFileSync } from "node:fs";
+          const [pack] = JSON.parse(readFileSync("npm-pack.json", "utf8"));
+          console.log(`${process.env.RUNNER_TEMP}/npm-pack/${pack.filename}`);
+          EOF
+          )"
+          prefix="$RUNNER_TEMP/npm-prefix"
+
+          npm install --global --prefix "$prefix" "$pack_file"
+          "$prefix/bin/prose" --version
+          "$prefix/bin/prose" run hello.md --harness mock
+
+      - name: Build and smoke release tarball
+        run: |
+          set -euo pipefail
+          release_dir="$RUNNER_TEMP/prose-release"
+          install_dir="$RUNNER_TEMP/prose-install"
+          bin_dir="$RUNNER_TEMP/prose-bin"
+
+          npm run release:tarball -- --out-dir "$release_dir" --skip-build
+
+          env \
+            PROSE_VERSION="$(node -p 'require("./package.json").version')" \
+            PROSE_OS=linux \
+            PROSE_ARCH=x64 \
+            PROSE_BASE_URL="file://$release_dir" \
+            PROSE_INSTALL_DIR="$install_dir" \
+            PROSE_BIN_DIR="$bin_dir" \
+            sh install.sh
+
+          "$bin_dir/prose" --version
+          "$bin_dir/prose" run hello.md --harness mock
+
+      - name: Upload npm package metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: cli-npm-pack-node-${{ matrix.node-version }}
+          path: cli/npm-pack.json
+          if-no-files-found: error

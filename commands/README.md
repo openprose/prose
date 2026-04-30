@@ -9,9 +9,9 @@ related:
 # commands
 
 Claude Code slash commands bundled with the prose repo. These commands provide
-the primary Claude Code interface for the OpenProse VM. The optional
+the primary Claude Code interface for the OpenProse VM. The
 [`cli/`](../cli/README.md) package exposes the same `prose ...` command language
-from a shell by forwarding prompts to an authenticated harness.
+from a shell.
 
 ## Contents
 

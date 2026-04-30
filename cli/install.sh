@@ -25,6 +25,15 @@ safe_label() {
 	esac
 }
 
+safe_sha256() {
+	case "$1" in
+		*[!A-Fa-f0-9]*|"")
+			fail "$2 must be a 64-character SHA-256 hex digest"
+			;;
+	esac
+	[ "${#1}" -eq 64 ] || fail "$2 must be a 64-character SHA-256 hex digest"
+}
+
 detect_os() {
 	uname_s=$(uname -s 2>/dev/null || true)
 	case "$uname_s" in
@@ -54,58 +63,11 @@ shell_single_quote_body() {
 	printf '%s' "$1" | sed "s/'/'\\\\''/g"
 }
 
-validate_extracted_package() {
-	node - "$1" <<'NODE'
-const fs = require("fs");
-const path = require("path");
-
-const root = path.resolve(process.argv[2]);
-
-function fail(message) {
-	console.error(message);
-	process.exit(1);
-}
-
-function isInsidePackage(candidate) {
-	const relative = path.relative(root, candidate);
-	return relative === "" || (relative !== "" && !relative.startsWith("..") && !path.isAbsolute(relative));
-}
-
-function walk(current) {
-	const stat = fs.lstatSync(current);
-	const relative = path.relative(root, current) || ".";
-
-	if (stat.isSymbolicLink()) {
-		const target = fs.readlinkSync(current);
-		const resolvedTarget = path.resolve(path.dirname(current), target);
-		if (!isInsidePackage(resolvedTarget)) {
-			fail(`archive contains an unsafe symlink: ${relative} -> ${target}`);
-		}
-		return;
-	}
-
-	if (stat.isDirectory()) {
-		for (const entry of fs.readdirSync(current)) {
-			walk(path.join(current, entry));
-		}
-		return;
-	}
-
-	if (stat.isFile() && stat.nlink > 1) {
-		fail(`archive contains a hardlinked file: ${relative}`);
-	}
-}
-
-try {
-	const rootStat = fs.lstatSync(root);
-	if (!rootStat.isDirectory()) {
-		fail("archive root is not a directory");
-	}
-	walk(root);
-} catch (error) {
-	fail(error instanceof Error ? error.message : String(error));
-}
-NODE
+download_to() {
+	case "$download_command" in
+		curl) curl -fsSL "$1" -o "$2" ;;
+		wget) wget -qO "$2" "$1" ;;
+	esac
 }
 
 raw_version=${PROSE_VERSION:-$DEFAULT_VERSION}
@@ -151,6 +113,12 @@ else
 	tarball_url="$base_url/$asset_name"
 fi
 
+if [ -n "${PROSE_SHA256_URL:-}" ]; then
+	sha256_url=$PROSE_SHA256_URL
+else
+	sha256_url="$tarball_url.sha256"
+fi
+
 install_root=$(make_absolute "${PROSE_INSTALL_DIR:-$HOME/.local/share/prose}")
 bin_dir=$(make_absolute "${PROSE_BIN_DIR:-$HOME/.local/bin}")
 target_dir="$install_root/$package_name"
@@ -162,6 +130,10 @@ case "${PROSE_DRY_RUN:-0}" in
 		log "Would download: $tarball_url"
 		if [ -n "${PROSE_SHA256:-}" ]; then
 			log "Would verify SHA256: $PROSE_SHA256"
+		elif [ "${PROSE_SKIP_SHA256:-0}" = "1" ]; then
+			log "Would skip SHA256 verification"
+		else
+			log "Would download checksum: $sha256_url"
 		fi
 		log "Would install: $target_dir"
 		log "Would write shim: $shim_path"
@@ -172,6 +144,7 @@ esac
 need_command tar
 need_command sed
 need_command mktemp
+need_command find
 need_command node
 
 node_major=$(node -p 'Number(process.versions.node.split(".")[0])' 2>/dev/null || printf '0')
@@ -200,28 +173,40 @@ trap 'exit 143' TERM
 archive_path="$tmpdir/$asset_name"
 extract_dir="$tmpdir/extract"
 contents_path="$tmpdir/contents.txt"
+details_path="$tmpdir/contents.verbose.txt"
+checksum_path="$tmpdir/checksum.txt"
 mkdir -p "$extract_dir"
 
 log "Downloading $tarball_url"
-case "$download_command" in
-	curl) curl -fsSL "$tarball_url" -o "$archive_path" ;;
-	wget) wget -qO "$archive_path" "$tarball_url" ;;
-esac
+download_to "$tarball_url" "$archive_path"
 
 if [ -n "${PROSE_SHA256:-}" ]; then
+	expected_checksum=$PROSE_SHA256
+elif [ "${PROSE_SKIP_SHA256:-0}" = "1" ]; then
+	expected_checksum=
+else
+	log "Downloading checksum $sha256_url"
+	download_to "$sha256_url" "$checksum_path" || fail "failed to download checksum. Set PROSE_SHA256 or PROSE_SKIP_SHA256=1 for private installs."
+	checksum_line=$(sed -n '1p' "$checksum_path")
+	expected_checksum=${checksum_line%% *}
+fi
+
+if [ -n "${expected_checksum:-}" ]; then
+	safe_sha256 "$expected_checksum" "PROSE_SHA256"
 	if command -v sha256sum >/dev/null 2>&1; then
 		checksum_line=$(sha256sum "$archive_path")
 	elif command -v shasum >/dev/null 2>&1; then
 		checksum_line=$(shasum -a 256 "$archive_path")
 	else
-		fail "PROSE_SHA256 was set, but sha256sum or shasum was not found"
+		fail "sha256sum or shasum is required to verify the archive"
 	fi
 
 	actual_checksum=${checksum_line%% *}
-	[ "$actual_checksum" = "$PROSE_SHA256" ] || fail "archive checksum mismatch"
+	[ "$actual_checksum" = "$expected_checksum" ] || fail "archive checksum mismatch"
 fi
 
 tar -tzf "$archive_path" > "$contents_path" || fail "downloaded archive is not a readable tar.gz"
+tar -tzvf "$archive_path" > "$details_path" || fail "downloaded archive is not a readable tar.gz"
 while IFS= read -r entry; do
 	case "$entry" in
 		""|/*|../*|*/../*|*/..)
@@ -235,9 +220,24 @@ while IFS= read -r entry; do
 	esac
 done < "$contents_path"
 
+while IFS= read -r entry; do
+	entry_mode=${entry%% *}
+	case "$entry_mode" in
+		l*|h*|b*|c*|p*|s*)
+			fail "archive contains an unsafe symlink, hardlink, or special file"
+			;;
+	esac
+done < "$details_path"
+
 tar -xzf "$archive_path" -C "$extract_dir" || fail "failed to extract downloaded archive"
 package_root="$extract_dir/$package_name"
-validate_extracted_package "$package_root" || fail "archive contains unsafe links"
+[ -d "$package_root" ] || fail "archive root is not a directory"
+unsafe_link=$(find "$package_root" -type l -print -quit)
+[ -z "$unsafe_link" ] || fail "archive contains an unsafe symlink: ${unsafe_link#"$package_root/"}"
+unsafe_hardlink=$(find "$package_root" -type f -links +1 -print -quit)
+[ -z "$unsafe_hardlink" ] || fail "archive contains a hardlinked file: ${unsafe_hardlink#"$package_root/"}"
+unsafe_special=$(find "$package_root" \( -type b -o -type c -o -type p -o -type s \) -print -quit)
+[ -z "$unsafe_special" ] || fail "archive contains a special file: ${unsafe_special#"$package_root/"}"
 [ -f "$package_root/dist/index.js" ] || fail "archive is missing dist/index.js"
 
 mkdir -p "$install_root" "$bin_dir"

@@ -1,12 +1,7 @@
 export {
-  CommandModelError,
-  canonicalPrompt,
-  parseArgv,
-  parseShell,
-  supportedCommands,
-  type CommandName,
-  type CommandPlan,
-  type CommandValidationError,
-  type ParseOutcome,
-  type ValidationCode,
+	CommandModelError,
+	canonicalPrompt,
+	supportedCommands,
+	usageFor,
+	type CommandName,
 } from "./command-model.js";

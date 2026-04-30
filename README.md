@@ -111,9 +111,9 @@ claude -p "prose run hello.md"
 codex exec "prose run hello.md"
 ```
 
-The optional [CLI package](cli/) wraps that same pattern in a `prose` shell
-command for authenticated harnesses. It is a prompt-forwarding wrapper around
-OpenProse agent execution, not a separate VM.
+The [CLI package](cli/) is the shell entrypoint for that same command language.
+It defaults to the Codex SDK harness and remains a prompt-forwarding wrapper
+around OpenProse agent execution, not a separate VM.
 
 > By installing, you agree to the [Privacy Policy](PRIVACY.md) and
 > [Terms of Service](TERMS.md).
