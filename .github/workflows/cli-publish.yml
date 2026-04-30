@@ -54,6 +54,7 @@ jobs:
         id: release
         env:
           GH_TOKEN: ${{ github.token }}
+          INPUT_DRY_RUN: ${{ inputs.dry_run }}
           GITHUB_TRIGGERING_ACTOR: ${{ github.triggering_actor }}
           INPUT_NPM_TAG: ${{ inputs.npm_tag }}
           INPUT_VERSION: ${{ inputs.version }}
@@ -96,17 +97,21 @@ jobs:
           }
 
           release_tag="v$version"
-          if git ls-remote --exit-code --tags origin "refs/tags/$release_tag" >/dev/null 2>&1; then
-            fail "Git tag already exists: $release_tag"
-          fi
+          if [ "$INPUT_DRY_RUN" = "true" ]; then
+            printf '%s\n' "Dry run requested: skipping tag, release, and npm-version uniqueness checks."
+          else
+            if git ls-remote --exit-code --tags origin "refs/tags/$release_tag" >/dev/null 2>&1; then
+              fail "Git tag already exists: $release_tag"
+            fi
 
-          if gh release view "$release_tag" >/dev/null 2>&1; then
-            fail "GitHub release already exists: $release_tag"
-          fi
+            if gh release view "$release_tag" >/dev/null 2>&1; then
+              fail "GitHub release already exists: $release_tag"
+            fi
 
-          if npm view "$PACKAGE_NAME@$version" version >/tmp/prose-npm-version 2>/dev/null; then
-            published_version="$(cat /tmp/prose-npm-version)"
-            fail "npm package version already exists: $PACKAGE_NAME@$published_version"
+            if npm view "$PACKAGE_NAME@$version" version >/tmp/prose-npm-version 2>/dev/null; then
+              published_version="$(cat /tmp/prose-npm-version)"
+              fail "npm package version already exists: $PACKAGE_NAME@$published_version"
+            fi
           fi
 
           {
@@ -266,6 +271,9 @@ jobs:
           registry-url: https://registry.npmjs.org
           cache: npm
           cache-dependency-path: cli/package-lock.json
+
+      - name: Install npm with trusted publishing support
+        run: npm install --global npm@latest
 
       - name: Install dependencies
         run: npm ci
