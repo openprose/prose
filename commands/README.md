@@ -1,13 +1,17 @@
 ---
-purpose: Custom Claude Code slash commands providing the primary user-facing interface for the OpenProse VM
+purpose: Custom Claude Code slash commands for the OpenProse VM
 related:
   - ../README.md
-  - ../skills/open-prose/README.md
+  - ../skills/open-prose/SKILL.md
+  - ../cli/README.md
 ---
 
 # commands
 
-Claude Code slash commands bundled with the prose repo. These commands provide the primary user-facing interface for the OpenProse VM.
+Claude Code slash commands bundled with the prose repo. These commands provide
+the primary Claude Code interface for the OpenProse VM. The
+[`cli/`](../cli/README.md) package exposes the same `prose ...` command language
+from a shell.
 
 ## Contents
 

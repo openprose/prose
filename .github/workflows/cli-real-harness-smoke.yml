@@ -1,0 +1,142 @@
+name: CLI Real Harness Smoke
+
+on:
+  pull_request:
+    paths:
+      - "cli/**"
+      - ".github/workflows/cli-real-harness-smoke.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "cli/**"
+      - ".github/workflows/cli-real-harness-smoke.yml"
+  workflow_dispatch:
+    inputs:
+      harness:
+        description: "Harness to smoke."
+        required: true
+        default: all
+        type: choice
+        options:
+          - all
+          - codex-sdk
+          - codex
+          - claude-sdk
+          - claude
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cli-real-harness-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    name: Smoke ${{ github.event_name == 'workflow_dispatch' && inputs.harness || 'all' }} harness
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: cli
+    env:
+      REQUESTED_HARNESS: ${{ github.event_name == 'workflow_dispatch' && inputs.harness || 'all' }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      PROSE_CODEX_APPROVAL_POLICY: never
+      PROSE_CODEX_SANDBOX_MODE: danger-full-access
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: cli/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build CLI
+        run: npm run build
+
+      - name: Install Claude Code CLI when requested
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.harness == 'all' || inputs.harness == 'claude' || inputs.harness == 'claude-sdk' }}
+        run: npm install --global @anthropic-ai/claude-code
+
+      - name: Run real harness smokes
+        run: |
+          set -euo pipefail
+
+          should_run() {
+            [ "$REQUESTED_HARNESS" = "all" ] || [ "$REQUESTED_HARNESS" = "$1" ]
+          }
+
+          require_env() {
+            name="$1"
+            value="$(eval "printf '%s' \"\${$name:-}\"")"
+            [ -n "$value" ] || {
+              printf '%s\n' "Missing required secret: $name" >&2
+              exit 1
+            }
+          }
+
+          run_smoke() {
+            harness="$1"
+            workspace="$RUNNER_TEMP/prose-$harness-smoke"
+            mkdir -p "$workspace"
+            cat > "$workspace/smoke.md" <<'EOF'
+          ---
+          name: harness-smoke
+          kind: program
+          ---
+
+          ### Ensures
+
+          - message: exactly `PROSE_HARNESS_SMOKE_OK`
+
+          ### Instructions
+
+          Return only `PROSE_HARNESS_SMOKE_OK`. Do not edit files.
+          EOF
+
+            git -C "$workspace" init --initial-branch=main >/dev/null
+            git -C "$workspace" config user.email "ci@openprose.local"
+            git -C "$workspace" config user.name "OpenProse CI"
+            git -C "$workspace" add smoke.md
+            git -C "$workspace" commit -m "Add smoke program" >/dev/null
+
+            (
+              cd "$workspace"
+              timeout 180 node "$GITHUB_WORKSPACE/cli/dist/index.js" run smoke.md --harness "$harness"
+            ) | tee "$RUNNER_TEMP/prose-$harness-smoke.out"
+
+            grep -q "PROSE_HARNESS_SMOKE_OK" "$RUNNER_TEMP/prose-$harness-smoke.out"
+          }
+
+          export PATH="$PWD/node_modules/.bin:$PATH"
+
+          if should_run codex-sdk; then
+            require_env OPENAI_API_KEY
+            run_smoke codex-sdk
+          fi
+
+          if should_run codex; then
+            require_env OPENAI_API_KEY
+            codex --version
+            run_smoke codex
+          fi
+
+          if should_run claude-sdk; then
+            require_env ANTHROPIC_API_KEY
+            run_smoke claude-sdk
+          fi
+
+          if should_run claude; then
+            require_env ANTHROPIC_API_KEY
+            claude --version
+            run_smoke claude
+          fi
