@@ -20,6 +20,7 @@ const testDir = dirname(fileURLToPath(import.meta.url));
 const cliDir = resolve(testDir, "..", "..");
 const installScript = join(cliDir, "install.sh");
 const buildScript = join(cliDir, "scripts", "build-release-tarball.mjs");
+const packageVersion = (JSON.parse(readFileSync(join(cliDir, "package.json"), "utf8")) as { version: string }).version;
 
 function run(command: string, args: string[], options: Parameters<typeof spawnSync>[2] = {}) {
 	return spawnSync(command, args, {
@@ -352,11 +353,11 @@ describe("build-release-tarball.mjs", () => {
 			]);
 
 			expect(result.status).toBe(0);
-			expect(result.stdout).toContain("Package name: prose-0.1.0-linux-x64");
-			expect(result.stdout).toContain(`Archive path: ${join(temp, "prose-0.1.0-linux-x64.tar.gz")}`);
-			expect(result.stdout).toContain(`Checksum path: ${join(temp, "prose-0.1.0-linux-x64.tar.gz.sha256")}`);
+			expect(result.stdout).toContain(`Package name: prose-${packageVersion}-linux-x64`);
+			expect(result.stdout).toContain(`Archive path: ${join(temp, `prose-${packageVersion}-linux-x64.tar.gz`)}`);
+			expect(result.stdout).toContain(`Checksum path: ${join(temp, `prose-${packageVersion}-linux-x64.tar.gz.sha256`)}`);
 			expect(result.stdout).toContain("Production npm target: linux/x64");
-			expect(existsSync(join(temp, "prose-0.1.0-linux-x64.tar.gz"))).toBe(false);
+			expect(existsSync(join(temp, `prose-${packageVersion}-linux-x64.tar.gz`))).toBe(false);
 		} finally {
 			rmSync(temp, { recursive: true, force: true });
 		}

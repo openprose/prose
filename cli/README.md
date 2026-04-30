@@ -8,36 +8,6 @@ The CLI does not replace the OpenProse VM or execute programs by itself. The
 selected harness still runs the prompt, loads the OpenProse skill/specs, spawns
 agents when available, and writes run state.
 
-## Publication Status
-
-This package is release prep. The npm package and GitHub release tarball used by
-`install.sh` are intended install paths, but these docs do not assume either has
-been published yet. For now, use a local checkout or a private release source.
-
-## Release Workflow
-
-CLI releases are published by the manual `CLI Publish` GitHub Actions workflow
-after the version bump has landed on `main`. The workflow is intentionally
-manual-only and checks that:
-
-- the actor and triggering actor are `irl-dan` or `josemontesdeoca`;
-- the run is executing from `main`;
-- the requested version matches `cli/package.json` and `install.sh`;
-- the Git tag, GitHub release, and npm package version do not already exist.
-
-`dry_run` defaults to `true`. A dry run builds and verifies the npm package and
-the Linux/macOS release tarballs without publishing. For a real release, run the
-workflow with `dry_run` set to `false`; the publish job then waits on the
-GitHub `release` environment before creating the public release artifacts.
-
-One-time repository setup:
-
-- Create a GitHub environment named `release` with required reviewers
-  `irl-dan` and `josemontesdeoca`.
-- Configure npm trusted publishing for `@openprose/prose-cli` with repository
-  `openprose/prose`, workflow `.github/workflows/cli-publish.yml`, and
-  environment `release`.
-
 ## Requirements
 
 - Node.js 18 or newer
@@ -47,7 +17,20 @@ One-time repository setup:
 
 ## Install
 
-From the repository root:
+From npm:
+
+```bash
+npm install --global @openprose/prose-cli
+prose --help
+```
+
+From the GitHub release tarball:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/openprose/prose/main/cli/install.sh | sh
+```
+
+From a repository checkout:
 
 ```bash
 cd cli
@@ -57,30 +40,19 @@ npm link
 prose --help
 ```
 
-For project-local use before publication:
+For project-local use:
 
 ```bash
 npm install --save-dev ../path/to/prose/cli
 npx prose run inspector.md
 ```
 
-Future npm registry path:
-
-```bash
-npm install --global @openprose/prose-cli
-prose --help
-```
-
-Future GitHub release tarball path:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/openprose/prose/main/cli/install.sh | sh
-```
-
 The installer supports `PROSE_VERSION`, `PROSE_BASE_URL`, `PROSE_INSTALL_DIR`,
 `PROSE_BIN_DIR`, `PROSE_SHA256`, and `PROSE_SHA256_URL` overrides for pinned or
 private releases. By default it downloads and verifies the `.sha256` file next
 to the release tarball.
+
+Maintainers can find the release process in [RELEASE.md](RELEASE.md).
 
 ## Harnesses
 
