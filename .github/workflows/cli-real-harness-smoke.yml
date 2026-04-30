@@ -1,6 +1,16 @@
 name: CLI Real Harness Smoke
 
 on:
+  pull_request:
+    paths:
+      - "cli/**"
+      - ".github/workflows/cli-real-harness-smoke.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "cli/**"
+      - ".github/workflows/cli-real-harness-smoke.yml"
   workflow_dispatch:
     inputs:
       harness:
@@ -24,14 +34,14 @@ concurrency:
 
 jobs:
   smoke:
-    name: Smoke ${{ inputs.harness }} harness
+    name: Smoke ${{ github.event_name == 'workflow_dispatch' && inputs.harness || 'all' }} harness
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
       run:
         working-directory: cli
     env:
-      REQUESTED_HARNESS: ${{ inputs.harness }}
+      REQUESTED_HARNESS: ${{ github.event_name == 'workflow_dispatch' && inputs.harness || 'all' }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
     steps:
@@ -52,7 +62,7 @@ jobs:
         run: npm run build
 
       - name: Install Claude Code CLI when requested
-        if: ${{ inputs.harness == 'all' || inputs.harness == 'claude' || inputs.harness == 'claude-sdk' }}
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.harness == 'all' || inputs.harness == 'claude' || inputs.harness == 'claude-sdk' }}
         run: npm install --global @anthropic-ai/claude-code
 
       - name: Run real harness smokes
