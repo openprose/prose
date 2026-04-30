@@ -652,7 +652,14 @@ function buildPrompt(smokeCase: SmokeCase): string {
     inputs.length > 0
       ? inputs.map(([name, value]) => `- ${name}: ${value}`).join("\n")
       : "- No caller inputs are declared.";
-  const outputs = (smokeCase.expectedOutputs ?? []).join(", ") || "(none declared)";
+  const expectedOutputs = smokeCase.expectedOutputs ?? [];
+  const outputs = expectedOutputs.join(", ") || "(none declared)";
+  const artifactBlock =
+    expectedOutputs.length > 0
+      ? expectedOutputs
+          .map((output) => `- ${output}: .prose/runs/<run-id>/bindings/**/${output}.md`)
+          .join("\n")
+      : "- No declared output bindings are expected.";
 
   return [
     "You are the OpenProse VM running a CI smoke fixture.",
@@ -663,6 +670,9 @@ function buildPrompt(smokeCase: SmokeCase): string {
     "Do not ask the user for input.",
     "Bind caller inputs if the program requires them.",
     "Write OpenProse state under .prose/runs/.",
+    "The smoke runner checks real files, not stdout. Before replying, ensure each declared output is published as a non-empty binding file:",
+    artifactBlock,
+    "If a binding is missing, create it under the correct component binding directory before reporting success.",
     "Keep all reads and writes inside this workspace.",
     `Print a concise result summary with the run id and declared output names: ${outputs}.`,
   ].join("\n");

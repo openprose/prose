@@ -103,4 +103,5 @@ jobs:
           name: openprose-smoke-${{ github.run_id }}-${{ github.run_attempt }}
           path: openprose-smoke-results/**
           retention-days: 30
+          include-hidden-files: true
           if-no-files-found: warn

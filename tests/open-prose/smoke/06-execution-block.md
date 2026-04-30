@@ -19,6 +19,7 @@ Verifies a pinned `### Execution` block is followed.
 ### Ensures
 
 - `result`: final output containing the exact phrase `execution-block-smoke-pass`
+- publish `result` as the program's declared output binding
 
 ### Execution
 
@@ -51,3 +52,4 @@ return result
 ### Ensures
 
 - `result`: final output containing the exact phrase `execution-block-smoke-pass`
+- publish `result` so callers can read it from `.prose/runs/` bindings

@@ -15,6 +15,7 @@ Verifies errors, conditional ensures, and strategies remain legible to the VM.
 
 - `response`: a concise recovery note containing the exact phrase `errors-strategies-smoke-pass`
 - if context is incomplete: response includes a clearly labeled assumption list
+- publish `response` as this service's declared output binding
 
 ### Errors
 
