@@ -1,4 +1,6 @@
 import { Command } from "@oclif/core";
+import { existsSync, statSync } from "node:fs";
+import { dirname, isAbsolute, join, resolve } from "node:path";
 import type { CommandName } from "../prose/index.js";
 import { canonicalPrompt, CommandModelError, usageFor } from "../prose/index.js";
 import { createHarness, type HarnessName } from "../harnesses/index.js";
@@ -86,19 +88,31 @@ function isOclifExit(error: unknown): boolean {
 
 export async function runForwardedProseCommand(options: ForwardRunOptions): Promise<number> {
 	const { harness, args } = splitHarnessArgs(options.argv, options.env, options.command);
-	const prompt = canonicalPrompt(options.command, args);
-	if (shouldRunSkillPreflight(options)) {
-		await runSkillPreflight(harness, options);
+	const prompt = harnessPrompt(canonicalPrompt(options.command, args));
+	const cwd = resolveHarnessCwd(options.cwd, options.command, args, options.env);
+	const forwardedOptions = { ...options, cwd };
+	if (shouldRunSkillPreflight(forwardedOptions)) {
+		await runSkillPreflight(harness, forwardedOptions);
 	}
 
 	const selectedHarness = (options.harnessFactory ?? createHarness)(harness);
 	return selectedHarness.run(prompt, {
-		cwd: options.cwd,
+		cwd,
 		env: { ...options.env },
 		stdout: options.stdout,
 		stderr: options.stderr,
 		...(options.signal === undefined ? {} : { signal: options.signal }),
 	});
+}
+
+function harnessPrompt(commandPrompt: string): string {
+	return [
+		"You are running inside the Prose CLI harness.",
+		"Interpret the following OpenProse command in-session through the open-prose skill.",
+		"Do not invoke the `prose`, `npx prose`, or `@openprose/prose-cli` shell command; that would recursively call this wrapper.",
+		"",
+		commandPrompt,
+	].join("\n");
 }
 
 function shouldRunSkillPreflight(options: ForwardRunOptions): boolean {
@@ -172,6 +186,70 @@ export function splitHarnessArgs(
 	}
 
 	return { harness, args };
+}
+
+function resolveHarnessCwd(
+	cwd: string,
+	command: CommandName,
+	args: readonly string[],
+	env: Readonly<Record<string, string | undefined>>,
+): string {
+	const target = localPathTarget(command, args, cwd, env);
+	if (target === undefined) {
+		return cwd;
+	}
+
+	const targetDirectory = statSync(target).isDirectory() ? target : dirname(target);
+	return nearestGitRoot(targetDirectory) ?? targetDirectory;
+}
+
+function localPathTarget(
+	command: CommandName,
+	args: readonly string[],
+	cwd: string,
+	env: Readonly<Record<string, string | undefined>>,
+): string | undefined {
+	if (!["lint", "migrate", "preflight", "run", "test"].includes(command)) {
+		return undefined;
+	}
+
+	const target = args[0];
+	if (target === undefined || target.startsWith("-") || target.includes("://")) {
+		return undefined;
+	}
+
+	const expanded = expandHome(target, env);
+	const absolute = isAbsolute(expanded) ? expanded : resolve(cwd, expanded);
+	if (!existsSync(absolute)) {
+		return undefined;
+	}
+
+	return absolute;
+}
+
+function expandHome(path: string, env: Readonly<Record<string, string | undefined>>): string {
+	if (path === "~") {
+		return env.HOME ?? process.env.HOME ?? path;
+	}
+	if (path.startsWith("~/")) {
+		const home = env.HOME ?? process.env.HOME;
+		return home === undefined ? path : join(home, path.slice(2));
+	}
+	return path;
+}
+
+function nearestGitRoot(directory: string): string | undefined {
+	let current = resolve(directory);
+	for (;;) {
+		if (existsSync(join(current, ".git"))) {
+			return current;
+		}
+		const parent = dirname(current);
+		if (parent === current) {
+			return undefined;
+		}
+		current = parent;
+	}
 }
 
 export function normalizeEntrypointArgv(

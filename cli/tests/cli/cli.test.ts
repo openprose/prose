@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -115,9 +115,54 @@ describe("runForwardedProseCommand", () => {
 		});
 
 		expect(exitCode).toBe(7);
-		expect(seen).toEqual(["prose run './flows/needs review.md' --topic 'two words'", "/repo", "secret"]);
+		expect(seen).toEqual([
+			[
+				"You are running inside the Prose CLI harness.",
+				"Interpret the following OpenProse command in-session through the open-prose skill.",
+				"Do not invoke the `prose`, `npx prose`, or `@openprose/prose-cli` shell command; that would recursively call this wrapper.",
+				"",
+				"prose run './flows/needs review.md' --topic 'two words'",
+			].join("\n"),
+			"/repo",
+			"secret",
+		]);
 		expect(io.stdout).toBe("out");
 		expect(io.stderr).toBe("err");
+	});
+
+	it("runs local file targets from their nearest project root", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-target-cwd-"));
+		const io = memoryStreams();
+		const seen: string[] = [];
+
+		try {
+			const project = join(temp, "project");
+			const programDir = join(project, "flows");
+			const program = join(programDir, "flow.md");
+			mkdirSync(join(project, ".git"), { recursive: true });
+			mkdirSync(programDir, { recursive: true });
+			writeFileSync(program, "---\nkind: program\n---\n");
+
+			await runForwardedProseCommand({
+				command: "run",
+				argv: [program, "--harness", "mock"],
+				cwd: temp,
+				env: {},
+				stdout: io.streams.stdout,
+				stderr: io.streams.stderr,
+				harnessFactory: () => ({
+					name: "mock",
+					async run(_prompt, options) {
+						seen.push(options.cwd ?? "");
+						return 0;
+					},
+				}),
+			});
+
+			expect(seen).toEqual([project]);
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
 	});
 
 	it("passes abort signals to harnesses", async () => {

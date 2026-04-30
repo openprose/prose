@@ -1,4 +1,4 @@
-import { codexThreadRuntimeOptions } from "./codex-options.js";
+import { codexClientConfig, codexThreadRuntimeOptions } from "./codex-options.js";
 import { writeLine } from "./streams.js";
 import type { CodexSdkClientOptions, CodexSdkFactory, CodexThreadEvent, CodexThreadItem, Harness } from "./types.js";
 
@@ -60,6 +60,7 @@ function codexClientOptions(env: Record<string, string> | undefined) {
 
 	return {
 		...(apiKey === undefined ? {} : { apiKey }),
+		config: codexClientConfig(),
 		...(env === undefined ? {} : { env }),
 	};
 }

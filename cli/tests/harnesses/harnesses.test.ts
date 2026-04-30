@@ -65,9 +65,28 @@ describe("process harnesses", () => {
 		const prompt = "prose run inspector.md --flag='two words'";
 		const harness = createHarness("codex", { runner: recordingRunner(calls) });
 
-		await harness.run(prompt, { ...io.options });
+		await harness.run(prompt, { ...io.options, env: { HOME: "/home/prose" } });
 
-		expect(calls).toEqual([{ command: "codex", args: ["exec", prompt] }]);
+		expect(calls).toEqual([
+			{
+				command: "codex",
+				args: [
+					"exec",
+					"--skip-git-repo-check",
+					"--sandbox",
+					"workspace-write",
+					"--config",
+					'approval_policy="never"',
+					"--add-dir",
+					"/home/prose/.codex",
+					"--config",
+					"sandbox_workspace_write.network_access=true",
+					"--config",
+					"shell_environment_policy.inherit=all",
+					prompt,
+				],
+			},
+		]);
 	});
 
 	test("codex CLI maps OPENAI_API_KEY to CODEX_API_KEY", async () => {
@@ -104,7 +123,17 @@ describe("process harnesses", () => {
 		expect(calls).toEqual([
 			{
 				command: "codex",
-				args: ["exec", "--sandbox", "danger-full-access", "--config", 'approval_policy="never"', prompt],
+				args: [
+					"exec",
+					"--skip-git-repo-check",
+					"--sandbox",
+					"danger-full-access",
+					"--config",
+					'approval_policy="never"',
+					"--config",
+					"shell_environment_policy.inherit=all",
+					prompt,
+				],
 			},
 		]);
 	});
@@ -184,14 +213,29 @@ describe("codex-sdk harness", () => {
 		const exitCode = await createCodexSdkHarness({ factory }).run("prose run inspector.md", {
 			...io.options,
 			cwd: "/repo",
-			env: { OPENAI_API_KEY: "test", EMPTY: undefined },
+			env: { OPENAI_API_KEY: "test", HOME: "/home/prose", EMPTY: undefined },
 			signal,
 		});
 
 		expect(exitCode).toBe(0);
 		expect(io.stdout).toBe("sdk output\n");
-		expect(starts).toEqual([{ workingDirectory: "/repo" }]);
-		expect(factoryOptions).toEqual([{ apiKey: "test", env: { OPENAI_API_KEY: "test" } }]);
+		expect(starts).toEqual([
+			{
+				additionalDirectories: ["/home/prose/.codex"],
+				approvalPolicy: "never",
+				networkAccessEnabled: true,
+				sandboxMode: "workspace-write",
+				skipGitRepoCheck: true,
+				workingDirectory: "/repo",
+			},
+		]);
+		expect(factoryOptions).toEqual([
+			{
+				apiKey: "test",
+				config: { shell_environment_policy: { inherit: "all" } },
+				env: { OPENAI_API_KEY: "test", HOME: "/home/prose" },
+			},
+		]);
 	});
 
 	test("forwards requested sandbox and approval settings to Codex SDK threads", async () => {
@@ -219,7 +263,13 @@ describe("codex-sdk harness", () => {
 		});
 
 		expect(exitCode).toBe(0);
-		expect(starts).toEqual([{ approvalPolicy: "never", sandboxMode: "danger-full-access" }]);
+		expect(starts).toEqual([
+			{
+				approvalPolicy: "never",
+				sandboxMode: "danger-full-access",
+				skipGitRepoCheck: true,
+			},
+		]);
 	});
 
 	test("maps failed turns to stderr and nonzero exit", async () => {

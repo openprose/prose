@@ -4,9 +4,9 @@ description: |
   Activate when the user types `prose ...`, opens a `.md` file with `kind:`
   frontmatter, opens a `.prose` file, or asks for reusable multi-agent
   orchestration. Treat `prose run ...` as an in-session instruction: embody
-  the OpenProse VM yourself; do not shell out to a `prose` binary unless the
-  host explicitly provides one. On activation read the Markdown contract, wire
-  services, execute with host primitives, and persist `.prose/runs/`.
+  the OpenProse VM yourself; do not shell out to a `prose` binary. On
+  activation read the Markdown contract, wire services, execute with host
+  primitives, and persist `.prose/runs/`.
   Decline for one-shot questions — a plain prompt is often the right answer.
 ---
 
@@ -96,11 +96,10 @@ Activate this skill when the user:
 `prose ...` commands are first an agent-session command language. When the user
 types `prose run foo.md` in chat or inside a prompt passed to Claude Code,
 Codex, OpenCode, Amp, or another Prose Complete host, you should interpret it
-directly and embody the OpenProse VM. Do not assume there is a `prose` shell
-binary on PATH. If a host does provide a native Prose CLI, the same command
-strings may be passed to that CLI; otherwise the shell executable is the agent
-runner, e.g. `claude -p "prose run foo.md"` or
-`codex exec "prose run foo.md"`.
+directly and embody the OpenProse VM. Do not run a `prose` shell binary or
+`npx prose`; in wrapper hosts this recursively calls the wrapper instead of
+executing the program. The shell executable is the agent runner, e.g.
+`claude -p "prose run foo.md"` or `codex exec "prose run foo.md"`.
 
 | Command | Action |
 |---------|--------|
