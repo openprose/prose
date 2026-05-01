@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Codex plugin envelope** — Added `.codex-plugin/plugin.json` and `.agents/plugins/marketplace.json` so OpenProse is discoverable through native Codex marketplace paths with first-class `interface` metadata. The manifest sits ready for OpenAI's self-serve plugin directory submission window.
+
 ## [0.10.0] - 2026-04-20
 
 ### Added
