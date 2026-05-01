@@ -49,54 +49,48 @@ Multiple delegates work on the same task in parallel. First acceptable result wi
 - Remaining candidates are cancelled (best-effort)
 - No candidate knows other candidates exist
 - If no candidate produces an acceptable result: return null with all attempts in failure_history
-- pattern_instance.result contains the winning result (or null)
-- pattern_instance.winner contains the winning candidate's name (or null)
-- pattern_instance.attempts contains the number of candidates that completed before a winner
+- `result`: the winning result, or `null`
+- `winner`: the winning candidate name, or `null`
+- `attempts`: number of candidates that completed before a winner
+- `failure_history`: rejected or failed candidate attempts
 
 ### Delegation
 
-```javascript
-const { candidates, task_brief, acceptance_criteria } = pattern_instance;
-
-// All candidates race in parallel
-const results = await Promise.all(
-  candidates.map(async (candidate) => {
-    try {
-      const result = await rlm(task_brief, null, { use: candidate });
-      return { candidate, result, error: null };
-    } catch (e) {
-      return { candidate, result: null, error: e.message };
+```prose
+let attempts = parallel for candidate in candidates:
+  try:
+    let candidate_result = call candidate
+      task_brief: task_brief
+    return {
+      candidate: candidate,
+      result: candidate_result,
+      error: null
     }
-  })
-);
-
-// Evaluate results in order of candidate preference (first in list = highest preference)
-for (const entry of results) {
-  if (entry.error) continue;
-
-  if (acceptance_criteria) {
-    const evalBrief = `Does this result meet the acceptance criteria?\n\nCriteria: "${acceptance_criteria}"\n\nResult:\n${String(entry.result).slice(0, 2000)}\n\nRespond with JSON: { "acceptable": true/false }`;
-    const evalResult = await rlm(evalBrief, null, {});
-    try {
-      const jsonMatch = String(evalResult).match(/\{[\s\S]*"acceptable"[\s\S]*\}/);
-      const evaluation = JSON.parse(jsonMatch[0]);
-      if (!evaluation.acceptable) continue;
-    } catch {
-      // Unparseable evaluation — treat as acceptable (fail open)
+  catch as error:
+    return {
+      candidate: candidate,
+      result: null,
+      error: error
     }
-  }
 
-  pattern_instance.result = entry.result;
-  pattern_instance.winner = entry.candidate;
-  pattern_instance.attempts = results.indexOf(entry) + 1;
-  return(entry.result);
+for attempt in attempts:
+  if attempt.error is present:
+    continue
+
+  if acceptance_criteria says attempt.result is acceptable:
+    return {
+      result: attempt.result,
+      winner: attempt.candidate,
+      attempts: "number of completed attempts before winner",
+      failure_history: attempts
+    }
+
+return {
+  result: null,
+  winner: null,
+  attempts: candidates.length,
+  failure_history: attempts
 }
-
-// No winner
-pattern_instance.result = null;
-pattern_instance.winner = null;
-pattern_instance.attempts = candidates.length;
-return(null);
 ```
 
 ### Notes

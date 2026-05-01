@@ -54,45 +54,43 @@ Iteratively improve a result through delegation rounds until a quality threshold
 - If score < threshold: refiner receives the result, score, and suggestions
 - Each round accumulates improvement — refiner sees its own prior output
 - Returns when threshold met or max_rounds exhausted
-- pattern_instance.result contains the final output
-- pattern_instance.score contains the final score
-- pattern_instance.rounds_used contains the number of rounds
+- `result`: the final output
+- `score`: the final score
+- `rounds_used`: number of rounds
 
 ### Delegation
 
-```javascript
-const { refiner, evaluator, task_brief, max_rounds = 3, threshold = 0.8 } = pattern_instance;
-let currentResult = null;
-let currentScore = 0;
-let roundsUsed = 0;
+```prose
+let current_result = null
+let current_score = 0
+let improvement_suggestions = null
 
-for (let round = 0; round < max_rounds; round++) {
-  roundsUsed = round + 1;
+repeat max_rounds as round:
+  let current_result = call refiner
+    task_brief: task_brief
+    current_result: current_result
+    current_score: current_score
+    improvement_suggestions: improvement_suggestions
 
-  // Refiner produces or improves
-  let refinerBrief = round === 0
-    ? task_brief
-    : `Improve this result. Current score: ${currentScore}.\n\nOriginal task: ${task_brief}\n\nCurrent result:\n${currentResult}\n\nImprovement suggestions:\n${pattern_instance._lastSuggestions}`;
+  let evaluation = call evaluator
+    task_brief: task_brief
+    result: current_result
 
-  currentResult = await rlm(refinerBrief, null, { use: refiner });
+  current_score = evaluation.score
+  improvement_suggestions = evaluation.suggestions
 
-  // Evaluator scores
-  const evalBrief = `Score this result from 0 to 1 and provide specific improvement suggestions.\n\nTask: ${task_brief}\n\nResult:\n${currentResult}`;
-  const evaluation = await rlm(evalBrief, null, { use: evaluator });
+  if current_score meets threshold:
+    return {
+      result: current_result,
+      score: current_score,
+      rounds_used: round
+    }
 
-  // Parse score from evaluation
-  const scoreMatch = String(evaluation).match(/(\d+\.?\d*)/);
-  currentScore = scoreMatch ? parseFloat(scoreMatch[1]) : 0;
-  if (currentScore > 1) currentScore = currentScore / 100; // handle percentage
-  pattern_instance._lastSuggestions = evaluation;
-
-  if (currentScore >= threshold) break;
+return {
+  result: current_result,
+  score: current_score,
+  rounds_used: max_rounds
 }
-
-pattern_instance.result = currentResult;
-pattern_instance.score = currentScore;
-pattern_instance.rounds_used = roundsUsed;
-return(currentResult);
 ```
 
 ### Notes

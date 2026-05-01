@@ -64,76 +64,46 @@ Detects drift between two corpora by having independent readers predict what the
   - Contradictory: both corpora address the same topic but make incompatible claims
   - Redundant divergence: both say the same thing differently — not a real drift, just style
 - Analysis is BIDIRECTIONAL — drift from A→B is a different finding than drift from B→A
-- pattern_instance.result contains the sync analyst's bidirectional drift report
-- pattern_instance.predictions contains raw predictions from both directions
+- `result`: the sync analyst's bidirectional drift report
+- `predictions`: raw predictions from both directions
 
 ### Delegation
 
-```javascript
-const {
-  reader, sync_analyst, corpus_a, corpus_b,
-  label_a = "Corpus A", label_b = "Corpus B",
-  readers_per_direction = 3
-} = pattern_instance;
+```prose
+parallel:
+  let a_predicts_b = repeat readers_per_direction:
+    call reader
+      corpus: corpus_a
+      counterpart_label: label_b
+      prompt: "Read only corpus A, then predict what corpus B should contain if both are in sync."
 
-const predictions = { a_predicts_b: [], b_predicts_a: [] };
+  let b_predicts_a = repeat readers_per_direction:
+    call reader
+      corpus: corpus_b
+      counterpart_label: label_a
+      prompt: "Read only corpus B, then predict what corpus A should contain if both are in sync."
 
-// Direction 1: readers of A predict B
-for (let i = 0; i < readers_per_direction; i++) {
-  const brief = `You are reading ${label_a}. Study it carefully, then predict what ${label_b} should contain if the two are in sync.
-
-${label_a}:
-${corpus_a}
-
-Based on your reading, describe what you expect ${label_b} to say. Be specific — list the claims, behaviors, interfaces, or rules you expect to find documented there.`;
-
-  const prediction = await rlm(brief, null, { use: reader });
-  predictions.a_predicts_b.push(prediction);
+let predictions = {
+  a_predicts_b: a_predicts_b,
+  b_predicts_a: b_predicts_a
 }
 
-// Direction 2: readers of B predict A
-for (let i = 0; i < readers_per_direction; i++) {
-  const brief = `You are reading ${label_b}. Study it carefully, then predict what ${label_a} should contain if the two are in sync.
+let result = call sync_analyst
+  predictions: predictions
+  actuals: {
+    corpus_a: corpus_a,
+    corpus_b: corpus_b
+  }
+  labels: {
+    label_a: label_a,
+    label_b: label_b
+  }
+  prompt: "Classify bidirectional discrepancies as stale, undocumented, contradictory, or redundant divergence."
 
-${label_b}:
-${corpus_b}
-
-Based on your reading, describe what you expect ${label_a} to say. Be specific — list the claims, behaviors, interfaces, or rules you expect to find there.`;
-
-  const prediction = await rlm(brief, null, { use: reader });
-  predictions.b_predicts_a.push(prediction);
+return {
+  result: result,
+  predictions: predictions
 }
-
-// Sync analyst compares predictions to actuals in both directions
-const analystBrief = `Two corpora — "${label_a}" and "${label_b}" — should describe the same system. Readers studied one corpus and predicted what the other should contain. Compare their predictions to the actual content.
-
-=== DIRECTION 1: ${label_a} readers predict ${label_b} ===
-Predictions (what ${label_a} readers expect ${label_b} to say):
-${predictions.a_predicts_b.map((p, i) => `--- Reader ${i + 1} ---\n${p}`).join("\n\n")}
-
-Actual ${label_b}:
-${corpus_b}
-
-=== DIRECTION 2: ${label_b} readers predict ${label_a} ===
-Predictions (what ${label_b} readers expect ${label_a} to say):
-${predictions.b_predicts_a.map((p, i) => `--- Reader ${i + 1} ---\n${p}`).join("\n\n")}
-
-Actual ${label_a}:
-${corpus_a}
-
-For each discrepancy between prediction and actual, classify:
-- STALE: the prediction matches an older version of the actual — drift from a formerly-synced state
-- UNDOCUMENTED: one corpus describes something the other omits entirely
-- CONTRADICTORY: both address the same topic with incompatible claims
-- REDUNDANT DIVERGENCE: both say the same thing differently — style, not substance
-
-Report findings bidirectionally. "${label_a} says X but ${label_b} says Y" is a different finding from "${label_b} says Y but ${label_a} says X."`;
-
-const analysis = await rlm(analystBrief, null, { use: sync_analyst });
-
-pattern_instance.result = analysis;
-pattern_instance.predictions = predictions;
-return(analysis);
 ```
 
 ### Notes

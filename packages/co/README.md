@@ -4,7 +4,7 @@ Reusable starter contracts for organizing an operating company as an
 OpenProse-native repository.
 
 `co` sits next to `std` under `packages/`, not inside it. `std` is the
-low-level standard library: roles, patterns, output adapters, memory, tests,
+low-level standard library: roles, patterns, output adapters, memory, evals,
 and ops primitives. `co` is an opinionated starter kit for a specific domain:
 a company whose operating system is made of Prose services and systems.
 

@@ -48,29 +48,21 @@ Parallel delegation without reduction. Send briefs to N delegates, collect all r
 - No delegate knows other delegates exist
 - Results are returned as an ordered array matching the input delegates
 - No merging or synthesis — the raw results are the output
-- pattern_instance.result contains the array of all delegate outputs
-- pattern_instance.results contains the same array (keyed alias)
+- `result`: array of all delegate outputs
+- `results`: same array, provided as a keyed alias
 
 ### Delegation
 
-```javascript
-const { delegates, briefs, task_brief } = pattern_instance;
+```prose
+let results = parallel for delegate, index in delegates:
+  call delegate
+    brief: briefs[index]
+    fallback_brief: task_brief
 
-// Normalize briefs: single string broadcasts to all, array maps 1:1
-const briefList = Array.isArray(briefs)
-  ? briefs
-  : delegates.map(() => briefs || task_brief);
-
-// All delegates run in parallel
-const results = await Promise.all(
-  delegates.map((delegate, i) => {
-    return rlm(briefList[i], null, { use: delegate });
-  })
-);
-
-pattern_instance.result = results;
-pattern_instance.results = results;
-return(results);
+return {
+  result: results,
+  results: results
+}
 ```
 
 ### Notes

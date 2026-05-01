@@ -5,8 +5,8 @@ kind: system
 
 ### Services
 
-- `researcher`
-- `documenter`
+- `std/roles/researcher`
+- `std/roles/summarizer`
 
 ### Description
 
@@ -16,6 +16,7 @@ references become entries in `### Services`.
 ### Requires
 
 - `topic`: a research question (default: "recent developments in renewable energy storage")
+- `preserve`: important facts, tradeoffs, and source notes to keep in the summary
 
 ### Ensures
 

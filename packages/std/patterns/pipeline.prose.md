@@ -47,25 +47,24 @@ Sequential transformation through multiple stages. Each stage sees only its pred
 - The pipeline does NOT curate between stages — it is a pure pass-through
 - If curation is needed: insert a role (e.g., summarizer) as an explicit stage
 - Each stage operates on a clean interface — no accumulated context
-- pattern_instance.result contains the final stage's output
-- pattern_instance.stage_outputs contains each stage's output
+- `result`: the final stage's output
+- `stage_outputs`: each stage's output
 
 ### Delegation
 
-```javascript
-const { stages, task_brief } = pattern_instance;
-const stageOutputs = [];
-let currentInput = task_brief;
+```prose
+let current_input = task_brief
+let stage_outputs = []
 
-for (let i = 0; i < stages.length; i++) {
-  const output = await rlm(currentInput, null, { use: stages[i] });
-  stageOutputs.push(output);
-  currentInput = String(output);
+for stage in stages:
+  let current_input = call stage
+    input: current_input
+  record current_input in stage_outputs
+
+return {
+  result: current_input,
+  stage_outputs: stage_outputs
 }
-
-pattern_instance.result = currentInput;
-pattern_instance.stage_outputs = stageOutputs;
-return(currentInput);
 ```
 
 ### Notes

@@ -64,45 +64,42 @@ Actor executes, observer independently analyzes outcomes, arbiter decides whethe
 - If arbiter says adjust: the adjustment is passed to the actor's next cycle
 - If arbiter says abort: return immediately with the reason
 - If arbiter says continue: actor runs another cycle with the same brief
-- pattern_instance.result contains the final outcome
-- pattern_instance.cycles contains the number of cycles run
+- `result`: the final outcome
+- `cycles`: number of cycles run
+- `abort_reason`: arbiter reason when the pattern aborts
 
 ### Delegation
 
-```javascript
-const { actor, observer, arbiter, task_brief, max_cycles = 3 } = pattern_instance;
-let currentBrief = task_brief;
-let lastOutcome = null;
+```prose
+let current_brief = task_brief
+let last_outcome = null
 
-for (let cycle = 0; cycle < max_cycles; cycle++) {
-  // Actor executes
-  lastOutcome = await rlm(currentBrief, null, { use: actor });
+repeat max_cycles as cycle:
+  let last_outcome = call actor
+    task_brief: current_brief
 
-  // Observer analyzes the outcome — no access to actor's reasoning
-  const observerBrief = `Analyze this outcome independently.\n\nTask: ${task_brief}\nOutcome:\n${lastOutcome}`;
-  const observation = await rlm(observerBrief, null, { use: observer });
+  let observation = call observer
+    task_brief: task_brief
+    outcome: last_outcome
 
-  // Arbiter decides based on observer's report
-  const arbiterBrief = `Based on this independent observation, decide: continue, adjust, or abort.\n\nTask: ${task_brief}\nObserver report:\n${observation}`;
-  const decision = await rlm(arbiterBrief, null, { use: arbiter });
+  let decision = call arbiter
+    task_brief: task_brief
+    observer_report: observation
 
-  const decisionStr = String(decision).toLowerCase();
-  if (/abort/.test(decisionStr)) {
-    pattern_instance.result = lastOutcome;
-    pattern_instance.cycles = cycle + 1;
-    pattern_instance.abort_reason = decision;
-    return(lastOutcome);
-  }
+  if decision says abort:
+    return {
+      result: last_outcome,
+      cycles: cycle,
+      abort_reason: decision
+    }
 
-  if (/adjust/.test(decisionStr)) {
-    currentBrief = `${task_brief}\n\nAdjustment from oversight: ${decision}`;
-  }
-  // "continue" → loop with same or adjusted brief
+  if decision says adjust:
+    current_brief = decision.adjusted_brief
+
+return {
+  result: last_outcome,
+  cycles: max_cycles
 }
-
-pattern_instance.result = lastOutcome;
-pattern_instance.cycles = max_cycles;
-return(lastOutcome);
 ```
 
 ### Notes

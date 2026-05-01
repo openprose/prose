@@ -53,58 +53,39 @@ Retry a service, passing failure analysis to each subsequent attempt. Each retry
     original task, what was tried, why it failed, what to try differently
 - Each retry receives the FULL failure history, not just the last attempt
 - Returns on first success
-- After max_retries: returns the last result with pattern_instance.failure_history
-- pattern_instance.result contains the final output
-- pattern_instance.attempts contains the attempt count
-- pattern_instance.failure_history contains analysis of each failed attempt
+- After max_retries: returns the last result with `failure_history`
+- `result`: the final output, or `null`
+- `attempts`: attempt count
+- `failure_history`: analysis of each failed attempt
 
 ### Delegation
 
-```javascript
-const { target, task_brief, max_retries = 3, failure_criteria } = pattern_instance;
-const failures = [];
+```prose
+let failure_history = []
 
-for (let attempt = 0; attempt < max_retries; attempt++) {
-  let brief = task_brief;
-  if (failures.length > 0) {
-    brief += `\n\nPrior attempts failed. You MUST try a different approach.\n`;
-    failures.forEach((f, i) => {
-      brief += `\nAttempt ${i + 1}: ${f.summary}\nFailure reason: ${f.reason}\n`;
-    });
-  }
+repeat max_retries as attempt:
+  try:
+    let result = call target
+      task_brief: task_brief
+      failure_history: failure_history
 
-  try {
-    const result = await rlm(brief, null, { use: target });
+    if failure_criteria says result is a failure:
+      record { attempt: attempt, result: result, reason: "matched failure_criteria" } in failure_history
+      continue
 
-    // Evaluate failure_criteria declaratively against the result
-    if (failure_criteria) {
-      const evalBrief = `Does this result satisfy the failure criteria? Criteria: "${failure_criteria}"\n\nResult:\n${String(result).slice(0, 2000)}\n\nRespond with JSON: { "is_failure": true/false, "reason": "..." }`;
-      const evalResult = await rlm(evalBrief, null, {});
-      try {
-        const jsonMatch = String(evalResult).match(/\{[\s\S]*"is_failure"[\s\S]*\}/);
-        const evaluation = JSON.parse(jsonMatch[0]);
-        if (evaluation.is_failure) {
-          failures.push({ summary: String(result).slice(0, 200), reason: evaluation.reason });
-          continue;
-        }
-      } catch {
-        // If evaluation is unparseable, treat as success — fail open on ambiguity
-      }
+    return {
+      result: result,
+      attempts: attempt,
+      failure_history: failure_history
     }
+  catch as error:
+    record { attempt: attempt, reason: error } in failure_history
 
-    pattern_instance.result = result;
-    pattern_instance.attempts = attempt + 1;
-    pattern_instance.failure_history = failures;
-    return(result);
-  } catch (e) {
-    failures.push({ summary: `Error: ${e.message}`, reason: e.message });
-  }
+return {
+  result: null,
+  attempts: max_retries,
+  failure_history: failure_history
 }
-
-pattern_instance.result = null;
-pattern_instance.attempts = max_retries;
-pattern_instance.failure_history = failures;
-return(null);
 ```
 
 ### Notes

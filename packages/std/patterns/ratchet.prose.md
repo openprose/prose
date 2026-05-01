@@ -56,43 +56,37 @@ Advancer proposes incremental steps; certifier validates each one; certified pro
 
 - Advancer receives the task brief plus all certified progress so far
 - Certifier receives the proposed step and decides: certify or reject
-- Certified steps are appended to pattern_instance.certified_progress — never removed
+- Certified steps are appended to `certified_progress` — never removed
 - Rejected steps are discarded — advancer receives the rejection reason and proposes differently
 - Progress is monotonic: the certified_progress array only grows
-- pattern_instance.result contains the final certified progress
+- `result`: the final certified progress
 
 ### Delegation
 
-```javascript
-const { advancer, certifier, task_brief, max_steps = 5 } = pattern_instance;
-let certified = pattern_instance.certified_progress || [];
-let consecutiveRejects = 0;
+```prose
+let certified_progress = certified_progress
+let rejection_feedback = null
 
-for (let step = 0; step < max_steps; step++) {
-  // Advancer proposes
-  let advancerBrief = `Propose the next incremental step toward the goal.\n\nGoal: ${task_brief}\n\nCertified progress so far:\n${certified.length ? certified.map((s, i) => `${i + 1}. ${s}`).join("\n") : "(none yet)"}`;
-  if (consecutiveRejects > 0) {
-    advancerBrief += `\n\nYour last ${consecutiveRejects} proposal(s) were rejected. Try a different approach.`;
-  }
+repeat max_steps:
+  let proposal = call advancer
+    task_brief: task_brief
+    certified_progress: certified_progress
+    rejection_feedback: rejection_feedback
 
-  const proposal = await rlm(advancerBrief, null, { use: advancer });
+  let verdict = call certifier
+    task_brief: task_brief
+    certified_progress: certified_progress
+    proposed_step: proposal
 
-  // Certifier validates
-  const certifierBrief = `Evaluate this proposed step. Does it maintain all invariants? Does it advance toward the goal? Is it consistent with prior certified progress?\n\nGoal: ${task_brief}\nCertified progress: ${JSON.stringify(certified)}\n\nProposed step:\n${proposal}`;
-  const verdict = await rlm(certifierBrief, null, { use: certifier });
+  if verdict certifies the proposal:
+    append proposal to certified_progress
+    rejection_feedback = null
+  else:
+    rejection_feedback = verdict
 
-  const verdictStr = String(verdict).toLowerCase();
-  if (/certif|accept|approve/.test(verdictStr)) {
-    certified.push(proposal);
-    pattern_instance.certified_progress = certified;
-    consecutiveRejects = 0;
-  } else {
-    consecutiveRejects++;
-  }
+return {
+  result: certified_progress
 }
-
-pattern_instance.result = certified;
-return(certified);
 ```
 
 ### Notes

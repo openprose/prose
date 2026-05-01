@@ -777,6 +777,22 @@ async function classifyLiveCase(
 
   const foundOutputs: string[] = [];
   const latestRunDir = hasRunsDir ? await findLatestRunDir(runsDir) : undefined;
+  if (hasRunsDir && !latestRunDir) {
+    reasons.push("No run directory was created under .agents/prose/runs.");
+  }
+  if (latestRunDir) {
+    for (const artifactName of ["manifest.run.md", "root.prose.md", "vm.log.md"]) {
+      const artifactPath = path.join(latestRunDir, artifactName);
+      const artifactStat = await statIfExists(artifactPath);
+      if (!artifactStat?.isFile()) {
+        reasons.push(`Missing required run artifact: ${artifactName}`);
+        continue;
+      }
+      if ((await readTextIfExists(artifactPath)).trim().length === 0) {
+        reasons.push(`Empty required run artifact: ${artifactName}`);
+      }
+    }
+  }
   for (const output of expectedOutputs) {
     const bindingPath = latestRunDir
       ? await findExpectedBinding(path.join(latestRunDir, "bindings"), output)

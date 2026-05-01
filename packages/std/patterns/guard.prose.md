@@ -49,39 +49,29 @@ Check before delegating. Fail-fast pattern.
 - If proceed: target receives the ORIGINAL brief unchanged
 - If blocked: return immediately with the guard's reason — no delegation to target
 - The guard does NOT modify the brief based on output — binary pass/block
-- pattern_instance.result contains the target's output (if proceeded) or guard's reason (if blocked)
-- pattern_instance.proceeded is true/false
+- `result`: target output if proceeded, or guard reason if blocked
+- `proceeded`: boolean
 
 ### Delegation
 
-```javascript
-const { guard, target, task_brief } = pattern_instance;
+```prose
+let decision = call guard
+  task_brief: task_brief
+  prompt: "Return { proceed: boolean, reason: string }. Block if the decision is ambiguous."
 
-// Guard decides — expects structured JSON output { proceed, reason }
-const guardBrief = `Evaluate whether this task should proceed.\n\nReturn your decision as JSON: { "proceed": true/false, "reason": "..." }\n\n${task_brief}`;
-const guardResult = await rlm(guardBrief, null, { use: guard });
+if decision does not explicitly proceed:
+  return {
+    result: decision.reason,
+    proceeded: false
+  }
 
-// Parse the guard's structured output
-let decision;
-try {
-  const jsonMatch = String(guardResult).match(/\{[\s\S]*"proceed"[\s\S]*\}/);
-  decision = JSON.parse(jsonMatch[0]);
-} catch {
-  // If the guard fails to return structured output, treat as blocked — fail safe
-  decision = { proceed: false, reason: `Guard returned unparseable output: ${String(guardResult).slice(0, 200)}` };
+let result = call target
+  task_brief: task_brief
+
+return {
+  result: result,
+  proceeded: true
 }
-
-if (!decision.proceed) {
-  pattern_instance.result = decision.reason;
-  pattern_instance.proceeded = false;
-  return(decision.reason);
-}
-
-// Target executes
-const result = await rlm(task_brief, null, { use: target });
-pattern_instance.result = result;
-pattern_instance.proceeded = true;
-return(result);
 ```
 
 ### Notes

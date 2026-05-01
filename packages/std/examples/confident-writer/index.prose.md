@@ -23,7 +23,13 @@ Demonstrates nested pattern instances: a writer with review and confidence measu
 - name: confidence-analysis
   pattern: std/patterns/stochastic-probe
   with:
-    probe: reviewed-draft
+    probe:
+      pattern: std/patterns/worker-critic
+      with:
+        worker: writer
+        critic: reviewer
+      config:
+        max_rounds: 2
     analyst: variance-analyst
   config:
     sample_size: 3
@@ -32,17 +38,19 @@ Demonstrates nested pattern instances: a writer with review and confidence measu
 ### Requires
 
 - `task_brief`: combined brief describing the topic and audience for the article
+- `criteria`: quality standards the reviewer must enforce
+- `material`: source material or constraints to use for the repeated confidence probe
 
 ### Ensures
 
-- `article`: polished article that has been quality-reviewed and confidence-scored
-- `confidence`: variance analysis of repeated reviewed-draft outputs
+- `result`: variance analysis of repeated reviewed-draft outputs
+- `responses`: raw reviewed-draft samples used for the variance analysis
 
 ### Notes
 
 This system instantiates two patterns:
 
 1. `worker-critic` uses `writer` as the worker and `reviewer` as the critic.
-2. `stochastic-probe` runs the reviewed draft service repeatedly and sends the responses to `variance-analyst`.
+2. `stochastic-probe` nests its own `worker-critic` instance, runs it repeatedly with identical inputs, and sends the responses to `variance-analyst`.
 
 The confidence score in the output indicates whether the writer produces consistent quality (low variance) or inconsistent results (high variance) for this topic.

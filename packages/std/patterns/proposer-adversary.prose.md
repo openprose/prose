@@ -56,21 +56,24 @@ One service proposes, another attacks the proposal, and the unresolved tension i
   edge cases, and counterexamples
 - This pattern does NOT resolve the tension
 - Returns { proposal, attack } — the instantiating system reasons about the disagreement
-- pattern_instance.result contains { proposal, attack }
+- `result`: object containing `{ proposal, attack }`
 
 ### Delegation
 
-```javascript
-const { proposer, adversary, task_brief } = pattern_instance;
+```prose
+let proposal = call proposer
+  task_brief: task_brief
 
-const proposal = await rlm(task_brief, null, { use: proposer });
+let attack = call adversary
+  task_brief: task_brief
+  proposal: proposal
 
-const adversaryBrief = `Find flaws, edge cases, or counterexamples in this proposal.\n\nOriginal task: ${task_brief}\n\nProposal:\n${proposal}`;
-const attack = await rlm(adversaryBrief, null, { use: adversary });
-
-const result = { proposal, attack };
-pattern_instance.result = result;
-return(result);
+return {
+  result: {
+    proposal: proposal,
+    attack: attack
+  }
+}
 ```
 
 ### Notes

@@ -48,53 +48,40 @@ Try delegate A. If it fails, try B. If B fails, try C. Ordered list of fallbacks
 - First successful result is returned immediately — no further delegates are tried
 - Each delegate receives the ORIGINAL brief — no failure context from prior attempts
 - If all delegates fail: return null with full failure history
-- pattern_instance.result contains the winning result (or null)
-- pattern_instance.winner contains the winning delegate's name (or null)
-- pattern_instance.attempts contains the number of delegates tried
-- pattern_instance.failure_history contains reasons for each failed attempt
+- `result`: the winning result, or `null`
+- `winner`: the winning delegate name, or `null`
+- `attempts`: number of delegates tried
+- `failure_history`: reasons for each failed attempt
 
 ### Delegation
 
-```javascript
-const { chain, task_brief, failure_criteria } = pattern_instance;
-const failures = [];
+```prose
+let failure_history = []
 
-for (let i = 0; i < chain.length; i++) {
-  try {
-    const result = await rlm(task_brief, null, { use: chain[i] });
+for delegate in chain:
+  try:
+    let candidate_result = call delegate
+      task_brief: task_brief
 
-    // Evaluate failure_criteria if provided
-    if (failure_criteria) {
-      const evalBrief = `Does this result satisfy the failure criteria?\n\nCriteria: "${failure_criteria}"\n\nResult:\n${String(result).slice(0, 2000)}\n\nRespond with JSON: { "is_failure": true/false, "reason": "..." }`;
-      const evalResult = await rlm(evalBrief, null, {});
-      try {
-        const jsonMatch = String(evalResult).match(/\{[\s\S]*"is_failure"[\s\S]*\}/);
-        const evaluation = JSON.parse(jsonMatch[0]);
-        if (evaluation.is_failure) {
-          failures.push({ delegate: chain[i], reason: evaluation.reason });
-          continue;
-        }
-      } catch {
-        // Unparseable evaluation — treat as success (fail open)
-      }
+    if failure_criteria says candidate_result is a failure:
+      record { delegate: delegate, reason: "matched failure_criteria" } in failure_history
+      continue
+
+    return {
+      result: candidate_result,
+      winner: delegate,
+      attempts: "number of attempted delegates",
+      failure_history: failure_history
     }
+  catch as error:
+    record { delegate: delegate, reason: error } in failure_history
 
-    pattern_instance.result = result;
-    pattern_instance.winner = chain[i];
-    pattern_instance.attempts = i + 1;
-    pattern_instance.failure_history = failures;
-    return(result);
-  } catch (e) {
-    failures.push({ delegate: chain[i], reason: e.message });
-  }
+return {
+  result: null,
+  winner: null,
+  attempts: chain.length,
+  failure_history: failure_history
 }
-
-// All delegates failed
-pattern_instance.result = null;
-pattern_instance.winner = null;
-pattern_instance.attempts = chain.length;
-pattern_instance.failure_history = failures;
-return(null);
 ```
 
 ### Notes

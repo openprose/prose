@@ -14,6 +14,7 @@ Evaluate a piece of writing against quality criteria and return a structured ver
 ### Requires
 
 - output: the article to review
+- criteria: quality standards to evaluate against
 
 ### Ensures
 

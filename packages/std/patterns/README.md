@@ -20,8 +20,8 @@ Use a structured YAML entry in a system's `### Services` section:
 - `with:` binds slots to services, systems, or nested pattern instances
 - `config:` sets operational parameters such as limits, thresholds, and modes
 - Pattern files define `### Slots`, `### Config`, `### Invariants`, `### Requires`, `### Ensures`, and `### Delegation`
-- `### Delegation` describes the pattern algorithm; only `### Execution`
-  blocks in services or systems are VM-executable ProseScript.
+- `### Delegation` describes the pattern algorithm in fenced `prose`; the VM
+  executes it only after a system instantiates the pattern and binds its slots.
 
 ## Quality Loops
 

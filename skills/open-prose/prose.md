@@ -847,7 +847,7 @@ status: complete
 For fan-in, the caller provides comma-separated run IDs:
 
 ```text
-prose run std/evals/calibrator -- runs: 20260406-201439-1a3369,20260406-202015-c5d6e7,20260406-203300-8f9a0b
+prose run std/evals/eval-calibrator -- runs: 20260406-201439-1a3369,20260406-202015-c5d6e7,20260406-203300-8f9a0b
 ```
 
 The VM validates each run independently (same rules as single `run`). It writes a single binding listing all references:

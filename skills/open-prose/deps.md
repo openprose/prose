@@ -237,7 +237,8 @@ Rules:
 │   │       │   │       └── project-memory.prose.md
 │   │       │   └── co/                  # Company-as-prose (resolved by `co/` shorthand)
 │   │       │       └── systems/
-│   │       │           └── company-repo-checker.prose.md
+│   │       │           └── company-repo-checker/
+│   │       │               └── index.prose.md
 │   │       └── ...
 │   ├── alice/
 │   │   └── research-pipeline/           # Full clone of github.com/alice/research-pipeline
@@ -284,10 +285,13 @@ When Forme resolves a service listed in `### Services`, it checks `.agents/prose
 
 1. Same directory as the system file: `./researcher.prose.md`
 2. A subdirectory matching the name: `./researcher/index.prose.md`
-3. **`.agents/prose/deps/` directory:** `.agents/prose/deps/{host}/{owner}/{repo}/{path}.prose.md`
+3. **`.agents/prose/deps/` directory:** first
+   `.agents/prose/deps/{host}/{owner}/{repo}/{path}.prose.md`, then
+   `.agents/prose/deps/{host}/{owner}/{repo}/{path}/index.prose.md`
 4. Bare `owner/repo` identifiers: reserved for the OpenProse registry (future home at `p.prose.md`); inert today
 
 A service or system reference like `std/evals/inspector` in `### Services` resolves to `.agents/prose/deps/github.com/openprose/prose/packages/std/evals/inspector.prose.md` after `std/` shorthand expansion.
+A directory-root system reference like `co/systems/company-repo-checker` resolves to `.agents/prose/deps/github.com/openprose/prose/packages/co/systems/company-repo-checker/index.prose.md`.
 
 ---
 
@@ -297,7 +301,7 @@ When the VM encounters a `use` statement during execution:
 
 1. Expand shorthand (`std/` → `github.com/openprose/prose/packages/std/`; `co/` → `github.com/openprose/prose/packages/co/`)
 2. Parse `{host}/{owner}/{repo}` and remaining path
-3. Read the service or system from `.agents/prose/deps/{host}/{owner}/{repo}/{path}.prose.md`
+3. Read the service or system from `.agents/prose/deps/{host}/{owner}/{repo}/{path}.prose.md`, or from `.agents/prose/deps/{host}/{owner}/{repo}/{path}/index.prose.md` when the dependency is a directory-root system
 4. Parse the imported service or system contract (`### Requires` / `### Ensures`)
 5. Register the import (with alias if `as` was used)
 

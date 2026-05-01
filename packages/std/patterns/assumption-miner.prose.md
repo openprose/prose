@@ -59,63 +59,34 @@ Heterogeneous services independently surface unstated assumptions; cross-tier di
   - Deep: surfaced only by higher tiers — a HIDDEN dependency (requires expertise to notice)
   - Contested: services disagree on whether it IS an assumption — may be a FALSE assumption or a point of genuine ambiguity about what the material presupposes
   - Phantom: surfaced by lower tiers but not higher — likely a MISREADING, not an actual assumption
-- pattern_instance.result contains the comparator's classified assumption map
-- pattern_instance.raw_assumptions contains per-miner assumption lists
+- `result`: the comparator's classified assumption map
+- `raw_assumptions`: per-miner assumption lists with tier metadata
 
 ### Delegation
 
-```javascript
-const { miner, comparator, material, tiers, context } = pattern_instance;
+```prose
+let raw_assumptions = parallel for tier in tiers:
+  repeat tier.count:
+    let assumptions = call miner
+      material: material
+      context: context
+      prompt: "List every unstated assumption, where it is required, and what breaks if it is false."
+      model: tier.model
+    return {
+      tier: tier.model,
+      assumptions: assumptions
+    }
 
-// Build miner roster
-const roster = [];
-for (const tier of tiers) {
-  for (let i = 0; i < (tier.count || 1); i++) {
-    roster.push({ id: `${tier.model}-${i + 1}`, model: tier.model });
-  }
+let result = call comparator
+  assumption_lists_by_tier: raw_assumptions
+  material: material
+  context: context
+  prompt: "Classify assumptions as universal, deep, contested, or phantom, with tier evidence."
+
+return {
+  result: result,
+  raw_assumptions: raw_assumptions
 }
-
-// Each miner independently extracts assumptions
-const rawAssumptions = {};
-for (const minerInstance of roster) {
-  const brief = `Examine the following material carefully. List every assumption it makes but does not explicitly state — things that must be true for the material to be correct or coherent, but which are not written down.
-
-For each assumption, explain:
-- What is assumed
-- Where in the material this assumption is required
-- What would break if the assumption were false
-
-${context ? `Domain context: ${context}\n\n` : ""}Material:
-${material}`;
-
-  const assumptions = await rlm(brief, null, { use: miner, model: minerInstance.model });
-  rawAssumptions[minerInstance.id] = { model: minerInstance.model, assumptions };
-}
-
-// Comparator classifies
-const comparatorBrief = `${roster.length} independent services across ${tiers.length} capability tiers examined the same material and listed its unstated assumptions.
-
-Classify each unique assumption that was surfaced:
-- UNIVERSAL: surfaced by services across all tiers — a widely recognizable implicit dependency
-- DEEP: surfaced only by higher-tier services — a hidden dependency requiring expertise to notice
-- CONTESTED: services disagree on whether this is actually an assumption — indicates ambiguity about what the material presupposes
-- PHANTOM: surfaced by lower tiers but not higher — likely a misreading rather than a real assumption
-
-For each assumption, note which services surfaced it and at which tier.
-
-Assumption lists by tier:
-${tiers.map(tier => {
-  const tierMiners = roster.filter(a => a.model === tier.model);
-  return `\n=== ${tier.model.toUpperCase()} TIER ===\n${tierMiners.map(a =>
-    `--- ${a.id} ---\n${rawAssumptions[a.id].assumptions}`
-  ).join("\n\n")}`;
-}).join("\n")}`;
-
-const analysis = await rlm(comparatorBrief, null, { use: comparator });
-
-pattern_instance.result = analysis;
-pattern_instance.raw_assumptions = rawAssumptions;
-return(analysis);
 ```
 
 ### Notes

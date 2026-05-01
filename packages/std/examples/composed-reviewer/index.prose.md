@@ -22,7 +22,8 @@ Demonstrates a pattern instance: a writer with worker-critic review.
 ### Requires
 
 - `task_brief`: combined brief describing the topic and audience for the article
+- `criteria`: quality standards the reviewer must enforce
 
 ### Ensures
 
-- `article`: polished article that has passed quality review
+- `result`: polished article that has passed quality review

@@ -103,7 +103,8 @@ File-based state persists all execution artifacts to disk. This enables:
 │   │   │           │       └── inspector.prose.md
 │   │   │           └── co/
 │   │   │               └── systems/
-│   │   │                   └── company-repo-checker.prose.md
+│   │   │                   └── company-repo-checker/
+│   │   │                       └── index.prose.md
 │   │   └── alice/
 │   │       └── research/
 │   │           └── ...

@@ -65,55 +65,33 @@ Runs any measurement pattern on two candidates independently, then ranks which s
   - Which candidate scores better on the specified dimension
   - By how much (qualitative magnitude: marginal, clear, decisive)
   - What specifically makes one better than the other
-- pattern_instance.result contains the ranker's verdict
-- pattern_instance.profile_a contains candidate A's measurement result
-- pattern_instance.profile_b contains candidate B's measurement result
+- `result`: the ranker's verdict
+- `profile_a`: candidate A's measurement result
+- `profile_b`: candidate B's measurement result
 
 ### Delegation
 
-```javascript
-const {
-  measurement, ranker,
-  candidate_a, candidate_b,
-  label_a = "Candidate A", label_b = "Candidate B",
-  dimension
-} = pattern_instance;
+```prose
+parallel:
+  let profile_a = call measurement
+    candidate_config: candidate_a
+    label: label_a
 
-// Run measurement on candidate A
-const profileA = await rlm(null, null, {
-  use: measurement,
-  config: candidate_a
-});
+  let profile_b = call measurement
+    candidate_config: candidate_b
+    label: label_b
 
-// Run measurement on candidate B
-const profileB = await rlm(null, null, {
-  use: measurement,
-  config: candidate_b
-});
+let result = call ranker
+  profile_a: profile_a
+  profile_b: profile_b
+  dimension: dimension
+  prompt: "Choose the better candidate, magnitude, evidence, and any sub-dimensions where the losing candidate is stronger."
 
-// Ranker compares
-const rankerBrief = `Two candidates were measured on the same dimension using the same diagnostic instrument.
-
-Dimension: ${dimension}
-
-=== ${label_a.toUpperCase()} — Diagnostic Profile ===
-${JSON.stringify(profileA, null, 2)}
-
-=== ${label_b.toUpperCase()} — Diagnostic Profile ===
-${JSON.stringify(profileB, null, 2)}
-
-Determine:
-1. Which candidate scores BETTER on "${dimension}"?
-2. By how much? (marginal / clear / decisive)
-3. What specifically makes one better? (cite evidence from the profiles)
-4. Are there sub-dimensions where the losing candidate is actually superior?`;
-
-const verdict = await rlm(rankerBrief, null, { use: ranker });
-
-pattern_instance.result = verdict;
-pattern_instance.profile_a = profileA;
-pattern_instance.profile_b = profileB;
-return(verdict);
+return {
+  result: result,
+  profile_a: profile_a,
+  profile_b: profile_b
+}
 ```
 
 ### Notes

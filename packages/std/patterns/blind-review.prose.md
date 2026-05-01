@@ -60,69 +60,40 @@ Heterogeneous reviewers build understanding progressively; cross-tier divergence
 - Reviewers across different tiers receive identical materials and briefs
 - Comparator receives all staged reports grouped by material and by tier
 - Comparator identifies: agreement (clarity), disagreement (ambiguity), and tier-correlated divergence (complexity)
-- pattern_instance.result contains the comparator's analysis
-- pattern_instance.reviews contains the structured per-reviewer, per-stage reports
-- pattern_instance.divergences contains points of disagreement with tier and stage metadata
+- `result`: the comparator's analysis
+- `reviews`: structured per-reviewer, per-stage reports
+- `divergences`: points of disagreement with tier and stage metadata
 
 ### Delegation
 
-```javascript
-const { reviewer, comparator, tiers, materials, task_brief, output_dir } = pattern_instance;
+```prose
+let reviews = parallel for tier in tiers:
+  repeat tier.count:
+    let staged_reports = []
+    let prior_understanding = ""
+    for material in materials:
+      let report = call reviewer
+        task_brief: task_brief
+        material: material
+        prior_understanding: prior_understanding
+        model: tier.model
+      record report in staged_reports
+      prior_understanding = report
+    return {
+      tier: tier.model,
+      reports: staged_reports
+    }
 
-// Build reviewer roster from tier specs
-const roster = [];
-for (const tier of tiers) {
-  for (let i = 0; i < (tier.count || 1); i++) {
-    roster.push({ id: `${tier.model}-${i + 1}`, model: tier.model });
-  }
+let result = call comparator
+  staged_reports_by_tier: reviews
+  task_brief: task_brief
+  prompt: "Compare agreement, within-tier disagreement, cross-tier disagreement, and tier-correlated understanding."
+
+return {
+  result: result,
+  reviews: reviews,
+  divergences: result.divergences
 }
-
-// Progressive disclosure: each reviewer sees materials one at a time
-const reviews = {}; // reviews[reviewerId][stageIndex] = report
-
-for (const reviewerInstance of roster) {
-  reviews[reviewerInstance.id] = [];
-  let priorUnderstanding = "";
-
-  for (let stage = 0; stage < materials.length; stage++) {
-    const material = materials[stage];
-    const brief = stage === 0
-      ? `${task_brief}\n\nExamine ONLY the following material. Report your understanding as specifically as possible.\n\n${material}`
-      : `${task_brief}\n\nYour understanding so far:\n${priorUnderstanding}\n\nNow also examine this additional material. Report how your understanding has changed or deepened.\n\n${material}`;
-
-    const report = await rlm(brief, null, { use: reviewer, model: reviewerInstance.model });
-    reviews[reviewerInstance.id].push({ stage, material_ref: material, report });
-    priorUnderstanding = report;
-  }
-}
-
-// Comparator analyzes across tiers and stages
-const comparatorBrief = `${roster.length} independent reviewers across ${tiers.length} capability tiers examined the same materials progressively. Compare their reports.
-
-Identify:
-1. Points of AGREEMENT across all tiers (high clarity — the material communicates unambiguously)
-2. Points of DISAGREEMENT within a tier (noise — individual variation)
-3. Points of DISAGREEMENT across tiers (ambiguity or complexity — the material may be unclear)
-4. Understanding that only emerges at higher tiers (complexity that rewards capability)
-
-Task context: ${task_brief}
-
-Reviews by tier:
-${tiers.map(tier => {
-  const tierReviewers = roster.filter(a => a.model === tier.model);
-  return `\n=== ${tier.model.toUpperCase()} TIER ===\n${tierReviewers.map(a =>
-    `--- ${a.id} ---\n${reviews[a.id].map((r, i) =>
-      `[After material ${i + 1}]: ${r.report}`
-    ).join("\n")}`
-  ).join("\n\n")}`;
-}).join("\n")}`;
-
-const analysis = await rlm(comparatorBrief, null, { use: comparator });
-
-// Extract divergences
-pattern_instance.result = analysis;
-pattern_instance.reviews = reviews;
-return(analysis);
 ```
 
 ### Notes

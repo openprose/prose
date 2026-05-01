@@ -51,29 +51,28 @@ Split input, delegate chunks to mappers in parallel, merge results with a reduce
 - All mappers execute in parallel
 - Reducer receives ALL mapper outputs and the overall task brief
 - Reducer reasons about how to merge — handles conflicts and overlaps
-- pattern_instance.result contains the merged output
-- pattern_instance.mapper_results contains individual mapper outputs
+- `result`: the merged output
+- `mapper_results`: individual mapper outputs
 
 ### Delegation
 
-```javascript
-const { mapper, reducer, task_brief, chunks } = pattern_instance;
+```prose
+let mapper_results = parallel for chunk, index in chunks:
+  call mapper
+    task_brief: task_brief
+    chunk: chunk
+    chunk_index: index
+    chunk_count: chunks.length
 
-// Map phase — all mappers run in parallel
-const mapperResults = await Promise.all(
-  chunks.map((chunk, i) => {
-    const mapBrief = `${task_brief}\n\nProcess this chunk (${i + 1} of ${chunks.length}):\n${typeof chunk === 'string' ? chunk : JSON.stringify(chunk)}`;
-    return rlm(mapBrief, null, { use: mapper });
-  })
-);
+let result = call reducer
+  task_brief: task_brief
+  mapper_results: mapper_results
+  prompt: "Merge every mapper result, preserving conflicts and resolving overlap explicitly."
 
-// Reduce phase
-const reduceBrief = `Merge these ${mapperResults.length} results into a single coherent output. Handle conflicts and overlaps.\n\nOverall task: ${task_brief}\n\nResults to merge:\n${mapperResults.map((r, i) => `--- Chunk ${i + 1} ---\n${r}`).join("\n\n")}`;
-const merged = await rlm(reduceBrief, null, { use: reducer });
-
-pattern_instance.result = merged;
-pattern_instance.mapper_results = mapperResults;
-return(merged);
+return {
+  result: result,
+  mapper_results: mapper_results
+}
 ```
 
 ### Notes

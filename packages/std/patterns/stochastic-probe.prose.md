@@ -61,49 +61,27 @@ Run the same service on identical inputs N times; variance in responses measures
   - Underdetermined: responses vary in specific areas — those areas permit multiple valid readings
   - Chaotic: responses vary widely — the material fails to constrain interpretation at all
 - Analyst identifies WHICH aspects of the responses vary and which are stable
-- pattern_instance.result contains the analyst's classification and variance map
-- pattern_instance.responses contains the N raw responses
+- `result`: the analyst's classification and variance map
+- `responses`: the N raw responses
 
 ### Delegation
 
-```javascript
-const { probe, analyst, task_brief, material, sample_size = 7, model } = pattern_instance;
+```prose
+let responses = parallel repeat sample_size:
+  call probe
+    task_brief: task_brief
+    material: material
+    model: model
 
-// Run the same probe N times — identical inputs
-const responses = [];
-for (let i = 0; i < sample_size; i++) {
-  const opts = model ? { use: probe, model } : { use: probe };
-  const response = await rlm(
-    `${task_brief}\n\nMaterial:\n${material}`,
-    null,
-    opts
-  );
-  responses.push(response);
+let result = call analyst
+  responses: responses
+  material: material
+  prompt: "Classify stable aspects, varying aspects, and whether the material is deterministic, underdetermined, or chaotic."
+
+return {
+  result: result,
+  responses: responses
 }
-
-// Analyst measures variance
-const analystBrief = `${sample_size} identical runs of the same service on the same material produced the following responses. The service binding, prompt, and material were identical across all runs — any variation comes from the material's ambiguity, not the service's inconsistency.
-
-Analyze:
-1. Which aspects of the responses are STABLE across all runs? (The material determines these.)
-2. Which aspects VARY? (The material underdetermines these — multiple valid readings exist.)
-3. Classify the material overall:
-   - DETERMINISTIC: responses substantively identical
-   - UNDERDETERMINED: specific aspects vary, others stable
-   - CHAOTIC: responses vary widely with no stable core
-
-For underdetermined material, identify the specific passages or aspects that permit multiple readings.
-
-Original task: ${task_brief}
-
-Responses:
-${responses.map((r, i) => `--- Run ${i + 1} ---\n${r}`).join("\n\n")}`;
-
-const analysis = await rlm(analystBrief, null, { use: analyst });
-
-pattern_instance.result = analysis;
-pattern_instance.responses = responses;
-return(analysis);
 ```
 
 ### Notes

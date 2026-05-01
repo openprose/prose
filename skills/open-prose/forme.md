@@ -122,8 +122,9 @@ For each entry in `### Services`, locate the corresponding `*.prose.md` file:
 3. `.agents/prose/deps/` directory (for git-native deps installed via `prose install` — see `deps.md`):
    - Expand `std/` shorthand to `github.com/openprose/prose/packages/std/`
    - Expand `co/` shorthand to `github.com/openprose/prose/packages/co/`
-   - Map the service name to `.agents/prose/deps/{host}/{owner}/{repo}/{path}.prose.md`
+   - Map the service name first to `.agents/prose/deps/{host}/{owner}/{repo}/{path}.prose.md`, then to `.agents/prose/deps/{host}/{owner}/{repo}/{path}/index.prose.md`
    - Example: `std/evals/inspector` → `.agents/prose/deps/github.com/openprose/prose/packages/std/evals/inspector.prose.md`
+   - Example: `co/systems/company-repo-checker` → `.agents/prose/deps/github.com/openprose/prose/packages/co/systems/company-repo-checker/index.prose.md`
    - Example: `github.com/alice/tools/formatter` → `.agents/prose/deps/github.com/alice/tools/formatter.prose.md`
 4. Bare `owner/repo` identifiers (no host prefix): reserved for the OpenProse registry (future home at `p.prose.md`); inert today
 

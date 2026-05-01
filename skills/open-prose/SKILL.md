@@ -161,9 +161,9 @@ For `.prose.md` files:
 6. If the file has `kind: pattern`, refuse direct execution: patterns must be instantiated by systems.
 7. If the file has `kind: test`, route to `prose test` semantics rather than ordinary `prose run`.
 
-For older `.prose` files, warn that the file likely needs `prose upgrade
---dry-run`; load `changelog.md` before deciding whether direct execution is
-still appropriate.
+For older `.prose` files, warn that the file is legacy upgrade input, not
+current executable source. Recommend `prose upgrade --dry-run`, and load
+`changelog.md` only when performing or planning that upgrade.
 
 ## Contract Markdown Sections
 

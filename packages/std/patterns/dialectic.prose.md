@@ -56,35 +56,33 @@ Thesis and antithesis argue opposing positions; the unresolved tension is the ou
 - Subsequent rounds: each service sees the other's prior argument
 - This pattern does NOT resolve the tension — the full exchange is the output
 - The instantiating system extracts insight from the tension
-- pattern_instance.result contains the full exchange
-- pattern_instance.exchange contains the structured round-by-round arguments
+- `result`: the full exchange
+- `exchange`: structured round-by-round arguments
 
 ### Delegation
 
-```javascript
-const { thesis, antithesis, task_brief, rounds = 2 } = pattern_instance;
-const exchange = [];
+```prose
+let exchange = []
+let last_thesis = null
+let last_antithesis = null
 
-let lastThesis = null;
-let lastAntithesis = null;
+repeat rounds as round:
+  let last_thesis = call thesis
+    task_brief: task_brief
+    prior_antithesis: last_antithesis
+    prompt: "Argue for the position, responding to the prior counterargument if present."
 
-for (let round = 0; round < rounds; round++) {
-  // Thesis argues
-  let thesisBrief = round === 0
-    ? `Argue FOR the following position.\n\n${task_brief}`
-    : `Argue FOR the following position, responding to the counterargument.\n\n${task_brief}\n\nCounterargument from prior round:\n${lastAntithesis}`;
-  lastThesis = await rlm(thesisBrief, null, { use: thesis });
+  let last_antithesis = call antithesis
+    task_brief: task_brief
+    prior_thesis: last_thesis
+    prompt: "Argue against the position, directly countering the thesis argument."
 
-  // Antithesis argues
-  const antithesisBrief = `Argue AGAINST the following position.\n\n${task_brief}\n\nArgument to counter:\n${lastThesis}`;
-  lastAntithesis = await rlm(antithesisBrief, null, { use: antithesis });
+  record { round: round, thesis: last_thesis, antithesis: last_antithesis } in exchange
 
-  exchange.push({ round: round + 1, thesis: lastThesis, antithesis: lastAntithesis });
+return {
+  result: exchange,
+  exchange: exchange
 }
-
-pattern_instance.result = exchange;
-pattern_instance.exchange = exchange;
-return(exchange);
 ```
 
 ### Notes

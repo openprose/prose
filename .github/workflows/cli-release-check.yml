@@ -99,7 +99,7 @@ jobs:
 
           node dist/index.js --help
           node dist/index.js help
-          node dist/index.js run hello.md --harness mock
+          node dist/index.js run hello.prose.md --harness mock
           PROSE_HARNESS=mock node dist/index.js status --graph
 
   npm-package-smoke:
@@ -168,7 +168,7 @@ jobs:
 
           npm install --global --prefix "$prefix" "$pack_file"
           "$prefix/bin/prose" --version
-          "$prefix/bin/prose" run hello.md --harness mock
+          "$prefix/bin/prose" run hello.prose.md --harness mock
 
           import_dir="$RUNNER_TEMP/npm-import-smoke"
           mkdir -p "$import_dir"
@@ -234,7 +234,7 @@ jobs:
             sh install.sh
 
           "$bin_dir/prose" --version
-          "$bin_dir/prose" run hello.md --harness mock
+          "$bin_dir/prose" run hello.prose.md --harness mock
 
       - name: Upload release tarball
         uses: actions/upload-artifact@v4

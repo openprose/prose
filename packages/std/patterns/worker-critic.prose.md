@@ -60,46 +60,39 @@ Iteratively refines a worker's output by looping through critic evaluation until
 - On reject: worker receives the critique as learning signal — not the raw task repeated
 - On accept: return the worker's result immediately
 - After max_rounds exhausted: return the best attempt with the final critique
-- pattern_instance.result contains the final output
-- pattern_instance.attempts contains the count
+- `result`: the final output
+- `attempts`: number of worker attempts
+- `final_critique`: final critic response when the round budget is exhausted
 
 ### Delegation
 
-```javascript
-const { worker, critic, task_brief, criteria, max_rounds = 3 } = pattern_instance;
-let lastResult = null;
-let lastCritique = null;
+```prose
+let last_result = null
+let last_critique = null
 
-for (let attempt = 0; attempt < max_rounds; attempt++) {
-  // Build worker brief
-  let workerBrief = task_brief;
-  if (lastCritique) {
-    workerBrief += `\n\nPrevious attempt was rejected.\nCritique: ${lastCritique.reasoning}`;
-    if (lastCritique.suggestions?.length) {
-      workerBrief += `\nSuggestions: ${lastCritique.suggestions.join("; ")}`;
+repeat max_rounds as attempt:
+  let last_result = call worker
+    task_brief: task_brief
+    critique: last_critique
+
+  let verdict = call critic
+    output: last_result
+    task_brief: task_brief
+    criteria: criteria
+
+  if verdict accepts result:
+    return {
+      result: last_result,
+      attempts: attempt
     }
-  }
 
-  lastResult = await rlm(workerBrief, null, { use: worker });
+  last_critique = verdict
 
-  // Build critic brief
-  const criticBrief = `Evaluate this result against the criteria.\n\nOriginal task: ${task_brief}\nCriteria: ${criteria}\n\nResult to evaluate:\n${lastResult}`;
-  const verdict = await rlm(criticBrief, null, { use: critic });
-
-  // Parse verdict — critic should return structured assessment
-  if (verdict?.verdict === "accept" || /accept/i.test(String(verdict))) {
-    pattern_instance.result = lastResult;
-    pattern_instance.attempts = attempt + 1;
-    return(lastResult);
-  }
-
-  lastCritique = verdict;
+return {
+  result: last_result,
+  attempts: max_rounds,
+  final_critique: last_critique
 }
-
-pattern_instance.result = lastResult;
-pattern_instance.attempts = max_rounds;
-pattern_instance.final_critique = lastCritique;
-return(lastResult);
 ```
 
 ### Notes
