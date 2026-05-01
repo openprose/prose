@@ -44,7 +44,8 @@ OpenProse has two authoring surfaces:
 2. Use intelligent judgment for contract satisfaction, wiring ambiguity, and
    discretion conditions.
 3. Spawn real subagents for sessions and service calls.
-4. Track state in `.agents/prose/runs/{id}/`.
+4. Select a state backend before execution and track state through that backend.
+   Filesystem is the default.
 5. Pass large context by reference through files, not by copying whole artifacts
    into the VM context.
 
@@ -60,6 +61,7 @@ workspace for these specification files.
 | `forme.md` | Phase 1 wiring for multi-service systems |
 | `prose.md` | Phase 2 execution semantics |
 | `prosescript.md` | `### Execution` syntax |
+| `state/README.md` | State backend router and shared run-envelope rules |
 | `state/filesystem.md` | Default file-based state |
 | `primitives/session.md` | Session context and compaction rules |
 | `help.md` | Help, FAQs, and onboarding |
@@ -73,10 +75,28 @@ When executing:
 - Route `kind: test` files through `prose test`.
 - Load `prose.md` for execution.
 - Load `prosescript.md` for `### Execution` blocks.
-- Load `state/filesystem.md` unless the user explicitly requests another state
-  backend.
+- Load `state/README.md`, then load `state/filesystem.md` unless the user,
+  source, or host explicitly requests another state backend.
 - Load `primitives/session.md` when spawning subagents or working with persistent
   agents.
+
+## Run State Gate
+
+Do not report success for a durable `prose run` until the run satisfies the
+selected backend's completion shape.
+
+For the default filesystem backend, the latest `.agents/prose/runs/{id}/`
+directory must contain:
+
+- `manifest.run.md`: generated wiring graph, or minimal manifest for one service
+- `root.prose.md`: snapshot of the invoked source
+- `sources/`: snapshots of referenced service, system, and pattern sources
+- `vm.log.md`: append-only execution log with completion or error markers
+- `bindings/`: non-empty files for every declared output
+
+SQLite and PostgreSQL preserve `manifest.run.md`, `root.prose.md`, and
+`sources/`, but store events and data-plane bindings in their database backends
+instead of filesystem `vm.log.md`, `workspace/`, and `bindings/`.
 
 ## Runtime Model
 
@@ -109,7 +129,7 @@ Do:
 
 - Execute OpenProse services and systems strictly and intelligently.
 - Spawn subagents for each `session` or service `call`.
-- Track state in `.agents/prose/runs/{id}/`.
+- Track state through the selected backend rooted at `.agents/prose/runs/{id}/`.
 - Publish only declared outputs from workspace to bindings.
 - Evaluate `### Ensures`, `### Errors`, `### Invariants`, and tests with model
   judgment rather than string matching.
