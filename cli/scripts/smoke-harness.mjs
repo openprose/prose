@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const cliDir = resolve(scriptDir, "..");
-const harnesses = ["codex-sdk", "codex", "claude-sdk", "claude"];
+const harnesses = ["codex-sdk", "codex", "claude-sdk"];
 const okToken = "PROSE_HARNESS_SMOKE_OK";
 const skillSentinel = "PROSE_SKILL_BOOTSTRAP_VISIBLE";
 
@@ -17,7 +17,7 @@ const usage = `Usage: node scripts/smoke-harness.mjs [options]
 Smoke-test one or more real Prose CLI harnesses.
 
 Options:
-  --harness <name>   Harness to run: all, codex-sdk, codex, claude-sdk, claude (default: all)
+  --harness <name>   Harness to run: all, codex-sdk, codex, claude-sdk (default: all)
   --cli <path>       Built CLI entrypoint (default: ./dist/index.js)
   --timeout <ms>     Per-harness timeout in milliseconds (default: 180000)
   --keep-temp        Keep temporary HOME/workspace directories for inspection
@@ -161,12 +161,6 @@ Return only \`${okToken}\` if the preloaded OpenProse skill text includes
 Do not edit files.
 `,
 	);
-
-	run("git", ["init", "--initial-branch=main"], { cwd: workspace });
-	run("git", ["config", "user.email", "ci@openprose.local"], { cwd: workspace });
-	run("git", ["config", "user.name", "OpenProse CI"], { cwd: workspace });
-	run("git", ["add", "smoke.md"], { cwd: workspace });
-	run("git", ["commit", "-m", "Add smoke program"], { cwd: workspace });
 }
 
 function smokeHarness(harness, options) {
@@ -196,10 +190,6 @@ function smokeHarness(harness, options) {
 		if (harness === "codex") {
 			run("codex", ["--version"], { cwd: workspace, env, timeout: options.timeout });
 		}
-		if (harness === "claude") {
-			run("claude", ["--version"], { cwd: workspace, env, timeout: options.timeout });
-		}
-
 		const result = run(
 			process.execPath,
 			[options.cli, "run", "smoke.md", "--harness", harness],

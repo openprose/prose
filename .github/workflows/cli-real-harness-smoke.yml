@@ -23,7 +23,6 @@ on:
           - codex-sdk
           - codex
           - claude-sdk
-          - claude
 
 permissions:
   contents: read
@@ -44,7 +43,6 @@ jobs:
           - codex-sdk
           - codex
           - claude-sdk
-          - claude
     defaults:
       run:
         working-directory: cli
@@ -78,10 +76,6 @@ jobs:
       - name: Build CLI
         if: ${{ env.SHOULD_RUN == 'true' }}
         run: npm run build
-
-      - name: Install Claude Code CLI when requested
-        if: ${{ env.SHOULD_RUN == 'true' && startsWith(matrix.harness, 'claude') }}
-        run: npm install --global @anthropic-ai/claude-code
 
       - name: Run real harness smokes
         if: ${{ env.SHOULD_RUN == 'true' }}

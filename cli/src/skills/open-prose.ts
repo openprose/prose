@@ -75,7 +75,6 @@ export function skillAgentsForHarness(harness: string): SkillAgent[] {
 		case "codex":
 		case "codex-sdk":
 			return ["codex"];
-		case "claude":
 		case "claude-sdk":
 			return ["claude-code"];
 		case "mock":
