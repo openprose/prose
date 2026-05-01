@@ -54,7 +54,30 @@ to the release tarball.
 
 Maintainers can find the release process in [RELEASE.md](RELEASE.md).
 
-## Harnesses
+## Provider Selection
+
+The CLI does not currently expose a separate `--provider` flag. Provider
+selection is done with `--harness <name>` or `PROSE_HARNESS`, where each
+harness names both a provider family and the runtime used to call it.
+
+| Harness | Provider | Runtime | Requirements | Notes |
+| --- | --- | --- | --- | --- |
+| `codex-sdk` | OpenAI/Codex | `@openai/codex-sdk` | `OPENAI_API_KEY` or `CODEX_API_KEY` | Default. Best first choice for OpenAI-backed runs. |
+| `codex` | OpenAI/Codex | `codex exec` | Codex CLI installed and authenticated, or `OPENAI_API_KEY`/`CODEX_API_KEY` | Uses the local Codex CLI process. |
+| `claude-sdk` | Anthropic/Claude | `@anthropic-ai/claude-agent-sdk` | `ANTHROPIC_API_KEY` | Best first choice for Anthropic-backed runs. |
+| `claude` | Anthropic/Claude | `claude -p` | Claude Code CLI installed and authenticated | Uses the local Claude Code CLI process. |
+| `mock` | None | local echo harness | none | Test and smoke-check harness only. |
+
+Examples:
+
+```bash
+prose run inspector.md
+prose run inspector.md --harness codex-sdk
+prose run inspector.md --harness claude-sdk
+PROSE_HARNESS=claude-sdk prose run inspector.md
+```
+
+## Harness Details
 
 - `codex-sdk` uses `@openai/codex-sdk`, forwards the current working directory
   and environment, and streams Codex SDK events. This is the default.
