@@ -20,12 +20,12 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/openprose/prose.git",
-    "directory": "cli"
+    "directory": "tools/cli"
   },
   "bugs": {
     "url": "https://github.com/openprose/prose/issues"
   },
-  "homepage": "https://github.com/openprose/prose/tree/main/cli#readme",
+  "homepage": "https://github.com/openprose/prose/tree/main/tools/cli#readme",
   "license": "MIT",
   "bin": {
     "prose": "dist/index.js"
