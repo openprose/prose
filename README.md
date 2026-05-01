@@ -121,6 +121,19 @@ local setup.
 > By installing, you agree to the [Privacy Policy](PRIVACY.md) and
 > [Terms of Service](TERMS.md).
 
+## Recommended Codex configuration
+
+Add to `~/.codex/config.toml` for the best experience with OpenProse's recursive multi-service programs:
+
+```toml
+[agents]
+max_threads = 12              # Concurrent open agent threads (default 6)
+max_depth = 2                 # Subagent nesting depth (default 1)
+job_max_runtime_seconds = 2700  # Per-worker timeout (default 1800)
+```
+
+Why these values: OpenProse programs commonly spawn a top-level orchestrator that itself spawns subagents (one extra nesting level beyond Codex's default), and 45-minute jobs are realistic for multi-service runs.
+
 ## Why It Exists
 
 Plain prompts are easy to start and hard to maintain. As soon as an agent
