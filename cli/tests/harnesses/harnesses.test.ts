@@ -55,47 +55,6 @@ async function waitFor(predicate: () => boolean): Promise<void> {
 }
 
 describe("process harnesses", () => {
-	test("claude preserves prompt as a single -p argument and streams output", async () => {
-		const calls: Array<{ command: string; args: string[] }> = [];
-		const io = memoryStreams();
-		const prompt = "prose run inspector.md\nkeep whitespace  ";
-		const harness = createHarness("claude", { runner: recordingRunner(calls) });
-
-		const exitCode = await harness.run(prompt, { ...io.options });
-
-		expect(exitCode).toBe(3);
-		expect(calls).toEqual([{ command: "claude", args: ["-p", prompt] }]);
-		expect(io.stdout).toBe("tool out");
-		expect(io.stderr).toBe("tool err");
-	});
-
-	test("claude appends OpenProse bootstrap as system prompt context", async () => {
-		const calls: Array<{ command: string; args: string[] }> = [];
-		const io = memoryStreams();
-		const prompt = "prose run inspector.md";
-		const harness = createHarness("claude", { runner: recordingRunner(calls) });
-
-		await harness.run(prompt, {
-			...io.options,
-			additionalDirectories: ["/skills/open-prose"],
-			systemPromptAppend: "OPEN_PROSE_BOOTSTRAP",
-		});
-
-		expect(calls).toEqual([
-			{
-				command: "claude",
-				args: [
-					"--add-dir",
-					"/skills/open-prose",
-					"--append-system-prompt",
-					"OPEN_PROSE_BOOTSTRAP",
-					"-p",
-					prompt,
-				],
-			},
-		]);
-	});
-
 	test("codex CLI builds codex exec with the exact prompt", async () => {
 		const calls: Array<{ command: string; args: string[] }> = [];
 		const io = memoryStreams();
@@ -224,7 +183,10 @@ describe("harness selection", () => {
 		expect(resolveHarnessName("codex-sdk")).toBe("codex-sdk");
 		expect(resolveHarnessName("claude-sdk")).toBe("claude-sdk");
 		expect(() => resolveHarnessName("missing")).toThrow(
-			"Unsupported harness: missing. Expected one of: codex-sdk, claude-sdk, codex, claude, mock",
+			"Unsupported harness: missing. Expected one of: codex-sdk, claude-sdk, codex, mock",
+		);
+		expect(() => resolveHarnessName("claude")).toThrow(
+			"Unsupported harness: claude. Expected one of: codex-sdk, claude-sdk, codex, mock",
 		);
 	});
 

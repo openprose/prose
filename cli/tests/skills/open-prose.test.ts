@@ -110,7 +110,7 @@ describe("OpenProse skill checks", () => {
 			writeSentinelSkill(skillRoot, "CLAUDE_BOOTSTRAP_SENTINEL");
 
 			const resolved = await resolveOpenProseSkill({
-				harness: "claude",
+				harness: "claude-sdk",
 				cwd,
 				env: { HOME: home },
 			});

@@ -65,7 +65,6 @@ harness names both a provider family and the runtime used to call it.
 | `codex-sdk` | OpenAI/Codex | `@openai/codex-sdk` | `OPENAI_API_KEY` or `CODEX_API_KEY` | Default. Best first choice for OpenAI-backed runs. |
 | `codex` | OpenAI/Codex | `codex exec` | Codex CLI installed and authenticated, or `OPENAI_API_KEY`/`CODEX_API_KEY` | Uses the local Codex CLI process. |
 | `claude-sdk` | Anthropic/Claude | `@anthropic-ai/claude-agent-sdk` | `ANTHROPIC_API_KEY` | Best first choice for Anthropic-backed runs. |
-| `claude` | Anthropic/Claude | `claude -p` | Claude Code CLI installed and authenticated | Uses the local Claude Code CLI process. |
 | `mock` | None | local echo harness | none | Test and smoke-check harness only. |
 
 Examples:
@@ -84,7 +83,6 @@ PROSE_HARNESS=claude-sdk prose run inspector.md
 - `claude-sdk` uses `@anthropic-ai/claude-agent-sdk`, forwards the current
   working directory and environment, and streams text deltas.
 - `codex` runs `codex exec <prompt>` and streams the Codex CLI process output.
-- `claude` runs `claude -p <prompt>` and streams the Claude CLI process output.
 - `mock` echoes prompts for tests and local smoke checks.
 
 Select a harness with `--harness <name>` or `PROSE_HARNESS`.
