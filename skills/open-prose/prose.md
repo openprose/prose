@@ -3,12 +3,13 @@ role: execution-semantics
 summary: |
   How to execute OpenProse services and systems. You embody the OpenProse VM—a virtual machine that
   reads a manifest (produced by Forme), spawns sessions through the host's
-  `spawn_session` primitive, manages state via the filesystem, and coordinates
-  execution across services and systems. Read this file to run service and system files.
+  `spawn_session` primitive, manages state via the selected backend, and
+  coordinates execution across services and systems. Read this file to run service and system files.
 see-also:
   - contract-markdown.md: System and service file format
   - forme.md: Wiring semantics (Phase 1 — produces the manifest you consume)
   - prosescript.md: Imperative syntax for pinned execution blocks
+  - state/README.md: State backend router and shared run-envelope rules
   - state/filesystem.md: File-system state management
   - primitives/session.md: Session context and compaction guidelines
   - guidance/tenets.md: Design reasoning behind the specs
@@ -16,7 +17,10 @@ see-also:
 
 # OpenProse VM
 
-This document defines how to execute OpenProse services and systems. You are the OpenProse VM—an intelligent virtual machine that reads a service file or wiring manifest, spawns subagent sessions for each service, passes data between them via filesystem pointers, and returns the run's output.
+This document defines how to execute OpenProse services and systems. You are
+the OpenProse VM—an intelligent virtual machine that reads a service file or
+wiring manifest, spawns subagent sessions for each service, passes data between
+them through the selected state backend, and returns the run's output.
 
 ## Agent Commands
 
@@ -45,7 +49,7 @@ codex exec "prose run system.prose.md"
 | `prose install --update`    | Update pinned dependency SHAs                                   |
 | `prose inspect <run-id>`    | Evaluate a completed run                                        |
 | `prose status`              | Show recent runs                                                |
-| `prose status --graph`      | Show run dependency graph                                       |
+| `prose status --graph`      | Show run dependency graph from the active backend event store    |
 | `prose upgrade --dry-run`   | Inspect old structures and report the migration plan            |
 | `prose upgrade`             | Migrate old OpenProse structures to current conventions          |
 | `prose help`                | Show help and examples                                          |
@@ -152,10 +156,10 @@ But simulation with sufficient fidelity _is_ implementation. When the simulated 
 | Traditional VM      | OpenProse VM                        | Substrate                                |
 | ------------------- | ----------------------------------- | ---------------------------------------- |
 | Instructions        | Manifest graph entries              | Executed via host `spawn_session` calls  |
-| Instruction pointer | Current position in execution order | Tracked in `vm.log.md`                    |
+| Instruction pointer | Current position in execution order | Tracked in the active backend event store; filesystem uses `vm.log.md` |
 | Working memory      | Conversation history                | The context window holds ephemeral state |
-| Persistent storage  | `.agents/prose/` directory                 | Files hold durable state across sessions |
-| Registers/variables | Named bindings                      | Stored in `bindings/{service}/{name}.md` |
+| Persistent storage  | Selected state backend rooted at `.agents/prose/` | Files or database rows hold durable state across sessions |
+| Registers/variables | Named bindings                      | Stored by the active backend; filesystem uses `bindings/{service}/{name}.md` |
 | I/O                 | Tool calls and results              | Host primitives spawn sessions, ask users, and return pointers |
 
 ### What Makes It Real
@@ -183,7 +187,7 @@ When you execute a system, you ARE the virtual machine. This is not a metaphor�
 - You don't _simulate_ execution—you _perform_ it
 - Each service spawns a real subagent through the host's `spawn_session`
   primitive
-- Your state persists in files (`.agents/prose/runs/`)
+- Your state persists through the selected backend rooted at `.agents/prose/runs/`
 - You follow the manifest strictly, but apply intelligence where needed
 
 ---
@@ -197,15 +201,18 @@ own tools:
 |-----------|-------------------|
 | `spawn_session` | Start an isolated agent/session with a prompt, optional model, and access to declared input/output paths |
 | `ask_user` | Pause execution for missing required caller input and resume with the answer |
-| `read_file` / `write_file` | Read and write `.agents/prose/runs/{id}/` state artifacts |
-| `copy_binding` | Copy a declared output from `workspace/{service}/` to `bindings/{service}/` |
+| `read_file` / `write_file` | Read and write `.agents/prose/runs/{id}/` state artifacts and backend records |
+| `copy_binding` | Publish a declared output through the active backend; filesystem copies from `workspace/{service}/` to `bindings/{service}/` |
 | `check_env` | Confirm an environment variable exists without exposing its value |
 
 ---
 
 ## Directory Structure
 
-All execution state lives in `.agents/prose/runs/{id}/`:
+Load `state/README.md` and the selected backend spec before execution. Durable
+backends always create `.agents/prose/runs/{id}/` with `manifest.run.md`,
+`root.prose.md`, and source snapshots. The default filesystem backend stores
+all execution state in that directory:
 
 ```
 .agents/prose/runs/{id}/
@@ -238,6 +245,11 @@ All execution state lives in `.agents/prose/runs/{id}/`:
         ├── memory.md
         └── {name}-NNN.md
 ```
+
+Unless a section explicitly says otherwise, the concrete paths below describe
+the default filesystem backend. SQLite and PostgreSQL perform the same VM
+operations through their event and binding tables; see `state/README.md` and
+the selected backend spec for the storage mapping.
 
 ### Run ID Format
 
@@ -381,9 +393,10 @@ The subagent returns either a completion message or a delegation request. If the
 Otherwise, the subagent has completed. The VM:
 
 1. Checks if the service wrote `__error.md` — if so, handle error (see Error Handling)
-2. For each declared output, copies from workspace to bindings:
+2. For each declared output, publishes it through the active backend. Filesystem
+   runs copy from workspace to bindings:
    - `workspace/{service-name}/{output-name}.md` → `bindings/{service-name}/{output-name}.md`
-3. Appends a completion marker to `vm.log.md`
+3. Appends a completion marker to the active backend event store
 4. Continues to the next service in execution order
 
 **Critical:** The VM never reads the full output files. It tracks pointers and copies files. This keeps the VM's context lean.
@@ -410,7 +423,10 @@ After pattern expansion, the manifest may contain a `## Constraints` section lis
 | **Monotonicity**         | For ratchet-type patterns, maintain a certified-progress ledger. Each iteration's certified output must be a superset of the previous iteration's. If an iteration would shrink the certified set, discard it and keep the prior state.                                             |
 | **Error propagation**    | If a slot service writes `__error.md` during a pattern loop, terminate the pattern instance immediately. Propagate the error as if the pattern instance itself errored. Do not retry or continue the loop.                                                                       |
 
-Constraints are checked at every service boundary within the expanded pattern — not just at the final output. If a constraint is violated, log the violation to `vm.log.md` and continue with the corrected state (e.g., the stripped output, the terminated loop, the preserved ledger).
+Constraints are checked at every service boundary within the expanded pattern —
+not just at the final output. If a constraint is violated, log the violation to
+the active backend event store and continue with the corrected state (e.g., the
+stripped output, the terminated loop, the preserved ledger).
 
 ### Step 5: Collect System Output
 
@@ -425,16 +441,22 @@ Read `bindings/synthesizer/report.md` and return it to the caller.
 
 ### Step 6: Finalize
 
-- Append `---end {ISO8601 timestamp}` to `vm.log.md`
+- Append `---end {ISO8601 timestamp}` to the active backend event store
+  (filesystem: `vm.log.md`)
 - If this is a top-level run (not nested), present the final output to the user
 
 ---
 
 ## State Management
 
-### `vm.log.md` — Append-Only Execution Log
+### Event Store
 
-The VM appends one line per event. Only the VM writes this file.
+The VM appends one record per event to the active backend event store. The
+filesystem backend writes those records to `vm.log.md`; SQLite and PostgreSQL
+write equivalent records to their database tables. Only the VM writes execution
+events.
+
+Filesystem `vm.log.md` format:
 
 ```markdown
 # run:20260317-143052-a7b3c9 deep-research
@@ -483,11 +505,14 @@ The `upstream:` field lists the run IDs of all `run`-typed inputs, written once 
 
 #### Resumption
 
-To resume an interrupted run:
+To resume an interrupted filesystem run:
 
 1. Read `vm.log.md` — find the last completed marker
 2. Scan `bindings/` — confirm existing outputs
 3. Continue from the next service in execution order
+
+For SQLite and PostgreSQL, use the selected backend's event and binding tables
+instead.
 
 ---
 
@@ -517,11 +542,11 @@ If a conditional clause covers this error, the VM can satisfy the degraded `### 
 If the errored service has downstream dependents (services that require its outputs), those services cannot run. Options:
 
 1. **Conditional `### Ensures` covers it** — produce the degraded output, skip dependents, return
-2. **No coverage** — propagate the error. Append `---error` to `vm.log.md`. Return the error to the caller.
+2. **No coverage** — propagate the error. Append `---error` to the active backend event store. Return the error to the caller.
 
 ### Step 4: Log
 
-Append the error marker to `vm.log.md`:
+Append the error marker to the active backend event store:
 
 ```
 3→ researcher ✗ no-results
@@ -608,7 +633,8 @@ Outputs written:
 Summary: Found 5 relevant sources on quantum computing, extracted 12 claims with confidence scores.
 ```
 
-The VM copies declared outputs from workspace to bindings, appends to `vm.log.md`, and continues.
+The VM publishes declared outputs through the active backend, appends to the
+event store, and continues.
 
 ---
 
@@ -660,7 +686,8 @@ The VM spawns all delegates concurrently, waits for all to complete, and resumes
 
 ### State Markers
 
-Runtime delegation appends these markers to `vm.log.md`:
+Runtime delegation appends these markers to the active backend event store
+(filesystem: `vm.log.md`):
 
 ```
 N→ service ⇒ delegate (delegate: {id})
@@ -789,7 +816,8 @@ At system start, the VM resolves each `requires` entry:
 
 ### Writing Input Bindings
 
-Write each input to `bindings/caller/{name}.md`:
+Write each input to the active backend binding store. Filesystem runs use
+`bindings/caller/{name}.md`:
 
 ```markdown
 # {name}
@@ -819,13 +847,19 @@ prose run std/evals/inspector -- subject: 20260406-201439-1a3369
 The VM validates:
 
 1. **Existence.** The referenced run directory exists under `.agents/prose/runs/`. For resolution rules, see Run ID Resolution below.
-2. **Structure.** The directory contains at minimum `vm.log.md` and `root.prose.md`.
-3. **Completion status:**
-   - `vm.log.md` has `---end` → the run completed successfully. Bind normally.
-   - `vm.log.md` has `---error` → the run failed. Emit a warning but allow binding (failed runs are consumable — an inspector may specifically want to evaluate a failed run).
-   - `vm.log.md` has neither → the run is incomplete. Error: cannot consume an in-progress run.
+2. **Structure.** The directory contains the durable run envelope
+   (`manifest.run.md`, `root.prose.md`, and source snapshots) plus the selected
+   backend's event store. Filesystem runs must contain `vm.log.md`.
+3. **Completion status.** Read the selected backend's completion marker:
+   - completed successfully → bind normally
+   - failed → emit a warning but allow binding (failed runs are consumable; an inspector may specifically want to evaluate a failed run)
+   - incomplete → error: cannot consume an in-progress run
 
-The VM writes the binding to `bindings/caller/{name}.md` with structured metadata:
+Filesystem completion is read from `vm.log.md`: `---end` means completed,
+`---error` means failed, and neither marker means incomplete.
+
+The VM writes the binding to the active backend binding store. Filesystem runs
+use `bindings/caller/{name}.md` with structured metadata:
 
 ```markdown
 # subject
@@ -954,7 +988,7 @@ The model references environment variables by name — it never reads, logs, or 
 
 - When a service declares `### Environment` variables, the VM verifies they are set before spawning the service's session. Verification means confirming the variable exists in the host environment — not reading or logging its value.
 - The service session can reference env vars via shell expansion (e.g., `$SLACK_WEBHOOK_URL` in a curl command) but must never construct strings containing the values, log them, or write them to workspace files.
-- If an environment variable is not set, the VM fails the service with a clear error rather than proceeding with an empty value. The error is logged to `vm.log.md` as `N→ service-name ✗ missing-env:{VAR_NAME}`.
+- If an environment variable is not set, the VM fails the service with a clear error rather than proceeding with an empty value. The error is logged to the active backend event store (filesystem: `vm.log.md`) as `N→ service-name ✗ missing-env:{VAR_NAME}`.
 
 ---
 
@@ -984,7 +1018,7 @@ Result: PASS | FAIL
 ✓ __error.md does not exist
 ```
 
-5. **Log markers** — test runs use standard `vm.log.md` markers for execution, plus `N→ [eval] assertion ✓` or `✗` for each assertion, and `---test PASS` or `---test FAIL (N/M assertions)` at the end. Failed assertion markers should identify the target output and the observed mismatch.
+5. **Log markers** — test runs use the active backend event store for standard execution markers, plus `N→ [eval] assertion ✓` or `✗` for each assertion, and `---test PASS` or `---test FAIL (N/M assertions)` at the end. Filesystem runs write these markers to `vm.log.md`. Failed assertion markers should identify the target output and the observed mismatch.
 6. **Exit behavior** — `prose test` returns exit code 0 if all assertions pass, 1 if any fail. When running a directory of tests, all tests run (no early exit), and a summary is printed at the end.
 
 ### Test Suites
@@ -1065,16 +1099,16 @@ function execute(manifest, inputs?):
      - From CLI args, config, or calling system
      - For run-typed inputs (run / run[]): validate existence, structure, completion; emit staleness warning if source system changed
      - Prompt user (`ask_user`) for any missing required inputs
-     - Write each to bindings/caller/{name}.md (structured metadata for run types)
-     - Record upstream: field in vm.log.md header for any run-typed inputs
-  3. Create workspace/ and bindings/ directories for each service
-  4. Initialize vm.log.md with run header (root: field always; upstream: field if run-typed inputs were bound)
+     - Write each to the active backend binding store (filesystem: bindings/caller/{name}.md with structured metadata for run types)
+     - Record upstream in the backend event header for any run-typed inputs
+  3. Initialize backend storage for each service (filesystem: workspace/ and bindings/ directories)
+  4. Initialize the backend event store with run header (root always; upstream if run-typed inputs were bound)
   5. For each service in execution order:
      a. Verify all input bindings exist (dependencies satisfied)
      b. Build session prompt:
         - Service definition (from sources/{name}.prose.md)
-        - Input file paths (from bindings/)
-        - Workspace path
+        - Input references from the active backend (filesystem: paths from `bindings/`)
+        - Writable output location (filesystem: workspace path)
         - Output instructions (ensures outputs to write)
         - Shape constraints (prohibited, self, delegates)
         - Error signaling format
@@ -1084,19 +1118,19 @@ function execute(manifest, inputs?):
         - If Delegate: lines → runtime delegation:
           i.  Spawn each delegate as a new session
           ii. Wait for all delegates to complete
-          iii. Write delegate outputs to workspace/{name}/__delegate/
-          iv. Resume the service with response paths
-          v.  Append ⇒, ✓, ⟳ markers to vm.log.md
+          iii. Write delegate outputs to the active backend (filesystem: workspace/{name}/__delegate/)
+          iv. Resume the service with response references
+          v.  Append ⇒, ✓, ⟳ markers to the backend event store
           vi. Loop back to (d)
         - If completion → continue
      e. Check for __error.md:
         - If error: check conditional ensures, handle or propagate
      f. Enforce pattern constraints (firewalls, termination bounds, monotonicity)
-     g. Copy declared outputs: workspace/{name}/ → bindings/{name}/
-     h. Append completion marker to vm.log.md
-  6. Collect final output from bindings/ per manifest's returns
+     g. Publish declared outputs through the active backend (filesystem: workspace/{name}/ → bindings/{name}/)
+     h. Append completion marker to the backend event store
+  6. Collect final output from the active backend bindings per manifest's returns
   7. Evaluate invariants across all services
-  8. Append ---end to vm.log.md
+  8. Append ---end to the backend event store
   9. Return final output to caller
 ```
 
@@ -1110,12 +1144,12 @@ The OpenProse VM:
 2. **Binds** caller inputs (from CLI, config, or user prompt)
 3. **Walks** the execution order from the dependency graph
 4. **Spawns** one session per service via `spawn_session`
-5. **Passes** input data as filesystem pointers (never values)
-6. **Copies** declared outputs from workspace to bindings (the return mechanism)
+5. **Passes** input data as backend references (filesystem: file pointers), never inline values
+6. **Publishes** declared outputs through the active backend (filesystem: copy from workspace to bindings)
 7. **Handles** errors via conditional ensures or propagation
 8. **Evaluates** contracts, strategies, and invariants intelligently
 9. **Parallelizes** independent services when the graph allows
-10. **Tracks** state in an append-only log (`vm.log.md`)
+10. **Tracks** state in the active backend event store (filesystem: `vm.log.md`)
 11. **Returns** the system's ensures output to the caller
 
 Each subagent only knows its own service definition, its inputs, and where to write. The global picture exists only in the manifest and the VM's working memory. This keeps sessions focused and context lean.

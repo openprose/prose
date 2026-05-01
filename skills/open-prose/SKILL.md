@@ -5,8 +5,8 @@ description: |
   `kind:` frontmatter, opens an older `.prose` file, or asks for reusable multi-agent
   orchestration. Treat `prose run ...` as an in-session instruction: embody
   the OpenProse VM yourself; do not shell out to a `prose` binary. On
-  activation read the Markdown contract, wire services, execute with host
-  primitives, and persist `.agents/prose/runs/`.
+  activation read the Markdown contract, select a state backend, wire services,
+  execute with host primitives, and persist run state under `.agents/prose/runs/`.
   Decline for one-shot questions — a plain prompt is often the right answer.
 ---
 
@@ -32,13 +32,13 @@ After activation, choose the narrowest path that matches the user's intent:
 | User Intent | Load First | Then Load If Needed |
 |-------------|------------|---------------------|
 | Explain OpenProse or answer "how do I..." | `help.md` | `examples/README.md`, then one focused example |
-| Run a `.prose.md` service or system | `contract-markdown.md` | `forme.md` if it is a system with `### Services`; `prose.md` and `state/filesystem.md` to execute |
+| Run a `.prose.md` service or system | `contract-markdown.md` | `state/README.md` and the selected backend (`state/filesystem.md` by default); `forme.md` if it is a system with `### Services`; `prose.md` to execute |
 | Inspect or upgrade old `.prose` / `.md` source | `changelog.md` | `contract-markdown.md`, `prosescript.md` if migration details require them |
 | Write a new `.prose.md` service or system | `contract-markdown.md` | `guidance/tenets.md`, `guidance/authoring.md` |
 | Write pinned choreography | `prosescript.md` | `contract-markdown.md` if inside `### Execution` |
 | Lint or review a service or system | `contract-markdown.md` | `forme.md` for multi-service wiring; `guidance/authoring.md` for design review |
 | Install or update dependencies | `deps.md` | `contract-markdown.md` only if dependency references are ambiguous |
-| Debug a completed run | `prose.md` | `state/filesystem.md`, then `std/evals/inspector` if available |
+| Debug a completed run | `prose.md` | `state/README.md` and the run's backend doc; then `std/evals/inspector` if available |
 
 Default to Contract Markdown for new authoring. Reach for ProseScript only when
 the author needs explicit order, loops, conditionals, retries, or parallel
@@ -111,15 +111,15 @@ executing the system. The shell executable is the agent runner, e.g.
 
 | Command | Action |
 |---------|--------|
-| `prose run <file.prose.md>` | Detect Contract Markdown, load `contract-markdown.md`, then `forme.md` if multi-service, then `prose.md` |
+| `prose run <file.prose.md>` | Detect Contract Markdown, load `contract-markdown.md`, select state with `state/README.md` plus the backend doc, then `forme.md` if multi-service, then `prose.md` |
 | `prose run <host>/<owner>/<repo>[/path]` | Resolve installed dependency service or system, detect format, then route as above |
 | `prose run std/...` / `co/...` | Expand OpenProse package shorthand, resolve installed dependency service or system, then route as above |
 | `prose lint <file.prose.md>` | Validate Contract Markdown structure, headers, frontmatter, contracts, shapes, and wiring |
 | `prose preflight <file.prose.md>` | Check dependencies and `### Environment` declarations without executing |
-| `prose test <path>` | Load `contract-markdown.md` and `prose.md`; run `kind: test` file(s) |
+| `prose test <path>` | Load `contract-markdown.md`, `state/README.md` plus the selected backend, and `prose.md`; run `kind: test` file(s) |
 | `prose inspect <run-id>` | Resolve and run `std/evals/inspector` against a completed run |
 | `prose status` | Summarize recent `.agents/prose/runs/` entries |
-| `prose status --graph` | Reconstruct the run DAG from `vm.log.md` `upstream:` headers |
+| `prose status --graph` | Reconstruct the run DAG from the active backend's event store; filesystem runs use `vm.log.md` `upstream:` headers |
 | `prose install` | Load `deps.md`; install dependency references into `.agents/prose/deps/` and write `.agents/prose/prose.lock` |
 | `prose install --update` | Load `deps.md`; update pinned dependency SHAs |
 | `prose upgrade --dry-run` | Load `changelog.md`; inspect nearby files and report the concrete migration plan without editing |
@@ -140,8 +140,8 @@ the current host must map onto its available tools:
 |--------------------|---------|--------------|
 | `spawn_session` | Run a service, execution branch, or delegate in an isolated agent/session | Use the host's subagent primitive when available; otherwise execute inline only for trivial single-service runs and report the limitation for multi-agent runs |
 | `ask_user` | Pause for missing required caller input | Use the host's user-question tool if available; otherwise ask plainly in chat |
-| `read_state` / `write_state` | Read and write `.agents/prose/runs/{id}/` artifacts | Use filesystem tools with the active workspace permissions |
-| `copy_binding` | Publish declared outputs from `workspace/` to `bindings/` | Use a filesystem copy operation; never publish undeclared scratch files |
+| `read_state` / `write_state` | Read and write run state through the selected backend | Use filesystem tools for default runs; use the selected database tool/connection for SQLite or PostgreSQL |
+| `copy_binding` | Publish declared outputs through the active backend | Filesystem backend copies from `workspace/` to `bindings/`; database backends write records/attachments; never publish undeclared scratch files |
 | `check_env` | Verify an environment variable exists | Check only presence; never reveal or log raw values |
 
 ## Format Detection
@@ -156,7 +156,7 @@ For `.prose.md` files:
 1. Read YAML frontmatter.
 2. If the file has `kind: service`, skip Forme and execute the service directly.
 3. If `kind: system` has a non-empty `### Services` section, load `forme.md` to produce a manifest.
-4. Load `prose.md` and `state/filesystem.md` to execute the service or manifest.
+4. Load `state/README.md`, then the selected backend doc (`state/filesystem.md` by default), and `prose.md` to execute the service or manifest.
 5. If the file has `kind: system` without `### Services`, report a structure error: a system must declare the graph it composes.
 6. If the file has `kind: pattern`, refuse direct execution: patterns must be instantiated by systems.
 7. If the file has `kind: test`, route to `prose test` semantics rather than ordinary `prose run`.
@@ -164,6 +164,25 @@ For `.prose.md` files:
 For older `.prose` files, warn that the file is legacy upgrade input, not
 current executable source. Recommend `prose upgrade --dry-run`, and load
 `changelog.md` only when performing or planning that upgrade.
+
+## Run State Gate
+
+Before executing any `prose run`, choose the state backend and load
+`state/README.md` plus that backend's spec. Filesystem is the default when the
+user, source, or host configuration does not request another backend.
+
+Durable backends create `.agents/prose/runs/{id}/` and always write the
+control-plane envelope before reporting success:
+
+- `manifest.run.md`: generated wiring graph, or a minimal manifest for a single service
+- `root.prose.md`: snapshot of the invoked source
+- `sources/`: snapshots of referenced service, system, and pattern sources
+
+The rest of the state is backend-specific. Filesystem runs must also write
+`vm.log.md`, `workspace/`, and declared `bindings/`. SQLite and PostgreSQL runs
+store execution events and data-plane bindings in their database backends
+instead of `vm.log.md`, `workspace/`, and filesystem `bindings/`. In-context
+state is ephemeral and should be used only when explicitly requested.
 
 ## Contract Markdown Sections
 
@@ -220,6 +239,7 @@ user workspace for these docs.
 | `deps.md` | Dependency resolution and `prose install` |
 | `changelog.md` | Compact version history and model-guided upgrade instructions; load only for `prose upgrade` or outdated-structure diagnosis |
 | `help.md` | User-facing help |
+| `state/README.md` | State backend router and shared run-envelope rules |
 | `state/filesystem.md` | Default state backend for Contract Markdown runs |
 | `primitives/session.md` | Subagent session and memory guidelines |
 | `guidance/tenets.md` | Architectural tenets |
@@ -283,13 +303,11 @@ installed into `.agents/prose/deps/` by `prose install`.
 
 ## State Modes
 
-Service and system runs use filesystem state by default and should be
-documented against `.agents/prose/runs/{id}/`.
-
-Alternative state docs (`state/in-context.md`, `state/sqlite.md`,
-`state/postgres.md`) remain available: in-context state is supported for small
-runs, while SQLite and PostgreSQL state are experimental advanced backends. Load
-them only when the user explicitly requests that mode.
+Service and system runs use filesystem state by default. Load `state/README.md`
+for every run, then load `state/filesystem.md` unless the user, source, or host
+configuration explicitly requests `state/in-context.md`, `state/sqlite.md`, or
+`state/postgres.md`. In-context state is supported for small ephemeral runs;
+SQLite and PostgreSQL state are experimental advanced backends.
 
 ## Authoring Guidance
 
