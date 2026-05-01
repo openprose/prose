@@ -423,8 +423,7 @@ function hasRelevantChange(changedFiles: string[]): boolean {
       normalized.startsWith("packages/co/") ||
       normalized.startsWith("tests/open-prose/") ||
       normalized.startsWith(".github/scripts/openprose-smoke/") ||
-      normalized === ".github/workflows/openprose-smoke.yml" ||
-      /^commands\/prose-[^/]+\.md$/.test(normalized)
+      normalized === ".github/workflows/openprose-smoke.yml"
     );
   });
 }

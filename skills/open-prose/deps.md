@@ -35,8 +35,8 @@ Parsed as:
 |-----------|-------|
 | Host | `github.com` |
 | Owner | `openprose` |
-| Repo | `std` |
-| Path | `evals/inspector` |
+| Repo | `prose` |
+| Path | `packages/std/evals/inspector` |
 | Clone URL | `github.com/openprose/prose/packages/std` |
 | Local clone | `.deps/github.com/openprose/prose/packages/std/` |
 | Resolved file | `.deps/github.com/openprose/prose/packages/std/evals/inspector.md` |

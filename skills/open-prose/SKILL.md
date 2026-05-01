@@ -8,6 +8,7 @@ description: |
   host explicitly provides one. On activation read the Markdown contract, wire
   services, execute with host primitives, and persist `.prose/runs/`.
   Decline for one-shot questions — a plain prompt is often the right answer.
+license: MIT
 ---
 
 # OpenProse Skill
