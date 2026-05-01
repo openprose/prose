@@ -2,7 +2,7 @@
 set -eu
 
 # Installs the Node-based Prose CLI from a verified release tarball.
-DEFAULT_VERSION="0.1.1"
+DEFAULT_VERSION="0.1.2"
 DEFAULT_REPO_URL="https://github.com/openprose/prose"
 
 log() {

@@ -6,7 +6,9 @@ streams the selected harness output back to the terminal.
 
 The CLI does not replace the OpenProse VM or execute programs by itself. The
 selected harness still runs the prompt, loads the OpenProse skill/specs, spawns
-agents when available, and writes run state.
+agents when available, and writes run state. Prompts sent through the CLI tell
+the harness not to invoke the `prose` shell command again, which prevents
+recursive wrapper calls.
 
 ## Requirements
 
@@ -66,10 +68,15 @@ Maintainers can find the release process in [RELEASE.md](RELEASE.md).
 
 Select a harness with `--harness <name>` or `PROSE_HARNESS`.
 
-For externally sandboxed CI environments, Codex harnesses also honor
-`PROSE_CODEX_SANDBOX_MODE` (`read-only`, `workspace-write`, or
-`danger-full-access`) and `PROSE_CODEX_APPROVAL_POLICY` (`never`, `on-request`,
-`on-failure`, or `untrusted`) and forward those values to Codex.
+Codex harnesses default to `workspace-write`, skip Codex's Git-repository
+startup check, allow network access inside the workspace-write sandbox, and add
+the user's Codex home as a writable directory so OpenProse sub-sessions can be
+created. They also ask Codex shells to inherit the user's PATH so normal local
+tools are available.
+
+Override those defaults with `PROSE_CODEX_SANDBOX_MODE` (`read-only`,
+`workspace-write`, or `danger-full-access`) and `PROSE_CODEX_APPROVAL_POLICY`
+(`never`, `on-request`, `on-failure`, or `untrusted`).
 
 ## Skill Setup
 
