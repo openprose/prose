@@ -161,12 +161,6 @@ Return only \`${okToken}\` if the preloaded OpenProse skill text includes
 Do not edit files.
 `,
 	);
-
-	run("git", ["init", "--initial-branch=main"], { cwd: workspace });
-	run("git", ["config", "user.email", "ci@openprose.local"], { cwd: workspace });
-	run("git", ["config", "user.name", "OpenProse CI"], { cwd: workspace });
-	run("git", ["add", "smoke.md"], { cwd: workspace });
-	run("git", ["commit", "-m", "Add smoke program"], { cwd: workspace });
 }
 
 function smokeHarness(harness, options) {

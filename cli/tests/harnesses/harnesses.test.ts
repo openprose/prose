@@ -107,7 +107,7 @@ describe("process harnesses", () => {
 		expect(calls).toEqual([
 			{
 				command: "codex",
-				args: ["exec", "--ephemeral", prompt],
+				args: ["exec", "--skip-git-repo-check", "--ephemeral", prompt],
 			},
 		]);
 	});
@@ -131,6 +131,7 @@ describe("process harnesses", () => {
 					command: "codex",
 					args: [
 						"exec",
+						"--skip-git-repo-check",
 						"--ephemeral",
 						"--add-dir",
 						"/skills/open-prose",
@@ -178,6 +179,7 @@ describe("process harnesses", () => {
 					command: "codex",
 					args: [
 						"exec",
+						"--skip-git-repo-check",
 						"--ephemeral",
 						"--sandbox",
 						"danger-full-access",
@@ -270,7 +272,7 @@ describe("codex-sdk harness", () => {
 
 		expect(exitCode).toBe(0);
 		expect(io.stdout).toBe("sdk output\n");
-		expect(starts).toEqual([{ workingDirectory: "/repo" }]);
+		expect(starts).toEqual([{ skipGitRepoCheck: true, workingDirectory: "/repo" }]);
 		expect(factoryOptions).toEqual([{ apiKey: "test", env: { OPENAI_API_KEY: "test" } }]);
 	});
 
@@ -305,6 +307,7 @@ describe("codex-sdk harness", () => {
 		expect(starts).toEqual([
 			{
 				additionalDirectories: ["/skills/open-prose"],
+				skipGitRepoCheck: true,
 			},
 		]);
 		expect(factoryOptions).toEqual([
@@ -343,7 +346,7 @@ describe("codex-sdk harness", () => {
 		});
 
 		expect(exitCode).toBe(0);
-		expect(starts).toEqual([{ approvalPolicy: "never", sandboxMode: "danger-full-access" }]);
+		expect(starts).toEqual([{ approvalPolicy: "never", sandboxMode: "danger-full-access", skipGitRepoCheck: true }]);
 	});
 
 	test("maps failed turns to stderr and nonzero exit", async () => {

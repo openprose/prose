@@ -66,6 +66,11 @@ Maintainers can find the release process in [RELEASE.md](RELEASE.md).
 
 Select a harness with `--harness <name>` or `PROSE_HARNESS`.
 
+OpenProse commands are allowed to run from non-git directories. For Codex
+harnesses, the CLI sets Codex's git-repository check skip option while leaving
+Codex sandbox and approval policy controls to Codex and the environment
+settings below.
+
 For externally sandboxed CI environments, Codex harnesses also honor
 `PROSE_CODEX_SANDBOX_MODE` (`read-only`, `workspace-write`, or
 `danger-full-access`) and `PROSE_CODEX_APPROVAL_POLICY` (`never`, `on-request`,

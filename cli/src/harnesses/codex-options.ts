@@ -11,7 +11,7 @@ export function codexCliRuntimeArgs(
 	const sandboxMode = codexEnvOption("PROSE_CODEX_SANDBOX_MODE", CODEX_SANDBOX_MODES, env);
 	const approvalPolicy = codexEnvOption("PROSE_CODEX_APPROVAL_POLICY", CODEX_APPROVAL_POLICIES, env);
 
-	args.push("--ephemeral");
+	args.push("--skip-git-repo-check", "--ephemeral");
 	if (sandboxMode !== undefined) {
 		args.push("--sandbox", sandboxMode);
 	}
@@ -36,11 +36,12 @@ export function codexDeveloperInstructionArgs(systemPromptAppend: string | undef
 export function codexThreadRuntimeOptions(
 	env: Record<string, string | undefined> | undefined,
 	additionalDirectories: readonly string[] = [],
-): Pick<CodexThreadOptions, "additionalDirectories" | "approvalPolicy" | "sandboxMode"> {
+): Pick<CodexThreadOptions, "additionalDirectories" | "approvalPolicy" | "sandboxMode" | "skipGitRepoCheck"> {
 	const sandboxMode = codexEnvOption("PROSE_CODEX_SANDBOX_MODE", CODEX_SANDBOX_MODES, env);
 	const approvalPolicy = codexEnvOption("PROSE_CODEX_APPROVAL_POLICY", CODEX_APPROVAL_POLICIES, env);
 
 	return {
+		skipGitRepoCheck: true,
 		...(sandboxMode === undefined ? {} : { sandboxMode }),
 		...(approvalPolicy === undefined ? {} : { approvalPolicy }),
 		...(additionalDirectories.length === 0 ? {} : { additionalDirectories: [...additionalDirectories] }),
