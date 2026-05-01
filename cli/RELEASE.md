@@ -76,3 +76,10 @@ PROSE_INSTALL_DIR="$tmpdir/install" \
 
 Check that the GitHub Release for `v<version>` exists and includes all expected
 tarball and `.sha256` assets.
+
+## Post-Release Playtest
+
+After the mechanical verification passes, run a broader maintainer playtest
+session using the public npm package and release tarballs. See
+[POST_RELEASE_PLAYTEST.md](POST_RELEASE_PLAYTEST.md) for the parallel
+temp-directory workflow, scenario matrix, and issue-reporting guidance.
