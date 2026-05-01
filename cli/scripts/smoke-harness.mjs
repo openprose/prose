@@ -133,7 +133,7 @@ description: Prose CLI smoke skill
 
 This skill was installed by the Prose CLI harness smoke test.
 
-If you can see ${skillSentinel}, and the user asks to run the smoke program,
+If you can see ${skillSentinel}, and the user asks to run the smoke service,
 return only ${okToken}.
 
 ${skillSentinel}
@@ -148,17 +148,24 @@ ${skillSentinel}
 function writeWorkspace(workspace) {
 	mkdirSync(workspace, { recursive: true });
 	writeFileSync(
-		join(workspace, "smoke.md"),
+		join(workspace, "smoke.prose.md"),
 		`---
 name: harness-smoke
-kind: program
+kind: service
 ---
 
-### Instructions
+### Description
 
-Return only \`${okToken}\` if the preloaded OpenProse skill text includes
-\`${skillSentinel}\`. Otherwise return \`PROSE_HARNESS_SMOKE_BOOTSTRAP_MISSING\`.
-Do not edit files.
+Verifies the harness can see the preloaded OpenProse skill text.
+
+### Ensures
+
+- \`message\`: return only \`${okToken}\` if the preloaded OpenProse skill text includes \`${skillSentinel}\`
+- \`message\`: otherwise return only \`PROSE_HARNESS_SMOKE_BOOTSTRAP_MISSING\`
+
+### Strategies
+
+- Do not edit files.
 `,
 	);
 }
@@ -192,7 +199,7 @@ function smokeHarness(harness, options) {
 		}
 		const result = run(
 			process.execPath,
-			[options.cli, "run", "smoke.md", "--harness", harness],
+			[options.cli, "run", "smoke.prose.md", "--harness", harness],
 			{ cwd: workspace, env, timeout: options.timeout },
 		);
 		const output = `${result.stdout}\n${result.stderr}`;

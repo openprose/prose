@@ -1,7 +1,7 @@
 ---
 purpose: Primitive operation specifications — the atomic building blocks the OpenProse VM executes
 related:
-  - ../README.md
+  - ../SKILL.md
   - ../state/README.md
   - ../guidance/README.md
 glossary:
@@ -10,7 +10,7 @@ glossary:
 
 # primitives
 
-Formal specifications for OpenProse primitive operations. Primitives are the atomic units the VM dispatches — every Contract Markdown or ProseScript program ultimately resolves to one or more of these.
+Formal specifications for OpenProse primitive operations. Primitives are the atomic VM operations dispatched during execution — every Contract Markdown service or system, and every ProseScript script, ultimately resolves to one or more of these.
 
 ## Contents
 

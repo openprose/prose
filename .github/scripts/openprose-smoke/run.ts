@@ -12,7 +12,7 @@ type SmokeCase = {
   id: string;
   tier: SmokeTier;
   command: SmokeCommand;
-  program: string;
+  source: string;
   inputs?: Record<string, string>;
   expectedOutputs?: string[];
   timeoutSeconds?: number;
@@ -77,6 +77,7 @@ const DEFAULT_WORKSPACE_ROOT = "/tmp/openprose-smoke";
 const DEFAULT_MODEL = process.env.OPENPROSE_SMOKE_MODEL ?? "claude-sonnet-4-6";
 const DEFAULT_TIMEOUT_SECONDS = 360;
 const DEFAULT_MAX_TURNS = 10;
+const RUNS_DIR_SEGMENTS = [".agents", "prose", "runs"] as const;
 const CLAUDE_TOOLS = "Edit,Read,Write,Glob,Grep,Task,Skill";
 const CLAUDE_DISALLOWED_TOOLS = [
   "Read(//proc/**)",
@@ -178,7 +179,7 @@ async function main(): Promise<void> {
   }
 
   if (!options.dryRun) {
-    await assertProgramFilesExist(selectedCases, manifestDir);
+    await assertSourceFilesExist(selectedCases, manifestDir);
   }
 
   const results = await runWithConcurrency(
@@ -455,12 +456,12 @@ async function loadManifest(manifestPath: string): Promise<SmokeManifest> {
   return { version: 1, cases };
 }
 
-async function assertProgramFilesExist(cases: SmokeCase[], manifestDir: string): Promise<void> {
+async function assertSourceFilesExist(cases: SmokeCase[], manifestDir: string): Promise<void> {
   for (const smokeCase of cases) {
-    const programPath = path.join(manifestDir, smokeCase.program);
-    const programStat = await statIfExists(programPath);
-    if (!programStat?.isFile()) {
-      throw new Error(`Smoke case ${smokeCase.id} program does not exist: ${smokeCase.program}`);
+    const sourcePath = path.join(manifestDir, smokeCase.source);
+    const sourceStat = await statIfExists(sourcePath);
+    if (!sourceStat?.isFile()) {
+      throw new Error(`Smoke case ${smokeCase.id} source does not exist: ${smokeCase.source}`);
     }
   }
 }
@@ -478,11 +479,11 @@ function validateCase(entry: any, index: number): SmokeCase {
     throw new Error(`Smoke case ${entry.id} has invalid command: ${entry.command}`);
   }
   if (
-    typeof entry.program !== "string" ||
-    !entry.program.endsWith(".md") ||
-    path.basename(entry.program) !== entry.program
+    typeof entry.source !== "string" ||
+    !entry.source.endsWith(".prose.md") ||
+    path.basename(entry.source) !== entry.source
   ) {
-    throw new Error(`Smoke case ${entry.id} program must be a .md filename`);
+    throw new Error(`Smoke case ${entry.id} source must be a .prose.md filename`);
   }
   if (entry.inputs !== undefined && !isStringRecord(entry.inputs)) {
     throw new Error(`Smoke case ${entry.id} inputs must be an object of string values`);
@@ -501,7 +502,7 @@ function validateCase(entry: any, index: number): SmokeCase {
     id: entry.id,
     tier: entry.tier,
     command: entry.command,
-    program: entry.program,
+    source: entry.source,
     inputs: entry.inputs,
     expectedOutputs: entry.expectedOutputs ?? [],
     timeoutSeconds: entry.timeoutSeconds,
@@ -583,9 +584,9 @@ async function runCase(
     timedOut = run.timedOut;
   }
 
-  const runsDir = path.join(workspace, ".prose", "runs");
+  const runsDir = path.join(workspace, ...RUNS_DIR_SEGMENTS);
   if (await pathExists(runsDir)) {
-    const artifactRunsDir = path.join(caseResultsDir, ".prose", "runs");
+    const artifactRunsDir = path.join(caseResultsDir, ...RUNS_DIR_SEGMENTS);
     await fs.mkdir(path.dirname(artifactRunsDir), { recursive: true });
     await fs.cp(runsDir, artifactRunsDir, { recursive: true, force: true });
   }
@@ -645,7 +646,7 @@ async function copyFixtureMarkdownFiles(sourceDir: string, targetDir: string): P
 }
 
 function buildPrompt(smokeCase: SmokeCase): string {
-  const command = `prose ${smokeCase.command} ${smokeCase.program}`;
+  const command = `prose ${smokeCase.command} ${smokeCase.source}`;
   const inputs = Object.entries(smokeCase.inputs ?? {});
   const inputBlock =
     inputs.length > 0
@@ -656,22 +657,24 @@ function buildPrompt(smokeCase: SmokeCase): string {
   const artifactBlock =
     expectedOutputs.length > 0
       ? expectedOutputs
-          .map((output) => `- ${output}: .prose/runs/<run-id>/bindings/**/${output}.md`)
+          .map((output) => `- ${output}: .agents/prose/runs/<run-id>/bindings/**/${output}.md`)
           .join("\n")
       : "- No declared output bindings are expected.";
 
   return [
     "You are the OpenProse VM running a CI smoke fixture.",
     "Use the installed open-prose skill from this workspace at .claude/skills/open-prose.",
+    "Because this is a dedicated OpenProse VM instance, load and follow .claude/skills/open-prose/guidance/system-prompt.md before executing.",
     `Run this smoke command: ${command}`,
     "Caller inputs:",
     inputBlock,
     "Do not ask the user for input.",
-    "Bind caller inputs if the program requires them.",
-    "Write OpenProse state under .prose/runs/.",
+    "Bind caller inputs if the source requires them.",
+    "Use the default filesystem state backend unless the source explicitly requests another backend.",
+    "Satisfy the open-prose Run State Gate before reporting success.",
     "The smoke runner checks real files, not stdout. Before replying, ensure each declared output is published as a non-empty binding file:",
     artifactBlock,
-    "If a binding is missing, create it under the correct component binding directory before reporting success.",
+    "If a binding is missing, create it under the correct service binding directory before reporting success.",
     "Keep all reads and writes inside this workspace.",
     `Print a concise result summary with the run id and declared output names: ${outputs}.`,
   ].join("\n");
@@ -752,10 +755,10 @@ async function classifyLiveCase(
     reasons.push(`Claude CLI exited with code ${exitCode === null ? "null" : exitCode}.`);
   }
 
-  const runsDir = path.join(workspace, ".prose", "runs");
+  const runsDir = path.join(workspace, ...RUNS_DIR_SEGMENTS);
   const hasRunsDir = await pathExists(runsDir);
   if (!hasRunsDir) {
-    reasons.push("No .prose/runs directory was created.");
+    reasons.push("No .agents/prose/runs directory was created.");
   }
 
   const markerTexts = [
@@ -776,6 +779,22 @@ async function classifyLiveCase(
 
   const foundOutputs: string[] = [];
   const latestRunDir = hasRunsDir ? await findLatestRunDir(runsDir) : undefined;
+  if (hasRunsDir && !latestRunDir) {
+    reasons.push("No run directory was created under .agents/prose/runs.");
+  }
+  if (latestRunDir) {
+    for (const artifactName of ["manifest.run.md", "root.prose.md", "vm.log.md"]) {
+      const artifactPath = path.join(latestRunDir, artifactName);
+      const artifactStat = await statIfExists(artifactPath);
+      if (!artifactStat?.isFile()) {
+        reasons.push(`Missing required run artifact: ${artifactName}`);
+        continue;
+      }
+      if ((await readTextIfExists(artifactPath)).trim().length === 0) {
+        reasons.push(`Empty required run artifact: ${artifactName}`);
+      }
+    }
+  }
   for (const output of expectedOutputs) {
     const bindingPath = latestRunDir
       ? await findExpectedBinding(path.join(latestRunDir, "bindings"), output)

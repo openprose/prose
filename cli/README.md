@@ -1,12 +1,12 @@
 # Prose CLI
 
 Official shell entrypoint for OpenProse commands. The CLI turns invocations like
-`prose run inspector.md` into canonical OpenProse agent-session prompts, then
-streams the selected harness output back to the terminal.
+`prose run std/evals/inspector` into canonical OpenProse agent-session prompts,
+then streams the selected harness output back to the terminal.
 
-The CLI does not replace the OpenProse VM or execute programs by itself. The
-selected harness still runs the prompt, loads the OpenProse skill/specs, spawns
-agents when available, and writes run state.
+The CLI does not replace the OpenProse VM or execute services or systems by
+itself. The selected harness still runs the prompt, loads the OpenProse
+skill/specs, spawns agents when available, and writes run state.
 
 ## Requirements
 
@@ -44,7 +44,7 @@ For project-local use:
 
 ```bash
 npm install --save-dev ../path/to/prose/cli
-npx prose run inspector.md
+npx prose run std/evals/inspector
 ```
 
 The installer supports `PROSE_VERSION`, `PROSE_BASE_URL`, `PROSE_INSTALL_DIR`,
@@ -72,10 +72,10 @@ harness names both a provider family and the runtime used to call it.
 Examples:
 
 ```bash
-prose run inspector.md
-prose run inspector.md --harness codex-sdk
-prose run inspector.md --harness claude-sdk
-PROSE_HARNESS=claude-sdk prose run inspector.md
+prose run std/evals/inspector
+prose run std/evals/inspector --harness codex-sdk
+prose run co/systems/company-repo-checker --harness claude-sdk
+PROSE_HARNESS=claude-sdk prose run std/evals/inspector
 ```
 
 ## Harness Details
@@ -112,7 +112,7 @@ npx --yes skills@1.5.3 add openprose/prose --skill open-prose --global --yes --c
 Automatic setup only installs the provider you selected for that run, prints a
 short status line on success, and only shows the full `skills` installer output
 if setup fails. Use `prose doctor` to inspect local skill availability without
-running a program:
+running a service or system:
 
 ```bash
 prose doctor
@@ -140,10 +140,13 @@ root docs. `prose help` is local CLI help; use `prose --help` or
 `prose help <command>` to inspect shell usage.
 
 ```bash
-prose run programs/reviewer.md
-prose run programs/reviewer.md --harness claude-sdk
+prose run systems/reviewer.prose.md
+prose run co/systems/company-repo-checker --harness claude-sdk
+prose upgrade
+prose upgrade --dry-run
 prose doctor
-prose lint programs/reviewer.md
+prose lint systems/reviewer.prose.md
+prose preflight systems/reviewer.prose.md
 prose status --graph
 ```
 

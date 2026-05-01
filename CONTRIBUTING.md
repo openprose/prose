@@ -30,7 +30,7 @@ This isn't gatekeeping — it's to save you from wasted effort if the change run
 1. Fork the repository
 2. Create a branch for your change
 3. Make your changes
-4. Test locally (run example `.prose` programs)
+4. Test locally (run example `*.prose.md` services and systems)
 5. Submit the PR with a clear description
 
 ## Code of Conduct

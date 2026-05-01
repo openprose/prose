@@ -2,20 +2,23 @@
 role: sqlite-state-management
 status: experimental
 summary: |
-  SQLite-based state management for OpenProse programs. This approach persists
+  SQLite-based state management for OpenProse systems. This approach persists
   execution state to a SQLite database, enabling structured queries, atomic
   transactions, and flexible schema evolution.
 requires: sqlite3 CLI tool in PATH
 see-also:
   - ../prose.md: VM execution semantics
+  - ../forme.md: System wiring semantics
   - filesystem.md: File-based state (default, more prescriptive)
-  - in-context.md: In-context state (for simple programs)
+  - in-context.md: In-context state (for simple systems)
   - ../primitives/session.md: Session context and compaction guidelines
 ---
 
 # SQLite State Management (Experimental)
 
-This document describes how the OpenProse VM tracks execution state using a **SQLite database**. This is an experimental alternative to file-based state (`filesystem.md`) and in-context state (`in-context.md`).
+This document describes how the Prose VM tracks execution state for service and
+system runs using a **SQLite database**. This is an experimental alternative to
+file-based state (`filesystem.md`) and in-context state (`in-context.md`).
 
 ## Prerequisites
 
@@ -27,7 +30,7 @@ This document describes how the OpenProse VM tracks execution state using a **SQ
 | Linux | `apt install sqlite3` / `dnf install sqlite3` / etc. |
 | Windows | `winget install SQLite.SQLite` or download from sqlite.org |
 
-If `sqlite3` is not available, the VM will fall back to filesystem state and warn the user.
+If `sqlite3` is not available, the Prose VM will fall back to filesystem state and warn the user.
 
 ---
 
@@ -41,7 +44,7 @@ SQLite state provides:
 - **Single-file portability**: The entire run state is one `.db` file
 - **Concurrent access**: SQLite handles locking automatically
 
-**Key principle:** The database is a flexible workspace. The VM and subagents share it as a coordination mechanism, not a rigid contract.
+**Key principle:** The database is a flexible workspace. The Prose VM and spawned sessions share it as a coordination mechanism, not a rigid contract.
 
 ---
 
@@ -50,15 +53,21 @@ SQLite state provides:
 The database lives within the standard run directory:
 
 ```
-.prose/runs/{YYYYMMDD}-{HHMMSS}-{random}/
-├── state.db          # SQLite database (this file)
-├── program.prose     # Copy of running program
-└── attachments/      # Large outputs that don't fit in DB (optional)
+.agents/prose/runs/{YYYYMMDD}-{HHMMSS}-{random}/
+├── manifest.run.md         # Wiring graph, or minimal service manifest
+├── root.prose.md           # Copy of the invoked service or system source
+├── sources/                # Service, system, and pattern source snapshots
+├── state.db                # SQLite database for execution events and bindings
+└── attachments/            # Large outputs that don't fit in DB (optional)
 ```
 
 **Run ID format:** Same as filesystem state: `{YYYYMMDD}-{HHMMSS}-{random6}`
 
-Example: `.prose/runs/20260116-143052-a7b3c9/state.db`
+Example: `.agents/prose/runs/20260116-143052-a7b3c9/state.db`
+
+SQLite state preserves the same run identity and source snapshot files as the
+filesystem backend. It replaces filesystem `workspace/`, `bindings/`, and
+`vm.log.md` artifacts with database tables plus optional attachment files.
 
 ### Project-Scoped and User-Scoped Agents
 
@@ -67,7 +76,7 @@ Execution-scoped agents (the default) live in the per-run `state.db`. However, *
 For project-scoped agents, use a separate database:
 
 ```
-.prose/
+.agents/prose/
 ├── agents.db                 # Project-scoped agent memory (survives runs)
 └── runs/
     └── {id}/
@@ -77,28 +86,28 @@ For project-scoped agents, use a separate database:
 For user-scoped agents, use a database in the home directory:
 
 ```
-~/.prose/
+~/.agents/prose/
 └── agents.db                 # User-scoped agent memory (survives across projects)
 ```
 
-The `agents` and `agent_segments` tables for project-scoped agents live in `.prose/agents.db`, and for user-scoped agents live in `~/.prose/agents.db`. The VM initializes these databases on first use and provides the correct path to subagents.
+The `agents` and `agent_segments` tables for project-scoped agents live in `.agents/prose/agents.db`, and for user-scoped agents live in `~/.agents/prose/agents.db`. The Prose VM initializes these databases on first use and provides the correct path to spawned sessions.
 
 ---
 
 ## Responsibility Separation
 
-This section defines **who does what**. This is the contract between the VM and subagents.
+This section defines **who does what**. This is the contract between the Prose VM and spawned sessions.
 
 ### VM Responsibilities
 
-The VM (the orchestrating agent running the .prose program) is responsible for:
+The Prose VM (the orchestrating agent running the service or system) is responsible for:
 
 | Responsibility | Description |
 |----------------|-------------|
 | **Database creation** | Create `state.db` and initialize core tables at run start |
-| **Program registration** | Store the program source and metadata |
+| **Run registration** | Store the root source and metadata |
 | **Execution tracking** | Append completion records (not update-per-statement) |
-| **Subagent spawning** | Spawn sessions via the host `spawn_session` primitive with database path and instructions |
+| **Session spawning** | Spawn sessions via the host `spawn_session` primitive with database path and instructions |
 | **Parallel coordination** | Track branch status, implement join strategies |
 | **Loop management** | Track iteration counts, evaluate conditions |
 | **Error aggregation** | Record failures, manage retry state |
@@ -106,9 +115,9 @@ The VM (the orchestrating agent running the .prose program) is responsible for:
 
 **Critical:** The VM's conversation history is the primary execution state. The database exists for persistence and coordination, not as the source of truth during normal execution. The VM appends records on completion events—it does NOT update the database after every statement.
 
-### Subagent Responsibilities
+### Spawned Session Responsibilities
 
-Subagents (sessions spawned by the VM) are responsible for:
+Spawned sessions are responsible for:
 
 | Responsibility | Description |
 |----------------|-------------|
@@ -118,23 +127,23 @@ Subagents (sessions spawned by the VM) are responsible for:
 | **Attachment handling** | Write large outputs to `attachments/` directory, store path in DB |
 | **Atomic writes** | Use transactions when updating multiple related records |
 
-**Critical:** Subagents write ONLY to `bindings`, `agents`, and `agent_segments` tables. The VM owns the `execution` table entirely. Completion signaling happens through the substrate (`spawn_session` return), not database updates.
+**Critical:** Spawned sessions write ONLY to `bindings`, `agents`, and `agent_segments` tables. The Prose VM owns the `execution` table entirely. Completion signaling happens through the host `spawn_session` return, not database updates.
 
-**Critical:** Subagents must write their outputs directly to the database. The VM does not write subagent outputs—it only reads them after the subagent completes.
+**Critical:** Spawned sessions must write their outputs directly to the database. The Prose VM does not write spawned-session outputs; it only reads them after the session completes.
 
-**What subagents return to the VM:** A confirmation message with the binding location—not the full content:
+**What spawned sessions return to the VM:** A confirmation message with the binding location, not the full content:
 
 **Root scope:**
 ```
 Binding written: research
-Location: .prose/runs/20260116-143052-a7b3c9/state.db (bindings table, name='research', execution_id=NULL)
+Location: .agents/prose/runs/20260116-143052-a7b3c9/state.db (bindings table, name='research', execution_id=NULL)
 Summary: AI safety research covering alignment, robustness, and interpretability with 15 citations.
 ```
 
 **Inside block invocation:**
 ```
 Binding written: result
-Location: .prose/runs/20260116-143052-a7b3c9/state.db (bindings table, name='result', execution_id=43)
+Location: .agents/prose/runs/20260116-143052-a7b3c9/state.db (bindings table, name='result', execution_id=43)
 Execution ID: 43
 Summary: Processed chunk into 3 sub-parts for recursive processing.
 ```
@@ -160,8 +169,8 @@ The VM initializes these tables. This is a **minimum viable schema**—extend fr
 -- Run metadata
 CREATE TABLE IF NOT EXISTS run (
     id TEXT PRIMARY KEY,
-    program_path TEXT,
-    program_source TEXT,
+    root_path TEXT,
+    root_source TEXT,
     started_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now')),
     status TEXT DEFAULT 'running',  -- running, completed, failed, interrupted
@@ -181,11 +190,11 @@ CREATE TABLE IF NOT EXISTS execution (
     metadata TEXT  -- JSON for construct-specific data (loop iteration, parallel branch, etc.)
 );
 
--- All named values (input, output, let, const)
+-- All named values (binding input/output, let, const)
 CREATE TABLE IF NOT EXISTS bindings (
     name TEXT,
     execution_id INTEGER,  -- NULL for root scope, non-null for block invocations
-    kind TEXT,  -- input, output, let, const
+    binding TEXT,  -- input, output, let, const
     value TEXT,
     source_statement TEXT,
     created_at TEXT DEFAULT (datetime('now')),
@@ -214,13 +223,13 @@ CREATE TABLE IF NOT EXISTS agent_segments (
     UNIQUE(agent_name, segment_number)
 );
 
--- Import registry
+-- Resolved dependency cache
 CREATE TABLE IF NOT EXISTS imports (
     alias TEXT PRIMARY KEY,
-    source_url TEXT,
-    fetched_at TEXT,
-    inputs_schema TEXT,  -- JSON
-    outputs_schema TEXT  -- JSON
+    source_ref TEXT,
+    resolved_at TEXT,
+    requires_schema TEXT,  -- JSON
+    ensures_schema TEXT  -- JSON
 );
 ```
 
@@ -231,7 +240,7 @@ CREATE TABLE IF NOT EXISTS imports (
 - **Large values**: If a binding value exceeds ~100KB, write to `attachments/{name}.md` and store path
 - **Extension tables**: Prefix with `x_` (e.g., `x_metrics`, `x_audit_log`)
 - **Anonymous bindings**: Sessions without explicit capture (`session "..."` without `let x =`) use auto-generated names: `anon_001`, `anon_002`, etc.
-- **Import bindings**: Prefix with import alias for scoping: `research.findings`, `research.sources`
+- **Resolved service bindings**: Prefix with the resolved service alias for scoping: `research.findings`, `research.sources`
 - **Scoped bindings**: Use `execution_id` column—NULL for root scope, non-null for block invocations
 
 ### Scope Resolution Query
@@ -274,46 +283,46 @@ LIMIT 1;
 
 ## Database Interaction
 
-Both VM and subagents interact via the `sqlite3` CLI.
+The Prose VM and spawned sessions interact via the `sqlite3` CLI.
 
 ### From the VM
 
 ```bash
 # Initialize database
-sqlite3 .prose/runs/20260116-143052-a7b3c9/state.db "CREATE TABLE IF NOT EXISTS..."
+sqlite3 .agents/prose/runs/20260116-143052-a7b3c9/state.db "CREATE TABLE IF NOT EXISTS..."
 
 # Update execution position
-sqlite3 .prose/runs/20260116-143052-a7b3c9/state.db "
+sqlite3 .agents/prose/runs/20260116-143052-a7b3c9/state.db "
   INSERT INTO execution (statement_index, statement_text, status, started_at)
   VALUES (3, 'session \"Research AI safety\"', 'executing', datetime('now'))
 "
 
 # Read a binding
-sqlite3 -json .prose/runs/20260116-143052-a7b3c9/state.db "
+sqlite3 -json .agents/prose/runs/20260116-143052-a7b3c9/state.db "
   SELECT value FROM bindings WHERE name = 'research'
 "
 
 # Check parallel branch status
-sqlite3 .prose/runs/20260116-143052-a7b3c9/state.db "
+sqlite3 .agents/prose/runs/20260116-143052-a7b3c9/state.db "
   SELECT statement_text, status FROM execution
   WHERE json_extract(metadata, '$.parallel_id') = 'p1'
 "
 ```
 
-### From Subagents
+### From Spawned Sessions
 
-The VM provides the database path and instructions when spawning:
+The Prose VM provides the database path and instructions when spawning:
 
 **Root scope (outside block invocations):**
 
 ```
 Your output database is:
-  .prose/runs/20260116-143052-a7b3c9/state.db
+  .agents/prose/runs/20260116-143052-a7b3c9/state.db
 
 When complete, write your output:
 
-sqlite3 .prose/runs/20260116-143052-a7b3c9/state.db "
-  INSERT OR REPLACE INTO bindings (name, execution_id, kind, value, source_statement, updated_at)
+sqlite3 .agents/prose/runs/20260116-143052-a7b3c9/state.db "
+  INSERT OR REPLACE INTO bindings (name, execution_id, binding, value, source_statement, updated_at)
   VALUES (
     'research',
     NULL,  -- root scope
@@ -334,12 +343,12 @@ Execution scope:
   depth: 3
 
 Your output database is:
-  .prose/runs/20260116-143052-a7b3c9/state.db
+  .agents/prose/runs/20260116-143052-a7b3c9/state.db
 
 When complete, write your output:
 
-sqlite3 .prose/runs/20260116-143052-a7b3c9/state.db "
-  INSERT OR REPLACE INTO bindings (name, execution_id, kind, value, source_statement, updated_at)
+sqlite3 .agents/prose/runs/20260116-143052-a7b3c9/state.db "
+  INSERT OR REPLACE INTO bindings (name, execution_id, binding, value, source_statement, updated_at)
   VALUES (
     'result',
     43,  -- scoped to this execution
@@ -355,19 +364,19 @@ For persistent agents (execution-scoped):
 
 ```
 Your memory is in the database:
-  .prose/runs/20260116-143052-a7b3c9/state.db
+  .agents/prose/runs/20260116-143052-a7b3c9/state.db
 
 Read your current state:
-  sqlite3 -json .prose/runs/20260116-143052-a7b3c9/state.db "SELECT memory FROM agents WHERE name = 'captain'"
+  sqlite3 -json .agents/prose/runs/20260116-143052-a7b3c9/state.db "SELECT memory FROM agents WHERE name = 'captain'"
 
 Update when done:
-  sqlite3 .prose/runs/20260116-143052-a7b3c9/state.db "UPDATE agents SET memory = '...', updated_at = datetime('now') WHERE name = 'captain'"
+  sqlite3 .agents/prose/runs/20260116-143052-a7b3c9/state.db "UPDATE agents SET memory = '...', updated_at = datetime('now') WHERE name = 'captain'"
 
 Record this segment:
-  sqlite3 .prose/runs/20260116-143052-a7b3c9/state.db "INSERT INTO agent_segments (agent_name, segment_number, prompt, summary) VALUES ('captain', 3, '...', '...')"
+  sqlite3 .agents/prose/runs/20260116-143052-a7b3c9/state.db "INSERT INTO agent_segments (agent_name, segment_number, prompt, summary) VALUES ('captain', 3, '...', '...')"
 ```
 
-For project-scoped agents, use `.prose/agents.db`. For user-scoped agents, use `~/.prose/agents.db`.
+For project-scoped agents, use `.agents/prose/agents.db`. For user-scoped agents, use `~/.agents/prose/agents.db`.
 
 ---
 
@@ -408,7 +417,7 @@ For parallel blocks, **append completion records** rather than updating status. 
 INSERT INTO execution (statement_index, statement_text, status, metadata)
 VALUES (5, 'parallel:', 'started', '{"parallel_id": "p1", "branches": ["a", "b", "c"]}');
 
--- Subagents write to bindings table, spawn_session signals completion
+-- Spawned sessions write to bindings table, spawn_session signals completion
 -- VM appends completion record for each branch as it returns
 INSERT INTO execution (statement_index, statement_text, status, metadata)
 VALUES (5, 'parallel:a', 'completed', '{"parallel_id": "p1", "branch": "a"}');
@@ -474,13 +483,13 @@ When a binding value is too large for comfortable database storage (>100KB):
 3. Leave `value` as a summary or null
 
 ```sql
-INSERT INTO bindings (name, kind, value, attachment_path, source_statement)
+INSERT INTO bindings (name, binding, value, attachment_path, source_statement)
 VALUES (
   'full_report',
   'let',
   'Full analysis report (847KB) - see attachment',
   'attachments/full_report.md',
-  'let full_report = session "Generate comprehensive report"'
+  'let full_report = session "Generate report with findings, evidence, and caveats"'
 );
 ```
 
@@ -498,7 +507,7 @@ WHERE status = 'executing'
 ORDER BY id DESC LIMIT 1;
 
 -- Get all completed bindings
-SELECT name, kind, value, attachment_path FROM bindings;
+SELECT name, binding, value, attachment_path FROM bindings;
 
 -- Get agent memory states
 SELECT name, memory FROM agents;
@@ -548,11 +557,11 @@ The database is your workspace. Use it.
 
 | Aspect | filesystem.md | in-context.md | sqlite.md |
 |--------|---------------|---------------|-----------|
-| **State location** | `.prose/runs/{id}/` files | Conversation history | `.prose/runs/{id}/state.db` |
+| **State location** | `.agents/prose/runs/{id}/` files | Conversation history | `.agents/prose/runs/{id}/state.db` |
 | **Queryable** | Via file reads | No | Yes (SQL) |
 | **Atomic updates** | No | N/A | Yes (transactions) |
 | **Schema flexibility** | Rigid file structure | N/A | Flexible (add tables/columns) |
-| **Resumption** | Read state.md | Re-read conversation | Query database |
+| **Resumption** | Read vm.log.md | Re-read conversation | Query database |
 | **Complexity ceiling** | High | Low (<30 statements) | High |
 | **Dependency** | None | None | sqlite3 CLI |
 | **Status** | Stable | Stable | **Experimental** |
@@ -565,10 +574,10 @@ SQLite state management:
 
 1. Uses a **single database file** per run
 2. Uses **append-only writes** for minimal token overhead
-3. Provides **clear responsibility separation** between VM and subagents
+3. Provides **clear responsibility separation** between the Prose VM and spawned sessions
 4. Enables **structured queries** for state inspection
 5. Allows **flexible schema evolution** as needed
 6. Requires the **sqlite3 CLI** tool
 7. Is **experimental**—expect changes
 
-The core contract: the VM appends execution events (not updates); subagents write their own outputs directly to the database. The conversation is primary state; the database is for persistence and inspection.
+The core contract: the Prose VM appends execution events (not updates); spawned sessions write their own outputs directly to the database. The conversation is primary state; the database is for persistence and inspection.

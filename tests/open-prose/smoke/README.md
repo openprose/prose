@@ -9,11 +9,13 @@ docs, examples, and runtime guidance, not internal CI fixtures.
 The required smoke suite checks structural execution behavior:
 
 - the skill can be installed into a fresh harness workspace
-- Contract Markdown programs can be parsed and executed
-- Forme-style wiring surfaces still work
+- authored smoke fixtures use `*.prose.md`; this README remains plain Markdown
+- Contract Markdown services and systems can be parsed and executed
+- Forme-style service wiring surfaces still work
+- systems can instantiate local `kind: pattern` definitions through `pattern:`
 - ProseScript execution blocks still run
 - test manifests can produce `---test PASS`
-- declared output bindings are written under `.prose/runs/`
+- declared output bindings are written under `.agents/prose/runs/`
 
 The required tier does not judge prose quality. Semantic and golden-trajectory
 checks belong in advisory or manual eval tiers after smoke flake and cost are

@@ -8,7 +8,7 @@ export type CommandName =
 	| "install"
 	| "help"
 	| "examples"
-	| "migrate";
+	| "upgrade";
 
 export class CommandModelError extends Error {
 	readonly usage: string;
@@ -30,20 +30,20 @@ export const supportedCommands = [
 	"install",
 	"help",
 	"examples",
-	"migrate",
+	"upgrade",
 ] as const satisfies readonly CommandName[];
 
 const usageByCommand: Record<CommandName, string> = {
-	run: "prose run <file.md|file.prose|handle/slug> [inputs...]",
-	lint: "prose lint <file.md>",
-	preflight: "prose preflight <file.md>",
+	run: "prose run <file.prose.md|package/handle> [inputs...]",
+	lint: "prose lint <file.prose.md>",
+	preflight: "prose preflight <file.prose.md>",
 	test: "prose test <path>",
 	inspect: "prose inspect <run-id>",
 	status: "prose status [--graph]",
 	install: "prose install [--update]",
 	help: "prose help",
 	examples: "prose examples [name]",
-	migrate: "prose migrate <file.prose>",
+	upgrade: "prose upgrade [--dry-run]",
 };
 
 export function canonicalPrompt(command: CommandName, args: readonly string[]): string {
@@ -58,7 +58,10 @@ export function usageFor(command: CommandName): string {
 function validate(command: CommandName, args: readonly string[]): void {
 	switch (command) {
 		case "run":
-			requireAtLeastOne(command, args, "<file.md|file.prose|handle/slug>");
+			requireAtLeastOne(command, args, "<file.prose.md|package/handle>");
+			if (args[0]?.endsWith(".prose") || (args[0]?.endsWith(".md") && !args[0].endsWith(".prose.md"))) {
+				fail(command, `Expected <file.prose.md|package/handle> for 'prose run', got '${args[0]}'.`);
+			}
 			return;
 		case "test":
 			requireExactlyOne(command, args, "<path>");
@@ -68,16 +71,13 @@ function validate(command: CommandName, args: readonly string[]): void {
 			return;
 		case "lint":
 		case "preflight":
-			requireExactlyOne(command, args, "<file.md>");
-			if (!args[0]?.endsWith(".md")) {
-				fail(command, `Expected <file.md> for 'prose ${command}', got '${args[0] ?? ""}'.`);
+			requireExactlyOne(command, args, "<file.prose.md>");
+			if (!args[0]?.endsWith(".prose.md")) {
+				fail(command, `Expected <file.prose.md> for 'prose ${command}', got '${args[0] ?? ""}'.`);
 			}
 			return;
-		case "migrate":
-			requireExactlyOne(command, args, "<file.prose>");
-			if (!args[0]?.endsWith(".prose")) {
-				fail(command, `Expected <file.prose> for 'prose migrate', got '${args[0] ?? ""}'.`);
-			}
+		case "upgrade":
+			requireOnlyFlags(command, args, ["--dry-run"]);
 			return;
 		case "status":
 			requireOnlyFlags(command, args, ["--graph"]);
@@ -112,7 +112,7 @@ function requireExactlyOne(command: CommandName, args: readonly string[], label:
 	}
 }
 
-function requireOnlyFlags(command: "install" | "status", args: readonly string[], flags: readonly string[]): void {
+function requireOnlyFlags(command: "install" | "status" | "upgrade", args: readonly string[], flags: readonly string[]): void {
 	for (const arg of args) {
 		if (!flags.includes(arg)) {
 			fail(command, `Unexpected ${arg.startsWith("-") ? "option" : "argument"} '${arg}' for 'prose ${command}'.`);

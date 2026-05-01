@@ -4,13 +4,13 @@ import { CommandModelError, canonicalPrompt } from "../../src/prose/index.js";
 
 describe("command model", () => {
 	const supportedCases: Array<[Parameters<typeof canonicalPrompt>, string]> = [
-		[["run", ["program.md"]], "prose run program.md"],
-		[["run", ["script.prose"]], "prose run script.prose"],
-		[["run", ["handle/slug"]], "prose run handle/slug"],
-		[["run", ["program.md", "--topic", "two words"]], "prose run program.md --topic 'two words'"],
-		[["lint", ["program.md"]], "prose lint program.md"],
-		[["preflight", ["program.md"]], "prose preflight program.md"],
-		[["test", ["tests/programs"]], "prose test tests/programs"],
+		[["run", ["system.prose.md"]], "prose run system.prose.md"],
+		[["run", ["std/evals/inspector"]], "prose run std/evals/inspector"],
+		[["run", ["co/systems/company-repo-checker"]], "prose run co/systems/company-repo-checker"],
+		[["run", ["system.prose.md", "--topic", "two words"]], "prose run system.prose.md --topic 'two words'"],
+		[["lint", ["system.prose.md"]], "prose lint system.prose.md"],
+		[["preflight", ["system.prose.md"]], "prose preflight system.prose.md"],
+		[["test", ["tests/systems"]], "prose test tests/systems"],
 		[["inspect", ["run-123"]], "prose inspect run-123"],
 		[["status", []], "prose status"],
 		[["status", ["--graph"]], "prose status --graph"],
@@ -19,7 +19,8 @@ describe("command model", () => {
 		[["help", []], "prose help"],
 		[["examples", []], "prose examples"],
 		[["examples", ["01-hello-world"]], "prose examples 01-hello-world"],
-		[["migrate", ["legacy.prose"]], "prose migrate legacy.prose"],
+		[["upgrade", []], "prose upgrade"],
+		[["upgrade", ["--dry-run"]], "prose upgrade --dry-run"],
 	];
 
 	for (const [[command, args], prompt] of supportedCases) {
@@ -29,14 +30,21 @@ describe("command model", () => {
 	}
 
 	test("preserves user path text and extension", () => {
-		expect(canonicalPrompt("run", ["./flows/needs review.prose"])).toBe("prose run './flows/needs review.prose'");
+		expect(canonicalPrompt("run", ["./systems/needs review.prose.md"])).toBe(
+			"prose run './systems/needs review.prose.md'",
+		);
 	});
 
 	const validationCases: Array<[Parameters<typeof canonicalPrompt>, string, string]> = [
-		[["run", []], "Missing required argument <file.md|file.prose|handle/slug>", "prose run <file.md|file.prose|handle/slug> [inputs...]"],
+		[["run", []], "Missing required argument <file.prose.md|package/handle>", "prose run <file.prose.md|package/handle> [inputs...]"],
+		[["run", ["system.md"]], "Expected <file.prose.md|package/handle>", "prose run <file.prose.md|package/handle> [inputs...]"],
+		[["run", ["script.prose"]], "Expected <file.prose.md|package/handle>", "prose run <file.prose.md|package/handle> [inputs...]"],
 		[["inspect", []], "Missing required argument <run-id>", "prose inspect <run-id>"],
-		[["lint", ["program.prose"]], "Expected <file.md>", "prose lint <file.md>"],
-		[["migrate", ["program.md"]], "Expected <file.prose>", "prose migrate <file.prose>"],
+		[["lint", ["system.md"]], "Expected <file.prose.md>", "prose lint <file.prose.md>"],
+		[["preflight", ["system.md"]], "Expected <file.prose.md>", "prose preflight <file.prose.md>"],
+		[["upgrade", ["legacy.prose"]], "Unexpected argument 'legacy.prose'", "prose upgrade [--dry-run]"],
+		[["upgrade", ["--force"]], "Unexpected option '--force'", "prose upgrade [--dry-run]"],
+		[["upgrade", ["--dry-run", "--dry-run"]], "Duplicate option", "prose upgrade [--dry-run]"],
 		[["status", ["--json"]], "Unexpected option '--json'", "prose status [--graph]"],
 		[["status", ["--graph", "--graph"]], "Duplicate option", "prose status [--graph]"],
 		[["install", ["--graph"]], "Unexpected option '--graph'", "prose install [--update]"],

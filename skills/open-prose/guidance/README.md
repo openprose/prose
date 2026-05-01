@@ -1,17 +1,18 @@
 ---
-purpose: VM behavior guidance — patterns, antipatterns, and system-prompt instructions for executing OpenProse programs correctly
+purpose: VM behavior guidance and canonical authoring advice for OpenProse systems
 related:
-  - ../README.md
+  - ../SKILL.md
   - ../examples/README.md
   - ../state/README.md
 ---
 
 # guidance
 
-Guidance documents that shape how the OpenProse VM interprets and executes programs.
+Guidance documents that shape how authors write OpenProse artifacts and how
+the VM interprets and executes systems.
 
 ## Contents
 
-- `patterns.md` — recommended execution patterns; idioms that produce correct and efficient orchestration
-- `antipatterns.md` — common mistakes to avoid; failure modes observed in practice
+- `authoring.md` — canonical guidance for services, systems, patterns, tests, repositories, memory, and security boundaries
+- `tenets.md` — architectural tenets behind the OpenProse specs
 - `system-prompt.md` — system-prompt text injected when the skill is active

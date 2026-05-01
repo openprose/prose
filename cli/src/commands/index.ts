@@ -31,24 +31,22 @@ const forwardCommandDefinitions = {
 	},
 	lint: {
 		command: "lint",
-		summary: "Lint an OpenProse markdown program.",
-		usage: "lint <file.md> [--harness <name>]",
-	},
-	migrate: {
-		command: "migrate",
-		summary: "Migrate a legacy prose script.",
-		usage: "migrate <file.prose> [--harness <name>]",
+		summary: "Lint an OpenProse source file.",
+		usage: "lint <file.prose.md> [--harness <name>]",
 	},
 	preflight: {
 		command: "preflight",
-		summary: "Preflight an OpenProse program.",
-		usage: "preflight <file.md> [--harness <name>]",
+		summary: "Preflight an OpenProse service or system.",
+		usage: "preflight <file.prose.md> [--harness <name>]",
 	},
 	run: {
 		command: "run",
-		examples: ["<%= config.bin %> run inspector.md --harness codex-sdk"],
-		summary: "Run an OpenProse program.",
-		usage: "run <file.md|file.prose|handle/slug> [inputs...] [--harness <name>]",
+		examples: [
+			"<%= config.bin %> run std/evals/inspector --harness codex-sdk",
+			"<%= config.bin %> run co/systems/company-repo-checker",
+		],
+		summary: "Run an OpenProse service or system.",
+		usage: "run <file.prose.md|package/handle> [inputs...] [--harness <name>]",
 	},
 	status: {
 		command: "status",
@@ -59,6 +57,11 @@ const forwardCommandDefinitions = {
 		command: "test",
 		summary: "Run OpenProse tests.",
 		usage: "test <path> [--harness <name>]",
+	},
+	upgrade: {
+		command: "upgrade",
+		summary: "Upgrade legacy Prose sources.",
+		usage: "upgrade [--dry-run] [--harness <name>]",
 	},
 } satisfies Record<string, ForwardCommandDefinition>;
 
