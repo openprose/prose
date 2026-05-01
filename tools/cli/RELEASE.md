@@ -13,16 +13,16 @@ create or store an npm automation token for routine releases.
 2. Choose a new npm version. npm package versions are immutable, so never reuse
    a version that already exists on npm.
 3. Open a small release-prep pull request that updates:
-   - `cli/package.json`
-   - `cli/package-lock.json`
-   - `cli/install.sh` `DEFAULT_VERSION`
+   - `tools/cli/package.json`
+   - `tools/cli/package-lock.json`
+   - `tools/cli/install.sh` `DEFAULT_VERSION`
 4. Merge the release-prep pull request after CI passes.
 
 ## Dry Run
 
 Run the `CLI Publish` workflow manually from `main` with:
 
-- `version`: the exact version in `cli/package.json`
+- `version`: the exact version in `tools/cli/package.json`
 - `npm_tag`: `latest` for stable releases, or `next` for prereleases
 - `dry_run`: `true`
 
@@ -35,7 +35,7 @@ GitHub Release, or npm publication.
 After the dry run passes, run the same `CLI Publish` workflow again from `main`
 with:
 
-- `version`: the exact version in `cli/package.json`
+- `version`: the exact version in `tools/cli/package.json`
 - `npm_tag`: the intended npm dist-tag
 - `dry_run`: `false`
 
@@ -70,7 +70,7 @@ For the tarball installer, use a temporary install location too:
 tmpdir="$(mktemp -d)"
 PROSE_INSTALL_DIR="$tmpdir/install" \
   PROSE_BIN_DIR="$tmpdir/bin" \
-  sh -c "$(curl -fsSL https://raw.githubusercontent.com/openprose/prose/main/cli/install.sh)"
+  sh -c "$(curl -fsSL https://raw.githubusercontent.com/openprose/prose/main/tools/cli/install.sh)"
 "$tmpdir/bin/prose" --version
 ```
 

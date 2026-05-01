@@ -92,7 +92,7 @@ Install from the tarball flow in another scenario:
 PROSE_VERSION="$version" \
 PROSE_INSTALL_DIR="$root/install" \
 PROSE_BIN_DIR="$root/bin" \
-  sh -c "$(curl -fsSL https://raw.githubusercontent.com/openprose/prose/main/cli/install.sh)"
+  sh -c "$(curl -fsSL https://raw.githubusercontent.com/openprose/prose/main/tools/cli/install.sh)"
 prose_bin="$root/bin/prose"
 "$prose_bin" --version
 "$prose_bin" --help

@@ -27,7 +27,7 @@ prose --help
 From the GitHub release tarball:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/openprose/prose/main/cli/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/openprose/prose/main/tools/cli/install.sh | sh
 ```
 
 From a repository checkout:
