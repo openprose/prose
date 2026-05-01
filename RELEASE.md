@@ -1,6 +1,6 @@
 # OpenProse Plugin Release Process
 
-The plugin track (the `open-prose` plugin shipped at `prose/.claude-plugin/` and `prose/.codex-plugin/`) is versioned and released independently from the CLI track (`cli/RELEASE.md`).
+The plugin track (the `open-prose` plugin shipped at `prose/.claude-plugin/` and `prose/.codex-plugin/`) is versioned and released independently from the CLI track (`tools/cli/RELEASE.md`).
 
 ## Release steps
 
@@ -32,5 +32,5 @@ The Claude Code marketplace deduplicates by `plugin.json:version`. Pushing a fix
 
 ## What this process does NOT cover
 
-- The CLI track. See `cli/RELEASE.md` and `.github/workflows/cli-publish.yml` for the `@openprose/prose-cli` npm release flow.
+- The CLI track. See `tools/cli/RELEASE.md` and `.github/workflows/cli-publish.yml` for the `@openprose/prose-cli` npm release flow.
 - Marketplace publishing automation. Submission is a manual step against Anthropic's intake form.

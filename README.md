@@ -11,7 +11,7 @@
   <a href="skills/open-prose/SKILL.md">Docs</a> |
   <a href="skills/open-prose/examples/">Examples</a> |
   <a href="skills/open-prose/contract-markdown.md">Spec</a> |
-  <a href="cli/">CLI</a> |
+  <a href="tools/cli/">CLI</a> |
   <a href="packages/std/">Stdlib</a> |
   <a href="packages/co/">Company-as-Prose</a>
 </p>
@@ -112,7 +112,7 @@ claude -p "prose run hello.prose.md"
 codex exec "prose run hello.prose.md"
 ```
 
-The [CLI package](cli/) is the shell entrypoint for that same command language.
+The [CLI package](tools/cli/) is the shell entrypoint for that same command language.
 It defaults to the Codex SDK harness and remains a prompt-forwarding wrapper
 around OpenProse agent execution, not a separate VM. The CLI checks for the
 `open-prose` skill before invoking a harness and can install the selected
@@ -283,7 +283,8 @@ happens during execution.
 | [skills/open-prose/prose.md](skills/open-prose/prose.md) | VM execution semantics |
 | [skills/open-prose/deps.md](skills/open-prose/deps.md) | Git-native dependency resolution |
 | [skills/open-prose/examples/](skills/open-prose/examples/) | Example services, systems, tests, and patterns |
-| [cli/](cli/) | Optional shell wrapper for sending `prose ...` commands to agent harnesses |
+| [tools/](tools/) | Shippable tooling published as standalone artifacts |
+| [tools/cli/](tools/cli/) | Optional shell wrapper for sending `prose ...` commands to agent harnesses |
 | [skills/open-prose/guidance/authoring.md](skills/open-prose/guidance/authoring.md) | Authoring practices and antipatterns |
 | [skills/open-prose/state/](skills/open-prose/state/) | State backend specs |
 
