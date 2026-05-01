@@ -15,9 +15,11 @@ export interface WritableStreamLike {
 }
 
 export interface HarnessRunOptions {
+	additionalDirectories?: string[];
 	cwd?: string;
 	env?: Record<string, string | undefined>;
 	signal?: AbortSignal;
+	systemPromptAppend?: string;
 	stdout: WritableStreamLike;
 	stderr: WritableStreamLike;
 }
@@ -45,7 +47,7 @@ export type ProcessRunner = (
 ) => Promise<ProcessRunResult>;
 
 export type CodexThreadOptions = ThreadOptions;
-export type CodexSdkClientOptions = Pick<CodexOptions, "apiKey" | "env">;
+export type CodexSdkClientOptions = Pick<CodexOptions, "apiKey" | "config" | "env">;
 
 export interface CodexThread {
 	runStreamed(prompt: CodexInput, options?: TurnOptions): Promise<RunStreamedResult>;

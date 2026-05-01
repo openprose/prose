@@ -11,9 +11,12 @@ export { supportedCommands, canonicalPrompt, CommandModelError, usageFor } from 
 export { createHarness, HARNESS_NAMES } from "./harnesses/index.js";
 export {
 	buildOpenProseSkillInstallCommand,
+	buildOpenProseSkillBootstrapPrompt,
 	checkOpenProseSkill,
 	ensureOpenProseSkill,
 	installOpenProseSkill,
+	loadOpenProseSkillBootstrap,
+	resolveOpenProseSkill,
 	skillAgentsForHarness,
 } from "./skills/open-prose.js";
 
