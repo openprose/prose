@@ -3,7 +3,7 @@ import type { CommandName } from "../prose/index.js";
 import { canonicalPrompt, CommandModelError, usageFor } from "../prose/index.js";
 import { createHarness, type HarnessName } from "../harnesses/index.js";
 import type { Harness, WritableStreamLike } from "../harnesses/types.js";
-import { ensureOpenProseSkill } from "../skills/open-prose.js";
+import { ensureOpenProseSkill, loadOpenProseSkillBootstrap, type OpenProseSkillBootstrap } from "../skills/open-prose.js";
 
 export interface SkillPreflightOptions {
 	harness: string;
@@ -14,6 +14,7 @@ export interface SkillPreflightOptions {
 }
 
 export type SkillPreflight = (options: SkillPreflightOptions) => Promise<void>;
+export type SkillBootstrapLoader = (options: SkillPreflightOptions) => Promise<OpenProseSkillBootstrap | undefined>;
 
 export interface ForwardRunOptions {
 	command: CommandName;
@@ -24,6 +25,7 @@ export interface ForwardRunOptions {
 	stderr: WritableStreamLike;
 	signal?: AbortSignal;
 	harnessFactory?: (name: string) => Harness;
+	skillBootstrap?: SkillBootstrapLoader | false;
 	skillPreflight?: SkillPreflight | false;
 }
 
@@ -90,9 +92,18 @@ export async function runForwardedProseCommand(options: ForwardRunOptions): Prom
 	if (shouldRunSkillPreflight(options)) {
 		await runSkillPreflight(harness, options);
 	}
+	const skillBootstrap = shouldLoadSkillBootstrap(options)
+		? await runSkillBootstrapLoader(harness, options)
+		: undefined;
 
 	const selectedHarness = (options.harnessFactory ?? createHarness)(harness);
 	return selectedHarness.run(prompt, {
+		...(skillBootstrap === undefined
+			? {}
+			: {
+					additionalDirectories: skillBootstrap.additionalDirectories,
+					systemPromptAppend: skillBootstrap.systemPromptAppend,
+				}),
 		cwd: options.cwd,
 		env: { ...options.env },
 		stdout: options.stdout,
@@ -107,6 +118,14 @@ function shouldRunSkillPreflight(options: ForwardRunOptions): boolean {
 	}
 
 	return options.skillPreflight !== undefined || options.harnessFactory === undefined;
+}
+
+function shouldLoadSkillBootstrap(options: ForwardRunOptions): boolean {
+	if (options.skillBootstrap === false || options.skillPreflight === false) {
+		return false;
+	}
+
+	return options.skillBootstrap !== undefined || options.skillPreflight !== undefined || options.harnessFactory === undefined;
 }
 
 async function runSkillPreflight(harness: string, options: ForwardRunOptions): Promise<void> {
@@ -127,6 +146,27 @@ async function runSkillPreflight(harness: string, options: ForwardRunOptions): P
 		env: options.env,
 		stderr: options.stderr,
 		...(options.signal === undefined ? {} : { signal: options.signal }),
+	});
+}
+
+async function runSkillBootstrapLoader(
+	harness: string,
+	options: ForwardRunOptions,
+): Promise<OpenProseSkillBootstrap | undefined> {
+	if (options.skillBootstrap !== undefined && options.skillBootstrap !== false) {
+		return options.skillBootstrap({
+			harness,
+			cwd: options.cwd,
+			env: options.env,
+			stderr: options.stderr,
+			...(options.signal === undefined ? {} : { signal: options.signal }),
+		});
+	}
+
+	return loadOpenProseSkillBootstrap({
+		harness,
+		cwd: options.cwd,
+		env: options.env,
 	});
 }
 

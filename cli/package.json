@@ -51,6 +51,7 @@
     "build": "npm run clean && tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest --run",
+    "smoke:harness": "node scripts/smoke-harness.mjs",
     "dev": "tsx src/index.ts",
     "clean": "rm -rf dist",
     "release:tarball": "node scripts/build-release-tarball.mjs",

@@ -57,6 +57,19 @@ export interface EnsureOpenProseSkillResult {
 	statuses: SkillStatus[];
 }
 
+export interface OpenProseSkillBootstrap {
+	additionalDirectories: string[];
+	skillPath: string;
+	skillRoot: string;
+	systemPromptAppend: string;
+}
+
+export interface LoadOpenProseSkillBootstrapOptions {
+	harness: string;
+	cwd: string;
+	env: Readonly<Record<string, string | undefined>>;
+}
+
 export function skillAgentsForHarness(harness: string): SkillAgent[] {
 	switch (harness as HarnessName) {
 		case "codex":
@@ -69,6 +82,78 @@ export function skillAgentsForHarness(harness: string): SkillAgent[] {
 		default:
 			return [];
 	}
+}
+
+export async function loadOpenProseSkillBootstrap(
+	options: LoadOpenProseSkillBootstrapOptions,
+): Promise<OpenProseSkillBootstrap | undefined> {
+	const resolved = await resolveOpenProseSkill(options);
+	if (resolved === undefined) {
+		return undefined;
+	}
+
+	const skillText = await readFile(resolved.path, "utf8");
+	const skillRoot = dirname(resolved.path);
+	return {
+		additionalDirectories: [skillRoot],
+		skillPath: resolved.path,
+		skillRoot,
+		systemPromptAppend: buildOpenProseSkillBootstrapPrompt({
+			skillPath: resolved.path,
+			skillRoot,
+			skillText,
+		}),
+	};
+}
+
+export function buildOpenProseSkillBootstrapPrompt(options: {
+	skillPath: string;
+	skillRoot: string;
+	skillText: string;
+}): string {
+	return [
+		"<open-prose-introduction>",
+		"You are running inside the Prose CLI harness.",
+		"The OpenProse skill is preloaded below and must be treated as active for this run.",
+		`OpenProse skill root: ${options.skillRoot}`,
+		`OpenProse SKILL.md path: ${options.skillPath}`,
+		"Resolve every file referenced by this SKILL.md relative to the OpenProse skill root.",
+		"When additional OpenProse skill files are needed, read them from that skill root.",
+		"Do not invoke the `prose`, `npx prose`, or `@openprose/prose-cli` shell command; that would recursively call this wrapper.",
+		"</open-prose-introduction>",
+		"",
+		"<open-prose-skill>",
+		options.skillText.trimEnd(),
+		"</open-prose-skill>",
+	].join("\n");
+}
+
+export async function resolveOpenProseSkill(
+	options: LoadOpenProseSkillBootstrapOptions,
+): Promise<SkillLocation | undefined> {
+	const agents = skillAgentsForHarness(options.harness);
+	if (agents.length === 0) {
+		return undefined;
+	}
+
+	const home = homeFromEnv(options.env);
+	const sharedSkillPath = join(home, ".agents", "skills", OPEN_PROSE_SKILL_NAME, "SKILL.md");
+	const sharedSkill = {
+		agent: "codex" as const,
+		scope: "user" as const,
+		path: sharedSkillPath,
+		...(await inspectSkill(sharedSkillPath)),
+	};
+	if (sharedSkill.valid) {
+		return sharedSkill;
+	}
+
+	const statuses = await checkOpenProseSkill({
+		agents,
+		cwd: options.cwd,
+		env: options.env,
+	});
+	return statuses.flatMap((status) => status.locations).find((location) => location.valid);
 }
 
 export async function checkOpenProseSkill(options: CheckOpenProseSkillOptions): Promise<SkillStatus[]> {

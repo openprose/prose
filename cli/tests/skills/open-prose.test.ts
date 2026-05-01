@@ -4,10 +4,13 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { ProcessRunner } from "../../src/harnesses/index.js";
 import {
+	buildOpenProseSkillBootstrapPrompt,
 	buildOpenProseSkillInstallCommand,
 	checkOpenProseSkill,
 	ensureOpenProseSkill,
 	installOpenProseSkill,
+	loadOpenProseSkillBootstrap,
+	resolveOpenProseSkill,
 } from "../../src/skills/open-prose.js";
 
 function tempDir(): string {
@@ -28,6 +31,22 @@ description: Test skill
 	);
 }
 
+function writeSentinelSkill(path: string, sentinel: string): void {
+	mkdirSync(path, { recursive: true });
+	writeFileSync(
+		join(path, "SKILL.md"),
+		`---
+name: open-prose
+description: Test skill
+---
+
+# OpenProse
+
+${sentinel}
+`,
+	);
+}
+
 function memoryStream() {
 	let output = "";
 	return {
@@ -39,6 +58,70 @@ function memoryStream() {
 }
 
 describe("OpenProse skill checks", () => {
+	it("builds a bootstrap prompt with the full skill text and skill root instructions", () => {
+		const bootstrap = buildOpenProseSkillBootstrapPrompt({
+			skillPath: "/home/prose/.agents/skills/open-prose/SKILL.md",
+			skillRoot: "/home/prose/.agents/skills/open-prose",
+			skillText: "---\nname: open-prose\n---\n\n# Skill\nBOOTSTRAP_SENTINEL\n",
+		});
+
+		expect(bootstrap).toContain("BOOTSTRAP_SENTINEL");
+		expect(bootstrap).toContain("OpenProse skill root: /home/prose/.agents/skills/open-prose");
+		expect(bootstrap).toContain("OpenProse SKILL.md path: /home/prose/.agents/skills/open-prose/SKILL.md");
+		expect(bootstrap).toContain("Resolve every file referenced by this SKILL.md relative to the OpenProse skill root.");
+		expect(bootstrap).toContain("Do not invoke the `prose`, `npx prose`, or `@openprose/prose-cli` shell command");
+		expect(bootstrap).toContain("<open-prose-introduction>");
+		expect(bootstrap).toContain("</open-prose-introduction>");
+		expect(bootstrap).toContain("<open-prose-skill>");
+		expect(bootstrap).toContain("</open-prose-skill>");
+	});
+
+	it("loads the shared installed skill into a harness bootstrap", async () => {
+		const home = tempDir();
+		const cwd = tempDir();
+		const skillRoot = join(home, ".agents", "skills", "open-prose");
+
+		try {
+			writeSentinelSkill(skillRoot, "SHARED_BOOTSTRAP_SENTINEL");
+
+			const bootstrap = await loadOpenProseSkillBootstrap({
+				harness: "claude-sdk",
+				cwd,
+				env: { HOME: home },
+			});
+
+			expect(bootstrap?.skillRoot).toBe(skillRoot);
+			expect(bootstrap?.skillPath).toBe(join(skillRoot, "SKILL.md"));
+			expect(bootstrap?.additionalDirectories).toEqual([skillRoot]);
+			expect(bootstrap?.systemPromptAppend).toContain("SHARED_BOOTSTRAP_SENTINEL");
+			expect(bootstrap?.systemPromptAppend).toContain(`OpenProse skill root: ${skillRoot}`);
+		} finally {
+			rmSync(home, { recursive: true, force: true });
+			rmSync(cwd, { recursive: true, force: true });
+		}
+	});
+
+	it("falls back to provider-specific installed skill locations", async () => {
+		const home = tempDir();
+		const cwd = tempDir();
+		const skillRoot = join(home, ".claude", "skills", "open-prose");
+
+		try {
+			writeSentinelSkill(skillRoot, "CLAUDE_BOOTSTRAP_SENTINEL");
+
+			const resolved = await resolveOpenProseSkill({
+				harness: "claude",
+				cwd,
+				env: { HOME: home },
+			});
+
+			expect(resolved?.path).toBe(join(skillRoot, "SKILL.md"));
+		} finally {
+			rmSync(home, { recursive: true, force: true });
+			rmSync(cwd, { recursive: true, force: true });
+		}
+	});
+
 	it("detects Codex user skills without treating them as Claude skills", async () => {
 		const home = tempDir();
 		const cwd = tempDir();

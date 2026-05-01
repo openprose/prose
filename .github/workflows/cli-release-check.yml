@@ -53,6 +53,9 @@ jobs:
       - name: Check release helper syntax
         run: node --check cli/scripts/build-release-tarball.mjs
 
+      - name: Check harness smoke helper syntax
+        run: node --check cli/scripts/smoke-harness.mjs
+
   node-checks:
     name: Node ${{ matrix.node-version }} checks
     runs-on: ubuntu-latest

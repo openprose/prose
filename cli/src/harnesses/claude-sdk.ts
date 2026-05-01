@@ -27,10 +27,22 @@ export function createClaudeSdkHarness(options: ClaudeSdkHarnessOptions = {}): H
 					prompt,
 					options: {
 						abortController,
+						...(runOptions.additionalDirectories === undefined
+							? {}
+							: { additionalDirectories: runOptions.additionalDirectories }),
 						...(runOptions.cwd === undefined ? {} : { cwd: runOptions.cwd }),
 						...(runOptions.env === undefined ? {} : { env: runOptions.env }),
 						includePartialMessages: true,
 						stderr: (chunk: string) => runOptions.stderr.write(chunk),
+						...(runOptions.systemPromptAppend === undefined
+							? {}
+							: {
+									systemPrompt: {
+										type: "preset",
+										preset: "claude_code",
+										append: runOptions.systemPromptAppend,
+									},
+								}),
 					},
 				}),
 			).catch((error: unknown) => {

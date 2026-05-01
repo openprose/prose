@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -120,6 +120,64 @@ describe("runForwardedProseCommand", () => {
 		expect(io.stderr).toBe("err");
 	});
 
+	it("loads OpenProse skill bootstrap after preflight and passes it to the harness", async () => {
+		const home = mkdtempSync(join(tmpdir(), "prose-home-"));
+		const cwd = mkdtempSync(join(tmpdir(), "prose-cwd-"));
+		const io = memoryStreams();
+		const skillRoot = join(home, ".agents", "skills", "open-prose");
+		const seen: Array<{
+			additionalDirectories: string[] | undefined;
+			systemPromptAppend: string | undefined;
+			prompt: string;
+		}> = [];
+
+		try {
+			mkdirSync(skillRoot, { recursive: true });
+			writeFileSync(
+				join(skillRoot, "SKILL.md"),
+				`---
+name: open-prose
+description: Test skill
+---
+
+# OpenProse
+
+FORWARDED_BOOTSTRAP_SENTINEL
+`,
+			);
+
+			await runForwardedProseCommand({
+				command: "run",
+				argv: ["flow.md", "--harness", "codex-sdk"],
+				cwd,
+				env: { HOME: home },
+				stdout: io.streams.stdout,
+				stderr: io.streams.stderr,
+				skillPreflight: async () => undefined,
+				harnessFactory: () => ({
+					name: "codex-sdk",
+					async run(prompt, options) {
+						seen.push({
+							additionalDirectories: options.additionalDirectories,
+							systemPromptAppend: options.systemPromptAppend,
+							prompt,
+						});
+						return 0;
+					},
+				}),
+			});
+
+			expect(seen).toHaveLength(1);
+			expect(seen[0]?.prompt).toContain("prose run flow.md");
+			expect(seen[0]?.additionalDirectories).toEqual([skillRoot]);
+			expect(seen[0]?.systemPromptAppend).toContain("FORWARDED_BOOTSTRAP_SENTINEL");
+			expect(seen[0]?.systemPromptAppend).toContain(`OpenProse skill root: ${skillRoot}`);
+		} finally {
+			rmSync(home, { recursive: true, force: true });
+			rmSync(cwd, { recursive: true, force: true });
+		}
+	});
+
 	it("passes abort signals to harnesses", async () => {
 		const io = memoryStreams();
 		const signal = new AbortController().signal;
@@ -156,6 +214,7 @@ describe("runForwardedProseCommand", () => {
 			env: {},
 			stdout: io.streams.stdout,
 			stderr: io.streams.stderr,
+			skillBootstrap: false,
 			skillPreflight: async ({ harness, cwd }) => void calls.push(`preflight:${harness}:${cwd}`),
 			harnessFactory: () => ({
 				name: "mock",
@@ -181,6 +240,7 @@ describe("runForwardedProseCommand", () => {
 				env: {},
 				stdout: io.streams.stdout,
 				stderr: io.streams.stderr,
+				skillBootstrap: false,
 				skillPreflight: async () => void (preflightCalled = true),
 				harnessFactory: () => ({
 					name: "mock",
