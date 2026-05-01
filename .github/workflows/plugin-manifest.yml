@@ -1,0 +1,71 @@
+name: Plugin Manifest
+
+on:
+  pull_request:
+    paths:
+      - ".claude-plugin/**"
+      - ".codex-plugin/**"
+      - ".agents/plugins/**"
+      - "skills/open-prose/SKILL.md"
+      - "scripts/bump-version.sh"
+      - ".version-bump.json"
+      - "CHANGELOG.md"
+      - ".github/workflows/plugin-manifest.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - ".claude-plugin/**"
+      - ".codex-plugin/**"
+      - ".agents/plugins/**"
+      - "skills/open-prose/SKILL.md"
+      - "scripts/bump-version.sh"
+      - ".version-bump.json"
+      - "CHANGELOG.md"
+      - ".github/workflows/plugin-manifest.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: plugin-manifest-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate plugin manifests
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate Claude plugin manifest
+        run: |
+          node -e '
+            const fs = require("fs");
+            const m = JSON.parse(fs.readFileSync(".claude-plugin/plugin.json","utf8"));
+            if (!m.name || !m.version) { console.error("missing name/version"); process.exit(1); }
+            const skillsField = String(m.skills || "./skills").replace(/^\.\//,"").replace(/\/$/,"");
+            const target = skillsField + "/open-prose/SKILL.md";
+            if (!fs.existsSync(target)) { console.error("skills path not found: " + target); process.exit(1); }
+            console.log("ok: claude plugin manifest");
+          '
+
+      - name: Validate Codex plugin manifest
+        run: |
+          node -e '
+            const fs = require("fs");
+            const m = JSON.parse(fs.readFileSync(".codex-plugin/plugin.json","utf8"));
+            if (!m.name || !m.version) { console.error("missing name/version"); process.exit(1); }
+            if (!m.interface || !m.interface.displayName) { console.error("missing interface.displayName"); process.exit(1); }
+            const skillsField = String(m.skills || "./skills").replace(/^\.\//,"").replace(/\/$/,"");
+            const target = skillsField + "/open-prose/SKILL.md";
+            if (!fs.existsSync(target)) { console.error("skills path not found: " + target); process.exit(1); }
+            const mp = JSON.parse(fs.readFileSync(".agents/plugins/marketplace.json","utf8"));
+            if (!Array.isArray(mp.plugins) || mp.plugins[0].name !== "open-prose") { console.error("agents/plugins/marketplace.json mismatch"); process.exit(1); }
+            console.log("ok: codex plugin manifest");
+          '
+
+      - name: Plugin versions in sync
+        run: ./scripts/bump-version.sh --check

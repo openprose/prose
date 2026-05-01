@@ -43,3 +43,13 @@ jobs:
           test -f "$temp_home/.claude/skills/open-prose/SKILL.md"
           grep -q "name: open-prose" "$temp_home/.agents/skills/open-prose/SKILL.md"
           grep -q "name: open-prose" "$temp_home/.claude/skills/open-prose/SKILL.md"
+
+      - name: Discoverability smoke (skills list)
+        run: |
+          set -euo pipefail
+          temp_home="$RUNNER_TEMP/list-home"
+          mkdir -p "$temp_home"
+          env HOME="$temp_home" XDG_CONFIG_HOME="$temp_home/.config" \
+            npx -y skills@1.5.3 list openprose/prose | tee /tmp/skills-list.txt
+          grep -q "open-prose" /tmp/skills-list.txt
+
