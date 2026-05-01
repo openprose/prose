@@ -1,14 +1,14 @@
 ---
 role: execution-semantics
 summary: |
-  How to execute OpenProse programs. You embody the OpenProse VM—a virtual machine that
+  How to execute OpenProse services and systems. You embody the OpenProse VM—a virtual machine that
   reads a manifest (produced by Forme), spawns sessions through the host's
   `spawn_session` primitive, manages state via the filesystem, and coordinates
-  execution across components. Read this file to run programs.
+  execution across services and systems. Read this file to run service and system files.
 see-also:
-  - contract-markdown.md: Program and service file format
+  - contract-markdown.md: System and service file format
   - forme.md: Wiring semantics (Phase 1 — produces the manifest you consume)
-  - prosescript.md: Imperative syntax for .prose files and pinned execution blocks
+  - prosescript.md: Imperative syntax for pinned execution blocks
   - state/filesystem.md: File-system state management
   - primitives/session.md: Session context and compaction guidelines
   - guidance/tenets.md: Design reasoning behind the specs
@@ -16,7 +16,7 @@ see-also:
 
 # OpenProse VM
 
-This document defines how to execute OpenProse programs. You are the OpenProse VM—an intelligent virtual machine that reads a wiring manifest, spawns subagent sessions for each component, passes data between them via filesystem pointers, and returns the program's output.
+This document defines how to execute OpenProse services and systems. You are the OpenProse VM—an intelligent virtual machine that reads a service file or wiring manifest, spawns subagent sessions for each service, passes data between them via filesystem pointers, and returns the run's output.
 
 ## Agent Commands
 
@@ -26,78 +26,79 @@ shell executable. If a host also ships a native CLI, the same strings can be
 passed to it. Otherwise wrap the command in the host runner, for example:
 
 ```bash
-claude -p "prose run program.md"
-codex exec "prose run program.md"
+claude -p "prose run system.prose.md"
+codex exec "prose run system.prose.md"
 ```
 
 | Command                     | Action                                                          |
 | --------------------------- | --------------------------------------------------------------- |
-| `prose run <file.md>`            | Execute a local `.md` program                                             |
-| `prose run <file.prose>`         | Execute a ProseScript program                                             |
-| `prose run <host>/<owner>/<repo>` | Explicit git host (e.g. `github.com/alice/research`); cache in `.deps/`   |
+| `prose run <file.prose.md>`      | Execute a local service or system                                        |
+| `prose run <host>/<owner>/<repo>` | Explicit git host (e.g. `github.com/alice/research`); resolve from `.agents/prose/deps/` |
+| `prose run std/...` / `co/...`     | Expand OpenProse package shorthand and resolve from `.agents/prose/deps/github.com/openprose/prose/` |
 | `prose run <owner>/<repo>`       | Reserved for the OpenProse registry (future home at `p.prose.md`)         |
-| `prose run ...@<version>`        | Pin to a SHA or tag; fetch if that version isn't cached                   |
-| `prose run ... --offline`        | Never fetch; error if not in `.deps/`                                     |
-| `prose lint <file.md>`      | Validate structure, schema, shapes, and contracts               |
-| `prose preflight <file.md>` | Check dependencies and environment variables                    |
+| `prose run ...@<version>`        | Pin to a SHA or tag; require that version in `.agents/prose/deps/`                     |
+| `prose run ... --offline`        | Require disk-only resolution; error if not in `.agents/prose/deps/`                   |
+| `prose lint <file.prose.md>`      | Validate structure, schema, shapes, and contracts               |
+| `prose preflight <file.prose.md>` | Check dependencies and environment variables                    |
 | `prose test <path>`         | Run test(s) and report results                                  |
-| `prose install`             | Install dependencies from `use` statements into `.deps/`        |
+| `prose install`             | Install dependencies from `use` statements into `.agents/prose/deps/`        |
+| `prose install --update`    | Update pinned dependency SHAs                                   |
 | `prose inspect <run-id>`    | Evaluate a completed run                                        |
 | `prose status`              | Show recent runs                                                |
 | `prose status --graph`      | Show run dependency graph                                       |
+| `prose upgrade --dry-run`   | Inspect old structures and report the migration plan            |
+| `prose upgrade`             | Migrate old OpenProse structures to current conventions          |
 | `prose help`                | Show help and examples                                          |
 | `prose examples`            | List or run bundled examples                                    |
 
-### Remote Programs
+### Remote Systems
 
-`prose run` and `use` statements share one resolution algorithm: prefer the
-locally installed copy in `.deps/`, fetch from the source host as fallback.
-This is the cache-first behavior Deno and Go modules converged on after
-trying other shapes.
+`prose run` and `use` statements share one resolution algorithm: read the
+locally installed copy in `.agents/prose/deps/`. Fetching and pinning belong to
+`prose install`; execution does not auto-install missing dependencies.
 
 The canonical identifier is `host/owner/repo`. Any git host works —
 write the host explicitly. GitHub is the 90% case but nothing in the
 resolver privileges it.
 
 ```bash
-# Raw URL — fetched every time, no caching
-prose run https://example.com/program.md
-
 # Canonical: explicit git host
-prose run github.com/alice/research              # cached copy wins; clones if missing
-prose run github.com/alice/research@0.3.1        # pin to tag; fetch iff that version isn't cached
+prose install                                    # populate .agents/prose/deps/ from declared deps
+prose run github.com/alice/research              # installed copy wins; errors if missing
+prose run github.com/alice/research@0.3.1        # pin to installed tag
 prose run github.com/alice/research@abc1234      # pin to SHA
 prose run gitlab.com/alice/research              # any git host
 prose run git.company.com/team/repo              # self-hosted
+prose run std/evals/inspector                    # OpenProse package shorthand
 
 # Flags
-prose run github.com/alice/research --offline    # never hit the network; error if not cached
+prose run github.com/alice/research --offline    # assert disk-only resolution
 ```
 
 **Resolution rules:**
 
-- Starts with `http://` or `https://` → fetch directly (no caching)
-- First path segment contains a dot (looks like a hostname) → explicit git host; cache-first under `.deps/{host}/{owner}/{repo}/`, clone from that host if not cached
-- Ends with `@{version}` → resolve that version (SHA or tag); fetch if that version is not cached
+- First path segment contains a dot (looks like a hostname) → explicit git host; resolve under `.agents/prose/deps/{host}/{owner}/{repo}/`; error if missing
+- Starts with `std/` or `co/` → expand to `github.com/openprose/prose/packages/{std|co}/...`; resolve under `.agents/prose/deps/github.com/openprose/prose/`; error if missing
+- Ends with `@{version}` → resolve that version (SHA or tag) from `.agents/prose/deps/`; error if missing
 - Otherwise contains `/` → reserved for the OpenProse registry (future home at `p.prose.md`); nothing publishes there today, so this path is spec'd but inert
-- Otherwise → treat as local file path
+- Otherwise → treat as local path; directories conventionally resolve to
+  `index.prose.md`, and extensionless source paths try `.prose.md`
 
-`--offline` disables the network fallback. `prose run
-github.com/alice/research --offline` errors out rather than fetching.
+`--offline` is a declaration of intent for dependency runs: every dependency
+must already be available in `.agents/prose/deps/`. Runtime dependency resolution is always
+disk-only.
 
 **When resolution fails:**
 
-When an identifier is not in `.deps/` *and* the fetch from its host returns
-no match, report:
+When an identifier is not in `.agents/prose/deps/`, report:
 
 ```
-Not found in `.deps/` or at github.com/alice/research.
-Did you mean to run `prose install`, or try `prose run github.com/alice/research@latest`?
+[Error] Dependency not found: github.com/alice/research
+  Run `prose install` to install dependencies.
 ```
 
-The error must name both the identifier and the exact host URL that was
-tried, so the user can distinguish a typo from a missing install from a
-host-side outage.
+The error must name the identifier and the expected `.agents/prose/deps/` location so the
+user can distinguish a typo from a missing install.
 
 **On the bare `owner/repo` form.** Bare identifiers (no host prefix) are
 reserved for the OpenProse registry. That registry isn't accepting
@@ -110,29 +111,33 @@ anyone who wrote explicit hosts.
 
 ## Two Phases of a Run
 
-A Prose program runs in two phases:
+A Prose system runs in two phases:
 
 | Phase                  | Who                      | Input                 | Output         |
 | ---------------------- | ------------------------ | --------------------- | -------------- |
-| **Phase 1: Wiring**    | Forme (`forme.md`)       | Component `.md` files | `manifest.md`  |
-| **Phase 2: Execution** | Prose VM (this document) | `manifest.md`         | Program output |
+| **Phase 1: Wiring**    | Forme (`forme.md`)       | Service and system `*.prose.md` files | `manifest.run.md`  |
+| **Phase 2: Execution** | Prose VM (this document) | `manifest.run.md`         | System output |
 
 You are Phase 2. The manifest tells you what to run and in what order. You execute it.
 
-For **single-component programs** (no `### Services` section), Phase 1 is skipped. The `.md` file is the entire program—you spawn one session and return its output.
+For `kind: service` files, Forme is skipped, but the run still gets a
+minimal `manifest.run.md` for uniform inspection and resumption. The
+`*.prose.md` file is the service to run: snapshot it as `root.prose.md` and
+`sources/{name}.prose.md`, spawn one session, and return its output. A
+`kind: system` file must declare `### Services`; otherwise it is malformed.
 
-### Component Kinds
+### Kinds
 
-Every `.md` component declares a `kind` in its frontmatter:
+Every source file declares a `kind` in its frontmatter:
 
 | Kind        | Purpose                                                                  |
 | ----------- | ------------------------------------------------------------------------ |
-| `program`   | Entry point — has a caller interface and an execution graph              |
-| `service`   | A single-session unit of work with a `### Requires` / `### Ensures` contract |
+| `service`   | Atomic execution boundary — one contract, one session, one workspace |
+| `system`   | Composition boundary — one contract implemented as a graph of services and systems |
 | `test`      | A test harness — provides fixtures, runs a subject, evaluates assertions |
-| `composite` | A parameterized multi-agent topology (see Composites below)              |
+| `pattern` | Reusable agent design pattern with slots, config, invariants, and delegation rules |
 
-A **composite** is a parameterized multi-agent topology. It declares slots (services to be provided by the caller), config (parameters), invariants (runtime guarantees), and a delegation pattern. Composites are expanded by Forme during Phase 1 wiring — the Prose VM never sees a raw composite. Instead, you see the expanded delegation steps and constraints in the manifest.
+`prose run` accepts `kind: service` and structurally complete `kind: system` files. `prose test` executes `kind: test` files. A `kind: pattern` file is not directly runnable; systems instantiate patterns through `pattern:` declarations in `### Services`. Services and ProseScript calls execute concrete services or systems, not pattern files.
 
 ---
 
@@ -142,20 +147,20 @@ Large language models are simulators. When given a detailed description of a sys
 
 But simulation with sufficient fidelity _is_ implementation. When the simulated VM spawns real subagents, produces real artifacts, and maintains real state, the distinction between "simulating a VM" and "being a VM" collapses.
 
-### Component Mapping
+### VM Mapping
 
 | Traditional VM      | OpenProse VM                        | Substrate                                |
 | ------------------- | ----------------------------------- | ---------------------------------------- |
 | Instructions        | Manifest graph entries              | Executed via host `spawn_session` calls  |
-| Program counter     | Current position in execution order | Tracked in `state.md`                    |
+| Instruction pointer | Current position in execution order | Tracked in `vm.log.md`                    |
 | Working memory      | Conversation history                | The context window holds ephemeral state |
-| Persistent storage  | `.prose/` directory                 | Files hold durable state across sessions |
+| Persistent storage  | `.agents/prose/` directory                 | Files hold durable state across sessions |
 | Registers/variables | Named bindings                      | Stored in `bindings/{service}/{name}.md` |
 | I/O                 | Tool calls and results              | Host primitives spawn sessions, ask users, and return pointers |
 
 ### What Makes It Real
 
-The OpenProse VM isn't a metaphor. Each component in the manifest triggers a
+The OpenProse VM isn't a metaphor. Each service in the manifest triggers a
 _real_ host session through `spawn_session`. The outputs are _real_ artifacts on
 disk. The simulation produces actual computation—it just happens through a
 different substrate than silicon executing bytecode.
@@ -164,7 +169,7 @@ different substrate than silicon executing bytecode.
 
 ## Embodying the VM
 
-When you execute a program, you ARE the virtual machine. This is not a metaphor—it's a mode of operation:
+When you execute a system, you ARE the virtual machine. This is not a metaphor—it's a mode of operation:
 
 | You                        | The VM                          |
 | -------------------------- | ------------------------------- |
@@ -176,9 +181,9 @@ When you execute a program, you ARE the virtual machine. This is not a metaphor�
 **What this means in practice:**
 
 - You don't _simulate_ execution—you _perform_ it
-- Each component spawns a real subagent through the host's `spawn_session`
+- Each service spawns a real subagent through the host's `spawn_session`
   primitive
-- Your state persists in files (`.prose/runs/`)
+- Your state persists in files (`.agents/prose/runs/`)
 - You follow the manifest strictly, but apply intelligence where needed
 
 ---
@@ -192,28 +197,24 @@ own tools:
 |-----------|-------------------|
 | `spawn_session` | Start an isolated agent/session with a prompt, optional model, and access to declared input/output paths |
 | `ask_user` | Pause execution for missing required caller input and resume with the answer |
-| `read_file` / `write_file` | Read and write `.prose/runs/{id}/` state artifacts |
+| `read_file` / `write_file` | Read and write `.agents/prose/runs/{id}/` state artifacts |
 | `copy_binding` | Copy a declared output from `workspace/{service}/` to `bindings/{service}/` |
 | `check_env` | Confirm an environment variable exists without exposing its value |
-
-Older docs and examples may say "Task tool" for `spawn_session` or
-"AskUserQuestion" for `ask_user`. Treat those as host-specific names for these
-abstract primitives.
 
 ---
 
 ## Directory Structure
 
-All execution state lives in `.prose/runs/{id}/`:
+All execution state lives in `.agents/prose/runs/{id}/`:
 
 ```
-.prose/runs/{id}/
-├── manifest.md                   # The wiring graph (produced by Phase 1)
-├── program.md                    # Copy of the entry point
-├── services/                     # Component source files (copied by Phase 1)
-│   ├── researcher.md
-│   ├── critic.md
-│   └── synthesizer.md
+.agents/prose/runs/{id}/
+├── manifest.run.md                   # Wiring graph, or minimal service manifest
+├── root.prose.md                        # Copy of the invoked service or system file
+├── sources/                       # Service, system, and pattern source files copied by Phase 1
+│   ├── researcher.prose.md
+│   ├── critic.prose.md
+│   └── synthesizer.prose.md
 ├── workspace/                    # Private working directories (one per service)
 │   ├── researcher/
 │   │   ├── notes.md              # Intermediate work
@@ -231,7 +232,7 @@ All execution state lives in `.prose/runs/{id}/`:
 │   │   └── evaluation.md
 │   └── synthesizer/
 │       └── report.md
-├── state.md                      # Append-only execution log
+├── vm.log.md                      # Append-only execution log
 └── agents/                       # Persistent agent memory
     └── {name}/
         ├── memory.md
@@ -250,22 +251,22 @@ Example: `20260317-143052-a7b3c9`
 
 ### Step 1: Read the Manifest
 
-Read `.prose/runs/{id}/manifest.md`. Extract:
+Read `.agents/prose/runs/{id}/manifest.run.md`. Extract:
 
-- **Caller Interface** — what inputs the program needs, what it returns
+- **Caller Interface** — what inputs the system needs, what it returns
 - **Graph** — each service with its source file, workspace path, inputs (with `←` mappings), and outputs
 - **Execution Order** — the sequence (with parallelization notes)
 - **Warnings** — present to the user before executing
 
 ### Step 2: Bind Caller Inputs
 
-The manifest's Caller Interface lists what the program requires. Bind these values:
+The manifest's Caller Interface lists what the system requires. Bind these values:
 
 | Source                                                           | Behavior                                              |
 | ---------------------------------------------------------------- | ----------------------------------------------------- |
-| CLI arguments (`prose run program.md --question "..."`)          | Bind immediately                                      |
-| Config file (`.prose/.env` or program-level config)              | Bind immediately                                      |
-| Pre-supplied by calling program (if this is a nested invocation) | Bind immediately                                      |
+| CLI arguments (`prose run system.prose.md --question "..."`)    | Bind immediately                                      |
+| Config file (`.agents/prose/.env` or system-level config)              | Bind immediately                                      |
+| Pre-supplied by calling system (if this is a nested invocation) | Bind immediately                                      |
 | No value available                                               | Pause execution, prompt user via `ask_user` |
 
 Write each bound input to `bindings/caller/{name}.md`:
@@ -273,7 +274,7 @@ Write each bound input to `bindings/caller/{name}.md`:
 ```markdown
 # question
 
-kind: input
+binding: input
 source: caller
 
 ---
@@ -300,7 +301,7 @@ All services listed in the service's `inputs` (the `←` mappings) must have the
 
 Spawn a subagent via the host's `spawn_session` primitive with:
 
-1. **The service's source file** — read `services/{service-name}.md` and include its full content as the service definition
+1. **The service's source file** — read `sources/{service-name}.prose.md` and include its full content as the service definition
 2. **Input file paths** — list each input with its binding path
 3. **Workspace path** — where the service should write ALL its work
 4. **Output instructions** — which files in the workspace are declared `### Ensures` outputs
@@ -308,11 +309,11 @@ Spawn a subagent via the host's `spawn_session` primitive with:
 The session prompt follows this structure:
 
 ```
-You are executing a Prose service component.
+You are executing a Prose service.
 
 ## Your Service Definition
 
-{contents of services/{service-name}.md}
+{contents of sources/{service-name}.prose.md}
 
 ## Your Inputs
 
@@ -322,7 +323,7 @@ Read these files for your input data:
 
 ## Your Workspace
 
-Write all your work to: .prose/runs/{id}/workspace/{service-name}/
+Write all your work to: .agents/prose/runs/{id}/workspace/{service-name}/
 
 This is your private working directory. Write intermediate notes, drafts, scratch
 work — whatever you need. All files here are preserved for inspection after the run.
@@ -382,7 +383,7 @@ Otherwise, the subagent has completed. The VM:
 1. Checks if the service wrote `__error.md` — if so, handle error (see Error Handling)
 2. For each declared output, copies from workspace to bindings:
    - `workspace/{service-name}/{output-name}.md` → `bindings/{service-name}/{output-name}.md`
-3. Appends a completion marker to `state.md`
+3. Appends a completion marker to `vm.log.md`
 4. Continues to the next service in execution order
 
 **Critical:** The VM never reads the full output files. It tracks pointers and copies files. This keeps the VM's context lean.
@@ -398,22 +399,22 @@ spawn_session({ prompt: "Service: critic ..." })
 // Wait for all to complete, then continue
 ```
 
-#### 4e. Enforce Composite Constraints
+#### 4e. Enforce Pattern Constraints
 
-After composite expansion, the manifest may contain a `## Constraints` section listing runtime constraints derived from composite invariants. When present, you enforce them during execution:
+After pattern expansion, the manifest may contain a `## Constraints` section listing runtime constraints derived from pattern invariants. When present, you enforce them during execution:
 
 | Constraint Type          | Enforcement                                                                                                                                                                                                                                                                           |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Information firewall** | When passing data between services that have a firewall constraint, strip internal reasoning and intermediate state before copying output to bindings. The downstream service receives only the declared `### Ensures` outputs — no reasoning chains, no scratch work, no internal state. |
 | **Termination bound**    | Count iterations in loop-based delegation patterns. If the iteration count reaches the ceiling (e.g., `max_rounds`), terminate the loop regardless of the critic's verdict and return the last output. Log: `N→ {service} ⊘ terminated (max_rounds)`                                  |
-| **Monotonicity**         | For ratchet-type composites, maintain a certified-progress ledger. Each iteration's certified output must be a superset of the previous iteration's. If an iteration would shrink the certified set, discard it and keep the prior state.                                             |
-| **Error propagation**    | If a slot service writes `__error.md` during a composite loop, terminate the composite immediately. Propagate the error as if the composed unit itself errored. Do not retry or continue the loop.                                                                                    |
+| **Monotonicity**         | For ratchet-type patterns, maintain a certified-progress ledger. Each iteration's certified output must be a superset of the previous iteration's. If an iteration would shrink the certified set, discard it and keep the prior state.                                             |
+| **Error propagation**    | If a slot service writes `__error.md` during a pattern loop, terminate the pattern instance immediately. Propagate the error as if the pattern instance itself errored. Do not retry or continue the loop.                                                                       |
 
-Constraints are checked at every service boundary within the expanded composite — not just at the final output. If a constraint is violated, log the violation to `state.md` and continue with the corrected state (e.g., the stripped output, the terminated loop, the preserved ledger).
+Constraints are checked at every service boundary within the expanded pattern — not just at the final output. If a constraint is violated, log the violation to `vm.log.md` and continue with the corrected state (e.g., the stripped output, the terminated loop, the preserved ledger).
 
-### Step 5: Collect Program Output
+### Step 5: Collect System Output
 
-After all services complete, the program's ensured outputs are in `bindings/`. The manifest's Caller Interface specifies which service produces the final output:
+After all services complete, the system's ensured outputs are in `bindings/`. The manifest's Caller Interface specifies which service produces the final output:
 
 ```
 returns:
@@ -424,14 +425,14 @@ Read `bindings/synthesizer/report.md` and return it to the caller.
 
 ### Step 6: Finalize
 
-- Append `---end {ISO8601 timestamp}` to `state.md`
+- Append `---end {ISO8601 timestamp}` to `vm.log.md`
 - If this is a top-level run (not nested), present the final output to the user
 
 ---
 
 ## State Management
 
-### `state.md` — Append-Only Execution Log
+### `vm.log.md` — Append-Only Execution Log
 
 The VM appends one line per event. Only the VM writes this file.
 
@@ -439,7 +440,7 @@ The VM appends one line per event. Only the VM writes this file.
 # run:20260317-143052-a7b3c9 deep-research
 
 upstream: [20260317-120000-f4e5d6] # present when run-typed inputs exist
-program: deep-research
+root: deep-research
 
 1→ [input] question ✓
 2→ researcher ✓
@@ -451,14 +452,14 @@ program: deep-research
 The header is the block between the `#` heading and the first event marker:
 
 ```
-# run:{id} {program-name}
+# run:{id} {system-name}
 upstream: [{comma-separated run IDs}]    # optional, present when run has run-typed inputs
-program: {program path or name}          # always present
+root: {root service or system path}       # always present
 
 {event markers follow}
 ```
 
-The `upstream:` field lists the run IDs of all `run`-typed inputs, written once at binding time (Step 2). On resumption, the VM reads it as context but does not re-process it. The `upstream:` field is omitted when a run has no `run`-typed inputs. The `program:` field is always present.
+The `upstream:` field lists the run IDs of all `run`-typed inputs, written once at binding time (Step 2). On resumption, the VM reads it as context but does not re-process it. The `upstream:` field is omitted when a run has no `run`-typed inputs. The `root:` field is always present.
 
 #### Event Markers
 
@@ -477,16 +478,14 @@ The `upstream:` field lists the run IDs of all `run`-typed inputs, written once 
 | `N→ [eval] assertion ✗`                  | Test assertion failed                         |
 | `---test PASS`                           | Test passed (all assertions satisfied)        |
 | `---test FAIL (N/M assertions)`          | Test failed                                   |
-| `---end TIMESTAMP`                       | Program completed successfully                |
-| `---error TIMESTAMP msg`                 | Program failed                                |
-
-**ASCII fallback:** Both `→` and `->` are valid in event markers. Models may emit either form. Parsers and inspectors should accept both.
+| `---end TIMESTAMP`                       | System completed successfully                |
+| `---error TIMESTAMP msg`                 | System failed                                |
 
 #### Resumption
 
 To resume an interrupted run:
 
-1. Read `state.md` — find the last completed marker
+1. Read `vm.log.md` — find the last completed marker
 2. Scan `bindings/` — confirm existing outputs
 3. Continue from the next service in execution order
 
@@ -502,7 +501,7 @@ Read `workspace/{service-name}/__error.md` to get the error name and details.
 
 ### Step 2: Check Caller's Contract
 
-Look at the program entry point's `### Ensures` for conditional clauses:
+Look at the root system's `### Ensures` for conditional clauses:
 
 ```markdown
 ### Ensures
@@ -518,11 +517,11 @@ If a conditional clause covers this error, the VM can satisfy the degraded `### 
 If the errored service has downstream dependents (services that require its outputs), those services cannot run. Options:
 
 1. **Conditional `### Ensures` covers it** — produce the degraded output, skip dependents, return
-2. **No coverage** — propagate the error. Append `---error` to `state.md`. Return the error to the caller.
+2. **No coverage** — propagate the error. Append `---error` to `vm.log.md`. Return the error to the caller.
 
 ### Step 4: Log
 
-Append the error marker to `state.md`:
+Append the error marker to `vm.log.md`:
 
 ```
 3→ researcher ✗ no-results
@@ -542,7 +541,10 @@ In this mode:
 - `let` bindings name the results for use in subsequent calls
 - `return` identifies the final output
 
-The execution block uses ProseScript. Within it, the full imperative grammar is available: `parallel:`, `loop until`, `for each`, `try/catch`, `if/elif/else`, `choice`, `block`, `do`, `repeat`, and persistent `agent` definitions. See `prosescript.md` for the canonical syntax.
+The execution block uses ProseScript. Its canonical grammar includes `parallel:`,
+`loop until`, `for each`, `try/catch`, `if/elif/else`, `choice`, `block`, `do`,
+`repeat`, and persistent `agent` definitions. See `prosescript.md` for the full
+syntax.
 
 ---
 
@@ -578,7 +580,7 @@ spawn_session({ description: "OpenProse service: fact-checker", prompt: "..." })
 
 The subagent receives:
 
-1. Its service definition (the full `.md` content from `services/`)
+1. Its service definition (the full `*.prose.md` content from `sources/`)
 2. File paths to its inputs (in `bindings/`)
 3. Its workspace path
 4. Instructions on which output files to write
@@ -590,7 +592,7 @@ The subagent does NOT receive:
 - The global manifest
 - Other services' definitions
 - The dependency graph
-- The program entry point
+- The root system file
 
 Each subagent only knows its own responsibilities.
 
@@ -606,7 +608,7 @@ Outputs written:
 Summary: Found 5 relevant sources on quantum computing, extracted 12 claims with confidence scores.
 ```
 
-The VM copies declared outputs from workspace to bindings, appends to `state.md`, and continues.
+The VM copies declared outputs from workspace to bindings, appends to `vm.log.md`, and continues.
 
 ---
 
@@ -658,7 +660,7 @@ The VM spawns all delegates concurrently, waits for all to complete, and resumes
 
 ### State Markers
 
-Runtime delegation appends these markers to `state.md`:
+Runtime delegation appends these markers to `vm.log.md`:
 
 ```
 N→ service ⇒ delegate (delegate: {id})
@@ -735,9 +737,9 @@ The example above uses `persist: project`, the common case for a service whose v
 
 | Scope               | Declaration        | Path                              | Lifetime                 |
 | ------------------- | ------------------ | --------------------------------- | ------------------------ |
-| Execution (default) | `### Runtime` with `persist: true`    | `.prose/runs/{id}/agents/{name}/` | Dies with run            |
-| Project             | `### Runtime` with `persist: project` | `.prose/agents/{name}/`           | Survives runs in project |
-| User                | `### Runtime` with `persist: user`    | `~/.prose/agents/{name}/`         | Survives across projects |
+| Execution (default) | `### Runtime` with `persist: true`    | `.agents/prose/runs/{id}/agents/{name}/` | Dies with run            |
+| Project             | `### Runtime` with `persist: project` | `.agents/prose/agents/{name}/`           | Survives runs in project |
+| User                | `### Runtime` with `persist: user`    | `~/.agents/prose/agents/{name}/`         | Survives across projects |
 
 Pick `persist: project` or `persist: user` whenever the service's contract references prior-run state — cumulative counts, watermarks, deltas, or any field whose value depends on what happened before. `persist: true` alone is *not* enough for that: its memory lives only for the duration of the current run and is discarded when the run ends.
 
@@ -747,13 +749,13 @@ When spawning a persistent agent's session, include its memory file path in the 
 
 ```
 Your memory is at:
-  .prose/runs/{id}/agents/{name}/memory.md
+  .agents/prose/runs/{id}/agents/{name}/memory.md
 
 Read it first to understand your prior context. When done, update it
 with your compacted state following the guidelines in primitives/session.md.
 
 Also write your segment record to:
-  .prose/runs/{id}/agents/{name}/{name}-NNN.md
+  .agents/prose/runs/{id}/agents/{name}/{name}-NNN.md
 ```
 
 The subagent:
@@ -772,17 +774,17 @@ See `primitives/session.md` for memory compaction guidelines.
 
 ## Caller Input Handling
 
-The manifest's Caller Interface specifies what the program requires from the user.
+The manifest's Caller Interface specifies what the system requires from the user.
 
 ### Binding Inputs
 
-At program start, the VM resolves each `requires` entry:
+At system start, the VM resolves each `requires` entry:
 
 | Scenario                                              | Behavior                                            |
 | ----------------------------------------------------- | --------------------------------------------------- |
 | Value provided via CLI arg (`--question "..."`)       | Bind immediately                                    |
 | Value provided via config file                        | Bind immediately                                    |
-| Value provided by calling program (nested invocation) | Bind immediately                                    |
+| Value provided by calling system (nested invocation) | Bind immediately                                    |
 | No value available                                    | Prompt user via `ask_user`, bind response           |
 
 ### Writing Input Bindings
@@ -792,7 +794,7 @@ Write each input to `bindings/caller/{name}.md`:
 ```markdown
 # {name}
 
-kind: input
+binding: input
 source: caller
 
 ---
@@ -816,27 +818,27 @@ prose run std/evals/inspector -- subject: 20260406-201439-1a3369
 
 The VM validates:
 
-1. **Existence.** The referenced run directory exists under `.prose/runs/`. For resolution rules, see Run ID Resolution below.
-2. **Structure.** The directory contains at minimum `state.md` and `program.md`.
+1. **Existence.** The referenced run directory exists under `.agents/prose/runs/`. For resolution rules, see Run ID Resolution below.
+2. **Structure.** The directory contains at minimum `vm.log.md` and `root.prose.md`.
 3. **Completion status:**
-   - `state.md` has `---end` → the run completed successfully. Bind normally.
-   - `state.md` has `---error` → the run failed. Emit a warning but allow binding (failed runs are consumable — an inspector may specifically want to evaluate a failed run).
-   - `state.md` has neither → the run is incomplete. Error: cannot consume an in-progress run.
+   - `vm.log.md` has `---end` → the run completed successfully. Bind normally.
+   - `vm.log.md` has `---error` → the run failed. Emit a warning but allow binding (failed runs are consumable — an inspector may specifically want to evaluate a failed run).
+   - `vm.log.md` has neither → the run is incomplete. Error: cannot consume an in-progress run.
 
 The VM writes the binding to `bindings/caller/{name}.md` with structured metadata:
 
 ```markdown
 # subject
 
-kind: input
+binding: input
 source: caller
 type: run
 
 ---
 
 run: 20260406-201439-1a3369
-path: .prose/runs/20260406-201439-1a3369
-program: customer-discovery
+path: .agents/prose/runs/20260406-201439-1a3369
+root: customer-discovery
 status: complete
 ```
 
@@ -853,47 +855,47 @@ The VM validates each run independently (same rules as single `run`). It writes 
 ```markdown
 # runs
 
-kind: input
+binding: input
 source: caller
 type: run[]
 
 ---
 
 - run: 20260406-201439-1a3369
-  path: .prose/runs/20260406-201439-1a3369
-  program: customer-discovery
+  path: .agents/prose/runs/20260406-201439-1a3369
+  root: customer-discovery
   status: complete
 
 - run: 20260406-202015-c5d6e7
-  path: .prose/runs/20260406-202015-c5d6e7
-  program: competitive-landscape
+  path: .agents/prose/runs/20260406-202015-c5d6e7
+  root: competitive-landscape
   status: complete
 
 - run: 20260406-203300-8f9a0b
-  path: .prose/runs/20260406-203300-8f9a0b
-  program: grant-radar
+  path: .agents/prose/runs/20260406-203300-8f9a0b
+  root: grant-radar
   status: complete
 ```
 
 #### Staleness Detection
 
-When binding a `run` input, the VM compares the run's `program.md` snapshot against the current source file on disk. If they differ semantically (a whitespace change is not staleness; a changed `ensures` clause is), the VM emits a warning:
+When binding a `run` input, the VM compares the run's `root.prose.md` snapshot against the current source file on disk. If they differ semantically (a whitespace change is not staleness; a changed `ensures` clause is), the VM emits a warning:
 
 ```
 [Warning] Stale run: 20260406-201439-1a3369
-  Program 'customer-discovery' has changed since this run.
+  Root source 'customer-discovery' has changed since this run.
 ```
 
 Staleness is informational, not blocking. The caller decides whether to re-run or proceed.
 
 #### Run ID Resolution
 
-Run IDs default to local `.prose/runs/`. For cross-project references:
+Run IDs default to local `.agents/prose/runs/`. For cross-project references:
 
 | Format                             | Resolves to                                                       |
 | ---------------------------------- | ----------------------------------------------------------------- |
-| Bare ID (`20260406-201439-1a3369`) | `.prose/runs/20260406-201439-1a3369` (local project)              |
-| `~/{id}`                           | `~/.prose/runs/{id}` (user scope)                                 |
+| Bare ID (`20260406-201439-1a3369`) | `.agents/prose/runs/20260406-201439-1a3369` (local project)              |
+| `~/{id}`                           | `~/.agents/prose/runs/{id}` (user scope)                                 |
 | Absolute path                      | Used as-is                                                        |
 | Future: `repo:{repo}#{id}`         | Git-based resolution (team/cloud scenarios — not yet implemented) |
 
@@ -952,18 +954,18 @@ The model references environment variables by name — it never reads, logs, or 
 
 - When a service declares `### Environment` variables, the VM verifies they are set before spawning the service's session. Verification means confirming the variable exists in the host environment — not reading or logging its value.
 - The service session can reference env vars via shell expansion (e.g., `$SLACK_WEBHOOK_URL` in a curl command) but must never construct strings containing the values, log them, or write them to workspace files.
-- If an environment variable is not set, the VM fails the service with a clear error rather than proceeding with an empty value. The error is logged to `state.md` as `N→ service-name ✗ missing-env:{VAR_NAME}`.
+- If an environment variable is not set, the VM fails the service with a clear error rather than proceeding with an empty value. The error is logged to `vm.log.md` as `N→ service-name ✗ missing-env:{VAR_NAME}`.
 
 ---
 
 ## Executing Tests
 
-When the VM executes a test manifest (produced by Forme for a `kind: test` component — see `forme.md`, Handling Test Components):
+When the VM executes a test manifest (produced by Forme for `kind: test` — see `forme.md`, Handling Tests):
 
 1. **Bind fixtures** — same as binding caller inputs, but from `### Fixtures` in the manifest. Never prompt the user — tests are fully self-contained.
-2. **Execute the subject** — run the service or program exactly as normal (spawn sessions, copy outputs, etc.). The subject does not know it is under test.
-3. **Evaluate assertions** — after execution completes, evaluate each `### Expects` and `### Expects Not` clause against the actual outputs in `bindings/`. This uses the same mechanism as "Evaluating Ensures" — it is an intelligent judgment call by the VM, not string matching. Read the output, read the assertion, determine if the commitment is met.
-4. **Produce test report** — instead of returning output to the caller, produce a structured report:
+2. **Execute the subject** — run the service or system exactly as normal (spawn sessions, copy outputs, etc.). The subject does not know it is under test.
+3. **Evaluate assertions** — after execution completes, evaluate each `### Expects` and `### Expects Not` clause against the actual outputs in `bindings/`. Use intelligent judgment, not string matching. Test observable behavior and contract satisfaction, not exact phrasing.
+4. **Produce test report** — instead of returning subject output to the caller, produce a structured report with every assertion, pass/fail status, and concise observed evidence for failures:
 
 ```
 # Test Report: {test-name}
@@ -982,14 +984,14 @@ Result: PASS | FAIL
 ✓ __error.md does not exist
 ```
 
-5. **State markers** — test runs use standard `state.md` markers for execution, plus `N→ [eval] assertion ✓` or `✗` for each assertion, and `---test PASS` or `---test FAIL (N/M assertions)` at the end.
+5. **Log markers** — test runs use standard `vm.log.md` markers for execution, plus `N→ [eval] assertion ✓` or `✗` for each assertion, and `---test PASS` or `---test FAIL (N/M assertions)` at the end. Failed assertion markers should identify the target output and the observed mismatch.
 6. **Exit behavior** — `prose test` returns exit code 0 if all assertions pass, 1 if any fail. When running a directory of tests, all tests run (no early exit), and a summary is printed at the end.
 
 ### Test Suites
 
 When `prose test tests/` is given a directory:
 
-1. Find all `.md` files with `kind: test` in the directory (non-recursive by default, `--recursive` for deep scan)
+1. Find all `*.prose.md` files with `kind: test` in the directory (non-recursive by default, `--recursive` for deep scan)
 2. Run each test independently (separate run IDs, separate state)
 3. Print per-test results as they complete
 4. Print a summary:
@@ -1005,60 +1007,52 @@ test-browse-contract ............. PASS (contract)
 
 ---
 
-## Single-Component Programs
+## Single-Service Runs
 
-For programs without a `services` list (no Forme phase):
+For `kind: service` files (no Forme phase):
 
-1. The `.md` file IS the program and the sole service
-2. No manifest needed—read the file directly
+1. The `*.prose.md` file is the service to run
+2. Synthesize a minimal `manifest.run.md` so the run directory has the same
+   control-plane shape as a system run
 3. Bind caller inputs from `### Requires`
 4. Spawn one session with the file as the service definition
 5. The session writes to `workspace/` and the VM copies `### Ensures` outputs to `bindings/`
 6. Return the output
 
-This is the simplest execution path. It is equivalent to a ProseScript file with one `session` call.
+This is the simplest execution path.
 
 ---
 
-## Composites
+## Patterns
 
-A composite defines how agents interact without specifying which agents fill the roles. By the time you execute, composites are gone — Forme has expanded them into concrete delegation steps and constraints in the manifest. For composite authoring syntax and expansion mechanics, see `forme.md`, Composite Expansion.
+A pattern is a reusable agent design pattern: slots, config, invariants, and delegation rules for how filled services interact. By the time you execute, patterns are gone — Forme has expanded them into concrete delegation steps and constraints in the manifest. For pattern authoring syntax and expansion mechanics, see `forme.md`, Pattern Expansion.
 
-### Composite Contract Sections
+### Pattern Contract Sections
 
-A composite file declares its topology with Contract Markdown sections. Understanding these sections clarifies where the manifest constraints you enforce come from:
+A pattern file declares its pattern with Contract Markdown sections. Understanding these sections clarifies where the manifest constraints you enforce come from:
 
 | Section | Purpose |
 |---------|---------|
-| `### Slots` | Services the composite requires; each slot has a name and a contract |
-| `### Config` | Composite-level parameters and defaults |
+| `### Slots` | Services the pattern requires; each slot has a name and a contract |
+| `### Config` | Pattern-level parameters and defaults |
 | `### Invariants` | Guarantees that Forme encodes and the VM enforces at runtime |
 | `### Delegation` | ProseScript or pseudocode for how the slots interact |
 
 ### Instantiation
 
-Authors instantiate composites with explicit slot-filling: a service declaration
-uses `compose:` and a `with:` block that names each slot and config parameter.
-For instantiation syntax, see `forme.md`, Composite Expansion. No shorthand
-composite syntax is accepted at runtime.
+Authors instantiate patterns with explicit slot-filling: a structured
+`### Services` entry uses `pattern:` to name the pattern, `with:` to bind slots,
+and `config:` to set pattern parameters. This declaration appears in a
+system's `### Services` section. Nested pattern declarations may appear only as
+slot values inside a pattern instance's `with:` block.
+For instantiation syntax, see `forme.md`, Pattern Expansion. No shorthand
+pattern syntax is accepted at runtime.
 
-Composites nest — a slot can be filled by another composite instantiation. Expansion proceeds inside-out. Recursive composites are prohibited. For nesting examples, see `forme.md`, Composite Expansion.
+Patterns nest — a slot can be filled by another pattern instantiation. Expansion proceeds inside-out. Recursive patterns are prohibited. For nesting examples, see `forme.md`, Pattern Expansion.
 
-### Composites in the Manifest
+### Patterns in the Manifest
 
-After expansion, the composed unit appears as a graph entry with delegation sub-entries and config. The manifest's `## Constraints` section lists one subsection per expanded composite, containing information firewalls, termination bounds, monotonicity ratchets, and exhaustion behavior derived from the composite's `invariants`. You enforce these constraints during execution — see Step 4e above.
-
----
-
-## ProseScript `.prose` Programs
-
-When `prose run` is invoked with a `.prose` file:
-
-- Skip Phase 1 (no Forme wiring)
-- Execute using ProseScript semantics (`prosescript.md`)
-- All historical `.prose` constructs work unchanged
-
-This keeps the old scripting language useful while giving it a clearer role: standalone orchestration, and the imperative language inside `### Execution` blocks.
+After expansion, the pattern instance appears as a graph entry with delegation sub-entries and config. The manifest's `## Constraints` section lists one subsection per expanded pattern, containing information firewalls, termination bounds, monotonicity ratchets, and exhaustion behavior derived from the pattern's `invariants`. You enforce these constraints during execution — see Step 4e above.
 
 ---
 
@@ -1068,17 +1062,17 @@ This keeps the old scripting language useful while giving it a clearer role: sta
 function execute(manifest, inputs?):
   1. Read manifest — extract caller interface, graph, execution order
   2. Bind caller inputs:
-     - From CLI args, config, or calling program
-     - For run-typed inputs (run / run[]): validate existence, structure, completion; emit staleness warning if source program changed
+     - From CLI args, config, or calling system
+     - For run-typed inputs (run / run[]): validate existence, structure, completion; emit staleness warning if source system changed
      - Prompt user (`ask_user`) for any missing required inputs
      - Write each to bindings/caller/{name}.md (structured metadata for run types)
-     - Record upstream: field in state.md header for any run-typed inputs
+     - Record upstream: field in vm.log.md header for any run-typed inputs
   3. Create workspace/ and bindings/ directories for each service
-  4. Initialize state.md with run header (program: field always; upstream: field if run-typed inputs were bound)
+  4. Initialize vm.log.md with run header (root: field always; upstream: field if run-typed inputs were bound)
   5. For each service in execution order:
      a. Verify all input bindings exist (dependencies satisfied)
      b. Build session prompt:
-        - Service definition (from services/{name}.md)
+        - Service definition (from sources/{name}.prose.md)
         - Input file paths (from bindings/)
         - Workspace path
         - Output instructions (ensures outputs to write)
@@ -1092,17 +1086,17 @@ function execute(manifest, inputs?):
           ii. Wait for all delegates to complete
           iii. Write delegate outputs to workspace/{name}/__delegate/
           iv. Resume the service with response paths
-          v.  Append ⇒, ✓, ⟳ markers to state.md
+          v.  Append ⇒, ✓, ⟳ markers to vm.log.md
           vi. Loop back to (d)
         - If completion → continue
      e. Check for __error.md:
         - If error: check conditional ensures, handle or propagate
-     f. Enforce composite constraints (firewalls, termination bounds, monotonicity)
+     f. Enforce pattern constraints (firewalls, termination bounds, monotonicity)
      g. Copy declared outputs: workspace/{name}/ → bindings/{name}/
-     h. Append completion marker to state.md
+     h. Append completion marker to vm.log.md
   6. Collect final output from bindings/ per manifest's returns
   7. Evaluate invariants across all services
-  8. Append ---end to state.md
+  8. Append ---end to vm.log.md
   9. Return final output to caller
 ```
 
@@ -1121,8 +1115,8 @@ The OpenProse VM:
 7. **Handles** errors via conditional ensures or propagation
 8. **Evaluates** contracts, strategies, and invariants intelligently
 9. **Parallelizes** independent services when the graph allows
-10. **Tracks** state in an append-only log (`state.md`)
-11. **Returns** the program's ensures output to the caller
+10. **Tracks** state in an append-only log (`vm.log.md`)
+11. **Returns** the system's ensures output to the caller
 
 Each subagent only knows its own service definition, its inputs, and where to write. The global picture exists only in the manifest and the VM's working memory. This keeps sessions focused and context lean.
 

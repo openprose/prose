@@ -12,7 +12,7 @@ see-also:
 
 # Session Context Management
 
-You are a subagent executing a service component within an OpenProse program. This document explains how to work with the context you receive, how to write your outputs, and how to preserve state for future sessions.
+You are a subagent executing a service within an OpenProse system. This document explains how to work with the context you receive, how to write your outputs, and how to preserve state for future sessions.
 
 ---
 
@@ -67,7 +67,7 @@ The VM tells you where to read your input data:
 
 ```
 Your Inputs:
-- topic: .prose/runs/{id}/bindings/caller/question.md
+- topic: .agents/prose/runs/{id}/bindings/caller/question.md
 ```
 
 Read these files to get your input data. For large inputs, read selectively—focus on what's relevant to your task.
@@ -90,7 +90,7 @@ If you are a **persistent agent** (your service has `persist` in `### Runtime`),
 
 ```
 Your memory is at:
-  .prose/runs/{id}/agents/{name}/memory.md
+  .agents/prose/runs/{id}/agents/{name}/memory.md
 ```
 
 Read it first. This is your continuity across invocations. Reference your prior decisions. Build on your accumulated understanding. Don't contradict yourself without acknowledging the change.
@@ -115,7 +115,7 @@ You write ALL your work to your **workspace** directory. This is your private wo
 The VM tells you your workspace path:
 
 ```
-Your workspace: .prose/runs/{id}/workspace/{service-name}/
+Your workspace: .agents/prose/runs/{id}/workspace/{service-name}/
 ```
 
 Write everything here — intermediate notes, drafts, scratch work, and your final outputs. All files are preserved for post-run inspection.
@@ -207,7 +207,7 @@ The error name (`no-results`) must match one of your declared `errors`. Undeclar
 ### 3.3 What Happens After
 
 The VM reads your `__error.md` and decides how to proceed:
-- If the program's `ensures` has a conditional clause covering this error, the VM produces the degraded output
+- If the system's `ensures` has a conditional clause covering this error, the VM produces the degraded output
 - If not, the error propagates upward
 
 You don't need to worry about recovery — that's the orchestrator's job. Just signal clearly.
@@ -247,7 +247,7 @@ Outputs written:
 Summary: Approved research phase, flagged 2 concerns for next iteration.
 
 Memory updated: captain
-Location: .prose/runs/{id}/agents/captain/memory.md
+Location: .agents/prose/runs/{id}/agents/captain/memory.md
 Segment: captain-003.md
 ```
 
@@ -397,7 +397,7 @@ Over many segments, your memory file grows. When it becomes unwieldy:
 - Segment 4-6: Completed initial implementation review, approved with minor fixes
 - Segment 1-3: Established review criteria, approved design doc
 
-## Key Historical Decisions
+## Key Prior Decisions
 - Chose JWT over session tokens (segment 2)
 - Established 80% coverage threshold (segment 1)
 ```
@@ -446,7 +446,7 @@ Before completing your session:
 
 ## Summary
 
-As a subagent in an OpenProse program:
+As a subagent in an OpenProse system:
 
 1. **Read your service definition** — understand your contract
 2. **Read your inputs from disk** — the VM gives you file paths

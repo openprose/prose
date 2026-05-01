@@ -9,8 +9,7 @@ see-also:
   - ../forme.md: Forme container spec
   - ../prose.md: Prose VM spec
   - ../prosescript.md: ProseScript imperative layer
-  - patterns.md: Proven execution patterns
-  - antipatterns.md: Common mistakes to avoid
+  - authoring.md: Canonical authoring guidance
 ---
 
 # Design Tenets
@@ -39,9 +38,9 @@ The container is intelligent, not deterministic. Ambiguity in wiring is resolved
 
 ## 3. The hybrid emerged from resisting a clean break
 
-The original blueprint proposed a clean break from `.prose`. That was wrong. Contract Markdown enriches ProseScript; it does not replace it. The imperative layer survives because it is *useful*, not because we couldn't figure out the declarative equivalent. We *did* figure out the declarative equivalents — `for each` → `each` in `### Ensures`, `try/catch` → `### Errors` + conditional `### Ensures`, `if/elif/else` → `### Strategies`, `parallel:` → contracts + Forme composites — and then chose to keep both.
+The original blueprint proposed a clean break from ProseScript. That was wrong. Contract Markdown enriches ProseScript; it does not replace it. The imperative layer survives because it is *useful*, not because we couldn't figure out the declarative equivalent. We *did* figure out the declarative equivalents — `for each` → `each` in `### Ensures`, `try/catch` → `### Errors` + conditional `### Ensures`, `if/elif/else` → `### Strategies`, `parallel:` → contracts + Forme patterns — and then chose to keep both.
 
-**How to apply:** Never remove ProseScript from `.prose` files or `### Execution` blocks. The declarative layer is the *default*; the imperative layer is the *option*. Both must always work.
+**How to apply:** Keep ProseScript available inside `### Execution` and pattern `### Delegation` blocks. The declarative layer is the *default*; the imperative layer is the *option*. Both must always work.
 
 ---
 
@@ -69,11 +68,13 @@ Contracts → auto-wired graph → wiring declaration → execution sequence. Yo
 
 ---
 
-## 7. Two things, not three
+## 7. Services and systems are distinct
 
-There are exactly two concepts: the Component (a service with a contract) and the Container (the intelligent orchestrator). There is no architectural distinction between a leaf and a coordinator — a component that delegates is just a component whose shape mentions other components. The container treats them uniformly.
+`prose run` accepts two authored shapes. A service is atomic: one contract, one session, one workspace. A system is composed: one contract whose implementation is a graph of services and systems.
 
-**How to apply:** Do not introduce new component types. If something feels like a new kind of thing, check whether it's actually a component with a specific shape pattern. It almost certainly is.
+Tests are harnesses executed by `prose test`. Patterns are not directly runnable. A pattern is a reusable agent design pattern: slots, config, invariants, and delegation rules for how filled services interact. Systems instantiate patterns.
+
+**How to apply:** When something does work directly, make it a service. When something owns a concrete graph of work, make it a system. When something is a reusable structural pattern, make it a pattern.
 
 ---
 
@@ -101,7 +102,7 @@ Errors are distinct from degraded success. The initial proposal folded everythin
 
 The initial design had `on-error:` as a caller-side block for handling dependency failures. But in the purely declarative model (no execution block), there is no explicit call site to attach error handling to. Recovery is the orchestrator's job, expressed as alternative acceptable outputs in conditional `ensures` clauses.
 
-**How to apply:** Error recovery should be expressed as what the program can still produce, not as a procedure to follow when something fails.
+**How to apply:** Error recovery should be expressed as what the system can still produce, not as a procedure to follow when something fails.
 
 ---
 
@@ -115,9 +116,9 @@ The initial design had `on-error:` as a caller-side block for handling dependenc
 
 ## 12. Forme was hiding in the standard library
 
-The original blueprint lumped composites, controls, roles, backpressure, and auto-wiring into "the standard library." But a standard library is a set of utilities. What we had was an opinionated framework with its own execution model (read contracts → build graph → produce manifest). Naming it Forme and separating it was the key architectural move.
+The original blueprint lumped patterns, controls, roles, backpressure, and auto-wiring into "the standard library." But a standard library is a set of utilities. What we had was an opinionated framework with its own execution model (read contracts → build graph → produce manifest). Naming it Forme and separating it was the key architectural move.
 
-**How to apply:** When something in the "standard library" has opinions about how programs should be structured, it belongs in Forme, not in the language or the runtime.
+**How to apply:** When something in the "standard library" has opinions about how systems should be structured, it belongs in Forme, not in the language or the runtime.
 
 ---
 
@@ -131,7 +132,7 @@ A single binding file per service was overloaded — it mixed intermediate scrat
 
 ## 14. The "bitter lesson" is the design constraint
 
-Every decision is evaluated against: "does this program get better as models improve?" Imperative constructs cap improvement — `loop 5 times` always loops 5 times. Declarative ones enable it — `ensure 3+ sources` lets a better model get there in one pass. Keeping both is the compromise. Authors choose where on the spectrum to sit.
+Every decision is evaluated against: "does this system get better as models improve?" Imperative constructs cap improvement — `loop 5 times` always loops 5 times. Declarative ones enable it — `ensure 3+ sources` lets a better model get there in one pass. Keeping both is the compromise. Authors choose where on the spectrum to sit.
 
 **How to apply:** When adding a new construct, check: would a smarter model execute this differently? If yes, the construct should be declarative (a contract). If no (e.g., explicit data flow), it can be imperative.
 
@@ -145,11 +146,11 @@ Strategies absorbed three separate imperative constructs: `if/elif/else` (condit
 
 ---
 
-## 16. Components don't discover each other
+## 16. Services don't discover each other
 
 Forme discovers them. This is dependency injection, not service discovery. A service declares what it requires and what it ensures. It does not know who provides its inputs or who consumes its outputs. The container handles that.
 
-**How to apply:** Services should never reference other services by name in their contracts. They reference data shapes. The wiring (who provides what) lives in the manifest, not the component.
+**How to apply:** Services should never reference other services by name in their contracts. They reference data shapes. The wiring (who provides what) lives in the manifest, not the service.
 
 ---
 

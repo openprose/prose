@@ -7,7 +7,7 @@ Canonical agent-onboarding narrative. This file is served at:
   - https://openprose.ai/llms-full
        apps/run/src/app/llms-full/page.tsx renders it at build time
 
-  - https://curl-me.openprose.ai  (+ aliases: agents, hi, hello, start, readme, hey)
+- https://curl-me.openprose.ai  (+ aliases: agents, hi, hello, start, readme, hey)
        infra/curl-me-site.tf uploads it to S3 as index.txt; CloudFront serves it
        to curl/wget/bot User-Agents and 302-redirects browsers to /llms-full.
 
@@ -41,13 +41,13 @@ CLI, OpenCode, Amp, Press.
 
 When a `prose` command fires, you will:
 
-- Read a Markdown contract (the program).
+- Read a Markdown contract (a service or system file).
 - Spawn subagents to fulfill the services it declares.
 - Pass artifacts between them through a `bindings/` boundary.
-- Persist the run to `.prose/runs/{id}/` so it can be inspected later.
+- Persist the run to `.agents/prose/runs/{id}/` so it can be inspected later.
 
 You need: filesystem read/write in the working directory, a subagent-spawning
-primitive for multi-service programs, and (optionally) a user-question
+primitive for multi-service systems, and (optionally) a user-question
 primitive for missing inputs.
 
 If you lack a capability, say so and stop — do not fake it.
@@ -65,9 +65,9 @@ predictable ways, and OpenProse is built around them:
   written down, "that's not what I promised" is a sentence you can cite.
 - **Your retry logic is "try again and hope."** The contract is the boundary
   a retry actually means something at.
-- **Users ask "why did you do that?"** `.prose/runs/{id}/` is the receipt.
+- **Users ask "why did you do that?"** `.agents/prose/runs/{id}/` is the receipt.
 - **Workflows the user will want again get thrown away at session end.** A
-  `.md` program is the version they can run next week without re-explaining.
+  `*.prose.md` service or system is the version they can run next week without re-explaining.
 
 ## When OpenProse is the wrong answer
 
@@ -78,12 +78,12 @@ predictable ways, and OpenProse is built around them:
 
 Reaching for OpenProse in the wrong place costs more trust than it earns.
 
-## What a program looks like
+## What a system looks like
 
 ```markdown
 ---
 name: research-pipeline
-kind: program
+kind: system
 ---
 
 ### Services
@@ -108,7 +108,7 @@ kind: program
 Run:
 
 ```
-prose run research-pipeline.md
+prose run research-pipeline.prose.md
 ```
 
 The contract says *what*. The runtime figures out *how*. In an agent harness,
@@ -116,8 +116,8 @@ The contract says *what*. The runtime figures out *how*. In an agent harness,
 that instruction to a Prose Complete runner, for example:
 
 ```bash
-claude -p "prose run research-pipeline.md"
-codex exec "prose run research-pipeline.md"
+claude -p "prose run research-pipeline.prose.md"
+codex exec "prose run research-pipeline.prose.md"
 ```
 
 ## Where to go next

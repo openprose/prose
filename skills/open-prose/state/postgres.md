@@ -2,21 +2,25 @@
 role: postgres-state-management
 status: experimental
 summary: |
-  PostgreSQL-based state management for OpenProse programs. This approach persists
+  PostgreSQL-based state management for OpenProse systems. This approach persists
   execution state to a PostgreSQL database, enabling true concurrent writes,
   network access, team collaboration, and high-throughput workloads.
 requires: psql CLI tool in PATH, running PostgreSQL server
 see-also:
   - ../prose.md: VM execution semantics
+  - ../forme.md: System wiring semantics
   - filesystem.md: File-based state (default, simpler)
   - sqlite.md: SQLite state (queryable, single-file)
-  - in-context.md: In-context state (for simple programs)
+  - in-context.md: In-context state (for simple systems)
   - ../primitives/session.md: Session context and compaction guidelines
 ---
 
 # PostgreSQL State Management (Experimental)
 
-This document describes how the OpenProse VM tracks execution state using a **PostgreSQL database**. This is an experimental alternative to file-based state (`filesystem.md`), SQLite state (`sqlite.md`), and in-context state (`in-context.md`).
+This document describes how the Prose VM tracks execution state for service and
+system runs using a **PostgreSQL database**. This is an experimental
+alternative to file-based state (`filesystem.md`), SQLite state (`sqlite.md`),
+and in-context state (`in-context.md`).
 
 ## Prerequisites
 
@@ -41,7 +45,7 @@ After installation, verify:
 psql --version    # Should output: psql (PostgreSQL) 16.x
 ```
 
-If `psql` is not available, the VM will offer to fall back to SQLite state.
+If `psql` is not available, the Prose VM will offer to fall back to SQLite state.
 
 ---
 
@@ -56,7 +60,7 @@ PostgreSQL state provides:
 - **High throughput**: Handle 1000+ writes/minute, multi-GB outputs
 - **Durability**: WAL-based recovery, point-in-time restore
 
-**Key principle:** The database is a flexible, shared workspace. The VM and subagents coordinate through it, and external tools can observe and query execution state in real-time.
+**Key principle:** The database is a flexible, shared workspace. The Prose VM and spawned sessions coordinate through it, and external tools can observe and query execution state in real-time.
 
 ---
 
@@ -99,12 +103,12 @@ PostgreSQL state is for **power users** with specific scale or collaboration nee
 | Outputs exceeding 1GB | Bulk ingestion; no single-file bottleneck |
 | Mission-critical workflows (hours/days) | Robust durability; point-in-time recovery |
 
-**If none of these apply, use filesystem or SQLite state.** They're simpler and sufficient for 99% of programs.
+**If none of these apply, use filesystem or SQLite state.** They're simpler and sufficient for 99% of systems.
 
 ### Decision Tree
 
 ```
-Is your program <30 statements with no parallel blocks?
+Is your system <30 statements with no parallel blocks?
   YES -> Use in-context state (zero friction)
   NO  -> Continue...
 
@@ -132,7 +136,7 @@ The primary motivation for PostgreSQL is **concurrent writes in parallel executi
 - SQLite uses table-level locks: parallel branches serialize
 - PostgreSQL uses row-level locks: parallel branches write simultaneously
 
-If your program has 10 parallel branches completing at once, PostgreSQL will be 5-10x faster than SQLite for the write phase.
+If your system has 10 parallel branches completing at once, PostgreSQL will be 5-10x faster than SQLite for the write phase.
 
 ---
 
@@ -154,8 +158,8 @@ docker run -d \
 Then configure the connection:
 
 ```bash
-mkdir -p .prose
-echo "OPENPROSE_POSTGRES_URL=postgresql://postgres@localhost:5432/prose" > .prose/.env
+mkdir -p .agents/prose
+echo "OPENPROSE_POSTGRES_URL=postgresql://postgres@localhost:5432/prose" > .agents/prose/.env
 ```
 
 Management commands:
@@ -178,7 +182,7 @@ For users who prefer native PostgreSQL:
 brew install postgresql@16
 brew services start postgresql@16
 createdb myproject
-echo "OPENPROSE_POSTGRES_URL=postgresql://localhost/myproject" >> .prose/.env
+echo "OPENPROSE_POSTGRES_URL=postgresql://localhost/myproject" >> .agents/prose/.env
 ```
 
 **Linux (Debian/Ubuntu):**
@@ -187,7 +191,7 @@ echo "OPENPROSE_POSTGRES_URL=postgresql://localhost/myproject" >> .prose/.env
 sudo apt install postgresql
 sudo systemctl start postgresql
 sudo -u postgres createdb myproject
-echo "OPENPROSE_POSTGRES_URL=postgresql:///myproject" >> .prose/.env
+echo "OPENPROSE_POSTGRES_URL=postgresql:///myproject" >> .agents/prose/.env
 ```
 
 ### Option 3: Cloud PostgreSQL
@@ -202,8 +206,8 @@ For team collaboration or production:
 
 ```bash
 # Example: Neon
-mkdir -p .prose
-# Add this line to .prose/.env locally:
+mkdir -p .agents/prose
+# Add this line to .agents/prose/.env locally:
 # OPENPROSE_POSTGRES_URL=postgresql://<user>:<password>@<host>/<db>?sslmode=require
 ```
 
@@ -214,29 +218,36 @@ string.
 
 ## Database Location
 
-The connection string is stored in `.prose/.env`:
+The connection string is stored in `.agents/prose/.env`:
 
 ```
 your-project/
-├── .prose/
+├── .agents/prose/
 │   ├── .env                    # OPENPROSE_POSTGRES_URL=...
-│   └── runs/                   # Execution metadata and attachments
+│   └── runs/                   # Source snapshots and attachments
 │       └── {YYYYMMDD}-{HHMMSS}-{random}/
-│           ├── program.prose   # Copy of running program
+│           ├── manifest.run.md # Wiring graph, or minimal service manifest
+│           ├── root.prose.md   # Copy of the invoked service or system source
+│           ├── sources/        # Service, system, and pattern source snapshots
 │           └── attachments/    # Large outputs (optional)
-├── .gitignore                  # Should exclude .prose/.env
-└── your-program.prose
+├── .gitignore                  # Should exclude .agents/prose/.env
+└── .agents/prose/src/system/index.prose.md
 ```
 
 **Run ID format:** `{YYYYMMDD}-{HHMMSS}-{random6}`
 
 Example: `20260116-143052-a7b3c9`
 
+PostgreSQL state preserves the same run identity and source snapshot files as
+the filesystem backend. It stores execution events, bindings, and agent memory
+in PostgreSQL instead of filesystem `workspace/`, `bindings/`, and `vm.log.md`
+artifacts.
+
 ### Environment Variable Precedence
 
 The VM checks in this order:
 
-1. `OPENPROSE_POSTGRES_URL` in `.prose/.env`
+1. `OPENPROSE_POSTGRES_URL` in `.agents/prose/.env`
 2. `OPENPROSE_POSTGRES_URL` in shell environment
 3. `DATABASE_URL` in shell environment (common fallback)
 
@@ -244,26 +255,26 @@ The VM checks in this order:
 
 ```gitignore
 # OpenProse sensitive files
-.prose/.env
-.prose/runs/
+.agents/prose/.env
+.agents/prose/runs/
 ```
 
 ---
 
 ## Responsibility Separation
 
-This section defines **who does what**. This is the contract between the VM and subagents.
+This section defines **who does what**. This is the contract between the Prose VM and spawned sessions.
 
 ### VM Responsibilities
 
-The VM (the orchestrating agent running the .prose program) is responsible for:
+The Prose VM (the orchestrating agent running the service or system) is responsible for:
 
 | Responsibility | Description |
 |----------------|-------------|
 | **Schema initialization** | Create `openprose` schema and tables at run start |
-| **Run registration** | Store the program source and metadata |
+| **Run registration** | Store the root source and metadata |
 | **Execution tracking** | Update position, status, and timing as statements execute |
-| **Subagent spawning** | Spawn sessions via the host `spawn_session` primitive with database instructions |
+| **Session spawning** | Spawn sessions via the host `spawn_session` primitive with database instructions |
 | **Parallel coordination** | Track branch status, implement join strategies |
 | **Loop management** | Track iteration counts, evaluate conditions |
 | **Error aggregation** | Record failures, manage retry state |
@@ -272,9 +283,9 @@ The VM (the orchestrating agent running the .prose program) is responsible for:
 
 **Critical:** The VM must preserve enough context in its own conversation to understand execution state without re-reading the entire database. The database is for coordination and persistence, not a replacement for working memory.
 
-### Subagent Responsibilities
+### Spawned Session Responsibilities
 
-Subagents (sessions spawned by the VM) are responsible for:
+Spawned sessions are responsible for:
 
 | Responsibility | Description |
 |----------------|-------------|
@@ -284,11 +295,11 @@ Subagents (sessions spawned by the VM) are responsible for:
 | **Attachment handling** | Write large outputs to `attachments/` directory, store path in DB |
 | **Atomic writes** | Use transactions when updating multiple related records |
 
-**Critical:** Subagents write ONLY to `bindings`, `agents`, and `agent_segments` tables. The VM owns the `execution` table entirely. Completion signaling happens through the substrate (`spawn_session` return), not database updates.
+**Critical:** Spawned sessions write ONLY to `bindings`, `agents`, and `agent_segments` tables. The Prose VM owns the `execution` table entirely. Completion signaling happens through the host `spawn_session` return, not database updates.
 
-**Critical:** Subagents must write their outputs directly to the database. The VM does not write subagent outputs—it only reads them after the subagent completes.
+**Critical:** Spawned sessions must write their outputs directly to the database. The Prose VM does not write spawned-session outputs; it only reads them after the session completes.
 
-**What subagents return to the VM:** A confirmation message with the binding location—not the full content:
+**What spawned sessions return to the VM:** A confirmation message with the binding location, not the full content:
 
 **Root scope:**
 ```
@@ -329,8 +340,8 @@ CREATE SCHEMA IF NOT EXISTS openprose;
 -- Run metadata
 CREATE TABLE IF NOT EXISTS openprose.run (
     id TEXT PRIMARY KEY,
-    program_path TEXT,
-    program_source TEXT,
+    root_path TEXT,
+    root_source TEXT,
     started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     status TEXT NOT NULL DEFAULT 'running'
@@ -354,12 +365,12 @@ CREATE TABLE IF NOT EXISTS openprose.execution (
     metadata JSONB DEFAULT '{}'::jsonb
 );
 
--- All named values (input, output, let, const)
+-- All named values (binding input/output, let, const)
 CREATE TABLE IF NOT EXISTS openprose.bindings (
     name TEXT NOT NULL,
     run_id TEXT NOT NULL REFERENCES openprose.run(id) ON DELETE CASCADE,
     execution_id INTEGER,  -- NULL for root scope, non-null for block invocations
-    kind TEXT NOT NULL CHECK (kind IN ('input', 'output', 'let', 'const')),
+    binding TEXT NOT NULL CHECK (binding IN ('input', 'output', 'let', 'const')),
     value TEXT,
     source_statement TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -394,14 +405,14 @@ CREATE TABLE IF NOT EXISTS openprose.agent_segments (
     UNIQUE (agent_name, COALESCE(run_id, '__project__'), segment_number)
 );
 
--- Import registry
+-- Resolved dependency cache
 CREATE TABLE IF NOT EXISTS openprose.imports (
     alias TEXT NOT NULL,
     run_id TEXT NOT NULL REFERENCES openprose.run(id) ON DELETE CASCADE,
-    source_url TEXT NOT NULL,
-    fetched_at TIMESTAMPTZ,
-    inputs_schema JSONB,
-    outputs_schema JSONB,
+    source_ref TEXT NOT NULL,
+    resolved_at TIMESTAMPTZ,
+    requires_schema JSONB,
+    ensures_schema JSONB,
     content_hash TEXT,
     metadata JSONB DEFAULT '{}'::jsonb,
     PRIMARY KEY (alias, run_id)
@@ -426,7 +437,7 @@ CREATE INDEX IF NOT EXISTS idx_agent_segments_lookup ON openprose.agent_segments
 - **Large values**: If a binding value exceeds ~100KB, write to `attachments/{name}.md` and store path
 - **Extension tables**: Prefix with `x_` (e.g., `x_metrics`, `x_audit_log`)
 - **Anonymous bindings**: Sessions without explicit capture use auto-generated names: `anon_001`, `anon_002`, etc.
-- **Import bindings**: Prefix with import alias for scoping: `research.findings`, `research.sources`
+- **Resolved service bindings**: Prefix with the resolved service alias for scoping: `research.findings`, `research.sources`
 - **Scoped bindings**: Use `execution_id` column—NULL for root scope, non-null for block invocations
 
 ### Scope Resolution Query
@@ -470,7 +481,7 @@ LIMIT 1;
 
 ## Database Interaction
 
-Both VM and subagents interact via the `psql` CLI.
+The Prose VM and spawned sessions interact via the `psql` CLI.
 
 ### From the VM
 
@@ -480,8 +491,8 @@ psql "$OPENPROSE_POSTGRES_URL" -f schema.sql
 
 # Register a new run
 psql "$OPENPROSE_POSTGRES_URL" -c "
-  INSERT INTO openprose.run (id, program_path, program_source, status)
-  VALUES ('20260116-143052-a7b3c9', '/path/to/program.prose', 'program source...', 'running')
+  INSERT INTO openprose.run (id, root_path, root_source, status)
+  VALUES ('20260116-143052-a7b3c9', '/path/to/root.prose.md', 'root source...', 'running')
 "
 
 # Update execution position
@@ -502,9 +513,9 @@ psql "$OPENPROSE_POSTGRES_URL" -c "
 "
 ```
 
-### From Subagents
+### From Spawned Sessions
 
-The VM provides the database path and instructions when spawning:
+The Prose VM provides the database path and instructions when spawning:
 
 **Root scope (outside block invocations):**
 
@@ -513,7 +524,7 @@ Your output goes to PostgreSQL state.
 
 | Property | Value |
 |----------|-------|
-| Connection | `postgresql://user:***@host:5432/db` |
+| Connection variable | `OPENPROSE_POSTGRES_URL` |
 | Schema | `openprose` |
 | Run ID | `20260116-143052-a7b3c9` |
 | Binding | `research` |
@@ -522,7 +533,7 @@ Your output goes to PostgreSQL state.
 When complete, write your output:
 
 psql "$OPENPROSE_POSTGRES_URL" -c "
-  INSERT INTO openprose.bindings (name, run_id, execution_id, kind, value, source_statement)
+  INSERT INTO openprose.bindings (name, run_id, execution_id, binding, value, source_statement)
   VALUES (
     'research',
     '20260116-143052-a7b3c9',
@@ -543,7 +554,7 @@ Your output goes to PostgreSQL state.
 
 | Property | Value |
 |----------|-------|
-| Connection | `postgresql://user:***@host:5432/db` |
+| Connection variable | `OPENPROSE_POSTGRES_URL` |
 | Schema | `openprose` |
 | Run ID | `20260116-143052-a7b3c9` |
 | Binding | `result` |
@@ -554,7 +565,7 @@ Your output goes to PostgreSQL state.
 When complete, write your output:
 
 psql "$OPENPROSE_POSTGRES_URL" -c "
-  INSERT INTO openprose.bindings (name, run_id, execution_id, kind, value, source_statement)
+  INSERT INTO openprose.bindings (name, run_id, execution_id, binding, value, source_statement)
   VALUES (
     'result',
     '20260116-143052-a7b3c9',
@@ -617,7 +628,7 @@ Even with PostgreSQL state, the VM should narrate key events in its conversation
 |---------|-----------|
 | **Working memory** | Conversation narration (what the VM "remembers" without re-querying) |
 | **Durable state** | PostgreSQL database (survives context limits, enables resumption) |
-| **Subagent coordination** | PostgreSQL database (shared access point) |
+| **Spawned session coordination** | PostgreSQL database (shared access point) |
 | **Debugging/inspection** | PostgreSQL database (queryable history) |
 
 The narration is the VM's "mental model" of execution. The database is the "source of truth" for resumption and inspection.
@@ -638,14 +649,14 @@ RETURNING id;  -- Save as parent_id (e.g., 42)
 -- VM creates execution record for each branch
 INSERT INTO openprose.execution (run_id, statement_index, statement_text, status, started_at, parent_id, metadata)
 VALUES
-  ('20260116-143052-a7b3c9', 6, 'a = session "Task A"', 'executing', NOW(), 42, '{"parallel_id": "p1", "branch": "a"}'::jsonb),
-  ('20260116-143052-a7b3c9', 7, 'b = session "Task B"', 'executing', NOW(), 42, '{"parallel_id": "p1", "branch": "b"}'::jsonb),
-  ('20260116-143052-a7b3c9', 8, 'c = session "Task C"', 'executing', NOW(), 42, '{"parallel_id": "p1", "branch": "c"}'::jsonb);
+  ('20260116-143052-a7b3c9', 6, 'a = session "Branch A"', 'executing', NOW(), 42, '{"parallel_id": "p1", "branch": "a"}'::jsonb),
+  ('20260116-143052-a7b3c9', 7, 'b = session "Branch B"', 'executing', NOW(), 42, '{"parallel_id": "p1", "branch": "b"}'::jsonb),
+  ('20260116-143052-a7b3c9', 8, 'c = session "Branch C"', 'executing', NOW(), 42, '{"parallel_id": "p1", "branch": "c"}'::jsonb);
 
--- Subagents write their outputs to bindings table (see "From Subagents" section)
--- spawn_session signals completion to VM via substrate
+-- Spawned sessions write their outputs to bindings table (see "From Spawned Sessions" section)
+-- spawn_session signals completion to the VM via the host
 
--- VM marks branch complete after Task returns
+-- VM marks branch complete after the session returns
 UPDATE openprose.execution SET status = 'completed', completed_at = NOW()
 WHERE run_id = '20260116-143052-a7b3c9' AND metadata->>'parallel_id' = 'p1' AND metadata->>'branch' = 'a';
 
@@ -659,7 +670,7 @@ WHERE run_id = '20260116-143052-a7b3c9'
 
 ### The Concurrency Advantage
 
-Each subagent writes to a different row in `openprose.bindings`. PostgreSQL's row-level locking means **no blocking**:
+Each spawned session writes to a different row in `openprose.bindings`. PostgreSQL's row-level locking means **no blocking**:
 
 ```
 SQLite (table locks):
@@ -772,14 +783,14 @@ When a binding value is too large for comfortable database storage (>100KB):
 3. Leave `value` as a summary
 
 ```sql
-INSERT INTO openprose.bindings (name, run_id, kind, value, attachment_path, source_statement)
+INSERT INTO openprose.bindings (name, run_id, binding, value, attachment_path, source_statement)
 VALUES (
   'full_report',
   '20260116-143052-a7b3c9',
   'let',
   'Full analysis report (847KB) - see attachment',
   'attachments/full_report.md',
-  'let full_report = session "Generate comprehensive report"'
+  'let full_report = session "Generate report with findings, evidence, and caveats"'
 )
 ON CONFLICT (name, run_id) DO UPDATE
 SET value = EXCLUDED.value, attachment_path = EXCLUDED.attachment_path, updated_at = NOW();
@@ -799,7 +810,7 @@ WHERE run_id = '20260116-143052-a7b3c9' AND status = 'executing'
 ORDER BY id DESC LIMIT 1;
 
 -- Get all completed bindings
-SELECT name, kind, value, attachment_path FROM openprose.bindings
+SELECT name, binding, value, attachment_path FROM openprose.bindings
 WHERE run_id = '20260116-143052-a7b3c9';
 
 -- Get agent memory states
@@ -855,14 +866,14 @@ The database is your workspace. Use it.
 
 | Aspect | filesystem.md | in-context.md | sqlite.md | postgres.md |
 |--------|---------------|---------------|-----------|-------------|
-| **State location** | `.prose/runs/{id}/` files | Conversation history | `.prose/runs/{id}/state.db` | PostgreSQL database |
+| **State location** | `.agents/prose/runs/{id}/` files | Conversation history | `.agents/prose/runs/{id}/state.db` | PostgreSQL database |
 | **Queryable** | Via file reads | No | Yes (SQL) | Yes (SQL) |
 | **Atomic updates** | No | N/A | Yes (transactions) | Yes (ACID) |
 | **Concurrent writes** | Yes (different files) | N/A | **No (table locks)** | **Yes (row locks)** |
 | **Network access** | No | No | No | **Yes** |
 | **Team collaboration** | Via file sync | No | Via file sync | **Yes** |
 | **Schema flexibility** | Rigid file structure | N/A | Flexible | Very flexible (JSONB) |
-| **Resumption** | Read state.md | Re-read conversation | Query database | Query database |
+| **Resumption** | Read vm.log.md | Re-read conversation | Query database | Query database |
 | **Complexity ceiling** | High | Low (<30 statements) | High | **Very high** |
 | **Dependency** | None | None | sqlite3 CLI | psql CLI + PostgreSQL |
 | **Setup friction** | Zero | Zero | Low | Medium-High |
@@ -882,6 +893,6 @@ PostgreSQL state management:
 6. Requires the **psql CLI** and a running PostgreSQL server
 7. Is **experimental**—expect changes
 
-The core contract: the VM manages execution flow and spawns subagents; subagents write their own outputs directly to the database. Completion is signaled through the `spawn_session` return, not database updates. External tools can query execution state in real-time.
+The core contract: the Prose VM manages execution flow and spawns sessions; spawned sessions write their own outputs directly to the database. Completion is signaled through the `spawn_session` return, not database updates. External tools can query execution state in real-time.
 
 **PostgreSQL state is for power users.** If you don't need concurrent writes, network access, or team collaboration, filesystem or SQLite state will be simpler and sufficient.

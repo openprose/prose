@@ -3,10 +3,11 @@ role: in-context-state-management
 summary: |
   In-context state management using the narration protocol with text markers.
   This approach tracks execution state within the conversation history itself.
-  The OpenProse VM "thinks aloud" to persist state—what you say becomes what you remember.
+  The Prose VM "thinks aloud" to persist state—what you say becomes what you remember.
 see-also:
   - ../prose.md: VM execution semantics
-  - filesystem.md: File-system state management (alternative approach)
+  - ../forme.md: System wiring semantics
+  - filesystem.md: File-system state management (default backend)
   - sqlite.md: SQLite state management (experimental)
   - postgres.md: PostgreSQL state management (experimental)
   - ../primitives/session.md: Session context and compaction guidelines
@@ -14,7 +15,7 @@ see-also:
 
 # In-Context State Management
 
-This document describes how the OpenProse VM tracks execution state using **structured narration** in the conversation history. This is one of two state management approaches (the other being file-based state in `filesystem.md`).
+This document describes how the Prose VM tracks execution state using **structured narration** in the conversation history. This is a supported alternative to file-based state (`filesystem.md`) for small service and system runs.
 
 ## Overview
 
@@ -32,15 +33,15 @@ In-context state is appropriate for:
 |--------|------------|------------------------|
 | Statement count | < 30 statements | >= 30 statements |
 | Parallel branches | < 5 concurrent | >= 5 concurrent |
-| Imported programs | 0-2 imports | >= 3 imports |
+| Resolved service/system calls | 0-2 calls | >= 3 calls |
 | Nested depth | <= 2 levels | > 2 levels |
 | Expected duration | < 5 minutes | >= 5 minutes |
 
-Announce your state mode at program start:
+Announce your state mode at run start:
 
 ```
-OpenProse Program Start
-   State mode: in-context (program is small, fits in context)
+OpenProse Run Start
+   State mode: in-context (system is small, fits in context)
 ```
 
 ---
@@ -83,7 +84,7 @@ That's it. One line. The host `spawn_session` call and result are in the convers
 
 ```
 ∥ [a b c]
-  [Task calls for a, b, c]
+  [spawn_session calls for a, b, c]
 ∥ [a✓ b✓ c✓] done
 ```
 
@@ -131,11 +132,11 @@ When inside a block, bindings are implicitly scoped to the current `#ID`:
   5→ result ✓   (scoped to #43)
 ```
 
-### Program Imports
+### Service and System Calls
 
 ```
-use alice/research → research
-research(topic:"quantum") → result ✓
+call researcher(topic:"quantum") → result ✓
+call synthesis(findings:result) → report ✓
 ```
 
 ---
@@ -152,7 +153,7 @@ When passing context to sessions, format appropriately:
 | 2000-8000 chars | Summarize to key points |
 | > 8000 chars | Extract essentials only |
 
-**Limitation:** In-context state cannot support RLM-style patterns with arbitrarily large bindings. For large intermediate values, use file-based or PostgreSQL state.
+**Limitation:** In-context state cannot support arbitrarily large bindings. For large intermediate values, use file-based or PostgreSQL state.
 
 ---
 
@@ -195,11 +196,11 @@ The VM's conversation naturally contains:
 
 | Information | Where It Lives |
 |-------------|----------------|
-| Agent/block definitions | Read at program start, in early context |
+| Agent/block definitions | Read at run start, in early context |
 | Binding values | `spawn_session` results in conversation |
 | Current position | VM knows what it just executed |
 | Loop iteration | VM is counting |
-| Parallel status | VM spawned the tasks, sees returns |
+| Parallel status | VM spawned the sessions, sees returns |
 | Call stack | VM invoked the blocks |
 
 The compact markers exist for **clarity and resumption**, not as the primary state store. The conversation IS the state.
@@ -208,12 +209,12 @@ The compact markers exist for **clarity and resumption**, not as the primary sta
 
 ## Independence from File-Based State
 
-In-context state and file-based state (`filesystem.md`) are **independent approaches**. You choose one or the other based on program complexity.
+In-context state and file-based state (`filesystem.md`) are **independent approaches**. You choose one or the other based on system complexity.
 
 - **In-context**: State lives in conversation history
-- **File-based**: State lives in `.prose/runs/{id}/`
+- **File-based**: State lives in `.agents/prose/runs/{id}/`
 
-They are not designed to be complementary—pick the appropriate mode at program start.
+They are not designed to be complementary—pick the appropriate mode at run start.
 
 ---
 
@@ -223,7 +224,7 @@ In-context state management:
 
 1. Uses **compact markers** (`1→ research ✓`) instead of verbose narration
 2. Relies on **conversation history** as the primary state
-3. Is appropriate for **smaller, simpler programs** (<30 statements)
+3. Is appropriate for **smaller, simpler systems** (<30 statements)
 4. Generates **minimal tokens** per statement
 5. Enables resumption by reading prior markers
 

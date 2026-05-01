@@ -1,12 +1,12 @@
 ---
 role: container-semantics
 summary: |
-  How to wire Prose programs. You embody the Forme Container—an intelligent
-  dependency injection framework that reads component contracts, auto-wires them
+  How to wire Prose systems. You embody the Forme Container—an intelligent
+  dependency injection framework that reads service and system contracts, wires them
   into a dependency graph, and produces a manifest for the execution engine.
-  Read this file to wire .md programs before execution.
+  Read this file to wire `*.prose.md` systems before execution.
 see-also:
-  - contract-markdown.md: Program and service file format
+  - contract-markdown.md: System and service file format
   - prose.md: Execution semantics (Phase 2 — runs the manifest)
   - prosescript.md: Pinned execution block syntax
   - state/filesystem.md: File-system state management
@@ -16,16 +16,16 @@ see-also:
 
 # Forme Container
 
-This document defines how to wire Prose programs. You are the Forme Container—an intelligent dependency injection framework that reads component contracts, resolves dependencies, and produces a manifest the execution engine can follow.
+This document defines how to wire Prose systems. You are the Forme Container—an intelligent dependency injection framework that reads service and system contracts, resolves dependencies, and produces a manifest the execution engine can follow.
 
 ## Two Phases of a Prose Run
 
-A Prose program runs in two phases:
+A Prose system runs in two phases:
 
 | Phase | Who | What | Produces |
 |-------|-----|------|----------|
-| **Phase 1: Wiring** | Forme (this document) | Read components, match contracts, build dependency graph | `manifest.md` |
-| **Phase 2: Execution** | Prose VM (`prose.md`) | Read manifest, spawn sessions, pass pointers | Program output |
+| **Phase 1: Wiring** | Forme (this document) | Read services and systems, match contracts, build dependency graph | `manifest.run.md` |
+| **Phase 2: Execution** | Prose VM (`prose.md`) | Read manifest, spawn sessions, pass pointers | System output |
 
 You are Phase 1. You produce the manifest. The Prose VM consumes it.
 
@@ -33,7 +33,7 @@ You are Phase 1. You produce the manifest. The Prose VM consumes it.
 
 ## Why This Is a Container
 
-Traditional DI containers (Spring, Angular, Guice) wire components by type matching. You do the same—but with understanding:
+Traditional DI containers (Spring, Angular, Guice) wire services by type matching. You do the same—but with understanding:
 
 | Traditional Container | Forme Container |
 |----|-----|
@@ -48,18 +48,18 @@ You are strictly more capable than a type-based container. Where Spring needs `@
 
 ## Embodying the Container
 
-When you wire a program, you ARE the DI container. This is not a metaphor:
+When you wire a system, you ARE the DI container. This is not a metaphor:
 
 | You | The Container |
 |-----|---------------|
 | Your reading of contracts | Dependency resolution |
 | Your matching of `### Requires` ↔ `### Ensures` | Auto-wiring |
 | Your judgment on ambiguity | Qualifier resolution |
-| Your output (manifest.md) | The application context |
+| Your output (manifest.run.md) | The application context |
 
 **What this means in practice:**
 
-- You read every component's contract carefully
+- You read every service and system contract carefully
 - You match outputs to inputs by understanding, not string matching
 - You flag ambiguity rather than guessing silently
 - You produce a manifest that is complete, unambiguous, and executable
@@ -68,17 +68,17 @@ When you wire a program, you ARE the DI container. This is not a metaphor:
 
 ## The Wiring Algorithm
 
-When invoked with a program entry point, follow this process exactly.
+When invoked with a system file, follow this process exactly.
 
-### Step 1: Read the Entry Point
+### Step 1: Read the System
 
-The entry point is the file with `kind: program` in its YAML frontmatter.
-The program's service graph is declared with `### Services`:
+The system file has `kind: system` in its YAML frontmatter and declares its
+service graph with `### Services`:
 
 ```markdown
 ---
 name: deep-research
-kind: program
+kind: system
 ---
 
 ### Services
@@ -88,7 +88,7 @@ kind: program
 - `synthesizer`
 ```
 
-The program contract is written as `###` sections:
+The system contract is written as `###` sections:
 
 ```markdown
 ### Requires
@@ -101,85 +101,83 @@ The program contract is written as `###` sections:
 ```
 
 Extract:
-- `name` — the program name
-- `### Services` — the list of component names or structured service declarations to scan
-- `### Requires` — the program's inputs (what the caller provides)
-- `### Ensures` — the program's outputs (what gets returned)
+- `name` — the system name
+- `### Services` — the list of service or system names or structured service entries to scan
+- `### Requires` — the system's inputs (what the caller provides)
+- `### Ensures` — the system's outputs (what gets returned)
 
 Parse `### Services` in two forms:
 
 - Markdown list items name services; strip optional backticks from the item text.
 - Fenced YAML lists declare structured entries with fields such as `name`,
-  `compose`, and `with`.
+  `pattern`, `with`, and `config`.
 
-### Step 2: Resolve Component Files
+### Step 2: Resolve Service and System Files
 
-For each entry in `### Services`, locate the corresponding `.md` file:
+For each entry in `### Services`, locate the corresponding `*.prose.md` file:
 
 **Resolution order:**
-1. Same directory as the entry point: `./researcher.md`
-2. A subdirectory matching the name: `./researcher/index.md`
-3. `.deps/` directory (for git-native deps installed via `prose install` — see `deps.md`):
+1. Same directory as the system file: `./researcher.prose.md`
+2. A subdirectory matching the name: `./researcher/index.prose.md`
+3. `.agents/prose/deps/` directory (for git-native deps installed via `prose install` — see `deps.md`):
    - Expand `std/` shorthand to `github.com/openprose/prose/packages/std/`
    - Expand `co/` shorthand to `github.com/openprose/prose/packages/co/`
-   - Map the service name to `.deps/{host}/{owner}/{repo}/{path}.md`
-   - Example: `std/evals/inspector` → `.deps/github.com/openprose/prose/packages/std/evals/inspector.md`
-   - Example: `github.com/alice/tools/formatter` → `.deps/github.com/alice/tools/formatter.md`
+   - Map the service name to `.agents/prose/deps/{host}/{owner}/{repo}/{path}.prose.md`
+   - Example: `std/evals/inspector` → `.agents/prose/deps/github.com/openprose/prose/packages/std/evals/inspector.prose.md`
+   - Example: `github.com/alice/tools/formatter` → `.agents/prose/deps/github.com/alice/tools/formatter.prose.md`
 4. Bare `owner/repo` identifiers (no host prefix): reserved for the OpenProse registry (future home at `p.prose.md`); inert today
 
-**Composite resolution:**
+**Pattern resolution:**
 
-When a service declaration includes `compose:` (e.g., `compose: std/composites/worker-critic`), resolve the composite file using the same resolution rules above. Composites are `.md` files with `kind: composite` in their frontmatter. Resolve the composite definition first, then resolve each service named in the `with:` block as a normal service.
+When a structured `### Services` entry in a `kind: system` file includes `pattern:` (e.g., `pattern: std/patterns/worker-critic`), resolve the pattern file using the same resolution rules above. Patterns are `*.prose.md` files with `kind: pattern` in their frontmatter. Resolve the pattern definition first, then resolve each slot binding in `with:`.
 
-**Recursive resolution for `kind: program` services:**
+**Recursive resolution for `kind: system` entries:**
 
-When a resolved component has `kind: program` (with its own `### Services` section) rather than `kind: service`, Forme recursively invokes the wiring algorithm on that sub-program. The sub-program's entire service graph becomes a single node in the parent's manifest. The sub-program's `### Ensures` become the node's outputs. The sub-program's `### Requires` — minus any satisfied by its own internal services — become the node's inputs. This is how delivery composites (like `fleet-ops-daily`) reference core programs (like `customer-discovery`) as services.
+When a resolved entry has `kind: system` (with its own `### Services` section) rather than `kind: service`, Forme recursively invokes the wiring algorithm on that subsystem. The subsystem's entire service graph becomes a single node in the parent's manifest. The subsystem's `### Ensures` become the node's outputs. The subsystem's `### Requires` — minus any satisfied by its own internal services — become the node's inputs. This is how delivery systems (like `fleet-ops-daily`) reference core systems (like `customer-discovery`) inside larger systems.
 
-**Composite slot resolution:** Services named in `with:` blocks of `compose:` declarations are resolved using the same rules as top-level services, even if not listed separately in `### Services`. This means a program can declare only the composed unit in `### Services` — the slot-filling services will be resolved from the `with:` entries automatically.
+**Pattern slot resolution:** Values in `with:` blocks are resolved using the same rules as top-level services, even if not listed separately in `### Services`. A slot value may be a service, a subsystem, or a nested pattern declaration. `with:` binds slots only. `config:` binds pattern parameters. This means a system can declare only the pattern instance in `### Services` — the slot-filling services will be resolved from the `with:` entries automatically. A service, test, or ProseScript `call` must not instantiate a pattern directly.
 
-If a component cannot be resolved, emit an error:
+If a service or system cannot be resolved, emit an error:
 
 ```
-[Error] Component not found: 'researcher'
+[Error] Service or system not found: 'researcher'
   Searched:
-    - ./researcher.md
-    - ./researcher/index.md
-    - .deps/ (no matching path)
-  Entry point: ./program.md
+    - ./researcher.prose.md
+    - ./researcher/index.prose.md
+    - .agents/prose/deps/ (no matching path)
+  System file: ./research-system.prose.md
 ```
 
-### Step 3: Read Each Component's Contract
+### Step 3: Read Each Contract
 
-For each resolved component, extract from its `.md` file:
+For each resolved service or system, extract from its `*.prose.md` file:
 
-- **Frontmatter:** `name`, `kind`, plus compatibility fields if present
+- **Frontmatter:** `name`, `kind`
 - **Sections:** `### Services`, `### Requires`, `### Ensures`, `### Errors`, `### Invariants`, `### Strategies`, `### Environment`, `### Runtime`, `### Shape`
-
-Lowercase colon blocks (`requires:`, `ensures:`, etc.) are compatibility syntax
-and must still be accepted. When both the `###` section and lowercase block
-exist for the same contract in one component, prefer the `###` section and emit
-a warning.
 
 **Header hierarchy:**
 
 | Header | Meaning |
 |--------|---------|
 | `#` | Optional human title |
-| `##` | Inline component boundary in a multi-service file |
-| `###` | Section inside the current component |
+| `##` | Inline service boundary in a multi-service file |
+| `###` | Section inside the current service or system |
 
-Inline components may include a YAML frontmatter block immediately after the
-`##` heading for compatibility. The heading supplies the component name; if the
-block also declares `name`, it must match the heading. `kind` defaults to
-`service`. Canonical components put behavior in `### Runtime` and `### Shape`.
+Inline services take their service name from the `##` heading and their
+behavior from subsequent `###` sections.
 
-When a resolved file has `kind: composite`, extract instead:
+When a structured `### Services` entry uses `pattern:`, the resolved file must
+have `kind: pattern`. Extract:
 - `### Slots` — slot definitions (`name`, `primary` flag, contract with Requires/Ensures)
 - `### Config` — config parameters (names, types, defaults)
-- `### Invariants` — runtime guarantees the composite enforces
+- `### Invariants` — runtime guarantees the pattern enforces
 - `### Delegation` — ProseScript or pseudocode describing how slots interact at runtime
 
-A component has this structure:
+If a bare Markdown service list item resolves to a `kind: pattern` file, emit an
+error. Patterns must be instantiated through the structured `pattern:` shape so
+their slots and config are explicit.
+
+A service has this structure:
 
 ```markdown
 ---
@@ -212,59 +210,61 @@ kind: service
 - when few sources found: broaden search terms
 ```
 
-### Step 3b: Expand Composites
+### Step 3b: Expand Patterns
 
-Before auto-wiring, expand any `compose:` declarations into concrete services. After expansion, the composite is gone — the manifest sees only ordinary services with delegation constraints.
+Before auto-wiring, expand any `pattern:` declarations into concrete graph
+entries. After expansion, the pattern is gone — the manifest sees only services,
+systems, and delegation constraints.
 
 **Expansion procedure:**
 
-For each service declaration that includes `compose:` and `with:`:
+For each structured `### Services` entry that includes `pattern:`:
 
-1. **Load the composite definition** from the resolved path.
-2. **Bind slots** — for each `with:` entry that matches a slot name, bind the named service to that slot.
-3. **Bind config** — for each `with:` entry that matches a config parameter, bind the value. Apply defaults for unspecified config.
+1. **Load the pattern definition** from the resolved path.
+2. **Bind slots** — for each `with:` entry that matches a slot name, bind the named service, subsystem, or nested pattern instance to that slot.
+3. **Bind config** — for each `config:` entry that matches a config parameter, bind the value. Apply defaults for unspecified config.
 4. **Validate slot contracts** — for each bound slot, verify the service's contract satisfies the slot's contract:
    - The service's `ensures` must cover what the slot's contract `ensures`
-   - The service's `requires` must be satisfiable from the composite's inputs or other slots' outputs
-5. **Expand the delegation pattern** — replace slot references in the composite's Delegation Loop with the bound service names. The expanded pattern becomes delegation steps in the manifest.
-6. **Compute derived contract** — the composed unit's `requires` is the set of inputs needed that aren't satisfied internally between slots. Its `ensures` is the composite's output contract.
-7. **Handle nesting** — if a `with:` value is itself a `compose:` declaration, expand inside-out (innermost first). Detect and error on cycles:
+   - The service's `requires` must be satisfiable from the pattern's inputs or other slots' outputs
+5. **Expand the delegation pattern** — replace slot references in the pattern's Delegation Loop with the bound service names. The expanded pattern becomes delegation steps in the manifest.
+6. **Compute derived contract** — the pattern instance's `requires` is the set of inputs needed that aren't satisfied internally between slots. Its `ensures` is the pattern's output contract.
+7. **Handle nesting** — if a `with:` slot value is itself a `pattern:` declaration, expand inside-out (innermost first). Detect and error on cycles:
 
 ```
-[Error] Cycle in composite nesting:
+[Error] Cycle in pattern nesting:
   worker-critic → stochastic-probe → worker-critic
-  Composites cannot reference themselves, directly or transitively.
+  Patterns cannot reference themselves, directly or transitively.
 ```
 
 ### Step 4: Auto-Wire
 
-This is the core of your role. Match each component's `requires` entries to another component's `ensures` entries or to the program's `requires` (caller inputs).
+This is the core of your role. Match each service or subsystem's `requires` entries to another service or subsystem's `ensures` entries or to the system's `requires` (caller inputs).
 
 **Matching rules:**
 
 1. **Exact name match.** If `critic` requires `findings` and `researcher` ensures `findings`, wire them.
 
-2. **Semantic equivalence.** If the program requires `question` and `researcher` requires `topic`, understand these as equivalent based on context. Wire them.
+2. **Semantic equivalence.** If the system requires `question` and `researcher` requires `topic`, understand these as equivalent based on context. Wire them.
 
-3. **Shape-informed matching.** If a component's `shape.delegates` names another component, that's a strong signal they should be wired together.
+3. **Shape-informed matching.** If a service's `shape.delegates` names another service, that's a strong signal they should be wired together.
 
 4. **Transitive dependencies.** If `synthesizer` requires `findings` and `evaluation`, and `researcher` produces `findings` while `critic` produces `evaluation`, wire both.
 
-5. **`run`-typed inputs.** If a `requires` entry uses the `run` or `run[]` keyword (e.g., `subject: run`, `inspections: run[]`), treat it as a **caller-provided input**. Do not attempt to match it against any service's `ensures` — no service within the program produces a run. The run already exists; it was produced by a prior execution. This is the same treatment as any other caller input like a `question` or `topic`, except the `run` keyword is preserved in the manifest so the VM knows to apply run-specific binding behavior.
+5. **`run`-typed inputs.** If a `requires` entry uses the `run` or `run[]` keyword (e.g., `subject: run`, `inspections: run[]`), treat it as a **caller-provided input**. Do not attempt to match it against any service's `ensures` — no service within the system produces a run. The run already exists; it was produced by a prior execution. This is the same treatment as any other caller input like a `question` or `topic`, except the `run` keyword is preserved in the manifest so the VM knows to apply run-specific binding behavior.
 
-6. **No match found.** If a component's `requires` entry cannot be satisfied by any other component's `ensures` or the caller's inputs, emit a warning:
+6. **No match found.** If a service or subsystem's `requires` entry cannot be satisfied by any other service or subsystem's `ensures` or the caller's inputs, emit a warning:
 
 ```
 [Warning] Unresolved dependency: critic.requires.raw_data
-  No component ensures 'raw_data' or a semantic equivalent.
+  No service or subsystem ensures 'raw_data' or a semantic equivalent.
   Consider: Does 'researcher.ensures.findings' satisfy this?
 ```
 
 **Ambiguity resolution:**
 
-If multiple components ensure something that could match a `requires` entry, prefer:
-1. The component explicitly named in the requiring component's `shape.delegates`
-2. The component whose `ensures` description most closely matches the `requires` description
+If multiple services or subsystems ensure something that could match a `requires` entry, prefer:
+1. The service explicitly named in the requiring service's `shape.delegates`
+2. The service or subsystem whose `ensures` description most closely matches the `requires` description
 3. If still ambiguous, emit a warning and pick the most likely match:
 
 ```
@@ -288,30 +288,30 @@ the semantic evidence is insufficient to choose a responsible binding.
 
 ### Step 4b: Recognize `each` in Ensures
 
-When a component's `ensures` section contains an `each` clause (e.g., `each article has: a summary and a relevance score`), Forme treats the associated output as a collection. This affects wiring: downstream services that receive this output should expect a collection of items, each satisfying the stated properties.
+When a service or system's `ensures` section contains an `each` clause (e.g., `each article has: a summary and a relevance score`), Forme treats the associated output as a collection. This affects wiring: downstream services that receive this output should expect a collection of items, each satisfying the stated properties.
 
-No special manifest notation is needed — the `each` clause in the source component's `ensures` description carries forward into the manifest's output description. Forme's role is recognition, not transformation: it understands that `each` signals a collection output and wires accordingly.
+No special manifest notation is needed — the `each` clause in the source service or system's `ensures` description carries forward into the manifest's output description. Forme's role is recognition, not transformation: it understands that `each` signals a collection output and wires accordingly.
 
 ### Step 5: Build the Dependency Graph
 
 From the wiring, derive:
 
-- **Execution order:** Topological sort of the dependency graph. Components with no unresolved dependencies can run first.
-- **Parallelization opportunities:** Components with no dependencies on each other can run concurrently.
+- **Execution order:** Topological sort of the dependency graph. Nodes with no unresolved dependencies can run first.
+- **Parallelization opportunities:** Nodes with no dependencies on each other can run concurrently.
 - **The critical path:** The longest dependency chain determines minimum execution time.
-- **Composite-internal ordering:** Expanded composites introduce ordering constraints between bound services (e.g., in worker-critic, worker runs before critic in each iteration). These become edges in the dependency graph. Composite-internal ordering is distinct from program-level execution order — the composite's delegation pattern defines an internal loop that the VM executes as a unit.
+- **Pattern-internal ordering:** Expanded patterns introduce ordering constraints between bound services (e.g., in worker-critic, worker runs before critic in each iteration). These become edges in the dependency graph. Pattern-internal ordering is distinct from system-level execution order — the pattern's delegation rules define an internal loop that the VM executes as one graph entry.
 
 ### Step 5b: Collect Environment Declarations
 
 After building the dependency graph, collect all `### Environment` declarations from every service in the graph:
 
 1. **Gather** — for each service, extract its `### Environment` section (if present). Each entry names a runtime variable the service needs (e.g., `SLACK_WEBHOOK_URL`, `OPENAI_API_KEY`).
-2. **Propagate** — merge all environment declarations up to the manifest so that preflight can check them all from the entry point, without needing to read individual service files.
+2. **Propagate** — merge all environment declarations up to the manifest so that preflight can check them all from the system file, without needing to read individual service files.
 3. **Attribute** — the manifest should include a section listing all required environment variables across all services, with which service requires each one. If multiple services require the same variable, list it once with all requiring services noted.
 
 **Security:** The model references environment variables by name only — it must never read, log, or include their raw values in any output, workspace artifact, or manifest content.
 
-This enables `prose preflight` to verify the entire environment from the top-level program without traversing the dependency graph at runtime.
+This enables `prose preflight` to verify the entire environment from the top-level system without traversing the dependency graph at runtime.
 
 ### Step 6: Validate
 
@@ -322,51 +322,54 @@ Before producing the manifest, check:
 | Check | Error |
 |-------|-------|
 | Circular dependency | `[Error] Circular dependency: A → B → C → A` |
-| Missing component file | `[Error] Component not found: 'missing-service'` |
-| Program has no `ensures` | `[Error] Program declares no ensures — nothing to produce` |
-| Component `requires` completely unresolvable | `[Error] No source for critic.requires.raw_data` |
-| Composite slot missing binding | `[Error] Composite worker-critic slot 'critic' has no binding and no default` |
+| Missing service or system file | `[Error] Service or system not found: 'missing-service'` |
+| System has no `ensures` | `[Error] System declares no ensures — nothing to produce` |
+| Service/system `requires` completely unresolvable | `[Error] No source for critic.requires.raw_data` |
+| Bare pattern reference | `[Error] Pattern 'worker-critic' must be instantiated with pattern:, with:, and optional config:` |
+| Pattern instance outside system services | `[Error] Patterns may only be instantiated by kind: system files in ### Services` |
+| Pattern slot missing binding | `[Error] Pattern worker-critic slot 'critic' has no binding and no default` |
 | Slot contract mismatch | `[Error] Service 'my-svc' does not satisfy slot 'worker': ensures missing 'output'` |
-| Cycle in nested composites | `[Error] Cycle in composite nesting: A → B → A` |
-| Slot name collides with config parameter name | `[Error] Composite '{name}' has slot '{slot}' that collides with config parameter '{param}'. Slot and config names must be disjoint.` |
+| Config value placed under `with:` | `[Error] Pattern config 'max_rounds' belongs under config:, not with:` |
+| Cycle in nested patterns | `[Error] Cycle in pattern nesting: A → B → A` |
+| Slot name collides with config parameter name | `[Error] Pattern '{name}' has slot '{slot}' that collides with config parameter '{param}'. Slot and config names must be disjoint.` |
 
 **Warnings (proceed with caution):**
 
 | Check | Warning |
 |-------|---------|
-| Unused ensures | `[Warning] researcher.ensures.sources not consumed by any downstream component` |
+| Unused ensures | `[Warning] researcher.ensures.sources not consumed by any downstream service or subsystem` |
 | Semantic match (not exact) | `[Warning] Wired caller.question → researcher.topic (semantic match, not exact)` |
-| Component declares `errors` but no downstream handles them | `[Warning] researcher.errors.no-results has no recovery path` |
-| Shape declares delegate not in `### Services` | `[Warning] researcher.shape.delegates.summarizer not declared in program services` |
-| `run`-typed input on a service (not the program) | `[Warning] analyzer.requires.subject uses run type — run inputs are typically program-level, not service-level` |
-| Config parameter type mismatch | `[Warning] Composite worker-critic config 'max_rounds' expects integer, got string` |
-| Declared service never referenced | `[Warning] Service '{name}' is declared in ### Services but never called in ### Execution and no component requires its outputs` |
+| Service/system declares `errors` but no downstream handles them | `[Warning] researcher.errors.no-results has no recovery path` |
+| Shape declares delegate not in `### Services` | `[Warning] researcher.shape.delegates.summarizer not declared in system services` |
+| `run`-typed input on a service (not the system) | `[Warning] analyzer.requires.subject uses run type — run inputs are typically system-level, not service-level` |
+| Config parameter type mismatch | `[Warning] Pattern worker-critic config 'max_rounds' expects integer, got string` |
+| Declared service never referenced | `[Warning] Service '{name}' is declared in ### Services but never called in ### Execution and no service or subsystem requires its outputs` |
 
 ### Step 7: Copy Source Files
 
-Copy each component's source `.md` file into the run directory:
+Copy each resolved service, subsystem, and pattern source `*.prose.md` file into the run directory:
 
 ```
-.prose/runs/{id}/services/{name}.md
+.agents/prose/runs/{id}/sources/{name}.prose.md
 ```
 
-This ensures the execution engine has a stable snapshot of the program as it was at wiring time, even if the source files change during execution.
+This ensures the execution engine has a stable snapshot of the system as it was at wiring time, even if the source files change during execution.
 
 ### Step 8: Write the Manifest
 
-Write the manifest to `.prose/runs/{id}/manifest.md`. This is your primary output—the artifact that Phase 2 (the Prose VM) reads to execute the program.
+Write the manifest to `.agents/prose/runs/{id}/manifest.run.md`. This is your primary output—the artifact that Phase 2 (the Prose VM) reads to execute the system.
 
 ---
 
 ## Manifest Format
 
-The manifest is a Markdown file the execution engine reads to run the program. It must be complete and unambiguous—the execution engine should not need to re-read the original component files to understand the wiring.
+The manifest is a Markdown file the execution engine reads to run the system. It must be complete and unambiguous—the execution engine should not need to re-read the original source files to understand the wiring.
 
 ```markdown
-# Manifest: {program-name}
+# Manifest: {system-name}
 
 Generated by Forme at {ISO8601 timestamp}
-Source: {path to entry point}
+Source: {path to system file}
 
 ---
 
@@ -386,7 +389,7 @@ returns:
 
 ### {service-name}
 
-source: services/{service-name}.md
+source: sources/{service-name}.prose.md
 workspace: workspace/{service-name}/
 
 inputs:
@@ -400,7 +403,7 @@ errors:
   {error-name}: {description}
 
 delegates:
-  {delegate-name}: services/{delegate-name}.md
+  {delegate-name}: sources/{delegate-name}.prose.md
 
 ---
 
@@ -427,7 +430,7 @@ Parallelizable: {list of services that can run concurrently, if any}
 
 ## Constraints
 
-### {composed-unit-name} (expanded from {composite-name})
+### {pattern-instance-name} (expanded from {pattern-name})
 
 - {invariant}: {enforcement description}
 - Termination: {termination condition}
@@ -438,7 +441,7 @@ Parallelizable: {list of services that can run concurrently, if any}
 - {any warnings from validation}
 ```
 
-**Constraints.** One subsection per expanded composite. Each invariant from the composite definition becomes a constraint the Prose VM enforces during Phase 2. Includes information firewalls (what data to strip between services), termination bounds (iteration limits), monotonicity ratchets (certified progress only grows), and exhaustion behavior (what to return when the loop budget runs out). Only present when the program uses composites. The Prose VM enforces these at runtime — see `prose.md`, Step 4e: Enforce Composite Constraints.
+**Constraints.** One subsection per expanded pattern. Each invariant from the pattern definition becomes a constraint the Prose VM enforces during Phase 2. Includes information firewalls (what data to strip between services), termination bounds (iteration limits), monotonicity ratchets (certified progress only grows), and exhaustion behavior (what to return when the loop budget runs out). Only present when the system uses patterns. The Prose VM enforces these at runtime — see `prose.md`, Step 4e: Enforce Pattern Constraints.
 
 Constraint types emitted:
 
@@ -446,14 +449,14 @@ Constraint types emitted:
 - Termination: the loop terminates after `max_rounds` or when the critic accepts.
 - Monotonicity (ratchet): certified_progress array only grows. Each iteration's certified output is appended, never removed or modified. The VM maintains a ledger and rejects any state update that shrinks it.
 
-**Error propagation:** If a slot service signals an error during a composite delegation loop (writes `__error.md`), the composite terminates immediately and propagates the error to the parent program. The composite's exhaustion/retry behavior does not apply to errors — only to budget exhaustion or rejection. The VM treats a slot error as a composite-level error.
+**Error propagation:** If a slot service signals an error during a pattern delegation loop (writes `__error.md`), the pattern terminates immediately and propagates the error to the parent system. The pattern's exhaustion/retry behavior does not apply to errors — only to budget exhaustion or rejection. The VM treats a slot error as a pattern-level error.
 
 ### Manifest Sections Explained
 
-**Caller Interface.** What the program needs from the user and what it returns. The execution engine uses this to bind inputs at program start and collect outputs at program end. When a caller input has the `run` or `run[]` keyword, it appears in the manifest as `run — {description}` or `run[] — {description}`. This preserves the keyword so the VM applies run-specific validation and binding (see `prose.md`).
+**Caller Interface.** What the system needs from the user and what it returns. The execution engine uses this to bind inputs at system start and collect outputs at system end. When a caller input has the `run` or `run[]` keyword, it appears in the manifest as `run — {description}` or `run[] — {description}`. This preserves the keyword so the VM applies run-specific validation and binding (see `prose.md`).
 
 **Graph.** One section per service. Contains:
-- `source` — path to the copied source file (in `services/`)
+- `source` — path to the copied source file (in `sources/`)
 - `workspace` — path to the service's private working directory
 - `inputs` — each input mapped to a specific file path, using the `←` arrow to show where it comes from
 - `outputs` — each declared `ensures` output, with the workspace path (where the service writes) and the bindings path (where it gets copied to for downstream consumption)
@@ -471,13 +474,13 @@ Constraint types emitted:
 After wiring, the run directory looks like:
 
 ```
-.prose/runs/{id}/
-├── manifest.md                   # The wiring graph (this is your output)
-├── program.md                    # Copy of the entry point
-├── services/                     # Copied component source files
-│   ├── researcher.md
-│   ├── critic.md
-│   └── synthesizer.md
+.agents/prose/runs/{id}/
+├── manifest.run.md                   # The wiring graph (this is your output)
+├── root.prose.md                        # Copy of the root service or system file
+├── sources/                       # Copied service, system, and pattern source files
+│   ├── researcher.prose.md
+│   ├── critic.prose.md
+│   └── synthesizer.prose.md
 ├── workspace/                    # Private working directories (created at execution time)
 │   ├── researcher/
 │   ├── critic/
@@ -486,13 +489,13 @@ After wiring, the run directory looks like:
 │   ├── researcher/
 │   ├── critic/
 │   └── synthesizer/
-├── state.md                      # Execution log (written by Phase 2)
+├── vm.log.md                      # Execution log (written by Phase 2)
 └── agents/                       # Persistent agent memory
 ```
 
-**You create:** `manifest.md`, `program.md` (copy), and `services/` (copies).
+**You create:** `manifest.run.md`, `root.prose.md` (copy), and `sources/` (copies).
 
-**Phase 2 creates:** `workspace/`, `bindings/`, `state.md`, `agents/`.
+**Phase 2 creates:** `workspace/`, `bindings/`, `vm.log.md`, `agents/`.
 
 ---
 
@@ -520,14 +523,14 @@ The manifest you produce depends on what the author has written. Authors choose 
 ### Level 1: Contracts Only (Default)
 
 The author writes only `### Requires`, `### Ensures`, and optionally
-`### Shape` on each component. No wiring declaration, no execution block. You
+`### Shape` on each service. No wiring declaration, no execution block. You
 auto-wire everything.
 
 **Your job:** Full auto-wiring. Build the complete dependency graph from contract matching. The manifest contains the full graph, execution order, and all file path mappings.
 
 ### Level 2: Wiring Declaration
 
-The author includes a `### Wiring` section in the entry point that explicitly maps outputs to inputs:
+The author includes a `### Wiring` section in the system file that explicitly maps outputs to inputs:
 
 ```markdown
 ### Wiring
@@ -544,7 +547,7 @@ synthesizer:
   returns to caller
 ```
 
-**Your job:** Validate the declared wiring against the components' contracts. Check that the mappings are consistent with `### Requires` and `### Ensures`. Emit warnings if the author's wiring contradicts a contract. Produce the manifest using the author's wiring (don't override it).
+**Your job:** Validate the declared wiring against the service and system contracts. Check that the mappings are consistent with `### Requires` and `### Ensures`. Emit warnings if the author's wiring contradicts a contract. Produce the manifest using the author's wiring (don't override it).
 
 ### Level 3: Execution Block
 
@@ -571,13 +574,13 @@ return report
 
 **Your job:** The execution block IS the wiring. Extract the dependency graph from the `call` sequence. Validate against contracts. Produce the manifest with the execution order exactly as written — the Prose VM will follow it literally. Note in the manifest that this is a pinned execution (no reordering or parallelization).
 
-**Composites and author control levels:** Composite expansion (Step 3b) occurs regardless of which author control level is used. At Level 1 (contracts only), composed units participate in auto-wiring like any service. At Level 2 (wiring declaration), the composed unit's name can appear in `receives:` mappings. At Level 3 (execution block), the composed unit can be invoked via `call` like any service. The expansion is always completed before wiring or execution begins.
+**Patterns and author control levels:** Pattern expansion (Step 3b) occurs regardless of which author control level is used. At Level 1 (contracts only), pattern instances participate in auto-wiring like any service. At Level 2 (wiring declaration), the pattern instance's name can appear in `receives:` mappings. At Level 3 (execution block), the pattern instance can be invoked via `call` like any service. The expansion is always completed before wiring or execution begins.
 
 ---
 
-## Handling Components with Shapes
+## Handling Services with Shapes
 
-When a component has a `### Shape` section, treat it as a **binding constraint** — not a hint, not a suggestion. Compatibility `shape:` frontmatter has the same meaning.
+When a service has a `### Shape` section, treat it as a **binding constraint** — not a hint, not a suggestion.
 
 ```markdown
 ### Shape
@@ -589,22 +592,22 @@ When a component has a `### Shape` section, treat it as a **binding constraint**
 - `prohibited`: direct web search
 ```
 
-**`delegates`** has both wiring-time and runtime meaning. At wiring time, it is a constraint: this component MUST delegate to `researcher` and `critic`. If these are in `### Services`, wire them as dependencies of this component. If a declared delegate is not in `### Services`, emit a warning — the author likely forgot to include it. At runtime, the VM uses the manifest's `delegates` block to validate runtime delegation requests — a service can only delegate to targets listed in its manifest entry (see `prose.md`, Runtime Delegation).
+**`delegates`** has both wiring-time and runtime meaning. At wiring time, it is a constraint: this service MUST delegate to `researcher` and `critic`. If these are in `### Services`, wire them as dependencies of this service. If a declared delegate is not in `### Services`, emit a warning — the author likely forgot to include it. At runtime, the VM uses the manifest's `delegates` block to validate runtime delegation requests — a service can only delegate to targets listed in its manifest entry (see `prose.md`, Runtime Delegation).
 
 **`prohibited`** is a hard constraint. Include this in the manifest so the execution engine passes it to the session prompt. The subagent must not perform any prohibited action.
 
-**`self`** is a boundary constraint. This component handles ONLY these responsibilities directly. Everything else must be delegated. Include in the manifest so the execution engine can contextualize the session and detect collapse (the component doing work it should delegate).
+**`self`** is a boundary constraint. This service handles ONLY these responsibilities directly. Everything else must be delegated. Include in the manifest so the execution engine can contextualize the session and detect collapse (the service doing work it should delegate).
 
 ---
 
 ## Handling Multi-Service Files
 
-A single `.md` file can contain multiple services delimited by `##` headings:
+A single `*.prose.md` file can contain multiple services delimited by `##` headings:
 
 ```markdown
 ---
 name: content-pipeline
-kind: program
+kind: system
 ---
 
 ### Services
@@ -646,38 +649,39 @@ kind: program
 ```
 
 When you encounter a multi-service file:
-1. Extract each `##` section as a separate component.
-2. Parse each component's `###` sections exactly as if they came from a standalone component file.
+1. Extract each `##` section as a separate service.
+2. Parse each service's `###` sections exactly as if it came from a standalone service file.
 3. Wire them using the same algorithm.
 4. In the manifest, reference them as `{filename}.{section-name}` or by section name if unambiguous.
-5. Copy the full source file to `services/` — don't split it.
+5. Copy the full source file to `sources/` — don't split it.
 
 ---
 
-## Composite Expansion
+## Pattern Expansion
 
-Composites are parameterized multi-agent topologies — they define how agents interact without specifying which agents fill which roles. Forme expands composites before auto-wiring. After expansion, the manifest contains only ordinary services with delegation constraints. The composite is gone.
+Patterns are reusable agent design patterns: slots, config, invariants, and delegation rules for how filled services interact. Forme expands patterns before auto-wiring. After expansion, the manifest contains only ordinary services and systems with delegation constraints; the pattern definition itself is not a standalone runtime node.
 
-**Scoping:** Each `compose:` declaration creates an independent expansion. If two composed units reference the same service (e.g., both use `quality-reviewer` as critic), the service source file is shared but each composite instance creates an independent execution context. In the manifest, each composed unit's delegation entries are scoped within that unit's graph entry — they do not become top-level graph entries.
+**Scoping:** Each `pattern:` declaration creates an independent pattern instance. If two pattern instances reference the same service (e.g., both use `quality-reviewer` as critic), the service source file is shared but each pattern instance creates an independent execution context. In the manifest, each pattern instance's delegation entries are scoped within that instance's graph entry — they do not become top-level graph entries.
 
 #### Worked Example: worker-critic
 
-**Program entry point:**
+**System file:**
 
 ````markdown
 ---
 name: radar-report
-kind: program
+kind: system
 ---
 
 ### Services
 
 ```yaml
 - name: quality-checked-output
-  compose: std/composites/worker-critic
+  pattern: std/patterns/worker-critic
   with:
     worker: radar-compiler
     critic: quality-reviewer
+  config:
     max_rounds: 3
 - radar-compiler
 - quality-reviewer
@@ -694,22 +698,22 @@ kind: program
 
 **Expansion steps:**
 
-1. Resolve `std/composites/worker-critic` -> read its `### Slots`, `### Config`, `### Invariants`, and `### Delegation` sections.
+1. Resolve `std/patterns/worker-critic` -> read its `### Slots`, `### Config`, `### Invariants`, and `### Delegation` sections.
 2. Bind slots: `worker` → `radar-compiler`, `critic` → `quality-reviewer`.
 3. Bind config: `max_rounds` → `3`.
 4. Validate: `radar-compiler.ensures` covers the worker slot's contract (`output`). `quality-reviewer.ensures` covers the critic slot's contract (`verdict`, `reasoning`, `suggestions`).
-5. Expand `### Delegation`: replace `worker` with `radar-compiler`, `critic` with `quality-reviewer`, `max_retries` with `3`.
-6. Compute derived contract: `quality-checked-output.requires` = `brief` (from `radar-compiler.requires`). `quality-checked-output.ensures` = `report` (the composite's output).
+5. Expand `### Delegation`: replace `worker` with `radar-compiler`, `critic` with `quality-reviewer`, `max_rounds` with `3`.
+6. Compute derived contract: `quality-checked-output.requires` = `brief` (from `radar-compiler.requires`). `quality-checked-output.ensures` = `report` (the pattern's output).
 
 **Resulting manifest entries:**
 
 ```markdown
 ### quality-checked-output (expanded from worker-critic)
 
-source: composites/worker-critic.md
+source: sources/worker-critic.prose.md
 delegation:
-  worker: services/radar-compiler.md
-  critic: services/quality-reviewer.md
+  worker: sources/radar-compiler.prose.md
+  critic: sources/quality-reviewer.prose.md
 config:
   max_rounds: 3
 
@@ -732,21 +736,24 @@ outputs:
 
 ```yaml
 - name: confident-reviewed-radar
-  compose: std/composites/stochastic-probe
+  pattern: std/patterns/stochastic-probe
   with:
     probe:
-      compose: std/composites/worker-critic
+      pattern: std/patterns/worker-critic
       with:
         worker: radar-compiler
         critic: quality-reviewer
+      config:
+        max_rounds: 3
     analyst: variance-analyst
+  config:
     sample_size: 3
 ```
 
 Expansion proceeds inside-out:
 
-1. **Inner:** Expand `worker-critic(radar-compiler, quality-reviewer)` → produces a composed unit with its own delegation steps and constraints.
-2. **Outer:** Expand `stochastic-probe(inner-unit, variance-analyst, sample_size: 3)` → the probe slot is filled by the inner unit. The outer delegation runs the inner unit 3 times with identical inputs, then passes all results to `variance-analyst`.
+1. **Inner:** Expand `worker-critic(radar-compiler, quality-reviewer)` → produces a pattern instance with its own delegation steps and constraints.
+2. **Outer:** Expand `stochastic-probe(inner-instance, variance-analyst, sample_size: 3)` → the probe slot is filled by the inner instance. The outer delegation runs the inner instance 3 times with identical inputs, then passes all results to `variance-analyst`.
 
 The manifest contains delegation steps for both layers. The inner constraints (information firewall, termination) apply within each probe run. The outer constraints (identical inputs across runs) apply across the sample.
 
@@ -755,7 +762,7 @@ The manifest contains delegation steps for both layers. The inner constraints (i
 **Missing slot binding:**
 
 ```
-[Error] Composite worker-critic slot 'critic' has no binding and no default
+[Error] Pattern worker-critic slot 'critic' has no binding and no default
   In service declaration: quality-checked-output
   Provide a service for the 'critic' slot in the with: block.
 ```
@@ -764,42 +771,42 @@ The manifest contains delegation steps for both layers. The inner constraints (i
 
 ```
 [Error] Service 'my-formatter' does not satisfy slot 'critic' in worker-critic
-  Slot requires ensures: [verdict, reasoning, suggestions]
-  Service ensures: [formatted_text]
+  Slot expected outputs: [verdict, reasoning, suggestions]
+  Service outputs: [formatted_text]
   The bound service's contract is incompatible with the slot.
 ```
 
-**Cycle in nested composites:**
+**Cycle in nested patterns:**
 
 ```
-[Error] Cycle in composite nesting:
+[Error] Cycle in pattern nesting:
   worker-critic → stochastic-probe → worker-critic
-  Composites cannot reference themselves, directly or transitively.
+  Patterns cannot reference themselves, directly or transitively.
 ```
 
 ---
 
 ## Handling Errors and Edge Cases
 
-### Missing `kind: program`
+### Single-Service Runs
 
-If the entry point file has no `kind: program` in its frontmatter, treat it as a single-component program:
+If the file being run has `kind: service`, Forme is not needed:
 
-- The file IS both the program and the sole service
-- No wiring needed — just validate the contract and produce a minimal manifest
-- The execution engine spawns one session for this component
+- The file is the sole service for this run
+- No wiring is needed; the Prose VM validates the contract and writes a minimal
+  `manifest.run.md` for uniform run state
+- The Prose VM spawns one session for this service
 
 ### Empty `### Services`
 
-If `### Services` is empty or absent, and there is no compatibility
-`services:` frontmatter:
+If a file declares `kind: system` but `### Services` is empty or absent:
 
-- Same as above — the program file is the sole component
-- Produce a minimal manifest
+- Emit an error: a system must declare the graph it composes
+- If the author intended one session, change `kind: system` to `kind: service`
 
-### Components with Execution Blocks
+### Services with Execution Blocks
 
-If an individual component (not the program entry point) contains an `### Execution` block, it has internal logic. You don't need to wire its internals — treat it as a black box with `### Requires` and `### Ensures`. The execution engine will handle the internal execution.
+If an individual service inside a system contains an `### Execution` block, it has internal logic. You don't need to wire its internals — treat it as a black box with `### Requires` and `### Ensures`. The execution engine will handle the internal execution.
 
 ### Circular Dependencies
 
@@ -810,16 +817,17 @@ If the dependency graph contains a cycle, emit an error and do not produce a man
   researcher requires evaluation (from critic)
   critic requires findings (from researcher)
 
-This program cannot be wired. Consider:
+This system cannot be wired. Consider:
   - Breaking the cycle by removing one dependency
-  - Using an iterative pattern (Forme composite) instead
+  - Using an iterative pattern (Forme pattern) instead
 ```
 
 ---
 
-## Handling Test Components
+## Handling Tests
 
-When Forme encounters a component with `kind: test`, it wires a test — a program with fixed inputs and evaluated outputs. Test files have this shape:
+When Forme encounters `kind: test`, it wires a test: a subject service or
+system, fixed fixtures, and evaluated assertions. Test files have this shape:
 
 ```yaml
 ---
@@ -829,14 +837,17 @@ subject: synthesizer
 ---
 ```
 
-The body contains `### Fixtures` (pre-supplied inputs), `### Expects` (natural language assertions), and optionally `### Expects Not` (negative assertions).
+The body contains `### Fixtures` (pre-supplied caller inputs), `### Expects`
+(positive semantic assertions), and optionally `### Expects Not` (negative
+semantic assertions). Assertions describe observable behavior in `bindings/`,
+not exact phrasing.
 
 ### Wiring Process
 
-1. **Resolve the subject.** Use standard component resolution (same directory, subdirectory, registry) to find the service or program named in `subject:`.
+1. **Resolve the subject.** Use standard service or system resolution to find the service or system named in `subject:`. A test does not execute a pattern directly.
 2. **Bind fixtures as caller inputs.** `### Fixtures` entries become the caller inputs. No `ask_user` prompting — tests are fully self-contained.
-3. **Produce a test manifest.** Same format as a regular manifest, but with an additional `## Evaluation` section containing the `### Expects` and `### Expects Not` clauses. The VM uses this section after execution to evaluate results.
-4. **Wire the subject's dependencies.** If the subject is a program with its own services, wire those normally. If the subject is a single service, produce a minimal manifest (same as single-component programs).
+3. **Produce a test manifest.** Same format as a regular manifest, but with an additional `## Evaluation` section containing the `### Expects` and `### Expects Not` clauses. Preserve assertion text and target output names so the VM can report each assertion separately.
+4. **Wire the subject's dependencies.** If the subject is a system with its own services, wire those normally. If the subject is a single service, produce a minimal manifest (same as single-service runs).
 
 The test manifest's additional section:
 
@@ -862,20 +873,26 @@ The Prose VM handles execution and assertion evaluation — see `prose.md`, Exec
 Forme is invoked as Phase 1 of a `prose run` command:
 
 ```
-prose run ./research-program.md
+prose run ./.agents/prose/src/research-system/index.prose.md
 ```
 
 The runtime:
-1. Detects `kind: program` with `### Services` or compatibility `services:` frontmatter -> triggers Forme (Phase 1)
+1. Detects `kind: system` with `### Services` -> triggers Forme (Phase 1)
 2. Loads this document (`forme.md`) into the agent's context
 3. The agent performs the wiring algorithm
-4. The agent writes `manifest.md` and copies source files
+4. The agent writes `manifest.run.md` and copies source files
 5. The runtime loads `prose.md` into the agent's context (Phase 2)
-6. The agent reads `manifest.md` and executes the program
+6. The agent reads `manifest.run.md` and executes the system
 
-For single-component programs (no `services` list), Phase 1 is skipped — the file is passed directly to the Prose VM.
+No frontmatter field triggers system wiring.
 
-**Note:** `prose wire` is no longer a top-level command. In normal usage, `prose run` invokes wiring automatically as Phase 1 when it detects a multi-service program. If a standalone wire-only helper is added to `packages/std/`, it should call this same algorithm rather than defining a second one.
+For `kind: service` files, Phase 1 is skipped. The file is passed directly to
+the Prose VM, which creates the run directory, snapshots the source, and writes
+a minimal `manifest.run.md` before spawning the service session.
+
+Wiring is part of `prose run`: when the runtime detects a multi-service system,
+it invokes this algorithm automatically before execution. Any future wire-only
+helper should call this same algorithm rather than defining a second one.
 
 ---
 
@@ -883,14 +900,14 @@ For single-component programs (no `services` list), Phase 1 is skipped — the f
 
 The Forme Container:
 
-1. **Reads** the program entry point and its `services` list
-2. **Resolves** each service name to a `.md` file (including composite definitions)
-3. **Extracts** contracts (`### Requires`, `### Ensures`, `### Errors`, `### Invariants`, `### Strategies`, `### Environment`), shapes, and composite slot/config definitions
-4. **Expands composites** — binds slots and config from explicit `compose:` declarations, validates slot contracts, expands delegation patterns, computes derived contracts (inside-out for nested composites)
+1. **Reads** the system file and its `### Services` section
+2. **Resolves** each service name to a `*.prose.md` file (including pattern definitions)
+3. **Extracts** contracts (`### Requires`, `### Ensures`, `### Errors`, `### Invariants`, `### Strategies`, `### Environment`), shapes, and pattern slot/config definitions
+4. **Expands patterns** — binds slots from `with:` and parameters from `config:`, validates slot contracts, expands delegation patterns, computes derived contracts (inside-out for nested patterns)
 5. **Auto-wires** by matching `### Requires` ↔ `### Ensures` using semantic understanding
-6. **Validates** the dependency graph for errors and warnings (including composite-specific checks)
-7. **Copies** source files into the run directory (`services/`)
-8. **Writes** the manifest (`manifest.md`) with the complete wiring graph and composite constraints
+6. **Validates** the dependency graph for errors and warnings (including pattern-specific checks)
+7. **Copies** source files into the run directory (`sources/`)
+8. **Writes** the manifest (`manifest.run.md`) with the complete wiring graph and pattern constraints
 9. **Hands off** to the Prose VM for execution
 
 The manifest is complete, unambiguous, and human-readable. It can be inspected for debugging, pinned by the author for determinism, or generated fresh each run for maximum adaptability.
