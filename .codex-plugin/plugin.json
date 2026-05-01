@@ -1,6 +1,6 @@
 {
   "name": "open-prose",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "description": "Runs OpenProse *.prose.md services and systems.",
   "license": "MIT",
   "homepage": "https://github.com/openprose/prose",
@@ -25,7 +25,10 @@
     "shortDescription": "Run OpenProse services and systems.",
     "longDescription": "OpenProse gives Codex a reusable language for services and systems: contracts, patterns, wiring, state, and auditable run artifacts under .agents/prose/runs/.",
     "category": "Productivity",
-    "capabilities": ["Read", "Write"],
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
     "privacyPolicyURL": "https://github.com/openprose/prose/blob/main/PRIVACY.md",
     "termsOfServiceURL": "https://github.com/openprose/prose/blob/main/TERMS.md",
     "defaultPrompt": [
