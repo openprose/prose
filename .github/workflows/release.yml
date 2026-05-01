@@ -1,0 +1,51 @@
+name: Plugin Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Create GitHub Release for plugin tag
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Verify declared versions match the tag
+        run: |
+          set -euo pipefail
+          ./scripts/bump-version.sh --check
+          declared="$(jq -r '.version' .claude-plugin/plugin.json)"
+          if [[ "$declared" != "${{ steps.version.outputs.version }}" ]]; then
+            echo "error: tag is v${{ steps.version.outputs.version }} but plugin.json says $declared" >&2
+            exit 1
+          fi
+
+      - name: Extract CHANGELOG block
+        run: |
+          set -euo pipefail
+          ./scripts/extract-changelog.sh "${{ steps.version.outputs.version }}" > /tmp/notes.md
+          if [[ ! -s /tmp/notes.md ]]; then
+            echo "error: no CHANGELOG block found for ${{ steps.version.outputs.version }}" >&2
+            exit 1
+          fi
+          cat /tmp/notes.md
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "OpenProse plugin $GITHUB_REF_NAME" \
+            --notes-file /tmp/notes.md \
+            --verify-tag
