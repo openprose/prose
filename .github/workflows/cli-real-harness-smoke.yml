@@ -3,13 +3,13 @@ name: CLI Real Harness Smoke
 on:
   pull_request:
     paths:
-      - "cli/**"
+      - "tools/cli/**"
       - ".github/workflows/cli-real-harness-smoke.yml"
   push:
     branches:
       - main
     paths:
-      - "cli/**"
+      - "tools/cli/**"
       - ".github/workflows/cli-real-harness-smoke.yml"
   workflow_dispatch:
     inputs:
@@ -45,7 +45,7 @@ jobs:
           - claude-sdk
     defaults:
       run:
-        working-directory: cli
+        working-directory: tools/cli
     env:
       SHOULD_RUN: ${{ github.event_name != 'workflow_dispatch' || inputs.harness == 'all' || inputs.harness == matrix.harness }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -67,7 +67,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: cli/package-lock.json
+          cache-dependency-path: tools/cli/package-lock.json
 
       - name: Install dependencies
         if: ${{ env.SHOULD_RUN == 'true' }}

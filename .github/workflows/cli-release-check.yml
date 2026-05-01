@@ -3,7 +3,7 @@ name: CLI Release Check
 on:
   pull_request:
     paths:
-      - "cli/**"
+      - "tools/cli/**"
       - ".github/workflows/cli-publish.yml"
       - ".github/workflows/cli-release-check.yml"
       - ".github/workflows/cli-real-harness-smoke.yml"
@@ -12,7 +12,7 @@ on:
     branches:
       - main
     paths:
-      - "cli/**"
+      - "tools/cli/**"
       - ".github/workflows/cli-publish.yml"
       - ".github/workflows/cli-release-check.yml"
       - ".github/workflows/cli-real-harness-smoke.yml"
@@ -48,13 +48,13 @@ jobs:
         run: actionlint .github/workflows/cli-*.yml
 
       - name: Check installer shell syntax
-        run: bash -n cli/install.sh
+        run: bash -n tools/cli/install.sh
 
       - name: Check release helper syntax
-        run: node --check cli/scripts/build-release-tarball.mjs
+        run: node --check tools/cli/scripts/build-release-tarball.mjs
 
       - name: Check harness smoke helper syntax
-        run: node --check cli/scripts/smoke-harness.mjs
+        run: node --check tools/cli/scripts/smoke-harness.mjs
 
   node-checks:
     name: Node ${{ matrix.node-version }} checks
@@ -69,7 +69,7 @@ jobs:
           - 22
     defaults:
       run:
-        working-directory: cli
+        working-directory: tools/cli
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -79,7 +79,7 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
-          cache-dependency-path: cli/package-lock.json
+          cache-dependency-path: tools/cli/package-lock.json
 
       - name: Install dependencies
         run: npm ci
@@ -108,7 +108,7 @@ jobs:
     timeout-minutes: 20
     defaults:
       run:
-        working-directory: cli
+        working-directory: tools/cli
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -118,7 +118,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: cli/package-lock.json
+          cache-dependency-path: tools/cli/package-lock.json
 
       - name: Install dependencies
         run: npm ci
@@ -184,7 +184,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: cli-npm-pack
-          path: cli/npm-pack.json
+          path: tools/cli/npm-pack.json
           if-no-files-found: error
 
   release-tarball-smoke:
@@ -199,7 +199,7 @@ jobs:
           - macos-latest
     defaults:
       run:
-        working-directory: cli
+        working-directory: tools/cli
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -209,7 +209,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: cli/package-lock.json
+          cache-dependency-path: tools/cli/package-lock.json
 
       - name: Install dependencies
         run: npm ci
@@ -249,7 +249,7 @@ jobs:
     timeout-minutes: 15
     defaults:
       run:
-        working-directory: cli
+        working-directory: tools/cli
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -259,7 +259,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: cli/package-lock.json
+          cache-dependency-path: tools/cli/package-lock.json
 
       - name: Install dependencies
         run: npm ci

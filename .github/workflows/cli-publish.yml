@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Version to publish. Must match cli/package.json, for example 1.2.3."
+        description: "Version to publish. Must match tools/cli/package.json, for example 1.2.3."
         required: true
         type: string
       npm_tag:
@@ -86,14 +86,14 @@ jobs:
             ""|*[!A-Za-z0-9._-]*) fail "version may only contain letters, numbers, dots, underscores, and dashes" ;;
           esac
 
-          package_version="$(node -p 'require("./cli/package.json").version')"
+          package_version="$(node -p 'require("./tools/cli/package.json").version')"
           [ "$version" = "$package_version" ] || {
-            fail "Input version ($version) must match cli/package.json ($package_version)"
+            fail "Input version ($version) must match tools/cli/package.json ($package_version)"
           }
 
-          installer_version="$(sed -n 's/^DEFAULT_VERSION="\([^"]*\)"/\1/p' cli/install.sh)"
+          installer_version="$(sed -n 's/^DEFAULT_VERSION="\([^"]*\)"/\1/p' tools/cli/install.sh)"
           [ "$version" = "$installer_version" ] || {
-            fail "Input version ($version) must match cli/install.sh DEFAULT_VERSION ($installer_version)"
+            fail "Input version ($version) must match tools/cli/install.sh DEFAULT_VERSION ($installer_version)"
           }
 
           release_tag="v$version"
@@ -127,7 +127,7 @@ jobs:
     needs: authorize
     defaults:
       run:
-        working-directory: cli
+        working-directory: tools/cli
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -137,7 +137,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: cli/package-lock.json
+          cache-dependency-path: tools/cli/package-lock.json
 
       - name: Install dependencies
         run: npm ci
@@ -178,7 +178,7 @@ jobs:
             target_arch: arm64
     defaults:
       run:
-        working-directory: cli
+        working-directory: tools/cli
     env:
       TARGET_ARCH: ${{ matrix.target_arch }}
       TARGET_OS: ${{ matrix.target_os }}
@@ -192,7 +192,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: cli/package-lock.json
+          cache-dependency-path: tools/cli/package-lock.json
 
       - name: Install dependencies
         run: npm ci
@@ -253,7 +253,7 @@ jobs:
       id-token: write
     defaults:
       run:
-        working-directory: cli
+        working-directory: tools/cli
     env:
       GH_TOKEN: ${{ github.token }}
       NPM_CONFIG_PROVENANCE: "true"
@@ -270,7 +270,7 @@ jobs:
           node-version: 24
           registry-url: https://registry.npmjs.org
           cache: npm
-          cache-dependency-path: cli/package-lock.json
+          cache-dependency-path: tools/cli/package-lock.json
 
       - name: Install npm with trusted publishing support
         run: npm install --global npm@latest
@@ -329,7 +329,7 @@ jobs:
 
           Install with the release tarball:
 
-              curl -fsSL https://raw.githubusercontent.com/openprose/prose/main/cli/install.sh | sh
+              curl -fsSL https://raw.githubusercontent.com/openprose/prose/main/tools/cli/install.sh | sh
           EOF
 
           gh release create "$RELEASE_TAG" "$asset_dir"/* \
