@@ -1,7 +1,7 @@
 {
   "name": "open-prose",
   "version": "0.10.0",
-  "description": "Runs Markdown contracts as multi-agent programs.",
+  "description": "Runs OpenProse *.prose.md services and systems.",
   "license": "MIT",
   "homepage": "https://github.com/openprose/prose",
   "repository": "https://github.com/openprose/prose",
@@ -22,15 +22,15 @@
   "interface": {
     "displayName": "OpenProse",
     "developerName": "OpenProse",
-    "shortDescription": "Run Markdown contracts as multi-agent programs.",
-    "longDescription": "OpenProse gives Codex a reusable workflow language for agent programs: contracts, services, wiring, state, and auditable run artifacts.",
+    "shortDescription": "Run OpenProse services and systems.",
+    "longDescription": "OpenProse gives Codex a reusable language for services and systems: contracts, patterns, wiring, state, and auditable run artifacts under .agents/prose/runs/.",
     "category": "Productivity",
     "capabilities": ["Read", "Write"],
     "privacyPolicyURL": "https://github.com/openprose/prose/blob/main/PRIVACY.md",
     "termsOfServiceURL": "https://github.com/openprose/prose/blob/main/TERMS.md",
     "defaultPrompt": [
       "Use OpenProse to run this workflow as a reusable contract.",
-      "Use OpenProse to write a multi-agent program for this repeated process."
+      "Use OpenProse to write a reusable system for this repeated process."
     ]
   }
 }

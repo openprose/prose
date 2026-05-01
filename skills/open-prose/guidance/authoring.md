@@ -127,7 +127,9 @@ subject: summarizer
 - `summary`: invents citations or named sources
 ```
 
-- `subject:` names a service or system, not a pattern.
+- `subject:` names a service or system, not a pattern. Prefer path-like subjects
+  for cross-directory tests; bare subjects may resolve by frontmatter `name:`
+  within the local test/source package.
 - `### Fixtures` are caller inputs supplied by the test. Tests must not prompt
   the user for missing inputs.
 - `### Expects` and `### Expects Not` are semantic assertions over

@@ -58,7 +58,7 @@ describe("process harnesses", () => {
 	test("codex CLI builds codex exec with the exact prompt", async () => {
 		const calls: Array<{ command: string; args: string[] }> = [];
 		const io = memoryStreams();
-		const prompt = "prose run inspector.md --flag='two words'";
+		const prompt = "prose run inspector.prose.md --flag='two words'";
 		const harness = createHarness("codex", { runner: recordingRunner(calls) });
 
 		await harness.run(prompt, { ...io.options });
@@ -74,7 +74,7 @@ describe("process harnesses", () => {
 	test("codex CLI injects OpenProse bootstrap as developer instructions", async () => {
 		const calls: Array<{ command: string; args: string[] }> = [];
 		const io = memoryStreams();
-		const prompt = "prose run inspector.md";
+		const prompt = "prose run inspector.prose.md";
 		const bootstrap = "OPEN_PROSE_BOOTSTRAP\nwith newline";
 		const harness = createHarness("codex", { runner: recordingRunner(calls) });
 
@@ -111,7 +111,7 @@ describe("process harnesses", () => {
 		};
 		const harness = createHarness("codex", { runner });
 
-		await harness.run("prose run inspector.md", {
+		await harness.run("prose run inspector.prose.md", {
 			...io.options,
 			env: { OPENAI_API_KEY: "openai-key" },
 		});
@@ -122,7 +122,7 @@ describe("process harnesses", () => {
 	test("codex CLI forwards requested sandbox and approval settings", async () => {
 		const calls: Array<{ command: string; args: string[] }> = [];
 		const io = memoryStreams();
-		const prompt = "prose run inspector.md";
+		const prompt = "prose run inspector.prose.md";
 		const harness = createHarness("codex", { runner: recordingRunner(calls) });
 
 		await harness.run(prompt, {
@@ -194,7 +194,7 @@ describe("harness selection", () => {
 		const io = memoryStreams();
 		const harness = createHarness("mock", { mock: { response: "ok" } });
 
-		await expect(harness.run("prose run inspector.md", { ...io.options })).resolves.toBe(0);
+		await expect(harness.run("prose run inspector.prose.md", { ...io.options })).resolves.toBe(0);
 		expect(io.stdout).toBe("ok\n");
 	});
 });
@@ -212,7 +212,7 @@ describe("codex-sdk harness", () => {
 					starts.push(options);
 					return {
 						runStreamed: async (prompt, turnOptions) => {
-							expect(prompt).toBe("prose run inspector.md");
+							expect(prompt).toBe("prose run inspector.prose.md");
 							expect(turnOptions?.signal).toBe(signal);
 							return {
 								events: events([
@@ -225,7 +225,7 @@ describe("codex-sdk harness", () => {
 			};
 		};
 
-		const exitCode = await createCodexSdkHarness({ factory }).run("prose run inspector.md", {
+		const exitCode = await createCodexSdkHarness({ factory }).run("prose run inspector.prose.md", {
 			...io.options,
 			cwd: "/repo",
 			env: { OPENAI_API_KEY: "test", EMPTY: undefined },
@@ -259,7 +259,7 @@ describe("codex-sdk harness", () => {
 			};
 		};
 
-		await createCodexSdkHarness({ factory }).run("prose run inspector.md", {
+		await createCodexSdkHarness({ factory }).run("prose run inspector.prose.md", {
 			...io.options,
 			additionalDirectories: ["/skills/open-prose"],
 			env: { OPENAI_API_KEY: "test", HOME: "/home/prose" },
@@ -299,7 +299,7 @@ describe("codex-sdk harness", () => {
 			},
 		});
 
-		const exitCode = await createCodexSdkHarness({ factory }).run("prose run inspector.md", {
+		const exitCode = await createCodexSdkHarness({ factory }).run("prose run inspector.prose.md", {
 			...io.options,
 			env: {
 				PROSE_CODEX_APPROVAL_POLICY: "never",
@@ -345,7 +345,7 @@ describe("claude-sdk harness", () => {
 			},
 		});
 
-		const exitCode = await harness.run("prose run inspector.md", {
+		const exitCode = await harness.run("prose run inspector.prose.md", {
 			...io.options,
 			additionalDirectories: ["/skills/open-prose"],
 			cwd: "/repo",
@@ -356,7 +356,7 @@ describe("claude-sdk harness", () => {
 		expect(exitCode).toBe(0);
 		expect(calls).toEqual([
 			{
-				prompt: "prose run inspector.md",
+				prompt: "prose run inspector.prose.md",
 				options: expect.objectContaining({
 					additionalDirectories: ["/skills/open-prose"],
 					cwd: "/repo",

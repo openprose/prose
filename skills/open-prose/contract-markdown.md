@@ -415,6 +415,9 @@ Rules:
 
 - `subject:` must name a service or system. Tests do not execute patterns
   directly.
+- Path-like subjects use normal service/system resolution. Bare subjects may
+  resolve by matching frontmatter `name:` in the test file's directory and
+  nearest OpenProse source/package root.
 - `### Fixtures` must provide every caller input needed by the subject; tests do
   not prompt the user.
 - `### Expects` and `### Expects Not` assert observable behavior, not exact

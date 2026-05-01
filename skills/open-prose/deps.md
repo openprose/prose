@@ -287,7 +287,7 @@ When Forme resolves a service listed in `### Services`, it checks `.agents/prose
 3. **`.agents/prose/deps/` directory:** `.agents/prose/deps/{host}/{owner}/{repo}/{path}.prose.md`
 4. Bare `owner/repo` identifiers: reserved for the OpenProse registry (future home at `p.prose.md`); inert today
 
-A service name like `std/evals/inspector` in `### Services` resolves to `.agents/prose/deps/github.com/openprose/prose/packages/std/evals/inspector.prose.md` after `std/` shorthand expansion.
+A service or system reference like `std/evals/inspector` in `### Services` resolves to `.agents/prose/deps/github.com/openprose/prose/packages/std/evals/inspector.prose.md` after `std/` shorthand expansion.
 
 ---
 

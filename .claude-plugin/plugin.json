@@ -1,6 +1,6 @@
 {
   "name": "open-prose",
-  "description": "Runs Markdown contracts as multi-agent programs. When the user invokes `prose`, you read the contract, spawn subagents, pass artifacts between them, and write run state to `.prose/runs/`. Requires a subagent primitive; single-service programs run inline.",
+  "description": "Runs OpenProse *.prose.md services and systems. When the user invokes `prose`, read the contract, spawn subagents when the system requires them, pass artifacts through bindings, and write run state to `.agents/prose/runs/`. Requires a subagent primitive for multi-agent systems; single services run inline.",
   "version": "0.10.0",
   "license": "MIT",
   "homepage": "https://github.com/openprose/prose",

@@ -1,6 +1,6 @@
 # Terms of Service
 
-**Last updated:** January 2025
+**Last updated:** May 2026
 
 ## Acceptance
 
@@ -8,7 +8,7 @@ By installing or using OpenProse, you agree to these terms. If you do not agree,
 
 ## Description
 
-OpenProse is an open-source programming language for orchestrating AI agent sessions. It runs within AI assistant environments and spawns subagent sessions according to structured programs.
+OpenProse is an open-source programming language for orchestrating AI agent sessions. It runs within AI assistant environments and executes structured `*.prose.md` services, systems, tests, and patterns.
 
 ## No Warranty
 
@@ -36,7 +36,7 @@ The OpenProse authors and contributors shall not be liable for any direct, indir
 **You are solely responsible for:**
 
 1. **Agent Operations**: All actions performed by AI agents you spawn through OpenProse, including any consequences of those actions
-2. **Code Review**: Reviewing and understanding any `.prose` programs before execution
+2. **Source Review**: Reviewing and understanding any OpenProse `*.prose.md` source before execution
 3. **Output Verification**: Verifying all outputs and not relying on agent outputs without human review
 4. **Access Control**: Ensuring appropriate permissions and access controls for agent operations
 5. **Compliance**: Ensuring your use complies with applicable laws and the terms of your AI assistant platform

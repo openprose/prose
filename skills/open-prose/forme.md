@@ -844,7 +844,7 @@ not exact phrasing.
 
 ### Wiring Process
 
-1. **Resolve the subject.** Use standard service or system resolution to find the service or system named in `subject:`. A test does not execute a pattern directly.
+1. **Resolve the subject.** First resolve `subject:` as a service or system path using standard service/system resolution. If that fails and the subject is a bare name, scan the test file's directory and nearest OpenProse source/package root for `*.prose.md` files whose frontmatter `name:` matches the subject. A test does not execute a pattern directly.
 2. **Bind fixtures as caller inputs.** `### Fixtures` entries become the caller inputs. No `ask_user` prompting — tests are fully self-contained.
 3. **Produce a test manifest.** Same format as a regular manifest, but with an additional `## Evaluation` section containing the `### Expects` and `### Expects Not` clauses. Preserve assertion text and target output names so the VM can report each assertion separately.
 4. **Wire the subject's dependencies.** If the subject is a system with its own services, wire those normally. If the subject is a single service, produce a minimal manifest (same as single-service runs).

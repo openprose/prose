@@ -10,7 +10,7 @@ kind: system
 
 ### Description
 
-Demonstrates importing a service from the external standard library. The `std/evals/inspector` service is installed and pinned by `prose install`. Local and dependency services are wired together by Forme using the same contract-matching algorithm.
+Demonstrates importing a system from the external standard library. The `std/evals/inspector` system is installed and pinned by `prose install`. Local services and dependency systems are wired together by Forme using the same contract-matching algorithm.
 
 ### Requires
 

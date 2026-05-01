@@ -1,4 +1,10 @@
-.prose
+# Legacy local OpenProse state
+.prose/
+
+# Current OpenProse generated state
+.agents/prose/.env
+.agents/prose/deps/
+.agents/prose/runs/
 
 # OpenProse smoke runner output
 openprose-smoke-results/

@@ -47,18 +47,18 @@ describe("Oclif entrypoint helpers", () => {
 	});
 
 	it("normalizes pre-command harness flags for Oclif dispatch", () => {
-		expect(normalizeEntrypointArgv(["--harness", "mock", "run", "flow.md"])).toEqual([
+		expect(normalizeEntrypointArgv(["--harness", "mock", "run", "flow.prose.md"])).toEqual([
 			"run",
 			"--harness",
 			"mock",
-			"flow.md",
+			"flow.prose.md",
 		]);
 	});
 
 	it("does not consume literal harness-looking args after --", () => {
-		expect(normalizeEntrypointArgv(["run", "flow.md", "--", "--harness", "literal"])).toEqual([
+		expect(normalizeEntrypointArgv(["run", "flow.prose.md", "--", "--harness", "literal"])).toEqual([
 			"run",
-			"flow.md",
+			"flow.prose.md",
 			"--",
 			"--harness",
 			"literal",
@@ -68,25 +68,25 @@ describe("Oclif entrypoint helpers", () => {
 
 describe("harness argument splitting", () => {
 	it("defaults to codex-sdk and honors the public env override", () => {
-		expect(splitHarnessArgs(["flow.md"], {}).harness).toBe("codex-sdk");
-		expect(splitHarnessArgs(["flow.md"], { PROSE_HARNESS: "claude-sdk" }).harness).toBe("claude-sdk");
+		expect(splitHarnessArgs(["flow.prose.md"], {}).harness).toBe("codex-sdk");
+		expect(splitHarnessArgs(["flow.prose.md"], { PROSE_HARNESS: "claude-sdk" }).harness).toBe("claude-sdk");
 	});
 
 	it("removes command-local harness flags while preserving run inputs", () => {
 		const parsed = splitHarnessArgs(
-			["./flows/needs review.md", "--topic", "two words", "--harness", "mock"],
+			["./flows/needs review.prose.md", "--topic", "two words", "--harness", "mock"],
 			{},
 		);
 
 		expect(parsed.harness).toBe("mock");
-		expect(parsed.args).toEqual(["./flows/needs review.md", "--topic", "two words"]);
+		expect(parsed.args).toEqual(["./flows/needs review.prose.md", "--topic", "two words"]);
 	});
 
 	it("keeps --harness literal after --", () => {
-		const parsed = splitHarnessArgs(["./flow.md", "--", "--harness", "literal"], { PROSE_HARNESS: "mock" });
+		const parsed = splitHarnessArgs(["./flow.prose.md", "--", "--harness", "literal"], { PROSE_HARNESS: "mock" });
 
 		expect(parsed.harness).toBe("mock");
-		expect(parsed.args).toEqual(["./flow.md", "--", "--harness", "literal"]);
+		expect(parsed.args).toEqual(["./flow.prose.md", "--", "--harness", "literal"]);
 	});
 });
 
@@ -106,7 +106,7 @@ describe("runForwardedProseCommand", () => {
 
 		const exitCode = await runForwardedProseCommand({
 			command: "run",
-			argv: ["./flows/needs review.md", "--topic", "two words", "--harness", "mock"],
+			argv: ["./flows/needs review.prose.md", "--topic", "two words", "--harness", "mock"],
 			cwd: "/repo",
 			env: { TOKEN: "secret" },
 			stdout: io.streams.stdout,
@@ -115,7 +115,7 @@ describe("runForwardedProseCommand", () => {
 		});
 
 		expect(exitCode).toBe(7);
-		expect(seen).toEqual(["prose run './flows/needs review.md' --topic 'two words'", "/repo", "secret"]);
+		expect(seen).toEqual(["prose run './flows/needs review.prose.md' --topic 'two words'", "/repo", "secret"]);
 		expect(io.stdout).toBe("out");
 		expect(io.stderr).toBe("err");
 	});
@@ -148,7 +148,7 @@ FORWARDED_BOOTSTRAP_SENTINEL
 
 			await runForwardedProseCommand({
 				command: "run",
-				argv: ["flow.md", "--harness", "codex-sdk"],
+				argv: ["flow.prose.md", "--harness", "codex-sdk"],
 				cwd,
 				env: { HOME: home },
 				stdout: io.streams.stdout,
@@ -168,7 +168,7 @@ FORWARDED_BOOTSTRAP_SENTINEL
 			});
 
 			expect(seen).toHaveLength(1);
-			expect(seen[0]?.prompt).toContain("prose run flow.md");
+			expect(seen[0]?.prompt).toContain("prose run flow.prose.md");
 			expect(seen[0]?.additionalDirectories).toEqual([skillRoot]);
 			expect(seen[0]?.systemPromptAppend).toContain("FORWARDED_BOOTSTRAP_SENTINEL");
 			expect(seen[0]?.systemPromptAppend).toContain(`OpenProse skill root: ${skillRoot}`);

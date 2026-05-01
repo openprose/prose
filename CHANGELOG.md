@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Codex plugin envelope** — Added `.codex-plugin/plugin.json` and `.agents/plugins/marketplace.json` so OpenProse is discoverable through native Codex marketplace paths with first-class `interface` metadata. The manifest sits ready for OpenAI's self-serve plugin directory submission window.
 
+### Changed
+
+- **Current contract conventions** — Authored Prose files now use `*.prose.md` with `kind: service`, `kind: system`, `kind: test`, or `kind: pattern`; older plain `.md` contracts, `.prose` source files, `kind: program`, `kind: composite`, and `compose:` are legacy upgrade inputs.
+- **Package/library migration** — Public docs now describe `packages/std/` and `packages/co/` as first-party libraries of service/system/test/pattern contracts rather than the older repo-local stdlib/composite model.
+- **Upgrade workflow** — `prose upgrade` and `prose upgrade --dry-run` are the current self-healing migration commands. Historical `prose migrate`, `.deps/`, root `prose.lock`, and `.prose/runs/` references remain part of older entries and are superseded by this guidance.
+
 ## [0.10.0] - 2026-04-20
 
 ### Added

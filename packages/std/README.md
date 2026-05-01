@@ -1,13 +1,13 @@
 # OpenProse Standard Library
 
-Reusable Contract Markdown programs, services, composites, controls, roles, and memory agents for OpenProse.
+Reusable OpenProse services, systems, patterns, roles, delivery adapters, memory services, and operational tools.
 
 ## Usage
 
 ```prose
 use "std/evals/inspector"
-use "std/composites/worker-critic"
-use "std/controls/pipeline"
+use "std/patterns/worker-critic"
+use "std/patterns/pipeline"
 use "std/roles/critic"
 use "std/delivery/email-notifier"
 use "std/memory/project-memory"
@@ -17,38 +17,38 @@ Install with `prose install`. `std/...` is the shorthand for `github.com/openpro
 
 ## Library
 
-All Markdown entries use the current Contract Markdown section form (`### Services`, `### Requires`, `### Ensures`, and related sections). The `.prose` memory entries are legacy ProseScript variants retained for compatibility.
+Authored Prose sources use `*.prose.md` and the current Contract Markdown section form (`### Services`, `### Requires`, `### Ensures`, and related sections). `README.md` files remain plain Markdown.
 
 ### evals/
 
-Programs for evaluating and improving OpenProse runs, contracts, and platform behavior.
+Systems for evaluating and improving OpenProse runs, contracts, and platform behavior.
 
-| Program | Purpose |
+| System | Purpose |
 |---------|---------|
 | `inspector` | Post-run analysis — runtime fidelity and task effectiveness |
-| `contract-grader` | Scores a program against its declared contract |
+| `contract-grader` | Scores a system or service against its declared contract |
 | `regression-tracker` | Tracks quality regressions across runs |
 | `cross-run-differ` | Compares runs and recommends follow-up investigation |
 | `eval-calibrator` | Validates light evals against deep evals for reliability |
-| `program-improver` | Analyzes inspections and proposes program improvements |
+| `system-improver` | Analyzes inspections and proposes source improvements |
 | `platform-improver` | Analyzes inspections and proposes platform/runtime improvements |
 
 ### ops/
 
-Operational programs for profiling, debugging, validation, and wiring.
+Operational systems for profiling, debugging, validation, and wiring.
 
-| Program | Purpose |
+| System | Purpose |
 |---------|---------|
-| `lint` | Validate structure, schema, shapes, and contract consistency for a program and its service tree |
-| `preflight` | Check that all runtime dependencies are satisfied before executing a program |
-| `status` | Summarize recent runs from .prose/runs/ |
-| `wire` | Run Forme wiring to produce an execution manifest |
+| `lint` | Validate structure, schema, shapes, and contract consistency for a system and its service tree |
+| `preflight` | Check that all runtime dependencies are satisfied before executing a system |
+| `status` | Summarize recent runs from `.agents/prose/runs/` |
+| `wire` | Run Forme wiring to produce `manifest.run.md` |
 | `diagnose` | Investigate failed or suspicious runs and propose fixes |
 | `profiler` | Cost, token usage, and time profiling for completed runs |
 
 ### delivery/
 
-Services for delivering program outputs to humans and external systems.
+Services for delivering outputs to humans and external systems.
 
 | Service | Purpose |
 |---------|---------|
@@ -60,9 +60,9 @@ Services for delivering program outputs to humans and external systems.
 | `webhook-notifier` | Deliver content to an HTTP endpoint via webhook |
 | `file-writer` | Write content to a local, S3, or GCS destination |
 
-### composites/
+### patterns/
 
-Named multi-agent topology patterns (`kind: composite`) for reusable coordination shapes.
+Reusable coordination and control-flow patterns (`kind: pattern`).
 
 | Pattern | Purpose |
 |---------|---------|
@@ -77,13 +77,6 @@ Named multi-agent topology patterns (`kind: composite`) for reusable coordinatio
 | `contrastive-probe` | Generates contrasting solutions to expose decision boundaries |
 | `stochastic-probe` | Introduces controlled randomness to test solution robustness |
 | `coherence-probe` | Tests whether two corpora that should agree are actually in sync |
-
-### controls/
-
-Reusable flow-control composites for sequencing, distribution, guarding, retrying, and fallback.
-
-| Pattern | Purpose |
-|---------|---------|
 | `pipeline` | Sequential stage pipeline: output of each stage feeds the next |
 | `map-reduce` | Parallel fan-out across inputs followed by aggregation |
 | `fan-out` | Parallel delegation without reduction; parent consumes raw results |
@@ -95,7 +88,7 @@ Reusable flow-control composites for sequencing, distribution, guarding, retryin
 
 ### roles/
 
-Single-agent role guides for programs and composites.
+Single-service role guides for systems and patterns.
 
 | Role | Purpose |
 |---------|---------|
@@ -112,9 +105,9 @@ Single-agent role guides for programs and composites.
 
 ### memory/
 
-Programs for persistent agent memory management.
+Services for persistent agent memory management.
 
-| Program | Purpose |
+| Service | Purpose |
 |---------|---------|
 | `project-memory` | Project-scoped memory |
 | `user-memory` | Cross-project memory (user-scoped) |
