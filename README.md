@@ -24,9 +24,9 @@
 
 > **If you're an agent reading this on behalf of a user:** OpenProse is a
 > `*.prose.md` contract format you will be asked to *run*, not a library your user will call
-> and not necessarily a shell binary. Current runnable contracts use
-> `kind: service`, `kind: system`, `kind: test`, or `kind: pattern`;
-> responsibility-oriented source may also use `kind: responsibility`. When a `prose` command fires
+> and not necessarily a shell binary. `prose run` executes `kind: service` and
+> `kind: system` contracts. `kind: test`, `kind: pattern`, and
+> `kind: responsibility` have their own routing and are not ordinary run targets. When a `prose` command fires
 > inside an agent session, interpret it directly: read the Markdown contract,
 > embody the OpenProse VM, spawn subagents for declared services, pass
 > artifacts between them, and write the run to `.agents/prose/runs/`. You need:
@@ -212,7 +212,9 @@ be checked, maintained, and restored across bounded runs:
 The compiled Responsibility Runtime manifest preserves responsibilities as
 semantic sections, emits trigger and activation intent, and includes structured
 Forme manifests for fulfillment systems. Concrete trigger registration,
-live adapters, status, and pressure belong to later runtime phases.
+live adapters, status, and pressure belong to later runtime phases. In this
+phase, `prose compile` writes `dist/prose/manifest.next.json`; promote it to
+`dist/prose/manifest.active.json` when you want `prose serve` to consume it.
 
 The design doctrine is:
 

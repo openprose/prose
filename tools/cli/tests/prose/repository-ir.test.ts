@@ -16,6 +16,10 @@ function readFixture(path: string): unknown {
 	return JSON.parse(readFileSync(join(repoRoot, path), "utf8"));
 }
 
+function cloneFixture(path: string): any {
+	return JSON.parse(JSON.stringify(readFixture(path)));
+}
+
 describe("repository IR v0", () => {
 	it("keeps the compile output convention under dist", () => {
 		expect(DEFAULT_REPOSITORY_IR_DIR).toBe("dist/prose");
@@ -87,5 +91,93 @@ describe("repository IR v0", () => {
 				"formeManifests[0].warnings[0] must be a non-empty string",
 			]),
 		);
+	});
+
+	it("rejects responsibilities without exactly one judge activation", () => {
+		const manifest = cloneFixture("tests/open-prose/compiler/expected/stargazer.manifest.next.json");
+		manifest.activations = manifest.activations.filter((activation: any) => activation.kind !== "judge");
+
+		const result = validateRepositoryIr(manifest);
+
+		expect(result.valid).toBe(false);
+		expect(result.errors).toContain(
+			"responsibility 'high-intent-stargazer-outreach' must have exactly one judge activation",
+		);
+	});
+
+	it("rejects trigger references across responsibilities", () => {
+		const manifest = cloneFixture("tests/open-prose/compiler/expected/stargazer.manifest.next.json");
+		manifest.sources.push({
+			path: "other-responsibility.prose.md",
+			kind: "responsibility",
+			name: "other-responsibility",
+		});
+		manifest.responsibilities.push({
+			id: "other-responsibility",
+			sourcePath: "other-responsibility.prose.md",
+			goal: "Another standing goal remains true.",
+			continuity: ["Check it periodically."],
+			criteria: ["The condition is observable."],
+			constraints: ["Do not invent evidence."],
+		});
+		manifest.triggers.push({
+			id: "other-responsibility.periodic-check",
+			responsibilityId: "other-responsibility",
+			kind: "periodic",
+			reason: "The other responsibility needs periodic checking.",
+		});
+		manifest.activations.push({
+			id: "other-responsibility.judge",
+			responsibilityId: "other-responsibility",
+			kind: "judge",
+			triggerIds: ["high-intent-stargazer-outreach.periodic-check"],
+			reason: "Determine whether the other responsibility is healthy.",
+		});
+
+		const result = validateRepositoryIr(manifest);
+
+		expect(result.valid).toBe(false);
+		expect(result.errors).toContain("activations[2].triggerIds[0] must reference a trigger for the same responsibility");
+	});
+
+	it("rejects fulfillment activations that do not match fulfillment intent", () => {
+		const manifest = cloneFixture("tests/open-prose/compiler/expected/stargazer.manifest.next.json");
+		delete manifest.responsibilities[0].fulfillment;
+
+		const result = validateRepositoryIr(manifest);
+
+		expect(result.valid).toBe(false);
+		expect(result.errors).toContain(
+			"activations[1] must not be a fulfillment activation unless its responsibility declares or infers fulfillment",
+		);
+	});
+
+	it("rejects non-runnable Forme wiring references", () => {
+		const manifest = cloneFixture("tests/open-prose/compiler/expected/stargazer.manifest.next.json");
+		const forme = manifest.formeManifests[0];
+		forme.graph[1].inputs[0].sourceOutput = "missing-output";
+		forme.caller.returns[0].source = "missing-node";
+		forme.executionOrder = forme.executionOrder.slice(0, 1);
+
+		const result = validateRepositoryIr(manifest);
+
+		expect(result.valid).toBe(false);
+		expect(result.errors).toEqual(
+			expect.arrayContaining([
+				"formeManifests[0].graph[1].inputs[0].sourceOutput must reference an output on sourceNodeId",
+				"formeManifests[0].caller.returns[0].source must reference a known graph node",
+				"formeManifests[0].executionOrder must include exactly one step for graph node 'profile-enricher'",
+			]),
+		);
+	});
+
+	it("rejects diagnostics that point outside discovered sources", () => {
+		const manifest = cloneFixture("tests/open-prose/compiler/expected/stargazer.manifest.next.json");
+		manifest.diagnostics[0].sourcePath = "missing.prose.md";
+
+		const result = validateRepositoryIr(manifest);
+
+		expect(result.valid).toBe(false);
+		expect(result.errors).toContain("diagnostics[0].sourcePath must reference a discovered source path");
 	});
 });

@@ -12,6 +12,10 @@ describe("command model", () => {
 		[["run", ["std/evals/inspector"]], "prose run std/evals/inspector"],
 		[["run", ["co/systems/company-repo-checker"]], "prose run co/systems/company-repo-checker"],
 		[["run", ["system.prose.md", "--topic", "two words"]], "prose run system.prose.md --topic 'two words'"],
+		[
+			["run", ["system.prose.md", "--activation-context", "{\"kind\":\"openprose.activation\"}"]],
+			"prose run system.prose.md --activation-context '{\"kind\":\"openprose.activation\"}'",
+		],
 		[["lint", ["system.prose.md"]], "prose lint system.prose.md"],
 		[["preflight", ["system.prose.md"]], "prose preflight system.prose.md"],
 		[["test", ["tests/systems"]], "prose test tests/systems"],

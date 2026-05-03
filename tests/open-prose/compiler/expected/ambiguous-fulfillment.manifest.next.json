@@ -40,12 +40,6 @@
       "responsibilityId": "customer-intake",
       "kind": "periodic",
       "reason": "Continuity requires checking often enough that promising requests are not stale for more than one week."
-    },
-    {
-      "id": "customer-intake.manual-review",
-      "responsibilityId": "customer-intake",
-      "kind": "manual",
-      "reason": "Fulfillment is ambiguous, so manual review can resolve the next activation path."
     }
   ],
   "activations": [
@@ -54,8 +48,7 @@
       "responsibilityId": "customer-intake",
       "kind": "judge",
       "triggerIds": [
-        "customer-intake.periodic-check",
-        "customer-intake.manual-review"
+        "customer-intake.periodic-check"
       ],
       "reason": "Determine whether the responsibility is up, drifting, down, or blocked."
     }

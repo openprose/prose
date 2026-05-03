@@ -34,7 +34,7 @@ curl -fsSL https://raw.githubusercontent.com/openprose/prose/main/tools/cli/inst
 From a repository checkout:
 
 ```bash
-cd cli
+cd tools/cli
 npm ci
 npm run build
 npm link
@@ -44,7 +44,7 @@ prose --help
 For project-local use:
 
 ```bash
-npm install --save-dev ../path/to/prose/cli
+npm install --save-dev ../path/to/prose/tools/cli
 npx prose run std/evals/inspector
 ```
 
@@ -143,6 +143,7 @@ root docs. `prose help` is local CLI help; use `prose --help` or
 ```bash
 prose compile
 prose compile responsibilities --out dist/prose
+cp dist/prose/manifest.next.json dist/prose/manifest.active.json
 prose serve
 prose run systems/reviewer.prose.md
 prose run co/systems/company-repo-checker --harness claude-sdk

@@ -104,8 +104,8 @@ Deep-dive into the identified layer. Read the relevant source files and trace th
 ### Strategies
 
 - for prose layer: read `root.prose.md` and the `sources/*.prose.md` snapshots from the inspection run. Trace which contract clause is violated, which shape boundary is breached, or which strategy is missing.
-- for forme layer: read the manifest.run.md from the inspection run. Compare the wiring graph against what the service contracts should produce. Check if `std/ops/wire` would produce different output with a fix.
-- for host-runtime layer: read vm.log.md event markers in detail. Compare actual execution trace against what manifest.run.md prescribes. Look for gaps, ordering violations, or protocol errors in the session spawning and binding copy sequence.
+- for forme layer: read forme.manifest.json from the inspection run. Compare the wiring graph against what the service contracts should produce. Check if `std/ops/wire` would produce different output with a fix.
+- for host-runtime layer: read vm.log.md event markers in detail. Compare actual execution trace against what forme.manifest.json prescribes. Look for gaps, ordering violations, or protocol errors in the session spawning and binding copy sequence.
 - when the triage confidence was low: investigate the alternative layers too and present findings for all candidates
 
 ---

@@ -138,6 +138,17 @@ describe("repository serve core", () => {
 		]);
 	});
 
+	it("rejects activation links across responsibilities", async () => {
+		const loaded = await loadFixture();
+		loaded.manifest.activations[0]!.responsibilityId = "different-responsibility";
+
+		expect(() =>
+			resolveActivationsForEvent(loaded.manifest, {
+				triggerId: "high-intent-stargazer-outreach.periodic-check",
+			}),
+		).toThrow("from a different responsibility");
+	});
+
 	it("builds a pinned activation run request with a narrow payload", async () => {
 		const loaded = await loadFixture();
 		const event = {
@@ -184,6 +195,21 @@ describe("repository serve core", () => {
 		expect(() => buildActivationRunRequest({ loaded, event, resolved: resolved! })).toThrow(RepositoryServeError);
 		expect(() => buildActivationRunRequest({ loaded, event, resolved: resolved! })).toThrow(
 			"generated judge runs are introduced in a later phase",
+		);
+	});
+
+	it("rejects non-judge activations without a runnable source path", async () => {
+		const loaded = await loadFixture();
+		const event = { triggerId: "high-intent-stargazer-outreach.evidence-change" };
+		const resolved = resolveActivationsForEvent(loaded.manifest, event).find(
+			(item) => item.activation.kind === "fulfillment",
+		);
+
+		expect(resolved).toBeDefined();
+		delete resolved!.activation.sourcePath;
+
+		expect(() => buildActivationRunRequest({ loaded, event, resolved: resolved! })).toThrow(
+			"does not declare a runnable sourcePath",
 		);
 	});
 

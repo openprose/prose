@@ -20,7 +20,7 @@ available as `prose run std/ops/wire`.
 
 ### Ensures
 
-- manifest: manifest.run.md written to .agents/prose/runs/{id}/ containing the full wiring graph
+- manifest: forme.manifest.json written to .agents/prose/runs/{id}/ containing the full wiring graph
 
 ### Errors
 
@@ -32,4 +32,4 @@ available as `prose run std/ops/wire`.
 - recursively resolve all services from the system's `### Services` section
 - for each service, read its contract and build a dependency graph by matching `requires` entries to `ensures` entries from other services using semantic matching
 - detect cycles and report them as errors
-- write the execution manifest to .agents/prose/runs/{id}/manifest.run.md with the full wiring graph and execution order
+- write the compiled Forme manifest to .agents/prose/runs/{id}/forme.manifest.json with the full wiring graph and execution order

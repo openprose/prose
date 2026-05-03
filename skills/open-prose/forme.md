@@ -415,7 +415,12 @@ not need to re-read original source files to understand wiring.
 }
 ```
 
-**Constraints.** One subsection per expanded pattern. Each invariant from the pattern definition becomes a constraint the Prose VM enforces during Phase 2. Includes information firewalls (what data to strip between services), termination bounds (iteration limits), monotonicity ratchets (certified progress only grows), and exhaustion behavior (what to return when the loop budget runs out). Only present when the system uses patterns. The Prose VM enforces these at runtime — see `prose.md`, Step 4e: Enforce Pattern Constraints.
+**Constraints.** Current v0 repository IR does not carry a separate constraint
+section. Compile pattern-backed systems into ordinary graph wiring when the
+pattern can be expanded without extra runtime rules; otherwise emit a warning
+and keep the source explicit. A future manifest version may encode pattern
+constraints such as firewalls, termination bounds, ratchets, and exhaustion
+behavior.
 
 Constraint types emitted:
 
@@ -431,7 +436,7 @@ Constraint types emitted:
 
 **Graph.** One node per service. Contains:
 - `sourcePath` — path to the copied source file or compiled source snapshot
-- `workspace` — path to the service's private working directory
+- `workspacePath` — path to the service's private working directory
 - `inputs` — each input mapped to a specific binding path and source
 - `outputs` — each declared `ensures` output, with the workspace path (where the service writes) and the bindings path (where it gets copied to for downstream consumption)
 - `errors` — the service's declared error conditions
@@ -680,7 +685,11 @@ kind: system
 5. Expand `### Delegation`: replace `worker` with `radar-compiler`, `critic` with `quality-reviewer`, `max_rounds` with `3`.
 6. Compute derived contract: `quality-checked-output.requires` = `brief` (from `radar-compiler.requires`). `quality-checked-output.ensures` = `report` (the pattern's output).
 
-**Resulting manifest entries:**
+**Conceptual expansion notes:**
+
+These notes show what the compiler must preserve semantically. Current v0
+repository IR should emit plain graph wiring when possible; it should warn
+rather than invent a hidden constraints schema.
 
 ```markdown
 ### quality-checked-output (expanded from worker-critic)
@@ -885,7 +894,7 @@ The Forme Container:
 5. **Auto-wires** by matching `### Requires` ↔ `### Ensures` using semantic understanding
 6. **Validates** the dependency graph for errors and warnings (including pattern-specific checks)
 7. **Copies** source files into the run directory (`sources/`)
-8. **Emits** the compiled Forme manifest with the complete wiring graph and pattern constraints
+8. **Emits** the compiled Forme manifest with the complete wiring graph and warnings
 9. **Hands off** to the Prose VM for execution
 
 The manifest is complete, unambiguous, and structured. It can be rendered for

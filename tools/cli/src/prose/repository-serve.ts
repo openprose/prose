@@ -182,7 +182,14 @@ export function resolveActivationsForEvent(
 
 	return manifest.activations
 		.filter((activation) => activation.triggerIds?.includes(event.triggerId))
-		.map((activation) => ({ trigger, activation }));
+		.map((activation) => {
+			if (activation.responsibilityId !== trigger.responsibilityId) {
+				throw new RepositoryServeError(
+					`Activation '${activation.id}' is linked to trigger '${trigger.id}' from a different responsibility.`,
+				);
+			}
+			return { trigger, activation };
+		});
 }
 
 export function buildActivationRunRequest(options: {
@@ -195,6 +202,9 @@ export function buildActivationRunRequest(options: {
 	const { activation, trigger } = resolved;
 
 	if (activation.sourcePath === undefined) {
+		if (activation.kind !== "judge") {
+			throw new RepositoryServeError(`Activation '${activation.id}' does not declare a runnable sourcePath.`);
+		}
 		throw new RepositoryServeError(
 			`Activation '${activation.id}' does not declare a runnable sourcePath; generated judge runs are introduced in a later phase.`,
 		);

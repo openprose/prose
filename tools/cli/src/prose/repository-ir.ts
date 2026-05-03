@@ -147,6 +147,32 @@ export interface RepositoryIrValidationResult {
 	errors: string[];
 }
 
+interface SourceIndex {
+	paths: Set<string>;
+	kindsByPath: Map<string, RepositoryIrSourceKind>;
+}
+
+interface ResponsibilityIndex {
+	ids: Set<string>;
+	recordsById: Map<string, RepositoryIrResponsibility>;
+}
+
+interface TriggerIndex {
+	ids: Set<string>;
+	responsibilityIdById: Map<string, string>;
+}
+
+interface FormeManifestIndex {
+	ids: Set<string>;
+	sourcePathById: Map<string, string>;
+}
+
+interface FormeGraphIndex {
+	nodeIds: Set<string>;
+	outputsByNodeId: Map<string, Set<string>>;
+	dependenciesByNodeId: Map<string, Set<string>>;
+}
+
 const sourceKinds: readonly RepositoryIrSourceKind[] = [
 	"responsibility",
 	"system",
@@ -181,21 +207,22 @@ export function validateRepositoryIr(value: unknown): RepositoryIrValidationResu
 		errors.push(`version must be ${REPOSITORY_IR_VERSION}`);
 	}
 
-	const sourcePaths = validateSources(value.sources, errors);
-	const formeManifestIds = validateFormeManifests(value.formeManifests, sourcePaths, errors);
-	const responsibilityIds = validateResponsibilities(value.responsibilities, sourcePaths, errors);
-	const triggerIds = validateTriggers(value.triggers, responsibilityIds, errors);
-	validateActivations(value.activations, responsibilityIds, triggerIds, sourcePaths, formeManifestIds, errors);
-	validateDiagnostics(value.diagnostics, errors);
+	const sources = validateSources(value.sources, errors);
+	const formeManifests = validateFormeManifests(value.formeManifests, sources.paths, errors);
+	const responsibilities = validateResponsibilities(value.responsibilities, sources.paths, errors);
+	const triggers = validateTriggers(value.triggers, responsibilities.ids, errors);
+	validateActivations(value.activations, responsibilities, triggers, sources, formeManifests, errors);
+	validateDiagnostics(value.diagnostics, sources.paths, errors);
 
 	return { valid: errors.length === 0, errors };
 }
 
-function validateSources(value: unknown, errors: string[]): Set<string> {
+function validateSources(value: unknown, errors: string[]): SourceIndex {
 	const paths = new Set<string>();
+	const kindsByPath = new Map<string, RepositoryIrSourceKind>();
 	if (!Array.isArray(value)) {
 		errors.push("sources must be an array");
-		return paths;
+		return { paths, kindsByPath };
 	}
 
 	for (const [index, source] of value.entries()) {
@@ -203,12 +230,18 @@ function validateSources(value: unknown, errors: string[]): Set<string> {
 			errors.push(`sources[${index}] must be an object`);
 			continue;
 		}
+		const hasKnownKind = sourceKinds.includes(source.kind as RepositoryIrSourceKind);
 		if (isNonEmptyString(source.path)) {
-			addUnique(paths, source.path, `sources[${index}].path`, errors);
+			const sourcePath = source.path;
+			const isUnique = !paths.has(sourcePath);
+			addUnique(paths, sourcePath, `sources[${index}].path`, errors);
+			if (isUnique && hasKnownKind) {
+				kindsByPath.set(sourcePath, source.kind as RepositoryIrSourceKind);
+			}
 		} else {
 			errors.push(`sources[${index}].path must be a non-empty string`);
 		}
-		if (!sourceKinds.includes(source.kind as RepositoryIrSourceKind)) {
+		if (!hasKnownKind) {
 			errors.push(`sources[${index}].kind must be a known source kind`);
 		}
 		if (source.name !== undefined && !isNonEmptyString(source.name)) {
@@ -216,14 +249,15 @@ function validateSources(value: unknown, errors: string[]): Set<string> {
 		}
 	}
 
-	return paths;
+	return { paths, kindsByPath };
 }
 
-function validateResponsibilities(value: unknown, sourcePaths: Set<string>, errors: string[]): Set<string> {
+function validateResponsibilities(value: unknown, sourcePaths: Set<string>, errors: string[]): ResponsibilityIndex {
 	const ids = new Set<string>();
+	const recordsById = new Map<string, RepositoryIrResponsibility>();
 	if (!Array.isArray(value)) {
 		errors.push("responsibilities must be an array");
-		return ids;
+		return { ids, recordsById };
 	}
 
 	for (const [index, responsibility] of value.entries()) {
@@ -234,7 +268,11 @@ function validateResponsibilities(value: unknown, sourcePaths: Set<string>, erro
 
 		const prefix = `responsibilities[${index}]`;
 		if (isNonEmptyString(responsibility.id)) {
+			const isUnique = !ids.has(responsibility.id);
 			addUnique(ids, responsibility.id, `${prefix}.id`, errors);
+			if (isUnique) {
+				recordsById.set(responsibility.id, responsibility as unknown as RepositoryIrResponsibility);
+			}
 		} else {
 			errors.push(`${prefix}.id must be a non-empty string`);
 		}
@@ -257,7 +295,7 @@ function validateResponsibilities(value: unknown, sourcePaths: Set<string>, erro
 		}
 	}
 
-	return ids;
+	return { ids, recordsById };
 }
 
 function validateFulfillmentIntent(
@@ -286,11 +324,12 @@ function validateFulfillmentIntent(
 	}
 }
 
-function validateTriggers(value: unknown, responsibilityIds: Set<string>, errors: string[]): Set<string> {
+function validateTriggers(value: unknown, responsibilityIds: Set<string>, errors: string[]): TriggerIndex {
 	const ids = new Set<string>();
+	const responsibilityIdById = new Map<string, string>();
 	if (!Array.isArray(value)) {
 		errors.push("triggers must be an array");
-		return ids;
+		return { ids, responsibilityIdById };
 	}
 
 	for (const [index, trigger] of value.entries()) {
@@ -301,7 +340,11 @@ function validateTriggers(value: unknown, responsibilityIds: Set<string>, errors
 
 		const prefix = `triggers[${index}]`;
 		if (isNonEmptyString(trigger.id)) {
+			const isUnique = !ids.has(trigger.id);
 			addUnique(ids, trigger.id, `${prefix}.id`, errors);
+			if (isUnique && isNonEmptyString(trigger.responsibilityId)) {
+				responsibilityIdById.set(trigger.id, trigger.responsibilityId);
+			}
 		} else {
 			errors.push(`${prefix}.id must be a non-empty string`);
 		}
@@ -314,18 +357,19 @@ function validateTriggers(value: unknown, responsibilityIds: Set<string>, errors
 		}
 	}
 
-	return ids;
+	return { ids, responsibilityIdById };
 }
 
 function validateActivations(
 	value: unknown,
-	responsibilityIds: Set<string>,
-	triggerIds: Set<string>,
-	sourcePaths: Set<string>,
-	formeManifestIds: Set<string>,
+	responsibilities: ResponsibilityIndex,
+	triggers: TriggerIndex,
+	sources: SourceIndex,
+	formeManifests: FormeManifestIndex,
 	errors: string[],
 ): void {
 	const ids = new Set<string>();
+	const judgeCountsByResponsibilityId = new Map<string, number>();
 	if (!Array.isArray(value)) {
 		errors.push("activations must be an array");
 		return;
@@ -343,7 +387,7 @@ function validateActivations(
 		} else {
 			errors.push(`${prefix}.id must be a non-empty string`);
 		}
-		validateResponsibilityReference(activation.responsibilityId, responsibilityIds, `${prefix}.responsibilityId`, errors);
+		validateResponsibilityReference(activation.responsibilityId, responsibilities.ids, `${prefix}.responsibilityId`, errors);
 		if (!activationIntentKinds.includes(activation.kind as RepositoryIrActivationIntentKind)) {
 			errors.push(`${prefix}.kind must be judge, fulfillment, retry, or escalation`);
 		}
@@ -351,7 +395,13 @@ function validateActivations(
 			errors.push(`${prefix}.reason must be a non-empty string`);
 		}
 		if (activation.triggerIds !== undefined) {
-			validateTriggerReferences(activation.triggerIds, triggerIds, `${prefix}.triggerIds`, errors);
+			validateTriggerReferences(activation.triggerIds, triggers, activation.responsibilityId, `${prefix}.triggerIds`, errors);
+		}
+		if (activation.kind === "judge" && isNonEmptyString(activation.responsibilityId)) {
+			judgeCountsByResponsibilityId.set(
+				activation.responsibilityId,
+				(judgeCountsByResponsibilityId.get(activation.responsibilityId) ?? 0) + 1,
+			);
 		}
 		const hasTargetName = isNonEmptyString(activation.targetName);
 		if (activation.kind === "fulfillment" && !hasTargetName) {
@@ -362,26 +412,98 @@ function validateActivations(
 		}
 		if (activation.sourcePath !== undefined) {
 			if (isNonEmptyString(activation.sourcePath)) {
-				validateKnownSourcePath(activation.sourcePath, sourcePaths, `${prefix}.sourcePath`, errors);
+				validateKnownSourcePath(activation.sourcePath, sources.paths, `${prefix}.sourcePath`, errors);
 			} else {
 				errors.push(`${prefix}.sourcePath must be a non-empty string when present`);
 			}
 		}
 		if (activation.formeManifestId !== undefined) {
 			if (isNonEmptyString(activation.formeManifestId)) {
-				validateKnownFormeManifestId(activation.formeManifestId, formeManifestIds, `${prefix}.formeManifestId`, errors);
+				validateKnownFormeManifestId(activation.formeManifestId, formeManifests.ids, `${prefix}.formeManifestId`, errors);
 			} else {
 				errors.push(`${prefix}.formeManifestId must be a non-empty string when present`);
 			}
 		}
+		validateActivationFulfillment(activation, prefix, responsibilities, sources, formeManifests, errors);
+	}
+
+	for (const responsibilityId of responsibilities.ids) {
+		const count = judgeCountsByResponsibilityId.get(responsibilityId) ?? 0;
+		if (count !== 1) {
+			errors.push(`responsibility '${responsibilityId}' must have exactly one judge activation`);
+		}
 	}
 }
 
-function validateFormeManifests(value: unknown, sourcePaths: Set<string>, errors: string[]): Set<string> {
+function validateActivationFulfillment(
+	activation: Record<string, unknown>,
+	prefix: string,
+	responsibilities: ResponsibilityIndex,
+	sources: SourceIndex,
+	formeManifests: FormeManifestIndex,
+	errors: string[],
+): void {
+	if (activation.kind !== "fulfillment") {
+		if (activation.formeManifestId !== undefined) {
+			errors.push(`${prefix}.formeManifestId is only valid for fulfillment activations`);
+		}
+		return;
+	}
+
+	const responsibility = isNonEmptyString(activation.responsibilityId)
+		? responsibilities.recordsById.get(activation.responsibilityId)
+		: undefined;
+	const fulfillment = responsibility?.fulfillment;
+	if (fulfillment === undefined) {
+		errors.push(`${prefix} must not be a fulfillment activation unless its responsibility declares or infers fulfillment`);
+	} else {
+		if (
+			isNonEmptyString(activation.targetName) &&
+			isNonEmptyString(fulfillment.targetName) &&
+			activation.targetName !== fulfillment.targetName
+		) {
+			errors.push(`${prefix}.targetName must match responsibility fulfillment targetName`);
+		}
+		if (isNonEmptyString(fulfillment.sourcePath)) {
+			if (activation.sourcePath === undefined) {
+				errors.push(`${prefix}.sourcePath must match responsibility fulfillment sourcePath`);
+			} else if (activation.sourcePath !== fulfillment.sourcePath) {
+				errors.push(`${prefix}.sourcePath must match responsibility fulfillment sourcePath`);
+			}
+		}
+	}
+
+	if (!isNonEmptyString(activation.sourcePath)) {
+		errors.push(`${prefix}.sourcePath must be a non-empty string for fulfillment activations`);
+		return;
+	}
+
+	const sourceKind = sources.kindsByPath.get(activation.sourcePath);
+	if (sourceKind !== "system" && sourceKind !== "service") {
+		errors.push(`${prefix}.sourcePath must reference a system or service source for fulfillment activations`);
+		return;
+	}
+
+	if (sourceKind === "system" && activation.formeManifestId === undefined) {
+		errors.push(`${prefix}.formeManifestId is required for fulfillment activations targeting system sources`);
+	}
+	if (sourceKind === "service" && activation.formeManifestId !== undefined) {
+		errors.push(`${prefix}.formeManifestId must be omitted for fulfillment activations targeting service sources`);
+	}
+	if (isNonEmptyString(activation.formeManifestId)) {
+		const manifestSourcePath = formeManifests.sourcePathById.get(activation.formeManifestId);
+		if (manifestSourcePath !== undefined && manifestSourcePath !== activation.sourcePath) {
+			errors.push(`${prefix}.formeManifestId must reference a Forme manifest for activation.sourcePath`);
+		}
+	}
+}
+
+function validateFormeManifests(value: unknown, sourcePaths: Set<string>, errors: string[]): FormeManifestIndex {
 	const ids = new Set<string>();
+	const sourcePathById = new Map<string, string>();
 	if (!Array.isArray(value)) {
 		errors.push("formeManifests must be an array");
-		return ids;
+		return { ids, sourcePathById };
 	}
 
 	for (const [index, manifest] of value.entries()) {
@@ -392,7 +514,11 @@ function validateFormeManifests(value: unknown, sourcePaths: Set<string>, errors
 
 		const prefix = `formeManifests[${index}]`;
 		if (isNonEmptyString(manifest.id)) {
+			const isUnique = !ids.has(manifest.id);
 			addUnique(ids, manifest.id, `${prefix}.id`, errors);
+			if (isUnique && isNonEmptyString(manifest.sourcePath)) {
+				sourcePathById.set(manifest.id, manifest.sourcePath);
+			}
 		} else {
 			errors.push(`${prefix}.id must be a non-empty string`);
 		}
@@ -404,23 +530,24 @@ function validateFormeManifests(value: unknown, sourcePaths: Set<string>, errors
 		} else {
 			errors.push(`${prefix}.sourcePath must be a non-empty string`);
 		}
-		validateFormeCaller(manifest.caller, `${prefix}.caller`, errors);
-		const nodeIds = validateFormeGraph(manifest.graph, `${prefix}.graph`, sourcePaths, errors);
-		validateFormeExecutionOrder(manifest.executionOrder, `${prefix}.executionOrder`, nodeIds, errors);
-		validateFormeEnvironment(manifest.environment, `${prefix}.environment`, nodeIds, errors);
+		const graph = validateFormeGraph(manifest.graph, `${prefix}.graph`, sourcePaths, errors);
+		validateFormeCaller(manifest.caller, `${prefix}.caller`, graph, errors);
+		validateFormeExecutionOrder(manifest.executionOrder, `${prefix}.executionOrder`, graph, errors);
+		validateFormeEnvironment(manifest.environment, `${prefix}.environment`, graph.nodeIds, errors);
 		validateStringArrayAllowEmpty(manifest.warnings, `${prefix}.warnings`, errors);
 	}
 
-	return ids;
+	return { ids, sourcePathById };
 }
 
-function validateFormeCaller(value: unknown, prefix: string, errors: string[]): void {
+function validateFormeCaller(value: unknown, prefix: string, graph: FormeGraphIndex, errors: string[]): void {
 	if (!isRecord(value)) {
 		errors.push(`${prefix} must be an object`);
 		return;
 	}
 	validateFormeFields(value.requires, `${prefix}.requires`, errors);
 	validateFormeFields(value.returns, `${prefix}.returns`, errors);
+	validateFormeReturnReferences(value.returns, `${prefix}.returns`, graph, errors);
 }
 
 function validateFormeGraph(
@@ -428,11 +555,13 @@ function validateFormeGraph(
 	prefix: string,
 	sourcePaths: Set<string>,
 	errors: string[],
-): Set<string> {
+): FormeGraphIndex {
 	const nodeIds = new Set<string>();
+	const outputsByNodeId = new Map<string, Set<string>>();
+	const dependenciesByNodeId = new Map<string, Set<string>>();
 	if (!Array.isArray(value)) {
 		errors.push(`${prefix} must be an array`);
-		return nodeIds;
+		return { nodeIds, outputsByNodeId, dependenciesByNodeId };
 	}
 	if (value.length === 0) {
 		errors.push(`${prefix} must contain at least one node`);
@@ -445,6 +574,7 @@ function validateFormeGraph(
 		}
 
 		const nodePrefix = `${prefix}[${index}]`;
+		const nodeId = isNonEmptyString(node.id) ? node.id : undefined;
 		if (isNonEmptyString(node.id)) {
 			addUnique(nodeIds, node.id, `${nodePrefix}.id`, errors);
 		} else {
@@ -459,7 +589,11 @@ function validateFormeGraph(
 			errors.push(`${nodePrefix}.workspacePath must be a non-empty string`);
 		}
 		validateFormeInputs(node.inputs, `${nodePrefix}.inputs`, errors);
-		validateFormeOutputs(node.outputs, `${nodePrefix}.outputs`, errors);
+		const outputs = validateFormeOutputs(node.outputs, `${nodePrefix}.outputs`, errors);
+		if (nodeId !== undefined) {
+			outputsByNodeId.set(nodeId, outputs);
+			dependenciesByNodeId.set(nodeId, new Set());
+		}
 		if (node.errors !== undefined) {
 			validateFormeFields(node.errors, `${nodePrefix}.errors`, errors);
 		}
@@ -468,8 +602,9 @@ function validateFormeGraph(
 		}
 	}
 
-	validateFormeInputReferences(value, prefix, nodeIds, errors);
-	return nodeIds;
+	const graph = { nodeIds, outputsByNodeId, dependenciesByNodeId };
+	validateFormeInputReferences(value, prefix, graph, errors);
+	return graph;
 }
 
 function validateFormeInputs(value: unknown, prefix: string, errors: string[]): void {
@@ -514,10 +649,11 @@ function validateFormeInputs(value: unknown, prefix: string, errors: string[]): 
 	}
 }
 
-function validateFormeOutputs(value: unknown, prefix: string, errors: string[]): void {
+function validateFormeOutputs(value: unknown, prefix: string, errors: string[]): Set<string> {
+	const outputNames = new Set<string>();
 	if (!Array.isArray(value)) {
 		errors.push(`${prefix} must be an array`);
-		return;
+		return outputNames;
 	}
 	if (value.length === 0) {
 		errors.push(`${prefix} must contain at least one output`);
@@ -530,6 +666,8 @@ function validateFormeOutputs(value: unknown, prefix: string, errors: string[]):
 		const outputPrefix = `${prefix}[${index}]`;
 		if (!isNonEmptyString(output.name)) {
 			errors.push(`${outputPrefix}.name must be a non-empty string`);
+		} else {
+			addUnique(outputNames, output.name, `${outputPrefix}.name`, errors);
 		}
 		if (!isNonEmptyString(output.workspacePath)) {
 			errors.push(`${outputPrefix}.workspacePath must be a non-empty string`);
@@ -544,25 +682,69 @@ function validateFormeOutputs(value: unknown, prefix: string, errors: string[]):
 			errors.push(`${outputPrefix}.description must be a non-empty string when present`);
 		}
 	}
+	return outputNames;
 }
 
 function validateFormeInputReferences(
 	nodes: unknown[],
 	prefix: string,
-	nodeIds: Set<string>,
+	graph: FormeGraphIndex,
 	errors: string[],
 ): void {
 	for (const [nodeIndex, node] of nodes.entries()) {
-		if (!isRecord(node) || !Array.isArray(node.inputs)) {
+		if (!isRecord(node) || !Array.isArray(node.inputs) || !isNonEmptyString(node.id)) {
 			continue;
 		}
 		for (const [inputIndex, input] of node.inputs.entries()) {
-			if (!isRecord(input) || input.from !== "service" || !isNonEmptyString(input.sourceNodeId)) {
+			if (!isRecord(input)) {
 				continue;
 			}
-			if (!nodeIds.has(input.sourceNodeId)) {
-				errors.push(`${prefix}[${nodeIndex}].inputs[${inputIndex}].sourceNodeId must reference a known graph node`);
+			if (input.from === "caller") {
+				graph.dependenciesByNodeId.get(node.id)?.add("caller");
+				continue;
 			}
+			if (input.from !== "service" || !isNonEmptyString(input.sourceNodeId)) {
+				continue;
+			}
+			if (!graph.nodeIds.has(input.sourceNodeId)) {
+				errors.push(`${prefix}[${nodeIndex}].inputs[${inputIndex}].sourceNodeId must reference a known graph node`);
+				continue;
+			}
+			graph.dependenciesByNodeId.get(node.id)?.add(input.sourceNodeId);
+			if (isNonEmptyString(input.sourceOutput)) {
+				const sourceOutputs = graph.outputsByNodeId.get(input.sourceNodeId);
+				if (sourceOutputs !== undefined && !sourceOutputs.has(input.sourceOutput)) {
+					errors.push(`${prefix}[${nodeIndex}].inputs[${inputIndex}].sourceOutput must reference an output on sourceNodeId`);
+				}
+			}
+		}
+	}
+}
+
+function validateFormeReturnReferences(
+	value: unknown,
+	prefix: string,
+	graph: FormeGraphIndex,
+	errors: string[],
+): void {
+	if (!Array.isArray(value)) {
+		return;
+	}
+	for (const [index, field] of value.entries()) {
+		if (!isRecord(field) || field.source === undefined) {
+			continue;
+		}
+		const fieldPrefix = `${prefix}[${index}]`;
+		if (!isNonEmptyString(field.source)) {
+			continue;
+		}
+		if (!graph.nodeIds.has(field.source)) {
+			errors.push(`${fieldPrefix}.source must reference a known graph node`);
+			continue;
+		}
+		const outputs = graph.outputsByNodeId.get(field.source);
+		if (isNonEmptyString(field.name) && outputs !== undefined && !outputs.has(field.name)) {
+			errors.push(`${fieldPrefix}.name must reference an output on source`);
 		}
 	}
 }
@@ -597,7 +779,7 @@ function validateFormeDelegates(
 function validateFormeExecutionOrder(
 	value: unknown,
 	prefix: string,
-	nodeIds: Set<string>,
+	graph: FormeGraphIndex,
 	errors: string[],
 ): void {
 	if (!Array.isArray(value)) {
@@ -607,25 +789,48 @@ function validateFormeExecutionOrder(
 	if (value.length === 0) {
 		errors.push(`${prefix} must contain at least one step`);
 	}
+	const seenSteps = new Set<string>();
 	for (const [index, step] of value.entries()) {
 		if (!isRecord(step)) {
 			errors.push(`${prefix}[${index}] must be an object`);
 			continue;
 		}
 		const stepPrefix = `${prefix}[${index}]`;
-		validateNodeReference(step.nodeId, nodeIds, `${stepPrefix}.nodeId`, errors);
+		validateNodeReference(step.nodeId, graph.nodeIds, `${stepPrefix}.nodeId`, errors);
+		if (isNonEmptyString(step.nodeId)) {
+			addUnique(seenSteps, step.nodeId, `${stepPrefix}.nodeId`, errors);
+		}
 		if (!Array.isArray(step.dependsOn)) {
 			errors.push(`${stepPrefix}.dependsOn must be an array`);
 			continue;
 		}
+		const declaredDependencies = new Set<string>();
 		for (const [dependsOnIndex, dependency] of step.dependsOn.entries()) {
 			if (!isNonEmptyString(dependency)) {
 				errors.push(`${stepPrefix}.dependsOn[${dependsOnIndex}] must be a non-empty string`);
 				continue;
 			}
-			if (dependency !== "caller" && !nodeIds.has(dependency)) {
+			addUnique(declaredDependencies, dependency, `${stepPrefix}.dependsOn[${dependsOnIndex}]`, errors);
+			if (dependency !== "caller" && !graph.nodeIds.has(dependency)) {
 				errors.push(`${stepPrefix}.dependsOn[${dependsOnIndex}] must reference caller or a known graph node`);
+				continue;
 			}
+			if (dependency !== "caller" && !seenSteps.has(dependency)) {
+				errors.push(`${stepPrefix}.dependsOn[${dependsOnIndex}] must appear earlier in executionOrder`);
+			}
+		}
+		if (isNonEmptyString(step.nodeId)) {
+			const expectedDependencies = graph.dependenciesByNodeId.get(step.nodeId) ?? new Set<string>();
+			for (const expectedDependency of expectedDependencies) {
+				if (!declaredDependencies.has(expectedDependency)) {
+					errors.push(`${stepPrefix}.dependsOn must include dependency '${expectedDependency}'`);
+				}
+			}
+		}
+	}
+	for (const nodeId of graph.nodeIds) {
+		if (!seenSteps.has(nodeId)) {
+			errors.push(`${prefix} must include exactly one step for graph node '${nodeId}'`);
 		}
 	}
 }
@@ -685,7 +890,7 @@ function validateFormeFields(value: unknown, prefix: string, errors: string[]): 
 	}
 }
 
-function validateDiagnostics(value: unknown, errors: string[]): void {
+function validateDiagnostics(value: unknown, sourcePaths: Set<string>, errors: string[]): void {
 	if (!Array.isArray(value)) {
 		errors.push("diagnostics must be an array");
 		return;
@@ -702,8 +907,12 @@ function validateDiagnostics(value: unknown, errors: string[]): void {
 		if (!isNonEmptyString(diagnostic.message)) {
 			errors.push(`diagnostics[${index}].message must be a non-empty string`);
 		}
-		if (diagnostic.sourcePath !== undefined && !isNonEmptyString(diagnostic.sourcePath)) {
-			errors.push(`diagnostics[${index}].sourcePath must be a non-empty string when present`);
+		if (diagnostic.sourcePath !== undefined) {
+			if (isNonEmptyString(diagnostic.sourcePath)) {
+				validateKnownSourcePath(diagnostic.sourcePath, sourcePaths, `diagnostics[${index}].sourcePath`, errors);
+			} else {
+				errors.push(`diagnostics[${index}].sourcePath must be a non-empty string when present`);
+			}
 		}
 	}
 }
@@ -762,7 +971,8 @@ function validateNodeReference(value: unknown, nodeIds: Set<string>, path: strin
 
 function validateTriggerReferences(
 	value: unknown,
-	triggerIds: Set<string>,
+	triggers: TriggerIndex,
+	activationResponsibilityId: unknown,
 	prefix: string,
 	errors: string[],
 ): void {
@@ -775,8 +985,13 @@ function validateTriggerReferences(
 			errors.push(`${prefix}[${index}] must be a non-empty string`);
 			continue;
 		}
-		if (!triggerIds.has(triggerId)) {
+		const triggerResponsibilityId = triggers.responsibilityIdById.get(triggerId);
+		if (!triggers.ids.has(triggerId) || triggerResponsibilityId === undefined) {
 			errors.push(`${prefix}[${index}] must reference a known trigger id`);
+			continue;
+		}
+		if (isNonEmptyString(activationResponsibilityId) && triggerResponsibilityId !== activationResponsibilityId) {
+			errors.push(`${prefix}[${index}] must reference a trigger for the same responsibility`);
 		}
 	}
 }

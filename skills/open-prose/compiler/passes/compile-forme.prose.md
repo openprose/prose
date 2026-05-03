@@ -26,7 +26,9 @@ Prepare Forme wiring for systems discovered during compile.
   manifests as strings.
 - Resolve service dependencies, caller inputs, service outputs, execution
   order, source snapshot paths, environment requirements, warnings, and
-  delegation constraints before runtime.
+  plain delegation targets before runtime.
+- Do not invent a pattern-constraint schema in v0. If a pattern requires
+  runtime constraints that cannot be expanded into the graph, emit a warning.
 - Link any fulfillment activation for a system to the matching
   `formeManifestId`.
 - Fail only when an author claims wiring that is structurally impossible to

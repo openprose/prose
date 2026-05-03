@@ -10,7 +10,8 @@ evaluation assets, not distributable skill docs.
 - classify `kind: responsibility` source
 - extract `Goal`, `Continuity`, `Criteria`, `Constraints`, and optional
   `Fulfillment`
-- infer fulfillment from nearby systems when the relationship is clear
+- resolve declared fulfillment and leave inference to compiler fixtures where
+  `### Fulfillment` is omitted
 - explain trigger intent without inventing concrete cron, webhook, or queue
   machinery
 - explain the layer split between responsibility source, compiler, harness,
@@ -40,21 +41,21 @@ Expected shape:
 - identifies the four core sections
 - avoids treating the bullets as implementation steps
 
-### Infer Fulfillment And Trigger Intent
+### Resolve Fulfillment And Trigger Intent
 
 Read `01-stargazer-responsibility.prose.md` and
 `stargazer-outreach/index.prose.md`.
 
 Return:
 
-- likely fulfillment source
+- declared fulfillment source
 - inferred trigger intent
 - ambiguity or warnings
 - what should remain for compile or harness code
 
 Expected shape:
 
-- infers `stargazer-outreach` as fulfillment
+- resolves `stargazer-outreach` as the declared fulfillment
 - derives judge cadence from the one-business-day continuity requirement
 - does not invent provider-specific webhook routes or queue payloads
 - says concrete registration belongs to compiled IR and `prose serve`

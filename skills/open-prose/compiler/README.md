@@ -30,7 +30,7 @@ Default output lives under `dist/prose/`:
 - `manifest.next.json`: next compiled IR produced by compile
 - `manifest.active.json`: active compiled IR consumed by serve in later phases
 
-Phase 3 emits a minimal v0 manifest with:
+The current v0 manifest contains:
 
 - `kind`
 - `version`

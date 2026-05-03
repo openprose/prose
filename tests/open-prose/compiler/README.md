@@ -1,14 +1,14 @@
 # Compiler Prompt Fixtures
 
-These fixtures exercise the compiler skeleton and Phase 3 responsibility
-lowering.
+These fixtures exercise the compiler skeleton, responsibility lowering, and
+structured Forme manifest emission.
 
 The compiler output convention is:
 
 - `dist/prose/manifest.next.json`: next generated repository IR
 - `dist/prose/manifest.active.json`: active IR used by `prose serve` later
 
-Phase 3 keeps the IR intentionally small. The checked v0 manifest contains:
+The checked v0 manifest stays intentionally small. It contains:
 
 - `kind`
 - `version`

@@ -47,8 +47,9 @@ inside `### Services`.
 
 A **responsibility** is responsibility-oriented source, not a direct run
 target. It defines a standing goal that must remain true over time. The
-compiler lowers it into responsibility, trigger-intent, judge, pressure, and
-activation IR.
+compiler lowers it into responsibility, trigger intent, and activation intent.
+Pressure is runtime feedback produced when the Reactor judges the standing goal
+to be drifting, down, or blocked.
 
 ## Core Shape
 

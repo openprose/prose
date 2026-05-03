@@ -34,7 +34,7 @@ Analyze a completed OpenProse run for runtime fidelity (did the OpenProse VM exe
 
 ### Errors
 
-- missing-artifacts: the run directory is missing critical files (vm.log.md, root.prose.md, or manifest.run.md)
+- missing-artifacts: the run directory is missing critical files (vm.log.md, root.prose.md, or forme.manifest.json)
 - corrupted-log: vm.log.md exists but cannot be parsed (no event markers, no header)
 
 ### Invariants
@@ -44,7 +44,7 @@ Analyze a completed OpenProse run for runtime fidelity (did the OpenProse VM exe
 ### Strategies
 
 - when depth is light: check structural completeness only — vm.log.md has `---end` or `---error`, all declared services have bindings, output files are non-empty, no `__error.md` files. Do not read output content in detail. Target: under 30 seconds, under 10K tokens.
-- when depth is deep: read root.prose.md to understand intent, read manifest.run.md to understand expected wiring, trace vm.log.md event markers against the manifest's execution order, read each service's workspace artifacts and bindings, evaluate output quality against the system's ensures clauses. Target: thorough analysis, no shortcuts.
+- when depth is deep: read root.prose.md to understand intent, read forme.manifest.json to understand expected wiring, trace vm.log.md event markers against the manifest's execution order, read each service's workspace artifacts and bindings, evaluate output quality against the system's ensures clauses. Target: thorough analysis, no shortcuts.
 - when a service has `__error.md`: read it, classify the error, check whether the system's conditional ensures handled the degradation correctly
 - when scoring runtime fidelity: weight heavily on execution order correctness (did services run in the right order?), binding integrity (did outputs get copied correctly?), and vm.log.md completeness (are all markers present?)
 - when scoring task effectiveness: weight heavily on whether the system's top-level ensures clauses are satisfied by the final output in bindings
@@ -100,7 +100,7 @@ Read the run's artifacts and produce a structured extraction suitable for evalua
     - bindings_present: list of binding paths that exist and are non-empty
     - bindings_missing: list of expected bindings that are absent or empty
     - (deep only) root_source: full content of root.prose.md
-    - (deep only) manifest_summary: execution order and wiring from manifest.run.md
+    - (deep only) manifest_summary: execution order and wiring from forme.manifest.json
     - (deep only) service_outputs: map of service name to first 500 chars of each binding
     - (deep only) workspace_artifacts: map of service name to list of files in workspace
     - (deep only) error_details: contents of any `__error.md` files

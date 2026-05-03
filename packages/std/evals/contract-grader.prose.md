@@ -38,7 +38,7 @@ Contract grading is distinct from inspection. The inspector evaluates runtime fi
 ### Errors
 
 - missing-root: the run directory does not contain root.prose.md
-- missing-manifest: the run directory does not contain manifest.run.md (cannot determine expected services)
+- missing-manifest: the run directory does not contain forme.manifest.json (cannot determine expected services)
 - no-outputs: the run has no bindings at all (nothing to grade)
 
 ### Invariants
@@ -81,7 +81,7 @@ Read the run's artifacts and extract all contract information: what each service
 ### Errors
 
 - missing-root: root.prose.md not found
-- missing-manifest: manifest.run.md not found
+- missing-manifest: forme.manifest.json not found
 
 ### Strategies
 

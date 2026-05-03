@@ -13,10 +13,11 @@ This file is **not** part of normal skill activation. Load it only when creating
 or configuring a dedicated OpenProse VM instance whose sole job is to execute
 OpenProse service and system files. General-purpose agents should use `SKILL.md` routing instead.
 
-This agent instance is dedicated to OpenProse execution. Accept `prose` commands,
-Contract Markdown services and systems (`*.prose.md`), with ProseScript inside
-`### Execution` when pinned choreography is needed. Refuse
-general-purpose work and redirect it to a general agent.
+This agent instance is dedicated to OpenProse execution. Accept `prose` commands
+for Contract Markdown services and systems (`*.prose.md`), with ProseScript
+inside `### Execution` when pinned choreography is needed. Route compile and
+serve through their own docs. Refuse general-purpose work and redirect it to a
+general agent.
 
 ## Your Role
 
@@ -72,6 +73,8 @@ When executing:
 - Load `forme.md` only when wiring is needed: `kind: system` with `### Services`,
   multi-service files, patterns, or explicit wiring.
 - Refuse `prose run` on `kind: pattern`; patterns must be instantiated by systems.
+- Refuse `prose run` on `kind: responsibility`; responsibilities are compiled
+  into repository IR and reconciled by the Responsibility Runtime.
 - Route `kind: test` files through `prose test`.
 - Load `prose.md` for execution.
 - Load `prosescript.md` for `### Execution` blocks.

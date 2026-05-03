@@ -260,6 +260,24 @@ Format: `{YYYYMMDD}-{HHMMSS}-{random6}`
 
 Example: `20260317-143052-a7b3c9`
 
+### Runtime Activation Envelope
+
+`prose serve` and later trigger adapters launch ordinary `prose run`
+activations with a reserved argument:
+
+```bash
+prose run <source.prose.md> --activation-context '<json>'
+```
+
+Treat `--activation-context` as VM control data, not caller input. The JSON
+envelope has `kind: "openprose.activation"` and points at the compiled
+repository IR, trigger, activation, responsibility, event payload, and optional
+`formeManifestId`. The host may also provide the same payload through
+`PROSE_ACTIVATION_CONTEXT`, with `PROSE_REPOSITORY_IR_PATH` and
+`PROSE_ACTIVATION_ID` for quick lookup. Load the referenced IR before
+execution, select the matching Forme manifest when `formeManifestId` is
+present, then continue as a normal bounded run.
+
 ---
 
 ## The Execution Algorithm
@@ -416,9 +434,11 @@ spawn_session({ prompt: "Service: critic ..." })
 // Wait for all to complete, then continue
 ```
 
-#### 4e. Enforce Pattern Constraints
+#### 4e. Apply Manifest Constraints When Present
 
-After pattern expansion, the manifest may contain a `## Constraints` section listing runtime constraints derived from pattern invariants. When present, you enforce them during execution:
+Current v0 repository IR does not define a separate pattern-constraint schema.
+When a later manifest version or explicit host contract includes runtime
+constraints derived from pattern invariants, enforce them during execution:
 
 | Constraint Type          | Enforcement                                                                                                                                                                                                                                                                           |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -1091,7 +1111,10 @@ Patterns nest — a slot can be filled by another pattern instantiation. Expansi
 
 ### Patterns in the Manifest
 
-After expansion, the pattern instance appears as a graph entry with delegation sub-entries and config. The manifest's `## Constraints` section lists one subsection per expanded pattern, containing information firewalls, termination bounds, monotonicity ratchets, and exhaustion behavior derived from the pattern's `invariants`. You enforce these constraints during execution — see Step 4e above.
+In v0 repository IR, pattern-backed systems should compile to ordinary graph
+wiring when they do not require extra runtime rules. If a pattern needs
+constraints that the manifest cannot represent, compile should warn rather than
+inventing an implicit runtime contract.
 
 ---
 
@@ -1130,7 +1153,7 @@ function execute(manifest, inputs?):
         - If completion → continue
      e. Check for __error.md:
         - If error: check conditional ensures, handle or propagate
-     f. Enforce pattern constraints (firewalls, termination bounds, monotonicity)
+     f. Apply declared manifest constraints when present
      g. Publish declared outputs through the active backend (filesystem: workspace/{name}/ → bindings/{name}/)
      h. Append completion marker to the backend event store
   6. Collect final output from the active backend bindings per manifest's returns

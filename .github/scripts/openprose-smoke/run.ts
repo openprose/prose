@@ -783,7 +783,7 @@ async function classifyLiveCase(
     reasons.push("No run directory was created under .agents/prose/runs.");
   }
   if (latestRunDir) {
-    for (const artifactName of ["manifest.run.md", "root.prose.md", "vm.log.md"]) {
+    for (const artifactName of ["forme.manifest.json", "root.prose.md", "vm.log.md"]) {
       const artifactPath = path.join(latestRunDir, artifactName);
       const artifactStat = await statIfExists(artifactPath);
       if (!artifactStat?.isFile()) {

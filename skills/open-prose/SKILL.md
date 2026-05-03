@@ -160,10 +160,11 @@ For `.prose.md` files:
 1. Read YAML frontmatter.
 2. If the file has `kind: service`, skip Forme and execute the service directly.
 3. If `kind: system` has a non-empty `### Services` section, load `forme.md` to produce a manifest.
-4. Load `state/README.md`, then the selected backend doc (`state/filesystem.md` by default), and `prose.md` to execute the service or manifest.
-5. If the file has `kind: system` without `### Services`, report a structure error: a system must declare the graph it composes.
+4. If the file has `kind: system` without `### Services`, report a structure error: a system must declare the graph it composes.
+5. If the file has `kind: responsibility`, refuse direct execution: responsibilities are standing goals compiled into repository IR and reconciled by the Responsibility Runtime.
 6. If the file has `kind: pattern`, refuse direct execution: patterns must be instantiated by systems.
 7. If the file has `kind: test`, route to `prose test` semantics rather than ordinary `prose run`.
+8. For runnable services and systems, load `state/README.md`, then the selected backend doc (`state/filesystem.md` by default), and `prose.md` to execute the service or manifest.
 
 For older `.prose` files, warn that the file is legacy upgrade input, not
 current executable source. Recommend `prose upgrade --dry-run`, and load
