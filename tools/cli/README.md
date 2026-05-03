@@ -140,6 +140,8 @@ root docs. `prose help` is local CLI help; use `prose --help` or
 `prose help <command>` to inspect shell usage.
 
 ```bash
+prose compile
+prose compile responsibilities --out dist/prose
 prose run systems/reviewer.prose.md
 prose run co/systems/company-repo-checker --harness claude-sdk
 prose upgrade

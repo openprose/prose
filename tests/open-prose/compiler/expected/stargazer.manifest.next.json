@@ -1,0 +1,23 @@
+{
+  "kind": "openprose.repository-ir",
+  "version": 0,
+  "sources": [
+    {
+      "path": "01-stargazer-responsibility.prose.md",
+      "kind": "responsibility",
+      "name": "high-intent-stargazer-outreach"
+    },
+    {
+      "path": "stargazer-outreach/index.prose.md",
+      "kind": "system",
+      "name": "stargazer-outreach"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "warning",
+      "message": "Trigger intent can be inferred from Continuity, but concrete provider registration is not present.",
+      "sourcePath": "01-stargazer-responsibility.prose.md"
+    }
+  ]
+}

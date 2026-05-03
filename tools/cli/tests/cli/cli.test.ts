@@ -120,6 +120,31 @@ describe("runForwardedProseCommand", () => {
 		expect(io.stderr).toBe("err");
 	});
 
+	it("forwards compile prompts through the selected harness", async () => {
+		const io = memoryStreams();
+		const seen: string[] = [];
+		const harness: Harness = {
+			name: "mock",
+			async run(prompt) {
+				seen.push(prompt);
+				return 0;
+			},
+		};
+
+		const exitCode = await runForwardedProseCommand({
+			command: "compile",
+			argv: [".", "--out", "dist/prose", "--harness", "mock"],
+			cwd: "/repo",
+			env: {},
+			stdout: io.streams.stdout,
+			stderr: io.streams.stderr,
+			harnessFactory: () => harness,
+		});
+
+		expect(exitCode).toBe(0);
+		expect(seen).toEqual(["prose compile . --out dist/prose"]);
+	});
+
 	it("loads OpenProse skill bootstrap after preflight and passes it to the harness", async () => {
 		const home = mkdtempSync(join(tmpdir(), "prose-home-"));
 		const cwd = mkdtempSync(join(tmpdir(), "prose-cwd-"));

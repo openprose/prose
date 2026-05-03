@@ -1,0 +1,11 @@
+{
+  "kind": "openprose.repository-ir",
+  "version": 0,
+  "sources": [],
+  "diagnostics": [
+    {
+      "severity": "info",
+      "message": "No OpenProse source files were discovered."
+    }
+  ]
+}

@@ -38,7 +38,7 @@ After activation, choose the narrowest path that matches the user's intent:
 | Write a new `.prose.md` service or system | `contract-markdown.md` | `guidance/tenets.md`, `guidance/authoring.md` |
 | Write pinned choreography | `prosescript.md` | `contract-markdown.md` if inside `### Execution` |
 | Lint or review a service or system | `contract-markdown.md` | `forme.md` for multi-service wiring; `guidance/authoring.md` for design review |
-| Work on Responsibility Runtime, responsibility-oriented source, Reactor, compile, or serve semantics | `responsibility-runtime.md` | `concepts/responsibility.md`, `concepts/reactor.md`, `forme.md` |
+| Work on Responsibility Runtime, responsibility-oriented source, Reactor, compile, or serve semantics | `responsibility-runtime.md` | `compiler/README.md`, `concepts/responsibility.md`, `concepts/reactor.md`, `forme.md` |
 | Install or update dependencies | `deps.md` | `contract-markdown.md` only if dependency references are ambiguous |
 | Debug a completed run | `prose.md` | `state/README.md` and the run's backend doc; then `std/evals/inspector` if available |
 
@@ -113,6 +113,7 @@ executing the system. The shell executable is the agent runner, e.g.
 
 | Command | Action |
 |---------|--------|
+| `prose compile [path] [--out <dir>]` | Load `responsibility-runtime.md`, then `compiler/index.prose.md`; compile semantic source into repository IR at `dist/prose/manifest.next.json` by default |
 | `prose run <file.prose.md>` | Detect Contract Markdown, load `contract-markdown.md`, select state with `state/README.md` plus the backend doc, then `forme.md` if multi-service, then `prose.md` |
 | `prose run <host>/<owner>/<repo>[/path]` | Resolve installed dependency service or system, detect format, then route as above |
 | `prose run std/...` / `co/...` | Expand OpenProse package shorthand, resolve installed dependency service or system, then route as above |
@@ -239,6 +240,9 @@ user workspace for these docs.
 | `forme.md` | Forme container wiring semantics |
 | `prose.md` | Prose VM execution semantics |
 | `responsibility-runtime.md` | Responsibility Runtime doctrine: Responsibilities, Reactor, compile, serve, run, and status |
+| `compiler/README.md` | Compiler overview for `prose compile` and repository IR |
+| `compiler/index.prose.md` | Bundled OpenProse compiler program |
+| `compiler/passes/` | Compiler pass services for discovery, Forme prep, IR emission, and validation |
 | `deps.md` | Dependency resolution and `prose install` |
 | `changelog.md` | Compact version history and model-guided upgrade instructions; load only for `prose upgrade` or outdated-structure diagnosis |
 | `help.md` | User-facing help |

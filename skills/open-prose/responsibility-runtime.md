@@ -6,6 +6,7 @@ summary: |
   file for Responsibility Runtime, `kind: responsibility`, or standing-goal
   work.
 see-also:
+  - compiler/README.md: Compiler program index and IR output convention
   - concepts/responsibility.md: Responsibility semantic contract
   - concepts/reactor.md: Evented reconciliation model
   - contract-markdown.md: Source format and recognized kinds
@@ -46,9 +47,15 @@ as reasons to keep one AI session alive forever.
 
 OpenProse preserves semantic Markdown as the authoring surface.
 
-`prose compile` lowers that source into repository IR. The compiler is an
-OpenProse program that reads the source graph, applies the concept docs, and
-emits deterministic manifests for the harness to validate and serve.
+`prose compile` lowers that source into repository IR. The compiler is the
+bundled OpenProse program at `compiler/index.prose.md`: it reads the source
+graph, applies the concept docs, and emits deterministic manifests for the
+harness to validate and serve.
+
+Default compiler output lives under `dist/prose/`:
+
+- `manifest.next.json`: the newly compiled manifest
+- `manifest.active.json`: the manifest served by later runtime phases
 
 `prose serve` loads compiled IR and acts like deterministic infrastructure:
 
@@ -83,7 +90,7 @@ Compiler programs lower semantics into IR:
 - discover source
 - compile responsibilities, trigger intent, activations, and Forme manifests
 - report ambiguity and warnings
-- emit deterministic output for harness validation
+- emit deterministic output for harness validation under `dist/prose/`
 
 The harness serves IR:
 
@@ -104,7 +111,7 @@ implement all of them yet.
 
 | Command | Role |
 |---------|------|
-| `prose compile` | Run the bundled compiler program and emit repository IR |
+| `prose compile [path] [--out <dir>]` | Run the bundled compiler program and emit repository IR |
 | `prose serve` | Load IR, register triggers, receive events, and launch activations |
 | `prose run` | Execute one bounded service, system, judge, or fulfillment activation |
 | `prose status` | Report recent runs, activations, diagnostics, and responsibility status |

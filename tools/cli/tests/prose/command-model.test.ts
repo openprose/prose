@@ -4,6 +4,10 @@ import { CommandModelError, canonicalPrompt } from "../../src/prose/index.js";
 
 describe("command model", () => {
 	const supportedCases: Array<[Parameters<typeof canonicalPrompt>, string]> = [
+		[["compile", []], "prose compile"],
+		[["compile", ["."]], "prose compile ."],
+		[["compile", ["./responsibilities", "--out", "dist/prose"]], "prose compile ./responsibilities --out dist/prose"],
+		[["compile", ["--out=build/prose"]], "prose compile --out=build/prose"],
 		[["run", ["system.prose.md"]], "prose run system.prose.md"],
 		[["run", ["std/evals/inspector"]], "prose run std/evals/inspector"],
 		[["run", ["co/systems/company-repo-checker"]], "prose run co/systems/company-repo-checker"],
@@ -36,6 +40,11 @@ describe("command model", () => {
 	});
 
 	const validationCases: Array<[Parameters<typeof canonicalPrompt>, string, string]> = [
+		[["compile", ["one", "two"]], "Unexpected argument 'two'", "prose compile [path] [--out <dir>]"],
+		[["compile", ["--out"]], "Missing value for --out", "prose compile [path] [--out <dir>]"],
+		[["compile", ["--out="]], "Missing value for --out", "prose compile [path] [--out <dir>]"],
+		[["compile", ["--json"]], "Unexpected option '--json'", "prose compile [path] [--out <dir>]"],
+		[["compile", ["--out", "dist/prose", "--out", "other"]], "Duplicate option", "prose compile [path] [--out <dir>]"],
 		[["run", []], "Missing required argument <file.prose.md|package/handle>", "prose run <file.prose.md|package/handle> [inputs...]"],
 		[["run", ["system.md"]], "Expected <file.prose.md|package/handle>", "prose run <file.prose.md|package/handle> [inputs...]"],
 		[["run", ["script.prose"]], "Expected <file.prose.md|package/handle>", "prose run <file.prose.md|package/handle> [inputs...]"],

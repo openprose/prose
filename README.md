@@ -205,7 +205,7 @@ be checked, maintained, and restored across bounded runs:
 
 | Command | Role |
 |---------|------|
-| `prose compile` | Run the bundled OpenProse compiler program and lower semantic source into repository IR |
+| `prose compile` | Run the bundled OpenProse compiler program and lower semantic source into `dist/prose/manifest.next.json` |
 | `prose serve` | Load IR, register triggers, receive events, and launch bounded activations |
 | `prose run` | Execute one bounded OpenProse VM activation |
 

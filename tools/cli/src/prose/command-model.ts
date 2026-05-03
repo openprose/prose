@@ -1,4 +1,5 @@
 export type CommandName =
+	| "compile"
 	| "run"
 	| "lint"
 	| "preflight"
@@ -21,6 +22,7 @@ export class CommandModelError extends Error {
 }
 
 export const supportedCommands = [
+	"compile",
 	"run",
 	"lint",
 	"preflight",
@@ -34,6 +36,7 @@ export const supportedCommands = [
 ] as const satisfies readonly CommandName[];
 
 const usageByCommand: Record<CommandName, string> = {
+	compile: "prose compile [path] [--out <dir>]",
 	run: "prose run <file.prose.md|package/handle> [inputs...]",
 	lint: "prose lint <file.prose.md>",
 	preflight: "prose preflight <file.prose.md>",
@@ -57,6 +60,9 @@ export function usageFor(command: CommandName): string {
 
 function validate(command: CommandName, args: readonly string[]): void {
 	switch (command) {
+		case "compile":
+			requireCompileArgs(command, args);
+			return;
 		case "run":
 			requireAtLeastOne(command, args, "<file.prose.md|package/handle>");
 			if (args[0]?.endsWith(".prose") || (args[0]?.endsWith(".md") && !args[0].endsWith(".prose.md"))) {
@@ -109,6 +115,51 @@ function requireExactlyOne(command: CommandName, args: readonly string[], label:
 	if (args.length > 1) {
 		const extra = args[1] ?? "";
 		fail(command, `Unexpected ${extra.startsWith("-") ? "option" : "argument"} '${extra}' for 'prose ${command}'.`);
+	}
+}
+
+function requireCompileArgs(command: "compile", args: readonly string[]): void {
+	let sawPath = false;
+	let sawOut = false;
+
+	for (let index = 0; index < args.length; index += 1) {
+		const arg = args[index];
+		if (arg === undefined) {
+			continue;
+		}
+
+		if (arg === "--out") {
+			if (sawOut) {
+				fail(command, "Duplicate option for 'prose compile'.");
+			}
+			const value = args[index + 1];
+			if (!value || value.startsWith("-")) {
+				fail(command, "Missing value for --out.");
+			}
+			sawOut = true;
+			index += 1;
+			continue;
+		}
+
+		if (arg.startsWith("--out=")) {
+			if (sawOut) {
+				fail(command, "Duplicate option for 'prose compile'.");
+			}
+			if (arg.slice("--out=".length) === "") {
+				fail(command, "Missing value for --out.");
+			}
+			sawOut = true;
+			continue;
+		}
+
+		if (arg.startsWith("-")) {
+			fail(command, `Unexpected option '${arg}' for 'prose compile'.`);
+		}
+
+		if (sawPath) {
+			fail(command, `Unexpected argument '${arg}' for 'prose compile'.`);
+		}
+		sawPath = true;
 	}
 }
 

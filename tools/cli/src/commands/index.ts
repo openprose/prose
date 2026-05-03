@@ -14,6 +14,11 @@ class Help extends Command {
 }
 
 const forwardCommandDefinitions = {
+	compile: {
+		command: "compile",
+		summary: "Compile OpenProse source into repository IR.",
+		usage: "compile [path] [--out <dir>] [--harness <name>]",
+	},
 	examples: {
 		command: "examples",
 		summary: "Show OpenProse examples.",

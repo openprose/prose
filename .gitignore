@@ -6,5 +6,8 @@
 .agents/prose/deps/
 .agents/prose/runs/
 
+# Compiled OpenProse repository IR
+dist/prose/
+
 # OpenProse smoke runner output
 openprose-smoke-results/
