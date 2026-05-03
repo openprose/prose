@@ -10,7 +10,7 @@ export const OPEN_PROSE_SKILL_SOURCE = "openprose/prose";
 export const SKILLS_CLI_PACKAGE = "skills@1.5.3";
 
 export type SkillAgent = "codex" | "claude-code";
-export type SkillScope = "project" | "user" | "compat";
+export type SkillScope = "project" | "user" | "provider-user";
 
 export interface SkillLocation {
 	agent: SkillAgent;
@@ -297,7 +297,7 @@ function candidateSkillLocations(agent: SkillAgent, cwd: string, home: string): 
 					},
 					{
 						agent,
-						scope: "compat" as const,
+						scope: "provider-user" as const,
 						path: join(home, ".codex", "skills", OPEN_PROSE_SKILL_NAME, "SKILL.md"),
 					},
 				]

@@ -11,6 +11,7 @@ export { supportedCommands, canonicalPrompt, CommandModelError, usageFor } from 
 export {
 	ATTACHED_OPENPROSE_ROOT_PATH,
 	RepositoryServeError,
+	USER_OPENPROSE_ROOT_PATH,
 	buildActivationRunRequest,
 	buildTriggerRegistrationPlan,
 	formatStaticRepositoryServe,

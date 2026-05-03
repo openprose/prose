@@ -7,6 +7,7 @@ export {
 } from "./command-model.js";
 export {
 	ATTACHED_OPENPROSE_ROOT_PATH,
+	USER_OPENPROSE_ROOT_PATH,
 	resolveOpenProseRoot,
 	rootRelativePath,
 	type OpenProseRoot,

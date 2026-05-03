@@ -110,6 +110,30 @@ describe("repository serve core", () => {
 		}
 	});
 
+	it("loads active manifests from a user-global OpenProse root", async () => {
+		const home = mkdtempSync(join(tmpdir(), "prose-serve-user-home-"));
+
+		try {
+			const userRoot = join(home, ".agents/prose");
+			const nestedCwd = join(userRoot, "src");
+			const activePath = join(userRoot, ACTIVE_REPOSITORY_IR_PATH);
+			mkdirSync(dirname(activePath), { recursive: true });
+			mkdirSync(nestedCwd, { recursive: true });
+			copyFileSync(stargazerFixture, activePath);
+
+			const loaded = await loadActiveRepositoryIr({ cwd: nestedCwd, home });
+
+			expect(loaded.openProseRoot).toMatchObject({
+				mode: "user",
+				path: "~/.agents/prose",
+				absolutePath: userRoot,
+			});
+			expect(loaded.absoluteManifestPath).toBe(activePath);
+		} finally {
+			rmSync(home, { recursive: true, force: true });
+		}
+	});
+
 	it("reports validation errors for malformed active manifests", async () => {
 		const temp = mkdtempSync(join(tmpdir(), "prose-serve-invalid-"));
 

@@ -98,6 +98,7 @@ export interface RepositoryServeActivationRunRequest {
 
 export interface LoadActiveRepositoryIrOptions {
 	cwd: string;
+	home?: string;
 	manifestPath?: string;
 }
 
@@ -120,7 +121,10 @@ export interface LaunchActivationRunOptions {
 
 export async function loadActiveRepositoryIr(options: LoadActiveRepositoryIrOptions): Promise<RepositoryServeLoadedIr> {
 	const manifestPath = options.manifestPath ?? ACTIVE_REPOSITORY_IR_PATH;
-	const openProseRoot = await resolveOpenProseRoot({ cwd: options.cwd });
+	const openProseRoot = await resolveOpenProseRoot({
+		cwd: options.cwd,
+		...(options.home === undefined ? {} : { home: options.home }),
+	});
 	const absoluteManifestPath = resolve(openProseRoot.absolutePath, manifestPath);
 	let text: string;
 
