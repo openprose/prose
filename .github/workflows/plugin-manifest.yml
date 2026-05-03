@@ -8,7 +8,10 @@ on:
       - ".agents/plugins/**"
       - "skills/open-prose/SKILL.md"
       - "scripts/bump-version.sh"
+      - "scripts/sync-copy.sh"
       - ".version-bump.json"
+      - ".plugin-meta.json"
+      - "assets/plugin/**"
       - "CHANGELOG.md"
       - ".github/workflows/plugin-manifest.yml"
   push:
@@ -20,7 +23,10 @@ on:
       - ".agents/plugins/**"
       - "skills/open-prose/SKILL.md"
       - "scripts/bump-version.sh"
+      - "scripts/sync-copy.sh"
       - ".version-bump.json"
+      - ".plugin-meta.json"
+      - "assets/plugin/**"
       - "CHANGELOG.md"
       - ".github/workflows/plugin-manifest.yml"
 
@@ -69,3 +75,23 @@ jobs:
 
       - name: Plugin versions in sync
         run: ./scripts/bump-version.sh --check
+
+      - name: Plugin copy in sync
+        run: ./scripts/sync-copy.sh --check
+
+      - name: Plugin assets exist
+        run: |
+          test -f assets/plugin/logo.png
+          test -f assets/plugin/composer-icon.png
+          file assets/plugin/logo.png          | grep -q 'PNG image data, 512 x 512'
+          file assets/plugin/composer-icon.png | grep -q 'PNG image data, 64 x 64'
+
+      - name: Codex interface has visual assets
+        run: |
+          jq -e '.interface.logo and .interface.composerIcon and .interface.brandColor and .interface.websiteURL' .codex-plugin/plugin.json
+          jq -re '.interface.brandColor' .codex-plugin/plugin.json | grep -E '^#[0-9A-Fa-f]{6}$'
+
+      - name: Registry names unified to openprose
+        run: |
+          jq -e '.name == "openprose"' .claude-plugin/marketplace.json
+          jq -e '.name == "openprose"' .agents/plugins/marketplace.json
