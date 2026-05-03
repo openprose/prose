@@ -152,10 +152,12 @@ interpreting maintenance feedback.
 Forme remains the single source of truth for service and system wiring
 semantics. Compile does not invent a second wiring language.
 
-During compile, Forme source is lowered into full runnable Forme manifests so
-activation-time runs do not need to re-discover dependencies. During serve,
-the harness loads those manifests and passes the right activation context into
-ordinary `prose run` sessions.
+During compile, Forme source is lowered into structured Forme manifest JSON so
+activation-time runs do not need to re-discover dependencies. This JSON object
+is the canonical wiring contract. A host may render it for inspection, but a
+separate Markdown run manifest is not required. During serve, the harness loads
+the compiled manifest and passes the right activation context into ordinary
+`prose run` sessions.
 
 ## Model Policy
 

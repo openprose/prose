@@ -60,6 +60,7 @@
       "reason": "Determine whether the responsibility is up, drifting, down, or blocked."
     }
   ],
+  "formeManifests": [],
   "diagnostics": [
     {
       "severity": "warning",

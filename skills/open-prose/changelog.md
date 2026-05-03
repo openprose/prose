@@ -22,8 +22,8 @@ plan.
 - Multi-file systems conventionally use `index.prose.md`.
 - Dependencies live in `.agents/prose/deps/`.
 - The lockfile is `.agents/prose/prose.lock`.
-- Generated run internals are `manifest.run.md`, `root.prose.md`, and
-  `vm.log.md`.
+- Generated run internals include the compiled activation manifest,
+  `root.prose.md`, and `vm.log.md`.
 
 ## History
 
@@ -78,7 +78,7 @@ plan.
 | source `*.md` with `kind:` | `*.prose.md` under `.agents/prose/src/` |
 | `index.md` system root | `index.prose.md` |
 | standalone `*.prose` | `*.prose.md` with Contract Markdown frontmatter and `### Execution` |
-| run `manifest.md` | `manifest.run.md` |
+| run `manifest.md` | compiled activation manifest |
 | run `root.md` | `root.prose.md` |
 | run `state.md` | `vm.log.md` |
 

@@ -15,14 +15,19 @@ Prepare Forme wiring for systems discovered during compile.
 ### Ensures
 
 - `diagnostics`: Forme-related warnings or errors.
-- `forme_manifests`: runnable Forme manifests when the compiler version
-  supports them.
+- `formeManifests`: structured runnable Forme manifests for discovered
+  systems.
 
 ### Strategies
 
 - Load `../../forme.md`; do not redefine Forme semantics here.
 - Treat systems with `### Services` as Forme candidates.
-- For now, record diagnostics and source relationships only; later phases emit
-  full runnable Forme manifests into repository IR.
+- Emit structured JSON manifests into repository IR. Do not embed Markdown
+  manifests as strings.
+- Resolve service dependencies, caller inputs, service outputs, execution
+  order, source snapshot paths, environment requirements, warnings, and
+  delegation constraints before runtime.
+- Link any fulfillment activation for a system to the matching
+  `formeManifestId`.
 - Fail only when an author claims wiring that is structurally impossible to
   interpret.

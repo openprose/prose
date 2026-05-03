@@ -5,6 +5,7 @@
   "responsibilities": [],
   "triggers": [],
   "activations": [],
+  "formeManifests": [],
   "diagnostics": [
     {
       "severity": "info",

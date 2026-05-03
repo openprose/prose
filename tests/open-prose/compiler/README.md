@@ -16,11 +16,15 @@ Phase 3 keeps the IR intentionally small. The checked v0 manifest contains:
 - `responsibilities`
 - `triggers`
 - `activations`
+- `formeManifests`
 - `diagnostics`
 
 Trigger and activation records are semantic intent only. Later phases can add
-full runnable Forme manifests, concrete trigger registration, serve, and status
-records without changing the source authoring model.
+concrete trigger registration, serve, and status records without changing the
+source authoring model.
+
+Forme manifests are compiled as structured JSON. They are the canonical runtime
+wiring object for systems; no separate Markdown run manifest is required.
 
 ## Advisory Prompts
 
@@ -46,8 +50,10 @@ Expected shape:
 - emits a v0 manifest shaped like `expected/stargazer.manifest.next.json`
 - preserves the responsibility sections in semantic IR
 - emits judge and fulfillment activation intent
+- emits a structured Forme manifest for the fulfillment system
+- links the fulfillment activation to the compiled Forme manifest
 - does not invent webhook routes, queue names, or provider payloads
-- leaves full Forme payloads and concrete trigger registration to later phases
+- leaves concrete trigger registration to later phases
 
 ### Compile Ambiguous Fulfillment Fixture
 
@@ -85,3 +91,11 @@ Expected shape:
 
 - fails deterministic validation
 - reports malformed responsibility, trigger, and activation records
+
+Validate `invalid/malformed-forme.manifest.next.json`.
+
+Expected shape:
+
+- fails deterministic validation
+- reports malformed Forme graph, execution order, environment, and activation
+  references

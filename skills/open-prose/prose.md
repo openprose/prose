@@ -2,12 +2,12 @@
 role: execution-semantics
 summary: |
   How to execute OpenProse services and systems. You embody the OpenProse VM—a virtual machine that
-  reads a manifest (produced by Forme), spawns sessions through the host's
+  reads a compiled Forme manifest, spawns sessions through the host's
   `spawn_session` primitive, manages state via the selected backend, and
   coordinates execution across services and systems. Read this file to run service and system files.
 see-also:
   - contract-markdown.md: System and service file format
-  - forme.md: Wiring semantics (Phase 1 — produces the manifest you consume)
+  - forme.md: Wiring semantics (Phase 1 — produces the compiled manifest you consume)
   - prosescript.md: Imperative syntax for pinned execution blocks
   - state/README.md: State backend router and shared run-envelope rules
   - state/filesystem.md: File-system state management
@@ -19,8 +19,9 @@ see-also:
 
 This document defines how to execute OpenProse services and systems. You are
 the OpenProse VM—an intelligent virtual machine that reads a service file or
-wiring manifest, spawns subagent sessions for each service, passes data between
-them through the selected state backend, and returns the run's output.
+compiled Forme manifest, spawns subagent sessions for each service, passes
+data between them through the selected state backend, and returns the run's
+output.
 
 ## Agent Commands
 
@@ -119,13 +120,14 @@ A Prose system runs in two phases:
 
 | Phase                  | Who                      | Input                 | Output         |
 | ---------------------- | ------------------------ | --------------------- | -------------- |
-| **Phase 1: Wiring**    | Forme (`forme.md`)       | Service and system `*.prose.md` files | `manifest.run.md`  |
-| **Phase 2: Execution** | Prose VM (this document) | `manifest.run.md`         | System output |
+| **Phase 1: Wiring**    | Forme (`forme.md`)       | Service and system `*.prose.md` files | Compiled Forme manifest |
+| **Phase 2: Execution** | Prose VM (this document) | Compiled Forme manifest | System output |
 
-You are Phase 2. The manifest tells you what to run and in what order. You execute it.
+You are Phase 2. The compiled manifest tells you what to run and in what
+order. You execute it.
 
-For `kind: service` files, Forme is skipped, but the run still gets a
-minimal `manifest.run.md` for uniform inspection and resumption. The
+For `kind: service` files, Forme is skipped, but the run still records a
+minimal service activation record for uniform inspection and resumption. The
 `*.prose.md` file is the service to run: snapshot it as `root.prose.md` and
 `sources/{name}.prose.md`, spawn one session, and return its output. A
 `kind: system` file must declare `### Services`; otherwise it is malformed.
@@ -210,13 +212,14 @@ own tools:
 ## Directory Structure
 
 Load `state/README.md` and the selected backend spec before execution. Durable
-backends always create `.agents/prose/runs/{id}/` with `manifest.run.md`,
-`root.prose.md`, and source snapshots. The default filesystem backend stores
-all execution state in that directory:
+backends always create `.agents/prose/runs/{id}/` with `root.prose.md`, source
+snapshots, and either a compiled Forme manifest or a service activation
+record. The default filesystem backend stores all execution state in that
+directory:
 
 ```
 .agents/prose/runs/{id}/
-├── manifest.run.md                   # Wiring graph, or minimal service manifest
+├── forme.manifest.json               # Optional filesystem snapshot of compiled Forme manifest
 ├── root.prose.md                        # Copy of the invoked service or system file
 ├── sources/                       # Service, system, and pattern source files copied by Phase 1
 │   ├── researcher.prose.md
@@ -261,9 +264,10 @@ Example: `20260317-143052-a7b3c9`
 
 ## The Execution Algorithm
 
-### Step 1: Read the Manifest
+### Step 1: Read the Compiled Manifest
 
-Read `.agents/prose/runs/{id}/manifest.run.md`. Extract:
+Read the compiled Forme manifest from activation context, repository IR, or the
+filesystem snapshot at `.agents/prose/runs/{id}/forme.manifest.json`. Extract:
 
 - **Caller Interface** — what inputs the system needs, what it returns
 - **Graph** — each service with its source file, workspace path, inputs (with `←` mappings), and outputs
@@ -848,8 +852,9 @@ The VM validates:
 
 1. **Existence.** The referenced run directory exists under `.agents/prose/runs/`. For resolution rules, see Run ID Resolution below.
 2. **Structure.** The directory contains the durable run envelope
-   (`manifest.run.md`, `root.prose.md`, and source snapshots) plus the selected
-   backend's event store. Filesystem runs must contain `vm.log.md`.
+   (`root.prose.md`, source snapshots, and the compiled activation/manifest
+   record) plus the selected backend's event store. Filesystem runs must
+   contain `vm.log.md`.
 3. **Completion status.** Read the selected backend's completion marker:
    - completed successfully → bind normally
    - failed → emit a warning but allow binding (failed runs are consumable; an inspector may specifically want to evaluate a failed run)
@@ -1046,8 +1051,8 @@ test-browse-contract ............. PASS (contract)
 For `kind: service` files (no Forme phase):
 
 1. The `*.prose.md` file is the service to run
-2. Synthesize a minimal `manifest.run.md` so the run directory has the same
-   control-plane shape as a system run
+2. Record a minimal service activation record so the run directory has the
+   same control-plane shape as a system run
 3. Bind caller inputs from `### Requires`
 4. Spawn one session with the file as the service definition
 5. The session writes to `workspace/` and the VM copies `### Ensures` outputs to `bindings/`
@@ -1140,7 +1145,7 @@ function execute(manifest, inputs?):
 
 The OpenProse VM:
 
-1. **Reads** the manifest produced by Forme
+1. **Reads** the compiled manifest produced by Forme
 2. **Binds** caller inputs (from CLI, config, or user prompt)
 3. **Walks** the execution order from the dependency graph
 4. **Spawns** one session per service via `spawn_session`

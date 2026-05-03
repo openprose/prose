@@ -27,9 +27,14 @@ it is written as `manifest.next.json`.
   `Criteria`, `Constraints`, and optional fulfillment intent.
 - Require `triggers` to be an array of semantic trigger-intent records.
 - Require `activations` to be an array of semantic activation-intent records.
+- Require `formeManifests` to be an array of structured Forme wiring objects.
 - Require `diagnostics` to be an array of objects with `severity` and
   non-empty `message`.
 - Recognize diagnostic severities `info`, `warning`, and `error`.
 - Check that responsibility, trigger, activation, and source references point
   at discovered records where possible.
+- Check that fulfillment activation `formeManifestId` values point at known
+  Forme manifests when present.
+- Check that Forme graph nodes, input bindings, execution order, environment
+  requirements, and source references are structurally complete.
 - Refuse to write `manifest.next.json` when validation fails.

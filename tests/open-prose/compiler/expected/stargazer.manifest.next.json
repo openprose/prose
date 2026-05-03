@@ -11,6 +11,31 @@
       "path": "stargazer-outreach/index.prose.md",
       "kind": "system",
       "name": "stargazer-outreach"
+    },
+    {
+      "path": "stargazer-outreach/stargazer-fetcher.prose.md",
+      "kind": "service",
+      "name": "stargazer-fetcher"
+    },
+    {
+      "path": "stargazer-outreach/profile-enricher.prose.md",
+      "kind": "service",
+      "name": "profile-enricher"
+    },
+    {
+      "path": "stargazer-outreach/program-proposer.prose.md",
+      "kind": "service",
+      "name": "program-proposer"
+    },
+    {
+      "path": "stargazer-outreach/sample-runner.prose.md",
+      "kind": "service",
+      "name": "sample-runner"
+    },
+    {
+      "path": "stargazer-outreach/outreach-drafter.prose.md",
+      "kind": "service",
+      "name": "outreach-drafter"
     }
   ],
   "responsibilities": [
@@ -76,7 +101,212 @@
       ],
       "targetName": "stargazer-outreach",
       "sourcePath": "stargazer-outreach/index.prose.md",
+      "formeManifestId": "stargazer-outreach",
       "reason": "Use the declared fulfillment system when judge pressure or explicit request says the responsibility needs work."
+    }
+  ],
+  "formeManifests": [
+    {
+      "id": "stargazer-outreach",
+      "systemName": "stargazer-outreach",
+      "sourcePath": "stargazer-outreach/index.prose.md",
+      "caller": {
+        "requires": [
+          {
+            "name": "github_repository",
+            "description": "repository whose new stargazers should be evaluated"
+          },
+          {
+            "name": "activation_event",
+            "description": "trigger event or manual request that woke this run"
+          }
+        ],
+        "returns": [
+          {
+            "name": "outreach_packet",
+            "source": "outreach-drafter",
+            "description": "qualified prospects, evidence, proposed OpenProse programs, sample result pointers, and draft outreach where appropriate"
+          }
+        ]
+      },
+      "graph": [
+        {
+          "id": "stargazer-fetcher",
+          "sourcePath": "stargazer-outreach/stargazer-fetcher.prose.md",
+          "workspacePath": "workspace/stargazer-fetcher/",
+          "inputs": [
+            {
+              "name": "github_repository",
+              "from": "caller",
+              "path": "inputs/github_repository.md",
+              "description": "repository whose new stargazers should be evaluated"
+            },
+            {
+              "name": "activation_event",
+              "from": "caller",
+              "path": "inputs/activation_event.json",
+              "description": "trigger event or manual request that woke this run"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "stargazers",
+              "workspacePath": "workspace/stargazer-fetcher/stargazers.md",
+              "bindingPath": "bindings/stargazer-fetcher/stargazers.md",
+              "public": true,
+              "description": "GitHub usernames and public profile URLs to evaluate, with enough provenance to avoid duplicate processing"
+            }
+          ]
+        },
+        {
+          "id": "profile-enricher",
+          "sourcePath": "stargazer-outreach/profile-enricher.prose.md",
+          "workspacePath": "workspace/profile-enricher/",
+          "inputs": [
+            {
+              "name": "stargazers",
+              "from": "service",
+              "sourceNodeId": "stargazer-fetcher",
+              "sourceOutput": "stargazers",
+              "path": "bindings/stargazer-fetcher/stargazers.md",
+              "description": "GitHub usernames and public profile URLs to evaluate"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "enriched_profiles",
+              "workspacePath": "workspace/profile-enricher/enriched_profiles.md",
+              "bindingPath": "bindings/profile-enricher/enriched_profiles.md",
+              "public": true,
+              "description": "likely organizations, company context, role signals, customers, repository activity, and confidence notes for each stargazer"
+            }
+          ]
+        },
+        {
+          "id": "program-proposer",
+          "sourcePath": "stargazer-outreach/program-proposer.prose.md",
+          "workspacePath": "workspace/program-proposer/",
+          "inputs": [
+            {
+              "name": "enriched_profiles",
+              "from": "service",
+              "sourceNodeId": "profile-enricher",
+              "sourceOutput": "enriched_profiles",
+              "path": "bindings/profile-enricher/enriched_profiles.md",
+              "description": "company and role context for candidate prospects"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "program_ideas",
+              "workspacePath": "workspace/program-proposer/program_ideas.md",
+              "bindingPath": "bindings/program-proposer/program_ideas.md",
+              "public": true,
+              "description": "OpenProse program ideas matched to observed operational pain, with a short reason each idea may be useful"
+            }
+          ]
+        },
+        {
+          "id": "sample-runner",
+          "sourcePath": "stargazer-outreach/sample-runner.prose.md",
+          "workspacePath": "workspace/sample-runner/",
+          "inputs": [
+            {
+              "name": "program_ideas",
+              "from": "service",
+              "sourceNodeId": "program-proposer",
+              "sourceOutput": "program_ideas",
+              "path": "bindings/program-proposer/program_ideas.md",
+              "description": "OpenProse program ideas matched to observed operational pain"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "sample_results",
+              "workspacePath": "workspace/sample-runner/sample_results.md",
+              "bindingPath": "bindings/sample-runner/sample_results.md",
+              "public": true,
+              "description": "sample output pointers or concise degradation notes for the highest-intent program ideas"
+            }
+          ]
+        },
+        {
+          "id": "outreach-drafter",
+          "sourcePath": "stargazer-outreach/outreach-drafter.prose.md",
+          "workspacePath": "workspace/outreach-drafter/",
+          "inputs": [
+            {
+              "name": "enriched_profiles",
+              "from": "service",
+              "sourceNodeId": "profile-enricher",
+              "sourceOutput": "enriched_profiles",
+              "path": "bindings/profile-enricher/enriched_profiles.md",
+              "description": "company and role context for candidate prospects"
+            },
+            {
+              "name": "program_ideas",
+              "from": "service",
+              "sourceNodeId": "program-proposer",
+              "sourceOutput": "program_ideas",
+              "path": "bindings/program-proposer/program_ideas.md",
+              "description": "OpenProse program ideas matched to observed operational pain"
+            },
+            {
+              "name": "sample_results",
+              "from": "service",
+              "sourceNodeId": "sample-runner",
+              "sourceOutput": "sample_results",
+              "path": "bindings/sample-runner/sample_results.md",
+              "description": "sample output pointers or degradation notes"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "outreach_packet",
+              "workspacePath": "workspace/outreach-drafter/outreach_packet.md",
+              "bindingPath": "bindings/outreach-drafter/outreach_packet.md",
+              "public": true,
+              "description": "qualified prospects, evidence, proposed OpenProse programs, sample result pointers, and draft outreach where appropriate"
+            }
+          ]
+        }
+      ],
+      "executionOrder": [
+        {
+          "nodeId": "stargazer-fetcher",
+          "dependsOn": [
+            "caller"
+          ]
+        },
+        {
+          "nodeId": "profile-enricher",
+          "dependsOn": [
+            "stargazer-fetcher"
+          ]
+        },
+        {
+          "nodeId": "program-proposer",
+          "dependsOn": [
+            "profile-enricher"
+          ]
+        },
+        {
+          "nodeId": "sample-runner",
+          "dependsOn": [
+            "program-proposer"
+          ]
+        },
+        {
+          "nodeId": "outreach-drafter",
+          "dependsOn": [
+            "profile-enricher",
+            "program-proposer",
+            "sample-runner"
+          ]
+        }
+      ],
+      "environment": [],
+      "warnings": []
     }
   ],
   "diagnostics": [

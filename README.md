@@ -188,8 +188,8 @@ For multi-service systems, execution has two phases:
 
 | Phase | System | Job |
 |-------|--------|-----|
-| 1 | [Forme](skills/open-prose/forme.md) | Read contracts, resolve services, build the wiring manifest |
-| 2 | [Prose VM](skills/open-prose/prose.md) | Walk the manifest, spawn sessions, pass artifacts, enforce constraints |
+| 1 | [Forme](skills/open-prose/forme.md) | Read contracts, resolve services, build the compiled Forme manifest |
+| 2 | [Prose VM](skills/open-prose/prose.md) | Walk the compiled manifest, spawn sessions, pass artifacts, enforce constraints |
 
 Single services skip Forme and run directly in the VM.
 
@@ -209,9 +209,10 @@ be checked, maintained, and restored across bounded runs:
 | `prose serve` | Load IR, register triggers, receive events, and launch bounded activations |
 | `prose run` | Execute one bounded OpenProse VM activation |
 
-The first compiled Responsibility Runtime manifest preserves responsibilities
-as semantic sections and emits only trigger and activation intent. Concrete
-registration, serving, status, and pressure belong to later runtime phases.
+The compiled Responsibility Runtime manifest preserves responsibilities as
+semantic sections, emits trigger and activation intent, and includes structured
+Forme manifests for fulfillment systems. Concrete trigger registration,
+serving, status, and pressure belong to later runtime phases.
 
 The design doctrine is:
 

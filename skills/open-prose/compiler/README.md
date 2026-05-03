@@ -38,7 +38,12 @@ Phase 3 emits a minimal v0 manifest with:
 - `responsibilities`
 - `triggers`
 - `activations`
+- `formeManifests`
 - `diagnostics`
 
 The responsibility records stay semantic. Trigger and activation records
 describe intent only; concrete registration belongs to `prose serve`.
+
+Forme manifests are structured JSON wiring objects. They are the canonical
+compiled runtime contract for systems; a host may render them for debugging,
+but no separate Markdown run manifest is required as a VM input.

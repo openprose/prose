@@ -177,7 +177,8 @@ user, source, or host configuration does not request another backend.
 Durable backends create `.agents/prose/runs/{id}/` and always write the
 control-plane envelope before reporting success:
 
-- `manifest.run.md`: generated wiring graph, or a minimal manifest for a single service
+- compiled Forme manifest: generated wiring graph for systems, or a minimal
+  service activation record for single services
 - `root.prose.md`: snapshot of the invoked source
 - `sources/`: snapshots of referenced service, system, and pattern sources
 

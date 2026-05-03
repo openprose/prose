@@ -68,4 +68,24 @@ describe("repository IR v0", () => {
 			]),
 		);
 	});
+
+	it("rejects malformed Forme manifest IR", () => {
+		const result = validateRepositoryIr(readFixture("tests/open-prose/compiler/invalid/malformed-forme.manifest.next.json"));
+
+		expect(result.valid).toBe(false);
+		expect(result.errors).toEqual(
+			expect.arrayContaining([
+				"activations[0].responsibilityId must reference a known responsibility id",
+				"activations[0].formeManifestId must reference a known Forme manifest id",
+				"formeManifests[0].graph[0].workspacePath must be a non-empty string",
+				"formeManifests[0].graph[0].inputs[0].sourceOutput must be a non-empty string for service inputs",
+				"formeManifests[0].graph[0].outputs must contain at least one output",
+				"formeManifests[0].graph[0].inputs[0].sourceNodeId must reference a known graph node",
+				"formeManifests[0].executionOrder[0].nodeId must reference a known graph node",
+				"formeManifests[0].executionOrder[0].dependsOn[1] must reference caller or a known graph node",
+				"formeManifests[0].environment[0].requiredBy[0] must reference a known graph node",
+				"formeManifests[0].warnings[0] must be a non-empty string",
+			]),
+		);
+	});
 });

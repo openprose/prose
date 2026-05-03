@@ -54,7 +54,7 @@ The database lives within the standard run directory:
 
 ```
 .agents/prose/runs/{YYYYMMDD}-{HHMMSS}-{random}/
-├── manifest.run.md         # Wiring graph, or minimal service manifest
+├── forme.manifest.json     # Optional filesystem snapshot of compiled Forme manifest
 ├── root.prose.md           # Copy of the invoked service or system source
 ├── sources/                # Service, system, and pattern source snapshots
 ├── state.db                # SQLite database for execution events and bindings

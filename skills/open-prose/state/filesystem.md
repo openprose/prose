@@ -51,7 +51,7 @@ File-based state persists all execution artifacts to disk. This enables:
 │       └── research-system.test.prose.md
 ├── runs/
 │   └── {YYYYMMDD}-{HHMMSS}-{random}/
-│       ├── manifest.run.md                     # Wiring graph, or minimal service manifest
+│       ├── forme.manifest.json                 # Compiled Forme manifest for systems
 │       ├── root.prose.md                         # Copy of the invoked service or system file
 │       ├── sources/                        # Service, system, and pattern source files copied by Phase 1
 │       │   ├── researcher.prose.md
@@ -195,9 +195,11 @@ bindings/
 
 ## File Formats
 
-### `manifest.run.md`
+### Compiled Activation Manifest
 
-The wiring graph produced by Forme. See `forme.md` for the full format specification. Contains:
+The wiring graph produced by Forme. For filesystem runs, systems may snapshot
+the compiled JSON object as `forme.manifest.json`. See `forme.md` for the full
+format specification. Contains:
 
 - Caller interface (requires/returns)
 - Per-service entries (source, workspace, inputs with `←` mappings, outputs)
@@ -267,7 +269,10 @@ type: run[]
   status: complete
 ```
 
-The downstream service receives the path and can read the run's bindings, `vm.log.md`, and `manifest.run.md` directly. The structured header gives the service immediate access to key metadata without traversing the filesystem.
+The downstream service receives the path and can read the run's bindings,
+`vm.log.md`, and compiled activation manifest directly. The structured header
+gives the service immediate access to key metadata without traversing the
+filesystem.
 
 **Resolution order for run references:**
 
@@ -389,7 +394,7 @@ The VM does NOT rewrite the entire file. Each write is a single line append.
 To resume an interrupted run:
 
 1. Read `vm.log.md` — find the last completed service
-2. Read `manifest.run.md` — get the execution order
+2. Read the compiled activation manifest — get the execution order
 3. Scan `bindings/` — confirm existing outputs
 4. Continue from the next service in execution order
 
@@ -399,7 +404,7 @@ To resume an interrupted run:
 
 | Artifact | Written By | When |
 |----------|------------|------|
-| `manifest.run.md` | Forme for systems; VM for single-service runs | Before execution |
+| compiled activation manifest | Forme for systems; VM for single-service runs | Before execution |
 | `root.prose.md` | Forme for systems; VM for single-service runs | Before execution |
 | `sources/*.prose.md` | Forme for systems; VM for single-service runs | Before execution |
 | `bindings/caller/*.md` | VM | At system start |
@@ -507,7 +512,7 @@ local file), the imported system runs in its own subdirectory:
 
 ```
 .agents/prose/runs/{id}/imports/{handle}--{slug}/
-├── manifest.run.md
+├── forme.manifest.json
 ├── root.prose.md
 ├── sources/
 ├── workspace/

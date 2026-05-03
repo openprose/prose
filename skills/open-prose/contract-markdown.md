@@ -410,7 +410,8 @@ When an entry's type is `run` or `run[]`, the caller supplies a run ID (or a
 list of them). The Prose VM resolves each ID to its run directory and writes a
 structured binding at `bindings/caller/{name}.md` containing the run ID, path,
 root source name, and status. The service reads that binding and then reaches into
-the run's own `bindings/`, `vm.log.md`, and `manifest.run.md` directly.
+the run's own `bindings/`, `vm.log.md`, and compiled activation manifest
+directly.
 
 See `prose.md` (Run-Typed Inputs) for binding format, resolution order (bare
 ID, `~/{id}` for user scope, absolute path), and staleness validation.

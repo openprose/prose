@@ -37,7 +37,7 @@ harness can validate and later serve.
   graph makes the relationship clear.
 - Do not invent connector routes, queue names, provider payloads, or secrets.
 - Keep the v0 IR narrow: `kind`, `version`, `sources`, `responsibilities`,
-  `triggers`, `activations`, and `diagnostics`.
+  `triggers`, `activations`, `formeManifests`, and `diagnostics`.
 - Prefer warnings over silent assumptions when timing, fulfillment, or Forme
   wiring is ambiguous.
 
@@ -49,10 +49,10 @@ harness can validate and later serve.
 3. Call `compile-responsibilities` for discovered responsibilities.
 4. Call `compile-forme` for discovered systems and services.
 5. Call `emit-ir` with discovered source records, responsibility records,
-   trigger intent, activation intent, and diagnostics.
+   trigger intent, activation intent, Forme manifests, and diagnostics.
 6. Call `validate-ir` before reporting success.
 7. Write only a valid manifest to `output_dir/manifest.next.json`.
 
-Phase 3 emits semantic responsibility, trigger-intent, and activation-intent
-records. Later phases add full runnable Forme manifests, trigger registration,
-serve, and responsibility status execution.
+Phase 4 emits structured Forme manifest objects. The JSON objects are the
+canonical compiled wiring contract; hosts may render them for inspection, but
+bounded runs should not need a separate Markdown run manifest.

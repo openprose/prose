@@ -33,7 +33,8 @@ and run layout.
 Durable backends create one run directory under `.agents/prose/runs/{id}/`.
 Before reporting success, every durable backend writes:
 
-- `manifest.run.md`: generated wiring graph, or a minimal manifest for a single service
+- compiled Forme manifest: generated wiring graph for systems, or a minimal
+  service activation record for single services
 - `root.prose.md`: snapshot of the invoked source
 - `sources/`: snapshots of referenced service, system, and pattern sources
 
@@ -46,10 +47,10 @@ Backend-specific storage begins after that envelope:
 | PostgreSQL | PostgreSQL tables | PostgreSQL rows, with optional `attachments/` | Replaces filesystem `vm.log.md`, `workspace/`, and `bindings/` |
 
 Persistent alternate backends still use the same `.agents/prose/` root,
-`*.prose.md` source conventions, run IDs, `manifest.run.md`, `root.prose.md`,
-and source snapshots; they move execution events and data-plane bindings into a
-database. In-context state keeps the same source conventions but stores run
-state in conversation history.
+`*.prose.md` source conventions, run IDs, compiled activation manifests,
+`root.prose.md`, and source snapshots; they move execution events and
+data-plane bindings into a database. In-context state keeps the same source
+conventions but stores run state in conversation history.
 
 ## Contents
 

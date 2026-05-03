@@ -226,7 +226,7 @@ your-project/
 │   ├── .env                    # OPENPROSE_POSTGRES_URL=...
 │   └── runs/                   # Source snapshots and attachments
 │       └── {YYYYMMDD}-{HHMMSS}-{random}/
-│           ├── manifest.run.md # Wiring graph, or minimal service manifest
+│           ├── forme.manifest.json # Optional filesystem snapshot of compiled Forme manifest
 │           ├── root.prose.md   # Copy of the invoked service or system source
 │           ├── sources/        # Service, system, and pattern source snapshots
 │           └── attachments/    # Large outputs (optional)

@@ -88,14 +88,15 @@ selected backend's completion shape.
 For the default filesystem backend, the latest `.agents/prose/runs/{id}/`
 directory must contain:
 
-- `manifest.run.md`: generated wiring graph, or minimal manifest for one service
+- compiled Forme manifest: generated wiring graph for systems, or minimal
+  service activation record for one service
 - `root.prose.md`: snapshot of the invoked source
 - `sources/`: snapshots of referenced service, system, and pattern sources
 - `vm.log.md`: append-only execution log with completion or error markers
 - `bindings/`: non-empty files for every declared output
 
-SQLite and PostgreSQL preserve `manifest.run.md`, `root.prose.md`, and
-`sources/`, but store events and data-plane bindings in their database backends
+SQLite and PostgreSQL preserve compiled activation manifests, `root.prose.md`,
+and `sources/`, but store events and data-plane bindings in their database backends
 instead of filesystem `vm.log.md`, `workspace/`, and `bindings/`.
 
 ## Runtime Model
