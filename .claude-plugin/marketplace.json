@@ -1,7 +1,7 @@
 {
-  "name": "prose",
+  "name": "openprose",
   "metadata": {
-    "description": "OpenProse — a programming language for AI sessions that structures English into unambiguous control flow for multi-agent orchestration"
+    "description": "A programming language for AI sessions. Declare outcomes, not instructions."
   },
   "owner": {
     "name": "OpenProse",
@@ -11,7 +11,7 @@
     {
       "name": "open-prose",
       "source": "./",
-      "description": "Runs OpenProse *.prose.md services and systems. When the user invokes `prose`, read the contract, spawn subagents when the system requires them, pass artifacts through bindings, and write run state to `<openprose-root>/runs/`. Requires a subagent primitive for multi-agent systems; single services run inline."
+      "description": "Write a Markdown contract (`.prose.md`). Your agent reads it, wires services, runs subagents, and leaves an auditable trace."
     }
   ]
 }

@@ -6,6 +6,7 @@
   "plugins": [
     {
       "name": "open-prose",
+      "description": "Write a Markdown contract (`.prose.md`). Your agent reads it, wires services, runs subagents, and leaves an auditable trace.",
       "source": {
         "source": "local",
         "path": "./"

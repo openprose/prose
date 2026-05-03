@@ -1,7 +1,7 @@
 {
-  "tagline": "PLACEHOLDER_TAGLINE",
-  "shortDescription": "PLACEHOLDER_SHORT",
-  "longDescription": "PLACEHOLDER_LONG",
+  "tagline": "A programming language for AI sessions. Declare outcomes, not instructions.",
+  "shortDescription": "Write a Markdown contract (`.prose.md`). Your agent reads it, wires services, runs subagents, and leaves an auditable trace.",
+  "longDescription": "OpenProse is a programming language for AI sessions. Write a Markdown contract: an agent reads it, wires the services, runs the subagents, passes artifacts through the filesystem, and leaves a durable trace under the active OpenProse root. Plain prompts are great for one-off work; they get messy when the same process needs roles, handoffs, retries, memory, or a receipt. The plugin activates on `prose ...`, on `.prose.md` files, and on requests for reusable multi-agent orchestration.",
   "targets": {
     "tagline": [
       { "path": ".claude-plugin/marketplace.json", "pointer": "metadata.description" }

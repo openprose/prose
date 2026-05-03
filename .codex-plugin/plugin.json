@@ -1,7 +1,7 @@
 {
   "name": "open-prose",
   "version": "0.12.0",
-  "description": "Runs OpenProse *.prose.md services and systems.",
+  "description": "Write a Markdown contract (`.prose.md`). Your agent reads it, wires services, runs subagents, and leaves an auditable trace.",
   "license": "MIT",
   "homepage": "https://github.com/openprose/prose",
   "repository": "https://github.com/openprose/prose",
@@ -18,12 +18,12 @@
     "workflow",
     "multi-agent"
   ],
-  "skills": "./skills/",
+  "skills": "./skills",
   "interface": {
     "displayName": "OpenProse",
     "developerName": "OpenProse",
-    "shortDescription": "Run OpenProse services and systems.",
-    "longDescription": "OpenProse gives Codex a reusable language for services and systems: contracts, patterns, wiring, state, and auditable run artifacts under the active OpenProse root.",
+    "shortDescription": "Write a Markdown contract (`.prose.md`). Your agent reads it, wires services, runs subagents, and leaves an auditable trace.",
+    "longDescription": "OpenProse is a programming language for AI sessions. Write a Markdown contract: an agent reads it, wires the services, runs the subagents, passes artifacts through the filesystem, and leaves a durable trace under the active OpenProse root. Plain prompts are great for one-off work; they get messy when the same process needs roles, handoffs, retries, memory, or a receipt. The plugin activates on `prose ...`, on `.prose.md` files, and on requests for reusable multi-agent orchestration.",
     "category": "Productivity",
     "capabilities": [
       "Read",
