@@ -1,6 +1,6 @@
-# Native Runtime Prompt Fixtures
+# Responsibility Runtime Prompt Fixtures
 
-These fixtures exercise Phase 1 native runtime semantics.
+These fixtures exercise Phase 1 Responsibility Runtime semantics.
 
 They intentionally live outside `skills/open-prose/` because they are test and
 evaluation assets, not distributable skill docs.
@@ -36,7 +36,7 @@ Return:
 Expected shape:
 
 - recognizes `kind: responsibility`
-- says it is semantic native repository source, not a direct `prose run` target
+- says it is responsibility-oriented source, not a direct `prose run` target
 - identifies the four core sections
 - avoids treating the bullets as implementation steps
 
@@ -59,10 +59,10 @@ Expected shape:
 - does not invent provider-specific webhook routes or queue payloads
 - says concrete registration belongs to compiled IR and `prose serve`
 
-### Explain Native Runtime Stack
+### Explain Responsibility Runtime Stack
 
-Read `skills/open-prose/native-runtime.md`, then summarize how a new GitHub
-star event eventually becomes a bounded OpenProse run.
+Read `skills/open-prose/responsibility-runtime.md`, then summarize how a new
+GitHub star event eventually becomes a bounded OpenProse run.
 
 Expected shape:
 

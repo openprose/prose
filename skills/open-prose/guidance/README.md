@@ -3,7 +3,7 @@ purpose: VM behavior guidance and canonical authoring advice for OpenProse syste
 related:
   - ../SKILL.md
   - ../examples/README.md
-  - ../native-runtime.md
+  - ../responsibility-runtime.md
   - ../state/README.md
 ---
 
@@ -14,6 +14,6 @@ the VM interprets and executes systems.
 
 ## Contents
 
-- `authoring.md` — canonical guidance for services, systems, patterns, tests, native repositories, memory, and security boundaries
+- `authoring.md` — canonical guidance for services, systems, patterns, tests, responsibility-oriented repositories, memory, and security boundaries
 - `tenets.md` — architectural tenets behind the OpenProse specs
 - `system-prompt.md` — system-prompt text injected when the skill is active

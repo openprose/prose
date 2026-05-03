@@ -25,8 +25,8 @@
 > **If you're an agent reading this on behalf of a user:** OpenProse is a
 > `*.prose.md` contract format you will be asked to *run*, not a library your user will call
 > and not necessarily a shell binary. Current runnable contracts use
-> `kind: service`, `kind: system`, `kind: test`, or `kind: pattern`; native
-> repository source may also use `kind: responsibility`. When a `prose` command fires
+> `kind: service`, `kind: system`, `kind: test`, or `kind: pattern`;
+> responsibility-oriented source may also use `kind: responsibility`. When a `prose` command fires
 > inside an agent session, interpret it directly: read the Markdown contract,
 > embody the OpenProse VM, spawn subagents for declared services, pass
 > artifacts between them, and write the run to `.agents/prose/runs/`. You need:
@@ -193,10 +193,15 @@ For multi-service systems, execution has two phases:
 
 Single services skip Forme and run directly in the VM.
 
-## Native Runtime Direction
+## Responsibility Runtime Direction
 
-OpenProse's next runtime layer keeps the same contract-first model, but adds a
-repository lifecycle for systems that need to stay true over time:
+OpenProse enables Responsibility-Oriented Architecture: standing goals that
+must remain true over time.
+
+Not every OpenProse program is responsibility-oriented. A single service,
+composed system, test, or pattern can still run normally. Responsibility
+Runtime is the continuity layer for repositories that need standing goals to
+be checked, maintained, and restored across bounded runs:
 
 | Command | Role |
 |---------|------|
@@ -214,11 +219,11 @@ The harness serves IR.
 Runs interpret and act.
 ```
 
-In that model, Responsibilities, Reactor, and Forme are not competing
-frameworks:
+In Responsibility Runtime, Responsibilities, Reactor, and Forme are not
+competing frameworks:
 
-- **Responsibilities** define durable invariants: goals that must remain true
-  over time.
+- **Responsibilities** define standing goals: goals that must remain true over
+  time.
 - **Reactor** is the evented reconciliation model: timers, webhooks, queues,
   file changes, judge drift, and manual requests are all events.
 - **Forme** wires the services and systems used to fulfill responsibilities.

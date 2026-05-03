@@ -7,7 +7,7 @@ summary: |
 see-also:
   - ../contract-markdown.md: Contract Markdown authoring surface
   - ../forme.md: Forme container spec
-  - ../native-runtime.md: Native repository runtime doctrine
+  - ../responsibility-runtime.md: Responsibility Runtime doctrine
   - ../prose.md: Prose VM spec
   - ../prosescript.md: ProseScript imperative layer
   - authoring.md: Canonical authoring guidance
@@ -163,25 +163,28 @@ In a traditional language, `accepts: { topic: string }` (type signature) and `re
 
 ---
 
-## 18. Native repositories add durable invariants, not another framework
+## 18. Responsibility-Oriented Architecture adds standing goals, not another framework
 
 Responsibilities, Reactor, and Forme should compose into one runtime stack.
 Responsibilities define what must remain true over time. Reactor reconciles
 those invariants through events, judge status, and pressure. Forme wires the
 services and systems that fulfill them.
 
+OpenProse enables this architecture, but not every OpenProse program is
+responsibility-oriented.
+
 **How to apply:** Do not create pluggable framework modes for Responsibilities,
-Reactor, and Forme. Treat them as adjacent semantic layers in the same
-OpenProse skill.
+Reactor, and Forme. Treat them as adjacent semantic layers available through
+the same OpenProse skill.
 
 ---
 
-## 19. Compile is intelligence before serving
+## 19. Compile is intelligence before Responsibility Runtime serving
 
-Native repository serving should be deterministic: load IR, register triggers,
-receive events, and launch bounded runs. The intelligent work of reading
-semantic Markdown, inferring fulfillment, and resolving Forme wiring belongs in
-`prose compile` and in the bounded runs that serve later launches.
+Responsibility Runtime serving should be deterministic: load IR, register
+triggers, receive events, and launch bounded runs. The intelligent work of
+reading semantic Markdown, inferring fulfillment, and resolving Forme wiring
+belongs in `prose compile` and in the bounded runs that serve later launches.
 
 **How to apply:** Keep harness primitives small. Push semantic interpretation
 into Markdown docs and compiler programs, then validate the compiled output

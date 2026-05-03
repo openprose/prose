@@ -1,11 +1,11 @@
 ---
 role: reactor-semantics
 summary: |
-  Evented reconciliation model for OpenProse Native Repositories. Read this
+  Evented reconciliation model for Responsibility Runtime. Read this
   file when designing triggers, judge activations, maintenance feedback, or
   responsibility pressure.
 see-also:
-  - ../native-runtime.md: Native runtime stack and layer boundaries
+  - ../responsibility-runtime.md: Responsibility Runtime stack and layer boundaries
   - responsibility.md: Responsibility semantic contract
   - ../prose.md: Bounded VM run semantics
   - ../forme.md: Fulfillment wiring semantics
@@ -13,7 +13,7 @@ see-also:
 
 # Reactor
 
-Reactor is the evented reconciliation model for OpenProse Native Repositories.
+Reactor is the evented reconciliation model for Responsibility Runtime.
 
 It replaces a task-loop mindset with this question:
 

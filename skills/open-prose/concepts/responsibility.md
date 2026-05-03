@@ -3,9 +3,9 @@ role: responsibility-semantics
 summary: |
   Semantic contract for `kind: responsibility` files. A responsibility is a
   goal that must remain true over time. Read this file when authoring,
-  reviewing, or compiling OpenProse Native Repository responsibilities.
+  reviewing, or compiling responsibility-oriented OpenProse source.
 see-also:
-  - ../native-runtime.md: Native runtime stack and layer boundaries
+  - ../responsibility-runtime.md: Responsibility Runtime stack and layer boundaries
   - reactor.md: Evented reconciliation and maintenance pressure
   - ../forme.md: Fulfillment wiring semantics
   - ../contract-markdown.md: Markdown source format
@@ -15,11 +15,10 @@ see-also:
 
 A goal is a point-in-time requirement.
 
-A responsibility is a time-invariant requirement: a goal that must remain true
-over time.
+A responsibility is a standing goal: a goal that must remain true over time.
 
-Responsibilities are the top-level semantic unit of an OpenProse Native
-Repository. They define standing obligations, not implementation machinery.
+Responsibilities are the top-level semantic unit of Responsibility-Oriented
+Architecture. They define standing obligations, not implementation machinery.
 
 ## Canonical Shape
 

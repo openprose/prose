@@ -1,9 +1,9 @@
 ---
-purpose: Canonical OpenProse authoring guidance for services, systems, patterns, tests, native repositories, memory, and security boundaries
+purpose: Canonical OpenProse authoring guidance for services, systems, patterns, tests, responsibility-oriented repositories, memory, and security boundaries
 related:
   - ../contract-markdown.md
   - ../forme.md
-  - ../native-runtime.md
+  - ../responsibility-runtime.md
   - ../prose.md
   - tenets.md
 ---
@@ -145,8 +145,8 @@ subject: summarizer
 
 ## Responsibility Authoring
 
-A `kind: responsibility` file defines a durable invariant for an OpenProse
-Native Repository. It is not run directly.
+A `kind: responsibility` file defines a standing goal for
+Responsibility-Oriented Architecture. It is not run directly.
 
 Use four core sections:
 
@@ -182,8 +182,9 @@ or `kind: test` files.
 
 - Put durable project source under `.agents/prose/src/`, with system
   directories using `index.prose.md` and nearby private services.
-- In native repositories, put responsibilities near the systems that fulfill
-  them unless the responsibility is deliberately cross-cutting.
+- In responsibility-oriented repositories, put responsibilities near the
+  systems that fulfill them unless the responsibility is deliberately
+  cross-cutting.
 - Co-locate services with the system that owns them. Promote a service to a
   shared location only after it has multiple real callers and a stable contract.
 - Keep public names stable and domain-specific: output names like `risk-report`

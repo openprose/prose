@@ -2,12 +2,12 @@
 role: contract-markdown-format
 summary: |
   Canonical Markdown format for OpenProse services, systems, tests, patterns,
-  and native repository responsibilities. Defines the header hierarchy,
-  contract sections, and how interpreters should extract `*.prose.md` source.
+  and responsibilities. Defines the header hierarchy, contract sections, and
+  how interpreters should extract `*.prose.md` source.
 see-also:
   - forme.md: Wiring semantics
   - prose.md: Execution semantics
-  - native-runtime.md: Responsibilities and native repository runtime semantics
+  - responsibility-runtime.md: Responsibility Runtime semantics
   - prosescript.md: Imperative scripting layer for `### Execution`
   - guidance/tenets.md: Design reasoning
   - guidance/authoring.md: Authoring guidance
@@ -16,10 +16,9 @@ see-also:
 # Contract Markdown
 
 Contract Markdown is the human-facing `*.prose.md` format for OpenProse
-services, systems, tests, patterns, and native repository responsibilities. It
-uses tiny YAML frontmatter for file identity, then Markdown sections for the
-human-facing language: contracts, runtime hints, shape, execution, and durable
-responsibilities.
+services, systems, tests, patterns, and responsibilities. It uses tiny YAML
+frontmatter for file identity, then Markdown sections for the human-facing
+language: contracts, runtime hints, shape, execution, and standing goals.
 
 The format optimizes for two readers:
 
@@ -46,9 +45,10 @@ pattern: slots, config, invariants, and delegation rules for how filled
 services interact. Patterns are not run directly; systems instantiate them
 inside `### Services`.
 
-A **responsibility** is native repository source, not a direct run target. It
-defines a goal that must remain true over time. The native compiler lowers it
-into responsibility, trigger-intent, judge, pressure, and activation IR.
+A **responsibility** is responsibility-oriented source, not a direct run
+target. It defines a standing goal that must remain true over time. The
+compiler lowers it into responsibility, trigger-intent, judge, pressure, and
+activation IR.
 
 ## Core Shape
 
@@ -192,7 +192,7 @@ contains inline services `review` and `polish`.
 
 ## Responsibilities
 
-Native repositories may contain `kind: responsibility` files:
+Responsibility-oriented repositories may contain `kind: responsibility` files:
 
 ```markdown
 ---
@@ -224,8 +224,8 @@ followed up with.
 
 Responsibilities are semantic and normative. They do not directly define
 entrypoints, tests, schedules, listeners, queues, or implementation steps.
-Load `native-runtime.md` and `concepts/responsibility.md` for responsibility
-semantics.
+Load `responsibility-runtime.md` and `concepts/responsibility.md` for
+responsibility semantics.
 
 ## Services
 

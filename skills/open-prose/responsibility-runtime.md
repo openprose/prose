@@ -1,9 +1,10 @@
 ---
-role: native-runtime-doctrine
+role: responsibility-runtime-doctrine
 summary: |
-  How OpenProse Native Repositories compose Responsibilities, Reactor,
-  Forme, compile, serve, run, and status. Read this file for company
-  operations-as-code, `kind: responsibility`, or native repository work.
+  How OpenProse enables Responsibility-Oriented Architecture by composing
+  Responsibilities, Reactor, Forme, compile, serve, run, and status. Read this
+  file for Responsibility Runtime, `kind: responsibility`, or standing-goal
+  work.
 see-also:
   - concepts/responsibility.md: Responsibility semantic contract
   - concepts/reactor.md: Evented reconciliation model
@@ -13,12 +14,18 @@ see-also:
   - guidance/tenets.md: Design reasoning behind the specs
 ---
 
-# Native Runtime Doctrine
+# Responsibility Runtime
 
-An OpenProse Native Repository models operations as durable intent. It does
-not model a company primarily as employees, roles, departments, or workflows.
-It models the company as responsibilities: goals that must remain true over
-time.
+OpenProse enables Responsibility-Oriented Architecture. It is not itself only
+a Responsibility Runtime: many OpenProse programs are ordinary one-shot
+services, composed systems, tests, or patterns.
+
+Responsibility-Oriented Architecture starts from responsibilities: standing
+goals that must remain true over time.
+
+A Responsibility Runtime is the served continuity layer that keeps those
+standing goals checked, maintained, and restored through bounded OpenProse
+runs.
 
 ## Runtime Stack
 
@@ -26,7 +33,7 @@ Responsibilities, Reactor, and Forme are not competing frameworks.
 
 | Layer | Role |
 |-------|------|
-| Responsibility | Durable invariant: what must remain true over time |
+| Responsibility | Standing goal: what must remain true over time |
 | Reactor | Evented reconciliation model: when and why the invariant is checked or acted on |
 | Forme | Fulfillment wiring: which services and systems can restore or maintain the invariant |
 | Prose VM | Bounded activation: one run that judges, fulfills, retries, or escalates |
@@ -90,10 +97,10 @@ Do not put semantic intelligence in the harness. Do not put runtime machinery
 inside responsibility contracts. Do not duplicate concept semantics inside
 compiler passes.
 
-## Native Repository Commands
+## Runtime Commands
 
-These commands describe the native runtime direction. A host may not implement
-all of them yet.
+These commands describe the Responsibility Runtime direction. A host may not
+implement all of them yet.
 
 | Command | Role |
 |---------|------|
@@ -130,13 +137,13 @@ Reactor is the maintenance loop:
 4. Unhealthy status produces pressure.
 5. Pressure activates fulfillment, retry, or escalation.
 
-Load `concepts/reactor.md` before designing native runtime behavior or
+Load `concepts/reactor.md` before designing Responsibility Runtime behavior or
 interpreting maintenance feedback.
 
-## Forme In The Native Runtime
+## Forme In The Responsibility Runtime
 
 Forme remains the single source of truth for service and system wiring
-semantics. Native compile does not invent a second wiring language.
+semantics. Compile does not invent a second wiring language.
 
 During compile, Forme source is lowered into full runnable Forme manifests so
 activation-time runs do not need to re-discover dependencies. During serve,

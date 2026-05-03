@@ -1,7 +1,7 @@
 ---
-purpose: Native runtime concept index for OpenProse responsibilities and Reactor
+purpose: Responsibility Runtime concept index for OpenProse responsibilities and Reactor
 related:
-  - ../native-runtime.md
+  - ../responsibility-runtime.md
   - ../contract-markdown.md
   - ../forme.md
   - ../prose.md
@@ -21,5 +21,5 @@ compiler passes and they are not harness implementation docs.
 
 ## Loading Rule
 
-Load `../native-runtime.md` first for the stack and layer boundaries. Then load
-only the concept file needed for the task.
+Load `../responsibility-runtime.md` first for the stack and layer boundaries.
+Then load only the concept file needed for the task.
