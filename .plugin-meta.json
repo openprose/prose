@@ -1,0 +1,20 @@
+{
+  "tagline": "PLACEHOLDER_TAGLINE",
+  "shortDescription": "PLACEHOLDER_SHORT",
+  "longDescription": "PLACEHOLDER_LONG",
+  "targets": {
+    "tagline": [
+      { "path": ".claude-plugin/marketplace.json", "pointer": "metadata.description" }
+    ],
+    "shortDescription": [
+      { "path": ".claude-plugin/plugin.json",       "pointer": "description" },
+      { "path": ".codex-plugin/plugin.json",        "pointer": "description" },
+      { "path": ".codex-plugin/plugin.json",        "pointer": "interface.shortDescription" },
+      { "path": ".claude-plugin/marketplace.json",  "pointer": "plugins[0].description" },
+      { "path": ".agents/plugins/marketplace.json", "pointer": "plugins[0].description" }
+    ],
+    "longDescription": [
+      { "path": ".codex-plugin/plugin.json", "pointer": "interface.longDescription" }
+    ]
+  }
+}
