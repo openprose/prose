@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const cliDir = resolve(scriptDir, "..");
-const harnesses = ["codex-sdk", "codex", "claude-sdk"];
+const harnesses = ["codex-sdk", "claude-sdk"];
 const okToken = "PROSE_HARNESS_SMOKE_OK";
 const skillSentinel = "PROSE_SKILL_BOOTSTRAP_VISIBLE";
 
@@ -17,7 +17,7 @@ const usage = `Usage: node scripts/smoke-harness.mjs [options]
 Smoke-test one or more real Prose CLI harnesses.
 
 Options:
-  --harness <name>   Harness to run: all, codex-sdk, codex, claude-sdk (default: all)
+  --harness <name>   Harness to run: all, codex-sdk, claude-sdk (default: all)
   --cli <path>       Built CLI entrypoint (default: ./dist/index.js)
   --timeout <ms>     Per-harness timeout in milliseconds (default: 180000)
   --keep-temp        Keep temporary HOME/workspace directories for inspection
@@ -194,9 +194,6 @@ function smokeHarness(harness, options) {
 			XDG_CONFIG_HOME: join(home, ".config"),
 		};
 
-		if (harness === "codex") {
-			run("codex", ["--version"], { cwd: workspace, env, timeout: options.timeout });
-		}
 		const result = run(
 			process.execPath,
 			[options.cli, "run", "smoke.prose.md", "--harness", harness],

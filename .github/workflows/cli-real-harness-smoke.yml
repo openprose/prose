@@ -21,7 +21,6 @@ on:
         options:
           - all
           - codex-sdk
-          - codex
           - claude-sdk
 
 permissions:
@@ -41,7 +40,6 @@ jobs:
       matrix:
         harness:
           - codex-sdk
-          - codex
           - claude-sdk
     defaults:
       run:
