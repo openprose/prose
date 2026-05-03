@@ -11,6 +11,7 @@ import {
 	type RepositoryIrV0,
 	validateRepositoryIr,
 } from "./repository-ir.js";
+import { resolveOpenProseRoot, type OpenProseRoot } from "./openprose-root.js";
 
 export class RepositoryServeError extends Error {
 	readonly details: string[];
@@ -26,6 +27,7 @@ export interface RepositoryServeLoadedIr {
 	manifest: RepositoryIrV0;
 	manifestPath: string;
 	absoluteManifestPath: string;
+	openProseRoot: OpenProseRoot;
 }
 
 export interface RepositoryServeTriggerRegistration {
@@ -118,7 +120,8 @@ export interface LaunchActivationRunOptions {
 
 export async function loadActiveRepositoryIr(options: LoadActiveRepositoryIrOptions): Promise<RepositoryServeLoadedIr> {
 	const manifestPath = options.manifestPath ?? ACTIVE_REPOSITORY_IR_PATH;
-	const absoluteManifestPath = resolve(options.cwd, manifestPath);
+	const openProseRoot = await resolveOpenProseRoot({ cwd: options.cwd });
+	const absoluteManifestPath = resolve(openProseRoot.absolutePath, manifestPath);
 	let text: string;
 
 	try {
@@ -145,6 +148,7 @@ export async function loadActiveRepositoryIr(options: LoadActiveRepositoryIrOpti
 		manifest: parsed as RepositoryIrV0,
 		manifestPath,
 		absoluteManifestPath,
+		openProseRoot,
 	};
 }
 
@@ -257,6 +261,7 @@ export function buildActivationRunRequest(options: {
 		prompt: canonicalPrompt("run", argv),
 		payload,
 		env: {
+			PROSE_OPENPROSE_ROOT: loaded.openProseRoot.absolutePath,
 			PROSE_REPOSITORY_IR_PATH: loaded.manifestPath,
 			PROSE_REPOSITORY_IR_VERSION: String(manifest.version),
 			PROSE_ACTIVATION_ID: activation.id,
@@ -284,6 +289,7 @@ export function formatStaticRepositoryServe(summary: RepositoryServeSummary): st
 	const { manifest } = summary.loaded;
 	const lines = [
 		`OpenProse serve loaded ${summary.loaded.manifestPath}`,
+		`OpenProse root: ${summary.loaded.openProseRoot.path}`,
 		`IR: ${manifest.kind} v${manifest.version}`,
 		`Sources: ${manifest.sources.length}`,
 		`Responsibilities: ${manifest.responsibilities.length}`,

@@ -66,7 +66,7 @@ const forwardCommandDefinitions = {
 	},
 	upgrade: {
 		command: "upgrade",
-		summary: "Upgrade legacy Prose sources.",
+		summary: "Upgrade Prose source layout.",
 		usage: "upgrade [--dry-run] [--harness <name>]",
 	},
 } satisfies Record<string, ForwardCommandDefinition>;

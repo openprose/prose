@@ -142,23 +142,24 @@ root docs. `prose help` is local CLI help; use `prose --help` or
 
 ```bash
 prose compile
-prose compile responsibilities --out dist/prose
-cp dist/prose/manifest.next.json dist/prose/manifest.active.json
+prose compile src/responsibilities --out dist
+cp dist/manifest.next.json dist/manifest.active.json
 prose serve
-prose run systems/reviewer.prose.md
+prose run src/systems/reviewer.prose.md
 prose run co/systems/company-repo-checker --harness claude-sdk
 prose upgrade
 prose upgrade --dry-run
 prose doctor
-prose lint systems/reviewer.prose.md
-prose preflight systems/reviewer.prose.md
+prose lint src/systems/reviewer.prose.md
+prose preflight src/systems/reviewer.prose.md
 prose status --graph
 ```
 
-`prose serve` loads and validates `dist/prose/manifest.active.json`, renders the
-static trigger registration plan, and exits. Live trigger adapters are planned
-for a later runtime phase; tests exercise event-to-activation resolution through
-the serve core rather than through synthetic production flags.
+`prose serve` loads and validates `dist/manifest.active.json` under the active
+OpenProse root, renders the static trigger registration plan, and exits. Live
+trigger adapters are planned for a later runtime phase; tests exercise
+event-to-activation resolution through the serve core rather than through
+synthetic production flags.
 
 ## Development
 

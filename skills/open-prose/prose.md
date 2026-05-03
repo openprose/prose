@@ -38,28 +38,38 @@ codex exec "prose run system.prose.md"
 | Command                     | Action                                                          |
 | --------------------------- | --------------------------------------------------------------- |
 | `prose run <file.prose.md>`      | Execute a local service or system                                        |
-| `prose run <host>/<owner>/<repo>` | Explicit git host (e.g. `github.com/alice/research`); resolve from `.agents/prose/deps/` |
-| `prose run std/...` / `co/...`     | Expand OpenProse package shorthand and resolve from `.agents/prose/deps/github.com/openprose/prose/` |
+| `prose run <host>/<owner>/<repo>` | Explicit git host (e.g. `github.com/alice/research`); resolve from `<openprose-root>/deps/` |
+| `prose run std/...` / `co/...`     | Expand OpenProse package shorthand and resolve from `<openprose-root>/deps/github.com/openprose/prose/` |
 | `prose run <owner>/<repo>`       | Reserved for the OpenProse registry (future home at `p.prose.md`)         |
-| `prose run ...@<version>`        | Pin to a SHA or tag; require that version in `.agents/prose/deps/`                     |
-| `prose run ... --offline`        | Require disk-only resolution; error if not in `.agents/prose/deps/`                   |
+| `prose run ...@<version>`        | Pin to a SHA or tag; require that version in `<openprose-root>/deps/`                     |
+| `prose run ... --offline`        | Require disk-only resolution; error if not in `<openprose-root>/deps/`                   |
 | `prose lint <file.prose.md>`      | Validate structure, schema, shapes, and contracts               |
 | `prose preflight <file.prose.md>` | Check dependencies and environment variables                    |
 | `prose test <path>`         | Run test(s) and report results                                  |
-| `prose install`             | Install dependencies from `use` statements into `.agents/prose/deps/`        |
+| `prose install`             | Install dependencies from `use` statements into `<openprose-root>/deps/`        |
 | `prose install --update`    | Update pinned dependency SHAs                                   |
 | `prose inspect <run-id>`    | Evaluate a completed run                                        |
 | `prose status`              | Show recent runs                                                |
 | `prose status --graph`      | Show run dependency graph from the active backend event store    |
-| `prose upgrade --dry-run`   | Inspect old structures and report the migration plan            |
-| `prose upgrade`             | Migrate old OpenProse structures to current conventions          |
+| `prose upgrade --dry-run`   | Inspect OpenProse source/layouts and report the migration plan   |
+| `prose upgrade`             | Migrate OpenProse source/layouts to current conventions          |
 | `prose help`                | Show help and examples                                          |
 | `prose examples`            | List or run bundled examples                                    |
+
+### OpenProse Root
+
+All filesystem paths are relative to `<openprose-root>`. Native repositories
+use the repository root as `<openprose-root>`. Attached repositories use
+`repo/.agents/prose`. User-global work uses `~/.agents/prose`.
+
+The root contains `src/` for authored intent, `dist/` for compiled intent,
+`runs/` for activation receipts, `state/` for durable cross-run state, `deps/`
+for installed dependencies, plus `prose.lock` and `.env`.
 
 ### Remote Systems
 
 `prose run` and `use` statements share one resolution algorithm: read the
-locally installed copy in `.agents/prose/deps/`. Fetching and pinning belong to
+locally installed copy in `<openprose-root>/deps/`. Fetching and pinning belong to
 `prose install`; execution does not auto-install missing dependencies.
 
 The canonical identifier is `host/owner/repo`. Any git host works —
@@ -68,7 +78,7 @@ resolver privileges it.
 
 ```bash
 # Canonical: explicit git host
-prose install                                    # populate .agents/prose/deps/ from declared deps
+prose install                                    # populate <openprose-root>/deps/ from declared deps
 prose run github.com/alice/research              # installed copy wins; errors if missing
 prose run github.com/alice/research@0.3.1        # pin to installed tag
 prose run github.com/alice/research@abc1234      # pin to SHA
@@ -82,27 +92,27 @@ prose run github.com/alice/research --offline    # assert disk-only resolution
 
 **Resolution rules:**
 
-- First path segment contains a dot (looks like a hostname) → explicit git host; resolve under `.agents/prose/deps/{host}/{owner}/{repo}/`; error if missing
-- Starts with `std/` or `co/` → expand to `github.com/openprose/prose/packages/{std|co}/...`; resolve under `.agents/prose/deps/github.com/openprose/prose/`; error if missing
-- Ends with `@{version}` → resolve that version (SHA or tag) from `.agents/prose/deps/`; error if missing
+- First path segment contains a dot (looks like a hostname) → explicit git host; resolve under `<openprose-root>/deps/{host}/{owner}/{repo}/`; error if missing
+- Starts with `std/` or `co/` → expand to `github.com/openprose/prose/packages/{std|co}/...`; resolve under `<openprose-root>/deps/github.com/openprose/prose/`; error if missing
+- Ends with `@{version}` → resolve that version (SHA or tag) from `<openprose-root>/deps/`; error if missing
 - Otherwise contains `/` → reserved for the OpenProse registry (future home at `p.prose.md`); nothing publishes there today, so this path is spec'd but inert
 - Otherwise → treat as local path; directories conventionally resolve to
   `index.prose.md`, and extensionless source paths try `.prose.md`
 
 `--offline` is a declaration of intent for dependency runs: every dependency
-must already be available in `.agents/prose/deps/`. Runtime dependency resolution is always
+must already be available in `<openprose-root>/deps/`. Runtime dependency resolution is always
 disk-only.
 
 **When resolution fails:**
 
-When an identifier is not in `.agents/prose/deps/`, report:
+When an identifier is not in `<openprose-root>/deps/`, report:
 
 ```
 [Error] Dependency not found: github.com/alice/research
   Run `prose install` to install dependencies.
 ```
 
-The error must name the identifier and the expected `.agents/prose/deps/` location so the
+The error must name the identifier and the expected `<openprose-root>/deps/` location so the
 user can distinguish a typo from a missing install.
 
 **On the bare `owner/repo` form.** Bare identifiers (no host prefix) are
@@ -160,7 +170,7 @@ But simulation with sufficient fidelity _is_ implementation. When the simulated 
 | Instructions        | Manifest graph entries              | Executed via host `spawn_session` calls  |
 | Instruction pointer | Current position in execution order | Tracked in the active backend event store; filesystem uses `vm.log.md` |
 | Working memory      | Conversation history                | The context window holds ephemeral state |
-| Persistent storage  | Selected state backend rooted at `.agents/prose/` | Files or database rows hold durable state across sessions |
+| Persistent storage  | Selected state backend rooted at `<openprose-root>` | Files or database rows hold durable state across sessions |
 | Registers/variables | Named bindings                      | Stored by the active backend; filesystem uses `bindings/{service}/{name}.md` |
 | I/O                 | Tool calls and results              | Host primitives spawn sessions, ask users, and return pointers |
 
@@ -189,7 +199,7 @@ When you execute a system, you ARE the virtual machine. This is not a metaphor�
 - You don't _simulate_ execution—you _perform_ it
 - Each service spawns a real subagent through the host's `spawn_session`
   primitive
-- Your state persists through the selected backend rooted at `.agents/prose/runs/`
+- Your state persists through the selected backend rooted at `<openprose-root>/runs/`
 - You follow the manifest strictly, but apply intelligence where needed
 
 ---
@@ -203,7 +213,7 @@ own tools:
 |-----------|-------------------|
 | `spawn_session` | Start an isolated agent/session with a prompt, optional model, and access to declared input/output paths |
 | `ask_user` | Pause execution for missing required caller input and resume with the answer |
-| `read_file` / `write_file` | Read and write `.agents/prose/runs/{id}/` state artifacts and backend records |
+| `read_file` / `write_file` | Read and write `<openprose-root>/runs/{id}/` state artifacts and backend records |
 | `copy_binding` | Publish a declared output through the active backend; filesystem copies from `workspace/{service}/` to `bindings/{service}/` |
 | `check_env` | Confirm an environment variable exists without exposing its value |
 
@@ -212,13 +222,13 @@ own tools:
 ## Directory Structure
 
 Load `state/README.md` and the selected backend spec before execution. Durable
-backends always create `.agents/prose/runs/{id}/` with `root.prose.md`, source
+backends always create `<openprose-root>/runs/{id}/` with `root.prose.md`, source
 snapshots, and either a compiled Forme manifest or a service activation
 record. The default filesystem backend stores all execution state in that
 directory:
 
 ```
-.agents/prose/runs/{id}/
+<openprose-root>/runs/{id}/
 ├── forme.manifest.json               # Optional filesystem snapshot of compiled Forme manifest
 ├── root.prose.md                        # Copy of the invoked service or system file
 ├── sources/                       # Service, system, and pattern source files copied by Phase 1
@@ -243,7 +253,7 @@ directory:
 │   └── synthesizer/
 │       └── report.md
 ├── vm.log.md                      # Append-only execution log
-└── agents/                       # Persistent agent memory
+└── agents/                       # Run-scoped agent memory
     └── {name}/
         ├── memory.md
         └── {name}-NNN.md
@@ -270,13 +280,15 @@ prose run <source.prose.md> --activation-context '<json>'
 ```
 
 Treat `--activation-context` as VM control data, not caller input. The JSON
-envelope has `kind: "openprose.activation"` and points at the compiled
-repository IR, trigger, activation, responsibility, event payload, and optional
+envelope has `kind: "openprose.activation"` and points at the compiled intent,
+trigger, activation, responsibility, event payload, and optional
 `formeManifestId`. The host may also provide the same payload through
-`PROSE_ACTIVATION_CONTEXT`, with `PROSE_REPOSITORY_IR_PATH` and
-`PROSE_ACTIVATION_ID` for quick lookup. Load the referenced IR before
-execution, select the matching Forme manifest when `formeManifestId` is
-present, then continue as a normal bounded run.
+`PROSE_ACTIVATION_CONTEXT`, with `PROSE_OPENPROSE_ROOT`,
+`PROSE_REPOSITORY_IR_PATH`, `PROSE_REPOSITORY_IR_VERSION`, and
+`PROSE_ACTIVATION_ID` for quick lookup. Load the referenced compiled intent
+from the active OpenProse root before execution, select the matching Forme
+manifest when `formeManifestId` is present, then continue as a normal bounded
+run.
 
 ---
 
@@ -284,8 +296,8 @@ present, then continue as a normal bounded run.
 
 ### Step 1: Read the Compiled Manifest
 
-Read the compiled Forme manifest from activation context, repository IR, or the
-filesystem snapshot at `.agents/prose/runs/{id}/forme.manifest.json`. Extract:
+Read the compiled Forme manifest from activation context, compiled intent, or the
+filesystem snapshot at `<openprose-root>/runs/{id}/forme.manifest.json`. Extract:
 
 - **Caller Interface** — what inputs the system needs, what it returns
 - **Graph** — each service with its source file, workspace path, inputs (with `←` mappings), and outputs
@@ -299,7 +311,7 @@ The manifest's Caller Interface lists what the system requires. Bind these value
 | Source                                                           | Behavior                                              |
 | ---------------------------------------------------------------- | ----------------------------------------------------- |
 | CLI arguments (`prose run system.prose.md --question "..."`)    | Bind immediately                                      |
-| Config file (`.agents/prose/.env` or system-level config)              | Bind immediately                                      |
+| Config file (`<openprose-root>/.env` or system-level config)              | Bind immediately                                      |
 | Pre-supplied by calling system (if this is a nested invocation) | Bind immediately                                      |
 | No value available                                               | Pause execution, prompt user via `ask_user` |
 
@@ -357,7 +369,7 @@ Read these files for your input data:
 
 ## Your Workspace
 
-Write all your work to: .agents/prose/runs/{id}/workspace/{service-name}/
+Write all your work to: <openprose-root>/runs/{id}/workspace/{service-name}/
 
 This is your private working directory. Write intermediate notes, drafts, scratch
 work — whatever you need. All files here are preserved for inspection after the run.
@@ -436,7 +448,7 @@ spawn_session({ prompt: "Service: critic ..." })
 
 #### 4e. Apply Manifest Constraints When Present
 
-Current v0 repository IR does not define a separate pattern-constraint schema.
+Current v0 compiled intent does not define a separate pattern-constraint schema.
 When a later manifest version or explicit host contract includes runtime
 constraints derived from pattern invariants, enforce them during execution:
 
@@ -788,25 +800,27 @@ The example above uses `persist: project`, the common case for a service whose v
 
 | Scope               | Declaration        | Path                              | Lifetime                 |
 | ------------------- | ------------------ | --------------------------------- | ------------------------ |
-| Execution (default) | `### Runtime` with `persist: true`    | `.agents/prose/runs/{id}/agents/{name}/` | Dies with run            |
-| Project             | `### Runtime` with `persist: project` | `.agents/prose/agents/{name}/`           | Survives runs in project |
-| User                | `### Runtime` with `persist: user`    | `~/.agents/prose/agents/{name}/`         | Survives across projects |
+| Execution (default) | `### Runtime` with `persist: true`    | `<openprose-root>/runs/{id}/agents/{name}/` | Dies with run            |
+| Project             | `### Runtime` with `persist: project` | `<openprose-root>/state/agents/{name}/`           | Survives runs in project |
+| User                | `### Runtime` with `persist: user`    | `~/.agents/prose/state/agents/{name}/`         | Survives across projects |
 
 Pick `persist: project` or `persist: user` whenever the service's contract references prior-run state — cumulative counts, watermarks, deltas, or any field whose value depends on what happened before. `persist: true` alone is *not* enough for that: its memory lives only for the duration of the current run and is discarded when the run ends.
 
 ### Invocation
 
-When spawning a persistent agent's session, include its memory file path in the prompt:
+When spawning an agent session, include the selected memory file path in the
+prompt. Execution-scoped memory uses the run receipt; durable cross-run memory
+uses `state/agents/` under the selected root or user-global root.
 
 ```
 Your memory is at:
-  .agents/prose/runs/{id}/agents/{name}/memory.md
+  {memory-path}
 
 Read it first to understand your prior context. When done, update it
 with your compacted state following the guidelines in primitives/session.md.
 
 Also write your segment record to:
-  .agents/prose/runs/{id}/agents/{name}/{name}-NNN.md
+  {segment-path}
 ```
 
 The subagent:
@@ -870,7 +884,7 @@ prose run std/evals/inspector -- subject: 20260406-201439-1a3369
 
 The VM validates:
 
-1. **Existence.** The referenced run directory exists under `.agents/prose/runs/`. For resolution rules, see Run ID Resolution below.
+1. **Existence.** The referenced run directory exists under `<openprose-root>/runs/`. For resolution rules, see Run ID Resolution below.
 2. **Structure.** The directory contains the durable run envelope
    (`root.prose.md`, source snapshots, and the compiled activation/manifest
    record) plus the selected backend's event store. Filesystem runs must
@@ -896,7 +910,7 @@ type: run
 ---
 
 run: 20260406-201439-1a3369
-path: .agents/prose/runs/20260406-201439-1a3369
+path: <openprose-root>/runs/20260406-201439-1a3369
 root: customer-discovery
 status: complete
 ```
@@ -921,17 +935,17 @@ type: run[]
 ---
 
 - run: 20260406-201439-1a3369
-  path: .agents/prose/runs/20260406-201439-1a3369
+  path: <openprose-root>/runs/20260406-201439-1a3369
   root: customer-discovery
   status: complete
 
 - run: 20260406-202015-c5d6e7
-  path: .agents/prose/runs/20260406-202015-c5d6e7
+  path: <openprose-root>/runs/20260406-202015-c5d6e7
   root: competitive-landscape
   status: complete
 
 - run: 20260406-203300-8f9a0b
-  path: .agents/prose/runs/20260406-203300-8f9a0b
+  path: <openprose-root>/runs/20260406-203300-8f9a0b
   root: grant-radar
   status: complete
 ```
@@ -949,11 +963,11 @@ Staleness is informational, not blocking. The caller decides whether to re-run o
 
 #### Run ID Resolution
 
-Run IDs default to local `.agents/prose/runs/`. For cross-project references:
+Run IDs default to local `<openprose-root>/runs/`. For cross-project references:
 
 | Format                             | Resolves to                                                       |
 | ---------------------------------- | ----------------------------------------------------------------- |
-| Bare ID (`20260406-201439-1a3369`) | `.agents/prose/runs/20260406-201439-1a3369` (local project)              |
+| Bare ID (`20260406-201439-1a3369`) | `<openprose-root>/runs/20260406-201439-1a3369` (local project)              |
 | `~/{id}`                           | `~/.agents/prose/runs/{id}` (user scope)                                 |
 | Absolute path                      | Used as-is                                                        |
 | Future: `repo:{repo}#{id}`         | Git-based resolution (team/cloud scenarios — not yet implemented) |
@@ -1111,7 +1125,7 @@ Patterns nest — a slot can be filled by another pattern instantiation. Expansi
 
 ### Patterns in the Manifest
 
-In v0 repository IR, pattern-backed systems should compile to ordinary graph
+In v0 compiled intent, pattern-backed systems should compile to ordinary graph
 wiring when they do not require extra runtime rules. If a pattern needs
 constraints that the manifest cannot represent, compile should warn rather than
 inventing an implicit runtime contract.

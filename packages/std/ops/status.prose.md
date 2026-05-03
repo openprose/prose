@@ -10,7 +10,7 @@ kind: system
 
 ### Requires
 
-- runs_dir: (optional, default ".agents/prose/runs/") path to the runs directory
+- runs_dir: (optional, default "<openprose-root>/runs/") path to the runs directory
 
 ### Ensures
 

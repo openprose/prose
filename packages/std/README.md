@@ -41,7 +41,7 @@ Operational systems for profiling, debugging, validation, and wiring.
 |---------|---------|
 | `lint` | Validate structure, schema, shapes, and contract consistency for a system and its service tree |
 | `preflight` | Check that all runtime dependencies are satisfied before executing a system |
-| `status` | Summarize recent runs from `.agents/prose/runs/` |
+| `status` | Summarize recent runs from `<openprose-root>/runs/` |
 | `wire` | Run Forme wiring to produce `forme.manifest.json` |
 | `diagnose` | Investigate failed or suspicious runs and propose fixes |
 | `profiler` | Cost, token usage, and time profiling for completed runs |

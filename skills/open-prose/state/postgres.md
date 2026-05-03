@@ -158,8 +158,9 @@ docker run -d \
 Then configure the connection:
 
 ```bash
-mkdir -p .agents/prose
-echo "OPENPROSE_POSTGRES_URL=postgresql://postgres@localhost:5432/prose" > .agents/prose/.env
+OPENPROSE_ROOT="${OPENPROSE_ROOT:-.}"
+mkdir -p "$OPENPROSE_ROOT"
+echo "OPENPROSE_POSTGRES_URL=postgresql://postgres@localhost:5432/prose" > "$OPENPROSE_ROOT/.env"
 ```
 
 Management commands:
@@ -179,19 +180,21 @@ For users who prefer native PostgreSQL:
 **macOS (Homebrew):**
 
 ```bash
+OPENPROSE_ROOT="${OPENPROSE_ROOT:-.}"
 brew install postgresql@16
 brew services start postgresql@16
 createdb myproject
-echo "OPENPROSE_POSTGRES_URL=postgresql://localhost/myproject" >> .agents/prose/.env
+echo "OPENPROSE_POSTGRES_URL=postgresql://localhost/myproject" >> "$OPENPROSE_ROOT/.env"
 ```
 
 **Linux (Debian/Ubuntu):**
 
 ```bash
+OPENPROSE_ROOT="${OPENPROSE_ROOT:-.}"
 sudo apt install postgresql
 sudo systemctl start postgresql
 sudo -u postgres createdb myproject
-echo "OPENPROSE_POSTGRES_URL=postgresql:///myproject" >> .agents/prose/.env
+echo "OPENPROSE_POSTGRES_URL=postgresql:///myproject" >> "$OPENPROSE_ROOT/.env"
 ```
 
 ### Option 3: Cloud PostgreSQL
@@ -206,8 +209,9 @@ For team collaboration or production:
 
 ```bash
 # Example: Neon
-mkdir -p .agents/prose
-# Add this line to .agents/prose/.env locally:
+OPENPROSE_ROOT="${OPENPROSE_ROOT:-.}"
+mkdir -p "$OPENPROSE_ROOT"
+# Add this line to <openprose-root>/.env locally:
 # OPENPROSE_POSTGRES_URL=postgresql://<user>:<password>@<host>/<db>?sslmode=require
 ```
 
@@ -218,20 +222,19 @@ string.
 
 ## Database Location
 
-The connection string is stored in `.agents/prose/.env`:
+The connection string is stored in `<openprose-root>/.env`:
 
 ```
-your-project/
-├── .agents/prose/
-│   ├── .env                    # OPENPROSE_POSTGRES_URL=...
-│   └── runs/                   # Source snapshots and attachments
-│       └── {YYYYMMDD}-{HHMMSS}-{random}/
-│           ├── forme.manifest.json # Optional filesystem snapshot of compiled Forme manifest
-│           ├── root.prose.md   # Copy of the invoked service or system source
-│           ├── sources/        # Service, system, and pattern source snapshots
-│           └── attachments/    # Large outputs (optional)
-├── .gitignore                  # Should exclude .agents/prose/.env
-└── .agents/prose/src/system/index.prose.md
+<openprose-root>/
+├── .env                        # OPENPROSE_POSTGRES_URL=...
+├── src/
+│   └── system/index.prose.md
+└── runs/                       # Source snapshots and attachments
+    └── {YYYYMMDD}-{HHMMSS}-{random}/
+        ├── forme.manifest.json # Optional filesystem snapshot of compiled Forme manifest
+        ├── root.prose.md       # Copy of the invoked service or system source
+        ├── sources/            # Service, system, and pattern source snapshots
+        └── attachments/        # Large outputs (optional)
 ```
 
 **Run ID format:** `{YYYYMMDD}-{HHMMSS}-{random6}`
@@ -247,7 +250,7 @@ artifacts.
 
 The VM checks in this order:
 
-1. `OPENPROSE_POSTGRES_URL` in `.agents/prose/.env`
+1. `OPENPROSE_POSTGRES_URL` in `<openprose-root>/.env`
 2. `OPENPROSE_POSTGRES_URL` in shell environment
 3. `DATABASE_URL` in shell environment (common fallback)
 
@@ -255,8 +258,8 @@ The VM checks in this order:
 
 ```gitignore
 # OpenProse sensitive files
-.agents/prose/.env
-.agents/prose/runs/
+<openprose-root>/.env
+<openprose-root>/runs/
 ```
 
 ---
@@ -866,7 +869,7 @@ The database is your workspace. Use it.
 
 | Aspect | filesystem.md | in-context.md | sqlite.md | postgres.md |
 |--------|---------------|---------------|-----------|-------------|
-| **State location** | `.agents/prose/runs/{id}/` files | Conversation history | `.agents/prose/runs/{id}/state.db` | PostgreSQL database |
+| **State location** | `<openprose-root>/runs/{id}/` files | Conversation history | `<openprose-root>/runs/{id}/state.db` | PostgreSQL database |
 | **Queryable** | Via file reads | No | Yes (SQL) | Yes (SQL) |
 | **Atomic updates** | No | N/A | Yes (transactions) | Yes (ACID) |
 | **Concurrent writes** | Yes (different files) | N/A | **No (table locks)** | **Yes (row locks)** |

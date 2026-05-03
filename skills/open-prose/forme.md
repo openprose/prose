@@ -120,13 +120,13 @@ For each entry in `### Services`, locate the corresponding `*.prose.md` file:
 **Resolution order:**
 1. Same directory as the system file: `./researcher.prose.md`
 2. A subdirectory matching the name: `./researcher/index.prose.md`
-3. `.agents/prose/deps/` directory (for git-native deps installed via `prose install` — see `deps.md`):
+3. `<openprose-root>/deps/` directory (for git-native deps installed via `prose install` — see `deps.md`):
    - Expand `std/` shorthand to `github.com/openprose/prose/packages/std/`
    - Expand `co/` shorthand to `github.com/openprose/prose/packages/co/`
-   - Map the service name first to `.agents/prose/deps/{host}/{owner}/{repo}/{path}.prose.md`, then to `.agents/prose/deps/{host}/{owner}/{repo}/{path}/index.prose.md`
-   - Example: `std/evals/inspector` → `.agents/prose/deps/github.com/openprose/prose/packages/std/evals/inspector.prose.md`
-   - Example: `co/systems/company-repo-checker` → `.agents/prose/deps/github.com/openprose/prose/packages/co/systems/company-repo-checker/index.prose.md`
-   - Example: `github.com/alice/tools/formatter` → `.agents/prose/deps/github.com/alice/tools/formatter.prose.md`
+   - Map the service name first to `<openprose-root>/deps/{host}/{owner}/{repo}/{path}.prose.md`, then to `<openprose-root>/deps/{host}/{owner}/{repo}/{path}/index.prose.md`
+   - Example: `std/evals/inspector` → `<openprose-root>/deps/github.com/openprose/prose/packages/std/evals/inspector.prose.md`
+   - Example: `co/systems/company-repo-checker` → `<openprose-root>/deps/github.com/openprose/prose/packages/co/systems/company-repo-checker/index.prose.md`
+   - Example: `github.com/alice/tools/formatter` → `<openprose-root>/deps/github.com/alice/tools/formatter.prose.md`
 4. Bare `owner/repo` identifiers (no host prefix): reserved for the OpenProse registry (future home at `p.prose.md`); inert today
 
 **Pattern resolution:**
@@ -146,7 +146,7 @@ If a service or system cannot be resolved, emit an error:
   Searched:
     - ./researcher.prose.md
     - ./researcher/index.prose.md
-    - .agents/prose/deps/ (no matching path)
+    - <openprose-root>/deps/ (no matching path)
   System file: ./research-system.prose.md
 ```
 
@@ -352,7 +352,7 @@ Before producing the manifest, check:
 Copy each resolved service, subsystem, and pattern source `*.prose.md` file into the run directory:
 
 ```
-.agents/prose/runs/{id}/sources/{name}.prose.md
+<openprose-root>/runs/{id}/sources/{name}.prose.md
 ```
 
 This ensures the execution engine has a stable snapshot of the system as it was at wiring time, even if the source files change during execution.
@@ -360,7 +360,7 @@ This ensures the execution engine has a stable snapshot of the system as it was 
 ### Step 8: Emit the Compiled Manifest
 
 Emit the compiled Forme manifest as structured JSON. In repository compile, it
-lives inside `dist/prose/manifest.next.json` under `formeManifests`. During a
+lives inside `dist/manifest.next.json` under `formeManifests`. During a
 run, a filesystem backend may snapshot it as `forme.manifest.json`, but the
 JSON object is the canonical runtime contract.
 
@@ -453,7 +453,7 @@ Constraint types emitted:
 After wiring, the run directory looks like:
 
 ```
-.agents/prose/runs/{id}/
+<openprose-root>/runs/{id}/
 ├── forme.manifest.json               # Optional filesystem snapshot of compiled Forme manifest
 ├── root.prose.md                        # Copy of the root service or system file
 ├── sources/                       # Copied service, system, and pattern source files
@@ -860,7 +860,7 @@ The Prose VM handles execution and assertion evaluation — see `prose.md`, Exec
 Forme is invoked as Phase 1 of a `prose run` command:
 
 ```
-prose run ./.agents/prose/src/research-system/index.prose.md
+prose run ./<openprose-root>/src/research-system/index.prose.md
 ```
 
 The runtime:

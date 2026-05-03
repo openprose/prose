@@ -5,8 +5,8 @@ structured Forme manifest emission.
 
 The compiler output convention is:
 
-- `dist/prose/manifest.next.json`: next generated repository IR
-- `dist/prose/manifest.active.json`: active IR used by `prose serve` later
+- `<openprose-root>/dist/manifest.next.json`: next generated OpenProse root IR
+- `<openprose-root>/dist/manifest.active.json`: active IR used by `prose serve` later
 
 The checked v0 manifest stays intentionally small. It contains:
 
@@ -36,7 +36,7 @@ Run `prose compile` against an empty temporary repository.
 
 Expected shape:
 
-- writes or proposes `dist/prose/manifest.next.json`
+- writes or proposes `<openprose-root>/dist/manifest.next.json`
 - emits a valid v0 manifest matching `expected/empty.manifest.next.json`
 - reports no discovered sources as an informational diagnostic
 

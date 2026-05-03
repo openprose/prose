@@ -44,7 +44,7 @@ When a `prose` command fires, you will:
 - Read a Markdown contract (a service or system file).
 - Spawn subagents to fulfill the services it declares.
 - Pass artifacts between them through a `bindings/` boundary.
-- Persist the run to `.agents/prose/runs/{id}/` so it can be inspected later.
+- Persist the run to `<openprose-root>/runs/{id}/` so it can be inspected later.
 
 You need: filesystem read/write in the working directory, a subagent-spawning
 primitive for multi-service systems, and (optionally) a user-question
@@ -65,7 +65,7 @@ predictable ways, and OpenProse is built around them:
   written down, "that's not what I promised" is a sentence you can cite.
 - **Your retry logic is "try again and hope."** The contract is the boundary
   a retry actually means something at.
-- **Users ask "why did you do that?"** `.agents/prose/runs/{id}/` is the receipt.
+- **Users ask "why did you do that?"** `<openprose-root>/runs/{id}/` is the receipt.
 - **Workflows the user will want again get thrown away at session end.** A
   `*.prose.md` service or system is the version they can run next week without re-explaining.
 

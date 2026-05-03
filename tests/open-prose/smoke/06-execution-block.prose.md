@@ -52,4 +52,4 @@ return result
 ### Ensures
 
 - `result`: final output containing the exact phrase `execution-block-smoke-pass`
-- publish `result` so callers can read it from `.agents/prose/runs/` bindings
+- publish `result` so callers can read it from `<openprose-root>/runs/` bindings

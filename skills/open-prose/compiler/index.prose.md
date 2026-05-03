@@ -12,7 +12,7 @@ harness can validate and later serve.
 
 - `source_root`: repository path to compile; default to the current working
   directory or the path supplied to `prose compile`.
-- `output_dir`: build output directory; default `dist/prose`.
+- `output_dir`: build output directory; default `dist`.
 
 ### Ensures
 

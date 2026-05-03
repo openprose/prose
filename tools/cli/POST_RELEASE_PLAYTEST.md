@@ -166,7 +166,7 @@ Use small fixtures first, then try one or two realistic programs.
 - auto-wired services
 - explicit wiring
 - local composite or worker/critic pattern
-- program that writes `.prose/runs`
+- program that writes run receipts under the active OpenProse root
 - program expected to fail cleanly
 - `prose lint`, `prose preflight`, `prose status`, and `prose inspect` where
   applicable
@@ -280,7 +280,7 @@ Keep the report factual. Distinguish "release blocker", "bug", "docs gap",
 - First real runs install or find the OpenProse skill without noisy output.
 - Real harnesses stream output and preserve meaningful failures.
 - Non-git working directories work for Codex-backed harnesses.
-- Generated `.prose/runs` artifacts appear where expected.
+- Generated run artifacts appear under the active OpenProse root.
 
 ## Common Follow-Ups
 

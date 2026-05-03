@@ -20,7 +20,7 @@ Operational utilities for debugging, profiling, and validating OpenProse systems
 - `preflight` -- validates that the runtime environment is ready
 - `wire` -- produces the execution manifest (Forme wiring)
 
-**Run-artifact tools** operate on completed runs in `.agents/prose/runs/`:
+**Run-artifact tools** operate on completed runs in `<openprose-root>/runs/`:
 - `status` -- lists recent runs and their outcomes
 - `diagnose` -- investigates a failed run to find the root cause
 - `profiler` -- breaks down cost, time, and token usage from actual session data

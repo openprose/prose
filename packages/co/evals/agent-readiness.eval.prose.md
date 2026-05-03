@@ -42,7 +42,7 @@ grounded, short, actionable report the caller can screenshot.
 ### Expects
 
 - path: workspace_dir
-  predicate: exists_on_disk and matches(^.*/\\.agents/prose/runs/.*/workspace/agent-readiness/[a-z0-9-]+/$)
+  predicate: exists_on_disk and matches(^.*/runs/.*/workspace/agent-readiness/[a-z0-9-]+/$)
 - path: report_path
   predicate: exists_on_disk and ends_with("/bindings/agent-readiness.md")
 - path: overall_score

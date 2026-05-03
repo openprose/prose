@@ -55,9 +55,56 @@ describe("repository serve core", () => {
 			const loaded = await loadActiveRepositoryIr({ cwd: temp });
 
 			expect(loaded.manifestPath).toBe(ACTIVE_REPOSITORY_IR_PATH);
+			expect(loaded.openProseRoot).toMatchObject({ mode: "native", path: "." });
 			expect(loaded.manifest.responsibilities).toHaveLength(1);
 			expect(loaded.manifest.triggers).toHaveLength(2);
 			expect(loaded.absoluteManifestPath).toBe(join(temp, ACTIVE_REPOSITORY_IR_PATH));
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
+
+	it("prefers an attached OpenProse root when one exists", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-serve-attached-"));
+
+		try {
+			const attachedRoot = join(temp, ".agents/prose");
+			const activePath = join(attachedRoot, ACTIVE_REPOSITORY_IR_PATH);
+			mkdirSync(dirname(activePath), { recursive: true });
+			copyFileSync(stargazerFixture, activePath);
+
+			const loaded = await loadActiveRepositoryIr({ cwd: temp });
+
+			expect(loaded.openProseRoot).toMatchObject({
+				mode: "attached",
+				path: ".agents/prose",
+				absolutePath: attachedRoot,
+			});
+			expect(loaded.manifestPath).toBe(ACTIVE_REPOSITORY_IR_PATH);
+			expect(loaded.absoluteManifestPath).toBe(activePath);
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
+
+	it("keeps the attached OpenProse root when serving from inside it", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-serve-attached-nested-"));
+
+		try {
+			const attachedRoot = join(temp, ".agents/prose");
+			const nestedCwd = join(attachedRoot, "src");
+			const activePath = join(attachedRoot, ACTIVE_REPOSITORY_IR_PATH);
+			mkdirSync(dirname(activePath), { recursive: true });
+			mkdirSync(nestedCwd, { recursive: true });
+			copyFileSync(stargazerFixture, activePath);
+
+			const loaded = await loadActiveRepositoryIr({ cwd: nestedCwd });
+
+			expect(loaded.openProseRoot).toMatchObject({
+				mode: "attached",
+				absolutePath: attachedRoot,
+			});
+			expect(loaded.absoluteManifestPath).toBe(activePath);
 		} finally {
 			rmSync(temp, { recursive: true, force: true });
 		}
@@ -170,6 +217,7 @@ describe("repository serve core", () => {
 		expect(request.env.PROSE_REPOSITORY_IR_PATH).toBe(ACTIVE_REPOSITORY_IR_PATH);
 		expect(request.env.PROSE_REPOSITORY_IR_VERSION).toBe("0");
 		expect(request.env.PROSE_ACTIVATION_ID).toBe("high-intent-stargazer-outreach.fulfillment");
+		expect(request.env.PROSE_OPENPROSE_ROOT).toBe(loaded.openProseRoot.absolutePath);
 		expect(request.payload).toMatchObject({
 			kind: "openprose.activation",
 			ir: {

@@ -6,6 +6,14 @@ export {
 	type CommandName,
 } from "./command-model.js";
 export {
+	ATTACHED_OPENPROSE_ROOT_PATH,
+	resolveOpenProseRoot,
+	rootRelativePath,
+	type OpenProseRoot,
+	type OpenProseRootMode,
+	type ResolveOpenProseRootOptions,
+} from "./openprose-root.js";
+export {
 	ACTIVE_REPOSITORY_IR_PATH,
 	DEFAULT_REPOSITORY_IR_DIR,
 	NEXT_REPOSITORY_IR_PATH,

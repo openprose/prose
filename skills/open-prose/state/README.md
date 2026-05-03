@@ -19,6 +19,10 @@ Load this file before every `prose run`, then load exactly one backend spec.
 The filesystem backend is the default and the normative reference for source
 and run layout.
 
+All durable backend paths are relative to `<openprose-root>`. Native
+repositories use the repository root, attached repositories use
+`repo/.agents/prose`, and user-global work uses `~/.agents/prose`.
+
 ## Backend Selection
 
 | Situation | Backend Spec | Notes |
@@ -30,7 +34,8 @@ and run layout.
 
 ## Durable Run Envelope
 
-Durable backends create one run directory under `.agents/prose/runs/{id}/`.
+Durable backends create one activation receipt directory under
+`<openprose-root>/runs/{id}/`.
 Before reporting success, every durable backend writes:
 
 - compiled Forme manifest: generated wiring graph for systems, or a minimal
@@ -46,11 +51,12 @@ Backend-specific storage begins after that envelope:
 | SQLite | `state.db` tables | `state.db`, with optional `attachments/` | Replaces filesystem `vm.log.md`, `workspace/`, and `bindings/` |
 | PostgreSQL | PostgreSQL tables | PostgreSQL rows, with optional `attachments/` | Replaces filesystem `vm.log.md`, `workspace/`, and `bindings/` |
 
-Persistent alternate backends still use the same `.agents/prose/` root,
+Persistent alternate backends still use the same `<openprose-root>`,
 `*.prose.md` source conventions, run IDs, compiled activation manifests,
-`root.prose.md`, and source snapshots; they move execution events and
-data-plane bindings into a database. In-context state keeps the same source
-conventions but stores run state in conversation history.
+`root.prose.md`, source snapshots, and `state/` durable cross-run namespace;
+they move execution events and data-plane bindings into a database. In-context
+state keeps the same source conventions but stores run state in conversation
+history.
 
 ## Contents
 

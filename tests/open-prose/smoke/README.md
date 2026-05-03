@@ -15,7 +15,7 @@ The required smoke suite checks structural execution behavior:
 - systems can instantiate local `kind: pattern` definitions through `pattern:`
 - ProseScript execution blocks still run
 - test manifests can produce `---test PASS`
-- declared output bindings are written under `.agents/prose/runs/`
+- declared output bindings are written under `<openprose-root>/runs/`
 
 The required tier does not judge prose quality. Semantic and golden-trajectory
 checks belong in advisory or manual eval tiers after smoke flake and cost are

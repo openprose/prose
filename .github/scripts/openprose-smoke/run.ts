@@ -77,7 +77,7 @@ const DEFAULT_WORKSPACE_ROOT = "/tmp/openprose-smoke";
 const DEFAULT_MODEL = process.env.OPENPROSE_SMOKE_MODEL ?? "claude-sonnet-4-6";
 const DEFAULT_TIMEOUT_SECONDS = 360;
 const DEFAULT_MAX_TURNS = 10;
-const RUNS_DIR_SEGMENTS = [".agents", "prose", "runs"] as const;
+const RUNS_DIR_SEGMENTS = ["runs"] as const;
 const CLAUDE_TOOLS = "Edit,Read,Write,Glob,Grep,Task,Skill";
 const CLAUDE_DISALLOWED_TOOLS = [
   "Read(//proc/**)",
@@ -657,12 +657,13 @@ function buildPrompt(smokeCase: SmokeCase): string {
   const artifactBlock =
     expectedOutputs.length > 0
       ? expectedOutputs
-          .map((output) => `- ${output}: .agents/prose/runs/<run-id>/bindings/**/${output}.md`)
+          .map((output) => `- ${output}: <openprose-root>/runs/<run-id>/bindings/**/${output}.md`)
           .join("\n")
       : "- No declared output bindings are expected.";
 
   return [
     "You are the OpenProse VM running a CI smoke fixture.",
+    "Treat this workspace as a native OpenProse root.",
     "Use the installed open-prose skill from this workspace at .claude/skills/open-prose.",
     "Because this is a dedicated OpenProse VM instance, load and follow .claude/skills/open-prose/guidance/system-prompt.md before executing.",
     `Run this smoke command: ${command}`,
@@ -758,7 +759,7 @@ async function classifyLiveCase(
   const runsDir = path.join(workspace, ...RUNS_DIR_SEGMENTS);
   const hasRunsDir = await pathExists(runsDir);
   if (!hasRunsDir) {
-    reasons.push("No .agents/prose/runs directory was created.");
+    reasons.push("No <openprose-root>/runs directory was created.");
   }
 
   const markerTexts = [
@@ -780,7 +781,7 @@ async function classifyLiveCase(
   const foundOutputs: string[] = [];
   const latestRunDir = hasRunsDir ? await findLatestRunDir(runsDir) : undefined;
   if (hasRunsDir && !latestRunDir) {
-    reasons.push("No run directory was created under .agents/prose/runs.");
+    reasons.push("No run directory was created under <openprose-root>/runs.");
   }
   if (latestRunDir) {
     for (const artifactName of ["forme.manifest.json", "root.prose.md", "vm.log.md"]) {

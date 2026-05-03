@@ -47,10 +47,10 @@ Options:
 | `prose test <test.prose.md>` | Run tests with assertions |
 | `prose inspect <run-id>` | Evaluate a completed run |
 | `prose status` | Show recent runs |
-| `prose install` | Install dependencies from `use` statements into `.agents/prose/deps/` |
+| `prose install` | Install dependencies from `use` statements into `<openprose-root>/deps/` |
 | `prose install --update` | Update pinned dependencies to latest |
-| `prose upgrade --dry-run` | Inspect old structures and report the migration plan |
-| `prose upgrade` | Migrate old structures to current conventions |
+| `prose upgrade --dry-run` | Inspect files and report the migration plan |
+| `prose upgrade` | Apply the migration plan |
 | `prose help` | This help -- guides you to what you need |
 | `prose examples` | Browse and run example systems |
 
@@ -70,9 +70,9 @@ prose help
 -> Describe what you want to automate
 ```
 
-Default project source lives under `.agents/prose/src/`. Multi-file systems
-conventionally start at `.agents/prose/src/{system}/index.prose.md`; runs are
-written to `.agents/prose/runs/`.
+Default project source lives under `<openprose-root>/src/`. Multi-file systems
+conventionally start at `<openprose-root>/src/{system}/index.prose.md`; runs are
+written to `<openprose-root>/runs/`.
 
 **Use a library service or system:**
 ```text
@@ -119,7 +119,7 @@ We started with YAML. The problem: loops, conditionals, and variable declaration
 
 ### How do dependencies work?
 
-OpenProse uses a git-native dependency model -- any git host works, written explicitly as `host/owner/repo/path` (e.g. `github.com/alice/research`). A system can reference dependencies with `use "host/owner/repo/path"`, dependency-like entries in `### Services`, or `pattern:` references. Run `prose install` to clone dependencies into `.agents/prose/deps/` and pin their versions in `.agents/prose/prose.lock`. The lockfile is committed to git; `.agents/prose/deps/` is gitignored (it's a cache, reproducible from the lockfile). `std/` is shorthand for `github.com/openprose/prose/packages/std/` (the standard library) and `co/` is shorthand for `github.com/openprose/prose/packages/co/` (company-as-prose). At runtime, dependencies are read from disk only -- no network calls. If deps are missing, `prose run` errors and tells you to run `prose install`.
+OpenProse uses a git-native dependency model -- any git host works, written explicitly as `host/owner/repo/path` (e.g. `github.com/alice/research`). A system can reference dependencies with `use "host/owner/repo/path"`, dependency-like entries in `### Services`, or `pattern:` references. Run `prose install` to clone dependencies into `<openprose-root>/deps/` and pin their versions in `<openprose-root>/prose.lock`. The lockfile is committed to git; `<openprose-root>/deps/` is gitignored (it's a cache, reproducible from the lockfile). `std/` is shorthand for `github.com/openprose/prose/packages/std/` (the standard library) and `co/` is shorthand for `github.com/openprose/prose/packages/co/` (company-as-prose). At runtime, dependencies are read from disk only -- no network calls. If deps are missing, `prose run` errors and tells you to run `prose install`.
 
 ### Why not LangChain/CrewAI/AutoGen?
 

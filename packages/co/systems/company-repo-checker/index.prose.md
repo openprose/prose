@@ -23,20 +23,18 @@ read/search operations.
 
 ### Requires
 
-- `repo_path`: local path to the company-as-prose repository root
-- `source_roots`: optional list of source roots; default
-  `["systems","services","patterns","evals","tests","shared"]`
-- `legacy_roots`: optional list of deprecated flat roots; default
-  `["programs","responsibilities","delivery","planning"]`
+- `repo_path`: local path to the company-as-prose OpenProse root
+- `source_roots`: optional list of source roots relative to `<openprose-root>`;
+  default `["src"]`
 - `ignored_roots`: optional list of roots ignored by the default check; default
-  `[".agents/prose/runs",".agents/prose/deps","customers"]`
+  `["dist","runs","state","deps","customers"]`
 - `external_prefixes`: optional service-reference prefixes that are resolved
   outside this package; default `["std/","co/","github.com/","gitlab.com/"]`
 
 ### Ensures
 
 - `report`: structured readiness report containing:
-    - `source_layout`: legacy source roots empty, source under declared roots
+    - `source_layout`: authored intent under declared source roots
     - `contract_surface`: services and systems declare Requires and Ensures
     - `test_pairing`: every service or system has a paired test subject
     - `test_metadata`: tests declare subject, tier, contract_version, Expects,
@@ -50,10 +48,11 @@ read/search operations.
 ### Strategies
 
 - inspect the repo as a bounded package walk rooted at `repo_path`
-- ignore `.agents/prose/runs/` and nested customer packages unless explicitly asked;
-  runtime traces and customer packages have their own migration tracks
-- fail on stale architecture vocabulary when it affects executable metadata,
-  such as removed kind values or legacy tiers
+- ignore `<openprose-root>/dist/`, `<openprose-root>/runs/`,
+  `<openprose-root>/state/`, `<openprose-root>/deps/`, and nested customer
+  packages unless explicitly asked
+- fail when executable metadata does not match current OpenProse kind and tier
+  values
 - fail authored Prose source with `kind:` frontmatter that is not stored as
   `*.prose.md`
 - treat cross-system private dependencies as source ownership bugs; promote the
@@ -68,7 +67,8 @@ read/search operations.
 - `unresolved_service`: a Services entry does not resolve in the package walk
 - `test_drift`: a service or system lacks a paired test or a test subject does not
   resolve
-- `source_layout_violation`: source appears under a deprecated flat root
+- `source_layout_violation`: authored Prose source appears outside declared
+  source roots
 - `ownership_violation`: shared code depends on system-private code, or one
   system depends directly on another system's private source
 
@@ -79,7 +79,6 @@ parallel:
   let source_layout = call repo-structure-inspector
     repo_path: repo_path
     source_roots: source_roots
-    legacy_roots: legacy_roots
     ignored_roots: ignored_roots
 
   let contract_surface = call contract-test-drift-inspector
@@ -107,29 +106,23 @@ return report
 ### Requires
 
 - `repo_path`: local path to inspect
-- `source_roots`: source roots to treat as package-owned source
-- `legacy_roots`: deprecated roots that should not accumulate source files
+- `source_roots`: source roots to treat as package-owned authored intent
 - `ignored_roots`: roots to skip in default scope
 
 ### Ensures
 
 - `source_layout`: report with:
-    - `legacy_roots`: status for each deprecated root
     - `source_roots`: status for each declared source root
     - `source_extensions`: file-grounded findings for authored Prose source
       that does not use `*.prose.md`
-    - `stale_vocabulary`: file-grounded findings for source metadata that uses
-      obsolete executable vocabulary
 - `failures`: array of source layout violations
 
 ### Strategies
 
 - use the package root as the boundary
-- allow historical migration maps in docs to mention old roots; fail only when
-  executable source or test metadata reintroduces old roots or kinds
 - treat README.md and other plain documentation as documentation, not authored
   Prose source, unless they contain `kind:` frontmatter
-- flag any committed source file under a deprecated flat root
+- flag authored Prose source outside declared source roots
 
 
 ## contract-test-drift-inspector

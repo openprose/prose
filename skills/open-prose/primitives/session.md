@@ -67,7 +67,7 @@ The VM tells you where to read your input data:
 
 ```
 Your Inputs:
-- topic: .agents/prose/runs/{id}/bindings/caller/question.md
+- topic: <openprose-root>/runs/{id}/bindings/caller/question.md
 ```
 
 Read these files to get your input data. For large inputs, read selectively—focus on what's relevant to your task.
@@ -90,7 +90,7 @@ If you are a **persistent agent** (your service has `persist` in `### Runtime`),
 
 ```
 Your memory is at:
-  .agents/prose/runs/{id}/agents/{name}/memory.md
+  <openprose-root>/runs/{id}/agents/{name}/memory.md
 ```
 
 Read it first. This is your continuity across invocations. Reference your prior decisions. Build on your accumulated understanding. Don't contradict yourself without acknowledging the change.
@@ -115,7 +115,7 @@ You write ALL your work to your **workspace** directory. This is your private wo
 The VM tells you your workspace path:
 
 ```
-Your workspace: .agents/prose/runs/{id}/workspace/{service-name}/
+Your workspace: <openprose-root>/runs/{id}/workspace/{service-name}/
 ```
 
 Write everything here — intermediate notes, drafts, scratch work, and your final outputs. All files are preserved for post-run inspection.
@@ -247,7 +247,7 @@ Outputs written:
 Summary: Approved research phase, flagged 2 concerns for next iteration.
 
 Memory updated: captain
-Location: .agents/prose/runs/{id}/agents/captain/memory.md
+Location: <openprose-root>/runs/{id}/agents/captain/memory.md
 Segment: captain-003.md
 ```
 

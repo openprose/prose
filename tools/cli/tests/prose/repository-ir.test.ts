@@ -22,9 +22,9 @@ function cloneFixture(path: string): any {
 
 describe("repository IR v0", () => {
 	it("keeps the compile output convention under dist", () => {
-		expect(DEFAULT_REPOSITORY_IR_DIR).toBe("dist/prose");
-		expect(NEXT_REPOSITORY_IR_PATH).toBe("dist/prose/manifest.next.json");
-		expect(ACTIVE_REPOSITORY_IR_PATH).toBe("dist/prose/manifest.active.json");
+		expect(DEFAULT_REPOSITORY_IR_DIR).toBe("dist");
+		expect(NEXT_REPOSITORY_IR_PATH).toBe("dist/manifest.next.json");
+		expect(ACTIVE_REPOSITORY_IR_PATH).toBe("dist/manifest.active.json");
 	});
 
 	it("accepts the empty manifest fixture", () => {

@@ -1,4 +1,4 @@
-export const DEFAULT_REPOSITORY_IR_DIR = "dist/prose";
+export const DEFAULT_REPOSITORY_IR_DIR = "dist";
 export const NEXT_REPOSITORY_IR_PATH = `${DEFAULT_REPOSITORY_IR_DIR}/manifest.next.json`;
 export const ACTIVE_REPOSITORY_IR_PATH = `${DEFAULT_REPOSITORY_IR_DIR}/manifest.active.json`;
 

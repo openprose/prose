@@ -160,7 +160,7 @@ helps the compiler. Omit it when the source graph makes the relationship clear.
 
 Keep responsibilities semantic. Do not put concrete cron syntax, webhook
 routes, queues, storage schemas, or tests inside the responsibility file.
-Those belong to compiled IR, harness-facing connector source, state backends,
+Those belong to compiled intent, harness-facing connector source, state backends,
 or `kind: test` files.
 
 ## State and Memory Authoring
@@ -180,18 +180,21 @@ or `kind: test` files.
 
 ## Repository Authoring
 
-- Put durable project source under `.agents/prose/src/`, with system
+- Put durable authored intent under `<openprose-root>/src/`, with system
   directories using `index.prose.md` and nearby private services.
-- In responsibility-oriented repositories, put responsibilities near the
-  systems that fulfill them unless the responsibility is deliberately
-  cross-cutting.
+- Put responsibility source under `<openprose-root>/src/`. Keep
+  responsibility files near the systems that fulfill them unless the
+  responsibility is deliberately cross-cutting.
 - Co-locate services with the system that owns them. Promote a service to a
   shared location only after it has multiple real callers and a stable contract.
 - Keep public names stable and domain-specific: output names like `risk-report`
   or `release-record` wire better than generic `result`.
-- Commit source artifacts, examples, tests, and `.agents/prose/prose.lock`. Treat `.agents/prose/deps/`
-  and `.agents/prose/runs/` as generated state. Treat `.agents/prose/agents/` as project
-  memory; commit it only when the repository deliberately shares that memory.
+- Commit source artifacts, examples, tests, and `<openprose-root>/prose.lock`.
+  Treat `<openprose-root>/dist/`, `<openprose-root>/deps/`, and
+  `<openprose-root>/runs/` as generated artifacts unless the host asks for a
+  served compiled-intent handoff. Treat `<openprose-root>/state/agents/` and
+  `<openprose-root>/state/responsibilities/` as durable cross-run state; commit
+  them only when the repository deliberately shares that state.
 - Give every public system at least one small `kind: test` covering the happy
   path plus one important degradation or error behavior.
 - Document operational dependencies in `### Environment` and `deps.md`-style

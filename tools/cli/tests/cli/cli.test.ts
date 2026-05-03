@@ -138,7 +138,7 @@ describe("runForwardedProseCommand", () => {
 
 		const exitCode = await runForwardedProseCommand({
 			command: "compile",
-			argv: [".", "--out", "dist/prose", "--harness", "mock"],
+			argv: [".", "--out", "dist", "--harness", "mock"],
 			cwd: "/repo",
 			env: {},
 			stdout: io.streams.stdout,
@@ -147,7 +147,7 @@ describe("runForwardedProseCommand", () => {
 		});
 
 		expect(exitCode).toBe(0);
-		expect(seen).toEqual(["prose compile . --out dist/prose"]);
+		expect(seen).toEqual(["prose compile . --out dist"]);
 	});
 
 	it("loads OpenProse skill bootstrap after preflight and passes it to the harness", async () => {

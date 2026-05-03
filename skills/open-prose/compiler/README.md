@@ -25,7 +25,7 @@ the deterministic harness.
 
 ## Output
 
-Default output lives under `dist/prose/`:
+Default output lives under `dist/`:
 
 - `manifest.next.json`: next compiled IR produced by compile
 - `manifest.active.json`: active compiled IR consumed by serve in later phases

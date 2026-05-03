@@ -6,7 +6,7 @@ summary: |
   file for Responsibility Runtime, `kind: responsibility`, or standing-goal
   work.
 see-also:
-  - compiler/README.md: Compiler program index and IR output convention
+  - compiler/README.md: Compiler program index and compiled intent output convention
   - concepts/responsibility.md: Responsibility semantic contract
   - concepts/reactor.md: Evented reconciliation model
   - contract-markdown.md: Source format and recognized kinds
@@ -43,21 +43,21 @@ Timers, webhooks, queues, file changes, source changes, judge drift, and
 manual requests are all events. The runtime should treat them as wakeups, not
 as reasons to keep one AI session alive forever.
 
-## Source And IR
+## Source And Compiled Intent
 
 OpenProse preserves semantic Markdown as the authoring surface.
 
-`prose compile` lowers that source into repository IR. The compiler is the
-bundled OpenProse program at `compiler/index.prose.md`: it reads the source
-graph, applies the concept docs, and emits deterministic manifests for the
-harness to validate and serve.
+`prose compile` lowers `<openprose-root>/src/` into compiled intent. The
+compiler is the bundled OpenProse program at `compiler/index.prose.md`: it
+reads the source graph, applies the concept docs, and emits deterministic
+manifests for the harness to validate and serve.
 
-Default compiler output lives under `dist/prose/`:
+Default compiler output lives under `<openprose-root>/dist/`:
 
 - `manifest.next.json`: the newly compiled manifest
 - `manifest.active.json`: the manifest served by later runtime phases
 
-`prose serve` loads compiled IR and acts like deterministic infrastructure:
+`prose serve` loads compiled intent and acts like deterministic infrastructure:
 
 - validate the active manifest
 - prepare the static trigger registration plan
@@ -69,8 +69,12 @@ The first serve phase should not add production flags only to simulate trigger
 delivery. Test event-to-activation resolution directly, then add live timer,
 webhook, queue, and file-watch adapters in a later runtime phase.
 
-The IR is disposable generated state. The Markdown source is the durable
-intent.
+Compiled intent is a disposable generated artifact. The Markdown source is the
+durable intent.
+
+Responsibility status, pressure, and other durable cross-run records live under
+`<openprose-root>/state/responsibilities/`. Agent memory that must survive
+activations lives under `<openprose-root>/state/agents/`.
 
 ## Layer Boundaries
 
@@ -88,14 +92,14 @@ Skill and interpreter docs define semantics:
 - how Forme wiring fulfills responsibilities
 - how bounded runs act on activation context
 
-Compiler programs lower semantics into IR:
+Compiler programs lower semantics into compiled intent:
 
 - discover source
 - compile responsibilities, trigger intent, activations, and Forme manifests
 - report ambiguity and warnings
-- emit deterministic output for harness validation under `dist/prose/`
+- emit deterministic output for harness validation under `<openprose-root>/dist/`
 
-The harness serves IR:
+The harness serves compiled intent:
 
 - load and validate the active manifest
 - prepare trigger registration plans
@@ -114,8 +118,8 @@ implement all of them yet.
 
 | Command | Role |
 |---------|------|
-| `prose compile [path] [--out <dir>]` | Run the bundled compiler program and emit repository IR |
-| `prose serve` | Load active IR and prepare the trigger registration plan; live adapters register and receive events in later runtime phases |
+| `prose compile [path] [--out <dir>]` | Run the bundled compiler program and emit compiled intent |
+| `prose serve` | Load active compiled intent and prepare the trigger registration plan; live adapters register and receive events in later runtime phases |
 | `prose run` | Execute one bounded service, system, judge, or fulfillment activation |
 | `prose status` | Report recent runs, activations, diagnostics, and responsibility status |
 

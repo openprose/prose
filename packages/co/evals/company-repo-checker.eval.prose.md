@@ -16,7 +16,7 @@ Protects the reusable company-as-prose repository gate.
 - fixture: current_company_prose_repo
   repo_path: fixtures/company-prose/current
   expected_result: pass
-- fixture: stale_legacy_tier
+- fixture: invalid_tier
   mutation: change any system test frontmatter from `tier: system` to
     `tier: delivery`
   expected_result: fail
@@ -31,7 +31,7 @@ Protects the reusable company-as-prose repository gate.
 ### Expects
 
 - path: report.source_layout
-  predicate: checks_legacy_roots(legacy_roots)
+  predicate: authored_source_under(source_roots)
 - path: report.contract_surface
   predicate: every_service_or_system_has(["Requires","Ensures"])
 - path: report.test_pairing
@@ -48,9 +48,9 @@ Protects the reusable company-as-prose repository gate.
 - path: failures[*]
   predicate: no_false_positive_from_h1_or_description_text_after("### Services")
 - path: failures[*]
-  predicate: no_requirement_to_migrate(".agents/prose/runs") during default scope
+  predicate: ignores_root("runs") during default scope
 - path: failures[*]
-  predicate: no_requirement_to_migrate("customers/*") during default scope
+  predicate: ignores_root("customers/*") during default scope
 - path: execution
   predicate: no_repo_local_python_or_bash_script_required
 - path: report.dependency_graph

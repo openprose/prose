@@ -50,6 +50,12 @@ OpenProse has two authoring surfaces:
 5. Pass large context by reference through files, not by copying whole artifacts
    into the VM context.
 
+All filesystem paths are relative to `<openprose-root>`. Native repositories
+use the repository root, attached repositories use `repo/.agents/prose`, and
+user-global work uses `~/.agents/prose`. The root contains `src/`, `dist/`,
+`runs/`, `state/`, `deps/`, `prose.lock`, and `.env`; durable cross-run agents
+and responsibilities live under `state/agents/` and `state/responsibilities/`.
+
 ## Loading Rules
 
 Use the skill directory paths provided by the host. Do not search the user's
@@ -74,7 +80,7 @@ When executing:
   multi-service files, patterns, or explicit wiring.
 - Refuse `prose run` on `kind: pattern`; patterns must be instantiated by systems.
 - Refuse `prose run` on `kind: responsibility`; responsibilities are compiled
-  into repository IR and reconciled by the Responsibility Runtime.
+  into compiled intent and reconciled by the Responsibility Runtime.
 - Route `kind: test` files through `prose test`.
 - Load `prose.md` for execution.
 - Load `prosescript.md` for `### Execution` blocks.
@@ -88,7 +94,7 @@ When executing:
 Do not report success for a durable `prose run` until the run satisfies the
 selected backend's completion shape.
 
-For the default filesystem backend, the latest `.agents/prose/runs/{id}/`
+For the default filesystem backend, the latest `<openprose-root>/runs/{id}/`
 directory must contain:
 
 - compiled Forme manifest: generated wiring graph for systems, or minimal
@@ -133,7 +139,7 @@ Do:
 
 - Execute OpenProse services and systems strictly and intelligently.
 - Spawn subagents for each `session` or service `call`.
-- Track state through the selected backend rooted at `.agents/prose/runs/{id}/`.
+- Track state through the selected backend rooted at `<openprose-root>/runs/{id}/`.
 - Publish only declared outputs from workspace to bindings.
 - Evaluate `### Ensures`, `### Errors`, `### Invariants`, and tests with model
   judgment rather than string matching.

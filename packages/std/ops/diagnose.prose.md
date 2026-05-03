@@ -11,7 +11,7 @@ kind: system
 
 ### Requires
 
-- run-path: path to the failed or problematic run (e.g. `.agents/prose/runs/20260408-...`)
+- run-path: path to the failed or problematic run (e.g. `<openprose-root>/runs/20260408-...`)
 - focus: focus area -- "host-runtime", "system", "context", or "external" (optional, default: auto-detect)
 
 ### Ensures

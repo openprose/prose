@@ -242,7 +242,7 @@ The supported keyword is `use`. It is processed before agents, blocks, and
 statements in the current ProseScript block. Resolution follows the same
 disk-only rules as `prose run`:
 explicit git host identifiers, `std/...` and `co/...` expansions, pinned
-versions, and `.agents/prose/deps/`.
+versions, and `<openprose-root>/deps/`.
 
 A used service or system can be invoked with `call alias`:
 

@@ -53,7 +53,7 @@ SQLite state provides:
 The database lives within the standard run directory:
 
 ```
-.agents/prose/runs/{YYYYMMDD}-{HHMMSS}-{random}/
+<openprose-root>/runs/{YYYYMMDD}-{HHMMSS}-{random}/
 ├── forme.manifest.json     # Optional filesystem snapshot of compiled Forme manifest
 ├── root.prose.md           # Copy of the invoked service or system source
 ├── sources/                # Service, system, and pattern source snapshots
@@ -63,7 +63,7 @@ The database lives within the standard run directory:
 
 **Run ID format:** Same as filesystem state: `{YYYYMMDD}-{HHMMSS}-{random6}`
 
-Example: `.agents/prose/runs/20260116-143052-a7b3c9/state.db`
+Example: `<openprose-root>/runs/20260116-143052-a7b3c9/state.db`
 
 SQLite state preserves the same run identity and source snapshot files as the
 filesystem backend. It replaces filesystem `workspace/`, `bindings/`, and
@@ -76,8 +76,9 @@ Execution-scoped agents (the default) live in the per-run `state.db`. However, *
 For project-scoped agents, use a separate database:
 
 ```
-.agents/prose/
-├── agents.db                 # Project-scoped agent memory (survives runs)
+<openprose-root>/
+├── state/
+│   └── agents.db             # Project-scoped agent memory (survives runs)
 └── runs/
     └── {id}/
         └── state.db          # Execution-scoped state (dies with run)
@@ -87,10 +88,14 @@ For user-scoped agents, use a database in the home directory:
 
 ```
 ~/.agents/prose/
-└── agents.db                 # User-scoped agent memory (survives across projects)
+└── state/
+    └── agents.db             # User-scoped agent memory (survives across projects)
 ```
 
-The `agents` and `agent_segments` tables for project-scoped agents live in `.agents/prose/agents.db`, and for user-scoped agents live in `~/.agents/prose/agents.db`. The Prose VM initializes these databases on first use and provides the correct path to spawned sessions.
+The `agents` and `agent_segments` tables for project-scoped agents live in
+`<openprose-root>/state/agents.db`, and for user-scoped agents live in
+`~/.agents/prose/state/agents.db`. The Prose VM initializes these databases on
+first use and provides the correct path to spawned sessions.
 
 ---
 
@@ -136,14 +141,14 @@ Spawned sessions are responsible for:
 **Root scope:**
 ```
 Binding written: research
-Location: .agents/prose/runs/20260116-143052-a7b3c9/state.db (bindings table, name='research', execution_id=NULL)
+Location: <openprose-root>/runs/20260116-143052-a7b3c9/state.db (bindings table, name='research', execution_id=NULL)
 Summary: AI safety research covering alignment, robustness, and interpretability with 15 citations.
 ```
 
 **Inside block invocation:**
 ```
 Binding written: result
-Location: .agents/prose/runs/20260116-143052-a7b3c9/state.db (bindings table, name='result', execution_id=43)
+Location: <openprose-root>/runs/20260116-143052-a7b3c9/state.db (bindings table, name='result', execution_id=43)
 Execution ID: 43
 Summary: Processed chunk into 3 sub-parts for recursive processing.
 ```
@@ -289,21 +294,21 @@ The Prose VM and spawned sessions interact via the `sqlite3` CLI.
 
 ```bash
 # Initialize database
-sqlite3 .agents/prose/runs/20260116-143052-a7b3c9/state.db "CREATE TABLE IF NOT EXISTS..."
+sqlite3 <openprose-root>/runs/20260116-143052-a7b3c9/state.db "CREATE TABLE IF NOT EXISTS..."
 
 # Update execution position
-sqlite3 .agents/prose/runs/20260116-143052-a7b3c9/state.db "
+sqlite3 <openprose-root>/runs/20260116-143052-a7b3c9/state.db "
   INSERT INTO execution (statement_index, statement_text, status, started_at)
   VALUES (3, 'session \"Research AI safety\"', 'executing', datetime('now'))
 "
 
 # Read a binding
-sqlite3 -json .agents/prose/runs/20260116-143052-a7b3c9/state.db "
+sqlite3 -json <openprose-root>/runs/20260116-143052-a7b3c9/state.db "
   SELECT value FROM bindings WHERE name = 'research'
 "
 
 # Check parallel branch status
-sqlite3 .agents/prose/runs/20260116-143052-a7b3c9/state.db "
+sqlite3 <openprose-root>/runs/20260116-143052-a7b3c9/state.db "
   SELECT statement_text, status FROM execution
   WHERE json_extract(metadata, '$.parallel_id') = 'p1'
 "
@@ -317,11 +322,11 @@ The Prose VM provides the database path and instructions when spawning:
 
 ```
 Your output database is:
-  .agents/prose/runs/20260116-143052-a7b3c9/state.db
+  <openprose-root>/runs/20260116-143052-a7b3c9/state.db
 
 When complete, write your output:
 
-sqlite3 .agents/prose/runs/20260116-143052-a7b3c9/state.db "
+sqlite3 <openprose-root>/runs/20260116-143052-a7b3c9/state.db "
   INSERT OR REPLACE INTO bindings (name, execution_id, binding, value, source_statement, updated_at)
   VALUES (
     'research',
@@ -343,11 +348,11 @@ Execution scope:
   depth: 3
 
 Your output database is:
-  .agents/prose/runs/20260116-143052-a7b3c9/state.db
+  <openprose-root>/runs/20260116-143052-a7b3c9/state.db
 
 When complete, write your output:
 
-sqlite3 .agents/prose/runs/20260116-143052-a7b3c9/state.db "
+sqlite3 <openprose-root>/runs/20260116-143052-a7b3c9/state.db "
   INSERT OR REPLACE INTO bindings (name, execution_id, binding, value, source_statement, updated_at)
   VALUES (
     'result',
@@ -364,19 +369,20 @@ For persistent agents (execution-scoped):
 
 ```
 Your memory is in the database:
-  .agents/prose/runs/20260116-143052-a7b3c9/state.db
+  <openprose-root>/runs/20260116-143052-a7b3c9/state.db
 
 Read your current state:
-  sqlite3 -json .agents/prose/runs/20260116-143052-a7b3c9/state.db "SELECT memory FROM agents WHERE name = 'captain'"
+  sqlite3 -json <openprose-root>/runs/20260116-143052-a7b3c9/state.db "SELECT memory FROM agents WHERE name = 'captain'"
 
 Update when done:
-  sqlite3 .agents/prose/runs/20260116-143052-a7b3c9/state.db "UPDATE agents SET memory = '...', updated_at = datetime('now') WHERE name = 'captain'"
+  sqlite3 <openprose-root>/runs/20260116-143052-a7b3c9/state.db "UPDATE agents SET memory = '...', updated_at = datetime('now') WHERE name = 'captain'"
 
 Record this segment:
-  sqlite3 .agents/prose/runs/20260116-143052-a7b3c9/state.db "INSERT INTO agent_segments (agent_name, segment_number, prompt, summary) VALUES ('captain', 3, '...', '...')"
+  sqlite3 <openprose-root>/runs/20260116-143052-a7b3c9/state.db "INSERT INTO agent_segments (agent_name, segment_number, prompt, summary) VALUES ('captain', 3, '...', '...')"
 ```
 
-For project-scoped agents, use `.agents/prose/agents.db`. For user-scoped agents, use `~/.agents/prose/agents.db`.
+For project-scoped agents, use `<openprose-root>/state/agents.db`. For
+user-scoped agents, use `~/.agents/prose/state/agents.db`.
 
 ---
 
@@ -557,7 +563,7 @@ The database is your workspace. Use it.
 
 | Aspect | filesystem.md | in-context.md | sqlite.md |
 |--------|---------------|---------------|-----------|
-| **State location** | `.agents/prose/runs/{id}/` files | Conversation history | `.agents/prose/runs/{id}/state.db` |
+| **State location** | `<openprose-root>/runs/{id}/` files | Conversation history | `<openprose-root>/runs/{id}/state.db` |
 | **Queryable** | Via file reads | No | Yes (SQL) |
 | **Atomic updates** | No | N/A | Yes (transactions) |
 | **Schema flexibility** | Rigid file structure | N/A | Flexible (add tables/columns) |

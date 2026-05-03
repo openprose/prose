@@ -16,7 +16,7 @@ for repository IR.
 
 - `sources`: discovered source records with `path`, `kind`, and optional
   `name`.
-- `diagnostics`: warnings for unreadable files, legacy structures, unknown
+- `diagnostics`: warnings for unreadable files, unknown structures, unknown
   kinds, or duplicate names.
 
 ### Strategies
@@ -25,4 +25,4 @@ for repository IR.
 - Read YAML frontmatter for `name` and `kind`.
 - Recognize `responsibility`, `system`, `service`, `test`, and `pattern`.
 - Mark unclear source as `unknown` and emit a diagnostic instead of guessing.
-- Ignore generated output under `dist/prose/`.
+- Ignore generated output under `dist/`.

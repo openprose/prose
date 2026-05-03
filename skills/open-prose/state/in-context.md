@@ -212,7 +212,7 @@ The compact markers exist for **clarity and resumption**, not as the primary sta
 In-context state and file-based state (`filesystem.md`) are **independent approaches**. You choose one or the other based on system complexity.
 
 - **In-context**: State lives in conversation history
-- **File-based**: State lives in `.agents/prose/runs/{id}/`
+- **File-based**: State lives in `<openprose-root>/runs/{id}/`
 
 They are not designed to be complementary—pick the appropriate mode at run start.
 

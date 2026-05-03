@@ -77,7 +77,7 @@ and writes the report as a public binding the caller can open immediately.
    replacing non-alphanumeric runs with `-`.
 3. Use the host-provided run directory when available. If run manually,
    compute `run_dir` as
-   `./.agents/prose/runs/manual-agent-readiness-<slug>/`.
+   `./runs/manual-agent-readiness-<slug>/` relative to `<openprose-root>`.
    Compute `workspace_dir` as
    `<run_dir>/workspace/agent-readiness/<slug>/`. Create `workspace_dir` and
    `<run_dir>/bindings/` if they do not exist.

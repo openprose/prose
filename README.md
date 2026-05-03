@@ -29,7 +29,7 @@
 > `kind: responsibility` have their own routing and are not ordinary run targets. When a `prose` command fires
 > inside an agent session, interpret it directly: read the Markdown contract,
 > embody the OpenProse VM, spawn subagents for declared services, pass
-> artifacts between them, and write the run to `.agents/prose/runs/`. You need:
+> artifacts between them, and write the run under `<openprose-root>/runs/`. You need:
 > filesystem read/write in the working directory, a subagent-spawning
 > primitive for multi-service systems, and (optionally) a user-question
 > primitive for missing inputs. If you lack a capability, say so and stop — do
@@ -45,6 +45,27 @@ services, spawns subagents, passes artifacts between them, and leaves a durable
 run trace on disk.
 
 The contract declares **what** should happen. The runtime figures out **how**.
+
+## OpenProse Root
+
+Every OpenProse workspace has an **OpenProse root**. All OpenProse filesystem
+paths are relative to `<openprose-root>`:
+
+| Path | Purpose |
+|------|---------|
+| `src/` | Authored intent: services, systems, tests, patterns, responsibilities, and supporting source |
+| `dist/` | Compiled intent consumed by deterministic runtime commands |
+| `runs/` | Activation receipts for bounded VM runs |
+| `state/` | Durable cross-run state |
+| `state/agents/` | Durable cross-run agents |
+| `state/responsibilities/` | Durable cross-run responsibilities |
+| `deps/` | Installed dependencies |
+| `prose.lock` | Dependency lockfile |
+| `.env` | Local runtime environment variables |
+
+Native repositories use the repository root as `<openprose-root>`. Attached
+repositories use `repo/.agents/prose`. User-global OpenProse state uses
+`~/.agents/prose`.
 
 ```markdown
 ---
@@ -81,7 +102,7 @@ Install the skill in a Prose Complete agent environment:
 npx skills add openprose/prose
 ```
 
-Create `hello.prose.md`:
+Create `src/hello.prose.md`:
 
 ```markdown
 ---
@@ -97,20 +118,20 @@ kind: service
 Run it inside an agent session:
 
 ```text
-prose run hello.prose.md
+prose run src/hello.prose.md
 ```
 
 The activated OpenProse skill interprets that as an instruction to the current
 agent, not as a request to find a `prose` executable on PATH. OpenProse writes
-the run state to `.agents/prose/runs/{run-id}/`, including inputs, outputs, service
+the run state to `<openprose-root>/runs/{run-id}/`, including inputs, outputs, service
 workspaces, and the execution log.
 
 From a shell outside an agent session, pass the same instruction to a Prose
 Complete runner:
 
 ```bash
-claude -p "prose run hello.prose.md"
-codex exec "prose run hello.prose.md"
+claude -p "prose run src/hello.prose.md"
+codex exec "prose run src/hello.prose.md"
 ```
 
 The [CLI package](tools/cli/) is the shell entrypoint for that same command language.
@@ -153,7 +174,8 @@ OpenProse gives agents a small set of primitives that fit naturally in a repo:
 | `### Shape` | Capability boundaries: what a service may do, delegate, or avoid |
 | `### Strategies` | Judgment rules for edge cases and degraded conditions |
 | `### Execution` | Optional ProseScript when you want exact order, loops, branches, or retries |
-| `.agents/prose/runs/` | Auditable filesystem state for every run |
+| `runs/` | Auditable activation receipts for every bounded VM run |
+| `state/` | Durable cross-run state for agents, responsibilities, and runtime continuity |
 
 The result is agent software that can be read, reviewed, versioned, forked, and
 improved like code.
@@ -205,7 +227,7 @@ be checked, maintained, and restored across bounded runs:
 
 | Command | Role |
 |---------|------|
-| `prose compile` | Run the bundled OpenProse compiler program and lower semantic source into `dist/prose/manifest.next.json` |
+| `prose compile` | Run the bundled OpenProse compiler program and lower semantic source into `<openprose-root>/dist/manifest.next.json` |
 | `prose serve` | Load active IR and prepare the static trigger registration plan |
 | `prose run` | Execute one bounded OpenProse VM activation |
 
@@ -213,8 +235,9 @@ The compiled Responsibility Runtime manifest preserves responsibilities as
 semantic sections, emits trigger and activation intent, and includes structured
 Forme manifests for fulfillment systems. Concrete trigger registration,
 live adapters, status, and pressure belong to later runtime phases. In this
-phase, `prose compile` writes `dist/prose/manifest.next.json`; promote it to
-`dist/prose/manifest.active.json` when you want `prose serve` to consume it.
+phase, `prose compile` writes `<openprose-root>/dist/manifest.next.json`; promote it to
+`<openprose-root>/dist/manifest.active.json` when you want `prose serve`
+to consume it.
 
 The design doctrine is:
 
@@ -249,7 +272,7 @@ is the contract you are agreeing to when the skill activates:
 |-----------|----------------|--------------------------|
 | `spawn_session` | Launch each service in an isolated subagent | Run a single service inline; refuse multi-service systems and say which primitive is missing |
 | `ask_user` | Pause and ask for missing `### Requires` inputs | Ask in plain chat; do not invent values |
-| `read_state` / `write_state` | Read and write `.agents/prose/runs/{id}/` artifacts | Stop and tell the user their workspace is read-only |
+| `read_state` / `write_state` | Read and write `<openprose-root>/runs/{id}/` artifacts and `<openprose-root>/state/` data | Stop and tell the user their workspace is read-only |
 | `copy_binding` | Publish declared `### Ensures` outputs from `workspace/` to `bindings/` | Do not publish undeclared scratch files — the boundary exists for a reason |
 | `check_env` | Verify an environment variable is *present* | Never reveal or log the value, even if the user asks |
 
@@ -265,7 +288,7 @@ You know the ways you fail at complex tasks. OpenProse is built around them.
 - **Your context bloats with scratch by step seven, and you lose the original goal.** When you spawn a subagent through `spawn_session`, its scratch stays in its session. Only declared `### Ensures` outputs cross back to you via `copy_binding`. You keep your context clean.
 - **You have no basis to push back on scope creep.** Without a contract, "add one more thing" is always free. With `### Requires` and `### Ensures` written down, "that's not what I promised" becomes a sentence you can say and cite.
 - **When you spawn parallel subagents, you improvise the handoff.** The contract `### Requires` / `### Ensures` is the handoff protocol you would otherwise invent on the fly — and forget the details of by the next turn.
-- **Users ask "why did you do that?" and you reconstruct from a compressed transcript.** `.agents/prose/runs/{id}/` is the receipt. Point at it.
+- **Users ask "why did you do that?" and you reconstruct from a compressed transcript.** `<openprose-root>/runs/{id}/` is the receipt. Point at it.
 - **Workflows the user will want again get thrown away at the end of the session.** A `*.prose.md` contract is the version the user can run next week without re-explaining.
 - **Your retry logic is "try again and hope."** The service contract is the boundary a retry actually means something at — you know what to preserve, what to re-derive, and when to escalate.
 
@@ -308,15 +331,15 @@ use "co/systems/company-repo-checker"
 
 Both shorthands expand to paths inside this repo (`packages/std/...` and
 `packages/co/...`). `prose install` clones this repository into
-`.agents/prose/deps/github.com/openprose/prose/` and pins the SHA in
-`.agents/prose/prose.lock`.
+`<openprose-root>/deps/github.com/openprose/prose/` and pins the SHA in
+`<openprose-root>/prose.lock`.
 
 ```bash
 prose install
 ```
 
-Dependencies are cloned into `.agents/prose/deps/`, locked in
-`.agents/prose/prose.lock`, and read from disk at runtime. No network fetch
+Dependencies are cloned into `<openprose-root>/deps/`, locked in
+`<openprose-root>/prose.lock`, and read from disk at runtime. No network fetch
 happens during execution.
 
 ## Project Map
@@ -335,10 +358,9 @@ happens during execution.
 | [skills/open-prose/guidance/authoring.md](skills/open-prose/guidance/authoring.md) | Authoring practices and antipatterns |
 | [skills/open-prose/state/](skills/open-prose/state/) | State backend specs |
 
-If you find old `.prose` source files, `index.md`, `.prose/runs/`, `.deps/`,
-root `prose.lock`, `kind: program`, `kind: composite`, or `compose:`
-structures, run `prose upgrade --dry-run` to inspect the self-healing
-migration plan, then `prose upgrade` to apply it when you're ready.
+Use `src/` for authored intent, `dist/` for compiled intent, `runs/` for
+activation receipts, `state/` for durable cross-run state, and `deps/` plus
+`prose.lock` for installed dependencies.
 
 ## FAQ
 
