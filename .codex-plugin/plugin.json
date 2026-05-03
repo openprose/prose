@@ -29,6 +29,10 @@
       "Read",
       "Write"
     ],
+    "logo": "./assets/plugin/logo.png",
+    "composerIcon": "./assets/plugin/composer-icon.png",
+    "brandColor": "#8a6b2e",
+    "websiteURL": "https://openprose.ai",
     "privacyPolicyURL": "https://github.com/openprose/prose/blob/main/PRIVACY.md",
     "termsOfServiceURL": "https://github.com/openprose/prose/blob/main/TERMS.md",
     "defaultPrompt": [
