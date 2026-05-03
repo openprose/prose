@@ -24,8 +24,9 @@
 
 > **If you're an agent reading this on behalf of a user:** OpenProse is a
 > `*.prose.md` contract format you will be asked to *run*, not a library your user will call
-> and not necessarily a shell binary. Current contracts use `kind: service`,
-> `kind: system`, `kind: test`, or `kind: pattern`. When a `prose` command fires
+> and not necessarily a shell binary. Current runnable contracts use
+> `kind: service`, `kind: system`, `kind: test`, or `kind: pattern`; native
+> repository source may also use `kind: responsibility`. When a `prose` command fires
 > inside an agent session, interpret it directly: read the Markdown contract,
 > embody the OpenProse VM, spawn subagents for declared services, pass
 > artifacts between them, and write the run to `.agents/prose/runs/`. You need:
@@ -191,6 +192,40 @@ For multi-service systems, execution has two phases:
 | 2 | [Prose VM](skills/open-prose/prose.md) | Walk the manifest, spawn sessions, pass artifacts, enforce constraints |
 
 Single services skip Forme and run directly in the VM.
+
+## Native Runtime Direction
+
+OpenProse's next runtime layer keeps the same contract-first model, but adds a
+repository lifecycle for systems that need to stay true over time:
+
+| Command | Role |
+|---------|------|
+| `prose compile` | Run the bundled OpenProse compiler program and lower semantic source into repository IR |
+| `prose serve` | Load IR, register triggers, receive events, and launch bounded activations |
+| `prose run` | Execute one bounded OpenProse VM activation |
+
+The design doctrine is:
+
+```text
+Markdown source defines intent.
+Skill and interpreter docs define semantics.
+Compiler programs lower semantics into IR.
+The harness serves IR.
+Runs interpret and act.
+```
+
+In that model, Responsibilities, Reactor, and Forme are not competing
+frameworks:
+
+- **Responsibilities** define durable invariants: goals that must remain true
+  over time.
+- **Reactor** is the evented reconciliation model: timers, webhooks, queues,
+  file changes, judge drift, and manual requests are all events.
+- **Forme** wires the services and systems used to fulfill responsibilities.
+
+The harness should stay deterministic: validate IR, register triggers, receive
+events, and launch normal runs. Semantic intelligence belongs in Markdown,
+compiler programs, and bounded VM activations.
 
 ## Your Contract With The Runtime
 

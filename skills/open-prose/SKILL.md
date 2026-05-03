@@ -12,14 +12,15 @@ description: |
 
 # OpenProse Skill
 
-OpenProse has four load-bearing pieces:
+OpenProse has five load-bearing pieces:
 
 | Piece | File | Role |
 |-------|------|------|
-| **Contract Markdown** | `contract-markdown.md` | Human-readable `*.prose.md` service and system format |
+| **Contract Markdown** | `contract-markdown.md` | Human-readable `*.prose.md` source format |
 | **Forme** | `forme.md` | Semantic dependency-injection container that wires contracts |
 | **Prose VM** | `prose.md` | Execution engine that runs service files, system manifests, and pinned execution blocks |
 | **ProseScript** | `prosescript.md` | Imperative scripting layer for `### Execution` blocks and pattern delegation |
+| **Native Runtime** | `native-runtime.md` | Responsibilities, Reactor, compile/serve doctrine, and company operations-as-code |
 
 Use Contract Markdown when authors want declarations and auto-wiring. Use
 ProseScript when authors want to pin choreography: order, loops, conditionals,
@@ -37,6 +38,7 @@ After activation, choose the narrowest path that matches the user's intent:
 | Write a new `.prose.md` service or system | `contract-markdown.md` | `guidance/tenets.md`, `guidance/authoring.md` |
 | Write pinned choreography | `prosescript.md` | `contract-markdown.md` if inside `### Execution` |
 | Lint or review a service or system | `contract-markdown.md` | `forme.md` for multi-service wiring; `guidance/authoring.md` for design review |
+| Work on a native repository, responsibility, Reactor, compile, or serve semantics | `native-runtime.md` | `concepts/responsibility.md`, `concepts/reactor.md`, `forme.md` |
 | Install or update dependencies | `deps.md` | `contract-markdown.md` only if dependency references are ambiguous |
 | Debug a completed run | `prose.md` | `state/README.md` and the run's backend doc; then `std/evals/inspector` if available |
 
@@ -96,7 +98,7 @@ Activate this skill when the user:
 - asks to run, lint, test, inspect, upgrade, or write an OpenProse service or system
 - references a `.prose.md` file with `kind:` frontmatter
 - references an older `.prose` script
-- mentions OpenProse, Forme, ProseScript, Contract Markdown, or a Prose service or system
+- mentions OpenProse, Forme, Reactor, Responsibilities, ProseScript, Contract Markdown, or a Prose service or system
 - wants reusable multi-agent orchestration
 
 ## Command Routing
@@ -236,9 +238,13 @@ user workspace for these docs.
 | `prosescript.md` | Imperative scripting syntax for `### Execution` and pattern `### Delegation` |
 | `forme.md` | Forme container wiring semantics |
 | `prose.md` | Prose VM execution semantics |
+| `native-runtime.md` | Native repository doctrine: Responsibilities, Reactor, compile, serve, run, and status |
 | `deps.md` | Dependency resolution and `prose install` |
 | `changelog.md` | Compact version history and model-guided upgrade instructions; load only for `prose upgrade` or outdated-structure diagnosis |
 | `help.md` | User-facing help |
+| `concepts/README.md` | Native runtime concept index |
+| `concepts/responsibility.md` | `kind: responsibility` semantic contract |
+| `concepts/reactor.md` | Evented reconciliation, judge status, and maintenance pressure |
 | `state/README.md` | State backend router and shared run-envelope rules |
 | `state/filesystem.md` | Default state backend for Contract Markdown runs |
 | `primitives/session.md` | Subagent session and memory guidelines |

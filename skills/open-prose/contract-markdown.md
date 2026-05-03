@@ -1,12 +1,13 @@
 ---
 role: contract-markdown-format
 summary: |
-  Canonical Markdown format for OpenProse services, systems, tests, and
-  patterns. Defines the header hierarchy, contract sections, and how Forme
-  should extract services and systems from `*.prose.md` files.
+  Canonical Markdown format for OpenProse services, systems, tests, patterns,
+  and native repository responsibilities. Defines the header hierarchy,
+  contract sections, and how interpreters should extract `*.prose.md` source.
 see-also:
   - forme.md: Wiring semantics
   - prose.md: Execution semantics
+  - native-runtime.md: Responsibilities and native repository runtime semantics
   - prosescript.md: Imperative scripting layer for `### Execution`
   - guidance/tenets.md: Design reasoning
   - guidance/authoring.md: Authoring guidance
@@ -14,17 +15,18 @@ see-also:
 
 # Contract Markdown
 
-Contract Markdown is the human-facing `*.prose.md` format for OpenProse services,
-systems, tests, and patterns. It uses tiny YAML frontmatter for file
-identity, then Markdown sections for the human-facing language: services,
-contracts, runtime hints, shape, and execution.
+Contract Markdown is the human-facing `*.prose.md` format for OpenProse
+services, systems, tests, patterns, and native repository responsibilities. It
+uses tiny YAML frontmatter for file identity, then Markdown sections for the
+human-facing language: contracts, runtime hints, shape, execution, and durable
+responsibilities.
 
 The format optimizes for two readers:
 
 1. Humans scanning a workflow.
 2. Agents extracting contracts and wiring services and systems.
 
-## Runnable Shapes
+## Authored Shapes
 
 `prose run` accepts two authored shapes:
 
@@ -43,6 +45,10 @@ A **pattern** is not domain work by itself. It is a reusable agent design
 pattern: slots, config, invariants, and delegation rules for how filled
 services interact. Patterns are not run directly; systems instantiate them
 inside `### Services`.
+
+A **responsibility** is native repository source, not a direct run target. It
+defines a goal that must remain true over time. The native compiler lowers it
+into responsibility, trigger-intent, judge, pressure, and activation IR.
 
 ## Core Shape
 
@@ -112,17 +118,23 @@ Forme and the Prose VM recognize these `###` sections case-insensitively:
 | `### Slots` | pattern | Services a pattern requires from its caller |
 | `### Config` | pattern | Pattern-level parameters and defaults |
 | `### Delegation` | pattern | ProseScript or pseudocode describing slot interaction |
+| `### Goal` | responsibility | The invariant: what must remain true over time |
+| `### Continuity` | responsibility | How time qualifies the obligation |
+| `### Criteria` | responsibility | What counts as satisfactory fulfillment |
+| `### Constraints` | responsibility | What must remain bounded or prohibited |
+| `### Fulfillment` | responsibility | Optional hint naming a system or service that may fulfill the responsibility |
 
 Unknown `###` sections are preserved as documentation. They are not contract
 sections unless a future spec names them.
 
 ## File Extraction
 
-Forme parses a file in this order:
+Interpreters parse a file in this order:
 
 1. Read YAML frontmatter for identity metadata (`name`, `kind`; `kind: test`
    files also declare `subject`).
-2. Create the file-level service, system, test, or pattern from the frontmatter.
+2. Create the file-level service, system, test, pattern, or responsibility from
+   the frontmatter.
 3. Attach all `###` sections before the first `##` to the file-level entry.
 4. For every `## {name}` heading, create an inline service named `{name}`.
 5. Attach subsequent `###` sections to that inline service until the next `##`.
@@ -177,6 +189,43 @@ kind: system
 
 The file-level system requires `draft` and ensures `final`. It also
 contains inline services `review` and `polish`.
+
+## Responsibilities
+
+Native repositories may contain `kind: responsibility` files:
+
+```markdown
+---
+name: qualified-stargazer-outreach
+kind: responsibility
+---
+
+### Goal
+
+High-intent GitHub stargazers are identified, enriched, and thoughtfully
+followed up with.
+
+### Continuity
+
+- New high-intent stargazers should not remain unattended for more than one
+  business day.
+- Outreach history should prevent duplicate contact without new evidence.
+
+### Criteria
+
+- Qualification includes GitHub activity, company context, and plausible pain.
+- Outreach includes a specific OpenProse program idea or sample result.
+
+### Constraints
+
+- Do not send generic outreach.
+- Keep enrichment and outreach costs bounded.
+```
+
+Responsibilities are semantic and normative. They do not directly define
+entrypoints, tests, schedules, listeners, queues, or implementation steps.
+Load `native-runtime.md` and `concepts/responsibility.md` for responsibility
+semantics.
 
 ## Services
 

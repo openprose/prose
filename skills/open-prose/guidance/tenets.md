@@ -7,6 +7,7 @@ summary: |
 see-also:
   - ../contract-markdown.md: Contract Markdown authoring surface
   - ../forme.md: Forme container spec
+  - ../native-runtime.md: Native repository runtime doctrine
   - ../prose.md: Prose VM spec
   - ../prosescript.md: ProseScript imperative layer
   - authoring.md: Canonical authoring guidance
@@ -159,3 +160,42 @@ Forme discovers them. This is dependency injection, not service discovery. A ser
 In a traditional language, `accepts: { topic: string }` (type signature) and `requires: topic is a non-empty string` (constraint) are different things — the type system enforces one, the contract system enforces the other. In a language where the runtime reads prose, this distinction is unnecessary. The model doesn't need both. `### Requires` is the interface AND the contract.
 
 **How to apply:** Do not reintroduce type/constraint separation. If you need to express the shape of data, do it in the `### Requires` / `### Ensures` description. If you need a quick-glance catalog view, extract it from the descriptions.
+
+---
+
+## 18. Native repositories add durable invariants, not another framework
+
+Responsibilities, Reactor, and Forme should compose into one runtime stack.
+Responsibilities define what must remain true over time. Reactor reconciles
+those invariants through events, judge status, and pressure. Forme wires the
+services and systems that fulfill them.
+
+**How to apply:** Do not create pluggable framework modes for Responsibilities,
+Reactor, and Forme. Treat them as adjacent semantic layers in the same
+OpenProse skill.
+
+---
+
+## 19. Compile is intelligence before serving
+
+Native repository serving should be deterministic: load IR, register triggers,
+receive events, and launch bounded runs. The intelligent work of reading
+semantic Markdown, inferring fulfillment, and resolving Forme wiring belongs in
+`prose compile` and in the bounded runs that serve later launches.
+
+**How to apply:** Keep harness primitives small. Push semantic interpretation
+into Markdown docs and compiler programs, then validate the compiled output
+before serving it.
+
+---
+
+## 20. A responsibility is not a cron
+
+A responsibility defines expectations. It does not exist to declare schedules,
+webhooks, queues, storage, or step-by-step behavior. Those are compiled or
+harness-facing mechanisms inferred from the responsibility and source graph
+unless explicit connector detail is necessary.
+
+**How to apply:** If a responsibility file starts reading like runtime
+machinery, move that machinery out. Preserve the four core sections: `Goal`,
+`Continuity`, `Criteria`, and `Constraints`.

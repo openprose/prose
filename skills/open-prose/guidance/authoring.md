@@ -1,8 +1,9 @@
 ---
-purpose: Canonical OpenProse authoring guidance for services, systems, patterns, tests, repositories, memory, and security boundaries
+purpose: Canonical OpenProse authoring guidance for services, systems, patterns, tests, native repositories, memory, and security boundaries
 related:
   - ../contract-markdown.md
   - ../forme.md
+  - ../native-runtime.md
   - ../prose.md
   - tenets.md
 ---
@@ -10,14 +11,16 @@ related:
 # Authoring Guidance
 
 Use this file when writing or reviewing OpenProse author-facing artifacts:
-`kind: service`, `kind: system`, `kind: test`, and `kind: pattern`.
+`kind: service`, `kind: system`, `kind: test`, `kind: pattern`, and
+`kind: responsibility`.
 
 ## Core Principles
 
 - Prefer the smallest artifact that expresses the work: one competent service
   for one competent session, a system when composition matters, a pattern when
-  repeated control flow deserves a reusable contract, and a test when behavior
-  needs to stay true over time.
+  repeated control flow deserves a reusable contract, a test when behavior
+  needs checking, and a responsibility when an operational goal must remain
+  true over time.
 - Author public contracts before choreography. `### Requires`, `### Ensures`,
   `### Errors`, `### Invariants`, `### Environment`, and `### Shape` should make
   the boundary obvious to a caller and to Forme.
@@ -140,6 +143,26 @@ subject: summarizer
 - Assertion reports should name each assertion, pass/fail status, and concise
   observed evidence for failures.
 
+## Responsibility Authoring
+
+A `kind: responsibility` file defines a durable invariant for an OpenProse
+Native Repository. It is not run directly.
+
+Use four core sections:
+
+- `### Goal`: what must remain true
+- `### Continuity`: how time qualifies the obligation
+- `### Criteria`: what counts as satisfactory fulfillment
+- `### Constraints`: what must remain bounded or prohibited
+
+Use optional `### Fulfillment` only when pointing at a likely service or system
+helps the compiler. Omit it when the source graph makes the relationship clear.
+
+Keep responsibilities semantic. Do not put concrete cron syntax, webhook
+routes, queues, storage schemas, or tests inside the responsibility file.
+Those belong to compiled IR, harness-facing connector source, state backends,
+or `kind: test` files.
+
 ## State and Memory Authoring
 
 - Use `### Memory` only with `### Runtime` persistence (`persist: project` or
@@ -159,6 +182,8 @@ subject: summarizer
 
 - Put durable project source under `.agents/prose/src/`, with system
   directories using `index.prose.md` and nearby private services.
+- In native repositories, put responsibilities near the systems that fulfill
+  them unless the responsibility is deliberately cross-cutting.
 - Co-locate services with the system that owns them. Promote a service to a
   shared location only after it has multiple real callers and a stable contract.
 - Keep public names stable and domain-specific: output names like `risk-report`
@@ -205,6 +230,8 @@ subject: summarizer
 - For recurring workflows, declare persistent memory reads/writes and emit cursors as normal ensures.
 - For prior-run analysis, use `run` / `run[]`, record provenance, and surface staleness warnings.
 - For tests, use fixtures plus semantic `expects` / `expects-not`; test contracts, not exact phrasing.
+- For responsibilities, state the invariant and bounds; let compile infer
+  triggers and fulfillment when the source graph is clear.
 - For security-sensitive services, express hard boundaries as `Shape.prohibited`, not strategies.
 - For model-improvable behavior, specify the desired result and leave discovery strategy open.
 
@@ -238,3 +265,5 @@ subject: summarizer
 - Writing tests that assert exact wording rather than observable behavior.
 - Using human gates for vague approval instead of a concrete artifact decision.
 - Fixing harness bugs by making every system more procedural.
+- Encoding runtime machinery in responsibility files instead of preserving
+  responsibilities as semantic contracts.
