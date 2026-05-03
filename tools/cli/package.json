@@ -1,7 +1,7 @@
 {
   "name": "@openprose/prose-cli",
   "version": "0.2.5",
-  "description": "Run OpenProse commands through Codex, Claude, or SDK-backed agent harnesses.",
+  "description": "Run OpenProse commands through first-party Codex and Claude agent SDKs.",
   "type": "module",
   "packageManager": "npm@10.9.2",
   "oclif": {

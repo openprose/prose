@@ -66,7 +66,6 @@ harness names both a provider family and the runtime used to call it.
 | Harness | Provider | Runtime | Requirements | Notes |
 | --- | --- | --- | --- | --- |
 | `codex-sdk` | OpenAI/Codex | `@openai/codex-sdk` | `OPENAI_API_KEY` or `CODEX_API_KEY` | Default. Best first choice for OpenAI-backed runs. |
-| `codex` | OpenAI/Codex | `codex exec` | Codex CLI installed and authenticated, or `OPENAI_API_KEY`/`CODEX_API_KEY` | Uses the local Codex CLI process. |
 | `claude-sdk` | Anthropic/Claude | `@anthropic-ai/claude-agent-sdk` | `ANTHROPIC_API_KEY` | Best first choice for Anthropic-backed runs. |
 | `mock` | None | local echo harness | none | Test and smoke-check harness only. |
 
@@ -85,15 +84,13 @@ PROSE_HARNESS=claude-sdk prose run std/evals/inspector
   and environment, and streams Codex SDK events. This is the default.
 - `claude-sdk` uses `@anthropic-ai/claude-agent-sdk`, forwards the current
   working directory and environment, and streams text deltas.
-- `codex` runs `codex exec <prompt>` and streams the Codex CLI process output.
 - `mock` echoes prompts for tests and local smoke checks.
 
 Select a harness with `--harness <name>` or `PROSE_HARNESS`.
 
-OpenProse commands are allowed to run from non-git directories. For Codex
-harnesses, the CLI sets Codex's git-repository check skip option while leaving
-Codex sandbox and approval policy controls to Codex and the environment
-settings below.
+OpenProse commands are allowed to run from non-git directories. Codex SDK
+harness runs leave Codex sandbox and approval policy controls to Codex and the
+environment settings below.
 
 For externally sandboxed CI environments, Codex harnesses also honor
 `PROSE_CODEX_SANDBOX_MODE` (`read-only`, `workspace-write`, or
@@ -123,7 +120,6 @@ prose doctor --harness claude-sdk --install
 ## Behavior
 
 - stdout and stderr are streamed rather than buffered.
-- child-process harnesses preserve child exit codes.
 - SDK harnesses return `0` on successful final results, `1` on SDK turn errors,
   and `143` when aborted by the CLI.
 - `SIGINT` and `SIGTERM` are propagated through the active harness.

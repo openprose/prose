@@ -48,7 +48,6 @@ Example worker families:
 - `npm-fresh`: npm global install, clean `HOME`, first-run behavior.
 - `tarball-fresh`: curl installer, checksum verification, shim behavior.
 - `codex-sdk`: default harness, OpenAI credentials, git and non-git dirs.
-- `codex-cli`: local `codex exec`, streaming, exit codes, signals.
 - `claude-sdk`: Claude SDK harness, streaming, skill loading.
 - `skill-state`: missing, existing, or damaged skill installs.
 - `path-edge`: spaces in paths, absolute paths, relative paths, temp dirs.
@@ -141,7 +140,6 @@ Cover a representative subset of these scenarios.
 
 - `prose run <program> --harness mock`
 - `prose run <program> --harness codex-sdk`
-- `prose run <program> --harness codex`
 - `prose run <program> --harness claude-sdk`
 - `PROSE_HARNESS=<name> prose run <program>`
 - missing credentials for each real harness
