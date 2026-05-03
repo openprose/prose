@@ -1,8 +1,7 @@
 import { createClaudeSdkHarness, type ClaudeSdkHarnessOptions } from "./claude-sdk.js";
-import { createCodexCliHarness } from "./codex-cli.js";
 import { createCodexSdkHarness, type CodexSdkHarnessOptions } from "./codex-sdk.js";
 import { createMockHarness, type MockHarnessOptions } from "./mock.js";
-import type { Harness, HarnessName, ProcessRunner } from "./types.js";
+import type { Harness, HarnessName } from "./types.js";
 
 export type {
 	CodexClient,
@@ -20,19 +19,16 @@ export type {
 	WritableStreamLike,
 } from "./types.js";
 export { createClaudeSdkHarness, defaultClaudeSdkQuery } from "./claude-sdk.js";
-export { createCodexCliHarness } from "./codex-cli.js";
 export { createCodexSdkHarness, createDefaultCodexSdkClient } from "./codex-sdk.js";
 export { createMockHarness } from "./mock.js";
-export { nodeProcessRunner } from "./process-runner.js";
 
 export interface HarnessSelectionOptions {
-	runner?: ProcessRunner;
 	claudeSdk?: ClaudeSdkHarnessOptions;
 	codexSdk?: CodexSdkHarnessOptions;
 	mock?: MockHarnessOptions;
 }
 
-export const HARNESS_NAMES: readonly HarnessName[] = ["codex-sdk", "claude-sdk", "codex", "mock"];
+export const HARNESS_NAMES: readonly HarnessName[] = ["codex-sdk", "claude-sdk", "mock"];
 
 export function isHarnessName(value: string): value is HarnessName {
 	return HARNESS_NAMES.includes(value as HarnessName);
@@ -48,13 +44,10 @@ export function resolveHarnessName(value: string): HarnessName {
 
 export function createHarness(name: string, options: HarnessSelectionOptions = {}): Harness {
 	const harnessName = resolveHarnessName(name);
-	const processOptions = options.runner === undefined ? {} : { runner: options.runner };
 
 	switch (harnessName) {
 		case "claude-sdk":
 			return createClaudeSdkHarness(options.claudeSdk);
-		case "codex":
-			return createCodexCliHarness(processOptions);
 		case "codex-sdk":
 			return createCodexSdkHarness(options.codexSdk);
 		case "mock":

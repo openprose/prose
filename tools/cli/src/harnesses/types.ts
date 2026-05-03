@@ -8,7 +8,7 @@ import type {
 	TurnOptions,
 } from "@openai/codex-sdk";
 
-export type HarnessName = "claude-sdk" | "codex" | "codex-sdk" | "mock";
+export type HarnessName = "claude-sdk" | "codex-sdk" | "mock";
 
 export interface WritableStreamLike {
 	write(chunk: string): unknown;

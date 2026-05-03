@@ -72,7 +72,6 @@ export interface LoadOpenProseSkillBootstrapOptions {
 
 export function skillAgentsForHarness(harness: string): SkillAgent[] {
 	switch (harness as HarnessName) {
-		case "codex":
 		case "codex-sdk":
 			return ["codex"];
 		case "claude-sdk":

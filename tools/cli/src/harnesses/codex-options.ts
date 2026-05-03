@@ -3,36 +3,6 @@ import type { CodexThreadOptions } from "./types.js";
 const CODEX_SANDBOX_MODES = ["read-only", "workspace-write", "danger-full-access"] as const;
 const CODEX_APPROVAL_POLICIES = ["never", "on-request", "on-failure", "untrusted"] as const;
 
-export function codexCliRuntimeArgs(
-	env: Record<string, string | undefined> | undefined,
-	additionalDirectories: readonly string[] = [],
-): string[] {
-	const args: string[] = [];
-	const sandboxMode = codexEnvOption("PROSE_CODEX_SANDBOX_MODE", CODEX_SANDBOX_MODES, env);
-	const approvalPolicy = codexEnvOption("PROSE_CODEX_APPROVAL_POLICY", CODEX_APPROVAL_POLICIES, env);
-
-	args.push("--skip-git-repo-check", "--ephemeral");
-	if (sandboxMode !== undefined) {
-		args.push("--sandbox", sandboxMode);
-	}
-	if (approvalPolicy !== undefined) {
-		args.push("--config", `approval_policy="${approvalPolicy}"`);
-	}
-	for (const directory of additionalDirectories) {
-		args.push("--add-dir", directory);
-	}
-
-	return args;
-}
-
-export function codexDeveloperInstructionArgs(systemPromptAppend: string | undefined): string[] {
-	if (systemPromptAppend === undefined) {
-		return [];
-	}
-
-	return ["--config", `developer_instructions=${JSON.stringify(systemPromptAppend)}`];
-}
-
 export function codexThreadRuntimeOptions(
 	env: Record<string, string | undefined> | undefined,
 	additionalDirectories: readonly string[] = [],
