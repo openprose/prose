@@ -37,10 +37,35 @@ describe("repository IR v0", () => {
 		});
 	});
 
+	it("accepts an ambiguous responsibility manifest with diagnostics", () => {
+		expect(validateRepositoryIr(readFixture("tests/open-prose/compiler/expected/ambiguous-fulfillment.manifest.next.json"))).toEqual({
+			valid: true,
+			errors: [],
+		});
+	});
+
 	it("rejects malformed manifest output", () => {
 		const result = validateRepositoryIr(readFixture("tests/open-prose/compiler/invalid/missing-version.manifest.next.json"));
 
 		expect(result.valid).toBe(false);
 		expect(result.errors).toContain("version must be 0");
+	});
+
+	it("rejects malformed responsibility IR", () => {
+		const result = validateRepositoryIr(
+			readFixture("tests/open-prose/compiler/invalid/malformed-responsibility.manifest.next.json"),
+		);
+
+		expect(result.valid).toBe(false);
+		expect(result.errors).toEqual(
+			expect.arrayContaining([
+				"responsibilities[0].criteria must contain at least one item",
+				"triggers[0].responsibilityId must reference a known responsibility id",
+				"triggers[0].kind must be periodic, event, manual, or unknown",
+				"triggers[0].reason must be a non-empty string",
+				"activations[0].triggerIds[0] must reference a known trigger id",
+				"activations[0].targetName must be a non-empty string for fulfillment activations",
+			]),
+		);
 	});
 });

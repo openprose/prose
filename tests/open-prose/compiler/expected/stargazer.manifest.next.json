@@ -13,10 +13,76 @@
       "name": "stargazer-outreach"
     }
   ],
+  "responsibilities": [
+    {
+      "id": "high-intent-stargazer-outreach",
+      "sourcePath": "01-stargazer-responsibility.prose.md",
+      "goal": "High-intent GitHub stargazers are identified, enriched, and thoughtfully followed up with using relevant OpenProse sample results.",
+      "continuity": [
+        "New high-intent stargazers should not remain unattended for more than one business day.",
+        "Outreach history should prevent duplicate contact unless new evidence changes the prospect's fit.",
+        "Stale leads should be revisited when company, role, or repository evidence materially changes."
+      ],
+      "criteria": [
+        "Qualification includes GitHub activity, likely organization, company context, role signals, customers, and plausible operational pain.",
+        "Proposed OpenProse programs are specific to the prospect's observed work.",
+        "Sample results exist before outreach when the prospect appears high intent.",
+        "Outreach asks whether the sample result is useful rather than pushing a generic sales message."
+      ],
+      "constraints": [
+        "Do not send generic or irrelevant outreach.",
+        "Do not contact the same person repeatedly without new evidence.",
+        "Keep enrichment and sample-generation cost bounded by expected value.",
+        "Escalate uncertainty instead of fabricating company, role, or pain details."
+      ],
+      "fulfillment": {
+        "mode": "declared",
+        "targetName": "stargazer-outreach",
+        "sourcePath": "stargazer-outreach/index.prose.md"
+      }
+    }
+  ],
+  "triggers": [
+    {
+      "id": "high-intent-stargazer-outreach.periodic-check",
+      "responsibilityId": "high-intent-stargazer-outreach",
+      "kind": "periodic",
+      "reason": "Continuity requires checking often enough that new high-intent stargazers are not left unattended for more than one business day."
+    },
+    {
+      "id": "high-intent-stargazer-outreach.evidence-change",
+      "responsibilityId": "high-intent-stargazer-outreach",
+      "kind": "event",
+      "reason": "Continuity says stale leads should be revisited when company, role, or repository evidence materially changes."
+    }
+  ],
+  "activations": [
+    {
+      "id": "high-intent-stargazer-outreach.judge",
+      "responsibilityId": "high-intent-stargazer-outreach",
+      "kind": "judge",
+      "triggerIds": [
+        "high-intent-stargazer-outreach.periodic-check",
+        "high-intent-stargazer-outreach.evidence-change"
+      ],
+      "reason": "Determine whether the responsibility is up, drifting, down, or blocked."
+    },
+    {
+      "id": "high-intent-stargazer-outreach.fulfillment",
+      "responsibilityId": "high-intent-stargazer-outreach",
+      "kind": "fulfillment",
+      "triggerIds": [
+        "high-intent-stargazer-outreach.evidence-change"
+      ],
+      "targetName": "stargazer-outreach",
+      "sourcePath": "stargazer-outreach/index.prose.md",
+      "reason": "Use the declared fulfillment system when judge pressure or explicit request says the responsibility needs work."
+    }
+  ],
   "diagnostics": [
     {
       "severity": "warning",
-      "message": "Trigger intent can be inferred from Continuity, but concrete provider registration is not present.",
+      "message": "Concrete provider registration is not present; trigger records describe intent only.",
       "sourcePath": "01-stargazer-responsibility.prose.md"
     }
   ]

@@ -209,6 +209,10 @@ be checked, maintained, and restored across bounded runs:
 | `prose serve` | Load IR, register triggers, receive events, and launch bounded activations |
 | `prose run` | Execute one bounded OpenProse VM activation |
 
+The first compiled Responsibility Runtime manifest preserves responsibilities
+as semantic sections and emits only trigger and activation intent. Concrete
+registration, serving, status, and pressure belong to later runtime phases.
+
 The design doctrine is:
 
 ```text

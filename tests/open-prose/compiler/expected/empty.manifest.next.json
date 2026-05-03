@@ -2,6 +2,9 @@
   "kind": "openprose.repository-ir",
   "version": 0,
   "sources": [],
+  "responsibilities": [],
+  "triggers": [],
+  "activations": [],
   "diagnostics": [
     {
       "severity": "info",

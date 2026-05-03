@@ -1,0 +1,70 @@
+{
+  "kind": "openprose.repository-ir",
+  "version": 0,
+  "sources": [
+    {
+      "path": "customer-intake.prose.md",
+      "kind": "responsibility",
+      "name": "customer-intake"
+    },
+    {
+      "path": "research-system.prose.md",
+      "kind": "system",
+      "name": "research-system"
+    },
+    {
+      "path": "outreach-system.prose.md",
+      "kind": "system",
+      "name": "outreach-system"
+    }
+  ],
+  "responsibilities": [
+    {
+      "id": "customer-intake",
+      "sourcePath": "customer-intake.prose.md",
+      "goal": "Promising customer requests are noticed, understood, and routed to a useful next action.",
+      "continuity": [
+        "Review open requests often enough that promising requests are not stale for more than one week."
+      ],
+      "criteria": [
+        "Each promising request has evidence, context, and a recommended next action."
+      ],
+      "constraints": [
+        "Do not fabricate context or overstate certainty."
+      ]
+    }
+  ],
+  "triggers": [
+    {
+      "id": "customer-intake.periodic-check",
+      "responsibilityId": "customer-intake",
+      "kind": "periodic",
+      "reason": "Continuity requires checking often enough that promising requests are not stale for more than one week."
+    },
+    {
+      "id": "customer-intake.manual-review",
+      "responsibilityId": "customer-intake",
+      "kind": "manual",
+      "reason": "Fulfillment is ambiguous, so manual review can resolve the next activation path."
+    }
+  ],
+  "activations": [
+    {
+      "id": "customer-intake.judge",
+      "responsibilityId": "customer-intake",
+      "kind": "judge",
+      "triggerIds": [
+        "customer-intake.periodic-check",
+        "customer-intake.manual-review"
+      ],
+      "reason": "Determine whether the responsibility is up, drifting, down, or blocked."
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "warning",
+      "message": "Fulfillment could not be inferred because multiple systems appear plausible.",
+      "sourcePath": "customer-intake.prose.md"
+    }
+  ]
+}

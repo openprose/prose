@@ -242,7 +242,7 @@ user workspace for these docs.
 | `responsibility-runtime.md` | Responsibility Runtime doctrine: Responsibilities, Reactor, compile, serve, run, and status |
 | `compiler/README.md` | Compiler overview for `prose compile` and repository IR |
 | `compiler/index.prose.md` | Bundled OpenProse compiler program |
-| `compiler/passes/` | Compiler pass services for discovery, Forme prep, IR emission, and validation |
+| `compiler/passes/` | Compiler pass services for discovery, responsibility lowering, Forme prep, IR emission, and validation |
 | `deps.md` | Dependency resolution and `prose install` |
 | `changelog.md` | Compact version history and model-guided upgrade instructions; load only for `prose upgrade` or outdated-structure diagnosis |
 | `help.md` | User-facing help |

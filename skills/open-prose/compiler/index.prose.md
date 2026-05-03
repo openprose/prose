@@ -24,6 +24,7 @@ harness can validate and later serve.
 ### Services
 
 - `passes/discover-source.prose.md`
+- `passes/compile-responsibilities.prose.md`
 - `passes/compile-forme.prose.md`
 - `passes/emit-ir.prose.md`
 - `passes/validate-ir.prose.md`
@@ -35,8 +36,8 @@ harness can validate and later serve.
 - Infer responsibilities, trigger intent, and fulfillment only when the source
   graph makes the relationship clear.
 - Do not invent connector routes, queue names, provider payloads, or secrets.
-- Keep the v0 IR shell narrow: `kind`, `version`, `sources`, and
-  `diagnostics`.
+- Keep the v0 IR narrow: `kind`, `version`, `sources`, `responsibilities`,
+  `triggers`, `activations`, and `diagnostics`.
 - Prefer warnings over silent assumptions when timing, fulfillment, or Forme
   wiring is ambiguous.
 
@@ -45,11 +46,13 @@ harness can validate and later serve.
 1. Load `../responsibility-runtime.md`, `../contract-markdown.md`, and
    `../forme.md`.
 2. Call `discover-source` for `source_root`.
-3. Call `compile-forme` for discovered systems and services.
-4. Call `emit-ir` with discovered source records and diagnostics.
-5. Call `validate-ir` before reporting success.
-6. Write only a valid manifest to `output_dir/manifest.next.json`.
+3. Call `compile-responsibilities` for discovered responsibilities.
+4. Call `compile-forme` for discovered systems and services.
+5. Call `emit-ir` with discovered source records, responsibility records,
+   trigger intent, activation intent, and diagnostics.
+6. Call `validate-ir` before reporting success.
+7. Write only a valid manifest to `output_dir/manifest.next.json`.
 
-Phase 2 stops at the minimal manifest shell. Later phases extend the manifest
-with responsibilities, triggers, activations, and full runnable Forme
-manifests.
+Phase 3 emits semantic responsibility, trigger-intent, and activation-intent
+records. Later phases add full runnable Forme manifests, trigger registration,
+serve, and responsibility status execution.

@@ -22,7 +22,7 @@ Prepare Forme wiring for systems discovered during compile.
 
 - Load `../../forme.md`; do not redefine Forme semantics here.
 - Treat systems with `### Services` as Forme candidates.
-- In Phase 2, record diagnostics and source relationships only; later phases
-  emit full runnable Forme manifests into repository IR.
+- For now, record diagnostics and source relationships only; later phases emit
+  full runnable Forme manifests into repository IR.
 - Fail only when an author claims wiring that is structurally impossible to
   interpret.
