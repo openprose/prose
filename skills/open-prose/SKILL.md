@@ -114,6 +114,7 @@ executing the system. The shell executable is the agent runner, e.g.
 | Command | Action |
 |---------|--------|
 | `prose compile [path] [--out <dir>]` | Load `responsibility-runtime.md`, then `compiler/index.prose.md`; compile semantic source into repository IR at `dist/prose/manifest.next.json` by default |
+| `prose serve` | Load and validate `dist/prose/manifest.active.json`; prepare the static trigger registration plan; live trigger adapters are handled by later runtime phases |
 | `prose run <file.prose.md>` | Detect Contract Markdown, load `contract-markdown.md`, select state with `state/README.md` plus the backend doc, then `forme.md` if multi-service, then `prose.md` |
 | `prose run <host>/<owner>/<repo>[/path]` | Resolve installed dependency service or system, detect format, then route as above |
 | `prose run std/...` / `co/...` | Expand OpenProse package shorthand, resolve installed dependency service or system, then route as above |

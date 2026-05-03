@@ -60,11 +60,14 @@ Default compiler output lives under `dist/prose/`:
 `prose serve` loads compiled IR and acts like deterministic infrastructure:
 
 - validate the active manifest
-- register triggers
-- receive events
-- map events to activations
+- prepare the static trigger registration plan
+- resolve events to activations
 - launch normal bounded `prose run` sessions
 - record operational metadata
+
+The first serve phase should not add production flags only to simulate trigger
+delivery. Test event-to-activation resolution directly, then add live timer,
+webhook, queue, and file-watch adapters in a later runtime phase.
 
 The IR is disposable generated state. The Markdown source is the durable
 intent.
@@ -95,8 +98,8 @@ Compiler programs lower semantics into IR:
 The harness serves IR:
 
 - load and validate the active manifest
-- register triggers
-- receive events
+- prepare trigger registration plans
+- receive events when live adapters are available
 - launch normal runs
 - store run, activation, status, and pressure records
 
@@ -112,7 +115,7 @@ implement all of them yet.
 | Command | Role |
 |---------|------|
 | `prose compile [path] [--out <dir>]` | Run the bundled compiler program and emit repository IR |
-| `prose serve` | Load IR, register triggers, receive events, and launch activations |
+| `prose serve` | Load active IR and prepare the trigger registration plan; live adapters register and receive events in later runtime phases |
 | `prose run` | Execute one bounded service, system, judge, or fulfillment activation |
 | `prose status` | Report recent runs, activations, diagnostics, and responsibility status |
 

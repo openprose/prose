@@ -9,6 +9,7 @@ import {
 	runForwardedProseCommand,
 	splitHarnessArgs,
 } from "../../src/index.js";
+import commands from "../../src/commands/index.js";
 import type { Harness } from "../../src/harnesses/index.js";
 
 function memoryStreams() {
@@ -30,6 +31,10 @@ function memoryStreams() {
 }
 
 describe("Oclif entrypoint helpers", () => {
+	it("registers serve as a local runtime command", () => {
+		expect(commands.serve).toBeDefined();
+	});
+
 	it("matches symlinked argv paths by real path", () => {
 		const temp = mkdtempSync(join(tmpdir(), "prose-direct-"));
 

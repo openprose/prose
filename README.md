@@ -206,13 +206,13 @@ be checked, maintained, and restored across bounded runs:
 | Command | Role |
 |---------|------|
 | `prose compile` | Run the bundled OpenProse compiler program and lower semantic source into `dist/prose/manifest.next.json` |
-| `prose serve` | Load IR, register triggers, receive events, and launch bounded activations |
+| `prose serve` | Load active IR and prepare the static trigger registration plan |
 | `prose run` | Execute one bounded OpenProse VM activation |
 
 The compiled Responsibility Runtime manifest preserves responsibilities as
 semantic sections, emits trigger and activation intent, and includes structured
 Forme manifests for fulfillment systems. Concrete trigger registration,
-serving, status, and pressure belong to later runtime phases.
+live adapters, status, and pressure belong to later runtime phases.
 
 The design doctrine is:
 

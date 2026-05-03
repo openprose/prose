@@ -35,3 +35,22 @@ export {
 	type RepositoryIrV0,
 	type RepositoryIrValidationResult,
 } from "./repository-ir.js";
+export {
+	RepositoryServeError,
+	buildActivationRunRequest,
+	buildTriggerRegistrationPlan,
+	formatStaticRepositoryServe,
+	launchActivationRun,
+	loadActiveRepositoryIr,
+	prepareStaticRepositoryServe,
+	resolveActivationsForEvent,
+	type LaunchActivationRunOptions,
+	type LoadActiveRepositoryIrOptions,
+	type RepositoryServeActivationPayload,
+	type RepositoryServeActivationRunRequest,
+	type RepositoryServeEvent,
+	type RepositoryServeLoadedIr,
+	type RepositoryServeResolvedActivation,
+	type RepositoryServeSummary,
+	type RepositoryServeTriggerRegistration,
+} from "./repository-serve.js";

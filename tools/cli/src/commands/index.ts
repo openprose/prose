@@ -1,6 +1,7 @@
 import { Command, Help as OclifHelp } from "@oclif/core";
 import { createForwardCommand, type ForwardCommandDefinition } from "./base.js";
 import Doctor from "./doctor.js";
+import Serve from "./serve.js";
 
 class Help extends Command {
 	static summary = "Show CLI help.";
@@ -73,6 +74,7 @@ const forwardCommandDefinitions = {
 const commands = {
 	doctor: Doctor,
 	help: Help,
+	serve: Serve,
 	...Object.fromEntries(
 		Object.entries(forwardCommandDefinitions).map(([name, definition]) => [name, createForwardCommand(definition)]),
 	),

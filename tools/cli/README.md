@@ -2,11 +2,12 @@
 
 Official shell entrypoint for OpenProse commands. The CLI turns invocations like
 `prose run std/evals/inspector` into canonical OpenProse agent-session prompts,
-then streams the selected harness output back to the terminal.
+then streams the selected harness output back to the terminal. It also hosts
+deterministic runtime commands such as `prose serve`.
 
 The CLI does not replace the OpenProse VM or execute services or systems by
-itself. The selected harness still runs the prompt, loads the OpenProse
-skill/specs, spawns agents when available, and writes run state.
+itself. For `prose run`, the selected harness still runs the prompt, loads the
+OpenProse skill/specs, spawns agents when available, and writes run state.
 
 ## Requirements
 
@@ -142,6 +143,7 @@ root docs. `prose help` is local CLI help; use `prose --help` or
 ```bash
 prose compile
 prose compile responsibilities --out dist/prose
+prose serve
 prose run systems/reviewer.prose.md
 prose run co/systems/company-repo-checker --harness claude-sdk
 prose upgrade
@@ -151,6 +153,11 @@ prose lint systems/reviewer.prose.md
 prose preflight systems/reviewer.prose.md
 prose status --graph
 ```
+
+`prose serve` loads and validates `dist/prose/manifest.active.json`, renders the
+static trigger registration plan, and exits. Live trigger adapters are planned
+for a later runtime phase; tests exercise event-to-activation resolution through
+the serve core rather than through synthetic production flags.
 
 ## Development
 

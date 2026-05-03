@@ -8,6 +8,25 @@ import { normalizeEntrypointArgv } from "./commands/base.js";
 
 export { normalizeEntrypointArgv, runForwardedProseCommand, splitHarnessArgs } from "./commands/base.js";
 export { supportedCommands, canonicalPrompt, CommandModelError, usageFor } from "./prose/index.js";
+export {
+	RepositoryServeError,
+	buildActivationRunRequest,
+	buildTriggerRegistrationPlan,
+	formatStaticRepositoryServe,
+	launchActivationRun,
+	loadActiveRepositoryIr,
+	prepareStaticRepositoryServe,
+	resolveActivationsForEvent,
+	type LaunchActivationRunOptions,
+	type LoadActiveRepositoryIrOptions,
+	type RepositoryServeActivationPayload,
+	type RepositoryServeActivationRunRequest,
+	type RepositoryServeEvent,
+	type RepositoryServeLoadedIr,
+	type RepositoryServeResolvedActivation,
+	type RepositoryServeSummary,
+	type RepositoryServeTriggerRegistration,
+} from "./prose/index.js";
 export { createHarness, HARNESS_NAMES } from "./harnesses/index.js";
 export {
 	buildOpenProseSkillInstallCommand,
