@@ -153,33 +153,31 @@ Harness-engineering plus TDD, with parallel subagents for independent work.
 | Mycelium | Architectural decisions left as git-notes on `src/skills.ts`, `src/compiler.ts`, `src/preflight.ts`, plus the plan/findings/review files. Future agents arriving at any of those files see the relevant context |
 | Examples convention | Demo program lives at `examples/north-star/<name>.prose.md` with sidecar README under `examples/north-star/<name>/`; registered in `examples/prose.package.json`; `examples-tour.test.ts` and the `package-ir/examples.summary.json` golden snapshot updated to match |
 
-## Scope: what this PR does NOT do (and why)
+## Scope: runtime activation is wired and proven
 
-This PR builds the **declarative + verification** half of skill loading. It does not yet wire **runtime activation**. Specifically:
+This PR closes the runtime activation loop in addition to the verification half. Both halves are empirically verified.
 
-- A `.prose.md` author can declare `skills:` and have `prose preflight` / `prose compile` deterministically verify them. ✅
+**Verification half (preflight + compile):**
+
+- A `.prose.md` author declares `skills:`. `prose preflight` and `prose compile` deterministically resolve every name against the user's installed skills, mutate canonical names into the IR, and fail closed if anything is missing. ✅
 - The on-disk IR carries pinned canonical names so a different machine can re-verify. ✅
-- The parent OpenProse VM (Claude Code / Codex / Pi / etc., whichever harness is running the program) does **not** yet read the pinned skills list and tell its harness "activate exactly these." That step is harness-specific and lives in a runtime adapter that does not exist in this PR.
-- When the parent VM spawns a sub-agent (Task tool, fresh CLI invocation, in-process delegate), the sub-agent's briefing does **not** yet include the pinned skills for the relevant scope. Same gap, sub-agent flavor.
 
-**What "praying" still happens today, even after this PR:**
+**Runtime-activation half (parent VM + delegate handoff):**
 
-The harness's existing skill auto-activation (e.g. Claude Code's description-based skill router) is what actually loads skills at runtime. The pinned IR is a contract that says "you should load these," but no code currently forces the harness to honor it. A user could still get a different skill activated than declared if the harness's auto-router decides differently.
+- **Parent VM case.** The OpenProse skill (`skills/open-prose/SKILL.md`) now teaches the activation contract: when the AI embodies a `.prose.md` as the VM, it MUST invoke the harness `Skill` tool with each declared canonical name before doing the work, and MUST NOT silently fall back to built-in tools (Read, Bash, etc.) even when those would produce a plausible answer. Verified in a controlled experiment (Run 3, see `docs/superpowers/findings/2026-05-04-skills-runtime-empirical-proof.md`): with the OpenProse skill loaded into the parent's context, the parent activates the declared skills before producing outputs.
+- **Delegate / sub-agent case.** `prose handoff` now injects a `## Required Skills` section into the rendered brief. The section explicitly directs the receiving harness to invoke `Skill('open-prose-raw:open-prose')` first, then `Skill(<each declared canonical>)`, with explicit "do not fall back" language. Verified in Run 4 of the empirical proof: a fresh `general-purpose` subagent given only the unedited handoff brief invoked both Skill tools in the prescribed order and proceeded to use the skill's prescribed tooling (`pdftotext -layout`) rather than Claude's built-in `Read` PDF rendering — activation drove behavior change, not just registration.
 
-**What this PR DID close:**
+**What "praying" still happens?** Empirically, none on the paths covered above. A delegate harness that ignores the brief's directives would re-introduce praying — that is a quality-of-implementation concern for any new harness adapter, but the brief itself is harness-agnostic Markdown that names skills explicitly.
 
-The *availability* loop. A `.prose.md` shipped to another machine cannot run the verification step without that machine having the skill installed. Preflight + compile both fail closed with actionable error messages. So an author can no longer accidentally ship a program whose declared skills are absent on the target machine.
+**Test guardrails:**
 
-**What completes the loop (clean follow-ups):**
+- `test/skills-handoff.test.ts` — three deterministic tests asserting that the rendered brief contains `Skill('open-prose-raw:open-prose')`, `Skill('<canonical>')` for each declared skill, and a "do not fall back" warning, plus a no-noise assertion for programs without `skills:`. Runs in <1s in `bun test`.
+- `docs/superpowers/findings/2026-05-04-skills-runtime-empirical-proof.md` — captured record of all four runs (with and without the fixes) so the maintainer can see exactly what changed and reproduce the proof.
 
-1. **Parent-VM activation adapter (per harness).** A `prose run` (or equivalent execution-bootstrap step) that reads `component.skills[].canonical_name` and converts it to a harness-specific activation directive. For Claude Code: prepend a system-message naming the canonical skills, or invoke a plugin/skill activation API. For Codex: mirror. For Pi: pass through whatever Pi's session-priming API exposes.
-2. **Sub-agent briefing extension.** When the runtime dispatches a sub-agent for a `## sub-service` or composed call, include that service's resolved canonical skills in the brief. Whether via the Task tool's prompt body, a structured parameter, or a fresh-CLI environment variable, the resolved name(s) need to ride along.
-3. **Inheritance rules.** Service-level `skills:` is additive — defining the precedence (system + service union? service narrows? both?) at runtime is a small but real spec decision. The IR already carries both lists; the adapter chooses how to combine them when briefing a sub-agent.
+**What is genuinely a follow-up (not in this PR):**
 
-These follow-ups are intentionally deferred because:
-- Each harness has its own activation mechanism — building them up-front means designing N adapters with no production traffic
-- The foundational work in this PR (declarative + verification + pinning) is what those adapters consume — no rework is needed when they're built
-- The user's "no praying" requirement is met for the *verification* step; closing the activation loop is a separate, scoped piece of work
+- A `prose run` command that wraps `handoff → dispatch → output-collect` for AI execution. Today the user runs `prose handoff` and feeds the brief to an agent themselves. A future `prose run` would automate that bridge — its priming layer is exactly the brief this PR generates.
+- Per-harness adapters for non-Claude/Codex environments. The brief is harness-agnostic Markdown today; a richer format (structured tool-call manifests, etc.) might be added if a target harness can't parse Markdown directives.
 
 ## Test results
 
