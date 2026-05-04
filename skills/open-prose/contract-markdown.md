@@ -10,10 +10,14 @@ Every `.prose.md` file may begin with YAML frontmatter:
 ```yaml
 ---
 name: invoice-extractor
-kind: system
+kind: program
 skills:
   - document-skills:pdf
 ---
+
+### Ensures
+
+- `extracted_invoice`: Json - normalized invoice fields
 ```
 
 Recognized frontmatter keys:
@@ -38,7 +42,7 @@ canonical section titles:
 | `### Requires` | any | Typed input ports. |
 | `### Ensures` | any | Typed output ports. |
 | `### Services` | system | Lists the named sub-services this system composes. |
-| `### Skills` | service, system | Names the agent skills (colon form, e.g. `document-skills:pdf`) that must be loaded for this component to run. Also accepted as `skills:` in frontmatter. |
+| `### Skills` | any | Names the agent skills (colon form, e.g. `document-skills:pdf`) that must be loaded for this component to run. Also accepted as `skills:` in frontmatter. |
 | `### Runtime` | any | Runtime hints (graph VM, model provider, model, thinking, etc.). |
 | `### Environment` | any | Environment variables the component needs at run time. |
 | `### Effects` | any | Declared side-effects. `pure` is exclusive of all other effects. |
@@ -70,7 +74,7 @@ For example, `document-skills:pdf` or `document-skills:xlsx`.
 ```yaml
 ---
 name: invoice-extractor
-kind: system
+kind: program
 skills:
   - document-skills:pdf
 ---
@@ -79,6 +83,10 @@ skills:
 
 - document-skills:pdf
 - `document-skills:xlsx`
+
+### Ensures
+
+- `extracted_invoice`: Json - normalized invoice fields
 ```
 
 A bare leaf name (e.g. `pdf`) is also accepted; the resolver will attempt a

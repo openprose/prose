@@ -44,19 +44,39 @@ In frontmatter:
 ```yaml
 ---
 name: invoice-extractor
-kind: system
+kind: program
 skills:
   - document-skills:pdf
 ---
+
+### Ensures
+
+- `extracted_invoice`: Json - normalized invoice fields
 ```
 
 Or as a `### Skills` section:
 
 ```markdown
+---
+name: invoice-extractor
+kind: program
+---
+
 ### Skills
 
 - `document-skills:pdf`
+
+### Ensures
+
+- `extracted_invoice`: Json - normalized invoice fields
 ```
+
+`kind: program` is what `prose preflight` checks end-to-end. A standalone
+`kind: system` declaration parses fine but preflight will report
+`preflight_not_program` because the readiness checks (environment, runtime,
+dependencies) only run against a program entrypoint. Use a `kind: program`
+component (and reference systems/services from it) when you want preflight to
+verify the whole package.
 
 `prose preflight` walks every declared skill and resolves it against the
 deterministic search path (`./skills/`, then `~/.claude/skills/`, then
