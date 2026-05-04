@@ -140,6 +140,7 @@ Forme and the Prose VM recognize these `###` sections case-insensitively:
 | `### Environment` | system, service | Runtime variables supplied by host infrastructure |
 | `### Runtime` | system, service | Execution hints such as `persist` and `model` |
 | `### Memory` | service | Declared reads from and writes to persistent agent memory. Only meaningful when `### Runtime` sets `persist: project` or `persist: user` |
+| `### Skills` | system, service | Agent harness skills the component requires the host harness to provide. See [Skills](#skills) |
 | `### Shape` | service | Capability boundaries: self, delegates, and prohibited work |
 | `### Wiring` | system | Explicit Level 2 wiring declaration |
 | `### Execution` | system, service | ProseScript choreography that pins execution |
@@ -391,6 +392,47 @@ Rules:
 
 See `prose.md` (Persistent Agents) and `state/filesystem.md` (Memory
 Scoping) for the on-disk format of memory files.
+
+## Skills
+
+A system or service that depends on the host agent's harness skills declares
+them in a `### Skills` section. Forme uses this declaration to verify the named
+skills are available before compiling or running the component, and fails closed
+with `skill_unresolved` if any are missing.
+
+```markdown
+### Skills
+
+- document-skills:pdf
+- document-skills:xlsx
+```
+
+Skill names use the `namespace:name` colon form that matches the plugin
+marketplace convention shown in `/skill` invocations.
+
+Rules:
+
+- `### Skills` is the only place to declare harness-skill dependencies. The
+  declaration is not duplicated in frontmatter — frontmatter stays structural
+  per [Frontmatter](#frontmatter); skills are reviewable contract material.
+- System-level declarations apply to every sub-service inside the system.
+  Service-level declarations are *additive*, not exclusive — declaring `###
+  Skills` on a `## sub-service` does not remove the system-level skills, it
+  adds to them.
+- Forme resolves each declared skill by looking, in order, in:
+  1. The project's `./skills/` directory.
+  2. `~/.claude/skills/`.
+  3. `~/.codex/skills/`.
+  4. `~/.agents/skills/`.
+- If a declared skill cannot be resolved in any of those paths, both `prose
+  compile` and `prose run` fail closed with a `skill_unresolved` diagnostic
+  naming the skill and the paths that were searched.
+
+### BYO harness invariant
+
+OpenProse never installs, modifies, or removes the user's harness skills.
+Installing skills is the user's responsibility; Forme only verifies they are
+present and stops the run when they are not.
 
 ## Frontmatter
 

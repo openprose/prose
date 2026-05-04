@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Declared `### Skills` section** — Components may now declare the agent harness skills they require in a `### Skills` section using the `namespace:name` colon form (e.g. `document-skills:pdf`). The compiler program resolves declared skills against `./skills/`, `~/.claude/skills/`, `~/.codex/skills/`, and `~/.agents/skills/`, and `prose compile` fails closed with a `skill_unresolved` diagnostic naming the skill and the searched paths if any are missing. OpenProse never installs harness skills — installing them remains the user's responsibility (BYO harness). See `skills/open-prose/contract-markdown.md` (Skills), `skills/open-prose/compiler/index.prose.md` (skills_resolver), and `skills/open-prose/examples/declared-skills/` for the spec and a worked example. Resolves [#60](https://github.com/openprose/prose/issues/60).
+
 ## [0.13.0] - 2026-05-04
 
 ### Added

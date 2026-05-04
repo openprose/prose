@@ -16,6 +16,7 @@ import {
 	type SkillBootstrapLoader,
 	type SkillPreflight,
 } from "./base.js";
+import { preflightDeclaredSkillsInRoot, formatUnresolvedMessage } from "../skills/declared.js";
 
 export class CompileValidationError extends Error {
 	readonly details: string[];
@@ -88,6 +89,13 @@ export async function runCompileCommand(options: RunCompileCommandOptions): Prom
 	});
 	await removePreviousCompiledManifest(target.absoluteManifestPath);
 
+	if (options.skillPreflight !== false) {
+		await preflightDeclaredSkillsForCompile({
+			cwd: options.cwd,
+			env: options.env,
+		});
+	}
+
 	const exitCode = await runForwardedProseCommand({
 		command: "compile",
 		argv: options.argv,
@@ -148,6 +156,28 @@ export async function validateCompiledRepositoryIr(options: {
 	if (!validation.valid) {
 		throw new CompileValidationError(`Compiled repository IR at ${target.manifestPath} is invalid.`, validation.errors);
 	}
+}
+
+async function preflightDeclaredSkillsForCompile(options: {
+	cwd: string;
+	env: Readonly<Record<string, string | undefined>>;
+}): Promise<void> {
+	const root = await resolveOpenProseRoot({
+		cwd: options.cwd,
+		...(options.env.HOME === undefined ? {} : { home: options.env.HOME }),
+	});
+	const result = await preflightDeclaredSkillsInRoot(root.absolutePath, {
+		cwd: options.cwd,
+		...(options.env.HOME === undefined ? {} : { home: options.env.HOME }),
+	});
+	if (result.unresolved.length === 0) {
+		return;
+	}
+	const heading =
+		result.unresolved.length === 1
+			? "Declared skill could not be resolved (skill_unresolved)."
+			: `${result.unresolved.length} declared skills could not be resolved (skill_unresolved).`;
+	throw new CompileValidationError(heading, formatUnresolvedMessage(result.unresolved).split(/\r?\n/).slice(1));
 }
 
 async function resolveCompiledManifestTarget(options: {
