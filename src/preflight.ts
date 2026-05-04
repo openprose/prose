@@ -9,7 +9,7 @@ import {
   resolveRuntimeProfile,
   type RuntimeProfileInput,
 } from "./runtime/profiles";
-import { defaultSearchPaths, resolveSkill } from "./skills";
+import { defaultSearchPaths, pinSkillsInComponents } from "./skills";
 import type {
   ComponentIR,
   Diagnostic,
@@ -19,7 +19,6 @@ import type {
   PreflightResult,
   PreflightSkillCheck,
   RuntimeProfile,
-  SkillRefIR,
 } from "./types";
 
 export interface PreflightOptions {
@@ -414,72 +413,48 @@ function isSet(
   return typeof environment[name] === "string" && environment[name]!.trim().length > 0;
 }
 
+/**
+ * Wraps the shared `pinSkillsInComponents` helper (which mutates each ref's
+ * canonical_name/resolution/fuzzy_distance and emits diagnostics) with a
+ * second pass that materializes a per-declaration `PreflightSkillCheck[]`
+ * for the text/JSON renderer. Single source of truth for resolution lives
+ * in src/skills.ts; this function only adapts the result for preflight UI.
+ */
 function checkSkills(
   components: ComponentIR[],
   searchPaths: string[],
 ): { diagnostics: Diagnostic[]; skills: PreflightSkillCheck[] } {
-  const diagnostics: Diagnostic[] = [];
+  const diagnostics = pinSkillsInComponents(components, searchPaths);
   const skills: PreflightSkillCheck[] = [];
-  const seen = new Set<SkillRefIR>();
-  const visit = (
-    ref: SkillRefIR,
-    component: ComponentIR,
-    service: string | null,
-  ) => {
-    if (seen.has(ref)) {
-      return;
-    }
-    seen.add(ref);
-    const result = resolveSkill(ref.declared_name, { searchPaths });
-    if (result.resolution === "exact") {
-      ref.canonical_name = result.canonical_name;
-      ref.resolution = "exact";
-      delete ref.fuzzy_distance;
-    } else if (result.resolution === "fuzzy") {
-      ref.canonical_name = result.canonical_name;
-      ref.resolution = "fuzzy";
-      ref.fuzzy_distance = result.fuzzy_distance;
-      diagnostics.push({
-        severity: "info",
-        code: "skill_fuzzy_resolved",
-        message: `Skill '${ref.declared_name}' resolved to '${result.canonical_name}' via fuzzy match (distance ${result.fuzzy_distance}). Pin the canonical name to make the IR reproducible.`,
-        source_span: ref.source_span,
-      });
-    } else {
-      // unresolved
-      ref.resolution = "unresolved";
-      ref.canonical_name = "";
-      delete ref.fuzzy_distance;
-      diagnostics.push({
-        severity: "error",
-        code: "skill_unresolved",
-        message: `Skill '${ref.declared_name}' is required but not installed. Looked in: ${searchPaths.join(", ")}.`,
-        source_span: ref.source_span,
-      });
-    }
-    skills.push({
-      component: component.name,
-      service,
-      declared_name: ref.declared_name,
-      canonical_name: ref.canonical_name,
-      resolution: ref.resolution,
-      fuzzy_distance: ref.fuzzy_distance,
-      source_span: ref.source_span,
-    });
-  };
-
   for (const component of components) {
     for (const ref of component.skills) {
-      visit(ref, component, null);
+      skills.push({
+        component: component.name,
+        service: null,
+        declared_name: ref.declared_name,
+        canonical_name: ref.canonical_name,
+        resolution: ref.resolution,
+        fuzzy_distance: ref.fuzzy_distance,
+        source_span: ref.source_span,
+      });
     }
     for (const service of component.services) {
       for (const ref of service.skills) {
-        visit(ref, component, service.name);
+        skills.push({
+          component: component.name,
+          service: service.name,
+          declared_name: ref.declared_name,
+          canonical_name: ref.canonical_name,
+          resolution: ref.resolution,
+          fuzzy_distance: ref.fuzzy_distance,
+          source_span: ref.source_span,
+        });
       }
     }
   }
   return { diagnostics, skills };
 }
+
 
 async function buildComponentEntries(files: string[]): Promise<ComponentEntry[]> {
   const entries: ComponentEntry[] = [];

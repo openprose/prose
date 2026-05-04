@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
-import type { SkillRefIR } from "./types";
+import type { ComponentIR, Diagnostic, SkillRefIR } from "./types";
 
 export interface ResolveSkillOptions {
   searchPaths?: string[];
@@ -175,6 +175,74 @@ function isDirectory(p: string): boolean {
   } catch {
     return false;
   }
+}
+
+/**
+ * Resolve every declared skill reference on `components` and pin the result
+ * (`canonical_name`, `resolution`, `fuzzy_distance`) into the IR in place.
+ *
+ * Used by `prose preflight` (informational diagnostics, fail-soft on info)
+ * and by `prose compile` (fail-loud: unresolved skills become errors so the
+ * on-disk IR never carries `resolution: "unresolved"` — that's the whole
+ * point of pinning).
+ *
+ * The caller decides what to do with the returned diagnostics. The mutation
+ * itself is the persistence contract: a downstream consumer reading the IR
+ * sees the resolved canonical name without re-running the resolver.
+ */
+export function pinSkillsInComponents(
+  components: ComponentIR[],
+  searchPaths: string[],
+): Diagnostic[] {
+  const diagnostics: Diagnostic[] = [];
+  const seen = new Set<SkillRefIR>();
+  const visit = (ref: SkillRefIR) => {
+    if (seen.has(ref)) {
+      return;
+    }
+    seen.add(ref);
+    const result = resolveSkill(ref.declared_name, { searchPaths });
+    if (result.resolution === "exact") {
+      ref.canonical_name = result.canonical_name;
+      ref.resolution = "exact";
+      delete ref.fuzzy_distance;
+      return;
+    }
+    if (result.resolution === "fuzzy") {
+      ref.canonical_name = result.canonical_name;
+      ref.resolution = "fuzzy";
+      ref.fuzzy_distance = result.fuzzy_distance;
+      diagnostics.push({
+        severity: "info",
+        code: "skill_fuzzy_resolved",
+        message: `Skill '${ref.declared_name}' resolved to '${result.canonical_name}' via fuzzy match (distance ${result.fuzzy_distance}). Pin the canonical name to make the IR reproducible.`,
+        source_span: ref.source_span,
+      });
+      return;
+    }
+    // unresolved
+    ref.resolution = "unresolved";
+    ref.canonical_name = "";
+    delete ref.fuzzy_distance;
+    diagnostics.push({
+      severity: "error",
+      code: "skill_unresolved",
+      message: `Skill '${ref.declared_name}' is required but not installed. Looked in: ${searchPaths.join(", ")}.`,
+      source_span: ref.source_span,
+    });
+  };
+
+  for (const component of components) {
+    for (const ref of component.skills) {
+      visit(ref);
+    }
+    for (const service of component.services) {
+      for (const ref of service.skills) {
+        visit(ref);
+      }
+    }
+  }
+  return diagnostics;
 }
 
 function levenshtein(a: string, b: string): number {
