@@ -91,6 +91,8 @@ export function parseServices(
       ref: name,
       compose: null,
       with: {},
+      // ServiceIR.skills is intentionally `[]` because inline `## sub-services`
+      // carry their own ComponentIR.skills (parsed from inline frontmatter).
       skills: [],
       source_span: span(section.span.path, line.number, line.number),
     });

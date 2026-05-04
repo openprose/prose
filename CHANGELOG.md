@@ -26,6 +26,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   smokes compile, plan, graph, run, eval, remote envelopes, package metadata,
   strict publish checks, install, status, and trace across the canonical package
   surfaces.
+- **Explicit `skills:` declarations** — `.prose.md` files (and inline
+  `## sub-service` blocks) can declare the agent skills they require, either
+  as a `skills:` frontmatter list or a `### Skills` section. `prose preflight`
+  resolves each declared name against the search path stack (`./skills/`,
+  `~/.claude/skills/`, `~/.codex/skills/`), pins the canonical
+  `namespace:name` into the IR, and fails closed with `skill_unresolved`
+  when a declared skill is not installed. Bare leaf names (`pdf`) get a
+  Levenshtein fuzzy match plus an info-severity nudge to pin the canonical
+  name. The text formatter now renders a `Skills:` section showing each
+  declared name and its resolution. OpenProse never installs or modifies the
+  user's harness skills — BYO harness is the invariant. `--skill-search-path`
+  on the CLI overrides the default search stack for tests and air-gapped
+  environments.
 
 ### Changed
 
