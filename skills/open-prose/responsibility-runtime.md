@@ -126,6 +126,11 @@ implement all of them yet.
 `prose compile` is the only special intelligent phase. Triggered activations
 are ordinary OpenProse runs.
 
+Judge activations use the bundled `runtime/judge-responsibility.prose.md`
+service unless a later runtime phase introduces custom judge routing. The
+service writes `latest.json` and appends `status.jsonl` under
+`<openprose-root>/state/responsibilities/{responsibility-id}/`.
+
 ## Responsibilities
 
 A `kind: responsibility` file is semantic and normative. It says what must stay

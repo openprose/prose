@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 
 import {
 	ACTIVE_REPOSITORY_IR_PATH,
+	OPENPROSE_JUDGE_SOURCE_PATH,
 	RepositoryServeError,
 	buildActivationRunRequest,
 	buildTriggerRegistrationPlan,
@@ -259,14 +260,46 @@ describe("repository serve core", () => {
 		expect(JSON.parse(request.argv[2] ?? "")).toEqual(request.payload);
 	});
 
-	it("defers generated judge run requests to the judge phase", async () => {
+	it("builds a static judge run request with status output paths", async () => {
 		const loaded = await loadFixture();
 		const event = { triggerId: "high-intent-stargazer-outreach.periodic-check" };
 		const [resolved] = resolveActivationsForEvent(loaded.manifest, event);
 
-		expect(() => buildActivationRunRequest({ loaded, event, resolved: resolved! })).toThrow(RepositoryServeError);
-		expect(() => buildActivationRunRequest({ loaded, event, resolved: resolved! })).toThrow(
-			"generated judge runs are introduced in a later phase",
+		const request = buildActivationRunRequest({ loaded, event, resolved: resolved! });
+
+		expect(request.activationId).toBe("high-intent-stargazer-outreach.judge");
+		expect(request.sourcePath).toBe(OPENPROSE_JUDGE_SOURCE_PATH);
+		expect(request.argv[0]).toBe(OPENPROSE_JUDGE_SOURCE_PATH);
+		expect(request.prompt).toContain(`prose run ${OPENPROSE_JUDGE_SOURCE_PATH} --activation-context`);
+		expect(request.payload.activation).toMatchObject({
+			id: "high-intent-stargazer-outreach.judge",
+			kind: "judge",
+			sourcePath: OPENPROSE_JUDGE_SOURCE_PATH,
+		});
+		expect(request.payload.responsibility).toMatchObject({
+			id: "high-intent-stargazer-outreach",
+			continuity: expect.arrayContaining([
+				"New high-intent stargazers should not remain unattended for more than one business day.",
+			]),
+			criteria: expect.arrayContaining([
+				"Sample results exist before outreach when the prospect appears high intent.",
+			]),
+			constraints: expect.arrayContaining(["Do not send generic or irrelevant outreach."]),
+			fingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
+		});
+		expect(request.payload.status).toEqual({
+			kind: "openprose.responsibility-status-output",
+			latestPath: "state/responsibilities/high-intent-stargazer-outreach/latest.json",
+			statusLogPath: "state/responsibilities/high-intent-stargazer-outreach/status.jsonl",
+			responsibilityFingerprint: request.payload.responsibility.fingerprint,
+		});
+		expect(request.env.PROSE_RESPONSIBILITY_ID).toBe("high-intent-stargazer-outreach");
+		expect(request.env.PROSE_RESPONSIBILITY_FINGERPRINT).toBe(request.payload.responsibility.fingerprint);
+		expect(request.env.PROSE_RESPONSIBILITY_STATUS_LATEST).toBe(
+			join(loaded.openProseRoot.absolutePath, "state/responsibilities/high-intent-stargazer-outreach/latest.json"),
+		);
+		expect(request.env.PROSE_RESPONSIBILITY_STATUS_LOG).toBe(
+			join(loaded.openProseRoot.absolutePath, "state/responsibilities/high-intent-stargazer-outreach/status.jsonl"),
 		);
 	});
 
@@ -315,6 +348,10 @@ describe("repository serve core", () => {
 					id: "responsibility-1",
 					sourcePath: "responsibility.prose.md",
 					goal: "A test responsibility stays up.",
+					continuity: ["Check it regularly."],
+					criteria: ["The expected evidence is present."],
+					constraints: ["Do not fabricate evidence."],
+					fingerprint: "fingerprint-1",
 				},
 				event: {
 					triggerId: "trigger-1",

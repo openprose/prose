@@ -121,5 +121,6 @@ The derived judge asks:
 - What evidence supports the status?
 - What maintenance feedback should be produced?
 
-No separate judge file is required for the first version. The responsibility
-contains enough semantic material to generate the judge.
+No user-authored judge file is required for the first version. The bundled
+`runtime/judge-responsibility.prose.md` service judges from the compiled
+responsibility itself.

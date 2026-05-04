@@ -62,8 +62,19 @@ Judges record one of four coarse statuses:
 | `down` | The responsibility is not currently true |
 | `blocked` | The system cannot determine or restore status without external help |
 
-The status record should include concise evidence. The exact durable shape is
-a compiler and harness decision, but v0 should stay narrow.
+The v0 status record stays narrow:
+
+- `kind: openprose.responsibility-status`
+- `version: 0`
+- `responsibilityId`
+- `responsibilityFingerprint`
+- `status`
+- `evidence`
+- `recordedAt`
+- `source`
+
+The static judge service writes `latest.json` and appends `status.jsonl` under
+`<openprose-root>/state/responsibilities/{responsibility-id}/`.
 
 ## Pressure
 

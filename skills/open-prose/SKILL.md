@@ -123,6 +123,7 @@ executing the system. The shell executable is the agent runner, e.g.
 | `prose compile [path] [--out <dir>]` | Load `responsibility-runtime.md`, then `compiler/index.prose.md`; compile semantic source into compiled intent at `<openprose-root>/dist/manifest.next.json` by default |
 | `prose serve` | Load and validate `<openprose-root>/dist/manifest.active.json`; prepare the static trigger registration plan; live trigger adapters are handled by later runtime phases |
 | `prose run <file.prose.md>` | Detect Contract Markdown, load `contract-markdown.md`, select state with `state/README.md` plus the backend doc, then `forme.md` if multi-service, then `prose.md` |
+| `prose run runtime/judge-responsibility.prose.md` | Resolve from the OpenProse skill root; judge one responsibility from activation context |
 | `prose run <host>/<owner>/<repo>[/path]` | Resolve installed dependency service or system, detect format, then route as above |
 | `prose run std/...` / `co/...` | Expand OpenProse package shorthand, resolve installed dependency service or system, then route as above |
 | `prose lint <file.prose.md>` | Validate Contract Markdown structure, headers, frontmatter, contracts, shapes, and wiring |
@@ -250,6 +251,7 @@ user workspace for these docs.
 | `forme.md` | Forme container wiring semantics |
 | `prose.md` | Prose VM execution semantics |
 | `responsibility-runtime.md` | Responsibility Runtime doctrine: Responsibilities, Reactor, compile, serve, run, and status |
+| `runtime/judge-responsibility.prose.md` | Static responsibility judge service launched by `prose serve` as a normal run |
 | `compiler/README.md` | Compiler overview for `prose compile` and compiled intent |
 | `compiler/index.prose.md` | Bundled OpenProse compiler program |
 | `compiler/passes/` | Compiler pass services for discovery, responsibility lowering, Forme prep, compiled intent emission, and validation |

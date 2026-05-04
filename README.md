@@ -58,7 +58,7 @@ paths are relative to `<openprose-root>`:
 | `runs/` | Activation receipts for bounded VM runs |
 | `state/` | Durable cross-run state |
 | `state/agents/` | Durable cross-run agents |
-| `state/responsibilities/` | Durable cross-run responsibilities |
+| `state/responsibilities/` | Durable responsibility status |
 | `deps/` | Installed dependencies |
 | `prose.lock` | Dependency lockfile |
 | `.env` | Local runtime environment variables |
@@ -233,9 +233,11 @@ be checked, maintained, and restored across bounded runs:
 
 The compiled Responsibility Runtime manifest preserves responsibilities as
 semantic sections, emits trigger and activation intent, and includes structured
-Forme manifests for fulfillment systems. Concrete trigger registration,
-live adapters, status, and pressure belong to later runtime phases. In this
-phase, `prose compile` writes `<openprose-root>/dist/manifest.next.json`; promote it to
+Forme manifests for fulfillment systems. The serve core can lower judge
+activations into normal bounded runs of the bundled judge service, which records
+responsibility status under `<openprose-root>/state/responsibilities/`; live
+adapters and pressure belong to later runtime phases. `prose compile` writes
+`<openprose-root>/dist/manifest.next.json`; promote it to
 `<openprose-root>/dist/manifest.active.json` when you want `prose serve`
 to consume it.
 

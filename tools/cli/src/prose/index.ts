@@ -45,6 +45,21 @@ export {
 	type RepositoryIrValidationResult,
 } from "./repository-ir.js";
 export {
+	RESPONSIBILITY_STATE_DIR,
+	RESPONSIBILITY_STATUS_KIND,
+	RESPONSIBILITY_STATUS_VERSION,
+	ResponsibilityStatusError,
+	buildResponsibilityStatusPaths,
+	fingerprintResponsibility,
+	recordResponsibilityStatus,
+	validateResponsibilityStatusRecord,
+	type ResponsibilityStatusPaths,
+	type ResponsibilityStatusRecord,
+	type ResponsibilityStatusValidationResult,
+	type ResponsibilityStatusValue,
+} from "./responsibility-status.js";
+export {
+	OPENPROSE_JUDGE_SOURCE_PATH,
 	RepositoryServeError,
 	buildActivationRunRequest,
 	buildTriggerRegistrationPlan,

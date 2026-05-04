@@ -6,12 +6,16 @@ import {
 	ACTIVE_REPOSITORY_IR_PATH,
 	REPOSITORY_IR_KIND,
 	type RepositoryIrActivationIntent,
+	type RepositoryIrFulfillmentIntent,
 	type RepositoryIrTriggerIntent,
 	type RepositoryIrTriggerIntentKind,
 	type RepositoryIrV0,
 	validateRepositoryIr,
 } from "./repository-ir.js";
 import { resolveOpenProseRoot, type OpenProseRoot } from "./openprose-root.js";
+import { buildResponsibilityStatusPaths, fingerprintResponsibility } from "./responsibility-status.js";
+
+export const OPENPROSE_JUDGE_SOURCE_PATH = "runtime/judge-responsibility.prose.md";
 
 export class RepositoryServeError extends Error {
 	readonly details: string[];
@@ -80,10 +84,21 @@ export interface RepositoryServeActivationPayload {
 		id: string;
 		sourcePath: string;
 		goal: string;
+		continuity: string[];
+		criteria: string[];
+		constraints: string[];
+		fingerprint: string;
+		fulfillment?: RepositoryIrFulfillmentIntent;
 	};
 	event: {
 		triggerId: string;
 		payload?: unknown;
+	};
+	status?: {
+		kind: "openprose.responsibility-status-output";
+		latestPath: string;
+		statusLogPath: string;
+		responsibilityFingerprint: string;
 	};
 }
 
@@ -208,14 +223,10 @@ export function buildActivationRunRequest(options: {
 	const { loaded, event, resolved } = options;
 	const { manifest } = loaded;
 	const { activation, trigger } = resolved;
+	const sourcePath = activation.sourcePath ?? (activation.kind === "judge" ? OPENPROSE_JUDGE_SOURCE_PATH : undefined);
 
-	if (activation.sourcePath === undefined) {
-		if (activation.kind !== "judge") {
-			throw new RepositoryServeError(`Activation '${activation.id}' does not declare a runnable sourcePath.`);
-		}
-		throw new RepositoryServeError(
-			`Activation '${activation.id}' does not declare a runnable sourcePath; generated judge runs are introduced in a later phase.`,
-		);
+	if (sourcePath === undefined) {
+		throw new RepositoryServeError(`Activation '${activation.id}' does not declare a runnable sourcePath.`);
 	}
 
 	const responsibility = manifest.responsibilities.find((candidate) => candidate.id === activation.responsibilityId);
@@ -223,6 +234,9 @@ export function buildActivationRunRequest(options: {
 		throw new RepositoryServeError(`Activation '${activation.id}' references an unknown responsibility.`);
 	}
 
+	const responsibilityFingerprint = fingerprintResponsibility(responsibility);
+	const statusPaths =
+		activation.kind === "judge" ? buildResponsibilityStatusPaths(loaded.openProseRoot, responsibility.id) : undefined;
 	const payload: RepositoryServeActivationPayload = {
 		kind: "openprose.activation",
 		ir: {
@@ -242,25 +256,40 @@ export function buildActivationRunRequest(options: {
 			responsibilityId: activation.responsibilityId,
 			reason: activation.reason,
 			...(activation.targetName === undefined ? {} : { targetName: activation.targetName }),
-			...(activation.sourcePath === undefined ? {} : { sourcePath: activation.sourcePath }),
+			sourcePath,
 			...(activation.formeManifestId === undefined ? {} : { formeManifestId: activation.formeManifestId }),
 		},
 		responsibility: {
 			id: responsibility.id,
 			sourcePath: responsibility.sourcePath,
 			goal: responsibility.goal,
+			continuity: responsibility.continuity,
+			criteria: responsibility.criteria,
+			constraints: responsibility.constraints,
+			fingerprint: responsibilityFingerprint,
+			...(responsibility.fulfillment === undefined ? {} : { fulfillment: responsibility.fulfillment }),
 		},
 		event: {
 			triggerId: event.triggerId,
 			...(event.payload === undefined ? {} : { payload: event.payload }),
 		},
+		...(statusPaths === undefined
+			? {}
+			: {
+					status: {
+						kind: "openprose.responsibility-status-output",
+						latestPath: statusPaths.latestPath,
+						statusLogPath: statusPaths.statusLogPath,
+						responsibilityFingerprint,
+					},
+				}),
 	};
 	const payloadJson = JSON.stringify(payload);
-	const argv = [activation.sourcePath, "--activation-context", payloadJson];
+	const argv = [sourcePath, "--activation-context", payloadJson];
 
 	return {
 		activationId: activation.id,
-		sourcePath: activation.sourcePath,
+		sourcePath,
 		argv,
 		prompt: canonicalPrompt("run", argv),
 		payload,
@@ -270,6 +299,14 @@ export function buildActivationRunRequest(options: {
 			PROSE_REPOSITORY_IR_VERSION: String(manifest.version),
 			PROSE_ACTIVATION_ID: activation.id,
 			PROSE_ACTIVATION_CONTEXT: payloadJson,
+			...(statusPaths === undefined
+				? {}
+				: {
+						PROSE_RESPONSIBILITY_ID: responsibility.id,
+						PROSE_RESPONSIBILITY_FINGERPRINT: responsibilityFingerprint,
+						PROSE_RESPONSIBILITY_STATUS_LATEST: statusPaths.absoluteLatestPath,
+						PROSE_RESPONSIBILITY_STATUS_LOG: statusPaths.absoluteStatusLogPath,
+					}),
 		},
 	};
 }
