@@ -11,7 +11,7 @@
     {
       "name": "open-prose",
       "source": "./",
-      "description": "Runs OpenProse *.prose.md services and systems. When the user invokes `prose`, read the contract, spawn subagents when the system requires them, pass artifacts through bindings, and write run state to `.agents/prose/runs/`. Requires a subagent primitive for multi-agent systems; single services run inline."
+      "description": "Runs OpenProse *.prose.md services and systems. When the user invokes `prose`, read the contract, spawn subagents when the system requires them, pass artifacts through bindings, and write run state to `<openprose-root>/runs/`. Requires a subagent primitive for multi-agent systems; single services run inline."
     }
   ]
 }

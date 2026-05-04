@@ -41,14 +41,15 @@ plan.
   helper moved under the open-prose skill.
 - CLI `0.1.x`: real `prose` CLI and harness support shipped, including Claude
   and Codex plugin surfaces.
-- Current unreleased docs: vocabulary settled on `kind: service`, `kind:
-  system`, `kind: gateway`, `kind: test`, `kind: pattern`, and
-  `kind: responsibility`; patterns replaced topology/composite
-  language; source files moved to `*.prose.md`; generated run files were
-  disambiguated; the filesystem model settled on a single OpenProse root with
-  `src/`, `dist/`, `runs/`, `state/`, and `deps/`; Responsibility Runtime
-  status reads active IR, trigger plans, recent runs, and responsibility
-  status/pressure from the OpenProse root.
+- `v0.12.0`: Responsibility Runtime release. Vocabulary settled on `kind:
+  service`, `kind: system`, `kind: gateway`, `kind: test`, `kind: pattern`,
+  and `kind: responsibility`; patterns replaced topology/composite language;
+  source files moved to `*.prose.md`; generated run files were disambiguated;
+  the filesystem model settled on a single OpenProse root with `src/`, `dist/`,
+  `runs/`, `state/`, and `deps/`; `prose compile` emits
+  `dist/manifest.next.json`; `prose serve` consumes
+  `dist/manifest.active.json`; `prose status` reads active IR, trigger plans,
+  recent runs, and responsibility status/pressure from the OpenProse root.
 
 ## Upgrade Command
 

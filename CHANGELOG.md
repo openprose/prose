@@ -7,9 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-05-04
+
 ### Added
 
 - **Responsibility Runtime live serve** — `prose serve` now runs local cron and HTTP trigger adapters from compiled `triggers[]`, dispatches events into ordinary bounded `prose run` activations, and feeds unhealthy judge status into deduped pressure fulfillment.
+- **Responsibility Runtime source model** — Added Responsibility-Oriented Architecture docs for standing goals, Reactor reconciliation, gateways, compile-time Forme wiring, judge activations, pressure, and deterministic runtime status.
+- **Compiler program docs** — Added `skills/open-prose/compiler/` with the bundled compiler program and pass docs for source discovery, responsibility lowering, gateway lowering, Forme compilation, IR emission, and IR validation.
+- **Native repository examples** — Replaced the old numbered examples with eight small OpenProse Native Repositories: `stargazer-outreach`, `incident-briefing-room`, `customer-risk-radar`, `release-readiness`, `vendor-renewal-watch`, `research-inbox-triage`, `content-performance-loop`, and `compliance-evidence-tracker`.
+
+### Changed
+
+- **OpenProse root model** — Documented native, attached, and user-global OpenProse roots with `src/`, `dist/`, `runs/`, `state/`, `deps/`, `prose.lock`, and `.env` as the current filesystem convention.
+- **Command routing** — Restored `prose compile` as the Responsibility Runtime compiler command that emits `dist/manifest.next.json`; `prose serve` consumes `dist/manifest.active.json`, and `prose status` inspects active IR and runtime receipts.
+- **Plugin descriptions** — Updated plugin metadata to describe run receipts under the active OpenProse root instead of assuming only `.agents/prose/runs/`.
 
 ### Fixed
 
@@ -17,6 +28,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Responsibility Runtime freshness** — `prose compile` clears stale compile output before running; `prose serve` rejects stale judge status output, validates that status belongs to the launched judge activation, and marks older pressure as resolved once a newer healthy status is recorded.
 - **Responsibility Runtime source safety** — Repository IR now rejects non-root-relative source paths and requires live triggers to wake the judge for their responsibility.
 - **Responsibility Runtime pressure** — Pressure dedupe now keys on the source status timestamp so fresh unhealthy judgments can each drive one reconciliation attempt.
+- **Stale compile doctrine** — Removed the old skill guidance that treated `prose compile` as folded into `prose lint`.
+
+### Removed
+
+- **Outdated examples** — Removed the legacy numbered example set and the older `kind: program`-first examples from the distributable skill.
 
 ## [0.11.0] - 2026-05-01
 
