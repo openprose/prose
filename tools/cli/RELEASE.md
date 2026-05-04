@@ -6,6 +6,8 @@ matching GitHub Release tarballs.
 The CLI is released from `main` with the manual `CLI Publish` GitHub Actions
 workflow. The workflow uses npm trusted publishing, so maintainers should not
 create or store an npm automation token for routine releases.
+CLI GitHub releases use `prose-cli-v<version>` tags so they do not collide with
+plugin release tags.
 
 ## Before Releasing
 
@@ -46,7 +48,7 @@ final publish job can proceed.
 When approved, the workflow:
 
 1. Verifies the package and release tarballs.
-2. Creates a draft GitHub Release for `v<version>`.
+2. Creates a draft GitHub Release for `prose-cli-v<version>`.
 3. Publishes `@openprose/prose-cli` to npm with provenance.
 4. Publishes the GitHub Release with tarball assets and checksums.
 
@@ -74,8 +76,8 @@ PROSE_INSTALL_DIR="$tmpdir/install" \
 "$tmpdir/bin/prose" --version
 ```
 
-Check that the GitHub Release for `v<version>` exists and includes all expected
-tarball and `.sha256` assets.
+Check that the GitHub Release for `prose-cli-v<version>` exists and includes
+all expected tarball and `.sha256` assets.
 
 ## Post-Release Playtest
 

@@ -96,7 +96,7 @@ jobs:
             fail "Input version ($version) must match tools/cli/install.sh DEFAULT_VERSION ($installer_version)"
           }
 
-          release_tag="v$version"
+          release_tag="prose-cli-v$version"
           if [ "$INPUT_DRY_RUN" = "true" ]; then
             printf '%s\n' "Dry run requested: skipping tag, release, and npm-version uniqueness checks."
           else
