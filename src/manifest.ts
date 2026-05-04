@@ -1,4 +1,4 @@
-import type { ComponentIR, GraphEdgeIR, ProseIR } from "./types";
+import type { ComponentIR, GraphEdgeIR, ProseIR, SkillRefIR } from "./types";
 
 export function projectManifest(ir: ProseIR): string {
   const main = ir.components.find((component) => component.kind === "program");
@@ -67,6 +67,14 @@ export function projectManifest(ir: ProseIR): string {
         lines.push(
           `  (public) ${port.name} -> bindings/${component.id}/${port.name}.md`,
         );
+      }
+    }
+
+    if (component.skills.length > 0) {
+      lines.push("");
+      lines.push("skills:");
+      for (const skill of component.skills) {
+        lines.push(`  ${formatSkillProjection(skill)}`);
       }
     }
   }
@@ -224,6 +232,17 @@ function dependenciesFor(componentId: string, edges: GraphEdgeIR[]): string[] {
         .map((edge) => edge.from.component),
     ),
   ).sort();
+}
+
+function formatSkillProjection(skill: SkillRefIR): string {
+  if (skill.resolution === "unresolved") {
+    return `${skill.declared_name} -> (unresolved)`;
+  }
+  const distance =
+    skill.resolution === "fuzzy" && skill.fuzzy_distance !== undefined
+      ? `, distance ${skill.fuzzy_distance}`
+      : "";
+  return `${skill.declared_name} -> ${skill.canonical_name} (${skill.resolution}${distance})`;
 }
 
 function collectEnvironment(components: ComponentIR[]): Map<string, Set<string>> {
