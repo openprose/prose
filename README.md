@@ -134,9 +134,10 @@ claude -p "prose run src/hello.prose.md"
 codex exec "prose run src/hello.prose.md"
 ```
 
-The [CLI package](tools/cli/) is the shell entrypoint for that same command language.
-It defaults to the Codex SDK harness and remains a prompt-forwarding wrapper
-around OpenProse agent execution, not a separate VM. The CLI checks for the
+The [CLI package](tools/cli/) is the shell entrypoint for that same command
+language. `prose run` forwards bounded VM activations to the selected harness;
+Responsibility Runtime commands add a thin deterministic host layer for
+compiling, serving, and inspecting repository IR. The CLI checks for the
 `open-prose` skill before invoking a harness and can install the selected
 provider's global skill target automatically; run `prose doctor` to inspect the
 local setup.

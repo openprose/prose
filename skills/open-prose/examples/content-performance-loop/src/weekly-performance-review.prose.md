@@ -12,11 +12,10 @@ kind: gateway
 
 ### Emits
 
-- `content-learning-cycle`
+- content-learning-cycle.evidence-change
 
 ### Payload
 
 Wake the content learning responsibility with the current week, available
 performance exports, content inventory, and campaign notes supplied by the
 local harness or operator.
-

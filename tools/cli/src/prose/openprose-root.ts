@@ -1,6 +1,6 @@
 import { stat } from "node:fs/promises";
 import { homedir } from "node:os";
-import { relative, resolve, sep } from "node:path";
+import { dirname, relative, resolve, sep } from "node:path";
 
 export const ATTACHED_OPENPROSE_ROOT_PATH = ".agents/prose";
 export const USER_OPENPROSE_ROOT_PATH = "~/.agents/prose";
@@ -47,6 +47,24 @@ export async function resolveOpenProseRoot(options: ResolveOpenProseRootOptions)
 		};
 	}
 
+	const enclosingAttachedRoot = await findEnclosingAttachedRoot(options.cwd);
+	if (enclosingAttachedRoot !== undefined) {
+		return {
+			mode: "attached",
+			path: enclosingAttachedRoot,
+			absolutePath: enclosingAttachedRoot,
+		};
+	}
+
+	const nativeRoot = await findNativeRepositoryRoot(options.cwd);
+	if (nativeRoot !== undefined) {
+		return {
+			mode: "native",
+			path: isSamePath(nativeRoot, options.cwd) ? "." : nativeRoot,
+			absolutePath: nativeRoot,
+		};
+	}
+
 	return {
 		mode: "native",
 		path: ".",
@@ -67,6 +85,15 @@ async function isDirectory(path: string): Promise<boolean> {
 	}
 }
 
+async function pathExists(path: string): Promise<boolean> {
+	try {
+		await stat(path);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
 function findContainingAttachedRoot(cwd: string): string | undefined {
 	const segments = resolve(cwd).split(sep);
 	for (let index = 0; index < segments.length - 1; index += 1) {
@@ -77,7 +104,34 @@ function findContainingAttachedRoot(cwd: string): string | undefined {
 	return undefined;
 }
 
+async function findEnclosingAttachedRoot(cwd: string): Promise<string | undefined> {
+	for (let current = resolve(cwd); ; current = dirname(current)) {
+		const attachedRoot = resolve(current, ATTACHED_OPENPROSE_ROOT_PATH);
+		if (await isDirectory(attachedRoot)) {
+			return attachedRoot;
+		}
+		if (dirname(current) === current) {
+			return undefined;
+		}
+	}
+}
+
+async function findNativeRepositoryRoot(cwd: string): Promise<string | undefined> {
+	for (let current = resolve(cwd); ; current = dirname(current)) {
+		if ((await pathExists(resolve(current, "prose.lock"))) || (await pathExists(resolve(current, ".git")))) {
+			return current;
+		}
+		if (dirname(current) === current) {
+			return undefined;
+		}
+	}
+}
+
 function isSameOrInside(path: string, parent: string): boolean {
 	const relativePath = relative(parent, path);
 	return relativePath === "" || (!relativePath.startsWith("..") && !relativePath.startsWith(sep));
+}
+
+function isSamePath(left: string, right: string): boolean {
+	return resolve(left) === resolve(right);
 }
