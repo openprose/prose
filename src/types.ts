@@ -1008,6 +1008,26 @@ export interface PreflightRuntimeCheck {
   env: string[];
 }
 
+/**
+ * One row per declared skill encountered during preflight, in declaration
+ * order. Surfaces the resolution outcome so the text formatter can render a
+ * "Skills:" section even on PASS, and so JSON consumers do not have to grep
+ * diagnostics to learn what each declared name resolved to.
+ */
+export interface PreflightSkillCheck {
+  /** Component the skill was declared on. */
+  component: string;
+  /** Inline service the skill was declared on, if any. `null` for component-level declarations. */
+  service: string | null;
+  /** Verbatim name the author wrote (bare leaf or `namespace:name`). */
+  declared_name: string;
+  /** Canonical `namespace:name` after resolution. Empty when unresolved. */
+  canonical_name: string;
+  resolution: "exact" | "fuzzy" | "unresolved";
+  fuzzy_distance?: number;
+  source_span: SourceSpan;
+}
+
 export interface PreflightResult {
   preflight_version: "0.1";
   target: string;
@@ -1026,6 +1046,11 @@ export interface PreflightResult {
     subagent_backend: "pi" | "disabled";
     checks: PreflightRuntimeCheck[];
   };
+  /**
+   * Per-declaration resolution rows for every skill declared on any component
+   * in the target file. Empty when no component declares any skills.
+   */
+  skills: PreflightSkillCheck[];
   diagnostics: Diagnostic[];
   missing: string[];
   warnings: string[];

@@ -17,6 +17,7 @@ import type {
   PreflightEnvironmentCheck,
   PreflightRuntimeCheck,
   PreflightResult,
+  PreflightSkillCheck,
   RuntimeProfile,
   SkillRefIR,
 } from "./types";
@@ -80,7 +81,8 @@ export async function preflightPath(
   // entries) so skills declared on `kind: system` / `kind: service` blocks
   // still get verified. Mutates each `SkillRefIR` in place to pin the
   // canonical name into the IR for cross-machine reproducibility.
-  diagnostics.push(...checkSkills(ir.components, skillSearchPaths));
+  const skillReport = checkSkills(ir.components, skillSearchPaths);
+  diagnostics.push(...skillReport.diagnostics);
   const missing = [
     ...environmentChecks
       .filter((check) => check.status === "missing")
@@ -108,6 +110,7 @@ export async function preflightPath(
     environment: environmentChecks,
     dependencies: dependencyChecks,
     runtime: runtime.result,
+    skills: skillReport.skills,
     diagnostics,
     missing,
     warnings,
@@ -163,6 +166,14 @@ export function renderPreflightText(result: PreflightResult): string {
     lines.push(`- ${check.name}: ${check.status} - ${check.detail}`);
   }
 
+  if (result.skills.length > 0) {
+    lines.push("");
+    lines.push("Skills:");
+    for (const skill of result.skills) {
+      lines.push(`- ${formatSkillCheck(skill)}`);
+    }
+  }
+
   if (result.missing.length > 0) {
     lines.push("");
     lines.push("Missing:");
@@ -179,7 +190,29 @@ export function renderPreflightText(result: PreflightResult): string {
     }
   }
 
+  // Always render info-severity diagnostics in text output. The fuzzy-pin
+  // nudge lives there, and hiding it defeats the entire fuzzy-resolver UX.
+  const notices = result.diagnostics.filter((d) => d.severity === "info");
+  if (notices.length > 0) {
+    lines.push("");
+    lines.push("Notices:");
+    for (const notice of notices) {
+      lines.push(`- ${notice.message}`);
+    }
+  }
+
   return `${lines.join("\n")}\n`;
+}
+
+function formatSkillCheck(skill: PreflightSkillCheck): string {
+  const scope = skill.service ? `${skill.component}/${skill.service}` : skill.component;
+  if (skill.resolution === "exact") {
+    return `${skill.canonical_name}  (exact, on ${scope})`;
+  }
+  if (skill.resolution === "fuzzy") {
+    return `${skill.declared_name} -> ${skill.canonical_name}  (fuzzy, distance ${skill.fuzzy_distance ?? "?"}, on ${scope}) - pin canonical name to keep IR reproducible`;
+  }
+  return `${skill.declared_name}  (unresolved, on ${scope})`;
 }
 
 function collectRuntimeChecks(
@@ -384,10 +417,15 @@ function isSet(
 function checkSkills(
   components: ComponentIR[],
   searchPaths: string[],
-): Diagnostic[] {
+): { diagnostics: Diagnostic[]; skills: PreflightSkillCheck[] } {
   const diagnostics: Diagnostic[] = [];
+  const skills: PreflightSkillCheck[] = [];
   const seen = new Set<SkillRefIR>();
-  const visit = (ref: SkillRefIR) => {
+  const visit = (
+    ref: SkillRefIR,
+    component: ComponentIR,
+    service: string | null,
+  ) => {
     if (seen.has(ref)) {
       return;
     }
@@ -397,9 +435,7 @@ function checkSkills(
       ref.canonical_name = result.canonical_name;
       ref.resolution = "exact";
       delete ref.fuzzy_distance;
-      return;
-    }
-    if (result.resolution === "fuzzy") {
+    } else if (result.resolution === "fuzzy") {
       ref.canonical_name = result.canonical_name;
       ref.resolution = "fuzzy";
       ref.fuzzy_distance = result.fuzzy_distance;
@@ -409,31 +445,40 @@ function checkSkills(
         message: `Skill '${ref.declared_name}' resolved to '${result.canonical_name}' via fuzzy match (distance ${result.fuzzy_distance}). Pin the canonical name to make the IR reproducible.`,
         source_span: ref.source_span,
       });
-      return;
+    } else {
+      // unresolved
+      ref.resolution = "unresolved";
+      ref.canonical_name = "";
+      delete ref.fuzzy_distance;
+      diagnostics.push({
+        severity: "error",
+        code: "skill_unresolved",
+        message: `Skill '${ref.declared_name}' is required but not installed. Looked in: ${searchPaths.join(", ")}.`,
+        source_span: ref.source_span,
+      });
     }
-    // unresolved
-    ref.resolution = "unresolved";
-    ref.canonical_name = "";
-    delete ref.fuzzy_distance;
-    diagnostics.push({
-      severity: "error",
-      code: "skill_unresolved",
-      message: `Skill '${ref.declared_name}' is required but not installed. Looked in: ${searchPaths.join(", ")}.`,
+    skills.push({
+      component: component.name,
+      service,
+      declared_name: ref.declared_name,
+      canonical_name: ref.canonical_name,
+      resolution: ref.resolution,
+      fuzzy_distance: ref.fuzzy_distance,
       source_span: ref.source_span,
     });
   };
 
   for (const component of components) {
     for (const ref of component.skills) {
-      visit(ref);
+      visit(ref, component, null);
     }
     for (const service of component.services) {
       for (const ref of service.skills) {
-        visit(ref);
+        visit(ref, component, service.name);
       }
     }
   }
-  return diagnostics;
+  return { diagnostics, skills };
 }
 
 async function buildComponentEntries(files: string[]): Promise<ComponentEntry[]> {
