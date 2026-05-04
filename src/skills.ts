@@ -60,9 +60,19 @@ export function resolveSkill(
   }
   const best = ranked[0];
   const second = ranked[1];
-  const threshold = Math.max(2, Math.floor(declared.length / 3));
-  // Require a clear winner: distance under threshold AND at least 1 less than second-best
-  if (best.d <= threshold && (!second || second.d > best.d)) {
+  // Tightened guardrails (bug #1):
+  //   - Short declared names (<=4 chars) only allow distance <=1, because
+  //     a 3-char name with distance 2 can match almost anything.
+  //   - Longer names allow distance up to floor(length/3), capped at 2.
+  //   - Require a clear margin of victory: either second.d - best.d >= 2,
+  //     or the best leaf shares a >=2-char common prefix or suffix with the
+  //     declared name. A bare-name match that is only 1 edit better than an
+  //     equally-plausible competitor is too risky to silently bind.
+  const threshold = declared.length <= 4 ? 1 : Math.min(2, Math.floor(declared.length / 3));
+  const margin = second ? second.d - best.d : Infinity;
+  const sharesAnchor = sharesPrefixOrSuffix(declared, best.s.leaf, 2);
+  const clearWinner = margin >= 2 || sharesAnchor;
+  if (best.d <= threshold && clearWinner) {
     // Report distance against the canonical name so callers can see the cost of
     // inferring the namespace (a bare-name leaf match still has canonical
     // distance > 0 from the prefix).
@@ -80,6 +90,19 @@ export function resolveSkill(
     canonical_name: "",
     candidates: ranked.slice(0, 3).map((r) => r.s.canonical),
   };
+}
+
+function sharesPrefixOrSuffix(a: string, b: string, minLen: number): boolean {
+  if (a.length < minLen || b.length < minLen) return false;
+  // Common prefix
+  let pre = 0;
+  const limit = Math.min(a.length, b.length);
+  while (pre < limit && a[pre] === b[pre]) pre++;
+  if (pre >= minLen) return true;
+  // Common suffix
+  let suf = 0;
+  while (suf < limit && a[a.length - 1 - suf] === b[b.length - 1 - suf]) suf++;
+  return suf >= minLen;
 }
 
 interface InstalledSkill {
