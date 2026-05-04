@@ -164,3 +164,14 @@ describe("SkillRefIR shape", () => {
     expect(true).toBe(true);
   });
 });
+
+describe("doc true-up", () => {
+  test("SKILL.md teaches the skills declaration", () => {
+    const skill = readFileSync(
+      join(repoRoot, "skills/open-prose/SKILL.md"),
+      "utf8",
+    );
+    expect(skill).toContain("`### Skills`");
+    expect(skill).toContain("`document-skills:pdf`");
+  });
+});
