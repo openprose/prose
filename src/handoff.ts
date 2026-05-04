@@ -30,6 +30,7 @@ export interface SingleRunHandoff {
     effects: HandoffEffect[];
     environment: HandoffEnvironment[];
     execution: string | null;
+    skills: HandoffSkill[];
   };
   inputs: HandoffInput[];
   missing_required_inputs: string[];
@@ -65,6 +66,11 @@ export interface HandoffEffect {
 export interface HandoffEnvironment {
   name: string;
   required: boolean;
+}
+
+export interface HandoffSkill {
+  declared_name: string;
+  canonical_name: string;
 }
 
 export async function handoffFile(
@@ -118,6 +124,10 @@ export function handoffSource(
         required: binding.required,
       })),
       execution: component.execution?.body ?? null,
+      skills: component.skills.map((ref) => ({
+        declared_name: ref.declared_name,
+        canonical_name: ref.canonical_name || ref.declared_name,
+      })),
     },
     inputs,
     missing_required_inputs: inputs
@@ -177,6 +187,29 @@ export function renderSingleRunHandoffMarkdown(handoff: SingleRunHandoff): strin
     lines.push("## Execution");
     lines.push("");
     lines.push(handoff.component.execution.trim());
+  }
+  if (handoff.component.skills.length > 0) {
+    lines.push("");
+    lines.push("## Required Skills");
+    lines.push("");
+    lines.push(
+      "This program declares skills that you must activate **before** producing the outputs.",
+    );
+    lines.push(
+      "Activation is the contract — do not fall back to built-in tools (Read, Bash, etc.)",
+    );
+    lines.push(
+      "even if they appear to do the same job. The author chose these skills for a reason.",
+    );
+    lines.push("");
+    lines.push("Invoke the harness `Skill` tool in this order:");
+    lines.push("");
+    lines.push("1. `Skill('open-prose-raw:open-prose')` — load the OpenProse runtime contract.");
+    for (const [index, skill] of handoff.component.skills.entries()) {
+      lines.push(
+        `${index + 2}. \`Skill('${skill.canonical_name}')\` — declared as \`${skill.declared_name}\`.`,
+      );
+    }
   }
   lines.push("");
   lines.push("## Return Contract");

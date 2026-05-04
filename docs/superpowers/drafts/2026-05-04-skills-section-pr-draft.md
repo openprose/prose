@@ -29,7 +29,7 @@ The user (raw@raw.works) is the BYO-harness type: they want OpenProse to *check*
 
 `main` is the monorepo-restructured docs+packages layer with no compiler source. The full compiler I needed to extend (`markdown.ts`, `sections.ts`, `compiler.ts`, `preflight.ts`, etc.) only exists on `rfc/reactive-openprose`. Branching off `main` would have meant a spec-only PR with nothing to wire into.
 
-**Trade-off:** This PR depends on the RFC eventually merging to `main`. If the RFC is reshaped, this branch may need a rebase. Acceptable because the same compiler surface exists on the RFC and any rework would touch parsing/IR regardless.
+**Trade-off:** This PR depends on the RFC merging to `main`. If the RFC is reshaped before merge, this branch may need a rebase. Acceptable because the same compiler surface exists on the RFC and any rework would touch parsing/IR regardless.
 
 ### 2. Naming convention: colon form (`document-skills:pdf`)
 
