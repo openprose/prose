@@ -157,7 +157,8 @@ function parseFrontmatter(
   }
 
   const body: string[] = [];
-  let index = startIndex + 1;
+  const bodyStart = startIndex + 1;
+  let index = bodyStart;
   while (index < lines.length && (lines[index] ?? "").trim() !== "---") {
     body.push(lines[index] ?? "");
     index += 1;
@@ -170,10 +171,14 @@ function parseFrontmatter(
       message: "YAML frontmatter starts with --- but has no closing delimiter.",
       source_span: span(path, startIndex + 1, lines.length),
     });
-    return { data: parseSimpleYaml(body), nextIndex: lines.length };
+    const data = parseSimpleYaml(body);
+    validateFrontmatter(data, body, bodyStart, path, diagnostics);
+    return { data, nextIndex: lines.length };
   }
 
-  return { data: parseSimpleYaml(body), nextIndex: index + 1 };
+  const data = parseSimpleYaml(body);
+  validateFrontmatter(data, body, bodyStart, path, diagnostics);
+  return { data, nextIndex: index + 1 };
 }
 
 function parseInlineFrontmatter(
@@ -190,23 +195,86 @@ function parseInlineFrontmatter(
 
 function parseSimpleYaml(lines: string[]): Record<string, unknown> {
   const data: Record<string, unknown> = {};
+  let index = 0;
 
-  for (const rawLine of lines) {
+  while (index < lines.length) {
+    const rawLine = lines[index];
     const line = rawLine.trim();
     if (!line || line.startsWith("#")) {
+      index += 1;
       continue;
     }
 
-    const match = line.match(/^([A-Za-z0-9_-]+):\s*(.*)$/);
-    if (!match) {
+    const keyMatch = rawLine.match(/^([A-Za-z0-9_-]+):\s*(.*)$/);
+    if (!keyMatch) {
+      index += 1;
       continue;
     }
 
-    const [, key, rawValue] = match;
-    data[key] = parseYamlScalar(rawValue);
+    const [, key, rawValue] = keyMatch;
+    const valueText = rawValue.trim();
+
+    if (valueText === "") {
+      // Possibly an indented list block on subsequent lines.
+      const items: string[] = [];
+      let look = index + 1;
+      while (look < lines.length) {
+        const next = lines[look];
+        if (!next.trim()) {
+          look += 1;
+          continue;
+        }
+        const itemMatch = next.match(/^\s+-\s+(.*)$/);
+        if (itemMatch) {
+          items.push(stripQuotes(itemMatch[1].trim()));
+          look += 1;
+          continue;
+        }
+        break;
+      }
+      if (items.length > 0) {
+        data[key] = items;
+        index = look;
+        continue;
+      }
+      data[key] = "";
+      index += 1;
+      continue;
+    }
+
+    data[key] = parseYamlScalar(valueText);
+    index += 1;
   }
 
   return data;
+}
+
+function validateFrontmatter(
+  data: Record<string, unknown>,
+  body: string[],
+  bodyStart: number,
+  path: string,
+  diagnostics: Diagnostic[],
+): void {
+  if ("skills" in data) {
+    const value = data.skills;
+    const isStringArray =
+      Array.isArray(value) && value.every((item) => typeof item === "string");
+    if (!isStringArray) {
+      const skillsLineIndex = body.findIndex((line) =>
+        /^skills\s*:/.test(line),
+      );
+      const lineNumber =
+        skillsLineIndex >= 0 ? bodyStart + skillsLineIndex + 1 : bodyStart;
+      diagnostics.push({
+        severity: "error",
+        code: "skills_invalid_shape",
+        message:
+          "skills: must be a list of skill names (e.g. - document-skills:pdf)",
+        source_span: span(path, lineNumber, lineNumber),
+      });
+    }
+  }
 }
 
 function parseYamlScalar(rawValue: string): unknown {
@@ -250,7 +318,8 @@ function parseKind(
     value === "program" ||
     value === "service" ||
     value === "composite" ||
-    value === "test"
+    value === "test" ||
+    value === "system"
   ) {
     return value;
   }

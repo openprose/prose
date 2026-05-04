@@ -1,4 +1,9 @@
-export type ComponentKind = "program" | "service" | "composite" | "test";
+export type ComponentKind =
+  | "program"
+  | "service"
+  | "composite"
+  | "test"
+  | "system";
 
 export interface SourceSpan {
   path: string;

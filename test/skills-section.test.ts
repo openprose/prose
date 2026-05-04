@@ -18,6 +18,44 @@ describe("skills section spec", () => {
   });
 });
 
+import { parseContractMarkdown } from "../src/markdown";
+
+describe("frontmatter skills parsing", () => {
+  test("extracts skills list from frontmatter", () => {
+    const source = [
+      "---",
+      "name: demo",
+      "kind: system",
+      "skills:",
+      "  - document-skills:pdf",
+      "  - pdf",
+      "---",
+      "",
+    ].join("\n");
+    const diagnostics: any[] = [];
+    const drafts = parseContractMarkdown(source, "demo.prose.md", diagnostics);
+    expect(drafts[0].frontmatter.skills).toEqual([
+      "document-skills:pdf",
+      "pdf",
+    ]);
+    expect(diagnostics).toEqual([]);
+  });
+
+  test("rejects non-list skills with a diagnostic", () => {
+    const source = [
+      "---",
+      "name: demo",
+      "kind: system",
+      "skills: document-skills:pdf",
+      "---",
+      "",
+    ].join("\n");
+    const diagnostics: any[] = [];
+    parseContractMarkdown(source, "demo.prose.md", diagnostics);
+    expect(diagnostics.some((d) => d.code === "skills_invalid_shape")).toBe(true);
+  });
+});
+
 describe("SkillRefIR shape", () => {
   test("exports SkillRefIR with declared and resolved fields", () => {
     const ref: SkillRefIR = {
