@@ -1,5 +1,7 @@
 import { stat, writeFile } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
 import { compileFile } from "./compiler";
+import { defaultSearchPaths, pinSkillsInComponents } from "./skills";
 import {
   buildPackageEntrypointGraphView,
   initLocalDeployment,
@@ -743,6 +745,27 @@ async function runCliInner(args: string[]): Promise<void> {
     const compiled = pathIsDirectory
       ? await compilePackagePath(options.file)
       : await compileFile(options.file);
+    // Pin canonical skill names into the IR. Compile is supposed to be
+    // deterministic across machines: if the same skills are installed on
+    // Alice's and Bob's boxes, both runs of `prose compile` should produce
+    // the same canonical_name + resolution. We fail-loud on unresolved skills
+    // so the on-disk IR never carries `resolution: "unresolved"` — that
+    // defeats the whole point of pinning.
+    //
+    // Search paths come from --skill-search-path (replaces defaults) or
+    // defaultSearchPaths(packageRoot) — same precedence as preflight.
+    const projectRoot = pathIsDirectory
+      ? resolve(options.file)
+      : dirname(resolve(options.file));
+    const skillSearchPaths =
+      options.skillSearchPaths.length > 0
+        ? options.skillSearchPaths
+        : defaultSearchPaths(projectRoot);
+    const skillDiagnostics = pinSkillsInComponents(
+      compiled.components,
+      skillSearchPaths,
+    );
+    compiled.diagnostics.push(...skillDiagnostics);
     const output = `${JSON.stringify(compiled, null, options.pretty ? 2 : 0)}\n`;
     if (options.out) {
       await writeFile(options.out, output, "utf8");
@@ -1555,7 +1578,7 @@ function printHelp(): void {
   console.log(`OpenProse
 
 Usage:
-  prose compile <file.prose.md|dir> [--out ir.json] [--no-pretty]
+  prose compile <file.prose.md|dir> [--out ir.json] [--no-pretty] [--skill-search-path PATH]
   prose deployment <dir> [--deployment-name name] [--org-id org] [--environment dev] [--mode dev] [--enable component] [--env KEY=value] [--format text|json]
   prose deployment init <dir> [--deployment-name name] [--state-root .prose/deployments/id] [--enable component] [--env KEY=value]
   prose deployment trigger <state-root> --entrypoint component [--input name=value] [--approved-effect effect] [--graph-vm pi] [--node-executor-command cmd]
