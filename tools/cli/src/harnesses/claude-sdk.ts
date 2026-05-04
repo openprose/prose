@@ -33,6 +33,7 @@ export function createClaudeSdkHarness(options: ClaudeSdkHarnessOptions = {}): H
 						...(runOptions.cwd === undefined ? {} : { cwd: runOptions.cwd }),
 						...(runOptions.env === undefined ? {} : { env: runOptions.env }),
 						includePartialMessages: true,
+						settingSources: ["user", "project"],
 						stderr: (chunk: string) => runOptions.stderr.write(chunk),
 						...(runOptions.systemPromptAppend === undefined
 							? {}

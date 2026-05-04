@@ -270,4 +270,68 @@ describe("claude-sdk harness", () => {
 		await expect(harness.run("prose status", { ...io.options })).resolves.toBe(1);
 		expect(io.stderr).toBe("bad\n");
 	});
+
+	test("always forwards settingSources: ['user', 'project']", async () => {
+		const io = memoryStreams();
+		const calls: unknown[] = [];
+		const harness = createClaudeSdkHarness({
+			query: async (args) => {
+				calls.push(args);
+				return {
+					async *[Symbol.asyncIterator]() {
+						yield { type: "result", subtype: "success", result: "ok", is_error: false };
+					},
+					close() {},
+				} as never;
+			},
+		});
+
+		await harness.run("prose status", { ...io.options });
+
+		expect(calls).toEqual([
+			expect.objectContaining({
+				options: expect.objectContaining({
+					settingSources: ["user", "project"],
+				}),
+			}),
+		]);
+	});
+
+	test("auth_status with error writes output and error to stderr and exits 1", async () => {
+		const io = memoryStreams();
+		const harness = createClaudeSdkHarness({
+			query: async () =>
+				({
+					async *[Symbol.asyncIterator]() {
+						yield {
+							type: "auth_status",
+							output: ["Visit https://example.com to authenticate"],
+							error: "Not authenticated",
+						};
+					},
+					close() {},
+				}) as never,
+		});
+
+		await expect(harness.run("prose status", { ...io.options })).resolves.toBe(1);
+		expect(io.stderr).toContain("Visit https://example.com to authenticate");
+		expect(io.stderr).toContain("Not authenticated");
+	});
+
+	test("auth_status info-only writes lines to stderr and exits 0", async () => {
+		const io = memoryStreams();
+		const harness = createClaudeSdkHarness({
+			query: async () =>
+				({
+					async *[Symbol.asyncIterator]() {
+						yield { type: "auth_status", output: ["Authenticated as user@example.com"] };
+						yield { type: "result", subtype: "success", result: "ok", is_error: false };
+					},
+					close() {},
+				}) as never,
+		});
+
+		await expect(harness.run("prose status", { ...io.options })).resolves.toBe(0);
+		expect(io.stderr).toBe("Authenticated as user@example.com\n");
+	});
 });
