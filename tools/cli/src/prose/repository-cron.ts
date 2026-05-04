@@ -33,6 +33,7 @@ export function validateRepositoryCronExpression(cron: string, timezone?: string
 	if (timezone !== undefined) {
 		validateTimeZone(timezone);
 	}
+	nextCronDate(cron, new Date("2026-01-01T00:00:00.000Z"), timezone);
 }
 
 export function millisecondsUntilNextCron(cron: string, from = new Date(), timezone?: string): number {
@@ -95,22 +96,14 @@ function parseCronField(field: string, min: number, max: number, mapSevenToZero 
 			end = max;
 		} else if (rangePart?.includes("-")) {
 			const [startRaw, endRaw] = rangePart.split("-");
-			start = parseCronValue(startRaw ?? "", min, max, mapSevenToZero);
-			end = parseCronValue(endRaw ?? "", min, max, mapSevenToZero);
-			if (start > end && !(mapSevenToZero && end === 0)) {
+			start = parseCronValue(startRaw ?? "", min, max);
+			end = parseCronValue(endRaw ?? "", min, max);
+			if (start > end) {
 				throw new RepositoryCronError(`Invalid cron range '${rangePart}'.`);
 			}
 		} else {
-			start = parseCronValue(rangePart ?? "", min, max, mapSevenToZero);
+			start = parseCronValue(rangePart ?? "", min, max);
 			end = start;
-		}
-
-		if (mapSevenToZero && end === 0 && start > end) {
-			for (let value = start; value <= 6; value += step) {
-				values.add(value);
-			}
-			values.add(0);
-			continue;
 		}
 
 		for (let value = start; value <= end; value += step) {
@@ -121,12 +114,12 @@ function parseCronField(field: string, min: number, max: number, mapSevenToZero 
 	return { values, wildcard };
 }
 
-function parseCronValue(value: string, min: number, max: number, mapSevenToZero: boolean): number {
+function parseCronValue(value: string, min: number, max: number): number {
 	const parsed = parsePositiveInteger(value, `Invalid cron value '${value}'.`);
 	if (parsed < min || parsed > max) {
 		throw new RepositoryCronError(`Cron value '${value}' must be between ${min} and ${max}.`);
 	}
-	return mapSevenToZero && parsed === 7 ? 0 : parsed;
+	return parsed;
 }
 
 function parsePositiveInteger(value: string, errorMessage: string): number {

@@ -115,6 +115,7 @@ export function buildResponsibilityPressureRecord(options: {
 		responsibilityId: status.responsibilityId,
 		responsibilityFingerprint: status.responsibilityFingerprint,
 		status: status.status,
+		statusRecordedAt: status.recordedAt,
 		recommendedActivationKind,
 		...(options.activationId === undefined ? {} : { activationId: options.activationId }),
 	});
@@ -237,6 +238,7 @@ function fingerprintPressure(value: {
 	responsibilityId: string;
 	responsibilityFingerprint: string;
 	status: ResponsibilityPressureStatus;
+	statusRecordedAt: string;
 	recommendedActivationKind: ResponsibilityPressureActivationKind;
 	activationId?: string;
 }): string {

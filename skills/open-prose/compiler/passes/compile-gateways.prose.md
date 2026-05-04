@@ -10,7 +10,7 @@ Lower optional `kind: gateway` source into concrete trigger registrations.
 ### Requires
 
 - `sources`: discovered source records.
-- `source_root`: repository path containing the source graph.
+- `source_root`: source directory containing the source graph.
 - `responsibilities`: compiled responsibility records.
 - `activations`: activation intent records.
 

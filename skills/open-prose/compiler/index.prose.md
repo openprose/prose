@@ -56,6 +56,6 @@ harness can validate and later serve.
 7. Call `validate-ir` before reporting success.
 8. Write only a valid manifest to `output_dir/manifest.next.json`.
 
-Phase 4 emits structured Forme manifest objects. The JSON objects are the
+Compile emits structured Forme manifest objects. The JSON objects are the
 canonical compiled wiring contract; hosts may render them for inspection, but
 bounded runs should not need a separate Markdown run manifest.

@@ -135,6 +135,42 @@ describe("responsibility pressure", () => {
 		}
 	});
 
+	it("records new pressure for a fresh unhealthy status", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-responsibility-pressure-fresh-"));
+
+		try {
+			const root: OpenProseRoot = { mode: "native", path: ".", absolutePath: temp };
+			const firstStatus = statusRecord("down");
+			const secondStatus = {
+				...statusRecord("down"),
+				recordedAt: "2026-05-03T12:30:00.000Z",
+				evidence: ["A newer qualifying lead is still unattended."],
+			};
+			const firstPressure = buildResponsibilityPressureRecord({
+				status: firstStatus,
+				recommendedActivationKind: "fulfillment",
+				activationId: "responsibility-1.fulfillment",
+				recordedAt: "2026-05-03T12:05:00.000Z",
+			})!;
+			const secondPressure = buildResponsibilityPressureRecord({
+				status: secondStatus,
+				recommendedActivationKind: "fulfillment",
+				activationId: "responsibility-1.fulfillment",
+				recordedAt: "2026-05-03T12:35:00.000Z",
+			})!;
+
+			const first = await recordResponsibilityPressure({ openProseRoot: root, record: firstPressure });
+			const second = await recordResponsibilityPressure({ openProseRoot: root, record: secondPressure });
+
+			expect(firstPressure.dedupeKey).not.toBe(secondPressure.dedupeKey);
+			expect(first.recorded).toBe(true);
+			expect(second.recorded).toBe(true);
+			expect(readFileSync(first.paths.absolutePressureLogPath, "utf8").trim().split("\n")).toHaveLength(2);
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
+
 	it("rejects malformed pressure records", () => {
 		expect(validateResponsibilityPressureRecord({ kind: RESPONSIBILITY_PRESSURE_KIND })).toEqual({
 			valid: false,

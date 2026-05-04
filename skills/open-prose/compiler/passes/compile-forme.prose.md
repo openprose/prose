@@ -10,7 +10,7 @@ Prepare Forme wiring for systems discovered during compile.
 ### Requires
 
 - `sources`: discovered source records.
-- `source_root`: repository path containing the source graph.
+- `source_root`: source directory containing the source graph.
 - `activations`: activation intent records.
 
 ### Ensures

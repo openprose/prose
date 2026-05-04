@@ -10,12 +10,12 @@ for repository IR.
 
 ### Requires
 
-- `source_root`: repository path to scan.
+- `source_root`: source directory to scan.
 
 ### Ensures
 
-- `sources`: discovered source records with `path`, `kind`, and optional
-  `name`.
+- `sources`: discovered source records with root-relative `path`, `kind`, and
+  optional `name`.
 - `diagnostics`: warnings for unreadable files, unknown structures, unknown
   kinds, or duplicate names.
 

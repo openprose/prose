@@ -3,17 +3,17 @@
   "version": 0,
   "sources": [
     {
-      "path": "customer-intake.prose.md",
+      "path": "tests/open-prose/compiler/fixtures/ambiguous-fulfillment/customer-intake.prose.md",
       "kind": "responsibility",
       "name": "customer-intake"
     },
     {
-      "path": "research-system.prose.md",
+      "path": "tests/open-prose/compiler/fixtures/ambiguous-fulfillment/research-system.prose.md",
       "kind": "system",
       "name": "research-system"
     },
     {
-      "path": "outreach-system.prose.md",
+      "path": "tests/open-prose/compiler/fixtures/ambiguous-fulfillment/outreach-system.prose.md",
       "kind": "system",
       "name": "outreach-system"
     }
@@ -21,7 +21,7 @@
   "responsibilities": [
     {
       "id": "customer-intake",
-      "sourcePath": "customer-intake.prose.md",
+      "sourcePath": "tests/open-prose/compiler/fixtures/ambiguous-fulfillment/customer-intake.prose.md",
       "goal": "Promising customer requests are noticed, understood, and routed to a useful next action.",
       "continuity": [
         "Review open requests often enough that promising requests are not stale for more than one week."
@@ -59,7 +59,7 @@
     {
       "severity": "warning",
       "message": "Fulfillment could not be inferred because multiple systems appear plausible.",
-      "sourcePath": "customer-intake.prose.md"
+      "sourcePath": "tests/open-prose/compiler/fixtures/ambiguous-fulfillment/customer-intake.prose.md"
     }
   ]
 }

@@ -11,7 +11,7 @@ concrete trigger registrations, and activation intent records.
 ### Requires
 
 - `sources`: discovered source records.
-- `source_root`: repository path containing the source graph.
+- `source_root`: source directory containing the source graph.
 
 ### Ensures
 

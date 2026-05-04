@@ -1,4 +1,4 @@
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
@@ -255,10 +255,10 @@ describe("repository serve core", () => {
 		const request = buildActivationRunRequest({ loaded, event, resolved: resolved! });
 
 		expect(request.activationId).toBe("high-intent-stargazer-outreach.fulfillment");
-		expect(request.sourcePath).toBe("stargazer-outreach/index.prose.md");
-		expect(request.argv[0]).toBe("stargazer-outreach/index.prose.md");
+		expect(request.sourcePath).toBe("tests/open-prose/responsibility-runtime/stargazer-outreach/index.prose.md");
+		expect(request.argv[0]).toBe("tests/open-prose/responsibility-runtime/stargazer-outreach/index.prose.md");
 		expect(request.argv[1]).toBe("--activation-context");
-		expect(request.prompt).toContain("prose run stargazer-outreach/index.prose.md --activation-context");
+		expect(request.prompt).toContain("prose run tests/open-prose/responsibility-runtime/stargazer-outreach/index.prose.md --activation-context");
 		expect(request.env.PROSE_REPOSITORY_IR_PATH).toBe(ACTIVE_REPOSITORY_IR_PATH);
 		expect(request.env.PROSE_REPOSITORY_IR_VERSION).toBe("0");
 		expect(request.env.PROSE_ACTIVATION_ID).toBe("high-intent-stargazer-outreach.fulfillment");
@@ -355,7 +355,7 @@ describe("repository serve core", () => {
 		const request = buildPressureActivationRunRequest({ loaded, pressure });
 
 		expect(request.activationId).toBe("high-intent-stargazer-outreach.fulfillment");
-		expect(request.sourcePath).toBe("stargazer-outreach/index.prose.md");
+		expect(request.sourcePath).toBe("tests/open-prose/responsibility-runtime/stargazer-outreach/index.prose.md");
 		expect(request.payload.trigger).toEqual({
 			id: "high-intent-stargazer-outreach.pressure",
 			kind: "manual",
@@ -426,7 +426,7 @@ describe("repository serve core", () => {
 			id: "high-intent-stargazer-outreach.escalation",
 			responsibilityId: "high-intent-stargazer-outreach",
 			kind: "escalation",
-			sourcePath: "stargazer-outreach/outreach-drafter.prose.md",
+			sourcePath: "tests/open-prose/responsibility-runtime/stargazer-outreach/outreach-drafter.prose.md",
 			reason: "Escalate blocked responsibility status.",
 		});
 
@@ -602,8 +602,6 @@ describe("repository serve core", () => {
 			const latestPath = join(temp, "state/responsibilities/high-intent-stargazer-outreach/latest.json");
 			mkdirSync(dirname(latestPath), { recursive: true });
 			writeFileSync(latestPath, `${JSON.stringify(statusRecord(loaded, "up"), null, 2)}\n`);
-			const oldTime = new Date("2026-05-03T10:00:00.000Z");
-			utimesSync(latestPath, oldTime, oldTime);
 
 			await expect(
 				dispatchRepositoryServeEvent({
@@ -769,6 +767,17 @@ describe("repository serve core", () => {
 
 		expect(millisecondsUntilNextCron("0 */6 * * *", from)).toBe(30_000);
 		expect(millisecondsUntilNextCron("15 9 * * 1", friday)).toBe(monday.getTime() - friday.getTime());
+	});
+
+	it("handles common day-of-week cron ranges", () => {
+		const from = new Date(2026, 0, 1, 0, 0, 0);
+		const sameDay = new Date(2026, 0, 1, 9, 0, 0);
+		const sunday = new Date(2026, 0, 4, 9, 0, 0);
+
+		expect(millisecondsUntilNextCron("0 9 * * *", from)).toBe(sameDay.getTime() - from.getTime());
+		expect(millisecondsUntilNextCron("0 9 * * 0-7", from)).toBe(sameDay.getTime() - from.getTime());
+		expect(millisecondsUntilNextCron("0 9 * * 1-7", from)).toBe(sameDay.getTime() - from.getTime());
+		expect(millisecondsUntilNextCron("0 9 * * 7", from)).toBe(sunday.getTime() - from.getTime());
 	});
 });
 

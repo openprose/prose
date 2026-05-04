@@ -354,4 +354,37 @@ describe("runCompileCommand", () => {
 			rmSync(temp, { recursive: true, force: true });
 		}
 	});
+
+	it("rejects successful compiler runs that leave stale valid IR behind", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-compile-stale-"));
+		const io = memoryStreams();
+
+		try {
+			mkdirSync(join(temp, "dist"), { recursive: true });
+			copyFileSync(stargazerFixture, join(temp, "dist/manifest.next.json"));
+
+			await expect(
+				runCompileCommand({
+					argv: ["--harness", "mock"],
+					cwd: temp,
+					env: {},
+					stdout: io.streams.stdout,
+					stderr: io.streams.stderr,
+					skillBootstrap: false,
+					skillPreflight: false,
+					harnessFactory: () => ({
+						name: "mock",
+						async run() {
+							return 0;
+						},
+					}),
+				}),
+			).rejects.toMatchObject({
+				name: "CompileValidationError",
+				message: "Compiled repository IR was not written to dist/manifest.next.json.",
+			});
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
 });

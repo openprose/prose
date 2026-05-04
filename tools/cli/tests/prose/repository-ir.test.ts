@@ -113,6 +113,16 @@ describe("repository IR v0", () => {
 				expect.stringContaining("Invalid timezone 'Not/AZone'"),
 			]),
 		);
+
+		manifest.triggers[0].timezone = undefined;
+		manifest.triggers[0].cron = "0 0 31 2 *";
+		const impossibleResult = validateRepositoryIr(manifest);
+		expect(impossibleResult.valid).toBe(false);
+		expect(impossibleResult.errors).toEqual(
+			expect.arrayContaining([
+				expect.stringContaining("Unable to find next time for cron '0 0 31 2 *'"),
+			]),
+		);
 	});
 
 	it("rejects trigger fields that do not belong to the trigger kind", () => {

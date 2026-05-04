@@ -114,15 +114,15 @@ compiler passes.
 
 ## Runtime Commands
 
-These commands describe the Responsibility Runtime direction. A host may not
-implement all of them yet.
-
 | Command | Role |
 |---------|------|
-| `prose compile [path] [--out <dir>]` | Run the bundled compiler program and emit compiled intent |
+| `prose compile [path] [--out <dir>]` | Run the bundled compiler program, emit compiled intent, and validate it before success |
 | `prose serve` | Load active compiled intent, register local cron and HTTP adapters, and launch ordinary bounded activations |
 | `prose run` | Execute one bounded service, system, judge, or fulfillment activation |
 | `prose status` | Report active IR, diagnostics, trigger plan, recent runs, and responsibility status/pressure |
+
+Queues, file watches, provider subscription setup, webhook authentication, and
+automatic manifest reload are not part of the v0 runtime surface.
 
 `prose compile` is the only special intelligent phase. Triggered activations
 are ordinary OpenProse runs.
@@ -134,8 +134,8 @@ service writes `latest.json` and appends `status.jsonl` under
 
 Unhealthy judge status can produce a narrow pressure record under the same
 responsibility directory. Pressure is deduped by responsibility fingerprint,
-status, activation class, and activation id, then launched as a normal bounded
-fulfillment, retry, or escalation activation.
+status, source status timestamp, activation class, and activation id, then
+launched as a normal bounded fulfillment, retry, or escalation activation.
 
 `prose status` is deterministic local inspection. It does not run the VM,
 register adapters, or infer new semantics; it reads compiled IR and runtime

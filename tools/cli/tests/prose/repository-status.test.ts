@@ -71,7 +71,7 @@ describe("repository status", () => {
 				Forme manifests: 1
 
 				Diagnostics:
-				- warning 02-stargazer-gateway.prose.md: GitHub webhook authentication is not represented in the gateway fixture.
+				- warning tests/open-prose/responsibility-runtime/02-stargazer-gateway.prose.md: GitHub webhook authentication is not represented in the gateway fixture.
 
 				Trigger plan:
 				- high-intent-stargazer-outreach.periodic-check [cron 0 */6 * * *] -> high-intent-stargazer-outreach.judge
@@ -79,7 +79,7 @@ describe("repository status", () => {
 
 				Responsibilities:
 				- high-intent-stargazer-outreach
-				  source: 01-stargazer-responsibility.prose.md
+				  source: tests/open-prose/responsibility-runtime/01-stargazer-responsibility.prose.md
 				  status: missing
 				  pressure: none
 

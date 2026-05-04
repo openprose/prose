@@ -28,6 +28,7 @@ Build the repository IR JSON manifest from compile pass outputs.
 - Emit arrays for `responsibilities`, `triggers`, and `activations`, even when
   empty.
 - Emit `formeManifests` as an array, even when empty.
-- Keep paths relative to `source_root` when possible.
+- Emit source paths relative to `<openprose-root>`, ready to pass to
+  `prose run` from the root.
 - Do not include prose, scratch notes, comments, or Markdown fences in the JSON
   payload.

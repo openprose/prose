@@ -156,7 +156,7 @@ Forme and the Prose VM recognize these `###` sections case-insensitively:
 | `### Fulfillment` | responsibility | Optional hint naming a system or service that may fulfill the responsibility |
 | `### Schedule` | gateway | Optional cron-like ingress cadence |
 | `### Receives` | gateway | Optional HTTP/event ingress description |
-| `### Emits` | gateway | Responsibility trigger or activation the gateway should wake |
+| `### Emits` | gateway | Responsibility trigger id the gateway should emit |
 | `### Payload` | gateway | Notes about the event payload shape |
 
 Unknown `###` sections are preserved as documentation. They are not contract

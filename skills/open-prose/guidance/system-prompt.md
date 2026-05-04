@@ -67,6 +67,9 @@ workspace for these specification files.
 | `contract-markdown.md` | `*.prose.md` service and system format |
 | `forme.md` | Phase 1 wiring for multi-service systems |
 | `prose.md` | Phase 2 execution semantics |
+| `responsibility-runtime.md` | Responsibility compile, serve, status, and reconciliation semantics |
+| `compiler/README.md` | Compiler overview for `prose compile` |
+| `compiler/index.prose.md` | Bundled compiler program |
 | `prosescript.md` | `### Execution` syntax |
 | `state/README.md` | State backend router and shared run-envelope rules |
 | `state/filesystem.md` | Default file-based state |

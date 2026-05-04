@@ -24,6 +24,9 @@ infer them from responsibility `Continuity` or declare them from optional
 `kind: gateway` source. Activation records reference trigger ids
 deterministically.
 
+Source paths in IR are root-relative and ready to pass to `prose run` from
+`<openprose-root>`.
+
 Forme manifests are compiled as structured JSON. They are the canonical runtime
 wiring object for systems; no separate Markdown run manifest is required.
 
@@ -37,7 +40,7 @@ Run `prose compile` against an empty temporary repository.
 
 Expected shape:
 
-- writes or proposes `<openprose-root>/dist/manifest.next.json`
+- writes `<openprose-root>/dist/manifest.next.json`
 - emits a valid v0 manifest matching `expected/empty.manifest.next.json`
 - reports no discovered sources as an informational diagnostic
 

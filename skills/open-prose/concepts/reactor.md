@@ -97,8 +97,8 @@ The first useful pressure record needs only:
 - reason, recorded time, and source status metadata
 
 The runtime writes `pressure.latest.json` and appends `pressure.jsonl` beside
-the responsibility status files. Repeated pressure with the same dedupe key is
-not appended again and should not launch duplicate work.
+the responsibility status files. Repeated pressure for the same source status
+is not appended again and should not launch duplicate work.
 
 Pressure wakes a normal bounded activation through a virtual
 `{responsibility-id}.pressure` event. It is control context for the activation,

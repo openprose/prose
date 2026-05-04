@@ -1,4 +1,4 @@
-import { readFile, stat } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import type { WritableStreamLike } from "../harnesses/types.js";
 import { canonicalPrompt } from "./command-model.js";
@@ -145,7 +145,7 @@ export interface RepositoryServeDispatchResult {
 
 interface RepositoryServeJudgeRequest {
 	request: RepositoryServeActivationRunRequest;
-	previousStatusMtimeMs?: number;
+	previousStatusText?: string;
 }
 
 export interface LoadActiveRepositoryIrOptions {
@@ -273,8 +273,8 @@ export async function dispatchRepositoryServeEvent(options: {
 			event: options.event,
 			resolved,
 		});
-		const previousStatusMtimeMs =
-			request.payload.activation.kind === "judge" ? await readLatestStatusMtime(request) : undefined;
+		const previousStatusText =
+			request.payload.activation.kind === "judge" ? await readLatestStatusText(request) : undefined;
 		const exitCode = await launchActivationRun(request, {
 			...options.run,
 			cwd,
@@ -292,13 +292,13 @@ export async function dispatchRepositoryServeEvent(options: {
 		if (request.payload.activation.kind === "judge") {
 			judgeRequests.push({
 				request,
-				...(previousStatusMtimeMs === undefined ? {} : { previousStatusMtimeMs }),
+				...(previousStatusText === undefined ? {} : { previousStatusText }),
 			});
 		}
 	}
 
 	for (const judge of judgeRequests) {
-		const status = await readLatestStatusForJudgeRequest(judge.request, judge.previousStatusMtimeMs);
+		const status = await readLatestStatusForJudgeRequest(judge.request, judge.previousStatusText);
 		const pressureResult = await recordPressureFromStatus({
 			loaded: options.loaded,
 			status,
@@ -680,16 +680,11 @@ export function formatTriggerRegistration(registration: RepositoryServeTriggerRe
 
 async function readLatestStatusForJudgeRequest(
 	request: RepositoryServeActivationRunRequest,
-	previousStatusMtimeMs?: number,
+	previousStatusText?: string,
 ): Promise<ResponsibilityStatusRecord> {
 	const statusPath = request.env.PROSE_RESPONSIBILITY_STATUS_LATEST;
 	if (statusPath === undefined) {
 		throw new RepositoryServeError(`Judge activation '${request.activationId}' did not declare a status output path.`);
-	}
-
-	const currentStatusMtimeMs = await readRequiredStatusMtime(request, statusPath);
-	if (previousStatusMtimeMs !== undefined && currentStatusMtimeMs <= previousStatusMtimeMs) {
-		throw new RepositoryServeError(`Judge activation '${request.activationId}' did not refresh latest status.`);
 	}
 
 	let text: string;
@@ -698,6 +693,9 @@ async function readLatestStatusForJudgeRequest(
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
 		throw new RepositoryServeError(`Judge activation '${request.activationId}' did not write latest status: ${message}`);
+	}
+	if (previousStatusText !== undefined && text === previousStatusText) {
+		throw new RepositoryServeError(`Judge activation '${request.activationId}' did not refresh latest status.`);
 	}
 
 	let parsed: unknown;
@@ -720,28 +718,19 @@ async function readLatestStatusForJudgeRequest(
 	return parsed as ResponsibilityStatusRecord;
 }
 
-async function readLatestStatusMtime(request: RepositoryServeActivationRunRequest): Promise<number | undefined> {
+async function readLatestStatusText(request: RepositoryServeActivationRunRequest): Promise<string | undefined> {
 	const statusPath = request.env.PROSE_RESPONSIBILITY_STATUS_LATEST;
 	if (statusPath === undefined) {
 		return undefined;
 	}
 	try {
-		return (await stat(statusPath)).mtimeMs;
+		return await readFile(statusPath, "utf8");
 	} catch (error) {
 		if (isNodeError(error) && error.code === "ENOENT") {
 			return undefined;
 		}
 		const message = error instanceof Error ? error.message : String(error);
 		throw new RepositoryServeError(`Unable to inspect latest status for '${request.activationId}': ${message}`);
-	}
-}
-
-async function readRequiredStatusMtime(request: RepositoryServeActivationRunRequest, statusPath: string): Promise<number> {
-	try {
-		return (await stat(statusPath)).mtimeMs;
-	} catch (error) {
-		const message = error instanceof Error ? error.message : String(error);
-		throw new RepositoryServeError(`Judge activation '${request.activationId}' did not write latest status: ${message}`);
 	}
 }
 

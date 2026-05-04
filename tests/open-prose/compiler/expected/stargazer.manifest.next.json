@@ -3,42 +3,42 @@
   "version": 0,
   "sources": [
     {
-      "path": "01-stargazer-responsibility.prose.md",
+      "path": "tests/open-prose/responsibility-runtime/01-stargazer-responsibility.prose.md",
       "kind": "responsibility",
       "name": "high-intent-stargazer-outreach"
     },
     {
-      "path": "02-stargazer-gateway.prose.md",
+      "path": "tests/open-prose/responsibility-runtime/02-stargazer-gateway.prose.md",
       "kind": "gateway",
       "name": "stargazer-events"
     },
     {
-      "path": "stargazer-outreach/index.prose.md",
+      "path": "tests/open-prose/responsibility-runtime/stargazer-outreach/index.prose.md",
       "kind": "system",
       "name": "stargazer-outreach"
     },
     {
-      "path": "stargazer-outreach/stargazer-fetcher.prose.md",
+      "path": "tests/open-prose/responsibility-runtime/stargazer-outreach/stargazer-fetcher.prose.md",
       "kind": "service",
       "name": "stargazer-fetcher"
     },
     {
-      "path": "stargazer-outreach/profile-enricher.prose.md",
+      "path": "tests/open-prose/responsibility-runtime/stargazer-outreach/profile-enricher.prose.md",
       "kind": "service",
       "name": "profile-enricher"
     },
     {
-      "path": "stargazer-outreach/program-proposer.prose.md",
+      "path": "tests/open-prose/responsibility-runtime/stargazer-outreach/program-proposer.prose.md",
       "kind": "service",
       "name": "program-proposer"
     },
     {
-      "path": "stargazer-outreach/sample-runner.prose.md",
+      "path": "tests/open-prose/responsibility-runtime/stargazer-outreach/sample-runner.prose.md",
       "kind": "service",
       "name": "sample-runner"
     },
     {
-      "path": "stargazer-outreach/outreach-drafter.prose.md",
+      "path": "tests/open-prose/responsibility-runtime/stargazer-outreach/outreach-drafter.prose.md",
       "kind": "service",
       "name": "outreach-drafter"
     }
@@ -46,7 +46,7 @@
   "responsibilities": [
     {
       "id": "high-intent-stargazer-outreach",
-      "sourcePath": "01-stargazer-responsibility.prose.md",
+      "sourcePath": "tests/open-prose/responsibility-runtime/01-stargazer-responsibility.prose.md",
       "goal": "High-intent GitHub stargazers are identified, enriched, and thoughtfully followed up with using relevant OpenProse sample results.",
       "continuity": [
         "New high-intent stargazers should not remain unattended for more than one business day.",
@@ -68,7 +68,7 @@
       "fulfillment": {
         "mode": "declared",
         "targetName": "stargazer-outreach",
-        "sourcePath": "stargazer-outreach/index.prose.md"
+        "sourcePath": "tests/open-prose/responsibility-runtime/stargazer-outreach/index.prose.md"
       }
     }
   ],
@@ -108,7 +108,7 @@
         "high-intent-stargazer-outreach.evidence-change"
       ],
       "targetName": "stargazer-outreach",
-      "sourcePath": "stargazer-outreach/index.prose.md",
+      "sourcePath": "tests/open-prose/responsibility-runtime/stargazer-outreach/index.prose.md",
       "formeManifestId": "stargazer-outreach",
       "reason": "Use the declared fulfillment system when judge pressure or explicit request says the responsibility needs work."
     }
@@ -117,7 +117,7 @@
     {
       "id": "stargazer-outreach",
       "systemName": "stargazer-outreach",
-      "sourcePath": "stargazer-outreach/index.prose.md",
+      "sourcePath": "tests/open-prose/responsibility-runtime/stargazer-outreach/index.prose.md",
       "caller": {
         "requires": [
           {
@@ -140,7 +140,7 @@
       "graph": [
         {
           "id": "stargazer-fetcher",
-          "sourcePath": "stargazer-outreach/stargazer-fetcher.prose.md",
+          "sourcePath": "tests/open-prose/responsibility-runtime/stargazer-outreach/stargazer-fetcher.prose.md",
           "workspacePath": "workspace/stargazer-fetcher/",
           "inputs": [
             {
@@ -168,7 +168,7 @@
         },
         {
           "id": "profile-enricher",
-          "sourcePath": "stargazer-outreach/profile-enricher.prose.md",
+          "sourcePath": "tests/open-prose/responsibility-runtime/stargazer-outreach/profile-enricher.prose.md",
           "workspacePath": "workspace/profile-enricher/",
           "inputs": [
             {
@@ -192,7 +192,7 @@
         },
         {
           "id": "program-proposer",
-          "sourcePath": "stargazer-outreach/program-proposer.prose.md",
+          "sourcePath": "tests/open-prose/responsibility-runtime/stargazer-outreach/program-proposer.prose.md",
           "workspacePath": "workspace/program-proposer/",
           "inputs": [
             {
@@ -216,7 +216,7 @@
         },
         {
           "id": "sample-runner",
-          "sourcePath": "stargazer-outreach/sample-runner.prose.md",
+          "sourcePath": "tests/open-prose/responsibility-runtime/stargazer-outreach/sample-runner.prose.md",
           "workspacePath": "workspace/sample-runner/",
           "inputs": [
             {
@@ -240,7 +240,7 @@
         },
         {
           "id": "outreach-drafter",
-          "sourcePath": "stargazer-outreach/outreach-drafter.prose.md",
+          "sourcePath": "tests/open-prose/responsibility-runtime/stargazer-outreach/outreach-drafter.prose.md",
           "workspacePath": "workspace/outreach-drafter/",
           "inputs": [
             {
@@ -321,7 +321,7 @@
     {
       "severity": "warning",
       "message": "GitHub webhook authentication is not represented in the gateway fixture.",
-      "sourcePath": "02-stargazer-gateway.prose.md"
+      "sourcePath": "tests/open-prose/responsibility-runtime/02-stargazer-gateway.prose.md"
     }
   ]
 }
