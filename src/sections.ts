@@ -10,6 +10,7 @@ import type {
   PortIR,
   RuntimeSettingIR,
   ServiceIR,
+  SkillRefIR,
 } from "./types";
 import type { SectionDraft, SourceLine } from "./markdown";
 import { span } from "./markdown";
@@ -97,6 +98,29 @@ export function parseServices(
 
   services.push(...parseStructuredServices(section));
   return services;
+}
+
+export function parseSkills(
+  section: SectionDraft | undefined,
+): SkillRefIR[] {
+  if (!section) {
+    return [];
+  }
+
+  const skills: SkillRefIR[] = [];
+  for (const line of topLevelListItems(section.lines, { skipFences: true })) {
+    const declared = stripTicks(line.item.trim());
+    if (!declared) {
+      continue;
+    }
+    skills.push({
+      declared_name: declared,
+      canonical_name: "",
+      resolution: "unresolved",
+      source_span: span(section.span.path, line.number, line.number),
+    });
+  }
+  return skills;
 }
 
 function parseCompositeServiceShorthand(section: SectionDraft): {

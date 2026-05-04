@@ -19,6 +19,31 @@ describe("skills section spec", () => {
 });
 
 import { parseContractMarkdown } from "../src/markdown";
+import { parseSkills } from "../src/sections";
+
+describe("### Skills section parser", () => {
+  test("extracts bare skill names from a Skills section", () => {
+    const section = {
+      title: "Skills",
+      key: "skills",
+      lines: [
+        { text: "- document-skills:pdf", number: 5 },
+        { text: "- `document-skills:xlsx`", number: 6 },
+      ],
+      span: { path: "x.prose.md", start_line: 4, end_line: 6 },
+    } as any;
+    const skills = parseSkills(section);
+    expect(skills.map((s: any) => s.declared_name)).toEqual([
+      "document-skills:pdf",
+      "document-skills:xlsx",
+    ]);
+    expect(skills[0].source_span.start_line).toBe(5);
+  });
+
+  test("returns [] when section is undefined", () => {
+    expect(parseSkills(undefined)).toEqual([]);
+  });
+});
 
 describe("frontmatter skills parsing", () => {
   test("extracts skills list from frontmatter", () => {
