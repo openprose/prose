@@ -71,7 +71,7 @@ The v0 status record stays narrow:
 - `status`
 - `evidence`
 - `recordedAt`
-- `source`
+- `source`, including the activation attempt metadata copied from context
 
 The static judge service writes `latest.json` and appends `status.jsonl` under
 `<openprose-root>/state/responsibilities/{responsibility-id}/`.

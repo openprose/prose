@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import type { WritableStreamLike } from "../harnesses/types.js";
@@ -93,6 +94,7 @@ export interface RepositoryServeActivationPayload {
 	};
 	activation: {
 		id: string;
+		attemptId: string;
 		kind: RepositoryIrActivationIntent["kind"];
 		responsibilityId: string;
 		reason: string;
@@ -347,6 +349,7 @@ export function buildActivationRunRequest(options: {
 	const { manifest } = loaded;
 	const { activation, trigger } = resolved;
 	const sourcePath = activation.sourcePath ?? (activation.kind === "judge" ? OPENPROSE_JUDGE_SOURCE_PATH : undefined);
+	const attemptId = randomUUID();
 
 	if (sourcePath === undefined) {
 		throw new RepositoryServeError(`Activation '${activation.id}' does not declare a runnable sourcePath.`);
@@ -384,6 +387,7 @@ export function buildActivationRunRequest(options: {
 		},
 		activation: {
 			id: activation.id,
+			attemptId,
 			kind: activation.kind,
 			responsibilityId: activation.responsibilityId,
 			reason: activation.reason,
@@ -431,6 +435,7 @@ export function buildActivationRunRequest(options: {
 			PROSE_REPOSITORY_IR_PATH: loaded.manifestPath,
 			PROSE_REPOSITORY_IR_VERSION: String(manifest.version),
 			PROSE_ACTIVATION_ID: activation.id,
+			PROSE_ACTIVATION_ATTEMPT_ID: attemptId,
 			PROSE_ACTIVATION_CONTEXT: payloadJson,
 			...(statusPaths === undefined
 				? {}
@@ -746,6 +751,9 @@ function validateJudgeStatusBelongsToRequest(
 	}
 	if (status.source.activationId !== request.activationId) {
 		throw new RepositoryServeError(`Judge activation '${request.activationId}' wrote status for a different activation.`);
+	}
+	if (status.source.attemptId !== request.payload.activation.attemptId) {
+		throw new RepositoryServeError(`Judge activation '${request.activationId}' wrote status for a different activation attempt.`);
 	}
 	if (status.source.triggerId !== request.payload.trigger.id) {
 		throw new RepositoryServeError(`Judge activation '${request.activationId}' wrote status for a different trigger.`);

@@ -7,7 +7,7 @@ export class RepositoryCronError extends Error {
 
 interface CronField {
 	values: Set<number>;
-	wildcard: boolean;
+	unrestricted: boolean;
 }
 
 interface CronSchedule {
@@ -74,7 +74,7 @@ function parseCronSchedule(cron: string): CronSchedule {
 function parseCronField(field: string, min: number, max: number, mapSevenToZero = false): CronField {
 	const values = new Set<number>();
 	const parts = field.split(",");
-	let wildcard = false;
+	let unrestricted = false;
 
 	for (const rawPart of parts) {
 		const part = rawPart.trim();
@@ -91,7 +91,7 @@ function parseCronField(field: string, min: number, max: number, mapSevenToZero 
 		let start: number;
 		let end: number;
 		if (rangePart === "*") {
-			wildcard = true;
+			unrestricted ||= stepPart === undefined;
 			start = min;
 			end = max;
 		} else if (rangePart?.includes("-")) {
@@ -111,7 +111,7 @@ function parseCronField(field: string, min: number, max: number, mapSevenToZero 
 		}
 	}
 
-	return { values, wildcard };
+	return { values, unrestricted };
 }
 
 function parseCronValue(value: string, min: number, max: number): number {
@@ -142,11 +142,11 @@ function cronMatchesDate(schedule: CronSchedule, date: Date, timezone?: string):
 	const dayOfMonthMatches = schedule.dayOfMonth.values.has(parts.dayOfMonth);
 	const dayOfWeekMatches = schedule.dayOfWeek.values.has(parts.dayOfWeek);
 	const dayMatches =
-		schedule.dayOfMonth.wildcard && schedule.dayOfWeek.wildcard
+		schedule.dayOfMonth.unrestricted && schedule.dayOfWeek.unrestricted
 			? true
-			: schedule.dayOfMonth.wildcard
+			: schedule.dayOfMonth.unrestricted
 				? dayOfWeekMatches
-				: schedule.dayOfWeek.wildcard
+				: schedule.dayOfWeek.unrestricted
 					? dayOfMonthMatches
 					: dayOfMonthMatches || dayOfWeekMatches;
 

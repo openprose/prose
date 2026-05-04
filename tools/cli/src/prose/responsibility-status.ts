@@ -30,6 +30,7 @@ export interface ResponsibilityStatusRecord {
 	recordedAt: string;
 	source: {
 		activationId?: string;
+		attemptId?: string;
 		triggerId?: string;
 		runId?: string;
 		manifestPath?: string;
@@ -158,7 +159,7 @@ function validateStatusSource(value: unknown, errors: string[]): void {
 		return;
 	}
 
-	for (const key of ["activationId", "triggerId", "runId", "manifestPath"] as const) {
+	for (const key of ["activationId", "attemptId", "triggerId", "runId", "manifestPath"] as const) {
 		if (value[key] !== undefined && !isNonEmptyString(value[key])) {
 			errors.push(`source.${key} must be a non-empty string when present`);
 		}

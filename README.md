@@ -234,10 +234,10 @@ be checked, maintained, and restored across bounded runs:
 
 The compiled Responsibility Runtime manifest preserves responsibilities as
 semantic sections, emits concrete triggers and activation intent, and includes
-structured Forme manifests for fulfillment systems. The serve core can lower judge
-activations into normal bounded runs of the bundled judge service, record
+structured Forme manifests for fulfillment systems. `prose serve` launches
+judge activations as normal bounded runs of the bundled judge service, records
 responsibility status under `<openprose-root>/state/responsibilities/`, and
-turn unhealthy status into deduped pressure that launches ordinary fulfillment
+turns unhealthy status into deduped pressure that launches ordinary fulfillment
 runs. The first live adapters are local cron timers and HTTP webhook/API
 routes. `prose compile` writes `<openprose-root>/dist/manifest.next.json`; promote it to
 `<openprose-root>/dist/manifest.active.json` when you want `prose serve`

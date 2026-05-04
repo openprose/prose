@@ -172,6 +172,7 @@ interface TriggerIndex {
 
 interface ActivationIndex {
 	activationIdsByTriggerId: Map<string, string[]>;
+	judgeActivationIdsByTriggerId: Map<string, string[]>;
 }
 
 interface FormeManifestIndex {
@@ -249,6 +250,7 @@ function validateSources(value: unknown, errors: string[]): SourceIndex {
 		if (isNonEmptyString(source.path)) {
 			const sourcePath = source.path;
 			const isUnique = !paths.has(sourcePath);
+			validateSourcePathShape(sourcePath, `sources[${index}].path`, errors);
 			addUnique(paths, sourcePath, `sources[${index}].path`, errors);
 			if (isUnique && hasKnownKind) {
 				kindsByPath.set(sourcePath, source.kind as RepositoryIrSourceKind);
@@ -446,9 +448,10 @@ function validateActivations(
 	const ids = new Set<string>();
 	const judgeCountsByResponsibilityId = new Map<string, number>();
 	const activationIdsByTriggerId = new Map<string, string[]>();
+	const judgeActivationIdsByTriggerId = new Map<string, string[]>();
 	if (!Array.isArray(value)) {
 		errors.push("activations must be an array");
-		return { activationIdsByTriggerId };
+		return { activationIdsByTriggerId, judgeActivationIdsByTriggerId };
 	}
 
 	for (const [index, activation] of value.entries()) {
@@ -479,6 +482,12 @@ function validateActivations(
 							...(activationIdsByTriggerId.get(triggerId) ?? []),
 							activation.id,
 						]);
+						if (activation.kind === "judge") {
+							judgeActivationIdsByTriggerId.set(triggerId, [
+								...(judgeActivationIdsByTriggerId.get(triggerId) ?? []),
+								activation.id,
+							]);
+						}
 					}
 				}
 			}
@@ -520,7 +529,7 @@ function validateActivations(
 		}
 	}
 
-	return { activationIdsByTriggerId };
+	return { activationIdsByTriggerId, judgeActivationIdsByTriggerId };
 }
 
 function validateConcreteTriggersWakeActivations(
@@ -534,6 +543,9 @@ function validateConcreteTriggersWakeActivations(
 		}
 		if ((activations.activationIdsByTriggerId.get(triggerId) ?? []).length === 0) {
 			errors.push(`trigger '${triggerId}' must wake at least one activation`);
+		}
+		if ((activations.judgeActivationIdsByTriggerId.get(triggerId) ?? []).length === 0) {
+			errors.push(`trigger '${triggerId}' must wake a judge activation`);
 		}
 	}
 }
@@ -1111,8 +1123,23 @@ function validateKnownFormeManifestId(
 }
 
 function validateKnownSourcePath(path: string, sourcePaths: Set<string>, label: string, errors: string[]): void {
+	validateSourcePathShape(path, label, errors);
 	if (!sourcePaths.has(path)) {
 		errors.push(`${label} must reference a discovered source path`);
+	}
+}
+
+function validateSourcePathShape(path: string, label: string, errors: string[]): void {
+	if (path.startsWith("/") || /^[A-Za-z]:[\\/]/.test(path)) {
+		errors.push(`${label} must be root-relative`);
+		return;
+	}
+	if (path.includes("\\")) {
+		errors.push(`${label} must use forward slashes`);
+	}
+	const parts = path.split("/");
+	if (parts.some((part) => part === "" || part === "." || part === "..")) {
+		errors.push(`${label} must not contain empty, current, or parent path segments`);
 	}
 }
 

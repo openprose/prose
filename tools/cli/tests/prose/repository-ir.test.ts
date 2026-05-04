@@ -163,6 +163,36 @@ describe("repository IR v0", () => {
 
 		expect(result.valid).toBe(false);
 		expect(result.errors).toContain("trigger 'high-intent-stargazer-outreach.unbound' must wake at least one activation");
+		expect(result.errors).toContain("trigger 'high-intent-stargazer-outreach.unbound' must wake a judge activation");
+	});
+
+	it("rejects live triggers that bypass the judge", () => {
+		const manifest = cloneFixture("tests/open-prose/compiler/expected/stargazer.manifest.next.json");
+		manifest.activations[0].triggerIds = ["high-intent-stargazer-outreach.periodic-check"];
+
+		const result = validateRepositoryIr(manifest);
+
+		expect(result.valid).toBe(false);
+		expect(result.errors).toContain("trigger 'high-intent-stargazer-outreach.evidence-change' must wake a judge activation");
+	});
+
+	it("rejects source paths that are not root-relative", () => {
+		const absolute = cloneFixture("tests/open-prose/compiler/expected/stargazer.manifest.next.json");
+		absolute.sources[0].path = "/tmp/responsibility.prose.md";
+
+		const parent = cloneFixture("tests/open-prose/compiler/expected/stargazer.manifest.next.json");
+		parent.sources[0].path = "../responsibility.prose.md";
+
+		const emptySegment = cloneFixture("tests/open-prose/compiler/expected/stargazer.manifest.next.json");
+		emptySegment.sources[0].path = "src//responsibility.prose.md";
+
+		expect(validateRepositoryIr(absolute).errors).toContain("sources[0].path must be root-relative");
+		expect(validateRepositoryIr(parent).errors).toContain(
+			"sources[0].path must not contain empty, current, or parent path segments",
+		);
+		expect(validateRepositoryIr(emptySegment).errors).toContain(
+			"sources[0].path must not contain empty, current, or parent path segments",
+		);
 	});
 
 	it("rejects malformed Forme manifest IR", () => {

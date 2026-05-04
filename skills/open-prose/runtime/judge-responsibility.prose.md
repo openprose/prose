@@ -50,6 +50,7 @@ Determine whether one responsibility is currently maintained.
   "recordedAt": "ISO-8601 timestamp",
   "source": {
     "activationId": "responsibility-id.judge",
+    "attemptId": "activation-attempt-id",
     "triggerId": "responsibility-id.periodic-check",
     "manifestPath": "dist/manifest.active.json",
     "irVersion": 0
@@ -65,3 +66,7 @@ Determine whether one responsibility is currently maintained.
 - Keep `evidence` short and specific enough for a later pressure or status
   reader to understand the decision.
 - Preserve the `responsibilityFingerprint` from the activation context exactly.
+- Copy `source.activationId`, `source.attemptId`, `source.triggerId`,
+  `source.manifestPath`, and `source.irVersion` from the activation context
+  exactly; `prose serve` rejects status that does not belong to the launched
+  judge attempt.

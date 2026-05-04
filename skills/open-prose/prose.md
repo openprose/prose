@@ -37,6 +37,8 @@ codex exec "prose run system.prose.md"
 
 | Command                     | Action                                                          |
 | --------------------------- | --------------------------------------------------------------- |
+| `prose compile [path]` | Compile Responsibility Runtime source into validated repository IR |
+| `prose serve` | Serve active repository IR as local cron and HTTP trigger adapters |
 | `prose run <file.prose.md>`      | Execute a local service or system                                        |
 | `prose run <host>/<owner>/<repo>` | Explicit git host (e.g. `github.com/alice/research`); resolve from `<openprose-root>/deps/` |
 | `prose run std/...` / `co/...`     | Expand OpenProse package shorthand and resolve from `<openprose-root>/deps/github.com/openprose/prose/` |

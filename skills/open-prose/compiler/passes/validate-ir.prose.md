@@ -23,13 +23,18 @@ it is written as `manifest.next.json`.
 - Require `version` to be `0`.
 - Require `sources` to be an array of objects with non-empty `path` and known
   `kind`.
+- Require source paths to be root-relative, forward-slash paths with no parent
+  traversal.
 - Require `responsibilities` to be an array preserving `Goal`, `Continuity`,
   `Criteria`, `Constraints`, and optional fulfillment intent.
 - Require `triggers` to be an array of concrete serve-facing trigger records.
 - Recognize trigger kinds `cron`, `http`, and `manual`.
-- Require `cron` triggers to include a standard five-field cron expression.
+- Require trigger fields to match their kind exactly.
+- Require `cron` triggers to include a parseable, live standard five-field
+  cron expression and valid timezone when present.
 - Require `http` triggers to include method and path.
 - Require `activations` to be an array of semantic activation-intent records.
+- Require live `cron` and `http` triggers to wake the responsibility's judge.
 - Require `formeManifests` to be an array of structured Forme wiring objects.
 - Require `diagnostics` to be an array of objects with `severity` and
   non-empty `message`.

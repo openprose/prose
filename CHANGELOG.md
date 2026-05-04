@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Responsibility Runtime validation** — `prose compile` now validates the emitted `manifest.next.json`; repository IR rejects invalid cron expressions, wrong trigger fields, and live triggers that wake no activations.
 - **Responsibility Runtime freshness** — `prose compile` clears stale compile output before running; `prose serve` rejects stale judge status output, validates that status belongs to the launched judge activation, and marks older pressure as resolved once a newer healthy status is recorded.
+- **Responsibility Runtime source safety** — Repository IR now rejects non-root-relative source paths and requires live triggers to wake the judge for their responsibility.
 - **Responsibility Runtime pressure** — Pressure dedupe now keys on the source status timestamp so fresh unhealthy judgments can each drive one reconciliation attempt.
 
 ## [0.11.0] - 2026-05-01

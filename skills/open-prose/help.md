@@ -24,14 +24,16 @@ Header: "Goal"
 Options:
   1. "Run a service/system" - "I have a service or system file to execute"
   2. "Build something new" - "Help me create a service or system for a specific task"
-  3. "Learn the syntax" - "Show me examples and explain how it works"
-  4. "Explore possibilities" - "What can OpenProse do?"
+  3. "Keep a goal true" - "Define a standing goal with compile/serve/status"
+  4. "Learn the syntax" - "Show me examples and explain how it works"
+  5. "Explore possibilities" - "What can OpenProse do?"
 ```
 
 **After the user responds:**
 
 - **Run a service/system**: Ask for the file path, then load `prose.md` and execute
 - **Build something new**: Ask them to describe their task, then help write a service or system (load `guidance/authoring.md`)
+- **Keep a goal true**: Help author a `kind: responsibility`, then explain `prose compile`, `prose serve`, and `prose status`
 - **Learn the syntax**: Show examples from `examples/`, explain the VM model
 - **Explore possibilities**: Walk through key examples like `37-the-forge/`
 

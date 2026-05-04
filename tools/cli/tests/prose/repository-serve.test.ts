@@ -262,6 +262,8 @@ describe("repository serve core", () => {
 		expect(request.env.PROSE_REPOSITORY_IR_PATH).toBe(ACTIVE_REPOSITORY_IR_PATH);
 		expect(request.env.PROSE_REPOSITORY_IR_VERSION).toBe("0");
 		expect(request.env.PROSE_ACTIVATION_ID).toBe("high-intent-stargazer-outreach.fulfillment");
+		expect(request.env.PROSE_ACTIVATION_ATTEMPT_ID).toBe(request.payload.activation.attemptId);
+		expect(request.payload.activation.attemptId).toMatch(/^[0-9a-f-]{36}$/);
 		expect(request.env.PROSE_OPENPROSE_ROOT).toBe(loaded.openProseRoot.absolutePath);
 		expect(request.payload).toMatchObject({
 			kind: "openprose.activation",
@@ -488,6 +490,7 @@ describe("repository serve core", () => {
 				},
 				activation: {
 					id: "activation-1",
+					attemptId: "attempt-1",
 					kind: "fulfillment",
 					responsibilityId: "responsibility-1",
 					reason: "test",
@@ -509,6 +512,7 @@ describe("repository serve core", () => {
 				PROSE_REPOSITORY_IR_PATH: ACTIVE_REPOSITORY_IR_PATH,
 				PROSE_REPOSITORY_IR_VERSION: "0",
 				PROSE_ACTIVATION_ID: "activation-1",
+				PROSE_ACTIVATION_ATTEMPT_ID: "attempt-1",
 				PROSE_ACTIVATION_CONTEXT: "{}",
 			},
 		};
@@ -617,6 +621,38 @@ describe("repository serve core", () => {
 					},
 				}),
 			).rejects.toThrow("did not refresh latest status");
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
+
+	it("rejects judge status from a different activation attempt", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-serve-wrong-attempt-"));
+		const io = memoryStreams();
+
+		try {
+			writeActiveManifest(temp);
+			const loaded = await loadActiveRepositoryIr({ cwd: temp });
+
+			await expect(
+				dispatchRepositoryServeEvent({
+					loaded,
+					event: {
+						triggerId: "high-intent-stargazer-outreach.periodic-check",
+					},
+					run: {
+						env: {},
+						stdout: io.streams.stdout,
+						stderr: io.streams.stderr,
+						commandRunner: async (options) => {
+							if (options.env.PROSE_ACTIVATION_ID === "high-intent-stargazer-outreach.judge") {
+								writeStatusFromRunEnv(options.env, "up", "wrong-attempt");
+							}
+							return 0;
+						},
+					},
+				}),
+			).rejects.toThrow("different activation attempt");
 		} finally {
 			rmSync(temp, { recursive: true, force: true });
 		}
@@ -779,6 +815,14 @@ describe("repository serve core", () => {
 		expect(millisecondsUntilNextCron("0 9 * * 1-7", from)).toBe(sameDay.getTime() - from.getTime());
 		expect(millisecondsUntilNextCron("0 9 * * 7", from)).toBe(sunday.getTime() - from.getTime());
 	});
+
+	it("respects stepped day-of-month and day-of-week cron fields", () => {
+		const friday = new Date(2026, 0, 2, 0, 0, 0);
+		const saturday = new Date(2026, 0, 3, 9, 0, 0);
+
+		expect(millisecondsUntilNextCron("0 9 * * */2", friday)).toBe(saturday.getTime() - friday.getTime());
+		expect(millisecondsUntilNextCron("0 9 */2 * *", friday)).toBe(saturday.getTime() - friday.getTime());
+	});
 });
 
 async function loadFixture(): Promise<RepositoryServeLoadedIr> {
@@ -840,6 +884,7 @@ function timerOnlyManifest(): Record<string, unknown> {
 function writeStatusFromRunEnv(
 	env: Readonly<Record<string, string | undefined>>,
 	status: ResponsibilityStatusRecord["status"],
+	attemptId = env.PROSE_ACTIVATION_ATTEMPT_ID,
 ): void {
 	const latestPath = env.PROSE_RESPONSIBILITY_STATUS_LATEST;
 	const contextText = env.PROSE_ACTIVATION_CONTEXT;
@@ -847,6 +892,7 @@ function writeStatusFromRunEnv(
 		return;
 	}
 	const context = JSON.parse(contextText) as {
+		activation: { attemptId: string };
 		ir: { manifestPath: string; version: number };
 		responsibility: { fingerprint: string; id: string };
 		trigger: { id: string };
@@ -861,6 +907,7 @@ function writeStatusFromRunEnv(
 		recordedAt: "2026-05-03T12:00:00.000Z",
 		source: {
 			...(env.PROSE_ACTIVATION_ID === undefined ? {} : { activationId: env.PROSE_ACTIVATION_ID }),
+			...(attemptId === undefined ? {} : { attemptId }),
 			triggerId: context.trigger.id,
 			manifestPath: context.ir.manifestPath,
 			irVersion: context.ir.version,
