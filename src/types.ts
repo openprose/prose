@@ -35,11 +35,20 @@ export interface TypeExpressionIR {
   element: TypeExpressionIR | null;
 }
 
+export interface SkillRefIR {
+  declared_name: string;
+  canonical_name: string;
+  resolution: "exact" | "fuzzy" | "unresolved";
+  fuzzy_distance?: number;
+  source_span: SourceSpan;
+}
+
 export interface ServiceIR {
   name: string;
   ref: string;
   compose: string | null;
   with: Record<string, string | number | boolean>;
+  skills: SkillRefIR[];
   source_span: SourceSpan;
 }
 
@@ -181,6 +190,7 @@ export interface ComponentIR {
     ensures: PortIR[];
   };
   services: ServiceIR[];
+  skills: SkillRefIR[];
   schemas: unknown[];
   runtime: RuntimeSettingIR[];
   environment: EnvironmentIR[];

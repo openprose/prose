@@ -61,6 +61,7 @@ export function compileSource(source: string, options: CompileOptions): ProseIR 
         ensures: parsePorts(findSection(draft, "ensures"), "output", diagnostics),
       },
       services,
+      skills: [],
       schemas: [],
       runtime: parseRuntime(findSection(draft, "runtime"), diagnostics),
       environment: parseEnvironment(

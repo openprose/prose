@@ -90,6 +90,7 @@ export function parseServices(
       ref: name,
       compose: null,
       with: {},
+      skills: [],
       source_span: span(section.span.path, line.number, line.number),
     });
   }
@@ -139,6 +140,7 @@ function parseCompositeServiceShorthand(section: SectionDraft): {
       ref: compose,
       compose,
       with: withValues,
+      skills: [],
       source_span: span(section.span.path, line.number, endLine),
     });
   }
@@ -829,6 +831,7 @@ function parseStructuredServices(section: SectionDraft): ServiceIR[] {
         compose:
           typeof current.fields.compose === "string" ? current.fields.compose : null,
         with: current.with,
+        skills: [],
         source_span: span(section.span.path, current.line, current.line),
       });
     }
