@@ -502,7 +502,7 @@ describe("cursor-sdk harness", () => {
 
 		const exitCode = await createCursorSdkHarness({ factory }).run("prose status", {
 			...io.options,
-			env: { CURSOR_API_KEY: "key-1", PROSE_SUPPRESS_EXPERIMENTAL_WARNINGS: "1" },
+			env: { CURSOR_API_KEY: "key-1" },
 		});
 
 		expect(exitCode).toBe(1);
@@ -528,7 +528,7 @@ describe("cursor-sdk harness", () => {
 
 		const exitCode = await createCursorSdkHarness({ factory }).run("prose status", {
 			...io.options,
-			env: { CURSOR_API_KEY: "key-1", PROSE_SUPPRESS_EXPERIMENTAL_WARNINGS: "1" },
+			env: { CURSOR_API_KEY: "key-1" },
 		});
 
 		expect(exitCode).toBe(1);
@@ -548,7 +548,7 @@ describe("cursor-sdk harness", () => {
 
 		const exitCode = await createCursorSdkHarness({ factory }).run("prose status", {
 			...io.options,
-			env: { CURSOR_API_KEY: "key-1", PROSE_SUPPRESS_EXPERIMENTAL_WARNINGS: "1" },
+			env: { CURSOR_API_KEY: "key-1" },
 		});
 
 		expect(exitCode).toBe(1);

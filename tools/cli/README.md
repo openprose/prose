@@ -67,7 +67,7 @@ harness names both a provider family and the runtime used to call it.
 | --- | --- | --- | --- | --- |
 | `codex-sdk` | OpenAI/Codex | `@openai/codex-sdk` | `OPENAI_API_KEY` or `CODEX_API_KEY` | Default. Best first choice for OpenAI-backed runs. |
 | `claude-sdk` | Anthropic/Claude | `@anthropic-ai/claude-agent-sdk` | `ANTHROPIC_API_KEY` | Best first choice for Anthropic-backed runs. |
-| `cursor-sdk` _(experimental)_ | Cursor | `@cursor/sdk` (local mode) | `CURSOR_API_KEY` | Tier-2 / experimental. Default model `composer-2` is tuned for coding tasks, not OpenProse contract execution; multi-stage programs may run plan-only. Override with `CURSOR_MODEL`. |
+| `cursor-sdk` _(experimental)_ | Cursor | `@cursor/sdk` (local mode) | `CURSOR_API_KEY` | Coding-tuned default model; multi-stage Prose programs may run plan-only. |
 | `mock` | None | local echo harness | none | Test and smoke-check harness only. |
 
 Examples:
@@ -86,30 +86,21 @@ PROSE_HARNESS=claude-sdk prose run std/evals/inspector
   and environment, and streams Codex SDK events. This is the default.
 - `claude-sdk` uses `@anthropic-ai/claude-agent-sdk`, forwards the current
   working directory and environment, and streams text deltas.
-- `cursor-sdk` _(experimental, Tier-2)_ uses `@cursor/sdk` in **local** mode,
-  forwards the current working directory, and streams Cursor agent assistant
-  text. It runs with `local.settingSources: ["project", "user"]` so Cursor
-  auto-loads the OpenProse skill from `.cursor/skills/`, `.agents/skills/`,
+- `cursor-sdk` _(experimental)_ uses `@cursor/sdk` in **local** mode with
+  `local.settingSources: ["project", "user"]`, so Cursor auto-loads the
+  OpenProse skill from `.cursor/skills/`, `.agents/skills/`,
   `~/.cursor/skills/`, or `~/.agents/skills/`. Authentication uses
-  `CURSOR_API_KEY`; the local model defaults to `composer-2` and can be
-  overridden with `CURSOR_MODEL`.
+  `CURSOR_API_KEY`; model defaults to `composer-2` and can be overridden
+  with `CURSOR_MODEL`. Exit codes (`0` / `1` / `143`) and SIGINT/SIGTERM
+  semantics match `codex-sdk` and `claude-sdk`. Cursor Cloud, PR/repo
+  automation, and `Cursor.models.list()` are not exposed.
 
-  **Caveat — not OpenProse-complete.** Cursor positions `composer-2` as a
-  coding agent ("specifically tuned for complex tasks such as tool use,
-  precise file edits, and terminal operations") rather than a general-purpose
-  instruction-follower. In practice the harness reliably handles
+  **Known limits.** Cursor positions `composer-2` as a coding-tuned model
+  rather than a general-purpose instruction-follower. The harness handles
   read-and-explain Prose programs (`std/ops/lint`, `std/evals/inspector`,
-  `std/ops/status`, `std/ops/diagnose`) but may run plan-only on multi-stage
-  execution programs (e.g. nested `worker-critic` × `stochastic-probe`) and
-  does not pass the SKILL.md-compliance smoke test. For production Prose
-  runs prefer `codex-sdk` or `claude-sdk`. The Cursor SDK exposes other
-  models (`gpt-5.5`, `claude-4.6-sonnet-thinking`) — try
-  `CURSOR_MODEL=claude-4.6-sonnet-thinking` if you need stricter
-  instruction-following through your Cursor billing account; this is
-  unverified.
-
-  The harness emits a one-line stderr warning on each run; suppress with
-  `PROSE_SUPPRESS_EXPERIMENTAL_WARNINGS=1`.
+  `std/ops/status`, `std/ops/diagnose`) reliably but may run plan-only on
+  multi-stage execution programs. For production Prose runs prefer
+  `codex-sdk` or `claude-sdk`.
 - `mock` echoes prompts for tests and local smoke checks.
 
 Select a harness with `--harness <name>` or `PROSE_HARNESS`.
@@ -122,12 +113,6 @@ For externally sandboxed CI environments, Codex harnesses also honor
 `PROSE_CODEX_SANDBOX_MODE` (`read-only`, `workspace-write`, or
 `danger-full-access`) and `PROSE_CODEX_APPROVAL_POLICY` (`never`, `on-request`,
 `on-failure`, or `untrusted`) and forward those values to Codex.
-
-The Cursor harness reads `CURSOR_API_KEY` for authentication and `CURSOR_MODEL`
-(default `composer-2`) for the local model id. Set
-`PROSE_SUPPRESS_EXPERIMENTAL_WARNINGS=1` to silence the per-run experimental
-warning. Cursor Cloud, PR/repo automation, `Cursor.models.list()`, and
-artifact downloads are not exposed by the CLI.
 
 ## Skill Setup
 

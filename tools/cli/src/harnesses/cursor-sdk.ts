@@ -38,13 +38,6 @@ export function createCursorSdkHarness(options: CursorSdkHarnessOptions = {}): H
 
 			try {
 				const agentOptions = cursorAgentOptions(runOptions);
-				const env = runOptions.env ?? {};
-				if (env.PROSE_SUPPRESS_EXPERIMENTAL_WARNINGS !== "1") {
-					writeLine(
-						runOptions.stderr,
-						"[cursor-sdk] experimental harness — composer-2 is tuned for coding tasks, not OpenProse contract execution. Multi-stage programs may run plan-only. Set CURSOR_MODEL to a stronger instruction-follower if needed (see README).",
-					);
-				}
 				agent = await factory(agentOptions);
 				run = await agent.send(prompt);
 
