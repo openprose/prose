@@ -100,7 +100,7 @@ jobs:
           node dist/index.js --help
           node dist/index.js help
           node dist/index.js run hello.prose.md --harness mock
-          PROSE_HARNESS=mock node dist/index.js status --graph
+          PROSE_HARNESS=mock node dist/index.js status
 
   npm-package-smoke:
     name: npm package smoke

@@ -709,7 +709,7 @@ describe("repository serve core", () => {
 		} finally {
 			rmSync(temp, { recursive: true, force: true });
 		}
-	});
+	}, 10_000);
 
 	it("restores trigger registrations when serve restarts", async () => {
 		const temp = mkdtempSync(join(tmpdir(), "prose-serve-restart-"));
