@@ -30,9 +30,14 @@ export function resolveSkill(
   const searchPaths = options.searchPaths ?? [];
   const installed = enumerateInstalledSkills(searchPaths);
 
-  // Exact match on canonical "namespace:name"
+  // Exact match on canonical "namespace:name". Only two-level installs can
+  // satisfy a colon-form declaration — a flat one-level install at
+  // <root>/<leaf>/SKILL.md whose leaf happens to equal the colon's right side
+  // is NOT a match (the namespace was not declared by the install).
   if (declared.includes(":")) {
-    const hit = installed.find((s) => s.canonical === declared);
+    const hit = installed.find(
+      (s) => s.layout === "two-level" && s.canonical === declared,
+    );
     if (hit) {
       return {
         declared_name: declared,
@@ -44,6 +49,19 @@ export function resolveSkill(
       declared_name: declared,
       resolution: "unresolved",
       canonical_name: "",
+    };
+  }
+
+  // Bare name — prefer an exact one-level install (canonical = leaf)
+  // before falling back to fuzzy leaf-match against the two-level layout.
+  const oneLevelExact = installed.find(
+    (s) => s.layout === "one-level" && s.leaf === declared,
+  );
+  if (oneLevelExact) {
+    return {
+      declared_name: declared,
+      canonical_name: oneLevelExact.canonical,
+      resolution: "exact",
     };
   }
 
@@ -106,26 +124,43 @@ function sharesPrefixOrSuffix(a: string, b: string, minLen: number): boolean {
 }
 
 interface InstalledSkill {
-  canonical: string; // "namespace:name"
+  canonical: string; // "namespace:name" (two-level) or "name" (one-level)
   leaf: string; // "name"
   path: string;
+  layout: "two-level" | "one-level";
 }
 
 function enumerateInstalledSkills(searchPaths: string[]): InstalledSkill[] {
   const out: InstalledSkill[] = [];
   for (const root of searchPaths) {
     if (!existsSync(root)) continue;
-    for (const namespace of readdirSync(root)) {
-      const nsDir = join(root, namespace);
-      if (!isDirectory(nsDir)) continue;
-      for (const name of readdirSync(nsDir)) {
-        const skillDir = join(nsDir, name);
+    for (const entry of readdirSync(root)) {
+      const entryPath = join(root, entry);
+      if (!isDirectory(entryPath)) continue;
+      // One-level layout: <root>/<name>/SKILL.md (stock Claude Code).
+      // Canonical name is just the leaf — there is no declared namespace.
+      const oneLevelSkill = join(entryPath, "SKILL.md");
+      if (existsSync(oneLevelSkill)) {
+        out.push({
+          canonical: entry,
+          leaf: entry,
+          path: entryPath,
+          layout: "one-level",
+        });
+      }
+      // Two-level layout: <root>/<namespace>/<name>/SKILL.md.
+      // Both layouts can coexist under the same root — for namespace
+      // directories that also happen to carry a SKILL.md (rare), we still
+      // recurse so packaged skills are discovered.
+      for (const name of readdirSync(entryPath)) {
+        const skillDir = join(entryPath, name);
         const skillFile = join(skillDir, "SKILL.md");
-        if (existsSync(skillFile)) {
+        if (existsSync(skillFile) && isDirectory(skillDir)) {
           out.push({
-            canonical: `${namespace}:${name}`,
+            canonical: `${entry}:${name}`,
             leaf: name,
             path: skillDir,
+            layout: "two-level",
           });
         }
       }

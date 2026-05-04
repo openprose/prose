@@ -110,3 +110,48 @@ describe("resolveSkill — fuzzy guardrails (bug #1)", () => {
     rmSync(root, { recursive: true, force: true });
   });
 });
+
+describe("resolveSkill — one-level Claude Code layout (bug #2)", () => {
+  test("discovers one-level skill at <root>/<name>/SKILL.md", () => {
+    const root = join(tmpdir(), `prose-skills-${Date.now()}`);
+    const skillsDir = join(root, "skills");
+    const dir = join(skillsDir, "pdf");
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, "SKILL.md"), "---\nname: pdf\ndescription: stub\n---\n");
+    const result = resolveSkill("pdf", { searchPaths: [skillsDir] });
+    expect(result.resolution).toBe("exact");
+    expect(result.canonical_name).toBe("pdf");
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  test("colon-form declared name does NOT match one-level install of same leaf", () => {
+    const root = join(tmpdir(), `prose-skills-${Date.now()}`);
+    const skillsDir = join(root, "skills");
+    const dir = join(skillsDir, "pdf");
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, "SKILL.md"), "---\nname: pdf\ndescription: stub\n---\n");
+    const result = resolveSkill("document-skills:pdf", { searchPaths: [skillsDir] });
+    expect(result.resolution).toBe("unresolved");
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  test("mixed layouts: one-level wins exact, two-level wins exact for colon form", () => {
+    const root = join(tmpdir(), `prose-skills-${Date.now()}`);
+    const skillsDir = join(root, "skills");
+    const oneLevel = join(skillsDir, "pdf");
+    mkdirSync(oneLevel, { recursive: true });
+    writeFileSync(join(oneLevel, "SKILL.md"), "---\nname: pdf\ndescription: stub\n---\n");
+    const twoLevel = join(skillsDir, "document-skills", "pdf");
+    mkdirSync(twoLevel, { recursive: true });
+    writeFileSync(join(twoLevel, "SKILL.md"), "---\nname: pdf\ndescription: stub\n---\n");
+
+    const bare = resolveSkill("pdf", { searchPaths: [skillsDir] });
+    expect(bare.resolution).toBe("exact");
+    expect(bare.canonical_name).toBe("pdf");
+
+    const colon = resolveSkill("document-skills:pdf", { searchPaths: [skillsDir] });
+    expect(colon.resolution).toBe("exact");
+    expect(colon.canonical_name).toBe("document-skills:pdf");
+    rmSync(root, { recursive: true, force: true });
+  });
+});
