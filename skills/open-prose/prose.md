@@ -49,8 +49,7 @@ codex exec "prose run system.prose.md"
 | `prose install`             | Install dependencies from `use` statements into `<openprose-root>/deps/`        |
 | `prose install --update`    | Update pinned dependency SHAs                                   |
 | `prose inspect <run-id>`    | Evaluate a completed run                                        |
-| `prose status`              | Show recent runs                                                |
-| `prose status --graph`      | Show run dependency graph from the active backend event store    |
+| `prose status`              | Show active IR, diagnostics, trigger plan, recent runs, and responsibility status/pressure |
 | `prose upgrade --dry-run`   | Inspect OpenProse source/layouts and report the migration plan   |
 | `prose upgrade`             | Migrate OpenProse source/layouts to current conventions          |
 | `prose help`                | Show help and examples                                          |

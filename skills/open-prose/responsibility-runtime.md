@@ -121,7 +121,7 @@ implement all of them yet.
 | `prose compile [path] [--out <dir>]` | Run the bundled compiler program and emit compiled intent |
 | `prose serve` | Load active compiled intent and prepare the trigger registration plan; live adapters register and receive events in later runtime phases |
 | `prose run` | Execute one bounded service, system, judge, or fulfillment activation |
-| `prose status` | Report recent runs, activations, diagnostics, and responsibility status |
+| `prose status` | Report active IR, diagnostics, trigger plan, recent runs, and responsibility status/pressure |
 
 `prose compile` is the only special intelligent phase. Triggered activations
 are ordinary OpenProse runs.
@@ -135,6 +135,10 @@ Unhealthy judge status can produce a narrow pressure record under the same
 responsibility directory. Pressure is deduped by responsibility fingerprint,
 status, activation class, and activation id, then launched as a normal bounded
 fulfillment, retry, or escalation activation.
+
+`prose status` is deterministic local inspection. It does not run the VM,
+register adapters, or infer new semantics; it reads compiled IR and runtime
+receipts so a developer can see what the runtime believes is active.
 
 ## Responsibilities
 

@@ -45,7 +45,9 @@ plan.
   system`, `kind: test`, and `kind: pattern`; patterns replaced topology/composite
   language; source files moved to `*.prose.md`; generated run files were
   disambiguated; the filesystem model settled on a single OpenProse root with
-  `src/`, `dist/`, `runs/`, `state/`, and `deps/`.
+  `src/`, `dist/`, `runs/`, `state/`, and `deps/`; Responsibility Runtime
+  status reads active IR, trigger plans, recent runs, and responsibility
+  status/pressure from the OpenProse root.
 
 ## Upgrade Command
 

@@ -42,7 +42,7 @@ const usageByCommand: Record<CommandName, string> = {
 	preflight: "prose preflight <file.prose.md>",
 	test: "prose test <path>",
 	inspect: "prose inspect <run-id>",
-	status: "prose status [--graph]",
+	status: "prose status",
 	install: "prose install [--update]",
 	help: "prose help",
 	examples: "prose examples [name]",
@@ -85,11 +85,11 @@ function validate(command: CommandName, args: readonly string[]): void {
 		case "upgrade":
 			requireOnlyFlags(command, args, ["--dry-run"]);
 			return;
-		case "status":
-			requireOnlyFlags(command, args, ["--graph"]);
-			return;
 		case "install":
 			requireOnlyFlags(command, args, ["--update"]);
+			return;
+		case "status":
+			requireOnlyFlags(command, args, []);
 			return;
 		case "examples":
 			if (args.length > 1) {

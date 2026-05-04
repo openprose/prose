@@ -46,7 +46,7 @@ Options:
 | `prose preflight <file.prose.md>` | Check dependencies and environment |
 | `prose test <test.prose.md>` | Run tests with assertions |
 | `prose inspect <run-id>` | Evaluate a completed run |
-| `prose status` | Show recent runs |
+| `prose status` | Show active IR, diagnostics, trigger plan, recent runs, and responsibility status/pressure |
 | `prose install` | Install dependencies from `use` statements into `<openprose-root>/deps/` |
 | `prose install --update` | Update pinned dependencies to latest |
 | `prose upgrade --dry-run` | Inspect files and report the migration plan |

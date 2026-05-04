@@ -130,8 +130,7 @@ executing the system. The shell executable is the agent runner, e.g.
 | `prose preflight <file.prose.md>` | Check dependencies and `### Environment` declarations without executing |
 | `prose test <path>` | Load `contract-markdown.md`, `state/README.md` plus the selected backend, and `prose.md`; run `kind: test` file(s) |
 | `prose inspect <run-id>` | Resolve and run `std/evals/inspector` against a completed run |
-| `prose status` | Summarize recent `<openprose-root>/runs/` entries |
-| `prose status --graph` | Reconstruct the run DAG from the active backend's event store; filesystem runs use `vm.log.md` `upstream:` headers |
+| `prose status` | Summarize active IR, diagnostics, trigger plan, recent runs, and responsibility status/pressure |
 | `prose install` | Load `deps.md`; install dependency references into `<openprose-root>/deps/` and write `<openprose-root>/prose.lock` |
 | `prose install --update` | Load `deps.md`; update pinned dependency SHAs |
 | `prose upgrade --dry-run` | Load `changelog.md`; inspect nearby files and report the concrete migration plan without editing |

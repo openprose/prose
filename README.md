@@ -230,6 +230,7 @@ be checked, maintained, and restored across bounded runs:
 | `prose compile` | Run the bundled OpenProse compiler program and lower semantic source into `<openprose-root>/dist/manifest.next.json` |
 | `prose serve` | Load active IR and prepare the static trigger registration plan |
 | `prose run` | Execute one bounded OpenProse VM activation |
+| `prose status` | Inspect active IR, diagnostics, trigger plan, recent runs, and responsibility status/pressure |
 
 The compiled Responsibility Runtime manifest preserves responsibilities as
 semantic sections, emits trigger and activation intent, and includes structured
@@ -241,6 +242,9 @@ runs. Live trigger adapters belong to later runtime phases. `prose compile`
 writes `<openprose-root>/dist/manifest.next.json`; promote it to
 `<openprose-root>/dist/manifest.active.json` when you want `prose serve`
 to consume it.
+
+`prose status` is deterministic local inspection. It reads compiled IR and
+runtime receipts without running the VM or registering live adapters.
 
 The design doctrine is:
 

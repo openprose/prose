@@ -35,6 +35,10 @@ describe("Oclif entrypoint helpers", () => {
 		expect(commands.serve).toBeDefined();
 	});
 
+	it("registers status as a local runtime command", () => {
+		expect(commands.status).toBeDefined();
+	});
+
 	it("matches symlinked argv paths by real path", () => {
 		const temp = mkdtempSync(join(tmpdir(), "prose-direct-"));
 
