@@ -396,9 +396,9 @@ Scoping) for the on-disk format of memory files.
 ## Skills
 
 A system or service that depends on the host agent's harness skills declares
-them in a `### Skills` section. Forme uses this declaration to verify the named
-skills are available before compiling or running the component, and fails closed
-with `skill_unresolved` if any are missing.
+them in a `### Skills` section. The compiler resolves the named skills against
+the host's installed skills before emitting the component's IR, and `prose
+compile` fails closed with a `skill_unresolved` diagnostic if any are missing.
 
 ```markdown
 ### Skills
@@ -412,27 +412,28 @@ marketplace convention shown in `/skill` invocations.
 
 Rules:
 
-- `### Skills` is the only place to declare harness-skill dependencies. The
-  declaration is not duplicated in frontmatter — frontmatter stays structural
-  per [Frontmatter](#frontmatter); skills are reviewable contract material.
 - System-level declarations apply to every sub-service inside the system.
   Service-level declarations are *additive*, not exclusive — declaring `###
   Skills` on a `## sub-service` does not remove the system-level skills, it
   adds to them.
-- Forme resolves each declared skill by looking, in order, in:
+- The compiler resolves each declared skill by looking, in order, in:
   1. The project's `./skills/` directory.
   2. `~/.claude/skills/`.
   3. `~/.codex/skills/`.
   4. `~/.agents/skills/`.
-- If a declared skill cannot be resolved in any of those paths, both `prose
-  compile` and `prose run` fail closed with a `skill_unresolved` diagnostic
-  naming the skill and the paths that were searched.
+- If a declared skill cannot be resolved in any of those paths, `prose compile`
+  fails closed with a `skill_unresolved` diagnostic naming the skill and the
+  paths that were searched.
+
+The compiler program implements this resolution rule; see
+`skills/open-prose/compiler/index.prose.md` (`skills_resolver`) for the
+program-level contract.
 
 ### BYO harness invariant
 
 OpenProse never installs, modifies, or removes the user's harness skills.
-Installing skills is the user's responsibility; Forme only verifies they are
-present and stops the run when they are not.
+Installing skills is the user's responsibility; the compiler only verifies they
+are present and stops the compile when they are not.
 
 ## Frontmatter
 

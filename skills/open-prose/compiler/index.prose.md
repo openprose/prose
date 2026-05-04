@@ -104,6 +104,35 @@ agent gateway_compiler:
     self: ["gateway lowering", "trigger registration"]
     prohibited: ["fulfillment work", "provider subscription setup"]
 
+agent skills_resolver:
+  model: "fast"
+  persist: false
+  prompt: """
+  Resolve declared `### Skills` for every system and service in the source
+  graph.
+  Load contract-markdown.md (Skills) and compiler/ir-v0.md.
+  For each declared skill in colon form (namespace:name), search in order:
+    1. <project>/skills/
+    2. ~/.claude/skills/
+    3. ~/.codex/skills/
+    4. ~/.agents/skills/
+  A skill resolves when one of those paths contains a directory whose name
+  matches the skill name in either flat (<name>) or namespaced
+  (<namespace>/<name>) layout.
+  Aggregate scope: a system's declared skills apply to every sub-service, and
+  a service's declarations are additive — they extend, never replace, the
+  inherited set.
+  Never install, modify, or remove host skills.
+  Return one record per declared skill with its source component path and the
+  resolved location, plus an `unresolved` array of `{ skill, sourcePath,
+  searchedPaths }` entries for any skill that did not resolve.
+  Emit one diagnostic with severity `error` and code `skill_unresolved` for
+  each unresolved entry, naming the skill and the searched paths.
+  """
+  shape:
+    self: ["skill resolution", "host filesystem checks", "scope aggregation"]
+    prohibited: ["installing skills", "modifying host state", "guessing skill locations"]
+
 agent forme_compiler:
   model: "fast"
   persist: false
@@ -176,6 +205,13 @@ let responsibility_output = session: responsibility_compiler
 let gateway_output = session: gateway_compiler
   prompt: "Compile gateways into v0 trigger records and activation links."
   context: { source_root, discovered, responsibility_output }
+
+let skills_resolution = session: skills_resolver
+  prompt: "Resolve declared skills for every system and service."
+  context: { source_root, discovered }
+
+if skills_resolution reports unresolved skills:
+  return skills_resolution
 
 let forme_output = session: forme_compiler
   prompt: "Compile systems and services into v0 Forme manifests."

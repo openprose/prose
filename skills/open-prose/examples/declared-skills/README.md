@@ -6,8 +6,10 @@ provide.
 
 The component in `src/invoice-extractor.prose.md` declares
 `document-skills:pdf` as a required skill. When `prose compile` is run against
-this directory, Forme verifies the named skill is installed in one of the
-recognized search paths and fails closed with `skill_unresolved` if it is not.
+this directory, the compiler's `skills_resolver` checks for the named skill in
+the recognized search paths and fails closed with `skill_unresolved` if it is
+not installed.
 
-See `skills/open-prose/contract-markdown.md` (Skills section) for the full
+See `skills/open-prose/contract-markdown.md` (Skills) and
+`skills/open-prose/compiler/index.prose.md` (`skills_resolver`) for the full
 specification.

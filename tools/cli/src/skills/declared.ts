@@ -1,3 +1,9 @@
+// Harness-side implementation of the compiler `skills_resolver` agent.
+// The authoritative spec lives in `skills/open-prose/compiler/index.prose.md`
+// and `skills/open-prose/contract-markdown.md` (Skills); this module follows
+// that contract so a different harness running the compiler resolves skills
+// the same way.
+
 import { readdir, readFile, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
