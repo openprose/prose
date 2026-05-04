@@ -283,7 +283,7 @@ another repository uses `repo/.agents/prose`. User-global work uses
 | `<openprose-root>/dist/` | Compiled intent and served manifests |
 | `<openprose-root>/runs/` | Activation receipts and run artifacts |
 | `<openprose-root>/state/agents/` | Durable cross-run agents |
-| `<openprose-root>/state/responsibilities/` | Durable responsibility state |
+| `<openprose-root>/state/responsibilities/` | Durable responsibility status and pressure |
 | `<openprose-root>/deps/` | Installed dependencies, gitignored |
 | `<openprose-root>/prose.lock` | Dependency lockfile, committed |
 | `<openprose-root>/.env` | Runtime configuration |

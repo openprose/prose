@@ -1,4 +1,4 @@
-import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
@@ -7,16 +7,23 @@ import { describe, expect, it } from "vitest";
 import {
 	ACTIVE_REPOSITORY_IR_PATH,
 	OPENPROSE_JUDGE_SOURCE_PATH,
+	RESPONSIBILITY_STATUS_KIND,
+	RESPONSIBILITY_STATUS_VERSION,
 	RepositoryServeError,
 	buildActivationRunRequest,
+	buildPressureActivationRunRequest,
+	buildPressureFromStatus,
 	buildTriggerRegistrationPlan,
+	fingerprintResponsibility,
 	formatStaticRepositoryServe,
 	launchActivationRun,
 	loadActiveRepositoryIr,
 	prepareStaticRepositoryServe,
+	recordPressureFromStatus,
 	resolveActivationsForEvent,
 	type RepositoryServeActivationRunRequest,
 	type RepositoryServeLoadedIr,
+	type ResponsibilityStatusRecord,
 } from "../../src/prose/index.js";
 
 const repoRoot = fileURLToPath(new URL("../../../../", import.meta.url));
@@ -303,6 +310,124 @@ describe("repository serve core", () => {
 		);
 	});
 
+	it("turns unhealthy status into fulfillment pressure", async () => {
+		const loaded = await loadFixture();
+		const status = statusRecord(loaded, "down");
+
+		const pressure = buildPressureFromStatus({
+			manifest: loaded.manifest,
+			status,
+			recordedAt: "2026-05-03T12:05:00.000Z",
+		});
+
+		expect(pressure).toMatchObject({
+			responsibilityId: "high-intent-stargazer-outreach",
+			status: "down",
+			evidence: ["No sample results exist for a high-intent stargazer discovered yesterday."],
+			recommendedActivationKind: "fulfillment",
+			activationId: "high-intent-stargazer-outreach.fulfillment",
+			reason:
+				"Responsibility status is down; activate 'high-intent-stargazer-outreach.fulfillment' to reconcile it.",
+		});
+	});
+
+	it("builds a fulfillment run request from pressure", async () => {
+		const loaded = await loadFixture();
+		const pressure = buildPressureFromStatus({
+			manifest: loaded.manifest,
+			status: statusRecord(loaded, "drifting"),
+			recordedAt: "2026-05-03T12:05:00.000Z",
+		})!;
+
+		const request = buildPressureActivationRunRequest({ loaded, pressure });
+
+		expect(request.activationId).toBe("high-intent-stargazer-outreach.fulfillment");
+		expect(request.sourcePath).toBe("stargazer-outreach/index.prose.md");
+		expect(request.payload.trigger).toEqual({
+			id: "high-intent-stargazer-outreach.pressure",
+			kind: "event",
+			responsibilityId: "high-intent-stargazer-outreach",
+			reason: "Responsibility pressure requested fulfillment.",
+		});
+		expect(request.payload.activation).toMatchObject({
+			id: "high-intent-stargazer-outreach.fulfillment",
+			kind: "fulfillment",
+			formeManifestId: "stargazer-outreach",
+		});
+		expect(request.payload.pressure).toEqual(pressure);
+		expect(request.payload.event.payload).toEqual({
+			kind: "openprose.pressure-event",
+			pressure,
+		});
+		expect(request.env.PROSE_PRESSURE_ID).toBe(pressure.pressureId);
+		expect(request.env.PROSE_PRESSURE_DEDUPE_KEY).toBe(pressure.dedupeKey);
+		expect(JSON.parse(request.argv[2] ?? "")).toEqual(request.payload);
+	});
+
+	it("records pressure from status without duplicating the same pressure", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-serve-pressure-record-"));
+
+		try {
+			writeActiveManifest(temp);
+			const loaded = await loadActiveRepositoryIr({ cwd: temp });
+			const status = statusRecord(loaded, "drifting");
+
+			const first = await recordPressureFromStatus({
+				loaded,
+				status,
+				recordedAt: "2026-05-03T12:05:00.000Z",
+			});
+			const second = await recordPressureFromStatus({
+				loaded,
+				status: { ...status, evidence: ["Still drifting."] },
+				recordedAt: "2026-05-03T12:10:00.000Z",
+			});
+
+			expect(first?.recorded).toBe(true);
+			expect(second?.recorded).toBe(false);
+			expect(readFileSync(first!.paths.absolutePressureLogPath, "utf8").trim().split("\n")).toHaveLength(1);
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
+
+	it("does not emit pressure for up status", async () => {
+		const loaded = await loadFixture();
+
+		expect(buildPressureFromStatus({ manifest: loaded.manifest, status: statusRecord(loaded, "up") })).toBeUndefined();
+	});
+
+	it("prefers escalation pressure for blocked status when escalation exists", async () => {
+		const loaded = await loadFixture();
+		loaded.manifest.activations.push({
+			id: "high-intent-stargazer-outreach.escalation",
+			responsibilityId: "high-intent-stargazer-outreach",
+			kind: "escalation",
+			sourcePath: "stargazer-outreach/outreach-drafter.prose.md",
+			reason: "Escalate blocked responsibility status.",
+		});
+
+		const pressure = buildPressureFromStatus({
+			manifest: loaded.manifest,
+			status: statusRecord(loaded, "blocked"),
+		});
+
+		expect(pressure).toMatchObject({
+			recommendedActivationKind: "escalation",
+			activationId: "high-intent-stargazer-outreach.escalation",
+		});
+	});
+
+	it("rejects stale status before creating pressure", async () => {
+		const loaded = await loadFixture();
+		const status = {
+			...statusRecord(loaded, "down"),
+			responsibilityFingerprint: "stale-fingerprint",
+		};
+
+		expect(() => buildPressureFromStatus({ manifest: loaded.manifest, status })).toThrow("is stale");
+	});
+
 	it("rejects non-judge activations without a runnable source path", async () => {
 		const loaded = await loadFixture();
 		const event = { triggerId: "high-intent-stargazer-outreach.evidence-change" };
@@ -402,4 +527,26 @@ async function loadFixture(): Promise<RepositoryServeLoadedIr> {
 	} finally {
 		rmSync(temp, { recursive: true, force: true });
 	}
+}
+
+function statusRecord(
+	loaded: RepositoryServeLoadedIr,
+	status: ResponsibilityStatusRecord["status"],
+): ResponsibilityStatusRecord {
+	const responsibility = loaded.manifest.responsibilities[0]!;
+	return {
+		kind: RESPONSIBILITY_STATUS_KIND,
+		version: RESPONSIBILITY_STATUS_VERSION,
+		responsibilityId: responsibility.id,
+		responsibilityFingerprint: fingerprintResponsibility(responsibility),
+		status,
+		evidence: ["No sample results exist for a high-intent stargazer discovered yesterday."],
+		recordedAt: "2026-05-03T12:00:00.000Z",
+		source: {
+			activationId: "high-intent-stargazer-outreach.judge",
+			triggerId: "high-intent-stargazer-outreach.periodic-check",
+			manifestPath: ACTIVE_REPOSITORY_IR_PATH,
+			irVersion: loaded.manifest.version,
+		},
+	};
 }

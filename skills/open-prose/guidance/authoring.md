@@ -193,8 +193,9 @@ or `kind: test` files.
   Treat `<openprose-root>/dist/`, `<openprose-root>/deps/`, and
   `<openprose-root>/runs/` as generated artifacts unless the host asks for a
   served compiled-intent handoff. Treat `<openprose-root>/state/agents/` and
-  `<openprose-root>/state/responsibilities/` as durable cross-run state; commit
-  them only when the repository deliberately shares that state.
+  `<openprose-root>/state/responsibilities/` as durable cross-run state for
+  responsibility status and pressure; commit them only when the repository
+  deliberately shares that state.
 - Give every public system at least one small `kind: test` covering the happy
   path plus one important degradation or error behavior.
 - Document operational dependencies in `### Environment` and `deps.md`-style

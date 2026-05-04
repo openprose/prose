@@ -13,7 +13,15 @@ import {
 	validateRepositoryIr,
 } from "./repository-ir.js";
 import { resolveOpenProseRoot, type OpenProseRoot } from "./openprose-root.js";
+import {
+	buildResponsibilityPressureRecord,
+	recordResponsibilityPressure,
+	type ResponsibilityPressureActivationKind,
+	type ResponsibilityPressureRecord,
+	type ResponsibilityPressureRecordResult,
+} from "./responsibility-pressure.js";
 import { buildResponsibilityStatusPaths, fingerprintResponsibility } from "./responsibility-status.js";
+import type { ResponsibilityStatusRecord } from "./responsibility-status.js";
 
 export const OPENPROSE_JUDGE_SOURCE_PATH = "runtime/judge-responsibility.prose.md";
 
@@ -100,6 +108,7 @@ export interface RepositoryServeActivationPayload {
 		statusLogPath: string;
 		responsibilityFingerprint: string;
 	};
+	pressure?: ResponsibilityPressureRecord;
 }
 
 export interface RepositoryServeActivationRunRequest {
@@ -219,8 +228,9 @@ export function buildActivationRunRequest(options: {
 	loaded: RepositoryServeLoadedIr;
 	event: RepositoryServeEvent;
 	resolved: RepositoryServeResolvedActivation;
+	pressure?: ResponsibilityPressureRecord;
 }): RepositoryServeActivationRunRequest {
-	const { loaded, event, resolved } = options;
+	const { loaded, event, pressure, resolved } = options;
 	const { manifest } = loaded;
 	const { activation, trigger } = resolved;
 	const sourcePath = activation.sourcePath ?? (activation.kind === "judge" ? OPENPROSE_JUDGE_SOURCE_PATH : undefined);
@@ -235,6 +245,11 @@ export function buildActivationRunRequest(options: {
 	}
 
 	const responsibilityFingerprint = fingerprintResponsibility(responsibility);
+	validateActivationPressure({
+		activation,
+		responsibilityFingerprint,
+		...(pressure === undefined ? {} : { pressure }),
+	});
 	const statusPaths =
 		activation.kind === "judge" ? buildResponsibilityStatusPaths(loaded.openProseRoot, responsibility.id) : undefined;
 	const payload: RepositoryServeActivationPayload = {
@@ -283,6 +298,7 @@ export function buildActivationRunRequest(options: {
 						responsibilityFingerprint,
 					},
 				}),
+		...(pressure === undefined ? {} : { pressure }),
 	};
 	const payloadJson = JSON.stringify(payload);
 	const argv = [sourcePath, "--activation-context", payloadJson];
@@ -307,8 +323,186 @@ export function buildActivationRunRequest(options: {
 						PROSE_RESPONSIBILITY_STATUS_LATEST: statusPaths.absoluteLatestPath,
 						PROSE_RESPONSIBILITY_STATUS_LOG: statusPaths.absoluteStatusLogPath,
 					}),
+			...(pressure === undefined
+				? {}
+				: {
+						PROSE_PRESSURE_ID: pressure.pressureId,
+						PROSE_PRESSURE_DEDUPE_KEY: pressure.dedupeKey,
+					}),
 		},
 	};
+}
+
+export function buildPressureFromStatus(options: {
+	manifest: RepositoryIrV0;
+	status: ResponsibilityStatusRecord;
+	recordedAt?: string;
+}): ResponsibilityPressureRecord | undefined {
+	const { manifest, status } = options;
+	if (status.status === "up") {
+		return undefined;
+	}
+	const responsibility = manifest.responsibilities.find((candidate) => candidate.id === status.responsibilityId);
+	if (responsibility === undefined) {
+		throw new RepositoryServeError(`Status references unknown responsibility '${status.responsibilityId}'.`);
+	}
+	if (fingerprintResponsibility(responsibility) !== status.responsibilityFingerprint) {
+		throw new RepositoryServeError(`Status for responsibility '${status.responsibilityId}' is stale.`);
+	}
+
+	const activation = selectPressureActivation(manifest, {
+		responsibilityId: status.responsibilityId,
+		status: status.status,
+	});
+	if (activation === undefined) {
+		throw new RepositoryServeError(
+			`Responsibility '${status.responsibilityId}' has unhealthy status but no fulfillment, retry, or escalation activation.`,
+		);
+	}
+
+	return buildResponsibilityPressureRecord({
+		status,
+		recommendedActivationKind: activation.kind as ResponsibilityPressureActivationKind,
+		activationId: activation.id,
+		reason: `Responsibility status is ${status.status}; activate '${activation.id}' to reconcile it.`,
+		...(options.recordedAt === undefined ? {} : { recordedAt: options.recordedAt }),
+	});
+}
+
+export function resolveActivationForPressure(
+	manifest: RepositoryIrV0,
+	pressure: ResponsibilityPressureRecord,
+): RepositoryServeResolvedActivation {
+	const activation = selectPressureActivation(manifest, {
+		responsibilityId: pressure.responsibilityId,
+		status: pressure.status,
+		recommendedActivationKind: pressure.recommendedActivationKind,
+		...(pressure.activationId === undefined ? {} : { activationId: pressure.activationId }),
+	});
+	if (activation === undefined) {
+		throw new RepositoryServeError(
+			`Pressure '${pressure.pressureId}' references no runnable activation for responsibility '${pressure.responsibilityId}'.`,
+		);
+	}
+
+	return {
+		trigger: {
+			id: `${pressure.responsibilityId}.pressure`,
+			responsibilityId: pressure.responsibilityId,
+			kind: "event",
+			reason: `Responsibility pressure requested ${pressure.recommendedActivationKind}.`,
+		},
+		activation,
+	};
+}
+
+export function buildPressureActivationRunRequest(options: {
+	loaded: RepositoryServeLoadedIr;
+	pressure: ResponsibilityPressureRecord;
+}): RepositoryServeActivationRunRequest {
+	const resolved = resolveActivationForPressure(options.loaded.manifest, options.pressure);
+	return buildActivationRunRequest({
+		loaded: options.loaded,
+		event: {
+			triggerId: resolved.trigger.id,
+			payload: {
+				kind: "openprose.pressure-event",
+				pressure: options.pressure,
+			},
+		},
+		resolved,
+		pressure: options.pressure,
+	});
+}
+
+export async function recordPressureFromStatus(options: {
+	loaded: RepositoryServeLoadedIr;
+	status: ResponsibilityStatusRecord;
+	recordedAt?: string;
+}): Promise<ResponsibilityPressureRecordResult | undefined> {
+	const pressure = buildPressureFromStatus({
+		manifest: options.loaded.manifest,
+		status: options.status,
+		...(options.recordedAt === undefined ? {} : { recordedAt: options.recordedAt }),
+	});
+	if (pressure === undefined) {
+		return undefined;
+	}
+
+	return recordResponsibilityPressure({
+		openProseRoot: options.loaded.openProseRoot,
+		record: pressure,
+	});
+}
+
+function selectPressureActivation(
+	manifest: RepositoryIrV0,
+	options: {
+		responsibilityId: string;
+		status: ResponsibilityPressureRecord["status"];
+		recommendedActivationKind?: ResponsibilityPressureActivationKind;
+		activationId?: string;
+	},
+): RepositoryIrActivationIntent | undefined {
+	const candidates = manifest.activations.filter(
+		(activation) =>
+			activation.responsibilityId === options.responsibilityId &&
+			(activation.kind === "fulfillment" || activation.kind === "retry" || activation.kind === "escalation"),
+	);
+
+	if (options.activationId !== undefined) {
+		return candidates.find(
+			(activation) =>
+				activation.id === options.activationId &&
+				(options.recommendedActivationKind === undefined || activation.kind === options.recommendedActivationKind),
+		);
+	}
+
+	const preferences: readonly ResponsibilityPressureActivationKind[] =
+		options.recommendedActivationKind === undefined
+			? pressureActivationPreferences(options.status)
+			: [options.recommendedActivationKind];
+
+	for (const kind of preferences) {
+		const activation = candidates.find((candidate) => candidate.kind === kind);
+		if (activation !== undefined) {
+			return activation;
+		}
+	}
+
+	return undefined;
+}
+
+function pressureActivationPreferences(
+	status: ResponsibilityPressureRecord["status"],
+): readonly ResponsibilityPressureActivationKind[] {
+	if (status === "blocked") {
+		return ["escalation", "fulfillment", "retry"];
+	}
+	return ["fulfillment", "retry", "escalation"];
+}
+
+function validateActivationPressure(options: {
+	activation: RepositoryIrActivationIntent;
+	pressure?: ResponsibilityPressureRecord;
+	responsibilityFingerprint: string;
+}): void {
+	const { activation, pressure, responsibilityFingerprint } = options;
+	if (pressure === undefined) {
+		return;
+	}
+	if (pressure.responsibilityId !== activation.responsibilityId) {
+		throw new RepositoryServeError(`Pressure '${pressure.pressureId}' targets a different responsibility.`);
+	}
+	if (pressure.activationId !== undefined && pressure.activationId !== activation.id) {
+		throw new RepositoryServeError(`Pressure '${pressure.pressureId}' targets a different activation.`);
+	}
+	if (pressure.recommendedActivationKind !== activation.kind) {
+		throw new RepositoryServeError(`Pressure '${pressure.pressureId}' targets a different activation kind.`);
+	}
+	if (pressure.responsibilityFingerprint !== responsibilityFingerprint) {
+		throw new RepositoryServeError(`Pressure '${pressure.pressureId}' is stale for the active responsibility.`);
+	}
 }
 
 export async function launchActivationRun(

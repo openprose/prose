@@ -281,18 +281,24 @@ prose run <source.prose.md> --activation-context '<json>'
 
 Treat `--activation-context` as VM control data, not caller input. The JSON
 envelope has `kind: "openprose.activation"` and points at the compiled intent,
-trigger, activation, responsibility, event payload, and optional
-`formeManifestId`. Judge activations also receive responsibility status output
-paths under `<openprose-root>/state/responsibilities/`. The host may also
-provide the same payload through
+trigger, activation, responsibility, event payload, optional pressure record,
+and optional `formeManifestId`. Judge activations also receive responsibility
+status output paths under `<openprose-root>/state/responsibilities/`. The host
+may also provide the same payload through
 `PROSE_ACTIVATION_CONTEXT`, with `PROSE_OPENPROSE_ROOT`,
 `PROSE_REPOSITORY_IR_PATH`, `PROSE_REPOSITORY_IR_VERSION`, and
 `PROSE_ACTIVATION_ID` for quick lookup. Judge runs may also receive
 `PROSE_RESPONSIBILITY_ID`, `PROSE_RESPONSIBILITY_FINGERPRINT`,
 `PROSE_RESPONSIBILITY_STATUS_LATEST`, and
-`PROSE_RESPONSIBILITY_STATUS_LOG`. Load the referenced compiled intent from the
-active OpenProse root before execution, select the matching Forme manifest when
-`formeManifestId` is present, then continue as a normal bounded run.
+`PROSE_RESPONSIBILITY_STATUS_LOG`. Pressure-triggered runs may also receive
+`PROSE_PRESSURE_ID` and `PROSE_PRESSURE_DEDUPE_KEY`. Load the referenced
+compiled intent from the active OpenProse root before execution, select the
+matching Forme manifest when `formeManifestId` is present, then continue as a
+normal bounded run.
+
+When pressure activates fulfillment, retry, or escalation, the trigger id may
+be a virtual `{responsibility-id}.pressure` event. Treat it like any other event
+in the activation context.
 
 If the invoked source is `runtime/judge-responsibility.prose.md`, resolve it
 from the OpenProse skill root, not the user source tree.

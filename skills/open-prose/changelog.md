@@ -22,7 +22,7 @@ plan.
 - The root contains `src/`, `dist/`, `runs/`, `state/`, `deps/`,
   `prose.lock`, and `.env`.
 - Durable cross-run agents live in `state/agents/`.
-- Durable responsibility status lives in `state/responsibilities/`.
+- Durable responsibility status and pressure live in `state/responsibilities/`.
 - Multi-file systems conventionally use `index.prose.md`.
 - Generated run internals include the compiled activation manifest,
   `root.prose.md`, and `vm.log.md`.

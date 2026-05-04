@@ -85,11 +85,24 @@ escalation. It is not a broad policy engine.
 
 The first useful pressure record needs only:
 
-- responsibility identity
+- `kind: openprose.responsibility-pressure`
+- `version: 0`
+- `pressureId`
+- `dedupeKey`
+- responsibility identity and fingerprint
 - status
 - evidence summary
 - recommended activation class
-- enough deduplication context to avoid uncontrolled duplicate runs
+- optional activation id
+- reason, recorded time, and source status metadata
+
+The runtime writes `pressure.latest.json` and appends `pressure.jsonl` beside
+the responsibility status files. Repeated pressure with the same dedupe key is
+not appended again and should not launch duplicate work.
+
+Pressure wakes a normal bounded activation through a virtual
+`{responsibility-id}.pressure` event. It is control context for the activation,
+not a second workflow language.
 
 ## Judge Cadence
 
@@ -106,4 +119,6 @@ Fulfillment runs only when the responsibility is drifting, down, blocked, or
 explicitly requested.
 
 When fulfillment needs a multi-service system, Forme supplies the compiled
-manifest and the Prose VM runs a normal bounded activation.
+manifest and the Prose VM runs a normal bounded activation. Pressure-triggered
+fulfillment should receive the responsibility, unhealthy status evidence,
+pressure record, and original event context.

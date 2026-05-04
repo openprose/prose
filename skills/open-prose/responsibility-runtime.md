@@ -131,6 +131,11 @@ service unless a later runtime phase introduces custom judge routing. The
 service writes `latest.json` and appends `status.jsonl` under
 `<openprose-root>/state/responsibilities/{responsibility-id}/`.
 
+Unhealthy judge status can produce a narrow pressure record under the same
+responsibility directory. Pressure is deduped by responsibility fingerprint,
+status, activation class, and activation id, then launched as a normal bounded
+fulfillment, retry, or escalation activation.
+
 ## Responsibilities
 
 A `kind: responsibility` file is semantic and normative. It says what must stay
@@ -154,7 +159,8 @@ Reactor is the maintenance loop:
 2. A bounded judge activation computes status.
 3. Status is recorded as `up`, `drifting`, `down`, or `blocked`.
 4. Unhealthy status produces pressure.
-5. Pressure activates fulfillment, retry, or escalation.
+5. Pressure activates fulfillment, retry, or escalation through ordinary
+   `prose run` semantics.
 
 Load `concepts/reactor.md` before designing Responsibility Runtime behavior or
 interpreting maintenance feedback.
