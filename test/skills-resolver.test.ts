@@ -64,3 +64,94 @@ describe("resolveSkill", () => {
     rmSync(root, { recursive: true, force: true });
   });
 });
+
+describe("resolveSkill — fuzzy guardrails (bug #1)", () => {
+  test("typo of short name does NOT silently bind to an unrelated skill", () => {
+    const root = join(tmpdir(), `prose-skills-${Date.now()}`);
+    const skillsDir = join(root, "skills");
+    makeStubSkill(skillsDir, "document-skills", "pdf");
+    makeStubSkill(skillsDir, "claude-skills", "xf");
+    const result = resolveSkill("pfd", { searchPaths: [skillsDir] });
+    expect(result.resolution).toBe("unresolved");
+    expect(result.candidates).toBeDefined();
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  test("short typo with only an unrelated skill installed does NOT silently bind", () => {
+    // Real-world synthetic-user scenario: user typed `pfd`, only `xf` is installed
+    // in the two-level layout. levenshtein("pfd","xf")=2. With declared.length=3,
+    // a distance of 2 must NOT resolve.
+    const root = join(tmpdir(), `prose-skills-${Date.now()}`);
+    const skillsDir = join(root, "skills");
+    makeStubSkill(skillsDir, "claude-skills", "xf");
+    const result = resolveSkill("pfd", { searchPaths: [skillsDir] });
+    expect(result.resolution).toBe("unresolved");
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  test("close fuzzy match still resolves when there's no plausible competitor", () => {
+    const root = join(tmpdir(), `prose-skills-${Date.now()}`);
+    const skillsDir = join(root, "skills");
+    makeStubSkill(skillsDir, "document-skills", "pdf");
+    const result = resolveSkill("pdf", { searchPaths: [skillsDir] });
+    expect(result.resolution).toBe("fuzzy");
+    expect(result.canonical_name).toBe("document-skills:pdf");
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  test("longer declared name still permits 1-2 edit fuzzy when competitor is far", () => {
+    const root = join(tmpdir(), `prose-skills-${Date.now()}`);
+    const skillsDir = join(root, "skills");
+    makeStubSkill(skillsDir, "document-skills", "spreadsheet");
+    makeStubSkill(skillsDir, "acme", "totally-different");
+    const result = resolveSkill("spreadshet", { searchPaths: [skillsDir] }); // missing one 'e'
+    expect(result.resolution).toBe("fuzzy");
+    expect(result.canonical_name).toBe("document-skills:spreadsheet");
+    rmSync(root, { recursive: true, force: true });
+  });
+});
+
+describe("resolveSkill — one-level Claude Code layout (bug #2)", () => {
+  test("discovers one-level skill at <root>/<name>/SKILL.md", () => {
+    const root = join(tmpdir(), `prose-skills-${Date.now()}`);
+    const skillsDir = join(root, "skills");
+    const dir = join(skillsDir, "pdf");
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, "SKILL.md"), "---\nname: pdf\ndescription: stub\n---\n");
+    const result = resolveSkill("pdf", { searchPaths: [skillsDir] });
+    expect(result.resolution).toBe("exact");
+    expect(result.canonical_name).toBe("pdf");
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  test("colon-form declared name does NOT match one-level install of same leaf", () => {
+    const root = join(tmpdir(), `prose-skills-${Date.now()}`);
+    const skillsDir = join(root, "skills");
+    const dir = join(skillsDir, "pdf");
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, "SKILL.md"), "---\nname: pdf\ndescription: stub\n---\n");
+    const result = resolveSkill("document-skills:pdf", { searchPaths: [skillsDir] });
+    expect(result.resolution).toBe("unresolved");
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  test("mixed layouts: one-level wins exact, two-level wins exact for colon form", () => {
+    const root = join(tmpdir(), `prose-skills-${Date.now()}`);
+    const skillsDir = join(root, "skills");
+    const oneLevel = join(skillsDir, "pdf");
+    mkdirSync(oneLevel, { recursive: true });
+    writeFileSync(join(oneLevel, "SKILL.md"), "---\nname: pdf\ndescription: stub\n---\n");
+    const twoLevel = join(skillsDir, "document-skills", "pdf");
+    mkdirSync(twoLevel, { recursive: true });
+    writeFileSync(join(twoLevel, "SKILL.md"), "---\nname: pdf\ndescription: stub\n---\n");
+
+    const bare = resolveSkill("pdf", { searchPaths: [skillsDir] });
+    expect(bare.resolution).toBe("exact");
+    expect(bare.canonical_name).toBe("pdf");
+
+    const colon = resolveSkill("document-skills:pdf", { searchPaths: [skillsDir] });
+    expect(colon.resolution).toBe("exact");
+    expect(colon.canonical_name).toBe("document-skills:pdf");
+    rmSync(root, { recursive: true, force: true });
+  });
+});
