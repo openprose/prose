@@ -1,0 +1,9 @@
+dist/manifest.*.json
+runs/*
+state/responsibilities/*
+state/agents/*
+!dist/.gitkeep
+!runs/.gitkeep
+!state/.gitkeep
+!deps/.gitkeep
+

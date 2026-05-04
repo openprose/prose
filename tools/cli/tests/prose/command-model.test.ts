@@ -25,7 +25,7 @@ describe("command model", () => {
 		[["install", ["--update"]], "prose install --update"],
 		[["help", []], "prose help"],
 		[["examples", []], "prose examples"],
-		[["examples", ["01-hello-world"]], "prose examples 01-hello-world"],
+		[["examples", ["stargazer-outreach"]], "prose examples stargazer-outreach"],
 		[["upgrade", []], "prose upgrade"],
 		[["upgrade", ["--dry-run"]], "prose upgrade --dry-run"],
 	];

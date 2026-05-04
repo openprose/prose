@@ -314,11 +314,11 @@ Start with:
 
 | Path | Why open it |
 |------|-------------|
-| [01-hello-world.prose.md](skills/open-prose/examples/01-hello-world.prose.md) | Smallest possible service |
-| [09-research-with-agents](skills/open-prose/examples/09-research-with-agents/) | First multi-agent workflow |
-| [35-feature-factory](skills/open-prose/examples/35-feature-factory/) | Production-style build loop |
-| [39-architect-by-simulation](skills/open-prose/examples/39-architect-by-simulation/) | Pinned ProseScript choreography |
-| [47-language-self-improvement](skills/open-prose/examples/47-language-self-improvement/) | OpenProse improving OpenProse |
+| [stargazer-outreach](skills/open-prose/examples/stargazer-outreach/) | GitHub stars to qualified, thoughtful outreach |
+| [incident-briefing-room](skills/open-prose/examples/incident-briefing-room/) | Incident updates, impact, and next actions |
+| [customer-risk-radar](skills/open-prose/examples/customer-risk-radar/) | Customer risk monitoring before renewals or escalations |
+| [release-readiness](skills/open-prose/examples/release-readiness/) | Release evidence, risk, notes, and rollback context |
+| [compliance-evidence-tracker](skills/open-prose/examples/compliance-evidence-tracker/) | Audit evidence freshness and gap tracking |
 
 ## Libraries
 

@@ -35,7 +35,7 @@ Options:
 - **Build something new**: Ask them to describe their task, then help write a service or system (load `guidance/authoring.md`)
 - **Keep a goal true**: Help author a `kind: responsibility`, then explain `prose compile`, `prose serve`, and `prose status`
 - **Learn the syntax**: Show examples from `examples/`, explain the VM model
-- **Explore possibilities**: Walk through key examples like `37-the-forge/`
+- **Explore possibilities**: Walk through examples like `stargazer-outreach/`
 
 ---
 
@@ -64,7 +64,10 @@ Options:
 
 **Run an example:**
 ```
-prose run examples/01-hello-world.prose.md
+cd examples/stargazer-outreach
+prose compile
+cp dist/manifest.next.json dist/manifest.active.json
+prose serve
 ```
 
 **Create your first service or system:**
@@ -286,26 +289,17 @@ Also valid: `session`, `agent`, `repeat`, `for`, `loop until`, `try/catch`, `if/
 
 ## Examples
 
-The `examples/` directory contains a mixture of canonical Contract Markdown,
-system patterns, and feature demos:
-
-| Range | Category |
-|-------|----------|
-| 01-04 | Basics -- single-service files (hello world, research, code review, write-and-refine) |
-| 09-13 | Agents, skills, imports, shape boundaries, variables |
-| 16 | Parallel execution (multi-service with synthesizer) |
-| 22-25 | Error handling, retry, choice blocks, conditionals |
-| 29-30 | Captain's chair pattern (persistent orchestrator) |
-| 32-37 | Production workflows (PR review, auto-fix, content pipeline, feature factory, bug hunter, the forge) |
-| 38-39 | Skill scanning, architect-by-simulation |
-| 40-43 | RLM patterns (self-refine, divide-conquer, filter-recurse, pairwise) |
-| 44-50 | Production and meta (UX testing, plugin release, workflow crystallizer, language self-improvement, habit miner, retrospective, interactive tutor) |
-| -- | Bonus: patterns-demo, multi-service-single-file, dependency-import, test-demo, wiring-declaration |
+The `examples/` directory contains small OpenProse Native Repositories. Each
+example has `src/`, `dist/`, `runs/`, `state/`, `deps/`, a top-level README,
+and source files for a responsibility, gateway, system, and focused services.
 
 **Recommended starting points:**
-- `01-hello-world.prose.md` -- Simplest possible service (single session, no inputs)
-- `16-parallel-reviews/` -- Multi-service parallel execution with auto-wiring
-- `37-the-forge/` -- Watch AI build a web browser (9-phase execution block)
-- `test-demo.prose.md` -- See how `kind: test` works with fixtures and assertions
-- `multi-service-single-file.prose.md` -- See `##` inline service boundaries
-- `patterns-demo/` -- See a self-contained worker-critic pattern
+
+- `stargazer-outreach/` -- GitHub stars to qualified, thoughtful outreach
+- `incident-briefing-room/` -- Incident updates, impact, and next actions
+- `customer-risk-radar/` -- Customer risk monitoring before renewals or escalations
+- `release-readiness/` -- Release evidence, risk, notes, and rollback context
+- `vendor-renewal-watch/` -- Renewal preparation before auto-renewal windows
+- `research-inbox-triage/` -- Deduplicated, prioritized research intake
+- `content-performance-loop/` -- Content performance lessons into next actions
+- `compliance-evidence-tracker/` -- Audit evidence freshness and gap tracking
