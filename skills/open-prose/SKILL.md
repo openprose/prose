@@ -30,6 +30,43 @@ from the same source of truth.
 - Hosted boundary: `prose remote execute` emits the host-ingestion envelope
   using the same run/artifact contract
 
+## Declaring required skills
+
+A `.prose.md` program can name the agent skills it requires so OpenProse can
+fail closed when they are missing instead of hoping a sub-agent auto-activates
+the right one. Names use the colon form `<namespace>:<name>`, matching the
+`/skill` plugin marketplace convention (e.g. `document-skills:pdf`).
+
+Two equivalent ways to declare:
+
+In frontmatter:
+
+```yaml
+---
+name: invoice-extractor
+kind: system
+skills:
+  - document-skills:pdf
+---
+```
+
+Or as a `### Skills` section:
+
+```markdown
+### Skills
+
+- `document-skills:pdf`
+```
+
+`prose preflight` walks every declared skill and resolves it against the
+deterministic search path (`./skills/`, then `~/.claude/skills/`, then
+`~/.codex/skills/`). If a declared skill is not installed, preflight emits a
+`skill_unresolved` error and the run fails closed — there is no automatic
+install. OpenProse never installs, edits, or deactivates the user's harness
+skills; BYO harness is the invariant. The author is responsible for installing
+the skill (e.g. via `/plugin marketplace install` or by cloning the skill into
+`./skills/`).
+
 ## Routing
 
 When the user asks for OpenProse work:
