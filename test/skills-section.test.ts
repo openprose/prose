@@ -20,6 +20,68 @@ describe("skills section spec", () => {
 
 import { parseContractMarkdown } from "../src/markdown";
 import { parseSkills } from "../src/sections";
+import { mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { loadComponentsFromSource } from "../src/source";
+
+describe("skills wiring", () => {
+  test("frontmatter and section skills land on ComponentIR.skills", () => {
+    const dir = join(tmpdir(), `prose-skills-test-${Date.now()}`);
+    mkdirSync(dir, { recursive: true });
+    const file = join(dir, "x.prose.md");
+    writeFileSync(
+      file,
+      [
+        "---",
+        "name: x",
+        "kind: system",
+        "skills:",
+        "  - document-skills:pdf",
+        "---",
+        "",
+        "### Skills",
+        "",
+        "- document-skills:xlsx",
+        "",
+        "### Services",
+        "- a",
+      ].join("\n"),
+    );
+    const components = loadComponentsFromSource(file);
+    const decl = components[0].skills.map((s: any) => s.declared_name).sort();
+    expect(decl).toEqual(["document-skills:pdf", "document-skills:xlsx"]);
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  test("inline service ## block carries its own skills", () => {
+    const dir = join(tmpdir(), `prose-skills-test-${Date.now()}`);
+    mkdirSync(dir, { recursive: true });
+    const file = join(dir, "y.prose.md");
+    writeFileSync(
+      file,
+      [
+        "---",
+        "name: y",
+        "kind: system",
+        "---",
+        "",
+        "## extract",
+        "---",
+        "kind: service",
+        "skills:",
+        "  - document-skills:pdf",
+        "---",
+        "",
+      ].join("\n"),
+    );
+    const components = loadComponentsFromSource(file);
+    const extract = components.find((c: any) => c.name === "extract");
+    expect(extract?.skills.map((s: any) => s.declared_name)).toEqual([
+      "document-skills:pdf",
+    ]);
+    rmSync(dir, { recursive: true, force: true });
+  });
+});
 
 describe("### Skills section parser", () => {
   test("extracts bare skill names from a Skills section", () => {

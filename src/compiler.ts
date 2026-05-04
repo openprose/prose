@@ -12,8 +12,10 @@ import {
   parsePorts,
   parseRuntime,
   parseServices,
+  parseSkills,
   parseTextSection,
 } from "./sections";
+import { span } from "./markdown";
 import { slugify } from "./text";
 import type {
   ComponentIR,
@@ -24,6 +26,8 @@ import type {
   PortIR,
   ProseIR,
   ServiceIR,
+  SkillRefIR,
+  SourceSpan,
 } from "./types";
 
 export interface CompileOptions {
@@ -48,6 +52,12 @@ export function compileSource(source: string, options: CompileOptions): ProseIR 
     const id = count === 0 ? baseId : `${baseId}-${count + 1}`;
 
     const services = parseServices(findSection(draft, "services"));
+    const sectionSkills = parseSkills(findSection(draft, "skills"));
+    const frontmatterSkills = collectFrontmatterSkills(
+      draft.frontmatter,
+      draft.sourceSpan,
+    );
+    const skills = dedupeSkills([...frontmatterSkills, ...sectionSkills]);
     const component: ComponentIR = {
       id,
       name: draft.name,
@@ -61,7 +71,7 @@ export function compileSource(source: string, options: CompileOptions): ProseIR 
         ensures: parsePorts(findSection(draft, "ensures"), "output", diagnostics),
       },
       services,
-      skills: [],
+      skills,
       schemas: [],
       runtime: parseRuntime(findSection(draft, "runtime"), diagnostics),
       environment: parseEnvironment(
@@ -400,4 +410,48 @@ function projectPort(port: PortIR): unknown {
 
 function normalizePath(path: string): string {
   return path.replace(/\\/g, "/");
+}
+
+function collectFrontmatterSkills(
+  frontmatter: Record<string, unknown>,
+  sourceSpan: SourceSpan,
+): SkillRefIR[] {
+  const value = frontmatter.skills;
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  const skills: SkillRefIR[] = [];
+  for (const item of value) {
+    if (typeof item !== "string") {
+      continue;
+    }
+    const declared = item.trim();
+    if (!declared) {
+      continue;
+    }
+    skills.push({
+      declared_name: declared,
+      canonical_name: "",
+      resolution: "unresolved",
+      source_span: span(
+        sourceSpan.path,
+        sourceSpan.start_line,
+        sourceSpan.start_line,
+      ),
+    });
+  }
+  return skills;
+}
+
+function dedupeSkills(skills: SkillRefIR[]): SkillRefIR[] {
+  const seen = new Set<string>();
+  const out: SkillRefIR[] = [];
+  for (const skill of skills) {
+    if (seen.has(skill.declared_name)) {
+      continue;
+    }
+    seen.add(skill.declared_name);
+    out.push(skill);
+  }
+  return out;
 }
