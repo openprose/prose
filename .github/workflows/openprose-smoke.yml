@@ -44,11 +44,12 @@ env:
   OPENPROSE_SMOKE_MODEL: claude-sonnet-4-6
 
 jobs:
-  smoke:
-    name: Run OpenProse smoke fixtures
+  select-cases:
+    name: Select OpenProse smoke cases
     runs-on: ubuntu-latest
-    timeout-minutes: 35
-
+    timeout-minutes: 5
+    outputs:
+      cases: ${{ steps.cases.outputs.cases }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -57,12 +58,51 @@ jobs:
           persist-credentials: false
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.pr_number != '' && format('refs/pull/{0}/merge', inputs.pr_number) || github.event_name == 'workflow_dispatch' && inputs.ref != '' && inputs.ref || github.ref }}
 
+      - name: Select cases for tier
+        id: cases
+        env:
+          SMOKE_TIER: ${{ github.event_name == 'workflow_dispatch' && inputs.tier || 'required' }}
+        run: |
+          node --input-type=module <<'EOF'
+          import { appendFileSync, readFileSync } from "node:fs";
+
+          const tier = process.env.SMOKE_TIER || "required";
+          const manifest = JSON.parse(readFileSync("tests/open-prose/smoke/manifest.json", "utf8"));
+          const cases = manifest.cases
+            .filter((smokeCase) => smokeCase.tier === tier)
+            .map((smokeCase) => smokeCase.id);
+
+          appendFileSync(process.env.GITHUB_OUTPUT, `cases=${JSON.stringify(cases.length > 0 ? cases : ["__none__"])}\n`);
+          console.log(`Selected ${cases.length} ${tier} smoke case(s): ${cases.join(", ") || "(none)"}`);
+          EOF
+
+  smoke:
+    name: OpenProse smoke / ${{ matrix.case_id }}
+    needs: select-cases
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        case_id: ${{ fromJSON(needs.select-cases.outputs.cases) }}
+
+    steps:
+      - name: Checkout
+        if: ${{ matrix.case_id != '__none__' }}
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.pr_number != '' && format('refs/pull/{0}/merge', inputs.pr_number) || github.event_name == 'workflow_dispatch' && inputs.ref != '' && inputs.ref || github.ref }}
+
       - name: Setup Node
+        if: ${{ matrix.case_id != '__none__' }}
         uses: actions/setup-node@v4
         with:
           node-version: 22
 
       - name: Install Claude Code CLI
+        if: ${{ matrix.case_id != '__none__' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -70,6 +110,7 @@ jobs:
           claude --version
 
       - name: Install tsx
+        if: ${{ matrix.case_id != '__none__' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -77,8 +118,10 @@ jobs:
           tsx --version
 
       - name: Run OpenProse smoke
+        if: ${{ matrix.case_id != '__none__' }}
         shell: bash
         env:
+          SMOKE_CASE: ${{ matrix.case_id }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           SMOKE_TIER: ${{ github.event_name == 'workflow_dispatch' && inputs.tier || 'required' }}
           SMOKE_MODEL: ${{ github.event_name == 'workflow_dispatch' && inputs.model != '' && inputs.model || env.OPENPROSE_SMOKE_MODEL }}
@@ -87,20 +130,24 @@ jobs:
           set -euo pipefail
           args=(
             --tier "$SMOKE_TIER"
+            --case "$SMOKE_CASE"
             --model "$SMOKE_MODEL"
             --results-dir openprose-smoke-results
-            --max-concurrency 1
           )
           if [[ "$SMOKE_FORCE" == "true" ]]; then
             args+=(--force)
           fi
           tsx .github/scripts/openprose-smoke/run.ts "${args[@]}"
 
+      - name: No smoke cases selected
+        if: ${{ matrix.case_id == '__none__' }}
+        run: echo "No smoke cases selected for this tier."
+
       - name: Upload smoke artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: openprose-smoke-${{ github.run_id }}-${{ github.run_attempt }}
+          name: openprose-smoke-${{ matrix.case_id }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: openprose-smoke-results/**
           retention-days: 30
           include-hidden-files: true

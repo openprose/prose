@@ -53,8 +53,8 @@ The installer supports `PROSE_VERSION`, `PROSE_BASE_URL`, `PROSE_INSTALL_DIR`,
 private releases. By default it downloads and verifies the `.sha256` file next
 to the release tarball.
 
-Maintainers can find the release process in [RELEASE.md](RELEASE.md) and the
-post-release playtest workflow in
+Maintainers can find the release process in the repository root
+[RELEASE.md](../../RELEASE.md) and the post-release playtest workflow in
 [POST_RELEASE_PLAYTEST.md](POST_RELEASE_PLAYTEST.md).
 
 ## Provider Selection

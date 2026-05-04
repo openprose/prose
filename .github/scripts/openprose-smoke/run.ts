@@ -566,6 +566,10 @@ async function runCase(
   let exitCode: number | null = 0;
   let timedOut = false;
 
+  logProgress(
+    `start case=${smokeCase.id} tier=${smokeCase.tier} command=${smokeCase.command} result=${resultPath}`,
+  );
+
   if (options.dryRun) {
     await fs.writeFile(stdoutPath, buildDryRunOutput(smokeCase, options, workspace, prompt), "utf8");
     await fs.writeFile(stderrPath, "", "utf8");
@@ -579,6 +583,7 @@ async function runCase(
       stdoutPath,
       stderrPath,
       buildClaudeEnv(),
+      smokeCase.id,
     );
     exitCode = run.exitCode;
     timedOut = run.timedOut;
@@ -617,6 +622,9 @@ async function runCase(
   };
 
   await fs.writeFile(resultPath, `${JSON.stringify(result, null, 2)}\n`, "utf8");
+  logProgress(
+    `complete case=${result.id} status=${result.status} duration=${result.durationMs}ms result=${result.resultPath}`,
+  );
   return result;
 }
 
@@ -943,6 +951,7 @@ async function runProcessToFiles(
   stdoutPath: string,
   stderrPath: string,
   env: Record<string, string> = process.env as Record<string, string>,
+  progressLabel = command,
 ): Promise<{ exitCode: number | null; timedOut: boolean }> {
   await fs.mkdir(path.dirname(stdoutPath), { recursive: true });
 
@@ -956,14 +965,20 @@ async function runProcessToFiles(
     });
     let timedOut = false;
     let settled = false;
+    const start = Date.now();
 
     const timer = setTimeout(() => {
       timedOut = true;
+      logProgress(`timeout case=${progressLabel} after ${Math.round((Date.now() - start) / 1000)}s`);
       child.kill("SIGTERM");
       setTimeout(() => {
         if (!settled) child.kill("SIGKILL");
       }, 5_000).unref();
     }, timeoutMs);
+    const heartbeat = setInterval(() => {
+      logProgress(`running case=${progressLabel} elapsed=${Math.round((Date.now() - start) / 1000)}s`);
+    }, 30_000);
+    heartbeat.unref();
 
     child.stdout.pipe(stdoutStream);
     child.stderr.pipe(stderrStream);
@@ -973,6 +988,7 @@ async function runProcessToFiles(
     child.on("close", (code) => {
       settled = true;
       clearTimeout(timer);
+      clearInterval(heartbeat);
       const stdoutDone = waitForStream(stdoutStream);
       const stderrDone = waitForStream(stderrStream);
       stdoutStream.end();
@@ -982,6 +998,10 @@ async function runProcessToFiles(
       });
     });
   });
+}
+
+function logProgress(message: string): void {
+  process.stderr.write(`[openprose-smoke] ${message}\n`);
 }
 
 function waitForStream(stream: NodeJS.WritableStream): Promise<void> {
