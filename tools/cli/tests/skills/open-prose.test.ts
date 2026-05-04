@@ -11,6 +11,7 @@ import {
 	installOpenProseSkill,
 	loadOpenProseSkillBootstrap,
 	resolveOpenProseSkill,
+	skillAgentsForHarness,
 } from "../../src/skills/open-prose.js";
 
 function tempDir(): string {
@@ -234,5 +235,139 @@ describe("OpenProse skill checks", () => {
 			rmSync(home, { recursive: true, force: true });
 			rmSync(cwd, { recursive: true, force: true });
 		}
+	});
+
+	it("maps cursor-sdk to the cursor skill agent", () => {
+		expect(skillAgentsForHarness("cursor-sdk")).toEqual(["cursor"]);
+	});
+
+	it("discovers cursor skills under .cursor/skills first, then .agents/skills", async () => {
+		const home = tempDir();
+		const repo = tempDir();
+		const cwd = repo;
+
+		try {
+			mkdirSync(join(repo, ".git"), { recursive: true });
+			writeSkill(join(repo, ".cursor", "skills", "open-prose"));
+
+			const [status] = await checkOpenProseSkill({
+				agents: ["cursor"],
+				cwd,
+				env: { HOME: home },
+			});
+
+			expect(status?.installed).toBe(true);
+			const projectPaths = status?.locations
+				.filter((location) => location.scope === "project")
+				.map((location) => location.path);
+			expect(projectPaths).toContain(join(repo, ".cursor", "skills", "open-prose", "SKILL.md"));
+			expect(projectPaths).toContain(join(repo, ".agents", "skills", "open-prose", "SKILL.md"));
+		} finally {
+			rmSync(home, { recursive: true, force: true });
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
+	it("includes ~/.cursor, ~/.agents, ~/.claude, and ~/.codex as cursor user-scope candidates", async () => {
+		const home = tempDir();
+		const cwd = tempDir();
+
+		try {
+			const [status] = await checkOpenProseSkill({
+				agents: ["cursor"],
+				cwd,
+				env: { HOME: home },
+			});
+
+			const userPaths = status?.locations
+				.filter((location) => location.scope === "user" || location.scope === "provider-user")
+				.map((location) => location.path);
+			expect(userPaths).toEqual(
+				expect.arrayContaining([
+					join(home, ".cursor", "skills", "open-prose", "SKILL.md"),
+					join(home, ".agents", "skills", "open-prose", "SKILL.md"),
+					join(home, ".claude", "skills", "open-prose", "SKILL.md"),
+					join(home, ".codex", "skills", "open-prose", "SKILL.md"),
+				]),
+			);
+		} finally {
+			rmSync(home, { recursive: true, force: true });
+			rmSync(cwd, { recursive: true, force: true });
+		}
+	});
+
+	it("walks ancestors and emits both project subdirs at each ancestor for cursor", async () => {
+		const home = tempDir();
+		const repo = tempDir();
+		const cwd = join(repo, "packages", "app");
+
+		try {
+			mkdirSync(join(repo, ".git"), { recursive: true });
+			mkdirSync(cwd, { recursive: true });
+			writeSkill(join(repo, ".agents", "skills", "open-prose"));
+
+			const [status] = await checkOpenProseSkill({ agents: ["cursor"], cwd, env: { HOME: home } });
+
+			expect(status?.installed).toBe(true);
+			const projectPaths = status?.locations
+				.filter((location) => location.scope === "project")
+				.map((location) => location.path);
+			// Cursor walks both .cursor/skills and .agents/skills at each ancestor.
+			expect(projectPaths).toEqual(
+				expect.arrayContaining([
+					join(repo, ".cursor", "skills", "open-prose", "SKILL.md"),
+					join(repo, ".agents", "skills", "open-prose", "SKILL.md"),
+					join(cwd, ".cursor", "skills", "open-prose", "SKILL.md"),
+					join(cwd, ".agents", "skills", "open-prose", "SKILL.md"),
+				]),
+			);
+		} finally {
+			rmSync(home, { recursive: true, force: true });
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
+	it("treats ~/.codex/skills/... as a compat candidate for cursor but NOT for claude-code", async () => {
+		const home = tempDir();
+		const cwd = tempDir();
+
+		try {
+			writeSkill(join(home, ".codex", "skills", "open-prose"));
+
+			const [cursorStatus] = await checkOpenProseSkill({
+				agents: ["cursor"],
+				cwd,
+				env: { HOME: home },
+			});
+			expect(cursorStatus?.installed).toBe(true);
+
+			const [claudeStatus] = await checkOpenProseSkill({
+				agents: ["claude-code"],
+				cwd,
+				env: { HOME: home },
+			});
+			expect(claudeStatus?.installed).toBe(false);
+		} finally {
+			rmSync(home, { recursive: true, force: true });
+			rmSync(cwd, { recursive: true, force: true });
+		}
+	});
+
+	it("builds the install command with --agent cursor", () => {
+		const command = buildOpenProseSkillInstallCommand(["cursor"]);
+		expect(command.args).toEqual([
+			"--yes",
+			"skills@1.5.3",
+			"add",
+			"openprose/prose",
+			"--skill",
+			"open-prose",
+			"--global",
+			"--yes",
+			"--copy",
+			"--full-depth",
+			"--agent",
+			"cursor",
+		]);
 	});
 });

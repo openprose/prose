@@ -9,7 +9,7 @@ export const OPEN_PROSE_SKILL_NAME = "open-prose";
 export const OPEN_PROSE_SKILL_SOURCE = "openprose/prose";
 export const SKILLS_CLI_PACKAGE = "skills@1.5.3";
 
-export type SkillAgent = "codex" | "claude-code";
+export type SkillAgent = "codex" | "claude-code" | "cursor";
 export type SkillScope = "project" | "user" | "provider-user";
 
 export interface SkillLocation {
@@ -77,7 +77,7 @@ export function skillAgentsForHarness(harness: string): SkillAgent[] {
 		case "claude-sdk":
 			return ["claude-code"];
 		case "cursor-sdk":
-			return [];
+			return ["cursor"];
 		case "mock":
 		default:
 			return [];
@@ -282,39 +282,52 @@ export function formatSkillStatus(status: SkillStatus, home = homedir()): string
 }
 
 function candidateSkillLocations(agent: SkillAgent, cwd: string, home: string): Array<Omit<SkillLocation, "exists" | "valid">> {
-	const ancestorLocations = projectAncestors(cwd).map((directory) => ({
-		agent,
-		scope: "project" as const,
-		path: join(directory, projectSkillDirectory(agent), OPEN_PROSE_SKILL_NAME, "SKILL.md"),
-	}));
+	const projectDirs = projectSkillDirectories(agent);
+	const ancestorLocations = projectAncestors(cwd).flatMap((directory) =>
+		projectDirs.map((projectDir) => ({
+			agent,
+			scope: "project" as const,
+			path: join(directory, projectDir, OPEN_PROSE_SKILL_NAME, "SKILL.md"),
+		})),
+	);
 
-	const userLocations =
-		agent === "codex"
-			? [
-					{
-						agent,
-						scope: "user" as const,
-						path: join(home, ".agents", "skills", OPEN_PROSE_SKILL_NAME, "SKILL.md"),
-					},
-					{
-						agent,
-						scope: "provider-user" as const,
-						path: join(home, ".codex", "skills", OPEN_PROSE_SKILL_NAME, "SKILL.md"),
-					},
-				]
-			: [
-					{
-						agent,
-						scope: "user" as const,
-						path: join(home, ".claude", "skills", OPEN_PROSE_SKILL_NAME, "SKILL.md"),
-					},
-				];
+	const userLocations = userSkillLocations(agent, home);
 
 	return uniqueByPath([...ancestorLocations, ...userLocations]);
 }
 
-function projectSkillDirectory(agent: SkillAgent): string {
-	return agent === "codex" ? join(".agents", "skills") : join(".claude", "skills");
+function projectSkillDirectories(agent: SkillAgent): string[] {
+	switch (agent) {
+		case "codex":
+			return [join(".agents", "skills")];
+		case "claude-code":
+			return [join(".claude", "skills")];
+		case "cursor":
+			// Cursor-native first per forum reliability report; .agents/ second for cross-client interop.
+			return [join(".cursor", "skills"), join(".agents", "skills")];
+	}
+}
+
+function userSkillLocations(agent: SkillAgent, home: string): Array<Omit<SkillLocation, "exists" | "valid">> {
+	switch (agent) {
+		case "codex":
+			return [
+				{ agent, scope: "user", path: join(home, ".agents", "skills", OPEN_PROSE_SKILL_NAME, "SKILL.md") },
+				{ agent, scope: "provider-user", path: join(home, ".codex", "skills", OPEN_PROSE_SKILL_NAME, "SKILL.md") },
+			];
+		case "claude-code":
+			return [
+				{ agent, scope: "user", path: join(home, ".claude", "skills", OPEN_PROSE_SKILL_NAME, "SKILL.md") },
+			];
+		case "cursor":
+			// Cursor-native first; ~/.agents/ for cross-client interop; other providers as fallback per Cursor docs.
+			return [
+				{ agent, scope: "user", path: join(home, ".cursor", "skills", OPEN_PROSE_SKILL_NAME, "SKILL.md") },
+				{ agent, scope: "provider-user", path: join(home, ".agents", "skills", OPEN_PROSE_SKILL_NAME, "SKILL.md") },
+				{ agent, scope: "provider-user", path: join(home, ".claude", "skills", OPEN_PROSE_SKILL_NAME, "SKILL.md") },
+				{ agent, scope: "provider-user", path: join(home, ".codex", "skills", OPEN_PROSE_SKILL_NAME, "SKILL.md") },
+			];
+	}
 }
 
 async function inspectSkill(path: string): Promise<Pick<SkillLocation, "exists" | "valid" | "error">> {
