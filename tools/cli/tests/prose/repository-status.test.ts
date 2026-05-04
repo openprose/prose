@@ -137,6 +137,56 @@ describe("repository status", () => {
 		}
 	});
 
+	it("marks older pressure as resolved after a newer up status", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-status-resolved-pressure-"));
+
+		try {
+			writeActiveManifest(temp);
+			const manifest = readFixture();
+			const responsibility = manifest.responsibilities[0]!;
+			const root: OpenProseRoot = { mode: "native", path: ".", absolutePath: temp };
+			const downStatus: ResponsibilityStatusRecord = {
+				kind: RESPONSIBILITY_STATUS_KIND,
+				version: RESPONSIBILITY_STATUS_VERSION,
+				responsibilityId: responsibility.id,
+				responsibilityFingerprint: fingerprintResponsibility(responsibility),
+				status: "down",
+				evidence: ["No qualified stargazer has been followed up with today."],
+				recordedAt: "2026-05-03T18:00:00.000Z",
+				source: {
+					activationId: "high-intent-stargazer-outreach.judge",
+					triggerId: "high-intent-stargazer-outreach.periodic-check",
+					manifestPath: ACTIVE_REPOSITORY_IR_PATH,
+					irVersion: manifest.version,
+				},
+			};
+			const pressure = buildResponsibilityPressureRecord({
+				status: downStatus,
+				recommendedActivationKind: "fulfillment",
+				activationId: "high-intent-stargazer-outreach.fulfillment",
+				recordedAt: "2026-05-03T18:05:00.000Z",
+			});
+			const upStatus: ResponsibilityStatusRecord = {
+				...downStatus,
+				status: "up",
+				evidence: ["Sample results and outreach are current."],
+				recordedAt: "2026-05-03T18:10:00.000Z",
+			};
+
+			await recordResponsibilityPressure({ openProseRoot: root, record: pressure! });
+			await recordResponsibilityStatus({ openProseRoot: root, record: upStatus });
+
+			const output = formatRepositoryStatus(await loadRepositoryStatus({ cwd: temp }));
+
+			expect(output).toContain("status: up at 2026-05-03T18:10:00.000Z; 1 evidence");
+			expect(output).toContain(
+				"pressure: fulfillment for down -> high-intent-stargazer-outreach.fulfillment; at 2026-05-03T18:05:00.000Z; resolved",
+			);
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
+
 	it("reports invalid active IR without requiring runtime state", async () => {
 		const temp = mkdtempSync(join(tmpdir(), "prose-status-invalid-"));
 

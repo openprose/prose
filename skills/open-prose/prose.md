@@ -149,8 +149,10 @@ Every source file declares a `kind` in its frontmatter:
 | ----------- | ------------------------------------------------------------------------ |
 | `service`   | Atomic execution boundary — one contract, one session, one workspace |
 | `system`   | Composition boundary — one contract implemented as a graph of services and systems |
+| `gateway` | Optional ingress declaration compiled into trigger registrations |
 | `test`      | A test harness — provides fixtures, runs a subject, evaluates assertions |
 | `pattern` | Reusable agent design pattern with slots, config, invariants, and delegation rules |
+| `responsibility` | Standing goal compiled into judge, trigger, and fulfillment intent |
 
 `prose run` accepts `kind: service` and structurally complete `kind: system`
 files. `prose test` executes `kind: test` files. `kind: gateway`,

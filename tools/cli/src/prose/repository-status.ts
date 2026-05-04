@@ -72,6 +72,7 @@ export interface RepositoryStatusLatestPressure {
 	state: RepositoryStatusRecordState;
 	error?: string;
 	record?: ResponsibilityPressureRecord;
+	resolved?: boolean;
 	stale?: boolean;
 }
 
@@ -220,13 +221,14 @@ async function loadResponsibilityStatusSummaries(
 				readLatestStatus(statusPaths.absoluteLatestPath, fingerprint),
 				readLatestPressure(pressurePaths.absoluteLatestPressurePath, fingerprint),
 			]);
+			const currentPressure = markResolvedPressure(status, pressure);
 
 			return {
 				id: responsibility.id,
 				sourcePath: responsibility.sourcePath,
 				fingerprint,
 				status,
-				pressure,
+				pressure: currentPressure,
 			};
 		}),
 	);
@@ -422,10 +424,30 @@ function formatLatestPressure(pressure: RepositoryStatusLatestPressure): string 
 	return [
 		`${record.recommendedActivationKind} for ${record.status}${activation}`,
 		`at ${record.recordedAt}`,
+		pressure.resolved ? "resolved" : undefined,
 		pressure.stale ? "stale" : undefined,
 	]
 		.filter((part): part is string => part !== undefined)
 		.join("; ");
+}
+
+function markResolvedPressure(
+	status: RepositoryStatusLatestStatus,
+	pressure: RepositoryStatusLatestPressure,
+): RepositoryStatusLatestPressure {
+	if (status.state !== "present" || pressure.state !== "present") {
+		return pressure;
+	}
+	if (status.stale || pressure.stale || status.record?.status !== "up") {
+		return pressure;
+	}
+	if (status.record.recordedAt < (pressure.record?.recordedAt ?? "")) {
+		return pressure;
+	}
+	return {
+		...pressure,
+		resolved: true,
+	};
 }
 
 function formatActivationCounts(manifest: RepositoryIrV0): string {

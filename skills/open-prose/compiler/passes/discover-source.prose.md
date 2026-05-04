@@ -26,4 +26,5 @@ for repository IR.
 - Recognize `responsibility`, `gateway`, `system`, `service`, `test`, and
   `pattern`.
 - Mark unclear source as `unknown` and emit a diagnostic instead of guessing.
-- Ignore generated output under `dist/`.
+- Ignore generated or runtime output under `dist/`, `runs/`, `state/`, and
+  `deps/`.

@@ -1,5 +1,6 @@
 import { Command, Help as OclifHelp } from "@oclif/core";
 import { createForwardCommand, type ForwardCommandDefinition } from "./base.js";
+import Compile from "./compile.js";
 import Doctor from "./doctor.js";
 import Serve from "./serve.js";
 import Status from "./status.js";
@@ -16,11 +17,6 @@ class Help extends Command {
 }
 
 const forwardCommandDefinitions = {
-	compile: {
-		command: "compile",
-		summary: "Compile OpenProse source into repository IR.",
-		usage: "compile [path] [--out <dir>] [--harness <name>]",
-	},
 	examples: {
 		command: "examples",
 		summary: "Show OpenProse examples.",
@@ -68,6 +64,7 @@ const forwardCommandDefinitions = {
 } satisfies Record<string, ForwardCommandDefinition>;
 
 const commands = {
+	compile: Compile,
 	doctor: Doctor,
 	help: Help,
 	serve: Serve,

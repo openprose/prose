@@ -154,6 +154,10 @@ Forme and the Prose VM recognize these `###` sections case-insensitively:
 | `### Criteria` | responsibility | What counts as satisfactory fulfillment |
 | `### Constraints` | responsibility | What must remain bounded or prohibited |
 | `### Fulfillment` | responsibility | Optional hint naming a system or service that may fulfill the responsibility |
+| `### Schedule` | gateway | Optional cron-like ingress cadence |
+| `### Receives` | gateway | Optional HTTP/event ingress description |
+| `### Emits` | gateway | Responsibility trigger or activation the gateway should wake |
+| `### Payload` | gateway | Notes about the event payload shape |
 
 Unknown `###` sections are preserved as documentation. They are not contract
 sections unless a future spec names them.
@@ -254,7 +258,7 @@ followed up with.
 ```
 
 Responsibilities are semantic and normative. They do not directly define
-entrypoints, tests, schedules, listeners, queues, or implementation steps.
+gateways, tests, schedules, listeners, queues, or implementation steps.
 Load `responsibility-runtime.md` and `concepts/responsibility.md` for
 responsibility semantics.
 
@@ -390,13 +394,13 @@ Scoping) for the on-disk format of memory files.
 
 ## Frontmatter
 
-Every service, system, gateway, test, or pattern declares identity with `name` and
-`kind`:
+Every service, system, gateway, test, pattern, or responsibility declares
+identity with `name` and `kind`:
 
 ```yaml
 ---
 name: entry-name
-kind: service | system | gateway | test | pattern
+kind: service | system | gateway | test | pattern | responsibility
 ---
 ```
 

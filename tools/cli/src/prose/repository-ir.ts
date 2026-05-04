@@ -1,3 +1,5 @@
+import { validateRepositoryCronExpression } from "./repository-cron.js";
+
 export const DEFAULT_REPOSITORY_IR_DIR = "dist";
 export const NEXT_REPOSITORY_IR_PATH = `${DEFAULT_REPOSITORY_IR_DIR}/manifest.next.json`;
 export const ACTIVE_REPOSITORY_IR_PATH = `${DEFAULT_REPOSITORY_IR_DIR}/manifest.active.json`;
@@ -46,7 +48,7 @@ export interface RepositoryIrResponsibility {
 	fulfillment?: RepositoryIrFulfillmentIntent;
 }
 
-export type RepositoryIrTriggerKind = "cron" | "http" | "manual" | "unknown";
+export type RepositoryIrTriggerKind = "cron" | "http" | "manual";
 
 export interface RepositoryIrTrigger {
 	id: string;
@@ -164,7 +166,12 @@ interface ResponsibilityIndex {
 
 interface TriggerIndex {
 	ids: Set<string>;
+	recordsById: Map<string, RepositoryIrTrigger>;
 	responsibilityIdById: Map<string, string>;
+}
+
+interface ActivationIndex {
+	activationIdsByTriggerId: Map<string, string[]>;
 }
 
 interface FormeManifestIndex {
@@ -190,7 +197,7 @@ const sourceKinds: readonly RepositoryIrSourceKind[] = [
 
 const diagnosticSeverities: readonly RepositoryIrDiagnosticSeverity[] = ["info", "warning", "error"];
 const fulfillmentModes: readonly RepositoryIrFulfillmentMode[] = ["declared", "inferred"];
-const triggerKinds: readonly RepositoryIrTriggerKind[] = ["cron", "http", "manual", "unknown"];
+const triggerKinds: readonly RepositoryIrTriggerKind[] = ["cron", "http", "manual"];
 const activationIntentKinds: readonly RepositoryIrActivationIntentKind[] = [
 	"judge",
 	"fulfillment",
@@ -218,7 +225,8 @@ export function validateRepositoryIr(value: unknown): RepositoryIrValidationResu
 	const formeManifests = validateFormeManifests(value.formeManifests, sources.paths, errors);
 	const responsibilities = validateResponsibilities(value.responsibilities, sources.paths, errors);
 	const triggers = validateTriggers(value.triggers, responsibilities.ids, errors);
-	validateActivations(value.activations, responsibilities, triggers, sources, formeManifests, errors);
+	const activations = validateActivations(value.activations, responsibilities, triggers, sources, formeManifests, errors);
+	validateConcreteTriggersWakeActivations(triggers, activations, errors);
 	validateDiagnostics(value.diagnostics, sources.paths, errors);
 
 	return { valid: errors.length === 0, errors };
@@ -333,10 +341,11 @@ function validateFulfillmentIntent(
 
 function validateTriggers(value: unknown, responsibilityIds: Set<string>, errors: string[]): TriggerIndex {
 	const ids = new Set<string>();
+	const recordsById = new Map<string, RepositoryIrTrigger>();
 	const responsibilityIdById = new Map<string, string>();
 	if (!Array.isArray(value)) {
 		errors.push("triggers must be an array");
-		return { ids, responsibilityIdById };
+		return { ids, recordsById, responsibilityIdById };
 	}
 
 	for (const [index, trigger] of value.entries()) {
@@ -351,13 +360,14 @@ function validateTriggers(value: unknown, responsibilityIds: Set<string>, errors
 			addUnique(ids, trigger.id, `${prefix}.id`, errors);
 			if (isUnique && isNonEmptyString(trigger.responsibilityId)) {
 				responsibilityIdById.set(trigger.id, trigger.responsibilityId);
+				recordsById.set(trigger.id, trigger as unknown as RepositoryIrTrigger);
 			}
 		} else {
 			errors.push(`${prefix}.id must be a non-empty string`);
 		}
 		validateResponsibilityReference(trigger.responsibilityId, responsibilityIds, `${prefix}.responsibilityId`, errors);
 		if (!triggerKinds.includes(trigger.kind as RepositoryIrTriggerKind)) {
-			errors.push(`${prefix}.kind must be cron, http, manual, or unknown`);
+			errors.push(`${prefix}.kind must be cron, http, or manual`);
 		}
 		if (!isNonEmptyString(trigger.reason)) {
 			errors.push(`${prefix}.reason must be a non-empty string`);
@@ -365,28 +375,24 @@ function validateTriggers(value: unknown, responsibilityIds: Set<string>, errors
 		validateConcreteTrigger(trigger, prefix, errors);
 	}
 
-	return { ids, responsibilityIdById };
+	return { ids, recordsById, responsibilityIdById };
 }
 
 function validateConcreteTrigger(trigger: Record<string, unknown>, prefix: string, errors: string[]): void {
 	if (trigger.kind === "cron") {
 		if (isNonEmptyString(trigger.cron)) {
-			validateCronExpression(trigger.cron, `${prefix}.cron`, errors);
+			validateCronExpression(trigger.cron, `${prefix}.cron`, errors, trigger.timezone);
 		} else {
 			errors.push(`${prefix}.cron must be a non-empty string for cron triggers`);
 		}
 		if (trigger.timezone !== undefined && !isNonEmptyString(trigger.timezone)) {
 			errors.push(`${prefix}.timezone must be a non-empty string when present`);
 		}
+		rejectTriggerFields(trigger, prefix, ["method", "path"], errors);
 	}
 
 	if (trigger.kind !== "cron") {
-		if (trigger.cron !== undefined && !isNonEmptyString(trigger.cron)) {
-			errors.push(`${prefix}.cron must be a non-empty string when present`);
-		}
-		if (trigger.timezone !== undefined && !isNonEmptyString(trigger.timezone)) {
-			errors.push(`${prefix}.timezone must be a non-empty string when present`);
-		}
+		rejectTriggerFields(trigger, prefix, ["cron", "timezone"], errors);
 	}
 
 	if (trigger.kind === "http") {
@@ -403,19 +409,29 @@ function validateConcreteTrigger(trigger: Record<string, unknown>, prefix: strin
 	}
 
 	if (trigger.kind !== "http") {
-		if (trigger.method !== undefined && !isNonEmptyString(trigger.method)) {
-			errors.push(`${prefix}.method must be a non-empty string when present`);
-		}
-		if (trigger.path !== undefined && !isNonEmptyString(trigger.path)) {
-			errors.push(`${prefix}.path must be a non-empty string when present`);
-		}
+		rejectTriggerFields(trigger, prefix, ["method", "path"], errors);
 	}
 }
 
-function validateCronExpression(value: string, label: string, errors: string[]): void {
-	const fields = value.trim().split(/\s+/);
-	if (fields.length !== 5) {
-		errors.push(`${label} must be a standard five-field cron expression`);
+function validateCronExpression(value: string, label: string, errors: string[], timezone: unknown): void {
+	try {
+		validateRepositoryCronExpression(value, isNonEmptyString(timezone) ? timezone : undefined);
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		errors.push(`${label} must be a standard five-field cron expression: ${message}`);
+	}
+}
+
+function rejectTriggerFields(
+	trigger: Record<string, unknown>,
+	prefix: string,
+	fields: readonly string[],
+	errors: string[],
+): void {
+	for (const field of fields) {
+		if (trigger[field] !== undefined) {
+			errors.push(`${prefix}.${field} is not valid for ${String(trigger.kind)} triggers`);
+		}
 	}
 }
 
@@ -426,12 +442,13 @@ function validateActivations(
 	sources: SourceIndex,
 	formeManifests: FormeManifestIndex,
 	errors: string[],
-): void {
+): ActivationIndex {
 	const ids = new Set<string>();
 	const judgeCountsByResponsibilityId = new Map<string, number>();
+	const activationIdsByTriggerId = new Map<string, string[]>();
 	if (!Array.isArray(value)) {
 		errors.push("activations must be an array");
-		return;
+		return { activationIdsByTriggerId };
 	}
 
 	for (const [index, activation] of value.entries()) {
@@ -455,6 +472,16 @@ function validateActivations(
 		}
 		if (activation.triggerIds !== undefined) {
 			validateTriggerReferences(activation.triggerIds, triggers, activation.responsibilityId, `${prefix}.triggerIds`, errors);
+			if (Array.isArray(activation.triggerIds) && isNonEmptyString(activation.id)) {
+				for (const triggerId of activation.triggerIds) {
+					if (isNonEmptyString(triggerId)) {
+						activationIdsByTriggerId.set(triggerId, [
+							...(activationIdsByTriggerId.get(triggerId) ?? []),
+							activation.id,
+						]);
+					}
+				}
+			}
 		}
 		if (activation.kind === "judge" && isNonEmptyString(activation.responsibilityId)) {
 			judgeCountsByResponsibilityId.set(
@@ -490,6 +517,23 @@ function validateActivations(
 		const count = judgeCountsByResponsibilityId.get(responsibilityId) ?? 0;
 		if (count !== 1) {
 			errors.push(`responsibility '${responsibilityId}' must have exactly one judge activation`);
+		}
+	}
+
+	return { activationIdsByTriggerId };
+}
+
+function validateConcreteTriggersWakeActivations(
+	triggers: TriggerIndex,
+	activations: ActivationIndex,
+	errors: string[],
+): void {
+	for (const [triggerId, trigger] of triggers.recordsById) {
+		if (trigger.kind !== "cron" && trigger.kind !== "http") {
+			continue;
+		}
+		if ((activations.activationIdsByTriggerId.get(triggerId) ?? []).length === 0) {
+			errors.push(`trigger '${triggerId}' must wake at least one activation`);
 		}
 	}
 }

@@ -99,7 +99,9 @@ File-based state persists all execution artifacts to disk. This enables:
 │   └── responsibilities/
 │       └── {responsibility-id}/
 │           ├── latest.json
-│           └── status.jsonl
+│           ├── status.jsonl
+│           ├── pressure.latest.json
+│           └── pressure.jsonl
 ├── deps/                                  # Cloned dependency repos (gitignored)
 │   ├── github.com/
 │   │   ├── openprose/

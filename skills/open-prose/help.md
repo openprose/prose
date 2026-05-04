@@ -41,6 +41,8 @@ Options:
 
 | Command | What it does |
 |---------|--------------|
+| `prose compile [path]` | Compile source into `<openprose-root>/dist/manifest.next.json` |
+| `prose serve` | Serve the active IR as local cron and HTTP trigger adapters |
 | `prose run <file.prose.md>` | Run a service or system |
 | `prose lint <file.prose.md>` | Validate structure, schema, and contracts |
 | `prose preflight <file.prose.md>` | Check dependencies and environment |
@@ -145,7 +147,7 @@ Services and systems are `*.prose.md` files with tiny YAML identity frontmatter 
 ```yaml
 ---
 name: my-service
-kind: service          # service | system | gateway | test | pattern
+kind: service          # service | system | gateway | test | pattern | responsibility
 ---
 ```
 

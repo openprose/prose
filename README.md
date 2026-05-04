@@ -227,7 +227,7 @@ be checked, maintained, and restored across bounded runs:
 
 | Command | Role |
 |---------|------|
-| `prose compile` | Run the bundled OpenProse compiler program and lower semantic source into `<openprose-root>/dist/manifest.next.json` |
+| `prose compile` | Run the bundled OpenProse compiler program, emit `<openprose-root>/dist/manifest.next.json`, and validate it before success |
 | `prose serve` | Load active IR and run local cron and HTTP trigger adapters |
 | `prose run` | Execute one bounded OpenProse VM activation |
 | `prose status` | Inspect active IR, diagnostics, trigger plan, recent runs, and responsibility status/pressure |
@@ -354,7 +354,7 @@ happens during execution.
 | Path | Purpose |
 |------|---------|
 | [skills/open-prose/SKILL.md](skills/open-prose/SKILL.md) | Skill activation and command routing |
-| [skills/open-prose/contract-markdown.md](skills/open-prose/contract-markdown.md) | Canonical `*.prose.md` service/system/test/pattern format |
+| [skills/open-prose/contract-markdown.md](skills/open-prose/contract-markdown.md) | Canonical `*.prose.md` service/system/gateway/test/pattern/responsibility format |
 | [skills/open-prose/prosescript.md](skills/open-prose/prosescript.md) | Imperative scripting syntax |
 | [skills/open-prose/forme.md](skills/open-prose/forme.md) | Semantic dependency-injection container |
 | [skills/open-prose/prose.md](skills/open-prose/prose.md) | VM execution semantics |

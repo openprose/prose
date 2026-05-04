@@ -11,10 +11,13 @@ Prepare Forme wiring for systems discovered during compile.
 
 - `sources`: discovered source records.
 - `source_root`: repository path containing the source graph.
+- `activations`: activation intent records.
 
 ### Ensures
 
 - `diagnostics`: Forme-related warnings or errors.
+- `activations`: activation intent records with system fulfillment linked to
+  matching `formeManifestId`.
 - `formeManifests`: structured runnable Forme manifests for discovered
   systems.
 

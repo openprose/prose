@@ -84,11 +84,75 @@ describe("repository IR v0", () => {
 		expect(result.valid).toBe(false);
 		expect(result.errors).toEqual(
 			expect.arrayContaining([
-				"triggers[0].cron must be a standard five-field cron expression",
+				expect.stringContaining("triggers[0].cron must be a standard five-field cron expression"),
 				"triggers[1].method must be GET, POST, PUT, PATCH, or DELETE",
 				"triggers[1].path must start with /",
 			]),
 		);
+	});
+
+	it("rejects cron ranges and timezones that serve cannot run", () => {
+		const manifest = cloneFixture("tests/open-prose/compiler/expected/stargazer.manifest.next.json");
+		manifest.triggers[0].cron = "99 * * * *";
+		manifest.triggers[0].timezone = "Not/AZone";
+
+		const result = validateRepositoryIr(manifest);
+
+		expect(result.valid).toBe(false);
+		expect(result.errors).toEqual(
+			expect.arrayContaining([
+				expect.stringContaining("Cron value '99' must be between 0 and 59"),
+			]),
+		);
+
+		manifest.triggers[0].cron = "0 * * * *";
+		const timezoneResult = validateRepositoryIr(manifest);
+		expect(timezoneResult.valid).toBe(false);
+		expect(timezoneResult.errors).toEqual(
+			expect.arrayContaining([
+				expect.stringContaining("Invalid timezone 'Not/AZone'"),
+			]),
+		);
+	});
+
+	it("rejects trigger fields that do not belong to the trigger kind", () => {
+		const manifest = cloneFixture("tests/open-prose/compiler/expected/stargazer.manifest.next.json");
+		manifest.triggers[0].method = "POST";
+		manifest.triggers[1].cron = "0 * * * *";
+		manifest.triggers.push({
+			id: "high-intent-stargazer-outreach.manual",
+			responsibilityId: "high-intent-stargazer-outreach",
+			kind: "manual",
+			reason: "Manual inspection.",
+			path: "/manual",
+		});
+
+		const result = validateRepositoryIr(manifest);
+
+		expect(result.valid).toBe(false);
+		expect(result.errors).toEqual(
+			expect.arrayContaining([
+				"triggers[0].method is not valid for cron triggers",
+				"triggers[1].cron is not valid for http triggers",
+				"triggers[2].path is not valid for manual triggers",
+			]),
+		);
+	});
+
+	it("rejects live triggers that do not wake an activation", () => {
+		const manifest = cloneFixture("tests/open-prose/compiler/expected/stargazer.manifest.next.json");
+		manifest.triggers.push({
+			id: "high-intent-stargazer-outreach.unbound",
+			responsibilityId: "high-intent-stargazer-outreach",
+			kind: "cron",
+			cron: "0 12 * * *",
+			reason: "A live trigger should wake something.",
+		});
+
+		const result = validateRepositoryIr(manifest);
+
+		expect(result.valid).toBe(false);
+		expect(result.errors).toContain("trigger 'high-intent-stargazer-outreach.unbound' must wake at least one activation");
 	});
 
 	it("rejects malformed Forme manifest IR", () => {

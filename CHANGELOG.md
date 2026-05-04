@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Responsibility Runtime live serve** — `prose serve` now runs local cron and HTTP trigger adapters from compiled `triggers[]`, dispatches events into ordinary bounded `prose run` activations, and feeds unhealthy judge status into deduped pressure fulfillment.
 
+### Fixed
+
+- **Responsibility Runtime validation** — `prose compile` now validates the emitted `manifest.next.json`; repository IR rejects invalid cron expressions, wrong trigger fields, and live triggers that wake no activations.
+- **Responsibility Runtime freshness** — `prose serve` now rejects stale judge status output, validates that status belongs to the launched judge activation, and marks older pressure as resolved once a newer healthy status is recorded.
+
 ## [0.11.0] - 2026-05-01
 
 ### Added

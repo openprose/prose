@@ -17,6 +17,8 @@ Lower optional `kind: gateway` source into concrete trigger registrations.
 ### Ensures
 
 - `triggers`: concrete trigger records declared by gateways.
+- `activations`: activation intent records with gateway trigger ids linked
+  where the relationship is deterministic.
 - `diagnostics`: warnings or errors when gateway ingress cannot be compiled
   deterministically.
 

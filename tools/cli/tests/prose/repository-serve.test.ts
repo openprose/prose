@@ -1,4 +1,4 @@
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
@@ -410,6 +410,16 @@ describe("repository serve core", () => {
 		expect(buildPressureFromStatus({ manifest: loaded.manifest, status: statusRecord(loaded, "up") })).toBeUndefined();
 	});
 
+	it("rejects stale up status before treating a responsibility as healthy", async () => {
+		const loaded = await loadFixture();
+		const status = {
+			...statusRecord(loaded, "up"),
+			responsibilityFingerprint: "stale-fingerprint",
+		};
+
+		expect(() => buildPressureFromStatus({ manifest: loaded.manifest, status })).toThrow("is stale");
+	});
+
 	it("prefers escalation pressure for blocked status when escalation exists", async () => {
 		const loaded = await loadFixture();
 		loaded.manifest.activations.push({
@@ -577,6 +587,38 @@ describe("repository serve core", () => {
 			expect(
 				readFileSync(join(temp, "state/responsibilities/high-intent-stargazer-outreach/pressure.latest.json"), "utf8"),
 			).toContain("high-intent-stargazer-outreach.fulfillment");
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
+
+	it("rejects judge runs that leave stale status behind", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-serve-stale-status-"));
+		const io = memoryStreams();
+
+		try {
+			writeActiveManifest(temp);
+			const loaded = await loadActiveRepositoryIr({ cwd: temp });
+			const latestPath = join(temp, "state/responsibilities/high-intent-stargazer-outreach/latest.json");
+			mkdirSync(dirname(latestPath), { recursive: true });
+			writeFileSync(latestPath, `${JSON.stringify(statusRecord(loaded, "up"), null, 2)}\n`);
+			const oldTime = new Date("2026-05-03T10:00:00.000Z");
+			utimesSync(latestPath, oldTime, oldTime);
+
+			await expect(
+				dispatchRepositoryServeEvent({
+					loaded,
+					event: {
+						triggerId: "high-intent-stargazer-outreach.periodic-check",
+					},
+					run: {
+						env: {},
+						stdout: io.streams.stdout,
+						stderr: io.streams.stderr,
+						commandRunner: async () => 0,
+					},
+				}),
+			).rejects.toThrow("did not refresh latest status");
 		} finally {
 			rmSync(temp, { recursive: true, force: true });
 		}

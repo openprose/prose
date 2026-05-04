@@ -10,8 +10,8 @@ harness can validate and later serve.
 
 ### Requires
 
-- `source_root`: repository path to compile; default to the current working
-  directory or the path supplied to `prose compile`.
+- `source_root`: source directory to compile; default `<openprose-root>/src`
+  unless `prose compile` supplies a path.
 - `output_dir`: build output directory; default `dist`.
 
 ### Ensures
@@ -51,8 +51,8 @@ harness can validate and later serve.
 4. Call `compile-gateways` for discovered gateways.
 5. Call `compile-forme` for discovered systems and services.
 6. Call `emit-ir` with discovered source records, responsibility records,
-   concrete trigger registrations, activation intent, Forme manifests, and
-   diagnostics.
+   concrete trigger registrations, finalized activation intent, Forme
+   manifests, and diagnostics.
 7. Call `validate-ir` before reporting success.
 8. Write only a valid manifest to `output_dir/manifest.next.json`.
 

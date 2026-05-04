@@ -1,6 +1,6 @@
 # Responsibility Runtime Prompt Fixtures
 
-These fixtures exercise Phase 1 Responsibility Runtime semantics.
+These fixtures exercise Responsibility Runtime semantics.
 
 They intentionally live outside `skills/open-prose/` because they are test and
 evaluation assets, not distributable skill docs.

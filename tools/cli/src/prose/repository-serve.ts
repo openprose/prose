@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import { resolve } from "node:path";
 import type { WritableStreamLike } from "../harnesses/types.js";
 import { canonicalPrompt } from "./command-model.js";
@@ -143,6 +143,11 @@ export interface RepositoryServeDispatchResult {
 	activationResults: RepositoryServeActivationResult[];
 }
 
+interface RepositoryServeJudgeRequest {
+	request: RepositoryServeActivationRunRequest;
+	previousStatusMtimeMs?: number;
+}
+
 export interface LoadActiveRepositoryIrOptions {
 	cwd: string;
 	home?: string;
@@ -259,7 +264,7 @@ export async function dispatchRepositoryServeEvent(options: {
 	const resolvedActivations = resolveActivationsForEvent(options.loaded.manifest, options.event);
 	const activationResults: RepositoryServeActivationResult[] = [];
 	const launchedActivationIds = new Set<string>();
-	const judgeRequests: RepositoryServeActivationRunRequest[] = [];
+	const judgeRequests: RepositoryServeJudgeRequest[] = [];
 	const cwd = options.run.cwd ?? options.loaded.openProseRoot.absolutePath;
 
 	for (const resolved of resolvedActivations) {
@@ -268,6 +273,8 @@ export async function dispatchRepositoryServeEvent(options: {
 			event: options.event,
 			resolved,
 		});
+		const previousStatusMtimeMs =
+			request.payload.activation.kind === "judge" ? await readLatestStatusMtime(request) : undefined;
 		const exitCode = await launchActivationRun(request, {
 			...options.run,
 			cwd,
@@ -283,12 +290,15 @@ export async function dispatchRepositoryServeEvent(options: {
 			throw new RepositoryServeError(`Activation '${request.activationId}' exited with code ${exitCode}.`);
 		}
 		if (request.payload.activation.kind === "judge") {
-			judgeRequests.push(request);
+			judgeRequests.push({
+				request,
+				...(previousStatusMtimeMs === undefined ? {} : { previousStatusMtimeMs }),
+			});
 		}
 	}
 
-	for (const request of judgeRequests) {
-		const status = await readLatestStatusForJudgeRequest(request);
+	for (const judge of judgeRequests) {
+		const status = await readLatestStatusForJudgeRequest(judge.request, judge.previousStatusMtimeMs);
 		const pressureResult = await recordPressureFromStatus({
 			loaded: options.loaded,
 			status,
@@ -446,15 +456,15 @@ export function buildPressureFromStatus(options: {
 	recordedAt?: string;
 }): ResponsibilityPressureRecord | undefined {
 	const { manifest, status } = options;
-	if (status.status === "up") {
-		return undefined;
-	}
 	const responsibility = manifest.responsibilities.find((candidate) => candidate.id === status.responsibilityId);
 	if (responsibility === undefined) {
 		throw new RepositoryServeError(`Status references unknown responsibility '${status.responsibilityId}'.`);
 	}
 	if (fingerprintResponsibility(responsibility) !== status.responsibilityFingerprint) {
 		throw new RepositoryServeError(`Status for responsibility '${status.responsibilityId}' is stale.`);
+	}
+	if (status.status === "up") {
+		return undefined;
 	}
 
 	const activation = selectPressureActivation(manifest, {
@@ -670,10 +680,16 @@ export function formatTriggerRegistration(registration: RepositoryServeTriggerRe
 
 async function readLatestStatusForJudgeRequest(
 	request: RepositoryServeActivationRunRequest,
+	previousStatusMtimeMs?: number,
 ): Promise<ResponsibilityStatusRecord> {
 	const statusPath = request.env.PROSE_RESPONSIBILITY_STATUS_LATEST;
 	if (statusPath === undefined) {
 		throw new RepositoryServeError(`Judge activation '${request.activationId}' did not declare a status output path.`);
+	}
+
+	const currentStatusMtimeMs = await readRequiredStatusMtime(request, statusPath);
+	if (previousStatusMtimeMs !== undefined && currentStatusMtimeMs <= previousStatusMtimeMs) {
+		throw new RepositoryServeError(`Judge activation '${request.activationId}' did not refresh latest status.`);
 	}
 
 	let text: string;
@@ -700,5 +716,59 @@ async function readLatestStatusForJudgeRequest(
 		);
 	}
 
+	validateJudgeStatusBelongsToRequest(request, parsed as ResponsibilityStatusRecord);
 	return parsed as ResponsibilityStatusRecord;
+}
+
+async function readLatestStatusMtime(request: RepositoryServeActivationRunRequest): Promise<number | undefined> {
+	const statusPath = request.env.PROSE_RESPONSIBILITY_STATUS_LATEST;
+	if (statusPath === undefined) {
+		return undefined;
+	}
+	try {
+		return (await stat(statusPath)).mtimeMs;
+	} catch (error) {
+		if (isNodeError(error) && error.code === "ENOENT") {
+			return undefined;
+		}
+		const message = error instanceof Error ? error.message : String(error);
+		throw new RepositoryServeError(`Unable to inspect latest status for '${request.activationId}': ${message}`);
+	}
+}
+
+async function readRequiredStatusMtime(request: RepositoryServeActivationRunRequest, statusPath: string): Promise<number> {
+	try {
+		return (await stat(statusPath)).mtimeMs;
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		throw new RepositoryServeError(`Judge activation '${request.activationId}' did not write latest status: ${message}`);
+	}
+}
+
+function validateJudgeStatusBelongsToRequest(
+	request: RepositoryServeActivationRunRequest,
+	status: ResponsibilityStatusRecord,
+): void {
+	if (status.responsibilityId !== request.payload.responsibility.id) {
+		throw new RepositoryServeError(`Judge activation '${request.activationId}' wrote status for a different responsibility.`);
+	}
+	if (status.responsibilityFingerprint !== request.payload.responsibility.fingerprint) {
+		throw new RepositoryServeError(`Judge activation '${request.activationId}' wrote stale responsibility status.`);
+	}
+	if (status.source.activationId !== request.activationId) {
+		throw new RepositoryServeError(`Judge activation '${request.activationId}' wrote status for a different activation.`);
+	}
+	if (status.source.triggerId !== request.payload.trigger.id) {
+		throw new RepositoryServeError(`Judge activation '${request.activationId}' wrote status for a different trigger.`);
+	}
+	if (
+		status.source.manifestPath !== request.payload.ir.manifestPath ||
+		status.source.irVersion !== request.payload.ir.version
+	) {
+		throw new RepositoryServeError(`Judge activation '${request.activationId}' wrote status for a different IR.`);
+	}
+}
+
+function isNodeError(error: unknown): error is NodeJS.ErrnoException {
+	return error instanceof Error && "code" in error;
 }

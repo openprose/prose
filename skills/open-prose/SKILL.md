@@ -287,7 +287,7 @@ another repository uses `repo/.agents/prose`. User-global work uses
 | `<openprose-root>/deps/` | Installed dependencies, gitignored |
 | `<openprose-root>/prose.lock` | Dependency lockfile, committed |
 | `<openprose-root>/.env` | Runtime configuration |
-| `*.prose.md` | OpenProse source files: services, systems, tests, and patterns |
+| `*.prose.md` | OpenProse source files: services, systems, gateways, tests, patterns, and responsibilities |
 
 User-global persistent agents live under `~/.agents/prose/state/agents/`.
 

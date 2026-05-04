@@ -155,6 +155,9 @@ prose preflight src/systems/reviewer.prose.md
 prose status
 ```
 
+`prose compile` returns success only after the emitted `manifest.next.json`
+passes deterministic IR validation.
+
 `prose serve` loads and validates `dist/manifest.active.json` under the active
 OpenProse root, registers local cron and HTTP trigger adapters, and launches
 ordinary bounded `prose run` activations when those triggers fire. HTTP

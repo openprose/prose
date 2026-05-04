@@ -15,6 +15,12 @@ export {
 	type ResolveOpenProseRootOptions,
 } from "./openprose-root.js";
 export {
+	RepositoryCronError,
+	millisecondsUntilNextCron,
+	nextCronDate,
+	validateRepositoryCronExpression,
+} from "./repository-cron.js";
+export {
 	ACTIVE_REPOSITORY_IR_PATH,
 	DEFAULT_REPOSITORY_IR_DIR,
 	NEXT_REPOSITORY_IR_PATH,
@@ -104,8 +110,6 @@ export {
 export {
 	DEFAULT_REPOSITORY_SERVE_HOST,
 	DEFAULT_REPOSITORY_SERVE_PORT,
-	millisecondsUntilNextCron,
-	nextCronDate,
 	startRepositoryServeDaemon,
 	type RepositoryServeDaemon,
 	type RepositoryServeDaemonAddress,

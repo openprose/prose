@@ -1,7 +1,7 @@
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
 	isDirectEntrypoint,
@@ -10,7 +10,11 @@ import {
 	splitHarnessArgs,
 } from "../../src/index.js";
 import commands from "../../src/commands/index.js";
+import { runCompileCommand } from "../../src/commands/compile.js";
 import type { Harness } from "../../src/harnesses/index.js";
+
+const repoRoot = fileURLToPath(new URL("../../../../", import.meta.url));
+const stargazerFixture = join(repoRoot, "tests/open-prose/compiler/expected/stargazer.manifest.next.json");
 
 function memoryStreams() {
 	let stdout = "";
@@ -286,5 +290,68 @@ FORWARDED_BOOTSTRAP_SENTINEL
 		).rejects.toThrow("Missing required argument");
 
 		expect(preflightCalled).toBe(false);
+	});
+});
+
+describe("runCompileCommand", () => {
+	it("validates the manifest emitted by the intelligent compiler", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-compile-valid-"));
+		const io = memoryStreams();
+
+		try {
+			const exitCode = await runCompileCommand({
+				argv: [".", "--harness", "mock"],
+				cwd: temp,
+				env: {},
+				stdout: io.streams.stdout,
+				stderr: io.streams.stderr,
+				skillBootstrap: false,
+				skillPreflight: false,
+				harnessFactory: () => ({
+					name: "mock",
+					async run() {
+						mkdirSync(join(temp, "dist"), { recursive: true });
+						copyFileSync(stargazerFixture, join(temp, "dist/manifest.next.json"));
+						return 0;
+					},
+				}),
+			});
+
+			expect(exitCode).toBe(0);
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
+
+	it("rejects successful compiler runs that do not emit valid IR", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-compile-invalid-"));
+		const io = memoryStreams();
+
+		try {
+			await expect(
+				runCompileCommand({
+					argv: ["--harness", "mock"],
+					cwd: temp,
+					env: {},
+					stdout: io.streams.stdout,
+					stderr: io.streams.stderr,
+					skillBootstrap: false,
+					skillPreflight: false,
+					harnessFactory: () => ({
+						name: "mock",
+						async run() {
+							mkdirSync(join(temp, "dist"), { recursive: true });
+							writeFileSync(join(temp, "dist/manifest.next.json"), JSON.stringify({ kind: "openprose.repository-ir" }));
+							return 0;
+						},
+					}),
+				}),
+			).rejects.toMatchObject({
+				name: "CompileValidationError",
+				details: expect.arrayContaining(["version must be 0"]),
+			});
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
 	});
 });
