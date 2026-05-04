@@ -20,7 +20,11 @@ import {
 	type ResponsibilityPressureRecord,
 	type ResponsibilityPressureRecordResult,
 } from "./responsibility-pressure.js";
-import { buildResponsibilityStatusPaths, fingerprintResponsibility } from "./responsibility-status.js";
+import {
+	buildResponsibilityStatusPaths,
+	fingerprintResponsibility,
+	validateResponsibilityStatusRecord,
+} from "./responsibility-status.js";
 import type { ResponsibilityStatusRecord } from "./responsibility-status.js";
 
 export const OPENPROSE_JUDGE_SOURCE_PATH = "runtime/judge-responsibility.prose.md";
@@ -128,6 +132,17 @@ export interface RepositoryServeActivationRunRequest {
 	env: Record<string, string>;
 }
 
+export interface RepositoryServeActivationResult {
+	activationId: string;
+	exitCode: number;
+	source: "trigger" | "pressure";
+}
+
+export interface RepositoryServeDispatchResult {
+	triggerId: string;
+	activationResults: RepositoryServeActivationResult[];
+}
+
 export interface LoadActiveRepositoryIrOptions {
 	cwd: string;
 	home?: string;
@@ -188,7 +203,7 @@ export async function loadActiveRepositoryIr(options: LoadActiveRepositoryIrOpti
 	};
 }
 
-export async function prepareStaticRepositoryServe(
+export async function prepareRepositoryServe(
 	options: LoadActiveRepositoryIrOptions,
 ): Promise<RepositoryServeSummary> {
 	const loaded = await loadActiveRepositoryIr(options);
@@ -234,6 +249,82 @@ export function resolveActivationsForEvent(
 			}
 			return { trigger, activation };
 		});
+}
+
+export async function dispatchRepositoryServeEvent(options: {
+	loaded: RepositoryServeLoadedIr;
+	event: RepositoryServeEvent;
+	run: Omit<LaunchActivationRunOptions, "cwd"> & { cwd?: string };
+}): Promise<RepositoryServeDispatchResult> {
+	const resolvedActivations = resolveActivationsForEvent(options.loaded.manifest, options.event);
+	const activationResults: RepositoryServeActivationResult[] = [];
+	const launchedActivationIds = new Set<string>();
+	const judgeRequests: RepositoryServeActivationRunRequest[] = [];
+	const cwd = options.run.cwd ?? options.loaded.openProseRoot.absolutePath;
+
+	for (const resolved of resolvedActivations) {
+		const request = buildActivationRunRequest({
+			loaded: options.loaded,
+			event: options.event,
+			resolved,
+		});
+		const exitCode = await launchActivationRun(request, {
+			...options.run,
+			cwd,
+		});
+		activationResults.push({
+			activationId: request.activationId,
+			exitCode,
+			source: "trigger",
+		});
+		launchedActivationIds.add(request.activationId);
+
+		if (exitCode !== 0) {
+			throw new RepositoryServeError(`Activation '${request.activationId}' exited with code ${exitCode}.`);
+		}
+		if (request.payload.activation.kind === "judge") {
+			judgeRequests.push(request);
+		}
+	}
+
+	for (const request of judgeRequests) {
+		const status = await readLatestStatusForJudgeRequest(request);
+		const pressureResult = await recordPressureFromStatus({
+			loaded: options.loaded,
+			status,
+		});
+		if (pressureResult?.recorded !== true) {
+			continue;
+		}
+		const pressureActivationId = pressureResult.record.activationId;
+		if (pressureActivationId !== undefined && launchedActivationIds.has(pressureActivationId)) {
+			continue;
+		}
+
+		const pressureRequest = buildPressureActivationRunRequest({
+			loaded: options.loaded,
+			pressure: pressureResult.record,
+		});
+		const exitCode = await launchActivationRun(pressureRequest, {
+			...options.run,
+			cwd,
+		});
+		activationResults.push({
+			activationId: pressureRequest.activationId,
+			exitCode,
+			source: "pressure",
+		});
+		launchedActivationIds.add(pressureRequest.activationId);
+
+		if (exitCode !== 0) {
+			throw new RepositoryServeError(`Pressure activation '${pressureRequest.activationId}' exited with code ${exitCode}.`);
+		}
+	}
+
+	return {
+		triggerId: options.event.triggerId,
+		activationResults,
+	};
 }
 
 export function buildActivationRunRequest(options: {
@@ -546,7 +637,7 @@ export async function launchActivationRun(
 	});
 }
 
-export function formatStaticRepositoryServe(summary: RepositoryServeSummary): string {
+export function formatRepositoryServeSummary(summary: RepositoryServeSummary): string {
 	const { manifest } = summary.loaded;
 	const lines = [
 		`OpenProse serve loaded ${summary.loaded.manifestPath}`,
@@ -563,7 +654,6 @@ export function formatStaticRepositoryServe(summary: RepositoryServeSummary): st
 		lines.push(`- ${registration.triggerId} [${formatTriggerRegistration(registration)}] -> ${activations}`);
 	}
 
-	lines.push("Live trigger adapters are not enabled in this phase.");
 	return lines.join("\n");
 }
 
@@ -576,4 +666,39 @@ export function formatTriggerRegistration(registration: RepositoryServeTriggerRe
 		return `http ${registration.method.toUpperCase()} ${registration.path}`;
 	}
 	return registration.kind;
+}
+
+async function readLatestStatusForJudgeRequest(
+	request: RepositoryServeActivationRunRequest,
+): Promise<ResponsibilityStatusRecord> {
+	const statusPath = request.env.PROSE_RESPONSIBILITY_STATUS_LATEST;
+	if (statusPath === undefined) {
+		throw new RepositoryServeError(`Judge activation '${request.activationId}' did not declare a status output path.`);
+	}
+
+	let text: string;
+	try {
+		text = await readFile(statusPath, "utf8");
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		throw new RepositoryServeError(`Judge activation '${request.activationId}' did not write latest status: ${message}`);
+	}
+
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(text);
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		throw new RepositoryServeError(`Judge activation '${request.activationId}' wrote invalid status JSON: ${message}`);
+	}
+
+	const validation = validateResponsibilityStatusRecord(parsed);
+	if (!validation.valid) {
+		throw new RepositoryServeError(
+			`Judge activation '${request.activationId}' wrote invalid responsibility status.`,
+			validation.errors,
+		);
+	}
+
+	return parsed as ResponsibilityStatusRecord;
 }

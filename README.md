@@ -228,7 +228,7 @@ be checked, maintained, and restored across bounded runs:
 | Command | Role |
 |---------|------|
 | `prose compile` | Run the bundled OpenProse compiler program and lower semantic source into `<openprose-root>/dist/manifest.next.json` |
-| `prose serve` | Load active IR and prepare the concrete trigger registration plan |
+| `prose serve` | Load active IR and run local cron and HTTP trigger adapters |
 | `prose run` | Execute one bounded OpenProse VM activation |
 | `prose status` | Inspect active IR, diagnostics, trigger plan, recent runs, and responsibility status/pressure |
 
@@ -238,8 +238,8 @@ structured Forme manifests for fulfillment systems. The serve core can lower jud
 activations into normal bounded runs of the bundled judge service, record
 responsibility status under `<openprose-root>/state/responsibilities/`, and
 turn unhealthy status into deduped pressure that launches ordinary fulfillment
-runs. Live trigger adapters belong to later runtime phases. `prose compile`
-writes `<openprose-root>/dist/manifest.next.json`; promote it to
+runs. The first live adapters are local cron timers and HTTP webhook/API
+routes. `prose compile` writes `<openprose-root>/dist/manifest.next.json`; promote it to
 `<openprose-root>/dist/manifest.active.json` when you want `prose serve`
 to consume it.
 

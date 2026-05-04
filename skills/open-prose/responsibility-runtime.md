@@ -55,19 +55,19 @@ manifests for the harness to validate and serve.
 Default compiler output lives under `<openprose-root>/dist/`:
 
 - `manifest.next.json`: the newly compiled manifest
-- `manifest.active.json`: the manifest served by later runtime phases
+- `manifest.active.json`: the manifest served by `prose serve`
 
 `prose serve` loads compiled intent and acts like deterministic infrastructure:
 
 - validate the active manifest
-- prepare the concrete trigger registration plan
+- register concrete cron and HTTP triggers
 - resolve events to activations
 - launch normal bounded `prose run` sessions
 - record operational metadata
 
-The first serve phase should not add production flags only to simulate trigger
-delivery. Test event-to-activation resolution directly, then add live cron,
-HTTP, queue, and file-watch adapters in later runtime phases.
+The first live serve phase supports local cron and HTTP adapters. Queue,
+file-watch, provider subscription, auth validation, and automatic manifest
+reload remain later runtime phases.
 
 Compiled intent is a disposable generated artifact. The Markdown source is the
 durable intent.
@@ -103,8 +103,8 @@ Compiler programs lower semantics into compiled intent:
 The harness serves compiled intent:
 
 - load and validate the active manifest
-- prepare concrete trigger registration plans
-- receive events when live adapters are available
+- register concrete trigger adapters
+- receive trigger events
 - launch normal runs
 - store run, activation, status, and pressure records
 
@@ -120,7 +120,7 @@ implement all of them yet.
 | Command | Role |
 |---------|------|
 | `prose compile [path] [--out <dir>]` | Run the bundled compiler program and emit compiled intent |
-| `prose serve` | Load active compiled intent and prepare the concrete trigger registration plan; live adapters register and receive events in later runtime phases |
+| `prose serve` | Load active compiled intent, register local cron and HTTP adapters, and launch ordinary bounded activations |
 | `prose run` | Execute one bounded service, system, judge, or fulfillment activation |
 | `prose status` | Report active IR, diagnostics, trigger plan, recent runs, and responsibility status/pressure |
 

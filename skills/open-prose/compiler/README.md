@@ -29,7 +29,7 @@ the deterministic harness.
 Default output lives under `dist/`:
 
 - `manifest.next.json`: next compiled IR produced by compile
-- `manifest.active.json`: active compiled IR consumed by serve in later phases
+- `manifest.active.json`: active compiled IR consumed by `prose serve`
 
 The current v0 manifest contains:
 

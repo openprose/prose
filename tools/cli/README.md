@@ -152,14 +152,14 @@ prose upgrade --dry-run
 prose doctor
 prose lint src/systems/reviewer.prose.md
 prose preflight src/systems/reviewer.prose.md
-prose status --graph
+prose status
 ```
 
 `prose serve` loads and validates `dist/manifest.active.json` under the active
-OpenProse root, renders the static trigger registration plan, and exits. Live
-trigger adapters are planned for a later runtime phase; tests exercise
-event-to-activation resolution through the serve core rather than through
-synthetic production flags.
+OpenProse root, registers local cron and HTTP trigger adapters, and launches
+ordinary bounded `prose run` activations when those triggers fire. HTTP
+adapters bind to `127.0.0.1:7331` by default; use `--host` and `--port` to
+override that local listener.
 
 ## Development
 

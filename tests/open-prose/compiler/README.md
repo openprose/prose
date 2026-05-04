@@ -6,7 +6,7 @@ structured Forme manifest emission.
 The compiler output convention is:
 
 - `<openprose-root>/dist/manifest.next.json`: next generated OpenProse root IR
-- `<openprose-root>/dist/manifest.active.json`: active IR used by `prose serve` later
+- `<openprose-root>/dist/manifest.active.json`: active IR used by `prose serve`
 
 The checked v0 manifest stays intentionally small. It contains:
 

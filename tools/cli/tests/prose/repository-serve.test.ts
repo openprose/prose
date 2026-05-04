@@ -14,15 +14,19 @@ import {
 	buildPressureActivationRunRequest,
 	buildPressureFromStatus,
 	buildTriggerRegistrationPlan,
+	dispatchRepositoryServeEvent,
 	fingerprintResponsibility,
-	formatStaticRepositoryServe,
+	formatRepositoryServeSummary,
 	launchActivationRun,
 	loadActiveRepositoryIr,
-	prepareStaticRepositoryServe,
+	millisecondsUntilNextCron,
+	prepareRepositoryServe,
 	recordPressureFromStatus,
 	resolveActivationsForEvent,
+	startRepositoryServeDaemon,
 	type RepositoryServeActivationRunRequest,
 	type RepositoryServeLoadedIr,
+	type RepositoryServeTimerScheduler,
 	type ResponsibilityStatusRecord,
 } from "../../src/prose/index.js";
 
@@ -33,6 +37,12 @@ function writeActiveManifest(temp: string, source = stargazerFixture): void {
 	const activePath = join(temp, ACTIVE_REPOSITORY_IR_PATH);
 	mkdirSync(dirname(activePath), { recursive: true });
 	copyFileSync(source, activePath);
+}
+
+function writeActiveManifestObject(temp: string, manifest: unknown): void {
+	const activePath = join(temp, ACTIVE_REPOSITORY_IR_PATH);
+	mkdirSync(dirname(activePath), { recursive: true });
+	writeFileSync(activePath, `${JSON.stringify(manifest, null, 2)}\n`);
 }
 
 function memoryStreams() {
@@ -187,20 +197,20 @@ describe("repository serve core", () => {
 		]);
 	});
 
-	it("formats the static serve summary without pretending live adapters are enabled", async () => {
+	it("formats the serve summary with concrete registrations", async () => {
 		const temp = mkdtempSync(join(tmpdir(), "prose-serve-summary-"));
 
 		try {
 			writeActiveManifest(temp);
 
-			const output = formatStaticRepositoryServe(await prepareStaticRepositoryServe({ cwd: temp }));
+			const output = formatRepositoryServeSummary(await prepareRepositoryServe({ cwd: temp }));
 
 			expect(output).toContain(`OpenProse serve loaded ${ACTIVE_REPOSITORY_IR_PATH}`);
 			expect(output).toContain("IR: openprose.repository-ir v0");
 			expect(output).toContain(
 				"- high-intent-stargazer-outreach.evidence-change [http POST /webhooks/github/stars] -> high-intent-stargazer-outreach.judge, high-intent-stargazer-outreach.fulfillment",
 			);
-			expect(output).toContain("Live trigger adapters are not enabled in this phase.");
+			expect(output).toContain("Triggers: 2");
 		} finally {
 			rmSync(temp, { recursive: true, force: true });
 		}
@@ -519,6 +529,205 @@ describe("repository serve core", () => {
 			}),
 		]);
 	});
+
+	it("dispatches cron events through judge pressure fulfillment", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-serve-dispatch-pressure-"));
+		const io = memoryStreams();
+		const calls: string[] = [];
+
+		try {
+			writeActiveManifest(temp);
+			const loaded = await loadActiveRepositoryIr({ cwd: temp });
+
+			const result = await dispatchRepositoryServeEvent({
+				loaded,
+				event: {
+					triggerId: "high-intent-stargazer-outreach.periodic-check",
+				},
+				run: {
+					env: {},
+					stdout: io.streams.stdout,
+					stderr: io.streams.stderr,
+					commandRunner: async (options) => {
+						calls.push(options.env.PROSE_ACTIVATION_ID ?? "");
+						if (options.env.PROSE_ACTIVATION_ID === "high-intent-stargazer-outreach.judge") {
+							writeStatusFromRunEnv(options.env, "down");
+						}
+						return 0;
+					},
+				},
+			});
+
+			expect(result.activationResults).toEqual([
+				{
+					activationId: "high-intent-stargazer-outreach.judge",
+					exitCode: 0,
+					source: "trigger",
+				},
+				{
+					activationId: "high-intent-stargazer-outreach.fulfillment",
+					exitCode: 0,
+					source: "pressure",
+				},
+			]);
+			expect(calls).toEqual([
+				"high-intent-stargazer-outreach.judge",
+				"high-intent-stargazer-outreach.fulfillment",
+			]);
+			expect(
+				readFileSync(join(temp, "state/responsibilities/high-intent-stargazer-outreach/pressure.latest.json"), "utf8"),
+			).toContain("high-intent-stargazer-outreach.fulfillment");
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
+
+	it("serves HTTP trigger registrations and launches matched activations", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-serve-http-"));
+		const io = memoryStreams();
+		const calls: string[] = [];
+
+		try {
+			writeActiveManifest(temp);
+			const daemon = await startRepositoryServeDaemon({
+				cwd: temp,
+				env: {},
+				host: "127.0.0.1",
+				port: 0,
+				stdout: io.streams.stdout,
+				stderr: io.streams.stderr,
+				commandRunner: async (options) => {
+					calls.push(options.env.PROSE_ACTIVATION_ID ?? "");
+					if (options.env.PROSE_ACTIVATION_ID === "high-intent-stargazer-outreach.judge") {
+						writeStatusFromRunEnv(options.env, "down");
+					}
+					return 0;
+				},
+			});
+
+			try {
+				expect(daemon.address).toBeDefined();
+				const response = await fetch(`${daemon.address!.url}/webhooks/github/stars`, {
+					method: "POST",
+					body: JSON.stringify({ repository: "openprose/prose", starred_by: "alice" }),
+					headers: { "content-type": "application/json" },
+				});
+				const body = await response.json();
+
+				expect(response.status).toBe(200);
+				expect(body).toMatchObject({
+					ok: true,
+					results: [
+						{
+							triggerId: "high-intent-stargazer-outreach.evidence-change",
+						},
+					],
+				});
+				expect(calls).toEqual([
+					"high-intent-stargazer-outreach.judge",
+					"high-intent-stargazer-outreach.fulfillment",
+				]);
+			} finally {
+				await daemon.stop();
+			}
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
+
+	it("restores trigger registrations when serve restarts", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-serve-restart-"));
+		const io = memoryStreams();
+		const commandRunner = async () => 0;
+
+		try {
+			writeActiveManifest(temp);
+			const first = await startRepositoryServeDaemon({
+				cwd: temp,
+				env: {},
+				host: "127.0.0.1",
+				port: 0,
+				stdout: io.streams.stdout,
+				stderr: io.streams.stderr,
+				commandRunner,
+			});
+			const firstRegistrations = first.summary.registrations.map((registration) => registration.triggerId);
+			await first.stop();
+
+			const second = await startRepositoryServeDaemon({
+				cwd: temp,
+				env: {},
+				host: "127.0.0.1",
+				port: 0,
+				stdout: io.streams.stdout,
+				stderr: io.streams.stderr,
+				commandRunner,
+			});
+
+			try {
+				expect(second.summary.registrations.map((registration) => registration.triggerId)).toEqual(firstRegistrations);
+				expect(second.address).toBeDefined();
+			} finally {
+				await second.stop();
+			}
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
+
+	it("registers cron timers in the live daemon", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-serve-timer-"));
+		const io = memoryStreams();
+		let current = new Date(2026, 0, 1, 0, 0, 30);
+		const scheduled: Array<{ callback: () => void | Promise<void>; delayMs: number }> = [];
+		const scheduler: RepositoryServeTimerScheduler = {
+			setTimeout(callback, delayMs) {
+				scheduled.push({ callback, delayMs });
+				return { cancel() {} };
+			},
+		};
+		const calls: string[] = [];
+
+		try {
+			writeActiveManifestObject(temp, timerOnlyManifest());
+			const daemon = await startRepositoryServeDaemon({
+				cwd: temp,
+				env: {},
+				now: () => current,
+				stdout: io.streams.stdout,
+				stderr: io.streams.stderr,
+				timerScheduler: scheduler,
+				commandRunner: async (options) => {
+					calls.push(options.env.PROSE_ACTIVATION_ID ?? "");
+					if (options.env.PROSE_ACTIVATION_ID === "high-intent-stargazer-outreach.judge") {
+						writeStatusFromRunEnv(options.env, "up");
+					}
+					return 0;
+				},
+			});
+
+			try {
+				expect(scheduled[0]?.delayMs).toBe(30_000);
+				current = new Date(2026, 0, 1, 0, 1, 0);
+				await scheduled[0]!.callback();
+				expect(calls).toEqual(["high-intent-stargazer-outreach.judge"]);
+				expect(scheduled.length).toBeGreaterThan(1);
+			} finally {
+				await daemon.stop();
+			}
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
+
+	it("computes the next matching cron time", () => {
+		const from = new Date(2026, 0, 1, 5, 59, 30);
+		const friday = new Date(2026, 0, 2, 10, 0, 0);
+		const monday = new Date(2026, 0, 5, 9, 15, 0);
+
+		expect(millisecondsUntilNextCron("0 */6 * * *", from)).toBe(30_000);
+		expect(millisecondsUntilNextCron("15 9 * * 1", friday)).toBe(monday.getTime() - friday.getTime());
+	});
 });
 
 async function loadFixture(): Promise<RepositoryServeLoadedIr> {
@@ -552,4 +761,61 @@ function statusRecord(
 			irVersion: loaded.manifest.version,
 		},
 	};
+}
+
+function fixtureManifest(): Record<string, unknown> {
+	return JSON.parse(readFileSync(stargazerFixture, "utf8")) as Record<string, unknown>;
+}
+
+function timerOnlyManifest(): Record<string, unknown> {
+	const manifest = fixtureManifest();
+	const triggers = manifest.triggers as Array<Record<string, unknown>>;
+	const activations = manifest.activations as Array<Record<string, unknown>>;
+	manifest.triggers = [
+		{
+			...triggers[0],
+			cron: "* * * * *",
+		},
+	];
+	manifest.activations = activations
+		.filter((activation) => activation.id === "high-intent-stargazer-outreach.judge")
+		.map((activation) => ({
+			...activation,
+			triggerIds: ["high-intent-stargazer-outreach.periodic-check"],
+		}));
+	return manifest;
+}
+
+function writeStatusFromRunEnv(
+	env: Readonly<Record<string, string | undefined>>,
+	status: ResponsibilityStatusRecord["status"],
+): void {
+	const latestPath = env.PROSE_RESPONSIBILITY_STATUS_LATEST;
+	const contextText = env.PROSE_ACTIVATION_CONTEXT;
+	if (latestPath === undefined || contextText === undefined) {
+		return;
+	}
+	const context = JSON.parse(contextText) as {
+		ir: { manifestPath: string; version: number };
+		responsibility: { fingerprint: string; id: string };
+		trigger: { id: string };
+	};
+	const record: ResponsibilityStatusRecord = {
+		kind: RESPONSIBILITY_STATUS_KIND,
+		version: RESPONSIBILITY_STATUS_VERSION,
+		responsibilityId: context.responsibility.id,
+		responsibilityFingerprint: context.responsibility.fingerprint,
+		status,
+		evidence: [`Responsibility is ${status} in the test harness.`],
+		recordedAt: "2026-05-03T12:00:00.000Z",
+		source: {
+			...(env.PROSE_ACTIVATION_ID === undefined ? {} : { activationId: env.PROSE_ACTIVATION_ID }),
+			triggerId: context.trigger.id,
+			manifestPath: context.ir.manifestPath,
+			irVersion: context.ir.version,
+		},
+	};
+
+	mkdirSync(dirname(latestPath), { recursive: true });
+	writeFileSync(latestPath, `${JSON.stringify(record, null, 2)}\n`);
 }

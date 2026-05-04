@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Responsibility Runtime live serve** — `prose serve` now runs local cron and HTTP trigger adapters from compiled `triggers[]`, dispatches events into ordinary bounded `prose run` activations, and feeds unhealthy judge status into deduped pressure fulfillment.
+
 ## [0.11.0] - 2026-05-01
 
 ### Added

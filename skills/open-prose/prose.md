@@ -277,8 +277,8 @@ Example: `20260317-143052-a7b3c9`
 
 ### Runtime Activation Envelope
 
-`prose serve` and later trigger adapters launch ordinary `prose run`
-activations with a reserved argument:
+`prose serve` launches ordinary `prose run` activations with a reserved
+argument:
 
 ```bash
 prose run <source.prose.md> --activation-context '<json>'

@@ -121,7 +121,7 @@ executing the system. The shell executable is the agent runner, e.g.
 | Command | Action |
 |---------|--------|
 | `prose compile [path] [--out <dir>]` | Load `responsibility-runtime.md`, then `compiler/index.prose.md`; compile responsibilities, optional gateways, Forme manifests, and concrete trigger registrations into `<openprose-root>/dist/manifest.next.json` by default |
-| `prose serve` | Load and validate `<openprose-root>/dist/manifest.active.json`; prepare the concrete trigger registration plan; live trigger adapters are handled by later runtime phases |
+| `prose serve` | Load and validate `<openprose-root>/dist/manifest.active.json`; register local cron and HTTP trigger adapters; launch ordinary bounded activations |
 | `prose run <file.prose.md>` | Detect Contract Markdown, load `contract-markdown.md`, select state with `state/README.md` plus the backend doc, then `forme.md` if multi-service, then `prose.md` |
 | `prose run runtime/judge-responsibility.prose.md` | Resolve from the OpenProse skill root; judge one responsibility from activation context |
 | `prose run <host>/<owner>/<repo>[/path]` | Resolve installed dependency service or system, detect format, then route as above |
