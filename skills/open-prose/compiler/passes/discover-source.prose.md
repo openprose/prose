@@ -23,6 +23,7 @@ for repository IR.
 
 - Discover `*.prose.md` files first.
 - Read YAML frontmatter for `name` and `kind`.
-- Recognize `responsibility`, `system`, `service`, `test`, and `pattern`.
+- Recognize `responsibility`, `gateway`, `system`, `service`, `test`, and
+  `pattern`.
 - Mark unclear source as `unknown` and emit a diagnostic instead of guessing.
 - Ignore generated output under `dist/`.

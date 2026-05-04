@@ -167,8 +167,9 @@ In a traditional language, `accepts: { topic: string }` (type signature) and `re
 
 Responsibilities, Reactor, and Forme should compose into one runtime stack.
 Responsibilities define what must remain true over time. Reactor reconciles
-those invariants through events, judge status, and pressure. Forme wires the
-services and systems that fulfill them.
+those invariants through events, judge status, and pressure. Gateways define
+how time or the outside world enters. Forme wires the services and systems that
+fulfill them.
 
 OpenProse enables this architecture, but not every OpenProse program is
 responsibility-oriented.

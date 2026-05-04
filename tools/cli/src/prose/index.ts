@@ -39,8 +39,8 @@ export {
 	type RepositoryIrResponsibility,
 	type RepositoryIrSource,
 	type RepositoryIrSourceKind,
-	type RepositoryIrTriggerIntent,
-	type RepositoryIrTriggerIntentKind,
+	type RepositoryIrTrigger,
+	type RepositoryIrTriggerKind,
 	type RepositoryIrV0,
 	type RepositoryIrValidationResult,
 } from "./repository-ir.js";
@@ -80,6 +80,7 @@ export {
 	buildPressureActivationRunRequest,
 	buildPressureFromStatus,
 	buildTriggerRegistrationPlan,
+	formatTriggerRegistration,
 	formatStaticRepositoryServe,
 	launchActivationRun,
 	loadActiveRepositoryIr,

@@ -152,7 +152,13 @@ Every source file declares a `kind` in its frontmatter:
 | `test`      | A test harness — provides fixtures, runs a subject, evaluates assertions |
 | `pattern` | Reusable agent design pattern with slots, config, invariants, and delegation rules |
 
-`prose run` accepts `kind: service` and structurally complete `kind: system` files. `prose test` executes `kind: test` files. A `kind: pattern` file is not directly runnable; systems instantiate patterns through `pattern:` declarations in `### Services`. Services and ProseScript calls execute concrete services or systems, not pattern files.
+`prose run` accepts `kind: service` and structurally complete `kind: system`
+files. `prose test` executes `kind: test` files. `kind: gateway`,
+`kind: responsibility`, and `kind: pattern` files are not directly runnable;
+gateways and responsibilities compile into Responsibility Runtime IR, while
+systems instantiate patterns through `pattern:` declarations in `### Services`.
+Services and ProseScript calls execute concrete services or systems, not
+gateway, responsibility, or pattern files.
 
 ---
 

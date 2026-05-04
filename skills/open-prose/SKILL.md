@@ -120,8 +120,8 @@ executing the system. The shell executable is the agent runner, e.g.
 
 | Command | Action |
 |---------|--------|
-| `prose compile [path] [--out <dir>]` | Load `responsibility-runtime.md`, then `compiler/index.prose.md`; compile semantic source into compiled intent at `<openprose-root>/dist/manifest.next.json` by default |
-| `prose serve` | Load and validate `<openprose-root>/dist/manifest.active.json`; prepare the static trigger registration plan; live trigger adapters are handled by later runtime phases |
+| `prose compile [path] [--out <dir>]` | Load `responsibility-runtime.md`, then `compiler/index.prose.md`; compile responsibilities, optional gateways, Forme manifests, and concrete trigger registrations into `<openprose-root>/dist/manifest.next.json` by default |
+| `prose serve` | Load and validate `<openprose-root>/dist/manifest.active.json`; prepare the concrete trigger registration plan; live trigger adapters are handled by later runtime phases |
 | `prose run <file.prose.md>` | Detect Contract Markdown, load `contract-markdown.md`, select state with `state/README.md` plus the backend doc, then `forme.md` if multi-service, then `prose.md` |
 | `prose run runtime/judge-responsibility.prose.md` | Resolve from the OpenProse skill root; judge one responsibility from activation context |
 | `prose run <host>/<owner>/<repo>[/path]` | Resolve installed dependency service or system, detect format, then route as above |
@@ -169,8 +169,9 @@ For `.prose.md` files:
 3. If `kind: system` has a non-empty `### Services` section, load `forme.md` to produce a manifest.
 4. If the file has `kind: system` without `### Services`, report a structure error: a system must declare the graph it composes.
 5. If the file has `kind: responsibility`, refuse direct execution: responsibilities are standing goals compiled into compiled intent and reconciled by the Responsibility Runtime.
-6. If the file has `kind: pattern`, refuse direct execution: patterns must be instantiated by systems.
-7. If the file has `kind: test`, route to `prose test` semantics rather than ordinary `prose run`.
+6. If the file has `kind: gateway`, refuse direct execution: gateways are ingress declarations compiled into trigger registrations.
+7. If the file has `kind: pattern`, refuse direct execution: patterns must be instantiated by systems.
+8. If the file has `kind: test`, route to `prose test` semantics rather than ordinary `prose run`.
 8. For runnable services and systems, load `state/README.md`, then the selected backend doc (`state/filesystem.md` by default), and `prose.md` to execute the service or manifest.
 
 For `.prose` files, treat the file as upgrade input. Recommend

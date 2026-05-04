@@ -8,6 +8,11 @@
       "name": "high-intent-stargazer-outreach"
     },
     {
+      "path": "02-stargazer-gateway.prose.md",
+      "kind": "gateway",
+      "name": "stargazer-events"
+    },
+    {
       "path": "stargazer-outreach/index.prose.md",
       "kind": "system",
       "name": "stargazer-outreach"
@@ -71,13 +76,16 @@
     {
       "id": "high-intent-stargazer-outreach.periodic-check",
       "responsibilityId": "high-intent-stargazer-outreach",
-      "kind": "periodic",
+      "kind": "cron",
+      "cron": "0 */6 * * *",
       "reason": "Continuity requires checking often enough that new high-intent stargazers are not left unattended for more than one business day."
     },
     {
       "id": "high-intent-stargazer-outreach.evidence-change",
       "responsibilityId": "high-intent-stargazer-outreach",
-      "kind": "event",
+      "kind": "http",
+      "method": "POST",
+      "path": "/webhooks/github/stars",
       "reason": "Continuity says stale leads should be revisited when company, role, or repository evidence materially changes."
     }
   ],
@@ -312,8 +320,8 @@
   "diagnostics": [
     {
       "severity": "warning",
-      "message": "Concrete provider registration is not present; trigger records describe intent only.",
-      "sourcePath": "01-stargazer-responsibility.prose.md"
+      "message": "GitHub webhook authentication is not represented in the gateway fixture.",
+      "sourcePath": "02-stargazer-gateway.prose.md"
     }
   ]
 }

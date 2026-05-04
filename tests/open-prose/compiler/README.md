@@ -19,9 +19,10 @@ The checked v0 manifest stays intentionally small. It contains:
 - `formeManifests`
 - `diagnostics`
 
-Trigger and activation records are semantic intent only. Later phases can add
-concrete trigger registration, serve, and status records without changing the
-source authoring model.
+Trigger records are concrete serve-facing registrations. The compiler may
+infer them from responsibility `Continuity` or declare them from optional
+`kind: gateway` source. Activation records reference trigger ids
+deterministically.
 
 Forme manifests are compiled as structured JSON. They are the canonical runtime
 wiring object for systems; no separate Markdown run manifest is required.
@@ -49,11 +50,13 @@ Expected shape:
 - discovers the responsibility and local fulfillment system
 - emits a v0 manifest shaped like `expected/stargazer.manifest.next.json`
 - preserves the responsibility sections in semantic IR
+- discovers the optional gateway source
+- emits concrete cron and HTTP trigger registrations
 - emits judge and fulfillment activation intent
 - emits a structured Forme manifest for the fulfillment system
 - links the fulfillment activation to the compiled Forme manifest
-- does not invent webhook routes, queue names, or provider payloads
-- leaves concrete trigger registration to later phases
+- does not invent provider-specific auth, subscription setup, queue names, or
+  payload schemas
 
 ### Compile Ambiguous Fulfillment Fixture
 

@@ -159,27 +159,30 @@ describe("repository serve core", () => {
 		}
 	});
 
-	it("builds a static trigger registration plan", async () => {
+	it("builds a concrete trigger registration plan", async () => {
 		const loaded = await loadFixture();
 
 		expect(buildTriggerRegistrationPlan(loaded.manifest)).toEqual([
 			{
 				triggerId: "high-intent-stargazer-outreach.periodic-check",
 				responsibilityId: "high-intent-stargazer-outreach",
-				kind: "periodic",
+				kind: "cron",
+				cron: "0 */6 * * *",
 				reason:
 					"Continuity requires checking often enough that new high-intent stargazers are not left unattended for more than one business day.",
 				activationIds: ["high-intent-stargazer-outreach.judge"],
-				adapter: "static",
+				adapter: "timer",
 			},
 			{
 				triggerId: "high-intent-stargazer-outreach.evidence-change",
 				responsibilityId: "high-intent-stargazer-outreach",
-				kind: "event",
+				kind: "http",
+				method: "POST",
+				path: "/webhooks/github/stars",
 				reason:
 					"Continuity says stale leads should be revisited when company, role, or repository evidence materially changes.",
 				activationIds: ["high-intent-stargazer-outreach.judge", "high-intent-stargazer-outreach.fulfillment"],
-				adapter: "static",
+				adapter: "http",
 			},
 		]);
 	});
@@ -195,7 +198,7 @@ describe("repository serve core", () => {
 			expect(output).toContain(`OpenProse serve loaded ${ACTIVE_REPOSITORY_IR_PATH}`);
 			expect(output).toContain("IR: openprose.repository-ir v0");
 			expect(output).toContain(
-				"- high-intent-stargazer-outreach.evidence-change [event] -> high-intent-stargazer-outreach.judge, high-intent-stargazer-outreach.fulfillment",
+				"- high-intent-stargazer-outreach.evidence-change [http POST /webhooks/github/stars] -> high-intent-stargazer-outreach.judge, high-intent-stargazer-outreach.fulfillment",
 			);
 			expect(output).toContain("Live trigger adapters are not enabled in this phase.");
 		} finally {
@@ -345,7 +348,7 @@ describe("repository serve core", () => {
 		expect(request.sourcePath).toBe("stargazer-outreach/index.prose.md");
 		expect(request.payload.trigger).toEqual({
 			id: "high-intent-stargazer-outreach.pressure",
-			kind: "event",
+			kind: "manual",
 			responsibilityId: "high-intent-stargazer-outreach",
 			reason: "Responsibility pressure requested fulfillment.",
 		});

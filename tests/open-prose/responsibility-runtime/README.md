@@ -12,8 +12,8 @@ evaluation assets, not distributable skill docs.
   `Fulfillment`
 - resolve declared fulfillment and leave inference to compiler fixtures where
   `### Fulfillment` is omitted
-- explain trigger intent without inventing concrete cron, webhook, or queue
-  machinery
+- explain concrete trigger compilation without inventing provider auth,
+  subscriptions, payload schemas, or queue machinery
 - explain the layer split between responsibility source, compiler, harness,
   Reactor, Forme, and bounded runs
 
@@ -41,15 +41,16 @@ Expected shape:
 - identifies the four core sections
 - avoids treating the bullets as implementation steps
 
-### Resolve Fulfillment And Trigger Intent
+### Resolve Fulfillment And Triggers
 
 Read `01-stargazer-responsibility.prose.md` and
-`stargazer-outreach/index.prose.md`.
+`02-stargazer-gateway.prose.md`, then `stargazer-outreach/index.prose.md`.
 
 Return:
 
 - declared fulfillment source
-- inferred trigger intent
+- inferred cron trigger
+- declared gateway HTTP trigger
 - ambiguity or warnings
 - what should remain for compile or harness code
 
@@ -57,7 +58,9 @@ Expected shape:
 
 - resolves `stargazer-outreach` as the declared fulfillment
 - derives judge cadence from the one-business-day continuity requirement
-- does not invent provider-specific webhook routes or queue payloads
+- reads the gateway route instead of inventing it from the responsibility
+- does not invent provider-specific auth, subscriptions, payload schemas, or
+  queue names
 - says concrete registration belongs to compiled IR and `prose serve`
 
 ### Explain Responsibility Runtime Stack

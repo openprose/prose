@@ -8,6 +8,7 @@ see-also:
   - index.prose.md: Bundled compiler program
   - passes/discover-source.prose.md: Source discovery pass
   - passes/compile-responsibilities.prose.md: Responsibility lowering pass
+  - passes/compile-gateways.prose.md: Gateway lowering pass
   - passes/compile-forme.prose.md: Forme wiring pass
   - passes/emit-ir.prose.md: IR emission pass
   - passes/validate-ir.prose.md: Deterministic validation pass
@@ -41,8 +42,9 @@ The current v0 manifest contains:
 - `formeManifests`
 - `diagnostics`
 
-The responsibility records stay semantic. Trigger and activation records
-describe intent only; concrete registration belongs to `prose serve`.
+The responsibility records stay semantic. Trigger records are concrete
+serve-facing registrations. Activation records describe the bounded runs those
+triggers wake.
 
 Forme manifests are structured JSON wiring objects. They are the canonical
 compiled runtime contract for systems; a host may render them for debugging,

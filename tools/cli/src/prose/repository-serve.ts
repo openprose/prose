@@ -7,8 +7,8 @@ import {
 	REPOSITORY_IR_KIND,
 	type RepositoryIrActivationIntent,
 	type RepositoryIrFulfillmentIntent,
-	type RepositoryIrTriggerIntent,
-	type RepositoryIrTriggerIntentKind,
+	type RepositoryIrTrigger,
+	type RepositoryIrTriggerKind,
 	type RepositoryIrV0,
 	validateRepositoryIr,
 } from "./repository-ir.js";
@@ -45,10 +45,14 @@ export interface RepositoryServeLoadedIr {
 export interface RepositoryServeTriggerRegistration {
 	triggerId: string;
 	responsibilityId: string;
-	kind: RepositoryIrTriggerIntentKind;
+	kind: RepositoryIrTriggerKind;
 	reason: string;
 	activationIds: string[];
-	adapter: "static";
+	adapter: "timer" | "http" | "manual" | "unknown";
+	cron?: string;
+	timezone?: string;
+	method?: string;
+	path?: string;
 }
 
 export interface RepositoryServeSummary {
@@ -62,7 +66,7 @@ export interface RepositoryServeEvent {
 }
 
 export interface RepositoryServeResolvedActivation {
-	trigger: RepositoryIrTriggerIntent;
+	trigger: RepositoryIrTrigger;
 	activation: RepositoryIrActivationIntent;
 }
 
@@ -75,9 +79,13 @@ export interface RepositoryServeActivationPayload {
 	};
 	trigger: {
 		id: string;
-		kind: RepositoryIrTriggerIntentKind;
+		kind: RepositoryIrTriggerKind;
 		responsibilityId: string;
 		reason: string;
+		cron?: string;
+		timezone?: string;
+		method?: string;
+		path?: string;
 	};
 	activation: {
 		id: string;
@@ -199,7 +207,11 @@ export function buildTriggerRegistrationPlan(manifest: RepositoryIrV0): Reposito
 		activationIds: manifest.activations
 			.filter((activation) => activation.triggerIds?.includes(trigger.id))
 			.map((activation) => activation.id),
-		adapter: "static",
+		adapter: adapterForTriggerKind(trigger.kind),
+		...(trigger.cron === undefined ? {} : { cron: trigger.cron }),
+		...(trigger.timezone === undefined ? {} : { timezone: trigger.timezone }),
+		...(trigger.method === undefined ? {} : { method: trigger.method }),
+		...(trigger.path === undefined ? {} : { path: trigger.path }),
 	}));
 }
 
@@ -264,6 +276,10 @@ export function buildActivationRunRequest(options: {
 			kind: trigger.kind,
 			responsibilityId: trigger.responsibilityId,
 			reason: trigger.reason,
+			...(trigger.cron === undefined ? {} : { cron: trigger.cron }),
+			...(trigger.timezone === undefined ? {} : { timezone: trigger.timezone }),
+			...(trigger.method === undefined ? {} : { method: trigger.method }),
+			...(trigger.path === undefined ? {} : { path: trigger.path }),
 		},
 		activation: {
 			id: activation.id,
@@ -389,7 +405,7 @@ export function resolveActivationForPressure(
 		trigger: {
 			id: `${pressure.responsibilityId}.pressure`,
 			responsibilityId: pressure.responsibilityId,
-			kind: "event",
+			kind: "manual",
 			reason: `Responsibility pressure requested ${pressure.recommendedActivationKind}.`,
 		},
 		activation,
@@ -482,6 +498,16 @@ function pressureActivationPreferences(
 	return ["fulfillment", "retry", "escalation"];
 }
 
+function adapterForTriggerKind(kind: RepositoryIrTriggerKind): RepositoryServeTriggerRegistration["adapter"] {
+	if (kind === "cron") {
+		return "timer";
+	}
+	if (kind === "http") {
+		return "http";
+	}
+	return kind;
+}
+
 function validateActivationPressure(options: {
 	activation: RepositoryIrActivationIntent;
 	pressure?: ResponsibilityPressureRecord;
@@ -534,9 +560,20 @@ export function formatStaticRepositoryServe(summary: RepositoryServeSummary): st
 	for (const registration of summary.registrations) {
 		const activations =
 			registration.activationIds.length === 0 ? "none" : registration.activationIds.join(", ");
-		lines.push(`- ${registration.triggerId} [${registration.kind}] -> ${activations}`);
+		lines.push(`- ${registration.triggerId} [${formatTriggerRegistration(registration)}] -> ${activations}`);
 	}
 
 	lines.push("Live trigger adapters are not enabled in this phase.");
 	return lines.join("\n");
+}
+
+export function formatTriggerRegistration(registration: RepositoryServeTriggerRegistration): string {
+	if (registration.kind === "cron" && registration.cron !== undefined) {
+		const timezone = registration.timezone === undefined ? "" : ` ${registration.timezone}`;
+		return `cron ${registration.cron}${timezone}`;
+	}
+	if (registration.kind === "http" && registration.method !== undefined && registration.path !== undefined) {
+		return `http ${registration.method.toUpperCase()} ${registration.path}`;
+	}
+	return registration.kind;
 }

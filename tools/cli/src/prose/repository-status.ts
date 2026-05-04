@@ -6,7 +6,11 @@ import {
 	type RepositoryIrV0,
 	validateRepositoryIr,
 } from "./repository-ir.js";
-import { buildTriggerRegistrationPlan, type RepositoryServeTriggerRegistration } from "./repository-serve.js";
+import {
+	buildTriggerRegistrationPlan,
+	formatTriggerRegistration,
+	type RepositoryServeTriggerRegistration,
+} from "./repository-serve.js";
 import { resolveOpenProseRoot, type OpenProseRoot } from "./openprose-root.js";
 import {
 	buildResponsibilityPressurePaths,
@@ -349,7 +353,7 @@ function appendTriggerPlan(lines: string[], registrations: RepositoryServeTrigge
 	for (const registration of registrations) {
 		const activations =
 			registration.activationIds.length === 0 ? "none" : registration.activationIds.join(", ");
-		lines.push(`- ${registration.triggerId} [${registration.kind}] -> ${activations}`);
+		lines.push(`- ${registration.triggerId} [${formatTriggerRegistration(registration)}] -> ${activations}`);
 	}
 }
 

@@ -5,8 +5,8 @@ kind: service
 
 # Compile Responsibilities
 
-Lower `kind: responsibility` source into semantic responsibility, trigger
-intent, and activation intent records.
+Lower `kind: responsibility` source into semantic responsibility records,
+concrete trigger registrations, and activation intent records.
 
 ### Requires
 
@@ -17,7 +17,8 @@ intent, and activation intent records.
 
 - `responsibilities`: records preserving `Goal`, `Continuity`, `Criteria`,
   `Constraints`, and optional `Fulfillment`.
-- `triggers`: semantic trigger intent inferred from `Continuity`.
+- `triggers`: concrete cron/manual trigger records inferred from
+  `Continuity` when cadence is clear.
 - `activations`: judge and fulfillment activation intent.
 - `diagnostics`: errors for missing core sections and warnings for ambiguous
   timing or fulfillment.
@@ -33,9 +34,11 @@ intent, and activation intent records.
   service only when the target is clear.
 - When `Fulfillment` is omitted, infer from nearby systems, service names,
   source paths, and contracts only when one relationship is clearly strongest.
-- Infer trigger intent from temporal language in `Continuity`; emit
-  `periodic`, `event`, `manual`, or `unknown` intent, not concrete cron,
-  webhook, queue, or provider payload details.
+- Infer concrete trigger registrations from temporal language in `Continuity`
+  when cadence is clear enough for a standard five-field cron expression.
+- Emit a diagnostic instead of guessing when cadence is ambiguous.
+- Do not invent provider-specific webhook routes, queue names, auth, or payload
+  schemas from responsibility text alone.
 - Emit one judge activation for each responsibility.
 - Emit fulfillment activation intent only when a declared or inferred
   fulfillment target is clear.

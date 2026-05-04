@@ -11,7 +11,7 @@ Build the repository IR JSON manifest from compile pass outputs.
 
 - `sources`: discovered source records.
 - `responsibilities`: compiled responsibility records.
-- `triggers`: compiled trigger intent records.
+- `triggers`: concrete serve-facing trigger registration records.
 - `activations`: compiled activation intent records.
 - `formeManifests`: compiled Forme wiring manifests.
 - `diagnostics`: compile diagnostics.

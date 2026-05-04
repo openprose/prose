@@ -7,6 +7,7 @@ export const REPOSITORY_IR_VERSION = 0;
 
 export type RepositoryIrSourceKind =
 	| "responsibility"
+	| "gateway"
 	| "system"
 	| "service"
 	| "test"
@@ -45,13 +46,17 @@ export interface RepositoryIrResponsibility {
 	fulfillment?: RepositoryIrFulfillmentIntent;
 }
 
-export type RepositoryIrTriggerIntentKind = "periodic" | "event" | "manual" | "unknown";
+export type RepositoryIrTriggerKind = "cron" | "http" | "manual" | "unknown";
 
-export interface RepositoryIrTriggerIntent {
+export interface RepositoryIrTrigger {
 	id: string;
 	responsibilityId: string;
-	kind: RepositoryIrTriggerIntentKind;
+	kind: RepositoryIrTriggerKind;
 	reason: string;
+	cron?: string;
+	timezone?: string;
+	method?: string;
+	path?: string;
 }
 
 export type RepositoryIrActivationIntentKind = "judge" | "fulfillment" | "retry" | "escalation";
@@ -136,7 +141,7 @@ export interface RepositoryIrV0 {
 	version: typeof REPOSITORY_IR_VERSION;
 	sources: RepositoryIrSource[];
 	responsibilities: RepositoryIrResponsibility[];
-	triggers: RepositoryIrTriggerIntent[];
+	triggers: RepositoryIrTrigger[];
 	activations: RepositoryIrActivationIntent[];
 	formeManifests: RepositoryIrFormeManifest[];
 	diagnostics: RepositoryIrDiagnostic[];
@@ -175,6 +180,7 @@ interface FormeGraphIndex {
 
 const sourceKinds: readonly RepositoryIrSourceKind[] = [
 	"responsibility",
+	"gateway",
 	"system",
 	"service",
 	"test",
@@ -184,7 +190,7 @@ const sourceKinds: readonly RepositoryIrSourceKind[] = [
 
 const diagnosticSeverities: readonly RepositoryIrDiagnosticSeverity[] = ["info", "warning", "error"];
 const fulfillmentModes: readonly RepositoryIrFulfillmentMode[] = ["declared", "inferred"];
-const triggerIntentKinds: readonly RepositoryIrTriggerIntentKind[] = ["periodic", "event", "manual", "unknown"];
+const triggerKinds: readonly RepositoryIrTriggerKind[] = ["cron", "http", "manual", "unknown"];
 const activationIntentKinds: readonly RepositoryIrActivationIntentKind[] = [
 	"judge",
 	"fulfillment",
@@ -192,6 +198,7 @@ const activationIntentKinds: readonly RepositoryIrActivationIntentKind[] = [
 	"escalation",
 ];
 const formeInputSources: readonly RepositoryIrFormeInputSource[] = ["caller", "service"];
+const httpMethods = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
 
 export function validateRepositoryIr(value: unknown): RepositoryIrValidationResult {
 	const errors: string[] = [];
@@ -349,15 +356,67 @@ function validateTriggers(value: unknown, responsibilityIds: Set<string>, errors
 			errors.push(`${prefix}.id must be a non-empty string`);
 		}
 		validateResponsibilityReference(trigger.responsibilityId, responsibilityIds, `${prefix}.responsibilityId`, errors);
-		if (!triggerIntentKinds.includes(trigger.kind as RepositoryIrTriggerIntentKind)) {
-			errors.push(`${prefix}.kind must be periodic, event, manual, or unknown`);
+		if (!triggerKinds.includes(trigger.kind as RepositoryIrTriggerKind)) {
+			errors.push(`${prefix}.kind must be cron, http, manual, or unknown`);
 		}
 		if (!isNonEmptyString(trigger.reason)) {
 			errors.push(`${prefix}.reason must be a non-empty string`);
 		}
+		validateConcreteTrigger(trigger, prefix, errors);
 	}
 
 	return { ids, responsibilityIdById };
+}
+
+function validateConcreteTrigger(trigger: Record<string, unknown>, prefix: string, errors: string[]): void {
+	if (trigger.kind === "cron") {
+		if (isNonEmptyString(trigger.cron)) {
+			validateCronExpression(trigger.cron, `${prefix}.cron`, errors);
+		} else {
+			errors.push(`${prefix}.cron must be a non-empty string for cron triggers`);
+		}
+		if (trigger.timezone !== undefined && !isNonEmptyString(trigger.timezone)) {
+			errors.push(`${prefix}.timezone must be a non-empty string when present`);
+		}
+	}
+
+	if (trigger.kind !== "cron") {
+		if (trigger.cron !== undefined && !isNonEmptyString(trigger.cron)) {
+			errors.push(`${prefix}.cron must be a non-empty string when present`);
+		}
+		if (trigger.timezone !== undefined && !isNonEmptyString(trigger.timezone)) {
+			errors.push(`${prefix}.timezone must be a non-empty string when present`);
+		}
+	}
+
+	if (trigger.kind === "http") {
+		if (!isNonEmptyString(trigger.method)) {
+			errors.push(`${prefix}.method must be a non-empty string for http triggers`);
+		} else if (!httpMethods.includes(trigger.method.toUpperCase() as (typeof httpMethods)[number])) {
+			errors.push(`${prefix}.method must be GET, POST, PUT, PATCH, or DELETE`);
+		}
+		if (!isNonEmptyString(trigger.path)) {
+			errors.push(`${prefix}.path must be a non-empty string for http triggers`);
+		} else if (!trigger.path.startsWith("/")) {
+			errors.push(`${prefix}.path must start with /`);
+		}
+	}
+
+	if (trigger.kind !== "http") {
+		if (trigger.method !== undefined && !isNonEmptyString(trigger.method)) {
+			errors.push(`${prefix}.method must be a non-empty string when present`);
+		}
+		if (trigger.path !== undefined && !isNonEmptyString(trigger.path)) {
+			errors.push(`${prefix}.path must be a non-empty string when present`);
+		}
+	}
+}
+
+function validateCronExpression(value: string, label: string, errors: string[]): void {
+	const fields = value.trim().split(/\s+/);
+	if (fields.length !== 5) {
+		errors.push(`${label} must be a standard five-field cron expression`);
+	}
 }
 
 function validateActivations(

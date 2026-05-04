@@ -64,18 +64,18 @@ describe("repository status", () => {
 				Root: . (native)
 				Active IR: dist/manifest.active.json (loaded)
 				IR: openprose.repository-ir v0
-				Sources: 7
+				Sources: 8
 				Responsibilities: 1
 				Triggers: 2
 				Activations: 2 (fulfillment: 1, judge: 1)
 				Forme manifests: 1
 
 				Diagnostics:
-				- warning 01-stargazer-responsibility.prose.md: Concrete provider registration is not present; trigger records describe intent only.
+				- warning 02-stargazer-gateway.prose.md: GitHub webhook authentication is not represented in the gateway fixture.
 
 				Trigger plan:
-				- high-intent-stargazer-outreach.periodic-check [periodic] -> high-intent-stargazer-outreach.judge
-				- high-intent-stargazer-outreach.evidence-change [event] -> high-intent-stargazer-outreach.judge, high-intent-stargazer-outreach.fulfillment
+				- high-intent-stargazer-outreach.periodic-check [cron 0 */6 * * *] -> high-intent-stargazer-outreach.judge
+				- high-intent-stargazer-outreach.evidence-change [http POST /webhooks/github/stars] -> high-intent-stargazer-outreach.judge, high-intent-stargazer-outreach.fulfillment
 
 				Responsibilities:
 				- high-intent-stargazer-outreach

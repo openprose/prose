@@ -81,6 +81,8 @@ When executing:
 - Refuse `prose run` on `kind: pattern`; patterns must be instantiated by systems.
 - Refuse `prose run` on `kind: responsibility`; responsibilities are compiled
   into compiled intent and reconciled by the Responsibility Runtime.
+- Refuse `prose run` on `kind: gateway`; gateways compile into trigger
+  registrations for `prose serve`.
 - Route `kind: test` files through `prose test`.
 - Load `prose.md` for execution.
 - Load `prosescript.md` for `### Execution` blocks.

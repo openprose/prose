@@ -145,7 +145,7 @@ Services and systems are `*.prose.md` files with tiny YAML identity frontmatter 
 ```yaml
 ---
 name: my-service
-kind: service          # service | system | test | pattern
+kind: service          # service | system | gateway | test | pattern
 ---
 ```
 

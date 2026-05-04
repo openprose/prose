@@ -65,10 +65,28 @@ describe("repository IR v0", () => {
 			expect.arrayContaining([
 				"responsibilities[0].criteria must contain at least one item",
 				"triggers[0].responsibilityId must reference a known responsibility id",
-				"triggers[0].kind must be periodic, event, manual, or unknown",
 				"triggers[0].reason must be a non-empty string",
+				"triggers[0].cron must be a non-empty string for cron triggers",
 				"activations[0].triggerIds[0] must reference a known trigger id",
 				"activations[0].targetName must be a non-empty string for fulfillment activations",
+			]),
+		);
+	});
+
+	it("rejects malformed concrete trigger registrations", () => {
+		const manifest = cloneFixture("tests/open-prose/compiler/expected/stargazer.manifest.next.json");
+		manifest.triggers[0].cron = "daily";
+		manifest.triggers[1].method = "TRACE";
+		manifest.triggers[1].path = "webhooks/github/stars";
+
+		const result = validateRepositoryIr(manifest);
+
+		expect(result.valid).toBe(false);
+		expect(result.errors).toEqual(
+			expect.arrayContaining([
+				"triggers[0].cron must be a standard five-field cron expression",
+				"triggers[1].method must be GET, POST, PUT, PATCH, or DELETE",
+				"triggers[1].path must start with /",
 			]),
 		);
 	});
@@ -123,7 +141,8 @@ describe("repository IR v0", () => {
 		manifest.triggers.push({
 			id: "other-responsibility.periodic-check",
 			responsibilityId: "other-responsibility",
-			kind: "periodic",
+			kind: "cron",
+			cron: "0 9 * * *",
 			reason: "The other responsibility needs periodic checking.",
 		});
 		manifest.activations.push({

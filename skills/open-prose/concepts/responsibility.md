@@ -92,17 +92,16 @@ Keep implementation details out:
 - test cases
 - storage schema
 
-Concrete connector details belong in entrypoint or harness-facing source only
-when inference cannot safely recover them. Tests belong in the parallel test
-system.
+Concrete connector details belong in optional `kind: gateway` source when
+inference cannot safely recover them. Tests belong in the parallel test system.
 
 ## Compiler Expectations
 
 When compiling a responsibility, the VM should infer:
 
 - the responsibility record from the four core sections
-- trigger intent from `Continuity`
-- judge cadence from how quickly drift must be noticed
+- concrete triggers from `Continuity` when cadence is clear
+- standard cron cadence from how quickly drift must be noticed
 - fulfillment source from `Fulfillment` or clear source-graph evidence
 - activation intent for judge, fulfillment, retry, or escalation
 - diagnostics when fulfillment, timing, or criteria are ambiguous

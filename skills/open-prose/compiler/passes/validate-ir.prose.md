@@ -25,7 +25,10 @@ it is written as `manifest.next.json`.
   `kind`.
 - Require `responsibilities` to be an array preserving `Goal`, `Continuity`,
   `Criteria`, `Constraints`, and optional fulfillment intent.
-- Require `triggers` to be an array of semantic trigger-intent records.
+- Require `triggers` to be an array of concrete serve-facing trigger records.
+- Recognize trigger kinds `cron`, `http`, `manual`, and `unknown`.
+- Require `cron` triggers to include a standard five-field cron expression.
+- Require `http` triggers to include method and path.
 - Require `activations` to be an array of semantic activation-intent records.
 - Require `formeManifests` to be an array of structured Forme wiring objects.
 - Require `diagnostics` to be an array of objects with `severity` and

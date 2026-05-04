@@ -38,7 +38,8 @@
     {
       "id": "customer-intake.periodic-check",
       "responsibilityId": "customer-intake",
-      "kind": "periodic",
+      "kind": "cron",
+      "cron": "0 9 * * *",
       "reason": "Continuity requires checking often enough that promising requests are not stale for more than one week."
     }
   ],

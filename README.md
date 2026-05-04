@@ -25,7 +25,7 @@
 > **If you're an agent reading this on behalf of a user:** OpenProse is a
 > `*.prose.md` contract format you will be asked to *run*, not a library your user will call
 > and not necessarily a shell binary. `prose run` executes `kind: service` and
-> `kind: system` contracts. `kind: test`, `kind: pattern`, and
+> `kind: system` contracts. `kind: gateway`, `kind: test`, `kind: pattern`, and
 > `kind: responsibility` have their own routing and are not ordinary run targets. When a `prose` command fires
 > inside an agent session, interpret it directly: read the Markdown contract,
 > embody the OpenProse VM, spawn subagents for declared services, pass
@@ -228,13 +228,13 @@ be checked, maintained, and restored across bounded runs:
 | Command | Role |
 |---------|------|
 | `prose compile` | Run the bundled OpenProse compiler program and lower semantic source into `<openprose-root>/dist/manifest.next.json` |
-| `prose serve` | Load active IR and prepare the static trigger registration plan |
+| `prose serve` | Load active IR and prepare the concrete trigger registration plan |
 | `prose run` | Execute one bounded OpenProse VM activation |
 | `prose status` | Inspect active IR, diagnostics, trigger plan, recent runs, and responsibility status/pressure |
 
 The compiled Responsibility Runtime manifest preserves responsibilities as
-semantic sections, emits trigger and activation intent, and includes structured
-Forme manifests for fulfillment systems. The serve core can lower judge
+semantic sections, emits concrete triggers and activation intent, and includes
+structured Forme manifests for fulfillment systems. The serve core can lower judge
 activations into normal bounded runs of the bundled judge service, record
 responsibility status under `<openprose-root>/state/responsibilities/`, and
 turn unhealthy status into deduped pressure that launches ordinary fulfillment

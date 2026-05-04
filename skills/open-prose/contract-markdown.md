@@ -1,9 +1,9 @@
 ---
 role: contract-markdown-format
 summary: |
-  Canonical Markdown format for OpenProse services, systems, tests, patterns,
-  and responsibilities. Defines the header hierarchy, contract sections, and
-  how interpreters should extract `*.prose.md` source.
+  Canonical Markdown format for OpenProse services, systems, gateways, tests,
+  patterns, and responsibilities. Defines the header hierarchy, contract
+  sections, and how interpreters should extract `*.prose.md` source.
 see-also:
   - forme.md: Wiring semantics
   - prose.md: Execution semantics
@@ -16,9 +16,10 @@ see-also:
 # Contract Markdown
 
 Contract Markdown is the human-facing `*.prose.md` format for OpenProse
-services, systems, tests, patterns, and responsibilities. It uses tiny YAML
-frontmatter for file identity, then Markdown sections for the human-facing
-language: contracts, runtime hints, shape, execution, and standing goals.
+services, systems, gateways, tests, patterns, and responsibilities. It uses
+tiny YAML frontmatter for file identity, then Markdown sections for the
+human-facing language: contracts, runtime hints, shape, execution, and standing
+goals.
 
 The format optimizes for two readers:
 
@@ -47,9 +48,38 @@ inside `### Services`.
 
 A **responsibility** is responsibility-oriented source, not a direct run
 target. It defines a standing goal that must remain true over time. The
-compiler lowers it into responsibility, trigger intent, and activation intent.
+compiler lowers it into responsibility, concrete triggers, and activation
+intent.
 Pressure is runtime feedback produced when the Reactor judges the standing goal
 to be drifting, down, or blocked.
+
+A **gateway** is optional ingress source, not a direct run target. It describes
+how time or the outside world enters OpenProse: schedules, local HTTP routes,
+webhooks, or provider events. The compiler lowers gateways into concrete
+serve-facing `triggers[]`.
+
+Gateway sections are intentionally small:
+
+```markdown
+---
+name: github-stars
+kind: gateway
+---
+
+### Receives
+
+- POST /webhooks/github/stars
+- Provider: GitHub
+- Event: star
+
+### Emits
+
+- high-intent-stargazer-outreach.evidence-change
+
+### Payload
+
+Pass the webhook payload as activation event context.
+```
 
 ## Core Shape
 
@@ -134,8 +164,8 @@ Interpreters parse a file in this order:
 
 1. Read YAML frontmatter for identity metadata (`name`, `kind`; `kind: test`
    files also declare `subject`).
-2. Create the file-level service, system, test, pattern, or responsibility from
-   the frontmatter.
+2. Create the file-level service, system, gateway, test, pattern, or
+   responsibility from the frontmatter.
 3. Attach all `###` sections before the first `##` to the file-level entry.
 4. For every `## {name}` heading, create an inline service named `{name}`.
 5. Attach subsequent `###` sections to that inline service until the next `##`.
@@ -360,13 +390,13 @@ Scoping) for the on-disk format of memory files.
 
 ## Frontmatter
 
-Every service, system, test, or pattern declares identity with `name` and
+Every service, system, gateway, test, or pattern declares identity with `name` and
 `kind`:
 
 ```yaml
 ---
 name: entry-name
-kind: service | system | test | pattern
+kind: service | system | gateway | test | pattern
 ---
 ```
 
@@ -482,5 +512,5 @@ Use Contract Markdown when the author cares about the promise more than the
 choreography. Use ProseScript when the author needs exact order, control flow,
 or human-readable procedural steps.
 
-For canonical service, system, pattern, test, memory, and security guidance,
-load `guidance/authoring.md`.
+For canonical service, system, gateway, pattern, test, memory, and security
+guidance, load `guidance/authoring.md`.

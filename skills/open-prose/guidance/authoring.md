@@ -1,5 +1,5 @@
 ---
-purpose: Canonical OpenProse authoring guidance for services, systems, patterns, tests, responsibility-oriented repositories, memory, and security boundaries
+purpose: Canonical OpenProse authoring guidance for services, systems, gateways, patterns, tests, responsibility-oriented repositories, memory, and security boundaries
 related:
   - ../contract-markdown.md
   - ../forme.md
@@ -11,16 +11,16 @@ related:
 # Authoring Guidance
 
 Use this file when writing or reviewing OpenProse author-facing artifacts:
-`kind: service`, `kind: system`, `kind: test`, `kind: pattern`, and
-`kind: responsibility`.
+`kind: service`, `kind: system`, `kind: gateway`, `kind: test`,
+`kind: pattern`, and `kind: responsibility`.
 
 ## Core Principles
 
 - Prefer the smallest artifact that expresses the work: one competent service
   for one competent session, a system when composition matters, a pattern when
-  repeated control flow deserves a reusable contract, a test when behavior
-  needs checking, and a responsibility when an operational goal must remain
-  true over time.
+  repeated control flow deserves a reusable contract, a gateway when time or
+  the outside world enters the runtime, a test when behavior needs checking,
+  and a responsibility when an operational goal must remain true over time.
 - Author public contracts before choreography. `### Requires`, `### Ensures`,
   `### Errors`, `### Invariants`, `### Environment`, and `### Shape` should make
   the boundary obvious to a caller and to Forme.
@@ -65,6 +65,22 @@ Use this file when writing or reviewing OpenProse author-facing artifacts:
   conflicts explicitly.
 - Use `each` when collection completeness matters: every item must satisfy the
   postcondition.
+
+## Gateway Authoring
+
+A `kind: gateway` file declares ingress for Responsibility Runtime. It is not
+run directly.
+
+- Use gateways when the responsibility alone should not carry concrete ingress:
+  stable HTTP routes, provider webhooks, explicit schedules, or provider event
+  names.
+- Keep gateways thin. They receive time or external events and emit trigger ids;
+  services and systems perform the work.
+- Use `### Receives` for HTTP method/path, provider, event, and auth notes.
+- Use `### Schedule` for standard five-field cron expressions.
+- Use `### Emits` to name the responsibility trigger that should wake.
+- Prefer diagnostics over invention when provider subscription setup, auth, or
+  payload shape is not explicit enough to compile.
 
 ## Pattern Authoring
 
@@ -160,8 +176,8 @@ helps the compiler. Omit it when the source graph makes the relationship clear.
 
 Keep responsibilities semantic. Do not put concrete cron syntax, webhook
 routes, queues, storage schemas, or tests inside the responsibility file.
-Those belong to compiled intent, harness-facing connector source, state backends,
-or `kind: test` files.
+Those belong to compiled intent, optional `kind: gateway` source, state
+backends, or `kind: test` files.
 
 ## State and Memory Authoring
 

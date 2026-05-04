@@ -60,14 +60,14 @@ Default compiler output lives under `<openprose-root>/dist/`:
 `prose serve` loads compiled intent and acts like deterministic infrastructure:
 
 - validate the active manifest
-- prepare the static trigger registration plan
+- prepare the concrete trigger registration plan
 - resolve events to activations
 - launch normal bounded `prose run` sessions
 - record operational metadata
 
 The first serve phase should not add production flags only to simulate trigger
-delivery. Test event-to-activation resolution directly, then add live timer,
-webhook, queue, and file-watch adapters in a later runtime phase.
+delivery. Test event-to-activation resolution directly, then add live cron,
+HTTP, queue, and file-watch adapters in later runtime phases.
 
 Compiled intent is a disposable generated artifact. The Markdown source is the
 durable intent.
@@ -83,7 +83,7 @@ Markdown source defines intent:
 - service and system contracts
 - responsibility promises
 - optional fulfillment hints
-- explicit connector details only when inference is unsafe
+- optional gateway ingress details when inference is unsafe
 
 Skill and interpreter docs define semantics:
 
@@ -95,14 +95,15 @@ Skill and interpreter docs define semantics:
 Compiler programs lower semantics into compiled intent:
 
 - discover source
-- compile responsibilities, trigger intent, activations, and Forme manifests
+- compile responsibilities, gateways, concrete triggers, activations, and
+  Forme manifests
 - report ambiguity and warnings
 - emit deterministic output for harness validation under `<openprose-root>/dist/`
 
 The harness serves compiled intent:
 
 - load and validate the active manifest
-- prepare trigger registration plans
+- prepare concrete trigger registration plans
 - receive events when live adapters are available
 - launch normal runs
 - store run, activation, status, and pressure records
@@ -119,7 +120,7 @@ implement all of them yet.
 | Command | Role |
 |---------|------|
 | `prose compile [path] [--out <dir>]` | Run the bundled compiler program and emit compiled intent |
-| `prose serve` | Load active compiled intent and prepare the trigger registration plan; live adapters register and receive events in later runtime phases |
+| `prose serve` | Load active compiled intent and prepare the concrete trigger registration plan; live adapters register and receive events in later runtime phases |
 | `prose run` | Execute one bounded service, system, judge, or fulfillment activation |
 | `prose status` | Report active IR, diagnostics, trigger plan, recent runs, and responsibility status/pressure |
 
@@ -150,8 +151,8 @@ Load `concepts/responsibility.md` before authoring, reviewing, or compiling a
 responsibility.
 
 Responsibility files do not directly define crons, listeners, queues, tests, or
-implementation steps. The compiler infers trigger intent and fulfillment when
-the source graph is clear. Authors add explicit connector details only when
+implementation steps. The compiler infers concrete triggers and fulfillment
+when the source graph is clear. Authors add optional `kind: gateway` files when
 inference would be unsafe, such as an external webhook route or provider event
 shape.
 

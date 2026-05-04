@@ -107,9 +107,9 @@ not a second workflow language.
 ## Judge Cadence
 
 The judge is not always running. The compiler derives cadence from the
-responsibility's `Continuity` section and emits trigger intent that lets
-`prose serve` wake judge activations often enough to detect drift before the
-responsibility is violated.
+responsibility's `Continuity` section and emits concrete cron triggers when
+cadence is clear. Optional gateways may declare additional HTTP or schedule
+triggers. `prose serve` reads only those concrete trigger records.
 
 Model choice for the judge is runtime policy, not responsibility source.
 

@@ -33,6 +33,7 @@ export {
 	fingerprintResponsibility,
 	formatStaticRepositoryServe,
 	formatRepositoryStatus,
+	formatTriggerRegistration,
 	launchActivationRun,
 	loadActiveRepositoryIr,
 	loadRepositoryStatus,
