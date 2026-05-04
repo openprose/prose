@@ -1,12 +1,12 @@
 {
   "package_ir_version": "0.1",
-  "semantic_hash": "8237cc6bcac2337dbfe4139050b08b8d79c9f08cd4c40763f46de90868a743c4",
+  "semantic_hash": "1a92ae1fbb51c86b87c710847d40e70e1479f94777a35760d93e3151011a1429",
   "hashes": {
-    "source_hash": "9a7264a2af22e48e9141275e41009e48a74a6e4e121474baa49bdebe2f54b5bd",
-    "semantic_hash": "8237cc6bcac2337dbfe4139050b08b8d79c9f08cd4c40763f46de90868a743c4",
+    "source_hash": "a6305abf5058b118c172c9d2ac594f836954fea9820bb2ec0224ff5b37f5d86c",
+    "semantic_hash": "1a92ae1fbb51c86b87c710847d40e70e1479f94777a35760d93e3151011a1429",
     "dependency_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-    "policy_hash": "2471c0dad52c2228c0ab35c42fb6b800db84182176ce27ba21744ab4f1c5d4c5",
-    "runtime_config_hash": "880a23323d31bc275663edd195d070673eeb25af2e233f3fedb597e8e20592d5"
+    "policy_hash": "5d3880a89cc9241f839ae18767752a0a28ba4fbc90fb14a104ba61d18efeec9e",
+    "runtime_config_hash": "c809edf435652aff91eeeca7bb08202c7d51b667bebbdb013c741aa9b252437c"
   },
   "manifest": {
     "name": "@openprose/examples",
@@ -39,6 +39,7 @@
       "north-star/lead-program-designer.prose.md",
       "north-star/merged-pr-fit-review-lite.prose.md",
       "north-star/opportunity-discovery-lite.prose.md",
+      "north-star/quarterly-investor-update.prose.md",
       "north-star/release-proposal-dry-run.prose.md",
       "north-star/stargazer-intake-lite.prose.md"
     ],
@@ -178,6 +179,16 @@
         "north-star-opportunity-discovery-lite--opportunity-classifier",
         "north-star-opportunity-discovery-lite--opportunity-deduplicator",
         "north-star-opportunity-discovery-lite--opportunity-summary-writer"
+      ],
+      "diagnostics": []
+    },
+    {
+      "path": "north-star/quarterly-investor-update.prose.md",
+      "component_ids": [
+        "north-star-quarterly-investor-update--quarterly-investor-update",
+        "north-star-quarterly-investor-update--historical-letter-extractor",
+        "north-star-quarterly-investor-update--investor-brief-synthesizer",
+        "north-star-quarterly-investor-update--investor-letter-formatter"
       ],
       "diagnostics": []
     },
@@ -359,6 +370,18 @@
     },
     {
       "kind": "example",
+      "path": "north-star/quarterly-investor-update.prose.md",
+      "exists": true,
+      "component_ids": [
+        "north-star-quarterly-investor-update--quarterly-investor-update",
+        "north-star-quarterly-investor-update--historical-letter-extractor",
+        "north-star-quarterly-investor-update--investor-brief-synthesizer",
+        "north-star-quarterly-investor-update--investor-letter-formatter"
+      ],
+      "diagnostics": []
+    },
+    {
+      "kind": "example",
       "path": "north-star/release-proposal-dry-run.prose.md",
       "exists": true,
       "component_ids": [
@@ -389,10 +412,10 @@
   "policy": {
     "effects": {
       "delivers": 2,
-      "human_gate": 2,
-      "mutates_repo": 2,
-      "pure": 32,
-      "read_external": 2,
+      "human_gate": 4,
+      "mutates_repo": 4,
+      "pure": 33,
+      "read_external": 4,
       "writes_memory": 4
     },
     "access": [],
@@ -620,6 +643,34 @@
       "expansions": []
     },
     {
+      "id": "north-star-quarterly-investor-update--historical-letter-extractor",
+      "name": "historical-letter-extractor",
+      "kind": "service",
+      "path": "north-star/quarterly-investor-update.prose.md",
+      "expansions": []
+    },
+    {
+      "id": "north-star-quarterly-investor-update--investor-brief-synthesizer",
+      "name": "investor-brief-synthesizer",
+      "kind": "service",
+      "path": "north-star/quarterly-investor-update.prose.md",
+      "expansions": []
+    },
+    {
+      "id": "north-star-quarterly-investor-update--investor-letter-formatter",
+      "name": "investor-letter-formatter",
+      "kind": "service",
+      "path": "north-star/quarterly-investor-update.prose.md",
+      "expansions": []
+    },
+    {
+      "id": "north-star-quarterly-investor-update--quarterly-investor-update",
+      "name": "quarterly-investor-update",
+      "kind": "program",
+      "path": "north-star/quarterly-investor-update.prose.md",
+      "expansions": []
+    },
+    {
       "id": "north-star-release-proposal-dry-run--announce-release",
       "name": "announce-release",
       "kind": "service",
@@ -698,13 +749,13 @@
     }
   ],
   "graph": {
-    "node_count": 42,
-    "edge_count": 91,
+    "node_count": 46,
+    "edge_count": 103,
     "edge_kinds": {
-      "caller": 11,
-      "exact": 30,
-      "execution": 25,
-      "return": 25
+      "caller": 15,
+      "exact": 32,
+      "execution": 28,
+      "return": 28
     }
   },
   "diagnostics": {
