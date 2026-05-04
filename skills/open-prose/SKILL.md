@@ -1,5 +1,7 @@
 ---
 name: open-prose
+version: 0.13.0
+runtime_contract: 1
 description: |
   Activate when the user types `prose ...`, opens a `.prose.md` file with
   `kind:` frontmatter, opens a `.prose` file, or asks for reusable multi-agent

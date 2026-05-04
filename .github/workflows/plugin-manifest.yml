@@ -8,6 +8,7 @@ on:
       - ".agents/plugins/**"
       - "skills/open-prose/SKILL.md"
       - "scripts/bump-version.sh"
+      - "scripts/release-preflight.sh"
       - "scripts/sync-copy.sh"
       - ".version-bump.json"
       - ".plugin-meta.json"
@@ -23,6 +24,7 @@ on:
       - ".agents/plugins/**"
       - "skills/open-prose/SKILL.md"
       - "scripts/bump-version.sh"
+      - "scripts/release-preflight.sh"
       - "scripts/sync-copy.sh"
       - ".version-bump.json"
       - ".plugin-meta.json"
@@ -73,7 +75,7 @@ jobs:
             console.log("ok: codex plugin manifest");
           '
 
-      - name: Plugin versions in sync
+      - name: OpenProse versions in sync
         run: ./scripts/bump-version.sh --check
 
       - name: Plugin copy in sync

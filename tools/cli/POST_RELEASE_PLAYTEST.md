@@ -1,9 +1,10 @@
-# Prose CLI Post-Release Playtest
+# OpenProse Post-Release Playtest
 
 This document describes a maintainer-run "play with the release" session for
-`@openprose/prose-cli`. It complements CI and smoke tests by simulating a group
-of real users installing the published CLI in fresh environments, trying varied
-OpenProse programs, and reporting anything confusing or broken.
+the public OpenProse release. It complements CI and smoke tests by simulating
+real users installing the published CLI and SKILL/plugin bundle in fresh
+environments, trying varied OpenProse programs, and reporting anything
+confusing or broken.
 
 The goal is not to prove every path exhaustively. The goal is to discover the
 rough edges that only appear when the package is downloaded, installed, and used
@@ -12,18 +13,18 @@ shapes.
 
 ## When To Run
 
-Run a post-release playtest after publishing a CLI release, especially when the
-release changes:
+Run a post-release playtest after publishing an OpenProse release, especially
+when the release changes:
 
 - installation or release packaging
 - harness behavior, streaming, exit codes, or signal handling
-- skill installation or skill prompt loading
+- SKILL installation, version metadata, or prompt loading
 - provider selection or provider documentation
 - path handling, current-working-directory behavior, or generated state
 
-For patch releases, a one-hour session is often enough. For larger CLI changes,
-budget several hours and include at least one Linux runner and one macOS
-machine.
+For patch releases, a one-hour session is often enough. For larger runtime
+changes, budget several hours and include at least one Linux runner and one
+macOS machine.
 
 ## Principles
 
@@ -51,7 +52,8 @@ Example worker families:
 - `claude-sdk`: Claude SDK harness, streaming, skill loading.
 - `skill-state`: missing, existing, or damaged skill installs.
 - `path-edge`: spaces in paths, absolute paths, relative paths, temp dirs.
-- `program-shapes`: single service, caller input, wiring, composites.
+- `native-repo`: compile, serve, status, and run in one small native repo.
+- `program-shapes`: single service, caller input, wiring, ProseScript.
 - `docs-user`: follow only the README/release docs and note gaps.
 
 Do not make every worker run every harness. A good playtest covers breadth
@@ -62,7 +64,7 @@ through parallel specialization.
 Start with the released version and record it:
 
 ```bash
-version="0.1.3"
+version="0.13.0"
 npm view @openprose/prose-cli@"$version" version dist-tags.latest
 gh release view "v$version" --repo openprose/prose
 ```
@@ -131,6 +133,7 @@ Cover a representative subset of these scenarios.
 - fresh `HOME` with no installed skill
 - `prose doctor`
 - `prose doctor --install`
+- installed SKILL version matches the released OpenProse version
 - first real `prose run` that must install the skill automatically
 - existing `~/.agents/skills/open-prose`
 - missing provider-specific skill target
@@ -163,11 +166,11 @@ Use small fixtures first, then try one or two realistic programs.
 - program requiring caller input
 - auto-wired services
 - explicit wiring
-- local composite or worker/critic pattern
+- ProseScript or worker/critic pattern
 - program that writes run receipts under the active OpenProse root
 - program expected to fail cleanly
-- `prose lint`, `prose preflight`, `prose status`, and `prose inspect` where
-  applicable
+- `prose compile`, `prose serve`, and `prose status` in a native repository
+- `prose run` against the compiled system or a focused service
 
 ### Runtime Behavior
 
@@ -184,12 +187,12 @@ Use small fixtures first, then try one or two realistic programs.
 When using async subagents, give each one a narrow brief. For example:
 
 ```text
-You are Worker npm-fresh in a post-release playtest for @openprose/prose-cli
-<version>. Use only temp directories. Install from npm with a fresh HOME.
-Run --version, --help, doctor, mock run, one real codex-sdk run if credentials
-are available, and one no-git working-directory run. Capture exact commands,
-exit codes, and concise observations. File no issues yourself; return issue
-drafts with reproduction steps for anything suspicious.
+You are Worker npm-fresh in a post-release playtest for OpenProse <version>.
+Use only temp directories. Install from npm with a fresh HOME. Run --version,
+--help, doctor, mock run, one real codex-sdk run if credentials are available,
+and one no-git working-directory run. Capture exact commands, exit codes, and
+concise observations. File no issues yourself; return issue drafts with
+reproduction steps for anything suspicious.
 ```
 
 For workers that may file issues directly, add:

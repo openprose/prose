@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-05-04
+
+### Added
+
+- **Canonical compiler IR contract** — Added `skills/open-prose/compiler/ir-v0.md` and refactored the bundled compiler into a compact ProseScript service that emits the v0 repository IR directly.
+- **Unified release preflight** — Added one OpenProse release preflight for CLI, SKILL, plugin manifests, installer defaults, changelog notes, npm uniqueness, and GitHub release/tag uniqueness.
+
+### Changed
+
+- **Single release train** — The CLI, SKILL metadata, plugin manifests, package lock, and tarball installer now share one OpenProse version.
+- **Release workflow** — Replaced split CLI/plugin release ownership with one protected OpenProse release workflow.
+- **Smoke visibility** — OpenProse smoke fixtures now run as separate GitHub Actions jobs and emit progress while live agent cases are running.
+
 ## [0.12.0] - 2026-05-04
 
 ### Added

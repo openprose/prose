@@ -4,19 +4,29 @@ on:
   pull_request:
     paths:
       - "tools/cli/**"
-      - ".github/workflows/cli-publish.yml"
       - ".github/workflows/cli-release-check.yml"
       - ".github/workflows/cli-real-harness-smoke.yml"
       - ".github/workflows/cli-skills-smoke.yml"
+      - ".github/workflows/openprose-smoke.yml"
+      - ".github/workflows/release.yml"
+      - ".github/scripts/openprose-smoke/**"
+      - "scripts/release-preflight.sh"
+      - "scripts/bump-version.sh"
+      - ".version-bump.json"
   push:
     branches:
       - main
     paths:
       - "tools/cli/**"
-      - ".github/workflows/cli-publish.yml"
       - ".github/workflows/cli-release-check.yml"
       - ".github/workflows/cli-real-harness-smoke.yml"
       - ".github/workflows/cli-skills-smoke.yml"
+      - ".github/workflows/openprose-smoke.yml"
+      - ".github/workflows/release.yml"
+      - ".github/scripts/openprose-smoke/**"
+      - "scripts/release-preflight.sh"
+      - "scripts/bump-version.sh"
+      - ".version-bump.json"
   workflow_dispatch:
 
 permissions:
@@ -45,7 +55,7 @@ jobs:
         run: go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.7
 
       - name: Lint GitHub Actions workflows
-        run: actionlint .github/workflows/cli-*.yml
+        run: actionlint .github/workflows/cli-*.yml .github/workflows/plugin-manifest.yml .github/workflows/openprose-smoke.yml .github/workflows/release.yml
 
       - name: Check installer shell syntax
         run: bash -n tools/cli/install.sh
@@ -55,6 +65,14 @@ jobs:
 
       - name: Check harness smoke helper syntax
         run: node --check tools/cli/scripts/smoke-harness.mjs
+
+      - name: Check release shell syntax
+        run: |
+          bash -n scripts/bump-version.sh
+          bash -n scripts/release-preflight.sh
+
+      - name: OpenProse versions in sync
+        run: ./scripts/bump-version.sh --check
 
   node-checks:
     name: Node ${{ matrix.node-version }} checks

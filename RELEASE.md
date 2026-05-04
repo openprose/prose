@@ -1,81 +1,88 @@
-# OpenProse Plugin Release Process
+# OpenProse Release Process
 
-The plugin track (the `open-prose` plugin shipped at `prose/.claude-plugin/` and `prose/.codex-plugin/`) is versioned and released independently from the CLI track (`tools/cli/RELEASE.md`).
+OpenProse uses one release train. The SKILL/plugin metadata, CLI npm package,
+package lock, and tarball installer all share the same `X.Y.Z` version and ship
+through the protected **OpenProse Release** GitHub Actions workflow.
 
-## Release steps
+## Prepare
 
-1. **Decide on the next version** following [SemVer](https://semver.org). Patch for fixes, minor for additive changes, major for incompatible skill behavior.
-2. **Update `CHANGELOG.md`**:
-   - Move all bullets from `## [Unreleased]` into a new `## [X.Y.Z] - YYYY-MM-DD` section.
-   - Leave the empty `## [Unreleased]` heading in place for future entries.
-3. **Bump declared version files**:
+1. Choose the next SemVer version.
+2. Move relevant `CHANGELOG.md` notes into `## [X.Y.Z] - YYYY-MM-DD`.
+3. Bump every declared version surface:
+
    ```bash
    ./scripts/bump-version.sh X.Y.Z
-   ./scripts/bump-version.sh --check       # confirms all declared files now agree
+   ./scripts/bump-version.sh --check
+   ./scripts/sync-copy.sh --check
+   ./scripts/release-preflight.sh --version X.Y.Z --npm-tag latest
    ```
-4. **Commit**: `chore: release vX.Y.Z`. The commit should contain only the CHANGELOG move and the bumped manifests.
-5. **Tag and push**:
-   ```bash
-   git tag vX.Y.Z
-   git push origin main vX.Y.Z
-   ```
-6. **GitHub Release** is created automatically by `.github/workflows/release.yml` on `v*` tag push, with notes pulled from the matching `## [X.Y.Z]` block in `CHANGELOG.md`. The workflow only creates a plugin release when the tag version matches the plugin manifests; other `v*` tags, such as CLI release tags, are skipped.
 
-## Critical: marketplace deduplication
+4. Open and merge a release-prep PR after CI passes.
 
-The Claude Code marketplace deduplicates by `plugin.json:version`. Pushing a fix without bumping `version` leaves users stuck on cached old copies (see `thedotmack/claude-mem#1219`). **Every release MUST increment `version`.** The CI gate `./scripts/bump-version.sh --check` exists precisely to catch a forgotten bump on one of the two manifests.
+## Dry Run
 
-## Marketplace submission
+Run **OpenProse Release** from `main` with:
 
-After a release is cut, the plugin can be published to the Claude Code marketplace and is staged for the Codex Plugin Directory once it opens publicly. Both submissions are manual.
+- `version`: `X.Y.Z`
+- `npm_tag`: `latest` for stable releases, `next` for prereleases
+- `dry_run`: `true`
 
-### Pre-flight
+The dry run performs the same preflight as publish, including tag, GitHub
+Release, and npm version uniqueness checks. It then verifies the CLI package,
+SKILL/plugin metadata, changelog notes, and release tarballs without publishing.
 
-- [ ] A `vX.Y.Z` tag exists on `main` and the matching GitHub Release is published.
-- [ ] CI is green on `main`, including the `Plugin Manifest` workflow's `Plugin copy in sync`, `Plugin assets exist`, and `Codex interface has visual assets` gates.
-- [ ] `./scripts/bump-version.sh --check` and `./scripts/sync-copy.sh --check` both exit 0 locally.
-- [ ] `assets/plugin/logo.png` and `assets/plugin/composer-icon.png` open cleanly.
+## Publish
 
-### Claude Code marketplace
+Run the same **OpenProse Release** workflow again with `dry_run: false`.
 
-Submit at https://platform.claude.com/plugins/submit (or https://claude.ai/settings/plugins/submit) with:
+The final job uses the protected `release` environment. After approval, it:
 
-- **Repo URL**: `https://github.com/openprose/prose`
-- **Plugin path**: leave blank — `.claude-plugin/` is auto-detected at the repo root.
-- **Marketplace name**: `openprose`
-- **Plugin name**: `open-prose`
-- **Version**: the `vX.Y.Z` tag SHA. Anthropic pins by SHA in `claude-plugins-official/marketplace.json`.
+1. Creates a draft GitHub Release for `vX.Y.Z`.
+2. Publishes `@openprose/prose-cli@X.Y.Z` to npm with provenance.
+3. Publishes the GitHub Release with CLI tarballs, checksums, and changelog
+   notes.
 
-Anthropic reviews the submission and pins the SHA. Status appears in the Claude.ai settings page tied to the submission.
+If npm publishing fails after the draft release is created, the workflow
+attempts to delete the draft release and tag.
 
-Each subsequent release needs a fresh `version` bump in `.claude-plugin/plugin.json` — the marketplace deduplicates by `version` (see *Critical: marketplace deduplication* above).
+## Verify
 
-### Codex Plugin Directory
+After publishing:
 
-The Codex Plugin Directory is curated; self-serve submission is "coming soon" per https://developers.openai.com/codex/plugins/build (as of May 2026).
-
-The repo is already staged for the moment the directory opens publicly:
-
-- `.codex-plugin/plugin.json` carries the full `interface` block (descriptions, `logo`, `composerIcon`, `brandColor`, `websiteURL`, default prompts).
-- `.agents/plugins/marketplace.json` carries the structured `source`, `policy`, and `category` entry.
-- `assets/plugin/logo.png` and `assets/plugin/composer-icon.png` are committed.
-
-The expected pathway, per OpenAI's published docs:
-
-1. Identity-verify on the OpenAI Platform Dashboard.
-2. Submit the plugin for review via the Apps SDK.
-3. On approval, OpenAI generates a directory entry from the submitted bundle.
-
-### Install today from this repo
-
-Codex supports git-URL marketplace sources, so the plugin can be installed directly from this repository before the directory opens:
-
-```text
-codex plugin marketplace add github.com/openprose/prose
-codex plugin install open-prose
+```bash
+npm view @openprose/prose-cli@latest version
+gh release view vX.Y.Z --repo openprose/prose
 ```
 
-## Out of scope
+Check both install paths in temporary directories:
 
-- The CLI track. See `tools/cli/RELEASE.md` and `.github/workflows/cli-publish.yml` for the `@openprose/prose-cli` npm release flow.
-- Automated submission. Both marketplaces accept submissions through their respective intake forms only.
+```bash
+tmpdir="$(mktemp -d)"
+npm install --global --prefix "$tmpdir/npm-global" @openprose/prose-cli@X.Y.Z
+"$tmpdir/npm-global/bin/prose" --version
+
+tmpdir="$(mktemp -d)"
+PROSE_INSTALL_DIR="$tmpdir/install" \
+  PROSE_BIN_DIR="$tmpdir/bin" \
+  sh -c "$(curl -fsSL https://raw.githubusercontent.com/openprose/prose/main/tools/cli/install.sh)"
+"$tmpdir/bin/prose" --version
+```
+
+For broader release validation, run the maintainer playtest in
+[tools/cli/POST_RELEASE_PLAYTEST.md](tools/cli/POST_RELEASE_PLAYTEST.md).
+
+## Marketplace Submission
+
+Marketplace publication remains manual after the GitHub Release exists.
+
+Claude Code marketplace:
+
+- Repo URL: `https://github.com/openprose/prose`
+- Plugin path: leave blank; `.claude-plugin/` is auto-detected
+- Marketplace name: `openprose`
+- Plugin name: `open-prose`
+- Version: the `vX.Y.Z` tag SHA
+
+Codex Plugin Directory submission is staged through `.codex-plugin/`,
+`.agents/plugins/marketplace.json`, and `assets/plugin/` once the public
+submission flow opens.
