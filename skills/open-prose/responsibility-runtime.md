@@ -6,7 +6,8 @@ summary: |
   file for Responsibility Runtime, `kind: responsibility`, or standing-goal
   work.
 see-also:
-  - compiler/README.md: Compiler program index and compiled intent output convention
+  - compiler/index.prose.md: Pinned compiler program
+  - compiler/ir-v0.md: Compiled intent output contract
   - concepts/responsibility.md: Responsibility semantic contract
   - concepts/reactor.md: Evented reconciliation model
   - contract-markdown.md: Source format and recognized kinds
@@ -92,13 +93,14 @@ Skill and interpreter docs define semantics:
 - how Forme wiring fulfills responsibilities
 - how bounded runs act on activation context
 
-Compiler programs lower semantics into compiled intent:
+The compiler program lowers semantics into compiled intent:
 
 - discover source
 - compile responsibilities, gateways, concrete triggers, activations, and
   Forme manifests
 - report ambiguity and warnings
-- emit deterministic output for harness validation under `<openprose-root>/dist/`
+- emit repository IR matching `compiler/ir-v0.md` under
+  `<openprose-root>/dist/`
 
 The harness serves compiled intent:
 
@@ -109,8 +111,8 @@ The harness serves compiled intent:
 - store run, activation, status, and pressure records
 
 Do not put semantic intelligence in the harness. Do not put runtime machinery
-inside responsibility contracts. Do not duplicate concept semantics inside
-compiler passes.
+inside responsibility contracts. Do not duplicate concept semantics inside the
+compiler program.
 
 ## Runtime Commands
 

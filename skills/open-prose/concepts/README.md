@@ -10,7 +10,7 @@ related:
 # Concepts
 
 Concept docs define semantic meaning for the intelligent VM. They are not
-compiler passes and they are not harness implementation docs.
+compiler sessions and they are not harness implementation docs.
 
 ## Contents
 

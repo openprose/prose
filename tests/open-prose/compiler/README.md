@@ -1,14 +1,15 @@
 # Compiler Prompt Fixtures
 
-These fixtures exercise the compiler skeleton, responsibility lowering, and
-structured Forme manifest emission.
+These fixtures exercise the pinned ProseScript compiler program,
+responsibility lowering, and structured Forme manifest emission.
 
 The compiler output convention is:
 
 - `<openprose-root>/dist/manifest.next.json`: next generated OpenProse root IR
 - `<openprose-root>/dist/manifest.active.json`: active IR used by `prose serve`
 
-The checked v0 manifest stays intentionally small. It contains:
+The checked v0 manifest stays intentionally small. Its exact schema is defined
+in `skills/open-prose/compiler/ir-v0.md` and contains:
 
 - `kind`
 - `version`
