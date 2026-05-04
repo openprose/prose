@@ -626,6 +626,8 @@ async function runCliInner(args: string[]): Promise<void> {
   if (command === "preflight") {
     const result = await preflightPath(options.file, {
       runtimeProfile: options.runtimeProfile,
+      skillSearchPaths:
+        options.skillSearchPaths.length > 0 ? options.skillSearchPaths : undefined,
     });
     const output =
       options.format === "json"
@@ -832,6 +834,7 @@ interface FileCommandArgs {
   enabledEntrypoints: string[];
   entrypointRef: string | null;
   environmentBindings: Record<string, string>;
+  skillSearchPaths: string[];
 }
 
 interface RemoteCommandArgs {
@@ -1007,6 +1010,7 @@ function parseFileCommandArgs(args: string[]): FileCommandArgs {
     enabledEntrypoints: [],
     entrypointRef: null,
     environmentBindings: {},
+    skillSearchPaths: [],
   };
 
   for (let index = 0; index < args.length; index += 1) {
@@ -1195,6 +1199,23 @@ function parseFileCommandArgs(args: string[]): FileCommandArgs {
     }
     if (arg === "--no-subagents") {
       parsed.runtimeProfile.subagents = false;
+      continue;
+    }
+    if (arg === "--skill-search-path" || arg === "--skill-search-paths") {
+      // Accept either repeated single paths or a single comma/colon-separated
+      // list. Used by `prose preflight` to point at a specific skills tree
+      // (e.g. test fixtures) instead of the default ./skills + ~/.claude/skills
+      // + ~/.codex/skills lookup.
+      const value = args[index + 1];
+      if (value) {
+        for (const part of value.split(/[,:]/)) {
+          const trimmed = part.trim();
+          if (trimmed) {
+            parsed.skillSearchPaths.push(trimmed);
+          }
+        }
+      }
+      index += 1;
       continue;
     }
     if (arg === "--deployment-name") {
@@ -1552,7 +1573,7 @@ Usage:
   prose lint <file.prose.md|dir> [--format text|json]
   prose plan <file.prose.md> [--input name=value] [--current-run .prose/runs/{id}] [--target-output final] [--approved-effect delivers]
   prose run <file.prose.md> [--graph-vm pi] [--model-provider openrouter] [--model model-id] [--thinking low] [--run-root .prose/runs] [--input name=value] [--output port=value] [--approved-effect delivers] [--approval approval.json] [--required-eval eval.prose.md]
-  prose preflight <file.prose.md> [--format text|json]
+  prose preflight <file.prose.md> [--format text|json] [--skill-search-path PATH]
   prose publish-check <dir|file.prose.md> [--format text|json] [--strict]
   prose remote execute <file.prose.md> [--graph-vm pi] [--model-provider openrouter] [--model model-id] [--thinking low] [--out-dir .openprose/remote-runs] [--run-id id] [--input name=value] [--output port=value] [--approved-effect delivers] [--node-executor-command cmd]
   prose remote execute-node <node-execution-request.json> [--out node-execution-result.json]
