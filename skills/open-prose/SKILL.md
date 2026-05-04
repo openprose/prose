@@ -87,6 +87,62 @@ skills; BYO harness is the invariant. The author is responsible for installing
 the skill (e.g. via `/plugin marketplace install` or by cloning the skill into
 `./skills/`).
 
+## Activating declared skills at runtime
+
+**This is the load-bearing contract.** When you execute an OpenProse program,
+you ARE the VM. The `skills:` declaration is not advisory metadata — it is a
+runtime requirement.
+
+Before doing the work for any service whose component declares `skills:`, you
+MUST invoke the harness's Skill tool with each declared canonical name. Do
+this *before* you read inputs, before you reach for `Read`, `Bash`, or any
+other tool that might appear to do the same job using built-in capabilities.
+
+The reason is non-negotiable: a declared skill exists because the author
+chose it for a reason — specific extraction logic, output format, anti-
+hallucination guards, organizational conventions — that the harness's
+built-in tools do not encode. Falling back to built-ins silently produces
+wrong-but-plausible output and breaks reproducibility across model versions.
+
+### Activation rules
+
+| Where the skill is declared | What you activate, when |
+|---|---|
+| Program-level frontmatter (`skills:` on the `kind: program` component) | Activate before any service runs. Skill remains available for the entire program. |
+| Inline-service block (`## sub-service` with its own `skills:`) | Activate before that sub-service's work begins. Additive to program-level skills, not exclusive — keep program-level skills active too. |
+| `### Skills` section | Identical to the frontmatter form. |
+
+If the program has been compiled to IR, prefer the canonical name pinned in
+`component.skills[].canonical_name`. If you only have the source `.prose.md`,
+use the declared name as written; the harness's plugin marketplace resolves
+colon-form names directly (`document-skills:pdf` → `Skill` tool with that
+name).
+
+### Required behavior
+
+- **Activate first, then work.** Do not infer that a built-in tool covers the
+  declared skill. Activate, then proceed.
+- **One skill per `Skill` tool invocation.** If three skills are declared,
+  invoke the tool three times.
+- **If activation fails** (the Skill tool errors or the canonical name is
+  unknown to the harness), halt and report. Do not silently substitute a
+  built-in tool. The author declared the skill because they needed it; falling
+  back is the praying behavior the project explicitly rejects.
+- **Do not deactivate skills the user already had loaded.** Activation is
+  additive. BYO harness is sacred.
+- **For each `## sub-service` you dispatch as a child run** (whether via
+  Task, fresh CLI, or in-process delegate), include the resolved canonical
+  names of the relevant skills in the briefing so the child also activates
+  them at its boundary.
+
+### Why you'll be tempted to skip this
+
+Models with strong built-in capabilities — multimodal PDF rendering, web
+fetch, code execution — will often produce a plausible answer without
+activating the declared skill. The output looks right. It is still wrong:
+you violated the contract, and reproducibility is now zero. The skill
+declaration is the contract; honor it.
+
 ## Routing
 
 When the user asks for OpenProse work:
