@@ -164,6 +164,8 @@ override that local listener. The listener always exposes
 `/_openprose/health`, including cron-only manifests. Trigger routes respond
 with `202 Accepted` after the event is accepted; judge and fulfillment
 activations continue in the background and log failures to the serve process.
+During shutdown, in-flight activations interrupted by the serve process signal
+are reported as shutdown cancellations instead of trigger failures.
 
 ## Development
 

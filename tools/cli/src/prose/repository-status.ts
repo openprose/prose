@@ -388,7 +388,7 @@ function appendRuns(lines: string[], runs: RepositoryStatusRun[]): void {
 
 function formatLatestStatus(status: RepositoryStatusLatestStatus): string {
 	if (status.state === "missing") {
-		return "missing";
+		return "no runtime status yet";
 	}
 	if (status.state === "invalid") {
 		return `invalid (${status.error ?? "unknown error"})`;

@@ -789,20 +789,21 @@ async function classifyLiveCase(
   exitCode: number | null,
   timedOut: boolean,
 ): Promise<{ status: SmokeStatus; reasons: string[]; foundOutputs: string[] }> {
-  const reasons: string[] = [];
+  const artifactReasons: string[] = [];
+  const processReasons: string[] = [];
   const expectedOutputs = smokeCase.expectedOutputs ?? [];
 
   if (timedOut) {
-    reasons.push(`Claude CLI timed out after ${smokeCase.timeoutSeconds ?? DEFAULT_TIMEOUT_SECONDS} seconds.`);
+    processReasons.push(`Claude CLI timed out after ${smokeCase.timeoutSeconds ?? DEFAULT_TIMEOUT_SECONDS} seconds.`);
   }
   if (exitCode !== 0) {
-    reasons.push(`Claude CLI exited with code ${exitCode === null ? "null" : exitCode}.`);
+    processReasons.push(`Claude CLI exited with code ${exitCode === null ? "null" : exitCode}.`);
   }
 
   const runsDir = path.join(workspace, ...RUNS_DIR_SEGMENTS);
   const hasRunsDir = await pathExists(runsDir);
   if (!hasRunsDir) {
-    reasons.push("No <openprose-root>/runs directory was created.");
+    artifactReasons.push("No <openprose-root>/runs directory was created.");
   }
 
   const markerTexts = [
@@ -812,30 +813,30 @@ async function classifyLiveCase(
   ];
 
   if (markerTexts.some((text) => hasLineStarting(text, "---error"))) {
-    reasons.push("Found a line starting ---error in stdout, stderr, or run artifacts.");
+    artifactReasons.push("Found a line starting ---error in stdout, stderr, or run artifacts.");
   }
   if (markerTexts.some((text) => hasLineStarting(text, "---test FAIL"))) {
-    reasons.push("Found a line starting ---test FAIL in stdout, stderr, or run artifacts.");
+    artifactReasons.push("Found a line starting ---test FAIL in stdout, stderr, or run artifacts.");
   }
   if (smokeCase.command === "test" && !markerTexts.some((text) => hasLineStarting(text, "---test PASS"))) {
-    reasons.push("Test smoke case did not emit a line starting ---test PASS.");
+    artifactReasons.push("Test smoke case did not emit a line starting ---test PASS.");
   }
 
   const foundOutputs: string[] = [];
   const latestRunDir = hasRunsDir ? await findLatestRunDir(runsDir) : undefined;
   if (hasRunsDir && !latestRunDir) {
-    reasons.push("No run directory was created under <openprose-root>/runs.");
+    artifactReasons.push("No run directory was created under <openprose-root>/runs.");
   }
   if (latestRunDir) {
     for (const artifactName of ["forme.manifest.json", "root.prose.md", "vm.log.md"]) {
       const artifactPath = path.join(latestRunDir, artifactName);
       const artifactStat = await statIfExists(artifactPath);
       if (!artifactStat?.isFile()) {
-        reasons.push(`Missing required run artifact: ${artifactName}`);
+        artifactReasons.push(`Missing required run artifact: ${artifactName}`);
         continue;
       }
       if ((await readTextIfExists(artifactPath)).trim().length === 0) {
-        reasons.push(`Empty required run artifact: ${artifactName}`);
+        artifactReasons.push(`Empty required run artifact: ${artifactName}`);
       }
     }
   }
@@ -846,9 +847,12 @@ async function classifyLiveCase(
     if (bindingPath && (await readTextIfExists(bindingPath)).trim().length > 0) {
       foundOutputs.push(output);
     } else {
-      reasons.push(`Missing or empty expected output binding: ${output}`);
+      artifactReasons.push(`Missing or empty expected output binding: ${output}`);
     }
   }
+
+  const reasons =
+    timedOut || artifactReasons.length > 0 ? [...processReasons, ...artifactReasons] : [];
 
   return {
     status: reasons.length > 0 ? "fail" : "pass",

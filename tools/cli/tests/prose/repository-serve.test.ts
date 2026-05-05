@@ -730,6 +730,173 @@ describe("repository serve core", () => {
 		}
 	}, 10_000);
 
+	it("logs shutdown-cancelled HTTP activations as cancellations", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-serve-http-shutdown-"));
+		const io = memoryStreams();
+		const controller = new AbortController();
+		let resolveJudgeStarted!: () => void;
+		const judgeStarted = new Promise<void>((resolve) => {
+			resolveJudgeStarted = resolve;
+		});
+
+		try {
+			writeActiveManifest(temp);
+			const daemon = await startRepositoryServeDaemon({
+				cwd: temp,
+				env: {},
+				host: "127.0.0.1",
+				port: 0,
+				signal: controller.signal,
+				stdout: io.streams.stdout,
+				stderr: io.streams.stderr,
+				commandRunner: async (options) => {
+					if (options.env.PROSE_ACTIVATION_ID === "high-intent-stargazer-outreach.judge") {
+						resolveJudgeStarted();
+						await new Promise<void>((resolve) => {
+							options.signal?.addEventListener("abort", () => resolve(), { once: true });
+						});
+						return 143;
+					}
+					return 0;
+				},
+			});
+
+			expect(daemon.address).toBeDefined();
+			const response = await fetch(`${daemon.address!.url}/webhooks/github/stars`, {
+				method: "POST",
+				body: JSON.stringify({ repository: "openprose/prose", starred_by: "alice" }),
+				headers: { "content-type": "application/json" },
+			});
+			expect(response.status).toBe(202);
+			await judgeStarted;
+
+			controller.abort("SIGTERM");
+			await daemon.closed;
+
+			expect(io.stdout).toContain(
+				"HTTP trigger high-intent-stargazer-outreach.evidence-change [POST /webhooks/github/stars] cancelled during shutdown: Activation 'high-intent-stargazer-outreach.judge' exited with code 143.",
+			);
+			expect(io.stderr).not.toContain("HTTP trigger high-intent-stargazer-outreach.evidence-change");
+		} finally {
+			controller.abort("SIGTERM");
+			rmSync(temp, { recursive: true, force: true });
+		}
+	}, 10_000);
+
+	it("does not classify manual stop exit 143 as signal-driven cancellation", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-serve-http-manual-stop-"));
+		const io = memoryStreams();
+		let resolveJudgeStarted!: () => void;
+		let releaseJudge!: () => void;
+		const judgeStarted = new Promise<void>((resolve) => {
+			resolveJudgeStarted = resolve;
+		});
+		const allowJudgeExit = new Promise<void>((resolve) => {
+			releaseJudge = resolve;
+		});
+
+		try {
+			writeActiveManifest(temp);
+			const daemon = await startRepositoryServeDaemon({
+				cwd: temp,
+				env: {},
+				host: "127.0.0.1",
+				port: 0,
+				stdout: io.streams.stdout,
+				stderr: io.streams.stderr,
+				commandRunner: async (options) => {
+					if (options.env.PROSE_ACTIVATION_ID === "high-intent-stargazer-outreach.judge") {
+						resolveJudgeStarted();
+						await allowJudgeExit;
+						return 143;
+					}
+					return 0;
+				},
+			});
+
+			expect(daemon.address).toBeDefined();
+			const response = await fetch(`${daemon.address!.url}/webhooks/github/stars`, {
+				method: "POST",
+				body: JSON.stringify({ repository: "openprose/prose", starred_by: "alice" }),
+				headers: { "content-type": "application/json" },
+			});
+			expect(response.status).toBe(202);
+			await judgeStarted;
+
+			const stopped = daemon.stop();
+			releaseJudge();
+			await stopped;
+
+			expect(io.stderr).toContain(
+				"HTTP trigger high-intent-stargazer-outreach.evidence-change [POST /webhooks/github/stars] failed: Activation 'high-intent-stargazer-outreach.judge' exited with code 143.",
+			);
+			expect(io.stdout).not.toContain("cancelled during shutdown");
+		} finally {
+			releaseJudge?.();
+			rmSync(temp, { recursive: true, force: true });
+		}
+	}, 10_000);
+
+	it("logs shutdown-cancelled cron activations as cancellations", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-serve-cron-shutdown-"));
+		const io = memoryStreams();
+		const controller = new AbortController();
+		let current = new Date(2026, 0, 1, 0, 0, 30);
+		const scheduled: Array<{ callback: () => void | Promise<void>; delayMs: number }> = [];
+		const scheduler: RepositoryServeTimerScheduler = {
+			setTimeout(callback, delayMs) {
+				scheduled.push({ callback, delayMs });
+				return { cancel() {} };
+			},
+		};
+		let resolveJudgeStarted!: () => void;
+		const judgeStarted = new Promise<void>((resolve) => {
+			resolveJudgeStarted = resolve;
+		});
+
+		try {
+			writeActiveManifestObject(temp, timerOnlyManifest());
+			const daemon = await startRepositoryServeDaemon({
+				cwd: temp,
+				env: {},
+				host: "127.0.0.1",
+				port: 0,
+				now: () => current,
+				signal: controller.signal,
+				stdout: io.streams.stdout,
+				stderr: io.streams.stderr,
+				timerScheduler: scheduler,
+				commandRunner: async (options) => {
+					if (options.env.PROSE_ACTIVATION_ID === "high-intent-stargazer-outreach.judge") {
+						resolveJudgeStarted();
+						await new Promise<void>((resolve) => {
+							options.signal?.addEventListener("abort", () => resolve(), { once: true });
+						});
+						return 143;
+					}
+					return 0;
+				},
+			});
+
+			expect(scheduled[0]?.delayMs).toBe(30_000);
+			current = new Date(2026, 0, 1, 0, 1, 0);
+			const fired = scheduled[0]!.callback();
+			await judgeStarted;
+
+			controller.abort("SIGTERM");
+			await daemon.closed;
+			await fired;
+
+			expect(io.stdout).toContain(
+				"Trigger high-intent-stargazer-outreach.periodic-check cancelled during shutdown: Activation 'high-intent-stargazer-outreach.judge' exited with code 143.",
+			);
+			expect(io.stderr).not.toContain("Trigger high-intent-stargazer-outreach.periodic-check failed");
+		} finally {
+			controller.abort("SIGTERM");
+			rmSync(temp, { recursive: true, force: true });
+		}
+	}, 10_000);
+
 	it("keeps an HTTP health endpoint for cron-only manifests", async () => {
 		const temp = mkdtempSync(join(tmpdir(), "prose-serve-cron-health-"));
 		const io = memoryStreams();
