@@ -1,6 +1,7 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import type { ProcessRunner } from "../../src/harnesses/index.js";
 import {
@@ -12,6 +13,8 @@ import {
 	loadOpenProseSkillBootstrap,
 	resolveOpenProseSkill,
 } from "../../src/skills/open-prose.js";
+
+const repoRoot = fileURLToPath(new URL("../../../../", import.meta.url));
 
 function tempDir(): string {
 	return mkdtempSync(join(tmpdir(), "prose-skill-"));
@@ -183,6 +186,19 @@ describe("OpenProse skill checks", () => {
 			"--agent",
 			"claude-code",
 		]);
+	});
+
+	it("keeps the compiler in a single-session shape for fast models", () => {
+		const compiler = readFileSync(join(repoRoot, "skills/open-prose/compiler/index.prose.md"), "utf8");
+
+		expect(compiler).toMatch(/Run these passes in this session/i);
+		expect(compiler).toMatch(/Do not invoke subagents/i);
+		expect(compiler).toMatch(/Do not call Claude's `Agent` or `Task` tool/i);
+		expect(compiler).toMatch(/sources\[\]\.path/);
+		expect(compiler).toMatch(/triggerIds/);
+		expect(compiler).toMatch(/targetName/);
+		expect(compiler).toMatch(/formeManifests\[\]\.graph/);
+		expect(compiler).not.toMatch(/^\s*agent\s+[\w-]+:/im);
 	});
 
 	it("runs the installer without overriding telemetry preferences", async () => {
