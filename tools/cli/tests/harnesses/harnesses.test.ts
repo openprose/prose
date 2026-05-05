@@ -269,6 +269,39 @@ describe("claude-sdk harness", () => {
 		]);
 	});
 
+	test("leaves non-compile Claude SDK runs on default permissions", async () => {
+		const io = memoryStreams();
+		const calls: unknown[] = [];
+		const harness = createClaudeSdkHarness({
+			query: async (args) => {
+				calls.push(args);
+				return {
+					async *[Symbol.asyncIterator]() {
+						yield { type: "result", subtype: "success", result: "ok", is_error: false };
+					},
+					close() {},
+				} as never;
+			},
+		});
+
+		const exitCode = await harness.run("prose status", {
+			...io.options,
+			env: { ANTHROPIC_MODEL: "claude-sonnet-4-6" },
+		});
+
+		expect(exitCode).toBe(0);
+		expect(calls).toEqual([
+			{
+				prompt: "prose status",
+				options: expect.not.objectContaining({
+					allowedTools: expect.anything(),
+					permissionMode: expect.anything(),
+					settings: expect.anything(),
+				}),
+			},
+		]);
+	});
+
 	test("streams text deltas without duplicating final result", async () => {
 		const io = memoryStreams();
 		const abortControllers: AbortController[] = [];

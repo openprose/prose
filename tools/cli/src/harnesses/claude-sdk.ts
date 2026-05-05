@@ -27,7 +27,8 @@ export function createClaudeSdkHarness(options: ClaudeSdkHarnessOptions = {}): H
 		async run(prompt, runOptions) {
 			const abortController = bridgeAbortController(runOptions.signal);
 			const model = claudeModel(runOptions.env);
-			const permissionMode = claudePermissionMode(runOptions.env);
+			const isCompile = isCompilePrompt(prompt);
+			const permissionMode = claudePermissionMode(runOptions.env, isCompile ? "acceptEdits" : undefined);
 			const stream = await Promise.resolve(
 				query({
 					prompt,
@@ -39,15 +40,19 @@ export function createClaudeSdkHarness(options: ClaudeSdkHarnessOptions = {}): H
 						...(runOptions.cwd === undefined ? {} : { cwd: runOptions.cwd }),
 						...(runOptions.env === undefined ? {} : { env: runOptions.env }),
 						includePartialMessages: true,
-						allowedTools: [...CLAUDE_AUTO_ALLOW_RULES],
 						...(model === undefined ? {} : { model }),
-						permissionMode,
-						settings: {
-							permissions: {
-								allow: [...CLAUDE_AUTO_ALLOW_RULES],
-								defaultMode: permissionMode,
-							},
-						},
+						...(isCompile
+							? {
+									allowedTools: [...CLAUDE_AUTO_ALLOW_RULES],
+									settings: {
+										permissions: {
+											allow: [...CLAUDE_AUTO_ALLOW_RULES],
+											defaultMode: permissionMode ?? "acceptEdits",
+										},
+									},
+								}
+							: {}),
+						...(permissionMode === undefined ? {} : { permissionMode }),
 						...(permissionMode === "bypassPermissions" ? { allowDangerouslySkipPermissions: true } : {}),
 						stderr: (chunk: string) => runOptions.stderr.write(chunk),
 						...(runOptions.systemPromptAppend === undefined
@@ -103,6 +108,10 @@ export function createClaudeSdkHarness(options: ClaudeSdkHarnessOptions = {}): H
 	};
 }
 
+function isCompilePrompt(prompt: string): boolean {
+	return prompt === "prose compile" || prompt.startsWith("prose compile ");
+}
+
 function claudeModel(env: Readonly<Record<string, string | undefined>> | undefined): string | undefined {
 	const value = env?.PROSE_CLAUDE_MODEL ?? env?.ANTHROPIC_MODEL ?? process.env.PROSE_CLAUDE_MODEL ?? process.env.ANTHROPIC_MODEL;
 	if (value === undefined || value.trim() === "") {
@@ -111,10 +120,13 @@ function claudeModel(env: Readonly<Record<string, string | undefined>> | undefin
 	return value;
 }
 
-function claudePermissionMode(env: Readonly<Record<string, string | undefined>> | undefined): ClaudePermissionMode {
+function claudePermissionMode(
+	env: Readonly<Record<string, string | undefined>> | undefined,
+	fallback: ClaudePermissionMode | undefined,
+): ClaudePermissionMode | undefined {
 	const value = env?.PROSE_CLAUDE_PERMISSION_MODE ?? process.env.PROSE_CLAUDE_PERMISSION_MODE;
 	if (value === undefined || value === "") {
-		return "acceptEdits";
+		return fallback;
 	}
 	if (CLAUDE_PERMISSION_MODES.includes(value as ClaudePermissionMode)) {
 		return value as ClaudePermissionMode;

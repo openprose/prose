@@ -119,7 +119,7 @@ export function buildOpenProseSkillBootstrapPrompt(options: {
 		"When additional OpenProse skill files are needed, read them from that skill root.",
 		"Do not invoke the `prose`, `npx prose`, or `@openprose/prose-cli` shell command; that would recursively call this wrapper.",
 		"CLI runs are non-interactive. Do not ask the user for permission to write declared OpenProse artifacts under the current OpenProse root.",
-		"For `prose compile`, the command itself grants permission to create or replace `dist/manifest.next.json` or the requested `--out` manifest.",
+		"For `prose compile`, the command itself grants permission to create or replace `dist/manifest.next.json` or the requested `--out` directory's `manifest.next.json`.",
 		"</open-prose-introduction>",
 		"",
 		"<open-prose-skill>",
