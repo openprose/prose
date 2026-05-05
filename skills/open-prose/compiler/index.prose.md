@@ -173,12 +173,6 @@ agent manifest_writer:
   command and the host CLI validates the result immediately after the write.
   Use the host filesystem write primitive immediately. The compile command
   itself is the user's approval to write the declared manifest artifact.
-  If the harness cannot write the file directly, do not ask for approval and do
-  not return a summary as a substitute. Instead, return the complete validated
-  manifest JSON between these exact markers and then stop:
-  <openprose-compiled-manifest>
-  { ...complete repository IR JSON... }
-  </openprose-compiled-manifest>
   Report the written path and byte count.
   """
   shape:

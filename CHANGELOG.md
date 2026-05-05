@@ -19,10 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Smoke postconditions** — OpenProse smoke checks now trust verified run
   artifacts when a model exits nonzero after satisfying the fixture contract.
 - **Sonnet compile path** — Pathless `prose compile` now forwards `src` to the
-  compiler, and the Claude SDK harness defaults to non-interactive edit
-  acceptance so declared compile artifacts can be written without approval
-  prompts. If the harness returns a valid marked manifest instead of writing it
-  directly, the CLI validates and writes the artifact.
+  compiler, and SDK harnesses default to permissive non-interactive filesystem
+  access so declared artifacts can be written without approval prompts.
 
 ## [0.13.1] - 2026-05-05
 

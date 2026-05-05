@@ -1,6 +1,6 @@
 import { Command } from "@oclif/core";
-import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { readFile, unlink } from "node:fs/promises";
+import { resolve } from "node:path";
 import type { Harness, WritableStreamLike } from "../harnesses/types.js";
 import {
 	CommandModelError,
@@ -26,9 +26,6 @@ export class CompileValidationError extends Error {
 		this.details = [...details];
 	}
 }
-
-const RETURNED_MANIFEST_START = "<openprose-compiled-manifest>";
-const RETURNED_MANIFEST_END = "</openprose-compiled-manifest>";
 
 export interface RunCompileCommandOptions {
 	argv: readonly string[];
@@ -91,24 +88,19 @@ export async function runCompileCommand(options: RunCompileCommandOptions): Prom
 		env: options.env,
 	});
 	await removePreviousCompiledManifest(target.absoluteManifestPath);
-	const stdoutCapture = createStdoutCapture(options.stdout);
 
 	const exitCode = await runForwardedProseCommand({
 		command: "compile",
 		argv,
 		cwd: options.cwd,
 		env: options.env,
-		stdout: stdoutCapture.stream,
+		stdout: options.stdout,
 		stderr: options.stderr,
 		...(options.signal === undefined ? {} : { signal: options.signal }),
 		...(options.harnessFactory === undefined ? {} : { harnessFactory: options.harnessFactory }),
 		...(options.skillBootstrap === undefined ? {} : { skillBootstrap: options.skillBootstrap }),
 		...(options.skillPreflight === undefined ? {} : { skillPreflight: options.skillPreflight }),
 	});
-	if (exitCode !== 0 && (options.signal?.aborted || isSignalExitCode(exitCode))) {
-		return exitCode;
-	}
-	await writeReturnedCompiledManifest(stdoutCapture.text(), target, options.stderr, { strict: exitCode === 0 });
 	if (exitCode !== 0) {
 		if (await shouldAcceptNonzeroCompiledManifest(exitCode, options, target)) {
 			options.stderr.write(
@@ -126,90 +118,6 @@ export async function runCompileCommand(options: RunCompileCommandOptions): Prom
 		...target,
 	});
 	return 0;
-}
-
-function createStdoutCapture(stdout: WritableStreamLike): { stream: WritableStreamLike; text: () => string } {
-	let captured = "";
-	return {
-		stream: {
-			write(chunk: string) {
-				captured += chunk;
-				return stdout.write(chunk);
-			},
-		},
-		text: () => captured,
-	};
-}
-
-async function writeReturnedCompiledManifest(
-	stdout: string,
-	target: { absoluteManifestPath: string; manifestPath: string },
-	stderr: WritableStreamLike,
-	options: { strict: boolean },
-): Promise<void> {
-	if (await compiledManifestFileExists(target.absoluteManifestPath)) {
-		return;
-	}
-
-	const returnedManifest = parseReturnedCompiledManifest(stdout, options);
-	if (returnedManifest === undefined) {
-		return;
-	}
-
-	await mkdir(dirname(target.absoluteManifestPath), { recursive: true });
-	await writeFile(target.absoluteManifestPath, `${JSON.stringify(returnedManifest, null, 2)}\n`, "utf8");
-	stderr.write(`Compiler returned valid repository IR; wrote ${target.manifestPath}.\n`);
-}
-
-async function compiledManifestFileExists(path: string): Promise<boolean> {
-	try {
-		await readFile(path, "utf8");
-		return true;
-	} catch (error) {
-		if (isNodeError(error) && error.code === "ENOENT") {
-			return false;
-		}
-		const message = error instanceof Error ? error.message : String(error);
-		throw new CompileValidationError("Unable to inspect compiled repository IR after compile.", [message]);
-	}
-}
-
-function parseReturnedCompiledManifest(stdout: string, options: { strict: boolean }): unknown | undefined {
-	const start = stdout.lastIndexOf(RETURNED_MANIFEST_START);
-	if (start === -1) {
-		return undefined;
-	}
-	const contentStart = start + RETURNED_MANIFEST_START.length;
-	const end = stdout.indexOf(RETURNED_MANIFEST_END, contentStart);
-	if (end === -1) {
-		if (!options.strict) {
-			return undefined;
-		}
-		throw new CompileValidationError("Compiler returned repository IR without a closing manifest marker.", [
-			`missing ${RETURNED_MANIFEST_END}`,
-		]);
-	}
-
-	let parsed: unknown;
-	try {
-		parsed = JSON.parse(stdout.slice(contentStart, end).trim());
-	} catch (error) {
-		if (!options.strict) {
-			return undefined;
-		}
-		const message = error instanceof Error ? error.message : String(error);
-		throw new CompileValidationError("Compiler returned repository IR is not valid JSON.", [message]);
-	}
-
-	const validation = validateRepositoryIr(parsed);
-	if (!validation.valid) {
-		if (!options.strict) {
-			return undefined;
-		}
-		throw new CompileValidationError("Compiler returned repository IR is invalid.", validation.errors);
-	}
-
-	return parsed;
 }
 
 function withDefaultCompileSource(

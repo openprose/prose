@@ -361,68 +361,35 @@ describe("runCompileCommand", () => {
 		}
 	});
 
-	it("writes a valid manifest returned by the compiler", async () => {
-		const temp = mkdtempSync(join(tmpdir(), "prose-compile-returned-"));
+	it("does not treat marked stdout as a compile artifact", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-compile-marked-stdout-"));
 		const io = memoryStreams();
 		const manifest = readFileSync(stargazerFixture, "utf8").trim();
 
 		try {
-			const exitCode = await runCompileCommand({
-				argv: [".", "--harness", "mock"],
-				cwd: temp,
-				env: {},
-				stdout: io.streams.stdout,
-				stderr: io.streams.stderr,
-				skillBootstrap: false,
-				skillPreflight: false,
-				harnessFactory: () => ({
-					name: "mock",
-					async run(_prompt, options) {
-						options.stdout.write(
-							`summary\n<openprose-compiled-manifest>\n${manifest}\n</openprose-compiled-manifest>\n`,
-						);
-						return 0;
-					},
+			await expect(
+				runCompileCommand({
+					argv: [".", "--harness", "mock"],
+					cwd: temp,
+					env: {},
+					stdout: io.streams.stdout,
+					stderr: io.streams.stderr,
+					skillBootstrap: false,
+					skillPreflight: false,
+					harnessFactory: () => ({
+						name: "mock",
+						async run(_prompt, options) {
+							options.stdout.write(
+								`summary\n<openprose-compiled-manifest>\n${manifest}\n</openprose-compiled-manifest>\n`,
+							);
+							return 0;
+						},
+					}),
 				}),
+			).rejects.toMatchObject({
+				name: "CompileValidationError",
+				message: "Compiled repository IR was not written to dist/manifest.next.json.",
 			});
-
-			expect(exitCode).toBe(0);
-			expect(JSON.parse(readFileSync(join(temp, "dist/manifest.next.json"), "utf8"))).toMatchObject({
-				kind: "openprose.repository-ir",
-				version: 0,
-			});
-			expect(io.stderr).toContain("Compiler returned valid repository IR; wrote dist/manifest.next.json.");
-		} finally {
-			rmSync(temp, { recursive: true, force: true });
-		}
-	});
-
-	it("prefers a written manifest over marked stdout", async () => {
-		const temp = mkdtempSync(join(tmpdir(), "prose-compile-written-over-returned-"));
-		const io = memoryStreams();
-
-		try {
-			const exitCode = await runCompileCommand({
-				argv: [".", "--harness", "mock"],
-				cwd: temp,
-				env: {},
-				stdout: io.streams.stdout,
-				stderr: io.streams.stderr,
-				skillBootstrap: false,
-				skillPreflight: false,
-				harnessFactory: () => ({
-					name: "mock",
-					async run(_prompt, options) {
-						mkdirSync(join(temp, "dist"), { recursive: true });
-						copyFileSync(stargazerFixture, join(temp, "dist/manifest.next.json"));
-						options.stdout.write("<openprose-compiled-manifest>\nnot json\n</openprose-compiled-manifest>\n");
-						return 0;
-					},
-				}),
-			});
-
-			expect(exitCode).toBe(0);
-			expect(io.stderr).not.toContain("Compiler returned valid repository IR");
 		} finally {
 			rmSync(temp, { recursive: true, force: true });
 		}
@@ -516,37 +483,6 @@ describe("runCompileCommand", () => {
 
 			expect(exitCode).toBe(143);
 			expect(io.stderr).not.toContain("accepting dist/manifest.next.json");
-		} finally {
-			rmSync(temp, { recursive: true, force: true });
-		}
-	});
-
-	it("preserves abort exits after a partial returned manifest", async () => {
-		const temp = mkdtempSync(join(tmpdir(), "prose-compile-abort-partial-return-"));
-		const io = memoryStreams();
-		const controller = new AbortController();
-
-		try {
-			const exitCode = await runCompileCommand({
-				argv: [".", "--harness", "mock"],
-				cwd: temp,
-				env: {},
-				stdout: io.streams.stdout,
-				stderr: io.streams.stderr,
-				signal: controller.signal,
-				skillBootstrap: false,
-				skillPreflight: false,
-				harnessFactory: () => ({
-					name: "mock",
-					async run(_prompt, options) {
-						options.stdout.write("<openprose-compiled-manifest>\n");
-						controller.abort("SIGTERM");
-						return 143;
-					},
-				}),
-			});
-
-			expect(exitCode).toBe(143);
 		} finally {
 			rmSync(temp, { recursive: true, force: true });
 		}
