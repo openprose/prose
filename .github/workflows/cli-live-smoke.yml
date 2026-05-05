@@ -8,6 +8,7 @@ on:
   push:
     branches:
       - main
+      - feat/cli-robust-explicit-defaults
     paths:
       - "tools/cli/**"
       - ".github/workflows/cli-live-smoke.yml"
