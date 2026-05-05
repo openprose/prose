@@ -81,8 +81,9 @@ export default class Compile extends Command {
 }
 
 export async function runCompileCommand(options: RunCompileCommandOptions): Promise<number> {
+	const argv = withDefaultCompileSource(options.argv, options.env);
 	const target = await resolveCompiledManifestTarget({
-		argv: options.argv,
+		argv,
 		cwd: options.cwd,
 		env: options.env,
 	});
@@ -90,7 +91,7 @@ export async function runCompileCommand(options: RunCompileCommandOptions): Prom
 
 	const exitCode = await runForwardedProseCommand({
 		command: "compile",
-		argv: options.argv,
+		argv,
 		cwd: options.cwd,
 		env: options.env,
 		stdout: options.stdout,
@@ -111,12 +112,40 @@ export async function runCompileCommand(options: RunCompileCommandOptions): Prom
 	}
 
 	await validateCompiledRepositoryIr({
-		argv: options.argv,
+		argv,
 		cwd: options.cwd,
 		env: options.env,
 		...target,
 	});
 	return 0;
+}
+
+function withDefaultCompileSource(
+	argv: readonly string[],
+	env: Readonly<Record<string, string | undefined>>,
+): string[] {
+	const { args } = splitHarnessArgs(argv, env, "compile");
+	return compileArgsHaveSource(args) ? [...argv] : ["src", ...argv];
+}
+
+function compileArgsHaveSource(args: readonly string[]): boolean {
+	for (let index = 0; index < args.length; index += 1) {
+		const arg = args[index];
+		if (arg === undefined) {
+			continue;
+		}
+		if (arg === "--out") {
+			index += 1;
+			continue;
+		}
+		if (arg.startsWith("--out=")) {
+			continue;
+		}
+		if (!arg.startsWith("-")) {
+			return true;
+		}
+	}
+	return false;
 }
 
 async function shouldAcceptNonzeroCompiledManifest(

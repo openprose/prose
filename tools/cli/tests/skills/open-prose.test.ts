@@ -70,6 +70,8 @@ describe("OpenProse skill checks", () => {
 		expect(bootstrap).toContain("OpenProse SKILL.md path: /home/prose/.agents/skills/open-prose/SKILL.md");
 		expect(bootstrap).toContain("Resolve every file referenced by this SKILL.md relative to the OpenProse skill root.");
 		expect(bootstrap).toContain("Do not invoke the `prose`, `npx prose`, or `@openprose/prose-cli` shell command");
+		expect(bootstrap).toContain("Do not ask the user for permission to write declared OpenProse artifacts");
+		expect(bootstrap).toContain("the command itself grants permission to create or replace `dist/manifest.next.json`");
 		expect(bootstrap).toContain("<open-prose-introduction>");
 		expect(bootstrap).toContain("</open-prose-introduction>");
 		expect(bootstrap).toContain("<open-prose-skill>");

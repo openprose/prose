@@ -5,6 +5,11 @@ export type ClaudeSdkQuery = typeof import("@anthropic-ai/claude-agent-sdk").que
 export type ClaudeSdkQueryResult = ReturnType<ClaudeSdkQuery>;
 export type ClaudeSdkMessage = ClaudeSdkQueryResult extends AsyncIterable<infer Message> ? Message : never;
 export type ClaudeSdkQueryLike = (...args: Parameters<ClaudeSdkQuery>) => ClaudeSdkQueryResult | Promise<ClaudeSdkQueryResult>;
+type ClaudePermissionMode = "default" | "acceptEdits" | "bypassPermissions" | "plan" | "dontAsk";
+
+const CLAUDE_PERMISSION_MODES = ["default", "acceptEdits", "bypassPermissions", "plan", "dontAsk"] as const;
+const CLAUDE_AUTO_ALLOW_RULES = ["Read(*)", "Glob(*)", "Grep(*)", "Write(*)", "Edit(*)", "MultiEdit(*)"] as const;
+const DEFAULT_CLAUDE_PERMISSION_MODE = "bypassPermissions";
 
 export interface ClaudeSdkHarnessOptions {
 	query?: ClaudeSdkQueryLike;
@@ -22,6 +27,8 @@ export function createClaudeSdkHarness(options: ClaudeSdkHarnessOptions = {}): H
 		name: "claude-sdk",
 		async run(prompt, runOptions) {
 			const abortController = bridgeAbortController(runOptions.signal);
+			const model = claudeModel(runOptions.env);
+			const permissionMode = claudePermissionMode(runOptions.env);
 			const stream = await Promise.resolve(
 				query({
 					prompt,
@@ -33,6 +40,16 @@ export function createClaudeSdkHarness(options: ClaudeSdkHarnessOptions = {}): H
 						...(runOptions.cwd === undefined ? {} : { cwd: runOptions.cwd }),
 						...(runOptions.env === undefined ? {} : { env: runOptions.env }),
 						includePartialMessages: true,
+						...(model === undefined ? {} : { model }),
+						allowedTools: [...CLAUDE_AUTO_ALLOW_RULES],
+						permissionMode,
+						settings: {
+							permissions: {
+								allow: [...CLAUDE_AUTO_ALLOW_RULES],
+								defaultMode: permissionMode,
+							},
+						},
+						...(permissionMode === "bypassPermissions" ? { allowDangerouslySkipPermissions: true } : {}),
 						stderr: (chunk: string) => runOptions.stderr.write(chunk),
 						...(runOptions.systemPromptAppend === undefined
 							? {}
@@ -85,6 +102,25 @@ export function createClaudeSdkHarness(options: ClaudeSdkHarnessOptions = {}): H
 			return runOptions.signal?.aborted ? 143 : exitCode;
 		},
 	};
+}
+
+function claudeModel(env: Readonly<Record<string, string | undefined>> | undefined): string | undefined {
+	const value = env?.PROSE_CLAUDE_MODEL ?? env?.ANTHROPIC_MODEL ?? process.env.PROSE_CLAUDE_MODEL ?? process.env.ANTHROPIC_MODEL;
+	if (value === undefined || value.trim() === "") {
+		return undefined;
+	}
+	return value;
+}
+
+function claudePermissionMode(env: Readonly<Record<string, string | undefined>> | undefined): ClaudePermissionMode {
+	const value = env?.PROSE_CLAUDE_PERMISSION_MODE ?? process.env.PROSE_CLAUDE_PERMISSION_MODE;
+	if (value === undefined || value === "") {
+		return DEFAULT_CLAUDE_PERMISSION_MODE;
+	}
+	if (CLAUDE_PERMISSION_MODES.includes(value as ClaudePermissionMode)) {
+		return value as ClaudePermissionMode;
+	}
+	throw new Error(`PROSE_CLAUDE_PERMISSION_MODE must be one of: ${CLAUDE_PERMISSION_MODES.join(", ")}`);
 }
 
 function writeClaudeMessage(

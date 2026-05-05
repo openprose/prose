@@ -2,6 +2,8 @@ import type { CodexThreadOptions } from "./types.js";
 
 const CODEX_SANDBOX_MODES = ["read-only", "workspace-write", "danger-full-access"] as const;
 const CODEX_APPROVAL_POLICIES = ["never", "on-request", "on-failure", "untrusted"] as const;
+const DEFAULT_CODEX_SANDBOX_MODE = "danger-full-access";
+const DEFAULT_CODEX_APPROVAL_POLICY = "never";
 
 export function codexThreadRuntimeOptions(
 	env: Record<string, string | undefined> | undefined,
@@ -12,8 +14,8 @@ export function codexThreadRuntimeOptions(
 
 	return {
 		skipGitRepoCheck: true,
-		...(sandboxMode === undefined ? {} : { sandboxMode }),
-		...(approvalPolicy === undefined ? {} : { approvalPolicy }),
+		sandboxMode: sandboxMode ?? DEFAULT_CODEX_SANDBOX_MODE,
+		approvalPolicy: approvalPolicy ?? DEFAULT_CODEX_APPROVAL_POLICY,
 		...(additionalDirectories.length === 0 ? {} : { additionalDirectories: [...additionalDirectories] }),
 	};
 }
