@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.13.1] - 2026-05-05
+
+### Fixed
+
+- **Compile success detection** — `prose compile` now accepts a freshly written
+  valid `manifest.next.json` when the harness exits nonzero afterward, while
+  still rejecting missing manifests, invalid IR, error diagnostics, and aborted
+  runs.
+- **Serve trigger behavior** — HTTP triggers now acknowledge immediately while
+  dispatching activations in the background, and cron-only manifests still expose
+  the local health endpoint.
+- **Smoke fixture isolation** — Responsibility Runtime smoke fixtures stay
+  inside their source root and include the local pattern dependencies needed by
+  the compiler.
+
 ## [0.13.0] - 2026-05-04
 
 ### Added
