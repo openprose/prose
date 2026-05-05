@@ -1,4 +1,5 @@
 import { codexClientConfig, codexThreadRuntimeOptions } from "./codex-options.js";
+import { resolveCodexModel } from "./defaults.js";
 import { writeLine } from "./streams.js";
 import type { CodexSdkClientOptions, CodexSdkFactory, CodexThreadEvent, CodexThreadItem, Harness } from "./types.js";
 
@@ -19,9 +20,10 @@ export function createCodexSdkHarness(options: CodexSdkHarnessOptions = {}): Har
 		async run(prompt, runOptions) {
 			try {
 				const env = definedEnv(runOptions.env);
+				const model = resolveCodexModel(runOptions.env);
 				const codex = await factory(codexClientOptions(env, runOptions.systemPromptAppend));
 				const thread = codex.startThread(
-					codexThreadOptions(runOptions.cwd, env, runOptions.additionalDirectories),
+					codexThreadOptions(runOptions.cwd, env, runOptions.additionalDirectories, model),
 				);
 				const { events } = await thread.runStreamed(
 					prompt,
@@ -48,14 +50,14 @@ function codexThreadOptions(
 	cwd: string | undefined,
 	env: Record<string, string> | undefined,
 	additionalDirectories: readonly string[] | undefined,
+	model: string,
 ) {
 	const runtimeOptions = codexThreadRuntimeOptions(env, additionalDirectories);
-	const options = {
+	return {
+		model,
 		...(cwd === undefined ? {} : { workingDirectory: cwd }),
 		...runtimeOptions,
 	};
-
-	return Object.keys(options).length === 0 ? undefined : options;
 }
 
 function codexClientOptions(env: Record<string, string> | undefined, systemPromptAppend: string | undefined) {
