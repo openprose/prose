@@ -229,6 +229,46 @@ describe("claude-sdk harness", () => {
 		]);
 	});
 
+	test("selects Claude model from env and defaults to non-interactive edit mode", async () => {
+		const io = memoryStreams();
+		const calls: unknown[] = [];
+		const harness = createClaudeSdkHarness({
+			query: async (args) => {
+				calls.push(args);
+				return {
+					async *[Symbol.asyncIterator]() {
+						yield { type: "result", subtype: "success", result: "ok", is_error: false };
+					},
+					close() {},
+				} as never;
+			},
+		});
+
+		const exitCode = await harness.run("prose compile src", {
+			...io.options,
+			env: { ANTHROPIC_MODEL: "claude-sonnet-4-6" },
+		});
+
+		expect(exitCode).toBe(0);
+		expect(calls).toEqual([
+			{
+				prompt: "prose compile src",
+				options: expect.objectContaining({
+					env: { ANTHROPIC_MODEL: "claude-sonnet-4-6" },
+					allowedTools: ["Read(*)", "Glob(*)", "Grep(*)", "Write(*)", "Edit(*)", "MultiEdit(*)"],
+					model: "claude-sonnet-4-6",
+					permissionMode: "acceptEdits",
+					settings: {
+						permissions: {
+							allow: ["Read(*)", "Glob(*)", "Grep(*)", "Write(*)", "Edit(*)", "MultiEdit(*)"],
+							defaultMode: "acceptEdits",
+						},
+					},
+				}),
+			},
+		]);
+	});
+
 	test("streams text deltas without duplicating final result", async () => {
 		const io = memoryStreams();
 		const abortControllers: AbortController[] = [];

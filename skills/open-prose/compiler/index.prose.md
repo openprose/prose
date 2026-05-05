@@ -44,6 +44,9 @@ to keep each lowering step on a narrow context budget.
   instinct, `ir-v0.md` wins.
 - Infer responsibilities, concrete trigger registrations, and fulfillment only
   when the source graph makes the relationship clear.
+- When `source_root` is a directory, compile the repository graph under that
+  directory. Do not ask the user to choose one `.prose.md` file; infer roots,
+  wire reachable source, and emit diagnostics for ambiguity.
 - Do not invent connector routes, queue names, provider payloads, secrets, or
   provider subscription setup.
 - Stay inside `source_root`; do not inspect sibling examples, parent
@@ -166,6 +169,16 @@ agent manifest_writer:
   Write the already validated manifest JSON to output_dir/manifest.next.json.
   Create output_dir if needed.
   Do not change, pretty-print creatively, summarize, or repair the manifest.
+  Do not ask for approval before writing; `prose compile` is a non-interactive
+  command and the host CLI validates the result immediately after the write.
+  Use the host filesystem write primitive immediately. The compile command
+  itself is the user's approval to write the declared manifest artifact.
+  If the harness cannot write the file directly, do not ask for approval and do
+  not return a summary as a substitute. Instead, return the complete validated
+  manifest JSON between these exact markers and then stop:
+  <openprose-compiled-manifest>
+  { ...complete repository IR JSON... }
+  </openprose-compiled-manifest>
   Report the written path and byte count.
   """
   shape:

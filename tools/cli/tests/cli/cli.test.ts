@@ -300,6 +300,38 @@ FORWARDED_BOOTSTRAP_SENTINEL
 });
 
 describe("runCompileCommand", () => {
+	it("defaults pathless compile commands to the repository src directory", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-compile-default-src-"));
+		const io = memoryStreams();
+		const prompts: string[] = [];
+
+		try {
+			const exitCode = await runCompileCommand({
+				argv: ["--harness", "mock"],
+				cwd: temp,
+				env: {},
+				stdout: io.streams.stdout,
+				stderr: io.streams.stderr,
+				skillBootstrap: false,
+				skillPreflight: false,
+				harnessFactory: () => ({
+					name: "mock",
+					async run(prompt) {
+						prompts.push(prompt);
+						mkdirSync(join(temp, "dist"), { recursive: true });
+						copyFileSync(stargazerFixture, join(temp, "dist/manifest.next.json"));
+						return 0;
+					},
+				}),
+			});
+
+			expect(exitCode).toBe(0);
+			expect(prompts).toEqual(["prose compile src"]);
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
+
 	it("validates the manifest emitted by the intelligent compiler", async () => {
 		const temp = mkdtempSync(join(tmpdir(), "prose-compile-valid-"));
 		const io = memoryStreams();
@@ -324,6 +356,42 @@ describe("runCompileCommand", () => {
 			});
 
 			expect(exitCode).toBe(0);
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
+
+	it("writes a valid manifest returned by the compiler", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-compile-returned-"));
+		const io = memoryStreams();
+		const manifest = readFileSync(stargazerFixture, "utf8").trim();
+
+		try {
+			const exitCode = await runCompileCommand({
+				argv: [".", "--harness", "mock"],
+				cwd: temp,
+				env: {},
+				stdout: io.streams.stdout,
+				stderr: io.streams.stderr,
+				skillBootstrap: false,
+				skillPreflight: false,
+				harnessFactory: () => ({
+					name: "mock",
+					async run(_prompt, options) {
+						options.stdout.write(
+							`summary\n<openprose-compiled-manifest>\n${manifest}\n</openprose-compiled-manifest>\n`,
+						);
+						return 0;
+					},
+				}),
+			});
+
+			expect(exitCode).toBe(0);
+			expect(JSON.parse(readFileSync(join(temp, "dist/manifest.next.json"), "utf8"))).toMatchObject({
+				kind: "openprose.repository-ir",
+				version: 0,
+			});
+			expect(io.stderr).toContain("Compiler returned valid repository IR; wrote dist/manifest.next.json.");
 		} finally {
 			rmSync(temp, { recursive: true, force: true });
 		}

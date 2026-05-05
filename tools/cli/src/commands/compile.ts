@@ -1,6 +1,6 @@
 import { Command } from "@oclif/core";
-import { readFile, unlink } from "node:fs/promises";
-import { resolve } from "node:path";
+import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
 import type { Harness, WritableStreamLike } from "../harnesses/types.js";
 import {
 	CommandModelError,
@@ -26,6 +26,9 @@ export class CompileValidationError extends Error {
 		this.details = [...details];
 	}
 }
+
+const RETURNED_MANIFEST_START = "<openprose-compiled-manifest>";
+const RETURNED_MANIFEST_END = "</openprose-compiled-manifest>";
 
 export interface RunCompileCommandOptions {
 	argv: readonly string[];
@@ -81,25 +84,28 @@ export default class Compile extends Command {
 }
 
 export async function runCompileCommand(options: RunCompileCommandOptions): Promise<number> {
+	const argv = withDefaultCompileSource(options.argv, options.env);
 	const target = await resolveCompiledManifestTarget({
-		argv: options.argv,
+		argv,
 		cwd: options.cwd,
 		env: options.env,
 	});
 	await removePreviousCompiledManifest(target.absoluteManifestPath);
+	const stdoutCapture = createStdoutCapture(options.stdout);
 
 	const exitCode = await runForwardedProseCommand({
 		command: "compile",
-		argv: options.argv,
+		argv,
 		cwd: options.cwd,
 		env: options.env,
-		stdout: options.stdout,
+		stdout: stdoutCapture.stream,
 		stderr: options.stderr,
 		...(options.signal === undefined ? {} : { signal: options.signal }),
 		...(options.harnessFactory === undefined ? {} : { harnessFactory: options.harnessFactory }),
 		...(options.skillBootstrap === undefined ? {} : { skillBootstrap: options.skillBootstrap }),
 		...(options.skillPreflight === undefined ? {} : { skillPreflight: options.skillPreflight }),
 	});
+	await writeReturnedCompiledManifest(stdoutCapture.text(), target, options.stderr);
 	if (exitCode !== 0) {
 		if (await shouldAcceptNonzeroCompiledManifest(exitCode, options, target)) {
 			options.stderr.write(
@@ -111,12 +117,97 @@ export async function runCompileCommand(options: RunCompileCommandOptions): Prom
 	}
 
 	await validateCompiledRepositoryIr({
-		argv: options.argv,
+		argv,
 		cwd: options.cwd,
 		env: options.env,
 		...target,
 	});
 	return 0;
+}
+
+function createStdoutCapture(stdout: WritableStreamLike): { stream: WritableStreamLike; text: () => string } {
+	let captured = "";
+	return {
+		stream: {
+			write(chunk: string) {
+				captured += chunk;
+				return stdout.write(chunk);
+			},
+		},
+		text: () => captured,
+	};
+}
+
+async function writeReturnedCompiledManifest(
+	stdout: string,
+	target: { absoluteManifestPath: string; manifestPath: string },
+	stderr: WritableStreamLike,
+): Promise<void> {
+	const returnedManifest = parseReturnedCompiledManifest(stdout);
+	if (returnedManifest === undefined) {
+		return;
+	}
+
+	await mkdir(dirname(target.absoluteManifestPath), { recursive: true });
+	await writeFile(target.absoluteManifestPath, `${JSON.stringify(returnedManifest, null, 2)}\n`, "utf8");
+	stderr.write(`Compiler returned valid repository IR; wrote ${target.manifestPath}.\n`);
+}
+
+function parseReturnedCompiledManifest(stdout: string): unknown | undefined {
+	const start = stdout.lastIndexOf(RETURNED_MANIFEST_START);
+	if (start === -1) {
+		return undefined;
+	}
+	const contentStart = start + RETURNED_MANIFEST_START.length;
+	const end = stdout.indexOf(RETURNED_MANIFEST_END, contentStart);
+	if (end === -1) {
+		throw new CompileValidationError("Compiler returned repository IR without a closing manifest marker.", [
+			`missing ${RETURNED_MANIFEST_END}`,
+		]);
+	}
+
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(stdout.slice(contentStart, end).trim());
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		throw new CompileValidationError("Compiler returned repository IR is not valid JSON.", [message]);
+	}
+
+	const validation = validateRepositoryIr(parsed);
+	if (!validation.valid) {
+		throw new CompileValidationError("Compiler returned repository IR is invalid.", validation.errors);
+	}
+
+	return parsed;
+}
+
+function withDefaultCompileSource(
+	argv: readonly string[],
+	env: Readonly<Record<string, string | undefined>>,
+): string[] {
+	const { args } = splitHarnessArgs(argv, env, "compile");
+	return compileArgsHaveSource(args) ? [...argv] : ["src", ...argv];
+}
+
+function compileArgsHaveSource(args: readonly string[]): boolean {
+	for (let index = 0; index < args.length; index += 1) {
+		const arg = args[index];
+		if (arg === undefined) {
+			continue;
+		}
+		if (arg === "--out") {
+			index += 1;
+			continue;
+		}
+		if (arg.startsWith("--out=")) {
+			continue;
+		}
+		if (!arg.startsWith("-")) {
+			return true;
+		}
+	}
+	return false;
 }
 
 async function shouldAcceptNonzeroCompiledManifest(

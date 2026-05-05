@@ -83,7 +83,9 @@ PROSE_HARNESS=claude-sdk prose run std/evals/inspector
 - `codex-sdk` uses `@openai/codex-sdk`, forwards the current working directory
   and environment, and streams Codex SDK events. This is the default.
 - `claude-sdk` uses `@anthropic-ai/claude-agent-sdk`, forwards the current
-  working directory and environment, and streams text deltas.
+  working directory and environment, streams text deltas, and defaults to
+  `acceptEdits` with basic filesystem tools auto-allowed so non-interactive
+  commands can write declared artifacts.
 - `mock` echoes prompts for tests and local smoke checks.
 
 Select a harness with `--harness <name>` or `PROSE_HARNESS`.
@@ -96,6 +98,10 @@ For externally sandboxed CI environments, Codex harnesses also honor
 `PROSE_CODEX_SANDBOX_MODE` (`read-only`, `workspace-write`, or
 `danger-full-access`) and `PROSE_CODEX_APPROVAL_POLICY` (`never`, `on-request`,
 `on-failure`, or `untrusted`) and forward those values to Codex.
+
+Claude harnesses honor `ANTHROPIC_MODEL` or `PROSE_CLAUDE_MODEL` for model
+selection, plus `PROSE_CLAUDE_PERMISSION_MODE` when callers need to override
+the default `acceptEdits` permission mode.
 
 ## Skill Setup
 
@@ -155,6 +161,11 @@ prose status
 passes deterministic IR validation with no error diagnostics. If an agent
 harness reports a stray nonzero status after writing a valid manifest, the CLI
 warns and accepts the validated artifact. Abort and signal exits are preserved.
+If a harness cannot directly write the artifact but returns a valid manifest in
+the compiler's marked output block, the CLI validates and writes it.
+When no source path is supplied, the CLI forwards `src` as the compiler source
+root; this keeps repository compiles non-interactive while preserving the
+documented default.
 
 `prose serve` loads and validates `dist/manifest.active.json` under the active
 OpenProse root, registers local cron and HTTP trigger adapters, and launches
