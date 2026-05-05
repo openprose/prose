@@ -51,6 +51,9 @@ to keep each lowering step on a narrow context budget.
 - Prefer warnings over silent assumptions when timing, fulfillment, or Forme
   wiring is ambiguous.
 - Write `manifest.next.json` only after validation accepts the manifest.
+- After writing `manifest.next.json`, return the result. Do not run optional
+  `jq`, `sed`, shell summaries, or environment-maintenance commands; the host
+  CLI performs deterministic validation after the compiler program exits.
 
 ### Execution
 

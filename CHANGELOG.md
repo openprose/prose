@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Serve shutdown logging** — In-flight activations interrupted by `prose serve`
+  shutdown now log as shutdown cancellations instead of generic trigger
+  failures.
+- **Status wording** — `prose status` now describes absent responsibility state
+  as `no runtime status yet` instead of `missing`.
+- **Compiler discipline** — The bundled compiler program now returns after
+  writing `manifest.next.json` and leaves deterministic validation to the CLI.
+- **Smoke postconditions** — OpenProse smoke checks now trust verified run
+  artifacts when a model exits nonzero after satisfying the fixture contract.
+
 ## [0.13.1] - 2026-05-05
 
 ### Fixed

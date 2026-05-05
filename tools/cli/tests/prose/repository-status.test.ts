@@ -80,7 +80,7 @@ describe("repository status", () => {
 				Responsibilities:
 				- high-intent-stargazer-outreach
 				  source: tests/open-prose/responsibility-runtime/01-stargazer-responsibility.prose.md
-				  status: missing
+				  status: no runtime status yet
 				  pressure: none
 
 				Runs:

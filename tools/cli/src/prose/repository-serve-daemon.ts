@@ -70,6 +70,7 @@ export async function startRepositoryServeDaemon(
 	const timerRegistrations = summary.registrations.filter((registration) => registration.adapter === "timer");
 	let httpServer: ServerType | undefined;
 	let closed = false;
+	let signalDrivenShutdown = false;
 	let cleanupSignal = () => {};
 
 	const dispatchEvent = async (event: RepositoryServeEvent): Promise<RepositoryServeDispatchResult> => {
@@ -97,6 +98,7 @@ export async function startRepositoryServeDaemon(
 			timers.push(
 				startCronTimer({
 					dispatchEvent,
+					isSignalDrivenShutdown: () => signalDrivenShutdown,
 					now,
 					registration,
 					scheduler: timerScheduler,
@@ -108,9 +110,11 @@ export async function startRepositoryServeDaemon(
 
 		const app = buildHttpApp({
 			dispatchEvent,
+			isSignalDrivenShutdown: () => signalDrivenShutdown,
 			now,
 			registrations: httpRegistrations,
 			stderr: options.stderr,
+			stdout: options.stdout,
 		});
 		const started = await startHttpServer(app, host, port);
 		httpServer = started.server;
@@ -154,9 +158,11 @@ export async function startRepositoryServeDaemon(
 	};
 
 	if (options.signal?.aborted) {
+		signalDrivenShutdown = true;
 		await stop();
 	} else if (options.signal !== undefined) {
 		const onAbort = () => {
+			signalDrivenShutdown = true;
 			void stop();
 		};
 		options.signal.addEventListener("abort", onAbort, { once: true });
@@ -178,6 +184,7 @@ export { millisecondsUntilNextCron, nextCronDate };
 
 function startCronTimer(options: {
 	dispatchEvent(event: RepositoryServeEvent): Promise<RepositoryServeDispatchResult>;
+	isSignalDrivenShutdown(): boolean;
 	now: () => Date;
 	registration: RepositoryServeTriggerRegistration;
 	scheduler: RepositoryServeTimerScheduler;
@@ -222,6 +229,10 @@ function startCronTimer(options: {
 				});
 			} catch (error) {
 				const message = error instanceof Error ? error.message : String(error);
+				if (options.isSignalDrivenShutdown() && isShutdownCancellationMessage(message)) {
+					options.stdout.write(`Trigger ${registration.triggerId} cancelled during shutdown: ${message}\n`);
+					return;
+				}
 				options.stderr.write(`Trigger ${registration.triggerId} failed: ${message}\n`);
 			}
 
@@ -245,9 +256,11 @@ function startCronTimer(options: {
 
 function buildHttpApp(options: {
 	dispatchEvent(event: RepositoryServeEvent): Promise<RepositoryServeDispatchResult>;
+	isSignalDrivenShutdown(): boolean;
 	now: () => Date;
 	registrations: RepositoryServeTriggerRegistration[];
 	stderr: WritableStreamLike;
+	stdout: WritableStreamLike;
 }): Hono {
 	const app = new Hono();
 	const routes = new Map<string, RepositoryServeTriggerRegistration[]>();
@@ -275,7 +288,13 @@ function buildHttpApp(options: {
 					})
 					.catch((error) => {
 						const message = error instanceof Error ? error.message : String(error);
-						options.stderr.write(`HTTP trigger ${key} failed: ${message}\n`);
+						if (options.isSignalDrivenShutdown() && isShutdownCancellationMessage(message)) {
+							options.stdout.write(
+								`HTTP trigger ${registration.triggerId} [${key}] cancelled during shutdown: ${message}\n`,
+							);
+							return;
+						}
+						options.stderr.write(`HTTP trigger ${registration.triggerId} [${key}] failed: ${message}\n`);
 					});
 
 				return {
@@ -379,6 +398,10 @@ async function closeHttpServer(server: ServerType): Promise<void> {
 function closeIdleHttpConnections(server: ServerType): void {
 	const closeIdleConnections = (server as { closeIdleConnections?: () => void }).closeIdleConnections;
 	closeIdleConnections?.call(server);
+}
+
+function isShutdownCancellationMessage(message: string): boolean {
+	return /\bexited with code (130|143)\b/.test(message);
 }
 
 function track<T>(promise: Promise<T>, inflight: Set<Promise<unknown>>): void {
