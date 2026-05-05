@@ -1,0 +1,52 @@
+name: CLI Live Smoke
+
+on:
+  pull_request:
+    paths:
+      - "tools/cli/**"
+      - ".github/workflows/cli-live-smoke.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "tools/cli/**"
+      - ".github/workflows/cli-live-smoke.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cli-live-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  live-smoke:
+    name: Harness live smoke (vitest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: tools/cli
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tools/cli/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build CLI
+        run: npm run build
+
+      - name: Run harness live smoke
+        run: npm run test:live

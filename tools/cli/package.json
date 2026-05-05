@@ -51,6 +51,7 @@
     "build": "npm run clean && tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest --run",
+    "test:live": "vitest --run --config vitest.live.config.ts",
     "smoke:harness": "node scripts/smoke-harness.mjs",
     "dev": "tsx src/index.ts",
     "clean": "rm -rf dist",
@@ -68,7 +69,7 @@
     "node": ">=18.14.1"
   },
   "dependencies": {
-    "@anthropic-ai/claude-agent-sdk": "^0.2.90",
+    "@anthropic-ai/claude-agent-sdk": "0.2.107",
     "@hono/node-server": "^1.19.14",
     "@oclif/core": "^4.10.6",
     "@openai/codex-sdk": "^0.125.0",
@@ -79,5 +80,8 @@
     "tsx": "^4.19.2",
     "typescript": "^5.7.3",
     "vitest": "^3.2.4"
+  },
+  "overrides": {
+    "@anthropic-ai/sdk": "^0.92.0"
   }
 }

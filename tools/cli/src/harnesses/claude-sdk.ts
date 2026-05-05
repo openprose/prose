@@ -1,3 +1,4 @@
+import { CLAUDE_SDK_DEFAULTS, resolveClaudeModel } from "./defaults.js";
 import { writeLine } from "./streams.js";
 import type { Harness, HarnessRunOptions } from "./types.js";
 
@@ -27,6 +28,8 @@ export function createClaudeSdkHarness(options: ClaudeSdkHarnessOptions = {}): H
 					prompt,
 					options: {
 						abortController,
+						model: resolveClaudeModel(runOptions.env),
+						thinking: CLAUDE_SDK_DEFAULTS.thinking,
 						...(runOptions.additionalDirectories === undefined
 							? {}
 							: { additionalDirectories: runOptions.additionalDirectories }),

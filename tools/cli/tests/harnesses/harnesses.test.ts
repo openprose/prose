@@ -92,7 +92,7 @@ describe("codex-sdk harness", () => {
 
 		expect(exitCode).toBe(0);
 		expect(io.stdout).toBe("sdk output\n");
-		expect(starts).toEqual([{ skipGitRepoCheck: true, workingDirectory: "/repo" }]);
+		expect(starts).toEqual([{ model: "gpt-5-codex", skipGitRepoCheck: true, workingDirectory: "/repo" }]);
 		expect(factoryOptions).toEqual([{ apiKey: "test", env: { OPENAI_API_KEY: "test" } }]);
 	});
 
@@ -127,6 +127,7 @@ describe("codex-sdk harness", () => {
 		expect(starts).toEqual([
 			{
 				additionalDirectories: ["/skills/open-prose"],
+				model: "gpt-5-codex",
 				skipGitRepoCheck: true,
 			},
 		]);
@@ -166,7 +167,9 @@ describe("codex-sdk harness", () => {
 		});
 
 		expect(exitCode).toBe(0);
-		expect(starts).toEqual([{ approvalPolicy: "never", sandboxMode: "danger-full-access", skipGitRepoCheck: true }]);
+		expect(starts).toEqual([
+			{ approvalPolicy: "never", model: "gpt-5-codex", sandboxMode: "danger-full-access", skipGitRepoCheck: true },
+		]);
 	});
 
 	test("maps failed turns to stderr and nonzero exit", async () => {
@@ -219,11 +222,44 @@ describe("claude-sdk harness", () => {
 					additionalDirectories: ["/skills/open-prose"],
 					cwd: "/repo",
 					env: { A: "B" },
+					model: "claude-sonnet-4-6",
+					thinking: { type: "adaptive" },
 					systemPrompt: {
 						type: "preset",
 						preset: "claude_code",
 						append: bootstrap,
 					},
+				}),
+			},
+		]);
+	});
+
+	test("honors ANTHROPIC_MODEL override from runOptions.env", async () => {
+		const io = memoryStreams();
+		const calls: unknown[] = [];
+		const harness = createClaudeSdkHarness({
+			query: async (args) => {
+				calls.push(args);
+				return {
+					async *[Symbol.asyncIterator]() {
+						yield { type: "result", subtype: "success", result: "ok", is_error: false };
+					},
+					close() {},
+				} as never;
+			},
+		});
+
+		await harness.run("prose status", {
+			...io.options,
+			env: { ANTHROPIC_MODEL: "claude-opus-4-7" },
+		});
+
+		expect(calls).toEqual([
+			{
+				prompt: "prose status",
+				options: expect.objectContaining({
+					model: "claude-opus-4-7",
+					thinking: { type: "adaptive" },
 				}),
 			},
 		]);
