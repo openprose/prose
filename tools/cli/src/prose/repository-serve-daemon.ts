@@ -106,18 +106,16 @@ export async function startRepositoryServeDaemon(
 			);
 		}
 
-		if (httpRegistrations.length > 0) {
-			const app = buildHttpApp({
-				dispatchEvent,
-				now,
-				registrations: httpRegistrations,
-				stderr: options.stderr,
-			});
-			const started = await startHttpServer(app, host, port);
-			httpServer = started.server;
-			address = started.address;
-			options.stdout.write(`HTTP listening on ${address.url}\n`);
-		}
+		const app = buildHttpApp({
+			dispatchEvent,
+			now,
+			registrations: httpRegistrations,
+			stderr: options.stderr,
+		});
+		const started = await startHttpServer(app, host, port);
+		httpServer = started.server;
+		address = started.address;
+		options.stdout.write(`HTTP listening on ${address.url}\n`);
 	} catch (error) {
 		for (const timer of timers) {
 			timer.cancel();
@@ -268,29 +266,32 @@ function buildHttpApp(options: {
 		const [method, path] = splitRouteKey(key);
 		app.on(method, path, async (context) => {
 			const payload = await buildHttpEventPayload(context.req.raw, options.now());
-			const results: RepositoryServeDispatchResult[] = [];
-			try {
-				for (const registration of registrations) {
-					results.push(
-						await options.dispatchEvent({
-							triggerId: registration.triggerId,
-							payload,
-						}),
-					);
-				}
-			} catch (error) {
-				const message = error instanceof Error ? error.message : String(error);
-				options.stderr.write(`HTTP trigger ${key} failed: ${message}\n`);
-				return context.json({ ok: false, error: message }, 500);
-			}
+			const acceptedAt = options.now().toISOString();
+			const accepted = registrations.map((registration) => {
+				void options
+					.dispatchEvent({
+						triggerId: registration.triggerId,
+						payload,
+					})
+					.catch((error) => {
+						const message = error instanceof Error ? error.message : String(error);
+						options.stderr.write(`HTTP trigger ${key} failed: ${message}\n`);
+					});
 
-			return context.json({
-				ok: true,
-				results: results.map((result) => ({
-					triggerId: result.triggerId,
-					activations: result.activationResults,
-				})),
+				return {
+					triggerId: registration.triggerId,
+					activations: registration.activationIds,
+				};
 			});
+
+			return context.json(
+				{
+					ok: true,
+					acceptedAt,
+					accepted,
+				},
+				202,
+			);
 		});
 	}
 
@@ -371,7 +372,13 @@ async function closeHttpServer(server: ServerType): Promise<void> {
 			}
 			resolve();
 		});
+		closeIdleHttpConnections(server);
 	});
+}
+
+function closeIdleHttpConnections(server: ServerType): void {
+	const closeIdleConnections = (server as { closeIdleConnections?: () => void }).closeIdleConnections;
+	closeIdleConnections?.call(server);
 }
 
 function track<T>(promise: Promise<T>, inflight: Set<Promise<unknown>>): void {

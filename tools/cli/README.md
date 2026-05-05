@@ -152,13 +152,18 @@ prose status
 ```
 
 `prose compile` returns success only after the emitted `manifest.next.json`
-passes deterministic IR validation.
+passes deterministic IR validation with no error diagnostics. If an agent
+harness reports a stray nonzero status after writing a valid manifest, the CLI
+warns and accepts the validated artifact. Abort and signal exits are preserved.
 
 `prose serve` loads and validates `dist/manifest.active.json` under the active
 OpenProse root, registers local cron and HTTP trigger adapters, and launches
 ordinary bounded `prose run` activations when those triggers fire. HTTP
 adapters bind to `127.0.0.1:7331` by default; use `--host` and `--port` to
-override that local listener.
+override that local listener. The listener always exposes
+`/_openprose/health`, including cron-only manifests. Trigger routes respond
+with `202 Accepted` after the event is accepted; judge and fulfillment
+activations continue in the background and log failures to the serve process.
 
 ## Development
 

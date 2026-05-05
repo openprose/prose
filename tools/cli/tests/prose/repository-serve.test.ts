@@ -658,10 +658,18 @@ describe("repository serve core", () => {
 		}
 	});
 
-	it("serves HTTP trigger registrations and launches matched activations", async () => {
+	it("acknowledges HTTP trigger registrations before matched activations finish", async () => {
 		const temp = mkdtempSync(join(tmpdir(), "prose-serve-http-"));
 		const io = memoryStreams();
 		const calls: string[] = [];
+		let releaseJudge: () => void = () => {};
+		let resolveJudgeStarted!: () => void;
+		const judgeStarted = new Promise<void>((resolve) => {
+			resolveJudgeStarted = resolve;
+		});
+		const allowJudge = new Promise<void>((resolve) => {
+			releaseJudge = resolve;
+		});
 
 		try {
 			writeActiveManifest(temp);
@@ -675,6 +683,8 @@ describe("repository serve core", () => {
 				commandRunner: async (options) => {
 					calls.push(options.env.PROSE_ACTIVATION_ID ?? "");
 					if (options.env.PROSE_ACTIVATION_ID === "high-intent-stargazer-outreach.judge") {
+						resolveJudgeStarted();
+						await allowJudge;
 						writeStatusFromRunEnv(options.env, "down");
 					}
 					return 0;
@@ -690,26 +700,64 @@ describe("repository serve core", () => {
 				});
 				const body = await response.json();
 
-				expect(response.status).toBe(200);
+				expect(response.status).toBe(202);
 				expect(body).toMatchObject({
 					ok: true,
-					results: [
+					accepted: [
 						{
 							triggerId: "high-intent-stargazer-outreach.evidence-change",
+							activations: [
+								"high-intent-stargazer-outreach.judge",
+								"high-intent-stargazer-outreach.fulfillment",
+							],
 						},
 					],
 				});
+				await judgeStarted;
+				expect(calls).toEqual(["high-intent-stargazer-outreach.judge"]);
+				releaseJudge();
+				await waitFor(() => calls.includes("high-intent-stargazer-outreach.fulfillment"));
 				expect(calls).toEqual([
 					"high-intent-stargazer-outreach.judge",
 					"high-intent-stargazer-outreach.fulfillment",
 				]);
 			} finally {
+				releaseJudge();
 				await daemon.stop();
 			}
 		} finally {
 			rmSync(temp, { recursive: true, force: true });
 		}
 	}, 10_000);
+
+	it("keeps an HTTP health endpoint for cron-only manifests", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-serve-cron-health-"));
+		const io = memoryStreams();
+
+		try {
+			writeActiveManifestObject(temp, timerOnlyManifest());
+			const daemon = await startRepositoryServeDaemon({
+				cwd: temp,
+				env: {},
+				host: "127.0.0.1",
+				port: 0,
+				stdout: io.streams.stdout,
+				stderr: io.streams.stderr,
+				commandRunner: async () => 0,
+			});
+
+			try {
+				expect(daemon.address).toBeDefined();
+				const response = await fetch(`${daemon.address!.url}/_openprose/health`);
+				expect(response.status).toBe(200);
+				expect(await response.json()).toEqual({ ok: true });
+			} finally {
+				await daemon.stop();
+			}
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
 
 	it("restores trigger registrations when serve restarts", async () => {
 		const temp = mkdtempSync(join(tmpdir(), "prose-serve-restart-"));
@@ -769,6 +817,8 @@ describe("repository serve core", () => {
 			const daemon = await startRepositoryServeDaemon({
 				cwd: temp,
 				env: {},
+				host: "127.0.0.1",
+				port: 0,
 				now: () => current,
 				stdout: io.streams.stdout,
 				stderr: io.streams.stderr,
@@ -916,4 +966,14 @@ function writeStatusFromRunEnv(
 
 	mkdirSync(dirname(latestPath), { recursive: true });
 	writeFileSync(latestPath, `${JSON.stringify(record, null, 2)}\n`);
+}
+
+async function waitFor(predicate: () => boolean, timeoutMs = 2_000): Promise<void> {
+	const start = Date.now();
+	while (!predicate()) {
+		if (Date.now() - start > timeoutMs) {
+			throw new Error("Timed out waiting for condition.");
+		}
+		await new Promise((resolve) => setTimeout(resolve, 10));
+	}
 }

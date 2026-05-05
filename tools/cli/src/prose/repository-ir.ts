@@ -1018,6 +1018,8 @@ function validateDiagnostics(value: unknown, sourcePaths: Set<string>, errors: s
 		}
 		if (!diagnosticSeverities.includes(diagnostic.severity as RepositoryIrDiagnosticSeverity)) {
 			errors.push(`diagnostics[${index}].severity must be info, warning, or error`);
+		} else if (diagnostic.severity === "error") {
+			errors.push(`diagnostics[${index}].severity must not be error in a written manifest`);
 		}
 		if (!isNonEmptyString(diagnostic.message)) {
 			errors.push(`diagnostics[${index}].message must be a non-empty string`);

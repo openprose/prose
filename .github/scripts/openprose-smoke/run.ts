@@ -13,6 +13,7 @@ type SmokeCase = {
   tier: SmokeTier;
   command: SmokeCommand;
   source: string;
+  workspaceSources?: string[];
   inputs?: Record<string, string>;
   expectedOutputs?: string[];
   timeoutSeconds?: number;
@@ -458,10 +459,12 @@ async function loadManifest(manifestPath: string): Promise<SmokeManifest> {
 
 async function assertSourceFilesExist(cases: SmokeCase[], manifestDir: string): Promise<void> {
   for (const smokeCase of cases) {
-    const sourcePath = path.join(manifestDir, smokeCase.source);
-    const sourceStat = await statIfExists(sourcePath);
-    if (!sourceStat?.isFile()) {
-      throw new Error(`Smoke case ${smokeCase.id} source does not exist: ${smokeCase.source}`);
+    for (const source of workspaceSourcesForCase(smokeCase)) {
+      const sourcePath = path.join(manifestDir, source);
+      const sourceStat = await statIfExists(sourcePath);
+      if (!sourceStat?.isFile()) {
+        throw new Error(`Smoke case ${smokeCase.id} source does not exist: ${source}`);
+      }
     }
   }
 }
@@ -491,6 +494,15 @@ function validateCase(entry: any, index: number): SmokeCase {
   if (entry.expectedOutputs !== undefined && !isStringArray(entry.expectedOutputs)) {
     throw new Error(`Smoke case ${entry.id} expectedOutputs must be a string array`);
   }
+  if (entry.workspaceSources !== undefined && !isStringArray(entry.workspaceSources)) {
+    throw new Error(`Smoke case ${entry.id} workspaceSources must be a string array`);
+  }
+  const workspaceSources = unique([entry.source, ...(entry.workspaceSources ?? [])]);
+  for (const source of workspaceSources) {
+    if (!source.endsWith(".prose.md") || path.basename(source) !== source) {
+      throw new Error(`Smoke case ${entry.id} workspaceSources entries must be .prose.md filenames`);
+    }
+  }
   if (entry.timeoutSeconds !== undefined && !isPositiveInteger(entry.timeoutSeconds)) {
     throw new Error(`Smoke case ${entry.id} timeoutSeconds must be a positive integer`);
   }
@@ -503,6 +515,7 @@ function validateCase(entry: any, index: number): SmokeCase {
     tier: entry.tier,
     command: entry.command,
     source: entry.source,
+    workspaceSources,
     inputs: entry.inputs,
     expectedOutputs: entry.expectedOutputs ?? [],
     timeoutSeconds: entry.timeoutSeconds,
@@ -559,7 +572,7 @@ async function runCase(
   await resetDirectory(caseResultsDir);
   assertSafeDirectoryTarget(workspace, `workspace for ${smokeCase.id}`);
   await resetDirectory(workspace);
-  await setupWorkspace(workspace, manifestDir);
+  await setupWorkspace(workspace, manifestDir, smokeCase);
   await copyFixtureArtifacts(manifestDir, path.join(caseResultsDir, "fixture"));
 
   const prompt = buildPrompt(smokeCase);
@@ -628,13 +641,13 @@ async function runCase(
   return result;
 }
 
-async function setupWorkspace(workspace: string, manifestDir: string): Promise<void> {
+async function setupWorkspace(workspace: string, manifestDir: string, smokeCase: SmokeCase): Promise<void> {
   await fs.mkdir(workspace, { recursive: true });
   const skillSource = path.join(REPO_ROOT, "skills", "open-prose");
   const skillTarget = path.join(workspace, ".claude", "skills", "open-prose");
   await fs.mkdir(path.dirname(skillTarget), { recursive: true });
   await fs.cp(skillSource, skillTarget, { recursive: true, force: true });
-  await copyFixtureMarkdownFiles(manifestDir, workspace);
+  await copyWorkspaceMarkdownFiles(manifestDir, workspace, workspaceSourcesForCase(smokeCase));
 }
 
 async function copyFixtureArtifacts(manifestDir: string, artifactDir: string): Promise<void> {
@@ -653,9 +666,28 @@ async function copyFixtureMarkdownFiles(sourceDir: string, targetDir: string): P
   }
 }
 
+async function copyWorkspaceMarkdownFiles(sourceDir: string, targetDir: string, sources: string[]): Promise<void> {
+  await fs.mkdir(targetDir, { recursive: true });
+  for (const source of sources) {
+    await fs.copyFile(path.join(sourceDir, source), path.join(targetDir, source));
+  }
+}
+
+function workspaceSourcesForCase(smokeCase: SmokeCase): string[] {
+  return smokeCase.workspaceSources ?? [smokeCase.source];
+}
+
 function buildPrompt(smokeCase: SmokeCase): string {
   const command = `prose ${smokeCase.command} ${smokeCase.source}`;
   const inputs = Object.entries(smokeCase.inputs ?? {});
+  const commandGuidance =
+    smokeCase.command === "test"
+      ? [
+          "For prose test: bind fixtures from the test file, resolve and execute the frontmatter subject as the program under test, evaluate ### Expects and ### Expects Not against bindings, and write ---test PASS or ---test FAIL to vm.log.md.",
+          "Write a compact forme.manifest.json before execution; for a test it must name the subject, fixtures, expected outputs, and assertions.",
+          "A test fixture is self-contained; do not prompt for inputs and do not inspect unrelated programs after resolving the subject.",
+        ]
+      : [];
   const inputBlock =
     inputs.length > 0
       ? inputs.map(([name, value]) => `- ${name}: ${value}`).join("\n")
@@ -679,12 +711,15 @@ function buildPrompt(smokeCase: SmokeCase): string {
     inputBlock,
     "Do not ask the user for input.",
     "Bind caller inputs if the source requires them.",
+    ...commandGuidance,
     "Use the default filesystem state backend unless the source explicitly requests another backend.",
     "Satisfy the open-prose Run State Gate before reporting success.",
+    "The run must create runs/<run-id>/root.prose.md, runs/<run-id>/forme.manifest.json, and runs/<run-id>/vm.log.md.",
     "The smoke runner checks real files, not stdout. Before replying, ensure each declared output is published as a non-empty binding file:",
     artifactBlock,
     "If a binding is missing, create it under the correct service binding directory before reporting success.",
     "Keep all reads and writes inside this workspace.",
+    "As soon as the required run artifacts, log markers, and declared bindings exist, stop and print the summary without further refinement.",
     `Print a concise result summary with the run id and declared output names: ${outputs}.`,
   ].join("\n");
 }

@@ -46,6 +46,8 @@ to keep each lowering step on a narrow context budget.
   when the source graph makes the relationship clear.
 - Do not invent connector routes, queue names, provider payloads, secrets, or
   provider subscription setup.
+- Stay inside `source_root`; do not inspect sibling examples, parent
+  repositories, or unrelated source trees.
 - Prefer warnings over silent assumptions when timing, fulfillment, or Forme
   wiring is ambiguous.
 - Write `manifest.next.json` only after validation accepts the manifest.
@@ -59,6 +61,8 @@ agent source_discoverer:
   prompt: """
   Discover OpenProse source files under source_root.
   Load contract-markdown.md only.
+  Treat source_root as a hard boundary. Do not read parent directories or
+  sibling repositories while discovering source.
   Return root-relative source records with path, kind, and optional name.
   Recognize responsibility, gateway, system, service, test, pattern, and unknown.
   Ignore dist/, runs/, state/, deps/, and generated output.
