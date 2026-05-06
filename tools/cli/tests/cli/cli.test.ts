@@ -698,6 +698,58 @@ describe("runCompileCommand", () => {
 		}
 	});
 
+	it("fails closed before forwarding when a declared skill cannot be resolved", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-compile-skill-unresolved-"));
+		const home = mkdtempSync(join(tmpdir(), "prose-compile-skill-home-"));
+		const io = memoryStreams();
+		let harnessInvocations = 0;
+
+		try {
+			mkdirSync(join(temp, "src"), { recursive: true });
+			writeFileSync(
+				join(temp, "src", "invoice-extractor.prose.md"),
+				`---
+name: invoice-extractor
+kind: system
+---
+
+### Skills
+
+- document-skills:pdf
+`,
+			);
+
+			await expect(
+				runCompileCommand({
+					argv: [".", "--harness", "mock"],
+					cwd: temp,
+					env: { HOME: home },
+					stdout: io.streams.stdout,
+					stderr: io.streams.stderr,
+					skillBootstrap: false,
+					harnessFactory: () => ({
+						name: "mock",
+						async run() {
+							harnessInvocations += 1;
+							return 0;
+						},
+					}),
+				}),
+			).rejects.toMatchObject({
+				name: "CompileValidationError",
+				message: expect.stringContaining("skill_unresolved"),
+				details: expect.arrayContaining([
+					expect.stringContaining("document-skills:pdf"),
+				]),
+			});
+
+			expect(harnessInvocations).toBe(0);
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+			rmSync(home, { recursive: true, force: true });
+		}
+	});
+
 	it("rejects successful compiler runs that leave stale valid IR behind", async () => {
 		const temp = mkdtempSync(join(tmpdir(), "prose-compile-stale-"));
 		const io = memoryStreams();
