@@ -6,8 +6,10 @@ import { describe, expect, it } from "vitest";
 import {
 	isDirectEntrypoint,
 	normalizeEntrypointArgv,
+	readCallerInterface,
 	runForwardedProseCommand,
 	splitHarnessArgs,
+	type PromptInputLike,
 } from "../../src/index.js";
 import commands from "../../src/commands/index.js";
 import { runCompileCommand } from "../../src/commands/compile.js";
@@ -38,6 +40,45 @@ function writeManifestWithErrorDiagnostic(path: string): void {
 	const manifest = JSON.parse(readFileSync(stargazerFixture, "utf8")) as { diagnostics: Array<{ severity: string }> };
 	manifest.diagnostics[0]!.severity = "error";
 	writeFileSync(path, `${JSON.stringify(manifest, null, 2)}\n`);
+}
+
+function fakeStdin(isTTY: boolean): PromptInputLike {
+	return {
+		isTTY,
+		async *[Symbol.asyncIterator]() {
+			return;
+		},
+	};
+}
+
+function writePromptableService(path: string): void {
+	writeFileSync(
+		path,
+		`---
+name: demo
+kind: service
+---
+
+# Demo
+
+### Requires
+
+- \`project\`: project name
+- \`audience\`: who this is for
+- free-form note ignored by startup prompting
+- \`constraint\`: main constraint
+
+### Ensures
+
+- \`brief\`: short result
+
+## worker
+
+### Requires
+
+- \`internal\`: not a caller input for startup prompting
+`,
+	);
 }
 
 describe("Oclif entrypoint helpers", () => {
@@ -109,6 +150,25 @@ describe("harness argument splitting", () => {
 	});
 });
 
+describe("caller interface startup input parsing", () => {
+	it("reads top-level backtick Requires entries from local Contract Markdown", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-startup-inputs-"));
+
+		try {
+			const path = join(temp, "demo.prose.md");
+			writePromptableService(path);
+
+			await expect(readCallerInterface(path)).resolves.toEqual([
+				{ name: "project", description: "project name" },
+				{ name: "audience", description: "who this is for" },
+				{ name: "constraint", description: "main constraint" },
+			]);
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
+});
+
 describe("runForwardedProseCommand", () => {
 	it("builds the canonical prompt and streams through the selected harness", async () => {
 		const io = memoryStreams();
@@ -162,6 +222,190 @@ describe("runForwardedProseCommand", () => {
 
 		expect(exitCode).toBe(0);
 		expect(seen).toEqual(["prose compile . --out dist"]);
+	});
+
+	it("prompts for missing startup caller inputs before harness invocation", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-startup-prompt-"));
+		const io = memoryStreams();
+		const seen: string[] = [];
+		const answers = new Map([
+			["project", "OpenProse CLI"],
+			["constraint", "keep it deterministic"],
+		]);
+
+		try {
+			writePromptableService(join(temp, "demo.prose.md"));
+
+			const exitCode = await runForwardedProseCommand({
+				command: "run",
+				argv: ["demo.prose.md", "--audience", "contributors", "--harness", "mock"],
+				cwd: temp,
+				env: {},
+				stdout: io.streams.stdout,
+				stderr: io.streams.stderr,
+				stdin: fakeStdin(true),
+				startupInputReader: async ({ name }) => answers.get(name),
+				harnessFactory: () => ({
+					name: "mock",
+					async run(prompt) {
+						seen.push(prompt);
+						return 0;
+					},
+				}),
+			});
+
+			expect(exitCode).toBe(0);
+			expect(io.stderr).toContain("project: ");
+			expect(io.stderr).toContain("constraint: ");
+			expect(io.stderr).not.toContain("OpenProse CLI");
+			expect(seen).toEqual([
+				"prose run demo.prose.md --audience contributors --project 'OpenProse CLI' --constraint 'keep it deterministic'",
+			]);
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
+
+	it("forwards supplied startup caller inputs without prompting", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-startup-supplied-"));
+		const io = memoryStreams();
+		const seen: string[] = [];
+
+		try {
+			writePromptableService(join(temp, "demo.prose.md"));
+
+			const exitCode = await runForwardedProseCommand({
+				command: "run",
+				argv: [
+					"demo.prose.md",
+					"--project=OpenProse",
+					"--audience",
+					"contributors",
+					"--constraint=small",
+					"--no-prompt",
+					"--harness",
+					"mock",
+				],
+				cwd: temp,
+				env: {},
+				stdout: io.streams.stdout,
+				stderr: io.streams.stderr,
+				stdin: fakeStdin(true),
+				startupInputReader: async () => {
+					throw new Error("should not prompt");
+				},
+				harnessFactory: () => ({
+					name: "mock",
+					async run(prompt) {
+						seen.push(prompt);
+						return 0;
+					},
+				}),
+			});
+
+			expect(exitCode).toBe(0);
+			expect(io.stderr).toBe("");
+			expect(seen).toEqual([
+				"prose run demo.prose.md --project=OpenProse --audience contributors --constraint=small",
+			]);
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
+
+	it("fails before harness invocation when startup caller inputs are missing in non-TTY", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-startup-non-tty-"));
+		const io = memoryStreams();
+		let harnessCalled = false;
+
+		try {
+			writePromptableService(join(temp, "demo.prose.md"));
+
+			await expect(
+				runForwardedProseCommand({
+					command: "run",
+					argv: ["demo.prose.md", "--harness", "mock"],
+					cwd: temp,
+					env: {},
+					stdout: io.streams.stdout,
+					stderr: io.streams.stderr,
+					stdin: fakeStdin(false),
+					harnessFactory: () => ({
+						name: "mock",
+						async run() {
+							harnessCalled = true;
+							return 0;
+						},
+					}),
+				}),
+			).rejects.toThrow("Missing required caller inputs: project, audience, constraint");
+
+			expect(harnessCalled).toBe(false);
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
+
+	it("treats no-prompt as an escape hatch for promptable runs", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-startup-no-prompt-"));
+		const io = memoryStreams();
+		let harnessCalled = false;
+
+		try {
+			writePromptableService(join(temp, "demo.prose.md"));
+
+			await expect(
+				runForwardedProseCommand({
+					command: "run",
+					argv: ["demo.prose.md", "--no-prompt", "--harness", "mock"],
+					cwd: temp,
+					env: {},
+					stdout: io.streams.stdout,
+					stderr: io.streams.stderr,
+					stdin: fakeStdin(true),
+					startupInputReader: async () => "unused",
+					harnessFactory: () => ({
+						name: "mock",
+						async run() {
+							harnessCalled = true;
+							return 0;
+						},
+					}),
+				}),
+			).rejects.toThrow("Missing required caller inputs: project, audience, constraint");
+
+			expect(harnessCalled).toBe(false);
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
+
+	it("preserves non-local handles and literal args after the separator", async () => {
+		const io = memoryStreams();
+		const seen: string[] = [];
+
+		const exitCode = await runForwardedProseCommand({
+			command: "run",
+			argv: ["std/demo", "--", "--harness", "literal"],
+			cwd: "/repo",
+			env: {},
+			stdout: io.streams.stdout,
+			stderr: io.streams.stderr,
+			stdin: fakeStdin(false),
+			startupInputReader: async () => {
+				throw new Error("should not prompt");
+			},
+			harnessFactory: () => ({
+				name: "mock",
+				async run(prompt) {
+					seen.push(prompt);
+					return 0;
+				},
+			}),
+		});
+
+		expect(exitCode).toBe(0);
+		expect(seen).toEqual(["prose run std/demo -- --harness literal"]);
 	});
 
 	it("loads OpenProse skill bootstrap after preflight and passes it to the harness", async () => {

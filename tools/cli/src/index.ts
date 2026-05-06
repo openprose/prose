@@ -7,7 +7,21 @@ import { fileURLToPath } from "node:url";
 import { normalizeEntrypointArgv } from "./commands/base.js";
 
 export { normalizeEntrypointArgv, runForwardedProseCommand, splitHarnessArgs } from "./commands/base.js";
-export { supportedCommands, canonicalPrompt, CommandModelError, usageFor } from "./prose/index.js";
+export {
+	CommandModelError,
+	canonicalPrompt,
+	parseRunCallerInputArgs,
+	readCallerInterface,
+	resolveStartupInputs,
+	supportedCommands,
+	usageFor,
+	type CallerInterfaceInput,
+	type PromptInputLike,
+	type ResolveStartupInputsOptions,
+	type ResolveStartupInputsResult,
+	type StartupInputPromptRequest,
+	type StartupInputReader,
+} from "./prose/index.js";
 export {
 	ATTACHED_OPENPROSE_ROOT_PATH,
 	OPENPROSE_JUDGE_SOURCE_PATH,

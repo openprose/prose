@@ -6,6 +6,17 @@ export {
 	type CommandName,
 } from "./command-model.js";
 export {
+	parseRunCallerInputArgs,
+	readCallerInterface,
+	resolveStartupInputs,
+	type CallerInterfaceInput,
+	type PromptInputLike,
+	type ResolveStartupInputsOptions,
+	type ResolveStartupInputsResult,
+	type StartupInputPromptRequest,
+	type StartupInputReader,
+} from "./startup-inputs.js";
+export {
 	ATTACHED_OPENPROSE_ROOT_PATH,
 	USER_OPENPROSE_ROOT_PATH,
 	resolveOpenProseRoot,
