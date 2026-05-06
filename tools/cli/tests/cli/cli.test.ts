@@ -40,6 +40,12 @@ function memoryStreams() {
 	};
 }
 
+function tempOpenProseProject(prefix: string): string {
+	const temp = mkdtempSync(join(tmpdir(), prefix));
+	writeFileSync(join(temp, "prose.lock"), "");
+	return temp;
+}
+
 function writeManifestWithErrorDiagnostic(path: string): void {
 	const manifest = JSON.parse(readFileSync(stargazerFixture, "utf8")) as { diagnostics: Array<{ severity: string }> };
 	manifest.diagnostics[0]!.severity = "error";
@@ -452,6 +458,61 @@ describe("runForwardedProseCommand", () => {
 		}
 	});
 
+	it("can chain into a prose program generated at a known path by the previous run", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-chain-generated-target-"));
+		const io = memoryStreams();
+		const prompts: string[] = [];
+		let runCount = 0;
+		const generatedTarget = join("generated", "skill-workflow.prose.md");
+
+		try {
+			writeSimpleService(join(temp, "discover-skills.prose.md"), "discover-skills");
+
+			const result = await runChainCommand({
+				argv: ["discover-skills.prose.md", generatedTarget, "--harness", "mock"],
+				cwd: temp,
+				env: {},
+				stdout: io.streams.stdout,
+				stderr: io.streams.stderr,
+				harnessFactory: () => ({
+					name: "mock",
+					async run(prompt, options) {
+						prompts.push(prompt);
+						runCount += 1;
+						const runId = `run-${runCount}`;
+						if (runCount === 1) {
+							mkdirSync(join(temp, "generated"), { recursive: true });
+							writeRunConsumerService(join(temp, generatedTarget));
+						}
+						writeFileSync(
+							options.env!.PROSE_RUN_RESULT_PATH!,
+							JSON.stringify({
+								command: "run",
+								status: "complete",
+								target: runCount === 1 ? "discover-skills.prose.md" : generatedTarget,
+								runId,
+								runPath: join(temp, `runs/${runId}`),
+							}),
+						);
+						return 0;
+					},
+				}),
+			});
+
+			expect(result.status).toBe("complete");
+			expect(result.finalRunId).toBe("run-2");
+			expect(result.steps[1]?.inputs).toEqual({
+				subject: { type: "run", fromStep: 1, runId: "run-1" },
+			});
+			expect(prompts).toEqual([
+				"prose run discover-skills.prose.md",
+				"prose run generated/skill-workflow.prose.md --subject run-1",
+			]);
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
+
 	it("fails a chain step before running when run handoff is ambiguous", async () => {
 		const temp = mkdtempSync(join(tmpdir(), "prose-chain-ambiguous-"));
 		const io = memoryStreams();
@@ -841,7 +902,7 @@ FORWARDED_BOOTSTRAP_SENTINEL
 
 describe("runCompileCommand", () => {
 	it("validates the manifest emitted by the intelligent compiler", async () => {
-		const temp = mkdtempSync(join(tmpdir(), "prose-compile-valid-"));
+		const temp = tempOpenProseProject("prose-compile-valid-");
 		const io = memoryStreams();
 
 		try {
@@ -870,7 +931,7 @@ describe("runCompileCommand", () => {
 	});
 
 	it("accepts a valid manifest when the compiler harness exits nonzero after writing it", async () => {
-		const temp = mkdtempSync(join(tmpdir(), "prose-compile-valid-nonzero-"));
+		const temp = tempOpenProseProject("prose-compile-valid-nonzero-");
 		const io = memoryStreams();
 
 		try {
@@ -900,7 +961,7 @@ describe("runCompileCommand", () => {
 	});
 
 	it("preserves nonzero compiler exits when the manifest has error diagnostics", async () => {
-		const temp = mkdtempSync(join(tmpdir(), "prose-compile-error-diagnostic-"));
+		const temp = tempOpenProseProject("prose-compile-error-diagnostic-");
 		const io = memoryStreams();
 
 		try {
@@ -930,7 +991,7 @@ describe("runCompileCommand", () => {
 	});
 
 	it("preserves abort exits after the compiler writes a valid manifest", async () => {
-		const temp = mkdtempSync(join(tmpdir(), "prose-compile-abort-"));
+		const temp = tempOpenProseProject("prose-compile-abort-");
 		const io = memoryStreams();
 		const controller = new AbortController();
 
@@ -963,7 +1024,7 @@ describe("runCompileCommand", () => {
 	});
 
 	it("rejects successful compiler runs that do not emit valid IR", async () => {
-		const temp = mkdtempSync(join(tmpdir(), "prose-compile-invalid-"));
+		const temp = tempOpenProseProject("prose-compile-invalid-");
 		const io = memoryStreams();
 
 		try {
@@ -995,7 +1056,7 @@ describe("runCompileCommand", () => {
 	});
 
 	it("fails closed before forwarding when a declared skill cannot be resolved", async () => {
-		const temp = mkdtempSync(join(tmpdir(), "prose-compile-skill-unresolved-"));
+		const temp = tempOpenProseProject("prose-compile-skill-unresolved-");
 		const home = mkdtempSync(join(tmpdir(), "prose-compile-skill-home-"));
 		const io = memoryStreams();
 		let harnessInvocations = 0;
@@ -1047,7 +1108,7 @@ kind: system
 	});
 
 	it("rejects successful compiler runs that leave stale valid IR behind", async () => {
-		const temp = mkdtempSync(join(tmpdir(), "prose-compile-stale-"));
+		const temp = tempOpenProseProject("prose-compile-stale-");
 		const io = memoryStreams();
 
 		try {
