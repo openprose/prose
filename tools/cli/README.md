@@ -75,6 +75,8 @@ Examples:
 prose run std/evals/inspector
 prose run std/evals/inspector --harness codex-sdk
 prose run co/systems/company-repo-checker --harness claude-sdk
+prose run demo.prose.md --json
+prose chain gather.prose.md inspect.prose.md --json
 PROSE_HARNESS=claude-sdk prose run std/evals/inspector
 ```
 
@@ -161,6 +163,57 @@ in an interactive terminal:
 prose run demo.prose.md --no-prompt --project "OpenProse"
 ```
 
+### Structured run results
+
+Use `--json` with `prose run` when a script needs the durable run ID:
+
+```bash
+prose run demo.prose.md --json
+```
+
+In JSON mode, stdout contains exactly one JSON object. Harness chatter,
+startup prompts, and progress text are written to stderr so stdout can be
+parsed directly:
+
+```json
+{"command":"run","status":"complete","exitCode":0,"target":"demo.prose.md","runId":"20260506-101010-a11111","runPath":"/repo/runs/20260506-101010-a11111","bindingsPath":"/repo/runs/20260506-101010-a11111/bindings"}
+```
+
+The selected harness must write the structured result through the CLI-provided
+`PROSE_RUN_RESULT_PATH` protocol. If a harness completes without reporting a
+run ID, JSON mode fails instead of guessing from human-readable output.
+
+### Chained runs
+
+Use `prose chain` to run separate local Prose programs in sequence while
+preserving one top-level run boundary per step:
+
+```bash
+prose chain gather.prose.md inspect.prose.md summarize.prose.md
+```
+
+Version 1 accepts local `*.prose.md` targets only. After each step completes,
+the chain runner passes the immediate previous run ID into the next step only
+when that step has exactly one missing `run` caller input:
+
+```markdown
+### Requires
+
+- `subject`: run — completed upstream run to inspect
+```
+
+Ambiguous handoff fails before the downstream step starts:
+
+```markdown
+### Requires
+
+- `baseline`: run — completed baseline run
+- `candidate`: run — completed candidate run
+```
+
+Use `prose chain --json` for a machine-readable step ledger. As with
+`prose run --json`, stdout contains only JSON and step progress goes to stderr.
+
 The tarball installer is intentionally a Node.js installer: the CLI package is
 JavaScript, so the installed shim executes Node.js 18 or newer. The script
 verifies release checksums by default, rejects unsafe tar paths, symlinks,
@@ -178,6 +231,8 @@ prose compile src/responsibilities --out dist
 cp dist/manifest.next.json dist/manifest.active.json
 prose serve
 prose run src/systems/reviewer.prose.md
+prose run src/systems/reviewer.prose.md --json
+prose chain src/collect.prose.md src/inspect.prose.md
 prose run co/systems/company-repo-checker --harness claude-sdk
 prose upgrade
 prose upgrade --dry-run

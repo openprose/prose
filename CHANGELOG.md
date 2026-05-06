@@ -9,14 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **CLI run chaining** — `prose run --json` now exposes structured run results
+  for scripting, and `prose chain` runs local `*.prose.md` targets as separate
+  top-level activations with deterministic `run`-typed handoff between steps.
+  JSON modes keep stdout machine-readable and route harness chatter to stderr.
 - **Declared `### Skills` section** — Components may now declare the agent
   harness skills they require in a `### Skills` section using the
-  `namespace:name` colon form (e.g. `document-skills:pdf`). The compiler
-  program resolves declared skills against `./skills/`, `~/.claude/skills/`,
-  `~/.codex/skills/`, and `~/.agents/skills/`, and `prose compile` fails closed
-  with a `skill_unresolved` diagnostic naming the skill and the searched paths
-  if any are missing. OpenProse never installs harness skills — installing them
-  remains the user's responsibility (BYO harness). See
+  `namespace:name` colon form (e.g. `document-skills:pdf`) or local bare host
+  skill names (e.g. `to-prd`). The compiler program resolves declared skills
+  against `./skills/`, `~/.claude/skills/`, `~/.codex/skills/`, and
+  `~/.agents/skills/`, and `prose compile` fails closed with a
+  `skill_unresolved` diagnostic naming the skill and the searched paths if any
+  are missing. OpenProse never installs harness skills — installing them remains
+  the user's responsibility (BYO harness). See
   `skills/open-prose/contract-markdown.md` (Skills),
   `skills/open-prose/compiler/index.prose.md` (skills_resolver), and
   `skills/open-prose/examples/declared-skills/` for the spec and a worked

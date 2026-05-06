@@ -10,12 +10,21 @@ export {
 	readCallerInterface,
 	resolveStartupInputs,
 	type CallerInterfaceInput,
+	type ParsedRunArgs,
 	type PromptInputLike,
 	type ResolveStartupInputsOptions,
 	type ResolveStartupInputsResult,
 	type StartupInputPromptRequest,
 	type StartupInputReader,
 } from "./startup-inputs.js";
+export {
+	createStructuredRunResultRequest,
+	failedRunResult,
+	readStructuredRunResult,
+	type ProseRunResult,
+	type ProseRunStatus,
+	type StructuredRunResultRequest,
+} from "./run-result.js";
 export {
 	ATTACHED_OPENPROSE_ROOT_PATH,
 	USER_OPENPROSE_ROOT_PATH,

@@ -6,21 +6,42 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { normalizeEntrypointArgv } from "./commands/base.js";
 
-export { normalizeEntrypointArgv, runForwardedProseCommand, splitHarnessArgs } from "./commands/base.js";
+export {
+	extractJsonFlag,
+	normalizeEntrypointArgv,
+	runForwardedProseCommand,
+	runForwardedProseCommandDetailed,
+	runForwardedProseCommandJson,
+	splitHarnessArgs,
+	type ForwardedProseCommandResult,
+} from "./commands/base.js";
+export {
+	runChainCommand,
+	type ChainResult,
+	type ChainRunOptions,
+	type ChainStepResult,
+} from "./commands/chain.js";
 export {
 	CommandModelError,
 	canonicalPrompt,
+	createStructuredRunResultRequest,
+	failedRunResult,
 	parseRunCallerInputArgs,
 	readCallerInterface,
+	readStructuredRunResult,
 	resolveStartupInputs,
 	supportedCommands,
 	usageFor,
 	type CallerInterfaceInput,
+	type ParsedRunArgs,
 	type PromptInputLike,
+	type ProseRunResult,
+	type ProseRunStatus,
 	type ResolveStartupInputsOptions,
 	type ResolveStartupInputsResult,
 	type StartupInputPromptRequest,
 	type StartupInputReader,
+	type StructuredRunResultRequest,
 } from "./prose/index.js";
 export {
 	ATTACHED_OPENPROSE_ROOT_PATH,

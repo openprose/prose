@@ -118,14 +118,16 @@ agent skills_resolver:
   Resolve declared `### Skills` for every system and service in the source
   graph.
   Load contract-markdown.md (Skills) and compiler/ir-v0.md.
-  For each declared skill in colon form (namespace:name), search in order:
+  For each declared skill, search in order:
     1. <project>/skills/
     2. ~/.claude/skills/
     3. ~/.codex/skills/
     4. ~/.agents/skills/
-  A skill resolves when one of those paths contains a directory whose name
-  matches the skill name in either flat (<name>) or namespaced
-  (<namespace>/<name>) layout.
+  Prefer colon-form names (namespace:name) for shareable contracts. A
+  colon-form skill resolves when one of those paths contains either a flat
+  namespace:name directory or a namespace/name directory. Bare host skill names
+  are allowed for local harness skills and resolve from a matching directory
+  name.
   Aggregate scope: a system's declared skills apply to every sub-service, and
   a service's declarations are additive — they extend, never replace, the
   inherited set.

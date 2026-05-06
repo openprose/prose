@@ -41,7 +41,7 @@ export interface ResolveDeclaredSkillsForFileResult {
 const SKILL_HEADING = /^###[ \t]+skills[ \t]*$/i;
 const NEXT_HEADING = /^#{1,3}[ \t]/;
 const BULLET = /^[-*+][ \t]+(.+?)[ \t]*$/;
-const SKILL_NAME = /[A-Za-z0-9][A-Za-z0-9_.-]*:[A-Za-z0-9][A-Za-z0-9_.-]*/;
+const SKILL_NAME = /^`?([A-Za-z0-9][A-Za-z0-9_.-]*(?::[A-Za-z0-9][A-Za-z0-9_.-]*)?)`?(?:$|[ \t]|[—-])/;
 
 export function parseDeclaredSkills(content: string): string[] {
 	const lines = content.split(/\r?\n/);
@@ -78,7 +78,10 @@ export function parseDeclaredSkills(content: string): string[] {
 			continue;
 		}
 
-		const name = match[0];
+		const name = match[1] ?? "";
+		if (name.length === 0) {
+			continue;
+		}
 		if (!seen.has(name)) {
 			seen.add(name);
 			skills.push(name);
@@ -104,9 +107,10 @@ export async function resolveDeclaredSkill(
 ): Promise<ResolveDeclaredSkillResult> {
 	const searched = DECLARED_SKILL_SEARCH_DIRECTORIES(options);
 	for (const directory of searched) {
-		const candidate = join(directory, skill);
-		if (await isDirectory(candidate)) {
-			return { skill, resolved: true, path: candidate, searched };
+		for (const candidate of candidateSkillPaths(directory, skill)) {
+			if (await isDirectory(candidate)) {
+				return { skill, resolved: true, path: candidate, searched };
+			}
 		}
 	}
 	return { skill, resolved: false, searched };
@@ -220,6 +224,15 @@ function stripBackticks(value: string): string {
 		return trimmed.slice(1, -1);
 	}
 	return trimmed;
+}
+
+function candidateSkillPaths(directory: string, skill: string): string[] {
+	const paths = [join(directory, skill)];
+	const separator = skill.indexOf(":");
+	if (separator !== -1) {
+		paths.push(join(directory, skill.slice(0, separator), skill.slice(separator + 1)));
+	}
+	return paths;
 }
 
 async function isDirectory(path: string): Promise<boolean> {

@@ -1,5 +1,6 @@
 export type CommandName =
 	| "compile"
+	| "chain"
 	| "run"
 	| "lint"
 	| "preflight"
@@ -23,6 +24,7 @@ export class CommandModelError extends Error {
 
 export const supportedCommands = [
 	"compile",
+	"chain",
 	"run",
 	"lint",
 	"preflight",
@@ -37,6 +39,7 @@ export const supportedCommands = [
 
 const usageByCommand: Record<CommandName, string> = {
 	compile: "prose compile [path] [--out <dir>]",
+	chain: "prose chain <first.prose.md> <next.prose.md> [more.prose.md...]",
 	run: "prose run <file.prose.md|package/handle> [inputs...]",
 	lint: "prose lint <file.prose.md>",
 	preflight: "prose preflight <file.prose.md>",
@@ -62,6 +65,9 @@ function validate(command: CommandName, args: readonly string[]): void {
 	switch (command) {
 		case "compile":
 			requireCompileArgs(command, args);
+			return;
+		case "chain":
+			requireChainArgs(command, args);
 			return;
 		case "run":
 			requireAtLeastOne(command, args, "<file.prose.md|package/handle>");
@@ -101,6 +107,20 @@ function validate(command: CommandName, args: readonly string[]): void {
 				fail(command, `Unexpected argument '${args[0] ?? ""}' for 'prose help'.`);
 			}
 			return;
+	}
+}
+
+function requireChainArgs(command: "chain", args: readonly string[]): void {
+	if (args.length < 2) {
+		fail(command, "Expected at least two local <file.prose.md> targets for 'prose chain'.");
+	}
+	for (const arg of args) {
+		if (arg.startsWith("-")) {
+			fail(command, `Unexpected option '${arg}' for 'prose chain'.`);
+		}
+		if (!arg.endsWith(".prose.md") || arg.includes("://")) {
+			fail(command, `Expected local <file.prose.md> target for 'prose chain', got '${arg}'.`);
+		}
 	}
 }
 

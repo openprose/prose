@@ -405,10 +405,13 @@ compile` fails closed with a `skill_unresolved` diagnostic if any are missing.
 
 - document-skills:pdf
 - document-skills:xlsx
+- to-prd
 ```
 
-Skill names use the `namespace:name` colon form that matches the plugin
-marketplace convention shown in `/skill` invocations.
+Skill names should use the `namespace:name` colon form for shareable contracts;
+this matches the plugin marketplace convention shown in `/skill` invocations.
+Bare host skill names are also allowed for local harness skills, such as user
+skills installed under `~/.codex/skills/to-prd`.
 
 Rules:
 
@@ -421,6 +424,9 @@ Rules:
   2. `~/.claude/skills/`.
   3. `~/.codex/skills/`.
   4. `~/.agents/skills/`.
+- A colon-form skill resolves from either a flat directory named
+  `namespace:name` or a namespaced directory at `namespace/name` inside one of
+  those roots. A bare skill resolves from a matching directory name.
 - If a declared skill cannot be resolved in any of those paths, `prose compile`
   fails closed with a `skill_unresolved` diagnostic naming the skill and the
   paths that were searched.

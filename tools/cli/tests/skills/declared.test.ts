@@ -56,7 +56,7 @@ A system that extracts invoice data.
 		expect(skills).toEqual([]);
 	});
 
-	it("extracts colon-form skill names from a ### Skills section", () => {
+	it("extracts skill names from a ### Skills section", () => {
 		const skills = parseDeclaredSkills(`---
 name: invoice-extractor
 kind: system
@@ -66,8 +66,10 @@ kind: system
 
 - document-skills:pdf
 - \`document-skills:xlsx\`
+- to-prd
+- \`tdd\`
 `);
-		expect(skills).toEqual(["document-skills:pdf", "document-skills:xlsx"]);
+		expect(skills).toEqual(["document-skills:pdf", "document-skills:xlsx", "to-prd", "tdd"]);
 	});
 
 	it("ignores prose lines and free text inside the section", () => {
@@ -137,6 +139,38 @@ describe("resolveDeclaredSkill", () => {
 			expect(result.resolved).toBe(true);
 			expect(result.path).toBe(join(home, ".agents", "skills", "document-skills:pdf"));
 			expect(result.skill).toBe("document-skills:pdf");
+		} finally {
+			rmSync(home, { recursive: true, force: true });
+			rmSync(cwd, { recursive: true, force: true });
+		}
+	});
+
+	it("resolves colon-form skills from a namespace directory layout", async () => {
+		const home = tempDir();
+		const cwd = tempDir();
+		try {
+			writeSkillStub(join(home, ".codex", "skills", "document-skills"), "pdf");
+
+			const result = await resolveDeclaredSkill("document-skills:pdf", { cwd, home });
+			expect(result.resolved).toBe(true);
+			expect(result.path).toBe(join(home, ".codex", "skills", "document-skills", "pdf"));
+			expect(result.skill).toBe("document-skills:pdf");
+		} finally {
+			rmSync(home, { recursive: true, force: true });
+			rmSync(cwd, { recursive: true, force: true });
+		}
+	});
+
+	it("resolves bare host skill names from installed skill directories", async () => {
+		const home = tempDir();
+		const cwd = tempDir();
+		try {
+			writeSkillStub(join(home, ".codex", "skills"), "to-prd");
+
+			const result = await resolveDeclaredSkill("to-prd", { cwd, home });
+			expect(result.resolved).toBe(true);
+			expect(result.path).toBe(join(home, ".codex", "skills", "to-prd"));
+			expect(result.skill).toBe("to-prd");
 		} finally {
 			rmSync(home, { recursive: true, force: true });
 			rmSync(cwd, { recursive: true, force: true });

@@ -31,9 +31,10 @@ export interface ResolveStartupInputsResult {
 export interface CallerInterfaceInput {
 	name: string;
 	description?: string;
+	type?: "run" | "run[]";
 }
 
-interface ParsedRunArgs {
+export interface ParsedRunArgs {
 	args: string[];
 	noPrompt: boolean;
 	provided: Set<string>;
@@ -118,10 +119,24 @@ export async function readCallerInterface(path: string): Promise<CallerInterface
 		inputs.push({
 			name,
 			...(description === undefined || description.length === 0 ? {} : { description }),
+			...callerInputType(description),
 		});
 	}
 
 	return dedupeInputs(inputs);
+}
+
+function callerInputType(description: string | undefined): Pick<CallerInterfaceInput, "type"> {
+	if (description === undefined) {
+		return {};
+	}
+
+	const match = /^(run\[\]|run)(?:\b|\s|[—-])/.exec(description.trim());
+	if (match === null) {
+		return {};
+	}
+	const type = match[1];
+	return type === "run" || type === "run[]" ? { type } : {};
 }
 
 export function parseRunCallerInputArgs(args: readonly string[], callerInterface: readonly CallerInterfaceInput[]): ParsedRunArgs {

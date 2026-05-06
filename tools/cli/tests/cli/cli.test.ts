@@ -4,10 +4,14 @@ import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
+	extractJsonFlag,
 	isDirectEntrypoint,
 	normalizeEntrypointArgv,
 	readCallerInterface,
+	runChainCommand,
+	runForwardedProseCommandDetailed,
 	runForwardedProseCommand,
+	runForwardedProseCommandJson,
 	splitHarnessArgs,
 	type PromptInputLike,
 } from "../../src/index.js";
@@ -81,6 +85,60 @@ kind: service
 	);
 }
 
+function writeSimpleService(path: string, name = "simple"): void {
+	writeFileSync(
+		path,
+		`---
+name: ${name}
+kind: service
+---
+
+### Ensures
+
+- \`result\`: demo result
+`,
+	);
+}
+
+function writeRunConsumerService(path: string): void {
+	writeFileSync(
+		path,
+		`---
+name: run-consumer
+kind: service
+---
+
+### Requires
+
+- \`subject\`: run — completed upstream run
+
+### Ensures
+
+- \`summary\`: summary of the upstream run
+`,
+	);
+}
+
+function writeAmbiguousRunConsumerService(path: string): void {
+	writeFileSync(
+		path,
+		`---
+name: ambiguous-run-consumer
+kind: service
+---
+
+### Requires
+
+- \`baseline\`: run — completed baseline run
+- \`candidate\`: run — completed candidate run
+
+### Ensures
+
+- \`comparison\`: comparison of both runs
+`,
+	);
+}
+
 describe("Oclif entrypoint helpers", () => {
 	it("registers serve as a local runtime command", () => {
 		expect(commands.serve).toBeDefined();
@@ -123,6 +181,13 @@ describe("Oclif entrypoint helpers", () => {
 			"--harness",
 			"literal",
 		]);
+	});
+
+	it("extracts json as a run control flag before literal args", () => {
+		expect(extractJsonFlag(["--json", "flow.prose.md", "--", "--json"])).toEqual({
+			json: true,
+			args: ["flow.prose.md", "--", "--json"],
+		});
 	});
 });
 
@@ -167,6 +232,21 @@ describe("caller interface startup input parsing", () => {
 			rmSync(temp, { recursive: true, force: true });
 		}
 	});
+
+	it("recognizes run-typed caller inputs", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-run-typed-inputs-"));
+
+		try {
+			const path = join(temp, "consumer.prose.md");
+			writeRunConsumerService(path);
+
+			await expect(readCallerInterface(path)).resolves.toEqual([
+				{ name: "subject", description: "run — completed upstream run", type: "run" },
+			]);
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
 });
 
 describe("runForwardedProseCommand", () => {
@@ -197,6 +277,222 @@ describe("runForwardedProseCommand", () => {
 		expect(seen).toEqual(["prose run './flows/needs review.prose.md' --topic 'two words'", "/repo", "secret"]);
 		expect(io.stdout).toBe("out");
 		expect(io.stderr).toBe("err");
+	});
+
+	it("returns a structured run result when the harness writes the result protocol", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-structured-run-"));
+		const io = memoryStreams();
+
+		try {
+			writeSimpleService(join(temp, "demo.prose.md"));
+
+			const result = await runForwardedProseCommandDetailed({
+				command: "run",
+				argv: ["demo.prose.md", "--harness", "mock"],
+				cwd: temp,
+				env: {},
+				stdout: io.streams.stdout,
+				stderr: io.streams.stderr,
+				structuredResult: true,
+				harnessFactory: () => ({
+					name: "mock",
+					async run(prompt, options) {
+						expect(prompt).toBe("prose run demo.prose.md");
+						const resultPath = options.env?.PROSE_RUN_RESULT_PATH;
+						expect(resultPath).toBeDefined();
+						writeFileSync(
+							resultPath!,
+							JSON.stringify({
+								command: "run",
+								status: "complete",
+								target: "demo.prose.md",
+								runId: "run-1",
+								runPath: join(temp, "runs/run-1"),
+								bindingsPath: join(temp, "runs/run-1/bindings"),
+							}),
+						);
+						return 0;
+					},
+				}),
+			});
+
+			expect(result.run).toMatchObject({
+				command: "run",
+				status: "complete",
+				exitCode: 0,
+				target: "demo.prose.md",
+				runId: "run-1",
+			});
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
+
+	it("writes json-only stdout for prose run json mode", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-json-run-"));
+		const io = memoryStreams();
+
+		try {
+			writeSimpleService(join(temp, "demo.prose.md"));
+
+			const exitCode = await runForwardedProseCommandJson({
+				command: "run",
+				argv: ["demo.prose.md", "--harness", "mock"],
+				cwd: temp,
+				env: {},
+				stdout: io.streams.stdout,
+				stderr: io.streams.stderr,
+				harnessFactory: () => ({
+					name: "mock",
+					async run(_prompt, options) {
+						options.stdout.write("human chatter\n");
+						writeFileSync(
+							options.env!.PROSE_RUN_RESULT_PATH!,
+							JSON.stringify({
+								command: "run",
+								status: "complete",
+								target: "demo.prose.md",
+								runId: "run-json",
+								runPath: join(temp, "runs/run-json"),
+							}),
+						);
+						return 0;
+					},
+				}),
+			});
+
+			expect(exitCode).toBe(0);
+			expect(JSON.parse(io.stdout) as { runId: string }).toMatchObject({ runId: "run-json" });
+			expect(io.stderr).toContain("human chatter");
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
+
+	it("fails structured run mode when the harness does not report a run id", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-json-run-missing-"));
+		const io = memoryStreams();
+
+		try {
+			writeSimpleService(join(temp, "demo.prose.md"));
+
+			const exitCode = await runForwardedProseCommandJson({
+				command: "run",
+				argv: ["demo.prose.md", "--harness", "mock"],
+				cwd: temp,
+				env: {},
+				stdout: io.streams.stdout,
+				stderr: io.streams.stderr,
+				harnessFactory: () => ({
+					name: "mock",
+					async run() {
+						return 0;
+					},
+				}),
+			});
+
+			expect(exitCode).toBe(1);
+			expect(JSON.parse(io.stdout) as { status: string; error: string }).toMatchObject({
+				status: "failed",
+				error: "Harness completed without reporting a run ID.",
+			});
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
+
+	it("chains local prose runs by passing the previous run id to a single missing run input", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-chain-success-"));
+		const io = memoryStreams();
+		const prompts: string[] = [];
+		let runCount = 0;
+
+		try {
+			writeSimpleService(join(temp, "first.prose.md"), "first");
+			writeRunConsumerService(join(temp, "second.prose.md"));
+
+			const result = await runChainCommand({
+				argv: ["first.prose.md", "second.prose.md", "--harness", "mock"],
+				cwd: temp,
+				env: {},
+				stdout: io.streams.stdout,
+				stderr: io.streams.stderr,
+				harnessFactory: () => ({
+					name: "mock",
+					async run(prompt, options) {
+						prompts.push(prompt);
+						runCount += 1;
+						const runId = `run-${runCount}`;
+						writeFileSync(
+							options.env!.PROSE_RUN_RESULT_PATH!,
+							JSON.stringify({
+								command: "run",
+								status: "complete",
+								target: runCount === 1 ? "first.prose.md" : "second.prose.md",
+								runId,
+								runPath: join(temp, `runs/${runId}`),
+							}),
+						);
+						return 0;
+					},
+				}),
+			});
+
+			expect(result.status).toBe("complete");
+			expect(result.finalRunId).toBe("run-2");
+			expect(result.steps[1]?.inputs).toEqual({
+				subject: { type: "run", fromStep: 1, runId: "run-1" },
+			});
+			expect(prompts).toEqual([
+				"prose run first.prose.md",
+				"prose run second.prose.md --subject run-1",
+			]);
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
+
+	it("fails a chain step before running when run handoff is ambiguous", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-chain-ambiguous-"));
+		const io = memoryStreams();
+		let harnessCalls = 0;
+
+		try {
+			writeSimpleService(join(temp, "first.prose.md"), "first");
+			writeAmbiguousRunConsumerService(join(temp, "compare.prose.md"));
+
+			const result = await runChainCommand({
+				argv: ["first.prose.md", "compare.prose.md", "--harness", "mock"],
+				cwd: temp,
+				env: {},
+				stdout: io.streams.stdout,
+				stderr: io.streams.stderr,
+				harnessFactory: () => ({
+					name: "mock",
+					async run(_prompt, options) {
+						harnessCalls += 1;
+						writeFileSync(
+							options.env!.PROSE_RUN_RESULT_PATH!,
+							JSON.stringify({
+								command: "run",
+								status: "complete",
+								target: "first.prose.md",
+								runId: "run-1",
+								runPath: join(temp, "runs/run-1"),
+							}),
+						);
+						return 0;
+					},
+				}),
+			});
+
+			expect(harnessCalls).toBe(1);
+			expect(result.status).toBe("failed");
+			expect(result.failedStep).toBe(2);
+			expect(result.steps[1]?.error).toContain("missing run inputs baseline, candidate");
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
 	});
 
 	it("forwards compile prompts through the selected harness", async () => {

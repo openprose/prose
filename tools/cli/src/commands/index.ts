@@ -1,5 +1,6 @@
 import { Command, Help as OclifHelp } from "@oclif/core";
 import { createForwardCommand, type ForwardCommandDefinition } from "./base.js";
+import Chain from "./chain.js";
 import Compile from "./compile.js";
 import Doctor from "./doctor.js";
 import Serve from "./serve.js";
@@ -64,6 +65,7 @@ const forwardCommandDefinitions = {
 } satisfies Record<string, ForwardCommandDefinition>;
 
 const commands = {
+	chain: Chain,
 	compile: Compile,
 	doctor: Doctor,
 	help: Help,

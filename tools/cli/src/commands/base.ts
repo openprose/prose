@@ -1,6 +1,12 @@
 import { Command } from "@oclif/core";
 import type { CommandName } from "../prose/index.js";
 import { canonicalPrompt, CommandModelError, usageFor } from "../prose/index.js";
+import {
+	createStructuredRunResultRequest,
+	failedRunResult,
+	readStructuredRunResult,
+	type ProseRunResult,
+} from "../prose/run-result.js";
 import { resolveStartupInputs, type PromptInputLike, type StartupInputReader } from "../prose/startup-inputs.js";
 import { createHarness, type HarnessName } from "../harnesses/index.js";
 import type { Harness, WritableStreamLike } from "../harnesses/types.js";
@@ -27,9 +33,17 @@ export interface ForwardRunOptions {
 	stdin?: PromptInputLike;
 	signal?: AbortSignal;
 	harnessFactory?: (name: string) => Harness;
+	redirectStdoutToStderr?: boolean;
 	startupInputReader?: StartupInputReader;
 	skillBootstrap?: SkillBootstrapLoader | false;
 	skillPreflight?: SkillPreflight | false;
+	structuredResult?: boolean;
+}
+
+export interface ForwardedProseCommandResult {
+	exitCode: number;
+	prompt: string;
+	run?: ProseRunResult;
 }
 
 export interface ForwardCommandDefinition {
@@ -47,10 +61,28 @@ export abstract class ProseForwardCommand extends Command {
 	async run(): Promise<void> {
 		const controller = new AbortController();
 		const cleanup = forwardProcessSignals(controller);
+		const runJson = this.proseCommand === "run" ? extractJsonFlag(this.argv) : { json: false, args: this.argv };
 		try {
+			if (this.proseCommand === "run" && runJson.json) {
+				const exitCode = await runForwardedProseCommandJson({
+					command: this.proseCommand,
+					argv: runJson.args,
+					cwd: process.cwd(),
+					env: process.env,
+					stdout: process.stdout,
+					stderr: process.stderr,
+					stdin: process.stdin,
+					signal: controller.signal,
+				});
+				if (exitCode !== 0) {
+					this.exit(exitCode);
+				}
+				return;
+			}
+
 			const exitCode = await runForwardedProseCommand({
 				command: this.proseCommand,
-				argv: this.argv,
+				argv: runJson.args,
 				cwd: process.cwd(),
 				env: process.env,
 				stdout: process.stdout,
@@ -91,6 +123,35 @@ function isOclifExit(error: unknown): boolean {
 }
 
 export async function runForwardedProseCommand(options: ForwardRunOptions): Promise<number> {
+	const result = await runForwardedProseCommandDetailed(options);
+	return result.exitCode;
+}
+
+export async function runForwardedProseCommandJson(options: ForwardRunOptions): Promise<number> {
+	try {
+		const result = await runForwardedProseCommandDetailed({
+			...options,
+			redirectStdoutToStderr: true,
+			structuredResult: true,
+		});
+		const run = result.run ?? failedRunResult({
+			exitCode: result.exitCode,
+			...optionalTarget(options.argv[0]),
+			error: "Harness completed without reporting a run ID.",
+		});
+		writeJsonLine(options.stdout, run);
+		return run.exitCode;
+	} catch (error) {
+		const run = failedRunResult({
+			...optionalTarget(options.argv[0]),
+			error: error instanceof Error ? error.message : String(error),
+		});
+		writeJsonLine(options.stdout, run);
+		return run.exitCode;
+	}
+}
+
+export async function runForwardedProseCommandDetailed(options: ForwardRunOptions): Promise<ForwardedProseCommandResult> {
 	const { harness, args } = splitHarnessArgs(options.argv, options.env, options.command);
 	canonicalPrompt(options.command, args);
 	const startupInputs = await resolveStartupInputs({
@@ -108,21 +169,41 @@ export async function runForwardedProseCommand(options: ForwardRunOptions): Prom
 	const skillBootstrap = shouldLoadSkillBootstrap(options)
 		? await runSkillBootstrapLoader(harness, options)
 		: undefined;
+	const structuredResult = options.structuredResult === true && options.command === "run"
+		? createStructuredRunResultRequest()
+		: undefined;
 
 	const selectedHarness = (options.harnessFactory ?? createHarness)(harness);
-	return selectedHarness.run(prompt, {
-		...(skillBootstrap === undefined
-			? {}
-			: {
-					additionalDirectories: skillBootstrap.additionalDirectories,
-					systemPromptAppend: skillBootstrap.systemPromptAppend,
-				}),
-		cwd: options.cwd,
-		env: { ...options.env },
-		stdout: options.stdout,
-		stderr: options.stderr,
-		...(options.signal === undefined ? {} : { signal: options.signal }),
-	});
+	try {
+		const systemPromptAppend = composeSystemPrompt(
+			skillBootstrap?.systemPromptAppend,
+			structuredResult?.systemPromptAppend,
+		);
+		const exitCode = await selectedHarness.run(prompt, {
+			...(skillBootstrap === undefined
+				? {}
+				: {
+						additionalDirectories: skillBootstrap.additionalDirectories,
+					}),
+			cwd: options.cwd,
+			env: { ...options.env, ...(structuredResult?.env ?? {}) },
+			stdout: options.redirectStdoutToStderr === true ? options.stderr : options.stdout,
+			stderr: options.stderr,
+			...(options.signal === undefined ? {} : { signal: options.signal }),
+			...(systemPromptAppend === undefined ? {} : { systemPromptAppend }),
+		});
+		const result: ForwardedProseCommandResult = { exitCode, prompt };
+		if (structuredResult !== undefined) {
+			result.run = readStructuredRunResult(structuredResult.path, {
+				exitCode,
+				...optionalTarget(startupInputs.args[0]),
+			});
+			result.exitCode = result.run.exitCode;
+		}
+		return result;
+	} finally {
+		structuredResult?.cleanup();
+	}
 }
 
 function shouldRunSkillPreflight(options: ForwardRunOptions): boolean {
@@ -227,6 +308,29 @@ export function splitHarnessArgs(
 	return { harness, args };
 }
 
+export function extractJsonFlag(argv: readonly string[]): { json: boolean; args: string[] } {
+	const args: string[] = [];
+	let json = false;
+
+	for (let index = 0; index < argv.length; index += 1) {
+		const arg = argv[index];
+		if (arg === undefined) {
+			continue;
+		}
+		if (arg === "--") {
+			args.push(...argv.slice(index));
+			break;
+		}
+		if (arg === "--json") {
+			json = true;
+			continue;
+		}
+		args.push(arg);
+	}
+
+	return { json, args };
+}
+
 export function normalizeEntrypointArgv(
 	argv: readonly string[],
 ): string[] {
@@ -283,4 +387,17 @@ function forwardProcessSignals(controller: AbortController): () => void {
 		process.off("SIGINT", onSigint);
 		process.off("SIGTERM", onSigterm);
 	};
+}
+
+function composeSystemPrompt(...parts: Array<string | undefined>): string | undefined {
+	const present = parts.filter((part): part is string => part !== undefined && part.length > 0);
+	return present.length === 0 ? undefined : present.join("\n\n");
+}
+
+function writeJsonLine(stream: WritableStreamLike, value: unknown): void {
+	stream.write(`${JSON.stringify(value)}\n`);
+}
+
+function optionalTarget(target: string | undefined): { target?: string } {
+	return target === undefined ? {} : { target };
 }
