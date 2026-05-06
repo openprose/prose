@@ -125,6 +125,42 @@ prose doctor --harness claude-sdk --install
 - `SIGINT` and `SIGTERM` are propagated through the active harness.
 - Arguments after `--` are forwarded literally, including `--harness`.
 
+### Startup input prompting
+
+For `prose run <local-file.prose.md>`, the CLI deterministically reads the
+file-level `### Requires` section before invoking the selected harness. Missing
+caller inputs declared as backtick-wrapped bullets are prompted for when stdin
+is an interactive terminal:
+
+```markdown
+### Requires
+
+- `project`: project name
+- `audience`: who the run is for
+```
+
+```bash
+prose run demo.prose.md
+```
+
+The same inputs can be supplied up front:
+
+```bash
+prose run demo.prose.md --project "OpenProse" --audience "contributors"
+prose run demo.prose.md --project=OpenProse --audience=contributors
+```
+
+Prompted values are forwarded to the harness as ordinary caller input flags.
+The CLI does not write run state for startup prompting.
+
+In non-interactive contexts, missing caller inputs fail before harness
+invocation instead of hanging. Use `--no-prompt` to require explicit inputs even
+in an interactive terminal:
+
+```bash
+prose run demo.prose.md --no-prompt --project "OpenProse"
+```
+
 The tarball installer is intentionally a Node.js installer: the CLI package is
 JavaScript, so the installed shim executes Node.js 18 or newer. The script
 verifies release checksums by default, rejects unsafe tar paths, symlinks,

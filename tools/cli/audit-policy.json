@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "allowedAdvisories": [
+    {
+      "id": "GHSA-v2v4-37r5-5v8g",
+      "package": "ip-address",
+      "severity": "moderate",
+      "reason": "Transitive dependency through @anthropic-ai/claude-agent-sdk/@modelcontextprotocol/sdk. Keep PR CI deterministic while upstream publishes a non-breaking fix.",
+      "expires": "2026-06-30"
+    }
+  ]
+}

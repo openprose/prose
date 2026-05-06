@@ -1,6 +1,7 @@
 import { Command } from "@oclif/core";
 import type { CommandName } from "../prose/index.js";
 import { canonicalPrompt, CommandModelError, usageFor } from "../prose/index.js";
+import { resolveStartupInputs, type PromptInputLike, type StartupInputReader } from "../prose/startup-inputs.js";
 import { createHarness, type HarnessName } from "../harnesses/index.js";
 import type { Harness, WritableStreamLike } from "../harnesses/types.js";
 import { ensureOpenProseSkill, loadOpenProseSkillBootstrap, type OpenProseSkillBootstrap } from "../skills/open-prose.js";
@@ -23,8 +24,10 @@ export interface ForwardRunOptions {
 	env: Readonly<Record<string, string | undefined>>;
 	stdout: WritableStreamLike;
 	stderr: WritableStreamLike;
+	stdin?: PromptInputLike;
 	signal?: AbortSignal;
 	harnessFactory?: (name: string) => Harness;
+	startupInputReader?: StartupInputReader;
 	skillBootstrap?: SkillBootstrapLoader | false;
 	skillPreflight?: SkillPreflight | false;
 }
@@ -52,6 +55,7 @@ export abstract class ProseForwardCommand extends Command {
 				env: process.env,
 				stdout: process.stdout,
 				stderr: process.stderr,
+				stdin: process.stdin,
 				signal: controller.signal,
 			});
 			if (exitCode !== 0) {
@@ -88,7 +92,16 @@ function isOclifExit(error: unknown): boolean {
 
 export async function runForwardedProseCommand(options: ForwardRunOptions): Promise<number> {
 	const { harness, args } = splitHarnessArgs(options.argv, options.env, options.command);
-	const prompt = canonicalPrompt(options.command, args);
+	canonicalPrompt(options.command, args);
+	const startupInputs = await resolveStartupInputs({
+		command: options.command,
+		args,
+		cwd: options.cwd,
+		stderr: options.stderr,
+		...(options.stdin === undefined ? {} : { stdin: options.stdin }),
+		...(options.startupInputReader === undefined ? {} : { inputReader: options.startupInputReader }),
+	});
+	const prompt = canonicalPrompt(options.command, startupInputs.args);
 	if (shouldRunSkillPreflight(options)) {
 		await runSkillPreflight(harness, options);
 	}
