@@ -6,6 +6,7 @@
       "tier": "required",
       "command": "run",
       "source": "01-single-service.prose.md",
+      "expectedArtifacts": ["root.prose.md", "vm.log.md"],
       "expectedOutputs": ["message"],
       "timeoutSeconds": 360,
       "maxTurns": 24
@@ -16,6 +17,7 @@
       "command": "run",
       "source": "02-caller-input.prose.md",
       "inputs": { "topic": "caller input smoke fixture" },
+      "expectedArtifacts": ["root.prose.md", "vm.log.md"],
       "expectedOutputs": ["echo"],
       "timeoutSeconds": 360,
       "maxTurns": 24
@@ -26,6 +28,7 @@
       "command": "run",
       "source": "03-auto-wiring.prose.md",
       "inputs": { "subject": "auto wiring smoke fixture" },
+      "expectedArtifacts": ["root.prose.md", "forme.manifest.json", "vm.log.md"],
       "expectedOutputs": ["summary"],
       "timeoutSeconds": 480,
       "maxTurns": 24
@@ -36,6 +39,7 @@
       "command": "run",
       "source": "04-inline-services.prose.md",
       "inputs": { "draft": "OpenProse smoke tests should be small, stable, and diagnostic." },
+      "expectedArtifacts": ["root.prose.md", "forme.manifest.json", "vm.log.md"],
       "expectedOutputs": ["final"],
       "timeoutSeconds": 480,
       "maxTurns": 24
@@ -46,6 +50,7 @@
       "command": "run",
       "source": "05-explicit-wiring.prose.md",
       "inputs": { "seed": "explicit wiring smoke fixture" },
+      "expectedArtifacts": ["root.prose.md", "forme.manifest.json", "vm.log.md"],
       "expectedOutputs": ["joined"],
       "timeoutSeconds": 480,
       "maxTurns": 24
@@ -56,6 +61,7 @@
       "command": "run",
       "source": "06-execution-block.prose.md",
       "inputs": { "request": "produce a short smoke result" },
+      "expectedArtifacts": ["root.prose.md", "forme.manifest.json", "vm.log.md"],
       "expectedOutputs": ["result"],
       "timeoutSeconds": 480,
       "maxTurns": 24
@@ -66,6 +72,7 @@
       "command": "run",
       "source": "07-errors-strategies.prose.md",
       "inputs": { "incident": "A smoke check lacks detail but needs a conservative recovery note." },
+      "expectedArtifacts": ["root.prose.md", "vm.log.md"],
       "expectedOutputs": ["response"],
       "timeoutSeconds": 360,
       "maxTurns": 24
@@ -75,6 +82,7 @@
       "tier": "required",
       "command": "test",
       "source": "08-kind-test.prose.md",
+      "expectedArtifacts": ["root.prose.md", "forme.manifest.json", "vm.log.md"],
       "expectedOutputs": ["echo"],
       "timeoutSeconds": 480,
       "maxTurns": 24
@@ -88,6 +96,7 @@
         "task": "produce a one sentence smoke result",
         "quality-bar": "The output contains local-pattern-smoke-pass and is under 80 words."
       },
+      "expectedArtifacts": ["root.prose.md", "forme.manifest.json", "vm.log.md"],
       "expectedOutputs": ["result"],
       "timeoutSeconds": 600,
       "maxTurns": 24
