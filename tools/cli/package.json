@@ -51,6 +51,8 @@
     "build": "npm run clean && tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest --run",
+    "audit:policy": "node scripts/audit-policy.mjs",
+    "ci:pr": "npm test && npm run typecheck && npm run build && npm run audit:policy",
     "smoke:harness": "node scripts/smoke-harness.mjs",
     "dev": "tsx src/index.ts",
     "clean": "rm -rf dist",
