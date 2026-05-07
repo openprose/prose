@@ -283,4 +283,4 @@ jobs:
         run: npm ci
 
       - name: Audit production dependencies
-        run: npm audit --omit=dev
+        run: npm run audit:policy
