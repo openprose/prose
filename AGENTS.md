@@ -7,3 +7,5 @@ Treat `prose run ...` as an instruction inside the current agent session. Do not
 Use `prose upgrade --dry-run` to preview legacy migrations and `prose upgrade` to apply them; do not recommend the old migrate command.
 
 Open `skills/open-prose/SKILL.md` and treat it as the authoritative router. Every command, every file routing decision, and every capability assumption lives there or behind a pointer inside it. Do not search the workspace for alternate copies of the OpenProse documentation — the canonical files are the ones bundled under `skills/open-prose/`.
+
+Before calling a PR mergeable or asking someone to review CI, run `./scripts/pr-preflight.sh` from a clean branch. It fetches `origin/main`, simulates merging the current HEAD into that base, and runs the local CI-equivalent checks. If you intentionally skip part of it, say exactly which part and why.
