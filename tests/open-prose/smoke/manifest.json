@@ -82,6 +82,7 @@
       "tier": "required",
       "command": "test",
       "source": "08-kind-test.prose.md",
+      "workspaceSources": ["08-kind-test.prose.md", "02-caller-input.prose.md"],
       "expectedArtifacts": ["root.prose.md", "forme.manifest.json", "vm.log.md"],
       "expectedOutputs": ["echo"],
       "timeoutSeconds": 480,
@@ -92,6 +93,7 @@
       "tier": "required",
       "command": "run",
       "source": "09-local-pattern.prose.md",
+      "workspaceSources": ["09-local-pattern.prose.md", "worker-critic.prose.md"],
       "inputs": {
         "task": "produce a one sentence smoke result",
         "quality-bar": "The output contains local-pattern-smoke-pass and is under 80 words."

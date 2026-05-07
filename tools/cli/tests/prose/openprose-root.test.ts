@@ -56,6 +56,23 @@ describe("OpenProse root resolution", () => {
 		}
 	});
 
+	it("does not escape a temporary workspace to an ambient parent repository marker", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-root-ambient-parent-"));
+		const sourceDir = join(temp, "src");
+
+		try {
+			mkdirSync(sourceDir, { recursive: true });
+
+			await expect(resolveOpenProseRoot({ cwd: sourceDir })).resolves.toEqual({
+				mode: "native",
+				path: ".",
+				absolutePath: resolve(sourceDir),
+			});
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
+
 	it("uses an attached root when the cwd contains one", async () => {
 		const temp = mkdtempSync(join(tmpdir(), "prose-root-attached-"));
 		const attached = join(temp, ".agents/prose");

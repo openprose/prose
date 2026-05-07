@@ -303,4 +303,14 @@ describe("repository IR v0", () => {
 		expect(result.valid).toBe(false);
 		expect(result.errors).toContain("diagnostics[0].sourcePath must reference a discovered source path");
 	});
+
+	it("rejects error diagnostics in written manifests", () => {
+		const manifest = cloneFixture("tests/open-prose/compiler/expected/stargazer.manifest.next.json");
+		manifest.diagnostics[0].severity = "error";
+
+		const result = validateRepositoryIr(manifest);
+
+		expect(result.valid).toBe(false);
+		expect(result.errors).toContain("diagnostics[0].severity must not be error in a written manifest");
+	});
 });

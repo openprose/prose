@@ -11,3 +11,7 @@ dist/prose/
 
 # OpenProse smoke runner output
 openprose-smoke-results/
+
+# Local agent overrides — never checked in
+AGENTS.override.md
+CLAUDE.local.md

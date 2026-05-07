@@ -1,4 +1,4 @@
-import { copyFileSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -32,6 +32,12 @@ function memoryStreams() {
 			return stderr;
 		},
 	};
+}
+
+function writeManifestWithErrorDiagnostic(path: string): void {
+	const manifest = JSON.parse(readFileSync(stargazerFixture, "utf8")) as { diagnostics: Array<{ severity: string }> };
+	manifest.diagnostics[0]!.severity = "error";
+	writeFileSync(path, `${JSON.stringify(manifest, null, 2)}\n`);
 }
 
 describe("Oclif entrypoint helpers", () => {
@@ -318,6 +324,99 @@ describe("runCompileCommand", () => {
 			});
 
 			expect(exitCode).toBe(0);
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
+
+	it("accepts a valid manifest when the compiler harness exits nonzero after writing it", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-compile-valid-nonzero-"));
+		const io = memoryStreams();
+
+		try {
+			const exitCode = await runCompileCommand({
+				argv: [".", "--harness", "mock"],
+				cwd: temp,
+				env: {},
+				stdout: io.streams.stdout,
+				stderr: io.streams.stderr,
+				skillBootstrap: false,
+				skillPreflight: false,
+				harnessFactory: () => ({
+					name: "mock",
+					async run() {
+						mkdirSync(join(temp, "dist"), { recursive: true });
+						copyFileSync(stargazerFixture, join(temp, "dist/manifest.next.json"));
+						return 1;
+					},
+				}),
+			});
+
+			expect(exitCode).toBe(0);
+			expect(io.stderr).toContain("Compiler harness exited with code 1 after writing valid repository IR");
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
+
+	it("preserves nonzero compiler exits when the manifest has error diagnostics", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-compile-error-diagnostic-"));
+		const io = memoryStreams();
+
+		try {
+			const exitCode = await runCompileCommand({
+				argv: [".", "--harness", "mock"],
+				cwd: temp,
+				env: {},
+				stdout: io.streams.stdout,
+				stderr: io.streams.stderr,
+				skillBootstrap: false,
+				skillPreflight: false,
+				harnessFactory: () => ({
+					name: "mock",
+					async run() {
+						mkdirSync(join(temp, "dist"), { recursive: true });
+						writeManifestWithErrorDiagnostic(join(temp, "dist/manifest.next.json"));
+						return 1;
+					},
+				}),
+			});
+
+			expect(exitCode).toBe(1);
+			expect(io.stderr).not.toContain("accepting dist/manifest.next.json");
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
+
+	it("preserves abort exits after the compiler writes a valid manifest", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-compile-abort-"));
+		const io = memoryStreams();
+		const controller = new AbortController();
+
+		try {
+			const exitCode = await runCompileCommand({
+				argv: [".", "--harness", "mock"],
+				cwd: temp,
+				env: {},
+				stdout: io.streams.stdout,
+				stderr: io.streams.stderr,
+				signal: controller.signal,
+				skillBootstrap: false,
+				skillPreflight: false,
+				harnessFactory: () => ({
+					name: "mock",
+					async run() {
+						mkdirSync(join(temp, "dist"), { recursive: true });
+						copyFileSync(stargazerFixture, join(temp, "dist/manifest.next.json"));
+						controller.abort("SIGTERM");
+						return 143;
+					},
+				}),
+			});
+
+			expect(exitCode).toBe(143);
+			expect(io.stderr).not.toContain("accepting dist/manifest.next.json");
 		} finally {
 			rmSync(temp, { recursive: true, force: true });
 		}

@@ -1,9 +1,10 @@
 import { stat } from "node:fs/promises";
-import { homedir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { dirname, relative, resolve, sep } from "node:path";
 
 export const ATTACHED_OPENPROSE_ROOT_PATH = ".agents/prose";
 export const USER_OPENPROSE_ROOT_PATH = "~/.agents/prose";
+const TEMP_ROOTS = uniquePaths([tmpdir(), "/tmp", "/private/tmp"]);
 
 export type OpenProseRootMode = "native" | "attached" | "user";
 
@@ -117,9 +118,13 @@ async function findEnclosingAttachedRoot(cwd: string): Promise<string | undefine
 }
 
 async function findNativeRepositoryRoot(cwd: string): Promise<string | undefined> {
+	const tempBoundary = findTempWorkspaceBoundary(cwd);
 	for (let current = resolve(cwd); ; current = dirname(current)) {
 		if ((await pathExists(resolve(current, "prose.lock"))) || (await pathExists(resolve(current, ".git")))) {
 			return current;
+		}
+		if (tempBoundary !== undefined && isSamePath(current, tempBoundary)) {
+			return undefined;
 		}
 		if (dirname(current) === current) {
 			return undefined;
@@ -134,4 +139,20 @@ function isSameOrInside(path: string, parent: string): boolean {
 
 function isSamePath(left: string, right: string): boolean {
 	return resolve(left) === resolve(right);
+}
+
+function findTempWorkspaceBoundary(cwd: string): string | undefined {
+	const absoluteCwd = resolve(cwd);
+	for (const tempRoot of TEMP_ROOTS) {
+		if (!isSameOrInside(absoluteCwd, tempRoot)) {
+			continue;
+		}
+		const [firstSegment] = relative(tempRoot, absoluteCwd).split(sep).filter(Boolean);
+		return firstSegment === undefined ? tempRoot : resolve(tempRoot, firstSegment);
+	}
+	return undefined;
+}
+
+function uniquePaths(paths: string[]): string[] {
+	return [...new Set(paths.map((path) => resolve(path)))];
 }

@@ -109,6 +109,12 @@ export async function runCompileCommand(options: RunCompileCommandOptions): Prom
 		...(options.skillPreflight === undefined ? {} : { skillPreflight: options.skillPreflight }),
 	});
 	if (exitCode !== 0) {
+		if (await shouldAcceptNonzeroCompiledManifest(exitCode, options, target)) {
+			options.stderr.write(
+				`Compiler harness exited with code ${exitCode} after writing valid repository IR; accepting ${target.manifestPath}.\n`,
+			);
+			return 0;
+		}
 		return exitCode;
 	}
 
@@ -119,6 +125,36 @@ export async function runCompileCommand(options: RunCompileCommandOptions): Prom
 		...target,
 	});
 	return 0;
+}
+
+async function shouldAcceptNonzeroCompiledManifest(
+	exitCode: number,
+	options: RunCompileCommandOptions,
+	target: { absoluteManifestPath: string; manifestPath: string },
+): Promise<boolean> {
+	if (options.signal?.aborted || isSignalExitCode(exitCode)) {
+		return false;
+	}
+	return validCompiledRepositoryIrExists({ ...options, ...target });
+}
+
+async function validCompiledRepositoryIrExists(options: {
+	argv: readonly string[];
+	cwd: string;
+	env: Readonly<Record<string, string | undefined>>;
+	absoluteManifestPath: string;
+	manifestPath: string;
+}): Promise<boolean> {
+	try {
+		await validateCompiledRepositoryIr(options);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+function isSignalExitCode(exitCode: number): boolean {
+	return Number.isInteger(exitCode) && exitCode > 128 && exitCode <= 192;
 }
 
 export async function validateCompiledRepositoryIr(options: {

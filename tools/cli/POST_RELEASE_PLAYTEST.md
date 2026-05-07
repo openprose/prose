@@ -67,6 +67,9 @@ Start with the released version and record it:
 version="0.13.0"
 npm view @openprose/prose-cli@"$version" version dist-tags.latest
 gh release view "v$version" --repo openprose/prose
+command -v prose || true
+which -a prose || true
+prose --version || true
 ```
 
 For each worker, create an isolated root:

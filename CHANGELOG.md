@@ -9,7 +9,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Declared `### Skills` section** — Components may now declare the agent harness skills they require in a `### Skills` section using the `namespace:name` colon form (e.g. `document-skills:pdf`). The compiler program resolves declared skills against `./skills/`, `~/.claude/skills/`, `~/.codex/skills/`, and `~/.agents/skills/`, and `prose compile` fails closed with a `skill_unresolved` diagnostic naming the skill and the searched paths if any are missing. OpenProse never installs harness skills — installing them remains the user's responsibility (BYO harness). See `skills/open-prose/contract-markdown.md` (Skills), `skills/open-prose/compiler/index.prose.md` (skills_resolver), and `skills/open-prose/examples/declared-skills/` for the spec and a worked example. Resolves [#60](https://github.com/openprose/prose/issues/60).
+- **Declared `### Skills` section** — Components may now declare the agent
+  harness skills they require in a `### Skills` section using the
+  `namespace:name` colon form (e.g. `document-skills:pdf`). The compiler
+  program resolves declared skills against `./skills/`, `~/.claude/skills/`,
+  `~/.codex/skills/`, and `~/.agents/skills/`, and `prose compile` fails closed
+  with a `skill_unresolved` diagnostic naming the skill and the searched paths
+  if any are missing. OpenProse never installs harness skills — installing them
+  remains the user's responsibility (BYO harness). See
+  `skills/open-prose/contract-markdown.md` (Skills),
+  `skills/open-prose/compiler/index.prose.md` (skills_resolver), and
+  `skills/open-prose/examples/declared-skills/` for the spec and a worked
+  example. Resolves [#60](https://github.com/openprose/prose/issues/60).
+
+### Fixed
+
+- **Serve shutdown logging** — In-flight activations interrupted by `prose serve`
+  shutdown now log as shutdown cancellations instead of generic trigger
+  failures.
+- **Status wording** — `prose status` now describes absent responsibility state
+  as `no runtime status yet` instead of `missing`.
+- **Compiler discipline** — The bundled compiler program now returns after
+  writing `manifest.next.json` and leaves deterministic validation to the CLI.
+- **Smoke postconditions** — OpenProse smoke checks now trust verified run
+  artifacts when a model exits nonzero after satisfying the fixture contract.
+
+## [0.13.1] - 2026-05-05
+
+### Fixed
+
+- **Compile success detection** — `prose compile` now accepts a freshly written
+  valid `manifest.next.json` when the harness exits nonzero afterward, while
+  still rejecting missing manifests, invalid IR, error diagnostics, and aborted
+  runs.
+- **Serve trigger behavior** — HTTP triggers now acknowledge immediately while
+  dispatching activations in the background, and cron-only manifests still expose
+  the local health endpoint.
+- **Smoke fixture isolation** — Responsibility Runtime smoke fixtures stay
+  inside their source root and include the local pattern dependencies needed by
+  the compiler.
 
 ## [0.13.0] - 2026-05-04
 

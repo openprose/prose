@@ -62,7 +62,7 @@ Default compiler output lives under `<openprose-root>/dist/`:
 
 - validate the active manifest
 - register concrete cron and HTTP triggers
-- resolve events to activations
+- accept HTTP trigger events quickly, then resolve events to activations
 - launch normal bounded `prose run` sessions
 - record operational metadata
 
@@ -142,6 +142,10 @@ launched as a normal bounded fulfillment, retry, or escalation activation.
 `prose status` is deterministic local inspection. It does not run the VM,
 register adapters, or infer new semantics; it reads compiled IR and runtime
 receipts so a developer can see what the runtime believes is active.
+
+HTTP trigger adapters acknowledge accepted events before the downstream judge or
+fulfillment run completes. Long-running AI work should not hold webhook callers
+open; activation failures belong in serve logs and run/status state.
 
 ## Responsibilities
 
