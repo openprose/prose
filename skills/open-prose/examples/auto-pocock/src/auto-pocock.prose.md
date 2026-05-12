@@ -198,8 +198,9 @@ service so the recommend-vs-decide boundary is explicit.
   omit ADR scope.
 - When a term is resolved, capture the resolution in
   `terminology_glossary` so `decide-plan` can commit it to the live
-  glossary, mirroring Pocock's "update CONTEXT.md right there, don't
-  batch these up" rule applied at the service boundary.
+  glossary, mirroring Pocock's `grill-with-docs/SKILL.md` rule —
+  *"update CONTEXT.md right there. Don't batch these up."* — applied
+  at the service boundary.
 
 ## decide-plan
 
