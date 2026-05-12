@@ -58,7 +58,7 @@ implementation_report + verify_report + review_report + commit_sha
 | `triage-and-pick` | Applies Pocock's five canonical labels from `setup-matt-pocock-skills/triage-labels.md`: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. |
 | `implement-tdd` | Applies Pocock's `tdd` red-green-refactor loop and the rules in `tdd/tests.md`, `tdd/mocking.md`, `tdd/deep-modules.md`, `tdd/refactoring.md`, `tdd/interface-design.md`. **Adaptation:** `red_evidence` / `green_evidence` / `refactor_notes` are harness-level bindings; `tdd/SKILL.md` describes the loop in prose without naming those artifacts. |
 | `verify-slice` | **OpenProse adaptation.** Deliberately not named `qa`, because Pocock's `qa` skill is a different thing: an interactive **upstream** session where the user reports bugs conversationally and the agent files issues. This service is a downstream pass/fail acceptance gate. |
-| `review-and-commit` | Enforces the no-push, no-force, no-`reset --hard`, no-`checkout .` discipline from Pocock's `git-guardrails-claude-code` skill. |
+| `review-and-commit` | Enforces the no-push, no-force, no-`reset --hard`, no-`checkout .` discipline from Pocock's [`git-guardrails-claude-code`][pocock-guardrails] skill. The discipline is encoded as service invariants and prohibitions; the skill is referenced in prose but not declared in `### Skills` so the example compiles without requiring users to install it. |
 
 ## Prerequisites
 
@@ -104,3 +104,4 @@ adaptation, not as how Pocock himself runs it.
 
 [pocock-skills]: https://github.com/mattpocock/skills
 [pocock-setup]: https://github.com/mattpocock/skills/blob/main/setup-matt-pocock-skills/SKILL.md
+[pocock-guardrails]: https://github.com/mattpocock/skills/tree/main/git-guardrails-claude-code

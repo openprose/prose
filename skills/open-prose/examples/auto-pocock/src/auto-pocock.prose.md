@@ -484,7 +484,6 @@ passes. Pocock's `git-guardrails-claude-code` skill is the source of the
 ### Skills
 
 - tdd
-- git-guardrails-claude-code
 
 ### Shape
 
