@@ -90,11 +90,8 @@ as an OpenProse adaptation rather than implying it is his teaching.
   a failing behavior test green; no broad refactors or unrelated edits
   (Pocock's `tdd/SKILL.md` "DO NOT write all tests first, then all
   implementation" rule).
-- The system never pushes, force-operates, rewrites history, or commits
-  when verification fails. `commit_sha` refers to a local commit only.
-  This stance aligns with Pocock's `git-guardrails-claude-code` skill,
-  which blocks `git push`, `git reset --hard`, `git clean -f`, and
-  `git checkout .`.
+- `review-and-commit` does not commit when verification fails;
+  `commit_sha` is `null` with a reason in that case.
 
 ## ensure-skills
 
@@ -399,7 +396,7 @@ using a red-green-refactor loop, with evidence captured at each step so
 - `self`: write one failing behavior test, implement the smallest code
   change, rerun the focused test, refactor only when green, and publish
   the report and evidence
-- `prohibited`: broad refactors, unrelated file edits, pushing, committing,
+- `prohibited`: broad refactors, unrelated file edits, committing,
   writing all tests first before any implementation, mocking internal
   collaborators, or hiding failing tests
 
@@ -460,9 +457,8 @@ deliberately different so the two are not confused.
 ### Description
 
 Review the implementation diff and TDD evidence, address scoped gaps,
-re-run verification, and create a local commit only when verification
-passes. Pocock's `git-guardrails-claude-code` skill is the source of the
-"never push, never force-operate" stance enforced here.
+re-run verification, and create a single local commit when verification
+passes.
 
 ### Requires
 
@@ -491,11 +487,9 @@ passes. Pocock's `git-guardrails-claude-code` skill is the source of the
   tests, address scoped gaps, re-run `green_evidence`'s command, and
   create a single local commit if `verify_report` and re-run verification
   both pass
-- `prohibited`: pushing, force operations, committing unrelated files,
-  rewriting history, committing when verification fails, or committing
-  when `verify_report` shows any failing criterion. These prohibitions
-  match `git-guardrails-claude-code`'s explicit blocks on `git push`,
-  `git reset --hard`, `git clean -f`, and `git checkout .`.
+- `prohibited`: committing unrelated files, or committing when
+  `verify_report` shows any failing criterion or when the re-run of
+  `green_evidence`'s focused command fails.
 
 ### Strategies
 
