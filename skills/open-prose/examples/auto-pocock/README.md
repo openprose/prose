@@ -53,7 +53,7 @@ implementation_report + verify_report + review_report + commit_sha
 | `ensure-skills` | Verifies the per-repo conventions Pocock's `setup-matt-pocock-skills` produces. Does not run setup itself (that skill is interactive). |
 | `grill-plan` | Applies Pocock's `grill-with-docs`. **Adaptation:** non-interactive — recommends answers grounded in repository evidence rather than asking the user one question at a time, which is how Pocock's own grilling is designed to run. |
 | `decide-plan` | **OpenProse adaptation.** Pocock resolves decisions inline within `grill-with-docs`; this service stands in for the human judgment normally provided mid-session. |
-| `produce-prd` | Applies Pocock's `to-prd` verbatim — Problem, Solution, User Stories, Implementation Decisions, Testing Decisions, Out of Scope, Further Notes. |
+| `produce-prd` | Applies Pocock's `to-prd` verbatim — Problem Statement, Solution, User Stories, Implementation Decisions, Testing Decisions, Out of Scope, Further Notes. |
 | `produce-issues` | Applies Pocock's `to-issues` verbatim — vertical-slice tracer-bullet thinking, HITL vs AFK split. |
 | `triage-and-pick` | Applies Pocock's five canonical labels from `setup-matt-pocock-skills/triage-labels.md`: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. |
 | `implement-tdd` | Applies Pocock's `tdd` red-green-refactor loop and the rules in `tdd/tests.md`, `tdd/mocking.md`, `tdd/deep-modules.md`, `tdd/refactoring.md`, `tdd/interface-design.md`. **Adaptation:** `red_evidence` / `green_evidence` / `refactor_notes` are harness-level bindings; `tdd/SKILL.md` describes the loop in prose without naming those artifacts. |

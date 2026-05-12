@@ -71,8 +71,9 @@ as an OpenProse adaptation rather than implying it is his teaching.
   `setup-matt-pocock-skills` expects.
 - Every phase answers from the repository before deferring to the user;
   `unresolved` is only used when repo evidence is genuinely absent. This
-  mirrors `grill-with-docs/SKILL.md`'s "answer from the repository when
-  the answer is discoverable" stance.
+  mirrors `grill-with-docs/SKILL.md`'s explore-the-codebase stance:
+  *"If a question can be answered by exploring the codebase, explore the
+  codebase instead."*
 - Vocabulary resolved during grilling is preserved verbatim through PRD,
   issues, implementation, and review phases. Pocock's `grill-with-docs`
   glossary rule is preserved here as a strong norm; we honor his "flag
@@ -99,9 +100,10 @@ as an OpenProse adaptation rather than implying it is his teaching.
 
 Confirm that the per-repo Pocock skill conventions exist and are readable,
 so downstream skills know where the issue tracker, triage labels, and
-domain docs live. Halts the system if any are missing, per
-`setup-matt-pocock-skills/SKILL.md`'s "do not bootstrap or repair beads
-unless the user asked" stance applied to conventions.
+domain docs live. Halts the system if any are missing. Verifying-without-
+scaffolding is an OpenProse adaptation here: Pocock's
+`setup-matt-pocock-skills` is itself interactive and prompts the user to
+confirm before writing the convention files.
 
 ### Requires
 
@@ -266,8 +268,8 @@ a PRD using `to-prd/SKILL.md`'s seven sections verbatim.
 ### Ensures
 
 - `prd`: product requirements document with the seven Pocock sections —
-  Problem, Solution, User Stories, Implementation Decisions, Testing
-  Decisions, Out of Scope, Further Notes — written to the path named in
+  Problem Statement, Solution, User Stories, Implementation Decisions,
+  Testing Decisions, Out of Scope, Further Notes — written to the path named in
   `issue_tracker_convention`
 
 ### Skills
@@ -276,7 +278,9 @@ a PRD using `to-prd/SKILL.md`'s seven sections verbatim.
 
 ### Strategies
 
-- Apply the `to-prd/SKILL.md` PRD template verbatim. Section names and
+- Apply the `to-prd/SKILL.md` PRD template verbatim. Section names
+  (`Problem Statement`, `Solution`, `User Stories`, `Implementation
+  Decisions`, `Testing Decisions`, `Out of Scope`, `Further Notes`) and
   ordering come from Pocock, not from us.
 - Use `chosen_terminology` for every domain noun; do not introduce new
   domain terms here.
@@ -326,8 +330,12 @@ says.
 
 ### Description
 
-Apply Pocock's canonical triage vocabulary to each issue and select the
-single AFK slice this run will implement.
+Re-apply Pocock's canonical triage vocabulary across every issue and
+select the single AFK slice this run will implement. `to-issues` already
+attaches a publish-time label per its `SKILL.md` ("publish them with the
+correct triage label unless instructed otherwise"); this service labels
+every issue against the full five-state vocabulary and picks the
+implementation target.
 
 ### Requires
 
@@ -407,8 +415,8 @@ using a red-green-refactor loop, with evidence captured at each step so
   rule: "DO NOT write all tests first, then all implementation."
 - Name tests in `chosen_terminology` vocabulary, per `tdd/tests.md`.
 - Tests assert behavior through public interfaces only; no internal
-  collaborator mocks. Pocock's `tdd/mocking.md` is the source —
-  "Don't mock... your own classes/modules, internal collaborators".
+  collaborator mocks. See `tdd/mocking.md`'s "Don't mock:" list
+  (own classes/modules and internal collaborators).
 - Prefer deep modules with small public surfaces, per
   `tdd/deep-modules.md` and `tdd/interface-design.md`.
 - Refactor only on green, per `tdd/refactoring.md`.
