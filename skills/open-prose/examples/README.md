@@ -22,6 +22,10 @@ receipts in `runs/`, durable state in `state/`, and dependencies in `deps/`.
   performance learnings flowing into next actions.
 - [compliance-evidence-tracker](./compliance-evidence-tracker/) keeps audit
   evidence fresh, reviewed, and gap-aware.
+- [auto-pocock](./auto-pocock/) chains Matt Pocock's published engineering
+  skills (grill-with-docs, to-prd, to-issues, tdd, plus his per-repo
+  conventions) into a single non-interactive OpenProse system, with the
+  two-subagent grill-and-decide split called out as an OpenProse adaptation.
 
 ## Quick Start
 
