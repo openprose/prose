@@ -13,10 +13,10 @@ runnable unattended.
 ## What it does
 
 ```
-feature_brief + agent_skills_config
+feature_brief
         │
         ▼
-ensure-skills      ← setup-matt-pocock-skills (verify only, no scaffold)
+ensure-skills      ← setup-matt-pocock-skills (find or scaffold conventions)
         │
         ▼
 grill-plan         ← grill-with-docs (recommend, do not decide)
@@ -50,7 +50,7 @@ implementation_report + verify_report + review_report + commit_sha
 
 | Service | Source |
 | --- | --- |
-| `ensure-skills` | Verifies the per-repo conventions Pocock's `setup-matt-pocock-skills` produces. Does not run setup itself (that skill is interactive). |
+| `ensure-skills` | Finds the per-repo conventions Pocock's `setup-matt-pocock-skills` produces, or scaffolds them at `docs/agents/` with Pocock's defaults if absent. The scaffold path is an **OpenProse adaptation**: Pocock's setup skill is interactive ("present what you found, confirm with the user, then write"), and this unattended version uses defaults instead of prompting, with a banner on each scaffolded file noting it was auto-created. |
 | `grill-plan` | Applies Pocock's `grill-with-docs`. **Adaptation:** non-interactive — recommends answers grounded in repository evidence rather than asking the user one question at a time, which is how Pocock's own grilling is designed to run. |
 | `decide-plan` | **OpenProse adaptation.** Pocock resolves decisions inline within `grill-with-docs`; this service stands in for the human judgment normally provided mid-session. |
 | `produce-prd` | Applies Pocock's `to-prd` verbatim — Problem Statement, Solution, User Stories, Implementation Decisions, Testing Decisions, Out of Scope, Further Notes. |
@@ -62,23 +62,24 @@ implementation_report + verify_report + review_report + commit_sha
 
 ## Prerequisites
 
-This example expects the per-repo Pocock conventions to be set up first.
-Run Pocock's [`setup-matt-pocock-skills`][pocock-setup] in your repo to
-scaffold the three convention files:
+Optional: if you have already run Pocock's
+[`setup-matt-pocock-skills`][pocock-setup] in this repo, auto-pocock will
+find and use the conventions it produced at `docs/agents/`:
 
 - `docs/agents/issue-tracker.md` — where PRDs, issues, and notes live
 - `docs/agents/triage-labels.md` — the canonical label vocabulary
 - `docs/agents/domain.md` — where the domain glossary and ADRs live
 
-Auto-Pocock reads these verbatim via `ensure-skills` and halts if any are
-missing.
+If you have not run that setup, `ensure-skills` will scaffold Pocock's
+defaults inline at `docs/agents/` with a banner noting they were
+auto-created so you can review and edit before the next run. First-time
+users do not need to do anything before running auto-pocock.
 
 ## Running it
 
 ```bash
 prose run skills/open-prose/examples/auto-pocock/src/auto-pocock.prose.md \
-  --feature_brief "<your feature brief>" \
-  --agent_skills_config "<path to docs/agents/>"
+  --feature_brief "<your feature brief>"
 ```
 
 The run produces:

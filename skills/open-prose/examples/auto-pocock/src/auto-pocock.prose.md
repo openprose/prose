@@ -36,9 +36,11 @@ as an OpenProse adaptation rather than implying it is his teaching.
 ### Requires
 
 - `feature_brief`: initial feature idea to challenge, clarify, and ship
-- `agent_skills_config`: path to the `docs/agents/` directory defining the
-  issue tracker, triage labels, and domain doc layout for this repo, per
-  Pocock's `setup-matt-pocock-skills/SKILL.md`
+
+The system discovers the per-repo Pocock skill conventions itself (see
+`ensure-skills`). First-time users do not need to point at
+`docs/agents/` explicitly — the system finds the conventions wherever
+the repo already keeps them and scaffolds Pocock's defaults if absent.
 
 ### Ensures
 
@@ -66,9 +68,11 @@ as an OpenProse adaptation rather than implying it is his teaching.
 
 ### Invariants
 
-- `ensure-skills` runs first and halts the system if `docs/agents/` is
-  missing the issue-tracker, triage-labels, or domain conventions Pocock's
-  `setup-matt-pocock-skills` expects.
+- `ensure-skills` runs first. It discovers the per-repo Pocock skill
+  conventions wherever the workspace already keeps them, or scaffolds
+  Pocock's defaults at the conventional location if none exist. The
+  rest of the system never operates without the three conventions
+  resolved.
 - Every phase answers from the repository before deferring to the user;
   `unresolved` is only used when repo evidence is genuinely absent. This
   mirrors `grill-with-docs/SKILL.md`'s explore-the-codebase stance:
@@ -98,25 +102,20 @@ as an OpenProse adaptation rather than implying it is his teaching.
 
 ### Description
 
-Confirm that the per-repo Pocock skill conventions exist and are readable,
-so downstream skills know where the issue tracker, triage labels, and
-domain docs live. Halts the system if any are missing. Verifying-without-
-scaffolding is an OpenProse adaptation here: Pocock's
-`setup-matt-pocock-skills` is itself interactive and prompts the user to
-confirm before writing the convention files.
-
-### Requires
-
-- `agent_skills_config`: path to `docs/agents/` for this repo
+Find or scaffold the per-repo Matt Pocock skill conventions so downstream
+services know where the issue tracker, triage labels, and domain docs
+live. The system runs even when the user has never set up Pocock's skill
+conventions before — first-time users get sensible defaults at the
+conventional location and a clear note that they were auto-created.
 
 ### Ensures
 
-- `issue_tracker_convention`: contents of `issue-tracker.md` describing
-  where PRDs, issues, and notes live
-- `triage_label_convention`: contents of `triage-labels.md` describing the
-  canonical label vocabulary
-- `domain_doc_layout`: contents of `domain.md` describing the domain
-  glossary and ADR locations
+- `issue_tracker_convention`: contents of the repo's `issue-tracker.md`
+  (either found in place or freshly scaffolded with Pocock's defaults)
+- `triage_label_convention`: contents of `triage-labels.md` (same)
+- `domain_doc_layout`: contents of `domain.md` (same)
+- `conventions_path`: the directory the conventions live at, so the
+  user knows where to edit later
 
 ### Skills
 
@@ -124,21 +123,41 @@ confirm before writing the convention files.
 
 ### Shape
 
-- `self`: read the three conventions from `agent_skills_config` and
-  publish them as public bindings for downstream services
-- `prohibited`: scaffolding new convention files mid-run, contacting any
-  remote service, or proceeding when a convention file is missing
+- `self`: search the workspace for the per-repo Pocock convention files;
+  if any are missing, scaffold them at the conventional location with
+  Pocock's defaults; publish all three as public bindings for downstream
+  services
+- `prohibited`: overwriting existing convention files, contacting any
+  remote service, or proceeding without all three conventions resolved
 
 ### Strategies
 
-- Treat each missing convention as a hard halt with a single actionable
-  message naming the absent file.
-- Do not paraphrase the conventions; publish them verbatim so downstream
-  services can quote them.
-- This service does not run `setup-matt-pocock-skills` itself — Pocock's
-  setup skill is interactive ("present what you found, confirm with the
-  user, then write"). This service only verifies the artifacts a prior
-  setup run produced.
+- Look first at `docs/agents/`. That is Pocock's documented convention
+  in `setup-matt-pocock-skills/SKILL.md`. Then check
+  `.scratch/matt-skills/docs/agents/` (the local-markdown variant his
+  skill scaffolds for repos that prefer not to use GitHub Issues). Then
+  scan the repo's `AGENTS.md` and `CLAUDE.md` for any `## Agent skills`
+  block that points elsewhere.
+- If the run's working tree already has any of the three convention
+  files anywhere under the searched locations, treat that location as
+  the conventions directory and publish whatever is there verbatim. Do
+  not overwrite.
+- If none of the three convention files are found anywhere, scaffold
+  them at `docs/agents/` using Pocock's defaults:
+  GitHub Issues as the issue tracker (or local markdown if a
+  `.scratch/` convention is already visible in the repo), the canonical
+  five-label triage vocabulary (`needs-triage`, `needs-info`,
+  `ready-for-agent`, `ready-for-human`, `wontfix`), and `CONTEXT.md` /
+  `docs/adr/` as the domain doc layout. Top each scaffolded file with a
+  one-line banner: *"Auto-created by `auto-pocock` from Pocock's
+  defaults; edit to match this repo and re-run when ready."*
+- This scaffold step is an OpenProse adaptation. Pocock's own
+  `setup-matt-pocock-skills` is interactive ("present what you found,
+  confirm with the user, then write"). The unattended adaptation here
+  uses defaults instead of prompting, and flags the files so the user
+  knows to review them.
+- Publish the conventions verbatim so downstream services can quote
+  them directly.
 
 ## grill-plan
 
