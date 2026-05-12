@@ -26,7 +26,8 @@ Options:
   2. "Build something new" - "Help me create a service or system for a specific task"
   3. "Keep a goal true" - "Define a standing goal with compile/serve/status"
   4. "Learn the syntax" - "Show me examples and explain how it works"
-  5. "Explore possibilities" - "What can OpenProse do?"
+  5. "Improve OpenProse" - "Turn run evidence into a focused upstream PR"
+  6. "Explore possibilities" - "What can OpenProse do?"
 ```
 
 **After the user responds:**
@@ -35,6 +36,7 @@ Options:
 - **Build something new**: Ask them to describe their task, then help write a service or system (load `guidance/authoring.md`)
 - **Keep a goal true**: Help author a `kind: responsibility`, then explain `prose compile`, `prose serve`, and `prose status`
 - **Learn the syntax**: Show examples from `examples/`, explain the VM model
+- **Improve OpenProse**: Run `std/evals/prose-contributor` on relevant run IDs; require explicit user approval before pushing or opening a PR
 - **Explore possibilities**: Walk through examples like `stargazer-outreach/`
 
 ---
@@ -84,6 +86,11 @@ written to `<openprose-root>/runs/`.
 **Use a library service or system:**
 ```text
 prose run std/evals/inspector -- subject: 20260406-201439-1a3369
+```
+
+**Contribute an improvement from run evidence:**
+```text
+prose run std/evals/prose-contributor -- subjects: 20260406-201439-1a3369
 ```
 
 **Add a dependency:**

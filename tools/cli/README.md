@@ -73,6 +73,7 @@ Examples:
 
 ```bash
 prose run std/evals/inspector
+prose run std/evals/prose-contributor -- subjects: 20260406-201439-1a3369
 prose run std/evals/inspector --harness codex-sdk
 prose run co/systems/company-repo-checker --harness claude-sdk
 PROSE_HARNESS=claude-sdk prose run std/evals/inspector

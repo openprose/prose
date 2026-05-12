@@ -334,6 +334,7 @@ Reference them with the `std/` and `co/` shorthands, then install and pin:
 
 ```prose
 use "std/evals/inspector"
+use "std/evals/prose-contributor"
 use "co/systems/company-repo-checker"
 ```
 
@@ -348,7 +349,12 @@ prose install
 
 Dependencies are cloned into `<openprose-root>/deps/`, locked in
 `<openprose-root>/prose.lock`, and read from disk at runtime. No network fetch
-happens during execution.
+happens for dependency resolution during execution.
+
+If a run teaches an agent how OpenProse itself should improve, use
+`std/evals/prose-contributor`. It consumes run evidence, makes one focused
+change, verifies it, and opens a draft PR after explicit approval to use the
+current GitHub identity.
 
 ## Project Map
 

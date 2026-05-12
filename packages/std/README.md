@@ -6,6 +6,7 @@ Reusable OpenProse services, systems, patterns, roles, delivery adapters, memory
 
 ```prose
 use "std/evals/inspector"
+use "std/evals/prose-contributor"
 use "std/patterns/worker-critic"
 use "std/patterns/pipeline"
 use "std/roles/critic"
@@ -32,6 +33,12 @@ Systems for evaluating and improving OpenProse runs, contracts, and platform beh
 | `eval-calibrator` | Validates light evals against deep evals for reliability |
 | `system-improver` | Analyzes inspections and proposes source improvements |
 | `platform-improver` | Analyzes inspections and proposes platform/runtime improvements |
+| `prose-contributor` | Turns run evidence into an approved branch and draft PR back to OpenProse |
+
+When a std run exposes friction, confusing docs, or a reusable pattern that
+belongs upstream, run `std/evals/prose-contributor` after inspection. It is the
+standard path from run evidence to a focused pull request. It still requires
+explicit user approval before pushing a branch or opening a PR.
 
 ### ops/
 

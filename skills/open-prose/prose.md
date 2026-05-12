@@ -86,6 +86,7 @@ prose run github.com/alice/research@abc1234      # pin to SHA
 prose run gitlab.com/alice/research              # any git host
 prose run git.company.com/team/repo              # self-hosted
 prose run std/evals/inspector                    # OpenProse package shorthand
+prose run std/evals/prose-contributor            # turn run evidence into an approved PR
 
 # Flags
 prose run github.com/alice/research --offline    # assert disk-only resolution
