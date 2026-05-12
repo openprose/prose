@@ -62,7 +62,18 @@ implementation_report + verify_report + review_report + commit_sha
 
 ## Prerequisites
 
-Optional: if you have already run Pocock's
+**Required.** Pocock's skills must be installed on the host harness so
+the compiler can resolve the `### Skills` declarations:
+
+```bash
+npx skills@latest add mattpocock/skills/grill-with-docs \
+  mattpocock/skills/to-prd \
+  mattpocock/skills/to-issues \
+  mattpocock/skills/tdd \
+  mattpocock/skills/setup-matt-pocock-skills
+```
+
+**Optional.** If you have already run Pocock's
 [`setup-matt-pocock-skills`][pocock-setup] in this repo, auto-pocock will
 find and use the conventions it produced at `docs/agents/`:
 
@@ -77,10 +88,41 @@ users do not need to do anything before running auto-pocock.
 
 ## Running it
 
+The only required runtime input is `--feature_brief`. The system
+discovers or scaffolds everything else.
+
+**Inside a clone of `openprose/prose`** (most common):
+
 ```bash
 prose run skills/open-prose/examples/auto-pocock/src/auto-pocock.prose.md \
   --feature_brief "<your feature brief>"
 ```
+
+**From inside this example's directory** (matches the `cd <example>`
+pattern used by every other example in `skills/open-prose/examples/`):
+
+```bash
+cd skills/open-prose/examples/auto-pocock
+prose run src/auto-pocock.prose.md --feature_brief "<your feature brief>"
+```
+
+**From outside the OpenProse repo** (in your own target codebase, with
+a clone of `openprose/prose` available somewhere on disk):
+
+```bash
+prose run /path/to/openprose-prose/skills/open-prose/examples/auto-pocock/src/auto-pocock.prose.md \
+  --feature_brief "<your feature brief>"
+```
+
+The system is currently multi-file under `src/`, so URL-fetch shortcuts
+like `prose run https://raw.githubusercontent.com/.../auto-pocock.prose.md`
+do **not** work — they only fetch the top-level file and the run halts
+when it cannot resolve the nine sibling service files. Use a local
+clone or copy the example directory.
+
+If `--feature_brief` is missing, the run halts with the standard
+`Missing required caller inputs: feature_brief` error in
+non-interactive shells, or prompts for it in a TTY.
 
 The run produces:
 
