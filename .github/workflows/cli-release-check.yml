@@ -11,6 +11,7 @@ on:
       - ".github/workflows/release.yml"
       - ".github/scripts/openprose-smoke/**"
       - "scripts/release-preflight.sh"
+      - "scripts/pr-preflight.sh"
       - "scripts/bump-version.sh"
       - ".version-bump.json"
   push:
@@ -25,6 +26,7 @@ on:
       - ".github/workflows/release.yml"
       - ".github/scripts/openprose-smoke/**"
       - "scripts/release-preflight.sh"
+      - "scripts/pr-preflight.sh"
       - "scripts/bump-version.sh"
       - ".version-bump.json"
   workflow_dispatch:
@@ -66,9 +68,13 @@ jobs:
       - name: Check harness smoke helper syntax
         run: node --check tools/cli/scripts/smoke-harness.mjs
 
+      - name: Check audit policy helper syntax
+        run: node --check tools/cli/scripts/audit-policy.mjs
+
       - name: Check release shell syntax
         run: |
           bash -n scripts/bump-version.sh
+          bash -n scripts/pr-preflight.sh
           bash -n scripts/release-preflight.sh
 
       - name: OpenProse versions in sync
