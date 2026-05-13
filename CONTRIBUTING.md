@@ -127,9 +127,13 @@ contract fixes, eval guardrails, or examples extracted from a real run. It
 should read this file, select one PR-sized responsibility, open one focused
 draft PR, and include the run evidence plus verification in the PR body.
 
-Do not push or open a PR with the user's GitHub identity unless the user has
-explicitly approved that specific contribution. If approval is missing, draft
-the diff and ask once.
+Keep the approval boundary explicit. Permission to draft or test a local patch
+is not permission to push a branch or open a PR with the user's GitHub identity.
+If publish approval is missing, leave the diff local and ask once.
+
+For authored syntax, language semantics, cross-layer behavior, or unclear
+design boundaries, use a proposal-first path: open or draft an issue, name the
+maintainer-feedback gate, and do not open the PR until that feedback exists.
 
 ## When To Open An Issue First
 
@@ -141,6 +145,10 @@ Small, evidence-backed fixes can go straight to PR. Open an issue first when:
 - the proposal depends on hosted product concepts not currently present in the
   OSS repository
 - you cannot describe a retestable success condition
+
+Agents may prepare a local branch after opening the issue when a concrete diff
+would make review easier, but the PR should stay gated on maintainer feedback
+and explicit publish approval.
 
 ## Code Of Conduct
 

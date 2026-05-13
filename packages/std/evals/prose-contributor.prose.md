@@ -5,15 +5,16 @@ kind: system
 
 # Prose Contributor
 
-Given one or more completed OpenProse runs, turn real run friction into a small, reviewable contribution to `openprose/prose`. This system is the standard path from "this run taught us something" to "there is a draft pull request that improves the library for the next agent."
+Given one or more completed OpenProse runs, turn real run friction into a small, reviewable contribution to `openprose/prose`. This system is the standard path from "this run taught us something" to "there is a proposal, local patch, or draft pull request that improves the library for the next agent."
 
-Use this when a run exposes confusing docs, missing examples, weak std contracts, brittle eval criteria, or a repeated pattern that belongs in `packages/std/`. It is not a general refactoring system. It should open one focused PR, grounded in run evidence and aligned with the repository contribution guidelines, after explicit approval to use the current GitHub identity.
+Use this when a run exposes confusing docs, missing examples, weak std contracts, brittle eval criteria, or a repeated pattern that belongs in `packages/std/`. It is not a general refactoring system. It should choose one focused contribution path, grounded in run evidence and aligned with the repository contribution guidelines. Some contributions can go directly to a local patch or draft PR; language semantics, authored syntax, cross-layer changes, and unclear boundaries should go through a proposal-first path before any PR is opened.
 
 ### Services
 
 - contribution-context
 - evidence-collector
 - opportunity-selector
+- proposal-gate
 - patch-author
 - verifier
 - pr-opener
@@ -24,7 +25,9 @@ Use this when a run exposes confusing docs, missing examples, weak std contracts
 - repository: path -- local checkout of `openprose/prose` or a fork
 - scope: contribution scope, one of "std", "skills", "docs", "examples", or "platform" (default: "std")
 - base-branch: target branch for the PR (default: "main")
-- pr-approval: explicit user approval to create a branch, push it, and open a GitHub pull request using the current authenticated GitHub identity
+- contribution-mode: one of "auto", "proposal-first", "local-patch", or "draft-pr" (default: "auto")
+- local-patch-approval: explicit user approval to create a local branch and modify the repository
+- publish-approval: explicit user approval to push a branch and open a GitHub pull request using the current authenticated GitHub identity
 
 ### Ensures
 
@@ -32,6 +35,8 @@ Use this when a run exposes confusing docs, missing examples, weak std contracts
     - evidence: run IDs and specific findings that motivated the change
     - guideline_alignment: how the change satisfies the repository contribution bar and project tenets
     - selected_opportunity: the single improvement selected for this PR, with rationale and why larger alternatives were deferred
+    - contribution_plan: whether the contribution should stop at a proposal, produce a local patch, or open a draft PR
+    - proposal_issue: issue URL, title, and maintainer-feedback gate when the contribution needs proposal-first review
     - files_changed: list of changed files
     - verification: commands or evals run, with pass/fail status and key output
     - branch: branch name created for the contribution
@@ -39,11 +44,14 @@ Use this when a run exposes confusing docs, missing examples, weak std contracts
     - follow_ups: related opportunities intentionally left out of this PR
 - pull_request is opened as draft unless the user explicitly asks for a ready-for-review PR
 - PR body includes the run evidence, verification performed, and any residual risk
+- if proposal-first review is required: an issue or proposal is produced, and no PR is opened until maintainer feedback and publish approval exist
 - if no evidence-backed, PR-sized improvement exists: no branch is pushed and no PR is opened
 
 ### Errors
 
-- approval-required: pr-approval is absent or ambiguous
+- local-patch-approval-required: local-patch-approval is absent or ambiguous for a run that would modify the repository
+- publish-approval-required: publish-approval is absent or ambiguous for a run that would push a branch or open a pull request
+- maintainer-feedback-required: a proposal-first contribution needs maintainer feedback before PR creation
 - no-actionable-improvement: subjects do not support a concrete, small contribution
 - repository-not-found: repository path is missing or is not a git checkout
 - dirty-worktree: repository contains unrelated uncommitted changes that would make authorship unclear
@@ -54,11 +62,13 @@ Use this when a run exposes confusing docs, missing examples, weak std contracts
 ### Invariants
 
 - never push directly to the base branch
-- never open a pull request without explicit user approval for this specific contribution
+- never treat local-patch-approval as permission to push or open a pull request
+- never open a pull request without explicit publish-approval for this specific contribution
 - never batch unrelated improvements into one PR
 - never modify files outside the selected scope unless the PR body names and justifies the exception
 - never move language semantics into the CLI, or harness mechanics into the skill/specs
 - never turn hosted product or subscription strategy into OSS language surface without a minimal public-runtime need
+- never skip proposal-first review when the selected opportunity changes authored syntax, language semantics, cross-layer contracts, or an unclear public boundary
 - never hide failed validation; if verification fails, stop before opening the PR unless the user explicitly asks for a failing draft PR
 - never ask for more than one giving-back action in the same run
 
@@ -68,11 +78,49 @@ Use this when a run exposes confusing docs, missing examples, weak std contracts
 - prefer the smallest change that helps a future agent: a docs clarification, a std contract fix, an eval guardrail, or an example extracted from a real run
 - ground every change in evidence from the provided runs; do not invent improvements because a file "could be nicer"
 - classify the change by layer before editing: language/framework semantics, std contract, CLI harness behavior, example, docs, or hosted-product-adjacent idea
+- in auto mode, choose proposal-first for language semantics, authored syntax, unclear layer boundaries, cross-layer changes, or changes that need maintainer design judgment before review
+- a proposal-first run may still produce a local branch for reviewability when local-patch-approval exists, but it must stop before push or PR until maintainer feedback and publish-approval exist
 - if the evidence points to source-system quality, reuse the reasoning shape of `std/evals/system-improver`
 - if the evidence points to Forme or VM behavior, reuse the reasoning shape of `std/evals/platform-improver`
 - if the evidence spans multiple runs, use `std/evals/cross-run-differ` thinking to identify the recurring pattern before selecting a PR
 - open draft PRs by default; ready-for-review PRs require explicit user direction
 - write the PR for maintainers and future agents using the shape from `CONTRIBUTING.md`: Summary, Use Case / Run Evidence, Design Boundary, Examples, Testing, Residual Risk / Follow-ups
+
+---
+
+## proposal-gate
+
+Decide whether the selected opportunity should become a proposal, a local patch, or a draft PR.
+
+### Requires
+
+- selected-opportunity: selected PR-sized improvement
+- context-pack: contribution context from contribution-context
+- contribution-mode: requested contribution mode
+- repository: local checkout path
+
+### Ensures
+
+- contribution-plan: structured plan containing:
+    - mode: "proposal-first", "local-patch", or "draft-pr"
+    - reason: why this path is appropriate
+    - approval_boundaries: which user approvals are needed for local edits, pushing, and PR creation
+    - proposal_required: whether maintainer design feedback is needed before PR creation
+    - proposal_issue: issue URL or draft issue body when proposal-first review is required
+    - stop_before_pr: boolean
+
+### Errors
+
+- no-actionable-improvement: selected-opportunity does not justify any contribution path
+- maintainer-feedback-required: contribution-mode requests a draft PR but the opportunity requires proposal-first review
+
+### Strategies
+
+- choose proposal-first for authored syntax, language semantics, compiler/IR contract changes, cross-layer changes, unclear design boundaries, or hosted-product-adjacent ideas
+- choose local-patch when a proposal-first contribution benefits from a concrete diff for review, but maintainer feedback is still needed before PR creation
+- choose draft-pr only for small, evidence-backed changes whose boundary is already clear and whose tests can be run deterministically
+- when proposal-first is selected, write a concise issue body using the contribution bar: use case, proposal, design boundary, diagnostics or examples, testing plan, and open questions
+- preserve the user's GitHub identity gate: local branch creation, pushing, and PR creation are separate approvals
 
 ---
 
@@ -187,9 +235,10 @@ Create a branch and apply the selected opportunity as a concrete patch.
 ### Requires
 
 - selected-opportunity: selected PR-sized improvement
+- contribution-plan: path selected by proposal-gate
 - repository: local checkout path
 - base-branch: target base branch
-- pr-approval: explicit approval to create a contribution branch
+- local-patch-approval: explicit approval to create a contribution branch and modify the local repository
 
 ### Ensures
 
@@ -201,7 +250,7 @@ Create a branch and apply the selected opportunity as a concrete patch.
 
 ### Errors
 
-- approval-required: approval is absent or does not cover branch creation and PR opening
+- local-patch-approval-required: approval is absent or does not cover branch creation and local edits
 - dirty-worktree: unrelated local changes are present
 - repository-not-found: repository is not a git checkout
 
@@ -210,6 +259,7 @@ Create a branch and apply the selected opportunity as a concrete patch.
 - create a branch named `prose-contributor/<short-topic>`
 - check `git status --short` before editing; stop if unrelated dirty files are present
 - apply the smallest patch that satisfies the selected opportunity
+- if contribution-plan.stop_before_pr is true, leave the patch local and report the maintainer-feedback gate
 - use a commit message that starts with the affected area, for example `std: add contributor guidance to evals`
 
 ---
@@ -256,10 +306,11 @@ Push the branch and open a pull request.
 - patch: committed patch
 - verification: verification record with ready_to_push true
 - selected-opportunity: selected opportunity
+- contribution-plan: path selected by proposal-gate
 - context-pack: contribution context from contribution-context
 - repository: local checkout path
 - base-branch: target base branch
-- pr-approval: explicit approval to push and open the PR
+- publish-approval: explicit approval to push and open the PR
 
 ### Ensures
 
@@ -274,12 +325,14 @@ Push the branch and open a pull request.
 
 ### Errors
 
-- approval-required: approval does not cover pushing and opening a PR
+- publish-approval-required: approval does not cover pushing and opening a PR
+- maintainer-feedback-required: contribution-plan requires proposal-first review before PR creation
 - gh-unavailable: `gh` is missing or not authenticated
 - pr-create-failed: `gh pr create` fails
 
 ### Strategies
 
+- stop before pushing when contribution-plan.stop_before_pr is true
 - use `gh auth status` before pushing
 - push only the contribution branch
 - create a draft PR unless the user explicitly requested ready-for-review
