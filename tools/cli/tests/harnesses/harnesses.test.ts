@@ -141,7 +141,7 @@ describe("codex-sdk harness", () => {
 		]);
 	});
 
-	test("forwards requested sandbox and approval settings to Codex SDK threads", async () => {
+	test("forwards requested runtime settings to Codex SDK threads", async () => {
 		const io = memoryStreams();
 		const starts: unknown[] = [];
 		const factory: CodexSdkFactory = () => ({
@@ -159,14 +159,45 @@ describe("codex-sdk harness", () => {
 
 		const exitCode = await createCodexSdkHarness({ factory }).run("prose run inspector.prose.md", {
 			...io.options,
+			additionalDirectories: ["/skills/open-prose"],
 			env: {
+				PROSE_CODEX_ADD_DIR: " /var/lib/prose, /tmp/grant-finder ,,",
 				PROSE_CODEX_APPROVAL_POLICY: "never",
+				PROSE_CODEX_NETWORK: "true",
 				PROSE_CODEX_SANDBOX_MODE: "danger-full-access",
 			},
 		});
 
 		expect(exitCode).toBe(0);
-		expect(starts).toEqual([{ approvalPolicy: "never", sandboxMode: "danger-full-access", skipGitRepoCheck: true }]);
+		expect(starts).toEqual([
+			{
+				additionalDirectories: ["/skills/open-prose", "/var/lib/prose", "/tmp/grant-finder"],
+				approvalPolicy: "never",
+				networkAccessEnabled: true,
+				sandboxMode: "danger-full-access",
+				skipGitRepoCheck: true,
+			},
+		]);
+	});
+
+	test("rejects invalid Codex network setting", async () => {
+		const io = memoryStreams();
+		const harness = createCodexSdkHarness({
+			factory: () => ({
+				startThread: () => {
+					throw new Error("unexpected startThread");
+				},
+			}),
+		});
+
+		await expect(
+			harness.run("prose run inspector.prose.md", {
+				...io.options,
+				env: {
+					PROSE_CODEX_NETWORK: "yes",
+				},
+			}),
+		).rejects.toThrow("PROSE_CODEX_NETWORK must be one of: true, false");
 	});
 
 	test("maps failed turns to stderr and nonzero exit", async () => {
