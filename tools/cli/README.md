@@ -97,6 +97,11 @@ For externally sandboxed CI environments, Codex harnesses also honor
 `danger-full-access`) and `PROSE_CODEX_APPROVAL_POLICY` (`never`, `on-request`,
 `on-failure`, or `untrusted`) and forward those values to Codex.
 
+To keep `workspace-write` sandboxing while granting narrow extra capabilities,
+Codex harnesses also honor `PROSE_CODEX_ADD_DIR` as a comma-separated list of
+additional writable directories and `PROSE_CODEX_NETWORK` (`true` or `false`)
+for outbound network access.
+
 ## Skill Setup
 
 OpenProse execution depends on the `open-prose` agent skill. Before running a
