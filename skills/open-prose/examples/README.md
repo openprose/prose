@@ -27,6 +27,18 @@ receipts in `runs/`, durable state in `state/`, and dependencies in `deps/`.
   conventions) into a single non-interactive OpenProse system, with the
   two-subagent grill-and-decide split called out as an OpenProse adaptation.
 
+## External Examples
+
+These examples live in separate repos when they depend on product-specific
+source code or should keep their own release cadence.
+
+- [grant-radar](https://github.com/openprose/grant-finder/tree/main/examples/openprose)
+  demonstrates an OpenProse system that drives the public
+  [`grant-finder`](https://github.com/openprose/grant-finder) CLI to produce
+  source-cited non-dilutive funding reports for research labs, startups, and
+  technical teams. The `grant-finder` repo remains the source of truth for that
+  example.
+
 ## Quick Start
 
 Open one example directory, then compile and serve it:

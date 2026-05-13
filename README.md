@@ -320,6 +320,7 @@ Start with:
 | [customer-risk-radar](skills/open-prose/examples/customer-risk-radar/) | Customer risk monitoring before renewals or escalations |
 | [release-readiness](skills/open-prose/examples/release-readiness/) | Release evidence, risk, notes, and rollback context |
 | [compliance-evidence-tracker](skills/open-prose/examples/compliance-evidence-tracker/) | Audit evidence freshness and gap tracking |
+| [grant-radar](https://github.com/openprose/grant-finder/tree/main/examples/openprose) | External example: source-cited funding research for labs, startups, and technical teams |
 
 ## Libraries
 
