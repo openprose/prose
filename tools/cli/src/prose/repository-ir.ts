@@ -124,6 +124,14 @@ export interface RepositoryIrFormeEnvironmentVariable {
 	requiredBy: string[];
 }
 
+export type RepositoryIrFormeToolKind = "cli";
+
+export interface RepositoryIrFormeTool {
+	kind: RepositoryIrFormeToolKind;
+	name: string;
+	requiredBy: string[];
+}
+
 export interface RepositoryIrFormeManifest {
 	id: string;
 	systemName: string;
@@ -135,6 +143,7 @@ export interface RepositoryIrFormeManifest {
 	graph: RepositoryIrFormeNode[];
 	executionOrder: RepositoryIrFormeExecutionStep[];
 	environment: RepositoryIrFormeEnvironmentVariable[];
+	tools: RepositoryIrFormeTool[];
 	warnings: string[];
 }
 
@@ -206,6 +215,7 @@ const activationIntentKinds: readonly RepositoryIrActivationIntentKind[] = [
 	"escalation",
 ];
 const formeInputSources: readonly RepositoryIrFormeInputSource[] = ["caller", "service"];
+const formeToolKinds: readonly RepositoryIrFormeToolKind[] = ["cli"];
 const httpMethods = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
 
 export function validateRepositoryIr(value: unknown): RepositoryIrValidationResult {
@@ -649,6 +659,7 @@ function validateFormeManifests(value: unknown, sourcePaths: Set<string>, errors
 		validateFormeCaller(manifest.caller, `${prefix}.caller`, graph, errors);
 		validateFormeExecutionOrder(manifest.executionOrder, `${prefix}.executionOrder`, graph, errors);
 		validateFormeEnvironment(manifest.environment, `${prefix}.environment`, graph.nodeIds, errors);
+		validateFormeTools(manifest.tools, `${prefix}.tools`, graph.nodeIds, errors);
 		validateStringArrayAllowEmpty(manifest.warnings, `${prefix}.warnings`, errors);
 	}
 
@@ -969,16 +980,46 @@ function validateFormeEnvironment(
 		if (!isNonEmptyString(variable.name)) {
 			errors.push(`${variablePrefix}.name must be a non-empty string`);
 		}
-		if (!Array.isArray(variable.requiredBy)) {
-			errors.push(`${variablePrefix}.requiredBy must be an array`);
+		validateRequiredByNodeReferences(variable.requiredBy, `${variablePrefix}.requiredBy`, nodeIds, errors);
+	}
+}
+
+function validateFormeTools(value: unknown, prefix: string, nodeIds: Set<string>, errors: string[]): void {
+	if (!Array.isArray(value)) {
+		errors.push(`${prefix} must be an array`);
+		return;
+	}
+	for (const [index, tool] of value.entries()) {
+		if (!isRecord(tool)) {
+			errors.push(`${prefix}[${index}] must be an object`);
 			continue;
 		}
-		if (variable.requiredBy.length === 0) {
-			errors.push(`${variablePrefix}.requiredBy must contain at least one node id`);
+		const toolPrefix = `${prefix}[${index}]`;
+		if (!formeToolKinds.includes(tool.kind as RepositoryIrFormeToolKind)) {
+			errors.push(`${toolPrefix}.kind must be cli`);
 		}
-		for (const [requiredByIndex, requiredBy] of variable.requiredBy.entries()) {
-			validateNodeReference(requiredBy, nodeIds, `${variablePrefix}.requiredBy[${requiredByIndex}]`, errors);
+		if (!isNonEmptyString(tool.name)) {
+			errors.push(`${toolPrefix}.name must be a non-empty string`);
 		}
+		validateRequiredByNodeReferences(tool.requiredBy, `${toolPrefix}.requiredBy`, nodeIds, errors);
+	}
+}
+
+function validateRequiredByNodeReferences(
+	value: unknown,
+	prefix: string,
+	nodeIds: Set<string>,
+	errors: string[],
+): void {
+	if (!Array.isArray(value)) {
+		errors.push(`${prefix} must be an array`);
+		return;
+	}
+	if (value.length === 0) {
+		errors.push(`${prefix} must contain at least one node id`);
+	}
+	for (const [index, requiredBy] of value.entries()) {
+		validateNodeReference(requiredBy, nodeIds, `${prefix}[${index}]`, errors);
 	}
 }
 
