@@ -30,9 +30,11 @@ to keep each lowering step on a narrow context budget.
 - `self`: orchestrate the compile flow, enforce the IR contract, and write only
   a valid manifest.
 - `delegates`: source discovery, responsibility lowering, gateway lowering,
-  Forme lowering, IR emission, and IR validation.
+  skill resolution, tool resolution, Forme lowering, IR emission, and IR
+  validation.
 - `prohibited`: inventing schema fields, silently guessing ambiguous timing or
-  fulfillment, recursively invoking the `prose` CLI.
+  fulfillment, installing host capabilities, recursively invoking the `prose`
+  CLI.
 
 ### Strategies
 
@@ -46,6 +48,7 @@ to keep each lowering step on a narrow context budget.
   when the source graph makes the relationship clear.
 - Do not invent connector routes, queue names, provider payloads, secrets, or
   provider subscription setup.
+- Do not invent host skill or tool availability.
 - Stay inside `source_root`; do not inspect sibling examples, parent
   repositories, or unrelated source trees.
 - Prefer warnings over silent assumptions when timing, fulfillment, or Forme
@@ -140,6 +143,42 @@ agent skills_resolver:
     self: ["skill resolution", "host filesystem checks", "scope aggregation"]
     prohibited: ["installing skills", "modifying host state", "guessing skill locations"]
 
+agent tools_resolver:
+  model: "fast"
+  persist: false
+  prompt: """
+  Resolve declared `### Tools` for every system and service in the source
+  graph.
+  Load contract-markdown.md (Tools) and compiler/ir-v0.md.
+  Accept only deterministic CLI executable declarations in the exact
+  `cli:<executable-name>` form. The executable name must be non-empty and must
+  not contain path separators.
+  Report malformed declarations such as `gh`, `cli:`, or `cli:bin/gh` with a
+  diagnostic whose severity is `error` and whose message includes
+  `tool_invalid`.
+  Report non-CLI namespaces such as `mcp:github` with a diagnostic whose
+  severity is `error` and whose message includes `tool_unsupported_kind`.
+  For each supported CLI declaration, check host PATH for an executable with
+  that name. Do not run the executable and do not perform version or auth
+  checks.
+  Aggregate scope: a system's declared tools apply to every sub-service, and a
+  service's declarations are additive -- they extend, never replace, the
+  inherited set.
+  Tool declarations do not satisfy `### Requires` and do not create Forme
+  dependency-graph edges.
+  Never install, modify, upgrade, or remove host tools.
+  Return one aggregated manifest tool record per resolved CLI executable using
+  `{ kind: "cli", name, requiredBy }`, where `requiredBy` names the graph nodes
+  that need the executable.
+  Return an `unresolved` array of `{ tool, sourcePath, checked }` entries for
+  any executable that is not present on PATH. Emit one diagnostic with severity
+  `error` and message code `tool_unresolved` for each unresolved entry, naming
+  the tool and the PATH lookup that was checked.
+  """
+  shape:
+    self: ["tool resolution", "PATH executable checks", "scope aggregation"]
+    prohibited: ["installing tools", "running declared tools", "guessing tool availability"]
+
 agent forme_compiler:
   model: "fast"
   persist: false
@@ -148,6 +187,9 @@ agent forme_compiler:
   Load forme.md and compiler/ir-v0.md.
   Produce only the formeManifests array entries described by ir-v0.md.
   Use executionOrder entries with exactly nodeId and dependsOn fields.
+  Include resolved tool requirements from tools_resolution in each Forme
+  manifest's tools array. Use only `{ kind: "cli", name, requiredBy }` records,
+  and make `requiredBy` reference graph node ids in that manifest.
   Link fulfillment activations that target systems to the matching
   formeManifestId.
   Emit warnings for wiring that cannot be represented in v0.
@@ -179,7 +221,8 @@ agent ir_validator:
   Check exact top-level fields, required fields, allowed enum values,
   root-relative paths, trigger-to-judge links, exactly one judge activation per
   responsibility, fulfillment/source/Forme links, Forme graph references,
-  executionOrder dependencies, and diagnostic shape.
+  executionOrder dependencies, tool requiredBy references, and diagnostic
+  shape.
   Treat any diagnostic with severity error as invalid for writing.
   Return valid: true only when the manifest should be written.
   Return concrete errors with JSON paths when invalid.
@@ -220,13 +263,20 @@ let skills_resolution = session: skills_resolver
 if skills_resolution reports unresolved skills:
   return skills_resolution
 
+let tools_resolution = session: tools_resolver
+  prompt: "Resolve declared host tools for every system and service."
+  context: { source_root, discovered }
+
+if tools_resolution reports invalid, unsupported, or unresolved tools:
+  return tools_resolution
+
 let forme_output = session: forme_compiler
   prompt: "Compile systems and services into v0 Forme manifests."
-  context: { source_root, discovered, responsibility_output, gateway_output }
+  context: { source_root, discovered, responsibility_output, gateway_output, tools_resolution }
 
 let manifest = session: ir_emitter
   prompt: "Assemble the complete v0 repository IR JSON object."
-  context: { discovered, responsibility_output, gateway_output, forme_output }
+  context: { discovered, responsibility_output, gateway_output, tools_resolution, forme_output }
 
 let validation = session: ir_validator
   prompt: "Validate the complete manifest before it is written."
