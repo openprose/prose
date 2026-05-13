@@ -140,7 +140,16 @@ Responsibility Runtime commands add a thin deterministic host layer for
 compiling, serving, and inspecting repository IR. The CLI checks for the
 `open-prose` skill before invoking a harness and can install the selected
 provider's global skill target automatically; run `prose doctor` to inspect the
-local setup.
+local setup. Automatic skill install uses `npx`; in a minimal shell where
+`prose` is available but `npx` is not, install the skill from this checkout:
+
+```bash
+mkdir -p "$HOME/.codex/skills" "$HOME/.agents/skills" "$HOME/.claude/skills"
+ln -sfn "$PWD/skills/open-prose" "$HOME/.codex/skills/open-prose"
+ln -sfn "$PWD/skills/open-prose" "$HOME/.agents/skills/open-prose"
+ln -sfn "$PWD/skills/open-prose" "$HOME/.claude/skills/open-prose"
+prose doctor
+```
 
 > By installing, you agree to the [Privacy Policy](PRIVACY.md) and
 > [Terms of Service](TERMS.md).
@@ -320,6 +329,7 @@ Start with:
 | [customer-risk-radar](skills/open-prose/examples/customer-risk-radar/) | Customer risk monitoring before renewals or escalations |
 | [release-readiness](skills/open-prose/examples/release-readiness/) | Release evidence, risk, notes, and rollback context |
 | [compliance-evidence-tracker](skills/open-prose/examples/compliance-evidence-tracker/) | Audit evidence freshness and gap tracking |
+| [grant-radar](https://github.com/openprose/grant-finder/tree/main/examples/openprose) | External example: source-cited funding research for labs, startups, and technical teams |
 
 ## Libraries
 
