@@ -46,7 +46,7 @@ codex exec "prose run system.prose.md"
 | `prose run ...@<version>`        | Pin to a SHA or tag; require that version in `<openprose-root>/deps/`                     |
 | `prose run ... --offline`        | Require disk-only resolution; error if not in `<openprose-root>/deps/`                   |
 | `prose lint <file.prose.md>`      | Validate structure, schema, shapes, and contracts               |
-| `prose preflight <file.prose.md>` | Check dependencies and environment variables                    |
+| `prose preflight <file.prose.md>` | Check dependencies, declared tools, and environment variables   |
 | `prose test <path>`         | Run test(s) and report results                                  |
 | `prose install`             | Install dependencies from `use` statements into `<openprose-root>/deps/`        |
 | `prose install --update`    | Update pinned dependency SHAs                                   |
@@ -226,6 +226,7 @@ own tools:
 | `read_file` / `write_file` | Read and write `<openprose-root>/runs/{id}/` state artifacts and backend records |
 | `copy_binding` | Publish a declared output through the active backend; filesystem copies from `workspace/{service}/` to `bindings/{service}/` |
 | `check_env` | Confirm an environment variable exists without exposing its value |
+| `check_tool` | Confirm a declared host tool exists without installing, modifying, or running it |
 
 ---
 
@@ -325,6 +326,7 @@ filesystem snapshot at `<openprose-root>/runs/{id}/forme.manifest.json`. Extract
 - **Caller Interface** — what inputs the system needs, what it returns
 - **Graph** — each service with its source file, workspace path, inputs (with `←` mappings), and outputs
 - **Execution Order** — the sequence (with parallelization notes)
+- **Tools** — host executable requirements attributed to graph nodes
 - **Warnings** — present to the user before executing
 
 ### Step 2: Bind Caller Inputs
@@ -412,6 +414,11 @@ output for that clause.
 {if shape.prohibited exists: "You must NOT: {prohibited list}"}
 {if shape.self exists: "You are responsible for: {self list}"}
 {if shape.delegates exists: "You delegate to: {delegates list}"}
+
+## Declared Host Tools
+
+{if tools exist for this service: "The manifest declares these host tools for this service: {tool list}"}
+{if no tools exist for this service: "No host tools are declared for this service."}
 
 ## Error Signaling
 
@@ -1051,6 +1058,37 @@ The model references environment variables by name — it never reads, logs, or 
 - When a service declares `### Environment` variables, the VM verifies they are set before spawning the service's session. Verification means confirming the variable exists in the host environment — not reading or logging its value.
 - The service session can reference env vars via shell expansion (e.g., `$SLACK_WEBHOOK_URL` in a curl command) but must never construct strings containing the values, log them, or write them to workspace files.
 - If an environment variable is not set, the VM fails the service with a clear error rather than proceeding with an empty value. The error is logged to the active backend event store (filesystem: `vm.log.md`) as `N→ service-name ✗ missing-env:{VAR_NAME}`.
+
+### Resolving Tools
+
+`### Tools` declares host executables required by a service or system. The
+compiler resolves these declarations before writing repository IR, and the
+compiled Forme manifest carries resolved tools as:
+
+```json
+{ "kind": "cli", "name": "jq", "requiredBy": ["verifier"] }
+```
+
+Tool declarations are host capability checks. They do not satisfy
+`### Requires`, do not create Forme dependency-graph edges, and do not act as
+an allowlist. Use `### Shape` to describe service boundaries and prohibited
+actions.
+
+**VM behavior for manifest `tools` during execution:**
+
+- Before spawning a service, find manifest tool records whose `requiredBy`
+  includes that service's graph node id.
+- For `kind: "cli"`, verify the executable name is present on host PATH. The
+  VM checks presence only; it does not run the executable for version or auth
+  checks.
+- Include declared tool names in the service prompt so the service knows which
+  host tools its contract relies on.
+- If a required CLI tool is missing, fail the service before spawning its
+  session. Log the failure to the active backend event store as
+  `N→ service-name ✗ missing-tool:cli:{name}`.
+
+OpenProse never installs, modifies, upgrades, or removes host tools. Installing
+and authenticating tools belongs to the host/user outside the VM.
 
 ---
 

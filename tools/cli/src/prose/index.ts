@@ -42,6 +42,8 @@ export {
 	type RepositoryIrFormeManifest,
 	type RepositoryIrFormeNode,
 	type RepositoryIrFormeOutputBinding,
+	type RepositoryIrFormeTool,
+	type RepositoryIrFormeToolKind,
 	type RepositoryIrResponsibility,
 	type RepositoryIrSource,
 	type RepositoryIrSourceKind,

@@ -155,7 +155,7 @@ If a service or system cannot be resolved, emit an error:
 For each resolved service or system, extract from its `*.prose.md` file:
 
 - **Frontmatter:** `name`, `kind`
-- **Sections:** `### Services`, `### Requires`, `### Ensures`, `### Errors`, `### Invariants`, `### Strategies`, `### Environment`, `### Runtime`, `### Shape`
+- **Sections:** `### Services`, `### Requires`, `### Ensures`, `### Errors`, `### Invariants`, `### Strategies`, `### Environment`, `### Runtime`, `### Memory`, `### Skills`, `### Tools`, `### Shape`
 
 **Header hierarchy:**
 
@@ -315,6 +315,34 @@ After building the dependency graph, collect all `### Environment` declarations 
 
 This enables `prose preflight` to verify the entire environment from the top-level system without traversing the dependency graph at runtime.
 
+### Step 5c: Collect Tool Declarations
+
+Collect all `### Tools` declarations from every system and service in the
+graph. Tool declarations are host capability requirements. They do not satisfy
+`### Requires`, do not create dependency-graph edges, and do not make a tool an
+allowed or prohibited action.
+
+For repository compile, consume the compiler program's `tools_resolution`
+output. The compiler resolves only supported declarations before Forme emits a
+manifest:
+
+1. **Gather** -- for each system and service, extract its `### Tools` section
+   if present.
+2. **Inherit** -- system-level declarations apply to every sub-service in that
+   system; service-level declarations are additive.
+3. **Resolve** -- supported `cli:<name>` declarations must resolve to an
+   executable on host PATH before the manifest is emitted.
+4. **Attribute** -- emit one manifest entry per resolved CLI tool with the graph
+   nodes that require it:
+
+```json
+{ "kind": "cli", "name": "jq", "requiredBy": ["verifier"] }
+```
+
+Only resolved CLI tools are emitted. Invalid, unsupported, or unresolved tool
+declarations are compile errors and prevent `manifest.next.json` from being
+written.
+
 ### Step 6: Validate
 
 Before producing the manifest, check:
@@ -334,6 +362,9 @@ Before producing the manifest, check:
 | Config value placed under `with:` | `[Error] Pattern config 'max_rounds' belongs under config:, not with:` |
 | Cycle in nested patterns | `[Error] Cycle in pattern nesting: A → B → A` |
 | Slot name collides with config parameter name | `[Error] Pattern '{name}' has slot '{slot}' that collides with config parameter '{param}'. Slot and config names must be disjoint.` |
+| Malformed tool declaration | `[Error] Invalid tool declaration: 'gh' (expected cli:<executable-name>)` |
+| Unsupported tool namespace | `[Error] Unsupported tool kind: 'mcp:github'` |
+| Unresolved declared CLI tool | `[Error] Declared tool not found on PATH: 'cli:gh'` |
 
 **Warnings (proceed with caution):**
 
@@ -411,6 +442,9 @@ not need to re-read original source files to understand wiring.
     { "nodeId": "{service-name}", "dependsOn": ["caller"] }
   ],
   "environment": [],
+  "tools": [
+    { "kind": "cli", "name": "jq", "requiredBy": ["draft-risk-brief"] }
+  ],
   "warnings": []
 }
 ```
@@ -443,6 +477,10 @@ Constraint types emitted:
 - `delegates` — valid runtime delegation targets for this service (from `shape.delegates`), with paths to their source files. Only present if the service has `shape.delegates`.
 
 **Execution Order.** A numbered list showing which services run in what order, derived from the dependency graph. Includes parallelization notes. Delegates are not in the static execution order — they run on-demand when requested by their parent service via runtime delegation (see `prose.md`, Runtime Delegation).
+
+**Tools.** Host executable requirements collected from `### Tools`. Each record
+has `kind: "cli"`, the executable `name`, and `requiredBy` graph node ids. Tool
+records do not create graph edges.
 
 **Warnings.** Any warnings from the validation step. The execution engine can present these to the user before running.
 
@@ -889,7 +927,7 @@ The Forme Container:
 
 1. **Reads** the system file and its `### Services` section
 2. **Resolves** each service name to a `*.prose.md` file (including pattern definitions)
-3. **Extracts** contracts (`### Requires`, `### Ensures`, `### Errors`, `### Invariants`, `### Strategies`, `### Environment`), shapes, and pattern slot/config definitions
+3. **Extracts** contracts (`### Requires`, `### Ensures`, `### Errors`, `### Invariants`, `### Strategies`, `### Environment`, `### Tools`), shapes, and pattern slot/config definitions
 4. **Expands patterns** — binds slots from `with:` and parameters from `config:`, validates slot contracts, expands delegation patterns, computes derived contracts (inside-out for nested patterns)
 5. **Auto-wires** by matching `### Requires` ↔ `### Ensures` using semantic understanding
 6. **Validates** the dependency graph for errors and warnings (including pattern-specific checks)

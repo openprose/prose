@@ -141,6 +141,7 @@ Forme and the Prose VM recognize these `###` sections case-insensitively:
 | `### Runtime` | system, service | Execution hints such as `persist` and `model` |
 | `### Memory` | service | Declared reads from and writes to persistent agent memory. Only meaningful when `### Runtime` sets `persist: project` or `persist: user` |
 | `### Skills` | system, service | Agent harness skills the component requires the host harness to provide. See [Skills](#skills) |
+| `### Tools` | system, service | Host tools the component requires the host environment to provide. See [Tools](#tools) |
 | `### Shape` | service | Capability boundaries: self, delegates, and prohibited work |
 | `### Wiring` | system | Explicit Level 2 wiring declaration |
 | `### Execution` | system, service | ProseScript choreography that pins execution |
@@ -434,6 +435,51 @@ program-level contract.
 OpenProse never installs, modifies, or removes the user's harness skills.
 Installing skills is the user's responsibility; the compiler only verifies they
 are present and stops the compile when they are not.
+
+## Tools
+
+A system or service that depends on host executables declares them in a
+`### Tools` section. Tool declarations are host capability requirements: they
+do not satisfy `### Requires`, do not create Forme dependency-graph edges, and
+do not grant or restrict tool use. Use `### Shape` for service boundaries and
+prohibited actions.
+
+```markdown
+### Tools
+
+- `cli:gh`: GitHub CLI available on PATH for PR inspection
+- `cli:jq`: JSON CLI available on PATH for JSON validation
+```
+
+The current deterministic tool declaration shape is `cli:<executable-name>`.
+The executable name is the command name the host should find by PATH lookup. It
+must be non-empty and must not contain path separators. Tool declarations
+belong only in the `### Tools` section; there is no frontmatter form.
+
+Rules:
+
+- System-level declarations apply to every sub-service inside the system.
+  Service-level declarations are additive, not exclusive.
+- `cli:<name>` checks only executable presence on PATH. Version ranges, auth
+  checks, and installer behavior are outside the declaration.
+- Namespaces other than `cli` are reserved. The current compiler reports
+  `tool_unsupported_kind` for reserved but unsupported namespaces such as
+  `mcp:github`.
+- A malformed declaration, such as `gh` or `cli:`, reports `tool_invalid`.
+- A supported `cli:<name>` declaration that cannot be found on PATH reports
+  `tool_unresolved`.
+- `prose compile` fails closed when any `tool_invalid`,
+  `tool_unsupported_kind`, or `tool_unresolved` diagnostic is emitted.
+
+The compiler program implements this resolution rule; see
+`skills/open-prose/compiler/index.prose.md` (`tools_resolver`) for the
+program-level contract.
+
+### BYO host tools invariant
+
+OpenProse never installs, modifies, upgrades, or removes host tools. Installing
+and authenticating host tools is the user's responsibility; the compiler only
+verifies declared tools are present and stops the compile when they are not.
 
 ## Frontmatter
 

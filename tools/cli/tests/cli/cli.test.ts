@@ -1,4 +1,13 @@
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+	chmodSync,
+	copyFileSync,
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	symlinkSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -503,6 +512,155 @@ kind: system
 		} finally {
 			rmSync(temp, { recursive: true, force: true });
 			rmSync(home, { recursive: true, force: true });
+		}
+	});
+
+	it("fails closed before forwarding when a declared CLI tool cannot be resolved", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-compile-tool-unresolved-"));
+		const io = memoryStreams();
+		let harnessInvocations = 0;
+
+		try {
+			mkdirSync(join(temp, "src"), { recursive: true });
+			writeFileSync(
+				join(temp, "src", "invoice-extractor.prose.md"),
+				`---
+name: invoice-extractor
+kind: system
+---
+
+### Tools
+
+- cli:pdftotext
+`,
+			);
+
+			await expect(
+				runCompileCommand({
+					argv: [".", "--harness", "mock"],
+					cwd: temp,
+					env: { PATH: join(temp, "empty-bin") },
+					stdout: io.streams.stdout,
+					stderr: io.streams.stderr,
+					skillBootstrap: false,
+					harnessFactory: () => ({
+						name: "mock",
+						async run() {
+							harnessInvocations += 1;
+							return 0;
+						},
+					}),
+				}),
+			).rejects.toMatchObject({
+				name: "CompileValidationError",
+				message: expect.stringContaining("tool_unresolved"),
+				details: expect.arrayContaining([
+					expect.stringContaining("cli:pdftotext"),
+				]),
+			});
+
+			expect(harnessInvocations).toBe(0);
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
+
+	it("fails closed before forwarding when a declared tool is invalid", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-compile-tool-invalid-"));
+		const io = memoryStreams();
+		let harnessInvocations = 0;
+
+		try {
+			mkdirSync(join(temp, "src"), { recursive: true });
+			writeFileSync(
+				join(temp, "src", "browser-check.prose.md"),
+				`---
+name: browser-check
+kind: system
+---
+
+### Tools
+
+- mcp:browser
+`,
+			);
+
+			await expect(
+				runCompileCommand({
+					argv: [".", "--harness", "mock"],
+					cwd: temp,
+					env: { PATH: join(temp, "bin") },
+					stdout: io.streams.stdout,
+					stderr: io.streams.stderr,
+					skillBootstrap: false,
+					harnessFactory: () => ({
+						name: "mock",
+						async run() {
+							harnessInvocations += 1;
+							return 0;
+						},
+					}),
+				}),
+			).rejects.toMatchObject({
+				name: "CompileValidationError",
+				message: expect.stringContaining("tool_unsupported_kind"),
+				details: expect.arrayContaining([
+					expect.stringContaining("mcp:browser"),
+				]),
+			});
+
+			expect(harnessInvocations).toBe(0);
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
+
+	it("forwards compile when declared CLI tools resolve on PATH", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-compile-tool-resolved-"));
+		const io = memoryStreams();
+		let harnessInvocations = 0;
+
+		try {
+			const bin = join(temp, "bin");
+			mkdirSync(join(temp, "src"), { recursive: true });
+			mkdirSync(bin, { recursive: true });
+			writeFileSync(join(bin, "jq"), "#!/bin/sh\nexit 0\n");
+			chmodSync(join(bin, "jq"), 0o755);
+			writeFileSync(
+				join(temp, "src", "json-summarizer.prose.md"),
+				`---
+name: json-summarizer
+kind: system
+---
+
+### Tools
+
+- cli:jq
+`,
+			);
+
+			const exitCode = await runCompileCommand({
+				argv: [".", "--harness", "mock"],
+				cwd: temp,
+				env: { PATH: bin },
+				stdout: io.streams.stdout,
+				stderr: io.streams.stderr,
+				skillBootstrap: false,
+				harnessFactory: () => ({
+					name: "mock",
+					async run() {
+						harnessInvocations += 1;
+						mkdirSync(join(temp, "dist"), { recursive: true });
+						copyFileSync(stargazerFixture, join(temp, "dist/manifest.next.json"));
+						return 0;
+					},
+				}),
+			});
+
+			expect(exitCode).toBe(0);
+			expect(harnessInvocations).toBe(1);
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
 		}
 	});
 

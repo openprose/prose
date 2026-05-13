@@ -21,6 +21,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `skills/open-prose/compiler/index.prose.md` (skills_resolver), and
   `skills/open-prose/examples/declared-skills/` for the spec and a worked
   example. Resolves [#60](https://github.com/openprose/prose/issues/60).
+- **Declared `### Tools` section** — Components may now declare host CLI
+  executables they require in a `### Tools` section using `cli:<name>`
+  declarations. The compiler program resolves supported declarations through a
+  PATH executable check, fails closed with `tool_invalid`,
+  `tool_unsupported_kind`, or `tool_unresolved` diagnostics, and emits resolved
+  tools into Forme manifests with `requiredBy` attribution. OpenProse never
+  installs or modifies host tools. Tracks
+  [#76](https://github.com/openprose/prose/issues/76).
 
 ### Fixed
 
