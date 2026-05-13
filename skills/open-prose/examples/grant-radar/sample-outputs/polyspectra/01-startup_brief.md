@@ -1,0 +1,33 @@
+# startup_brief
+
+kind: input
+source: caller
+
+---
+
+polySpectra is a US small business making COR (Cyclic Olefin Resin) rugged
+photopolymer resins for industrial 3D printing. Our materials let
+manufacturing engineers print durable, heat-resistant, chemically-resistant
+end-use parts on standard DLP and LCD resin printers. We sell to engineers
+in industrial, manufacturing, and laboratory facilities -- not to consumers.
+
+We are a small business looking for non-dilutive R&D funding to:
+
+- expand the COR resin product line (new chemistries, application-specific
+  formulations)
+- accelerate technical adoption with industrial customers
+- support qualification work for advanced manufacturing, aerospace, defense,
+  and energy applications where rugged photopolymer parts compete with
+  injection-molded thermoplastics
+
+Technical focus: advanced materials, additive manufacturing, photopolymer
+chemistry, manufacturing R&D. Dual-use applications are in scope where the
+underlying material science is the same. US-based, no preference about
+defense-specific work but open to it.
+
+We want to focus on grants we can actually win and ship work against.
+Conservative on eligibility. Prefer programs without matching-fund
+requirements if possible; will consider those if the program fit is strong.
+
+Do not recommend grants we have already received or that are listed in our
+internal "known" list (the upstream agent will pass that list separately).
