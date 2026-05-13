@@ -17,6 +17,11 @@ import {
 	type SkillPreflight,
 } from "./base.js";
 import { preflightDeclaredSkillsInRoot, formatUnresolvedMessage } from "../skills/declared.js";
+import {
+	preflightDeclaredToolsInRoot,
+	formatInvalidToolsMessage,
+	formatUnresolvedToolsMessage,
+} from "../tools/declared.js";
 
 export class CompileValidationError extends Error {
 	readonly details: string[];
@@ -91,6 +96,10 @@ export async function runCompileCommand(options: RunCompileCommandOptions): Prom
 
 	if (options.skillPreflight !== false) {
 		await preflightDeclaredSkillsForCompile({
+			cwd: options.cwd,
+			env: options.env,
+		});
+		await preflightDeclaredToolsForCompile({
 			cwd: options.cwd,
 			env: options.env,
 		});
@@ -214,6 +223,35 @@ async function preflightDeclaredSkillsForCompile(options: {
 			? "Declared skill could not be resolved (skill_unresolved)."
 			: `${result.unresolved.length} declared skills could not be resolved (skill_unresolved).`;
 	throw new CompileValidationError(heading, formatUnresolvedMessage(result.unresolved).split(/\r?\n/).slice(1));
+}
+
+async function preflightDeclaredToolsForCompile(options: {
+	cwd: string;
+	env: Readonly<Record<string, string | undefined>>;
+}): Promise<void> {
+	const root = await resolveOpenProseRoot({
+		cwd: options.cwd,
+		...(options.env.HOME === undefined ? {} : { home: options.env.HOME }),
+	});
+	const result = await preflightDeclaredToolsInRoot(root.absolutePath, {
+		cwd: options.cwd,
+		...(options.env.PATH === undefined ? {} : { path: options.env.PATH }),
+	});
+	if (result.invalid.length > 0) {
+		const heading =
+			result.invalid.length === 1
+				? `Declared tool declaration is invalid (${result.invalid[0]?.code ?? "tool_invalid"}).`
+				: `${result.invalid.length} declared tool declarations are invalid.`;
+		throw new CompileValidationError(heading, formatInvalidToolsMessage(result.invalid).split(/\r?\n/).slice(1));
+	}
+	if (result.unresolved.length === 0) {
+		return;
+	}
+	const heading =
+		result.unresolved.length === 1
+			? "Declared tool could not be resolved (tool_unresolved)."
+			: `${result.unresolved.length} declared tools could not be resolved (tool_unresolved).`;
+	throw new CompileValidationError(heading, formatUnresolvedToolsMessage(result.unresolved).split(/\r?\n/).slice(1));
 }
 
 async function resolveCompiledManifestTarget(options: {

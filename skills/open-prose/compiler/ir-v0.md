@@ -201,6 +201,13 @@ Do not emit `service`, `source`, `sourceName`, `target`, `triggeredBy`,
     { "nodeId": "draft-risk-brief", "dependsOn": ["caller"] }
   ],
   "environment": [],
+  "tools": [
+    {
+      "kind": "cli",
+      "name": "jq",
+      "requiredBy": ["draft-risk-brief"]
+    }
+  ],
   "warnings": []
 }
 ```
@@ -215,6 +222,9 @@ Do not emit `service`, `source`, `sourceName`, `target`, `triggeredBy`,
 "dependsOn": [...] }`. It is not a numbered step list.
 
 `environment` is an array of `{ "name": "ENV_VAR", "requiredBy": ["node-id"] }`.
+`tools` is an array of `{ "kind": "cli", "name": "executable", "requiredBy":
+["node-id"] }`. `requiredBy` entries must reference graph node ids in the same
+Forme manifest. Current v0 IR supports only `kind: "cli"` tool records.
 `warnings` is an array of non-empty strings.
 
 ## Diagnostics

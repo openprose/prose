@@ -215,6 +215,56 @@ describe("repository IR v0", () => {
 		);
 	});
 
+	it("accepts Forme manifest tool requirements", () => {
+		const manifest = cloneFixture("tests/open-prose/compiler/expected/stargazer.manifest.next.json");
+		manifest.formeManifests[0].tools = [
+			{
+				kind: "cli",
+				name: "gh",
+				requiredBy: ["stargazer-fetcher", "profile-enricher"],
+			},
+		];
+
+		expect(validateRepositoryIr(manifest)).toEqual({
+			valid: true,
+			errors: [],
+		});
+	});
+
+	it("rejects malformed Forme manifest tool requirements", () => {
+		const manifest = cloneFixture("tests/open-prose/compiler/expected/stargazer.manifest.next.json");
+		manifest.formeManifests[0].tools = [
+			{
+				kind: "http",
+				name: "",
+				requiredBy: ["missing-node", ""],
+			},
+			{
+				kind: "cli",
+				name: "gh",
+				requiredBy: [],
+			},
+			{
+				kind: "cli",
+				name: "gh",
+			},
+		];
+
+		const result = validateRepositoryIr(manifest);
+
+		expect(result.valid).toBe(false);
+		expect(result.errors).toEqual(
+			expect.arrayContaining([
+				"formeManifests[0].tools[0].kind must be cli",
+				"formeManifests[0].tools[0].name must be a non-empty string",
+				"formeManifests[0].tools[0].requiredBy[0] must reference a known graph node",
+				"formeManifests[0].tools[0].requiredBy[1] must be a non-empty string",
+				"formeManifests[0].tools[1].requiredBy must contain at least one node id",
+				"formeManifests[0].tools[2].requiredBy must be an array",
+			]),
+		);
+	});
+
 	it("rejects responsibilities without exactly one judge activation", () => {
 		const manifest = cloneFixture("tests/open-prose/compiler/expected/stargazer.manifest.next.json");
 		manifest.activations = manifest.activations.filter((activation: any) => activation.kind !== "judge");

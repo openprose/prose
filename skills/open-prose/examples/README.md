@@ -26,6 +26,10 @@ receipts in `runs/`, durable state in `state/`, and dependencies in `deps/`.
   skills (grill-with-docs, to-prd, to-issues, tdd, plus his per-repo
   conventions) into a single non-interactive OpenProse system, with the
   two-subagent grill-and-decide split called out as an OpenProse adaptation.
+- [declared-skills](./declared-skills/) shows a minimal `### Skills`
+  requirement that fails closed at compile time when the host skill is missing.
+- [declared-tools](./declared-tools/) shows a minimal `### Tools` requirement
+  that fails closed at compile time when the host CLI executable is missing.
 - [grant-radar](./grant-radar/) mirrors the canonical
   [`openprose/grant-finder`](https://github.com/openprose/grant-finder)
   example and demonstrates an OpenProse system that drives the public
