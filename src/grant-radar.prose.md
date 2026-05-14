@@ -88,8 +88,8 @@ returning `skill_unresolved` before any service runs. That guarantees the
 dependency is satisfied at wiring time rather than failing mid-run.
 
 **Two-step install:** the `grant-finder` CLI and host-harness skill live in the
-[`openprose/grant-finder`](https://github.com/openprose/grant-finder) repo even
-when this system is mirrored inside `openprose/prose`. The skill install step
+[`openprose/grant-finder`](https://github.com/openprose/grant-finder) repo.
+Clone or update that repo before running this system. The skill install step
 refreshes old symlinks because a stale installed skill can make the host agent
 follow old instructions.
 
@@ -142,8 +142,8 @@ under those defaults — it needs to create its SQLite ledger under
 `~/.local/share/grant-finder/` and reach public APIs (Grants.gov, Federal
 Register), agency RSS feeds, and configured public source pages.
 Run the commands below from this example directory: `examples/openprose` in
-`openprose/grant-finder`, or `skills/open-prose/examples/grant-radar` in the
-`openprose/prose` mirror.
+`openprose/grant-finder`, or `skills/open-prose/examples/grant-radar` in
+`openprose/prose`.
 
 **Recommended (granular permissions)** — requires
 [openprose/prose#78](https://github.com/openprose/prose/pull/78) (or any
