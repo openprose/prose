@@ -30,13 +30,10 @@ receipts in `runs/`, durable state in `state/`, and dependencies in `deps/`.
   requirement that fails closed at compile time when the host skill is missing.
 - [declared-tools](./declared-tools/) shows a minimal `### Tools` requirement
   that fails closed at compile time when the host CLI executable is missing.
-- [grant-radar](./grant-radar/) mirrors the canonical
-  [`openprose/grant-finder`](https://github.com/openprose/grant-finder)
-  example and demonstrates an OpenProse system that drives the public
+- [grant-radar](./grant-radar/) demonstrates an OpenProse system that drives the public
   [`grant-finder`](https://github.com/openprose/grant-finder) CLI to produce
   source-cited non-dilutive funding reports for research labs, startups, and
-  technical teams. The `grant-finder` repo remains the source of truth for that
-  example; see [grant-radar/MIRROR.md](./grant-radar/MIRROR.md).
+  technical teams.
 
 ## Quick Start
 
