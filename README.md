@@ -110,25 +110,33 @@ prose start
 
 `prose start` is the post-install onboarding coach. It asks one open question
 about what you want OpenProse to do, then either scaffolds a tailored program
-from your answer or walks you through curated examples by complexity.
+from your answer or walks you through curated examples by complexity. If you
+ask it to explain OpenProse with OpenProse, it scaffolds a first service that
+produces a practical guide and points you at its run receipt.
 
-Or, if you already know exactly what you want, create `src/hello.prose.md`:
+Or, if you already know exactly what you want, create
+`src/openprose-using-openprose.prose.md`:
 
 ```markdown
 ---
-name: hello
+name: openprose-using-openprose
 kind: service
 ---
 
+### Requires
+
+- `reader_goal`: the user's stated goal for this run
+
 ### Ensures
 
-- `message`: a warm one-paragraph introduction to OpenProse
+- `guide`: a concise practical explanation of how to use OpenProse
+- `receipt`: the run trace path for this activation
 ```
 
 Run it inside an agent session:
 
 ```text
-prose run src/hello.prose.md
+prose run src/openprose-using-openprose.prose.md
 ```
 
 The activated OpenProse skill interprets that as an instruction to the current

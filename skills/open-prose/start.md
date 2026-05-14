@@ -61,23 +61,30 @@ Signals the user is in this camp:
   "summarize incidents from PagerDuty"
 - A concrete workflow: "the three things I do every release"
 - A concrete role: "an agent that watches Linear for stale tickets"
+- A self-referential first task: "teach me OpenProse with OpenProse",
+  "show me how this works", "make a first service that explains the system"
 
 Action: **Honor it. Skip the rest of this file. Go scaffold.**
 
 1. Load `contract-markdown.md` and `guidance/authoring.md`.
-2. If the task is single-service, scaffold one `*.prose.md` under
+2. If the user's concrete ask is to learn OpenProse by running OpenProse,
+   scaffold the self-explaining service from Rung 0, with `reader_goal`
+   filled from the user's own words. Do not commit a generated root `src/`
+   file or any `runs/` receipt into the OpenProse repository; those are local
+   activation artifacts.
+3. Otherwise, if the task is single-service, scaffold one `*.prose.md` under
    `<openprose-root>/src/`. If it is multi-service (the user named two or more
    distinct roles, or named a workflow with three or more phases), scaffold a
    system plus per-service files.
-3. Use the user's words for `### Requires` and `### Ensures` -- do not
+4. Use the user's words for `### Requires` and `### Ensures` -- do not
    invent inputs or outputs they did not name. If a contract is unclear,
    ask one targeted question, not five.
-4. Show the scaffolded file(s) inline. Name the file path so the user can
+5. Show the scaffolded file(s) inline. Name the file path so the user can
    open it themselves.
-5. Apply `prose lint` semantics to the new file. In an agent session, do this
+6. Apply `prose lint` semantics to the new file. In an agent session, do this
    inline from `contract-markdown.md`; from a shell-backed CLI host, you may
    run the CLI command. Report cleanly.
-6. Offer: **"Want me to run it now?"** If yes, treat as `prose run
+7. Offer: **"Want me to run it now?"** If yes, treat as `prose run
    <path>` and execute. If no, tell the user where the file lives and how
    to run it later.
 
@@ -105,19 +112,63 @@ Always time-bound the options. The time estimate matters more than the name.
 Lead with the smallest. List rungs one at a time or in batches of two; never
 dump the whole ladder.
 
-#### Rung 0 -- Hello world (~60 seconds)
+#### Rung 0 -- OpenProse using OpenProse (~60 seconds)
 
-A single-service `hello.prose.md` that takes one input (a topic, a name, a
-question) and returns one output (a paragraph, a list, a greeting). You
-**scaffold this inline** -- there is no example directory for it. The user
-provides one sentence of intent ("greet me", "describe the weather here",
-"explain X"), you write a 15-line service, lint it, run it, point at the
-run trace.
+A single-service `openprose-using-openprose.prose.md` that teaches the user
+what just ran. It takes one input, `reader_goal`, and returns two outputs:
+`guide` and `receipt`. You **scaffold this inline** -- there is no committed
+root `src/` file and no example directory for it. Fill `reader_goal` from the
+user's own words, lint the service, run it if they agree, and point at the run
+trace.
+
+Use this shape as the default scaffold, tailoring only the description,
+`reader_goal` wording, and any repo-specific context you observed:
+
+````markdown
+---
+name: openprose-using-openprose
+kind: service
+---
+
+### Description
+
+Explain how to use OpenProse by running a first OpenProse service contract.
+
+### Runtime
+
+- `persist`: true
+
+### Shape
+
+- `self`: read the OpenProse quickstart and authoring contract, then produce a
+  practical guide
+- `prohibited`: pretending a shell `prose` binary ran; inventing commands or
+  files not supported by the OpenProse docs
+
+### Requires
+
+- `reader_goal`: the user's stated goal for this run
+
+### Ensures
+
+- `guide`: a concise practical explanation of how to use OpenProse
+- `guide` includes: what a `*.prose.md` file is, how `prose run` works in an
+  agent session, the difference between service/system/responsibility, where
+  files live, and the next command to try
+- `receipt`: the run trace path for this activation
+
+### Strategies
+
+- favor the smallest working example before explaining advanced orchestration
+- distinguish agent-session commands from shell commands
+- when describing commands, say what the current host will embody rather than
+  implying an external executable is required
+````
 
 **Why offer this first:** it proves OpenProse runs on this host in under a
-minute. It is the equivalent of `console.log("hello world")` -- boring on
-purpose, valuable because it eliminates ambiguity about whether the install
-worked.
+minute and immediately explains the receipt it created. The user sees Contract
+Markdown, an agent-session `prose run`, and a concrete binding without needing
+a separate toy domain.
 
 After Rung 0 succeeds, offer Rung 1 explicitly: *"That ran. Want to see a
 single-service example that does real work? Or a multi-service system?"*
