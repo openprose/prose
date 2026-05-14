@@ -6,6 +6,7 @@ export type CommandName =
 	| "test"
 	| "inspect"
 	| "status"
+	| "start"
 	| "install"
 	| "help"
 	| "examples"
@@ -29,6 +30,7 @@ export const supportedCommands = [
 	"test",
 	"inspect",
 	"status",
+	"start",
 	"install",
 	"help",
 	"examples",
@@ -43,6 +45,7 @@ const usageByCommand: Record<CommandName, string> = {
 	test: "prose test <path>",
 	inspect: "prose inspect <run-id>",
 	status: "prose status",
+	start: "prose start",
 	install: "prose install [--update]",
 	help: "prose help",
 	examples: "prose examples [name]",
@@ -89,6 +92,7 @@ function validate(command: CommandName, args: readonly string[]): void {
 			requireOnlyFlags(command, args, ["--update"]);
 			return;
 		case "status":
+		case "start":
 			requireOnlyFlags(command, args, []);
 			return;
 		case "examples":
@@ -163,7 +167,7 @@ function requireCompileArgs(command: "compile", args: readonly string[]): void {
 	}
 }
 
-function requireOnlyFlags(command: "install" | "status" | "upgrade", args: readonly string[], flags: readonly string[]): void {
+function requireOnlyFlags(command: "install" | "start" | "status" | "upgrade", args: readonly string[], flags: readonly string[]): void {
 	for (const arg of args) {
 		if (!flags.includes(arg)) {
 			fail(command, `Unexpected ${arg.startsWith("-") ? "option" : "argument"} '${arg}' for 'prose ${command}'.`);

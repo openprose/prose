@@ -35,6 +35,7 @@ After activation, choose the narrowest path that matches the user's intent:
 
 | User Intent | Load First | Then Load If Needed |
 |-------------|------------|---------------------|
+| First-run after installing the skill ("I just installed this, now what?") | `start.md` | `contract-markdown.md`, `guidance/authoring.md` once a path is chosen |
 | Explain OpenProse or answer "how do I..." | `help.md` | `examples/README.md`, then one focused example |
 | Run a `.prose.md` service or system | `contract-markdown.md` | `state/README.md` and the selected backend (`state/filesystem.md` by default); `forme.md` if it is a system with `### Services`; `prose.md` to execute |
 | Inspect or upgrade source layout | `changelog.md` | `contract-markdown.md`, `prosescript.md` if migration details require them |
@@ -137,6 +138,7 @@ executing the system. The shell executable is the agent runner, e.g.
 | `prose install --update` | Load `deps.md`; update pinned dependency SHAs |
 | `prose upgrade --dry-run` | Load `changelog.md`; inspect nearby files and report the concrete migration plan without editing |
 | `prose upgrade` | Load `changelog.md`; inspect nearby files and apply the migration plan |
+| `prose start` | Load `start.md`; act as the user's onboarding coach for their first OpenProse program. Use for first-run / "how do I get started" intents only |
 | `prose help` | Load `help.md` |
 | `prose examples` | List or run bundled examples from `examples/` |
 | Other | Interpret intent and load the smallest relevant spec set |
@@ -259,6 +261,7 @@ user workspace for these docs.
 | `deps.md` | Dependency resolution and `prose install` |
 | `changelog.md` | Compact version history and model-guided upgrade instructions; load only for `prose upgrade` or outdated-structure diagnosis |
 | `help.md` | User-facing help |
+| `start.md` | Post-install onboarding coach playbook for `prose start` |
 | `concepts/README.md` | Responsibility Runtime concept index |
 | `concepts/responsibility.md` | `kind: responsibility` semantic contract |
 | `concepts/reactor.md` | Evented reconciliation, judge status, and maintenance pressure |

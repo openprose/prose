@@ -102,7 +102,17 @@ Install the skill in a Prose Complete agent environment:
 npx skills add openprose/prose
 ```
 
-Create `src/hello.prose.md`:
+Restart your agent so it picks up the new skill, then run:
+
+```text
+prose start
+```
+
+`prose start` is the post-install onboarding coach. It asks one open question
+about what you want OpenProse to do, then either scaffolds a tailored program
+from your answer or walks you through curated examples by complexity.
+
+Or, if you already know exactly what you want, create `src/hello.prose.md`:
 
 ```markdown
 ---
@@ -239,6 +249,7 @@ be checked, maintained, and restored across bounded runs:
 |---------|------|
 | `prose compile` | Run the bundled OpenProse compiler program, emit `<openprose-root>/dist/manifest.next.json`, and validate it before success |
 | `prose serve` | Load active IR and run local cron and HTTP trigger adapters |
+| `prose start` | Launch the post-install onboarding coach for a first OpenProse program |
 | `prose run` | Execute one bounded OpenProse VM activation |
 | `prose status` | Inspect active IR, diagnostics, trigger plan, recent runs, and responsibility status/pressure |
 

@@ -232,6 +232,10 @@ describe("Oclif entrypoint helpers", () => {
 		expect(commands.status).toBeDefined();
 	});
 
+	it("registers start as a forwarded agent command", () => {
+		expect("start" in commands).toBe(true);
+	});
+
 	it("matches symlinked argv paths by real path", () => {
 		const temp = mkdtempSync(join(tmpdir(), "prose-direct-"));
 

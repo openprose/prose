@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`prose start` onboarding coach** — Added the post-install `prose start`
+  route, `skills/open-prose/start.md` onboarding playbook, README quickstart
+  guidance, and CLI forwarding/tests so shell users can invoke the same
+  agent-session onboarding command.
 - **Declared `### Skills` section** — Components may now declare the agent
   harness skills they require in a `### Skills` section using the
   `namespace:name` colon form (e.g. `document-skills:pdf`). The compiler

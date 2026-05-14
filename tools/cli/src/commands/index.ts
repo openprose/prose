@@ -32,6 +32,11 @@ const forwardCommandDefinitions = {
 		summary: "Install or update OpenProse dependencies.",
 		usage: "install [--update] [--harness <name>]",
 	},
+	start: {
+		command: "start",
+		summary: "Start the OpenProse onboarding coach.",
+		usage: "start [--harness <name>]",
+	},
 	lint: {
 		command: "lint",
 		summary: "Lint an OpenProse source file.",
