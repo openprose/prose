@@ -1,6 +1,7 @@
 ---
 name: incident-channel-current
 kind: responsibility
+id: 067NC4KG0NSK9D9P6WW3JEHV7G
 ---
 
 # Incident Channel Current
@@ -31,7 +32,10 @@ support, and leadership the same operational picture.
 - Do not publish credentials, private customer data, or raw logs.
 - Keep the briefing short enough for a responder joining mid-incident to scan.
 
+### Tools
+
+(none)
+
 ### Fulfillment
 
 Prefer the local `incident-briefing-room` system.
-

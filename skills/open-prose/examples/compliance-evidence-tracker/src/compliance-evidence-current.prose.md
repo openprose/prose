@@ -1,6 +1,7 @@
 ---
 name: compliance-evidence-current
 kind: responsibility
+id: 067NC4KG0HWJNASC5MQ2YC1H68
 ---
 
 # Compliance Evidence Current
@@ -36,6 +37,10 @@ an auditor or internal owner before review windows become urgent.
 - Do not expose sensitive customer, employee, or security details beyond the
   compliance owners who need them.
 - Keep follow-up requests narrow enough that control owners can act on them.
+
+### Tools
+
+(none)
 
 ### Fulfillment
 

@@ -156,6 +156,15 @@ must remain bounded or prohibited.
 Load `concepts/responsibility.md` before authoring, reviewing, or compiling a
 responsibility.
 
+Responsibilities declare host capabilities in `### Tools` when the judge needs
+connectors or CLIs for observation, or when the fulfillment target named in
+`### Fulfillment` needs them for actuation. Supported declarations are
+`cli:<name>` and `mcp:<name>`; resolution is fail-closed and never installs or
+contacts tools during compile. Resolved responsibility-level tools are carried
+in repository IR as `responsibilities[].tools` and are included in serve
+activation payloads so judge and connector layers bind the declared capability
+set instead of re-reading or guessing from source.
+
 Responsibility files do not directly define crons, listeners, queues, tests, or
 implementation steps. The compiler infers concrete triggers and fulfillment
 when the source graph is clear. Authors add optional `kind: gateway` files when

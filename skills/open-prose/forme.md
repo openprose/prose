@@ -318,9 +318,11 @@ This enables `prose preflight` to verify the entire environment from the top-lev
 ### Step 5c: Collect Tool Declarations
 
 Collect all `### Tools` declarations from every system and service in the
-graph. Tool declarations are host capability requirements. They do not satisfy
-`### Requires`, do not create dependency-graph edges, and do not make a tool an
-allowed or prohibited action.
+graph. Responsibility-level tools are resolved by the repository compiler for
+judge observation and fulfillment actuation; Forme carries the subset required
+by graph nodes. Tool declarations are host capability requirements. They do not
+satisfy `### Requires`, do not create dependency-graph edges, and do not make a
+tool an allowed or prohibited action.
 
 For repository compile, consume the compiler program's `tools_resolution`
 output. The compiler resolves only supported declarations before Forme emits a
@@ -331,15 +333,16 @@ manifest:
 2. **Inherit** -- system-level declarations apply to every sub-service in that
    system; service-level declarations are additive.
 3. **Resolve** -- supported `cli:<name>` declarations must resolve to an
-   executable on host PATH before the manifest is emitted.
-4. **Attribute** -- emit one manifest entry per resolved CLI tool with the graph
+   executable on host PATH, and supported `mcp:<name>` declarations must
+   resolve to a registered host MCP server, before the manifest is emitted.
+4. **Attribute** -- emit one manifest entry per resolved tool with the graph
    nodes that require it:
 
 ```json
 { "kind": "cli", "name": "jq", "requiredBy": ["verifier"] }
 ```
 
-Only resolved CLI tools are emitted. Invalid, unsupported, or unresolved tool
+Only resolved CLI and MCP tools are emitted. Invalid, unsupported, or unresolved tool
 declarations are compile errors and prevent `manifest.next.json` from being
 written.
 
@@ -362,9 +365,10 @@ Before producing the manifest, check:
 | Config value placed under `with:` | `[Error] Pattern config 'max_rounds' belongs under config:, not with:` |
 | Cycle in nested patterns | `[Error] Cycle in pattern nesting: A → B → A` |
 | Slot name collides with config parameter name | `[Error] Pattern '{name}' has slot '{slot}' that collides with config parameter '{param}'. Slot and config names must be disjoint.` |
-| Malformed tool declaration | `[Error] Invalid tool declaration: 'gh' (expected cli:<executable-name>)` |
-| Unsupported tool namespace | `[Error] Unsupported tool kind: 'mcp:github'` |
+| Malformed tool declaration | `[Error] Invalid tool declaration: 'gh' (expected cli:<executable-name> or mcp:<server-name>)` |
+| Unsupported tool namespace | `[Error] Unsupported tool kind: 'http:github'` |
 | Unresolved declared CLI tool | `[Error] Declared tool not found on PATH: 'cli:gh'` |
+| Unresolved declared MCP tool | `[Error] Declared MCP server not found in registry: 'mcp:gmail'` |
 
 **Warnings (proceed with caution):**
 
@@ -478,9 +482,9 @@ Constraint types emitted:
 
 **Execution Order.** A numbered list showing which services run in what order, derived from the dependency graph. Includes parallelization notes. Delegates are not in the static execution order — they run on-demand when requested by their parent service via runtime delegation (see `prose.md`, Runtime Delegation).
 
-**Tools.** Host executable requirements collected from `### Tools`. Each record
-has `kind: "cli"`, the executable `name`, and `requiredBy` graph node ids. Tool
-records do not create graph edges.
+**Tools.** Host capability requirements collected from `### Tools`. Each record
+has `kind: "cli"` or `kind: "mcp"`, the capability `name`, and `requiredBy`
+graph node ids. Tool records do not create graph edges.
 
 **Warnings.** Any warnings from the validation step. The execution engine can present these to the user before running.
 

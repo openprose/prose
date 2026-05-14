@@ -1,6 +1,7 @@
 ---
 name: customer-risk-maintained
 kind: responsibility
+id: 067NC4KG0XVMH2AA9D64TKJFA0
 ---
 
 # Customer Risk Maintained
@@ -33,6 +34,10 @@ churn, renewal, or escalation windows become urgent.
 - Do not expose private customer details beyond the account team that owns the
   relationship.
 - Keep recommended actions practical for a human account owner to perform.
+
+### Tools
+
+(none)
 
 ### Fulfillment
 

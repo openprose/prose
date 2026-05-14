@@ -389,6 +389,34 @@ kind: service
 			rmSync(cwd, { recursive: true, force: true });
 		}
 	});
+
+	it("ignores generated output, runtime state, and dependency directories", async () => {
+		const home = tempDir();
+		const cwd = tempDir();
+		try {
+			for (const directory of ["deps", "dist", "runs", "state"]) {
+				writeFile(
+					join(cwd, directory, "stale.prose.md"),
+					`---
+name: stale
+kind: service
+---
+
+### Skills
+
+- document-skills:pdf
+`,
+				);
+			}
+
+			const result = await preflightDeclaredSkillsInRoot(cwd, { cwd, home });
+			expect(result.declared).toEqual([]);
+			expect(result.unresolved).toEqual([]);
+		} finally {
+			rmSync(home, { recursive: true, force: true });
+			rmSync(cwd, { recursive: true, force: true });
+		}
+	});
 });
 
 describe("DeclaredSkillsUnresolvedError + formatUnresolvedMessage", () => {

@@ -175,7 +175,7 @@ describe("repository serve core", () => {
 		expect(buildTriggerRegistrationPlan(loaded.manifest)).toEqual([
 			{
 				triggerId: "high-intent-stargazer-outreach.periodic-check",
-				responsibilityId: "high-intent-stargazer-outreach",
+				responsibilityId: "067NC4KG01RG50R40M30E20918",
 				kind: "cron",
 				cron: "0 */6 * * *",
 				reason:
@@ -185,7 +185,7 @@ describe("repository serve core", () => {
 			},
 			{
 				triggerId: "high-intent-stargazer-outreach.evidence-change",
-				responsibilityId: "high-intent-stargazer-outreach",
+				responsibilityId: "067NC4KG01RG50R40M30E20918",
 				kind: "http",
 				method: "POST",
 				path: "/webhooks/github/stars",
@@ -279,11 +279,13 @@ describe("repository serve core", () => {
 			},
 			event,
 		});
+		expect(request.payload.responsibility.tools).toEqual([]);
 		expect(JSON.parse(request.argv[2] ?? "")).toEqual(request.payload);
 	});
 
 	it("builds a static judge run request with status output paths", async () => {
 		const loaded = await loadFixture();
+		loaded.manifest.responsibilities[0]!.tools = [{ kind: "mcp", name: "github" }];
 		const event = { triggerId: "high-intent-stargazer-outreach.periodic-check" };
 		const [resolved] = resolveActivationsForEvent(loaded.manifest, event);
 
@@ -299,7 +301,7 @@ describe("repository serve core", () => {
 			sourcePath: OPENPROSE_JUDGE_SOURCE_PATH,
 		});
 		expect(request.payload.responsibility).toMatchObject({
-			id: "high-intent-stargazer-outreach",
+			id: "067NC4KG01RG50R40M30E20918",
 			continuity: expect.arrayContaining([
 				"New high-intent stargazers should not remain unattended for more than one business day.",
 			]),
@@ -307,21 +309,22 @@ describe("repository serve core", () => {
 				"Sample results exist before outreach when the prospect appears high intent.",
 			]),
 			constraints: expect.arrayContaining(["Do not send generic or irrelevant outreach."]),
+			tools: [{ kind: "mcp", name: "github" }],
 			fingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
 		});
 		expect(request.payload.status).toEqual({
 			kind: "openprose.responsibility-status-output",
-			latestPath: "state/responsibilities/high-intent-stargazer-outreach/latest.json",
-			statusLogPath: "state/responsibilities/high-intent-stargazer-outreach/status.jsonl",
+			latestPath: "state/responsibilities/067NC4KG01RG50R40M30E20918/latest.json",
+			statusLogPath: "state/responsibilities/067NC4KG01RG50R40M30E20918/status.jsonl",
 			responsibilityFingerprint: request.payload.responsibility.fingerprint,
 		});
-		expect(request.env.PROSE_RESPONSIBILITY_ID).toBe("high-intent-stargazer-outreach");
+		expect(request.env.PROSE_RESPONSIBILITY_ID).toBe("067NC4KG01RG50R40M30E20918");
 		expect(request.env.PROSE_RESPONSIBILITY_FINGERPRINT).toBe(request.payload.responsibility.fingerprint);
 		expect(request.env.PROSE_RESPONSIBILITY_STATUS_LATEST).toBe(
-			join(loaded.openProseRoot.absolutePath, "state/responsibilities/high-intent-stargazer-outreach/latest.json"),
+			join(loaded.openProseRoot.absolutePath, "state/responsibilities/067NC4KG01RG50R40M30E20918/latest.json"),
 		);
 		expect(request.env.PROSE_RESPONSIBILITY_STATUS_LOG).toBe(
-			join(loaded.openProseRoot.absolutePath, "state/responsibilities/high-intent-stargazer-outreach/status.jsonl"),
+			join(loaded.openProseRoot.absolutePath, "state/responsibilities/067NC4KG01RG50R40M30E20918/status.jsonl"),
 		);
 	});
 
@@ -336,7 +339,7 @@ describe("repository serve core", () => {
 		});
 
 		expect(pressure).toMatchObject({
-			responsibilityId: "high-intent-stargazer-outreach",
+			responsibilityId: "067NC4KG01RG50R40M30E20918",
 			status: "down",
 			evidence: ["No sample results exist for a high-intent stargazer discovered yesterday."],
 			recommendedActivationKind: "fulfillment",
@@ -359,9 +362,9 @@ describe("repository serve core", () => {
 		expect(request.activationId).toBe("high-intent-stargazer-outreach.fulfillment");
 		expect(request.sourcePath).toBe("tests/open-prose/responsibility-runtime/stargazer-outreach/index.prose.md");
 		expect(request.payload.trigger).toEqual({
-			id: "high-intent-stargazer-outreach.pressure",
+			id: "067NC4KG01RG50R40M30E20918.pressure",
 			kind: "manual",
-			responsibilityId: "high-intent-stargazer-outreach",
+			responsibilityId: "067NC4KG01RG50R40M30E20918",
 			reason: "Responsibility pressure requested fulfillment.",
 		});
 		expect(request.payload.activation).toMatchObject({
@@ -426,7 +429,7 @@ describe("repository serve core", () => {
 		const loaded = await loadFixture();
 		loaded.manifest.activations.push({
 			id: "high-intent-stargazer-outreach.escalation",
-			responsibilityId: "high-intent-stargazer-outreach",
+			responsibilityId: "067NC4KG01RG50R40M30E20918",
 			kind: "escalation",
 			sourcePath: "tests/open-prose/responsibility-runtime/stargazer-outreach/outreach-drafter.prose.md",
 			reason: "Escalate blocked responsibility status.",
@@ -502,6 +505,7 @@ describe("repository serve core", () => {
 					continuity: ["Check it regularly."],
 					criteria: ["The expected evidence is present."],
 					constraints: ["Do not fabricate evidence."],
+					tools: [],
 					fingerprint: "fingerprint-1",
 				},
 				event: {
@@ -589,7 +593,7 @@ describe("repository serve core", () => {
 				"high-intent-stargazer-outreach.fulfillment",
 			]);
 			expect(
-				readFileSync(join(temp, "state/responsibilities/high-intent-stargazer-outreach/pressure.latest.json"), "utf8"),
+				readFileSync(join(temp, "state/responsibilities/067NC4KG01RG50R40M30E20918/pressure.latest.json"), "utf8"),
 			).toContain("high-intent-stargazer-outreach.fulfillment");
 		} finally {
 			rmSync(temp, { recursive: true, force: true });
@@ -603,7 +607,7 @@ describe("repository serve core", () => {
 		try {
 			writeActiveManifest(temp);
 			const loaded = await loadActiveRepositoryIr({ cwd: temp });
-			const latestPath = join(temp, "state/responsibilities/high-intent-stargazer-outreach/latest.json");
+			const latestPath = join(temp, "state/responsibilities/067NC4KG01RG50R40M30E20918/latest.json");
 			mkdirSync(dirname(latestPath), { recursive: true });
 			writeFileSync(latestPath, `${JSON.stringify(statusRecord(loaded, "up"), null, 2)}\n`);
 

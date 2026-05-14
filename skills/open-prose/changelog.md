@@ -15,6 +15,13 @@ plan.
 ## Current Conventions
 
 - Authored source files are `*.prose.md`.
+- `kind: responsibility` files declare stable `id:` frontmatter. The id is
+  generated once by tooling as UUIDv7-compatible bytes, rendered as uppercase
+  Crockford base32, and preserved across display-name and filepath renames.
+- `### Tools` applies to `system`, `service`, and `responsibility`. Tool
+  declarations support both `cli:<name>` and `mcp:<name>` and fail closed when
+  the host cannot resolve a declared capability. Resolved responsibility tools
+  are preserved in repository IR and serve activation payloads.
 - Every workspace has an active OpenProse root.
 - Native repositories use the repository root as the OpenProse root.
 - Attached repositories use `repo/.agents/prose`.

@@ -24,6 +24,8 @@ import type { Harness } from "../../src/harnesses/index.js";
 
 const repoRoot = fileURLToPath(new URL("../../../../", import.meta.url));
 const stargazerFixture = join(repoRoot, "tests/open-prose/compiler/expected/stargazer.manifest.next.json");
+const dailyResponsibilityId = "067NC4KG01RG50R40M30E20918";
+const otherResponsibilityId = "067NC4KG0DZJ18924CJ2A9H750";
 
 function memoryStreams() {
 	let stdout = "";
@@ -47,6 +49,178 @@ function writeManifestWithErrorDiagnostic(path: string): void {
 	const manifest = JSON.parse(readFileSync(stargazerFixture, "utf8")) as { diagnostics: Array<{ severity: string }> };
 	manifest.diagnostics[0]!.severity = "error";
 	writeFileSync(path, `${JSON.stringify(manifest, null, 2)}\n`);
+}
+
+function writeResponsibilitySource(
+	root: string,
+	sourcePath = "src/daily-check.prose.md",
+	options: { id?: string; tools?: readonly string[] } = {},
+): string {
+	const file = join(root, sourcePath);
+	const tools = options.tools === undefined || options.tools.length === 0
+		? "(none)"
+		: options.tools.map((tool) => `- ${tool}`).join("\n");
+	mkdirSync(file.replace(/\/[^/]+$/, ""), { recursive: true });
+	writeFileSync(
+		file,
+		`---
+name: daily-check
+kind: responsibility
+id: ${options.id ?? dailyResponsibilityId}
+---
+
+### Goal
+
+The daily check is complete.
+
+### Continuity
+
+- Check every weekday.
+
+### Criteria
+
+- Evidence exists.
+
+### Constraints
+
+- Do not fabricate evidence.
+
+### Tools
+
+${tools}
+`,
+	);
+	return file;
+}
+
+function writeMinimalResponsibilityManifest(
+	path: string,
+	options: { id?: string; sourcePath?: string; tools?: Array<{ kind: "cli" | "mcp"; name: string }> } = {},
+): void {
+	const responsibilityId = options.id ?? dailyResponsibilityId;
+	const sourcePath = options.sourcePath ?? "src/daily-check.prose.md";
+	mkdirSync(path.replace(/\/[^/]+$/, ""), { recursive: true });
+	writeFileSync(
+		path,
+		`${JSON.stringify(
+			{
+				kind: "openprose.repository-ir",
+				version: 0,
+				sources: [{ path: sourcePath, kind: "responsibility", name: "daily-check" }],
+				responsibilities: [
+					{
+						id: responsibilityId,
+						sourcePath,
+						goal: "The daily check is complete.",
+						continuity: ["Check every weekday."],
+						criteria: ["Evidence exists."],
+						constraints: ["Do not fabricate evidence."],
+						tools: options.tools ?? [],
+					},
+				],
+				triggers: [],
+				activations: [
+					{
+						id: "daily-check.judge",
+						responsibilityId,
+						kind: "judge",
+						reason: "Determine whether the daily check is complete.",
+					},
+				],
+				formeManifests: [],
+				diagnostics: [],
+			},
+			null,
+			2,
+		)}\n`,
+	);
+}
+
+function writeMinimalFormeManifest(
+	path: string,
+	options: {
+		systemSourcePath?: string;
+		systemName?: string;
+		nodeId?: string;
+		nodeSourcePath?: string;
+		tools?: Array<{ kind: "cli" | "mcp"; name: string; requiredBy: string[] }>;
+	} = {},
+): void {
+	const systemSourcePath = options.systemSourcePath ?? "src/json-summarizer.prose.md";
+	const nodeId = options.nodeId ?? "json-summarizer";
+	const nodeSourcePath = options.nodeSourcePath ?? systemSourcePath;
+	const sources = [{ path: systemSourcePath, kind: "system", name: options.systemName ?? "json-summarizer" }];
+	if (nodeSourcePath !== systemSourcePath) {
+		sources.push({ path: nodeSourcePath, kind: "service", name: nodeId });
+	}
+	mkdirSync(path.replace(/\/[^/]+$/, ""), { recursive: true });
+	writeFileSync(
+		path,
+		`${JSON.stringify(
+			{
+				kind: "openprose.repository-ir",
+				version: 0,
+				sources,
+				responsibilities: [],
+				triggers: [],
+				activations: [],
+				formeManifests: [
+					{
+						id: options.systemName ?? "json-summarizer",
+						systemName: options.systemName ?? "json-summarizer",
+						sourcePath: systemSourcePath,
+						caller: {
+							requires: [],
+							returns: [],
+						},
+						graph: [
+							{
+								id: nodeId,
+								sourcePath: nodeSourcePath,
+								workspacePath: `workspace/${nodeId}/`,
+								inputs: [],
+								outputs: [
+									{
+										name: "result",
+										workspacePath: `workspace/${nodeId}/result.md`,
+										public: true,
+									},
+								],
+							},
+						],
+						executionOrder: [{ nodeId, dependsOn: [] }],
+						environment: [],
+						tools: options.tools ?? [],
+						warnings: [],
+					},
+				],
+				diagnostics: [],
+			},
+			null,
+			2,
+		)}\n`,
+	);
+}
+
+function writeEmptyManifest(path: string): void {
+	mkdirSync(path.replace(/\/[^/]+$/, ""), { recursive: true });
+	writeFileSync(
+		path,
+		`${JSON.stringify(
+			{
+				kind: "openprose.repository-ir",
+				version: 0,
+				sources: [],
+				responsibilities: [],
+				triggers: [],
+				activations: [],
+				formeManifests: [],
+				diagnostics: [],
+			},
+			null,
+			2,
+		)}\n`,
+	);
 }
 
 describe("Oclif entrypoint helpers", () => {
@@ -314,6 +488,7 @@ describe("runCompileCommand", () => {
 		const io = memoryStreams();
 
 		try {
+			writeResponsibilitySource(temp);
 			const exitCode = await runCompileCommand({
 				argv: [".", "--harness", "mock"],
 				cwd: temp,
@@ -325,8 +500,7 @@ describe("runCompileCommand", () => {
 				harnessFactory: () => ({
 					name: "mock",
 					async run() {
-						mkdirSync(join(temp, "dist"), { recursive: true });
-						copyFileSync(stargazerFixture, join(temp, "dist/manifest.next.json"));
+						writeMinimalResponsibilityManifest(join(temp, "dist/manifest.next.json"));
 						return 0;
 					},
 				}),
@@ -343,6 +517,7 @@ describe("runCompileCommand", () => {
 		const io = memoryStreams();
 
 		try {
+			writeResponsibilitySource(temp);
 			const exitCode = await runCompileCommand({
 				argv: [".", "--harness", "mock"],
 				cwd: temp,
@@ -354,8 +529,7 @@ describe("runCompileCommand", () => {
 				harnessFactory: () => ({
 					name: "mock",
 					async run() {
-						mkdirSync(join(temp, "dist"), { recursive: true });
-						copyFileSync(stargazerFixture, join(temp, "dist/manifest.next.json"));
+						writeMinimalResponsibilityManifest(join(temp, "dist/manifest.next.json"));
 						return 1;
 					},
 				}),
@@ -444,7 +618,6 @@ describe("runCompileCommand", () => {
 					stdout: io.streams.stdout,
 					stderr: io.streams.stderr,
 					skillBootstrap: false,
-					skillPreflight: false,
 					harnessFactory: () => ({
 						name: "mock",
 						async run() {
@@ -581,7 +754,7 @@ kind: system
 
 ### Tools
 
-- mcp:browser
+- http:browser
 `,
 			);
 
@@ -605,11 +778,773 @@ kind: system
 				name: "CompileValidationError",
 				message: expect.stringContaining("tool_unsupported_kind"),
 				details: expect.arrayContaining([
-					expect.stringContaining("mcp:browser"),
+					expect.stringContaining("http:browser"),
 				]),
 			});
 
 			expect(harnessInvocations).toBe(0);
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
+
+	it("fails closed before forwarding when a responsibility source is missing id frontmatter", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-compile-source-missing-id-"));
+		const io = memoryStreams();
+		let harnessInvocations = 0;
+
+		try {
+			mkdirSync(join(temp, "src"), { recursive: true });
+			writeFileSync(
+				join(temp, "src", "daily-check.prose.md"),
+				`---
+name: daily-check
+kind: responsibility
+---
+
+### Goal
+
+The daily check is complete.
+
+### Continuity
+
+- Check every weekday.
+
+### Criteria
+
+- Evidence exists.
+
+### Constraints
+
+- Do not fabricate evidence.
+
+### Tools
+
+(none)
+`,
+			);
+
+			await expect(
+				runCompileCommand({
+					argv: ["src/daily-check.prose.md", "--harness", "mock"],
+					cwd: temp,
+					env: {},
+					stdout: io.streams.stdout,
+					stderr: io.streams.stderr,
+					skillBootstrap: false,
+					skillPreflight: false,
+					harnessFactory: () => ({
+						name: "mock",
+						async run() {
+							harnessInvocations += 1;
+							return 0;
+						},
+					}),
+				}),
+			).rejects.toMatchObject({
+				name: "CompileValidationError",
+				message: expect.stringContaining("missing_id"),
+				details: expect.arrayContaining([
+					expect.stringContaining("missing_id"),
+				]),
+			});
+
+			expect(harnessInvocations).toBe(0);
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
+
+	it("fails closed before forwarding when a responsibility source id is malformed", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-compile-source-malformed-id-"));
+		const io = memoryStreams();
+		let harnessInvocations = 0;
+
+		try {
+			mkdirSync(join(temp, "src"), { recursive: true });
+			writeFileSync(
+				join(temp, "src", "daily-check.prose.md"),
+				`---
+name: daily-check
+kind: responsibility
+id: daily-check
+---
+
+### Goal
+
+The daily check is complete.
+
+### Continuity
+
+- Check every weekday.
+
+### Criteria
+
+- Evidence exists.
+
+### Constraints
+
+- Do not fabricate evidence.
+
+### Tools
+
+(none)
+`,
+			);
+
+			await expect(
+				runCompileCommand({
+					argv: ["src/daily-check.prose.md", "--harness", "mock"],
+					cwd: temp,
+					env: {},
+					stdout: io.streams.stdout,
+					stderr: io.streams.stderr,
+					skillBootstrap: false,
+					skillPreflight: false,
+					harnessFactory: () => ({
+						name: "mock",
+						async run() {
+							harnessInvocations += 1;
+							return 0;
+						},
+					}),
+				}),
+			).rejects.toMatchObject({
+				name: "CompileValidationError",
+				message: expect.stringContaining("malformed_id"),
+				details: expect.arrayContaining([
+					expect.stringContaining("malformed_id"),
+				]),
+			});
+
+			expect(harnessInvocations).toBe(0);
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
+
+	it("fails closed before forwarding when a responsibility source omits the required Tools section", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-compile-source-missing-tools-"));
+		const io = memoryStreams();
+		let harnessInvocations = 0;
+
+		try {
+			mkdirSync(join(temp, "src"), { recursive: true });
+			writeFileSync(
+				join(temp, "src", "daily-check.prose.md"),
+				`---
+name: daily-check
+kind: responsibility
+id: 067NC4KG01RG50R40M30E20918
+---
+
+### Goal
+
+The daily check is complete.
+
+### Continuity
+
+- Check every weekday.
+
+### Criteria
+
+- Evidence exists.
+
+### Constraints
+
+- Do not fabricate evidence.
+`,
+			);
+
+			await expect(
+				runCompileCommand({
+					argv: ["src/daily-check.prose.md", "--harness", "mock"],
+					cwd: temp,
+					env: {},
+					stdout: io.streams.stdout,
+					stderr: io.streams.stderr,
+					skillBootstrap: false,
+					harnessFactory: () => ({
+						name: "mock",
+						async run() {
+							harnessInvocations += 1;
+							return 0;
+						},
+					}),
+				}),
+			).rejects.toMatchObject({
+				name: "CompileValidationError",
+				message: expect.stringContaining("missing_required_section"),
+				details: expect.arrayContaining([
+					expect.stringContaining("### Tools"),
+				]),
+			});
+
+			expect(harnessInvocations).toBe(0);
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
+
+	it("does not accept a responsibility Tools heading hidden inside fenced code", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-compile-source-fenced-tools-"));
+		const io = memoryStreams();
+		let harnessInvocations = 0;
+
+		try {
+			mkdirSync(join(temp, "src"), { recursive: true });
+			writeFileSync(
+				join(temp, "src", "daily-check.prose.md"),
+				`---
+name: daily-check
+kind: responsibility
+id: 067NC4KG01RG50R40M30E20918
+---
+
+### Goal
+
+The daily check is complete.
+
+### Continuity
+
+- Check every weekday.
+
+### Criteria
+
+- Evidence exists.
+
+### Constraints
+
+- Do not fabricate evidence.
+
+\`\`\`markdown
+### Tools
+
+(none)
+\`\`\`
+`,
+			);
+
+			await expect(
+				runCompileCommand({
+					argv: ["src/daily-check.prose.md", "--harness", "mock"],
+					cwd: temp,
+					env: {},
+					stdout: io.streams.stdout,
+					stderr: io.streams.stderr,
+					skillBootstrap: false,
+					harnessFactory: () => ({
+						name: "mock",
+						async run() {
+							harnessInvocations += 1;
+							return 0;
+						},
+					}),
+				}),
+			).rejects.toMatchObject({
+				name: "CompileValidationError",
+				message: expect.stringContaining("missing_required_section"),
+				details: expect.arrayContaining([
+					expect.stringContaining("### Tools"),
+				]),
+			});
+
+			expect(harnessInvocations).toBe(0);
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
+
+	it("rejects compiled responsibilities whose id no longer matches Markdown frontmatter", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-compile-id-lockstep-"));
+		const io = memoryStreams();
+		let harnessInvocations = 0;
+
+		try {
+			writeResponsibilitySource(temp);
+
+			await expect(
+				runCompileCommand({
+					argv: ["src", "--harness", "mock"],
+					cwd: temp,
+					env: {},
+					stdout: io.streams.stdout,
+					stderr: io.streams.stderr,
+					skillBootstrap: false,
+					skillPreflight: false,
+					harnessFactory: () => ({
+						name: "mock",
+						async run() {
+							harnessInvocations += 1;
+							writeMinimalResponsibilityManifest(join(temp, "dist/manifest.next.json"), {
+								id: otherResponsibilityId,
+							});
+							return 0;
+						},
+					}),
+				}),
+			).rejects.toMatchObject({
+				name: "CompileValidationError",
+				message: expect.stringContaining("does not match Markdown source contracts"),
+				details: expect.arrayContaining([
+					expect.stringContaining("frontmatter id"),
+				]),
+			});
+
+			expect(harnessInvocations).toBe(1);
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
+
+	it("rejects compiled responsibilities whose tools no longer match Markdown Tools", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-compile-tools-lockstep-"));
+		const io = memoryStreams();
+		const bin = join(temp, "bin");
+		let harnessInvocations = 0;
+
+		try {
+			mkdirSync(bin, { recursive: true });
+			writeFileSync(join(bin, "jq"), "#!/bin/sh\nexit 0\n");
+			chmodSync(join(bin, "jq"), 0o755);
+			writeResponsibilitySource(temp, "src/daily-check.prose.md", { tools: ["cli:jq"] });
+
+			await expect(
+				runCompileCommand({
+					argv: ["src", "--harness", "mock"],
+					cwd: temp,
+					env: { PATH: bin },
+					stdout: io.streams.stdout,
+					stderr: io.streams.stderr,
+					skillBootstrap: false,
+					skillPreflight: false,
+					harnessFactory: () => ({
+						name: "mock",
+						async run() {
+							harnessInvocations += 1;
+							writeMinimalResponsibilityManifest(join(temp, "dist/manifest.next.json"));
+							return 0;
+						},
+					}),
+				}),
+			).rejects.toMatchObject({
+				name: "CompileValidationError",
+				message: expect.stringContaining("does not match Markdown source contracts"),
+				details: expect.arrayContaining([
+					expect.stringContaining("### Tools cli:jq"),
+				]),
+			});
+
+			expect(harnessInvocations).toBe(1);
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
+
+	it("rejects compiler runs that emit zero responsibilities while source declares one", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-compile-missing-responsibility-"));
+		const io = memoryStreams();
+		let harnessInvocations = 0;
+
+		try {
+			writeResponsibilitySource(temp);
+
+			await expect(
+				runCompileCommand({
+					argv: ["src", "--harness", "mock"],
+					cwd: temp,
+					env: {},
+					stdout: io.streams.stdout,
+					stderr: io.streams.stderr,
+					skillBootstrap: false,
+					skillPreflight: false,
+					harnessFactory: () => ({
+						name: "mock",
+						async run() {
+							harnessInvocations += 1;
+							writeEmptyManifest(join(temp, "dist/manifest.next.json"));
+							return 0;
+						},
+					}),
+				}),
+			).rejects.toMatchObject({
+				name: "CompileValidationError",
+				message: expect.stringContaining("does not match Markdown source contracts"),
+				details: expect.arrayContaining([
+					expect.stringContaining("src/daily-check.prose.md must appear exactly once"),
+				]),
+			});
+
+			expect(harnessInvocations).toBe(1);
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
+
+	it("rejects compiler runs that drop one source responsibility", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-compile-dropped-responsibility-"));
+		const io = memoryStreams();
+		let harnessInvocations = 0;
+
+		try {
+			writeResponsibilitySource(temp);
+			writeResponsibilitySource(temp, "src/weekly-check.prose.md", { id: otherResponsibilityId });
+
+			await expect(
+				runCompileCommand({
+					argv: ["src", "--harness", "mock"],
+					cwd: temp,
+					env: {},
+					stdout: io.streams.stdout,
+					stderr: io.streams.stderr,
+					skillBootstrap: false,
+					skillPreflight: false,
+					harnessFactory: () => ({
+						name: "mock",
+						async run() {
+							harnessInvocations += 1;
+							writeMinimalResponsibilityManifest(join(temp, "dist/manifest.next.json"));
+							return 0;
+						},
+					}),
+				}),
+			).rejects.toMatchObject({
+				name: "CompileValidationError",
+				details: expect.arrayContaining([
+					expect.stringContaining("src/weekly-check.prose.md must appear exactly once"),
+				]),
+			});
+
+			expect(harnessInvocations).toBe(1);
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
+
+	it("rejects Forme manifests that omit service or system Tools declared in source", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-compile-forme-missing-tools-"));
+		const io = memoryStreams();
+		const bin = join(temp, "bin");
+		let harnessInvocations = 0;
+
+		try {
+			mkdirSync(join(temp, "src"), { recursive: true });
+			mkdirSync(bin, { recursive: true });
+			writeFileSync(join(bin, "jq"), "#!/bin/sh\nexit 0\n");
+			chmodSync(join(bin, "jq"), 0o755);
+			writeFileSync(
+				join(temp, "src", "json-summarizer.prose.md"),
+				`---
+name: json-summarizer
+kind: system
+---
+
+### Tools
+
+- cli:jq
+`,
+			);
+
+			await expect(
+				runCompileCommand({
+					argv: ["src", "--harness", "mock"],
+					cwd: temp,
+					env: { PATH: bin },
+					stdout: io.streams.stdout,
+					stderr: io.streams.stderr,
+					skillBootstrap: false,
+					skillPreflight: false,
+					harnessFactory: () => ({
+						name: "mock",
+						async run() {
+							harnessInvocations += 1;
+							writeMinimalFormeManifest(join(temp, "dist/manifest.next.json"));
+							return 0;
+						},
+					}),
+				}),
+			).rejects.toMatchObject({
+				name: "CompileValidationError",
+				details: expect.arrayContaining([
+					expect.stringContaining("formeManifests[0].tools missing cli:jq"),
+				]),
+			});
+
+			expect(harnessInvocations).toBe(1);
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
+
+	it("rejects Forme manifests that invent service or system Tools", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-compile-forme-invented-tools-"));
+		const io = memoryStreams();
+		let harnessInvocations = 0;
+
+		try {
+			mkdirSync(join(temp, "src"), { recursive: true });
+			writeFileSync(
+				join(temp, "src", "json-summarizer.prose.md"),
+				`---
+name: json-summarizer
+kind: system
+---
+
+### Description
+
+No host tools are declared.
+`,
+			);
+
+			await expect(
+				runCompileCommand({
+					argv: ["src", "--harness", "mock"],
+					cwd: temp,
+					env: { PATH: join(temp, "empty-bin") },
+					stdout: io.streams.stdout,
+					stderr: io.streams.stderr,
+					skillBootstrap: false,
+					skillPreflight: false,
+					harnessFactory: () => ({
+						name: "mock",
+						async run() {
+							harnessInvocations += 1;
+							writeMinimalFormeManifest(join(temp, "dist/manifest.next.json"), {
+								tools: [{ kind: "cli", name: "jq", requiredBy: ["json-summarizer"] }],
+							});
+							return 0;
+						},
+					}),
+				}),
+			).rejects.toMatchObject({
+				name: "CompileValidationError",
+				details: expect.arrayContaining([
+					expect.stringContaining("formeManifests[0].tools invents cli:jq"),
+				]),
+			});
+
+			expect(harnessInvocations).toBe(1);
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
+
+	it("uses src as the no-arg compile source root before forwarding", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-compile-default-src-"));
+		const io = memoryStreams();
+		let harnessInvocations = 0;
+
+		try {
+			writeResponsibilitySource(temp);
+			mkdirSync(join(temp, "examples"), { recursive: true });
+			writeFileSync(
+				join(temp, "examples", "unrelated.prose.md"),
+				`---
+name: unrelated
+kind: system
+---
+
+### Tools
+
+- cli:tool-that-is-not-on-path
+`,
+			);
+
+			const exitCode = await runCompileCommand({
+				argv: ["--harness", "mock"],
+				cwd: temp,
+				env: { PATH: join(temp, "empty-bin") },
+				stdout: io.streams.stdout,
+				stderr: io.streams.stderr,
+				skillBootstrap: false,
+				skillPreflight: false,
+				harnessFactory: () => ({
+					name: "mock",
+					async run() {
+						harnessInvocations += 1;
+						writeMinimalResponsibilityManifest(join(temp, "dist/manifest.next.json"));
+						return 0;
+					},
+				}),
+			});
+
+			expect(exitCode).toBe(0);
+			expect(harnessInvocations).toBe(1);
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
+
+	it("limits declared tool preflight to a non-dot compile target", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-compile-target-tools-"));
+		const io = memoryStreams();
+		let harnessInvocations = 0;
+
+		try {
+			mkdirSync(join(temp, "src"), { recursive: true });
+			mkdirSync(join(temp, "examples"), { recursive: true });
+			writeFileSync(
+				join(temp, "src", "daily-check.prose.md"),
+				`---
+name: daily-check
+kind: responsibility
+id: 067NC4KG01RG50R40M30E20918
+---
+
+### Goal
+
+The daily check is complete.
+
+### Continuity
+
+- Check every weekday.
+
+### Criteria
+
+- Evidence exists.
+
+### Constraints
+
+- Do not fabricate evidence.
+
+### Tools
+
+(none)
+`,
+			);
+			writeFileSync(
+				join(temp, "examples", "unrelated.prose.md"),
+				`---
+name: unrelated
+kind: system
+---
+
+### Tools
+
+- cli:tool-that-is-not-on-path
+`,
+			);
+
+			const exitCode = await runCompileCommand({
+				argv: ["src", "--harness", "mock"],
+				cwd: temp,
+				env: { PATH: join(temp, "empty-bin") },
+				stdout: io.streams.stdout,
+				stderr: io.streams.stderr,
+				skillBootstrap: false,
+				harnessFactory: () => ({
+					name: "mock",
+					async run() {
+						harnessInvocations += 1;
+						writeMinimalResponsibilityManifest(join(temp, "dist/manifest.next.json"));
+						return 0;
+					},
+				}),
+			});
+
+			expect(exitCode).toBe(0);
+			expect(harnessInvocations).toBe(1);
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
+
+	it("fails closed before forwarding when a declared MCP tool is absent from the host registry", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-compile-mcp-unresolved-"));
+		const io = memoryStreams();
+		let harnessInvocations = 0;
+
+		try {
+			mkdirSync(join(temp, "src"), { recursive: true });
+			writeFileSync(
+				join(temp, "src", "inbox-check.prose.md"),
+				`---
+name: inbox-check
+kind: system
+---
+
+### Tools
+
+- mcp:gmail
+`,
+			);
+
+			await expect(
+				runCompileCommand({
+					argv: [".", "--harness", "mock"],
+					cwd: temp,
+					env: {},
+					stdout: io.streams.stdout,
+					stderr: io.streams.stderr,
+					skillBootstrap: false,
+					skillPreflight: false,
+					harnessFactory: () => ({
+						name: "mock",
+						async run() {
+							harnessInvocations += 1;
+							return 0;
+						},
+					}),
+				}),
+			).rejects.toMatchObject({
+				name: "CompileValidationError",
+				message: expect.stringContaining("tool_unresolved"),
+				details: expect.arrayContaining([
+					expect.stringContaining("mcp:gmail"),
+					expect.stringContaining("searched MCP registry"),
+				]),
+			});
+
+			expect(harnessInvocations).toBe(0);
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
+
+	it("forwards compile when declared MCP tools resolve through the host registry env bridge", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-compile-mcp-resolved-"));
+		const io = memoryStreams();
+		let harnessInvocations = 0;
+
+		try {
+			mkdirSync(join(temp, "src"), { recursive: true });
+			writeFileSync(
+				join(temp, "src", "inbox-check.prose.md"),
+				`---
+name: inbox-check
+kind: system
+---
+
+### Tools
+
+- mcp:gmail
+`,
+			);
+
+			const exitCode = await runCompileCommand({
+				argv: [".", "--harness", "mock"],
+				cwd: temp,
+				env: { PROSE_MCP_REGISTRY: "gmail" },
+				stdout: io.streams.stdout,
+				stderr: io.streams.stderr,
+				skillBootstrap: false,
+				harnessFactory: () => ({
+					name: "mock",
+					async run() {
+						harnessInvocations += 1;
+						writeMinimalFormeManifest(join(temp, "dist/manifest.next.json"), {
+							systemSourcePath: "src/inbox-check.prose.md",
+							systemName: "inbox-check",
+							nodeId: "inbox-check",
+							tools: [{ kind: "mcp", name: "gmail", requiredBy: ["inbox-check"] }],
+						});
+						return 0;
+					},
+				}),
+			});
+
+			expect(exitCode).toBe(0);
+			expect(harnessInvocations).toBe(1);
 		} finally {
 			rmSync(temp, { recursive: true, force: true });
 		}
@@ -650,8 +1585,12 @@ kind: system
 					name: "mock",
 					async run() {
 						harnessInvocations += 1;
-						mkdirSync(join(temp, "dist"), { recursive: true });
-						copyFileSync(stargazerFixture, join(temp, "dist/manifest.next.json"));
+						writeMinimalFormeManifest(join(temp, "dist/manifest.next.json"), {
+							systemSourcePath: "src/json-summarizer.prose.md",
+							systemName: "json-summarizer",
+							nodeId: "json-summarizer",
+							tools: [{ kind: "cli", name: "jq", requiredBy: ["json-summarizer"] }],
+						});
 						return 0;
 					},
 				}),

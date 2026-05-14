@@ -1,6 +1,7 @@
 ---
 name: request-routing
 kind: responsibility
+id: 067NC4KG09THD5RR34D1P70X3R
 ---
 
 # Request Routing
@@ -16,3 +17,7 @@ Inbound requests are routed to the right next action.
 ### Constraints
 
 - Do not route requests without evidence.
+
+### Tools
+
+(none)

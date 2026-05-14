@@ -8,6 +8,7 @@ import {
 	REPOSITORY_IR_KIND,
 	type RepositoryIrActivationIntent,
 	type RepositoryIrFulfillmentIntent,
+	type RepositoryIrResponsibilityTool,
 	type RepositoryIrTrigger,
 	type RepositoryIrTriggerKind,
 	type RepositoryIrV0,
@@ -109,6 +110,7 @@ export interface RepositoryServeActivationPayload {
 		continuity: string[];
 		criteria: string[];
 		constraints: string[];
+		tools: RepositoryIrResponsibilityTool[];
 		fingerprint: string;
 		fulfillment?: RepositoryIrFulfillmentIntent;
 	};
@@ -402,6 +404,7 @@ export function buildActivationRunRequest(options: {
 			continuity: responsibility.continuity,
 			criteria: responsibility.criteria,
 			constraints: responsibility.constraints,
+			tools: responsibility.tools,
 			fingerprint: responsibilityFingerprint,
 			...(responsibility.fulfillment === undefined ? {} : { fulfillment: responsibility.fulfillment }),
 		},

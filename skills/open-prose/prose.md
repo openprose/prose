@@ -1061,13 +1061,19 @@ The model references environment variables by name — it never reads, logs, or 
 
 ### Resolving Tools
 
-`### Tools` declares host executables required by a service or system. The
-compiler resolves these declarations before writing repository IR, and the
-compiled Forme manifest carries resolved tools as:
+`### Tools` declares host capabilities required by a service, system, or
+responsibility. The compiler resolves these declarations before writing
+repository IR, and the compiled Forme manifest carries resolved service/system
+tools as:
 
 ```json
 { "kind": "cli", "name": "jq", "requiredBy": ["verifier"] }
 ```
+
+Responsibility-level tools are carried separately on
+`responsibilities[].tools` as `{ "kind": "cli" | "mcp", "name": "capability" }`
+records and are included in activation payloads for judge and fulfillment
+binding.
 
 Tool declarations are host capability checks. They do not satisfy
 `### Requires`, do not create Forme dependency-graph edges, and do not act as
@@ -1081,11 +1087,14 @@ actions.
 - For `kind: "cli"`, verify the executable name is present on host PATH. The
   VM checks presence only; it does not run the executable for version or auth
   checks.
+- For `kind: "mcp"`, verify the server name is present in the host MCP
+  registry. The VM checks presence only; it does not install, contact, or
+  introspect the server during preflight.
 - Include declared tool names in the service prompt so the service knows which
   host tools its contract relies on.
-- If a required CLI tool is missing, fail the service before spawning its
+- If a required CLI or MCP tool is missing, fail the service before spawning its
   session. Log the failure to the active backend event store as
-  `N→ service-name ✗ missing-tool:cli:{name}`.
+  `N→ service-name ✗ missing-tool:{kind}:{name}`.
 
 OpenProse never installs, modifies, upgrades, or removes host tools. Installing
 and authenticating tools belongs to the host/user outside the VM.
