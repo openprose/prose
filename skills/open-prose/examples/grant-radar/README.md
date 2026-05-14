@@ -19,7 +19,7 @@ Open this example directory first. In `openprose/grant-finder`, that is:
 cd examples/openprose
 ```
 
-In the `openprose/prose` mirror, that is:
+In `openprose/prose`, that is:
 
 ```bash
 cd skills/open-prose/examples/grant-radar
@@ -87,10 +87,10 @@ research_packet + ranked_recommendations + top_pick_explanations + markdown_repo
 
 Two-step install — both are required for this example to wire cleanly. The
 `grant-finder` CLI and host-harness skill live in the
-[`openprose/grant-finder`](https://github.com/openprose/grant-finder) repo even
-when you are reading this mirrored example inside `openprose/prose`. The skill
-install step is intentionally update-safe because a stale installed skill can
-make an agent follow old instructions.
+[`openprose/grant-finder`](https://github.com/openprose/grant-finder) repo.
+Clone or update that repo before running this example. The skill install step is
+intentionally update-safe because a stale installed skill can make an agent
+follow old instructions.
 
 ```bash
 # 1. Clone or update the grant-finder source, then build the CLI.
