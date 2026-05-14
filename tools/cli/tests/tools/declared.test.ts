@@ -1,9 +1,12 @@
-import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { delimiter, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
 	DECLARED_TOOL_SEARCH_DIRECTORIES,
+	DECLARED_MCP_TOOL_REGISTRY,
+	DECLARED_MCP_TOOL_REGISTRY_ENV,
 	DeclaredToolsUnresolvedError,
 	formatInvalidToolsMessage,
 	formatUnresolvedToolsMessage,
@@ -13,6 +16,12 @@ import {
 	resolveDeclaredTool,
 	resolveDeclaredToolsForFile,
 } from "../../src/tools/declared.js";
+
+const repoRoot = fileURLToPath(new URL("../../../../", import.meta.url));
+const crockfordAlphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+const crockfordValues = new Map<string, number>(
+	[...crockfordAlphabet].map((char, index) => [char, index]),
+);
 
 function tempDir(): string {
 	return mkdtempSync(join(tmpdir(), "prose-declared-tool-"));
@@ -30,6 +39,50 @@ function writeExecutableStub(root: string, name: string): string {
 	writeFileSync(toolPath, "#!/bin/sh\nexit 0\n");
 	chmodSync(toolPath, 0o755);
 	return toolPath;
+}
+
+function collectProseMarkdownFiles(root: string): string[] {
+	const out: string[] = [];
+	const queue = [root];
+	while (queue.length > 0) {
+		const current = queue.pop();
+		if (current === undefined) {
+			continue;
+		}
+		for (const entry of readdirSync(current)) {
+			const path = join(current, entry);
+			const info = statSync(path);
+			if (info.isDirectory()) {
+				queue.push(path);
+			} else if (info.isFile() && path.endsWith(".prose.md")) {
+				out.push(path);
+			}
+		}
+	}
+	return out.sort();
+}
+
+function isMarkdownUuidV7(value: string): boolean {
+	if (value.length !== 26 || value !== value.toUpperCase()) {
+		return false;
+	}
+	let buffer = 0;
+	let bits = 0;
+	const bytes: number[] = [];
+	for (const char of value) {
+		const decoded = crockfordValues.get(char);
+		if (decoded === undefined) {
+			return false;
+		}
+		buffer = (buffer << 5) | decoded;
+		bits += 5;
+		while (bits >= 8) {
+			bits -= 8;
+			bytes.push((buffer >> bits) & 255);
+			buffer &= (1 << bits) - 1;
+		}
+	}
+	return bytes.length === 16 && buffer === 0 && ((bytes[6] ?? 0) & 0xf0) === 0x70 && ((bytes[8] ?? 0) & 0xc0) === 0x80;
 }
 
 describe("parseDeclaredTools", () => {
@@ -81,30 +134,40 @@ The component needs these host tools available:
 - gh
 - cli:
 - cli:bin/gh
-- mcp:browser
+- http:browser
 `);
 		expect(diagnostics).toEqual([
 			{
 				declaration: "gh",
 				code: "tool_invalid",
-				message: "expected cli:<executable-name> with no path separators",
+				message: "expected cli:<executable-name> or mcp:<server-name> with no path separators",
 			},
 			{
 				declaration: "cli:",
 				code: "tool_invalid",
-				message: "expected cli:<executable-name> with no path separators",
+				message: "expected cli:<executable-name> or mcp:<server-name> with no path separators",
 			},
 			{
 				declaration: "cli:bin/gh",
 				code: "tool_invalid",
-				message: "expected cli:<executable-name> with no path separators",
+				message: "expected cli:<executable-name> or mcp:<server-name> with no path separators",
 			},
 			{
-				declaration: "mcp:browser",
+				declaration: "http:browser",
 				code: "tool_unsupported_kind",
-				message: "expected cli:<executable-name>",
+				message: "expected cli:<executable-name> or mcp:<server-name>",
 			},
 		]);
+	});
+
+	it("accepts mcp declarations as first-class tools", () => {
+		const tools = parseDeclaredTools(`### Tools
+
+- \`mcp:gmail\`
+- mcp:linear
+`);
+		expect(tools).toEqual(["mcp:gmail", "mcp:linear"]);
+		expect(parseDeclaredToolDiagnostics("### Tools\n\n- mcp:gmail\n")).toEqual([]);
 	});
 
 	it("does not bleed into the next ### section", () => {
@@ -117,6 +180,21 @@ The component needs these host tools available:
 - cli:jq
 `);
 		expect(tools).toEqual(["cli:pdftotext"]);
+	});
+
+	it("ignores fake Tools headings inside fenced code and reads the real section", () => {
+		const tools = parseDeclaredTools(`\`\`\`markdown
+### Tools
+
+- cli:fake
+\`\`\`
+
+### Tools
+
+- cli:jq
+`);
+		expect(tools).toEqual(["cli:jq"]);
+		expect(parseDeclaredToolDiagnostics("```markdown\n### Tools\n\n- gh\n```\n\n### Tools\n\n- cli:jq\n")).toEqual([]);
 	});
 
 	it("is case-insensitive on the section header", () => {
@@ -138,6 +216,24 @@ The component needs these host tools available:
 	});
 });
 
+describe("responsibility fixture conformance", () => {
+	it("requires migrated responsibility contracts to declare stable ids and explicit Tools sections", () => {
+		const files = [
+			...collectProseMarkdownFiles(join(repoRoot, "skills")),
+			...collectProseMarkdownFiles(join(repoRoot, "tests", "open-prose")),
+		].filter((file) => /^kind: responsibility$/m.test(readFileSync(file, "utf8")));
+
+		expect(files.length).toBeGreaterThan(0);
+		for (const file of files) {
+			const content = readFileSync(file, "utf8");
+			const id = content.match(/^id:\s*(\S+)\s*$/m)?.[1];
+			expect(id, file).toBeDefined();
+			expect(isMarkdownUuidV7(id ?? ""), file).toBe(true);
+			expect(/^### Tools\s*$/im.test(content), file).toBe(true);
+		}
+	});
+});
+
 describe("DECLARED_TOOL_SEARCH_DIRECTORIES", () => {
 	it("lists PATH directories in order and treats empty entries as cwd", () => {
 		const cwd = "/work/project";
@@ -146,6 +242,27 @@ describe("DECLARED_TOOL_SEARCH_DIRECTORIES", () => {
 			path: ["/opt/bin", "", "/usr/local/bin", "/opt/bin"].join(delimiter),
 		});
 		expect(dirs).toEqual(["/opt/bin", cwd, "/usr/local/bin"]);
+	});
+});
+
+describe("DECLARED_MCP_TOOL_REGISTRY", () => {
+	it("returns the deterministic MCP registry supplied by the host", () => {
+		expect(
+			DECLARED_MCP_TOOL_REGISTRY({
+				cwd: "/work",
+				mcpRegistry: ["gmail", "mcp:linear"],
+			}),
+		).toEqual(["gmail", "mcp:linear"]);
+	});
+
+	it("parses the deterministic MCP registry env bridge", () => {
+		expect(DECLARED_MCP_TOOL_REGISTRY_ENV).toBe("PROSE_MCP_REGISTRY");
+		expect(
+			DECLARED_MCP_TOOL_REGISTRY({
+				cwd: "/work",
+				mcpRegistryEnv: "gmail, mcp:linear, gmail",
+			}),
+		).toEqual(["gmail", "mcp:linear"]);
 	});
 });
 
@@ -221,6 +338,35 @@ describe("resolveDeclaredTool", () => {
 		} finally {
 			rmSync(cwd, { recursive: true, force: true });
 		}
+	});
+
+	it("resolves mcp declarations against the supplied registry without contacting servers", async () => {
+		const result = await resolveDeclaredTool("mcp:gmail", {
+			cwd: "/work",
+			mcpRegistry: ["gmail"],
+		});
+
+		expect(result).toEqual({
+			tool: "mcp:gmail",
+			executable: "",
+			resolved: true,
+			path: "mcp:gmail",
+			searched: ["gmail"],
+		});
+	});
+
+	it("reports unresolved mcp declarations against the supplied registry", async () => {
+		const result = await resolveDeclaredTool("mcp:gmail", {
+			cwd: "/work",
+			mcpRegistry: ["linear"],
+		});
+
+		expect(result).toEqual({
+			tool: "mcp:gmail",
+			executable: "",
+			resolved: false,
+			searched: ["linear"],
+		});
 	});
 });
 
@@ -335,6 +481,42 @@ kind: system
 			rmSync(cwd, { recursive: true, force: true });
 		}
 	});
+
+	it("resolves mcp declarations from a file against the host registry", async () => {
+		const cwd = tempDir();
+		try {
+			const file = writeFile(
+				join(cwd, "src", "inbox.prose.md"),
+				`---
+name: inbox
+kind: responsibility
+---
+
+### Tools
+
+- mcp:gmail
+`,
+			);
+			const result = await resolveDeclaredToolsForFile(file, {
+				cwd,
+				path: "",
+				mcpRegistry: ["gmail"],
+			});
+			expect(result.invalid).toEqual([]);
+			expect(result.unresolved).toEqual([]);
+			expect(result.resolved).toEqual([
+				{
+					tool: "mcp:gmail",
+					executable: "",
+					path: "mcp:gmail",
+					source: file,
+					registry: "mcp",
+				},
+			]);
+		} finally {
+			rmSync(cwd, { recursive: true, force: true });
+		}
+	});
 });
 
 describe("preflightDeclaredToolsInRoot", () => {
@@ -390,6 +572,34 @@ Nothing declared.
 		}
 	});
 
+	it("accepts a single .prose.md file as the preflight target", async () => {
+		const cwd = tempDir();
+		const bin = join(cwd, "bin");
+		try {
+			writeExecutableStub(bin, "jq");
+			const file = writeFile(
+				join(cwd, "src", "json-check.prose.md"),
+				`---
+name: json-check
+kind: service
+---
+
+### Tools
+
+- cli:jq
+`,
+			);
+
+			const result = await preflightDeclaredToolsInRoot(file, { cwd, path: bin });
+
+			expect(result.declared).toEqual(["cli:jq"]);
+			expect(result.resolved.map((entry) => entry.tool)).toEqual(["cli:jq"]);
+			expect(result.unresolved).toEqual([]);
+		} finally {
+			rmSync(cwd, { recursive: true, force: true });
+		}
+	});
+
 	it("ignores hidden directories and node_modules", async () => {
 		const cwd = tempDir();
 		try {
@@ -418,6 +628,34 @@ kind: service
 `,
 			);
 			const result = await preflightDeclaredToolsInRoot(cwd, { cwd, path: "" });
+			expect(result.declared).toEqual([]);
+			expect(result.invalid).toEqual([]);
+			expect(result.unresolved).toEqual([]);
+		} finally {
+			rmSync(cwd, { recursive: true, force: true });
+		}
+	});
+
+	it("ignores compiler output and runtime state directories during discovery", async () => {
+		const cwd = tempDir();
+		try {
+			for (const directory of ["deps", "dist", "runs", "state"]) {
+				writeFile(
+					join(cwd, directory, "stale.prose.md"),
+					`---
+name: stale
+kind: service
+---
+
+### Tools
+
+- cli:jq
+`,
+				);
+			}
+
+			const result = await preflightDeclaredToolsInRoot(cwd, { cwd, path: "" });
+
 			expect(result.declared).toEqual([]);
 			expect(result.invalid).toEqual([]);
 			expect(result.unresolved).toEqual([]);
@@ -460,15 +698,30 @@ describe("DeclaredToolsUnresolvedError + formatUnresolvedToolsMessage", () => {
 	it("formats invalid declarations with their diagnostic codes", () => {
 		const message = formatInvalidToolsMessage([
 			{
-				declaration: "mcp:browser",
+				declaration: "http:browser",
 				code: "tool_unsupported_kind",
-				message: "expected cli:<executable-name>",
+				message: "expected cli:<executable-name> or mcp:<server-name>",
 				source: "/work/src/x.prose.md",
 			},
 		]);
 		expect(message).toContain("Declared tool declaration is invalid.");
-		expect(message).toContain("- mcp:browser");
+		expect(message).toContain("- http:browser");
 		expect(message).toContain("(declared in /work/src/x.prose.md)");
 		expect(message).toContain("tool_unsupported_kind");
+	});
+
+	it("formats unresolved mcp declarations as registry lookups", () => {
+		const message = formatUnresolvedToolsMessage([
+			{
+				tool: "mcp:gmail",
+				executable: "",
+				source: "/work/src/x.prose.md",
+				searched: ["linear"],
+				registry: "mcp",
+			},
+		]);
+		expect(message).toContain("- mcp:gmail");
+		expect(message).toContain("searched MCP registry:");
+		expect(message).toContain("linear");
 	});
 });

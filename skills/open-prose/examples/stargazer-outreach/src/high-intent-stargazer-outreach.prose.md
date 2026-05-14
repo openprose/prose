@@ -1,6 +1,7 @@
 ---
 name: high-intent-stargazer-outreach
 kind: responsibility
+id: 067NC4KG19TPD9V8D5N6PV3DDR
 ---
 
 # High-Intent Stargazer Outreach
@@ -33,6 +34,10 @@ for thoughtful OpenProse outreach.
 - Do not contact the same person repeatedly without new evidence.
 - Keep enrichment bounded to public, low-cost sources.
 - Leave final send decisions to a human owner.
+
+### Tools
+
+(none)
 
 ### Fulfillment
 

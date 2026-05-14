@@ -1,6 +1,7 @@
 ---
 name: research-inbox-responsibility
 kind: responsibility
+id: 067NC4KG15XNS7AYBXG62RK3CG
 ---
 
 # Research Inbox Responsibility
@@ -35,6 +36,10 @@ next actions for the team's active questions.
 - Keep summaries short enough for a researcher to scan before deciding what to
   read.
 - Do not invent claims that are not present in the submitted item.
+
+### Tools
+
+(none)
 
 ### Fulfillment
 

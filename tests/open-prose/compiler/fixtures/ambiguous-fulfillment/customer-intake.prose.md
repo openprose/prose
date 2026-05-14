@@ -1,6 +1,7 @@
 ---
 name: customer-intake
 kind: responsibility
+id: 067NC4KG05XGS38E1W8124GK2G
 ---
 
 # Customer Intake
@@ -22,3 +23,7 @@ next action.
 ### Constraints
 
 - Do not fabricate context or overstate certainty.
+
+### Tools
+
+(none)

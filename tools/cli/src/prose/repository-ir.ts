@@ -38,6 +38,13 @@ export interface RepositoryIrFulfillmentIntent {
 	sourcePath?: string;
 }
 
+export type RepositoryIrToolKind = "cli" | "mcp";
+
+export interface RepositoryIrResponsibilityTool {
+	kind: RepositoryIrToolKind;
+	name: string;
+}
+
 export interface RepositoryIrResponsibility {
 	id: string;
 	sourcePath: string;
@@ -45,6 +52,7 @@ export interface RepositoryIrResponsibility {
 	continuity: string[];
 	criteria: string[];
 	constraints: string[];
+	tools: RepositoryIrResponsibilityTool[];
 	fulfillment?: RepositoryIrFulfillmentIntent;
 }
 
@@ -124,7 +132,7 @@ export interface RepositoryIrFormeEnvironmentVariable {
 	requiredBy: string[];
 }
 
-export type RepositoryIrFormeToolKind = "cli";
+export type RepositoryIrFormeToolKind = RepositoryIrToolKind;
 
 export interface RepositoryIrFormeTool {
 	kind: RepositoryIrFormeToolKind;
@@ -215,8 +223,15 @@ const activationIntentKinds: readonly RepositoryIrActivationIntentKind[] = [
 	"escalation",
 ];
 const formeInputSources: readonly RepositoryIrFormeInputSource[] = ["caller", "service"];
-const formeToolKinds: readonly RepositoryIrFormeToolKind[] = ["cli"];
+const toolKinds: readonly RepositoryIrToolKind[] = ["cli", "mcp"];
 const httpMethods = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
+const toolNamePattern = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/;
+const markdownIdLength = 26;
+const markdownIdByteLength = 16;
+const crockfordAlphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+const crockfordValues = new Map<string, number>(
+	[...crockfordAlphabet].map((char, index) => [char, index]),
+);
 
 export function validateRepositoryIr(value: unknown): RepositoryIrValidationResult {
 	const errors: string[] = [];
@@ -295,6 +310,9 @@ function validateResponsibilities(value: unknown, sourcePaths: Set<string>, erro
 
 		const prefix = `responsibilities[${index}]`;
 		if (isNonEmptyString(responsibility.id)) {
+			if (!isMarkdownResponsibilityId(responsibility.id)) {
+				errors.push(`${prefix}.id must be an uppercase Crockford-base32 UUIDv7 Markdown id`);
+			}
 			const isUnique = !ids.has(responsibility.id);
 			addUnique(ids, responsibility.id, `${prefix}.id`, errors);
 			if (isUnique) {
@@ -316,6 +334,7 @@ function validateResponsibilities(value: unknown, sourcePaths: Set<string>, erro
 		validateStringArray(responsibility.continuity, `${prefix}.continuity`, errors);
 		validateStringArray(responsibility.criteria, `${prefix}.criteria`, errors);
 		validateStringArray(responsibility.constraints, `${prefix}.constraints`, errors);
+		validateResponsibilityTools(responsibility.tools, `${prefix}.tools`, errors);
 
 		if (responsibility.fulfillment !== undefined) {
 			validateFulfillmentIntent(responsibility.fulfillment, `${prefix}.fulfillment`, sourcePaths, errors);
@@ -995,13 +1014,41 @@ function validateFormeTools(value: unknown, prefix: string, nodeIds: Set<string>
 			continue;
 		}
 		const toolPrefix = `${prefix}[${index}]`;
-		if (!formeToolKinds.includes(tool.kind as RepositoryIrFormeToolKind)) {
-			errors.push(`${toolPrefix}.kind must be cli`);
-		}
-		if (!isNonEmptyString(tool.name)) {
-			errors.push(`${toolPrefix}.name must be a non-empty string`);
-		}
+		validateToolKindAndName(tool, toolPrefix, errors);
 		validateRequiredByNodeReferences(tool.requiredBy, `${toolPrefix}.requiredBy`, nodeIds, errors);
+	}
+}
+
+function validateResponsibilityTools(value: unknown, prefix: string, errors: string[]): void {
+	if (!Array.isArray(value)) {
+		errors.push(`${prefix} must be an array`);
+		return;
+	}
+
+	const seen = new Set<string>();
+	for (const [index, tool] of value.entries()) {
+		if (!isRecord(tool)) {
+			errors.push(`${prefix}[${index}] must be an object`);
+			continue;
+		}
+		const toolPrefix = `${prefix}[${index}]`;
+		validateToolKindAndName(tool, toolPrefix, errors);
+		if (isNonEmptyString(tool.kind) && isNonEmptyString(tool.name)) {
+			addUnique(seen, `${tool.kind}:${tool.name}`, toolPrefix, errors);
+		}
+	}
+}
+
+function validateToolKindAndName(tool: Record<string, unknown>, prefix: string, errors: string[]): void {
+	if (!toolKinds.includes(tool.kind as RepositoryIrToolKind)) {
+		errors.push(`${prefix}.kind must be cli or mcp`);
+	}
+	if (!isNonEmptyString(tool.name)) {
+		errors.push(`${prefix}.name must be a non-empty string`);
+		return;
+	}
+	if (!toolNamePattern.test(tool.name)) {
+		errors.push(`${prefix}.name must be a deterministic capability name with no path separators`);
 	}
 }
 
@@ -1200,4 +1247,44 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isNonEmptyString(value: unknown): value is string {
 	return typeof value === "string" && value.trim() !== "";
+}
+
+export function isMarkdownResponsibilityId(value: string): boolean {
+	if (value.length !== markdownIdLength || value !== value.toUpperCase()) {
+		return false;
+	}
+	const bytes = decodeCrockfordBase32(value);
+	if (bytes === null || bytes.length !== markdownIdByteLength) {
+		return false;
+	}
+	return (
+		((bytes[6] ?? 0) & 0xf0) === 0x70 &&
+		((bytes[8] ?? 0) & 0xc0) === 0x80
+	);
+}
+
+function decodeCrockfordBase32(value: string): Uint8Array | null {
+	let buffer = 0;
+	let bits = 0;
+	const bytes: number[] = [];
+
+	for (const char of value) {
+		const decoded = crockfordValues.get(char);
+		if (decoded === undefined) {
+			return null;
+		}
+		buffer = (buffer << 5) | decoded;
+		bits += 5;
+		while (bits >= 8) {
+			bits -= 8;
+			bytes.push((buffer >> bits) & 255);
+			buffer &= (1 << bits) - 1;
+		}
+	}
+
+	if (bits > 0 && buffer !== 0) {
+		return null;
+	}
+
+	return Uint8Array.from(bytes);
 }

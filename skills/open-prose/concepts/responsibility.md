@@ -26,6 +26,7 @@ Architecture. They define standing obligations, not implementation machinery.
 ---
 name: high-intent-stargazers
 kind: responsibility
+id: 067NC4KG01RG50R40M30E20918
 ---
 
 ### Goal
@@ -53,6 +54,10 @@ followed up with.
 - Do not contact the same person repeatedly without new evidence.
 - Keep enrichment and outreach costs bounded.
 
+### Tools
+
+(none)
+
 ### Fulfillment
 
 Prefer the local `stargazer-outreach` system when present.
@@ -66,12 +71,13 @@ Prefer the local `stargazer-outreach` system when present.
 | `Continuity` | How time qualifies the obligation |
 | `Criteria` | What counts as satisfactory fulfillment |
 | `Constraints` | What must remain bounded or prohibited |
+| `Tools` | Explicit host capabilities the judge or fulfillment path needs; write `(none)` when empty |
 | `Fulfillment` | Optional hint naming source that may fulfill the responsibility |
 
-`Goal`, `Continuity`, `Criteria`, and `Constraints` are the core contract.
-`Fulfillment` is optional. If omitted, the compiler should infer fulfillment
-from nearby systems, services, names, and contracts when the relationship is
-clear.
+`Goal`, `Continuity`, `Criteria`, `Constraints`, and `Tools` are the core
+contract. `Fulfillment` is optional. If omitted, the compiler should infer
+fulfillment from nearby systems, services, names, and contracts when the
+relationship is clear.
 
 ## What Belongs Here
 

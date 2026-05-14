@@ -42,6 +42,7 @@ const SKILL_HEADING = /^###[ \t]+skills[ \t]*$/i;
 const NEXT_HEADING = /^#{1,3}[ \t]/;
 const BULLET = /^[-*+][ \t]+(.+?)[ \t]*$/;
 const SKILL_NAME = /[A-Za-z0-9][A-Za-z0-9_.-]*:[A-Za-z0-9][A-Za-z0-9_.-]*/;
+const SOURCE_DISCOVERY_IGNORED_DIRECTORIES = new Set(["deps", "dist", "node_modules", "runs", "state"]);
 
 export function parseDeclaredSkills(content: string): string[] {
 	const lines = content.split(/\r?\n/);
@@ -199,7 +200,7 @@ async function collectProseFiles(rootPath: string): Promise<string[]> {
 			continue;
 		}
 		for (const entry of entries) {
-			if (entry.name.startsWith(".") || entry.name === "node_modules") {
+			if (entry.name.startsWith(".") || SOURCE_DISCOVERY_IGNORED_DIRECTORIES.has(entry.name)) {
 				continue;
 			}
 			const path = join(current, entry.name);

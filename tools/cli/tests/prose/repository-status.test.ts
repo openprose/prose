@@ -78,7 +78,7 @@ describe("repository status", () => {
 				- high-intent-stargazer-outreach.evidence-change [http POST /webhooks/github/stars] -> high-intent-stargazer-outreach.judge, high-intent-stargazer-outreach.fulfillment
 
 				Responsibilities:
-				- high-intent-stargazer-outreach
+				- 067NC4KG01RG50R40M30E20918
 				  source: tests/open-prose/responsibility-runtime/01-stargazer-responsibility.prose.md
 				  status: no runtime status yet
 				  pressure: none

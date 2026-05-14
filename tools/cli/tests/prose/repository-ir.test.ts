@@ -11,6 +11,8 @@ import {
 } from "../../src/prose/index.js";
 
 const repoRoot = fileURLToPath(new URL("../../../../", import.meta.url));
+const stargazerResponsibilityId = "067NC4KG01RG50R40M30E20918";
+const otherResponsibilityId = "067NC4KG0DZJ18924CJ2A9H750";
 
 function readFixture(path: string): unknown {
 	return JSON.parse(readFileSync(join(repoRoot, path), "utf8"));
@@ -73,6 +75,84 @@ describe("repository IR v0", () => {
 		);
 	});
 
+	it("rejects responsibility ids that are still slug-derived", () => {
+		const manifest = cloneFixture("tests/open-prose/compiler/expected/stargazer.manifest.next.json");
+		manifest.responsibilities[0].id = "high-intent-stargazer-outreach";
+		manifest.triggers[0].responsibilityId = "high-intent-stargazer-outreach";
+		manifest.activations[0].responsibilityId = "high-intent-stargazer-outreach";
+
+		const result = validateRepositoryIr(manifest);
+
+		expect(result.valid).toBe(false);
+		expect(result.errors).toContain(
+			"responsibilities[0].id must be an uppercase Crockford-base32 UUIDv7 Markdown id",
+		);
+	});
+
+	it("rejects responsibility ids that are Crockford-shaped but not UUIDv7", () => {
+		const manifest = cloneFixture("tests/open-prose/compiler/expected/stargazer.manifest.next.json");
+		manifest.responsibilities[0].id = "067NC4KG00GG50R40M30E20918";
+		manifest.triggers[0].responsibilityId = "067NC4KG00GG50R40M30E20918";
+		manifest.activations[0].responsibilityId = "067NC4KG00GG50R40M30E20918";
+
+		const result = validateRepositoryIr(manifest);
+
+		expect(result.valid).toBe(false);
+		expect(result.errors).toContain(
+			"responsibilities[0].id must be an uppercase Crockford-base32 UUIDv7 Markdown id",
+		);
+	});
+
+	it("accepts responsibility-level declared tools in repository IR", () => {
+		const manifest = cloneFixture("tests/open-prose/compiler/expected/stargazer.manifest.next.json");
+		manifest.responsibilities[0].tools = [
+			{ kind: "cli", name: "gh" },
+			{ kind: "mcp", name: "github" },
+		];
+
+		expect(validateRepositoryIr(manifest)).toEqual({
+			valid: true,
+			errors: [],
+		});
+	});
+
+	it("rejects missing or malformed responsibility-level declared tools", () => {
+		const manifest = cloneFixture("tests/open-prose/compiler/expected/stargazer.manifest.next.json");
+		delete manifest.responsibilities[0].tools;
+		manifest.responsibilities.push({
+			id: otherResponsibilityId,
+			sourcePath: "tests/open-prose/responsibility-runtime/01-stargazer-responsibility.prose.md",
+			goal: "Another responsibility remains visible.",
+			continuity: ["Check it periodically."],
+			criteria: ["Evidence is present."],
+			constraints: ["Do not fabricate evidence."],
+			tools: [
+				{ kind: "http", name: "github" },
+				{ kind: "cli", name: "bin/gh" },
+				{ kind: "cli", name: "gh" },
+				{ kind: "cli", name: "gh" },
+			],
+		});
+		manifest.activations.push({
+			id: "other-responsibility.judge",
+			responsibilityId: otherResponsibilityId,
+			kind: "judge",
+			reason: "Determine whether the other responsibility is healthy.",
+		});
+
+		const result = validateRepositoryIr(manifest);
+
+		expect(result.valid).toBe(false);
+		expect(result.errors).toEqual(
+			expect.arrayContaining([
+				"responsibilities[0].tools must be an array",
+				"responsibilities[1].tools[0].kind must be cli or mcp",
+				"responsibilities[1].tools[1].name must be a deterministic capability name with no path separators",
+				"responsibilities[1].tools[3] must be unique",
+			]),
+		);
+	});
+
 	it("rejects malformed concrete trigger registrations", () => {
 		const manifest = cloneFixture("tests/open-prose/compiler/expected/stargazer.manifest.next.json");
 		manifest.triggers[0].cron = "daily";
@@ -131,7 +211,7 @@ describe("repository IR v0", () => {
 		manifest.triggers[1].cron = "0 * * * *";
 		manifest.triggers.push({
 			id: "high-intent-stargazer-outreach.manual",
-			responsibilityId: "high-intent-stargazer-outreach",
+			responsibilityId: stargazerResponsibilityId,
 			kind: "manual",
 			reason: "Manual inspection.",
 			path: "/manual",
@@ -153,7 +233,7 @@ describe("repository IR v0", () => {
 		const manifest = cloneFixture("tests/open-prose/compiler/expected/stargazer.manifest.next.json");
 		manifest.triggers.push({
 			id: "high-intent-stargazer-outreach.unbound",
-			responsibilityId: "high-intent-stargazer-outreach",
+			responsibilityId: stargazerResponsibilityId,
 			kind: "cron",
 			cron: "0 12 * * *",
 			reason: "A live trigger should wake something.",
@@ -223,6 +303,11 @@ describe("repository IR v0", () => {
 				name: "gh",
 				requiredBy: ["stargazer-fetcher", "profile-enricher"],
 			},
+			{
+				kind: "mcp",
+				name: "github",
+				requiredBy: ["profile-enricher"],
+			},
 		];
 
 		expect(validateRepositoryIr(manifest)).toEqual({
@@ -255,7 +340,7 @@ describe("repository IR v0", () => {
 		expect(result.valid).toBe(false);
 		expect(result.errors).toEqual(
 			expect.arrayContaining([
-				"formeManifests[0].tools[0].kind must be cli",
+				"formeManifests[0].tools[0].kind must be cli or mcp",
 				"formeManifests[0].tools[0].name must be a non-empty string",
 				"formeManifests[0].tools[0].requiredBy[0] must reference a known graph node",
 				"formeManifests[0].tools[0].requiredBy[1] must be a non-empty string",
@@ -273,7 +358,7 @@ describe("repository IR v0", () => {
 
 		expect(result.valid).toBe(false);
 		expect(result.errors).toContain(
-			"responsibility 'high-intent-stargazer-outreach' must have exactly one judge activation",
+			`responsibility '${stargazerResponsibilityId}' must have exactly one judge activation`,
 		);
 	});
 
@@ -285,23 +370,24 @@ describe("repository IR v0", () => {
 			name: "other-responsibility",
 		});
 		manifest.responsibilities.push({
-			id: "other-responsibility",
+			id: otherResponsibilityId,
 			sourcePath: "other-responsibility.prose.md",
 			goal: "Another standing goal remains true.",
 			continuity: ["Check it periodically."],
 			criteria: ["The condition is observable."],
 			constraints: ["Do not invent evidence."],
+			tools: [],
 		});
 		manifest.triggers.push({
 			id: "other-responsibility.periodic-check",
-			responsibilityId: "other-responsibility",
+			responsibilityId: otherResponsibilityId,
 			kind: "cron",
 			cron: "0 9 * * *",
 			reason: "The other responsibility needs periodic checking.",
 		});
 		manifest.activations.push({
 			id: "other-responsibility.judge",
-			responsibilityId: "other-responsibility",
+			responsibilityId: otherResponsibilityId,
 			kind: "judge",
 			triggerIds: ["high-intent-stargazer-outreach.periodic-check"],
 			reason: "Determine whether the other responsibility is healthy.",

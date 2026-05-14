@@ -1,6 +1,7 @@
 ---
 name: vendor-renewals-prepared
 kind: responsibility
+id: 067NC4KG11RN54TMANB5EP2SB8
 ---
 
 # Vendor Renewals Prepared
@@ -36,6 +37,10 @@ close.
 - Do not invent contract terms, usage, alternatives, or stakeholder sentiment.
 - Keep the review bounded to evidence available in the activation context and
   project memory unless a caller supplies external research.
+
+### Tools
+
+(none)
 
 ### Fulfillment
 

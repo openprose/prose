@@ -63,6 +63,7 @@ export function fingerprintResponsibility(responsibility: RepositoryIrResponsibi
 		continuity: responsibility.continuity,
 		criteria: responsibility.criteria,
 		constraints: responsibility.constraints,
+		tools: responsibility.tools,
 		...(responsibility.fulfillment === undefined ? {} : { fulfillment: responsibility.fulfillment }),
 	};
 

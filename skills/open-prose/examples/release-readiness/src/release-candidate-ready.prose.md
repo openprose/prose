@@ -1,6 +1,7 @@
 ---
 name: release-candidate-ready
 kind: responsibility
+id: 067NC4KG0SYKXFT085146H258R
 ---
 
 # Release Candidate Ready
@@ -32,6 +33,10 @@ that a release owner can trust before shipping.
 - Do not recommend shipping with unresolved blockers hidden in caveats.
 - Do not invent CI, migration, documentation, or customer evidence.
 - Keep the brief concise enough for a release owner to review quickly.
+
+### Tools
+
+(none)
 
 ### Fulfillment
 

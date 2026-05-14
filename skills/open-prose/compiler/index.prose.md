@@ -87,6 +87,9 @@ agent responsibility_compiler:
   Load concepts/responsibility.md, concepts/reactor.md, and compiler/ir-v0.md.
   Preserve Goal, Continuity, Criteria, and Constraints in the exact IR fields:
   goal, continuity, criteria, constraints.
+  Use frontmatter `id:` as the responsibility `id` in IR. Never derive
+  responsibility identity from `name:`, filepath, title, or a slug; those are
+  display and source-location fields only.
   Emit one judge activation per responsibility.
   Infer cron triggers from Continuity only when cadence is clear enough for a
   standard five-field cron expression. Otherwise emit a diagnostic.
@@ -147,36 +150,44 @@ agent tools_resolver:
   model: "fast"
   persist: false
   prompt: """
-  Resolve declared `### Tools` for every system and service in the source
-  graph.
+  Resolve declared `### Tools` for every system, service, and responsibility in
+  the source graph.
   Load contract-markdown.md (Tools) and compiler/ir-v0.md.
-  Accept only deterministic CLI executable declarations in the exact
-  `cli:<executable-name>` form. The executable name must be non-empty and must
-  not contain path separators.
-  Report malformed declarations such as `gh`, `cli:`, or `cli:bin/gh` with a
-  diagnostic whose severity is `error` and whose message includes
+  Accept deterministic CLI executable declarations in the exact
+  `cli:<executable-name>` form and deterministic MCP server declarations in the
+  exact `mcp:<server-name>` form. Names must be non-empty and must not contain
+  path separators.
+  Report malformed declarations such as `gh`, `cli:`, `mcp:`, or `cli:bin/gh`
+  with a diagnostic whose severity is `error` and whose message includes
   `tool_invalid`.
-  Report non-CLI namespaces such as `mcp:github` with a diagnostic whose
-  severity is `error` and whose message includes `tool_unsupported_kind`.
+  Report namespaces other than `cli` and `mcp` with a diagnostic whose severity
+  is `error` and whose message includes `tool_unsupported_kind`.
   For each supported CLI declaration, check host PATH for an executable with
   that name. Do not run the executable and do not perform version or auth
   checks.
+  For each supported MCP declaration, check the deterministic host MCP registry
+  for that server name. Do not install, contact, or introspect the MCP server.
   Aggregate scope: a system's declared tools apply to every sub-service, and a
   service's declarations are additive -- they extend, never replace, the
-  inherited set.
+  inherited set. A responsibility's declarations apply to judge observation and
+  fulfillment actuation for that responsibility.
   Tool declarations do not satisfy `### Requires` and do not create Forme
   dependency-graph edges.
   Never install, modify, upgrade, or remove host tools.
-  Return one aggregated manifest tool record per resolved CLI executable using
-  `{ kind: "cli", name, requiredBy }`, where `requiredBy` names the graph nodes
-  that need the executable.
+  Return one aggregated Forme manifest tool record per resolved system/service
+  tool using `{ kind: "cli" | "mcp", name, requiredBy }`, where `requiredBy`
+  names the graph nodes that need the capability.
+  Return one responsibility tool list per responsibility using
+  `{ responsibilityId, tools: [{ kind: "cli" | "mcp", name }] }`; use an empty
+  `tools` array when the responsibility explicitly declares no required tools.
+  Responsibility tool records do not have `requiredBy`.
   Return an `unresolved` array of `{ tool, sourcePath, checked }` entries for
-  any executable that is not present on PATH. Emit one diagnostic with severity
-  `error` and message code `tool_unresolved` for each unresolved entry, naming
-  the tool and the PATH lookup that was checked.
+  any executable absent from PATH or MCP server absent from the registry. Emit
+  one diagnostic with severity `error` and message code `tool_unresolved` for
+  each unresolved entry, naming the tool and the lookup that was checked.
   """
   shape:
-    self: ["tool resolution", "PATH executable checks", "scope aggregation"]
+    self: ["tool resolution", "PATH executable checks", "MCP registry checks", "scope aggregation"]
     prohibited: ["installing tools", "running declared tools", "guessing tool availability"]
 
 agent forme_compiler:
@@ -187,9 +198,11 @@ agent forme_compiler:
   Load forme.md and compiler/ir-v0.md.
   Produce only the formeManifests array entries described by ir-v0.md.
   Use executionOrder entries with exactly nodeId and dependsOn fields.
-  Include resolved tool requirements from tools_resolution in each Forme
-  manifest's tools array. Use only `{ kind: "cli", name, requiredBy }` records,
-  and make `requiredBy` reference graph node ids in that manifest.
+  Include resolved system/service tool requirements from tools_resolution in each Forme
+  manifest's tools array. Use only `{ kind: "cli" | "mcp", name, requiredBy }`
+  records, and make `requiredBy` reference graph node ids in that manifest.
+  Do not include responsibility-level judge tools in a Forme manifest unless a
+  system or service also declares the same tool.
   Link fulfillment activations that target systems to the matching
   formeManifestId.
   Emit warnings for wiring that cannot be represented in v0.
@@ -264,7 +277,7 @@ if skills_resolution reports unresolved skills:
   return skills_resolution
 
 let tools_resolution = session: tools_resolver
-  prompt: "Resolve declared host tools for every system and service."
+  prompt: "Resolve declared host tools for every system, service, and responsibility."
   context: { source_root, discovered }
 
 if tools_resolution reports invalid, unsupported, or unresolved tools:
@@ -275,7 +288,7 @@ let forme_output = session: forme_compiler
   context: { source_root, discovered, responsibility_output, gateway_output, tools_resolution }
 
 let manifest = session: ir_emitter
-  prompt: "Assemble the complete v0 repository IR JSON object."
+  prompt: "Assemble the complete v0 repository IR JSON object, including resolved tools on every responsibility."
   context: { discovered, responsibility_output, gateway_output, tools_resolution, forme_output }
 
 let validation = session: ir_validator
@@ -292,6 +305,10 @@ let write_result = session: manifest_writer
 return write_result
 ```
 
-The deterministic CLI validates the written manifest after this program
-returns. That host validation is the final guardrail; the compiler program
-should still treat `ir-v0.md` as binding before it writes.
+Before forwarding to the compiler harness, the deterministic CLI preflights
+the compile target source files for responsibility `id:` and required
+`### Tools` sections, then resolves declared tools only within that target
+(except `prose compile .`, which preserves whole-root preflight). After this
+program returns, the CLI validates the written manifest. That host validation
+is the final guardrail; the compiler program should still treat `ir-v0.md` as
+binding before it writes.

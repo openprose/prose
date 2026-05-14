@@ -50,12 +50,16 @@ Allowed `kind` values: `responsibility`, `gateway`, `system`, `service`,
 
 ```json
 {
-  "id": "customer-health",
+  "id": "067NC4KG01RG50R40M30E20918",
   "sourcePath": "src/customer-health.prose.md",
   "goal": "Customer risk is surfaced before it surprises the team.",
   "continuity": ["Review risk signals every weekday."],
   "criteria": ["Risk notes include evidence and next action."],
   "constraints": ["Do not invent customer facts."],
+  "tools": [
+    { "kind": "mcp", "name": "gmail" },
+    { "kind": "cli", "name": "gh" }
+  ],
   "fulfillment": {
     "mode": "inferred",
     "targetName": "customer-risk-radar",
@@ -65,15 +69,20 @@ Allowed `kind` values: `responsibility`, `gateway`, `system`, `service`,
 ```
 
 Required fields: `id`, `sourcePath`, `goal`, `continuity`, `criteria`,
-`constraints`. `continuity`, `criteria`, and `constraints` are non-empty string
-arrays.
+`constraints`, `tools`. `id` is the exact frontmatter `id:` from the
+responsibility Markdown, not a slug derived from `name:` or filepath. It must
+be an uppercase Crockford-base32 UUIDv7 Markdown id. `continuity`, `criteria`,
+and `constraints` are non-empty string arrays. `tools` is the resolved
+responsibility-level `### Tools` declaration lowered to `{ "kind": "cli" |
+"mcp", "name": "capability" }` records. Use an empty array when the source
+declares no required tools; do not omit the field.
 
 `fulfillment` is optional. When present, `mode` is `declared` or `inferred`,
 `targetName` names the target system or service, and `sourcePath` is present
 when the target source is known.
 
 Do not emit `sections`, `fingerprint`, `target`, `targetKind`, `resolution`,
-or `formeManifestId` inside a responsibility.
+`requiredBy`, or `formeManifestId` inside a responsibility.
 
 ## Triggers
 
@@ -84,7 +93,7 @@ Cron trigger:
 ```json
 {
   "id": "customer-health.weekday-check",
-  "responsibilityId": "customer-health",
+  "responsibilityId": "067NC4KG01RG50R40M30E20918",
   "kind": "cron",
   "reason": "Continuity requires weekday review.",
   "cron": "0 9 * * 1-5",
@@ -97,7 +106,7 @@ HTTP trigger:
 ```json
 {
   "id": "customer-health.signal-webhook",
-  "responsibilityId": "customer-health",
+  "responsibilityId": "067NC4KG01RG50R40M30E20918",
   "kind": "http",
   "reason": "New customer-risk evidence should wake the judge.",
   "method": "POST",
@@ -110,7 +119,7 @@ Manual trigger:
 ```json
 {
   "id": "customer-health.manual",
-  "responsibilityId": "customer-health",
+  "responsibilityId": "067NC4KG01RG50R40M30E20918",
   "kind": "manual",
   "reason": "A human asked for reconciliation."
 }
@@ -131,7 +140,7 @@ Judge activation:
 ```json
 {
   "id": "customer-health.judge",
-  "responsibilityId": "customer-health",
+  "responsibilityId": "067NC4KG01RG50R40M30E20918",
   "kind": "judge",
   "reason": "Determine whether the responsibility is up, drifting, down, or blocked.",
   "triggerIds": ["customer-health.weekday-check", "customer-health.signal-webhook"]
@@ -143,7 +152,7 @@ Fulfillment activation:
 ```json
 {
   "id": "customer-health.fulfillment",
-  "responsibilityId": "customer-health",
+  "responsibilityId": "067NC4KG01RG50R40M30E20918",
   "kind": "fulfillment",
   "reason": "Use the fulfillment system when pressure says the responsibility needs work.",
   "targetName": "customer-risk-radar",
@@ -206,6 +215,11 @@ Do not emit `service`, `source`, `sourceName`, `target`, `triggeredBy`,
       "kind": "cli",
       "name": "jq",
       "requiredBy": ["draft-risk-brief"]
+    },
+    {
+      "kind": "mcp",
+      "name": "gmail",
+      "requiredBy": ["draft-risk-brief"]
     }
   ],
   "warnings": []
@@ -222,9 +236,11 @@ Do not emit `service`, `source`, `sourceName`, `target`, `triggeredBy`,
 "dependsOn": [...] }`. It is not a numbered step list.
 
 `environment` is an array of `{ "name": "ENV_VAR", "requiredBy": ["node-id"] }`.
-`tools` is an array of `{ "kind": "cli", "name": "executable", "requiredBy":
-["node-id"] }`. `requiredBy` entries must reference graph node ids in the same
-Forme manifest. Current v0 IR supports only `kind: "cli"` tool records.
+`tools` is an array of `{ "kind": "cli" | "mcp", "name": "capability",
+"requiredBy": ["node-id"] }`. `requiredBy` entries must reference graph node
+ids in the same Forme manifest. `cli` names are executable names resolved on
+PATH. `mcp` names are host MCP server names resolved from the host MCP
+registry.
 `warnings` is an array of non-empty strings.
 
 ## Diagnostics
@@ -259,18 +275,19 @@ manifest.
   ],
   "responsibilities": [
     {
-      "id": "customer-health",
+      "id": "067NC4KG01RG50R40M30E20918",
       "sourcePath": "src/customer-health.prose.md",
       "goal": "Customer health is reviewed before risk surprises the team.",
       "continuity": ["Review customer risk signals every weekday."],
       "criteria": ["Risk notes include evidence and a next action."],
-      "constraints": ["Do not invent customer facts."]
+      "constraints": ["Do not invent customer facts."],
+      "tools": []
     }
   ],
   "triggers": [
     {
       "id": "customer-health.weekday-check",
-      "responsibilityId": "customer-health",
+      "responsibilityId": "067NC4KG01RG50R40M30E20918",
       "kind": "cron",
       "reason": "Continuity requires weekday review.",
       "cron": "0 9 * * 1-5"
@@ -279,7 +296,7 @@ manifest.
   "activations": [
     {
       "id": "customer-health.judge",
-      "responsibilityId": "customer-health",
+      "responsibilityId": "067NC4KG01RG50R40M30E20918",
       "kind": "judge",
       "reason": "Determine whether the responsibility is up, drifting, down, or blocked.",
       "triggerIds": ["customer-health.weekday-check"]

@@ -45,7 +45,7 @@
   ],
   "responsibilities": [
     {
-      "id": "high-intent-stargazer-outreach",
+      "id": "067NC4KG01RG50R40M30E20918",
       "sourcePath": "tests/open-prose/responsibility-runtime/01-stargazer-responsibility.prose.md",
       "goal": "High-intent GitHub stargazers are identified, enriched, and thoughtfully followed up with using relevant OpenProse sample results.",
       "continuity": [
@@ -65,6 +65,7 @@
         "Keep enrichment and sample-generation cost bounded by expected value.",
         "Escalate uncertainty instead of fabricating company, role, or pain details."
       ],
+      "tools": [],
       "fulfillment": {
         "mode": "declared",
         "targetName": "stargazer-outreach",
@@ -75,14 +76,14 @@
   "triggers": [
     {
       "id": "high-intent-stargazer-outreach.periodic-check",
-      "responsibilityId": "high-intent-stargazer-outreach",
+      "responsibilityId": "067NC4KG01RG50R40M30E20918",
       "kind": "cron",
       "cron": "0 */6 * * *",
       "reason": "Continuity requires checking often enough that new high-intent stargazers are not left unattended for more than one business day."
     },
     {
       "id": "high-intent-stargazer-outreach.evidence-change",
-      "responsibilityId": "high-intent-stargazer-outreach",
+      "responsibilityId": "067NC4KG01RG50R40M30E20918",
       "kind": "http",
       "method": "POST",
       "path": "/webhooks/github/stars",
@@ -92,7 +93,7 @@
   "activations": [
     {
       "id": "high-intent-stargazer-outreach.judge",
-      "responsibilityId": "high-intent-stargazer-outreach",
+      "responsibilityId": "067NC4KG01RG50R40M30E20918",
       "kind": "judge",
       "triggerIds": [
         "high-intent-stargazer-outreach.periodic-check",
@@ -102,7 +103,7 @@
     },
     {
       "id": "high-intent-stargazer-outreach.fulfillment",
-      "responsibilityId": "high-intent-stargazer-outreach",
+      "responsibilityId": "067NC4KG01RG50R40M30E20918",
       "kind": "fulfillment",
       "triggerIds": [
         "high-intent-stargazer-outreach.evidence-change"

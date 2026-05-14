@@ -1,6 +1,7 @@
 ---
 name: high-intent-stargazer-outreach
 kind: responsibility
+id: 067NC4KG01RG50R40M30E20918
 ---
 
 # High-Intent Stargazer Outreach
@@ -34,6 +35,10 @@ followed up with using relevant OpenProse sample results.
 - Do not contact the same person repeatedly without new evidence.
 - Keep enrichment and sample-generation cost bounded by expected value.
 - Escalate uncertainty instead of fabricating company, role, or pain details.
+
+### Tools
+
+(none)
 
 ### Fulfillment
 

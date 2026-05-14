@@ -32,6 +32,12 @@ describe("responsibility status", () => {
 				criteria: [...responsibility.criteria, "A new quality bar."],
 			}),
 		).not.toBe(fingerprint);
+		expect(
+			fingerprintResponsibility({
+				...responsibility,
+				tools: [{ kind: "mcp", name: "github" }],
+			}),
+		).not.toBe(fingerprint);
 	});
 
 	it("builds root-relative and absolute status paths", () => {
@@ -58,7 +64,7 @@ describe("responsibility status", () => {
 			const record: ResponsibilityStatusRecord = {
 				kind: RESPONSIBILITY_STATUS_KIND,
 				version: RESPONSIBILITY_STATUS_VERSION,
-				responsibilityId: "high-intent-stargazer-outreach",
+				responsibilityId: "067NC4KG01RG50R40M30E20918",
 				responsibilityFingerprint: "fingerprint-1",
 				status: "up",
 				evidence: ["Recent outreach packets were generated for new high-intent stargazers."],

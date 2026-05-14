@@ -1,6 +1,7 @@
 ---
 name: content-learning-cycle
 kind: responsibility
+id: 067NC4KG0DZJ18924CJ2A9H750
 ---
 
 # Content Learning Cycle
@@ -34,8 +35,11 @@ performance rather than preference or recency bias.
   job.
 - Keep the review brief enough for a weekly editorial meeting.
 
+### Tools
+
+(none)
+
 ### Fulfillment
 
 Prefer the local `content-performance-loop` system when performance evidence or
 weekly review cadence indicates the responsibility needs attention.
-
