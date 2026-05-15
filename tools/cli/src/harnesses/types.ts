@@ -7,8 +7,16 @@ import type {
 	ThreadOptions,
 	TurnOptions,
 } from "@openai/codex-sdk";
+import type {
+	AgentOptions as CursorAgentOptions,
+	Run as CursorRun,
+	RunResult as CursorRunResult,
+	SDKAgent as CursorSDKAgent,
+	SDKMessage as CursorSDKMessage,
+	SDKUserMessage as CursorSDKUserMessage,
+} from "@cursor/sdk";
 
-export type HarnessName = "claude-sdk" | "codex-sdk" | "mock";
+export type HarnessName = "claude-sdk" | "codex-sdk" | "cursor-sdk" | "mock";
 
 export interface WritableStreamLike {
 	write(chunk: string): unknown;
@@ -60,3 +68,11 @@ export interface CodexClient {
 export type CodexSdkFactory = (options?: CodexSdkClientOptions) => CodexClient | Promise<CodexClient>;
 export type CodexThreadEvent = ThreadEvent;
 export type CodexThreadItem = ThreadItem;
+
+export type CursorSdkAgentOptions = CursorAgentOptions;
+export type CursorSdkAgent = CursorSDKAgent;
+export type CursorSdkRun = CursorRun;
+export type CursorSdkRunResult = CursorRunResult;
+export type CursorSdkMessage = CursorSDKMessage;
+export type CursorSdkUserMessage = CursorSDKUserMessage;
+export type CursorSdkAgentFactory = (options: CursorSdkAgentOptions) => Promise<CursorSdkAgent>;

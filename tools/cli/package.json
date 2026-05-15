@@ -1,7 +1,7 @@
 {
   "name": "@openprose/prose-cli",
   "version": "0.13.1",
-  "description": "Run OpenProse commands through first-party Codex and Claude agent SDKs.",
+  "description": "Run OpenProse commands through first-party Codex and Claude agent SDKs, with experimental Cursor support.",
   "type": "module",
   "packageManager": "npm@10.9.2",
   "oclif": {
@@ -62,6 +62,7 @@
     "ai",
     "cli",
     "codex",
+    "cursor",
     "openprose",
     "prose"
   ],
@@ -70,6 +71,7 @@
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.2.90",
+    "@cursor/sdk": "^1.0.12",
     "@hono/node-server": "^1.19.14",
     "@oclif/core": "^4.10.6",
     "@openai/codex-sdk": "^0.125.0",

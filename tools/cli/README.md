@@ -67,6 +67,7 @@ harness names both a provider family and the runtime used to call it.
 | --- | --- | --- | --- | --- |
 | `codex-sdk` | OpenAI/Codex | `@openai/codex-sdk` | `OPENAI_API_KEY` or `CODEX_API_KEY` | Default. Best first choice for OpenAI-backed runs. |
 | `claude-sdk` | Anthropic/Claude | `@anthropic-ai/claude-agent-sdk` | `ANTHROPIC_API_KEY` | Best first choice for Anthropic-backed runs. |
+| `cursor-sdk` _(experimental)_ | Cursor | `@cursor/sdk` (local mode) | `CURSOR_API_KEY` | Coding-tuned default model; multi-stage Prose programs may run plan-only. |
 | `mock` | None | local echo harness | none | Test and smoke-check harness only. |
 
 Examples:
@@ -76,6 +77,7 @@ prose run std/evals/inspector
 prose run std/evals/prose-contributor -- subjects: 20260406-201439-1a3369
 prose run std/evals/inspector --harness codex-sdk
 prose run co/systems/company-repo-checker --harness claude-sdk
+prose run std/ops/lint target:packages/std/evals/inspector.prose.md --harness cursor-sdk
 PROSE_HARNESS=claude-sdk prose run std/evals/inspector
 ```
 
@@ -85,6 +87,21 @@ PROSE_HARNESS=claude-sdk prose run std/evals/inspector
   and environment, and streams Codex SDK events. This is the default.
 - `claude-sdk` uses `@anthropic-ai/claude-agent-sdk`, forwards the current
   working directory and environment, and streams text deltas.
+- `cursor-sdk` _(experimental)_ uses `@cursor/sdk` in **local** mode with
+  `local.settingSources: ["project", "user"]`, so Cursor auto-loads the
+  OpenProse skill from `.cursor/skills/`, `.agents/skills/`,
+  `~/.cursor/skills/`, or `~/.agents/skills/`. Authentication uses
+  `CURSOR_API_KEY`; model defaults to `composer-2` and can be overridden
+  with `CURSOR_MODEL`. Exit codes (`0` / `1` / `143`) and SIGINT/SIGTERM
+  semantics match `codex-sdk` and `claude-sdk`. Cursor Cloud, PR/repo
+  automation, and `Cursor.models.list()` are not exposed.
+
+  **Known limits.** Cursor positions `composer-2` as a coding-tuned model
+  rather than a general-purpose instruction-follower. The harness handles
+  read-and-explain Prose programs (`std/ops/lint`, `std/evals/inspector`,
+  `std/ops/status`, `std/ops/diagnose`) reliably but may run plan-only on
+  multi-stage execution programs. For production Prose runs prefer
+  `codex-sdk` or `claude-sdk`.
 - `mock` echoes prompts for tests and local smoke checks.
 
 Select a harness with `--harness <name>` or `PROSE_HARNESS`.

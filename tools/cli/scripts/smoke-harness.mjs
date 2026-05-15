@@ -8,6 +8,12 @@ import { fileURLToPath } from "node:url";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const cliDir = resolve(scriptDir, "..");
+// `cursor-sdk` is intentionally excluded from the smoke matrix. The smoke
+// test asserts strict instruction-following ("return only
+// PROSE_HARNESS_SMOKE_OK"), which Cursor's default composer-2 model — tuned
+// for coding tasks rather than return-token compliance — does not reliably
+// honor. Including it here would produce a permanently-red CI signal that
+// masks legitimate failures on codex-sdk / claude-sdk.
 const harnesses = ["codex-sdk", "claude-sdk"];
 const okToken = "PROSE_HARNESS_SMOKE_OK";
 const skillSentinel = "PROSE_SKILL_BOOTSTRAP_VISIBLE";
@@ -86,7 +92,9 @@ function requestedHarnesses(name) {
 }
 
 function requiredSecret(harness) {
-	return harness.startsWith("claude") ? "ANTHROPIC_API_KEY" : "OPENAI_API_KEY";
+	if (harness.startsWith("claude")) return "ANTHROPIC_API_KEY";
+	if (harness.startsWith("cursor")) return "CURSOR_API_KEY";
+	return "OPENAI_API_KEY";
 }
 
 function run(command, args, options) {

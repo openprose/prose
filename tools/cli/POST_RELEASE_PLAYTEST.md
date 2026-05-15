@@ -50,6 +50,7 @@ Example worker families:
 - `tarball-fresh`: curl installer, checksum verification, shim behavior.
 - `codex-sdk`: default harness, OpenAI credentials, git and non-git dirs.
 - `claude-sdk`: Claude SDK harness, streaming, skill loading.
+- `cursor-sdk` _(experimental)_: Cursor SDK local harness, `CURSOR_API_KEY`, `CURSOR_MODEL` override (default `composer-2`), skill loading from `.cursor/skills/` and `.agents/skills/`. Coding-tuned default; multi-stage programs may run plan-only.
 - `skill-state`: missing, existing, or damaged skill installs.
 - `path-edge`: spaces in paths, absolute paths, relative paths, temp dirs.
 - `native-repo`: compile, serve, status, and run in one small native repo.
@@ -147,8 +148,11 @@ Cover a representative subset of these scenarios.
 - `prose run <program> --harness mock`
 - `prose run <program> --harness codex-sdk`
 - `prose run <program> --harness claude-sdk`
+- `prose run std/ops/lint target:<path>.prose.md --harness cursor-sdk` (read-and-explain — expected to pass)
+- `prose run std/evals/inspector --harness cursor-sdk` (read-and-explain — expected to clarify on missing inputs)
 - `PROSE_HARNESS=<name> prose run <program>`
 - missing credentials for each real harness
+- `prose run <program> --harness cursor-sdk` with missing `CURSOR_API_KEY`
 - invalid harness name
 
 ### Working Directories And Paths
