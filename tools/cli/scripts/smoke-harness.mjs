@@ -214,33 +214,39 @@ async function discoverClaudeControls({ model, reasoningEffort }) {
 	const candidates = models
 		.map((entry) => {
 			const effort = entry.capabilities?.effort;
+			const thinking = entry.capabilities?.thinking;
 			const levels = ["low", "medium", "high", "max", "xhigh"].filter((level) => effort?.[level]?.supported === true);
 			return {
 				displayName: entry.display_name,
 				model: typeof entry.id === "string" ? entry.id : undefined,
 				searchText: candidateText(entry.id, entry.display_name),
 				levels,
-				supportedInApi: effort?.supported === true,
+				supportedInApi: effort?.supported === true && thinking?.types?.enabled?.supported === true,
 				visible: true,
 			};
 		})
 		.filter((entry) => entry.model && entry.supportedInApi && entry.levels.length > 0);
 
-	const selected = selectDiscoveredModel(candidates, { model, pattern, provider: "Claude", reasoningEffort });
+	const selected = selectDiscoveredModel(candidates, {
+		model,
+		pattern,
+		provider: "Claude",
+		requirement: "reasoning effort support compatible with the current Claude Agent SDK",
+	});
 	return {
 		model: selected.model,
 		reasoningEffort: preferredEffort(selected.levels, reasoningEffort, `Claude model ${selected.model}`),
 	};
 }
 
-function selectDiscoveredModel(candidates, { model, pattern, provider }) {
+function selectDiscoveredModel(candidates, { model, pattern, provider, requirement = "reasoning effort support" }) {
 	if (model !== undefined) {
 		const selected = candidates.find((candidate) => candidate.model === model);
 		if (selected === undefined && candidates.length === 1) {
 			return candidates[0];
 		}
 		if (selected === undefined) {
-			throw new Error(`${provider} model ${model} was not found or does not advertise reasoning effort support`);
+			throw new Error(`${provider} model ${model} was not found or does not advertise ${requirement}`);
 		}
 		return selected;
 	}
@@ -249,7 +255,7 @@ function selectDiscoveredModel(candidates, { model, pattern, provider }) {
 	const [selected] = filtered;
 	if (selected === undefined) {
 		const suffix = pattern === undefined ? "" : ` matching ${pattern}`;
-		throw new Error(`No ${provider} models with reasoning effort support were discovered${suffix}`);
+		throw new Error(`No ${provider} models with ${requirement} were discovered${suffix}`);
 	}
 	return selected;
 }
