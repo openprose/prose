@@ -12,7 +12,8 @@ const harnesses = ["codex-sdk", "claude-sdk"];
 const okToken = "PROSE_HARNESS_SMOKE_OK";
 const skillSentinel = "PROSE_SKILL_BOOTSTRAP_VISIBLE";
 const claudeReasoningEfforts = ["low", "medium", "high", "max"];
-const claudeThinkingType = "adaptive";
+// The current Claude Code path still sends enabled thinking when effort is set.
+const claudeThinkingType = "enabled";
 
 const usage = `Usage: node scripts/smoke-harness.mjs [options]
 
@@ -233,7 +234,7 @@ async function discoverClaudeControls({ model, reasoningEffort }) {
 		model,
 		pattern,
 		provider: "Claude",
-		requirement: `${claudeThinkingType} thinking and reasoning effort support compatible with the current Claude Agent SDK`,
+		requirement: `${claudeThinkingType} thinking and reasoning effort support compatible with the current Claude Code path`,
 	});
 	return {
 		model: selected.model,

@@ -19,10 +19,10 @@ afterEach(() => {
 });
 
 describe("smoke-harness Claude control discovery", () => {
-	it("requires adaptive thinking because the Claude harness relies on the SDK default", async () => {
+	it("requires enabled thinking because that is what current Claude Code sends with effort", async () => {
 		mockClaudeModel({
-			id: "claude-enabled-only",
-			display_name: "Claude enabled only",
+			id: "claude-adaptive-only",
+			display_name: "Claude adaptive only",
 			capabilities: {
 				effort: {
 					supported: true,
@@ -30,22 +30,22 @@ describe("smoke-harness Claude control discovery", () => {
 				},
 				thinking: {
 					types: {
-						adaptive: { supported: false },
-						enabled: { supported: true },
+						adaptive: { supported: true },
+						enabled: { supported: false },
 					},
 				},
 			},
 		});
 
-		await expect(discoverClaudeControls({ model: "claude-enabled-only" })).rejects.toThrow(
-			"adaptive thinking and reasoning effort support",
+		await expect(discoverClaudeControls({ model: "claude-adaptive-only" })).rejects.toThrow(
+			"enabled thinking and reasoning effort support",
 		);
 	});
 
-	it("selects a model with adaptive thinking and harness-supported effort", async () => {
+	it("selects a model with enabled thinking and harness-supported effort", async () => {
 		mockClaudeModel({
-			id: "claude-adaptive",
-			display_name: "Claude adaptive",
+			id: "claude-enabled",
+			display_name: "Claude enabled",
 			capabilities: {
 				effort: {
 					supported: true,
@@ -54,14 +54,14 @@ describe("smoke-harness Claude control discovery", () => {
 				},
 				thinking: {
 					types: {
-						adaptive: { supported: true },
+						enabled: { supported: true },
 					},
 				},
 			},
 		});
 
-		await expect(discoverClaudeControls({ model: "claude-adaptive" })).resolves.toEqual({
-			model: "claude-adaptive",
+		await expect(discoverClaudeControls({ model: "claude-enabled" })).resolves.toEqual({
+			model: "claude-enabled",
 			reasoningEffort: "low",
 		});
 	});
@@ -78,7 +78,7 @@ describe("smoke-harness Claude control discovery", () => {
 				},
 				thinking: {
 					types: {
-						adaptive: { supported: true },
+						enabled: { supported: true },
 					},
 				},
 			},
