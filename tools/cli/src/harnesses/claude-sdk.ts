@@ -95,10 +95,9 @@ export function createClaudeSdkHarness(options: ClaudeSdkHarnessOptions = {}): H
 	};
 }
 
-function claudeReasoningOptions(value: string): Pick<ClaudeQueryOptions, "effort" | "thinking"> {
+function claudeReasoningOptions(value: string): Pick<ClaudeQueryOptions, "effort"> {
 	return {
 		effort: claudeReasoningEffort(value),
-		thinking: { type: "adaptive" },
 	};
 }
 

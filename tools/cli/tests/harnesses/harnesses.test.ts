@@ -288,7 +288,6 @@ describe("claude-sdk harness", () => {
 					effort: "high",
 					env: { A: "B" },
 					model: "claude-opus-4-6",
-					thinking: { type: "adaptive" },
 					systemPrompt: {
 						type: "preset",
 						preset: "claude_code",

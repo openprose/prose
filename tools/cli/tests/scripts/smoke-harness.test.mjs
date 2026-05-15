@@ -19,7 +19,7 @@ afterEach(() => {
 });
 
 describe("smoke-harness Claude control discovery", () => {
-	it("requires adaptive thinking because that is what the Claude harness sends", async () => {
+	it("requires adaptive thinking because the Claude harness relies on the SDK default", async () => {
 		mockClaudeModel({
 			id: "claude-enabled-only",
 			display_name: "Claude enabled only",
