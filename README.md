@@ -1,9 +1,9 @@
 <p align="center">
-  <img src="assets/readme-header.svg" alt="OpenProse - Engineer your agents" width="100%" />
+  <img src="https://openprose.ai/readme-header.png" alt="OpenProse - Author Outcomes" width="100%" />
 </p>
 
 <p align="center">
-  <strong>Contracts, composition, and version control for the Markdown your agents run on.</strong>
+  <strong>Write the future as a Markdown contract agents can run, review, and maintain.</strong>
 </p>
 
 <p align="center">
