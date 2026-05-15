@@ -21,7 +21,10 @@ export function createCodexSdkHarness(options: CodexSdkHarnessOptions = {}): Har
 				const env = definedEnv(runOptions.env);
 				const codex = await factory(codexClientOptions(env, runOptions.systemPromptAppend));
 				const thread = codex.startThread(
-					codexThreadOptions(runOptions.cwd, env, runOptions.additionalDirectories),
+					codexThreadOptions(runOptions.cwd, env, runOptions.additionalDirectories, {
+						...(runOptions.model === undefined ? {} : { model: runOptions.model }),
+						...(runOptions.reasoningEffort === undefined ? {} : { reasoningEffort: runOptions.reasoningEffort }),
+					}),
 				);
 				const { events } = await thread.runStreamed(
 					prompt,
@@ -48,8 +51,9 @@ function codexThreadOptions(
 	cwd: string | undefined,
 	env: Record<string, string> | undefined,
 	additionalDirectories: readonly string[] | undefined,
+	overrides: { model?: string; reasoningEffort?: string },
 ) {
-	const runtimeOptions = codexThreadRuntimeOptions(env, additionalDirectories);
+	const runtimeOptions = codexThreadRuntimeOptions(env, additionalDirectories, overrides);
 	const options = {
 		...(cwd === undefined ? {} : { workingDirectory: cwd }),
 		...runtimeOptions,

@@ -257,6 +257,18 @@ describe("Oclif entrypoint helpers", () => {
 		]);
 	});
 
+	it("normalizes pre-command model controls for Oclif dispatch", () => {
+		expect(
+			normalizeEntrypointArgv([
+				"--model",
+				"gpt-5.4",
+				"--reasoning-effort=high",
+				"run",
+				"flow.prose.md",
+			]),
+		).toEqual(["run", "--model", "gpt-5.4", "--reasoning-effort=high", "flow.prose.md"]);
+	});
+
 	it("does not consume literal harness-looking args after --", () => {
 		expect(normalizeEntrypointArgv(["run", "flow.prose.md", "--", "--harness", "literal"])).toEqual([
 			"run",
@@ -284,11 +296,29 @@ describe("harness argument splitting", () => {
 		expect(parsed.args).toEqual(["./flows/needs review.prose.md", "--topic", "two words"]);
 	});
 
+	it("removes model controls while preserving run inputs", () => {
+		const parsed = splitHarnessArgs(
+			["./flow.prose.md", "--model", "gpt-5.4", "--topic", "two words", "--reasoning-effort=high"],
+			{},
+		);
+
+		expect(parsed.harness).toBe("codex-sdk");
+		expect(parsed.args).toEqual(["./flow.prose.md", "--topic", "two words"]);
+		expect(parsed.harnessOptions).toEqual({ model: "gpt-5.4", reasoningEffort: "high" });
+	});
+
 	it("keeps --harness literal after --", () => {
 		const parsed = splitHarnessArgs(["./flow.prose.md", "--", "--harness", "literal"], { PROSE_HARNESS: "mock" });
 
 		expect(parsed.harness).toBe("mock");
 		expect(parsed.args).toEqual(["./flow.prose.md", "--", "--harness", "literal"]);
+	});
+
+	it("keeps model-looking args literal after --", () => {
+		const parsed = splitHarnessArgs(["./flow.prose.md", "--", "--model", "literal"], {});
+
+		expect(parsed.args).toEqual(["./flow.prose.md", "--", "--model", "literal"]);
+		expect(parsed.harnessOptions).toEqual({});
 	});
 });
 
@@ -320,6 +350,31 @@ describe("runForwardedProseCommand", () => {
 		expect(seen).toEqual(["prose run './flows/needs review.prose.md' --topic 'two words'", "/repo", "secret"]);
 		expect(io.stdout).toBe("out");
 		expect(io.stderr).toBe("err");
+	});
+
+	it("passes model controls to the selected harness without adding prompt args", async () => {
+		const io = memoryStreams();
+		const seen: unknown[] = [];
+		const harness: Harness = {
+			name: "mock",
+			async run(prompt, options) {
+				seen.push(prompt, { model: options.model, reasoningEffort: options.reasoningEffort });
+				return 0;
+			},
+		};
+
+		const exitCode = await runForwardedProseCommand({
+			command: "run",
+			argv: ["flow.prose.md", "--model", "gpt-5.4", "--reasoning-effort", "high"],
+			cwd: "/repo",
+			env: {},
+			stdout: io.streams.stdout,
+			stderr: io.streams.stderr,
+			harnessFactory: () => harness,
+		});
+
+		expect(exitCode).toBe(0);
+		expect(seen).toEqual(["prose run flow.prose.md", { model: "gpt-5.4", reasoningEffort: "high" }]);
 	});
 
 	it("forwards compile prompts through the selected harness", async () => {

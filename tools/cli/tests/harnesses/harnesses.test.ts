@@ -163,7 +163,9 @@ describe("codex-sdk harness", () => {
 			env: {
 				PROSE_CODEX_ADD_DIR: " /var/lib/prose, /tmp/grant-finder ,,",
 				PROSE_CODEX_APPROVAL_POLICY: "never",
+				PROSE_CODEX_MODEL: "gpt-5.4-mini",
 				PROSE_CODEX_NETWORK: "true",
+				PROSE_CODEX_REASONING_EFFORT: "low",
 				PROSE_CODEX_SANDBOX_MODE: "danger-full-access",
 			},
 		});
@@ -171,13 +173,45 @@ describe("codex-sdk harness", () => {
 		expect(exitCode).toBe(0);
 		expect(starts).toEqual([
 			{
-				additionalDirectories: ["/skills/open-prose", "/var/lib/prose", "/tmp/grant-finder"],
-				approvalPolicy: "never",
-				networkAccessEnabled: true,
-				sandboxMode: "danger-full-access",
-				skipGitRepoCheck: true,
+					additionalDirectories: ["/skills/open-prose", "/var/lib/prose", "/tmp/grant-finder"],
+					approvalPolicy: "never",
+					model: "gpt-5.4-mini",
+					modelReasoningEffort: "low",
+					networkAccessEnabled: true,
+					sandboxMode: "danger-full-access",
+					skipGitRepoCheck: true,
 			},
 		]);
+	});
+
+	test("command model settings override Codex environment fallbacks", async () => {
+		const io = memoryStreams();
+		const starts: unknown[] = [];
+		const factory: CodexSdkFactory = () => ({
+			startThread: (options) => {
+				starts.push(options);
+				return {
+					runStreamed: async () => ({
+						events: events([
+							{ type: "item.completed", item: { id: "item-1", type: "agent_message", text: "sdk output" } },
+						]),
+					}),
+				};
+			},
+		});
+
+		const exitCode = await createCodexSdkHarness({ factory }).run("prose run inspector.prose.md", {
+			...io.options,
+			env: {
+				PROSE_CODEX_MODEL: "gpt-5.4-mini",
+				PROSE_CODEX_REASONING_EFFORT: "low",
+			},
+			model: "gpt-5.4",
+			reasoningEffort: "high",
+		});
+
+		expect(exitCode).toBe(0);
+		expect(starts).toEqual([{ model: "gpt-5.4", modelReasoningEffort: "high", skipGitRepoCheck: true }]);
 	});
 
 	test("rejects invalid Codex network setting", async () => {
@@ -239,6 +273,8 @@ describe("claude-sdk harness", () => {
 			additionalDirectories: ["/skills/open-prose"],
 			cwd: "/repo",
 			env: { A: "B" },
+			model: "claude-opus-4-6",
+			reasoningEffort: "high",
 			systemPromptAppend: bootstrap,
 		});
 
@@ -249,7 +285,9 @@ describe("claude-sdk harness", () => {
 				options: expect.objectContaining({
 					additionalDirectories: ["/skills/open-prose"],
 					cwd: "/repo",
+					effort: "high",
 					env: { A: "B" },
+					model: "claude-opus-4-6",
 					systemPrompt: {
 						type: "preset",
 						preset: "claude_code",

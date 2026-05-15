@@ -46,10 +46,11 @@ const forwardCommandDefinitions = {
 		command: "run",
 		examples: [
 			"<%= config.bin %> run std/evals/inspector --harness codex-sdk",
+			"<%= config.bin %> run std/evals/inspector --model gpt-5.4 --reasoning-effort high",
 			"<%= config.bin %> run co/systems/company-repo-checker",
 		],
 		summary: "Run an OpenProse service or system.",
-		usage: "run <file.prose.md|package/handle> [inputs...] [--harness <name>]",
+		usage: "run <file.prose.md|package/handle> [inputs...] [--harness <name>] [--model <name>] [--reasoning-effort <level>]",
 	},
 	test: {
 		command: "test",

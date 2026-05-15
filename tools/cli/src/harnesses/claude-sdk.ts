@@ -3,8 +3,11 @@ import type { Harness, HarnessRunOptions } from "./types.js";
 
 export type ClaudeSdkQuery = typeof import("@anthropic-ai/claude-agent-sdk").query;
 export type ClaudeSdkQueryResult = ReturnType<ClaudeSdkQuery>;
+type ClaudeQueryOptions = NonNullable<Parameters<ClaudeSdkQuery>[0]["options"]>;
 export type ClaudeSdkMessage = ClaudeSdkQueryResult extends AsyncIterable<infer Message> ? Message : never;
 export type ClaudeSdkQueryLike = (...args: Parameters<ClaudeSdkQuery>) => ClaudeSdkQueryResult | Promise<ClaudeSdkQueryResult>;
+
+const CLAUDE_REASONING_EFFORTS = ["low", "medium", "high", "max"] as const;
 
 export interface ClaudeSdkHarnessOptions {
 	query?: ClaudeSdkQueryLike;
@@ -32,6 +35,10 @@ export function createClaudeSdkHarness(options: ClaudeSdkHarnessOptions = {}): H
 							: { additionalDirectories: runOptions.additionalDirectories }),
 						...(runOptions.cwd === undefined ? {} : { cwd: runOptions.cwd }),
 						...(runOptions.env === undefined ? {} : { env: runOptions.env }),
+						...(runOptions.model === undefined ? {} : { model: runOptions.model }),
+						...(runOptions.reasoningEffort === undefined
+							? {}
+							: { effort: claudeReasoningEffort(runOptions.reasoningEffort) }),
 						includePartialMessages: true,
 						settingSources: ["user", "project"],
 						stderr: (chunk: string) => runOptions.stderr.write(chunk),
@@ -86,6 +93,14 @@ export function createClaudeSdkHarness(options: ClaudeSdkHarnessOptions = {}): H
 			return runOptions.signal?.aborted ? 143 : exitCode;
 		},
 	};
+}
+
+function claudeReasoningEffort(value: string): NonNullable<ClaudeQueryOptions["effort"]> {
+	if (CLAUDE_REASONING_EFFORTS.includes(value as (typeof CLAUDE_REASONING_EFFORTS)[number])) {
+		return value as NonNullable<ClaudeQueryOptions["effort"]>;
+	}
+
+	throw new Error(`--reasoning-effort for claude-sdk must be one of: ${CLAUDE_REASONING_EFFORTS.join(", ")}`);
 }
 
 function writeClaudeMessage(
