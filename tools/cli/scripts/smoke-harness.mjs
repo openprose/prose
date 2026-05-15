@@ -4,13 +4,15 @@ import { spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const cliDir = resolve(scriptDir, "..");
 const harnesses = ["codex-sdk", "claude-sdk"];
 const okToken = "PROSE_HARNESS_SMOKE_OK";
 const skillSentinel = "PROSE_SKILL_BOOTSTRAP_VISIBLE";
+const claudeReasoningEfforts = ["low", "medium", "high", "max"];
+const claudeThinkingType = "adaptive";
 
 const usage = `Usage: node scripts/smoke-harness.mjs [options]
 
@@ -215,13 +217,13 @@ async function discoverClaudeControls({ model, reasoningEffort }) {
 		.map((entry) => {
 			const effort = entry.capabilities?.effort;
 			const thinking = entry.capabilities?.thinking;
-			const levels = ["low", "medium", "high", "max", "xhigh"].filter((level) => effort?.[level]?.supported === true);
+			const levels = claudeReasoningEfforts.filter((level) => effort?.[level]?.supported === true);
 			return {
 				displayName: entry.display_name,
 				model: typeof entry.id === "string" ? entry.id : undefined,
 				searchText: candidateText(entry.id, entry.display_name),
 				levels,
-				supportedInApi: effort?.supported === true && thinking?.types?.enabled?.supported === true,
+				supportedInApi: effort?.supported === true && thinking?.types?.[claudeThinkingType]?.supported === true,
 				visible: true,
 			};
 		})
@@ -231,7 +233,7 @@ async function discoverClaudeControls({ model, reasoningEffort }) {
 		model,
 		pattern,
 		provider: "Claude",
-		requirement: "reasoning effort support compatible with the current Claude Agent SDK",
+		requirement: `${claudeThinkingType} thinking and reasoning effort support compatible with the current Claude Agent SDK`,
 	});
 	return {
 		model: selected.model,
@@ -449,9 +451,15 @@ async function main() {
 	}
 }
 
-try {
-	await main();
-} catch (error) {
-	process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
-	process.exitCode = 1;
+const isMain = process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href;
+
+if (isMain) {
+	try {
+		await main();
+	} catch (error) {
+		process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+		process.exitCode = 1;
+	}
 }
+
+export { discoverClaudeControls };
