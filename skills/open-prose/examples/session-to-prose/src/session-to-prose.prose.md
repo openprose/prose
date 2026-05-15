@@ -740,8 +740,9 @@ return { resolved-session: resolved_session, harness-plan: harness_plan, source-
 - `program`: top-level `### Requires` and `### Ensures` preserve concrete semantic descriptions from `program-contract` and `phase-contracts`; generic placeholders such as "caller-provided policy or runtime input" or "generated evidence-backed output" are invalid unless those exact concepts are evidenced by the source.
 - `program`: includes compact provenance metadata with session id, harness format, snapshot sha256, snapshot line count, and key event ids without embedding raw sensitive session content.
 - `program`: includes invoked contract version and source digest when available, and labels any copied-source divergence as a validation caveat rather than claiming full provenance.
-- `program`: every phase, nontrivial strategy, observed error, and gate has at least one event-id citation or is explicitly marked as synthesized with low confidence.
+- `program`: every phase, generated service section, nontrivial strategy, observed error, and gate has at least one local event-id citation or is explicitly marked as synthesized with low confidence; a global provenance citation does not satisfy per-service citation coverage.
 - `manifest-contract`: includes the invoked contract source path, copied source path, source sha256, copied sha256, and version, so receipt audit can detect stale `root.prose.md` or `sources/` copies.
+- `manifest-contract`: includes explicit per-service output mappings and root return source mappings; a manifest that only lists service directories or service names is incomplete.
 - `result-contract`: records the canonical final result artifact path and the exact public binding path for every returned object, including structured outputs such as `resolved-session` and `source-snapshot`.
 - `program`: never contains malformed ProseScript such as doubled return braces `{{` or `}}`.
 - `program`: every provenance path it prints either exists in the current run or is explicitly labeled as a historical path; current snapshot paths must exactly match `source-snapshot.snapshot-path`.
@@ -770,6 +771,7 @@ return { resolved-session: resolved_session, harness-plan: harness_plan, source-
 - when prior generated programs have richer concrete inputs, outputs, loops, or parallel branches than the current draft: merge those details unless the new source evidence contradicts them.
 - when emitting ProseScript returns: use exactly one object literal delimiter pair and reject `{{ ... }}` or `}}` as invalid syntax.
 - when writing manifest and result contracts: derive logical output names from service `### Ensures`, derive binding paths from the actual file written, and record both fields without substituting one for the other.
+- when writing a manifest contract: include `services[*].inputs`, `services[*].outputs`, `root-returns`, and `return-sources`; if any section cannot be populated, return a receipt issue instead of emitting a summary-only manifest.
 - when adding provenance paths: compute or copy the exact current path from `source-snapshot`, not by appending suffixes to an existing filename.
 - when `quality-feedback` reports a regression against the baseline: reuse the richer baseline structure as a repair guide, but update citations and provenance to the current source snapshot.
 - when `baseline-run` is unavailable: apply the same quality floor against the richest current upstream evidence instead of weakening the generated program to satisfy the receipt.
@@ -788,10 +790,6 @@ return { resolved-session: resolved_session, harness-plan: harness_plan, source-
 - `evidence-index`: stable event-id map from `session-parser`.
 - `source-snapshot`: immutable source snapshot metadata.
 - `harness-plan`: selected harness adapter, result protocol, primitive support, and recursion policy from `harness-adapter`.
-
-### Tools
-
-- `cli:prose`: OpenProse CLI on PATH for `prose lint` and `prose preflight` when available.
 
 ### Ensures
 
@@ -831,6 +829,7 @@ return { resolved-session: resolved_session, harness-plan: harness_plan, source-
 - verify every `### Services` entry resolves to an inline `## service-name` section or an explicit external service path in `manifest-contract`; declared-but-undefined services are blocking issues.
 - verify generated top-level contract lines are not generic placeholders; reject repeated boilerplate descriptions that omit domain nouns, phase evidence, or caller meaning.
 - verify the generated program contains compact provenance and at least one evidence citation for every phase, gate, observed error, and nontrivial strategy.
+- verify per-service citation coverage by scanning each generated service section body; do not count header-only provenance citations as evidence for every service.
 - verify `result-contract` paths exactly match final result metadata paths for every root output, including single-output objects such as `source-snapshot`.
 - verify evidence citations against `evidence-index` and record parser exceptions or recovery in parse warnings.
 - verify unsupported or contradicted claims are downgraded to caveats, risks, or required verification outputs.
@@ -844,6 +843,7 @@ return { resolved-session: resolved_session, harness-plan: harness_plan, source-
 - verify recognized iteration loops, parallel branches, and human gates appear in the generated `### Execution` or are explicitly justified as declarative Forme wiring in the report.
 - verify manifest service inputs are present for every non-caller required input; empty `inputs` arrays are blocking unless the service truly has no `### Requires`.
 - verify every manifest output binding path exists on disk and every manifest output name equals a declared service/root `### Ensures` key, not a filename stem.
+- verify the manifest is not summary-only: each declared service with `### Ensures` must have output mappings, each non-caller `### Requires` must have an input source, and every root return must map to a producing service output.
 - verify every recovered Python traceback, exception class, failed write pass, missing directory creation, and rerun correction is named with class/message in validation, extraction report, receipt audit, tail/citation audit, VM log, and final result metadata.
 - verify `tail-citation-audit` checks at least one material report claim whenever `extraction-report` contains phase, strategy, error, or conclusion claims.
 
@@ -880,6 +880,7 @@ return { resolved-session: resolved_session, harness-plan: harness_plan, source-
 
 - `extraction-report`: structured Markdown report under 500 lines.
 - `extraction-report`: includes source path, snapshot path, snapshot sha256, source line count, harness format, duration, message count, project, and resolver warnings.
+- `extraction-report`: includes current invoked contract version, sha256, and line count separately from historical V3/V4 baseline provenance.
 - `extraction-report`: lists phases with descriptions and activity types.
 - `extraction-report`: explains human decision classification, counterfactual risk, and what was absorbed versus gated.
 - `extraction-report`: lists the concrete phase contracts, mined strategies, observed errors, validation revisions, and notable tool results with event-id citations.
@@ -900,6 +901,7 @@ return { resolved-session: resolved_session, harness-plan: harness_plan, source-
 - when a source snapshot line count differs from the live file line count: report that the run used the snapshot and mark the live-tail risk explicitly.
 - when validation status is `pass-with-warnings`: summarize the exact warnings and avoid saying the generated program is fully runnable.
 - when generated outputs are drafts rather than machine-validated runnable programs: say so plainly in the confidence notes.
+- when reporting provenance: never label V3 or V4 baseline hashes, line counts, or paths as the current invoked contract; put historical provenance only in a baseline-comparison section.
 - preserve rich old-run narrative material when it remains evidence-backed: human decision tables, strategy explanations, observed error lists, and confidence caveats are required report sections, not optional prose.
 - when the report must stay under 500 lines: summarize repeated phases compactly, but do not drop unique human decisions, unresolved errors, or validation caveats.
 - when any recovered error appears in the CLI log or VM log: repeat it in the report with the recovery action and affected artifact paths.
@@ -993,8 +995,10 @@ return { resolved-session: resolved_session, harness-plan: harness_plan, source-
 - `receipt-audit`: verifies final CLI/JSON response is generated from persisted result metadata, result contract, receipt audit, and tail/citation audit without omitting declared outputs or changing statuses.
 - `receipt-audit`: verifies recovered errors, failed probes, late writes, and corrections are present in all final warning surfaces.
 - `receipt-audit`: verifies every manifest input mapping and output binding path against actual on-disk files, and distinguishes logical output names from file names.
+- `receipt-audit`: distinguishes self-produced audit outputs that are pending during receipt drafting from final published audit paths, and never records a missing final audit path while reporting no blocking issues.
 - `receipt-audit`: verifies generated program provenance paths exist or are explicitly historical, including the exact `source-snapshot.snapshot-path`.
 - `receipt-audit`: verifies `quality-comparison` is present in result metadata and has no blocking generated-program/report regressions before any success status is emitted.
+- `receipt-audit`: verifies every recovered probe/write failure visible in CLI logs, VM logs, or validation output appears in `validation-result`, `extraction-report`, `receipt-audit`, `tail-citation-audit`, and final result metadata.
 
 ### Errors
 
@@ -1003,6 +1007,7 @@ return { resolved-session: resolved_session, harness-plan: harness_plan, source-
 ### Strategies
 
 - treat missing manifest service outputs or input mappings as blocking receipt issues, even when output files exist.
+- treat a summary-only manifest with service directories but no service output mappings or root return mapping as blocking, even when final result paths exist.
 - treat a file write after the logged run end as a blocking receipt issue unless the late write is logged as a validation correction.
 - treat stale copied source files, stale `root.prose.md`, missing source digests, or version mismatch as blocking `source-provenance-mismatch` issues.
 - treat declared services without inline contracts or explicit external paths as blocking receipt issues because the generated program cannot be re-run from the receipt.
@@ -1013,8 +1018,10 @@ return { resolved-session: resolved_session, harness-plan: harness_plan, source-
 - when the live source has grown after snapshot creation: pass only with an explicit point-in-time caveat that states snapshot lines, live lines, and excluded tail count.
 - when a result path names a wrapper document but `result-contract` expects raw content: fail the audit or update the contract to make the wrapper the declared output format.
 - when `result.json` and console JSON disagree: fail the audit unless the console JSON is a documented pointer to the persisted result artifact.
+- when auditing `receipt-audit` or `tail-citation-audit` paths before their final copy exists: mark them as `pending-self-publication`, then require a post-publication stat check before any clean or pass-with-warnings status; a final receipt with `result-paths-exist.* = false` and no blocking issue is invalid.
 - if the receipt audit fails, return `invalid-receipt` and force another assembler/validator loop rather than publishing a clean success.
 - when a receipt failure is recovered during the run: keep the original failure visible as a recovered issue with class/message/path in every final warning surface; do not collapse it to a generic "recovered surfaces" warning.
+- when shell probes fail during validation or receipt publication, including `jq` shape errors, `rg` assertion failures, `FileNotFoundError`, missing-directory writes, SIGKILL/resource kills, or stale-manifest corrections: preserve the command, class/exit/signal, affected path, and recovery in every final warning surface.
 - when the manifest has missing input mappings, nonexistent binding paths, or output names that do not match declared `### Ensures`: fail even if the final result object has the right top-level keys.
 - when `quality-comparison` fails: fail the receipt even if all files exist, because a good envelope around a worse generated program is still a regression.
 
@@ -1061,6 +1068,7 @@ return { resolved-session: resolved_session, harness-plan: harness_plan, source-
 - when live source changed after the snapshot: keep the run valid only as a point-in-time extraction and require the excluded tail count in report, receipt, tail audit, and result metadata.
 - parse citations using the evidence id format emitted by `session-parser`; reject citations that are not present in `evidence-index` or whose source line does not match.
 - require at least one citation for each phase, gate, observed error, nontrivial strategy, and generated service section; allow low-confidence synthesized claims only when explicitly marked.
+- count generated-service citations only when the citation appears inside that service section or in a service-local evidence field; file-level provenance citations cannot be reused as blanket service coverage.
 - treat CLI probe failures such as `jq` shape errors, `rg` no-match exits used as assertions, missing-file recoveries, or safety-hook false positives as warnings unless they affect output correctness; they must still be persisted everywhere.
 - when final console JSON omits returned outputs or changes persisted statuses: return a blocking issue so the next pass emits a pointer to the persisted result or regenerates the console JSON from disk.
 - parse `extraction-report` for phase, strategy, error, decision, and conclusion claims; require claim-level citation accounting, not only generated-program citation counts.
