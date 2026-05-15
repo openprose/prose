@@ -75,6 +75,7 @@ Examples:
 prose run std/evals/inspector
 prose run std/evals/prose-contributor -- subjects: 20260406-201439-1a3369
 prose run std/evals/inspector --harness codex-sdk
+prose run std/evals/inspector --model gpt-5.4 --reasoning-effort high
 prose run co/systems/company-repo-checker --harness claude-sdk
 PROSE_HARNESS=claude-sdk prose run std/evals/inspector
 ```
@@ -88,6 +89,10 @@ PROSE_HARNESS=claude-sdk prose run std/evals/inspector
 - `mock` echoes prompts for tests and local smoke checks.
 
 Select a harness with `--harness <name>` or `PROSE_HARNESS`.
+Override the selected harness model with `--model <name>`. For reasoning
+controls, use `--reasoning-effort <level>`; Codex accepts `minimal`, `low`,
+`medium`, `high`, or `xhigh`, and Claude accepts `low`, `medium`, `high`, or
+`max`.
 
 OpenProse commands are allowed to run from non-git directories. Codex SDK
 harness runs leave Codex sandbox and approval policy controls to Codex and the
@@ -101,7 +106,9 @@ For externally sandboxed CI environments, Codex harnesses also honor
 To keep `workspace-write` sandboxing while granting narrow extra capabilities,
 Codex harnesses also honor `PROSE_CODEX_ADD_DIR` as a comma-separated list of
 additional writable directories and `PROSE_CODEX_NETWORK` (`true` or `false`)
-for outbound network access.
+for outbound network access. Codex harnesses also honor `PROSE_CODEX_MODEL` and
+`PROSE_CODEX_REASONING_EFFORT`; command-line `--model` and
+`--reasoning-effort` values take precedence.
 
 ## Skill Setup
 

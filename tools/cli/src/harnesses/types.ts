@@ -18,6 +18,8 @@ export interface HarnessRunOptions {
 	additionalDirectories?: string[];
 	cwd?: string;
 	env?: Record<string, string | undefined>;
+	model?: string;
+	reasoningEffort?: string;
 	signal?: AbortSignal;
 	systemPromptAppend?: string;
 	stdout: WritableStreamLike;

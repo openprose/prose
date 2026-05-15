@@ -37,7 +37,7 @@ export const supportedCommands = [
 
 const usageByCommand: Record<CommandName, string> = {
 	compile: "prose compile [path] [--out <dir>]",
-	run: "prose run <file.prose.md|package/handle> [inputs...]",
+	run: "prose run <file.prose.md|package/handle> [inputs...] [--harness <name>] [--model <name>] [--reasoning-effort <level>]",
 	lint: "prose lint <file.prose.md>",
 	preflight: "prose preflight <file.prose.md>",
 	test: "prose test <path>",

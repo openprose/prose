@@ -16,6 +16,11 @@ export interface SkillPreflightOptions {
 export type SkillPreflight = (options: SkillPreflightOptions) => Promise<void>;
 export type SkillBootstrapLoader = (options: SkillPreflightOptions) => Promise<OpenProseSkillBootstrap | undefined>;
 
+export interface HarnessControlOptions {
+	model?: string;
+	reasoningEffort?: string;
+}
+
 export interface ForwardRunOptions {
 	command: CommandName;
 	argv: readonly string[];
@@ -87,7 +92,7 @@ function isOclifExit(error: unknown): boolean {
 }
 
 export async function runForwardedProseCommand(options: ForwardRunOptions): Promise<number> {
-	const { harness, args } = splitHarnessArgs(options.argv, options.env, options.command);
+	const { harness, args, harnessOptions } = splitHarnessArgs(options.argv, options.env, options.command);
 	const prompt = canonicalPrompt(options.command, args);
 	if (shouldRunSkillPreflight(options)) {
 		await runSkillPreflight(harness, options);
@@ -106,6 +111,10 @@ export async function runForwardedProseCommand(options: ForwardRunOptions): Prom
 				}),
 		cwd: options.cwd,
 		env: { ...options.env },
+		...(harnessOptions.model === undefined ? {} : { model: harnessOptions.model }),
+		...(harnessOptions.reasoningEffort === undefined
+			? {}
+			: { reasoningEffort: harnessOptions.reasoningEffort }),
 		stdout: options.stdout,
 		stderr: options.stderr,
 		...(options.signal === undefined ? {} : { signal: options.signal }),
@@ -174,8 +183,9 @@ export function splitHarnessArgs(
 	argv: readonly string[],
 	env: Readonly<Record<string, string | undefined>>,
 	command: CommandName = "run",
-): { harness: HarnessName | string; args: string[] } {
+): { harness: HarnessName | string; args: string[]; harnessOptions: HarnessControlOptions } {
 	const args: string[] = [];
+	const harnessOptions: HarnessControlOptions = {};
 	let harness = env.PROSE_HARNESS || "codex-sdk";
 
 	for (let index = 0; index < argv.length; index += 1) {
@@ -208,17 +218,55 @@ export function splitHarnessArgs(
 			continue;
 		}
 
+		if (arg === "--model") {
+			const value = argv[index + 1];
+			if (!value || value === "--") {
+				throw new CommandModelError("Missing value for --model.", usageFor(command));
+			}
+			harnessOptions.model = value;
+			index += 1;
+			continue;
+		}
+
+		if (arg.startsWith("--model=")) {
+			const value = arg.slice("--model=".length);
+			if (!value) {
+				throw new CommandModelError("Missing value for --model.", usageFor(command));
+			}
+			harnessOptions.model = value;
+			continue;
+		}
+
+		if (arg === "--reasoning-effort") {
+			const value = argv[index + 1];
+			if (!value || value === "--") {
+				throw new CommandModelError("Missing value for --reasoning-effort.", usageFor(command));
+			}
+			harnessOptions.reasoningEffort = value;
+			index += 1;
+			continue;
+		}
+
+		if (arg.startsWith("--reasoning-effort=")) {
+			const value = arg.slice("--reasoning-effort=".length);
+			if (!value) {
+				throw new CommandModelError("Missing value for --reasoning-effort.", usageFor(command));
+			}
+			harnessOptions.reasoningEffort = value;
+			continue;
+		}
+
 		args.push(arg);
 	}
 
-	return { harness, args };
+	return { harness, args, harnessOptions };
 }
 
 export function normalizeEntrypointArgv(
 	argv: readonly string[],
 ): string[] {
 	const normalized: string[] = [];
-	let harness: string | undefined;
+	const commandOptions: string[] = [];
 
 	for (let index = 0; index < argv.length; index += 1) {
 		const arg = argv[index];
@@ -229,31 +277,49 @@ export function normalizeEntrypointArgv(
 			normalized.push(...argv.slice(index));
 			break;
 		}
-		if (arg === "--harness") {
-			const value = argv[index + 1];
-			if (value && value !== "--") {
-				harness = value;
-				index += 1;
-				continue;
-			}
-		}
-		if (arg.startsWith("--harness=")) {
-			const value = arg.slice("--harness=".length);
-			if (value) {
-				harness = value;
-				continue;
-			}
+		const consumedOption = consumePreCommandOption(argv, index);
+		if (consumedOption !== undefined) {
+			commandOptions.push(...consumedOption.args);
+			index = consumedOption.index;
+			continue;
 		}
 		normalized.push(arg);
 		if (!arg.startsWith("-")) {
-			if (harness !== undefined) {
-				normalized.push("--harness", harness);
-			}
+			normalized.push(...commandOptions);
 			normalized.push(...argv.slice(index + 1));
 			break;
 		}
 	}
 	return normalized;
+}
+
+function consumePreCommandOption(
+	argv: readonly string[],
+	index: number,
+): { args: string[]; index: number } | undefined {
+	const arg = argv[index];
+	if (arg === undefined) {
+		return undefined;
+	}
+
+	for (const option of ["--harness", "--model", "--reasoning-effort"]) {
+		if (arg === option) {
+			const value = argv[index + 1];
+			if (value && value !== "--") {
+				return { args: [option, value], index: index + 1 };
+			}
+			return undefined;
+		}
+
+		if (arg.startsWith(`${option}=`)) {
+			const value = arg.slice(option.length + 1);
+			if (value) {
+				return { args: [arg], index };
+			}
+		}
+	}
+
+	return undefined;
 }
 
 function forwardProcessSignals(controller: AbortController): () => void {

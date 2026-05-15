@@ -42,15 +42,17 @@ describe("command model", () => {
 		);
 	});
 
+	const runUsage =
+		"prose run <file.prose.md|package/handle> [inputs...] [--harness <name>] [--model <name>] [--reasoning-effort <level>]";
 	const validationCases: Array<[Parameters<typeof canonicalPrompt>, string, string]> = [
 		[["compile", ["one", "two"]], "Unexpected argument 'two'", "prose compile [path] [--out <dir>]"],
 		[["compile", ["--out"]], "Missing value for --out", "prose compile [path] [--out <dir>]"],
 		[["compile", ["--out="]], "Missing value for --out", "prose compile [path] [--out <dir>]"],
 		[["compile", ["--json"]], "Unexpected option '--json'", "prose compile [path] [--out <dir>]"],
 		[["compile", ["--out", "dist", "--out", "other"]], "Duplicate option", "prose compile [path] [--out <dir>]"],
-		[["run", []], "Missing required argument <file.prose.md|package/handle>", "prose run <file.prose.md|package/handle> [inputs...]"],
-		[["run", ["system.md"]], "Expected <file.prose.md|package/handle>", "prose run <file.prose.md|package/handle> [inputs...]"],
-		[["run", ["script.prose"]], "Expected <file.prose.md|package/handle>", "prose run <file.prose.md|package/handle> [inputs...]"],
+		[["run", []], "Missing required argument <file.prose.md|package/handle>", runUsage],
+		[["run", ["system.md"]], "Expected <file.prose.md|package/handle>", runUsage],
+		[["run", ["script.prose"]], "Expected <file.prose.md|package/handle>", runUsage],
 		[["inspect", []], "Missing required argument <run-id>", "prose inspect <run-id>"],
 		[["lint", ["system.md"]], "Expected <file.prose.md>", "prose lint <file.prose.md>"],
 		[["preflight", ["system.md"]], "Expected <file.prose.md>", "prose preflight <file.prose.md>"],
