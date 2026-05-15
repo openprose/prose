@@ -22,6 +22,9 @@ receipts in `runs/`, durable state in `state/`, and dependencies in `deps/`.
   performance learnings flowing into next actions.
 - [compliance-evidence-tracker](./compliance-evidence-tracker/) keeps audit
   evidence fresh, reviewed, and gap-aware.
+- [session-to-prose](./session-to-prose/) turns local Claude Code, Codex, or
+  Pi agent session logs into reusable OpenProse programs with auditable
+  receipts.
 - [auto-pocock](./auto-pocock/) chains Matt Pocock's published engineering
   skills (grill-with-docs, to-prd, to-issues, tdd, plus his per-repo
   conventions) into a single non-interactive OpenProse system, with the
