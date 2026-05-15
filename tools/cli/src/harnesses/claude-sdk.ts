@@ -38,7 +38,7 @@ export function createClaudeSdkHarness(options: ClaudeSdkHarnessOptions = {}): H
 						...(runOptions.model === undefined ? {} : { model: runOptions.model }),
 						...(runOptions.reasoningEffort === undefined
 							? {}
-							: { effort: claudeReasoningEffort(runOptions.reasoningEffort) }),
+							: claudeReasoningOptions(runOptions.reasoningEffort)),
 						includePartialMessages: true,
 						settingSources: ["user", "project"],
 						stderr: (chunk: string) => runOptions.stderr.write(chunk),
@@ -92,6 +92,13 @@ export function createClaudeSdkHarness(options: ClaudeSdkHarnessOptions = {}): H
 
 			return runOptions.signal?.aborted ? 143 : exitCode;
 		},
+	};
+}
+
+function claudeReasoningOptions(value: string): Pick<ClaudeQueryOptions, "effort" | "thinking"> {
+	return {
+		effort: claudeReasoningEffort(value),
+		thinking: { type: "adaptive" },
 	};
 }
 
