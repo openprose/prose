@@ -114,6 +114,34 @@ describe("eval schema", () => {
 		).toThrow("suite.tasks[0].expected must define at least one assertion");
 	});
 
+	test("validates canonical reportUse metadata with legacy debug-only compatibility", () => {
+		expect(
+			validateEvalSuite({
+				...baseSuite,
+				metadata: { reportUse: "debug" },
+				tasks: [{ ...baseTask, metadata: { reportUse: "report-eligible" } }],
+			}),
+		).toEqual(
+			expect.objectContaining({
+				metadata: { reportUse: "debug" },
+			}),
+		);
+
+		expect(() =>
+			validateEvalSuite({
+				...baseSuite,
+				metadata: { reportUse: "debug-only" },
+			}),
+		).not.toThrow();
+
+		expect(() =>
+			validateEvalSuite({
+				...baseSuite,
+				metadata: { reportUse: "report-grade" },
+			}),
+		).toThrow("suite.metadata.reportUse must be one of: debug, adapter-canary, report-eligible");
+	});
+
 	test("rejects unsafe source contract provenance", () => {
 		expect(() =>
 			validateEvalSuite({
@@ -273,13 +301,17 @@ describe("eval runner", () => {
 				}),
 			);
 
+			const attemptPath = join(root, "run-1", "attempts", "quiet-drift-tiny", "mock", "attempt-1");
+			const canonicalTaskResult = JSON.parse(readFileSync(join(attemptPath, "result.json"), "utf8")) as {
+				taskId: string;
+				status: string;
+			};
 			const suiteSnapshot = JSON.parse(readFileSync(join(root, "run-1", "suite.json"), "utf8")) as EvalSuite;
 			expect(suiteSnapshot.tasks[0]?.contract?.source.path).toBe("tests/evals/fixtures/quiet-drift-canary.prose.md");
-			expect(JSON.parse(readFileSync(join(root, "run-1", "quiet-drift-tiny", "score.json"), "utf8"))).toEqual(
-				expect.objectContaining({ passed: true }),
-			);
-			expect(readFileSync(join(root, "run-1", "quiet-drift-tiny", "stdout.log"), "utf8")).toBe("drift detected\n");
-			expect(readFileSync(join(root, "run-1", "quiet-drift-tiny", "stderr.log"), "utf8")).toBe("");
+			expect(canonicalTaskResult).toEqual(expect.objectContaining({ taskId: "quiet-drift-tiny", status: "passed" }));
+			expect(JSON.parse(readFileSync(join(attemptPath, "score.json"), "utf8"))).toEqual(expect.objectContaining({ passed: true }));
+			expect(readFileSync(join(attemptPath, "stdout.log"), "utf8")).toBe("drift detected\n");
+			expect(readFileSync(join(attemptPath, "stderr.log"), "utf8")).toBe("");
 
 			const events = parseJsonl(readFileSync(join(root, "run-1", "events.jsonl"), "utf8"));
 			expect(events.map((event) => event.type)).toEqual(
@@ -327,6 +359,26 @@ describe("eval runner", () => {
 				tasks: 2,
 				unknownCostRecords: 0,
 			});
+
+			const eligibility = JSON.parse(readFileSync(join(root, "run-built-in", "claim-eligibility.json"), "utf8")) as {
+				kind: string;
+				reportEligible: boolean;
+				reasons: Array<{ code: string; taskId?: string }>;
+				version: number;
+			};
+			expect(eligibility.kind).toBe("prose.eval.claim-eligibility.v1");
+			expect(eligibility.version).toBe(1);
+			expect(result.claimEligibility.reportEligible).toBe(false);
+			expect(eligibility.reportEligible).toBe(false);
+			expect(eligibility.reasons.map((reason) => reason.code)).toEqual(
+				expect.arrayContaining([
+					"debug_report_use",
+					"mock_adapter",
+					"missing_normalized_trace",
+					"missing_receipts",
+					"missing_replay",
+				]),
+			);
 		} finally {
 			rmSync(root, { recursive: true, force: true });
 		}
@@ -350,6 +402,104 @@ describe("eval runner", () => {
 				expect.objectContaining({ name: "unknownCostRecords", passed: false, actual: 1 }),
 			]),
 		);
+	});
+
+	test("treats unknown-confidence cost as unknown even when totalCostUsd is numeric", async () => {
+		const result = await runEvalSuite(
+			baseSuite,
+			createMockEvalAdapter({
+				stdout: "drift detected\n",
+				events: [{ type: "model.call", at: "2026-05-17T12:00:00.000Z" }],
+				costs: [
+					{
+						id: "unknown-numeric",
+						runId: "unknown-confidence-run",
+						taskId: "quiet-drift-tiny",
+						attemptId: "unknown-confidence-run:quiet-drift-tiny:1",
+						adapterName: "mock",
+						confidence: "unknown",
+						occurredAt: "2026-05-17T12:00:00.000Z",
+						totalCostUsd: 0.01,
+						currency: "USD",
+					},
+				],
+			}),
+			{
+				runId: "unknown-confidence-run",
+				now: () => new Date("2026-05-17T12:00:00.000Z"),
+			},
+		);
+
+		expect(result.status).toBe("failed");
+		expect(result.totals).toEqual(expect.objectContaining({ knownCostUsd: 0, unknownCostRecords: 1 }));
+		expect(result.tasks[0]?.score.checks).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ name: "unknownCostRecords", passed: false, actual: 1 }),
+			]),
+		);
+	});
+
+	test("filters mismatched adapter cost rows before scoring and ledger writes", async () => {
+		const root = mkdtempSync(join(tmpdir(), "prose-evals-stale-cost-"));
+		try {
+			const result = await runEvalSuite(
+				baseSuite,
+				createMockEvalAdapter({
+					stdout: "drift detected\n",
+					events: [{ type: "model.call", at: "2026-05-17T12:00:00.000Z" }],
+					costs: [
+						{
+							id: "stale-cost",
+							runId: "old-run",
+							taskId: "quiet-drift-tiny",
+							attemptId: "old-run:quiet-drift-tiny:1",
+							adapterName: "mock",
+							confidence: "provider-reconciled",
+							occurredAt: "2026-05-17T12:00:00.000Z",
+							totalCostUsd: 0.01,
+							currency: "USD",
+						},
+					],
+				}),
+				{
+					artifactStore: createFilesystemArtifactStore({ root }),
+					runId: "current-run",
+					now: () => new Date("2026-05-17T12:00:00.000Z"),
+				},
+			);
+
+			expect(result.status).toBe("failed");
+			expect(result.tasks[0]?.attempt.metadata).toEqual(expect.objectContaining({ costRecordMismatchCount: 1 }));
+			expect(result.tasks[0]?.attempt.events).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						type: "eval.cost_record_mismatch",
+						data: expect.objectContaining({
+							costRecordId: "stale-cost",
+							mismatchedFields: expect.arrayContaining(["runId", "attemptId"]),
+						}),
+					}),
+				]),
+			);
+			expect(result.tasks[0]?.attempt.costs).toEqual([
+				expect.objectContaining({
+					id: "unknown:current-run:quiet-drift-tiny:1",
+					confidence: "unknown",
+					runId: "current-run",
+				}),
+			]);
+
+			const costLedger = parseJsonl(readFileSync(join(root, "current-run", "cost-ledger.jsonl"), "utf8"));
+			expect(costLedger).toEqual([
+				expect.objectContaining({
+					id: "unknown:current-run:quiet-drift-tiny:1",
+					confidence: "unknown",
+				}),
+			]);
+			expect(JSON.stringify(costLedger)).not.toContain("stale-cost");
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
 	});
 
 	test("does not let synthetic unknown costs satisfy requiresCost by default", async () => {
@@ -381,6 +531,57 @@ describe("eval runner", () => {
 		);
 		expect(result.tasks[0]?.score.checks).toEqual(
 			expect.arrayContaining([
+				expect.objectContaining({ name: "unknownCostRecords", passed: false, actual: 1 }),
+			]),
+		);
+	});
+
+	test("does not let mismatched cost rows satisfy requiresCost", async () => {
+		const requiresCostSuite: EvalSuite = {
+			...baseSuite,
+			tasks: [
+				{
+					...baseTask,
+					id: "requires-cost-mismatch",
+					expected: {
+						exitCode: 0,
+						requiresCost: true,
+					},
+				},
+			],
+		};
+
+		const result = await runEvalSuite(
+			requiresCostSuite,
+			createMockEvalAdapter({
+				costs: [
+					{
+						id: "wrong-task-cost",
+						runId: "requires-cost-mismatch-run",
+						taskId: "other-task",
+						attemptId: "requires-cost-mismatch-run:requires-cost-mismatch:1",
+						adapterName: "mock",
+						confidence: "response-usage",
+						occurredAt: "2026-05-17T12:00:00.000Z",
+						promptTokens: 11,
+						completionTokens: 3,
+						totalTokens: 14,
+					},
+				],
+			}),
+			{
+				runId: "requires-cost-mismatch-run",
+				now: () => new Date("2026-05-17T12:00:00.000Z"),
+			},
+		);
+
+		expect(result.status).toBe("failed");
+		expect(result.tasks[0]?.attempt.events).toEqual(
+			expect.arrayContaining([expect.objectContaining({ type: "eval.cost_record_mismatch" })]),
+		);
+		expect(result.tasks[0]?.score.checks).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ name: "costEvidencePresent", passed: false }),
 				expect.objectContaining({ name: "unknownCostRecords", passed: false, actual: 1 }),
 			]),
 		);
@@ -464,7 +665,7 @@ describe("eval runner", () => {
 		);
 	});
 
-	test("marks mock attempts as debug-only and surfaces that in summaries", async () => {
+	test("marks mock attempts as debug and surfaces that in summaries", async () => {
 		const result = await runEvalSuite(baseSuite, createMockEvalAdapter({ stdout: "drift detected\n" }), {
 			runId: "debug-run",
 			now: () => new Date("2026-05-17T12:00:00.000Z"),
@@ -474,11 +675,66 @@ describe("eval runner", () => {
 			expect.objectContaining({
 				adapterKind: "mock",
 				debugOnly: true,
-				reportUse: "debug-only",
+				reportUse: "debug",
 			}),
 		);
-		expect(formatEvalSuiteSummary(result)).toContain("report_use: debug-only");
+		expect(formatEvalSuiteSummary(result)).toContain("report_use: debug");
+		expect(formatEvalSuiteSummary(result)).toContain("debug_attempts: 1");
 		expect(formatEvalSuiteSummary(result)).toContain("debug_only_attempts: 1");
+	});
+
+	test("redacts inherited secret-like process env values from runner results", async () => {
+		const key = "PROSE_EVAL_RUNNER_SECRET";
+		const previous = process.env[key];
+		const secret = "runner-secret-value-123456";
+		process.env[key] = secret;
+		try {
+			const result = await runEvalSuite(
+				baseSuite,
+				createMockEvalAdapter({
+					stdout: `drift detected ${secret}\n`,
+					stderr: `stderr ${secret}\n`,
+					events: [
+						{
+							type: "model.call",
+							at: "2026-05-17T12:00:00.000Z",
+							message: `event ${secret}`,
+							data: { secret },
+						},
+					],
+					costs: [
+						{
+							id: "redacted-cost",
+							runId: "runner-redaction-run",
+							taskId: "quiet-drift-tiny",
+							attemptId: "runner-redaction-run:quiet-drift-tiny:1",
+							adapterName: "mock",
+							confidence: "provider-reconciled",
+							occurredAt: "2026-05-17T12:00:00.000Z",
+							totalCostUsd: 0.01,
+							currency: "USD",
+							metadata: { secret },
+						},
+					],
+					metadata: { secret },
+				}),
+				{
+					runId: "runner-redaction-run",
+					now: () => new Date("2026-05-17T12:00:00.000Z"),
+				},
+			);
+
+			const attemptJson = JSON.stringify(result.tasks[0]?.attempt);
+			expect(attemptJson).toContain("[REDACTED]");
+			expect(attemptJson).not.toContain(secret);
+			expect(result.status).toBe("passed");
+		} finally {
+			if (previous === undefined) {
+				delete process.env[key];
+			} else {
+				process.env[key] = previous;
+			}
+		}
 	});
 
 	test("records adapter exceptions as failed task artifacts instead of aborting the suite", async () => {

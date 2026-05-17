@@ -27,13 +27,14 @@ export function summarizeCostLedger(records: readonly EvalCostRecord[]): CostLed
 	let unknownCostRecords = 0;
 
 	for (const record of records) {
+		const knownConfidence = COST_CONFIDENCES.includes(record.confidence) && record.confidence !== "unknown";
 		if (!COST_CONFIDENCES.includes(record.confidence)) {
 			byConfidence.unknown += 1;
 		} else {
 			byConfidence[record.confidence] += 1;
 		}
 
-		if (typeof record.totalCostUsd === "number" && Number.isFinite(record.totalCostUsd)) {
+		if (knownConfidence && typeof record.totalCostUsd === "number" && Number.isFinite(record.totalCostUsd)) {
 			knownCostUsd += record.totalCostUsd;
 		} else {
 			unknownCostRecords += 1;

@@ -1,9 +1,22 @@
 export const EVAL_SUITE_KIND = "prose.eval.suite.v1";
 export const EVAL_TASK_KIND = "prose.eval.task.v1";
+export const EVAL_CLAIM_ELIGIBILITY_KIND = "prose.eval.claim-eligibility.v1";
 
 export type JsonPrimitive = string | number | boolean | null;
 export type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
 export type JsonObject = { [key: string]: JsonValue };
+
+export type ReportUse = "debug" | "adapter-canary" | "report-eligible";
+
+export const REPORT_USES: readonly ReportUse[] = ["debug", "adapter-canary", "report-eligible"];
+
+export function normalizeReportUse(value: unknown): ReportUse | undefined {
+	if (value === "debug-only") {
+		return "debug";
+	}
+
+	return REPORT_USES.includes(value as ReportUse) ? (value as ReportUse) : undefined;
+}
 
 export type SurpriseLabel =
 	| "noop"
@@ -159,6 +172,44 @@ export interface EvalScore {
 	points: number;
 }
 
+export type EvalClaimEligibilityReasonCode =
+	| "adapter_canary_report_use"
+	| "debug_report_use"
+	| "missing_normalized_trace"
+	| "missing_receipts"
+	| "missing_replay"
+	| "missing_report_use"
+	| "mock_adapter";
+
+export interface EvalClaimEligibilityReason {
+	code: EvalClaimEligibilityReasonCode;
+	message: string;
+	actual?: JsonValue;
+	expected?: JsonValue;
+	scope: "run" | "task";
+	taskId?: string;
+}
+
+export interface EvalClaimEligibilityGate {
+	name: string;
+	passed: boolean;
+	actual?: JsonValue;
+	expected?: JsonValue;
+	taskId?: string;
+}
+
+export interface EvalClaimEligibilityReport {
+	adapterName: string;
+	generatedAt: string;
+	gates: readonly EvalClaimEligibilityGate[];
+	kind: typeof EVAL_CLAIM_ELIGIBILITY_KIND;
+	reasons: readonly EvalClaimEligibilityReason[];
+	reportEligible: boolean;
+	runId: string;
+	suiteId: string;
+	version: 1;
+}
+
 export interface EvalTaskRunResult {
 	adapterName: string;
 	attempt: EvalAttemptResult;
@@ -173,6 +224,7 @@ export interface EvalTaskRunResult {
 
 export interface EvalSuiteRunResult {
 	adapterName: string;
+	claimEligibility: EvalClaimEligibilityReport;
 	completedAt: string;
 	metadata?: JsonObject;
 	runId: string;

@@ -1,4 +1,4 @@
-import type { EvalSuiteRunResult } from "./types.js";
+import { normalizeReportUse, type EvalSuiteRunResult, type ReportUse } from "./types.js";
 
 export function formatEvalSuiteSummary(result: EvalSuiteRunResult): string {
 	const cost = result.totals.knownCostUsd.toFixed(6);
@@ -17,6 +17,7 @@ export function formatEvalSuiteSummary(result: EvalSuiteRunResult): string {
 	}
 	const debugOnlyAttempts = result.tasks.filter((task) => isDebugOnlyMetadata(task.attempt.metadata)).length;
 	if (debugOnlyAttempts > 0) {
+		lines.push(`debug_attempts: ${debugOnlyAttempts}`);
 		lines.push(`debug_only_attempts: ${debugOnlyAttempts}`);
 	}
 
@@ -24,17 +25,17 @@ export function formatEvalSuiteSummary(result: EvalSuiteRunResult): string {
 }
 
 function inferReportUse(result: EvalSuiteRunResult): string | undefined {
-	const values = new Set<string>();
+	const values = new Set<ReportUse>();
 	addReportUse(values, result.metadata);
 	for (const task of result.tasks) {
 		addReportUse(values, task.attempt.metadata);
 		if (isDebugOnlyMetadata(task.attempt.metadata)) {
-			values.add("debug-only");
+			values.add("debug");
 		}
 	}
 
-	if (values.has("debug-only")) {
-		return "debug-only";
+	if (values.has("debug")) {
+		return "debug";
 	}
 	if (values.size === 1) {
 		return [...values][0];
@@ -46,13 +47,13 @@ function inferReportUse(result: EvalSuiteRunResult): string | undefined {
 	return undefined;
 }
 
-function addReportUse(values: Set<string>, metadata: EvalSuiteRunResult["metadata"]): void {
-	const reportUse = metadata?.reportUse;
-	if (typeof reportUse === "string" && reportUse.trim() !== "") {
+function addReportUse(values: Set<ReportUse>, metadata: EvalSuiteRunResult["metadata"]): void {
+	const reportUse = normalizeReportUse(metadata?.reportUse);
+	if (reportUse !== undefined) {
 		values.add(reportUse);
 	}
 }
 
 function isDebugOnlyMetadata(metadata: EvalSuiteRunResult["metadata"]): boolean {
-	return metadata?.debugOnly === true || metadata?.reportUse === "debug-only";
+	return metadata?.debugOnly === true || normalizeReportUse(metadata?.reportUse) === "debug";
 }

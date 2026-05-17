@@ -33,6 +33,7 @@ describe("eval adapter isolation", () => {
 				PI_CODING_AGENT_SESSION_DIR: "/caller/options/pi-sessions",
 				PI_OFFLINE: "0",
 				PI_SKIP_VERSION_CHECK: "0",
+				PI_TELEMETRY: "1",
 			},
 			rpcRunner: async (_command, _args, options) => {
 				piCalls.push({ cwd: options.cwd, env: options.env });
@@ -55,6 +56,7 @@ describe("eval adapter isolation", () => {
 					PI_CODING_AGENT_SESSION_DIR: "/caller/context/pi-sessions",
 					PI_OFFLINE: "0",
 					PI_SKIP_VERSION_CHECK: "0",
+					PI_TELEMETRY: "1",
 				},
 			}),
 		);
@@ -66,14 +68,17 @@ describe("eval adapter isolation", () => {
 				PI_CODING_AGENT_SESSION_DIR: join(runDirectory, "pi-sessions"),
 				PI_OFFLINE: "1",
 				PI_SKIP_VERSION_CHECK: "1",
+				PI_TELEMETRY: "0",
 			}),
 		);
 
 		const hermesCalls: ProcessCall[] = [];
 		const hermes = createHermesEvalAdapter({
 			env: {
+				HERMES_ACCEPT_HOOKS: "0",
 				HERMES_HOME: "/caller/options/hermes",
 				HERMES_REDACT_SECRETS: "0",
+				HERMES_SESSION_SOURCE: "caller-options",
 			},
 			runner: async (_command, _args, options) => {
 				hermesCalls.push({ cwd: options.cwd, env: options.env });
@@ -86,8 +91,10 @@ describe("eval adapter isolation", () => {
 			task,
 			context({
 				env: {
+					HERMES_ACCEPT_HOOKS: "0",
 					HERMES_HOME: "/caller/context/hermes",
 					HERMES_REDACT_SECRETS: "0",
+					HERMES_SESSION_SOURCE: "caller-context",
 				},
 			}),
 		);
@@ -95,8 +102,10 @@ describe("eval adapter isolation", () => {
 		expect(hermesCalls[0]?.cwd).toBe(runDirectory);
 		expect(hermesCalls[0]?.env).toEqual(
 			expect.objectContaining({
+				HERMES_ACCEPT_HOOKS: "1",
 				HERMES_HOME: join(runDirectory, "hermes-home"),
 				HERMES_REDACT_SECRETS: "1",
+				HERMES_SESSION_SOURCE: "prose-eval",
 			}),
 		);
 

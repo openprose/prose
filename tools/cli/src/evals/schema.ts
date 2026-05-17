@@ -1,6 +1,14 @@
 import { isAbsolute, win32 } from "node:path";
 
-import { EVAL_SUITE_KIND, EVAL_TASK_KIND, SURPRISE_LABELS, type EvalSuite, type SurpriseLabel } from "./types.js";
+import {
+	EVAL_SUITE_KIND,
+	EVAL_TASK_KIND,
+	REPORT_USES,
+	SURPRISE_LABELS,
+	normalizeReportUse,
+	type EvalSuite,
+	type SurpriseLabel,
+} from "./types.js";
 import { assertSafePathSegment } from "./safety.js";
 
 export class EvalSchemaError extends Error {
@@ -18,6 +26,7 @@ export function validateEvalSuite(value: unknown): EvalSuite {
 
 	assertSafePathSegment(requireNonEmptyString(suite.id, "suite.id"), "suite.id");
 	requireNonEmptyString(suite.title, "suite.title");
+	requireMetadataReportUse(suite.metadata, "suite.metadata");
 
 	if (!Array.isArray(suite.tasks) || suite.tasks.length === 0) {
 		throw new EvalSchemaError("suite.tasks must contain at least one task");
@@ -39,6 +48,7 @@ export function validateEvalSuite(value: unknown): EvalSuite {
 		requireNonEmptyString(task.title, `suite.tasks[${index}].title`);
 		requireNonEmptyString(task.prompt, `suite.tasks[${index}].prompt`);
 		requireExpectedOutcome(task.expected, `suite.tasks[${index}].expected`);
+		requireMetadataReportUse(task.metadata, `suite.tasks[${index}].metadata`);
 
 		if (task.contract !== undefined) {
 			requireTaskContract(task.contract, `suite.tasks[${index}].contract`);
@@ -205,6 +215,19 @@ function requireStringArray(value: unknown, path: string): void {
 
 	for (const [index, item] of value.entries()) {
 		requireNonEmptyString(item, `${path}[${index}]`);
+	}
+}
+
+function requireMetadataReportUse(value: unknown, path: string): void {
+	if (value === undefined) {
+		return;
+	}
+
+	const metadata = objectAt(value, path);
+	if (metadata.reportUse !== undefined && normalizeReportUse(metadata.reportUse) === undefined) {
+		throw new EvalSchemaError(
+			`${path}.reportUse must be one of: ${REPORT_USES.join(", ")} (legacy debug-only is accepted)`,
+		);
 	}
 }
 

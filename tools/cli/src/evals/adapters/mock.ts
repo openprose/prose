@@ -45,7 +45,7 @@ export function createMockEvalAdapter(options: MockEvalAdapterOptions = {}): Eva
 					...(response.metadata ?? {}),
 					adapterKind: "mock",
 					debugOnly: true,
-					reportUse: "debug-only",
+					reportUse: "debug",
 				},
 			};
 		},

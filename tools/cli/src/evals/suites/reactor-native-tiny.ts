@@ -7,7 +7,7 @@ export const reactorNativeTinySuite: EvalSuite = {
 	metadata: {
 		description:
 			"Fast canary tasks for debugging eval plumbing before spending tokens on real Reactor-native timelines.",
-		reportUse: "debug-only",
+		reportUse: "debug",
 	},
 	tasks: [
 		{
@@ -29,7 +29,7 @@ export const reactorNativeTinySuite: EvalSuite = {
 			},
 			metadata: {
 				evalFamily: "quiet-drift",
-				reportUse: "debug-only",
+				reportUse: "debug",
 			},
 			surpriseLabels: ["silent-drift"],
 			tags: ["reactor-native", "canary", "cost"],
@@ -54,7 +54,7 @@ export const reactorNativeTinySuite: EvalSuite = {
 			},
 			metadata: {
 				evalFamily: "memoized-verdict",
-				reportUse: "debug-only",
+				reportUse: "debug",
 			},
 			surpriseLabels: ["noop"],
 			tags: ["reactor-native", "canary", "memoization"],
