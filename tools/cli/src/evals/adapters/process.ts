@@ -1,9 +1,10 @@
 import { nodeProcessRunner } from "../../harnesses/process-runner.js";
 import type { ProcessCommand, ProcessRunner, WritableStreamLike } from "../../harnesses/types.js";
-import type { EvalAdapter, EvalTask } from "../types.js";
+import type { EvalAdapter, EvalAdapterContext, EvalTask } from "../types.js";
 
 export interface ProcessEvalAdapterOptions {
 	args?: readonly string[];
+	buildEnv?: (task: EvalTask, context: EvalAdapterContext) => Record<string, string | undefined>;
 	buildCommand?: (task: EvalTask) => ProcessCommand;
 	command?: string;
 	cwd?: string;
@@ -24,8 +25,8 @@ export function createProcessEvalAdapter(options: ProcessEvalAdapterOptions): Ev
 			const started = Date.now();
 			const result = await runner(command.command, command.args, {
 				...(task.cwd ?? options.cwd ? { cwd: task.cwd ?? options.cwd } : {}),
-				...(context.env !== undefined || options.env !== undefined
-					? { env: { ...(options.env ?? {}), ...(context.env ?? {}) } }
+				...(context.env !== undefined || options.env !== undefined || options.buildEnv !== undefined
+					? { env: { ...(options.env ?? {}), ...(options.buildEnv?.(task, context) ?? {}), ...(context.env ?? {}) } }
 					: {}),
 				...(context.signal === undefined ? {} : { signal: context.signal }),
 				stdout: captureStream((chunk) => void (stdout += chunk)),

@@ -8,8 +8,12 @@ import {
 	EVAL_SUITE_KIND,
 	EVAL_TASK_KIND,
 	EvalSchemaError,
+	buildDspyRlmCommand,
+	buildHermesCommand,
+	buildPiCommand,
 	createFilesystemArtifactStore,
 	createMockEvalAdapter,
+	createPiEvalAdapter,
 	createProcessEvalAdapter,
 	loadEvalSuite,
 	openRouterGenerationToCostRecord,
@@ -211,5 +215,154 @@ describe("eval runner", () => {
 				env: { OPENROUTER_API_KEY: "redacted-test-value" },
 			},
 		]);
+	});
+});
+
+describe("public harness adapter command builders", () => {
+	test("builds a small isolated Pi print-mode command", () => {
+		expect(
+			buildPiCommand(baseTask, {
+				mode: "print",
+				model: "openrouter/openai/gpt-4.1-mini",
+				provider: "openrouter",
+				tools: ["read", "grep"],
+			}),
+		).toEqual({
+			command: "npx",
+			args: [
+				"-y",
+				"@earendil-works/pi-coding-agent@0.75.0",
+				"--provider",
+				"openrouter",
+				"--model",
+				"openrouter/openai/gpt-4.1-mini",
+				"--tools",
+				"read,grep",
+				"--no-session",
+				"--no-context-files",
+				"--no-extensions",
+				"--no-skills",
+				"--no-prompt-templates",
+				"--no-themes",
+				"-p",
+				baseTask.prompt,
+			],
+		});
+	});
+
+	test("builds an isolated Hermes oneshot command", () => {
+		expect(
+			buildHermesCommand(baseTask, {
+				model: "openrouter/openai/gpt-4.1-mini",
+				provider: "openrouter",
+				toolsets: ["filesystem"],
+			}),
+		).toEqual({
+			command: "hermes",
+			args: [
+				"chat",
+				"-q",
+				baseTask.prompt,
+				"-Q",
+				"--source",
+				"tool",
+				"--max-turns",
+				"10",
+				"--ignore-user-config",
+				"--ignore-rules",
+				"--accept-hooks",
+				"--provider",
+				"openrouter",
+				"--model",
+				"openrouter/openai/gpt-4.1-mini",
+				"--toolsets",
+				"filesystem",
+			],
+		});
+	});
+
+	test("builds a bounded DSPy.RLM worker command without embedding secrets", () => {
+		const command = buildDspyRlmCommand(baseTask, {
+			maxIterations: 3,
+			maxLlmCalls: 5,
+			maxTokens: 500,
+			model: "openrouter/openai/gpt-4.1-mini",
+		});
+
+		expect(command.command).toBe("python3");
+		expect(command.args[0]).toBe("-c");
+		expect(command.args[1]).toContain("dspy.RLM");
+		expect(command.args[1]).not.toContain("OPENROUTER_API_KEY=");
+		expect(JSON.parse(command.args[2] ?? "{}")).toEqual(
+			expect.objectContaining({
+				max_iterations: 3,
+				max_llm_calls: 5,
+				max_tokens: 500,
+				model: "openrouter/openai/gpt-4.1-mini",
+				query: baseTask.prompt,
+			}),
+		);
+	});
+
+	test("runs Pi RPC adapter through an injectable runner and maps session stats", async () => {
+		const adapter = createPiEvalAdapter({
+			model: "anthropic/claude-3-5-sonnet-20241022",
+			rpcRunner: async (command, args, options) => {
+				expect(command).toBe("npx");
+				expect(args).toEqual(
+					expect.arrayContaining([
+						"@earendil-works/pi-coding-agent@0.75.0",
+						"--mode",
+						"rpc",
+						"--no-session",
+						"--no-context-files",
+					]),
+				);
+				expect(options.env?.PI_CODING_AGENT_DIR).toContain("pi-agent");
+				return {
+					exitCode: 0,
+					stdout: "",
+					stderr: "",
+					lastAssistantText: "drift detected",
+					sessionStats: {
+						cost: 0.012,
+						tokens: {
+							prompt: 100,
+							completion: 20,
+						},
+					},
+					records: [
+						{ id: "run-1:quiet-drift-tiny:1:prompt", type: "response", success: true },
+						{ type: "agent_end" },
+					],
+				};
+			},
+			writeTranscript: false,
+		});
+
+		const result = await adapter.runTask(baseTask, {
+			adapterRunDirectory: "/tmp/prose-pi-run",
+			attemptId: "run-1:quiet-drift-tiny:1",
+			runId: "run-1",
+			startedAt: "2026-05-17T12:00:00.000Z",
+		});
+
+		expect(result).toEqual(
+			expect.objectContaining({
+				adapterName: "pi",
+				exitCode: 0,
+				stdout: "drift detected",
+			}),
+		);
+		expect(result.costs?.[0]).toEqual(
+			expect.objectContaining({
+				adapterName: "pi",
+				completionTokens: 20,
+				confidence: "response-usage",
+				promptTokens: 100,
+				totalCostUsd: 0.012,
+				totalTokens: 120,
+			}),
+		);
 	});
 });

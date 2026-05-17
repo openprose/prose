@@ -19,6 +19,17 @@ export type { MockEvalAdapterOptions, MockEvalAdapterResponse } from "./adapters
 export { createProcessEvalAdapter } from "./adapters/process.js";
 export type { ProcessEvalAdapterOptions } from "./adapters/process.js";
 export {
+	DEFAULT_DSPY_PACKAGE_SPEC,
+	DEFAULT_DSPY_RLM_MODEL,
+	buildDspyRlmCommand,
+	createDspyRlmEvalAdapter,
+} from "./adapters/dspy-rlm.js";
+export type { DspyRlmEvalAdapterOptions } from "./adapters/dspy-rlm.js";
+export { DEFAULT_HERMES_PACKAGE_SPEC, buildHermesCommand, createHermesEvalAdapter } from "./adapters/hermes.js";
+export type { HermesEvalAdapterOptions } from "./adapters/hermes.js";
+export { DEFAULT_PI_PACKAGE_SPEC, buildPiCommand, createPiEvalAdapter, createPiPrintEvalAdapter } from "./adapters/pi.js";
+export type { PiEvalAdapterMode, PiEvalAdapterOptions, PiRpcRunner, PiRpcRunOptions, PiRpcRunResult } from "./adapters/pi.js";
+export {
 	EVAL_SUITE_KIND,
 	EVAL_TASK_KIND,
 	SURPRISE_LABELS,
