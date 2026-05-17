@@ -1,5 +1,14 @@
 export { createFilesystemArtifactStore } from "./artifact-store.js";
 export type { FilesystemArtifactStoreOptions } from "./artifact-store.js";
+export {
+	createNamedEvalAdapter,
+	EVAL_ADAPTER_NAMES,
+	isEvalAdapterName,
+	resolveEvalAdapterName,
+} from "./adapter-registry.js";
+export type { EvalAdapterName, EvalAdapterRegistryOptions } from "./adapter-registry.js";
+export { runEvalCli } from "./cli.js";
+export type { EvalCliIo, EvalCliOptions } from "./cli.js";
 export { summarizeCostLedger } from "./cost-ledger.js";
 export type { CostLedgerSummary } from "./cost-ledger.js";
 export { fetchOpenRouterGenerationCost, openRouterGenerationToCostRecord } from "./costs/openrouter.js";
@@ -13,7 +22,15 @@ export type { EvalRunnerOptions } from "./runner.js";
 export { scoreAttempt } from "./scorer.js";
 export { EvalSchemaError, validateEvalSuite } from "./schema.js";
 export { loadEvalSuite } from "./suite-loader.js";
+export {
+	BUILT_IN_EVAL_SUITE_NAMES,
+	getBuiltInEvalSuite,
+	isBuiltInEvalSuiteName,
+	loadEvalSuiteByNameOrPath,
+} from "./suite-registry.js";
+export type { BuiltInEvalSuiteName } from "./suite-registry.js";
 export { reactorNativeTinySuite } from "./suites/reactor-native-tiny.js";
+export { formatEvalSuiteSummary } from "./format.js";
 export { createMockEvalAdapter } from "./adapters/mock.js";
 export type { MockEvalAdapterOptions, MockEvalAdapterResponse } from "./adapters/mock.js";
 export { createProcessEvalAdapter } from "./adapters/process.js";

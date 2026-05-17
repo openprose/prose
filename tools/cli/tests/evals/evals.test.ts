@@ -13,11 +13,14 @@ import {
 	buildPiCommand,
 	createFilesystemArtifactStore,
 	createMockEvalAdapter,
+	createNamedEvalAdapter,
 	createPiEvalAdapter,
 	createProcessEvalAdapter,
+	loadEvalSuiteByNameOrPath,
 	loadEvalSuite,
 	openRouterGenerationToCostRecord,
 	reactorNativeTinySuite,
+	runEvalCli,
 	runEvalSuite,
 	validateEvalSuite,
 	type EvalSuite,
@@ -181,6 +184,27 @@ describe("eval runner", () => {
 		}
 	});
 
+	test("runs the built-in Reactor-native tiny suite through the named mock adapter", async () => {
+		const root = mkdtempSync(join(tmpdir(), "prose-evals-built-in-"));
+		try {
+			const result = await runEvalSuite(reactorNativeTinySuite, createNamedEvalAdapter("mock"), {
+				artifactStore: createFilesystemArtifactStore({ root }),
+				runId: "run-built-in",
+			});
+
+			expect(result.status).toBe("passed");
+			expect(result.totals).toEqual({
+				failed: 0,
+				knownCostUsd: 0,
+				passed: 2,
+				tasks: 2,
+				unknownCostRecords: 0,
+			});
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	});
+
 	test("keeps process adapters injectable for harness-specific packaging smoke tests", async () => {
 		const calls: unknown[] = [];
 		const adapter = createProcessEvalAdapter({
@@ -215,6 +239,36 @@ describe("eval runner", () => {
 				env: { OPENROUTER_API_KEY: "redacted-test-value" },
 			},
 		]);
+	});
+});
+
+describe("eval suite and CLI registry", () => {
+	test("loads a built-in suite by name", async () => {
+		await expect(loadEvalSuiteByNameOrPath("reactor-native-tiny")).resolves.toBe(reactorNativeTinySuite);
+	});
+
+	test("runs the CLI helper with mock adapter and writes artifacts", async () => {
+		const root = mkdtempSync(join(tmpdir(), "prose-eval-cli-"));
+		let stdout = "";
+		let stderr = "";
+		try {
+			const exitCode = await runEvalCli(
+				["--suite", "reactor-native-tiny", "--adapter", "mock", "--artifacts", root],
+				{
+					stdout: { write: (chunk: string) => void (stdout += chunk) },
+					stderr: { write: (chunk: string) => void (stderr += chunk) },
+				},
+				{ runId: "cli-run-1" },
+			);
+
+			expect(exitCode).toBe(0);
+			expect(stderr).toBe("");
+			expect(stdout).toContain("status: passed");
+			expect(stdout).toContain("tasks: 2/2 passed");
+			expect(readFileSync(join(root, "cli-run-1", "summary.json"), "utf8")).toContain("reactor-native-tiny");
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
 	});
 });
 
