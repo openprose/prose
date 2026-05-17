@@ -1,0 +1,176 @@
+export const EVAL_SUITE_KIND = "prose.eval.suite.v1";
+export const EVAL_TASK_KIND = "prose.eval.task.v1";
+
+export type JsonPrimitive = string | number | boolean | null;
+export type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
+export type JsonObject = { [key: string]: JsonValue };
+
+export type SurpriseLabel =
+	| "noop"
+	| "relevant-change"
+	| "silent-drift"
+	| "ambiguity"
+	| "escalation"
+	| "policy-drift";
+
+export const SURPRISE_LABELS: readonly SurpriseLabel[] = [
+	"noop",
+	"relevant-change",
+	"silent-drift",
+	"ambiguity",
+	"escalation",
+	"policy-drift",
+];
+
+export type CostConfidence =
+	| "unknown"
+	| "local-token-estimate"
+	| "price-projected"
+	| "response-usage"
+	| "provider-reconciled";
+
+export interface EvalExpectedOutcome {
+	exitCode?: number;
+	stdoutContains?: readonly string[];
+	stdoutExcludes?: readonly string[];
+	stderrContains?: readonly string[];
+	stderrExcludes?: readonly string[];
+	eventTypes?: readonly string[];
+	maxKnownCostUsd?: number;
+}
+
+export interface EvalTask {
+	kind: typeof EVAL_TASK_KIND;
+	id: string;
+	title: string;
+	prompt: string;
+	expected: EvalExpectedOutcome;
+	cwd?: string;
+	metadata?: JsonObject;
+	surpriseLabels?: readonly SurpriseLabel[];
+	tags?: readonly string[];
+	timeoutMs?: number;
+}
+
+export interface EvalSuite {
+	kind: typeof EVAL_SUITE_KIND;
+	id: string;
+	title: string;
+	tasks: readonly EvalTask[];
+	metadata?: JsonObject;
+}
+
+export interface EvalArtifact {
+	path: string;
+	mediaType: string;
+	bytes: number;
+}
+
+export interface EvalArtifactStore {
+	readonly root: string;
+	appendJsonl(relativePath: string, value: JsonValue): Promise<EvalArtifact>;
+	writeJson(relativePath: string, value: JsonValue): Promise<EvalArtifact>;
+	writeText(relativePath: string, value: string, mediaType?: string): Promise<EvalArtifact>;
+}
+
+export interface EvalEvent {
+	type: string;
+	at: string;
+	data?: JsonObject;
+	message?: string;
+	surpriseLabel?: SurpriseLabel;
+}
+
+export interface EvalCostRecord {
+	id: string;
+	runId: string;
+	taskId: string;
+	attemptId: string;
+	adapterName: string;
+	confidence: CostConfidence;
+	occurredAt: string;
+	cacheReadTokens?: number;
+	cacheWriteTokens?: number;
+	completionTokens?: number;
+	currency?: "USD";
+	generationId?: string;
+	metadata?: JsonObject;
+	model?: string;
+	promptTokens?: number;
+	provider?: string;
+	role?: string;
+	surpriseLabel?: SurpriseLabel;
+	totalCostUsd?: number;
+	totalTokens?: number;
+}
+
+export interface EvalAttemptResult {
+	adapterName: string;
+	durationMs: number;
+	exitCode: number;
+	stdout: string;
+	stderr: string;
+	artifacts?: readonly EvalArtifact[];
+	costs?: readonly EvalCostRecord[];
+	events?: readonly EvalEvent[];
+	metadata?: JsonObject;
+	metrics?: Readonly<Record<string, number>>;
+}
+
+export interface EvalAdapterContext {
+	adapterRunDirectory?: string;
+	artifactStore?: EvalArtifactStore;
+	attemptId: string;
+	env?: Record<string, string | undefined>;
+	runId: string;
+	signal?: AbortSignal;
+	startedAt: string;
+}
+
+export interface EvalAdapter {
+	readonly name: string;
+	runTask(task: EvalTask, context: EvalAdapterContext): Promise<EvalAttemptResult>;
+}
+
+export interface EvalScoreCheck {
+	name: string;
+	passed: boolean;
+	actual?: JsonValue;
+	expected?: JsonValue;
+	message?: string;
+}
+
+export interface EvalScore {
+	checks: readonly EvalScoreCheck[];
+	maxPoints: number;
+	passed: boolean;
+	points: number;
+}
+
+export interface EvalTaskRunResult {
+	adapterName: string;
+	attempt: EvalAttemptResult;
+	attemptId: string;
+	completedAt: string;
+	score: EvalScore;
+	startedAt: string;
+	status: "passed" | "failed";
+	taskId: string;
+}
+
+export interface EvalSuiteRunResult {
+	adapterName: string;
+	completedAt: string;
+	runId: string;
+	startedAt: string;
+	status: "passed" | "failed";
+	suiteId: string;
+	tasks: readonly EvalTaskRunResult[];
+	totals: {
+		failed: number;
+		knownCostUsd: number;
+		passed: number;
+		tasks: number;
+		unknownCostRecords: number;
+	};
+}
