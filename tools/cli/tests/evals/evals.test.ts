@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -11,6 +11,9 @@ import {
 	createFilesystemArtifactStore,
 	createMockEvalAdapter,
 	createProcessEvalAdapter,
+	loadEvalSuite,
+	openRouterGenerationToCostRecord,
+	reactorNativeTinySuite,
 	runEvalSuite,
 	validateEvalSuite,
 	type EvalSuite,
@@ -42,6 +45,7 @@ const baseSuite: EvalSuite = {
 describe("eval schema", () => {
 	test("accepts a valid suite", () => {
 		expect(validateEvalSuite(baseSuite)).toBe(baseSuite);
+		expect(validateEvalSuite(reactorNativeTinySuite)).toBe(reactorNativeTinySuite);
 	});
 
 	test("rejects duplicate task ids and invalid surprise labels", () => {
@@ -58,6 +62,56 @@ describe("eval schema", () => {
 				tasks: [{ ...baseTask, surpriseLabels: ["after-the-fact"] }],
 			}),
 		).toThrow(EvalSchemaError);
+	});
+
+	test("loads suite JSON from disk", async () => {
+		const root = mkdtempSync(join(tmpdir(), "prose-eval-suite-"));
+		try {
+			const path = join(root, "suite.json");
+			writeFileSync(path, JSON.stringify(baseSuite), "utf8");
+			await expect(loadEvalSuite(path)).resolves.toEqual(baseSuite);
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	});
+});
+
+describe("OpenRouter cost mapping", () => {
+	test("maps generation accounting into an auditable cost ledger record", () => {
+		const record = openRouterGenerationToCostRecord(
+			{
+				created_at: "2026-05-17T12:00:00.000Z",
+				model: "openai/gpt-4.1-mini",
+				provider_name: "OpenAI",
+				tokens_completion: 7,
+				tokens_prompt: "13",
+				total_cost: "0.000123",
+			},
+			{
+				adapterName: "pi",
+				attemptId: "run-1:quiet-drift-tiny:1",
+				generationId: "gen-1",
+				role: "agent",
+				runId: "run-1",
+				surpriseLabel: "silent-drift",
+				taskId: "quiet-drift-tiny",
+			},
+		);
+
+		expect(record).toEqual(
+			expect.objectContaining({
+				adapterName: "pi",
+				confidence: "provider-reconciled",
+				generationId: "gen-1",
+				model: "openai/gpt-4.1-mini",
+				provider: "OpenAI",
+				promptTokens: 13,
+				completionTokens: 7,
+				totalTokens: 20,
+				totalCostUsd: 0.000123,
+				surpriseLabel: "silent-drift",
+			}),
+		);
 	});
 });
 
