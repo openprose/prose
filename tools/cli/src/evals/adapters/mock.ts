@@ -1,10 +1,11 @@
-import type { EvalAdapter, EvalAttemptResult, EvalCostRecord, EvalEvent, EvalTask } from "../types.js";
+import type { EvalAdapter, EvalAttemptResult, EvalCostRecord, EvalEvent, EvalTask, JsonObject } from "../types.js";
 
 export interface MockEvalAdapterOptions {
 	costs?: readonly EvalCostRecord[];
 	events?: readonly EvalEvent[];
 	exitCode?: number;
 	handler?: (task: EvalTask) => MockEvalAdapterResponse | Promise<MockEvalAdapterResponse>;
+	metadata?: JsonObject;
 	name?: string;
 	stderr?: string;
 	stdout?: string;
@@ -14,6 +15,7 @@ export interface MockEvalAdapterResponse {
 	costs?: readonly EvalCostRecord[];
 	events?: readonly EvalEvent[];
 	exitCode?: number;
+	metadata?: JsonObject;
 	stderr?: string;
 	stdout?: string;
 }
@@ -38,6 +40,13 @@ export function createMockEvalAdapter(options: MockEvalAdapterOptions = {}): Eva
 				...(response.events !== undefined || options.events !== undefined
 					? { events: response.events ?? options.events ?? [] }
 					: {}),
+				metadata: {
+					...(options.metadata ?? {}),
+					...(response.metadata ?? {}),
+					adapterKind: "mock",
+					debugOnly: true,
+					reportUse: "debug-only",
+				},
 			};
 		},
 	};

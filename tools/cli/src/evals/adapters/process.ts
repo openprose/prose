@@ -1,7 +1,8 @@
 import { nodeProcessRunner } from "../../harnesses/process-runner.js";
 import type { ProcessCommand, ProcessRunner, WritableStreamLike } from "../../harnesses/types.js";
-import { DEFAULT_EVAL_OUTPUT_CHAR_LIMIT, redactionValuesFromEnv, sanitizeText } from "../safety.js";
+import { DEFAULT_EVAL_OUTPUT_CHAR_LIMIT, sanitizeText } from "../safety.js";
 import type { EvalAdapter, EvalAdapterContext, EvalTask } from "../types.js";
+import { mergeEvalEnvWithProtectedIsolation, redactionValuesFromProcessEnv } from "./env.js";
 
 export interface ProcessEvalAdapterOptions {
 	args?: readonly string[];
@@ -25,19 +26,18 @@ export function createProcessEvalAdapter(options: ProcessEvalAdapterOptions): Ev
 			let stdout = "";
 			let stderr = "";
 			const started = Date.now();
-			const env =
-				context.env !== undefined || options.env !== undefined || options.buildEnv !== undefined
-					? { ...(options.env ?? {}), ...(options.buildEnv?.(task, context) ?? {}), ...(context.env ?? {}) }
-					: undefined;
+			const buildEnv = options.buildEnv?.(task, context);
+			const env = mergeEvalEnvWithProtectedIsolation([options.env, buildEnv, context.env], buildEnv);
 			const maxOutputChars = options.maxOutputChars ?? DEFAULT_EVAL_OUTPUT_CHAR_LIMIT;
+			const cwd = task.cwd ?? options.cwd ?? context.adapterRunDirectory;
+			const redactionValues = redactionValuesFromProcessEnv(env);
 			const result = await runner(command.command, command.args, {
-				...(task.cwd ?? options.cwd ? { cwd: task.cwd ?? options.cwd } : {}),
+				...(cwd === undefined ? {} : { cwd }),
 				...(env === undefined ? {} : { env }),
 				...(context.signal === undefined ? {} : { signal: context.signal }),
 				stdout: captureStream((chunk) => void (stdout = appendLimited(stdout, chunk, maxOutputChars))),
 				stderr: captureStream((chunk) => void (stderr = appendLimited(stderr, chunk, maxOutputChars))),
 			});
-			const redactionValues = redactionValuesFromEnv(env);
 
 			return {
 				adapterName: options.name,

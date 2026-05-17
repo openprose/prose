@@ -6,7 +6,20 @@ import { summarizeCostLedger } from "./cost-ledger.js";
 import { assertSafePathSegment, redactionValuesFromEnv, sanitizeAttemptResult } from "./safety.js";
 import { scoreAttempt } from "./scorer.js";
 import { validateEvalSuite } from "./schema.js";
-import type { EvalAdapter, EvalArtifactStore, EvalAttemptResult, EvalSuite, EvalSuiteRunResult, EvalTask, EvalTaskRunResult } from "./types.js";
+import type {
+	EvalAdapter,
+	EvalArtifact,
+	EvalArtifactStore,
+	EvalAttemptResult,
+	EvalEvent,
+	EvalSuite,
+	EvalSuiteRunResult,
+	EvalTask,
+	EvalTaskContract,
+	EvalTaskRunResult,
+	JsonObject,
+	JsonValue,
+} from "./types.js";
 
 export interface EvalRunnerOptions {
 	artifactStore?: EvalArtifactStore;
@@ -31,6 +44,8 @@ export async function runEvalSuite(
 	const tasks: EvalTaskRunResult[] = [];
 	const redactionValues = redactionValuesFromEnv(options.env);
 
+	await writeRunEvidenceStart(options.artifactStore, runId, suite, adapterName, startedAt);
+
 	for (const task of suite.tasks) {
 		const taskStartedAt = now().toISOString();
 		const attemptId = `${runId}:${task.id}:1`;
@@ -44,6 +59,12 @@ export async function runEvalSuite(
 
 		const signal = composeSignals(options.signal, task.timeoutMs);
 		try {
+			await appendEvidenceEvent(options.artifactStore, runId, {
+				type: "eval.task_started",
+				at: taskStartedAt,
+				data: taskEvidenceData(suite.id, task, adapterName, attemptId),
+			});
+
 			let attempt: EvalAttemptResult;
 			try {
 				attempt = await adapter.runTask(task, {
@@ -66,10 +87,11 @@ export async function runEvalSuite(
 				...(options.maxOutputChars === undefined ? {} : { maxTextLength: options.maxOutputChars }),
 			});
 			const result = buildTaskResult(task, adapterName, attemptId, taskStartedAt, now().toISOString(), sanitizedAttempt);
-			tasks.push(result);
-			await options.artifactStore?.writeJson(`${runId}/${task.id}/result.json`, resultToJson(result));
+			const resultWithEvidence = await writeTaskEvidenceArtifacts(options.artifactStore, runId, suite.id, task, result);
+			tasks.push(resultWithEvidence);
+			await options.artifactStore?.writeJson(`${runId}/${task.id}/result.json`, jsonClone(resultWithEvidence));
 
-			if (options.failFast === true && result.status === "failed") {
+			if (options.failFast === true && resultWithEvidence.status === "failed") {
 				break;
 			}
 		} finally {
@@ -82,8 +104,9 @@ export async function runEvalSuite(
 	const costs = tasks.flatMap((task) => task.attempt.costs ?? []);
 	const costSummary = summarizeCostLedger(costs);
 	const result: EvalSuiteRunResult = {
-		adapterName: adapter.name,
+		adapterName,
 		completedAt,
+		...(suite.metadata === undefined ? {} : { metadata: suite.metadata }),
 		runId,
 		startedAt,
 		status: failed === 0 ? "passed" : "failed",
@@ -98,7 +121,18 @@ export async function runEvalSuite(
 		},
 	};
 
-	await options.artifactStore?.writeJson(`${runId}/summary.json`, resultToJson(result));
+	await appendEvidenceEvent(options.artifactStore, runId, {
+		type: "eval.run_completed",
+		at: completedAt,
+		data: {
+			adapterName,
+			failed,
+			status: result.status,
+			suiteId: suite.id,
+			tasks: tasks.length,
+		},
+	});
+	await options.artifactStore?.writeJson(`${runId}/summary.json`, jsonClone(result));
 	return result;
 }
 
@@ -116,11 +150,118 @@ function buildTaskResult(
 		attempt,
 		attemptId,
 		completedAt,
+		...(task.contract === undefined ? {} : { contract: task.contract }),
 		score,
 		startedAt,
 		status: score.passed ? "passed" : "failed",
 		taskId: task.id,
 	};
+}
+
+async function writeRunEvidenceStart(
+	artifactStore: EvalArtifactStore | undefined,
+	runId: string,
+	suite: EvalSuite,
+	adapterName: string,
+	startedAt: string,
+): Promise<void> {
+	if (artifactStore === undefined) {
+		return;
+	}
+
+	await artifactStore.writeJson(`${runId}/suite.json`, jsonClone(suite));
+	await artifactStore.writeText(`${runId}/cost-ledger.jsonl`, "", "application/jsonl");
+	await appendEvidenceEvent(artifactStore, runId, {
+		type: "eval.run_started",
+		at: startedAt,
+		data: {
+			adapterName,
+			suiteId: suite.id,
+		},
+	});
+}
+
+async function writeTaskEvidenceArtifacts(
+	artifactStore: EvalArtifactStore | undefined,
+	runId: string,
+	suiteId: string,
+	task: EvalTask,
+	result: EvalTaskRunResult,
+): Promise<EvalTaskRunResult> {
+	if (artifactStore === undefined) {
+		return result;
+	}
+
+	const basePath = `${runId}/${task.id}`;
+	const artifacts: EvalArtifact[] = [
+		await artifactStore.writeJson(`${basePath}/score.json`, jsonClone(result.score)),
+		await artifactStore.writeText(`${basePath}/stdout.log`, result.attempt.stdout),
+		await artifactStore.writeText(`${basePath}/stderr.log`, result.attempt.stderr),
+	];
+
+	for (const event of result.attempt.events ?? []) {
+		await appendEvidenceEvent(artifactStore, runId, {
+			...event,
+			data: {
+				...(event.data ?? {}),
+				...taskEvidenceData(suiteId, task, result.adapterName, result.attemptId),
+			},
+		});
+	}
+
+	for (const cost of result.attempt.costs ?? []) {
+		await artifactStore.appendJsonl(`${runId}/cost-ledger.jsonl`, jsonClone(cost));
+	}
+
+	await appendEvidenceEvent(artifactStore, runId, {
+		type: "eval.task_completed",
+		at: result.completedAt,
+		data: {
+			...taskEvidenceData(suiteId, task, result.adapterName, result.attemptId),
+			points: result.score.points,
+			scorePassed: result.score.passed,
+			status: result.status,
+		},
+	});
+
+	return {
+		...result,
+		attempt: {
+			...result.attempt,
+			artifacts: [...(result.attempt.artifacts ?? []), ...artifacts],
+		},
+	};
+}
+
+async function appendEvidenceEvent(
+	artifactStore: EvalArtifactStore | undefined,
+	runId: string,
+	event: EvalEvent,
+): Promise<void> {
+	if (artifactStore === undefined) {
+		return;
+	}
+
+	await artifactStore.appendJsonl(`${runId}/events.jsonl`, jsonClone(event));
+}
+
+function taskEvidenceData(
+	suiteId: string,
+	task: EvalTask,
+	adapterName: string,
+	attemptId: string,
+): JsonObject {
+	return {
+		adapterName,
+		attemptId,
+		...(task.contract === undefined ? {} : { contract: contractToJson(task.contract) }),
+		suiteId,
+		taskId: task.id,
+	};
+}
+
+function contractToJson(contract: EvalTaskContract): JsonObject {
+	return jsonClone(contract) as JsonObject;
 }
 
 function failedAttemptFromError(error: unknown, adapterName: string, durationMs: number, at: string): EvalAttemptResult {
@@ -212,6 +353,6 @@ function composeSignals(signal: AbortSignal | undefined, timeoutMs: number | und
 	};
 }
 
-function resultToJson(value: EvalSuiteRunResult | EvalTaskRunResult) {
-	return JSON.parse(JSON.stringify(value));
+function jsonClone(value: unknown): JsonValue {
+	return JSON.parse(JSON.stringify(value)) as JsonValue;
 }

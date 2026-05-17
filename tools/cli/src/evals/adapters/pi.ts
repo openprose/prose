@@ -12,7 +12,8 @@ import type {
 	JsonObject,
 	JsonValue,
 } from "../types.js";
-import { DEFAULT_EVAL_OUTPUT_CHAR_LIMIT, redactionValuesFromEnv, sanitizeJsonValue, sanitizeText } from "../safety.js";
+import { DEFAULT_EVAL_OUTPUT_CHAR_LIMIT, sanitizeJsonValue, sanitizeText } from "../safety.js";
+import { mergeEvalEnvWithProtectedIsolation, redactionValuesFromProcessEnv } from "./env.js";
 import { createProcessEvalAdapter } from "./process.js";
 
 export const DEFAULT_PI_PACKAGE_SPEC = "@earendil-works/pi-coding-agent@0.75.0";
@@ -77,11 +78,13 @@ export function createPiEvalAdapter(options: PiEvalAdapterOptions = {}): EvalAda
 		async runTask(task, context) {
 			const started = Date.now();
 			const command = buildPiCommand(task, { ...options, mode: "rpc" });
-			const env = { ...buildPiEnv(context), ...(options.env ?? {}), ...(context.env ?? {}) };
+			const buildEnv = buildPiEnv(context);
+			const env = mergeEvalEnvWithProtectedIsolation([buildEnv, options.env, context.env], buildEnv) ?? {};
 			const maxOutputChars = options.maxOutputChars ?? DEFAULT_EVAL_OUTPUT_CHAR_LIMIT;
-			const redactionValues = redactionValuesFromEnv(env);
+			const redactionValues = redactionValuesFromProcessEnv(env);
+			const cwd = task.cwd ?? context.adapterRunDirectory;
 			const result = await rpcRunner(command.command, command.args, {
-				...(task.cwd === undefined ? {} : { cwd: task.cwd }),
+				...(cwd === undefined ? {} : { cwd }),
 				env,
 				maxOutputChars,
 				...(context.signal === undefined ? {} : { signal: context.signal }),

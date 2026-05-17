@@ -41,10 +41,20 @@ export interface EvalExpectedOutcome {
 	requiresCost?: boolean;
 }
 
+export interface EvalTaskContractSource {
+	path: string;
+	sha256?: string;
+}
+
+export interface EvalTaskContract {
+	source: EvalTaskContractSource;
+}
+
 export interface EvalTask {
 	kind: typeof EVAL_TASK_KIND;
 	id: string;
 	title: string;
+	contract?: EvalTaskContract;
 	prompt: string;
 	expected: EvalExpectedOutcome;
 	cwd?: string;
@@ -154,6 +164,7 @@ export interface EvalTaskRunResult {
 	attempt: EvalAttemptResult;
 	attemptId: string;
 	completedAt: string;
+	contract?: EvalTaskContract;
 	score: EvalScore;
 	startedAt: string;
 	status: "passed" | "failed";
@@ -163,6 +174,7 @@ export interface EvalTaskRunResult {
 export interface EvalSuiteRunResult {
 	adapterName: string;
 	completedAt: string;
+	metadata?: JsonObject;
 	runId: string;
 	startedAt: string;
 	status: "passed" | "failed";

@@ -1,4 +1,5 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -16,6 +17,7 @@ import {
 	createNamedEvalAdapter,
 	createPiEvalAdapter,
 	createProcessEvalAdapter,
+	formatEvalSuiteSummary,
 	loadEvalSuiteByNameOrPath,
 	loadEvalSuite,
 	openRouterGenerationToCostRecord,
@@ -31,6 +33,12 @@ const baseTask: EvalTask = {
 	kind: EVAL_TASK_KIND,
 	id: "quiet-drift-tiny",
 	title: "Quiet drift tiny slice",
+	contract: {
+		source: {
+			path: "tests/evals/fixtures/quiet-drift-canary.prose.md",
+			sha256: "939de0bacfc591264a67abf985f13ffa08d822ed96c3e47d0f279766553c7fe8",
+		},
+	},
 	prompt: "Inspect the receipt and report whether the webhook drifted.",
 	expected: {
 		exitCode: 0,
@@ -53,6 +61,18 @@ describe("eval schema", () => {
 	test("accepts a valid suite", () => {
 		expect(validateEvalSuite(baseSuite)).toBe(baseSuite);
 		expect(validateEvalSuite(reactorNativeTinySuite)).toBe(reactorNativeTinySuite);
+	});
+
+	test("keeps Reactor-native canaries tied to public Markdown contracts", () => {
+		for (const task of reactorNativeTinySuite.tasks) {
+			const source = task.contract?.source;
+			if (source === undefined) {
+				throw new Error(`missing source contract for ${task.id}`);
+			}
+			expect(source.path.endsWith(".prose.md")).toBe(true);
+			expect(readWorkspaceFile(source.path)).toContain("Markdown responsibility");
+			expect(sha256Hex(readWorkspaceFile(source.path))).toBe(source.sha256);
+		}
 	});
 
 	test("rejects duplicate task ids and invalid surprise labels", () => {
@@ -92,6 +112,49 @@ describe("eval schema", () => {
 				tasks: [{ ...baseTask, expected: {} }],
 			}),
 		).toThrow("suite.tasks[0].expected must define at least one assertion");
+	});
+
+	test("rejects unsafe source contract provenance", () => {
+		expect(() =>
+			validateEvalSuite({
+				...baseSuite,
+				tasks: [
+					{
+						...baseTask,
+						contract: { source: { path: "../outside.prose.md" } },
+					},
+				],
+			}),
+		).toThrow("suite.tasks[0].contract.source.path contains unsafe segment");
+
+		expect(() =>
+			validateEvalSuite({
+				...baseSuite,
+				tasks: [
+					{
+						...baseTask,
+						contract: { source: { path: "tests/evals/fixtures/not-markdown.md" } },
+					},
+				],
+			}),
+		).toThrow("suite.tasks[0].contract.source.path must point to a *.prose.md Markdown source");
+
+		expect(() =>
+			validateEvalSuite({
+				...baseSuite,
+				tasks: [
+					{
+						...baseTask,
+						contract: {
+							source: {
+								path: "tests/evals/fixtures/quiet-drift-canary.prose.md",
+								sha256: "not-a-sha",
+							},
+						},
+					},
+				],
+			}),
+		).toThrow("suite.tasks[0].contract.source.sha256 must be a 64-character hex sha256");
 	});
 
 	test("loads suite JSON from disk", async () => {
@@ -202,6 +265,47 @@ describe("eval runner", () => {
 
 			expect(summary).toEqual(expect.objectContaining({ runId: "run-1", status: "passed" }));
 			expect(taskResult).toEqual(expect.objectContaining({ taskId: "quiet-drift-tiny", status: "passed" }));
+			expect(taskResult).toEqual(
+				expect.objectContaining({
+					contract: expect.objectContaining({
+						source: expect.objectContaining({ path: "tests/evals/fixtures/quiet-drift-canary.prose.md" }),
+					}),
+				}),
+			);
+
+			const suiteSnapshot = JSON.parse(readFileSync(join(root, "run-1", "suite.json"), "utf8")) as EvalSuite;
+			expect(suiteSnapshot.tasks[0]?.contract?.source.path).toBe("tests/evals/fixtures/quiet-drift-canary.prose.md");
+			expect(JSON.parse(readFileSync(join(root, "run-1", "quiet-drift-tiny", "score.json"), "utf8"))).toEqual(
+				expect.objectContaining({ passed: true }),
+			);
+			expect(readFileSync(join(root, "run-1", "quiet-drift-tiny", "stdout.log"), "utf8")).toBe("drift detected\n");
+			expect(readFileSync(join(root, "run-1", "quiet-drift-tiny", "stderr.log"), "utf8")).toBe("");
+
+			const events = parseJsonl(readFileSync(join(root, "run-1", "events.jsonl"), "utf8"));
+			expect(events.map((event) => event.type)).toEqual(
+				expect.arrayContaining(["eval.run_started", "eval.task_started", "model.call", "eval.task_completed", "eval.run_completed"]),
+			);
+			expect(events).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						type: "model.call",
+						data: expect.objectContaining({
+							taskId: "quiet-drift-tiny",
+							contract: expect.objectContaining({
+								source: expect.objectContaining({ path: "tests/evals/fixtures/quiet-drift-canary.prose.md" }),
+							}),
+						}),
+					}),
+				]),
+			);
+
+			const costLedger = parseJsonl(readFileSync(join(root, "run-1", "cost-ledger.jsonl"), "utf8"));
+			expect(costLedger).toEqual([
+				expect.objectContaining({
+					id: "cost-1",
+					totalCostUsd: 0.01,
+				}),
+			]);
 		} finally {
 			rmSync(root, { recursive: true, force: true });
 		}
@@ -246,6 +350,135 @@ describe("eval runner", () => {
 				expect.objectContaining({ name: "unknownCostRecords", passed: false, actual: 1 }),
 			]),
 		);
+	});
+
+	test("does not let synthetic unknown costs satisfy requiresCost by default", async () => {
+		const requiresCostSuite: EvalSuite = {
+			...baseSuite,
+			tasks: [
+				{
+					...baseTask,
+					id: "requires-cost",
+					expected: {
+						exitCode: 0,
+						requiresCost: true,
+					},
+				},
+			],
+		};
+
+		const result = await runEvalSuite(requiresCostSuite, createMockEvalAdapter(), {
+			runId: "requires-cost-run",
+			now: () => new Date("2026-05-17T12:00:00.000Z"),
+		});
+
+		expect(result.status).toBe("failed");
+		expect(result.tasks[0]?.attempt.costs?.[0]).toEqual(
+			expect.objectContaining({
+				confidence: "unknown",
+				id: "unknown:requires-cost-run:requires-cost:1",
+			}),
+		);
+		expect(result.tasks[0]?.score.checks).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ name: "unknownCostRecords", passed: false, actual: 1 }),
+			]),
+		);
+	});
+
+	test("allows unknown requiresCost only when explicitly requested", async () => {
+		const requiresUnknownCostSuite: EvalSuite = {
+			...baseSuite,
+			tasks: [
+				{
+					...baseTask,
+					id: "requires-unknown-cost",
+					expected: {
+						allowUnknownCost: true,
+						exitCode: 0,
+						requiresCost: true,
+					},
+				},
+			],
+		};
+
+		const result = await runEvalSuite(requiresUnknownCostSuite, createMockEvalAdapter(), {
+			runId: "requires-unknown-cost-run",
+			now: () => new Date("2026-05-17T12:00:00.000Z"),
+		});
+
+		expect(result.status).toBe("passed");
+		expect(result.totals.unknownCostRecords).toBe(1);
+		expect(result.tasks[0]?.score.checks).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ name: "unknownCostRecords", passed: true, actual: 1, expected: "allowed" }),
+			]),
+		);
+	});
+
+	test("accepts token-only known usage for requiresCost", async () => {
+		const requiresCostSuite: EvalSuite = {
+			...baseSuite,
+			tasks: [
+				{
+					...baseTask,
+					id: "requires-token-cost",
+					expected: {
+						exitCode: 0,
+						requiresCost: true,
+					},
+				},
+			],
+		};
+
+		const result = await runEvalSuite(
+			requiresCostSuite,
+			createMockEvalAdapter({
+				costs: [
+					{
+						id: "usage-1",
+						runId: "token-cost-run",
+						taskId: "requires-token-cost",
+						attemptId: "token-cost-run:requires-token-cost:1",
+						adapterName: "mock",
+						confidence: "response-usage",
+						occurredAt: "2026-05-17T12:00:00.000Z",
+						promptTokens: 11,
+						completionTokens: 3,
+						totalTokens: 14,
+					},
+				],
+			}),
+			{
+				runId: "token-cost-run",
+				now: () => new Date("2026-05-17T12:00:00.000Z"),
+			},
+		);
+
+		expect(result.status).toBe("passed");
+		expect(result.tasks[0]?.score.checks).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ name: "costEvidencePresent", passed: true }),
+				expect.objectContaining({ name: "unknownCostRecords", passed: true, actual: 0 }),
+			]),
+		);
+	});
+
+	test("marks mock attempts as debug-only and surfaces that in summaries", async () => {
+		const result = await runEvalSuite(baseSuite, createMockEvalAdapter({ stdout: "drift detected\n" }), {
+			runId: "debug-run",
+			now: () => new Date("2026-05-17T12:00:00.000Z"),
+		});
+
+		expect(result.tasks[0]?.attempt.metadata).toEqual(
+			expect.objectContaining({
+				adapterKind: "mock",
+				debugOnly: true,
+				reportUse: "debug-only",
+			}),
+		);
+		expect(formatEvalSuiteSummary(result)).toContain("report_use: debug-only");
+		expect(formatEvalSuiteSummary(result)).toContain("debug_only_attempts: 1");
 	});
 
 	test("records adapter exceptions as failed task artifacts instead of aborting the suite", async () => {
@@ -342,6 +575,27 @@ describe("eval runner", () => {
 		expect(result.stdout).not.toContain(secret);
 	});
 });
+
+function readWorkspaceFile(relativePath: string): string {
+	for (const candidate of [join(process.cwd(), relativePath), join(process.cwd(), "tools/cli", relativePath)]) {
+		if (existsSync(candidate)) {
+			return readFileSync(candidate, "utf8");
+		}
+	}
+
+	throw new Error(`could not find workspace file: ${relativePath}`);
+}
+
+function sha256Hex(value: string): string {
+	return createHash("sha256").update(value, "utf8").digest("hex");
+}
+
+function parseJsonl(value: string): Array<Record<string, unknown>> {
+	return value
+		.split("\n")
+		.filter((line) => line.trim() !== "")
+		.map((line) => JSON.parse(line) as Record<string, unknown>);
+}
 
 describe("eval suite and CLI registry", () => {
 	test("loads a built-in suite by name", async () => {

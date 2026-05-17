@@ -1,3 +1,5 @@
+import { isAbsolute, win32 } from "node:path";
+
 import { EVAL_SUITE_KIND, EVAL_TASK_KIND, SURPRISE_LABELS, type EvalSuite, type SurpriseLabel } from "./types.js";
 import { assertSafePathSegment } from "./safety.js";
 
@@ -37,6 +39,10 @@ export function validateEvalSuite(value: unknown): EvalSuite {
 		requireNonEmptyString(task.title, `suite.tasks[${index}].title`);
 		requireNonEmptyString(task.prompt, `suite.tasks[${index}].prompt`);
 		requireExpectedOutcome(task.expected, `suite.tasks[${index}].expected`);
+
+		if (task.contract !== undefined) {
+			requireTaskContract(task.contract, `suite.tasks[${index}].contract`);
+		}
 
 		if (task.cwd !== undefined) {
 			const cwd = requireNonEmptyString(task.cwd, `suite.tasks[${index}].cwd`);
@@ -135,6 +141,57 @@ function requireExpectedOutcome(value: unknown, path: string): void {
 	requireStringArray(expected.stderrExcludes, `${path}.stderrExcludes`);
 	requireStringArray(expected.stdoutContains, `${path}.stdoutContains`);
 	requireStringArray(expected.stdoutExcludes, `${path}.stdoutExcludes`);
+}
+
+function requireTaskContract(value: unknown, path: string): void {
+	const contract = objectAt(value, path);
+	const allowed = new Set(["source"]);
+	for (const key of Object.keys(contract)) {
+		if (!allowed.has(key)) {
+			throw new EvalSchemaError(`${path}.${key} is not supported`);
+		}
+	}
+
+	const source = objectAt(contract.source, `${path}.source`);
+	const sourceAllowed = new Set(["path", "sha256"]);
+	for (const key of Object.keys(source)) {
+		if (!sourceAllowed.has(key)) {
+			throw new EvalSchemaError(`${path}.source.${key} is not supported`);
+		}
+	}
+
+	requireSafeMarkdownSourcePath(source.path, `${path}.source.path`);
+	if (source.sha256 !== undefined) {
+		const sha256 = requireNonEmptyString(source.sha256, `${path}.source.sha256`);
+		if (!/^[a-f0-9]{64}$/i.test(sha256)) {
+			throw new EvalSchemaError(`${path}.source.sha256 must be a 64-character hex sha256`);
+		}
+	}
+}
+
+function requireSafeMarkdownSourcePath(value: unknown, path: string): void {
+	const sourcePath = requireNonEmptyString(value, path);
+	if (sourcePath.includes("\0")) {
+		throw new EvalSchemaError(`${path} must not contain NUL`);
+	}
+	if (sourcePath.includes("\\") || isAbsolute(sourcePath) || win32.isAbsolute(sourcePath)) {
+		throw new EvalSchemaError(`${path} must be a relative POSIX path`);
+	}
+	if (sourcePath.includes("://") || sourcePath.startsWith("file:")) {
+		throw new EvalSchemaError(`${path} must not be a URL`);
+	}
+	if (!sourcePath.endsWith(".prose.md")) {
+		throw new EvalSchemaError(`${path} must point to a *.prose.md Markdown source`);
+	}
+
+	for (const [index, segment] of sourcePath.split("/").entries()) {
+		if (segment === "" || segment === "." || segment === "..") {
+			throw new EvalSchemaError(`${path} contains unsafe segment at index ${index}`);
+		}
+		if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(segment)) {
+			throw new EvalSchemaError(`${path} contains unsafe segment: ${segment}`);
+		}
+	}
 }
 
 function requireStringArray(value: unknown, path: string): void {

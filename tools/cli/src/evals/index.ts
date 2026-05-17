@@ -64,6 +64,8 @@ export {
 	type EvalSuite,
 	type EvalSuiteRunResult,
 	type EvalTask,
+	type EvalTaskContract,
+	type EvalTaskContractSource,
 	type EvalTaskRunResult,
 	type JsonObject,
 	type JsonPrimitive,

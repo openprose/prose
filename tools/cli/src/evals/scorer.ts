@@ -1,5 +1,5 @@
 import { summarizeCostLedger } from "./cost-ledger.js";
-import type { EvalAttemptResult, EvalExpectedOutcome, EvalScore, EvalScoreCheck } from "./types.js";
+import type { EvalAttemptResult, EvalCostRecord, EvalExpectedOutcome, EvalScore, EvalScoreCheck } from "./types.js";
 
 export function scoreAttempt(attempt: EvalAttemptResult, expected: EvalExpectedOutcome): EvalScore {
 	const checks: EvalScoreCheck[] = [];
@@ -54,11 +54,29 @@ export function scoreAttempt(attempt: EvalAttemptResult, expected: EvalExpectedO
 		});
 	} else if (expected.requiresCost === true) {
 		const costs = attempt.costs ?? [];
+		const missingCostEvidence = costs.filter((cost) => !hasCostEvidence(cost)).length;
+		const hasRequiredCostEvidence = costs.some(hasCostEvidence) || (expected.allowUnknownCost === true && costs.length > 0);
 		checks.push({
 			name: "costRecordsPresent",
 			passed: costs.length > 0,
 			actual: costs.length,
 			expected: "at least one cost record",
+		});
+		checks.push({
+			name: "costEvidencePresent",
+			passed: hasRequiredCostEvidence,
+			actual: costs.map((cost) => cost.confidence),
+			expected:
+				expected.allowUnknownCost === true
+					? "at least one known cost/token record or explicitly allowed unknown record"
+					: "at least one non-unknown cost or token record",
+		});
+		checks.push({
+			name: "unknownCostRecords",
+			passed: expected.allowUnknownCost === true || missingCostEvidence === 0,
+			actual: missingCostEvidence,
+			expected: expected.allowUnknownCost === true ? "allowed" : 0,
+			message: "requiresCost needs known cost or token evidence unless allowUnknownCost is true.",
 		});
 	}
 
@@ -71,6 +89,21 @@ export function scoreAttempt(attempt: EvalAttemptResult, expected: EvalExpectedO
 		passed: checks.every((check) => check.passed),
 		points,
 	};
+}
+
+function hasCostEvidence(cost: EvalCostRecord): boolean {
+	if (cost.confidence === "unknown") {
+		return false;
+	}
+
+	return [
+		cost.cacheReadTokens,
+		cost.cacheWriteTokens,
+		cost.completionTokens,
+		cost.promptTokens,
+		cost.totalCostUsd,
+		cost.totalTokens,
+	].some((value) => typeof value === "number" && Number.isFinite(value));
 }
 
 function pushContainsChecks(
