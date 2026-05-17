@@ -15,6 +15,11 @@ export function formatEvalSuiteSummary(result: EvalSuiteRunResult): string {
 	if (reportUse !== undefined) {
 		lines.push(`report_use: ${reportUse}`);
 	}
+	lines.push(`claim_eligible: ${result.claimEligibility.reportEligible ? "true" : "false"}`);
+	const reasonCodes = result.claimEligibility.reasons.map((reason) => reason.code);
+	if (reasonCodes.length > 0) {
+		lines.push(`claim_reason_codes: ${formatReasonCodes(reasonCodes)}`);
+	}
 	const debugOnlyAttempts = result.tasks.filter((task) => isDebugOnlyMetadata(task.attempt.metadata)).length;
 	if (debugOnlyAttempts > 0) {
 		lines.push(`debug_attempts: ${debugOnlyAttempts}`);
@@ -22,6 +27,12 @@ export function formatEvalSuiteSummary(result: EvalSuiteRunResult): string {
 	}
 
 	return lines.join("\n");
+}
+
+function formatReasonCodes(reasonCodes: readonly string[]): string {
+	const leading = reasonCodes.slice(0, 5).join(", ");
+	const remaining = reasonCodes.length - 5;
+	return remaining > 0 ? `${leading}, ... (+${remaining} more)` : leading;
 }
 
 function inferReportUse(result: EvalSuiteRunResult): string | undefined {

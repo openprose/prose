@@ -9,6 +9,10 @@ import {
 	EVAL_SUITE_KIND,
 	EVAL_TASK_KIND,
 	EvalSchemaError,
+	REACTOR_PROOF_KIND,
+	REACTOR_PROOF_MEDIA_TYPE,
+	REACTOR_TIMELINE_CASE_KIND,
+	REACTOR_TIMELINE_CASE_MEDIA_TYPE,
 	buildDspyRlmCommand,
 	buildHermesCommand,
 	buildPiCommand,
@@ -374,14 +378,190 @@ describe("eval runner", () => {
 				expect.arrayContaining([
 					"debug_report_use",
 					"mock_adapter",
-					"missing_normalized_trace",
-					"missing_receipts",
-					"missing_replay",
+					"missing_reactor_timeline_case",
+					"missing_reactor_proof",
 				]),
 			);
 		} finally {
 			rmSync(root, { recursive: true, force: true });
 		}
+	});
+
+	test("keeps failed report-eligible-looking tasks ineligible", async () => {
+		const reportEligibleTask: EvalTask = {
+			...baseTask,
+			expected: { exitCode: 0 },
+			metadata: { reportUse: "report-eligible" },
+		};
+		const result = await runEvalSuite(
+			{
+				...baseSuite,
+				metadata: { reportUse: "report-eligible" },
+				tasks: [reportEligibleTask],
+			},
+			{
+				name: "pi",
+				runTask: async () => ({
+					adapterName: "pi",
+					artifacts: [
+						{
+							bytes: 2,
+							mediaType: "application/json",
+							path: "/tmp/report-eligible-looking-replay.json",
+						},
+					],
+					durationMs: 1,
+					events: [{ type: "replay.available", at: "2026-05-17T12:00:00.000Z" }],
+					exitCode: 1,
+					metadata: {
+						hasNormalizedTrace: true,
+						normalizedTracePath: "normalized-trace.json",
+						receiptPath: "receipts.json",
+						replayPath: "replay.json",
+						reportUse: "report-eligible",
+					},
+					stderr: "",
+					stdout: "drift detected\n",
+				}),
+			},
+			{
+				runId: "failed-report-eligible-run",
+				now: () => new Date("2026-05-17T12:00:00.000Z"),
+			},
+		);
+
+		expect(result.status).toBe("failed");
+		expect(result.claimEligibility.reportEligible).toBe(false);
+		expect(result.claimEligibility.reasons.map((reason) => reason.code)).toEqual(
+			expect.arrayContaining(["task_failed", "missing_reactor_timeline_case", "missing_reactor_proof"]),
+		);
+	});
+
+	test("keeps passing tasks without source contracts ineligible", async () => {
+		const result = await runEvalSuite(
+			{
+				...baseSuite,
+				metadata: { reportUse: "report-eligible" },
+				tasks: [
+					{
+						...withoutContract(baseTask),
+						expected: { exitCode: 0, stdoutContains: ["drift detected"] },
+						metadata: { reportUse: "report-eligible" },
+					},
+				],
+			},
+			{
+				name: "pi",
+				runTask: async () => ({
+					adapterName: "pi",
+					durationMs: 1,
+					exitCode: 0,
+					stderr: "",
+					stdout: "drift detected\n",
+				}),
+			},
+			{
+				runId: "missing-contract-run",
+				now: () => new Date("2026-05-17T12:00:00.000Z"),
+			},
+		);
+
+		expect(result.status).toBe("passed");
+		expect(result.claimEligibility.reportEligible).toBe(false);
+		expect(result.claimEligibility.reasons.map((reason) => reason.code)).toEqual(
+			expect.arrayContaining(["missing_source_contract_path", "missing_source_contract_sha"]),
+		);
+	});
+
+	test("allows verified native Reactor artifacts to satisfy claim eligibility", async () => {
+		const root = mkdtempSync(join(tmpdir(), "prose-native-reactor-"));
+		try {
+			const result = await runEvalSuite(
+				{
+					...baseSuite,
+					metadata: { reportUse: "report-eligible" },
+					tasks: [
+						{
+							...baseTask,
+							expected: { exitCode: 0, stdoutContains: ["drift detected"] },
+							metadata: { reportUse: "report-eligible" },
+						},
+					],
+				},
+				{
+					name: "native-reactor",
+					runTask: async (task, context) => {
+						if (context.artifactStore === undefined || context.attemptArtifactDirectory === undefined) {
+							throw new Error("missing artifact store");
+						}
+
+						const timeline = await context.artifactStore.writeText(
+							`${context.attemptArtifactDirectory}/timeline-case.json`,
+							`${JSON.stringify({ kind: REACTOR_TIMELINE_CASE_KIND, taskId: task.id })}\n`,
+							REACTOR_TIMELINE_CASE_MEDIA_TYPE,
+						);
+						const proof = await context.artifactStore.writeText(
+							`${context.attemptArtifactDirectory}/proof.json`,
+							`${JSON.stringify({
+								kind: REACTOR_PROOF_KIND,
+								oracle: { frozen: true, sha256: "a".repeat(64) },
+								taskId: task.id,
+							})}\n`,
+							REACTOR_PROOF_MEDIA_TYPE,
+						);
+
+						return {
+							adapterName: "native-reactor",
+							artifacts: [timeline, proof],
+							durationMs: 1,
+							exitCode: 0,
+							stderr: "",
+							stdout: "drift detected\n",
+						};
+					},
+				},
+				{
+					artifactStore: createFilesystemArtifactStore({ root }),
+					runId: "native-reactor-run",
+					now: () => new Date("2026-05-17T12:00:00.000Z"),
+				},
+			);
+
+			expect(result.status).toBe("passed");
+			expect(result.claimEligibility.reportEligible).toBe(true);
+			expect(result.claimEligibility.reasons).toEqual([]);
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	});
+
+	test("marks fail-fast skipped tasks ineligible", async () => {
+		const result = await runEvalSuite(
+			{
+				...baseSuite,
+				metadata: { reportUse: "report-eligible" },
+				tasks: [
+					{ ...baseTask, id: "first-task", expected: { exitCode: 0 }, metadata: { reportUse: "report-eligible" } },
+					{ ...baseTask, id: "second-task", expected: { exitCode: 0 }, metadata: { reportUse: "report-eligible" } },
+				],
+			},
+			{
+				name: "pi",
+				runTask: async () => ({
+					adapterName: "pi",
+					durationMs: 1,
+					exitCode: 1,
+					stderr: "",
+					stdout: "",
+				}),
+			},
+			{ failFast: true, runId: "fail-fast-run" },
+		);
+
+		expect(result.tasks).toHaveLength(1);
+		expect(result.claimEligibility.reasons).toEqual(
+			expect.arrayContaining([expect.objectContaining({ code: "task_missing", taskId: "second-task" })]),
+		);
 	});
 
 	test("fails cost-limited tasks when no trustworthy cost record is present", async () => {
@@ -679,6 +859,8 @@ describe("eval runner", () => {
 			}),
 		);
 		expect(formatEvalSuiteSummary(result)).toContain("report_use: debug");
+		expect(formatEvalSuiteSummary(result)).toContain("claim_eligible: false");
+		expect(formatEvalSuiteSummary(result)).toContain("claim_reason_codes: debug_report_use");
 		expect(formatEvalSuiteSummary(result)).toContain("debug_attempts: 1");
 		expect(formatEvalSuiteSummary(result)).toContain("debug_only_attempts: 1");
 	});
@@ -853,6 +1035,12 @@ function parseJsonl(value: string): Array<Record<string, unknown>> {
 		.map((line) => JSON.parse(line) as Record<string, unknown>);
 }
 
+function withoutContract(task: EvalTask): EvalTask {
+	const copy = { ...task };
+	delete copy.contract;
+	return copy;
+}
+
 describe("eval suite and CLI registry", () => {
 	test("loads a built-in suite by name", async () => {
 		await expect(loadEvalSuiteByNameOrPath("reactor-native-tiny")).resolves.toBe(reactorNativeTinySuite);
@@ -876,6 +1064,8 @@ describe("eval suite and CLI registry", () => {
 			expect(stderr).toBe("");
 			expect(stdout).toContain("status: passed");
 			expect(stdout).toContain("tasks: 2/2 passed");
+			expect(stdout).toContain("claim_eligible: false");
+			expect(stdout).toContain("claim_reason_codes:");
 			expect(readFileSync(join(root, "cli-run-1", "summary.json"), "utf8")).toContain("reactor-native-tiny");
 		} finally {
 			rmSync(root, { recursive: true, force: true });
@@ -1046,5 +1236,45 @@ describe("public harness adapter command builders", () => {
 				totalTokens: 120,
 			}),
 		);
+	});
+
+	test("writes Pi RPC transcripts into attempt-scoped artifacts", async () => {
+		const root = mkdtempSync(join(tmpdir(), "prose-pi-transcript-"));
+		try {
+			const result = await runEvalSuite(
+				{
+					...baseSuite,
+					tasks: [{ ...baseTask, expected: { exitCode: 0, stdoutContains: ["drift detected"] } }],
+				},
+				createPiEvalAdapter({
+					rpcRunner: async () => ({
+						exitCode: 0,
+						lastAssistantText: "drift detected",
+						records: [{ type: "agent_end" }],
+						stderr: "",
+						stdout: "",
+					}),
+				}),
+				{
+					artifactStore: createFilesystemArtifactStore({ root }),
+					runId: "pi-transcript-run",
+				},
+			);
+
+			const transcriptPath = join(
+				root,
+				"pi-transcript-run",
+				"attempts",
+				"quiet-drift-tiny",
+				"pi",
+				"attempt-1",
+				"rpc-transcript.json",
+			);
+			expect(result.tasks[0]?.attempt.artifacts?.map((artifact) => artifact.path)).toContain(transcriptPath);
+			expect(existsSync(transcriptPath)).toBe(true);
+			expect(existsSync(join(root, "pi-transcript-run", "quiet-drift-tiny", "pi", "rpc-transcript.json"))).toBe(false);
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
 	});
 });

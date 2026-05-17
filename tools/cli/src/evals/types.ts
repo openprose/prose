@@ -1,6 +1,10 @@
 export const EVAL_SUITE_KIND = "prose.eval.suite.v1";
 export const EVAL_TASK_KIND = "prose.eval.task.v1";
 export const EVAL_CLAIM_ELIGIBILITY_KIND = "prose.eval.claim-eligibility.v1";
+export const REACTOR_TIMELINE_CASE_KIND = "prose.reactor.timeline-case.v1";
+export const REACTOR_PROOF_KIND = "prose.reactor.proof.v1";
+export const REACTOR_TIMELINE_CASE_MEDIA_TYPE = "application/vnd.prose.reactor.timeline-case+json";
+export const REACTOR_PROOF_MEDIA_TYPE = "application/vnd.prose.reactor.proof+json";
 
 export type JsonPrimitive = string | number | boolean | null;
 export type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
@@ -144,6 +148,7 @@ export interface EvalAttemptResult {
 
 export interface EvalAdapterContext {
 	adapterRunDirectory?: string;
+	attemptArtifactDirectory?: string;
 	artifactStore?: EvalArtifactStore;
 	attemptId: string;
 	env?: Record<string, string | undefined>;
@@ -175,10 +180,16 @@ export interface EvalScore {
 export type EvalClaimEligibilityReasonCode =
 	| "adapter_canary_report_use"
 	| "debug_report_use"
+	| "missing_reactor_proof"
+	| "missing_reactor_timeline_case"
 	| "missing_normalized_trace"
 	| "missing_receipts"
 	| "missing_replay"
 	| "missing_report_use"
+	| "missing_source_contract_path"
+	| "missing_source_contract_sha"
+	| "task_failed"
+	| "task_missing"
 	| "mock_adapter";
 
 export interface EvalClaimEligibilityReason {

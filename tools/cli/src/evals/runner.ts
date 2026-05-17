@@ -1,12 +1,19 @@
 import { randomUUID } from "node:crypto";
-import { mkdir } from "node:fs/promises";
-import { join } from "node:path";
+import { mkdir, readFile } from "node:fs/promises";
+import { isAbsolute, join, relative, resolve } from "node:path";
 
 import { summarizeCostLedger } from "./cost-ledger.js";
 import { assertSafePathSegment, redactionValuesFromEnv, sanitizeAttemptResult } from "./safety.js";
 import { scoreAttempt } from "./scorer.js";
 import { validateEvalSuite } from "./schema.js";
-import { EVAL_CLAIM_ELIGIBILITY_KIND, normalizeReportUse } from "./types.js";
+import {
+	EVAL_CLAIM_ELIGIBILITY_KIND,
+	REACTOR_PROOF_KIND,
+	REACTOR_PROOF_MEDIA_TYPE,
+	REACTOR_TIMELINE_CASE_KIND,
+	REACTOR_TIMELINE_CASE_MEDIA_TYPE,
+	normalizeReportUse,
+} from "./types.js";
 import type {
 	EvalAdapter,
 	EvalArtifact,
@@ -56,11 +63,12 @@ export async function runEvalSuite(
 		const taskStartedAt = now().toISOString();
 		const attemptIndex = 1;
 		const attemptId = `${runId}:${task.id}:${attemptIndex}`;
+		const attemptArtifactDirectory = attemptEvidenceRelativePath(runId, task.id, adapterName, attemptIndex);
 		const startedMs = Date.now();
 		const adapterRunDirectory =
 			options.artifactStore === undefined
 				? undefined
-				: join(options.artifactStore.root, attemptEvidenceRelativePath(runId, task.id, adapterName, attemptIndex));
+				: join(options.artifactStore.root, attemptArtifactDirectory);
 
 		if (adapterRunDirectory !== undefined) {
 			await mkdir(adapterRunDirectory, { recursive: true });
@@ -78,6 +86,7 @@ export async function runEvalSuite(
 			try {
 				attempt = await adapter.runTask(task, {
 					...(adapterRunDirectory === undefined ? {} : { adapterRunDirectory }),
+					attemptArtifactDirectory,
 					...(options.artifactStore === undefined ? {} : { artifactStore: options.artifactStore }),
 					...(options.env === undefined ? {} : { env: options.env }),
 					attemptId,
@@ -131,7 +140,14 @@ export async function runEvalSuite(
 	const failed = tasks.filter((task) => task.status === "failed").length;
 	const costs = tasks.flatMap((task) => task.attempt.costs ?? []);
 	const costSummary = summarizeCostLedger(costs);
-	const claimEligibility = buildClaimEligibilityReport(suite, adapterName, runId, completedAt, tasks);
+	const claimEligibility = await buildClaimEligibilityReport(
+		suite,
+		adapterName,
+		runId,
+		completedAt,
+		tasks,
+		options.artifactStore,
+	);
 	const result: EvalSuiteRunResult = {
 		adapterName,
 		claimEligibility,
@@ -396,13 +412,14 @@ function jsonScalar(value: unknown): JsonValue {
 	return String(value);
 }
 
-function buildClaimEligibilityReport(
+async function buildClaimEligibilityReport(
 	suite: EvalSuite,
 	adapterName: string,
 	runId: string,
 	generatedAt: string,
 	tasks: readonly EvalTaskRunResult[],
-): EvalClaimEligibilityReport {
+	artifactStore: EvalArtifactStore | undefined,
+): Promise<EvalClaimEligibilityReport> {
 	const gates: EvalClaimEligibilityGate[] = [];
 	const reasons: EvalClaimEligibilityReason[] = [];
 	const reportUses = collectReportUses(suite, tasks);
@@ -457,10 +474,31 @@ function buildClaimEligibilityReport(
 		});
 	}
 
-	for (const task of tasks) {
-		pushTaskEvidenceGate(gates, reasons, task, "normalizedTrace", "missing_normalized_trace", "normalized trace");
-		pushTaskEvidenceGate(gates, reasons, task, "receipts", "missing_receipts", "receipts");
-		pushTaskEvidenceGate(gates, reasons, task, "replay", "missing_replay", "replay");
+	const tasksById = new Map(tasks.map((task) => [task.taskId, task]));
+	for (const suiteTask of suite.tasks) {
+		const task = tasksById.get(suiteTask.id);
+		if (task === undefined) {
+			pushMissingTaskGate(gates, reasons, suiteTask);
+			continue;
+		}
+
+		pushTaskStatusGate(gates, reasons, task);
+		pushTaskSourceContractGates(gates, reasons, task);
+		await pushNativeReactorArtifactGate(gates, reasons, task, artifactStore, runId, {
+			code: "missing_reactor_timeline_case",
+			expectedKind: REACTOR_TIMELINE_CASE_KIND,
+			label: "timeline case",
+			mediaType: REACTOR_TIMELINE_CASE_MEDIA_TYPE,
+			name: "reactorTimelineCase",
+		});
+		await pushNativeReactorArtifactGate(gates, reasons, task, artifactStore, runId, {
+			code: "missing_reactor_proof",
+			expectedKind: REACTOR_PROOF_KIND,
+			label: "proof",
+			mediaType: REACTOR_PROOF_MEDIA_TYPE,
+			name: "reactorProof",
+			requiresFrozenOracle: true,
+		});
 	}
 
 	return {
@@ -474,6 +512,237 @@ function buildClaimEligibilityReport(
 		suiteId: suite.id,
 		version: 1,
 	};
+}
+
+function pushMissingTaskGate(
+	gates: EvalClaimEligibilityGate[],
+	reasons: EvalClaimEligibilityReason[],
+	task: EvalTask,
+): void {
+	gates.push({
+		name: "task.present",
+		passed: false,
+		actual: false,
+		expected: true,
+		taskId: task.id,
+	});
+	reasons.push({
+		code: "task_missing",
+		message: "Task did not produce an eval result for claim reporting.",
+		actual: false,
+		expected: true,
+		scope: "task",
+		taskId: task.id,
+	});
+}
+
+function pushTaskStatusGate(
+	gates: EvalClaimEligibilityGate[],
+	reasons: EvalClaimEligibilityReason[],
+	task: EvalTaskRunResult,
+): void {
+	const passed = task.status === "passed";
+	gates.push({
+		name: "task.status",
+		passed,
+		actual: task.status,
+		expected: "passed",
+		taskId: task.taskId,
+	});
+	if (!passed) {
+		reasons.push({
+			code: "task_failed",
+			message: "Failed eval tasks are not eligible for claims reporting.",
+			actual: task.status,
+			expected: "passed",
+			scope: "task",
+			taskId: task.taskId,
+		});
+	}
+}
+
+function pushTaskSourceContractGates(
+	gates: EvalClaimEligibilityGate[],
+	reasons: EvalClaimEligibilityReason[],
+	task: EvalTaskRunResult,
+): void {
+	const sourcePath = task.contract?.source.path;
+	const hasSourcePath = typeof sourcePath === "string" && sourcePath.trim() !== "";
+	gates.push({
+		name: "task.sourceContract.path",
+		passed: hasSourcePath,
+		actual: sourcePath ?? null,
+		expected: "*.prose.md source path",
+		taskId: task.taskId,
+	});
+	if (!hasSourcePath) {
+		reasons.push({
+			code: "missing_source_contract_path",
+			message: "Task is missing source contract path provenance for claim reporting.",
+			actual: null,
+			expected: "*.prose.md source path",
+			scope: "task",
+			taskId: task.taskId,
+		});
+	}
+
+	const sourceSha = task.contract?.source.sha256;
+	const hasSourceSha = typeof sourceSha === "string" && /^[a-f0-9]{64}$/i.test(sourceSha);
+	gates.push({
+		name: "task.sourceContract.sha256",
+		passed: hasSourceSha,
+		actual: sourceSha ?? null,
+		expected: "64-character sha256",
+		taskId: task.taskId,
+	});
+	if (!hasSourceSha) {
+		reasons.push({
+			code: "missing_source_contract_sha",
+			message: "Task is missing source contract sha256 provenance for claim reporting.",
+			actual: null,
+			expected: "64-character sha256",
+			scope: "task",
+			taskId: task.taskId,
+		});
+	}
+}
+
+interface NativeReactorArtifactRequirement {
+	code: EvalClaimEligibilityReason["code"];
+	expectedKind: string;
+	label: string;
+	mediaType: string;
+	name: string;
+	requiresFrozenOracle?: boolean;
+}
+
+async function pushNativeReactorArtifactGate(
+	gates: EvalClaimEligibilityGate[],
+	reasons: EvalClaimEligibilityReason[],
+	task: EvalTaskRunResult,
+	artifactStore: EvalArtifactStore | undefined,
+	runId: string,
+	requirement: NativeReactorArtifactRequirement,
+): Promise<void> {
+	const present = await hasVerifiedNativeReactorArtifact(task, artifactStore, runId, requirement);
+	gates.push({
+		name: `task.${requirement.name}`,
+		passed: present,
+		actual: present,
+		expected: true,
+		taskId: task.taskId,
+	});
+	if (!present) {
+		reasons.push({
+			code: requirement.code,
+			message: `Missing verified Reactor ${requirement.label} artifact for claim reporting.`,
+			actual: false,
+			expected: true,
+			scope: "task",
+			taskId: task.taskId,
+		});
+	}
+}
+
+async function hasVerifiedNativeReactorArtifact(
+	task: EvalTaskRunResult,
+	artifactStore: EvalArtifactStore | undefined,
+	runId: string,
+	requirement: NativeReactorArtifactRequirement,
+): Promise<boolean> {
+	if (artifactStore === undefined) {
+		return false;
+	}
+
+	for (const artifact of task.attempt.artifacts ?? []) {
+		if (artifact.mediaType !== requirement.mediaType || artifact.bytes <= 0) {
+			continue;
+		}
+
+		if (!artifactIsAttemptScoped(artifact, artifactStore.root, runId, task)) {
+			continue;
+		}
+
+		const payload = await readJsonObjectArtifact(artifact.path);
+		if (payload?.kind !== requirement.expectedKind) {
+			continue;
+		}
+
+		if (requirement.requiresFrozenOracle === true && !hasFrozenOracleBinding(payload)) {
+			continue;
+		}
+
+		return true;
+	}
+
+	return false;
+}
+
+function artifactIsAttemptScoped(
+	artifact: EvalArtifact,
+	artifactRoot: string,
+	runId: string,
+	task: EvalTaskRunResult,
+): boolean {
+	const relativePath = artifactRelativePath(artifact.path, artifactRoot);
+	if (relativePath === undefined) {
+		return false;
+	}
+
+	const normalizedPath = relativePath.split("\\").join("/");
+	const expectedPrefix = `${runId}/attempts/${task.taskId}/${task.adapterName}/attempt-`;
+	return normalizedPath.startsWith(expectedPrefix);
+}
+
+function artifactRelativePath(path: string, root: string): string | undefined {
+	if (!isAbsolute(path)) {
+		return undefined;
+	}
+
+	const resolvedRoot = resolve(root);
+	const resolvedPath = resolve(path);
+	const relativePath = relative(resolvedRoot, resolvedPath);
+	if (relativePath === "" || relativePath.startsWith("..") || isAbsolute(relativePath)) {
+		return undefined;
+	}
+
+	return relativePath;
+}
+
+async function readJsonObjectArtifact(path: string): Promise<JsonObject | undefined> {
+	try {
+		const value = JSON.parse(await readFile(path, "utf8")) as JsonValue;
+		return value !== null && typeof value === "object" && !Array.isArray(value) ? value : undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+function hasFrozenOracleBinding(proof: JsonObject): boolean {
+	if (hasSha256Field(proof, "frozenOracleSha256")) {
+		return true;
+	}
+	if (proof.oracleFrozen === true && hasSha256Field(proof, "oracleSha256")) {
+		return true;
+	}
+
+	const oracle = objectField(proof, "oracle");
+	if (oracle === undefined) {
+		return false;
+	}
+
+	const frozen = oracle.frozen === true || oracle.status === "frozen";
+	return frozen && (hasSha256Field(oracle, "sha256") || hasSha256Field(oracle, "digest"));
+}
+
+function objectField(object: JsonObject, key: string): JsonObject | undefined {
+	const value = object[key];
+	return value !== null && typeof value === "object" && !Array.isArray(value) ? value : undefined;
+}
+
+function hasSha256Field(object: JsonObject, key: string): boolean {
+	const value = object[key];
+	return typeof value === "string" && /^[a-f0-9]{64}$/i.test(value);
 }
 
 function collectReportUses(suite: EvalSuite, tasks: readonly EvalTaskRunResult[]): Set<ReportUse> {
@@ -497,95 +766,6 @@ function addReportUseFromMetadata(reportUses: Set<ReportUse>, metadata: JsonObje
 	if (metadata?.debugOnly === true) {
 		reportUses.add("debug");
 	}
-}
-
-type TaskEvidenceKind = "normalizedTrace" | "receipts" | "replay";
-
-function pushTaskEvidenceGate(
-	gates: EvalClaimEligibilityGate[],
-	reasons: EvalClaimEligibilityReason[],
-	task: EvalTaskRunResult,
-	kind: TaskEvidenceKind,
-	code: EvalClaimEligibilityReason["code"],
-	label: string,
-): void {
-	const present = hasTaskEvidence(task, kind);
-	gates.push({
-		name: `task.${kind}`,
-		passed: present,
-		actual: present,
-		expected: true,
-		taskId: task.taskId,
-	});
-	if (!present) {
-		reasons.push({
-			code,
-			message: `Missing ${label} evidence for claim reporting.`,
-			actual: false,
-			expected: true,
-			scope: "task",
-			taskId: task.taskId,
-		});
-	}
-}
-
-function hasTaskEvidence(task: EvalTaskRunResult, kind: TaskEvidenceKind): boolean {
-	const metadata = task.attempt.metadata;
-	if (metadataFlag(metadata, kind) || metadataFlag(metadata, `has${capitalize(kind)}`)) {
-		return true;
-	}
-
-	const metadataPathKeys = evidenceMetadataPathKeys(kind);
-	for (const key of metadataPathKeys) {
-		if (typeof metadata?.[key] === "string" && (metadata[key] as string).trim() !== "") {
-			return true;
-		}
-	}
-
-	const pathPattern = evidencePathPattern(kind);
-	for (const artifact of task.attempt.artifacts ?? []) {
-		if (pathPattern.test(artifact.path)) {
-			return true;
-		}
-	}
-
-	for (const event of task.attempt.events ?? []) {
-		if (pathPattern.test(event.type)) {
-			return true;
-		}
-	}
-
-	return false;
-}
-
-function metadataFlag(metadata: JsonObject | undefined, key: string): boolean {
-	return metadata?.[key] === true;
-}
-
-function evidenceMetadataPathKeys(kind: TaskEvidenceKind): readonly string[] {
-	if (kind === "normalizedTrace") {
-		return ["normalizedTracePath", "tracePath"];
-	}
-	if (kind === "receipts") {
-		return ["receiptPath", "receiptsPath"];
-	}
-
-	return ["replayPath"];
-}
-
-function evidencePathPattern(kind: TaskEvidenceKind): RegExp {
-	if (kind === "normalizedTrace") {
-		return /normalized[-_]?trace|trace[-_]?normalized/i;
-	}
-	if (kind === "receipts") {
-		return /receipts?/i;
-	}
-
-	return /replay/i;
-}
-
-function capitalize(value: string): string {
-	return `${value.slice(0, 1).toUpperCase()}${value.slice(1)}`;
 }
 
 function contractToJson(contract: EvalTaskContract): JsonObject {

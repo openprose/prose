@@ -110,7 +110,7 @@ export function createPiEvalAdapter(options: PiEvalAdapterOptions = {}): EvalAda
 				options.writeTranscript === false || context.artifactStore === undefined
 					? []
 					: [
-							await context.artifactStore.writeJson(`${context.runId}/${task.id}/${name}/rpc-transcript.json`, {
+							await context.artifactStore.writeJson(`${attemptArtifactDirectory(context, task, name)}/rpc-transcript.json`, {
 								records,
 								stderr,
 							}),
@@ -128,6 +128,16 @@ export function createPiEvalAdapter(options: PiEvalAdapterOptions = {}): EvalAda
 			};
 		},
 	};
+}
+
+function attemptArtifactDirectory(context: EvalAdapterContext, task: EvalTask, adapterName: string): string {
+	if (context.attemptArtifactDirectory !== undefined) {
+		return context.attemptArtifactDirectory;
+	}
+
+	const attemptIdParts = context.attemptId.split(":");
+	const attemptIndex = attemptIdParts[attemptIdParts.length - 1] ?? "1";
+	return `${context.runId}/attempts/${task.id}/${adapterName}/attempt-${attemptIndex}`;
 }
 
 export function createPiPrintEvalAdapter(options: PiEvalAdapterOptions = {}): EvalAdapter {
