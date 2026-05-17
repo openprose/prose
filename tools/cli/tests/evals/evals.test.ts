@@ -71,6 +71,29 @@ describe("eval schema", () => {
 		).toThrow(EvalSchemaError);
 	});
 
+	test("rejects unsafe ids and vacuous expectations", () => {
+		expect(() =>
+			validateEvalSuite({
+				...baseSuite,
+				id: "../outside",
+			}),
+		).toThrow("suite.id must be a safe path segment");
+
+		expect(() =>
+			validateEvalSuite({
+				...baseSuite,
+				tasks: [{ ...baseTask, id: "../../outside" }],
+			}),
+		).toThrow("suite.tasks[0].id must be a safe path segment");
+
+		expect(() =>
+			validateEvalSuite({
+				...baseSuite,
+				tasks: [{ ...baseTask, expected: {} }],
+			}),
+		).toThrow("suite.tasks[0].expected must define at least one assertion");
+	});
+
 	test("loads suite JSON from disk", async () => {
 		const root = mkdtempSync(join(tmpdir(), "prose-eval-suite-"));
 		try {
@@ -205,6 +228,62 @@ describe("eval runner", () => {
 		}
 	});
 
+	test("fails cost-limited tasks when no trustworthy cost record is present", async () => {
+		const result = await runEvalSuite(baseSuite, createMockEvalAdapter({ stdout: "drift detected\n" }), {
+			runId: "missing-cost-run",
+			now: () => new Date("2026-05-17T12:00:00.000Z"),
+		});
+
+		expect(result.status).toBe("failed");
+		expect(result.tasks[0]?.attempt.costs?.[0]).toEqual(
+			expect.objectContaining({
+				confidence: "unknown",
+				id: "unknown:missing-cost-run:quiet-drift-tiny:1",
+			}),
+		);
+		expect(result.tasks[0]?.score.checks).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ name: "unknownCostRecords", passed: false, actual: 1 }),
+			]),
+		);
+	});
+
+	test("records adapter exceptions as failed task artifacts instead of aborting the suite", async () => {
+		const root = mkdtempSync(join(tmpdir(), "prose-evals-error-"));
+		try {
+			const result = await runEvalSuite(
+				baseSuite,
+				{
+					name: "mock",
+					runTask: async () => {
+						throw new Error("adapter exploded");
+					},
+				},
+				{
+					artifactStore: createFilesystemArtifactStore({ root }),
+					runId: "error-run",
+				},
+			);
+
+			expect(result.status).toBe("failed");
+			expect(result.tasks[0]?.attempt.stderr).toBe("adapter exploded\n");
+			expect(result.tasks[0]?.attempt.events?.[0]).toEqual(
+				expect.objectContaining({ type: "eval.adapter_error", message: "adapter exploded" }),
+			);
+			expect(readFileSync(join(root, "error-run", "quiet-drift-tiny", "result.json"), "utf8")).toContain(
+				"adapter exploded",
+			);
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	});
+
+	test("rejects unsafe run ids before creating artifact directories", async () => {
+		await expect(runEvalSuite(baseSuite, createMockEvalAdapter(), { runId: "../outside" })).rejects.toThrow(
+			"runId must be a safe path segment",
+		);
+	});
+
 	test("keeps process adapters injectable for harness-specific packaging smoke tests", async () => {
 		const calls: unknown[] = [];
 		const adapter = createProcessEvalAdapter({
@@ -240,6 +319,28 @@ describe("eval runner", () => {
 			},
 		]);
 	});
+
+	test("redacts secret-like process output before scoring and artifacts", async () => {
+		const secret = "sk-test-secret-1234567890";
+		const adapter = createProcessEvalAdapter({
+			name: "process-smoke",
+			command: "agent-cli",
+			runner: async (_command, _args, options) => {
+				options.stdout.write(`drift detected ${secret}\n`);
+				return { exitCode: 0 };
+			},
+		});
+
+		const result = await adapter.runTask(baseTask, {
+			attemptId: "run-1:quiet-drift-tiny:1",
+			env: { OPENROUTER_API_KEY: secret },
+			runId: "run-1",
+			startedAt: "2026-05-17T12:00:00.000Z",
+		});
+
+		expect(result.stdout).toContain("drift detected [REDACTED]");
+		expect(result.stdout).not.toContain(secret);
+	});
 });
 
 describe("eval suite and CLI registry", () => {
@@ -269,6 +370,23 @@ describe("eval suite and CLI registry", () => {
 		} finally {
 			rmSync(root, { recursive: true, force: true });
 		}
+	});
+
+	test("requires explicit network and spend opt-in for non-mock CLI adapters", async () => {
+		let stdout = "";
+		let stderr = "";
+		const exitCode = await runEvalCli(
+			["--suite", "reactor-native-tiny", "--adapter", "pi"],
+			{
+				stdout: { write: (chunk: string) => void (stdout += chunk) },
+				stderr: { write: (chunk: string) => void (stderr += chunk) },
+			},
+			{ runId: "blocked-run" },
+		);
+
+		expect(exitCode).toBe(1);
+		expect(stdout).toBe("");
+		expect(stderr).toContain("requires explicit --allow-network and --allow-spend");
 	});
 });
 

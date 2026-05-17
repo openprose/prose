@@ -12,6 +12,7 @@ import type {
 	JsonObject,
 	JsonValue,
 } from "../types.js";
+import { DEFAULT_EVAL_OUTPUT_CHAR_LIMIT, redactionValuesFromEnv, sanitizeJsonValue, sanitizeText } from "../safety.js";
 import { createProcessEvalAdapter } from "./process.js";
 
 export const DEFAULT_PI_PACKAGE_SPEC = "@earendil-works/pi-coding-agent@0.75.0";
@@ -26,6 +27,7 @@ export interface PiEvalAdapterOptions {
 	mode?: PiEvalAdapterMode;
 	model?: string;
 	name?: string;
+	maxOutputChars?: number;
 	packageSpec?: string;
 	provider?: string;
 	runner?: ProcessRunner;
@@ -42,6 +44,7 @@ export interface PiRpcRunOptions {
 	prompt: string;
 	signal?: AbortSignal;
 	task: EvalTask;
+	maxOutputChars?: number;
 }
 
 export interface PiRpcRunResult {
@@ -74,25 +77,39 @@ export function createPiEvalAdapter(options: PiEvalAdapterOptions = {}): EvalAda
 		async runTask(task, context) {
 			const started = Date.now();
 			const command = buildPiCommand(task, { ...options, mode: "rpc" });
+			const env = { ...buildPiEnv(context), ...(options.env ?? {}), ...(context.env ?? {}) };
+			const maxOutputChars = options.maxOutputChars ?? DEFAULT_EVAL_OUTPUT_CHAR_LIMIT;
+			const redactionValues = redactionValuesFromEnv(env);
 			const result = await rpcRunner(command.command, command.args, {
 				...(task.cwd === undefined ? {} : { cwd: task.cwd }),
-				env: { ...buildPiEnv(context), ...(options.env ?? {}), ...(context.env ?? {}) },
+				env,
+				maxOutputChars,
 				...(context.signal === undefined ? {} : { signal: context.signal }),
 				context,
 				prompt: task.prompt,
 				task,
 			});
 
-			const events = piRecordsToEvents(result.records);
-			const costs = result.sessionStats === undefined ? [] : piStatsToCosts(result.sessionStats, name, task, context);
-			const stdout = result.lastAssistantText ?? collectAssistantText(result.records) ?? result.stdout;
+			const records = result.records.map((record) => sanitizeJsonValue(record, redactionValues, maxOutputChars) as JsonObject);
+			const stderr = sanitizeText(result.stderr, redactionValues, maxOutputChars);
+			const events = piRecordsToEvents(records);
+			const sessionStats =
+				result.sessionStats === undefined
+					? undefined
+					: (sanitizeJsonValue(result.sessionStats, redactionValues, maxOutputChars) as JsonObject);
+			const costs = sessionStats === undefined ? [] : piStatsToCosts(sessionStats, name, task, context);
+			const stdout = sanitizeText(
+				result.lastAssistantText ?? collectAssistantText(records) ?? result.stdout,
+				redactionValues,
+				maxOutputChars,
+			);
 			const artifacts =
 				options.writeTranscript === false || context.artifactStore === undefined
 					? []
 					: [
 							await context.artifactStore.writeJson(`${context.runId}/${task.id}/${name}/rpc-transcript.json`, {
-								records: [...result.records],
-								stderr: result.stderr,
+								records,
+								stderr,
 							}),
 						];
 
@@ -101,7 +118,7 @@ export function createPiEvalAdapter(options: PiEvalAdapterOptions = {}): EvalAda
 				durationMs: Date.now() - started,
 				exitCode: result.exitCode,
 				stdout,
-				stderr: result.stderr,
+				stderr,
 				...(artifacts.length === 0 ? {} : { artifacts }),
 				...(costs.length === 0 ? {} : { costs }),
 				...(events.length === 0 ? {} : { events }),
@@ -199,12 +216,16 @@ async function nodePiRpcRunner(command: string, args: readonly string[], options
 		let sessionStats: JsonObject | undefined;
 		let postAgentEndRequestsSent = false;
 		let settled = false;
+		let intentionalShutdown = false;
+		let aborted = false;
+		const maxOutputChars = options.maxOutputChars ?? DEFAULT_EVAL_OUTPUT_CHAR_LIMIT;
 
 		const promptRequestId = `${options.context.attemptId}:prompt`;
 		const lastAssistantRequestId = `${options.context.attemptId}:last-assistant`;
 		const statsRequestId = `${options.context.attemptId}:stats`;
 
 		const abort = () => {
+			aborted = true;
 			if (!child.killed) {
 				child.kill("SIGTERM");
 			}
@@ -216,6 +237,7 @@ async function nodePiRpcRunner(command: string, args: readonly string[], options
 
 		const finishIfPostRequestsComplete = () => {
 			if (lastAssistantText !== undefined && sessionStats !== undefined && !child.killed) {
+				intentionalShutdown = true;
 				child.stdin.end();
 				child.kill("SIGTERM");
 			}
@@ -224,8 +246,8 @@ async function nodePiRpcRunner(command: string, args: readonly string[], options
 		child.stdout.setEncoding("utf8");
 		child.stderr.setEncoding("utf8");
 		child.stdout.on("data", (chunk: string) => {
-			stdout += chunk;
-			buffer += chunk;
+			stdout = appendLimited(stdout, chunk, maxOutputChars);
+			buffer = appendLimited(buffer, chunk, maxOutputChars);
 			const lines = buffer.split("\n");
 			buffer = lines.pop() ?? "";
 			for (const line of lines) {
@@ -255,7 +277,7 @@ async function nodePiRpcRunner(command: string, args: readonly string[], options
 			}
 		});
 		child.stderr.on("data", (chunk: string) => {
-			stderr += chunk;
+			stderr = appendLimited(stderr, chunk, maxOutputChars);
 		});
 
 		if (options.signal?.aborted) {
@@ -274,22 +296,45 @@ async function nodePiRpcRunner(command: string, args: readonly string[], options
 		child.on("spawn", () => {
 			writeRecord({ id: promptRequestId, type: "prompt", message: options.prompt });
 		});
-		child.on("close", (exitCode) => {
+		child.on("close", (exitCode, signal) => {
 			if (settled) {
 				return;
 			}
 			settled = true;
 			options.signal?.removeEventListener("abort", abort);
+			const resolvedExitCode = exitCode ?? (intentionalShutdown ? 0 : exitCodeForSignal(signal));
 			resolve({
-				exitCode: exitCode ?? 0,
+				exitCode: resolvedExitCode,
 				records,
-				stderr,
+				stderr: aborted && stderr.trim() === "" ? "Pi RPC run aborted.\n" : stderr,
 				stdout,
 				...(lastAssistantText === undefined ? {} : { lastAssistantText }),
 				...(sessionStats === undefined ? {} : { sessionStats }),
 			});
 		});
 	});
+}
+
+function appendLimited(current: string, chunk: string, maxLength: number): string {
+	if (current.length >= maxLength) {
+		return current;
+	}
+
+	return `${current}${chunk}`.slice(0, maxLength);
+}
+
+function exitCodeForSignal(signal: NodeJS.Signals | null): number {
+	if (signal === "SIGTERM") {
+		return 143;
+	}
+	if (signal === "SIGKILL") {
+		return 137;
+	}
+	if (signal === "SIGINT") {
+		return 130;
+	}
+
+	return signal === null ? 1 : 1;
 }
 
 function piRecordsToEvents(records: readonly JsonObject[]): EvalEvent[] {

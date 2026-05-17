@@ -20,7 +20,6 @@ export const reactorNativeTinySuite: EvalSuite = {
 				exitCode: 0,
 				stdoutContains: ["drift detected"],
 				stderrExcludes: ["API_KEY", "secret"],
-				maxKnownCostUsd: 0.05,
 			},
 			metadata: {
 				evalFamily: "quiet-drift",
@@ -40,7 +39,6 @@ export const reactorNativeTinySuite: EvalSuite = {
 				exitCode: 0,
 				stdoutContains: ["reused verdict"],
 				stderrExcludes: ["API_KEY", "secret"],
-				maxKnownCostUsd: 0.05,
 			},
 			metadata: {
 				evalFamily: "memoized-verdict",

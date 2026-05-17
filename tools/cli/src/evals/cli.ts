@@ -12,6 +12,8 @@ export interface EvalCliIo {
 }
 
 export interface EvalCliOptions {
+	allowNetwork?: boolean;
+	allowSpend?: boolean;
 	adapterOptions?: EvalAdapterRegistryOptions;
 	defaultArtifactRoot?: string;
 	env?: Record<string, string | undefined>;
@@ -19,6 +21,8 @@ export interface EvalCliOptions {
 }
 
 interface ParsedEvalArgs {
+	allowNetwork: boolean;
+	allowSpend: boolean;
 	adapter: string;
 	artifactRoot: string;
 	suite: string;
@@ -35,12 +39,20 @@ export async function runEvalCli(argv: readonly string[], io: EvalCliIo, options
 	}
 
 	try {
+		const allowNetwork = parsed.allowNetwork || options.allowNetwork === true;
+		const allowSpend = parsed.allowSpend || options.allowSpend === true;
+		if (parsed.adapter !== "mock" && (!allowNetwork || !allowSpend)) {
+			throw new Error(
+				`Adapter ${parsed.adapter} requires explicit --allow-network and --allow-spend for eval CLI runs.`,
+			);
+		}
+
 		const suite = await loadEvalSuiteByNameOrPath(parsed.suite);
 		const adapter = createNamedEvalAdapter(parsed.adapter, options.adapterOptions);
 		const artifactStore = createFilesystemArtifactStore({ root: parsed.artifactRoot });
 		const result = await runEvalSuite(suite, adapter, {
 			artifactStore,
-			...(options.env === undefined ? {} : { env: options.env }),
+			...(options.env === undefined ? {} : { env: allowSpend ? options.env : stripSpendEnv(options.env) }),
 			...(options.runId === undefined ? {} : { runId: options.runId }),
 		});
 
@@ -54,13 +66,19 @@ export async function runEvalCli(argv: readonly string[], io: EvalCliIo, options
 }
 
 function parseEvalArgs(argv: readonly string[], defaultArtifactRoot: string): ParsedEvalArgs {
+	let allowNetwork = false;
+	let allowSpend = false;
 	let adapter = "mock";
 	let artifactRoot = defaultArtifactRoot;
 	let suite = "reactor-native-tiny";
 
 	for (let index = 0; index < argv.length; index += 1) {
 		const arg = argv[index];
-		if (arg === "--adapter") {
+		if (arg === "--allow-network") {
+			allowNetwork = true;
+		} else if (arg === "--allow-spend") {
+			allowSpend = true;
+		} else if (arg === "--adapter") {
 			adapter = requireValue(argv, index, arg);
 			index += 1;
 		} else if (arg === "--artifacts") {
@@ -77,6 +95,8 @@ function parseEvalArgs(argv: readonly string[], defaultArtifactRoot: string): Pa
 	}
 
 	return {
+		allowNetwork,
+		allowSpend,
 		adapter,
 		artifactRoot,
 		suite,
@@ -95,8 +115,20 @@ function requireValue(argv: readonly string[], index: number, flag: string): str
 function evalUsage(): string {
 	return [
 		"Usage: prose eval --suite <suite|path> --adapter <adapter> --artifacts <dir>",
+		"Use --allow-network --allow-spend for non-mock adapters.",
 		`Built-in suites: ${BUILT_IN_EVAL_SUITE_NAMES.join(", ")}`,
 		`Adapters: ${EVAL_ADAPTER_NAMES.join(", ")}`,
 		"",
 	].join("\n");
+}
+
+function stripSpendEnv(env: Record<string, string | undefined>): Record<string, string | undefined> {
+	const result = { ...env };
+	for (const key of Object.keys(result)) {
+		if (/(?:API|TOKEN|SECRET|KEY|PASSWORD)/i.test(key)) {
+			delete result[key];
+		}
+	}
+
+	return result;
 }

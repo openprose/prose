@@ -31,12 +31,34 @@ export function scoreAttempt(attempt: EvalAttemptResult, expected: EvalExpectedO
 	}
 
 	if (expected.maxKnownCostUsd !== undefined) {
-		const summary = summarizeCostLedger(attempt.costs ?? []);
+		const costs = attempt.costs ?? [];
+		const summary = summarizeCostLedger(costs);
+		checks.push({
+			name: "costRecordsPresent",
+			passed: costs.length > 0,
+			actual: costs.length,
+			expected: "at least one cost record",
+			message: "Cost limits require at least one cost ledger record.",
+		});
 		checks.push({
 			name: "maxKnownCostUsd",
-			passed: summary.knownCostUsd <= expected.maxKnownCostUsd,
+			passed: costs.length > 0 && summary.knownCostUsd <= expected.maxKnownCostUsd,
 			actual: summary.knownCostUsd,
 			expected: expected.maxKnownCostUsd,
+		});
+		checks.push({
+			name: "unknownCostRecords",
+			passed: expected.allowUnknownCost === true || summary.unknownCostRecords === 0,
+			actual: summary.unknownCostRecords,
+			expected: expected.allowUnknownCost === true ? "allowed" : 0,
+		});
+	} else if (expected.requiresCost === true) {
+		const costs = attempt.costs ?? [];
+		checks.push({
+			name: "costRecordsPresent",
+			passed: costs.length > 0,
+			actual: costs.length,
+			expected: "at least one cost record",
 		});
 	}
 

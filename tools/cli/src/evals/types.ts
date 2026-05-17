@@ -30,6 +30,7 @@ export type CostConfidence =
 	| "provider-reconciled";
 
 export interface EvalExpectedOutcome {
+	allowUnknownCost?: boolean;
 	exitCode?: number;
 	stdoutContains?: readonly string[];
 	stdoutExcludes?: readonly string[];
@@ -37,6 +38,7 @@ export interface EvalExpectedOutcome {
 	stderrExcludes?: readonly string[];
 	eventTypes?: readonly string[];
 	maxKnownCostUsd?: number;
+	requiresCost?: boolean;
 }
 
 export interface EvalTask {
