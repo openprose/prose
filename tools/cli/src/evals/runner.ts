@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { mkdir, readFile } from "node:fs/promises";
 import { isAbsolute, join, relative, resolve } from "node:path";
 
@@ -198,6 +198,7 @@ function buildTaskResult(
 		attemptId,
 		completedAt,
 		...(task.contract === undefined ? {} : { contract: task.contract }),
+		...(task.metadata === undefined ? {} : { metadata: task.metadata }),
 		score,
 		startedAt,
 		status: score.passed ? "passed" : "failed",
@@ -476,6 +477,7 @@ async function buildClaimEligibilityReport(
 
 	const tasksById = new Map(tasks.map((task) => [task.taskId, task]));
 	for (const suiteTask of suite.tasks) {
+		pushTaskCwdGate(gates, reasons, suiteTask);
 		const task = tasksById.get(suiteTask.id);
 		if (task === undefined) {
 			pushMissingTaskGate(gates, reasons, suiteTask);
@@ -483,7 +485,7 @@ async function buildClaimEligibilityReport(
 		}
 
 		pushTaskStatusGate(gates, reasons, task);
-		pushTaskSourceContractGates(gates, reasons, task);
+		await pushTaskSourceContractGates(gates, reasons, task);
 		await pushNativeReactorArtifactGate(gates, reasons, task, artifactStore, runId, {
 			code: "missing_reactor_timeline_case",
 			expectedKind: REACTOR_TIMELINE_CASE_KIND,
@@ -499,6 +501,7 @@ async function buildClaimEligibilityReport(
 			name: "reactorProof",
 			requiresFrozenOracle: true,
 		});
+		pushNativeValidatorGate(gates, reasons, task);
 	}
 
 	return {
@@ -561,11 +564,36 @@ function pushTaskStatusGate(
 	}
 }
 
-function pushTaskSourceContractGates(
+function pushTaskCwdGate(
+	gates: EvalClaimEligibilityGate[],
+	reasons: EvalClaimEligibilityReason[],
+	task: EvalTask,
+): void {
+	const passed = task.cwd === undefined;
+	gates.push({
+		name: "task.cwd",
+		passed,
+		actual: task.cwd ?? null,
+		expected: "default adapter run directory",
+		taskId: task.id,
+	});
+	if (!passed) {
+		reasons.push({
+			code: "custom_task_cwd",
+			message: "Tasks with custom cwd are smoke plumbing only until native sandbox provenance is declared.",
+			actual: task.cwd ?? null,
+			expected: "default adapter run directory",
+			scope: "task",
+			taskId: task.id,
+		});
+	}
+}
+
+async function pushTaskSourceContractGates(
 	gates: EvalClaimEligibilityGate[],
 	reasons: EvalClaimEligibilityReason[],
 	task: EvalTaskRunResult,
-): void {
+): Promise<void> {
 	const sourcePath = task.contract?.source.path;
 	const hasSourcePath = typeof sourcePath === "string" && sourcePath.trim() !== "";
 	gates.push({
@@ -605,6 +633,93 @@ function pushTaskSourceContractGates(
 			taskId: task.taskId,
 		});
 	}
+
+	if (!hasSourcePath || !hasSourceSha || sourcePath === undefined || sourceSha === undefined) {
+		return;
+	}
+
+	const verification = await verifySourceContractBytes(sourcePath, sourceSha);
+	gates.push({
+		name: "task.sourceContract.bytesSha256",
+		passed: verification.passed,
+		actual: verification.actual,
+		expected: sourceSha.toLowerCase(),
+		taskId: task.taskId,
+	});
+	if (!verification.passed) {
+		reasons.push({
+			code: verification.reasonCode,
+			message: verification.message,
+			actual: verification.actual,
+			expected: sourceSha.toLowerCase(),
+			scope: "task",
+			taskId: task.taskId,
+		});
+	}
+}
+
+type SourceContractVerification =
+	| {
+			actual: string;
+			message: string;
+			passed: false;
+			reasonCode: "source_contract_sha_mismatch";
+	  }
+	| {
+			actual: "unreadable";
+			message: string;
+			passed: false;
+			reasonCode: "unreadable_source_contract";
+	  }
+	| {
+			actual: string;
+			passed: true;
+	  };
+
+async function verifySourceContractBytes(
+	sourcePath: string,
+	expectedSha256: string,
+): Promise<SourceContractVerification> {
+	const sourceBytes = await readSourceContractBytes(sourcePath);
+	if (sourceBytes === undefined) {
+		return {
+			actual: "unreadable",
+			message: "Task source contract file could not be read for claim reporting.",
+			passed: false,
+			reasonCode: "unreadable_source_contract",
+		};
+	}
+
+	const actualSha256 = createHash("sha256").update(sourceBytes).digest("hex");
+	if (actualSha256 !== expectedSha256.toLowerCase()) {
+		return {
+			actual: actualSha256,
+			message: "Task source contract bytes do not match declared sha256 provenance.",
+			passed: false,
+			reasonCode: "source_contract_sha_mismatch",
+		};
+	}
+
+	return {
+		actual: actualSha256,
+		passed: true,
+	};
+}
+
+async function readSourceContractBytes(sourcePath: string): Promise<Buffer | undefined> {
+	for (const candidate of sourceContractPathCandidates(sourcePath)) {
+		try {
+			return await readFile(candidate);
+		} catch {
+			// Try the next supported workspace/package-relative location.
+		}
+	}
+
+	return undefined;
+}
+
+function sourceContractPathCandidates(sourcePath: string): string[] {
+	return dedupeStrings([resolve(process.cwd(), sourcePath), resolve(process.cwd(), "tools/cli", sourcePath)]);
 }
 
 interface NativeReactorArtifactRequirement {
@@ -642,6 +757,28 @@ async function pushNativeReactorArtifactGate(
 			taskId: task.taskId,
 		});
 	}
+}
+
+function pushNativeValidatorGate(
+	gates: EvalClaimEligibilityGate[],
+	reasons: EvalClaimEligibilityReason[],
+	task: EvalTaskRunResult,
+): void {
+	gates.push({
+		name: "task.nativeValidator",
+		passed: false,
+		actual: "missing",
+		expected: "verified Reactor proof-bundle validator",
+		taskId: task.taskId,
+	});
+	reasons.push({
+		code: "missing_native_validator",
+		message: "Reactor-native artifacts are not report-eligible until a validator verifies the proof bundle.",
+		actual: "missing",
+		expected: "verified Reactor proof-bundle validator",
+		scope: "task",
+		taskId: task.taskId,
+	});
 }
 
 async function hasVerifiedNativeReactorArtifact(

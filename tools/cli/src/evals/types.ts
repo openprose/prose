@@ -179,7 +179,9 @@ export interface EvalScore {
 
 export type EvalClaimEligibilityReasonCode =
 	| "adapter_canary_report_use"
+	| "custom_task_cwd"
 	| "debug_report_use"
+	| "missing_native_validator"
 	| "missing_reactor_proof"
 	| "missing_reactor_timeline_case"
 	| "missing_normalized_trace"
@@ -188,8 +190,10 @@ export type EvalClaimEligibilityReasonCode =
 	| "missing_report_use"
 	| "missing_source_contract_path"
 	| "missing_source_contract_sha"
+	| "source_contract_sha_mismatch"
 	| "task_failed"
 	| "task_missing"
+	| "unreadable_source_contract"
 	| "mock_adapter";
 
 export interface EvalClaimEligibilityReason {
@@ -227,6 +231,7 @@ export interface EvalTaskRunResult {
 	attemptId: string;
 	completedAt: string;
 	contract?: EvalTaskContract;
+	metadata?: JsonObject;
 	score: EvalScore;
 	startedAt: string;
 	status: "passed" | "failed";

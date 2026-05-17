@@ -473,7 +473,7 @@ describe("eval runner", () => {
 		);
 	});
 
-	test("allows verified native Reactor artifacts to satisfy claim eligibility", async () => {
+	test("keeps thin native Reactor artifacts ineligible until a native validator exists", async () => {
 		const root = mkdtempSync(join(tmpdir(), "prose-native-reactor-"));
 		try {
 			const result = await runEvalSuite(
@@ -528,11 +528,142 @@ describe("eval runner", () => {
 			);
 
 			expect(result.status).toBe("passed");
-			expect(result.claimEligibility.reportEligible).toBe(true);
-			expect(result.claimEligibility.reasons).toEqual([]);
+			expect(result.claimEligibility.reportEligible).toBe(false);
+			expect(result.claimEligibility.reasons.map((reason) => reason.code)).toContain("missing_native_validator");
+			expect(result.claimEligibility.gates).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({ name: "task.reactorTimelineCase", passed: true }),
+					expect.objectContaining({ name: "task.reactorProof", passed: true }),
+					expect.objectContaining({ name: "task.nativeValidator", passed: false }),
+				]),
+			);
 		} finally {
 			rmSync(root, { recursive: true, force: true });
 		}
+	});
+
+	test("keeps tasks with mismatched source contract bytes ineligible", async () => {
+		const result = await runEvalSuite(
+			{
+				...baseSuite,
+				metadata: { reportUse: "report-eligible" },
+				tasks: [
+					{
+						...baseTask,
+						contract: {
+							source: {
+								path: "tests/evals/fixtures/quiet-drift-canary.prose.md",
+								sha256: "0".repeat(64),
+							},
+						},
+						expected: { exitCode: 0, stdoutContains: ["drift detected"] },
+						metadata: { reportUse: "report-eligible" },
+					},
+				],
+			},
+			{
+				name: "pi",
+				runTask: async () => ({
+					adapterName: "pi",
+					durationMs: 1,
+					exitCode: 0,
+					stderr: "",
+					stdout: "drift detected\n",
+				}),
+			},
+			{
+				runId: "source-sha-mismatch-run",
+				now: () => new Date("2026-05-17T12:00:00.000Z"),
+			},
+		);
+
+		expect(result.status).toBe("passed");
+		expect(result.claimEligibility.reportEligible).toBe(false);
+		expect(result.claimEligibility.reasons.map((reason) => reason.code)).toContain("source_contract_sha_mismatch");
+		expect(result.claimEligibility.gates).toEqual(
+			expect.arrayContaining([expect.objectContaining({ name: "task.sourceContract.bytesSha256", passed: false })]),
+		);
+	});
+
+	test("keeps tasks with unreadable source contracts ineligible", async () => {
+		const result = await runEvalSuite(
+			{
+				...baseSuite,
+				metadata: { reportUse: "report-eligible" },
+				tasks: [
+					{
+						...baseTask,
+						contract: {
+							source: {
+								path: "tests/evals/fixtures/missing-source.prose.md",
+								sha256: "0".repeat(64),
+							},
+						},
+						expected: { exitCode: 0, stdoutContains: ["drift detected"] },
+						metadata: { reportUse: "report-eligible" },
+					},
+				],
+			},
+			{
+				name: "pi",
+				runTask: async () => ({
+					adapterName: "pi",
+					durationMs: 1,
+					exitCode: 0,
+					stderr: "",
+					stdout: "drift detected\n",
+				}),
+			},
+			{
+				runId: "source-unreadable-run",
+				now: () => new Date("2026-05-17T12:00:00.000Z"),
+			},
+		);
+
+		expect(result.status).toBe("passed");
+		expect(result.claimEligibility.reportEligible).toBe(false);
+		expect(result.claimEligibility.reasons.map((reason) => reason.code)).toContain("unreadable_source_contract");
+		expect(result.claimEligibility.gates).toEqual(
+			expect.arrayContaining([expect.objectContaining({ name: "task.sourceContract.bytesSha256", passed: false })]),
+		);
+	});
+
+	test("keeps tasks with custom cwd ineligible while still running them", async () => {
+		const result = await runEvalSuite(
+			{
+				...baseSuite,
+				metadata: { reportUse: "report-eligible" },
+				tasks: [
+					{
+						...baseTask,
+						cwd: join(tmpdir(), "custom-eval-cwd"),
+						expected: { exitCode: 0, stdoutContains: ["drift detected"] },
+						metadata: { reportUse: "report-eligible" },
+					},
+				],
+			},
+			{
+				name: "pi",
+				runTask: async () => ({
+					adapterName: "pi",
+					durationMs: 1,
+					exitCode: 0,
+					stderr: "",
+					stdout: "drift detected\n",
+				}),
+			},
+			{
+				runId: "custom-cwd-run",
+				now: () => new Date("2026-05-17T12:00:00.000Z"),
+			},
+		);
+
+		expect(result.status).toBe("passed");
+		expect(result.claimEligibility.reportEligible).toBe(false);
+		expect(result.claimEligibility.reasons.map((reason) => reason.code)).toContain("custom_task_cwd");
+		expect(result.claimEligibility.gates).toEqual(
+			expect.arrayContaining([expect.objectContaining({ name: "task.cwd", passed: false })]),
+		);
 	});
 
 	test("marks fail-fast skipped tasks ineligible", async () => {
@@ -863,6 +994,38 @@ describe("eval runner", () => {
 		expect(formatEvalSuiteSummary(result)).toContain("claim_reason_codes: debug_report_use");
 		expect(formatEvalSuiteSummary(result)).toContain("debug_attempts: 1");
 		expect(formatEvalSuiteSummary(result)).toContain("debug_only_attempts: 1");
+	});
+
+	test("surfaces task-level reportUse metadata in summaries", async () => {
+		const result = await runEvalSuite(
+			{
+				...baseSuite,
+				tasks: [
+					{
+						...baseTask,
+						expected: { exitCode: 0, stdoutContains: ["drift detected"] },
+						metadata: { reportUse: "report-eligible" },
+					},
+				],
+			},
+			{
+				name: "pi",
+				runTask: async () => ({
+					adapterName: "pi",
+					durationMs: 1,
+					exitCode: 0,
+					stderr: "",
+					stdout: "drift detected\n",
+				}),
+			},
+			{
+				runId: "task-report-use-summary-run",
+				now: () => new Date("2026-05-17T12:00:00.000Z"),
+			},
+		);
+
+		expect(formatEvalSuiteSummary(result)).toContain("report_use: report-eligible");
+		expect(result.claimEligibility.reasons.map((reason) => reason.code)).not.toContain("missing_report_use");
 	});
 
 	test("redacts inherited secret-like process env values from runner results", async () => {

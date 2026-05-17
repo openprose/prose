@@ -38,7 +38,14 @@ function formatReasonCodes(reasonCodes: readonly string[]): string {
 function inferReportUse(result: EvalSuiteRunResult): string | undefined {
 	const values = new Set<ReportUse>();
 	addReportUse(values, result.metadata);
+	if (isDebugOnlyMetadata(result.metadata)) {
+		values.add("debug");
+	}
 	for (const task of result.tasks) {
+		addReportUse(values, task.metadata);
+		if (isDebugOnlyMetadata(task.metadata)) {
+			values.add("debug");
+		}
 		addReportUse(values, task.attempt.metadata);
 		if (isDebugOnlyMetadata(task.attempt.metadata)) {
 			values.add("debug");
