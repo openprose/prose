@@ -7,6 +7,7 @@ Reusable OpenProse services, systems, patterns, roles, delivery adapters, memory
 ```prose
 use "std/evals/inspector"
 use "std/evals/prose-contributor"
+use "std/ops/prose-author"
 use "std/patterns/worker-critic"
 use "std/patterns/pipeline"
 use "std/roles/critic"
@@ -50,6 +51,7 @@ Operational systems for profiling, debugging, validation, and wiring.
 | `preflight` | Check that all runtime dependencies are satisfied before executing a system |
 | `status` | Summarize recent runs from `<openprose-root>/runs/` |
 | `wire` | Run Forme wiring to produce `forme.manifest.json` |
+| `prose-author` | Turn pseudo-Prose or logical English into a fully validated OpenProse program package |
 | `diagnose` | Investigate failed or suspicious runs and propose fixes |
 | `profiler` | Cost, token usage, and time profiling for completed runs |
 

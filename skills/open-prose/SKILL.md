@@ -128,6 +128,7 @@ executing the system. The shell executable is the agent runner, e.g.
 | `prose run runtime/judge-responsibility.prose.md` | Resolve from the OpenProse skill root; judge one responsibility from activation context |
 | `prose run <host>/<owner>/<repo>[/path]` | Resolve installed dependency service or system, detect format, then route as above |
 | `prose run std/...` / `co/...` | Expand OpenProse package shorthand, resolve installed dependency service or system, then route as above |
+| `prose write [request...]` | Read the authoring request from argv text or piped stdin; load `contract-markdown.md`, `guidance/tenets.md`, and `guidance/authoring.md`; run `std/ops/prose-author`; return the fully validated source package and do not apply it to the repository unless the caller explicitly asks for that follow-up |
 | `prose lint <file.prose.md>` | Validate Contract Markdown structure, headers, frontmatter, contracts, shapes, and wiring |
 | `prose preflight <file.prose.md>` | Check dependencies and `### Environment` declarations without executing |
 | `prose test <path>` | Load `contract-markdown.md`, `state/README.md` plus the selected backend, and `prose.md`; run `kind: test` file(s) |

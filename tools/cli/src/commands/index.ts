@@ -61,9 +61,18 @@ const forwardCommandDefinitions = {
 		summary: "Upgrade Prose source layout.",
 		usage: "upgrade [--dry-run] [--harness <name>]",
 	},
+	write: {
+		command: "write",
+		examples: [
+			'<%= config.bin %> write "draft a release readiness responsibility" --harness codex-sdk',
+			"cat brief.txt | <%= config.bin %> write --harness codex-sdk",
+		],
+		summary: "Write linted OpenProse source from a rough request.",
+		usage: "write [request...] [--harness <name>]",
+	},
 } satisfies Record<string, ForwardCommandDefinition>;
 
-const commands = {
+const commands: Record<string, typeof Command> = {
 	compile: Compile,
 	doctor: Doctor,
 	help: Help,
@@ -72,6 +81,6 @@ const commands = {
 	...Object.fromEntries(
 		Object.entries(forwardCommandDefinitions).map(([name, definition]) => [name, createForwardCommand(definition)]),
 	),
-} satisfies Record<string, typeof Command>;
+};
 
 export default commands;

@@ -21,6 +21,7 @@ export interface ForwardRunOptions {
 	argv: readonly string[];
 	cwd: string;
 	env: Readonly<Record<string, string | undefined>>;
+	stdin?: StdinStreamLike;
 	stdout: WritableStreamLike;
 	stderr: WritableStreamLike;
 	signal?: AbortSignal;
@@ -50,6 +51,7 @@ export abstract class ProseForwardCommand extends Command {
 				argv: this.argv,
 				cwd: process.cwd(),
 				env: process.env,
+				stdin: process.stdin,
 				stdout: process.stdout,
 				stderr: process.stderr,
 				signal: controller.signal,
@@ -82,13 +84,16 @@ export function createForwardCommand(definition: ForwardCommandDefinition): type
 	};
 }
 
+type StdinStreamLike = AsyncIterable<string | Uint8Array> & { isTTY?: boolean };
+
 function isOclifExit(error: unknown): boolean {
 	return typeof error === "object" && error !== null && "oclif" in error;
 }
 
 export async function runForwardedProseCommand(options: ForwardRunOptions): Promise<number> {
 	const { harness, args } = splitHarnessArgs(options.argv, options.env, options.command);
-	const prompt = canonicalPrompt(options.command, args);
+	const promptArgs = await hydrateForwardedArgs(options.command, args, options.stdin);
+	const prompt = canonicalPrompt(options.command, promptArgs);
 	if (shouldRunSkillPreflight(options)) {
 		await runSkillPreflight(harness, options);
 	}
@@ -110,6 +115,35 @@ export async function runForwardedProseCommand(options: ForwardRunOptions): Prom
 		stderr: options.stderr,
 		...(options.signal === undefined ? {} : { signal: options.signal }),
 	});
+}
+
+async function hydrateForwardedArgs(
+	command: CommandName,
+	args: readonly string[],
+	stdin: StdinStreamLike | undefined,
+): Promise<string[]> {
+	if (command !== "write") {
+		return [...args];
+	}
+
+	const stdinText = await readPipedStdin(stdin);
+	const requestParts = [...args];
+	if (stdinText !== "") {
+		requestParts.push(stdinText);
+	}
+	return requestParts;
+}
+
+async function readPipedStdin(stdin: StdinStreamLike | undefined): Promise<string> {
+	if (stdin === undefined || stdin.isTTY === true) {
+		return "";
+	}
+
+	const chunks: string[] = [];
+	for await (const chunk of stdin) {
+		chunks.push(typeof chunk === "string" ? chunk : Buffer.from(chunk).toString("utf8"));
+	}
+	return chunks.join("").trim();
 }
 
 function shouldRunSkillPreflight(options: ForwardRunOptions): boolean {

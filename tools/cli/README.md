@@ -74,6 +74,8 @@ Examples:
 ```bash
 prose run std/evals/inspector
 prose run std/evals/prose-contributor -- subjects: 20260406-201439-1a3369
+prose write "draft a release readiness responsibility"
+cat brief.txt | prose write --harness codex-sdk
 prose run std/evals/inspector --harness codex-sdk
 prose run co/systems/company-repo-checker --harness claude-sdk
 PROSE_HARNESS=claude-sdk prose run std/evals/inspector
@@ -142,12 +144,20 @@ Forwarding commands mirror the agent-session command language described in the
 root docs. `prose help` is local CLI help; use `prose --help` or
 `prose help <command>` to inspect shell usage.
 
+Use `prose write` when you have rough English or pseudo-Prose and want a valid
+OpenProse program faster. It is Prose for making Prose, similar to
+skill-authoring helpers that turn intent into valid skill source. The output
+may be one `.prose.md` file or a folder of composed `.prose.md` files,
+depending on the workflow.
+
 ```bash
 prose compile
 prose compile src/responsibilities --out dist
 cp dist/manifest.next.json dist/manifest.active.json
 prose serve
 prose run src/systems/reviewer.prose.md
+prose write "draft a release readiness responsibility"
+prose write < brief.txt
 prose run co/systems/company-repo-checker --harness claude-sdk
 prose upgrade
 prose upgrade --dry-run

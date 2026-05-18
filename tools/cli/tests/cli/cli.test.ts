@@ -10,6 +10,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { Readable } from "node:stream";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
@@ -232,6 +233,10 @@ describe("Oclif entrypoint helpers", () => {
 		expect(commands.status).toBeDefined();
 	});
 
+	it("registers write as a forwarded authoring command", () => {
+		expect(commands.write).toBeDefined();
+	});
+
 	it("matches symlinked argv paths by real path", () => {
 		const temp = mkdtempSync(join(tmpdir(), "prose-direct-"));
 
@@ -345,6 +350,57 @@ describe("runForwardedProseCommand", () => {
 
 		expect(exitCode).toBe(0);
 		expect(seen).toEqual(["prose compile . --out dist"]);
+	});
+
+	it("forwards write prompts to the prose-author system through the selected harness", async () => {
+		const io = memoryStreams();
+		const seen: string[] = [];
+		const harness: Harness = {
+			name: "mock",
+			async run(prompt) {
+				seen.push(prompt);
+				return 0;
+			},
+		};
+
+		const exitCode = await runForwardedProseCommand({
+			command: "write",
+			argv: ["draft", "release", "readiness", "--harness", "mock"],
+			cwd: "/repo",
+			env: {},
+			stdout: io.streams.stdout,
+			stderr: io.streams.stderr,
+			harnessFactory: () => harness,
+		});
+
+		expect(exitCode).toBe(0);
+		expect(seen).toEqual(["prose run std/ops/prose-author -- request: 'draft release readiness'"]);
+	});
+
+	it("uses piped stdin as the write request when no argv request is provided", async () => {
+		const io = memoryStreams();
+		const seen: string[] = [];
+		const harness: Harness = {
+			name: "mock",
+			async run(prompt) {
+				seen.push(prompt);
+				return 0;
+			},
+		};
+
+		const exitCode = await runForwardedProseCommand({
+			command: "write",
+			argv: ["--harness", "mock"],
+			cwd: "/repo",
+			env: {},
+			stdin: Readable.from(["draft a release readiness responsibility\n"]),
+			stdout: io.streams.stdout,
+			stderr: io.streams.stderr,
+			harnessFactory: () => harness,
+		});
+
+		expect(exitCode).toBe(0);
+		expect(seen).toEqual(["prose run std/ops/prose-author -- request: 'draft a release readiness responsibility'"]);
 	});
 
 	it("loads OpenProse skill bootstrap after preflight and passes it to the harness", async () => {
