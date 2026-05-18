@@ -8,6 +8,7 @@ import { scoreAttempt } from "./scorer.js";
 import { validateEvalSuite } from "./schema.js";
 import {
 	EVAL_CLAIM_ELIGIBILITY_KIND,
+	REACTOR_CLAIMS,
 	REACTOR_PROOF_KIND,
 	REACTOR_PROOF_MEDIA_TYPE,
 	REACTOR_TIMELINE_CASE_KIND,
@@ -20,6 +21,7 @@ import type {
 	EvalArtifactStore,
 	EvalAttemptResult,
 	EvalClaimEligibilityGate,
+	EvalClaimEligibilityRecord,
 	EvalClaimEligibilityReason,
 	EvalClaimEligibilityReport,
 	EvalCostRecord,
@@ -506,6 +508,7 @@ async function buildClaimEligibilityReport(
 
 	return {
 		adapterName,
+		claimEligibility: buildClosedClaimEligibilityRecords(reasons),
 		generatedAt,
 		gates,
 		kind: EVAL_CLAIM_ELIGIBILITY_KIND,
@@ -515,6 +518,19 @@ async function buildClaimEligibilityReport(
 		suiteId: suite.id,
 		version: 1,
 	};
+}
+
+function buildClosedClaimEligibilityRecords(
+	reasons: readonly EvalClaimEligibilityReason[],
+): readonly EvalClaimEligibilityRecord[] {
+	const reasonCodes = reasons.map((reason) => reason.code);
+	const closedReasons = reasonCodes.length === 0 ? ["missing_native_validator"] : reasonCodes;
+	return REACTOR_CLAIMS.map((claim) => ({
+		claim,
+		verdict: "ill-formed",
+		predicate_id: `${claim}.native_validator_missing`,
+		reasons: closedReasons,
+	}));
 }
 
 function pushMissingTaskGate(

@@ -348,8 +348,20 @@ export interface EvalClaimEligibilityGate {
 	taskId?: string;
 }
 
+export type EvalClaimEligibilityVerdict = "sound" | "unsound" | "ill-formed";
+
+export interface EvalClaimEligibilityRecord {
+	claim: ReactorClaim;
+	verdict: EvalClaimEligibilityVerdict;
+	predicate_id: string;
+	attestation_cid?: string;
+	prereg_hash?: string;
+	reasons?: readonly string[];
+}
+
 export interface EvalClaimEligibilityReport {
 	adapterName: string;
+	claimEligibility: readonly EvalClaimEligibilityRecord[];
 	generatedAt: string;
 	gates: readonly EvalClaimEligibilityGate[];
 	kind: typeof EVAL_CLAIM_ELIGIBILITY_KIND;

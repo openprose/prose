@@ -365,6 +365,7 @@ describe("eval runner", () => {
 			});
 
 			const eligibility = JSON.parse(readFileSync(join(root, "run-built-in", "claim-eligibility.json"), "utf8")) as {
+				claimEligibility: Array<{ claim: string; predicate_id: string; verdict: string }>;
 				kind: string;
 				reportEligible: boolean;
 				reasons: Array<{ code: string; taskId?: string }>;
@@ -382,6 +383,21 @@ describe("eval runner", () => {
 					"missing_reactor_proof",
 				]),
 			);
+			expect(eligibility.claimEligibility).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						claim: "C1",
+						predicate_id: "C1.native_validator_missing",
+						verdict: "ill-formed",
+					}),
+					expect.objectContaining({
+						claim: "C6",
+						predicate_id: "C6.native_validator_missing",
+						verdict: "ill-formed",
+					}),
+				]),
+			);
+			expect(result.claimEligibility.claimEligibility.every((record) => record.verdict === "ill-formed")).toBe(true);
 		} finally {
 			rmSync(root, { recursive: true, force: true });
 		}

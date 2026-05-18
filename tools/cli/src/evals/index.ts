@@ -20,6 +20,25 @@ export type {
 export { runEvalSuite } from "./runner.js";
 export type { EvalRunnerOptions } from "./runner.js";
 export { scoreAttempt } from "./scorer.js";
+export {
+	computeCacheKeyCid,
+	computeEdgeCid,
+	computeNodeCid,
+	validateReactorProofGraph,
+	verdict,
+} from "./proof-graph.js";
+export type {
+	ReactorProofAttestation,
+	ReactorProofEdge,
+	ReactorProofExternalEffect,
+	ReactorProofGraphV1,
+	ReactorProofIngressObservation,
+	ReactorProofMetamorphicPair,
+	ReactorProofNode,
+	ReactorProofValidationResult,
+	ReactorProofVerdict,
+	ReactorProofVerdictStatus,
+} from "./proof-graph.js";
 export { EvalSchemaError, validateEvalSuite, validateReactorTimelineCase } from "./schema.js";
 export { loadEvalSuite } from "./suite-loader.js";
 export {
@@ -69,9 +88,11 @@ export {
 	type EvalArtifactStore,
 	type EvalAttemptResult,
 	type EvalClaimEligibilityGate,
+	type EvalClaimEligibilityRecord,
 	type EvalClaimEligibilityReason,
 	type EvalClaimEligibilityReasonCode,
 	type EvalClaimEligibilityReport,
+	type EvalClaimEligibilityVerdict,
 	type EvalCostRecord,
 	type EvalEvent,
 	type EvalExpectedOutcome,
