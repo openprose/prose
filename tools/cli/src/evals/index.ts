@@ -17,6 +17,29 @@ export type {
 	OpenRouterCostRecordOptions,
 	OpenRouterGenerationResponse,
 } from "./costs/openrouter.js";
+export {
+	generationIdsFromCostRecords,
+	runOpenRouterCostLearningBatch,
+} from "./costs/cost-learning.js";
+export type {
+	OpenRouterCostLearningBatchInput,
+	OpenRouterCostLearningBatchOptions,
+	OpenRouterCostLearningBatchResult,
+	OpenRouterGenerationLookupFailure,
+	OpenRouterLearnedCostEstimate,
+} from "./costs/cost-learning.js";
+export {
+	DEFAULT_COST_LEARNING_MODEL,
+	DEFAULT_OPENROUTER_BASE_URL,
+	ModelCatalogClient,
+	computeOpenRouterCreditDeltaUsd,
+} from "./costs/model-catalog.js";
+export type {
+	ModelCatalogClientOptions,
+	OpenRouterCreditsSnapshot,
+	OpenRouterModelCatalogSnapshot,
+	OpenRouterModelEndpointSnapshot,
+} from "./costs/model-catalog.js";
 export { runEvalSuite } from "./runner.js";
 export type { EvalRunnerOptions } from "./runner.js";
 export { scoreAttempt } from "./scorer.js";
@@ -49,6 +72,21 @@ export {
 } from "./suite-registry.js";
 export type { BuiltInEvalSuiteName } from "./suite-registry.js";
 export { reactorNativeTinySuite } from "./suites/reactor-native-tiny.js";
+export {
+	PUBLIC_BENCHMARK_CANARY_SPECS,
+	PUBLIC_BENCHMARK_COMPETITORS,
+	PUBLIC_BENCHMARK_STACK_ORDER,
+	createPublicBenchmarkCanarySuite,
+	generatePublicBenchmarkCanaryTasks,
+	publicBenchmarkCanarySuite,
+} from "./public-benchmarks/index.js";
+export type {
+	GeneratePublicBenchmarkCanaryTasksOptions,
+	PublicBenchmarkCanarySpec,
+	PublicBenchmarkCompetitorId,
+	PublicBenchmarkCompetitorSpec,
+	PublicBenchmarkId,
+} from "./public-benchmarks/index.js";
 export {
 	PHASE_1B_REACTOR_SCENARIO_CORPUS,
 	PHASE_1B_REACTOR_SCENARIO_CORPUS_ID,

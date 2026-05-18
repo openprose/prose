@@ -1,4 +1,5 @@
 import type { EvalCostRecord, JsonObject, SurpriseLabel } from "../types.js";
+import { jsonObjectFromUnknown } from "./sanitize.js";
 
 export interface OpenRouterGenerationResponse {
 	data?: JsonObject;
@@ -40,7 +41,7 @@ export async function fetchOpenRouterGenerationCost(
 		throw new Error(`OpenRouter generation lookup failed with HTTP ${response.status}`);
 	}
 
-	const body = (await response.json()) as OpenRouterGenerationResponse;
+	const body = jsonObjectFromUnknown(await response.json(), [clientOptions.apiKey]) as OpenRouterGenerationResponse;
 	return openRouterGenerationToCostRecord(body.data ?? {}, {
 		...recordOptions,
 		generationId,
