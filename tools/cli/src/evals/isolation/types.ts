@@ -31,6 +31,7 @@ export interface IsolationSubstratePlan {
 	egressProxyUrl: string;
 	identity: IsolationRunIdentity;
 	kind: IsolationSubstrateKind;
+	modelCallLogPath: string;
 	networkName: string;
 	workDirectory: string;
 }

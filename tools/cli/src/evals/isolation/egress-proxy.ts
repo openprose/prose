@@ -1,4 +1,6 @@
 import { createHash, timingSafeEqual } from "node:crypto";
+import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
+import { dirname } from "node:path";
 
 import { computeNodeCid } from "../proof-graph.js";
 import type { JsonObject, JsonValue } from "../types.js";
@@ -159,6 +161,37 @@ export function createAuthenticatedEgressProxy(options: AuthenticatedEgressProxy
 			});
 		},
 	};
+}
+
+export function appendProxyModelCallRecord(modelCallLogPath: string, record: ProxyModelCallRecord): ProxyModelCallRecord {
+	const normalized = normalizeProxyModelCallRecord(record, "record");
+	mkdirSync(dirname(modelCallLogPath), { recursive: true });
+	appendFileSync(modelCallLogPath, `${JSON.stringify(normalized)}\n`, "utf8");
+	return normalized;
+}
+
+export function readProxyModelCallRecords(modelCallLogPath: string): readonly ProxyModelCallRecord[] {
+	if (!existsSync(modelCallLogPath)) {
+		return [];
+	}
+
+	const contents = readFileSync(modelCallLogPath, "utf8");
+	const records: ProxyModelCallRecord[] = [];
+	for (const [index, line] of contents.split(/\r?\n/).entries()) {
+		if (line.length === 0) {
+			continue;
+		}
+
+		let value: unknown;
+		try {
+			value = JSON.parse(line);
+		} catch (error) {
+			throw new Error(`proxy model-call log line ${index + 1} is not valid JSON`, { cause: error });
+		}
+		records.push(normalizeProxyModelCallRecord(value, `line ${index + 1}`));
+	}
+
+	return records;
 }
 
 interface AuthResult {
@@ -448,4 +481,76 @@ function sanitizedUrl(value: string): string {
 		}
 	}
 	return url.toString();
+}
+
+function normalizeProxyModelCallRecord(value: unknown, path: string): ProxyModelCallRecord {
+	if (!isJsonObject(value)) {
+		throw new Error(`${path} must be an object`);
+	}
+
+	const metadata = objectField(value, "metadata");
+	const request = objectField(metadata, "request");
+	const response = objectField(metadata, "response");
+	const record: ProxyModelCallRecord = {
+		cid: requireStringField(value, "cid", path),
+		completion_tokens: requireNumberField(value, "completion_tokens", path),
+		decision_cid: requireStringField(value, "decision_cid", path),
+		metadata: {
+			request: {
+				body_bytes: requireNumberField(request, "body_bytes", `${path}.metadata.request`),
+				headers: requireJsonObjectField(request, "headers", `${path}.metadata.request`),
+				method: requireStringField(request, "method", `${path}.metadata.request`),
+				url: requireStringField(request, "url", `${path}.metadata.request`),
+			},
+			response: {
+				body_bytes: requireNumberField(response, "body_bytes", `${path}.metadata.response`),
+				headers: requireJsonObjectField(response, "headers", `${path}.metadata.response`),
+				status: requireNumberField(response, "status", `${path}.metadata.response`),
+				status_text: requireStringField(response, "status_text", `${path}.metadata.response`),
+			},
+		},
+		model_version: requireStringField(value, "model_version", path),
+		prompt_tokens: requireNumberField(value, "prompt_tokens", path),
+		provider: requireStringField(value, "provider", path),
+		request_cid: requireStringField(value, "request_cid", path),
+		response_cid: requireStringField(value, "response_cid", path),
+		type: requireModelCallType(value, path),
+	};
+
+	return record;
+}
+
+function requireStringField(object: JsonObject | undefined, key: string, path: string): string {
+	const value = object?.[key];
+	if (typeof value !== "string" || value.length === 0) {
+		throw new Error(`${path}.${key} must be a non-empty string`);
+	}
+
+	return value;
+}
+
+function requireNumberField(object: JsonObject | undefined, key: string, path: string): number {
+	const value = object?.[key];
+	if (typeof value !== "number" || !Number.isFinite(value)) {
+		throw new Error(`${path}.${key} must be a finite number`);
+	}
+
+	return value;
+}
+
+function requireJsonObjectField(object: JsonObject | undefined, key: string, path: string): JsonObject {
+	const value = object?.[key];
+	if (!isJsonObject(value)) {
+		throw new Error(`${path}.${key} must be a JSON object`);
+	}
+
+	return value;
+}
+
+function requireModelCallType(object: JsonObject, path: string): "ModelCall" {
+	if (object.type !== "ModelCall") {
+		throw new Error(`${path}.type must be ModelCall`);
+	}
+
+	return "ModelCall";
 }

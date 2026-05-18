@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { isAbsolute, join, posix } from "node:path";
 
 import type { JsonObject } from "../types.js";
@@ -10,10 +11,12 @@ const DEFAULT_EGRESS_NETWORK_NAME = "prose-eval-egress";
 const DEFAULT_WORKSPACE_TARGET_PATH = "/workspace";
 const DEFAULT_ARTIFACT_TARGET_PATH = "/artifacts";
 const DEFAULT_EFFECT_LOG_FILE_NAME = "effects.jsonl";
+const DEFAULT_MODEL_CALL_LOG_FILE_NAME = "model-calls.jsonl";
 const DEFAULT_EGRESS_PROXY_PORT = 3128;
 const DEFAULT_EGRESS_PROXY_IMAGE = "ghcr.io/openprose/eval-egress-proxy:0.1.0";
 
 const SAFE_DOCKER_NAME = /^[a-z][a-z0-9-]{0,62}$/;
+const SAFE_ARTIFACT_FILE_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
 
 export interface DockerIsolationPlanOptions {
 	artifactHostPath: string;
@@ -26,8 +29,10 @@ export interface DockerIsolationPlanOptions {
 	egressProxyImage?: string;
 	egressProxyPort?: number;
 	egressProxyServiceName?: string;
+	egressProxyToken?: string;
 	environment?: Readonly<Record<string, string | undefined>>;
 	harnessServiceName?: string;
+	modelCallLogFileName?: string;
 	networkName?: string;
 	readOnlyRootFilesystem?: boolean;
 	workspaceTargetPath?: string;
@@ -64,9 +69,19 @@ export function createDockerIsolationPlan(options: DockerIsolationPlanOptions): 
 	if (!Number.isInteger(proxyPort) || proxyPort < 1 || proxyPort > 65_535) {
 		throw new Error(`egressProxyPort must be an integer TCP port: ${proxyPort}`);
 	}
+	const egressProxyToken = assertNonEmptyString(
+		options.egressProxyToken ?? randomBytes(32).toString("hex"),
+		"egressProxyToken",
+	);
+	const modelCallLogFileName = assertSafeArtifactFileName(
+		options.modelCallLogFileName ?? DEFAULT_MODEL_CALL_LOG_FILE_NAME,
+		"modelCallLogFileName",
+	);
 
 	const effectLogPath = join(artifactHostPath, DEFAULT_EFFECT_LOG_FILE_NAME);
+	const modelCallLogPath = join(artifactHostPath, modelCallLogFileName);
 	const containerEffectLogPath = posix.join(artifactTargetPath, DEFAULT_EFFECT_LOG_FILE_NAME);
+	const containerModelCallLogPath = posix.join(artifactTargetPath, modelCallLogFileName);
 	const egressProxyUrl = `http://${egressProxyServiceName}:${proxyPort}`;
 	const readOnlyRootFilesystem = options.readOnlyRootFilesystem ?? true;
 
@@ -77,6 +92,8 @@ export function createDockerIsolationPlan(options: DockerIsolationPlanOptions): 
 		HTTPS_PROXY: egressProxyUrl,
 		NO_PROXY: "localhost,127.0.0.1,::1",
 		PROSE_EVAL_EFFECT_LOG_PATH: containerEffectLogPath,
+		PROSE_EVAL_EGRESS_PROXY_AUTHORIZATION: `Bearer ${egressProxyToken}`,
+		PROSE_EVAL_EGRESS_PROXY_TOKEN: egressProxyToken,
 		PROSE_EVAL_EGRESS_PROXY_URL: egressProxyUrl,
 		all_proxy: egressProxyUrl,
 		http_proxy: egressProxyUrl,
@@ -112,11 +129,23 @@ export function createDockerIsolationPlan(options: DockerIsolationPlanOptions): 
 	const egressProxyService: JsonObject = {
 		image: options.egressProxyImage ?? DEFAULT_EGRESS_PROXY_IMAGE,
 		cap_drop: ["ALL"],
+		environment: sortedStringRecord({
+			PROSE_EVAL_EGRESS_PROXY_PORT: `${proxyPort}`,
+			PROSE_EVAL_EGRESS_PROXY_TOKEN: egressProxyToken,
+			PROSE_EVAL_MODEL_CALL_LOG_PATH: containerModelCallLogPath,
+		}),
 		expose: [`${proxyPort}`],
 		networks: [networkName, egressNetworkName],
 		read_only: readOnlyRootFilesystem,
 		security_opt: ["no-new-privileges:true"],
 		tmpfs: ["/tmp:rw,noexec,nosuid,size=128m"],
+		volumes: [
+			{
+				type: "bind",
+				source: artifactHostPath,
+				target: artifactTargetPath,
+			},
+		],
 	};
 
 	return {
@@ -136,6 +165,7 @@ export function createDockerIsolationPlan(options: DockerIsolationPlanOptions): 
 		egressProxyUrl,
 		identity: options.identity,
 		kind: "docker-compose",
+		modelCallLogPath,
 		networkName,
 		workDirectory: workspaceTargetPath,
 	};
@@ -160,6 +190,22 @@ function assertAbsoluteHostPath(value: string, path: string): string {
 function assertAbsoluteContainerPath(value: string, path: string): string {
 	if (!value.startsWith("/")) {
 		throw new Error(`${path} must be an absolute container path: ${value}`);
+	}
+
+	return value;
+}
+
+function assertSafeArtifactFileName(value: string, path: string): string {
+	if (!SAFE_ARTIFACT_FILE_NAME.test(value)) {
+		throw new Error(`${path} must be a safe artifact file name: ${value}`);
+	}
+
+	return value;
+}
+
+function assertNonEmptyString(value: string, path: string): string {
+	if (value.trim() === "") {
+		throw new Error(`${path} must be a non-empty string`);
 	}
 
 	return value;

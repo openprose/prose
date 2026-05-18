@@ -49,6 +49,24 @@ export {
 } from "./suite-registry.js";
 export type { BuiltInEvalSuiteName } from "./suite-registry.js";
 export { reactorNativeTinySuite } from "./suites/reactor-native-tiny.js";
+export {
+	PHASE_1B_REACTOR_SCENARIO_CORPUS,
+	PHASE_1B_REACTOR_SCENARIO_CORPUS_ID,
+	PHASE_1B_REACTOR_SCENARIO_FAMILIES,
+	PHASE_1B_REACTOR_SCENARIO_FAMILY_IDS,
+	PHASE_1B_SCENARIOS_PER_FAMILY,
+	computePhase1bOracleCid,
+	computePhase1bPreregistrationHash,
+	getPhase1bScenarioMetadata,
+} from "./scenarios/phase-1b-corpus.js";
+export type {
+	Phase1bGoldTraceEntry,
+	Phase1bPreregistration,
+	Phase1bScenarioFamily,
+	Phase1bScenarioFamilyId,
+	Phase1bScenarioMetadata,
+	Phase1bScenarioRole,
+} from "./scenarios/phase-1b-corpus.js";
 export { runReactorTimelineCase } from "./timeline-runner.js";
 export type { ReactorTimelineRunnerOptions } from "./timeline-runner.js";
 export { createAdaptiveCronTimelineAdapter } from "./timeline-adapters/adaptive-cron.js";
@@ -67,9 +85,39 @@ export { createIdealCronTimelineAdapter } from "./timeline-adapters/ideal-cron.j
 export type { IdealCronTimelineAdapterOptions } from "./timeline-adapters/ideal-cron.js";
 export { createTunedTtlTimelineAdapter } from "./timeline-adapters/tuned-ttl.js";
 export type { TunedTtlTimelineAdapterOptions } from "./timeline-adapters/tuned-ttl.js";
+export {
+	createCodexTimelineAdapter,
+	createDspyRlmTimelineAdapter,
+	createHermesTimelineAdapter,
+	createOpenClawTimelineAdapter,
+	createPiTimelineAdapter,
+} from "./timeline-adapters/competitors.js";
+export type {
+	CodexTimelineAdapterOptions,
+	DspyRlmTimelineAdapterOptions,
+	HermesTimelineAdapterOptions,
+	OpenClawTimelineAdapterOptions,
+	PiTimelineAdapterOptions,
+} from "./timeline-adapters/competitors.js";
+export {
+	buildTimelineEventEvalTask,
+	createEvalAdapterTimelineAdapter,
+	createUnsupportedTimelineAdapter,
+} from "./timeline-adapters/competitor-wrapper.js";
+export type {
+	BuildTimelineEventEvalTaskOptions,
+	EvalAdapterTimelineAdapterOptions,
+	TimelineEvalTaskBuilder,
+	TimelineEvalTaskBuilderInput,
+	UnsupportedTimelineAdapterOptions,
+} from "./timeline-adapters/competitor-wrapper.js";
 export { createDockerIsolationPlan } from "./isolation/docker-substrate.js";
 export type { DockerIsolationPlanOptions } from "./isolation/docker-substrate.js";
-export { createAuthenticatedEgressProxy } from "./isolation/egress-proxy.js";
+export {
+	appendProxyModelCallRecord,
+	createAuthenticatedEgressProxy,
+	readProxyModelCallRecords,
+} from "./isolation/egress-proxy.js";
 export type {
 	AuthenticatedEgressProxy,
 	AuthenticatedEgressProxyOptions,
@@ -86,6 +134,19 @@ export {
 	reconcileKernelEffects,
 } from "./isolation/effect-log.js";
 export type { KernelEffectLog, KernelEffectLogOptions } from "./isolation/effect-log.js";
+export {
+	createDockerComposeCommandRunner,
+	dockerComposeRunner,
+	runDockerIsolation,
+} from "./isolation/live-runner.js";
+export type {
+	DockerComposeCommandRunnerOptions,
+	DockerComposeRunOptions,
+	DockerComposeRunResult,
+	DockerComposeRunner,
+	DockerIsolationLiveRunnerOptions,
+	DockerIsolationLiveRunResult,
+} from "./isolation/live-runner.js";
 export type {
 	IsolationDockerService,
 	IsolationDockerVolume,
