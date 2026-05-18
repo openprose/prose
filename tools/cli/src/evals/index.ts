@@ -18,6 +18,31 @@ export type {
 	OpenRouterGenerationResponse,
 } from "./costs/openrouter.js";
 export {
+	mcnemarExact,
+	wilcoxonSignedRank,
+} from "./results/statistics.js";
+export type {
+	McNemarExactResult,
+	WilcoxonSignedRankResult,
+} from "./results/statistics.js";
+export {
+	createPhase1bBaselineAdapters,
+	notRunPhase1bCompetitorRows,
+	phase1bStatisticalPilot,
+	runPhase1bBaselinePilot,
+	scorePhase1bTimelineRun,
+	summarizePhase1bResults,
+} from "./results/phase-1b.js";
+export type {
+	Phase1bBaselineRunOptions,
+	Phase1bDecisionClass,
+	Phase1bResultRow,
+	Phase1bResultStatus,
+	Phase1bResultsTableRow,
+	Phase1bStatisticalPilotResult,
+	Phase1bStepScore,
+} from "./results/phase-1b.js";
+export {
 	generationIdsFromCostRecords,
 	runOpenRouterCostLearningBatch,
 } from "./costs/cost-learning.js";
