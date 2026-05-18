@@ -378,9 +378,10 @@ function learnedCostEstimate(options: {
 }): OpenRouterLearnedCostEstimate {
 	const providerReconciledSpendUsd = sumKnownCostByConfidence(options.costRecords, "provider-reconciled");
 	const knownCostUsd = options.costSummary.knownCostUsd;
-	const hasProviderReconciledCost = options.costRecords.some((record) => record.confidence === "provider-reconciled");
+	const allCostRecordsProviderReconciled =
+		options.costRecords.length > 0 && options.costRecords.every((record) => record.confidence === "provider-reconciled");
 	const spendBasis =
-		hasProviderReconciledCost && options.creditDeltaUsd !== undefined && options.creditDeltaUsd > 0
+		allCostRecordsProviderReconciled && options.creditDeltaUsd !== undefined && options.creditDeltaUsd > 0
 			? "credit-delta"
 			: knownCostUsd > 0
 				? "cost-records"
@@ -394,7 +395,7 @@ function learnedCostEstimate(options: {
 				? knownCostUsd
 				: 0;
 	const confidence =
-		hasProviderReconciledCost
+		allCostRecordsProviderReconciled
 			? "provider-reconciled"
 			: options.costRecords.length > 0
 				? "response-usage"

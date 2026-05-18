@@ -19,23 +19,38 @@ export type {
 } from "./costs/openrouter.js";
 export {
 	mcnemarExact,
+	pairedPowerPilot,
 	wilcoxonSignedRank,
 } from "./results/statistics.js";
 export type {
 	McNemarExactResult,
+	PairedPowerPilotResult,
 	WilcoxonSignedRankResult,
 } from "./results/statistics.js";
 export {
+	createPhase1bCompetitorAdapters,
 	createPhase1bBaselineAdapters,
+	createPhase1bReportMinusReactorAdapters,
 	notRunPhase1bCompetitorRows,
+	phase1bFamilyStatisticalPilots,
 	phase1bStatisticalPilot,
 	runPhase1bBaselinePilot,
+	runPhase1bReportMinusReactorPilot,
 	scorePhase1bTimelineRun,
 	summarizePhase1bResults,
 } from "./results/phase-1b.js";
 export type {
+	Phase1bArmKind,
 	Phase1bBaselineRunOptions,
+	Phase1bCompetitorAdapterOptions,
+	Phase1bCostConfidence,
 	Phase1bDecisionClass,
+	Phase1bEvidenceUse,
+	Phase1bOpenProseReceiptV0Observation,
+	Phase1bPilotCostStage,
+	Phase1bPilotStageName,
+	Phase1bReportMinusReactorPilotOptions,
+	Phase1bReportMinusReactorPilotResult,
 	Phase1bResultRow,
 	Phase1bResultStatus,
 	Phase1bResultsTableRow,

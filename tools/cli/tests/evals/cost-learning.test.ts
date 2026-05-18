@@ -274,6 +274,55 @@ describe("OpenRouter cost-learning loop", () => {
 		expect(result.learnedCost.spendBasis).toBe("cost-records");
 	});
 
+	test("does not label a mixed provider/fallback batch as provider-reconciled", async () => {
+		const fetchImpl: typeof fetch = async (input) => {
+			const url = new URL(input.toString());
+			if (url.pathname === "/api/v1/models") {
+				return jsonResponse({ data: [] });
+			}
+			if (url.pathname.endsWith("/endpoints")) {
+				return jsonResponse({ data: { endpoints: [] } });
+			}
+			if (url.pathname === "/api/v1/credits") {
+				return jsonResponse({ data: { total_usage: 3 } });
+			}
+			if (url.pathname === "/api/v1/generation" && url.searchParams.get("id") === "gen-ok") {
+				return jsonResponse({
+					data: {
+						created_at: "2026-05-17T12:00:00.000Z",
+						model: DEFAULT_COST_LEARNING_MODEL,
+						provider_name: "Google",
+						tokens_prompt: 2,
+						tokens_completion: 1,
+						total_cost: "0.002",
+					},
+				});
+			}
+			return jsonResponse({ error: "not found" }, 404);
+		};
+		const client = new ModelCatalogClient({ apiKey: API_KEY, fetch: fetchImpl });
+		const fallbackRecord = {
+			...inputCostRecord("gen-missing", "pi", "case-2"),
+			confidence: "response-usage" as const,
+			totalCostUsd: 0.003,
+		};
+
+		const result = await runOpenRouterCostLearningBatch({
+			allowGenerationLookupFailures: true,
+			batchId: "mixed-batch",
+			client,
+			costRecords: [inputCostRecord("gen-ok", "pi", "case-1"), fallbackRecord],
+			generationLookupAttempts: 1,
+			runId: "mixed-run",
+		});
+
+		expect(result.reconciledCostRecords).toHaveLength(1);
+		expect(result.fallbackCostRecords).toEqual([fallbackRecord]);
+		expect(result.learnedCost.confidence).toBe("response-usage");
+		expect(result.learnedCost.providerReconciledSpendUsd).toBe(0.002);
+		expect(result.learnedCost.spendBasis).toBe("cost-records");
+	});
+
 	test("redacts secrets from generation lookup failures", async () => {
 		const fetchImpl: typeof fetch = async (input) => {
 			const url = new URL(input.toString());
