@@ -51,6 +51,22 @@ export type { BuiltInEvalSuiteName } from "./suite-registry.js";
 export { reactorNativeTinySuite } from "./suites/reactor-native-tiny.js";
 export { runReactorTimelineCase } from "./timeline-runner.js";
 export type { ReactorTimelineRunnerOptions } from "./timeline-runner.js";
+export { createAdaptiveCronTimelineAdapter } from "./timeline-adapters/adaptive-cron.js";
+export type { AdaptiveCronTimelineAdapterOptions } from "./timeline-adapters/adaptive-cron.js";
+export { createDiffcacheTimelineAdapter } from "./timeline-adapters/diffcache.js";
+export type { DiffcacheTimelineAdapterOptions } from "./timeline-adapters/diffcache.js";
+export {
+	DEFAULT_DIFFCACHE_PLUS_THRESHOLD,
+	createDiffcachePlusTimelineAdapter,
+} from "./timeline-adapters/diffcache-plus.js";
+export type {
+	DiffcachePlusEmbeddingProvider,
+	DiffcachePlusTimelineAdapterOptions,
+} from "./timeline-adapters/diffcache-plus.js";
+export { createIdealCronTimelineAdapter } from "./timeline-adapters/ideal-cron.js";
+export type { IdealCronTimelineAdapterOptions } from "./timeline-adapters/ideal-cron.js";
+export { createTunedTtlTimelineAdapter } from "./timeline-adapters/tuned-ttl.js";
+export type { TunedTtlTimelineAdapterOptions } from "./timeline-adapters/tuned-ttl.js";
 export { formatEvalSuiteSummary } from "./format.js";
 export { createMockEvalAdapter } from "./adapters/mock.js";
 export type { MockEvalAdapterOptions, MockEvalAdapterResponse } from "./adapters/mock.js";
