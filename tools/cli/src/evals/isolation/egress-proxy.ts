@@ -1,0 +1,451 @@
+import { createHash, timingSafeEqual } from "node:crypto";
+
+import { computeNodeCid } from "../proof-graph.js";
+import type { JsonObject, JsonValue } from "../types.js";
+import type { ProxyModelCallNode } from "./types.js";
+
+export type EgressProxyFetch = (input: Request | URL | string, init?: RequestInit) => Promise<Response>;
+
+export interface AuthenticatedEgressProxyOptions {
+	bearerToken?: string;
+	token?: string;
+	fetch: EgressProxyFetch;
+	onModelCall?: (node: ProxyModelCallNode) => void | Promise<void>;
+	emitRecord?: (record: ProxyModelCallRecord) => void | Promise<void>;
+	upstreamBaseUrl?: string | URL;
+}
+
+export interface AuthenticatedEgressProxyRequestContext {
+	decisionCid?: string;
+	decision_cid?: string;
+	model?: string;
+	provider?: string;
+	targetUrl?: string | URL;
+}
+
+export interface AuthenticatedEgressProxy {
+	readonly records: ProxyModelCallRecord[];
+	handleRequest(request: Request, context?: AuthenticatedEgressProxyRequestContext): Promise<Response>;
+}
+
+export interface ProxyModelCallRecord extends ProxyModelCallNode {
+	metadata: {
+		request: ProxyHttpRequestMetadata;
+		response: ProxyHttpResponseMetadata;
+	};
+}
+
+export interface ProxyHttpRequestMetadata {
+	body_bytes: number;
+	headers: JsonObject;
+	method: string;
+	url: string;
+}
+
+export interface ProxyHttpResponseMetadata {
+	body_bytes: number;
+	headers: JsonObject;
+	status: number;
+	status_text: string;
+}
+
+const AUTHENTICATE_HEADERS = [
+	"proxy-authorization",
+	"x-prose-egress-authorization",
+	"x-prose-egress-token",
+	"authorization",
+] as const;
+const CONTROL_HEADERS = new Set([
+	"proxy-authorization",
+	"x-prose-decision-cid",
+	"x-prose-egress-authorization",
+	"x-prose-egress-provider",
+	"x-prose-egress-target",
+	"x-prose-model",
+	"x-prose-provider",
+	"x-prose-reactor-decision-cid",
+	"x-reactor-decision-cid",
+]);
+const REDACTED_HEADER_NAMES = new Set([
+	"anthropic-api-key",
+	"api-key",
+	"authorization",
+	"openai-api-key",
+	"proxy-authorization",
+	"x-api-key",
+	"x-prose-egress-authorization",
+	"x-prose-egress-token",
+]);
+const REDACTED_QUERY_PARAMS = new Set(["api_key", "apikey", "key", "token"]);
+const DECISION_CID_HEADERS = ["x-prose-decision-cid", "x-prose-reactor-decision-cid", "x-reactor-decision-cid"] as const;
+
+export function createAuthenticatedEgressProxy(options: AuthenticatedEgressProxyOptions): AuthenticatedEgressProxy {
+	const bearerToken = options.bearerToken ?? options.token;
+	if (bearerToken === undefined || bearerToken.trim() === "") {
+		throw new Error("Authenticated egress proxy requires a bearer token");
+	}
+
+	const records: ProxyModelCallRecord[] = [];
+
+	return {
+		records,
+		async handleRequest(request, context = {}) {
+			const auth = authenticate(request.headers, bearerToken);
+			if (auth === undefined) {
+				return unauthorizedResponse();
+			}
+
+			const decisionCid = decisionCidFrom(request.headers, context);
+			if (decisionCid === undefined) {
+				return new Response("Missing decision_cid", { status: 400 });
+			}
+
+			const targetUrl = resolveTargetUrl(request, context, options.upstreamBaseUrl);
+			if (targetUrl === undefined) {
+				return new Response("Invalid egress target", { status: 400 });
+			}
+
+			const requestBodyBytes = await requestBodyForForwarding(request);
+			const forwardedHeaders = forwardedRequestHeaders(request.headers, auth.sourceHeader);
+			const requestCid = sha256Bytes(requestBodyBytes);
+
+			const response = await options.fetch(targetUrl, {
+				method: request.method,
+				headers: forwardedHeaders,
+				...(methodAllowsBody(request.method) && requestBodyBytes.length > 0 ? { body: requestBodyBytes } : {}),
+				signal: request.signal,
+			});
+
+			const responseBodyBytes = new Uint8Array(await response.arrayBuffer());
+			const responseHeaders = new Headers(response.headers);
+			const responseCid = sha256Bytes(responseBodyBytes);
+			const node = modelCallNode({
+				context,
+				decisionCid,
+				requestBodyBytes,
+				requestHeaders: request.headers,
+				requestCid,
+				responseBodyBytes,
+				responseCid,
+				responseHeaders,
+				targetUrl,
+			});
+			const record: ProxyModelCallRecord = {
+				...node,
+				metadata: {
+					request: {
+						body_bytes: requestBodyBytes.length,
+						headers: sanitizedHeaders(forwardedHeaders),
+						method: request.method,
+						url: sanitizedUrl(targetUrl),
+					},
+					response: {
+						body_bytes: responseBodyBytes.length,
+						headers: sanitizedHeaders(responseHeaders),
+						status: response.status,
+						status_text: response.statusText,
+					},
+				},
+			};
+
+			records.push(record);
+			await options.onModelCall?.(node);
+			await options.emitRecord?.(record);
+
+			return new Response(responseBodyBytes, {
+				headers: responseHeaders,
+				status: response.status,
+				statusText: response.statusText,
+			});
+		},
+	};
+}
+
+interface AuthResult {
+	sourceHeader: string;
+}
+
+interface ModelCallNodeOptions {
+	context: AuthenticatedEgressProxyRequestContext;
+	decisionCid: string;
+	requestBodyBytes: Uint8Array;
+	requestHeaders: Headers;
+	requestCid: string;
+	responseBodyBytes: Uint8Array;
+	responseCid: string;
+	responseHeaders: Headers;
+	targetUrl: string;
+}
+
+function authenticate(headers: Headers, expectedToken: string): AuthResult | undefined {
+	for (const header of AUTHENTICATE_HEADERS) {
+		const value = headers.get(header);
+		const token = parseBearerToken(value);
+		if (token !== undefined && tokensMatch(token, expectedToken)) {
+			return { sourceHeader: header };
+		}
+	}
+
+	return undefined;
+}
+
+function parseBearerToken(value: string | null): string | undefined {
+	if (value === null) {
+		return undefined;
+	}
+
+	const match = /^Bearer\s+(.+)$/i.exec(value.trim());
+	return match?.[1]?.trim();
+}
+
+function tokensMatch(actual: string, expected: string): boolean {
+	const actualBytes = Buffer.from(actual);
+	const expectedBytes = Buffer.from(expected);
+	return actualBytes.length === expectedBytes.length && timingSafeEqual(actualBytes, expectedBytes);
+}
+
+function unauthorizedResponse(): Response {
+	return new Response("Unauthorized", {
+		headers: {
+			"www-authenticate": "Bearer",
+		},
+		status: 401,
+	});
+}
+
+function decisionCidFrom(headers: Headers, context: AuthenticatedEgressProxyRequestContext): string | undefined {
+	const candidates = new Set<string>();
+	addNonEmpty(candidates, context.decisionCid);
+	addNonEmpty(candidates, context.decision_cid);
+	for (const header of DECISION_CID_HEADERS) {
+		addNonEmpty(candidates, headers.get(header) ?? undefined);
+	}
+
+	if (candidates.size !== 1) {
+		return undefined;
+	}
+
+	return [...candidates][0];
+}
+
+function addNonEmpty(values: Set<string>, value: string | undefined): void {
+	const trimmed = value?.trim();
+	if (trimmed !== undefined && trimmed !== "") {
+		values.add(trimmed);
+	}
+}
+
+function resolveTargetUrl(
+	request: Request,
+	context: AuthenticatedEgressProxyRequestContext,
+	upstreamBaseUrl: string | URL | undefined,
+): string | undefined {
+	const explicitTarget = context.targetUrl?.toString() ?? request.headers.get("x-prose-egress-target") ?? undefined;
+	if (explicitTarget !== undefined && explicitTarget.trim() !== "") {
+		return httpUrl(explicitTarget, upstreamBaseUrl);
+	}
+
+	if (upstreamBaseUrl !== undefined) {
+		const requestUrl = new URL(request.url);
+		return httpUrl(`${requestUrl.pathname}${requestUrl.search}`, upstreamBaseUrl);
+	}
+
+	return httpUrl(request.url, undefined);
+}
+
+function httpUrl(value: string, base: string | URL | undefined): string | undefined {
+	try {
+		const url = base === undefined ? new URL(value) : new URL(value, base);
+		if (url.protocol !== "http:" && url.protocol !== "https:") {
+			return undefined;
+		}
+		return url.toString();
+	} catch {
+		return undefined;
+	}
+}
+
+async function requestBodyForForwarding(request: Request): Promise<Uint8Array> {
+	if (!methodAllowsBody(request.method)) {
+		return new Uint8Array();
+	}
+
+	return new Uint8Array(await request.arrayBuffer());
+}
+
+function methodAllowsBody(method: string): boolean {
+	const normalized = method.toUpperCase();
+	return normalized !== "GET" && normalized !== "HEAD";
+}
+
+function forwardedRequestHeaders(headers: Headers, authSourceHeader: string): Headers {
+	const forwarded = new Headers();
+	for (const [name, value] of headers.entries()) {
+		const normalizedName = name.toLowerCase();
+		if (CONTROL_HEADERS.has(normalizedName)) {
+			continue;
+		}
+		if (normalizedName === "authorization" && authSourceHeader === "authorization") {
+			continue;
+		}
+		if (normalizedName === "host") {
+			continue;
+		}
+		forwarded.append(name, value);
+	}
+
+	return forwarded;
+}
+
+function sha256Bytes(bytes: Uint8Array): string {
+	return createHash("sha256").update(bytes).digest("hex");
+}
+
+function modelCallNode(options: ModelCallNodeOptions): ProxyModelCallNode {
+	const requestJson = parseJsonObject(options.requestBodyBytes);
+	const responseJson = parseJsonObject(options.responseBodyBytes);
+	const usage = usageFrom(responseJson);
+	const node: ProxyModelCallNode = {
+		cid: "",
+		completion_tokens: usage.completionTokens,
+		decision_cid: options.decisionCid,
+		model_version:
+			stringField(responseJson, "model") ??
+			stringField(requestJson, "model") ??
+			options.context.model ??
+			modelFromHeaders(options.requestHeaders) ??
+			"unknown",
+		prompt_tokens: usage.promptTokens,
+		provider:
+			stringField(responseJson, "provider") ??
+			stringField(responseJson, "provider_name") ??
+			stringField(requestJson, "provider") ??
+			options.context.provider ??
+			providerFromHeaders(options.requestHeaders) ??
+			providerFromHeaders(options.responseHeaders) ??
+			providerFromUrl(options.targetUrl),
+		request_cid: options.requestCid,
+		response_cid: options.responseCid,
+		type: "ModelCall",
+	};
+	node.cid = computeNodeCid(node);
+	return node;
+}
+
+function parseJsonObject(bytes: Uint8Array): JsonObject | undefined {
+	if (bytes.length === 0) {
+		return undefined;
+	}
+
+	try {
+		const parsed = JSON.parse(new TextDecoder().decode(bytes)) as unknown;
+		return isJsonObject(parsed) ? parsed : undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+function usageFrom(response: JsonObject | undefined): { completionTokens: number; promptTokens: number } {
+	const usage = objectField(response, "usage");
+	const promptTokens =
+		numberField(usage, "prompt_tokens") ??
+		numberField(usage, "input_tokens") ??
+		numberField(usage, "tokens_prompt") ??
+		numberField(response, "prompt_tokens") ??
+		0;
+	const completionTokens =
+		numberField(usage, "completion_tokens") ??
+		numberField(usage, "output_tokens") ??
+		numberField(usage, "tokens_completion") ??
+		numberField(response, "completion_tokens") ??
+		0;
+
+	return { completionTokens, promptTokens };
+}
+
+function objectField(object: JsonObject | undefined, key: string): JsonObject | undefined {
+	const value = object?.[key];
+	return isJsonObject(value) ? value : undefined;
+}
+
+function numberField(object: JsonObject | undefined, key: string): number | undefined {
+	const value = object?.[key];
+	if (typeof value === "number" && Number.isFinite(value)) {
+		return value;
+	}
+
+	if (typeof value === "string") {
+		const parsed = Number(value);
+		return Number.isFinite(parsed) ? parsed : undefined;
+	}
+
+	return undefined;
+}
+
+function stringField(object: JsonObject | undefined, key: string): string | undefined {
+	const value = object?.[key];
+	return typeof value === "string" && value.trim() !== "" ? value : undefined;
+}
+
+function isJsonObject(value: unknown): value is JsonObject {
+	if (value === null || typeof value !== "object" || Array.isArray(value)) {
+		return false;
+	}
+
+	return Object.values(value).every(isJsonValue);
+}
+
+function isJsonValue(value: unknown): value is JsonValue {
+	if (value === null || typeof value === "string" || typeof value === "boolean") {
+		return true;
+	}
+	if (typeof value === "number") {
+		return Number.isFinite(value);
+	}
+	if (Array.isArray(value)) {
+		return value.every(isJsonValue);
+	}
+	return isJsonObject(value);
+}
+
+function providerFromHeaders(headers: Headers): string | undefined {
+	return headers.get("x-prose-provider") ?? headers.get("x-prose-egress-provider") ?? headers.get("x-provider") ?? undefined;
+}
+
+function modelFromHeaders(headers: Headers): string | undefined {
+	return headers.get("x-prose-model") ?? headers.get("x-model") ?? undefined;
+}
+
+function providerFromUrl(url: string): string {
+	const host = new URL(url).hostname.toLowerCase();
+	if (host.endsWith("anthropic.com")) {
+		return "anthropic";
+	}
+	if (host.endsWith("openai.com")) {
+		return "openai";
+	}
+	if (host.endsWith("openrouter.ai")) {
+		return "openrouter";
+	}
+
+	return host.replace(/^api[.-]/, "").split(".")[0] ?? host;
+}
+
+function sanitizedHeaders(headers: Headers): JsonObject {
+	const metadata: JsonObject = {};
+	for (const [name, value] of [...headers.entries()].sort(([left], [right]) => left.localeCompare(right))) {
+		const normalizedName = name.toLowerCase();
+		metadata[normalizedName] = REDACTED_HEADER_NAMES.has(normalizedName) ? "[REDACTED]" : value;
+	}
+	return metadata;
+}
+
+function sanitizedUrl(value: string): string {
+	const url = new URL(value);
+	for (const key of [...url.searchParams.keys()]) {
+		if (REDACTED_QUERY_PARAMS.has(key.toLowerCase())) {
+			url.searchParams.set(key, "[REDACTED]");
+		}
+	}
+	return url.toString();
+}

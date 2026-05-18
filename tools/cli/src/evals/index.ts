@@ -67,6 +67,36 @@ export { createIdealCronTimelineAdapter } from "./timeline-adapters/ideal-cron.j
 export type { IdealCronTimelineAdapterOptions } from "./timeline-adapters/ideal-cron.js";
 export { createTunedTtlTimelineAdapter } from "./timeline-adapters/tuned-ttl.js";
 export type { TunedTtlTimelineAdapterOptions } from "./timeline-adapters/tuned-ttl.js";
+export { createDockerIsolationPlan } from "./isolation/docker-substrate.js";
+export type { DockerIsolationPlanOptions } from "./isolation/docker-substrate.js";
+export { createAuthenticatedEgressProxy } from "./isolation/egress-proxy.js";
+export type {
+	AuthenticatedEgressProxy,
+	AuthenticatedEgressProxyOptions,
+	AuthenticatedEgressProxyRequestContext,
+	EgressProxyFetch,
+	ProxyHttpRequestMetadata,
+	ProxyHttpResponseMetadata,
+	ProxyModelCallRecord,
+} from "./isolation/egress-proxy.js";
+export {
+	appendKernelEffect,
+	createKernelEffectLog,
+	readKernelEffects,
+	reconcileKernelEffects,
+} from "./isolation/effect-log.js";
+export type { KernelEffectLog, KernelEffectLogOptions } from "./isolation/effect-log.js";
+export type {
+	IsolationDockerService,
+	IsolationDockerVolume,
+	IsolationEffectKind,
+	IsolationRunIdentity,
+	IsolationSubstrateKind,
+	IsolationSubstratePlan,
+	KernelEffectLogEntry,
+	KernelEffectReconciliation,
+	ProxyModelCallNode,
+} from "./isolation/types.js";
 export { formatEvalSuiteSummary } from "./format.js";
 export { createMockEvalAdapter } from "./adapters/mock.js";
 export type { MockEvalAdapterOptions, MockEvalAdapterResponse } from "./adapters/mock.js";
@@ -123,6 +153,8 @@ export {
 	type JsonObject,
 	type JsonPrimitive,
 	type JsonValue,
+	type ReportUse,
+	type SurpriseLabel,
 	type ReactorClaim,
 	type ReactorTimelineAdapter,
 	type ReactorTimelineAdapterContext,
@@ -138,6 +170,4 @@ export {
 	type ReactorTimelineRunResult,
 	type ReactorTimelineStepResult,
 	type ReactorTimelineTeardownResult,
-	type ReportUse,
-	type SurpriseLabel,
 } from "./types.js";
