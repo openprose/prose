@@ -179,13 +179,19 @@ export type {
 	TimelineEvalTaskBuilderInput,
 	UnsupportedTimelineAdapterOptions,
 } from "./timeline-adapters/competitor-wrapper.js";
-export { createDockerIsolationPlan } from "./isolation/docker-substrate.js";
+export { DEFAULT_EGRESS_PROXY_IMAGE, createDockerIsolationPlan } from "./isolation/docker-substrate.js";
 export type { DockerIsolationPlanOptions } from "./isolation/docker-substrate.js";
 export {
 	appendProxyModelCallRecord,
 	createAuthenticatedEgressProxy,
 	readProxyModelCallRecords,
 } from "./isolation/egress-proxy.js";
+export {
+	createEgressProxyServer,
+	egressProxyServerOptionsFromEnv,
+	runEgressProxyServerFromEnv,
+} from "./isolation/proxy-server.js";
+export type { EgressProxyServerEnv, EgressProxyServerOptions } from "./isolation/proxy-server.js";
 export type {
 	AuthenticatedEgressProxy,
 	AuthenticatedEgressProxyOptions,

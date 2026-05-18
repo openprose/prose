@@ -77,6 +77,11 @@ describe("Docker isolation live runner", () => {
 			expect(harness.environment).toEqual(
 				expect.objectContaining({
 					ALL_PROXY: result.plan.egressProxyUrl,
+					OPENAI_API_KEY: PROXY_TOKEN,
+					OPENAI_BASE_URL: `${result.plan.egressProxyUrl}/api/v1`,
+					OPENROUTER_API_KEY: PROXY_TOKEN,
+					OPENROUTER_BASE_URL: `${result.plan.egressProxyUrl}/api/v1`,
+					PROSE_EVAL_DECISION_CID: expect.stringMatching(/^[a-f0-9]{64}$/),
 					PROSE_EVAL_EGRESS_PROXY_AUTHORIZATION: `Bearer ${PROXY_TOKEN}`,
 					PROSE_EVAL_EGRESS_PROXY_TOKEN: PROXY_TOKEN,
 					PROSE_EVAL_EGRESS_PROXY_URL: result.plan.egressProxyUrl,
@@ -84,8 +89,11 @@ describe("Docker isolation live runner", () => {
 			);
 			expect(proxy.environment).toEqual(
 				expect.objectContaining({
+					PROSE_EVAL_EGRESS_DECISION_CID: expect.stringMatching(/^[a-f0-9]{64}$/),
 					PROSE_EVAL_EGRESS_PROXY_PORT: "3128",
 					PROSE_EVAL_EGRESS_PROXY_TOKEN: PROXY_TOKEN,
+					PROSE_EVAL_EGRESS_UPSTREAM_AUTHORIZATION: "Bearer ${OPENROUTER_API_KEY}",
+					PROSE_EVAL_EGRESS_UPSTREAM_BASE_URL: "https://openrouter.ai",
 					PROSE_EVAL_MODEL_CALL_LOG_PATH: "/artifacts/model-calls.jsonl",
 				}),
 			);

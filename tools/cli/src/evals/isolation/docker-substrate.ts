@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto";
+import { createHash } from "node:crypto";
 import { isAbsolute, join, posix } from "node:path";
 
 import type { JsonObject } from "../types.js";
@@ -13,7 +14,9 @@ const DEFAULT_ARTIFACT_TARGET_PATH = "/artifacts";
 const DEFAULT_EFFECT_LOG_FILE_NAME = "effects.jsonl";
 const DEFAULT_MODEL_CALL_LOG_FILE_NAME = "model-calls.jsonl";
 const DEFAULT_EGRESS_PROXY_PORT = 3128;
-const DEFAULT_EGRESS_PROXY_IMAGE = "ghcr.io/openprose/eval-egress-proxy:0.1.0";
+export const DEFAULT_EGRESS_PROXY_IMAGE = "eval-egress-proxy:local";
+const DEFAULT_EGRESS_PROXY_UPSTREAM_BASE_URL = "https://openrouter.ai";
+const DEFAULT_EGRESS_PROXY_UPSTREAM_AUTHORIZATION = "Bearer ${OPENROUTER_API_KEY}";
 
 const SAFE_DOCKER_NAME = /^[a-z][a-z0-9-]{0,62}$/;
 const SAFE_ARTIFACT_FILE_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
@@ -27,9 +30,12 @@ export interface DockerIsolationPlanOptions {
 	command?: readonly string[];
 	egressNetworkName?: string;
 	egressProxyImage?: string;
+	egressProxyDecisionCid?: string;
 	egressProxyPort?: number;
 	egressProxyServiceName?: string;
 	egressProxyToken?: string;
+	egressProxyUpstreamAuthorization?: string;
+	egressProxyUpstreamBaseUrl?: string;
 	environment?: Readonly<Record<string, string | undefined>>;
 	harnessServiceName?: string;
 	modelCallLogFileName?: string;
@@ -73,6 +79,7 @@ export function createDockerIsolationPlan(options: DockerIsolationPlanOptions): 
 		options.egressProxyToken ?? randomBytes(32).toString("hex"),
 		"egressProxyToken",
 	);
+	const decisionCid = assertHexCid(options.egressProxyDecisionCid ?? defaultDecisionCid(options.identity), "egressProxyDecisionCid");
 	const modelCallLogFileName = assertSafeArtifactFileName(
 		options.modelCallLogFileName ?? DEFAULT_MODEL_CALL_LOG_FILE_NAME,
 		"modelCallLogFileName",
@@ -83,14 +90,23 @@ export function createDockerIsolationPlan(options: DockerIsolationPlanOptions): 
 	const containerEffectLogPath = posix.join(artifactTargetPath, DEFAULT_EFFECT_LOG_FILE_NAME);
 	const containerModelCallLogPath = posix.join(artifactTargetPath, modelCallLogFileName);
 	const egressProxyUrl = `http://${egressProxyServiceName}:${proxyPort}`;
+	const egressProxyApiBaseUrl = `${egressProxyUrl}/api/v1`;
 	const readOnlyRootFilesystem = options.readOnlyRootFilesystem ?? true;
+	const noProxy = `localhost,127.0.0.1,::1,${egressProxyServiceName}`;
 
 	const harnessEnvironment = sortedStringRecord({
 		...options.environment,
 		ALL_PROXY: egressProxyUrl,
 		HTTP_PROXY: egressProxyUrl,
 		HTTPS_PROXY: egressProxyUrl,
-		NO_PROXY: "localhost,127.0.0.1,::1",
+		NO_PROXY: noProxy,
+		OPENAI_API_BASE: egressProxyApiBaseUrl,
+		OPENAI_API_KEY: egressProxyToken,
+		OPENAI_BASE_URL: egressProxyApiBaseUrl,
+		OPENROUTER_API_BASE: egressProxyApiBaseUrl,
+		OPENROUTER_API_KEY: egressProxyToken,
+		OPENROUTER_BASE_URL: egressProxyApiBaseUrl,
+		PROSE_EVAL_DECISION_CID: decisionCid,
 		PROSE_EVAL_EFFECT_LOG_PATH: containerEffectLogPath,
 		PROSE_EVAL_EGRESS_PROXY_AUTHORIZATION: `Bearer ${egressProxyToken}`,
 		PROSE_EVAL_EGRESS_PROXY_TOKEN: egressProxyToken,
@@ -98,7 +114,7 @@ export function createDockerIsolationPlan(options: DockerIsolationPlanOptions): 
 		all_proxy: egressProxyUrl,
 		http_proxy: egressProxyUrl,
 		https_proxy: egressProxyUrl,
-		no_proxy: "localhost,127.0.0.1,::1",
+		no_proxy: noProxy,
 	});
 
 	const harnessService: JsonObject = {
@@ -130,8 +146,13 @@ export function createDockerIsolationPlan(options: DockerIsolationPlanOptions): 
 		image: options.egressProxyImage ?? DEFAULT_EGRESS_PROXY_IMAGE,
 		cap_drop: ["ALL"],
 		environment: sortedStringRecord({
+			PROSE_EVAL_EGRESS_DECISION_CID: decisionCid,
 			PROSE_EVAL_EGRESS_PROXY_PORT: `${proxyPort}`,
 			PROSE_EVAL_EGRESS_PROXY_TOKEN: egressProxyToken,
+			PROSE_EVAL_EGRESS_UPSTREAM_AUTHORIZATION:
+				options.egressProxyUpstreamAuthorization ?? DEFAULT_EGRESS_PROXY_UPSTREAM_AUTHORIZATION,
+			PROSE_EVAL_EGRESS_UPSTREAM_BASE_URL:
+				options.egressProxyUpstreamBaseUrl ?? DEFAULT_EGRESS_PROXY_UPSTREAM_BASE_URL,
 			PROSE_EVAL_MODEL_CALL_LOG_PATH: containerModelCallLogPath,
 		}),
 		expose: [`${proxyPort}`],
@@ -169,6 +190,20 @@ export function createDockerIsolationPlan(options: DockerIsolationPlanOptions): 
 		networkName,
 		workDirectory: workspaceTargetPath,
 	};
+}
+
+function defaultDecisionCid(identity: IsolationRunIdentity): string {
+	return createHash("sha256")
+		.update(`${identity.runId}\0${identity.caseId}\0${identity.attemptId}\0${identity.adapterName}`)
+		.digest("hex");
+}
+
+function assertHexCid(value: string, path: string): string {
+	if (!/^[a-f0-9]{64}$/.test(value)) {
+		throw new Error(`${path} must be a 64-character lowercase hex cid: ${value}`);
+	}
+
+	return value;
 }
 
 function assertSafeDockerName(value: string, path: string): string {

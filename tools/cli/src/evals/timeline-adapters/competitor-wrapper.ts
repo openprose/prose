@@ -293,18 +293,27 @@ export function createDockerIsolatedTimelineAdapter(options: DockerIsolatedTimel
 
 			let stdout = "";
 			let stderr = "";
-			const environment = mergeDockerEnvironment(options.isolation.environment, commandEnv, context.env);
+			const mergedEnvironment = mergeDockerEnvironment(options.isolation.environment, commandEnv, context.env);
 			const redactionValues = redactionValuesFromEnv(
-				environment === undefined ? process.env : { ...process.env, ...environment },
+				mergedEnvironment === undefined ? process.env : { ...process.env, ...mergedEnvironment },
 			);
+			const { composeEnv: secretComposeEnv, harnessEnvironment } = splitDockerSecretEnvironment(mergedEnvironment);
 
 			try {
-				const { artifactHostPath: _artifactHostPath, environment: _environment, workspaceHostPath, ...isolation } = options.isolation;
+				const {
+					artifactHostPath: _artifactHostPath,
+					composeEnv,
+					environment: _environment,
+					workspaceHostPath,
+					...isolation
+				} = options.isolation;
+				const mergedComposeEnv = mergeDockerEnvironment(composeEnv, secretComposeEnv);
 				const result = await runDockerIsolation({
 					...isolation,
 					artifactHostPath: dockerArtifactHostPath,
 					command: [command.command, ...command.args],
-					...(environment === undefined ? {} : { environment }),
+					...(mergedComposeEnv === undefined ? {} : { composeEnv: mergedComposeEnv }),
+					...(harnessEnvironment === undefined ? {} : { environment: harnessEnvironment }),
 					identity: {
 						adapterName: name,
 						attemptId: attemptContext.attemptId,
@@ -396,13 +405,15 @@ export function buildTimelineEventEvalTask(options: BuildTimelineEventEvalTaskOp
 		metadata: {
 			adapterName: options.adapterName,
 			context: contextText,
+			evidenceUse: "external-context",
 			evalFamily: "competitor-timeline",
 			query,
+			reportUse: "adapter-canary",
 			timelineCase: caseContext,
 			timelineEvent: eventContext,
 		},
 		surpriseLabels: [options.event.label],
-		tags: ["reactor-timeline", "competitor", options.adapterName],
+		tags: ["reactor-timeline", "competitor", "adapter-canary", "external-context", options.adapterName],
 	};
 }
 
@@ -478,11 +489,13 @@ function attemptToStepResult(options: {
 		adapterName: options.name,
 		adapterRunDirectory: options.attemptContext.adapterRunDirectory ?? "",
 		attemptAdapterName: options.attempt.adapterName,
+		evidenceUse: "external-context",
 		attemptId: options.attemptContext.attemptId,
 		eventId: options.event.id,
 		eventIndex: options.context.eventIndex,
 		exitCode: options.attempt.exitCode,
 		observable,
+		reportUse: "adapter-canary",
 		taskId: options.task.id,
 	};
 	if (options.attemptContext.attemptArtifactDirectory !== undefined) {
@@ -510,11 +523,13 @@ function attemptToStepResult(options: {
 		adapterName: options.name,
 		adapterRunDirectory: options.attemptContext.adapterRunDirectory ?? "",
 		attemptAdapterName: options.attempt.adapterName,
+		evidenceUse: "external-context",
 		attemptId: options.attemptContext.attemptId,
 		eventId: options.event.id,
 		eventIndex: options.context.eventIndex,
 		exitCode: options.attempt.exitCode,
 		observable,
+		reportUse: "adapter-canary",
 		taskId: options.task.id,
 	};
 	if (options.attemptContext.attemptArtifactDirectory !== undefined) {
@@ -651,11 +666,18 @@ function proxyModelCallsToCosts(
 				modelCallCid: record.cid,
 				requestCid: record.request_cid,
 				responseCid: record.response_cid,
+				...(record.metadata.response.generation_id === undefined
+					? {}
+					: { openRouterGenerationId: record.metadata.response.generation_id }),
 			},
 			model: record.model_version,
 			promptTokens: record.prompt_tokens,
 			provider: record.provider,
 			totalTokens,
+			...(record.metadata.response.generation_id === undefined ? {} : { generationId: record.metadata.response.generation_id }),
+			...(record.metadata.response.usage_cost_usd === undefined
+				? {}
+				: { totalCostUsd: record.metadata.response.usage_cost_usd }),
 		};
 	});
 }
@@ -744,6 +766,33 @@ function mergeDockerEnvironment(
 	}
 
 	return Object.keys(merged).length === 0 ? undefined : merged;
+}
+
+function splitDockerSecretEnvironment(environment: Record<string, string | undefined> | undefined): {
+	composeEnv: Record<string, string | undefined> | undefined;
+	harnessEnvironment: Record<string, string | undefined> | undefined;
+} {
+	if (environment === undefined) {
+		return {
+			composeEnv: undefined,
+			harnessEnvironment: undefined,
+		};
+	}
+
+	const composeEnv: Record<string, string | undefined> = {};
+	const harnessEnvironment: Record<string, string | undefined> = {};
+	for (const [key, value] of Object.entries(environment)) {
+		if (key === "OPENROUTER_API_KEY") {
+			composeEnv[key] = value;
+		} else if (!key.endsWith("_API_KEY") && key !== "OPENAI_API_KEY") {
+			harnessEnvironment[key] = value;
+		}
+	}
+
+	return {
+		composeEnv: Object.keys(composeEnv).length === 0 ? undefined : composeEnv,
+		harnessEnvironment: Object.keys(harnessEnvironment).length === 0 ? undefined : harnessEnvironment,
+	};
 }
 
 function captureText(write: (chunk: string) => void): NodeJS.WritableStream {

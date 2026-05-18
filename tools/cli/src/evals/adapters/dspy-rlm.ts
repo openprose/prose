@@ -107,6 +107,14 @@ if payload.get("max_tokens") is not None:
 api_key = os.environ.get("OPENROUTER_API_KEY") or os.environ.get("OPENAI_API_KEY")
 if api_key:
     lm_kwargs["api_key"] = api_key
+api_base = (
+    os.environ.get("OPENROUTER_API_BASE")
+    or os.environ.get("OPENROUTER_BASE_URL")
+    or os.environ.get("OPENAI_BASE_URL")
+    or os.environ.get("OPENAI_API_BASE")
+)
+if api_base:
+    lm_kwargs["api_base"] = api_base
 
 main_lm = dspy.LM(payload["model"], **lm_kwargs)
 dspy.configure(lm=main_lm, track_usage=True)

@@ -46,9 +46,11 @@ export interface ProxyHttpRequestMetadata {
 
 export interface ProxyHttpResponseMetadata {
 	body_bytes: number;
+	generation_id?: string;
 	headers: JsonObject;
 	status: number;
 	status_text: string;
+	usage_cost_usd?: number;
 }
 
 const AUTHENTICATE_HEADERS = [
@@ -119,7 +121,7 @@ export function createAuthenticatedEgressProxy(options: AuthenticatedEgressProxy
 			});
 
 			const responseBodyBytes = new Uint8Array(await response.arrayBuffer());
-			const responseHeaders = new Headers(response.headers);
+			const responseHeaders = forwardedResponseHeaders(response.headers);
 			const responseCid = sha256Bytes(responseBodyBytes);
 			const node = modelCallNode({
 				context,
@@ -143,9 +145,10 @@ export function createAuthenticatedEgressProxy(options: AuthenticatedEgressProxy
 					},
 					response: {
 						body_bytes: responseBodyBytes.length,
+						...responseModelCallMetadata(responseBodyBytes, responseHeaders),
 						headers: sanitizedHeaders(responseHeaders),
 						status: response.status,
-						status_text: response.statusText,
+						status_text: response.statusText || defaultStatusText(response.status),
 					},
 				},
 			};
@@ -330,6 +333,16 @@ function forwardedRequestHeaders(headers: Headers, authSourceHeader: string): He
 	return forwarded;
 }
 
+function forwardedResponseHeaders(headers: Headers): Headers {
+	const forwarded = new Headers(headers);
+	// Node fetch decodes compressed upstream bodies before arrayBuffer(); keeping
+	// upstream compression headers would make downstream clients decode plaintext.
+	forwarded.delete("content-encoding");
+	forwarded.delete("content-length");
+	forwarded.delete("transfer-encoding");
+	return forwarded;
+}
+
 function sha256Bytes(bytes: Uint8Array): string {
 	return createHash("sha256").update(bytes).digest("hex");
 }
@@ -396,6 +409,31 @@ function usageFrom(response: JsonObject | undefined): { completionTokens: number
 	return { completionTokens, promptTokens };
 }
 
+function responseModelCallMetadata(responseBodyBytes: Uint8Array, responseHeaders: Headers): Partial<ProxyHttpResponseMetadata> {
+	const responseJson = parseJsonObject(responseBodyBytes);
+	const usage = objectField(responseJson, "usage");
+	const generationId =
+		responseHeaders.get("x-generation-id") ??
+		stringField(responseJson, "id") ??
+		stringField(responseJson, "generation_id") ??
+		stringField(responseJson, "generationId");
+	const usageCostUsd =
+		nonNegativeNumberField(responseJson, "total_cost") ??
+		nonNegativeNumberField(responseJson, "totalCost") ??
+		nonNegativeNumberField(responseJson, "usage") ??
+		(usage === undefined
+			? undefined
+			: nonNegativeNumberField(usage, "cost") ??
+				nonNegativeNumberField(usage, "total_cost") ??
+				nonNegativeNumberField(usage, "totalCost") ??
+				nonNegativeNumberField(usage, "usage"));
+
+	return {
+		...(generationId === undefined ? {} : { generation_id: generationId }),
+		...(usageCostUsd === undefined ? {} : { usage_cost_usd: usageCostUsd }),
+	};
+}
+
 function objectField(object: JsonObject | undefined, key: string): JsonObject | undefined {
 	const value = object?.[key];
 	return isJsonObject(value) ? value : undefined;
@@ -413,6 +451,11 @@ function numberField(object: JsonObject | undefined, key: string): number | unde
 	}
 
 	return undefined;
+}
+
+function nonNegativeNumberField(object: JsonObject | undefined, key: string): number | undefined {
+	const value = numberField(object, key);
+	return value === undefined || value < 0 ? undefined : value;
 }
 
 function stringField(object: JsonObject | undefined, key: string): string | undefined {
@@ -483,6 +526,20 @@ function sanitizedUrl(value: string): string {
 	return url.toString();
 }
 
+function defaultStatusText(status: number): string {
+	if (status >= 200 && status < 300) {
+		return "OK";
+	}
+	if (status >= 400 && status < 500) {
+		return "Client Error";
+	}
+	if (status >= 500 && status < 600) {
+		return "Server Error";
+	}
+
+	return "Unknown";
+}
+
 function normalizeProxyModelCallRecord(value: unknown, path: string): ProxyModelCallRecord {
 	if (!isJsonObject(value)) {
 		throw new Error(`${path} must be an object`);
@@ -504,9 +561,11 @@ function normalizeProxyModelCallRecord(value: unknown, path: string): ProxyModel
 			},
 			response: {
 				body_bytes: requireNumberField(response, "body_bytes", `${path}.metadata.response`),
+				...optionalStringProperty(response, "generation_id", `${path}.metadata.response`),
 				headers: requireJsonObjectField(response, "headers", `${path}.metadata.response`),
 				status: requireNumberField(response, "status", `${path}.metadata.response`),
 				status_text: requireStringField(response, "status_text", `${path}.metadata.response`),
+				...optionalNumberProperty(response, "usage_cost_usd", `${path}.metadata.response`),
 			},
 		},
 		model_version: requireStringField(value, "model_version", path),
@@ -518,6 +577,38 @@ function normalizeProxyModelCallRecord(value: unknown, path: string): ProxyModel
 	};
 
 	return record;
+}
+
+function optionalStringProperty<K extends string>(
+	object: JsonObject | undefined,
+	key: K,
+	path: string,
+): Partial<Record<K, string>> {
+	const value = object?.[key];
+	if (value === undefined) {
+		return {};
+	}
+	if (typeof value !== "string" || value.length === 0) {
+		throw new Error(`${path}.${key} must be a non-empty string when present`);
+	}
+
+	return { [key]: value } as Partial<Record<K, string>>;
+}
+
+function optionalNumberProperty<K extends string>(
+	object: JsonObject | undefined,
+	key: K,
+	path: string,
+): Partial<Record<K, number>> {
+	const value = object?.[key];
+	if (value === undefined) {
+		return {};
+	}
+	if (typeof value !== "number" || !Number.isFinite(value)) {
+		throw new Error(`${path}.${key} must be a finite number when present`);
+	}
+
+	return { [key]: value } as Partial<Record<K, number>>;
 }
 
 function requireStringField(object: JsonObject | undefined, key: string, path: string): string {

@@ -2,7 +2,11 @@ import { isAbsolute, join, relative } from "node:path";
 
 import { describe, expect, test } from "vitest";
 
-import { createDockerIsolationPlan, type DockerIsolationPlanOptions } from "../../src/evals/isolation/docker-substrate.js";
+import {
+	DEFAULT_EGRESS_PROXY_IMAGE,
+	createDockerIsolationPlan,
+	type DockerIsolationPlanOptions,
+} from "../../src/evals/isolation/docker-substrate.js";
 
 const workspaceHostPath = "/tmp/prose-eval-workspace";
 const artifactHostPath = "/tmp/prose-eval-artifacts";
@@ -19,16 +23,22 @@ describe("Docker isolation substrate planner", () => {
 		expect(harness.networks).toEqual([plan.networkName]);
 		expect(proxy.networks).toContain(plan.networkName);
 		expect(proxy.networks).toContain("prose-eval-egress");
+		expect(proxy.image).toBe(DEFAULT_EGRESS_PROXY_IMAGE);
 		expect(harness.environment).toEqual(
 			expect.objectContaining({
 				ALL_PROXY: plan.egressProxyUrl,
 				HTTP_PROXY: plan.egressProxyUrl,
 				HTTPS_PROXY: plan.egressProxyUrl,
+				NO_PROXY: "localhost,127.0.0.1,::1,egress-proxy",
+				OPENAI_BASE_URL: `${plan.egressProxyUrl}/api/v1`,
+				OPENROUTER_BASE_URL: `${plan.egressProxyUrl}/api/v1`,
 				PROSE_EVAL_EFFECT_LOG_PATH: "/artifacts/effects.jsonl",
+				PROSE_EVAL_DECISION_CID: expect.stringMatching(/^[a-f0-9]{64}$/),
 				PROSE_EVAL_EGRESS_PROXY_URL: plan.egressProxyUrl,
 				all_proxy: plan.egressProxyUrl,
 				http_proxy: plan.egressProxyUrl,
 				https_proxy: plan.egressProxyUrl,
+				no_proxy: "localhost,127.0.0.1,::1,egress-proxy",
 			}),
 		);
 	});
@@ -51,6 +61,22 @@ describe("Docker isolation substrate planner", () => {
 					target: "/artifacts",
 				},
 			]),
+		);
+	});
+
+	test("keeps upstream OpenRouter authorization on the proxy service placeholder", () => {
+		const plan = createDockerIsolationPlan(baseOptions({ egressProxyToken: "proxy-token" }));
+		const compose = plan.compose as unknown as ComposePlan;
+		const harness = service(compose, "harness");
+		const proxy = service(compose, "egress-proxy");
+
+		expect(harness.environment.OPENROUTER_API_KEY).toBe("proxy-token");
+		expect(proxy.environment).toEqual(
+			expect.objectContaining({
+				PROSE_EVAL_EGRESS_DECISION_CID: expect.stringMatching(/^[a-f0-9]{64}$/),
+				PROSE_EVAL_EGRESS_UPSTREAM_AUTHORIZATION: "Bearer ${OPENROUTER_API_KEY}",
+				PROSE_EVAL_EGRESS_UPSTREAM_BASE_URL: "https://openrouter.ai",
+			}),
 		);
 	});
 
@@ -99,6 +125,7 @@ interface ComposePlan {
 }
 
 interface ComposeService {
+	image: string;
 	environment: Record<string, string>;
 	networks: string[];
 	read_only: boolean;

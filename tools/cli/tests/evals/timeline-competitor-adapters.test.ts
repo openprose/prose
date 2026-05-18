@@ -143,8 +143,21 @@ describe("competitor timeline adapters", () => {
 					type: "evidence.receipt",
 				}),
 			);
+			expect(calls[0]?.task.metadata).toEqual(
+				expect.objectContaining({
+					evidenceUse: "external-context",
+					reportUse: "adapter-canary",
+				}),
+			);
+			expect(calls[0]?.task.tags).toEqual(expect.arrayContaining(["adapter-canary", "external-context"]));
 			expect(calls[0]?.prompt).toContain('"id": "receipt-issued"');
 			expect(calls[0]?.prompt).not.toContain('"id": "forecast-recheck"');
+			expect(result.steps[0]?.metadata).toEqual(
+				expect.objectContaining({
+					evidenceUse: "external-context",
+					reportUse: "adapter-canary",
+				}),
+			);
 			expect(result.steps[0]?.metrics).toEqual(
 				expect.objectContaining({
 					acted: 1,
@@ -281,14 +294,51 @@ describe("competitor timeline adapters", () => {
 		}
 	});
 
-	test("plans Hermes and DSPy container runs with pinned packages, proxy auth, and corrected commands", async () => {
+	test("plans Pi, Hermes, and DSPy container runs with pinned packages, proxy auth, and corrected commands", async () => {
 		const root = mkdtempSync(join(tmpdir(), "prose-container-timeline-artifacts-"));
 		const cacheRoot = mkdtempSync(join(tmpdir(), "prose-container-timeline-cache-"));
 		try {
+			const piArtifacts = join(root, "pi");
 			const hermesArtifacts = join(root, "hermes");
 			const dspyArtifacts = join(root, "dspy");
+			const piRunner = new FakeComposeRunner(piArtifacts, "pi says action completed\n");
 			const hermesRunner = new FakeComposeRunner(hermesArtifacts, "hermes says action completed\n");
 			const dspyRunner = new FakeComposeRunner(dspyArtifacts, "dspy says recheck completed\n");
+
+			const pi = createPiTimelineAdapter({
+				isolation: {
+					artifactHostPath: piArtifacts,
+					composeRunner: piRunner,
+					egressProxyToken: "test-proxy-token",
+					harnessImage: "eval-pi-harness:0.75.0",
+				},
+			});
+			const piResult = await runReactorTimelineCase({ ...timelineCase, events: [timelineCase.events[0]!] }, pi, {
+				env: {
+					OPENROUTER_API_KEY: "test-openrouter-key",
+				},
+				runId: "pi-container-run",
+				scenarioCacheRoot: cacheRoot,
+				now: () => new Date("2026-05-17T12:00:00.000Z"),
+			});
+			const piCommand = isolationCommand(piResult.steps[0]?.metadata);
+			const piHarness = service(piRunner.composePlan(), "harness");
+
+			expect(piResult.status).toBe("passed");
+			expect(piCommand.join("\0")).toContain("prose-pi-openrouter-proxy-extension.mjs");
+			expect(piCommand).toEqual(expect.arrayContaining(["pi", "--provider", "prose-egress-proxy"]));
+			expect(piCommand).toEqual(
+				expect.arrayContaining(["--model", "google/gemini-3.1-flash-lite-preview", "--mode", "json"]),
+			);
+			expect(piHarness.environment).toEqual(
+				expect.objectContaining({
+					OPENAI_BASE_URL: "http://egress-proxy:3128/api/v1",
+					OPENROUTER_API_KEY: "test-proxy-token",
+					PROSE_EVAL_DECISION_CID: expect.stringMatching(/^[a-f0-9]{64}$/),
+					PROSE_EVAL_EGRESS_PROXY_AUTHORIZATION: "Bearer test-proxy-token",
+				}),
+			);
+			expect(JSON.stringify(piHarness.environment)).not.toContain("test-openrouter-key");
 
 			const hermes = createHermesTimelineAdapter({
 				isolation: {
@@ -312,24 +362,42 @@ describe("competitor timeline adapters", () => {
 
 			expect(hermesResult.status).toBe("passed");
 			expect(hermesCommand.join("\0")).toContain("hermes-agent==0.13.0");
+			expect(hermesCommand.join("\0")).toContain("$$HERMES_HOME/config.yaml");
+			expect(hermesCommand.join("\0")).not.toContain("${OPENAI_API_KEY}");
+			expect(hermesCommand.join("\0")).not.toContain("api_key:");
 			expect(hermesCommand).toEqual(expect.arrayContaining(["hermes", "chat", "-q", "-Q", "--source", "tool"]));
+			expect(hermesCommand).not.toContain("--ignore-user-config");
 			expect(hermesCommand).not.toEqual(expect.arrayContaining(["-z", "--oneshot"]));
 			expect(hermesCommand).toEqual(
-				expect.arrayContaining(["--provider", "openrouter", "--model", "google/gemini-3.1-flash-lite-preview"]),
+				expect.arrayContaining([
+					"--provider",
+					"prose-egress-proxy",
+					"--model",
+					"google/gemini-3.1-flash-lite-preview",
+				]),
 			);
 			expect(hermesHarness.environment).toEqual(
 				expect.objectContaining({
 					HTTPS_PROXY: "http://egress-proxy:3128",
-					OPENROUTER_API_KEY: "test-openrouter-key",
+					OPENAI_BASE_URL: "http://egress-proxy:3128/api/v1",
+					OPENROUTER_API_KEY: "test-proxy-token",
+					PROSE_EVAL_DECISION_CID: expect.stringMatching(/^[a-f0-9]{64}$/),
 					PROSE_EVAL_EGRESS_PROXY_AUTHORIZATION: "Bearer test-proxy-token",
 					PROSE_EVAL_EGRESS_PROXY_TOKEN: "test-proxy-token",
 				}),
 			);
+			expect(JSON.stringify(hermesHarness.environment)).not.toContain("test-openrouter-key");
 			expect(hermesResult.steps[0]?.metrics).toEqual(
 				expect.objectContaining({
 					acted: 1,
 					modelCalls: 1,
 					unreconciledEffects: 0,
+				}),
+			);
+			expect(hermesResult.steps[0]?.metadata).toEqual(
+				expect.objectContaining({
+					evidenceUse: "external-context",
+					reportUse: "adapter-canary",
 				}),
 			);
 
@@ -356,15 +424,19 @@ describe("competitor timeline adapters", () => {
 			expect(dspyResult.status).toBe("passed");
 			expect(dspyCommand.join("\0")).toContain("dspy==3.2.1");
 			expect(dspyCommand).toEqual(expect.arrayContaining(["python3", "-c"]));
-			expect(dspyPayload.model).toBe("openrouter/google/gemini-3.1-flash-lite-preview");
+			expect(dspyPayload.model).toBe("openai/google/gemini-3.1-flash-lite-preview");
 			expect(dspyHarness.command.join("\0")).toContain("dspy==3.2.1");
 			expect(dspyHarness.environment).toEqual(
 				expect.objectContaining({
 					HTTP_PROXY: "http://egress-proxy:3128",
-					OPENROUTER_API_KEY: "test-openrouter-key",
+					LITELLM_LOCAL_MODEL_COST_MAP: "True",
+					OPENAI_BASE_URL: "http://egress-proxy:3128/api/v1",
+					OPENROUTER_API_KEY: "test-proxy-token",
+					PROSE_EVAL_DECISION_CID: expect.stringMatching(/^[a-f0-9]{64}$/),
 					PROSE_EVAL_EGRESS_PROXY_AUTHORIZATION: "Bearer test-proxy-token",
 				}),
 			);
+			expect(JSON.stringify(dspyHarness.environment)).not.toContain("test-openrouter-key");
 			expect(dspyResult.steps[0]?.metrics).toEqual(
 				expect.objectContaining({
 					modelCalls: 1,
@@ -412,6 +484,7 @@ describe("competitor timeline adapters", () => {
 				}),
 			);
 			expect(row.modelCalls).toBeGreaterThan(0);
+			expect(result.costs[0]?.generationId).toBe("gen-fixture-model-call");
 			expect(row.acted).toBeGreaterThan(0);
 			expect(row.steps.length).toBe(scenario.events.length);
 		} finally {
@@ -609,11 +682,13 @@ function modelCallRecord(): ProxyModelCallRecord {
 			},
 			response: {
 				body_bytes: 84,
+				generation_id: "gen-fixture-model-call",
 				headers: {
 					"content-type": "application/json",
 				},
 				status: 200,
 				status_text: "OK",
+				usage_cost_usd: 0.00001,
 			},
 		},
 		model_version: "google/gemini-3.1-flash-lite-preview",
