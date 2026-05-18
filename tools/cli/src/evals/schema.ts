@@ -3,10 +3,17 @@ import { isAbsolute, win32 } from "node:path";
 import {
 	EVAL_SUITE_KIND,
 	EVAL_TASK_KIND,
+	REACTOR_CLAIMS,
+	REACTOR_ORACLE_SPEC_KIND,
+	REACTOR_TIMELINE_CASE_KIND,
+	REACTOR_TIMELINE_EVENT_TRIGGERS,
 	REPORT_USES,
 	SURPRISE_LABELS,
 	normalizeReportUse,
 	type EvalSuite,
+	type ReactorClaim,
+	type ReactorTimelineCase,
+	type ReactorTimelineEventTrigger,
 	type SurpriseLabel,
 } from "./types.js";
 import { assertSafePathSegment } from "./safety.js";
@@ -73,12 +80,54 @@ export function validateEvalSuite(value: unknown): EvalSuite {
 	return suite as unknown as EvalSuite;
 }
 
+export function validateReactorTimelineCase(value: unknown): ReactorTimelineCase {
+	const timelineCase = objectAt(value, "timelineCase");
+	requireAllowedKeys(
+		timelineCase,
+		new Set(["claims", "contract", "events", "id", "kind", "limits", "metadata", "oracle", "title", "version"]),
+		"timelineCase",
+	);
+
+	if (timelineCase.kind !== REACTOR_TIMELINE_CASE_KIND) {
+		throw new EvalSchemaError(`timelineCase.kind must be ${REACTOR_TIMELINE_CASE_KIND}`);
+	}
+	if (timelineCase.version !== 1) {
+		throw new EvalSchemaError("timelineCase.version must be 1");
+	}
+
+	assertSafePathSegment(requireNonEmptyString(timelineCase.id, "timelineCase.id"), "timelineCase.id");
+	requireNonEmptyString(timelineCase.title, "timelineCase.title");
+	requireTimelineContract(timelineCase.contract, "timelineCase.contract");
+	requireTimelineOracle(timelineCase.oracle, "timelineCase.oracle");
+	requireTimelineEvents(timelineCase.events, "timelineCase.events");
+
+	if (timelineCase.claims !== undefined) {
+		requireReactorClaims(timelineCase.claims, "timelineCase.claims");
+	}
+	if (timelineCase.limits !== undefined) {
+		requireTimelineLimits(timelineCase.limits, "timelineCase.limits");
+	}
+	if (timelineCase.metadata !== undefined) {
+		objectAt(timelineCase.metadata, "timelineCase.metadata");
+	}
+
+	return timelineCase as unknown as ReactorTimelineCase;
+}
+
 function objectAt(value: unknown, path: string): Record<string, unknown> {
 	if (value === null || typeof value !== "object" || Array.isArray(value)) {
 		throw new EvalSchemaError(`${path} must be an object`);
 	}
 
 	return value as Record<string, unknown>;
+}
+
+function requireAllowedKeys(value: Record<string, unknown>, allowed: ReadonlySet<string>, path: string): void {
+	for (const key of Object.keys(value)) {
+		if (!allowed.has(key)) {
+			throw new EvalSchemaError(`${path}.${key} is not supported`);
+		}
+	}
 }
 
 function requireNonEmptyString(value: unknown, path: string): string {
@@ -173,8 +222,117 @@ function requireTaskContract(value: unknown, path: string): void {
 	requireSafeMarkdownSourcePath(source.path, `${path}.source.path`);
 	if (source.sha256 !== undefined) {
 		const sha256 = requireNonEmptyString(source.sha256, `${path}.source.sha256`);
-		if (!/^[a-f0-9]{64}$/i.test(sha256)) {
-			throw new EvalSchemaError(`${path}.source.sha256 must be a 64-character hex sha256`);
+		requireSha256(sha256, `${path}.source.sha256`);
+	}
+}
+
+function requireTimelineContract(value: unknown, path: string): void {
+	const contract = objectAt(value, path);
+	requireAllowedKeys(contract, new Set(["source"]), path);
+
+	const source = objectAt(contract.source, `${path}.source`);
+	requireAllowedKeys(
+		source,
+		new Set(["path", "responsibilityId", "revision", "sha256", "signerTrustContext"]),
+		`${path}.source`,
+	);
+	requireSafeMarkdownSourcePath(source.path, `${path}.source.path`);
+	requireSha256(requireNonEmptyString(source.sha256, `${path}.source.sha256`), `${path}.source.sha256`);
+	assertSafePathSegment(
+		requireNonEmptyString(source.responsibilityId, `${path}.source.responsibilityId`),
+		`${path}.source.responsibilityId`,
+	);
+	if (source.revision !== undefined) {
+		requireNonEmptyString(source.revision, `${path}.source.revision`);
+	}
+	if (source.signerTrustContext !== undefined) {
+		requireNonEmptyString(source.signerTrustContext, `${path}.source.signerTrustContext`);
+	}
+}
+
+function requireTimelineOracle(value: unknown, path: string): void {
+	const oracle = objectAt(value, path);
+	requireAllowedKeys(
+		oracle,
+		new Set(["cid", "forecastModelId", "kind", "policyCid", "preconditionSet", "recheckSchedule", "recheckTolerance"]),
+		path,
+	);
+	if (oracle.kind !== REACTOR_ORACLE_SPEC_KIND) {
+		throw new EvalSchemaError(`${path}.kind must be ${REACTOR_ORACLE_SPEC_KIND}`);
+	}
+	requireSha256(requireNonEmptyString(oracle.cid, `${path}.cid`), `${path}.cid`);
+	requireSha256(requireNonEmptyString(oracle.policyCid, `${path}.policyCid`), `${path}.policyCid`);
+	requireNonEmptyString(oracle.forecastModelId, `${path}.forecastModelId`);
+	requireStringArray(oracle.recheckSchedule, `${path}.recheckSchedule`);
+	requireNonNegativeNumber(oracle.recheckTolerance, `${path}.recheckTolerance`);
+	requireSha256Array(oracle.preconditionSet, `${path}.preconditionSet`);
+}
+
+function requireTimelineEvents(value: unknown, path: string): void {
+	if (!Array.isArray(value) || value.length === 0) {
+		throw new EvalSchemaError(`${path} must contain at least one event`);
+	}
+
+	const ids = new Set<string>();
+	for (const [index, item] of value.entries()) {
+		const event = objectAt(item, `${path}[${index}]`);
+		requireAllowedKeys(
+			event,
+			new Set(["at", "id", "label", "metadata", "payload", "payloadCid", "trigger", "type"]),
+			`${path}[${index}]`,
+		);
+
+		const id = assertSafePathSegment(requireNonEmptyString(event.id, `${path}[${index}].id`), `${path}[${index}].id`);
+		if (ids.has(id)) {
+			throw new EvalSchemaError(`${path} contains duplicate id: ${id}`);
+		}
+		ids.add(id);
+
+		requireIsoDateTime(event.at, `${path}[${index}].at`);
+		requireNonEmptyString(event.type, `${path}[${index}].type`);
+		if (!SURPRISE_LABELS.includes(event.label as SurpriseLabel)) {
+			throw new EvalSchemaError(`${path}[${index}].label must be one of: ${SURPRISE_LABELS.join(", ")}`);
+		}
+		if (!REACTOR_TIMELINE_EVENT_TRIGGERS.includes(event.trigger as ReactorTimelineEventTrigger)) {
+			throw new EvalSchemaError(
+				`${path}[${index}].trigger must be one of: ${REACTOR_TIMELINE_EVENT_TRIGGERS.join(", ")}`,
+			);
+		}
+		if (event.payloadCid !== undefined) {
+			requireSha256(requireNonEmptyString(event.payloadCid, `${path}[${index}].payloadCid`), `${path}[${index}].payloadCid`);
+		}
+		if (event.payload !== undefined) {
+			requireJsonValue(event.payload, `${path}[${index}].payload`);
+		}
+		if (event.metadata !== undefined) {
+			objectAt(event.metadata, `${path}[${index}].metadata`);
+		}
+	}
+}
+
+function requireReactorClaims(value: unknown, path: string): void {
+	if (!Array.isArray(value) || value.length === 0) {
+		throw new EvalSchemaError(`${path} must be a non-empty claim array`);
+	}
+
+	const claims = new Set<string>();
+	for (const [index, claim] of value.entries()) {
+		if (!REACTOR_CLAIMS.includes(claim as ReactorClaim)) {
+			throw new EvalSchemaError(`${path}[${index}] must be one of: ${REACTOR_CLAIMS.join(", ")}`);
+		}
+		if (claims.has(claim as string)) {
+			throw new EvalSchemaError(`${path} contains duplicate claim: ${String(claim)}`);
+		}
+		claims.add(claim as string);
+	}
+}
+
+function requireTimelineLimits(value: unknown, path: string): void {
+	const limits = objectAt(value, path);
+	requireAllowedKeys(limits, new Set(["maxCostUsd", "maxModelCalls", "maxWallTimeMs"]), path);
+	for (const key of ["maxCostUsd", "maxModelCalls", "maxWallTimeMs"] as const) {
+		if (limits[key] !== undefined) {
+			requirePositiveNumber(limits[key], `${path}.${key}`);
 		}
 	}
 }
@@ -202,6 +360,58 @@ function requireSafeMarkdownSourcePath(value: unknown, path: string): void {
 			throw new EvalSchemaError(`${path} contains unsafe segment: ${segment}`);
 		}
 	}
+}
+
+function requireIsoDateTime(value: unknown, path: string): void {
+	const text = requireNonEmptyString(value, path);
+	if (Number.isNaN(Date.parse(text))) {
+		throw new EvalSchemaError(`${path} must be an ISO-8601 date-time string`);
+	}
+}
+
+function requireSha256(value: string, path: string): void {
+	if (!/^[a-f0-9]{64}$/i.test(value)) {
+		throw new EvalSchemaError(`${path} must be a 64-character hex sha256`);
+	}
+}
+
+function requireSha256Array(value: unknown, path: string): void {
+	if (!Array.isArray(value)) {
+		throw new EvalSchemaError(`${path} must be an array`);
+	}
+
+	for (const [index, item] of value.entries()) {
+		requireSha256(requireNonEmptyString(item, `${path}[${index}]`), `${path}[${index}]`);
+	}
+}
+
+function requireJsonValue(value: unknown, path: string): void {
+	if (value === null || typeof value === "string" || typeof value === "boolean") {
+		return;
+	}
+	if (typeof value === "number") {
+		if (!Number.isFinite(value)) {
+			throw new EvalSchemaError(`${path} must be JSON-serializable`);
+		}
+		return;
+	}
+	if (Array.isArray(value)) {
+		for (const [index, item] of value.entries()) {
+			requireJsonValue(item, `${path}[${index}]`);
+		}
+		return;
+	}
+	if (typeof value === "object") {
+		for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
+			if (item === undefined) {
+				throw new EvalSchemaError(`${path}.${key} must be JSON-serializable`);
+			}
+			requireJsonValue(item, `${path}.${key}`);
+		}
+		return;
+	}
+
+	throw new EvalSchemaError(`${path} must be JSON-serializable`);
 }
 
 function requireStringArray(value: unknown, path: string): void {

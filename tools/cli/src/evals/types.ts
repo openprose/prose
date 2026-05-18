@@ -2,6 +2,7 @@ export const EVAL_SUITE_KIND = "prose.eval.suite.v1";
 export const EVAL_TASK_KIND = "prose.eval.task.v1";
 export const EVAL_CLAIM_ELIGIBILITY_KIND = "prose.eval.claim-eligibility.v1";
 export const REACTOR_TIMELINE_CASE_KIND = "prose.reactor.timeline-case.v1";
+export const REACTOR_ORACLE_SPEC_KIND = "prose.reactor.oracle-spec.v1";
 export const REACTOR_PROOF_KIND = "prose.reactor.proof.v1";
 export const REACTOR_TIMELINE_CASE_MEDIA_TYPE = "application/vnd.prose.reactor.timeline-case+json";
 export const REACTOR_PROOF_MEDIA_TYPE = "application/vnd.prose.reactor.proof+json";
@@ -39,6 +40,19 @@ export const SURPRISE_LABELS: readonly SurpriseLabel[] = [
 	"policy-drift",
 ];
 
+export type ReactorClaim = "C1" | "C2" | "C3" | "C4" | "C5" | "C6";
+
+export const REACTOR_CLAIMS: readonly ReactorClaim[] = ["C1", "C2", "C3", "C4", "C5", "C6"];
+
+export type ReactorTimelineEventTrigger = "input" | "scheduled" | "clock" | "synthetic";
+
+export const REACTOR_TIMELINE_EVENT_TRIGGERS: readonly ReactorTimelineEventTrigger[] = [
+	"input",
+	"scheduled",
+	"clock",
+	"synthetic",
+];
+
 export type CostConfidence =
 	| "unknown"
 	| "local-token-estimate"
@@ -65,6 +79,127 @@ export interface EvalTaskContractSource {
 
 export interface EvalTaskContract {
 	source: EvalTaskContractSource;
+}
+
+export interface ReactorTimelineContractSource extends EvalTaskContractSource {
+	responsibilityId: string;
+	sha256: string;
+	revision?: string;
+	signerTrustContext?: string;
+}
+
+export interface ReactorTimelineContract {
+	source: ReactorTimelineContractSource;
+}
+
+export interface ReactorTimelineOracleSpec {
+	kind: typeof REACTOR_ORACLE_SPEC_KIND;
+	cid: string;
+	policyCid: string;
+	forecastModelId: string;
+	recheckSchedule: readonly string[];
+	recheckTolerance: number;
+	preconditionSet: readonly string[];
+}
+
+export interface ReactorTimelineEvent {
+	id: string;
+	at: string;
+	label: SurpriseLabel;
+	trigger: ReactorTimelineEventTrigger;
+	type: string;
+	payload?: JsonValue;
+	payloadCid?: string;
+	metadata?: JsonObject;
+}
+
+export interface ReactorTimelineLimits {
+	maxCostUsd?: number;
+	maxModelCalls?: number;
+	maxWallTimeMs?: number;
+}
+
+export interface ReactorTimelineCase {
+	kind: typeof REACTOR_TIMELINE_CASE_KIND;
+	version: 1;
+	id: string;
+	title: string;
+	contract: ReactorTimelineContract;
+	oracle: ReactorTimelineOracleSpec;
+	events: readonly ReactorTimelineEvent[];
+	claims?: readonly ReactorClaim[];
+	limits?: ReactorTimelineLimits;
+	metadata?: JsonObject;
+}
+
+export interface ReactorTimelineAdapterContext {
+	adapterName: string;
+	artifactDirectory?: string;
+	artifactStore?: EvalArtifactStore;
+	attemptId: string;
+	caseId: string;
+	env?: Record<string, string | undefined>;
+	runId: string;
+	scenarioCacheDirectory: string;
+	signal?: AbortSignal;
+	startedAt: string;
+}
+
+export interface ReactorTimelineAdapterEventContext extends ReactorTimelineAdapterContext {
+	eventIndex: number;
+}
+
+export interface ReactorTimelinePrepareResult {
+	artifacts?: readonly EvalArtifact[];
+	events?: readonly EvalEvent[];
+	metadata?: JsonObject;
+}
+
+export interface ReactorTimelineStepResult {
+	eventId: string;
+	status: "passed" | "failed" | "error" | "skipped";
+	artifacts?: readonly EvalArtifact[];
+	costs?: readonly EvalCostRecord[];
+	events?: readonly EvalEvent[];
+	metadata?: JsonObject;
+	metrics?: Readonly<Record<string, number>>;
+	stderr?: string;
+	stdout?: string;
+}
+
+export interface ReactorTimelineTeardownResult {
+	artifacts?: readonly EvalArtifact[];
+	events?: readonly EvalEvent[];
+	metadata?: JsonObject;
+}
+
+export interface ReactorTimelineAdapter {
+	readonly name: string;
+	prepare?(timelineCase: ReactorTimelineCase, context: ReactorTimelineAdapterContext): Promise<ReactorTimelinePrepareResult | void>;
+	onEvent(
+		event: ReactorTimelineEvent,
+		context: ReactorTimelineAdapterEventContext,
+	): Promise<ReactorTimelineStepResult>;
+	teardown?(
+		timelineCase: ReactorTimelineCase,
+		context: ReactorTimelineAdapterContext,
+	): Promise<ReactorTimelineTeardownResult | void>;
+}
+
+export interface ReactorTimelineRunResult {
+	adapterName: string;
+	artifacts: readonly EvalArtifact[];
+	attemptId: string;
+	caseId: string;
+	completedAt: string;
+	costs: readonly EvalCostRecord[];
+	events: readonly EvalEvent[];
+	metadata?: JsonObject;
+	runId: string;
+	scenarioCacheDirectory: string;
+	startedAt: string;
+	status: "passed" | "failed";
+	steps: readonly ReactorTimelineStepResult[];
 }
 
 export interface EvalTask {

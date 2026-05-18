@@ -20,7 +20,7 @@ export type {
 export { runEvalSuite } from "./runner.js";
 export type { EvalRunnerOptions } from "./runner.js";
 export { scoreAttempt } from "./scorer.js";
-export { EvalSchemaError, validateEvalSuite } from "./schema.js";
+export { EvalSchemaError, validateEvalSuite, validateReactorTimelineCase } from "./schema.js";
 export { loadEvalSuite } from "./suite-loader.js";
 export {
 	BUILT_IN_EVAL_SUITE_NAMES,
@@ -30,6 +30,8 @@ export {
 } from "./suite-registry.js";
 export type { BuiltInEvalSuiteName } from "./suite-registry.js";
 export { reactorNativeTinySuite } from "./suites/reactor-native-tiny.js";
+export { runReactorTimelineCase } from "./timeline-runner.js";
+export type { ReactorTimelineRunnerOptions } from "./timeline-runner.js";
 export { formatEvalSuiteSummary } from "./format.js";
 export { createMockEvalAdapter } from "./adapters/mock.js";
 export type { MockEvalAdapterOptions, MockEvalAdapterResponse } from "./adapters/mock.js";
@@ -50,9 +52,12 @@ export {
 	EVAL_SUITE_KIND,
 	EVAL_TASK_KIND,
 	EVAL_CLAIM_ELIGIBILITY_KIND,
+	REACTOR_CLAIMS,
+	REACTOR_ORACLE_SPEC_KIND,
 	REACTOR_PROOF_KIND,
 	REACTOR_PROOF_MEDIA_TYPE,
 	REACTOR_TIMELINE_CASE_KIND,
+	REACTOR_TIMELINE_EVENT_TRIGGERS,
 	REACTOR_TIMELINE_CASE_MEDIA_TYPE,
 	REPORT_USES,
 	SURPRISE_LABELS,
@@ -81,6 +86,21 @@ export {
 	type JsonObject,
 	type JsonPrimitive,
 	type JsonValue,
+	type ReactorClaim,
+	type ReactorTimelineAdapter,
+	type ReactorTimelineAdapterContext,
+	type ReactorTimelineAdapterEventContext,
+	type ReactorTimelineCase,
+	type ReactorTimelineContract,
+	type ReactorTimelineContractSource,
+	type ReactorTimelineEvent,
+	type ReactorTimelineEventTrigger,
+	type ReactorTimelineLimits,
+	type ReactorTimelineOracleSpec,
+	type ReactorTimelinePrepareResult,
+	type ReactorTimelineRunResult,
+	type ReactorTimelineStepResult,
+	type ReactorTimelineTeardownResult,
 	type ReportUse,
 	type SurpriseLabel,
 } from "./types.js";
