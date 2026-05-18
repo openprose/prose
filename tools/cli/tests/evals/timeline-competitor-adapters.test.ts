@@ -1,21 +1,27 @@
-import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { describe, expect, test } from "vitest";
 
 import {
+	PHASE_1B_REACTOR_SCENARIO_CORPUS,
 	REACTOR_ORACLE_SPEC_KIND,
 	REACTOR_TIMELINE_CASE_KIND,
+	appendProxyModelCallRecord,
 	createCodexTimelineAdapter,
 	createDspyRlmTimelineAdapter,
 	createFilesystemArtifactStore,
 	createHermesTimelineAdapter,
 	createOpenClawTimelineAdapter,
 	createPiTimelineAdapter,
+	notRunPhase1bCompetitorRows,
 	runReactorTimelineCase,
+	scorePhase1bTimelineRun,
+	type DockerComposeRunOptions,
 	type EvalTask,
 	type JsonObject,
+	type ProxyModelCallRecord,
 	type ReactorTimelineCase,
 } from "../../src/evals/index.js";
 
@@ -275,6 +281,145 @@ describe("competitor timeline adapters", () => {
 		}
 	});
 
+	test("plans Hermes and DSPy container runs with pinned packages, proxy auth, and corrected commands", async () => {
+		const root = mkdtempSync(join(tmpdir(), "prose-container-timeline-artifacts-"));
+		const cacheRoot = mkdtempSync(join(tmpdir(), "prose-container-timeline-cache-"));
+		try {
+			const hermesArtifacts = join(root, "hermes");
+			const dspyArtifacts = join(root, "dspy");
+			const hermesRunner = new FakeComposeRunner(hermesArtifacts, "hermes says action completed\n");
+			const dspyRunner = new FakeComposeRunner(dspyArtifacts, "dspy says recheck completed\n");
+
+			const hermes = createHermesTimelineAdapter({
+				isolation: {
+					artifactHostPath: hermesArtifacts,
+					composeRunner: hermesRunner,
+					egressProxyToken: "test-proxy-token",
+					harnessImage: "python:3.12-slim",
+				},
+			});
+			const hermesResult = await runReactorTimelineCase({ ...timelineCase, events: [timelineCase.events[0]!] }, hermes, {
+				env: {
+					OPENROUTER_API_KEY: "test-openrouter-key",
+				},
+				runId: "hermes-container-run",
+				scenarioCacheRoot: cacheRoot,
+				now: () => new Date("2026-05-17T12:00:00.000Z"),
+			});
+			const hermesCommand = isolationCommand(hermesResult.steps[0]?.metadata);
+			const hermesCompose = hermesRunner.composePlan();
+			const hermesHarness = service(hermesCompose, "harness");
+
+			expect(hermesResult.status).toBe("passed");
+			expect(hermesCommand.join("\0")).toContain("hermes-agent==0.13.0");
+			expect(hermesCommand).toEqual(expect.arrayContaining(["hermes", "chat", "-q", "-Q", "--source", "tool"]));
+			expect(hermesCommand).not.toEqual(expect.arrayContaining(["-z", "--oneshot"]));
+			expect(hermesCommand).toEqual(
+				expect.arrayContaining(["--provider", "openrouter", "--model", "google/gemini-3.1-flash-lite-preview"]),
+			);
+			expect(hermesHarness.environment).toEqual(
+				expect.objectContaining({
+					HTTPS_PROXY: "http://egress-proxy:3128",
+					OPENROUTER_API_KEY: "test-openrouter-key",
+					PROSE_EVAL_EGRESS_PROXY_AUTHORIZATION: "Bearer test-proxy-token",
+					PROSE_EVAL_EGRESS_PROXY_TOKEN: "test-proxy-token",
+				}),
+			);
+			expect(hermesResult.steps[0]?.metrics).toEqual(
+				expect.objectContaining({
+					acted: 1,
+					modelCalls: 1,
+					unreconciledEffects: 0,
+				}),
+			);
+
+			const dspy = createDspyRlmTimelineAdapter({
+				isolation: {
+					artifactHostPath: dspyArtifacts,
+					composeRunner: dspyRunner,
+					egressProxyToken: "test-proxy-token",
+					harnessImage: "python:3.12-slim",
+				},
+			});
+			const dspyResult = await runReactorTimelineCase({ ...timelineCase, events: [timelineCase.events[1]!] }, dspy, {
+				env: {
+					OPENROUTER_API_KEY: "test-openrouter-key",
+				},
+				runId: "dspy-container-run",
+				scenarioCacheRoot: cacheRoot,
+				now: () => new Date("2026-05-17T12:00:00.000Z"),
+			});
+			const dspyCommand = isolationCommand(dspyResult.steps[0]?.metadata);
+			const dspyPayload = parseDspyPayload(dspyCommand);
+			const dspyHarness = service(dspyRunner.composePlan(), "harness");
+
+			expect(dspyResult.status).toBe("passed");
+			expect(dspyCommand.join("\0")).toContain("dspy==3.2.1");
+			expect(dspyCommand).toEqual(expect.arrayContaining(["python3", "-c"]));
+			expect(dspyPayload.model).toBe("openrouter/google/gemini-3.1-flash-lite-preview");
+			expect(dspyHarness.command.join("\0")).toContain("dspy==3.2.1");
+			expect(dspyHarness.environment).toEqual(
+				expect.objectContaining({
+					HTTP_PROXY: "http://egress-proxy:3128",
+					OPENROUTER_API_KEY: "test-openrouter-key",
+					PROSE_EVAL_EGRESS_PROXY_AUTHORIZATION: "Bearer test-proxy-token",
+				}),
+			);
+			expect(dspyResult.steps[0]?.metrics).toEqual(
+				expect.objectContaining({
+					modelCalls: 1,
+					rechecked: 1,
+					unreconciledEffects: 0,
+				}),
+			);
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+			rmSync(cacheRoot, { recursive: true, force: true });
+		}
+	});
+
+	test("containerized competitor success can replace prior Phase-1b not-run rows with observable metrics", async () => {
+		const root = mkdtempSync(join(tmpdir(), "prose-container-phase1b-artifacts-"));
+		const cacheRoot = mkdtempSync(join(tmpdir(), "prose-container-phase1b-cache-"));
+		try {
+			const scenario = PHASE_1B_REACTOR_SCENARIO_CORPUS[0]!;
+			const notRun = notRunPhase1bCompetitorRows([scenario], ["hermes"])[0]!;
+			const runner = new FakeComposeRunner(root, "action completed\n");
+			const adapter = createHermesTimelineAdapter({
+				isolation: {
+					artifactHostPath: root,
+					composeRunner: runner,
+					egressProxyToken: "test-proxy-token",
+					harnessImage: "python:3.12-slim",
+				},
+			});
+
+			const result = await runReactorTimelineCase(scenario, adapter, {
+				env: {
+					OPENROUTER_API_KEY: "test-openrouter-key",
+				},
+				runId: "phase-1b-hermes-container",
+				scenarioCacheRoot: cacheRoot,
+				now: () => new Date("2026-05-17T12:00:00.000Z"),
+			});
+			const row = scorePhase1bTimelineRun(scenario, result);
+
+			expect(notRun).toEqual(expect.objectContaining({ status: "not-run", modelCalls: 0 }));
+			expect(row).toEqual(
+				expect.objectContaining({
+					adapterName: "hermes",
+					status: "passed",
+				}),
+			);
+			expect(row.modelCalls).toBeGreaterThan(0);
+			expect(row.acted).toBeGreaterThan(0);
+			expect(row.steps.length).toBe(scenario.events.length);
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+			rmSync(cacheRoot, { recursive: true, force: true });
+		}
+	});
+
 	test("keeps Codex and OpenClaw scaffolds fail-closed without model calls", async () => {
 		const cacheRoot = mkdtempSync(join(tmpdir(), "prose-unsupported-timeline-cache-"));
 		try {
@@ -332,16 +477,150 @@ interface DspyPayload {
 	query: string;
 }
 
+interface ComposePlan {
+	services: Record<string, ComposeService>;
+}
+
+interface ComposeService {
+	command: string[];
+	environment: Record<string, string>;
+}
+
+interface ComposeCall {
+	args: string[];
+	options: DockerComposeRunOptions;
+}
+
+class FakeComposeRunner {
+	readonly calls: ComposeCall[] = [];
+
+	constructor(
+		private readonly artifactHostPath: string,
+		private readonly output: string,
+	) {}
+
+	async run(args: readonly string[], options: DockerComposeRunOptions): Promise<{ exitCode: number }> {
+		this.calls.push({ args: [...args], options });
+		if (args.includes("up")) {
+			options.stdout?.write(this.output);
+			appendProxyModelCallRecord(join(this.artifactHostPath, "model-calls.jsonl"), modelCallRecord());
+		}
+		return { exitCode: 0 };
+	}
+
+	composePlan(): ComposePlan {
+		const composePath = this.calls[0]?.args[this.calls[0].args.indexOf("-f") + 1];
+		if (composePath === undefined) {
+			throw new Error("missing compose file path");
+		}
+
+		const command = commandFromCompose(readFile(composePath));
+		return {
+			services: {
+				harness: {
+					command,
+					environment: environmentFromCompose(readFile(composePath), "harness"),
+				},
+			},
+		};
+	}
+}
+
 function promptArg(args: readonly string[], flag: string): string {
 	const index = args.indexOf(flag);
 	return index === -1 ? "" : args[index + 1] ?? "";
 }
 
 function parseDspyPayload(args: readonly string[]): DspyPayload {
-	return JSON.parse(args[2] ?? "{}") as DspyPayload;
+	const inlineIndex = args.indexOf("-c");
+	return JSON.parse(args[inlineIndex + 2] ?? "{}") as DspyPayload;
 }
 
 function timelineEventId(task: EvalTask): string {
 	const event = task.metadata?.timelineEvent as JsonObject | undefined;
 	return typeof event?.id === "string" ? event.id : task.id;
+}
+
+function isolationCommand(metadata: JsonObject | undefined): string[] {
+	const attemptMetadata = metadata?.attemptMetadata as JsonObject | undefined;
+	const isolation = attemptMetadata?.isolation as JsonObject | undefined;
+	return Array.isArray(isolation?.command) ? isolation.command.map(String) : [];
+}
+
+function service(compose: ComposePlan, name: string): ComposeService {
+	const found = compose.services[name];
+	if (found === undefined) {
+		throw new Error(`missing compose service: ${name}`);
+	}
+
+	return found;
+}
+
+function readFile(path: string): string {
+	return existsSync(path) ? readFileSync(path, "utf8") : "";
+}
+
+function commandFromCompose(contents: string): string[] {
+	const lines = contents.split(/\r?\n/);
+	const commandIndex = lines.findIndex((line) => line.trim() === "command:");
+	if (commandIndex === -1) {
+		return [];
+	}
+	const command: string[] = [];
+	for (const line of lines.slice(commandIndex + 1)) {
+		const match = /^\s+- (.*)$/.exec(line);
+		if (match === null) {
+			break;
+		}
+		command.push(JSON.parse(match[1] ?? "\"\"") as string);
+	}
+	return command;
+}
+
+function environmentFromCompose(contents: string, serviceName: string): Record<string, string> {
+	const lines = contents.split(/\r?\n/);
+	const serviceIndex = lines.findIndex((line) => line.trim() === `${serviceName}:`);
+	const environmentIndex = lines.findIndex((line, index) => index > serviceIndex && line.trim() === "environment:");
+	const environment: Record<string, string> = {};
+	for (const line of lines.slice(environmentIndex + 1)) {
+		const match = /^\s{6}([A-Za-z0-9_]+): (.*)$/.exec(line);
+		if (match === null) {
+			break;
+		}
+		environment[match[1]!] = JSON.parse(match[2] ?? "\"\"") as string;
+	}
+	return environment;
+}
+
+function modelCallRecord(): ProxyModelCallRecord {
+	return {
+		cid: "1".repeat(64),
+		completion_tokens: 7,
+		decision_cid: "2".repeat(64),
+		metadata: {
+			request: {
+				body_bytes: 42,
+				headers: {
+					authorization: "[REDACTED]",
+					"content-type": "application/json",
+				},
+				method: "POST",
+				url: "https://openrouter.ai/api/v1/chat/completions",
+			},
+			response: {
+				body_bytes: 84,
+				headers: {
+					"content-type": "application/json",
+				},
+				status: 200,
+				status_text: "OK",
+			},
+		},
+		model_version: "google/gemini-3.1-flash-lite-preview",
+		prompt_tokens: 12,
+		provider: "openrouter",
+		request_cid: "3".repeat(64),
+		response_cid: "4".repeat(64),
+		type: "ModelCall",
+	};
 }

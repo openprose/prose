@@ -9,6 +9,11 @@ import {
 	computeOpenRouterCreditDeltaUsd,
 } from "./model-catalog.js";
 
+const DEFAULT_GENERATION_LOOKUP_ATTEMPTS = 6;
+const DEFAULT_GENERATION_LOOKUP_BACKOFF_MULTIPLIER = 2;
+const DEFAULT_GENERATION_LOOKUP_DELAY_MS = 2_000;
+const DEFAULT_GENERATION_LOOKUP_MAX_DELAY_MS = 20_000;
+
 export interface OpenRouterCostLearningBatchOptions {
 	batchId: string;
 	runId: string;
@@ -20,7 +25,10 @@ export interface OpenRouterCostLearningBatchOptions {
 	suiteResults?: readonly EvalSuiteRunResult[];
 	generationIds?: readonly string[];
 	generationLookupAttempts?: number;
+	generationLookupBackoffMultiplier?: number;
 	generationLookupDelayMs?: number;
+	generationLookupMaxDelayMs?: number;
+	generationLookupMaxWaitMs?: number;
 	runCount?: number;
 	scenarioPairCount?: number;
 	now?: () => Date;
@@ -92,19 +100,45 @@ export async function runOpenRouterCostLearningBatch(
 		...generationIdsFromCostRecords(inputCostRecords),
 	]);
 	const reconciledCostRecords: EvalCostRecord[] = [];
-	const generationLookupAttempts = positiveInteger(options.generationLookupAttempts ?? 1, "generationLookupAttempts");
-	const generationLookupDelayMs = nonNegativeInteger(options.generationLookupDelayMs ?? 0, "generationLookupDelayMs");
+	const generationLookupAttempts = positiveInteger(
+		options.generationLookupAttempts ?? DEFAULT_GENERATION_LOOKUP_ATTEMPTS,
+		"generationLookupAttempts",
+	);
+	const generationLookupDelayMs = nonNegativeInteger(
+		options.generationLookupDelayMs ?? DEFAULT_GENERATION_LOOKUP_DELAY_MS,
+		"generationLookupDelayMs",
+	);
+	const generationLookupBackoffMultiplier = backoffMultiplier(
+		options.generationLookupBackoffMultiplier ?? DEFAULT_GENERATION_LOOKUP_BACKOFF_MULTIPLIER,
+		"generationLookupBackoffMultiplier",
+	);
+	const generationLookupMaxDelayMs =
+		options.generationLookupMaxDelayMs === undefined
+			? DEFAULT_GENERATION_LOOKUP_MAX_DELAY_MS
+			: nonNegativeInteger(options.generationLookupMaxDelayMs, "generationLookupMaxDelayMs");
+	const generationLookupMaxWaitMs =
+		options.generationLookupMaxWaitMs === undefined
+			? maxScheduledWaitMs({
+					attempts: generationLookupAttempts,
+					backoffMultiplier: generationLookupBackoffMultiplier,
+					delayMs: generationLookupDelayMs,
+					maxDelayMs: generationLookupMaxDelayMs,
+				})
+			: nonNegativeInteger(options.generationLookupMaxWaitMs, "generationLookupMaxWaitMs");
 	const fallbackCostRecords: EvalCostRecord[] = [];
 	const generationLookupFailures: OpenRouterGenerationLookupFailure[] = [];
 	for (const generationId of lookedUpGenerationIds) {
 		const role = roleForGeneration(inputCostRecords, generationId);
 		const surpriseLabel = surpriseLabelForGeneration(inputCostRecords, generationId);
 		try {
-			reconciledCostRecords.push(await fetchGenerationCostWithRetry({
+			const fetchedCostRecord = await fetchGenerationCostWithRetry({
 				attempts: generationLookupAttempts,
+				backoffMultiplier: generationLookupBackoffMultiplier,
 				client: options.client,
 				delayMs: generationLookupDelayMs,
 				generationId,
+				maxDelayMs: generationLookupMaxDelayMs,
+				maxWaitMs: generationLookupMaxWaitMs,
 				recordOptions: {
 					adapterName: adapterNameForGeneration(inputCostRecords, generationId),
 					attemptId: attemptIdForGeneration(inputCostRecords, generationId),
@@ -113,7 +147,21 @@ export async function runOpenRouterCostLearningBatch(
 					...(role === undefined ? {} : { role }),
 					...(surpriseLabel === undefined ? {} : { surpriseLabel }),
 				},
-			}));
+			});
+			if (fetchedCostRecord.confidence === "provider-reconciled") {
+				reconciledCostRecords.push(fetchedCostRecord);
+			} else {
+				generationLookupFailures.push({
+					generationId,
+					message: "OpenRouter generation response did not include usable provider cost/token fields",
+				});
+				const fallback = recordForGeneration(inputCostRecords, generationId);
+				if (fallback === undefined) {
+					reconciledCostRecords.push(fetchedCostRecord);
+				} else {
+					fallbackCostRecords.push(fallback);
+				}
+			}
 		} catch (error) {
 			if (options.allowGenerationLookupFailures !== true) {
 				throw error;
@@ -164,8 +212,16 @@ export async function runOpenRouterCostLearningBatch(
 			modelIds: [...modelIds],
 			generationLookups: lookedUpGenerationIds.length,
 			generationLookupAttempts,
+			generationLookupBackoffMultiplier,
 			generationLookupDelayMs,
+			...(generationLookupMaxDelayMs === undefined ? {} : { generationLookupMaxDelayMs }),
+			generationLookupMaxWaitMs,
 			generationLookupFailures: generationLookupFailures.length,
+			generationReconciliation: {
+				phase: "end-of-batch",
+				maxAttempts: generationLookupAttempts,
+				maxWaitMs: generationLookupMaxWaitMs,
+			},
 			inputCostRecords: inputCostRecords.length,
 			creditDeltaSource:
 				creditsBefore.totalUsage !== undefined && creditsAfter.totalUsage !== undefined
@@ -179,19 +235,32 @@ export async function runOpenRouterCostLearningBatch(
 
 async function fetchGenerationCostWithRetry(options: {
 	attempts: number;
+	backoffMultiplier: number;
 	client: ModelCatalogClient;
 	delayMs: number;
 	generationId: string;
+	maxDelayMs: number | undefined;
+	maxWaitMs: number;
 	recordOptions: Parameters<ModelCatalogClient["fetchGenerationCost"]>[1];
 }): Promise<EvalCostRecord> {
 	let lastError: unknown;
+	let waitedMs = 0;
 	for (let attempt = 1; attempt <= options.attempts; attempt += 1) {
 		try {
 			return await options.client.fetchGenerationCost(options.generationId, options.recordOptions);
 		} catch (error) {
 			lastError = error;
-			if (attempt < options.attempts && options.delayMs > 0) {
-				await delay(options.delayMs);
+			const nextDelayMs = retryDelayMs({
+				attempt,
+				backoffMultiplier: options.backoffMultiplier,
+				delayMs: options.delayMs,
+				maxDelayMs: options.maxDelayMs,
+			});
+			if (attempt < options.attempts && nextDelayMs > 0 && waitedMs + nextDelayMs <= options.maxWaitMs) {
+				waitedMs += nextDelayMs;
+				await delay(nextDelayMs);
+			} else if (attempt < options.attempts && nextDelayMs > 0) {
+				break;
 			}
 		}
 	}
@@ -232,6 +301,36 @@ function nonNegativeInteger(value: number, path: string): number {
 		throw new Error(`${path} must be a non-negative integer`);
 	}
 	return value;
+}
+
+function backoffMultiplier(value: number, path: string): number {
+	if (!Number.isFinite(value) || value < 1) {
+		throw new Error(`${path} must be a finite number greater than or equal to 1`);
+	}
+	return value;
+}
+
+function maxScheduledWaitMs(options: {
+	attempts: number;
+	backoffMultiplier: number;
+	delayMs: number;
+	maxDelayMs: number | undefined;
+}): number {
+	let totalMs = 0;
+	for (let attempt = 1; attempt < options.attempts; attempt += 1) {
+		totalMs += retryDelayMs({ ...options, attempt });
+	}
+	return totalMs;
+}
+
+function retryDelayMs(options: {
+	attempt: number;
+	backoffMultiplier: number;
+	delayMs: number;
+	maxDelayMs: number | undefined;
+}): number {
+	const unboundedDelayMs = Math.floor(options.delayMs * options.backoffMultiplier ** (options.attempt - 1));
+	return options.maxDelayMs === undefined ? unboundedDelayMs : Math.min(unboundedDelayMs, options.maxDelayMs);
 }
 
 function delay(ms: number): Promise<void> {
@@ -277,11 +376,13 @@ function learnedCostEstimate(options: {
 	runCount: number;
 	scenarioPairCount: number | undefined;
 }): OpenRouterLearnedCostEstimate {
-	const providerReconciledSpendUsd = options.costSummary.knownCostUsd;
+	const providerReconciledSpendUsd = sumKnownCostByConfidence(options.costRecords, "provider-reconciled");
+	const knownCostUsd = options.costSummary.knownCostUsd;
+	const hasProviderReconciledCost = options.costRecords.some((record) => record.confidence === "provider-reconciled");
 	const spendBasis =
-		options.creditDeltaUsd !== undefined && options.creditDeltaUsd > 0
+		hasProviderReconciledCost && options.creditDeltaUsd !== undefined && options.creditDeltaUsd > 0
 			? "credit-delta"
-			: providerReconciledSpendUsd > 0
+			: knownCostUsd > 0
 				? "cost-records"
 				: options.creditDeltaUsd !== undefined
 					? "credit-delta"
@@ -290,10 +391,10 @@ function learnedCostEstimate(options: {
 		spendBasis === "credit-delta"
 			? (options.creditDeltaUsd ?? 0)
 			: spendBasis === "cost-records"
-				? providerReconciledSpendUsd
+				? knownCostUsd
 				: 0;
 	const confidence =
-		options.creditDeltaUsd !== undefined && options.costRecords.some((record) => record.confidence === "provider-reconciled")
+		hasProviderReconciledCost
 			? "provider-reconciled"
 			: options.costRecords.length > 0
 				? "response-usage"
@@ -317,4 +418,17 @@ function learnedCostEstimate(options: {
 		...(options.scenarioPairCount === undefined ? {} : { scenarioPairCount: options.scenarioPairCount }),
 		spendBasis,
 	};
+}
+
+function sumKnownCostByConfidence(
+	records: readonly EvalCostRecord[],
+	confidence: EvalCostRecord["confidence"],
+): number {
+	let total = 0;
+	for (const record of records) {
+		if (record.confidence === confidence && record.totalCostUsd !== undefined && Number.isFinite(record.totalCostUsd)) {
+			total += record.totalCostUsd;
+		}
+	}
+	return total;
 }

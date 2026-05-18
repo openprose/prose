@@ -1,11 +1,13 @@
 import { mkdir } from "node:fs/promises";
 import { isAbsolute, join, relative } from "node:path";
 
+import type { ProcessCommand } from "../../harnesses/types.js";
 import {
 	EVAL_TASK_KIND,
 	type EvalAdapter,
 	type EvalAdapterContext,
 	type EvalAttemptResult,
+	type EvalCostRecord,
 	type EvalEvent,
 	type EvalExpectedOutcome,
 	type EvalTask,
@@ -20,6 +22,10 @@ import {
 	type ReactorTimelineStepResult,
 	type ReactorTimelineTeardownResult,
 } from "../types.js";
+import { redactionValuesFromEnv, sanitizeText } from "../safety.js";
+import type { DockerIsolationLiveRunnerOptions } from "../isolation/live-runner.js";
+import { runDockerIsolation } from "../isolation/live-runner.js";
+import type { ProxyModelCallRecord } from "../isolation/egress-proxy.js";
 
 export interface TimelineEvalTaskBuilderInput {
 	adapterName: string;
@@ -35,6 +41,25 @@ export interface EvalAdapterTimelineAdapterOptions {
 	buildTask?: TimelineEvalTaskBuilder;
 	name?: string;
 	taskExpected?: EvalExpectedOutcome;
+}
+
+export interface DockerIsolatedTimelineAdapterOptions {
+	buildCommand: (task: EvalTask) => ProcessCommand;
+	buildEnv?: (task: EvalTask, context: EvalAdapterContext) => Record<string, string | undefined>;
+	buildTask?: TimelineEvalTaskBuilder;
+	isolation: TimelineDockerIsolationOptions;
+	name: string;
+	taskExpected?: EvalExpectedOutcome;
+}
+
+export interface TimelineDockerIsolationOptions
+	extends Omit<
+		DockerIsolationLiveRunnerOptions,
+		"artifactHostPath" | "command" | "environment" | "identity" | "signal" | "stderr" | "stdout" | "workspaceHostPath"
+	> {
+	artifactHostPath?: string;
+	environment?: Readonly<Record<string, string | undefined>>;
+	workspaceHostPath?: string;
 }
 
 export interface BuildTimelineEventEvalTaskOptions extends TimelineEvalTaskBuilderInput {
@@ -173,6 +198,166 @@ export function createEvalAdapterTimelineAdapter(options: EvalAdapterTimelineAda
 						data: {
 							adapterName: name,
 							caseId: timelineCase.id,
+						},
+					},
+				],
+			};
+		},
+	};
+}
+
+export function createDockerIsolatedTimelineAdapter(options: DockerIsolatedTimelineAdapterOptions): ReactorTimelineAdapter {
+	const name = options.name;
+	const taskExpected = options.taskExpected ?? DEFAULT_TASK_EXPECTED;
+	const buildTask =
+		options.buildTask ??
+		((input: TimelineEvalTaskBuilderInput) =>
+			buildTimelineEventEvalTask({
+				...input,
+				expected: taskExpected,
+			}));
+	const preparedCases = new Map<string, ReactorTimelineCase>();
+
+	return {
+		name,
+		async prepare(timelineCase, context): Promise<ReactorTimelinePrepareResult> {
+			preparedCases.set(preparedCaseKey(context), timelineCase);
+			await mkdir(adapterRunDirectory(context), { recursive: true });
+
+			return {
+				events: [
+					{
+						type: `competitor.${name}.prepared`,
+						at: context.startedAt,
+						data: {
+							adapterName: name,
+							adapterRunDirectory: adapterRunDirectory(context),
+							caseId: timelineCase.id,
+							containerized: true,
+							eventCount: timelineCase.events.length,
+						},
+					},
+				],
+				metadata: {
+					adapterName: name,
+					adapterRunDirectory: adapterRunDirectory(context),
+					competitorTimeline: true,
+					containerized: true,
+				},
+			};
+		},
+		async onEvent(event, context): Promise<ReactorTimelineStepResult> {
+			const timelineCase = preparedCases.get(preparedCaseKey(context));
+			if (timelineCase === undefined) {
+				return failClosedStep({
+					name,
+					event,
+					context,
+					reason: "timeline competitor adapter was not prepared before onEvent",
+					status: "error",
+					type: "not_prepared",
+				});
+			}
+
+			const runDirectory = adapterRunDirectory(context);
+			await mkdir(runDirectory, { recursive: true });
+			const artifactDirectory = eventAttemptArtifactDirectory(context, event);
+			if (artifactDirectory !== undefined) {
+				await mkdir(artifactDirectory.absolutePath, { recursive: true });
+			}
+
+			const task = withoutTaskCwd(
+				buildTask({
+					adapterName: name,
+					context,
+					event,
+					timelineCase,
+				}),
+			);
+			const attemptContext: EvalAdapterContext = {
+				adapterRunDirectory: runDirectory,
+				...(artifactDirectory === undefined ? {} : { attemptArtifactDirectory: artifactDirectory.relativePath }),
+				...(context.artifactStore === undefined ? {} : { artifactStore: context.artifactStore }),
+				...(context.env === undefined ? {} : { env: context.env }),
+				attemptId: `${context.attemptId}:${event.id}`,
+				runId: context.runId,
+				...(context.signal === undefined ? {} : { signal: context.signal }),
+				startedAt: event.at,
+			};
+			const command = options.buildCommand(task);
+			const commandEnv = options.buildEnv?.(task, attemptContext);
+			const started = Date.now();
+			const dockerArtifactHostPath =
+				options.isolation.artifactHostPath ?? artifactDirectory?.absolutePath ?? join(runDirectory, "docker-artifacts", event.id);
+			await mkdir(dockerArtifactHostPath, { recursive: true });
+
+			let stdout = "";
+			let stderr = "";
+			const environment = mergeDockerEnvironment(options.isolation.environment, commandEnv, context.env);
+			const redactionValues = redactionValuesFromEnv(
+				environment === undefined ? process.env : { ...process.env, ...environment },
+			);
+
+			try {
+				const { artifactHostPath: _artifactHostPath, environment: _environment, workspaceHostPath, ...isolation } = options.isolation;
+				const result = await runDockerIsolation({
+					...isolation,
+					artifactHostPath: dockerArtifactHostPath,
+					command: [command.command, ...command.args],
+					...(environment === undefined ? {} : { environment }),
+					identity: {
+						adapterName: name,
+						attemptId: attemptContext.attemptId,
+						caseId: context.caseId,
+						runId: context.runId,
+					},
+					...(context.signal === undefined ? {} : { signal: context.signal }),
+					stderr: captureText((chunk) => void (stderr = appendLimited(stderr, chunk))),
+					stdout: captureText((chunk) => void (stdout = appendLimited(stdout, chunk))),
+					workspaceHostPath: workspaceHostPath ?? process.cwd(),
+				});
+				const attempt = dockerIsolationResultToAttempt({
+					command,
+					durationMs: Date.now() - started,
+					name,
+					result,
+					stderr: sanitizeText(stderr, redactionValues),
+					stdout: sanitizeText(stdout, redactionValues),
+					task,
+					context: attemptContext,
+				});
+
+				return attemptToStepResult({
+					attempt,
+					attemptContext,
+					context,
+					event,
+					name,
+					task,
+				});
+			} catch (error) {
+				return failClosedStep({
+					name,
+					event,
+					context,
+					reason: error instanceof Error ? error.message : String(error),
+					status: "error",
+					type: "run_error",
+				});
+			}
+		},
+		async teardown(timelineCase, context): Promise<ReactorTimelineTeardownResult> {
+			preparedCases.delete(preparedCaseKey(context));
+
+			return {
+				events: [
+					{
+						type: `competitor.${name}.teardown`,
+						at: context.startedAt,
+						data: {
+							adapterName: name,
+							caseId: timelineCase.id,
+							containerized: true,
 						},
 					},
 				],
@@ -396,6 +581,85 @@ function failClosedStep(options: {
 	};
 }
 
+function dockerIsolationResultToAttempt(options: {
+	command: ProcessCommand;
+	context: EvalAdapterContext;
+	durationMs: number;
+	name: string;
+	result: Awaited<ReturnType<typeof runDockerIsolation>>;
+	stderr: string;
+	stdout: string;
+	task: EvalTask;
+}): EvalAttemptResult {
+	const failureText =
+		options.result.failureReasons.length === 0 ? "" : `\n${options.result.failureReasons.join("\n")}\n`;
+	const modelCalls = options.result.modelCalls.length;
+
+	return {
+		adapterName: options.name,
+		durationMs: options.durationMs,
+		exitCode: options.result.exitCode,
+		stdout: options.stdout,
+		stderr: `${options.stderr}${failureText}`,
+		costs: proxyModelCallsToCosts(options.result.modelCalls, options.name, options.task, options.context),
+		events: options.result.modelCalls.map((record) => ({
+			type: "model.call",
+			at: options.context.startedAt,
+			data: {
+				cid: record.cid,
+				model: record.model_version,
+				provider: record.provider,
+			},
+		})),
+		metadata: {
+			isolation: {
+				command: [options.command.command, ...options.command.args],
+				composeFilePath: options.result.composeFilePath,
+				composeProjectName: options.result.composeProjectName,
+				effectCount: options.result.effects.length,
+				failureReasons: [...options.result.failureReasons],
+				modelCalls,
+				status: options.result.status,
+				unreconciledEffects: options.result.effectReconciliation.unreconciled.length,
+			},
+		},
+		metrics: {
+			modelCalls,
+			unreconciledEffects: options.result.effectReconciliation.unreconciled.length,
+		},
+	};
+}
+
+function proxyModelCallsToCosts(
+	records: readonly ProxyModelCallRecord[],
+	adapterName: string,
+	task: EvalTask,
+	context: EvalAdapterContext,
+): EvalCostRecord[] {
+	return records.map((record, index) => {
+		const totalTokens = record.prompt_tokens + record.completion_tokens;
+		return {
+			id: `${context.attemptId}:proxy-model-call:${index + 1}`,
+			adapterName,
+			attemptId: context.attemptId,
+			confidence: "response-usage",
+			occurredAt: context.startedAt,
+			taskId: task.id,
+			runId: context.runId,
+			completionTokens: record.completion_tokens,
+			metadata: {
+				modelCallCid: record.cid,
+				requestCid: record.request_cid,
+				responseCid: record.response_cid,
+			},
+			model: record.model_version,
+			promptTokens: record.prompt_tokens,
+			provider: record.provider,
+			totalTokens,
+		};
+	});
+}
+
 function observationMetrics(attempt: EvalAttemptResult, event: ReactorTimelineEvent): ObservationMetrics {
 	const inherited = numericMetrics(attempt.metrics);
 	const output = `${attempt.stdout}\n${attempt.stderr}`;
@@ -467,6 +731,36 @@ function eventTypeMatches(events: readonly EvalEvent[] | undefined, words: reado
 			words.some((word) => new RegExp(`(^|[._:-])${escapeRegExp(word)}($|[._:-])`, "i").test(event.type)),
 		) ?? false
 	);
+}
+
+function mergeDockerEnvironment(
+	...layers: readonly (Readonly<Record<string, string | undefined>> | undefined)[]
+): Record<string, string | undefined> | undefined {
+	const merged: Record<string, string | undefined> = {};
+	for (const layer of layers) {
+		if (layer !== undefined) {
+			Object.assign(merged, layer);
+		}
+	}
+
+	return Object.keys(merged).length === 0 ? undefined : merged;
+}
+
+function captureText(write: (chunk: string) => void): NodeJS.WritableStream {
+	return {
+		write(chunk: unknown) {
+			write(String(chunk));
+			return true;
+		},
+	} as NodeJS.WritableStream;
+}
+
+function appendLimited(current: string, chunk: string, maxLength = 1_000_000): string {
+	if (current.length >= maxLength) {
+		return current;
+	}
+
+	return `${current}${chunk}`.slice(0, maxLength);
 }
 
 function escapeRegExp(value: string): string {

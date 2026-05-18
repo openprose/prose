@@ -149,6 +149,8 @@ export type { IdealCronTimelineAdapterOptions } from "./timeline-adapters/ideal-
 export { createTunedTtlTimelineAdapter } from "./timeline-adapters/tuned-ttl.js";
 export type { TunedTtlTimelineAdapterOptions } from "./timeline-adapters/tuned-ttl.js";
 export {
+	DEFAULT_DSPY_OPENROUTER_COMPETITOR_MODEL,
+	DEFAULT_OPENROUTER_COMPETITOR_MODEL,
 	createCodexTimelineAdapter,
 	createDspyRlmTimelineAdapter,
 	createHermesTimelineAdapter,
@@ -164,12 +166,15 @@ export type {
 } from "./timeline-adapters/competitors.js";
 export {
 	buildTimelineEventEvalTask,
+	createDockerIsolatedTimelineAdapter,
 	createEvalAdapterTimelineAdapter,
 	createUnsupportedTimelineAdapter,
 } from "./timeline-adapters/competitor-wrapper.js";
 export type {
 	BuildTimelineEventEvalTaskOptions,
+	DockerIsolatedTimelineAdapterOptions,
 	EvalAdapterTimelineAdapterOptions,
+	TimelineDockerIsolationOptions,
 	TimelineEvalTaskBuilder,
 	TimelineEvalTaskBuilderInput,
 	UnsupportedTimelineAdapterOptions,

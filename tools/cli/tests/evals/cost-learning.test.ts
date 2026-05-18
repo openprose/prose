@@ -4,6 +4,7 @@ import {
 	DEFAULT_COST_LEARNING_MODEL,
 	ModelCatalogClient,
 	generationIdsFromCostRecords,
+	openRouterGenerationToCostRecord,
 	runOpenRouterCostLearningBatch,
 	type EvalCostRecord,
 } from "../../src/evals/index.js";
@@ -62,11 +63,20 @@ describe("OpenRouter cost-learning loop", () => {
 				return jsonResponse({
 					data: {
 						created_at: "2026-05-17T12:00:00.000Z",
-						model: DEFAULT_COST_LEARNING_MODEL,
-						provider_name: "Google",
-						tokens_prompt: generationId === "gen-1" ? "11" : "13",
-						tokens_completion: generationId === "gen-1" ? 3 : 5,
-						total_cost: generationId === "gen-1" ? "0.004" : "0.006",
+						model: generationId === "gen-1" ? DEFAULT_COST_LEARNING_MODEL : { id: DEFAULT_COST_LEARNING_MODEL },
+						provider_name: generationId === "gen-1" ? "Google" : undefined,
+						provider: generationId === "gen-1" ? undefined : { name: "Google" },
+						tokens_prompt: generationId === "gen-1" ? "11" : undefined,
+						tokens_completion: generationId === "gen-1" ? 3 : undefined,
+						total_cost: generationId === "gen-1" ? "0.004" : undefined,
+						usage:
+							generationId === "gen-1"
+								? undefined
+								: {
+										prompt_tokens: "13",
+										completion_tokens: 5,
+										cost: "0.006",
+									},
 						echo: API_KEY,
 					},
 				});
@@ -117,6 +127,10 @@ describe("OpenRouter cost-learning loop", () => {
 		expect(result.creditDeltaUsd).toBeCloseTo(0.015, 6);
 		expect(result.lookedUpGenerationIds).toEqual(["gen-1", "gen-2"]);
 		expect(result.reconciledCostRecords.map((record) => record.totalCostUsd)).toEqual([0.004, 0.006]);
+		expect(result.reconciledCostRecords.map((record) => record.model)).toEqual([
+			DEFAULT_COST_LEARNING_MODEL,
+			DEFAULT_COST_LEARNING_MODEL,
+		]);
 		expect(result.costSummary.knownCostUsd).toBeCloseTo(0.01, 6);
 		expect(result.learnedCost).toEqual(
 			expect.objectContaining({
@@ -154,7 +168,7 @@ describe("OpenRouter cost-learning loop", () => {
 		).toEqual(["gen-1", "gen-2"]);
 	});
 
-	test("retries generation lookups for eventually consistent usage records", async () => {
+	test("reconciles delayed generation stats after a bounded 404-then-200 backoff", async () => {
 		let generationReads = 0;
 		const fetchImpl: typeof fetch = async (input) => {
 			const url = new URL(input.toString());
@@ -191,16 +205,24 @@ describe("OpenRouter cost-learning loop", () => {
 			batchId: "retry-batch",
 			client,
 			costRecords: [inputCostRecord("gen-lagged", "pi", "case-1")],
-			generationLookupAttempts: 2,
+			generationLookupAttempts: 3,
+			generationLookupBackoffMultiplier: 2,
+			generationLookupDelayMs: 1,
+			generationLookupMaxWaitMs: 5,
 			runId: "retry-run",
 		});
 
 		expect(generationReads).toBe(2);
 		expect(result.reconciledCostRecords).toHaveLength(1);
-		expect(result.metadata.generationLookupAttempts).toBe(2);
+		expect(result.reconciledCostRecords[0]?.generationId).toBe("gen-lagged");
+		expect(result.reconciledCostRecords[0]?.confidence).toBe("provider-reconciled");
+		expect(result.metadata.generationLookupAttempts).toBe(3);
+		expect(result.metadata.generationLookupBackoffMultiplier).toBe(2);
+		expect(result.metadata.generationLookupMaxWaitMs).toBe(5);
 	});
 
-	test("records generation lookup failures and falls back to response-usage costs when allowed", async () => {
+	test("bounds repeated 404s and falls back to response-usage costs when allowed", async () => {
+		let generationReads = 0;
 		const fetchImpl: typeof fetch = async (input) => {
 			const url = new URL(input.toString());
 			if (url.pathname === "/api/v1/models") {
@@ -213,6 +235,7 @@ describe("OpenRouter cost-learning loop", () => {
 				return jsonResponse({ data: { total_usage: 2 } });
 			}
 			if (url.pathname === "/api/v1/generation") {
+				generationReads += 1;
 				return jsonResponse({ error: "not found" }, 404);
 			}
 			return jsonResponse({}, 404);
@@ -229,9 +252,13 @@ describe("OpenRouter cost-learning loop", () => {
 			batchId: "fallback-batch",
 			client,
 			costRecords: [fallbackRecord],
+			generationLookupAttempts: 5,
+			generationLookupDelayMs: 5,
+			generationLookupMaxWaitMs: 6,
 			runId: "fallback-run",
 		});
 
+		expect(generationReads).toBe(2);
 		expect(result.reconciledCostRecords).toEqual([]);
 		expect(result.fallbackCostRecords).toEqual([fallbackRecord]);
 		expect(result.generationLookupFailures).toEqual([
@@ -245,6 +272,120 @@ describe("OpenRouter cost-learning loop", () => {
 		expect(result.learnedCost.effectiveSpendUsd).toBe(0.003);
 		expect(result.learnedCost.groundTruthSpendUsd).toBe(0);
 		expect(result.learnedCost.spendBasis).toBe("cost-records");
+	});
+
+	test("redacts secrets from generation lookup failures", async () => {
+		const fetchImpl: typeof fetch = async (input) => {
+			const url = new URL(input.toString());
+			if (url.pathname === "/api/v1/models") {
+				return jsonResponse({ data: [] });
+			}
+			if (url.pathname.endsWith("/endpoints")) {
+				return jsonResponse({ data: { endpoints: [] } });
+			}
+			if (url.pathname === "/api/v1/credits") {
+				return jsonResponse({ data: { total_usage: 2 } });
+			}
+			if (url.pathname === "/api/v1/generation") {
+				throw new Error(`transport failed for ${API_KEY}`);
+			}
+			return jsonResponse({}, 404);
+		};
+		const client = new ModelCatalogClient({ apiKey: API_KEY, fetch: fetchImpl });
+		const fallbackRecord = {
+			...inputCostRecord("gen-secret", "pi", "case-1"),
+			confidence: "response-usage" as const,
+			totalCostUsd: 0.004,
+		};
+
+		const result = await runOpenRouterCostLearningBatch({
+			allowGenerationLookupFailures: true,
+			batchId: "redaction-batch",
+			client,
+			costRecords: [fallbackRecord],
+			generationLookupAttempts: 1,
+			runId: "redaction-run",
+		});
+
+		expect(result.generationLookupFailures[0]?.message).toBe("transport failed for [REDACTED]");
+		expect(JSON.stringify(result)).not.toContain(API_KEY);
+	});
+
+	test("uses response-usage spend basis when generation reconciliation never yields usable provider fields", async () => {
+		let creditsReads = 0;
+		const fetchImpl: typeof fetch = async (input) => {
+			const url = new URL(input.toString());
+			if (url.pathname === "/api/v1/models") {
+				return jsonResponse({ data: [] });
+			}
+			if (url.pathname.endsWith("/endpoints")) {
+				return jsonResponse({ data: { endpoints: [] } });
+			}
+			if (url.pathname === "/api/v1/credits") {
+				creditsReads += 1;
+				return jsonResponse({ data: { total_usage: creditsReads === 1 ? 2 : 2.02 } });
+			}
+			if (url.pathname === "/api/v1/generation") {
+				return jsonResponse({
+					data: {
+						created_at: "2026-05-17T12:00:00.000Z",
+						model: DEFAULT_COST_LEARNING_MODEL,
+						provider_name: "Google",
+						total_cost: "0.02",
+					},
+				});
+			}
+			return jsonResponse({}, 404);
+		};
+		const client = new ModelCatalogClient({ apiKey: API_KEY, fetch: fetchImpl });
+		const fallbackRecord = {
+			...inputCostRecord("gen-no-tokens", "pi", "case-1"),
+			confidence: "response-usage" as const,
+			totalCostUsd: 0.003,
+		};
+
+		const result = await runOpenRouterCostLearningBatch({
+			batchId: "basis-batch",
+			client,
+			costRecords: [fallbackRecord],
+			runId: "basis-run",
+		});
+
+		expect(result.reconciledCostRecords).toEqual([]);
+		expect(result.fallbackCostRecords).toEqual([fallbackRecord]);
+		expect(result.generationLookupFailures).toEqual([
+			expect.objectContaining({
+				generationId: "gen-no-tokens",
+				message: "OpenRouter generation response did not include usable provider cost/token fields",
+			}),
+		]);
+		expect(result.creditDeltaUsd).toBeCloseTo(0.02, 6);
+		expect(result.learnedCost.confidence).toBe("response-usage");
+		expect(result.learnedCost.effectiveSpendUsd).toBeCloseTo(0.003, 6);
+		expect(result.learnedCost.groundTruthSpendUsd).toBeCloseTo(0.02, 6);
+		expect(result.learnedCost.providerReconciledSpendUsd).toBe(0);
+		expect(result.learnedCost.spendBasis).toBe("cost-records");
+	});
+
+	test("does not upgrade generation responses without usable cost and token fields", () => {
+		const record = openRouterGenerationToCostRecord(
+			{
+				model: DEFAULT_COST_LEARNING_MODEL,
+				provider_name: "Google",
+				total_cost: "0.001",
+			},
+			{
+				adapterName: "pi",
+				attemptId: "attempt-1",
+				generationId: "gen-no-tokens",
+				runId: "run-1",
+				taskId: "case-1",
+			},
+		);
+
+		expect(record.confidence).toBe("response-usage");
+		expect(record.generationId).toBe("gen-no-tokens");
+		expect(record.totalCostUsd).toBe(0.001);
 	});
 });
 

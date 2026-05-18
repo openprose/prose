@@ -1,6 +1,6 @@
 import type { EvalCostRecord, JsonObject, JsonValue } from "../types.js";
 import { openRouterGenerationToCostRecord, type OpenRouterCostRecordOptions } from "./openrouter.js";
-import { isJsonObject, jsonObjectFromUnknown } from "./sanitize.js";
+import { isJsonObject, jsonObjectFromUnknown, redactText } from "./sanitize.js";
 
 export const DEFAULT_OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 export const DEFAULT_COST_LEARNING_MODEL = "google/gemini-3.1-flash-lite-preview";
@@ -138,12 +138,18 @@ export class ModelCatalogClient {
 			url.searchParams.set(key, value);
 		}
 
-		const response = await this.fetchImpl(url, {
-			headers: {
-				Accept: "application/json",
-				Authorization: `Bearer ${this.apiKey}`,
-			},
-		});
+		let response: Response;
+		try {
+			response = await this.fetchImpl(url, {
+				headers: {
+					Accept: "application/json",
+					Authorization: `Bearer ${this.apiKey}`,
+				},
+			});
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			throw new Error(redactText(message, [this.apiKey]));
+		}
 
 		if (!response.ok) {
 			throw new Error(`OpenRouter request failed with HTTP ${response.status}`);
