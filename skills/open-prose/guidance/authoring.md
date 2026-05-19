@@ -31,6 +31,37 @@ Use this file when writing or reviewing OpenProse author-facing artifacts:
 - Express hard boundaries as contracts, especially `Shape.prohibited`,
   environment declarations, and pattern invariants.
 
+## Mode-Aware Contracts
+
+When a service or system behaves differently based on the caller or host
+environment, make the mode an explicit contract input. Do not hide that choice
+in command names, prose-only caveats, or implicit host assumptions.
+
+- Put capability and mode inputs in `### Requires`, such as `interactive`,
+  `apply`, `run_state`, `network_allowed`, `persistence_scope`, or
+  `tools_available`.
+- Document each mode's observable behavior in `### Ensures`, especially which
+  bindings are produced, which side effects are allowed, and which degraded
+  outputs are valid.
+- Declare fallback errors in `### Errors` when a missing capability blocks safe
+  execution. Prefer a specific error such as `unresolved-intent` over guessing.
+- Use `### Invariants` to prohibit unavailable primitives in a mode. For
+  example, a non-interactive run must not rely on `ask_user`, `gate()`, or any
+  other mid-run caller interaction.
+- Keep the same command and contract honest: different hosts may pass different
+  mode inputs, but the contract should make that difference visible and
+  testable.
+- Add tests or semantic lint checks for each important mode branch, especially
+  any branch that suppresses side effects, avoids persistence, or returns a
+  declared fallback instead of normal output.
+
+`prose write` is the model case. Direct in-harness authoring can be
+interactive when the host supports `ask_user`; the shell CLI path passes
+`interactive: false` because all user input must arrive up front through argv
+or stdin. Both paths invoke the same authoring contract. The mode input, not
+hidden CLI magic, selects whether the system may ask follow-up questions or
+must return `unresolved-intent`.
+
 ## Service Authoring
 
 - A service is an atomic execution boundary: one contract, one session, one

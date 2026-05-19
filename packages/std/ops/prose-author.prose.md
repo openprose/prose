@@ -18,12 +18,19 @@ Use this when a caller knows the workflow they want but has not yet written the
 folder-shaped package with an `index.prose.md` system and nearby service,
 gateway, responsibility, pattern, or test files.
 
-Direct in-harness `prose write` is interactive by default: after a read-only
-landscape scan and initial shape/root decision, ask a small number of targeted
-questions when the host can satisfy the OpenProse `ask_user` primitive. The
-shell CLI may mark the run non-interactive because it can only pass argv/stdin
-up front; in that mode, return `unresolved-intent` with concrete missing
-decisions instead of guessing.
+### Invocation Modes
+
+`prose-author` is one contract with explicit mode inputs, not separate hidden
+behaviors per surface. Direct in-harness `prose write` is interactive by default
+when the host can satisfy `ask_user`.
+
+| Invocation surface | Mode inputs | Behavior |
+|--------------------|-------------|----------|
+| Direct in-harness `prose write` | `interactive` defaults to `true` when the host can satisfy `ask_user` | After a read-only landscape scan and initial shape/root decision, ask a small number of targeted questions when they unblock safe source planning |
+| Shell CLI `prose write` | wrapper passes `interactive: false`, `output_mode: source-package-only`, `apply: false`, `run_state: in-context`, and `terminal_summary: required` | Read request text from argv or piped stdin only; return a validated source package or `unresolved-intent` with concrete missing decisions |
+
+Non-interactive authoring must not guess when a missing decision could change
+the generated source shape, root, path, side effects, or safety boundary.
 
 ### Services
 
