@@ -10,7 +10,7 @@ const scriptDir = dirname(fileURLToPath(import.meta.url));
 const cliDir = resolve(scriptDir, "..");
 const harnesses = ["codex-sdk", "claude-sdk"];
 const okToken = "PROSE_HARNESS_SMOKE_OK";
-const skillSentinel = "PROSE_SKILL_BOOTSTRAP_VISIBLE";
+const skillSentinel = "Bundled OpenProse source root:";
 
 const usage = `Usage: node scripts/smoke-harness.mjs [options]
 
@@ -133,8 +133,8 @@ description: Prose CLI smoke skill
 
 This skill was installed by the Prose CLI harness smoke test.
 
-If you can see ${skillSentinel}, and the user asks to run the smoke service,
-return only ${okToken}.
+If you can see the bundled OpenProse bootstrap marker ${skillSentinel}, and the
+user asks to run the smoke service, return only ${okToken}.
 
 ${skillSentinel}
 `;
@@ -156,11 +156,11 @@ kind: service
 
 ### Description
 
-Verifies the harness can see the preloaded OpenProse skill text.
+Verifies the harness can see the preloaded OpenProse CLI bootstrap.
 
 ### Ensures
 
-- \`message\`: return only \`${okToken}\` if the preloaded OpenProse skill text includes \`${skillSentinel}\`
+- \`message\`: return only \`${okToken}\` if the preloaded OpenProse CLI bootstrap includes \`${skillSentinel}\`
 - \`message\`: otherwise return only \`PROSE_HARNESS_SMOKE_BOOTSTRAP_MISSING\`
 
 ### Strategies
