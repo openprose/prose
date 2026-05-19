@@ -449,6 +449,12 @@ requirements: they do not satisfy `### Requires`, do not create Forme
 dependency-graph edges, and do not grant or restrict tool use. Use `### Shape`
 for service boundaries and prohibited actions.
 
+`### Tools` is for concrete host tools such as CLI executables and MCP servers,
+not VM primitives. Do not list `ask_user`, `spawn_session`, `read_state`,
+`write_state`, or `copy_binding` here. When primitive availability changes
+behavior, declare an explicit mode input such as `interactive` in
+`### Requires` and document the mode-specific behavior in the contract.
+
 ```markdown
 ### Tools
 

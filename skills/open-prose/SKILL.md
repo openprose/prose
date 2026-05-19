@@ -158,6 +158,13 @@ the current host must map onto its available tools:
 | `copy_binding` | Publish declared outputs through the active backend | Filesystem backend copies from `workspace/` to `bindings/`; database backends write records/attachments; never publish undeclared scratch files |
 | `check_env` | Verify an environment variable exists | Check only presence; never reveal or log raw values |
 
+When a host capability changes contract behavior, pass it as an explicit mode
+input rather than relying on implicit host inference. For example, shell
+wrappers for `prose write` pass `interactive: false` because they can supply
+argv/stdin up front but cannot pause and resume a running authoring contract for
+follow-up questions. See `prose.md#host-capability-modes` and
+`guidance/authoring.md#mode-aware-contracts`.
+
 ## Format Detection
 
 | Format | Extension | Primary Docs | Execution Path |
