@@ -18,18 +18,19 @@ Use this when a caller knows the workflow they want but has not yet written the
 folder-shaped package with an `index.prose.md` system and nearby service,
 gateway, responsibility, pattern, or test files.
 
-The `prose write` shell command is a single-shot path into this system: all
-authoring input arrives up front through argv text or piped stdin, and the
-system returns either a validated source package or an `unresolved-intent`
-failure with the concrete missing decisions. It does not depend on mid-run
-questions from the CLI. A future interactive authoring wrapper may reuse these
-services in a host that can satisfy the OpenProse `ask_user` primitive.
+Direct in-harness `prose write` is interactive by default: after a read-only
+landscape scan and initial shape/root decision, ask a small number of targeted
+questions when the host can satisfy the OpenProse `ask_user` primitive. The
+shell CLI may mark the run non-interactive because it can only pass argv/stdin
+up front; in that mode, return `unresolved-intent` with concrete missing
+decisions instead of guessing.
 
 ### Services
 
 - `intent-normalizer`
 - `landscape-scanner`
 - `shape-root-decider`
+- `interactive-triage`
 - `guidance-loader`
 - `source-planner`
 - `source-author`
@@ -49,6 +50,9 @@ services in a host that can satisfy the OpenProse `ask_user` primitive.
   workspace when the host can honor that mode.
 - `terminal_summary`: whether a concise final terminal status block is required.
   `prose write` passes `required`.
+- `interactive`: whether the host may ask targeted follow-up questions before
+  source planning. Defaults to `true` for direct in-harness `prose write`; shell
+  CLI wrappers may pass `false`.
 - `request`: pseudo-Prose, logical English, copied notes, or a rough workflow
   brief. The request may include preferred kind, target path, whether the
   output should be a single file or folder, required inputs, outputs, tools,
@@ -70,9 +74,11 @@ services in a host that can satisfy the OpenProse `ask_user` primitive.
   package shape, root file or root folder, `apply`, files written, lint status,
   and next command; it appears after the source package so CLI users can see
   success or failure without rereading the full package
-- if safe source generation requires more up-front input: signal
-  `unresolved-intent` with an `unresolved_intent` envelope and no
-  `source_package`
+- if safe source generation requires more input and `interactive` is available:
+  ask targeted questions before source planning and incorporate the answers
+- if safe source generation requires more input and `interactive` is false or
+  unavailable: signal `unresolved-intent` with an `unresolved_intent` envelope
+  and no `source_package`
 - if valid source cannot be produced within the repair budget: signal
   `validation-failed` instead of publishing a passing `source_package`
 
@@ -87,7 +93,7 @@ services in a host that can satisfy the OpenProse `ask_user` primitive.
     - `assumptions_not_made`: unsafe assumptions the authoring system refused
       to invent
     - `retry_request_hint`: concise text the caller can add to the next
-      single-shot request
+      non-interactive request
     - no `source_package`
 - `validation-failed`: the candidate source still has blocking lint findings
   after repair attempts
@@ -95,8 +101,8 @@ services in a host that can satisfy the OpenProse `ask_user` primitive.
 ### Invariants
 
 - Source authoring does not begin until the local landscape has been scanned,
-  the shape/root decision has been recorded, and the required guidance set has
-  been loaded.
+  the shape/root decision has been recorded, interactive triage has completed
+  or been explicitly declined, and the required guidance set has been loaded.
 - Landscape inspection is read-only: it may list and read nearby source,
   configuration, and OpenProse layout markers, but it must not create, modify,
   delete, format, install, compile, or migrate files.
@@ -130,8 +136,9 @@ services in a host that can satisfy the OpenProse `ask_user` primitive.
   are part of the requirement. Otherwise the source stays declarative.
 - The linter runs after the initial draft and after every repair. The system
   must not claim lint success while blocking diagnostics remain.
-- A single-shot CLI run must not rely on `ask_user`, `gate()`, or any other
-  mid-run caller interaction. Missing decisions that block safe authoring
+- Interactive host runs use `ask_user` for a small number of blocking
+  shape/root/path decisions. Non-interactive runs must not rely on `ask_user`,
+  `gate()`, or any other mid-run caller interaction; missing blocking decisions
   produce `unresolved-intent`.
 - Generated source must not include secrets, environment values, private
   product strategy, or hosted-product assumptions unless the request explicitly
@@ -176,6 +183,9 @@ services in a host that can satisfy the OpenProse `ask_user` primitive.
 - Use CLI-facing language for `prose write`: describe the result as an
   authoring command response, not as "not a shell command" or a recursive
   wrapper warning.
+- Prefer asking over refusing when the host supports interaction and the only
+  blockers are a few concrete shape, root, path, persistence, or side-effect
+  policy decisions.
 
 ### Execution
 
@@ -186,6 +196,7 @@ let authoring_intent = call intent-normalizer
   apply: apply
   run_state: run_state
   terminal_summary: terminal_summary
+  interactive: interactive
 
 let landscape = call landscape-scanner
   authoring_intent: authoring_intent
@@ -194,31 +205,37 @@ let shape_decision = call shape-root-decider
   authoring_intent: authoring_intent
   landscape: landscape
 
-if shape_decision has blocking missing decisions:
+let triage_result = call interactive-triage
+  authoring_intent: authoring_intent
+  landscape: landscape
+  shape_decision: shape_decision
+  interactive: interactive
+
+if triage_result has blocking missing decisions:
   throw {
     error: "unresolved-intent",
-    missing_decisions: shape_decision.blocking_missing_decisions,
+    missing_decisions: triage_result.blocking_missing_decisions,
     landscape_facts: landscape.relevant_facts,
-    assumptions_not_made: shape_decision.assumptions_refused,
-    retry_request_hint: shape_decision.retry_request_hint
+    assumptions_not_made: triage_result.assumptions_refused,
+    retry_request_hint: triage_result.retry_request_hint
   }
 
 let guidance_report = call guidance-loader
-  authoring_intent: authoring_intent
+  authoring_intent: triage_result.authoring_intent
   landscape: landscape
-  shape_decision: shape_decision
+  shape_decision: triage_result.shape_decision
 
 let source_plan = call source-planner
-  authoring_intent: authoring_intent
+  authoring_intent: triage_result.authoring_intent
   landscape: landscape
-  shape_decision: shape_decision
+  shape_decision: triage_result.shape_decision
   guidance_report: guidance_report
 
 let draft_source_package = call source-author
   source_plan: source_plan
-  authoring_intent: authoring_intent
+  authoring_intent: triage_result.authoring_intent
   landscape: landscape
-  shape_decision: shape_decision
+  shape_decision: triage_result.shape_decision
   guidance_report: guidance_report
   output_mode: output_mode
   apply: apply
@@ -226,7 +243,7 @@ let draft_source_package = call source-author
 let lint_report = call source-linter
   draft_source_package: draft_source_package
   source_plan: source_plan
-  shape_decision: shape_decision
+  shape_decision: triage_result.shape_decision
   guidance_report: guidance_report
 
 loop while lint_report has blocking findings (max: 3):
@@ -234,13 +251,13 @@ loop while lint_report has blocking findings (max: 3):
     draft_source_package: draft_source_package
     lint_report: lint_report
     source_plan: source_plan
-    shape_decision: shape_decision
+    shape_decision: triage_result.shape_decision
     guidance_report: guidance_report
 
   lint_report = call source-linter
     draft_source_package: draft_source_package
     source_plan: source_plan
-    shape_decision: shape_decision
+    shape_decision: triage_result.shape_decision
     guidance_report: guidance_report
 
 if lint_report still has blocking findings:
@@ -251,13 +268,14 @@ let assembled = call package-assembler
   lint_report: lint_report
   source_plan: source_plan
   landscape: landscape
-  shape_decision: shape_decision
+  shape_decision: triage_result.shape_decision
   guidance_report: guidance_report
 
 return {
   source_package: assembled.source_package,
   lint_report: lint_report,
-  authoring_notes: assembled.authoring_notes
+  authoring_notes: assembled.authoring_notes,
+  final_status_summary: assembled.final_status_summary
 }
 ```
 
@@ -275,6 +293,8 @@ Normalize the caller's rough request into an explicit authoring intent.
 - `apply`: whether this authoring run may write files, usually `false`
 - `run_state`: preferred run-state mode, usually `in-context`
 - `terminal_summary`: whether the final status block is required
+- `interactive`: whether targeted follow-up questions are allowed before source
+  planning; default `true` in agent-host `prose write`
 
 ### Ensures
 
@@ -293,6 +313,7 @@ Normalize the caller's rough request into an explicit authoring intent.
       authoring
     - terminal_summary: caller terminal-summary requirement, preserved for
       downstream authoring
+    - interactive: whether `ask_user` may be used during pre-authoring triage
     - assumptions: conservative assumptions made because the request was
       incomplete
     - blockers: missing facts that prevent safe source generation
@@ -417,7 +438,7 @@ planning begins.
     - blocking_missing_decisions that make generation unsafe
     - assumptions_refused: unsafe assumptions not made
     - retry_request_hint: concise text the caller can add to the next
-      single-shot request when generation is blocked
+      non-interactive request when generation is blocked
 
 ### Errors
 
@@ -447,6 +468,57 @@ planning begins.
 
 ---
 
+## interactive-triage
+
+Resolve blocking authoring decisions before source planning when the host can
+ask the user.
+
+### Requires
+
+- `authoring_intent`: normalized authoring intent from `intent-normalizer`
+- `landscape`: read-only local context from `landscape-scanner`
+- `shape_decision`: initial shape and root decision from `shape-root-decider`
+- `interactive`: whether targeted follow-up questions are allowed
+
+### Ensures
+
+- `triage_result`: decision record containing:
+    - authoring_intent: updated intent after any accepted user answers
+    - shape_decision: updated shape/root/path decision after any accepted user
+      answers
+    - questions_asked: concise list of questions asked and answers received, or
+      empty when no interaction was needed
+    - blocking_missing_decisions: unresolved blockers that still prevent safe
+      generation
+    - assumptions_refused: unsafe assumptions still refused
+    - retry_request_hint: concise text to add to a non-interactive retry when
+      blockers remain
+
+### Invariants
+
+- Ask only after the local landscape scan and initial decision are available,
+  so questions are grounded in the current repository.
+- Ask at most three focused questions in one triage pass.
+- Do not ask broad preference questions when a conservative, valid default is
+  already clear.
+- Do not ask the user for secrets or raw environment values.
+
+### Strategies
+
+- Prefer multiple-choice or short-answer questions about concrete blockers:
+  target root (`native`, `.agents/prose`, or `~/.agents/prose`), root path,
+  package shape, persistence scope, and operational side-effect policy.
+- When `interactive` is true and blockers are limited to a few concrete
+  decisions, call `ask_user` and update the intent and shape decision from the
+  answers.
+- When `interactive` is false or the host cannot satisfy `ask_user`, do not
+  stall. Preserve blockers in `blocking_missing_decisions` and return a
+  `retry_request_hint`.
+- If the answers introduce a new conflict, keep the blocker explicit rather
+  than inventing a reconciliation.
+
+---
+
 ## guidance-loader
 
 Load the baseline and shape-specific OpenProse guidance required by the
@@ -456,7 +528,8 @@ decision before source planning and authoring.
 
 - `authoring_intent`: normalized authoring intent from `intent-normalizer`
 - `landscape`: read-only local context from `landscape-scanner`
-- `shape_decision`: explicit shape and root decision from `shape-root-decider`
+- `shape_decision`: explicit shape and root decision from
+  `interactive-triage`
 
 ### Ensures
 
@@ -497,7 +570,7 @@ Plan the generated file tree and contracts before drafting source.
 - `authoring_intent`: normalized authoring intent from `intent-normalizer`
 - `landscape`: read-only local context from `landscape-scanner`
 - `shape_decision`: explicit shape and root decision from
-  `shape-root-decider`
+  `interactive-triage`
 - `guidance_report`: baseline and shape-specific guidance from
   `guidance-loader`
 
@@ -569,7 +642,7 @@ Draft the planned source package.
 - `authoring_intent`: normalized authoring intent from `intent-normalizer`
 - `landscape`: read-only local context from `landscape-scanner`
 - `shape_decision`: explicit shape and root decision from
-  `shape-root-decider`
+  `interactive-triage`
 - `guidance_report`: baseline and shape-specific guidance from
   `guidance-loader`
 - `output_mode`: caller output mode, usually `source-package-only`
@@ -635,7 +708,7 @@ Validate the draft source package against current OpenProse authoring rules.
   `source-repairer`
 - `source_plan`: planned file tree and validation checklist
 - `shape_decision`: explicit shape and root decision from
-  `shape-root-decider`
+  `interactive-triage`
 - `guidance_report`: baseline and shape-specific guidance from
   `guidance-loader`
 
@@ -707,9 +780,9 @@ Validate the draft source package against current OpenProse authoring rules.
 - Check authoring side-effect safety: generated source may declare external
   operational actions, tools, and gates, but `prose-author` itself must not
   call or claim it contacted those external systems during authoring.
-- Check single-shot behavior: no generated source or authoring note claims that
-  the shell CLI can pause mid-run for more user input; unresolved blocking
-  decisions remain blocking findings.
+- Check interaction behavior: interactive host runs ask targeted questions
+  before planning when that resolves blockers; non-interactive runs do not
+  claim they can pause mid-run and keep unresolved blocking decisions explicit.
 - Pass only when `blocking_findings` is empty.
 
 ---
@@ -724,7 +797,7 @@ Repair blocking lint findings without changing the caller's intent.
 - `lint_report`: validation report from `source-linter`
 - `source_plan`: planned file tree and contract map
 - `shape_decision`: explicit shape and root decision from
-  `shape-root-decider`
+  `interactive-triage`
 - `guidance_report`: baseline and shape-specific guidance from
   `guidance-loader`
 
@@ -764,7 +837,7 @@ Publish the validated source package and concise next-step notes.
 - `source_plan`: planned file tree and next commands
 - `landscape`: read-only local context from `landscape-scanner`
 - `shape_decision`: explicit shape and root decision from
-  `shape-root-decider`
+  `interactive-triage`
 - `guidance_report`: baseline and shape-specific guidance from
   `guidance-loader`
 

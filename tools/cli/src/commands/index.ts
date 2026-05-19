@@ -67,7 +67,7 @@ const forwardCommandDefinitions = {
 			'<%= config.bin %> write "draft a release readiness responsibility" --harness codex-sdk',
 			"cat brief.txt | <%= config.bin %> write --harness codex-sdk",
 		],
-		summary: "Write linted OpenProse source from a rough request in one shot.",
+		summary: "Write linted OpenProse source from rough intent.",
 		usage: "write [request...] [--harness <name>]",
 	},
 } satisfies Record<string, ForwardCommandDefinition>;

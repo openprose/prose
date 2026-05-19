@@ -2,7 +2,6 @@ import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join, relative, resolve, sep } from "node:path";
-import { fileURLToPath } from "node:url";
 import { nodeProcessRunner } from "../harnesses/process-runner.js";
 import type { HarnessName, ProcessCommand, ProcessRunner, WritableStreamLike } from "../harnesses/types.js";
 
@@ -60,7 +59,6 @@ export interface EnsureOpenProseSkillResult {
 
 export interface OpenProseSkillBootstrap {
 	additionalDirectories: string[];
-	bundledSourceRoot?: string;
 	skillPath: string;
 	skillRoot: string;
 	systemPromptAppend: string;
@@ -87,21 +85,18 @@ export function skillAgentsForHarness(harness: string): SkillAgent[] {
 export async function loadOpenProseSkillBootstrap(
 	options: LoadOpenProseSkillBootstrapOptions,
 ): Promise<OpenProseSkillBootstrap | undefined> {
-	const resolved = resolveBundledOpenProseSkill() ?? (await resolveOpenProseSkill(options));
+	const resolved = await resolveOpenProseSkill(options);
 	if (resolved === undefined) {
 		return undefined;
 	}
 
 	const skillText = await readFile(resolved.path, "utf8");
 	const skillRoot = dirname(resolved.path);
-	const bundledSourceRoot = resolveBundledOpenProseSourceRoot();
 	return {
-		additionalDirectories: [skillRoot, ...(bundledSourceRoot === undefined ? [] : [bundledSourceRoot])],
-		...(bundledSourceRoot === undefined ? {} : { bundledSourceRoot }),
+		additionalDirectories: [skillRoot],
 		skillPath: resolved.path,
 		skillRoot,
 		systemPromptAppend: buildOpenProseSkillBootstrapPrompt({
-			...(bundledSourceRoot === undefined ? {} : { bundledSourceRoot }),
 			skillPath: resolved.path,
 			skillRoot,
 			skillText,
@@ -110,7 +105,6 @@ export async function loadOpenProseSkillBootstrap(
 }
 
 export function buildOpenProseSkillBootstrapPrompt(options: {
-	bundledSourceRoot?: string;
 	skillPath: string;
 	skillRoot: string;
 	skillText: string;
@@ -123,18 +117,6 @@ export function buildOpenProseSkillBootstrapPrompt(options: {
 		`OpenProse SKILL.md path: ${options.skillPath}`,
 		"Resolve every file referenced by this SKILL.md relative to the OpenProse skill root.",
 		"When additional OpenProse skill files are needed, read them from that skill root.",
-		...(options.bundledSourceRoot === undefined
-			? []
-			: [
-					`Bundled OpenProse source root: ${options.bundledSourceRoot}`,
-					`When resolving std/ops/prose-author and the caller's workspace does not have an installed dependency copy, read ${join(
-						options.bundledSourceRoot,
-						"packages/std/ops/prose-author.prose.md",
-					)} as the invoked authoring source.`,
-					"When the forwarded prompt starts with `prose write`, execute that bundled authoring source directly. Do not describe this to the terminal user as 'not a shell command'; they already invoked the shell CLI and are waiting for authoring output.",
-					"For `prose write` requests, start terminal-facing progress with the words `Using the prose write authoring path` so CLI users can tell which product mode is running.",
-					"The bundled authoring source is part of this CLI package; do not substitute a different authoring workflow.",
-				]),
 		"Do not invoke the `prose`, `npx prose`, or `@openprose/prose-cli` shell command; that would recursively call this wrapper.",
 		"</open-prose-introduction>",
 		"",
@@ -142,39 +124,6 @@ export function buildOpenProseSkillBootstrapPrompt(options: {
 		options.skillText.trimEnd(),
 		"</open-prose-skill>",
 	].join("\n");
-}
-
-export function resolveBundledOpenProseSourceRoot(): string | undefined {
-	for (const root of candidateBundledOpenProseSourceRoots()) {
-		if (existsSync(join(root, "packages", "std", "ops", "prose-author.prose.md"))) {
-			return root;
-		}
-	}
-	return undefined;
-}
-
-export function resolveBundledOpenProseSkill(): SkillLocation | undefined {
-	for (const root of candidateBundledOpenProseSourceRoots()) {
-		const path = join(root, "skills", OPEN_PROSE_SKILL_NAME, "SKILL.md");
-		if (existsSync(path)) {
-			return {
-				agent: "codex",
-				scope: "provider-user",
-				path,
-				exists: true,
-				valid: true,
-			};
-		}
-	}
-	return undefined;
-}
-
-function candidateBundledOpenProseSourceRoots(): string[] {
-	const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
-	return [
-		join(packageRoot, "vendor", "openprose"),
-		resolve(packageRoot, "..", ".."),
-	];
 }
 
 export async function resolveOpenProseSkill(

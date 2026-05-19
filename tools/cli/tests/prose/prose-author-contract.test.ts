@@ -16,6 +16,7 @@ describe("prose-author contract", () => {
 		const normalized = source.indexOf("call intent-normalizer");
 		const scanned = source.indexOf("call landscape-scanner");
 		const decided = source.indexOf("call shape-root-decider");
+		const triaged = source.indexOf("call interactive-triage");
 		const guided = source.indexOf("call guidance-loader");
 		const planned = source.indexOf("call source-planner");
 		const authored = source.indexOf("call source-author");
@@ -23,7 +24,8 @@ describe("prose-author contract", () => {
 		expect(normalized).toBeGreaterThan(-1);
 		expect(scanned).toBeGreaterThan(normalized);
 		expect(decided).toBeGreaterThan(scanned);
-		expect(guided).toBeGreaterThan(decided);
+		expect(triaged).toBeGreaterThan(decided);
+		expect(guided).toBeGreaterThan(triaged);
 		expect(planned).toBeGreaterThan(guided);
 		expect(authored).toBeGreaterThan(planned);
 	});
@@ -45,14 +47,16 @@ describe("prose-author contract", () => {
 		}
 	});
 
-	it("documents that shell prose write is single-shot rather than interactive", () => {
+	it("documents interactive-by-default host authoring with non-interactive fallback", () => {
 		const source = proseAuthorSource();
 
-		expect(source).toContain("single-shot");
+		expect(source).toContain("interactive by default");
+		expect(source).toContain("interactive-triage");
+		expect(source).toContain("ask_user");
+		expect(source).toContain("at most three focused questions");
 		expect(source).toContain("unresolved-intent");
 		expect(source).toContain("missing_decisions");
 		expect(source).toContain("retry_request_hint");
-		expect(source).not.toContain("--no-interactive");
 	});
 
 	it("keeps authoring side effects descriptive instead of operational", () => {

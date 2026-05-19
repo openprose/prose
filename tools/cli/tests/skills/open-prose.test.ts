@@ -10,8 +10,6 @@ import {
 	ensureOpenProseSkill,
 	installOpenProseSkill,
 	loadOpenProseSkillBootstrap,
-	resolveBundledOpenProseSkill,
-	resolveBundledOpenProseSourceRoot,
 	resolveOpenProseSkill,
 } from "../../src/skills/open-prose.js";
 
@@ -78,51 +76,7 @@ describe("OpenProse skill checks", () => {
 		expect(bootstrap).toContain("</open-prose-skill>");
 	});
 
-	it("can point harnesses at the bundled prose-author source", () => {
-		const bundledSourceRoot = resolveBundledOpenProseSourceRoot();
-
-		expect(bundledSourceRoot).toBeDefined();
-		if (bundledSourceRoot === undefined) {
-			throw new Error("expected bundled source root");
-		}
-		const bootstrap = buildOpenProseSkillBootstrapPrompt({
-			bundledSourceRoot,
-			skillPath: "/home/prose/.agents/skills/open-prose/SKILL.md",
-			skillRoot: "/home/prose/.agents/skills/open-prose",
-			skillText: "---\nname: open-prose\n---\n\n# Skill\n",
-		});
-
-		expect(bootstrap).toContain(`Bundled OpenProse source root: ${bundledSourceRoot}`);
-		expect(bootstrap).toContain("packages/std/ops/prose-author.prose.md");
-		expect(bootstrap).toContain("Do not describe this to the terminal user as 'not a shell command'");
-		expect(bootstrap).toContain("Using the prose write authoring path");
-		expect(bootstrap).toContain("do not substitute a different authoring workflow");
-	});
-
-	it("prefers the bundled OpenProse skill for harness bootstrap", async () => {
-		const home = tempDir();
-		const cwd = tempDir();
-
-		try {
-			writeSentinelSkill(join(home, ".agents", "skills", "open-prose"), "STALE_SHARED_SKILL_SENTINEL");
-
-			const bootstrap = await loadOpenProseSkillBootstrap({
-				harness: "codex-sdk",
-				cwd,
-				env: { HOME: home },
-			});
-
-			expect(resolveBundledOpenProseSkill()).toBeDefined();
-			expect(bootstrap?.skillRoot).toContain("vendor/openprose/skills/open-prose");
-			expect(bootstrap?.systemPromptAppend).not.toContain("STALE_SHARED_SKILL_SENTINEL");
-			expect(bootstrap?.systemPromptAppend).toContain("prose write [request...]");
-		} finally {
-			rmSync(home, { recursive: true, force: true });
-			rmSync(cwd, { recursive: true, force: true });
-		}
-	});
-
-	it("adds the bundled source root to the harness bootstrap", async () => {
+	it("loads the shared installed skill into a harness bootstrap", async () => {
 		const home = tempDir();
 		const cwd = tempDir();
 		const skillRoot = join(home, ".agents", "skills", "open-prose");
@@ -136,10 +90,11 @@ describe("OpenProse skill checks", () => {
 				env: { HOME: home },
 			});
 
-			expect(bootstrap?.bundledSourceRoot).toBeDefined();
-			expect(bootstrap?.additionalDirectories?.some((path) => path.endsWith("vendor/openprose/skills/open-prose"))).toBe(true);
-			expect(bootstrap?.additionalDirectories).toContain(bootstrap?.bundledSourceRoot);
-			expect(bootstrap?.systemPromptAppend).toContain("Bundled OpenProse source root:");
+			expect(bootstrap?.skillRoot).toBe(skillRoot);
+			expect(bootstrap?.skillPath).toBe(join(skillRoot, "SKILL.md"));
+			expect(bootstrap?.additionalDirectories).toEqual([skillRoot]);
+			expect(bootstrap?.systemPromptAppend).toContain("SHARED_BOOTSTRAP_SENTINEL");
+			expect(bootstrap?.systemPromptAppend).toContain(`OpenProse skill root: ${skillRoot}`);
 		} finally {
 			rmSync(home, { recursive: true, force: true });
 			rmSync(cwd, { recursive: true, force: true });

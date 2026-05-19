@@ -6,9 +6,10 @@ Operational utilities for debugging, profiling, and validating OpenProse systems
 making Prose. It plays the same role for OpenProse programs that skill-authoring
 helpers play for agent skills: start from rough intent, produce reviewable
 source, and keep validation in the generated artifact rather than in a wrapper.
-The shell `prose write` path is single-shot: request text goes in up front, and
-the system returns either a validated package or `unresolved-intent` with the
-missing decisions. It does not rely on mid-run CLI prompts.
+In an agent host, `prose write` is interactive by default: it can ask targeted
+shape/root questions before authoring. The shell CLI wrapper passes request
+text up front and marks the run non-interactive, so missing blocking decisions
+come back as `unresolved-intent` instead of terminal prompts.
 
 ## Systems
 
@@ -18,7 +19,7 @@ missing decisions. It does not rely on mid-run CLI prompts.
 | `preflight.prose.md` | `prose preflight <file>` | Check that dependencies are installed and environment variables are set |
 | `wire.prose.md` | `prose run std/ops/wire` | Run Forme wiring to produce an execution manifest |
 | `status.prose.md` | `prose status` | Show recent runs with system name, duration, and pass/fail status |
-| `prose-author.prose.md` | `prose write [request...]` | Single-shot authoring of a validated OpenProse package from rough English or pseudo-Prose |
+| `prose-author.prose.md` | `prose write [request...]` | Interactive-by-default authoring of a validated OpenProse package from rough English or pseudo-Prose |
 | `diagnose.prose.md` | `prose run std/ops/diagnose` | Diagnose why a run failed -- root cause analysis with fix recommendations |
 | `profiler.prose.md` | `prose run std/ops/profiler` | Profile a run for cost, tokens, and time using actual API session data |
 

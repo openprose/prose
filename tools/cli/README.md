@@ -150,13 +150,14 @@ skill-authoring helpers that turn intent into valid skill source. The output
 may be one `.prose.md` file or a folder of composed `.prose.md` files,
 depending on the workflow.
 
-`prose write` is single-shot: the shell command forwards argv and piped stdin
-to `std/ops/prose-author` and does not pause mid-run for follow-up questions.
-The authoring system scans the current landscape read-only, records an explicit
-shape/root decision, loads shape-specific guidance, and either returns a
-validated source package or reports `unresolved-intent` with the missing
-decisions to include in the next request. CLI flags that would imply mid-run
-interaction are rejected; put literal text after `--` or pipe it on stdin.
+In an agent host, `prose write` is interactive by default: the authoring system
+scans the current landscape read-only, records an explicit shape/root decision,
+loads shape-specific guidance, asks a few targeted questions when needed, and
+returns a validated source package. The shell CLI remains a single-shot wrapper:
+it forwards argv and piped stdin up front and marks the run non-interactive, so
+missing blocking decisions are reported as `unresolved-intent` instead of a
+mid-run terminal prompt. CLI flags that would imply mid-run interaction are
+rejected; put literal text after `--` or pipe it on stdin.
 
 ```bash
 prose compile

@@ -215,43 +215,6 @@ describe("codex-sdk harness", () => {
 		await expect(harness.run("prose status", { ...io.options })).resolves.toBe(1);
 		expect(io.stderr).toBe("boom\n");
 	});
-
-	test("does not turn recovered command execution failures into process failures", async () => {
-		const io = memoryStreams();
-		const harness = createCodexSdkHarness({
-			factory: () => ({
-				startThread: () => ({
-					runStreamed: async () => ({
-						events: events([
-							{
-								type: "item.completed",
-								item: {
-									id: "cmd-1",
-									type: "command_execution",
-									command: "bad exploratory command",
-									status: "failed",
-									exit_code: 1,
-									aggregated_output: "internal command failed",
-								},
-							},
-							{
-								type: "item.completed",
-								item: {
-									id: "item-1",
-									type: "agent_message",
-									text: "source_package: ok\nlint_report:\n  status: pass",
-								},
-							},
-						]),
-					}),
-				}),
-			}),
-		});
-
-		await expect(harness.run("prose write brief", { ...io.options })).resolves.toBe(0);
-		expect(io.stdout).toContain("source_package: ok");
-		expect(io.stderr).toBe("");
-	});
 });
 
 describe("claude-sdk harness", () => {

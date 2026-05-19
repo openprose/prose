@@ -66,6 +66,8 @@ export function canonicalPrompt(command: CommandName, args: readonly string[]): 
 			"in-context",
 			"terminal_summary:",
 			"required",
+			"interactive:",
+			"false",
 			"request:",
 			parseWriteRequest(args),
 		]);

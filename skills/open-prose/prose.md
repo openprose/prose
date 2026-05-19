@@ -45,7 +45,7 @@ codex exec "prose run system.prose.md"
 | `prose run <owner>/<repo>`       | Reserved for the OpenProse registry (future home at `p.prose.md`)         |
 | `prose run ...@<version>`        | Pin to a SHA or tag; require that version in `<openprose-root>/deps/`                     |
 | `prose run ... --offline`        | Require disk-only resolution; error if not in `<openprose-root>/deps/`                   |
-| `prose write [request...]`        | Single-shot authoring through `std/ops/prose-author`, reading argv or piped stdin and returning a validated source package or `unresolved-intent` when more up-front detail is required |
+| `prose write [request...]`        | Interactive-by-default authoring through `std/ops/prose-author`, asking targeted shape/root questions when supported and returning a validated source package |
 | `prose lint <file.prose.md>`      | Validate structure, schema, shapes, and contracts               |
 | `prose preflight <file.prose.md>` | Check dependencies, declared tools, and environment variables   |
 | `prose test <path>`         | Run test(s) and report results                                  |

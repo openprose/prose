@@ -375,7 +375,7 @@ describe("runForwardedProseCommand", () => {
 
 		expect(exitCode).toBe(0);
 		expect(seen).toEqual([
-			"prose write output_mode: source-package-only apply: false run_state: in-context terminal_summary: required request: 'draft release readiness'",
+			"prose write output_mode: source-package-only apply: false run_state: in-context terminal_summary: required interactive: false request: 'draft release readiness'",
 		]);
 	});
 
@@ -403,7 +403,7 @@ describe("runForwardedProseCommand", () => {
 
 		expect(exitCode).toBe(0);
 		expect(seen).toEqual([
-			"prose write output_mode: source-package-only apply: false run_state: in-context terminal_summary: required request: 'draft a release readiness responsibility'",
+			"prose write output_mode: source-package-only apply: false run_state: in-context terminal_summary: required interactive: false request: 'draft a release readiness responsibility'",
 		]);
 	});
 
@@ -481,13 +481,10 @@ FORWARDED_BOOTSTRAP_SENTINEL
 
 			expect(seen).toHaveLength(1);
 			expect(seen[0]?.prompt).toContain("prose run flow.prose.md");
-			expect(seen[0]?.additionalDirectories?.some((path) => path.endsWith("vendor/openprose/skills/open-prose"))).toBe(
-				true,
-			);
-			expect(seen[0]?.additionalDirectories?.some((path) => path.endsWith("vendor/openprose"))).toBe(true);
-			expect(seen[0]?.systemPromptAppend).not.toContain("FORWARDED_BOOTSTRAP_SENTINEL");
-			expect(seen[0]?.systemPromptAppend).toContain("vendor/openprose/skills/open-prose");
-			expect(seen[0]?.systemPromptAppend).toContain("Bundled OpenProse source root:");
+			expect(seen[0]?.additionalDirectories).toEqual([skillRoot]);
+			expect(seen[0]?.systemPromptAppend).toContain("FORWARDED_BOOTSTRAP_SENTINEL");
+			expect(seen[0]?.systemPromptAppend).toContain(skillRoot);
+			expect(seen[0]?.systemPromptAppend).not.toContain("Bundled OpenProse source root:");
 		} finally {
 			rmSync(home, { recursive: true, force: true });
 			rmSync(cwd, { recursive: true, force: true });

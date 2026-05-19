@@ -23,10 +23,10 @@ subject: prose-author
 - `lint_report`: does not report a passing package when root, persistence, and
   workflow shape are still unsafe to infer
 - `authoring_notes`: names the missing decisions needed for a safe follow-up
-  single-shot request, including target root, desired workflow, and persistence
+  non-interactive request, including target root, desired workflow, and persistence
   scope
-- `authoring_notes`: explains that the shell CLI cannot pause mid-run for
-  those answers
+- `authoring_notes`: explains that interactive hosts should ask for those
+  answers, while non-interactive runs should return the missing decisions
 - `authoring_notes`: preserves the read-only landscape facts that were used to
   decide the request remained underspecified
 
