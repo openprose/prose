@@ -55,7 +55,20 @@ const usageByCommand: Record<CommandName, string> = {
 export function canonicalPrompt(command: CommandName, args: readonly string[]): string {
 	validate(command, args);
 	if (command === "write") {
-		return shellJoin(["prose", "run", "std/ops/prose-author", "--", "request:", parseWriteRequest(args)]);
+		return shellJoin([
+			"prose",
+			"write",
+			"output_mode:",
+			"source-package-only",
+			"apply:",
+			"false",
+			"run_state:",
+			"in-context",
+			"terminal_summary:",
+			"required",
+			"request:",
+			parseWriteRequest(args),
+		]);
 	}
 	return shellJoin(["prose", command, ...args]);
 }

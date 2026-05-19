@@ -101,10 +101,6 @@ function writeCodexItem(
 			writeLine(stdout, item.text);
 			return 0;
 		case "command_execution":
-			if (item.status === "failed") {
-				writeLine(stderr, item.aggregated_output || `Command failed: ${item.command}`);
-				return typeof item.exit_code === "number" ? normalizeExitCode(item.exit_code) : 1;
-			}
 			return 0;
 		case "error":
 			writeLine(stderr, item.message);
@@ -121,11 +117,4 @@ function definedEnv(env: Record<string, string | undefined> | undefined): Record
 
 	const entries = Object.entries(env).filter((entry): entry is [string, string] => entry[1] !== undefined);
 	return Object.fromEntries(entries);
-}
-
-function normalizeExitCode(exitCode: number): number {
-	if (Number.isInteger(exitCode) && exitCode >= 0 && exitCode <= 255) {
-		return exitCode;
-	}
-	return 1;
 }

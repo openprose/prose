@@ -1,0 +1,15 @@
+.env
+.env.*
+
+dist/*
+!dist/.gitkeep
+!dist/manifest.active.json
+
+runs/*
+!runs/.gitkeep
+
+state/*
+!state/.gitkeep
+
+deps/*
+!deps/.gitkeep

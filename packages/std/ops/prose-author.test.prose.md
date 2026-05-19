@@ -8,6 +8,8 @@ subject: prose-author
 
 ### Fixtures
 
+- `output_mode`: source-package-only
+- `apply`: false
 - `request`: Write a folder-shaped OpenProse package from this rough brief:
   "Keep release candidates ready before ship day. Every weekday, collect CI
   status, changelog notes, rollback context, and unresolved blocker signals.
@@ -30,9 +32,13 @@ subject: prose-author
   brief into Contract Markdown
 - `authoring_notes`: includes the local landscape facts, chosen shape/root
   decision, and targeted guidance loaded before source authoring
+- `source_package`: includes file contents and apply notes but does not claim
+  generated files were written to the repository
 
 ### Expects Not
 
+- `authoring_notes`: claims this authoring run created or modified repository
+  files
 - `source_package`: includes raw secret values or API keys
 - `source_package`: uses bare `owner/repo` dependency references
 - `lint_report`: hides unresolved blocking diagnostics behind warnings

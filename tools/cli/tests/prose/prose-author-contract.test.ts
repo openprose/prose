@@ -50,6 +50,35 @@ describe("prose-author contract", () => {
 
 		expect(source).toContain("single-shot");
 		expect(source).toContain("unresolved-intent");
+		expect(source).toContain("missing_decisions");
+		expect(source).toContain("retry_request_hint");
 		expect(source).not.toContain("--no-interactive");
+	});
+
+	it("keeps authoring side effects descriptive instead of operational", () => {
+		const source = proseAuthorSource();
+
+		expect(source).toContain("not invoke external operational systems while authoring");
+		expect(source).toContain("never actions performed by `prose-author`");
+	});
+
+	it("requires a terminal-friendly success summary for prose write", () => {
+		const source = proseAuthorSource();
+
+		expect(source).toContain("final_status_summary");
+		expect(source).toContain("terminal_summary");
+		expect(source).toContain("files_written");
+		expect(source).toContain("terminal user can distinguish success");
+		expect(source).toContain("not as \"not a shell command\"");
+		expect(source).toContain("contract failure");
+	});
+
+	it("keeps package-only write runs out of the caller workspace when possible", () => {
+		const source = proseAuthorSource();
+
+		expect(source).toContain("run_state");
+		expect(source).toContain("prefer in-context run state");
+		expect(source).toContain("avoid creating OpenProse `runs/` artifacts");
+		expect(source).toContain("files_written: none");
 	});
 });

@@ -29,6 +29,30 @@ describe("package smoke", () => {
 			default: "./dist/index.js",
 			types: "./dist/index.d.ts",
 		});
-		expect(packageJson.files).toEqual(expect.arrayContaining(["dist", "README.md", "LICENSE"]));
+		expect(packageJson.files).toEqual(
+			expect.arrayContaining([
+				"dist",
+				"vendor/openprose",
+				"README.md",
+				"LICENSE",
+			]),
+		);
+	});
+
+	it("keeps the bundled prose-author source in sync with std", () => {
+		const canonical = readFileSync(
+			resolve(cliDir, "..", "..", "packages", "std", "ops", "prose-author.prose.md"),
+			"utf8",
+		);
+		const bundled = readFileSync(resolve(cliDir, "vendor", "openprose", "packages", "std", "ops", "prose-author.prose.md"), "utf8");
+
+		expect(bundled).toBe(canonical);
+	});
+
+	it("keeps the bundled OpenProse skill in sync with this repository", () => {
+		const canonical = readFileSync(resolve(cliDir, "..", "..", "skills", "open-prose", "SKILL.md"), "utf8");
+		const bundled = readFileSync(resolve(cliDir, "vendor", "openprose", "skills", "open-prose", "SKILL.md"), "utf8");
+
+		expect(bundled).toBe(canonical);
 	});
 });

@@ -205,6 +205,7 @@ async function main() {
 	try {
 		await mkdir(stageRoot, { recursive: true });
 		await cp(join(cliDir, "dist"), join(stageRoot, "dist"), { recursive: true });
+		await cp(join(cliDir, "vendor"), join(stageRoot, "vendor"), { recursive: true });
 		await cp(packageJsonPath, join(stageRoot, "package.json"));
 
 		const packageLockPath = join(cliDir, "package-lock.json");

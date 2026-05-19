@@ -49,12 +49,17 @@ subject: prose-author
 - `source_package`: includes a bounded mitigation loop preserving max 4 cycles
 - `source_package`: carries reviewer notes into the next mitigation cycle
 - `source_package`: gates mitigation execution behind reviewer approval
+- `authoring_notes`: records that operational side effects are represented as
+  generated declarations and future runtime actions, not executed during
+  authoring
 - `source_package`: declares degraded outputs or errors for exhausted mitigation
   attempts
 - `lint_report`: has status `pass` and no blocking findings
 
 ### Expects Not
 
+- `authoring_notes`: claims PagerDuty, Slack, status pages, issue trackers,
+  deployment systems, or feature flag systems were contacted during authoring
 - `source_package`: executes mitigation before reviewer approval
 - `source_package`: treats paging, channel creation, status updates, or issue
   creation as ordinary text with no side-effect boundary

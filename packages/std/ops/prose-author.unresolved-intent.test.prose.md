@@ -14,6 +14,12 @@ subject: prose-author
 
 ### Expects
 
+- `unresolved_intent`: includes `error: unresolved-intent`
+- `unresolved_intent`: includes `missing_decisions` for target root, desired
+  workflow, and persistence scope
+- `unresolved_intent`: includes `landscape_facts`,
+  `assumptions_not_made`, and `retry_request_hint`
+- `unresolved_intent`: does not include a `source_package`
 - `lint_report`: does not report a passing package when root, persistence, and
   workflow shape are still unsafe to infer
 - `authoring_notes`: names the missing decisions needed for a safe follow-up
