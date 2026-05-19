@@ -55,7 +55,7 @@ const usageByCommand: Record<CommandName, string> = {
 export function canonicalPrompt(command: CommandName, args: readonly string[]): string {
 	validate(command, args);
 	if (command === "write") {
-		return shellJoin(["prose", "run", "std/ops/prose-author", "--", "request:", args.join(" ")]);
+		return shellJoin(["prose", "run", "std/ops/prose-author", "--", "request:", parseWriteRequest(args)]);
 	}
 	return shellJoin(["prose", command, ...args]);
 }
@@ -120,9 +120,32 @@ function requireAtLeastOne(command: CommandName, args: readonly string[], label:
 }
 
 function requireNonBlankWriteRequest(command: "write", args: readonly string[]): void {
-	if (args.join(" ").trim() === "") {
+	if (parseWriteRequest(args).trim() === "") {
 		fail(command, "Missing request text for 'prose write'. Pass text arguments or pipe stdin.");
 	}
+}
+
+function parseWriteRequest(args: readonly string[]): string {
+	const requestParts: string[] = [];
+	let literalRequest = false;
+
+	for (const arg of args) {
+		if (!literalRequest && arg === "--") {
+			literalRequest = true;
+			continue;
+		}
+
+		if (!literalRequest && (arg === "--interactive" || arg === "--no-interactive")) {
+			fail(
+				"write",
+				"'prose write' does not support interactive flags. Pass all authoring context in argv/stdin, or run prose-author from a host that supports ask_user.",
+			);
+		}
+
+		requestParts.push(arg);
+	}
+
+	return requestParts.join(" ");
 }
 
 function requireExactlyOne(command: CommandName, args: readonly string[], label: string): void {

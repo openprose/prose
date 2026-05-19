@@ -28,6 +28,8 @@ subject: prose-author
 - `lint_report`: has status `pass` and no blocking findings
 - `authoring_notes`: names the assumptions made while translating the rough
   brief into Contract Markdown
+- `authoring_notes`: includes the local landscape facts, chosen shape/root
+  decision, and targeted guidance loaded before source authoring
 
 ### Expects Not
 

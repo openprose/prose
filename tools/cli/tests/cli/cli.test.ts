@@ -403,6 +403,31 @@ describe("runForwardedProseCommand", () => {
 		expect(seen).toEqual(["prose run std/ops/prose-author -- request: 'draft a release readiness responsibility'"]);
 	});
 
+	it("rejects write flags that would imply unsupported CLI interaction", async () => {
+		const io = memoryStreams();
+		let harnessCalled = false;
+
+		await expect(
+			runForwardedProseCommand({
+				command: "write",
+				argv: ["--interactive", "draft", "--harness", "mock"],
+				cwd: "/repo",
+				env: {},
+				stdout: io.streams.stdout,
+				stderr: io.streams.stderr,
+				harnessFactory: () => ({
+					name: "mock",
+					async run() {
+						harnessCalled = true;
+						return 0;
+					},
+				}),
+			}),
+		).rejects.toThrow("does not support interactive flags");
+
+		expect(harnessCalled).toBe(false);
+	});
+
 	it("loads OpenProse skill bootstrap after preflight and passes it to the harness", async () => {
 		const home = mkdtempSync(join(tmpdir(), "prose-home-"));
 		const cwd = mkdtempSync(join(tmpdir(), "prose-cwd-"));

@@ -150,6 +150,14 @@ skill-authoring helpers that turn intent into valid skill source. The output
 may be one `.prose.md` file or a folder of composed `.prose.md` files,
 depending on the workflow.
 
+`prose write` is single-shot: the shell command forwards argv and piped stdin
+to `std/ops/prose-author` and does not pause mid-run for follow-up questions.
+The authoring system scans the current landscape read-only, records an explicit
+shape/root decision, loads shape-specific guidance, and either returns a
+validated source package or reports `unresolved-intent` with the missing
+decisions to include in the next request. CLI flags that would imply mid-run
+interaction are rejected; put literal text after `--` or pipe it on stdin.
+
 ```bash
 prose compile
 prose compile src/responsibilities --out dist

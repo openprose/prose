@@ -27,6 +27,8 @@ subject: prose-author
   services or explicit dependencies for research, drafting, and review
 - `source_package`: includes a fenced `prose` `### Execution` block with a
   bounded `loop until` and `max: 5`
+- `authoring_notes`: records that `prosescript.md` was loaded because the
+  request requires bounded imperative choreography
 - `source_package`: carries prior editor notes from the review step back into
   the next research and drafting round
 - `source_package`: declares the exhausted-loop outcome when editor approval is

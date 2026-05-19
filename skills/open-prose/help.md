@@ -48,7 +48,7 @@ Options:
 | `prose compile [path] [--out <dir>]` | Compile source into `<openprose-root>/dist/manifest.next.json` |
 | `prose serve` | Serve the active IR as local cron and HTTP trigger adapters |
 | `prose run <file.prose.md>` | Run a service or system |
-| `prose write [request...]` | Turn argv or piped rough English/pseudo-Prose into a fully validated source package |
+| `prose write [request...]` | Single-shot authoring from argv or piped rough English/pseudo-Prose into a validated source package, or `unresolved-intent` when more up-front detail is required |
 | `prose lint <file.prose.md>` | Validate structure, schema, and contracts |
 | `prose preflight <file.prose.md>` | Check dependencies and environment |
 | `prose test <test.prose.md>` | Run tests with assertions |

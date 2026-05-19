@@ -240,7 +240,7 @@ be checked, maintained, and restored across bounded runs:
 | `prose compile` | Run the bundled OpenProse compiler program, emit `<openprose-root>/dist/manifest.next.json`, and validate it before success |
 | `prose serve` | Load active IR and run local cron and HTTP trigger adapters |
 | `prose run` | Execute one bounded OpenProse VM activation |
-| `prose write` | Author a fully validated OpenProse program package from argv or piped rough English/pseudo-Prose |
+| `prose write` | Single-shot authoring from argv or piped rough English/pseudo-Prose into a validated OpenProse program package, or a clear `unresolved-intent` response when more up-front detail is required |
 | `prose status` | Inspect active IR, diagnostics, trigger plan, recent runs, and responsibility status/pressure |
 
 The compiled Responsibility Runtime manifest preserves responsibilities as
