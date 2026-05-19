@@ -6,6 +6,7 @@ import { describe, expect, test } from "vitest";
 
 import {
 	PHASE_1B_REACTOR_SCENARIO_CORPUS,
+	bcaBootstrapPairedDifferenceCi,
 	createPhase1bBaselineAdapters,
 	ModelCatalogClient,
 	mcnemarExact,
@@ -53,6 +54,23 @@ describe("Phase-1b statistics", () => {
 				recommendedN: expect.any(Number),
 			}),
 		);
+
+		const ci = bcaBootstrapPairedDifferenceCi([1, 2, 3, 4], [2, 4, 6, 8], {
+			resamples: 200,
+			seed: 123,
+		});
+		expect(ci).toEqual(
+			expect.objectContaining({
+				method: "bca-bootstrap-paired-difference",
+				statistic: "median",
+				confidenceLevel: 0.95,
+				resamples: 200,
+				n: 4,
+				estimate: -2.5,
+			}),
+		);
+		expect(ci.lower).toBeLessThanOrEqual(ci.estimate);
+		expect(ci.upper).toBeGreaterThanOrEqual(ci.estimate);
 	});
 });
 
@@ -91,7 +109,10 @@ describe("Phase-1b non-Reactor baseline pilot", () => {
 			);
 			expect(pilot.powerPilot.recommendedN).toBeGreaterThanOrEqual(12);
 			expect(pilot.wilcoxonModelCalls.n).toBeGreaterThan(0);
+			expect(pilot.modelCallDeltaCi95.method).toBe("bca-bootstrap-paired-difference");
+			expect(pilot.modelCallDeltaCi95.resamples).toBe(10000);
 			expect(pilot.mcnemarTraceCorrect.method).toBe("mcnemar-exact");
+			expect(pilot.traceCorrectDeltaCi95.method).toBe("bca-bootstrap-paired-difference");
 			expect(notRunRows).toHaveLength(6);
 			expect(notRunRows.every((row) => row.status === "not-run" && row.modelCalls === 0)).toBe(true);
 			expect(notRunRows.every((row) => row.reportUse === "adapter-canary" && row.evidenceUse === "external-context")).toBe(true);

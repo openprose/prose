@@ -27,6 +27,19 @@ export interface PairedPowerPilotResult {
 	floorN: number;
 }
 
+export interface BcaBootstrapConfidenceInterval {
+	method: "bca-bootstrap-paired-difference";
+	statistic: "median";
+	confidenceLevel: number;
+	resamples: number;
+	n: number;
+	estimate: number;
+	lower: number;
+	upper: number;
+	acceleration: number;
+	biasCorrection: number;
+}
+
 interface RankedDifference {
 	absolute: number;
 	rank: number;
@@ -137,6 +150,64 @@ export function pairedPowerPilot(
 	};
 }
 
+export function bcaBootstrapPairedDifferenceCi(
+	left: readonly number[],
+	right: readonly number[],
+	options: { confidenceLevel?: number; resamples?: number; seed?: number } = {},
+): BcaBootstrapConfidenceInterval {
+	if (left.length !== right.length) {
+		throw new Error(`paired bootstrap inputs must have equal length: ${left.length} != ${right.length}`);
+	}
+
+	const differences = left.map((value, index) => requireFinite(value, `left[${index}]`) - requireFinite(right[index], `right[${index}]`));
+	const n = differences.length;
+	const confidenceLevel = options.confidenceLevel ?? 0.95;
+	if (confidenceLevel <= 0 || confidenceLevel >= 1) {
+		throw new Error(`confidenceLevel must be between 0 and 1: ${confidenceLevel}`);
+	}
+	const resamples = options.resamples ?? 10_000;
+	if (!Number.isInteger(resamples) || resamples < 1) {
+		throw new Error(`resamples must be a positive integer: ${resamples}`);
+	}
+	if (n === 0) {
+		return {
+			method: "bca-bootstrap-paired-difference",
+			statistic: "median",
+			confidenceLevel,
+			resamples,
+			n,
+			estimate: 0,
+			lower: 0,
+			upper: 0,
+			acceleration: 0,
+			biasCorrection: 0,
+		};
+	}
+
+	const estimate = median(differences);
+	const bootstrapStatistics = bootstrapMedians(differences, resamples, options.seed ?? 0x5eed_1b);
+	const sorted = [...bootstrapStatistics].sort((leftValue, rightValue) => leftValue - rightValue);
+	const proportionLess = clampProportion(sorted.filter((value) => value < estimate).length / sorted.length);
+	const biasCorrection = inverseNormalCdf(proportionLess);
+	const acceleration = jackknifeAcceleration(differences);
+	const alpha = (1 - confidenceLevel) / 2;
+	const lowerProbability = adjustedBcaProbability(alpha, biasCorrection, acceleration);
+	const upperProbability = adjustedBcaProbability(1 - alpha, biasCorrection, acceleration);
+
+	return {
+		method: "bca-bootstrap-paired-difference",
+		statistic: "median",
+		confidenceLevel,
+		resamples,
+		n,
+		estimate,
+		lower: quantile(sorted, lowerProbability),
+		upper: quantile(sorted, upperProbability),
+		acceleration,
+		biasCorrection,
+	};
+}
+
 function rankAbsoluteDifferences(differences: readonly number[]): RankedDifference[] {
 	const sorted = differences
 		.map((difference, index) => ({
@@ -167,6 +238,43 @@ function rankAbsoluteDifferences(differences: readonly number[]): RankedDifferen
 		rank: ranks[differenceIndex] ?? 0,
 		sign: difference < 0 ? -1 : 1,
 	}));
+}
+
+function bootstrapMedians(values: readonly number[], resamples: number, seed: number): number[] {
+	const random = seededRandom(seed);
+	const statistics: number[] = [];
+	for (let resampleIndex = 0; resampleIndex < resamples; resampleIndex += 1) {
+		const sample: number[] = [];
+		for (let index = 0; index < values.length; index += 1) {
+			sample.push(values[Math.floor(random() * values.length)] ?? 0);
+		}
+		statistics.push(median(sample));
+	}
+	return statistics;
+}
+
+function jackknifeAcceleration(values: readonly number[]): number {
+	if (values.length < 3) {
+		return 0;
+	}
+	const jackknife = values.map((_value, index) => median(values.filter((_candidate, candidateIndex) => candidateIndex !== index)));
+	const average = jackknife.reduce((sum, value) => sum + value, 0) / jackknife.length;
+	const numerator = jackknife.reduce((sum, value) => sum + (average - value) ** 3, 0);
+	const denominatorBase = jackknife.reduce((sum, value) => sum + (average - value) ** 2, 0);
+	if (denominatorBase === 0) {
+		return 0;
+	}
+	return numerator / (6 * denominatorBase ** 1.5);
+}
+
+function adjustedBcaProbability(probability: number, biasCorrection: number, acceleration: number): number {
+	const z = inverseNormalCdf(clampProportion(probability));
+	const numerator = biasCorrection + z;
+	const denominator = 1 - acceleration * numerator;
+	if (denominator === 0) {
+		return clampProportion(probability);
+	}
+	return clampProportion(normalCdf(biasCorrection + numerator / denominator));
 }
 
 function exactWilcoxonPValue(ranks: readonly number[], observedStatistic: number): number {
@@ -261,6 +369,19 @@ function inverseNormalCdf(probability: number): number {
 		(((((b[0]! * r + b[1]!) * r + b[2]!) * r + b[3]!) * r + b[4]!) * r + 1);
 }
 
+function quantile(sortedValues: readonly number[], probability: number): number {
+	if (sortedValues.length === 0) {
+		return 0;
+	}
+	const clamped = Math.max(0, Math.min(1, probability));
+	const position = clamped * (sortedValues.length - 1);
+	const lowerIndex = Math.floor(position);
+	const upperIndex = Math.ceil(position);
+	const lower = sortedValues[lowerIndex] ?? 0;
+	const upper = sortedValues[upperIndex] ?? lower;
+	return lower + (upper - lower) * (position - lowerIndex);
+}
+
 function median(values: readonly number[]): number {
 	if (values.length === 0) {
 		return 0;
@@ -289,6 +410,21 @@ function erf(value: number): number {
 			t *
 			Math.exp(-x * x);
 	return sign * y;
+}
+
+function seededRandom(seed: number): () => number {
+	let state = seed >>> 0;
+	return () => {
+		state = (1664525 * state + 1013904223) >>> 0;
+		return state / 0x1_0000_0000;
+	};
+}
+
+function clampProportion(value: number): number {
+	if (!Number.isFinite(value)) {
+		return 0.5;
+	}
+	return Math.min(1 - 1e-9, Math.max(1e-9, value));
 }
 
 function requireFinite(value: number | undefined, path: string): number {

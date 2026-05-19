@@ -18,11 +18,13 @@ export type {
 	OpenRouterGenerationResponse,
 } from "./costs/openrouter.js";
 export {
+	bcaBootstrapPairedDifferenceCi,
 	mcnemarExact,
 	pairedPowerPilot,
 	wilcoxonSignedRank,
 } from "./results/statistics.js";
 export type {
+	BcaBootstrapConfidenceInterval,
 	McNemarExactResult,
 	PairedPowerPilotResult,
 	WilcoxonSignedRankResult,

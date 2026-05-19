@@ -46,9 +46,11 @@ import type {
 	ReportUse,
 } from "../types.js";
 import {
+	bcaBootstrapPairedDifferenceCi,
 	mcnemarExact,
 	pairedPowerPilot,
 	wilcoxonSignedRank,
+	type BcaBootstrapConfidenceInterval,
 	type McNemarExactResult,
 	type PairedPowerPilotResult,
 	type WilcoxonSignedRankResult,
@@ -145,7 +147,9 @@ export interface Phase1bStatisticalPilotResult {
 	rightAdapterName: string;
 	n: number;
 	wilcoxonModelCalls: WilcoxonSignedRankResult;
+	modelCallDeltaCi95: BcaBootstrapConfidenceInterval;
 	mcnemarTraceCorrect: McNemarExactResult;
+	traceCorrectDeltaCi95: BcaBootstrapConfidenceInterval;
 	powerPilot: PairedPowerPilotResult;
 }
 
@@ -430,23 +434,26 @@ export function phase1bStatisticalPilot(
 	const pairs = pairedRows(rows, leftAdapterName, rightAdapterName);
 	const left = pairs.map((pair) => pair.left);
 	const right = pairs.map((pair) => pair.right);
+	const leftModelCalls = left.map((row) => row.modelCalls);
+	const rightModelCalls = right.map((row) => row.modelCalls);
+	const leftTraceCorrect = left.map((row) => row.traceScore === 1);
+	const rightTraceCorrect = right.map((row) => row.traceScore === 1);
 	return {
 		leftAdapterName,
 		rightAdapterName,
 		n: pairs.length,
-		wilcoxonModelCalls: wilcoxonSignedRank(
-			left.map((row) => row.modelCalls),
-			right.map((row) => row.modelCalls),
-		),
-		mcnemarTraceCorrect: mcnemarExact(
-			left.map((row) => row.traceScore === 1),
-			right.map((row) => row.traceScore === 1),
+		wilcoxonModelCalls: wilcoxonSignedRank(leftModelCalls, rightModelCalls),
+		modelCallDeltaCi95: bcaBootstrapPairedDifferenceCi(leftModelCalls, rightModelCalls),
+		mcnemarTraceCorrect: mcnemarExact(leftTraceCorrect, rightTraceCorrect),
+		traceCorrectDeltaCi95: bcaBootstrapPairedDifferenceCi(
+			leftTraceCorrect.map((correct) => (correct ? 1 : 0)),
+			rightTraceCorrect.map((correct) => (correct ? 1 : 0)),
 		),
 		powerPilot: pairedPowerPilot(
-			left.map((row) => row.modelCalls),
-			right.map((row) => row.modelCalls),
-			left.map((row) => row.traceScore === 1),
-			right.map((row) => row.traceScore === 1),
+			leftModelCalls,
+			rightModelCalls,
+			leftTraceCorrect,
+			rightTraceCorrect,
 		),
 	};
 }
