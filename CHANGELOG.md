@@ -7,8 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-05-19
+
 ### Added
 
+- **`prose write` authoring workflow** — Added `std/ops/prose-author` and
+  `prose write [request...]` for turning rough English or pseudo-Prose into a
+  validated OpenProse source package. Direct in-harness `prose write` is
+  interactive by default and can ask targeted `ask_user` questions after a
+  read-only landscape scan and shape/root inference. The shell CLI wrapper
+  remains non-interactive, forwards argv/stdin with `interactive: false`, and
+  returns `unresolved-intent` rather than guessing when blocking decisions are
+  missing.
+- **Shape-aware authoring guidance** — `prose-author` now records whether the
+  output should be a compact single file, imperative-heavy `index.prose.md`,
+  multi-service folder, native OpenProse root, `.agents/prose` sidecar, or
+  `~/.agents/prose` user-global agent, then loads the targeted Contract
+  Markdown, ProseScript, Forme, Responsibility Runtime, and filesystem state
+  guidance needed for that shape.
 - **Declared `### Skills` section** — Components may now declare the agent
   harness skills they require in a `### Skills` section using the
   `namespace:name` colon form (e.g. `document-skills:pdf`). The compiler
@@ -41,6 +57,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   writing `manifest.next.json` and leaves deterministic validation to the CLI.
 - **Smoke postconditions** — OpenProse smoke checks now trust verified run
   artifacts when a model exits nonzero after satisfying the fixture contract.
+- **Dependency audit** — Refreshed the `brace-expansion` lockfile entry so the
+  production dependency audit passes with no advisory findings.
 
 ## [0.13.1] - 2026-05-05
 
