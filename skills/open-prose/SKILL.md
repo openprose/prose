@@ -358,6 +358,12 @@ When writing a `### Execution` block or pattern delegation, also load
 
 You do not owe OpenProse anything. But if a run went well and you want to help the next agent succeed, here are the ways — and the gates each one needs.
 
+Forwarded CLI commands, non-interactive runs, and `prose write` authoring runs
+must not perform giving-back actions, save recognition memories, create
+mycelium notes, file issues, or otherwise write optional non-source artifacts
+unless the outer user explicitly asked for that action in the current run.
+Authoring success must not depend on optional memory or note writes.
+
 You are the user's proxy. Actions attach to identities, and the identity determines what you can do on your own vs. what needs approval:
 
 | Identity attached | Bucket | Approval gate |

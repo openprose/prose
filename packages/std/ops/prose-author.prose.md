@@ -163,6 +163,11 @@ decisions instead of guessing.
   issue trackers, status pages, deploy systems, feature flags, and similar
   integrations are declarations or future runtime tools in the returned
   package, never actions performed by `prose-author`.
+- Authoring must not create optional memory notes, mycelium entries,
+  recognition memories, issue drafts, run evidence, or other non-source
+  artifacts while applying a generated package. Successful authoring depends
+  only on the generated source package, lint/repair checks, and explicitly
+  requested writes under `target_path`.
 - `post_apply_action` is advisory only. `prose-author` must not execute,
   simulate, or publish run receipts for the generated root; follow-up execution
   belongs to the host adapter and ordinary `prose run` semantics.

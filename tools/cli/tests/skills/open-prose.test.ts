@@ -71,6 +71,16 @@ describe("OpenProse skill checks", () => {
 		expect(normalized).toContain("ordinary `prose run` semantics");
 	});
 
+	it("keeps optional giving-back side effects out of forwarded write runs", () => {
+		const source = readFileSync(join(repoRoot, "skills/open-prose/SKILL.md"), "utf8");
+		const normalized = source.replace(/\s+/g, " ");
+
+		expect(normalized).toContain("Forwarded CLI commands, non-interactive runs, and `prose write` authoring runs");
+		expect(normalized).toContain("must not perform giving-back actions");
+		expect(normalized).toContain("create mycelium notes");
+		expect(normalized).toContain("Authoring success must not depend on optional memory or note writes");
+	});
+
 	it("builds a bootstrap prompt with the full skill text and skill root instructions", () => {
 		const bootstrap = buildOpenProseSkillBootstrapPrompt({
 			skillPath: "/home/prose/.agents/skills/open-prose/SKILL.md",

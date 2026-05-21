@@ -64,6 +64,8 @@ describe("prose-author contract", () => {
 
 		expect(source).toContain("not invoke external operational systems while authoring");
 		expect(source).toContain("never actions performed by `prose-author`");
+		expect(source).toContain("must not create optional memory notes");
+		expect(source).toContain("recognition memories");
 	});
 
 	it("keeps write-run as a non-operational host follow-up", () => {
