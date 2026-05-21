@@ -324,7 +324,8 @@ function normalizeWriteTargetPath(value: string): string {
 	if (normalized.split("/").includes("..")) {
 		fail("write", "--out must stay inside the OpenProse root.");
 	}
-	if (normalized.endsWith(".md") && !normalized.endsWith(".prose.md")) {
+	const lastSegment = normalized.split("/").at(-1) ?? normalized;
+	if (normalized !== "." && lastSegment.includes(".") && !normalized.endsWith(".prose.md")) {
 		fail("write", "--out file paths must end in .prose.md.");
 	}
 	return normalized === "." ? "." : normalized;

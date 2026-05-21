@@ -142,6 +142,11 @@ executing the system. The shell executable is the agent runner, e.g.
 | `prose examples` | List or run bundled examples from `examples/` |
 | Other | Interpret intent and load the smallest relevant spec set |
 
+Shell wrappers may chain forwarded commands only when a single flag names a
+deterministic pipeline, such as `prose write --run` forwarding authoring and
+then the generated root run. The wrapper still must not inspect or execute the
+generated source itself; VM semantics remain in this skill and `prose.md`.
+
 There is one skill: `open-prose`. Do not look for separate `prose-run`,
 `prose-lint`, `prose-compile`, or `prose-boot` skills.
 

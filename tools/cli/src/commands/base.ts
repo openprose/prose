@@ -123,6 +123,9 @@ export async function runForwardedProseCommand(options: ForwardRunOptions): Prom
 	if (exitCode !== 0 || writeRunTarget === undefined) {
 		return exitCode;
 	}
+	if (options.signal?.aborted) {
+		return 143;
+	}
 
 	const runPrompt = canonicalPrompt("run", [writeRunTarget]);
 	const runExitCode = await selectedHarness.run(runPrompt, harnessRunOptions);

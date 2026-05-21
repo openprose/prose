@@ -67,6 +67,7 @@ describe("command model", () => {
 		[["write", ["--out", "/tmp/source", "draft"]], "root-relative path", "prose write [--out <path>] [--apply] [--run] [request...]"],
 		[["write", ["--out", "../source", "draft"]], "inside the OpenProse root", "prose write [--out <path>] [--apply] [--run] [request...]"],
 		[["write", ["--out", "source.md", "draft"]], "end in .prose.md", "prose write [--out <path>] [--apply] [--run] [request...]"],
+		[["write", ["--out", "src/source.txt", "draft"]], "end in .prose.md", "prose write [--out <path>] [--apply] [--run] [request...]"],
 		[["write", ["--out", "one", "--out", "two", "draft"]], "Duplicate option", "prose write [--out <path>] [--apply] [--run] [request...]"],
 		[["inspect", []], "Missing required argument <run-id>", "prose inspect <run-id>"],
 		[["lint", ["system.md"]], "Expected <file.prose.md>", "prose lint <file.prose.md>"],

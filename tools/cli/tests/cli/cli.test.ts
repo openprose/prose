@@ -464,6 +464,35 @@ kind: system
 		}
 	});
 
+	it("does not start the write follow-up run when aborted after apply", async () => {
+		const io = memoryStreams();
+		const seen: string[] = [];
+		const controller = new AbortController();
+
+		const exitCode = await runForwardedProseCommand({
+			command: "write",
+			argv: ["--out", "src/release-readiness", "--run", "draft release readiness", "--harness", "mock"],
+			cwd: "/repo",
+			env: {},
+			stdout: io.streams.stdout,
+			stderr: io.streams.stderr,
+			signal: controller.signal,
+			harnessFactory: () => ({
+				name: "mock",
+				async run(prompt) {
+					seen.push(prompt);
+					controller.abort();
+					return 0;
+				},
+			}),
+		});
+
+		expect(exitCode).toBe(143);
+		expect(seen).toEqual([
+			"prose write output_mode: source-package-and-files apply: true target_path: src/release-readiness run_after_write: host-managed run_state: filesystem terminal_summary: required interactive: false request: 'draft release readiness'",
+		]);
+	});
+
 	it("defaults codex write apply runs to workspace-write when no sandbox is configured", async () => {
 		const io = memoryStreams();
 		const seenSandboxModes: Array<string | undefined> = [];

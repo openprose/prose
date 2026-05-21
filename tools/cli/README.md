@@ -168,6 +168,12 @@ write the package and then immediately invoke `prose run` on the generated
 root file. Directory targets run `<path>/index.prose.md`; file targets must end
 in `.prose.md`.
 
+`--out` is a validated, root-relative target contract passed to the authoring
+harness. The CLI rejects absolute paths, parent traversal, and file targets
+that do not end in `.prose.md`; the actual write is still performed by the
+selected harness under the `prose-author` contract, not by a separate CLI
+filesystem sandbox.
+
 ```bash
 prose compile
 prose compile src/responsibilities --out dist
