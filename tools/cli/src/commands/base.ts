@@ -172,8 +172,7 @@ function writeEnabledEnv(
 	if (
 		behavior.harness !== "codex-sdk" ||
 		!behavior.requiresFilesystemWrites ||
-		env.PROSE_CODEX_SANDBOX_MODE !== undefined ||
-		process.env.PROSE_CODEX_SANDBOX_MODE !== undefined
+		env.PROSE_CODEX_SANDBOX_MODE !== undefined
 	) {
 		return env;
 	}

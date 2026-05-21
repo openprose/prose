@@ -572,6 +572,42 @@ kind: system
 		expect(seenSandboxModes).toEqual(["workspace-write"]);
 	});
 
+	it("derives codex sandbox defaults from the forwarded env only", async () => {
+		const io = memoryStreams();
+		const seenSandboxModes: Array<string | undefined> = [];
+		const previous = process.env.PROSE_CODEX_SANDBOX_MODE;
+		process.env.PROSE_CODEX_SANDBOX_MODE = "danger-full-access";
+
+		try {
+			const exitCode = await runForwardedProseCommand({
+				command: "write",
+				argv: ["--out", "src/release-readiness", "--apply", "draft release readiness", "--harness", "codex-sdk"],
+				cwd: "/repo",
+				env: {},
+				stdout: io.streams.stdout,
+				stderr: io.streams.stderr,
+				skillBootstrap: false,
+				skillPreflight: false,
+				harnessFactory: () => ({
+					name: "codex-sdk",
+					async run(_prompt, options) {
+						seenSandboxModes.push(options.env?.PROSE_CODEX_SANDBOX_MODE);
+						return 0;
+					},
+				}),
+			});
+
+			expect(exitCode).toBe(0);
+			expect(seenSandboxModes).toEqual(["workspace-write"]);
+		} finally {
+			if (previous === undefined) {
+				delete process.env.PROSE_CODEX_SANDBOX_MODE;
+			} else {
+				process.env.PROSE_CODEX_SANDBOX_MODE = previous;
+			}
+		}
+	});
+
 	it("does not override an explicit codex sandbox for write apply runs", async () => {
 		const io = memoryStreams();
 		const seenSandboxModes: Array<string | undefined> = [];
