@@ -105,6 +105,9 @@ jobs:
       - name: Install dependencies
         run: corepack enable && pnpm install --frozen-lockfile --dir ../..
 
+      - name: Build workspace
+        run: pnpm --dir ../.. run build
+
       - name: Typecheck
         run: npm run typecheck
 
@@ -245,6 +248,9 @@ jobs:
 
       - name: Install dependencies
         run: corepack enable && pnpm install --frozen-lockfile --dir ../..
+
+      - name: Build workspace
+        run: pnpm --dir ../.. run build
 
       - name: Build
         run: npm run build

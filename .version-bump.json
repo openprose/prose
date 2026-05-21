@@ -4,8 +4,6 @@
     { "path": ".codex-plugin/plugin.json", "kind": "json", "field": "version" },
     { "path": "skills/open-prose/SKILL.md", "kind": "yaml", "field": "version" },
     { "path": "tools/cli/package.json", "kind": "json", "field": "version" },
-    { "path": "tools/cli/package-lock.json", "kind": "json", "field": "version" },
-    { "path": "tools/cli/package-lock.json", "kind": "json", "field": "packages[\"\"].version" },
     { "path": "tools/cli/install.sh", "kind": "shell-var", "field": "DEFAULT_VERSION" }
   ]
 }
