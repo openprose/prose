@@ -66,10 +66,11 @@ const forwardCommandDefinitions = {
 		examples: [
 			'<%= config.bin %> write "draft a release readiness responsibility" --harness codex-sdk',
 			'<%= config.bin %> write --out src/release-readiness --run "draft a release readiness responsibility"',
+			'<%= config.bin %> write --out src/release-readiness --apply --test-iterations=3 "draft a release readiness responsibility"',
 			"cat brief.txt | <%= config.bin %> write --harness codex-sdk",
 		],
 		summary: "Write linted OpenProse source from rough intent.",
-		usage: "write [--out <path>] [--apply] [--run] [request...] [--harness <name>]",
+		usage: "write [--out <path>] [--apply] [--run] [--test-iterations <0-3>] [request...] [--harness <name>]",
 	},
 } satisfies Record<string, ForwardCommandDefinition>;
 

@@ -517,6 +517,299 @@ kind: system
 		]);
 	});
 
+	it("runs generated test files before the write-run follow-up", async () => {
+		const cwd = mkdtempSync(join(tmpdir(), "prose-write-test-run-"));
+		const io = memoryStreams();
+		const seen: string[] = [];
+		const targetDir = join(cwd, "src", "release-readiness");
+
+		try {
+			const exitCode = await runForwardedProseCommand({
+				command: "write",
+				argv: ["--out", "src/release-readiness", "--run", "draft release readiness", "--harness", "mock"],
+				cwd,
+				env: {},
+				stdout: io.streams.stdout,
+				stderr: io.streams.stderr,
+				harnessFactory: () => ({
+					name: "mock",
+					async run(prompt) {
+						seen.push(prompt);
+						if (prompt.startsWith("prose write ")) {
+							mkdirSync(targetDir, { recursive: true });
+							writeFileSync(join(targetDir, "index.prose.md"), "---\nname: release-readiness\nkind: system\n---\n");
+							writeFileSync(
+								join(targetDir, "release-readiness.test.prose.md"),
+								"---\nname: release-readiness-test\nkind: test\nsubject: release-readiness\n---\n",
+							);
+						}
+						return 0;
+					},
+				}),
+			});
+
+			expect(exitCode).toBe(0);
+			expect(seen).toEqual([
+				"prose write output_mode: source-package-and-files apply: true target_path: src/release-readiness post_apply_action: host-will-run-root run_state: filesystem terminal_summary: required interactive: false request: 'draft release readiness'",
+				"prose test src/release-readiness/release-readiness.test.prose.md",
+				"prose run src/release-readiness/index.prose.md",
+			]);
+		} finally {
+			rmSync(cwd, { recursive: true, force: true });
+		}
+	});
+
+	it("discovers generated tests from quoted kind frontmatter without body false positives", async () => {
+		const cwd = mkdtempSync(join(tmpdir(), "prose-write-test-frontmatter-"));
+		const io = memoryStreams();
+		const seen: string[] = [];
+		const targetDir = join(cwd, "src", "release-readiness");
+
+		try {
+			const exitCode = await runForwardedProseCommand({
+				command: "write",
+				argv: ["--out", "src/release-readiness", "--apply", "draft release readiness", "--harness", "mock"],
+				cwd,
+				env: {},
+				stdout: io.streams.stdout,
+				stderr: io.streams.stderr,
+				harnessFactory: () => ({
+					name: "mock",
+					async run(prompt) {
+						seen.push(prompt);
+						if (prompt.startsWith("prose write ")) {
+							mkdirSync(targetDir, { recursive: true });
+							writeFileSync(join(targetDir, "index.prose.md"), "---\nname: release-readiness\nkind: system\n---\n");
+							writeFileSync(
+								join(targetDir, "quoted-kind.prose.md"),
+								'---\nname: quoted-kind\nkind: "test"\nsubject: release-readiness\n---\n',
+							);
+							writeFileSync(
+								join(targetDir, "notes.prose.md"),
+								"---\nname: release-notes\nkind: system\n---\n\nThis body mentions kind: test as prose, not frontmatter.\n",
+							);
+						}
+						return 0;
+					},
+				}),
+			});
+
+			expect(exitCode).toBe(0);
+			expect(seen).toEqual([
+				"prose write output_mode: source-package-and-files apply: true target_path: src/release-readiness post_apply_action: none run_state: filesystem terminal_summary: required interactive: false request: 'draft release readiness'",
+				"prose test src/release-readiness/quoted-kind.prose.md",
+			]);
+		} finally {
+			rmSync(cwd, { recursive: true, force: true });
+		}
+	});
+
+	it("skips generated test files when write test iterations are disabled", async () => {
+		const cwd = mkdtempSync(join(tmpdir(), "prose-write-test-off-"));
+		const io = memoryStreams();
+		const seen: string[] = [];
+		const targetDir = join(cwd, "src", "release-readiness");
+
+		try {
+			const exitCode = await runForwardedProseCommand({
+				command: "write",
+				argv: [
+					"--out",
+					"src/release-readiness",
+					"--run",
+					"--test-iterations=0",
+					"draft release readiness",
+					"--harness",
+					"mock",
+				],
+				cwd,
+				env: {},
+				stdout: io.streams.stdout,
+				stderr: io.streams.stderr,
+				harnessFactory: () => ({
+					name: "mock",
+					async run(prompt) {
+						seen.push(prompt);
+						if (prompt.startsWith("prose write ")) {
+							mkdirSync(targetDir, { recursive: true });
+							writeFileSync(join(targetDir, "index.prose.md"), "---\nname: release-readiness\nkind: system\n---\n");
+							writeFileSync(
+								join(targetDir, "release-readiness.test.prose.md"),
+								"---\nname: release-readiness-test\nkind: test\nsubject: release-readiness\n---\n",
+							);
+						}
+						return 0;
+					},
+				}),
+			});
+
+			expect(exitCode).toBe(0);
+			expect(seen).toEqual([
+				"prose write output_mode: source-package-and-files apply: true target_path: src/release-readiness post_apply_action: host-will-run-root run_state: filesystem terminal_summary: required interactive: false request: 'draft release readiness'",
+				"prose run src/release-readiness/index.prose.md",
+			]);
+		} finally {
+			rmSync(cwd, { recursive: true, force: true });
+		}
+	});
+
+	it("does not run pre-existing unchanged tests in the write target", async () => {
+		const cwd = mkdtempSync(join(tmpdir(), "prose-write-existing-tests-"));
+		const io = memoryStreams();
+		const seen: string[] = [];
+		const targetDir = join(cwd, "src", "release-readiness");
+
+		try {
+			mkdirSync(targetDir, { recursive: true });
+			writeFileSync(
+				join(targetDir, "release-readiness.test.prose.md"),
+				"---\nname: release-readiness-test\nkind: test\nsubject: release-readiness\n---\n",
+			);
+
+			const exitCode = await runForwardedProseCommand({
+				command: "write",
+				argv: ["--out", "src/release-readiness", "--apply", "draft release readiness", "--harness", "mock"],
+				cwd,
+				env: {},
+				stdout: io.streams.stdout,
+				stderr: io.streams.stderr,
+				harnessFactory: () => ({
+					name: "mock",
+					async run(prompt) {
+						seen.push(prompt);
+						if (prompt.startsWith("prose write ")) {
+							writeFileSync(join(targetDir, "index.prose.md"), "---\nname: release-readiness\nkind: system\n---\n");
+						}
+						return 0;
+					},
+				}),
+			});
+
+			expect(exitCode).toBe(0);
+			expect(seen).toEqual([
+				"prose write output_mode: source-package-and-files apply: true target_path: src/release-readiness post_apply_action: none run_state: filesystem terminal_summary: required interactive: false request: 'draft release readiness'",
+			]);
+		} finally {
+			rmSync(cwd, { recursive: true, force: true });
+		}
+	});
+
+	it("fails when a repair pass deletes an initially generated failing test", async () => {
+		const cwd = mkdtempSync(join(tmpdir(), "prose-write-test-deleted-"));
+		const io = memoryStreams();
+		const seen: string[] = [];
+		const targetDir = join(cwd, "src", "release-readiness");
+		let writePasses = 0;
+
+		try {
+			const exitCode = await runForwardedProseCommand({
+				command: "write",
+				argv: [
+					"--out",
+					"src/release-readiness",
+					"--apply",
+					"--test-iterations=2",
+					"draft release readiness",
+					"--harness",
+					"mock",
+				],
+				cwd,
+				env: {},
+				stdout: io.streams.stdout,
+				stderr: io.streams.stderr,
+				harnessFactory: () => ({
+					name: "mock",
+					async run(prompt, runOptions) {
+						seen.push(prompt);
+						if (prompt.startsWith("prose write ")) {
+							writePasses += 1;
+							mkdirSync(targetDir, { recursive: true });
+							writeFileSync(join(targetDir, "index.prose.md"), "---\nname: release-readiness\nkind: system\n---\n");
+							const testPath = join(targetDir, "release-readiness.test.prose.md");
+							if (writePasses === 1) {
+								writeFileSync(testPath, "---\nname: release-readiness-test\nkind: test\nsubject: release-readiness\n---\n");
+							} else {
+								rmSync(testPath, { force: true });
+							}
+							return 0;
+						}
+						if (prompt.startsWith("prose test ")) {
+							runOptions.stderr.write("expected release signal\n");
+							return 7;
+						}
+						return 0;
+					},
+				}),
+			});
+
+			expect(exitCode).toBe(1);
+			expect(seen.filter((prompt) => prompt.startsWith("prose test "))).toHaveLength(1);
+			expect(seen.filter((prompt) => prompt.startsWith("prose write "))).toHaveLength(2);
+			expect(io.stderr).toContain(
+				"Generated test target disappeared after repair: src/release-readiness/release-readiness.test.prose.md",
+			);
+		} finally {
+			rmSync(cwd, { recursive: true, force: true });
+		}
+	});
+
+	it("bounds generated test repair passes and keeps forwarded write side effects off", async () => {
+		const cwd = mkdtempSync(join(tmpdir(), "prose-write-test-repair-"));
+		const io = memoryStreams();
+		const seen: string[] = [];
+		const targetDir = join(cwd, "src", "release-readiness");
+
+		try {
+			const exitCode = await runForwardedProseCommand({
+				command: "write",
+				argv: [
+					"--out",
+					"src/release-readiness",
+					"--apply",
+					"--test-iterations=3",
+					"draft release readiness",
+					"--harness",
+					"mock",
+				],
+				cwd,
+				env: {},
+				stdout: io.streams.stdout,
+				stderr: io.streams.stderr,
+				harnessFactory: () => ({
+					name: "mock",
+					async run(prompt, runOptions) {
+						seen.push(prompt);
+						if (prompt.startsWith("prose write ")) {
+							mkdirSync(targetDir, { recursive: true });
+							writeFileSync(join(targetDir, "index.prose.md"), "---\nname: release-readiness\nkind: system\n---\n");
+							writeFileSync(
+								join(targetDir, "release-readiness.test.prose.md"),
+								"---\nname: release-readiness-test\nkind: test\nsubject: release-readiness\n---\n",
+							);
+							return 0;
+						}
+						if (prompt.startsWith("prose test ")) {
+							runOptions.stderr.write("expected release signal\n");
+							return 7;
+						}
+						return 0;
+					},
+				}),
+			});
+
+			expect(exitCode).toBe(7);
+			expect(seen.filter((prompt) => prompt.startsWith("prose test "))).toHaveLength(3);
+			expect(seen.filter((prompt) => prompt.startsWith("prose write "))).toHaveLength(3);
+			expect(seen[1]).toBe("prose test src/release-readiness/release-readiness.test.prose.md");
+			expect(seen[2]).toContain("Repair the generated OpenProse source under `src/release-readiness`");
+			expect(seen[2]).toContain("Original request: draft release readiness");
+			expect(seen[2]).toContain("Captured test output");
+			expect(seen[2]).toContain("do not perform optional giving-back, memory, or mycelium note side effects");
+		} finally {
+			rmSync(cwd, { recursive: true, force: true });
+		}
+	});
+
 	it("does not start the write follow-up run when aborted after apply", async () => {
 		const io = memoryStreams();
 		const seen: string[] = [];

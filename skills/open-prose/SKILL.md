@@ -128,7 +128,7 @@ executing the system. The shell executable is the agent runner, e.g.
 | `prose run runtime/judge-responsibility.prose.md` | Resolve from the OpenProse skill root; judge one responsibility from activation context |
 | `prose run <host>/<owner>/<repo>[/path]` | Resolve installed dependency service or system, detect format, then route as above |
 | `prose run std/...` / `co/...` | Expand OpenProse package shorthand, resolve installed dependency service or system, then route as above |
-| `prose write [--out <path>] [--apply] [--run] [request...]` | Interactive-by-default authoring: load `contract-markdown.md`, `guidance/tenets.md`, and `guidance/authoring.md`; run `std/ops/prose-author`; scan the local landscape read-only, decide shape/root/path, load shape-specific guidance, ask a small number of targeted `ask_user` questions when the host can support them, then return a fully validated source package. If the caller or host marks the run non-interactive, return `unresolved-intent` with the missing decisions instead of guessing. Apply generated files only when the caller explicitly passes apply permission, normally through `--out <path> --apply`; `--run` is a host-adapter macro that implies apply permission and expands to an ordinary `prose run <generated-root>` only after authoring succeeds |
+| `prose write [--out <path>] [--apply] [--run] [--test-iterations <0-3>] [request...]` | Interactive-by-default authoring: load `contract-markdown.md`, `guidance/tenets.md`, and `guidance/authoring.md`; run `std/ops/prose-author`; scan the local landscape read-only, decide shape/root/path, load shape-specific guidance, ask a small number of targeted `ask_user` questions when the host can support them, then return a fully validated source package. If the caller or host marks the run non-interactive, return `unresolved-intent` with the missing decisions instead of guessing. Apply generated files only when the caller explicitly passes apply permission, normally through `--out <path> --apply`; `--run` is a host-adapter macro that implies apply permission and expands to an ordinary `prose run <generated-root>` only after authoring succeeds. `--test-iterations` is a CLI host-adapter macro with default `1`; `0` disables generated-test execution, and `3` is the maximum bounded repair loop |
 | `prose lint <file.prose.md>` | Validate Contract Markdown structure, headers, frontmatter, contracts, shapes, and wiring |
 | `prose preflight <file.prose.md>` | Check dependencies and `### Environment` declarations without executing |
 | `prose test <path>` | Load `contract-markdown.md`, `state/README.md` plus the selected backend, and `prose.md`; run `kind: test` file(s) |
@@ -148,6 +148,18 @@ then invoke ordinary `prose run` semantics for the generated root only if
 authoring succeeds. A host that cannot perform this macro must reject
 `prose write --run` before authoring and must not pass the macro into
 `prose-author`.
+
+`prose write --test-iterations` is also a host-adapter macro for apply-enabled
+CLI writes. The CLI host adapter defaults to one generated-test attempt: it
+runs ordinary `prose test` for generated `kind: test` files after authoring
+succeeds, repairs by invoking a new apply-enabled `prose-author` pass only
+between failed test attempts, and stops at the requested bound. The macro is
+off when set to `0`, and the maximum is `3`. Plain in-session `prose write`
+still routes to `prose-author`; a non-CLI host that cannot perform this macro
+must reject an explicit `--test-iterations` option before authoring, must not
+pass the test-iteration macro into `prose-author`, and must not perform
+optional giving-back, memory, or mycelium note side effects while executing a
+forwarded/non-interactive write loop.
 
 There is one skill: `open-prose`. Do not look for separate `prose-run`,
 `prose-lint`, `prose-compile`, or `prose-boot` skills.

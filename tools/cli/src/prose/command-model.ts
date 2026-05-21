@@ -42,7 +42,7 @@ export const supportedCommands = [
 const usageByCommand: Record<CommandName, string> = {
 	compile: "prose compile [path] [--out <dir>]",
 	run: "prose run <file.prose.md|package/handle> [inputs...]",
-	write: "prose write [--out <path>] [--apply] [--run] [request...]",
+	write: "prose write [--out <path>] [--apply] [--run] [--test-iterations <0-3>] [request...]",
 	lint: "prose lint <file.prose.md>",
 	preflight: "prose preflight <file.prose.md>",
 	test: "prose test <path>",
@@ -90,6 +90,7 @@ export interface WriteCommandOptions {
 	out?: string;
 	request: string;
 	run: boolean;
+	testIterations: number;
 }
 
 export function parseWriteCommand(args: readonly string[]): WriteCommandOptions {
@@ -98,6 +99,8 @@ export function parseWriteCommand(args: readonly string[]): WriteCommandOptions 
 	let out: string | undefined;
 	let apply = false;
 	let run = false;
+	let testIterations = 1;
+	let sawTestIterations = false;
 
 	for (let index = 0; index < args.length; index += 1) {
 		const arg = args[index];
@@ -126,6 +129,29 @@ export function parseWriteCommand(args: readonly string[]): WriteCommandOptions 
 			if (arg === "--run") {
 				apply = true;
 				run = true;
+				continue;
+			}
+
+			if (arg === "--test-iterations") {
+				if (sawTestIterations) {
+					fail("write", "Duplicate option for 'prose write'.");
+				}
+				const value = args[index + 1];
+				if (value === undefined || value === "" || value.startsWith("-")) {
+					fail("write", "Missing value for --test-iterations.");
+				}
+				testIterations = normalizeWriteTestIterations(value);
+				sawTestIterations = true;
+				index += 1;
+				continue;
+			}
+
+			if (arg.startsWith("--test-iterations=")) {
+				if (sawTestIterations) {
+					fail("write", "Duplicate option for 'prose write'.");
+				}
+				testIterations = normalizeWriteTestIterations(arg.slice("--test-iterations=".length));
+				sawTestIterations = true;
 				continue;
 			}
 
@@ -167,6 +193,7 @@ export function parseWriteCommand(args: readonly string[]): WriteCommandOptions 
 		...(out === undefined ? {} : { out }),
 		request,
 		run,
+		testIterations,
 	};
 }
 
@@ -329,6 +356,20 @@ function normalizeWriteTargetPath(value: string): string {
 		fail("write", "--out file paths must end in .prose.md.");
 	}
 	return normalized === "." ? "." : normalized;
+}
+
+function normalizeWriteTestIterations(value: string): number {
+	if (value.trim() === "") {
+		fail("write", "Missing value for --test-iterations.");
+	}
+	if (!/^\d+$/.test(value)) {
+		fail("write", "--test-iterations must be an integer between 0 and 3.");
+	}
+	const parsed = Number(value);
+	if (!Number.isSafeInteger(parsed) || parsed < 0 || parsed > 3) {
+		fail("write", "--test-iterations must be an integer between 0 and 3.");
+	}
+	return parsed;
 }
 
 function rootFileForWriteTarget(out: string): string {

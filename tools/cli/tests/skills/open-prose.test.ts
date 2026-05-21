@@ -81,6 +81,17 @@ describe("OpenProse skill checks", () => {
 		expect(normalized).toContain("Authoring success must not depend on optional memory or note writes");
 	});
 
+	it("documents write test iterations as a host-adapter macro that unsupported session routers must reject", () => {
+		const source = readFileSync(join(repoRoot, "skills/open-prose/SKILL.md"), "utf8");
+		const normalized = source.replace(/\s+/g, " ");
+
+		expect(source).toContain("--test-iterations");
+		expect(normalized).toContain("runs ordinary `prose test` for generated `kind: test` files");
+		expect(normalized).toContain("reject an explicit `--test-iterations` option before authoring");
+		expect(normalized).toContain("must not pass the test-iteration macro into `prose-author`");
+		expect(normalized).toContain("must not perform optional giving-back, memory, or mycelium note side effects");
+	});
+
 	it("builds a bootstrap prompt with the full skill text and skill root instructions", () => {
 		const bootstrap = buildOpenProseSkillBootstrapPrompt({
 			skillPath: "/home/prose/.agents/skills/open-prose/SKILL.md",

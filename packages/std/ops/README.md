@@ -19,7 +19,7 @@ come back as `unresolved-intent` instead of terminal prompts.
 | `preflight.prose.md` | `prose preflight <file>` | Check that dependencies are installed and environment variables are set |
 | `wire.prose.md` | `prose run std/ops/wire` | Run Forme wiring to produce an execution manifest |
 | `status.prose.md` | `prose status` | Show recent runs with system name, duration, and pass/fail status |
-| `prose-author.prose.md` | `prose write [--out <path>] [--apply] [--run] [request...]` | Interactive-by-default authoring of a validated OpenProse package from rough English or pseudo-Prose; `--out --apply` may write it, and host adapters that support `--run` expand it to write/apply followed by ordinary `prose run <generated-root>` |
+| `prose-author.prose.md` | `prose write [--out <path>] [--apply] [--run] [--test-iterations <0-3>] [request...]` | Interactive-by-default authoring of a validated OpenProse package from rough English or pseudo-Prose; `--out --apply` may write it, CLI host adapters may test generated `kind: test` files after apply, and `--run` expands to ordinary `prose run <generated-root>` |
 | `diagnose.prose.md` | `prose run std/ops/diagnose` | Diagnose why a run failed -- root cause analysis with fix recommendations |
 | `profiler.prose.md` | `prose run std/ops/profiler` | Profile a run for cost, tokens, and time using actual API session data |
 
