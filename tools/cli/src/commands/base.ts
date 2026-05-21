@@ -1,9 +1,9 @@
 import { Command } from "@oclif/core";
 import type { CommandName } from "../prose/index.js";
-import { canonicalPrompt, CommandModelError, usageFor } from "../prose/index.js";
+import { canonicalPrompt, CommandModelError, resolveWriteRunTarget, usageFor } from "../prose/index.js";
 import { recordForwardedFulfillmentArtifact } from "../prose/fulfillment-artifact.js";
 import { createHarness, type HarnessName } from "../harnesses/index.js";
-import type { Harness, WritableStreamLike } from "../harnesses/types.js";
+import type { Harness, HarnessRunOptions, WritableStreamLike } from "../harnesses/types.js";
 import { ensureOpenProseSkill, loadOpenProseSkillBootstrap, type OpenProseSkillBootstrap } from "../skills/open-prose.js";
 
 export interface SkillPreflightOptions {
@@ -95,6 +95,7 @@ export async function runForwardedProseCommand(options: ForwardRunOptions): Prom
 	const { harness, args } = splitHarnessArgs(options.argv, options.env, options.command);
 	const promptArgs = await hydrateForwardedArgs(options.command, args, options.stdin);
 	const prompt = canonicalPrompt(options.command, promptArgs);
+	const writeRunTarget = options.command === "write" ? resolveWriteRunTarget(promptArgs) : undefined;
 	if (shouldRunSkillPreflight(options)) {
 		await runSkillPreflight(harness, options);
 	}
@@ -103,7 +104,41 @@ export async function runForwardedProseCommand(options: ForwardRunOptions): Prom
 		: undefined;
 
 	const selectedHarness = (options.harnessFactory ?? createHarness)(harness);
-	const exitCode = await selectedHarness.run(prompt, {
+	const harnessRunOptions = buildHarnessRunOptions(options, skillBootstrap);
+	const exitCode = await selectedHarness.run(prompt, harnessRunOptions);
+	await recordForwardedFulfillmentArtifact({
+		command: options.command,
+		argv: args,
+		cwd: options.cwd,
+		env: options.env,
+		exitCode,
+		harness,
+		prompt,
+	});
+
+	if (exitCode !== 0 || writeRunTarget === undefined) {
+		return exitCode;
+	}
+
+	const runPrompt = canonicalPrompt("run", [writeRunTarget]);
+	const runExitCode = await selectedHarness.run(runPrompt, harnessRunOptions);
+	await recordForwardedFulfillmentArtifact({
+		command: "run",
+		argv: [writeRunTarget],
+		cwd: options.cwd,
+		env: options.env,
+		exitCode: runExitCode,
+		harness,
+		prompt: runPrompt,
+	});
+	return runExitCode;
+}
+
+function buildHarnessRunOptions(
+	options: ForwardRunOptions,
+	skillBootstrap: OpenProseSkillBootstrap | undefined,
+): HarnessRunOptions {
+	return {
 		...(skillBootstrap === undefined
 			? {}
 			: {
@@ -115,17 +150,7 @@ export async function runForwardedProseCommand(options: ForwardRunOptions): Prom
 		stdout: options.stdout,
 		stderr: options.stderr,
 		...(options.signal === undefined ? {} : { signal: options.signal }),
-	});
-	await recordForwardedFulfillmentArtifact({
-		command: options.command,
-		argv: args,
-		cwd: options.cwd,
-		env: options.env,
-		exitCode,
-		harness,
-		prompt,
-	});
-	return exitCode;
+	};
 }
 
 async function hydrateForwardedArgs(

@@ -41,13 +41,24 @@ decisions instead of guessing.
 ### Requires
 
 - `output_mode`: output mode requested by the caller. `prose write` passes
-  `source-package-only`; in that mode the system must return source content and
-  apply notes only.
+  `source-package-only` by default; shell `--out --apply` and `--out --run`
+  pass `source-package-and-files`, where the system must write the generated
+  source after validation and still return a reviewable summary.
 - `apply`: whether this run is allowed to write generated source into the
-  caller's repository. `prose write` passes `false`.
+  caller's repository. `prose write` passes `false` by default; shell
+  `--apply` and `--run` pass `true`.
+- `target_path`: optional root-relative file or folder path selected by the
+  caller. When present with `apply: true`, generated files must stay under this
+  path. Folder targets use `index.prose.md` as the root file; file targets must
+  end in `.prose.md`.
+- `run_after_write`: follow-up run mode. `false` means no follow-up run;
+  `host-managed` means the shell wrapper will run the generated root file after
+  successful apply. The authoring system must not execute the generated root
+  itself.
 - `run_state`: preferred run-state mode. `prose write` passes `in-context` so
   package-only authoring avoids creating run artifacts in the caller's
-  workspace when the host can honor that mode.
+  workspace when the host can honor that mode. Apply-enabled shell runs may
+  pass `filesystem`.
 - `terminal_summary`: whether a concise final terminal status block is required.
   `prose write` passes `required`.
 - `interactive`: whether the host may ask targeted follow-up questions before
@@ -106,6 +117,9 @@ decisions instead of guessing.
 - Landscape inspection is read-only: it may list and read nearby source,
   configuration, and OpenProse layout markers, but it must not create, modify,
   delete, format, install, compile, or migrate files.
+- Apply-enabled source writing may happen only after planning, linting, and
+  repair pass. It must be limited to the generated files under `target_path`
+  and must not modify unrelated repository files.
 - When `output_mode` is `source-package-only` or `apply` is `false`, generated
   files are returned as source package content and optional apply notes only.
   The authoring run must not write generated files to the caller's repository,
@@ -177,7 +191,9 @@ decisions instead of guessing.
   `co/...`, or `github.com/owner/repo/path`. Do not invent bare `owner/repo`
   registry references.
 - Do not write directly to the caller's repository. Return a package and patch
-  notes; a separate file-writing step can apply it after human review.
+  notes unless `apply: true` and `target_path` are explicitly present. In
+  apply-enabled mode, write only the generated source package under
+  `target_path` after lint passes.
 - Treat any request phrase such as "under src/foo" or "add it to this repo" as
   a desired package path when `apply: false`, not as permission to create files.
 - Use CLI-facing language for `prose write`: describe the result as an
@@ -194,6 +210,8 @@ let authoring_intent = call intent-normalizer
   request: request
   output_mode: output_mode
   apply: apply
+  target_path: target_path
+  run_after_write: run_after_write
   run_state: run_state
   terminal_summary: terminal_summary
   interactive: interactive
@@ -239,6 +257,7 @@ let draft_source_package = call source-author
   guidance_report: guidance_report
   output_mode: output_mode
   apply: apply
+  target_path: target_path
 
 let lint_report = call source-linter
   draft_source_package: draft_source_package
@@ -270,6 +289,9 @@ let assembled = call package-assembler
   landscape: landscape
   shape_decision: triage_result.shape_decision
   guidance_report: guidance_report
+  apply: apply
+  target_path: target_path
+  run_after_write: run_after_write
 
 return {
   source_package: assembled.source_package,
@@ -291,6 +313,9 @@ Normalize the caller's rough request into an explicit authoring intent.
   brief from the caller
 - `output_mode`: caller output mode, usually `source-package-only`
 - `apply`: whether this authoring run may write files, usually `false`
+- `target_path`: optional root-relative destination for generated source
+- `run_after_write`: follow-up run mode, usually `false`; `host-managed` means
+  the shell wrapper will perform the run after a successful apply
 - `run_state`: preferred run-state mode, usually `in-context`
 - `terminal_summary`: whether the final status block is required
 - `interactive`: whether targeted follow-up questions are allowed before source
@@ -309,6 +334,9 @@ Normalize the caller's rough request into an explicit authoring intent.
       persistence, memory, and safety boundaries implied by the request
     - output_mode: caller output mode, preserved for downstream authoring
     - apply: caller apply flag, preserved for downstream authoring
+    - target_path: caller destination path, preserved for downstream authoring
+    - run_after_write: caller follow-up run mode, preserved for downstream
+      authoring
     - run_state: caller run-state preference, preserved for downstream
       authoring
     - terminal_summary: caller terminal-summary requirement, preserved for
@@ -458,6 +486,10 @@ planning begins.
   or a graph that should be edited service-by-service later.
 - Choose a native OpenProse root only when the landscape already looks native or
   the user is clearly creating an OpenProse repository.
+- When `target_path` is present, treat it as the binding destination for the
+  package. If it ends in `.prose.md`, choose single-file output at that file.
+  Otherwise choose a folder-shaped package rooted at `target_path` with
+  `index.prose.md` as the runnable root unless the request makes that invalid.
 - Choose an attached sidecar root for ordinary application repositories where
   generated Prose should live alongside, not inside, the app source.
 - Choose user-global only when the user asks for a personal agent, cross-repo
@@ -573,6 +605,10 @@ Plan the generated file tree and contracts before drafting source.
   `interactive-triage`
 - `guidance_report`: baseline and shape-specific guidance from
   `guidance-loader`
+- `apply`: whether this run may write generated files
+- `target_path`: optional root-relative destination for generated files
+- `run_after_write`: follow-up run mode; `host-managed` means the shell wrapper
+  will run the generated root file after a successful apply
 
 ### Ensures
 
@@ -647,6 +683,8 @@ Draft the planned source package.
   `guidance-loader`
 - `output_mode`: caller output mode, usually `source-package-only`
 - `apply`: whether this authoring run may write files, usually `false`
+- `target_path`: optional root-relative destination for apply-enabled source
+  writing
 
 ### Ensures
 
@@ -669,6 +707,9 @@ Draft the planned source package.
 - In `source-package-only` or `apply: false` mode, include the chosen paths and
   full file contents in `draft_source_package`; do not write those paths to the
   filesystem.
+- In `source-package-and-files` with `apply: true`, still draft the package as
+  explicit file paths plus contents. The later `package-assembler` performs the
+  filesystem write only after lint passes.
 - Use current Contract Markdown headings exactly. Unknown `###` sections may
   be preserved only as documentation, never as hidden runtime behavior.
 - Make every `### Ensures` item named, evaluable, and specific enough for a
@@ -862,10 +903,12 @@ Publish the validated source package and concise next-step notes.
     - `source_package`: `returned`
     - `shape`: chosen package shape
     - `root`: selected root file or root folder
-    - `apply`: `false` for `prose write`
-    - `files_written`: `none` when no generated source files were applied
+    - `apply`: whether generated source files were applied
+    - `files_written`: `none` when no generated source files were applied, or
+      a compact list/count of files written under `target_path`
     - `lint`: `pass`
-    - `next`: recommended command or manual apply step
+    - `next`: recommended command, the run command just triggered by the shell
+      wrapper, or a manual apply step
 
 ### Errors
 
@@ -876,6 +919,9 @@ Publish the validated source package and concise next-step notes.
 - Do not publish a package when `lint_report` has blocking findings.
 - Keep final output reviewable: include paths first, then file contents in the
   same order a human would open them.
+- When `apply: true`, write the generated source files only after
+  `lint_report.status` is `pass`, only under `target_path`, and report the
+  concrete files in `files_written`.
 - Do not claim files were written to the caller's repository unless this run
   actually wrote them through an explicitly requested file-writing step.
 - End every successful package-only response with `final_status_summary` so a

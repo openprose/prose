@@ -1,3 +1,5 @@
+import { isAbsolute } from "node:path";
+
 export type CommandName =
 	| "compile"
 	| "run"
@@ -40,7 +42,7 @@ export const supportedCommands = [
 const usageByCommand: Record<CommandName, string> = {
 	compile: "prose compile [path] [--out <dir>]",
 	run: "prose run <file.prose.md|package/handle> [inputs...]",
-	write: "prose write [request...]",
+	write: "prose write [--out <path>] [--apply] [--run] [request...]",
 	lint: "prose lint <file.prose.md>",
 	preflight: "prose preflight <file.prose.md>",
 	test: "prose test <path>",
@@ -55,21 +57,25 @@ const usageByCommand: Record<CommandName, string> = {
 export function canonicalPrompt(command: CommandName, args: readonly string[]): string {
 	validate(command, args);
 	if (command === "write") {
+		const write = parseWriteCommand(args);
 		return shellJoin([
 			"prose",
 			"write",
 			"output_mode:",
-			"source-package-only",
+			write.apply ? "source-package-and-files" : "source-package-only",
 			"apply:",
-			"false",
+			String(write.apply),
+			...(write.out === undefined ? [] : ["target_path:", write.out]),
+			"run_after_write:",
+			write.run ? "host-managed" : "false",
 			"run_state:",
-			"in-context",
+			write.apply ? "filesystem" : "in-context",
 			"terminal_summary:",
 			"required",
 			"interactive:",
 			"false",
 			"request:",
-			parseWriteRequest(args),
+			write.request,
 		]);
 	}
 	return shellJoin(["prose", command, ...args]);
@@ -77,6 +83,102 @@ export function canonicalPrompt(command: CommandName, args: readonly string[]): 
 
 export function usageFor(command: CommandName): string {
 	return usageByCommand[command];
+}
+
+export interface WriteCommandOptions {
+	apply: boolean;
+	out?: string;
+	request: string;
+	run: boolean;
+}
+
+export function parseWriteCommand(args: readonly string[]): WriteCommandOptions {
+	const requestParts: string[] = [];
+	let literalRequest = false;
+	let out: string | undefined;
+	let apply = false;
+	let run = false;
+
+	for (let index = 0; index < args.length; index += 1) {
+		const arg = args[index];
+		if (arg === undefined) {
+			continue;
+		}
+
+		if (!literalRequest && arg === "--") {
+			literalRequest = true;
+			continue;
+		}
+
+		if (!literalRequest) {
+			if (arg === "--interactive" || arg === "--no-interactive") {
+				fail(
+					"write",
+					"'prose write' does not support interactive flags. Pass all authoring context in argv/stdin, or run prose-author from a host that supports ask_user.",
+				);
+			}
+
+			if (arg === "--apply") {
+				apply = true;
+				continue;
+			}
+
+			if (arg === "--run") {
+				apply = true;
+				run = true;
+				continue;
+			}
+
+			if (arg === "--out") {
+				if (out !== undefined) {
+					fail("write", "Duplicate option for 'prose write'.");
+				}
+				const value = args[index + 1];
+				if (!value || value.startsWith("-")) {
+					fail("write", "Missing value for --out.");
+				}
+				out = normalizeWriteTargetPath(value);
+				index += 1;
+				continue;
+			}
+
+			if (arg.startsWith("--out=")) {
+				if (out !== undefined) {
+					fail("write", "Duplicate option for 'prose write'.");
+				}
+				out = normalizeWriteTargetPath(arg.slice("--out=".length));
+				continue;
+			}
+		}
+
+		requestParts.push(arg);
+	}
+
+	const request = requestParts.join(" ");
+	if (request.trim() === "") {
+		fail("write", "Missing request text for 'prose write'. Pass text arguments or pipe stdin.");
+	}
+	if (apply && out === undefined) {
+		fail("write", "'prose write --apply' and 'prose write --run' require --out <path>.");
+	}
+
+	return {
+		apply,
+		...(out === undefined ? {} : { out }),
+		request,
+		run,
+	};
+}
+
+export function resolveWriteRunTarget(args: readonly string[]): string | undefined {
+	const write = parseWriteCommand(args);
+	if (!write.run) {
+		return undefined;
+	}
+	if (write.out === undefined) {
+		return undefined;
+	}
+	return rootFileForWriteTarget(write.out);
 }
 
 function validate(command: CommandName, args: readonly string[]): void {
@@ -135,32 +237,9 @@ function requireAtLeastOne(command: CommandName, args: readonly string[], label:
 }
 
 function requireNonBlankWriteRequest(command: "write", args: readonly string[]): void {
-	if (parseWriteRequest(args).trim() === "") {
+	if (parseWriteCommand(args).request.trim() === "") {
 		fail(command, "Missing request text for 'prose write'. Pass text arguments or pipe stdin.");
 	}
-}
-
-function parseWriteRequest(args: readonly string[]): string {
-	const requestParts: string[] = [];
-	let literalRequest = false;
-
-	for (const arg of args) {
-		if (!literalRequest && arg === "--") {
-			literalRequest = true;
-			continue;
-		}
-
-		if (!literalRequest && (arg === "--interactive" || arg === "--no-interactive")) {
-			fail(
-				"write",
-				"'prose write' does not support interactive flags. Pass all authoring context in argv/stdin, or run prose-author from a host that supports ask_user.",
-			);
-		}
-
-		requestParts.push(arg);
-	}
-
-	return requestParts.join(" ");
 }
 
 function requireExactlyOne(command: CommandName, args: readonly string[], label: string): void {
@@ -229,6 +308,36 @@ function requireOnlyFlags(command: "install" | "status" | "upgrade", args: reado
 
 function fail(command: CommandName, message: string): never {
 	throw new CommandModelError(message, usageByCommand[command]);
+}
+
+function normalizeWriteTargetPath(value: string): string {
+	const normalized = value.trim().replaceAll("\\", "/").replace(/^\.\/+/, "").replace(/\/+$/, "");
+	if (normalized === "") {
+		fail("write", "Missing value for --out.");
+	}
+	if (value.includes("\0")) {
+		fail("write", "--out must be a root-relative path.");
+	}
+	if (isAbsolute(value) || normalized.startsWith("/")) {
+		fail("write", "--out must be a root-relative path.");
+	}
+	if (normalized.split("/").includes("..")) {
+		fail("write", "--out must stay inside the OpenProse root.");
+	}
+	if (normalized.endsWith(".md") && !normalized.endsWith(".prose.md")) {
+		fail("write", "--out file paths must end in .prose.md.");
+	}
+	return normalized === "." ? "." : normalized;
+}
+
+function rootFileForWriteTarget(out: string): string {
+	if (out.endsWith(".prose.md")) {
+		return out;
+	}
+	if (out === ".") {
+		return "index.prose.md";
+	}
+	return `${out}/index.prose.md`;
 }
 
 function shellJoin(tokens: readonly string[]): string {

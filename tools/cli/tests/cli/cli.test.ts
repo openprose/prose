@@ -1,6 +1,7 @@
 import {
 	chmodSync,
 	copyFileSync,
+	existsSync,
 	mkdirSync,
 	mkdtempSync,
 	readFileSync,
@@ -376,7 +377,7 @@ describe("runForwardedProseCommand", () => {
 
 		expect(exitCode).toBe(0);
 		expect(seen).toEqual([
-			"prose write output_mode: source-package-only apply: false run_state: in-context terminal_summary: required interactive: false request: 'draft release readiness'",
+			"prose write output_mode: source-package-only apply: false run_after_write: false run_state: in-context terminal_summary: required interactive: false request: 'draft release readiness'",
 		]);
 	});
 
@@ -404,8 +405,63 @@ describe("runForwardedProseCommand", () => {
 
 		expect(exitCode).toBe(0);
 		expect(seen).toEqual([
-			"prose write output_mode: source-package-only apply: false run_state: in-context terminal_summary: required interactive: false request: 'draft a release readiness responsibility'",
+			"prose write output_mode: source-package-only apply: false run_after_write: false run_state: in-context terminal_summary: required interactive: false request: 'draft a release readiness responsibility'",
 		]);
+	});
+
+	it("applies and runs the exact vulnerability detection write example", async () => {
+		const cwd = mkdtempSync(join(tmpdir(), "prose-write-run-"));
+		const io = memoryStreams();
+		const seen: string[] = [];
+		const rootFile = join(cwd, "src", "vulnerability-detection", "index.prose.md");
+		const exactRequest =
+			"a vulnerability detection system that uses lessons from https://blog.cloudflare.com/cyber-frontier-models/";
+
+		try {
+			const exitCode = await runForwardedProseCommand({
+				command: "write",
+				argv: ["--out", "src/vulnerability-detection", "--run", exactRequest, "--harness", "mock"],
+				cwd,
+				env: {},
+				stdout: io.streams.stdout,
+				stderr: io.streams.stderr,
+				harnessFactory: () => ({
+					name: "mock",
+					async run(prompt) {
+						seen.push(prompt);
+						if (prompt.startsWith("prose write ")) {
+							mkdirSync(join(cwd, "src", "vulnerability-detection"), { recursive: true });
+							writeFileSync(
+								rootFile,
+								`---
+name: vulnerability-detection
+kind: system
+---
+
+# Vulnerability Detection
+
+### Services
+
+- \`reporter\`
+`,
+							);
+						}
+						if (prompt.startsWith("prose run ")) {
+							expect(existsSync(rootFile)).toBe(true);
+						}
+						return 0;
+					},
+				}),
+			});
+
+			expect(exitCode).toBe(0);
+			expect(seen).toEqual([
+				"prose write output_mode: source-package-and-files apply: true target_path: src/vulnerability-detection run_after_write: host-managed run_state: filesystem terminal_summary: required interactive: false request: 'a vulnerability detection system that uses lessons from https://blog.cloudflare.com/cyber-frontier-models/'",
+				"prose run src/vulnerability-detection/index.prose.md",
+			]);
+		} finally {
+			rmSync(cwd, { recursive: true, force: true });
+		}
 	});
 
 	it("rejects write flags that would imply unsupported CLI interaction", async () => {
