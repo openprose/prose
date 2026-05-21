@@ -1,5 +1,7 @@
+import { existsSync, lstatSync, readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { Command } from "@oclif/core";
-import type { CommandName } from "../prose/index.js";
+import type { CommandName, WriteCommandOptions } from "../prose/index.js";
 import { canonicalPrompt, CommandModelError, parseWriteCommand, resolveWriteRunTarget, usageFor } from "../prose/index.js";
 import { recordForwardedFulfillmentArtifact } from "../prose/fulfillment-artifact.js";
 import { createHarness, type HarnessName } from "../harnesses/index.js";
@@ -94,8 +96,9 @@ function isOclifExit(error: unknown): boolean {
 export async function runForwardedProseCommand(options: ForwardRunOptions): Promise<number> {
 	const { harness, args } = splitHarnessArgs(options.argv, options.env, options.command);
 	const promptArgs = await hydrateForwardedArgs(options.command, args, options.stdin);
+	const writeOptions = options.command === "write" ? parseWriteCommand(promptArgs) : undefined;
 	const prompt = canonicalPrompt(options.command, promptArgs);
-	const writeRequiresFilesystem = options.command === "write" ? parseWriteCommand(promptArgs).apply : false;
+	const writeRequiresFilesystem = writeOptions?.apply ?? false;
 	const writeRunTarget = options.command === "write" ? resolveWriteRunTarget(promptArgs) : undefined;
 	if (shouldRunSkillPreflight(options)) {
 		await runSkillPreflight(harness, options);
@@ -109,6 +112,7 @@ export async function runForwardedProseCommand(options: ForwardRunOptions): Prom
 		harness,
 		requiresFilesystemWrites: writeRequiresFilesystem,
 	});
+	const writeTestBaseline = snapshotWriteTestBaseline(options.cwd, writeOptions);
 	const exitCode = await selectedHarness.run(prompt, harnessRunOptions);
 	await recordForwardedFulfillmentArtifact({
 		command: options.command,
@@ -120,11 +124,29 @@ export async function runForwardedProseCommand(options: ForwardRunOptions): Prom
 		prompt,
 	});
 
-	if (exitCode !== 0 || writeRunTarget === undefined) {
+	if (exitCode !== 0) {
 		return exitCode;
 	}
 	if (options.signal?.aborted) {
 		return 143;
+	}
+
+	const testLoopExitCode = await runWriteTestLoop({
+		forwardOptions: options,
+		harness,
+		harnessRunOptions,
+		selectedHarness,
+		writeTestBaseline,
+		writeOptions,
+	});
+	if (testLoopExitCode !== 0) {
+		return testLoopExitCode;
+	}
+	if (options.signal?.aborted) {
+		return 143;
+	}
+	if (writeRunTarget === undefined) {
+		return exitCode;
 	}
 
 	const runPrompt = canonicalPrompt("run", [writeRunTarget]);
@@ -139,6 +161,292 @@ export async function runForwardedProseCommand(options: ForwardRunOptions): Prom
 		prompt: runPrompt,
 	});
 	return runExitCode;
+}
+
+interface WriteTestLoopOptions {
+	forwardOptions: ForwardRunOptions;
+	harness: string;
+	harnessRunOptions: HarnessRunOptions;
+	selectedHarness: Harness;
+	writeTestBaseline: ReadonlyMap<string, string> | undefined;
+	writeOptions: WriteCommandOptions | undefined;
+}
+
+interface WriteTestResult {
+	exitCode: number;
+	output: string;
+	prompt: string;
+}
+
+async function runWriteTestLoop(options: WriteTestLoopOptions): Promise<number> {
+	const write = options.writeOptions;
+	if (write === undefined || !write.apply || write.out === undefined || write.testIterations === 0) {
+		return 0;
+	}
+
+	let requiredTestTargets: readonly string[] | undefined;
+	for (let attempt = 1; attempt <= write.testIterations; attempt += 1) {
+		if (options.forwardOptions.signal?.aborted) {
+			return 143;
+		}
+
+		const discoveredTargets = discoverGeneratedWriteTestTargets(options.forwardOptions.cwd, write.out);
+		const changedTargets = filterChangedWriteTestTargets(
+			options.forwardOptions.cwd,
+			discoveredTargets,
+			options.writeTestBaseline,
+		);
+		requiredTestTargets ??= changedTargets;
+		const missingRequiredTargets = requiredTestTargets.filter((target) => !discoveredTargets.includes(target));
+		if (missingRequiredTargets.length > 0) {
+			options.forwardOptions.stderr.write(
+				`Generated test target disappeared after repair: ${missingRequiredTargets.join(", ")}\n`,
+			);
+			return 1;
+		}
+
+		const testTargets = mergeTestTargets(requiredTestTargets, changedTargets);
+		if (testTargets.length === 0) {
+			return 0;
+		}
+
+		const testResult = await runGeneratedWriteTests(options, testTargets);
+		if (testResult.exitCode === 0) {
+			return 0;
+		}
+		if (attempt === write.testIterations) {
+			return testResult.exitCode;
+		}
+		if (options.forwardOptions.signal?.aborted) {
+			return 143;
+		}
+
+		const repairRequest = buildWriteTestRepairRequest(write, testResult);
+		const repairArgs = ["--out", write.out, "--apply", repairRequest];
+		const repairPrompt = canonicalPrompt("write", repairArgs);
+		const repairExitCode = await options.selectedHarness.run(repairPrompt, options.harnessRunOptions);
+		await recordForwardedFulfillmentArtifact({
+			command: "write",
+			argv: repairArgs,
+			cwd: options.forwardOptions.cwd,
+			env: options.forwardOptions.env,
+			exitCode: repairExitCode,
+			harness: options.harness,
+			prompt: repairPrompt,
+		});
+		if (repairExitCode !== 0) {
+			return repairExitCode;
+		}
+	}
+
+	return 0;
+}
+
+function mergeTestTargets(required: readonly string[], changed: readonly string[]): string[] {
+	return Array.from(new Set([...required, ...changed])).sort();
+}
+
+async function runGeneratedWriteTests(options: WriteTestLoopOptions, testTargets: readonly string[]): Promise<WriteTestResult> {
+	for (const testTarget of testTargets) {
+		const testPrompt = canonicalPrompt("test", [testTarget]);
+		const capture = createCapturedHarnessStreams(options.harnessRunOptions.stdout, options.harnessRunOptions.stderr);
+		const testExitCode = await options.selectedHarness.run(testPrompt, {
+			...options.harnessRunOptions,
+			stdout: capture.stdout,
+			stderr: capture.stderr,
+		});
+		await recordForwardedFulfillmentArtifact({
+			command: "test",
+			argv: [testTarget],
+			cwd: options.forwardOptions.cwd,
+			env: options.forwardOptions.env,
+			exitCode: testExitCode,
+			harness: options.harness,
+			prompt: testPrompt,
+		});
+		if (testExitCode !== 0) {
+			return {
+				exitCode: testExitCode,
+				output: capture.output,
+				prompt: testPrompt,
+			};
+		}
+	}
+
+	return {
+		exitCode: 0,
+		output: "",
+		prompt: "",
+	};
+}
+
+function buildWriteTestRepairRequest(write: WriteCommandOptions, testResult: WriteTestResult): string {
+	const parts = [
+		`Repair the generated OpenProse source under \`${write.out ?? ""}\` after a host-managed test iteration failed.`,
+		`Original request: ${write.request}`,
+		`Failing test command: ${testResult.prompt}`,
+		`Failing test exit code: ${testResult.exitCode}`,
+		"Read the generated files under target_path and apply only source repairs under that same target.",
+		"Keep forwarded/non-interactive write boundaries: do not run tests yourself, do not run the generated root, and do not perform optional giving-back, memory, or mycelium note side effects.",
+	];
+	const output = testResult.output.trim();
+	if (output !== "") {
+		parts.push(`Captured test output:\n${output}`);
+	}
+	return parts.join("\n\n");
+}
+
+function discoverGeneratedWriteTestTargets(cwd: string, targetPath: string): string[] {
+	const root = join(cwd, ...targetPath.split("/"));
+	if (!existsSync(root)) {
+		return [];
+	}
+
+	const targets: string[] = [];
+	visitGeneratedWriteTarget(root, targetPath === "." ? "" : targetPath, targets);
+	return targets.sort();
+}
+
+function snapshotWriteTestBaseline(
+	cwd: string,
+	write: WriteCommandOptions | undefined,
+): ReadonlyMap<string, string> | undefined {
+	if (write === undefined || !write.apply || write.out === undefined || write.testIterations === 0) {
+		return undefined;
+	}
+
+	return new Map(
+		discoverGeneratedWriteTestTargets(cwd, write.out)
+			.map((target): [string, string] | undefined => {
+				const source = readRootRelativeFileIfExists(cwd, target);
+				return source === undefined ? undefined : [target, source];
+			})
+			.filter((entry): entry is [string, string] => entry !== undefined),
+	);
+}
+
+function filterChangedWriteTestTargets(
+	cwd: string,
+	targets: readonly string[],
+	baseline: ReadonlyMap<string, string> | undefined,
+): string[] {
+	if (baseline === undefined) {
+		return [...targets];
+	}
+
+	return targets.filter((target) => {
+		const source = readRootRelativeFileIfExists(cwd, target);
+		return source !== undefined && baseline.get(target) !== source;
+	});
+}
+
+function visitGeneratedWriteTarget(fsPath: string, relativePath: string, targets: string[]): void {
+	let stat;
+	try {
+		stat = lstatSync(fsPath);
+	} catch {
+		return;
+	}
+	if (stat.isSymbolicLink()) {
+		return;
+	}
+	if (stat.isDirectory()) {
+		let entries: string[];
+		try {
+			entries = readdirSync(fsPath).sort();
+		} catch {
+			return;
+		}
+		for (const entry of entries) {
+			visitGeneratedWriteTarget(join(fsPath, entry), relativePath === "" ? entry : `${relativePath}/${entry}`, targets);
+		}
+		return;
+	}
+	if (!stat.isFile() || !relativePath.endsWith(".prose.md")) {
+		return;
+	}
+	if (relativePath.endsWith(".test.prose.md") || proseFileHasTestKind(fsPath)) {
+		targets.push(relativePath);
+	}
+}
+
+function proseFileHasTestKind(fsPath: string): boolean {
+	const source = readFileIfExists(fsPath);
+	return source !== undefined && parseFlatFrontmatter(source).get("kind") === "test";
+}
+
+function parseFlatFrontmatter(source: string): Map<string, string> {
+	const frontmatter = source.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
+	if (frontmatter?.[1] === undefined) {
+		return new Map();
+	}
+
+	const parsed = new Map<string, string>();
+	for (const line of frontmatter[1].split(/\r?\n/)) {
+		const match = line.match(/^([A-Za-z][A-Za-z0-9_-]*)\s*:\s*(.*?)\s*$/);
+		if (match?.[1] !== undefined && match[2] !== undefined) {
+			parsed.set(match[1], stripYamlScalarQuotes(match[2].trim()));
+		}
+	}
+	return parsed;
+}
+
+function stripYamlScalarQuotes(value: string): string {
+	if (value.length >= 2 && value.startsWith('"') && value.endsWith('"')) {
+		return value.slice(1, -1);
+	}
+	if (value.length >= 2 && value.startsWith("'") && value.endsWith("'")) {
+		return value.slice(1, -1);
+	}
+	return value;
+}
+
+function readRootRelativeFileIfExists(cwd: string, target: string): string | undefined {
+	return readFileIfExists(join(cwd, ...target.split("/")));
+}
+
+function readFileIfExists(fsPath: string): string | undefined {
+	try {
+		return readFileSync(fsPath, "utf8");
+	} catch {
+		return undefined;
+	}
+}
+
+function createCapturedHarnessStreams(stdout: WritableStreamLike, stderr: WritableStreamLike) {
+	const maxOutputLength = 12_000;
+	let output = "";
+	let truncated = false;
+
+	function capture(label: "stdout" | "stderr", chunk: string): void {
+		const formatted = `[${label}] ${chunk}`;
+		const remaining = maxOutputLength - output.length;
+		if (remaining > 0) {
+			output += formatted.slice(0, remaining);
+		}
+		if (formatted.length > remaining && !truncated) {
+			output += "\n[truncated]\n";
+			truncated = true;
+		}
+	}
+
+	return {
+		stdout: {
+			write(chunk: string) {
+				capture("stdout", chunk);
+				return stdout.write(chunk);
+			},
+		},
+		stderr: {
+			write(chunk: string) {
+				capture("stderr", chunk);
+				return stderr.write(chunk);
+			},
+		},
+		get output() {
+			return output;
+		},
+	};
 }
 
 function buildHarnessRunOptions(

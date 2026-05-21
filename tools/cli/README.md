@@ -77,6 +77,7 @@ prose run std/evals/inspector
 prose run std/evals/prose-contributor -- subjects: 20260406-201439-1a3369
 prose write "draft a release readiness responsibility"
 prose write --out src/release-readiness --run "draft a release readiness responsibility"
+prose write --out src/release-readiness --apply --test-iterations=3 "draft a release readiness responsibility"
 cat brief.txt | prose write --harness codex-sdk
 prose run std/evals/inspector --harness codex-sdk
 prose run co/systems/company-repo-checker --harness claude-sdk
@@ -169,6 +170,18 @@ then starts a separate ordinary `prose run` for the generated root file only
 after authoring succeeds. Directory targets run `<path>/index.prose.md`; file
 targets must end in `.prose.md`.
 
+Generated-test execution is also a CLI host-adapter macro. After apply-enabled
+authoring succeeds, the CLI discovers generated `kind: test` files under
+`--out` and runs ordinary `prose test` for each one. `--test-iterations=1` is
+the default for `--apply` and `--run`, `--test-iterations=0` disables the test
+loop, and `--test-iterations=3` allows up to three test attempts with repair
+authoring passes between failures. The test loop never commits generated files and does
+not ask the authoring run to perform optional giving-back, memory, or mycelium
+note side effects. Repair prompts include captured failing test output capped
+at 12 KB; the side-effect ban and target-path repair instruction are prepended
+before that output. If the loop exhausts its iteration bound, the CLI returns
+the final failing `prose test` exit code rather than a distinct sentinel.
+
 `--out` is a validated, root-relative target contract passed to the authoring
 harness. The CLI rejects absolute paths, parent traversal, and file targets
 that do not end in `.prose.md`; the actual write is still performed by the
@@ -184,6 +197,7 @@ prose run src/systems/reviewer.prose.md
 prose write "draft a release readiness responsibility"
 prose write --out src/reviewer --apply "draft a reviewer system"
 prose write --out src/reviewer --run "draft a reviewer system"
+prose write --out src/reviewer --apply --test-iterations=0 "draft a reviewer system"
 prose write < brief.txt
 prose run co/systems/company-repo-checker --harness claude-sdk
 prose upgrade

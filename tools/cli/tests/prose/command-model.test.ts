@@ -1,8 +1,10 @@
 import { describe, expect, test } from "vitest";
 
-import { CommandModelError, canonicalPrompt } from "../../src/prose/index.js";
+import { CommandModelError, canonicalPrompt, parseWriteCommand } from "../../src/prose/index.js";
 
 describe("command model", () => {
+	const writeUsage = "prose write [--out <path>] [--apply] [--run] [--test-iterations <0-3>] [request...]";
+
 	const supportedCases: Array<[Parameters<typeof canonicalPrompt>, string]> = [
 		[["compile", []], "prose compile"],
 		[["compile", ["."]], "prose compile ."],
@@ -18,6 +20,9 @@ describe("command model", () => {
 		],
 		[["write", ["draft a release readiness responsibility"]], "prose write output_mode: source-package-only apply: false post_apply_action: none run_state: in-context terminal_summary: required interactive: false request: 'draft a release readiness responsibility'"],
 		[["write", ["--out", "src/release-readiness", "draft a release readiness responsibility"]], "prose write output_mode: source-package-only apply: false target_path: src/release-readiness post_apply_action: none run_state: in-context terminal_summary: required interactive: false request: 'draft a release readiness responsibility'"],
+		[["write", ["--test-iterations=0", "draft a release readiness responsibility"]], "prose write output_mode: source-package-only apply: false post_apply_action: none run_state: in-context terminal_summary: required interactive: false request: 'draft a release readiness responsibility'"],
+		[["write", ["--test-iterations", "1", "draft a release readiness responsibility"]], "prose write output_mode: source-package-only apply: false post_apply_action: none run_state: in-context terminal_summary: required interactive: false request: 'draft a release readiness responsibility'"],
+		[["write", ["--out", "src/release-readiness", "--run", "--test-iterations=3", "draft a release readiness responsibility"]], "prose write output_mode: source-package-and-files apply: true target_path: src/release-readiness post_apply_action: host-will-run-root run_state: filesystem terminal_summary: required interactive: false request: 'draft a release readiness responsibility'"],
 		[["write", ["--out", "src/release-readiness", "--apply", "draft a release readiness responsibility"]], "prose write output_mode: source-package-and-files apply: true target_path: src/release-readiness post_apply_action: none run_state: filesystem terminal_summary: required interactive: false request: 'draft a release readiness responsibility'"],
 		[["write", ["--out=src/release-readiness", "--run", "draft a release readiness responsibility"]], "prose write output_mode: source-package-and-files apply: true target_path: src/release-readiness post_apply_action: host-will-run-root run_state: filesystem terminal_summary: required interactive: false request: 'draft a release readiness responsibility'"],
 		[["write", ["--out", "src/vulnerability-detection", "--run", "a vulnerability detection system that uses lessons from https://blog.cloudflare.com/cyber-frontier-models/"]], "prose write output_mode: source-package-and-files apply: true target_path: src/vulnerability-detection post_apply_action: host-will-run-root run_state: filesystem terminal_summary: required interactive: false request: 'a vulnerability detection system that uses lessons from https://blog.cloudflare.com/cyber-frontier-models/'"],
@@ -48,6 +53,13 @@ describe("command model", () => {
 		);
 	});
 
+	test("parses write test iteration bounds without passing them to prose-author", () => {
+		expect(parseWriteCommand(["draft"]).testIterations).toBe(1);
+		expect(parseWriteCommand(["--test-iterations=0", "draft"]).testIterations).toBe(0);
+		expect(parseWriteCommand(["--test-iterations", "1", "draft"]).testIterations).toBe(1);
+		expect(parseWriteCommand(["--test-iterations=3", "draft"]).testIterations).toBe(3);
+	});
+
 	const validationCases: Array<[Parameters<typeof canonicalPrompt>, string, string]> = [
 		[["compile", ["one", "two"]], "Unexpected argument 'two'", "prose compile [path] [--out <dir>]"],
 		[["compile", ["--out"]], "Missing value for --out", "prose compile [path] [--out <dir>]"],
@@ -57,19 +69,27 @@ describe("command model", () => {
 		[["run", []], "Missing required argument <file.prose.md|package/handle>", "prose run <file.prose.md|package/handle> [inputs...]"],
 		[["run", ["system.md"]], "Expected <file.prose.md|package/handle>", "prose run <file.prose.md|package/handle> [inputs...]"],
 		[["run", ["script.prose"]], "Expected <file.prose.md|package/handle>", "prose run <file.prose.md|package/handle> [inputs...]"],
-		[["write", []], "Pass text arguments or pipe stdin", "prose write [--out <path>] [--apply] [--run] [request...]"],
-		[["write", ["   "]], "Pass text arguments or pipe stdin", "prose write [--out <path>] [--apply] [--run] [request...]"],
-		[["write", ["--interactive", "draft"]], "does not support interactive flags", "prose write [--out <path>] [--apply] [--run] [request...]"],
-		[["write", ["--no-interactive", "draft"]], "does not support interactive flags", "prose write [--out <path>] [--apply] [--run] [request...]"],
-		[["write", ["--apply", "draft"]], "require --out <path>", "prose write [--out <path>] [--apply] [--run] [request...]"],
-		[["write", ["--run", "draft"]], "require --out <path>", "prose write [--out <path>] [--apply] [--run] [request...]"],
-		[["write", ["--out"]], "Missing value for --out", "prose write [--out <path>] [--apply] [--run] [request...]"],
-		[["write", ["--out=", "draft"]], "Missing value for --out", "prose write [--out <path>] [--apply] [--run] [request...]"],
-		[["write", ["--out", "/tmp/source", "draft"]], "root-relative path", "prose write [--out <path>] [--apply] [--run] [request...]"],
-		[["write", ["--out", "../source", "draft"]], "inside the OpenProse root", "prose write [--out <path>] [--apply] [--run] [request...]"],
-		[["write", ["--out", "source.md", "draft"]], "end in .prose.md", "prose write [--out <path>] [--apply] [--run] [request...]"],
-		[["write", ["--out", "src/source.txt", "draft"]], "end in .prose.md", "prose write [--out <path>] [--apply] [--run] [request...]"],
-		[["write", ["--out", "one", "--out", "two", "draft"]], "Duplicate option", "prose write [--out <path>] [--apply] [--run] [request...]"],
+		[["write", []], "Pass text arguments or pipe stdin", writeUsage],
+		[["write", ["   "]], "Pass text arguments or pipe stdin", writeUsage],
+		[["write", ["--interactive", "draft"]], "does not support interactive flags", writeUsage],
+		[["write", ["--no-interactive", "draft"]], "does not support interactive flags", writeUsage],
+		[["write", ["--test-iterations"]], "Missing value for --test-iterations", writeUsage],
+		[["write", ["--test-iterations", "--apply", "draft"]], "Missing value for --test-iterations", writeUsage],
+		[["write", ["--test-iterations=", "draft"]], "Missing value for --test-iterations", writeUsage],
+		[["write", ["--test-iterations=-1", "draft"]], "between 0 and 3", writeUsage],
+		[["write", ["--test-iterations=4", "draft"]], "between 0 and 3", writeUsage],
+		[["write", ["--test-iterations=1.5", "draft"]], "between 0 and 3", writeUsage],
+		[["write", ["--test-iterations=lots", "draft"]], "between 0 and 3", writeUsage],
+		[["write", ["--test-iterations=1", "--test-iterations=0", "draft"]], "Duplicate option", writeUsage],
+		[["write", ["--apply", "draft"]], "require --out <path>", writeUsage],
+		[["write", ["--run", "draft"]], "require --out <path>", writeUsage],
+		[["write", ["--out"]], "Missing value for --out", writeUsage],
+		[["write", ["--out=", "draft"]], "Missing value for --out", writeUsage],
+		[["write", ["--out", "/tmp/source", "draft"]], "root-relative path", writeUsage],
+		[["write", ["--out", "../source", "draft"]], "inside the OpenProse root", writeUsage],
+		[["write", ["--out", "source.md", "draft"]], "end in .prose.md", writeUsage],
+		[["write", ["--out", "src/source.txt", "draft"]], "end in .prose.md", writeUsage],
+		[["write", ["--out", "one", "--out", "two", "draft"]], "Duplicate option", writeUsage],
 		[["inspect", []], "Missing required argument <run-id>", "prose inspect <run-id>"],
 		[["lint", ["system.md"]], "Expected <file.prose.md>", "prose lint <file.prose.md>"],
 		[["preflight", ["system.md"]], "Expected <file.prose.md>", "prose preflight <file.prose.md>"],
