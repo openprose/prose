@@ -248,6 +248,9 @@ let source_plan = call source-planner
   landscape: landscape
   shape_decision: triage_result.shape_decision
   guidance_report: guidance_report
+  apply: apply
+  target_path: target_path
+  run_after_write: run_after_write
 
 let draft_source_package = call source-author
   source_plan: source_plan
@@ -841,6 +844,10 @@ Repair blocking lint findings without changing the caller's intent.
   `interactive-triage`
 - `guidance_report`: baseline and shape-specific guidance from
   `guidance-loader`
+- `apply`: whether this authoring run may write files
+- `target_path`: optional root-relative destination for generated source
+- `run_after_write`: follow-up run mode; `host-managed` means the shell wrapper
+  will run the generated root file after a successful apply
 
 ### Ensures
 

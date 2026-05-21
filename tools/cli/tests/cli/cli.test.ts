@@ -464,6 +464,58 @@ kind: system
 		}
 	});
 
+	it("defaults codex write apply runs to workspace-write when no sandbox is configured", async () => {
+		const io = memoryStreams();
+		const seenSandboxModes: Array<string | undefined> = [];
+
+		const exitCode = await runForwardedProseCommand({
+			command: "write",
+			argv: ["--out", "src/release-readiness", "--apply", "draft release readiness", "--harness", "codex-sdk"],
+			cwd: "/repo",
+			env: {},
+			stdout: io.streams.stdout,
+			stderr: io.streams.stderr,
+			skillBootstrap: false,
+			skillPreflight: false,
+			harnessFactory: () => ({
+				name: "codex-sdk",
+				async run(_prompt, options) {
+					seenSandboxModes.push(options.env?.PROSE_CODEX_SANDBOX_MODE);
+					return 0;
+				},
+			}),
+		});
+
+		expect(exitCode).toBe(0);
+		expect(seenSandboxModes).toEqual(["workspace-write"]);
+	});
+
+	it("does not override an explicit codex sandbox for write apply runs", async () => {
+		const io = memoryStreams();
+		const seenSandboxModes: Array<string | undefined> = [];
+
+		const exitCode = await runForwardedProseCommand({
+			command: "write",
+			argv: ["--out", "src/release-readiness", "--apply", "draft release readiness", "--harness", "codex-sdk"],
+			cwd: "/repo",
+			env: { PROSE_CODEX_SANDBOX_MODE: "danger-full-access" },
+			stdout: io.streams.stdout,
+			stderr: io.streams.stderr,
+			skillBootstrap: false,
+			skillPreflight: false,
+			harnessFactory: () => ({
+				name: "codex-sdk",
+				async run(_prompt, options) {
+					seenSandboxModes.push(options.env?.PROSE_CODEX_SANDBOX_MODE);
+					return 0;
+				},
+			}),
+		});
+
+		expect(exitCode).toBe(0);
+		expect(seenSandboxModes).toEqual(["danger-full-access"]);
+	});
+
 	it("rejects write flags that would imply unsupported CLI interaction", async () => {
 		const io = memoryStreams();
 		let harnessCalled = false;
