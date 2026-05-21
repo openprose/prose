@@ -163,10 +163,11 @@ rejected; put literal text after `--` or pipe it on stdin.
 
 By default, `prose write` returns a source package for review and does not
 modify the repository. Use `--out <path>` with `--apply` to let the authoring
-run write the generated package after lint passes. Use `--out <path> --run` to
-write the package and then immediately invoke `prose run` on the generated
-root file. Directory targets run `<path>/index.prose.md`; file targets must end
-in `.prose.md`.
+run write the generated package after lint passes. This CLI is a host adapter
+that supports the `--run` macro: `--out <path> --run` writes the package and
+then starts a separate ordinary `prose run` for the generated root file only
+after authoring succeeds. Directory targets run `<path>/index.prose.md`; file
+targets must end in `.prose.md`.
 
 `--out` is a validated, root-relative target contract passed to the authoring
 harness. The CLI rejects absolute paths, parent traversal, and file targets

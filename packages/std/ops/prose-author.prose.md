@@ -51,10 +51,11 @@ decisions instead of guessing.
   caller. When present with `apply: true`, generated files must stay under this
   path. Folder targets use `index.prose.md` as the root file; file targets must
   end in `.prose.md`.
-- `run_after_write`: follow-up run mode. `false` means no follow-up run;
-  `host-managed` means the shell wrapper will run the generated root file after
-  successful apply. The authoring system must not execute the generated root
-  itself.
+- `post_apply_action`: optional non-operational host follow-up marker. `none`
+  means no known host follow-up; `host-will-run-root` means the invoking host
+  adapter intends to run the generated root as a separate top-level
+  `prose run` after successful apply. This marker does not authorize
+  `prose-author` to run, simulate, or publish receipts for the generated root.
 - `run_state`: preferred run-state mode. `prose write` passes `in-context` so
   package-only authoring avoids creating run artifacts in the caller's
   workspace when the host can honor that mode. Apply-enabled shell runs may
@@ -162,6 +163,9 @@ decisions instead of guessing.
   issue trackers, status pages, deploy systems, feature flags, and similar
   integrations are declarations or future runtime tools in the returned
   package, never actions performed by `prose-author`.
+- `post_apply_action` is advisory only. `prose-author` must not execute,
+  simulate, or publish run receipts for the generated root; follow-up execution
+  belongs to the host adapter and ordinary `prose run` semantics.
 
 ### Tools
 
@@ -211,7 +215,7 @@ let authoring_intent = call intent-normalizer
   output_mode: output_mode
   apply: apply
   target_path: target_path
-  run_after_write: run_after_write
+  post_apply_action: post_apply_action
   run_state: run_state
   terminal_summary: terminal_summary
   interactive: interactive
@@ -250,7 +254,7 @@ let source_plan = call source-planner
   guidance_report: guidance_report
   apply: apply
   target_path: target_path
-  run_after_write: run_after_write
+  post_apply_action: post_apply_action
 
 let draft_source_package = call source-author
   source_plan: source_plan
@@ -294,7 +298,7 @@ let assembled = call package-assembler
   guidance_report: guidance_report
   apply: apply
   target_path: target_path
-  run_after_write: run_after_write
+  post_apply_action: post_apply_action
 
 return {
   source_package: assembled.source_package,
@@ -317,8 +321,9 @@ Normalize the caller's rough request into an explicit authoring intent.
 - `output_mode`: caller output mode, usually `source-package-only`
 - `apply`: whether this authoring run may write files, usually `false`
 - `target_path`: optional root-relative destination for generated source
-- `run_after_write`: follow-up run mode, usually `false`; `host-managed` means
-  the shell wrapper will perform the run after a successful apply
+- `post_apply_action`: non-operational host follow-up marker, usually `none`;
+  `host-will-run-root` means the host adapter intends to invoke ordinary
+  `prose run` after successful apply
 - `run_state`: preferred run-state mode, usually `in-context`
 - `terminal_summary`: whether the final status block is required
 - `interactive`: whether targeted follow-up questions are allowed before source
@@ -338,8 +343,8 @@ Normalize the caller's rough request into an explicit authoring intent.
     - output_mode: caller output mode, preserved for downstream authoring
     - apply: caller apply flag, preserved for downstream authoring
     - target_path: caller destination path, preserved for downstream authoring
-    - run_after_write: caller follow-up run mode, preserved for downstream
-      authoring
+    - post_apply_action: caller follow-up marker, preserved for downstream
+      authoring but never executed by `prose-author`
     - run_state: caller run-state preference, preserved for downstream
       authoring
     - terminal_summary: caller terminal-summary requirement, preserved for
@@ -610,8 +615,9 @@ Plan the generated file tree and contracts before drafting source.
   `guidance-loader`
 - `apply`: whether this run may write generated files
 - `target_path`: optional root-relative destination for generated files
-- `run_after_write`: follow-up run mode; `host-managed` means the shell wrapper
-  will run the generated root file after a successful apply
+- `post_apply_action`: non-operational host follow-up marker;
+  `host-will-run-root` means the host adapter intends to run the generated root
+  after successful apply
 
 ### Ensures
 
@@ -846,8 +852,9 @@ Repair blocking lint findings without changing the caller's intent.
   `guidance-loader`
 - `apply`: whether this authoring run may write files
 - `target_path`: optional root-relative destination for generated source
-- `run_after_write`: follow-up run mode; `host-managed` means the shell wrapper
-  will run the generated root file after a successful apply
+- `post_apply_action`: non-operational host follow-up marker;
+  `host-will-run-root` means the host adapter intends to run the generated root
+  after successful apply
 
 ### Ensures
 
@@ -914,8 +921,7 @@ Publish the validated source package and concise next-step notes.
     - `files_written`: `none` when no generated source files were applied, or
       a compact list/count of files written under `target_path`
     - `lint`: `pass`
-    - `next`: recommended command, the run command just triggered by the shell
-      wrapper, or a manual apply step
+    - `next`: recommended command, host follow-up note, or a manual apply step
 
 ### Errors
 
@@ -931,6 +937,9 @@ Publish the validated source package and concise next-step notes.
   concrete files in `files_written`.
 - Do not claim files were written to the caller's repository unless this run
   actually wrote them through an explicitly requested file-writing step.
+- Do not claim a follow-up run happened during authoring. When
+  `post_apply_action` is `host-will-run-root`, report only that the host adapter
+  is expected to invoke ordinary `prose run` after this authoring run succeeds.
 - End every successful package-only response with `final_status_summary` so a
   terminal user can distinguish success from validation failure at a glance.
 - When `terminal_summary` is `required`, treat the final status block as part of

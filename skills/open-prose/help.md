@@ -48,7 +48,7 @@ Options:
 | `prose compile [path] [--out <dir>]` | Compile source into `<openprose-root>/dist/manifest.next.json` |
 | `prose serve` | Serve the active IR as local cron and HTTP trigger adapters |
 | `prose run <file.prose.md>` | Run a service or system |
-| `prose write [--out <path>] [--apply] [--run] [request...]` | Interactive-by-default authoring from rough English/pseudo-Prose into a validated source package; `--out <path> --apply` writes it after lint passes, and `--out <path> --run` writes then runs the generated root file |
+| `prose write [--out <path>] [--apply] [--run] [request...]` | Interactive-by-default authoring from rough English/pseudo-Prose into a validated source package; `--out <path> --apply` writes it after lint passes, and host adapters that support `--run` expand it to write/apply followed by ordinary `prose run <generated-root>` |
 | `prose lint <file.prose.md>` | Validate structure, schema, and contracts |
 | `prose preflight <file.prose.md>` | Check dependencies and environment |
 | `prose test <test.prose.md>` | Run tests with assertions |

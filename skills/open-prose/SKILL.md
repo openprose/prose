@@ -128,7 +128,7 @@ executing the system. The shell executable is the agent runner, e.g.
 | `prose run runtime/judge-responsibility.prose.md` | Resolve from the OpenProse skill root; judge one responsibility from activation context |
 | `prose run <host>/<owner>/<repo>[/path]` | Resolve installed dependency service or system, detect format, then route as above |
 | `prose run std/...` / `co/...` | Expand OpenProse package shorthand, resolve installed dependency service or system, then route as above |
-| `prose write [--out <path>] [--apply] [--run] [request...]` | Interactive-by-default authoring: load `contract-markdown.md`, `guidance/tenets.md`, and `guidance/authoring.md`; run `std/ops/prose-author`; scan the local landscape read-only, decide shape/root/path, load shape-specific guidance, ask a small number of targeted `ask_user` questions when the host can support them, then return a fully validated source package. If the caller or host marks the run non-interactive, return `unresolved-intent` with the missing decisions instead of guessing. Apply generated files only when the caller explicitly passes apply permission, normally through `--out <path> --apply`; `--run` implies apply permission and then runs the generated root file |
+| `prose write [--out <path>] [--apply] [--run] [request...]` | Interactive-by-default authoring: load `contract-markdown.md`, `guidance/tenets.md`, and `guidance/authoring.md`; run `std/ops/prose-author`; scan the local landscape read-only, decide shape/root/path, load shape-specific guidance, ask a small number of targeted `ask_user` questions when the host can support them, then return a fully validated source package. If the caller or host marks the run non-interactive, return `unresolved-intent` with the missing decisions instead of guessing. Apply generated files only when the caller explicitly passes apply permission, normally through `--out <path> --apply`; `--run` is a host-adapter macro that implies apply permission and expands to an ordinary `prose run <generated-root>` only after authoring succeeds |
 | `prose lint <file.prose.md>` | Validate Contract Markdown structure, headers, frontmatter, contracts, shapes, and wiring |
 | `prose preflight <file.prose.md>` | Check dependencies and `### Environment` declarations without executing |
 | `prose test <path>` | Load `contract-markdown.md`, `state/README.md` plus the selected backend, and `prose.md`; run `kind: test` file(s) |
@@ -142,10 +142,12 @@ executing the system. The shell executable is the agent runner, e.g.
 | `prose examples` | List or run bundled examples from `examples/` |
 | Other | Interpret intent and load the smallest relevant spec set |
 
-Shell wrappers may chain forwarded commands only when a single flag names a
-deterministic pipeline, such as `prose write --run` forwarding authoring and
-then the generated root run. The wrapper still must not inspect or execute the
-generated source itself; VM semantics remain in this skill and `prose.md`.
+`prose write --run` is a host-adapter macro. A host that supports it must run
+it as two top-level operations: invoke `prose-author` with apply permission,
+then invoke ordinary `prose run` semantics for the generated root only if
+authoring succeeds. A host that cannot perform this macro must reject
+`prose write --run` before authoring and must not pass the macro into
+`prose-author`.
 
 There is one skill: `open-prose`. Do not look for separate `prose-run`,
 `prose-lint`, `prose-compile`, or `prose-boot` skills.

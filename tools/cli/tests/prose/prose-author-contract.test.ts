@@ -66,6 +66,18 @@ describe("prose-author contract", () => {
 		expect(source).toContain("never actions performed by `prose-author`");
 	});
 
+	it("keeps write-run as a non-operational host follow-up", () => {
+		const source = proseAuthorSource();
+		const normalized = source.replace(/\s+/g, " ");
+
+		expect(source).toContain("post_apply_action");
+		expect(source).toContain("host-will-run-root");
+		expect(normalized).toContain("does not authorize `prose-author` to run");
+		expect(normalized).toContain("must not execute, simulate, or publish run receipts");
+		expect(source).not.toContain("run_after_write");
+		expect(source).not.toContain("host-managed");
+	});
+
 	it("requires a terminal-friendly success summary for prose write", () => {
 		const source = proseAuthorSource();
 
