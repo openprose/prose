@@ -59,6 +59,10 @@ jobs:
         if: ${{ env.SHOULD_RUN == 'true' }}
         uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        if: ${{ env.SHOULD_RUN == 'true' }}
+        uses: pnpm/action-setup@v4
+
       - name: Setup Node
         if: ${{ env.SHOULD_RUN == 'true' }}
         uses: actions/setup-node@v4

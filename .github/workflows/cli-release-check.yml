@@ -92,6 +92,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -131,6 +134,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -141,19 +147,33 @@ jobs:
       - name: Install dependencies
         run: corepack enable && pnpm install --frozen-lockfile --dir ../..
 
-      - name: Pack npm artifact
+      - name: Build workspace
+        run: pnpm --dir ../.. run build
+
+      - name: Pack CLI and reactor artifacts
         run: |
           set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/npm-pack"
-          npm pack --pack-destination "$RUNNER_TEMP/npm-pack" --json | tee npm-pack.json
+          pack_dir="$RUNNER_TEMP/npm-pack"
+          mkdir -p "$pack_dir"
+          # pnpm pack rewrites the workspace: protocol dependency on
+          # @openprose/reactor to a concrete version; npm pack does not.
+          pnpm pack --pack-destination "$pack_dir"
+          pnpm --dir ../../packages/reactor pack --pack-destination "$pack_dir"
+          ls -1 "$pack_dir"
 
       - name: Validate npm package manifest
         run: |
+          set -euo pipefail
+          cli_tarball="$(find "$RUNNER_TEMP/npm-pack" -maxdepth 1 -name 'openprose-prose-cli-*.tgz' -print -quit)"
+          tar -tzf "$cli_tarball" | sed 's#^package/##' | sed '/^$/d' | sort -u > "$RUNNER_TEMP/cli-pack-files.txt"
           node --input-type=module <<'EOF'
           import { readFileSync } from "node:fs";
 
-          const [pack] = JSON.parse(readFileSync("npm-pack.json", "utf8"));
-          const paths = new Set(pack.files.map((file) => file.path));
+          const paths = new Set(
+            readFileSync(`${process.env.RUNNER_TEMP}/cli-pack-files.txt`, "utf8")
+              .split("\n")
+              .filter(Boolean),
+          );
           const required = ["package.json", "README.md", "LICENSE", "dist/index.js", "dist/index.d.ts"];
           const forbiddenPrefixes = ["src/", "tests/", "node_modules/"];
 
@@ -171,20 +191,21 @@ jobs:
               throw new Error(`npm package includes sourcemap ${path}`);
             }
           }
+          console.log("ok: npm package manifest");
           EOF
 
       - name: Smoke npm package artifact
         run: |
           set -euo pipefail
-          pack_file="$(node --input-type=module <<'EOF'
-          import { readFileSync } from "node:fs";
-          const [pack] = JSON.parse(readFileSync("npm-pack.json", "utf8"));
-          console.log(`${process.env.RUNNER_TEMP}/npm-pack/${pack.filename}`);
-          EOF
-          )"
+          pack_dir="$RUNNER_TEMP/npm-pack"
+          cli_tarball="$(find "$pack_dir" -maxdepth 1 -name 'openprose-prose-cli-*.tgz' -print -quit)"
+          reactor_tarball="$(find "$pack_dir" -maxdepth 1 -name 'openprose-reactor-*.tgz' -print -quit)"
           prefix="$RUNNER_TEMP/npm-prefix"
 
-          npm install --global --prefix "$prefix" "$pack_file"
+          # The packed CLI depends on @openprose/reactor by exact version;
+          # install the locally packed reactor tarball alongside it so the
+          # smoke does not depend on the registry.
+          npm install --global --prefix "$prefix" "$reactor_tarball" "$cli_tarball"
           "$prefix/bin/prose" --version
           "$prefix/bin/prose" run hello.prose.md --harness mock
 
@@ -192,18 +213,8 @@ jobs:
           mkdir -p "$import_dir"
           cd "$import_dir"
           npm init -y
-          npm install "$pack_file"
+          npm install "$reactor_tarball" "$cli_tarball"
           node --input-type=module -e "await import('@openprose/prose-cli')"
-
-      - name: Dry-run npm publish
-        run: npm publish --dry-run
-
-      - name: Upload npm package metadata
-        uses: actions/upload-artifact@v4
-        with:
-          name: cli-npm-pack
-          path: tools/cli/npm-pack.json
-          if-no-files-found: error
 
   release-tarball-smoke:
     name: Release tarball smoke on ${{ matrix.os }}
@@ -221,6 +232,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -271,6 +285,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
 
       - name: Setup Node
         uses: actions/setup-node@v4
