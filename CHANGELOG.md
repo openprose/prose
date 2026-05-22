@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`claude-sdk` env-var passthrough** — The `claude-sdk` harness now honors
+  `PROSE_CLAUDE_PERMISSION_MODE` (`default`, `acceptEdits`, `bypassPermissions`,
+  or `plan`) and forwards it to the Claude Agent SDK as `permissionMode`. This
+  mirrors the existing `PROSE_CODEX_*` pattern and unblocks non-interactive
+  `prose run --harness claude-sdk` invocations (CI, conformance runs, scheduled
+  jobs) that previously stalled on per-write permission prompts because
+  `permissionMode` is a query-level SDK option that `settingSources` does not
+  flow into. See `tools/cli/README.md` and
+  `tools/cli/src/harnesses/claude-options.ts`.
+
 ## [0.14.0] - 2026-05-19
 
 ### Added

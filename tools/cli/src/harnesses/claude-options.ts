@@ -1,10 +1,12 @@
+import type { ClaudeSdkQuery } from "./claude-sdk.js";
+
 const CLAUDE_PERMISSION_MODES = ["default", "acceptEdits", "bypassPermissions", "plan"] as const;
 
-export type ClaudePermissionMode = (typeof CLAUDE_PERMISSION_MODES)[number];
+type ClaudeQueryOptions = NonNullable<Parameters<ClaudeSdkQuery>[0]["options"]>;
 
 export function claudeRuntimeOptions(
 	env: Record<string, string | undefined> | undefined,
-): { permissionMode?: ClaudePermissionMode } {
+): Pick<ClaudeQueryOptions, "permissionMode"> {
 	const permissionMode = claudeEnvOption("PROSE_CLAUDE_PERMISSION_MODE", CLAUDE_PERMISSION_MODES, env);
 
 	return {

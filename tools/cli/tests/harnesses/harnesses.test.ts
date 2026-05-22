@@ -350,7 +350,9 @@ describe("claude-sdk harness", () => {
 			},
 		});
 
-		await harness.run("prose status", { ...io.options });
+		// Pass an explicit empty env so the test does not depend on the
+		// host shell's PROSE_CLAUDE_PERMISSION_MODE.
+		await harness.run("prose status", { ...io.options, env: {} });
 
 		expect(calls).toHaveLength(1);
 		const call = calls[0] as { options: Record<string, unknown> };
