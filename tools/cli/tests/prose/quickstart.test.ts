@@ -20,7 +20,9 @@ describe("CLI quickstart", () => {
 
 		expect(quickstart).toContain("incident-briefing-room");
 		expect(quickstart).toContain("local deterministic Reactor demo path");
-		expect(quickstart).toContain("does not claim npm publication");
+		expect(quickstart).toContain("Node.js 20 or newer");
+		expect(quickstart).toContain("corepack enable");
+		expect(quickstart).toContain("pnpm build");
 		expect(quickstart).toContain("prose compile src --harness mock");
 		expect(quickstart).toContain("cp dist/manifest.next.json dist/manifest.active.json");
 		expect(quickstart).toContain("PROSE_REACTOR_LOCAL_STATUS=down prose serve --port 7331 --harness mock");

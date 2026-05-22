@@ -53,6 +53,7 @@ export const R7_CRADLE_PUBLIC_IMPORT_SPECIFIERS_V0 = [
   "@openprose/reactor-cradle/replay/model-gateway",
   "@openprose/reactor-cradle/replay/parity",
   "@openprose/reactor-cradle/scenario/parser",
+  "@openprose/reactor-cradle/scenario",
   "@openprose/reactor-cradle/scenario/runner",
   "@openprose/reactor-cradle/scenario/time",
   "@openprose/reactor-cradle/scenario/types",

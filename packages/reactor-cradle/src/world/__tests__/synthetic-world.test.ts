@@ -30,6 +30,8 @@ test("static synthetic world exposes SDK connector reads from explicit state", (
   equal(first.as_of, "2026-05-18T12:00:00.000Z");
   equal(first.materialized_at, "2026-05-18T12:00:00.000Z");
   equal(first.material_version, 0);
+  equal(typeof first.payload_hash, "string");
+  equal(first.payload_hash?.startsWith("sha256:"), true);
   assertZeroSurprise(first);
 
   const timeAdvance = world.advance({
@@ -51,8 +53,38 @@ test("static synthetic world exposes SDK connector reads from explicit state", (
   deepEqual(second.state, first.state);
   equal(second.materialized_at, first.materialized_at);
   equal(second.material_version, first.material_version);
+  equal(second.payload_hash, first.payload_hash);
   equal(second.surprise.event_index, 1);
   assertZeroSurprise(second);
+});
+
+test("static synthetic world synthesizes semantic payload hashes by default", () => {
+  const world = createSyntheticWorldConnectorV0({
+    initial_as_of: "2026-05-18T12:00:00Z",
+    profile: STATIC_SURPRISE_PROFILE_V0,
+    sources: [
+      {
+        source_id: "source.incident",
+        payload: {
+          status: "green",
+          open_incidents: [],
+        },
+      },
+    ],
+  });
+
+  const initial = readWorld(world, "source.incident", "2026-05-18T12:00:00Z");
+  world.advance({
+    kind: "time",
+    as_of: "2026-05-18T12:15:00Z",
+  });
+  const recheck = readWorld(world, "source.incident", "2026-05-18T12:15:00Z");
+
+  equal(initial.as_of, "2026-05-18T12:00:00.000Z");
+  equal(recheck.as_of, "2026-05-18T12:15:00.000Z");
+  equal(initial.payload_hash, recheck.payload_hash);
+  equal(initial.materialized_at, recheck.materialized_at);
+  equal(initial.payload_hash?.startsWith("sha256:"), true);
 });
 
 test("static profile remains zero across explicit source events", () => {

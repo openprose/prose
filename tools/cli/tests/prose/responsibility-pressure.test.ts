@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -166,6 +166,46 @@ describe("responsibility pressure", () => {
 			expect(first.recorded).toBe(true);
 			expect(second.recorded).toBe(true);
 			expect(readFileSync(first.paths.absolutePressureLogPath, "utf8").trim().split("\n")).toHaveLength(2);
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
+
+	it("serializes concurrent writes without losing pressure records", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-responsibility-pressure-concurrent-"));
+
+		try {
+			const root: OpenProseRoot = { mode: "native", path: ".", absolutePath: temp };
+			const pressures = Array.from({ length: 12 }, (_, index) =>
+				buildResponsibilityPressureRecord({
+					status: {
+						...statusRecord("down"),
+						recordedAt: `2026-05-03T12:${String(index).padStart(2, "0")}:00.000Z`,
+						evidence: [`Concurrent pressure ${index}.`],
+					},
+					recommendedActivationKind: "fulfillment",
+					activationId: "responsibility-1.fulfillment",
+					recordedAt: `2026-05-03T12:${String(index).padStart(2, "0")}:30.000Z`,
+				})!,
+			);
+
+			const results = await Promise.all(
+				pressures.map((record) => recordResponsibilityPressure({ openProseRoot: root, record })),
+			);
+			const paths = results[0]!.paths;
+			const logRecords = readFileSync(paths.absolutePressureLogPath, "utf8")
+				.trim()
+				.split("\n")
+				.map((line) => JSON.parse(line));
+			const latest = JSON.parse(readFileSync(paths.absoluteLatestPressurePath, "utf8"));
+
+			expect(results.every((result) => result.recorded)).toBe(true);
+			expect(logRecords).toHaveLength(pressures.length);
+			expect(new Set(logRecords.map((record) => record.dedupeKey)).size).toBe(pressures.length);
+			expect(pressures.some((record) => record.dedupeKey === latest.dedupeKey)).toBe(true);
+			expect(readdirSync(paths.absolutePressureClaimDirectoryPath).filter((name) => name.endsWith(".json"))).toHaveLength(
+				pressures.length,
+			);
 		} finally {
 			rmSync(temp, { recursive: true, force: true });
 		}

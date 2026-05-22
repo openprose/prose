@@ -1,10 +1,11 @@
 {
   "package": "@openprose/reactor",
   "version": "0.1.0-rc.1",
-  "packageTreeSha256": "a29444072fb0a02a61a9376bf3c942042afba370cc9c4d2e02f8ffb37b9301a2",
+  "packageTreeSha256": "c3d67bf600ff66563b0463f9325cd2fa288c3ee7b5a2d05477d89fd1fa8bba0c",
   "checkedFiles": [
     "package.json",
     "README.md",
+    "ADOPTION.md",
     "dist/index.js",
     "dist/index.d.ts",
     "dist/composition/index.js",

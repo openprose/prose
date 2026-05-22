@@ -39,6 +39,7 @@ export const CRADLE_PUBLIC_EXPORT_SUBPATHS = Object.freeze([
   './replay/model-gateway',
   './replay/parity',
   './scenario/parser',
+  './scenario',
   './scenario/runner',
   './scenario/time',
   './scenario/types',

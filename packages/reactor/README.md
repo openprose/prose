@@ -6,8 +6,10 @@ forking, evidence review, and package verification without changing OpenProse
 source syntax.
 
 This README describes the `0.1.0-rc.1` package surface. It is an OSS release
-candidate; the stable `0.1.0` launch waits for provenance publication and
-stranger-run verification.
+candidate that is already published on npm and has passed first-contact
+validation. Start with the
+[Reactor v0.1 adoption contract](./ADOPTION.md) for install commands,
+supported boundaries, and the golden path.
 
 ## v0.1 Status
 
@@ -36,14 +38,10 @@ What is designed and partial:
 - Provider parity is recorded, not a live runtime matrix. Cradle carries
   deterministic provider parity doubles and one live-recorded K1 cassette, but
   this package does not perform runtime variable-depth ensemble judging.
-- The tagged publish gate is wired for provenance publication, but no npm
-  publication has been run for this worktree.
+- The tagged publish gate is wired for trusted publishing with npm provenance.
 
-Deferred to v0.2 or external gates:
+Roadmap after v0.1:
 
-- Actual npm publication and provenance until a release tag and npm auth or
-  trusted publishing are available.
-- The stranger run that verifies both local demos outside the authoring team.
 - Production ingress, fulfillment, and oracle layers.
 - Runtime variable-depth ensemble judging, Postgres parity, and a non-null
   signer adapter.
@@ -120,40 +118,108 @@ Create an SDK instance with explicit adapters. The SDK does not install hidden
 network, model, agent, sandbox, or storage defaults. In v0.1, omitting `signer`
 is represented explicitly as the null signer state
 `{ scheme: "none", null_reason: "no-signer-adapter-configured" }`; real signing
-adapters are deferred:
+adapters are planned after v0.1.
 
-```ts
-import { createReactor, type ReactorAdaptersV0 } from "@openprose/reactor/sdk";
+```js
+import { createHash } from "node:crypto";
+import { createReactor } from "@openprose/reactor/sdk";
+import { verifyReceiptV0 } from "@openprose/reactor/receipt";
 
-const adapters: ReactorAdaptersV0 = {
-  clock: { now: () => "2026-05-19T00:00:00Z" },
-  storage: {
-    appendReceipt: () => undefined,
-    listReceipts: () => [],
-    readRegistry: () => ({
-      contract_revision:
-        "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-      policy_artifact_id: "policy.incident-briefing",
-      policy_artifact_identity: "incident-briefing",
-      policy_artifact_namespace: "policy.static",
-      policy_artifact_revision: "policy-revision-1",
-      policy_artifact_validation_state: "validated",
-    }),
+const sha256 = (value) =>
+  `sha256:${createHash("sha256").update(value).digest("hex")}`;
+const CONTRACT = sha256("incident-briefing-contract");
+const EVIDENCE = sha256("incident-briefing-state:quiet");
+const POLICY = sha256("incident-briefing-policy");
+let now = "2026-05-18T12:00:00.000Z";
+let registry = {
+  contract_revision: CONTRACT,
+  policy_artifact_id: "policy.incident-briefing",
+  policy_artifact_identity: "policy.incident-briefing",
+  policy_artifact_namespace: "policy.readme",
+  policy_artifact_revision: "1",
+  policy_artifact_validation_state: "validated",
+  policy_artifact_content_hash: POLICY,
+  compiled_evidence_plan: {
+    responsibility_id: "responsibility.incident-briefing",
+    contract_revision: CONTRACT,
+    policy_artifact_namespace: "policy.readme",
+    policy_artifact_revision: "1",
+    plan_revision: "readme-plan-1",
+    as_of: now,
+    evidence_order: "declared",
+    sources: [
+      { id: "incident-briefing-state", kind: "adapter", required: true },
+    ],
   },
-  modelGateway: { invoke: (request) => ({ payload: request.payload }) },
-  agentSdk: { launch: (request) => ({ payload: request.payload }) },
-  sandbox: { run: () => ({ exit_code: 0, stdout: "", stderr: "" }) },
-  connectors: { read: () => ({ payload: null }) },
-  eventSink: { emit: () => undefined },
+  forecast_schedule: {
+    responsibility_id: "responsibility.incident-briefing",
+    contract_revision: CONTRACT,
+    memo_key: "readme-seed",
+    evidence_input_ids: [EVIDENCE],
+    next_evidence_recheck: "2026-05-19T12:00:00.000Z",
+    next_plan_recheck: "2026-05-25T12:00:00.000Z",
+  },
 };
-
+const receipts = [];
 const reactor = createReactor({
   responsibility_id: "responsibility.incident-briefing",
-  adapters,
+  adapters: {
+    clock: { now: () => now },
+    storage: {
+      appendReceipt: (receipt) => receipts.push(receipt),
+      listReceipts: () => [...receipts],
+      readRegistry: () => registry,
+      writeRegistry: (next) => {
+        registry = next;
+      },
+    },
+    modelGateway: {
+      invoke: () => ({
+        payload: {
+          status: "up",
+          confidence: {
+            value: 0.91,
+            derivation_method: "readme-local",
+            label_source: "readme",
+          },
+          cost_tags: { tags: ["readme-sdk-quickstart"] },
+        },
+        usage: {
+          provider: "local",
+          model: "readme-shallow",
+          tokens: { fresh: 17, reused: 3 },
+        },
+      }),
+    },
+    agentSdk: { launch: (request) => ({ payload: request.payload }) },
+    sandbox: { run: () => ({ exit_code: 0, stdout: "", stderr: "" }) },
+    connectors: {
+      read: () => ({ payload: { status: "quiet" }, payload_hash: EVIDENCE }),
+    },
+    eventSink: { emit: () => undefined },
+  },
 });
 
-reactor.ingest({ kind: "tick" });
+const event = {
+  kind: "real-input",
+  evidence: [{ source_id: "incident-briefing-state", content_hash: EVIDENCE }],
+};
+const first = reactor.ingest(event);
+now = "2026-05-18T12:15:00.000Z";
+const second = reactor.ingest(event);
+
+for (const receipt of reactor.receipts()) {
+  const verified = verifyReceiptV0(receipt);
+  if (!verified.ok) throw new Error(verified.errors.join("; "));
+}
 const exitBundle = reactor.export();
+if ("ok" in exitBundle && exitBundle.ok === false) {
+  throw new Error(exitBundle.errors.join("; "));
+}
+
+console.log(first.outcome); // fresh-judge-receipt
+console.log(second.outcome); // memo-hit-receipt
+console.log("export ok");
 ```
 
 Evaluate a validated policy artifact before running B3 backstops:
@@ -220,12 +286,11 @@ artifacts into a temporary offline consumer and expects `tokens.fresh=46`,
 
 ## Current Boundaries
 
-- This README describes the release-candidate package surface; the stable npm
-  release waits for registry-visible provenance and stranger-run evidence.
+- This README describes the published release-candidate package surface.
 - GitHub Actions contain a tagged publish gate that relies on npm trusted
   publishing/OIDC and rejects tag/package-version mismatches.
 - The package does not include the CLI implementation; local CLI
   `serve/status` evidence lives in the companion OpenProse CLI worktree.
 - Postgres parity, production adapter release, live provider/model matrix, and
   deployment checks are still outside this package surface.
-- `cost.provider_norm` remains the deferred receipt v0 normalization field.
+- `cost.provider_norm` remains a future receipt v0 normalization field.

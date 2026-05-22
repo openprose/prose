@@ -44,7 +44,7 @@ test('release-candidate preflight builds deterministic bundle and report', async
   );
   assert.match(first.reportMarkdown, /Reactor Release Candidate Evidence Bundle/);
   assert.match(first.reportMarkdown, /Reactor imported entrypoints: 11/);
-  assert.match(first.reportMarkdown, /Cradle imported entrypoints: 23/);
+  assert.match(first.reportMarkdown, /Cradle imported entrypoints: 24/);
   assert.match(first.reportMarkdown, /release-readiness-example-smoke/);
 });
 

@@ -77,7 +77,7 @@ test("builds a deterministic R7 release-candidate evidence bundle", () => {
   match(first.content_hash, /^sha256:[a-f0-9]{64}$/);
   match(report, /Reactor Release Candidate Evidence Bundle/);
   match(report, /Reactor imported entrypoints: 11/);
-  match(report, /Cradle imported entrypoints: 23/);
+  match(report, /Cradle imported entrypoints: 24/);
   match(report, /release-readiness-example-smoke/);
   match(report, /Live model matrix: not-run/);
 });

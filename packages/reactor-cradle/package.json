@@ -82,6 +82,10 @@
       "types": "./dist/scenario/parser.d.ts",
       "default": "./dist/scenario/parser.js"
     },
+    "./scenario": {
+      "types": "./dist/scenario/index.d.ts",
+      "default": "./dist/scenario/index.js"
+    },
     "./scenario/runner": {
       "types": "./dist/scenario/runner.d.ts",
       "default": "./dist/scenario/runner.js"

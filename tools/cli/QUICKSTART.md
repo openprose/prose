@@ -1,25 +1,31 @@
 # Prose CLI Quickstart
 
 This is the local deterministic Reactor demo path for the CLI worktree. It
-does not claim npm publication, live-model fulfillment content, hosted
-production ingress, or stranger-run evidence. It exercises the bundled
-`incident-briefing-room` example with local adapters and writes Reactor
-receipts on disk.
+uses the bundled `incident-briefing-room` example with local adapters and
+writes Reactor receipts on disk. The path is intentionally local: it proves
+compile, serve, status projection, receipt production, and fulfillment dispatch
+without claiming hosted ingress or live-model fulfillment quality.
+
+## Environment Prerequisites
+
+- Node.js 20 or newer.
+- Corepack enabled (`corepack enable`) so the repo uses `pnpm@9.15.0`.
+- A prepared checkout of <https://github.com/openprose/prose>.
 
 ## Install From A Prepared Checkout
 
 ```bash
 cd /path/to/prose
+corepack enable
 pnpm install
-pnpm --filter @openprose/prose-cli build
+pnpm build
 cd tools/cli
 npm link
 prose --help
 ```
 
-The current release-candidate CLI package is tested from the prepared
-worktree. The public npm install path belongs to the release gate. Until that
-gate lands, use the checkout install above when reproducing this quickstart.
+The checkout build compiles the Reactor packages, Cradle, and the CLI in the
+same order used by CI.
 
 ## Copy The Bundled Example
 

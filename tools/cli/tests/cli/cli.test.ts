@@ -632,6 +632,62 @@ describe("runCompileCommand", () => {
 		}
 	});
 
+	it("emits a diagnostic when a gateway drops extra Receives routes", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-compile-extra-receives-"));
+		const io = memoryStreams();
+
+		try {
+			writeResponsibilitySource(temp);
+			writeFileSync(
+				join(temp, "src/daily-check-events.prose.md"),
+				`---
+name: daily-check-events
+kind: gateway
+---
+
+### Receives
+
+- POST /daily/check
+- POST /daily/check/alternate
+
+### Emits
+
+- daily-check.evidence-change
+
+### Payload
+
+Daily check evidence changed.
+`,
+			);
+
+			const exitCode = await runCompileCommand({
+				argv: ["src", "--harness", "mock"],
+				cwd: temp,
+				env: {},
+				stdout: io.streams.stdout,
+				stderr: io.streams.stderr,
+				skillBootstrap: false,
+				skillPreflight: false,
+			});
+
+			expect(exitCode).toBe(0);
+			const manifest = JSON.parse(readFileSync(join(temp, "dist/manifest.next.json"), "utf8")) as {
+				diagnostics: Array<{ severity: string; message: string; sourcePath?: string }>;
+				triggers: Array<{ method?: string; path?: string }>;
+			};
+			expect(manifest.triggers).toContainEqual(expect.objectContaining({ method: "POST", path: "/daily/check" }));
+			expect(manifest.diagnostics).toContainEqual(
+				expect.objectContaining({
+					severity: "warning",
+					message: expect.stringContaining("extra Receives route POST /daily/check/alternate"),
+					sourcePath: "src/daily-check-events.prose.md",
+				}),
+			);
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
+
 	it("accepts a valid manifest when the compiler harness exits nonzero after writing it", async () => {
 		const temp = mkdtempSync(join(tmpdir(), "prose-compile-valid-nonzero-"));
 		const io = memoryStreams();

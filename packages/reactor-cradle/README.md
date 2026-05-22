@@ -7,8 +7,10 @@ for the normal test path.
 
 The Cradle is a test and evidence package, not the production Reactor runtime.
 This README describes the `0.1.0-rc.1` package surface. It is an OSS release
-candidate; the stable `0.1.0` launch waits for provenance publication and
-stranger-run verification.
+candidate that is already published on npm and has passed first-contact
+validation. Start with the
+[Reactor v0.1 adoption contract](../reactor/ADOPTION.md) for install commands,
+supported boundaries, and the golden path.
 
 ## v0.1 Status
 
@@ -40,14 +42,10 @@ What is designed and partial:
 - Provider parity is recorded, not a live runtime matrix. Cradle carries
   deterministic provider parity doubles and one live-recorded K1 cassette, but
   the runtime does not perform variable-depth live ensemble judging.
-- The tagged publish gate is wired for provenance publication, but no npm
-  publication has been run for this worktree.
+- The tagged publish gate is wired for trusted publishing with npm provenance.
 
-Deferred to v0.2 or external gates:
+Roadmap after v0.1:
 
-- Actual npm publication and provenance until a release tag and npm auth or
-  trusted publishing are available.
-- The stranger run that verifies both local demos outside the authoring team.
 - Production ingress, fulfillment, and oracle layers.
 - Runtime variable-depth ensemble judging, Postgres parity, and a non-null
   signer adapter.
@@ -88,6 +86,7 @@ The packed artifact exposes these CommonJS entrypoints:
 - `@openprose/reactor-cradle/rollback`
 - `@openprose/reactor-cradle/replay/model-gateway`
 - `@openprose/reactor-cradle/replay/parity`
+- `@openprose/reactor-cradle/scenario`
 - `@openprose/reactor-cradle/scenario/parser`
 - `@openprose/reactor-cradle/scenario/runner`
 - `@openprose/reactor-cradle/scenario/time`
@@ -224,11 +223,11 @@ observed counts for the current worktree instead of reusing stale numbers.
 It does not publish, push, contact a registry, run a live provider/model
 matrix, or claim remote CI provenance.
 
-## Explicit Deferred Rows
+## Explicit Roadmap Rows
 
 The current release-candidate evidence keeps these rows unrepresented:
 
-- `down-after-budget-exhaustion`: deferred until typed retry-budget and
+- `down-after-budget-exhaustion`: roadmap until typed retry-budget and
   pressure-dispatch primitives exist.
 - `postgres-parity`: future work; memory and filesystem parity rows are the
   represented rows today.
@@ -259,8 +258,7 @@ flat-tokens smoke runs from the same packed artifacts and expects
 
 ## Current Boundaries
 
-- This README describes the release-candidate package surface; the stable npm
-  release waits for registry-visible provenance and stranger-run evidence.
+- This README describes the published release-candidate package surface.
 - The Cradle is a deterministic harness and evidence package, not a production
   hosted service.
 - The package does not include the CLI implementation; local CLI

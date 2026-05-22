@@ -318,10 +318,10 @@ export class SyntheticWorldConnectorV0 implements ReactorConnectorAdapterV0 {
       payload: payload.value,
       payload_canonical: payload.canonical,
     };
-    const revision: SourceRevision =
-      seed.payload_hash === undefined
-        ? revisionBase
-        : { ...revisionBase, payload_hash: seed.payload_hash };
+    const revision: SourceRevision = {
+      ...revisionBase,
+      payload_hash: seed.payload_hash ?? payloadContentHash(payload.canonical),
+    };
 
     this.#sources.set(seed.source_id, {
       source_id: seed.source_id,

@@ -59,6 +59,7 @@
     "!dist/**/*.test.js",
     "!dist/**/*.test.d.ts",
     "!dist/**/*.test.d.ts.map",
+    "ADOPTION.md",
     "README.md"
   ],
   "sideEffects": false,

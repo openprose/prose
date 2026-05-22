@@ -25,8 +25,8 @@ test('flat-tokens example source declares npm run example', async () => {
   );
 
   assert.equal(packageJson.scripts.example, 'node flat-tokens.example.mjs');
-  assert.equal(packageJson.dependencies['@openprose/reactor'], 'workspace:*');
-  assert.equal(packageJson.dependencies['@openprose/reactor-cradle'], 'workspace:*');
+  assert.equal(packageJson.dependencies['@openprose/reactor'], '0.1.0-rc.1');
+  assert.equal(packageJson.dependencies['@openprose/reactor-cradle'], '0.1.0-rc.1');
 });
 
 test('flat-tokens smoke accepts a packed-artifact consumer with valid output', async () => {

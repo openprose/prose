@@ -1,6 +1,6 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { appendFile, mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
-import { posix, resolve } from "node:path";
+import { dirname, posix, resolve } from "node:path";
 import type { OpenProseRoot } from "./openprose-root.js";
 import type { RepositoryIrActivationIntentKind } from "./repository-ir.js";
 import type { ResponsibilityStatusRecord, ResponsibilityStatusValue } from "./responsibility-status.js";
@@ -78,6 +78,7 @@ const pressureActivationKinds: readonly ResponsibilityPressureActivationKind[] =
 	"retry",
 	"escalation",
 ];
+const pressureWriteQueues = new Map<string, Promise<void>>();
 
 export function buildResponsibilityPressurePaths(
 	openProseRoot: OpenProseRoot,
@@ -201,6 +202,16 @@ export async function recordResponsibilityPressure(options: {
 	}
 
 	const paths = buildResponsibilityPressurePaths(options.openProseRoot, options.record.responsibilityId);
+	return enqueueResponsibilityPressureWrite(paths.responsibilityId, () =>
+		recordResponsibilityPressureSerialized({ record: options.record, paths }),
+	);
+}
+
+async function recordResponsibilityPressureSerialized(options: {
+	record: ResponsibilityPressureRecord;
+	paths: ResponsibilityPressurePaths;
+}): Promise<ResponsibilityPressureRecordResult> {
+	const { paths } = options;
 	const latest = await readLatestPressure(paths);
 	if (latest !== undefined && pressureClaimsMatch(latest, options.record)) {
 		return { paths, record: latest, recorded: false };
@@ -225,6 +236,24 @@ export async function recordResponsibilityPressure(options: {
 	await writeJsonFileAtomic(paths.absoluteLatestPressurePath, options.record);
 	await appendFile(paths.absolutePressureLogPath, `${JSON.stringify(options.record)}\n`, "utf8");
 	return { paths, record: options.record, recorded: true };
+}
+
+async function enqueueResponsibilityPressureWrite<T>(responsibilityId: string, operation: () => Promise<T>): Promise<T> {
+	const previous = pressureWriteQueues.get(responsibilityId) ?? Promise.resolve();
+	const run = previous.catch(() => undefined).then(operation);
+	const next = run.then(
+		() => undefined,
+		() => undefined,
+	);
+	pressureWriteQueues.set(responsibilityId, next);
+
+	try {
+		return await run;
+	} finally {
+		if (pressureWriteQueues.get(responsibilityId) === next) {
+			pressureWriteQueues.delete(responsibilityId);
+		}
+	}
 }
 
 async function readLatestPressure(paths: ResponsibilityPressurePaths): Promise<ResponsibilityPressureRecord | undefined> {
@@ -304,17 +333,24 @@ function fingerprintPressureClaim(record: ResponsibilityPressureRecord): string 
 }
 
 async function writeJsonFileAtomic(path: string, value: unknown): Promise<void> {
-	const temporaryPath = `${path}.${process.pid}.${Date.now()}.tmp`;
-	try {
-		await writeFile(temporaryPath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
-		await rename(temporaryPath, path);
-	} catch (error) {
+	for (let attempt = 0; attempt < 2; attempt += 1) {
+		const temporaryPath = `${path}.${process.pid}.${randomUUID()}.tmp`;
 		try {
-			await unlink(temporaryPath);
-		} catch {
-			// Best-effort cleanup; preserve the original write/rename failure.
+			await writeFile(temporaryPath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+			await rename(temporaryPath, path);
+			return;
+		} catch (error) {
+			try {
+				await unlink(temporaryPath);
+			} catch {
+				// Best-effort cleanup; preserve the original write/rename failure.
+			}
+			if (attempt === 0 && isNodeError(error) && error.code === "ENOENT") {
+				await mkdir(dirname(path), { recursive: true });
+				continue;
+			}
+			throw error;
 		}
-		throw error;
 	}
 }
 

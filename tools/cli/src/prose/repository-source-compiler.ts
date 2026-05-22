@@ -272,7 +272,18 @@ function compileGatewayTriggers(
 	const seen = new Set<string>();
 	for (const gateway of gateways) {
 		const receives = bulletItems(gateway.sections.get("receives") ?? "");
-		const receivedHttp = receives.map(parseHttpReceive).find((receive) => receive !== undefined);
+		const receivedHttpRoutes = receives.flatMap((receive) => {
+			const parsed = parseHttpReceive(receive);
+			return parsed === undefined ? [] : [parsed];
+		});
+		const receivedHttp = receivedHttpRoutes[0];
+		for (const dropped of receivedHttpRoutes.slice(1)) {
+			diagnostics.push({
+				severity: "warning",
+				message: `Gateway '${gateway.name ?? slugFromSourcePath(gateway.sourcePath)}' declares extra Receives route ${dropped.method} ${dropped.path}; only the first HTTP route ${receivedHttp?.method ?? "unknown"} ${receivedHttp?.path ?? "unknown"} lowers into repository IR in v0.`,
+				sourcePath: gateway.sourcePath,
+			});
+		}
 		const emits = bulletItems(gateway.sections.get("emits") ?? "");
 
 		for (const emitted of emits) {
