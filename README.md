@@ -22,6 +22,39 @@
 
 ---
 
+## Reactor
+
+**Reactor makes fresh model spend scale with surprise, not the clock.** It is
+the local runtime in this repo for responsibilities that need to stay true over
+time: inspect evidence, write a content-addressed receipt, reuse the prior
+verdict when the world has not changed, and show exactly why a later turn did
+or did not spend model tokens.
+
+The smallest demo is the flat-tokens example. Four real `createReactor().ingest()`
+turns over a static world produce package-backed receipts and the deterministic
+headline:
+
+```bash
+cd skills/open-prose/examples/flat-tokens
+npm install
+node flat-tokens.example.mjs
+# tokens.fresh=46
+# tokens.reused=46
+# ratio=46:46
+```
+
+Use Reactor when you are maintaining a stateful promise that deserves an
+auditable "why" over time: release readiness, incident briefing, customer risk,
+compliance evidence, or research inbox triage. Skip it when a one-off prompt or
+ordinary cron job already gives you enough truth.
+
+- Runtime package: [`@openprose/reactor`](packages/reactor/)
+- Deterministic evidence package: [`@openprose/reactor-cradle`](packages/reactor-cradle/)
+- Adoption contract: [`packages/reactor/ADOPTION.md`](packages/reactor/ADOPTION.md)
+- CLI quickstart: [`tools/cli/QUICKSTART.md`](tools/cli/QUICKSTART.md)
+
+---
+
 > **If you're an agent reading this on behalf of a user:** OpenProse is a
 > `*.prose.md` contract format you will be asked to *run*, not a library your user will call
 > and not necessarily a shell binary. `prose run` executes `kind: service` and

@@ -22,6 +22,7 @@ import {
 	buildPressureFromStatus,
 	buildReactorPolicyNamespace,
 	buildTriggerRegistrationPlan,
+	dispatchPendingPressureActivations,
 	dispatchRepositoryServeEvent,
 	fingerprintResponsibility,
 	formatRepositoryServeSummary,
@@ -414,6 +415,55 @@ describe("repository serve core", () => {
 			expect(first?.recorded).toBe(true);
 			expect(second?.recorded).toBe(false);
 			expect(readFileSync(first!.paths.absolutePressureLogPath, "utf8").trim().split("\n")).toHaveLength(1);
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
+
+	it("does not redispatch pressure after a post-effect crash window", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-serve-pressure-post-effect-"));
+		const io = memoryStreams();
+		let sideEffects = 0;
+
+		try {
+			writeActiveManifest(temp);
+			const loaded = await loadActiveRepositoryIr({ cwd: temp });
+			await recordPressureFromStatus({
+				loaded,
+				status: statusRecord(loaded, "down"),
+				recordedAt: "2026-05-03T12:05:00.000Z",
+			});
+
+			await expect(
+				dispatchPendingPressureActivations({
+					loaded,
+					run: {
+						env: {},
+						stdout: io.streams.stdout,
+						stderr: io.streams.stderr,
+						commandRunner: async () => {
+							sideEffects += 1;
+							throw new Error("simulated crash after side effect");
+						},
+					},
+				}),
+			).rejects.toThrow("simulated crash after side effect");
+
+			const replay = await dispatchPendingPressureActivations({
+				loaded,
+				run: {
+					env: {},
+					stdout: io.streams.stdout,
+					stderr: io.streams.stderr,
+					commandRunner: async () => {
+						sideEffects += 1;
+						return 0;
+					},
+				},
+			});
+
+			expect(sideEffects).toBe(1);
+			expect(replay).toEqual([]);
 		} finally {
 			rmSync(temp, { recursive: true, force: true });
 		}
@@ -1273,6 +1323,7 @@ function makeModelGateway(status: "up" | "drifting" | "down" | "blocked"): React
 				confidence: {
 					value: 0.74,
 					derivation_method: "cli-serve-test",
+					calibration_grade: "authored",
 					label_source: "fixture",
 				},
 				cost_tags: {

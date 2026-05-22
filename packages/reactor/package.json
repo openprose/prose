@@ -1,7 +1,7 @@
 {
   "name": "@openprose/reactor",
   "version": "0.1.0-rc.1",
-  "description": "Ideal Reactor Harness runtime spine for OpenProse.",
+  "description": "OpenProse Reactor runtime: fresh model spend scales with surprise, not the clock.",
   "type": "commonjs",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

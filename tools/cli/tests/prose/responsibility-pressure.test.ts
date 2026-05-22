@@ -15,6 +15,10 @@ import {
 	type OpenProseRoot,
 	type ResponsibilityStatusRecord,
 } from "../../src/prose/index.js";
+import {
+	claimResponsibilityPressureDispatch,
+	startResponsibilityPressureDispatchEffect,
+} from "../../src/prose/responsibility-pressure-dispatch.js";
 
 describe("responsibility pressure", () => {
 	it("does not create pressure for up status", () => {
@@ -206,6 +210,47 @@ describe("responsibility pressure", () => {
 			expect(readdirSync(paths.absolutePressureClaimDirectoryPath).filter((name) => name.endsWith(".json"))).toHaveLength(
 				pressures.length,
 			);
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
+
+	it("does not reclaim a dispatch after fulfillment effect has started", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-pressure-dispatch-started-"));
+
+		try {
+			const root: OpenProseRoot = { mode: "native", path: ".", absolutePath: temp };
+			const pressure = buildResponsibilityPressureRecord({
+				status: statusRecord("down"),
+				recommendedActivationKind: "fulfillment",
+				activationId: "responsibility-1.fulfillment",
+				recordedAt: "2026-05-03T12:05:00.000Z",
+			})!;
+
+			const claim = await claimResponsibilityPressureDispatch({
+				openProseRoot: root,
+				pressure,
+				activationId: "responsibility-1.fulfillment",
+				claimedAt: "2026-05-03T12:05:01.000Z",
+			});
+			expect(claim.claimed).toBe(true);
+			const started = await startResponsibilityPressureDispatchEffect({
+				claim,
+				effectStartedAt: "2026-05-03T12:05:02.000Z",
+			});
+			expect(started.record.effectStartedAt).toBe("2026-05-03T12:05:02.000Z");
+
+			const restartClaim = await claimResponsibilityPressureDispatch({
+				openProseRoot: root,
+				pressure,
+				activationId: "responsibility-1.fulfillment",
+				reclaimIncomplete: true,
+			});
+
+			expect(restartClaim.claimed).toBe(false);
+			expect(restartClaim.record.effectStartedAt).toBe("2026-05-03T12:05:02.000Z");
+			expect(restartClaim.record.completedAt).toBeUndefined();
+			expect(restartClaim.record.exitCode).toBeUndefined();
 		} finally {
 			rmSync(temp, { recursive: true, force: true });
 		}

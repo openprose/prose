@@ -18,6 +18,7 @@ export interface ResponsibilityPressureDispatchRecord {
 	responsibilityId: string;
 	activationId: string;
 	claimedAt: string;
+	effectStartedAt?: string;
 	completedAt?: string;
 	exitCode?: number;
 }
@@ -132,6 +133,21 @@ export async function completeResponsibilityPressureDispatch(options: {
 	return record;
 }
 
+export async function startResponsibilityPressureDispatchEffect(options: {
+	claim: ResponsibilityPressureDispatchClaimResult;
+	effectStartedAt?: string;
+}): Promise<ResponsibilityPressureDispatchClaimResult> {
+	const record: ResponsibilityPressureDispatchRecord = {
+		...options.claim.record,
+		effectStartedAt: options.effectStartedAt ?? new Date().toISOString(),
+	};
+	await writeFile(options.claim.path, `${JSON.stringify(record, null, 2)}\n`, "utf8");
+	return {
+		...options.claim,
+		record,
+	};
+}
+
 export function buildResponsibilityPressureDispatchPath(
 	openProseRoot: OpenProseRoot,
 	pressure: Pick<ResponsibilityPressureRecord, "responsibilityId" | "dedupeKey">,
@@ -155,6 +171,7 @@ async function readPressureDispatchRecord(path: string): Promise<ResponsibilityP
 		typeof parsed.responsibilityId !== "string" ||
 		typeof parsed.activationId !== "string" ||
 		typeof parsed.claimedAt !== "string" ||
+		(parsed.effectStartedAt !== undefined && typeof parsed.effectStartedAt !== "string") ||
 		(parsed.completedAt !== undefined && typeof parsed.completedAt !== "string") ||
 		(parsed.exitCode !== undefined && !Number.isInteger(parsed.exitCode))
 	) {
@@ -175,6 +192,7 @@ function isIncompleteDispatchClaim(
 		record.dedupeKey === options.pressure.dedupeKey &&
 		record.responsibilityId === options.pressure.responsibilityId &&
 		record.activationId === options.activationId &&
+		record.effectStartedAt === undefined &&
 		record.completedAt === undefined &&
 		record.exitCode === undefined
 	);

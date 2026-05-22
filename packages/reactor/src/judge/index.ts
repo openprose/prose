@@ -1,4 +1,5 @@
 import type {
+  ReceiptCalibrationGradeV0,
   ContentHashV0,
   ReceiptBlockedV0,
   ReceiptEventCauseV0,
@@ -52,6 +53,11 @@ const INTERRUPT_CAUSES = new Set([
   "needs-input",
   "contract-declared",
 ] as const);
+const CALIBRATION_GRADES = new Set<ReceiptCalibrationGradeV0>([
+  "authored",
+  "accrued",
+  "none",
+]);
 
 export function runShallowJudgeV0(
   input: ShallowJudgeV0Input,
@@ -107,13 +113,31 @@ function readVerdict(payload: unknown): ReceiptVerdictV0 {
   const labelSource =
     readNonEmptyString(confidenceRecord["label_source"]) ?? "no-anchor-v0.1";
   const blocked = readBlocked(status, record["blocked"]);
+  const calibrationGrade = readCalibrationGrade(confidenceRecord["calibration_grade"]);
+
+  if (status !== "blocked" && calibrationGrade === "none") {
+    return {
+      status: "blocked",
+      confidence: {
+        value: 0,
+        derivation_method: `${derivationMethod}:fail-safe`,
+        calibration_grade: calibrationGrade,
+        label_source: labelSource,
+      },
+      blocked: {
+        reason: "calibration-unattainable",
+        fix_target: "contract-author",
+        interrupt_cause: "needs-judgment",
+      },
+    };
+  }
 
   return {
     status,
     confidence: {
       value: confidenceValue,
       derivation_method: derivationMethod,
-      calibration_grade: "none",
+      calibration_grade: calibrationGrade,
       label_source: labelSource,
     },
     ...(blocked === undefined ? {} : { blocked }),
@@ -124,6 +148,12 @@ function readStatus(value: unknown): ReceiptVerdictStatusV0 {
   return typeof value === "string" && VERDICT_STATUSES.has(value as ReceiptVerdictStatusV0)
     ? (value as ReceiptVerdictStatusV0)
     : "blocked";
+}
+
+function readCalibrationGrade(value: unknown): ReceiptCalibrationGradeV0 {
+  return typeof value === "string" && CALIBRATION_GRADES.has(value as ReceiptCalibrationGradeV0)
+    ? (value as ReceiptCalibrationGradeV0)
+    : "none";
 }
 
 function readBlocked(

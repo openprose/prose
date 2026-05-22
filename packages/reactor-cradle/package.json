@@ -1,7 +1,7 @@
 {
   "name": "@openprose/reactor-cradle",
   "version": "0.1.0-rc.1",
-  "description": "Deterministic Cradle test harness for the OpenProse Reactor.",
+  "description": "Deterministic evidence harness for OpenProse Reactor cost and receipt claims.",
   "type": "commonjs",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

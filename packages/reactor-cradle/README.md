@@ -1,9 +1,10 @@
 # @openprose/reactor-cradle
 
-`@openprose/reactor-cradle` is the deterministic test harness for the local
-OpenProse Reactor package. It is where Reactor behavior is replayed, compared,
-projected, and packaged into release evidence without requiring live services
-for the normal test path.
+`@openprose/reactor-cradle` is the deterministic evidence harness behind the
+Reactor claim that fresh model spend scales with surprise, not the clock. It is
+where Reactor behavior is replayed, compared against no-memo and naive-loop
+controls, projected, and packaged into release evidence without requiring live
+services for the normal test path.
 
 The Cradle is a test and evidence package, not the production Reactor runtime.
 This README describes the `0.1.0-rc.1` package surface. It is an OSS release
@@ -21,7 +22,7 @@ What v0.1 demonstrates:
   `createReactor().ingest()` turns and prints `tokens.fresh=46`,
   `tokens.reused=46`, and `ratio=46:46`. The Cradle C5 summary also compares
   that Reactor run with the no-memo deterministic control (`92:0`) and the
-  naive-loop control (`256:0`).
+  same-unit naive-loop control (`92:0`).
 - Receipts, owner/subscriber/public projections, and SDK exit-bundle
   export/import are exercised by release-candidate evidence helpers without
   exposing private replay payloads.

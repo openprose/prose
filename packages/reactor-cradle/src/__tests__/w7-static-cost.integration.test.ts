@@ -274,7 +274,7 @@ test(
       equal(noMemoRow?.provenance, "simulated");
       equal(noMemoRow?.ratio.label, "92:0");
       equal(naiveLoopRow?.provenance, "control");
-      equal(naiveLoopRow?.ratio.label, "256:0");
+      equal(naiveLoopRow?.ratio.label, "92:0");
       equal(c5Summary.event_changing_scenario?.status, "absent");
       equal(networkCalls, 0);
     } finally {

@@ -27,6 +27,7 @@ import {
 	claimResponsibilityPressureDispatch,
 	completeResponsibilityPressureDispatch,
 	readLatestResponsibilityPressure,
+	startResponsibilityPressureDispatchEffect,
 } from "./responsibility-pressure-dispatch.js";
 import {
 	buildResponsibilityStatusPaths,
@@ -760,12 +761,13 @@ async function launchPressureActivationOnce(options: {
 		return undefined;
 	}
 
+	const startedClaim = await startResponsibilityPressureDispatchEffect({ claim });
 	const exitCode = await launchActivationRun(options.request, {
 		...options.run,
 		cwd: options.cwd,
 	});
 	await completeResponsibilityPressureDispatch({
-		claim,
+		claim: startedClaim,
 		exitCode,
 	});
 

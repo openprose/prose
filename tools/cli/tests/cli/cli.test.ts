@@ -688,7 +688,7 @@ Daily check evidence changed.
 		}
 	});
 
-	it("accepts a valid manifest when the compiler harness exits nonzero after writing it", async () => {
+	it("preserves nonzero compiler exits even after a valid manifest is written", async () => {
 		const temp = mkdtempSync(join(tmpdir(), "prose-compile-valid-nonzero-"));
 		const io = memoryStreams();
 
@@ -711,8 +711,8 @@ Daily check evidence changed.
 				}),
 			});
 
-			expect(exitCode).toBe(0);
-			expect(io.stderr).toContain("Compiler harness exited with code 1 after writing valid repository IR");
+			expect(exitCode).toBe(1);
+			expect(io.stderr).not.toContain("accepting dist/manifest.next.json");
 		} finally {
 			rmSync(temp, { recursive: true, force: true });
 		}

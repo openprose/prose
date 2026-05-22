@@ -1,9 +1,23 @@
 # @openprose/reactor
 
-`@openprose/reactor` is the local Reactor Harness runtime spine for OpenProse.
-It models the parts of a responsibility loop that need to survive replay,
-forking, evidence review, and package verification without changing OpenProse
-source syntax.
+**Fresh model spend should scale with surprise, not the clock.**
+`@openprose/reactor` is the local runtime for OpenProse responsibilities that
+need to stay true over time: inspect evidence, write a content-addressed
+receipt, reuse the prior verdict when the world has not changed, and expose the
+token reason in a form CI and humans can verify.
+
+The package-backed `skills/open-prose/examples/flat-tokens` demo runs four real
+`createReactor().ingest()` turns over a static world and prints the deterministic
+headline:
+
+```text
+tokens.fresh=46
+tokens.reused=46
+ratio=46:46
+```
+
+That is the v0.1 promise in one line: the receipt log still advances, but fresh
+model spend stays flat when the evidence has not surprised the runtime.
 
 This README describes the `0.1.0-rc.1` package surface. It is an OSS release
 candidate that is already published on npm and has passed first-contact
@@ -180,6 +194,7 @@ const reactor = createReactor({
           confidence: {
             value: 0.91,
             derivation_method: "readme-local",
+            calibration_grade: "authored",
             label_source: "readme",
           },
           cost_tags: { tags: ["readme-sdk-quickstart"] },

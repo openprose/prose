@@ -288,6 +288,7 @@ function makeModelGateway(status: "up" | "drifting" | "down" | "blocked"): React
 				confidence: {
 					value: 0.74,
 					derivation_method: "cli-status-test",
+					calibration_grade: "authored",
 					label_source: "fixture",
 				},
 				cost_tags: {
