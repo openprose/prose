@@ -57,6 +57,20 @@ function memoryStreams() {
 }
 
 describe("bundled example CLI integration", () => {
+	it("exits nonzero for unknown compile options", async () => {
+		const temp = mkdtempSync(join(tmpdir(), "prose-compile-unknown-option-"));
+
+		try {
+			ensureBuiltCli();
+			const result = await runCli(["compile", "--json", "--harness", "mock"], { cwd: temp });
+
+			expect(result.exitCode).toBe(1);
+			expect(result.stderr).toContain("Unexpected option '--json'");
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
+		}
+	});
+
 	it("validates, serves, triggers, and reports Reactor surprise attribution for release-readiness", async () => {
 		const temp = mkdtempSync(join(tmpdir(), "prose-release-readiness-e2e-"));
 		const io = memoryStreams();

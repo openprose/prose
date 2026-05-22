@@ -27,7 +27,7 @@ const stargazerPressurePath = join(
 const fulfillmentPrompt = "prose run tests/open-prose/responsibility-runtime/stargazer-outreach/index.prose.md";
 
 describe("crash-window replay", () => {
-	it("restarts from durable pressure and dispatches fulfillment exactly once", async () => {
+	it("restarts from durable pressure and dispatches unstarted fulfillment once", async () => {
 		const temp = mkdtempSync(join(tmpdir(), "prose-crash-window-"));
 		const markerPath = join(temp, "markers/pressure-dispatch-claim-written.json");
 		let firstServe: SpawnedCli | undefined;

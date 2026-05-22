@@ -144,6 +144,7 @@ export function createC5StaticCostThesisSummaryV0(
   const naiveLoopRow = normalizeNaiveLoopCostRowV0(
     input.naive_loop,
     reactorRow.scenario,
+    reactorRow.turns,
   );
 
   const payload: CostThesisSummaryPayloadV0 = {
@@ -272,6 +273,7 @@ export function normalizeNoMemoCostRowV0(
 export function normalizeNaiveLoopCostRowV0(
   summary: NaiveLoopBaselineSummaryV0,
   expectedScenario?: CostThesisScenarioRefV0,
+  runtimeTurns?: readonly CostThesisTurnDetailV0[],
 ): CostThesisReportRowV0 {
   const scenario: CostThesisScenarioRefV0 = {
     id: summary.scenario_id,
@@ -281,10 +283,22 @@ export function normalizeNaiveLoopCostRowV0(
   };
   assertSameScenario(scenario, expectedScenario, "naive-loop");
 
-  const turns = summary.review_turns.map((turn) =>
-    naiveLoopTurnDetail(turn, summary),
-  );
-  const tokens = tokensFromFreshReused(summary.tokens.fresh, summary.tokens.reused);
+  const turns =
+    runtimeTurns === undefined
+      ? summary.review_turns.map((turn) => naiveLoopTurnDetail(turn, summary))
+      : sameUnitNaiveLoopTurns(summary.review_turns, runtimeTurns);
+  const tokens =
+    runtimeTurns === undefined
+      ? tokensFromFreshReused(summary.tokens.fresh, summary.tokens.reused)
+      : sumTurnTokens(turns);
+  const notes =
+    runtimeTurns === undefined
+      ? summary.notes
+      : [
+          "Static naive-loop control over the same receipt-bearing schedule.",
+          "Every review turn rereads the current evidence and spends the runtime row's per-turn total as fresh work.",
+          "The control has no receipts, memo keys, forecast policy, stable content identity, or reusable verdict architecture.",
+        ];
 
   return Object.freeze({
     variant: "naive-loop",
@@ -296,7 +310,7 @@ export function normalizeNaiveLoopCostRowV0(
     model_invocation_count: summary.model_invocation_count,
     tokens,
     ratio: tokenRatio(tokens),
-    notes: Object.freeze([...summary.notes]),
+    notes: Object.freeze([...notes]),
     turns: Object.freeze([...turns]),
   });
 }
@@ -387,6 +401,40 @@ function naiveLoopTurnDetail(
     source_ids: Object.freeze([...turn.source_ids]),
     note: `${turn.review_kind} over ${turn.source_ids.join(", ")} with no receipt or memo reuse.`,
   });
+}
+
+function sameUnitNaiveLoopTurns(
+  reviewTurns: readonly NaiveLoopReviewTurnV0[],
+  runtimeTurns: readonly CostThesisTurnDetailV0[],
+): readonly CostThesisTurnDetailV0[] {
+  if (reviewTurns.length !== runtimeTurns.length) {
+    throw new Error(
+      `naive-loop same-unit control requires ${reviewTurns.length} runtime turns; received ${runtimeTurns.length}`,
+    );
+  }
+
+  return Object.freeze(
+    reviewTurns.map((turn, index) => {
+      const runtimeTurn = runtimeTurns[index];
+      if (runtimeTurn === undefined) {
+        throw new Error(`missing runtime turn ${index} for naive-loop same-unit control`);
+      }
+
+      const tokens = tokensFromFreshReused(runtimeTurn.tokens.total, 0);
+      return Object.freeze({
+        index: turn.index,
+        as_of: turn.as_of,
+        source: "naive-loop-control",
+        outcome: "control-review",
+        tokens,
+        model_invocation_count: 1,
+        ...(turn.recheck_kind === undefined ? {} : { recheck_kind: turn.recheck_kind }),
+        review_kind: turn.review_kind,
+        source_ids: Object.freeze([...turn.source_ids]),
+        note: `${turn.review_kind} over ${turn.source_ids.join(", ")} charged from runtime turn ${index}'s token unit.`,
+      });
+    }),
+  );
 }
 
 function simulateNoMemoEventChangingRowV0(

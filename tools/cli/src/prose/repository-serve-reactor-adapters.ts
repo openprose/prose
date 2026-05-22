@@ -42,6 +42,7 @@ function createLocalModelGateway(
 					confidence: {
 						value: 0.5,
 						derivation_method: "local-deterministic-v0",
+						calibration_grade: "authored",
 						label_source: "openprose-cli-local",
 					},
 					...(status === "blocked"

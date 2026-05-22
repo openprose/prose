@@ -157,9 +157,15 @@ test("createC5StaticCostThesisSummaryV0 emits deterministic static rows with hon
   equal(naive?.provenance, "control");
   equal(naive?.receipt_count, 0);
   equal(naive?.model_invocation_count, 4);
-  deepEqual(naive?.tokens, { fresh: 256, reused: 0, total: 256 });
-  equal(naive?.ratio.label, "256:0");
+  deepEqual(naive?.tokens, { fresh: 92, reused: 0, total: 92 });
+  equal(naive?.ratio.label, "92:0");
   equal(naive?.turns.every((turn) => turn.source === "naive-loop-control"), true);
+  deepEqual(naive?.turns.map((turn) => turn.tokens), [
+    { fresh: 41, reused: 0, total: 41 },
+    { fresh: 41, reused: 0, total: 41 },
+    { fresh: 5, reused: 0, total: 5 },
+    { fresh: 5, reused: 0, total: 5 },
+  ]);
 });
 
 test("createC5StaticCostThesisSummaryV0 is deterministic", () => {

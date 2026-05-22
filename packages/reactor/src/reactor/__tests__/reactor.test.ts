@@ -109,7 +109,7 @@ test("createReactor ingest produces a verified real-input receipt without test-s
   equal(receipt.cost.tokens.reused, 3);
   equal(receipt.cost.provider, "record-replay");
   equal(receipt.cost.model, "shallow-test-model");
-  equal(receipt.verdict.confidence.calibration_grade, "none");
+  equal(receipt.verdict.confidence.calibration_grade, "authored");
   equal(receipt.core.memo_key, expectedMemoKey);
 });
 
@@ -164,6 +164,44 @@ test("runtime selects memo and judge evidence from compiled plan source ids", ()
       content_hash: EVIDENCE_HASH,
     },
   ]);
+});
+
+test("runtime blocks uncalibrated confident judge verdicts before consumers can act on them", () => {
+  const receipts: ReceiptV0[] = [];
+  const emitted: ReactorSdkEventV0[] = [];
+  const reactor = createReactor({
+    responsibility_id: RESPONSIBILITY_ID,
+    adapters: makeAdapters({
+      receipts,
+      emitted,
+      modelPayload: {
+        status: "up",
+        confidence: {
+          value: 0.99,
+          derivation_method: "fixture-uncalibrated-up",
+          label_source: "fixture",
+        },
+      },
+    }),
+  });
+
+  const result = reactor.ingest({
+    kind: "real-input",
+    evidence: [
+      {
+        source_id: "incident-briefing-state",
+        content_hash: EVIDENCE_HASH,
+      },
+    ],
+  });
+
+  equal(result.outcome, "fresh-judge-receipt");
+  const receipt = reactor.receipts()[0];
+  ok(receipt);
+  equal(receipt.verdict.status, "blocked");
+  equal(receipt.verdict.confidence.calibration_grade, "none");
+  equal(receipt.verdict.blocked?.reason, "calibration-unattainable");
+  equal(receipt.verdict.blocked?.interrupt_cause, "needs-judgment");
 });
 
 test("missing required planned evidence writes a blocked receipt before judging", () => {
@@ -1148,7 +1186,7 @@ test("forecast plan-age writes a token-bearing shallow audit floor receipt", () 
   ok(receipt.cost.tags.includes("forecast-recheck"));
   equal(receipt.cost.provider, "record-replay");
   equal(receipt.cost.model, "shallow-plan-audit-model");
-  equal(receipt.verdict.confidence.calibration_grade, "none");
+  equal(receipt.verdict.confidence.calibration_grade, "authored");
 });
 
 test("driver ignores model-authored surprise cause on forecast recheck", () => {
