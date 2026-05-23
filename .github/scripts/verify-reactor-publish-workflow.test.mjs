@@ -30,6 +30,11 @@ test('reactor package workflow runs publish path only for reactor-v* tags', asyn
     /id-token: write/,
     'publish job must request OIDC id-token permission for npm provenance',
   );
+  assert.match(
+    publishJob,
+    /npm install -g npm@11\.5\.1/,
+    'publish job must upgrade npm to a Trusted Publishing-capable CLI before provenance publish',
+  );
   assert.doesNotMatch(
     extractJob(source, 'ci'),
     /npm publish/,
@@ -113,6 +118,11 @@ test('reactor package workflow publishes both smoked tarballs with provenance', 
     'publish job must rely on npm trusted publishing/OIDC without token fallback',
   );
   assertInOrder(publishJob, 'Publish Reactor package', 'Publish Cradle package');
+  assertInOrder(
+    publishJob,
+    'Upgrade npm for trusted publishing',
+    'Publish Reactor package',
+  );
   assert.doesNotMatch(
     publishJob,
     /--dry-run/,

@@ -169,6 +169,9 @@ jobs:
         with:
           node-version: 22
 
+      - name: Upgrade npm for trusted publishing
+        run: npm install -g npm@11.5.1
+
       - name: Download Reactor tarball
         uses: actions/download-artifact@v4
         with:
