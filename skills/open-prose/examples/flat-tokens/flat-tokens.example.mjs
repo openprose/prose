@@ -40,6 +40,7 @@ const restoreFetch = interceptFetch();
 
 try {
   const output = runExample();
+  process.stderr.write(renderMemoizationSummary(output));
   process.stdout.write(`${JSON.stringify(output, null, 2)}\n`);
 } finally {
   restoreFetch();
@@ -122,6 +123,7 @@ function runExample() {
     isTokenBearingReceiptV0(receipt),
   );
   const tokens = sumReceiptTokens(tokenBearingReceipts);
+  const noMemoFresh = tokens.fresh + tokens.reused;
   const surpriseAttribution = evaluateSurpriseAttributionCompleteV0(receipts);
   const flatSpend = evaluateFlatSpendUnderStaticV0({
     receipts,
@@ -139,6 +141,11 @@ function runExample() {
   if (tokens.fresh !== 46 || tokens.reused !== 46) {
     throw new Error(
       `expected produced receipt tokens 46:46, got ${tokens.fresh}:${tokens.reused}`,
+    );
+  }
+  if (noMemoFresh !== 92) {
+    throw new Error(
+      `expected no-memo fresh token contrast 92, got ${noMemoFresh}`,
     );
   }
 
@@ -171,6 +178,14 @@ function runExample() {
       ratio: `${tokens.fresh}:${tokens.reused}`,
       reused_to_fresh_ratio: tokens.reused / tokens.fresh,
     },
+    memoization: {
+      no_memo_fresh: noMemoFresh,
+      fresh_spend_reduction_percent: Math.round(
+        (1 - tokens.fresh / noMemoFresh) * 100,
+      ),
+      model_invocations: modelInvocationCount,
+      no_memo_model_invocations: tokenBearingReceipts.length,
+    },
     relationships: {
       surprise_attribution_complete: relationshipSummary(surpriseAttribution),
       flat_spend_under_static: relationshipSummary(flatSpend),
@@ -190,6 +205,24 @@ function runExample() {
       },
     })),
   };
+}
+
+function renderMemoizationSummary(output) {
+  const fresh = output.tokens.fresh;
+  const reused = output.tokens.reused;
+  const noMemoFresh = output.memoization.no_memo_fresh;
+  const percent = output.memoization.fresh_spend_reduction_percent;
+  const calls = output.memoization.model_invocations;
+  const noMemoCalls = output.memoization.no_memo_model_invocations;
+  return [
+    `memoization cut fresh model spend ${percent}% (${calls} model calls, not ${noMemoCalls})`,
+    '',
+    `tokens.fresh=${fresh}`,
+    `tokens.reused=${reused}`,
+    `ratio=${output.tokens.ratio}`,
+    `no-memo-fresh=${noMemoFresh}`,
+    '',
+  ].join('\n');
 }
 
 function createStaticWorld() {

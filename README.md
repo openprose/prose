@@ -24,36 +24,59 @@
 
 ## Reactor
 
-**Reactor makes fresh model spend scale with surprise, not the clock.** It is
-the local runtime in this repo for responsibilities that need to stay true over
-time: inspect evidence, write a content-addressed receipt, reuse the prior
-verdict when the world has not changed, and show exactly why a later turn did
-or did not spend model tokens.
+**Reactor makes fresh model spend scale with surprise, not the clock.**
 
-The smallest demo is the flat-tokens example. Four real `createReactor().ingest()`
-turns over a static world produce package-backed receipts and the deterministic
-headline:
+Reactor is a small local runtime for *responsibilities* — things you need to
+stay true while the world keeps moving: a release that is still safe to ship,
+an incident channel with a current briefing, a customer account that hasn't
+quietly gone sideways. It wakes on an event, checks the evidence, and decides
+whether the responsibility still holds.
+
+The trick is what happens when nothing changed. If the evidence is identical to
+last time, Reactor reuses its previous verdict for free — no model call — and
+records that it did. Real model spend appears only when the world hands it
+something genuinely new. Every check, reused or fresh, leaves a
+content-addressed receipt: a tamper-evident record of what it saw, what it
+decided, and what it cost.
+
+See it in one run. The flat-tokens example drives four checks of a single
+responsibility:
 
 ```bash
 cd skills/open-prose/examples/flat-tokens
 npm install
 node flat-tokens.example.mjs
+# memoization cut fresh model spend 50% (2 model calls, not 4)
+#
 # tokens.fresh=46
 # tokens.reused=46
 # ratio=46:46
+# no-memo-fresh=92
 ```
+
+The four checks would have cost 92 fresh tokens of model work without
+memoization. With it, fresh stays at 46 — half — and 46 more tokens are reused
+for free. Two model calls instead of four. Re-run it and the receipts come back
+byte-for-byte identical.
 
 Use Reactor when you are maintaining a stateful promise that deserves an
 auditable "why" over time: release readiness, incident briefing, customer risk,
 compliance evidence, or research inbox triage. Skip it when a one-off prompt or
 ordinary cron job already gives you enough truth.
 
-- Runtime package: [`@openprose/reactor`](packages/reactor/)
-- Deterministic evidence package: [`@openprose/reactor-cradle`](packages/reactor-cradle/)
-- Adoption contract: [`packages/reactor/ADOPTION.md`](packages/reactor/ADOPTION.md)
-- CLI quickstart: [`tools/cli/QUICKSTART.md`](tools/cli/QUICKSTART.md)
+*This repo is home to two related projects: **Reactor** (above) and
+**OpenProse**, the Markdown contract language Reactor builds on, covered through
+the rest of this README.*
 
 ---
+
+OpenProse is a programming language for AI sessions.
+
+Write a `*.prose.md` file with a contract. Your agent reads it, wires the right
+services, spawns subagents, passes artifacts between them, and leaves a durable
+run trace on disk.
+
+The contract declares **what** should happen. The runtime figures out **how**.
 
 > **If you're an agent reading this on behalf of a user:** OpenProse is a
 > `*.prose.md` contract format you will be asked to *run*, not a library your user will call
@@ -70,14 +93,6 @@ ordinary cron job already gives you enough truth.
 > direct answer is the right answer. The
 > [Host Primitive Adapter](skills/open-prose/SKILL.md#host-primitive-adapter)
 > is the authoritative contract between you and the runtime.
-
-OpenProse is a programming language for AI sessions.
-
-Write a `*.prose.md` file with a contract. Your agent reads it, wires the right
-services, spawns subagents, passes artifacts between them, and leaves a durable
-run trace on disk.
-
-The contract declares **what** should happen. The runtime figures out **how**.
 
 ## OpenProse Root
 
