@@ -5,15 +5,16 @@ This page is the current first-contact contract for `@openprose/reactor` and
 
 ## Current Release
 
-- npm packages: `@openprose/reactor@0.1.0-rc.1` and
-  `@openprose/reactor-cradle@0.1.0-rc.1`.
-- npm dist-tags: `rc` and `latest` both currently point at `0.1.0-rc.1`.
+- npm packages: `@openprose/reactor@0.1.0-rc.2` and
+  `@openprose/reactor-cradle@0.1.0-rc.2`.
+- npm dist-tags: `rc` points at `0.1.0-rc.2`; `latest` stays at
+  `0.1.0-rc.1` until the final stable release.
 - Source: <https://github.com/openprose/prose>, under `packages/reactor`,
   `packages/reactor-cradle`, `tools/cli`, and
   `skills/open-prose/examples`.
 - Publish path: GitHub Actions trusted publishing with npm provenance. The
   stable Reactor release uses the `reactor-v0.1.0` git tag.
-- Current local gate: 153 Reactor tests, 121 Cradle tests, 281 CLI tests,
+- Current local gate: 155 Reactor tests, 121 Cradle tests, 284 CLI tests,
   35 release-verifier tests, and `pnpm build` are green after the rc-to-stable
   hardening pass. The rc passed 12 independent first-contact validations.
 
@@ -30,7 +31,7 @@ pnpm build
 Use npm when trying the published packages outside the workspace:
 
 ```sh
-npm install @openprose/reactor@0.1.0-rc.1 @openprose/reactor-cradle@0.1.0-rc.1
+npm install @openprose/reactor@0.1.0-rc.2 @openprose/reactor-cradle@0.1.0-rc.2
 ```
 
 ## Golden Path

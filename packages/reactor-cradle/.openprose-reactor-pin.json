@@ -1,7 +1,7 @@
 {
   "package": "@openprose/reactor",
-  "version": "0.1.0-rc.1",
-  "packageTreeSha256": "11a91b631a2429d763e6055dd3812d8133347ea12734960cd97afe15aae21697",
+  "version": "0.1.0-rc.2",
+  "packageTreeSha256": "412ac5894ce7084574b84936114c252ae1796a6c72b7406244ec59f565fc7f48",
   "checkedFiles": [
     "package.json",
     "README.md",

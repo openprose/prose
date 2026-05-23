@@ -1,6 +1,6 @@
 {
   "name": "@openprose/reactor-cradle",
-  "version": "0.1.0-rc.1",
+  "version": "0.1.0-rc.2",
   "description": "Deterministic evidence harness for OpenProse Reactor cost and receipt claims.",
   "type": "commonjs",
   "main": "./dist/index.js",
@@ -127,7 +127,7 @@
     "test": "pnpm typecheck && pnpm test:runtime"
   },
   "dependencies": {
-    "@openprose/reactor": "workspace:0.1.0-rc.1"
+    "@openprose/reactor": "workspace:0.1.0-rc.2"
   },
   "devDependencies": {
     "@types/node": "^22.10.7",

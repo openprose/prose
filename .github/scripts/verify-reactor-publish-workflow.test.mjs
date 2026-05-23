@@ -6,14 +6,14 @@ const WORKFLOW_PATH = '.github/workflows/ci-reactor-package.yml';
 const PUBLISH_WORKFLOW_TEST_PATH =
   '.github/scripts/verify-reactor-publish-workflow.test.mjs';
 
-test('reactor package workflow runs publish path only for v* tags', async () => {
+test('reactor package workflow runs publish path only for reactor-v* tags', async () => {
   const source = await readWorkflow();
   const publishJob = extractJob(source, 'publish');
 
   assert.match(
     source,
-    /push:\n    branches: \[main]\n    tags:\n      - "v\*"/,
-    'workflow must subscribe to v* tag pushes',
+    /push:\n    branches: \[main]\n    tags:\n      - "reactor-v\*"/,
+    'workflow must subscribe to reactor-v* tag pushes',
   );
   assert.match(
     publishJob,
@@ -22,8 +22,8 @@ test('reactor package workflow runs publish path only for v* tags', async () => 
   );
   assert.match(
     publishJob,
-    /if: \$\{\{ startsWith\(github\.ref, 'refs\/tags\/v'\) \}\}/,
-    'publish job must be gated to v* tags',
+    /if: \$\{\{ startsWith\(github\.ref, 'refs\/tags\/reactor-v'\) \}\}/,
+    'publish job must be gated to reactor-v* tags',
   );
   assert.match(
     publishJob,
@@ -71,7 +71,7 @@ test('reactor package workflow publishes both smoked tarballs with provenance', 
   );
   assert.match(
     publishJob,
-    /expected_version="\$\{GITHUB_REF_NAME#v\}"/,
+    /expected_version="\$\{GITHUB_REF_NAME#reactor-v\}"/,
     'publish job must derive the expected package version from the pushed tag',
   );
   assert.match(

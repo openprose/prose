@@ -40,13 +40,13 @@ test('cradle tarball import smoke accepts packed public exports', async () => {
 
     assert.deepEqual(result.reactorPackage, {
       name: '@openprose/reactor',
-      version: '0.1.0-rc.1',
+      version: '0.1.0-rc.2',
     });
     assert.deepEqual(result.cradlePackage, {
       name: '@openprose/reactor-cradle',
-      version: '0.1.0-rc.1',
+      version: '0.1.0-rc.2',
     });
-    assert.equal(result.cradleDependency, '0.1.0-rc.1');
+    assert.equal(result.cradleDependency, '0.1.0-rc.2');
     assert.deepEqual(result.subpaths, CRADLE_PUBLIC_EXPORT_SUBPATHS);
     assert.ok(result.exportTargets.every((entry) => entry.types.endsWith('.d.ts')));
     assert.deepEqual(
@@ -164,7 +164,7 @@ test('cradle tarball import smoke rejects reactor dependency version mismatch', 
 });
 
 async function createFixture({
-  cradleDependency = '0.1.0-rc.1',
+  cradleDependency = '0.1.0-rc.2',
   omitCradleExport = null,
   omitCradleFile = null,
   omitCradleTypesFile = null,
@@ -214,7 +214,7 @@ async function createReactorTarball(root, {
     `${JSON.stringify(
       {
         name: reactorPackageName,
-        version: '0.1.0-rc.1',
+        version: '0.1.0-rc.2',
         type: 'commonjs',
         main: './dist/index.js',
         exports: {
@@ -229,7 +229,7 @@ async function createReactorTarball(root, {
     )}\n`,
   );
 
-  const tarballPath = join(root, 'openprose-reactor-0.1.0-rc.1.tgz');
+  const tarballPath = join(root, 'openprose-reactor-0.1.0-rc.2.tgz');
   await execFileAsync('tar', ['-czf', tarballPath, '-C', tarRoot, 'package']);
   return tarballPath;
 }
@@ -283,7 +283,7 @@ async function createCradleTarball(root, {
     `${JSON.stringify(
       {
         name: '@openprose/reactor-cradle',
-        version: '0.1.0-rc.1',
+        version: '0.1.0-rc.2',
         type: 'commonjs',
         main: './dist/index.js',
         exports: exportsMap,
@@ -296,7 +296,7 @@ async function createCradleTarball(root, {
     )}\n`,
   );
 
-  const tarballPath = join(root, 'openprose-reactor-cradle-0.1.0-rc.1.tgz');
+  const tarballPath = join(root, 'openprose-reactor-cradle-0.1.0-rc.2.tgz');
   await execFileAsync('tar', ['-czf', tarballPath, '-C', tarRoot, 'package']);
   return tarballPath;
 }

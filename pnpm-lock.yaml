@@ -20,7 +20,7 @@ importers:
   packages/reactor-cradle:
     dependencies:
       '@openprose/reactor':
-        specifier: workspace:0.1.0-rc.1
+        specifier: workspace:0.1.0-rc.2
         version: link:../reactor
     devDependencies:
       '@types/node':

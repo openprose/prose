@@ -166,7 +166,7 @@ async function createReactorTarball(root) {
     `${JSON.stringify(
       {
         name: '@openprose/reactor',
-        version: '0.1.0-rc.1',
+        version: '0.1.0-rc.2',
         type: 'commonjs',
         exports: {
           '.': { default: './dist/index.js' },
@@ -178,7 +178,7 @@ async function createReactorTarball(root) {
   );
   await writeFixtureFile(packageRoot, 'dist/index.js', "'use strict';\n");
 
-  return packFixture(root, 'reactor-tar-root', 'openprose-reactor-0.1.0-rc.1.tgz');
+  return packFixture(root, 'reactor-tar-root', 'openprose-reactor-0.1.0-rc.2.tgz');
 }
 
 async function createCradleTarball(root) {
@@ -190,10 +190,10 @@ async function createCradleTarball(root) {
     `${JSON.stringify(
       {
         name: '@openprose/reactor-cradle',
-        version: '0.1.0-rc.1',
+        version: '0.1.0-rc.2',
         type: 'commonjs',
         dependencies: {
-          '@openprose/reactor': '0.1.0-rc.1',
+          '@openprose/reactor': '0.1.0-rc.2',
         },
         exports: {
           '.': { default: './dist/index.js' },
@@ -208,7 +208,7 @@ async function createCradleTarball(root) {
   return packFixture(
     root,
     'cradle-tar-root',
-    'openprose-reactor-cradle-0.1.0-rc.1.tgz',
+    'openprose-reactor-cradle-0.1.0-rc.2.tgz',
   );
 }
 

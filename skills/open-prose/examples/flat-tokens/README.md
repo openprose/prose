@@ -22,8 +22,8 @@ consumer and runs the same command:
 
 ```sh
 node .github/scripts/smoke-reactor-flat-tokens-example.mjs \
-  --reactorTarball /tmp/openprose-reactor-example-pack/openprose-reactor-0.1.0-rc.1.tgz \
-  --cradleTarball /tmp/openprose-reactor-example-pack/openprose-reactor-cradle-0.1.0-rc.1.tgz
+  --reactorTarball /tmp/openprose-reactor-example-pack/openprose-reactor-0.1.0-rc.2.tgz \
+  --cradleTarball /tmp/openprose-reactor-example-pack/openprose-reactor-cradle-0.1.0-rc.2.tgz
 ```
 
 ## Output Shape

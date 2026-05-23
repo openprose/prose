@@ -303,13 +303,13 @@ The current build has local evidence for the package shape:
 pnpm --filter @openprose/reactor test
 pnpm --dir packages/reactor pack --pack-destination /tmp/openprose-reactor-pack
 node .github/scripts/verify-reactor-pin.mjs \
-  --tarball /tmp/openprose-reactor-pack/openprose-reactor-0.1.0-rc.1.tgz
+  --tarball /tmp/openprose-reactor-pack/openprose-reactor-0.1.0-rc.2.tgz
 node .github/scripts/smoke-reactor-tarball-import.mjs \
-  --tarball /tmp/openprose-reactor-pack/openprose-reactor-0.1.0-rc.1.tgz
+  --tarball /tmp/openprose-reactor-pack/openprose-reactor-0.1.0-rc.2.tgz
 pnpm --dir packages/reactor-cradle pack --pack-destination /tmp/openprose-reactor-pack
 node .github/scripts/smoke-reactor-flat-tokens-example.mjs \
-  --reactorTarball /tmp/openprose-reactor-pack/openprose-reactor-0.1.0-rc.1.tgz \
-  --cradleTarball /tmp/openprose-reactor-pack/openprose-reactor-cradle-0.1.0-rc.1.tgz \
+  --reactorTarball /tmp/openprose-reactor-pack/openprose-reactor-0.1.0-rc.2.tgz \
+  --cradleTarball /tmp/openprose-reactor-pack/openprose-reactor-cradle-0.1.0-rc.2.tgz \
   --exampleDir skills/open-prose/examples/flat-tokens
 ```
 

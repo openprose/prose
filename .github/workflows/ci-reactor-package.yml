@@ -28,7 +28,7 @@ on:
   push:
     branches: [main]
     tags:
-      - "v*"
+      - "reactor-v*"
 
 concurrency:
   group: ci-reactor-package-${{ github.head_ref || github.ref }}
@@ -136,7 +136,7 @@ jobs:
             --exampleDir skills/open-prose/examples/flat-tokens
 
       - name: Upload Reactor package artifact
-        if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+        if: ${{ startsWith(github.ref, 'refs/tags/reactor-v') }}
         uses: actions/upload-artifact@v4
         with:
           name: openprose-reactor-tarball
@@ -145,7 +145,7 @@ jobs:
           retention-days: 7
 
       - name: Upload Cradle package artifact
-        if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+        if: ${{ startsWith(github.ref, 'refs/tags/reactor-v') }}
         uses: actions/upload-artifact@v4
         with:
           name: openprose-reactor-cradle-tarball
@@ -156,7 +156,7 @@ jobs:
   publish:
     name: Publish Reactor Packages
     needs: ci
-    if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+    if: ${{ startsWith(github.ref, 'refs/tags/reactor-v') }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -185,9 +185,9 @@ jobs:
         id: publish_meta
         run: |
           set -euo pipefail
-          expected_version="${GITHUB_REF_NAME#v}"
+          expected_version="${GITHUB_REF_NAME#reactor-v}"
           if [ -z "${expected_version}" ] || [ "${expected_version}" = "${GITHUB_REF_NAME}" ]; then
-            echo "::error::Publish tags must be named v<package-version>."
+            echo "::error::Publish tags must be named reactor-v<package-version>."
             exit 1
           fi
 

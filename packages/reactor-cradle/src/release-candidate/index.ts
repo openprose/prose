@@ -171,9 +171,9 @@ export interface R7ReleaseCandidateBuildMetadataV0 {
 
 export interface R7ReleaseCandidatePackagePinEvidenceV0 {
   readonly package_name: "@openprose/reactor";
-  readonly version: "0.1.0-rc.1";
+  readonly version: "0.1.0-rc.2";
   readonly consumer_name: "@openprose/reactor-cradle";
-  readonly consumer_dependency: "workspace:0.1.0-rc.1";
+  readonly consumer_dependency: "workspace:0.1.0-rc.2";
   readonly package_tree_sha256: string;
   readonly checked_file_count: number;
   readonly checked_files_hash: ContentHashV0;
@@ -181,14 +181,14 @@ export interface R7ReleaseCandidatePackagePinEvidenceV0 {
 
 export interface R7ReleaseCandidateTarballSmokeEvidenceV0 {
   readonly package_name: "@openprose/reactor";
-  readonly version: "0.1.0-rc.1";
+  readonly version: "0.1.0-rc.2";
   readonly imported_entrypoint_count: number;
   readonly imported_entrypoints: readonly string[];
 }
 
 export interface R7ReleaseCandidateCradleTarballSmokeEvidenceV0 {
   readonly package_name: "@openprose/reactor-cradle";
-  readonly version: "0.1.0-rc.1";
+  readonly version: "0.1.0-rc.2";
   readonly imported_entrypoint_count: number;
   readonly imported_entrypoints: readonly string[];
 }
@@ -427,22 +427,22 @@ function normalizePackagePin(
   if (input.package_name !== "@openprose/reactor") {
     throw new Error("package_pin.package_name must be @openprose/reactor");
   }
-  if (input.version !== "0.1.0-rc.1") {
-    throw new Error("package_pin.version must be 0.1.0-rc.1");
+  if (input.version !== "0.1.0-rc.2") {
+    throw new Error("package_pin.version must be 0.1.0-rc.2");
   }
   if (input.consumer_name !== "@openprose/reactor-cradle") {
     throw new Error("package_pin.consumer_name must be @openprose/reactor-cradle");
   }
-  if (input.consumer_dependency !== "workspace:0.1.0-rc.1") {
-    throw new Error("package_pin.consumer_dependency must be workspace:0.1.0-rc.1");
+  if (input.consumer_dependency !== "workspace:0.1.0-rc.2") {
+    throw new Error("package_pin.consumer_dependency must be workspace:0.1.0-rc.2");
   }
   const checkedFiles = normalizeCheckedFiles(input.checked_files);
 
   return Object.freeze({
     package_name: "@openprose/reactor",
-    version: "0.1.0-rc.1",
+    version: "0.1.0-rc.2",
     consumer_name: "@openprose/reactor-cradle",
-    consumer_dependency: "workspace:0.1.0-rc.1",
+    consumer_dependency: "workspace:0.1.0-rc.2",
     package_tree_sha256: assertHexSha256(
       input.package_tree_sha256,
       "package_pin.package_tree_sha256",
@@ -458,8 +458,8 @@ function normalizeTarballSmoke(
   if (input.package_name !== "@openprose/reactor") {
     throw new Error("tarball_smoke.package_name must be @openprose/reactor");
   }
-  if (input.version !== "0.1.0-rc.1") {
-    throw new Error("tarball_smoke.version must be 0.1.0-rc.1");
+  if (input.version !== "0.1.0-rc.2") {
+    throw new Error("tarball_smoke.version must be 0.1.0-rc.2");
   }
   const imports = [...input.imported_entrypoints].sort((left, right) =>
     left.localeCompare(right),
@@ -481,7 +481,7 @@ function normalizeTarballSmoke(
 
   return Object.freeze({
     package_name: "@openprose/reactor",
-    version: "0.1.0-rc.1",
+    version: "0.1.0-rc.2",
     imported_entrypoint_count: imports.length,
     imported_entrypoints: Object.freeze(imports),
   });
@@ -493,8 +493,8 @@ function normalizeCradleTarballSmoke(
   if (input.package_name !== "@openprose/reactor-cradle") {
     throw new Error("cradle_tarball_smoke.package_name must be @openprose/reactor-cradle");
   }
-  if (input.version !== "0.1.0-rc.1") {
-    throw new Error("cradle_tarball_smoke.version must be 0.1.0-rc.1");
+  if (input.version !== "0.1.0-rc.2") {
+    throw new Error("cradle_tarball_smoke.version must be 0.1.0-rc.2");
   }
   const imports = [...input.imported_entrypoints].sort((left, right) =>
     left.localeCompare(right),
@@ -518,7 +518,7 @@ function normalizeCradleTarballSmoke(
 
   return Object.freeze({
     package_name: "@openprose/reactor-cradle",
-    version: "0.1.0-rc.1",
+    version: "0.1.0-rc.2",
     imported_entrypoint_count: imports.length,
     imported_entrypoints: Object.freeze(imports),
   });
