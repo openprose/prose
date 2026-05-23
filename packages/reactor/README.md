@@ -1,29 +1,42 @@
 # @openprose/reactor
 
 **Fresh model spend should scale with surprise, not the clock.**
-`@openprose/reactor` is the local runtime for OpenProse responsibilities that
-need to stay true over time: inspect evidence, write a content-addressed
-receipt, reuse the prior verdict when the world has not changed, and expose the
-token reason in a form CI and humans can verify.
 
-The package-backed `skills/open-prose/examples/flat-tokens` demo runs four real
-`createReactor().ingest()` turns over a static world and prints the deterministic
-headline:
+Reactor is a small runtime for *responsibilities* — things you need an AI to
+keep true while the world keeps moving: a release that is still safe to ship,
+an incident channel with a current briefing, a customer account that hasn't
+quietly gone sideways. It wakes on an event, checks the evidence, and decides
+whether the responsibility still holds. When the evidence is identical to last
+time, it reuses its previous verdict for free instead of paying a model to
+think again — so you spend tokens on surprise, not on the clock. Every check
+leaves a content-addressed receipt CI and humans can verify.
+
+```bash
+npm install @openprose/reactor
+```
+
+The package-backed `flat-tokens` example drives four checks of a single
+responsibility and prints:
 
 ```text
+memoization cut fresh model spend 50% (2 model calls, not 4)
+
 tokens.fresh=46
 tokens.reused=46
 ratio=46:46
+no-memo-fresh=92
 ```
 
-That is the v0.1 promise in one line: the receipt log still advances, but fresh
-model spend stays flat when the evidence has not surprised the runtime.
+The four checks would have cost 92 fresh tokens of model work without
+memoization. With it, fresh stays at 46 — half — and 46 more tokens are reused
+for free. Two model calls instead of four. Re-run it and the receipts come back
+byte-for-byte identical.
 
-This README describes the `0.1.0-rc.1` package surface. It is an OSS release
-candidate that is already published on npm and has passed first-contact
-validation. Start with the
-[Reactor v0.1 adoption contract](./ADOPTION.md) for install commands,
-supported boundaries, and the golden path.
+This README describes the `0.1.0-rc.2` package surface — an OSS release
+candidate published on npm. For install commands, supported boundaries, and the
+golden path, start with the [Reactor v0.1 adoption contract][adoption].
+
+[adoption]: https://github.com/openprose/prose/blob/main/packages/reactor/ADOPTION.md
 
 ## v0.1 Status
 
@@ -128,11 +141,16 @@ export function publicReceiptEvidence(proof: ReceiptProofInspectionV0) {
 }
 ```
 
-Create an SDK instance with explicit adapters. The SDK does not install hidden
-network, model, agent, sandbox, or storage defaults. In v0.1, omitting `signer`
-is represented explicitly as the null signer state
+Create an SDK instance with explicit adapters — the SDK installs no hidden
+network, model, agent, sandbox, or storage defaults. (Omitting `signer` is
+represented explicitly as the null signer state
 `{ scheme: "none", null_reason: "no-signer-adapter-configured" }`; real signing
-adapters are planned after v0.1.
+adapters are planned after v0.1.) The example below is complete and runnable;
+most of it is fixture setup, and the payoff is the three `console.log` lines at
+the end.
+
+<details>
+<summary>Full SDK example — adapter wiring, two ingest() turns, exit bundle</summary>
 
 ```js
 import { createHash } from "node:crypto";
@@ -236,6 +254,8 @@ console.log(first.outcome); // fresh-judge-receipt
 console.log(second.outcome); // memo-hit-receipt
 console.log("export ok");
 ```
+
+</details>
 
 Evaluate a validated policy artifact before running B3 backstops:
 

@@ -1,28 +1,33 @@
 # @openprose/reactor-cradle
 
-`@openprose/reactor-cradle` is the deterministic evidence harness behind the
-Reactor claim that fresh model spend scales with surprise, not the clock. It is
-where Reactor behavior is replayed, compared against no-memo and naive-loop
-controls, projected, and packaged into release evidence without requiring live
-services for the normal test path.
+`@openprose/reactor-cradle` is the deterministic evidence harness for
+[`@openprose/reactor`][reactor] — the runtime whose thesis is that fresh model
+spend scales with surprise, not the clock. The Cradle is where Reactor behavior
+is replayed, measured against no-memo and naive-loop controls, and packaged into
+release evidence — no live services needed for the normal test path.
+
+```bash
+npm install @openprose/reactor-cradle
+```
 
 The Cradle is a test and evidence package, not the production Reactor runtime.
-This README describes the `0.1.0-rc.1` package surface. It is an OSS release
-candidate that is already published on npm and has passed first-contact
-validation. Start with the
-[Reactor v0.1 adoption contract](../reactor/ADOPTION.md) for install commands,
-supported boundaries, and the golden path.
+This README describes the `0.1.0-rc.2` package surface — an OSS release
+candidate published on npm. For install commands, supported boundaries, and the
+golden path, start with the [Reactor v0.1 adoption contract][adoption].
+
+[reactor]: https://www.npmjs.com/package/@openprose/reactor
+[adoption]: https://github.com/openprose/prose/blob/main/packages/reactor/ADOPTION.md
 
 ## v0.1 Status
 
 What v0.1 demonstrates:
 
-- The static-world cost thesis is measured and locally runnable: the
-  package-backed `skills/open-prose/examples/flat-tokens` run drives four real
-  `createReactor().ingest()` turns and prints `tokens.fresh=46`,
-  `tokens.reused=46`, and `ratio=46:46`. The Cradle C5 summary also compares
-  that Reactor run with the no-memo deterministic control (`92:0`) and the
-  same-unit naive-loop control (`92:0`).
+- The cost thesis is measured and locally runnable: the package-backed
+  `flat-tokens` example drives four checks of a single responsibility and
+  prints `memoization cut fresh model spend 50% (2 model calls, not 4)` — with
+  the raw counters `tokens.fresh=46`, `tokens.reused=46`, `ratio=46:46`,
+  `no-memo-fresh=92`. The Cradle's C5 summary independently confirms via the
+  no-memo control (`92:0`) and the same-unit naive-loop control (`92:0`).
 - Receipts, owner/subscriber/public projections, and SDK exit-bundle
   export/import are exercised by release-candidate evidence helpers without
   exposing private replay payloads.
