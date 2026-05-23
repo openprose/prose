@@ -26,8 +26,8 @@ pnpm --dir packages/reactor pack --pack-destination /tmp/openprose-reactor-examp
 pnpm --dir packages/reactor-cradle pack --pack-destination /tmp/openprose-reactor-example-pack
 
 node .github/scripts/smoke-reactor-release-readiness-example.mjs \
-  --reactorTarball /tmp/openprose-reactor-example-pack/openprose-reactor-0.1.0-rc.2.tgz \
-  --cradleTarball /tmp/openprose-reactor-example-pack/openprose-reactor-cradle-0.1.0-rc.2.tgz \
+  --reactorTarball /tmp/openprose-reactor-example-pack/openprose-reactor-0.1.0.tgz \
+  --cradleTarball /tmp/openprose-reactor-example-pack/openprose-reactor-cradle-0.1.0.tgz \
   --exampleDir skills/open-prose/examples/release-readiness/reactor-package-example
 ```
 

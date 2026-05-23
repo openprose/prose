@@ -32,8 +32,8 @@ memoization. With it, fresh stays at 46 — half — and 46 more tokens are reus
 for free. Two model calls instead of four. Re-run it and the receipts come back
 byte-for-byte identical.
 
-This README describes the `0.1.0-rc.2` package surface — an OSS release
-candidate published on npm. For install commands, supported boundaries, and the
+This README describes the `0.1.0` package surface — the stable OSS release
+published on npm. For install commands, supported boundaries, and the
 golden path, start with the [Reactor v0.1 adoption contract][adoption].
 
 [adoption]: https://github.com/openprose/prose/blob/main/packages/reactor/ADOPTION.md
@@ -303,13 +303,13 @@ The current build has local evidence for the package shape:
 pnpm --filter @openprose/reactor test
 pnpm --dir packages/reactor pack --pack-destination /tmp/openprose-reactor-pack
 node .github/scripts/verify-reactor-pin.mjs \
-  --tarball /tmp/openprose-reactor-pack/openprose-reactor-0.1.0-rc.2.tgz
+  --tarball /tmp/openprose-reactor-pack/openprose-reactor-0.1.0.tgz
 node .github/scripts/smoke-reactor-tarball-import.mjs \
-  --tarball /tmp/openprose-reactor-pack/openprose-reactor-0.1.0-rc.2.tgz
+  --tarball /tmp/openprose-reactor-pack/openprose-reactor-0.1.0.tgz
 pnpm --dir packages/reactor-cradle pack --pack-destination /tmp/openprose-reactor-pack
 node .github/scripts/smoke-reactor-flat-tokens-example.mjs \
-  --reactorTarball /tmp/openprose-reactor-pack/openprose-reactor-0.1.0-rc.2.tgz \
-  --cradleTarball /tmp/openprose-reactor-pack/openprose-reactor-cradle-0.1.0-rc.2.tgz \
+  --reactorTarball /tmp/openprose-reactor-pack/openprose-reactor-0.1.0.tgz \
+  --cradleTarball /tmp/openprose-reactor-pack/openprose-reactor-cradle-0.1.0.tgz \
   --exampleDir skills/open-prose/examples/flat-tokens
 ```
 

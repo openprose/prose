@@ -26,7 +26,7 @@ test('reactor tarball import smoke accepts packed public exports', async () => {
     });
 
     assert.equal(result.packageName, '@openprose/reactor');
-    assert.equal(result.version, '0.1.0-rc.2');
+    assert.equal(result.version, '0.1.0');
     assert.deepEqual(result.subpaths, REACTOR_PUBLIC_EXPORT_SUBPATHS);
     assert.deepEqual(
       result.imports.map((entry) => entry.specifier),
@@ -118,7 +118,7 @@ async function createFixture({
     `${JSON.stringify(
       {
         name: '@openprose/reactor',
-        version: '0.1.0-rc.2',
+        version: '0.1.0',
         type: 'commonjs',
         main: './dist/index.js',
         exports: exportsMap,
@@ -128,7 +128,7 @@ async function createFixture({
     )}\n`,
   );
 
-  const tarballPath = join(root, 'openprose-reactor-0.1.0-rc.2.tgz');
+  const tarballPath = join(root, 'openprose-reactor-0.1.0.tgz');
   await execFileAsync('tar', ['-czf', tarballPath, '-C', tarRoot, 'package']);
 
   return {

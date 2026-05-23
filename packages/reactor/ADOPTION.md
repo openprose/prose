@@ -5,10 +5,10 @@ This page is the current first-contact contract for `@openprose/reactor` and
 
 ## Current Release
 
-- npm packages: `@openprose/reactor@0.1.0-rc.2` and
-  `@openprose/reactor-cradle@0.1.0-rc.2`.
-- npm dist-tags: `rc` points at `0.1.0-rc.2`; `latest` stays at
-  `0.1.0-rc.1` until the final stable release.
+- npm packages: `@openprose/reactor@0.1.0` and
+  `@openprose/reactor-cradle@0.1.0`.
+- npm dist-tags: `latest` points at `0.1.0`; `rc` remains on the last
+  release candidate as frozen registry history.
 - Source: <https://github.com/openprose/prose>, under `packages/reactor`,
   `packages/reactor-cradle`, `tools/cli`, and
   `skills/open-prose/examples`.
@@ -31,7 +31,7 @@ pnpm build
 Use npm when trying the published packages outside the workspace:
 
 ```sh
-npm install @openprose/reactor@0.1.0-rc.2 @openprose/reactor-cradle@0.1.0-rc.2
+npm install @openprose/reactor@0.1.0 @openprose/reactor-cradle@0.1.0
 ```
 
 ## Golden Path

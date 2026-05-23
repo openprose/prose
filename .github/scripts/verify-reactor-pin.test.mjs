@@ -22,7 +22,7 @@ test('reactor pin verifier accepts matching package metadata, tree hash, and che
     const result = await verifyReactorPin(fixture);
 
     assert.equal(result.packageName, '@openprose/reactor');
-    assert.equal(result.version, '0.1.0-rc.2');
+    assert.equal(result.version, '0.1.0');
     assert.equal(result.packageTreeSha256, fixture.packageTreeSha256);
     assert.deepEqual(result.checkedFiles, fixture.checkedFiles);
   } finally {
@@ -59,10 +59,10 @@ test('reactor pin verifier rejects loose Cradle workspace dependencies', async (
 test('reactor pin verifier rejects package version drift', async () => {
   const fixture = await createFixture({ packageVersion: '0.1.1' });
   try {
-	await assert.rejects(
-	  () => verifyReactorPin(fixture),
-	  /pins @openprose\/reactor@0\.1\.0-rc\.2; package\.json is 0\.1\.1/,
-	);
+    await assert.rejects(
+      () => verifyReactorPin(fixture),
+      /pins @openprose\/reactor@0\.1\.0; package\.json is 0\.1\.1/,
+    );
   } finally {
     await rm(fixture.root, { force: true, recursive: true });
   }
@@ -102,9 +102,9 @@ test('reactor pin verifier rejects checked files missing from the tarball', asyn
 
 async function createFixture({
   packageName = '@openprose/reactor',
-  packageVersion = '0.1.0-rc.2',
+  packageVersion = '0.1.0',
   pin = {},
-  reactorDependency = 'workspace:0.1.0-rc.2',
+  reactorDependency = 'workspace:0.1.0',
 } = {}) {
   const root = await mkdtemp(join(tmpdir(), 'openprose-reactor-pin-'));
   const packageDir = join(root, 'packages', 'reactor');
@@ -121,7 +121,7 @@ async function createFixture({
     'package.json': `${JSON.stringify(
       {
         name: '@openprose/reactor',
-        version: '0.1.0-rc.2',
+        version: '0.1.0',
       },
       null,
       2,
@@ -135,7 +135,7 @@ async function createFixture({
     'src/index.ts',
   ];
   const packageTreeSha256 = hashPackageTree(tarballFiles);
-  const tarballPath = join(root, 'openprose-reactor-0.1.0-rc.2.tgz');
+  const tarballPath = join(root, 'openprose-reactor-0.1.0.tgz');
 
   await writePackageFiles(tarRoot, tarballFiles);
   await execFileAsync('tar', [
@@ -176,7 +176,7 @@ async function createFixture({
     JSON.stringify(
       {
         package: '@openprose/reactor',
-        version: '0.1.0-rc.2',
+        version: '0.1.0',
         packageTreeSha256,
         checkedFiles,
         ...pin,

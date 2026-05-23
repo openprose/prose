@@ -64,13 +64,10 @@ auditable "why" over time: release readiness, incident briefing, customer risk,
 compliance evidence, or research inbox triage. Skip it when a one-off prompt or
 ordinary cron job already gives you enough truth.
 
-*This repo is home to two related projects: **Reactor** (above) and
-**OpenProse**, the Markdown contract language Reactor builds on, covered through
-the rest of this README.*
-
 ---
 
-OpenProse is a programming language for AI sessions.
+OpenProse is the Markdown contract language Reactor builds on, and a
+programming language for AI sessions.
 
 Write a `*.prose.md` file with a contract. Your agent reads it, wires the right
 services, spawns subagents, passes artifacts between them, and leaves a durable

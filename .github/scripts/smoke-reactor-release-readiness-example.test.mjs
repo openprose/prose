@@ -115,7 +115,7 @@ test('release-readiness example smoke rejects remote release behavior in source'
 });
 
 async function createFixture({
-  cradleDependency = '0.1.0-rc.2',
+  cradleDependency = '0.1.0',
   reactorPackageName = '@openprose/reactor',
 } = {}) {
   const root = await mkdtemp(join(tmpdir(), 'openprose-reactor-example-fixture-'));
@@ -171,7 +171,7 @@ async function createReactorTarball(root, { reactorPackageName }) {
     `${JSON.stringify(
       {
         name: reactorPackageName,
-        version: '0.1.0-rc.2',
+        version: '0.1.0',
         type: 'commonjs',
         exports: {
           './receipt': { default: './dist/receipt/index.js' },
@@ -183,7 +183,7 @@ async function createReactorTarball(root, { reactorPackageName }) {
     )}\n`,
   );
 
-  return packFixture(root, 'reactor-tar-root', 'openprose-reactor-0.1.0-rc.2.tgz');
+  return packFixture(root, 'reactor-tar-root', 'openprose-reactor-0.1.0.tgz');
 }
 
 async function createCradleTarball(root, { cradleDependency }) {
@@ -253,7 +253,7 @@ async function createCradleTarball(root, { cradleDependency }) {
     `${JSON.stringify(
       {
         name: '@openprose/reactor-cradle',
-        version: '0.1.0-rc.2',
+        version: '0.1.0',
         type: 'commonjs',
         dependencies: {
           '@openprose/reactor': cradleDependency,
@@ -271,7 +271,7 @@ async function createCradleTarball(root, { cradleDependency }) {
   return packFixture(
     root,
     'cradle-tar-root',
-    'openprose-reactor-cradle-0.1.0-rc.2.tgz',
+    'openprose-reactor-cradle-0.1.0.tgz',
   );
 }
 

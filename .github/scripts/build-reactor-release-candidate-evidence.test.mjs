@@ -140,14 +140,14 @@ async function buildFixtureEvidence(overrides = {}) {
     asOf: '2026-05-19T08:05:00.000Z',
     branch: 'main',
     commit: FIXTURE_COMMIT,
-    cradleTarballPath: '/tmp/openprose-reactor-cradle-0.1.0-rc.2.tgz',
+    cradleTarballPath: '/tmp/openprose-reactor-cradle-0.1.0.tgz',
     generatedAt: '2026-05-19T08:10:00.000Z',
     hygieneEvidence: {
       dependencyScan: 'pass',
       diffCheck: 'pass',
       secretScan: 'pass',
     },
-    reactorTarballPath: '/tmp/openprose-reactor-0.1.0-rc.2.tgz',
+    reactorTarballPath: '/tmp/openprose-reactor-0.1.0.tgz',
     releaseCandidateId: 'r10-local-release-candidate-preflight',
     smokeReactorReleaseReadinessExampleImpl: async () => ({
       example_id: 'reactor-release-readiness',
@@ -162,7 +162,7 @@ async function buildFixtureEvidence(overrides = {}) {
     smokeReactorCradleTarballImportImpl: async () => ({
       cradlePackage: {
         name: '@openprose/reactor-cradle',
-        version: '0.1.0-rc.2',
+        version: '0.1.0',
       },
       imports: RELEASE_CANDIDATE_CRADLE_PUBLIC_IMPORT_SPECIFIERS.map((specifier) => ({
         exportCount: 1,
@@ -175,7 +175,7 @@ async function buildFixtureEvidence(overrides = {}) {
         specifier,
       })),
       packageName: '@openprose/reactor',
-      version: '0.1.0-rc.2',
+      version: '0.1.0',
     }),
     testEvidence: {
       cradleTests: { tests_passed: 92, tests_total: 92 },
@@ -185,10 +185,10 @@ async function buildFixtureEvidence(overrides = {}) {
     },
     verifyReactorPinImpl: async () => ({
       checkedFiles: ['package.json', 'dist/index.js', 'dist/index.d.ts'],
-      consumerDependency: 'workspace:0.1.0-rc.2',
+      consumerDependency: 'workspace:0.1.0',
       packageName: '@openprose/reactor',
       packageTreeSha256: FIXTURE_TREE_HASH,
-      version: '0.1.0-rc.2',
+      version: '0.1.0',
     }),
     worktreeStatus: 'clean',
     ...overrides,

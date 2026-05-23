@@ -11,8 +11,8 @@ npm install @openprose/reactor-cradle
 ```
 
 The Cradle is a test and evidence package, not the production Reactor runtime.
-This README describes the `0.1.0-rc.2` package surface — an OSS release
-candidate published on npm. For install commands, supported boundaries, and the
+This README describes the `0.1.0` package surface — the stable OSS release
+published on npm. For install commands, supported boundaries, and the
 golden path, start with the [Reactor v0.1 adoption contract][adoption].
 
 [reactor]: https://www.npmjs.com/package/@openprose/reactor
@@ -209,8 +209,8 @@ node .github/scripts/build-reactor-release-candidate-evidence.mjs \
   --branch main \
   --commit <local-commit-sha> \
   --worktreeStatus clean \
-  --reactorTarball /tmp/openprose-reactor-pack/openprose-reactor-0.1.0-rc.2.tgz \
-  --cradleTarball /tmp/openprose-reactor-pack/openprose-reactor-cradle-0.1.0-rc.2.tgz \
+  --reactorTarball /tmp/openprose-reactor-pack/openprose-reactor-0.1.0.tgz \
+  --cradleTarball /tmp/openprose-reactor-pack/openprose-reactor-cradle-0.1.0.tgz \
   --verifierSmokeTests <verifier-smoke-passed/total> \
   --exampleSmokeTests <example-smoke-passed/total> \
   --reactorTests <reactor-tests-passed/total> \
@@ -249,11 +249,11 @@ pnpm --filter @openprose/reactor-cradle test
 pnpm --dir packages/reactor pack --pack-destination /tmp/openprose-reactor-pack
 pnpm --dir packages/reactor-cradle pack --pack-destination /tmp/openprose-reactor-pack
 node .github/scripts/smoke-reactor-cradle-tarball-import.mjs \
-  --reactorTarball /tmp/openprose-reactor-pack/openprose-reactor-0.1.0-rc.2.tgz \
-  --cradleTarball /tmp/openprose-reactor-pack/openprose-reactor-cradle-0.1.0-rc.2.tgz
+  --reactorTarball /tmp/openprose-reactor-pack/openprose-reactor-0.1.0.tgz \
+  --cradleTarball /tmp/openprose-reactor-pack/openprose-reactor-cradle-0.1.0.tgz
 node .github/scripts/smoke-reactor-flat-tokens-example.mjs \
-  --reactorTarball /tmp/openprose-reactor-pack/openprose-reactor-0.1.0-rc.2.tgz \
-  --cradleTarball /tmp/openprose-reactor-pack/openprose-reactor-cradle-0.1.0-rc.2.tgz \
+  --reactorTarball /tmp/openprose-reactor-pack/openprose-reactor-0.1.0.tgz \
+  --cradleTarball /tmp/openprose-reactor-pack/openprose-reactor-cradle-0.1.0.tgz \
   --exampleDir skills/open-prose/examples/flat-tokens
 ```
 
