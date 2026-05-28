@@ -492,15 +492,19 @@ function modelFromHeaders(headers: Headers): string | undefined {
 	return headers.get("x-prose-model") ?? headers.get("x-model") ?? undefined;
 }
 
+function hostMatches(host: string, domain: string): boolean {
+	return host === domain || host.endsWith(`.${domain}`);
+}
+
 function providerFromUrl(url: string): string {
 	const host = new URL(url).hostname.toLowerCase();
-	if (host.endsWith("anthropic.com")) {
+	if (hostMatches(host, "anthropic.com")) {
 		return "anthropic";
 	}
-	if (host.endsWith("openai.com")) {
+	if (hostMatches(host, "openai.com")) {
 		return "openai";
 	}
-	if (host.endsWith("openrouter.ai")) {
+	if (hostMatches(host, "openrouter.ai")) {
 		return "openrouter";
 	}
 
