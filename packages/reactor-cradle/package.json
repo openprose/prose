@@ -101,7 +101,12 @@
     "./world": {
       "types": "./dist/world/index.d.ts",
       "default": "./dist/world/index.js"
-    }
+    },
+    "./baselines/*": {
+      "types": "./dist/baselines/*/index.d.ts",
+      "default": "./dist/baselines/*/index.js"
+    },
+    "./examples/flat-tokens": "./examples/flat-tokens.mjs"
   },
   "files": [
     "dist/**/*.js",
@@ -111,6 +116,7 @@
     "!dist/**/*.test.js",
     "!dist/**/*.test.d.ts",
     "!dist/**/*.test.d.ts.map",
+    "examples/flat-tokens.mjs",
     "README.md"
   ],
   "sideEffects": false,
