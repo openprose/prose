@@ -24,7 +24,9 @@
 
 ## Reactor
 
-**Reactor makes fresh model spend scale with surprise, not the clock.**
+**Reactor makes fresh model spend scale with surprise — plus a bounded periodic audit floor — not the arbitrary clock.**
+
+> v0.1.0 released 2026-05-22 — public on [npm](https://www.npmjs.com/package/@openprose/reactor) (`latest`, SLSA v1 provenance), source at tag [`reactor-v0.1.0`](https://github.com/openprose/prose/releases/tag/reactor-v0.1.0). See [`packages/reactor/ADOPTION.md`](packages/reactor/ADOPTION.md) for v0.1 scope.
 
 Reactor is a small local runtime for *responsibilities* — things you need to
 stay true while the world keeps moving: a release that is still safe to ship,
