@@ -49,6 +49,10 @@
     "./projection": {
       "types": "./dist/projection/index.d.ts",
       "default": "./dist/projection/index.js"
+    },
+    "./adapters": {
+      "types": "./dist/adapters/index.d.ts",
+      "default": "./dist/adapters/index.js"
     }
   },
   "files": [

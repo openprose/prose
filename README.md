@@ -45,9 +45,8 @@ See it in one run. The flat-tokens example drives four checks of a single
 responsibility:
 
 ```bash
-cd skills/open-prose/examples/flat-tokens
-npm install
-node flat-tokens.example.mjs
+npm install @openprose/reactor @openprose/reactor-cradle
+node node_modules/@openprose/reactor-cradle/examples/flat-tokens.mjs 2>&1
 # memoization cut fresh model spend 50% (2 model calls, not 4)
 #
 # tokens.fresh=46
@@ -55,6 +54,8 @@ node flat-tokens.example.mjs
 # ratio=46:46
 # no-memo-fresh=92
 ```
+
+From a clone of this repo: `cd skills/open-prose/examples/flat-tokens && npm install && node flat-tokens.example.mjs`.
 
 The four checks would have cost 92 fresh tokens of model work without
 memoization. With it, fresh stays at 46 — half — and 46 more tokens are reused
