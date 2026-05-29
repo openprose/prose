@@ -106,6 +106,13 @@ Codex harnesses also honor `PROSE_CODEX_ADD_DIR` as a comma-separated list of
 additional writable directories and `PROSE_CODEX_NETWORK` (`true` or `false`)
 for outbound network access.
 
+For externally sandboxed or non-interactive runs, the `claude-sdk` harness
+honors `PROSE_CLAUDE_PERMISSION_MODE` (`default`, `acceptEdits`,
+`bypassPermissions`, or `plan`) and forwards it to the Claude Agent SDK as
+`permissionMode`. The SDK defaults to `default` (prompt for tool use) when the
+variable is unset, which is appropriate for interactive sessions but blocks
+automated runs that cannot answer permission prompts.
+
 ## Skill Setup
 
 OpenProse execution depends on the `open-prose` agent skill. Before running a

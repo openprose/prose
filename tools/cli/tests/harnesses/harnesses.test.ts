@@ -305,6 +305,78 @@ describe("claude-sdk harness", () => {
 		expect(io.stderr).toBe("bad\n");
 	});
 
+	test("forwards PROSE_CLAUDE_PERMISSION_MODE to the SDK as permissionMode", async () => {
+		const io = memoryStreams();
+		const calls: unknown[] = [];
+		const harness = createClaudeSdkHarness({
+			query: async (args) => {
+				calls.push(args);
+				return {
+					async *[Symbol.asyncIterator]() {
+						yield { type: "result", subtype: "success", result: "ok", is_error: false };
+					},
+					close() {},
+				} as never;
+			},
+		});
+
+		const exitCode = await harness.run("prose run inspector.prose.md", {
+			...io.options,
+			env: { PROSE_CLAUDE_PERMISSION_MODE: "bypassPermissions" },
+		});
+
+		expect(exitCode).toBe(0);
+		expect(calls).toEqual([
+			expect.objectContaining({
+				options: expect.objectContaining({
+					permissionMode: "bypassPermissions",
+				}),
+			}),
+		]);
+	});
+
+	test("omits permissionMode when PROSE_CLAUDE_PERMISSION_MODE is unset", async () => {
+		const io = memoryStreams();
+		const calls: unknown[] = [];
+		const harness = createClaudeSdkHarness({
+			query: async (args) => {
+				calls.push(args);
+				return {
+					async *[Symbol.asyncIterator]() {
+						yield { type: "result", subtype: "success", result: "ok", is_error: false };
+					},
+					close() {},
+				} as never;
+			},
+		});
+
+		// Pass an explicit empty env so the test does not depend on the
+		// host shell's PROSE_CLAUDE_PERMISSION_MODE.
+		await harness.run("prose status", { ...io.options, env: {} });
+
+		expect(calls).toHaveLength(1);
+		const call = calls[0] as { options: Record<string, unknown> };
+		expect(call.options).not.toHaveProperty("permissionMode");
+	});
+
+	test("rejects invalid PROSE_CLAUDE_PERMISSION_MODE", async () => {
+		const io = memoryStreams();
+		const harness = createClaudeSdkHarness({
+			query: async () => {
+				throw new Error("unexpected query");
+			},
+		});
+
+		await expect(
+			harness.run("prose run inspector.prose.md", {
+				...io.options,
+				env: { PROSE_CLAUDE_PERMISSION_MODE: "yolo" },
+			}),
+		).rejects.toThrow(
+			"PROSE_CLAUDE_PERMISSION_MODE must be one of: default, acceptEdits, bypassPermissions, plan",
+		);
+	});
+
 	test("always forwards settingSources: ['user', 'project']", async () => {
 		const io = memoryStreams();
 		const calls: unknown[] = [];

@@ -1,3 +1,4 @@
+import { claudeRuntimeOptions } from "./claude-options.js";
 import { writeLine } from "./streams.js";
 import type { Harness, HarnessRunOptions } from "./types.js";
 
@@ -22,6 +23,7 @@ export function createClaudeSdkHarness(options: ClaudeSdkHarnessOptions = {}): H
 		name: "claude-sdk",
 		async run(prompt, runOptions) {
 			const abortController = bridgeAbortController(runOptions.signal);
+			const runtimeOptions = claudeRuntimeOptions(runOptions.env);
 			const stream = await Promise.resolve(
 				query({
 					prompt,
@@ -33,6 +35,7 @@ export function createClaudeSdkHarness(options: ClaudeSdkHarnessOptions = {}): H
 						...(runOptions.cwd === undefined ? {} : { cwd: runOptions.cwd }),
 						...(runOptions.env === undefined ? {} : { env: runOptions.env }),
 						includePartialMessages: true,
+						...runtimeOptions,
 						settingSources: ["user", "project"],
 						stderr: (chunk: string) => runOptions.stderr.write(chunk),
 						...(runOptions.systemPromptAppend === undefined
