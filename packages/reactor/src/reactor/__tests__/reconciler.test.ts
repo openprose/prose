@@ -34,13 +34,13 @@ import {
   type RenderRequest,
   type WakeEvent,
   COLD_START_ATOMIC_FINGERPRINT,
-  createFacetGranularResolver,
   createReconciler,
   inboundEdges,
   memoKeyMoved,
   movedFacetsBetween,
   propagationTargets,
 } from "../index";
+import { resolveInputs } from "../../sdk/mounted-dag";
 
 // --------------------------------------------------------------------------
 // Fakes
@@ -656,10 +656,14 @@ test("reconcile: a node missing from the compiled topology throws (Forme must ru
 // --------------------------------------------------------------------------
 
 // --------------------------------------------------------------------------
-// THE HEADLINE EVAL — facet-granular propagation (the selector boundary).
+// THE HEADLINE EVAL — facet-granular propagation (the selector boundary),
+// driven through the LIVE production resolver (`resolveInputs`, ledger-sourced —
+// the resolver `mountDag` binds the reconciler port to). There is ONE run-half
+// input-fingerprint resolver and this eval exercises it, not a parallel one.
 //
 // A 2-producer-facet node "vendor" exposes facets X and Y (plus the atomic
-// whole-truth token). "x_sub" Requires only vendor.X. The run half must:
+// whole-truth token), published into the LEDGER. "x_sub" Requires only vendor.X.
+// The run half must:
 //   - move facet Y (and the atomic token)  ⇒ x_sub SKIPS (its tuple held);
 //   - move facet X                          ⇒ x_sub WAKES (its tuple moved);
 //   - an atomic-only subscriber behaves byte-identically to the old path;
@@ -667,11 +671,44 @@ test("reconcile: a node missing from the compiled topology throws (Forme must ru
 // (architecture.md §3.2 selector boundary; world-model.md §3; SHAPES §3.)
 // --------------------------------------------------------------------------
 
+// A sentinel contract fingerprint for a SYNTHETIC producer-publish receipt. It
+// differs from the producer's compiled contract fingerprint so that seeding the
+// producer's published truth does NOT memo-skip the producer's own next render
+// (the memo key's contract half moves), while still feeding the ledger-sourced
+// resolver the producer's `{facet → token}` map.
+const SEED_CONTRACT = "sha256:" + "e".repeat(64);
+
 /**
- * Reconciler wired with the REAL facet-granular resolver
- * (`createFacetGranularResolver`) over a mutable producer-fingerprints table —
- * so moving a single facet exercises the genuine run-half selector, not a
- * hand-fed tuple.
+ * A synthetic `rendered` producer receipt carrying a published facet map — the
+ * shape the LEDGER-SOURCED resolver reads (`resolveInputs` reads the producer's
+ * last receipt `.fingerprints`). The eval moves a producer's published truth by
+ * appending one of these, exactly as a real producer render would.
+ */
+function producerReceipt(node: string, fingerprints: FingerprintMap): Receipt {
+  return {
+    node,
+    contract_fingerprint: SEED_CONTRACT,
+    wake: inputWake,
+    input_fingerprints: [],
+    fingerprints,
+    semantic_diff: {},
+    prev: null,
+    status: "rendered",
+    cost: RENDER_COST,
+    sig: { scheme: "none", null_reason: "test" },
+  };
+}
+
+/**
+ * Reconciler wired with the LIVE, LEDGER-SOURCED resolver — the production path
+ * (`resolveInputs` from `sdk/mounted-dag`, the resolver `mountDag` binds the
+ * reconciler port to). Per inbound edge it reads the producer's last receipt
+ * `.fingerprints` and resolves the subscribed facet, so moving a single facet
+ * exercises the genuine run-half selector over the real ledger, not a hand-fed
+ * tuple or a store-sourced parallel resolver. `setProducer` moves a producer's
+ * published truth by appending a `rendered` receipt to the ledger (the producer
+ * publishes its `{facet → token}` map there), so the selector boundary is proven
+ * against the same code production runs.
  */
 function facetHarness(input: {
   topology: TopologyWorldModel;
@@ -682,24 +719,32 @@ function facetHarness(input: {
   ledger: FakeLedger;
   renderCount: () => number;
   setProducer: (node: string, fps: FingerprintMap) => void;
+  setRenderOutput: (node: string, fps: FingerprintMap) => void;
 } {
   const ledger = new FakeLedger();
+  // What each producer's own render commits (drives the diamond's vendor render).
   const table = { ...input.producerFingerprints };
   let renderCount = 0;
   let renderSeq = 0;
 
+  // Seed each producer's published truth into the ledger so the ledger-sourced
+  // resolver sees it on the first reconcile (a producer that has not rendered
+  // exposes COLD_START via resolveInputs).
+  for (const node of Object.keys(input.producerFingerprints)) {
+    ledger.append(producerReceipt(node, input.producerFingerprints[node]!));
+  }
+
   const ports: ReconcilerPorts = {
     ledger,
     worldModel: { publishedRef: (node) => fakeWorldModelRef(node) },
-    resolveInputFingerprints: createFacetGranularResolver(
-      input.topology,
-      (producer) => table[producer] ?? atomic("cold"),
-    ),
+    // THE LIVE PRODUCTION RESOLVER: ledger-sourced, facet-granular.
+    resolveInputFingerprints: (_node, edges) => resolveInputs(ledger, edges),
     spawnRender: (req) => {
       renderCount += 1;
       renderSeq += 1;
       // A subscriber's render publishes its own fresh atomic truth; a producer's
-      // published facets are driven by the test via setProducer.
+      // published facets are driven by the test via setProducer (its committed
+      // map is what its receipt carries into the ledger).
       const existing = table[req.node];
       const commit: WorldModelCommit = {
         node: req.node,
@@ -719,6 +764,15 @@ function facetHarness(input: {
     ledger,
     renderCount: () => renderCount,
     setProducer: (node, fps) => {
+      table[node] = fps;
+      // Move the producer's PUBLISHED truth in the ledger — what the live
+      // ledger-sourced resolver reads on the subscriber's next reconcile.
+      ledger.append(producerReceipt(node, fps));
+    },
+    // Set ONLY what the producer's own render commits — no synthetic ledger
+    // append. Used when the producer publishes its move through its OWN render
+    // (the live propagation path: commit-vs-prior-receipt drives propagation).
+    setRenderOutput: (node, fps) => {
       table[node] = fps;
     },
   };
@@ -814,11 +868,13 @@ test("facet eval (diamond): a subscriber reachable by two moved facets of one pr
       vendor: { [ATOMIC_FACET]: "fp:whole-1", X: "fp:x-1", Y: "fp:y-1" },
     },
   });
-  // Seed x_sub's last receipt against the cold producer.
+  // Seed x_sub's last receipt against the producer's published truth.
   h.reconciler.reconcile({ node: "x_sub", wake: inputWake });
   const before = h.renderCount();
-  // Move BOTH X and Y, then drive the producer through a drain so it propagates.
-  h.setProducer("vendor", { [ATOMIC_FACET]: "fp:whole-2", X: "fp:x-2", Y: "fp:y-2" });
+  // Vendor publishes its move through its OWN render (the live propagation path:
+  // its commit {X-2,Y-2} vs its prior receipt {X-1,Y-1} moves BOTH facets). Both
+  // inbound edges resolve to x_sub, which must wake exactly once.
+  h.setRenderOutput("vendor", { [ATOMIC_FACET]: "fp:whole-2", X: "fp:x-2", Y: "fp:y-2" });
   const results = h.reconciler.drain([{ node: "vendor", wake: externalWake }]);
   const xWakes = results.filter((r) => r.node === "x_sub");
   equal(xWakes.length, 1, "the diamond reconverges to ONE wake, not one per edge");

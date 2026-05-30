@@ -50,7 +50,6 @@ import {
   createNullSignature,
   makeMemoKey,
 } from "../shapes";
-import { selectInputFingerprints } from "../composition";
 
 // ===========================================================================
 // Seam ports — the injection boundary (architecture.md §5.3).
@@ -161,32 +160,14 @@ export type ResolveInputFingerprints = (
   edges: readonly TopologyEdge[],
 ) => InputFingerprints;
 
-/**
- * The canonical, facet-granular `ResolveInputFingerprints` for the run half.
- * Integration wires this against the compiled topology and a producer-truth
- * lookup (the world-model store's `publishedFingerprints(node)`); it is the
- * production resolver the reconciler's `resolveInputFingerprints` port should be
- * bound to. It delegates to composition's `selectInputFingerprints`, which
- * consumes EXACTLY the subscribed facets — one slot per edge
- * `subscriber.Requires.<facet>` → `producer.Maintains.<facet>`, each token
- * resolved per-facet (architecture.md §6.3; world-model.md §3 "a downstream that
- * subscribes to facet *X* does not wake when facet *Y* moves"). A move in an
- * unsubscribed facet leaves the tuple untouched, so the subscriber skips; an
- * atomic-only subscriber resolves the whole-truth token and behaves exactly as
- * today (world-model.md §5; SHAPES §1).
- *
- * Note: the resolver ignores its `edges` argument and re-resolves the
- * subscriber's edges from the fixed `topology` — the topology is a fixed input
- * per scheduling epoch (architecture.md §2), so this is the same edge set the
- * reconciler passes, resolved into stable subscription order by composition.
- */
-export function createFacetGranularResolver(
-  topology: TopologyWorldModel,
-  producerFingerprints: (producer: string) => FingerprintMap,
-): ResolveInputFingerprints {
-  return (node, _edges) =>
-    selectInputFingerprints(topology, node, producerFingerprints);
-}
+// The single production `ResolveInputFingerprints` is ledger-sourced:
+// `resolveInputs` in `sdk/mounted-dag.ts`, which `mountDag` binds the
+// reconciler's `resolveInputFingerprints` port to. Per inbound edge it reads the
+// producer's last receipt `.fingerprints` (the published-truth identity
+// downstreams subscribe to, world-model.md §4) and resolves the subscribed facet
+// (architecture.md §6.3; world-model.md §3). There is exactly ONE such resolver —
+// no parallel store-sourced resolver — so the run-half input-fingerprint
+// resolution has a single authority (architecture.md §6.1).
 
 // ===========================================================================
 // Reconciler configuration + result types

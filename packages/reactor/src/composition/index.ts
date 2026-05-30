@@ -266,49 +266,16 @@ export function buildInputFingerprints(
   return Object.freeze(fingerprints);
 }
 
-/**
- * Resolve a subscriber's `input_fingerprints` tuple from the CURRENT published
- * truth of its upstreams — the run-half selector (architecture.md §4.1; SHAPES
- * §3). This is the sibling of `buildInputFingerprints`: that one reads the pins
- * a render captured at start; this one reads the producers' *current* published
- * `{facet → token}` maps so the reconciler can compare the tuple against the
- * node's last receipt BEFORE deciding to render.
- *
- * It consumes EXACTLY the subscribed facets: each topology edge
- * `subscriber.Requires.<facet>` → `producer.Maintains.<facet>` (§6.3) yields one
- * slot, and the token is resolved per-facet via `resolveFacetFingerprint` — so a
- * move in facet *Y* leaves an *X*-subscriber's tuple untouched and it skips
- * (architecture.md §3.2 "wakes only when `#### funding`'s fingerprint moves — not
- * when hiring or launches move … React's selector boundary"; world-model.md §3
- * "a downstream that subscribes to facet *X* does not wake when facet *Y*
- * moves"). The order is the resolved subscription order so the tuple is stable
- * across renders (SHAPES §3). An atomic-only subscriber (its edge facet is
- * `ATOMIC_FACET`, or the producer declares no facets) resolves the whole-truth
- * token — behaving exactly as the atomic-only path always has (world-model.md
- * §5; SHAPES §1).
- *
- * `producerFingerprints` returns the producer's current published fingerprint
- * map (the world-model store's `publishedFingerprints(node)` — its cold-start
- * default is the empty-artifact atomic token, so a never-rendered producer still
- * yields a defined token, architecture.md §8).
- */
-export function selectInputFingerprints(
-  topology: TopologyWorldModel,
-  subscriber: string,
-  producerFingerprints: (producer: string) => FingerprintMap,
-): InputFingerprints {
-  const subscriptions = resolveSubscriptions(topology, subscriber);
-  if (typeof producerFingerprints !== "function") {
-    throw new Error("producerFingerprints must be a function");
-  }
-  const tokens = subscriptions.map((subscription) =>
-    resolveFacetFingerprint(
-      producerFingerprints(subscription.producer),
-      subscription.facet,
-    ),
-  );
-  return Object.freeze(tokens);
-}
+// The run-half input-fingerprint resolver is LEDGER-SOURCED and lives at
+// `resolveInputs` in `sdk/mounted-dag.ts` (the resolver `mountDag` binds the
+// reconciler's `resolveInputFingerprints` port to): per inbound edge it reads
+// the producer's last receipt `.fingerprints` and resolves the subscribed facet
+// (architecture.md §4.1, §6.1, §6.3; world-model.md §3, §4). A second,
+// store-sourced selector (`selectInputFingerprints`, which read the world-model
+// store's `publishedFingerprints(node)`) once lived here; it had no production
+// call site and was removed in the v2-facets consolidation so the run half has a
+// single input-fingerprint authority. The per-facet read primitive it relied on
+// (`resolveFacetFingerprint`) is shared and still exported here.
 
 /**
  * Compose the full memo key for a subscriber render: the contract fingerprint
