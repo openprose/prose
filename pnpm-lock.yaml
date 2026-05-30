@@ -20,7 +20,7 @@ importers:
   packages/reactor-cradle:
     dependencies:
       '@openprose/reactor':
-        specifier: workspace:0.1.0
+        specifier: workspace:0.2.0
         version: link:../reactor
     devDependencies:
       '@types/node':
@@ -34,10 +34,10 @@ importers:
     dependencies:
       '@openprose/reactor':
         specifier: 0.1.0
-        version: link:../../../../packages/reactor
+        version: 0.1.0
       '@openprose/reactor-cradle':
         specifier: 0.1.0
-        version: link:../../../../packages/reactor-cradle
+        version: 0.1.0
 
   tools/cli:
     dependencies:
@@ -513,6 +513,14 @@ packages:
     engines: {node: '>=16'}
     cpu: [x64]
     os: [win32]
+
+  '@openprose/reactor-cradle@0.1.0':
+    resolution: {integrity: sha512-+gUISdrpRd0wKZMDHQY3UHMHGjNBZMEATZt0SrnIUwgWM5ZapOa87ae6kOHl/klbKgSWrTmqJa4QuVxWRwdiWA==}
+    engines: {node: '>=20.0.0'}
+
+  '@openprose/reactor@0.1.0':
+    resolution: {integrity: sha512-wPCgog240baVXQwzOO+5JRNZLTwjBJkwnGovISLmETnI1A/7+SUVYQl8iqtc6yFUb/DspZN920jZh4dQ0N5dLg==}
+    engines: {node: '>=20.0.0'}
 
   '@rollup/rollup-android-arm-eabi@4.60.4':
     resolution: {integrity: sha512-F5QXMSiFebS9hKZj02XhWLLnRpJ3B3AROP0tWbFBSj+6kCbg5m9j5JoHKd4mmSVy5mS/IMQloYgYxCuJC0fxEQ==}
@@ -1691,6 +1699,12 @@ snapshots:
 
   '@openai/codex@0.125.0-win32-x64':
     optional: true
+
+  '@openprose/reactor-cradle@0.1.0':
+    dependencies:
+      '@openprose/reactor': 0.1.0
+
+  '@openprose/reactor@0.1.0': {}
 
   '@rollup/rollup-android-arm-eabi@4.60.4':
     optional: true
