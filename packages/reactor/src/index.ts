@@ -65,16 +65,16 @@ export * from "./adapters";
 export * from "./sdk";
 
 // --- Collision resolution ---------------------------------------------------
-// Two pairs of modules legitimately ship a same-named helper so each compiles
-// standalone. We pin the canonical public binding here (the others remain
-// reachable on their own subpath export):
-//   - `createSkippedReceipt`: the canonical builder is the receipt ledger's
-//     (SHAPES.md §4 — the skipped receipt is a Receipt; delta.md §A3.2). The
-//     memo module's `SkippedReceiptInput`-shaped helper stays on
-//     `@openprose/reactor/memo`.
-//   - `resolveFacetFingerprint`: the canonical resolver is the world-model
-//     store's (world-model.md §4 — published-truth facet → token, atomic
-//     fallback). Composition's identical resolver stays on
-//     `@openprose/reactor/composition`.
+// `createSkippedReceipt` legitimately ships from two modules so each compiles
+// standalone. We pin the canonical public binding here (the other remains
+// reachable on its own subpath export): the canonical builder is the receipt
+// ledger's (SHAPES.md §4 — the skipped receipt is a Receipt; delta.md §A3.2);
+// the memo module's `SkippedReceiptInput`-shaped helper stays on
+// `@openprose/reactor/memo`.
+//
+// `resolveFacetFingerprint` is NOT a collision: there is ONE declaration, in
+// `./shapes` (the read-half of a FingerprintMap), and `./world-model` +
+// `./composition` merely re-export that same binding — `export *` of an
+// identical re-export is unambiguous, so the barrel surfaces it cleanly with no
+// pin needed (world-model.md §5; SHAPES.md §1).
 export { createSkippedReceipt } from "./receipt";
-export { resolveFacetFingerprint } from "./world-model";

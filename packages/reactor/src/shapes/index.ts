@@ -56,6 +56,32 @@ export type AtomicFacet = typeof ATOMIC_FACET;
  */
 export type FingerprintMap = Readonly<Record<Facet, Fingerprint>>;
 
+/**
+ * The subscriber's facet resolver — the single read-half of a `FingerprintMap`
+ * (world-model.md §5 L216–L221; SHAPES.md §1 L39). A declared facet uses its own
+ * token; an undeclared facet (or the atomic-only case) resolves through the
+ * reserved `ATOMIC_FACET` whole-truth token, which the map always carries. This
+ * is the ONE resolution rule the selector boundary keys on — the store, the
+ * pins, and the run-half resolver all consume it, so a move in facet *Y* leaves
+ * an *X*-subscriber's resolved token untouched (architecture.md §3.2).
+ */
+export function resolveFacetFingerprint(
+  fingerprints: FingerprintMap,
+  facet: Facet,
+): Fingerprint {
+  const direct = fingerprints[facet];
+  if (direct !== undefined) {
+    return direct;
+  }
+  const atomic = fingerprints[ATOMIC_FACET];
+  if (atomic === undefined) {
+    throw new TypeError(
+      `fingerprint map must contain the reserved ${ATOMIC_FACET} token`,
+    );
+  }
+  return atomic;
+}
+
 // ---------------------------------------------------------------------------
 // Wake: one event, three sources
 // ---------------------------------------------------------------------------
