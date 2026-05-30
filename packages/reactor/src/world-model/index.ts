@@ -14,6 +14,7 @@ export {
   normalizeArtifactPath,
   normalizeArtifactFiles,
   serializeArtifact,
+  deserializeArtifact,
   contentAddressOf,
   fingerprintArtifact,
 } from "./canonical";
@@ -27,6 +28,11 @@ export {
   COLD_START_FINGERPRINTS,
   resolveFacetFingerprint,
 } from "./store";
+
+export {
+  type FileSystemWorldModelStoreInput,
+  FileSystemWorldModelStore,
+} from "./fs-store";
 
 export {
   textFile,

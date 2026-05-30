@@ -113,6 +113,17 @@ export interface WorldModelStore {
    * (architecture.md §8 L328–L330). `null` if that version is not retained.
    */
   readVersion(node: string, version: ContentAddress): WorldModelRead | null;
+
+  /**
+   * The published fingerprint map a node currently exposes downstream — the
+   * "identity downstreams subscribe to" (world-model.md §4 L188). Promoted onto
+   * the interface so a consumer holding the `WorldModelStore` type (not the
+   * concrete class) can read the subscribed identity (world-model.md §4 L188;
+   * SHAPES.md §1 L40 "the published-truth { facet → token } map"). Cold start
+   * (no commit yet) is the empty-artifact atomic fingerprint (architecture.md
+   * §8 L335–L337), so subscribers always see a valid "no data yet" state.
+   */
+  publishedFingerprints(node: string): FingerprintMap;
 }
 
 interface PublishedEntry {

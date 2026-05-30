@@ -122,6 +122,63 @@ export function serializeArtifact(files: WorldModelFiles): Uint8Array {
 }
 
 /**
+ * Inverse of {@link serializeArtifact}: parse canonical bytes back into a
+ * `WorldModelFiles` map. This is the durable-store read path — bytes persisted
+ * to disk by the filesystem store are re-hydrated into files that re-serialize
+ * to the EXACT same bytes (and therefore the same content address), so a
+ * committed-then-restarted node yields identical fingerprints (architecture.md
+ * §10.1 L377–L379 deterministic directory-serialization; §8 L328–L330 the
+ * read-isolation pin must survive a restart). Strictly validates the frame so a
+ * truncated or tampered file is rejected rather than silently mis-read.
+ */
+export function deserializeArtifact(serialized: Uint8Array): WorldModelFiles {
+  let offset = 0;
+  for (let i = 0; i < MAGIC.length; i += 1) {
+    if (serialized[offset] !== MAGIC[i]) {
+      throw new TypeError("world-model artifact: bad magic header");
+    }
+    offset += 1;
+  }
+  const readU32 = (): number => {
+    if (offset + 4 > serialized.length) {
+      throw new TypeError("world-model artifact: truncated frame");
+    }
+    const value =
+      serialized[offset]! |
+      (serialized[offset + 1]! << 8) |
+      (serialized[offset + 2]! << 16) |
+      (serialized[offset + 3]! << 24);
+    offset += 4;
+    return value >>> 0;
+  };
+
+  const fileCount = readU32();
+  const out: Record<string, Uint8Array> = {};
+  for (let i = 0; i < fileCount; i += 1) {
+    const pathLen = readU32();
+    if (offset + pathLen > serialized.length) {
+      throw new TypeError("world-model artifact: truncated path");
+    }
+    const path = new TextDecoder("utf-8", { fatal: true }).decode(
+      serialized.subarray(offset, offset + pathLen),
+    );
+    offset += pathLen;
+    const contentLen = readU32();
+    if (offset + contentLen > serialized.length) {
+      throw new TypeError("world-model artifact: truncated content");
+    }
+    out[path] = serialized.slice(offset, offset + contentLen);
+    offset += contentLen;
+  }
+  if (offset !== serialized.length) {
+    throw new TypeError("world-model artifact: trailing bytes");
+  }
+  // Re-normalize so the returned map obeys the same path invariants as the
+  // serialize path (rejects any collision that a tampered file could introduce).
+  return normalizeArtifactFiles(out);
+}
+
+/**
  * The reference fingerprint computation (world-model.md §3 L162–L165; SHAPES.md
  * §0 invariant 2): sha256 over the canonical serialization, rendered as the
  * reference `sha256:<64 lowercase hex>` content address (SHAPES.md §1 L36).
