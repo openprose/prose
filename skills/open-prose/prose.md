@@ -45,7 +45,7 @@ codex exec "prose run system.prose.md"
 | `prose run <owner>/<repo>`       | Reserved for the OpenProse registry (future home at `p.prose.md`)         |
 | `prose run ...@<version>`        | Pin to a SHA or tag; require that version in `<openprose-root>/deps/`                     |
 | `prose run ... --offline`        | Require disk-only resolution; error if not in `<openprose-root>/deps/`                   |
-| `prose write [request...]`        | Interactive-by-default authoring through `std/ops/prose-author`, asking targeted shape/root questions when supported and returning a validated source package |
+| `prose write [request...]`        | Author through `std/ops/prose-author`; interactive hosts may ask targeted shape/root questions, while non-interactive callers must pass all context up front and receive `unresolved-intent` when more detail is required |
 | `prose lint <file.prose.md>`      | Validate structure, schema, shapes, and contracts               |
 | `prose preflight <file.prose.md>` | Check dependencies, declared tools, and environment variables   |
 | `prose test <path>`         | Run test(s) and report results                                  |
@@ -231,6 +231,41 @@ own tools:
 
 ---
 
+## Host Capability Modes
+
+OpenProse contracts may need different behavior in different host
+environments: a chat or TUI host can pause for `ask_user`, while a shell wrapper
+may only be able to pass argv and stdin before execution starts. The VM does
+not infer those modes mid-run. The caller or host declares them as explicit
+contract inputs or activation context, and the service or system treats those
+inputs as part of its public contract.
+
+Use this pattern for environment-dependent behavior:
+
+1. The host determines what it can support by construction or configuration.
+2. The invocation passes that capability as a named input, such as
+   `interactive: false`, `apply: false`, `run_state: in-context`,
+   `network_allowed: false`, or `tools_available: [...]`.
+3. The contract declares the mode input in `### Requires` and documents the
+   mode-specific obligations in `### Ensures`, `### Errors`, and
+   `### Invariants`.
+4. Execution branches on the declared mode. If a required primitive is
+   unavailable, return a declared error or degraded output instead of stalling,
+   guessing, or pretending the primitive exists.
+
+For example, the shell CLI path for `prose write` can pass request text from
+argv or piped stdin, but it cannot pause and safely resume the running
+authoring contract for follow-up questions. That wrapper therefore invokes the
+same `std/ops/prose-author` contract with `interactive: false`. Direct
+in-harness authoring may leave `interactive` true when the host can satisfy
+`ask_user`.
+
+Capability modes are contract-level obligations. They make behavior explicit
+and testable, but they are not a hard static type system unless a caller adds a
+separate checker for the mode-specific output shape.
+
+---
+
 ## Directory Structure
 
 Load `state/README.md` and the selected backend spec before execution. Durable
@@ -339,7 +374,8 @@ The manifest's Caller Interface lists what the system requires. Bind these value
 | CLI arguments (`prose run system.prose.md --question "..."`)    | Bind immediately                                      |
 | Config file (`<openprose-root>/.env` or system-level config)              | Bind immediately                                      |
 | Pre-supplied by calling system (if this is a nested invocation) | Bind immediately                                      |
-| No value available                                               | Pause execution, prompt user via `ask_user` |
+| No value available and current mode permits `ask_user`           | Pause execution, prompt user via `ask_user` |
+| No value available and current mode cannot use `ask_user`        | Return a declared missing-input error or mode-specific fallback |
 
 Write each bound input to `bindings/caller/{name}.md`:
 
@@ -881,7 +917,8 @@ At system start, the VM resolves each `requires` entry:
 | Value provided via CLI arg (`--question "..."`)       | Bind immediately                                    |
 | Value provided via config file                        | Bind immediately                                    |
 | Value provided by calling system (nested invocation) | Bind immediately                                    |
-| No value available                                    | Prompt user via `ask_user`, bind response           |
+| No value available and current mode permits `ask_user` | Prompt user via `ask_user`, bind response         |
+| No value available and current mode cannot use `ask_user` | Return a declared missing-input error or mode-specific fallback |
 
 ### Writing Input Bindings
 
@@ -1211,7 +1248,7 @@ function execute(manifest, inputs?):
   2. Bind caller inputs:
      - From CLI args, config, or calling system
      - For run-typed inputs (run / run[]): validate existence, structure, completion; emit staleness warning if source system changed
-     - Prompt user (`ask_user`) for any missing required inputs
+     - Prompt user (`ask_user`) for missing required inputs only when the current mode permits it; otherwise return the declared missing-input error or mode-specific fallback
      - Write each to the active backend binding store (filesystem: bindings/caller/{name}.md with structured metadata for run types)
      - Record upstream in the backend event header for any run-typed inputs
   3. Initialize backend storage for each service (filesystem: workspace/ and bindings/ directories)

@@ -111,6 +111,19 @@ runs a sufficiently intelligent model and supports the OpenProse primitives
 (`spawn_session`, filesystem state, tool calls, and user input) is considered
 "Prose Complete".
 
+### Why does shell `prose write` not ask follow-up questions?
+
+The shell CLI path is single-shot: it can pass argv and piped stdin before the
+authoring run starts, but it cannot safely pause and resume the running
+OpenProse contract for more input. Shell wrappers therefore invoke
+`std/ops/prose-author` with `interactive: false`. Pass all required authoring
+context up front; when safe generation needs another decision, the command
+returns `unresolved-intent` with a retry hint.
+
+Direct in-harness `prose write` can be interactive when the host can satisfy
+the OpenProse `ask_user` primitive. Both paths use the same authoring contract;
+the explicit `interactive` input selects the allowed behavior.
+
 ### How is this a VM?
 
 LLMs are simulators -- when given a detailed system description, they don't just
