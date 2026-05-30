@@ -57,10 +57,17 @@ import {
   InMemoryWorldModelStore,
 } from "../world-model";
 import {
+  compiledStoreCanonicalizer,
   type RenderContext,
   type RenderFailure,
   type RenderProduct,
+  type TruthProjection,
 } from "./render-atom";
+
+// Re-exported from the mounted front door so a caller wiring a compiled DAG can
+// thread each node's COMPILED canonicalizer into its `NodeMount.canonicalizer`
+// (architecture.md §3.2 / §5.2) from the single mounted-DAG import surface.
+export { compiledStoreCanonicalizer, type TruthProjection };
 
 // ---------------------------------------------------------------------------
 // The mounted render: the same atom body, woken by the harness

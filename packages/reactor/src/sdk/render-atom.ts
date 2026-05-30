@@ -42,6 +42,10 @@ import {
   type WorldModelStore,
   InMemoryWorldModelStore,
 } from "../world-model";
+import type {
+  CompiledCanonicalizer,
+  WorldModelValue,
+} from "../canonicalizer";
 
 // ---------------------------------------------------------------------------
 // What a standalone render produces
@@ -144,6 +148,41 @@ export interface RenderAtomResult {
   readonly receipt: LedgerReceipt;
   /** Present iff the render committed a new world-model (`rendered`). */
   readonly commit?: WorldModelCommit;
+}
+
+// ---------------------------------------------------------------------------
+// Threading the COMPILED per-node canonicalizer into the store
+// ---------------------------------------------------------------------------
+
+/**
+ * Project a node's published world-model FILES (the canonical artifact's bytes,
+ * `WorldModelFiles`) into the STRUCTURED `WorldModelValue` the compiled
+ * canonicalizer reduces. This is the "structured-backing rule" boundary
+ * (architecture.md §3.2 L144–L148): "anything subscribed must have a structured,
+ * canonicalizable backing; free-form rendered prose is a derived projection
+ * EXCLUDED from the fingerprint." The projection travels with the contract — it
+ * is how that contract lays its structured truth out on disk — so the harness
+ * never invents a file-name convention.
+ */
+export type TruthProjection = (files: WorldModelFiles) => WorldModelValue;
+
+/**
+ * Adapt a COMPILED per-node canonicalizer (the compile-phase artifact, operating
+ * on the structured `WorldModelValue`, architecture.md §3.2 L138–L143;
+ * SHAPES.md §6) into the store-shaped `Canonicalizer` (`WorldModelFiles →
+ * FingerprintMap`) that `store.commitPublished(node, files, canonicalizer)`
+ * applies (architecture.md §5.2 L208–L214). This is the seam that lets the
+ * canonicalizer the contract COMPILED TO be threaded through `renderAtom` /
+ * `mountDag` instead of falling back to the whole-truth `atomicCanonicalizer`:
+ * project the committed files into the structured truth, then apply the frozen
+ * materiality decision the compiler lowered (world-model.md §3 — "material" is
+ * frozen at compile, never judged at wake).
+ */
+export function compiledStoreCanonicalizer(
+  compiled: CompiledCanonicalizer,
+  projectTruth: TruthProjection,
+): Canonicalizer {
+  return (files) => compiled.apply(projectTruth(files));
 }
 
 const DEFAULT_WAKE: Wake = { source: "self", refs: [] };
