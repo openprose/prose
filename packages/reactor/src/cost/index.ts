@@ -1,24 +1,44 @@
-import type {
-  ReceiptEventCauseV0,
-  ReceiptRecheckKindV0,
-  ReceiptV0,
-} from "../receipt";
+// cost/ — surprise-attribution + flat-spend-under-static.
+//
+// KEPT (delta.md §A4 L193-197): the cost field makes "cost scales with surprise"
+// observable. It is a *superset* of architecture.md §6.1's `cost` — it carries
+// `surprise_cause`, which we keep. The judge era is gone: `surprise_cause` is now
+// the wake source (input | self | external), not the retired event-cause enum
+// (delta.md §A6 L227,234; SHAPES.md §2,§4).
+//
+// Two relationships are evaluated here:
+//   - surprise-attribution-complete — every token-bearing receipt names exactly
+//     one allowed surprise cause that matches its wake source (world-model.md §5
+//     "one event type, three sources").
+//   - flat-spend-under-static — in a static world, post-bootstrap *fresh* spend
+//     stays flat, with the sole exception of self-driven recheck ticks (the
+//     deliberately-declared forecast-cadence exception that re-examines silent
+//     staleness, world-model.md §6 L285-290).
 
-export const ALLOWED_SURPRISE_CAUSES_V0 = Object.freeze([
-  "real-input",
-  "forecast-recheck",
-  "escalation",
-] as const satisfies readonly ReceiptEventCauseV0[]);
+import type { Receipt, WakeSource } from "../shapes/index";
 
-export type CostRelationshipV0 =
+/**
+ * The surprise causes a token-bearing receipt may name. These are exactly the
+ * wake sources (world-model.md §5): an upstream receipt (`input`), the node's own
+ * continuity clock (`self`), or a gateway-translated external trigger
+ * (`external`). `surprise_cause` echoes the wake source that drove the spend
+ * (SHAPES.md §4).
+ */
+export const ALLOWED_SURPRISE_CAUSES = Object.freeze([
+  "input",
+  "self",
+  "external",
+] as const satisfies readonly WakeSource[]);
+
+export type CostRelationship =
   | "surprise-attribution-complete"
   | "flat-spend-under-static";
 
-export type CostEvaluationIssueCodeV0 =
+export type CostEvaluationIssueCode =
   | "receipt-not-object"
-  | "core-not-object"
-  | "core-event-cause-invalid"
   | "cost-not-object"
+  | "wake-not-object"
+  | "wake-source-invalid"
   | "tokens-not-object"
   | "tokens-invalid"
   | "surprise-cause-missing"
@@ -30,76 +50,65 @@ export type CostEvaluationIssueCodeV0 =
   | "token-bearing-evidence-missing"
   | "post-bootstrap-fresh-spend";
 
-export interface CostEvaluationIssueV0 {
+export interface CostEvaluationIssue {
   readonly path: string;
-  readonly code: CostEvaluationIssueCodeV0;
+  readonly code: CostEvaluationIssueCode;
   readonly message: string;
   readonly observed: unknown;
 }
 
-export interface ReceiptCostObservationV0 {
+export interface ReceiptCostObservation {
   readonly path: string;
   readonly token_bearing: boolean;
   readonly fresh: number;
   readonly reused: number;
-  readonly surprise_cause: ReceiptEventCauseV0;
-  readonly recheck_kind: ReceiptRecheckKindV0 | null;
-  readonly content_hash: string | null;
+  readonly surprise_cause: WakeSource;
+  readonly wake_source: WakeSource;
 }
 
-export interface ReceiptSurpriseAttributionCheckV0 {
+export interface ReceiptSurpriseAttributionCheck {
   readonly ok: boolean;
-  readonly issues: readonly CostEvaluationIssueV0[];
-  readonly observation: ReceiptCostObservationV0 | null;
+  readonly issues: readonly CostEvaluationIssue[];
+  readonly observation: ReceiptCostObservation | null;
 }
 
-export interface CostRelationshipEvaluationV0 {
+export interface CostRelationshipEvaluation {
   readonly ok: boolean;
-  readonly relationship: CostRelationshipV0;
+  readonly relationship: CostRelationship;
   readonly summary: string;
-  readonly issues: readonly CostEvaluationIssueV0[];
+  readonly issues: readonly CostEvaluationIssue[];
   readonly checked: {
     readonly receipts: number;
     readonly token_bearing_receipts: number;
     readonly post_bootstrap_token_bearing_receipts: number;
-    readonly plan_age_audit_floor_receipts: number;
+    readonly self_recheck_floor_receipts: number;
   };
 }
 
-export interface FlatSpendUnderStaticInputV0 {
+export interface FlatSpendUnderStaticInput {
   readonly receipts: readonly unknown[];
   readonly bootstrap_receipt_count?: number;
   readonly world_profile?: string;
 }
 
-const ALLOWED_SURPRISE_CAUSE_SET = new Set<ReceiptEventCauseV0>(
-  ALLOWED_SURPRISE_CAUSES_V0,
-);
-const ALLOWED_RECHECK_KIND_SET = new Set<ReceiptRecheckKindV0>([
-  "evidence-age",
-  "plan-age",
-]);
+const ALLOWED_SURPRISE_CAUSE_SET = new Set<WakeSource>(ALLOWED_SURPRISE_CAUSES);
 
-export function isAllowedSurpriseCauseV0(
-  value: unknown,
-): value is ReceiptEventCauseV0 {
+export function isAllowedSurpriseCause(value: unknown): value is WakeSource {
   return (
     typeof value === "string" &&
-    ALLOWED_SURPRISE_CAUSE_SET.has(value as ReceiptEventCauseV0)
+    ALLOWED_SURPRISE_CAUSE_SET.has(value as WakeSource)
   );
 }
 
-export function isTokenBearingReceiptV0(
-  receipt: Pick<ReceiptV0, "cost">,
-): boolean {
+export function isTokenBearingReceipt(receipt: Pick<Receipt, "cost">): boolean {
   return receipt.cost.tokens.fresh + receipt.cost.tokens.reused > 0;
 }
 
-export function validateReceiptSurpriseAttributionV0(
+export function validateReceiptSurpriseAttribution(
   receipt: unknown,
   path = "receipt",
-): ReceiptSurpriseAttributionCheckV0 {
-  const issues: CostEvaluationIssueV0[] = [];
+): ReceiptSurpriseAttributionCheck {
+  const issues: CostEvaluationIssue[] = [];
 
   if (!isRecord(receipt)) {
     return {
@@ -117,49 +126,45 @@ export function validateReceiptSurpriseAttributionV0(
   }
 
   const cost = readRecord(receipt, "cost", path, "cost-not-object", issues);
-  const core = readRecord(receipt, "core", path, "core-not-object", issues);
-  if (cost === undefined || core === undefined) {
+  const wake = readRecord(receipt, "wake", path, "wake-not-object", issues);
+  if (cost === undefined || wake === undefined) {
     return { ok: false, issues: Object.freeze([...issues]), observation: null };
   }
 
   const tokenSpend = readTokenSpend(cost, `${path}.cost`, issues);
-  const coreEventCause = readCoreEventCause(core, `${path}.core`, issues);
+  const wakeSource = readWakeSource(wake, `${path}.wake`, issues);
   const surpriseCause = readExactlyOneSurpriseCause(cost, `${path}.cost`, issues);
 
   if (
     surpriseCause !== undefined &&
-    coreEventCause !== undefined &&
-    surpriseCause !== coreEventCause
+    wakeSource !== undefined &&
+    surpriseCause !== wakeSource
   ) {
     issues.push(
       issue(
         `${path}.cost.surprise_cause`,
         "surprise-cause-mismatch",
-        "cost.surprise_cause must match receipt core.event_cause",
-        { surprise_cause: surpriseCause, event_cause: coreEventCause },
+        "cost.surprise_cause must echo the receipt wake.source",
+        { surprise_cause: surpriseCause, wake_source: wakeSource },
       ),
     );
   }
 
-  const recheckKind = readRecheckKind(core, `${path}.core`);
-
   if (
     tokenSpend === undefined ||
     surpriseCause === undefined ||
-    coreEventCause === undefined
+    wakeSource === undefined
   ) {
     return { ok: false, issues: Object.freeze([...issues]), observation: null };
   }
 
-  const observation: ReceiptCostObservationV0 = {
+  const observation: ReceiptCostObservation = {
     path: `${path}.cost`,
     token_bearing: tokenSpend.fresh + tokenSpend.reused > 0,
     fresh: tokenSpend.fresh,
     reused: tokenSpend.reused,
     surprise_cause: surpriseCause,
-    recheck_kind: recheckKind,
-    content_hash:
-      typeof receipt["content_hash"] === "string" ? receipt["content_hash"] : null,
+    wake_source: wakeSource,
   };
 
   return {
@@ -169,14 +174,11 @@ export function validateReceiptSurpriseAttributionV0(
   };
 }
 
-export const validateReceiptSurpriseCauseV0 =
-  validateReceiptSurpriseAttributionV0;
-
-export function evaluateSurpriseAttributionCompleteV0(
+export function evaluateSurpriseAttributionComplete(
   receipts: readonly unknown[],
-): CostRelationshipEvaluationV0 {
+): CostRelationshipEvaluation {
   const checks = receipts.map((receipt, index) =>
-    validateReceiptSurpriseAttributionV0(receipt, `receipts[${index}]`),
+    validateReceiptSurpriseAttribution(receipt, `receipts[${index}]`),
   );
   const observations = checks.flatMap((check) =>
     check.observation === null ? [] : [check.observation],
@@ -210,10 +212,10 @@ export function evaluateSurpriseAttributionCompleteV0(
   );
 }
 
-export function evaluateFlatSpendUnderStaticV0(
-  input: FlatSpendUnderStaticInputV0,
-): CostRelationshipEvaluationV0 {
-  const issues: CostEvaluationIssueV0[] = [];
+export function evaluateFlatSpendUnderStatic(
+  input: FlatSpendUnderStaticInput,
+): CostRelationshipEvaluation {
+  const issues: CostEvaluationIssue[] = [];
   const bootstrapReceiptCount = input.bootstrap_receipt_count ?? 1;
 
   if (
@@ -230,10 +232,7 @@ export function evaluateFlatSpendUnderStaticV0(
     );
   }
 
-  if (
-    input.world_profile !== undefined &&
-    input.world_profile !== "static"
-  ) {
+  if (input.world_profile !== undefined && input.world_profile !== "static") {
     issues.push(
       issue(
         "world_profile",
@@ -245,7 +244,7 @@ export function evaluateFlatSpendUnderStaticV0(
   }
 
   const checks = input.receipts.map((receipt, index) =>
-    validateReceiptSurpriseAttributionV0(receipt, `receipts[${index}]`),
+    validateReceiptSurpriseAttribution(receipt, `receipts[${index}]`),
   );
   issues.push(...checks.flatMap((check) => check.issues));
 
@@ -273,7 +272,7 @@ export function evaluateFlatSpendUnderStaticV0(
   }
 
   for (const observation of postBootstrap) {
-    if (observation.fresh === 0 || isPlanAgeAuditObservationV0(observation)) {
+    if (observation.fresh === 0 || isSelfRecheckObservation(observation)) {
       continue;
     }
 
@@ -281,13 +280,11 @@ export function evaluateFlatSpendUnderStaticV0(
       issue(
         `${observation.path}.tokens.fresh`,
         "post-bootstrap-fresh-spend",
-        "post-bootstrap static-world fresh spend must stay flat except plan-age audit receipts",
+        "post-bootstrap static-world fresh spend must stay flat except self-driven recheck ticks",
         {
           fresh: observation.fresh,
           reused: observation.reused,
           surprise_cause: observation.surprise_cause,
-          recheck_kind: observation.recheck_kind,
-          content_hash: observation.content_hash,
         },
       ),
     );
@@ -296,37 +293,37 @@ export function evaluateFlatSpendUnderStaticV0(
   return relationshipResult(
     "flat-spend-under-static",
     issues.length === 0
-      ? "static-world post-bootstrap fresh spend stayed flat apart from the plan-age audit floor"
-      : "static-world post-bootstrap fresh spend increased outside the plan-age audit floor",
+      ? "static-world post-bootstrap fresh spend stayed flat apart from the self-driven recheck floor"
+      : "static-world post-bootstrap fresh spend increased outside the self-driven recheck floor",
     input.receipts.length,
     tokenBearing.length,
     postBootstrap.length,
-    postBootstrap.filter(isPlanAgeAuditObservationV0).length,
+    postBootstrap.filter(isSelfRecheckObservation).length,
     issues,
   );
 }
 
-export function isPlanAgeAuditObservationV0(
-  observation: Pick<
-    ReceiptCostObservationV0,
-    "surprise_cause" | "recheck_kind"
-  >,
+/**
+ * A self-driven recheck tick: the node's own continuity clock re-examined a fact
+ * for silent staleness (world-model.md §6 L285-290). This is the single
+ * legitimate source of post-bootstrap fresh spend in a static world — the
+ * deliberately-declared forecast-cadence exception, not a hidden clock.
+ */
+export function isSelfRecheckObservation(
+  observation: Pick<ReceiptCostObservation, "surprise_cause">,
 ): boolean {
-  return (
-    observation.surprise_cause === "forecast-recheck" &&
-    observation.recheck_kind === "plan-age"
-  );
+  return observation.surprise_cause === "self";
 }
 
 function relationshipResult(
-  relationship: CostRelationshipV0,
+  relationship: CostRelationship,
   summary: string,
   receiptCount: number,
   tokenBearingReceiptCount: number,
   postBootstrapTokenBearingReceiptCount: number,
-  planAgeAuditFloorReceiptCount: number,
-  issues: readonly CostEvaluationIssueV0[],
-): CostRelationshipEvaluationV0 {
+  selfRecheckFloorReceiptCount: number,
+  issues: readonly CostEvaluationIssue[],
+): CostRelationshipEvaluation {
   return {
     ok: issues.length === 0,
     relationship,
@@ -337,7 +334,7 @@ function relationshipResult(
       token_bearing_receipts: tokenBearingReceiptCount,
       post_bootstrap_token_bearing_receipts:
         postBootstrapTokenBearingReceiptCount,
-      plan_age_audit_floor_receipts: planAgeAuditFloorReceiptCount,
+      self_recheck_floor_receipts: selfRecheckFloorReceiptCount,
     },
   };
 }
@@ -346,18 +343,13 @@ function readRecord(
   record: Readonly<Record<string, unknown>>,
   key: string,
   path: string,
-  code: "cost-not-object" | "core-not-object",
-  issues: CostEvaluationIssueV0[],
+  code: "cost-not-object" | "wake-not-object",
+  issues: CostEvaluationIssue[],
 ): Readonly<Record<string, unknown>> | undefined {
   const value = record[key];
   if (!isRecord(value)) {
     issues.push(
-      issue(
-        `${path}.${key}`,
-        code,
-        `${path}.${key} must be an object`,
-        value,
-      ),
+      issue(`${path}.${key}`, code, `${path}.${key} must be an object`, value),
     );
     return undefined;
   }
@@ -368,7 +360,7 @@ function readRecord(
 function readTokenSpend(
   cost: Readonly<Record<string, unknown>>,
   path: string,
-  issues: CostEvaluationIssueV0[],
+  issues: CostEvaluationIssue[],
 ): { readonly fresh: number; readonly reused: number } | undefined {
   const tokens = cost["tokens"];
   if (!isRecord(tokens)) {
@@ -400,38 +392,38 @@ function readTokenSpend(
   return { fresh, reused };
 }
 
-function readCoreEventCause(
-  core: Readonly<Record<string, unknown>>,
+function readWakeSource(
+  wake: Readonly<Record<string, unknown>>,
   path: string,
-  issues: CostEvaluationIssueV0[],
-): ReceiptEventCauseV0 | undefined {
-  const eventCause = core["event_cause"];
-  if (!isAllowedSurpriseCauseV0(eventCause)) {
+  issues: CostEvaluationIssue[],
+): WakeSource | undefined {
+  const source = wake["source"];
+  if (!isAllowedSurpriseCause(source)) {
     issues.push(
       issue(
-        `${path}.event_cause`,
-        "core-event-cause-invalid",
-        "core.event_cause must be one of the allowed surprise causes",
-        eventCause,
+        `${path}.source`,
+        "wake-source-invalid",
+        "wake.source must be one of input, self, external",
+        source,
       ),
     );
     return undefined;
   }
 
-  return eventCause;
+  return source;
 }
 
 function readExactlyOneSurpriseCause(
   cost: Readonly<Record<string, unknown>>,
   path: string,
-  issues: CostEvaluationIssueV0[],
-): ReceiptEventCauseV0 | undefined {
+  issues: CostEvaluationIssue[],
+): WakeSource | undefined {
   if (!Object.hasOwn(cost, "surprise_cause")) {
     issues.push(
       issue(
         `${path}.surprise_cause`,
         "surprise-cause-missing",
-        "cost.surprise_cause is required for receipt v0 cost attribution",
+        "cost.surprise_cause is required for receipt cost attribution",
         null,
       ),
     );
@@ -444,7 +436,7 @@ function readExactlyOneSurpriseCause(
       issue(
         `${path}.surprise_cause`,
         "surprise-cause-multiple",
-        "receipt v0 cost attribution must name exactly one surprise cause",
+        "receipt cost attribution must name exactly one surprise cause",
         {
           surprise_cause: surpriseCause,
           surprise_causes: cost["surprise_causes"] ?? null,
@@ -454,12 +446,12 @@ function readExactlyOneSurpriseCause(
     return undefined;
   }
 
-  if (!isAllowedSurpriseCauseV0(surpriseCause)) {
+  if (!isAllowedSurpriseCause(surpriseCause)) {
     issues.push(
       issue(
         `${path}.surprise_cause`,
         "surprise-cause-invalid",
-        "cost.surprise_cause must be one of real-input, forecast-recheck, escalation",
+        "cost.surprise_cause must be one of input, self, external",
         surpriseCause,
       ),
     );
@@ -469,27 +461,12 @@ function readExactlyOneSurpriseCause(
   return surpriseCause;
 }
 
-function readRecheckKind(
-  core: Readonly<Record<string, unknown>>,
-  path: string,
-): ReceiptRecheckKindV0 | null {
-  const recheckKind = core["recheck_kind"];
-  if (
-    typeof recheckKind === "string" &&
-    ALLOWED_RECHECK_KIND_SET.has(recheckKind as ReceiptRecheckKindV0)
-  ) {
-    return recheckKind as ReceiptRecheckKindV0;
-  }
-
-  return null;
-}
-
 function issue(
   path: string,
-  code: CostEvaluationIssueCodeV0,
+  code: CostEvaluationIssueCode,
   message: string,
   observed: unknown,
-): CostEvaluationIssueV0 {
+): CostEvaluationIssue {
   return { path, code, message, observed };
 }
 

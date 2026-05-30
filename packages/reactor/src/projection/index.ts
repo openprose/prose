@@ -1,38 +1,49 @@
+// projection/ — owner / subscriber / public receipt projection + secret
+// redaction. The shareable-trust tiers (plan.md "trust is demonstrated, not
+// asserted").
+//
+// KEPT (delta.md §A4 L198-201) but re-pointed onto the ideal Receipt: a
+// projection is a DERIVED VIEW of a receipt, never truth (SHAPES.md §0 invariant
+// 3: "SQL / vector / dashboards are derived projections, never the truth"). The
+// judge era — verdict.{status,confidence,blocked}, role, freshness.*,
+// composition pins, contract_revision — is demolished (delta.md §A6). The new
+// projectable surface is the ideal receipt's own fields (architecture.md §6.1):
+// node, contract_fingerprint, wake, input_fingerprints, fingerprints (the
+// published-truth facet map), status (render outcome), cost, sig.
+//
+// Redaction posture is preserved: public/subscriber tiers fail closed if a
+// public field would carry secret-shaped data or a known-private key.
+
 import {
-  RECEIPT_SCHEMA,
-  RECEIPT_VERSION,
-  inspectReceiptProofV0,
-  type ContentHashV0,
-  type ReceiptProofInspectionV0,
-  type ReceiptVerdictStatusV0,
+  inspectReceiptProof,
+  type ContentAddress,
+  type ReceiptProofInspection,
 } from "../receipt";
 
 export const RECEIPT_PROJECTION_SCHEMA =
   "openprose.receipt.projection" as const;
-export const RECEIPT_PROJECTION_VERSION = 0 as const;
-export const RECEIPT_PROJECTION_TIERS_V0 = [
+export const RECEIPT_PROJECTION_VERSION = 1 as const;
+export const RECEIPT_PROJECTION_TIERS = [
   "owner",
   "subscriber",
   "public",
 ] as const;
 
-export type ReceiptProjectionSchemaV0 = typeof RECEIPT_PROJECTION_SCHEMA;
-export type ReceiptProjectionVersionV0 = typeof RECEIPT_PROJECTION_VERSION;
-export type ReceiptProjectionTierV0 =
-  (typeof RECEIPT_PROJECTION_TIERS_V0)[number];
+export type ReceiptProjectionSchema = typeof RECEIPT_PROJECTION_SCHEMA;
+export type ReceiptProjectionVersion = typeof RECEIPT_PROJECTION_VERSION;
+export type ReceiptProjectionTier = (typeof RECEIPT_PROJECTION_TIERS)[number];
 
-export interface ProjectReceiptInputV0 {
+export interface ProjectReceiptInput {
   readonly tier: string;
   readonly receipt: unknown;
 }
 
-export interface ProjectReceiptProofInputV0 {
+export interface ProjectReceiptProofInput {
   readonly tier: string;
   readonly proof: unknown;
-  readonly status?: ReceiptVerdictStatusV0 | null;
 }
 
-export type ReceiptProjectionSignerV0 =
+export type ReceiptProjectionSigner =
   | {
       readonly kind: "null";
       readonly scheme: "none";
@@ -42,152 +53,156 @@ export type ReceiptProjectionSignerV0 =
       readonly scheme: string;
     };
 
-export interface ReceiptProjectionFreshnessV0 {
-  readonly as_of: string;
-  readonly next_forecast_recheck: string;
-  readonly transitive_freshness_policy_ref: string | null;
-  readonly consumed_freshness_evaluated_count: number;
+/**
+ * The wake projection: source + how many waking-receipt refs there were. The
+ * refs themselves (content addresses) are not surfaced — the *attribution* is the
+ * source, not the upstream identity (world-model.md §5).
+ */
+export interface ReceiptWakeProjection {
+  readonly source: string;
+  /** Count of waking-receipt refs; `null` when projected from a proof summary
+   * (which carries the wake source but not its refs). */
+  readonly ref_count: number | null;
 }
 
-export interface ReceiptPublicCompositionPinProjectionV0 {
-  readonly upstream_content_hash: ContentHashV0;
-  readonly contract_revision: ContentHashV0;
-  readonly acceptable_signer_set_count: number;
+/**
+ * The published-truth facet projection. The public tier exposes only the *shape*
+ * of the truth (how many facets, whether the atomic facet is present) — never the
+ * facet names or tokens, since a proof summary carries only counts and a facet
+ * name may itself be sensitive. Subscriber/owner get the full `{ facet → token }`
+ * map (a fingerprint is a meaning-layer trust token, safe to share downstream).
+ */
+export interface ReceiptPublicFingerprintProjection {
+  readonly facet_count: number;
+  readonly atomic_facet_present: boolean;
 }
 
-export interface ReceiptSubscriberCompositionPinProjectionV0 {
-  readonly upstream_content_hash: ContentHashV0;
-  readonly contract_revision: ContentHashV0;
-  readonly acceptable_signer_set: readonly string[];
+export interface ReceiptSubscriberFingerprintProjection {
+  readonly facets: readonly string[];
+  readonly atomic_facet_present: boolean;
+  readonly fingerprints: Readonly<Record<string, string>>;
 }
 
-export interface ReceiptPublicCompositionProjectionV0 {
-  readonly consumed_receipt_count: number;
-  readonly consumed_receipts: readonly ReceiptPublicCompositionPinProjectionV0[];
-  readonly cycle_checked: boolean;
-}
-
-export interface ReceiptSubscriberCompositionProjectionV0 {
-  readonly consumed_receipt_count: number;
-  readonly consumed_receipts: readonly ReceiptSubscriberCompositionPinProjectionV0[];
-  readonly cycle_checked: boolean;
-}
-
-export interface ReceiptPublicTokenTruthProjectionV0 {
+/**
+ * The cost projection — "cost scales with surprise" made shareable (delta.md
+ * §A4). public exposes the token split + surprise cause; subscriber adds the
+ * provider/model attribution.
+ */
+export interface ReceiptPublicCostProjection {
   readonly fresh: number;
   readonly reused: number;
-  readonly role: string;
   readonly surprise_cause: string;
 }
 
-export interface ReceiptSubscriberTokenTruthProjectionV0
-  extends ReceiptPublicTokenTruthProjectionV0 {
+export interface ReceiptSubscriberCostProjection
+  extends ReceiptPublicCostProjection {
   readonly provider: string;
   readonly model: string;
 }
 
-export interface ReceiptOwnerVerdictProjectionV0 {
-  readonly status: ReceiptVerdictStatusV0 | null;
-  readonly confidence: {
-    readonly value: number | null;
-    readonly derivation_method: string | null;
-    readonly calibration_grade: string | null;
-    readonly label_source: string | null;
-  } | null;
-  readonly blocked: {
-    readonly reason: string | null;
-    readonly fix_target: string | null;
-    readonly interrupt_cause: string | null;
-  } | null;
+export interface ReceiptProjectionBase {
+  readonly schema: ReceiptProjectionSchema;
+  readonly v: ReceiptProjectionVersion;
+  readonly tier: ReceiptProjectionTier;
+  readonly receipt_id: ContentAddress;
+  readonly content_hash: ContentAddress;
+  readonly contract_fingerprint: string;
+  readonly status: string;
+  readonly wake: ReceiptWakeProjection;
+  readonly signer: ReceiptProjectionSigner;
 }
 
-export interface ReceiptProjectionBaseV0 {
-  readonly schema: ReceiptProjectionSchemaV0;
-  readonly v: ReceiptProjectionVersionV0;
-  readonly tier: ReceiptProjectionTierV0;
-  readonly receipt_id: ContentHashV0;
-  readonly content_hash: ContentHashV0;
-  readonly contract_revision: ContentHashV0;
-  readonly status: ReceiptVerdictStatusV0 | null;
-  readonly signer: ReceiptProjectionSignerV0;
-  readonly freshness: ReceiptProjectionFreshnessV0;
-}
-
-export interface ReceiptOwnerProjectionV0 extends ReceiptProjectionBaseV0 {
+export interface ReceiptOwnerProjection extends ReceiptProjectionBase {
   readonly tier: "owner";
-  readonly responsibility_id: string;
-  readonly role: string;
-  readonly composition: ReceiptSubscriberCompositionProjectionV0;
-  readonly token_truth: ReceiptSubscriberTokenTruthProjectionV0;
-  readonly verdict: ReceiptOwnerVerdictProjectionV0;
-  readonly proof: ReceiptProofInspectionV0;
+  readonly node: string;
+  readonly input_fingerprints: readonly string[];
+  readonly fingerprints: ReceiptSubscriberFingerprintProjection;
+  readonly cost: ReceiptSubscriberCostProjection;
+  readonly prev: ContentAddress | null;
+  readonly proof: ReceiptProofInspection;
 }
 
-export interface ReceiptSubscriberProjectionV0 extends ReceiptProjectionBaseV0 {
+export interface ReceiptSubscriberProjection extends ReceiptProjectionBase {
   readonly tier: "subscriber";
-  readonly responsibility_id: string;
-  readonly role: string;
-  readonly composition: ReceiptSubscriberCompositionProjectionV0;
-  readonly token_truth: ReceiptSubscriberTokenTruthProjectionV0;
+  readonly node: string;
+  readonly input_fingerprints: readonly string[];
+  readonly fingerprints: ReceiptSubscriberFingerprintProjection;
+  readonly cost: ReceiptSubscriberCostProjection;
 }
 
-export interface ReceiptPublicProjectionV0 extends ReceiptProjectionBaseV0 {
+export interface ReceiptPublicProjection extends ReceiptProjectionBase {
   readonly tier: "public";
-  readonly composition: ReceiptPublicCompositionProjectionV0;
-  readonly token_truth: ReceiptPublicTokenTruthProjectionV0;
+  readonly fingerprints: ReceiptPublicFingerprintProjection;
+  readonly cost: ReceiptPublicCostProjection;
+  readonly input_fingerprint_count: number;
 }
 
-export type ReceiptProjectionV0 =
-  | ReceiptOwnerProjectionV0
-  | ReceiptSubscriberProjectionV0
-  | ReceiptPublicProjectionV0;
+export type ReceiptProjection =
+  | ReceiptOwnerProjection
+  | ReceiptSubscriberProjection
+  | ReceiptPublicProjection;
 
-export type ReceiptProjectionResultV0 =
+export type ReceiptProjectionResult =
   | {
       readonly ok: true;
-      readonly tier: ReceiptProjectionTierV0;
-      readonly projection: ReceiptProjectionV0;
+      readonly tier: ReceiptProjectionTier;
+      readonly projection: ReceiptProjection;
     }
   | {
       readonly ok: false;
-      readonly tier: ReceiptProjectionTierV0 | null;
+      readonly tier: ReceiptProjectionTier | null;
       readonly errors: readonly string[];
       readonly projection: null;
     };
 
-interface NormalizedProofV0 {
-  readonly inspection: ReceiptProofInspectionV0;
-  readonly content_hash: ContentHashV0;
-  readonly contract_revision: ContentHashV0;
-  readonly responsibility_id: string;
-  readonly role: string;
-  readonly signer: ReceiptProjectionSignerV0;
-  readonly freshness: ReceiptProjectionFreshnessV0;
-  readonly composition: ReceiptSubscriberCompositionProjectionV0;
-  readonly token_truth: ReceiptSubscriberTokenTruthProjectionV0;
+/**
+ * The summary that *every* source yields: a verified proof inspection carries
+ * counts (facet_count, input_fingerprint_count) but not the raw facet map. It is
+ * sufficient for the public tier.
+ */
+interface NormalizedSummary {
+  readonly inspection: ReceiptProofInspection;
+  readonly content_hash: ContentAddress;
+  readonly node: string;
+  readonly contract_fingerprint: string;
+  readonly status: string;
+  readonly wake: ReceiptWakeProjection;
+  readonly signer: ReceiptProjectionSigner;
+  readonly facet_count: number;
+  readonly atomic_facet_present: boolean;
+  readonly input_fingerprint_count: number;
+  readonly cost: ReceiptSubscriberCostProjection;
+  readonly prev: ContentAddress | null;
 }
 
-const CONTENT_HASH_PATTERN = /^sha256:[a-f0-9]{64}$/;
-const ISO_INSTANT_PATTERN =
-  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/;
-const PROJECTION_TIERS = new Set<string>(RECEIPT_PROJECTION_TIERS_V0);
-const RECEIPT_STATUSES = new Set<string>([
-  "up",
-  "drifting",
-  "down",
-  "blocked",
-]);
+/**
+ * The full view — only available from a raw receipt (the proof summary does not
+ * carry the raw facet map or the input-fingerprint tuple). Required for the
+ * subscriber/owner tiers.
+ */
+interface NormalizedFull extends NormalizedSummary {
+  readonly fingerprints: Readonly<Record<string, string>>;
+  readonly facets: readonly string[];
+  readonly input_fingerprints: readonly string[];
+}
+
+const CONTENT_ADDRESS_PATTERN = /^sha256:[a-f0-9]{64}$/;
+const ATOMIC_FACET = "@atomic";
+const PROJECTION_TIERS = new Set<string>(RECEIPT_PROJECTION_TIERS);
+const ALLOWED_STATUSES = new Set<string>(["rendered", "skipped", "failed"]);
+const ALLOWED_WAKE_SOURCES = new Set<string>(["input", "self", "external"]);
+const ALLOWED_SURPRISE_CAUSES = new Set<string>(["input", "self", "external"]);
 const OPENROUTER_SECRET_PREFIX = ["sk", "or"].join("-");
 const PRIVATE_OUTPUT_KEYS = new Set([
   "customer_payload",
   "evidence_payload",
-  "judge_rationale",
   "memo_key",
   "provider_norm",
   "rationale",
   "raw_evidence",
   "raw_evidence_payload",
   "run_id",
+  "semantic_diff",
   "tags",
 ]);
 const SECRET_SHAPED_PATTERNS = [
@@ -202,480 +217,364 @@ const SECRET_SHAPED_PATTERNS = [
   /\bhttps?:\/\/[^\s?#]+[/?#][^\s]*(?:token|secret|signature|credential|password)=/i,
 ];
 
-export function projectReceiptV0(
-  input: ProjectReceiptInputV0,
-): ReceiptProjectionResultV0 {
+export function projectReceipt(
+  input: ProjectReceiptInput,
+): ReceiptProjectionResult {
   const tier = normalizeTier(input.tier);
   if (tier === null) {
     return failProjection(null, ["unknown projection tier"]);
   }
 
-  const proof = inspectReceiptProofV0(input.receipt);
-  if (!proof.ok) {
+  const inspection = inspectReceiptProof(input.receipt);
+  if (!inspection.ok) {
     return failProjection(tier, ["receipt failed verification"]);
   }
 
-  const normalized = normalizeProof(proof);
-  if (!normalized.ok) {
-    return failProjection(tier, normalized.errors);
+  const summary = normalizeSummary(inspection);
+  if (!summary.ok) {
+    return failProjection(tier, summary.errors);
   }
 
-  const status = readReceiptStatus(input.receipt);
-  if (status === null) {
-    return failProjection(tier, ["receipt status is malformed"]);
+  // A raw receipt carries its wake refs, so enrich the summary's ref_count even
+  // for the public tier (the proof-only path leaves it null).
+  const refErrors: string[] = [];
+  const refCount = readWakeRefCount(input.receipt, refErrors);
+  const enriched: NormalizedSummary =
+    refCount === null
+      ? summary.summary
+      : {
+          ...summary.summary,
+          wake: { source: summary.summary.wake.source, ref_count: refCount },
+        };
+
+  if (tier === "public") {
+    return projectPublic(enriched);
   }
 
-  return projectNormalizedProof({
-    tier,
-    proof: normalized.proof,
-    status,
-    verdict: readOwnerVerdict(input.receipt, status),
-  });
+  const full = normalizeFull(enriched, input.receipt);
+  if (!full.ok) {
+    return failProjection(tier, full.errors);
+  }
+
+  return projectFull(tier, full.full);
 }
 
-export function projectReceiptProofV0(
-  input: ProjectReceiptProofInputV0,
-): ReceiptProjectionResultV0 {
+/**
+ * Project from a verified proof *summary* (inspectReceiptProof output). A proof
+ * summary carries counts, not the raw facet map, so it can only yield the public
+ * tier — the shareable-trust view (plan.md "trust is demonstrated"). Asking for a
+ * richer tier from a summary fails closed.
+ */
+export function projectReceiptProof(
+  input: ProjectReceiptProofInput,
+): ReceiptProjectionResult {
   const tier = normalizeTier(input.tier);
   if (tier === null) {
     return failProjection(null, ["unknown projection tier"]);
   }
-
-  const normalized = normalizeProof(input.proof);
-  if (!normalized.ok) {
-    return failProjection(tier, normalized.errors);
+  if (tier !== "public") {
+    return failProjection(tier, [
+      "a proof summary can only be projected to the public tier",
+    ]);
   }
 
-  const status =
-    input.status === undefined || input.status === null
-      ? null
-      : normalizeStatus(input.status);
-  if (input.status !== undefined && input.status !== null && status === null) {
-    return failProjection(tier, ["receipt status is malformed"]);
+  if (!isRecord(input.proof) || input.proof["ok"] !== true) {
+    return failProjection(tier, ["receipt proof must be verified"]);
   }
 
-  return projectNormalizedProof({
-    tier,
-    proof: normalized.proof,
-    status,
-    verdict: {
-      status,
-      confidence: null,
-      blocked: null,
-    },
-  });
+  const summary = normalizeSummary(input.proof as unknown as ReceiptProofInspection);
+  if (!summary.ok) {
+    return failProjection(tier, summary.errors);
+  }
+
+  return projectPublic(summary.summary);
 }
 
-function projectNormalizedProof(input: {
-  readonly tier: ReceiptProjectionTierV0;
-  readonly proof: NormalizedProofV0;
-  readonly status: ReceiptVerdictStatusV0 | null;
-  readonly verdict: ReceiptOwnerVerdictProjectionV0;
-}): ReceiptProjectionResultV0 {
-  const base = {
-    schema: RECEIPT_PROJECTION_SCHEMA,
-    v: RECEIPT_PROJECTION_VERSION,
-    tier: input.tier,
-    receipt_id: input.proof.content_hash,
-    content_hash: input.proof.content_hash,
-    contract_revision: input.proof.contract_revision,
-    status: input.status,
-    signer: input.proof.signer,
-    freshness: input.proof.freshness,
-  } satisfies ReceiptProjectionBaseV0;
+function projectPublic(summary: NormalizedSummary): ReceiptProjectionResult {
+  const projection: ReceiptPublicProjection = {
+    ...projectionBase("public", summary),
+    tier: "public",
+    fingerprints: {
+      facet_count: summary.facet_count,
+      atomic_facet_present: summary.atomic_facet_present,
+    },
+    cost: {
+      fresh: summary.cost.fresh,
+      reused: summary.cost.reused,
+      surprise_cause: summary.cost.surprise_cause,
+    },
+    input_fingerprint_count: summary.input_fingerprint_count,
+  };
 
-  const projection = buildProjection(input.tier, base, input.proof, input.verdict);
-  if (
-    (input.tier === "public" || input.tier === "subscriber") &&
-    hasPublicProjectionLeak(projection)
-  ) {
-    return failProjection(input.tier, ["projection would expose secret-shaped data"]);
+  if (hasPublicProjectionLeak(projection)) {
+    return failProjection("public", [
+      "projection would expose secret-shaped data",
+    ]);
   }
 
+  return { ok: true, tier: "public", projection };
+}
+
+function projectFull(
+  tier: "owner" | "subscriber",
+  full: NormalizedFull,
+): ReceiptProjectionResult {
+  const fingerprints: ReceiptSubscriberFingerprintProjection = {
+    facets: full.facets,
+    atomic_facet_present: full.atomic_facet_present,
+    fingerprints: full.fingerprints,
+  };
+
+  const projection: ReceiptProjection =
+    tier === "owner"
+      ? {
+          ...projectionBase("owner", full),
+          tier: "owner",
+          node: full.node,
+          input_fingerprints: full.input_fingerprints,
+          fingerprints,
+          cost: full.cost,
+          prev: full.prev,
+          proof: full.inspection,
+        }
+      : {
+          ...projectionBase("subscriber", full),
+          tier: "subscriber",
+          node: full.node,
+          input_fingerprints: full.input_fingerprints,
+          fingerprints,
+          cost: full.cost,
+        };
+
+  if (tier === "subscriber" && hasPublicProjectionLeak(projection)) {
+    return failProjection("subscriber", [
+      "projection would expose secret-shaped data",
+    ]);
+  }
+
+  return { ok: true, tier, projection };
+}
+
+function projectionBase(
+  tier: ReceiptProjectionTier,
+  summary: NormalizedSummary,
+): ReceiptProjectionBase {
   return {
-    ok: true,
-    tier: input.tier,
-    projection,
+    schema: RECEIPT_PROJECTION_SCHEMA,
+    v: RECEIPT_PROJECTION_VERSION,
+    tier,
+    receipt_id: summary.content_hash,
+    content_hash: summary.content_hash,
+    contract_fingerprint: summary.contract_fingerprint,
+    status: summary.status,
+    wake: summary.wake,
+    signer: summary.signer,
   };
 }
 
-function buildProjection(
-  tier: ReceiptProjectionTierV0,
-  base: ReceiptProjectionBaseV0,
-  proof: NormalizedProofV0,
-  verdict: ReceiptOwnerVerdictProjectionV0,
-): ReceiptProjectionV0 {
-  switch (tier) {
-    case "owner":
-      return {
-        ...base,
-        tier,
-        responsibility_id: proof.responsibility_id,
-        role: proof.role,
-        composition: proof.composition,
-        token_truth: proof.token_truth,
-        verdict,
-        proof: proof.inspection,
-      };
-    case "subscriber":
-      return {
-        ...base,
-        tier,
-        responsibility_id: proof.responsibility_id,
-        role: proof.role,
-        composition: proof.composition,
-        token_truth: proof.token_truth,
-      };
-    case "public":
-      return {
-        ...base,
-        tier,
-        composition: {
-          consumed_receipt_count: proof.composition.consumed_receipt_count,
-          consumed_receipts: proof.composition.consumed_receipts.map((pin) => ({
-            upstream_content_hash: pin.upstream_content_hash,
-            contract_revision: pin.contract_revision,
-            acceptable_signer_set_count: pin.acceptable_signer_set.length,
-          })),
-          cycle_checked: proof.composition.cycle_checked,
-        },
-        token_truth: {
-          fresh: proof.token_truth.fresh,
-          reused: proof.token_truth.reused,
-          role: proof.token_truth.role,
-          surprise_cause: proof.token_truth.surprise_cause,
-        },
-      };
-  }
+function normalizeTier(tier: string): ReceiptProjectionTier | null {
+  return PROJECTION_TIERS.has(tier) ? (tier as ReceiptProjectionTier) : null;
 }
 
-function normalizeTier(tier: string): ReceiptProjectionTierV0 | null {
-  return PROJECTION_TIERS.has(tier) ? (tier as ReceiptProjectionTierV0) : null;
-}
-
-function normalizeProof(
-  value: unknown,
+function normalizeSummary(
+  inspection: ReceiptProofInspection,
 ):
-  | {
-      readonly ok: true;
-      readonly proof: NormalizedProofV0;
-    }
-  | {
-      readonly ok: false;
-      readonly errors: readonly string[];
-    } {
+  | { readonly ok: true; readonly summary: NormalizedSummary }
+  | { readonly ok: false; readonly errors: readonly string[] } {
   const errors: string[] = [];
-  const proof = expectRecord(value, "receipt proof", errors);
-  if (proof === undefined) {
-    return { ok: false, errors };
-  }
 
-  if (proof["ok"] !== true) {
-    errors.push("receipt proof must be verified");
-  }
-  const proofErrors = proof["errors"];
-  if (
-    !Array.isArray(proofErrors) ||
-    proofErrors.length > 0 ||
-    proofErrors.some((item) => typeof item !== "string")
-  ) {
-    errors.push("receipt proof errors must be empty");
-  }
-  if (proof["schema"] !== RECEIPT_SCHEMA) {
-    errors.push("receipt proof schema is malformed");
-  }
-  if (proof["v"] !== RECEIPT_VERSION) {
-    errors.push("receipt proof version is malformed");
-  }
-
-  const contentHash = readContentHash(proof, "content_hash", errors);
-  const contractRevision = readContentHash(proof, "contract_revision", errors);
-  const responsibilityId = readNonEmptyString(
-    proof,
-    "responsibility_id",
+  const contentHash = assertContentAddress(
+    inspection.content_hash,
+    "content_hash",
     errors,
   );
-  const role = readNonEmptyString(proof, "role", errors);
-  const signer = normalizeSigner(proof["signer"], errors);
-  const freshness = normalizeFreshness(proof["freshness"], errors);
-  const composition = normalizeComposition(proof["composition"], errors);
-  const tokenTruth = normalizeTokenTruth(proof["token_truth"], errors);
+  const node = assertNonEmptyString(inspection.node, "node", errors);
+  const contractFingerprint = assertNonEmptyString(
+    inspection.contract_fingerprint,
+    "contract_fingerprint",
+    errors,
+  );
+  const status = assertEnum(inspection.status, ALLOWED_STATUSES, "status", errors);
+  const wakeSource = assertEnum(
+    inspection.wake_source,
+    ALLOWED_WAKE_SOURCES,
+    "wake_source",
+    errors,
+  );
+  const signer = normalizeSigner(inspection.signer, errors);
+  const cost = normalizeCost(inspection, errors);
 
   if (
     errors.length > 0 ||
     contentHash === null ||
-    contractRevision === null ||
-    responsibilityId === null ||
-    role === null ||
+    node === null ||
+    contractFingerprint === null ||
+    status === null ||
+    wakeSource === null ||
     signer === null ||
-    freshness === null ||
-    composition === null ||
-    tokenTruth === null
+    cost === null
   ) {
     return { ok: false, errors };
   }
 
-  const inspection: ReceiptProofInspectionV0 = {
+  return {
     ok: true,
-    errors: [],
-    schema: RECEIPT_SCHEMA,
-    v: RECEIPT_VERSION,
-    content_hash: contentHash,
-    contract_revision: contractRevision,
-    responsibility_id: responsibilityId,
-    role,
-    signer,
-    freshness: {
-      as_of: freshness.as_of,
-      next_forecast_recheck: freshness.next_forecast_recheck,
-      transitive_freshness_policy_ref:
-        freshness.transitive_freshness_policy_ref,
-      consumed_freshness_evaluated_count:
-        freshness.consumed_freshness_evaluated_count,
-    },
-    composition: {
-      consumed_receipt_count: composition.consumed_receipt_count,
-      consumed_receipts: composition.consumed_receipts,
-      cycle_checked: composition.cycle_checked,
-    },
-    token_truth: {
-      fresh: tokenTruth.fresh,
-      reused: tokenTruth.reused,
-      provider: tokenTruth.provider,
-      model: tokenTruth.model,
-      role: tokenTruth.role,
-      surprise_cause: tokenTruth.surprise_cause,
+    summary: {
+      inspection,
+      content_hash: contentHash,
+      node,
+      contract_fingerprint: contractFingerprint,
+      status,
+      wake: { source: wakeSource, ref_count: null },
+      signer,
+      facet_count: inspection.facet_count,
+      atomic_facet_present: inspection.has_atomic_facet,
+      input_fingerprint_count: inspection.input_fingerprint_count,
+      cost,
+      prev: inspection.prev,
     },
   };
+}
+
+function normalizeFull(
+  summary: NormalizedSummary,
+  raw: unknown,
+):
+  | { readonly ok: true; readonly full: NormalizedFull }
+  | { readonly ok: false; readonly errors: readonly string[] } {
+  const errors: string[] = [];
+
+  const refCount = readWakeRefCount(raw, errors);
+  const fingerprints = readFingerprintMap(raw, errors);
+  const inputFingerprints = readInputFingerprints(raw, errors);
+
+  if (
+    errors.length > 0 ||
+    refCount === null ||
+    fingerprints === null ||
+    inputFingerprints === null
+  ) {
+    return { ok: false, errors };
+  }
 
   return {
     ok: true,
-    proof: {
-      inspection,
-      content_hash: contentHash,
-      contract_revision: contractRevision,
-      responsibility_id: responsibilityId,
-      role,
-      signer,
-      freshness,
-      composition,
-      token_truth: tokenTruth,
+    full: {
+      ...summary,
+      wake: { source: summary.wake.source, ref_count: refCount },
+      fingerprints,
+      facets: Object.keys(fingerprints).sort(),
+      input_fingerprints: inputFingerprints,
     },
   };
+}
+
+function readWakeRefCount(raw: unknown, errors: string[]): number | null {
+  const receipt = isRecord(raw) ? raw : undefined;
+  const wake = readRecord(receipt, "wake");
+  const refs = wake?.["refs"];
+  if (!Array.isArray(refs) || refs.some((ref) => typeof ref !== "string")) {
+    errors.push("wake is malformed");
+    return null;
+  }
+
+  return refs.length;
 }
 
 function normalizeSigner(
-  value: unknown,
+  value: ReceiptProofInspection["signer"],
   errors: string[],
-): ReceiptProjectionSignerV0 | null {
-  const signer = expectRecord(value, "receipt proof signer", errors);
-  if (signer === undefined) {
+): ReceiptProjectionSigner | null {
+  if (value === null) {
+    errors.push("signer is malformed");
     return null;
   }
-
-  const kind = readString(signer, "kind");
-  const scheme = readNonEmptyString(signer, "scheme", errors);
-  if (scheme === null) {
-    return null;
+  if (value.kind === "null" && value.scheme === "none") {
+    return { kind: "null", scheme: "none" };
   }
-  if (kind === "null" && scheme === "none") {
-    return { kind, scheme };
-  }
-  if (kind === "signed" && scheme !== "none") {
-    return { kind, scheme };
+  if (value.kind === "signed" && value.scheme !== "none") {
+    return { kind: "signed", scheme: value.scheme };
   }
 
-  errors.push("receipt proof signer is malformed");
+  errors.push("signer is malformed");
   return null;
 }
 
-function normalizeFreshness(
-  value: unknown,
+function readFingerprintMap(
+  raw: unknown,
   errors: string[],
-): ReceiptProjectionFreshnessV0 | null {
-  const freshness = expectRecord(value, "receipt proof freshness", errors);
-  if (freshness === undefined) {
+): Readonly<Record<string, string>> | null {
+  const receipt = isRecord(raw) ? raw : undefined;
+  const fingerprints = readRecord(receipt, "fingerprints");
+  if (fingerprints === undefined) {
+    errors.push("fingerprints is malformed");
     return null;
   }
 
-  const asOf = readIsoInstant(freshness, "as_of", errors);
-  const nextForecastRecheck = readIsoInstant(
-    freshness,
-    "next_forecast_recheck",
-    errors,
-  );
-  const transitiveRef = readNullableString(
-    freshness,
-    "transitive_freshness_policy_ref",
-    errors,
-  );
-  const consumedCount = readNonNegativeInteger(
-    freshness,
-    "consumed_freshness_evaluated_count",
-    errors,
-  );
+  const entries: Record<string, string> = {};
+  for (const [facet, token] of Object.entries(fingerprints)) {
+    if (typeof token !== "string" || token.length === 0) {
+      errors.push("fingerprints is malformed");
+      return null;
+    }
+    entries[facet] = token;
+  }
 
-  if (asOf === null || nextForecastRecheck === null || consumedCount === null) {
+  if (!Object.hasOwn(entries, ATOMIC_FACET)) {
+    errors.push("fingerprints is malformed");
     return null;
   }
 
-  return {
-    as_of: asOf,
-    next_forecast_recheck: nextForecastRecheck,
-    transitive_freshness_policy_ref: transitiveRef,
-    consumed_freshness_evaluated_count: consumedCount,
-  };
+  return entries;
 }
 
-function normalizeComposition(
-  value: unknown,
+function readInputFingerprints(
+  raw: unknown,
   errors: string[],
-): ReceiptSubscriberCompositionProjectionV0 | null {
-  const composition = expectRecord(value, "receipt proof composition", errors);
-  if (composition === undefined) {
+): readonly string[] | null {
+  const receipt = isRecord(raw) ? raw : undefined;
+  const value = receipt?.["input_fingerprints"];
+  if (
+    !Array.isArray(value) ||
+    value.some((item) => typeof item !== "string" || item.length === 0)
+  ) {
+    errors.push("input_fingerprints is malformed");
     return null;
   }
 
-  const consumedCount = readNonNegativeInteger(
-    composition,
-    "consumed_receipt_count",
-    errors,
-  );
-  const cycleChecked = readBoolean(composition, "cycle_checked", errors);
-  const consumedReceiptsValue = composition["consumed_receipts"];
-  if (!Array.isArray(consumedReceiptsValue)) {
-    errors.push("receipt proof composition consumed receipts are malformed");
-    return null;
-  }
-
-  const consumedReceipts: ReceiptSubscriberCompositionPinProjectionV0[] = [];
-  for (const item of consumedReceiptsValue) {
-    const pin = expectRecord(item, "receipt proof composition pin", errors);
-    if (pin === undefined) {
-      continue;
-    }
-
-    const upstreamContentHash = readContentHash(
-      pin,
-      "upstream_content_hash",
-      errors,
-    );
-    const contractRevision = readContentHash(pin, "contract_revision", errors);
-    const acceptableSignerSet = readStringArray(
-      pin,
-      "acceptable_signer_set",
-      errors,
-    );
-    if (
-      upstreamContentHash !== null &&
-      contractRevision !== null &&
-      acceptableSignerSet !== null
-    ) {
-      consumedReceipts.push({
-        upstream_content_hash: upstreamContentHash,
-        contract_revision: contractRevision,
-        acceptable_signer_set: acceptableSignerSet,
-      });
-    }
-  }
-
-  if (consumedCount === null || cycleChecked === null) {
-    return null;
-  }
-  if (consumedReceipts.length !== consumedCount) {
-    errors.push("receipt proof composition count is malformed");
-    return null;
-  }
-
-  return {
-    consumed_receipt_count: consumedCount,
-    consumed_receipts: consumedReceipts,
-    cycle_checked: cycleChecked,
-  };
+  return value as readonly string[];
 }
 
-function normalizeTokenTruth(
-  value: unknown,
+function normalizeCost(
+  inspection: ReceiptProofInspection,
   errors: string[],
-): ReceiptSubscriberTokenTruthProjectionV0 | null {
-  const tokenTruth = expectRecord(value, "receipt proof token truth", errors);
-  if (tokenTruth === undefined) {
-    return null;
-  }
-
-  const fresh = readNonNegativeInteger(tokenTruth, "fresh", errors);
-  const reused = readNonNegativeInteger(tokenTruth, "reused", errors);
-  const provider = readNonEmptyString(tokenTruth, "provider", errors);
-  const model = readNonEmptyString(tokenTruth, "model", errors);
-  const role = readNonEmptyString(tokenTruth, "role", errors);
-  const surpriseCause = readNonEmptyString(
-    tokenTruth,
-    "surprise_cause",
-    errors,
-  );
-
+): ReceiptSubscriberCostProjection | null {
+  const { fresh, reused, provider, model, surprise_cause } = inspection.cost;
   if (
     fresh === null ||
     reused === null ||
-    provider === null ||
-    model === null ||
-    role === null ||
-    surpriseCause === null
+    !Number.isInteger(fresh) ||
+    !Number.isInteger(reused) ||
+    fresh < 0 ||
+    reused < 0
   ) {
+    errors.push("cost tokens are malformed");
+    return null;
+  }
+  if (provider === null || provider.length === 0) {
+    errors.push("cost provider is malformed");
+    return null;
+  }
+  if (model === null || model.length === 0) {
+    errors.push("cost model is malformed");
+    return null;
+  }
+  if (surprise_cause === null || !ALLOWED_SURPRISE_CAUSES.has(surprise_cause)) {
+    errors.push("cost surprise_cause is malformed");
     return null;
   }
 
-  return {
-    fresh,
-    reused,
-    provider,
-    model,
-    role,
-    surprise_cause: surpriseCause,
-  };
-}
-
-function readReceiptStatus(value: unknown): ReceiptVerdictStatusV0 | null {
-  const receipt = isRecord(value) ? value : undefined;
-  const verdict = readRecord(receipt, "verdict");
-  return normalizeStatus(readString(verdict, "status"));
-}
-
-function normalizeStatus(value: unknown): ReceiptVerdictStatusV0 | null {
-  return typeof value === "string" && RECEIPT_STATUSES.has(value)
-    ? (value as ReceiptVerdictStatusV0)
-    : null;
-}
-
-function readOwnerVerdict(
-  value: unknown,
-  status: ReceiptVerdictStatusV0 | null,
-): ReceiptOwnerVerdictProjectionV0 {
-  const receipt = isRecord(value) ? value : undefined;
-  const verdict = readRecord(receipt, "verdict");
-  const confidence = readRecord(verdict, "confidence");
-  const blocked = readRecord(verdict, "blocked");
-
-  return {
-    status,
-    confidence:
-      confidence === undefined
-        ? null
-        : {
-            value: readNumber(confidence, "value"),
-            derivation_method: readString(confidence, "derivation_method"),
-            calibration_grade: readString(confidence, "calibration_grade"),
-            label_source: readString(confidence, "label_source"),
-          },
-    blocked:
-      blocked === undefined
-        ? null
-        : {
-            reason: readString(blocked, "reason"),
-            fix_target: readString(blocked, "fix_target"),
-            interrupt_cause: readString(blocked, "interrupt_cause"),
-          },
-  };
+  return { fresh, reused, provider, model, surprise_cause };
 }
 
 function hasPublicProjectionLeak(value: unknown): boolean {
@@ -684,7 +583,8 @@ function hasPublicProjectionLeak(value: unknown): boolean {
   }
   if (isRecord(value)) {
     return Object.entries(value).some(
-      ([key, item]) => isForbiddenOutputKey(key) || hasPublicProjectionLeak(item),
+      ([key, item]) =>
+        isForbiddenOutputKey(key) || hasPublicProjectionLeak(item),
     );
   }
   return typeof value === "string" && hasSecretShapedText(value);
@@ -699,25 +599,47 @@ function hasSecretShapedText(value: string): boolean {
 }
 
 function failProjection(
-  tier: ReceiptProjectionTierV0 | null,
+  tier: ReceiptProjectionTier | null,
   errors: readonly string[],
-): ReceiptProjectionResultV0 {
-  return {
-    ok: false,
-    tier,
-    errors,
-    projection: null,
-  };
+): ReceiptProjectionResult {
+  return { ok: false, tier, errors, projection: null };
 }
 
-function expectRecord(
-  value: unknown,
+function assertContentAddress(
+  value: string | null,
   label: string,
   errors: string[],
-): Readonly<Record<string, unknown>> | undefined {
-  if (!isRecord(value)) {
+): ContentAddress | null {
+  if (value === null || !CONTENT_ADDRESS_PATTERN.test(value)) {
     errors.push(`${label} is malformed`);
-    return undefined;
+    return null;
+  }
+
+  return value as ContentAddress;
+}
+
+function assertNonEmptyString(
+  value: string | null,
+  label: string,
+  errors: string[],
+): string | null {
+  if (value === null || value.length === 0) {
+    errors.push(`${label} is malformed`);
+    return null;
+  }
+
+  return value;
+}
+
+function assertEnum(
+  value: string | null,
+  allowed: Set<string>,
+  label: string,
+  errors: string[],
+): string | null {
+  if (value === null || !allowed.has(value)) {
+    errors.push(`${label} is malformed`);
+    return null;
   }
 
   return value;
@@ -729,129 +651,6 @@ function readRecord(
 ): Readonly<Record<string, unknown>> | undefined {
   const value = record?.[key];
   return isRecord(value) ? value : undefined;
-}
-
-function readString(
-  record: Readonly<Record<string, unknown>> | undefined,
-  key: string,
-): string | null {
-  const value = record?.[key];
-  return typeof value === "string" ? value : null;
-}
-
-function readNonEmptyString(
-  record: Readonly<Record<string, unknown>>,
-  key: string,
-  errors: string[],
-): string | null {
-  const value = readString(record, key);
-  if (value === null || value.length === 0) {
-    errors.push(`${key} is malformed`);
-    return null;
-  }
-
-  return value;
-}
-
-function readNullableString(
-  record: Readonly<Record<string, unknown>>,
-  key: string,
-  errors: string[],
-): string | null {
-  const value = record[key];
-  if (value === null) {
-    return null;
-  }
-  if (typeof value === "string" && value.length > 0) {
-    return value;
-  }
-
-  errors.push(`${key} is malformed`);
-  return null;
-}
-
-function readNumber(
-  record: Readonly<Record<string, unknown>> | undefined,
-  key: string,
-): number | null {
-  const value = record?.[key];
-  return typeof value === "number" && Number.isFinite(value) ? value : null;
-}
-
-function readNonNegativeInteger(
-  record: Readonly<Record<string, unknown>>,
-  key: string,
-  errors: string[],
-): number | null {
-  const value = readNumber(record, key);
-  if (value === null || !Number.isInteger(value) || value < 0) {
-    errors.push(`${key} is malformed`);
-    return null;
-  }
-
-  return value;
-}
-
-function readBoolean(
-  record: Readonly<Record<string, unknown>>,
-  key: string,
-  errors: string[],
-): boolean | null {
-  const value = record[key];
-  if (typeof value !== "boolean") {
-    errors.push(`${key} is malformed`);
-    return null;
-  }
-
-  return value;
-}
-
-function readIsoInstant(
-  record: Readonly<Record<string, unknown>>,
-  key: string,
-  errors: string[],
-): string | null {
-  const value = readNonEmptyString(record, key, errors);
-  if (value === null) {
-    return null;
-  }
-  if (!ISO_INSTANT_PATTERN.test(value)) {
-    errors.push(`${key} is malformed`);
-    return null;
-  }
-
-  return value;
-}
-
-function readContentHash(
-  record: Readonly<Record<string, unknown>>,
-  key: string,
-  errors: string[],
-): ContentHashV0 | null {
-  const value = readNonEmptyString(record, key, errors);
-  if (value === null) {
-    return null;
-  }
-  if (!CONTENT_HASH_PATTERN.test(value)) {
-    errors.push(`${key} is malformed`);
-    return null;
-  }
-
-  return value as ContentHashV0;
-}
-
-function readStringArray(
-  record: Readonly<Record<string, unknown>>,
-  key: string,
-  errors: string[],
-): readonly string[] | null {
-  const value = record[key];
-  if (!Array.isArray(value) || value.some((item) => typeof item !== "string")) {
-    errors.push(`${key} is malformed`);
-    return null;
-  }
-
-  return value;
 }
 
 function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {

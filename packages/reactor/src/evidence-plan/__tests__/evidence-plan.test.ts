@@ -1,253 +1,282 @@
-import { deepEqual, equal, ok } from "node:assert/strict";
+// Tests for the reshaped evidence-plan module: evidence-by-reference resolution.
+// The judge-coupled shallow/deep-roam plan is DELETED (delta.md §A3.7); these
+// tests cover only the surviving seam — resolving a subscriber's upstream
+// evidence BY REFERENCE from the topology edges + the waking receipt(s)
+// (architecture.md §1 L44–L48, §8 L321–L323; delta.md §A3.1 L140).
+
+import { deepEqual, equal, ok, throws } from "node:assert/strict";
 import { test } from "node:test";
 
 import {
-  type CompiledEvidencePlan,
-  type EvidenceSourceCollector,
-  canonicalizeEvidenceReceiptRefsForPlan,
-  executeShallowEvidencePlan,
-  reconcileDeepRoam,
-  validateCompiledEvidencePlan,
+  type WakingReceipt,
+  atomicFingerprintOf,
+  readPublishedFacetFingerprint,
+  resolveEvidenceByReference,
 } from "../index";
 import {
-  type ReceiptV0Input,
-  createReceiptV0,
-  verifyReceiptV0,
-} from "../../receipt";
+  ATOMIC_FACET,
+  type ContentAddress,
+  type FingerprintMap,
+  type Receipt,
+  type TopologyEdge,
+  type Wake,
+  createNullSignature,
+} from "../../shapes";
 
-const HASH_A =
+const CA_A =
   "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" as const;
-const HASH_B =
+const CA_B =
   "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" as const;
-const HASH_C =
-  "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" as const;
-const HASH_D =
-  "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" as const;
+const FP_PUBLISHED =
+  "sha256:1111111111111111111111111111111111111111111111111111111111111111" as const;
+const FP_FACET =
+  "sha256:2222222222222222222222222222222222222222222222222222222222222222" as const;
 
-test("shallow execution consults only sources declared in the compiled plan", () => {
-  const plan = makePlan({
-    sources: [
-      { id: "incident-feed", kind: "adapter", required: true },
-      { id: "plan-age-clock", kind: "forecast", required: true },
-    ],
-  });
-  const calls: string[] = [];
-  const collectors: Record<string, EvidenceSourceCollector> = {
-    "incident-feed": (source) => {
-      calls.push(source.id);
-      return makeReceipt("incident-feed", HASH_B);
-    },
-    "plan-age-clock": (source) => {
-      calls.push(source.id);
-      return makeReceipt("plan-age-clock", HASH_C);
-    },
-    "unplanned-filesystem-roam": (source) => {
-      calls.push(source.id);
-      return makeReceipt("unplanned-filesystem-roam", HASH_D);
-    },
-  };
-
-  const result = executeShallowEvidencePlan(plan, collectors);
-
-  equal(result.outcome, "ready");
-  deepEqual(calls, ["incident-feed", "plan-age-clock"]);
-  deepEqual(result.consulted_source_ids, ["incident-feed", "plan-age-clock"]);
-  ok(
-    result.outcome === "ready" &&
-      result.evidence_receipts.every(
-        (ref) => ref.source_id !== "unplanned-filesystem-roam",
-      ),
-  );
-});
-
-test("shallow execution fails safe when a planned source cannot produce a receipt", () => {
-  const result = executeShallowEvidencePlan(makePlan(), {});
-
-  equal(result.outcome, "fail-safe");
-  ok(
-    result.outcome === "fail-safe" &&
-      result.reason.includes("planned source incident-feed has no collector"),
-  );
-  ok(result.outcome === "fail-safe" && verifyReceiptV0(result.receipt).ok);
-  ok(
-    result.outcome === "fail-safe" &&
-      result.receipt.core.evidence_input_ids.length === 1 &&
-      result.receipt.core.evidence_input_ids[0]?.startsWith("sha256:"),
-  );
-  ok(
-    result.outcome === "fail-safe" &&
-      result.receipt.verdict.blocked?.reason.includes("planned source"),
-  );
-});
-
-test("canonical evidence refs sort unordered sets and preserve declared order", () => {
-  const refs = [
-    { source_id: "late", receipt_hash: HASH_D },
-    { source_id: "early", receipt_hash: HASH_B },
+test("resolves one input per subscribed edge, pinned to the producer's published version", () => {
+  const edges: TopologyEdge[] = [
+    { subscriber: "briefing", producer: "incidents", facet: ATOMIC_FACET },
   ];
-
-  deepEqual(
-    canonicalizeEvidenceReceiptRefsForPlan({ evidence_order: "unordered" }, refs),
-    [
-      { source_id: "early", receipt_hash: HASH_B },
-      { source_id: "late", receipt_hash: HASH_D },
-    ],
-  );
-  deepEqual(
-    canonicalizeEvidenceReceiptRefsForPlan({ evidence_order: "declared" }, refs),
-    refs,
-  );
-});
-
-test("canonical evidence refs reject duplicates instead of normalizing silently", () => {
-  const refs = [
-    { source_id: "a", receipt_hash: HASH_B },
-    { source_id: "b", receipt_hash: HASH_B },
-  ];
-
-  throwsWithMessage(() =>
-    canonicalizeEvidenceReceiptRefsForPlan({ evidence_order: "unordered" }, refs),
-  );
-});
-
-test("scenario: deep roam discovering a new dependency forces policy recompile", () => {
-  const plan = makePlan({
-    sources: [{ id: "incident-feed", kind: "adapter", required: true }],
-  });
-
-  const reconciliation = reconcileDeepRoam(plan, "forecast-plan-age", [
+  const wake: Wake = { source: "input", refs: [CA_A] };
+  const waking: WakingReceipt[] = [
     {
-      source_id: "crm-owner-map",
-      kind: "dependency",
-      receipt_hash: HASH_D,
-    },
-  ]);
-
-  deepEqual(reconciliation, {
-    outcome: "force-recompile",
-    trigger: "forecast-plan-age",
-    discovered_source_ids: ["crm-owner-map"],
-    discovered_receipt_hashes: [HASH_D],
-    reason: "deep roaming discovered evidence outside the compiled plan",
-  });
-});
-
-test("deep roam confirms the plan when discoveries stay inside declared sources", () => {
-  const plan = makePlan({
-    sources: [{ id: "incident-feed", kind: "adapter", required: true }],
-  });
-
-  deepEqual(
-    reconcileDeepRoam(plan, "confidence-escalation", [
-      { source_id: "incident-feed", kind: "adapter", receipt_hash: HASH_B },
-    ]),
-    {
-      outcome: "plan-confirmed",
-      trigger: "confidence-escalation",
-      confirmed_source_ids: ["incident-feed"],
-    },
-  );
-});
-
-test("compiled plan validation rejects duplicate source ids", () => {
-  deepEqual(
-    validateCompiledEvidencePlan(
-      makePlan({
-        sources: [
-          { id: "incident-feed", kind: "adapter", required: true },
-          { id: "incident-feed", kind: "forecast", required: true },
-        ],
+      ref: CA_A,
+      receipt: makeReceipt("incidents", {
+        [ATOMIC_FACET]: FP_PUBLISHED,
       }),
-    ),
-    ["source incident-feed is duplicated"],
+    },
+  ];
+
+  const resolution = resolveEvidenceByReference(
+    "briefing",
+    edges,
+    wake,
+    waking,
+  );
+
+  equal(resolution.subscriber, "briefing");
+  equal(resolution.inputs.length, 1);
+  const input = resolution.inputs[0]!;
+  equal(input.producer, "incidents");
+  equal(input.facet, ATOMIC_FACET);
+  equal(input.fingerprint, FP_PUBLISHED);
+  // Read BY REFERENCE: published workspace, pinned to the atomic version.
+  equal(input.ref.node, "incidents");
+  equal(input.ref.workspace, "published");
+  equal(input.ref.version, FP_PUBLISHED);
+});
+
+test("input_fingerprints is the consumed tuple in resolved subscription (edge) order", () => {
+  const edges: TopologyEdge[] = [
+    { subscriber: "briefing", producer: "incidents", facet: ATOMIC_FACET },
+    { subscriber: "briefing", producer: "owners", facet: "directory" },
+  ];
+  const wake: Wake = { source: "input", refs: [CA_A, CA_B] };
+  const waking: WakingReceipt[] = [
+    {
+      ref: CA_A,
+      receipt: makeReceipt("incidents", { [ATOMIC_FACET]: FP_PUBLISHED }),
+    },
+    {
+      ref: CA_B,
+      receipt: makeReceipt("owners", {
+        [ATOMIC_FACET]: CA_B,
+        directory: FP_FACET,
+      }),
+    },
+  ];
+
+  const resolution = resolveEvidenceByReference(
+    "briefing",
+    edges,
+    wake,
+    waking,
+  );
+
+  // The tuple is the memo key's second half (SHAPES.md §3), in edge order.
+  deepEqual(resolution.input_fingerprints, [FP_PUBLISHED, FP_FACET]);
+});
+
+test("a facet subscription pins the producer's per-facet fingerprint, not the atomic one", () => {
+  const edges: TopologyEdge[] = [
+    { subscriber: "briefing", producer: "owners", facet: "directory" },
+  ];
+  const waking: WakingReceipt[] = [
+    {
+      ref: CA_B,
+      receipt: makeReceipt("owners", {
+        [ATOMIC_FACET]: CA_B,
+        directory: FP_FACET,
+      }),
+    },
+  ];
+
+  const resolution = resolveEvidenceByReference(
+    "briefing",
+    edges,
+    { source: "input", refs: [CA_B] },
+    waking,
+  );
+
+  equal(resolution.inputs[0]!.fingerprint, FP_FACET);
+  // The version still pins the producer's published artifact (the atomic CA).
+  equal(resolution.inputs[0]!.ref.version, CA_B);
+});
+
+test("ignores edges that belong to other subscribers", () => {
+  const edges: TopologyEdge[] = [
+    { subscriber: "other", producer: "incidents", facet: ATOMIC_FACET },
+    { subscriber: "briefing", producer: "incidents", facet: ATOMIC_FACET },
+  ];
+  const waking: WakingReceipt[] = [
+    {
+      ref: CA_A,
+      receipt: makeReceipt("incidents", { [ATOMIC_FACET]: FP_PUBLISHED }),
+    },
+  ];
+
+  const resolution = resolveEvidenceByReference(
+    "briefing",
+    edges,
+    { source: "input", refs: [CA_A] },
+    waking,
+  );
+
+  equal(resolution.inputs.length, 1);
+  equal(resolution.inputs[0]!.subscriber, "briefing");
+});
+
+test("self-driven and external wakes resolve uniformly (every wake is a receipt)", () => {
+  // A self wake carries a synthetic self-receipt; with no subscribed edges the
+  // resolution is simply empty inputs (the node renders on its own clock).
+  const resolution = resolveEvidenceByReference(
+    "scheduler",
+    [],
+    { source: "self", refs: [CA_A] },
+    [
+      {
+        ref: CA_A,
+        receipt: makeReceipt("scheduler", { [ATOMIC_FACET]: FP_PUBLISHED }),
+      },
+    ],
+  );
+
+  equal(resolution.wake.source, "self");
+  deepEqual(resolution.input_fingerprints, []);
+});
+
+test("uses a supplied location map when the store provides concrete artifact paths", () => {
+  const edges: TopologyEdge[] = [
+    { subscriber: "briefing", producer: "incidents", facet: ATOMIC_FACET },
+  ];
+  const waking: WakingReceipt[] = [
+    {
+      ref: CA_A,
+      receipt: makeReceipt("incidents", { [ATOMIC_FACET]: FP_PUBLISHED }),
+    },
+  ];
+
+  const resolution = resolveEvidenceByReference(
+    "briefing",
+    edges,
+    { source: "input", refs: [CA_A] },
+    waking,
+    { locations: { incidents: "/wm/incidents/published" } },
+  );
+
+  equal(resolution.inputs[0]!.ref.location, "/wm/incidents/published");
+});
+
+test("throws when a subscribed edge has no waking receipt (topology invariant)", () => {
+  const edges: TopologyEdge[] = [
+    { subscriber: "briefing", producer: "incidents", facet: ATOMIC_FACET },
+  ];
+
+  throws(
+    () =>
+      resolveEvidenceByReference(
+        "briefing",
+        edges,
+        { source: "input", refs: [] },
+        [],
+      ),
+    /no waking receipt for producer incidents/,
   );
 });
 
-function throwsWithMessage(fn: () => unknown): void {
-  let threw = false;
-  try {
-    fn();
-  } catch (error) {
-    threw = true;
-    ok(error instanceof Error);
-    equal(error.message, `duplicate evidence receipt ref ${HASH_B}`);
-  }
-  equal(threw, true);
-}
+test("throws when the producer published no fingerprint for the required facet", () => {
+  const edges: TopologyEdge[] = [
+    { subscriber: "briefing", producer: "owners", facet: "directory" },
+  ];
+  const waking: WakingReceipt[] = [
+    {
+      ref: CA_B,
+      // No `directory` facet published.
+      receipt: makeReceipt("owners", { [ATOMIC_FACET]: CA_B }),
+    },
+  ];
 
-function makePlan(
-  overrides: Partial<CompiledEvidencePlan> = {},
-): CompiledEvidencePlan {
-  return {
-    responsibility_id: "responsibility.incident-briefing",
-    contract_revision: HASH_A,
-    policy_artifact_namespace: "policy.incident-briefing.static-v1",
-    policy_artifact_revision: "policy-revision-1",
-    plan_revision: "compiled-plan-1",
-    as_of: "2026-05-18T12:00:00Z",
-    evidence_order: "unordered",
-    sources: [{ id: "incident-feed", kind: "adapter", required: true }],
-    ...overrides,
+  throws(
+    () =>
+      resolveEvidenceByReference(
+        "briefing",
+        edges,
+        { source: "input", refs: [CA_B] },
+        waking,
+      ),
+    /published no fingerprint for facet directory/,
+  );
+});
+
+test("throws on ambiguous waking receipts for one producer", () => {
+  const waking: WakingReceipt[] = [
+    {
+      ref: CA_A,
+      receipt: makeReceipt("incidents", { [ATOMIC_FACET]: FP_PUBLISHED }),
+    },
+    {
+      ref: CA_B,
+      receipt: makeReceipt("incidents", { [ATOMIC_FACET]: CA_B }),
+    },
+  ];
+
+  throws(
+    () =>
+      resolveEvidenceByReference(
+        "briefing",
+        [{ subscriber: "briefing", producer: "incidents", facet: ATOMIC_FACET }],
+        { source: "input", refs: [CA_A, CA_B] },
+        waking,
+      ),
+    /ambiguous waking receipts for producer incidents/,
+  );
+});
+
+test("readPublishedFacetFingerprint + atomicFingerprintOf read the published map", () => {
+  const fps: FingerprintMap = {
+    [ATOMIC_FACET]: FP_PUBLISHED,
+    directory: FP_FACET,
   };
-}
+  equal(readPublishedFacetFingerprint(fps, "directory"), FP_FACET);
+  equal(readPublishedFacetFingerprint(fps, "missing"), undefined);
+  equal(atomicFingerprintOf(fps), FP_PUBLISHED);
+});
 
-function makeReceipt(sourceId: string, evidenceHash: typeof HASH_B): ReturnType<
-  typeof createReceiptV0
->;
-function makeReceipt(sourceId: string, evidenceHash: typeof HASH_C): ReturnType<
-  typeof createReceiptV0
->;
-function makeReceipt(sourceId: string, evidenceHash: typeof HASH_D): ReturnType<
-  typeof createReceiptV0
->;
-function makeReceipt(
-  sourceId: string,
-  evidenceHash: typeof HASH_B | typeof HASH_C | typeof HASH_D,
-): ReturnType<typeof createReceiptV0> {
-  const input: ReceiptV0Input = {
-    core: {
-      responsibility_id: "responsibility.incident-briefing",
-      contract_revision: HASH_A,
-      event_cause: sourceId === "plan-age-clock" ? "forecast-recheck" : "real-input",
-      ...(sourceId === "plan-age-clock" ? { recheck_kind: "plan-age" as const } : {}),
-      memo_key: `memo-${sourceId}`,
-      evidence_input_ids: [evidenceHash],
-      as_of: "2026-05-18T12:00:00Z",
-      role: "judge",
-    },
-    sig: {
-      scheme: "none",
-      null_reason: "evidence-plan fixture",
-    },
-    verdict: {
-      status: "up",
-      confidence: {
-        value: 0.8,
-        derivation_method: "fixture",
-        calibration_grade: "authored",
-        label_source: "fixture",
-      },
-    },
-    freshness: {
-      as_of: "2026-05-18T12:00:00Z",
-      next_forecast_recheck: "2026-05-19T12:00:00Z",
-    },
-    composition: {
-      consumed_receipts: [],
-      cycle_checked: true,
-    },
+function makeReceipt(node: string, fingerprints: FingerprintMap): Receipt {
+  return {
+    node,
+    contract_fingerprint: CA_A,
+    wake: { source: "input", refs: [] },
+    input_fingerprints: [],
+    fingerprints,
+    semantic_diff: {},
+    prev: null,
+    status: "rendered",
     cost: {
       provider: "cradle-double",
       model: "deterministic-replay",
-      role: "judge",
-      tags: [sourceId],
-      responsibility_id: "responsibility.incident-briefing",
-      run_id: `run-${sourceId}`,
-      as_of: "2026-05-18T12:00:00Z",
       tokens: { fresh: 0, reused: 1 },
-      surprise_cause: sourceId === "plan-age-clock" ? "forecast-recheck" : "real-input",
+      surprise_cause: "input",
     },
+    sig: createNullSignature(),
   };
-
-  return createReceiptV0(input);
 }

@@ -1,302 +1,176 @@
+// receipt/ — the single commit object and the unit of the ledger.
+//
+// RESHAPED to the ideal Receipt (SHAPES.md §4; architecture.md §6.1). The judge
+// era (verdict.{status,confidence,blocked}, role:judge, freshness.*,
+// composition.*, core.memo_key, V0 naming) is demolished (delta.md §A6, §C7;
+// world-model.md §3 "do not reintroduce it").
+//
+// What is KEPT verbatim as machinery (delta.md §A3.2, lines 152-158):
+//   - the deterministic sorted-key canonical serialization, and
+//   - sha256 over that canonical form,
+// re-pointed so the receipt's own `content_hash` is the *chain identity*
+// (architecture.md §5.1: "each receipt commits to its fingerprints and its
+// `prev`; verification is chain-consistency").
+//
+// The semantic shapes (Receipt, Wake, Cost, FingerprintMap, ReceiptStatus,
+// ReceiptSignature, ContentAddress, …) are the foundation-wave canonical types
+// from ../shapes; this module owns the *envelope*, *canonicalization*,
+// *hashing*, *verification*, and *chain/proof inspection* over them.
+
 import { createHash } from "node:crypto";
 
+import {
+  ATOMIC_FACET,
+  EMPTY_SEMANTIC_DIFF,
+  NULL_SIGNER_NOT_CONFIGURED_REASON,
+  createNullSignature,
+  type ContentAddress,
+  type Cost,
+  type Facet,
+  type Fingerprint,
+  type FingerprintMap,
+  type InputFingerprints,
+  type NullSignature,
+  type Receipt,
+  type ReceiptSignature,
+  type ReceiptStatus,
+  type SemanticDiff,
+  type Wake,
+  type WakeSource,
+} from "../shapes/index";
+
 export const RECEIPT_SCHEMA = "openprose.receipt" as const;
-export const RECEIPT_VERSION = 0 as const;
 export const RECEIPT_HASH_ALGORITHM = "sha256" as const;
 
-export type ContentHashV0 = `sha256:${string}`;
-export type ReceiptSchemaV0 = typeof RECEIPT_SCHEMA;
-export type ReceiptVersionV0 = typeof RECEIPT_VERSION;
-export type ReceiptHashAlgorithmV0 = typeof RECEIPT_HASH_ALGORITHM;
+export type ReceiptSchema = typeof RECEIPT_SCHEMA;
+export type ReceiptHashAlgorithm = typeof RECEIPT_HASH_ALGORITHM;
 
-export type ReceiptEventCauseV0 =
-  | "real-input"
-  | "forecast-recheck"
-  | "escalation";
-export type ReceiptRecheckKindV0 = "evidence-age" | "plan-age";
-export type ReceiptRoleV0 = "judge" | "fulfill" | "summarize" | "policy-compile";
-export type ReceiptVerdictStatusV0 = "up" | "drifting" | "down" | "blocked";
-export type ReceiptCalibrationGradeV0 = "authored" | "accrued" | "none";
-export type ReceiptInterruptCauseV0 =
-  | "needs-judgment"
-  | "needs-input"
-  | "contract-declared";
-export type ReceiptStalenessOutcomeV0 =
-  | "fresh"
-  | "stale-refetched"
-  | "stale-blocked";
+// Re-export the canonical signature null-state so callers building a receipt do
+// not need to reach into ../shapes for the only honest v1 signer.
+export { NULL_SIGNER_NOT_CONFIGURED_REASON, createNullSignature };
 
-export interface ReceiptCoreV0 {
-  readonly responsibility_id: string;
-  readonly contract_revision: ContentHashV0;
-  readonly event_cause: ReceiptEventCauseV0;
-  readonly recheck_kind?: ReceiptRecheckKindV0;
-  readonly memo_key: string;
-  readonly evidence_input_ids: readonly ContentHashV0[];
-  readonly as_of: string;
-  readonly role: ReceiptRoleV0;
+/**
+ * The on-ledger receipt envelope. The body is the canonical `Receipt`
+ * (SHAPES.md §4); the envelope adds the schema tag, the hash-algorithm tag, and
+ * the receipt's own `content_hash` — the *chain identity* (architecture.md
+ * §5.1; delta.md §A3.2 line 157: "the receipt's own content_hash survives as
+ * chain identity"). `prev` lives on the `Receipt` body and points at the prior
+ * envelope's `content_hash`.
+ */
+export interface LedgerReceipt extends Receipt {
+  readonly schema: ReceiptSchema;
+  readonly hash_algorithm: ReceiptHashAlgorithm;
+  readonly content_hash: ContentAddress;
 }
 
-export interface NullReceiptSignatureV0 {
-  readonly scheme: "none";
-  readonly null_reason: string;
-}
+export type ReceiptHashPayload = Omit<LedgerReceipt, "content_hash">;
 
-export interface AdapterReceiptSignatureV0 {
-  readonly scheme: string;
-  readonly signer_id: string;
-  readonly signature: string;
-  readonly signed_payload_hash: ContentHashV0;
-}
+/**
+ * The caller-supplied body — exactly the canonical `Receipt` fields. The
+ * envelope (schema, hash_algorithm, content_hash) is stamped by createReceipt.
+ */
+export type ReceiptInput = Receipt;
 
-export type ReceiptSignatureV0 =
-  | NullReceiptSignatureV0
-  | AdapterReceiptSignatureV0;
-
-export const NULL_SIGNER_ADAPTER_NOT_CONFIGURED_REASON_V0 =
-  "no-signer-adapter-configured" as const;
-
-export function createNullSignerReceiptSignatureV0(): NullReceiptSignatureV0 {
-  return {
-    scheme: "none",
-    null_reason: NULL_SIGNER_ADAPTER_NOT_CONFIGURED_REASON_V0,
-  };
-}
-
-export interface ReceiptConfidenceV0 {
-  readonly value: number;
-  readonly derivation_method: string;
-  readonly calibration_grade: ReceiptCalibrationGradeV0;
-  readonly label_source: string;
-}
-
-export interface ReceiptBlockedV0 {
-  readonly reason: string;
-  readonly fix_target: string;
-  readonly interrupt_cause: ReceiptInterruptCauseV0;
-}
-
-export interface ReceiptVerdictV0 {
-  readonly status: ReceiptVerdictStatusV0;
-  readonly confidence: ReceiptConfidenceV0;
-  readonly blocked?: ReceiptBlockedV0;
-}
-
-export interface ConsumedFreshnessEvaluationV0 {
-  readonly receipt_hash: ContentHashV0;
-  readonly next_forecast_recheck: string;
-  readonly staleness_outcome: ReceiptStalenessOutcomeV0;
-}
-
-export interface ReceiptFreshnessV0 {
-  readonly as_of: string;
-  readonly next_forecast_recheck: string;
-  readonly transitive_freshness_policy_ref?: string;
-  readonly consumed_freshness_evaluated?: readonly ConsumedFreshnessEvaluationV0[];
-}
-
-export interface ConsumedReceiptPinV0 {
-  readonly upstream_content_hash: ContentHashV0;
-  readonly contract_revision: ContentHashV0;
-  readonly acceptable_signer_set: readonly string[];
-}
-
-export interface ReceiptCompositionV0 {
-  readonly consumed_receipts: readonly ConsumedReceiptPinV0[];
-  readonly cycle_checked: boolean;
-}
-
-export interface ReceiptTokensV0 {
-  readonly fresh: number;
-  readonly reused: number;
-}
-
-export interface ReceiptProviderNormV0 {
-  readonly schema: string;
-  readonly [key: string]: unknown;
-}
-
-export interface ReceiptCostV0 {
-  readonly provider: string;
-  readonly model: string;
-  readonly role: ReceiptRoleV0;
-  readonly tags: readonly string[];
-  readonly responsibility_id: string;
-  readonly run_id: string;
-  readonly as_of: string;
-  readonly tokens: ReceiptTokensV0;
-  readonly surprise_cause: ReceiptEventCauseV0;
-  readonly provider_norm?: ReceiptProviderNormV0;
-}
-
-export interface ReceiptV0 {
-  readonly schema: ReceiptSchemaV0;
-  readonly v: ReceiptVersionV0;
-  readonly hash_algorithm: ReceiptHashAlgorithmV0;
-  readonly content_hash: ContentHashV0;
-  readonly core: ReceiptCoreV0;
-  readonly sig: ReceiptSignatureV0;
-  readonly verdict: ReceiptVerdictV0;
-  readonly freshness: ReceiptFreshnessV0;
-  readonly composition: ReceiptCompositionV0;
-  readonly cost: ReceiptCostV0;
-}
-
-export type ReceiptHashPayloadV0 = Omit<ReceiptV0, "content_hash">;
-
-export interface ReceiptV0Input {
-  readonly core: ReceiptCoreV0;
-  readonly sig: ReceiptSignatureV0;
-  readonly verdict: ReceiptVerdictV0;
-  readonly freshness: ReceiptFreshnessV0;
-  readonly composition: ReceiptCompositionV0;
-  readonly cost: ReceiptCostV0;
-}
-
-export interface ReceiptTokenTruthV0 {
-  readonly responsibility_id: string;
-  readonly run_id: string;
-  readonly provider: string;
-  readonly model: string;
-  readonly role: ReceiptRoleV0;
-  readonly tags: readonly string[];
-  readonly as_of: string;
-  readonly fresh: number;
-  readonly reused: number;
-  readonly surprise_cause: ReceiptEventCauseV0;
-}
-
-export type ReceiptVerificationResultV0 =
-  | {
-      readonly ok: true;
-      readonly content_hash: ContentHashV0;
-    }
-  | {
-      readonly ok: false;
-      readonly errors: readonly string[];
-      readonly expected_content_hash?: ContentHashV0;
-      readonly actual_content_hash?: string;
-    };
-
-export type ReceiptSignerPostureInspectionV0 =
-  | {
-      readonly kind: "null";
-      readonly scheme: "none";
-    }
-  | {
-      readonly kind: "signed";
-      readonly scheme: string;
-    };
-
-export interface ReceiptFreshnessInspectionV0 {
-  readonly as_of: string | null;
-  readonly next_forecast_recheck: string | null;
-  readonly transitive_freshness_policy_ref: string | null;
-  readonly consumed_freshness_evaluated_count: number;
-}
-
-export interface ReceiptCompositionPinInspectionV0 {
-  readonly upstream_content_hash: ContentHashV0 | null;
-  readonly contract_revision: ContentHashV0 | null;
-  readonly acceptable_signer_set: readonly string[];
-}
-
-export interface ReceiptCompositionInspectionV0 {
-  readonly consumed_receipt_count: number;
-  readonly consumed_receipts: readonly ReceiptCompositionPinInspectionV0[];
-  readonly cycle_checked: boolean | null;
-}
-
-export interface ReceiptTokenTruthInspectionV0 {
-  readonly fresh: number | null;
-  readonly reused: number | null;
-  readonly provider: string | null;
-  readonly model: string | null;
-  readonly role: string | null;
-  readonly surprise_cause: string | null;
-}
-
-export interface ReceiptProofInspectionV0 {
-  readonly ok: boolean;
-  readonly errors: readonly string[];
-  readonly schema: string | null;
-  readonly v: number | null;
-  readonly content_hash: ContentHashV0 | null;
-  readonly contract_revision: ContentHashV0 | null;
-  readonly responsibility_id: string | null;
-  readonly role: string | null;
-  readonly signer: ReceiptSignerPostureInspectionV0 | null;
-  readonly freshness: ReceiptFreshnessInspectionV0;
-  readonly composition: ReceiptCompositionInspectionV0;
-  readonly token_truth: ReceiptTokenTruthInspectionV0;
-}
-
-const CONTENT_HASH_PATTERN = /^sha256:[a-f0-9]{64}$/;
-const ISO_INSTANT_PATTERN =
-  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/;
-const EVENT_CAUSES = new Set<ReceiptEventCauseV0>([
-  "real-input",
-  "forecast-recheck",
-  "escalation",
-]);
-const RECHECK_KINDS = new Set<ReceiptRecheckKindV0>([
-  "evidence-age",
-  "plan-age",
-]);
-const ROLES = new Set<ReceiptRoleV0>([
-  "judge",
-  "fulfill",
-  "summarize",
-  "policy-compile",
-]);
-const VERDICT_STATUSES = new Set<ReceiptVerdictStatusV0>([
-  "up",
-  "drifting",
-  "down",
-  "blocked",
-]);
-const CALIBRATION_GRADES = new Set<ReceiptCalibrationGradeV0>([
-  "authored",
-  "accrued",
-  "none",
-]);
-const INTERRUPT_CAUSES = new Set<ReceiptInterruptCauseV0>([
-  "needs-judgment",
-  "needs-input",
-  "contract-declared",
-]);
-const STALENESS_OUTCOMES = new Set<ReceiptStalenessOutcomeV0>([
-  "fresh",
-  "stale-refetched",
-  "stale-blocked",
+const WAKE_SOURCES = new Set<WakeSource>(["input", "self", "external"]);
+const RECEIPT_STATUSES = new Set<ReceiptStatus>([
+  "rendered",
+  "skipped",
+  "failed",
 ]);
 
-export function createReceiptV0(input: ReceiptV0Input): ReceiptV0 {
-  const payload: ReceiptHashPayloadV0 = {
+const CONTENT_ADDRESS_PATTERN = /^sha256:[a-f0-9]{64}$/;
+
+// ---------------------------------------------------------------------------
+// Construction
+// ---------------------------------------------------------------------------
+
+/**
+ * Stamp a canonical Receipt body into a verified ledger envelope. The
+ * content_hash is the sha256 of the canonical serialization of the envelope
+ * sans content_hash (kept machinery, delta.md §A3.2). Throws if the body is not
+ * a valid ideal receipt.
+ */
+export function createReceipt(input: ReceiptInput): LedgerReceipt {
+  const payload: ReceiptHashPayload = {
     schema: RECEIPT_SCHEMA,
-    v: RECEIPT_VERSION,
     hash_algorithm: RECEIPT_HASH_ALGORITHM,
-    core: input.core,
-    sig: input.sig,
-    verdict: input.verdict,
-    freshness: input.freshness,
-    composition: input.composition,
+    node: input.node,
+    contract_fingerprint: input.contract_fingerprint,
+    wake: input.wake,
+    input_fingerprints: input.input_fingerprints,
+    fingerprints: input.fingerprints,
+    semantic_diff: input.semantic_diff,
+    prev: input.prev,
+    status: input.status,
     cost: input.cost,
+    sig: input.sig,
   };
-  const receipt: ReceiptV0 = {
-    ...payload,
-    content_hash: computeReceiptContentHashV0(payload),
-  };
-  const verification = verifyReceiptV0(receipt);
 
+  const receipt: LedgerReceipt = {
+    ...payload,
+    content_hash: computeReceiptContentHash(payload),
+  };
+
+  const verification = verifyReceipt(receipt);
   if (!verification.ok) {
-    throw new Error(`Invalid receipt v0 input: ${verification.errors.join("; ")}`);
+    throw new Error(`Invalid receipt input: ${verification.errors.join("; ")}`);
   }
 
   return receipt;
 }
 
-export function verifyReceiptV0(value: unknown): ReceiptVerificationResultV0 {
+/**
+ * Build the canonical `skipped` receipt that copies the unchanged fingerprints
+ * forward (architecture.md §8 dirty/coalesce; SHAPES.md §4: "A `skipped`
+ * receipt copies the unchanged `fingerprints` forward, carries
+ * EMPTY_SEMANTIC_DIFF, and zero cost"). Only `rendered` with a moved
+ * fingerprint propagates (world-model.md §8 line 329-330).
+ */
+export function createSkippedReceipt(params: {
+  readonly node: string;
+  readonly contract_fingerprint: Fingerprint;
+  readonly wake: Wake;
+  readonly input_fingerprints: InputFingerprints;
+  readonly fingerprints: FingerprintMap;
+  readonly prev: ContentAddress | null;
+  readonly cost?: Cost;
+  readonly sig?: ReceiptSignature;
+}): LedgerReceipt {
+  return createReceipt({
+    node: params.node,
+    contract_fingerprint: params.contract_fingerprint,
+    wake: params.wake,
+    input_fingerprints: params.input_fingerprints,
+    fingerprints: params.fingerprints,
+    semantic_diff: EMPTY_SEMANTIC_DIFF,
+    prev: params.prev,
+    status: "skipped",
+    cost:
+      params.cost ??
+      {
+        provider: "none",
+        model: "none",
+        tokens: { fresh: 0, reused: 0 },
+        surprise_cause: params.wake.source,
+      },
+    sig: params.sig ?? createNullSignature(),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Verification
+// ---------------------------------------------------------------------------
+
+export type ReceiptVerificationResult =
+  | { readonly ok: true; readonly content_hash: ContentAddress }
+  | {
+      readonly ok: false;
+      readonly errors: readonly string[];
+      readonly expected_content_hash?: ContentAddress;
+      readonly actual_content_hash?: string;
+    };
+
+export function verifyReceipt(value: unknown): ReceiptVerificationResult {
   const errors: string[] = [];
 
   if (!isRecord(value)) {
@@ -305,10 +179,10 @@ export function verifyReceiptV0(value: unknown): ReceiptVerificationResultV0 {
 
   validateReceiptShape(value, errors);
 
-  let expectedContentHash: ContentHashV0 | undefined;
+  let expectedContentHash: ContentAddress | undefined;
   try {
-    expectedContentHash = computeReceiptContentHashV0(
-      value as ReceiptV0 | ReceiptHashPayloadV0,
+    expectedContentHash = computeReceiptContentHash(
+      value as LedgerReceipt | ReceiptHashPayload,
     );
   } catch (error) {
     errors.push(error instanceof Error ? error.message : "content hash failed");
@@ -317,7 +191,7 @@ export function verifyReceiptV0(value: unknown): ReceiptVerificationResultV0 {
   const actualContentHash = value["content_hash"];
   if (typeof actualContentHash !== "string") {
     errors.push("content_hash must be a sha256 content address");
-  } else if (!CONTENT_HASH_PATTERN.test(actualContentHash)) {
+  } else if (!CONTENT_ADDRESS_PATTERN.test(actualContentHash)) {
     errors.push("content_hash must use sha256:<64 lowercase hex>");
   } else if (
     expectedContentHash !== undefined &&
@@ -330,7 +204,7 @@ export function verifyReceiptV0(value: unknown): ReceiptVerificationResultV0 {
     const failure: {
       readonly ok: false;
       readonly errors: readonly string[];
-      readonly expected_content_hash?: ContentHashV0;
+      readonly expected_content_hash?: ContentAddress;
       readonly actual_content_hash?: string;
     } = { ok: false, errors };
 
@@ -345,140 +219,359 @@ export function verifyReceiptV0(value: unknown): ReceiptVerificationResultV0 {
     };
   }
 
-  return {
-    ok: true,
-    content_hash: actualContentHash as ContentHashV0,
-  };
+  return { ok: true, content_hash: actualContentHash as ContentAddress };
 }
 
-export function assertReceiptV0(value: unknown): asserts value is ReceiptV0 {
-  const verification = verifyReceiptV0(value);
-
+export function assertReceipt(value: unknown): asserts value is LedgerReceipt {
+  const verification = verifyReceipt(value);
   if (!verification.ok) {
-    throw new Error(`Invalid receipt v0: ${verification.errors.join("; ")}`);
+    throw new Error(`Invalid receipt: ${verification.errors.join("; ")}`);
   }
 }
 
-export function inspectReceiptProofV0(value: unknown): ReceiptProofInspectionV0 {
-  const verification = verifyReceiptV0(value);
+// ---------------------------------------------------------------------------
+// Chain helpers (the ledger is a `prev`-linked chain of content addresses)
+// ---------------------------------------------------------------------------
+
+export type ReceiptChainResult =
+  | { readonly ok: true; readonly head: ContentAddress | null; readonly length: number }
+  | { readonly ok: false; readonly errors: readonly string[] };
+
+/**
+ * Verify a node-scoped ledger slice is a well-formed `prev`-linked chain
+ * (architecture.md §5.1: each receipt "commits to its fingerprints and its
+ * `prev`; verification is chain-consistency"). `chain[0]` is the cold-start
+ * receipt (`prev: null`); each subsequent `prev` must equal the predecessor's
+ * `content_hash`, and every receipt must share the same `node`.
+ */
+export function verifyReceiptChain(
+  chain: readonly unknown[],
+): ReceiptChainResult {
+  const errors: string[] = [];
+
+  if (chain.length === 0) {
+    return { ok: true, head: null, length: 0 };
+  }
+
+  let node: string | undefined;
+  let prevHash: ContentAddress | null = null;
+
+  for (const [index, value] of chain.entries()) {
+    const verification = verifyReceipt(value);
+    if (!verification.ok) {
+      errors.push(`chain[${index}] is not a valid receipt: ${verification.errors.join("; ")}`);
+      continue;
+    }
+    const receipt = value as LedgerReceipt;
+
+    if (node === undefined) {
+      node = receipt.node;
+    } else if (receipt.node !== node) {
+      errors.push(`chain[${index}].node "${receipt.node}" breaks node-scoped ledger "${node}"`);
+    }
+
+    const expectedPrev: ContentAddress | null = index === 0 ? null : prevHash;
+    if (receipt.prev !== expectedPrev) {
+      errors.push(
+        `chain[${index}].prev must be ${expectedPrev === null ? "null (cold start)" : expectedPrev} to chain the ledger`,
+      );
+    }
+
+    prevHash = verification.content_hash;
+  }
+
+  if (errors.length > 0) {
+    return { ok: false, errors };
+  }
+  return { ok: true, head: prevHash, length: chain.length };
+}
+
+// ---------------------------------------------------------------------------
+// Canonicalization + hashing (kept machinery, re-pointed — delta.md §A3.2)
+// ---------------------------------------------------------------------------
+
+export function serializeReceipt(receipt: LedgerReceipt): string {
+  assertReceipt(receipt);
+  return canonicalizeForReceipt(receipt);
+}
+
+export function computeReceiptContentHash(
+  value: LedgerReceipt | ReceiptHashPayload,
+): ContentAddress {
+  const payload = withoutContentHash(value);
+  return hashCanonicalReceipt(canonicalizeForReceipt(payload));
+}
+
+export function canonicalizeForReceipt(value: unknown): string {
+  return renderCanonical(value);
+}
+
+export function hashCanonicalReceipt(canonical: string): ContentAddress {
+  return `sha256:${createHash("sha256").update(canonical).digest("hex")}`;
+}
+
+// ---------------------------------------------------------------------------
+// Proof inspection (shareable, non-secret summary — feeds projection/)
+// ---------------------------------------------------------------------------
+
+export interface ReceiptSignerPostureInspection {
+  readonly kind: "null" | "signed";
+  readonly scheme: string;
+}
+
+export interface ReceiptCostInspection {
+  readonly fresh: number | null;
+  readonly reused: number | null;
+  readonly provider: string | null;
+  readonly model: string | null;
+  readonly surprise_cause: string | null;
+}
+
+export interface ReceiptProofInspection {
+  readonly ok: boolean;
+  readonly errors: readonly string[];
+  readonly schema: string | null;
+  readonly content_hash: ContentAddress | null;
+  readonly node: string | null;
+  readonly contract_fingerprint: string | null;
+  readonly wake_source: string | null;
+  readonly status: string | null;
+  readonly input_fingerprint_count: number;
+  readonly facet_count: number;
+  readonly has_atomic_facet: boolean;
+  readonly prev: ContentAddress | null;
+  readonly signer: ReceiptSignerPostureInspection | null;
+  readonly cost: ReceiptCostInspection;
+}
+
+export function inspectReceiptProof(value: unknown): ReceiptProofInspection {
+  const verification = verifyReceipt(value);
   const receipt = isRecord(value) ? value : undefined;
-  const core = readRecord(receipt, "core");
+  const fingerprints = readRecord(receipt, "fingerprints");
+  const inputFingerprints = receipt?.["input_fingerprints"];
+  const wake = readRecord(receipt, "wake");
 
   return {
     ok: verification.ok,
     errors: verification.ok ? [] : verification.errors,
     schema: readString(receipt, "schema"),
-    v: readNumber(receipt, "v"),
     content_hash: verification.ok ? verification.content_hash : null,
-    contract_revision: readContentHash(core, "contract_revision"),
-    responsibility_id: readString(core, "responsibility_id"),
-    role: readString(core, "role"),
+    node: readString(receipt, "node"),
+    contract_fingerprint: readString(receipt, "contract_fingerprint"),
+    wake_source: readString(wake, "source"),
+    status: readString(receipt, "status"),
+    input_fingerprint_count: Array.isArray(inputFingerprints)
+      ? inputFingerprints.length
+      : 0,
+    facet_count: fingerprints === undefined ? 0 : Object.keys(fingerprints).length,
+    has_atomic_facet:
+      fingerprints !== undefined &&
+      typeof fingerprints[ATOMIC_FACET] === "string",
+    prev: readContentAddress(receipt, "prev"),
     signer: inspectSigner(readRecord(receipt, "sig")),
-    freshness: inspectFreshness(readRecord(receipt, "freshness")),
-    composition: inspectComposition(readRecord(receipt, "composition")),
-    token_truth: inspectTokenTruth(readRecord(receipt, "cost")),
+    cost: inspectCost(readRecord(receipt, "cost")),
   };
-}
-
-export function readTokenTruthV0(receipt: ReceiptV0): ReceiptTokenTruthV0 {
-  return {
-    responsibility_id: receipt.cost.responsibility_id,
-    run_id: receipt.cost.run_id,
-    provider: receipt.cost.provider,
-    model: receipt.cost.model,
-    role: receipt.cost.role,
-    tags: receipt.cost.tags,
-    as_of: receipt.cost.as_of,
-    fresh: receipt.cost.tokens.fresh,
-    reused: receipt.cost.tokens.reused,
-    surprise_cause: receipt.cost.surprise_cause,
-  };
-}
-
-export function serializeReceiptV0(receipt: ReceiptV0): string {
-  assertReceiptV0(receipt);
-  return canonicalizeForReceiptV0(receipt);
-}
-
-export function computeReceiptContentHashV0(
-  value: ReceiptV0 | ReceiptHashPayloadV0,
-): ContentHashV0 {
-  const payload = withoutContentHash(value);
-  return hashCanonicalReceiptV0(canonicalizeForReceiptV0(payload));
-}
-
-export function canonicalizeForReceiptV0(value: unknown): string {
-  return renderCanonical(value);
-}
-
-export function hashCanonicalReceiptV0(canonical: string): ContentHashV0 {
-  return `sha256:${createHash("sha256").update(canonical).digest("hex")}`;
 }
 
 function inspectSigner(
   sig: Readonly<Record<string, unknown>> | undefined,
-): ReceiptSignerPostureInspectionV0 | null {
+): ReceiptSignerPostureInspection | null {
   const scheme = readString(sig, "scheme");
   if (scheme === null || scheme.length === 0) {
     return null;
   }
-  if (scheme === "none") {
-    return { kind: "null", scheme };
-  }
-  return { kind: "signed", scheme };
+  return scheme === "none"
+    ? { kind: "null", scheme }
+    : { kind: "signed", scheme };
 }
 
-function inspectFreshness(
-  freshness: Readonly<Record<string, unknown>> | undefined,
-): ReceiptFreshnessInspectionV0 {
-  const consumed = freshness?.["consumed_freshness_evaluated"];
-
-  return {
-    as_of: readString(freshness, "as_of"),
-    next_forecast_recheck: readString(freshness, "next_forecast_recheck"),
-    transitive_freshness_policy_ref: readString(
-      freshness,
-      "transitive_freshness_policy_ref",
-    ),
-    consumed_freshness_evaluated_count: Array.isArray(consumed)
-      ? consumed.length
-      : 0,
-  };
-}
-
-function inspectComposition(
-  composition: Readonly<Record<string, unknown>> | undefined,
-): ReceiptCompositionInspectionV0 {
-  const consumed = composition?.["consumed_receipts"];
-  const consumedReceipts = Array.isArray(consumed) ? consumed : [];
-
-  return {
-    consumed_receipt_count: consumedReceipts.length,
-    consumed_receipts: consumedReceipts
-      .filter(isRecord)
-      .map((pin) => ({
-        upstream_content_hash: readContentHash(pin, "upstream_content_hash"),
-        contract_revision: readContentHash(pin, "contract_revision"),
-        acceptable_signer_set: readStringArray(pin, "acceptable_signer_set"),
-      })),
-    cycle_checked: readBoolean(composition, "cycle_checked"),
-  };
-}
-
-function inspectTokenTruth(
+function inspectCost(
   cost: Readonly<Record<string, unknown>> | undefined,
-): ReceiptTokenTruthInspectionV0 {
+): ReceiptCostInspection {
   const tokens = readRecord(cost, "tokens");
-
   return {
     fresh: readNumber(tokens, "fresh"),
     reused: readNumber(tokens, "reused"),
     provider: readString(cost, "provider"),
     model: readString(cost, "model"),
-    role: readString(cost, "role"),
     surprise_cause: readString(cost, "surprise_cause"),
   };
 }
+
+// ---------------------------------------------------------------------------
+// Shape validation
+// ---------------------------------------------------------------------------
+
+function validateReceiptShape(
+  receipt: Readonly<Record<string, unknown>>,
+  errors: string[],
+): void {
+  validateExactKeys(
+    receipt,
+    "receipt",
+    [
+      "schema",
+      "hash_algorithm",
+      "content_hash",
+      "node",
+      "contract_fingerprint",
+      "wake",
+      "input_fingerprints",
+      "fingerprints",
+      "semantic_diff",
+      "prev",
+      "status",
+      "cost",
+      "sig",
+    ],
+    errors,
+  );
+  expectLiteral(receipt, "schema", RECEIPT_SCHEMA, "receipt", errors);
+  expectLiteral(receipt, "hash_algorithm", RECEIPT_HASH_ALGORITHM, "receipt", errors);
+
+  expectNonEmptyString(receipt, "node", "receipt", errors);
+  expectNonEmptyString(receipt, "contract_fingerprint", "receipt", errors);
+  expectEnum(receipt, "status", "receipt", RECEIPT_STATUSES, errors);
+
+  const wake = expectRecord(receipt, "wake", "receipt", errors);
+  if (wake !== undefined) {
+    validateWake(wake, errors);
+  }
+
+  expectFingerprintArray(receipt, "input_fingerprints", "receipt", errors);
+
+  const fingerprints = expectRecord(receipt, "fingerprints", "receipt", errors);
+  if (fingerprints !== undefined) {
+    validateFingerprintMap(fingerprints, errors);
+  }
+
+  validateSemanticDiff(receipt, errors);
+  validatePrev(receipt, errors);
+
+  const sig = expectRecord(receipt, "sig", "receipt", errors);
+  if (sig !== undefined) {
+    validateSignature(sig, errors);
+  }
+
+  const cost = expectRecord(receipt, "cost", "receipt", errors);
+  if (cost !== undefined) {
+    validateCost(cost, errors);
+  }
+
+  // Cross-field invariants tying the receipt together (SHAPES.md §4).
+  if (wake !== undefined && cost !== undefined) {
+    expectSameString(
+      "cost.surprise_cause",
+      cost["surprise_cause"],
+      "wake.source",
+      wake["source"],
+      errors,
+    );
+  }
+
+  // A skipped receipt carries the empty semantic diff and zero cost
+  // (SHAPES.md §4; architecture.md §8).
+  if (receipt["status"] === "skipped") {
+    const diff = receipt["semantic_diff"];
+    if (isRecord(diff) && Object.keys(diff).length !== 0) {
+      errors.push("skipped receipt must carry the empty semantic_diff");
+    }
+    if (cost !== undefined) {
+      const tokens = readRecord(cost, "tokens");
+      if ((readNumber(tokens, "fresh") ?? 0) !== 0) {
+        errors.push("skipped receipt must carry zero fresh tokens");
+      }
+    }
+  }
+}
+
+function validateWake(
+  wake: Readonly<Record<string, unknown>>,
+  errors: string[],
+): void {
+  validateExactKeys(wake, "wake", ["source", "refs"], errors);
+  expectEnum(wake, "source", "wake", WAKE_SOURCES, errors);
+  expectContentAddressArray(wake, "refs", "wake", errors);
+}
+
+function validateFingerprintMap(
+  fingerprints: Readonly<Record<string, unknown>>,
+  errors: string[],
+): void {
+  const keys = Object.keys(fingerprints);
+  if (!Object.hasOwn(fingerprints, ATOMIC_FACET)) {
+    errors.push(`fingerprints must always include the reserved "${ATOMIC_FACET}" facet`);
+  }
+  for (const key of keys) {
+    const value = fingerprints[key];
+    if (typeof value !== "string" || value.length === 0) {
+      errors.push(`fingerprints.${key} must be a non-empty fingerprint token`);
+    }
+  }
+}
+
+function validateSemanticDiff(
+  receipt: Readonly<Record<string, unknown>>,
+  errors: string[],
+): void {
+  const diff = receipt["semantic_diff"];
+  if (!isRecord(diff)) {
+    errors.push("semantic_diff must be an object (render-input context map)");
+  }
+}
+
+function validatePrev(
+  receipt: Readonly<Record<string, unknown>>,
+  errors: string[],
+): void {
+  const prev = receipt["prev"];
+  if (prev === null) {
+    return;
+  }
+  if (typeof prev !== "string" || !CONTENT_ADDRESS_PATTERN.test(prev)) {
+    errors.push("prev must be null (cold start) or a sha256 content address");
+  }
+}
+
+function validateSignature(
+  sig: Readonly<Record<string, unknown>>,
+  errors: string[],
+): void {
+  const scheme = sig["scheme"];
+  if (scheme === "none") {
+    validateExactKeys(sig, "sig", ["scheme", "null_reason"], errors);
+    expectNonEmptyString(sig, "null_reason", "sig", errors);
+    return;
+  }
+  // The null signer is the only honest v1 state (world-model.md §5; SHAPES.md
+  // §4: `ReceiptSignature = NullSignature`). Non-null returns with the deferred
+  // crypto milestone (architecture.md §9).
+  errors.push(
+    'sig.scheme must be "none"; the null signer is the only honest v1 state',
+  );
+}
+
+function validateCost(
+  cost: Readonly<Record<string, unknown>>,
+  errors: string[],
+): void {
+  // The receipt requires the architecture.md §6.1 core of Cost. The cost/
+  // module's superset MAY add fields (delta.md §A4), so extra keys are allowed
+  // here, but tokens + surprise_cause + provider + model are load-bearing.
+  expectNonEmptyString(cost, "provider", "cost", errors);
+  expectNonEmptyString(cost, "model", "cost", errors);
+  expectEnum(cost, "surprise_cause", "cost", WAKE_SOURCES, errors);
+
+  const tokens = expectRecord(cost, "tokens", "cost", errors);
+  if (tokens !== undefined) {
+    expectNonNegativeInteger(tokens, "fresh", "cost.tokens", errors);
+    expectNonNegativeInteger(tokens, "reused", "cost.tokens", errors);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Primitive readers + canonicalizer (kept verbatim machinery)
+// ---------------------------------------------------------------------------
 
 function readRecord(
   record: Readonly<Record<string, unknown>> | undefined,
@@ -504,461 +597,21 @@ function readNumber(
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
-function readBoolean(
+function readContentAddress(
   record: Readonly<Record<string, unknown>> | undefined,
   key: string,
-): boolean | null {
-  const value = record?.[key];
-  return typeof value === "boolean" ? value : null;
-}
-
-function readStringArray(
-  record: Readonly<Record<string, unknown>>,
-  key: string,
-): readonly string[] {
-  const value = record[key];
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  return value.filter((item): item is string => typeof item === "string");
-}
-
-function readContentHash(
-  record: Readonly<Record<string, unknown>> | undefined,
-  key: string,
-): ContentHashV0 | null {
+): ContentAddress | null {
   const value = readString(record, key);
-  return value !== null && CONTENT_HASH_PATTERN.test(value)
-    ? (value as ContentHashV0)
+  return value !== null && CONTENT_ADDRESS_PATTERN.test(value)
+    ? (value as ContentAddress)
     : null;
 }
 
 function withoutContentHash(
-  value: ReceiptV0 | ReceiptHashPayloadV0,
-): ReceiptHashPayloadV0 {
-  const { content_hash: _contentHash, ...payload } = value as ReceiptV0;
+  value: LedgerReceipt | ReceiptHashPayload,
+): ReceiptHashPayload {
+  const { content_hash: _contentHash, ...payload } = value as LedgerReceipt;
   return payload;
-}
-
-function validateReceiptShape(
-  receipt: Readonly<Record<string, unknown>>,
-  errors: string[],
-): void {
-  validateExactKeys(
-    receipt,
-    "receipt",
-    [
-      "schema",
-      "v",
-      "hash_algorithm",
-      "content_hash",
-      "core",
-      "sig",
-      "verdict",
-      "freshness",
-      "composition",
-      "cost",
-    ],
-    errors,
-  );
-  expectLiteral(receipt, "schema", RECEIPT_SCHEMA, "receipt", errors);
-  expectLiteral(receipt, "v", RECEIPT_VERSION, "receipt", errors);
-  expectLiteral(
-    receipt,
-    "hash_algorithm",
-    RECEIPT_HASH_ALGORITHM,
-    "receipt",
-    errors,
-  );
-
-  const core = expectRecord(receipt, "core", "receipt", errors);
-  if (core !== undefined) {
-    validateCore(core, errors);
-  }
-
-  const sig = expectRecord(receipt, "sig", "receipt", errors);
-  if (sig !== undefined) {
-    validateSignature(sig, errors);
-  }
-
-  const verdict = expectRecord(receipt, "verdict", "receipt", errors);
-  if (verdict !== undefined) {
-    validateVerdict(verdict, errors);
-  }
-
-  const freshness = expectRecord(receipt, "freshness", "receipt", errors);
-  if (freshness !== undefined) {
-    validateFreshness(freshness, errors);
-  }
-
-  const composition = expectRecord(receipt, "composition", "receipt", errors);
-  if (composition !== undefined) {
-    validateComposition(composition, errors);
-  }
-
-  const cost = expectRecord(receipt, "cost", "receipt", errors);
-  if (cost !== undefined) {
-    validateCost(cost, errors);
-  }
-
-  if (core !== undefined && freshness !== undefined) {
-    expectSameString(
-      "freshness.as_of",
-      freshness["as_of"],
-      "core.as_of",
-      core["as_of"],
-      errors,
-    );
-  }
-
-  if (freshness !== undefined && composition !== undefined) {
-    validateComposedFreshness(composition, freshness, errors);
-  }
-
-  if (core !== undefined && cost !== undefined) {
-    expectSameString(
-      "cost.responsibility_id",
-      cost["responsibility_id"],
-      "core.responsibility_id",
-      core["responsibility_id"],
-      errors,
-    );
-    expectSameString("cost.role", cost["role"], "core.role", core["role"], errors);
-    expectSameString("cost.as_of", cost["as_of"], "core.as_of", core["as_of"], errors);
-    expectSameString(
-      "cost.surprise_cause",
-      cost["surprise_cause"],
-      "core.event_cause",
-      core["event_cause"],
-      errors,
-    );
-  }
-}
-
-function validateCore(
-  core: Readonly<Record<string, unknown>>,
-  errors: string[],
-): void {
-  validateExactKeys(
-    core,
-    "core",
-    [
-      "responsibility_id",
-      "contract_revision",
-      "event_cause",
-      "recheck_kind",
-      "memo_key",
-      "evidence_input_ids",
-      "as_of",
-      "role",
-    ],
-    errors,
-  );
-  expectNonEmptyString(core, "responsibility_id", "core", errors);
-  expectContentHash(core, "contract_revision", "core", errors);
-  expectEnum(core, "event_cause", "core", EVENT_CAUSES, errors);
-  expectNonEmptyString(core, "memo_key", "core", errors);
-  expectContentHashArray(core, "evidence_input_ids", "core", errors);
-  expectIsoInstant(core, "as_of", "core", errors);
-  expectEnum(core, "role", "core", ROLES, errors);
-
-  const eventCause = core["event_cause"];
-  const recheckKind = core["recheck_kind"];
-  if (eventCause === "forecast-recheck") {
-    expectEnum(core, "recheck_kind", "core", RECHECK_KINDS, errors);
-  } else if (recheckKind !== undefined) {
-    errors.push("core.recheck_kind is only valid for forecast-recheck");
-  }
-}
-
-function validateSignature(
-  sig: Readonly<Record<string, unknown>>,
-  errors: string[],
-): void {
-  const scheme = sig["scheme"];
-  if (scheme === "none") {
-    validateExactKeys(sig, "sig", ["scheme", "null_reason"], errors);
-    expectNonEmptyString(sig, "null_reason", "sig", errors);
-    return;
-  }
-
-  validateExactKeys(
-    sig,
-    "sig",
-    ["scheme", "signer_id", "signature", "signed_payload_hash"],
-    errors,
-  );
-  expectNonEmptyString(sig, "scheme", "sig", errors);
-  expectNonEmptyString(sig, "signer_id", "sig", errors);
-  expectNonEmptyString(sig, "signature", "sig", errors);
-  expectContentHash(sig, "signed_payload_hash", "sig", errors);
-  errors.push(
-    "non-null signatures are not supported in receipt v0.1; null signer is the only honest v0.1 state",
-  );
-}
-
-function validateVerdict(
-  verdict: Readonly<Record<string, unknown>>,
-  errors: string[],
-): void {
-  validateExactKeys(verdict, "verdict", ["status", "confidence", "blocked"], errors);
-  expectEnum(verdict, "status", "verdict", VERDICT_STATUSES, errors);
-
-  const confidence = expectRecord(verdict, "confidence", "verdict", errors);
-  if (confidence !== undefined) {
-    validateExactKeys(
-      confidence,
-      "verdict.confidence",
-      ["value", "derivation_method", "calibration_grade", "label_source"],
-      errors,
-    );
-    expectUnitInterval(confidence, "value", "verdict.confidence", errors);
-    expectNonEmptyString(
-      confidence,
-      "derivation_method",
-      "verdict.confidence",
-      errors,
-    );
-    expectEnum(
-      confidence,
-      "calibration_grade",
-      "verdict.confidence",
-      CALIBRATION_GRADES,
-      errors,
-    );
-    expectNonEmptyString(confidence, "label_source", "verdict.confidence", errors);
-  }
-
-  const blocked = verdict["blocked"];
-  if (verdict["status"] === "blocked") {
-    const blockedRecord = expectRecord(verdict, "blocked", "verdict", errors);
-    if (blockedRecord !== undefined) {
-      validateBlocked(blockedRecord, errors);
-    }
-  } else if (blocked !== undefined) {
-    errors.push("verdict.blocked is only valid when status is blocked");
-  }
-}
-
-function validateBlocked(
-  blocked: Readonly<Record<string, unknown>>,
-  errors: string[],
-): void {
-  validateExactKeys(
-    blocked,
-    "verdict.blocked",
-    ["reason", "fix_target", "interrupt_cause"],
-    errors,
-  );
-  expectNonEmptyString(blocked, "reason", "verdict.blocked", errors);
-  expectNonEmptyString(blocked, "fix_target", "verdict.blocked", errors);
-  expectEnum(
-    blocked,
-    "interrupt_cause",
-    "verdict.blocked",
-    INTERRUPT_CAUSES,
-    errors,
-  );
-}
-
-function validateFreshness(
-  freshness: Readonly<Record<string, unknown>>,
-  errors: string[],
-): void {
-  validateExactKeys(
-    freshness,
-    "freshness",
-    [
-      "as_of",
-      "next_forecast_recheck",
-      "transitive_freshness_policy_ref",
-      "consumed_freshness_evaluated",
-    ],
-    errors,
-  );
-  expectIsoInstant(freshness, "as_of", "freshness", errors);
-  expectIsoInstant(freshness, "next_forecast_recheck", "freshness", errors);
-
-  if (freshness["transitive_freshness_policy_ref"] !== undefined) {
-    expectNonEmptyString(
-      freshness,
-      "transitive_freshness_policy_ref",
-      "freshness",
-      errors,
-    );
-  }
-
-  const consumed = freshness["consumed_freshness_evaluated"];
-  if (consumed !== undefined) {
-    if (!Array.isArray(consumed)) {
-      errors.push("freshness.consumed_freshness_evaluated must be an array");
-    } else {
-      for (const [index, item] of consumed.entries()) {
-        const path = `freshness.consumed_freshness_evaluated[${index}]`;
-        if (!isRecord(item)) {
-          errors.push(`${path} must be an object`);
-          continue;
-        }
-        validateExactKeys(
-          item,
-          path,
-          ["receipt_hash", "next_forecast_recheck", "staleness_outcome"],
-          errors,
-        );
-        expectContentHash(item, "receipt_hash", path, errors);
-        expectIsoInstant(item, "next_forecast_recheck", path, errors);
-        expectEnum(item, "staleness_outcome", path, STALENESS_OUTCOMES, errors);
-      }
-    }
-  }
-}
-
-function validateComposition(
-  composition: Readonly<Record<string, unknown>>,
-  errors: string[],
-): void {
-  validateExactKeys(
-    composition,
-    "composition",
-    ["consumed_receipts", "cycle_checked"],
-    errors,
-  );
-  expectBoolean(composition, "cycle_checked", "composition", errors);
-
-  const consumed = composition["consumed_receipts"];
-  if (!Array.isArray(consumed)) {
-    errors.push("composition.consumed_receipts must be an array");
-    return;
-  }
-
-  const seenHashes = new Set<string>();
-  for (const [index, item] of consumed.entries()) {
-    const path = `composition.consumed_receipts[${index}]`;
-    if (!isRecord(item)) {
-      errors.push(`${path} must be an object`);
-      continue;
-    }
-    validateExactKeys(
-      item,
-      path,
-      ["upstream_content_hash", "contract_revision", "acceptable_signer_set"],
-      errors,
-    );
-    expectContentHash(item, "upstream_content_hash", path, errors);
-    expectContentHash(item, "contract_revision", path, errors);
-    expectStringArray(item, "acceptable_signer_set", path, errors);
-    if (
-      Array.isArray(item["acceptable_signer_set"]) &&
-      item["acceptable_signer_set"].length === 0
-    ) {
-      errors.push(`${path}.acceptable_signer_set must not be empty`);
-    }
-
-    const hash = item["upstream_content_hash"];
-    if (typeof hash === "string") {
-      if (seenHashes.has(hash)) {
-        errors.push(`${path}.upstream_content_hash duplicates a consumed receipt`);
-      }
-      seenHashes.add(hash);
-    }
-  }
-}
-
-function validateComposedFreshness(
-  composition: Readonly<Record<string, unknown>>,
-  freshness: Readonly<Record<string, unknown>>,
-  errors: string[],
-): void {
-  const consumed = composition["consumed_receipts"];
-  if (!Array.isArray(consumed) || consumed.length === 0) {
-    return;
-  }
-
-  if (typeof freshness["transitive_freshness_policy_ref"] !== "string") {
-    errors.push(
-      "freshness.transitive_freshness_policy_ref is required when receipts are consumed",
-    );
-  }
-
-  const evaluated = freshness["consumed_freshness_evaluated"];
-  if (!Array.isArray(evaluated)) {
-    errors.push(
-      "freshness.consumed_freshness_evaluated is required when receipts are consumed",
-    );
-    return;
-  }
-  if (evaluated.length !== consumed.length) {
-    errors.push(
-      "freshness.consumed_freshness_evaluated must cover every consumed receipt",
-    );
-  }
-
-  const consumedHashes = new Set<string>();
-  for (const item of consumed) {
-    if (isRecord(item) && typeof item["upstream_content_hash"] === "string") {
-      consumedHashes.add(item["upstream_content_hash"]);
-    }
-  }
-
-  for (const [index, item] of evaluated.entries()) {
-    if (!isRecord(item)) {
-      continue;
-    }
-    const receiptHash = item["receipt_hash"];
-    if (typeof receiptHash === "string" && !consumedHashes.has(receiptHash)) {
-      errors.push(
-        `freshness.consumed_freshness_evaluated[${index}].receipt_hash must match a consumed receipt`,
-      );
-    }
-  }
-}
-
-function validateCost(
-  cost: Readonly<Record<string, unknown>>,
-  errors: string[],
-): void {
-  validateExactKeys(
-    cost,
-    "cost",
-    [
-      "provider",
-      "model",
-      "role",
-      "tags",
-      "responsibility_id",
-      "run_id",
-      "as_of",
-      "tokens",
-      "surprise_cause",
-      "provider_norm",
-    ],
-    errors,
-  );
-  expectNonEmptyString(cost, "provider", "cost", errors);
-  expectNonEmptyString(cost, "model", "cost", errors);
-  expectEnum(cost, "role", "cost", ROLES, errors);
-  expectStringArray(cost, "tags", "cost", errors);
-  expectNonEmptyString(cost, "responsibility_id", "cost", errors);
-  expectNonEmptyString(cost, "run_id", "cost", errors);
-  expectIsoInstant(cost, "as_of", "cost", errors);
-  expectEnum(cost, "surprise_cause", "cost", EVENT_CAUSES, errors);
-
-  const tokens = expectRecord(cost, "tokens", "cost", errors);
-  if (tokens !== undefined) {
-    validateExactKeys(tokens, "cost.tokens", ["fresh", "reused"], errors);
-    expectNonNegativeInteger(tokens, "fresh", "cost.tokens", errors);
-    expectNonNegativeInteger(tokens, "reused", "cost.tokens", errors);
-  }
-
-  const providerNorm = cost["provider_norm"];
-  if (providerNorm !== undefined) {
-    if (!isRecord(providerNorm)) {
-      errors.push("cost.provider_norm must be an object when present");
-    } else {
-      expectNonEmptyString(providerNorm, "schema", "cost.provider_norm", errors);
-    }
-  }
 }
 
 function validateExactKeys(
@@ -968,10 +621,9 @@ function validateExactKeys(
   errors: string[],
 ): void {
   const allowed = new Set(allowedKeys);
-
   for (const key of Object.keys(record)) {
     if (!allowed.has(key)) {
-      errors.push(`${path}.${key} is not pinned in receipt v0`);
+      errors.push(`${path}.${key} is not pinned in the receipt shape`);
     }
   }
 }
@@ -999,7 +651,6 @@ function expectRecord(
     errors.push(`${path}.${key} must be an object`);
     return undefined;
   }
-
   return value;
 }
 
@@ -1015,31 +666,25 @@ function expectNonEmptyString(
   }
 }
 
-function expectContentHash(
+function expectFingerprintArray(
   record: Readonly<Record<string, unknown>>,
   key: string,
   path: string,
   errors: string[],
 ): void {
   const value = record[key];
-  if (typeof value !== "string" || !CONTENT_HASH_PATTERN.test(value)) {
-    errors.push(`${path}.${key} must use sha256:<64 lowercase hex>`);
+  if (!Array.isArray(value)) {
+    errors.push(`${path}.${key} must be an array of fingerprint tokens`);
+    return;
+  }
+  for (const [index, item] of value.entries()) {
+    if (typeof item !== "string" || item.length === 0) {
+      errors.push(`${path}.${key}[${index}] must be a non-empty fingerprint token`);
+    }
   }
 }
 
-function expectStringArray(
-  record: Readonly<Record<string, unknown>>,
-  key: string,
-  path: string,
-  errors: string[],
-): void {
-  const value = record[key];
-  if (!Array.isArray(value) || value.some((item) => typeof item !== "string")) {
-    errors.push(`${path}.${key} must be an array of strings`);
-  }
-}
-
-function expectContentHashArray(
+function expectContentAddressArray(
   record: Readonly<Record<string, unknown>>,
   key: string,
   path: string,
@@ -1050,22 +695,10 @@ function expectContentHashArray(
     errors.push(`${path}.${key} must be an array of sha256 content addresses`);
     return;
   }
-
   for (const [index, item] of value.entries()) {
-    if (typeof item !== "string" || !CONTENT_HASH_PATTERN.test(item)) {
+    if (typeof item !== "string" || !CONTENT_ADDRESS_PATTERN.test(item)) {
       errors.push(`${path}.${key}[${index}] must use sha256:<64 lowercase hex>`);
     }
-  }
-}
-
-function expectBoolean(
-  record: Readonly<Record<string, unknown>>,
-  key: string,
-  path: string,
-  errors: string[],
-): void {
-  if (typeof record[key] !== "boolean") {
-    errors.push(`${path}.${key} must be a boolean`);
   }
 }
 
@@ -1079,30 +712,6 @@ function expectEnum<T extends string>(
   const value = record[key];
   if (typeof value !== "string" || !allowed.has(value as T)) {
     errors.push(`${path}.${key} must be one of ${Array.from(allowed).join(", ")}`);
-  }
-}
-
-function expectIsoInstant(
-  record: Readonly<Record<string, unknown>>,
-  key: string,
-  path: string,
-  errors: string[],
-): void {
-  const value = record[key];
-  if (typeof value !== "string" || !ISO_INSTANT_PATTERN.test(value)) {
-    errors.push(`${path}.${key} must be a replayable ISO instant`);
-  }
-}
-
-function expectUnitInterval(
-  record: Readonly<Record<string, unknown>>,
-  key: string,
-  path: string,
-  errors: string[],
-): void {
-  const value = record[key];
-  if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 1) {
-    errors.push(`${path}.${key} must be a finite number between 0 and 1`);
   }
 }
 
@@ -1134,7 +743,6 @@ function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     return false;
   }
-
   const prototype = Object.getPrototypeOf(value);
   return prototype === Object.prototype || prototype === null;
 }
@@ -1176,7 +784,6 @@ function renderCanonicalObject(
   value: Readonly<Record<string, unknown>>,
 ): string {
   const fields: string[] = [];
-
   for (const key of Object.keys(value).sort()) {
     const item = value[key];
     if (item === undefined) {
@@ -1184,6 +791,23 @@ function renderCanonicalObject(
     }
     fields.push(`${JSON.stringify(key)}:${renderCanonical(item)}`);
   }
-
   return `{${fields.join(",")}}`;
 }
+
+// Re-export the canonical shape types so downstream modules can import receipt
+// surface + shapes from one place without reaching across modules.
+export type {
+  ContentAddress,
+  Cost,
+  Facet,
+  Fingerprint,
+  FingerprintMap,
+  InputFingerprints,
+  NullSignature,
+  Receipt,
+  ReceiptSignature,
+  ReceiptStatus,
+  SemanticDiff,
+  Wake,
+  WakeSource,
+};

@@ -1,300 +1,238 @@
+// memo/ — the React.memo skip decision.
+//
+// RESHAPE (delta.md §A3.3, Part F "Memo key richness"): the memo key is EXACTLY
+// `(contract_fingerprint, input_fingerprints)` — nothing else. The old triple
+// `(contract_revision, evidence_receipts, dependency_receipts)` and the
+// policy-artifact namespace are gone (they belonged to the retired
+// judge → verdict → policy spine). This module no longer caches a *verdict*; it
+// caches the **skip decision** (architecture.md §4.1: "if neither moved since
+// the node's last receipt, write a cheap `skipped` receipt and spawn nothing").
+//
+// Source of truth: world-model.md §4 ("the memoization key is
+// `(contract-fingerprint, input-fingerprints)` — nothing else"); architecture.md
+// §4.1 (reconciler memo/skip); SHAPES.md §3. Conforms to `../shapes`
+// (Foundation wave) — the canonical `MemoKey` / `Receipt` shapes.
+
+import { renderAdapterJsonV0 } from "../adapters/json";
 import {
-  type ContentHashV0,
-  type ReceiptRecheckKindV0,
-  type ReceiptV0,
-  canonicalizeForReceiptV0,
-  createNullSignerReceiptSignatureV0,
-  createReceiptV0,
-  hashCanonicalReceiptV0,
-  verifyReceiptV0,
-} from "../receipt";
+  ATOMIC_FACET,
+  EMPTY_SEMANTIC_DIFF,
+  type Fingerprint,
+  type FingerprintMap,
+  type InputFingerprints,
+  type MemoKey,
+  type Receipt,
+  type Wake,
+  createNullSignature,
+  makeMemoKey,
+} from "../shapes";
 
 export const MEMO_KEY_SCHEMA = "openprose.memo-key" as const;
-export const MEMO_KEY_VERSION = 0 as const;
+export const MEMO_KEY_VERSION = 1 as const;
 
-export interface DependencyReceiptMemoRefV0 {
-  readonly upstream_content_hash: ContentHashV0;
-  readonly contract_revision: ContentHashV0;
-  readonly acceptable_signer_set: readonly string[];
-}
+/**
+ * A stable, comparable serialization of a memo key. The reconciler compares two
+ * keys by string equality; this is the canonical form that makes the comparison
+ * total and order-stable. `input_fingerprints` order is the resolved
+ * subscription order from the topology world-model (SHAPES.md §3), so it is
+ * preserved verbatim — NOT sorted — because position carries the
+ * facet-slot meaning.
+ */
+export type MemoKeyDigest = string;
 
-export interface MemoKeyInputV0 {
-  readonly contract_revision: ContentHashV0;
-  readonly evidence_receipts: readonly ContentHashV0[];
-  readonly dependency_receipts: readonly DependencyReceiptMemoRefV0[];
-}
+// ---------------------------------------------------------------------------
+// Memo key construction + serialization
+// ---------------------------------------------------------------------------
 
-export interface PolicyArtifactMemoNamespaceV0 {
-  readonly policy_artifact_namespace: string;
-  readonly policy_artifact_revision: string;
-}
-
-export interface MemoizedVerdictV0 {
-  readonly memo_key: ContentHashV0;
-  readonly verdict_receipt_hash: ContentHashV0;
-  readonly reusable_tokens: number;
-  readonly stored_as_of: string;
-  readonly receipt: ReceiptV0;
-}
-
-export type MemoLookupResultV0 =
-  | {
-      readonly outcome: "hit";
-      readonly entry: MemoizedVerdictV0;
-    }
-  | {
-      readonly outcome: "miss";
-      readonly reason: "absent" | "namespace-empty";
-    };
-
-export interface MemoHitReceiptInputV0 {
-  readonly source_receipt: ReceiptV0;
-  readonly as_of: string;
-  readonly next_forecast_recheck: string;
-  readonly event_cause?: "real-input" | "forecast-recheck" | "escalation";
-  readonly recheck_kind?: ReceiptRecheckKindV0;
-}
-
-export class InMemoryMemoStoreV0 {
-  private readonly namespaces = new Map<string, Map<ContentHashV0, MemoizedVerdictV0>>();
-
-  lookup(
-    namespace: PolicyArtifactMemoNamespaceV0,
-    memoKey: ContentHashV0,
-  ): MemoLookupResultV0 {
-    const scoped = this.namespaces.get(namespaceKey(namespace));
-    if (scoped === undefined) {
-      return { outcome: "miss", reason: "namespace-empty" };
-    }
-
-    const entry = scoped.get(memoKey);
-    if (entry === undefined) {
-      return { outcome: "miss", reason: "absent" };
-    }
-
-    return { outcome: "hit", entry };
-  }
-
-  store(
-    namespace: PolicyArtifactMemoNamespaceV0,
-    entry: MemoizedVerdictV0,
-  ): void {
-    const verification = verifyReceiptV0(entry.receipt);
-    if (!verification.ok) {
-      throw new Error("memo entry receipt must verify before storage");
-    }
-    if (verification.content_hash !== entry.verdict_receipt_hash) {
-      throw new Error("memo entry receipt hash must match verdict_receipt_hash");
-    }
-    if (entry.reusable_tokens <= 0 || !Number.isSafeInteger(entry.reusable_tokens)) {
-      throw new Error("memo entry reusable_tokens must be a positive safe integer");
-    }
-
-    const key = namespaceKey(namespace);
-    const scoped = this.namespaces.get(key) ?? new Map<ContentHashV0, MemoizedVerdictV0>();
-    scoped.set(entry.memo_key, entry);
-    this.namespaces.set(key, scoped);
-  }
-}
-
-export function computeMemoKeyV0(input: MemoKeyInputV0): ContentHashV0 {
-  const normalized = normalizeMemoKeyInput(input);
-  return hashCanonicalReceiptV0(canonicalizeForReceiptV0(normalized));
-}
-
-export function normalizeMemoKeyInput(input: MemoKeyInputV0): {
-  readonly schema: typeof MEMO_KEY_SCHEMA;
-  readonly v: typeof MEMO_KEY_VERSION;
-  readonly contract_revision: ContentHashV0;
-  readonly evidence_receipts: readonly ContentHashV0[];
-  readonly dependency_receipts: readonly {
-    readonly upstream_content_hash: ContentHashV0;
-    readonly contract_revision: ContentHashV0;
-    readonly acceptable_signer_set: readonly string[];
-  }[];
-} {
-  assertContentHash(input.contract_revision, "contract_revision");
-  const evidenceReceipts = normalizeReceiptHashSet(
-    input.evidence_receipts,
-    "evidence_receipts",
+/**
+ * Build the memo key from EXACTLY the contract fingerprint and the input
+ * fingerprint tuple (world-model.md §4). Re-exports the canonical `makeMemoKey`
+ * from `../shapes` and validates the two halves are well-formed.
+ */
+export function computeMemoKey(
+  contract_fingerprint: Fingerprint,
+  input_fingerprints: InputFingerprints,
+): MemoKey {
+  assertFingerprint(contract_fingerprint, "contract_fingerprint");
+  input_fingerprints.forEach((fp, index) =>
+    assertFingerprint(fp, `input_fingerprints[${index}]`),
   );
-  const dependencyReceipts = normalizeDependencyReceipts(input.dependency_receipts);
+  return makeMemoKey(contract_fingerprint, input_fingerprints);
+}
 
-  return {
+/**
+ * The canonical, comparable digest of a memo key. Two keys are equal iff their
+ * digests are equal. The digest folds in the schema/version so a future re-key
+ * never silently collides with a v1 key.
+ */
+export function memoKeyDigest(key: MemoKey): MemoKeyDigest {
+  return renderAdapterJsonV0({
     schema: MEMO_KEY_SCHEMA,
     v: MEMO_KEY_VERSION,
-    contract_revision: input.contract_revision,
-    evidence_receipts: evidenceReceipts,
-    dependency_receipts: dependencyReceipts,
-  };
-}
-
-export function createMemoHitReceiptV0(
-  input: MemoHitReceiptInputV0,
-): ReceiptV0 {
-  const verification = verifyReceiptV0(input.source_receipt);
-  if (!verification.ok) {
-    throw new Error("source receipt must verify before memo reuse");
-  }
-
-  const totalReused =
-    input.source_receipt.cost.tokens.fresh + input.source_receipt.cost.tokens.reused;
-  if (totalReused <= 0) {
-    throw new Error("source receipt must contain reusable token work");
-  }
-
-  const eventCause = input.event_cause ?? input.source_receipt.core.event_cause;
-  const core = {
-    responsibility_id: input.source_receipt.core.responsibility_id,
-    contract_revision: input.source_receipt.core.contract_revision,
-    event_cause: eventCause,
-    ...(eventCause === "forecast-recheck"
-      ? { recheck_kind: input.recheck_kind ?? "plan-age" }
-      : {}),
-    memo_key: input.source_receipt.core.memo_key,
-    evidence_input_ids: input.source_receipt.core.evidence_input_ids,
-    as_of: input.as_of,
-    role: input.source_receipt.core.role,
-  };
-
-  return createReceiptV0({
-    core,
-    sig: createNullSignerReceiptSignatureV0(),
-    verdict: input.source_receipt.verdict,
-    freshness: {
-      as_of: input.as_of,
-      next_forecast_recheck: input.next_forecast_recheck,
-      ...(input.source_receipt.freshness.transitive_freshness_policy_ref === undefined
-        ? {}
-        : {
-            transitive_freshness_policy_ref:
-              input.source_receipt.freshness.transitive_freshness_policy_ref,
-          }),
-      ...(input.source_receipt.freshness.consumed_freshness_evaluated === undefined
-        ? {}
-        : {
-            consumed_freshness_evaluated:
-              input.source_receipt.freshness.consumed_freshness_evaluated,
-          }),
-    },
-    composition: input.source_receipt.composition,
-    cost: {
-      provider: "memo",
-      model: "memoized-verdict",
-      role: input.source_receipt.core.role,
-      tags: ["memo-hit", ...input.source_receipt.cost.tags],
-      responsibility_id: input.source_receipt.core.responsibility_id,
-      run_id: `memo-hit-${input.as_of}`,
-      as_of: input.as_of,
-      tokens: {
-        fresh: 0,
-        reused: totalReused,
-      },
-      surprise_cause: eventCause,
-    },
+    contract_fingerprint: key.contract_fingerprint,
+    input_fingerprints: [...key.input_fingerprints],
   });
 }
 
-export function createMemoizedVerdictEntryV0(
-  memoKey: ContentHashV0,
-  receipt: ReceiptV0,
-): MemoizedVerdictV0 {
-  const verification = verifyReceiptV0(receipt);
-  if (!verification.ok) {
-    throw new Error("memoized verdict receipt must verify");
+/** Structural equality on memo keys: same contract fp AND same ordered tuple. */
+export function memoKeysEqual(left: MemoKey, right: MemoKey): boolean {
+  return memoKeyDigest(left) === memoKeyDigest(right);
+}
+
+// ---------------------------------------------------------------------------
+// The skip decision (replaces the cached verdict)
+// ---------------------------------------------------------------------------
+
+/**
+ * What the store remembers per node: the memo key of the node's last receipt and
+ * the published fingerprints that receipt committed. On the next wake the
+ * reconciler re-derives the candidate key and compares; an equal key means
+ * "nothing moved → skip". The carried `fingerprints` are copied forward onto the
+ * `skipped` receipt (architecture.md §8 dirty/coalesce; SHAPES.md §4: "a
+ * `skipped` receipt copies the unchanged `fingerprints` forward").
+ */
+export interface MemoEntry {
+  readonly node: string;
+  readonly key: MemoKey;
+  readonly digest: MemoKeyDigest;
+  /** The published truth the last receipt committed — copied forward on a skip. */
+  readonly fingerprints: FingerprintMap;
+  /** Content address of the last receipt; becomes a skipped receipt's `prev`. */
+  readonly receipt_ref: `sha256:${string}` | null;
+}
+
+/**
+ * The skip-vs-render decision (architecture.md §4.1). `skip` means the candidate
+ * memo key matches the node's last receipt's key — neither the contract nor any
+ * subscribed input moved — so the reconciler writes a `skipped` receipt and
+ * spawns nothing. `render` means a half moved (or the node has no prior receipt)
+ * so a render must be spawned.
+ */
+export type SkipDecision =
+  | { readonly outcome: "skip"; readonly entry: MemoEntry }
+  | { readonly outcome: "render"; readonly reason: "cold-start" | "key-moved" };
+
+// ---------------------------------------------------------------------------
+// The store — node-scoped last-receipt memo, NOT a policy-namespaced verdict cache
+// ---------------------------------------------------------------------------
+
+/**
+ * Holds the last receipt's memo key + published fingerprints per node. Scoped by
+ * `node` only — there is no policy-artifact namespace (delta.md §A3.3: the
+ * namespace was a fourth key term serving the retired policy spine). The store
+ * is the reconciler's "did anything move since last time?" memory.
+ */
+export class InMemoryMemoStore {
+  private readonly byNode = new Map<string, MemoEntry>();
+
+  /**
+   * Decide skip-vs-render for `node` against a freshly-derived candidate key.
+   * Cold start (no prior entry) ⇒ render. Key unchanged ⇒ skip (carrying the
+   * prior entry so the reconciler can copy its `fingerprints` forward). Key
+   * moved ⇒ render.
+   */
+  decide(node: string, candidate: MemoKey): SkipDecision {
+    const prior = this.byNode.get(node);
+    if (prior === undefined) {
+      return { outcome: "render", reason: "cold-start" };
+    }
+    if (prior.digest === memoKeyDigest(candidate)) {
+      return { outcome: "skip", entry: prior };
+    }
+    return { outcome: "render", reason: "key-moved" };
   }
+
+  /**
+   * Record the outcome of a committed receipt as the node's new memo state. Call
+   * after a `rendered` receipt commits (the moved truth) AND after a `skipped`
+   * receipt (the carried-forward truth) so `prev`/`receipt_ref` advances.
+   */
+  record(entry: MemoEntry): void {
+    assertFingerprintMap(entry.fingerprints);
+    this.byNode.set(entry.node, {
+      node: entry.node,
+      key: entry.key,
+      digest: memoKeyDigest(entry.key),
+      fingerprints: entry.fingerprints,
+      receipt_ref: entry.receipt_ref,
+    });
+  }
+
+  /** The current memo entry for a node, if any. */
+  peek(node: string): MemoEntry | undefined {
+    return this.byNode.get(node);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Building a `skipped` receipt from a skip decision
+// ---------------------------------------------------------------------------
+
+export interface SkippedReceiptInput {
+  readonly node: string;
+  readonly contract_fingerprint: Fingerprint;
+  readonly wake: Wake;
+  readonly key: MemoKey;
+  /** The matched memo entry whose fingerprints/ref are carried forward. */
+  readonly entry: MemoEntry;
+  /** The provider/model that would have rendered — echoed for cost attribution. */
+  readonly provider?: string;
+  readonly model?: string;
+}
+
+/**
+ * Build the cheap `skipped` receipt the reconciler writes when the memo key did
+ * not move (architecture.md §4.1, §8). It copies the unchanged `fingerprints`
+ * forward, carries `EMPTY_SEMANTIC_DIFF`, zero cost, and chains `prev` to the
+ * prior receipt (SHAPES.md §4: "A `skipped` receipt copies the unchanged
+ * `fingerprints` forward, carries `EMPTY_SEMANTIC_DIFF`, and zero `cost`").
+ * `status` is `skipped`; only `rendered`-with-a-moved-fingerprint propagates
+ * (world-model.md §8), so this receipt wakes nothing.
+ */
+export function createSkippedReceipt(input: SkippedReceiptInput): Receipt {
+  if (input.entry.node !== input.node) {
+    throw new Error("skipped receipt node must match the memo entry node");
+  }
+  assertFingerprint(input.contract_fingerprint, "contract_fingerprint");
+  assertFingerprintMap(input.entry.fingerprints);
 
   return {
-    memo_key: memoKey,
-    verdict_receipt_hash: verification.content_hash,
-    reusable_tokens: receipt.cost.tokens.fresh + receipt.cost.tokens.reused,
-    stored_as_of: receipt.core.as_of,
-    receipt,
+    node: input.node,
+    contract_fingerprint: input.contract_fingerprint,
+    wake: input.wake,
+    input_fingerprints: [...input.key.input_fingerprints],
+    fingerprints: input.entry.fingerprints,
+    semantic_diff: EMPTY_SEMANTIC_DIFF,
+    prev: input.entry.receipt_ref,
+    status: "skipped",
+    cost: {
+      provider: input.provider ?? "memo",
+      model: input.model ?? "memo-skip",
+      tokens: { fresh: 0, reused: 0 },
+      surprise_cause: input.wake.source,
+    },
+    sig: createNullSignature(),
   };
 }
 
-export function namespaceKey(namespace: PolicyArtifactMemoNamespaceV0): string {
-  if (
-    namespace.policy_artifact_namespace.length === 0 ||
-    namespace.policy_artifact_revision.length === 0
-  ) {
-    throw new Error("policy artifact namespace and revision must be non-empty");
-  }
+// ---------------------------------------------------------------------------
+// Validation helpers
+// ---------------------------------------------------------------------------
 
-  return canonicalizeForReceiptV0({
-    policy_artifact_namespace: namespace.policy_artifact_namespace,
-    policy_artifact_revision: namespace.policy_artifact_revision,
-  });
-}
-
-function normalizeDependencyReceipts(
-  refs: readonly DependencyReceiptMemoRefV0[],
-): readonly DependencyReceiptMemoRefV0[] {
-  const seen = new Set<string>();
-  const normalized = refs.map((ref, index) => {
-    assertContentHash(ref.upstream_content_hash, `dependency_receipts[${index}].upstream_content_hash`);
-    assertContentHash(ref.contract_revision, `dependency_receipts[${index}].contract_revision`);
-    const acceptableSignerSet = normalizeSignerSet(
-      ref.acceptable_signer_set,
-      `dependency_receipts[${index}].acceptable_signer_set`,
-    );
-    const key = `${ref.upstream_content_hash}\0${ref.contract_revision}\0${acceptableSignerSet.join("\0")}`;
-    if (seen.has(key)) {
-      throw new Error(`duplicate dependency receipt ref ${ref.upstream_content_hash}`);
-    }
-    seen.add(key);
-
-    return {
-      upstream_content_hash: ref.upstream_content_hash,
-      contract_revision: ref.contract_revision,
-      acceptable_signer_set: acceptableSignerSet,
-    };
-  });
-
-  return normalized.sort((left, right) =>
-    left.upstream_content_hash.localeCompare(right.upstream_content_hash),
-  );
-}
-
-function normalizeReceiptHashSet(
-  refs: readonly ContentHashV0[],
+function assertFingerprint(
+  value: string,
   path: string,
-): readonly ContentHashV0[] {
-  const seen = new Set<string>();
-  for (const [index, ref] of refs.entries()) {
-    assertContentHash(ref, `${path}[${index}]`);
-    if (seen.has(ref)) {
-      throw new Error(`duplicate ${path} ref ${ref}`);
-    }
-    seen.add(ref);
+): asserts value is Fingerprint {
+  if (typeof value !== "string" || value.length === 0) {
+    throw new Error(`${path} must be a non-empty fingerprint token`);
   }
-
-  return [...refs].sort((left, right) => left.localeCompare(right));
 }
 
-function normalizeSignerSet(
-  signers: readonly string[],
-  path: string,
-): readonly string[] {
-  if (signers.length === 0) {
-    throw new Error(`${path} must not be empty`);
+function assertFingerprintMap(map: FingerprintMap): void {
+  if (!(ATOMIC_FACET in map)) {
+    throw new Error(`fingerprint map must contain the atomic facet ${ATOMIC_FACET}`);
   }
-  const seen = new Set<string>();
-  for (const signer of signers) {
-    if (signer.length === 0) {
-      throw new Error(`${path} contains an empty signer`);
-    }
-    if (seen.has(signer)) {
-      throw new Error(`${path} contains duplicate signer ${signer}`);
-    }
-    seen.add(signer);
-  }
-
-  return [...signers].sort((left, right) => left.localeCompare(right));
-}
-
-function assertContentHash(value: string, path: string): asserts value is ContentHashV0 {
-  if (!/^sha256:[a-f0-9]{64}$/.test(value)) {
-    throw new Error(`${path} must be a sha256 content address`);
+  for (const [facet, token] of Object.entries(map)) {
+    assertFingerprint(token, `fingerprints[${facet}]`);
   }
 }

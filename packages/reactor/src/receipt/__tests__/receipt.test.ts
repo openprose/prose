@@ -1,546 +1,298 @@
-import { deepEqual, doesNotMatch, equal, match, ok } from "node:assert/strict";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { deepEqual, equal, match, ok } from "node:assert/strict";
 import { test } from "node:test";
 
-import * as rootSurface from "../../index";
+import {
+  ATOMIC_FACET,
+  EMPTY_SEMANTIC_DIFF,
+  createNullSignature,
+} from "../../shapes/index";
 import {
   RECEIPT_HASH_ALGORITHM,
   RECEIPT_SCHEMA,
-  RECEIPT_VERSION,
-  type ReceiptV0,
-  type ReceiptV0Input,
-  createNullSignerReceiptSignatureV0,
-  createReceiptV0,
-  inspectReceiptProofV0,
-  readTokenTruthV0,
-  serializeReceiptV0,
-  verifyReceiptV0,
+  type LedgerReceipt,
+  type ReceiptInput,
+  assertReceipt,
+  canonicalizeForReceipt,
+  computeReceiptContentHash,
+  createReceipt,
+  createSkippedReceipt,
+  inspectReceiptProof,
+  serializeReceipt,
+  verifyReceipt,
+  verifyReceiptChain,
 } from "../index";
 
-const HASH_A =
-  "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" as const;
-const HASH_B =
-  "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" as const;
-const HASH_C =
-  "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" as const;
+const FP_CONTRACT = "fp:contract:incident-briefing@7";
+const FP_INPUT_A = "fp:input:a";
+const FP_INPUT_B = "fp:input:b";
+const FP_ATOMIC = "fp:atomic:v1";
+const FP_FACET_SUMMARY = "fp:facet:summary";
 
-test("receipt v0 round-trips pinned fields through canonical content addressing", () => {
-  const receipt = createReceiptV0(makeReceiptInput());
-  const verification = verifyReceiptV0(receipt);
+const REF_A =
+  "sha256:1111111111111111111111111111111111111111111111111111111111111111" as const;
+const REF_B =
+  "sha256:2222222222222222222222222222222222222222222222222222222222222222" as const;
+
+function makeReceiptInput(overrides: Partial<ReceiptInput> = {}): ReceiptInput {
+  return {
+    node: "node.incident-briefing",
+    contract_fingerprint: FP_CONTRACT,
+    wake: { source: "input", refs: [REF_A] },
+    input_fingerprints: [FP_INPUT_A, FP_INPUT_B],
+    fingerprints: {
+      [ATOMIC_FACET]: FP_ATOMIC,
+      summary: FP_FACET_SUMMARY,
+    },
+    semantic_diff: { changed: ["summary"] },
+    prev: null,
+    status: "rendered",
+    cost: {
+      provider: "anthropic",
+      model: "claude-opus",
+      tokens: { fresh: 1200, reused: 300 },
+      surprise_cause: "input",
+    },
+    sig: createNullSignature(),
+    ...overrides,
+  };
+}
+
+test("receipt round-trips its ideal fields through canonical content addressing", () => {
+  const receipt = createReceipt(makeReceiptInput());
+  const verification = verifyReceipt(receipt);
 
   equal(receipt.schema, RECEIPT_SCHEMA);
-  equal(receipt.v, RECEIPT_VERSION);
   equal(receipt.hash_algorithm, RECEIPT_HASH_ALGORITHM);
   equal(verification.ok, true);
   match(receipt.content_hash, /^sha256:[a-f0-9]{64}$/);
+  equal(receipt.status, "rendered");
+  equal(receipt.contract_fingerprint, FP_CONTRACT);
+  deepEqual(receipt.input_fingerprints, [FP_INPUT_A, FP_INPUT_B]);
+  equal(receipt.fingerprints[ATOMIC_FACET], FP_ATOMIC);
+  equal(receipt.wake.source, "input");
 
-  const serialized = serializeReceiptV0(receipt);
-  const parsed = JSON.parse(serialized) as ReceiptV0;
-
+  const serialized = serializeReceipt(receipt);
+  const parsed = JSON.parse(serialized) as LedgerReceipt;
   deepEqual(parsed, receipt);
-  deepEqual(verifyReceiptV0(parsed), {
-    ok: true,
-    content_hash: receipt.content_hash,
-  });
+  deepEqual(verifyReceipt(parsed), { ok: true, content_hash: receipt.content_hash });
 });
 
-test("receipt proof inspection summarizes a valid receipt without private payloads", () => {
-  const receipt = createReceiptV0(makeReceiptInput());
-  const inspection = inspectReceiptProofV0(receipt);
+test("content hash is deterministic and sha256 over the canonical form", () => {
+  const a = createReceipt(makeReceiptInput());
+  const b = createReceipt(makeReceiptInput());
+  equal(a.content_hash, b.content_hash);
 
-  deepEqual(inspection, {
-    ok: true,
-    errors: [],
-    schema: RECEIPT_SCHEMA,
-    v: RECEIPT_VERSION,
-    content_hash: receipt.content_hash,
-    contract_revision: HASH_A,
-    responsibility_id: "responsibility.incident-briefing",
-    role: "judge",
-    signer: {
-      kind: "null",
-      scheme: "none",
-    },
-    freshness: {
-      as_of: "2026-05-18T12:00:00Z",
-      next_forecast_recheck: "2026-05-19T12:00:00Z",
-      transitive_freshness_policy_ref: null,
-      consumed_freshness_evaluated_count: 0,
-    },
-    composition: {
-      consumed_receipt_count: 0,
-      consumed_receipts: [],
-      cycle_checked: true,
-    },
-    token_truth: {
-      fresh: 37,
-      reused: 0,
-      provider: "cradle-double",
-      model: "deterministic-replay",
-      role: "judge",
-      surprise_cause: "real-input",
-    },
-  });
+  const expected = computeReceiptContentHash(a);
+  equal(a.content_hash, expected);
 
-  const serializedInspection = JSON.stringify(inspection);
-  doesNotMatch(
-    serializedInspection,
-    /memo-key-static-world|run-2026-05-18T12:00:00Z|single-host|static-world-anchor/,
+  // Key order in fingerprints must not change the canonical hash.
+  const reordered = createReceipt(
+    makeReceiptInput({
+      fingerprints: { summary: FP_FACET_SUMMARY, [ATOMIC_FACET]: FP_ATOMIC },
+    }),
   );
-  ok(!serializedInspection.includes(HASH_B));
+  equal(reordered.content_hash, a.content_hash);
 });
 
-test("receipt verification fails when a byte of hashed content is tampered", () => {
-  const receipt = createReceiptV0(makeReceiptInput());
-  const parsed = JSON.parse(serializeReceiptV0(receipt)) as ReceiptV0;
-  const tampered = {
-    ...parsed,
-    core: {
-      ...parsed.core,
-      memo_key: "memo-key-after-tamper",
-    },
-  };
+test("a moved fingerprint changes the content hash", () => {
+  const base = createReceipt(makeReceiptInput());
+  const moved = createReceipt(
+    makeReceiptInput({ fingerprints: { [ATOMIC_FACET]: "fp:atomic:v2" } }),
+  );
+  ok(base.content_hash !== moved.content_hash);
+});
 
-  const verification = verifyReceiptV0(tampered);
-
+test("tampering with a field is detected as chain inconsistency", () => {
+  const receipt = createReceipt(makeReceiptInput());
+  const tampered = { ...receipt, node: "node.someone-else" };
+  const verification = verifyReceipt(tampered);
   equal(verification.ok, false);
-  ok(
-    !verification.ok &&
-      verification.errors.includes(
-        "content_hash does not match canonical receipt payload",
-      ),
-  );
+  if (!verification.ok) {
+    ok(verification.errors.some((e) => e.includes("content_hash does not match")));
+  }
 });
 
-test("receipt proof inspection reports tamper without trusting the old content hash", () => {
-  const receipt = createReceiptV0(makeReceiptInput());
-  const tampered = {
-    ...receipt,
-    core: {
-      ...receipt.core,
-      memo_key: "memo-key-after-tamper",
-    },
-  };
-
-  const inspection = inspectReceiptProofV0(tampered);
-
-  equal(inspection.ok, false);
-  equal(inspection.content_hash, null);
-  equal(inspection.responsibility_id, "responsibility.incident-briefing");
-  equal(inspection.contract_revision, HASH_A);
-  ok(
-    inspection.errors.includes(
-      "content_hash does not match canonical receipt payload",
-    ),
-  );
-  doesNotMatch(JSON.stringify(inspection), /memo-key-after-tamper|memo-key-static-world/);
-});
-
-test("null signer is accepted only as an explicit honest non-signature state", () => {
-  const receipt = createReceiptV0(makeReceiptInput());
-
-  deepEqual(receipt.sig, {
-    scheme: "none",
-    null_reason: "single-host v0.1 fixture; no cross-domain non-repudiation",
+test("wake is a structured field, not a bare enum", () => {
+  const verification = verifyReceipt({
+    ...createReceipt(makeReceiptInput()),
+    wake: "input",
   });
-  equal(verifyReceiptV0(receipt).ok, true);
-
-  const deceptive = {
-    ...receipt,
-    sig: { scheme: "none", signature: "not-a-real-signature" },
-  };
-  const verification = verifyReceiptV0(deceptive);
-
   equal(verification.ok, false);
-  ok(
-    !verification.ok &&
-      verification.errors.some((error) => error.includes("sig.signature")),
-  );
-  ok(
-    !verification.ok &&
-      verification.errors.includes("sig.null_reason must be a non-empty string"),
-  );
 });
 
-test("null signer adapter not configured state is explicit and non-throwing", () => {
-  const sig = createNullSignerReceiptSignatureV0();
-  const receipt = createReceiptV0({
-    ...makeReceiptInput(),
-    sig,
-  });
-
-  deepEqual(sig, {
-    scheme: "none",
-    null_reason: "no-signer-adapter-configured",
-  });
-  deepEqual(receipt.sig, sig);
-  equal(verifyReceiptV0(receipt).ok, true);
+test("fingerprints must always include the reserved atomic facet", () => {
+  const input = makeReceiptInput({ fingerprints: { summary: FP_FACET_SUMMARY } });
+  let threw = false;
+  try {
+    createReceipt(input);
+  } catch (error) {
+    threw = true;
+    ok((error as Error).message.includes(ATOMIC_FACET));
+  }
+  equal(threw, true);
 });
 
-test("non-null receipt signatures are rejected honestly in v0.1", () => {
-  const signed = createReceiptWithoutVerifying({
-    ...makeReceiptInput(),
+test("cost.surprise_cause must echo wake.source", () => {
+  const input = makeReceiptInput({
+    wake: { source: "self", refs: [REF_A] },
+    cost: {
+      provider: "anthropic",
+      model: "claude-opus",
+      tokens: { fresh: 10, reused: 0 },
+      surprise_cause: "input",
+    },
+  });
+  let threw = false;
+  try {
+    createReceipt(input);
+  } catch (error) {
+    threw = true;
+    ok((error as Error).message.includes("cost.surprise_cause must match wake.source"));
+  }
+  equal(threw, true);
+});
+
+test("only the null signer is accepted in v1", () => {
+  const input = makeReceiptInput({
     sig: {
-      scheme: "ed25519:test",
-      signer_id: "test-signer",
-      signature: "detached-signature-bytes",
-      signed_payload_hash: HASH_A,
-    },
+      scheme: "ed25519",
+      signer_id: "x",
+      signature: "y",
+      signed_payload_hash: REF_A,
+    } as never,
   });
-
-  const verification = verifyReceiptV0(signed);
-
-  equal(verification.ok, false);
-  ok(
-    !verification.ok &&
-      verification.errors.includes(
-        "non-null signatures are not supported in receipt v0.1; null signer is the only honest v0.1 state",
-      ),
-  );
+  let threw = false;
+  try {
+    createReceipt(input);
+  } catch {
+    threw = true;
+  }
+  equal(threw, true);
 });
 
-test("fresh-vs-reused token truth is recoverable from one receipt", () => {
-  const receipt = createReceiptV0(
+test("the demolished judge fields are rejected", () => {
+  const receipt = createReceipt(makeReceiptInput());
+  const withVerdict = { ...receipt, verdict: { status: "up" } };
+  const verification = verifyReceipt(withVerdict);
+  equal(verification.ok, false);
+  if (!verification.ok) {
+    ok(verification.errors.some((e) => e.includes("verdict")));
+  }
+});
+
+test("a skipped receipt copies fingerprints forward with empty diff and zero cost", () => {
+  const skipped = createSkippedReceipt({
+    node: "node.incident-briefing",
+    contract_fingerprint: FP_CONTRACT,
+    wake: { source: "self", refs: [REF_A] },
+    input_fingerprints: [FP_INPUT_A],
+    fingerprints: { [ATOMIC_FACET]: FP_ATOMIC },
+    prev: REF_A,
+  });
+
+  equal(skipped.status, "skipped");
+  deepEqual(skipped.semantic_diff, EMPTY_SEMANTIC_DIFF);
+  equal(skipped.cost.tokens.fresh, 0);
+  equal(skipped.cost.surprise_cause, "self");
+  equal(verifyReceipt(skipped).ok, true);
+});
+
+test("a skipped receipt with a non-empty diff is rejected", () => {
+  const receipt = createReceipt(
     makeReceiptInput({
-      tokens: { fresh: 0, reused: 1247 },
-      eventCause: "forecast-recheck",
-      recheckKind: "plan-age",
-      tags: ["memo-hit", "plan-audit"],
-    }),
-  );
-
-  deepEqual(readTokenTruthV0(receipt), {
-    responsibility_id: "responsibility.incident-briefing",
-    run_id: "run-2026-05-18T12:00:00Z",
-    provider: "cradle-double",
-    model: "deterministic-replay",
-    role: "judge",
-    tags: ["memo-hit", "plan-audit"],
-    as_of: "2026-05-18T12:00:00Z",
-    fresh: 0,
-    reused: 1247,
-    surprise_cause: "forecast-recheck",
-  });
-});
-
-test("forecast recheck shape is explicit and never a fourth surprise cause", () => {
-  const missingRecheckKind = createReceiptWithoutVerifying(
-    makeReceiptInput({ eventCause: "forecast-recheck" }),
-  );
-  const missingVerification = verifyReceiptV0(missingRecheckKind);
-
-  equal(missingVerification.ok, false);
-  ok(
-    !missingVerification.ok &&
-      missingVerification.errors.includes(
-        "core.recheck_kind must be one of evidence-age, plan-age",
-      ),
-  );
-
-  const extraRecheckKind = createReceiptWithoutVerifying(
-    makeReceiptInput({ eventCause: "real-input", recheckKind: "evidence-age" }),
-  );
-  const extraVerification = verifyReceiptV0(extraRecheckKind);
-
-  equal(extraVerification.ok, false);
-  ok(
-    !extraVerification.ok &&
-      extraVerification.errors.includes(
-        "core.recheck_kind is only valid for forecast-recheck",
-      ),
-  );
-});
-
-test("composition pins reject duplicates instead of normalizing silently", () => {
-  const duplicateConsumedReceipt = createReceiptWithoutVerifying({
-    ...makeReceiptInput(),
-    composition: {
-      cycle_checked: true,
-      consumed_receipts: [
-        {
-          upstream_content_hash: HASH_C,
-          contract_revision: HASH_A,
-          acceptable_signer_set: ["none"],
-        },
-        {
-          upstream_content_hash: HASH_C,
-          contract_revision: HASH_B,
-          acceptable_signer_set: ["none"],
-        },
-      ],
-    },
-  });
-  const verification = verifyReceiptV0(duplicateConsumedReceipt);
-
-  equal(verification.ok, false);
-  ok(
-    !verification.ok &&
-      verification.errors.includes(
-        "composition.consumed_receipts[1].upstream_content_hash duplicates a consumed receipt",
-      ),
-  );
-});
-
-test("composition pins require an explicit acceptable signer set", () => {
-  const emptySignerSetReceipt = createReceiptWithoutVerifying({
-    ...makeReceiptInput(),
-    composition: {
-      cycle_checked: true,
-      consumed_receipts: [
-        {
-          upstream_content_hash: HASH_C,
-          contract_revision: HASH_A,
-          acceptable_signer_set: [],
-        },
-      ],
-    },
-  });
-  const verification = verifyReceiptV0(emptySignerSetReceipt);
-
-  equal(verification.ok, false);
-  ok(
-    !verification.ok &&
-      verification.errors.includes(
-        "composition.consumed_receipts[0].acceptable_signer_set must not be empty",
-      ),
-  );
-});
-
-test("composed receipts require transitive freshness proof for consumed receipts", () => {
-  const missingFreshnessProof = createReceiptWithoutVerifying({
-    ...makeReceiptInput(),
-    composition: {
-      cycle_checked: true,
-      consumed_receipts: [
-        {
-          upstream_content_hash: HASH_C,
-          contract_revision: HASH_A,
-          acceptable_signer_set: ["none"],
-        },
-      ],
-    },
-  });
-  const missingVerification = verifyReceiptV0(missingFreshnessProof);
-
-  equal(missingVerification.ok, false);
-  ok(
-    !missingVerification.ok &&
-      missingVerification.errors.includes(
-        "freshness.transitive_freshness_policy_ref is required when receipts are consumed",
-      ),
-  );
-  ok(
-    !missingVerification.ok &&
-      missingVerification.errors.includes(
-        "freshness.consumed_freshness_evaluated is required when receipts are consumed",
-      ),
-  );
-
-  const mismatchedFreshnessProof = createReceiptWithoutVerifying({
-    ...makeReceiptInput(),
-    freshness: {
-      ...makeReceiptInput().freshness,
-      transitive_freshness_policy_ref: "policy.transitive-freshness@v0",
-      consumed_freshness_evaluated: [
-        {
-          receipt_hash: HASH_B,
-          next_forecast_recheck: "2026-05-19T12:00:00Z",
-          staleness_outcome: "fresh",
-        },
-      ],
-    },
-    composition: {
-      cycle_checked: true,
-      consumed_receipts: [
-        {
-          upstream_content_hash: HASH_C,
-          contract_revision: HASH_A,
-          acceptable_signer_set: ["none"],
-        },
-      ],
-    },
-  });
-  const mismatchVerification = verifyReceiptV0(mismatchedFreshnessProof);
-
-  equal(mismatchVerification.ok, false);
-  ok(
-    !mismatchVerification.ok &&
-      mismatchVerification.errors.includes(
-        "freshness.consumed_freshness_evaluated[0].receipt_hash must match a consumed receipt",
-      ),
-  );
-});
-
-test("receipt proof inspection carries composed proof counts and pins", () => {
-  const receipt = createReceiptV0(
-    makeReceiptInput({
-      composition: {
-        cycle_checked: true,
-        consumed_receipts: [
-          {
-            upstream_content_hash: HASH_C,
-            contract_revision: HASH_B,
-            acceptable_signer_set: ["none", "ed25519:team-a"],
-          },
-        ],
-      },
-      freshness: {
-        as_of: "2026-05-18T12:00:00Z",
-        next_forecast_recheck: "2026-05-19T12:00:00Z",
-        transitive_freshness_policy_ref: "policy.transitive-freshness@v0",
-        consumed_freshness_evaluated: [
-          {
-            receipt_hash: HASH_C,
-            next_forecast_recheck: "2026-05-19T00:00:00Z",
-            staleness_outcome: "fresh",
-          },
-        ],
+      status: "skipped",
+      semantic_diff: EMPTY_SEMANTIC_DIFF,
+      cost: {
+        provider: "none",
+        model: "none",
+        tokens: { fresh: 0, reused: 0 },
+        surprise_cause: "input",
       },
     }),
   );
+  const verification = verifyReceipt({
+    ...receipt,
+    semantic_diff: { changed: ["x"] },
+  });
+  equal(verification.ok, false);
+});
 
-  const inspection = inspectReceiptProofV0(receipt);
+test("failed receipts are valid audit signal", () => {
+  const failed = createReceipt(
+    makeReceiptInput({
+      status: "failed",
+      semantic_diff: { error: "postcondition: acyclic violated" },
+    }),
+  );
+  equal(failed.status, "failed");
+  equal(verifyReceipt(failed).ok, true);
+});
+
+test("prev chains the node-scoped ledger", () => {
+  const first = createReceipt(makeReceiptInput({ prev: null }));
+  const second = createReceipt(
+    makeReceiptInput({
+      prev: first.content_hash,
+      fingerprints: { [ATOMIC_FACET]: "fp:atomic:v2" },
+    }),
+  );
+
+  const result = verifyReceiptChain([first, second]);
+  equal(result.ok, true);
+  if (result.ok) {
+    equal(result.length, 2);
+    equal(result.head, second.content_hash);
+  }
+});
+
+test("a broken prev link is rejected by the chain verifier", () => {
+  const first = createReceipt(makeReceiptInput({ prev: null }));
+  const orphan = createReceipt(makeReceiptInput({ prev: REF_B }));
+  const result = verifyReceiptChain([first, orphan]);
+  equal(result.ok, false);
+});
+
+test("a cross-node receipt breaks the node-scoped ledger", () => {
+  const first = createReceipt(makeReceiptInput({ prev: null }));
+  const foreign = createReceipt(
+    makeReceiptInput({ node: "node.other", prev: first.content_hash }),
+  );
+  const result = verifyReceiptChain([first, foreign]);
+  equal(result.ok, false);
+});
+
+test("proof inspection summarizes without leaking private payloads", () => {
+  const receipt = createReceipt(makeReceiptInput());
+  const inspection = inspectReceiptProof(receipt);
 
   equal(inspection.ok, true);
-  deepEqual(inspection.freshness, {
-    as_of: "2026-05-18T12:00:00Z",
-    next_forecast_recheck: "2026-05-19T12:00:00Z",
-    transitive_freshness_policy_ref: "policy.transitive-freshness@v0",
-    consumed_freshness_evaluated_count: 1,
-  });
-  deepEqual(inspection.composition, {
-    consumed_receipt_count: 1,
-    consumed_receipts: [
-      {
-        upstream_content_hash: HASH_C,
-        contract_revision: HASH_B,
-        acceptable_signer_set: ["none", "ed25519:team-a"],
-      },
-    ],
-    cycle_checked: true,
-  });
+  equal(inspection.schema, RECEIPT_SCHEMA);
+  equal(inspection.node, "node.incident-briefing");
+  equal(inspection.contract_fingerprint, FP_CONTRACT);
+  equal(inspection.wake_source, "input");
+  equal(inspection.status, "rendered");
+  equal(inspection.input_fingerprint_count, 2);
+  equal(inspection.facet_count, 2);
+  equal(inspection.has_atomic_facet, true);
+  equal(inspection.content_hash, receipt.content_hash);
+  deepEqual(inspection.signer, { kind: "null", scheme: "none" });
+  equal(inspection.cost.surprise_cause, "input");
+  ok(!Object.prototype.hasOwnProperty.call(inspection, "semantic_diff"));
 });
 
-test("receipt proof inspection is exported from root and package subpath", () => {
-  equal(typeof rootSurface.inspectReceiptProofV0, "function");
-  equal(typeof inspectReceiptProofV0, "function");
-
-  const packageJson = readPackageJson();
-
-  deepEqual(packageJson.exports?.["./receipt"], {
-    types: "./dist/receipt/index.d.ts",
-    default: "./dist/receipt/index.js",
-  });
+test("assertReceipt throws on an invalid receipt", () => {
+  let threw = false;
+  try {
+    assertReceipt({ schema: RECEIPT_SCHEMA });
+  } catch {
+    threw = true;
+  }
+  equal(threw, true);
 });
 
-test("core evidence input ids must be content-addressed receipt refs", () => {
-  const receipt = createReceiptV0(makeReceiptInput());
-  const pathBackedReceipt = {
-    ...receipt,
-    core: {
-      ...receipt.core,
-      evidence_input_ids: ["fixtures/local-evidence.json"],
-    },
-  } as unknown as ReceiptV0;
-
-  const verification = verifyReceiptV0(pathBackedReceipt);
-
-  equal(verification.ok, false);
-  ok(
-    !verification.ok &&
-      verification.errors.includes(
-        "core.evidence_input_ids[0] must use sha256:<64 lowercase hex>",
-      ),
-  );
+test("canonicalizer sorts object keys deterministically", () => {
+  const a = canonicalizeForReceipt({ b: 1, a: 2 });
+  const b = canonicalizeForReceipt({ a: 2, b: 1 });
+  equal(a, b);
+  equal(a, '{"a":2,"b":1}');
 });
-
-interface MakeReceiptInputOptions {
-  readonly eventCause?: "real-input" | "forecast-recheck" | "escalation";
-  readonly recheckKind?: "evidence-age" | "plan-age";
-  readonly composition?: ReceiptV0Input["composition"];
-  readonly freshness?: ReceiptV0Input["freshness"];
-  readonly tokens?: {
-    readonly fresh: number;
-    readonly reused: number;
-  };
-  readonly tags?: readonly string[];
-}
-
-interface ReactorPackageJson {
-  readonly exports?: Record<string, unknown>;
-}
-
-function makeReceiptInput(options: MakeReceiptInputOptions = {}): ReceiptV0Input {
-  const asOf = "2026-05-18T12:00:00Z";
-  const eventCause = options.eventCause ?? "real-input";
-  const core = {
-    responsibility_id: "responsibility.incident-briefing",
-    contract_revision: HASH_A,
-    event_cause: eventCause,
-    ...(options.recheckKind === undefined
-      ? {}
-      : { recheck_kind: options.recheckKind }),
-    memo_key: "memo-key-static-world",
-    evidence_input_ids: [HASH_B],
-    as_of: asOf,
-    role: "judge" as const,
-  };
-
-  return {
-    core,
-    sig: {
-      scheme: "none",
-      null_reason: "single-host v0.1 fixture; no cross-domain non-repudiation",
-    },
-    verdict: {
-      status: "up",
-      confidence: {
-        value: 0.91,
-        derivation_method: "cradle-double-calibration",
-        calibration_grade: "authored",
-        label_source: "static-world-anchor",
-      },
-    },
-    freshness: options.freshness ?? {
-      as_of: asOf,
-      next_forecast_recheck: "2026-05-19T12:00:00Z",
-    },
-    composition: options.composition ?? {
-      consumed_receipts: [],
-      cycle_checked: true,
-    },
-    cost: {
-      provider: "cradle-double",
-      model: "deterministic-replay",
-      role: "judge",
-      tags: options.tags ?? ["static-world"],
-      responsibility_id: "responsibility.incident-briefing",
-      run_id: "run-2026-05-18T12:00:00Z",
-      as_of: asOf,
-      tokens: options.tokens ?? { fresh: 37, reused: 0 },
-      surprise_cause: eventCause,
-    },
-  };
-}
-
-function readPackageJson(): ReactorPackageJson {
-  const packageJsonPath = join(__dirname, "..", "..", "..", "package.json");
-  return JSON.parse(readFileSync(packageJsonPath, "utf8")) as ReactorPackageJson;
-}
-
-function createReceiptWithoutVerifying(input: ReceiptV0Input): ReceiptV0 {
-  const validInput = makeReceiptInput();
-  const validReceipt = createReceiptV0(validInput);
-  const receipt = {
-    ...validReceipt,
-    core: input.core,
-    sig: input.sig,
-    verdict: input.verdict,
-    freshness: input.freshness,
-    composition: input.composition,
-    cost: input.cost,
-  };
-
-  return receipt;
-}
