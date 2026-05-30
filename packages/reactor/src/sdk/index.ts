@@ -79,6 +79,22 @@ export {
   type ReactorRuntimeAdapters,
 } from "./create-reactor";
 
+// --- The self-driven continuity scheduler (the clock-driven cadence loop) ---
+// The driver that finally arms `next_self_recheck` off the `forecast/` math and
+// fires a `self` wake through the reconciler when a `valid_until` lapses
+// (architecture.md §4.2; world-model.md §5/§6; gap-audit #11). Drives U09.
+export {
+  createContinuityScheduler,
+  createAsyncContinuityScheduler,
+  type ContinuityScheduler,
+  type AsyncContinuityScheduler,
+  type ContinuitySchedulerInput,
+  type NodeFreshnessReader,
+  type ArmedRecheck,
+  type ContinuityFire,
+  type ContinuityPollResult,
+} from "./continuity-scheduler";
+
 // --- The run-phase reconciler (the sibling module) --------------------------
 // Re-exported so the front door is the single import surface for mounting a DAG
 // by hand against custom ports (architecture.md §5.3: the injection boundary).

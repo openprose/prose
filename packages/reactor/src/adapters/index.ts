@@ -1,5 +1,6 @@
 export * from "./agent-sdk-passthrough";
 export * from "./clock-system";
+export * from "./connector-poll";
 export * from "./connector-static";
 export * from "./json";
 export * from "./model-gateway-record-replay";
