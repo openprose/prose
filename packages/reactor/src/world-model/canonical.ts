@@ -196,6 +196,60 @@ export function fingerprintArtifact(files: WorldModelFiles): ContentAddress {
 }
 
 // ---------------------------------------------------------------------------
+// Facet subtree layout — "the directory structure IS the state" (facets)
+// ---------------------------------------------------------------------------
+//
+// A facet is a NAMED REGION of the content-addressed artifact: a `####` part of
+// `### Maintains` lives at `published/<facet>/…` so the on-disk form shows the
+// facets literally (architecture.md §3.2 L162–L164 "the world-model subtree …
+// `published/<facet>/…` — so 'the directory structure *is* the state' shows the
+// facets literally"; world-model.md §3 L164–L166; delta.md Part G "world-model
+// subtree (`published/<facet>/…`)"). The layout is purely additive: a node that
+// names no parts has no `<facet>/` regions and keeps today's flat artifact, so
+// its atomic fingerprint is byte-identical.
+
+/**
+ * The relative path of a facet's subtree root inside the published artifact. A
+ * facet's material files live at and under this prefix (architecture.md §3.2
+ * L162–L164; delta.md Part G). The atomic fingerprint is still taken over the
+ * WHOLE artifact (every file, faceted or not); a per-facet fingerprint is taken
+ * over this subtree alone.
+ */
+export function facetSubtreePath(facet: string): string {
+  if (typeof facet !== "string" || facet.length === 0) {
+    throw new TypeError("facet name must be a non-empty string");
+  }
+  // The facet name is one path segment under the artifact root; reject a name
+  // that would split into multiple segments or escape, so `<facet>/` is a clean,
+  // unambiguous region (mirrors normalizeArtifactPath's segment discipline).
+  if (facet.includes("/") || facet.includes("\\") || facet === "." || facet === "..") {
+    throw new TypeError(`facet name must be a single path segment: ${facet}`);
+  }
+  return facet;
+}
+
+/**
+ * Extract a facet's subtree from a full artifact, REBASED so the returned map's
+ * paths are relative to the facet root (`<facet>/controls.json` → `controls.json`).
+ * Rebasing makes the subtree's canonical serialization — and therefore its
+ * fingerprint — depend ONLY on the facet's own bytes, never on the facet name or
+ * sibling facets, so a facet token moves iff that facet's material content moves
+ * (world-model.md §3 the selector boundary). Files outside any facet region are
+ * not part of any facet subtree (they move only the atomic token).
+ */
+export function facetSubtree(files: WorldModelFiles, facet: string): WorldModelFiles {
+  const prefix = `${facetSubtreePath(facet)}/`;
+  const normalized = normalizeArtifactFiles(files);
+  const out: Record<string, Uint8Array> = {};
+  for (const path of Object.keys(normalized)) {
+    if (path.startsWith(prefix)) {
+      out[path.slice(prefix.length)] = normalized[path]!;
+    }
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
 // internals
 // ---------------------------------------------------------------------------
 
