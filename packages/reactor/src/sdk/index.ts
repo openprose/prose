@@ -25,15 +25,21 @@
 // exports it should surface are listed in this module's signpost.
 
 // --- The render atom, standalone (architecture.md §1 L29–L31) ---------------
+// `compiledStoreCanonicalizer` + `TruthProjection` are the v1gaps seam that
+// threads the COMPILED per-node canonicalizer (WorldModelValue domain, §3.2)
+// into the store's `Canonicalizer` (WorldModelFiles domain, §5.2) — see
+// signpost v1gaps-runtime-wiring.
 export {
   renderAtom,
   zeroCost,
+  compiledStoreCanonicalizer,
   type RenderAtomInput,
   type RenderAtomResult,
   type RenderContext,
   type RenderProduct,
   type RenderFailure,
   type StandaloneRender,
+  type TruthProjection,
 } from "./render-atom";
 
 // --- The mounted DAG (architecture.md §1 L32, §4.1) -------------------------
