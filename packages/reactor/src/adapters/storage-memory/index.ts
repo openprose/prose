@@ -5,7 +5,7 @@ import {
   type ReactorRuntimeRegistrySnapshot,
   type ReactorStorageRuntimeAdapter,
 } from "../types";
-import { cloneAdapterJsonValueV0 } from "../json";
+import { cloneAdapterJsonValue } from "../json";
 
 export interface MemoryStorageAdapterInput {
   readonly registry?: ReactorRuntimeRegistrySnapshot;
@@ -45,5 +45,5 @@ export function createMemoryStorageAdapter(
 }
 
 function cloneReceipt(receipt: Receipt): Receipt {
-  return cloneAdapterJsonValueV0(receipt);
+  return cloneAdapterJsonValue(receipt);
 }

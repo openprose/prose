@@ -19,6 +19,7 @@ import {
   type ContentAddress,
   type ReceiptProofInspection,
 } from "../receipt";
+import { ATOMIC_FACET } from "../shapes";
 
 export const RECEIPT_PROJECTION_SCHEMA =
   "openprose.receipt.projection" as const;
@@ -187,7 +188,6 @@ interface NormalizedFull extends NormalizedSummary {
 }
 
 const CONTENT_ADDRESS_PATTERN = /^sha256:[a-f0-9]{64}$/;
-const ATOMIC_FACET = "@atomic";
 const PROJECTION_TIERS = new Set<string>(RECEIPT_PROJECTION_TIERS);
 const ALLOWED_STATUSES = new Set<string>(["rendered", "skipped", "failed"]);
 const ALLOWED_WAKE_SOURCES = new Set<string>(["input", "self", "external"]);

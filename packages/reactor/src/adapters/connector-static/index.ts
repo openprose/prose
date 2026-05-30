@@ -1,4 +1,4 @@
-import { cloneAdapterJsonValueV0 } from "../json";
+import { cloneAdapterJsonValue } from "../json";
 import type {
   ReactorConnectorAdapter,
   ReactorConnectorRequest,
@@ -27,21 +27,21 @@ export function createStaticConnectorAdapter(
 
   return {
     read(request: ReactorConnectorRequest): ReactorConnectorResponse {
-      const requestCopy = cloneAdapterJsonValueV0(request);
+      const requestCopy = cloneAdapterJsonValue(request);
       reads.push(requestCopy);
       if (!records.has(request.source_id)) {
         throw new Error(`connector source not found: ${request.source_id}`);
       }
 
       return {
-        payload: cloneAdapterJsonValueV0(records.get(request.source_id)),
+        payload: cloneAdapterJsonValue(records.get(request.source_id)),
       };
     },
     writeSource(source: StaticConnectorSource): void {
       writeSource(records, source);
     },
     reads(): readonly ReactorConnectorRequest[] {
-      return reads.map((read) => cloneAdapterJsonValueV0(read));
+      return reads.map((read) => cloneAdapterJsonValue(read));
     },
   };
 }
@@ -53,5 +53,5 @@ function writeSource(
   if (source.source_id.length === 0) {
     throw new Error("connector source_id must be non-empty");
   }
-  records.set(source.source_id, cloneAdapterJsonValueV0(source.payload));
+  records.set(source.source_id, cloneAdapterJsonValue(source.payload));
 }

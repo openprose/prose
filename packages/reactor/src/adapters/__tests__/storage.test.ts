@@ -10,7 +10,7 @@ import {
   createNullSignature,
   type Receipt,
 } from "../../shapes";
-import { renderAdapterJsonV0 } from "../json";
+import { renderAdapterJson } from "../json";
 import { createFileSystemStorageAdapter } from "../storage-fs";
 import { createMemoryStorageAdapter } from "../storage-memory";
 import type { ReactorRuntimeRegistrySnapshot } from "../types";
@@ -75,11 +75,11 @@ test("filesystem storage round-trips deterministic JSON and survives reopen", (t
   deepEqual(reopened.listReceipts(), [first, second]);
   equal(
     readFileSync(join(directory, "registry.json"), "utf8"),
-    `${renderAdapterJsonV0(hydrated)}\n`,
+    `${renderAdapterJson(hydrated)}\n`,
   );
   equal(
     readFileSync(join(directory, "receipts.json"), "utf8"),
-    `${renderAdapterJsonV0([first, second])}\n`,
+    `${renderAdapterJson([first, second])}\n`,
   );
 });
 

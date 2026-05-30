@@ -1,4 +1,4 @@
-import { cloneAdapterJsonValueV0, renderAdapterJsonV0 } from "../json";
+import { cloneAdapterJsonValue, renderAdapterJson } from "../json";
 import {
   assertModelGatewayUsage,
   cloneModelGatewayUsage,
@@ -44,14 +44,14 @@ export function createRecordReplayModelGatewayAdapter(
     invoke(
       request: ReactorModelGatewayRequest,
     ): ReactorModelGatewayResponseWithUsage {
-      const requestCopy = cloneAdapterJsonValueV0(request);
+      const requestCopy = cloneAdapterJsonValue(request);
       const record = records[cursor];
       if (record === undefined) {
         throw new Error("record-replay model gateway has no remaining records");
       }
 
-      const expected = renderAdapterJsonV0(record.request);
-      const actual = renderAdapterJsonV0(requestCopy);
+      const expected = renderAdapterJson(record.request);
+      const actual = renderAdapterJson(requestCopy);
       if (actual !== expected) {
         throw new Error(
           `record-replay model gateway request mismatch at record ${record.id}`,
@@ -67,12 +67,12 @@ export function createRecordReplayModelGatewayAdapter(
       });
 
       return {
-        payload: cloneAdapterJsonValueV0(record.response.payload),
+        payload: cloneAdapterJsonValue(record.response.payload),
         usage,
       };
     },
     calls(): readonly RecordReplayModelGatewayCall[] {
-      return calls.map((call) => cloneAdapterJsonValueV0(call));
+      return calls.map((call) => cloneAdapterJsonValue(call));
     },
     remaining(): number {
       return records.length - cursor;
@@ -91,9 +91,9 @@ function normalizeRecord(
 
   return {
     id: record.id,
-    request: cloneAdapterJsonValueV0(record.request),
+    request: cloneAdapterJsonValue(record.request),
     response: {
-      payload: cloneAdapterJsonValueV0(record.response.payload),
+      payload: cloneAdapterJsonValue(record.response.payload),
       usage: cloneModelGatewayUsage(record.response.usage),
     },
   };

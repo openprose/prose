@@ -12,20 +12,23 @@
 // This module is the clean keep-home for the kernel split: the policy half
 // (backstops, rollback compare, kernel safety receipts, policy-artifact
 // validation) is deleted; nothing here imports the retired spine.
+//
+// The content address is the shared `ContentAddress` shape (SHAPES.md §1) — this
+// module no longer restates it as a local alias.
 
-export type ContentAddressV0 = `sha256:${string}`;
+import type { ContentAddress } from "../shapes";
 
 const CONTENT_ADDRESS_PATTERN = /^sha256:[a-f0-9]{64}$/;
 
 export interface ConsumedReceiptEdge {
-  readonly from: ContentAddressV0;
-  readonly to: ContentAddressV0;
+  readonly from: ContentAddress;
+  readonly to: ContentAddress;
 }
 
 export interface CycleDetectionResult {
   readonly cycle_checked: true;
   readonly has_cycle: boolean;
-  readonly cycle: readonly ContentAddressV0[];
+  readonly cycle: readonly ContentAddress[];
 }
 
 /**
@@ -39,9 +42,9 @@ export function detectReceiptCycles(
 ): CycleDetectionResult {
   const graph = createCanonicalReceiptGraph(edges);
 
-  const visiting = new Set<ContentAddressV0>();
-  const visited = new Set<ContentAddressV0>();
-  const path: ContentAddressV0[] = [];
+  const visiting = new Set<ContentAddress>();
+  const visited = new Set<ContentAddress>();
+  const path: ContentAddress[] = [];
 
   for (const node of graph.keys()) {
     const cycle = visitCycleNode(node, graph, visiting, visited, path);
@@ -255,12 +258,12 @@ function isFactValue(value: unknown): value is PredicateFactValue {
 // --- cycle-detection internals ---
 
 function visitCycleNode(
-  node: ContentAddressV0,
-  graph: ReadonlyMap<ContentAddressV0, readonly ContentAddressV0[]>,
-  visiting: Set<ContentAddressV0>,
-  visited: Set<ContentAddressV0>,
-  path: ContentAddressV0[],
-): readonly ContentAddressV0[] {
+  node: ContentAddress,
+  graph: ReadonlyMap<ContentAddress, readonly ContentAddress[]>,
+  visiting: Set<ContentAddress>,
+  visited: Set<ContentAddress>,
+  path: ContentAddress[],
+): readonly ContentAddress[] {
   if (visited.has(node)) {
     return [];
   }
@@ -288,12 +291,12 @@ function visitCycleNode(
 
 function createCanonicalReceiptGraph(
   edges: readonly ConsumedReceiptEdge[],
-): ReadonlyMap<ContentAddressV0, readonly ContentAddressV0[]> {
+): ReadonlyMap<ContentAddress, readonly ContentAddress[]> {
   if (!Array.isArray(edges)) {
     throw new Error("receipt cycle edges must be an array");
   }
 
-  const adjacency = new Map<ContentAddressV0, Set<ContentAddressV0>>();
+  const adjacency = new Map<ContentAddress, Set<ContentAddress>>();
 
   for (const [index, edge] of edges.entries()) {
     assertConsumedReceiptEdge(edge, index);
@@ -301,25 +304,25 @@ function createCanonicalReceiptGraph(
     receiptGraphTargets(adjacency, edge.to);
   }
 
-  const graph = new Map<ContentAddressV0, readonly ContentAddressV0[]>();
-  for (const node of [...adjacency.keys()].sort(compareContentAddressV0)) {
-    const targets = adjacency.get(node) ?? new Set<ContentAddressV0>();
-    graph.set(node, [...targets].sort(compareContentAddressV0));
+  const graph = new Map<ContentAddress, readonly ContentAddress[]>();
+  for (const node of [...adjacency.keys()].sort(compareContentAddress)) {
+    const targets = adjacency.get(node) ?? new Set<ContentAddress>();
+    graph.set(node, [...targets].sort(compareContentAddress));
   }
 
   return graph;
 }
 
 function receiptGraphTargets(
-  adjacency: Map<ContentAddressV0, Set<ContentAddressV0>>,
-  node: ContentAddressV0,
-): Set<ContentAddressV0> {
+  adjacency: Map<ContentAddress, Set<ContentAddress>>,
+  node: ContentAddress,
+): Set<ContentAddress> {
   const existing = adjacency.get(node);
   if (existing !== undefined) {
     return existing;
   }
 
-  const targets = new Set<ContentAddressV0>();
+  const targets = new Set<ContentAddress>();
   adjacency.set(node, targets);
   return targets;
 }
@@ -332,22 +335,22 @@ function assertConsumedReceiptEdge(
     throw new Error(`receipt cycle edges[${index}] must be an object`);
   }
 
-  assertContentAddressV0(edge["from"], `receipt cycle edges[${index}].from`);
-  assertContentAddressV0(edge["to"], `receipt cycle edges[${index}].to`);
+  assertContentAddress(edge["from"], `receipt cycle edges[${index}].from`);
+  assertContentAddress(edge["to"], `receipt cycle edges[${index}].to`);
 }
 
-function assertContentAddressV0(
+function assertContentAddress(
   value: unknown,
   name: string,
-): asserts value is ContentAddressV0 {
+): asserts value is ContentAddress {
   if (typeof value !== "string" || !CONTENT_ADDRESS_PATTERN.test(value)) {
     throw new Error(`${name} must use sha256:<64 lowercase hex>`);
   }
 }
 
-function compareContentAddressV0(
-  left: ContentAddressV0,
-  right: ContentAddressV0,
+function compareContentAddress(
+  left: ContentAddress,
+  right: ContentAddress,
 ): number {
   if (left < right) {
     return -1;

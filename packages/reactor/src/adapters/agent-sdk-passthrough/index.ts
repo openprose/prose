@@ -1,4 +1,4 @@
-import { cloneAdapterJsonValueV0 } from "../json";
+import { cloneAdapterJsonValue } from "../json";
 import type {
   ReactorAgentRequest,
   ReactorAgentResponse,
@@ -47,20 +47,20 @@ export function createPassthroughAgentSdkAdapter(
 
   return {
     launch(request: ReactorAgentRequest): ReactorAgentResponse {
-      const requestCopy = cloneAdapterJsonValueV0(request);
+      const requestCopy = cloneAdapterJsonValue(request);
       launches.push(requestCopy);
-      return cloneAdapterJsonValueV0(launchHandler(requestCopy));
+      return cloneAdapterJsonValue(launchHandler(requestCopy));
     },
     runSandbox(request: ReactorSandboxRequest): ReactorSandboxResponse {
-      const requestCopy = cloneAdapterJsonValueV0(request);
+      const requestCopy = cloneAdapterJsonValue(request);
       sandboxRuns.push(requestCopy);
-      return cloneAdapterJsonValueV0(sandboxHandler(requestCopy));
+      return cloneAdapterJsonValue(sandboxHandler(requestCopy));
     },
     launches(): readonly ReactorAgentRequest[] {
-      return launches.map((launch) => cloneAdapterJsonValueV0(launch));
+      return launches.map((launch) => cloneAdapterJsonValue(launch));
     },
     sandboxRuns(): readonly ReactorSandboxRequest[] {
-      return sandboxRuns.map((run) => cloneAdapterJsonValueV0(run));
+      return sandboxRuns.map((run) => cloneAdapterJsonValue(run));
     },
   };
 }
@@ -69,6 +69,6 @@ export function createNullAgentSdkAdapter(
   payload: unknown = null,
 ): RecordingAgentSdkAdapter {
   return createPassthroughAgentSdkAdapter({
-    launch: () => ({ payload: cloneAdapterJsonValueV0(payload) }),
+    launch: () => ({ payload: cloneAdapterJsonValue(payload) }),
   });
 }

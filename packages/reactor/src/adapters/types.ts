@@ -34,7 +34,7 @@ import type {
   WorldModelRef,
   WorldModelWorkspaceKind,
 } from "../shapes";
-import { cloneAdapterJsonValueV0 } from "./json";
+import { cloneAdapterJsonValue } from "./json";
 
 const CONTENT_ADDRESS_PATTERN = /^sha256:[a-f0-9]{64}$/;
 
@@ -250,7 +250,7 @@ export interface ReactorAdapters {
 export function cloneRuntimeRegistrySnapshot(
   registry: ReactorRuntimeRegistrySnapshot,
 ): ReactorRuntimeRegistrySnapshot {
-  const clone = cloneAdapterJsonValueV0(registry);
+  const clone = cloneAdapterJsonValue(registry);
   assertRuntimeRegistrySnapshot(clone);
   return clone;
 }
@@ -258,7 +258,7 @@ export function cloneRuntimeRegistrySnapshot(
 export function cloneModelGatewayUsage(
   usage: ReactorModelGatewayUsage,
 ): ReactorModelGatewayUsage {
-  const clone = cloneAdapterJsonValueV0(usage);
+  const clone = cloneAdapterJsonValue(usage);
   assertModelGatewayUsage(clone);
   return clone;
 }

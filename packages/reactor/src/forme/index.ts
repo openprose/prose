@@ -36,6 +36,7 @@
 
 import {
   ATOMIC_FACET,
+  type ContentAddress,
   type Facet,
   type Fingerprint,
   type TopologyEdge,
@@ -46,7 +47,6 @@ import {
 import {
   detectReceiptCycles,
   type ConsumedReceiptEdge,
-  type ContentAddressV0,
 } from "../cycle";
 
 // ---------------------------------------------------------------------------
@@ -454,7 +454,7 @@ export function hasNodeCycle(edges: readonly TopologyEdge[]): boolean {
  * id's char codes — sufficient as a stable injective key for the DFS; it is NOT
  * a cryptographic fingerprint and is never persisted).
  */
-function nodeAddress(id: string): ContentAddressV0 {
+function nodeAddress(id: string): ContentAddress {
   // FNV-1a-style rolling mix into a wide hex string keyed by id, then expand to
   // 64 hex chars by repeating a per-id deterministic stream. Distinct ids yield
   // distinct strings because the id is length-prefixed and fully folded in.
@@ -472,7 +472,7 @@ function nodeAddress(id: string): ContentAddressV0 {
     h = Math.imul(h ^ (seed.charCodeAt(i % seed.length) + i), 0x01000193) >>> 0;
     hex += (h >>> 16).toString(16).padStart(2, "0");
   }
-  return `sha256:${hex.slice(0, 64).toLowerCase()}` as ContentAddressV0;
+  return `sha256:${hex.slice(0, 64).toLowerCase()}` as ContentAddress;
 }
 
 // ---------------------------------------------------------------------------

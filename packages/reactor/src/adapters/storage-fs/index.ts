@@ -8,7 +8,7 @@ import {
 import { join } from "node:path";
 
 import type { Receipt } from "../../shapes";
-import { cloneAdapterJsonValueV0, renderAdapterJsonV0 } from "../json";
+import { cloneAdapterJsonValue, renderAdapterJson } from "../json";
 import {
   EMPTY_RUNTIME_REGISTRY,
   assertRuntimeRegistrySnapshot,
@@ -88,7 +88,7 @@ function readReceiptLog(path: string): readonly Receipt[] {
 }
 
 function cloneReceipt(receipt: Receipt): Receipt {
-  return cloneAdapterJsonValueV0(receipt);
+  return cloneAdapterJsonValue(receipt);
 }
 
 function readJsonFile(path: string): unknown {
@@ -97,6 +97,6 @@ function readJsonFile(path: string): unknown {
 
 function writeJsonFile(path: string, value: unknown): void {
   const tempPath = `${path}.tmp-${process.pid}`;
-  writeFileSync(tempPath, `${renderAdapterJsonV0(value)}\n`, "utf8");
+  writeFileSync(tempPath, `${renderAdapterJson(value)}\n`, "utf8");
   renameSync(tempPath, path);
 }

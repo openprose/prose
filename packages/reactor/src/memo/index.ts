@@ -13,7 +13,7 @@
 // §4.1 (reconciler memo/skip); SHAPES.md §3. Conforms to `../shapes`
 // (Foundation wave) — the canonical `MemoKey` / `Receipt` shapes.
 
-import { renderAdapterJsonV0 } from "../adapters/json";
+import { renderAdapterJson } from "../adapters/json";
 import {
   ATOMIC_FACET,
   EMPTY_SEMANTIC_DIFF,
@@ -66,7 +66,7 @@ export function computeMemoKey(
  * never silently collides with a v1 key.
  */
 export function memoKeyDigest(key: MemoKey): MemoKeyDigest {
-  return renderAdapterJsonV0({
+  return renderAdapterJson({
     schema: MEMO_KEY_SCHEMA,
     v: MEMO_KEY_VERSION,
     contract_fingerprint: key.contract_fingerprint,
