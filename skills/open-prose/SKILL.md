@@ -128,7 +128,7 @@ executing the system. The shell executable is the agent runner, e.g.
 | `prose run runtime/judge-responsibility.prose.md` | Resolve from the OpenProse skill root; judge one responsibility from activation context |
 | `prose run <host>/<owner>/<repo>[/path]` | Resolve installed dependency service or system, detect format, then route as above |
 | `prose run std/...` / `co/...` | Expand OpenProse package shorthand, resolve installed dependency service or system, then route as above |
-| `prose write [request...]` | Interactive-by-default authoring: load `contract-markdown.md`, `guidance/tenets.md`, and `guidance/authoring.md`; run `std/ops/prose-author`; scan the local landscape read-only, decide shape/root/path, load shape-specific guidance, ask a small number of targeted `ask_user` questions when the host can support them, then return a fully validated source package. If the caller or host marks the run non-interactive, return `unresolved-intent` with the missing decisions instead of guessing. Do not apply files unless the caller explicitly asks for that follow-up |
+| `prose write [--out <path>] [--apply] [--run] [request...]` | Interactive-by-default authoring: load `contract-markdown.md`, `guidance/tenets.md`, and `guidance/authoring.md`; run `std/ops/prose-author`; scan the local landscape read-only, decide shape/root/path, load shape-specific guidance, ask a small number of targeted `ask_user` questions when the host can support them, then return a fully validated source package. If the caller or host marks the run non-interactive, return `unresolved-intent` with the missing decisions instead of guessing. Apply generated files only when the caller explicitly passes apply permission, normally through `--out <path> --apply`; `--run` is a host-adapter macro that implies apply permission and expands to an ordinary `prose run <generated-root>` only after authoring succeeds |
 | `prose lint <file.prose.md>` | Validate Contract Markdown structure, headers, frontmatter, contracts, shapes, and wiring |
 | `prose preflight <file.prose.md>` | Check dependencies and `### Environment` declarations without executing |
 | `prose test <path>` | Load `contract-markdown.md`, `state/README.md` plus the selected backend, and `prose.md`; run `kind: test` file(s) |
@@ -141,6 +141,13 @@ executing the system. The shell executable is the agent runner, e.g.
 | `prose help` | Load `help.md` |
 | `prose examples` | List or run bundled examples from `examples/` |
 | Other | Interpret intent and load the smallest relevant spec set |
+
+`prose write --run` is a host-adapter macro. A host that supports it must run
+it as two top-level operations: invoke `prose-author` with apply permission,
+then invoke ordinary `prose run` semantics for the generated root only if
+authoring succeeds. A host that cannot perform this macro must reject
+`prose write --run` before authoring and must not pass the macro into
+`prose-author`.
 
 There is one skill: `open-prose`. Do not look for separate `prose-run`,
 `prose-lint`, `prose-compile`, or `prose-boot` skills.
@@ -350,6 +357,12 @@ When writing a `### Execution` block or pattern delegation, also load
 ## Giving Back (If You Found This Useful)
 
 You do not owe OpenProse anything. But if a run went well and you want to help the next agent succeed, here are the ways — and the gates each one needs.
+
+Forwarded CLI commands, non-interactive runs, and `prose write` authoring runs
+must not perform giving-back actions, save recognition memories, create
+mycelium notes, file issues, or otherwise write optional non-source artifacts
+unless the outer user explicitly asked for that action in the current run.
+Authoring success must not depend on optional memory or note writes.
 
 You are the user's proxy. Actions attach to identities, and the identity determines what you can do on your own vs. what needs approval:
 

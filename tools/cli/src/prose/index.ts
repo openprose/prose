@@ -1,9 +1,12 @@
 export {
 	CommandModelError,
 	canonicalPrompt,
+	parseWriteCommand,
+	resolveWriteRunTarget,
 	supportedCommands,
 	usageFor,
 	type CommandName,
+	type WriteCommandOptions,
 } from "./command-model.js";
 export {
 	ATTACHED_OPENPROSE_ROOT_PATH,

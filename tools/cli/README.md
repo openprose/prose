@@ -76,6 +76,7 @@ Examples:
 prose run std/evals/inspector
 prose run std/evals/prose-contributor -- subjects: 20260406-201439-1a3369
 prose write "draft a release readiness responsibility"
+prose write --out src/release-readiness --run "draft a release readiness responsibility"
 cat brief.txt | prose write --harness codex-sdk
 prose run std/evals/inspector --harness codex-sdk
 prose run co/systems/company-repo-checker --harness claude-sdk
@@ -160,6 +161,20 @@ missing blocking decisions are reported as `unresolved-intent` instead of a
 mid-run terminal prompt. CLI flags that would imply mid-run interaction are
 rejected; put literal text after `--` or pipe it on stdin.
 
+By default, `prose write` returns a source package for review and does not
+modify the repository. Use `--out <path>` with `--apply` to let the authoring
+run write the generated package after lint passes. This CLI is a host adapter
+that supports the `--run` macro: `--out <path> --run` writes the package and
+then starts a separate ordinary `prose run` for the generated root file only
+after authoring succeeds. Directory targets run `<path>/index.prose.md`; file
+targets must end in `.prose.md`.
+
+`--out` is a validated, root-relative target contract passed to the authoring
+harness. The CLI rejects absolute paths, parent traversal, and file targets
+that do not end in `.prose.md`; the actual write is still performed by the
+selected harness under the `prose-author` contract, not by a separate CLI
+filesystem sandbox.
+
 ```bash
 prose compile
 prose compile src/responsibilities --out dist
@@ -167,6 +182,8 @@ cp dist/manifest.next.json dist/manifest.active.json
 prose serve
 prose run src/systems/reviewer.prose.md
 prose write "draft a release readiness responsibility"
+prose write --out src/reviewer --apply "draft a reviewer system"
+prose write --out src/reviewer --run "draft a reviewer system"
 prose write < brief.txt
 prose run co/systems/company-repo-checker --harness claude-sdk
 prose upgrade

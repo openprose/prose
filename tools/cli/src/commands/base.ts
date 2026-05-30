@@ -1,9 +1,9 @@
 import { Command } from "@oclif/core";
 import type { CommandName } from "../prose/index.js";
-import { canonicalPrompt, CommandModelError, usageFor } from "../prose/index.js";
+import { canonicalPrompt, CommandModelError, parseWriteCommand, resolveWriteRunTarget, usageFor } from "../prose/index.js";
 import { recordForwardedFulfillmentArtifact } from "../prose/fulfillment-artifact.js";
 import { createHarness, type HarnessName } from "../harnesses/index.js";
-import type { Harness, WritableStreamLike } from "../harnesses/types.js";
+import type { Harness, HarnessRunOptions, WritableStreamLike } from "../harnesses/types.js";
 import { ensureOpenProseSkill, loadOpenProseSkillBootstrap, type OpenProseSkillBootstrap } from "../skills/open-prose.js";
 
 export interface SkillPreflightOptions {
@@ -95,6 +95,8 @@ export async function runForwardedProseCommand(options: ForwardRunOptions): Prom
 	const { harness, args } = splitHarnessArgs(options.argv, options.env, options.command);
 	const promptArgs = await hydrateForwardedArgs(options.command, args, options.stdin);
 	const prompt = canonicalPrompt(options.command, promptArgs);
+	const writeRequiresFilesystem = options.command === "write" ? parseWriteCommand(promptArgs).apply : false;
+	const writeRunTarget = options.command === "write" ? resolveWriteRunTarget(promptArgs) : undefined;
 	if (shouldRunSkillPreflight(options)) {
 		await runSkillPreflight(harness, options);
 	}
@@ -103,19 +105,11 @@ export async function runForwardedProseCommand(options: ForwardRunOptions): Prom
 		: undefined;
 
 	const selectedHarness = (options.harnessFactory ?? createHarness)(harness);
-	const exitCode = await selectedHarness.run(prompt, {
-		...(skillBootstrap === undefined
-			? {}
-			: {
-					additionalDirectories: skillBootstrap.additionalDirectories,
-					systemPromptAppend: skillBootstrap.systemPromptAppend,
-				}),
-		cwd: options.cwd,
-		env: { ...options.env },
-		stdout: options.stdout,
-		stderr: options.stderr,
-		...(options.signal === undefined ? {} : { signal: options.signal }),
+	const harnessRunOptions = buildHarnessRunOptions(options, skillBootstrap, {
+		harness,
+		requiresFilesystemWrites: writeRequiresFilesystem,
 	});
+	const exitCode = await selectedHarness.run(prompt, harnessRunOptions);
 	await recordForwardedFulfillmentArtifact({
 		command: options.command,
 		argv: args,
@@ -125,7 +119,68 @@ export async function runForwardedProseCommand(options: ForwardRunOptions): Prom
 		harness,
 		prompt,
 	});
-	return exitCode;
+
+	if (exitCode !== 0 || writeRunTarget === undefined) {
+		return exitCode;
+	}
+	if (options.signal?.aborted) {
+		return 143;
+	}
+
+	const runPrompt = canonicalPrompt("run", [writeRunTarget]);
+	const runExitCode = await selectedHarness.run(runPrompt, harnessRunOptions);
+	await recordForwardedFulfillmentArtifact({
+		command: "run",
+		argv: [writeRunTarget],
+		cwd: options.cwd,
+		env: options.env,
+		exitCode: runExitCode,
+		harness,
+		prompt: runPrompt,
+	});
+	return runExitCode;
+}
+
+function buildHarnessRunOptions(
+	options: ForwardRunOptions,
+	skillBootstrap: OpenProseSkillBootstrap | undefined,
+	behavior: {
+		harness: string;
+		requiresFilesystemWrites: boolean;
+	},
+): HarnessRunOptions {
+	const env = writeEnabledEnv(options.env, behavior);
+	return {
+		...(skillBootstrap === undefined
+			? {}
+			: {
+					additionalDirectories: skillBootstrap.additionalDirectories,
+					systemPromptAppend: skillBootstrap.systemPromptAppend,
+				}),
+		cwd: options.cwd,
+		env: { ...env },
+		stdout: options.stdout,
+		stderr: options.stderr,
+		...(options.signal === undefined ? {} : { signal: options.signal }),
+	};
+}
+
+function writeEnabledEnv(
+	env: Readonly<Record<string, string | undefined>>,
+	behavior: { harness: string; requiresFilesystemWrites: boolean },
+): Readonly<Record<string, string | undefined>> {
+	if (
+		behavior.harness !== "codex-sdk" ||
+		!behavior.requiresFilesystemWrites ||
+		env.PROSE_CODEX_SANDBOX_MODE !== undefined
+	) {
+		return env;
+	}
+
+	return {
+		...env,
+		PROSE_CODEX_SANDBOX_MODE: "workspace-write",
+	};
 }
 
 async function hydrateForwardedArgs(

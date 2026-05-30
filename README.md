@@ -287,7 +287,7 @@ be checked, maintained, and restored across bounded runs:
 | `prose compile` | Run the bundled OpenProse compiler program, emit `<openprose-root>/dist/manifest.next.json`, and validate it before success |
 | `prose serve` | Load active IR and run local cron and HTTP trigger adapters |
 | `prose run` | Execute one bounded OpenProse VM activation |
-| `prose write` | Author a validated OpenProse program package from rough English/pseudo-Prose, asking targeted shape/root questions in interactive hosts and returning `unresolved-intent` only for non-interactive missing decisions |
+| `prose write` | Author a validated OpenProse program package from rough English/pseudo-Prose; `--out <path> --apply` writes the package after lint passes, and host adapters that support `--run` expand it to write/apply followed by ordinary `prose run <generated-root>` |
 | `prose status` | Inspect active IR, diagnostics, trigger plan, recent runs, and responsibility status/pressure |
 
 The compiled Responsibility Runtime manifest preserves responsibilities as

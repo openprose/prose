@@ -1,6 +1,7 @@
 import {
 	chmodSync,
 	copyFileSync,
+	existsSync,
 	mkdirSync,
 	mkdtempSync,
 	readFileSync,
@@ -376,7 +377,7 @@ describe("runForwardedProseCommand", () => {
 
 		expect(exitCode).toBe(0);
 		expect(seen).toEqual([
-			"prose write output_mode: source-package-only apply: false run_state: in-context terminal_summary: required interactive: false request: 'draft release readiness'",
+			"prose write output_mode: source-package-only apply: false post_apply_action: none run_state: in-context terminal_summary: required interactive: false request: 'draft release readiness'",
 		]);
 	});
 
@@ -404,8 +405,233 @@ describe("runForwardedProseCommand", () => {
 
 		expect(exitCode).toBe(0);
 		expect(seen).toEqual([
-			"prose write output_mode: source-package-only apply: false run_state: in-context terminal_summary: required interactive: false request: 'draft a release readiness responsibility'",
+			"prose write output_mode: source-package-only apply: false post_apply_action: none run_state: in-context terminal_summary: required interactive: false request: 'draft a release readiness responsibility'",
 		]);
+	});
+
+	it("applies and runs the exact vulnerability detection write example", async () => {
+		const cwd = mkdtempSync(join(tmpdir(), "prose-write-run-"));
+		const io = memoryStreams();
+		const seen: string[] = [];
+		const rootFile = join(cwd, "src", "vulnerability-detection", "index.prose.md");
+		const exactRequest =
+			"a vulnerability detection system that uses lessons from https://blog.cloudflare.com/cyber-frontier-models/";
+
+		try {
+			const exitCode = await runForwardedProseCommand({
+				command: "write",
+				argv: ["--out", "src/vulnerability-detection", "--run", exactRequest, "--harness", "mock"],
+				cwd,
+				env: {},
+				stdout: io.streams.stdout,
+				stderr: io.streams.stderr,
+				harnessFactory: () => ({
+					name: "mock",
+					async run(prompt) {
+						seen.push(prompt);
+						if (prompt.startsWith("prose write ")) {
+							mkdirSync(join(cwd, "src", "vulnerability-detection"), { recursive: true });
+							writeFileSync(
+								rootFile,
+								`---
+name: vulnerability-detection
+kind: system
+---
+
+# Vulnerability Detection
+
+### Services
+
+- \`reporter\`
+`,
+							);
+						}
+						if (prompt.startsWith("prose run ")) {
+							expect(existsSync(rootFile)).toBe(true);
+						}
+						return 0;
+					},
+				}),
+			});
+
+			expect(exitCode).toBe(0);
+			expect(seen).toEqual([
+				"prose write output_mode: source-package-and-files apply: true target_path: src/vulnerability-detection post_apply_action: host-will-run-root run_state: filesystem terminal_summary: required interactive: false request: 'a vulnerability detection system that uses lessons from https://blog.cloudflare.com/cyber-frontier-models/'",
+				"prose run src/vulnerability-detection/index.prose.md",
+			]);
+		} finally {
+			rmSync(cwd, { recursive: true, force: true });
+		}
+	});
+
+	it("does not start the write-run macro when authoring fails", async () => {
+		const io = memoryStreams();
+		const seen: string[] = [];
+
+		const exitCode = await runForwardedProseCommand({
+			command: "write",
+			argv: ["--out", "src/release-readiness", "--run", "draft release readiness", "--harness", "mock"],
+			cwd: "/repo",
+			env: {},
+			stdout: io.streams.stdout,
+			stderr: io.streams.stderr,
+			harnessFactory: () => ({
+				name: "mock",
+				async run(prompt) {
+					seen.push(prompt);
+					return 7;
+				},
+			}),
+		});
+
+		expect(exitCode).toBe(7);
+		expect(seen).toEqual([
+			"prose write output_mode: source-package-and-files apply: true target_path: src/release-readiness post_apply_action: host-will-run-root run_state: filesystem terminal_summary: required interactive: false request: 'draft release readiness'",
+		]);
+	});
+
+	it("returns the follow-up run exit code from the write-run macro", async () => {
+		const io = memoryStreams();
+		const seen: string[] = [];
+
+		const exitCode = await runForwardedProseCommand({
+			command: "write",
+			argv: ["--out", "src/release-readiness", "--run", "draft release readiness", "--harness", "mock"],
+			cwd: "/repo",
+			env: {},
+			stdout: io.streams.stdout,
+			stderr: io.streams.stderr,
+			harnessFactory: () => ({
+				name: "mock",
+				async run(prompt) {
+					seen.push(prompt);
+					return prompt.startsWith("prose run ") ? 9 : 0;
+				},
+			}),
+		});
+
+		expect(exitCode).toBe(9);
+		expect(seen).toEqual([
+			"prose write output_mode: source-package-and-files apply: true target_path: src/release-readiness post_apply_action: host-will-run-root run_state: filesystem terminal_summary: required interactive: false request: 'draft release readiness'",
+			"prose run src/release-readiness/index.prose.md",
+		]);
+	});
+
+	it("does not start the write follow-up run when aborted after apply", async () => {
+		const io = memoryStreams();
+		const seen: string[] = [];
+		const controller = new AbortController();
+
+		const exitCode = await runForwardedProseCommand({
+			command: "write",
+			argv: ["--out", "src/release-readiness", "--run", "draft release readiness", "--harness", "mock"],
+			cwd: "/repo",
+			env: {},
+			stdout: io.streams.stdout,
+			stderr: io.streams.stderr,
+			signal: controller.signal,
+			harnessFactory: () => ({
+				name: "mock",
+				async run(prompt) {
+					seen.push(prompt);
+					controller.abort();
+					return 0;
+				},
+			}),
+		});
+
+		expect(exitCode).toBe(143);
+		expect(seen).toEqual([
+			"prose write output_mode: source-package-and-files apply: true target_path: src/release-readiness post_apply_action: host-will-run-root run_state: filesystem terminal_summary: required interactive: false request: 'draft release readiness'",
+		]);
+	});
+
+	it("defaults codex write apply runs to workspace-write when no sandbox is configured", async () => {
+		const io = memoryStreams();
+		const seenSandboxModes: Array<string | undefined> = [];
+
+		const exitCode = await runForwardedProseCommand({
+			command: "write",
+			argv: ["--out", "src/release-readiness", "--apply", "draft release readiness", "--harness", "codex-sdk"],
+			cwd: "/repo",
+			env: {},
+			stdout: io.streams.stdout,
+			stderr: io.streams.stderr,
+			skillBootstrap: false,
+			skillPreflight: false,
+			harnessFactory: () => ({
+				name: "codex-sdk",
+				async run(_prompt, options) {
+					seenSandboxModes.push(options.env?.PROSE_CODEX_SANDBOX_MODE);
+					return 0;
+				},
+			}),
+		});
+
+		expect(exitCode).toBe(0);
+		expect(seenSandboxModes).toEqual(["workspace-write"]);
+	});
+
+	it("derives codex sandbox defaults from the forwarded env only", async () => {
+		const io = memoryStreams();
+		const seenSandboxModes: Array<string | undefined> = [];
+		const previous = process.env.PROSE_CODEX_SANDBOX_MODE;
+		process.env.PROSE_CODEX_SANDBOX_MODE = "danger-full-access";
+
+		try {
+			const exitCode = await runForwardedProseCommand({
+				command: "write",
+				argv: ["--out", "src/release-readiness", "--apply", "draft release readiness", "--harness", "codex-sdk"],
+				cwd: "/repo",
+				env: {},
+				stdout: io.streams.stdout,
+				stderr: io.streams.stderr,
+				skillBootstrap: false,
+				skillPreflight: false,
+				harnessFactory: () => ({
+					name: "codex-sdk",
+					async run(_prompt, options) {
+						seenSandboxModes.push(options.env?.PROSE_CODEX_SANDBOX_MODE);
+						return 0;
+					},
+				}),
+			});
+
+			expect(exitCode).toBe(0);
+			expect(seenSandboxModes).toEqual(["workspace-write"]);
+		} finally {
+			if (previous === undefined) {
+				delete process.env.PROSE_CODEX_SANDBOX_MODE;
+			} else {
+				process.env.PROSE_CODEX_SANDBOX_MODE = previous;
+			}
+		}
+	});
+
+	it("does not override an explicit codex sandbox for write apply runs", async () => {
+		const io = memoryStreams();
+		const seenSandboxModes: Array<string | undefined> = [];
+
+		const exitCode = await runForwardedProseCommand({
+			command: "write",
+			argv: ["--out", "src/release-readiness", "--apply", "draft release readiness", "--harness", "codex-sdk"],
+			cwd: "/repo",
+			env: { PROSE_CODEX_SANDBOX_MODE: "danger-full-access" },
+			stdout: io.streams.stdout,
+			stderr: io.streams.stderr,
+			skillBootstrap: false,
+			skillPreflight: false,
+			harnessFactory: () => ({
+				name: "codex-sdk",
+				async run(_prompt, options) {
+					seenSandboxModes.push(options.env?.PROSE_CODEX_SANDBOX_MODE);
+					return 0;
+				},
+			}),
+		});
+
+		expect(exitCode).toBe(0);
+		expect(seenSandboxModes).toEqual(["danger-full-access"]);
 	});
 
 	it("rejects write flags that would imply unsupported CLI interaction", async () => {
