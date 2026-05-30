@@ -18,6 +18,7 @@ import {
   planCompositionPropagation,
   resolveFacetFingerprint,
   resolveSubscriptions,
+  selectInputFingerprints,
 } from "../index";
 
 const VERSION_A =
@@ -206,6 +207,96 @@ test("composeSubscriberMemoKey is exactly (contract_fingerprint, input_fingerpri
   deepEqual(Object.keys(key).sort(), ["contract_fingerprint", "input_fingerprints"]);
   equal(key.contract_fingerprint, "c:risk");
   deepEqual(key.input_fingerprints, ["fp:owner", "fp:spend"]);
+});
+
+// --- selectInputFingerprints: the run-half selector boundary -------------
+//     (architecture.md §3.2 selector boundary; world-model.md §3; SHAPES §3)
+
+// A 2-producer-facet producer "vendor" exposing facets X and Y, plus a sibling
+// producer "spend". Two subscribers: "x_sub" subscribes ONLY to vendor.X;
+// "atomic_sub" subscribes to the whole truth of "spend" (atomic-only).
+const FACETED_TOPOLOGY: TopologyWorldModel = {
+  nodes: [
+    { node: "vendor", contract_fingerprint: "c:vendor", wake_source: "input" },
+    { node: "spend", contract_fingerprint: "c:spend", wake_source: "input" },
+    { node: "x_sub", contract_fingerprint: "c:x", wake_source: "input" },
+    { node: "atomic_sub", contract_fingerprint: "c:a", wake_source: "input" },
+  ],
+  edges: [
+    { subscriber: "x_sub", producer: "vendor", facet: "X" },
+    { subscriber: "atomic_sub", producer: "spend", facet: ATOMIC_FACET },
+  ],
+  entry_points: [],
+  acyclic: true,
+};
+
+test("selectInputFingerprints consumes EXACTLY the subscribed facet (X), not the atomic token", () => {
+  const fps: Record<string, FingerprintMap> = {
+    vendor: { [ATOMIC_FACET]: "fp:whole-1", X: "fp:x-1", Y: "fp:y-1" },
+  };
+  const tuple = selectInputFingerprints(
+    FACETED_TOPOLOGY,
+    "x_sub",
+    (p) => fps[p]!,
+  );
+  // exactly one slot, carrying vendor.X's token — not the atomic/whole token.
+  deepEqual(tuple, ["fp:x-1"]);
+});
+
+test("selectInputFingerprints: a move in facet Y does NOT change an X-subscriber's tuple (selector boundary)", () => {
+  const before = selectInputFingerprints(
+    FACETED_TOPOLOGY,
+    "x_sub",
+    () => ({ [ATOMIC_FACET]: "fp:whole-1", X: "fp:x-1", Y: "fp:y-1" }),
+  );
+  // Y moved (and so the atomic/whole token moved), X held.
+  const after = selectInputFingerprints(
+    FACETED_TOPOLOGY,
+    "x_sub",
+    () => ({ [ATOMIC_FACET]: "fp:whole-2", X: "fp:x-1", Y: "fp:y-2" }),
+  );
+  deepEqual(before, after, "Y moving leaves the X-subscriber's tuple untouched");
+});
+
+test("selectInputFingerprints: a move in facet X DOES change the X-subscriber's tuple (it must wake)", () => {
+  const before = selectInputFingerprints(
+    FACETED_TOPOLOGY,
+    "x_sub",
+    () => ({ [ATOMIC_FACET]: "fp:whole-1", X: "fp:x-1", Y: "fp:y-1" }),
+  );
+  const after = selectInputFingerprints(
+    FACETED_TOPOLOGY,
+    "x_sub",
+    () => ({ [ATOMIC_FACET]: "fp:whole-2", X: "fp:x-2", Y: "fp:y-1" }),
+  );
+  deepEqual(before, ["fp:x-1"]);
+  deepEqual(after, ["fp:x-2"]);
+});
+
+test("selectInputFingerprints: an atomic-only subscriber resolves the whole-truth token (unchanged behavior)", () => {
+  const tuple = selectInputFingerprints(
+    FACETED_TOPOLOGY,
+    "atomic_sub",
+    () => atomic("fp:spend-1"),
+  );
+  deepEqual(tuple, ["fp:spend-1"]);
+});
+
+test("selectInputFingerprints: an atomic-only subscriber of a faceted producer still resolves the atomic token", () => {
+  // subscriber declares no facet (ATOMIC_FACET) but the producer has facets;
+  // it consumes the whole-truth token, so it wakes on ANY change (world-model.md §3).
+  const topo: TopologyWorldModel = {
+    nodes: [],
+    edges: [{ subscriber: "whole_sub", producer: "vendor", facet: ATOMIC_FACET }],
+    entry_points: [],
+    acyclic: true,
+  };
+  const tuple = selectInputFingerprints(topo, "whole_sub", () => ({
+    [ATOMIC_FACET]: "fp:whole-9",
+    X: "fp:x",
+    Y: "fp:y",
+  }));
+  deepEqual(tuple, ["fp:whole-9"]);
 });
 
 // --- propagation by topology edge (architecture.md §4.1, §6.3) ---

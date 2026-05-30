@@ -34,6 +34,7 @@ import {
   type RenderRequest,
   type WakeEvent,
   COLD_START_ATOMIC_FINGERPRINT,
+  createFacetGranularResolver,
   createReconciler,
   inboundEdges,
   memoKeyMoved,
@@ -653,6 +654,177 @@ test("reconcile: a node missing from the compiled topology throws (Forme must ru
 // --------------------------------------------------------------------------
 // no judge: there is no model call on a skip
 // --------------------------------------------------------------------------
+
+// --------------------------------------------------------------------------
+// THE HEADLINE EVAL — facet-granular propagation (the selector boundary).
+//
+// A 2-producer-facet node "vendor" exposes facets X and Y (plus the atomic
+// whole-truth token). "x_sub" Requires only vendor.X. The run half must:
+//   - move facet Y (and the atomic token)  ⇒ x_sub SKIPS (its tuple held);
+//   - move facet X                          ⇒ x_sub WAKES (its tuple moved);
+//   - an atomic-only subscriber behaves byte-identically to the old path;
+//   - the diamond still reconverges to ONE wake per distinct input tuple.
+// (architecture.md §3.2 selector boundary; world-model.md §3; SHAPES §3.)
+// --------------------------------------------------------------------------
+
+/**
+ * Reconciler wired with the REAL facet-granular resolver
+ * (`createFacetGranularResolver`) over a mutable producer-fingerprints table —
+ * so moving a single facet exercises the genuine run-half selector, not a
+ * hand-fed tuple.
+ */
+function facetHarness(input: {
+  topology: TopologyWorldModel;
+  contract_fingerprints: Record<string, Fingerprint>;
+  producerFingerprints: Record<string, FingerprintMap>;
+}): {
+  reconciler: ReturnType<typeof createReconciler>;
+  ledger: FakeLedger;
+  renderCount: () => number;
+  setProducer: (node: string, fps: FingerprintMap) => void;
+} {
+  const ledger = new FakeLedger();
+  const table = { ...input.producerFingerprints };
+  let renderCount = 0;
+  let renderSeq = 0;
+
+  const ports: ReconcilerPorts = {
+    ledger,
+    worldModel: { publishedRef: (node) => fakeWorldModelRef(node) },
+    resolveInputFingerprints: createFacetGranularResolver(
+      input.topology,
+      (producer) => table[producer] ?? atomic("cold"),
+    ),
+    spawnRender: (req) => {
+      renderCount += 1;
+      renderSeq += 1;
+      // A subscriber's render publishes its own fresh atomic truth; a producer's
+      // published facets are driven by the test via setProducer.
+      const existing = table[req.node];
+      const commit: WorldModelCommit = {
+        node: req.node,
+        version: ("sha256:" +
+          ("c".repeat(63) + String(renderSeq % 10))) as ContentAddress,
+        fingerprints: existing ?? atomic(`r${renderSeq}`),
+      };
+      return { status: "rendered", commit, semantic_diff: {}, cost: RENDER_COST };
+    },
+  };
+  const topo: ReconcilerTopology = {
+    topology: input.topology,
+    contract_fingerprints: input.contract_fingerprints,
+  };
+  return {
+    reconciler: createReconciler(ports, topo),
+    ledger,
+    renderCount: () => renderCount,
+    setProducer: (node, fps) => {
+      table[node] = fps;
+    },
+  };
+}
+
+const FACETED_TOPOLOGY: TopologyWorldModel = {
+  nodes: [
+    { node: "vendor", contract_fingerprint: CONTRACT_A, wake_source: "input" },
+    { node: "x_sub", contract_fingerprint: CONTRACT_B, wake_source: "input" },
+  ],
+  edges: [{ subscriber: "x_sub", producer: "vendor", facet: "X" }],
+  entry_points: ["vendor"],
+  acyclic: true,
+};
+
+test("facet eval: move facet Y (X held) ⇒ the X-subscriber SKIPS", () => {
+  const h = facetHarness({
+    topology: FACETED_TOPOLOGY,
+    contract_fingerprints: { vendor: CONTRACT_A, x_sub: CONTRACT_B },
+    producerFingerprints: {
+      vendor: { [ATOMIC_FACET]: "fp:whole-1", X: "fp:x-1", Y: "fp:y-1" },
+    },
+  });
+  // Cold render of x_sub establishes its last receipt (tuple = [fp:x-1]).
+  const cold = h.reconciler.reconcile({ node: "x_sub", wake: inputWake });
+  equal(cold.disposition, "rendered");
+  // Move ONLY facet Y (the atomic whole-token moves too; X holds).
+  h.setProducer("vendor", { [ATOMIC_FACET]: "fp:whole-2", X: "fp:x-1", Y: "fp:y-2" });
+  const after = h.reconciler.reconcile({ node: "x_sub", wake: inputWake });
+  equal(after.disposition, "skipped", "Y moving must NOT wake an X-subscriber");
+  equal(h.renderCount(), 1, "no second render — the selector boundary held");
+});
+
+test("facet eval: move facet X ⇒ the X-subscriber WAKES", () => {
+  const h = facetHarness({
+    topology: FACETED_TOPOLOGY,
+    contract_fingerprints: { vendor: CONTRACT_A, x_sub: CONTRACT_B },
+    producerFingerprints: {
+      vendor: { [ATOMIC_FACET]: "fp:whole-1", X: "fp:x-1", Y: "fp:y-1" },
+    },
+  });
+  h.reconciler.reconcile({ node: "x_sub", wake: inputWake }); // cold render
+  // Move facet X (Y holds).
+  h.setProducer("vendor", { [ATOMIC_FACET]: "fp:whole-2", X: "fp:x-2", Y: "fp:y-1" });
+  const after = h.reconciler.reconcile({ node: "x_sub", wake: inputWake });
+  equal(after.disposition, "rendered", "X moving must wake the X-subscriber");
+  equal(h.renderCount(), 2);
+});
+
+test("facet eval: an atomic-only subscriber wakes on ANY producer change (unchanged behavior)", () => {
+  const atomicTopology: TopologyWorldModel = {
+    nodes: [],
+    edges: [{ subscriber: "a_sub", producer: "vendor", facet: ATOMIC_FACET }],
+    entry_points: ["vendor"],
+    acyclic: true,
+  };
+  const h = facetHarness({
+    topology: atomicTopology,
+    contract_fingerprints: { vendor: CONTRACT_A, a_sub: CONTRACT_B },
+    producerFingerprints: {
+      vendor: { [ATOMIC_FACET]: "fp:whole-1", X: "fp:x-1", Y: "fp:y-1" },
+    },
+  });
+  h.reconciler.reconcile({ node: "a_sub", wake: inputWake }); // cold render
+  // Move ONLY facet Y; the atomic whole-token moves, so the atomic-only sub wakes.
+  h.setProducer("vendor", { [ATOMIC_FACET]: "fp:whole-2", X: "fp:x-1", Y: "fp:y-2" });
+  const after = h.reconciler.reconcile({ node: "a_sub", wake: inputWake });
+  equal(
+    after.disposition,
+    "rendered",
+    "an atomic-only subscriber wakes on any whole-truth move",
+  );
+});
+
+test("facet eval (diamond): a subscriber reachable by two moved facets of one producer wakes ONCE", () => {
+  // x_sub subscribes to BOTH vendor.X and vendor.Y — the diamond. When the
+  // producer renders and both facets move, the subscriber is woken exactly once
+  // per distinct input-fingerprint tuple (world-model.md §3 "renders once per
+  // distinct input-fingerprint tuple, not once per inbound edge").
+  const diamond: TopologyWorldModel = {
+    nodes: [],
+    edges: [
+      { subscriber: "x_sub", producer: "vendor", facet: "X" },
+      { subscriber: "x_sub", producer: "vendor", facet: "Y" },
+    ],
+    entry_points: ["vendor"],
+    acyclic: true,
+  };
+  const h = facetHarness({
+    topology: diamond,
+    contract_fingerprints: { vendor: CONTRACT_A, x_sub: CONTRACT_B },
+    producerFingerprints: {
+      vendor: { [ATOMIC_FACET]: "fp:whole-1", X: "fp:x-1", Y: "fp:y-1" },
+    },
+  });
+  // Seed x_sub's last receipt against the cold producer.
+  h.reconciler.reconcile({ node: "x_sub", wake: inputWake });
+  const before = h.renderCount();
+  // Move BOTH X and Y, then drive the producer through a drain so it propagates.
+  h.setProducer("vendor", { [ATOMIC_FACET]: "fp:whole-2", X: "fp:x-2", Y: "fp:y-2" });
+  const results = h.reconciler.drain([{ node: "vendor", wake: externalWake }]);
+  const xWakes = results.filter((r) => r.node === "x_sub");
+  equal(xWakes.length, 1, "the diamond reconverges to ONE wake, not one per edge");
+  equal(xWakes[0]?.disposition, "rendered");
+  equal(h.renderCount(), before + 2, "one vendor render + one single x_sub render");
+});
 
 test("no judge: a skip never invokes the render (the harness never asks an LLM 'did this change')", () => {
   let rendered = 0;

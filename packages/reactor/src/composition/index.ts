@@ -37,7 +37,13 @@ import {
   type TopologyWorldModel,
   type WorldModelRef,
   makeMemoKey,
+  resolveFacetFingerprint,
 } from "../shapes";
+
+// The subscriber's facet resolver is the ONE read-half of a FingerprintMap and
+// lives in `../shapes`; re-exported so consumers of the composition barrel keep
+// reaching it here (world-model.md §5; the run-half selector keys on it).
+export { resolveFacetFingerprint } from "../shapes";
 
 const CONTENT_ADDRESS_PATTERN = /^sha256:[a-f0-9]{64}$/;
 
@@ -104,30 +110,6 @@ export function pinConsumedWorldModel(input: PinInputV): ConsumedReceiptPin {
   const fingerprint = resolveFacetFingerprint(input.fingerprints, facet);
 
   return { producer: input.producer, facet, version, fingerprint };
-}
-
-/**
- * Resolve a producer's token for a facet from its published fingerprint map. A
- * declared facet uses its own key; an undeclared facet resolves through the
- * reserved `ATOMIC_FACET` whole-truth token (world-model.md §5). The atomic
- * token must always be present (SHAPES §1).
- */
-export function resolveFacetFingerprint(
-  fingerprints: FingerprintMap,
-  facet: Facet,
-): Fingerprint {
-  assertFingerprintMap(fingerprints, "fingerprints");
-
-  const declared = fingerprints[facet];
-  if (declared !== undefined) {
-    return declared;
-  }
-
-  const atomic = fingerprints[ATOMIC_FACET];
-  if (atomic === undefined) {
-    throw new Error(`fingerprints is missing the reserved ${ATOMIC_FACET} token`);
-  }
-  return atomic;
 }
 
 // ---------------------------------------------------------------------------
@@ -282,6 +264,50 @@ export function buildInputFingerprints(
   }
 
   return Object.freeze(fingerprints);
+}
+
+/**
+ * Resolve a subscriber's `input_fingerprints` tuple from the CURRENT published
+ * truth of its upstreams — the run-half selector (architecture.md §4.1; SHAPES
+ * §3). This is the sibling of `buildInputFingerprints`: that one reads the pins
+ * a render captured at start; this one reads the producers' *current* published
+ * `{facet → token}` maps so the reconciler can compare the tuple against the
+ * node's last receipt BEFORE deciding to render.
+ *
+ * It consumes EXACTLY the subscribed facets: each topology edge
+ * `subscriber.Requires.<facet>` → `producer.Maintains.<facet>` (§6.3) yields one
+ * slot, and the token is resolved per-facet via `resolveFacetFingerprint` — so a
+ * move in facet *Y* leaves an *X*-subscriber's tuple untouched and it skips
+ * (architecture.md §3.2 "wakes only when `#### funding`'s fingerprint moves — not
+ * when hiring or launches move … React's selector boundary"; world-model.md §3
+ * "a downstream that subscribes to facet *X* does not wake when facet *Y*
+ * moves"). The order is the resolved subscription order so the tuple is stable
+ * across renders (SHAPES §3). An atomic-only subscriber (its edge facet is
+ * `ATOMIC_FACET`, or the producer declares no facets) resolves the whole-truth
+ * token — behaving exactly as the atomic-only path always has (world-model.md
+ * §5; SHAPES §1).
+ *
+ * `producerFingerprints` returns the producer's current published fingerprint
+ * map (the world-model store's `publishedFingerprints(node)` — its cold-start
+ * default is the empty-artifact atomic token, so a never-rendered producer still
+ * yields a defined token, architecture.md §8).
+ */
+export function selectInputFingerprints(
+  topology: TopologyWorldModel,
+  subscriber: string,
+  producerFingerprints: (producer: string) => FingerprintMap,
+): InputFingerprints {
+  const subscriptions = resolveSubscriptions(topology, subscriber);
+  if (typeof producerFingerprints !== "function") {
+    throw new Error("producerFingerprints must be a function");
+  }
+  const tokens = subscriptions.map((subscription) =>
+    resolveFacetFingerprint(
+      producerFingerprints(subscription.producer),
+      subscription.facet,
+    ),
+  );
+  return Object.freeze(tokens);
 }
 
 /**
