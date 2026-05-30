@@ -19,18 +19,13 @@ an auditor or internal owner before review windows become urgent.
 
 ### Maintains
 
-- `controls`: per-control evidence truth, with `status`, `gaps`, and `register`
-  facets
+- `controls`: per-control evidence truth. Its subscribable parts are the three
+  `####` facets below — each `####` part *is* a facet (fingerprint unit +
+  `Requires.<facet>` ↔ `Maintains.<facet>` subscription symbol +
+  `published/<facet>/…` subtree).
 - each control has: a named owner, framework mapping, evidence requirement,
   current artifact reference, freshness status, review status, and known gaps
-- `status` facet (material): per-control readiness (`accepted`, `stale`,
-  `missing`, `exception`, or `needs-human-review`) with cited evidence and
-  confidence
-- `gaps` facet (material): owner-ready follow-up grouped by control owner with
-  severity, due date, and audit-ready notes
-- `register` facet (material): durable evidence history — fingerprints, exception
-  context, owner follow-up, and next review timing — preserved across renders
-- immaterial: scan timestamps and source request ids
+- immaterial everywhere: scan timestamps and source request ids
 - freshness: each control carries `last_reviewed` and a `valid_until` that lapses
   on the weekly (audit-prep) or monthly (otherwise) cadence
 - postcondition: every accepted evidence artifact has a source reference, review
@@ -38,6 +33,23 @@ an auditor or internal owner before review windows become urgent.
 - postcondition: every gap has a named owner, reason, severity, and next action
 - postcondition: unverified screenshots, informal notes, or expired exports are
   never accepted without marking the risk
+
+#### status
+
+Material: per-control readiness (`accepted`, `stale`, `missing`, `exception`, or
+`needs-human-review`) with cited evidence and confidence. A readiness dashboard
+subscribes here and wakes when a control's status moves, not when the gap queue
+or evidence register churns.
+
+#### gaps
+
+Material: owner-ready follow-up grouped by control owner with severity, due date,
+and audit-ready notes.
+
+#### register
+
+Material: durable evidence history — fingerprints, exception context, owner
+follow-up, and next review timing — preserved across renders.
 
 ### Continuity
 

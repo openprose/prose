@@ -226,13 +226,14 @@ describe("examples corpus — memory-fold (delta.md §B7 MEMORY-FOLD)", () => {
 
 	it("a responsibility that absorbed a ledger now keeps a durable `history`/register facet in its WM", () => {
 		// delta.md §B7 L385-L390: the ledger held decision history; that becomes a facet.
+		// delta.md Part G L548-L555: facets are declared as `#### <facet>` named parts.
 		const risk = read(
 			join(
 				examplesDir,
 				"customer-risk-radar/src/customer-risk-maintained.prose.md",
 			),
 		);
-		expect(risk).toMatch(/`history` facet/);
+		expect(risk).toMatch(/^#### history\b/m);
 		expect(risk).toMatch(/prior risk decisions/i);
 	});
 });

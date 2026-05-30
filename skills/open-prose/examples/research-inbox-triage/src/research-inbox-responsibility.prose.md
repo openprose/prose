@@ -21,21 +21,34 @@ next actions for the team's active questions.
 
 ### Maintains
 
-- `triage`: the current triage truth, with `report`, `topics`, and `ignored`
-  facets
-- `report` facet (material): a scan-friendly summary of clusters, priorities,
-  and next actions — each follow-up names an owner role, next step, and reason
-- `topics` facet (material): durable topic clusters, canonical sources, and
-  duplicate cross-references, carried forward across renders
-- `ignored` facet (material): items that do not deserve follow-up, with enough
-  rationale to avoid repeated re-triage
-- immaterial: scan timestamps and submission receipt ids
+- `triage`: the current triage truth. Its subscribable parts are the three
+  `####` facets below — each `####` part *is* a facet, naming its own fingerprint
+  unit, its `Requires.<facet>` ↔ `Maintains.<facet>` subscription symbol, and its
+  `published/<facet>/…` subtree.
+- immaterial everywhere: scan timestamps and submission receipt ids
 - postcondition: each item is either linked to an existing cluster or starts a
   new cluster with a concise rationale
 - postcondition: priority reflects relevance to active questions, novelty,
   credibility, and urgency
 - postcondition: the strongest source is preserved for any duplicate set; an
   item is never discarded solely because it is duplicated
+
+#### report
+
+Material: a scan-friendly summary of clusters, priorities, and next actions —
+each follow-up names an owner role, next step, and reason. A downstream that
+surfaces the triage report subscribes here and wakes when priorities move, not
+when the topic register or ignore list churns.
+
+#### topics
+
+Material: durable topic clusters, canonical sources, and duplicate
+cross-references, carried forward across renders.
+
+#### ignored
+
+Material: items that do not deserve follow-up, with enough rationale to avoid
+repeated re-triage.
 
 ### Continuity
 

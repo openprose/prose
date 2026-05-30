@@ -201,6 +201,107 @@ describe("contract-markdown format doc — sections (delta.md §B2)", () => {
 	});
 });
 
+describe("contract-markdown format doc — Maintains teaches #### facets (delta.md Part G)", () => {
+	function maintains(): string {
+		const source = doc();
+		// The dedicated facet section lives under the ## Maintains *section
+		// heading* (anchor on the newline so we skip earlier `### Maintains`
+		// substrings), before the ## Continuity section heading.
+		return source.slice(
+			source.indexOf("\n## Maintains\n"),
+			source.indexOf("\n## Continuity\n"),
+		);
+	}
+
+	it("declares the named-parts rule: a #### sub-heading inside ### Maintains IS a facet", () => {
+		// architecture.md §3.2 ("the named-parts rule"); §10.2 (DECIDED: named parts);
+		// world-model.md §9.5 (RESOLVED); delta.md Part G.
+		const m = maintains();
+		expect(m).toMatch(/named-parts rule/i);
+		expect(m).toMatch(/`#### \{name\}` sub-heading inside `### Maintains`/);
+		expect(m).toMatch(/\*\*is\*\* a facet/i);
+	});
+
+	it("names the facet in three places: fingerprint unit, subscription symbol, world-model subtree", () => {
+		// architecture.md §3.2: "the same name in three places at once".
+		const m = maintains();
+		expect(m).toMatch(/fingerprint unit/i);
+		expect(m).toMatch(/subscription symbol/i);
+		expect(m).toMatch(/world-model subtree/i);
+		expect(m).toMatch(/published\/<facet>/);
+	});
+
+	it("states naming no parts is the atomic default (the leaf-node case)", () => {
+		// world-model.md §9.5; architecture.md §10.2: atomic-only stays the default.
+		const m = maintains();
+		expect(m).toMatch(/atomic facet/i);
+		expect(m).toMatch(/atomic-only.+v1 default|default.+atomic-only/is);
+	});
+
+	it("carries the worked competitor-activity-monitor example with three #### facets", () => {
+		// architecture.md §3.2 worked example: funding / hiring / product-launches.
+		const m = maintains();
+		expect(m).toContain("#### funding");
+		expect(m).toContain("#### hiring");
+		expect(m).toContain("#### product-launches");
+		// The selector boundary: a funding subscriber does not wake on hiring/launches.
+		expect(m.replace(/\s+/g, " ")).toMatch(
+			/`### Requires` \*funding\* wakes only when `#### funding`/,
+		);
+	});
+
+	it("documents the Requires.<facet> <-> Maintains.<facet> symmetry and the unchanged memo key", () => {
+		// architecture.md §6.3 (edges) + delta.md Part G (memo key unchanged).
+		const m = maintains().replace(/\s+/g, " ");
+		expect(m).toMatch(/Requires\.<facet>.+Maintains\.<facet>/);
+		expect(m).toMatch(/memo key is unchanged/i);
+		expect(m).toMatch(/\(contract_fingerprint, input_fingerprints\)/);
+	});
+
+	it("retires the 'inline vs sub-block — open' ergonomics caveat", () => {
+		// delta.md Part G: replace the L396 open-ergonomics note. The decision is
+		// settled (named parts), so the doc must not call the syntax open anymore.
+		const flatDoc = flat();
+		expect(flatDoc).not.toMatch(/inline vs a sub-block/i);
+		expect(flatDoc).not.toMatch(/open ergonomics question/i);
+		expect(flatDoc).not.toMatch(/physically sit inside the block/i);
+	});
+});
+
+describe("contract-markdown format doc — Header Hierarchy marks #### semantic (delta.md Part G)", () => {
+	function hierarchy(): string {
+		const source = doc();
+		return source.slice(
+			source.indexOf("## Header Hierarchy"),
+			source.indexOf("## Canonical Sections"),
+		);
+	}
+
+	it("marks #### inside ### Maintains as a semantic facet, not free-form documentation", () => {
+		// architecture.md §3.2 / §10.2: #### inside Maintains is a facet.
+		const h = hierarchy();
+		expect(h).toMatch(/`####` inside `### Maintains`/);
+		expect(h).toMatch(/Semantic: a facet/i);
+		// The legacy "Free-form nested documentation" meaning is now scoped to
+		// "elsewhere", never to #### inside Maintains/Requires.
+		expect(h).not.toMatch(/\| `####`\+ \| Free-form nested documentation/);
+	});
+
+	it("marks #### inside ### Requires as a semantic facet-need", () => {
+		// architecture.md §6.3: Requires.<facet> is the subscription symbol.
+		const h = hierarchy();
+		expect(h).toMatch(/`####` inside `### Requires`/);
+		expect(h).toMatch(/Semantic: a facet-need/i);
+		expect(h).toMatch(/Requires\.<facet>.+Maintains\.<facet>/);
+	});
+
+	it("keeps #### elsewhere as free-form nested documentation", () => {
+		const h = hierarchy();
+		expect(h).toMatch(/`####`\+ elsewhere/);
+		expect(h).toMatch(/Free-form nested documentation/);
+	});
+});
+
 describe("contract-markdown format doc — composition + render body", () => {
 	it("keeps ### Execution as the intra-node ProseScript render body", () => {
 		// plan.md §7; architecture.md §7.2.

@@ -218,6 +218,55 @@ fingerprint** (`world-model.md` §3, the structured-backing rule) — otherwise 
 LLM re-rendering the same paragraph hashes differently every time and falsely
 re-triggers downstreams. Fingerprint the structured truth; render prose *from* it.
 
+#### Faceted layout — one subtree per facet
+
+When a node's `### Maintains` declares facets by **naming the parts** (a `####`
+sub-heading inside `### Maintains` *is* a facet — the named-parts rule,
+`delta.md` Part G; `world-model.md` §3, "Declaring facets"), the published
+artifact lays each facet out as its own subtree under the node directory:
+`published/<facet>/…`. The directory structure *is* the subscription surface —
+the same name is the facet's fingerprint unit, its
+`Requires.<facet>` ↔ `Maintains.<facet>` subscription symbol, and its on-disk
+region. The canonical `competitor-activity-monitor` example
+(`examples/competitor-activity/`) declares `#### funding`, `#### hiring`, and
+`#### product-launches`, so its published artifact is:
+
+```
+world-model/
+└── competitor-activity-monitor/
+    ├── competitors.md          # shared, un-facetted fields (name, last_corroborated)
+    ├── published/
+    │   ├── funding/            # #### funding facet subtree
+    │   │   └── events.md       # structured funding events (round, amount, date)
+    │   ├── hiring/             # #### hiring facet subtree
+    │   │   └── roles.md        # department set + open-role count
+    │   └── product-launches/   # #### product-launches facet subtree
+    │       └── launches.md     # launch set + shipped status
+    └── .version                # ContentAddress of this committed version
+```
+
+**The fingerprinting rule with facets** (`world-model.md` §3; the
+canonical-serialization pass below):
+
+- The **atomic `@atomic` token is computed over the whole `published/` tree** —
+  every facet subtree plus the shared un-facetted fields — and is always emitted.
+  It is the diamond-reconvergence primitive and the free default.
+- Each declared facet additionally emits **one token computed over only its
+  subtree's material content**. A downstream that `### Requires` `funding` and
+  resolves to `#### funding` subscribes to that facet's token: a move in
+  `published/hiring/` advances the `hiring` token and the `@atomic` token but
+  **not** the `funding` token, so the funding-only subscriber does not wake (the
+  selector boundary, `world-model.md` §3).
+- Shared un-facetted fields (here `competitors.md`'s `name` /
+  `last_corroborated`) sit *outside* any `published/<facet>/` subtree, so they
+  move only the `@atomic` token.
+
+Atomic-only nodes (no `####` parts) keep the flat layout above — facets are
+purely additive, and the `@atomic` token over the whole artifact is unchanged.
+Correctness holds either way (the canonicalizer fingerprints over normalized
+paths regardless); the subtree layout is what makes "the directory *is* the
+state" literally true for a faceted node.
+
 ---
 
 ## The Canonical-Serialization-Before-Fingerprint Pass
@@ -237,8 +286,9 @@ canonicalize (drop immaterial) → fingerprint → sign receipt*:
    (`fetched_at`, request ids, cosmetic ordering), normalize sets/numbers/text to
    declared tolerances. This yields the **canonical (material) form**.
 4. **Fingerprint** = a plain digest over the canonical material form, producing
-   the `FingerprintMap` — the atomic `@atomic` token always, plus one token per
-   declared facet.
+   the `FingerprintMap` — the atomic `@atomic` token (over the whole `published/`
+   tree) always, plus one token per declared facet (over only that
+   `published/<facet>/` subtree's material content; see *Faceted layout* above).
 5. **Compare** against the node's prior receipt `fingerprints`. If nothing moved,
    write a `skipped` receipt (unchanged fingerprints copied forward, empty
    `semantic_diff`, zero `cost`) and **publish nothing new**. If a fingerprint

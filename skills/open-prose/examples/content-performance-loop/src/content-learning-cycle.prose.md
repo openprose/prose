@@ -23,16 +23,11 @@ performance rather than preference or recency bias.
 
 ### Maintains
 
-- `learning`: the current editorial learning truth, with `brief`, `actions`, and
-  `history` facets
-- `brief` facet (material): a concise editorial summary of what changed, why it
-  likely changed, evidence highlights, caveats, and decisions needed
-- `actions` facet (material): a prioritized follow-up queue for refreshes,
-  experiments, distribution, or measurement cleanup, each with an owner role,
-  intended outcome, and evidence rationale
-- `history` facet (material): prior recommendations and recorded learnings per
-  content series, preserved so repeat reads are explained, not rediscovered
-- immaterial: export pull timestamps and source request ids
+- `learning`: the current editorial learning truth. Its subscribable parts are
+  the three `####` facets below — each `####` part *is* a facet (fingerprint unit
+  + `Requires.<facet>` ↔ `Maintains.<facet>` subscription symbol +
+  `published/<facet>/…` subtree).
+- immaterial everywhere: export pull timestamps and source request ids
 - freshness: `last_reviewed` and a `valid_until` that lapses on the weekly cadence
 - postcondition: the review distinguishes traffic quality, conversion quality,
   distribution lift, and audience fit
@@ -40,6 +35,24 @@ performance rather than preference or recency bias.
   losing URLs
 - postcondition: each lesson names the evidence it depends on and the caveat that
   could weaken it
+
+#### brief
+
+Material: a concise editorial summary of what changed, why it likely changed,
+evidence highlights, caveats, and decisions needed. A digest or dashboard
+consumer subscribes here and wakes when the summary moves, not when the action
+queue or learning history churns.
+
+#### actions
+
+Material: a prioritized follow-up queue for refreshes, experiments, distribution,
+or measurement cleanup, each with an owner role, intended outcome, and evidence
+rationale.
+
+#### history
+
+Material: prior recommendations and recorded learnings per content series,
+preserved so repeat reads are explained, not rediscovered.
 
 ### Continuity
 

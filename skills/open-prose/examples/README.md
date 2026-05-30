@@ -16,6 +16,10 @@ moved — so cost scales with surprise, not the clock.
 
 ## Examples
 
+- [competitor-activity](./competitor-activity/) is the canonical **named-parts
+  (facet)** example: one `### Maintains` declares `#### funding`, `#### hiring`,
+  and `#### product-launches` as independently-subscribable facets, so a
+  downstream wakes only when the part it watches moves.
 - [stargazer-outreach](./stargazer-outreach/) keeps high-intent GitHub
   stargazers enriched and ready for thoughtful follow-up.
 - [incident-briefing-room](./incident-briefing-room/) keeps an incident channel

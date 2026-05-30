@@ -148,23 +148,36 @@ A current, corroborated view of each tracked competitor's material activity.
 
 ### Requires
 
-- `funding-signals`: a current view of competitor funding events
-- `hiring-signals`: a current view of competitor hiring activity
+- `funding`: a current view of competitor funding events
+- `hiring`: a current view of competitor hiring activity
 
 ### Maintains
 
-- `competitors`: per-competitor truth with `funding`, `hiring`, and
-  `product-launches` facets
-- each competitor has: a name, the latest material events, and a
-  `last_corroborated` freshness field
-- material: the event set and corroboration status; immaterial: `fetched_at`
-  timestamps and source request ids
-- postcondition: every listed competitor cites at least one corroborating source
+A current, corroborated view of each tracked competitor. Each competitor carries a
+stable `name` and a `last_corroborated` field; `fetched_at` and source request-ids
+are immaterial everywhere. Postcondition: every competitor cites a corroborating
+source.
+
+#### funding
+Funding events per competitor — round, amount, date. Material: the event set
+(unordered) and each event's round/amount/date.
+
+#### hiring
+Open-role activity — the department set and the open-role count (exact).
+
+#### product-launches
+Announced or shipped products — the launch set; a ship-date slipping past today
+flips `shipped`, which is material.
 
 ### Continuity
 
 - self-driven: re-check every 6h
 ````
+
+The three `####` parts under `### Maintains` are facets: a subscriber that
+`### Requires` *funding* wakes only when `#### funding`'s fingerprint moves. The
+`### Requires` bullets name the producer facet they subscribe to —
+`Requires.<facet>` ↔ `Maintains.<facet>`.
 
 ## Header Hierarchy
 
@@ -173,11 +186,18 @@ A current, corroborated view of each tracked competitor's material activity.
 | `#` | Optional human title. Ignored by Forme unless no frontmatter `name` exists. |
 | `##` | Inline responsibility/function boundary in multi-node files. |
 | `###` | Section inside the current responsibility, function, or gateway. |
-| `####`+ | Free-form nested documentation inside a section. |
+| `####` inside `### Maintains` | **Semantic: a facet.** A named, independently-subscribable part of the maintained truth (the named-parts rule, §[Facets](#facets--the-named-parts-rule)). Its name is the fingerprint unit, subscription symbol, and world-model subtree. |
+| `####` inside `### Requires` | **Semantic: a facet-need.** A named subscription to a producer's facet; Forme matches `Requires.<facet>` ↔ `Maintains.<facet>`. |
+| `####`+ elsewhere | Free-form nested documentation inside a section. |
 
 `##` is reserved for inline node names so a file can contain several
 responsibilities or functions without ambiguous parsing. Contract sections use
 `###` so they work uniformly in standalone files and inside inline nodes.
+
+Inside `### Maintains` and `### Requires`, a `####` sub-heading is **not** free-form
+documentation — it is a facet (a named part of the truth) or a facet-need (a named
+subscription to one). Everywhere else `####` is plain nested prose
+(`architecture.md` §3.2 / §10.2; `delta.md` Part G).
 
 ## Canonical Sections
 
@@ -187,8 +207,8 @@ Forme and the Prose VM recognize these `###` sections case-insensitively:
 |---------|------------|---------|
 | `### Description` | all | Human summary. Preserved for readers; not used as a contract |
 | `### Goal` | responsibility, gateway | The render's one-sentence standing intent |
-| `### Requires` | responsibility, pattern slots | Subscription contracts naming facet-level needs; Forme's match target (`Requires.<facet> ↔ Maintains.<facet>`) |
-| `### Maintains` | responsibility, gateway | The world-model **schema** — type, canonicalization spec, facets, and postconditions (see [Maintains](#maintains)) |
+| `### Requires` | responsibility, pattern slots | Subscription contracts naming facet-level needs; a `####` sub-heading is a facet-need. Forme's match target (`Requires.<facet> ↔ Maintains.<facet>`) |
+| `### Maintains` | responsibility, gateway | The world-model **schema** — type, canonicalization spec, facets (a `####` sub-heading is a facet, the named-parts rule), and postconditions (see [Maintains](#maintains)) |
 | `### Parameters` | function | Inputs the caller passes at call time |
 | `### Returns` | function | The value the function returns |
 | `### Continuity` | responsibility, gateway | The intrinsic wake-source declaration: input-driven, self-driven, or external-driven (see [Continuity](#continuity)) |
@@ -325,14 +345,22 @@ followed up with.
 
 ### Maintains
 
-- `outreach`: per-stargazer truth with `qualification`, `enrichment`, and
-  `contact-history` facets
-- each entry has: GitHub activity, company context, plausible pain, and the
-  outreach already sent
-- material: qualification verdict and contact history; immaterial: scan timestamps
-- postcondition: outreach is specific (a concrete program idea or sample result),
-  never generic
-- postcondition: a stargazer is never contacted twice without new evidence
+Per-stargazer outreach truth. Each entry carries GitHub activity, company context,
+plausible pain, and the outreach already sent; scan timestamps are immaterial.
+Postcondition: outreach is specific (a concrete program idea or sample result),
+never generic. Postcondition: a stargazer is never contacted twice without new
+evidence.
+
+#### qualification
+The qualification verdict per stargazer. Material: the verdict and its supporting
+signals.
+
+#### enrichment
+Company and profile context. Material: the resolved company, role, and plausible
+pain.
+
+#### contact-history
+What outreach has been sent. Material: each sent contact and its evidence basis.
 
 ### Continuity
 
@@ -366,10 +394,12 @@ standing, typed, subscribable artifact, so its declaration does **four jobs**
    normalize. This is the single highest-leverage memoization control: without
    it, a feed re-polled every few minutes always *looks* changed and "cost scales
    with surprise" degrades into "cost scales with the clock."
-3. **Facets** (optional) — named, independently-subscribable parts of the truth.
-   A downstream that subscribes to facet *X* does not wake when facet *Y* moves.
-   A single-truth (leaf) node declares none; its atomic world-model is the one
-   implicit facet, so a `### Requires` match still resolves.
+3. **Facets** (optional) — named, independently-subscribable parts of the truth,
+   declared by the **named-parts rule**: a `#### {name}` sub-heading inside
+   `### Maintains` *is* a facet. A downstream that subscribes to facet *X* does
+   not wake when facet *Y* moves. A single-truth (leaf) node declares no `####`
+   parts; its atomic world-model is the one implicit facet, so a `### Requires`
+   match still resolves. See [Facets — the named-parts rule](#facets--the-named-parts-rule).
 4. **Postconditions** — the folded-in `### Criteria`: validators the render must
    leave the truth satisfying before it signs. Not a separate judge beat; just
    conditions on the output. Deterministically-expressible postconditions are
@@ -393,9 +423,74 @@ subscribed fields that lack a structured backing.
 The world-model itself — the materialized truth the render writes and commits —
 is a content-addressable artifact, a directory by default. `### Maintains`
 describes its shape; `state/filesystem.md` describes its on-disk canonical form.
-(Where facet and material annotations physically sit inside the block — inline vs
-a sub-block — is an open ergonomics question; atomic-only is the v1 default,
-`world-model.md` §9.5.)
+
+### Facets — the named-parts rule
+
+A **facet** is a *named part* of a maintained truth, and authors declare facets
+simply by **naming the parts**: a `#### {name}` sub-heading inside `### Maintains`
+**is** a facet, and its body describes that part's fields and which are material —
+in prose. Name no parts and the node has one truth: the **atomic facet**, the free
+default that costs nothing. Atomic-only — no `####` parts — is the v1 default and
+the leaf-node case (`world-model.md` §9.5; `architecture.md` §10.2 records the
+decision: *"a `####` sub-heading inside `### Maintains` declares a facet … Atomic-only
+(no `####`) stays the default"*).
+
+The name an author writes is the **same name in three places at once**
+(`architecture.md` §3.2, "the named-parts rule"; `delta.md` Part G):
+
+1. **Fingerprint unit** — the compiled canonicalizer emits one token per `####`
+   part, plus the always-on atomic token over the whole truth. A part moves only
+   *its* token; fields that sit outside any part move only the atomic token.
+2. **Subscription symbol** — a consumer names the part in `### Requires`, and the
+   reconciler wakes that consumer only when *that* part's token moves. The join is
+   `Requires.<facet>` ↔ `Maintains.<facet>` (`architecture.md` §6.3: edges are
+   `subscriber.Requires.<facet-contract>` → `producer.Maintains.<facet>`).
+3. **World-model subtree** — the part is a named region of the content-addressed
+   artifact, `published/<facet>/…`, so "the directory structure *is* the state"
+   shows the facets literally (`state/filesystem.md`).
+
+Faceting therefore adds **no new grammar**: it reuses the heading hierarchy the
+format already has (`####` = structure inside a `###` section), the
+Requires↔Maintains join already specified, and the directory store. *Structure is
+subscription.* Material/immaterial and normalization stay prose **inside** each
+part, lowered at compile time into that part's facet name + material field-paths;
+a part subscribed without a structured backing is a lint (the structured-backing
+rule, above).
+
+Worked example — the competitor-activity monitor maintains three subscribable
+parts:
+
+````markdown
+### Maintains
+
+A current, corroborated view of each tracked competitor. Each competitor carries
+a stable `name` and a `last_corroborated` field; `fetched_at` and source
+request-ids are immaterial everywhere. Postcondition: every competitor cites a
+corroborating source.
+
+#### funding
+Funding events per competitor — round, amount, date. Material: the event set
+(unordered) and each event's round/amount/date.
+
+#### hiring
+Open-role activity — the department set and the open-role count (exact).
+
+#### product-launches
+Announced or shipped products — the launch set; a ship-date slipping past today
+flips `shipped`, which is material.
+````
+
+A downstream that `### Requires` *funding* wakes only when `#### funding`'s
+fingerprint moves — not when hiring or launches move. The shared `name` /
+`last_corroborated` sit outside any part, so they move only the atomic token. This
+is React's selector boundary made authorable.
+
+The symmetry is total: a producer's `#### funding` part under `### Maintains` is
+exactly the symbol a subscriber names in its `### Requires` (`Requires.funding`
+↔ `Maintains.funding`). The memo key is unchanged — `(contract_fingerprint,
+input_fingerprints)`; facet granularity lives in *which* input-fingerprints a
+subscriber consumes (one per subscribed facet), not in the key shape
+(`delta.md` Part G).
 
 ## Continuity
 

@@ -181,13 +181,14 @@ describe("vendor-renewal-watch — a `gateway` for external input (plan.md §3/�
 });
 
 describe("vendor-renewal-watch — facets routing propagation (world-model.md §3/§5)", () => {
-	it("the assessor declares recommendation / history / ownership facets", () => {
-		const source = flat("vendor-renewals-prepared.prose.md");
+	it("the assessor declares recommendation / history / ownership facets as #### named parts", () => {
+		const source = read("vendor-renewals-prepared.prose.md");
 		// world-model.md §3 L151-L157: facets make propagation finer-grained.
+		// delta.md Part G L548-L555: a `#### <facet>` sub-heading IS a facet.
 		expect(source).toMatch(/[Ff]acets/);
-		expect(source).toMatch(/`recommendation`/);
-		expect(source).toMatch(/`history`/);
-		expect(source).toMatch(/`ownership`/);
+		expect(source).toMatch(/^#### recommendation\b/m);
+		expect(source).toMatch(/^#### history\b/m);
+		expect(source).toMatch(/^#### ownership\b/m);
 	});
 
 	it("the brief writer subscribes to the `recommendation` facet ONLY (selector, not atomic)", () => {

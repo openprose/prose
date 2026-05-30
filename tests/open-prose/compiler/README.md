@@ -68,6 +68,28 @@ Expected shape:
 - does not invent provider-specific auth, subscription setup, queue names, or
   payload schemas
 
+### Compile Multi-Facet Fixture
+
+Run `prose compile tests/open-prose/compiler/fixtures/multi-facet`.
+
+Expected shape:
+
+- discovers a producer whose `### Maintains` declares three `####` parts —
+  `#### funding`, `#### hiring`, `#### product-launches` — and a subscriber that
+  `### Requires` only `funding`
+- lowers each `####` part into a facet (facet name = heading text, paths = the
+  part's material fields), default-material within the part, and binds the shared
+  un-facetted `name` / `last_corroborated` to the atomic facet only (the
+  named-parts rule, `architecture.md` §3.2)
+- emits the producer canonicalizer with
+  `facets: ["@atomic", "funding", "hiring", "product-launches"]`
+- lowers the atomic-only subscriber `### Maintains` (no `####` parts) to
+  `facets: ["@atomic"]` — the free default
+- draws a facet-granular edge `funding-brief.Requires.funding ->
+  competitor-monitor.Maintains.funding` carrying `facet: "funding"`, not
+  `@atomic`
+- emits a compile-phase IR shaped like `expected/multi-facet.manifest.next.json`
+
 ### Compile Ambiguous Wiring Fixture
 
 Run `prose compile tests/open-prose/compiler/fixtures/ambiguous-fulfillment`.

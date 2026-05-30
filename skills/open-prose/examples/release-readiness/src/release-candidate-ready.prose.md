@@ -19,19 +19,30 @@ that a release owner can trust before shipping.
 
 ### Maintains
 
-- `readiness`: the current readiness truth, with `decision` and `history` facets
-- `decision` facet (material): candidate version, ship or hold recommendation,
-  blocking issues, non-blocking risks, validation evidence, user-facing notes,
-  rollback context, open questions, and next review timing
-- `history` facet (material): prior readiness decisions, repeated risks, and
-  unresolved follow-up, preserved across renders for rollback and retrospective
-- immaterial: render scan timestamps and event delivery ids
+- `readiness`: the current readiness truth. Its subscribable parts are the two
+  `####` facets below — each `####` part *is* a facet (fingerprint unit +
+  `Requires.<facet>` ↔ `Maintains.<facet>` subscription symbol +
+  `published/<facet>/…` subtree).
+- immaterial everywhere: render scan timestamps and event delivery ids
 - freshness: `valid_until` reflects the next review timing; during an active
   release window the brief should not be stale for more than one business day
 - postcondition: risk levels distinguish missing evidence from confirmed failures
 - postcondition: every ship or hold recommendation cites the evidence that drove it
 - postcondition: a ship recommendation never hides unresolved blockers in caveats,
   and rollback context is present before any ship recommendation is final
+
+#### decision
+
+Material: candidate version, ship or hold recommendation, blocking issues,
+non-blocking risks, validation evidence, user-facing notes, rollback context,
+open questions, and next review timing. A release-gate or notification consumer
+subscribes here and wakes when the ship/hold decision moves, not when the
+decision history is appended.
+
+#### history
+
+Material: prior readiness decisions, repeated risks, and unresolved follow-up,
+preserved across renders for rollback and retrospective.
 
 ### Continuity
 

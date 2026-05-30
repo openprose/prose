@@ -18,20 +18,30 @@ churn, renewal, or escalation windows become urgent.
 
 ### Maintains
 
-- `accounts`: per-account risk truth, with `risk` and `history` facets
+- `accounts`: per-account risk truth. Its subscribable parts are the two `####`
+  facets below — each `####` part *is* a facet (fingerprint unit +
+  `Requires.<facet>` ↔ `Maintains.<facet>` subscription symbol +
+  `published/<facet>/…` subtree).
 - each account has: current risk level, cited evidence, confidence, trend,
   likely cause, a concrete next action, the follow-up owner, and next-review
   timing
-- `risk` facet (material): the risk level, evidence set, confidence, trend, and
-  next action — a downstream that surfaces alerts subscribes here
-- `history` facet (material): prior risk decisions and owner handoffs, preserved
-  so repeat warnings are explained instead of rediscovered from scratch
-- immaterial: scan timestamps and source request ids
+- immaterial everywhere: scan timestamps and source request ids
 - freshness: each account carries `last_reviewed` and a `valid_until` that lapses
   on the weekly cadence
 - postcondition: every risk level is supported by multiple signals or explicitly
   marked low confidence
 - postcondition: every high-risk account names a next action and an owner handoff
+
+#### risk
+
+Material: the risk level, evidence set, confidence, trend, and next action. A
+downstream that surfaces alerts subscribes here and wakes when the live risk
+moves, not when the decision history is appended.
+
+#### history
+
+Material: prior risk decisions and owner handoffs, preserved so repeat warnings
+are explained instead of rediscovered from scratch.
 
 ### Continuity
 

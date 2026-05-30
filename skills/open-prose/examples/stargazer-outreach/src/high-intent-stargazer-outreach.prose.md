@@ -18,19 +18,28 @@ for thoughtful OpenProse outreach.
 
 ### Maintains
 
-- `outreach`: per-stargazer truth, with `qualification` and `contact-history`
-  facets
+- `outreach`: per-stargazer truth. Its subscribable parts are the two `####`
+  facets below — each `####` part *is* a facet (fingerprint unit +
+  `Requires.<facet>` ↔ `Maintains.<facet>` subscription symbol +
+  `published/<facet>/…` subtree).
 - each entry has: login, repository, first seen time, latest evidence, status,
   draft summary, and contact safety notes
-- `qualification` facet (material): fit verdict, evidence summary, outreach
-  angle, and recommended next action
-- `contact-history` facet (material): first seen time, prior contact decisions,
-  and duplicate-contact safeguards, preserved across renders
-- immaterial: enrichment scan timestamps and source request ids
+- immaterial everywhere: enrichment scan timestamps and source request ids
 - postcondition: recommended outreach names a specific workflow the person could
   reuse or adapt — never generic
 - postcondition: a stargazer is never contacted twice without new evidence
 - postcondition: final send decisions are left to a human owner
+
+#### qualification
+
+Material: fit verdict, evidence summary, outreach angle, and recommended next
+action. A downstream that drafts or queues outreach subscribes here and wakes
+when the verdict moves, not when contact history is appended.
+
+#### contact-history
+
+Material: first seen time, prior contact decisions, and duplicate-contact
+safeguards, preserved across renders.
 
 ### Continuity
 

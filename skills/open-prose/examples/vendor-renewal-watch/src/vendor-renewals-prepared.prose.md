@@ -56,33 +56,44 @@ history and watermark state.
 - `latest_signal_at`: the newest signal timestamp folded into this entry
   (watermark state — used by the canonicalizer's material/immaterial split)
 
-**Canonicalization spec** (what equality means for the fingerprint):
+**Canonicalization spec** (what equality means for the fingerprint) — the
+cross-cutting rules; per-part material lives inside each `####` facet below:
 
-- **Material**: `recommendation`, `risk`, `urgency`, `renewal_date`,
-  `notice_deadline`, `valid_until` (a lapsing `valid_until` is a *real* change
-  that flips posture freshness), and the *latest* `decision_history` entry's
-  `recommendation`.
-- **Immaterial** (excluded from the fingerprint): `latest_signal_at` and any
-  `fetched_at`/request-id timestamps — these advance on every poll and must not
-  masquerade as surprise; the rendered-prose `evidence` summary is a *derived
-  projection* fingerprinted only through its structured `evidence` backing, never
-  as free text.
+- **Immaterial everywhere** (excluded from the fingerprint): `latest_signal_at`
+  and any `fetched_at`/request-id timestamps — these advance on every poll and
+  must not masquerade as surprise. The rendered-prose `evidence` summary is a
+  *derived projection* fingerprinted only through its structured `evidence`
+  backing, never as free text.
 - Vendor entries are ordered by `vendor_id` before hashing so map-ordering noise
   is not a change.
 
-**Facets** (named, independently-subscribable parts of this truth):
+**Facets** — named parts of this truth. Each `####` part below is a facet: its
+name is at once the **fingerprint unit**, the **subscription symbol**
+(`Requires.<facet>` ↔ `Maintains.<facet>`), and the **`published/<facet>/…`
+subtree**. `vendor_id`, `vendor_name`, and `confidence` sit outside any part, so
+they move only the `@atomic` token. A downstream subscribes to the facet it
+cares about; a move in `#### history` does not wake a `#### recommendation`-only
+subscriber. (`@atomic` remains the whole-truth fingerprint and the free default.)
 
-- `recommendation` — the decision posture per vendor. A downstream brief writer
-  wakes on this and *not* on history churn.
-- `history` — the decision-history ledger. An audit/analytics consumer wakes
-  here when a new decision is appended, even if the live recommendation is
-  unchanged.
-- `ownership` — owner + handoff timing. An owner-routing consumer wakes only when
-  the responsible owner changes.
+#### recommendation
 
-A downstream subscribes to the facet it cares about; a move in `history` does not
-wake a `recommendation`-only subscriber. (`@atomic` remains the whole-truth
-fingerprint and the free default.)
+The decision posture per vendor — the brief-writer's subscription. Material: the
+`recommendation` field (the closed set above), `risk`, `urgency`, `renewal_date`,
+`notice_deadline`, and `valid_until` (a lapsing `valid_until` is a *real* change
+that flips posture freshness). Each is structured-backed, so a downstream brief
+writer wakes on a posture move and *not* on history churn.
+
+#### history
+
+The decision-history ledger — the audit/analytics subscription. Material: the
+*latest* `decision_history` entry's `recommendation` (the ledger is append-only,
+ordered by `at`). A consumer here wakes when a new decision is appended, even if
+the live recommendation is unchanged.
+
+#### ownership
+
+Owner and handoff timing — the owner-routing subscription. Material: the `owner`
+field. A consumer here wakes only when the responsible owner changes.
 
 **Postconditions** (self-policed by the render before it signs — no separate
 judge beat):

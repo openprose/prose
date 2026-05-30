@@ -301,6 +301,20 @@ describe("compiler/ir-v0.md — carries compile-phase outputs (delta.md §A5/§B
 	it("declares the @atomic reserved whole-truth facet (architecture.md §6.1)", () => {
 		expect(flat()).toContain('"@atomic"');
 	});
+
+	it("documents the ####-part → facet lowering: name a part, get a facet (architecture.md §3.2, delta.md Part G)", () => {
+		const f = flat();
+		// A #### sub-heading inside ### Maintains IS a facet (the named-parts rule).
+		expect(f).toContain("`####` sub-heading inside `### Maintains` **is a facet**");
+		// Un-facetted top-level fields bind to the atomic facet only.
+		expect(f).toContain("bind to the **atomic facet only**");
+		// No #### parts → atomic-only is the free default and byte-identical.
+		expect(f).toContain("atomic-only");
+		// One FacetSpec per part, heading text = facet name.
+		expect(f).toContain(
+			"one `FacetSpec { facet: <heading>, paths: <material fields> }`",
+		);
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -317,6 +331,7 @@ describe("expected/ fixtures conform to the compile-phase IR", () => {
 				"empty.manifest.next.json",
 				"stargazer.manifest.next.json",
 				"ambiguous-fulfillment.manifest.next.json",
+				"multi-facet.manifest.next.json",
 			]),
 		);
 	});
@@ -380,6 +395,74 @@ describe("expected/ambiguous-fulfillment.manifest.next.json — surfaced wiring 
 		const warn = ir.diagnostics.find((d) => d.severity === "warning");
 		expect(warn).toBeDefined();
 		expect(warn?.message).toMatch(/multiple producers/i);
+	});
+});
+
+describe("expected/multi-facet.manifest.next.json — the named-parts (####) lowering", () => {
+	// The canonical multi-facet node (architecture.md §3.2 L173–L197 worked
+	// competitor-activity-monitor): `#### funding` / `#### hiring` /
+	// `#### product-launches` lower to one facet each, names = the heading text;
+	// shared un-facetted fields move only the atomic token; a subscriber that
+	// `### Requires` *funding* draws an edge carrying ONLY the funding facet.
+	const ir = readJson("expected/multi-facet.manifest.next.json") as {
+		topology: {
+			nodes: { node: string; wake_source: string }[];
+			edges: { subscriber: string; producer: string; facet: string }[];
+		};
+		canonicalizers: { node: string; facets: string[] }[];
+	};
+
+	it("lowers each #### part under ### Maintains into a declared facet (facet names = headings)", () => {
+		const monitor = ir.canonicalizers.find(
+			(c) => c.node === "competitor-monitor",
+		);
+		expect(monitor?.facets).toEqual([
+			"@atomic",
+			"funding",
+			"hiring",
+			"product-launches",
+		]);
+	});
+
+	it("keeps the atomic facet first and always present alongside the declared facets", () => {
+		const monitor = ir.canonicalizers.find(
+			(c) => c.node === "competitor-monitor",
+		);
+		expect(monitor?.facets[0]).toBe(ATOMIC_FACET);
+		expect(monitor?.facets).toContain(ATOMIC_FACET);
+	});
+
+	it("lowers an atomic-only ### Maintains (no #### parts) to facets:[@atomic] — the free default", () => {
+		// `funding-brief` declares no #### parts, so its CanonicalizationSpec has
+		// facets:[] and the canonicalizer emits the lone atomic facet — byte
+		// identical to the pre-facet leaf case (delta.md Part G L578–L579,
+		// architecture.md §3.2 L171).
+		const brief = ir.canonicalizers.find((c) => c.node === "funding-brief");
+		expect(brief?.facets).toEqual([ATOMIC_FACET]);
+	});
+
+	it("draws a facet-granular edge: the funding subscriber consumes only the funding facet", () => {
+		// Requires.<facet> ↔ Maintains.<facet> (architecture.md §6.3): the edge
+		// names `funding`, NOT `@atomic` — a move in hiring/product-launches must
+		// not wake this subscriber (the selector boundary, world-model.md §3).
+		expect(ir.topology.edges).toEqual([
+			{
+				subscriber: "funding-brief",
+				producer: "competitor-monitor",
+				facet: "funding",
+			},
+		]);
+	});
+
+	it("covers every subscribed edge facet on the producing node's canonicalizer", () => {
+		// ir-v0.md Canonicalizers: every edge.facet whose producer is this node
+		// must appear in this node's facets.
+		const byNode = new Map(
+			ir.canonicalizers.map((c) => [c.node, new Set(c.facets)]),
+		);
+		for (const e of ir.topology.edges) {
+			expect(byNode.get(e.producer)?.has(e.facet)).toBe(true);
+		}
 	});
 });
 

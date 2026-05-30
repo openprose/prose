@@ -231,13 +231,20 @@ agent canonicalizer_compiler:
   Compile each node's `### Maintains` canonicalization spec into a deterministic
   canonicalizer reference.
   Load compiler/ir-v0.md and concepts/responsibility.md.
+  Read the named parts of `### Maintains` (the named-parts rule, ir-v0.md
+  "The `####`-part -> facet lowering"). Each `#### <name>` sub-heading IS a facet:
+  lower it to a FacetSpec { facet: <heading text>, paths: <the part's material
+  field paths> }, default-material WITHIN the part. Bind un-facetted top-level
+  `### Maintains` fields (the shared truth outside any `####` part) to the atomic
+  facet only. A `### Maintains` with no `####` parts lowers to atomic-only.
   Produce one canonicalizer record per topology node with node, artifact, and
-  facets. facets always includes "@atomic"; a leaf truth that declares no facets
-  has facets ["@atomic"]. Every edge.facet whose producer is this node must
-  appear in this node's facets.
+  facets. facets always includes "@atomic" and then every `#### <name>` part as a
+  facet; a leaf truth that declares no facets has facets ["@atomic"]. Every
+  edge.facet whose producer is this node must appear in this node's facets.
   Apply the structured-backing rule: anything subscribed must have a structured,
-  canonicalizable backing. Lint subscribed fields without structured backing and
-  surface them as diagnostics; free-form rendered prose is excluded from the
+  canonicalizable backing. Lint subscribed fields (every `#### ` part) without
+  structured backing and surface them as diagnostics; a part with no material
+  field paths is backing-less, and free-form rendered prose is excluded from the
   fingerprint.
   """
   shape:
@@ -345,7 +352,7 @@ if forme_output reports an ambiguous match, an unsatisfied subscription, or a cy
   return forme_output
 
 let canonicalizer_output = session: canonicalizer_compiler
-  prompt: "Compile each node's Maintains canonicalization spec into a canonicalizer reference."
+  prompt: "Compile each node's Maintains canonicalization spec into a canonicalizer reference. Lower each #### part under Maintains into a facet; un-facetted top-level fields bind to @atomic only."
   context: { source_root, discovered, responsibility_output, gateway_output, forme_output }
 
 let postcondition_output = session: postcondition_compiler

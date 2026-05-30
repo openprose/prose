@@ -19,21 +19,34 @@ support, and leadership the same operational picture.
 
 ### Maintains
 
-- `briefing`: the current incident briefing truth, with `brief`, `timeline`, and
-  `actions` facets
-- `brief` facet (material): current status, severity, affected customers or
-  features, known facts, open questions, decisions, owners, and next update time
-- `timeline` facet (material): incident timeline and decision history, preserved
-  across renders for handoff and retrospective
-- `actions` facet (material): owned follow-up actions with review timing, plus
-  handoff notes for the next incident commander
-- immaterial: render scan timestamps and event delivery ids
+- `briefing`: the current incident briefing truth. Its subscribable parts are the
+  three `####` facets below — each `####` part *is* a facet (fingerprint unit +
+  `Requires.<facet>` ↔ `Maintains.<facet>` subscription symbol +
+  `published/<facet>/…` subtree).
+- immaterial everywhere: render scan timestamps and event delivery ids
 - freshness: `valid_until` reflects the next expected update time; during an
   active incident the brief should not be stale for more than fifteen minutes
 - postcondition: customer-facing impact is stated only when supported by evidence
 - postcondition: facts, assumptions, and open questions remain labeled separately
 - postcondition: the next expected update time is present while the incident is
   active
+
+#### brief
+
+Material: current status, severity, affected customers or features, known facts,
+open questions, decisions, owners, and next update time. A status-page or
+exec-summary consumer subscribes here and wakes when the live brief moves, not
+when the timeline or action queue is appended.
+
+#### timeline
+
+Material: incident timeline and decision history, preserved across renders for
+handoff and retrospective.
+
+#### actions
+
+Material: owned follow-up actions with review timing, plus handoff notes for the
+next incident commander.
 
 ### Continuity
 

@@ -1,0 +1,75 @@
+{
+  "kind": "openprose.compile-phase-ir",
+  "version": 2,
+  "sources": [
+    {
+      "path": "tests/open-prose/compiler/fixtures/multi-facet/competitor-monitor.prose.md",
+      "kind": "responsibility",
+      "name": "competitor-monitor"
+    },
+    {
+      "path": "tests/open-prose/compiler/fixtures/multi-facet/funding-brief.prose.md",
+      "kind": "responsibility",
+      "name": "funding-brief"
+    }
+  ],
+  "topology": {
+    "nodes": [
+      {
+        "node": "competitor-monitor",
+        "contract_fingerprint": "sha256:facec0de00000000000000000000000000000000000000000000000000000001",
+        "wake_source": "self"
+      },
+      {
+        "node": "funding-brief",
+        "contract_fingerprint": "sha256:b21ef00000000000000000000000000000000000000000000000000000000002",
+        "wake_source": "input"
+      }
+    ],
+    "edges": [
+      {
+        "subscriber": "funding-brief",
+        "producer": "competitor-monitor",
+        "facet": "funding"
+      }
+    ],
+    "entry_points": [],
+    "acyclic": true
+  },
+  "canonicalizers": [
+    {
+      "node": "competitor-monitor",
+      "artifact": "dist/canonicalizers/competitor-monitor.js",
+      "facets": [
+        "@atomic",
+        "funding",
+        "hiring",
+        "product-launches"
+      ]
+    },
+    {
+      "node": "funding-brief",
+      "artifact": "dist/canonicalizers/funding-brief.js",
+      "facets": [
+        "@atomic"
+      ]
+    }
+  ],
+  "postconditions": [
+    {
+      "node": "competitor-monitor",
+      "artifact": "dist/postconditions/competitor-monitor.js",
+      "mode": "render-attested"
+    },
+    {
+      "node": "funding-brief",
+      "artifact": "dist/postconditions/funding-brief.js",
+      "mode": "render-attested"
+    }
+  ],
+  "contract_fingerprints": {
+    "competitor-monitor": "sha256:facec0de00000000000000000000000000000000000000000000000000000001",
+    "funding-brief": "sha256:b21ef00000000000000000000000000000000000000000000000000000000002"
+  },
+  "diagnostics": []
+}

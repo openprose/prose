@@ -179,6 +179,38 @@ the compiled contract and a standalone render applies it locally to fingerprint
 its own receipt (`architecture.md` §3.2, §1). `canonicalizer(world-model) →
 fingerprints`.
 
+### The `####`-part → facet lowering (the named-parts rule)
+
+The compile phase reads the **named parts** of `### Maintains` into the facet
+boundaries this canonicalizer emits. A `####` sub-heading inside `### Maintains`
+**is a facet**: its heading text is the facet name and its body's material field
+paths are that facet's `paths` (`architecture.md` §3.2 L154–L171, "a `####`
+sub-heading inside `### Maintains` is a facet; its body describes that part's
+fields and which are material"; `delta.md` Part G L576–L579). The lowering is:
+
+- Each `#### <name>` part → one facet `<name>` whose fingerprint is computed over
+  that part's **material** field paths. Materiality and normalization (text/sets/
+  numbers) stay prose **inside** the part, lowered at compile time to that facet's
+  material paths; a part is **default-material within itself** (everything the
+  part names is material unless the part's prose drops it).
+- Un-facetted top-level `### Maintains` fields (the shared truth sitting outside
+  any `####` part — e.g. a node-wide `name` / `last_corroborated`) bind to the
+  **atomic facet only**. They move only the always-on `"@atomic"` token, never a
+  declared facet's token (`architecture.md` §3.2 L194–L197, "The shared `name` /
+  `last_corroborated` sit outside any part, so they move only the atomic token").
+- **Name no parts → atomic-only.** A `### Maintains` with no `####` parts lowers
+  to a single facet `["@atomic"]` over the whole material truth — the free
+  default and the leaf-node case (`architecture.md` §3.2 L171). This is
+  byte-identical to the pre-facet behaviour; faceting is purely additive.
+
+This is the JSON realization of the `CanonicalizationSpec.facets: FacetSpec[]`
+input the SDK canonicalizer-compiler consumes
+(`packages/reactor/src/canonicalizer/spec.ts`, `compile.ts`): one `FacetSpec
+{ facet: <heading>, paths: <material fields> }` per `####` part, plus the
+reserved atomic facet the compiler always prepends. The `facets` array below is
+the *output* projection of that lowering — the facet names the canonicalizer
+emits, atomic always included.
+
 ```json
 {
   "node": "competitor-monitor",
@@ -186,6 +218,12 @@ fingerprints`.
   "facets": ["@atomic", "funding", "hiring", "product-launches"]
 }
 ```
+
+Here `competitor-monitor`'s `### Maintains` declared three `####` parts —
+`#### funding`, `#### hiring`, `#### product-launches` — so the canonicalizer
+emits three declared facets plus the always-on atomic token over the whole truth
+(`architecture.md` §3.2 L173–L197, the worked competitor-activity-monitor
+example).
 
 Required fields: `node` (a node id present in `topology.nodes`), `artifact`
 (a root-relative locator for the compiled canonicalizer artifact), and `facets`
