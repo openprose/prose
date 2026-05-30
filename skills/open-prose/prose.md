@@ -133,17 +133,19 @@ A Prose system runs in two phases:
 
 | Phase                  | Who                      | Input                 | Output         |
 | ---------------------- | ------------------------ | --------------------- | -------------- |
-| **Phase 1: Wiring**    | Forme (`forme.md`)       | Service and system `*.prose.md` files | Compiled Forme manifest |
-| **Phase 2: Execution** | Prose VM (this document) | Compiled Forme manifest | System output |
+| **Phase 1: Wiring**    | Forme (`forme.md`)       | Responsibility `*.prose.md` files | Compiled topology world-model |
+| **Phase 2: Execution** | Prose VM (this document) | Compiled topology world-model | Reconciled world-models + receipts |
 
-You are Phase 2. The compiled manifest tells you what to run and in what
-order. You execute it.
+You are Phase 2. The compiled topology tells you which responsibilities are
+mounted and how their subscriptions are wired. The reconciler renders them.
 
-For `kind: service` files, Forme is skipped, but the run still records a
-minimal service activation record for uniform inspection and resumption. The
-`*.prose.md` file is the service to run: snapshot it as `root.prose.md` and
-`sources/{name}.prose.md`, spawn one session, and return its output. A
-`kind: system` file must declare `### Services`; otherwise it is malformed.
+For a lone `kind: function` file there is no Forme phase: the function is a
+called, ephemeral helper. The run still records a minimal activation record for
+uniform inspection and resumption. The `*.prose.md` file is the function to run:
+snapshot it as `root.prose.md` and `sources/{name}.prose.md`, bind
+`### Parameters`, spawn one render, and return its `### Returns` value. There is
+no `### Services` graph kind to declare — cross-node composition is a Forme-wired
+subscription between responsibilities.
 
 ### Kinds
 
@@ -151,20 +153,19 @@ Every source file declares a `kind` in its frontmatter:
 
 | Kind        | Purpose                                                                  |
 | ----------- | ------------------------------------------------------------------------ |
-| `service`   | Atomic execution boundary — one contract, one session, one workspace |
-| `system`   | Composition boundary — one contract implemented as a graph of services and systems |
-| `gateway` | Optional ingress declaration compiled into trigger registrations |
-| `test`      | A test harness — provides fixtures, runs a subject, evaluates assertions |
-| `pattern` | Reusable agent design pattern with slots, config, invariants, and delegation rules |
+| `function`   | A called, ephemeral helper — `### Parameters` → `### Returns`, stateless, no world-model. The replacement for the retired `service` |
 | `responsibility` | A mounted DAG node: `### Requires`/`### Maintains` interface + a render, woken by its `### Continuity` wake-source. Maintains a canonical world-model; downstreams subscribe to it |
+| `gateway` | Sugar for an external-driven responsibility: ingress (webhook/cron/manual) that maintains the latest incoming truth. Compiled into trigger registrations |
+| `pattern` | Reusable agent design pattern with slots, config, invariants, and delegation rules |
+| `test`      | A test harness — provides fixtures, runs a subject, evaluates assertions |
 
-`prose run` accepts `kind: service` and structurally complete `kind: system`
-files. `prose test` executes `kind: test` files. `kind: gateway`,
-`kind: responsibility`, and `kind: pattern` files are not directly runnable;
-gateways and responsibilities compile into Responsibility Runtime IR, while
-systems instantiate patterns through `pattern:` declarations in `### Services`.
-Services and ProseScript calls execute concrete services or systems, not
-gateway, responsibility, or pattern files.
+`prose run` accepts a lone `kind: function` (run directly) and `kind: responsibility`
+files (mounted and reconciled). `prose test` executes `kind: test` files. `kind: gateway`
+files are not directly runnable: gateways compile into trigger registrations for
+`prose serve`. `kind: pattern` files are not runnable; they are instantiated at
+compile time and expanded into nodes. There is no `service`/`system`: a function is
+`call`ed inside a render, and responsibilities are wired to each other by Forme
+matching `### Requires` → `### Maintains` — never an internally-autowired graph kind.
 
 ---
 
@@ -845,19 +846,20 @@ in the workspace and never reaches the published truth, so it never wakes a
 downstream.
 
 This harness activates only for mounted responsibility nodes. A standalone
-`service`/`function` run has no harness imposing it; a standalone responsibility
+`function` run has no harness imposing it; a standalone responsibility
 render applies the compiled canonicalizer locally to fingerprint its own receipt.
 
 ---
 
 ## Persistent Agents
 
-Services can be persistent agents that accumulate memory across sessions. Memory can persist *within a single run* (across the service's own turns) or *across runs* (so the next run starts where the last one left off). The scope is declared in `### Runtime`:
+A responsibility that accumulates truth across wakes is a persistent agent: its persisted state is its world-model. Memory can persist *within a single run* (across the render's own turns) or *across runs* (so the next wake starts where the last one left off). The scope is declared in `### Runtime`. (A genuinely stateful component is a `responsibility`, not a `function`: a function is stateless and carries no world-model.)
 
 ```markdown
 ---
 name: captain
-kind: service
+kind: responsibility
+id: 067NC4KG01RG50R40M30E20918
 ---
 
 ### Runtime
@@ -865,7 +867,7 @@ kind: service
 - `persist`: project
 ```
 
-The example above uses `persist: project`, the common case for a service whose value compounds between runs (e.g., a cumulative registry, a high-water mark, a growing classifier). Use `persist: true` when the service only needs session memory that dies with the run.
+The example above uses `persist: project`, the common case for a responsibility whose world-model compounds between runs (e.g., a cumulative registry, a high-water mark, a growing classifier). Use `persist: true` when the render only needs session memory that dies with the run.
 
 ### Persistence Scoping
 
@@ -1191,17 +1193,17 @@ test-browse-contract ............. PASS (contract)
 
 ---
 
-## Single-Service Runs
+## Single-Function Runs
 
-For `kind: service` files (no Forme phase):
+For a lone `kind: function` file (no Forme phase):
 
-1. The `*.prose.md` file is the service to run
-2. Record a minimal service activation record so the run directory has the
-   same control-plane shape as a system run
-3. Bind caller inputs from `### Requires`
-4. Spawn one session with the file as the service definition
-5. The session writes to `workspace/` and the VM copies `### Ensures` outputs to `bindings/`
-6. Return the output
+1. The `*.prose.md` file is the function to run
+2. Record a minimal activation record so the run directory has the
+   same control-plane shape as a mounted run
+3. Bind caller inputs from `### Parameters`
+4. Spawn one render with the file as the function definition
+5. The render writes to `workspace/` and the VM copies `### Returns` outputs to `bindings/`
+6. Return the value
 
 This is the simplest execution path.
 

@@ -36,9 +36,9 @@ After activation, choose the narrowest path that matches the user's intent:
 | User Intent | Load First | Then Load If Needed |
 |-------------|------------|---------------------|
 | Explain OpenProse or answer "how do I..." | `help.md` | `examples/README.md`, then one focused example |
-| Run a `.prose.md` service or system | `contract-markdown.md` | `state/README.md` and the selected backend (`state/filesystem.md` by default); `forme.md` if it is a system with `### Services`; `prose.md` to execute |
+| Run a `.prose.md` responsibility or function | `contract-markdown.md` | `state/README.md` and the selected backend (`state/filesystem.md` by default); `forme.md` if responsibilities must be wired (`### Requires` → `### Maintains`); `prose.md` to execute |
 | Inspect or upgrade source layout | `changelog.md` | `contract-markdown.md`, `prosescript.md` if migration details require them |
-| Write a new `.prose.md` service or system | `contract-markdown.md` | `guidance/tenets.md`, `guidance/authoring.md` |
+| Write a new `.prose.md` responsibility or function | `contract-markdown.md` | `guidance/tenets.md`, `guidance/authoring.md` |
 | Write pinned choreography | `prosescript.md` | `contract-markdown.md` if inside `### Execution` |
 | Lint or review a service or system | `contract-markdown.md` | `forme.md` for multi-service wiring; `guidance/authoring.md` for design review |
 | Work on Responsibility Runtime, responsibility-oriented source, Reactor, compile, or serve semantics | `responsibility-runtime.md` | `compiler/index.prose.md`, `compiler/ir-v0.md`, `concepts/responsibility.md`, `concepts/reactor.md`, `forme.md` |
@@ -162,20 +162,20 @@ the current host must map onto its available tools:
 
 | Format | Extension | Primary Docs | Execution Path |
 |--------|-----------|--------------|----------------|
-| Contract Markdown | `.prose.md` | `contract-markdown.md`, `forme.md`, `prose.md` | Forme wires systems; Prose VM executes services and systems |
+| Contract Markdown | `.prose.md` | `contract-markdown.md`, `forme.md`, `prose.md` | Forme wires the responsibility DAG by matching `### Requires` → `### Maintains`; the reconciler renders responsibilities and the Prose VM `call`s functions |
 | Embedded ProseScript | `### Execution` / pattern `### Delegation` | `prosescript.md`, `prose.md` | Prose VM executes pinned choreography inside the source file |
 
 For `.prose.md` files:
 
 1. Read YAML frontmatter.
-2. If the file has `kind: service`, skip Forme and execute the service directly.
-3. If `kind: system` has a non-empty `### Services` section, load `forme.md` to produce a manifest.
-4. If the file has `kind: system` without `### Services`, report a structure error: a system must declare the graph it composes.
-5. If the file has `kind: responsibility`, refuse direct execution: responsibilities are standing goals compiled into compiled intent and reconciled by the Responsibility Runtime.
-6. If the file has `kind: gateway`, refuse direct execution: gateways are ingress declarations compiled into trigger registrations.
-7. If the file has `kind: pattern`, refuse direct execution: patterns must be instantiated by systems.
-8. If the file has `kind: test`, route to `prose test` semantics rather than ordinary `prose run`.
-8. For runnable services and systems, load `state/README.md`, then the selected backend doc (`state/filesystem.md` by default), and `prose.md` to execute the service or manifest.
+2. If the file has `kind: function`, run it as a called, ephemeral helper: bind `### Parameters`, spawn one render, and return its `### Returns` value. There is no Forme phase for a lone function.
+3. If the file has `kind: responsibility`, mount it as a DAG node. Forme matches its `### Requires` facet-contracts to the `### Maintains` facets of other mounted responsibilities and draws the subscription edges; the reconciler then renders it, persists its world-model, and signs a fingerprinted receipt. A standalone responsibility render still applies its compiled canonicalizer locally to fingerprint its own receipt.
+4. If the file has `kind: gateway`, mount it as an external-driven responsibility: it has no `### Requires`, maintains the latest incoming truth, and is Forme's entry-point set. Direct `prose run` is refused; it compiles into a trigger registration for `prose serve`.
+5. If the file has `kind: pattern`, refuse direct execution: patterns are instantiated at compile time and expanded into nodes.
+6. If the file has `kind: test`, route to `prose test` semantics rather than ordinary `prose run`.
+7. For runnable functions and responsibilities, load `state/README.md`, then the selected backend doc (`state/filesystem.md` by default), and `prose.md` to execute the render. The reconciler is dumb: when a node's `(contract-fingerprint, input-fingerprints)` are unmoved it writes a `skipped` receipt and renders nothing; only a moved fingerprint propagates to downstream subscribers.
+
+There is **no `kind: service`** (renamed to `kind: function`) and **no `kind: system`** (deleted): cross-node composition is a Forme-wired subscription between responsibilities, and intra-node composition is an imperative `call` inside one render — never an internally-autowired graph kind.
 
 For `.prose` files, treat the file as upgrade input. Recommend
 `prose upgrade --dry-run`, and load `changelog.md` only when performing or
@@ -190,8 +190,8 @@ user, source, or host configuration does not request another backend.
 Durable backends create `<openprose-root>/runs/{id}/` and always write the
 control-plane envelope before reporting success:
 
-- compiled Forme manifest: generated wiring graph for systems, or a minimal
-  service activation record for single services
+- compiled Forme topology: the wired responsibility DAG, or a minimal
+  activation record for a single called function
 - `root.prose.md`: snapshot of the invoked source
 - `sources/`: snapshots of referenced service, system, and pattern sources
 

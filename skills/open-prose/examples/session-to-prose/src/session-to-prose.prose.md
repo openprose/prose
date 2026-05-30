@@ -713,7 +713,7 @@ return { resolved-session: resolved_session, harness-plan: harness_plan, source-
 ### Returns
 
 - `program`: a complete `*.prose.md` file with provenance comment, YAML frontmatter, current Contract Markdown sections, and inline services when the output has multiple phases.
-- `program`: uses `kind: service` for a single-service output or `kind: system` with `### Services` for multi-service output.
+- `program`: uses `kind: function` for a single-helper output, or a `kind: responsibility` with inline helper functions (and additional responsibilities wired by Forme matching `### Requires` → `### Maintains`) for multi-part output.
 - `program`: includes `### Requires` and `### Ensures`, and includes `### Shape`, `### Errors`, `### Strategies`, and `### Execution` when evidenced by the source.
 - `program`: uses generalized names, not session-specific project names, file names, or ids.
 - `program`: can run on a similar but different codebase with the same domain problem.
