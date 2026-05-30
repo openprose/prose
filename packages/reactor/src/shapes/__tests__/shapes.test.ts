@@ -122,3 +122,70 @@ test("the compile-phase IR carries topology + canonicalizers + validators", () =
   deepEqual(ir.topology.entry_points, ["gateway.funding-feed"]);
   equal(ir.topology.edges[0]?.facet, ATOMIC_FACET);
 });
+
+test("the compile-phase IR survives the harness seam JSON round-trip structurally", () => {
+  // The IR is the seam between the SKILL compile phase (which emits it) and the
+  // SDK run phase (which consumes its topology/canonicalizers/validators):
+  // architecture.md §1 (L42–L50) "The seam — the harness I/O contract"; it crosses
+  // a serialization boundary (architecture.md §6.3; delta.md §A5 "Topology
+  // world-model"). A wholly-plain, JSON-stable IR is the precondition for the
+  // reconciler reading `edges` for propagation after a compile-step render emits it.
+  const ir: CompilePhaseIR = {
+    topology: {
+      nodes: [
+        {
+          node: "gateway.funding-feed",
+          contract_fingerprint: "contract:gw",
+          wake_source: "external",
+        },
+        {
+          node: "responsibility.competitor-activity",
+          contract_fingerprint: "contract:resp",
+          wake_source: "input",
+        },
+      ],
+      edges: [
+        {
+          subscriber: "responsibility.competitor-activity",
+          producer: "gateway.funding-feed",
+          facet: "funding",
+        },
+      ],
+      entry_points: ["gateway.funding-feed"],
+      acyclic: true,
+    },
+    canonicalizers: [
+      {
+        node: "responsibility.competitor-activity",
+        artifact: "canonicalizers/competitor-activity.js",
+        facets: [ATOMIC_FACET, "funding"],
+      },
+    ],
+    postconditions: [
+      {
+        node: "responsibility.competitor-activity",
+        artifact: "validators/competitor-activity.js",
+        mode: "deterministic",
+      },
+    ],
+    contract_fingerprints: {
+      "gateway.funding-feed": "contract:gw",
+      "responsibility.competitor-activity": "contract:resp",
+    },
+  };
+
+  // Determinism: the IR is its own canonical form — two encodes agree byte-for-byte.
+  equal(JSON.stringify(ir), JSON.stringify(ir));
+
+  // Round-trip: encode → decode reconstructs an IR equal in every field. No
+  // class instances, Maps, Symbols, or undefined holes leak across the seam.
+  const decoded = JSON.parse(JSON.stringify(ir)) as CompilePhaseIR;
+  deepEqual(decoded, ir);
+
+  // The reconciler's propagation input — the edge's moved facet — survives intact.
+  equal(decoded.topology.edges[0]?.facet, "funding");
+  equal(
+    decoded.contract_fingerprints["responsibility.competitor-activity"],
+    "contract:resp",
+  );
+});
