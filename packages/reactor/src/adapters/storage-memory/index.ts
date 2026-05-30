@@ -1,52 +1,49 @@
-import { assertReceiptV0, type ReceiptV0 } from "../../receipt";
+import type { Receipt } from "../../shapes";
 import {
-  EMPTY_RUNTIME_REGISTRY_V0,
-  cloneRuntimeRegistrySnapshotV0,
-  type ReactorRuntimeRegistrySnapshotV0,
-  type ReactorStorageRuntimeAdapterV0,
+  EMPTY_RUNTIME_REGISTRY,
+  cloneRuntimeRegistrySnapshot,
+  type ReactorRuntimeRegistrySnapshot,
+  type ReactorStorageRuntimeAdapter,
 } from "../types";
 import { cloneAdapterJsonValueV0 } from "../json";
 
-export interface MemoryStorageAdapterInputV0 {
-  readonly registry?: ReactorRuntimeRegistrySnapshotV0;
-  readonly receipts?: readonly ReceiptV0[];
+export interface MemoryStorageAdapterInput {
+  readonly registry?: ReactorRuntimeRegistrySnapshot;
+  readonly receipts?: readonly Receipt[];
 }
 
-export interface MemoryStorageAdapterV0 extends ReactorStorageRuntimeAdapterV0 {
+export interface MemoryStorageAdapter extends ReactorStorageRuntimeAdapter {
   readonly clear: () => void;
 }
 
-export function createMemoryStorageAdapterV0(
-  input: MemoryStorageAdapterInputV0 = {},
-): MemoryStorageAdapterV0 {
-  let registry = cloneRuntimeRegistrySnapshotV0(
-    input.registry ?? EMPTY_RUNTIME_REGISTRY_V0,
+export function createMemoryStorageAdapter(
+  input: MemoryStorageAdapterInput = {},
+): MemoryStorageAdapter {
+  let registry = cloneRuntimeRegistrySnapshot(
+    input.registry ?? EMPTY_RUNTIME_REGISTRY,
   );
   let receipts = (input.receipts ?? []).map((receipt) => cloneReceipt(receipt));
 
   return {
-    appendReceipt(receipt: ReceiptV0): void {
+    appendReceipt(receipt: Receipt): void {
       receipts = [...receipts, cloneReceipt(receipt)];
     },
-    listReceipts(): readonly ReceiptV0[] {
+    listReceipts(): readonly Receipt[] {
       return receipts.map((receipt) => cloneReceipt(receipt));
     },
-    readRegistry(): ReactorRuntimeRegistrySnapshotV0 {
-      return cloneRuntimeRegistrySnapshotV0(registry);
+    readRegistry(): ReactorRuntimeRegistrySnapshot {
+      return cloneRuntimeRegistrySnapshot(registry);
     },
-    writeRegistry(nextRegistry: ReactorRuntimeRegistrySnapshotV0): void {
-      registry = cloneRuntimeRegistrySnapshotV0(nextRegistry);
+    writeRegistry(nextRegistry: ReactorRuntimeRegistrySnapshot): void {
+      registry = cloneRuntimeRegistrySnapshot(nextRegistry);
     },
     clear(): void {
-      registry = cloneRuntimeRegistrySnapshotV0(EMPTY_RUNTIME_REGISTRY_V0);
+      registry = cloneRuntimeRegistrySnapshot(EMPTY_RUNTIME_REGISTRY);
       receipts = [];
     },
   };
 }
 
-function cloneReceipt(receipt: ReceiptV0): ReceiptV0 {
-  assertReceiptV0(receipt);
-  const clone = cloneAdapterJsonValueV0(receipt);
-  assertReceiptV0(clone);
-  return clone;
+function cloneReceipt(receipt: Receipt): Receipt {
+  return cloneAdapterJsonValueV0(receipt);
 }

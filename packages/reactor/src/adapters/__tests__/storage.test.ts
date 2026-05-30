@@ -1,62 +1,75 @@
-import { deepEqual, equal } from "node:assert/strict";
+import { deepEqual, equal, throws } from "node:assert/strict";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 
-import { createForecastRecheckReceiptV0 } from "../../forecast";
-import type { ReceiptRecheckKindV0, ReceiptV0 } from "../../receipt";
+import {
+  ATOMIC_FACET,
+  EMPTY_SEMANTIC_DIFF,
+  createNullSignature,
+  type Receipt,
+} from "../../shapes";
 import { renderAdapterJsonV0 } from "../json";
-import { createFileSystemStorageAdapterV0 } from "../storage-fs";
-import { createMemoryStorageAdapterV0 } from "../storage-memory";
-import type { ReactorRuntimeRegistrySnapshotV0 } from "../types";
+import { createFileSystemStorageAdapter } from "../storage-fs";
+import { createMemoryStorageAdapter } from "../storage-memory";
+import type { ReactorRuntimeRegistrySnapshot } from "../types";
 
-const CONTRACT_HASH =
-  "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" as const;
-const EVIDENCE_HASH =
-  "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" as const;
-const POLICY_HASH =
-  "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" as const;
+const CONTRACT_FP =
+  "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+const ATOMIC_FP =
+  "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 
-test("memory storage round-trips registry hydration and receipt append", () => {
-  const first = makeReceipt("2026-05-18T12:00:00Z", "evidence-age");
-  const second = makeReceipt("2026-05-18T12:05:00Z", "plan-age");
-  const storage = createMemoryStorageAdapterV0({
-    registry: makeRegistry("1"),
+test("memory storage round-trips the shrunk registry and appends ideal receipts", () => {
+  const first = makeReceipt("rendered");
+  const second = makeReceipt("skipped");
+  const storage = createMemoryStorageAdapter({
+    registry: makeRegistry("topology-1"),
     receipts: [first],
   });
 
-  deepEqual(storage.readRegistry(), makeRegistry("1"));
+  deepEqual(storage.readRegistry(), makeRegistry("topology-1"));
 
-  const hydrated = makeRegistry("2");
+  const hydrated = makeRegistry("topology-2");
   storage.writeRegistry(hydrated);
   storage.appendReceipt(second);
 
   deepEqual(storage.readRegistry(), hydrated);
   deepEqual(storage.listReceipts(), [first, second]);
 
+  // The reader returns a clone — mutating it must not corrupt stored truth.
   const returnedRegistry = storage.readRegistry() as Record<string, unknown>;
-  returnedRegistry["policy_artifact_namespace"] = "policy.tampered";
-  equal(storage.readRegistry().policy_artifact_namespace, "policy.test");
+  returnedRegistry["topology"] = "tampered";
+  deepEqual(storage.readRegistry(), hydrated);
 });
 
-test("filesystem storage round-trips deterministic JSON and registry hydration", (t) => {
+test("memory storage rejects a non-object registry", () => {
+  throws(
+    () =>
+      createMemoryStorageAdapter({
+        registry: [] as unknown as ReactorRuntimeRegistrySnapshot,
+      }),
+    /registry snapshot must be an object/,
+  );
+});
+
+test("filesystem storage round-trips deterministic JSON and survives reopen", (t) => {
   const directory = mkdtempSync(join(tmpdir(), "reactor-adapters-"));
   t.after(() => rmSync(directory, { recursive: true, force: true }));
 
-  const first = makeReceipt("2026-05-18T12:00:00Z", "evidence-age");
-  const second = makeReceipt("2026-05-18T12:05:00Z", "plan-age");
-  const hydrated = makeRegistry("2");
-  const storage = createFileSystemStorageAdapterV0({
+  const first = makeReceipt("rendered");
+  const second = makeReceipt("rendered");
+  const hydrated = makeRegistry("topology-2");
+  const storage = createFileSystemStorageAdapter({
     directory,
-    initial_registry: makeRegistry("1"),
+    initial_registry: makeRegistry("topology-1"),
   });
 
   storage.appendReceipt(first);
   storage.writeRegistry(hydrated);
   storage.appendReceipt(second);
 
-  const reopened = createFileSystemStorageAdapterV0({ directory });
+  const reopened = createFileSystemStorageAdapter({ directory });
 
   deepEqual(reopened.readRegistry(), hydrated);
   deepEqual(reopened.listReceipts(), [first, second]);
@@ -70,43 +83,35 @@ test("filesystem storage round-trips deterministic JSON and registry hydration",
   );
 });
 
-function makeRegistry(revision: string): ReactorRuntimeRegistrySnapshotV0 {
+function makeRegistry(topologyTag: string): ReactorRuntimeRegistrySnapshot {
   return {
-    contract_revision: CONTRACT_HASH,
-    policy_artifact_id: "policy.test.registry-row",
-    policy_artifact_identity: "policy.test",
-    policy_artifact_namespace: "policy.test",
-    policy_artifact_revision: revision,
-    policy_artifact_validation_state: {
-      status: "validated",
-      validator_id: "adapter-storage-test",
+    topology: {
+      tag: topologyTag,
+      nodes: ["node.release-risk"],
+      edges: [],
     },
-    validation_state: {
-      status: "validated",
-      validator_id: "adapter-storage-test",
-    },
-    policy_artifact_content_hash: POLICY_HASH,
-    compiled_evidence_plan: {
-      schema: "openprose.test.compiled-evidence-plan",
-      source_ids: ["source.release-risk"],
-    },
-    forecast_schedule: {
-      next_evidence_recheck: "2026-05-18T13:00:00Z",
-      next_plan_recheck: "2026-05-19T12:00:00Z",
+    self_schedule: {
+      "node.release-risk": { next_self_wake: "2026-05-18T13:00:00Z" },
     },
   };
 }
 
-function makeReceipt(
-  asOf: string,
-  recheckKind: ReceiptRecheckKindV0,
-): ReceiptV0 {
-  return createForecastRecheckReceiptV0({
-    responsibility_id: "responsibility.adapter-storage",
-    contract_revision: CONTRACT_HASH,
-    memo_key: `memo-${recheckKind}-${asOf}`,
-    evidence_input_ids: [EVIDENCE_HASH],
-    as_of: asOf,
-    recheck_kind: recheckKind,
-  });
+function makeReceipt(status: "rendered" | "skipped"): Receipt {
+  return {
+    node: "node.release-risk",
+    contract_fingerprint: CONTRACT_FP,
+    wake: { source: "input", refs: [CONTRACT_FP as `sha256:${string}`] },
+    input_fingerprints: [ATOMIC_FP],
+    fingerprints: { [ATOMIC_FACET]: ATOMIC_FP },
+    semantic_diff: status === "skipped" ? EMPTY_SEMANTIC_DIFF : { moved: true },
+    prev: null,
+    status,
+    cost: {
+      provider: "p",
+      model: "m",
+      tokens: { fresh: status === "skipped" ? 0 : 4, reused: 0 },
+      surprise_cause: "input",
+    },
+    sig: createNullSignature(),
+  };
 }

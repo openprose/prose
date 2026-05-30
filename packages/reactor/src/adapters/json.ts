@@ -1,7 +1,7 @@
-import { canonicalizeForReceiptV0 } from "../receipt";
+import { canonicalizeForReceipt } from "../receipt";
 
 export function renderAdapterJsonV0(value: unknown): string {
-  return canonicalizeForReceiptV0(toAdapterJsonValue(value));
+  return canonicalizeForReceipt(toAdapterJsonValue(value));
 }
 
 export function cloneAdapterJsonValueV0<T>(value: T): T {

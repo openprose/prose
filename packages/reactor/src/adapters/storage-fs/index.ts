@@ -7,65 +7,67 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 
-import { assertReceiptV0, type ReceiptV0 } from "../../receipt";
+import type { Receipt } from "../../shapes";
 import { cloneAdapterJsonValueV0, renderAdapterJsonV0 } from "../json";
 import {
-  EMPTY_RUNTIME_REGISTRY_V0,
-  assertRuntimeRegistrySnapshotV0,
-  cloneRuntimeRegistrySnapshotV0,
-  type ReactorRuntimeRegistrySnapshotV0,
-  type ReactorStorageRuntimeAdapterV0,
+  EMPTY_RUNTIME_REGISTRY,
+  assertRuntimeRegistrySnapshot,
+  cloneRuntimeRegistrySnapshot,
+  type ReactorRuntimeRegistrySnapshot,
+  type ReactorStorageRuntimeAdapter,
 } from "../types";
 
-export interface FileSystemStorageAdapterInputV0 {
+export interface FileSystemStorageAdapterInput {
   readonly directory: string;
   readonly registry_file?: string;
   readonly receipts_file?: string;
-  readonly initial_registry?: ReactorRuntimeRegistrySnapshotV0;
+  readonly initial_registry?: ReactorRuntimeRegistrySnapshot;
 }
 
-export interface FileSystemStorageAdapterV0 extends ReactorStorageRuntimeAdapterV0 {
+export interface FileSystemStorageAdapter extends ReactorStorageRuntimeAdapter {
   readonly directory: string;
   readonly registryPath: string;
   readonly receiptsPath: string;
 }
 
-export function createFileSystemStorageAdapterV0(
-  input: FileSystemStorageAdapterInputV0,
-): FileSystemStorageAdapterV0 {
+export function createFileSystemStorageAdapter(
+  input: FileSystemStorageAdapterInput,
+): FileSystemStorageAdapter {
   if (input.directory.length === 0) {
     throw new Error("filesystem storage directory must be non-empty");
   }
 
-  const registryPath = join(input.directory, input.registry_file ?? "registry.json");
-  const receiptsPath = join(input.directory, input.receipts_file ?? "receipts.json");
+  const registryPath = join(
+    input.directory,
+    input.registry_file ?? "registry.json",
+  );
+  const receiptsPath = join(
+    input.directory,
+    input.receipts_file ?? "receipts.json",
+  );
 
   mkdirSync(input.directory, { recursive: true });
-  initializeFile(
-    registryPath,
-    input.initial_registry ?? EMPTY_RUNTIME_REGISTRY_V0,
-  );
+  initializeFile(registryPath, input.initial_registry ?? EMPTY_RUNTIME_REGISTRY);
   initializeFile(receiptsPath, []);
 
   return {
     directory: input.directory,
     registryPath,
     receiptsPath,
-    appendReceipt(receipt: ReceiptV0): void {
-      assertReceiptV0(receipt);
+    appendReceipt(receipt: Receipt): void {
       const receipts = readReceiptLog(receiptsPath);
       writeJsonFile(receiptsPath, [...receipts, cloneReceipt(receipt)]);
     },
-    listReceipts(): readonly ReceiptV0[] {
+    listReceipts(): readonly Receipt[] {
       return readReceiptLog(receiptsPath);
     },
-    readRegistry(): ReactorRuntimeRegistrySnapshotV0 {
+    readRegistry(): ReactorRuntimeRegistrySnapshot {
       const value = readJsonFile(registryPath);
-      assertRuntimeRegistrySnapshotV0(value);
-      return cloneRuntimeRegistrySnapshotV0(value);
+      assertRuntimeRegistrySnapshot(value);
+      return cloneRuntimeRegistrySnapshot(value);
     },
-    writeRegistry(registry: ReactorRuntimeRegistrySnapshotV0): void {
-      writeJsonFile(registryPath, cloneRuntimeRegistrySnapshotV0(registry));
+    writeRegistry(registry: ReactorRuntimeRegistrySnapshot): void {
+      writeJsonFile(registryPath, cloneRuntimeRegistrySnapshot(registry));
     },
   };
 }
@@ -76,20 +78,17 @@ function initializeFile(path: string, value: unknown): void {
   }
 }
 
-function readReceiptLog(path: string): readonly ReceiptV0[] {
+function readReceiptLog(path: string): readonly Receipt[] {
   const value = readJsonFile(path);
   if (!Array.isArray(value)) {
     throw new Error("filesystem receipts file must contain an array");
   }
 
-  return value.map((receipt) => cloneReceipt(receipt as ReceiptV0));
+  return value.map((receipt) => cloneReceipt(receipt as Receipt));
 }
 
-function cloneReceipt(receipt: ReceiptV0): ReceiptV0 {
-  assertReceiptV0(receipt);
-  const clone = cloneAdapterJsonValueV0(receipt);
-  assertReceiptV0(clone);
-  return clone;
+function cloneReceipt(receipt: Receipt): Receipt {
+  return cloneAdapterJsonValueV0(receipt);
 }
 
 function readJsonFile(path: string): unknown {

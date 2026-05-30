@@ -1,18 +1,18 @@
-import type { ReactorClockAdapterV0 } from "../../sdk";
+import type { ReactorClockAdapter } from "../types";
 
-export interface FixedClockAdapterV0 extends ReactorClockAdapterV0 {
+export interface FixedClockAdapter extends ReactorClockAdapter {
   readonly set: (instant: string) => void;
   readonly advanceByMs: (milliseconds: number) => string;
   readonly readings: () => readonly string[];
 }
 
-export function createSystemClockAdapterV0(): ReactorClockAdapterV0 {
+export function createSystemClockAdapter(): ReactorClockAdapter {
   return {
     now: () => new Date().toISOString(),
   };
 }
 
-export function createFixedClockAdapterV0(initialInstant: string): FixedClockAdapterV0 {
+export function createFixedClockAdapter(initialInstant: string): FixedClockAdapter {
   assertReplayableInstant(initialInstant, "initialInstant");
 
   let current = initialInstant;
