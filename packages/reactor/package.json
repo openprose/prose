@@ -1,6 +1,6 @@
 {
   "name": "@openprose/reactor",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "OpenProse Reactor runtime: fresh model spend scales with surprise, not the clock.",
   "type": "commonjs",
   "main": "./dist/index.js",
@@ -18,9 +18,13 @@
       "types": "./dist/cost/index.d.ts",
       "default": "./dist/cost/index.js"
     },
-    "./kernel": {
-      "types": "./dist/kernel/index.d.ts",
-      "default": "./dist/kernel/index.js"
+    "./world-model": {
+      "types": "./dist/world-model/index.d.ts",
+      "default": "./dist/world-model/index.js"
+    },
+    "./forme": {
+      "types": "./dist/forme/index.d.ts",
+      "default": "./dist/forme/index.js"
     },
     "./evidence-plan": {
       "types": "./dist/evidence-plan/index.d.ts",
@@ -37,10 +41,6 @@
     "./sdk": {
       "types": "./dist/sdk/index.d.ts",
       "default": "./dist/sdk/index.js"
-    },
-    "./policy": {
-      "types": "./dist/policy/index.d.ts",
-      "default": "./dist/policy/index.js"
     },
     "./composition": {
       "types": "./dist/composition/index.d.ts",

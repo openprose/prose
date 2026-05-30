@@ -127,7 +127,7 @@
     "test": "pnpm typecheck && pnpm test:runtime"
   },
   "dependencies": {
-    "@openprose/reactor": "workspace:0.1.0"
+    "@openprose/reactor": "workspace:0.2.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.7",
