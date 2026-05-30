@@ -59,6 +59,26 @@ export {
   type AsyncNodeMount,
 } from "./mounted-dag";
 
+// --- The durable receipt ledger (re-derived from the storage trail) ---------
+// The persisted `MutableReceiptLedger` the assembler injects so a node's memory
+// survives a restart (architecture.md §5.1 / §8; gap-audit #10).
+export {
+  FileSystemReceiptLedger,
+  createFileSystemReceiptLedger,
+  type FileSystemReceiptLedgerInput,
+} from "./fs-ledger";
+
+// --- The keystone assembler (architecture.md §5.3 + §8; gap-audit #9) --------
+// `createReactor` wires the durable FS world-model store + persisted ledger +
+// clock + the render bodies into the `mountDag` run-phase surface, and exposes
+// the boot / cold-miss sweep that survives a restart.
+export {
+  createReactor,
+  type AssembledReactor,
+  type CreateReactorInput,
+  type ReactorRuntimeAdapters,
+} from "./create-reactor";
+
 // --- The run-phase reconciler (the sibling module) --------------------------
 // Re-exported so the front door is the single import surface for mounting a DAG
 // by hand against custom ports (architecture.md §5.3: the injection boundary).
