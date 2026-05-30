@@ -1,6 +1,6 @@
 ---
 name: recommend-actions
-kind: service
+kind: function
 ---
 
 # Recommend Actions
@@ -9,14 +9,14 @@ kind: service
 
 Creates concise account-owner briefs from risk assessments.
 
-### Requires
+### Parameters
 
-- `risk_assessments`: explainable customer risk assessments with evidence,
+- `risk-assessments`: explainable customer risk assessments with evidence,
   confidence, trend, and urgency
 
-### Ensures
+### Returns
 
-- `risk_brief`: account-owner-ready briefs with risk level, evidence summary,
+- `risk-brief`: account-owner-ready briefs with risk level, evidence summary,
   likely cause, recommended next action, owner handoff, and follow-up timing
 - each brief has: a practical action, a customer-safe explanation, and a
   confidence note

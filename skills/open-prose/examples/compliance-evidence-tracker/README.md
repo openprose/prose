@@ -4,7 +4,6 @@
 
 ```bash
 prose compile
-cp dist/manifest.next.json dist/manifest.active.json
 prose serve
 ```
 
@@ -18,8 +17,9 @@ flags stale or missing artifacts, and prepares a human-reviewable gap brief.
 
 ## Source Shape
 
-- `src/`: responsibility, schedule gateway, evidence system, and services
-- `dist/`: compiled intent produced by `prose compile`
-- `runs/`: bounded activation receipts
-- `state/`: durable control evidence status
+- `src/`: the `compliance-evidence-current` responsibility, the
+  `evidence-review-events` gateway, and the helper `function`s it `call`s
+- `dist/`: compiled topology + canonicalizers produced by `prose compile`
+- `runs/`: append-only receipt ledger
+- `state/`: the canonical world-model (control evidence + register history)
 - `deps/`: installed OpenProse dependencies

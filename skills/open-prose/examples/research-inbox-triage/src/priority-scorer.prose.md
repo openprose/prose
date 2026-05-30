@@ -1,6 +1,6 @@
 ---
 name: priority-scorer
-kind: service
+kind: function
 ---
 
 # Priority Scorer
@@ -14,15 +14,15 @@ Scores clustered research items by relevance, novelty, credibility, and urgency.
 - `self`: score and explain priority
 - `prohibited`: assigning owners or writing the final triage report
 
-### Requires
+### Parameters
 
-- `clustered_items`: items grouped into topic clusters with duplicate reasoning
-- `active_questions`: research questions, initiatives, or watch areas that
+- `clustered-items`: items grouped into topic clusters with duplicate reasoning
+- `active-questions`: research questions, initiatives, or watch areas that
   should influence priority
 
-### Ensures
+### Returns
 
-- `priority_ranking`: ranked clusters and items with scores, confidence, and
+- `priority-ranking`: ranked clusters and items with scores, confidence, and
   short reasoning
 
 ### Strategies

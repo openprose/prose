@@ -1,5 +1,5 @@
 ---
-purpose: Responsibility Runtime concept index for OpenProse responsibilities and Reactor
+purpose: Concept index for OpenProse responsibilities and the Reactor reconciler
 related:
   - ../responsibility-runtime.md
   - ../contract-markdown.md
@@ -14,10 +14,11 @@ compiler sessions and they are not harness implementation docs.
 
 ## Contents
 
-- `responsibility.md` -- the `kind: responsibility` contract: a goal that must
-  remain true over time
-- `reactor.md` -- the evented reconciliation model that checks
-  responsibilities and creates pressure when they drift
+- `responsibility.md` -- the `kind: responsibility` contract: a mounted
+  reactive node that maintains a standing truth (world-model) over time
+- `reactor.md` -- the dumb run-phase reconciler: world-model = DOM,
+  subscriptions = props, receipt = setState, fingerprint comparison decides
+  wakes
 
 ## Loading Rule
 

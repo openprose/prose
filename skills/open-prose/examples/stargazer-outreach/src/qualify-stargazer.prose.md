@@ -1,6 +1,6 @@
 ---
 name: qualify-stargazer
-kind: service
+kind: function
 ---
 
 # Qualify Stargazer
@@ -9,14 +9,14 @@ kind: service
 
 Scores whether an enriched stargazer is a realistic OpenProse outreach lead.
 
-### Requires
+### Parameters
 
-- `stargazer_profiles`: enriched public profiles with evidence and confidence
+- `stargazer-profiles`: enriched public profiles with evidence and confidence
   notes
 
-### Ensures
+### Returns
 
-- `qualified_leads`: profiles labeled `qualified`, `defer`, or `reject` with a
+- `qualified-leads`: profiles labeled `qualified`, `defer`, or `reject` with a
   concise rationale and next action
 - each lead has: fit score, evidence summary, outreach angle, and safety notes
 

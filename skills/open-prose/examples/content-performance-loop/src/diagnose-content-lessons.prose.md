@@ -1,6 +1,6 @@
 ---
 name: diagnose-content-lessons
-kind: service
+kind: function
 ---
 
 # Diagnose Content Lessons
@@ -11,18 +11,18 @@ kind: service
 - `prohibited`: assigning causality when the evidence only supports a
   hypothesis
 
-### Requires
+### Parameters
 
-- `performance_snapshot`: normalized evidence table grouped by asset, channel,
+- `performance-snapshot`: normalized evidence table grouped by asset, channel,
   funnel role, and review period
-- `measurement_caveats`: gaps and outliers that should constrain
+- `measurement-caveats`: gaps and outliers that should constrain
   interpretation
 
-### Ensures
+### Returns
 
-- `learning_summary`: patterns, hypotheses, and cautions the editorial team can
+- `learning-summary`: patterns, hypotheses, and cautions the editorial team can
   use in planning
-- `opportunity_backlog`: candidate refreshes, follow-up pieces, distribution
+- `opportunity-backlog`: candidate refreshes, follow-up pieces, distribution
   tests, and measurement fixes suggested by the evidence
 
 ### Invariants
@@ -34,4 +34,3 @@ kind: service
 
 - Prefer a small number of durable lessons over a long list of URL-level notes.
 - Treat unexplained movement as a hypothesis queue, not as proof.
-

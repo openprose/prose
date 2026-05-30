@@ -1,6 +1,6 @@
 ---
 name: triage-and-pick
-kind: service
+kind: function
 ---
 
 # Triage And Pick
@@ -14,17 +14,17 @@ correct triage label unless instructed otherwise"); this service labels
 every issue against the full five-state vocabulary and picks the
 implementation target.
 
-### Requires
+### Parameters
 
 - `issues`: issue breakdown from `produce-issues`
-- `triage_label_convention`: canonical labels from `ensure-skills`
+- `triage-label-convention`: canonical labels from `ensure-skills`
 
-### Ensures
+### Returns
 
-- `triage_labels_applied`: mapping of `issue_id -> triage_label` using
+- `triage-labels-applied`: mapping of `issue_id -> triage_label` using
   exactly one canonical label per issue from
   `setup-matt-pocock-skills/triage-labels.md`
-- `chosen_slice`: the single highest-value AFK slice picked for
+- `chosen-slice`: the single highest-value AFK slice picked for
   `implement-tdd`, including `issue_id`, `acceptance_criteria`, and a
   rationale for the pick
 
@@ -32,8 +32,8 @@ implementation target.
 
 - `self`: assign one canonical label per issue (Pocock's full vocabulary,
   including HITL ones), then pick the lowest-numbered AFK slice with no
-  unresolved blockers as `chosen_slice`
-- `prohibited`: inventing labels not in `triage_label_convention`, or
+  unresolved blockers as `chosen-slice`
+- `prohibited`: inventing labels not in `triage-label-convention`, or
   picking a slice whose `blocked_by` is not yet resolved
 
 ### Strategies
@@ -41,7 +41,7 @@ implementation target.
 - Label all five Pocock states where they apply: `needs-triage`,
   `needs-info`, `ready-for-agent` (AFK), `ready-for-human` (HITL),
   `wontfix`. Pocock's HITL/AFK split is preserved at the labeling layer;
-  picking only AFK for `chosen_slice` is a property of the autonomous
+  picking only AFK for `chosen-slice` is a property of the autonomous
   pipeline, not of his teaching.
 - When two AFK slices tie, prefer the lowest issue number so the pick is
   reproducible.

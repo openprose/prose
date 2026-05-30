@@ -1,6 +1,6 @@
 ---
 name: produce-prd
-kind: service
+kind: function
 ---
 
 # Produce PRD
@@ -10,19 +10,19 @@ kind: service
 Apply the local Matt Pocock `to-prd` skill to the grilled plan and produce
 a PRD using `to-prd/SKILL.md`'s seven sections verbatim.
 
-### Requires
+### Parameters
 
-- `grilled_plan`: clarified plan from `decide-plan`
-- `chosen_terminology`: glossary from `decide-plan`
-- `issue_tracker_convention`: storage location convention so the PRD
+- `grilled-plan`: clarified plan from `decide-plan`
+- `chosen-terminology`: glossary from `decide-plan`
+- `issue-tracker-convention`: storage location convention so the PRD
   lands where the repo expects it
 
-### Ensures
+### Returns
 
 - `prd`: product requirements document with the seven Pocock sections —
   Problem Statement, Solution, User Stories, Implementation Decisions,
   Testing Decisions, Out of Scope, Further Notes — written to the path named in
-  `issue_tracker_convention`
+  `issue-tracker-convention`
 
 ### Skills
 
@@ -34,7 +34,7 @@ a PRD using `to-prd/SKILL.md`'s seven sections verbatim.
   (`Problem Statement`, `Solution`, `User Stories`, `Implementation
   Decisions`, `Testing Decisions`, `Out of Scope`, `Further Notes`) and
   ordering come from Pocock, not from us.
-- Use `chosen_terminology` for every domain noun; do not introduce new
+- Use `chosen-terminology` for every domain noun; do not introduce new
   domain terms here.
 - Identify deep-module opportunities for testability and name them in
   Implementation Decisions, per `tdd/deep-modules.md`.

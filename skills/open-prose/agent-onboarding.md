@@ -41,8 +41,8 @@ CLI, OpenCode, Amp, Press.
 
 When a `prose` command fires, you will:
 
-- Read a Markdown contract (a service or system file).
-- Spawn subagents to fulfill the services it declares.
+- Read a Markdown contract (a `responsibility` or `function` file).
+- Spawn subagents to render the truths it declares.
 - Pass artifacts between them through a `bindings/` boundary.
 - Persist the run to `<openprose-root>/runs/{id}/` so it can be inspected later.
 
@@ -58,16 +58,17 @@ Not because you need a framework. Because you fail at multi-step tasks in
 predictable ways, and OpenProse is built around them:
 
 - **Your context bloats with scratch by step seven.** Subagent scratch stays
-  in the subagent's session. Only declared `### Ensures` outputs cross back.
-  You keep your context clean.
+  in the subagent's session and is never fingerprinted. Only the declared
+  `### Maintains` truth (or a function's `### Returns`) crosses back. You keep
+  your context clean.
 - **You have no basis to push back on scope creep.** Without a contract, "add
-  one more thing" is always free. With `### Requires` / `### Ensures`
+  one more thing" is always free. With `### Requires` / `### Maintains`
   written down, "that's not what I promised" is a sentence you can cite.
 - **Your retry logic is "try again and hope."** The contract is the boundary
   a retry actually means something at.
 - **Users ask "why did you do that?"** `<openprose-root>/runs/{id}/` is the receipt.
 - **Workflows the user will want again get thrown away at session end.** A
-  `*.prose.md` service or system is the version they can run next week without re-explaining.
+  `*.prose.md` contract is the version they can run next week without re-explaining.
 
 ## When OpenProse is the wrong answer
 
@@ -78,26 +79,25 @@ predictable ways, and OpenProse is built around them:
 
 Reaching for OpenProse in the wrong place costs more trust than it earns.
 
-## What a system looks like
+## What a contract looks like
 
 ```markdown
 ---
-name: research-pipeline
-kind: system
+name: research-monitor
+kind: responsibility
 ---
-
-### Services
-
-- `researcher`
-- `writer`
 
 ### Requires
 
-- `topic`: the question to investigate
+- `topic`: the question to keep current
 
-### Ensures
+### Maintains
 
 - `report`: an executive-ready summary with sources
+
+### Continuity
+
+- input-driven
 
 ### Strategies
 
@@ -105,10 +105,13 @@ kind: system
 - when sources conflict: note the disagreement, don't pick sides
 ```
 
-Run:
+A `responsibility` declares a standing truth it keeps current (`### Maintains`)
+from its subscribed inputs (`### Requires`); Forme wires the edges and the render
+runs only when something material moves. A `function` is the called helper tier
+(`### Parameters` → `### Returns`). Run:
 
 ```
-prose run research-pipeline.prose.md
+prose run research-monitor.prose.md
 ```
 
 The contract says *what*. The runtime figures out *how*. In an agent harness,

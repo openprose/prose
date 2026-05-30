@@ -1,6 +1,6 @@
 ---
 name: prioritize-next-actions
-kind: service
+kind: function
 ---
 
 # Prioritize Next Actions
@@ -11,16 +11,16 @@ kind: service
 - `prohibited`: creating work that is too vague for an editor or marketer to
   accept
 
-### Requires
+### Parameters
 
-- `learning_summary`: patterns, hypotheses, and cautions from the performance
+- `learning-summary`: patterns, hypotheses, and cautions from the performance
   diagnosis
-- `opportunity_backlog`: candidate refreshes, follow-up pieces, distribution
+- `opportunity-backlog`: candidate refreshes, follow-up pieces, distribution
   tests, and measurement fixes
 
-### Ensures
+### Returns
 
-- `next_action_queue`: ordered list of editorial, distribution, experiment, and
+- `next-action-queue`: ordered list of editorial, distribution, experiment, and
   instrumentation actions for the next planning cycle
 
 ### Invariants
@@ -32,4 +32,3 @@ kind: service
 
 - Prefer one high-confidence content refresh and one learning experiment over a
   broad backlog with no sequencing.
-

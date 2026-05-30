@@ -1,6 +1,6 @@
 ---
 name: verify-slice
-kind: service
+kind: function
 ---
 
 # Verify Slice
@@ -15,14 +15,14 @@ conversationally and the agent files issues. This service is a
 **downstream pass/fail acceptance check** before commit. The names are
 deliberately different so the two are not confused.
 
-### Requires
+### Parameters
 
-- `chosen_slice`: the slice's acceptance criteria
-- `green_evidence`: the focused test command from `implement-tdd`
+- `chosen-slice`: the slice's acceptance criteria
+- `green-evidence`: the focused test command from `implement-tdd`
 
-### Ensures
+### Returns
 
-- `verify_report`: reproducible command, observed behavior, and pass/fail
+- `verify-report`: reproducible command, observed behavior, and pass/fail
   per acceptance criterion
 
 ### Shape
@@ -36,6 +36,6 @@ deliberately different so the two are not confused.
 ### Strategies
 
 - Treat a single failing acceptance criterion as overall `fail`; the
-  review phase will not commit on a failing `verify_report`.
+  review phase will not commit on a failing `verify-report`.
 - Prefer the smallest reproducible command that demonstrates each
   criterion.

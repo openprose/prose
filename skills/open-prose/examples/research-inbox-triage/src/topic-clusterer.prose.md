@@ -1,47 +1,38 @@
 ---
 name: topic-clusterer
-kind: service
+kind: function
 ---
 
 # Topic Clusterer
 
 ### Description
 
-Connects normalized inbox items to active questions and existing topic memory.
-
-### Runtime
-
-- `persist`: project
-
-### Memory
-
-```yaml
-reads:
-  - topic_map: existing clusters, canonical sources, and duplicate groups
-  - ignored_history: item fingerprints and prior ignore rationale
-writes:
-  - topic_map: merged clusters, new clusters, and duplicate cross-references
-  - ignored_history: newly ignored item fingerprints and rationale
-```
+Connects normalized inbox items to active questions and the calling
+responsibility's prior topic truth.
 
 ### Shape
 
 - `self`: compare items, cluster by topic, preserve duplicate evidence
 - `prohibited`: deciding owner assignments or final action wording
 
-### Requires
+### Parameters
 
-- `normalized_items`: cleaned item records with source and tag clues
-- `batch_duplicate_hints`: likely duplicates within this batch
-- `active_questions`: research questions, initiatives, or watch areas that
+- `normalized-items`: cleaned item records with source and tag clues
+- `batch-duplicate-hints`: likely duplicates within this batch
+- `active-questions`: research questions, initiatives, or watch areas that
   should influence priority
+- `prior-topics`: existing clusters, canonical sources, and duplicate groups
+  read from the responsibility's world-model
+- `prior-ignored`: item fingerprints and prior ignore rationale read from the
+  responsibility's world-model
 
-### Ensures
+### Returns
 
-- `clustered_items`: items grouped into existing or new topic clusters with
+- `clustered-items`: items grouped into existing or new topic clusters with
   duplicate reasoning
-- `topic_map_updates`: durable updates to topic clusters and duplicate history
-- `ignored_item_log`: items that are irrelevant or already resolved, with
+- `topic-map-updates`: merged clusters, new clusters, and duplicate
+  cross-references for the responsibility to commit to its world-model
+- `ignored-item-log`: items that are irrelevant or already resolved, with
   concise rationale
 
 ### Strategies

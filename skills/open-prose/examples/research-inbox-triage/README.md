@@ -4,7 +4,6 @@
 
 ```bash
 prose compile
-cp dist/manifest.next.json dist/manifest.active.json
 prose serve
 ```
 
@@ -19,8 +18,9 @@ what was ignored.
 
 ## Source Shape
 
-- `src/`: responsibility, inbox gateway, triage system, and services
-- `dist/`: compiled intent produced by `prose compile`
-- `runs/`: bounded activation receipts
-- `state/`: durable inbox memory and topic map
+- `src/`: the `research-inbox-responsibility`, the `inbox-gateway`, and the
+  helper `function`s it `call`s
+- `dist/`: compiled topology + canonicalizers produced by `prose compile`
+- `runs/`: append-only receipt ledger
+- `state/`: the canonical world-model (topic map + ignored-item history)
 - `deps/`: installed OpenProse dependencies

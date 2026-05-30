@@ -23,6 +23,15 @@ In-context state uses text-prefixed markers to persist state within the conversa
 
 **Key principle:** Your conversation history IS the VM's working memory.
 
+**The canonical world-model still holds even in-memory** (`world-model.md` §1): a
+node's published, fingerprinted truth and its append-only receipt chain are
+narrated as canonical state in the conversation, while the render's private
+working notes are *workspace* scratch — never fingerprinted, never subscribed to.
+There is no durable run directory and no SQL/vector projection; the canonical
+world-model and ledger live in conversation history and are lost when the session
+ends. The wake decision is still the reconciler comparing fingerprints
+narrated forward — never a judge, never a stored verdict.
+
 ---
 
 ## When to Use In-Context State

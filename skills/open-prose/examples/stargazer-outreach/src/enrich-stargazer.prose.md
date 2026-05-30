@@ -1,6 +1,6 @@
 ---
 name: enrich-stargazer
-kind: service
+kind: function
 ---
 
 # Enrich Stargazer
@@ -9,13 +9,13 @@ kind: service
 
 Gathers bounded public context for each candidate stargazer.
 
-### Requires
+### Parameters
 
-- `candidate_stargazers`: stargazers that need review
+- `candidate-stargazers`: stargazers that need review
 
-### Ensures
+### Returns
 
-- `stargazer_profiles`: candidate profiles with public GitHub activity, project
+- `stargazer-profiles`: candidate profiles with public GitHub activity, project
   context, company or team clues, and notable workflow signals
 - each profile has: cited evidence, confidence notes, and missing-context flags
 

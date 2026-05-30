@@ -4,7 +4,6 @@
 
 ```bash
 prose compile
-cp dist/manifest.next.json dist/manifest.active.json
 prose serve
 ```
 
@@ -19,8 +18,9 @@ duplicate or generic outreach.
 
 ## Source Shape
 
-- `src/`: responsibility, gateway, fulfillment system, and services
-- `dist/`: compiled intent produced by `prose compile`
-- `runs/`: bounded activation receipts
-- `state/`: durable stargazer history and outreach state
+- `src/`: the `high-intent-stargazer-outreach` responsibility, the
+  `github-star-events` gateway, and the helper `function`s it `call`s
+- `dist/`: compiled topology + canonicalizers produced by `prose compile`
+- `runs/`: append-only receipt ledger
+- `state/`: the canonical world-model (stargazer history + outreach state)
 - `deps/`: installed OpenProse dependencies

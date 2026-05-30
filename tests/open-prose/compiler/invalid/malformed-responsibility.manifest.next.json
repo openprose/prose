@@ -1,6 +1,6 @@
 {
-  "kind": "openprose.repository-ir",
-  "version": 0,
+  "kind": "openprose.compile-phase-ir",
+  "version": 2,
   "sources": [
     {
       "path": "broken.prose.md",
@@ -8,39 +8,40 @@
       "name": "broken"
     }
   ],
-  "responsibilities": [
+  "topology": {
+    "nodes": [
+      {
+        "node": "broken",
+        "contract_fingerprint": "",
+        "wake_source": "judge"
+      }
+    ],
+    "edges": [
+      {
+        "subscriber": "broken",
+        "producer": "missing",
+        "facet": ""
+      }
+    ],
+    "entry_points": [
+      "broken"
+    ],
+    "acyclic": true
+  },
+  "canonicalizers": [
     {
-      "id": "broken",
-      "sourcePath": "broken.prose.md",
-      "goal": "A broken responsibility remains structurally visible.",
-      "continuity": [
-        "Check daily."
-      ],
-      "criteria": [],
-      "constraints": [
-        "Do not hide malformed output."
-      ]
+      "node": "broken",
+      "artifact": "dist/canonicalizers/broken.js",
+      "facets": []
     }
   ],
-  "triggers": [
+  "postconditions": [
     {
-      "id": "broken.periodic",
-      "responsibilityId": "missing",
-      "kind": "cron",
-      "reason": ""
+      "node": "broken",
+      "artifact": "",
+      "mode": "judge"
     }
   ],
-  "activations": [
-    {
-      "id": "broken.fulfillment",
-      "responsibilityId": "broken",
-      "kind": "fulfillment",
-      "triggerIds": [
-        "missing"
-      ],
-      "reason": "Run the missing fulfillment."
-    }
-  ],
-  "formeManifests": [],
+  "contract_fingerprints": {},
   "diagnostics": []
 }

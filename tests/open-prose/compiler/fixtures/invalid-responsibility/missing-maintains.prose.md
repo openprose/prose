@@ -12,9 +12,9 @@ Inbound requests are routed to the right next action.
 
 ### Continuity
 
-- Review every business day.
+- input-driven.
 
-### Constraints
+### Invariants
 
 - Do not route requests without evidence.
 

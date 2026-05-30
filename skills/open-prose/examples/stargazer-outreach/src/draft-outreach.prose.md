@@ -1,6 +1,6 @@
 ---
 name: draft-outreach
-kind: service
+kind: function
 ---
 
 # Draft Outreach
@@ -9,13 +9,13 @@ kind: service
 
 Creates human-reviewable outreach notes for qualified stargazers.
 
-### Requires
+### Parameters
 
-- `qualified_leads`: qualified, deferred, and rejected stargazer records
+- `qualified-leads`: qualified, deferred, and rejected stargazer records
 
-### Ensures
+### Returns
 
-- `outreach_batch`: reviewed stargazers with final status, rationale, and draft
+- `outreach-batch`: reviewed stargazers with final status, rationale, and draft
   outreach when appropriate
 - each draft has: evidence-backed opener, specific OpenProse workflow idea,
   optional sample result, and reason a human should approve or skip it

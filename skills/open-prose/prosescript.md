@@ -2,36 +2,43 @@
 role: prosescript-language-reference
 summary: |
   Canonical imperative scripting layer for OpenProse. ProseScript is used by
-  `### Execution` blocks in Contract Markdown services and systems, and by
-  fenced pattern `### Delegation` rules when the author needs pinned
+  `### Execution` blocks in Contract Markdown responsibilities and functions,
+  and by fenced pattern `### Delegation` rules when the author needs pinned
   choreography.
 see-also:
-  - contract-markdown.md: Declarative service and system format
+  - contract-markdown.md: Declarative responsibility and function format
   - prose.md: VM execution semantics
   - forme.md: Manifest wiring semantics
 ---
 
 # ProseScript
 
-ProseScript describes exact workflow choreography: call this service, pass these
-bindings, run these branches in parallel, loop until this condition holds, and
-handle failures this way. Use it when order matters. Use Contract Markdown when
-the end state matters and Forme can choose the graph.
+ProseScript describes exact workflow choreography inside a single render: call
+this function, pass these bindings, run these branches in parallel, loop until
+this condition holds, and handle failures this way. Use it when order matters.
+Use Contract Markdown when the end state matters and Forme can choose the graph.
+
+ProseScript is the **intra-node** layer: `call` invokes a `function`, and
+`session`/`agent`/`resume` spawn one-off sub-agents — all ephemeral and internal
+to producing this node's world-model. Cross-node connections are never made in
+ProseScript; they are subscriptions Forme wires from `### Requires` to a
+producer's `### Maintains`.
 
 ## Surfaces
 
 | Surface | Scope | Primary call style | Interface source |
 |---------|-------|--------------------|------------------|
-| `### Execution` in `*.prose.md` | Pinned service/system choreography | `call service-name` | `### Requires`, `### Ensures`, `### Services` |
+| `### Execution` in `*.prose.md` | Pinned intra-node choreography | `call function-name` | `### Requires`/`### Maintains` (responsibility) or `### Parameters`/`### Returns` (function) |
 | Pattern `### Delegation` | Slot interaction rules inside a pattern instance | `call slot-name` | `### Slots`, `### Config`, pattern instance bindings |
 
-Contract Markdown owns the interface and service graph, so embedded ProseScript
-must not redeclare caller inputs or public outputs. Use `### Requires`,
-`### Ensures`, and `### Services` for those contracts.
+Contract Markdown owns the interface, so embedded ProseScript must not redeclare
+caller inputs or public outputs. A responsibility declares them with
+`### Requires` / `### Maintains`; a function declares them with `### Parameters`
+/ `### Returns`.
 
-Inside `### Execution`, prefer `call service`. Use `session`, `agent`, and
-`resume` only for explicitly intentional one-off subagents that are outside the
-Contract Markdown service graph.
+Inside `### Execution`, prefer `call function`. Use `session`, `agent`, and
+`resume` only for explicitly intentional one-off subagents internal to this
+render.
 
 ## Lexical Rules
 
@@ -213,8 +220,10 @@ surface-specific validation and execution behavior.
 ProseScript does not own public interfaces in current OpenProse source.
 Caller inputs and public outputs are declared by Contract Markdown:
 
-- `### Requires` declares variables available to `### Execution`.
-- `### Ensures` declares public outputs the service or system must produce.
+- `### Requires` (responsibility) or `### Parameters` (function) declares the
+  variables available to `### Execution`.
+- `### Maintains` (responsibility) declares the world-model truth the render
+  must keep current; `### Returns` (function) declares the value it must produce.
 - `return` chooses the execution block's result for the enclosing contract.
 
 Legacy standalone `.prose` files used `input` and `output` declarations. Treat
@@ -226,8 +235,8 @@ Validation:
 | Check | Result |
 |-------|--------|
 | `input` or `output` inside current ProseScript | Error |
-| `return` value does not satisfy enclosing `### Ensures` | Contract failure |
-| Referenced `### Requires` variable is missing | Error |
+| `return` value does not satisfy enclosing `### Maintains`/`### Returns` | Contract failure |
+| Referenced `### Requires`/`### Parameters` variable is missing | Error |
 
 ## Dependency Declarations
 
@@ -244,7 +253,7 @@ disk-only rules as `prose run`:
 explicit git host identifiers, `std/...` and `co/...` expansions, pinned
 versions, and `<openprose-root>/deps/`.
 
-A used service or system can be invoked with `call alias`:
+A used function can be invoked with `call alias`:
 
 ```prose
 let inspection = call inspector
@@ -260,12 +269,12 @@ Validation:
 | Duplicate alias | Error |
 | Alias is not a valid identifier | Error |
 | Dependency declared after executable statements | Error |
-| `use` inside embedded Contract Markdown ProseScript | Error; declare it in `### Services` |
+| `use` inside embedded Contract Markdown ProseScript | Error; declare the dependency in the contract, not the render body |
 
 ## Calls
 
-`call` invokes a Contract Markdown service, system, pattern instance, pattern
-slot, or used dependency.
+`call` invokes a Contract Markdown `function`, pattern instance, pattern slot,
+or used dependency function.
 
 ```prose
 let findings = call researcher
@@ -302,16 +311,16 @@ Validation:
 | Destructured output not declared by target | Error |
 | Call modifier conflicts with target input name | Error; rename or wrap the data |
 
-Inside `### Execution`, each `call` must resolve to a service, system, or
-pattern instance declared in `### Services`, or to the current service when the
-service owns the execution block. Inside pattern `### Delegation`, each `call`
-must resolve to a slot name, a bound nested pattern instance, or a helper
-explicitly declared by the pattern.
+Inside `### Execution`, each `call` must resolve to a resolved `function` (a
+local file, a `use`d dependency, or a `std/` library function) or a pattern
+instance, or to a delegated helper the render declares. Inside pattern
+`### Delegation`, each `call` must resolve to a slot name, a bound nested
+pattern instance, or a helper explicitly declared by the pattern.
 
 ## Sessions, Agents, And Resume
 
 Pinned execution blocks can spawn direct subagent sessions when the work is
-intentionally outside the static service graph:
+intentionally a one-off internal to this render (not a reusable `function`):
 
 ```prose
 agent researcher:
@@ -375,7 +384,7 @@ Validation:
 | Undefined agent | Error |
 | Duplicate property | Error |
 | Invalid shape property | Error |
-| Direct `session` in Contract Markdown when an equivalent service exists | Warning |
+| Direct `session` in `### Execution` when an equivalent `function` exists | Warning |
 
 ## Variables And Context
 
@@ -447,11 +456,13 @@ return call fixer
 
 In a block, `return` returns to the `do block(...)` caller. At top level, it
 returns to the script caller or satisfies the surrounding Contract Markdown
-`### Ensures`. A bare `return` returns `null`.
+`### Maintains` (responsibility) or `### Returns` (function). A bare `return`
+returns `null`.
 
 Embedded `### Execution` should return a value whose shape matches the enclosing
-service or system `### Ensures`. Pattern `### Delegation` should return the
-pattern instance result or the result expected by the current delegation rule.
+contract's `### Maintains` (responsibility) or `### Returns` (function). Pattern
+`### Delegation` should return the pattern instance result or the result
+expected by the current delegation rule.
 
 ## Parallel Blocks
 
@@ -771,14 +782,16 @@ return call writer
 ```
 ````
 
-Forme validates that every `call` target appears in `### Services` or is the
-current service's declared internal execution. The Prose VM follows the written
-sequence exactly, including explicit `parallel` blocks. It does not infer new
-parallelism, reorder calls, or add missing services.
+Forme validates that every `call` target resolves to a `function` (local, a
+`use`d dependency, or a `std/` library function) or to a delegated helper the
+render declares. The Prose VM follows the written sequence exactly, including
+explicit `parallel` blocks. It does not infer new parallelism, reorder calls, or
+add missing calls.
 
 Embedded validation also checks that the returned value satisfies the enclosing
-`### Ensures` and that each call input can be satisfied from `### Requires`,
-prior call outputs, local variables, or literals.
+`### Maintains`/`### Returns` and that each call input can be satisfied from
+`### Requires`/`### Parameters`, prior call outputs, local variables, or
+literals.
 
 ## Pattern Delegation
 
@@ -801,8 +814,8 @@ return output
 
 Slot names, `config` keys, and parent-provided inputs are in scope. Calls may
 target slots or nested pattern instances. Pattern files are not directly
-runnable; a system instantiates the pattern and binds its slots before the
-delegation runs.
+runnable; a responsibility instantiates the pattern and binds its slots before
+the delegation runs.
 
 ## Execution And Validation Model
 
@@ -811,23 +824,23 @@ Execution has three phases:
 1. Parse lexical structure, blocks, declarations, and statements.
 2. Validate names, scopes, target contracts, inputs, outputs, loop bounds, and
    surface-specific restrictions.
-3. Execute in source order, using the Prose VM from `prose.md` for service
+3. Execute in source order, using the Prose VM from `prose.md` for function
    calls, sessions, state, bindings, retries, and final result publication.
 
 Contract Markdown `### Execution`:
 
 ```text
-Forme resolves Services, Requires, Ensures
+Forme resolves the render's call targets and contract sections
 parse execution block
 validate call targets and binding flow against contracts
-emit pinned manifest
+emit pinned compile-phase IR
 Prose VM executes exactly the written choreography
 ```
 
 Pattern `### Delegation`:
 
 ```text
-instantiate pattern from a system Services entry
+instantiate pattern from a responsibility's pattern reference
 bind slots and config
 execute delegation rules inside the pattern instance
 enforce pattern invariants and termination bounds

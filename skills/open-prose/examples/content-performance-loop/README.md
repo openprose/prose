@@ -4,7 +4,6 @@
 
 ```bash
 prose compile
-cp dist/manifest.next.json dist/manifest.active.json
 prose serve
 ```
 
@@ -18,8 +17,9 @@ queue.
 
 ## Source Shape
 
-- `src/`: responsibility, schedule gateway, performance system, and services
-- `dist/`: compiled intent produced by `prose compile`
-- `runs/`: bounded activation receipts
-- `state/`: durable content performance history
+- `src/`: the `content-learning-cycle` responsibility, the
+  `weekly-performance-review` gateway, and the helper `function`s it `call`s
+- `dist/`: compiled topology + canonicalizers produced by `prose compile`
+- `runs/`: append-only receipt ledger
+- `state/`: the canonical world-model (learnings + recommendation history)
 - `deps/`: installed OpenProse dependencies

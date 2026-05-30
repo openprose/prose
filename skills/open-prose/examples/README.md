@@ -1,8 +1,18 @@
 # OpenProse Examples
 
 These examples are small OpenProse Native Repositories. Each one models a real
-standing goal with source in `src/`, compiled intent in `dist/`, runtime
-receipts in `runs/`, durable state in `state/`, and dependencies in `deps/`.
+standing goal as a mounted `responsibility` — the headline kind — that maintains
+a world-model, with cross-node helper `function`s it `call`s and a `gateway`
+that brings outside events in. Source lives in `src/`, the compiled topology and
+per-node canonicalizers in `dist/`, runtime receipts in `runs/`, the canonical
+world-model in `state/`, and dependencies in `deps/`.
+
+Each responsibility declares what it subscribes to (`### Requires`), the shape of
+the truth it keeps current (`### Maintains`), and its wake-source
+(`### Continuity`: input-driven, self-driven, or external-driven). Forme wires
+the `### Requires` ↔ `### Maintains` edges at compile time; the dumb reconciler
+skips a render when neither the contract nor any subscribed input fingerprint
+moved — so cost scales with surprise, not the clock.
 
 ## Examples
 
@@ -48,12 +58,14 @@ source code or should keep their own release cadence.
 
 ## Quick Start
 
-Open one example directory, then compile and serve it:
+Open one example directory, then compile and serve it. `prose compile` is the
+only intelligent phase — it runs Forme to wire the responsibility DAG and lowers
+each `### Maintains` into a deterministic canonicalizer; `prose serve` runs the
+dumb reconciler over that frozen output.
 
 ```bash
 cd skills/open-prose/examples/stargazer-outreach
 prose compile
-cp dist/manifest.next.json dist/manifest.active.json
 prose serve
 ```
 

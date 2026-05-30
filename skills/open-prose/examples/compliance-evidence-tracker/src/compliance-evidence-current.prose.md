@@ -11,37 +11,63 @@ id: 067NC4KG0HWJNASC5MQ2YC1H68
 Compliance evidence for active controls is current, reviewable, and ready for
 an auditor or internal owner before review windows become urgent.
 
+### Requires
+
+- `evidence-signals`: a current view of evidence-change events, control changes,
+  failed checks, policy exceptions, and incoming audit requests for active
+  controls
+
+### Maintains
+
+- `controls`: per-control evidence truth, with `status`, `gaps`, and `register`
+  facets
+- each control has: a named owner, framework mapping, evidence requirement,
+  current artifact reference, freshness status, review status, and known gaps
+- `status` facet (material): per-control readiness (`accepted`, `stale`,
+  `missing`, `exception`, or `needs-human-review`) with cited evidence and
+  confidence
+- `gaps` facet (material): owner-ready follow-up grouped by control owner with
+  severity, due date, and audit-ready notes
+- `register` facet (material): durable evidence history — fingerprints, exception
+  context, owner follow-up, and next review timing — preserved across renders
+- immaterial: scan timestamps and source request ids
+- freshness: each control carries `last_reviewed` and a `valid_until` that lapses
+  on the weekly (audit-prep) or monthly (otherwise) cadence
+- postcondition: every accepted evidence artifact has a source reference, review
+  timestamp, and evidence fingerprint
+- postcondition: every gap has a named owner, reason, severity, and next action
+- postcondition: unverified screenshots, informal notes, or expired exports are
+  never accepted without marking the risk
+
 ### Continuity
 
-- Evidence for active controls should be reviewed at least weekly during audit
-  preparation and at least monthly otherwise.
-- Material control changes, failed checks, new policy exceptions, or incoming
-  audit requests should trigger evidence review before the next scheduled
-  cadence when known.
-- Prior evidence decisions should remain available so stale, missing, accepted,
-  and exception-backed artifacts are not rediscovered from scratch.
+- self-driven: review active-control evidence at least weekly during audit
+  preparation and at least monthly otherwise
+- input-driven: material control changes, failed checks, new policy exceptions,
+  or incoming audit requests wake a review before the next scheduled cadence
 
-### Criteria
+### Invariants
 
-- Each control has a named owner, evidence requirement, current artifact
-  reference, freshness status, review status, and known gaps.
-- Evidence gaps distinguish missing artifacts, stale artifacts, unclear
-  ownership, and policy exceptions.
-- The durable register records reviewed controls, evidence fingerprints,
-  owner follow-up, exception context, and next review timing.
-
-### Constraints
-
-- Do not treat unverified screenshots, informal chat notes, or expired exports
-  as accepted evidence without marking the risk.
 - Do not expose sensitive customer, employee, or security details beyond the
   compliance owners who need them.
 - Keep follow-up requests narrow enough that control owners can act on them.
 
-### Tools
+### Execution
 
-(none)
+```prose
+let scope = call collect-control-scope
+  evidence-signals: evidence-signals
+  prior-controls: controls
 
-### Fulfillment
+let assessments = call inspect-evidence
+  control-scope: scope.control-scope
 
-Prefer the local `evidence-tracker` system.
+let brief = call prepare-gap-brief
+  evidence-assessments: assessments.evidence-assessments
+
+return {
+  status: assessments.evidence-assessments,
+  gaps: brief.evidence-brief,
+  register: assessments.evidence-assessments
+}
+```

@@ -1,11 +1,16 @@
 {
-  "kind": "openprose.repository-ir",
-  "version": 0,
+  "kind": "openprose.compile-phase-ir",
+  "version": 2,
   "sources": [],
-  "responsibilities": [],
-  "triggers": [],
-  "activations": [],
-  "formeManifests": [],
+  "topology": {
+    "nodes": [],
+    "edges": [],
+    "entry_points": [],
+    "acyclic": true
+  },
+  "canonicalizers": [],
+  "postconditions": [],
+  "contract_fingerprints": {},
   "diagnostics": [
     {
       "severity": "info",

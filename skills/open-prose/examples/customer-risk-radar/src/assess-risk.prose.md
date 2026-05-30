@@ -1,6 +1,6 @@
 ---
 name: assess-risk
-kind: service
+kind: function
 ---
 
 # Assess Risk
@@ -9,17 +9,17 @@ kind: service
 
 Turns normalized account signals into explainable customer risk assessments.
 
-### Requires
+### Parameters
 
-- `account_signals`: accounts needing review with current signals and prior
+- `account-signals`: accounts needing review with current signals and prior
   risk context
 
-### Ensures
+### Returns
 
-- `risk_assessments`: accounts labeled `low`, `watch`, `high`, or `unknown`
+- `risk-assessments`: accounts labeled `low`, `watch`, `high`, or `unknown`
   with evidence, likely cause, confidence, trend, and urgency
 - each assessment has: cited signal evidence, missing-context notes, and
-  comparison with prior ledger state
+  comparison with prior risk state
 
 ### Invariants
 

@@ -5,6 +5,10 @@ kind: gateway
 
 # Evidence Review Events
 
+### Continuity
+
+- external-driven
+
 ### Schedule
 
 - Every Monday at 09:00 local time.
@@ -15,13 +19,20 @@ kind: gateway
 - Provider: Internal compliance workspace
 - Event: evidence-change
 
+### Maintains
+
+- `evidence-signals`: the latest incoming compliance evidence as structured truth
+- each signal carries: changed control ids, evidence artifact updates, audit
+  request details, or policy exception updates
+- immaterial: webhook delivery ids and receipt timestamps
+
 ### Emits
 
-- compliance-evidence-current.evidence-change
+- compliance-evidence-current
 
 ### Payload
 
 Pass the scheduled review request, changed control ids, evidence artifact
-updates, audit request details, or policy exception updates as activation event
-context. The fulfillment system should accept a portfolio scan, a focused
-control batch, or an explicit manual review request.
+updates, audit request details, or policy exception updates as the incoming
+truth. Accept a portfolio scan, a focused control batch, or an explicit manual
+review request.

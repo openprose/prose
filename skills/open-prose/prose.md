@@ -52,7 +52,7 @@ codex exec "prose run system.prose.md"
 | `prose install`             | Install dependencies from `use` statements into `<openprose-root>/deps/`        |
 | `prose install --update`    | Update pinned dependency SHAs                                   |
 | `prose inspect <run-id>`    | Evaluate a completed run                                        |
-| `prose status`              | Show active IR, diagnostics, trigger plan, recent runs, and responsibility status/pressure |
+| `prose status`              | Show active IR, diagnostics, the topology world-model (nodes/edges/wake-sources), recent runs, and per-node receipt/fingerprint state |
 | `prose upgrade --dry-run`   | Inspect OpenProse source/layouts and report the migration plan   |
 | `prose upgrade`             | Migrate OpenProse source/layouts to current conventions          |
 | `prose help`                | Show help and examples                                          |
@@ -156,7 +156,7 @@ Every source file declares a `kind` in its frontmatter:
 | `gateway` | Optional ingress declaration compiled into trigger registrations |
 | `test`      | A test harness — provides fixtures, runs a subject, evaluates assertions |
 | `pattern` | Reusable agent design pattern with slots, config, invariants, and delegation rules |
-| `responsibility` | Standing goal compiled into judge, trigger, and fulfillment intent |
+| `responsibility` | A mounted DAG node: `### Requires`/`### Maintains` interface + a render, woken by its `### Continuity` wake-source. Maintains a canonical world-model; downstreams subscribe to it |
 
 `prose run` accepts `kind: service` and structurally complete `kind: system`
 files. `prose test` executes `kind: test` files. `kind: gateway`,
@@ -225,7 +225,7 @@ own tools:
 | `spawn_session` | Start an isolated agent/session with a prompt, optional model, and access to declared input/output paths |
 | `ask_user` | Pause execution for missing required caller input and resume with the answer |
 | `read_file` / `write_file` | Read and write `<openprose-root>/runs/{id}/` state artifacts and backend records |
-| `copy_binding` | Publish a declared output through the active backend; filesystem copies from `workspace/{service}/` to `bindings/{service}/` |
+| `commit_world_model` | Publish a node's maintained truth: write the **canonical world-model artifact** through the active backend (filesystem: from the render's private `workspace/{node}/` scratch to the canonical `world-model/{node}/` artifact), then sign a receipt carrying its `fingerprints`. The published artifact is deterministically serialized and fingerprinted; the workspace scratch never is. This replaces the old dumb copy: publishing is *write world-model + sign receipt*, not a file copy. |
 | `check_env` | Confirm an environment variable exists without exposing its value |
 | `check_tool` | Confirm a declared host tool exists without installing, modifying, or running it |
 
@@ -292,28 +292,24 @@ prose run <source.prose.md> --activation-context '<json>'
 ```
 
 Treat `--activation-context` as VM control data, not caller input. The JSON
-envelope has `kind: "openprose.activation"` and points at the compiled intent,
-trigger, activation, responsibility, event payload, optional pressure record,
-and optional `formeManifestId`. Judge activations also receive responsibility
-status output paths under `<openprose-root>/state/responsibilities/`. The host
-may also provide the same payload through
-`PROSE_ACTIVATION_CONTEXT`, with `PROSE_OPENPROSE_ROOT`,
-`PROSE_REPOSITORY_IR_PATH`, `PROSE_REPOSITORY_IR_VERSION`, and
-`PROSE_ACTIVATION_ID` for quick lookup. Judge runs may also receive
-`PROSE_RESPONSIBILITY_ID`, `PROSE_RESPONSIBILITY_FINGERPRINT`,
-`PROSE_RESPONSIBILITY_STATUS_LATEST`, and
-`PROSE_RESPONSIBILITY_STATUS_LOG`. Pressure-triggered runs may also receive
-`PROSE_PRESSURE_ID` and `PROSE_PRESSURE_DEDUPE_KEY`. Load the referenced
-compiled intent from the active OpenProse root before execution, select the
-matching Forme manifest when `formeManifestId` is present, then continue as a
-normal bounded run.
+envelope has `kind: "openprose.activation"` and points at the compiled intent
+(the topology world-model + per-node canonicalizers + postcondition validators),
+the woken `node`, and the `wake` that scheduled this render — its `source`
+(`input` | `self` | `external`) and the `refs` to the waking receipt(s) or tick.
+The host may also provide the same payload through `PROSE_ACTIVATION_CONTEXT`,
+with `PROSE_OPENPROSE_ROOT`, `PROSE_REPOSITORY_IR_PATH`,
+`PROSE_REPOSITORY_IR_VERSION`, and `PROSE_ACTIVATION_ID` for quick lookup. A
+render may also receive `PROSE_NODE` (the node identity), `PROSE_CONTRACT_FINGERPRINT`,
+and `PROSE_PREV_RECEIPT` (the prior receipt, by reference). Load the referenced
+compiled intent from the active OpenProse root before execution, then continue as
+a normal bounded render.
 
-When pressure activates fulfillment, retry, or escalation, the trigger id may
-be a virtual `{responsibility-id}.pressure` event. Treat it like any other event
-in the activation context.
-
-If the invoked source is `runtime/judge-responsibility.prose.md`, resolve it
-from the OpenProse skill root, not the user source tree.
+There is no judge beat, no responsibility status enum, no pressure record. A node
+runs because the **reconciler** compared fingerprints and found that either the
+node's own `contract_fingerprint` or one of its subscribed `input_fingerprints`
+moved (`world-model.md` §3). The wake decision is deterministic and total — never
+an LLM judgment — and every wake, from any of the three sources, arrives as a
+receipt the render reads by reference.
 
 ---
 
@@ -807,6 +803,50 @@ This is the "return" in Prose. When a service completes:
 - **`workspace/`** is private. The service writes freely. Everything is preserved for post-run inspection and debugging.
 - **`bindings/`** is public. Only declared `ensures` outputs appear here. Downstream services only see what the contract promises.
 - **The copy is the publish step.** A service can write draft findings, revise them, rewrite them—only the final version in workspace gets copied to bindings.
+
+This copy-on-return mechanism governs a single-session `service`/`function` run:
+a stateless callable that returns a value. A **responsibility node**, which
+maintains a standing world-model and is subscribed to by downstreams, publishes
+through the richer render-harness seam below — not a dumb copy.
+
+---
+
+## The Render Harness Seam
+
+A **responsibility node** maintains a canonical world-model — its standing,
+typed, subscribable truth (`world-model.md` §1). When the reconciler wakes a node
+(because its `contract_fingerprint` or an `input_fingerprint` moved), the VM
+runs a **render** under this harness contract:
+
+1. **Locate the prior world-model by reference.** The render is *not* handed the
+   world-model stuffed into context. The harness tells it *where* the prior truth
+   lives (a queryable location — a directory by default, or a derived query index
+   for a large truth) and the render reads it *as needed*, the way an agent works
+   against a repo. The waking receipt carries the upstream `fingerprints` +
+   `semantic_diff` ("3 controls went stale"); the render reaches each upstream
+   *published* world-model by reference, never inlined.
+2. **Render against the prior truth.** The render writes freely to its private
+   `workspace/{node}/` scratch — intermediate reasoning, working notes. **Scratch
+   is never fingerprinted and never subscribed to.** It self-polices its
+   `### Maintains` postconditions before signing (no separate judge beat).
+3. **Commit + sign.** When something semantically material changed, the render
+   writes the canonical **published** world-model artifact and emits a receipt via
+   `commit_world_model`. The store produces a deterministic canonical
+   serialization (stable file ordering, path/encoding normalization), the compiled
+   canonicalizer computes the `fingerprints` over it, and the receipt records
+   `node`, `contract_fingerprint`, `wake`, `input_fingerprints`, `fingerprints`,
+   `semantic_diff`, `prev`, `status`, `cost`, and `sig`.
+
+**Only `rendered` with a moved fingerprint propagates.** If neither the contract
+nor any input moved, the reconciler writes a `skipped` receipt (copying the
+unchanged `fingerprints` forward, empty `semantic_diff`, zero `cost`) and spawns
+no render at all. Immaterial churn (a re-poll that only bumps `fetched_at`) stays
+in the workspace and never reaches the published truth, so it never wakes a
+downstream.
+
+This harness activates only for mounted responsibility nodes. A standalone
+`service`/`function` run has no harness imposing it; a standalone responsibility
+render applies the compiled canonicalizer locally to fingerprint its own receipt.
 
 ---
 

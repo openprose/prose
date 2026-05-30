@@ -1,6 +1,6 @@
 ---
 name: action-planner
-kind: service
+kind: function
 ---
 
 # Action Planner
@@ -16,18 +16,18 @@ follow-up queue.
   ignored
 - `prohibited`: contacting owners or modifying external task systems directly
 
-### Requires
+### Parameters
 
-- `clustered_items`: items grouped into topic clusters with duplicate reasoning
-- `priority_ranking`: ranked clusters and items with scores, confidence, and
+- `clustered-items`: items grouped into topic clusters with duplicate reasoning
+- `priority-ranking`: ranked clusters and items with scores, confidence, and
   short reasoning
-- `ignored_item_log`: items that are irrelevant or already resolved, with
+- `ignored-item-log`: items that are irrelevant or already resolved, with
   concise rationale
-- `available_owners`: people or roles who can accept follow-up work
+- `available-owners`: people or roles who can accept follow-up work
 
-### Ensures
+### Returns
 
-- `triage_report`: scan-friendly summary of clusters, priorities, and next
+- `triage-report`: scan-friendly summary of clusters, priorities, and next
   actions
 
 ### Strategies

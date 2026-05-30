@@ -1,6 +1,6 @@
 {
   "kind": "openprose.repository-ir",
-  "version": 0,
+  "version": 2,
   "sources": [
     {
       "path": "system.prose.md",
@@ -13,64 +13,54 @@
       "name": "worker"
     }
   ],
-  "responsibilities": [],
-  "triggers": [],
-  "activations": [
+  "topology": {
+    "nodes": [
+      {
+        "node": "a",
+        "contract_fingerprint": "sha256:0000000000000000000000000000000000000000000000000000000000000001",
+        "wake_source": "input"
+      },
+      {
+        "node": "b",
+        "contract_fingerprint": "sha256:0000000000000000000000000000000000000000000000000000000000000002",
+        "wake_source": "input"
+      }
+    ],
+    "edges": [
+      {
+        "subscriber": "a",
+        "producer": "b",
+        "facet": "@atomic"
+      },
+      {
+        "subscriber": "b",
+        "producer": "a",
+        "facet": "@atomic"
+      }
+    ],
+    "entry_points": [
+      "missing-gateway"
+    ],
+    "acyclic": true
+  },
+  "canonicalizers": [
     {
-      "id": "orphan.fulfillment",
-      "responsibilityId": "missing",
-      "kind": "fulfillment",
-      "reason": "Run malformed wiring.",
-      "targetName": "system",
-      "formeManifestId": "missing-forme"
+      "node": "a",
+      "artifact": "dist/canonicalizers/a.js",
+      "facets": [
+        "product"
+      ]
     }
   ],
-  "formeManifests": [
+  "postconditions": [],
+  "contract_fingerprints": {
+    "a": "sha256:0000000000000000000000000000000000000000000000000000000000000001"
+  },
+  "activations": [
     {
-      "id": "system",
-      "systemName": "system",
-      "sourcePath": "system.prose.md",
-      "caller": {
-        "requires": [],
-        "returns": []
-      },
-      "graph": [
-        {
-          "id": "worker",
-          "sourcePath": "worker.prose.md",
-          "workspacePath": "",
-          "inputs": [
-            {
-              "name": "brief",
-              "from": "service",
-              "path": "bindings/missing/brief.md",
-              "sourceNodeId": "missing",
-              "sourceOutput": ""
-            }
-          ],
-          "outputs": []
-        }
-      ],
-      "executionOrder": [
-        {
-          "nodeId": "missing",
-          "dependsOn": [
-            "worker",
-            "missing"
-          ]
-        }
-      ],
-      "environment": [
-        {
-          "name": "API_KEY",
-          "requiredBy": [
-            "missing"
-          ]
-        }
-      ],
-      "warnings": [
-        ""
-      ]
+      "id": "orphan.judge",
+      "responsibilityId": "missing",
+      "kind": "judge"
     }
   ],
   "diagnostics": []

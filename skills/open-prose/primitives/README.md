@@ -14,4 +14,4 @@ Formal specifications for OpenProse primitive operations. Primitives are the ato
 
 ## Contents
 
-- `session.md` — the `session` primitive; spawns a host subagent/session with a prompt and optional agent, context, and skill bindings
+- `session.md` — the render's harness contract: how a bounded session that is a render reads its inputs and prior world-model by reference, satisfies its `### Maintains` postconditions, writes the canonical world-model, and signs a receipt with the fingerprints. A render is complete standalone; mounting adds composition around it.

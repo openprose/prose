@@ -1,32 +1,32 @@
 ---
 name: implement-tdd
-kind: service
+kind: function
 ---
 
 # Implement TDD
 
 ### Description
 
-Apply the local Matt Pocock `tdd` skill to implement the `chosen_slice`
+Apply the local Matt Pocock `tdd` skill to implement the `chosen-slice`
 using a red-green-refactor loop, with evidence captured at each step so
 `verify-slice` and `review-and-commit` can audit the loop independently.
 
-### Requires
+### Parameters
 
-- `chosen_slice`: the AFK slice from `triage-and-pick`
-- `chosen_terminology`: glossary from `decide-plan` so tests and code use
+- `chosen-slice`: the AFK slice from `triage-and-pick`
+- `chosen-terminology`: glossary from `decide-plan` so tests and code use
   resolved vocabulary
 
-### Ensures
+### Returns
 
-- `implementation_report`: behavior implemented, tests added or changed,
+- `implementation-report`: behavior implemented, tests added or changed,
   commands run, files touched, and residual risks
-- `red_evidence`: failing test name, failure output, and test file path
+- `red-evidence`: failing test name, failure output, and test file path
   (harness-level evidence; `tdd/SKILL.md` describes the red step in
   prose without demanding a named artifact)
-- `green_evidence`: same test passing, with the exact focused command
-  run (same caveat as `red_evidence`)
-- `refactor_notes`: what changed under green, or `"none"` if no refactor
+- `green-evidence`: same test passing, with the exact focused command
+  run (same caveat as `red-evidence`)
+- `refactor-notes`: what changed under green, or `"none"` if no refactor
   was needed (same caveat)
 
 ### Skills
@@ -47,7 +47,7 @@ using a red-green-refactor loop, with evidence captured at each step so
 - One test → one minimal implementation → repeat. Never write a
   horizontal slice of tests first. This is Pocock's `tdd/SKILL.md`
   rule: "DO NOT write all tests first, then all implementation."
-- Name tests in `chosen_terminology` vocabulary, per `tdd/tests.md`.
+- Name tests in `chosen-terminology` vocabulary, per `tdd/tests.md`.
 - Tests assert behavior through public interfaces only; no internal
   collaborator mocks. See `tdd/mocking.md`'s "Don't mock:" list
   (own classes/modules and internal collaborators).
@@ -55,4 +55,4 @@ using a red-green-refactor loop, with evidence captured at each step so
   `tdd/deep-modules.md` and `tdd/interface-design.md`.
 - Refactor only on green, per `tdd/refactoring.md`.
 - If the repo already contains the intended fix, prove it with a
-  regression test and report `refactor_notes: "none — pre-existing"`.
+  regression test and report `refactor-notes: "none — pre-existing"`.
