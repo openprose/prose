@@ -17,8 +17,6 @@ export {
   deserializeArtifact,
   contentAddressOf,
   fingerprintArtifact,
-  facetSubtreePath,
-  facetSubtree,
 } from "./canonical";
 
 export {
@@ -26,7 +24,6 @@ export {
   type WorldModelRead,
   type WorldModelStore,
   atomicCanonicalizer,
-  subtreeFacetCanonicalizer,
   InMemoryWorldModelStore,
   COLD_START_FINGERPRINTS,
   resolveFacetFingerprint,

@@ -6,7 +6,6 @@ import { test } from "node:test";
 
 import { ATOMIC_FACET } from "../../shapes";
 import {
-  facetSubtree,
   fingerprintArtifact,
   type WorldModelFiles,
 } from "../canonical";
@@ -14,7 +13,7 @@ import { jsonFile, readTextFile, textFile } from "../files";
 import {
   COLD_START_FINGERPRINTS,
   InMemoryWorldModelStore,
-  subtreeFacetCanonicalizer,
+  atomicCanonicalizer,
 } from "../store";
 import { FileSystemWorldModelStore } from "../fs-store";
 
@@ -177,36 +176,30 @@ test("a faceted canonicalizer drives finer-grained per-facet propagation, durabl
   }
 });
 
-test("published/<facet>/ subtree layout round-trips on the FS store and matches in-memory", () => {
+test("arbitrary file layout round-trips on the FS store and matches in-memory (bytes survive a restart)", () => {
   const dir = tempDir();
   try {
     const fs = new FileSystemWorldModelStore({ directory: dir });
     const mem = new InMemoryWorldModelStore();
+    // The store ORGANIZES bytes (any paths) and applies the handed canonicalizer;
+    // it never imposes a `published/<facet>/…` subtree convention. Nested paths
+    // are preserved intact and the FS + in-memory stores agree on map + version.
     const art: WorldModelFiles = {
       "funding/round.json": jsonFile({ amount: 10 }),
       "hiring/reqs.json": jsonFile({ open: 3 }),
       "summary.md": textFile("# competitor"),
     };
-    const canon = subtreeFacetCanonicalizer(["funding", "hiring"]);
 
-    const fsCommit = fs.commitPublished("competitor", art, canon);
-    const memCommit = mem.commitPublished("competitor", art, canon);
+    const fsCommit = fs.commitPublished("competitor", art);
+    const memCommit = mem.commitPublished("competitor", art);
 
-    // Both stores agree on the whole faceted map and the version.
+    // Both stores agree on the atomic map and the version (the single authority
+    // is the handed canonicalizer; here the atomic default).
     deepEqual(fsCommit.fingerprints, memCommit.fingerprints);
     equal(fsCommit.version, memCommit.version);
+    equal(fsCommit.fingerprints[ATOMIC_FACET], fingerprintArtifact(art));
 
-    // The per-facet token equals the facet subtree fingerprint on the FS store.
-    equal(
-      fsCommit.fingerprints.funding,
-      fingerprintArtifact(facetSubtree(art, "funding")),
-    );
-    equal(
-      fsCommit.fingerprints.hiring,
-      fingerprintArtifact(facetSubtree(art, "hiring")),
-    );
-
-    // The <facet>/ regions survive a restart intact.
+    // The nested file regions survive a restart intact.
     const reader = new FileSystemWorldModelStore({ directory: dir });
     const files = reader.read("competitor").files;
     deepEqual(JSON.parse(readTextFile(files["funding/round.json"]!)), { amount: 10 });
@@ -224,9 +217,9 @@ test("atomic-only layout + fingerprint is byte-unchanged on the FS store (additi
     const fs = new FileSystemWorldModelStore({ directory: dir });
     const mem = new InMemoryWorldModelStore();
     const art = truth({ cve: 1 });
-    // No facets declared → the flat layout + the atomic singleton, identical to
-    // what the default atomic path produces (faceting is purely additive).
-    const fsCommit = fs.commitPublished("monitor", art, subtreeFacetCanonicalizer());
+    // The atomic default (no facets) → the flat layout + the atomic singleton,
+    // identical on the FS and in-memory stores (faceting is purely additive).
+    const fsCommit = fs.commitPublished("monitor", art, atomicCanonicalizer);
     const memCommit = mem.commitPublished("monitor", art);
     deepEqual(Object.keys(fsCommit.fingerprints), [ATOMIC_FACET]);
     equal(fsCommit.fingerprints[ATOMIC_FACET], memCommit.fingerprints[ATOMIC_FACET]);

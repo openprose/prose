@@ -7,10 +7,8 @@ import {
   InMemoryWorldModelStore,
   atomicCanonicalizer,
   resolveFacetFingerprint,
-  subtreeFacetCanonicalizer,
 } from "../store";
 import {
-  facetSubtree,
   fingerprintArtifact,
   type WorldModelFiles,
 } from "../canonical";
@@ -130,76 +128,27 @@ test("resolveFacetFingerprint falls back to the atomic token for unknown facets"
   equal(resolveFacetFingerprint(map, ATOMIC_FACET), "sha256:x");
 });
 
-test("published/<facet>/ subtree layout round-trips through the store, files intact", () => {
+// The store preserves arbitrary file paths intact on commit (any bytes, any
+// layout) and the COMPILED canonicalizer it is handed is the single source of
+// the facet tokens. The store-side `subtreeFacetCanonicalizer` (a second
+// facet-fingerprinting convention over `published/<facet>/…` file subtrees, with
+// no production caller) and its `facetSubtree` layout helper were removed in the
+// v2-facets consolidation; the facet selector boundary is proven end-to-end over
+// the compiled canonicalizer (compiled-canonicalizer-threading.test.ts) and the
+// live ledger-sourced resolver (reactor/__tests__/reconciler.test.ts).
+
+test("commitPublished preserves arbitrary file paths intact (any layout, bytes survive)", () => {
   const s = store();
   const art: WorldModelFiles = {
     "funding/round.json": jsonFile({ amount: 10 }),
     "hiring/reqs.json": jsonFile({ open: 3 }),
     "summary.md": textFile("# competitor"),
   };
-  s.commitPublished("competitor", art, subtreeFacetCanonicalizer(["funding", "hiring"]));
+  s.commitPublished("competitor", art);
   const read = s.read("competitor").files;
-  // The on-disk form shows the facets literally: the <facet>/ regions survive.
   deepEqual(JSON.parse(readTextFile(read["funding/round.json"]!)), { amount: 10 });
   deepEqual(JSON.parse(readTextFile(read["hiring/reqs.json"]!)), { open: 3 });
   equal(readTextFile(read["summary.md"]!), "# competitor");
-});
-
-test("per-facet subtree fingerprint EQUALS the canonicalizer facet token", () => {
-  const s = store();
-  const art: WorldModelFiles = {
-    "funding/round.json": jsonFile({ amount: 10 }),
-    "hiring/reqs.json": jsonFile({ open: 3 }),
-  };
-  const commit = s.commitPublished(
-    "competitor",
-    art,
-    subtreeFacetCanonicalizer(["funding", "hiring"]),
-  );
-  // The fingerprint the store committed for each facet IS the fingerprint of
-  // that facet's `published/<facet>/…` subtree — the layout is the source of
-  // the per-facet token (no forked canonicalization).
-  equal(commit.fingerprints.funding, fingerprintArtifact(facetSubtree(art, "funding")));
-  equal(commit.fingerprints.hiring, fingerprintArtifact(facetSubtree(art, "hiring")));
-  // The atomic token stays over the WHOLE published tree.
-  equal(commit.fingerprints[ATOMIC_FACET], fingerprintArtifact(art));
-});
-
-test("subtree faceting is finer-grained: move facet Y → facet X token holds", () => {
-  const s = store();
-  const canon = subtreeFacetCanonicalizer(["funding", "hiring"]);
-  const a = s.commitPublished(
-    "competitor",
-    { "funding/round.json": jsonFile({ amount: 10 }), "hiring/reqs.json": jsonFile({ open: 3 }) },
-    canon,
-  );
-  const b = s.commitPublished(
-    "competitor",
-    { "funding/round.json": jsonFile({ amount: 10 }), "hiring/reqs.json": jsonFile({ open: 9 }) },
-    canon,
-  );
-  // hiring moved; funding did not — a funding subscriber must not wake.
-  equal(a.fingerprints.funding, b.fingerprints.funding);
-  notEqual(a.fingerprints.hiring, b.fingerprints.hiring);
-  notEqual(a.fingerprints[ATOMIC_FACET], b.fingerprints[ATOMIC_FACET]);
-});
-
-test("atomic-only (no facets) keeps the flat layout + IDENTICAL fingerprint — purely additive", () => {
-  const s = store();
-  const art = truth({ cve: 1 });
-  // subtreeFacetCanonicalizer() with no facets is byte-identical to the atomic
-  // default: faceting adds nothing for a node that names no parts.
-  const faceted = s.commitPublished("a", art, subtreeFacetCanonicalizer());
-  const atomic = s.commitPublished("b", art, atomicCanonicalizer);
-  deepEqual(Object.keys(faceted.fingerprints), [ATOMIC_FACET]);
-  equal(faceted.fingerprints[ATOMIC_FACET], atomic.fingerprints[ATOMIC_FACET]);
-  // No `<facet>/` regions exist, so the flat layout is unchanged on disk.
-  deepEqual(Object.keys(s.read("a").files), ["truth.json"]);
-});
-
-test("subtreeFacetCanonicalizer rejects a redeclared atomic facet and duplicates", () => {
-  throws(() => subtreeFacetCanonicalizer([ATOMIC_FACET]));
-  throws(() => subtreeFacetCanonicalizer(["funding", "funding"]));
 });
 
 test("one node, one world-model: nodes are isolated", () => {

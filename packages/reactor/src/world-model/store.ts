@@ -24,8 +24,6 @@
 import {
   ATOMIC_FACET,
   type ContentAddress,
-  type Facet,
-  type Fingerprint,
   type FingerprintMap,
   type WorldModelCommit,
   type WorldModelRef,
@@ -39,7 +37,6 @@ export { resolveFacetFingerprint } from "../shapes";
 
 import {
   contentAddressOf,
-  facetSubtree,
   fingerprintArtifact,
   serializeArtifact,
   type WorldModelFiles,
@@ -65,59 +62,18 @@ export const atomicCanonicalizer: Canonicalizer = (files) => {
   return { [ATOMIC_FACET]: fingerprintArtifact(files) };
 };
 
-/**
- * The canonicalizer for a node whose published artifact is laid out as
- * `published/<facet>/…` subtrees mirroring the facet map (architecture.md §3.2
- * L162–L164 "the world-model subtree … `published/<facet>/…` — so 'the directory
- * structure *is* the state' shows the facets literally"; world-model.md §3
- * L164–L166; delta.md Part G "world-model subtree (`published/<facet>/…`)"). It
- * emits:
- *   - the ATOMIC token over the WHOLE artifact (every file, faceted or not) — the
- *     atomic fingerprint "stays computed over the whole `published/` tree"
- *     (delta.md Part G), so it moves on any material change; and
- *   - one token PER FACET over that facet's rebased subtree alone, so a move in
- *     facet Y does not move facet X's token (world-model.md §3 the selector
- *     boundary; SHAPES.md §1 L39).
- *
- * This makes the layout the source of the per-facet fingerprints: the store does
- * NOT fork canonicalization — the bytes it organizes (the `<facet>/` subtrees)
- * ARE what each facet token is taken over, so "per-facet subtree fingerprint ==
- * the facet token" holds by construction. A node that names no facets gets the
- * plain atomic singleton, byte-identical to {@link atomicCanonicalizer} (faceting
- * is purely additive, delta.md Part G "Atomic-only (no `####`) stays the
- * default").
- */
-export function subtreeFacetCanonicalizer(
-  facets: readonly Facet[] = [],
-): Canonicalizer {
-  // Reject a redeclared/duplicate atomic facet up front — the atomic token is
-  // always emitted over the whole tree and is reserved (SHAPES.md §1 L39).
-  const declared: Facet[] = [];
-  const seen = new Set<Facet>();
-  for (const facet of facets) {
-    if (facet === ATOMIC_FACET) {
-      throw new RangeError(
-        `the reserved atomic facet "${ATOMIC_FACET}" is implicit; do not declare it`,
-      );
-    }
-    if (seen.has(facet)) {
-      throw new RangeError(`facet "${facet}" declared more than once`);
-    }
-    seen.add(facet);
-    declared.push(facet);
-  }
-  return (files) => {
-    const map: Record<Facet, Fingerprint> = {
-      [ATOMIC_FACET]: fingerprintArtifact(files),
-    };
-    for (const facet of declared) {
-      // The facet token is the fingerprint of its rebased subtree — exactly the
-      // bytes under `published/<facet>/…`, independent of name + siblings.
-      map[facet] = fingerprintArtifact(facetSubtree(files, facet));
-    }
-    return Object.freeze(map);
-  };
-}
+// The SINGLE facet-fingerprint authority is the COMPILED canonicalizer that
+// travels with the contract (architecture.md §3.2; SHAPES.md §6): it reduces the
+// structured `WorldModelValue` (material, dotted paths) to the `{facet → token}`
+// map, and `commitPublished` applies whatever canonicalizer it is handed
+// (`mount.canonicalizer ?? atomicCanonicalizer`). The store does NOT define a
+// second facet-fingerprinting convention. A `subtreeFacetCanonicalizer` once
+// lived here that fingerprinted each facet over its `published/<facet>/…` file
+// subtree — a DIFFERENT token for the same facet, with no production caller; it
+// (and the `facetSubtree` layout helper it relied on) were removed in the
+// v2-facets consolidation so there is exactly one facet-fingerprint authority
+// (world-model.md §3; delta.md Part G). The store's facet job is to ORGANIZE
+// bytes and APPLY the handed canonicalizer on commit — never to fingerprint.
 
 /**
  * Read result of a published or workspace artifact, returned by reference (the

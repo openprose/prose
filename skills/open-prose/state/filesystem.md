@@ -246,26 +246,34 @@ world-model/
 ```
 
 **The fingerprinting rule with facets** (`world-model.md` §3; the
-canonical-serialization pass below):
+canonical-serialization pass below). The single authority for facet tokens is the
+**compiled canonicalizer** that travels with the contract: it reduces the
+node's *structured* material truth (the `### Maintains` canonicalization spec,
+frozen at compile, addressing material fields by their dotted structured paths)
+to the `{ facet → token }` map. The `published/<facet>/…` directory layout above
+is a *legibility convention* for the on-disk artifact — it mirrors the facets so
+"the directory *is* the state" reads literally — but the per-facet **token is
+not** a digest of that on-disk subtree's bytes; it is what the compiled
+canonicalizer computes over the facet's material structured content.
 
 - The **atomic `@atomic` token is computed over the whole `published/` tree** —
-  every facet subtree plus the shared un-facetted fields — and is always emitted.
-  It is the diamond-reconvergence primitive and the free default.
-- Each declared facet additionally emits **one token computed over only its
-  subtree's material content**. A downstream that `### Requires` `funding` and
-  resolves to `#### funding` subscribes to that facet's token: a move in
-  `published/hiring/` advances the `hiring` token and the `@atomic` token but
-  **not** the `funding` token, so the funding-only subscriber does not wake (the
-  selector boundary, `world-model.md` §3).
+  every facet's material content plus the shared un-facetted fields — and is
+  always emitted. It is the diamond-reconvergence primitive and the free default.
+- Each declared facet additionally emits **one token computed over only that
+  facet's material content** (its `#### funding` material fields). A downstream
+  that `### Requires` `funding` and resolves to `#### funding` subscribes to that
+  facet's token: a move in the `hiring` facet advances the `hiring` token and the
+  `@atomic` token but **not** the `funding` token, so the funding-only subscriber
+  does not wake (the selector boundary, `world-model.md` §3).
 - Shared un-facetted fields (here `competitors.md`'s `name` /
-  `last_corroborated`) sit *outside* any `published/<facet>/` subtree, so they
-  move only the `@atomic` token.
+  `last_corroborated`) belong to no facet's material content, so they move only
+  the `@atomic` token.
 
 Atomic-only nodes (no `####` parts) keep the flat layout above — facets are
 purely additive, and the `@atomic` token over the whole artifact is unchanged.
-Correctness holds either way (the canonicalizer fingerprints over normalized
-paths regardless); the subtree layout is what makes "the directory *is* the
-state" literally true for a faceted node.
+Correctness holds either way: the compiled canonicalizer fingerprints the
+structured material truth regardless of the on-disk directory shape; the subtree
+layout is the legibility surface, not a second fingerprinting convention.
 
 ---
 
@@ -285,10 +293,12 @@ canonicalize (drop immaterial) → fingerprint → sign receipt*:
    canonicalization spec, frozen at compile time): drop immaterial fields
    (`fetched_at`, request ids, cosmetic ordering), normalize sets/numbers/text to
    declared tolerances. This yields the **canonical (material) form**.
-4. **Fingerprint** = a plain digest over the canonical material form, producing
-   the `FingerprintMap` — the atomic `@atomic` token (over the whole `published/`
-   tree) always, plus one token per declared facet (over only that
-   `published/<facet>/` subtree's material content; see *Faceted layout* above).
+4. **Fingerprint** = the compiled canonicalizer's digest over the canonical
+   material form, producing the `FingerprintMap` — the atomic `@atomic` token
+   (over the whole material truth) always, plus one token per declared facet (over
+   only that facet's material content; see *Faceted layout* above). The token
+   authority is the compiled canonicalizer over the structured truth, not a digest
+   of the on-disk `published/<facet>/` subtree bytes.
 5. **Compare** against the node's prior receipt `fingerprints`. If nothing moved,
    write a `skipped` receipt (unchanged fingerprints copied forward, empty
    `semantic_diff`, zero `cost`) and **publish nothing new**. If a fingerprint
