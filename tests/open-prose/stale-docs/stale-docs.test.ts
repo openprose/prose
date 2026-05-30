@@ -3,10 +3,27 @@
 //   - skills/open-prose/compiler/index.prose.md  (kind: service -> kind: function)
 //   - skills/open-prose/guidance/authoring.md    (service/system guidance -> the new kinds)
 //
-// It also installs a CORPUS-WIDE GUARD: a grep-style assertion that fails if a
-// retired kind (`kind: service` / `kind: system`) reappears as frontmatter in
-// ANY SKILL doc. The retired kinds are deleted (delta.md §B1 L273-281, Part F
-// L534-541): `service`->`function`, `system` removed.
+// It also installs a CORPUS-WIDE GUARD: a FULL-TEXT assertion that fails if a
+// retired kind (`kind: service` / `kind: system`) is taught as LIVE behavior in
+// ANY SKILL doc — frontmatter `kind:` values, fenced code-block examples that
+// declare them, or prose that instructs using them as a current kind. The
+// retired kinds are deleted (delta.md §B1 L273-281, Part F L534-541):
+// `service`->`function`, `system` removed.
+//
+// HARDENED (v1gaps-guard-harden): the prior version inspected ONLY leading
+// frontmatter (`^kind:`), so ~18 body-level retired-kind references survived
+// the wave-1 sweep undetected. This now scans the full text of every SKILL doc
+// with a precise allowlist so it does NOT flag the legitimate HISTORICAL /
+// NEGATION contexts that the migration record must keep (delta.md keep-rule):
+//   - ALLOWLISTED FILES: changelog.md (the migration map — it must name the
+//     retired kinds to record that they were removed).
+//   - NEGATION/MIGRATION LINES: any occurrence whose line (collapsed with its
+//     immediate neighbours, because Markdown hard-wraps prose) reads as a
+//     prohibition or migration statement — "no `kind: system`", "service is
+//     renamed", "removed", "deleted", "retired", "no longer", or a `->`/`→`
+//     rename arrow. These NEGATE the kinds; they do not teach them as live.
+// Everything else — a frontmatter `kind: service`/`system`, a fenced example
+// declaring one, or affirmative prose instructing their current use — FAILS.
 //
 // Doc-conformance test in the style of tests/open-prose/contract-markdown and
 // tests/open-prose/skill-meta — it reads the source docs and asserts on their
@@ -200,26 +217,73 @@ describe("guidance/authoring.md — reshaped to the new kind set (delta.md §B6 
 	});
 });
 
-describe("CORPUS GUARD — no retired kind reappears in any SKILL doc frontmatter", () => {
+describe("CORPUS GUARD — no retired kind is TAUGHT AS LIVE in any SKILL doc (full text)", () => {
 	const docs = allDocs(skillDir);
+
+	// The literal retired-kind token, anywhere in the body or frontmatter.
+	// We match the `kind:` form specifically (not the bare words "service"/
+	// "system", which survive legitimately as English in unrelated sentences and
+	// as the retired NAMES in migration prose). Backticks optional so we catch
+	// both `` `kind: service` `` and bare `kind: service`.
+	const RETIRED = /kind:\s*`?(service|system)`?/gi;
+
+	// Files allowlisted wholesale: their JOB is to record the retired kinds.
+	// changelog.md is the migration map (delta.md §C3) — it must name
+	// `kind: service`/`kind: system` to document service->function and the
+	// system deletion. This is the historical record, not live teaching.
+	const ALLOWLIST_FILES = new Set(["changelog.md"]);
+
+	// A line (collapsed with its immediate neighbours to survive Markdown
+	// hard-wrap) is a NEGATION / MIGRATION statement — it states the kind does
+	// NOT exist or was renamed — and so is allowed.
+	const NEGATION =
+		/\bno\b|\bnot\b|\bnever\b|renamed|removed|deleted|retired|no longer|->|→|\bmigrat/i;
+
+	function relPath(path: string): string {
+		return path.slice(skillDir.length + 1);
+	}
 
 	it("finds SKILL docs to scan (sanity)", () => {
 		expect(docs.length).toBeGreaterThan(10);
 	});
 
-	it("no SKILL doc declares `kind: service` or `kind: system` in YAML frontmatter", () => {
+	it("no SKILL doc teaches `kind: service` or `kind: system` as live behavior", () => {
 		// delta.md §B1 L273-281 + Part F L534-541: `service` and `system` are DELETED.
-		// A doc-sweep miss (this is exactly what stranded compiler/index.prose.md and
-		// authoring.md) must fail here loudly. Scope: every *.md under the SKILL whose
-		// leading `---` frontmatter declares a `kind:`.
+		// A doc-sweep miss (this is exactly what stranded body references in SKILL.md,
+		// prose.md, deps.md, and the examples) must fail here loudly. Scope: every *.md
+		// under the SKILL, full text — frontmatter AND body — except the allowlisted
+		// migration record and any deliberate negation/migration line.
 		const offenders: string[] = [];
 		for (const path of docs) {
-			const fm = frontmatter(readFileSync(path, "utf8"));
-			if (!fm) continue;
+			const rel = relPath(path);
+			if (ALLOWLIST_FILES.has(rel)) continue;
+			const text = readFileSync(path, "utf8");
+			const lines = text.split("\n");
+
+			// Frontmatter `kind: service`/`system` is NEVER a negation — a declared
+			// kind is always live. Flag it unconditionally.
+			const fm = frontmatter(text);
 			if (/^kind:\s*(service|system)\s*$/m.test(fm)) {
-				offenders.push(path.slice(repoRoot.length));
+				offenders.push(`${rel}: frontmatter declares a retired kind`);
 			}
+
+			// Body / inline references: flag any retired-kind token whose line —
+			// collapsed with the line before and after it, to survive hard-wrap —
+			// is NOT a negation/migration statement.
+			lines.forEach((line, i) => {
+				if (!RETIRED.test(line)) return;
+				RETIRED.lastIndex = 0; // reset the /g regex between lines
+				// Skip lines that live inside the leading frontmatter block; handled above.
+				const window = flat(
+					[lines[i - 1] ?? "", line, lines[i + 1] ?? ""].join(" "),
+				);
+				if (NEGATION.test(window)) return;
+				offenders.push(`${rel}:${i + 1} — ${line.trim()}`);
+			});
 		}
-		expect(offenders, `retired kind in frontmatter: ${offenders.join(", ")}`).toEqual([]);
+		expect(
+			offenders,
+			`retired kind taught as live:\n${offenders.join("\n")}`,
+		).toEqual([]);
 	});
 });
