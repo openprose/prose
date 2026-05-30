@@ -31,14 +31,17 @@
 // signpost v1gaps-runtime-wiring.
 export {
   renderAtom,
+  renderAtomAsync,
   zeroCost,
   compiledStoreCanonicalizer,
   type RenderAtomInput,
+  type RenderAtomAsyncInput,
   type RenderAtomResult,
   type RenderContext,
   type RenderProduct,
   type RenderFailure,
   type StandaloneRender,
+  type AsyncStandaloneRender,
   type TruthProjection,
 } from "./render-atom";
 
@@ -50,8 +53,10 @@ export {
   type MountDagInput,
   type MountedDag,
   type MountedRender,
+  type AsyncMountedRender,
   type MutableReceiptLedger,
   type NodeMount,
+  type AsyncNodeMount,
 } from "./mounted-dag";
 
 // --- The run-phase reconciler (the sibling module) --------------------------
@@ -72,6 +77,7 @@ export {
   type ReceiptLedgerPort,
   type WorldModelStorePort,
   type SpawnRender,
+  type SpawnRenderAsync,
   type ResolveInputFingerprints,
   type RenderRequest,
   type RenderOutcome,

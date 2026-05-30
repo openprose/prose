@@ -91,6 +91,16 @@ export type StandaloneRender = (
 ) => RenderProduct | RenderFailure;
 
 /**
+ * The ASYNC standalone render (Phase-1 live execution; 05 §1.1). The same atom
+ * seam, but the render is one bounded LLM session = one `await run(...)`. Sits
+ * ALONGSIDE the sync `StandaloneRender` (additive, D1); a sync render is
+ * trivially an already-resolved promise. Driven by `renderAtomAsync`.
+ */
+export type AsyncStandaloneRender = (
+  context: RenderContext,
+) => Promise<RenderProduct | RenderFailure>;
+
+/**
  * What the render reads (architecture.md §1 seam): the contract (by
  * fingerprint), the evidence by reference (carried on the `wake`), and the prior
  * world-model by reference. No truth is pre-stuffed into context — the render
@@ -265,9 +275,110 @@ export function renderAtom(input: RenderAtomInput): RenderAtomResult {
   return { node: input.node, receipt, commit };
 }
 
+/**
+ * The inputs to an ASYNC standalone render of the atom — identical to
+ * `RenderAtomInput` except `render` is an `AsyncStandaloneRender` (a bounded LLM
+ * session). Additive; the sync `RenderAtomInput`/`renderAtom` are untouched.
+ */
+export interface RenderAtomAsyncInput {
+  readonly node: string;
+  readonly contract_fingerprint: Fingerprint;
+  readonly wake?: Wake;
+  /** The async render: compute the new world-model (one bounded LLM session). */
+  readonly render: AsyncStandaloneRender;
+  readonly canonicalizer?: Canonicalizer;
+  readonly store?: WorldModelStore;
+}
+
+/**
+ * Run the render atom STANDALONE through the ASYNC path (Phase-1 live execution;
+ * 05 §1.1). Mirrors `renderAtom` EXACTLY — read prior by reference, run, commit
+ * + fingerprint + sign on `rendered`, commit nothing on `failed` — but AWAITS
+ * the render. All commit/sign/fingerprint machinery stays pure-sync after the
+ * awaited product. The fingerprint still comes from the canonicalizer, never a
+ * model "did this change" call (world-model.md §3).
+ */
+export async function renderAtomAsync(
+  input: RenderAtomAsyncInput,
+): Promise<RenderAtomResult> {
+  const store = input.store ?? new InMemoryWorldModelStore();
+  const canonicalizer = input.canonicalizer ?? atomicCanonicalizer;
+  const wake = input.wake ?? DEFAULT_WAKE;
+
+  const prior = store.read(input.node);
+  const priorFingerprints =
+    prior.ref.version === null
+      ? COLD_START_FINGERPRINTS
+      : canonicalizer(prior.files);
+
+  const product = await runRenderAsync(input.render, {
+    node: input.node,
+    contract_fingerprint: input.contract_fingerprint,
+    wake,
+    input_fingerprints: [],
+    prior,
+  });
+
+  if (isFailure(product)) {
+    const receipt = createReceipt({
+      node: input.node,
+      contract_fingerprint: input.contract_fingerprint,
+      wake,
+      input_fingerprints: [],
+      fingerprints: priorFingerprints,
+      semantic_diff: EMPTY_SEMANTIC_DIFF,
+      prev: null,
+      status: "failed",
+      cost: product.cost,
+      sig: createNullSignature(),
+    });
+    return { node: input.node, receipt };
+  }
+
+  const commit = store.commitPublished(
+    input.node,
+    product.world_model,
+    canonicalizer,
+  );
+
+  const receipt = createReceipt({
+    node: input.node,
+    contract_fingerprint: input.contract_fingerprint,
+    wake,
+    input_fingerprints: [],
+    fingerprints: commit.fingerprints,
+    semantic_diff: product.semantic_diff ?? EMPTY_SEMANTIC_DIFF,
+    prev: null,
+    status: "rendered",
+    cost: product.cost,
+    sig: createNullSignature(),
+  });
+
+  return { node: input.node, receipt, commit };
+}
+
 // ---------------------------------------------------------------------------
 // internals
 // ---------------------------------------------------------------------------
+
+/**
+ * The ASYNC sibling of `runRender` — awaits the render; a throw maps to a
+ * `failed` signal (nothing commits, architecture.md §1 L51–L54).
+ */
+async function runRenderAsync(
+  render: AsyncStandaloneRender,
+  context: RenderContext,
+): Promise<RenderProduct | RenderFailure> {
+  try {
+    return await render(context);
+  } catch (error) {
+    return {
+      failed: true,
+      reason: error instanceof Error ? error.message : String(error),
+      cost: zeroCost(context.wake.source),
+    };
+  }
+}
 
 function runRender(
   render: StandaloneRender,

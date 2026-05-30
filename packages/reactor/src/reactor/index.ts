@@ -148,6 +148,20 @@ export interface RenderRequest {
 export type SpawnRender = (request: RenderRequest) => RenderOutcome;
 
 /**
+ * The async render spawn — Phase-1 live execution (architecture.md §1 seam;
+ * 05-reactor-integration §1.1). A real render is one bounded LLM session = one
+ * `await run(...)`, so the production spawn returns a `Promise<RenderOutcome>`.
+ * This sits ALONGSIDE the sync `SpawnRender` (additive: D1 in 00-SYNTHESIS) so
+ * the existing synchronous reconcile/drain path stays bit-identical and green.
+ * A sync render is trivially an already-resolved promise, so this async shape
+ * subsumes the sync one; both are kept transiently for test-blast-radius
+ * control (05 §5 Phase A).
+ */
+export type SpawnRenderAsync = (
+  request: RenderRequest,
+) => Promise<RenderOutcome>;
+
+/**
  * Resolve the consumed-facet tuple for a node from the current published truth
  * of its upstreams (the memo key's second half — one slot per subscribed
  * facet, in resolved subscription order, SHAPES.md §3). The reconciler reads
@@ -178,6 +192,15 @@ export interface ReconcilerPorts {
   readonly worldModel: WorldModelStorePort;
   readonly spawnRender: SpawnRender;
   readonly resolveInputFingerprints: ResolveInputFingerprints;
+  /**
+   * The async render spawn (Phase-1 live execution). OPTIONAL and additive: a
+   * wiring that only drives the synchronous `reconcile`/`drain` need not supply
+   * it (every existing test stays green). The async `reconcileAsync`/`drainAsync`
+   * prefer this when present and fall back to wrapping the sync `spawnRender` in
+   * an already-resolved promise when absent — so the async path subsumes the sync
+   * one without forcing every caller to migrate at once (05 §5 Phase A).
+   */
+  readonly spawnRenderAsync?: SpawnRenderAsync;
 }
 
 /**
@@ -255,6 +278,26 @@ export interface ReconcilerHandle {
    * seeds the queue (e.g. a gateway receipt, a self-tick, a boot cold-miss).
    */
   readonly drain: (initial: readonly WakeEvent[]) => readonly ReconcileResult[];
+  /**
+   * The ASYNC sibling of `reconcile` (Phase-1 live execution; 05 §1.1). Awaits
+   * the render (one bounded LLM session). The single-flight + coalescing
+   * machinery is identical to the sync path BUT is now genuinely exercised under
+   * interleaving: a wake delivered (from another async caller) while this node's
+   * render is in flight observes `inFlight === true`, marks the node dirty, and
+   * collapses into exactly ONE coalesced follow-up against the freshest inputs —
+   * never a second concurrent render, never a lost wake (05 §1.3).
+   */
+  readonly reconcileAsync: (event: WakeEvent) => Promise<ReconcileResult>;
+  /**
+   * The ASYNC sibling of `drain` — a serialized fixpoint loop that `await`s each
+   * `reconcileAsync` fully before shifting the next event (05 §1.2). This
+   * preserves today's exact ordering + "one render in flight per node"
+   * guarantees; the only difference is the `await`. Parallelizing independent
+   * nodes is a deferred optimization (05 §6, out of scope for v1).
+   */
+  readonly drainAsync: (
+    initial: readonly WakeEvent[],
+  ) => Promise<readonly ReconcileResult[]>;
 }
 
 /**
@@ -375,7 +418,122 @@ export function createReconciler(
     return results;
   };
 
-  return { reconcile, drain };
+  // -------------------------------------------------------------------------
+  // The ASYNC path (Phase-1 live execution) — ADDITIVE alongside the sync path
+  // above. The sync `reconcile`/`drain`/`renderAndCommit` are untouched and stay
+  // bit-identical (D1 in 00-SYNTHESIS; 05 §5 Phase A). The async body mirrors the
+  // sync one EXACTLY except the render is now `await`ed — so the single-flight
+  // lock at (B)→(D) is released across the await, and a wake landing mid-render
+  // from another async caller hits the (A) coalesce guard for real (05 §1.3).
+  // -------------------------------------------------------------------------
+
+  const reconcileAsync = async (
+    event: WakeEvent,
+  ): Promise<ReconcileResult> => {
+    const { node, wake } = event;
+
+    // --- (A) Single-flight + coalescing. Identical to the sync guard. Under the
+    // async path this is REACHED: a second wake for this node, delivered while
+    // the awaited render below is suspended, observes `inFlight === true`, marks
+    // the node dirty + records the freshest wake, and returns `coalesced`
+    // WITHOUT spawning a second concurrent render (05 §1.3). There is NO `await`
+    // between this read and the lock-take at (B), so the check-and-set stays
+    // atomic in single-threaded JS (05 §1.3 compare-and-set note).
+    const state = flightFor(node);
+    if (state.inFlight) {
+      state.dirty = true;
+      state.pendingWake = wake;
+      return { node, disposition: "coalesced", propagated: [] };
+    }
+
+    const contractFp = contractFingerprintFor(topology, node);
+
+    // --- Resolve the memo key's two halves (sync; world-model.md §4).
+    const subscribedEdges = inboundEdges(topology.topology, node);
+    const inputFingerprints = ports.resolveInputFingerprints(
+      node,
+      subscribedEdges,
+    );
+    const key = makeMemoKey(contractFp, inputFingerprints);
+
+    // --- MEMO / SKIP. Pure-sync fingerprint comparison; no render spawned.
+    const last = ports.ledger.lastReceipt(node);
+    if (last !== null && !memoKeyMoved(last, key)) {
+      const skipped = buildSkippedReceipt({
+        node,
+        contractFp,
+        wake,
+        key,
+        last,
+        prev: ports.ledger.addressOf(last),
+      });
+      const ref = ports.ledger.append(skipped);
+      return {
+        node,
+        disposition: "skipped",
+        receipt: skipped,
+        receipt_ref: ref,
+        propagated: [],
+      };
+    }
+
+    // --- (B) SCHEDULE: take the single-flight lock, AWAIT one render. The lock
+    // is held across the suspension point so any concurrently-running
+    // reconcileAsync for this node coalesces at (A) instead of double-rendering.
+    state.inFlight = true;
+    let result: ReconcileResult;
+    try {
+      result = await renderAndCommitAsync({
+        ports,
+        topology,
+        node,
+        contractFp,
+        wake,
+        key,
+        last,
+      });
+    } finally {
+      // --- (D) release the lock.
+      state.inFlight = false;
+    }
+
+    // --- (E) Coalesced follow-up: a wake that landed DURING the awaited render
+    // collapses into ONE follow-up render against the freshest inputs. The
+    // follow-up re-runs the full memo/skip path (re-resolving input_fingerprints),
+    // so an unmoved input simply skips — coalescing never forces a redundant
+    // render. Recursion depth is bounded by the number of distinct wakes that
+    // landed during renders (05 §1.3.4).
+    if (state.dirty) {
+      state.dirty = false;
+      const followWake = state.pendingWake ?? wake;
+      state.pendingWake = null;
+      return await reconcileAsync({ node, wake: followWake });
+    }
+
+    return result;
+  };
+
+  const drainAsync = async (
+    initial: readonly WakeEvent[],
+  ): Promise<readonly ReconcileResult[]> => {
+    const results: ReconcileResult[] = [];
+    const queue: WakeEvent[] = [...initial];
+    // Serialized fixpoint loop: await each reconcile fully before shifting the
+    // next event (05 §1.2). Preserves today's FIFO ordering + "one render in
+    // flight per node" exactly; the only difference from the sync drain is the
+    // `await`.
+    while (queue.length > 0) {
+      const event = queue.shift() as WakeEvent;
+      const result = await reconcileAsync(event);
+      results.push(result);
+      for (const downstream of result.propagated) {
+        queue.push(downstream);
+      }
+    }
+    return results;
+  };
+
+  return { reconcile, drain, reconcileAsync, drainAsync };
 }
 
 // ===========================================================================
@@ -448,6 +606,98 @@ function renderAndCommit(input: {
   // fingerprint propagates (world-model.md §8: "Only `rendered` with a moved
   // fingerprint propagates"). Cold start (no prior receipt) is a move for every
   // facet the node publishes.
+  const movedFacets = movedFacetsBetween(
+    last?.fingerprints ?? null,
+    outcome.commit.fingerprints,
+  );
+  const propagated =
+    movedFacets.size > 0
+      ? propagationTargets({
+          topology: topology.topology,
+          producer: node,
+          movedFacets,
+          wakeRef: ref,
+        })
+      : [];
+
+  return {
+    node,
+    disposition: "rendered",
+    receipt: rendered,
+    receipt_ref: ref,
+    propagated,
+  };
+}
+
+/**
+ * The ASYNC sibling of `renderAndCommit` (05 §1.1, §1.4). Identical commit /
+ * sign / propagate machinery — all pure-sync — but the render spawn is AWAITED.
+ * Prefers the async port `spawnRenderAsync` (a real bounded LLM session); when
+ * absent, wraps the sync `spawnRender` (a render is trivially an already-resolved
+ * promise), so the async path subsumes the sync one without forcing every wiring
+ * to supply an async spawn (additive, 05 §5 Phase A).
+ */
+async function renderAndCommitAsync(input: {
+  ports: ReconcilerPorts;
+  topology: ReconcilerTopology;
+  node: string;
+  contractFp: Fingerprint;
+  wake: Wake;
+  key: MemoKey;
+  last: Receipt | null;
+}): Promise<ReconcileResult> {
+  const { ports, topology, node, contractFp, wake, key, last } = input;
+
+  const prior = ports.worldModel.publishedRef(node);
+  const prevRef = last !== null ? ports.ledger.addressOf(last) : null;
+
+  // Spawn ONE render (the language layer), AWAITED. The reconciler stays dumb.
+  const request: RenderRequest = {
+    node,
+    contract_fingerprint: contractFp,
+    wake,
+    input_fingerprints: key.input_fingerprints,
+    prior_world_model: prior,
+  };
+  const outcome =
+    ports.spawnRenderAsync !== undefined
+      ? await ports.spawnRenderAsync(request)
+      : ports.spawnRender(request);
+
+  // --- FAILURE: identical to the sync path. Commits nothing; prior truth stands.
+  if (outcome.status === "failed") {
+    const failed = buildFailedReceipt({
+      node,
+      contractFp,
+      wake,
+      key,
+      prev: prevRef,
+      last,
+      cost: outcome.cost,
+    });
+    const ref = ports.ledger.append(failed);
+    return {
+      node,
+      disposition: "failed",
+      receipt: failed,
+      receipt_ref: ref,
+      propagated: [],
+    };
+  }
+
+  // --- COMMIT + PROPAGATE: identical pure-sync machinery as the sync path.
+  const rendered = buildRenderedReceipt({
+    node,
+    contractFp,
+    wake,
+    key,
+    fingerprints: outcome.commit.fingerprints,
+    semantic_diff: outcome.semantic_diff,
+    prev: prevRef,
+    cost: outcome.cost,
+  });
+  const ref = ports.ledger.append(rendered);
+
   const movedFacets = movedFacetsBetween(
     last?.fingerprints ?? null,
     outcome.commit.fingerprints,

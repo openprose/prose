@@ -84,6 +84,18 @@ export type MountedRender = (
   context: RenderContext,
 ) => RenderProduct | RenderFailure;
 
+/**
+ * The ASYNC mounted render (Phase-1 live execution; 05 §1.1, §2.1). A real
+ * render IS one bounded OpenAI-Agents-SDK session = one `await run(...)`, so the
+ * agent-render factory produces this shape. It sits ALONGSIDE the sync
+ * `MountedRender` (additive, D1): a sync render is trivially an already-resolved
+ * promise, so an `AsyncMountedRender` can wrap a sync one. The harness drives it
+ * through the async reconcile path (`ingestAsync`/`tickAsync`/`drainAsync`).
+ */
+export type AsyncMountedRender = (
+  context: RenderContext,
+) => Promise<RenderProduct | RenderFailure>;
+
 /** Per-node mount: the render body and its compiled canonicalizer. */
 export interface NodeMount {
   readonly render: MountedRender;
@@ -91,11 +103,31 @@ export interface NodeMount {
   readonly canonicalizer?: Canonicalizer;
 }
 
+/**
+ * Per-node mount for the ASYNC path: an `AsyncMountedRender` body and its
+ * compiled canonicalizer. Used when the caller drives `ingestAsync`/`tickAsync`/
+ * `drainAsync` with a live agent render (05 §2.1).
+ */
+export interface AsyncNodeMount {
+  readonly render: AsyncMountedRender;
+  /** Defaults to the atomic whole-truth canonicalizer (the no-facet case). */
+  readonly canonicalizer?: Canonicalizer;
+}
+
 export interface MountDagInput {
   /** The compiled topology (Forme's output) + per-node contract fingerprints. */
   readonly topology: ReconcilerTopology;
-  /** The render body per node identity. */
+  /** The render body per node identity (the SYNC path). */
   readonly mounts: Readonly<Record<string, NodeMount>>;
+  /**
+   * The ASYNC render body per node identity (Phase-1 live execution). OPTIONAL
+   * and additive: supply this to drive `ingestAsync`/`tickAsync`/`drainAsync`
+   * with live agent renders (05 §2.1). When a node is present in `asyncMounts`
+   * the async spawn uses it; otherwise the async spawn falls back to the sync
+   * `mounts` entry (wrapping its synchronous render in a resolved promise), so a
+   * caller can mix live and fake renders during the build-out.
+   */
+  readonly asyncMounts?: Readonly<Record<string, AsyncNodeMount>>;
   /**
    * The world-model store. Defaults to a fresh in-memory store — the mounted
    * DAG is self-contained for tests (architecture.md §5.3: tests inject fakes).
@@ -129,6 +161,21 @@ export interface MountedDag {
   readonly tick: (node: string) => readonly ReconcileResult[];
   /** Drain an arbitrary set of seed wakes (e.g. a boot cold-miss sweep). */
   readonly drain: (initial: readonly WakeEvent[]) => readonly ReconcileResult[];
+  /**
+   * The ASYNC sibling of `ingest` (Phase-1 live execution; 05 §1.1–§1.2). Awaits
+   * the live agent render(s) the wake reaches. Same memo/skip/schedule/commit/
+   * propagate semantics as `ingest`, but the render is a bounded LLM session.
+   */
+  readonly ingestAsync: (
+    node: string,
+    wake?: Wake,
+  ) => Promise<readonly ReconcileResult[]>;
+  /** The ASYNC sibling of `tick` — a self-sourced wake driven through the async path. */
+  readonly tickAsync: (node: string) => Promise<readonly ReconcileResult[]>;
+  /** The ASYNC sibling of `drain` — a serialized async fixpoint over seed wakes (05 §1.2). */
+  readonly drainAsync: (
+    initial: readonly WakeEvent[],
+  ) => Promise<readonly ReconcileResult[]>;
   /** The node-scoped receipt ledger (a node's durable memory). */
   readonly ledger: MutableReceiptLedger;
   /** The world-model store (the canonical maintained truth). */
@@ -188,6 +235,54 @@ export function mountDag(input: MountDagInput): MountedDag {
     };
   };
 
+  // The ASYNC SpawnRender port (Phase-1 live execution; 05 §1.1, §2.1). Mirrors
+  // the sync `spawnRender` above EXACTLY — run the render, COMMIT its world-model,
+  // hand the reconciler the WorldModelCommit — but AWAITS the render (a bounded
+  // LLM session). Prefers an `asyncMounts` entry; falls back to the sync `mounts`
+  // render (wrapped in a resolved promise) so live and fake renders can mix. The
+  // commit/sign/fingerprint stay pure-sync after the awaited product (D6: the
+  // harness — not a tool — calls commitPublished).
+  const spawnRenderAsync: ReconcilerPorts["spawnRenderAsync"] = async (
+    request,
+  ) => {
+    const asyncMount = input.asyncMounts?.[request.node];
+    const syncMount = input.mounts[request.node];
+    if (asyncMount === undefined && syncMount === undefined) {
+      return {
+        status: "failed",
+        reason: `no render mounted for node "${request.node}"`,
+        cost: failCost(request),
+      };
+    }
+    const canonicalizer =
+      (asyncMount ?? syncMount)?.canonicalizer ?? atomicCanonicalizer;
+    const context = toRenderContext(request, store);
+    const product =
+      asyncMount !== undefined
+        ? await runAsyncMountedRender(asyncMount.render, context)
+        : // Wrap the sync render: a sync render is trivially an already-resolved
+          // promise, so the async path subsumes it (05 §5 Phase A).
+          runMountedRender((syncMount as NodeMount).render, context);
+    if (isFailure(product)) {
+      return {
+        status: "failed",
+        reason: product.reason,
+        cost: product.cost,
+      };
+    }
+    const commit = store.commitPublished(
+      request.node,
+      product.world_model,
+      canonicalizer,
+    );
+    return {
+      status: "rendered",
+      commit,
+      semantic_diff: product.semantic_diff ?? {},
+      cost: product.cost,
+    };
+  };
+
   // The ResolveInputFingerprints port: the memo key's second half. Read each
   // subscribed edge's producer published fingerprint map (from the producer's
   // last receipt — the published-truth identity downstreams subscribe to,
@@ -204,6 +299,7 @@ export function mountDag(input: MountDagInput): MountedDag {
     ledger,
     worldModel: worldModelPort,
     spawnRender,
+    spawnRenderAsync,
     resolveInputFingerprints,
   };
 
@@ -214,6 +310,10 @@ export function mountDag(input: MountDagInput): MountedDag {
       reconciler.drain([{ node, wake: wake ?? defaultExternalWake() }]),
     tick: (node) => reconciler.drain([{ node, wake: selfWake() }]),
     drain: (initial) => reconciler.drain(initial),
+    ingestAsync: (node, wake) =>
+      reconciler.drainAsync([{ node, wake: wake ?? defaultExternalWake() }]),
+    tickAsync: (node) => reconciler.drainAsync([{ node, wake: selfWake() }]),
+    drainAsync: (initial) => reconciler.drainAsync(initial),
     ledger,
     store,
     reconciler,
@@ -345,6 +445,32 @@ function runMountedRender(
 ): RenderProduct | RenderFailure {
   try {
     return render(context);
+  } catch (error) {
+    return {
+      failed: true,
+      reason: error instanceof Error ? error.message : String(error),
+      cost: {
+        provider: "none",
+        model: "none",
+        tokens: { fresh: 0, reused: 0 },
+        surprise_cause: context.wake.source,
+      },
+    };
+  }
+}
+
+/**
+ * Run an ASYNC mounted render, mapping a throw (network error, schema-parse
+ * failure, max-turns) to a `RenderFailure` — exactly as the sync
+ * `runMountedRender` does, so an exhausted/erroring live session degrades to a
+ * `failed` receipt with the prior truth standing (architecture.md §4.1; 05 §2.5).
+ */
+async function runAsyncMountedRender(
+  render: AsyncMountedRender,
+  context: RenderContext,
+): Promise<RenderProduct | RenderFailure> {
+  try {
+    return await render(context);
   } catch (error) {
     return {
       failed: true,
