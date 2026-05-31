@@ -64,9 +64,11 @@ import type { RenderUsage } from "./cost";
 import {
   createCwdTools,
   createRenderTools,
+  createSpawnSubagentTool,
   type AgentRenderContext,
   type RenderSandboxRunner,
 } from "./tools";
+import type { Tool } from "@openai/agents";
 import {
   harvestDirectory,
   prepareWorkingDir,
@@ -241,19 +243,45 @@ export function createAgentRender(
       ctx.prior.files,
     );
 
+    const modelSettings = {
+      temperature,
+      ...(config.seed !== undefined
+        ? { providerData: { seed: config.seed } }
+        : {}),
+    };
+
+    // The render's full tool surface: wm_* + the cwd-rooted Codex-style tools.
+    // Built once per render so the SAME set is given to the render AND offered to
+    // any sub-agent it spawns (SPEC §3.6 — a helper shares the parent's affordances).
+    const renderTools: Tool<AgentRenderContext>[] = [
+      ...createRenderTools(),
+      ...createCwdTools(workingDir),
+    ];
+
+    // The generic sub-agent primitive (SPEC §3.6 / step 6.5). The render spawns a
+    // focused helper, gets a value back, leaves no node behind; the helper's token
+    // Usage rolls up into THIS render's receipt Cost because the tool runs the
+    // sub-agent through the parent's RunContext. The sub-agent inherits the render's
+    // tool subset; pushing the spawn tool itself onto that subset lets a helper
+    // recurse, bounded by the SAME `maxTurns`/Usage backstop (D1).
+    const spawnSubagentTool = createSpawnSubagentTool({
+      skill,
+      model,
+      getRunner,
+      modelSettings,
+      maxTurns,
+      subTools: renderTools,
+    });
+    renderTools.push(spawnSubagentTool);
+
     const agent = new Agent<AgentRenderContext, AgentOutputType>({
       name: ctx.node,
       instructions,
       model,
-      modelSettings: {
-        temperature,
-        ...(config.seed !== undefined
-          ? { providerData: { seed: config.seed } }
-          : {}),
-      },
-      // The wm_* read/upstream/write tools PLUS the cwd-rooted Codex-style tools
-      // (fs_*, shell_exec, apply_patch) over the per-node working dir (SPEC §3.5).
-      tools: [...createRenderTools(), ...createCwdTools(workingDir)],
+      modelSettings,
+      // The wm_* read/upstream/write tools, the cwd-rooted Codex-style tools (fs_*,
+      // shell_exec, apply_patch), AND the generic spawn_subagent primitive (§3.6).
+      tools: renderTools,
       // The small done/failed signal (D6). NO file contents ride here. The
       // schema is built lazily as a zod object; `output-schema.ts` types its
       // return as the SDK-independent `z.ZodTypeAny`, so we annotate it here as
@@ -419,6 +447,7 @@ export {
 } from "./provider";
 export {
   createCwdTools,
+  createSpawnSubagentTool,
   fsReadTool,
   fsListTool,
   fsWriteTool,
@@ -433,11 +462,13 @@ export {
   FS_WRITE_TOOL,
   SHELL_EXEC_TOOL,
   APPLY_PATCH_TOOL,
+  SPAWN_SUBAGENT_TOOL,
 } from "./tools";
 export type {
   RenderSandboxRunner,
   AgentRenderContext,
   UpstreamSubscription,
+  SpawnSubagentDeps,
 } from "./tools";
 export {
   prepareWorkingDir,

@@ -45,6 +45,7 @@ import { dispositionOf, lastReceipt } from "../../../scenario/trace";
 import { createAgentRender, DEFAULT_MAX_TURNS } from "../index";
 import { hasOpenRouterKey } from "../provider";
 import {
+  SPAWN_SUBAGENT_TOOL,
   WM_LIST_TOOL,
   WM_READ_UPSTREAM_TOOL,
   WM_WRITE_WORKSPACE_TOOL,
@@ -574,4 +575,204 @@ test("agent-render: a SUBSCRIBER reads a producer's facet via wm_read_upstream a
   ok(receipt);
   equal(receipt.status, "rendered");
   ok(receipt.fingerprints[ATOMIC_FACET]);
+});
+
+// ---------------------------------------------------------------------------
+// 6.5 (§3.6) — spawn_subagent via agent.asTool(): a render spawns a focused
+// helper, gets its VALUE back, and the helper's token Usage ROLLS UP into the
+// parent render's receipt Cost (the helper leaves NO node behind — §7.4).
+// Offline (a fake provider that drives BOTH the parent and the sub-agent), through
+// the REAL async harness, so the whole capability is proven keyless:
+//   parent turn1 → spawn_subagent → isolated nested run (1 turn) returns a value →
+//   parent turn2 writes the helper's value to the workspace → parent turn3 done →
+//   harvest/commit, and the receipt Cost = parent tokens + child tokens.
+// ---------------------------------------------------------------------------
+
+// A sentinel only the SUB-AGENT's instructions carry (the sub-task text), so the
+// shared fake model can tell a sub-agent run apart from the parent render run.
+const SUBAGENT_SENTINEL = "SUBTASK::compute the greeting word";
+// The value the sub-agent returns; the parent echoes it into the committed file,
+// proving the helper's final value actually came back through the tool result.
+const SUBAGENT_RESULT = "hello-from-subagent";
+// Per-turn token usage every model call reports — used to assert the rollup math.
+const TURN_INPUT = 10;
+const TURN_OUTPUT = 5;
+
+/**
+ * A fake `ModelProvider` that serves BOTH the parent render AND the sub-agent it
+ * spawns, off the SAME model instance (the runner reuses the parent's provider for
+ * the nested run). It branches on the request's `systemInstructions`:
+ *
+ *  - SUB-AGENT (instructions contain {@link SUBAGENT_SENTINEL}): reply once with a
+ *    final assistant message whose text is {@link SUBAGENT_RESULT}. That ends the
+ *    nested run; `asTool`/our spawn tool returns the text as the tool result.
+ *  - PARENT render (everything else): turn 1 calls `spawn_subagent`; turn 2 (the
+ *    spawn result now in history) writes the returned value to the workspace via
+ *    `wm_write_workspace`; turn 3 emits the structured `done` signal.
+ *
+ * Every model call reports the same {@link TURN_INPUT}/{@link TURN_OUTPUT} usage, so
+ * the parent receipt's `cost.tokens.fresh` is a clean multiple we can assert: 3
+ * parent turns + 1 sub-agent turn = 4 × (10 + 5) = 60.
+ */
+function spawningProvider(): ModelProvider {
+  let parentTurn = 0;
+  const usage = () =>
+    new Usage({
+      inputTokens: TURN_INPUT,
+      outputTokens: TURN_OUTPUT,
+      totalTokens: TURN_INPUT + TURN_OUTPUT,
+    });
+
+  const finalMessage = (text: string): ModelResponse =>
+    ({
+      usage: usage(),
+      output: [
+        {
+          type: "message",
+          role: "assistant",
+          status: "completed",
+          content: [{ type: "output_text", text }],
+        },
+      ],
+    }) as unknown as ModelResponse;
+
+  const callTool = (
+    callId: string,
+    name: string,
+    args: Record<string, unknown>,
+  ): ModelResponse =>
+    ({
+      usage: usage(),
+      output: [
+        {
+          type: "function_call",
+          callId,
+          name,
+          arguments: JSON.stringify(args),
+        },
+      ],
+    }) as unknown as ModelResponse;
+
+  const model: Model = {
+    async getResponse(request: unknown): Promise<ModelResponse> {
+      const instr = String(
+        (request as { systemInstructions?: unknown }).systemInstructions ?? "",
+      );
+      // The SUB-AGENT run: return its final value once and stop.
+      if (instr.includes(SUBAGENT_SENTINEL)) {
+        return finalMessage(SUBAGENT_RESULT);
+      }
+      // The PARENT render run.
+      parentTurn += 1;
+      if (parentTurn === 1) {
+        // Turn 1: delegate to a focused helper. The sub-task instructions carry
+        // the sentinel so the fake model can recognize the nested run.
+        return callTool("call_spawn", SPAWN_SUBAGENT_TOOL, {
+          instructions: SUBAGENT_SENTINEL,
+          input: "produce the single greeting word",
+        });
+      }
+      if (parentTurn === 2) {
+        // Turn 2: the spawn tool's result (the helper's value) is now in history.
+        // Write it to the workspace so the committed truth proves the value came
+        // back through the tool result.
+        const returned = extractSpawnResult(request);
+        return callTool("call_write", WM_WRITE_WORKSPACE_TOOL, {
+          path: OUTPUT_PATH,
+          content: returned,
+        });
+      }
+      // Turn 3: done — the harness harvests the workspace + commits.
+      return finalMessage(
+        JSON.stringify({
+          status: "done",
+          semantic_diff: { summary: "wrote greeting from sub-agent" },
+        }),
+      );
+    },
+    // eslint-disable-next-line require-yield
+    async *getStreamedResponse() {
+      throw new Error("fake model does not stream");
+    },
+  };
+  return {
+    getModel(): Model {
+      return model;
+    },
+  };
+}
+
+/**
+ * Pull the text the `spawn_subagent` tool returned out of the runner's input
+ * history (a `function_call_result` whose `output` is `{ type: 'text', text }`).
+ */
+function extractSpawnResult(request: unknown): string {
+  const input = (request as { input?: unknown }).input;
+  if (!Array.isArray(input)) {
+    return "(no spawn result found)";
+  }
+  for (const item of input) {
+    const it = item as {
+      type?: string;
+      name?: string;
+      output?: { text?: string } | string;
+    };
+    if (it.type === "function_call_result" && it.name === SPAWN_SUBAGENT_TOOL) {
+      if (typeof it.output === "string") {
+        return it.output;
+      }
+      if (it.output && typeof it.output.text === "string") {
+        return it.output.text;
+      }
+    }
+  }
+  return "(no spawn result found)";
+}
+
+test("agent-render: a render spawns a helper via spawn_subagent, gets its value back, and child usage rolls up into the receipt Cost (offline)", async () => {
+  const store = new InMemoryWorldModelStore();
+
+  const render = createAgentRender({
+    store,
+    contractFor: () => CONTRACT,
+    skill: "TEST SKILL",
+    provider: spawningProvider(),
+    maxTurns: 8,
+  });
+
+  const dag = mountDag({
+    topology: greetingTopology(),
+    mounts: {},
+    asyncMounts: { [NODE]: { render, canonicalizer: atomicCanonicalizer } },
+    store,
+  });
+
+  const results = await dag.ingestAsync(NODE);
+
+  // The render committed (it did not fail): the spawn returned a value the parent
+  // could act on, and the parent reached its `done` signal.
+  equal(dispositionOf(results, NODE), "rendered");
+
+  // The committed file is EXACTLY the value the sub-agent returned — proof the
+  // helper's final value came back through the spawn_subagent tool result (not a
+  // pre-stuffed prompt, not the parent inventing it).
+  const read = store.read(NODE, "published");
+  notEqual(read.ref.version, null);
+  const committed = read.files[OUTPUT_PATH];
+  ok(committed, `expected the render to write ${OUTPUT_PATH}`);
+  equal(readTextFile(committed), SUBAGENT_RESULT);
+
+  // The receipt's token Cost includes BOTH the parent's 3 turns AND the
+  // sub-agent's 1 turn — the child Usage ROLLED UP via the shared RunContext
+  // (run.ts:1029). 4 turns × (10 input + 5 output) = 60 fresh tokens. Had the child
+  // NOT rolled up, this would be 45 (the 3 parent turns only).
+  const receipt = lastReceipt(dag.ledger, NODE);
+  ok(receipt);
+  equal(receipt.status, "rendered");
+  equal(receipt.cost.tokens.fresh, (TURN_INPUT + TURN_OUTPUT) * 4);
+  ok(receipt.fingerprints[ATOMIC_FACET]);
+
+  // The sub-agent left NO node behind (§7.4 ephemeral session): only the parent
+  // node was ever committed; no helper node exists in the store.
+  equal(store.read("spawn_subagent:greeting", "published").ref.version, null);
 });

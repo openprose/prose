@@ -34,11 +34,15 @@
  */
 
 import {
+  Agent,
   applyDiff,
   applyPatchTool,
+  type AgentOutputType,
   type ApplyPatchOperation,
   type ApplyPatchResult,
   type Editor,
+  type ModelSettings,
+  type Runner,
   type Shell,
   type ShellAction,
   type ShellResult,
@@ -162,6 +166,10 @@ export const FS_LIST_TOOL = "fs_list";
 export const FS_WRITE_TOOL = "fs_write";
 export const SHELL_EXEC_TOOL = "shell_exec";
 export const APPLY_PATCH_TOOL = "apply_patch";
+
+// The generic sub-agent primitive (Phase 1.5 step 6.5; SPEC §3.6). The render
+// spawns a focused helper, gets a value back, leaves no node behind.
+export const SPAWN_SUBAGENT_TOOL = "spawn_subagent";
 
 /** Returned by `sandbox_exec` when no sandbox runner is wired into the context. */
 export const NO_SANDBOX_MESSAGE =
@@ -885,6 +893,178 @@ function collectFiles(root: string, dir: string, out: string[]): void {
 
 function toUint8(buf: Uint8Array): Uint8Array {
   return Uint8Array.prototype.slice.call(buf);
+}
+
+// ---------------------------------------------------------------------------
+// spawn_subagent — the generic sub-agent primitive (SPEC §3.6 / step 6.5)
+// ---------------------------------------------------------------------------
+//
+// ProseScript's `agent`/`session` primitives are "spin up a focused helper, get a
+// value back, leave no node behind." That is exactly the SDK's `agent.asTool()`
+// isolated nested-run path (agent.ts:665). We expose it as a GENERIC tool because
+// the calling render's body decides WHO to spawn — the sub-task instructions ride
+// in the tool call, not a pre-declared child (D4). `handoff()` stays UNUSED: it
+// never returns a value (a baton pass), the wrong primitive here.
+//
+// THREE load-bearing disciplines:
+//   1. FRESH AGENT per call: SKILL as the base system prompt (the only base, §3.2)
+//      + the caller's sub-task instructions + an optional tool subset.
+//   2. INHERIT THE PARENT RunContext: we run the sub-agent through the SAME
+//      `RunContext` instance the render's tools receive (the parent), so the
+//      nested run's token Usage ACCUMULATES onto the shared `RunContext.usage`
+//      (run.ts:1029 `state._context.usage.add(...)`; the same instance survives
+//      because the runner reuses an `options.context instanceof RunContext`
+//      verbatim — run.ts:822). The child tokens therefore ROLL UP into the
+//      render's receipt Cost (runContext.ts:149).
+//   3. NO NODE LEFT BEHIND (§7.4 ephemeral session): the sub-agent never commits,
+//      never publishes, never touches the world-model store's published truth — it
+//      returns its final value as the tool result and evaporates. It carries the
+//      same `AgentRenderContext`, so any wm_/fs_ tools it is given operate on the
+//      PARENT node's scratch, exactly like a Codex sub-shell.
+//
+// RECURSION is allowed (a sub-agent may itself `spawn_subagent`) — bounded by the
+// SAME turn/cost backstop (`maxTurns` + the Usage→Cost signal). The sub-agent's
+// tool subset MAY include this very tool (see {@link createSpawnSubagentTool}'s
+// `recursive` wiring in the factory) so a helper can spawn its own helper.
+//
+// N1 (STOP): this is a CAPABILITY the agent invokes, never a control-flow compiler.
+// We do NOT parse ProseScript to "drive" the spawn — the model calls the tool with
+// free-text sub-task instructions; the VM (this session) supplies the affordance.
+
+/**
+ * The handles {@link createSpawnSubagentTool} closes over to build + run a fresh
+ * sub-agent per call. Supplied by the render factory (index.ts), which owns the
+ * SKILL, the model id, and the {@link Runner} (carrying the scoped provider). Kept
+ * a small structural bag so the tool depends only on what it needs.
+ */
+export interface SpawnSubagentDeps {
+  /** The SKILL system prompt — the sub-agent's base, exactly like the render's. */
+  readonly skill: string;
+  /** The model id the sub-agent runs on (the same model as the parent render). */
+  readonly model: string;
+  /**
+   * A getter for the shared {@link Runner} (carrying the scoped model provider).
+   * A getter (not the runner directly) so a keyless construction never forces the
+   * provider/runner into existence — it is resolved lazily on first spawn, the
+   * same lazy-once discipline the render factory uses.
+   */
+  readonly getRunner: () => Runner;
+  /** The sub-agent's decoding settings (temperature/seed), mirroring the render. */
+  readonly modelSettings?: ModelSettings;
+  /**
+   * The turn cap for ONE sub-agent run (the same backstop as the render's
+   * `maxTurns`; D1). `null` opts a sub-agent into an unbounded loop deliberately.
+   */
+  readonly maxTurns?: number | null;
+  /**
+   * The tool subset the sub-agent may use. The render factory passes the render's
+   * own tool set (wm_*, fs_*, shell_exec, apply_patch) so a helper shares the
+   * parent's affordances. This array is read at SPAWN time, so the factory can
+   * push the spawn tool itself onto it AFTER construction to enable recursion.
+   */
+  readonly subTools: readonly Tool<AgentRenderContext>[];
+}
+
+/**
+ * Build the generic `spawn_subagent(instructions, input?)` tool (SPEC §3.6). Its
+ * `execute`:
+ *
+ *  1. builds a FRESH {@link Agent}: SKILL base + the caller's `instructions` (the
+ *     sub-task) + the deps' tool subset,
+ *  2. runs it via the deps' shared {@link Runner} through the PARENT's
+ *     {@link RunContext} (so the child Usage rolls up into the render's Cost), and
+ *  3. returns the sub-agent's final text value as the tool result — no node, no
+ *     commit, no published write (§7.4 ephemeral session).
+ *
+ * Recursion: the `deps.subTools` array is read at spawn time, so the factory may
+ * push this very tool onto it after building it, letting a sub-agent spawn its own
+ * helper. The same `maxTurns`/Usage backstop bounds every level.
+ */
+export function createSpawnSubagentTool(
+  deps: SpawnSubagentDeps,
+): Tool<AgentRenderContext> {
+  return tool({
+    name: SPAWN_SUBAGENT_TOOL,
+    description:
+      "Spawn a focused sub-agent to do a bounded sub-task and return its result. " +
+      "Pass the sub-task as `instructions` (what the helper should do) and an " +
+      "optional `input` (the concrete request/data). The helper runs as an " +
+      "isolated session with your same tools, returns its final answer as this " +
+      "tool's result, and leaves nothing behind — use it to decompose work, not to " +
+      "hand off the conversation.",
+    parameters: z.object({
+      instructions: z
+        .string()
+        .describe(
+          "The sub-task for the helper — its focused instructions (layered on the " +
+            "shared SKILL base).",
+        ),
+      input: z
+        .string()
+        .nullable()
+        .describe(
+          "Optional concrete input/request to hand the helper; pass null to let " +
+            "the instructions stand alone.",
+        ),
+    }),
+    strict: true,
+    execute: async ({ instructions, input }, runContext) => {
+      // Validate the parent context the same way the other render tools do, so a
+      // misconfigured render surfaces a legible message rather than a TypeError.
+      // We need the RunContext INSTANCE (not just its `.context`) to roll usage up,
+      // so guard `runContext` itself here too.
+      requireContext(runContext);
+      if (runContext === undefined) {
+        // requireContext already throws on a missing context, so this is
+        // unreachable in practice; it narrows the type for the nested run below.
+        throw new Error(
+          "spawn_subagent invoked without a RunContext (cannot roll up usage)",
+        );
+      }
+
+      // A FRESH sub-agent: SKILL base + the caller's sub-task. Default text output
+      // so the helper returns a plain final value (asTool semantics) — no
+      // structured render signal, no commit. The tool subset is read NOW so any
+      // spawn tool the factory pushed on for recursion is included.
+      const subAgent = new Agent<AgentRenderContext, AgentOutputType>({
+        name: `${SPAWN_SUBAGENT_TOOL}:${runContext?.context.node ?? "unknown"}`,
+        instructions: `${deps.skill}\n\n---\n\n${instructions}`,
+        model: deps.model,
+        ...(deps.modelSettings !== undefined
+          ? { modelSettings: deps.modelSettings }
+          : {}),
+        tools: [...deps.subTools],
+      });
+
+      const subInput =
+        input === null || input === undefined || input.length === 0
+          ? instructions
+          : input;
+
+      // Run the sub-agent through the PARENT's RunContext — the SAME instance the
+      // render tools received (run.ts:822 reuses an `options.context instanceof
+      // RunContext` verbatim), so the nested run's token Usage accumulates onto the
+      // shared `RunContext.usage` (run.ts:1029) and ROLLS UP into the render's
+      // receipt Cost. `maxTurns` (D1) bounds the helper; on exhaustion the
+      // MaxTurnsExceededError is returned as a legible tool result, never thrown out
+      // of the tool (a sub-task failure must not crash the parent render).
+      try {
+        const result = await deps.getRunner().run(subAgent, subInput, {
+          context: runContext,
+          ...(deps.maxTurns !== undefined ? { maxTurns: deps.maxTurns } : {}),
+        });
+        const final = result.finalOutput;
+        if (final === undefined || final === null) {
+          return "(the sub-agent returned no output)";
+        }
+        return typeof final === "string" ? final : JSON.stringify(final);
+      } catch (error) {
+        return `sub-agent failed: ${
+          error instanceof Error ? error.message : String(error)
+        }`;
+      }
+    },
+  });
 }
 
 /**
