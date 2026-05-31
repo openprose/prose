@@ -4,10 +4,10 @@
   "private": true,
   "packageManager": "pnpm@9.15.0",
   "scripts": {
-    "build": "pnpm --filter @openprose/reactor build && pnpm --filter @openprose/reactor-cradle build && pnpm --filter @openprose/prose-cli build",
-    "test": "pnpm --filter @openprose/reactor test && pnpm --filter @openprose/reactor-cradle test && pnpm --filter @openprose/prose-cli test && pnpm test:skill",
+    "build": "pnpm --filter @openprose/reactor build && pnpm --filter @openprose/prose-cli build",
+    "test": "pnpm --filter @openprose/reactor test && pnpm --filter @openprose/prose-cli test && pnpm test:skill",
     "test:skill": "vitest run tests/open-prose",
-    "lint": "pnpm --filter @openprose/reactor run lint --if-present && pnpm --filter @openprose/reactor-cradle run lint --if-present && pnpm --filter @openprose/prose-cli run lint --if-present"
+    "lint": "pnpm --filter @openprose/reactor run lint --if-present && pnpm --filter @openprose/prose-cli run lint --if-present"
   },
   "devDependencies": {
     "vitest": "^3.2.4"
