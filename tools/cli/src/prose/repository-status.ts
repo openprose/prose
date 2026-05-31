@@ -1,16 +1,9 @@
 import { readFile, readdir, stat } from "node:fs/promises";
 import { resolve } from "node:path";
-import {
-	RECEIPT_PROJECTION_TIERS_V0,
-	projectReceiptV0,
-	type ReceiptProjectionTierV0,
-	type ReceiptProjectionV0,
-	type ReceiptV0,
-} from "@openprose/reactor";
+import { ATOMIC_FACET, type Receipt } from "@openprose/reactor";
 import {
 	ACTIVE_REPOSITORY_IR_PATH,
 	type RepositoryIrDiagnostic,
-	type RepositoryIrResponsibility,
 	type RepositoryIrV0,
 	validateRepositoryIr,
 } from "./repository-ir.js";
@@ -32,30 +25,27 @@ import {
 	type ResponsibilityStatusRecord,
 } from "./responsibility-status.js";
 import {
-	buildReactorContractRevision,
-	buildResponsibilityReactorPaths,
-} from "./responsibility-reactor.js";
+	buildRepositoryReactorPaths,
+	deriveRepositoryReactorStatus,
+	resolveResponsibilityForNode,
+	type RepositoryReactorStatus,
+} from "./repository-reactor.js";
 
 export const REPOSITORY_RUNS_DIR = "runs";
 export const REPOSITORY_STATUS_RECENT_RUN_LIMIT = 5;
-export const REPOSITORY_STATUS_PROJECTION_TIERS = RECEIPT_PROJECTION_TIERS_V0;
-export const DEFAULT_REPOSITORY_STATUS_PROJECTION_TIER = "owner" as const satisfies ReceiptProjectionTierV0;
 
 export type RepositoryStatusIrState = "loaded" | "missing" | "invalid";
 export type RepositoryStatusRecordState = "present" | "missing" | "invalid";
-export type RepositoryStatusProjectionTier = ReceiptProjectionTierV0;
 
 export interface LoadRepositoryStatusOptions {
 	cwd: string;
 	home?: string;
 	manifestPath?: string;
 	runLimit?: number;
-	tier?: RepositoryStatusProjectionTier;
 }
 
 export interface RepositoryStatusSummary {
 	openProseRoot: OpenProseRoot;
-	projectionTier: RepositoryStatusProjectionTier;
 	activeIr: RepositoryStatusActiveIr;
 	registrations: RepositoryServeTriggerRegistration[];
 	responsibilities: RepositoryStatusResponsibility[];
@@ -97,9 +87,12 @@ export interface RepositoryStatusLatestPressure {
 export interface RepositoryStatusLatestReactor {
 	state: RepositoryStatusRecordState;
 	error?: string;
-	receipt?: ReceiptV0;
-	projection?: ReceiptProjectionV0;
-	stale?: boolean;
+	/** The last persisted run-phase Receipt for a node owned by this responsibility. */
+	receipt?: Receipt;
+	/** The narrowed run-phase status derived from the Receipt's commit-gate (G6). */
+	status?: RepositoryReactorStatus;
+	/** The published-truth content address (the ATOMIC_FACET fingerprint). */
+	contentAddress?: string;
 }
 
 export interface RepositoryStatusRun {
@@ -119,7 +112,6 @@ export class RepositoryStatusError extends Error {
 }
 
 export async function loadRepositoryStatus(options: LoadRepositoryStatusOptions): Promise<RepositoryStatusSummary> {
-	const projectionTier = options.tier ?? DEFAULT_REPOSITORY_STATUS_PROJECTION_TIER;
 	const openProseRoot = await resolveOpenProseRoot({
 		cwd: options.cwd,
 		...(options.home === undefined ? {} : { home: options.home }),
@@ -130,12 +122,11 @@ export async function loadRepositoryStatus(options: LoadRepositoryStatusOptions)
 	const responsibilities =
 		activeIr.manifest === undefined
 			? []
-			: await loadResponsibilityStatusSummaries(openProseRoot, activeIr.manifest, projectionTier);
+			: await loadResponsibilityStatusSummaries(openProseRoot, activeIr.manifest);
 	const runs = await loadRecentRuns(openProseRoot, options.runLimit ?? REPOSITORY_STATUS_RECENT_RUN_LIMIT);
 
 	return {
 		openProseRoot,
-		projectionTier,
 		activeIr,
 		registrations,
 		responsibilities,
@@ -239,20 +230,22 @@ async function loadStatusActiveIr(openProseRoot: OpenProseRoot, manifestPath: st
 async function loadResponsibilityStatusSummaries(
 	openProseRoot: OpenProseRoot,
 	manifest: RepositoryIrV0,
-	projectionTier: RepositoryStatusProjectionTier,
 ): Promise<RepositoryStatusResponsibility[]> {
+	// The run-phase reactor is TOPOLOGY-WIDE (PHASE5-UNRED §5a): a single
+	// `receipts.json` under `state/reactor/<topologyId>/` carries the new `Receipt`
+	// log for ALL nodes. Read it ONCE, then map each responsibility to the last
+	// receipt for a node it owns (via the Forme-manifest → fulfillment activation
+	// link). The retired per-responsibility receipt dir + projection-tier read are
+	// gone — a Receipt is a render attestation, not a tiered status projection.
+	const reactorReceipts = await readReactorReceiptLog(openProseRoot);
+
 	return Promise.all(
 		manifest.responsibilities.map(async (responsibility) => {
 			const fingerprint = fingerprintResponsibility(responsibility);
 			const statusPaths = buildResponsibilityStatusPaths(openProseRoot, responsibility.id);
 			const pressurePaths = buildResponsibilityPressurePaths(openProseRoot, responsibility.id);
-			const reactorPaths = buildResponsibilityReactorPaths(openProseRoot, responsibility.id);
-			const [reactor, status, pressure] = await Promise.all([
-				readLatestReactorReceipt(
-					resolve(reactorPaths.absoluteDirectoryPath, "receipts.json"),
-					responsibility,
-					projectionTier,
-				),
+			const reactor = selectReactorForResponsibility(manifest, reactorReceipts, responsibility.id);
+			const [status, pressure] = await Promise.all([
 				readLatestStatus(statusPaths.absoluteLatestPath, fingerprint),
 				readLatestPressure(pressurePaths.absoluteLatestPressurePath, fingerprint),
 			]);
@@ -270,40 +263,56 @@ async function loadResponsibilityStatusSummaries(
 	);
 }
 
-async function readLatestReactorReceipt(
-	path: string,
-	responsibility: RepositoryIrResponsibility,
-	projectionTier: RepositoryStatusProjectionTier,
-): Promise<RepositoryStatusLatestReactor> {
-	const parsed = await readOptionalJson(path, "reactor receipts");
-	if (parsed.state !== "present") {
+type ReactorReceiptLog =
+	| { state: "missing" }
+	| { state: "invalid"; error: string }
+	| { state: "present"; receipts: readonly Receipt[] };
+
+async function readReactorReceiptLog(openProseRoot: OpenProseRoot): Promise<ReactorReceiptLog> {
+	const paths = buildRepositoryReactorPaths(openProseRoot, "repository");
+	const parsed = await readOptionalJson(resolve(paths.absoluteDirectoryPath, "receipts.json"), "reactor receipts");
+	if (parsed.state === "missing") {
+		return { state: "missing" };
+	}
+	if (parsed.state === "invalid") {
 		return parsed;
 	}
 	if (!Array.isArray(parsed.value)) {
 		return { state: "invalid", error: "reactor receipts must be an array" };
 	}
-	if (parsed.value.length === 0) {
+	return { state: "present", receipts: parsed.value as Receipt[] };
+}
+
+function selectReactorForResponsibility(
+	manifest: RepositoryIrV0,
+	log: ReactorReceiptLog,
+	responsibilityId: string,
+): RepositoryStatusLatestReactor {
+	if (log.state === "missing") {
+		return { state: "missing" };
+	}
+	if (log.state === "invalid") {
+		return { state: "invalid", error: log.error };
+	}
+
+	// The last receipt (the log is append-ordered) for a node this responsibility
+	// owns. A responsibility with no rendered node yet is `missing`.
+	let latest: Receipt | undefined;
+	for (const receipt of log.receipts) {
+		const owner = resolveResponsibilityForNode(manifest, receipt.node);
+		if (owner?.id === responsibilityId) {
+			latest = receipt;
+		}
+	}
+	if (latest === undefined) {
 		return { state: "missing" };
 	}
 
-	const receipt = parsed.value[parsed.value.length - 1] as ReceiptV0;
-	const projectionResult = projectReceiptV0({ tier: projectionTier, receipt });
-	if (!projectionResult.ok) {
-		return { state: "invalid", error: projectionResult.errors.join("; ") };
-	}
-	if (projectionResult.projection.tier !== projectionTier) {
-		return { state: "invalid", error: `reactor receipt did not project to ${projectionTier} tier` };
-	}
-
-	const projection = projectionResult.projection;
-	const expectedContractRevision = buildReactorContractRevision(responsibility);
 	return {
 		state: "present",
-		receipt,
-		projection,
-		stale:
-			receipt.core.responsibility_id !== responsibility.id ||
-			projection.contract_revision !== expectedContractRevision,
+		receipt: latest,
+		status: deriveRepositoryReactorStatus(latest),
+		contentAddress: latest.fingerprints[ATOMIC_FACET] ?? latest.contract_fingerprint,
 	};
 }
 
@@ -471,17 +480,14 @@ function formatLatestReactorStatus(reactor: RepositoryStatusLatestReactor): stri
 	if (reactor.state === "invalid") {
 		return `invalid reactor receipt (${reactor.error ?? "unknown error"})`;
 	}
-	const projection = reactor.projection;
-	if (projection === undefined) {
-		return "invalid reactor receipt (missing projection)";
+	const receipt = reactor.receipt;
+	if (receipt === undefined || reactor.status === undefined) {
+		return "invalid reactor receipt (missing receipt)";
 	}
 	return [
-		`${projection.status ?? "unknown"} at ${projection.freshness.as_of}`,
-		`receipt ${projection.content_hash}`,
-		reactor.stale ? "stale" : undefined,
-	]
-		.filter((part): part is string => part !== undefined)
-		.join("; ");
+		`${reactor.status} (${receipt.status})`,
+		`receipt ${reactor.contentAddress ?? receipt.contract_fingerprint}`,
+	].join("; ");
 }
 
 function appendReactorDetails(lines: string[], reactor: RepositoryStatusLatestReactor): void {
@@ -493,40 +499,25 @@ function appendReactorDetails(lines: string[], reactor: RepositoryStatusLatestRe
 		return;
 	}
 
-	const projection = reactor.projection;
-	if (projection === undefined) {
-		lines.push("  reactor: invalid (missing projection)");
+	const receipt = reactor.receipt;
+	if (receipt === undefined) {
+		lines.push("  reactor: invalid (missing receipt)");
 		return;
 	}
 
-	const tokenTruth = projection.token_truth;
-	if (projection.tier !== "owner") {
-		lines.push(`  projection: ${projection.tier}`);
-	}
-	const tokenTruthParts = [
-		`  surprise: fresh=${tokenTruth.fresh}`,
-		`reused=${tokenTruth.reused}`,
-		`surprise_cause=${tokenTruth.surprise_cause}`,
-		`role=${tokenTruth.role}`,
-		"provider" in tokenTruth ? `provider=${tokenTruth.provider}` : undefined,
-		"model" in tokenTruth ? `model=${tokenTruth.model}` : undefined,
-	].filter((part): part is string => part !== undefined);
-	lines.push(tokenTruthParts.join(" "));
-	lines.push(`  forecast: next_recheck=${projection.freshness.next_forecast_recheck}`);
-
-	if (projection.tier !== "owner") {
-		return;
-	}
-	const blocked = projection.verdict.blocked;
-	if (blocked !== null) {
-		lines.push(
-			[
-				`  blocked: ${blocked.reason ?? "unknown reason"}`,
-				`fix_target=${blocked.fix_target ?? "unknown"}`,
-				`interrupt_cause=${blocked.interrupt_cause ?? "unknown"}`,
-			].join("; "),
-		);
-	}
+	// A Receipt is a render attestation (G6): the honest run-phase facts are the
+	// node, the render outcome, the mechanical token cost, and the content address.
+	// The retired tiered projection (freshness / token-truth role / verdict.blocked)
+	// has no successor and is dropped, not faked.
+	lines.push(
+		[
+			`  surprise: fresh=${receipt.cost.tokens.fresh}`,
+			`reused=${receipt.cost.tokens.reused}`,
+			`surprise_cause=${receipt.cost.surprise_cause}`,
+			`provider=${receipt.cost.provider}`,
+			`model=${receipt.cost.model}`,
+		].join(" "),
+	);
 }
 
 function formatLatestStatus(status: RepositoryStatusLatestStatus): string {
@@ -580,10 +571,11 @@ function markResolvedPressure(
 	reactor: RepositoryStatusLatestReactor,
 ): RepositoryStatusLatestPressure {
 	if (reactor.state === "present" && pressure.state === "present") {
-		if (reactor.stale || pressure.stale || reactor.projection?.status !== "up") {
-			return pressure;
-		}
-		if ((reactor.projection?.freshness.as_of ?? "") < (pressure.record?.recordedAt ?? "")) {
+		// A `healthy` reactor status (the commit gate passed — the new analog of the
+		// retired `up`) resolves the pressure; a `blocked` one leaves it standing. The
+		// new Receipt carries no timestamp, so a present healthy receipt resolves the
+		// last pressure outright (the run-phase boot is the most recent signal).
+		if (pressure.stale || reactor.status !== "healthy") {
 			return pressure;
 		}
 		return {

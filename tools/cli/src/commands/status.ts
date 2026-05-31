@@ -4,21 +4,16 @@ import {
 	loadRepositoryStatus,
 	RepositoryStatusError,
 } from "../prose/index.js";
-import {
-	DEFAULT_REPOSITORY_STATUS_PROJECTION_TIER,
-	REPOSITORY_STATUS_PROJECTION_TIERS,
-	type RepositoryStatusProjectionTier,
-} from "../prose/repository-status.js";
 
 export default class Status extends Command {
 	static summary = "Show OpenProse repository status.";
-	static usage = "status [--tier owner|subscriber|public]";
+	static usage = "status";
 	static strict = false;
 
 	async run(): Promise<void> {
 		try {
-			const args = parseStatusArgs(this.argv);
-			const status = await loadRepositoryStatus({ cwd: process.cwd(), tier: args.tier });
+			parseStatusArgs(this.argv);
+			const status = await loadRepositoryStatus({ cwd: process.cwd() });
 			this.log(formatRepositoryStatus(status));
 		} catch (error) {
 			if (error instanceof RepositoryStatusError) {
@@ -31,48 +26,20 @@ export default class Status extends Command {
 	}
 }
 
-export interface StatusArgs {
-	tier: RepositoryStatusProjectionTier;
-}
-
-export function parseStatusArgs(argv: readonly string[]): StatusArgs {
-	let tier: RepositoryStatusProjectionTier = DEFAULT_REPOSITORY_STATUS_PROJECTION_TIER;
-
+export function parseStatusArgs(argv: readonly string[]): void {
 	for (let index = 0; index < argv.length; index += 1) {
 		const arg = argv[index];
 		if (arg === undefined) {
 			continue;
 		}
-		if (arg === "--tier") {
-			const value = argv[index + 1];
-			if (value === undefined || value.startsWith("-")) {
-				throw new RepositoryStatusError("Missing value for --tier.", [statusUsage()]);
-			}
-			tier = parseProjectionTier(value);
-			index += 1;
-			continue;
-		}
-		if (arg.startsWith("--tier=")) {
-			tier = parseProjectionTier(arg.slice("--tier=".length));
-			continue;
-		}
 
+		// The retired `--tier owner|subscriber|public` flag selected a Receipt
+		// PROJECTION tier; the post-judge reactor has no tiered projection (a Receipt
+		// is a render attestation, G6), so the flag is gone. Any argument is rejected.
 		throw new RepositoryStatusError(`Unexpected argument '${arg}' for 'prose status'.`, [statusUsage()]);
 	}
-
-	return { tier };
-}
-
-function parseProjectionTier(value: string): RepositoryStatusProjectionTier {
-	if (REPOSITORY_STATUS_PROJECTION_TIERS.some((tier) => tier === value)) {
-		return value as RepositoryStatusProjectionTier;
-	}
-
-	throw new RepositoryStatusError(`Unsupported status projection tier '${value}'.`, [
-		`--tier must be one of: ${REPOSITORY_STATUS_PROJECTION_TIERS.join(", ")}`,
-	]);
 }
 
 function statusUsage(): string {
-	return "Usage: prose status [--tier owner|subscriber|public]";
+	return "Usage: prose status";
 }

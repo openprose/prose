@@ -36,11 +36,12 @@ import {
 } from "./responsibility-status.js";
 import type { ResponsibilityStatusRecord } from "./responsibility-status.js";
 import {
-	findRepositoryTriggerReceipt,
-	ingestRepositoryTriggerThroughReactor,
-	loadResponsibilityReactor,
-	type LoadResponsibilityReactorOptions,
-} from "./responsibility-reactor.js";
+	bootRepositoryReactor,
+	buildPressureFromReceipt,
+	loadRepositoryReactor,
+	resolveResponsibilityForNode,
+	type LoadRepositoryReactorOptions,
+} from "./repository-reactor.js";
 
 export const OPENPROSE_JUDGE_SOURCE_PATH = "runtime/judge-responsibility.prose.md";
 
@@ -160,7 +161,7 @@ export interface RepositoryServeDispatchResult {
 	activationResults: RepositoryServeActivationResult[];
 }
 
-export type RepositoryServeReactorOptions = Omit<LoadResponsibilityReactorOptions, "loaded" | "responsibilityId">;
+export type RepositoryServeReactorOptions = Omit<LoadRepositoryReactorOptions, "loaded">;
 
 interface RepositoryServeJudgeRequest {
 	request: RepositoryServeActivationRunRequest;
@@ -387,81 +388,80 @@ async function dispatchRepositoryServeEventThroughReactor(options: {
 	activationResults: RepositoryServeActivationResult[];
 	launchedActivationIds: Set<string>;
 }): Promise<void> {
+	// The new model is topology-wide (PHASE5-UNRED §5a): the bridge assembles ONE
+	// reactor over the whole repository IR and drives the cold-miss boot sweep —
+	// the honest first render. The retired per-responsibility `ingest(event)` that
+	// returned a judged status is GONE; an event simply wakes the reactor, and the
+	// run-phase `Receipt` (a render attestation) is the only signal. A `failed`
+	// receipt — the prior truth stands — is the sole honest pressure source (G6).
 	const trigger = findTriggerForEvent(options.loaded.manifest, options.event);
-	const bridge = loadResponsibilityReactor({
+	const bridge = loadRepositoryReactor({
 		...options.reactor,
 		loaded: options.loaded,
-		responsibilityId: trigger.responsibilityId,
 	});
-	const existing = findRepositoryTriggerReceipt({
-		bridge,
-		loaded: options.loaded,
-		event: options.event,
-		...(options.reactor.asOf === undefined ? {} : { asOf: options.reactor.asOf }),
-	});
-	const latestPressure = await readLatestResponsibilityPressure({
-		openProseRoot: options.loaded.openProseRoot,
-		responsibilityId: bridge.responsibility.id,
-	});
-	if (
-		latestPressure !== undefined &&
-		latestPressure.responsibilityFingerprint === fingerprintResponsibility(bridge.responsibility) &&
-		latestPressure.source.triggerDedupeKey === existing.triggerDedupeKey
-	) {
-		return;
-	}
-	if (existing.receipt !== undefined) {
-		return;
-	}
-	const result = ingestRepositoryTriggerThroughReactor({
-		bridge,
-		loaded: options.loaded,
-		event: options.event,
-		...(options.reactor.asOf === undefined ? {} : { asOf: options.reactor.asOf }),
-	});
-	if (!result.result.accepted) {
-		throw new RepositoryServeError(
-			`Reactor rejected trigger '${options.event.triggerId}' with outcome '${result.result.outcome}'.`,
-		);
-	}
-	if (result.pressure === undefined) {
-		return;
-	}
+	const recordedAt = options.reactor.clock?.now() ?? new Date().toISOString();
+	const { receipts } = await bootRepositoryReactor(bridge);
 
-	const pressureResult = await recordResponsibilityPressure({
-		openProseRoot: options.loaded.openProseRoot,
-		record: result.pressure,
-	});
-	if (pressureResult.recorded !== true) {
-		return;
-	}
+	for (const receipt of receipts) {
+		if (receipt.status !== "failed") {
+			continue;
+		}
+		const responsibility = resolveResponsibilityForNode(options.loaded.manifest, receipt.node);
+		if (responsibility === undefined) {
+			// A blocked node with no fulfillment activation cannot be reconciled by a
+			// pressure dispatch; surface it as a hard serve error (mirrors the retired
+			// "no activation" guard).
+			throw new RepositoryServeError(
+				`Reactor node '${receipt.node}' (trigger '${trigger.id}') is blocked but maps to no fulfillment responsibility.`,
+			);
+		}
 
-	const pressureActivationId = pressureResult.record.activationId;
-	if (pressureActivationId !== undefined && options.launchedActivationIds.has(pressureActivationId)) {
-		return;
-	}
+		const pressure = buildPressureFromReceipt({
+			manifest: options.loaded.manifest,
+			responsibilityId: responsibility.id,
+			responsibilityFingerprint: fingerprintResponsibility(responsibility),
+			receipt,
+			recordedAt,
+		});
+		if (pressure === undefined) {
+			continue;
+		}
 
-	const pressureRequest = buildPressureActivationRunRequest({
-		loaded: options.loaded,
-		pressure: pressureResult.record,
-	});
-	const pressureActivation = await launchPressureActivationOnce({
-		loaded: options.loaded,
-		pressure: pressureResult.record,
-		request: pressureRequest,
-		run: options.run,
-		cwd: options.cwd,
-	});
-	if (pressureActivation === undefined) {
-		return;
-	}
-	options.activationResults.push(pressureActivation);
-	options.launchedActivationIds.add(pressureActivation.activationId);
+		const pressureResult = await recordResponsibilityPressure({
+			openProseRoot: options.loaded.openProseRoot,
+			record: pressure,
+		});
+		if (pressureResult.recorded !== true) {
+			continue;
+		}
 
-	if (pressureActivation.exitCode !== 0) {
-		throw new RepositoryServeError(
-			`Pressure activation '${pressureActivation.activationId}' exited with code ${pressureActivation.exitCode}.`,
-		);
+		const pressureActivationId = pressureResult.record.activationId;
+		if (pressureActivationId !== undefined && options.launchedActivationIds.has(pressureActivationId)) {
+			continue;
+		}
+
+		const pressureRequest = buildPressureActivationRunRequest({
+			loaded: options.loaded,
+			pressure: pressureResult.record,
+		});
+		const pressureActivation = await launchPressureActivationOnce({
+			loaded: options.loaded,
+			pressure: pressureResult.record,
+			request: pressureRequest,
+			run: options.run,
+			cwd: options.cwd,
+		});
+		if (pressureActivation === undefined) {
+			continue;
+		}
+		options.activationResults.push(pressureActivation);
+		options.launchedActivationIds.add(pressureActivation.activationId);
+
+		if (pressureActivation.exitCode !== 0) {
+			throw new RepositoryServeError(
+				`Pressure activation '${pressureActivation.activationId}' exited with code ${pressureActivation.exitCode}.`,
+			);
+		}
 	}
 }
 
