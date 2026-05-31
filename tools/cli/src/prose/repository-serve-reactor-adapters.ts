@@ -21,6 +21,7 @@ import {
 	EMPTY_SEMANTIC_DIFF,
 	type AsyncMountedRender,
 	type Cost,
+	type WakeSource,
 	type WorldModelStore,
 } from "@openprose/reactor";
 import type { RepositoryServeReactorOptions } from "./repository-serve.js";
@@ -64,16 +65,20 @@ export function createLocalRenderFactory(): RepositoryRenderFactory {
 		return async (context) => ({
 			world_model: context.prior.files,
 			semantic_diff: EMPTY_SEMANTIC_DIFF,
-			cost: localRenderCost(),
+			// The receipt's surprise_cause MUST echo the node's wake source (the
+			// reactor verifies cost.surprise_cause === wake.source); an IR-derived
+			// topology wakes nodes via `external`/`input`, not just `self`, so a
+			// hardcoded "self" fails receipt validation and persists no receipt.
+			cost: localRenderCost(context.wake.source),
 		});
 	};
 }
 
-function localRenderCost(): Cost {
+function localRenderCost(surpriseCause: WakeSource): Cost {
 	return {
 		provider: REPOSITORY_SERVE_LOCAL_REACTOR_PROVIDER,
 		model: REPOSITORY_SERVE_LOCAL_REACTOR_MODEL,
 		tokens: { fresh: 0, reused: 0 },
-		surprise_cause: "self",
+		surprise_cause: surpriseCause,
 	};
 }
