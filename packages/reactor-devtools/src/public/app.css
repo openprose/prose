@@ -1,0 +1,422 @@
+/* Reactor DevTools — dark theme.
+ *
+ * S1: layered-DAG render of the topology + an ordered receipt timeline + a
+ * scrubber (play/pause/step/jump) that marks which node each receipt hit. The
+ * S2 animation hooks (flash / dim-pulse / red / edge-light / sparkline) layer
+ * on top of these same classes — colors are defined here as CSS variables so
+ * S2 only adds keyframes + a few transient classes. */
+:root {
+  --bg: #0b0e14;
+  --bg-grad: radial-gradient(1200px 700px at 28% -10%, #131a27 0%, #0b0e14 60%);
+  --panel: #11151f;
+  --panel-2: #0e121b;
+  --ink: #d7dce5;
+  --ink-dim: #6b7484;
+  --ink-faint: #424b5c;
+  --line: #1d2433;
+  --line-soft: #161c28;
+
+  /* disposition colors (shared by graph + timeline) */
+  --rendered: #6ee7ff;
+  --rendered-deep: #2bb6da;
+  --skipped: #5b6678;
+  --failed: #ff5d6c;
+
+  /* wake-cause accents */
+  --cause-input: #6ee7ff;
+  --cause-self: #c08bff;
+  --cause-external: #ffce6e;
+
+  --entry: #ffce6e;
+  --edge: #283143;
+  --edge-atomic: #2f3a4f;
+  --node-fill: #161d2b;
+  --node-stroke: #2c3548;
+  --fresh: #ff8a5c;
+  --reused: #3f8f6b;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--bg);
+  background-image: var(--bg-grad);
+  color: var(--ink);
+  font: 12.5px/1.5 ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ---- topbar ---- */
+#topbar {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line);
+  background: linear-gradient(180deg, #0e131d, #0b0e14);
+}
+.brand { font-weight: 600; letter-spacing: 0.04em; font-size: 13px; }
+.brand-dim { color: var(--ink-dim); }
+.legend { display: flex; gap: 14px; color: var(--ink-dim); font-size: 11px; }
+.lg { display: inline-flex; align-items: center; gap: 5px; }
+.lg i { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
+.lg-rendered i { background: var(--rendered); }
+.lg-skipped i { background: var(--skipped); }
+.lg-failed i { background: var(--failed); }
+.lg-entry i { background: transparent; border: 1.5px solid var(--entry); border-radius: 50%; }
+.status { margin-left: auto; color: var(--ink-dim); font-size: 11px; }
+
+/* ---- stage: graph + sidebar ---- */
+#stage {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  min-height: 0;
+  overflow: hidden;
+}
+#graphwrap {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  padding: 10px 14px;
+}
+/* The SVG fits the whole DAG into the viewport (viewBox + meet). Node geometry
+ * is tuned so that at this fit the labels stay legible; deeper/denser graphs
+ * are handled by S5's clustering (out of scope here). */
+#graph { display: block; width: 100%; height: 100%; }
+.graphhint {
+  position: absolute;
+  left: 12px;
+  bottom: 10px;
+  color: var(--ink-faint);
+  font-size: 10.5px;
+  pointer-events: none;
+}
+
+/* ---- graph elements ---- */
+.edge {
+  fill: none;
+  stroke: var(--edge);
+  stroke-width: 1.2;
+  opacity: 0.55;
+}
+.edge.facet-atomic { stroke: var(--edge-atomic); stroke-dasharray: none; }
+.edge:not(.facet-atomic) { stroke-dasharray: 3 3; }    /* named facet lanes are dashed */
+.edge-label {
+  fill: var(--ink-faint);
+  font-size: 9px;
+  letter-spacing: 0.02em;
+}
+
+.node-box {
+  fill: var(--node-fill);
+  stroke: var(--line);
+  stroke-width: 1.4;
+  rx: 7;
+  transition: stroke 0.18s ease, fill 0.18s ease;
+}
+.node.entry .node-box { stroke: var(--entry); }
+.node-label {
+  fill: var(--ink);
+  font-size: 18px;
+  font-weight: 500;
+  dominant-baseline: middle;
+}
+.node-sub {
+  fill: var(--ink-dim);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  dominant-baseline: middle;
+}
+.node.entry .node-label { fill: #ffe2a8; }
+.node.producer-only .node-box { stroke-dasharray: 4 3; opacity: 0.85; }
+
+/* current-hit marker (S1 scrubber): the node the active receipt landed on */
+.node.hit .node-box { stroke: var(--rendered); stroke-width: 2.2; fill: #16222e; }
+.node.hit.skipped .node-box { stroke: var(--skipped); fill: #161b24; }
+.node.hit.failed .node-box { stroke: var(--failed); fill: #241317; }
+.node.hit .node-label { fill: #eaf7ff; }
+
+/* nodes that haven't fired yet in this replay are faintly dimmed */
+.node.untouched .node-box { opacity: 0.55; }
+.node.untouched .node-label, .node.untouched .node-sub { opacity: 0.6; }
+
+/* =====================================================================
+ * S2 — the hero shot: flashes, skips, red, edge-lights, meter sparkline.
+ * Every animation is TRANSIENT (fire-and-forget): a `step` fires the pulse
+ * by adding a class on the next animation frame, and the class self-removes
+ * on `animationend`. State (`.hit`/`.untouched`/`.current`) stays idempotent
+ * for scrub-safety; only these decaying pulses are the motion.
+ * ===================================================================== */
+
+/* The bright "highlight update" box — a node RENDERED with a moved fingerprint.
+ * A halo rect (`.node-halo`) sits under the box and pulses outward; the box
+ * stroke flares to the disposition color. Hue is set per-wake-cause via a
+ * --flash custom property on the <g> (input cyan / self violet / external gold). */
+.node-halo {
+  fill: none;
+  stroke: var(--flash, var(--rendered));
+  stroke-width: 2;
+  opacity: 0;
+  rx: 12;
+  pointer-events: none;
+}
+.node.flash { --flash: var(--rendered); }
+.node.flash.cause-input { --flash: var(--cause-input); }
+.node.flash.cause-self { --flash: var(--cause-self); }
+.node.flash.cause-external { --flash: var(--cause-external); }
+
+.node.flash .node-halo { animation: nodeFlashHalo var(--pulse, 700ms) cubic-bezier(0.16, 0.84, 0.44, 1) forwards; }
+.node.flash .node-box  { animation: nodeFlashBox var(--pulse, 700ms) ease-out forwards; }
+.node.flash .node-label { animation: nodeFlashLabel var(--pulse, 700ms) ease-out forwards; }
+
+@keyframes nodeFlashHalo {
+  0%   { opacity: 0.95; transform: scale(1); }
+  100% { opacity: 0;    transform: scale(1.14); }
+}
+@keyframes nodeFlashBox {
+  0%   { stroke: var(--flash); stroke-width: 3.2; filter: drop-shadow(0 0 9px var(--flash)); }
+  60%  { stroke: var(--flash); stroke-width: 2.4; }
+  100% { stroke: var(--node-stroke); stroke-width: 1.4; filter: none; }
+}
+@keyframes nodeFlashLabel {
+  0%   { fill: #f3fbff; }
+  100% { fill: var(--ink); }
+}
+/* the halo scales about the node's own center, not the SVG origin */
+.node-halo { transform-box: fill-box; transform-origin: center; }
+
+/* The dim grey ripple — a node was woken but memo-SKIPPED ("correctly did
+ * nothing"). A faint grey halo breathes once; no stroke flare, no glow. This is
+ * the shot React DevTools can't take. */
+.node.skip-pulse .node-halo { stroke: var(--skipped); animation: nodeSkipHalo var(--pulse, 700ms) ease-out forwards; }
+@keyframes nodeSkipHalo {
+  0%   { opacity: 0.34; transform: scale(0.98); }
+  100% { opacity: 0;    transform: scale(1.07); }
+}
+
+/* The red fail flare — a node FAILED; prior truth stands, no edges light. */
+.node.fail-pulse { --flash: var(--failed); }
+.node.fail-pulse .node-halo { stroke: var(--failed); animation: nodeFailHalo var(--pulse, 700ms) ease-out forwards; }
+.node.fail-pulse .node-box  { animation: nodeFailBox var(--pulse, 700ms) ease-out forwards; }
+@keyframes nodeFailHalo {
+  0%   { opacity: 0.95; transform: scale(1); }
+  35%  { opacity: 0.8;  transform: scale(1.05); }
+  100% { opacity: 0;    transform: scale(1.12); }
+}
+@keyframes nodeFailBox {
+  0%   { stroke: var(--failed); stroke-width: 3; filter: drop-shadow(0 0 8px var(--failed)); }
+  100% { stroke: var(--node-stroke); stroke-width: 1.4; filter: none; }
+}
+
+/* Per-facet EDGE LIGHT — a receipt propagated producer→subscriber on a moved
+ * facet. The lane brightens to the facet color and a dash chases along it
+ * (producer→subscriber direction), plus a token bead travels the path. Only the
+ * moved facet's lanes light; a hiring-only subscriber stays dark. */
+.edge.lit {
+  stroke: var(--flow, var(--rendered));
+  stroke-width: 2.2;
+  opacity: 1;
+  filter: drop-shadow(0 0 4px var(--flow, var(--rendered)));
+  animation: edgeLit var(--pulse, 700ms) ease-out forwards;
+}
+.edge.lit.facet-atomic { --flow: var(--rendered); }
+.edge.lit:not(.facet-atomic) { --flow: var(--cause-external); }
+@keyframes edgeLit {
+  0%   { opacity: 1;    stroke-width: 2.6; }
+  70%  { opacity: 0.9;  stroke-width: 2; }
+  100% { opacity: 0.55; stroke-width: 1.2; filter: none; }
+}
+/* the chasing dash overlay drawn over a lit lane */
+.flow-dash.facet-atomic { --flow: var(--rendered); }
+.flow-dash:not(.facet-atomic) { --flow: var(--cause-external); }
+.flow-bead { --flow: var(--rendered); }
+.flow-dash {
+  fill: none;
+  stroke: var(--flow, var(--rendered));
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-dasharray: 7 220;
+  filter: drop-shadow(0 0 5px var(--flow, var(--rendered)));
+  pointer-events: none;
+  animation: flowDash var(--pulse, 700ms) cubic-bezier(0.4, 0, 0.5, 1) forwards;
+}
+@keyframes flowDash {
+  0%   { stroke-dashoffset: 227; opacity: 0; }
+  12%  { opacity: 1; }
+  88%  { opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 0; }
+}
+/* a glowing token bead that rides the lane */
+.flow-bead {
+  fill: var(--flow, var(--rendered));
+  filter: drop-shadow(0 0 5px var(--flow, var(--rendered)));
+  pointer-events: none;
+}
+
+/* a freshly woken subscriber gets a quick anticipatory ring (the diamond
+ * single-wake lands here — woken once even via multiple lanes) */
+.node.woken .node-halo { stroke: var(--rendered); animation: nodeWokenHalo var(--pulse, 700ms) ease-out forwards; }
+@keyframes nodeWokenHalo {
+  0%   { opacity: 0; transform: scale(1.08); }
+  40%  { opacity: 0.5; transform: scale(1.0); }
+  100% { opacity: 0; transform: scale(0.98); }
+}
+
+/* ---- sidebar ---- */
+#sidebar {
+  border-left: 1px solid var(--line);
+  background: var(--panel-2);
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-height: 0;
+}
+.panel { padding: 12px 14px; min-height: 0; }
+.panel + .panel { border-top: 1px solid var(--line); }
+.panel-title {
+  margin: 0 0 10px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+.dim { color: var(--ink-faint); font-weight: 400; }
+
+/* ---- cost meter (S2: sparkline over the per-frame series + live totals) ---- */
+.meterbody { display: grid; gap: 9px; }
+
+/* The sparkline: fresh tokens per receipt as a filled area, reused as a faint
+ * underlay, broken out by surprise_cause as stacked tick bands. Flat near zero
+ * on a quiet stretch; a single tall spike on a surprise = "cost scales with
+ * surprise." A moving playhead marker tracks the scrub head. */
+.spark-wrap { position: relative; }
+.spark {
+  display: block;
+  width: 100%;
+  height: 64px;
+  background: linear-gradient(180deg, #0a0d13, #0c1018);
+  border: 1px solid var(--line-soft);
+  border-radius: 6px;
+}
+.spark-baseline { stroke: var(--line); stroke-width: 1; }
+.spark-area-fresh { fill: var(--fresh); fill-opacity: 0.16; stroke: none; }
+.spark-line-fresh { fill: none; stroke: var(--fresh); stroke-width: 1.4; }
+.spark-bar { stroke-width: 0; }
+.spark-bar.c-input { fill: var(--cause-input); }
+.spark-bar.c-self { fill: var(--cause-self); }
+.spark-bar.c-external { fill: var(--cause-external); }
+.spark-bar.reused { fill: var(--reused); fill-opacity: 0.5; }
+.spark-bar.future { opacity: 0.18; }
+.spark-head { stroke: var(--rendered); stroke-width: 1; opacity: 0.85; }
+.spark-caption {
+  display: flex; justify-content: space-between;
+  font-size: 9.5px; color: var(--ink-faint); margin-top: 2px;
+  font-variant-numeric: tabular-nums;
+}
+.meter-total { display: flex; align-items: baseline; gap: 8px; }
+.meter-total .big { font-size: 20px; font-weight: 600; color: var(--ink); }
+.meter-total .unit { font-size: 10px; color: var(--ink-dim); }
+.meter-bar { height: 8px; border-radius: 4px; background: #0a0d13; overflow: hidden; display: flex; }
+.meter-bar .seg-fresh { background: var(--fresh); }
+.meter-bar .seg-reused { background: var(--reused); }
+.meter-rows { display: grid; gap: 5px; font-size: 11px; }
+.meter-row { display: grid; grid-template-columns: 14px 1fr auto; align-items: center; gap: 7px; }
+.meter-row .swatch { width: 9px; height: 9px; border-radius: 2px; }
+.meter-row .swatch.fresh { background: var(--fresh); }
+.meter-row .swatch.reused { background: var(--reused); }
+.meter-row .k { color: var(--ink-dim); }
+.meter-row .v { color: var(--ink); font-variant-numeric: tabular-nums; }
+.meter-causes { margin-top: 4px; display: grid; gap: 3px; font-size: 10.5px; color: var(--ink-dim); }
+.meter-cause { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; font-variant-numeric: tabular-nums; }
+.meter-cause .cause-name { display: inline-flex; align-items: center; gap: 5px; }
+.meter-cause .dot { width: 7px; height: 7px; border-radius: 50%; }
+.dot-input { background: var(--cause-input); }
+.dot-self { background: var(--cause-self); }
+.dot-external { background: var(--cause-external); }
+
+/* ---- timeline ---- */
+.timeline { display: grid; grid-template-rows: auto 1fr; min-height: 0; }
+.receiptlist {
+  margin: 0; padding: 0; list-style: none;
+  overflow-y: auto; min-height: 0;
+  scrollbar-width: thin; scrollbar-color: var(--line) transparent;
+}
+.receiptlist::-webkit-scrollbar { width: 8px; }
+.receiptlist::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+.ritem {
+  display: grid;
+  grid-template-columns: 30px 6px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  border-radius: 5px;
+  cursor: pointer;
+  color: var(--ink-dim);
+}
+.ritem:hover { background: #131a26; }
+.ritem .idx { color: var(--ink-faint); font-variant-numeric: tabular-nums; text-align: right; }
+.ritem .tick { width: 6px; height: 6px; border-radius: 50%; justify-self: center; }
+.ritem.s-rendered .tick { background: var(--rendered); }
+.ritem.s-skipped .tick { background: var(--skipped); }
+.ritem.s-failed .tick { background: var(--failed); }
+.ritem .name { color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ritem.s-skipped .name { color: var(--ink-dim); }
+.ritem .cause { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.04em; }
+.ritem .cause.c-input { color: var(--cause-input); }
+.ritem .cause.c-self { color: var(--cause-self); }
+.ritem .cause.c-external { color: var(--cause-external); }
+.ritem.future { opacity: 0.4; }
+.ritem.current {
+  background: #16222e;
+  box-shadow: inset 2px 0 0 var(--rendered);
+}
+.ritem.current.s-skipped { box-shadow: inset 2px 0 0 var(--skipped); }
+.ritem.current.s-failed { box-shadow: inset 2px 0 0 var(--failed); }
+
+/* ---- scrubber ---- */
+#scrubber {
+  border-top: 1px solid var(--line);
+  padding: 9px 16px 11px;
+  background: var(--panel);
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 14px;
+}
+.transport { display: flex; align-items: center; gap: 6px; }
+.tbtn {
+  background: #161d2a;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  height: 28px;
+  min-width: 30px;
+  padding: 0 7px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.tbtn:hover { background: #1d2636; border-color: #34405a; }
+.tbtn:active { transform: translateY(1px); }
+.tbtn-play { background: #15303a; border-color: #1f4e5e; color: #aef0ff; min-width: 38px; }
+.tbtn-play.playing { background: #3a1f24; border-color: #5e2730; color: #ffb3bb; }
+.speed { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-dim); font-size: 11px; margin-left: 6px; }
+.speed select {
+  background: #161d2a; color: var(--ink); border: 1px solid var(--line);
+  border-radius: 5px; padding: 3px 6px; font: inherit; font-size: 11px;
+}
+.seek { width: 100%; accent-color: var(--rendered); cursor: pointer; }
+.scrubreadout {
+  color: var(--ink-dim);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  min-width: 220px;
+  text-align: right;
+}
+.scrubreadout .hl { color: var(--ink); }

@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Reactor DevTools</title>
+    <link rel="stylesheet" href="/app.css" />
+  </head>
+  <body>
+    <header id="topbar">
+      <span class="brand">reactor<span class="brand-dim">·devtools</span></span>
+      <span id="legend" class="legend" hidden>
+        <span class="lg lg-rendered"><i></i>rendered</span>
+        <span class="lg lg-skipped"><i></i>skipped</span>
+        <span class="lg lg-failed"><i></i>failed</span>
+        <span class="lg lg-entry"><i></i>entry</span>
+      </span>
+      <span id="status" class="status">loading…</span>
+    </header>
+
+    <main id="stage">
+      <section id="graphwrap">
+        <svg id="graph" aria-label="Reactor DAG" role="img"></svg>
+        <div id="graphhint" class="graphhint"></div>
+      </section>
+
+      <aside id="sidebar">
+        <section id="meter" class="panel">
+          <h2 class="panel-title">cost · fresh vs reused</h2>
+          <div class="spark-wrap">
+            <svg id="spark" class="spark" aria-label="fresh-vs-reused token spend per receipt" role="img"></svg>
+            <div class="spark-caption">
+              <span>fresh tokens / receipt</span>
+              <span id="spark-peak" class="dim"></span>
+            </div>
+          </div>
+          <div id="meterbody" class="meterbody">
+            <!-- live totals so far at the scrub head -->
+          </div>
+        </section>
+        <section id="timeline" class="panel timeline">
+          <h2 class="panel-title">receipts <span id="timeline-count" class="dim"></span></h2>
+          <ol id="receiptlist" class="receiptlist"></ol>
+        </section>
+      </aside>
+    </main>
+
+    <footer id="scrubber">
+      <div class="transport">
+        <button id="btn-start" class="tbtn" title="Jump to start">⏮</button>
+        <button id="btn-step-back" class="tbtn" title="Step back">◀</button>
+        <button id="btn-play" class="tbtn tbtn-play" title="Play / Pause">▶</button>
+        <button id="btn-step" class="tbtn" title="Step forward">▶|</button>
+        <button id="btn-end" class="tbtn" title="Jump to end">⏭</button>
+        <label class="speed">
+          speed
+          <select id="speed">
+            <option value="0.5">0.5×</option>
+            <option value="1" selected>1×</option>
+            <option value="2">2×</option>
+            <option value="4">4×</option>
+            <option value="8">8×</option>
+          </select>
+        </label>
+      </div>
+      <input id="seek" class="seek" type="range" min="-1" max="0" value="-1" step="1" />
+      <div id="scrubreadout" class="scrubreadout">—</div>
+    </footer>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
