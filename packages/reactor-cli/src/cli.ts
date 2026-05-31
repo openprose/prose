@@ -13,7 +13,13 @@ import { Command } from 'commander';
 import { runDoctor } from './commands/doctor';
 import { cliVersion } from './meta';
 
-export function buildProgram(): Command {
+/**
+ * Build the program. `onExitCode` is invoked by a command's action with the
+ * desired process exit code; `main` applies it after `parseAsync` resolves, so
+ * the exit code does not depend on the parser's internal post-action behavior
+ * (which differs across commander majors).
+ */
+export function buildProgram(onExitCode: (code: number) => void = () => {}): Command {
   const program = new Command();
 
   program
@@ -27,22 +33,30 @@ export function buildProgram(): Command {
       'Report environment health (node, SDK, live key/deps, offline mode)',
     )
     .action(async () => {
-      const code = await runDoctor();
-      process.exitCode = code;
+      onExitCode(await runDoctor());
     });
 
   return program;
 }
 
-async function main(argv: string[]): Promise<void> {
-  const program = buildProgram();
+/** Parse argv and return the process exit code (0 by default). */
+export async function main(argv: string[]): Promise<number> {
+  let code = 0;
+  const program = buildProgram((c) => {
+    code = c;
+  });
   await program.parseAsync(argv);
+  return code;
 }
 
 // Only run when invoked as a binary, not when imported by tests.
 if (require.main === module) {
-  main(process.argv).catch((err) => {
-    process.stderr.write(String(err?.stack ?? err) + '\n');
-    process.exitCode = 1;
-  });
+  main(process.argv)
+    .then((code) => {
+      process.exitCode = code;
+    })
+    .catch((err) => {
+      process.stderr.write(String(err?.stack ?? err) + '\n');
+      process.exitCode = 1;
+    });
 }

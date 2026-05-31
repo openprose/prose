@@ -29,22 +29,54 @@ export interface SdkResolution {
  * Resolve `@openprose/reactor` (the SDK) and read its version, without
  * importing any of its barrels. `require.resolve` does not execute the module,
  * so this stays keyless.
+ *
+ * NOTE: the SDK's `exports` map does NOT expose `./package.json`, so
+ * `require.resolve('@openprose/reactor/package.json')` throws
+ * `ERR_PACKAGE_PATH_NOT_EXPORTED`. We therefore resolve the package ENTRY
+ * (which is exported) and then walk up from it to the package's own
+ * `package.json` to read the version.
  */
 export function resolveSdk(): SdkResolution {
+  let entry: string;
   try {
-    const entry = require.resolve('@openprose/reactor');
-    const pkgJson = require.resolve('@openprose/reactor/package.json');
-    const parsed = JSON.parse(fs.readFileSync(pkgJson, 'utf8')) as {
-      version?: string;
-    };
-    return {
-      resolved: true,
-      version: parsed.version,
-      resolvedPath: entry,
-    };
+    entry = require.resolve('@openprose/reactor');
   } catch {
     return { resolved: false };
   }
+  return {
+    resolved: true,
+    version: readVersionNear(entry),
+    resolvedPath: entry,
+  };
+}
+
+/**
+ * Walk up from a resolved module file to the nearest `package.json` whose
+ * `name` is `@openprose/reactor`, and return its `version`. Returns undefined
+ * if none is found (resolution still counts as successful).
+ */
+function readVersionNear(fromFile: string): string | undefined {
+  let dir = path.dirname(fromFile);
+  for (let depth = 0; depth < 64; depth++) {
+    const candidate = path.join(dir, 'package.json');
+    try {
+      const parsed = JSON.parse(fs.readFileSync(candidate, 'utf8')) as {
+        name?: string;
+        version?: string;
+      };
+      if (parsed.name === '@openprose/reactor') {
+        return parsed.version;
+      }
+    } catch {
+      // keep walking
+    }
+    const parent = path.dirname(dir);
+    if (parent === dir) {
+      break;
+    }
+    dir = parent;
+  }
+  return undefined;
 }
 
 export interface LiveDepStatus {
