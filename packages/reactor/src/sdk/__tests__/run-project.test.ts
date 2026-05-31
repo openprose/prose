@@ -36,12 +36,20 @@ import { createSystemClockAdapter } from "../../adapters/clock-system";
 import type { RenderContext } from "../render-atom";
 import type { TruthProjection } from "../render-atom";
 import type { AsyncMountedRender } from "../mounted-dag";
-import { dispositionOf } from "../../scenario/trace";
+import { mountDag } from "../mounted-dag";
+import {
+  atomicCanonicalizer,
+  InMemoryWorldModelStore,
+  type ReconcilerTopology,
+} from "../index";
+import { dispositionOf, lastReceipt } from "../../scenario/trace";
+import { contractFingerprint } from "../../scenario/fixture";
 import { fakeStructuredProvider } from "../../adapters/agent-compile/__tests__/fake-provider";
 import {
   createOpenRouterProvider,
   hasOpenRouterKey,
 } from "../../adapters/agent-render/provider";
+import { createAgentRender } from "../../adapters/agent-render";
 import type { CompiledContractView } from "../../adapters/agent-render/instructions";
 import type { WorldModelStore } from "../../world-model";
 import { compileProject, runProject, type CompiledProject } from "../run-project";
@@ -403,35 +411,35 @@ test("runProject RESTART-SURVIVAL: a second reactor over the same dirs boots to 
 
 // ===========================================================================
 // THE LIVE HEADLINE — a real gemini compile → render → boot, end to end
-// (PHASE5 §4d live; §8 N3). Gated behind OPENROUTER_API_KEY (process.env OR the
-// repo .env via hasOpenRouterKey). This is the HEADLINE, NOT the green bar: it
-// must NOT gate the offline build — the four tests above are the keyless green
-// gate; a keyless CI run reports this as a passing (skipped-body) subtest and
-// never touches the network. With the key present it runs the REAL compile
-// sessions (Forme + per-node canonicalizer) over the on-disk fixture, then the
-// REAL google/gemini-3.5-flash render through bootAsync.
+// (PHASE5 §4d live; §8 N3; HARDENED by IT-0). Gated behind OPENROUTER_API_KEY
+// (process.env OR the repo .env via hasOpenRouterKey). This is the HEADLINE, NOT
+// the green bar: it must NOT gate the offline build — the four tests above are
+// the keyless green gate; a keyless CI run reports this as a passing
+// (skipped-body) subtest and never touches the network. With the key present it
+// runs the REAL compile sessions (Forme + per-node canonicalizer + the
+// POSTCONDITION session — Defect A is fixed, the schema is FLAT/$ref-free) over
+// the on-disk fixture, then the REAL google/gemini-3.5-flash render through
+// bootAsync.
 //
 // It asserts ROBUST facts ONLY (loose on content — the model's prose varies):
-//   (i)  the real Forme + canonicalizer compile wired the topology (both nodes +
-//        the `funding` edge the semantic match implies);
-//   (ii) the SOURCE (competitor-monitor) committed a fingerprinted world-model
-//        with NON-ZERO token cost — a real model call wrote real truth;
-//   (iii) the subscriber (weekly-brief) WOKE via PROPAGATION — boot seeds only
-//        the source, so the brief running at all (its receipt carries a consumed
-//        input fingerprint) PROVES the monitor's `funding` facet moved and
-//        propagated along the edge Forme drew (gotcha-1, live).
-//
-// SCOPE NOTE — why the headline does NOT assert the brief COMMITS a world-model:
-// the agent-render adapter exposes `wm_read`/`wm_list` over the node's OWN prior
-// published truth only — there is NO cross-node UPSTREAM read tool today (the
-// live input-pointer seam is the carry-over's flagged open question, risks[0],
-// and is a Phase-1 agent-render concern, OUT of scope for #13's runner). So a
-// live brief render that needs the upstream funding view self-reports `failed`
-// ("upstream ... has no published files"). That is faithful adapter behavior,
-// not a runner bug: the runner's job — compile→mount→boot→PROPAGATE — is what
-// this headline proves. Asserting the brief's commit would couple #13's headline
-// to an unbuilt adapter seam and flake. The OFFLINE gate above (fake render with
-// the upstream truth handed in) already proves the brief commits end to end.
+//   (i)   the real Forme + canonicalizer compile wired the topology (both nodes +
+//         the `funding` edge the semantic match implies);
+//   (i.b) IT-0 (2): the LIVE postcondition session ran for BOTH nodes WITHOUT a
+//         400 ("reference to undefined schema at ...predicate" — Defect A) and
+//         returned a well-formed deterministic validator set per node;
+//   (ii)  the SOURCE (competitor-monitor) committed a fingerprinted world-model
+//         with NON-ZERO token cost — a real model call wrote real truth;
+//   (iii) IT-0 (1): the subscriber (weekly-brief) WOKE via PROPAGATION *and*
+//         COMMITS a fingerprinted world-model — it reads the producer's published
+//         `funding` facet through the now-built `wm_read_upstream` tool (closed in
+//         Phase 1.5, 46b2df5), writes `state/brief.md`, and the harness
+//         promotes-and-fingerprints it. The brief's receipt carries ≥1 consumed
+//         upstream input fingerprint (proving the funding facet propagated along
+//         the edge Forme drew — gotcha-1, live) AND its published version is
+//         non-null with `state/brief.md` present (proving the cross-node upstream
+//         read seam works live end to end — the old "subscriber does not commit"
+//         SCOPE NOTE is REMOVED: that was true at Phase 5 #13, false since the
+//         wm_read_upstream tool landed).
 // ===========================================================================
 
 // The live render's per-node contract VIEW. The fixtures declare the WHAT
@@ -464,9 +472,13 @@ function liveContractFor(node: string): CompiledContractView {
     requires: ["a current view of competitor fundraising activity"],
     continuity: "Input-driven: re-render when the upstream funding view moves.",
     execution:
-      `Write the file \`${BRIEF_PATH}\` to your workspace: a short plain-text ` +
-      `weekly briefing about competitor fundraising activity. Then report ` +
-      `status "done".`,
+      `FIRST, read your upstream producer's funding truth BY REFERENCE: call ` +
+      `\`wm_list_upstream\` to discover the producer you subscribe to, then ` +
+      `\`wm_read_upstream\` with that producer and path \`${FUNDING_PATH}\` to ` +
+      `read the competitor funding events. THEN write the file \`${BRIEF_PATH}\` ` +
+      `to your workspace: a short plain-text weekly briefing about competitor ` +
+      `fundraising activity that summarizes the funding events you just read. ` +
+      `Finally report status "done".`,
   };
 }
 
@@ -481,17 +493,17 @@ test(
       // step (the live path; the per-step fake providers above are only for the
       // offline gate). Temperature 0 + a fixed seed for reproducibility.
       const provider = createOpenRouterProvider();
+      // IT-0 (2): run the FULL three-step compile — including the live
+      // POSTCONDITION session — now that Defect A is fixed. Before the fix the
+      // live model rejected the recursive-predicate output schema with a 400
+      // ("reference to undefined schema at ...predicate"); the schema is now the
+      // FLAT, $ref-free encoding (exercised offline in compile-lowering.test.ts).
+      // Flipping `skipPostconditions` off here exercises that live path end to end;
+      // the assertions below prove it returned a well-formed validator (no 400).
       const compiled = await compileProject({
         contractsDir: FIXTURE_DIR,
         options: { provider, temperature: 0, seed: 7, maxTurns: 12 },
-        // This live slice keeps the postcondition SESSION skipped to hold its scope
-        // to the Forme + canonicalizer + render headline (and to keep this gate
-        // run network-cheap). Defect A — the recursive-predicate output schema the
-        // live model rejected with `reference to undefined schema at ...predicate`
-        // — is now FIXED: the schema is the FLAT, $ref-free encoding, exercised by
-        // the offline schema tests in compile-lowering.test.ts. Re-enabling the
-        // live postcondition session is owned by a separate live-headline step.
-        skipPostconditions: true,
+        skipPostconditions: false,
       });
 
       // (i) Forme actually wired the topology (both nodes + the funding edge the
@@ -506,6 +518,27 @@ test(
         "the live Forme session must wire weekly-brief → competitor-monitor",
       );
       ok(compiled.cost.tokens.fresh > 0);
+
+      // (i.b) IT-0 (2): the LIVE postcondition session ran for BOTH nodes WITHOUT
+      // a 400 (Defect A) and returned a well-formed validator set. A 400 would
+      // have thrown out of compileProject above; reaching here proves the live
+      // `compilePostcondition` call succeeded over the FLAT $ref-free schema. The
+      // synthesized ref is node-level `deterministic` and a deterministic
+      // validator set (possibly empty) came back — a real lowered artifact, not
+      // the skip-path empty stub.
+      for (const node of [MONITOR, BRIEF]) {
+        const pc = compiled.perNode[node]?.postconditions;
+        ok(pc, `the live compile must return a postcondition artifact for ${node}`);
+        equal(pc?.ref.node, node);
+        ok(
+          pc?.ref.mode === "deterministic" || pc?.ref.mode === "render-attested",
+          "the live postcondition ref must carry a valid node-level mode",
+        );
+        ok(
+          Array.isArray(pc?.set.deterministic),
+          "a deterministic validator set must have come back from the live session",
+        );
+      }
 
       // --- the REAL run phase: the live agent-render (default buildRender =
       // createAgentRender over the shared store) drives bootAsync. The monitor's
@@ -546,13 +579,15 @@ test(
         "the live monitor render must report a non-zero fresh token spend",
       );
 
-      // (iii) THE SUBSCRIBER WOKE VIA PROPAGATION. boot seeds ONLY the source
-      // (the brief has an inbound edge, so it is NOT seeded); the brief running
-      // AT ALL proves the monitor's `funding` facet moved and propagated. Its
-      // receipt carries the consumed upstream input fingerprint. (The brief's
-      // render itself may self-report `failed` — there is no cross-node upstream
-      // READ tool in agent-render yet; see the SCOPE NOTE above. We assert the
-      // WAKE + propagation, which is the runner's job, not the brief's commit.)
+      // (iii) IT-0 (1): THE SUBSCRIBER WOKE VIA PROPAGATION *AND* COMMITS. boot
+      // seeds ONLY the source (the brief has an inbound edge, so it is NOT
+      // seeded); the brief running AT ALL proves the monitor's `funding` facet
+      // moved and propagated. Its receipt carries ≥1 consumed upstream input
+      // fingerprint. Beyond the wake, the brief now COMMITS a fingerprinted
+      // world-model: its contract directs it to read the producer's published
+      // funding via `wm_read_upstream` (the cross-node read seam built in Phase
+      // 1.5), so it can satisfy its `### Maintains` and write `state/brief.md`.
+      // The old "subscriber does not commit" SCOPE NOTE is GONE.
       const briefReceipt = reactor.ledger.all().find((r) => r.node === BRIEF);
       ok(
         briefReceipt,
@@ -562,9 +597,176 @@ test(
         (briefReceipt?.input_fingerprints.length ?? 0) > 0,
         "the brief's wake must carry the monitor's propagated funding fingerprint",
       );
+
+      // The subscriber RENDERED (not failed) on the propagated wake.
+      equal(
+        dispositionOf(bootResults, BRIEF),
+        "rendered",
+        "the subscriber must COMMIT (disposition rendered) by reading upstream funding via wm_read_upstream",
+      );
+      // It committed a fingerprinted world-model: a non-null published version
+      // with `state/brief.md` present — the cross-node upstream-read → write →
+      // harness promote-and-fingerprint path, proven live.
+      const briefRead = reactor.store.read(BRIEF, "published");
+      notEqual(
+        briefRead.ref.version,
+        null,
+        "the subscriber must have committed a fingerprinted world-model (non-null version)",
+      );
+      ok(
+        briefRead.files[BRIEF_PATH],
+        `the subscriber's commit must include ${BRIEF_PATH}`,
+      );
+      equal(
+        briefReceipt?.status,
+        "rendered",
+        "the subscriber's receipt must record a `rendered` (committed) render",
+      );
     } finally {
       rmSync(d.wm, { recursive: true, force: true });
       rmSync(d.storage, { recursive: true, force: true });
     }
+  },
+);
+
+// ===========================================================================
+// IT-0 (3) — NUMERIC spawn-rollup, LIVE. The offline spawn test
+// (agent-render.test.ts) proves the rollup MATH with a fake provider (a clean
+// multiple). This is the LIVE counterpart: a real google/gemini-3.5-flash render
+// whose contract REQUIRES it to delegate a sub-analysis to `spawn_subagent`, and
+// a baseline render of the same node whose contract does the SAME work DIRECTLY
+// (no spawn). Both commit a fingerprinted world-model; the spawn render's receipt
+// `Cost.tokens.fresh` is STRICTLY GREATER than the baseline's — proof the child
+// session's tokens ROLLED UP into the parent receipt (run.ts:1029, the shared
+// RunContext), not just a sentinel round-trip. The child's tokens are the
+// difference, so spawnFresh > baselineFresh ⟺ child tokens > 0 rolled up.
+//
+// Gated like every live test: skips offline (no key), never gates the build.
+// ===========================================================================
+
+const SPAWN_NODE = "spawn-probe";
+const SPAWN_OUT = "state/answer.md";
+
+/** A single self-driven node topology (one render, no edges) for the live probe. */
+function spawnProbeTopology(): ReconcilerTopology {
+  const fp = contractFingerprint({
+    id: SPAWN_NODE,
+    kind: "responsibility",
+    name: "Spawn Probe",
+    requires: [],
+    maintains: [],
+    continuity: "",
+    render: () => {
+      throw new Error("unused");
+    },
+    canonicalizer: atomicCanonicalizer,
+  });
+  return {
+    topology: {
+      nodes: [{ node: SPAWN_NODE, contract_fingerprint: fp, wake_source: "self" }],
+      edges: [],
+      entry_points: [SPAWN_NODE],
+      acyclic: true,
+    },
+    contract_fingerprints: { [SPAWN_NODE]: fp },
+  };
+}
+
+/**
+ * Drive ONE live render of the single SPAWN_NODE node over a fresh store, using
+ * the supplied contract view. Returns the committed `cost.tokens.fresh` (asserts
+ * it committed first). A fresh InMemory store per call so the two renders are
+ * independent. temperature 0 + seed for reproducibility.
+ */
+async function liveRenderFresh(
+  contract: CompiledContractView,
+): Promise<number> {
+  const store = new InMemoryWorldModelStore();
+  const render = createAgentRender({
+    store,
+    contractFor: () => contract,
+    temperature: 0,
+    seed: 7,
+    maxTurns: 16,
+  });
+  const dag = mountDag({
+    topology: spawnProbeTopology(),
+    mounts: {},
+    asyncMounts: {
+      [SPAWN_NODE]: { render, canonicalizer: atomicCanonicalizer },
+    },
+    store,
+  });
+  const results = await dag.ingestAsync(SPAWN_NODE);
+  equal(
+    dispositionOf(results, SPAWN_NODE),
+    "rendered",
+    "the live spawn-probe render must commit a world-model",
+  );
+  const read = store.read(SPAWN_NODE, "published");
+  notEqual(read.ref.version, null);
+  ok(
+    read.files[SPAWN_OUT],
+    `the live spawn-probe render must write ${SPAWN_OUT}`,
+  );
+  const receipt = lastReceipt(dag.ledger, SPAWN_NODE);
+  ok(receipt);
+  ok(
+    receipt.cost.tokens.fresh > 0,
+    "a live render must report a non-zero fresh token spend",
+  );
+  return receipt.cost.tokens.fresh;
+}
+
+test(
+  "run-project LIVE: a spawn_subagent render's receipt Cost rolls up the child session's tokens (parent + child)",
+  { skip: hasOpenRouterKey() ? false : "OPENROUTER_API_KEY not set" },
+  async () => {
+    // BASELINE: do the work DIRECTLY in one render — no sub-agent. The model
+    // writes the answer file itself; the receipt's fresh tokens reflect only the
+    // parent render's own turns.
+    const baselineContract: CompiledContractView = {
+      name: "Spawn Probe (direct)",
+      maintains: [`\`answer\`: a one-word answer at \`${SPAWN_OUT}\`.`],
+      requires: [],
+      continuity: "Self-driven.",
+      execution:
+        `Write the file \`${SPAWN_OUT}\` to your workspace. Its content must be ` +
+        `exactly the single word "blue". Do NOT spawn any sub-agent — do it ` +
+        `yourself. Then report status "done".`,
+    };
+
+    // SPAWN: the SAME work, but the contract REQUIRES delegating the sub-analysis
+    // to a focused helper via `spawn_subagent`, then writing the helper's returned
+    // value. The child session's tokens roll up into THIS receipt's Cost, so its
+    // fresh-token total exceeds the baseline's by the child's spend.
+    const spawnContract: CompiledContractView = {
+      name: "Spawn Probe (delegated)",
+      maintains: [`\`answer\`: a one-word answer at \`${SPAWN_OUT}\`.`],
+      requires: [],
+      continuity: "Self-driven.",
+      execution:
+        `You MUST delegate the sub-task to a focused helper: call the ` +
+        `\`spawn_subagent\` tool with instructions asking the helper to return ` +
+        `the single word "blue" (and nothing else). Take the value the helper ` +
+        `returns and write it to the file \`${SPAWN_OUT}\` in your workspace. ` +
+        `Do NOT answer directly — you must use spawn_subagent. Then report ` +
+        `status "done".`,
+    };
+
+    const baselineFresh = await liveRenderFresh(baselineContract);
+    const spawnFresh = await liveRenderFresh(spawnContract);
+
+    // The child session's tokens ROLLED UP into the parent receipt: the spawn
+    // render's fresh-token total strictly exceeds the baseline's. The difference
+    // IS the child's spend (> 0), so this proves a numeric rollup, not a sentinel
+    // round-trip. (Both did the same trivial work; the only delta is the extra
+    // delegated session — run.ts:1029 accumulates its Usage onto the shared
+    // RunContext, runContext.ts:149 surfaces it as the receipt Cost.)
+    ok(
+      spawnFresh > baselineFresh,
+      `the spawn render's fresh tokens (${spawnFresh}) must exceed the direct ` +
+        `render's (${baselineFresh}) — the child session's tokens rolled up`,
+    );
   },
 );
