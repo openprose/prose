@@ -36,7 +36,8 @@ describe('cli arg parsing', () => {
     program.configureOutput({ writeOut: () => {}, writeErr: () => {} });
     assert.throws(
       () => program.parse(['node', 'reactor', '--version']),
-      /commander\.version/,
+      (err: unknown) =>
+        (err as { code?: string }).code === 'commander.version',
     );
   });
 
@@ -46,7 +47,10 @@ describe('cli arg parsing', () => {
     program.configureOutput({ writeOut: () => {}, writeErr: () => {} });
     assert.throws(
       () => program.parse(['node', 'reactor', 'definitely-not-a-command']),
-      /commander\.(unknownCommand|help)/,
+      (err: unknown) => {
+        const code = (err as { code?: string }).code;
+        return code === 'commander.unknownCommand' || code === 'commander.help';
+      },
     );
   });
 });
