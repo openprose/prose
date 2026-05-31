@@ -71,6 +71,10 @@ import {
   readSkill,
   type CompiledContractView,
 } from "./instructions";
+import {
+  assertSkillBundleInstalled,
+  DEFAULT_SKILL_ROOT,
+} from "./skill-preflight";
 
 // ---------------------------------------------------------------------------
 // Config
@@ -101,6 +105,15 @@ export interface AgentRenderConfig {
   readonly skill?: string;
   /** Path to the SKILL, when `skill` is not supplied. */
   readonly skillPath?: string;
+  /**
+   * The SKILL-bundle root the install preflight checks (6.3; §3.4). Defaults to
+   * {@link DEFAULT_SKILL_ROOT} (the directory holding `SKILL.md`). On
+   * construction, this factory asserts the bundle is installed there — `SKILL.md`
+   * plus its sub-doc manifest exist — and throws a legible
+   * {@link SkillBundleNotInstalledError} BEFORE any model call if not. Pass a
+   * different root to point the check at an alternate install location.
+   */
+  readonly skillRoot?: string;
   /** Optional folded sandbox (architecture.md §5.3) for `sandbox_exec`. */
   readonly sandbox?: RenderSandboxRunner;
   /** Decoding temperature. Defaults to 0 (greedy; 05 §4.1). */
@@ -146,6 +159,13 @@ export const DEFAULT_MAX_TURNS = 200;
 export function createAgentRender(
   config: AgentRenderConfig,
 ): AsyncMountedRender {
+  // SKILL-bundle install preflight (6.3; §3.4): assert the open-prose bundle is
+  // installed at the expected root — `SKILL.md` + its sub-doc manifest exist —
+  // and throw a LEGIBLE error here, at construction, BEFORE any model call. A
+  // render cannot teach a session to be a render without the bundle, so fail
+  // early rather than mid-render. Pure (a handful of `fs` stats; no model).
+  assertSkillBundleInstalled(config.skillRoot ?? DEFAULT_SKILL_ROOT);
+
   const skill = config.skill ?? readSkill(config.skillPath);
   const model = config.model ?? DEFAULT_RENDER_MODEL;
   const temperature = config.temperature ?? DEFAULT_TEMPERATURE;
@@ -330,6 +350,12 @@ export {
   DEFAULT_SKILL_PATH,
   type CompiledContractView,
 } from "./instructions";
+export {
+  assertSkillBundleInstalled,
+  SkillBundleNotInstalledError,
+  DEFAULT_SKILL_ROOT,
+  EXPECTED_SKILL_PATHS,
+} from "./skill-preflight";
 export {
   createOpenRouterProvider,
   hasOpenRouterKey,

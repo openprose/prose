@@ -26,12 +26,6 @@
 import { readFileSync } from "node:fs";
 
 import type { RenderContext } from "../../sdk/render-atom";
-import {
-  WM_LIST_TOOL,
-  WM_READ_TOOL,
-  WM_WRITE_WORKSPACE_TOOL,
-  SANDBOX_EXEC_TOOL,
-} from "./tools";
 
 /** The on-disk location of the open-prose SKILL system prompt (the render VM). */
 export const DEFAULT_SKILL_PATH =
@@ -175,21 +169,22 @@ export function composeWakeHeader(ctx: RenderContext): string {
     );
   }
 
+  // NOTE (§3.2): we do NOT enumerate the `wm_*` / sandbox tools here. The SDK
+  // advertises the available tools to the model via the native `tools` request
+  // field, not the prompt; hand-listing them in prose is redundant and a drift
+  // risk. The SKILL + node contract + this wake header are the only prompt
+  // layers — the render reads/writes through whatever tools the session is given.
   lines.push("");
   lines.push("### How to render");
   lines.push(
-    `1. Use \`${WM_LIST_TOOL}\` / \`${WM_READ_TOOL}\` to read your prior ` +
-      `published truth and any upstream truth you need.`,
+    "1. Read your prior published truth — and any upstream truth you " +
+      "subscribe to — by reference, as needed.",
   );
+  lines.push("2. Do the work the contract requires.");
   lines.push(
-    `2. Do the work (use \`${SANDBOX_EXEC_TOOL}\` for deterministic, ` +
-      `executable steps when a sandbox is available).`,
-  );
-  lines.push(
-    `3. Write your new world-model files into your private workspace with ` +
-      `\`${WM_WRITE_WORKSPACE_TOOL}\` — one call per file. Do NOT return file ` +
-      `contents in your final answer; the harness harvests your workspace and ` +
-      `promotes-and-fingerprints it.`,
+    "3. Write your new world-model files into your private workspace — one " +
+      "file at a time. Do NOT return file contents in your final answer; the " +
+      "harness harvests your workspace and promotes-and-fingerprints it.",
   );
   lines.push(
     `4. Finish by emitting your structured result: \`status: "done"\` once ` +
