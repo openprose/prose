@@ -35,6 +35,7 @@
 
 import {
   Agent,
+  MaxTurnsExceededError,
   Runner,
   setTracingDisabled,
   type AgentOutputType,
@@ -108,13 +109,26 @@ export interface AgentRenderConfig {
   readonly seed?: number;
   /**
    * Max agentic turns for one render (the SDK's `maxTurns`). A bounded session
-   * (architecture.md §1: "one bounded session"); defaults to {@link DEFAULT_MAX_TURNS}.
+   * (architecture.md §1: "one bounded session"); defaults to
+   * {@link DEFAULT_MAX_TURNS} (D1: a high explicit cap, not unbounded).
+   *
+   * Pass `null` to opt DELIBERATELY into an unbounded loop — the SDK's
+   * `maxTurns: null` bypasses the turn guard entirely (no `MaxTurnsExceededError`
+   * is ever thrown). The token `Usage → Cost` capture remains the real budget
+   * signal; turns are not themselves cost-bounded, so `null` is a runaway-spend
+   * opt-in (D1).
    */
-  readonly maxTurns?: number;
+  readonly maxTurns?: number | null;
 }
 
-/** Default agentic-loop turn bound for one render. */
-export const DEFAULT_MAX_TURNS = 24;
+/**
+ * Default agentic-loop turn bound for one render (D1). A render is "one bounded
+ * session" (architecture.md §1); this is a deliberately HIGH explicit cap (not
+ * the SDK's default 10, and not unbounded). A render that exceeds it yields a
+ * {@link RenderFailure} (the prior truth stands), never an unhandled throw. A
+ * caller may pass `maxTurns: null` to opt out of the cap entirely.
+ */
+export const DEFAULT_MAX_TURNS = 200;
 
 // ---------------------------------------------------------------------------
 // The factory
@@ -135,7 +149,11 @@ export function createAgentRender(
   const skill = config.skill ?? readSkill(config.skillPath);
   const model = config.model ?? DEFAULT_RENDER_MODEL;
   const temperature = config.temperature ?? DEFAULT_TEMPERATURE;
-  const maxTurns = config.maxTurns ?? DEFAULT_MAX_TURNS;
+  // `null` is a DELIBERATE unbounded opt-in (D1), so distinguish "not supplied"
+  // (→ the high default cap) from an explicit `null` (→ SDK bypasses the guard).
+  // `??` would collapse `null` into the default, erasing the opt-in.
+  const maxTurns =
+    config.maxTurns === undefined ? DEFAULT_MAX_TURNS : config.maxTurns;
 
   // Resolve the provider + runner lazily and ONCE: a keyless build/test that
   // never invokes the render never constructs them (so the OpenRouter-key throw
@@ -190,27 +208,55 @@ export function createAgentRender(
       ...(config.sandbox !== undefined ? { sandbox: config.sandbox } : {}),
     };
 
-    const result = await getRunner().run(agent, input, {
-      context,
-      maxTurns,
-    });
+    // A render that exhausts its turn cap is a RenderFailure (the prior truth
+    // stands — architecture.md §4.1), NOT a crash out of the adapter (D1, §3.1).
+    // The SDK throws `MaxTurnsExceededError` when `currentTurn > maxTurns`; map
+    // it to a `failed` signal so nothing commits. (`maxTurns: null` bypasses the
+    // guard entirely, so this branch is unreachable under a deliberate opt-out.)
+    try {
+      const result = await getRunner().run(agent, input, {
+        context,
+        maxTurns,
+      });
 
-    // The agent WROTE its world-model to the workspace; HARVEST it (D6). The
-    // harness (mountDag's async spawn) promotes-and-fingerprints these files.
-    const harvested = config.store.read(ctx.node, "workspace").files;
+      // The agent WROTE its world-model to the workspace; HARVEST it (D6). The
+      // harness (mountDag's async spawn) promotes-and-fingerprints these files.
+      const harvested = config.store.read(ctx.node, "workspace").files;
 
-    // `result.state.usage` (NOT `result.state.context.usage` — that getter does
-    // not exist) is the run's accumulated token usage (05 §4.2 + the step-1
-    // correction). `Usage` structurally satisfies `RenderUsage`.
-    const usage = result.state.usage as unknown as RenderUsage;
+      // `result.state.usage` (NOT `result.state.context.usage` — that getter
+      // does not exist) is the run's accumulated token usage (05 §4.2 + the
+      // step-1 correction). `Usage` structurally satisfies `RenderUsage`.
+      const usage = result.state.usage as unknown as RenderUsage;
 
-    const signal = result.finalOutput as RenderOutputSignal | undefined;
-    return mapRenderOutput({
-      signal: normalizeSignal(signal),
-      harvested: harvested as WorldModelFiles,
-      usage,
-      surprise_cause: ctx.wake.source satisfies WakeSource,
-    });
+      const signal = result.finalOutput as RenderOutputSignal | undefined;
+      return mapRenderOutput({
+        signal: normalizeSignal(signal),
+        harvested: harvested as WorldModelFiles,
+        usage,
+        surprise_cause: ctx.wake.source satisfies WakeSource,
+      });
+    } catch (error) {
+      if (error instanceof MaxTurnsExceededError) {
+        return mapRenderOutput({
+          signal: {
+            status: "failed",
+            reason:
+              `render exceeded its ${String(maxTurns)}-turn cap without ` +
+              `emitting a done signal (${error.message})`,
+          },
+          harvested: {} as WorldModelFiles,
+          // No usage is recoverable from the thrown error; report an empty
+          // Cost so the receipt still attributes a (zero-token) failed render.
+          usage: {
+            inputTokens: 0,
+            outputTokens: 0,
+            totalTokens: 0,
+          } satisfies RenderUsage,
+          surprise_cause: ctx.wake.source satisfies WakeSource,
+        });
+      }
+      throw error;
+    }
   };
 }
 

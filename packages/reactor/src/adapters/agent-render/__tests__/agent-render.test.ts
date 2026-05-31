@@ -24,6 +24,13 @@
 import { equal, notEqual, ok } from "node:assert/strict";
 import { test } from "node:test";
 
+import {
+  Usage,
+  type Model,
+  type ModelProvider,
+  type ModelResponse,
+} from "@openai/agents";
+
 import { ATOMIC_FACET } from "../../../shapes";
 import {
   atomicCanonicalizer,
@@ -35,8 +42,9 @@ import { mountDag } from "../../../sdk/mounted-dag";
 import type { RenderContext } from "../../../sdk/render-atom";
 import { contractFingerprint } from "../../../scenario/fixture";
 import { dispositionOf, lastReceipt } from "../../../scenario/trace";
-import { createAgentRender } from "../index";
+import { createAgentRender, DEFAULT_MAX_TURNS } from "../index";
 import { hasOpenRouterKey } from "../provider";
+import { WM_LIST_TOOL } from "../tools";
 import type { CompiledContractView } from "../instructions";
 
 // ---------------------------------------------------------------------------
@@ -226,3 +234,92 @@ test(
     ok(receipt.fingerprints[ATOMIC_FACET]);
   },
 );
+
+// ---------------------------------------------------------------------------
+// D1 (§3.1) — the high cap is the new default; a render that exhausts its
+// turn cap is a RenderFailure (prior truth stands), NOT an unhandled throw.
+// ---------------------------------------------------------------------------
+
+test("agent-render: DEFAULT_MAX_TURNS is the high D1 cap (200)", () => {
+  equal(DEFAULT_MAX_TURNS, 200);
+});
+
+/**
+ * A fake `ModelProvider` whose model NEVER emits a final structured output — it
+ * always replies with a single `function_call` to `wm_list`. The runner executes
+ * the tool and loops again, so the turn counter climbs every cycle and the SDK
+ * raises `MaxTurnsExceededError` once `currentTurn > maxTurns`. This is exactly
+ * the runaway a render must survive as a `failed` signal, not a crash.
+ */
+function neverFinishesProvider(): ModelProvider {
+  const model: Model = {
+    async getResponse(): Promise<ModelResponse> {
+      const usage = new Usage({
+        inputTokens: 10,
+        outputTokens: 5,
+        totalTokens: 15,
+      });
+      return {
+        usage,
+        output: [
+          {
+            type: "function_call",
+            callId: "call_loop",
+            name: WM_LIST_TOOL,
+            // `wm_list` takes no args (z.object({})) — harmless, always returns;
+            // the point is the model keeps calling instead of finishing.
+            arguments: "{}",
+          },
+        ],
+      } as unknown as ModelResponse;
+    },
+    // eslint-disable-next-line require-yield
+    async *getStreamedResponse() {
+      throw new Error("fake model does not stream");
+    },
+  };
+  return {
+    getModel(): Model {
+      return model;
+    },
+  };
+}
+
+test("agent-render: a render that exceeds its turn cap yields a RenderFailure (no unhandled throw)", async () => {
+  const store = new InMemoryWorldModelStore();
+
+  const render = createAgentRender({
+    store,
+    contractFor: () => CONTRACT,
+    skill: "TEST SKILL",
+    provider: neverFinishesProvider(),
+    // A tiny cap so the loop trips fast; the mapping is what's under test, not
+    // the magnitude of the default.
+    maxTurns: 2,
+  });
+
+  const dag = mountDag({
+    topology: greetingTopology(),
+    mounts: {},
+    asyncMounts: { [NODE]: { render, canonicalizer: atomicCanonicalizer } },
+    store,
+  });
+
+  // The render must NOT throw out of the adapter — the async reconcile path
+  // resolves, and the disposition is a non-rendered (failed) one. Nothing
+  // commits, so the prior (empty) truth stands.
+  const results = await dag.ingestAsync(NODE);
+  notEqual(dispositionOf(results, NODE), "rendered");
+
+  // No world-model was committed (prior truth stands).
+  const read = store.read(NODE, "published");
+  equal(read.ref.version, null);
+
+  // The receipt records a `failed` render (nothing committed) with a zero-token
+  // Cost — the turn-cap exhaustion was mapped to a RenderFailure, not re-thrown.
+  const receipt = lastReceipt(dag.ledger, NODE);
+  ok(receipt);
+  equal(receipt.status, "failed");
+  equal(receipt.cost.tokens.fresh, 0);
+  equal(receipt.cost.tokens.reused, 0);
+});

@@ -54,8 +54,13 @@ import { renderContractSet } from "./contract-set-input";
 /** The compile step a session performs — shapes the instruction framing only. */
 export type CompileStep = "forme" | "canonicalizer" | "postcondition";
 
-/** Default agentic-loop turn bound for one compile session. */
-export const DEFAULT_COMPILE_MAX_TURNS = 16;
+/**
+ * Default agentic-loop turn bound for one compile session (D1). A deliberately
+ * high explicit cap (not the SDK default of 10, not unbounded). A caller may pass
+ * `maxTurns: null` to opt out of the cap entirely; the token `Usage → Cost`
+ * capture stays the real budget signal.
+ */
+export const DEFAULT_COMPILE_MAX_TURNS = 100;
 
 export interface CompileSessionConfig {
   /** Which compile step this session performs (frames the instructions). */
@@ -88,8 +93,12 @@ export interface CompileSessionConfig {
   readonly temperature?: number;
   /** Best-effort reproducibility seed, passed through `providerData.seed`. */
   readonly seed?: number;
-  /** Max agentic turns for one compile session. */
-  readonly maxTurns?: number;
+  /**
+   * Max agentic turns for one compile session. Defaults to
+   * {@link DEFAULT_COMPILE_MAX_TURNS} (D1: a high explicit cap). Pass `null` to
+   * opt DELIBERATELY into an unbounded loop (the SDK bypasses the turn guard).
+   */
+  readonly maxTurns?: number | null;
 }
 
 /**
@@ -130,7 +139,10 @@ export async function runCompileSession(
   const skill = config.skill ?? readSkill(config.skillPath);
   const model = config.model ?? DEFAULT_RENDER_MODEL;
   const temperature = config.temperature ?? DEFAULT_TEMPERATURE;
-  const maxTurns = config.maxTurns ?? DEFAULT_COMPILE_MAX_TURNS;
+  // `null` is a deliberate unbounded opt-in (D1); distinguish "not supplied"
+  // (→ the high default cap) from an explicit `null` (`??` would erase it).
+  const maxTurns =
+    config.maxTurns === undefined ? DEFAULT_COMPILE_MAX_TURNS : config.maxTurns;
 
   const instructions = composeCompileInstructions(skill, config.task);
 
