@@ -33,7 +33,32 @@
  * because the adapters barrel does not re-export this module.
  */
 
-import { tool, type RunContext, type Tool } from "@openai/agents";
+import {
+  applyDiff,
+  applyPatchTool,
+  type ApplyPatchOperation,
+  type ApplyPatchResult,
+  type Editor,
+  type Shell,
+  type ShellAction,
+  type ShellResult,
+  shellTool,
+  tool,
+  type RunContext,
+  type Tool,
+} from "@openai/agents";
+import { exec } from "node:child_process";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
+import { dirname, relative, sep } from "node:path";
+import { promisify } from "node:util";
 import { z } from "zod";
 
 import type { Facet } from "../../shapes";
@@ -47,6 +72,9 @@ import {
   type WorldModelFiles,
   type WorldModelStore,
 } from "../../world-model";
+import { resolveWithinRoot, WorkingDirEscapeError } from "./working-dir";
+
+const execAsync = promisify(exec);
 
 // ---------------------------------------------------------------------------
 // The run context the render tools read off `RunContext.context`
@@ -102,6 +130,16 @@ export interface AgentRenderContext {
    * world-model.md §1).
    */
   readonly upstream?: readonly UpstreamSubscription[];
+  /**
+   * The render's REAL per-node working ROOT (Phase 1.5 / Option B; SPEC §4). When
+   * present, `wm_write_workspace` writes into THIS directory (the same place the
+   * `fs_*` / `shell_exec` tools operate and the harness harvests), so a render's
+   * legacy workspace writes and its real-file writes land in one harvested truth.
+   * When ABSENT (the standalone tool tests / a virtual-store render),
+   * `wm_write_workspace` falls back to the store's virtual workspace map. Never
+   * model state — a per-render absolute path set by the harness.
+   */
+  readonly workingDir?: string;
   /** Optional folded sandbox (architecture.md §5.3); absent → `sandbox_exec` declines. */
   readonly sandbox?: RenderSandboxRunner;
 }
@@ -116,6 +154,14 @@ export const WM_READ_UPSTREAM_TOOL = "wm_read_upstream";
 export const WM_LIST_UPSTREAM_TOOL = "wm_list_upstream";
 export const WM_WRITE_WORKSPACE_TOOL = "wm_write_workspace";
 export const SANDBOX_EXEC_TOOL = "sandbox_exec";
+
+// The cwd-rooted Codex-style tools (Phase 1.5 step 6.4; SPEC §3.5). These operate
+// on the render's REAL per-node working directory, not the virtual store.
+export const FS_READ_TOOL = "fs_read";
+export const FS_LIST_TOOL = "fs_list";
+export const FS_WRITE_TOOL = "fs_write";
+export const SHELL_EXEC_TOOL = "shell_exec";
+export const APPLY_PATCH_TOOL = "apply_patch";
 
 /** Returned by `sandbox_exec` when no sandbox runner is wired into the context. */
 export const NO_SANDBOX_MESSAGE =
@@ -375,11 +421,15 @@ export function wmReadUpstreamTool(): Tool<AgentRenderContext> {
  * `wm_write_workspace(path, content)` — write one file into the node's PRIVATE
  * workspace scratch (NEVER fingerprinted, NEVER subscribed — world-model.md §1
  * L50–L54). The render builds its world-model here; the harness later harvests
- * the workspace and promotes-and-fingerprints. NOT a commit.
+ * it and promotes-and-fingerprints. NOT a commit.
  *
- * The store's `writeWorkspace` replaces the WHOLE workspace map, so to let the
- * agent accumulate files across many tool calls we MERGE this write onto the
- * current workspace before writing it back.
+ * Option B (SPEC §4): when the context carries a real `workingDir`, this writes
+ * the file INTO that directory (the same place `fs_write` / `shell_exec` operate
+ * and the harness harvests), through the SAME path-escape guard as `fs_write`, so
+ * a render's legacy workspace writes and its real-file writes are one harvested
+ * truth. When NO `workingDir` is present (the standalone tool tests / a virtual
+ * render), it falls back to MERGING into the store's virtual workspace map (the
+ * store's `writeWorkspace` replaces the whole map, so we merge to accumulate).
  */
 export function wmWriteWorkspaceTool(): Tool<AgentRenderContext> {
   return tool({
@@ -399,7 +449,21 @@ export function wmWriteWorkspaceTool(): Tool<AgentRenderContext> {
     }),
     strict: true,
     execute: async ({ path, content }, runContext) => {
-      const { node, store } = requireContext(runContext);
+      const context = requireContext(runContext);
+      if (context.workingDir !== undefined) {
+        // Option B: write the real file into the per-node working dir, guarded.
+        try {
+          writeFileWithinRoot(context.workingDir, path, textFile(content));
+        } catch (error) {
+          if (error instanceof WorkingDirEscapeError) {
+            return error.message;
+          }
+          throw error;
+        }
+        return `wrote ${path} (${content.length} chars) to workspace`;
+      }
+      // Fallback: virtual store workspace (merge to accumulate across calls).
+      const { node, store } = context;
       const current = store.read(node, "workspace").files;
       const merged: Record<string, Uint8Array> = { ...current };
       merged[path] = textFile(content);
@@ -407,6 +471,420 @@ export function wmWriteWorkspaceTool(): Tool<AgentRenderContext> {
       return `wrote ${path} (${content.length} chars) to workspace`;
     },
   });
+}
+
+// ---------------------------------------------------------------------------
+// The cwd-rooted Codex-style tools (SPEC §3.5 / §4 Option B)
+// ---------------------------------------------------------------------------
+//
+// These operate on the render's REAL per-node working directory, NOT the virtual
+// store. Unlike the `wm_*` tools (stateless, node+store off `RunContext`), the
+// cwd tools close over a fixed working ROOT resolved per render in the factory
+// `createCwdTools(root)` — `shellTool`'s `Shell` is bound at tool-construction, so
+// the cwd is fixed at build time (one tool set per render, not per process).
+//
+// SANDBOX LIMITATION (SPEC §5; STOP invariant N3): the `fs_*` tools enforce a
+// path-escape guard (reject any path resolving outside the root); `shell_exec`
+// runs with `cwd` = root. This is a SCOPED dir + guards, NOT an OS sandbox — a
+// shell command can still escape `cwd` and reach the machine/network. Safe for
+// TRUSTED, self-authored `.prose` projects only; NOT safe for untrusted contract
+// sets. The OS sandbox is DEFERRED (D5). Do NOT claim isolation we don't have.
+
+/**
+ * Build the cwd-rooted tool set over a render's REAL working `root` (SPEC §3.5):
+ * `fs_read` / `fs_list` / `fs_write` (guarded `node:fs`), `shell_exec` (the SDK's
+ * `shellTool()` over a `LocalShell(root)`), and `apply_patch` (the SDK's
+ * `applyPatchTool()` — Codex's edit primitive). All rooted at the per-node working
+ * dir; none reaches the store. Returns `Tool<AgentRenderContext>[]` so the set
+ * composes with the `wm_*` tools in one `Agent.tools` array.
+ */
+export function createCwdTools(root: string): Tool<AgentRenderContext>[] {
+  return [
+    fsReadTool(root),
+    fsListTool(root),
+    fsWriteTool(root),
+    shellExecTool(root),
+    applyPatchToolFor(root),
+  ];
+}
+
+/**
+ * Write `bytes` to `relPath` under `root`, creating parent dirs, REJECTING any
+ * path that escapes the root (the path-escape guard, SPEC §3.5 / §5). Shared by
+ * `fs_write` and the Option-B `wm_write_workspace`.
+ */
+export function writeFileWithinRoot(
+  root: string,
+  relPath: string,
+  bytes: Uint8Array,
+): void {
+  const absolute = resolveWithinRoot(root, relPath);
+  mkdirSync(dirname(absolute), { recursive: true });
+  writeFileSync(absolute, bytes);
+}
+
+/**
+ * `fs_read(path)` — read one file under the working directory by its relative
+ * path (the real-FS sibling of `wm_read`; folds §3.4 skill_read — the skill bundle
+ * is reachable under/near the root, D3). Returns the file's UTF-8 text, or a
+ * legible not-found / escape message (never a throw to the model).
+ */
+export function fsReadTool(root: string): Tool<AgentRenderContext> {
+  return tool({
+    name: FS_READ_TOOL,
+    description:
+      "Read one file from your working directory by its relative path. Returns " +
+      "the file's UTF-8 text content, or a not-found message. Use this for any " +
+      "file in your working tree, including skill sub-docs reachable under the root.",
+    parameters: z.object({
+      path: z
+        .string()
+        .describe("Relative path under the working directory, e.g. 'state/x.md'."),
+    }),
+    strict: true,
+    execute: async ({ path }) => {
+      let absolute: string;
+      try {
+        absolute = resolveWithinRoot(root, path);
+      } catch (error) {
+        return escapeMessage(error);
+      }
+      if (!existsSync(absolute) || !statSync(absolute).isFile()) {
+        return `not found: no file at '${path}' in the working directory`;
+      }
+      return readTextFile(toUint8(readFileSync(absolute)));
+    },
+  });
+}
+
+/**
+ * `fs_list(path?)` — list the relative paths of every file under the working
+ * directory (optionally narrowed to a sub-path). Sorted, newline-joined; an empty
+ * tree returns a legible note. The real-FS sibling of `wm_list`.
+ */
+export function fsListTool(root: string): Tool<AgentRenderContext> {
+  return tool({
+    name: FS_LIST_TOOL,
+    description:
+      "List the relative paths of every file in your working directory (optionally " +
+      "under a sub-path). Use this to discover what files exist before reading.",
+    parameters: z.object({
+      path: z
+        .string()
+        .nullable()
+        .describe(
+          "Optional relative sub-path to list under; pass null to list the whole " +
+            "working directory.",
+        ),
+    }),
+    strict: true,
+    execute: async ({ path }) => {
+      let base: string;
+      try {
+        base =
+          path === null || path === undefined || path.length === 0
+            ? root
+            : resolveWithinRoot(root, path);
+      } catch (error) {
+        return escapeMessage(error);
+      }
+      if (!existsSync(base)) {
+        return "(no files in the working directory)";
+      }
+      const paths: string[] = [];
+      collectFiles(root, base, paths);
+      if (paths.length === 0) {
+        return "(no files in the working directory)";
+      }
+      return paths.sort().join("\n");
+    },
+  });
+}
+
+/**
+ * `fs_write(path, content)` — write one UTF-8 text file under the working
+ * directory, creating parent dirs, with the path-escape guard. The real-FS sibling
+ * of `wm_write_workspace`; both land in the same harvested directory (SPEC §4).
+ */
+export function fsWriteTool(root: string): Tool<AgentRenderContext> {
+  return tool({
+    name: FS_WRITE_TOOL,
+    description:
+      "Write one UTF-8 text file into your working directory at a relative path " +
+      "(parent directories are created). This is real scratch on disk that the " +
+      "harness harvests on commit; it is never fingerprinted by you (the harness " +
+      "does that). Re-writing the same path overwrites it.",
+    parameters: z.object({
+      path: z
+        .string()
+        .describe("Relative path under the working directory, e.g. 'state/x.md'."),
+      content: z.string().describe("The UTF-8 text content to write."),
+    }),
+    strict: true,
+    execute: async ({ path, content }) => {
+      try {
+        writeFileWithinRoot(root, path, textFile(content));
+      } catch (error) {
+        return escapeMessage(error);
+      }
+      return `wrote ${path} (${content.length} chars) to the working directory`;
+    },
+  });
+}
+
+/**
+ * `shell_exec(commands)` — run shell commands with `cwd` set to the per-node
+ * working ROOT (the `examples/tools/local-shell.ts` LocalShell pattern; SPEC
+ * §3.5). Returns the per-command `{ command, exit_code, stdout, stderr }` as JSON.
+ *
+ * IMPLEMENTATION NOTE (provider compatibility): the SDK's `shellTool()` emits a
+ * HOSTED tool of `type: "shell"`, which the OpenRouter ChatCompletions API the
+ * render runs on REJECTS ("Hosted tools are not supported with the ChatCompletions
+ * API"). So `shell_exec` is exposed as a plain `tool({...})` (`type: "function"`)
+ * whose `execute` drives the SAME {@link LocalShell} (cwd-rooted `execAsync`) — the
+ * capability of SPEC §3.5 (a real cwd-rooted shell the agent invokes), realized as
+ * a function tool so it works on the live ChatCompletions provider. The
+ * SDK-`shellTool` path is kept available as {@link hostedShellExecTool} for a
+ * future Responses-API provider.
+ *
+ * SANDBOX LIMITATION (N3): `cwd` is scoped to the root but the subprocess is NOT
+ * OS-isolated — it can `cd` out, read/write elsewhere, reach the network. Trusted
+ * contracts only (SPEC §5).
+ */
+export function shellExecTool(root: string): Tool<AgentRenderContext> {
+  const shell = new LocalShell(root);
+  return tool({
+    name: SHELL_EXEC_TOOL,
+    description:
+      "Run shell commands in your working directory (cwd is the working root) and " +
+      "get back each command's exit code, stdout and stderr (as JSON). Use this for " +
+      "the executable work of the render.",
+    parameters: z.object({
+      commands: z
+        .array(z.string())
+        .describe("The shell commands to run in order, each as a full command line."),
+    }),
+    strict: true,
+    execute: async ({ commands }) => {
+      const result = await shell.run({ commands });
+      return JSON.stringify(
+        result.output.map((o) => ({
+          command: o.command,
+          exit_code: o.outcome.type === "exit" ? o.outcome.exitCode : null,
+          outcome: o.outcome.type,
+          stdout: o.stdout,
+          stderr: o.stderr,
+        })),
+      );
+    },
+  });
+}
+
+/**
+ * The SDK-`shellTool()` shell, kept for a future Responses-API provider that
+ * supports hosted tools (the live render's OpenRouter ChatCompletions provider does
+ * NOT — see {@link shellExecTool}). NOT in the default render tool set; constructed
+ * only if a caller wires a hosted-tool-capable provider.
+ */
+export function hostedShellExecTool(root: string): Tool<AgentRenderContext> {
+  return shellTool({
+    name: SHELL_EXEC_TOOL,
+    shell: new LocalShell(root),
+    needsApproval: false,
+  }) as unknown as Tool<AgentRenderContext>;
+}
+
+/**
+ * `apply_patch(operation)` — apply a V4A diff to a file under the working `root`
+ * (Codex's edit primitive; SPEC §3.5, "optionally apply_patch"). Create / update /
+ * delete, each guarded by the path-escape check via the {@link RootedEditor}.
+ *
+ * IMPLEMENTATION NOTE (provider compatibility): like `shell_exec`, the SDK's
+ * `applyPatchTool()` emits a HOSTED tool (`type: "apply_patch"`) the OpenRouter
+ * ChatCompletions API rejects. So apply_patch is a plain `tool({...})` driving the
+ * SAME {@link RootedEditor} + the SDK's own `applyDiff`. The SDK-`applyPatchTool`
+ * path is kept as {@link hostedApplyPatchTool} for a future Responses-API provider.
+ */
+export function applyPatchToolFor(root: string): Tool<AgentRenderContext> {
+  const editor = new RootedEditor(root);
+  return tool({
+    name: APPLY_PATCH_TOOL,
+    description:
+      "Apply a V4A unified diff to a file in your working directory. Use op " +
+      "'create_file' (diff is the full new content as added lines), 'update_file' " +
+      "(diff is a unified patch against the existing file), or 'delete_file'.",
+    parameters: z.object({
+      op: z
+        .enum(["create_file", "update_file", "delete_file"])
+        .describe("The patch operation."),
+      path: z
+        .string()
+        .describe("Relative path under the working directory to patch."),
+      diff: z
+        .string()
+        .describe(
+          "The V4A diff body. For create_file, the full content as '+'-prefixed " +
+            "lines; for update_file, a unified patch; for delete_file, may be empty.",
+        ),
+    }),
+    strict: true,
+    execute: async ({ op, path, diff }) => {
+      try {
+        let result;
+        if (op === "create_file") {
+          result = await editor.createFile({ type: "create_file", path, diff });
+        } else if (op === "update_file") {
+          result = await editor.updateFile({ type: "update_file", path, diff });
+        } else {
+          result = await editor.deleteFile({ type: "delete_file", path });
+        }
+        return JSON.stringify(result ?? { status: "completed" });
+      } catch (error) {
+        return escapeMessage(error);
+      }
+    },
+  });
+}
+
+/**
+ * The SDK-`applyPatchTool()` editor, kept for a future Responses-API provider that
+ * supports hosted tools (see {@link applyPatchToolFor}). NOT in the default set.
+ */
+export function hostedApplyPatchTool(root: string): Tool<AgentRenderContext> {
+  return applyPatchTool({
+    name: APPLY_PATCH_TOOL,
+    editor: new RootedEditor(root),
+    needsApproval: false,
+  }) as unknown as Tool<AgentRenderContext>;
+}
+
+/**
+ * A `Shell` that runs each command with `cwd` set to the per-node working ROOT
+ * (the `examples/tools/local-shell.ts` LocalShell). Bound at tool-construction so
+ * the cwd is fixed for the render. NOT OS-isolated (N3).
+ */
+export class LocalShell implements Shell {
+  constructor(private readonly cwd: string) {}
+
+  async run(action: ShellAction): Promise<ShellResult> {
+    const output: ShellResult["output"] = [];
+    for (const command of action.commands) {
+      let stdout = "";
+      let stderr = "";
+      let exitCode: number | null = 0;
+      let outcome: ShellResult["output"][number]["outcome"] = {
+        type: "exit",
+        exitCode: 0,
+      };
+      try {
+        const result = await execAsync(command, {
+          cwd: this.cwd,
+          timeout: action.timeoutMs,
+          maxBuffer: action.maxOutputLength,
+        });
+        stdout = result.stdout;
+        stderr = result.stderr;
+      } catch (error) {
+        const e = error as {
+          code?: number;
+          stdout?: string;
+          stderr?: string;
+          killed?: boolean;
+          signal?: string;
+        };
+        exitCode = typeof e.code === "number" ? e.code : null;
+        stdout = e.stdout ?? "";
+        stderr = e.stderr ?? "";
+        outcome =
+          e.killed || e.signal === "SIGTERM"
+            ? { type: "timeout" }
+            : { type: "exit", exitCode };
+      }
+      output.push({ command, stdout, stderr, outcome });
+      if (outcome.type === "timeout") {
+        break;
+      }
+    }
+    return {
+      output,
+      providerData: { working_directory: this.cwd },
+    };
+  }
+}
+
+/**
+ * The {@link Editor} `applyPatchTool()` drives, rooted at the working dir so every
+ * create/update/delete goes through the same path-escape guard as `fs_*` (SPEC
+ * §5). It applies the SDK's V4A diffs via the SDK's own `applyDiff` (the
+ * `examples/tools/apply-patch.ts` WorkspaceEditor pattern), so apply_patch is a
+ * Codex-equivalent edit path confined to the per-node directory.
+ */
+class RootedEditor implements Editor {
+  constructor(private readonly root: string) {}
+
+  async createFile(
+    operation: Extract<ApplyPatchOperation, { type: "create_file" }>,
+  ): Promise<ApplyPatchResult> {
+    const content = applyDiff("", operation.diff, "create");
+    writeFileWithinRoot(this.root, operation.path, textFile(content));
+    return { status: "completed", output: `Created ${operation.path}` };
+  }
+
+  async updateFile(
+    operation: Extract<ApplyPatchOperation, { type: "update_file" }>,
+  ): Promise<ApplyPatchResult> {
+    const absolute = resolveWithinRoot(this.root, operation.path);
+    if (!existsSync(absolute)) {
+      return {
+        status: "failed",
+        output: `Cannot update missing file: ${operation.path}`,
+      };
+    }
+    const original = readTextFile(toUint8(readFileSync(absolute)));
+    const patched = applyDiff(original, operation.diff);
+    writeFileWithinRoot(this.root, operation.path, textFile(patched));
+    return { status: "completed", output: `Updated ${operation.path}` };
+  }
+
+  async deleteFile(
+    operation: Extract<ApplyPatchOperation, { type: "delete_file" }>,
+  ): Promise<ApplyPatchResult> {
+    const absolute = resolveWithinRoot(this.root, operation.path);
+    rmSync(absolute, { force: true });
+    return { status: "completed", output: `Deleted ${operation.path}` };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// cwd-tool internals
+// ---------------------------------------------------------------------------
+
+function escapeMessage(error: unknown): string {
+  if (error instanceof WorkingDirEscapeError) {
+    return error.message;
+  }
+  throw error;
+}
+
+function collectFiles(root: string, dir: string, out: string[]): void {
+  for (const name of readdirSync(dir)) {
+    const absolute = `${dir}${sep}${name}`;
+    const stat = statSync(absolute, { throwIfNoEntry: false });
+    if (stat === undefined) {
+      continue;
+    }
+    if (stat.isDirectory()) {
+      collectFiles(root, absolute, out);
+      continue;
+    }
+    if (stat.isFile()) {
+      out.push(relative(root, absolute).split(sep).join("/"));
+    }
+  }
+}
+
+function toUint8(buf: Uint8Array): Uint8Array {
+  return Uint8Array.prototype.slice.call(buf);
 }
 
 /**

@@ -62,10 +62,18 @@ import {
 } from "./output-schema";
 import type { RenderUsage } from "./cost";
 import {
+  createCwdTools,
   createRenderTools,
   type AgentRenderContext,
   type RenderSandboxRunner,
 } from "./tools";
+import {
+  harvestDirectory,
+  prepareWorkingDir,
+} from "./working-dir";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
   composeInstructions,
   readSkill,
@@ -114,6 +122,19 @@ export interface AgentRenderConfig {
    * different root to point the check at an alternate install location.
    */
   readonly skillRoot?: string;
+  /**
+   * The BASE directory under which each render's REAL per-node working directory
+   * lives (Option B; SPEC §4). Each render mounts against `<workspaceRoot>/<node>/`
+   * — a real dir the agent writes with `fs_*` / `shell_exec` / `apply_patch`, that
+   * the harness HARVESTS on commit (replacing the virtual-workspace harvest). When
+   * omitted, a fresh OS temp directory is allocated once per factory, so a keyless
+   * test or a caller that does not care about durability still gets real cwd tools.
+   *
+   * SANDBOX LIMITATION (SPEC §5; N3): this is a SCOPED dir with path-escape guards,
+   * NOT an OS sandbox — a shell command can still escape `cwd`. Trusted,
+   * self-authored `.prose` projects only; the OS sandbox is DEFERRED (D5).
+   */
+  readonly workspaceRoot?: string;
   /** Optional folded sandbox (architecture.md §5.3) for `sandbox_exec`. */
   readonly sandbox?: RenderSandboxRunner;
   /** Decoding temperature. Defaults to 0 (greedy; 05 §4.1). */
@@ -175,6 +196,18 @@ export function createAgentRender(
   const maxTurns =
     config.maxTurns === undefined ? DEFAULT_MAX_TURNS : config.maxTurns;
 
+  // The BASE for per-node working directories (Option B; SPEC §4). Resolved ONCE
+  // here so every render of every node lands a sibling `<base>/<nodeSeg>/` dir.
+  // Default: a fresh OS temp dir (allocated lazily on first render so a keyless
+  // construction makes no filesystem side-effect at factory time).
+  let workspaceBase = config.workspaceRoot;
+  const getWorkspaceBase = (): string => {
+    if (workspaceBase === undefined) {
+      workspaceBase = mkdtempSync(join(tmpdir(), "openprose-render-"));
+    }
+    return workspaceBase;
+  };
+
   // Resolve the provider + runner lazily and ONCE: a keyless build/test that
   // never invokes the render never constructs them (so the OpenRouter-key throw
   // in `createOpenRouterProvider` is only reached on a real render).
@@ -197,6 +230,17 @@ export function createAgentRender(
     const contract = config.contractFor(ctx.node);
     const instructions = composeInstructions(skill, ctx.node, contract, ctx);
 
+    // Option B (SPEC §4): prepare the render's REAL per-node working directory,
+    // SEEDED with the node's prior published truth (so the agent reads its prior
+    // truth through the same `fs_read`, folding §3.4 — D3). The harness harvests
+    // THIS directory after the run (replacing the virtual-workspace harvest). A
+    // pure `node:fs` op — no model call (N2).
+    const workingDir = prepareWorkingDir(
+      getWorkspaceBase(),
+      ctx.node,
+      ctx.prior.files,
+    );
+
     const agent = new Agent<AgentRenderContext, AgentOutputType>({
       name: ctx.node,
       instructions,
@@ -207,7 +251,9 @@ export function createAgentRender(
           ? { providerData: { seed: config.seed } }
           : {}),
       },
-      tools: createRenderTools(),
+      // The wm_* read/upstream/write tools PLUS the cwd-rooted Codex-style tools
+      // (fs_*, shell_exec, apply_patch) over the per-node working dir (SPEC §3.5).
+      tools: [...createRenderTools(), ...createCwdTools(workingDir)],
       // The small done/failed signal (D6). NO file contents ride here. The
       // schema is built lazily as a zod object; `output-schema.ts` types its
       // return as the SDK-independent `z.ZodTypeAny`, so we annotate it here as
@@ -233,6 +279,10 @@ export function createAgentRender(
       node: ctx.node,
       store: config.store,
       upstream,
+      // Option B: wm_write_workspace writes into the SAME working dir the cwd
+      // tools use and the harness harvests (SPEC §4), so legacy and real-file
+      // writes are one harvested truth.
+      workingDir,
       ...(config.sandbox !== undefined ? { sandbox: config.sandbox } : {}),
     };
 
@@ -247,9 +297,13 @@ export function createAgentRender(
         maxTurns,
       });
 
-      // The agent WROTE its world-model to the workspace; HARVEST it (D6). The
-      // harness (mountDag's async spawn) promotes-and-fingerprints these files.
-      const harvested = config.store.read(ctx.node, "workspace").files;
+      // The agent WROTE its world-model into the REAL working DIRECTORY; HARVEST
+      // that directory (Option B; SPEC §4) — a plain, deterministic `node:fs`
+      // walk, NO model call (N2). The harness (mountDag's async spawn) then
+      // promotes-and-fingerprints these harvested files with the COMPILED
+      // canonicalizer at commit, exactly as before — D6 is unchanged except the
+      // harvest reads a directory instead of the store's virtual workspace map.
+      const harvested = harvestDirectory(workingDir);
 
       // `result.state.usage` (NOT `result.state.context.usage` — that getter
       // does not exist) is the run's accumulated token usage (05 §4.2 + the
@@ -363,8 +417,33 @@ export {
   DEFAULT_RENDER_MODEL,
   OPENROUTER_PROVIDER_LABEL,
 } from "./provider";
+export {
+  createCwdTools,
+  fsReadTool,
+  fsListTool,
+  fsWriteTool,
+  shellExecTool,
+  applyPatchToolFor,
+  hostedShellExecTool,
+  hostedApplyPatchTool,
+  LocalShell,
+  writeFileWithinRoot,
+  FS_READ_TOOL,
+  FS_LIST_TOOL,
+  FS_WRITE_TOOL,
+  SHELL_EXEC_TOOL,
+  APPLY_PATCH_TOOL,
+} from "./tools";
 export type {
   RenderSandboxRunner,
   AgentRenderContext,
   UpstreamSubscription,
 } from "./tools";
+export {
+  prepareWorkingDir,
+  harvestDirectory,
+  resolveWithinRoot,
+  nodeWorkingRoot,
+  workingDirSegment,
+  WorkingDirEscapeError,
+} from "./working-dir";
