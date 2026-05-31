@@ -68,6 +68,24 @@ export {
   type FileSystemReceiptLedgerInput,
 } from "./fs-ledger";
 
+// --- The replay-session shaping helper (DevTools / benchmark read surface) ---
+// A tiny, pure-data view over an already-opened ledger (or a receipt array):
+// ordered receipts + per-node chain index + per-receipt moved-facet diff (via
+// the exported `movedFacetsBetween`) + cumulative fresh/reused/$ cost rollup.
+// Zero new dependency, no I/O — it exists so `@openprose/reactor-devtools` and
+// the SURPRISE-COST benchmark don't each re-implement ordering/diff/rollup
+// (plan 2026-05-31-reactor-devtools §3.2 / §3.6).
+export {
+  createReplaySession,
+  WAKE_SOURCES,
+  type ReplaySession,
+  type ReplaySessionInput,
+  type ReplaySessionOptions,
+  type ReplaySessionCostOptions,
+  type ReplayCostRollup,
+  type ReplayCostBucket,
+} from "./replay-session";
+
 // --- The keystone assembler (architecture.md §5.3 + §8; gap-audit #9) --------
 // `createReactor` wires the durable FS world-model store + persisted ledger +
 // clock + the render bodies into the `mountDag` run-phase surface, and exposes
