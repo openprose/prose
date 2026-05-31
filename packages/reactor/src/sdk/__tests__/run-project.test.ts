@@ -22,7 +22,7 @@
 // propagates monitor → brief), (ii) TWO receipts land in the ledger, and (iii) a
 // RESTART (a new reactor over the same dirs) boots to ALL-SKIPS (no re-render).
 
-import { deepEqual, equal, ok } from "node:assert/strict";
+import { deepEqual, equal, notEqual, ok } from "node:assert/strict";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -38,6 +38,11 @@ import type { TruthProjection } from "../render-atom";
 import type { AsyncMountedRender } from "../mounted-dag";
 import { dispositionOf } from "../../scenario/trace";
 import { fakeStructuredProvider } from "../../adapters/agent-compile/__tests__/fake-provider";
+import {
+  createOpenRouterProvider,
+  hasOpenRouterKey,
+} from "../../adapters/agent-render/provider";
+import type { CompiledContractView } from "../../adapters/agent-render/instructions";
 import type { WorldModelStore } from "../../world-model";
 import { compileProject, runProject, type CompiledProject } from "../run-project";
 
@@ -223,6 +228,41 @@ test("compileProject: the on-disk two-node fixture compiles to a mountable topol
   equal(compiled.cost.surprise_cause, "self");
 });
 
+test("compileProject skipPostconditions: synthesizes EMPTY validator sets without a postcondition session", async () => {
+  // skipPostconditions runs Forme + the per-node canonicalizer sessions but NOT
+  // the postcondition session (whose recursive-predicate schema the live
+  // structured-output model rejects). Here we prove the synthesized fallback: an
+  // empty, well-formed validator set per node, no fake postcondition provider
+  // needed. The canonicalizer still produces the load-bearing `funding` facet.
+  const compiled = await compileProject({
+    contractsDir: FIXTURE_DIR,
+    options: { skill: "TEST SKILL" },
+    skipPostconditions: true,
+    perStep: {
+      forme: { provider: fakeStructuredProvider(FORME_OUTPUT) },
+      canonicalizer: {
+        [MONITOR]: { provider: fakeStructuredProvider(MONITOR_CANON_OUTPUT) },
+        [BRIEF]: { provider: fakeStructuredProvider(BRIEF_CANON_OUTPUT) },
+      },
+    },
+  });
+
+  // Both nodes compiled; the monitor still emits the `funding` facet.
+  ok(compiled.perNode[MONITOR]);
+  ok(compiled.perNode[BRIEF]);
+  ok(compiled.perNode[MONITOR]?.compiled.canonicalizer.facets.includes("funding"));
+
+  // The synthesized postcondition sets are EMPTY + well-formed (pure lowering).
+  for (const node of [MONITOR, BRIEF]) {
+    const pc = compiled.perNode[node]?.postconditions;
+    ok(pc);
+    deepEqual(pc?.set.deterministic, []);
+    deepEqual(pc?.set.attested, []);
+    equal(pc?.ref.mode, "deterministic");
+    equal(pc?.ref.node, node);
+  }
+});
+
 test("runProject: bootAsync renders the source AND propagates the funding facet to the subscriber (2 receipts)", async () => {
   const d = dirs();
   try {
@@ -355,3 +395,171 @@ test("runProject RESTART-SURVIVAL: a second reactor over the same dirs boots to 
     rmSync(d.storage, { recursive: true, force: true });
   }
 });
+
+// ===========================================================================
+// THE LIVE HEADLINE — a real gemini compile → render → boot, end to end
+// (PHASE5 §4d live; §8 N3). Gated behind OPENROUTER_API_KEY (process.env OR the
+// repo .env via hasOpenRouterKey). This is the HEADLINE, NOT the green bar: it
+// must NOT gate the offline build — the four tests above are the keyless green
+// gate; a keyless CI run reports this as a passing (skipped-body) subtest and
+// never touches the network. With the key present it runs the REAL compile
+// sessions (Forme + per-node canonicalizer) over the on-disk fixture, then the
+// REAL google/gemini-3.5-flash render through bootAsync.
+//
+// It asserts ROBUST facts ONLY (loose on content — the model's prose varies):
+//   (i)  the real Forme + canonicalizer compile wired the topology (both nodes +
+//        the `funding` edge the semantic match implies);
+//   (ii) the SOURCE (competitor-monitor) committed a fingerprinted world-model
+//        with NON-ZERO token cost — a real model call wrote real truth;
+//   (iii) the subscriber (weekly-brief) WOKE via PROPAGATION — boot seeds only
+//        the source, so the brief running at all (its receipt carries a consumed
+//        input fingerprint) PROVES the monitor's `funding` facet moved and
+//        propagated along the edge Forme drew (gotcha-1, live).
+//
+// SCOPE NOTE — why the headline does NOT assert the brief COMMITS a world-model:
+// the agent-render adapter exposes `wm_read`/`wm_list` over the node's OWN prior
+// published truth only — there is NO cross-node UPSTREAM read tool today (the
+// live input-pointer seam is the carry-over's flagged open question, risks[0],
+// and is a Phase-1 agent-render concern, OUT of scope for #13's runner). So a
+// live brief render that needs the upstream funding view self-reports `failed`
+// ("upstream ... has no published files"). That is faithful adapter behavior,
+// not a runner bug: the runner's job — compile→mount→boot→PROPAGATE — is what
+// this headline proves. Asserting the brief's commit would couple #13's headline
+// to an unbuilt adapter seam and flake. The OFFLINE gate above (fake render with
+// the upstream truth handed in) already proves the brief commits end to end.
+// ===========================================================================
+
+// The live render's per-node contract VIEW. The fixtures declare the WHAT
+// (`### Maintains` / `### Requires`); here we hand the model the concrete file
+// layout so the producer's structured truth lands where `projectTruthFor` reads
+// it (state/funding.json). This is the instruction layer only — the load-bearing
+// propagation comes from the COMPILED canonicalizer, not this view.
+function liveContractFor(node: string): CompiledContractView {
+  if (node === MONITOR) {
+    return {
+      name: "competitor-monitor",
+      maintains: [
+        "`funding`: a corroborated view of each competitor's funding events " +
+          "(round, amount, date).",
+      ],
+      requires: [],
+      continuity: "Self-driven: re-check on a daily forecast cadence.",
+      execution:
+        `Write the file \`${FUNDING_PATH}\` to your workspace. It must be ` +
+        `valid JSON of the shape ` +
+        `{"funding": [ {"competitor": string, "round": string, ` +
+        `"amount": string, "date": string} ], "fetched_at": string}. ` +
+        `Invent one or two plausible competitor funding events. Then report ` +
+        `status "done".`,
+    };
+  }
+  return {
+    name: "weekly-brief",
+    maintains: ["`brief`: the current weekly briefing text."],
+    requires: ["a current view of competitor fundraising activity"],
+    continuity: "Input-driven: re-render when the upstream funding view moves.",
+    execution:
+      `Write the file \`${BRIEF_PATH}\` to your workspace: a short plain-text ` +
+      `weekly briefing about competitor fundraising activity. Then report ` +
+      `status "done".`,
+  };
+}
+
+test(
+  "run-project LIVE: a real gemini compile + render boots the source and PROPAGATES to the subscriber",
+  { skip: hasOpenRouterKey() ? false : "OPENROUTER_API_KEY not set" },
+  async () => {
+    const d = dirs();
+    try {
+      // --- the REAL compile phase: Forme + per-node canonicalizer sessions, on
+      // google/gemini-3.5-flash. A single shared OpenRouter provider serves every
+      // step (the live path; the per-step fake providers above are only for the
+      // offline gate). Temperature 0 + a fixed seed for reproducibility.
+      const provider = createOpenRouterProvider();
+      const compiled = await compileProject({
+        contractsDir: FIXTURE_DIR,
+        options: { provider, temperature: 0, seed: 7, maxTurns: 12 },
+        // Skip the postcondition SESSION: its recursive-predicate output schema is
+        // rejected by the live structured-output model (`reference to undefined
+        // schema at ...predicate`), and the run phase does not consult
+        // postconditions anyway. The REAL Forme + canonicalizer sessions + the REAL
+        // render still run — that is the headline. (The offline gate above drives
+        // the full three-step compile with fake providers, so the postcondition
+        // wiring stays covered.)
+        skipPostconditions: true,
+      });
+
+      // (i) Forme actually wired the topology (both nodes + the funding edge the
+      // semantic match implies). Robust shape, not exact text.
+      equal(compiled.reconcilerTopology.topology.nodes.length, 2);
+      ok(compiled.perNode[MONITOR]);
+      ok(compiled.perNode[BRIEF]);
+      ok(
+        compiled.reconcilerTopology.topology.edges.some(
+          (e) => e.subscriber === BRIEF && e.producer === MONITOR,
+        ),
+        "the live Forme session must wire weekly-brief → competitor-monitor",
+      );
+      ok(compiled.cost.tokens.fresh > 0);
+
+      // --- the REAL run phase: the live agent-render (default buildRender =
+      // createAgentRender over the shared store) drives bootAsync. The monitor's
+      // projectTruth maps its funding file into the value the compiled
+      // canonicalizer reduces, so the `funding` facet moves and the brief wakes.
+      const { reactor, bootResults } = await runProject({
+        compiled,
+        adapters: {
+          clock: createSystemClockAdapter(),
+          storage: createMemoryStorageAdapter(),
+          worldModel: new FileSystemWorldModelStore({ directory: d.wm }),
+        },
+        render: {
+          provider,
+          contractFor: liveContractFor,
+          projectTruthFor,
+          temperature: 0,
+          seed: 7,
+          maxTurns: 16,
+        },
+      });
+
+      // (ii) The SOURCE rendered on the cold-miss boot sweep and committed a
+      // fingerprinted world-model — a real model call wrote real truth.
+      equal(dispositionOf(bootResults, MONITOR), "rendered");
+      const monitorRead = reactor.store.read(MONITOR, "published");
+      notEqual(monitorRead.ref.version, null);
+      ok(
+        Object.keys(monitorRead.files).length > 0,
+        "the live monitor render must have written at least one world-model file",
+      );
+      const monitorReceipt = reactor.ledger
+        .all()
+        .find((r) => r.node === MONITOR);
+      ok(monitorReceipt);
+      ok(
+        (monitorReceipt?.cost.tokens.fresh ?? 0) > 0,
+        "the live monitor render must report a non-zero fresh token spend",
+      );
+
+      // (iii) THE SUBSCRIBER WOKE VIA PROPAGATION. boot seeds ONLY the source
+      // (the brief has an inbound edge, so it is NOT seeded); the brief running
+      // AT ALL proves the monitor's `funding` facet moved and propagated. Its
+      // receipt carries the consumed upstream input fingerprint. (The brief's
+      // render itself may self-report `failed` — there is no cross-node upstream
+      // READ tool in agent-render yet; see the SCOPE NOTE above. We assert the
+      // WAKE + propagation, which is the runner's job, not the brief's commit.)
+      const briefReceipt = reactor.ledger.all().find((r) => r.node === BRIEF);
+      ok(
+        briefReceipt,
+        "the subscriber must have woken — its receipt proves the funding facet propagated",
+      );
+      ok(
+        (briefReceipt?.input_fingerprints.length ?? 0) > 0,
+        "the brief's wake must carry the monitor's propagated funding fingerprint",
+      );
+    } finally {
+      rmSync(d.wm, { recursive: true, force: true });
+      rmSync(d.storage, { recursive: true, force: true });
+    }
+  },
+);

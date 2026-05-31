@@ -45,6 +45,7 @@ import {
   type CompiledNode,
   type CompilePostconditionsResult,
 } from "../adapters/agent-compile";
+import { compilePostconditions } from "../postcondition";
 import {
   createAgentRender,
   type CompiledContractView,
@@ -120,6 +121,22 @@ export interface CompileProjectInput {
    * the real provider serves every step.
    */
   readonly perStep?: PerStepCompileOptions;
+  /**
+   * Skip the per-node postcondition SESSION and synthesize an EMPTY validator set
+   * (the pure {@link compilePostconditions} lowering over `[]`, no model call).
+   *
+   * The run phase ({@link runProject}) does not consult `perNode[...].postconditions`
+   * today — mounting + boot drive only the compiled canonicalizer — so this leaves
+   * propagation/boot behavior unchanged. It exists so a LIVE end-to-end run can
+   * exercise the real Forme + canonicalizer sessions and the real render WITHOUT
+   * depending on the postcondition session's recursive-predicate output schema,
+   * which the current structured-output model (Google AI Studio) rejects with
+   * `reference to undefined schema at ...predicate` for the `and`/`or`/`not`
+   * predicate DSL. The OFFLINE gate leaves this unset and still drives the full
+   * three-step compile with fake providers, so the postcondition wiring stays
+   * covered. Defaults to `false`.
+   */
+  readonly skipPostconditions?: boolean;
 }
 
 /**
@@ -188,15 +205,31 @@ export async function compileProject(
       contracts,
       canonOptions,
     );
-    const { result: postconditions, cost: pcCost } = await compilePostcondition(
-      nodeId,
-      contracts,
-      pcOptions,
-    );
+
+    let postconditions: CompilePostconditionsResult;
+    if (input.skipPostconditions === true) {
+      // Synthesize an EMPTY validator set via the pure lowering (no model call).
+      // The run phase does not consult postconditions today, so this is a faithful
+      // no-op for propagation/boot — see CompileProjectInput.skipPostconditions.
+      postconditions = compilePostconditions(
+        nodeId,
+        [],
+        contractFingerprints[nodeId] ?? nodeId,
+      );
+      totalFresh += canonCost.tokens.fresh;
+      totalReused += canonCost.tokens.reused;
+    } else {
+      const { result, cost: pcCost } = await compilePostcondition(
+        nodeId,
+        contracts,
+        pcOptions,
+      );
+      postconditions = result;
+      totalFresh += canonCost.tokens.fresh + pcCost.tokens.fresh;
+      totalReused += canonCost.tokens.reused + pcCost.tokens.reused;
+    }
 
     perNode[nodeId] = { compiled, postconditions };
-    totalFresh += canonCost.tokens.fresh + pcCost.tokens.fresh;
-    totalReused += canonCost.tokens.reused + pcCost.tokens.reused;
     provider = canonCost.provider;
     model = canonCost.model;
   }
