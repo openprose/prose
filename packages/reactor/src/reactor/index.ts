@@ -136,6 +136,15 @@ export interface RenderRequest {
   readonly wake: Wake;
   /** The resolved consumed-facet tuple (memo key's second half) at render start. */
   readonly input_fingerprints: InputFingerprints;
+  /**
+   * The node's resolved inbound topology edges (producer + facet) — the
+   * subscriptions whose facet fingerprints made up `input_fingerprints`
+   * (architecture.md §6.3; SHAPES.md §3). The render reads upstream truth BY
+   * REFERENCE through these (a subscriber may read ONLY a producer it subscribes
+   * to — the read-isolation pin, architecture.md §4.2 / world-model.md §1). Order
+   * is the resolved subscription order, in lockstep with `input_fingerprints`.
+   */
+  readonly inbound_edges: readonly TopologyEdge[];
   /** Prior world-model, by reference. */
   readonly prior_world_model: WorldModelRef;
 }
@@ -381,6 +390,7 @@ export function createReconciler(
         wake,
         key,
         last,
+        subscribedEdges,
       });
     } finally {
       state.inFlight = false;
@@ -491,6 +501,7 @@ export function createReconciler(
         wake,
         key,
         last,
+        subscribedEdges,
       });
     } finally {
       // --- (D) release the lock.
@@ -548,8 +559,11 @@ function renderAndCommit(input: {
   wake: Wake;
   key: MemoKey;
   last: Receipt | null;
+  /** The node's resolved inbound edges (producer + facet) — threaded to the render. */
+  subscribedEdges: readonly TopologyEdge[];
 }): ReconcileResult {
-  const { ports, topology, node, contractFp, wake, key, last } = input;
+  const { ports, topology, node, contractFp, wake, key, last, subscribedEdges } =
+    input;
 
   const prior = ports.worldModel.publishedRef(node);
   const prevRef = last !== null ? ports.ledger.addressOf(last) : null;
@@ -560,6 +574,7 @@ function renderAndCommit(input: {
     contract_fingerprint: contractFp,
     wake,
     input_fingerprints: key.input_fingerprints,
+    inbound_edges: subscribedEdges,
     prior_world_model: prior,
   });
 
@@ -645,8 +660,11 @@ async function renderAndCommitAsync(input: {
   wake: Wake;
   key: MemoKey;
   last: Receipt | null;
+  /** The node's resolved inbound edges (producer + facet) — threaded to the render. */
+  subscribedEdges: readonly TopologyEdge[];
 }): Promise<ReconcileResult> {
-  const { ports, topology, node, contractFp, wake, key, last } = input;
+  const { ports, topology, node, contractFp, wake, key, last, subscribedEdges } =
+    input;
 
   const prior = ports.worldModel.publishedRef(node);
   const prevRef = last !== null ? ports.ledger.addressOf(last) : null;
@@ -657,6 +675,7 @@ async function renderAndCommitAsync(input: {
     contract_fingerprint: contractFp,
     wake,
     input_fingerprints: key.input_fingerprints,
+    inbound_edges: subscribedEdges,
     prior_world_model: prior,
   };
   const outcome =

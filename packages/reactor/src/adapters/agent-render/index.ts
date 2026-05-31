@@ -201,10 +201,18 @@ export function createAgentRender(
     const input = buildRunInput(ctx);
 
     // The per-render context the tools read off `RunContext.context` (the only
-    // sanctioned channel for node/store/sandbox — 02 §5).
+    // sanctioned channel for node/store/sandbox — 02 §5). The resolved inbound
+    // edges (producer → facet) become the `upstream` subscriptions the
+    // `wm_*_upstream` tools read by reference — the same tuple that formed the
+    // memo key (step 6.2 / §3.3). A node with no subscriptions carries `[]`.
+    const upstream = ctx.inbound_edges.map((edge) => ({
+      producer: edge.producer,
+      facet: edge.facet,
+    }));
     const context: AgentRenderContext = {
       node: ctx.node,
       store: config.store,
+      upstream,
       ...(config.sandbox !== undefined ? { sandbox: config.sandbox } : {}),
     };
 
@@ -329,4 +337,8 @@ export {
   DEFAULT_RENDER_MODEL,
   OPENROUTER_PROVIDER_LABEL,
 } from "./provider";
-export type { RenderSandboxRunner, AgentRenderContext } from "./tools";
+export type {
+  RenderSandboxRunner,
+  AgentRenderContext,
+  UpstreamSubscription,
+} from "./tools";

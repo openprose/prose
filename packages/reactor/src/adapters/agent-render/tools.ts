@@ -36,6 +36,7 @@
 import { tool, type RunContext, type Tool } from "@openai/agents";
 import { z } from "zod";
 
+import type { Facet } from "../../shapes";
 import type {
   ReactorSandboxRequest,
   ReactorSandboxResponse,
@@ -63,6 +64,24 @@ export type RenderSandboxRunner = (
 ) => ReactorSandboxResponse | Promise<ReactorSandboxResponse>;
 
 /**
+ * One resolved upstream subscription the render may read by reference — a
+ * producer node id this node subscribes to, plus the facet of that producer's
+ * published truth the edge depends on (architecture.md §6.3; SHAPES.md §3). The
+ * `wm_*_upstream` tools resolve a producer against this list; a producer NOT in
+ * the list is rejected (the read-isolation pin — a subscriber reads only the
+ * producers it actually subscribes to, architecture.md §4.2 / world-model.md §1).
+ *
+ * A producer may appear more than once when the node subscribes to several of its
+ * facets; `wm_list_upstream` reports each (producer, facet) pair it sees here.
+ */
+export interface UpstreamSubscription {
+  /** The producer node whose PUBLISHED truth this node may read by reference. */
+  readonly producer: string;
+  /** The producer facet this edge depends on (ATOMIC_FACET if none declared). */
+  readonly facet: Facet;
+}
+
+/**
  * The object the harness passes as `run(agent, input, { context })`. Every render
  * tool reaches the node identity + store (+ optional sandbox) through this — the
  * only sanctioned channel for these handles (research/agents-sdk/02 §5). It is
@@ -73,6 +92,16 @@ export interface AgentRenderContext {
   readonly node: string;
   /** The world-model store the read/write tools go through (read-by-reference). */
   readonly store: WorldModelStore;
+  /**
+   * The producers this node SUBSCRIBES to (its resolved inbound edges), the only
+   * upstream truth `wm_read_upstream` / `wm_list_upstream` may reach. Resolved by
+   * the harness from the render's `RenderContext.inbound_edges` and threaded here
+   * (the same tuple that formed the memo key). A render with no subscriptions
+   * carries `[]` and the upstream tools find nothing to read. The read-isolation
+   * pin: a producer absent from this list is REJECTED (architecture.md §4.2 /
+   * world-model.md §1).
+   */
+  readonly upstream?: readonly UpstreamSubscription[];
   /** Optional folded sandbox (architecture.md §5.3); absent → `sandbox_exec` declines. */
   readonly sandbox?: RenderSandboxRunner;
 }
@@ -83,6 +112,8 @@ export interface AgentRenderContext {
 
 export const WM_READ_TOOL = "wm_read";
 export const WM_LIST_TOOL = "wm_list";
+export const WM_READ_UPSTREAM_TOOL = "wm_read_upstream";
+export const WM_LIST_UPSTREAM_TOOL = "wm_list_upstream";
 export const WM_WRITE_WORKSPACE_TOOL = "wm_write_workspace";
 export const SANDBOX_EXEC_TOOL = "sandbox_exec";
 
@@ -139,6 +170,8 @@ export function createRenderTools(): Tool<AgentRenderContext>[] {
   return [
     wmReadTool(),
     wmListTool(),
+    wmReadUpstreamTool(),
+    wmListUpstreamTool(),
     wmWriteWorkspaceTool(),
     sandboxExecTool(),
   ];
@@ -196,6 +229,144 @@ export function wmListTool(): Tool<AgentRenderContext> {
         return "(no prior published files — this node has no prior truth yet)";
       }
       return paths.join("\n");
+    },
+  });
+}
+
+/**
+ * The subscriptions a render may read upstream — its resolved inbound edges. An
+ * absent/empty `upstream` means the node subscribes to nothing, so the upstream
+ * tools find no producer to read (the standalone / source-node case).
+ */
+function upstreamOf(
+  context: AgentRenderContext,
+): readonly UpstreamSubscription[] {
+  return context.upstream ?? [];
+}
+
+/**
+ * The set of producer node ids this node subscribes to — the only producers
+ * `wm_read_upstream` may reach. Deduplicated (a producer can appear once per
+ * subscribed facet); used to enforce the read-isolation pin.
+ */
+function subscribedProducers(context: AgentRenderContext): Set<string> {
+  const producers = new Set<string>();
+  for (const sub of upstreamOf(context)) {
+    producers.add(sub.producer);
+  }
+  return producers;
+}
+
+/**
+ * `wm_list_upstream(producer?)` — list the (producer, facet) subscriptions this
+ * node depends on, from its resolved inbound topology edges. With a `producer`
+ * argument, narrows to that one producer's subscribed facets (and reports a
+ * legible note — not an error — for a producer the node does not subscribe to, so
+ * the agent can probe without aborting the turn). This is how the render
+ * DISCOVERS what upstream truth it may read before reading it (read-by-reference;
+ * world-model.md §1). It does NOT pre-stuff the upstream truth — only the pointers.
+ */
+export function wmListUpstreamTool(): Tool<AgentRenderContext> {
+  return tool({
+    name: WM_LIST_UPSTREAM_TOOL,
+    description:
+      "List the upstream producers (and their facets) this node subscribes to — " +
+      "the only upstream truth you may read. Optionally pass a producer node id to " +
+      "narrow to that producer's subscribed facets. Use this to discover what " +
+      "upstream truth exists before reading it with wm_read_upstream.",
+    parameters: z.object({
+      producer: z
+        .string()
+        .nullable()
+        .describe(
+          "Optional producer node id to narrow to; pass null to list every " +
+            "subscribed producer + facet.",
+        ),
+    }),
+    strict: true,
+    execute: async ({ producer }, runContext) => {
+      const context = requireContext(runContext);
+      const subs = upstreamOf(context);
+      if (subs.length === 0) {
+        return "(this node subscribes to no upstream producers)";
+      }
+      const selected =
+        producer === null || producer === undefined
+          ? subs
+          : subs.filter((s) => s.producer === producer);
+      if (selected.length === 0) {
+        return (
+          `not subscribed: this node does not subscribe to producer '${String(
+            producer,
+          )}'. Subscribed producers: ` +
+          [...subscribedProducers(context)].sort().join(", ")
+        );
+      }
+      // One line per (producer, facet), sorted + de-duplicated for a stable list.
+      const lines = [
+        ...new Set(selected.map((s) => `${s.producer}\t${s.facet}`)),
+      ].sort();
+      return lines.join("\n");
+    },
+  });
+}
+
+/**
+ * `wm_read_upstream(producer, path)` — read ONE file of a PRODUCER's prior
+ * PUBLISHED truth by reference, keyed by an inbound edge's producer node id.
+ * Exactly like `wm_read`, but scoped to a producer this node ACTUALLY subscribes
+ * to (the read-isolation pin, architecture.md §4.2 / world-model.md §1): a read of
+ * a non-subscribed producer is REJECTED with a legible message (not the file).
+ * Reads PUBLISHED truth only — NEVER a producer's private workspace. Returns the
+ * file's UTF-8 text, or a not-found message when the path is absent, so the agent
+ * can probe upstream truth without a tool error aborting the turn.
+ */
+export function wmReadUpstreamTool(): Tool<AgentRenderContext> {
+  return tool({
+    name: WM_READ_UPSTREAM_TOOL,
+    description:
+      "Read one file of an UPSTREAM producer's prior published world-model by its " +
+      "relative path. The producer must be one this node subscribes to (see " +
+      "wm_list_upstream); a producer you do not subscribe to is rejected. Returns " +
+      "the file's UTF-8 text, or a not-found message. This is your upstream truth — " +
+      "read it by reference as needed.",
+    parameters: z.object({
+      producer: z
+        .string()
+        .describe(
+          "The upstream producer node id to read from — must be a producer this " +
+            "node subscribes to.",
+        ),
+      path: z
+        .string()
+        .describe(
+          "Relative path of the producer's published file to read, e.g. " +
+            "'state/funding.json'.",
+        ),
+    }),
+    strict: true,
+    execute: async ({ producer, path }, runContext) => {
+      const context = requireContext(runContext);
+      // The read-isolation pin: reject any producer the node does not subscribe to
+      // (architecture.md §4.2 / world-model.md §1). The agent only ever sees the
+      // producers on its resolved inbound edges.
+      if (!subscribedProducers(context).has(producer)) {
+        const subscribed = [...subscribedProducers(context)].sort();
+        return (
+          `not subscribed: this node does not subscribe to producer '${producer}', ` +
+          `so its truth is not readable. ` +
+          (subscribed.length === 0
+            ? "This node subscribes to no upstream producers."
+            : `Subscribed producers: ${subscribed.join(", ")}.`)
+        );
+      }
+      // Read the PRODUCER's PUBLISHED truth (never its workspace) by reference.
+      const { files } = context.store.read(producer, "published");
+      const bytes = files[path];
+      if (bytes === undefined) {
+        return `not found: no published file at '${path}' for producer '${producer}'`;
+      }
+      return readTextFile(bytes);
     },
   });
 }

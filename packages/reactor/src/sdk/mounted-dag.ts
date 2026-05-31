@@ -435,6 +435,7 @@ function toRenderContext(
     contract_fingerprint: request.contract_fingerprint,
     wake: request.wake,
     input_fingerprints: request.input_fingerprints,
+    inbound_edges: request.inbound_edges,
     prior: store.read(request.node, "published"),
   };
 }

@@ -21,7 +21,7 @@
 // FAKE provider through the real async harness, proving the harness wiring +
 // harvest + commit + receipt independently of any live model.
 
-import { equal, notEqual, ok } from "node:assert/strict";
+import { equal, match, notEqual, ok } from "node:assert/strict";
 import { test } from "node:test";
 
 import {
@@ -44,7 +44,11 @@ import { contractFingerprint } from "../../../scenario/fixture";
 import { dispositionOf, lastReceipt } from "../../../scenario/trace";
 import { createAgentRender, DEFAULT_MAX_TURNS } from "../index";
 import { hasOpenRouterKey } from "../provider";
-import { WM_LIST_TOOL } from "../tools";
+import {
+  WM_LIST_TOOL,
+  WM_READ_UPSTREAM_TOOL,
+  WM_WRITE_WORKSPACE_TOOL,
+} from "../tools";
 import type { CompiledContractView } from "../instructions";
 
 // ---------------------------------------------------------------------------
@@ -322,4 +326,252 @@ test("agent-render: a render that exceeds its turn cap yields a RenderFailure (n
   equal(receipt.status, "failed");
   equal(receipt.cost.tokens.fresh, 0);
   equal(receipt.cost.tokens.reused, 0);
+});
+
+// ---------------------------------------------------------------------------
+// 6.2 (§3.3) — wm_read_upstream / wm_list_upstream: a SUBSCRIBER renders by
+// READING a producer's published facet through the real `createAgentRender`
+// context, then COMMITS (fixes Defect B). Offline (fake provider), through the
+// REAL async harness, so the WHOLE threading is proven keyless:
+//   topology edges → RenderContext.inbound_edges → AgentRenderContext.upstream →
+//   wm_read_upstream reads the producer's PUBLISHED truth → workspace write →
+//   harness harvest/commit/fingerprint → a `rendered` receipt.
+// ---------------------------------------------------------------------------
+
+const MONITOR = "competitor-monitor";
+const BRIEF = "weekly-brief";
+const FUNDING_PATH = "state/funding.json";
+const BRIEF_PATH = "state/brief.md";
+const FUNDING_FACET = "funding";
+
+/** The compiled-contract view for the subscriber (reads the funding facet). */
+const BRIEF_CONTRACT: CompiledContractView = {
+  name: "Weekly Brief",
+  maintains: [`A brief at \`${BRIEF_PATH}\` summarizing competitor funding.`],
+  requires: ["competitor fundraising activity (the producer's `funding` facet)"],
+  continuity: "Re-render when the producer's funding facet moves.",
+  execution:
+    `Read the producer's funding via wm_read_upstream, then write ${BRIEF_PATH}.`,
+};
+
+/**
+ * A two-node topology: MONITOR (a source maintaining `funding`) → BRIEF (the
+ * subscriber on that facet). The single inbound edge is what the harness resolves
+ * into BRIEF's `RenderContext.inbound_edges`, which `createAgentRender` threads
+ * into the upstream tool context.
+ */
+function twoNodeTopology(): ReconcilerTopology {
+  const monitorFp = contractFingerprint({
+    id: MONITOR,
+    kind: "responsibility",
+    name: "Competitor Monitor",
+    requires: [],
+    maintains: [FUNDING_FACET],
+    continuity: "",
+    render: () => {
+      throw new Error("unused");
+    },
+    canonicalizer: atomicCanonicalizer,
+  });
+  const briefFp = contractFingerprint({
+    id: BRIEF,
+    kind: "responsibility",
+    name: BRIEF_CONTRACT.name,
+    requires: [{ producer: MONITOR, facet: FUNDING_FACET }],
+    maintains: [],
+    continuity: "",
+    render: () => {
+      throw new Error("unused");
+    },
+    canonicalizer: atomicCanonicalizer,
+  });
+  return {
+    topology: {
+      nodes: [
+        { node: MONITOR, contract_fingerprint: monitorFp, wake_source: "self" },
+        { node: BRIEF, contract_fingerprint: briefFp, wake_source: "input" },
+      ],
+      // The resolved subscription: BRIEF consumes MONITOR's `funding` facet.
+      edges: [{ subscriber: BRIEF, producer: MONITOR, facet: FUNDING_FACET }],
+      entry_points: [MONITOR],
+      acyclic: true,
+    },
+    contract_fingerprints: { [MONITOR]: monitorFp, [BRIEF]: briefFp },
+  };
+}
+
+/**
+ * A fake `ModelProvider` for the SUBSCRIBER render that drives the upstream read
+ * path: turn 1 calls `wm_read_upstream(MONITOR, FUNDING_PATH)`, turn 2 (now that
+ * the tool result is in the input history) writes the brief INCORPORATING what it
+ * read via `wm_write_workspace`, turn 3 emits the `done` signal. Because the model
+ * echoes the upstream read back into its workspace write, a green assertion proves
+ * the producer's PUBLISHED truth actually reached the subscriber render through
+ * the threaded context — not a pre-stuffed prompt.
+ */
+function upstreamReadingProvider(): ModelProvider {
+  let turn = 0;
+  const model: Model = {
+    async getResponse(request: unknown): Promise<ModelResponse> {
+      const usage = new Usage({
+        inputTokens: 10,
+        outputTokens: 5,
+        totalTokens: 15,
+      });
+      turn += 1;
+      if (turn === 1) {
+        // Turn 1: ask for the producer's funding facet by reference.
+        return {
+          usage,
+          output: [
+            {
+              type: "function_call",
+              callId: "call_read",
+              name: WM_READ_UPSTREAM_TOOL,
+              arguments: JSON.stringify({
+                producer: MONITOR,
+                path: FUNDING_PATH,
+              }),
+            },
+          ],
+        } as unknown as ModelResponse;
+      }
+      if (turn === 2) {
+        // Turn 2: the runner has appended the `wm_read_upstream` tool result to
+        // the input history. Extract it and write the brief INCORPORATING it, so
+        // the committed truth proves the upstream value reached this render.
+        const upstreamText = extractUpstreamRead(request);
+        return {
+          usage,
+          output: [
+            {
+              type: "function_call",
+              callId: "call_write",
+              name: WM_WRITE_WORKSPACE_TOOL,
+              arguments: JSON.stringify({
+                path: BRIEF_PATH,
+                content: `BRIEF based on upstream funding: ${upstreamText}`,
+              }),
+            },
+          ],
+        } as unknown as ModelResponse;
+      }
+      // Turn 3: done — the harness harvests the workspace + commits.
+      return {
+        usage,
+        output: [
+          {
+            type: "message",
+            role: "assistant",
+            status: "completed",
+            content: [
+              {
+                type: "output_text",
+                text: JSON.stringify({
+                  status: "done",
+                  semantic_diff: { summary: "wrote brief from upstream funding" },
+                }),
+              },
+            ],
+          },
+        ],
+      } as unknown as ModelResponse;
+    },
+    // eslint-disable-next-line require-yield
+    async *getStreamedResponse() {
+      throw new Error("fake model does not stream");
+    },
+  };
+  return {
+    getModel(): Model {
+      return model;
+    },
+  };
+}
+
+/**
+ * Pull the text the `wm_read_upstream` tool returned out of the runner's input
+ * history (a `function_call_result` item whose `output` is `{ type: 'text', text }`
+ * — see openai-agents-js toolExecution.getToolCallOutputItem).
+ */
+function extractUpstreamRead(request: unknown): string {
+  const input = (request as { input?: unknown }).input;
+  if (!Array.isArray(input)) {
+    return "(no upstream read found)";
+  }
+  for (const item of input) {
+    const it = item as {
+      type?: string;
+      name?: string;
+      output?: { text?: string } | string;
+    };
+    if (it.type === "function_call_result" && it.name === WM_READ_UPSTREAM_TOOL) {
+      if (typeof it.output === "string") {
+        return it.output;
+      }
+      if (it.output && typeof it.output.text === "string") {
+        return it.output.text;
+      }
+    }
+  }
+  return "(no upstream read found)";
+}
+
+test("agent-render: a SUBSCRIBER reads a producer's facet via wm_read_upstream and COMMITS (offline; fixes Defect B)", async () => {
+  const store = new InMemoryWorldModelStore();
+  const topology = twoNodeTopology();
+
+  // 1) The PRODUCER commits its published `funding` truth (a separate node). This
+  // is the upstream truth the subscriber will read BY REFERENCE.
+  const fundingBytes = new TextEncoder().encode('{"acme":"Series B"}');
+  store.commitPublished(MONITOR, { [FUNDING_PATH]: fundingBytes });
+
+  // 2) Build the REAL subscriber render (createAgentRender) over a FAKE provider
+  // that drives the wm_read_upstream → wm_write_workspace → done loop. The point
+  // is the REAL context wiring: ctx.inbound_edges → AgentRenderContext.upstream.
+  const briefRender = createAgentRender({
+    store,
+    contractFor: () => BRIEF_CONTRACT,
+    skill: "TEST SKILL",
+    provider: upstreamReadingProvider(),
+    maxTurns: 8,
+  });
+
+  const dag = mountDag({
+    topology,
+    mounts: {},
+    asyncMounts: {
+      [BRIEF]: { render: briefRender, canonicalizer: atomicCanonicalizer },
+    },
+    store,
+    // Seed the producer's last receipt so resolveInputs has a published identity
+    // to resolve the funding facet against (it falls back to cold-start otherwise;
+    // either way the edge is present and the upstream read is authorized).
+  });
+
+  // 3) Wake the subscriber directly (input-driven). The harness resolves BRIEF's
+  // inbound edge → threads it into RenderContext.inbound_edges → the render's
+  // AgentRenderContext.upstream → wm_read_upstream authorizes + reads MONITOR.
+  const results = await dag.ingestAsync(BRIEF, { source: "input", refs: [] });
+
+  // The subscriber RENDERED (committed) — the live-path Defect B ("upstream node
+  // has no published files") is gone: the producer's truth was readable.
+  equal(dispositionOf(results, BRIEF), "rendered");
+
+  // The committed brief INCORPORATES the upstream funding value it read by
+  // reference — proof the producer's PUBLISHED truth reached this render through
+  // the threaded context (not a pre-stuffed prompt).
+  const read = store.read(BRIEF, "published");
+  notEqual(read.ref.version, null);
+  const brief = read.files[BRIEF_PATH];
+  ok(brief, `expected the subscriber to write ${BRIEF_PATH}`);
+  const briefText = readTextFile(brief);
+  match(briefText, /Series B/);
+  match(briefText, /BRIEF based on upstream funding/);
+
+  // A signed `rendered` receipt rode through.
+  const receipt = lastReceipt(dag.ledger, BRIEF);
+  ok(receipt);
+  equal(receipt.status, "rendered");
+  ok(receipt.fingerprints[ATOMIC_FACET]);
 });

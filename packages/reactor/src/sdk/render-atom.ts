@@ -26,6 +26,7 @@ import {
   type Fingerprint,
   type InputFingerprints,
   type SemanticDiff,
+  type TopologyEdge,
   type Wake,
   type WakeSource,
   type WorldModelCommit,
@@ -116,6 +117,15 @@ export interface RenderContext {
    * SHAPES.md §3). Empty `[]` for a standalone render (no subscriptions).
    */
   readonly input_fingerprints: InputFingerprints;
+  /**
+   * The node's resolved inbound topology edges (producer + facet) — the
+   * subscriptions whose facet fingerprints made up `input_fingerprints`, in
+   * lockstep order (architecture.md §6.3; SHAPES.md §3). This is the read-by-
+   * reference handle for UPSTREAM truth: a render may read a producer's published
+   * world-model ONLY when it appears here (the read-isolation pin, architecture.md
+   * §4.2 / world-model.md §1). Empty `[]` for a standalone render (no upstreams).
+   */
+  readonly inbound_edges: readonly TopologyEdge[];
   /** The prior published world-model, by reference + its files. */
   readonly prior: WorldModelRead;
 }
@@ -229,6 +239,7 @@ export function renderAtom(input: RenderAtomInput): RenderAtomResult {
     contract_fingerprint: input.contract_fingerprint,
     wake,
     input_fingerprints: [],
+    inbound_edges: [],
     prior,
   });
 
@@ -316,6 +327,7 @@ export async function renderAtomAsync(
     contract_fingerprint: input.contract_fingerprint,
     wake,
     input_fingerprints: [],
+    inbound_edges: [],
     prior,
   });
 

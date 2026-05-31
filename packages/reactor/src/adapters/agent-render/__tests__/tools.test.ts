@@ -7,10 +7,14 @@ import {
   createRenderTools,
   wmReadTool,
   wmListTool,
+  wmReadUpstreamTool,
+  wmListUpstreamTool,
   wmWriteWorkspaceTool,
   sandboxExecTool,
   WM_READ_TOOL,
   WM_LIST_TOOL,
+  WM_READ_UPSTREAM_TOOL,
+  WM_LIST_UPSTREAM_TOOL,
   WM_WRITE_WORKSPACE_TOOL,
   SANDBOX_EXEC_TOOL,
   NO_SANDBOX_MESSAGE,
@@ -60,10 +64,20 @@ function makeContext(
 // Tool set shape
 // ---------------------------------------------------------------------------
 
-test("createRenderTools: returns exactly the four render tools, all function tools", () => {
+test("createRenderTools: returns exactly the render tool set, all function tools", () => {
   const tools = createRenderTools();
   const names = tools.map((t) => (t as FunctionTool).name).sort();
-  deepEqual(names, [SANDBOX_EXEC_TOOL, WM_LIST_TOOL, WM_READ_TOOL, WM_WRITE_WORKSPACE_TOOL].sort());
+  deepEqual(
+    names,
+    [
+      SANDBOX_EXEC_TOOL,
+      WM_LIST_TOOL,
+      WM_LIST_UPSTREAM_TOOL,
+      WM_READ_TOOL,
+      WM_READ_UPSTREAM_TOOL,
+      WM_WRITE_WORKSPACE_TOOL,
+    ].sort(),
+  );
   for (const t of tools) {
     equal((t as FunctionTool).type, "function");
   }
@@ -135,6 +149,130 @@ test("wm_list: cold start (no prior truth) returns a legible empty note", async 
   const store = new InMemoryWorldModelStore();
   const out = await invokeTool(wmListTool(), makeContext(store), {});
   match(out, /no prior/i);
+});
+
+// ---------------------------------------------------------------------------
+// wm_list_upstream / wm_read_upstream (the cross-node upstream read — Defect B)
+// ---------------------------------------------------------------------------
+
+test("wm_list_upstream: lists the (producer, facet) subscriptions this node has", async () => {
+  const store = new InMemoryWorldModelStore();
+  const ctx = makeContext(store, {
+    upstream: [
+      { producer: "monitor", facet: "funding" },
+      { producer: "feed", facet: "@atomic" },
+    ],
+  });
+  const out = await invokeTool(wmListUpstreamTool(), ctx, { producer: null });
+  // sorted, one (producer \t facet) per line
+  equal(out, "feed\t@atomic\nmonitor\tfunding");
+});
+
+test("wm_list_upstream: narrows to one producer's facets when given a producer", async () => {
+  const store = new InMemoryWorldModelStore();
+  const ctx = makeContext(store, {
+    upstream: [
+      { producer: "monitor", facet: "funding" },
+      { producer: "monitor", facet: "hiring" },
+      { producer: "feed", facet: "@atomic" },
+    ],
+  });
+  const out = await invokeTool(wmListUpstreamTool(), ctx, {
+    producer: "monitor",
+  });
+  equal(out, "monitor\tfunding\nmonitor\thiring");
+});
+
+test("wm_list_upstream: no subscriptions returns a legible empty note", async () => {
+  const store = new InMemoryWorldModelStore();
+  const out = await invokeTool(wmListUpstreamTool(), makeContext(store), {
+    producer: null,
+  });
+  match(out, /subscribes to no upstream/i);
+});
+
+test("wm_list_upstream: a non-subscribed producer is reported, not an error", async () => {
+  const store = new InMemoryWorldModelStore();
+  const ctx = makeContext(store, {
+    upstream: [{ producer: "monitor", facet: "funding" }],
+  });
+  const out = await invokeTool(wmListUpstreamTool(), ctx, { producer: "other" });
+  match(out, /not subscribed/i);
+  match(out, /monitor/);
+});
+
+test("wm_read_upstream: reads a SUBSCRIBED producer's published file by reference", async () => {
+  const store = new InMemoryWorldModelStore();
+  // The producer commits its published truth (a separate node).
+  store.commitPublished("monitor", {
+    "state/funding.json": textFile('{"round":"A"}'),
+  });
+  // The subscriber's render context lists `monitor` on its inbound edges.
+  const ctx = makeContext(store, {
+    node: "brief",
+    upstream: [{ producer: "monitor", facet: "funding" }],
+  });
+  const out = await invokeTool(wmReadUpstreamTool(), ctx, {
+    producer: "monitor",
+    path: "state/funding.json",
+  });
+  equal(out, '{"round":"A"}');
+});
+
+test("wm_read_upstream: REJECTS a producer the node does not subscribe to (read-isolation pin)", async () => {
+  const store = new InMemoryWorldModelStore();
+  // A producer with real published truth — but NOT on the subscriber's edges.
+  store.commitPublished("secret", { "state/x.json": textFile("classified") });
+  const ctx = makeContext(store, {
+    node: "brief",
+    upstream: [{ producer: "monitor", facet: "funding" }],
+  });
+  const out = await invokeTool(wmReadUpstreamTool(), ctx, {
+    producer: "secret",
+    path: "state/x.json",
+  });
+  match(out, /not subscribed/i);
+  // The classified content is NEVER returned.
+  ok(!/classified/.test(out), `leaked non-subscribed truth: ${out}`);
+});
+
+test("wm_read_upstream: reads PUBLISHED, never the producer's workspace scratch", async () => {
+  const store = new InMemoryWorldModelStore();
+  store.commitPublished("monitor", { "f.json": textFile("published") });
+  store.writeWorkspace("monitor", { "f.json": textFile("scratch") });
+  const ctx = makeContext(store, {
+    node: "brief",
+    upstream: [{ producer: "monitor", facet: "@atomic" }],
+  });
+  const out = await invokeTool(wmReadUpstreamTool(), ctx, {
+    producer: "monitor",
+    path: "f.json",
+  });
+  equal(out, "published");
+});
+
+test("wm_read_upstream: missing path on a subscribed producer returns not-found, not an error", async () => {
+  const store = new InMemoryWorldModelStore();
+  store.commitPublished("monitor", { "a.json": textFile("a") });
+  const ctx = makeContext(store, {
+    node: "brief",
+    upstream: [{ producer: "monitor", facet: "@atomic" }],
+  });
+  const out = await invokeTool(wmReadUpstreamTool(), ctx, {
+    producer: "monitor",
+    path: "missing.json",
+  });
+  match(out, /not found/i);
+});
+
+test("wm_read_upstream: no subscriptions rejects every producer", async () => {
+  const store = new InMemoryWorldModelStore();
+  store.commitPublished("monitor", { "f.json": textFile("x") });
+  const out = await invokeTool(wmReadUpstreamTool(), makeContext(store), {
+    producer: "monitor",
+    path: "f.json",
+  });
+  match(out, /not subscribed/i);
 });
 
 // ---------------------------------------------------------------------------
