@@ -7,8 +7,7 @@
     "example": "node flat-tokens.example.mjs"
   },
   "dependencies": {
-    "@openprose/reactor": "0.1.0",
-    "@openprose/reactor-cradle": "0.1.0"
+    "@openprose/reactor": "0.1.0"
   },
   "engines": {
     "node": ">=20.0.0"

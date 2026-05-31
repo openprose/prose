@@ -35,9 +35,6 @@ importers:
       '@openprose/reactor':
         specifier: 0.1.0
         version: 0.1.0
-      '@openprose/reactor-cradle':
-        specifier: 0.1.0
-        version: 0.1.0
 
   tools/cli:
     dependencies:
@@ -536,10 +533,6 @@ packages:
     engines: {node: '>=16'}
     cpu: [x64]
     os: [win32]
-
-  '@openprose/reactor-cradle@0.1.0':
-    resolution: {integrity: sha512-+gUISdrpRd0wKZMDHQY3UHMHGjNBZMEATZt0SrnIUwgWM5ZapOa87ae6kOHl/klbKgSWrTmqJa4QuVxWRwdiWA==}
-    engines: {node: '>=20.0.0'}
 
   '@openprose/reactor@0.1.0':
     resolution: {integrity: sha512-wPCgog240baVXQwzOO+5JRNZLTwjBJkwnGovISLmETnI1A/7+SUVYQl8iqtc6yFUb/DspZN920jZh4dQ0N5dLg==}
@@ -1800,10 +1793,6 @@ snapshots:
 
   '@openai/codex@0.125.0-win32-x64':
     optional: true
-
-  '@openprose/reactor-cradle@0.1.0':
-    dependencies:
-      '@openprose/reactor': 0.1.0
 
   '@openprose/reactor@0.1.0': {}
 
