@@ -117,7 +117,11 @@ const MONITOR_PC_OUTPUT = JSON.stringify({
       id: "has-funding",
       mode: "deterministic",
       facet: ATOMIC_FACET,
-      predicate: { kind: "equals", fact: "has_funding", value: false },
+      // flat encoding (Defect-A $ref-free schema): single leaf node, root = 0
+      predicate: {
+        nodes: [{ kind: "equals", fact: "has_funding", value: false }],
+        root: 0,
+      },
       source: "every competitor view must carry at least one funding event",
     },
   ],
@@ -230,10 +234,11 @@ test("compileProject: the on-disk two-node fixture compiles to a mountable topol
 
 test("compileProject skipPostconditions: synthesizes EMPTY validator sets without a postcondition session", async () => {
   // skipPostconditions runs Forme + the per-node canonicalizer sessions but NOT
-  // the postcondition session (whose recursive-predicate schema the live
-  // structured-output model rejects). Here we prove the synthesized fallback: an
-  // empty, well-formed validator set per node, no fake postcondition provider
-  // needed. The canonicalizer still produces the load-bearing `funding` facet.
+  // the postcondition session — a deliberate opt-out a caller may choose. Here we
+  // prove the synthesized fallback: an empty, well-formed validator set per node,
+  // no fake postcondition provider needed. The canonicalizer still produces the
+  // load-bearing `funding` facet. (The postcondition session's output schema is
+  // now the FLAT, $ref-free encoding — Defect A — so it no longer forces a skip.)
   const compiled = await compileProject({
     contractsDir: FIXTURE_DIR,
     options: { skill: "TEST SKILL" },
@@ -479,13 +484,13 @@ test(
       const compiled = await compileProject({
         contractsDir: FIXTURE_DIR,
         options: { provider, temperature: 0, seed: 7, maxTurns: 12 },
-        // Skip the postcondition SESSION: its recursive-predicate output schema is
-        // rejected by the live structured-output model (`reference to undefined
-        // schema at ...predicate`), and the run phase does not consult
-        // postconditions anyway. The REAL Forme + canonicalizer sessions + the REAL
-        // render still run — that is the headline. (The offline gate above drives
-        // the full three-step compile with fake providers, so the postcondition
-        // wiring stays covered.)
+        // This live slice keeps the postcondition SESSION skipped to hold its scope
+        // to the Forme + canonicalizer + render headline (and to keep this gate
+        // run network-cheap). Defect A — the recursive-predicate output schema the
+        // live model rejected with `reference to undefined schema at ...predicate`
+        // — is now FIXED: the schema is the FLAT, $ref-free encoding, exercised by
+        // the offline schema tests in compile-lowering.test.ts. Re-enabling the
+        // live postcondition session is owned by a separate live-headline step.
         skipPostconditions: true,
       });
 

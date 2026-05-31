@@ -8,6 +8,8 @@
 import { deepEqual, equal, ok, throws } from "node:assert/strict";
 import { test } from "node:test";
 
+import { z } from "zod";
+
 import { ATOMIC_FACET } from "../../../shapes";
 import {
   lowerFormeOutput,
@@ -22,10 +24,27 @@ import {
 import {
   lowerPostconditionOutput,
   toAuthoredPostconditions,
+  postconditionOutputSchema,
+  flatPredicateSchema,
+  decodeFlatPredicate,
+  predicateSchema,
+  MAX_PREDICATE_DEPTH,
   type PostconditionOutputSignal,
 } from "../postcondition-output";
 import { gateCommit } from "../../../postcondition";
 import { textFile } from "../../../world-model";
+
+/**
+ * Lower a zod schema to JSON Schema the way the live structured-output path does
+ * (zod v4 `toJSONSchema`, draft 2020-12). The SDK ultimately routes the agent
+ * `outputType` through `openai/helpers/zod`, which produces the SAME `$ref`-on-
+ * recursion behavior; this offline check reproduces that conversion without
+ * importing the SDK (so the offline barrel stays SDK-free). Returns the stringly
+ * JSON so a test can assert on `$ref`/`$defs` presence.
+ */
+function lowerToJsonSchemaString(schema: z.ZodTypeAny): string {
+  return JSON.stringify(z.toJSONSchema(schema, { target: "draft-2020-12" }));
+}
 
 // ---------------------------------------------------------------------------
 // 3a — Forme output → ReconcilerTopology (the session drives `wire`, not exactFacetMatcher)
@@ -237,8 +256,11 @@ test("postcondition lowering: a deterministic predicate gates the commit at run 
         id: "min-confidence",
         mode: "deterministic",
         facet: ATOMIC_FACET,
-        // VIOLATION condition: confidence < 0.5
-        predicate: { kind: "less-than", fact: "confidence", value: 0.5 },
+        // VIOLATION condition: confidence < 0.5 (flat: single leaf node, root = 0)
+        predicate: {
+          nodes: [{ kind: "less-than", fact: "confidence", value: 0.5 }],
+          root: 0,
+        },
         source: "every recommendation must carry confidence >= 0.5",
       },
     ],
@@ -280,13 +302,144 @@ test("toAuthoredPostconditions: preserves mode + predicate verbatim", () => {
         id: "p1",
         mode: "deterministic",
         facet: ATOMIC_FACET,
-        predicate: { kind: "equals", fact: "ok", value: true },
+        predicate: {
+          nodes: [{ kind: "equals", fact: "ok", value: true }],
+          root: 0,
+        },
         source: "ok must be true",
       },
     ],
   });
   equal(authored.length, 1);
   equal(authored[0]?.mode, "deterministic");
+  // the flat predicate decodes back to the recursive IR the gate consumes
+  deepEqual(authored[0]?.mode === "deterministic" ? authored[0].predicate : null, {
+    kind: "equals",
+    fact: "ok",
+    value: true,
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Defect A — the postcondition OUTPUT SCHEMA must lower to a $ref-free JSON Schema
+// (Google AI Studio rejects unresolved $refs with a 400). The fix flattens the
+// recursive predicate DSL into an index-referenced node list; these tests pin
+// that the model-facing schema is $ref-free AND that the flat encoding still
+// round-trips to the recursive run-time predicate the gate consumes unchanged.
+// ---------------------------------------------------------------------------
+
+test("Defect A: the postcondition output schema lowers to a JSON Schema with NO $ref/$defs", () => {
+  const json = lowerToJsonSchemaString(postconditionOutputSchema());
+  ok(!json.includes("$ref"), "model-facing schema must carry no $ref (Google AI Studio 400)");
+  ok(!json.includes("$defs"), "model-facing schema must carry no $defs");
+});
+
+test("Defect A: the flat predicate sub-schema is itself $ref-free", () => {
+  const json = lowerToJsonSchemaString(z.object({ predicate: flatPredicateSchema() }));
+  ok(!json.includes("$ref"));
+  ok(!json.includes("$defs"));
+});
+
+test("Defect A regression: the OLD recursive predicate schema DID lower to a $ref (why we flattened)", () => {
+  // Guards against anyone reintroducing the recursive z.lazy as the model schema.
+  const json = lowerToJsonSchemaString(z.object({ predicate: predicateSchema() }));
+  ok(json.includes("$ref"), "the recursive z.lazy is exactly the Defect-A shape we avoid");
+});
+
+test("decodeFlatPredicate: round-trips a nested and(or(not)) tree to the recursive run-time IR", () => {
+  // VIOLATION when: confidence < 0.5 AND (sourced = false OR NOT(verified = true)).
+  // Flat node pool with index references; root is the top `and`.
+  const flat = {
+    nodes: [
+      { kind: "and" as const, children: [1, 2] },
+      { kind: "less-than" as const, fact: "confidence", value: 0.5 },
+      { kind: "or" as const, children: [3, 4] },
+      { kind: "equals" as const, fact: "sourced", value: false },
+      { kind: "not" as const, child: 5 },
+      { kind: "equals" as const, fact: "verified", value: true },
+    ],
+    root: 0,
+  };
+  const decoded = decodeFlatPredicate(flat);
+  deepEqual(decoded, {
+    kind: "and",
+    predicates: [
+      { kind: "less-than", fact: "confidence", value: 0.5 },
+      {
+        kind: "or",
+        predicates: [
+          { kind: "equals", fact: "sourced", value: false },
+          { kind: "not", predicate: { kind: "equals", fact: "verified", value: true } },
+        ],
+      },
+    ],
+  });
+});
+
+test("Defect A: a flat nested predicate gates the commit exactly as the recursive tree would", () => {
+  // Same VIOLATION as above, lowered + run through the real gate (no model).
+  const signal: PostconditionOutputSignal = {
+    postconditions: [
+      {
+        id: "well-grounded",
+        mode: "deterministic",
+        facet: ATOMIC_FACET,
+        predicate: {
+          nodes: [
+            { kind: "and", children: [1, 2] },
+            { kind: "less-than", fact: "confidence", value: 0.5 },
+            { kind: "or", children: [3, 4] },
+            { kind: "equals", fact: "sourced", value: false },
+            { kind: "not", child: 5 },
+            { kind: "equals", fact: "verified", value: true },
+          ],
+          root: 0,
+        },
+        source: "high-confidence claims must be sourced and verified",
+      },
+    ],
+  };
+  const { set, ref } = lowerPostconditionOutput("claim", signal);
+  equal(ref.mode, "deterministic");
+
+  // not-tripped (postcondition HOLDS) ⇒ commit proceeds: confidence high.
+  equal(gateCommit(set, { confidence: 0.9, sourced: true, verified: true }).status, "rendered");
+  // tripped (VIOLATION) ⇒ commit refused: low confidence AND unverified.
+  const fail = gateCommit(set, { confidence: 0.2, sourced: true, verified: false });
+  equal(fail.status, "failed");
+  equal(fail.failures[0]?.id, "well-grounded");
+});
+
+test("decodeFlatPredicate: rejects an out-of-range child index (never a silent IR)", () => {
+  throws(
+    () => decodeFlatPredicate({ nodes: [{ kind: "not", child: 9 }], root: 0 }),
+    /out of range/,
+  );
+});
+
+test("decodeFlatPredicate: rejects a cyclic node reference (the flattening cannot loop)", () => {
+  throws(
+    () =>
+      decodeFlatPredicate({
+        nodes: [{ kind: "not", child: 1 }, { kind: "not", child: 0 }],
+        root: 0,
+      }),
+    /cycle/,
+  );
+});
+
+test("decodeFlatPredicate: rejects an over-deep tree (depth-bounded reconstruction)", () => {
+  // Build a `not`-chain deeper than MAX_PREDICATE_DEPTH; each links to the next.
+  const depth = MAX_PREDICATE_DEPTH + 5;
+  const nodes: unknown[] = [];
+  for (let i = 0; i < depth; i++) {
+    nodes.push({ kind: "not", child: i + 1 });
+  }
+  nodes.push({ kind: "equals", fact: "x", value: true });
+  throws(
+    () => decodeFlatPredicate({ nodes: nodes as never, root: 0 }),
+    /max depth/,
+  );
 });
 
 // a tiny use of textFile so the import is load-bearing where a future fixture needs it

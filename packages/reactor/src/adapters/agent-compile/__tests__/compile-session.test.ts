@@ -229,7 +229,11 @@ test("compile-session: postcondition session → a deterministic commit-gate val
         id: "has-funding",
         mode: "deterministic",
         facet: ATOMIC_FACET,
-        predicate: { kind: "equals", fact: "has_funding", value: false },
+        // flat encoding: single leaf node, root = 0 (Defect-A $ref-free schema)
+        predicate: {
+          nodes: [{ kind: "equals", fact: "has_funding", value: false }],
+          root: 0,
+        },
         source: "every competitor view must carry at least one funding event",
       },
     ],

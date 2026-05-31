@@ -238,11 +238,18 @@ export {
 export {
   postconditionOutputSchema,
   predicateSchema,
+  flatPredicateSchema,
+  flatPredicateNodeSchema,
+  decodeFlatPredicate,
   lowerPostconditionOutput,
   toAuthoredPostconditions,
   postconditionArtifactId,
+  MAX_PREDICATE_DEPTH,
+  MAX_PREDICATE_NODES,
   type PostconditionOutputSignal,
   type PostconditionDecl,
+  type FlatPredicate,
+  type FlatPredicateNode,
 } from "./postcondition-output";
 
 export {
