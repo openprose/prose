@@ -506,12 +506,15 @@ export function wmWriteWorkspaceTool(): Tool<AgentRenderContext> {
  * dir; none reaches the store. Returns `Tool<AgentRenderContext>[]` so the set
  * composes with the `wm_*` tools in one `Agent.tools` array.
  */
-export function createCwdTools(root: string): Tool<AgentRenderContext>[] {
+export function createCwdTools(
+  root: string,
+  shellOpts?: ShellExecOptions,
+): Tool<AgentRenderContext>[] {
   return [
     fsReadTool(root),
     fsListTool(root),
     fsWriteTool(root),
-    shellExecTool(root),
+    shellExecTool(root, shellOpts),
     applyPatchToolFor(root),
   ];
 }
@@ -657,10 +660,15 @@ export function fsWriteTool(root: string): Tool<AgentRenderContext> {
  *
  * SANDBOX LIMITATION (N3): `cwd` is scoped to the root but the subprocess is NOT
  * OS-isolated — it can `cd` out, read/write elsewhere, reach the network. Trusted
- * contracts only (SPEC §5).
+ * contracts only (SPEC §5). Every command IS time-/output-bounded (a runaway is
+ * SIGTERM'd into `outcome: 'timeout'`), so a render cannot hang; true OS isolation
+ * for untrusted contracts is a separate decision (see RENDER-SANDBOX-OPTIONS).
  */
-export function shellExecTool(root: string): Tool<AgentRenderContext> {
-  const shell = new LocalShell(root);
+export function shellExecTool(
+  root: string,
+  shellOpts?: ShellExecOptions,
+): Tool<AgentRenderContext> {
+  const shell = new LocalShell(root, shellOpts);
   return tool({
     name: SHELL_EXEC_TOOL,
     description:
@@ -767,12 +775,42 @@ export function hostedApplyPatchTool(root: string): Tool<AgentRenderContext> {
 }
 
 /**
+ * Default per-command shell execution timeout (ms). The SDK's `shellTool` calls
+ * `Shell.run` with no `timeoutMs`, so without this default a runaway command
+ * (e.g. a model-emitted `find / …`) runs with NO timeout and hangs the render
+ * forever. This bounds every command; a timed-out command surfaces as
+ * `outcome: 'timeout'` (the prior truth stands) rather than a hang.
+ */
+export const DEFAULT_SHELL_TIMEOUT_MS = 300_000;
+
+/** Default max bytes captured per command before the process is killed (node's `execAsync` `maxBuffer`). */
+export const DEFAULT_SHELL_MAX_OUTPUT_BYTES = 1_048_576;
+
+/** Bounds for {@link LocalShell} / {@link shellExecTool} — threaded from the adapter config so a caller can tune them. */
+export interface ShellExecOptions {
+  readonly timeoutMs?: number;
+  readonly maxOutputBytes?: number;
+}
+
+/**
  * A `Shell` that runs each command with `cwd` set to the per-node working ROOT
  * (the `examples/tools/local-shell.ts` LocalShell). Bound at tool-construction so
- * the cwd is fixed for the render. NOT OS-isolated (N3).
+ * the cwd is fixed for the render. NOT OS-isolated (N3) — but every command is
+ * time- and output-bounded (see {@link DEFAULT_SHELL_TIMEOUT_MS}) so a runaway
+ * cannot hang the render; OS isolation for untrusted contracts is deferred to the
+ * Agents-SDK sandbox (see RENDER-SANDBOX-OPTIONS).
  */
 export class LocalShell implements Shell {
-  constructor(private readonly cwd: string) {}
+  private readonly timeoutMs: number;
+  private readonly maxOutputBytes: number;
+
+  constructor(
+    private readonly cwd: string,
+    opts?: ShellExecOptions,
+  ) {
+    this.timeoutMs = opts?.timeoutMs ?? DEFAULT_SHELL_TIMEOUT_MS;
+    this.maxOutputBytes = opts?.maxOutputBytes ?? DEFAULT_SHELL_MAX_OUTPUT_BYTES;
+  }
 
   async run(action: ShellAction): Promise<ShellResult> {
     const output: ShellResult["output"] = [];
@@ -787,8 +825,8 @@ export class LocalShell implements Shell {
       try {
         const result = await execAsync(command, {
           cwd: this.cwd,
-          timeout: action.timeoutMs,
-          maxBuffer: action.maxOutputLength,
+          timeout: action.timeoutMs ?? this.timeoutMs,
+          maxBuffer: action.maxOutputLength ?? this.maxOutputBytes,
         });
         stdout = result.stdout;
         stderr = result.stderr;

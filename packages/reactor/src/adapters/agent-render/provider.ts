@@ -50,18 +50,43 @@ export const DEFAULT_ENV_PATH = "/Users/sl/code/openprose/.env";
 
 const OPENROUTER_API_KEY = "OPENROUTER_API_KEY";
 
+/** Env var that forces the live gate closed (hermetic offline). */
+const REACTOR_OFFLINE = "REACTOR_OFFLINE";
+
 // ---------------------------------------------------------------------------
 // Env: read OPENROUTER_API_KEY without a dotenv dependency
 // ---------------------------------------------------------------------------
 
 /**
- * Resolve the OpenRouter API key. Prefers `process.env`, then falls back to a
- * minimal parse of the `.env` file at `envPath`. Returns `undefined` (never
- * throws) when absent, so callers can gate live behaviour on its presence.
+ * True when `REACTOR_OFFLINE` is set to a truthy value. Because
+ * {@link readOpenRouterKey} falls back to reading the repo `.env` file, plain
+ * `env -u OPENROUTER_API_KEY` does NOT disable the key-gated live tests — the
+ * file fallback still resolves the key. Setting `REACTOR_OFFLINE=1` short-circuits
+ * BOTH the process env and the `.env` fallback so the offline gate is hermetic
+ * (`pnpm test:offline`), and a runaway live test can never hang it.
+ */
+export function isOfflineForced(): boolean {
+  const v = process.env[REACTOR_OFFLINE];
+  return (
+    typeof v === "string" &&
+    v.length > 0 &&
+    v !== "0" &&
+    v.toLowerCase() !== "false"
+  );
+}
+
+/**
+ * Resolve the OpenRouter API key. Returns `undefined` (never throws) when absent
+ * or when `REACTOR_OFFLINE` is set, so callers can gate live behaviour on its
+ * presence. Prefers `process.env`, then falls back to a minimal parse of the
+ * `.env` file at `envPath`.
  */
 export function readOpenRouterKey(
   envPath: string = DEFAULT_ENV_PATH,
 ): string | undefined {
+  if (isOfflineForced()) {
+    return undefined;
+  }
   const fromProcess = process.env[OPENROUTER_API_KEY];
   if (typeof fromProcess === "string" && fromProcess.length > 0) {
     return fromProcess;

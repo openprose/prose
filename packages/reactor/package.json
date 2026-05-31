@@ -73,7 +73,8 @@
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test:runtime": "pnpm build && node --test $(find dist -name '*.test.js' -type f | sort)",
-    "test": "pnpm typecheck && pnpm test:runtime"
+    "test": "pnpm typecheck && pnpm test:runtime",
+    "test:offline": "REACTOR_OFFLINE=1 pnpm test"
   },
   "devDependencies": {
     "@openai/agents": "^0.11.6",
