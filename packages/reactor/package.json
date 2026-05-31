@@ -49,6 +49,22 @@
     "./projection": {
       "types": "./dist/projection/index.d.ts",
       "default": "./dist/projection/index.js"
+    },
+    "./adapters/agent-compile": {
+      "types": "./dist/adapters/agent-compile/index.d.ts",
+      "default": "./dist/adapters/agent-compile/index.js"
+    },
+    "./adapters/agent-render": {
+      "types": "./dist/adapters/agent-render/index.d.ts",
+      "default": "./dist/adapters/agent-render/index.js"
+    },
+    "./run-project": {
+      "types": "./dist/sdk/run-project.d.ts",
+      "default": "./dist/sdk/run-project.js"
+    },
+    "./canonicalizer": {
+      "types": "./dist/canonicalizer/index.d.ts",
+      "default": "./dist/canonicalizer/index.js"
     }
   },
   "files": [
