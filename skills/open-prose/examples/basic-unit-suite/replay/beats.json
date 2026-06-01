@@ -1,0 +1,70 @@
+{
+  "scenario": "basic-unit-suite",
+  "title": "The substrate: every micro-mechanic in one tiny graph — memo skip, facet subscription, the diamond, the function/projection boundary, self-continuity, failure containment, replay.",
+  "beats": [
+    {
+      "name": "cold-start",
+      "park": 9,
+      "from": 0,
+      "to": 9,
+      "holdMs": 2600,
+      "caption": "cold start (U01–U02) · the whole graph lights once · gateway → summary → alert → projection"
+    },
+    {
+      "name": "memo-skip",
+      "park": 11,
+      "from": 10,
+      "to": 11,
+      "holdMs": 2600,
+      "caption": "U03: a byte-identical re-wake · the gateway memo-SKIPS · nothing propagates · fresh 0"
+    },
+    {
+      "name": "linear-propagation",
+      "park": 19,
+      "from": 12,
+      "to": 19,
+      "holdMs": 3000,
+      "caption": "U04: a real new event · the counts lane wakes summary → alert → projection in DAG order"
+    },
+    {
+      "name": "facet-subscription",
+      "park": 23,
+      "from": 20,
+      "to": 23,
+      "holdMs": 3000,
+      "caption": "U05: a metadata-only event · raw_events moves, counts does NOT · the auditor lights, summary stays dark"
+    },
+    {
+      "name": "diamond-single-wake",
+      "park": 33,
+      "from": 24,
+      "to": 33,
+      "holdMs": 3200,
+      "caption": "U06: a material event reaches the snapshot down THREE paths · it renders ONCE for the tuple"
+    },
+    {
+      "name": "projection-boundary",
+      "park": 34,
+      "from": 34,
+      "to": 34,
+      "holdMs": 3000,
+      "caption": "U08: a cosmetic contract revision RE-RENDERS the projection · @atomic truth MOVES but the structured facet does NOT · no subscriber, no downstream wake"
+    },
+    {
+      "name": "self-recheck",
+      "park": 36,
+      "from": 35,
+      "to": 36,
+      "holdMs": 2800,
+      "caption": "U09: the projection then Count Trend self-tick · each re-derives the same truth · a no-op recheck propagates nothing"
+    },
+    {
+      "name": "failure-containment",
+      "park": 44,
+      "from": 37,
+      "to": 44,
+      "holdMs": 3000,
+      "caption": "U10: Alert State render fails RED · a failure receipt · the prior alert truth still stands"
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+# Live runtime churn — NOT the committed replay/ fixture.
+/state/
+/runs/
+/dist/
+node_modules/

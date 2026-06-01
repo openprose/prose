@@ -1,0 +1,55 @@
+{
+  "scenario": "implementation-pipeline",
+  "title": "A wide implementation effort as a FIXED DAG · 6 construction lanes · the planner reassigns lane contents but can never grow the graph.",
+  "beats": [
+    {
+      "name": "cold-boot",
+      "from": 0,
+      "to": 53,
+      "holdMs": 2600,
+      "caption": "the fixed graph wires up · 6 lanes mounted · extra work parks in unassigned_work"
+    },
+    {
+      "name": "quiet",
+      "from": 54,
+      "to": 65,
+      "holdMs": 2800,
+      "caption": "a no-change replay · every node memo-skips · cost flat, the report fingerprint is stable"
+    },
+    {
+      "name": "lane-local",
+      "from": 66,
+      "to": 75,
+      "holdMs": 3600,
+      "caption": "IP03 · only skill-contract guidance changed · ONE lane lights, five lanes stay dark"
+    },
+    {
+      "name": "quiet-2",
+      "from": 76,
+      "to": 81,
+      "holdMs": 2400,
+      "caption": "back to a flat memo-skip field · the changed lane settled"
+    },
+    {
+      "name": "foundation-fanout",
+      "from": 82,
+      "to": 119,
+      "holdMs": 3800,
+      "caption": "IP02 · the shared shape moves to Receipt@v2 · ALL SIX lanes wake once (intentional fanout)"
+    },
+    {
+      "name": "review-blocks",
+      "from": 120,
+      "to": 136,
+      "holdMs": 3400,
+      "caption": "IP04 · a lane patches a forbidden path · construction-review REJECTS · integration excludes it"
+    },
+    {
+      "name": "quiet-final",
+      "from": 137,
+      "to": 148,
+      "holdMs": 2600,
+      "caption": "the bookend · no-change replay · the whole fixed graph memo-skips at zero fresh"
+    }
+  ]
+}

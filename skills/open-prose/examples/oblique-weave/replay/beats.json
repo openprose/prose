@@ -1,0 +1,38 @@
+{
+  "scenario": "oblique-weave",
+  "title": "A programmable novelty-pressure system. Four masked roles each see a different slice of the same truth; a terminal auditor's recommendation re-weaves who sees what NEXT epoch — DAG intact.",
+  "beats": [
+    {
+      "name": "cold",
+      "park": 1,
+      "from": 0,
+      "to": 10,
+      "holdMs": 2800,
+      "caption": "cold start · both gateways + the ledger + the viewport policy fan one masked view to each of four roles · the whole weave lights once"
+    },
+    {
+      "name": "quiet-skip",
+      "park": 11,
+      "from": 11,
+      "to": 11,
+      "holdMs": 3600,
+      "caption": "an identical signal re-wake · the signal ledger memo-SKIPS · moved[—] · fresh 0 · nothing downstream wakes"
+    },
+    {
+      "name": "surprise-one-role",
+      "park": 16,
+      "from": 12,
+      "to": 16,
+      "holdMs": 4000,
+      "caption": "a new founder hunch lands · ONLY the Analogist's masked viewport moves · the three sibling roles stay DARK · the bet re-writes"
+    },
+    {
+      "name": "re-weave-next-epoch",
+      "park": 21,
+      "from": 17,
+      "to": 21,
+      "holdMs": 4200,
+      "caption": "the auditor's recommended viewport shift arrives as a NEW Weave Config receipt · the seed rotates · the Adversary now sees the contested anomaly · DAG-preserving, no same-epoch cycle"
+    }
+  ]
+}

@@ -1,0 +1,136 @@
+{
+  "nodes": [
+    {
+      "node": "gateway.signals",
+      "contract_fingerprint": "contract:gateway.signals@d2",
+      "wake_source": "external"
+    },
+    {
+      "node": "gateway.weave-config",
+      "contract_fingerprint": "contract:gateway.weave-config@d2",
+      "wake_source": "external"
+    },
+    {
+      "node": "responsibility.signal-ledger",
+      "contract_fingerprint": "contract:responsibility.signal-ledger@v1",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.viewport-policy",
+      "contract_fingerprint": "contract:responsibility.viewport-policy@v1",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.analogist",
+      "contract_fingerprint": "contract:responsibility.analogist@v1",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.adversary",
+      "contract_fingerprint": "contract:responsibility.adversary@v1",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.constraint-breaker",
+      "contract_fingerprint": "contract:responsibility.constraint-breaker@v1",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.weirdness-keeper",
+      "contract_fingerprint": "contract:responsibility.weirdness-keeper@v1",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.oblique-ledger",
+      "contract_fingerprint": "contract:responsibility.oblique-ledger@v1",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.surprising-bet",
+      "contract_fingerprint": "contract:responsibility.surprising-bet@v1",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.novelty-auditor",
+      "contract_fingerprint": "contract:responsibility.novelty-auditor@v1",
+      "wake_source": "input"
+    }
+  ],
+  "edges": [
+    {
+      "subscriber": "responsibility.signal-ledger",
+      "producer": "gateway.signals",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.viewport-policy",
+      "producer": "responsibility.signal-ledger",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.viewport-policy",
+      "producer": "gateway.weave-config",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.analogist",
+      "producer": "responsibility.viewport-policy",
+      "facet": "view:analogist"
+    },
+    {
+      "subscriber": "responsibility.adversary",
+      "producer": "responsibility.viewport-policy",
+      "facet": "view:adversary"
+    },
+    {
+      "subscriber": "responsibility.constraint-breaker",
+      "producer": "responsibility.viewport-policy",
+      "facet": "view:constraint-breaker"
+    },
+    {
+      "subscriber": "responsibility.weirdness-keeper",
+      "producer": "responsibility.viewport-policy",
+      "facet": "view:weirdness-keeper"
+    },
+    {
+      "subscriber": "responsibility.oblique-ledger",
+      "producer": "responsibility.analogist",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.oblique-ledger",
+      "producer": "responsibility.adversary",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.oblique-ledger",
+      "producer": "responsibility.constraint-breaker",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.oblique-ledger",
+      "producer": "responsibility.weirdness-keeper",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.surprising-bet",
+      "producer": "responsibility.oblique-ledger",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.novelty-auditor",
+      "producer": "responsibility.surprising-bet",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.novelty-auditor",
+      "producer": "responsibility.oblique-ledger",
+      "facet": "@atomic"
+    }
+  ],
+  "entry_points": [
+    "gateway.signals",
+    "gateway.weave-config"
+  ],
+  "acyclic": true
+}

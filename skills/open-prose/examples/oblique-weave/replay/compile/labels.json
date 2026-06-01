@@ -1,0 +1,13 @@
+{
+  "gateway.signals": "Product Signal Inbox",
+  "gateway.weave-config": "Weave Config",
+  "responsibility.signal-ledger": "Signal Ledger",
+  "responsibility.viewport-policy": "Viewport Policy",
+  "responsibility.analogist": "Analogist",
+  "responsibility.adversary": "Adversary",
+  "responsibility.constraint-breaker": "Constraint Breaker",
+  "responsibility.weirdness-keeper": "Weirdness Keeper",
+  "responsibility.oblique-ledger": "Oblique Thread Ledger",
+  "responsibility.surprising-bet": "Surprising Bet Memo",
+  "responsibility.novelty-auditor": "Novelty Auditor"
+}

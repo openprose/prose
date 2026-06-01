@@ -1,0 +1,78 @@
+{
+  "scenario": "agent-observatory",
+  "title": "Many cheap watchers, one expensive synthesis. Your agent dashboard only re-writes when some session state actually changed.",
+  "beats": [
+    {
+      "name": "cold-boot",
+      "park": 22,
+      "from": 0,
+      "to": 22,
+      "holdMs": 2600,
+      "caption": "the observatory wires up · 14 nodes lit once"
+    },
+    {
+      "name": "quiet",
+      "park": 28,
+      "from": 23,
+      "to": 28,
+      "holdMs": 2800,
+      "caption": "no session changed · every re-tick memo-skips · cost flat near zero"
+    },
+    {
+      "name": "self-tick",
+      "park": 30,
+      "from": 29,
+      "to": 30,
+      "holdMs": 2400,
+      "caption": "self-tick audit floor · the Clusterer re-checks itself · no input, no cost"
+    },
+    {
+      "name": "hero-one-runtime",
+      "park": 42,
+      "from": 33,
+      "to": 42,
+      "holdMs": 3800,
+      "caption": "HERO: one Claude turn · only the Claude lane lights · 3 sibling adapters DARK · the index re-writes ONCE"
+    },
+    {
+      "name": "diamond",
+      "park": 56,
+      "from": 43,
+      "to": 56,
+      "holdMs": 3400,
+      "caption": "two sessions move in one drain · the Workstream Index is woken EXACTLY once"
+    },
+    {
+      "name": "red-fail",
+      "park": 59,
+      "from": 57,
+      "to": 59,
+      "holdMs": 3000,
+      "caption": "a corrupt Codex dispatch fails RED · no downstream · prior truth stands"
+    },
+    {
+      "name": "recover",
+      "park": 67,
+      "from": 60,
+      "to": 67,
+      "holdMs": 2800,
+      "caption": "the next Codex delivery parses · the Codex lane re-lights green"
+    },
+    {
+      "name": "batch-spike",
+      "park": 86,
+      "from": 68,
+      "to": 86,
+      "holdMs": 4000,
+      "caption": "a major-new-project delta · distinct workstreams 1 → 3 · the Clusterer wakes ONCE · the single tall spike"
+    },
+    {
+      "name": "final-quiet",
+      "park": 98,
+      "from": 87,
+      "to": 98,
+      "holdMs": 2800,
+      "caption": "the laptop goes quiet again · every re-tick memo-skips · flat line bookend"
+    }
+  ]
+}

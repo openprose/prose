@@ -1,0 +1,90 @@
+{
+  "nodes": [
+    {
+      "node": "gateway.counter-events",
+      "contract_fingerprint": "sha256:0367460e7244d8b9a7946319b90cdcb2972749c090f3ce9029e932faf531fb50",
+      "wake_source": "external"
+    },
+    {
+      "node": "responsibility.count-summary",
+      "contract_fingerprint": "sha256:ce347c15c7580e159a203bd182ad8a14b4994859aacd3a5d2d2fa03077d2687f",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.alert-state",
+      "contract_fingerprint": "sha256:57f7231ed4401e2c9e8ffff3745461c93e9642e92f8cdd905b1b452339bf3bbe",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.alert-projection",
+      "contract_fingerprint": "sha256:552c73479412a3443979df0b3a55d43b32e559647cfdb55e1e995221313a07af",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.raw-event-auditor",
+      "contract_fingerprint": "sha256:75366420b8f3357bad3a621255a358b43c8743d577133ecbde400fa543ec837b",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.count-trend",
+      "contract_fingerprint": "sha256:eaa963de26203e63996efc0a97077f7d6af48b7bf6c643b2da963355c5ff07a0",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.executive-snapshot",
+      "contract_fingerprint": "sha256:8fc2df7653b6fafc39507164ba226a982ff1d1b5bf9f41e1a5d1f83e55ee13b6",
+      "wake_source": "input"
+    }
+  ],
+  "edges": [
+    {
+      "subscriber": "gateway.counter-events",
+      "producer": "ingress.counter-events",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.count-summary",
+      "producer": "gateway.counter-events",
+      "facet": "counts"
+    },
+    {
+      "subscriber": "responsibility.alert-state",
+      "producer": "responsibility.count-summary",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.alert-projection",
+      "producer": "responsibility.alert-state",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.raw-event-auditor",
+      "producer": "gateway.counter-events",
+      "facet": "raw_events"
+    },
+    {
+      "subscriber": "responsibility.count-trend",
+      "producer": "gateway.counter-events",
+      "facet": "counts"
+    },
+    {
+      "subscriber": "responsibility.executive-snapshot",
+      "producer": "responsibility.alert-state",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.executive-snapshot",
+      "producer": "responsibility.raw-event-auditor",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.executive-snapshot",
+      "producer": "responsibility.count-trend",
+      "facet": "@atomic"
+    }
+  ],
+  "entry_points": [
+    "gateway.counter-events"
+  ],
+  "acyclic": true
+}

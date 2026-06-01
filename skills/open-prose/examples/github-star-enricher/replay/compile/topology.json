@@ -1,0 +1,276 @@
+{
+  "nodes": [
+    {
+      "node": "gateway.star-events",
+      "contract_fingerprint": "contract:gateway.star-events@v1",
+      "wake_source": "external"
+    },
+    {
+      "node": "gateway.human-review",
+      "contract_fingerprint": "contract:gateway.human-review@v1",
+      "wake_source": "external"
+    },
+    {
+      "node": "responsibility.registry",
+      "contract_fingerprint": "contract:responsibility.registry@v1",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.footprint-alice",
+      "contract_fingerprint": "contract:responsibility.footprint-alice@v1",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.footprint-bob",
+      "contract_fingerprint": "contract:responsibility.footprint-bob@v1",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.footprint-casey",
+      "contract_fingerprint": "contract:responsibility.footprint-casey@v1",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.person-alice",
+      "contract_fingerprint": "contract:responsibility.person-alice@v1",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.person-bob",
+      "contract_fingerprint": "contract:responsibility.person-bob@v1",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.person-casey",
+      "contract_fingerprint": "contract:responsibility.person-casey@v1",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.company-acme",
+      "contract_fingerprint": "contract:responsibility.company-acme@v1",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.company-solo",
+      "contract_fingerprint": "contract:responsibility.company-solo@v1",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.intent-alice",
+      "contract_fingerprint": "contract:responsibility.intent-alice@v1",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.intent-bob",
+      "contract_fingerprint": "contract:responsibility.intent-bob@v1",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.intent-casey",
+      "contract_fingerprint": "contract:responsibility.intent-casey@v1",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.sample-alice",
+      "contract_fingerprint": "contract:responsibility.sample-alice@v1",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.sample-bob",
+      "contract_fingerprint": "contract:responsibility.sample-bob@v1",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.sample-casey",
+      "contract_fingerprint": "contract:responsibility.sample-casey@v1",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.outreach-alice",
+      "contract_fingerprint": "contract:responsibility.outreach-alice@v1",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.outreach-bob",
+      "contract_fingerprint": "contract:responsibility.outreach-bob@v1",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.outreach-casey",
+      "contract_fingerprint": "contract:responsibility.outreach-casey@v1",
+      "wake_source": "input"
+    }
+  ],
+  "edges": [
+    {
+      "subscriber": "gateway.star-events",
+      "producer": "ingress.star-events",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.registry",
+      "producer": "gateway.star-events",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.registry",
+      "producer": "gateway.human-review",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.footprint-alice",
+      "producer": "responsibility.registry",
+      "facet": "eligible:alice"
+    },
+    {
+      "subscriber": "responsibility.footprint-bob",
+      "producer": "responsibility.registry",
+      "facet": "eligible:bob"
+    },
+    {
+      "subscriber": "responsibility.footprint-casey",
+      "producer": "responsibility.registry",
+      "facet": "eligible:casey"
+    },
+    {
+      "subscriber": "responsibility.person-alice",
+      "producer": "responsibility.footprint-alice",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.person-bob",
+      "producer": "responsibility.footprint-bob",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.person-casey",
+      "producer": "responsibility.footprint-casey",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.company-acme",
+      "producer": "responsibility.footprint-alice",
+      "facet": "company-signal"
+    },
+    {
+      "subscriber": "responsibility.company-acme",
+      "producer": "responsibility.footprint-bob",
+      "facet": "company-signal"
+    },
+    {
+      "subscriber": "responsibility.company-solo",
+      "producer": "responsibility.footprint-casey",
+      "facet": "company-signal"
+    },
+    {
+      "subscriber": "responsibility.intent-alice",
+      "producer": "responsibility.footprint-alice",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.intent-alice",
+      "producer": "responsibility.person-alice",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.intent-alice",
+      "producer": "responsibility.company-acme",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.intent-bob",
+      "producer": "responsibility.footprint-bob",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.intent-bob",
+      "producer": "responsibility.person-bob",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.intent-bob",
+      "producer": "responsibility.company-acme",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.intent-casey",
+      "producer": "responsibility.footprint-casey",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.intent-casey",
+      "producer": "responsibility.person-casey",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.intent-casey",
+      "producer": "responsibility.company-solo",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.sample-alice",
+      "producer": "responsibility.intent-alice",
+      "facet": "track"
+    },
+    {
+      "subscriber": "responsibility.sample-bob",
+      "producer": "responsibility.intent-bob",
+      "facet": "track"
+    },
+    {
+      "subscriber": "responsibility.sample-casey",
+      "producer": "responsibility.intent-casey",
+      "facet": "track"
+    },
+    {
+      "subscriber": "responsibility.outreach-alice",
+      "producer": "responsibility.intent-alice",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.outreach-alice",
+      "producer": "responsibility.sample-alice",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.outreach-alice",
+      "producer": "gateway.human-review",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.outreach-bob",
+      "producer": "responsibility.intent-bob",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.outreach-bob",
+      "producer": "responsibility.sample-bob",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.outreach-bob",
+      "producer": "gateway.human-review",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.outreach-casey",
+      "producer": "responsibility.intent-casey",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.outreach-casey",
+      "producer": "responsibility.sample-casey",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.outreach-casey",
+      "producer": "gateway.human-review",
+      "facet": "@atomic"
+    }
+  ],
+  "entry_points": [
+    "gateway.star-events",
+    "gateway.human-review"
+  ],
+  "acyclic": true
+}

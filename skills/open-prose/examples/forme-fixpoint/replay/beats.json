@@ -1,0 +1,54 @@
+{
+  "scenario": "forme-fixpoint",
+  "title": "The harness wires its own graph. Forme commits the active graph as a versioned truth; invalid candidates cannot corrupt scheduling.",
+  "beats": [
+    {
+      "name": "cold-start",
+      "from": 0,
+      "to": 12,
+      "caption": "the seed wires the control plane · Forme commits the FIRST valid active graph"
+    },
+    {
+      "name": "quiet",
+      "from": 13,
+      "to": 20,
+      "caption": "byte-identical source re-scans · the whole graph memo-skips · Forme never wakes"
+    },
+    {
+      "name": "immaterial-edit",
+      "from": 21,
+      "to": 24,
+      "caption": "a reflowed comment · the contract-set facet holds · Forme skips (topology memoization)"
+    },
+    {
+      "name": "valid-addition",
+      "from": 25,
+      "to": 31,
+      "caption": "a new responsibility (risk-digest) · active-graph moves · the schedule replans"
+    },
+    {
+      "name": "ambiguous-candidate",
+      "from": 32,
+      "to": 37,
+      "caption": "a duplicate CompetitorActivity producer · Forme REJECTS · active-graph HELD · schedule skips"
+    },
+    {
+      "name": "operator-pin",
+      "from": 38,
+      "to": 43,
+      "caption": "an operator pins the intended producer · Forme commits the new valid active graph"
+    },
+    {
+      "name": "bad-cycle",
+      "from": 44,
+      "to": 49,
+      "caption": "a 2-node cycle · Forme REJECTS · active-graph HELD · schedule skips · prior graph stands"
+    },
+    {
+      "name": "final-quiet",
+      "from": 50,
+      "to": 55,
+      "caption": "byte-identical re-scans · steady on the last valid active graph · the cycle never entered it"
+    }
+  ]
+}

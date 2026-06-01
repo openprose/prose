@@ -1,0 +1,55 @@
+{
+  "nodes": [
+    {
+      "node": "gateway.account-signals",
+      "contract_fingerprint": "sha256:478cb6601f99e4c8d3dec6ebfbef5ebb43c43d5656d8f7afc0cbb0b1c0deb910",
+      "wake_source": "external"
+    },
+    {
+      "node": "responsibility.renewal-risk",
+      "contract_fingerprint": "sha256:be5fe69c7fd2fe4509bb6ac4f0fe6bcfdd7092d410d1d36ca50a3f1d3cb5e7a7",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.renewal-alert-feed",
+      "contract_fingerprint": "sha256:89be6688ddde79c24b835b062e26b1d4a839b4fa313fe1b026325ba736ca4f9c",
+      "wake_source": "input"
+    }
+  ],
+  "edges": [
+    {
+      "subscriber": "gateway.account-signals",
+      "producer": "ingress.account-signals",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.renewal-risk",
+      "producer": "gateway.account-signals",
+      "facet": "acct:acme"
+    },
+    {
+      "subscriber": "responsibility.renewal-risk",
+      "producer": "gateway.account-signals",
+      "facet": "acct:globex"
+    },
+    {
+      "subscriber": "responsibility.renewal-risk",
+      "producer": "gateway.account-signals",
+      "facet": "acct:initech"
+    },
+    {
+      "subscriber": "responsibility.renewal-risk",
+      "producer": "gateway.account-signals",
+      "facet": "acct:umbrella"
+    },
+    {
+      "subscriber": "responsibility.renewal-alert-feed",
+      "producer": "responsibility.renewal-risk",
+      "facet": "risk"
+    }
+  ],
+  "entry_points": [
+    "gateway.account-signals"
+  ],
+  "acyclic": true
+}

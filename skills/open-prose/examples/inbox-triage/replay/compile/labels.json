@@ -1,0 +1,19 @@
+{
+  "ingress.mail-feed": "Mail Feed",
+  "gateway.inbox-stream": "Inbox Stream",
+  "responsibility.classifier-nl1": "Classifier [nl→alice]",
+  "responsibility.classifier-nl2": "Classifier [nl→bob]",
+  "responsibility.classifier-nl3": "Classifier [nl→carol]",
+  "responsibility.classifier-nl4": "Classifier [nl→dave]",
+  "responsibility.classifier-nl5": "Classifier [nl→erin]",
+  "responsibility.classifier-ship1": "Classifier [shipping]",
+  "responsibility.classifier-invoice1": "Classifier [invoice]",
+  "responsibility.classifier-bad1": "Classifier [alert]",
+  "responsibility.threader": "Threader",
+  "responsibility.thread-newsletter": "Thread Render [newsletter]",
+  "responsibility.thread-ship": "Thread Render [shipping]",
+  "responsibility.thread-invoice": "Thread Render [invoice]",
+  "responsibility.thread-alert": "Thread Render [alert]",
+  "responsibility.priority": "Priority",
+  "responsibility.digest": "Daily Digest"
+}

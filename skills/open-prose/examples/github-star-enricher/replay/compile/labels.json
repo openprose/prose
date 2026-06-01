@@ -1,0 +1,22 @@
+{
+  "gateway.star-events": "GitHub Star Events",
+  "responsibility.registry": "Stargazer Registry",
+  "gateway.human-review": "Human Review Events",
+  "responsibility.footprint-alice": "Footprint [Alice]",
+  "responsibility.footprint-bob": "Footprint [Bob]",
+  "responsibility.footprint-casey": "Footprint [Casey]",
+  "responsibility.person-alice": "Person Resolver [Alice]",
+  "responsibility.person-bob": "Person Resolver [Bob]",
+  "responsibility.person-casey": "Person Resolver [Casey]",
+  "responsibility.company-acme": "Company Resolver [Acme]",
+  "responsibility.company-solo": "Company Resolver [Solo]",
+  "responsibility.intent-alice": "Intent & Safety [Alice]",
+  "responsibility.intent-bob": "Intent & Safety [Bob]",
+  "responsibility.intent-casey": "Intent & Safety [Casey]",
+  "responsibility.sample-alice": "Sample Program [Alice]",
+  "responsibility.sample-bob": "Sample Program [Bob]",
+  "responsibility.sample-casey": "Sample Program [Casey]",
+  "responsibility.outreach-alice": "Outreach Packet [Alice]",
+  "responsibility.outreach-bob": "Outreach Packet [Bob]",
+  "responsibility.outreach-casey": "Outreach Packet [Casey]"
+}
