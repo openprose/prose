@@ -319,13 +319,49 @@ export function buildProgram(onExitCode: (code: number) => void = () => {}): Com
   return program;
 }
 
-/** Parse argv and return the process exit code (0 by default). */
+/**
+ * Commander error `code`s that are a normal, successful terminal output (help
+ * text or the version string) — these exit 0, NOT as a usage error.
+ */
+const COMMANDER_SUCCESS_CODES = new Set([
+  'commander.help',
+  'commander.helpDisplayed',
+  'commander.version',
+]);
+
+/**
+ * Parse argv and return the process exit code. Mapping (matches README
+ * §"Documented exit codes"):
+ *   0 — success / a help|version display.
+ *   1 — a reported failure with an actionable message (an action handler set it).
+ *   2 — a USAGE error (unknown command/flag, missing argument) surfaced by the
+ *       arg parser. `exitOverride` turns commander's internal `process.exit(1)`
+ *       into a throw we map to 2 here, so the binary's exit code matches the doc.
+ */
 export async function main(argv: string[]): Promise<number> {
   let code = 0;
   const program = buildProgram((c) => {
     code = c;
   });
-  await program.parseAsync(argv);
+  // Take ownership of commander's process-exit so usage errors exit 2 (the
+  // documented code), and help/version exit 0 — instead of commander's blanket 1.
+  // exitOverride must be set on EACH command: an unknown option on a subcommand
+  // is surfaced by that subcommand's parser, not the root program's.
+  program.exitOverride();
+  for (const sub of program.commands) {
+    sub.exitOverride();
+  }
+  try {
+    await program.parseAsync(argv);
+  } catch (err) {
+    const commanderCode = (err as { code?: string } | undefined)?.code;
+    if (commanderCode !== undefined) {
+      // A commander control-flow signal: help/version are a clean 0; every other
+      // parser signal (unknownCommand/unknownOption/missingArgument/…) is a usage error.
+      return COMMANDER_SUCCESS_CODES.has(commanderCode) ? 0 : 2;
+    }
+    throw err; // a non-commander error — let the caller's catch report it (exit 1).
+  }
   return code;
 }
 

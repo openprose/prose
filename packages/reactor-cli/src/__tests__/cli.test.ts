@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildProgram } from '../cli';
+import { buildProgram, main } from '../cli';
 import { cliVersion } from '../meta';
 
 describe('cli arg parsing', () => {
@@ -52,5 +52,75 @@ describe('cli arg parsing', () => {
         return code === 'commander.unknownCommand' || code === 'commander.help';
       },
     );
+  });
+});
+
+describe('main() honors the documented exit codes', () => {
+  // Silence commander's stderr/stdout for the parse-error + help/version paths.
+  const hush = () => {
+    const out = process.stdout.write.bind(process.stdout);
+    const err = process.stderr.write.bind(process.stderr);
+    (process.stdout.write as unknown) = () => true;
+    (process.stderr.write as unknown) = () => true;
+    return () => {
+      (process.stdout.write as unknown) = out;
+      (process.stderr.write as unknown) = err;
+    };
+  };
+
+  it('a help display exits 0', async () => {
+    const restore = hush();
+    try {
+      assert.equal(await main(['node', 'reactor', '--help']), 0);
+      assert.equal(await main(['node', 'reactor', 'doctor', '--help']), 0);
+    } finally {
+      restore();
+    }
+  });
+
+  it('a version display exits 0', async () => {
+    const restore = hush();
+    try {
+      assert.equal(await main(['node', 'reactor', '--version']), 0);
+    } finally {
+      restore();
+    }
+  });
+
+  it('an unknown command is a usage error (exit 2)', async () => {
+    const restore = hush();
+    try {
+      assert.equal(await main(['node', 'reactor', 'definitely-not-a-command']), 2);
+    } finally {
+      restore();
+    }
+  });
+
+  it('an unknown global flag is a usage error (exit 2)', async () => {
+    const restore = hush();
+    try {
+      assert.equal(await main(['node', 'reactor', '--definitely-not-a-flag']), 2);
+    } finally {
+      restore();
+    }
+  });
+
+  it('an unknown flag on a subcommand is a usage error (exit 2)', async () => {
+    const restore = hush();
+    try {
+      assert.equal(await main(['node', 'reactor', 'status', '--definitely-not-a-flag']), 2);
+    } finally {
+      restore();
+    }
+  });
+
+  it('a missing required argument is a usage error (exit 2)', async () => {
+    const restore = hush();
+    try {
+      // `trigger <node>` requires a node argument.
+      assert.equal(await main(['node', 'reactor', 'trigger']), 2);
+    } finally {
+      restore();
+    }
   });
 });
