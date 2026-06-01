@@ -1,8 +1,8 @@
 /**
  * `reactor serve` (single reactor) — the durable daemon (CLI plan Phase 2).
  *
- * Builds the DURABLE substrate (system clock + filesystem storage under
- * `<state-dir>/receipts` + filesystem world-model under `<state-dir>/world-models`),
+ * Builds the DURABLE substrate (system clock + filesystem storage as the flat
+ * `<state-dir>/receipts.json` + filesystem world-model under `<state-dir>/world-models`),
  * CONFIGURES `runProject` (which self-mounts + runs the boot cold-miss sweep),
  * then runs the driver loop behind a PER-REACTOR serialization queue (correction
  * #4): the continuity poll + every ingress (`trigger`/HTTP, Phase 3) enqueue onto

@@ -5,7 +5,8 @@
  *   - the RUNNING-DAEMON path (HTTP POST / enqueue onto the serve loop's
  *     serialization queue) — wired in Phase 3 when the HTTP server lands;
  *   - the ONE-SHOT MOUNT path (this command, v1): boot a transient reactor over
- *     the durable world-model + an ephemeral receipt trail, ingest the named node
+ *     the DURABLE substrate (the receipt persists to the same flat
+ *     `<state-dir>/receipts.json` trail run/serve write), ingest the named node
  *     with a full external wake `{ source: "external", refs: [] }`, drain to
  *     quiescence, and report the dispositions.
  *
