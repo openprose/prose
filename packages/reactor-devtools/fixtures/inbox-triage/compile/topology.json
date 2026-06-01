@@ -1,0 +1,225 @@
+{
+  "nodes": [
+    {
+      "node": "gateway.inbox-stream",
+      "contract_fingerprint": "sha256:757e73420941a43b13db0d4c56883cf50d8702ab3b4bb8909772a8b45dede2cc",
+      "wake_source": "external"
+    },
+    {
+      "node": "responsibility.classifier-nl1",
+      "contract_fingerprint": "sha256:8fb9cd3c857be251362dd6249dddc2e9c3febd752e6ca23244a71c3efd1b5fa4",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.classifier-nl2",
+      "contract_fingerprint": "sha256:3d71c786a1d05556297da1c19ffd6d6cf7ddd4d00b0dd92bec8b66ea6e5eee1f",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.classifier-nl3",
+      "contract_fingerprint": "sha256:4b201ffd5e6c092d171d0a75f8168486388cc4bf36accbe469fda259352317e6",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.classifier-nl4",
+      "contract_fingerprint": "sha256:21fb438c4ae13beec07c5ee979e47b98e34fc85189120175f5e7bd12cbc9d1f6",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.classifier-nl5",
+      "contract_fingerprint": "sha256:bb347c75eb3e087fff894eb72926465622bbbe0d525804c3e29e46729e394bdd",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.classifier-ship1",
+      "contract_fingerprint": "sha256:4adf7907926b45c5fa2071d70d845a8d99003c16766aaf470173057212c5d785",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.classifier-invoice1",
+      "contract_fingerprint": "sha256:4da1b6451487cd9b0fe4d7fbcbe1de9bb083e612e17b24e9eb355415f49d808b",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.classifier-bad1",
+      "contract_fingerprint": "sha256:a5e436027aa0116b0b98f9a9eac49cac5ae179b4d34d5419ae6cf0535a76b7c5",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.threader",
+      "contract_fingerprint": "sha256:f0be1645e84a382e761c1661910a5a3d4cde9a32f6ae73517109e406dbbd8ef6",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.thread-newsletter",
+      "contract_fingerprint": "sha256:9e00bbeaa4d3248a6742f0aaf404c9b1bff1e51ec753233f3d7cbba7f994ee1b",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.thread-ship",
+      "contract_fingerprint": "sha256:3372584cdf4cb948648b78c93089a7e9752490f74deab621f9e9903afdb9d485",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.thread-invoice",
+      "contract_fingerprint": "sha256:012f8164e6557e2e7e7d4ea6b336563e87b9a236e0a4b9c102faed194bc6c548",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.thread-alert",
+      "contract_fingerprint": "sha256:67c2510c318db316057db2bf78d256c84863cd7dad7ceb13096f7ae07233900c",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.priority",
+      "contract_fingerprint": "sha256:b8e7f91e796f371d5680471a011bcaa3f93a75948aebb5e433bfdcca75bd67f0",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.digest",
+      "contract_fingerprint": "sha256:368d239a2a01a0f80ee3be2f48af522ebc51ee1a7761be3fc4b3bf0875e7ab6f",
+      "wake_source": "input"
+    }
+  ],
+  "edges": [
+    {
+      "subscriber": "gateway.inbox-stream",
+      "producer": "ingress.mail-feed",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.classifier-nl1",
+      "producer": "gateway.inbox-stream",
+      "facet": "email:nl1"
+    },
+    {
+      "subscriber": "responsibility.classifier-nl2",
+      "producer": "gateway.inbox-stream",
+      "facet": "email:nl2"
+    },
+    {
+      "subscriber": "responsibility.classifier-nl3",
+      "producer": "gateway.inbox-stream",
+      "facet": "email:nl3"
+    },
+    {
+      "subscriber": "responsibility.classifier-nl4",
+      "producer": "gateway.inbox-stream",
+      "facet": "email:nl4"
+    },
+    {
+      "subscriber": "responsibility.classifier-nl5",
+      "producer": "gateway.inbox-stream",
+      "facet": "email:nl5"
+    },
+    {
+      "subscriber": "responsibility.classifier-ship1",
+      "producer": "gateway.inbox-stream",
+      "facet": "email:ship1"
+    },
+    {
+      "subscriber": "responsibility.classifier-invoice1",
+      "producer": "gateway.inbox-stream",
+      "facet": "email:invoice1"
+    },
+    {
+      "subscriber": "responsibility.classifier-bad1",
+      "producer": "gateway.inbox-stream",
+      "facet": "email:bad1"
+    },
+    {
+      "subscriber": "responsibility.threader",
+      "producer": "responsibility.classifier-nl1",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.threader",
+      "producer": "responsibility.classifier-nl2",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.threader",
+      "producer": "responsibility.classifier-nl3",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.threader",
+      "producer": "responsibility.classifier-nl4",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.threader",
+      "producer": "responsibility.classifier-nl5",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.threader",
+      "producer": "responsibility.classifier-ship1",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.threader",
+      "producer": "responsibility.classifier-invoice1",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.threader",
+      "producer": "responsibility.classifier-bad1",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.thread-newsletter",
+      "producer": "responsibility.threader",
+      "facet": "thread:newsletter"
+    },
+    {
+      "subscriber": "responsibility.thread-ship",
+      "producer": "responsibility.threader",
+      "facet": "thread:ship"
+    },
+    {
+      "subscriber": "responsibility.thread-invoice",
+      "producer": "responsibility.threader",
+      "facet": "thread:invoice"
+    },
+    {
+      "subscriber": "responsibility.thread-alert",
+      "producer": "responsibility.threader",
+      "facet": "thread:alert"
+    },
+    {
+      "subscriber": "responsibility.priority",
+      "producer": "responsibility.threader",
+      "facet": "rollup"
+    },
+    {
+      "subscriber": "responsibility.digest",
+      "producer": "responsibility.thread-newsletter",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.digest",
+      "producer": "responsibility.thread-ship",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.digest",
+      "producer": "responsibility.thread-invoice",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.digest",
+      "producer": "responsibility.thread-alert",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.digest",
+      "producer": "responsibility.priority",
+      "facet": "@atomic"
+    }
+  ],
+  "entry_points": [
+    "gateway.inbox-stream"
+  ],
+  "acyclic": true
+}

@@ -1,0 +1,165 @@
+{
+  "nodes": [
+    {
+      "node": "gateway.clauses",
+      "contract_fingerprint": "sha256:47159f29d662152406ea389526a8fdde7de374566068422691f2c4bfec6a93c3",
+      "wake_source": "external"
+    },
+    {
+      "node": "responsibility.summarize-section-1",
+      "contract_fingerprint": "sha256:5635cf82ca0e4c6150f5d11e53bdbe47d8c4bed100f8956013f137ada43c86f4",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.summarize-section-2",
+      "contract_fingerprint": "sha256:fdcde1d2a3f3dc7671276c3766ecaa48ab7bda9808c8b208b70e3a00fc30be97",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.summarize-section-3",
+      "contract_fingerprint": "sha256:d6051ea2125ffb5d21be92ccf4011aeb5b98cf6e7cf23c7bc1556d5f290d6c41",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.summarize-section-4",
+      "contract_fingerprint": "sha256:62f44020561dd7926af9d2947cf1abd56413bf8c9e27171c4581f183243bda04",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.summarize-section-5",
+      "contract_fingerprint": "sha256:35508e3d575beb0bdbbc133599332724f36c46355f67e84030a8c285e48282f1",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.summarize-section-6",
+      "contract_fingerprint": "sha256:2c317cb421672f310b494110a41868f057c9fb0bcf9f64c8bb649a7a8f941898",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.summarize-section-7",
+      "contract_fingerprint": "sha256:cf2a0c6a3b4f1611363e4bc333645abcb3aa06fdbc0357e72702191634b4447a",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.summarize-section-8",
+      "contract_fingerprint": "sha256:d7f6b6ac9edcd7b1890b0e3bd153f734856e8a599fd0b84f7a3fff855b0bbfc4",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.risk-rollup",
+      "contract_fingerprint": "sha256:44bc791de119732e67b0ee79f60ef77a20dcae71c5286ec5031c6b38cd414d38",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.exec-summary",
+      "contract_fingerprint": "sha256:3eb3ded851d4735c90a8da19ffde9720d98278b63375127f10711e5ab3ffaac1",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.redline-report",
+      "contract_fingerprint": "sha256:12441d5345782352efbafa27ca2e02238dd525f01777f34829e80ed3373cad8c",
+      "wake_source": "input"
+    }
+  ],
+  "edges": [
+    {
+      "subscriber": "gateway.clauses",
+      "producer": "ingress.contract-doc",
+      "facet": "material"
+    },
+    {
+      "subscriber": "responsibility.summarize-section-1",
+      "producer": "gateway.clauses",
+      "facet": "section:1"
+    },
+    {
+      "subscriber": "responsibility.summarize-section-2",
+      "producer": "gateway.clauses",
+      "facet": "section:2"
+    },
+    {
+      "subscriber": "responsibility.summarize-section-3",
+      "producer": "gateway.clauses",
+      "facet": "section:3"
+    },
+    {
+      "subscriber": "responsibility.summarize-section-4",
+      "producer": "gateway.clauses",
+      "facet": "section:4"
+    },
+    {
+      "subscriber": "responsibility.summarize-section-5",
+      "producer": "gateway.clauses",
+      "facet": "section:5"
+    },
+    {
+      "subscriber": "responsibility.summarize-section-6",
+      "producer": "gateway.clauses",
+      "facet": "section:6"
+    },
+    {
+      "subscriber": "responsibility.summarize-section-7",
+      "producer": "gateway.clauses",
+      "facet": "section:7"
+    },
+    {
+      "subscriber": "responsibility.summarize-section-8",
+      "producer": "gateway.clauses",
+      "facet": "section:8"
+    },
+    {
+      "subscriber": "responsibility.risk-rollup",
+      "producer": "responsibility.summarize-section-1",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.risk-rollup",
+      "producer": "responsibility.summarize-section-2",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.risk-rollup",
+      "producer": "responsibility.summarize-section-3",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.risk-rollup",
+      "producer": "responsibility.summarize-section-4",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.risk-rollup",
+      "producer": "responsibility.summarize-section-5",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.risk-rollup",
+      "producer": "responsibility.summarize-section-6",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.risk-rollup",
+      "producer": "responsibility.summarize-section-7",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.risk-rollup",
+      "producer": "responsibility.summarize-section-8",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.exec-summary",
+      "producer": "responsibility.risk-rollup",
+      "facet": "risk"
+    },
+    {
+      "subscriber": "responsibility.redline-report",
+      "producer": "responsibility.exec-summary",
+      "facet": "@atomic"
+    }
+  ],
+  "entry_points": [
+    "gateway.clauses"
+  ],
+  "acyclic": true
+}

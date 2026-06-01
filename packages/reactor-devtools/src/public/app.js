@@ -783,8 +783,34 @@ function createApp(snapshot) {
       }
     }
   }
+  // ---- Authored beats override (data-driven captions). When the served state
+  // carries an authored `beats.json` (`snapshot.beats`), we build a
+  // `park-frame → caption` map from its beats and PREFER an authored caption on
+  // that beat's park frame over the computed observatory caption above. A
+  // state-dir with no `beats.json` (e.g. the agent-observatory) has no
+  // `snapshot.beats`, so this map is empty and `captionFor` falls back to the
+  // computed `CAPTIONS` exactly as before — the observatory is unchanged.
+  const BEAT_CAPTION_BY_FRAME = new Map();
+  if (snapshot.beats && Array.isArray(snapshot.beats.beats)) {
+    for (const b of snapshot.beats.beats) {
+      if (
+        b &&
+        typeof b.park === "number" &&
+        typeof b.caption === "string" &&
+        b.caption
+      ) {
+        BEAT_CAPTION_BY_FRAME.set(b.park, b.caption);
+      }
+    }
+  }
   function captionFor(f) {
-    return f ? CAPTIONS[f.index] ?? null : null;
+    if (!f) return null;
+    // Prefer the authored beat caption on a beat's park frame; otherwise fall
+    // back to the computed caption (the original observatory behavior).
+    if (BEAT_CAPTION_BY_FRAME.has(f.index)) {
+      return BEAT_CAPTION_BY_FRAME.get(f.index);
+    }
+    return CAPTIONS[f.index] ?? null;
   }
   const captionEl = document.getElementById("herocaption");
   function showCaption(text) {

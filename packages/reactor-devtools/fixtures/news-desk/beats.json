@@ -1,0 +1,78 @@
+{
+  "scenario": "news-desk",
+  "title": "12 feeds, 1,000 updates an hour. Your morning brief only re-writes when something actually happened.",
+  "beats": [
+    {
+      "name": "cold-boot",
+      "park": 28,
+      "from": 0,
+      "to": 28,
+      "holdMs": 2600,
+      "caption": "the desk wires up · 12 feeds, the cluster, the brief — lit once"
+    },
+    {
+      "name": "quiet",
+      "park": 45,
+      "from": 29,
+      "to": 53,
+      "holdMs": 2800,
+      "caption": "1,000 updates an hour · every re-tick memo-skips · cost flat near zero"
+    },
+    {
+      "name": "self-tick",
+      "park": 47,
+      "from": 46,
+      "to": 47,
+      "holdMs": 2400,
+      "caption": "self-tick audit floor · the Briefing re-checks itself · no event, no cost"
+    },
+    {
+      "name": "hero-breaking-story",
+      "park": 60,
+      "from": 54,
+      "to": 60,
+      "holdMs": 3800,
+      "caption": "HERO: Reuters breaks a quake · one lane lights · the brief re-writes ONCE"
+    },
+    {
+      "name": "dedup-diamond",
+      "park": 66,
+      "from": 61,
+      "to": 66,
+      "holdMs": 3400,
+      "caption": "the SAME quake hits AP · the cluster dedupes it · the Briefing does NOT re-render"
+    },
+    {
+      "name": "second-event",
+      "park": 78,
+      "from": 73,
+      "to": 79,
+      "holdMs": 3200,
+      "caption": "a NEW story (a merger) on Bloomberg · the brief re-writes again · surprise, not volume"
+    },
+    {
+      "name": "red-fail",
+      "park": 83,
+      "from": 81,
+      "to": 83,
+      "holdMs": 3000,
+      "caption": "a corrupt AFP dispatch fails RED · no downstream · the prior brief stands"
+    },
+    {
+      "name": "recover-spike",
+      "park": 89,
+      "from": 84,
+      "to": 90,
+      "holdMs": 3600,
+      "caption": "AFP recovers GREEN · a third real story lands · the tallest brief spike fires"
+    },
+    {
+      "name": "final-quiet",
+      "park": 109,
+      "from": 91,
+      "to": 109,
+      "holdMs": 2600,
+      "caption": "the wires go quiet again · cost back to flat · the brief holds"
+    }
+  ]
+}

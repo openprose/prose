@@ -36,7 +36,16 @@
 // =============================================================================
 
 import { spawn, execFileSync, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, renameSync, statSync, rmSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  renameSync,
+  statSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
 import process from "node:process";
@@ -44,18 +53,49 @@ import process from "node:process";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG_DIR = resolve(__dirname, "..");
 const REPO_ROOT = resolve(PKG_DIR, "..", "..");
-const FIXTURE_DIR = join(PKG_DIR, "fixtures", "agent-observatory");
 const CLI_JS = join(PKG_DIR, "dist", "cli.js");
-const OUT_DIR = resolve(
-  REPO_ROOT,
-  "..",
-  "openprose",
-  "planning",
-  "plans",
-  "2026-05-31-reactor-devtools",
-  "demo",
-  "recording",
-);
+
+// ---------------------------------------------------------------------------
+// Which fixture to record. Default = the agent-observatory (unchanged behavior,
+// hardcoded BEATS below, artifacts → demo/recording/). Pass another fixture id
+// via `FIXTURE=<id>` env or the first CLI argv to record a demo-suite scenario;
+// then FIXTURE_DIR → fixtures/<id>, BEATS come from that dir's beats.json, and
+// artifacts land in demo-suite/<id>/recording/.
+//   FIXTURE=monorepo-ci node scripts/record-demo.mjs
+//   node scripts/record-demo.mjs monorepo-ci
+// ---------------------------------------------------------------------------
+const FIXTURE_RAW = (process.env.FIXTURE || process.argv[2] || "").trim();
+// "observatory" / "agent-observatory" / "" all mean the default observatory.
+const IS_OBSERVATORY =
+  FIXTURE_RAW === "" ||
+  FIXTURE_RAW === "observatory" ||
+  FIXTURE_RAW === "agent-observatory";
+const FIXTURE_ID = IS_OBSERVATORY ? "agent-observatory" : FIXTURE_RAW;
+const FIXTURE_DIR = join(PKG_DIR, "fixtures", FIXTURE_ID);
+// Stable artifact base name (observatory keeps its historical name).
+const ARTIFACT_BASE = IS_OBSERVATORY ? "observatory-demo" : `${FIXTURE_ID}-demo`;
+const OUT_DIR = IS_OBSERVATORY
+  ? resolve(
+      REPO_ROOT,
+      "..",
+      "openprose",
+      "planning",
+      "plans",
+      "2026-05-31-reactor-devtools",
+      "demo",
+      "recording",
+    )
+  : resolve(
+      REPO_ROOT,
+      "..",
+      "openprose",
+      "planning",
+      "plans",
+      "2026-05-31-reactor-devtools",
+      "demo-suite",
+      FIXTURE_ID,
+      "recording",
+    );
 
 const PORT = Number(process.env.PORT || 4571);
 const HOST = "127.0.0.1";
@@ -76,7 +116,7 @@ const VIEWPORT = { width: 1280, height: 720 };
 // `from`/`to` = the inclusive step range the recorder ArrowRight-drives so the
 // moving pulses for that beat actually fire on camera.
 // ---------------------------------------------------------------------------
-const BEATS = [
+const OBSERVATORY_BEATS = [
   // cold-boot: park at 21 (Agent Dashboard renders last) so the still shows the
   // WHOLE graph lit-floor once — the establishing "it lights up" shot.
   { name: "cold-boot", park: 21, from: 0, to: 21, holdMs: 2600, caption: "the graph lights up once" },
@@ -112,6 +152,43 @@ const BEATS = [
   // fully out of the window → a genuinely flat bookend, the inverse of the spike.
   { name: "final-quiet", park: 91, from: 75, to: 91, holdMs: 2600, caption: "it goes quiet again · cost back to flat" },
 ];
+
+// Resolve the beat timeline. The observatory uses its hardcoded BEATS above (so
+// the default recording is byte-for-byte the same as today). Any other fixture
+// reads its authored beats from `<FIXTURE_DIR>/beats.json` — the SAME file the
+// SPA reads for its data-driven captions — so the recording and the live view
+// narrate identically.
+function resolveBeats() {
+  if (IS_OBSERVATORY) return OBSERVATORY_BEATS;
+  const beatsPath = join(FIXTURE_DIR, "beats.json");
+  if (!existsSync(beatsPath)) {
+    throw new Error(
+      `fixture "${FIXTURE_ID}" has no beats.json at ${beatsPath} — ` +
+        `regenerate the fixture (and copy its beats.json) first`,
+    );
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(readFileSync(beatsPath, "utf8"));
+  } catch (e) {
+    throw new Error(`could not parse ${beatsPath}: ${String(e?.message || e)}`);
+  }
+  const beats = Array.isArray(parsed?.beats) ? parsed.beats : null;
+  if (!beats || beats.length === 0) {
+    throw new Error(`${beatsPath} has no "beats" array`);
+  }
+  // Normalize each beat to the shape the driver below expects.
+  return beats.map((b, i) => ({
+    name: typeof b.name === "string" && b.name ? b.name : `beat-${i}`,
+    park: Number(b.park),
+    from: Number(typeof b.from === "number" ? b.from : b.park),
+    to: Number(typeof b.to === "number" ? b.to : b.park),
+    holdMs: Number(typeof b.holdMs === "number" ? b.holdMs : 2600),
+    caption: typeof b.caption === "string" ? b.caption : "",
+  }));
+}
+
+const BEATS = resolveBeats();
 
 const log = (...a) => console.log("[record]", ...a);
 
@@ -207,7 +284,12 @@ async function main() {
     throw new Error(`fixture state-dir not found at ${FIXTURE_DIR}`);
   }
   mkdirSync(OUT_DIR, { recursive: true });
+  // These are LARGE binary working artifacts for the user — keep them out of git
+  // (mirrors demo/recording/.gitignore). Write a '*' .gitignore in the out dir.
+  const gitignore = join(OUT_DIR, ".gitignore");
+  if (!existsSync(gitignore)) writeFileSync(gitignore, "*\n", "utf8");
   log("output dir:", OUT_DIR);
+  log("fixture:", FIXTURE_ID, "→", FIXTURE_DIR);
 
   const { chromium } = await loadPlaywright();
   ensureChromium(chromium);
@@ -359,7 +441,7 @@ async function main() {
     // Rename the hashed Playwright file to a stable name unless KEEP_WEBM=1.
     let finalWebm = webmPath;
     if (!process.env.KEEP_WEBM) {
-      finalWebm = join(OUT_DIR, "observatory-demo.webm");
+      finalWebm = join(OUT_DIR, `${ARTIFACT_BASE}.webm`);
       if (finalWebm !== webmPath) {
         if (existsSync(finalWebm)) rmSync(finalWebm);
         renameSync(webmPath, finalWebm);
@@ -370,7 +452,7 @@ async function main() {
     // --- ffmpeg → mp4 ------------------------------------------------------
     let mp4Path = null;
     if (!process.env.SKIP_MP4 && existsSync(FFMPEG)) {
-      mp4Path = join(OUT_DIR, "observatory-demo.mp4");
+      mp4Path = join(OUT_DIR, `${ARTIFACT_BASE}.mp4`);
       log(`transcoding → ${mp4Path} …`);
       try {
         execFileSync(

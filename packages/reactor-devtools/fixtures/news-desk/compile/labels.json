@@ -1,0 +1,20 @@
+{
+  "ingress.wire-feeds": "Feed Inbox",
+  "gateway.wire-feeds": "Wire Feeds",
+  "responsibility.normalize-reuters": "Normalize [Reuters]",
+  "responsibility.normalize-ap": "Normalize [Ap]",
+  "responsibility.normalize-bloomberg": "Normalize [Bloomberg]",
+  "responsibility.normalize-afp": "Normalize [Afp]",
+  "responsibility.normalize-dpa": "Normalize [Dpa]",
+  "responsibility.normalize-kyodo": "Normalize [Kyodo]",
+  "responsibility.normalize-pti": "Normalize [Pti]",
+  "responsibility.normalize-tass": "Normalize [Tass]",
+  "responsibility.normalize-efe": "Normalize [Efe]",
+  "responsibility.normalize-ansa": "Normalize [Ansa]",
+  "responsibility.normalize-yonhap": "Normalize [Yonhap]",
+  "responsibility.normalize-xinhua": "Normalize [Xinhua]",
+  "responsibility.dedup-cluster": "Dedup Cluster",
+  "responsibility.topic-index": "Topic Index",
+  "responsibility.briefing": "Briefing",
+  "responsibility.headline": "Headline"
+}

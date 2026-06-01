@@ -75,6 +75,38 @@ export interface OpenedStateDir {
    * `{}` when absent. Carried through to {@link ReplaySnapshot.labels}.
    */
   readonly labels: Record<string, string>;
+  /**
+   * The optional authored beat map from `<state-dir>/beats.json` — a director's
+   * cut of the replay (scenario title + park-frame captions), or `null` when the
+   * state-dir has no `beats.json`. Carried through to {@link ReplaySnapshot.beats}
+   * so the SPA can PREFER an authored caption on a beat's park frame over the
+   * generic computed caption. Pure presentation data per state-dir; the viewer
+   * stays generic and unchanged when no `beats.json` is present.
+   */
+  readonly beats: BeatsMap | null;
+}
+
+/** One authored beat of a scenario recording (a park frame + its caption). */
+export interface Beat {
+  /** Stable beat name (e.g. `"hero-dark-lane"`). */
+  readonly name: string;
+  /** The receipt index the recording parks on for this beat. */
+  readonly park: number;
+  /** Inclusive scrub-range start the beat covers. */
+  readonly from: number;
+  /** Inclusive scrub-range end the beat covers. */
+  readonly to: number;
+  /** How long the recorder holds the parked still, in ms. */
+  readonly holdMs: number;
+  /** The authored one-line caption shown on the beat's park frame. */
+  readonly caption: string;
+}
+
+/** The authored beat map read from `<state-dir>/beats.json`. */
+export interface BeatsMap {
+  readonly scenario: string;
+  readonly title: string;
+  readonly beats: readonly Beat[];
 }
 
 /**
@@ -95,7 +127,47 @@ export function openStateDir(
   const topology = readTopology(stateDir);
   const worldModels = openWorldModels(stateDir);
   const labels = readLabels(stateDir);
-  return { stateDir, session, topology, worldModels, labels };
+  const beats = readBeats(stateDir);
+  return { stateDir, session, topology, worldModels, labels, beats };
+}
+
+/**
+ * Read the optional `<state-dir>/beats.json` (an authored {@link BeatsMap}), or
+ * `null` if absent or malformed. Pure read; beats are presentation data carried
+ * by the state-dir so the SPA stays generic — a state-dir without `beats.json`
+ * (e.g. the agent-observatory) renders exactly as before with computed captions.
+ * Defensive: a non-object / wrong-shaped file is treated as "no beats".
+ */
+export function readBeats(stateDir: string): BeatsMap | null {
+  const path = join(stateDir, "beats.json");
+  if (!existsSync(path)) return null;
+  try {
+    const raw = JSON.parse(readFileSync(path, "utf8")) as unknown;
+    if (raw === null || typeof raw !== "object") return null;
+    const obj = raw as Record<string, unknown>;
+    if (!Array.isArray(obj.beats)) return null;
+    const beats: Beat[] = [];
+    for (const b of obj.beats as unknown[]) {
+      if (b === null || typeof b !== "object") continue;
+      const o = b as Record<string, unknown>;
+      if (typeof o.park !== "number" || typeof o.caption !== "string") continue;
+      beats.push({
+        name: typeof o.name === "string" ? o.name : "",
+        park: o.park,
+        from: typeof o.from === "number" ? o.from : o.park,
+        to: typeof o.to === "number" ? o.to : o.park,
+        holdMs: typeof o.holdMs === "number" ? o.holdMs : 0,
+        caption: o.caption,
+      });
+    }
+    return {
+      scenario: typeof obj.scenario === "string" ? obj.scenario : "",
+      title: typeof obj.title === "string" ? obj.title : "",
+      beats,
+    };
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -334,6 +406,15 @@ export interface ReplaySnapshot {
    * formatter uses the same map so its one-liners read the same as the video.
    */
   readonly labels: Record<string, string>;
+  /**
+   * The optional authored beat map from `<state-dir>/beats.json` (a director's
+   * cut: scenario title + per-beat park-frame captions), or `null` when absent.
+   * When present the SPA builds a `park-frame → caption` map from these beats and
+   * PREFERS it over the computed observatory captions; when absent (e.g. the
+   * agent-observatory) the SPA falls back to its computed captions, so that
+   * scenario is byte-for-byte unchanged. Pure presentation data per state-dir.
+   */
+  readonly beats: BeatsMap | null;
 }
 
 /**
@@ -409,6 +490,7 @@ export function buildSnapshot(opened: OpenedStateDir): ReplaySnapshot {
     costRollup: projectCostRollup(session),
     hasTopology: topology !== null,
     labels: opened.labels,
+    beats: opened.beats,
   };
 }
 

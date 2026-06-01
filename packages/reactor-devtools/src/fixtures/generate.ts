@@ -13,6 +13,11 @@ import { resolve, join } from "node:path";
 
 import { generateMaskedRelayFixture } from "./masked-relay";
 import { generateAgentObservatoryFixture } from "./agent-observatory";
+import { generateMonorepoCiFixture } from "./monorepo-ci";
+import { generateNewsDeskFixture } from "./news-desk";
+import { generateInboxTriageFixture } from "./inbox-triage";
+import { generateContractRedlineFixture } from "./contract-redline";
+import { generateResearchTreeFixture } from "./research-tree";
 
 function packageRoot(): string {
   // dist/fixtures/generate.js → package root is two dirs up from dist/fixtures.
@@ -41,6 +46,31 @@ const TARGETS: Record<string, Target> = {
     name: "agent-observatory",
     defaultDir: join(packageRoot(), "fixtures", "agent-observatory"),
     generate: generateAgentObservatoryFixture,
+  },
+  "monorepo-ci": {
+    name: "monorepo-ci",
+    defaultDir: join(packageRoot(), "fixtures", "monorepo-ci"),
+    generate: generateMonorepoCiFixture,
+  },
+  "news-desk": {
+    name: "news-desk",
+    defaultDir: join(packageRoot(), "fixtures", "news-desk"),
+    generate: generateNewsDeskFixture,
+  },
+  "inbox-triage": {
+    name: "inbox-triage",
+    defaultDir: join(packageRoot(), "fixtures", "inbox-triage"),
+    generate: generateInboxTriageFixture,
+  },
+  "contract-redline": {
+    name: "contract-redline",
+    defaultDir: join(packageRoot(), "fixtures", "contract-redline"),
+    generate: generateContractRedlineFixture,
+  },
+  "research-tree": {
+    name: "research-tree",
+    defaultDir: join(packageRoot(), "fixtures", "research-tree"),
+    generate: generateResearchTreeFixture,
   },
 };
 
