@@ -89,12 +89,28 @@ export function formatDoctorReport(report: DoctorReport): string {
   return lines.join('\n');
 }
 
+/** Options for {@link runDoctor}. */
+export interface DoctorCommandOptions {
+  /**
+   * Force offline mode (sets REACTOR_OFFLINE=1 for the process) BEFORE the
+   * report is gathered, so the global `--offline` flag is honestly reflected in
+   * the `offline mode` line — matching every other command's handling of the
+   * flag. Doctor itself stays keyless either way (it never loads the model
+   * surface), so forcing offline only changes what it reports, not what it does.
+   */
+  readonly offline?: boolean;
+}
+
 /**
  * Run the doctor command. Returns the process exit code (0 = healthy-for-offline).
  */
 export async function runDoctor(
+  options: DoctorCommandOptions = {},
   write: (line: string) => void = (line) => process.stdout.write(line + '\n'),
 ): Promise<number> {
+  if (options.offline === true) {
+    process.env['REACTOR_OFFLINE'] = '1';
+  }
   const report = await collectDoctorReport();
   write(formatDoctorReport(report));
   return report.healthyForOffline ? 0 : 1;
