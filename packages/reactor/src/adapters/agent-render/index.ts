@@ -139,6 +139,14 @@ export interface AgentRenderConfig {
   readonly workspaceRoot?: string;
   /** Optional folded sandbox (architecture.md §5.3) for `sandbox_exec`. */
   readonly sandbox?: RenderSandboxRunner;
+  /**
+   * Per-command `shell_exec` timeout (ms) for the cwd-rooted {@link LocalShell}
+   * (Change C). Threaded into {@link createCwdTools} as `{ timeoutMs }`, so a
+   * caller (the CLI's `[sandbox].shell_timeout_ms`) can tune the bound the render's
+   * shell enforces. When unset, the shell keeps {@link DEFAULT_SHELL_TIMEOUT_MS}
+   * (300_000) — the default is UNCHANGED, the passthrough is opt-in.
+   */
+  readonly shellTimeoutMs?: number;
   /** Decoding temperature. Defaults to 0 (greedy; 05 §4.1). */
   readonly temperature?: number;
   /** Best-effort reproducibility seed, passed through `providerData.seed`. */
@@ -255,7 +263,15 @@ export function createAgentRender(
     // any sub-agent it spawns (SPEC §3.6 — a helper shares the parent's affordances).
     const renderTools: Tool<AgentRenderContext>[] = [
       ...createRenderTools(),
-      ...createCwdTools(workingDir),
+      // Change C: thread the caller-supplied per-command shell timeout into the
+      // cwd-rooted LocalShell. Unset → createCwdTools keeps DEFAULT_SHELL_TIMEOUT_MS,
+      // so the default render is byte-for-byte unchanged (the passthrough is opt-in).
+      ...createCwdTools(
+        workingDir,
+        config.shellTimeoutMs !== undefined
+          ? { timeoutMs: config.shellTimeoutMs }
+          : undefined,
+      ),
     ];
 
     // The generic sub-agent primitive (SPEC §3.6 / step 6.5). The render spawns a

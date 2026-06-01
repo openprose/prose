@@ -49,6 +49,7 @@ import { compilePostconditions } from "../postcondition";
 import {
   createAgentRender,
   type CompiledContractView,
+  type RenderSandboxRunner,
 } from "../adapters/agent-render";
 import type { Cost, Fingerprint } from "../shapes";
 import type { ReconcilerTopology } from "../reactor";
@@ -301,6 +302,24 @@ export interface RunProjectRender {
   readonly seed?: number;
   /** Max agentic turns per render. */
   readonly maxTurns?: number;
+  /**
+   * Change C — the folded render sandbox (architecture.md §5.3), passed through to
+   * {@link createAgentRender}'s `sandbox` so a caller-supplied
+   * {@link RenderSandboxRunner} reaches the live render's `sandbox_exec` tool. The
+   * SDK still ships NO concrete runner; CONSTRUCTING one stays a CLI concern (this
+   * is a TYPE only). Unset → the live render has no sandbox (`sandbox_exec`
+   * declines), exactly as today. Ignored when {@link buildRender} is supplied
+   * (the offline fake owns its own body).
+   */
+  readonly sandbox?: RenderSandboxRunner;
+  /**
+   * Change C — the per-command `shell_exec` timeout (ms), passed through to
+   * {@link createAgentRender}'s `shellTimeoutMs` so the cwd-rooted shell the render
+   * runs commands in is bounded by the caller's value (the CLI's
+   * `[sandbox].shell_timeout_ms`). Unset → the shell keeps its 300_000 ms default,
+   * exactly as today. Ignored when {@link buildRender} is supplied.
+   */
+  readonly shellTimeoutMs?: number;
 }
 
 /** Input to {@link runProject}: the compiled project + the run substrate. */
@@ -369,6 +388,13 @@ export async function runProject(
           : {}),
         ...(render.seed !== undefined ? { seed: render.seed } : {}),
         ...(render.maxTurns !== undefined ? { maxTurns: render.maxTurns } : {}),
+        // Change C: thread the caller's render sandbox + shell timeout through to
+        // createAgentRender. Both are OPTIONAL and spread the same way every other
+        // knob is — unset means the construction is byte-for-byte what it was today.
+        ...(render.sandbox !== undefined ? { sandbox: render.sandbox } : {}),
+        ...(render.shellTimeoutMs !== undefined
+          ? { shellTimeoutMs: render.shellTimeoutMs }
+          : {}),
       });
 
   // GOTCHA 1: mount each node with the canonicalizer its canonicalizer-SESSION
