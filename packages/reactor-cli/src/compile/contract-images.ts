@@ -57,8 +57,9 @@ export function loadContractSet(directory: string): ContractImage[] {
  */
 export function enumerateContractFiles(directory: string): string[] {
   const out: string[] = [];
+  let visited = 0;
   const walk = (dir: string, depth: number): void => {
-    if (depth > MAX_WALK_DEPTH) {
+    if (depth > MAX_WALK_DEPTH || visited > MAX_WALK_ENTRIES) {
       return;
     }
     let entries: string[];
@@ -68,6 +69,10 @@ export function enumerateContractFiles(directory: string): string[] {
       return;
     }
     for (const entry of entries) {
+      if (visited > MAX_WALK_ENTRIES) {
+        return;
+      }
+      visited++;
       if (entry.startsWith('.') || entry === 'node_modules') {
         continue;
       }
@@ -95,6 +100,16 @@ export function enumerateContractFiles(directory: string): string[] {
 
 /** Depth cap for the contract walk (defense-in-depth alongside the symlink skip). */
 const MAX_WALK_DEPTH = 64;
+
+/**
+ * Total-entries budget for the contract walk. The depth cap + symlink skip stop
+ * an INFINITE walk, but resolving the project dir from a default cwd of `.` means
+ * `doctor` / `compile --check` run from a huge root (e.g. `/`, with `/proc` +
+ * `/sys`) would still scan for a very long time. This budget bounds the worst
+ * case so the keyless preflight always returns promptly; a real `.prose` project
+ * has far fewer than this many non-ignored entries.
+ */
+const MAX_WALK_ENTRIES = 20000;
 
 /** Slice raw contract markdown into a {@link ContractImage} (no semantic parse). */
 export function sliceContract(text: string, path: string): ContractImage {

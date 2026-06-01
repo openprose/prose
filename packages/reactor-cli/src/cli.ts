@@ -354,13 +354,18 @@ export async function main(argv: string[]): Promise<number> {
   try {
     await program.parseAsync(argv);
   } catch (err) {
-    const commanderCode = (err as { code?: string } | undefined)?.code;
-    if (commanderCode !== undefined) {
-      // A commander control-flow signal: help/version are a clean 0; every other
-      // parser signal (unknownCommand/unknownOption/missingArgument/…) is a usage error.
-      return COMMANDER_SUCCESS_CODES.has(commanderCode) ? 0 : 2;
+    const code = (err as { code?: string } | undefined)?.code;
+    // ONLY a genuine commander parser signal is a usage error. Commander
+    // namespaces its codes `commander.*`; real runtime errors (ENOENT,
+    // ECONNREFUSED, ENOTFOUND, an agents-SDK failure …) ALSO carry a `.code`, so
+    // we must NOT mistake them for a usage signal and swallow them as a silent
+    // exit 2. Anything that is not `commander.*` rethrows and the caller prints
+    // it (exit 1) — a failing command must never exit silently.
+    if (typeof code === "string" && code.startsWith("commander.")) {
+      // help/version are a clean 0; every other parser signal is a usage error (2).
+      return COMMANDER_SUCCESS_CODES.has(code) ? 0 : 2;
     }
-    throw err; // a non-commander error — let the caller's catch report it (exit 1).
+    throw err; // a real error — let the caller's catch report it (exit 1).
   }
   return code;
 }

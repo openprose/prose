@@ -227,6 +227,21 @@ export async function runReceiptsCommand(
 
   if (sub === 'verify') {
     const audit = projectReceiptsAudit(view);
+    // An empty/unreadable ledger is NOT a verified chain — never print a green
+    // "ALL OK" on zero receipts (a trust trap for an audit tool). Distinguish
+    // "no receipts found" from "verified an intact chain", and exit nonzero.
+    if (audit.receipts === 0) {
+      if (options.json === true) {
+        write(JSON.stringify({ ...audit, ok: false, empty: true }));
+      } else {
+        write(
+          'receipts verify: no receipts found in this state dir — nothing to ' +
+            'verify. Run `reactor run`/`reactor serve` to populate the trail, or ' +
+            'point --state-dir at a populated ledger.',
+        );
+      }
+      return 1;
+    }
     if (options.json === true) {
       write(JSON.stringify(audit));
     } else {

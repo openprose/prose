@@ -212,13 +212,26 @@ export function formatRunReport(report: RunReport): string {
   lines.push('reactor run');
   lines.push('');
   lines.push('  dispositions:');
-  for (const d of report.dispositions) {
-    lines.push(`    ${d.node.padEnd(28)} ${d.disposition}`);
+  if (report.dispositions.length === 0) {
+    lines.push('    (no nodes woke — nothing to reconcile)');
+  } else {
+    for (const d of report.dispositions) {
+      lines.push(`    ${d.node.padEnd(28)} ${d.disposition}`);
+    }
   }
   lines.push('');
   lines.push(`  receipts       ${report.receipts}`);
   lines.push(
     `  run cost       fresh=${report.cost.fresh} reused=${report.cost.reused}`,
   );
+  if (report.receipts === 0) {
+    lines.push('');
+    lines.push(
+      '  note: nothing rendered. A one-shot `run` boots and drains to ' +
+        'quiescence; a gateway only wakes once its connector stages an arrival. ' +
+        'Stage one with `reactor trigger <gateway> --data @item.json`, or run ' +
+        '`reactor serve` (which polls the configured connectors on cadence).',
+    );
+  }
   return lines.join('\n');
 }

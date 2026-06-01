@@ -52,6 +52,8 @@ export interface DoctorReport {
   offlineForced: boolean;
   /** The project's render sandbox mode + (for `docker`) daemon availability. */
   sandbox: { mode: SandboxMode; dockerAvailable?: boolean };
+  /** The open-prose SKILL bundle (the render VM): resolved root + presence. */
+  skill: { root: string; present: boolean };
   /** The durable state directory + whether it is writable (or creatable). */
   stateDir: { path: string; writable: boolean };
   /** Compiled-IR freshness vs. the current contracts. */
@@ -79,6 +81,64 @@ export interface DoctorCommandOptions extends ConfigOverrides {
   readonly live?: boolean;
   /** Machine-readable JSON output. */
   readonly json?: boolean;
+}
+
+/**
+ * Probe for the open-prose SKILL bundle (the render VM) the way the SDK resolves
+ * it for a user (instructions.ts): `REACTOR_SKILL_PATH` → the copy bundled into
+ * the installed SDK package → the host skill dirs (`~/.claude`, `~/.codex`,
+ * `~/.agents`). Keyless (pure `fs`), so it stays on the offline report path.
+ * Reports the first present root, else a standard install location for the
+ * "missing" message. Does NOT gate offline health — the keyless surface
+ * (`status`, `topology`, `compile --check`, devtools replay) needs no skill.
+ */
+function probeSkillBundle(): { root: string; present: boolean } {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const fs = require('fs') as typeof import('fs');
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const path = require('path') as typeof import('path');
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const os = require('os') as typeof import('os');
+
+  const candidates: string[] = [];
+  const env = process.env['REACTOR_SKILL_PATH'];
+  if (env !== undefined && env.length > 0) {
+    candidates.push(env.endsWith('.md') ? env : path.join(env, 'SKILL.md'));
+  }
+  // The copy bundled into the installed SDK package (its prepack step).
+  try {
+    const entry = require.resolve('@openprose/reactor');
+    let dir = path.dirname(entry);
+    for (let i = 0; i < 6; i++) {
+      if (fs.existsSync(path.join(dir, 'package.json'))) {
+        candidates.push(path.join(dir, 'skill', 'open-prose', 'SKILL.md'));
+        break;
+      }
+      const parent = path.dirname(dir);
+      if (parent === dir) {
+        break;
+      }
+      dir = parent;
+    }
+  } catch {
+    // SDK not resolvable — `sdk.resolved` already reports that distinctly.
+  }
+  const home = os.homedir();
+  for (const r of ['.claude', '.codex', '.agents']) {
+    candidates.push(path.join(home, r, 'skills', 'open-prose', 'SKILL.md'));
+  }
+  for (const c of candidates) {
+    try {
+      if (fs.existsSync(c)) {
+        return { root: path.dirname(c), present: true };
+      }
+    } catch {
+      // ignore an unreadable candidate
+    }
+  }
+  const fallback =
+    candidates[0] ?? path.join(home, '.claude', 'skills', 'open-prose', 'SKILL.md');
+  return { root: path.dirname(fallback), present: false };
 }
 
 /** Determine whether the durable state dir is writable (creating it if absent). */
@@ -135,6 +195,7 @@ export async function collectDoctorReport(
     liveDeps,
     offlineForced: isOfflineForced(),
     sandbox: sandboxReport,
+    skill: probeSkillBundle(),
     stateDir: { path: stateDir, writable: stateWritable },
     ir,
     healthyForOffline,
@@ -292,6 +353,20 @@ export function formatDoctorReport(report: DoctorReport): string {
   for (const dep of report.liveDeps) {
     lines.push(`  live dep       ${dep.name}: ${mark(dep.present)}`);
   }
+  if (report.liveDeps.some((d) => !d.present)) {
+    lines.push(
+      '                 (a globally-installed `reactor` resolves these from the ' +
+        'GLOBAL npm tree — install with `npm i -g @openai/agents zod`)',
+    );
+  }
+  lines.push(
+    `  skill bundle   ${
+      report.skill.present
+        ? `present (${report.skill.root})`
+        : `MISSING at ${report.skill.root} — needed only for compile/render; ` +
+          'install with `npx skills add openprose/prose` or set REACTOR_SKILL_PATH'
+    }`,
+  );
   lines.push(
     `  sandbox        mode ${report.sandbox.mode}` +
       (report.sandbox.mode === 'docker'
