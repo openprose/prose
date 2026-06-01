@@ -132,15 +132,33 @@ export async function runCompileCommand(
 
   // Cache miss / --force: run the compile sessions (model surface, dynamic import).
   const { runCompile } = await import('../compile/run-compile');
-  const result = await runCompile({
-    contractsDir,
-    model,
-    sdkVersion,
-    temperature: config.model.temperature,
-    maxTurns: config.model.max_turns,
-    ...(options.testProviders !== undefined ? { providers: options.testProviders } : {}),
-    ...(options.testSkill !== undefined ? { skill: options.testSkill } : {}),
-  });
+  let result: Awaited<ReturnType<typeof runCompile>>;
+  try {
+    result = await runCompile({
+      contractsDir,
+      model,
+      sdkVersion,
+      temperature: config.model.temperature,
+      maxTurns: config.model.max_turns,
+      ...(options.testProviders !== undefined ? { providers: options.testProviders } : {}),
+      ...(options.testSkill !== undefined ? { skill: options.testSkill } : {}),
+    });
+  } catch (err) {
+    // A live-provider failure (auth/billing/rate-limit) must NOT exit 0 with a raw
+    // stack — map it to a one-line actionable message and exit non-zero so a CI
+    // `compile` step fails loudly. Anything else propagates to the top-level
+    // handler (which prints it and exits 1).
+    const hint = providerErrorHint(err);
+    if (hint === undefined) {
+      throw err;
+    }
+    if (options.json === true) {
+      write(JSON.stringify({ status: 'error', message: hint }));
+    } else {
+      write(`reactor compile failed: ${hint}`);
+    }
+    return 1;
+  }
 
   persistIR(stateDir, result.ir);
 
@@ -168,6 +186,37 @@ export async function runCompileCommand(
 // ---------------------------------------------------------------------------
 // internals
 // ---------------------------------------------------------------------------
+
+/**
+ * Map a live-provider failure (auth / billing / rate-limit) to a ONE-LINE
+ * actionable message. Returns `undefined` for anything else, so a non-provider
+ * error propagates normally (and the top-level handler prints + exits 1). Keeps
+ * the keyless escape hatch in view (the devtools replay needs no key).
+ */
+function providerErrorHint(err: unknown): string | undefined {
+  const e = err as { status?: number; message?: string } | undefined;
+  const text = String(e?.message ?? err ?? '');
+  const status = typeof e?.status === 'number' ? e.status : undefined;
+  const matches = (code: number, ...words: string[]): boolean =>
+    status === code || words.some((w) => text.includes(w));
+  if (matches(402, '402', 'Insufficient credits', 'insufficient_quota')) {
+    return (
+      'the model provider returned 402 — out of credits/quota. Top up your ' +
+      'OpenRouter account, or use the keyless `reactor-devtools` replay (no key ' +
+      'needed). Confirm the exact error with `reactor doctor --live`.'
+    );
+  }
+  if (matches(401, '401', 'Unauthorized', 'invalid api key', 'No auth credentials')) {
+    return (
+      'the model provider returned 401 — bad or missing key. Check ' +
+      'OPENROUTER_API_KEY (`reactor doctor` reports its presence without printing it).'
+    );
+  }
+  if (matches(429, '429', 'rate limit', 'Too Many Requests')) {
+    return 'the model provider returned 429 — rate limited. Retry shortly, or lower --concurrency.';
+  }
+  return undefined;
+}
 
 import * as path from 'path';
 import {

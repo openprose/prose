@@ -156,11 +156,14 @@ export function formatInspect(p: InspectProjection): string {
   return lines.join('\n');
 }
 
-export function formatLogs(entries: readonly LogEntry[]): string {
+export function formatLogs(
+  entries: readonly LogEntry[],
+  header = 'reactor logs',
+): string {
   if (entries.length === 0) {
-    return 'reactor logs\n\n  (no receipts)';
+    return `${header}\n\n  (no receipts)`;
   }
-  const lines: string[] = ['reactor logs', ''];
+  const lines: string[] = [header, ''];
   for (const e of entries) {
     lines.push(
       `  ${e.node.padEnd(28)} ${e.status.padEnd(8)} wake=${e.wake_source.padEnd(8)} ` +

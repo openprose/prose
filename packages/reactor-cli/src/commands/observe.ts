@@ -269,7 +269,7 @@ export async function runReceiptsCommand(
   if (options.json === true) {
     write(JSON.stringify({ receipts: entries.length, entries }));
   } else {
-    write(formatLogs(entries));
+    write(formatLogs(entries, 'reactor receipts'));
   }
   return 0;
 }

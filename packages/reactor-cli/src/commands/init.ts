@@ -177,11 +177,16 @@ reactor doctor
 #    Compile runs intelligent sessions and needs a live key (OPENROUTER_API_KEY).
 reactor compile
 
-# 3. Run once: boot, drain to quiescence, print dispositions + cost.
-reactor run
-
-# 4. Or serve: boot the durable host + continuity loop, with an HTTP surface.
+# 3. Drive the gateway to a real receipt. This scaffold's 'inbox' gateway uses a
+#    'static' connector (a fixed item list) that is STAGED BY 'serve' (which polls
+#    connectors), so 'serve' is what produces the first receipts here:
 reactor serve --http 8080
+#    (Ctrl-C to stop; then 'reactor-devtools .reactor --describe' replays the run.)
+
+# 4. 'reactor run' boots and drains to quiescence — for graphs whose connectors
+#    emit on their own. On this static-gateway scaffold it has nothing to ingest
+#    (it reports "0 nodes woke"); to stage ONE arrival into a one-shot run, use:
+#    reactor trigger inbox --data '{"id":"1","text":"hello"}'
 \`\`\`
 
 \`reactor compile --check\` exits non-zero while the IR is stale (e.g. right after
@@ -281,6 +286,8 @@ export function formatInitReport(report: InitReport): string {
   lines.push('  Next:');
   lines.push('    reactor doctor      # check your environment');
   lines.push('    reactor compile     # compile the contracts (needs a live key)');
-  lines.push('    reactor run         # boot, drain, report');
+  lines.push('    reactor serve --http 8080   # drive the static gateway to a receipt');
+  lines.push('  (`reactor run` boots+drains but won\'t ingest this static gateway —');
+  lines.push('   use `serve`, or `reactor trigger inbox --data @item.json` for one arrival.)');
   return lines.join('\n');
 }

@@ -174,7 +174,11 @@ export async function runRunCommand(
     reactor.ledger.all().map((r) => ({ node: r.node, cost: r.cost })),
   );
   emitReport(report, options, write);
-  return 0;
+  // A run with a `failed` node must exit NONZERO — a failed render is the audit
+  // signal the whole pitch rests on, and CI/agents read the exit code. (The
+  // documented exit table: 0 = ran clean, 1 = a node failed.)
+  const anyFailed = report.dispositions.some((d) => d.disposition === 'failed');
+  return anyFailed ? 1 : 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -200,7 +204,10 @@ function emitReport(
   write: (line: string) => void,
 ): void {
   if (options.json === true) {
-    write(JSON.stringify({ status: 'ran', ...report }));
+    // Always emit a structured object — even on a no-op — so a piped `--json`
+    // consumer never sees zero bytes. `ok` is false when any node failed.
+    const ok = !report.dispositions.some((d) => d.disposition === 'failed');
+    write(JSON.stringify({ status: 'ran', ok, ...report }));
     return;
   }
   write(formatRunReport(report));
@@ -224,7 +231,15 @@ export function formatRunReport(report: RunReport): string {
   lines.push(
     `  run cost       fresh=${report.cost.fresh} reused=${report.cost.reused}`,
   );
-  if (report.receipts === 0) {
+  if (report.dispositions.some((d) => d.disposition === 'failed')) {
+    lines.push('');
+    lines.push(
+      '  note: a node FAILED — its prior truth stands and no successful-render ' +
+        'receipt was written. The cause is usually a live render error (e.g. a ' +
+        'provider 402/401); run `reactor doctor --live` to see it. `run` exits ' +
+        'non-zero when any node fails.',
+    );
+  } else if (report.receipts === 0) {
     lines.push('');
     lines.push(
       '  note: nothing rendered. A one-shot `run` boots and drains to ' +

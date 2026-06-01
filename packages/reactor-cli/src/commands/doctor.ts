@@ -61,6 +61,12 @@ export interface DoctorReport {
   /** Only present when `--live` was requested. */
   live?: LiveSmokeResult;
   healthyForOffline: boolean;
+  /**
+   * Cleared to spend a key: offline-healthy AND a live key AND both model peers
+   * AND the SKILL bundle AND a writable state dir are all present. Tells the user
+   * at a glance whether `reactor compile`/`run` can actually render.
+   */
+  healthyForLive: boolean;
 }
 
 function nodeMajor(version: string): number {
@@ -188,17 +194,28 @@ export async function collectDoctorReport(
   // Healthy-for-offline requires only: a supported node and a resolvable SDK.
   let healthyForOffline = major >= MIN_NODE_MAJOR && sdk.resolved;
 
+  const skill = probeSkillBundle();
+  const liveKeyPresent = hasOpenRouterKey();
+  // Cleared to spend a key: everything a live `compile`/`run` render needs.
+  const healthyForLive =
+    healthyForOffline &&
+    liveKeyPresent &&
+    liveDeps.every((d) => d.present) &&
+    skill.present &&
+    stateWritable;
+
   const report: DoctorReport = {
     node: { version, major, ok: major >= MIN_NODE_MAJOR },
     sdk: { resolved: sdk.resolved, version: sdk.version },
-    liveKeyPresent: hasOpenRouterKey(),
+    liveKeyPresent,
     liveDeps,
     offlineForced: isOfflineForced(),
     sandbox: sandboxReport,
-    skill: probeSkillBundle(),
+    skill,
     stateDir: { path: stateDir, writable: stateWritable },
     ir,
     healthyForOffline,
+    healthyForLive,
   };
 
   if (options.live === true) {
@@ -389,6 +406,11 @@ export function formatDoctorReport(report: DoctorReport): string {
     report.healthyForOffline
       ? '  status: healthy-for-offline'
       : '  status: NOT healthy-for-offline',
+  );
+  lines.push(
+    report.healthyForLive
+      ? '  live:   READY — key + model peers + SKILL present; `reactor compile`/`run` can render'
+      : '  live:   not ready — needs a key + `@openai/agents`+`zod` + the SKILL bundle (the keyless surface works without them)',
   );
   return lines.join('\n');
 }
