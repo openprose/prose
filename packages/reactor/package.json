@@ -89,7 +89,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "bundle-skill": "node scripts/bundle-skill.mjs",
-    "prepack": "node scripts/bundle-skill.mjs",
+    "prepack": "pnpm build && node scripts/bundle-skill.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test:runtime": "pnpm build && node --test $(find dist -name '*.test.js' -type f | sort)",
     "test": "pnpm typecheck && pnpm test:runtime",
