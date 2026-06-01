@@ -13,6 +13,7 @@ import type {
   NodeTrace,
   ReceiptsAudit,
 } from '../observe/projections';
+import type { CostRollup } from '../run/cost';
 
 function tokens(c: { fresh: number; reused: number }): string {
   return `fresh=${c.fresh} reused=${c.reused}`;
@@ -52,6 +53,42 @@ export function formatStatus(p: StatusProjection): string {
     lines.push('  cost by node:');
     for (const node of nodes) {
       lines.push(`    ${node.padEnd(28)} ${tokens(p.run.byNode[node]!)}`);
+    }
+  }
+  return lines.join('\n');
+}
+
+/**
+ * Render the `receipts cost` rollup (cli.md §5.4): the run-side fresh/reused
+ * totals, the disposition tallies, and the by-surprise-cause / by-node breakdowns
+ * that make "spend scales with surprise" legible. This is the cost half of
+ * {@link formatStatus} over a bare {@link CostRollup} — the human sibling of the
+ * `--json` cost output (the prior human branch wrongly printed the receipts audit).
+ */
+export function formatCost(c: CostRollup): string {
+  const lines: string[] = [];
+  lines.push('reactor receipts cost');
+  lines.push('');
+  lines.push(`  receipts       ${c.receipts}`);
+  lines.push(`  run cost       ${tokens(c.total)}`);
+  lines.push(
+    `  dispositions   rendered=${c.dispositions.rendered} ` +
+      `skipped=${c.dispositions.skipped} failed=${c.dispositions.failed}`,
+  );
+  const causes = Object.keys(c.bySurpriseCause).sort();
+  if (causes.length > 0) {
+    lines.push('');
+    lines.push('  cost by surprise cause:');
+    for (const cause of causes) {
+      lines.push(`    ${cause.padEnd(12)} ${tokens(c.bySurpriseCause[cause]!)}`);
+    }
+  }
+  const nodes = Object.keys(c.byNode).sort();
+  if (nodes.length > 0) {
+    lines.push('');
+    lines.push('  cost by node:');
+    for (const node of nodes) {
+      lines.push(`    ${node.padEnd(28)} ${tokens(c.byNode[node]!)}`);
     }
   }
   return lines.join('\n');

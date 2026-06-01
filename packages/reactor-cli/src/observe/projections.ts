@@ -47,9 +47,17 @@ export interface StatusProjection {
   readonly run: CostRollup;
 }
 
-/** Project the run-side cost rollup off the receipt trail (the shared projector). */
-export function projectCost(view: StateView): CostRollup {
-  return rollupCost(toCostReceipts(view.receipts()));
+/**
+ * Project the run-side cost rollup off the receipt trail (the shared projector).
+ * When `node` is given, the rollup is scoped to that node's receipts (so
+ * `receipts cost --node X` reports X's spend, not the whole trail's); otherwise
+ * it summarizes every receipt.
+ */
+export function projectCost(view: StateView, node?: string): CostRollup {
+  const receipts = toCostReceipts(view.receipts());
+  return rollupCost(
+    node === undefined ? receipts : receipts.filter((r) => r.node === node),
+  );
 }
 
 /** Build the `status` projection (compile cost beside run cost). */
