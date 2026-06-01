@@ -45,12 +45,44 @@ export interface GatewayConfig {
   readonly connector?: Readonly<Record<string, unknown>>;
 }
 
+/**
+ * One hosted reactor in a multi-reactor `serve` host (`cli.md` §5.5). Each entry
+ * names an ISOLATED reactor: its own contracts directory + its own state-dir
+ * (durable substrate + schedule + cursors), so one reactor never corrupts
+ * another. A single-reactor host omits `reactors:` entirely (the default — the
+ * top-level `state`/`gateways` ARE the one reactor).
+ */
+export interface ReactorEntry {
+  /** The reactor's name (the HTTP namespace prefix `/<name>/...`). */
+  readonly name: string;
+  /** The contracts directory (where this reactor's `.prose.md` live). Default the project dir. */
+  readonly project: string;
+  /** This reactor's durable state directory (isolated). */
+  readonly stateDir: string;
+  /** This reactor's gateways (external-driven entry points). */
+  readonly gateways: readonly GatewayConfig[];
+}
+
 /** The fully-resolved, typed config the commands consume. */
 export interface ReactorConfig {
   readonly state: StateConfig;
   readonly model: ModelConfig;
   readonly sandbox: SandboxConfig;
   readonly gateways: readonly GatewayConfig[];
+  /**
+   * The hosted reactors (`cli.md` §5.5). A single-reactor project leaves
+   * `reactors:` empty and {@link resolveReactors} synthesizes ONE entry from the
+   * top-level `state`/`project`/`gateways`. A multi-reactor host declares N.
+   */
+  readonly reactors: readonly RawReactorEntry[];
+}
+
+/** A loosely-typed `reactors:` list entry as parsed from `reactor.yml`. */
+export interface RawReactorEntry {
+  readonly name?: string;
+  readonly project?: string;
+  readonly state_dir?: string;
+  readonly gateways?: readonly GatewayConfig[];
 }
 
 /** Per-command override knobs (from global flags / env), applied over the file. */
@@ -78,6 +110,7 @@ export const DEFAULT_CONFIG: ReactorConfig = Object.freeze({
     shell_timeout_ms: 300000,
   },
   gateways: [],
+  reactors: [],
 });
 
 /** The config file name looked up at the project root. */
@@ -113,7 +146,75 @@ export function loadConfig(overrides: ConfigOverrides = {}): ReactorConfig {
     model,
     sandbox: merged.sandbox,
     gateways: merged.gateways,
+    reactors: merged.reactors,
   };
+}
+
+/**
+ * A fully-resolved hosted reactor: absolute paths + concrete gateways. The
+ * commands' multi-reactor host ({@link import('./run/host')}) consumes these.
+ */
+export interface ResolvedReactor {
+  readonly name: string;
+  /** Absolute contracts directory. */
+  readonly projectDir: string;
+  /** Absolute, isolated state directory. */
+  readonly stateDir: string;
+  readonly gateways: readonly GatewayConfig[];
+}
+
+/**
+ * Resolve the hosted-reactor list from a loaded {@link ReactorConfig} (`cli.md`
+ * §5.5). When `reactors:` is empty the project is SINGLE-reactor: synthesize one
+ * entry named `"default"` from the top-level `state`/`project`/`gateways`. When
+ * `reactors:` is declared, each entry is ISOLATED — its `state_dir` defaults to
+ * `<top-level state.dir>/<name>` (so siblings never share a substrate) and its
+ * `project` defaults to the top-level project dir. Paths resolve to absolute
+ * (rooted at the project dir) so every command agrees on one durable location.
+ *
+ * `singleReactor` is true exactly when the host serves ONE reactor — the HTTP
+ * surface omits the `/<name>` prefix in that case (`cli.md` §5.5).
+ */
+export function resolveReactors(
+  config: ReactorConfig,
+  overrides: ConfigOverrides = {},
+): { readonly reactors: readonly ResolvedReactor[]; readonly singleReactor: boolean } {
+  const projectDir = path.resolve(overrides.projectDir ?? '.');
+  const topStateDir = config.state.dir;
+
+  if (config.reactors.length === 0) {
+    return {
+      reactors: [
+        {
+          name: 'default',
+          projectDir,
+          stateDir: topStateDir,
+          gateways: config.gateways,
+        },
+      ],
+      singleReactor: true,
+    };
+  }
+
+  const reactors = config.reactors.map((entry, index): ResolvedReactor => {
+    const name = entry.name ?? `reactor-${index}`;
+    const entryProject = entry.project
+      ? path.resolve(projectDir, entry.project)
+      : projectDir;
+    const entryStateDir = entry.state_dir
+      ? path.isAbsolute(entry.state_dir)
+        ? entry.state_dir
+        : path.resolve(projectDir, entry.state_dir)
+      : path.join(topStateDir, name);
+    return {
+      name,
+      projectDir: entryProject,
+      stateDir: entryStateDir,
+      gateways: entry.gateways ?? [],
+    };
+  });
+
+  return { reactors, singleReactor: reactors.length === 1 };
 }
 
 /** Read + parse the config file; returns a partial config (absent ⇒ `{}`). */
@@ -138,6 +239,7 @@ interface RawConfig {
   model?: MutableModel;
   sandbox?: MutableSandbox;
   gateways?: GatewayConfig[];
+  reactors?: RawReactorEntry[];
 }
 
 /** Shape a parsed YAML value into the partial raw config (best-effort, typed). */
@@ -184,6 +286,23 @@ function shapeRawConfig(tree: unknown): Partial<RawConfig> {
     out.gateways = gateways.filter(isRecord).map(shapeGateway);
   }
 
+  const reactors = tree['reactors'];
+  if (Array.isArray(reactors)) {
+    out.reactors = reactors.filter(isRecord).map(shapeReactorEntry);
+  }
+
+  return out;
+}
+
+/** Shape one `reactors:` list entry (best-effort, typed). */
+function shapeReactorEntry(raw: Record<string, unknown>): RawReactorEntry {
+  const out: { -readonly [K in keyof RawReactorEntry]?: RawReactorEntry[K] } = {};
+  if (typeof raw['name'] === 'string') out.name = raw['name'];
+  if (typeof raw['project'] === 'string') out.project = raw['project'];
+  if (typeof raw['state_dir'] === 'string') out.state_dir = raw['state_dir'];
+  if (Array.isArray(raw['gateways'])) {
+    out.gateways = raw['gateways'].filter(isRecord).map(shapeGateway);
+  }
   return out;
 }
 
@@ -216,6 +335,7 @@ function mergeConfig(base: ReactorConfig, over: Partial<RawConfig>): ReactorConf
     model,
     sandbox,
     gateways: over.gateways ?? [...base.gateways],
+    reactors: over.reactors ?? [...base.reactors],
   };
 }
 

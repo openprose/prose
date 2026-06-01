@@ -101,12 +101,17 @@ export function buildProgram(onExitCode: (code: number) => void = () => {}): Com
   program
     .command('serve')
     .description(
-      'Boot a single durable reactor and run the continuity driver loop (Ctrl-C to stop)',
+      'Boot the durable reactor host (one or many reactors) and run the continuity driver loop (Ctrl-C to stop)',
     )
     .option('--poll-interval <ms>', 'continuity poll cadence ceiling in ms (default 60000)')
+    .option(
+      '--concurrency <n>',
+      'across-reactor worker-pool bound (default 1; within-reactor parallelism is a future enhancement)',
+    )
+    .option('--http <port>', 'bind the built-in HTTP server on <port> (trigger/status/health/cost)')
     .action(
       async (
-        cmdOptions: { pollInterval?: string },
+        cmdOptions: { pollInterval?: string; concurrency?: string; http?: string },
         cmd: Command,
       ) => {
         const globals = cmd.optsWithGlobals() as {
@@ -119,6 +124,12 @@ export function buildProgram(onExitCode: (code: number) => void = () => {}): Com
           cmdOptions.pollInterval !== undefined
             ? Number(cmdOptions.pollInterval)
             : undefined;
+        const concurrency =
+          cmdOptions.concurrency !== undefined
+            ? Number(cmdOptions.concurrency)
+            : undefined;
+        const httpPort =
+          cmdOptions.http !== undefined ? Number(cmdOptions.http) : undefined;
         onExitCode(
           await runServeCommand({
             ...(globals.stateDir !== undefined ? { stateDir: globals.stateDir } : {}),
@@ -127,6 +138,12 @@ export function buildProgram(onExitCode: (code: number) => void = () => {}): Com
             ...(globals.offline !== undefined ? { offline: globals.offline } : {}),
             ...(pollIntervalMs !== undefined && Number.isFinite(pollIntervalMs)
               ? { pollIntervalMs }
+              : {}),
+            ...(concurrency !== undefined && Number.isFinite(concurrency)
+              ? { concurrency }
+              : {}),
+            ...(httpPort !== undefined && Number.isFinite(httpPort)
+              ? { httpPort }
               : {}),
           }),
         );
