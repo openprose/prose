@@ -168,9 +168,13 @@ export function buildProgram(onExitCode: (code: number) => void = () => {}): Com
       'across-reactor worker-pool bound (default 1; within-reactor parallelism is a future enhancement)',
     )
     .option('--http <port>', 'bind the built-in HTTP server on <port> (trigger/status/health/cost)')
+    .option(
+      '--host <addr>',
+      'HTTP bind address (default 127.0.0.1, loopback only; v1 has NO auth — use 0.0.0.0 only behind a proxy)',
+    )
     .action(
       async (
-        cmdOptions: { pollInterval?: string; concurrency?: string; http?: string },
+        cmdOptions: { pollInterval?: string; concurrency?: string; http?: string; host?: string },
         cmd: Command,
       ) => {
         const globals = cmd.optsWithGlobals() as {
@@ -204,6 +208,7 @@ export function buildProgram(onExitCode: (code: number) => void = () => {}): Com
             ...(httpPort !== undefined && Number.isFinite(httpPort)
               ? { httpPort }
               : {}),
+            ...(cmdOptions.host !== undefined ? { httpHost: cmdOptions.host } : {}),
           }),
         );
       },

@@ -45,12 +45,22 @@ interface Route {
 }
 
 /**
+ * The default bind address — LOOPBACK only. v1 has NO auth (an unauthenticated
+ * `POST /<node>/trigger` can cause model spend), so the server must NOT be
+ * exposed to the network unless the operator explicitly asks (`--host`). Binding
+ * `127.0.0.1` by default keeps a `reactor serve --http` safe on a shared box.
+ */
+export const DEFAULT_HTTP_HOST = '127.0.0.1';
+
+/**
  * Start the HTTP server over `host` on `port` (0 ⇒ an OS-assigned port, returned
- * in the handle — convenient for tests). Resolves once listening.
+ * in the handle — convenient for tests), bound to `bindHost` (default
+ * {@link DEFAULT_HTTP_HOST} — loopback). Resolves once listening.
  */
 export function startHttpServer(
   host: HostHandle,
   port: number,
+  bindHost: string = DEFAULT_HTTP_HOST,
 ): Promise<HttpServerHandle> {
   const server = http.createServer((req, res) => {
     handleRequest(host, req, res).catch((err) => {
@@ -60,7 +70,7 @@ export function startHttpServer(
 
   return new Promise<HttpServerHandle>((resolve, reject) => {
     server.once('error', reject);
-    server.listen(port, () => {
+    server.listen(port, bindHost, () => {
       const addr = server.address();
       const boundPort =
         addr !== null && typeof addr === 'object' ? addr.port : port;

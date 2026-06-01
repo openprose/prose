@@ -452,5 +452,10 @@ export async function runDoctor(
   } else {
     write(formatDoctorReport(report));
   }
-  return report.healthyForOffline ? 0 : 1;
+  // Exit 0 only when healthy-for-offline AND (no --live requested, or the live
+  // smoke passed). A requested `--live` that FAILS must exit non-zero so it
+  // composes in CI as the documented exit-code table promises — while a
+  // live-only failure still never changes the offline-health verdict itself.
+  const liveOk = options.live !== true || report.live?.ok === true;
+  return report.healthyForOffline && liveOk ? 0 : 1;
 }

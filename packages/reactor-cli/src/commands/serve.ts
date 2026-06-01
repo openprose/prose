@@ -48,7 +48,11 @@ import {
   type CostRollup,
 } from '../run/cost';
 import { bootHost, type PerReactorTestSeam } from '../run/host';
-import { startHttpServer, type HttpServerHandle } from '../run/http-server';
+import {
+  startHttpServer,
+  DEFAULT_HTTP_HOST,
+  type HttpServerHandle,
+} from '../run/http-server';
 import {
   augmentTopologyWithIngress,
   loadConnectorPlugin,
@@ -156,6 +160,8 @@ export interface ServeCommandOptions extends ConfigOverrides {
   readonly concurrency?: number;
   /** Bind a tiny HTTP server on this port (`--http <port>`). */
   readonly httpPort?: number;
+  /** Bind address for the HTTP server (`--host`); default loopback (127.0.0.1). */
+  readonly httpHost?: string;
   /** Test seam (OFFLINE gate): the durable/fake substrate + render wiring. */
   readonly testAdapters?: RunAdapters;
   readonly testRender?: RunRender;
@@ -465,9 +471,20 @@ export async function runServeCommand(
 
   let httpServer: HttpServerHandle | undefined;
   if (options.httpPort !== undefined) {
-    httpServer = await startHttpServer(host, options.httpPort);
+    const bindHost = options.httpHost ?? DEFAULT_HTTP_HOST;
+    httpServer = await startHttpServer(host, options.httpPort, bindHost);
     if (options.json !== true) {
-      write(`reactor serve — HTTP on :${httpServer.port}`);
+      write(`reactor serve — HTTP on ${bindHost}:${httpServer.port}`);
+      // v1 has NO auth: an exposed POST /<node>/trigger can cause model spend.
+      const loopback =
+        bindHost === '127.0.0.1' || bindHost === '::1' || bindHost === 'localhost';
+      if (!loopback) {
+        write(
+          `  WARNING: bound to ${bindHost} (not loopback) with NO auth in v1 — an ` +
+            `unauthenticated POST /<node>/trigger can cause model spend. Put it ` +
+            `behind a reverse proxy / network policy.`,
+        );
+      }
     }
   }
 
