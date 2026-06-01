@@ -8,14 +8,18 @@
     "reactor": "dist/cli.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "examples"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
+    "build:test": "tsc -p tsconfig.test.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test:runtime": "pnpm build && node --test $(find dist -name '*.test.js' -type f | sort)",
+    "test:runtime": "pnpm build:test && node --test $(find dist-test -name '*.test.js' -type f | sort)",
     "test": "pnpm typecheck && pnpm test:runtime",
-    "test:offline": "REACTOR_OFFLINE=1 pnpm test"
+    "test:offline": "REACTOR_OFFLINE=1 pnpm test",
+    "prepublishOnly": "pnpm build"
   },
   "dependencies": {
     "commander": "^12.0.0"

@@ -12,6 +12,7 @@ import { Command } from 'commander';
 
 import { runCompileCommand } from './commands/compile';
 import { runDoctor } from './commands/doctor';
+import { runInitCommand } from './commands/init';
 import { runRunCommand } from './commands/run';
 import { runServeCommand } from './commands/serve';
 import { runTriggerCommand } from './commands/trigger';
@@ -68,16 +69,43 @@ export function buildProgram(onExitCode: (code: number) => void = () => {}): Com
     .option('--offline', 'force offline mode (REACTOR_OFFLINE=1)');
 
   program
+    .command('init')
+    .description('Scaffold a minimal .prose project (gateway + responsibility) + reactor.yml')
+    .argument('[dir]', 'target directory to scaffold into (default .)')
+    .option('--force', 'overwrite existing scaffold files (default: refuse)')
+    .action(async (dir: string | undefined, cmdOptions: { force?: boolean }, cmd: Command) => {
+      const globals = cmd.optsWithGlobals() as { json?: boolean; offline?: boolean };
+      onExitCode(
+        await runInitCommand({
+          ...(dir !== undefined ? { dir } : {}),
+          ...(cmdOptions.force !== undefined ? { force: cmdOptions.force } : {}),
+          ...(globals.json !== undefined ? { json: globals.json } : {}),
+          ...(globals.offline !== undefined ? { offline: globals.offline } : {}),
+        }),
+      );
+    });
+
+  program
     .command('doctor')
     .description(
-      'Report environment health (node, SDK, live key/deps, offline mode)',
+      'Report environment health (node, SDK, live key/deps, offline mode, sandbox)',
     )
-    .action(async (_cmdOptions: Record<string, unknown>, cmd: Command) => {
-      const globals = cmd.optsWithGlobals() as { offline?: boolean };
+    .option('--live', 'additionally probe one live smoke render (requires a key + deps)')
+    .action(async (cmdOptions: { live?: boolean }, cmd: Command) => {
+      const globals = cmd.optsWithGlobals() as {
+        offline?: boolean;
+        stateDir?: string;
+        project?: string;
+        json?: boolean;
+      };
       onExitCode(
-        await runDoctor(
-          globals.offline !== undefined ? { offline: globals.offline } : {},
-        ),
+        await runDoctor({
+          ...(globals.offline !== undefined ? { offline: globals.offline } : {}),
+          ...(globals.stateDir !== undefined ? { stateDir: globals.stateDir } : {}),
+          ...(globals.project !== undefined ? { projectDir: globals.project } : {}),
+          ...(globals.json !== undefined ? { json: globals.json } : {}),
+          ...(cmdOptions.live !== undefined ? { live: cmdOptions.live } : {}),
+        }),
       );
     });
 

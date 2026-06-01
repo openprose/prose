@@ -1,0 +1,22 @@
+# Quickstart example — a gateway (inbox) + a responsibility (digest).
+state:
+  dir: ./.reactor
+
+model:
+  provider: openrouter
+  render_model: google/gemini-3.5-flash
+  compile_model: google/gemini-3.5-flash
+  temperature: 0
+  max_turns: 200
+
+sandbox:
+  mode: none
+  shell_timeout_ms: 300000
+
+gateways:
+  - node: inbox
+    source_id: inbox
+    connector:
+      type: static
+      id_field: id
+      items: [{ id: item-1, body: "the first item" }, { id: item-2, body: "the second item" }]
