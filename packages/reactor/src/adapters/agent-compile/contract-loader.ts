@@ -108,9 +108,13 @@ export function enumerateContractFiles(directory: string): string[] {
   // `lstat` (NOT `stat`) + never follow a symlink + a depth cap: `stat` follows
   // symlinks, so a walk rooted at/above a pseudo-fs cycle (e.g. /proc/<pid>/root
   // -> /) recurses forever and pegs a CPU. The walk must terminate from anywhere.
+  // A total-entries budget additionally bounds the merely-huge case (a walk from
+  // `/`, with /proc + /sys) so a keyless preflight always returns promptly.
   const MAX_WALK_DEPTH = 64;
+  const MAX_WALK_ENTRIES = 20000;
+  let visited = 0;
   const walk = (dir: string, depth: number): void => {
-    if (depth > MAX_WALK_DEPTH) {
+    if (depth > MAX_WALK_DEPTH || visited > MAX_WALK_ENTRIES) {
       return;
     }
     let entries: string[];
@@ -120,6 +124,10 @@ export function enumerateContractFiles(directory: string): string[] {
       return;
     }
     for (const entry of entries) {
+      if (visited > MAX_WALK_ENTRIES) {
+        return;
+      }
+      visited++;
       if (entry.startsWith(".") || entry === "node_modules") {
         continue;
       }

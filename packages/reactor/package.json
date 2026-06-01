@@ -75,6 +75,7 @@
     "!dist/**/*.test.js",
     "!dist/**/*.test.d.ts",
     "!dist/**/*.test.d.ts.map",
+    "skill/**",
     "ADOPTION.md",
     "README.md"
   ],
@@ -87,6 +88,8 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
+    "bundle-skill": "node scripts/bundle-skill.mjs",
+    "prepack": "node scripts/bundle-skill.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test:runtime": "pnpm build && node --test $(find dist -name '*.test.js' -type f | sort)",
     "test": "pnpm typecheck && pnpm test:runtime",

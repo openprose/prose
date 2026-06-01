@@ -20,6 +20,7 @@
  */
 
 import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 import {
   Agent,
@@ -45,8 +46,14 @@ export const DEFAULT_TEMPERATURE = 0;
 /** The provider label that rides into the receipt `Cost` (research §3, §4.2). */
 export const OPENROUTER_PROVIDER_LABEL = "openrouter";
 
-/** Default location of the env file holding `OPENROUTER_API_KEY`. */
-export const DEFAULT_ENV_PATH = "/Users/sl/code/openprose/.env";
+/**
+ * Default location of the `.env` fallback for `OPENROUTER_API_KEY`. The primary
+ * source is always `process.env`; this is only a convenience fallback, resolved
+ * PORTABLY — the project's `.env` (`<cwd>/.env`), overridable via
+ * `REACTOR_ENV_PATH`. Never a baked-in author path.
+ */
+export const DEFAULT_ENV_PATH =
+  process.env["REACTOR_ENV_PATH"] ?? join(process.cwd(), ".env");
 
 const OPENROUTER_API_KEY = "OPENROUTER_API_KEY";
 

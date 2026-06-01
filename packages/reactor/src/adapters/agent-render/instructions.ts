@@ -23,13 +23,74 @@
  * one filesystem read of the SKILL, so it never trips the offline-build guard.
  */
 
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { dirname, join } from "node:path";
 
 import type { RenderContext } from "../../sdk/render-atom";
 
-/** The on-disk location of the open-prose SKILL system prompt (the render VM). */
-export const DEFAULT_SKILL_PATH =
-  "/Users/sl/code/prose/skills/open-prose/SKILL.md";
+/**
+ * Resolve the open-prose SKILL bundle's `SKILL.md` PORTABLY. The render IS the
+ * SKILL (architecture.md §1), so the SDK must locate it on ANY machine — never a
+ * baked-in author path. Resolution order (first existing wins):
+ *   1. `REACTOR_SKILL_PATH` — explicit override (a `SKILL.md` file or its dir).
+ *   2. A copy bundled into this package at pack time (`<pkg>/skill/open-prose`),
+ *      so a bare `npm i @openprose/reactor` carries its own render VM.
+ *   3. The monorepo source checkout — walk up for `skills/open-prose/SKILL.md`.
+ *   4. A skill installed via `npx skills add openprose/prose` — the standard host
+ *      skill dirs (`~/.claude`, `~/.codex`, `~/.agents`).
+ * If none exist, return the first standard install path so the missing-bundle
+ * error (skill-preflight.ts / {@link readSkill}) names a place to install to.
+ */
+function resolveSkillMarkdownPath(): string {
+  const override = process.env["REACTOR_SKILL_PATH"];
+  if (typeof override === "string" && override.length > 0) {
+    return override.endsWith(".md") ? override : join(override, "SKILL.md");
+  }
+
+  const candidates: string[] = [];
+  // 2. bundled-into-package copy (prepack copies repo `skills/open-prose` here).
+  //    __dirname = <pkg>/dist/adapters/agent-render → <pkg> is three up.
+  candidates.push(
+    join(__dirname, "..", "..", "..", "skill", "open-prose", "SKILL.md"),
+  );
+  // 3. monorepo source checkout: walk up for skills/open-prose/SKILL.md.
+  let dir = __dirname;
+  for (let i = 0; i < 8; i++) {
+    candidates.push(join(dir, "skills", "open-prose", "SKILL.md"));
+    const parent = dirname(dir);
+    if (parent === dir) {
+      break;
+    }
+    dir = parent;
+  }
+  // 4. host-installed skill bundle (where `npx skills add` puts it).
+  const home = homedir();
+  const installed = [".claude", ".codex", ".agents"].map((r) =>
+    join(home, r, "skills", "open-prose", "SKILL.md"),
+  );
+  candidates.push(...installed);
+
+  for (const c of candidates) {
+    try {
+      if (existsSync(c)) {
+        return c;
+      }
+    } catch {
+      // ignore an unreadable candidate and try the next
+    }
+  }
+  // None found — name a standard install location so the error is actionable.
+  return installed[0] ?? join(home, ".claude", "skills", "open-prose", "SKILL.md");
+}
+
+/**
+ * The on-disk location of the open-prose SKILL system prompt (the render VM),
+ * resolved portably at load (see {@link resolveSkillMarkdownPath}). Overridable
+ * per call via {@link readSkill}'s argument and per project via the CLI's
+ * `reactor.yml` `skill_root` (which sets `REACTOR_SKILL_PATH`).
+ */
+export const DEFAULT_SKILL_PATH = resolveSkillMarkdownPath();
 
 /** The separator between composed instruction layers. */
 const LAYER_SEPARATOR = "\n\n---\n\n";
@@ -66,7 +127,18 @@ export interface CompiledContractView {
  * without it.
  */
 export function readSkill(skillPath: string = DEFAULT_SKILL_PATH): string {
-  return readFileSync(skillPath, "utf8");
+  try {
+    return readFileSync(skillPath, "utf8");
+  } catch {
+    // A render cannot be a render without the SKILL, so fail with a LEGIBLE,
+    // actionable error (never a bare ENOENT on an internal path).
+    throw new Error(
+      `open-prose SKILL bundle not found at ${skillPath}. The render IS the ` +
+        `SKILL, so compile and render need it on disk. Install it with ` +
+        `\`npx skills add openprose/prose\`, or set REACTOR_SKILL_PATH to a ` +
+        `checkout's skills/open-prose directory.`,
+    );
+  }
 }
 
 /**
