@@ -16,7 +16,7 @@ ships:
   model, std/co, CLI surface.
 - [02-ReactorHarness.md](./02-ReactorHarness.md) — **the Reactor
   Harness**, bundled as the **CLI/Server**: the runtime control architecture
-  (loop, invariants, kernel, memoization, forecast, receipts, composition)
+  (loop, invariants, the reconciler, memoization, forecast, receipts, composition)
   that *serves* these contracts.
 - [03-ReactorPattern.md](./03-ReactorPattern.md) — **the
   Reactor-Native Authoring Pattern**, **SKILL-bundled but harness-governed**:
@@ -42,7 +42,7 @@ This file has three parts, mirroring its companions:
 OpenProse is a contract format, runtime doctrine, skill package, standard
 library, and CLI wrapper for making agent work readable, reviewable, versioned,
 reusable, and inspectable. A user writes one `*.prose.md` file of durable
-intent. A Prose Complete agent host reads it, wires the services, spawns
+intent. A Prose Complete agent host reads it, wires the responsibility DAG, spawns
 isolated bounded sessions, passes artifacts through declared bindings, and
 leaves a durable receipt under an OpenProse root.
 
@@ -67,35 +67,40 @@ Part II is honest about how far the current skill has climbed toward them.
   There is no second surface where intent lives — not a prompt, not a tool
   config, not a hidden judge prompt (Tenet 1).
 - **The responsibility is the program (the inversion).** A standing goal
-  written as durable intent is the top-level authored object. A `kind: system`
-  is one beat of its loop; bounded service/system work is the **N=0
-  (no-continuity) special case**, not the default.
+  written as durable intent is the top-level authored object — a
+  `kind: responsibility`, mounted as a node whose truth is maintained over time.
+  Node-ness comes from *mounting*, never from statefulness: a bounded,
+  no-continuity job is a `kind: function` (a called, ephemeral helper that binds
+  `### Parameters` and returns `### Returns`), not a lesser kind of loop.
 - **The same Markdown runs on any Prose Complete host (Tenet 1).** Every
   contract authored against this spec executes identically on any compliant
   host. A fresh `git clone` is a first-class experience; a long-lived host
   adds reliability and scale, never semantics.
 - **Intelligence lives in the model, not in deterministic code (Tenet 2).**
-  The compiler is itself a Prose service the model runs; deterministic code
-  only validates IR, wires connectors, enforces boundaries, schedules, and
-  signs. The language never grows a config format to encode what the model
-  should decide.
-- **The authored surface is small, stable, and complete.** Six kinds
-  (`service`, `system`, `test`, `pattern`, `responsibility`, `gateway`), the
-  canonical `###` section set (enumerated in Part II), the `### Runtime`
-  `persist` setting and the `### Memory` contract it gates, and the header
-  hierarchy are the entire language. New capability is new *semantics* in
-  skill docs, never new syntax or a YAML overlay.
-- **A sensing service may return a stable content identity (Harness invariant
-  5).** A service that observes the world to inform a judgment may declare, as
-  an ordinary `### Ensures` output, a *stable content identity*: a cheaply
-  computed value that changes if and only if the semantically relevant
-  observed content changed. This is not new syntax — it is one `### Ensures`
-  item, optionally diffed against a `### Memory` ledger key. It is what lets
-  the harness reuse a prior verdict instead of re-judging an unchanged world;
-  absent it, maintenance cost scales with time, not surprise. The
-  *normalization convention* (hash of what, normalized how) is deliberately
-  not fixed here — see [03-ReactorPattern.md](./03-ReactorPattern.md) Rules 2
-  & 5 and [02-ReactorHarness.md](./02-ReactorHarness.md) open item I.1.
+  Compilation is itself model work — intelligent sessions lower a contract into
+  its IR (the Forme topology, the per-node canonicalizer, and the postcondition
+  validators); deterministic code only validates that IR, wires connectors,
+  enforces boundaries, schedules, and signs. The language never grows a config
+  format to encode what the model should decide.
+- **The authored surface is small, stable, and complete.** Five kinds
+  (`responsibility`, `function`, `gateway`, `pattern`, `test`), the canonical
+  `###` section set (enumerated in Part II), and the header hierarchy are the
+  entire language. Persistence is conferred by *mounting* a responsibility — the
+  harness gives a mounted node its single durable world-model — not by a config
+  flag. New capability is new *semantics* in skill docs, never new syntax or a
+  YAML overlay.
+- **Material change is declared, then frozen into a fingerprint (cost scales
+  with surprise).** The author declares, inside `### Maintains`, *what counts as
+  a material change* — which fields matter, how text/sets/numbers normalize, and
+  (optionally) how the truth divides into facets. Compilation lowers that prose
+  into a deterministic **canonicalizer**, and the run phase fingerprints each
+  render's output through it. An unmoved fingerprint means the world did not
+  materially change, so the dumb reconciler skips the render at zero cost —
+  there is no judge re-deciding "did this change." Absent a material/immaterial
+  split, maintenance cost scales with the clock, not with surprise. The
+  *normalization convention* is the author's prose inside `### Maintains`; the
+  compiled mechanics are the harness's
+  ([02-ReactorHarness.md](./02-ReactorHarness.md)).
 - **The language packages reusable behavior and stays a public good.** `std`
   and `co` prove OpenProse programs compose like code. The language, runtime
   doctrine, and skill are MIT and free, forever; commerce is out of scope of
@@ -108,43 +113,65 @@ Part II is honest about how far the current skill has climbed toward them.
   semantics. The public artifact is the contract; the deployment's secrets and
   data stay private.
 
-### What the responsibility's two semantic sections mean
+### What the responsibility's load-bearing sections mean
 
 Most `###` sections are catalogued in Part II; their meaning is self-evident
-from their name. Two are not, and carry semantic load the Ideal must state
-rather than defer: `### Continuity` and `### Criteria` in a
-`kind: responsibility`.
+from their name. Three carry the semantic load of a `kind: responsibility` and
+the Ideal must state them rather than defer: `### Requires`, `### Maintains`,
+and `### Continuity`.
 
-**`### Continuity` is the author's input to forecast and memoization.** It is
-not a schedule. It names: the *freshness referents* (what makes the goal go
-stale, how fast, and which external signal — if any — announces a change); the
-*memo-breaking condition* (what makes a prior verdict no longer reusable); the
-*plan-audit horizon* (how long a no-escalation run may continue before a forced
-deep revalidation, independent of judge confidence); and *whether a cheap
-stable identity exists at all* — if "did the semantically relevant content
-change" cannot be decided more cheaply than the judgment itself, the author
-must say so, and the contract runs at forecast cadence by deliberate
-declaration, not by accident.
+**`### Maintains` is the world-model schema — the truth this node keeps
+current.** It does four jobs at once: it *types* the maintained truth; it
+carries the *canonicalization spec* (which fields are material, how they
+normalize) that compiles into the node's fingerprint; it declares *facets*
+(below); and it states *postconditions* — the obligations a render must satisfy
+before it may commit. There is no separate judge and no `### Criteria`:
+satisfaction folds into `### Maintains`, checked deterministically where it can
+be expressed as a validator and self-attested by the render where it is
+semantic. A render that cannot satisfy its postconditions commits nothing — the
+prior truth stands and a `failed` receipt records why.
 
-**`### Criteria` states satisfaction in observable referents.** Every criterion
-must point at something a judge can observe. When a criterion has no observable
-referent the correct verdict is `blocked` with a judge-authored reason routed
-to the contract author — an expected, high-value output, never an error and
-never an enumerated status.
+**Facets make subscription structural.** A `####` sub-heading inside
+`### Maintains` declares a facet — a named part of the truth. Its name is, at
+once, its *fingerprint unit* (the canonicalizer emits one token per facet, plus
+an always-on atomic token over the whole truth), its *subscription symbol* (a
+consumer names it in `### Requires`, and the reconciler wakes that consumer only
+when *that* facet's token moves — `Requires.<facet>` ↔ `Maintains.<facet>`), and
+its region of the world-model. Declaring no parts is the atomic default — one
+truth, one token — and costs nothing. This adds no new grammar; it reuses the
+heading hierarchy and the Requires↔Maintains join. *Structure is subscription.*
 
-The author writes these; the harness owns the memo, the forecast, and the
-control policy derived from them. The granular how-to — decomposition for
-memoization, the confidence gate, projection-only shapes — is the Reactor
-authoring pattern's ([03-ReactorPattern.md](./03-ReactorPattern.md)); the
-runtime mechanics are the harness's
-([02-ReactorHarness.md](./02-ReactorHarness.md)).
+**`### Requires` declares what the node subscribes to.** It names the upstream
+facets this node consumes; Forme matches each `### Requires` entry to a
+producer's `### Maintains` facet and draws the subscription edge. `### Requires`
+is the input side of the memo key: the run phase fingerprints the node's
+contract together with its subscribed inputs, and re-renders only when one of
+them moves.
 
-The full mechanics of the runtime that *serves* these contracts — memoization,
-forecast-gated quiescence, the two-timescale model-authored policy, receipts,
-composition — are **not** specified here. They are the Reactor harness's
-concern ([02-ReactorHarness.md](./02-ReactorHarness.md)). This
-document's ideal is the *language*: the contract a human or agent writes, and
-the semantics by which it is understood.
+**`### Continuity` declares the wake source — when, beyond an input change, a
+node should re-render.** It is not a schedule. A node is *input-driven* by
+default (it wakes when a subscribed facet moves); `### Continuity` adds a
+*self-driven* cadence (the truth goes stale on its own — a `valid_until`
+freshness state the node carries in its world-model, read on a forecast cadence)
+or marks a `kind: gateway` as *external-driven* (an ingress event wakes it).
+Freshness *state* lives in the world-model as data; `### Continuity` carries only
+the *policy* that reads it. When a `valid_until` lapses, the harness mechanically
+moves the affected facet's fingerprint and wakes the node — no model call to
+decide that time has passed.
+
+The author writes these; the harness owns the fingerprinting, the forecast
+cadence, the receipts, and the subscription wiring. The granular how-to —
+declaring material fields, faceting the truth, giving the world a cheap content
+identity, projection-only shapes — is the Reactor authoring pattern's
+([03-ReactorPattern.md](./03-ReactorPattern.md)); the runtime mechanics are the
+harness's ([02-ReactorHarness.md](./02-ReactorHarness.md)).
+
+The full mechanics of the runtime that *serves* these contracts — the two-phase
+compile/run split, memoization, the deterministic continuity clock, receipts,
+composition — are **not** specified here. They are the Reactor harness's concern
+([02-ReactorHarness.md](./02-ReactorHarness.md)). This document's ideal is the
+*language*: the contract a human or agent writes, and the semantics by which it
+is understood.
 
 ---
 

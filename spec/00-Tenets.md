@@ -8,10 +8,13 @@ evaluated before any new capability is considered.
 
 When the system is in tension with a tenet, the tenet wins. When two tenets
 collide, the lower-numbered tenet wins — the order below is descending
-precedence. The Harness precedence stack
-(`correctness > safety > cost > interrupt-minimization`) is the runtime
-projection of this ordering, not an independent authority:
-correctness⇄Tenets 1–3, safety⇄Tenet 4, cost/interrupt⇄Tenets 5–6.
+precedence. That ordering — correctness over safety over cost, with minimizing
+how often a human is interrupted a downstream goal rather than an authority the
+other tenets bend around — is enforced where decisions are actually made: at
+compile time, where the canonicalizer and postcondition validators are frozen,
+and in the fail-safe commit gate, where a render that cannot satisfy its
+obligations commits nothing rather than acting. It is not a separate runtime
+policy dial.
 
 ---
 
@@ -27,10 +30,12 @@ config, or a tuned judge.
 
 The model acts as a bounded *agent* — with an environment, a filesystem, and
 the ability to read, write, and run code — that dynamically explores rather
-than consuming a one-shot context. It authors judgment, compilation, and
-policy. Deterministic code validates, schedules, records, and executes what the
-agent authored, and constrains it with limits the agent cannot override — it
-never authors judgment itself.
+than consuming a one-shot context. Intelligence lives in exactly two layers it
+authors: the compilation (the canonicalizer and the postcondition validators,
+frozen once per contract) and the render (the bounded session that computes the
+next world-model). Deterministic code validates, schedules, records, and
+executes what the agent authored, and constrains it with limits the agent
+cannot override — it never decides meaning itself.
 
 ## 3. Continuity lives in the trail, not a session.
 

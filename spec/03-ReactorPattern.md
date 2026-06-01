@@ -41,9 +41,10 @@ in its light:
 > **The Reactor paradigm does not change OpenProse syntax. It inverts which
 > kind is the program.** Every section, kind, and keyword the pattern needs
 > already exists. What changes is doctrine: the responsibility is the
-> top-level authored object, the system is a fulfillment detail, and two
-> contract sections (`### Continuity`, `### Criteria`) acquire a cost and
-> decidability obligation they did not visibly carry before.
+> top-level authored object, the render is where the work happens (there is no
+> separate fulfillment system), and two contract sections (`### Maintains` and
+> `### Continuity`) carry a cost-and-reconciliation obligation they did not
+> visibly carry before.
 
 ---
 
@@ -51,54 +52,43 @@ in its light:
 
 ### The inversion
 
-`01-Language.md`'s "Mental Model" reads, in order: a prompt for one-off work, a
-contract for roles/handoffs, a `kind: system` is a dependency graph, Forme
-wires it, the VM performs it, and — last — Responsibility Runtime keeps
-standing goals true. That ordering is **system-first**. It is correct for
-bounded work and wrong for the Reactor.
-
-In the Reactor-native pattern the ordering inverts:
+`01-Language.md` settles the mental model: the **responsibility is the program**.
+A standing goal, written as durable intent, is the top-level authored object;
+everything else is derived from it.
 
 ```text
 The responsibility is the program.
-The gateway is how the world reaches it.
-The fulfillment system is an implementation detail of one beat of the loop.
-Services, patterns, Forme, and the VM are the substrate the fulfillment
-  system happens to be built from.
+A gateway is how the world reaches it.
+A function is a helper one render calls; the DAG is how responsibilities compose.
+Forme, the canonicalizer, and the VM are the substrate, never the unit of authoring.
 ```
 
-The harness doc states this as "the single-responsibility loop is the base
-case." The authoring consequence: **you do not start by writing a system. You
-start by writing one sentence of durable intent and what makes it true.** The
-system, if any, is derived from the responsibility, not the other way around.
+The authoring consequence: **you do not start by writing a system. You start by
+writing one sentence of durable intent and what makes it true** — a `### Goal`
+and a `### Maintains`. A responsibility is _served_, not _run_, but that is not a
+limitation: "not directly runnable" means "continuously reconciled," which is the
+entire point. The render of a single responsibility still runs standalone
+(language sovereignty), so there is no lesser, non-executable artifact here.
 
-This reframes a table in `01-Language.md` that currently misleads on intent. The
-"Directly runnable?" column says `service: Yes`, `system: Yes`,
-`responsibility: No`. Technically accurate — a responsibility is _served_, not
-_run_. But it implies the responsibility is a lesser, non-executable artifact.
-In the Reactor-native pattern the responsibility is the **most** load-bearing
-authored object; "not directly runnable" means "continuously reconciled," which
-is the entire point, not a limitation.
+### The canonical contract
 
-### The canonical contract set
+A Reactor-native unit of work is, at its smallest, **one file**: a
+`kind: responsibility` whose `### Maintains` declares the truth to keep current.
+It grows only as the work demands:
 
-A Reactor-native unit of work is not a file. It is a small, fixed set of files
-with distinct jobs that map one-to-one onto harness layers:
+| File | `kind:` | What the author is really writing |
+| --- | --- | --- |
+| The standing goal | `responsibility` | One `### Goal` sentence + the `### Maintains` world-model that makes it true (facets, canonicalization, postconditions) |
+| Event ingress | `gateway` | How and when the world is allowed to wake the loop |
+| A helper | `function` | A called, ephemeral computation a render invokes — `### Parameters` → `### Returns` |
 
-| File | `kind:` | Harness layer it feeds | What the author is really writing |
-| --- | --- | --- | --- |
-| The standing goal | `responsibility` | Responsibility / Contract Markdown | One decidable sentence + what makes it true |
-| Event ingress | `gateway` | Gateway | How and when the world is allowed to wake the loop |
-| Fulfillment | `system` (`persist: project`) | Fulfillment | The one beat where world-mutation is permitted |
-| Sense | `service` inside the system | Judge evidence | A read-only observation that emits a stable content identity |
-| Verdict | `service` inside the system | Judge | Cheapest-sufficient judgment + a calibrated confidence |
-| Ledger | `service` (`persist: project`) | Storage / Receipt (approx.) | The durable trail and the composition edge |
-
-The responsibility is normative and semantic. Everything else is derived
-infrastructure. A reader who understands only the responsibility understands
-the program; the rest is _how_, and is allowed to change without the intent
-changing — which is exactly the harness doc's invariant 8 ("state is
-replayable and exitable") expressed at authoring time.
+There is no separate "fulfillment system," no "sense service," no "verdict
+service," and no "ledger service": the render *is* the fulfillment, the
+canonicalizer *is* how change is sensed, the commit gate *is* the verdict, and
+the signed receipt ledger *is* the storage — all owned by the harness, not
+authored. A reader who understands the responsibility understands the program;
+the rest is _how_, and may change without the intent changing (invariant 8, at
+authoring time).
 
 ### Authoring derived from the invariants
 
@@ -107,404 +97,291 @@ table is the spine of the pattern; the prose after it only elaborates.
 
 | Harness invariant | Authoring rule it imposes |
 | --- | --- |
-| 1. Markdown is intent | The responsibility carries all semantic weight. Never push intent into the fulfillment system's prose, a prompt, or a tool config. If it matters, it is in `### Goal`/`### Criteria`/`### Constraints`. |
-| 2. Policy is model-authored, compiled, shared | Do not hand-write cadences, hysteresis, or escalation thresholds as imperative ProseScript. Express them as **semantic intent** in `### Continuity`/`### Constraints`. The harness compiles policy; the author states the policy's _shape_, not its registry. |
-| 3. Adapters are the only reason homes differ | Author no host-specific logic in contracts. Declare needs in `### Tools`/`### Environment` by name only. The same contract must run local and cloud. |
-| 4. Activations are bounded | Never write a fulfillment system that assumes it keeps running. No "while true," no in-session waiting for the next event. Continuity lives in the ledger, not in a session. |
-| 5. Cost scales with surprise | Write `### Continuity` so "did anything material change?" is **cheaply decidable**, and decompose the system so the sensing service emits a **stable content identity** the harness can memoize on. Also name the **plan-audit horizon** — the max no-escalation interval before a forced deep revalidation (recorded as a `forecast-recheck`/`plan-age` recheck). This is the rule authors most often violate. |
-| 6. The judge fails safe | Write `### Criteria` with **observable referents**. When a criterion has no referent, the correct verdict is "undecidable" — design for that as a welcome output, not an error. |
-| 7. Receipts are content-addressed | Make the ledger the explicit, structured trail: `as_of`, last-input identity, decision, evidence pointers. Treat it as the audit/composition/exit unit, not a scratch log. |
-| 8. State is replayable and exitable | Keep all durable truth in the responsibility + ledger, in plain Markdown/structured records. A reader must be able to take the contract and its trail to another harness. |
+| 1. Markdown is intent | The responsibility carries all semantic weight. Never push intent into a prompt or a tool config. If it matters, it is in `### Goal` / `### Requires` / `### Maintains`. |
+| 2. Materiality is compiled and shared | Declare *what counts as a material change* as natural language inside `### Maintains` — which fields matter, how they normalize, where the facets fall. The compile phase lowers that into a deterministic canonicalizer; you state the materiality, not the hash. |
+| 3. Adapters are the only reason homes differ | Author no host-specific logic in contracts. Declare needs in `### Tools` / `### Environment` by name only. The same contract must run local and cloud. |
+| 4. Activations are bounded | Never write a render that assumes it keeps running. No "while true," no in-session waiting for the next event. Continuity lives in the receipt ledger, not a session. |
+| 5. Cost scales with surprise | Write `### Maintains` so "did anything material change?" is **cheaply decidable** — give the truth a stable content identity and facet it so an unrelated change wakes nobody. Declare freshness (`valid_until`) in `### Continuity` so silent staleness still wakes the node. This is the rule authors most often violate. |
+| 6. The commit gate is deterministic | State satisfaction as **postconditions inside `### Maintains`** — deterministic where you can express a validator, self-attested by the render where it is semantic. There is no separate judge and no `### Criteria`. |
+| 7. Receipts are content-addressed | Trust the harness's signed receipt ledger as the audit / composition / exit unit. Do not hand-roll a scratch log. |
+| 8. State is replayable and exitable | Keep all durable truth in the responsibility's `### Maintains` world-model, in plain structured records. A reader must be able to take the contract and its trail to another harness. |
 
-### Rule 1 — `### Goal` is one decidable sentence
+### Rule 1 — `### Goal` is one standing-intent sentence
 
-A goal is a state that should remain true, written so a judge can render a
-verdict on it. Not a task ("triage the inbox"), not a deliverable ("produce a
-report"), but an invariant ("the research inbox is deduplicated, prioritized,
-and converted into action").
+A goal is a state that should remain true, not a task or a deliverable. Not
+"triage the inbox," not "produce a report," but an invariant: "the research inbox
+is deduplicated, prioritized, and converted into action."
 
-The test: could a competent judge, given evidence, say `up` / `drifting` /
-`down` about this sentence? If the sentence describes an _activity_ rather than
-a _state_, rewrite it until it describes a state. The harness doc's
-front-loaded-then-silent promise depends on this: the most valuable early
-output is "this sentence is not yet decidable, here is why," and that output is
-only possible if the sentence was _trying_ to be decidable.
+The test is no longer "could a judge score it" — there is no judge. The test is:
+**can you name the maintainable truth and declare its shape in `### Maintains`?**
+If the sentence describes an _activity_ rather than a _state_, rewrite it until
+it describes a state. A sentence whose truth has nothing observable to maintain
+against is the highest-value early signal: the first render fails, its receipt
+names the gap, and the contract author hears about it — front-loaded, then
+silent.
 
-### Rule 2 — `### Continuity` is written for forecast and memoization
+### Rule 2 — `### Continuity` declares the wake source; `### Maintains` carries the materiality
 
-This is the rule that separates a Reactor-native contract from cron-plus-prompt,
-and the one the current skill underspecifies.
+These were once one rule; they are two jobs, and conflating them is the most
+common authoring mistake.
 
-`### Continuity` is not "how often to run." It is the author's contribution to
-two harness mechanisms the author does **not** write directly:
+`### Continuity` answers **when, beyond an input change, this node should
+re-render**:
 
-- **Forecast** (the harness manufactures the minimum necessary recheck when the
-  world will not announce change). The author's job is to name the **freshness
-  referents**: what makes this goal go stale, how fast, and what external
-  signal — if any — announces a change. "New stargazers within one business
-  day" tells the harness the staleness clock; "outreach history prevents
-  duplicate contact unless new evidence" tells it the memo-breaking condition.
-- **Memoization** (unchanged input hash → reused verdict, zero tokens). The
-  author cannot write the hash, but the author _decides whether one is
-  cheaply computable_. Write Continuity so that "nothing material changed"
-  corresponds to **a stable, cheaply observed identity** — a content hash of
-  the watched artifacts, a max-timestamp, a revision number. If the only way to
-  know whether anything changed is to do the full expensive judgment, you have
-  written a contract whose cost scales with time, not surprise.
+- **Input-driven (default).** The node wakes when a subscribed `### Requires`
+  facet moves. You write nothing extra.
+- **Self-driven.** The truth goes stale on its own. Declare a `valid_until`
+  freshness window — "a stargazer count older than one business day is stale."
+  When it lapses, the continuity clock mechanically moves the facet's fingerprint
+  and wakes the node; you do not hand-write a cron.
+- **External-driven.** A `kind: gateway` turns an ingress event (webhook, queue,
+  schedule) into a wake.
 
-Concretely, a good `### Continuity` answers: what events legitimately wake this;
-what the staleness horizon is when no event fires; what condition makes a prior
-verdict no longer reusable; and what divergence is _expected and should be
-preserved rather than reconciled away_ (the policy-over-time recursion — an
-ideal layer is allowed to drift from a plan layer, and that drift is signal).
+The *memoization* half — what counts as a material change, and whether "nothing
+changed" is cheaply decidable — belongs in **`### Maintains`**, not here. Write
+`### Maintains` so an unchanged world produces an unchanged fingerprint: give the
+truth a stable content identity (a content hash, a max-timestamp, a revision) and
+facet it so an unrelated change wakes nobody. If the only way to know whether
+anything changed is to redo the full expensive render, you have written a
+contract whose cost scales with the clock, not surprise — say so deliberately
+(the node will run at freshness cadence), exactly as projection-only is a
+deliberate choice rather than a degenerate Reactor.
 
-It must also answer two questions the completeness law now makes load-bearing.
-First, the **plan-audit horizon**: how long a _no-escalation_ run may continue
-before a forced deep revalidation, independent of the shallow judge's
-confidence — the author's input to the harness's plan-age clock (Harness, _The
-completeness law_). Second, **whether a cheap stable identity exists at all**:
-if "did the semantically relevant content change" cannot be decided more
-cheaply than the judgment itself, the author must say so explicitly; the
-harness then runs this responsibility at forecast cadence, not surprise
-cadence. Silently writing such a contract as if memoization applies is not a
-correctness break — forecast still makes it safe — but it is a false cost
-promise, and the honest form declares the forecast-cadence shape deliberately,
-exactly as projection-only is a deliberate amputation rather than a degenerate
-Reactor.
+### Rule 3 — satisfaction is a postcondition in `### Maintains`, not a `### Criteria` judge
 
-### Rule 3 — `### Criteria` uses observable referents; undecidable is welcome
+There is no `### Criteria` and no judge. State what "satisfied" means as
+**postconditions inside `### Maintains`**:
 
-Every criterion must point at something a judge can observe. "Notes are
-current" is undecidable without a referent; "the release notes file's last
-commit is newer than the latest merged PR touching `src/`" is decidable.
+- **Deterministic where you can express it.** "The release-notes file's last
+  commit is newer than the latest merged PR touching `src/`" compiles into a
+  validator the harness runs at commit. If it fails, the render commits nothing.
+- **Self-attested where it is semantic.** Where the obligation cannot be reduced
+  to a validator, the render must attest it satisfied its own `### Maintains`
+  before it signs. `gateCommit` fails closed: no attestation, no commit.
 
-When a criterion genuinely has no observable referent, the Reactor-native
-author does **not** patch around it. The correct behavior is for the judge to
-return `blocked` with a natural-language reason "criterion X has no observable
-referent" and a recommended fix target (the contract author). This is the
-flagship interrupt of the entire architecture — the single highest-leverage
-thing the system can say. Author criteria _expecting_ this verdict on the first
-few activations; that front-loading is the promise, not a defect.
+When the truth genuinely has *nothing observable to maintain against*, the render
+cannot satisfy its postcondition and writes a `failed` receipt naming the gap —
+routed to the contract author. Author postconditions *expecting* this on the
+first few activations; that front-loading is the promise, not a defect. There is
+no `up`/`drifting`/`down`/`blocked` status to encode and no "undecidable" enum —
+the `failed` receipt and its reason carry it.
 
-Do not encode an "undecidable" status. The four coarse statuses (`up`,
-`drifting`, `down`, `blocked`) are the control vocabulary; undecidability is a
-judge-authored reason attached to `blocked`, lives at the English layer, and
-must never become an enum in a contract. `calibration-unattainable` is a
-second judge-authored `blocked` sub-reason of the same family: authors of
-high-stakes no-anchor responsibilities should *expect a front-loaded
-calibration spot-check interrupt* — the asymptote-toward-silence promise
-applied to calibration, not just decidability.
+### Rule 4 — `### Invariants` draws the actuation boundary
 
-### Rule 4 — `### Constraints` draws the actuation boundary
-
-`### Constraints` is where the author quarantines world-mutation. The
-render/commit split from the harness doc's React metaphor (judge is pure:
-world → status; fulfillment is the only commit-phase side effect) is enforced
-at authoring time here.
+`### Invariants` (the section that absorbs the old `### Constraints`) is where the
+author quarantines world-mutation — the authoring-time expression of the
+render/commit split: a render may act, but only the canonicalized published truth
+re-enters the memo, and `### Invariants` bounds what the render may touch.
 
 Two boundary shapes recur:
 
-- **Full Reactor.** Fulfillment may mutate the world (send the email, update
-  the briefing, write the register). `### Constraints` bounds _how_ (rate,
-  scope, prohibited actions, "leave the final send to a human").
+- **Full Reactor.** The render may mutate the world (send the email, update the
+  briefing, write the register). `### Invariants` bounds _how_ (rate, scope,
+  prohibited actions, "leave the final send to a human").
 - **Projection-only Reactor.** The author forbids all world-mutation except
-  writing the projection itself. This is a legitimate, common shape: an
-  observe-only overseer, a dashboard that must stay true, an audit that watches
-  but never touches. It uses the judge and projection half of the architecture
-  and deliberately amputates the fulfillment/escalation arm. Say so explicitly:
-  "the only writable surface is &lt;the projection&gt;; never modify, signal, or
+  writing the published truth itself: an observe-only overseer, a dashboard that
+  must stay true, an audit that watches but never touches. Say so explicitly:
+  "the only writable surface is the published truth; never modify, signal, or
   write into the observed system."
 
 A projection-only contract is not a degenerate Reactor. It keeps every cost and
-audit property; it simply declines the reconcile-the-world payoff. Authors
-should choose it deliberately, not back into it.
+audit property; it simply declines the reconcile-the-world payoff. Choose it
+deliberately, not by backing into it.
 
-### Rule 5 — the fulfillment system is decomposed for memoization and variable depth
+### Rule 5 — write `### Maintains` so the harness can memoize
 
-The fulfillment `kind: system` is where authors most often write the
-anti-pattern: one big service that re-derives everything every time. The
-Reactor-native decomposition is fixed and small:
+Authors most often write the anti-pattern: a render that re-derives everything
+every time. The fix is not a service decomposition — it is shaping `### Maintains`
+so the dumb reconciler can skip:
 
-1. **Sense** — a read-only service that observes the world and returns,
-   alongside the observation, a **stable content identity** (hash, max-ts,
-   revision). This identity is what makes harness memoization possible. Mark it
-   `persist: project` only if it needs the prior identity to diff.
-2. **Judge** — a service that takes the sensed evidence and emits a coarse
-   status **and a calibrated confidence**. Cheapest sufficient form by default.
-3. **Escalate (conditional)** — a deeper judgment, instantiated as a pattern
-   (`std/patterns/fan-out`, `dialectic`, `oversight`), invoked **only** when the
-   shallow judge is uncertain or stakes/forecast warrant. Variable depth is an
-   authoring decision: a `choice`/`if` in `### Execution` that gates the
-   expensive path on the shallow judge's confidence.
-4. **Fulfill or project** — the single permitted effect, bounded by
-   `### Constraints`.
-5. **Ledger** — a `persist: project` service that records the receipt-shaped
-   trail and advances the last-seen identity.
+1. **Give the truth a stable content identity.** The canonicalizer fingerprints
+   the published truth; make sure an unchanged world yields an unchanged
+   fingerprint (drop volatile fields — a re-poll timestamp, a request id — from
+   materiality). This is what lets the reconciler skip *before* any render runs
+   (quiescence behavior 1).
+2. **Facet the truth.** Split `### Maintains` into `####` parts so a consumer
+   subscribing to one facet is not woken by a change in another (quiescence
+   behavior 3). A diamond reconverges to a single wake.
+3. **Declare freshness.** Put `valid_until` windows in `### Continuity` so silent
+   staleness still wakes the node (quiescence behavior 2).
 
-The `### Execution` block wires this so that an unchanged content identity
-**short-circuits before the expensive judge** (the author's expression of
-quiescence behavior 2), and the deep path is gated on confidence (behavior 3).
-The author writes the gates; the harness owns the memo and the forecast.
+Variable-depth work, where you genuinely need it, is ordinary control flow
+*inside the one render* — a `call` to a `function` for an expensive sub-step,
+gated by an `if` in `### Execution`. It is not a "judge tier" and not an
+autowired service graph.
 
-### Rule 6 — composition is consuming an upstream trail, not a new primitive
+### Rule 6 — composition is subscribing to an upstream facet, not a new primitive
 
-"Responsibility B depends on responsibility A" needs no new syntax. B's judge
-consumes A's latest ledger record (the current stand-in for A's
-content-addressed receipt) as an evidence source — identical to consuming a
-webhook or a file. Three authoring obligations make this safe:
+"Responsibility B depends on responsibility A" needs no new syntax. B names the
+upstream facet in `### Requires`; Forme matches it to A's `### Maintains` facet
+and draws the subscription edge. B's render wakes on A's receipt when that
+facet's fingerprint moves — identical to consuming a webhook. Two authoring
+obligations make it safe:
 
-- **Reference, don't embed.** B's contract names A's responsibility id / ledger
-  location as a declared input, not a copied value.
-- **Pin revision and trust.** B's `### Criteria` must state which revision of A
-  it accepts and, for cross-trust-domain composition, an acceptable signer set. Unpinned
-  composition is a supply-chain attack; the author closes that hole, not the
-  runtime.
-- **Carry freshness — semantically, not imperatively.** State B's freshness
-  tolerance for upstream inputs as *intent* in `### Continuity`/`### Criteria`
-  (e.g. "A may be up to one business day stale; older than that, treat B as
-  `drifting` pending a refresh"). The transitive-freshness *function* is
-  harness-side, model-authored, and recorded in the policy registry; the
-  author supplies its *shape* the same way they supply cadence shape, never a
-  hand-written staleness comparison in `### Execution`. An upstream's
-  calibration grade (`authored`/`accrued`/`none`) is part of what B weighs —
-  an uncalibrated upstream is a supply-chain caveat the author pins, parallel
-  to revision/signer.
+- **Reference, don't embed.** B's `### Requires` names A's responsibility id /
+  facet as a declared subscription, not a copied value.
+- **Pin revision and trust.** For cross-trust-domain composition, pin which
+  revision of A you accept and an acceptable signer set; unpinned composition is
+  a supply-chain attack the author closes, not the runtime. (In v1 "signed" is
+  meaning-layer chain-consistency; the cryptographic signer is a deferred
+  milestone.)
 
-This is how the three-layer overseer (below) consumes "the plan" — it is a
-composition edge, not a special case.
+Freshness needs no special authoring: each facet carries its own `valid_until`,
+so a stale upstream facet's fingerprint lapses and wakes B through the ordinary
+path. There is no transitive-freshness function to shape and no per-cycle
+staleness comparison to hand-write.
+
+This is how a downstream responsibility consumes an upstream one — a subscription
+edge, not a special case.
 
 ### Patterns that are Reactor-native
 
-The std pattern library is use-case agnostic, but a subset maps directly onto
-harness layers and should be the author's default vocabulary:
+The std pattern library is use-case agnostic, but a subset recurs in
+Reactor-native contracts and should be the author's default vocabulary:
 
 | Pattern | Reactor-native role |
 | --- | --- |
-| `oversight` | Separates actor / observer / arbiter — the canonical projection-only or fail-safe judge shape |
-| `fan-out`, `dialectic`, `ensemble-synthesizer` | Variable-depth escalation; instantiate only on the uncertain branch |
-| `guard` | Precondition gate before an expensive judge or a world-mutating fulfillment |
-| `worker-critic`, `proposer-adversary` | Fulfillment with a built-in fail-safe check before commit |
-| `map-reduce`, `fan-out` | Sensing a wide world cheaply, in parallel, before judging |
+| `fan-out`, `map-reduce` | Sensing a wide world cheaply, in parallel, inside one render |
+| `guard` | A precondition gate before an expensive `call` or a world-mutating step |
+| `worker-critic`, `proposer-adversary` | A built-in check a render runs before it attests and commits |
+| `oversight` | The actor / observer / arbiter split — the canonical projection-only shape |
 
-The judge being "a variable-depth circuit, not a fixed circuit" (harness
-failure model) is, at the authoring layer, exactly: _instantiate an ensemble
-pattern behind a confidence gate, not unconditionally._
+These coordinate `call`s to `function`s *inside a render*; none is a separate
+node, a judge tier, or an autowired graph. Depth — running a critic only on the
+uncertain branch — is ordinary `### Execution` control flow, not a
+confidence-gated judge ensemble.
 
-### A worked example: the three-layer overseer
+### A worked example: the competitor-activity monitor
 
-A long-running external agent session (here, a Codex run building an eval set
-across many subagent waves) must be observed but never interrupted. The author
-wants three maintained world-state layers — observed ground truth, the plan
-being executed, the overseer's evolving ideal — and three pairwise delta
-projections, rendered richly, kept true as the world mutates constantly.
-
-This is structurally the harness doc's Incident Briefing Room with a different
-channel, and it is a near-perfect Reactor fit precisely because the naive
-implementation (a swarm of subagents that watches forever) is the
-cost-scales-with-time anti-pattern the Reactor exists to kill.
+The running example across the harness and world-model specs: keep a current
+picture of a set of competitors, where downstream consumers care about
+*different parts* of that picture and should wake only when their part moves.
 
 **The responsibility** (the whole program):
 
 ```markdown
 ---
-name: codex-eval-build-oversight
+name: competitor-activity-monitor
 kind: responsibility
 id: 067NC4KG01RG50R40M30E20918
 ---
 
 ### Goal
 
-A three-layer world model — observed ground truth, the plan being executed,
-and the overseer's evolving ideal — and the three pairwise delta projections
-are current and accurate with respect to the unfolding eval-set build.
-
-### Continuity
-
-- Re-judge on worktree changes and planning-directory changes.
-- While the observed session is active, a forecast-paced fallback recheck so a
-  silent worktree does not mean a silent overseer.
-- Quiesce hard when no material change crosses the layers: an unchanged
-  observation identity reuses the prior projection at zero render cost.
-- The ideal layer is expected to diverge from the plan over time; divergence
-  is preserved as signal and is never reconciled toward the plan.
-
-### Criteria
-
-- Six artifacts reflect the latest material state: three layer views (truth,
-  plan, ideal) and three delta views (plan↔truth, ideal↔plan, ideal↔truth).
-- Deltas are rendered spatially and from multiple dimensions, not as prose
-  lists.
-- The plan layer pins the plan revision it was synthesized against; stale-plan
-  deltas are labeled, never silently mixed.
-- When the build's true state is not yet decidable from observable artifacts,
-  the judge says so and routes that to the human — it does not fabricate a
-  delta.
-
-### Constraints
-
-- NEVER modify, pause, signal, or write into the observed session, its
-  worktree, or the planning directory. Observation is strictly read-only.
-- The only writable surface is the six projection artifacts.
-- Deep enrichment is bounded and escalated only on judge uncertainty or a
-  large delta — never on every event.
-
-### Tools
-
-- cli:git
-- cli:fs-read
-
-### Fulfillment
-
-Prefer the local `oversight-projection` system.
-```
-
-**The gateway** (event ingress; honest current limit noted inline):
-
-```markdown
----
-name: codex-build-signals
-kind: gateway
----
-
-### Schedule
-
-- every 3 minutes while the observed session is active
-  # forecast-paced poll; replace with a worktree file-watch when serve
-  # supports file-change ingress
-
-### Receives
-
-- Manual: refresh
-
-### Emits
-
-- codex-eval-build-oversight.evidence-change
-
-### Payload
-
-Pass changed paths (or "scheduled sweep") as activation context. The
-fulfillment system must hash-diff and quiesce when nothing material changed.
-```
-
-**The fulfillment system** (projection-only; the `### Execution` block is where
-quiescence and variable depth are authored):
-
-```markdown
----
-name: oversight-projection
-kind: system
----
-
-### Services
-
-- `observe-ground-truth`
-- `read-plan`
-- `judge-materiality`
-- `evolve-ideal`
-- `synthesize-deltas`
-- `render-projection`
-
-- name: deep-survey
-  pattern: std/patterns/fan-out
-  with:
-    delegate: worktree-prober
+The activity of the tracked competitors — their funding, hiring, and product
+launches — is current.
 
 ### Requires
 
-- `activation_event`: changed paths, scheduled sweep, or manual refresh
+- `competitors`: the watchlist (names + domains) this monitor tracks.
 
-### Ensures
+### Maintains
 
-- `projection_update`: the six rendered artifacts and a ledger receipt
+A `competitor-activity` world-model with three independently-subscribable parts:
 
-### Runtime
+#### funding
+Rounds, amounts, investors, and dates. Material: a new or changed round.
+Immaterial: re-ordering, prose phrasing, the timestamp of the last poll.
 
-- `persist`: project
+#### hiring
+Open roles and headcount signals by function. Material: a role appears or
+closes, or headcount crosses a band. Immaterial: list order, exact view counts.
 
-### Execution
+#### product-launches
+Announced launches and ship dates. Material: a new launch or a moved date.
 
-```prose
-let truth = call observe-ground-truth
-  activation_event: activation_event
-# returns a content identity; the harness memoizes on it.
-# Unchanged identity => prior projection reused, zero render. (quiescence 1+2)
+Postcondition: every entry cites the source it was derived from; an entry with
+no observable source is not committed (the render attests this).
 
-let plan = call read-plan
-  activation_event: activation_event
+### Continuity
 
-let verdict = call judge-materiality
-  truth: truth
-  plan: plan
+- Input-driven: wake when the `competitors` watchlist changes.
+- Self-driven: each part carries a `valid_until` of +1 business day; when it
+  lapses, that part is re-checked against the world.
 
-if verdict is quiescent:
-  return verdict.prior_projection      # don't act, don't render
+### Invariants
 
-let evidence = truth
-choice verdict.depth:
-  option "shallow":
-    evidence = truth
-  option "deep":
-    let probes = call deep-survey      # gated escalation, not a watcher
-      target: verdict.uncertain_regions
-    evidence = merge truth with probes
+- Read-only on the outside world: never contact a competitor or alter a source.
+- The only writable surface is the `competitor-activity` world-model.
 
-let ideal = call evolve-ideal
-  truth: evidence
-  prior_ideal: verdict.prior_ideal     # allowed to diverge from plan
+### Tools
 
-let deltas = call synthesize-deltas
-  truth: evidence
-  plan: plan
-  ideal: ideal
-
-let projection_update = call render-projection
-  truth: evidence
-  plan: plan
-  ideal: ideal
-  deltas: deltas
-
-return projection_update
-```
+- cli:web-fetch
+- cli:fs-read
 ```
 
-`observe-ground-truth` and `render-projection` carry `persist: project` with a
-`### Memory` ledger storing `last_observation_identity`, `as_of`, and
-`pinned_plan_revision` — the current stand-in for content-addressed receipts
-and the composition edge to the plan. `judge-materiality` is the variable-depth
-judge: cheap identity-diff by default, `### Shape` delegating to a critic only
-when uncertain. `render-projection`'s `### Constraints` forbids any write
-outside the six artifacts — the authored expression of the amputated
-fulfillment arm.
+**A downstream consumer** subscribes to one facet, and wakes only on that facet:
+
+```markdown
+---
+name: weekly-competitor-brief
+kind: responsibility
+id: 067NC4KG01RG50R40M30E20919
+---
+
+### Requires
+
+- `funding` from `competitor-activity-monitor`   # subscribes to ONE facet
+
+### Maintains
+
+A short brief summarizing the latest funding activity for the watchlist.
+
+### Continuity
+
+- Self-driven: a `valid_until` of +7 days, so the brief refreshes weekly even
+  if funding stays quiet.
+```
+
+What the harness does with this, for free:
+
+- A re-poll that finds **no material funding change** produces an unchanged
+  `funding` fingerprint, so the monitor writes a `skipped` receipt and the brief
+  never wakes — *cost scales with surprise.*
+- A new **hiring** signal moves only the `hiring` fingerprint; the brief
+  subscribes to `funding`, so it stays asleep — *facets make subscription
+  selective.*
+- When `funding`'s `valid_until` lapses, the continuity clock moves its
+  fingerprint and wakes the monitor with a zero-token self-receipt; if the
+  re-check finds real news, *that* propagates to the brief.
+- A render that cannot cite a source for an entry fails its postcondition,
+  commits nothing, and leaves a `failed` receipt — the prior truth stands.
+
+No `kind: system`, no `### Services`, no judge, no ledger service: the render
+maintains the world-model, the canonicalizer senses change, `gateCommit` gates
+the commit, and the signed receipt ledger is the trail.
 
 ### Anti-patterns
 
 Each is the natural non-Reactor instinct and why it breaks an invariant:
 
-- **Writing a `kind: system` first and a responsibility as an afterthought.**
-  Inverts the model; the system becomes the source of intent (breaks
-  invariant 1).
-- **A fulfillment system with a `loop until done` that waits for events
-  in-session.** That is a long-running agent loop, not bounded activations
-  (breaks invariant 4).
-- **A sense service that returns the observation but no content identity.**
-  The harness cannot memoize; cost scales with time (breaks invariant 5). This
-  is the most common and most expensive mistake.
-- **A contract whose only "did anything change" test is the full judgment,
-  written as if it memoizes.** Not an invariant-5 _correctness_ break (forecast
-  still makes it safe) but a false cost claim. The Reactor-native form names
-  the absence of a cheap identity in `### Continuity` and accepts
-  forecast-cadence cost deliberately — exactly as projection-only is a
-  deliberate amputation, not a degenerate Reactor.
-- **Hard-coding cadence/hysteresis/escalation as imperative ProseScript.**
-  Steals policy from the model-authored, compiled layer (breaks invariant 2).
-- **An unconditional ensemble in `### Execution`.** Fixed-depth judging;
-  removes the cost lever (breaks invariant 5).
+- **Modeling the work as a graph of services instead of one responsibility.**
+  Inverts the model; the wiring becomes the source of intent (breaks
+  invariant 1). Start from the `### Maintains` truth, not a system.
+- **A render with a `loop until done` that waits for events in-session.** That
+  is a long-running agent loop, not bounded activations (breaks invariant 4).
+- **A `### Maintains` with no material/immaterial split, so every re-poll looks
+  changed.** The canonicalizer's fingerprint moves every cycle; the reconciler
+  can never skip and cost scales with the clock (breaks invariant 5). This is the
+  most common and most expensive mistake.
+- **A contract whose only "did anything change" test is the full render, written
+  as if it memoizes.** Not an invariant-5 _correctness_ break (the continuity
+  clock still makes it safe) but a false cost claim. The Reactor-native form names
+  the absence of a cheap identity and accepts freshness-cadence cost
+  deliberately — exactly as projection-only is a deliberate choice, not a
+  degenerate Reactor.
+- **Hand-coding a cadence in `### Execution`** instead of declaring the wake in
+  `### Continuity` (an input subscription or a `valid_until`). It hides the
+  schedule from the harness and defeats forecast-paced quiescence (breaks
+  invariant 5).
+- **Putting volatile fields in `### Maintains`** — a poll timestamp, a request
+  id, a re-ordered list — so the fingerprint moves on noise (breaks invariant 5).
 - **Consuming another responsibility's value by copying it into the contract.**
-  Not a verifiable, revision-pinned reference; a supply-chain hole (breaks
-  invariants 6/7).
-- **"Swarm of subagents that continuously watches."** The cron-plus-prompt
-  shape the Reactor replaces. The Reactor-native form is: events wake a cheap
-  judge; the swarm is the gated deep path, not the steady state.
+  Not a verifiable, revision-pinned subscription; a supply-chain hole (breaks
+  invariants 6/7). Name the facet in `### Requires` instead.
+- **"Swarm of subagents that continuously watches."** The cron-plus-prompt shape
+  the Reactor replaces. The Reactor-native form is: a subscribed input or a
+  lapsed `valid_until` wakes one bounded render; nothing watches in between.
 
 ### Precedence for authors
 
@@ -514,10 +391,10 @@ When authoring rules tension, follow the harness precedence stack:
 correctness  >  safety  >  cost  >  interrupt-minimization
 ```
 
-If a decidable, safe contract requires more interrupts during authoring,
-accept the interrupts. If making a contract cheaper would make it unsafe (a
-shallow judge on a high-stakes goal), pay the cost. Silence is a target, never
-a constraint the other rules bend around.
+If a correct, safe contract surfaces more `failed` receipts to the author early,
+accept them. If making a contract cheaper would make it unsafe (dropping a
+postcondition on a high-stakes goal so it commits without checking), pay the
+cost. Silence is a target, never a constraint the other rules bend around.
 
 ---
 

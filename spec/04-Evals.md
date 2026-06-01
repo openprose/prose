@@ -9,7 +9,7 @@ ships:
   the **SKILL**: syntax, kinds, sections, compile model, std/co, CLI surface.
 - [02-ReactorHarness.md](./02-ReactorHarness.md) — **the Reactor Harness**,
   bundled as the **CLI/Server**: the runtime control architecture (loop,
-  invariants, kernel, memoization, forecast, receipts, composition). It answers
+  invariants, the reconciler, memoization, forecast, receipts, composition). It answers
   _what the runtime must do_.
 - [03-ReactorPattern.md](./03-ReactorPattern.md) — **the Reactor-Native
   Authoring Pattern**: how to write `*.prose.md` so the harness's mechanisms
@@ -51,27 +51,31 @@ fails** — a claim with no stated failure boundary reads as marketing:
   sub-claims (below), each of which could have come out the other way.
 - **Claim B — "Model X is better than Model Y _for Reactor_."** The
   first-principles reframe that makes this useful rather than a leaderboard:
-  the result is **role-conditional fit**, not a ranking. The defensible,
-  report-grade findings are (i) which model is the best _judge_ (status
-  accuracy + calibration), which the best _fulfiller_ (restoration without
-  overreach), which the safest _cheap_ model once calibration is earned; and
-  (ii) **where the architecture compensates for a weaker model** — if the
-  harness narrows the gap between a cheap and a frontier model, that _is_ the
-  architectural value proposition restated in model terms, and it is the single
-  most valuable Claim-B result.
+  the result is **role-conditional fit**, not a ranking. With no judge, the two
+  model-bearing roles are the **render** (does the bounded session compute a
+  correct next world-model?) and the **compile** (does the model lower
+  `### Maintains` into a _sound_ canonicalizer + postcondition validators?). The
+  defensible, report-grade findings are (i) which model is the best renderer and
+  which the best compiler; and (ii) **where the architecture compensates for a
+  weaker model** — if memoization plus a compiled canonicalizer narrows the gap
+  between a cheap and a frontier render, that _is_ the architectural value
+  proposition restated in model terms, and it is the single most valuable Claim-B
+  result.
 
 ### The eval invariants
 
 Each survives the negation test: drop it and a hostile reviewer wins.
 
 1. **Decidability over judgment.** Every headline number is the output of a
-   deterministic predicate over a content-addressed artifact — the
-   `openprose.receipt v0` log (02). **No headline claim may rest on an LLM
-   grading an LLM.** Output _quality_ ("was the briefing good?") is real but
-   lives in a separate, clearly-labelled, blind-human-adjudicated track that
-   never enters the abstract. This wall — decision-trace correctness vs. output
-   quality — is the single biggest credibility lever and the methodology's
-   keystone.
+   deterministic predicate over a content-addressed artifact — the flat
+   `<state-dir>/receipts.json` ledger (02 §6.1), read offline by the keyless
+   `reactor-devtools --describe` replay. **No headline claim may rest on an LLM
+   grading an LLM** — and with the judge retired, the run phase contains no LLM
+   judgment to grade at all; the wall is even cleaner than before. Output
+   _quality_ ("was the briefing good?") is real but lives in a separate,
+   clearly-labelled, blind-human-adjudicated track that never enters the
+   abstract. This wall — decision-trace correctness vs. output quality — is the
+   single biggest credibility lever and the methodology's keystone.
 2. **The adversary is the strongest cheap thing, not a strawman.** Beating a
    naive single-agent loop proves nothing. The load-bearing baseline is the one
    that is _cheap **and** correct_ in the regime under claim: a strong
@@ -79,9 +83,11 @@ Each survives the negation test: drop it and a hostile reviewer wins.
    cron**. The non-obvious, empirically-confirmed point: on the silent-drift
    headline regime a content cache is **blind by construction**, so beating it
    there demonstrates nothing — the honest comparator is the oracle cron, and
-   the real claim is _"Reactor's learned forecast approaches an oracle schedule
-   it was never given."_ A strong cheap baseline that ties Reactor on a regime
-   is reported as a tie **in the abstract**.
+   the real claim is _"Reactor's declared freshness cadence catches drift a
+   content cache is blind to, approaching an oracle schedule."_ (Inferring that
+   cadence rather than declaring it is a named v-next capability, not what v1
+   claims.) A strong cheap baseline that ties Reactor on a regime is reported as
+   a tie **in the abstract**.
 3. **The cost claim is a preregistered falsifiable hypothesis with an explicit
    null.** "For every token, name the surprise" is operationalized as a
    regression of spend on preregistered surprise-count against the null that
@@ -100,49 +106,54 @@ Each survives the negation test: drop it and a hostile reviewer wins.
    endpoint is latency-bound, and response-usage is not reconciled usage. Every
    cost figure carries its confidence tier.
 6. **Boundaries are measured, not hidden.** The architecture has structurally
-   irreducible costs (the plan-audit floor; the no-cheap-hash domain; the
-   no-anchor calibration tax — 02 _Where it excels_). An eval that only shows
-   the favorable regime is not report-grade. The instrument must **quantify the
-   boundary**: where cost-scales-with-surprise degrades to forecast cadence,
-   and by how much. Stating the boundary precisely is what makes the central
-   claim believable.
+   irreducible costs (the compile-phase floor — re-deriving the canonicalizer,
+   topology, and validators when a contract changes; and the no-cheap-hash
+   domain, where deciding "did it change" essentially _is_ the work — 02 _Where
+   it excels_). An eval that only shows the favorable regime is not report-grade.
+   The instrument must **quantify the boundary**: where cost-scales-with-surprise
+   degrades to freshness cadence, and by how much. Stating the boundary
+   precisely is what makes the central claim believable.
 7. **The eval is itself replayable and exitable.** The suite that proves the
    receipt invariants must obey them: fixtures content-addressed, model
    snapshots pinned, a snapshot roll **voids** (never patches) the run, the
    whole thing reproducible by a skeptic from a fresh clone. The replay engine
-   runs against the recorded receipt artifact and never re-derives it.
+   runs against the recorded receipt artifact and never re-derives it. The
+   report-grade instrument is concrete: a benchmark run emits a real ledger, the
+   keyless `reactor-devtools --describe` replays it offline, and the **Cradle**
+   static-world flat-token scenario is the cost-thesis hero shot — `tokens.fresh`
+   vs `tokens.reused` makes the fresh-vs-reused ratio recoverable from the trail.
 8. **Two truth oracles, never merged** (mirrors 02's failure model):
-   correctness-truth ("was the verdict right") and cost-truth ("what did it
-   cost") are different sockets with different failure meanings; a cost result
-   may never launder into a correctness result or vice versa.
+   correctness-truth ("was the maintained truth right") and cost-truth ("what
+   did it cost") are different sockets with different failure meanings; a cost
+   result may never launder into a correctness result or vice versa.
 9. **The suite mirrors the unification recursions, not a feature list.** Per
-   02's thesis, composition-amortization and policy-recompile-stability are the
-   N>1 and policy-over-time recursions of the _same_ memoization mechanism. The
-   suite is structured so the report says "one mechanism, three
-   demonstrations," not "twelve features."
+   02's thesis, composition-amortization and the **fixpoint**
+   (topology-memoization) are the N>1 and self-maintenance recursions of the
+   _same_ memoization mechanism. The suite is structured so the report says "one
+   mechanism, three demonstrations," not "twelve features." (The fixpoint
+   demonstration is a post-v1 track, marked as such.)
 
 ### Claim A, decomposed
 
 Each sub-claim ships with a one-sentence statement and explicit null, its
-strongest cheap adversary, a deterministic verdict predicate, and a
+strongest cheap adversary, a deterministic decision predicate, and a
 preregistered decision rule.
 
 | Sub-claim | Strongest cheap adversary | Decided by |
 | --- | --- | --- |
 | Cost scales with surprise, not time | oracle-cron + strong diff/embedding cache | regression vs. null over a content-hashed receipt log |
-| Memoized reuse spends zero judge tokens | Reactor-without-memoization | `tokens.reused` is judge-free in the receipt; pure predicate |
+| Memoized reuse spends zero tokens — the render body never runs | Reactor-without-memoization | a `skipped` receipt carries zero `cost` with fingerprints copied forward; pure predicate over the ledger |
 | Forecast catches silent drift a cache cannot | content cache (blind here, by construction) | injected silent drift; detection vs. oracle-cron at matched cost |
-| Variable-depth preserves accuracy at lower cost | fixed-ensemble Reactor | accuracy delta ≈ 0 with cost delta < 0, preregistered band |
-| Fail-safe interrupt precision | cron + prompt with durable state | typed-interrupt confusion matrix vs. oracle labels |
+| Fail-safe: an inadmissible render commits nothing | cron + prompt with durable state | a failing postcondition leaves the fingerprint unmoved and wakes no downstream — ledger predicate |
 | Receipts replay; composition amortizes; supply-chain pins | Reactor-without-receipts / islands | clean-machine replay equality; N-dependent cost amortization; rejection of unpinned upstream |
 
 ### Claim B, decomposed
 
-Run **both adapter seams** (the bounded-activation agent SDK and the
-model-gateway socket — 02 _Architecture_) so the seam boundary stays honest and
-the policy-author migration path is exercised, not assumed. Report role-fit and
-**Reactor-compensation curves** (cheap-vs-frontier gap with and without each
-mechanism), never a single quality ranking.
+Run **both model-bearing roles** (`agent-compile` and `agent-render` — 02
+_Architecture_) so the compile/render seam stays honest, not assumed. Report
+role-fit and **architecture-compensation curves** (the cheap-vs-frontier render
+gap with and without memoization + a compiled canonicalizer), never a single
+quality ranking.
 
 ---
 
