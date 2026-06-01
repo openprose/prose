@@ -458,9 +458,11 @@ export {
   createOpenRouterProvider,
   hasOpenRouterKey,
   readOpenRouterKey,
+  smokeRun,
   DEFAULT_RENDER_MODEL,
   OPENROUTER_PROVIDER_LABEL,
 } from "./provider";
+export type { SmokeRunConfig, SmokeRunResult } from "./provider";
 export {
   createCwdTools,
   createSpawnSubagentTool,

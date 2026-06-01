@@ -3,10 +3,19 @@
  *
  * KEYLESS: every adapter here is on the SDK's offline root barrel
  * (`@openprose/reactor`): `createSystemClockAdapter`,
- * `createFileSystemStorageAdapter`, `createMemoryStorageAdapter`,
- * `FileSystemWorldModelStore`. None pull `@openai/agents`/`zod`, so this module
- * is safe on the offline path. The model surface is reached ONLY by the run/serve
- * handlers' dynamic import of `runProject` (load-run-project.ts).
+ * `createFileSystemStorageAdapter`, `FileSystemWorldModelStore`. None pull
+ * `@openai/agents`/`zod`, so this module is safe on the offline path. The model
+ * surface is reached ONLY by the run/serve handlers' dynamic import of
+ * `runProject` (load-run-project.ts).
+ *
+ * STATE-DIR LAYOUT (canonical, flat): the receipt ledger persists as a single
+ * `<state-dir>/receipts.json` directly under the state-dir root — NOT a
+ * `receipts/` subdir. This is the one canonical location shared by `run`,
+ * `serve`, the observe/read path, the committed DevTools fixtures, and
+ * `reactor-devtools <state-dir>` (which reads `<state-dir>/receipts.json`). The
+ * world-model truth is a sibling under `<state-dir>/world-models/`. Keeping the
+ * trail flat at the root is what makes "`reactor run --state-dir ./run` then
+ * `reactor-devtools ./run`" actually replay (crosscheck dt-receiptspath-1).
  */
 
 import * as path from 'path';
@@ -14,15 +23,20 @@ import * as path from 'path';
 import {
   FileSystemWorldModelStore,
   createFileSystemStorageAdapter,
-  createMemoryStorageAdapter,
   createSystemClockAdapter,
 } from '@openprose/reactor';
 
 import type { RunAdapters } from './load-run-project';
 
-/** The `<state-dir>` sub-locations the durable run substrate persists under. */
+/**
+ * The directory holding the canonical flat `receipts.json` — the state-dir root
+ * itself (`createFileSystemStorageAdapter` names `receipts.json` inside the given
+ * `directory`). This single chokepoint feeds BOTH the write path (the durable
+ * substrate below) and the read path (`observe/state-view`), so the CLI and
+ * DevTools agree on `<state-dir>/receipts.json`.
+ */
 export function receiptsDir(stateDir: string): string {
-  return path.join(stateDir, 'receipts');
+  return stateDir;
 }
 
 export function worldModelsDir(stateDir: string): string {
@@ -30,31 +44,17 @@ export function worldModelsDir(stateDir: string): string {
 }
 
 /**
- * Build the DURABLE run substrate for `serve` (and a persistent `run`): a system
+ * Build the DURABLE run substrate for `run`, `serve`, and `trigger`: a system
  * clock, a filesystem storage adapter (the receipt ledger's append-only trail)
- * under `<state-dir>/receipts`, and a filesystem world-model store under
- * `<state-dir>/world-models`. The two FS directories are siblings so a restart
- * re-opens the SAME durable trail + truth and the boot sweep memo-skips.
+ * as `<state-dir>/receipts.json`, and a filesystem world-model store under
+ * `<state-dir>/world-models`. Both land directly under the state-dir root so a
+ * restart re-opens the SAME durable trail + truth (the boot sweep memo-skips)
+ * and `reactor-devtools <state-dir>` replays the run that produced them.
  */
 export function buildDurableSubstrate(stateDir: string): RunAdapters {
   return {
     clock: createSystemClockAdapter(),
     storage: createFileSystemStorageAdapter({ directory: receiptsDir(stateDir) }),
-    worldModel: new FileSystemWorldModelStore({ directory: worldModelsDir(stateDir) }),
-  };
-}
-
-/**
- * Build an EPHEMERAL run substrate for a one-shot `run` whose receipt trail need
- * not persist across processes: a system clock + an in-memory storage adapter +
- * a filesystem world-model store under `<state-dir>/world-models` (the truth
- * still lands on disk so a later `serve`/inspect can read it). Used when a `run`
- * is a transient drain-to-quiescence rather than a daemon.
- */
-export function buildEphemeralSubstrate(stateDir: string): RunAdapters {
-  return {
-    clock: createSystemClockAdapter(),
-    storage: createMemoryStorageAdapter(),
     worldModel: new FileSystemWorldModelStore({ directory: worldModelsDir(stateDir) }),
   };
 }

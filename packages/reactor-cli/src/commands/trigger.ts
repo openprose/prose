@@ -31,7 +31,7 @@ import {
   type RunAdapters,
   type RunRender,
 } from '../run/load-run-project';
-import { buildEphemeralSubstrate } from '../run/substrate';
+import { buildDurableSubstrate } from '../run/substrate';
 import { isCacheFresh, contractSetFingerprint } from '../compile/ir-cache';
 import { loadContractSet as keylessLoadContractSet } from '../compile/contract-images';
 import type { ConfigOverrides } from '../config';
@@ -134,9 +134,12 @@ export async function runTriggerCommand(
     );
   }
 
-  // One-shot mount: boot a transient reactor over the durable world-model.
+  // One-shot mount: boot a transient reactor over the durable substrate so the
+  // injected event's receipt persists to the SAME flat `<state-dir>/receipts.json`
+  // trail that `serve`/`run` write and `reactor-devtools <state-dir>` replays
+  // (crosscheck dt-receiptspath-1).
   const adapters: RunAdapters =
-    options.testAdapters ?? buildEphemeralSubstrate(stateDir);
+    options.testAdapters ?? buildDurableSubstrate(stateDir);
   const baseRender: RunRender = options.testRender ?? {};
   const render: RunRender = {
     ...baseRender,

@@ -9,8 +9,11 @@
 // How a state-dir is opened (verified against the v0.2.0 SDK read surface):
 //   - `createFileSystemStorageAdapter({ directory })` (root `@openprose/reactor`,
 //     via `export * from "./adapters"`) opens the durable trail (a single
-//     `receipts.json` under the dir — NOT a `receipts/` subdir; the plan's
-//     "receipts/" wording predates the storage-fs layout).
+//     `receipts.json` under the dir — NOT a `receipts/` subdir). This flat
+//     root layout is now the ONE canonical state-dir convention: `reactor run`/
+//     `serve`/`trigger` write `<state-dir>/receipts.json` here, and the specs
+//     were reconciled to match (crosscheck dt-receiptspath-1 / dt-receiptsdir-1;
+//     the plan's earlier "receipts/" wording predated the storage-fs layout).
 //   - `new FileSystemReceiptLedger({ storage })` (`@openprose/reactor/sdk`)
 //     re-derives `all()` from that trail — THAT is replay.
 //   - `createReplaySession({ ledger })` (`@openprose/reactor/sdk`) shapes the
