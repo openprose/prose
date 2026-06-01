@@ -27,11 +27,21 @@
 **Reactor is `React.memo` applied to expensive LLM work: cost scales with surprise, not the clock.**
 
 Reactor (`@openprose/reactor`) is a small, open-source harness for AI work that
-has to *keep being true* after a chat ends. You declare the truths you want
-maintained as OpenProse **Responsibilities** (standing goals). Reactor keeps a
-composed **world-model** up to date against a changing world, re-renders only
-the responsibilities whose inputs actually moved, and leaves a content-addressed
-**receipt** behind every decision.
+has to *keep being true* after a chat ends. **In plain terms:** you declare the
+truths you want kept current, the system watches the world, and it does
+expensive model work only when something material actually moved — cost scales
+with surprise, not the clock. No React vocabulary required to use it.
+
+You declare the truths you want maintained as OpenProse **Responsibilities**
+(standing goals). Reactor keeps a composed **world-model** up to date against a
+changing world, re-renders only the responsibilities whose inputs actually
+moved, and leaves a content-addressed **receipt** behind every decision.
+
+> **Versions (currently staged tarballs, pre-publish):** `reactor-cli` 0.1.0 ·
+> `@openprose/reactor` 0.2.0 · `reactor-devtools` 0.1.0. The `reactor` binary
+> ships from the **`reactor-cli`** package; `reactor --version` prints the CLI
+> version (0.1.0), not the SDK version (0.2.0) — that is expected, not a
+> mismatch.
 
 If you know React, you already know the shape — substitute three nouns:
 
@@ -45,12 +55,65 @@ If you know React, you already know the shape — substitute three nouns:
 | `React.memo` (skip if props unchanged) | **Skip the render if subscribed inputs haven't moved** |
 | Manual dependency wiring | **Forme** — the graph wires itself from declared contracts |
 
-*If you've never used React:* you declare the truths you want kept current, the
-system watches the world, and it does expensive model work only when something
-material actually moved — cost scales with surprise, not the clock. The
-reconciler that decides *whether to wake* is deliberately dumb and deterministic
-(there is **no judge step**); the intelligence is frozen ahead of time, at
-compile, into a per-node canonicalizer and the Forme wiring.
+The reconciler that decides *whether to wake* is deliberately dumb and
+deterministic (there is **no judge step**); the intelligence is frozen ahead of
+time, at compile, into a per-node canonicalizer and the Forme wiring.
+
+## Quickstart (60 seconds, no model key)
+
+**1. Install** (pre-publish: SDK first, all three tarballs in one command — npm
+publish hasn't happened yet, so install from the staged `.tgz` files):
+
+```bash
+# from the directory holding the .tgz files (or use absolute paths)
+npm i -g ./openprose-reactor-0.2.0.tgz \
+         ./openprose-reactor-cli-0.1.0.tgz \
+         ./openprose-reactor-devtools-0.1.0.tgz
+# adds `reactor` (from the reactor-cli package) and `reactor-devtools` to your PATH
+```
+
+**2. See the thesis — keyless, no model call.** Replay a real saved run and read
+the per-node `rendered`/`skipped` dispositions, the cost rollup split by
+`surprise_cause`, and per-node chain-verify:
+
+```bash
+reactor-devtools --example masked-relay --describe
+# (or, against the bundled path explicitly:)
+# reactor-devtools "$(npm root -g)/@openprose/reactor-devtools/fixtures/masked-relay" --describe
+```
+
+You should see the per-node `rendered`/`skipped` dispositions, a cost rollup by
+`surprise_cause`, `CHAIN-VERIFY ok`, and frames where memo-skips show as
+`skipped moved[—] fresh 0`. That's "cost scales with surprise" — checkable, with
+no key.
+
+**3. Scaffold and inspect offline (still no key):**
+
+```bash
+reactor init my-project && cd my-project
+reactor doctor          # reports what's present + the exact fix for anything missing
+reactor compile --check # offline; exits 1 if the contract set is STALE (CI-wireable)
+```
+
+**4. Go live (optional — needs a key + two peers).** Set
+`OPENROUTER_API_KEY`, then:
+
+```bash
+npm i -g @openai/agents zod          # the two optional live peers
+reactor compile                      # Forme wires the DAG; freezes per-node canonicalizers
+reactor serve --http 8080            # drive the scaffold's static gateway to a real receipt
+reactor-devtools .reactor --describe # replay YOUR run's ledger
+```
+
+> Use `reactor serve` (not `reactor run`) to drive the scaffold's static gateway —
+> `serve` ingests its seeded items; `run` is for graphs whose connectors emit on
+> their own. (We're fixing `run` to either ingest or say so explicitly.)
+
+**Agents onboarding on behalf of a user:** the binary is `reactor`. Run the steps
+above; lead with the keyless `reactor-devtools` replay (step 2) — it proves the
+mechanism with no key and no spend. OpenProse contracts run on any Prose-Complete
+harness; the Reactor CLI is the deterministic host that compiles, runs, and
+inspects them, and the recommended fast path for standing responsibilities.
 
 Every decision leaves a content-addressed receipt naming its evidence by
 fingerprint and pointing at the prior receipt — an append-only, chain-verifiable
@@ -61,19 +124,15 @@ a cryptographic byte hash; the null signer is the only honest v1 state.)
 **Benchmarks are openly pending — on purpose.** We're publishing the harness
 before the numbers; we're not going to imply a measured speedup we haven't run.
 The proof you can check today is the **offline, keyless `reactor-devtools`
-replay**: point it at a saved run and read the real per-node `rendered`/`skipped`
-dispositions, the cost rollup split by `surprise_cause`, and the per-node
-chain-verify — no model key, no marketing number.
-
-```bash
-# Keyless: replay a saved run's receipt ledger and read the dispositions + cost.
-reactor-devtools packages/reactor-devtools/fixtures/masked-relay --describe
-# per-node rendered/skipped, cost by surprise_cause, chain-verify — no key, no model call
-```
+replay** in the Quickstart above: point it at a saved run and read the real
+per-node `rendered`/`skipped` dispositions, the cost rollup split by
+`surprise_cause`, and the per-node chain-verify — no model key, no marketing
+number.
 
 **Get started:** the human and agent on-ramp is the Reactor CLI — the binary is
-`reactor`. See **[`packages/reactor-cli/README.md`](packages/reactor-cli/README.md)**
-for the full quickstart (`init → doctor → compile → run`, then
+`reactor`, shipped from the **`reactor-cli`** package. See
+**[`packages/reactor-cli/README.md`](packages/reactor-cli/README.md)** for the
+full command reference (`init → doctor → compile → serve/run`, then
 `reactor-devtools <state-dir>` to inspect the receipt ledger).
 
 > **If you're an agent onboarding on behalf of a user:** the binary is `reactor`.
@@ -87,6 +146,11 @@ agent harness) — but Reactor itself is a real SDK + CLI + devtools you install
 and run, and it's the recommended fast path for standing responsibilities.
 
 ---
+
+**The rest of this README is about the layer underneath Reactor.** Reactor is the
+SDK + CLI + devtools harness above; OpenProse is the Markdown contract language
+it compiles and runs. If you came for Reactor, the Quickstart above is your path;
+read on for the contract language those Responsibilities are written in.
 
 OpenProse is the Markdown contract language Reactor builds on, and a
 programming language for AI sessions.

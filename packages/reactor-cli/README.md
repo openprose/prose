@@ -6,11 +6,17 @@ parses `.prose` itself. Compile freezes intelligence (model sessions) into
 deterministic, content-addressed artifacts; run/serve execute those frozen
 artifacts with a dumb reconciler.
 
-The command is `reactor`. Reactor is `React.memo` applied to expensive LLM work:
-you declare standing **Responsibilities**, the harness maintains a **world-model**
-and re-renders only what materially moved (the reconciler is dumb — **no judge
-step**), and every decision leaves a content-addressed **receipt**. Cost scales
-with surprise, not the clock.
+The command is `reactor`, shipped from this **`reactor-cli`** package. Reactor is
+`React.memo` applied to expensive LLM work: you declare standing
+**Responsibilities**, the harness maintains a **world-model** and re-renders only
+what materially moved (the reconciler is dumb — **no judge step**), and every
+decision leaves a content-addressed **receipt**. Cost scales with surprise, not
+the clock.
+
+> **Versions (currently staged tarballs, pre-publish):** `reactor-cli` 0.1.0 ·
+> `@openprose/reactor` 0.2.0 · `reactor-devtools` 0.1.0. `reactor --version`
+> prints the CLI version (0.1.0), not the SDK version (0.2.0) — expected, not a
+> mismatch.
 
 ## Install
 
@@ -46,9 +52,12 @@ own responsibility offline; only the live `compile`/`run` needs a model key.
 
 ```sh
 # 1. See the thesis — keyless, no model call, no setup.
-#    Replay a saved run's receipt ledger: dispositions, cost-by-surprise, chain-verify.
-reactor-devtools <state-dir> --describe   # headless summary (the text an agent reads)
-reactor-devtools <state-dir>              # browser viewer at http://localhost:4555
+#    Replay a real saved run's receipt ledger: dispositions, cost-by-surprise, chain-verify.
+#    Use the bundled fixture by name — no path to compute, works from any cwd:
+reactor-devtools --example masked-relay --describe   # headless summary (the text an agent reads)
+reactor-devtools --example masked-relay              # browser viewer at http://localhost:4555
+# (or, against the bundled path explicitly:)
+# reactor-devtools "$(npm root -g)/@openprose/reactor-devtools/fixtures/masked-relay" --describe
 
 # 2. Scaffold and check your own responsibility — offline.
 reactor init my-project        # scaffold a gateway + responsibility + reactor.yml
@@ -60,10 +69,14 @@ reactor compile --check        # honest STALE + contract fingerprint; zero cost
 export OPENROUTER_API_KEY=...   # doctor confirms it's present, never echoes it
 reactor compile                # run the compile sessions -> content-addressed IR cache
 reactor topology               # the DAG Forme wired from your contracts
-reactor run                    # boot, drain to quiescence, print dispositions + cost
-reactor serve --http 8080      # boot the durable host + continuity loop + HTTP surface
-reactor-devtools .reactor      # replay YOUR run's receipts in the viewer
+reactor serve --http 8080      # drive the scaffold's static gateway to a real receipt
+reactor-devtools .reactor --describe  # replay YOUR run's receipts
 ```
+
+> The scaffold seeds a **static** gateway, so drive it with `reactor serve` (which
+> ingests the seeded items), not `reactor run` (which is for graphs whose
+> connectors emit on their own). We're fixing `run` to either ingest the static
+> case or say so explicitly rather than no-op.
 
 `compile`/`run`/`serve` reach the model surface and need a live key
 (`OPENROUTER_API_KEY`) plus the optional peer deps (`@openai/agents`, `zod`).
