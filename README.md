@@ -147,6 +147,11 @@ fingerprint and pointing at the prior receipt — an append-only, chain-verifiab
 ledger that is the responsibility's durable memory. (Signer caveat: in v1,
 *signed* means tamper-evident at the meaning layer and chain-consistent — not yet
 a cryptographic byte hash; the null signer is the only honest v1 state.)
+`reactor receipts verify` proves receipt-**chain** consistency — each receipt's
+`content_hash` matches its payload and links its `prev` — but in v1 does **not**
+bind the world-model artifacts: editing a `world-models/*/published.json` while
+leaving `receipts.json` intact is not caught (the null-signer / meaning-layer
+boundary).
 
 **Benchmarks are openly pending — on purpose.** We're publishing the harness
 before the numbers; we're not going to imply a measured speedup we haven't run.
@@ -169,6 +174,20 @@ rendered/skipped dispositions and the cost rollup — see the eval-authoring gui
 shipped inside the `@openprose/reactor` SDK tarball). That is the most
 useful thing you can hand us: a responsibility where the harness *should* skip
 and doesn't, or *should* render and doesn't.
+
+**Contributing?** The commit gate is the **per-package offline test** (keyless,
+no network) — install with a frozen lockfile first:
+
+```bash
+pnpm install --frozen-lockfile
+pnpm -C packages/reactor test:offline
+pnpm -C packages/reactor-cli test:offline
+pnpm -C packages/reactor-devtools test:offline
+```
+
+If the repo root defines a `test:offline` script, `pnpm test:offline` is the
+one-shot gate that chains all three. (Root `pnpm test` chains the *live* + skill
+suites and goes red on a keyless box — use the offline gate to verify a commit.)
 
 > **If you're an agent onboarding on behalf of a user:** the binary is `reactor`.
 > Run `reactor init → doctor → compile → run`, then open

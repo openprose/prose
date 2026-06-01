@@ -70,6 +70,7 @@ export OPENROUTER_API_KEY=...   # doctor confirms it's present, never echoes it
 reactor compile                # run the compile sessions -> content-addressed IR cache
 reactor topology               # the DAG Forme wired from your contracts
 reactor serve --http 8080      # drive the scaffold's static gateway to a real receipt
+                               # (binds 127.0.0.1 by default; no auth in v1 — see "Deploying reactor serve")
 reactor-devtools .reactor --describe  # replay YOUR run's receipts
 ```
 
@@ -121,6 +122,65 @@ tokens) only when its `(contract_fp, input_fps)` memo key actually moves. So the
 standing cost of a quiet system trends to zero, and a cost spike is always a real
 change propagating — `reactor receipts cost` and `reactor status` roll cost up by
 `surprise_cause` so you can see exactly *what surprised the system*.
+
+## Deploying `reactor serve`
+
+`reactor serve --http <port>` boots the durable host and exposes a small HTTP
+surface for liveness, observability, and manual ingress. The routes (namespaced
+under `/<reactor-name>/...` on a multi-reactor host; the prefix is omitted for a
+single reactor):
+
+| Method + path | What it returns |
+| --- | --- |
+| `GET /health` | Liveness — `200` with `{ "status": "ok" }` once the host is up. |
+| `GET /status` | Standing compile cost beside live run cost + per-node dispositions (the `status` command's JSON). |
+| `GET /cost` | The cost rollup by `surprise_cause` (the `receipts cost` JSON). |
+| `POST /<node>/trigger` | Wake `<node>` with an optional JSON body as an external arrival; returns the resulting disposition. |
+
+It drains in-flight work on `SIGINT`/`SIGTERM` before exiting.
+
+> **⚠ Bind address and auth — read before exposing this.** As of this release
+> `serve --http` binds **`127.0.0.1` by default** — it is *not* reachable off the
+> host unless you pass an explicit `--host 0.0.0.0`. And **v1 ships no auth.**
+> `POST /<node>/trigger` is unauthenticated, so anything that can reach the port
+> can wake a node and **cause model spend**. Exposing it externally (`--host
+> 0.0.0.0`) is only safe behind a **reverse proxy or network policy** that adds
+> authentication and rate-limiting. Treat the bare HTTP surface as a
+> single-operator, trusted-network interface.
+
+### Kubernetes / container deployment
+
+Probe liveness on the HTTP server and readiness with `reactor doctor --json`
+(keyless, offline — it reports node/SDK/key/deps/state-dir/IR health):
+
+```yaml
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 8080
+  initialDelaySeconds: 5
+  periodSeconds: 10
+readinessProbe:
+  exec:
+    command: ["reactor", "doctor", "--json"]
+  initialDelaySeconds: 5
+  periodSeconds: 15
+```
+
+A reference Dockerfile sketch — pin Node 22, install the three packages globally
+(SDK first), and run `serve --http` bound to all interfaces *inside the
+container* (keep the bind at `127.0.0.1` on the host and front it with an
+ingress/proxy that adds auth):
+
+```dockerfile
+FROM node:22-slim
+RUN npm i -g @openprose/reactor @openprose/reactor-cli @openprose/reactor-devtools \
+    && npm i -g @openai/agents zod
+WORKDIR /app
+COPY . .
+EXPOSE 8080
+CMD ["reactor", "serve", "--http", "8080", "--host", "0.0.0.0"]
+```
 
 ## Configuration — `reactor.yml`
 
@@ -217,6 +277,13 @@ Run `reactor <command> --help` for the full options of any command.
 | `reactor trace [<node>]` | offline | Each node's receipt chain: wake → disposition. |
 | `reactor receipts [list\|verify\|cost] [--node <node>]` | offline | Audit the receipt trail (`verify` is non-zero on a broken chain). |
 
+> **What `receipts verify` proves (and doesn't).** It proves **receipt-chain
+> consistency**: each receipt's `content_hash` matches its payload, and each
+> receipt links to its `prev`. In v1 it does **not** bind the world-model
+> artifacts — editing a `world-models/*/published.json` while leaving
+> `receipts.json` intact is **not** caught. That is the null-signer / meaning-layer
+> boundary: verify covers the chain, not the maintained truth on disk.
+
 ### Documented exit codes
 
 The CLI uses stable, documented exit codes so it composes in CI/scripts:
@@ -260,3 +327,20 @@ the CLI entrypoint loads neither `@openai/agents` nor `zod`. `compile`, `run`,
 `serve`, `trigger`, and the connector/render paths reach the model surface only via
 dynamic `import()` inside the handler — so `doctor`, `init`, and the whole
 observability suite work with the model deps absent.
+
+## Contributing — the offline commit gate
+
+The commit gate is the **per-package offline test**, which runs with no model key
+and no network. Install with a frozen lockfile, then run the gate:
+
+```sh
+pnpm install --frozen-lockfile
+pnpm -C packages/reactor test:offline
+pnpm -C packages/reactor-cli test:offline
+pnpm -C packages/reactor-devtools test:offline
+```
+
+If the repo root defines a `test:offline` script, `pnpm test:offline` from the
+root is the one-shot gate that chains all three. (Root `pnpm test` chains the
+*live* + skill suites and will go red on a keyless box — use the offline gate to
+verify a commit.)
