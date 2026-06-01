@@ -124,16 +124,14 @@ executing the system. The shell executable is the agent runner, e.g.
 |---------|--------|
 | `prose compile [path] [--out <dir>]` | Load `responsibility-runtime.md`, then `compiler/index.prose.md`; run the pinned ProseScript compiler and emit concrete trigger registrations, activations, and Forme manifests into `<openprose-root>/dist/manifest.next.json` by default |
 | `prose serve` | Load and validate `<openprose-root>/dist/manifest.active.json`; register local cron and HTTP trigger adapters; launch ordinary bounded activations |
-| `prose run <file.prose.md>` | Detect Contract Markdown, load `contract-markdown.md`, select state with `state/README.md` plus the backend doc, then `forme.md` if multi-service, then `prose.md` |
-| `prose run runtime/judge-responsibility.prose.md` | Resolve from the OpenProse skill root; judge one responsibility from activation context |
-| `prose run <host>/<owner>/<repo>[/path]` | Resolve installed dependency service or system, detect format, then route as above |
+| `prose run <file.prose.md>` | Detect Contract Markdown, load `contract-markdown.md`, select state with `state/README.md` plus the backend doc, then `forme.md` if multi-service, then `prose.md` || `prose run <host>/<owner>/<repo>[/path]` | Resolve installed dependency service or system, detect format, then route as above |
 | `prose run std/...` / `co/...` | Expand OpenProse package shorthand, resolve installed dependency service or system, then route as above |
 | `prose write [request...]` | Interactive-by-default authoring: load `contract-markdown.md`, `guidance/tenets.md`, and `guidance/authoring.md`; run `std/ops/prose-author`; scan the local landscape read-only, decide shape/root/path, load shape-specific guidance, ask a small number of targeted `ask_user` questions when the host can support them, then return a fully validated source package. If the caller or host marks the run non-interactive, return `unresolved-intent` with the missing decisions instead of guessing. Do not apply files unless the caller explicitly asks for that follow-up |
 | `prose lint <file.prose.md>` | Validate Contract Markdown structure, headers, frontmatter, contracts, shapes, and wiring |
 | `prose preflight <file.prose.md>` | Check dependencies and `### Environment` declarations without executing |
 | `prose test <path>` | Load `contract-markdown.md`, `state/README.md` plus the selected backend, and `prose.md`; run `kind: test` file(s) |
 | `prose inspect <run-id>` | Resolve and run `std/evals/inspector` against a completed run |
-| `prose status` | Summarize active IR, diagnostics, trigger plan, recent runs, and responsibility status/pressure |
+| `prose status` | Summarize active IR, diagnostics, trigger plan, recent runs, and responsibility status from the receipt ledger |
 | `prose install` | Load `deps.md`; install dependency references into `<openprose-root>/deps/` and write `<openprose-root>/prose.lock` |
 | `prose install --update` | Load `deps.md`; update pinned dependency SHAs |
 | `prose upgrade --dry-run` | Load `changelog.md`; inspect nearby files and report the concrete migration plan without editing |
@@ -253,16 +251,14 @@ user workspace for these docs.
 | `prosescript.md` | Imperative scripting syntax for `### Execution` and pattern `### Delegation` |
 | `forme.md` | Forme container wiring semantics |
 | `prose.md` | Prose VM execution semantics |
-| `responsibility-runtime.md` | Responsibility Runtime doctrine: Responsibilities, Reactor, compile, serve, run, and status |
-| `runtime/judge-responsibility.prose.md` | Static responsibility judge service launched by `prose serve` as a normal run |
-| `compiler/index.prose.md` | Bundled ProseScript compiler program |
+| `responsibility-runtime.md` | Responsibility Runtime doctrine: Responsibilities, Reactor, compile, serve, run, and status || `compiler/index.prose.md` | Bundled ProseScript compiler program |
 | `compiler/ir-v0.md` | Canonical repository IR contract emitted by compile and served by the harness |
 | `deps.md` | Dependency resolution and `prose install` |
 | `changelog.md` | Compact version history and model-guided upgrade instructions; load only for `prose upgrade` or outdated-structure diagnosis |
 | `help.md` | User-facing help |
 | `concepts/README.md` | Responsibility Runtime concept index |
 | `concepts/responsibility.md` | `kind: responsibility` semantic contract |
-| `concepts/reactor.md` | Evented reconciliation, judge status, and maintenance pressure |
+| `concepts/reactor.md` | The dumb deterministic reconciler: fingerprint compare/skip/propagate, receipts, and postcondition-gated commits (no judge) |
 | `state/README.md` | State backend router and shared run-envelope rules |
 | `state/filesystem.md` | Default state backend for Contract Markdown runs |
 | `primitives/session.md` | Subagent session and memory guidelines |
@@ -285,7 +281,7 @@ another repository uses `repo/.agents/prose`. User-global work uses
 | `<openprose-root>/dist/` | Compiled intent and served manifests |
 | `<openprose-root>/runs/` | Activation receipts and run artifacts |
 | `<openprose-root>/state/agents/` | Durable cross-run agents |
-| `<openprose-root>/state/responsibilities/` | Durable responsibility status and pressure |
+| `<openprose-root>/state/responsibilities/` | Durable per-responsibility world-model and signed, append-only receipt ledger |
 | `<openprose-root>/deps/` | Installed dependencies, gitignored |
 | `<openprose-root>/prose.lock` | Dependency lockfile, committed |
 | `<openprose-root>/.env` | Runtime configuration |

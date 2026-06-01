@@ -243,7 +243,7 @@ paths are relative to `<openprose-root>`:
 | `runs/` | Activation receipts for bounded VM runs |
 | `state/` | Durable cross-run state |
 | `state/agents/` | Durable cross-run agents |
-| `state/responsibilities/` | Durable responsibility status and pressure |
+| `state/responsibilities/` | Durable per-responsibility world-model and signed, append-only receipt ledger |
 | `deps/` | Installed dependencies |
 | `prose.lock` | Dependency lockfile |
 | `.env` | Local runtime environment variables |
@@ -426,15 +426,16 @@ be checked, maintained, and restored across bounded runs:
 | `prose serve` | Load active IR and run local cron and HTTP trigger adapters |
 | `prose run` | Execute one bounded OpenProse VM activation |
 | `prose write` | Author a validated OpenProse program package from rough English/pseudo-Prose, asking targeted shape/root questions in interactive hosts and returning `unresolved-intent` only for non-interactive missing decisions |
-| `prose status` | Inspect active IR, diagnostics, trigger plan, recent runs, and responsibility status/pressure |
+| `prose status` | Inspect active IR, diagnostics, trigger plan, recent runs, and responsibility status from the receipt ledger |
 
 The compiled Responsibility Runtime manifest preserves responsibilities as
 semantic sections, emits concrete triggers and activation intent, and includes
-structured Forme manifests for fulfillment systems. `prose serve` launches
-judge activations as normal bounded runs of the bundled judge service, records
-responsibility status under `<openprose-root>/state/responsibilities/`, and
-turns unhealthy status into deduped pressure that launches ordinary fulfillment
-runs. The first live adapters are local cron timers and HTTP webhook/API
+structured Forme manifests. `prose serve` runs the dumb reconciler over the
+active IR: each event wakes the subscribed responsibilities, and the reconciler
+re-renders only those whose `(contract, inputs)` fingerprints moved — persisting
+each responsibility's world-model under `<openprose-root>/state/responsibilities/`
+and signing a receipt for every decision (a cheap `skipped` receipt when nothing
+moved). The first live adapters are local cron timers and HTTP webhook/API
 routes. `prose compile` writes `<openprose-root>/dist/manifest.next.json`; promote it to
 `<openprose-root>/dist/manifest.active.json` when you want `prose serve`
 to consume it.
@@ -458,7 +459,7 @@ competing frameworks:
 - **Responsibilities** define standing goals: goals that must remain true over
   time.
 - **Reactor** is the evented reconciliation model: timers, webhooks, queues,
-  file changes, judge drift, and manual requests are all events.
+  file changes, upstream receipt changes, and manual requests are all events.
 - **Forme** wires the services and systems used to fulfill responsibilities.
 
 The harness should stay deterministic: validate IR, register triggers, receive

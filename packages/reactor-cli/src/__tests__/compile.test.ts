@@ -16,7 +16,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, readFileSync, existsSync } from 'node:fs';
+import { mkdtempSync, rmSync, readFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -24,7 +24,7 @@ import { spawnSync } from 'node:child_process';
 import { ATOMIC_FACET } from '@openprose/reactor';
 
 import { runCompileCommand } from '../commands/compile';
-import { manifestPath, loadIR } from '../compile/ir-cache';
+import { manifestPath, loadIR, readTopologyShape, compileDir } from '../compile/ir-cache';
 import { fakeStructuredProvider } from './fake-provider';
 
 // The on-disk two-node fixture (NOT copied into dist — resolve against the SDK's
@@ -186,11 +186,50 @@ describe('reactor compile (offline gate)', () => {
   it('re-run HITS the cache at zero session cost (no re-compile)', async () => {
     const stateDir = freshStateDir();
     try {
-      await compileOnce(stateDir);
+      const fresh = await compileOnce(stateDir);
       const { code, report } = await compileOnce(stateDir);
       assert.equal(code, 0);
       assert.equal(report['status'], 'cache-hit');
       assert.equal((report['cost'] as { fresh: number }).fresh, 0);
+      // A cache HIT must report the SAME entry_points + acyclic as the fresh
+      // compile — read back from the persisted topology, not a placeholder.
+      // (This fixture is acyclic with no gateway entry points; the dedicated
+      // `readTopologyShape` test below proves the reader surfaces NON-placeholder
+      // values — a cyclic graph must not read as acyclic just because it was
+      // served from cache.)
+      assert.deepEqual(report['entry_points'], fresh.report['entry_points']);
+      assert.equal(report['acyclic'], fresh.report['acyclic']);
+    } finally {
+      rmSync(stateDir, { recursive: true, force: true });
+    }
+  });
+
+  it('readTopologyShape returns the REAL persisted entry_points + acyclic (not placeholders)', () => {
+    const stateDir = freshStateDir();
+    try {
+      // No topology cached yet → undefined (the warm report then falls back).
+      assert.equal(readTopologyShape(stateDir), undefined);
+
+      // Seed a CYCLIC topology with gateway entry points — the exact case the
+      // old hardcoded `acyclic: true` / `entry_points: []` cache-hit report got
+      // wrong. readTopologyShape must surface these real values.
+      const dir = compileDir(stateDir);
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(
+        join(dir, 'topology.json'),
+        JSON.stringify({
+          topology: {
+            nodes: [{ node: 'gw' }, { node: 'a' }],
+            edges: [{ subscriber: 'a', producer: 'gw', facet: 'x' }],
+            acyclic: false,
+            entry_points: ['gw'],
+          },
+        }),
+        'utf8',
+      );
+
+      const shape = readTopologyShape(stateDir);
+      assert.deepEqual(shape, { entry_points: ['gw'], acyclic: false });
     } finally {
       rmSync(stateDir, { recursive: true, force: true });
     }
