@@ -6,6 +6,9 @@
 // The future `reactor dev` CLI integration is documented in the README for the
 // CLI agent to wire later — this bin does not touch the CLI package.
 
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { startDevToolsServer } from "./server";
 import { openStateDir, describeStateDir } from "./data";
 
@@ -14,8 +17,20 @@ interface ParsedArgs {
   readonly port: number | undefined;
   readonly host: string | undefined;
   readonly help: boolean;
+  /** `--version` / `-V`: print the package version and exit. */
+  readonly version: boolean;
   /** `--describe`: print a headless run summary (no browser) and exit. */
   readonly describe: boolean;
+}
+
+/** This package's version, read from its package.json at runtime (dist/cli.js -> ../package.json). */
+function readVersion(): string {
+  try {
+    const raw = readFileSync(join(__dirname, "..", "package.json"), "utf8");
+    return (JSON.parse(raw) as { version?: string }).version ?? "0.0.0";
+  } catch {
+    return "0.0.0";
+  }
 }
 
 function parseArgs(argv: readonly string[]): ParsedArgs {
@@ -23,11 +38,14 @@ function parseArgs(argv: readonly string[]): ParsedArgs {
   let port: number | undefined;
   let host: string | undefined;
   let help = false;
+  let version = false;
   let describe = false;
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]!;
     if (arg === "--help" || arg === "-h") {
       help = true;
+    } else if (arg === "--version" || arg === "-V") {
+      version = true;
     } else if (arg === "--describe") {
       describe = true;
     } else if (arg === "--port" || arg === "-p") {
@@ -38,7 +56,7 @@ function parseArgs(argv: readonly string[]): ParsedArgs {
       stateDir = arg;
     }
   }
-  return { stateDir, port, host, help, describe };
+  return { stateDir, port, host, help, version, describe };
 }
 
 const USAGE = `reactor-devtools — replay a saved Reactor ledger in a browser DAG viewer
@@ -61,6 +79,10 @@ Options:
 
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
+  if (args.version) {
+    process.stdout.write(`${readVersion()}\n`);
+    process.exit(0);
+  }
   if (args.help || args.stateDir === undefined) {
     process.stdout.write(USAGE);
     process.exit(args.help ? 0 : 1);
