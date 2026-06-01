@@ -25,6 +25,7 @@ import {
   loadIR,
   persistIR,
   readManifest,
+  readTopologyShape,
   type ContractImage,
 } from '../compile/ir-cache';
 import type { ConfigOverrides } from '../config';
@@ -248,6 +249,10 @@ function cacheReport(
   status: 'cache-hit',
 ): CompileReport {
   const manifest = readManifest(stateDir);
+  // entry_points + acyclic ARE persisted in topology.json — read the real values
+  // so a warm `compile --json` does not always claim `acyclic: true`. diagnostics
+  // are not yet persisted in the IR cache (tracked follow-on), so they stay empty.
+  const shape = readTopologyShape(stateDir);
   return {
     status,
     contract_set_fingerprint: setFingerprint,
@@ -255,8 +260,8 @@ function cacheReport(
     model,
     nodes: manifest?.nodes ?? 0,
     edges: manifest?.edges ?? 0,
-    entry_points: [],
-    acyclic: true,
+    entry_points: shape?.entry_points ?? [],
+    acyclic: shape?.acyclic ?? true,
     diagnostics: [],
     cost: { fresh: 0, reused: 0 },
     step_costs: [],
