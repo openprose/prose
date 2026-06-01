@@ -36,6 +36,7 @@ import {
   type RunRender,
 } from '../run/load-run-project';
 import { buildDurableSubstrate } from '../run/substrate';
+import { buildSandboxRunner } from '../run/sandbox';
 import { createSerialQueue, type SerialQueue } from '../run/serial-queue';
 import {
   rollupCost,
@@ -47,7 +48,7 @@ import { bootHost, type PerReactorTestSeam } from '../run/host';
 import { startHttpServer, type HttpServerHandle } from '../run/http-server';
 import { isCacheFresh, contractSetFingerprint } from '../compile/ir-cache';
 import { loadContractSet as keylessLoadContractSet } from '../compile/contract-images';
-import type { ConfigOverrides } from '../config';
+import type { ConfigOverrides, SandboxConfig } from '../config';
 import { loadConfig } from '../config';
 import { resolveSdk } from '../meta';
 import { runCompileCommand, type CompileCommandOptions } from './compile';
@@ -98,6 +99,12 @@ export interface BootReactorInput {
   readonly offline?: boolean;
   /** A model override applied to compile-if-stale. */
   readonly modelOverride?: string;
+  /**
+   * Phase 5 — the reactor's `[sandbox]` config. Drives the workspace-scoped render
+   * sandbox runner + the per-command shell timeout. Omitted (single test seam) →
+   * the locked `mode: none` default (no runner; bounded LocalShell).
+   */
+  readonly sandbox?: SandboxConfig;
   /** Test seam: the substrate + render. */
   readonly testAdapters?: RunAdapters;
   readonly testRender?: RunRender;
@@ -191,6 +198,13 @@ export async function bootReactorHandle(
   const adapters: RunAdapters =
     input.testAdapters ?? buildDurableSubstrate(stateDir);
   const baseRender: RunRender = input.testRender ?? {};
+  // Phase 5: construct the render sandbox runner from `[sandbox]` (mode none →
+  // none; docker present → workspace-scoped network-off container; docker absent →
+  // none + a note). The workspace root is the reactor's isolated state dir (the
+  // harness harvests host-side). Thread `shell_timeout_ms` onto the render bound.
+  const sandboxConfig: SandboxConfig =
+    input.sandbox ?? { mode: 'none', shell_timeout_ms: 300_000 };
+  const built = buildSandboxRunner(sandboxConfig, stateDir);
   const render: RunRender = {
     ...baseRender,
     contractFor:
@@ -198,6 +212,12 @@ export async function bootReactorHandle(
     projectTruthFor:
       baseRender.projectTruthFor ??
       ((node) => loaded.projectTruthFor(node) as ProjectTruthProjection),
+    ...(baseRender.sandbox === undefined && built.runner !== undefined
+      ? { sandbox: built.runner }
+      : {}),
+    ...(baseRender.shellTimeoutMs === undefined
+      ? { shellTimeoutMs: sandboxConfig.shell_timeout_ms }
+      : {}),
   };
 
   // 4. CONFIGURE + boot runProject (the SDK self-mounts + runs the boot sweep).
@@ -288,6 +308,7 @@ export async function bootServe(
     contractsDir: path.resolve(options.projectDir ?? '.'),
     stateDir: config.state.dir,
     model: config.model.compile_model,
+    sandbox: config.sandbox,
     ...(options.offline !== undefined ? { offline: options.offline } : {}),
     ...(options.model !== undefined ? { modelOverride: options.model } : {}),
     ...(options.testAdapters !== undefined ? { testAdapters: options.testAdapters } : {}),

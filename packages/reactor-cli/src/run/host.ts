@@ -125,6 +125,7 @@ export async function bootHost(options: BootHostOptions = {}): Promise<HostHandl
       contractsDir: entry.projectDir,
       stateDir: entry.stateDir,
       model,
+      sandbox: config.sandbox,
       ...(options.offline !== undefined ? { offline: options.offline } : {}),
       ...(options.model !== undefined ? { modelOverride: options.model } : {}),
       ...(seam.testAdapters !== undefined ? { testAdapters: seam.testAdapters } : {}),

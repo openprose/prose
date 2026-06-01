@@ -19,6 +19,7 @@ import type {
   ContractView,
   ProjectTruthProjection,
 } from './run-core';
+import type { SandboxRunner } from './sandbox';
 
 /** The substrate the run/serve path injects (clock + storage + world-model). */
 export interface RunAdapters {
@@ -40,6 +41,21 @@ export interface RunRender {
   readonly temperature?: number;
   readonly seed?: number;
   readonly maxTurns?: number;
+  /**
+   * Phase 5 — the constructed render sandbox runner (structural mirror of the
+   * SDK's `RenderSandboxRunner`). When set, it reaches `createAgentRender`'s
+   * `sandbox` (via Change C's `RunProjectRender.sandbox`) so the render's
+   * `sandbox_exec` runs inside the workspace-scoped container. Unset → the render
+   * has no sandbox (`sandbox_exec` declines), the locked `mode: none` default.
+   */
+  readonly sandbox?: SandboxRunner;
+  /**
+   * Phase 5 — the per-command `shell_exec` timeout (ms) from `[sandbox]
+   * .shell_timeout_ms`, threaded onto Change C's `RunProjectRender.shellTimeoutMs`
+   * so the cwd-rooted LocalShell honors the configured bound. Unset → the SDK's
+   * 300_000 ms default.
+   */
+  readonly shellTimeoutMs?: number;
 }
 
 /** Input to {@link callRunProject}: the compiled project + substrate + render. */
@@ -116,8 +132,16 @@ async function importRunProject(): Promise<RunProjectModule> {
  */
 export async function callRunProject(
   input: CallRunProjectInput,
+  /**
+   * Test seam (OFFLINE gate): inject the `runProject` implementation so a test can
+   * CAPTURE the exact render config the CLI hands it (e.g. prove Phase 5's
+   * `sandbox`/`shellTimeoutMs` flow through) WITHOUT the dynamic import + a real
+   * provider. Defaults to the dynamically-imported model-bearing barrel.
+   */
+  runProjectImpl?: (input: unknown) => Promise<CallRunProjectResult>,
 ): Promise<CallRunProjectResult> {
-  const { runProject } = await importRunProject();
+  const runProject =
+    runProjectImpl ?? (await importRunProject()).runProject;
   const renderConfig: Record<string, unknown> = {};
   if (input.render.contractFor !== undefined)
     renderConfig['contractFor'] = input.render.contractFor;
@@ -134,6 +158,12 @@ export async function callRunProject(
   if (input.render.seed !== undefined) renderConfig['seed'] = input.render.seed;
   if (input.render.maxTurns !== undefined)
     renderConfig['maxTurns'] = input.render.maxTurns;
+  // Phase 5: thread the constructed sandbox runner + the per-command shell
+  // timeout onto Change C's `RunProjectRender.sandbox` / `.shellTimeoutMs`.
+  if (input.render.sandbox !== undefined)
+    renderConfig['sandbox'] = input.render.sandbox;
+  if (input.render.shellTimeoutMs !== undefined)
+    renderConfig['shellTimeoutMs'] = input.render.shellTimeoutMs;
 
   return runProject({
     compiled: input.compiled,
