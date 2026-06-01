@@ -93,13 +93,18 @@ You should see the per-node `rendered`/`skipped` dispositions, a cost rollup by
 `skipped moved[—] fresh 0`. That's "cost scales with surprise" — checkable, with
 no key.
 
+> **Prefer the browser?** Drop `--describe` —
+> `reactor-devtools --example masked-relay` boots an animated DAG viewer at a
+> localhost URL: nodes flash on render, dim-pulse on memo-skip, with a live cost
+> meter. Same keyless replay, the deck-ready view.
+
 **3. Scaffold and inspect — keyless (no model key).** Everything in this step
 runs offline:
 
 ```bash
 reactor init my-project && cd my-project
 reactor doctor          # reports what's present + the exact fix for anything missing
-reactor compile --check # offline; exits 1 if the contract set is STALE (CI-wireable)
+reactor compile --check; echo "exit=$?"   # offline; exits 1 if the contract set is STALE (CI-wireable)
 
 # Want a real-shaped ledger in YOUR own directory to poke at, keyless?
 reactor-devtools --example masked-relay --copy-to ./my.reactor  # copy the sample ledger locally
@@ -110,6 +115,11 @@ reactor-devtools ./my.reactor --describe                        # then inspect i
 > real-shaped receipt trail to inspect and diff against, not a run you computed.
 > Minting your *own* first receipt needs a live render (step 4). Until then, your
 > own contracts still `compile --check` keyless.
+
+> **Wiring `--check` into CI?** Read `$?` directly — *do not pipe* if you need the
+> exit status. A pipe (`reactor compile --check | tee log`) reports the *last*
+> command's exit, not reactor's, so a STALE failure looks like a pass. Use
+> `reactor compile --check; echo "exit=$?"` to confirm the real code.
 
 **4. Go live (needs a model key).** The steps below reach the model surface, so
 they need `OPENROUTER_API_KEY` and the two optional peers — a keyless reader can
@@ -154,8 +164,9 @@ full command reference (`init → doctor → compile → serve/run`, then
 
 **Want to send us an eval?** To author a surprise-cost scenario by hand — drive
 the reconciler from the public SDK, wake a graph, and read back the
-rendered/skipped dispositions and the cost rollup — see
-**[`packages/reactor/EVALS.md`](packages/reactor/EVALS.md)**. That is the most
+rendered/skipped dispositions and the cost rollup — see the eval-authoring guide
+**[`packages/reactor/EVALS.md`](packages/reactor/EVALS.md)** (in this repo, and
+shipped inside the `@openprose/reactor` SDK tarball). That is the most
 useful thing you can hand us: a responsibility where the harness *should* skip
 and doesn't, or *should* render and doesn't.
 

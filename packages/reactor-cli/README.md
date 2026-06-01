@@ -231,6 +231,17 @@ Failure modes carry actionable messages, e.g. a missing live key → "set
 `OPENROUTER_API_KEY`"; `mode: docker` with no daemon → "install/start Docker, or
 renders fall back to the bounded shell"; a stale cache → "run `reactor compile`".
 
+> **Reading the exit code in CI?** Check `$?` directly — **do not pipe** if you
+> need the status:
+>
+> ```sh
+> reactor compile --check; echo "exit=$?"   # 1 when STALE, 0 when fresh
+> ```
+>
+> A pipe (`reactor compile --check | tee log`) reports the *last* command's exit,
+> not reactor's — so a STALE failure silently looks like a pass. Read `$?` from
+> the bare command, or capture it before piping.
+
 ## Examples
 
 The [`examples/`](./examples) directory runs end-to-end from a fresh checkout:
