@@ -79,6 +79,7 @@ test("buildSnapshot projects receipts, topology, and cost rollup", () => {
     session,
     topology: TOPOLOGY,
     worldModels: null,
+    labels: {},
   };
 
   const snap = buildSnapshot(opened);
@@ -169,6 +170,7 @@ test("diamond single-wake: a node reached by ≥2 moved facets wakes once", () =
     session,
     topology,
     worldModels: null,
+    labels: {},
   });
   const [frame] = snap.frames;
 
@@ -190,6 +192,7 @@ test("buildSnapshot falls back to a node-only set without topology", () => {
     session,
     topology: null,
     worldModels: null,
+    labels: {},
   });
 
   assert.equal(snap.hasTopology, false);

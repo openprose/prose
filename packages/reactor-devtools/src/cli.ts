@@ -7,12 +7,15 @@
 // CLI agent to wire later — this bin does not touch the CLI package.
 
 import { startDevToolsServer } from "./server";
+import { openStateDir, describeStateDir } from "./data";
 
 interface ParsedArgs {
   readonly stateDir: string | undefined;
   readonly port: number | undefined;
   readonly host: string | undefined;
   readonly help: boolean;
+  /** `--describe`: print a headless run summary (no browser) and exit. */
+  readonly describe: boolean;
 }
 
 function parseArgs(argv: readonly string[]): ParsedArgs {
@@ -20,10 +23,13 @@ function parseArgs(argv: readonly string[]): ParsedArgs {
   let port: number | undefined;
   let host: string | undefined;
   let help = false;
+  let describe = false;
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]!;
     if (arg === "--help" || arg === "-h") {
       help = true;
+    } else if (arg === "--describe") {
+      describe = true;
     } else if (arg === "--port" || arg === "-p") {
       port = Number(argv[++i]);
     } else if (arg === "--host") {
@@ -32,7 +38,7 @@ function parseArgs(argv: readonly string[]): ParsedArgs {
       stateDir = arg;
     }
   }
-  return { stateDir, port, host, help };
+  return { stateDir, port, host, help, describe };
 }
 
 const USAGE = `reactor-devtools — replay a saved Reactor ledger in a browser DAG viewer
@@ -46,6 +52,10 @@ Arguments:
 Options:
   -p, --port    Port to listen on (default 4555).
       --host    Host to bind (default 127.0.0.1).
+      --describe Print a headless run summary (per-node + per-frame
+                 dispositions, moved-facet diff, cost rollup, chain-verify)
+                 and exit — no browser. The text an agent reads to sanity-
+                 check the beats without watching the video.
   -h, --help    Show this help.
 `;
 
@@ -58,6 +68,13 @@ async function main(): Promise<void> {
   if (args.port !== undefined && !Number.isInteger(args.port)) {
     process.stderr.write("error: --port must be an integer\n");
     process.exit(1);
+  }
+
+  // `--describe`: headless run summary, no server, no browser.
+  if (args.describe) {
+    const opened = openStateDir(args.stateDir);
+    process.stdout.write(describeStateDir(opened));
+    process.exit(0);
   }
 
   const started = await startDevToolsServer({

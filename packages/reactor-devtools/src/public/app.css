@@ -21,6 +21,14 @@
   --rendered-deep: #2bb6da;
   --skipped: #5b6678;
   --failed: #ff5d6c;
+  --recovered: #4ee08a;
+
+  /* The "lit / freshly-rendered" accent — matches the orange `--fresh` /
+   * "rendered" legend swatch so a node that just rendered POPS the same warm hue
+   * the cost meter spends in. This is the hero contrast: a lit box is hot orange,
+   * a dark box recedes toward the page background. */
+  --lit: #ff9a4d;
+  --lit-soft: #ffb877;
 
   /* wake-cause accents */
   --cause-input: #6ee7ff;
@@ -63,7 +71,7 @@ body {
 .legend { display: flex; gap: 14px; color: var(--ink-dim); font-size: 11px; }
 .lg { display: inline-flex; align-items: center; gap: 5px; }
 .lg i { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
-.lg-rendered i { background: var(--rendered); }
+.lg-rendered i { background: var(--lit); box-shadow: 0 0 6px var(--lit); }
 .lg-skipped i { background: var(--skipped); }
 .lg-failed i { background: var(--failed); }
 .lg-entry i { background: transparent; border: 1.5px solid var(--entry); border-radius: 50%; }
@@ -96,15 +104,68 @@ body {
   pointer-events: none;
 }
 
+/* The "siblings stayed dark" hero caption — a data-driven annotation that fades
+ * in on a selective-wake frame (most fan-out subscribers stayed dark). Sits
+ * top-center over the graph; subtle, legible, very Twitter-readable. */
+.herocaption {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translate(-50%, -6px);
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: rgba(14, 18, 27, 0.82);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  backdrop-filter: blur(6px);
+  box-shadow: 0 8px 24px -10px #000, 0 0 0 1px rgba(110, 231, 255, 0.06);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.28s ease, transform 0.28s ease;
+  white-space: nowrap;
+}
+.herocaption::before {
+  content: "";
+  display: inline-block;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--rendered);
+  box-shadow: 0 0 8px var(--rendered);
+  margin-right: 8px;
+  vertical-align: middle;
+}
+.herocaption.show { opacity: 1; transform: translate(-50%, 0); }
+
 /* ---- graph elements ---- */
+/* Base (resting / dark-lane) edges read GENUINELY DARK so an unlit lane recedes
+ * into the page — the whole pitch is "the lit path lights, the sibling lanes stay
+ * dark". A connector you can barely see when dark is correct: the contrast lands
+ * the instant a path-lit edge blazes orange over it. */
 .edge {
   fill: none;
   stroke: var(--edge);
-  stroke-width: 1.2;
-  opacity: 0.55;
+  stroke-width: 1.1;
+  opacity: 0.32;
 }
 .edge.facet-atomic { stroke: var(--edge-atomic); stroke-dasharray: none; }
 .edge:not(.facet-atomic) { stroke-dasharray: 3 3; }    /* named facet lanes are dashed */
+
+/* THE LIT PATH (review #1/#2, the keystone steady state). An edge on the active
+ * propagation drain holds a bright hot-orange connector with a glow — so a PARKED
+ * keyframe shows the whole path lit at once (Claude Adapter → Session Ledger →
+ * Session Summary → Workstream Index → Dashboard), while the five sibling adapter
+ * lanes keep the dark base edge above. This is what turns "boxes change color"
+ * into "a path lights up." Steady (no animation) so the still captures it. */
+.edge.path-lit {
+  stroke: var(--lit);
+  stroke-width: 2.6;
+  opacity: 1;
+  stroke-dasharray: none;
+  filter: drop-shadow(0 0 5px rgba(255, 154, 77, 0.85)) drop-shadow(0 0 2px rgba(255, 154, 77, 0.9));
+}
 .edge-label {
   fill: var(--ink-faint);
   font-size: 9px;
@@ -125,6 +186,14 @@ body {
   font-weight: 500;
   dominant-baseline: middle;
 }
+/* friendly labels ("Claude Adapter") are proportional and a touch smaller so
+ * longer relatable names fit the box without crushing letter-spacing. */
+.node-label.labeled {
+  font-size: 14.5px;
+  font-weight: 600;
+  font-family: -apple-system, "SF Pro Text", "Inter", system-ui, sans-serif;
+  letter-spacing: 0.01em;
+}
 .node-sub {
   fill: var(--ink-dim);
   font-size: 12px;
@@ -134,15 +203,109 @@ body {
 .node.entry .node-label { fill: #ffe2a8; }
 .node.producer-only .node-box { stroke-dasharray: 4 3; opacity: 0.85; }
 
-/* current-hit marker (S1 scrubber): the node the active receipt landed on */
-.node.hit .node-box { stroke: var(--rendered); stroke-width: 2.2; fill: #16222e; }
-.node.hit.skipped .node-box { stroke: var(--skipped); fill: #161b24; }
-.node.hit.failed .node-box { stroke: var(--failed); fill: #241317; }
-.node.hit .node-label { fill: #eaf7ff; }
+/* current-hit marker (S1 scrubber): the node the active receipt landed on. A
+ * rendered head is the bright lit orange (the `.rendered-now`/`.recovered-now`
+ * classes above carry the saturated glow); a skipped head is grey; a failed head
+ * is red. */
+.node.hit .node-box { stroke: var(--lit); stroke-width: 2.4; fill: #20170f; }
+.node.hit.skipped .node-box { stroke: var(--skipped); fill: #161b24; filter: none; }
+/* The FAILED head must POP as hard as the orange wake (review #3): a saturated
+ * red FILL + a double glow, not a thin outline. A parked still on the fail beat
+ * reads "this node failed" instantly at Twitter scale, and the lit-path overlay
+ * is suppressed (nothing propagated) so it sits alone, red, on a dark graph. */
+.node.hit.failed .node-box {
+  stroke: var(--failed);
+  stroke-width: 3.2;
+  fill: #3a131a;
+  filter: drop-shadow(0 0 12px rgba(255, 93, 108, 0.75)) drop-shadow(0 0 4px rgba(255, 93, 108, 0.9));
+}
+.node.hit .node-label { fill: #ffe8d4; }
+.node.hit.skipped .node-label { fill: var(--ink-dim); }
+.node.hit.failed .node-label { fill: #ffd2d7; }
 
-/* nodes that haven't fired yet in this replay are faintly dimmed */
-.node.untouched .node-box { opacity: 0.55; }
-.node.untouched .node-label, .node.untouched .node-sub { opacity: 0.6; }
+/* Nodes that haven't fired yet read as GENUINELY DARK so the dark lane is stark
+ * on video: when you touch one Claude session and only that path lights, the
+ * five sibling adapters that stayed dark must visibly recede. The box fill drops
+ * toward the page background and the stroke + text go faint. (The transition
+ * makes a node "come alive" smoothly the first time a receipt hits it.) */
+.node.untouched .node-box {
+  opacity: 0.26;
+  fill: #0a0e16;
+  stroke: var(--line-soft);
+}
+.node.untouched .node-label, .node.untouched .node-sub { opacity: 0.24; }
+
+/* A node that has rendered AT OR BEFORE the scrub head keeps a warm "lit / alive"
+ * floor so the lit-vs-dark delta is obvious in a STILL even after the pulse has
+ * decayed (review #1/#3). The freshly-rendered node at the head goes brighter
+ * still via `.rendered-now` (set by the scrubber, idempotent — survives a park /
+ * deep-link, so the keyframe PNG is shot at full brightness, not mid-decay). */
+.node.lit-floor .node-box {
+  stroke: #3a4252;
+  fill: #11151e;
+}
+.node.lit-floor .node-label { fill: #aab4c4; }
+.node.lit-floor .node-sub { fill: var(--ink-dim); }
+
+/* A node on the ACTIVE LIT PATH (review #1/#2): warmer than the cool lit-floor so
+ * the whole propagation chain reads as one continuous lit run, but a notch below
+ * the blazing `.rendered-now` head so the freshly-rendered node still leads the
+ * eye. Steady state — held on a parked still. */
+.node.path-node .node-box {
+  stroke: var(--lit-soft);
+  stroke-width: 1.8;
+  fill: #1d1610;
+  filter: drop-shadow(0 0 4px rgba(255, 154, 77, 0.32));
+}
+.node.path-node .node-label { fill: #ffd9b8; }
+.node.path-node .node-sub { fill: #b48a63; }
+/* the head node's own `.rendered-now` / `.recovered-now` glow wins over path-node */
+.node.path-node.rendered-now .node-box,
+.node.path-node.recovered-now .node-box { fill: #241a12; }
+
+/* THE freshly-rendered node at the head — bright saturated orange border + a
+ * subtle warm fill glow, matching the "rendered" legend swatch. This is the
+ * steady-state "lit" treatment the still is captured on; it reads as hot even
+ * with the caption hidden and the motion frozen. Skipped/failed heads keep their
+ * own disposition color (handled by `.hit.skipped` / `.hit.failed` below). */
+.node.rendered-now .node-box {
+  stroke: var(--lit);
+  stroke-width: 2.6;
+  fill: #241a12;
+  filter: drop-shadow(0 0 10px rgba(255, 154, 77, 0.55)) drop-shadow(0 0 3px rgba(255, 154, 77, 0.7));
+}
+.node.rendered-now .node-label { fill: #ffd9b8; }
+.node.rendered-now.cause-self .node-box {
+  stroke: var(--cause-self);
+  fill: #1d1626;
+  filter: drop-shadow(0 0 10px rgba(192, 139, 255, 0.5)) drop-shadow(0 0 3px rgba(192, 139, 255, 0.7));
+}
+.node.rendered-now.cause-self .node-label { fill: #e6d6ff; }
+.node.recovered-now .node-box {
+  stroke: var(--recovered);
+  stroke-width: 2.6;
+  fill: #122218;
+  filter: drop-shadow(0 0 10px rgba(78, 224, 138, 0.5)) drop-shadow(0 0 3px rgba(78, 224, 138, 0.7));
+}
+.node.recovered-now .node-label { fill: #c8f7da; }
+
+/* The held SELF-tick treatment (review #8): a parked still on a self-sourced skip
+ * (the audit floor on a quiet world) shows a dim VIOLET self-pulse on the canvas
+ * — a lone glow that lights NO edges, distinct from the bright orange render and
+ * from a grey memo-skip. */
+.node.self-now .node-box {
+  stroke: var(--cause-self);
+  stroke-width: 2.4;
+  fill: #1c1430;
+  filter: drop-shadow(0 0 12px rgba(192, 139, 255, 0.6)) drop-shadow(0 0 4px rgba(192, 139, 255, 0.55));
+}
+.node.self-now .node-label { fill: #e8ddff; }
+.node.self-now .node-halo {
+  stroke: var(--cause-self);
+  opacity: 0.6;
+  stroke-width: 2.2;
+  stroke-dasharray: 4 4;
+}
 
 /* =====================================================================
  * S2 — the hero shot: flashes, skips, red, edge-lights, meter sparkline.
@@ -164,10 +327,13 @@ body {
   rx: 12;
   pointer-events: none;
 }
-.node.flash { --flash: var(--rendered); }
-.node.flash.cause-input { --flash: var(--cause-input); }
+/* The flash hue is the hot "lit" orange by default (matches the rendered legend
+ * swatch + the steady-state `.rendered-now`); a SELF-sourced wake flashes violet
+ * so the self-tick reads as its own distinct event. */
+.node.flash { --flash: var(--lit); }
+.node.flash.cause-input { --flash: var(--lit); }
 .node.flash.cause-self { --flash: var(--cause-self); }
-.node.flash.cause-external { --flash: var(--cause-external); }
+.node.flash.cause-external { --flash: var(--lit-soft); }
 
 .node.flash .node-halo { animation: nodeFlashHalo var(--pulse, 700ms) cubic-bezier(0.16, 0.84, 0.44, 1) forwards; }
 .node.flash .node-box  { animation: nodeFlashBox var(--pulse, 700ms) ease-out forwards; }
@@ -178,9 +344,12 @@ body {
   100% { opacity: 0;    transform: scale(1.14); }
 }
 @keyframes nodeFlashBox {
-  0%   { stroke: var(--flash); stroke-width: 3.2; filter: drop-shadow(0 0 9px var(--flash)); }
-  60%  { stroke: var(--flash); stroke-width: 2.4; }
-  100% { stroke: var(--node-stroke); stroke-width: 1.4; filter: none; }
+  0%   { stroke: var(--flash); stroke-width: 4; filter: drop-shadow(0 0 18px var(--flash)) drop-shadow(0 0 7px var(--flash)); fill: #2a1d12; }
+  60%  { stroke: var(--flash); stroke-width: 2.8; filter: drop-shadow(0 0 9px var(--flash)); fill: #20170f; }
+  /* decays to the cool lit-floor steady state, NOT all the way back to dark — so
+   * the node stays visibly "alive" between pulses (review #1/#3) while the FRESH
+   * head node (`.rendered-now`) stays blazing orange so the hero contrast holds. */
+  100% { stroke: #3a4252; stroke-width: 1.6; filter: none; fill: #11151e; }
 }
 @keyframes nodeFlashLabel {
   0%   { fill: #f3fbff; }
@@ -194,8 +363,26 @@ body {
  * the shot React DevTools can't take. */
 .node.skip-pulse .node-halo { stroke: var(--skipped); animation: nodeSkipHalo var(--pulse, 700ms) ease-out forwards; }
 @keyframes nodeSkipHalo {
-  0%   { opacity: 0.34; transform: scale(0.98); }
-  100% { opacity: 0;    transform: scale(1.07); }
+  0%   { opacity: 0.18; transform: scale(0.99); }
+  100% { opacity: 0;    transform: scale(1.05); }
+}
+
+/* The SELF-tick pulse (review #8): a lone violet self-pulse on the audit-floor
+ * node. It lights NO edges and costs nothing, but unlike a grey memo-skip it
+ * glows its own violet so "the reactor audited itself on a quiet world" reads on
+ * the CANVAS, not only in the receipts panel. Brighter + a faint box tint so the
+ * still captures it. */
+.node.self-pulse { --flash: var(--cause-self); }
+.node.self-pulse .node-halo { stroke: var(--cause-self); animation: nodeSelfHalo var(--pulse, 700ms) cubic-bezier(0.16, 0.84, 0.44, 1) forwards; }
+.node.self-pulse .node-box  { animation: nodeSelfBox var(--pulse, 700ms) ease-out forwards; }
+@keyframes nodeSelfHalo {
+  0%   { opacity: 0.85; transform: scale(0.98); }
+  45%  { opacity: 0.6;  transform: scale(1.06); }
+  100% { opacity: 0;    transform: scale(1.12); }
+}
+@keyframes nodeSelfBox {
+  0%   { stroke: var(--cause-self); stroke-width: 2.6; filter: drop-shadow(0 0 10px var(--cause-self)); fill: #1d1626; }
+  100% { stroke: var(--node-stroke); stroke-width: 1.4; filter: none; }
 }
 
 /* The red fail flare — a node FAILED; prior truth stands, no edges light. */
@@ -208,8 +395,11 @@ body {
   100% { opacity: 0;    transform: scale(1.12); }
 }
 @keyframes nodeFailBox {
-  0%   { stroke: var(--failed); stroke-width: 3; filter: drop-shadow(0 0 8px var(--failed)); }
-  100% { stroke: var(--node-stroke); stroke-width: 1.4; filter: none; }
+  0%   { stroke: var(--failed); stroke-width: 4; filter: drop-shadow(0 0 16px var(--failed)) drop-shadow(0 0 6px var(--failed)); fill: #45131c; }
+  60%  { stroke: var(--failed); stroke-width: 3.2; filter: drop-shadow(0 0 10px var(--failed)); fill: #3a131a; }
+  /* decays to the held red fail state (the `.hit.failed` steady style), so the
+   * red stays POPPED on a parked still instead of fading back to dark. */
+  100% { stroke: var(--failed); stroke-width: 3.2; filter: drop-shadow(0 0 12px rgba(255,93,108,0.75)); fill: #3a131a; }
 }
 
 /* Per-facet EDGE LIGHT — a receipt propagated producer→subscriber on a moved
@@ -223,17 +413,17 @@ body {
   filter: drop-shadow(0 0 4px var(--flow, var(--rendered)));
   animation: edgeLit var(--pulse, 700ms) ease-out forwards;
 }
-.edge.lit.facet-atomic { --flow: var(--rendered); }
-.edge.lit:not(.facet-atomic) { --flow: var(--cause-external); }
+.edge.lit.facet-atomic { --flow: var(--lit); }
+.edge.lit:not(.facet-atomic) { --flow: var(--lit-soft); }
 @keyframes edgeLit {
   0%   { opacity: 1;    stroke-width: 2.6; }
   70%  { opacity: 0.9;  stroke-width: 2; }
   100% { opacity: 0.55; stroke-width: 1.2; filter: none; }
 }
 /* the chasing dash overlay drawn over a lit lane */
-.flow-dash.facet-atomic { --flow: var(--rendered); }
-.flow-dash:not(.facet-atomic) { --flow: var(--cause-external); }
-.flow-bead { --flow: var(--rendered); }
+.flow-dash.facet-atomic { --flow: var(--lit); }
+.flow-dash:not(.facet-atomic) { --flow: var(--lit-soft); }
+.flow-bead { --flow: var(--lit); }
 .flow-dash {
   fill: none;
   stroke: var(--flow, var(--rendered));
@@ -257,13 +447,23 @@ body {
   pointer-events: none;
 }
 
-/* a freshly woken subscriber gets a quick anticipatory ring (the diamond
- * single-wake lands here — woken once even via multiple lanes) */
-.node.woken .node-halo { stroke: var(--rendered); animation: nodeWokenHalo var(--pulse, 700ms) ease-out forwards; }
+/* a freshly woken subscriber gets a convergent ring that CONTRACTS inward (the
+ * diamond single-wake lands here — woken once even via multiple lanes). The
+ * inward collapse reads as "the fan-in converged here, once" — distinct from the
+ * outward bloom of a render flash. Brighter so the still can capture it. */
+.node.woken .node-halo { stroke: var(--lit); animation: nodeWokenHalo var(--pulse, 700ms) cubic-bezier(0.3, 0, 0.2, 1) forwards; }
 @keyframes nodeWokenHalo {
-  0%   { opacity: 0; transform: scale(1.08); }
-  40%  { opacity: 0.5; transform: scale(1.0); }
-  100% { opacity: 0; transform: scale(0.98); }
+  0%   { opacity: 0; transform: scale(1.22); }
+  35%  { opacity: 0.9; transform: scale(1.06); }
+  100% { opacity: 0; transform: scale(0.97); }
+}
+/* When the diamond convergence node is the head and parked, give it a held
+ * "woken once" ring so the still reads the single-wake. */
+.node.woke-once .node-halo {
+  stroke: var(--lit);
+  opacity: 0.7;
+  stroke-width: 2.4;
+  stroke-dasharray: 5 4;
 }
 
 /* ---- sidebar ---- */
@@ -289,6 +489,25 @@ body {
 /* ---- cost meter (S2: sparkline over the per-frame series + live totals) ---- */
 .meterbody { display: grid; gap: 9px; }
 
+/* The cost meter is the VISUAL HERO. When the expensive node finally wakes
+ * (beat 8: the single tall fresh spike), the whole meter panel pulses — the big
+ * "fresh tokens so far" number scales + glows orange and the sparkline frame
+ * lights — so the "cost ticks ONCE off a flat line" reads instantly on camera. */
+#meter.spike .meter-total .big {
+  color: #ffd9c2;
+  text-shadow: 0 0 18px var(--fresh), 0 0 6px var(--fresh);
+  animation: meterBigPulse 1s cubic-bezier(0.16, 0.84, 0.44, 1);
+}
+#meter.spike .spark {
+  border-color: var(--fresh);
+  box-shadow: 0 0 18px -2px var(--fresh), inset 0 0 12px -6px var(--fresh);
+}
+@keyframes meterBigPulse {
+  0%   { transform: scale(1); }
+  22%  { transform: scale(1.16); }
+  100% { transform: scale(1); }
+}
+
 /* The sparkline: fresh tokens per receipt as a filled area, reused as a faint
  * underlay, broken out by surprise_cause as stacked tick bands. Flat near zero
  * on a quiet stretch; a single tall spike on a surprise = "cost scales with
@@ -297,29 +516,46 @@ body {
 .spark {
   display: block;
   width: 100%;
-  height: 64px;
+  height: 92px;
   background: linear-gradient(180deg, #0a0d13, #0c1018);
   border: 1px solid var(--line-soft);
   border-radius: 6px;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 .spark-baseline { stroke: var(--line); stroke-width: 1; }
 .spark-area-fresh { fill: var(--fresh); fill-opacity: 0.16; stroke: none; }
 .spark-line-fresh { fill: none; stroke: var(--fresh); stroke-width: 1.4; }
 .spark-bar { stroke-width: 0; }
-.spark-bar.c-input { fill: var(--cause-input); }
+/* fresh bars are the hot lit orange regardless of cause — the sparkline is the
+ * cost story, and cost is cost; the cause dots live in the rows below. A self
+ * tick has zero fresh so it never draws a bar (the floor stays flat). */
+.spark-bar.c-input { fill: var(--fresh); }
 .spark-bar.c-self { fill: var(--cause-self); }
-.spark-bar.c-external { fill: var(--cause-external); }
+.spark-bar.c-external { fill: var(--fresh); fill-opacity: 0.75; }
 .spark-bar.reused { fill: var(--reused); fill-opacity: 0.5; }
-.spark-bar.future { opacity: 0.18; }
-.spark-head { stroke: var(--rendered); stroke-width: 1; opacity: 0.85; }
+.spark-bar.future { opacity: 0.16; }
+.spark-bar.spike-bar { filter: drop-shadow(0 0 5px var(--fresh)); }
+.spark-head { stroke: var(--lit); stroke-width: 1.4; opacity: 0.9; }
 .spark-caption {
   display: flex; justify-content: space-between;
   font-size: 9.5px; color: var(--ink-faint); margin-top: 2px;
   font-variant-numeric: tabular-nums;
 }
-.meter-total { display: flex; align-items: baseline; gap: 8px; }
-.meter-total .big { font-size: 20px; font-weight: 600; color: var(--ink); }
-.meter-total .unit { font-size: 10px; color: var(--ink-dim); }
+.meter-total { display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; }
+.meter-total .big {
+  font-size: 38px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--fresh);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  transition: text-shadow 0.18s ease, transform 0.18s ease, color 0.25s ease;
+  transform-origin: left center;
+}
+/* on a quiet window the hero number COOLS to grey so "near zero" reads as calm,
+ * not as a hot spend (review #5). It re-warms the instant a fresh tick lands. */
+.meter-total .big.quiet { color: var(--ink-dim); }
+.meter-total .unit { font-size: 10.5px; color: var(--ink-dim); }
 .meter-bar { height: 8px; border-radius: 4px; background: #0a0d13; overflow: hidden; display: flex; }
 .meter-bar .seg-fresh { background: var(--fresh); }
 .meter-bar .seg-reused { background: var(--reused); }
@@ -376,6 +612,14 @@ body {
 }
 .ritem.current.s-skipped { box-shadow: inset 2px 0 0 var(--skipped); }
 .ritem.current.s-failed { box-shadow: inset 2px 0 0 var(--failed); }
+
+/* FOCUS mode (review #5): on the hero / diamond / recover path beats, gently dim
+ * the right-hand receipts timeline so the lit graph path is the brightest thing
+ * on screen and pulls the eye. The cost meter stays full-brightness (it's the
+ * co-hero); only the dense receipts list recedes. Smooth so it doesn't flicker as
+ * the scrubber crosses beats. */
+.receiptlist, #sidebar { transition: opacity 0.4s ease; }
+body.focus .timeline { opacity: 0.38; transition: opacity 0.4s ease; }
 
 /* ---- scrubber ---- */
 #scrubber {

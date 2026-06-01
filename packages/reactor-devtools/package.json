@@ -32,6 +32,7 @@
     "copy:public": "node -e \"const fs=require('fs'),p=require('path');const s=p.join('src','public'),d=p.join('dist','public');fs.mkdirSync(d,{recursive:true});for(const f of fs.readdirSync(s))fs.copyFileSync(p.join(s,f),p.join(d,f));\"",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "fixtures:gen": "pnpm build && node dist/fixtures/generate.js",
+    "record": "pnpm build && node scripts/record-demo.mjs",
     "test:runtime": "pnpm build && node --test $(find dist -name '*.test.js' -type f | sort)",
     "test": "pnpm typecheck && pnpm test:runtime"
   },
@@ -40,6 +41,7 @@
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
+    "playwright": "1.60.0",
     "typescript": "^5.6.3"
   }
 }

@@ -70,6 +70,11 @@ export interface OpenedStateDir {
    * the SPA — it holds an I/O handle; the SPA reaches it through the endpoint.
    */
   readonly worldModels: FileSystemWorldModelStore | null;
+  /**
+   * Friendly `nodeId → label` map from `<state-dir>/compile/labels.json`, or
+   * `{}` when absent. Carried through to {@link ReplaySnapshot.labels}.
+   */
+  readonly labels: Record<string, string>;
 }
 
 /**
@@ -89,7 +94,31 @@ export function openStateDir(
   );
   const topology = readTopology(stateDir);
   const worldModels = openWorldModels(stateDir);
-  return { stateDir, session, topology, worldModels };
+  const labels = readLabels(stateDir);
+  return { stateDir, session, topology, worldModels, labels };
+}
+
+/**
+ * Read the optional `<state-dir>/compile/labels.json` (a flat
+ * `nodeId → friendly label` map), or `{}` if absent or malformed. Pure read;
+ * labels are presentation data carried by the state-dir so the SPA stays
+ * generic. A non-object/non-string-valued file is treated as "no labels"
+ * (defensive — never throw on a viewer-only nicety).
+ */
+export function readLabels(stateDir: string): Record<string, string> {
+  const path = join(stateDir, "compile", "labels.json");
+  if (!existsSync(path)) return {};
+  try {
+    const raw = JSON.parse(readFileSync(path, "utf8")) as unknown;
+    if (raw === null || typeof raw !== "object") return {};
+    const out: Record<string, string> = {};
+    for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+      if (typeof v === "string") out[k] = v;
+    }
+    return out;
+  } catch {
+    return {};
+  }
 }
 
 /** Read `<state-dir>/compile/topology.json`, or `null` if absent. */
@@ -296,6 +325,15 @@ export interface ReplaySnapshot {
   readonly costRollup: CostRollupView;
   /** True when topology came from a saved `topology.json` (vs. a node-only fallback). */
   readonly hasTopology: boolean;
+  /**
+   * Friendly `nodeId → label` map read from the optional
+   * `<state-dir>/compile/labels.json` (e.g. `"adapter-claude" → "Claude Adapter"`).
+   * Empty when the state-dir has no `labels.json`. The SPA renders these instead
+   * of the raw node id when present, so relatable names are DATA (per state-dir),
+   * not hardcoded in the viewer — the viewer stays generic. The `--describe`
+   * formatter uses the same map so its one-liners read the same as the video.
+   */
+  readonly labels: Record<string, string>;
 }
 
 /**
@@ -370,6 +408,7 @@ export function buildSnapshot(opened: OpenedStateDir): ReplaySnapshot {
     frames,
     costRollup: projectCostRollup(session),
     hasTopology: topology !== null,
+    labels: opened.labels,
   };
 }
 
@@ -429,6 +468,160 @@ function projectCostRollup(session: ReplaySession): CostRollupView {
       dollars: total.dollars,
     },
   };
+}
+
+// ---------------------------------------------------------------------------
+// `--describe`: the headless, no-browser run summary (agent-ergonomics, plan §6).
+//
+// This is the text dump an AGENT reads instead of watching the video: per-node
+// rendered/skipped/failed counts, the moved-facet diff per frame, the cost
+// rollup, chain-verify status, and a one-line "what happened" per frame
+// (`frame 34  Claude Adapter  rendered  moved[claude]  fresh 540  woke[…]`).
+// It is a PURE FORMATTER over the same {@link buildSnapshot} the SPA renders, so
+// the beats it prints are exactly the beats the video shows.
+// ---------------------------------------------------------------------------
+
+export interface DescribeOptions {
+  /** Use friendly labels (default true when the snapshot carries them). */
+  readonly useLabels?: boolean;
+}
+
+/** Friendly label for a node, falling back to the structural short name. */
+function labelFor(
+  snapshot: ReplaySnapshot,
+  node: string,
+  useLabels: boolean,
+): string {
+  if (useLabels) {
+    const l = snapshot.labels[node];
+    if (l) return l;
+  }
+  const dot = node.indexOf(".");
+  return dot >= 0 ? node.slice(dot + 1) : node;
+}
+
+/**
+ * Render the full `--describe` report for an opened state-dir as plain text.
+ * Pure over {@link buildSnapshot} + the session's per-node chain verify; no I/O
+ * beyond what `opened` already holds, no browser.
+ */
+export function describeStateDir(
+  opened: OpenedStateDir,
+  options: DescribeOptions = {},
+): string {
+  const snapshot = buildSnapshot(opened);
+  const useLabels =
+    options.useLabels ?? Object.keys(snapshot.labels).length > 0;
+  const lines: string[] = [];
+  const W = (s: string, n: number): string =>
+    s.length >= n ? s : s + " ".repeat(n - s.length);
+
+  // ---- header ----
+  lines.push(`reactor-devtools --describe`);
+  lines.push(`  state-dir   ${opened.stateDir}`);
+  lines.push(
+    `  topology    ${snapshot.hasTopology ? "yes" : "no (node-only fallback)"} · ` +
+      `${snapshot.nodes.length} nodes · ${snapshot.edges.length} edges · ` +
+      `acyclic=${snapshot.acyclic}`,
+  );
+  lines.push(`  receipts    ${snapshot.frames.length} frames`);
+
+  // ---- disposition + wake totals ----
+  const status = { rendered: 0, skipped: 0, failed: 0 } as Record<string, number>;
+  const wake: Record<string, number> = {};
+  for (const f of snapshot.frames) {
+    status[f.status] = (status[f.status] ?? 0) + 1;
+    wake[f.wakeSource] = (wake[f.wakeSource] ?? 0) + 1;
+  }
+  lines.push(
+    `  dispositions rendered=${status.rendered} · skipped=${status.skipped} · failed=${status.failed}`,
+  );
+  lines.push(
+    `  wake-cause  ${Object.entries(wake)
+      .map(([k, v]) => `${k}=${v}`)
+      .join(" · ")}`,
+  );
+
+  // ---- cost rollup ----
+  const t = snapshot.costRollup.total;
+  const peak = snapshot.frames.reduce(
+    (m, f) => (f.cost.fresh > m.fresh ? { fresh: f.cost.fresh, index: f.index } : m),
+    { fresh: 0, index: -1 },
+  );
+  lines.push("");
+  lines.push(`COST ROLLUP`);
+  lines.push(
+    `  total       fresh=${t.fresh} · reused=${t.reused} · ` +
+      `reuse=${t.fresh + t.reused > 0 ? Math.round((t.reused / (t.fresh + t.reused)) * 100) : 0}%`,
+  );
+  for (const [cause, b] of Object.entries(snapshot.costRollup.byCause)) {
+    if (b.receipts === 0) continue;
+    lines.push(
+      `    ${W(cause, 9)} receipts=${W(String(b.receipts), 3)} fresh=${W(String(b.fresh), 7)} reused=${b.reused}`,
+    );
+  }
+  if (peak.index >= 0) {
+    lines.push(
+      `  peak fresh  ${peak.fresh} at frame ${peak.index} ` +
+        `(${labelFor(snapshot, snapshot.frames[peak.index]!.node, useLabels)})`,
+    );
+  }
+
+  // ---- per-node counts ----
+  lines.push("");
+  lines.push(`PER-NODE`);
+  const perNode = new Map<
+    string,
+    { rendered: number; skipped: number; failed: number; fresh: number }
+  >();
+  for (const f of snapshot.frames) {
+    let r = perNode.get(f.node);
+    if (!r) perNode.set(f.node, (r = { rendered: 0, skipped: 0, failed: 0, fresh: 0 }));
+    r[f.status] += 1;
+    r.fresh += f.cost.fresh;
+  }
+  // order by topology node order when available, else first-seen
+  const order = snapshot.hasTopology
+    ? snapshot.nodes.map((n) => n.id)
+    : [...perNode.keys()];
+  for (const id of order) {
+    const r = perNode.get(id);
+    if (!r) continue;
+    const chain = opened.session.verifyNodeChain(id);
+    const chainTag = chain.ok ? "chain✓" : "chain✗";
+    lines.push(
+      `  ${W(labelFor(snapshot, id, useLabels), 26)} ` +
+        `r=${W(String(r.rendered), 2)} s=${W(String(r.skipped), 2)} f=${W(String(r.failed), 2)} ` +
+        `fresh=${W(String(r.fresh), 7)} ${chainTag}`,
+    );
+  }
+  const anyBadChain = order.some((id) => !opened.session.verifyNodeChain(id).ok);
+  lines.push("");
+  lines.push(
+    `CHAIN-VERIFY  ${anyBadChain ? "FAILED — one or more node chains inconsistent" : "ok — every node chain is prev-linked & consistent"}`,
+  );
+
+  // ---- per-frame "what happened" ----
+  lines.push("");
+  lines.push(`FRAMES  (frame  node  status  moved[…]  fresh  woke[…])`);
+  for (const f of snapshot.frames) {
+    const moved = f.movedFacets.length ? f.movedFacets.join(",") : "—";
+    const woke = f.wokenSubscribers.length
+      ? f.wokenSubscribers
+          .map((s) => labelFor(snapshot, s, useLabels))
+          .join(",")
+      : "—";
+    lines.push(
+      `  ${W(String(f.index), 3)} ` +
+        `${W(labelFor(snapshot, f.node, useLabels), 26)} ` +
+        `${W(f.status, 8)} ` +
+        `moved[${W(moved, 22)}] ` +
+        `fresh ${W(String(f.cost.fresh), 6)} ` +
+        `woke[${woke}]`,
+    );
+  }
+
+  return lines.join("\n") + "\n";
 }
 
 // Re-exported so S4 (inspector / chain-verified badge) can build on the same
