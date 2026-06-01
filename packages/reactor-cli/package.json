@@ -1,6 +1,7 @@
 {
   "name": "@openprose/reactor-cli",
   "version": "0.1.0",
+  "license": "MIT",
   "type": "commonjs",
   "description": "Deterministic command-line driver for the @openprose/reactor SDK.",
   "main": "dist/cli.js",

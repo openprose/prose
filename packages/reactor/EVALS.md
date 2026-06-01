@@ -22,6 +22,15 @@ property you are probing: *a node renders if and only if its memo key
 
 ## Drive the reconciler yourself
 
+> **Driving the SDK needs it as a LOCAL dependency, not a global install.** The
+> `npm i -g …` from the quickstart installs the `reactor`/`reactor-devtools`
+> *binaries*; a bare `import`/`require` of `@openprose/reactor` resolves only when
+> the package is in your project's `node_modules`. So for an eval: `npm init -y &&
+> npm i ./openprose-reactor-0.2.0.tgz` (or `npm link @openprose/reactor` against a
+> global install), then run with `node eval.mjs` (CommonJS `require`) or `tsx
+> eval.ts`. The package is `type: commonjs`, so the `require` form below is the
+> most portable.
+
 ```ts
 import { createFileSystemStorageAdapter } from "@openprose/reactor";
 import {
