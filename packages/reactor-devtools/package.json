@@ -11,7 +11,8 @@
   },
   "files": [
     "dist",
-    "src/public"
+    "src/public",
+    "fixtures/masked-relay"
   ],
   "exports": {
     ".": {

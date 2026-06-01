@@ -62,12 +62,26 @@ fixture is therefore reviewable as a diff.
 
 ### Regenerate
 
+The generator's first argument is the fixture **key** (NOT a directory); the
+optional second argument is a custom output dir. The key for the observatory is
+`observatory` (it writes the `fixtures/agent-observatory/` directory):
+
 ```bash
-pnpm fixtures:gen                          # → fixtures/masked-relay
-node dist/fixtures/generate.js <abs-dir>   # → a custom location
+pnpm fixtures:gen                                   # → ALL committed fixtures
+node dist/fixtures/generate.js masked-relay          # → fixtures/masked-relay
+node dist/fixtures/generate.js observatory           # → fixtures/agent-observatory
+node dist/fixtures/generate.js masked-relay /tmp/mr  # → a custom location
 ```
 
-Re-run after any change to `src/fixtures/masked-relay.ts` and commit the result.
+Valid keys: `masked-relay`, `observatory`, `monorepo-ci`, `news-desk`,
+`inbox-triage`, `contract-redline`, `research-tree`.
+
+Re-run after any change to a `src/fixtures/*.ts` generator and commit the result.
+
+> **Shipped in the tarball:** only `masked-relay/` is in the package's npm `files`,
+> so `reactor-devtools <pkg>/fixtures/masked-relay` works after a tarball install
+> with no generation step. The other fixtures are repo-only — generate them from a
+> checkout with the commands above.
 
 ### A note on the phantom ingress node
 

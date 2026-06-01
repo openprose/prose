@@ -41,6 +41,53 @@ A **replayable state dir** = a flat `receipts.json` (the durable trail) + `compi
 If `compile/topology.json` is absent, the viewer falls back to a node-only set
 derived from the receipts' distinct `node` values (no edges).
 
+`compile/topology.json` is read tolerantly: both the flat `TopologyWorldModel`
+shape (`{ nodes, edges, entry_points, acyclic }`) **and** the nested envelope
+`reactor compile` writes (`{ contract_fingerprints, topology: { … } }`) work — so
+`reactor-devtools <state-dir>` opens a CLI-produced state-dir directly, with no
+path or schema translation.
+
+### Get a replayable ledger
+
+You don't need a model key or a running reactor to see the payoff. Three ways,
+fastest first:
+
+1. **Replay a committed fixture (ships in the tarball).** `masked-relay` is a
+   small, deterministic sample ledger committed to the package and included in the
+   npm `files`, so it is present after a tarball install:
+
+   ```bash
+   # from an installed copy (resolve the package dir, then point at the fixture):
+   reactor-devtools "$(node -p "require('path').dirname(require.resolve('@openprose/reactor-devtools/package.json'))")/fixtures/masked-relay" --describe
+   # or, in this repo:
+   reactor-devtools packages/reactor-devtools/fixtures/masked-relay --describe
+   ```
+
+2. **Generate a fixture from source (repo checkout).** The generator lives at
+   `dist/fixtures/generate.js`. Its argument is the fixture *key*, which differs
+   from the on-disk directory name for the observatory — the key is
+   **`observatory`** (the directory it writes is `fixtures/agent-observatory`):
+
+   ```bash
+   pnpm build
+   node dist/fixtures/generate.js                       # regenerate ALL committed fixtures
+   node dist/fixtures/generate.js masked-relay           # just masked-relay
+   node dist/fixtures/generate.js observatory            # the agent-observatory (key = "observatory")
+   node dist/fixtures/generate.js observatory /tmp/obs   # …into a custom dir
+   ```
+
+   Valid keys: `masked-relay`, `observatory`, `monorepo-ci`, `news-desk`,
+   `inbox-triage`, `contract-redline`, `research-tree`.
+
+3. **Replay your own run.** After `reactor compile` + `reactor run`, point the
+   viewer at the run's state-dir: `reactor-devtools <state-dir>`.
+
+> **Empty (compile-only) ledger?** A state-dir that was compiled but not yet run
+> has `receipts.json = []`. `--describe` treats that as a legitimate first-run
+> state: it prints a short "no receipts yet" guidance and **exits 0** (it is not
+> an error). A genuinely corrupt/unreadable trail exits non-zero, and a detected
+> ledger tamper (a broken chain) prints `CHAIN-VERIFY FAILED` and **exits 1**.
+
 ### The SPA (S1 + S2, built)
 
 `reactor-devtools <state-dir>` boots the server and prints a localhost URL; open
@@ -139,7 +186,7 @@ All reads go through `src/data` — the only place this package touches the SDK:
 | Re-derive the ledger (= replay) | `new FileSystemReceiptLedger({ storage })` (`@openprose/reactor/sdk`) |
 | Order + chain index + moved-facet diff + cost rollup | `createReplaySession({ ledger })` (`@openprose/reactor/sdk`) |
 | Topology graph | `<state-dir>/compile/topology.json` (`TopologyWorldModel`) — `MountedDag` has no `.topology` in replay |
-| Chain / tamper badge | `verifyReceiptChain` (`@openprose/reactor/sdk`) |
+| Chain / tamper badge | `verifyReceiptChain` / `verifyReceipt` (`@openprose/reactor/sdk`), run over the **raw on-disk receipts** (original `content_hash`), so an edited field is caught — the re-stamped replay ledger would heal it |
 | Click-through world-model (S4) | `FileSystemWorldModelStore.readVersion(node, version)` where `version === receipt.fingerprints["@atomic"]` |
 
 The event → visual mapping:

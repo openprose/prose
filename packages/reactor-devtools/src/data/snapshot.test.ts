@@ -77,6 +77,7 @@ test("buildSnapshot projects receipts, topology, and cost rollup", () => {
   const opened: OpenedStateDir = {
     stateDir: "/tmp/example",
     session,
+    rawReceipts: receipts,
     topology: TOPOLOGY,
     worldModels: null,
     labels: {},
@@ -169,6 +170,7 @@ test("diamond single-wake: a node reached by ≥2 moved facets wakes once", () =
   const snap = buildSnapshot({
     stateDir: "/tmp/d",
     session,
+    rawReceipts: [producer],
     topology,
     worldModels: null,
     labels: {},
@@ -192,6 +194,7 @@ test("buildSnapshot falls back to a node-only set without topology", () => {
   const snap = buildSnapshot({
     stateDir: "/tmp/x",
     session,
+    rawReceipts: receipts,
     topology: null,
     worldModels: null,
     labels: {},

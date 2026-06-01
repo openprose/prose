@@ -93,10 +93,26 @@ async function main(): Promise<void> {
   }
 
   // `--describe`: headless run summary, no server, no browser.
+  //
+  // Exit-code contract (D8/bug#6 — honesty-preserving):
+  //   - clean ledger (chain ✓), incl. the legitimate compile-only/first-run
+  //     EMPTY ledger → exit 0 (an empty ledger is NOT an error).
+  //   - detected tamper / broken chain (`chainOk === false`) → exit 1, visible.
+  //   - a TRUE read error (corrupt/unreadable trail) → `openStateDir` throws,
+  //     caught here, printed to stderr, exit 1. We do NOT swallow it as empty.
   if (args.describe) {
-    const opened = openStateDir(args.stateDir);
-    process.stdout.write(describeStateDir(opened));
-    process.exit(0);
+    let opened;
+    try {
+      opened = openStateDir(args.stateDir);
+    } catch (err) {
+      process.stderr.write(
+        `reactor-devtools --describe: cannot read state-dir "${args.stateDir}": ${String(err)}\n`,
+      );
+      process.exit(1);
+    }
+    const result = describeStateDir(opened);
+    process.stdout.write(result.text);
+    process.exit(result.chainOk ? 0 : 1);
   }
 
   const started = await startDevToolsServer({
