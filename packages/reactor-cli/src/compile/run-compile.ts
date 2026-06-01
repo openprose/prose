@@ -345,8 +345,11 @@ async function importAgentCompile(): Promise<AgentCompileModule> {
     return mod as AgentCompileModule;
   } catch (err) {
     throw new Error(
-      'reactor compile needs the model extras (@openai/agents + zod). Install them ' +
-        '(`npm i @openai/agents zod`) or set REACTOR_OFFLINE=1 for a fake provider.\n' +
+      'reactor compile needs the model extras (@openai/agents + zod) — install them ' +
+        'with `npm i @openai/agents zod`. They are optional peers, required only to ' +
+        'compile or render (the keyless paths — `compile --check`, `status`, `topology`, ' +
+        '`receipts` — do not need them). Note: REACTOR_OFFLINE=1 only skips the live key ' +
+        'check; it does NOT substitute a provider, so it cannot stand in for the extras here.\n' +
         `underlying error: ${String((err as Error)?.message ?? err)}`,
     );
   }

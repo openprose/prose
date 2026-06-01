@@ -17,7 +17,7 @@
  * SDK's real `loadContractSet`; this is used only to decide cache freshness.
  */
 
-import { readFileSync, readdirSync, statSync } from 'fs';
+import { readFileSync, readdirSync, lstatSync } from 'fs';
 import { join } from 'path';
 
 import type { ContractImage } from './ir-cache';
@@ -45,10 +45,22 @@ export function loadContractSet(directory: string): ContractImage[] {
   return images.slice().sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 }
 
-/** Recursively enumerate `.prose.md` files; skip dot-dirs + `node_modules`. */
+/**
+ * Recursively enumerate `.prose.md` files; skip dot-dirs + `node_modules`.
+ *
+ * Uses `lstat` (NOT `stat`) and never descends into a symlink, and caps the
+ * recursion depth. This is load-bearing: `stat` follows symlinks, so a walk
+ * rooted at (or above) a pseudo-filesystem cycle — e.g. a container's
+ * `/proc/<pid>/root -> /` — recurses forever and pegs a CPU. `doctor` and
+ * `compile --check` resolve the project dir from cwd (default `.`), so the
+ * walk MUST terminate from anywhere, not just inside a tidy project.
+ */
 export function enumerateContractFiles(directory: string): string[] {
   const out: string[] = [];
-  const walk = (dir: string): void => {
+  const walk = (dir: string, depth: number): void => {
+    if (depth > MAX_WALK_DEPTH) {
+      return;
+    }
     let entries: string[];
     try {
       entries = readdirSync(dir);
@@ -60,22 +72,29 @@ export function enumerateContractFiles(directory: string): string[] {
         continue;
       }
       const full = join(dir, entry);
-      let isDir = false;
+      let stat: ReturnType<typeof lstatSync>;
       try {
-        isDir = statSync(full).isDirectory();
+        stat = lstatSync(full);
       } catch {
         continue;
       }
-      if (isDir) {
-        walk(full);
-      } else if (entry.endsWith(CONTRACT_SUFFIX)) {
+      if (stat.isSymbolicLink()) {
+        // Never follow a symlink: it can point into a cycle (e.g. /proc).
+        continue;
+      }
+      if (stat.isDirectory()) {
+        walk(full, depth + 1);
+      } else if (stat.isFile() && entry.endsWith(CONTRACT_SUFFIX)) {
         out.push(full);
       }
     }
   };
-  walk(directory);
+  walk(directory, 0);
   return out;
 }
+
+/** Depth cap for the contract walk (defense-in-depth alongside the symlink skip). */
+const MAX_WALK_DEPTH = 64;
 
 /** Slice raw contract markdown into a {@link ContractImage} (no semantic parse). */
 export function sliceContract(text: string, path: string): ContractImage {

@@ -27,7 +27,7 @@
  * touches the SDK, so it is safe in the offline-build path and re-exportable.
  */
 
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { readFileSync, readdirSync, lstatSync } from "node:fs";
 import { join } from "node:path";
 
 import type { WakeSource } from "../../shapes";
@@ -105,7 +105,14 @@ export function loadContractSet(directory: string): ContractSet {
  */
 export function enumerateContractFiles(directory: string): string[] {
   const out: string[] = [];
-  const walk = (dir: string): void => {
+  // `lstat` (NOT `stat`) + never follow a symlink + a depth cap: `stat` follows
+  // symlinks, so a walk rooted at/above a pseudo-fs cycle (e.g. /proc/<pid>/root
+  // -> /) recurses forever and pegs a CPU. The walk must terminate from anywhere.
+  const MAX_WALK_DEPTH = 64;
+  const walk = (dir: string, depth: number): void => {
+    if (depth > MAX_WALK_DEPTH) {
+      return;
+    }
     let entries: string[];
     try {
       entries = readdirSync(dir);
@@ -117,20 +124,23 @@ export function enumerateContractFiles(directory: string): string[] {
         continue;
       }
       const full = join(dir, entry);
-      let isDir = false;
+      let stat: ReturnType<typeof lstatSync>;
       try {
-        isDir = statSync(full).isDirectory();
+        stat = lstatSync(full);
       } catch {
         continue;
       }
-      if (isDir) {
-        walk(full);
-      } else if (entry.endsWith(CONTRACT_SUFFIX)) {
+      if (stat.isSymbolicLink()) {
+        continue;
+      }
+      if (stat.isDirectory()) {
+        walk(full, depth + 1);
+      } else if (stat.isFile() && entry.endsWith(CONTRACT_SUFFIX)) {
         out.push(full);
       }
     }
   };
-  walk(directory);
+  walk(directory, 0);
   return out;
 }
 
