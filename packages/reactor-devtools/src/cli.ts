@@ -62,7 +62,7 @@ function parseArgs(argv: readonly string[]): ParsedArgs {
 const USAGE = `reactor-devtools — replay a saved Reactor ledger in a browser DAG viewer
 
 Usage:
-  reactor-devtools <state-dir> [--port <n>] [--host <h>]
+  reactor-devtools <state-dir> [--port <n>] [--host <h>] [--describe]
 
 Arguments:
   <state-dir>   A saved Reactor state directory (receipts + compile/topology.json).

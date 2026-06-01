@@ -211,6 +211,14 @@ export async function runLiveSmoke(): Promise<LiveSmokeResult> {
     const provider = (await import(AGENT_RENDER_SPECIFIER)) as {
       hasOpenRouterKey?: () => boolean;
       assertSkillBundleInstalled?: () => void;
+      smokeRun?: (config?: {
+        readonly input?: string;
+        readonly maxTurns?: number;
+      }) => Promise<{
+        readonly text: string;
+        readonly totalTokens: number;
+        readonly model: string;
+      }>;
     };
     if (typeof provider.assertSkillBundleInstalled === 'function') {
       provider.assertSkillBundleInstalled();
@@ -222,10 +230,29 @@ export async function runLiveSmoke(): Promise<LiveSmokeResult> {
         detail: 'the live provider reports no usable key',
       };
     }
+    // Drive ONE real bounded render against the live gateway (cli.md §3: `--live`
+    // proves provider reachability via a single live render, not just a key/bundle
+    // presence check). `smokeRun` performs a real network call; we reached it only
+    // after `hasOpenRouterKey` gated above, so it is safe to invoke here.
+    if (typeof provider.smokeRun !== 'function') {
+      return {
+        ran: true,
+        ok: false,
+        detail: 'live render smoke unavailable (smokeRun not exported by the render barrel)',
+      };
+    }
+    const smoke = await provider.smokeRun();
+    if (typeof smoke.text !== 'string' || smoke.totalTokens <= 0) {
+      return {
+        ran: true,
+        ok: false,
+        detail: `live render returned no usable completion (model ${smoke.model})`,
+      };
+    }
     return {
       ran: true,
       ok: true,
-      detail: 'live provider reachable; SKILL bundle present',
+      detail: `live render OK (model ${smoke.model}, ${smoke.totalTokens} tokens); SKILL bundle present`,
     };
   } catch (err) {
     return {

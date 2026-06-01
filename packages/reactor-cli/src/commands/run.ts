@@ -25,7 +25,7 @@ import {
   type RunAdapters,
   type RunRender,
 } from '../run/load-run-project';
-import { buildEphemeralSubstrate } from '../run/substrate';
+import { buildDurableSubstrate } from '../run/substrate';
 import { buildSandboxRunner } from '../run/sandbox';
 import { isCacheFresh, contractSetFingerprint } from '../compile/ir-cache';
 import { loadContractSet as keylessLoadContractSet } from '../compile/contract-images';
@@ -122,8 +122,13 @@ export async function runRunCommand(
   // 3. CONFIGURE runProject. Offline gate: the test render wiring (fake build
   //    render + projectTruthFor). Live: supply our derived projectTruthFor +
   //    contractFor (the SDK builds createAgentRender lazily from the key).
+  // Persist the one-shot run's receipt trail to disk (flat
+  // `<state-dir>/receipts.json`) so `reactor-devtools <state-dir>` can replay it
+  // and a later `serve`/`inspect` re-opens the SAME durable trail + truth
+  // (crosscheck dt-receiptspath-1: `run` formerly used in-memory storage and
+  // left nothing on disk to replay).
   const adapters: RunAdapters =
-    options.testAdapters ?? buildEphemeralSubstrate(stateDir);
+    options.testAdapters ?? buildDurableSubstrate(stateDir);
 
   const render: RunRender = options.testRender ?? {
     contractFor: (node: string): ContractView => loaded.contractFor(node),

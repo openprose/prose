@@ -21,7 +21,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -333,6 +333,34 @@ describe('reactor observability (offline gate)', () => {
       const monitorAudit = audit.nodes.find((n) => n.node === MONITOR);
       assert.equal(monitorAudit?.ok, false);
       assert.ok((monitorAudit?.errors.length ?? 0) > 0, 'the break is reported');
+    } finally {
+      rmSync(stateDir, { recursive: true, force: true });
+    }
+  });
+
+  it('persists the receipt trail at the canonical FLAT <state-dir>/receipts.json (DevTools interop)', async () => {
+    const stateDir = freshState();
+    try {
+      await populateState(stateDir);
+      // ONE canonical state-dir layout: the receipt ledger is a single flat
+      // `receipts.json` directly under the state-dir root — NOT a `receipts/`
+      // subdir — so the CLI write path, the CLI read path, and
+      // `reactor-devtools <state-dir>` (which reads `<state-dir>/receipts.json`)
+      // all agree and a `reactor run` is replayable in DevTools (crosscheck
+      // dt-receiptspath-1). `receiptsDir()` is the single chokepoint guarding it.
+      assert.equal(
+        receiptsDir(stateDir),
+        stateDir,
+        'receiptsDir() must be the flat state-dir root',
+      );
+      assert.ok(
+        existsSync(join(stateDir, 'receipts.json')),
+        'a flat receipts.json at the state-dir root',
+      );
+      assert.ok(
+        !existsSync(join(stateDir, 'receipts', 'receipts.json')),
+        'NO legacy receipts/ subdir (would break DevTools replay)',
+      );
     } finally {
       rmSync(stateDir, { recursive: true, force: true });
     }
