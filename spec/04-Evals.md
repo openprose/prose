@@ -157,62 +157,143 @@ quality ranking.
 
 ---
 
-## II. What Exists Today
+## II. What Exists Today — the shipped replay-and-cost surface
 
-- **Methodology: launch-grade.** The committed eval plan operationalizes every
-  invariant above — the soundness model over the receipt log, the
-  strongest-cheap-adversary set, the falsifiable cost hypothesis, the
-  trace-vs-quality wall, the preregistered statistical protocol (paired
-  Wilcoxon on per-scenario token deltas, McNemar on correctness). It has
-  survived a multi-lens adversarial red-team and an independent re-audit.
-- **Apparatus: built and Reactor-independent.** A multi-family fixture set
-  across the headline regimes, competitor adapters on a stateful timeline
-  contract, a live isolation runner that routes all model egress through an
-  authenticated minting proxy (decision-bound receipts, fail-closed effect-log
-  reconciliation), a cost-learning loop that reaches provider-reconciled
-  confidence, and deterministic trace-scoring with paired statistics — all
-  Reactor-independent, run on a cheap model under a strict cost cap.
-- **Evidence: partial.** Real isolated competitor runs are collected; the model
-  matrix is in progress. There is **no Reactor result yet**: the Reactor's own
-  `openprose.receipt v0` emitter (02 open item I.1) is not built, and Claim A's
-  headline is gated on it. No report has been written, by design — the report
-  follows the evidence.
-- **Proof object: reconciled to spec.** The eval scores the
-  `openprose.receipt v0` log the harness actually emits (02 open item I.1); the
-  soundness predicates, tamper matrix, trace-vs-quality wall, and
-  preregistration are eval-side methodology _over_ that pinned receipt, never a
-  competing schema. The methodology tracks 02; it never leads it.
+What ships is the **offline half** of the instrument: a real receipt ledger, a
+keyless replay over it, and the two cost-truth surfaces the cost thesis is read
+through. There is **no judge, verdict, calibration, or policy-compile loop** to
+score — the run phase contains no LLM judgment (the dumb reconciler decides
+skip / render / gateCommit / propagate over `(contract_fingerprint,
+input_fingerprints)`), so decidability-over-judgment (invariant 1) is a property
+of the artifact, not a methodology layered on top of it. What is shipped is
+**unit- and contract-verified tooling**; what is _not_ shipped is the
+preregistered cost-thesis **run** and the adversary baselines — those are Part
+III.
 
-> The methodology is launch-grade; the apparatus is built and Reactor-free; the
-> central evidence — the Reactor column — is still owed, and is owed to the
-> harness, not to this document.
+- **The proof object exists and replays keyless.** `@openprose/reactor` v0.2.0
+  emits the content-addressed receipt (`status ∈ {rendered, skipped, failed}`,
+  `cost.tokens.{fresh,reused}`, `cost.surprise_cause ∈ {input, self, external}`,
+  `prev`-linked chain) into the flat `<state-dir>/receipts.json` trail (02 _Open
+  specification items_). `@openprose/reactor-devtools` v0.1.0 reads that trail
+  with **zero running reactor and zero model key**: `reactor-devtools
+  <state-dir> --describe` prints per-node `rendered`/`skipped`/`failed`
+  dispositions, the moved-facet diff, a **cost rollup split by
+  `surprise_cause`** (`tokens.fresh` vs `tokens.reused`, with `wake-cause` as
+  the old synonym), and a per-node **chain-verify** line; `--describe --json`
+  emits the same as a parseable object for CI/agents. The animated SPA (`flash`
+  on render, **dim-pulse on memo-skip**, red on fail, per-facet edge lights, a
+  live fresh-vs-reused token meter) is the same read, animated — "the
+  visualization _is_ the audit trail." (README + `src/data`, `src/cli.ts`.)
+- **Chain-verify is meaning-layer, not cryptographic.** `verifyReceiptChain` /
+  `verifyReceipt` run over the **raw on-disk** receipts: each receipt's
+  `content_hash` must match its canonical payload and link its `prev`. This is
+  tamper-_evident_ against accidental or independent edits (a detected break
+  prints `CHAIN-VERIFY FAILED` and exits 1) but **not** non-repudiation against
+  a forge that re-stamps the whole trail — v1 has a **null signer** (`{ scheme:
+  "none", null_reason: … }`). The library refuses to claim a signature scheme it
+  does not have. (reactor README _Signer caveat_; devtools README _data
+  contract_.)
+- **The Cradle hero shot is the flat-token replay, today realized as a committed
+  fixture — not a benchmark result.** The static-world scenario Part I names is
+  shipped as the keyless `--example masked-relay` fixture (a deterministic
+  content-pipeline state-dir: receipts + `compile/topology.json` +
+  `world-models/`) replayed offline, where `tokens.fresh` vs `tokens.reused`
+  makes the fresh-vs-reused ratio recoverable from the trail. A `--describe` of a
+  shipped sample prints a `(synthetic sample ledger — token counts are
+  illustrative, not a bill)` banner: **these token figures are scripted, not a
+  measured spend.** A second committed fixture, the **Agent State Observatory**
+  (`fixtures/agent-observatory`), is the launch-video corpus — it adds the dark
+  facet-lane, a `failed` receipt, and a `self`-tick the masked-relay fixture
+  lacks. Both are illustrative cost _stories_, not the report-grade cost
+  _result_.
+- **The scenario harness is real, and drives the dumb reconciler directly.** A
+  surprise-cost eval is authored against the public SDK (`@openprose/reactor` +
+  its `/sdk` subpath) by hand: `mountDag` over a `ReconcilerTopology`, a
+  deterministic render per node, `ingest(node)` to wake to a fixpoint, then read
+  back `ReconcileResult.disposition` and the `createReplaySession({ ledger
+  }).costRollup` — the **same read view devtools renders**. The probed property
+  is exactly Claim A's memo sub-claim: _a node renders iff its memo key
+  `(contract_fingerprint, input_fingerprints)` actually moved_; a quiet re-wake
+  must `skip` and leave `costRollup.total.fresh` unmoved. This is the
+  `reactor/EVALS.md` "send us the eval where Reactor _should_ skip and doesn't"
+  loop, run verbatim in the package's own test suite. The in-tree scenarios
+  (`masked-relay`, `implementation-pipeline`, the basic-unit suite) have **pure
+  deterministic** offline bodies that gate the commit and a **live** sibling
+  (`*.live.test.ts`) that swaps the fakes for the live `createAgentRender`
+  adapter — the reconciler cannot tell them apart.
+- **The CLI observe surface is the keyless cost-truth driver.** `@openprose/
+  reactor-cli` v0.1.0 ships the model-free, offline-gated read commands —
+  `status` (standing compile cost beside live run cost), `topology`, `inspect
+  <node>` (fingerprints + chain), `logs`, `trace`, and `receipts (list | verify
+  | cost)` — all with `--json`. `reactor receipts cost --json` is the
+  CLI-driven equivalent of `reactor-devtools --describe --json`: both surface the
+  **same** rollup-by-`surprise_cause` off the trail. `receipts verify` (and a
+  `--strict` `inspect`) exits nonzero on a broken chain.
+
+> What is shipped: a real receipt, a keyless replay, two reconciled cost
+> surfaces, a hand-driven scenario harness, and two illustrative committed
+> fixtures. What is **not yet** shipped: a preregistered benchmark _run_, the
+> adversary baselines, the model matrix, and any report-grade cost _result_.
+> Today's fixtures tell the cost story; they do not yet measure it.
 
 ---
 
-## III. The Plan To Get There
+## III. The Plan To Get There — from illustrative fixture to report-grade run
 
-1. **Proof object stays reconciled.** The methodology derives from
-   `openprose.receipt v0` (02 open item I.1). The harness emits one receipt
-   definition; the eval scores the receipt the harness actually emits.
-2. **Land the Reactor-independent contribution first.** Real isolated
-   competitor runs plus the cost methodology and the harness comparison are a
-   _publishable contribution on their own_ — collected while the Reactor is
-   built, so the apparatus is proven before the subject exists.
-3. **The Reactor column docks through the Cradle.** The Reactor row is not a
-   bespoke emitter bolted onto the eval harness. It is the Reactor presented as
-   one more adapter in the harness's own automated test cradle: a typed SDK
-   seam, an adapter-parity matrix with a byte-identity gate, a replay engine
-   that runs against the recorded receipt artifact and never re-derives it, and
-   assertion families evaluated over the receipt. The eval competitor adapters
-   present under that same parity-and-replay contract, so when the Reactor's
-   emitter lands the Reactor slots into the socket the competitors already
-   occupy. The first harness milestone is itself scoped to _prove or kill the
-   cost thesis_ — the same preregistered hypothesis this methodology fixes
-   (invariant 3, Claim-A row 1) — so the eval is that milestone's acceptance
-   instrument: align the preregistered surprise-label and decision-rule freeze
-   with that gate.
-4. **Write the report after the evals, never before.** Strong claim, then the
+The offline instrument exists; the **measured result** does not. Every item
+below is owed to the report, and each is built _on top of_ the shipped trail —
+the receipt, the keyless replay, the `surprise_cause` rollup — never against a
+competing schema. The order is the order of credibility.
+
+1. **Freeze the preregistration, then mint a real ledger.** The cost thesis is a
+   preregistered falsifiable hypothesis (invariant 3): the surprise labels, the
+   decision rule, the baseline set, and the model matrix are content-hashed
+   _before any run_. The acceptance instrument is already shipped — `reactor
+   receipts cost --json` and `reactor-devtools --describe --json` over the flat
+   `receipts.json`. What is owed is the run that emits a **non-synthetic**
+   ledger: replace the `(synthetic sample ledger)` fixtures with a real
+   `reactor serve`/`run` spend so `tokens.fresh` vs `tokens.reused` is a bill,
+   not a script. This is the Cradle static-world scenario promoted from
+   illustrative fixture to the cost-thesis hero _measurement_.
+2. **Build the adversary baselines — the strongest cheap thing, not a strawman**
+   (invariant 2). Neither baseline exists yet: an **oracle-optimally-scheduled
+   cron** and a strong **content-diff-plus-embedding cache**, each presented to
+   the trail under the same replay-and-cost contract the Reactor already
+   occupies. The non-obvious honesty: on the silent-drift headline regime a
+   content cache is **blind by construction**, so the load-bearing comparator
+   there is the oracle cron, and a baseline that ties on a regime is reported as
+   a tie **in the abstract**.
+3. **Run both model-bearing roles — the Claim-B matrix.** With the judge retired,
+   the two roles to vary are **render** (does the bounded session compute a
+   correct next world-model?) and **compile** (does the model lower `###
+   Maintains` into a _sound_ canonicalizer + postcondition validators?). The
+   live `createAgentRender` adapter and the `agent-compile` adapter are the
+   seams; the deliverable is the **architecture-compensation curve** — the
+   cheap-vs-frontier render gap _with and without_ memoization plus a compiled
+   canonicalizer — reported as role-conditional fit, never a single ranking.
+4. **Quantify the boundary, do not hide it** (invariant 6). Measure where
+   cost-scales-with-surprise degrades to a freshness cadence: the compile-phase
+   floor (re-deriving canonicalizer + topology + validators on a contract
+   change) and the no-cheap-hash domain (where deciding "did it change"
+   essentially _is_ the work). Stating the boundary precisely is what makes the
+   central claim believable.
+5. **Replay the eval itself from a clean clone** (invariant 7). The fixtures are
+   already content-addressed and the replay never re-derives the trail; the
+   remaining work is pinning model snapshots so a snapshot roll **voids** (never
+   patches) a run, and a skeptic reproduces the headline from a fresh checkout.
+6. **Write the report after the evals, never before.** Strong claim, then the
    evidence, then the boundary. Ties and losses in the abstract.
+
+**Genuine deferrals (post-v1).** A **cryptographic byte-hash signer** to replace
+the null signer (turning meaning-layer tamper-evidence into non-repudiation);
+**ledger compaction** of the flat `receipts.json` as the trail grows;
+**facet inference** (the v-next "infer the cadence rather than declare it"
+capability invariant 2 names as _not_ what v1 claims), and the default
+`valid_until` freshness projector + adaptive serve cadence on the harness side;
+and **the fixpoint demonstration** — topology-memoization as one more
+responsibility, the closing recursion where "one mechanism, three
+demonstrations" is shown rather than asserted (invariant 9). Each is marked
+post-v1 and is not gating the first report.
 
 **Launch standard.** Do not publish "Reactor-class harness" until both claims
 survive their _strongest cheap adversaries_ under preregistration, the

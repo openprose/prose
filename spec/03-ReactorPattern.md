@@ -400,189 +400,211 @@ cost. Silence is a target, never a constraint the other rules bend around.
 
 ## II. What The OpenProse Skill Implements Today
 
-This section assumes the responsibility CLI harness branch is merged and
-released (`@openprose/responsibility` backing both CLI and API), consistent
-with Part II of the harness doc.
+The current model in Part I — intelligent compile (per-node canonicalizer +
+Forme topology + postcondition validators, fired only on a contract-set change)
+over a dumb deterministic run (compare `(contract_fingerprint, input_fingerprints)`
+→ skip / render / `gateCommit` / propagate) — is the model the shipped skill
+authors against. This section is the conformance ledger: what the skill routes
+today, measured honestly against that pattern.
+
+The reference harness backing the skill is the three packages that ship
+together — `@openprose/reactor` (the engine SDK, `0.2.0`), `@openprose/reactor-cli`
+(command `reactor`, `0.1.0`, twelve commands), and `@openprose/reactor-devtools`
+(the replay viewer, `0.1.0`). The skill's `responsibility-runtime.md` and
+`concepts/{responsibility,reactor}.md` are already written to this model; the
+retired judge/verdict/status/pressure/fulfillment vocabulary is gone from the
+authoring surface, not merely deprecated.
 
 ### The authoring surface that already exists
 
-The headline finding: **the Reactor-native pattern requires no
-new syntax.** Everything in Part I is expressible with the current skill.
+The headline finding still holds: **the Reactor-native pattern requires no new
+syntax** — but the syntax it requires is the *current* one. The skill routes the
+kinds and sections Part I names, and only those.
 
 | Pattern element | Skill support today |
 | --- | --- |
-| `kind: responsibility` with `### Goal`/`### Continuity`/`### Criteria`/`### Constraints`/`### Tools`/`### Fulfillment` | Present; `id:` is tooling-minted and stable across `name:`/filename renames (see `contract-markdown.md`) |
-| `kind: gateway` with `### Schedule`/`### Receives`/`### Emits`/`### Payload` | Present |
-| Fulfillment `kind: system`, `persist: project`, auto-wired via Forme | Present |
-| `### Execution` ProseScript: `call`, `parallel`, `for`, `loop`, `if`, `choice`, `try/catch/finally`, `agent`, `session`, `resume`, pipelines | Present — sufficient for the quiescence short-circuit and variable-depth gate |
-| `### Shape` (self / delegates / prohibited) for the actuation boundary | Present |
-| `### Memory` (`reads:`/`writes:`) for the durable ledger | Present |
-| std patterns (`oversight`, `fan-out`, `dialectic`, `guard`, `worker-critic`, `map-reduce`, …) instantiated by YAML in `### Services` | Present |
-| std/delivery renderers and file-writer for projections; project-memory service for the ledger | Present |
-| `prose compile` → IR, `prose serve` (cron + HTTP), `prose status`, judge status / pressure / Reactor decision records | Present |
+| `kind: responsibility` with `### Goal` / `### Requires` / `### Maintains` / `### Continuity` / `### Invariants` (+ `### Tools` / `### Shape` / `### Runtime`) | Present and canonical (`concepts/responsibility.md`, `contract-markdown.md`); `id:` is tooling-minted and stable across `name:`/filename renames |
+| `kind: function` with `### Parameters` / `### Returns` — a stateless called helper (the former `service`) | Present; run as a lone render with no Forme phase |
+| `kind: gateway` — sugar for an external-driven responsibility; Forme's entry-point set | Present; `reactor serve` registers it and stages ingress (fetch → extract → stage + a durable idempotency cursor) |
+| `kind: pattern` / `kind: test` | Present; patterns expand at compile time, tests route to `prose test` / `reactor` test semantics |
+| Facets: `####` parts under `### Maintains` — name = fingerprint unit + subscription symbol; atomic default | Present and **facet-granular propagation is live in production** (the v2 named-parts model); a downstream subscribed to one facet does not wake when another moves |
+| `### Maintains` as the world-model schema doing four jobs (type, canonicalization spec, facets, postconditions) | Present; the postconditions are the folded-in `### Criteria`, compiled to validators |
+| `### Continuity` as the structural wake-source declaration (input / self / external) | Present; self-driven recheck and the gateway entry point are both wired (Phase 4) |
+| `### Execution` ProseScript for variable-depth work inside one render | Present — an `if`-gated `call` to a `function` is the depth mechanism, not a judge tier |
+| Compile as SKILL-loaded sessions (Forme / canonicalizer / postcondition) → deterministic lowering → content-addressed IR cache | Present; a `.prose` set mounts without hand-authoring via a true semantic `Requires ↔ Maintains` match |
+| Run: dumb reconciler — memo-skip on unmoved `(contract_fp, input_fp)`, single-flight + coalescing, failure = no-commit, propagate only on a `rendered` moved fingerprint | Present (`@openprose/reactor`); restart-survival proven (truth + ledger survive a fresh process) |
+| `gateCommit`: deterministic postcondition validators + render self-attestation of `### Maintains`; receipt status in `{rendered, skipped, failed}` | Present; no judge, no verdict, no status enum |
+| Content-addressed, chain-verifiable receipt ledger; cost = `tokens.fresh` vs `tokens.reused` + `surprise_cause` | Present (`reactor receipts` chain-verifies and tamper-detects; the devtools meter renders "cost scales with surprise") |
+| Composition: a downstream responsibility names an upstream facet in `### Requires`; Forme draws the subscription edge | Present; the reconciler reads the topology `edges` to resolve propagation |
 
-The skill can already express the _shape_ of a Reactor-native program end to
-end: a responsibility, a gateway, a projection-only or full fulfillment system,
-a memoization-friendly sense/judge/ledger decomposition, variable-depth
-escalation behind a confidence gate, and a composition edge via a project
-ledger.
+The skill can already express a Reactor-native program end to end *in the current
+model*: one responsibility with a faceted `### Maintains`, a gateway for ingress,
+a `function` helper for an expensive sub-step, a projection-only or full
+actuation boundary in `### Invariants`, postcondition-gated commit, and a
+composition edge that is a real subscription rather than a copied value.
 
 ### Current authoring limits
 
-Part I states the pattern as an unqualified north star. This section is where
-authoring reality is honest.
+Part I states the pattern as an unqualified north star. This is where authoring
+reality is honest, rule by rule.
 
-| Authoring rule | State | Gap / what the author must currently do |
+| Authoring rule (Part I) | State | What the author must currently know |
 | --- | --- | --- |
 | 1. Intent lives in the responsibility | Conformant | Fully authorable today |
-| 2. Policy stated semantically, not as ProseScript | Conformant (authoring) | Author writes intent in `### Continuity`/`### Constraints`; the _two-timescale model-authored recompile_ is harness-side and not yet built — the author's semantic statement is correct and forward-compatible regardless |
-| 3. No host-specific contract logic | Conformant | `### Tools`/`### Environment` are name-only by design |
-| 4. Bounded activations | Conformant | Idiomatic; the anti-pattern is author error, not a skill gap |
-| 5. Written for memoization / variable depth | Partial | Author _can and must_ emit a content identity from the sense service and gate depth in `### Execution`; the harness memo and forecast that consume the identity are "Not yet" per harness Conformance Ledger invariant 5. Author writes it now; full benefit lands when the harness does |
-| 6. Composition via referenced upstream trail | Partial | Expressible only as a `persist: project` ledger reference today; content-addressed signed receipts with pinned revision/signer are harness "Partial." Pin the revision in `### Criteria` now; cryptographic signing is an optional pluggable adapter for cross-trust-domain composition, not a deferred tier |
-| 7. Ledger as receipt/audit/exit unit | Partial | `### Memory` ledger works; `as_of` / `next_forecast_recheck` / content-addressing are conventions the author adds by hand until the receipt schema is finalized |
-| 8. Replayable and exitable | Partial | Contract + ledger are plain and portable; a first-class export/exit surface is harness "Partial" |
+| 2. Materiality stated semantically in `### Maintains` | Conformant (authoring) | The author states materiality in prose; it is lowered to a deterministic canonicalizer. The lowering runs **only spec→code** — a compile session reads the `### Maintains` prose and emits the canonicalization spec, which the deterministic producer compiles. There is no `.prose` *parser*; compile is sessions, not a grammar |
+| 3. No host-specific contract logic | Conformant | `### Tools` (`cli:` / `mcp:`) and `### Environment` are name-only; resolution is fail-closed and never installs or contacts at compile |
+| 4. Bounded activations | Conformant | Idiomatic; the "loop until done" anti-pattern is author error, not a skill gap |
+| 5. Written for memoization / variable depth | Conformant | The reconciler's skip on `(contract_fp, input_fp)` is live (cost scales with surprise, including an immaterial-churn re-poll that still skips); facet selectors are live; depth is an `if`-gated `call` in `### Execution`. The author's leverage is real today |
+| 6. Composition via a subscribed upstream facet | Conformant (meaning-layer) | A downstream names the upstream facet in `### Requires` and Forme wires the edge; receipts are content-addressed and the chain is verifiable. The **cryptographic** signer is a null-state — v1 "signed" is meaning-layer chain-consistency, not a byte-hash — so cross-trust-domain *pinning to a signer set* is not yet enforceable |
+| 7. Receipts as the audit / composition / exit unit | Conformant | The ledger is flat `<state-dir>/receipts.json`, content-addressed, chain-verifiable; `cost` (fresh/reused/surprise_cause) and `status` are first-class. No hand-rolled scratch log is needed |
+| 8. Replayable and exitable | Conformant | Contract + world-model + ledger are plain and portable; `reactor-devtools <state-dir>` replays a saved run with zero running reactor and zero key |
 
 ### Honest current limits for authors
 
-- **File-watch gateways are not in `prose serve`.** Live serve supports cron
-  and HTTP only; queues, file watches, and provider subscriptions are explicit
-  later phases. The Reactor-native worktree/planning-dir example must use a
-  forecast-paced `### Schedule` today and note the intended file-watch form.
-- **Memoization, forecast, and variable-depth are harness policy, not author
-  syntax.** The author's leverage is indirect: write `### Continuity` and the
-  sense service so a stable identity _exists_ to memoize on. A contract that
-  makes "did anything change" expensive defeats the mechanism no matter how
-  good the harness is.
-- **Receipt composition is approximated by project memory.** "B consumes A's
-  content-addressed signed receipt" is authored as "B reads A's
-  `persist: project` ledger and pins A's revision in `### Criteria`."
-  Functionally adequate; cryptographically weaker than the ideal until
-  receipts harden.
-- **The two-timescale policy loop is not authorable.** Authors state policy
-  _shape_ semantically; they cannot yet author the meta-Reactor that recompiles
-  policy on drift. This is correct — it is harness machinery — but it means a
-  Part I claim ("policy is model-authored and recompiled") is, at the authoring
-  layer, an intent statement the runtime does not yet fully honor.
+- **`### Continuity` self-driven recheck is wired, but the cadence is flat.**
+  The continuity scheduler drives the freshness-lapse → synthetic self-receipt
+  bridge (a lapsed `valid_until` flips a fact's status, moves the facet
+  fingerprint, and wakes the node — a **zero-token** fingerprint move, not a
+  model re-render). `reactor serve` polls it on a flat `--poll-interval`
+  (default 60s); **forecast-paced / adaptive idle** off each node's soonest
+  `next_self_recheck` is deferred. Declare `valid_until` now; the cadence
+  tightens later without a source change.
+- **Serve ingress is local cron-poll + HTTP only.** Gateway poll connectors and
+  an HTTP trigger surface ship; **queues, file watches, and provider
+  subscriptions** do not. A worktree/planning-dir watcher must use a poll
+  `### Continuity` today and note the intended file-watch form.
+- **The cryptographic signer is a null-state.** Composition pins a revision and
+  is chain-verifiable at the meaning layer, but pinning an *acceptable signer
+  set* for cross-trust-domain composition is not enforceable until the
+  byte-hash signer lands. Functionally adequate within one trust domain;
+  cryptographically weaker than the ideal across domains.
+- **Materiality is authored, not yet inferred.** The author writes the
+  material/immaterial split in `### Maintains` prose and the compile session
+  lowers it. The skill does **not** infer facets or materiality from the truth's
+  shape; that inference loop is deferred. The store also does not materialize a
+  per-facet `published/<facet>/…` subtree on disk (it persists `published.json`
+  + content-addressed blobs) — facet-granular propagation holds regardless; only
+  the on-disk subtree mirror is absent.
 
-> The pattern is fully writable today. Several of its headline payoffs
-> (provable quiescence, forecast-manufactured rechecks, verifiable composition)
-> are harness commitments the author writes _toward_ and the runtime does not
-> yet fully deliver. Author to the ideal; do not claim the runtime already
-> reaches it.
+> The pattern is fully writable today, in the current model. Its remaining
+> climb is harness cadence and cryptographic hardening (forecast-paced rechecks,
+> richer ingress adapters, the byte-hash signer), not retired vision. Author to
+> the ideal; do not claim the runtime delivers the deferred items it does not.
 
 ---
 
 ## III. What Must Change In The Skill
 
-These are documentation and doctrine changes, not syntax changes. They make
-the Reactor-native pattern the _taught default_ rather than an advanced corner.
+The retired-model framings are gone: the skill already routes the current kinds
+and sections, the examples are migrated, and `concepts/{responsibility,reactor}.md`
+teach the no-judge model. What remains is the climb from "fully authorable in the
+current model" to "every Part I payoff is also *delivered*" — a mix of finishing
+the authoring story for the newest sections and the genuine harness deferrals.
 
-### 1. Invert the Mental Model in `01-Language.md`
+### 1. Finish the facet authoring story
 
-The "Mental Model" section currently lists Responsibility Runtime last, as a
-continuity addendum to a system-centric model. Rewrite it responsibility-first:
-the responsibility is the program; the gateway is ingress; the system is one
-beat of the loop; Forme/VM/ProseScript are the substrate. Keep the
-system-centric model as the bounded-work special case, explicitly labeled as
-the N=0 (no continuity) case of the Reactor base case.
+Facet propagation is live and the named-parts model is canonical, but two seams
+are open:
 
-### 2. Reframe the "Directly runnable?" table
+- **Facet inference is deferred.** Today the author writes the `####` parts and
+  the material/immaterial split by hand. The skill should eventually offer a
+  lint that flags an under-faceted `### Maintains` (one giant atomic truth whose
+  consumers clearly want selectors) — and, post-v1, an inference pass that
+  proposes facets from the truth's shape.
+- **The on-disk subtree mirror is absent.** The store fingerprints each facet's
+  material field-paths and persists `published.json` + content-addressed blobs;
+  it does not materialize a `published/<facet>/…` subtree. Author doctrine
+  should not promise a subtree on disk — describe facets as the *subscription
+  and fingerprint* unit, which is what actually ships.
 
-Add a column or a footnote distinguishing _run_ (bounded) from _serve_
-(reconciled). State plainly that `kind: responsibility` being "not directly
-runnable" means "continuously reconciled" and is the **intended top-level
-authored object** for any standing goal — not a lesser artifact.
+### 2. Complete the no-judge postcondition doctrine in `contract-markdown.md`
 
-### 3. Add Reactor-native routing to `SKILL.md`
+`### Maintains` now carries four jobs (type, canonicalization, facets,
+postconditions) and `### Continuity` is a structural wake-source declaration.
+These are documented in `concepts/responsibility.md`; `contract-markdown.md`
+should mirror the load they bear:
 
-"First 90 Seconds" routes "Run a `.prose.md` service or system" as the default
-and Responsibility Runtime as a specialist path. Add a recognition signal and a
-first-class route:
+- `### Continuity` is the author's input to memoization and cadence — name the
+  freshness referents (`valid_until`) and the wake sources (input / self /
+  external), and make "nothing changed" cheaply observable.
+- Postconditions are the author's commit gate. State them as observable
+  referents; when the truth has *nothing observable to maintain against*, that
+  is an expected, high-value `failed` receipt routed to the author — **never** a
+  `blocked`/`drifting` status enum (those are retired).
 
-- Recognition signal: "make sure X stays true," "keep Y current," "watch Z and
-  maintain a view" → **author a responsibility + gateway first**, derive the
-  system second.
-- Route: when the user describes a standing goal, load
-  `responsibility-runtime.md` and this pattern before `forme.md`/`prose.md`,
-  not after.
+### 3. Land the materiality lowering's prose→spec half
 
-### 4. Promote the authoring rules into `guidance/authoring.md`
+Compile runs as SKILL-loaded sessions and the **spec→code** canonicalizer
+lowering is real (a compile session emits the canonicalization spec; the
+deterministic producer compiles it). The remaining work is hardening the
+**prose→spec** step — reading the author's `### Maintains` materiality prose into
+the spec reliably — so that "state the materiality, not the hash" is trustworthy
+across more contract shapes. This is a compile-session quality effort, not a new
+grammar; there is no `.prose` parser to build.
 
-Add a "Reactor-Native Authoring" section that ports Part I's eight rules as a
-checklist, with the memoization rule (Rule 5) called out as the one authors
-most often violate. Include the sense-service-must-emit-a-content-identity
-requirement as a lint-able expectation.
+### 4. Forecast-paced continuity cadence
 
-### 5. Strengthen `### Continuity` / `### Criteria` doctrine in `contract-markdown.md`
+The self-driven recheck path is wired (freshness-lapse → synthetic self-receipt,
+a zero-token fingerprint move), but `reactor serve` polls it on a flat
+`--poll-interval`. The deferred work is arming each node's soonest
+`next_self_recheck` off its freshness so an idle reactor sleeps to the next real
+expiry instead of waking every interval — the *forecast-paced quiescence* Part I
+implies. The author already writes the `valid_until` that feeds it; the cadence
+tightens harness-side, without a source change.
 
-These two sections are documented thinly relative to the load they now bear.
-`contract-markdown.md` should state that `### Continuity` is the author's input
-to forecast and memoization (name the freshness referents and the
-memo-breaking condition; make "nothing changed" cheaply observable) and that
-`### Criteria` must use observable referents, with "undecidable" framed as an
-expected, high-value `blocked` reason routed to the author — never an enum.
+### 5. Richer serve ingress adapters
 
-### 6. Add a canonical Reactor-native example
+`reactor serve` supports local cron-poll and HTTP, plus gateway poll connectors
+with a durable idempotency cursor. Queues, file watches, provider subscriptions,
+and webhook authentication remain later runtime phases. Until they land, a
+file-watch-shaped responsibility is authored as a poll `### Continuity`; the
+intended ingress form should be noted in the contract so it migrates cleanly.
 
-The examples set demonstrates full Reactors (stargazer, incident, compliance).
-Add a **projection-only** example — an observe-but-never-touch overseer like
-the three-layer Codex-build overseer — to teach the amputated-fulfillment
-shape, the composition-via-ledger edge, and the
-forecast-paced-schedule-as-file-watch-stand-in limit. It is the clearest
-teaching case for "cost scales with surprise, not the watched system's
-activity."
+### 6. The cryptographic signer (cross-trust-domain composition)
 
-### 7. Document the projection-only Reactor as a first-class shape
-
-Both `responsibility-runtime.md` and `concepts/reactor.md` should name
-projection-only (judge + projection, no fulfillment) as a deliberate,
-supported shape with its own `### Constraints` idiom, not an incomplete
-Reactor. This is a recurring real use case (audits, overseers, dashboards) and
-is currently undocumented.
+The receipt ledger is content-addressed and chain-verifiable, and the `signer`
+is an explicit null-state (`kind: "null" | "signed"`, only `null` shipped). v1
+"signed" means meaning-layer chain-consistency. The deferred milestone is the
+cryptographic byte-hash signer, after which a downstream can pin an *acceptable
+signer set* in `### Requires` and have it enforced — closing the cross-trust-domain
+supply-chain edge that is, today, the author's discipline rather than the
+runtime's guarantee.
 
 ### Definition of done for the authoring layer
 
-- `01-Language.md` Mental Model is responsibility-first; the runnable table no
-  longer implies responsibilities are lesser artifacts.
-- `SKILL.md` routes standing-goal language to responsibility authoring before
-  system wiring.
-- `guidance/authoring.md` carries the eight Reactor-native rules as a
-  checklist, with the content-identity requirement explicit.
-- `contract-markdown.md` documents `### Continuity` as forecast/memo input and
-  `### Criteria` decidability with the undecidable-`blocked` doctrine.
-- A projection-only example ships and runs from a fresh clone.
-- Every Part I rule that is harness-"Partial"/"Not yet" is cross-referenced to
-  the harness Conformance Ledger so authors are never told the runtime
-  delivers what it does not.
+- `contract-markdown.md` documents `### Continuity` as the cadence/memo input
+  and `### Maintains` postconditions as the commit gate, with the
+  retired-status-enum doctrine explicit.
+- A facet under-faceting lint exists; doctrine never promises an on-disk
+  `published/<facet>/…` subtree.
+- The prose→spec materiality lowering is hardened across the example corpus.
+- `reactor serve` arms `next_self_recheck` (forecast-paced cadence) so an idle
+  reactor sleeps to the next real expiry.
+- The cryptographic signer lands and a pinned signer set is enforceable for
+  cross-trust-domain composition.
 
 ### Open authoring items
 
 Deferred by design, tracked so they are neither invented nor dropped:
 
-1. **Content-identity convention.** The *existence* of the obligation is now
-   stated in [01-Language.md](./01-Language.md) Part I (a sense service may
-   return a stable content identity as an `### Ensures` output); only the
-   *convention* — the exact shape of the identity (hash of what, normalized
-   how) — is deferred here, pending the harness receipt-schema research
-   (harness open item I.1).
-2. **Composition reference syntax — resolved.** "B depends on A" is authored
-   as a reserved `responsibility` typed-input in `### Requires` (the same
-   mechanism as `run`/`run[]`), pinning upstream id-or-path + contract
-   revision + acceptable signer set; see [01-Language.md](./01-Language.md)
-   Part III §3. Kernel-verifiable, not a Forme edge. The prose-ledger
-   reference is the pre-receipt-schema stand-in until the receipt
-   `composition` block lands.
-3. **Policy-shape vocabulary.** How an author states hysteresis _shape_ ("this
-   signal is noisy → widen the band") — and, equally, upstream freshness
-   tolerance ("A may be one business day stale") — semantically, in a way the
-   model-authored policy compile can consume, is principle-only (harness open
-   item I.4).
-4. **Projection-tier authoring.** Owner / subscriber / public projection
-   contracts (the privacy-as-failure-mode safeguard) have no authoring section
-   yet; today it is ad hoc per fulfillment system.
+1. **The fixpoint (topology-as-responsibility).** Mounting the compile-phase
+   renders — Forme above all — as ordinary nodes so the reconciler wakes them on
+   a contract-set-change receipt, and the system maintains itself, is the
+   closing recursion. It is **post-v1** by design; v1 runs compile as a batch
+   step on contract change with the topology a fixed input per scheduling epoch.
+   This is the deliberate deferral, not an oversight.
+2. **Facet / materiality inference.** The author states facets and materiality
+   today; an inference loop that proposes them from the truth's shape is
+   v-next.
+3. **Ledger compaction.** A signed-snapshot-plus-truncate path for high-churn
+   nodes is deferred; today the ledger is the full append-only trail.
+4. **The default `valid_until` freshness projector for serve.** A first-class
+   serve-time projector that surfaces soonest-expiry across nodes (the input to
+   adaptive idle) rides with the forecast-paced cadence work above.
 
 > `02-ReactorHarness.md` says what the machine must do.
-> `03-ReactorPattern.md` says what to write so it does it. The pattern
-> is fully writable now; its full power lands as the harness Conformance
-> Ledger closes. Author to the ideal, document the climb honestly.
+> `03-ReactorPattern.md` says what to write so it does it. The pattern is
+> fully writable now in the current model; its full power lands as the harness
+> climbs from flat-poll continuity and a null-state signer to forecast-paced
+> rechecks and a cryptographic chain — and, last, to the fixpoint. Author to the
+> ideal, document the climb honestly.
