@@ -28,10 +28,15 @@ and **S5** (facet / diamond polish) are follow-ons (see below).
 ## Usage (standalone)
 
 ```bash
-reactor-devtools <state-dir> [--port 4555] [--host 127.0.0.1]
+reactor-devtools <state-dir> [--port 4555] [--host 127.0.0.1] [--describe]
 ```
 
-A **replayable state dir** = `receipts` (the durable trail) + `compile/topology.json`
+`--describe` prints a headless run summary (per-node + per-frame dispositions,
+moved-facet diff, cost rollup, chain-verify) and exits without a browser -- the
+text an agent reads to sanity-check a run. `--version`/`-V` prints the version,
+`--help`/`-h` the usage.
+
+A **replayable state dir** = a flat `receipts.json` (the durable trail) + `compile/topology.json`
 + `world-models/`. Replay needs **zero** running reactor and **zero** model key.
 If `compile/topology.json` is absent, the viewer falls back to a node-only set
 derived from the receipts' distinct `node` values (no edges).
