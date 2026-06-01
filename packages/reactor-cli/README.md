@@ -6,29 +6,78 @@ parses `.prose` itself. Compile freezes intelligence (model sessions) into
 deterministic, content-addressed artifacts; run/serve execute those frozen
 artifacts with a dumb reconciler.
 
+The command is `reactor`. Reactor is `React.memo` applied to expensive LLM work:
+you declare standing **Responsibilities**, the harness maintains a **world-model**
+and re-renders only what materially moved (the reconciler is dumb — **no judge
+step**), and every decision leaves a content-addressed **receipt**. Cost scales
+with surprise, not the clock.
+
+## Install
+
+After npm publish:
+
 ```sh
-npm install -g @openprose/reactor-cli
+npm i -g @openprose/reactor-cli @openprose/reactor-devtools
 # or, per-project:
 npm install --save-dev @openprose/reactor-cli @openprose/reactor @openai/agents zod
 ```
 
-The command is `reactor`.
+**Pre-publish (from the staged tarballs).** The CLI and devtools peer-depend on
+the SDK, which isn't on npm yet — so install all three together, **SDK first**,
+in one `npm install`:
+
+```sh
+npm i -g openprose-reactor-0.2.0.tgz \
+         openprose-reactor-cli-0.1.0.tgz \
+         openprose-reactor-devtools-0.1.0.tgz
+# The live render also needs two peers, installed in the same -g tree:
+npm i -g @openai/agents zod
+```
+
+> Zero *runtime* deps in the SDK core. The live render needs two peers
+> (`@openai/agents`, `zod`); `doctor`, `init`, the whole observability suite, and
+> the `reactor-devtools` replay need neither.
 
 ## Quickstart
 
+The keyless `reactor-devtools` replay is the first thing to touch — it's the
+payoff that works with **no key and no model call**. Then scaffold and check your
+own responsibility offline; only the live `compile`/`run` needs a model key.
+
 ```sh
+# 1. See the thesis — keyless, no model call, no setup.
+#    Replay a saved run's receipt ledger: dispositions, cost-by-surprise, chain-verify.
+reactor-devtools <state-dir> --describe   # headless summary (the text an agent reads)
+reactor-devtools <state-dir>              # browser viewer at http://localhost:4555
+
+# 2. Scaffold and check your own responsibility — offline.
 reactor init my-project        # scaffold a gateway + responsibility + reactor.yml
 cd my-project
 reactor doctor                 # check node, SDK, key/deps, sandbox, state-dir, IR
+reactor compile --check        # honest STALE + contract fingerprint; zero cost
+
+# 3. Run it live (needs a model key).
+export OPENROUTER_API_KEY=...   # doctor confirms it's present, never echoes it
 reactor compile                # run the compile sessions -> content-addressed IR cache
+reactor topology               # the DAG Forme wired from your contracts
 reactor run                    # boot, drain to quiescence, print dispositions + cost
 reactor serve --http 8080      # boot the durable host + continuity loop + HTTP surface
+reactor-devtools .reactor      # replay YOUR run's receipts in the viewer
 ```
 
 `compile`/`run`/`serve` reach the model surface and need a live key
 (`OPENROUTER_API_KEY`) plus the optional peer deps (`@openai/agents`, `zod`).
 Every other command — `doctor`, `init`, and all of the observability commands —
 runs **fully offline**, with no key and with the model deps absent.
+
+> **If you're an agent onboarding on behalf of a user:** the binary is `reactor`.
+> Run `reactor init → doctor → compile → run`, then open
+> `reactor-devtools <state-dir>` to inspect the receipt ledger. OpenProse
+> contracts run on any Prose-Complete harness; the Reactor CLI is the
+> deterministic host layer that compiles, runs, and inspects them.
+
+Benchmarks are openly pending — the proof is the receipts and the keyless replay
+above, not a number in our marketing.
 
 ## The reference client: compile → run → serve
 

@@ -3,12 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "scripts": {
-    "example": "node flat-tokens.example.mjs"
-  },
-  "dependencies": {
-    "@openprose/reactor": "0.1.0"
-  },
+  "deprecated": "Superseded by the keyless reactor-devtools --describe replay; this example imported the removed @openprose/reactor-cradle package. See README.md.",
   "engines": {
     "node": ">=20.0.0"
   }

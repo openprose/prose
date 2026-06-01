@@ -1,43 +1,38 @@
-# Reactor Flat Tokens Example
+# Reactor Flat Tokens Example — superseded
 
-This example runs the static-world Reactor scenario through a real
-`createReactor().ingest` path and prints the token accounting from the receipts
-produced by that run.
+> **This example is deprecated and does not run on the published v0.2.0 surface.**
+> `flat-tokens.example.mjs` imports `@openprose/reactor-cradle` (a package that is
+> not part of the released harness) and reproduces a token-accounting headline
+> (`46:46`, judge cassettes) from a superseded, deleted build. The current Reactor
+> harness has **no judge step** and ships no `cradle` package. Do not treat the
+> numbers in this directory as the cost claim — the honest, current proof is the
+> keyless `reactor-devtools` replay below.
 
-It is intentionally offline. The model gateway is a recorded replay cassette,
-the world is deterministic, and the output is a small JSON object with
-`tokens.fresh`, `tokens.reused`, and the `ratio` label.
+## The headline proof is now the keyless devtools replay
 
-## Run
-
-After installing `@openprose/reactor` and `@openprose/reactor-cradle` into this
-example, run:
-
-```sh
-npm run example
-```
-
-The public-release smoke installs packed local tarballs into a temporary
-consumer and runs the same command:
+The thesis — *cost scales with surprise, not the clock* — is checkable offline,
+with no model key and no model call, by replaying a saved run's receipt ledger:
 
 ```sh
-node .github/scripts/smoke-reactor-flat-tokens-example.mjs \
-  --reactorTarball /tmp/openprose-reactor-example-pack/openprose-reactor-0.1.0.tgz \
-  --cradleTarball /tmp/openprose-reactor-example-pack/openprose-reactor-cradle-0.1.0.tgz
+reactor-devtools <state-dir> --describe
 ```
 
-## Output Shape
+`--describe` prints, per node: the `rendered`/`skipped` dispositions, the
+moved-facet diff, a cost rollup split by `surprise_cause` (so you can read the
+reuse directly off real receipts), and a per-node chain-verify — no marketing
+number. The same dir opens in the browser viewer with `reactor-devtools
+<state-dir>`.
 
-The example prints JSON with:
+To produce your own saved run:
 
-- `schema: "openprose.reactor.example.flat-tokens"`
-- `overall_status: "pass"`
-- `runtime.create_reactor_ingest_path: true`
-- `runtime.offline_replay_model_gateway: true`
-- `runtime.receipt_count: 4`
-- `runtime.model_invocation_count: 2`
-- `tokens.fresh: 46`
-- `tokens.reused: 46`
-- `tokens.ratio: "46:46"`
-- one row per produced receipt, showing fresh/reused tokens and whether the
-  turn was a model invocation or memo hit
+```sh
+reactor init my-responsibility && cd my-responsibility
+export OPENROUTER_API_KEY=...
+reactor compile && reactor run
+reactor-devtools .reactor --describe
+```
+
+See **[`packages/reactor-cli/README.md`](../../../../packages/reactor-cli/README.md)**
+for the full quickstart and
+**[`packages/reactor-devtools`](../../../../packages/reactor-devtools/)** for the
+viewer and its committed replay fixtures.

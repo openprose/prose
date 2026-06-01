@@ -24,47 +24,67 @@
 
 ## Reactor
 
-**Reactor makes fresh model spend scale with surprise — plus a bounded periodic audit floor — not the arbitrary clock.**
+**Reactor is `React.memo` applied to expensive LLM work: cost scales with surprise, not the clock.**
 
-> v0.1.0 released 2026-05-22 — public on [npm](https://www.npmjs.com/package/@openprose/reactor) (`latest`, SLSA v1 provenance), source at tag [`reactor-v0.1.0`](https://github.com/openprose/prose/releases/tag/reactor-v0.1.0). See [`packages/reactor/ADOPTION.md`](packages/reactor/ADOPTION.md) for v0.1 scope.
+Reactor (`@openprose/reactor`) is a small, open-source harness for AI work that
+has to *keep being true* after a chat ends. You declare the truths you want
+maintained as OpenProse **Responsibilities** (standing goals). Reactor keeps a
+composed **world-model** up to date against a changing world, re-renders only
+the responsibilities whose inputs actually moved, and leaves a content-addressed
+**receipt** behind every decision.
 
-Reactor is a small local runtime for *responsibilities* — things you need to
-stay true while the world keeps moving: a release that is still safe to ship,
-an incident channel with a current briefing, a customer account that hasn't
-quietly gone sideways. It wakes on an event, checks the evidence, and decides
-whether the responsibility still holds.
+If you know React, you already know the shape — substitute three nouns:
 
-The trick is what happens when nothing changed. If the evidence is identical to
-last time, Reactor reuses its previous verdict for free — no model call — and
-records that it did. Real model spend appears only when the world hands it
-something genuinely new. Every check, reused or fresh, leaves a
-content-addressed receipt: a tamper-evident record of what it saw, what it
-decided, and what it cost.
+| React | Reactor |
+| --- | --- |
+| Component | **Responsibility** — a declared standing goal |
+| DOM | **World-model** — the maintained truth, materialized |
+| `render()` | **A bounded LLM session** that computes the next world-model |
+| props | **Subscriptions** to other responsibilities' outputs |
+| Reconciler | **The reconciler** — fingerprints inputs, schedules, commits (dumb, no judge step) |
+| `React.memo` (skip if props unchanged) | **Skip the render if subscribed inputs haven't moved** |
+| Manual dependency wiring | **Forme** — the graph wires itself from declared contracts |
 
-See it in one run. The flat-tokens example drives four checks of a single
-responsibility:
+*If you've never used React:* you declare the truths you want kept current, the
+system watches the world, and it does expensive model work only when something
+material actually moved — cost scales with surprise, not the clock. The
+reconciler that decides *whether to wake* is deliberately dumb and deterministic
+(there is **no judge step**); the intelligence is frozen ahead of time, at
+compile, into a per-node canonicalizer and the Forme wiring.
+
+Every decision leaves a content-addressed receipt naming its evidence by
+fingerprint and pointing at the prior receipt — an append-only, chain-verifiable
+ledger that is the responsibility's durable memory. (Signer caveat: in v1,
+*signed* means tamper-evident at the meaning layer and chain-consistent — not yet
+a cryptographic byte hash; the null signer is the only honest v1 state.)
+
+**Benchmarks are openly pending — on purpose.** We're publishing the harness
+before the numbers; we're not going to imply a measured speedup we haven't run.
+The proof you can check today is the **offline, keyless `reactor-devtools`
+replay**: point it at a saved run and read the real per-node `rendered`/`skipped`
+dispositions, the cost rollup split by `surprise_cause`, and the per-node
+chain-verify — no model key, no marketing number.
 
 ```bash
-cd skills/open-prose/examples/flat-tokens
-npm install
-node flat-tokens.example.mjs
-# memoization cut fresh model spend 50% (2 model calls, not 4)
-#
-# tokens.fresh=46
-# tokens.reused=46
-# ratio=46:46
-# no-memo-fresh=92
+# Keyless: replay a saved run's receipt ledger and read the dispositions + cost.
+reactor-devtools packages/reactor-devtools/fixtures/masked-relay --describe
+# per-node rendered/skipped, cost by surprise_cause, chain-verify — no key, no model call
 ```
 
-The four checks would have cost 92 fresh tokens of model work without
-memoization. With it, fresh stays at 46 — half — and 46 more tokens are reused
-for free. Two model calls instead of four. Re-run it and the receipts come back
-byte-for-byte identical.
+**Get started:** the human and agent on-ramp is the Reactor CLI — the binary is
+`reactor`. See **[`packages/reactor-cli/README.md`](packages/reactor-cli/README.md)**
+for the full quickstart (`init → doctor → compile → run`, then
+`reactor-devtools <state-dir>` to inspect the receipt ledger).
 
-Use Reactor when you are maintaining a stateful promise that deserves an
-auditable "why" over time: release readiness, incident briefing, customer risk,
-compliance evidence, or research inbox triage. Skip it when a one-off prompt or
-ordinary cron job already gives you enough truth.
+> **If you're an agent onboarding on behalf of a user:** the binary is `reactor`.
+> Run `reactor init → doctor → compile → run`, then open
+> `reactor-devtools <state-dir>` to inspect the receipt ledger. OpenProse
+> contracts run on any Prose-Complete harness; the Reactor CLI is the
+> deterministic host layer that compiles, runs, and inspects them.
+
+Reactor is built on OpenProse (Markdown contracts that run on any Prose-Complete
+agent harness) — but Reactor itself is a real SDK + CLI + devtools you install
+and run, and it's the recommended fast path for standing responsibilities.
 
 ---
 
