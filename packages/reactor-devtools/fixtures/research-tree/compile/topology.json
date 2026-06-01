@@ -1,0 +1,175 @@
+{
+  "nodes": [
+    {
+      "node": "gateway.sources",
+      "contract_fingerprint": "sha256:16e42cd598a089ab45b556e7c3fe63bb933754358897ef3e94e8ceb2cff381ad",
+      "wake_source": "external"
+    },
+    {
+      "node": "finding.A1",
+      "contract_fingerprint": "sha256:620cb5db6056ab950ff61b0e432ca5a7adc6cadc518a4884b36e19b4f5d4ac9a",
+      "wake_source": "input"
+    },
+    {
+      "node": "finding.A2",
+      "contract_fingerprint": "sha256:95542538f8a949ba1f4b6dd631ea711e5ed1d8395c688d48494531b801e8c2e0",
+      "wake_source": "input"
+    },
+    {
+      "node": "finding.A3",
+      "contract_fingerprint": "sha256:52dc443307c3df36b53eedcc772879fa11ca53ff36b5a92bba9c1d43573e0418",
+      "wake_source": "input"
+    },
+    {
+      "node": "finding.B1",
+      "contract_fingerprint": "sha256:1d6ee724d558c34b50b742bcffe0e34e8aa9020abae0db64ad819f691fe38a33",
+      "wake_source": "input"
+    },
+    {
+      "node": "finding.B2",
+      "contract_fingerprint": "sha256:35e3e77b456385928ff872528a006f0a2deedc554ebcfeb13d6ad9f6e2ffd24d",
+      "wake_source": "input"
+    },
+    {
+      "node": "finding.B3",
+      "contract_fingerprint": "sha256:49a65a4a53af8615e04e79c291d321ddf4d49875a13ec0fb246bbf5fa4f4a35d",
+      "wake_source": "input"
+    },
+    {
+      "node": "finding.C1",
+      "contract_fingerprint": "sha256:8fe7a132dbf451741cad28143659e27e309244f0e17d3087af8c6c1190f81d54",
+      "wake_source": "input"
+    },
+    {
+      "node": "finding.C2",
+      "contract_fingerprint": "sha256:d0a32e91651d848da1d16573be253552ea12fe663c503d0922477240d6788694",
+      "wake_source": "input"
+    },
+    {
+      "node": "synthesis.sub-A",
+      "contract_fingerprint": "sha256:a1ccaaa07b192a679d16966862c54c3b8d14b6eb374eae8f6cc91801240d920d",
+      "wake_source": "input"
+    },
+    {
+      "node": "synthesis.sub-B",
+      "contract_fingerprint": "sha256:8173562ed5bd37943615c3d1ed35ce47cb59984cdac53158bc959ca41d4c5573",
+      "wake_source": "input"
+    },
+    {
+      "node": "synthesis.sub-C",
+      "contract_fingerprint": "sha256:fd021812142c41a5b3f597514031274f090ecd6065b3c59c0d220d8e36a79f9f",
+      "wake_source": "input"
+    },
+    {
+      "node": "synthesis.root",
+      "contract_fingerprint": "sha256:bb5a83dfe3152ad8ad6c4f6406f378e205d404b538fd0b7aeb243624c7141d1e",
+      "wake_source": "input"
+    }
+  ],
+  "edges": [
+    {
+      "subscriber": "gateway.sources",
+      "producer": "ingress.corpus",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "finding.A1",
+      "producer": "gateway.sources",
+      "facet": "leaf:A1"
+    },
+    {
+      "subscriber": "finding.A2",
+      "producer": "gateway.sources",
+      "facet": "leaf:A2"
+    },
+    {
+      "subscriber": "finding.A3",
+      "producer": "gateway.sources",
+      "facet": "leaf:A3"
+    },
+    {
+      "subscriber": "finding.B1",
+      "producer": "gateway.sources",
+      "facet": "leaf:B1"
+    },
+    {
+      "subscriber": "finding.B2",
+      "producer": "gateway.sources",
+      "facet": "leaf:B2"
+    },
+    {
+      "subscriber": "finding.B3",
+      "producer": "gateway.sources",
+      "facet": "leaf:B3"
+    },
+    {
+      "subscriber": "finding.C1",
+      "producer": "gateway.sources",
+      "facet": "leaf:C1"
+    },
+    {
+      "subscriber": "finding.C2",
+      "producer": "gateway.sources",
+      "facet": "leaf:C2"
+    },
+    {
+      "subscriber": "synthesis.sub-A",
+      "producer": "finding.A1",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "synthesis.sub-A",
+      "producer": "finding.A2",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "synthesis.sub-A",
+      "producer": "finding.A3",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "synthesis.sub-B",
+      "producer": "finding.B1",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "synthesis.sub-B",
+      "producer": "finding.B2",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "synthesis.sub-B",
+      "producer": "finding.B3",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "synthesis.sub-C",
+      "producer": "finding.C1",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "synthesis.sub-C",
+      "producer": "finding.C2",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "synthesis.root",
+      "producer": "synthesis.sub-A",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "synthesis.root",
+      "producer": "synthesis.sub-B",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "synthesis.root",
+      "producer": "synthesis.sub-C",
+      "facet": "@atomic"
+    }
+  ],
+  "entry_points": [
+    "gateway.sources"
+  ],
+  "acyclic": true
+}

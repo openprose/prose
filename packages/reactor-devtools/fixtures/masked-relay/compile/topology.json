@@ -1,0 +1,185 @@
+{
+  "nodes": [
+    {
+      "node": "gateway.signal-inbox",
+      "contract_fingerprint": "sha256:8952f792589f9f2051b5d352844a1558d0886d67bda5e12e13d4042fa8bd6c3b",
+      "wake_source": "external"
+    },
+    {
+      "node": "responsibility.signal-ledger",
+      "contract_fingerprint": "sha256:830ed586f64b0a5cee3d9ba8fd533cc913f9c07801232984dc3dbf6acdf35b88",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.scout-price",
+      "contract_fingerprint": "sha256:80e71d31f3c6810194058875f8904b6d2ef3c0865cf3e55d1dcc17ed54bf6b20",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.scout-friction",
+      "contract_fingerprint": "sha256:86a539d83023c5b8a9a358e5c4ceb23b91785a4e4ca9b80dd1a34ba78429229f",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.scout-desire",
+      "contract_fingerprint": "sha256:4cb04a597646c74cd07d8833c9bd4b7e284d8e0b61b1a27db7f3030129701315",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.viewport-masker",
+      "contract_fingerprint": "sha256:59d45465d0b84ef01d8db363d33c70199e8f757d22802e63ec09b179960b4f12",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.expander-1",
+      "contract_fingerprint": "sha256:12809c1893df69d45a1847efbb7f27cc8a928557169b7540d89574e81d9e0c2e",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.expander-2",
+      "contract_fingerprint": "sha256:fc3c0848c124ee553443f78b3d9cfc2b75edfb511b173c02acbdbd43859d47ae",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.critic-strong",
+      "contract_fingerprint": "sha256:df378b43802082bcdfdaedc9bea81e708e4583931f0125515729e2521c449635",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.critic-weak",
+      "contract_fingerprint": "sha256:74801ab4575840a773dd6a6328dc0a6779d74cd7b8d7c4f961b898200d047e7b",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.insight-synthesizer",
+      "contract_fingerprint": "sha256:edc05e2f193ec777b85125f6b9a075783ef9c74f08976e57f1e81b950bc609a3",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.diversity-auditor",
+      "contract_fingerprint": "sha256:54f75e122a5706eb1f54a5d709470aa9da4133862ca9c54239fa773c4ac5e818",
+      "wake_source": "input"
+    }
+  ],
+  "edges": [
+    {
+      "subscriber": "gateway.signal-inbox",
+      "producer": "ingress.signal-inbox",
+      "facet": "inbox"
+    },
+    {
+      "subscriber": "responsibility.signal-ledger",
+      "producer": "gateway.signal-inbox",
+      "facet": "ledger"
+    },
+    {
+      "subscriber": "responsibility.scout-price",
+      "producer": "responsibility.signal-ledger",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.scout-friction",
+      "producer": "responsibility.signal-ledger",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.scout-desire",
+      "producer": "responsibility.signal-ledger",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.viewport-masker",
+      "producer": "responsibility.scout-price",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.viewport-masker",
+      "producer": "responsibility.scout-friction",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.viewport-masker",
+      "producer": "responsibility.scout-desire",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.expander-1",
+      "producer": "responsibility.viewport-masker",
+      "facet": "view_e1"
+    },
+    {
+      "subscriber": "responsibility.expander-2",
+      "producer": "responsibility.viewport-masker",
+      "facet": "view_e2"
+    },
+    {
+      "subscriber": "responsibility.critic-strong",
+      "producer": "responsibility.expander-1",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.critic-strong",
+      "producer": "responsibility.expander-2",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.critic-weak",
+      "producer": "responsibility.expander-1",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.critic-weak",
+      "producer": "responsibility.expander-2",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.insight-synthesizer",
+      "producer": "responsibility.scout-price",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.insight-synthesizer",
+      "producer": "responsibility.scout-friction",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.insight-synthesizer",
+      "producer": "responsibility.scout-desire",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.insight-synthesizer",
+      "producer": "responsibility.expander-1",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.insight-synthesizer",
+      "producer": "responsibility.expander-2",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.insight-synthesizer",
+      "producer": "responsibility.critic-strong",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.insight-synthesizer",
+      "producer": "responsibility.critic-weak",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.diversity-auditor",
+      "producer": "responsibility.insight-synthesizer",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.diversity-auditor",
+      "producer": "responsibility.viewport-masker",
+      "facet": "@atomic"
+    }
+  ],
+  "entry_points": [
+    "gateway.signal-inbox"
+  ],
+  "acyclic": true
+}

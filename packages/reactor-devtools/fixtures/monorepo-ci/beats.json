@@ -1,0 +1,70 @@
+{
+  "scenario": "monorepo-ci",
+  "title": "Your CI re-ran 200 checks. Reactor re-ran 3 — the ones your 4-line diff actually touched.",
+  "beats": [
+    {
+      "name": "cold-boot",
+      "park": 35,
+      "from": 0,
+      "to": 35,
+      "holdMs": 2600,
+      "caption": "cold boot · the whole CI runs once (every build, test, lint) · merge GREEN"
+    },
+    {
+      "name": "quiet",
+      "park": 48,
+      "from": 36,
+      "to": 48,
+      "holdMs": 2400,
+      "caption": "nothing changed · every check memo-skips · cost flat near zero"
+    },
+    {
+      "name": "self-tick",
+      "park": 56,
+      "from": 55,
+      "to": 56,
+      "holdMs": 2400,
+      "caption": "self-tick audit floor · merge-gate re-checks itself · no work, no cost"
+    },
+    {
+      "name": "hero-leaf",
+      "park": 66,
+      "from": 59,
+      "to": 66,
+      "holdMs": 3800,
+      "caption": "HERO: a 4-line pkg-ui diff wakes only the ui lane · 5 packages stay dark"
+    },
+    {
+      "name": "hub-fanout",
+      "park": 80,
+      "from": 70,
+      "to": 80,
+      "holdMs": 3600,
+      "caption": "a pkg-core diff fans out · ui/api/auth rebuild · utils+billing stay dark"
+    },
+    {
+      "name": "red-fail",
+      "park": 100,
+      "from": 93,
+      "to": 100,
+      "holdMs": 3000,
+      "caption": "a pkg-api test throws RED · merge-gate BLOCKED · no merge this tick"
+    },
+    {
+      "name": "green-recover",
+      "park": 110,
+      "from": 103,
+      "to": 110,
+      "holdMs": 2800,
+      "caption": "the fix lands · pkg-api test GREEN · merge-gate fans in to GREEN"
+    },
+    {
+      "name": "final-quiet",
+      "park": 129,
+      "from": 111,
+      "to": 129,
+      "holdMs": 2600,
+      "caption": "CI goes quiet again · nothing to re-run · cost back to flat"
+    }
+  ]
+}
