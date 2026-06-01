@@ -96,17 +96,33 @@ export async function runStatusCommand(
 // topology
 // ---------------------------------------------------------------------------
 
+/**
+ * A clearer "no compiled IR" message: distinguish an UNCOMPILED project from a
+ * reactor-devtools REPLAY FIXTURE (which ships `compile/topology.json` but no CLI
+ * manifest), so a cross-tool dir does not read as a broken project.
+ */
+function topologyAbsentMessage(cmd: string, stateDir: string): string {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { existsSync } = require('fs') as typeof import('fs');
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { join } = require('path') as typeof import('path');
+  if (existsSync(join(stateDir, 'compile', 'topology.json'))) {
+    return (
+      `reactor ${cmd}: ${stateDir} has compile/topology.json but no compiled CLI ` +
+      `manifest — it looks like a reactor-devtools replay fixture, not a compiled ` +
+      `project. Inspect it with \`reactor-devtools ${stateDir} --describe\`.`
+    );
+  }
+  return `reactor ${cmd}: no compiled IR — run \`reactor compile\` first`;
+}
+
 export async function runTopologyCommand(
   options: ObserveOptions = {},
   write: Writer = stdout,
 ): Promise<number> {
   const view = openView(options);
   if (!view.hasTopology()) {
-    return emitError(
-      'reactor topology: no compiled IR — run `reactor compile` first',
-      options,
-      write,
-    );
+    return emitError(topologyAbsentMessage('topology', view.stateDir), options, write);
   }
   const projection = projectTopology(view);
   if (options.json === true) {
@@ -134,7 +150,7 @@ export async function runInspectCommand(
   const view = openView(options);
   if (!view.hasTopology()) {
     return emitError(
-      'reactor inspect: no compiled IR — run `reactor compile` first',
+      topologyAbsentMessage('inspect', view.stateDir),
       options,
       write,
     );

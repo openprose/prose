@@ -438,14 +438,30 @@ export async function runServeCommand(
   options: ServeCommandOptions = {},
   write: (line: string) => void = (line) => process.stdout.write(line + '\n'),
 ): Promise<number> {
-  const host = await bootHost({
-    ...(options.stateDir !== undefined ? { stateDir: options.stateDir } : {}),
-    ...(options.projectDir !== undefined ? { projectDir: options.projectDir } : {}),
-    ...(options.model !== undefined ? { model: options.model } : {}),
-    ...(options.offline !== undefined ? { offline: options.offline } : {}),
-    ...(options.concurrency !== undefined ? { concurrency: options.concurrency } : {}),
-    ...(options.testSeams !== undefined ? { testSeams: options.testSeams } : {}),
-  });
+  let host: Awaited<ReturnType<typeof bootHost>>;
+  try {
+    host = await bootHost({
+      ...(options.stateDir !== undefined ? { stateDir: options.stateDir } : {}),
+      ...(options.projectDir !== undefined ? { projectDir: options.projectDir } : {}),
+      ...(options.model !== undefined ? { model: options.model } : {}),
+      ...(options.offline !== undefined ? { offline: options.offline } : {}),
+      ...(options.concurrency !== undefined ? { concurrency: options.concurrency } : {}),
+      ...(options.testSeams !== undefined ? { testSeams: options.testSeams } : {}),
+    });
+  } catch (err) {
+    // Boot failure (stale IR / compile failed / no contracts) gets a clean
+    // one-liner + exit 1 — mirroring run/topology/compile — never a raw stack.
+    const msg = err instanceof Error ? err.message : String(err);
+    const hint = /stale|compile/i.test(msg)
+      ? ' — run `reactor compile` first (it needs a model key); the keyless surface works without one.'
+      : '';
+    if (options.json === true) {
+      write(JSON.stringify({ status: 'error', message: msg }));
+    } else {
+      write(`${msg}${hint}`);
+    }
+    return 1;
+  }
 
   let httpServer: HttpServerHandle | undefined;
   if (options.httpPort !== undefined) {

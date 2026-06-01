@@ -192,7 +192,8 @@ export async function collectDoctorReport(
   const stateWritable = probeStateDirWritable(stateDir);
 
   // Healthy-for-offline requires only: a supported node and a resolvable SDK.
-  let healthyForOffline = major >= MIN_NODE_MAJOR && sdk.resolved;
+  // (Independent of the live smoke — a live-only failure never flips this.)
+  const healthyForOffline = major >= MIN_NODE_MAJOR && sdk.resolved;
 
   const skill = probeSkillBundle();
   const liveKeyPresent = hasOpenRouterKey();
@@ -221,9 +222,13 @@ export async function collectDoctorReport(
   if (options.live === true) {
     const live = await runLiveSmoke();
     report.live = live;
-    // Under --live, offline health is gated on the smoke too.
-    healthyForOffline = healthyForOffline && live.ok;
-    report.healthyForOffline = healthyForOffline;
+    // Offline health is INDEPENDENT of the live smoke — the keyless surface works
+    // regardless of a live-only failure (e.g. a 402 out-of-credits), so a failed
+    // `--live` smoke must NOT flip `healthy-for-offline` to false (the three
+    // status lines must agree). A failed smoke DOES mean we are not live-ready.
+    if (!live.ok) {
+      report.healthyForLive = false;
+    }
   }
 
   return report;
