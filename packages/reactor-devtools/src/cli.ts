@@ -36,6 +36,12 @@ interface ParsedArgs {
   /** `--describe`: print a headless run summary (no browser) and exit. */
   readonly describe: boolean;
   /**
+   * `--json`: with `--describe`, emit the run summary as a machine-readable JSON
+   * object (the SAME data the human text shows — D8) instead of the text dump.
+   * The surface a CI/agent consumer parses. Only meaningful with `--describe`.
+   */
+  readonly json: boolean;
+  /**
    * `--copy-to <dir>`: copy a bundled `--example` fixture into `<dir>` so the
    * user can replay a real-shaped ledger sitting in their OWN project — a keyless
    * "see a real-shaped ledger in your own dir" loop (D1). Only valid with
@@ -71,6 +77,7 @@ function parseArgs(argv: readonly string[]): ParsedArgs {
   let help = false;
   let version = false;
   let describe = false;
+  let json = false;
   let copyTo: string | undefined;
   let force = false;
   const unknown: string[] = [];
@@ -82,6 +89,8 @@ function parseArgs(argv: readonly string[]): ParsedArgs {
       version = true;
     } else if (arg === "--describe") {
       describe = true;
+    } else if (arg === "--json") {
+      json = true;
     } else if (arg === "--force") {
       force = true;
     } else if (arg === "--example") {
@@ -112,6 +121,7 @@ function parseArgs(argv: readonly string[]): ParsedArgs {
     help,
     version,
     describe,
+    json,
     copyTo,
     force,
     unknown,
@@ -144,6 +154,10 @@ Options:
                  dispositions, moved-facet diff, cost rollup, chain-verify)
                  and exit — no browser. The text an agent reads to sanity-
                  check the beats without watching the video.
+      --json    With --describe, emit that summary as a machine-readable JSON
+                 object (state-dir, topology, dispositions, the cost rollup by
+                 surprise_cause, and the chain-verify verdict) instead of text —
+                 the surface a CI/agent consumer parses. Exit codes unchanged.
   -h, --help    Show this help.
 `;
 
@@ -227,6 +241,17 @@ async function main(): Promise<void> {
   }
   if (args.port !== undefined && !Number.isInteger(args.port)) {
     process.stderr.write("error: --port must be an integer\n");
+    process.exit(1);
+  }
+
+  // `--json` is a rendering of the `--describe` summary; it is meaningless on the
+  // server path (the browser viewer). Refuse it without `--describe` rather than
+  // silently booting the viewer, so a CI invocation expecting JSON fails loudly.
+  if (args.json && !args.describe) {
+    process.stderr.write(
+      `error: --json only applies with --describe (the machine-readable run summary).\n` +
+        `  e.g. reactor-devtools --example masked-relay --describe --json\n`,
+    );
     process.exit(1);
   }
 
@@ -320,7 +345,15 @@ async function main(): Promise<void> {
       process.exit(1);
     }
     const result = describeStateDir(opened, { synthetic });
-    process.stdout.write(result.text);
+    // `--describe --json`: emit the SAME data as a machine-readable object (D8) —
+    // the surface a CI/agent consumer parses instead of scraping the text. The
+    // exit-code contract is UNCHANGED (empty/clean → 0, tamper → 1): only the
+    // rendering differs.
+    if (args.json) {
+      process.stdout.write(JSON.stringify(result.data, null, 2) + "\n");
+    } else {
+      process.stdout.write(result.text);
+    }
     process.exit(result.chainOk ? 0 : 1);
   }
 

@@ -741,6 +741,113 @@ export interface DescribeResult {
    * {@link openStateDir} throws on a corrupt trail before describe runs.
    */
   readonly empty: boolean;
+  /**
+   * The SAME numbers the human `--describe` text shows, in a machine-readable
+   * shape — what `reactor-devtools --describe --json` emits (D8). A CI/agent
+   * consumer parses THIS instead of scraping the text. Every field here is a
+   * surfacing of a number {@link describeStateDir} already computed for the text
+   * (the cost rollup is the SDK's `session.costRollup`; the chain-verify mirrors
+   * the `CHAIN-VERIFY` line), so the two never drift.
+   */
+  readonly data: DescribeData;
+}
+
+/** One disposition tally (`rendered`/`skipped`/`failed` counts). */
+export interface DispositionCounts {
+  readonly rendered: number;
+  readonly skipped: number;
+  readonly failed: number;
+}
+
+/** One cost bucket in the JSON rollup — the SDK's bucket, surfaced verbatim. */
+export interface DescribeCostBucket {
+  readonly receipts: number;
+  readonly fresh: number;
+  readonly reused: number;
+  readonly dollars: number;
+}
+
+/** A per-node line of the JSON `--describe --json` surface. */
+export interface DescribeNode {
+  readonly node: string;
+  /** The friendly label used in the human text (falls back to the short name). */
+  readonly label: string;
+  readonly rendered: number;
+  readonly skipped: number;
+  readonly failed: number;
+  /** Summed `cost.tokens.fresh` for the node. */
+  readonly fresh: number;
+  /** Per-node chain-verify (the `chain✓`/`chain✗` glyph, as a boolean). */
+  readonly chainOk: boolean;
+  /** True for a tampered node not present in the saved topology (off-topology). */
+  readonly offTopology: boolean;
+}
+
+/** A per-frame line of the JSON `--describe --json` surface. */
+export interface DescribeFrame {
+  readonly index: number;
+  readonly node: string;
+  readonly label: string;
+  readonly status: LedgerReceipt["status"];
+  readonly wakeSource: LedgerReceipt["wake"]["source"];
+  readonly movedFacets: readonly string[];
+  readonly fresh: number;
+  readonly reused: number;
+  readonly surpriseCause: LedgerReceipt["cost"]["surprise_cause"];
+  readonly wokenSubscribers: readonly string[];
+}
+
+/**
+ * The machine-readable mirror of the human `--describe` report — emitted by
+ * `reactor-devtools --describe --json` (D8). It surfaces the SAME data the text
+ * shows: the state-dir, a topology summary, the disposition + surprise-cause
+ * totals, the cost rollup keyed by `surprise_cause` (`bySurpriseCause`, the noun
+ * the README documents and the human line uses — fresh/reused token counts plus
+ * the grand `total`), per-node + per-frame dispositions, and the chain-verify
+ * verdict. A CI/agent consumer parses this; the numbers come straight from the
+ * SDK's `costRollup` and the same chain-verify the text runs (no re-derivation).
+ */
+export interface DescribeData {
+  /** Always present so a consumer can sniff the surface. */
+  readonly tool: "reactor-devtools";
+  readonly stateDir: string;
+  /** True when the ledger is the legitimate compile-only / first-run empty case. */
+  readonly empty: boolean;
+  /** True when this is a shipped sample ledger (`--example`) — figures illustrative. */
+  readonly synthetic: boolean;
+  readonly topology: {
+    /** True when topology came from a saved `topology.json` (not a node-only fallback). */
+    readonly present: boolean;
+    readonly nodes: number;
+    readonly edges: number;
+    readonly acyclic: boolean;
+  };
+  readonly receipts: number;
+  /** Disposition totals across all frames. */
+  readonly dispositions: DispositionCounts;
+  /** Frame counts bucketed by `surprise_cause` (a.k.a. wake-cause). */
+  readonly bySurpriseCause: Readonly<Record<string, number>>;
+  /**
+   * The cumulative cost rollup, the SDK's `session.costRollup` surfaced verbatim:
+   * `bySurpriseCause` (per-cause buckets — fresh/reused tokens + receipts + $)
+   * plus the grand `total`. This is the machine-readable cost surface a buyer/CI
+   * parses (the devtools twin of `reactor receipts cost --json`).
+   */
+  readonly costRollup: {
+    readonly bySurpriseCause: Readonly<Record<string, DescribeCostBucket>>;
+    readonly total: DescribeCostBucket;
+  };
+  readonly nodes: readonly DescribeNode[];
+  readonly frames: readonly DescribeFrame[];
+  /**
+   * The chain-verify verdict (the `CHAIN-VERIFY ok`/`FAILED` line as structured
+   * data): `ok` mirrors {@link DescribeResult.chainOk}; `errors` lists the
+   * per-node failures when a tamper is detected (empty on a clean/empty ledger).
+   */
+  readonly chainVerify: {
+    readonly ok: boolean;
+    readonly errors: readonly string[];
+  };
 }
 
 /** Friendly label for a node, falling back to the structural short name. */
@@ -797,6 +904,15 @@ export function describeStateDir(
   );
   lines.push(`  receipts    ${snapshot.frames.length} frames`);
 
+  // The topology summary is shared by both the empty and the populated returns —
+  // build it once so the JSON `data` mirrors the human header exactly.
+  const topologySummary = {
+    present: snapshot.hasTopology,
+    nodes: snapshot.nodes.length,
+    edges: snapshot.edges.length,
+    acyclic: snapshot.acyclic,
+  } as const;
+
   // ---- EMPTY LEDGER (D8): the compile-only / first-run state is LEGITIMATE ----
   // A topology may be present (the dir was compiled) but no reactor has run yet,
   // so `receipts.json = []`. Before the guard, the per-frame/per-node walks below
@@ -827,7 +943,28 @@ export function describeStateDir(
     lines.push("");
     // An empty chain is trivially consistent (verifyReceiptChain([]) → ok). This
     // is a clean exit-0 case, NOT a tamper.
-    return { text: lines.join("\n") + "\n", chainOk: true, empty: true };
+    return {
+      text: lines.join("\n") + "\n",
+      chainOk: true,
+      empty: true,
+      data: {
+        tool: "reactor-devtools",
+        stateDir: opened.stateDir,
+        empty: true,
+        synthetic: options.synthetic ?? false,
+        topology: topologySummary,
+        receipts: 0,
+        dispositions: { rendered: 0, skipped: 0, failed: 0 },
+        bySurpriseCause: {},
+        costRollup: {
+          bySurpriseCause: {},
+          total: { receipts: 0, fresh: 0, reused: 0, dollars: 0 },
+        },
+        nodes: [],
+        frames: [],
+        chainVerify: { ok: true, errors: [] },
+      },
+    };
   }
 
   // ---- disposition + wake totals ----
@@ -897,6 +1034,9 @@ export function describeStateDir(
   // payload, compare to the on-disk hash), so an edited `node`/fingerprint with a
   // stale `content_hash` shows `chain✗` and flips `chainOk` to false.
   const chainErrors: string[] = [];
+  // The structured per-node rows for the JSON surface (D8) — filled in the SAME
+  // walk that prints the human PER-NODE block, so they never drift.
+  const nodeData: DescribeNode[] = [];
   for (const id of order) {
     const r = perNode.get(id);
     if (!r) continue;
@@ -907,6 +1047,16 @@ export function describeStateDir(
         `  ${labelFor(snapshot, id, useLabels)}: ${chain.errors.join("; ")}`,
       );
     }
+    nodeData.push({
+      node: id,
+      label: labelFor(snapshot, id, useLabels),
+      rendered: r.rendered,
+      skipped: r.skipped,
+      failed: r.failed,
+      fresh: r.fresh,
+      chainOk: chain.ok,
+      offTopology: false,
+    });
     lines.push(
       `  ${W(labelFor(snapshot, id, useLabels), 26)} ` +
         `r=${W(String(r.rendered), 2)} s=${W(String(r.skipped), 2)} f=${W(String(r.failed), 2)} ` +
@@ -955,6 +1105,16 @@ export function describeStateDir(
           `r=${W(String(tally.rendered), 2)} s=${W(String(tally.skipped), 2)} f=${W(String(tally.failed), 2)} ` +
           `fresh=${W(String(tally.fresh), 7)} tokens chain✗`,
       );
+      nodeData.push({
+        node: id,
+        label: labelFor(snapshot, id, useLabels),
+        rendered: tally.rendered,
+        skipped: tally.skipped,
+        failed: tally.failed,
+        fresh: tally.fresh,
+        chainOk: false,
+        offTopology: true,
+      });
     }
   }
   const chainOk = chainErrors.length === 0;
@@ -988,6 +1148,8 @@ export function describeStateDir(
   // ---- per-frame "what happened" ----
   lines.push("");
   lines.push(`FRAMES  (frame  node  status  moved[…]  fresh tokens  woke[…])`);
+  // The structured per-frame rows for the JSON surface — filled in the SAME walk.
+  const frameData: DescribeFrame[] = [];
   for (const f of snapshot.frames) {
     const moved = f.movedFacets.length ? f.movedFacets.join(",") : "—";
     const woke = f.wokenSubscribers.length
@@ -1003,9 +1165,69 @@ export function describeStateDir(
         `fresh ${W(String(f.cost.fresh), 6)} tokens ` +
         `woke[${woke}]`,
     );
+    frameData.push({
+      index: f.index,
+      node: f.node,
+      label: labelFor(snapshot, f.node, useLabels),
+      status: f.status,
+      wakeSource: f.wakeSource,
+      movedFacets: f.movedFacets,
+      fresh: f.cost.fresh,
+      reused: f.cost.reused,
+      surpriseCause: f.cost.surpriseCause,
+      wokenSubscribers: f.wokenSubscribers.map((s) =>
+        labelFor(snapshot, s, useLabels),
+      ),
+    });
   }
 
-  return { text: lines.join("\n") + "\n", chainOk, empty: false };
+  // The cost rollup for JSON: the SDK's per-cause buckets surfaced under the
+  // documented `bySurpriseCause` noun (the same numbers `snapshot.costRollup`
+  // carries — `byCause` keyed by `surprise_cause`), plus the grand total.
+  const costBySurpriseCause: Record<string, DescribeCostBucket> = {};
+  for (const [cause, b] of Object.entries(snapshot.costRollup.byCause)) {
+    costBySurpriseCause[cause] = {
+      receipts: b.receipts,
+      fresh: b.fresh,
+      reused: b.reused,
+      dollars: b.dollars,
+    };
+  }
+
+  return {
+    text: lines.join("\n") + "\n",
+    chainOk,
+    empty: false,
+    data: {
+      tool: "reactor-devtools",
+      stateDir: opened.stateDir,
+      empty: false,
+      synthetic: options.synthetic ?? false,
+      topology: topologySummary,
+      receipts: snapshot.frames.length,
+      dispositions: {
+        rendered: status.rendered ?? 0,
+        skipped: status.skipped ?? 0,
+        failed: status.failed ?? 0,
+      },
+      bySurpriseCause: { ...wake },
+      costRollup: {
+        bySurpriseCause: costBySurpriseCause,
+        total: {
+          receipts: snapshot.costRollup.total.receipts,
+          fresh: snapshot.costRollup.total.fresh,
+          reused: snapshot.costRollup.total.reused,
+          dollars: snapshot.costRollup.total.dollars,
+        },
+      },
+      nodes: nodeData,
+      frames: frameData,
+      chainVerify: {
+        ok: chainOk,
+        errors: chainErrors.map((e) => e.trim()),
+      },
+    },
+  };
 }
 
 // Re-exported so S4 (inspector / chain-verified badge) can build on the same

@@ -76,6 +76,38 @@ test("a REAL compiled-but-unrun state-dir renders LEDGER EMPTY at exit 0", () =>
   assert.ok(res.stdout.includes("LEDGER EMPTY"), "empty-state heading shown");
 });
 
+// --- D8: `--describe --json` emits valid JSON (the machine-readable surface) ----
+
+test("--describe --json emits valid JSON with the cost rollup + chain-verify (exit 0)", () => {
+  const res = run(["--example", "masked-relay", "--describe", "--json"]);
+  assert.equal(res.status, 0, "clean ledger → exit 0 (unchanged from text mode)");
+  // The whole stdout must parse as one JSON object — a CI/agent consumer parses it.
+  const parsed = JSON.parse(res.stdout) as Record<string, unknown>;
+  assert.equal(parsed.tool, "reactor-devtools", "tool tag present");
+  assert.equal(parsed.synthetic, true, "shipped sample flagged synthetic");
+  // The cost rollup the brief asks for: bySurpriseCause + total in tokens.
+  const cost = parsed.costRollup as {
+    bySurpriseCause: Record<string, unknown>;
+    total: { fresh: number };
+  };
+  assert.ok(cost, "costRollup present");
+  assert.ok(Object.keys(cost.bySurpriseCause).length > 0, "per-cause buckets present");
+  assert.equal(typeof cost.total.fresh, "number", "total.fresh is a number");
+  // The chain-verify verdict the CI gates on.
+  const chain = parsed.chainVerify as { ok: boolean; errors: unknown[] };
+  assert.equal(chain.ok, true, "clean fixture verifies in JSON");
+  assert.deepEqual(chain.errors, [], "no chain errors");
+  // The text dump must NOT leak into the JSON stream.
+  assert.ok(!/CHAIN-VERIFY/.test(res.stdout), "no human text mixed into the JSON");
+});
+
+test("--json without --describe errors (it only applies to the run summary)", () => {
+  const res = run(["--example", "masked-relay", "--json"]);
+  assert.notEqual(res.status, 0, "--json without --describe → non-zero");
+  assert.ok(/--json only applies with --describe/.test(res.stderr), "explains the constraint");
+  assert.ok(!/open http/.test(res.stdout), "must NOT fall through to the viewer");
+});
+
 // --- bug#6: an unrecognized flag MUST error, never launch the blocking viewer --
 
 test("an unknown flag errors with usage and exits non-zero (never launches the viewer)", () => {

@@ -271,6 +271,104 @@ test("describe labels the cost split `surprise-cause` (matching bySurpriseCause)
   );
 });
 
+// --- D8: `--describe --json` emits the same data as a machine-readable object ---
+
+test("describe carries a JSON `data` object with the cost rollup + chain-verify (valid JSON, keys present)", () => {
+  const result = describeStateDir(openStateDir(FIXTURE), { synthetic: true });
+
+  // It must round-trip through JSON unchanged (this is what `--describe --json`
+  // writes via JSON.stringify — assert it parses back to an equal object).
+  const json = JSON.stringify(result.data);
+  const parsed = JSON.parse(json) as typeof result.data;
+  assert.deepEqual(parsed, result.data, "data round-trips through JSON");
+
+  // Top-level shape a CI/agent consumer parses.
+  assert.equal(parsed.tool, "reactor-devtools", "tool tag present");
+  assert.equal(parsed.stateDir, openStateDir(FIXTURE).stateDir, "state-dir surfaced");
+  assert.equal(parsed.empty, false, "non-empty ledger");
+  assert.equal(parsed.synthetic, true, "synthetic flag carried through");
+  assert.ok(parsed.receipts > 0, "receipt count present");
+
+  // Topology summary mirrors the human header.
+  assert.equal(parsed.topology.present, true, "topology present on the fixture");
+  assert.ok(parsed.topology.nodes > 0, "topology node count");
+  assert.equal(typeof parsed.topology.acyclic, "boolean", "acyclic is a boolean");
+
+  // Dispositions + surprise-cause totals.
+  for (const k of ["rendered", "skipped", "failed"] as const) {
+    assert.equal(typeof parsed.dispositions[k], "number", `dispositions.${k} is a number`);
+  }
+  assert.ok(Object.keys(parsed.bySurpriseCause).length > 0, "surprise-cause buckets present");
+
+  // The cost rollup by surprise_cause — fresh/reused/total in tokens (D8).
+  assert.ok(parsed.costRollup, "costRollup present");
+  assert.ok(
+    Object.keys(parsed.costRollup.bySurpriseCause).length > 0,
+    "costRollup.bySurpriseCause has at least one bucket",
+  );
+  for (const bucket of Object.values(parsed.costRollup.bySurpriseCause)) {
+    for (const k of ["receipts", "fresh", "reused", "dollars"] as const) {
+      assert.equal(typeof bucket[k], "number", `bucket.${k} is a number`);
+    }
+  }
+  for (const k of ["receipts", "fresh", "reused", "dollars"] as const) {
+    assert.equal(typeof parsed.costRollup.total[k], "number", `total.${k} is a number`);
+  }
+  assert.ok(parsed.costRollup.total.fresh > 0, "the fixture spent some fresh tokens");
+
+  // Per-node + per-frame arrays.
+  assert.ok(parsed.nodes.length > 0, "per-node rows present");
+  assert.equal(typeof parsed.nodes[0]!.chainOk, "boolean", "per-node chainOk is a boolean");
+  assert.equal(parsed.frames.length, parsed.receipts, "one frame per receipt");
+
+  // Chain-verify verdict — the key a CI consumer gates on (clean fixture → ok).
+  assert.equal(parsed.chainVerify.ok, true, "clean fixture verifies");
+  assert.deepEqual(parsed.chainVerify.errors, [], "no errors on a clean ledger");
+  assert.equal(parsed.chainVerify.ok, result.chainOk, "chainVerify.ok mirrors chainOk");
+});
+
+test("describe JSON data on a tampered ledger reports chainVerify.ok=false with errors", () => {
+  const dir = copyFixture();
+  const path = join(dir, "receipts.json");
+  const receipts = JSON.parse(readFileSync(path, "utf8")) as Array<
+    Record<string, unknown>
+  >;
+  const idx = receipts.findIndex((r) => r.status === "rendered");
+  receipts[idx]!.node = "responsibility.IMPOSTOR";
+  writeFileSync(path, JSON.stringify(receipts));
+
+  const result = describeStateDir(openStateDir(dir));
+  // Valid JSON, and the chain-verify verdict reflects the tamper.
+  const parsed = JSON.parse(JSON.stringify(result.data)) as typeof result.data;
+  assert.equal(parsed.chainVerify.ok, false, "tamper surfaces as chainVerify.ok=false");
+  assert.ok(parsed.chainVerify.errors.length > 0, "tamper errors listed in JSON");
+  assert.equal(parsed.chainVerify.ok, result.chainOk, "still mirrors chainOk (exit 1)");
+  // The tampered off-topology node appears in the per-node rows, flagged.
+  const impostor = parsed.nodes.find((n) => n.node.includes("IMPOSTOR"));
+  assert.ok(impostor, "tampered node present in the JSON per-node rows");
+  assert.equal(impostor!.chainOk, false, "and flagged chainOk=false");
+});
+
+test("describe JSON data on an empty/compile-only ledger is well-formed (empty:true, chain ok)", () => {
+  const dir = mkdtempSync(join(tmpdir(), "rdt-empty-json-"));
+  mkdirSync(join(dir, "compile"), { recursive: true });
+  const flat = readTopology(FIXTURE)!;
+  writeFileSync(
+    join(dir, "compile", "topology.json"),
+    JSON.stringify(flat satisfies TopologyWorldModel),
+  );
+  writeFileSync(join(dir, "receipts.json"), "[]");
+
+  const result = describeStateDir(openStateDir(dir));
+  const parsed = JSON.parse(JSON.stringify(result.data)) as typeof result.data;
+  assert.equal(parsed.empty, true, "flagged empty");
+  assert.equal(parsed.receipts, 0, "no receipts");
+  assert.deepEqual(parsed.frames, [], "no frames");
+  assert.deepEqual(parsed.nodes, [], "no per-node rows");
+  assert.equal(parsed.costRollup.total.fresh, 0, "zero fresh on an empty ledger");
+  assert.equal(parsed.chainVerify.ok, true, "an empty chain is trivially consistent");
+});
+
 // --- bug#5: the CHAIN-VERIFY badge is honest about the re-stamp limit ----------
 
 test("the CHAIN-VERIFY ok badge does not over-claim: meaning-layer, not a signature, re-stamp caveat", () => {

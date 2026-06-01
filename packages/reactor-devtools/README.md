@@ -33,6 +33,17 @@ reactor-devtools --example masked-relay [--describe]   # bundled fixture, no pat
 reactor-devtools --example masked-relay --copy-to ./.reactor [--force]  # seed it into your own dir
 ```
 
+**Boot the browser DAG viewer (the visual hero shot):** `reactor-devtools <state-dir>`
+(or `reactor-devtools --example masked-relay`) with **no `--describe`** starts a small
+local server and prints a **localhost URL** — open it for the animated, scrubbable DAG
+(node flash on render, dim-pulse on memo-skip, per-facet edge lights, a live
+fresh-vs-reused token meter). No model key, no build step.
+
+**Machine-readable surface (CI / agents):** `reactor-devtools --describe --json` emits
+the same run summary as a JSON object you can parse — see *Machine-readable output*
+below. (`reactor receipts cost --json`, from the [`reactor` CLI](../reactor-cli), is
+the other machine-readable cost surface.)
+
 `--example <name>` replays a fixture **shipped inside this package** — it resolves
 the bundled state-dir internally (relative to the installed package), so it works
 after `npm i -g` from **any** directory with **no path to compute**. The only
@@ -40,11 +51,11 @@ fixture in the tarball is `masked-relay` (see *Fixture coverage* below); an unkn
 name lists the shipped ones and exits non-zero.
 
 `--describe` prints a headless run summary (per-node + per-frame dispositions,
-moved-facet diff, cost rollup split by **surprise-cause** — the same noun the
-`--json` surface emits as `bySurpriseCause` (`wake-cause` is the old synonym) —
-and a chain-verify line) and exits without a browser -- the text an agent reads
-to sanity-check a run. `--version`/`-V` prints the version, `--help`/`-h` the
-usage.
+moved-facet diff, cost rollup split by **surprise-cause** — `wake-cause` is the old
+synonym — and a chain-verify line) and exits without a browser -- the text an agent
+reads to sanity-check a run. Add `--json` (`--describe --json`) to emit the **same
+data** as a machine-readable JSON object instead of text (see *Machine-readable
+output* below). `--version`/`-V` prints the version, `--help`/`-h` the usage.
 
 `--copy-to <dir>` (only with `--example`) copies the bundled sample fixture
 (`receipts.json` + `compile/` + `world-models/`) into `<dir>`, so you can replay a
@@ -140,6 +151,49 @@ from a checkout with `node dist/fixtures/generate.js <key>` (see step 2). So
 > state: it prints a short "no receipts yet" guidance and **exits 0** (it is not
 > an error). A genuinely corrupt/unreadable trail exits non-zero, and a detected
 > ledger tamper (a broken chain) prints `CHAIN-VERIFY FAILED` and **exits 1**.
+
+### Machine-readable output (`--describe --json`)
+
+`--describe` is human text; for a CI step or an agent, add `--json`:
+
+```bash
+reactor-devtools --example masked-relay --describe --json
+```
+
+It emits the **same data** the text shows as one JSON object — parse this instead
+of scraping the report. Shape (top-level keys):
+
+```jsonc
+{
+  "tool": "reactor-devtools",
+  "stateDir": "…",
+  "empty": false,                 // true on a compile-only / first-run ledger
+  "synthetic": true,              // true for a shipped --example sample
+  "topology": { "present": true, "nodes": 6, "edges": 7, "acyclic": true },
+  "receipts": 84,
+  "dispositions": { "rendered": 41, "skipped": 31, "failed": 12 },
+  "bySurpriseCause": { "input": 30, "self": 8, "external": 3 },  // frame counts
+  "costRollup": {                 // the SDK's cost rollup, surfaced verbatim
+    "bySurpriseCause": {
+      "input":    { "receipts": 30, "fresh": 5400, "reused": 1200, "dollars": 0 },
+      "self":     { "receipts": 8,  "fresh": 320,  "reused": 60,   "dollars": 0 },
+      "external": { "receipts": 3,  "fresh": 180,  "reused": 0,    "dollars": 0 }
+    },
+    "total":      { "receipts": 41, "fresh": 5900, "reused": 1260, "dollars": 0 }
+  },
+  "nodes":  [ /* per-node: rendered/skipped/failed, fresh tokens, chainOk */ ],
+  "frames": [ /* per-frame: node, status, wakeSource, movedFacets, fresh, … */ ],
+  "chainVerify": { "ok": true, "errors": [] }  // ok:false + errors on a tamper
+}
+```
+
+Exit codes are **unchanged** from text mode: a clean or empty ledger exits `0`; a
+detected tamper (`chainVerify.ok === false`) exits `1`. (Token figures are
+illustrative for a shipped `--example` sample; `synthetic` flags that.)
+
+`reactor-devtools --describe --json` is the cost surface **for a saved replay
+ledger**; the [`reactor` CLI](../reactor-cli)'s `reactor receipts cost --json` is
+the equivalent machine-readable cost surface driven from the CLI.
 
 ### The SPA (S1 + S2, built)
 
