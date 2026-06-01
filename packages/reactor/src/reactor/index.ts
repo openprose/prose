@@ -359,7 +359,12 @@ export function createReconciler(
     // receipt. If neither half of the key moved, write a cheap `skipped` receipt
     // and spawn NOTHING (architecture.md §4.1). "Cost scales with surprise."
     const last = ports.ledger.lastReceipt(node);
-    if (last !== null && !memoKeyMoved(last, key)) {
+    // A prior FAILED receipt is NOT a memoizable result — the render committed
+    // nothing, so the node must RE-ATTEMPT on its next wake rather than skip
+    // forever (world-model.md §8: "the next upstream receipt or the Continuity
+    // self-tick re-attempts"). A transient failure (e.g. a provider 402) must not
+    // poison the node into a permanent skip.
+    if (last !== null && last.status !== "failed" && !memoKeyMoved(last, key)) {
       const skipped = buildSkippedReceipt({
         node,
         contractFp,
@@ -468,7 +473,12 @@ export function createReconciler(
 
     // --- MEMO / SKIP. Pure-sync fingerprint comparison; no render spawned.
     const last = ports.ledger.lastReceipt(node);
-    if (last !== null && !memoKeyMoved(last, key)) {
+    // A prior FAILED receipt is NOT a memoizable result — the render committed
+    // nothing, so the node must RE-ATTEMPT on its next wake rather than skip
+    // forever (world-model.md §8: "the next upstream receipt or the Continuity
+    // self-tick re-attempts"). A transient failure (e.g. a provider 402) must not
+    // poison the node into a permanent skip.
+    if (last !== null && last.status !== "failed" && !memoKeyMoved(last, key)) {
       const skipped = buildSkippedReceipt({
         node,
         contractFp,
