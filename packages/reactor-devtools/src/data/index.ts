@@ -53,6 +53,50 @@ export interface OpenStateDirOptions {
   readonly cost?: ReplaySessionCostOptions;
 }
 
+// --- Bundled examples + state-dir validation (D2) --------------------------
+//
+// D2: the flagship keyless command used a repo-relative fixture path, which after
+// `npm i -g` resolves against the wrong cwd and SILENTLY rendered `LEDGER EMPTY`.
+// Two guards close that footgun: (1) `--example <name>` resolves a SHIPPED fixture
+// internally from this package's own dir so no user ever computes a path; (2) the
+// normal `<state-dir>` arg distinguishes does-not-exist / not-a-state-dir from a
+// real-but-empty ledger, so a wrong cwd can never masquerade as `LEDGER EMPTY`.
+
+/**
+ * The fixtures SHIPPED in the package tarball (the npm `files` list). Only these
+ * resolve via `--example`; everything else is repo-only (generate it locally).
+ * `masked-relay` is the single replayable state-dir in the tarball.
+ */
+export const SHIPPED_EXAMPLES: readonly string[] = ["masked-relay"];
+
+/**
+ * Resolve a SHIPPED example name to its on-disk state-dir, INTERNALLY — relative
+ * to this package's own directory (the same `fixtures/` the package ships in its
+ * npm `files`). `dist/data/index.js` → `../../fixtures/<name>` is the package root
+ * `fixtures/`. Returns `null` for an unknown name (caller lists the shipped ones).
+ * No user ever computes a path.
+ */
+export function resolveExampleDir(name: string): string | null {
+  if (!SHIPPED_EXAMPLES.includes(name)) return null;
+  // From dist/data/ up two levels to the package root, then into fixtures/.
+  const dir = join(__dirname, "..", "..", "fixtures", name);
+  return existsSync(dir) ? dir : null;
+}
+
+/**
+ * Whether `dir` is a real, openable Reactor state-dir: it must EXIST on disk and
+ * carry at least one of the two trail markers — a `receipts.json` (the durable
+ * ledger) or a `compile/` directory (a compiled-but-unrun dir). A path that does
+ * not exist, or an arbitrary directory with neither marker, is NOT a state-dir —
+ * the CLI errors non-zero rather than silently rendering an empty ledger (D2).
+ * A real, existing, compiled-but-unrun dir with an empty `receipts.json` still
+ * passes here (it has `compile/`), so `LEDGER EMPTY` (exit 0) is reserved for it.
+ */
+export function isReactorStateDir(dir: string): boolean {
+  if (!existsSync(dir)) return false;
+  return existsSync(join(dir, "receipts.json")) || existsSync(join(dir, "compile"));
+}
+
 /**
  * An opened, replayable state directory: the live SDK handles (kept server-side
  * for click-through) plus the resolved topology. Build the wire payload with
@@ -666,6 +710,13 @@ function projectCostRollup(session: ReplaySession): CostRollupView {
 export interface DescribeOptions {
   /** Use friendly labels (default true when the snapshot carries them). */
   readonly useLabels?: boolean;
+  /**
+   * Whether this is a SHIPPED sample ledger (e.g. invoked via `--example`). When
+   * true, `--describe` prints a one-line "synthetic sample ledger — token counts
+   * are illustrative, not a bill" banner so a show-me reader does not misread the
+   * round token figures as a real spend (D7). Defaults to `false`.
+   */
+  readonly synthetic?: boolean;
 }
 
 /**
@@ -731,6 +782,13 @@ export function describeStateDir(
 
   // ---- header ----
   lines.push(`reactor-devtools --describe`);
+  // D7: when describing a shipped sample ledger, flag the token figures as
+  // illustrative so they are never misread as a real bill.
+  if (options.synthetic) {
+    lines.push(
+      `  (synthetic sample ledger — token counts are illustrative, not a bill)`,
+    );
+  }
   lines.push(`  state-dir   ${opened.stateDir}`);
   lines.push(
     `  topology    ${snapshot.hasTopology ? "yes" : "no (node-only fallback)"} · ` +
@@ -760,11 +818,11 @@ export function describeStateDir(
     lines.push(`    reactor-devtools <state-dir> --describe`);
     lines.push("");
     lines.push(
-      `  Or replay a committed sample ledger that ships with this package:`,
+      `  Or replay the sample ledger that ships with this package (no path):`,
     );
     lines.push("");
     lines.push(
-      `    reactor-devtools <pkg>/fixtures/masked-relay --describe`,
+      `    reactor-devtools --example masked-relay --describe`,
     );
     lines.push("");
     // An empty chain is trivially consistent (verifyReceiptChain([]) → ok). This
@@ -795,20 +853,20 @@ export function describeStateDir(
     { fresh: 0, index: -1 },
   );
   lines.push("");
-  lines.push(`COST ROLLUP`);
+  lines.push(`COST ROLLUP  (tokens)`);
   lines.push(
-    `  total       fresh=${t.fresh} · reused=${t.reused} · ` +
+    `  total       fresh=${t.fresh} tokens · reused=${t.reused} tokens · ` +
       `reuse=${t.fresh + t.reused > 0 ? Math.round((t.reused / (t.fresh + t.reused)) * 100) : 0}%`,
   );
   for (const [cause, b] of Object.entries(snapshot.costRollup.byCause)) {
     if (b.receipts === 0) continue;
     lines.push(
-      `    ${W(cause, 9)} receipts=${W(String(b.receipts), 3)} fresh=${W(String(b.fresh), 7)} reused=${b.reused}`,
+      `    ${W(cause, 9)} receipts=${W(String(b.receipts), 3)} fresh=${W(String(b.fresh), 7)} tokens reused=${b.reused} tokens`,
     );
   }
   if (peak.index >= 0) {
     lines.push(
-      `  peak fresh  ${peak.fresh} at frame ${peak.index} ` +
+      `  peak fresh  ${peak.fresh} tokens at frame ${peak.index} ` +
         `(${labelFor(snapshot, snapshot.frames[peak.index]!.node, useLabels)})`,
     );
   }
@@ -849,7 +907,7 @@ export function describeStateDir(
     lines.push(
       `  ${W(labelFor(snapshot, id, useLabels), 26)} ` +
         `r=${W(String(r.rendered), 2)} s=${W(String(r.skipped), 2)} f=${W(String(r.failed), 2)} ` +
-        `fresh=${W(String(r.fresh), 7)} ${chainTag}`,
+        `fresh=${W(String(r.fresh), 7)} tokens ${chainTag}`,
     );
   }
   // AUTHORITATIVE pass: verify EVERY node actually present in the RAW trail, not
@@ -871,6 +929,28 @@ export function describeStateDir(
     if (!chain.ok) {
       chainErrors.push(
         `  ${labelFor(snapshot, id, useLabels)} (off-topology): ${chain.errors.join("; ")}`,
+      );
+      // bug#11: the offending/off-topology node must ALSO show a per-node line
+      // with a flipped `chain✗` glyph, so the PER-NODE view agrees with the
+      // global `CHAIN-VERIFY FAILED` verdict (before, a tampered `node` field
+      // invented a phantom node that only surfaced in the global error list — its
+      // per-node row was missing, so the glyph never flipped for it). Count its
+      // raw receipts so the row's r/s/f/fresh reflect the as-persisted trail.
+      const tally = { rendered: 0, skipped: 0, failed: 0, fresh: 0 };
+      for (const raw of opened.rawReceipts ?? []) {
+        if (raw === null || typeof raw !== "object") continue;
+        const o = raw as Record<string, unknown>;
+        if (o.node !== id) continue;
+        const st = typeof o.status === "string" ? o.status : "";
+        if (st === "rendered" || st === "skipped" || st === "failed") tally[st] += 1;
+        const cost = o.cost as { tokens?: { fresh?: unknown } } | undefined;
+        const fresh = cost?.tokens?.fresh;
+        if (typeof fresh === "number") tally.fresh += fresh;
+      }
+      lines.push(
+        `  ${W(labelFor(snapshot, id, useLabels) + " (off-topology)", 26)} ` +
+          `r=${W(String(tally.rendered), 2)} s=${W(String(tally.skipped), 2)} f=${W(String(tally.failed), 2)} ` +
+          `fresh=${W(String(tally.fresh), 7)} tokens chain✗`,
       );
     }
   }
@@ -898,7 +978,7 @@ export function describeStateDir(
 
   // ---- per-frame "what happened" ----
   lines.push("");
-  lines.push(`FRAMES  (frame  node  status  moved[…]  fresh  woke[…])`);
+  lines.push(`FRAMES  (frame  node  status  moved[…]  fresh tokens  woke[…])`);
   for (const f of snapshot.frames) {
     const moved = f.movedFacets.length ? f.movedFacets.join(",") : "—";
     const woke = f.wokenSubscribers.length
@@ -911,7 +991,7 @@ export function describeStateDir(
         `${W(labelFor(snapshot, f.node, useLabels), 26)} ` +
         `${W(f.status, 8)} ` +
         `moved[${W(moved, 22)}] ` +
-        `fresh ${W(String(f.cost.fresh), 6)} ` +
+        `fresh ${W(String(f.cost.fresh), 6)} tokens ` +
         `woke[${woke}]`,
     );
   }

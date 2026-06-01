@@ -29,12 +29,26 @@ and **S5** (facet / diamond polish) are follow-ons (see below).
 
 ```bash
 reactor-devtools <state-dir> [--port 4555] [--host 127.0.0.1] [--describe]
+reactor-devtools --example masked-relay [--describe]   # bundled fixture, no path
 ```
+
+`--example <name>` replays a fixture **shipped inside this package** — it resolves
+the bundled state-dir internally (relative to the installed package), so it works
+after `npm i -g` from **any** directory with **no path to compute**. The only
+fixture in the tarball is `masked-relay` (see *Fixture coverage* below); an unknown
+name lists the shipped ones and exits non-zero.
 
 `--describe` prints a headless run summary (per-node + per-frame dispositions,
 moved-facet diff, cost rollup, chain-verify) and exits without a browser -- the
 text an agent reads to sanity-check a run. `--version`/`-V` prints the version,
 `--help`/`-h` the usage.
+
+A `<state-dir>` you pass by path must **exist** and look like a reactor state-dir
+(a `receipts.json` or a `compile/` directory inside it). A non-existent path or a
+non-state-dir errors non-zero (`state-dir not found` / `not a reactor state-dir`)
+rather than silently rendering an empty ledger — so a wrong cwd after a global
+install never masquerades as `LEDGER EMPTY`. `LEDGER EMPTY` (exit 0) is reserved
+for a real, existing, compiled-but-unrun dir.
 
 A **replayable state dir** = a flat `receipts.json` (the durable trail) + `compile/topology.json`
 + `world-models/`. Replay needs **zero** running reactor and **zero** model key.
@@ -52,16 +66,20 @@ path or schema translation.
 You don't need a model key or a running reactor to see the payoff. Three ways,
 fastest first:
 
-1. **Replay a committed fixture (ships in the tarball).** `masked-relay` is a
-   small, deterministic sample ledger committed to the package and included in the
-   npm `files`, so it is present after a tarball install:
+1. **Replay the bundled fixture (ships in the tarball) — no path to compute.**
+   `masked-relay` is a small, deterministic sample ledger committed to the package
+   and included in the npm `files`, so it is present after a tarball install. Use
+   `--example` and the package resolves it internally:
 
    ```bash
-   # from an installed copy (resolve the package dir, then point at the fixture):
-   reactor-devtools "$(node -p "require('path').dirname(require.resolve('@openprose/reactor-devtools/package.json'))")/fixtures/masked-relay" --describe
-   # or, in this repo:
+   reactor-devtools --example masked-relay --describe   # works from any cwd
+   # (in this repo you can also point at the path directly:)
    reactor-devtools packages/reactor-devtools/fixtures/masked-relay --describe
    ```
+
+   When you replay a shipped sample (via `--example`), `--describe` prints a
+   `(synthetic sample ledger — token counts are illustrative, not a bill)` banner,
+   since the token figures in a fixture are scripted, not a real spend.
 
 2. **Generate a fixture from source (repo checkout).** The generator lives at
    `dist/fixtures/generate.js`. Its argument is the fixture *key*, which differs
@@ -81,6 +99,17 @@ fastest first:
 
 3. **Replay your own run.** After `reactor compile` + `reactor run`, point the
    viewer at the run's state-dir: `reactor-devtools <state-dir>`.
+
+#### Fixture coverage (what ships vs. what you generate)
+
+**Exactly one fixture ships in the npm tarball: `masked-relay`** — it is the only
+entry in the package's `files` list, so it is the only one present after an
+`npm i -g` install. Replay it with `reactor-devtools --example masked-relay`
+(no path, any cwd). Every *other* named fixture (`observatory`/agent-observatory,
+`monorepo-ci`, `news-desk`, `inbox-triage`, `contract-redline`, `research-tree`)
+is **repo-only**: it does not ship in the tarball and must be generated locally
+from a checkout with `node dist/fixtures/generate.js <key>` (see step 2). So
+`--example` accepts `masked-relay` only; the rest are a build step away.
 
 > **Empty (compile-only) ledger?** A state-dir that was compiled but not yet run
 > has `receipts.json = []`. `--describe` treats that as a legitimate first-run
