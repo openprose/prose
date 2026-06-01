@@ -31,6 +31,7 @@ import {
   type ServeHandle,
 } from '../commands/serve';
 import type { RunAdapters, RunRender } from './load-run-project';
+import type { ConnectorFetch } from './connectors';
 import type { CompileCommandOptions } from '../commands/compile';
 import { createWorkerPool, type WorkerPool } from './worker-pool';
 import { rollupCost, type CostReceipt, type CostRollup } from './cost';
@@ -47,6 +48,8 @@ export interface PerReactorTestSeam {
   readonly testRender?: RunRender;
   readonly testReadFreshness?: FreshnessReader;
   readonly testCompileOptions?: CompileCommandOptions;
+  /** Phase 4: a FAKE connector fetch (keyed by source id) for this reactor's gateways. */
+  readonly testGatewayFetch?: (sourceId: string) => ConnectorFetch;
 }
 
 export interface BootHostOptions extends ConfigOverrides {
@@ -76,6 +79,12 @@ export interface HostHandle {
    * serialized behind its own queue. Resolves once every reactor's poll settled.
    */
   readonly pollAll: (now: string) => Promise<void>;
+  /**
+   * Phase 4 — poll EVERY reactor's gateways at `now`, bounded by the same
+   * across-reactor worker pool; each reactor's gateway poll is itself serialized
+   * behind its own queue (correction #4). Resolves once every reactor settled.
+   */
+  readonly pollGatewaysAll: (now: string) => Promise<void>;
   /** The host-wide cost rollup (every reactor's ledger summed) + per-reactor. */
   readonly cost: () => HostCost;
   /** Drain every reactor's queue to idle then resolve (graceful shutdown). */
@@ -126,8 +135,12 @@ export async function bootHost(options: BootHostOptions = {}): Promise<HostHandl
       stateDir: entry.stateDir,
       model,
       sandbox: config.sandbox,
+      gateways: entry.gateways,
       ...(options.offline !== undefined ? { offline: options.offline } : {}),
       ...(options.model !== undefined ? { modelOverride: options.model } : {}),
+      ...(seam.testGatewayFetch !== undefined
+        ? { testGatewayFetch: seam.testGatewayFetch }
+        : {}),
       ...(seam.testAdapters !== undefined ? { testAdapters: seam.testAdapters } : {}),
       ...(seam.testRender !== undefined ? { testRender: seam.testRender } : {}),
       ...(seam.testReadFreshness !== undefined
@@ -148,6 +161,15 @@ export async function bootHost(options: BootHostOptions = {}): Promise<HostHandl
     // each poll is itself serialized behind that reactor's own queue.
     await Promise.all(
       handles.map((h) => pool.submit(() => h.pollOnce(now))),
+    );
+  };
+
+  const pollGatewaysAll = async (now: string): Promise<void> => {
+    // Each reactor's gateway poll is submitted to the across-reactor pool; the
+    // poll itself enqueues onto that reactor's serialization queue (correction #4),
+    // so within a reactor a gateway poll never overlaps a continuity poll/trigger.
+    await Promise.all(
+      handles.map((h) => pool.submit(() => h.pollGatewaysOnce(now))),
     );
   };
 
@@ -178,6 +200,7 @@ export async function bootHost(options: BootHostOptions = {}): Promise<HostHandl
     pool,
     byName: (name) => byNameMap.get(name),
     pollAll,
+    pollGatewaysAll,
     cost,
     shutdown,
   };

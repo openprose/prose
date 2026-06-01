@@ -46,9 +46,17 @@ import {
 } from '../run/cost';
 import { bootHost, type PerReactorTestSeam } from '../run/host';
 import { startHttpServer, type HttpServerHandle } from '../run/http-server';
+import {
+  augmentTopologyWithIngress,
+  loadConnectorPlugin,
+  resolveGatewayPoller,
+  type ConnectorFetch,
+  type GatewayPollOutcome,
+  type ResolvedGatewayPoller,
+} from '../run/connectors';
 import { isCacheFresh, contractSetFingerprint } from '../compile/ir-cache';
 import { loadContractSet as keylessLoadContractSet } from '../compile/contract-images';
-import type { ConfigOverrides, SandboxConfig } from '../config';
+import type { ConfigOverrides, GatewayConfig, SandboxConfig } from '../config';
 import { loadConfig } from '../config';
 import { resolveSdk } from '../meta';
 import { runCompileCommand, type CompileCommandOptions } from './compile';
@@ -74,6 +82,17 @@ export interface ServeHandle {
    * propagation it drove) has settled.
    */
   readonly pollOnce: (now: string) => Promise<void>;
+  /**
+   * Phase 4 — enqueue ONE poll across EVERY configured gateway at `now`, behind
+   * the same per-reactor serialization queue (correction #4): fetch → extract →
+   * stage each NEW arrival into the gateway's phantom-ingress truth → wake the
+   * gateway → persist the advanced idempotency cursor. Serialized, so a gateway
+   * poll never overlaps a continuity poll / trigger / another gateway poll. Returns
+   * the per-gateway outcomes (the new vs. deduped arrival ids).
+   */
+  readonly pollGatewaysOnce: (now: string) => Promise<readonly GatewayPollOutcome[]>;
+  /** The configured gateway node ids (for HTTP/observability; empty when none). */
+  readonly gatewayNodes: readonly string[];
   /**
    * Enqueue an external trigger of `node` (the running-daemon path). Serialized.
    * Passes the SDK external wake `{ source: "external", refs: [] }`.
@@ -105,6 +124,19 @@ export interface BootReactorInput {
    * the locked `mode: none` default (no runner; bounded LocalShell).
    */
   readonly sandbox?: SandboxConfig;
+  /**
+   * Phase 4 — this reactor's external-driven gateways (`reactor.yml` §6). Each is
+   * consumed as a connector (fetch + extract + stage) with a durable idempotency
+   * cursor; the topology is augmented with a phantom-ingress edge per gateway so a
+   * staged arrival moves the gateway's input fingerprint (correction #5).
+   */
+  readonly gateways?: readonly GatewayConfig[];
+  /**
+   * Test seam (OFFLINE gate, Phase 4): a FAKE connector fetch that replaces every
+   * gateway's real I/O with canned items — keyed by source id, so distinct
+   * gateways can return distinct batches. Hermetic (no network).
+   */
+  readonly testGatewayFetch?: (sourceId: string) => ConnectorFetch;
   /** Test seam: the substrate + render. */
   readonly testAdapters?: RunAdapters;
   readonly testRender?: RunRender;
@@ -128,6 +160,11 @@ export interface ServeCommandOptions extends ConfigOverrides {
   readonly testReadFreshness?: FreshnessReader;
   /** Test seam: compile-if-stale providers (offline). */
   readonly testCompileOptions?: CompileCommandOptions;
+  /**
+   * Test seam (OFFLINE gate, Phase 4): a FAKE connector fetch keyed by source id,
+   * threaded onto the single-reactor `bootServe` gateway path (no network).
+   */
+  readonly testGatewayFetch?: (sourceId: string) => ConnectorFetch;
   /** Test seam: when true, return the handle instead of blocking on the loop. */
   readonly returnHandle?: boolean;
   /** Test seam (Phase 3): per-reactor wiring keyed by name (multi-reactor host). */
@@ -194,6 +231,24 @@ export async function bootReactorHandle(
   // 2. Load + re-lower (KEYLESS).
   const loaded = loadCompiledProject(stateDir);
 
+  // Phase 4: AUGMENT the loaded topology with a phantom-ingress edge per
+  // configured gateway, so a staged arrival moves the gateway's input fingerprint
+  // (correction #5). The gateway itself is the real, NAMED, mounted Forme node; the
+  // phantom ingress is an unmounted edge producer the connector's staged receipts
+  // move (it is never seeded/rendered). This rewrites only the reconcilerTopology
+  // the SDK mounts — the cached IR on disk is untouched.
+  const gateways = input.gateways ?? [];
+  const compiledForRun =
+    gateways.length === 0
+      ? loaded.compiled
+      : {
+          ...loaded.compiled,
+          reconcilerTopology: augmentTopologyWithIngress(
+            loaded.compiled.reconcilerTopology,
+            gateways,
+          ),
+        };
+
   // 3. Build the DURABLE substrate (or the test substrate) + render wiring.
   const adapters: RunAdapters =
     input.testAdapters ?? buildDurableSubstrate(stateDir);
@@ -222,7 +277,7 @@ export async function bootReactorHandle(
 
   // 4. CONFIGURE + boot runProject (the SDK self-mounts + runs the boot sweep).
   const { reactor } = await callRunProject({
-    compiled: loaded.compiled,
+    compiled: compiledForRun,
     adapters,
     render,
   });
@@ -248,6 +303,41 @@ export async function bootReactorHandle(
   const pollOnce = (now: string): Promise<void> =>
     queue.enqueue(async () => {
       await scheduler.poll(now);
+    });
+
+  // Phase 4: resolve a gateway poller per configured gateway (connector = fetch +
+  // extract + stage + durable cursor). The plugin file is loaded once (the
+  // common case has none). Each gateway's cursor round-trips the SAME storage
+  // registry the reactor already persists to (no second state store — `cli.md`
+  // §8). The offline gate's fake fetch (keyed by source id) replaces the I/O.
+  const plugins =
+    input.testGatewayFetch === undefined ? loadConnectorPlugin(contractsDir) : {};
+  const gatewayRuntime = {
+    store: reactor.store as never,
+    ledger: reactor.ledger as never,
+    dag: (reactor as { dag: unknown }).dag as never,
+    storage: adapters.storage as never,
+  };
+  const gatewayPollers: ResolvedGatewayPoller[] = gateways.map((gw) =>
+    resolveGatewayPoller(gw, gatewayRuntime, {
+      plugins,
+      ...(input.testGatewayFetch !== undefined
+        ? { fetchOverride: input.testGatewayFetch(gw.source_id ?? gw.node) }
+        : {}),
+    }),
+  );
+  const gatewayNodes = gatewayPollers.map((p) => p.node);
+
+  const pollGatewaysOnce = (now: string): Promise<readonly GatewayPollOutcome[]> =>
+    // ONE serialized task drains EVERY gateway in order behind the per-reactor
+    // queue — at most one drainAsync in flight per reactor (correction #4). A
+    // gateway poll's stage + wake never overlaps a continuity poll or trigger.
+    queue.enqueue(async () => {
+      const outcomes: GatewayPollOutcome[] = [];
+      for (const poller of gatewayPollers) {
+        outcomes.push(await poller.poll(now));
+      }
+      return outcomes;
     });
 
   const trigger = (node: string, wake?: unknown): Promise<void> =>
@@ -279,6 +369,8 @@ export async function bootReactorHandle(
     queue,
     nodes,
     pollOnce,
+    pollGatewaysOnce,
+    gatewayNodes,
     trigger,
     cost,
     shutdown,
@@ -309,8 +401,12 @@ export async function bootServe(
     stateDir: config.state.dir,
     model: config.model.compile_model,
     sandbox: config.sandbox,
+    gateways: config.gateways,
     ...(options.offline !== undefined ? { offline: options.offline } : {}),
     ...(options.model !== undefined ? { modelOverride: options.model } : {}),
+    ...(options.testGatewayFetch !== undefined
+      ? { testGatewayFetch: options.testGatewayFetch }
+      : {}),
     ...(options.testAdapters !== undefined ? { testAdapters: options.testAdapters } : {}),
     ...(options.testRender !== undefined ? { testRender: options.testRender } : {}),
     ...(options.testReadFreshness !== undefined
@@ -377,9 +473,13 @@ export async function runServeCommand(
   process.once('SIGTERM', stop);
   process.once('SIGINT', stop);
 
-  // The driver loop: poll all reactors, surface live cost, sleep, until SIGTERM.
+  // The driver loop: poll gateways (ingress) + continuity across all reactors,
+  // surface live cost, sleep, until SIGTERM. Gateways poll BEFORE continuity each
+  // tick so a freshly-staged arrival is visible to the same tick's continuity
+  // sweep; both run behind each reactor's serialization queue (correction #4).
   while (!stopped) {
     const now = host.reactors[0]?.reactor.clock.now() ?? new Date().toISOString();
+    await host.pollGatewaysAll(now);
     await host.pollAll(now);
     if (options.json !== true) {
       write(formatCostLine(host.cost().host));
