@@ -9,9 +9,12 @@
  * ONE async-serial executor, so at most one `drainAsync` is in flight per reactor.
  *
  * Continuity: a single `createAsyncContinuityScheduler` armed once, then polled
- * on a cadence; the loop sleeps to the soonest armed `next_self_recheck`.
- * `readFreshness` is OPT-IN per project (nothing writes `valid_until` by default;
- * the offline gate injects a fake reader, as the SDK scheduler test does).
+ * on a FLAT `--poll-interval` cadence (default 60s). `readFreshness` is OPT-IN per
+ * project and the v1 default arms nothing (nothing writes `valid_until` by
+ * default; the offline gate injects a fake reader, as the SDK scheduler test
+ * does), so the loop sleeps a fixed interval rather than to the soonest armed
+ * `next_self_recheck` — the adaptive idle is deferred with the default freshness
+ * projector (`cli-serve-default-freshness-1`).
  *
  * Graceful shutdown: SIGTERM/SIGINT → stop arming new work, drain the in-flight
  * queue, then resolve (the SDK keeps no process alive; this is the CLI's).

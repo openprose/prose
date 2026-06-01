@@ -51,7 +51,7 @@ export interface ChainResult {
 /**
  * A read-only view over a populated state-dir. Construct once per command; every
  * projection reads off this. The receipt trail is RE-DERIVED at construction
- * (the durable ledger rehydrates from `<state-dir>/receipts/receipts.json`), so
+ * (the durable ledger rehydrates from the flat `<state-dir>/receipts.json`), so
  * `receipts()` returns exactly the committed, content-addressed trail.
  */
 export class StateView {

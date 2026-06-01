@@ -31,6 +31,7 @@ import {
   formatLogs,
   formatTrace,
   formatReceiptsAudit,
+  formatCost,
 } from './observe-format';
 
 /** Shared options for the read-only observability commands. */
@@ -236,11 +237,14 @@ export async function runReceiptsCommand(
   }
 
   if (sub === 'cost') {
-    const cost = projectCost(view);
+    // `--node` scopes the rollup to one node (else the whole trail). The human
+    // branch prints the COST rollup (r3a: it previously printed the receipts
+    // audit, the same table `verify` prints).
+    const cost = projectCost(view, options.node);
     if (options.json === true) {
       write(JSON.stringify(cost));
     } else {
-      write(formatReceiptsAudit(projectReceiptsAudit(view)));
+      write(formatCost(cost));
     }
     return 0;
   }

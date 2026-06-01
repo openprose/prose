@@ -338,6 +338,51 @@ describe('reactor observability (offline gate)', () => {
     }
   });
 
+  it('receipts cost (human) prints the COST rollup, not the receipts audit (r3a)', async () => {
+    const stateDir = freshState();
+    try {
+      await populateState(stateDir);
+      const out = capture();
+      const code = await runReceiptsCommand(
+        { directStateDir: stateDir, sub: 'cost' },
+        out.write,
+      );
+      assert.equal(code, 0);
+      const text = out.lines.join('\n');
+      // The cost rollup header + its rollup sections — NOT the `verify` audit table.
+      assert.match(text, /reactor receipts cost/);
+      assert.match(text, /run cost\s+fresh=\d+ reused=\d+/);
+      assert.match(text, /cost by node:/);
+      assert.ok(
+        !/chain ok|VERIFIED|tampered/i.test(text),
+        'must not print the receipts-audit/verify output',
+      );
+    } finally {
+      rmSync(stateDir, { recursive: true, force: true });
+    }
+  });
+
+  it('receipts cost --node scopes the rollup to one node (r3b)', async () => {
+    const stateDir = freshState();
+    try {
+      await populateState(stateDir);
+      const out = capture();
+      await runReceiptsCommand(
+        { directStateDir: stateDir, json: true, sub: 'cost', node: MONITOR },
+        out.write,
+      );
+      const rollup = out.json() as { byNode: Record<string, unknown> };
+      // Scoped to MONITOR: its by-node breakdown carries only that node (or is empty).
+      const nodes = Object.keys(rollup.byNode);
+      assert.ok(
+        nodes.length === 0 || (nodes.length === 1 && nodes[0] === MONITOR),
+        `--node should scope the rollup to ${MONITOR}, got nodes: ${nodes.join(',')}`,
+      );
+    } finally {
+      rmSync(stateDir, { recursive: true, force: true });
+    }
+  });
+
   it('persists the receipt trail at the canonical FLAT <state-dir>/receipts.json (DevTools interop)', async () => {
     const stateDir = freshState();
     try {
