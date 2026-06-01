@@ -6,8 +6,14 @@
 // The future `reactor dev` CLI integration is documented in the README for the
 // CLI agent to wire later — this bin does not touch the CLI package.
 
-import { readFileSync, existsSync } from "node:fs";
-import { join } from "node:path";
+import {
+  readFileSync,
+  existsSync,
+  cpSync,
+  mkdirSync,
+  readdirSync,
+} from "node:fs";
+import { join, resolve } from "node:path";
 
 import { startDevToolsServer } from "./server";
 import {
@@ -29,6 +35,22 @@ interface ParsedArgs {
   readonly version: boolean;
   /** `--describe`: print a headless run summary (no browser) and exit. */
   readonly describe: boolean;
+  /**
+   * `--copy-to <dir>`: copy a bundled `--example` fixture into `<dir>` so the
+   * user can replay a real-shaped ledger sitting in their OWN project — a keyless
+   * "see a real-shaped ledger in your own dir" loop (D1). Only valid with
+   * `--example`.
+   */
+  readonly copyTo: string | undefined;
+  /** `--force`: overwrite a non-empty / existing state-dir on `--copy-to`. */
+  readonly force: boolean;
+  /**
+   * Any tokens that look like options (`-x` / `--foo`) but are not recognized.
+   * An unknown flag must error with usage and exit non-zero — never fall through
+   * to server mode on a typo (bug#6). Carried out of the loop so a single typo'd
+   * flag does not silently launch the blocking viewer.
+   */
+  readonly unknown: readonly string[];
 }
 
 /** This package's version, read from its package.json at runtime (dist/cli.js -> ../package.json). */
@@ -49,6 +71,9 @@ function parseArgs(argv: readonly string[]): ParsedArgs {
   let help = false;
   let version = false;
   let describe = false;
+  let copyTo: string | undefined;
+  let force = false;
+  const unknown: string[] = [];
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]!;
     if (arg === "--help" || arg === "-h") {
@@ -57,17 +82,40 @@ function parseArgs(argv: readonly string[]): ParsedArgs {
       version = true;
     } else if (arg === "--describe") {
       describe = true;
+    } else if (arg === "--force") {
+      force = true;
     } else if (arg === "--example") {
       example = argv[++i];
+    } else if (arg === "--copy-to") {
+      copyTo = argv[++i];
     } else if (arg === "--port" || arg === "-p") {
       port = Number(argv[++i]);
     } else if (arg === "--host") {
       host = argv[++i];
-    } else if (!arg.startsWith("-") && stateDir === undefined) {
+    } else if (arg.startsWith("-")) {
+      // bug#6: an UNRECOGNIZED option must NOT fall through to a positional /
+      // server launch. Collect it so `main` can print usage and exit non-zero
+      // instead of silently binding a port and hanging the viewer on a typo.
+      unknown.push(arg);
+    } else if (stateDir === undefined) {
       stateDir = arg;
+    } else {
+      // A second bare positional is also unexpected — surface it as unknown.
+      unknown.push(arg);
     }
   }
-  return { stateDir, example, port, host, help, version, describe };
+  return {
+    stateDir,
+    example,
+    port,
+    host,
+    help,
+    version,
+    describe,
+    copyTo,
+    force,
+    unknown,
+  };
 }
 
 const USAGE = `reactor-devtools — replay a saved Reactor ledger in a browser DAG viewer
@@ -75,6 +123,7 @@ const USAGE = `reactor-devtools — replay a saved Reactor ledger in a browser D
 Usage:
   reactor-devtools <state-dir> [--port <n>] [--host <h>] [--describe]
   reactor-devtools --example <name> [--describe]   # replay a bundled fixture
+  reactor-devtools --example <name> --copy-to <dir> [--force]  # seed a sample ledger
 
 Arguments:
   <state-dir>   A saved Reactor state directory (receipts + compile/topology.json).
@@ -84,6 +133,11 @@ Options:
                  compute, works after a global install from any cwd. Shipped: ${SHIPPED_EXAMPLES.join(
                    ", ",
                  )}.
+      --copy-to <dir>   Copy the bundled --example fixture into <dir> (a keyless
+                 way to drop a real-shaped SAMPLE ledger into your OWN project, so
+                 \`reactor-devtools <dir> --describe\` replays a ledger sitting in
+                 your tree). Refuses a non-empty / existing state-dir unless --force.
+      --force   Overwrite a non-empty / existing state-dir on --copy-to.
   -p, --port    Port to listen on (default 4555).
       --host    Host to bind (default 127.0.0.1).
       --describe Print a headless run summary (per-node + per-frame
@@ -93,18 +147,97 @@ Options:
   -h, --help    Show this help.
 `;
 
+/**
+ * D1: copy a bundled `--example` fixture (`source` = its resolved state-dir) into
+ * the user's OWN directory `dest`, keyless, so they can replay a real-shaped
+ * SAMPLE ledger in their own tree. Refuses an existing non-empty / already-a-
+ * state-dir `dest` unless `force`, so a copy never clobbers real work. Prints a
+ * one-line, HONEST confirmation (it is the sample ledger, not the user's own
+ * computed run) naming the dir and the next command, then exits. Never returns.
+ */
+function copyExampleInto(
+  name: string,
+  source: string,
+  dest: string,
+  force: boolean,
+): never {
+  const target = resolve(dest);
+  // Refuse a destination that already holds content (a real state-dir or any
+  // non-empty dir) unless --force — never silently clobber a user's own ledger.
+  if (existsSync(target)) {
+    let entries: string[] = [];
+    try {
+      entries = readdirSync(target);
+    } catch {
+      entries = [];
+    }
+    const looksLikeStateDir = isReactorStateDir(target);
+    if ((entries.length > 0 || looksLikeStateDir) && !force) {
+      process.stderr.write(
+        `error: ${dest} is ${looksLikeStateDir ? "already a reactor state-dir" : "not empty"} — refusing to overwrite.\n` +
+          `  re-run with --force to overwrite it:\n` +
+          `    reactor-devtools --example ${name} --copy-to ${dest} --force\n`,
+      );
+      process.exit(1);
+    }
+  }
+  try {
+    mkdirSync(target, { recursive: true });
+    // Copy the whole sample state-dir (receipts.json + compile/ + world-models/).
+    cpSync(source, target, { recursive: true });
+  } catch (err) {
+    process.stderr.write(
+      `error: failed to copy the sample ledger into ${dest}: ${String(err)}\n`,
+    );
+    process.exit(1);
+  }
+  process.stdout.write(
+    `reactor-devtools: copied the SAMPLE "${name}" ledger into ${dest}\n` +
+      `  (a synthetic sample, not your own computed run — your real receipts come\n` +
+      `   from \`reactor serve\`/\`reactor run\` with a model key). Replay it keyless:\n` +
+      `    reactor-devtools ${dest} --describe\n`,
+  );
+  process.exit(0);
+}
+
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
   if (args.version) {
     process.stdout.write(`${readVersion()}\n`);
     process.exit(0);
   }
-  if (args.help || (args.stateDir === undefined && args.example === undefined)) {
+  if (args.help) {
     process.stdout.write(USAGE);
-    process.exit(args.help ? 0 : 1);
+    process.exit(0);
+  }
+  // bug#6: an UNRECOGNIZED flag (e.g. `--verify`) must error with usage and exit
+  // non-zero — it must NEVER fall through to server mode and silently bind a port
+  // / hang the blocking viewer on a typo. Checked before the no-target usage so a
+  // bare `--typo` reports the typo, not just "no state-dir".
+  if (args.unknown.length > 0) {
+    process.stderr.write(
+      `error: unrecognized option${args.unknown.length > 1 ? "s" : ""}: ${args.unknown.join(", ")}\n\n`,
+    );
+    process.stderr.write(USAGE);
+    process.exit(1);
+  }
+  if (args.stateDir === undefined && args.example === undefined) {
+    process.stdout.write(USAGE);
+    process.exit(1);
   }
   if (args.port !== undefined && !Number.isInteger(args.port)) {
     process.stderr.write("error: --port must be an integer\n");
+    process.exit(1);
+  }
+
+  // D1: `--copy-to <dir>` seeds a bundled sample ledger into the user's OWN dir.
+  // It is only meaningful with `--example` (the only keyless source of a shipped
+  // ledger); refuse it on a `<state-dir>` arg so the intent is unambiguous.
+  if (args.copyTo !== undefined && args.example === undefined) {
+    process.stderr.write(
+      `error: --copy-to <dir> requires --example <name> (the sample ledger to copy).\n` +
+        `  e.g. reactor-devtools --example masked-relay --copy-to ./.reactor\n`,
+    );
     process.exit(1);
   }
 
@@ -136,6 +269,15 @@ async function main(): Promise<void> {
     }
     stateDir = resolved;
     synthetic = true;
+
+    // D1: `--copy-to <dir>` — drop the bundled sample ledger into the user's OWN
+    // dir, keyless, so they can then run `reactor-devtools <dir> --describe` (or
+    // the viewer) on a real-shaped ledger sitting in their project. This is the
+    // highest-leverage keyless loop: "see a real-shaped ledger in your own dir."
+    if (args.copyTo !== undefined) {
+      copyExampleInto(args.example, resolved, args.copyTo, args.force);
+      // copyExampleInto exits the process (success or refusal); never returns.
+    }
   } else {
     stateDir = args.stateDir!;
     // D2: distinguish does-not-exist / not-a-state-dir from a real-but-empty

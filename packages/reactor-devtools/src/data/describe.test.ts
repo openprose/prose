@@ -256,6 +256,32 @@ test("describe prints the synthetic-sample banner only when synthetic: true", ()
   );
 });
 
+// --- D3/bug#3: the human cost-split line uses `surprise-cause` ----------------
+
+test("describe labels the cost split `surprise-cause` (matching bySurpriseCause), footnoting wake-cause", () => {
+  const text = describeStateDir(openStateDir(FIXTURE)).text;
+  // The human line picks the SAME noun as the JSON surface (`bySurpriseCause`),
+  // the README, and the post — one word, so a hostile reader can't dunk the drift.
+  assert.ok(/surprise-cause\s+\S/.test(text), "the cost split line reads 'surprise-cause'");
+  // `wake-cause` survives only as a parenthetical synonym, never as the label.
+  assert.ok(/a\.k\.a\. wake-cause/.test(text), "wake-cause kept only as a footnote");
+  assert.ok(
+    !/^\s*wake-cause\s/m.test(text),
+    "no line is labelled `wake-cause` as the primary noun",
+  );
+});
+
+// --- bug#5: the CHAIN-VERIFY badge is honest about the re-stamp limit ----------
+
+test("the CHAIN-VERIFY ok badge does not over-claim: meaning-layer, not a signature, re-stamp caveat", () => {
+  const text = describeStateDir(openStateDir(FIXTURE)).text;
+  assert.ok(/CHAIN-VERIFY\s+ok/.test(text), "ok badge shown on the clean fixture");
+  assert.ok(/meaning-layer chain-consistency/.test(text), "claims only meaning-layer consistency");
+  assert.ok(/NOT a cryptographic signature/.test(text), "explicitly not a signature");
+  assert.ok(/re-stamps/.test(text), "names the re-stamp-with-public-hash forge it does NOT catch");
+  assert.ok(/null signer/.test(text), "names the v1 null-signer boundary");
+});
+
 // --- bug#11: per-node `chain✗` glyph on the tampered/off-topology node ------
 
 test("describe flips the per-node chain glyph for a tampered off-topology node", () => {

@@ -840,10 +840,13 @@ export function describeStateDir(
   lines.push(
     `  dispositions rendered=${status.rendered} · skipped=${status.skipped} · failed=${status.failed}`,
   );
+  // D3/bug#3: the human line uses `surprise-cause` to match the JSON surface
+  // (`bySurpriseCause`), the README, and the post — all one noun. `wake-cause`
+  // is footnoted as the synonym so a reader who knew the old label is not lost.
   lines.push(
-    `  wake-cause  ${Object.entries(wake)
+    `  surprise-cause  ${Object.entries(wake)
       .map(([k, v]) => `${k}=${v}`)
-      .join(" · ")}`,
+      .join(" · ")}  (a.k.a. wake-cause)`,
   );
 
   // ---- cost rollup ----
@@ -958,16 +961,22 @@ export function describeStateDir(
   lines.push("");
   if (chainOk) {
     lines.push(
-      `CHAIN-VERIFY  ok — every node chain is prev-linked & consistent`,
+      `CHAIN-VERIFY  ok — meaning-layer chain-consistency`,
     );
     lines.push(
-      `  (meaning-layer chain-consistency: each receipt's content_hash matches its`,
+      `  (each receipt's content_hash matches its canonical payload and links its`,
     );
     lines.push(
-      `   canonical payload and prev-links its predecessor; v1 signer is null, so`,
+      `   prev — NOT a cryptographic signature. v1 has a null signer, so this is`,
     );
     lines.push(
-      `   this is tamper-EVIDENCE at the meaning layer, not byte-level non-repudiation.)`,
+      `   tamper-EVIDENT against accidental / independent edits, NOT against a forge`,
+    );
+    lines.push(
+      `   that re-stamps the trail with the public content-hash. Meaning-layer`,
+    );
+    lines.push(
+      `   tamper-evidence, not byte-level non-repudiation.)`,
     );
   } else {
     lines.push(

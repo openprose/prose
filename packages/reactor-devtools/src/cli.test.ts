@@ -9,7 +9,13 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
+import {
+  mkdtempSync,
+  mkdirSync,
+  writeFileSync,
+  existsSync,
+  readdirSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -68,4 +74,73 @@ test("a REAL compiled-but-unrun state-dir renders LEDGER EMPTY at exit 0", () =>
   const res = run([dir, "--describe"]);
   assert.equal(res.status, 0, "a real empty ledger is exit 0 (not an error)");
   assert.ok(res.stdout.includes("LEDGER EMPTY"), "empty-state heading shown");
+});
+
+// --- bug#6: an unrecognized flag MUST error, never launch the blocking viewer --
+
+test("an unknown flag errors with usage and exits non-zero (never launches the viewer)", () => {
+  // The synthesis repro: `--example masked-relay --verify` previously bound a port
+  // and HUNG in viewer mode on the typo. It must now print usage + exit non-zero,
+  // and must NOT print the server's "open <url>" line.
+  const res = run(["--example", "masked-relay", "--verify"]);
+  assert.notEqual(res.status, 0, "unknown flag → non-zero");
+  assert.ok(/unrecognized option/.test(res.stderr), "names the offending flag");
+  assert.ok(/--verify/.test(res.stderr), "echoes the typo");
+  assert.ok(!/open http/.test(res.stdout), "must NOT fall through to server mode");
+});
+
+test("a bare unknown flag errors before the no-target usage", () => {
+  const res = run(["--nope"]);
+  assert.notEqual(res.status, 0, "unknown flag → non-zero");
+  assert.ok(/unrecognized option/.test(res.stderr), "reports the typo, not just 'no state-dir'");
+});
+
+// --- D1: `--copy-to <dir>` seeds a sample ledger into the user's own dir --------
+
+test("--copy-to seeds the sample ledger into a fresh dir + prints the honest next step", () => {
+  const work = mkdtempSync(join(tmpdir(), "rdt-copyto-"));
+  const dest = join(work, ".reactor");
+  const res = run(["--example", "masked-relay", "--copy-to", dest]);
+  assert.equal(res.status, 0, "copy into a fresh dir → exit 0");
+  // The copied tree carries the real-shaped ledger pieces.
+  assert.ok(existsSync(join(dest, "receipts.json")), "receipts.json copied");
+  assert.ok(existsSync(join(dest, "compile")), "compile/ copied");
+  // Honest confirmation: names the dir, flags it as the SAMPLE, gives the next cmd.
+  assert.ok(/SAMPLE/.test(res.stdout), "confirmation flags it as the sample ledger");
+  assert.ok(res.stdout.includes(dest), "confirmation names the destination dir");
+  assert.ok(
+    new RegExp(`reactor-devtools ${dest.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} --describe`).test(
+      res.stdout,
+    ),
+    "confirmation prints the replay next-command",
+  );
+  // And the seeded dir actually replays.
+  const replay = run([dest, "--describe"]);
+  assert.equal(replay.status, 0, "the seeded ledger replays clean");
+  assert.ok(replay.stdout.includes("CHAIN-VERIFY  ok"), "seeded ledger chain-verifies");
+});
+
+test("--copy-to refuses a non-empty dir unless --force, then overwrites with --force", () => {
+  const work = mkdtempSync(join(tmpdir(), "rdt-copyto-busy-"));
+  const dest = join(work, "busy");
+  mkdirSync(dest, { recursive: true });
+  writeFileSync(join(dest, "keep.txt"), "mine");
+
+  const refused = run(["--example", "masked-relay", "--copy-to", dest]);
+  assert.notEqual(refused.status, 0, "non-empty dir without --force → non-zero");
+  assert.ok(/not empty|state-dir/.test(refused.stderr), "explains the refusal");
+  assert.ok(/--force/.test(refused.stderr), "names the --force escape hatch");
+  assert.ok(!existsSync(join(dest, "receipts.json")), "did NOT copy on refusal");
+
+  const forced = run(["--example", "masked-relay", "--copy-to", dest, "--force"]);
+  assert.equal(forced.status, 0, "--force overwrites → exit 0");
+  assert.ok(existsSync(join(dest, "receipts.json")), "ledger copied under --force");
+  assert.ok(readdirSync(dest).length > 0, "dest populated");
+});
+
+test("--copy-to without --example errors (needs a sample to copy)", () => {
+  const work = mkdtempSync(join(tmpdir(), "rdt-copyto-noex-"));
+  const res = run([join(work, "x"), "--copy-to", join(work, "y")]);
+  assert.notEqual(res.status, 0, "--copy-to without --example → non-zero");
+  assert.ok(/requires --example/.test(res.stderr), "explains it needs --example");
 });

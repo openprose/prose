@@ -30,6 +30,7 @@ and **S5** (facet / diamond polish) are follow-ons (see below).
 ```bash
 reactor-devtools <state-dir> [--port 4555] [--host 127.0.0.1] [--describe]
 reactor-devtools --example masked-relay [--describe]   # bundled fixture, no path
+reactor-devtools --example masked-relay --copy-to ./.reactor [--force]  # seed it into your own dir
 ```
 
 `--example <name>` replays a fixture **shipped inside this package** — it resolves
@@ -39,9 +40,24 @@ fixture in the tarball is `masked-relay` (see *Fixture coverage* below); an unkn
 name lists the shipped ones and exits non-zero.
 
 `--describe` prints a headless run summary (per-node + per-frame dispositions,
-moved-facet diff, cost rollup, chain-verify) and exits without a browser -- the
-text an agent reads to sanity-check a run. `--version`/`-V` prints the version,
-`--help`/`-h` the usage.
+moved-facet diff, cost rollup split by **surprise-cause** — the same noun the
+`--json` surface emits as `bySurpriseCause` (`wake-cause` is the old synonym) —
+and a chain-verify line) and exits without a browser -- the text an agent reads
+to sanity-check a run. `--version`/`-V` prints the version, `--help`/`-h` the
+usage.
+
+`--copy-to <dir>` (only with `--example`) copies the bundled sample fixture
+(`receipts.json` + `compile/` + `world-models/`) into `<dir>`, so you can replay a
+real-shaped ledger sitting in your **own** project keyless:
+
+```bash
+reactor-devtools --example masked-relay --copy-to ./.reactor
+reactor-devtools ./.reactor --describe        # replay a ledger in YOUR tree
+```
+
+It refuses a non-empty / already-a-state-dir `<dir>` unless you pass `--force`,
+and the confirmation is explicit that this is the **sample** ledger, not your own
+computed run — your real receipts come from `reactor serve`/`run` with a model key.
 
 A `<state-dir>` you pass by path must **exist** and look like a reactor state-dir
 (a `receipts.json` or a `compile/` directory inside it). A non-existent path or a
@@ -105,7 +121,15 @@ fastest first:
 **Exactly one fixture ships in the npm tarball: `masked-relay`** — it is the only
 entry in the package's `files` list, so it is the only one present after an
 `npm i -g` install. Replay it with `reactor-devtools --example masked-relay`
-(no path, any cwd). Every *other* named fixture (`observatory`/agent-observatory,
+(no path, any cwd).
+
+> **What `masked-relay` is, in plain terms:** a small content-pipeline scenario —
+> an upstream source feeds a *masker* that redacts sensitive spans, *expander*
+> nodes that enrich the surviving items, and a downstream *synthesizer* that writes
+> the digest. It stands in for any "watch a feed, do expensive model work only on
+> the items that actually moved, re-use the rest" demo (e.g. renewal-risk briefs,
+> incident summaries, an audit digest). The node names are abstract; the *shape* is
+> the post's "cost scales with surprise" story. Every *other* named fixture (`observatory`/agent-observatory,
 `monorepo-ci`, `news-desk`, `inbox-triage`, `contract-redline`, `research-tree`)
 is **repo-only**: it does not ship in the tarball and must be generated locally
 from a checkout with `node dist/fixtures/generate.js <key>` (see step 2). So
@@ -215,7 +239,7 @@ All reads go through `src/data` — the only place this package touches the SDK:
 | Re-derive the ledger (= replay) | `new FileSystemReceiptLedger({ storage })` (`@openprose/reactor/sdk`) |
 | Order + chain index + moved-facet diff + cost rollup | `createReplaySession({ ledger })` (`@openprose/reactor/sdk`) |
 | Topology graph | `<state-dir>/compile/topology.json` (`TopologyWorldModel`) — `MountedDag` has no `.topology` in replay |
-| Chain / tamper badge | `verifyReceiptChain` / `verifyReceipt` (`@openprose/reactor/sdk`), run over the **raw on-disk receipts** (original `content_hash`), so an edited field is caught — the re-stamped replay ledger would heal it |
+| Chain / tamper badge | `verifyReceiptChain` / `verifyReceipt` (`@openprose/reactor/sdk`), run over the **raw on-disk receipts** (original `content_hash`), so an edited field is caught — the re-stamped replay ledger would heal it. It verifies **meaning-layer chain-consistency** (each receipt's `content_hash` matches its canonical payload and links its `prev`), **not** a cryptographic signature: tamper-evident against accidental / independent edits, **not** against a forge that re-stamps the whole trail with the public `computeReceiptContentHash` (v1 has a null signer). Meaning-layer tamper-evidence, not byte-level non-repudiation. |
 | Click-through world-model (S4) | `FileSystemWorldModelStore.readVersion(node, version)` where `version === receipt.fingerprints["@atomic"]` |
 
 The event → visual mapping:
