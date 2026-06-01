@@ -117,6 +117,13 @@ The package exposes these entrypoints:
 - `@openprose/reactor/composition`
 - `@openprose/reactor/projection`
 
+## Author a scenario / write an eval
+
+To drive the reconciler yourself from these exports — mount a DAG, run a sequence
+of wakes, and read back the rendered/skipped dispositions and the cost rollup by
+`surprise_cause` — see **[`EVALS.md`](./EVALS.md)**. It's the fastest path to the
+"send us a responsibility the harness can't keep yet" ask.
+
 ## What's built, and what isn't
 
 In the spirit of the receipts, here is the honest status.

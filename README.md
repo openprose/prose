@@ -72,6 +72,12 @@ npm i -g ./openprose-reactor-0.2.0.tgz \
 # adds `reactor` (from the reactor-cli package) and `reactor-devtools` to your PATH
 ```
 
+> **Air-gapped?** The *runtime* is offline-clean, but a global `npm i -g` still
+> reaches the registry to fetch the CLI's `commander` dependency (not yet
+> bundled) — the install needs network even though replay/`doctor`/`compile
+> --check` afterward do not. If `-g` fails with `EACCES` on Linux/WSL, use a
+> user prefix (nvm) or `sudo` — the most common non-mac install snag.
+
 **2. See the thesis — keyless, no model call.** Replay a real saved run and read
 the per-node `rendered`/`skipped` dispositions, the cost rollup split by
 `surprise_cause`, and per-node chain-verify:
@@ -87,22 +93,33 @@ You should see the per-node `rendered`/`skipped` dispositions, a cost rollup by
 `skipped moved[—] fresh 0`. That's "cost scales with surprise" — checkable, with
 no key.
 
-**3. Scaffold and inspect offline (still no key):**
+**3. Scaffold and inspect — keyless (no model key).** Everything in this step
+runs offline:
 
 ```bash
 reactor init my-project && cd my-project
 reactor doctor          # reports what's present + the exact fix for anything missing
 reactor compile --check # offline; exits 1 if the contract set is STALE (CI-wireable)
+
+# Want a real-shaped ledger in YOUR own directory to poke at, keyless?
+reactor-devtools --example masked-relay --copy-to ./my.reactor  # copy the sample ledger locally
+reactor-devtools ./my.reactor --describe                        # then inspect it from your dir
 ```
 
-**4. Go live (optional — needs a key + two peers).** Set
-`OPENROUTER_API_KEY`, then:
+> The `--copy-to` step gives you the *sample* ledger in a directory you own — a
+> real-shaped receipt trail to inspect and diff against, not a run you computed.
+> Minting your *own* first receipt needs a live render (step 4). Until then, your
+> own contracts still `compile --check` keyless.
+
+**4. Go live (needs a model key).** The steps below reach the model surface, so
+they need `OPENROUTER_API_KEY` and the two optional peers — a keyless reader can
+stop at step 3. Set the key, then:
 
 ```bash
 npm i -g @openai/agents zod          # the two optional live peers
 reactor compile                      # Forme wires the DAG; freezes per-node canonicalizers
 reactor serve --http 8080            # drive the scaffold's static gateway to a real receipt
-reactor-devtools .reactor --describe # replay YOUR run's ledger
+reactor-devtools .reactor --describe # replay YOUR live run's ledger
 ```
 
 > Use `reactor serve` (not `reactor run`) to drive the scaffold's static gateway —
@@ -134,6 +151,13 @@ number.
 **[`packages/reactor-cli/README.md`](packages/reactor-cli/README.md)** for the
 full command reference (`init → doctor → compile → serve/run`, then
 `reactor-devtools <state-dir>` to inspect the receipt ledger).
+
+**Want to send us an eval?** To author a surprise-cost scenario by hand — drive
+the reconciler from the public SDK, wake a graph, and read back the
+rendered/skipped dispositions and the cost rollup — see
+**[`packages/reactor/EVALS.md`](packages/reactor/EVALS.md)**. That is the most
+useful thing you can hand us: a responsibility where the harness *should* skip
+and doesn't, or *should* render and doesn't.
 
 > **If you're an agent onboarding on behalf of a user:** the binary is `reactor`.
 > Run `reactor init → doctor → compile → run`, then open
