@@ -10,6 +10,7 @@
 
 import { Command } from 'commander';
 
+import { runCompileCommand } from './commands/compile';
 import { runDoctor } from './commands/doctor';
 import { cliVersion } from './meta';
 
@@ -25,7 +26,12 @@ export function buildProgram(onExitCode: (code: number) => void = () => {}): Com
   program
     .name('reactor')
     .description('Deterministic CLI for the @openprose/reactor SDK')
-    .version(cliVersion(), '-v, --version', 'output the CLI version');
+    .version(cliVersion(), '-v, --version', 'output the CLI version')
+    // Global options (cli.md §3): every command honors these.
+    .option('--state-dir <path>', 'durable state directory (default ./.reactor)')
+    .option('--project <dir>', 'project directory containing reactor.yml (default .)')
+    .option('--json', 'machine-readable JSON output')
+    .option('--offline', 'force offline mode (REACTOR_OFFLINE=1)');
 
   program
     .command('doctor')
@@ -34,6 +40,32 @@ export function buildProgram(onExitCode: (code: number) => void = () => {}): Com
     )
     .action(async () => {
       onExitCode(await runDoctor());
+    });
+
+  program
+    .command('compile')
+    .description(
+      'Run the compile phase as sessions and refresh the content-addressed IR cache',
+    )
+    .option('--force', 'recompile regardless of cache freshness')
+    .option('--check', 'exit non-zero if the cache is stale; do not compile (CI)')
+    .action(async (cmdOptions: { force?: boolean; check?: boolean }, cmd: Command) => {
+      const globals = cmd.optsWithGlobals() as {
+        stateDir?: string;
+        project?: string;
+        json?: boolean;
+        offline?: boolean;
+      };
+      onExitCode(
+        await runCompileCommand({
+          ...(globals.stateDir !== undefined ? { stateDir: globals.stateDir } : {}),
+          ...(globals.project !== undefined ? { projectDir: globals.project } : {}),
+          ...(globals.json !== undefined ? { json: globals.json } : {}),
+          ...(globals.offline !== undefined ? { offline: globals.offline } : {}),
+          ...(cmdOptions.force !== undefined ? { force: cmdOptions.force } : {}),
+          ...(cmdOptions.check !== undefined ? { check: cmdOptions.check } : {}),
+        }),
+      );
     });
 
   return program;
