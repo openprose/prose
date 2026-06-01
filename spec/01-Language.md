@@ -43,7 +43,7 @@ OpenProse is a contract format, runtime doctrine, skill package, standard
 library, and CLI wrapper for making agent work readable, reviewable, versioned,
 reusable, and inspectable. A user writes one `*.prose.md` file of durable
 intent. A Prose Complete agent host reads it, wires the responsibility DAG, spawns
-isolated bounded sessions, passes artifacts through declared bindings, and
+isolated bounded sessions, and
 leaves a durable receipt under an OpenProse root.
 
 The central idea:
@@ -62,7 +62,7 @@ Each is a Tenet made concrete at the language layer. They are the north star;
 Part II is honest about how far the current skill has climbed toward them.
 
 - **Markdown is the only contract (Tenet 1).** `*.prose.md` carries 100% of
-  semantic weight. Compiled IR, manifests, projections, and read models are
+  semantic weight. Compiled IR and other projections are
   derived views; if any disagrees with the Markdown, the Markdown is right.
   There is no second surface where intent lives — not a prompt, not a tool
   config, not a hidden judge prompt (Tenet 1).
@@ -84,7 +84,11 @@ Part II is honest about how far the current skill has climbed toward them.
   format to encode what the model should decide.
 - **The authored surface is small, stable, and complete.** Five kinds
   (`responsibility`, `function`, `gateway`, `pattern`, `test`), the canonical
-  `###` section set (enumerated in Part II), and the header hierarchy are the
+  `###` section set (`### Goal`, `### Requires`, `### Maintains`,
+  `### Continuity`, `### Invariants`, `### Execution`, plus
+  `### Parameters`/`### Returns` for a `function`, and the carried
+  `### Shape`/`### Environment`/`### Tools`/`### Runtime`), and the header
+  hierarchy are the
   entire language. Persistence is conferred by *mounting* a responsibility — the
   harness gives a mounted node its single durable world-model — not by a config
   flag. New capability is new *semantics* in skill docs, never new syntax or a
@@ -115,7 +119,7 @@ Part II is honest about how far the current skill has climbed toward them.
 
 ### What the responsibility's load-bearing sections mean
 
-Most `###` sections are catalogued in Part II; their meaning is self-evident
+Most `###` sections' meaning is self-evident
 from their name. Three carry the semantic load of a `kind: responsibility` and
 the Ideal must state them rather than defer: `### Requires`, `### Maintains`,
 and `### Continuity`.

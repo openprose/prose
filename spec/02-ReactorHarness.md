@@ -200,9 +200,9 @@ ordered by how much they save:
 
 1. **Don't act.** Nothing the node subscribes to moved, so it writes a cheap
    `skipped` receipt and renders nothing. The trivial case.
-2. **Don't check now.** A self-driven node's truth carries a `valid_until`;
-   until it lapses, the node sleeps. Provable quiescence is genuinely zero tokens
-   on a static world. (= don't re-render until a dependency changes or freshness
+2. **Don't check now.** each self-driven facet carries a `valid_until`;
+   until the soonest one lapses, the node sleeps. Provable quiescence is genuinely
+   zero tokens on a static world. (= don't re-render until a dependency changes or freshness
    lapses.)
 3. **Don't re-render the whole graph.** When a fingerprint does move, only the
    subtree that subscribes to it wakes; the rest stays asleep. (= reconcile the
@@ -542,7 +542,7 @@ harnesses are strongest when:
 - events arrive over time from multiple sources;
 - the world state is partly ambiguous and requires interpretation;
 - the system must avoid duplicate or thrashing actions;
-- the value of acting depends on freshness, confidence, risk, or cost;
+- the value of acting depends on freshness, risk, or cost;
 - the user needs an audit trail for why an action happened;
 - the implementation may change while the declared intent stays stable;
 - multiple models may perform differently across rendering and compilation.

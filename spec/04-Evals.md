@@ -68,7 +68,7 @@ Each survives the negation test: drop it and a hostile reviewer wins.
 
 1. **Decidability over judgment.** Every headline number is the output of a
    deterministic predicate over a content-addressed artifact — the flat
-   `<state-dir>/receipts.json` ledger (02 §6.1), read offline by the keyless
+   `<state-dir>/receipts.json` ledger (02 _Open specification items_, item 1), read offline by the keyless
    `reactor-devtools --describe` replay. **No headline claim may rest on an LLM
    grading an LLM** — and with the judge retired, the run phase contains no LLM
    judgment to grade at all; the wall is even cleaner than before. Output
@@ -149,7 +149,7 @@ preregistered decision rule.
 
 ### Claim B, decomposed
 
-Run **both model-bearing roles** (`agent-compile` and `agent-render` — 02
+Run **both model-bearing roles** (the compile and render roles — 02
 _Architecture_) so the compile/render seam stays honest, not assumed. Report
 role-fit and **architecture-compensation curves** (the cheap-vs-frontier render
 gap with and without memoization + a compiled canonicalizer), never a single

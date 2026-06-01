@@ -9,7 +9,7 @@ ships:
   the **SKILL**: syntax, kinds, sections, compile model, std/co, CLI surface.
 - [02-ReactorHarness.md](./02-ReactorHarness.md) — **the Reactor
   Harness**, bundled as the **CLI/Server**: the runtime control architecture
-  (loop, invariants, kernel, memoization, forecast, receipts, composition). It
+  (loop, invariants, the reconciler, memoization, forecast, receipts, composition). It
   answers _what the runtime must do_.
 - [03-ReactorPattern.md](./03-ReactorPattern.md) — **this
   document, the Reactor-Native Authoring Pattern**: **SKILL-bundled but
@@ -25,7 +25,7 @@ ships:
 
 The relationship is the same as the one between a language reference and an
 effective-style guide. The harness doc tells you the machine has memoization,
-forecast-gated quiescence, variable-depth judging, and receipt composition.
+forecast-gated quiescence, deterministic commit-gating, and receipt composition.
 This doc tells you how to write contracts so those mechanisms actually engage
 instead of degrading to "cron plus a prompt."
 
@@ -84,10 +84,10 @@ It grows only as the work demands:
 
 There is no separate "fulfillment system," no "sense service," no "verdict
 service," and no "ledger service": the render *is* the fulfillment, the
-canonicalizer *is* how change is sensed, the commit gate *is* the verdict, and
+canonicalizer *is* how change is sensed, `gateCommit` *is* the admissibility check, and
 the signed receipt ledger *is* the storage — all owned by the harness, not
 authored. A reader who understands the responsibility understands the program;
-the rest is _how_, and may change without the intent changing (invariant 8, at
+the rest is _how_, and may change without the intent changing (invariant 1, at
 authoring time).
 
 ### Authoring derived from the invariants
