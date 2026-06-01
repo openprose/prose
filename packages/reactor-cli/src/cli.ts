@@ -41,8 +41,13 @@ export function buildProgram(onExitCode: (code: number) => void = () => {}): Com
     .description(
       'Report environment health (node, SDK, live key/deps, offline mode)',
     )
-    .action(async () => {
-      onExitCode(await runDoctor());
+    .action(async (_cmdOptions: Record<string, unknown>, cmd: Command) => {
+      const globals = cmd.optsWithGlobals() as { offline?: boolean };
+      onExitCode(
+        await runDoctor(
+          globals.offline !== undefined ? { offline: globals.offline } : {},
+        ),
+      );
     });
 
   program

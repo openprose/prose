@@ -47,9 +47,26 @@ describe('doctor', () => {
 
   it('runDoctor returns exit 0 when healthy-for-offline', async () => {
     const lines: string[] = [];
-    const code = await runDoctor((line) => lines.push(line));
+    const code = await runDoctor({}, (line) => lines.push(line));
     assert.equal(code, 0);
     assert.ok(lines.length > 0);
+  });
+
+  it('honors --offline: reports offline mode as forced', async () => {
+    const prev = process.env.REACTOR_OFFLINE;
+    delete process.env.REACTOR_OFFLINE;
+    try {
+      const lines: string[] = [];
+      const code = await runDoctor({ offline: true }, (line) => lines.push(line));
+      assert.equal(code, 0);
+      assert.match(lines.join('\n'), /offline mode {3}forced \(REACTOR_OFFLINE\)/);
+    } finally {
+      if (prev === undefined) {
+        delete process.env.REACTOR_OFFLINE;
+      } else {
+        process.env.REACTOR_OFFLINE = prev;
+      }
+    }
   });
 
   it('reports offline-forced honestly from REACTOR_OFFLINE', async () => {
