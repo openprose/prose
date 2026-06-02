@@ -16,8 +16,8 @@
 import {
   loadCompiledProject,
   summarizeBoot,
-  type ContractView,
-  type ProjectTruthProjection,
+  ensureCompiledIR,
+  buildRenderWithDefaults,
   type RunReport,
 } from '../run/run-core';
 import {
@@ -27,12 +27,9 @@ import {
 } from '../run/load-run-project';
 import { buildDurableSubstrate } from '../run/substrate';
 import { buildSandboxRunner } from '../run/sandbox';
-import { isCacheFresh, contractSetFingerprint } from '../compile/ir-cache';
-import { loadContractSet as keylessLoadContractSet } from '../compile/contract-images';
 import type { ConfigOverrides } from '../config';
 import { loadConfig, validateStateDirTarget } from '../config';
-import { resolveSdk } from '../meta';
-import { runCompileCommand, type CompileCommandOptions } from './compile';
+import type { CompileCommandOptions } from './compile';
 import { emitError } from './emit';
 
 import * as path from 'path';
@@ -75,7 +72,6 @@ export async function runRunCommand(
   const stateDir = config.state.dir;
   const contractsDir = path.resolve(options.projectDir ?? '.');
   const model = config.model.compile_model;
-  const sdkVersion = resolveSdk().version ?? 'unknown';
 
   // Validate the state-dir target before anything tries to mkdir it (G12) — a
   // file at the state-dir path otherwise surfaces a raw EEXIST with no guidance.
@@ -89,44 +85,30 @@ export async function runRunCommand(
     return 2;
   }
 
-  // 1. Ensure the IR is fresh (compile if stale). Compute the contract-set fp
-  //    (keyless) and compare to the cached manifest. A stale cache → compile.
-  const images = keylessLoadContractSet(contractsDir);
-  if (images.length === 0) {
+  // 1. Ensure the IR is fresh (compile if stale).
+  const ensured = await ensureCompiledIR({
+    contractsDir,
+    stateDir,
+    model,
+    ...(options.offline !== undefined ? { offline: options.offline } : {}),
+    ...(options.model !== undefined ? { modelOverride: options.model } : {}),
+    ...(options.testCompileOptions !== undefined
+      ? { compileOptions: options.testCompileOptions }
+      : {}),
+  });
+  if (ensured.kind === 'no-contracts') {
     return emitError(
       write,
       options.json,
       `reactor run: no .prose.md contracts found under ${contractsDir}`,
     );
   }
-  const setFingerprint = contractSetFingerprint(images);
-  const fresh = isCacheFresh(stateDir, setFingerprint, sdkVersion, model);
-
-  if (!fresh) {
-    const compileCode = await runCompileCommand(
-      {
-        ...(options.stateDir !== undefined ? { stateDir: options.stateDir } : {}),
-        ...(options.projectDir !== undefined ? { projectDir: options.projectDir } : {}),
-        ...(options.model !== undefined ? { model: options.model } : {}),
-        ...(options.offline !== undefined ? { offline: options.offline } : {}),
-        json: true,
-        ...(options.testCompileOptions?.testProviders !== undefined
-          ? { testProviders: options.testCompileOptions.testProviders }
-          : {}),
-        ...(options.testCompileOptions?.testSkill !== undefined
-          ? { testSkill: options.testCompileOptions.testSkill }
-          : {}),
-      },
-      // Swallow the compile report's lines (we print the run report below).
-      () => {},
+  if (ensured.kind === 'compile-failed') {
+    return emitError(
+      write,
+      options.json,
+      `reactor run: compile failed (the IR is stale and could not be refreshed)`,
     );
-    if (compileCode !== 0) {
-      return emitError(
-        write,
-        options.json,
-        `reactor run: compile failed (the IR is stale and could not be refreshed)`,
-      );
-    }
   }
 
   // 2. Load + re-lower the cached compiled project (KEYLESS — compileNode).
@@ -143,35 +125,23 @@ export async function runRunCommand(
   const adapters: RunAdapters =
     options.testAdapters ?? buildDurableSubstrate(stateDir);
 
-  const render: RunRender = options.testRender ?? {
-    contractFor: (node: string): ContractView => loaded.contractFor(node),
-    projectTruthFor: (node: string): ProjectTruthProjection =>
-      loaded.projectTruthFor(node),
-  };
+  const baseRender: RunRender = options.testRender ?? {};
   // Phase 5: construct the render sandbox runner from `[sandbox]` (mode none →
   // none; docker present → workspace-scoped, network-off container; docker absent
   // → none + a surfaced note). The workspace root is the state dir (the harness
-  // harvests host-side). Thread `shell_timeout_ms` onto the render's bound. A
-  // test render that already wired its own sandbox/shellTimeoutMs keeps them.
+  // harvests host-side). Thread `shell_timeout_ms` onto the render's bound.
   const built = buildSandboxRunner(config.sandbox, stateDir);
   if (built.note !== undefined && options.json !== true) {
     write(`reactor run: ${built.note}`);
   }
 
-  // If the offline gate handed a render that omits projectTruthFor/contractFor,
-  // fill them from the loaded IR so faceted producers still propagate (#2).
-  const renderWithDefaults: RunRender = {
-    ...render,
-    contractFor: render.contractFor ?? ((node) => loaded.contractFor(node)),
-    projectTruthFor:
-      render.projectTruthFor ?? ((node) => loaded.projectTruthFor(node)),
-    ...(render.sandbox === undefined && built.runner !== undefined
-      ? { sandbox: built.runner }
-      : {}),
-    ...(render.shellTimeoutMs === undefined
-      ? { shellTimeoutMs: config.sandbox.shell_timeout_ms }
-      : {}),
-  };
+  // Default an unset render field from the loaded IR + built sandbox: contractFor/
+  // projectTruthFor so faceted producers still propagate (#2); the sandbox runner +
+  // shell-timeout bound. A test render that wired its own keeps them.
+  const renderWithDefaults = buildRenderWithDefaults(baseRender, loaded, {
+    runner: built.runner,
+    shellTimeoutMs: config.sandbox.shell_timeout_ms,
+  });
 
   // 4. Run the dumb run phase (the SDK self-mounts + bootAsync). Drain to
   //    quiescence is bootAsync's cold-miss sweep + the propagation it cascades.

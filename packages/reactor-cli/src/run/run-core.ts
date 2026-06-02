@@ -36,7 +36,21 @@ import {
   type ReconcilerTopology,
 } from '@openprose/reactor';
 
-import { loadIR, type LoadedCompileIR, type PersistedCost } from '../compile/ir-cache';
+import {
+  loadIR,
+  isCacheFresh,
+  contractSetFingerprint,
+  type LoadedCompileIR,
+  type PersistedCost,
+} from '../compile/ir-cache';
+import { loadContractSet as keylessLoadContractSet } from '../compile/contract-images';
+import { resolveSdk } from '../meta';
+import {
+  runCompileCommand,
+  type CompileCommandOptions,
+} from '../commands/compile';
+import type { RunRender } from './load-run-project';
+import type { SandboxRunner } from './sandbox';
 
 // ---------------------------------------------------------------------------
 // Structural mirrors of the SDK shapes the CLI configures (typed locally so
@@ -138,6 +152,124 @@ export function loadCompiledProject(stateDir: string): LoadedRunProject {
     projectTruthFor: (node) => buildProjectTruthFor(ir, node),
     contractFor: (node) => contractViewFor(ir, node),
     selfDrivenNodes,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// ensureCompiledIR — the shared "ensure IR fresh / compile-if-stale" gate every
+// run-phase command (`run`/`serve`/`trigger`) opens with. Load the contract
+// images, compute the contract-set fingerprint, and compare to the cached
+// manifest; on a miss, run the compile command (KEYLESS at load — the model
+// surface is reached only inside `runCompileCommand`'s own dynamic import on a
+// real miss). Returns a discriminated result so each caller renders its own
+// message (a CLI command via `emitError`, `serve` by throwing).
+// ---------------------------------------------------------------------------
+
+/** Inputs to {@link ensureCompiledIR}. All paths are already resolved. */
+export interface EnsureCompiledIROptions {
+  /** The absolute contracts directory. */
+  readonly contractsDir: string;
+  /** The absolute, isolated state directory. */
+  readonly stateDir: string;
+  /** The compile-model id (the cache key component). */
+  readonly model: string;
+  /** Force offline (forwarded to compile-if-stale). */
+  readonly offline?: boolean;
+  /** A model override applied to compile-if-stale. */
+  readonly modelOverride?: string;
+  /** Offline-gate compile seam (fake providers + pre-read SKILL). */
+  readonly compileOptions?: CompileCommandOptions;
+}
+
+/** The outcome of {@link ensureCompiledIR} (the caller renders its own message). */
+export type EnsureCompiledIRResult =
+  | { readonly kind: 'ok' }
+  | { readonly kind: 'no-contracts' }
+  | { readonly kind: 'compile-failed' };
+
+/**
+ * Ensure the cached IR is fresh for the contract set under `contractsDir`,
+ * compiling if stale. Keyless at load — the model surface is reached only on an
+ * actual miss, inside `runCompileCommand`'s dynamic import.
+ */
+export async function ensureCompiledIR(
+  options: EnsureCompiledIROptions,
+): Promise<EnsureCompiledIRResult> {
+  const { contractsDir, stateDir, model } = options;
+  const sdkVersion = resolveSdk().version ?? 'unknown';
+
+  const images = keylessLoadContractSet(contractsDir);
+  if (images.length === 0) {
+    return { kind: 'no-contracts' };
+  }
+  const setFingerprint = contractSetFingerprint(images);
+  if (isCacheFresh(stateDir, setFingerprint, sdkVersion, model)) {
+    return { kind: 'ok' };
+  }
+
+  const compileOptions = options.compileOptions;
+  const code = await runCompileCommand(
+    {
+      stateDir,
+      projectDir: contractsDir,
+      ...(options.modelOverride !== undefined ? { model: options.modelOverride } : {}),
+      ...(options.offline !== undefined ? { offline: options.offline } : {}),
+      json: true,
+      ...(compileOptions?.testProviders !== undefined
+        ? { testProviders: compileOptions.testProviders }
+        : {}),
+      ...(compileOptions?.testSkill !== undefined
+        ? { testSkill: compileOptions.testSkill }
+        : {}),
+    },
+    // Swallow the compile report's lines (the caller prints its own report).
+    () => {},
+  );
+  return code !== 0 ? { kind: 'compile-failed' } : { kind: 'ok' };
+}
+
+// ---------------------------------------------------------------------------
+// buildRenderWithDefaults — fill a (possibly partial) render with the per-node
+// projections + sandbox bound the run-phase commands default in. A test render
+// that already wired its own contractFor/projectTruthFor/sandbox/shellTimeoutMs
+// keeps them; an omitted field falls back to the loaded IR + built sandbox.
+// ---------------------------------------------------------------------------
+
+/** The subset of {@link LoadedRunProject} {@link buildRenderWithDefaults} reads. */
+export interface RenderDefaultsSource {
+  readonly contractFor: (node: string) => ContractView;
+  readonly projectTruthFor: (node: string) => ProjectTruthProjection;
+}
+
+/** The built sandbox runner + per-command shell timeout the render defaults in. */
+export interface RenderSandboxDefaults {
+  readonly runner: SandboxRunner | undefined;
+  readonly shellTimeoutMs: number;
+}
+
+/**
+ * Assemble the render `runProject` receives by defaulting each unset field of
+ * `baseRender` from the loaded IR + the built sandbox. Defaulting semantics:
+ * `contractFor`/`projectTruthFor` fall back to the loaded projections so faceted
+ * producers still propagate (#2); `sandbox` is filled only when the base omits it
+ * AND a runner was built; `shellTimeoutMs` is filled only when the base omits it.
+ */
+export function buildRenderWithDefaults(
+  baseRender: RunRender,
+  loaded: RenderDefaultsSource,
+  sandbox: RenderSandboxDefaults,
+): RunRender {
+  return {
+    ...baseRender,
+    contractFor: baseRender.contractFor ?? ((node) => loaded.contractFor(node)),
+    projectTruthFor:
+      baseRender.projectTruthFor ?? ((node) => loaded.projectTruthFor(node)),
+    ...(baseRender.sandbox === undefined && sandbox.runner !== undefined
+      ? { sandbox: sandbox.runner }
+      : {}),
+    ...(baseRender.shellTimeoutMs === undefined
+      ? { shellTimeoutMs: sandbox.shellTimeoutMs }
+      : {}),
   };
 }
 

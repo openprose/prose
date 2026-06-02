@@ -1,35 +1,32 @@
 /**
- * `reactor serve` (single reactor) — the durable daemon (CLI plan Phase 2).
+ * `reactor serve` (single reactor) — the durable daemon.
  *
  * Builds the DURABLE substrate (system clock + filesystem storage as the flat
  * `<state-dir>/receipts.json` + filesystem world-model under `<state-dir>/world-models`),
  * CONFIGURES `runProject` (which self-mounts + runs the boot cold-miss sweep),
- * then runs the driver loop behind a PER-REACTOR serialization queue (correction
- * #4): the continuity poll + every ingress (`trigger`/HTTP, Phase 3) enqueue onto
- * ONE async-serial executor, so at most one `drainAsync` is in flight per reactor.
+ * then runs the driver loop behind a PER-REACTOR serialization queue: the
+ * continuity poll + every ingress (`trigger`/HTTP) enqueue onto ONE async-serial
+ * executor, so at most one `drainAsync` is in flight per reactor.
  *
  * Continuity: a single `createAsyncContinuityScheduler` armed once, then polled
  * on a FLAT `--poll-interval` cadence (default 60s). `readFreshness` is OPT-IN per
- * project and the v1 default arms nothing (nothing writes `valid_until` by
- * default; the offline gate injects a fake reader, as the SDK scheduler test
- * does), so the loop sleeps a fixed interval rather than to the soonest armed
- * `next_self_recheck` — the adaptive idle is deferred with the default freshness
- * projector (`cli-serve-default-freshness-1`).
+ * project and the default arms nothing (nothing writes `valid_until` by default;
+ * the offline gate injects a fake reader), so the loop sleeps a fixed interval
+ * rather than to the soonest armed `next_self_recheck`.
  *
  * Graceful shutdown: SIGTERM/SIGINT → stop arming new work, drain the in-flight
  * queue, then resolve (the SDK keeps no process alive; this is the CLI's).
  *
- * OFFLINE-SAFE (N2): keyless at load (run-core + continuity scheduler are on the
- * root barrel); the model surface is reached ONLY via `callRunProject`'s dynamic
- * import. The offline gate drives `serveOnce`/the handle directly with a fake
- * render; a live `serve` builds the substrate and blocks on the loop.
+ * OFFLINE-SAFE: keyless at load (run-core + continuity scheduler are on the root
+ * barrel); the model surface is reached ONLY via `callRunProject`'s dynamic
+ * import. The offline gate drives the handle directly with a fake render; a live
+ * `serve` builds the substrate and blocks on the loop.
  */
 
 import { createAsyncContinuityScheduler } from '@openprose/reactor';
 
 import {
   loadCompiledProject,
-  contentAddressOf,
   type ContractView,
   type ProjectTruthProjection,
 } from '../run/run-core';
@@ -59,6 +56,8 @@ import {
   buildStageArrival,
   loadConnectorPlugin,
   resolveGatewayPoller,
+  triggerArrivalId,
+  EXTERNAL_WAKE,
   type ConnectorFetch,
   type GatewayPollOutcome,
   type ResolvedGatewayPoller,
@@ -94,12 +93,12 @@ export interface ServeHandle {
    */
   readonly pollOnce: (now: string) => Promise<void>;
   /**
-   * Phase 4 — enqueue ONE poll across EVERY configured gateway at `now`, behind
-   * the same per-reactor serialization queue (correction #4): fetch → extract →
-   * stage each NEW arrival into the gateway's phantom-ingress truth → wake the
-   * gateway → persist the advanced idempotency cursor. Serialized, so a gateway
-   * poll never overlaps a continuity poll / trigger / another gateway poll. Returns
-   * the per-gateway outcomes (the new vs. deduped arrival ids).
+   * Enqueue ONE poll across EVERY configured gateway at `now`, behind the same
+   * per-reactor serialization queue: fetch → extract → stage each NEW arrival into
+   * the gateway's phantom-ingress truth → wake the gateway → persist the advanced
+   * idempotency cursor. Serialized, so a gateway poll never overlaps a continuity
+   * poll / trigger / another gateway poll. Returns the per-gateway outcomes (the
+   * new vs. deduped arrival ids).
    */
   readonly pollGatewaysOnce: (now: string) => Promise<readonly GatewayPollOutcome[]>;
   /** The configured gateway node ids (for HTTP/observability; empty when none). */
@@ -108,14 +107,14 @@ export interface ServeHandle {
    * Enqueue an external trigger of `node` (the running-daemon path). Serialized.
    * Passes the SDK external wake `{ source: "external", refs: [] }`. When `data`
    * is supplied AND the node is a configured gateway, the data is STAGED into the
-   * node's ingress inbox so it actually reaches the render (B3); the returned
+   * node's ingress inbox so it actually reaches the render; the returned
    * `dataDelivered` reports whether staging happened.
    */
   readonly trigger: (
     node: string,
     opts?: { wake?: unknown; data?: unknown },
   ) => Promise<TriggerOutcome>;
-  /** This reactor's current cost rollup, read off its ledger (§5.4). */
+  /** This reactor's current cost rollup, read off its ledger. */
   readonly cost: () => CostRollup;
   /** Drain the queue to idle then resolve (graceful shutdown). */
   readonly shutdown: () => Promise<void>;
@@ -136,22 +135,22 @@ export interface BootReactorInput {
   /** A model override applied to compile-if-stale. */
   readonly modelOverride?: string;
   /**
-   * Phase 5 — the reactor's `[sandbox]` config. Drives the workspace-scoped render
-   * sandbox runner + the per-command shell timeout. Omitted (single test seam) →
-   * the locked `mode: none` default (no runner; bounded LocalShell).
+   * The reactor's `[sandbox]` config. Drives the workspace-scoped render sandbox
+   * runner + the per-command shell timeout. Omitted → the `mode: none` default (no
+   * runner; bounded LocalShell).
    */
   readonly sandbox?: SandboxConfig;
   /**
-   * Phase 4 — this reactor's external-driven gateways (`reactor.yml` §6). Each is
-   * consumed as a connector (fetch + extract + stage) with a durable idempotency
-   * cursor; the topology is augmented with a phantom-ingress edge per gateway so a
-   * staged arrival moves the gateway's input fingerprint (correction #5).
+   * This reactor's external-driven gateways. Each is consumed as a connector
+   * (fetch + extract + stage) with a durable idempotency cursor; the topology is
+   * augmented with a phantom-ingress edge per gateway so a staged arrival moves the
+   * gateway's input fingerprint.
    */
   readonly gateways?: readonly GatewayConfig[];
   /**
-   * Test seam (OFFLINE gate, Phase 4): a FAKE connector fetch that replaces every
-   * gateway's real I/O with canned items — keyed by source id, so distinct
-   * gateways can return distinct batches. Hermetic (no network).
+   * Test seam: a FAKE connector fetch that replaces every gateway's real I/O with
+   * canned items — keyed by source id, so distinct gateways can return distinct
+   * batches. Hermetic (no network).
    */
   readonly testGatewayFetch?: (sourceId: string) => ConnectorFetch;
   /** Test seam: the substrate + render. */
@@ -180,13 +179,13 @@ export interface ServeCommandOptions extends ConfigOverrides {
   /** Test seam: compile-if-stale providers (offline). */
   readonly testCompileOptions?: CompileCommandOptions;
   /**
-   * Test seam (OFFLINE gate, Phase 4): a FAKE connector fetch keyed by source id,
-   * threaded onto the single-reactor `bootServe` gateway path (no network).
+   * Test seam: a FAKE connector fetch keyed by source id, threaded onto the
+   * single-reactor `bootServe` gateway path (no network).
    */
   readonly testGatewayFetch?: (sourceId: string) => ConnectorFetch;
   /** Test seam: when true, return the handle instead of blocking on the loop. */
   readonly returnHandle?: boolean;
-  /** Test seam (Phase 3): per-reactor wiring keyed by name (multi-reactor host). */
+  /** Test seam: per-reactor wiring keyed by name (multi-reactor host). */
   readonly testSeams?: Readonly<Record<string, PerReactorTestSeam>>;
   /** Test seam: when true, boot the host + HTTP then return (drive them directly). */
   readonly returnHost?: boolean;
@@ -196,32 +195,8 @@ export interface ServeCommandOptions extends ConfigOverrides {
 
 /** The outcome of a running-daemon trigger: whether a `--data` body was staged. */
 export interface TriggerOutcome {
-  /** True when a supplied trigger body was staged into the node's ingress (B3). */
+  /** True when a supplied trigger body was staged into the node's ingress. */
   readonly dataDelivered: boolean;
-}
-
-/** The SDK external wake (the barrel does not export the const; build it). */
-const EXTERNAL_WAKE = Object.freeze({ source: 'external', refs: [] as string[] });
-
-/**
- * A stable arrival id for a triggered payload (mirrors the trigger command +
- * connector default `id_field`): prefer the payload's own `id`, else a content-
- * stable hash of the payload so a re-trigger of the same body dedups at the inbox.
- */
-function triggerArrivalId(data: unknown): string {
-  if (
-    data !== null &&
-    typeof data === 'object' &&
-    'id' in (data as Record<string, unknown>)
-  ) {
-    const id = (data as Record<string, unknown>)['id'];
-    if (typeof id === 'string' || typeof id === 'number') {
-      return String(id);
-    }
-  }
-  return `trigger:${contentAddressOf(
-    new TextEncoder().encode(JSON.stringify(data ?? null)),
-  )}`;
 }
 
 /**
@@ -229,8 +204,7 @@ function triggerArrivalId(data: unknown): string {
  * the single-reactor `bootServe` and the multi-reactor host). Ensure IR fresh,
  * configure + boot `runProject`, wire the continuity scheduler behind a
  * PER-REACTOR serialization queue, and return a {@link ServeHandle}. The handle
- * is ISOLATED: its own state-dir, substrate, schedule, and serialization queue
- * (correction #4 / `cli.md` §5.5 isolation).
+ * is ISOLATED: its own state-dir, substrate, schedule, and serialization queue.
  */
 export async function bootReactorHandle(
   input: BootReactorInput,
@@ -242,9 +216,9 @@ export async function bootReactorHandle(
   const { contractsDir, stateDir, model } = input;
   const sdkVersion = resolveSdk().version ?? 'unknown';
 
-  // Validate the state-dir target before the substrate mkdir's it (G12). A file at
-  // the state-dir path otherwise surfaces a raw EEXIST with no guidance. Tag the
-  // error so `runServeCommand` maps it to the usage exit code (2), not the generic
+  // Validate the state-dir target before the substrate mkdir's it. A file at the
+  // state-dir path otherwise surfaces a raw EEXIST with no guidance. Tag the error
+  // so `runServeCommand` maps it to the usage exit code (2), not the generic
   // boot-failure 1.
   const stateDirError = validateStateDirTarget(stateDir);
   if (stateDirError !== undefined) {
@@ -286,12 +260,12 @@ export async function bootReactorHandle(
   // 2. Load + re-lower (KEYLESS).
   const loaded = loadCompiledProject(stateDir);
 
-  // Phase 4: AUGMENT the loaded topology with a phantom-ingress edge per
-  // configured gateway, so a staged arrival moves the gateway's input fingerprint
-  // (correction #5). The gateway itself is the real, NAMED, mounted Forme node; the
-  // phantom ingress is an unmounted edge producer the connector's staged receipts
-  // move (it is never seeded/rendered). This rewrites only the reconcilerTopology
-  // the SDK mounts — the cached IR on disk is untouched.
+  // AUGMENT the loaded topology with a phantom-ingress edge per configured
+  // gateway, so a staged arrival moves the gateway's input fingerprint. The gateway
+  // itself is the real, NAMED, mounted Forme node; the phantom ingress is an
+  // unmounted edge producer the connector's staged receipts move (it is never
+  // seeded/rendered). This rewrites only the reconcilerTopology the SDK mounts —
+  // the cached IR on disk is untouched.
   const gateways = input.gateways ?? [];
   const compiledForRun =
     gateways.length === 0
@@ -308,10 +282,10 @@ export async function bootReactorHandle(
   const adapters: RunAdapters =
     input.testAdapters ?? buildDurableSubstrate(stateDir);
   const baseRender: RunRender = input.testRender ?? {};
-  // Phase 5: construct the render sandbox runner from `[sandbox]` (mode none →
-  // none; docker present → workspace-scoped network-off container; docker absent →
-  // none + a note). The workspace root is the reactor's isolated state dir (the
-  // harness harvests host-side). Thread `shell_timeout_ms` onto the render bound.
+  // Construct the render sandbox runner from `[sandbox]` (mode none → none; docker
+  // present → workspace-scoped network-off container; docker absent → none + a
+  // note). The workspace root is the reactor's isolated state dir (the harness
+  // harvests host-side). Thread `shell_timeout_ms` onto the render bound.
   const sandboxConfig: SandboxConfig =
     input.sandbox ?? { mode: 'none', shell_timeout_ms: 300_000 };
   const built = buildSandboxRunner(sandboxConfig, stateDir);
@@ -360,11 +334,11 @@ export async function bootReactorHandle(
       await scheduler.poll(now);
     });
 
-  // Phase 4: resolve a gateway poller per configured gateway (connector = fetch +
-  // extract + stage + durable cursor). The plugin file is loaded once (the
-  // common case has none). Each gateway's cursor round-trips the SAME storage
-  // registry the reactor already persists to (no second state store — `cli.md`
-  // §8). The offline gate's fake fetch (keyed by source id) replaces the I/O.
+  // Resolve a gateway poller per configured gateway (connector = fetch + extract +
+  // stage + durable cursor). The plugin file is loaded once (the common case has
+  // none). Each gateway's cursor round-trips the SAME storage registry the reactor
+  // already persists to (no second state store). The offline gate's fake fetch
+  // (keyed by source id) replaces the I/O.
   const plugins =
     input.testGatewayFetch === undefined ? loadConnectorPlugin(contractsDir) : {};
   const gatewayRuntime = {
@@ -385,8 +359,8 @@ export async function bootReactorHandle(
 
   const pollGatewaysOnce = (now: string): Promise<readonly GatewayPollOutcome[]> =>
     // ONE serialized task drains EVERY gateway in order behind the per-reactor
-    // queue — at most one drainAsync in flight per reactor (correction #4). A
-    // gateway poll's stage + wake never overlaps a continuity poll or trigger.
+    // queue — at most one drainAsync in flight per reactor. A gateway poll's stage
+    // + wake never overlaps a continuity poll or trigger.
     queue.enqueue(async () => {
       const outcomes: GatewayPollOutcome[] = [];
       for (const poller of gatewayPollers) {
@@ -399,10 +373,10 @@ export async function bootReactorHandle(
   const trigger = (node: string, opts?: { wake?: unknown; data?: unknown }): Promise<TriggerOutcome> =>
     queue.enqueue(async () => {
       // The running-daemon trigger path: an external wake through the reactor's
-      // async ingest (serialized — at most one drain in flight, correction #4).
+      // async ingest (serialized — at most one drain in flight).
       const dag = (reactor as { dag: { ingestAsync: (n: string, w: unknown) => Promise<unknown> } }).dag;
-      // B3: deliver a trigger BODY by STAGING it into the node's ingress inbox (so
-      // the upcoming ingest is a memo-miss that re-renders the node reading the
+      // Deliver a trigger BODY by STAGING it into the node's ingress inbox (so the
+      // upcoming ingest is a memo-miss that re-renders the node reading the
       // payload). Staging needs the node to carry an ingress edge — true for a
       // configured GATEWAY (its edge was augmented at boot). For a non-gateway node
       // there is no ingress input to move, so the body cannot be delivered through a
@@ -453,9 +427,9 @@ export async function bootReactorHandle(
 }
 
 /**
- * Boot a single-reactor daemon (the Phase-2 public API, kept for the run/serve
- * gate). Resolves the config for the project + state-dir, then delegates to
- * {@link bootReactorHandle}. A multi-reactor host uses {@link bootHost} instead.
+ * Boot a single-reactor daemon. Resolves the config for the project + state-dir,
+ * then delegates to {@link bootReactorHandle}. A multi-reactor host uses
+ * {@link bootHost} instead.
  */
 export async function bootServe(
   options: ServeCommandOptions = {},
@@ -503,8 +477,8 @@ export async function bootServe(
  * HTTP server, and exits 0.
  *
  * The single-reactor case is just N=1: the host synthesizes one `"default"`
- * reactor and the HTTP surface omits the `/<name>` prefix. Within-reactor
- * parallelism is DEFERRED (Change B) — `--concurrency` is across-reactor ONLY.
+ * reactor and the HTTP surface omits the `/<name>` prefix. `--concurrency` is
+ * across-reactor ONLY.
  */
 export async function runServeCommand(
   options: ServeCommandOptions = {},
@@ -524,7 +498,7 @@ export async function runServeCommand(
     // Boot failure (stale IR / compile failed / no contracts) gets a clean
     // one-liner + exit 1 — mirroring run/topology/compile — never a raw stack.
     const msg = err instanceof Error ? err.message : String(err);
-    // A state-dir usage error (G12) is a usage fault (exit 2), not a boot failure.
+    // A state-dir usage error is a usage fault (exit 2), not a boot failure.
     const usage = (err as { reactorCliUsageError?: boolean })?.reactorCliUsageError === true;
     const hint = /stale|compile/i.test(msg)
       ? ' — run `reactor compile` first (it needs a model key); the keyless surface works without one.'
@@ -580,7 +554,7 @@ export async function runServeCommand(
   // The driver loop: poll gateways (ingress) + continuity across all reactors,
   // surface live cost, sleep, until SIGTERM. Gateways poll BEFORE continuity each
   // tick so a freshly-staged arrival is visible to the same tick's continuity
-  // sweep; both run behind each reactor's serialization queue (correction #4).
+  // sweep; both run behind each reactor's serialization queue.
   while (!stopped) {
     const now = host.reactors[0]?.reactor.clock.now() ?? new Date().toISOString();
     await host.pollGatewaysAll(now);

@@ -29,7 +29,6 @@ import * as path from 'path';
 import {
   loadCompiledProject,
   summarizeBoot,
-  contentAddressOf,
   type RunReport,
 } from '../run/run-core';
 import {
@@ -41,6 +40,8 @@ import { buildDurableSubstrate } from '../run/substrate';
 import {
   augmentTopologyWithIngress,
   buildStageArrival,
+  triggerArrivalId,
+  EXTERNAL_WAKE,
   type StageStore,
   type StageLedger,
 } from '../run/connectors';
@@ -51,9 +52,6 @@ import { loadConfig, validateStateDirTarget } from '../config';
 import { resolveSdk } from '../meta';
 import { runCompileCommand, type CompileCommandOptions } from './compile';
 import { emitError } from './emit';
-
-/** The SDK external wake (the barrel does not export the const; build it). */
-const EXTERNAL_WAKE = Object.freeze({ source: 'external', refs: [] as string[] });
 
 export interface TriggerCommandOptions extends ConfigOverrides {
   /** The node to trigger (required). */
@@ -235,28 +233,6 @@ export async function runTriggerCommand(
 // ---------------------------------------------------------------------------
 // internals
 // ---------------------------------------------------------------------------
-
-/**
- * A stable arrival id for a triggered payload. Prefer the payload's own `id`
- * field (so a caller controls idempotency, matching the connector's default
- * `id_field`); otherwise derive a content-stable id from the payload bytes so
- * re-triggering the same `--data` dedups at the ingress inbox.
- */
-function triggerArrivalId(data: unknown): string {
-  if (
-    data !== null &&
-    typeof data === 'object' &&
-    'id' in (data as Record<string, unknown>)
-  ) {
-    const id = (data as Record<string, unknown>)['id'];
-    if (typeof id === 'string' || typeof id === 'number') {
-      return String(id);
-    }
-  }
-  return `trigger:${contentAddressOf(
-    new TextEncoder().encode(JSON.stringify(data ?? null)),
-  )}`;
-}
 
 /** Parse `--data`: `@path` reads a JSON file; otherwise inline JSON. */
 function parseData(raw: string): unknown {

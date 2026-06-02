@@ -48,6 +48,7 @@
 import {
   ATOMIC_FACET,
   EMPTY_SEMANTIC_DIFF,
+  contentAddressOf,
   createNullSignature,
   createPollConnectorAdapter,
   createIdempotencyCursor,
@@ -120,6 +121,30 @@ export interface RegistryStorage {
 /** The phantom ingress source id for a gateway (an UNMOUNTED edge producer). */
 export function ingressSourceFor(gatewayNode: string): string {
   return `${gatewayNode}::ingress`;
+}
+
+/** The SDK external wake (the barrel does not export the const; build it). */
+export const EXTERNAL_WAKE = Object.freeze({ source: 'external', refs: [] as string[] });
+
+/**
+ * A stable arrival id for a triggered payload (mirrors the connector default
+ * `id_field`): prefer the payload's own `id`, else a content-stable hash of the
+ * payload so a re-trigger of the same body dedups at the inbox.
+ */
+export function triggerArrivalId(data: unknown): string {
+  if (
+    data !== null &&
+    typeof data === 'object' &&
+    'id' in (data as Record<string, unknown>)
+  ) {
+    const id = (data as Record<string, unknown>)['id'];
+    if (typeof id === 'string' || typeof id === 'number') {
+      return String(id);
+    }
+  }
+  return `trigger:${contentAddressOf(
+    new TextEncoder().encode(JSON.stringify(data ?? null)),
+  )}`;
 }
 
 /** The default extract `id_field` and the default arrival-id ledger inbox path. */
