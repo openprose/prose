@@ -74,6 +74,11 @@ npm install @openprose/reactor @openprose/reactor-cli @openprose/reactor-devtool
 # then call the binaries with `npx reactor …` / `npx reactor-devtools …`
 ```
 
+> **Local install?** The bare `reactor …` / `reactor-devtools …` commands shown below assume the
+> binaries are on your `PATH` (a global install). After the project-local `npm install` above,
+> prepend `npx` to them — e.g. `npx reactor init my-project`, `npx reactor-devtools ./replay --describe`.
+> (The keyless `npx -p @openprose/reactor-devtools …` lines already do this and need no change.)
+
 <details><summary>Global install (alternative — collision- and EACCES-prone)</summary>
 
 ```bash
