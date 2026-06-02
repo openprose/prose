@@ -1,6 +1,6 @@
 // Regenerate the COMMITTED demo fixtures into `fixtures/<name>/`.
 //
-//   node dist/fixtures/generate.js                          → BOTH fixtures
+//   node dist/fixtures/generate.js                          → all committed fixtures
 //   node dist/fixtures/generate.js masked-relay             → just masked-relay
 //   node dist/fixtures/generate.js observatory              → just the observatory
 //   node dist/fixtures/generate.js observatory <abs-dir>    → a custom location
@@ -90,7 +90,7 @@ function main(): void {
   const dirArg = process.argv[3];
 
   if (!which) {
-    // Default: regenerate BOTH committed fixtures into their default dirs.
+    // Default: regenerate all committed fixtures into their default dirs.
     for (const target of Object.values(TARGETS)) {
       emit(target, target.defaultDir);
     }

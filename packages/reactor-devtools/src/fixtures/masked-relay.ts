@@ -67,6 +67,8 @@ import type { ReconcilerTopology } from "@openprose/reactor/sdk";
 // The render-context type lives on the render-atom surface.
 import type { RenderContext, RenderProduct } from "@openprose/reactor/sdk";
 
+import { materialFingerprint, readJson } from "./_fixture-shared";
+
 // ---------------------------------------------------------------------------
 // Node identities + facets (mirrors scenario/masked-relay.ts so the demo graph
 // reads identically to the SDK's documented fixture)
@@ -100,35 +102,6 @@ const VIEW_E1: Facet = "view_e1";
 const VIEW_E2: Facet = "view_e2";
 
 const MASK_SEED = 1729;
-
-// ---------------------------------------------------------------------------
-// Deterministic fingerprint of a structured sub-value (own facet tokens). The
-// SDK keeps `materialFingerprint` internal to its scenario module; we recreate
-// the same sha256-over-stable-JSON shape here so a facet token moves iff its
-// projected sub-value moves.
-// ---------------------------------------------------------------------------
-
-function materialFingerprint(value: unknown): Fingerprint {
-  return `sha256:${createHash("sha256").update(stableStringify(value)).digest("hex")}`;
-}
-
-function stableStringify(value: unknown): string {
-  if (value === null || typeof value !== "object") {
-    return JSON.stringify(value) ?? "null";
-  }
-  if (Array.isArray(value)) {
-    return `[${value.map(stableStringify).join(",")}]`;
-  }
-  const entries = Object.keys(value as Record<string, unknown>)
-    .sort()
-    .map(
-      (k) =>
-        `${JSON.stringify(k)}:${stableStringify(
-          (value as Record<string, unknown>)[k],
-        )}`,
-    );
-  return `{${entries.join(",")}}`;
-}
 
 // ---------------------------------------------------------------------------
 // The cost model — what makes the token meter SING (the S2 hero shot)
@@ -206,22 +179,6 @@ function maskFor(
     visible: visible.sort(),
     hidden_hashes: hidden_hashes.sort(),
   };
-}
-
-// ---------------------------------------------------------------------------
-// Reading upstream truth by reference (what a fake render does)
-// ---------------------------------------------------------------------------
-
-function readJson<T = Record<string, unknown>>(
-  store: WorldModelStore,
-  node: string,
-  path = "truth.json",
-): T | null {
-  const read = store.read(node, "published");
-  if (read.ref.version === null) return null;
-  const bytes = read.files[path];
-  if (bytes === undefined) return null;
-  return JSON.parse(readTextFile(bytes)) as T;
 }
 
 function readTruth(fm: WorldModelFiles): Record<string, unknown> {

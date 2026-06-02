@@ -53,10 +53,10 @@ export interface OpenStateDirOptions {
   readonly cost?: ReplaySessionCostOptions;
 }
 
-// --- Bundled examples + state-dir validation (D2) --------------------------
+// --- Bundled examples + state-dir validation -------------------------------
 //
-// D2: the flagship keyless command used a repo-relative fixture path, which after
-// `npm i -g` resolves against the wrong cwd and SILENTLY rendered `LEDGER EMPTY`.
+// The flagship keyless command must not use a repo-relative fixture path: after
+// `npm i -g` that resolves against the wrong cwd and SILENTLY renders `LEDGER EMPTY`.
 // Two guards close that footgun: (1) `--example <name>` resolves a SHIPPED fixture
 // internally from this package's own dir so no user ever computes a path; (2) the
 // normal `<state-dir>` arg distinguishes does-not-exist / not-a-state-dir from a
@@ -88,7 +88,7 @@ export function resolveExampleDir(name: string): string | null {
  * carry at least one of the two trail markers — a `receipts.json` (the durable
  * ledger) or a `compile/` directory (a compiled-but-unrun dir). A path that does
  * not exist, or an arbitrary directory with neither marker, is NOT a state-dir —
- * the CLI errors non-zero rather than silently rendering an empty ledger (D2).
+ * the CLI errors non-zero rather than silently rendering an empty ledger.
  * A real, existing, compiled-but-unrun dir with an empty `receipts.json` still
  * passes here (it has `compile/`), so `LEDGER EMPTY` (exit 0) is reserved for it.
  */
@@ -117,8 +117,8 @@ export interface OpenedStateDir {
    * payload. That is correct for the renderer (it needs a consistent address) but
    * it silently HEALS a tamper — an edited `node`/fingerprint field with a stale
    * on-disk `content_hash` comes back with a fresh, self-consistent hash, so a
-   * chain-verify over the re-stamped trail reads green on a tampered ledger
-   * (synthesis bug#6 — a false ✓ on a trust-first product). Chain-verify must run
+   * chain-verify over the re-stamped trail reads green on a tampered ledger (a
+   * false ✓ on a trust-first product). Chain-verify must run
    * against THESE raw, as-persisted receipts so the SDK's `verifyReceipt`
    * recomputes the hash and compares it to the on-disk `content_hash`, catching
    * the tamper exactly as `reactor receipts verify` does. `null` for a state-dir
@@ -209,10 +209,9 @@ export function openStateDir(
     read_only: true,
   });
   // The RAW persisted trail, ORIGINAL content_hashes intact — the authoritative
-  // input to chain-verify (D8/bug#6: it must NOT be the re-stamped ledger). A
-  // throw here (a receipts file that is not a JSON array, etc.) is a TRUE error
-  // and propagates — `openStateDir` does NOT swallow a corrupt trail into an
-  // empty state; only a well-formed `[]` is the legitimate empty case.
+  // input to chain-verify (see OpenedStateDir.rawReceipts). A throw here (a
+  // receipts file that is not a JSON array, etc.) is a TRUE error and propagates;
+  // only a well-formed `[]` is the legitimate empty case.
   const rawReceipts = storage.listReceipts();
   const ledger = new FileSystemReceiptLedger({ storage });
   const session = createReplaySession(
@@ -227,14 +226,12 @@ export function openStateDir(
 }
 
 /**
- * Chain-verify ONE node against the RAW on-disk receipts (D8/bug#6). Groups the
- * as-persisted receipts (original `content_hash` bytes) by node in append order
- * and runs the SDK's {@link verifyReceiptChain}, which recomputes each receipt's
- * hash over its canonical payload and rejects a stale on-disk `content_hash` (a
- * tampered `node`/fingerprint field). This is the SAME check the SDK's
- * `verifyReceipt`/`verifyReceiptChain` apply — so a tamper the SDK catches can no
- * longer read green here. Falls back to the SDK ledger's `verifyNodeChain` only
- * when the raw trail is unavailable (it never should be for a real state-dir).
+ * Chain-verify ONE node against the RAW on-disk receipts — NOT the re-stamped
+ * ledger (see {@link OpenedStateDir.rawReceipts} for why). Groups the
+ * as-persisted receipts by node in append order and runs the SDK's
+ * {@link verifyReceiptChain}. Falls back to the SDK ledger's `verifyNodeChain`
+ * only when the raw trail is unavailable (it never should be for a real
+ * state-dir).
  */
 export function verifyNodeChainRaw(
   opened: OpenedStateDir,
@@ -317,7 +314,7 @@ export function readLabels(stateDir: string): Record<string, string> {
 /**
  * Read `<state-dir>/compile/topology.json`, or `null` if absent.
  *
- * Tolerates BOTH on-disk shapes (D7 / synthesis bug#3):
+ * Tolerates BOTH on-disk shapes:
  *   - FLAT — `{ nodes, edges, entry_points, acyclic }` (the `TopologyWorldModel`
  *     itself; the committed devtools fixtures are written this way).
  *   - NESTED ENVELOPE — `{ contract_fingerprints, topology: { nodes, edges,
@@ -341,7 +338,7 @@ export function readTopology(stateDir: string): TopologyWorldModel | null {
 
 /**
  * Normalize a parsed `topology.json` value to a `TopologyWorldModel`, unwrapping
- * the CLI's `{ topology: … }` envelope when present (D7). Returns `null` for a
+ * the CLI's `{ topology: … }` envelope when present. Returns `null` for a
  * value that carries no readable `nodes` array in either position — the caller
  * treats that as "no saved topology" (node-only fallback), never a throw.
  */
@@ -733,14 +730,14 @@ export interface DescribeOptions {
    * Whether this is a SHIPPED sample ledger (e.g. invoked via `--example`). When
    * true, `--describe` prints a one-line "synthetic sample ledger — token counts
    * are illustrative, not a bill" banner so a show-me reader does not misread the
-   * round token figures as a real spend (D7). Defaults to `false`.
+   * round token figures as a real spend. Defaults to `false`.
    */
   readonly synthetic?: boolean;
 }
 
 /**
  * The result of {@link describeStateDir}: the rendered text plus the two signals
- * the CLI maps to an exit code (D8/bug#6). `chainOk === false` (a detected
+ * the CLI maps to an exit code. `chainOk === false` (a detected
  * tamper / broken chain) and a true read error are the only non-zero cases; an
  * empty-but-well-formed ledger is `empty: true, chainOk: true` and exits 0.
  */
@@ -756,13 +753,13 @@ export interface DescribeResult {
   /**
    * Whether the ledger is the legitimate compile-only / first-run empty case
    * (zero receipts). The CLI prints the empty-state guidance and exits 0 — an
-   * empty ledger is NOT an error (D8). A true read error never reaches here:
+   * empty ledger is NOT an error. A true read error never reaches here:
    * {@link openStateDir} throws on a corrupt trail before describe runs.
    */
   readonly empty: boolean;
   /**
    * The SAME numbers the human `--describe` text shows, in a machine-readable
-   * shape — what `reactor-devtools --describe --json` emits (D8). A CI/agent
+   * shape — what `reactor-devtools --describe --json` emits. A CI/agent
    * consumer parses THIS instead of scraping the text. Every field here is a
    * surfacing of a number {@link describeStateDir} already computed for the text
    * (the cost rollup is the SDK's `session.costRollup`; the chain-verify mirrors
@@ -818,7 +815,7 @@ export interface DescribeFrame {
 
 /**
  * The machine-readable mirror of the human `--describe` report — emitted by
- * `reactor-devtools --describe --json` (D8). It surfaces the SAME data the text
+ * `reactor-devtools --describe --json`. It surfaces the SAME data the text
  * shows: the state-dir, a topology summary, the disposition + surprise-cause
  * totals, the cost rollup keyed by `surprise_cause` (`bySurpriseCause`, the noun
  * the README documents and the human line uses — fresh/reused token counts plus
@@ -893,7 +890,7 @@ function labelFor(
  *   - exit 0 on a clean OR legitimately-empty (compile-only / first-run) ledger,
  *   - exit non-zero on a detected tamper / broken chain (`chainOk === false`).
  * A TRUE error (corrupt/unreadable trail) never reaches here — `openStateDir`
- * throws first, which the CLI surfaces as a non-zero failure (D8).
+ * throws first, which the CLI surfaces as a non-zero failure.
  */
 export function describeStateDir(
   opened: OpenedStateDir,
@@ -908,7 +905,7 @@ export function describeStateDir(
 
   // ---- header ----
   lines.push(`reactor-devtools --describe`);
-  // D7: when describing a shipped sample ledger, flag the token figures as
+  // When describing a shipped sample ledger, flag the token figures as
   // illustrative so they are never misread as a real bill.
   if (options.synthetic) {
     lines.push(
@@ -932,7 +929,7 @@ export function describeStateDir(
     acyclic: snapshot.acyclic,
   } as const;
 
-  // ---- EMPTY LEDGER (D8): the compile-only / first-run state is LEGITIMATE ----
+  // ---- EMPTY LEDGER: the compile-only / first-run state is LEGITIMATE ----
   // A topology may be present (the dir was compiled) but no reactor has run yet,
   // so `receipts.json = []`. Before the guard, the per-frame/per-node walks below
   // were fine on `[]`, but the whole report read as a confusing "nothing here";
@@ -996,7 +993,7 @@ export function describeStateDir(
   lines.push(
     `  dispositions rendered=${status.rendered} · skipped=${status.skipped} · failed=${status.failed}`,
   );
-  // D3/bug#3: the human line uses `surprise-cause` to match the JSON surface
+  // The human line uses `surprise-cause` to match the JSON surface
   // (`bySurpriseCause`), the README, and the post — all one noun. `wake-cause`
   // is footnoted as the synonym so a reader who knew the old label is not lost.
   lines.push(
@@ -1047,13 +1044,10 @@ export function describeStateDir(
   const order = snapshot.hasTopology
     ? snapshot.nodes.map((n) => n.id)
     : [...perNode.keys()];
-  // Chain-verify against the RAW on-disk receipts (D8/bug#6) — NOT the re-stamped
-  // session ledger, which heals tampers. `verifyNodeChainRaw` runs the SDK's
-  // `verifyReceiptChain`/`verifyReceipt` (recompute content_hash vs the canonical
-  // payload, compare to the on-disk hash), so an edited `node`/fingerprint with a
-  // stale `content_hash` shows `chain✗` and flips `chainOk` to false.
+  // Chain-verify against the RAW on-disk receipts (see OpenedStateDir.rawReceipts),
+  // NOT the re-stamped session ledger which heals tampers.
   const chainErrors: string[] = [];
-  // The structured per-node rows for the JSON surface (D8) — filled in the SAME
+  // The structured per-node rows for the JSON surface — filled in the SAME
   // walk that prints the human PER-NODE block, so they never drift.
   const nodeData: DescribeNode[] = [];
   for (const id of order) {
@@ -1086,7 +1080,7 @@ export function describeStateDir(
   // just those in `order` (the topology / per-frame node set). A tamper that
   // edits a `node` field invents a phantom node that is NOT in the topology — its
   // broken singleton chain must still be caught, so we never miss a tamper just
-  // because the tampered node isn't a drawn graph node (bug#6).
+  // because the tampered node isn't a drawn graph node.
   const verified = new Set(order);
   const rawNodes = new Set<string>();
   for (const raw of opened.rawReceipts ?? []) {
@@ -1102,12 +1096,11 @@ export function describeStateDir(
       chainErrors.push(
         `  ${labelFor(snapshot, id, useLabels)} (off-topology): ${chain.errors.join("; ")}`,
       );
-      // bug#11: the offending/off-topology node must ALSO show a per-node line
-      // with a flipped `chain✗` glyph, so the PER-NODE view agrees with the
-      // global `CHAIN-VERIFY FAILED` verdict (before, a tampered `node` field
-      // invented a phantom node that only surfaced in the global error list — its
-      // per-node row was missing, so the glyph never flipped for it). Count its
-      // raw receipts so the row's r/s/f/fresh reflect the as-persisted trail.
+      // The off-topology node must ALSO show a per-node line with a flipped
+      // `chain✗` glyph, so the PER-NODE view agrees with the global
+      // `CHAIN-VERIFY FAILED` verdict (a tampered `node` field invents a phantom
+      // node that would otherwise only surface in the global error list). Count
+      // its raw receipts so the row's r/s/f/fresh reflect the as-persisted trail.
       const tally = { rendered: 0, skipped: 0, failed: 0, fresh: 0 };
       for (const raw of opened.rawReceipts ?? []) {
         if (raw === null || typeof raw !== "object") continue;

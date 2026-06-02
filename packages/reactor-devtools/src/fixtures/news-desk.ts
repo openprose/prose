@@ -42,7 +42,6 @@
 // Same generator ⇒ byte-identical state-dir ⇒ the devtools replays the same
 // animation every time.
 
-import { createHash } from "node:crypto";
 import { mkdirSync, writeFileSync, rmSync, existsSync } from "node:fs";
 import { join } from "node:path";
 
@@ -73,6 +72,8 @@ import {
 
 import type { ReconcilerTopology } from "@openprose/reactor/sdk";
 import type { RenderContext, RenderProduct } from "@openprose/reactor/sdk";
+
+import { materialFingerprint, readJson } from "./_fixture-shared";
 
 // ---------------------------------------------------------------------------
 // Node identities (the labels the SPA shows come from the labels map below; the
@@ -153,33 +154,6 @@ const LABELS: Record<string, string> = {
 };
 
 // ---------------------------------------------------------------------------
-// Deterministic fingerprint of a structured sub-value (own facet tokens). A
-// facet token moves iff its projected sub-value moves.
-// ---------------------------------------------------------------------------
-
-function materialFingerprint(value: unknown): Fingerprint {
-  return `sha256:${createHash("sha256").update(stableStringify(value)).digest("hex")}`;
-}
-
-function stableStringify(value: unknown): string {
-  if (value === null || typeof value !== "object") {
-    return JSON.stringify(value) ?? "null";
-  }
-  if (Array.isArray(value)) {
-    return `[${value.map(stableStringify).join(",")}]`;
-  }
-  const entries = Object.keys(value as Record<string, unknown>)
-    .sort()
-    .map(
-      (k) =>
-        `${JSON.stringify(k)}:${stableStringify(
-          (value as Record<string, unknown>)[k],
-        )}`,
-    );
-  return `{${entries.join(",")}}`;
-}
-
-// ---------------------------------------------------------------------------
 // The cost model — what makes the token meter SING (the cost-meter hero shot)
 // ---------------------------------------------------------------------------
 //
@@ -248,22 +222,6 @@ function seedInbox(): FeedInbox {
 // SAME story on a second wire normalizes to a BYTE-IDENTICAL payload.
 function canonicalStory(item: WireItem): { story: StoryId; lede: string } {
   return { story: item.story, lede: item.lede };
-}
-
-// ---------------------------------------------------------------------------
-// Reading upstream truth by reference (what a fake render does)
-// ---------------------------------------------------------------------------
-
-function readJson<T = Record<string, unknown>>(
-  store: WorldModelStore,
-  node: string,
-  path = "truth.json",
-): T | null {
-  const read = store.read(node, "published");
-  if (read.ref.version === null) return null;
-  const bytes = read.files[path];
-  if (bytes === undefined) return null;
-  return JSON.parse(readTextFile(bytes)) as T;
 }
 
 function readTruth(fm: WorldModelFiles): Record<string, unknown> {
