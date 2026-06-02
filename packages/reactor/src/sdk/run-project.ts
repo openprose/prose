@@ -62,10 +62,12 @@ import type {
 } from "../world-model";
 import { FileSystemWorldModelStore } from "../world-model/fs-store";
 import type {
-  ReactorClockAdapter,
-  ReactorStorageAdapter,
+  ClockAdapter,
+  StorageAdapter,
 } from "../adapters/types";
+import type { Substrate } from "../adapters/substrate";
 import { createReactor } from "./create-reactor";
+import type { MutableReceiptLedger } from "./mounted-dag";
 import type { Reactor } from "./reactor-handle";
 import {
   compiledStoreCanonicalizer,
@@ -340,13 +342,25 @@ export interface RunProjectRender {
 export interface RunProjectInput {
   /** The output of {@link compileProject}. */
   readonly compiled: CompiledProject;
-  /** The durable substrate (clock + storage + optional world-model store). */
-  readonly adapters: {
-    readonly clock: ReactorClockAdapter;
-    readonly storage: ReactorStorageAdapter;
+  /**
+   * The blessed persistence primitive (clock + storage + world-model + ledger).
+   * Supply a whole {@link Substrate} (`fileSystemSubstrate` / `inMemorySubstrate`)
+   * or a `Partial<Substrate>`; missing pieces default. Prefer this over
+   * {@link RunProjectInput.adapters}.
+   */
+  readonly substrate?: Partial<Substrate>;
+  /**
+   * The durable substrate (clock + storage + optional world-model store +
+   * optional ledger). The à-la-carte form retained for back-compat;
+   * {@link RunProjectInput.substrate} is the blessed superset.
+   */
+  readonly adapters?: {
+    readonly clock: ClockAdapter;
+    readonly storage: StorageAdapter;
     readonly worldModel?: WorldModelStore;
+    readonly ledger?: MutableReceiptLedger;
   };
-  /** The world-model directory (when `adapters.worldModel` is defaulted). */
+  /** The world-model directory (when the world-model store is defaulted). */
   readonly directory?: string;
   /** The render wiring. */
   readonly render: RunProjectRender;
@@ -371,13 +385,29 @@ export interface RunProjectResult {
 export async function runProject(
   input: RunProjectInput,
 ): Promise<RunProjectResult> {
-  const { compiled, adapters, render } = input;
+  const { compiled, render } = input;
+
+  // Merge the blessed `substrate` with the back-compat à-la-carte `adapters`;
+  // `adapters` fields win when both supply the same key. `clock` + `storage` are
+  // required (one of the two sources must provide each).
+  const substrate = input.substrate ?? {};
+  const adapters = input.adapters;
+  const clock = adapters?.clock ?? substrate.clock;
+  const storage = adapters?.storage ?? substrate.storage;
+  if (clock === undefined || storage === undefined) {
+    throw new TypeError(
+      "runProject requires a clock + storage (via substrate or adapters)",
+    );
+  }
 
   // The store the render writes to MUST be the store the reactor commits to, so
   // the render's workspace write is visible to the harness harvest. When the
   // caller injects a store, use it; otherwise default to the FS store over
   // `directory` (constructed here so the render and reactor share the instance).
   const store = resolveStore(input);
+  // A supplied ledger (substrate or adapters) is the explicit opt-out; otherwise
+  // `createReactor` derives the durable ledger over `storage` (restart-survival).
+  const ledger = adapters?.ledger ?? substrate.ledger;
 
   const contractFor = render.contractFor ?? defaultContractFor(compiled);
   const projectTruthFor =
@@ -439,9 +469,10 @@ export async function runProject(
 
   const reactor = createReactor({
     adapters: {
-      clock: adapters.clock,
-      storage: adapters.storage,
+      clock,
+      storage,
       worldModel: store,
+      ...(ledger !== undefined ? { ledger } : {}),
     },
     topology: compiled.reconcilerTopology,
     asyncMounts,
@@ -555,8 +586,10 @@ function isPerNodeOptions(
 }
 
 function resolveStore(input: RunProjectInput): WorldModelStore {
-  if (input.adapters.worldModel !== undefined) {
-    return input.adapters.worldModel;
+  // `adapters.worldModel` wins (back-compat override), then `substrate.worldModel`.
+  const worldModel = input.adapters?.worldModel ?? input.substrate?.worldModel;
+  if (worldModel !== undefined) {
+    return worldModel;
   }
   // No injected store: defer to createReactor's defaulting by constructing the
   // SAME default the assembler would. We construct it HERE so the render shares

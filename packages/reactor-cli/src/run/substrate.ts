@@ -20,13 +20,7 @@
 
 import * as path from 'path';
 
-import {
-  createFileSystemStorageAdapter,
-  createSystemClockAdapter,
-} from '@openprose/reactor';
-import { FileSystemWorldModelStore } from '@openprose/reactor/adapters';
-
-import type { RunAdapters } from './load-run-project';
+import { fileSystemSubstrate, type Substrate } from '@openprose/reactor';
 
 /**
  * The directory holding the canonical flat `receipts.json` — the state-dir root
@@ -44,17 +38,16 @@ export function worldModelsDir(stateDir: string): string {
 }
 
 /**
- * Build the DURABLE run substrate for `run`, `serve`, and `trigger`: a system
- * clock, a filesystem storage adapter (the receipt ledger's append-only trail)
- * as `<state-dir>/receipts.json`, and a filesystem world-model store under
- * `<state-dir>/world-models`. Both land directly under the state-dir root so a
- * restart re-opens the SAME durable trail + truth (the boot sweep memo-skips)
- * and `reactor-devtools <state-dir>` replays the run that produced them.
+ * Build the DURABLE run substrate for `run`, `serve`, and `trigger`. This is the
+ * SDK's one blessed persistence primitive: `fileSystemSubstrate({ directory })`
+ * builds the system clock, the filesystem storage adapter (the receipt trail at
+ * `<state-dir>/receipts.json`), the durable ledger RE-DERIVED from that storage
+ * (restart-survival — the boot sweep memo-skips), and the filesystem world-model
+ * store under `<state-dir>/world-models`. The layout matches {@link receiptsDir}
+ * /{@link worldModelsDir} exactly, so the read path (`observe/state-view`) and
+ * `reactor-devtools <state-dir>` re-open the SAME durable trail + truth this
+ * write path produced.
  */
-export function buildDurableSubstrate(stateDir: string): RunAdapters {
-  return {
-    clock: createSystemClockAdapter(),
-    storage: createFileSystemStorageAdapter({ directory: receiptsDir(stateDir) }),
-    worldModel: new FileSystemWorldModelStore({ directory: worldModelsDir(stateDir) }),
-  };
+export function buildDurableSubstrate(stateDir: string): Substrate {
+  return fileSystemSubstrate({ directory: receiptsDir(stateDir) });
 }

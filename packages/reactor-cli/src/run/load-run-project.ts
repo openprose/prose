@@ -38,8 +38,15 @@ export type ReactorHandle = Reactor;
 // against its real `RunProjectInput['adapters']` / `RunProjectRender` types, so
 // a field the SDK adds (or renames) is a CLI compile error, not a silent drift.
 
-/** The substrate the run/serve path injects (clock + storage + world-model). */
-export type RunAdapters = RunProjectInput['adapters'];
+/**
+ * The substrate the run/serve path injects (clock + storage + world-model +
+ * optional ledger). The blessed durable form is the SDK's `Substrate`
+ * (`buildDurableSubstrate` → `fileSystemSubstrate`); the test seam injects a
+ * partial `{ clock, storage, worldModel }`. `NonNullable` strips the `| undefined`
+ * the SDK's now-optional `adapters` field carries (the SDK accepts EITHER
+ * `substrate` or `adapters`).
+ */
+export type RunAdapters = NonNullable<RunProjectInput['adapters']>;
 
 /** The render wiring handed to `runProject` (the SDK `RunProjectRender`). */
 export type RunRender = RunProjectRender;

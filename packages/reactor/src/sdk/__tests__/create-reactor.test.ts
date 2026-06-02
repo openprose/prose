@@ -19,6 +19,7 @@ import {
 import { FileSystemWorldModelStore } from "../../world-model/fs-store";
 import { createFileSystemStorageAdapter } from "../../adapters/storage-fs";
 import { createSystemClockAdapter } from "../../adapters/clock-system";
+import { fileSystemSubstrate, inMemorySubstrate } from "../../adapters/substrate";
 import { type ReconcilerTopology } from "../../reactor";
 import { createReactor } from "../create-reactor";
 import { type MountedRender } from "../mounted-dag";
@@ -316,4 +317,124 @@ test("boot() drives the same cold-miss sweep through the async path", async () =
     rmSync(d.wm, { recursive: true, force: true });
     rmSync(d.storage, { recursive: true, force: true });
   }
+});
+
+// ---------------------------------------------------------------------------
+// The one Substrate persistence primitive (substrate.ts) — `createReactor` over
+// `{ substrate }`, and the restart-survival derivation baked into the factory.
+// ---------------------------------------------------------------------------
+
+test("createReactor over { substrate: fileSystemSubstrate(...) } boots + commits", () => {
+  const dir = mkdtempSync(join(tmpdir(), "opreactor-sub-"));
+  try {
+    const pCalls = { n: 0 };
+    const sCalls = { n: 0 };
+    const reactor = createReactor({
+      substrate: fileSystemSubstrate({ directory: dir }),
+      topology: topology(),
+      mounts: {
+        [PRODUCER]: { render: countingProducer(() => "active", pCalls), canonicalizer: statusCanon },
+        [SUBSCRIBER]: { render: subscriber(sCalls), canonicalizer: statusCanon },
+      },
+    });
+
+    const results = reactor.sync.boot();
+    equal(results.find((r) => r.node === PRODUCER)?.disposition, "rendered");
+    equal(results.find((r) => r.node === SUBSCRIBER)?.disposition, "rendered");
+    equal(pCalls.n, 1);
+    equal(sCalls.n, 1);
+    deepEqual(reactor.store.publishedFingerprints(PRODUCER), {
+      [ATOMIC_FACET]: asFingerprint("status:active"),
+    });
+    ok(reactor.ledger.all().length >= 2);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("RESTART-SURVIVAL via fileSystemSubstrate: a second substrate over the same directory boots to all-skips", () => {
+  const dir = mkdtempSync(join(tmpdir(), "opreactor-sub-restart-"));
+  try {
+    // process 1: boot once over a fresh durable substrate.
+    const p1 = { n: 0 };
+    const s1 = { n: 0 };
+    const first = createReactor({
+      substrate: fileSystemSubstrate({ directory: dir }),
+      topology: topology(),
+      mounts: {
+        [PRODUCER]: { render: countingProducer(() => "active", p1), canonicalizer: statusCanon },
+        [SUBSCRIBER]: { render: subscriber(s1), canonicalizer: statusCanon },
+      },
+    });
+    first.sync.boot();
+    equal(p1.n, 1);
+    equal(s1.n, 1);
+    const fpBefore = first.store.publishedFingerprints(PRODUCER);
+    const receiptsBefore = first.ledger.all().length;
+
+    // process 2: a BRAND-NEW substrate over the SAME directory. The durable
+    // ledger `fileSystemSubstrate` derives from the storage re-opens the prior
+    // memory, so the boot sweep memo-SKIPS — the factory bakes in the
+    // storage→ledger restart-survival derivation (REHOME-MAP invariant #1).
+    const p2 = { n: 0 };
+    const s2 = { n: 0 };
+    const second = createReactor({
+      substrate: fileSystemSubstrate({ directory: dir }),
+      topology: topology(),
+      mounts: {
+        [PRODUCER]: { render: countingProducer(() => "active", p2), canonicalizer: statusCanon },
+        [SUBSCRIBER]: { render: subscriber(s2), canonicalizer: statusCanon },
+      },
+    });
+    const bootResults = second.sync.boot();
+
+    equal(p2.n, 0);
+    equal(s2.n, 0);
+    equal(bootResults.find((r) => r.node === PRODUCER)?.disposition, "skipped");
+    equal(bootResults.find((r) => r.node === SUBSCRIBER), undefined);
+    deepEqual(second.store.publishedFingerprints(PRODUCER), fpBefore);
+    equal(second.ledger.all().length, receiptsBefore + 1);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("the storage-only spread idiom overrides one substrate field", () => {
+  const dir = mkdtempSync(join(tmpdir(), "opreactor-sub-spread-"));
+  try {
+    const overrideStorage = createFileSystemStorageAdapter({ directory: dir });
+    const reactor = createReactor({
+      // `{ ...fileSystemSubstrate(...), storage }` — the blessed override idiom.
+      substrate: { ...inMemorySubstrate(), storage: overrideStorage },
+      topology: topology(),
+      mounts: {
+        [PRODUCER]: { render: countingProducer(() => "active", { n: 0 }), canonicalizer: statusCanon },
+        [SUBSCRIBER]: { render: subscriber({ n: 0 }), canonicalizer: statusCanon },
+      },
+    });
+    reactor.sync.boot();
+    // The spread carries inMemorySubstrate's already-derived ledger (it writes to
+    // its own in-memory storage); overriding only `storage` does NOT re-derive the
+    // ledger — re-deriving over a swapped storage is the explicit `{ ...sub,
+    // storage, ledger }` form. The point under test is that the spread compiles +
+    // the override field takes effect (no field is silently dropped).
+    ok(reactor.ledger.all().length >= 2);
+    equal(overrideStorage.listReceipts().length, 0);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("inMemorySubstrate is ephemeral: a fresh one starts empty", () => {
+  const reactor = createReactor({
+    substrate: inMemorySubstrate(),
+    topology: topology(),
+    mounts: {
+      [PRODUCER]: { render: countingProducer(() => "active", { n: 0 }), canonicalizer: statusCanon },
+      [SUBSCRIBER]: { render: subscriber({ n: 0 }), canonicalizer: statusCanon },
+    },
+  });
+  equal(reactor.ledger.all().length, 0);
+  const results = reactor.sync.boot();
+  equal(results.find((r) => r.node === PRODUCER)?.disposition, "rendered");
 });

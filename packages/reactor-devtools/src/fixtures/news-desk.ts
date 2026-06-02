@@ -47,7 +47,7 @@ import { join } from "node:path";
 
 import {
   mountDag,
-  createFileSystemStorageAdapter,
+  fileSystemSubstrate,
   files,
   jsonFile,
   ATOMIC_FACET,
@@ -59,8 +59,6 @@ import {
 } from "@openprose/reactor";
 
 import {
-  FileSystemWorldModelStore,
-  FileSystemReceiptLedger,
   readTextFile,
   fingerprintArtifact,
   type WorldModelStore,
@@ -571,10 +569,13 @@ export function generateNewsDeskFixture(opts: GenerateOptions): GenerateResult {
   }
   mkdirSync(stateDir, { recursive: true });
 
-  const worldModelDir = join(stateDir, "world-models");
-  const store = new FileSystemWorldModelStore({ directory: worldModelDir });
-  const storage = createFileSystemStorageAdapter({ directory: stateDir });
-  const ledger = new FileSystemReceiptLedger({ storage });
+  // The one Substrate primitive: storage at `<stateDir>/receipts.json`, the
+  // world-model store under `<stateDir>/world-models`, and the durable ledger
+  // re-derived from that storage — one blessed factory for the split this
+  // fixture wired by hand before.
+  const { worldModel: store, ledger } = fileSystemSubstrate({
+    directory: stateDir,
+  });
 
   const deps: Deps = { store };
 

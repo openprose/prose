@@ -40,10 +40,12 @@ import {
 } from "../reactor";
 import type { WorldModelStore } from "../world-model";
 import { FileSystemWorldModelStore } from "../world-model/fs-store";
-import type { ReactorClockAdapter, ReactorStorageAdapter } from "../adapters/types";
+import type { ClockAdapter, StorageAdapter } from "../adapters/types";
+import type { Substrate } from "../adapters/substrate";
 import {
   mountDag,
   type AsyncNodeMount,
+  type MutableReceiptLedger,
   type NodeMount,
 } from "./mounted-dag";
 import {
@@ -61,24 +63,45 @@ import { assembleReactor, type Reactor } from "./reactor-handle";
  */
 export interface ReactorRuntimeAdapters {
   /** The only time source (architecture.md §5.3). */
-  readonly clock: ReactorClockAdapter;
+  readonly clock: ClockAdapter;
   /**
    * The durable storage adapter the receipt ledger appends through and
    * re-derives from at boot (architecture.md §5.1 / §8). In production this is
    * the filesystem `storage-fs` adapter.
    */
-  readonly storage: ReactorStorageAdapter;
+  readonly storage: StorageAdapter;
   /**
    * The world-model store. Defaults to a fresh durable
    * `FileSystemWorldModelStore` over {@link CreateReactorInput.directory} when
    * omitted; inject an explicit store (e.g. in-memory) for tests.
    */
   readonly worldModel?: WorldModelStore;
+  /**
+   * The receipt ledger. Defaults to the durable ledger re-derived from
+   * {@link storage} (the restart-survival derivation). Supply a divergent ledger
+   * (e.g. in-memory alongside durable storage) as the explicit opt-out.
+   */
+  readonly ledger?: MutableReceiptLedger;
 }
 
 export interface CreateReactorInput {
-  /** The injected durable substrate (clock + storage + optional world-model store). */
-  readonly adapters: ReactorRuntimeAdapters;
+  /**
+   * The blessed persistence primitive (clock + storage + world-model + ledger).
+   * Supply the whole {@link Substrate} (`fileSystemSubstrate({ directory })` /
+   * `inMemorySubstrate()`) or a `Partial<Substrate>` — missing pieces default
+   * (in-memory storage/world-model; the storage-derived durable ledger; the
+   * system clock). Prefer this over {@link CreateReactorInput.adapters}; the two
+   * are merged, with {@link CreateReactorInput.adapters} fields winning when both
+   * are given (back-compat).
+   */
+  readonly substrate?: Partial<Substrate>;
+  /**
+   * The injected durable substrate (clock + storage + optional world-model
+   * store + optional ledger). The à-la-carte form retained for back-compat;
+   * {@link CreateReactorInput.substrate} is the blessed superset. Optional iff a
+   * {@link CreateReactorInput.substrate} supplies `clock` + `storage`.
+   */
+  readonly adapters?: ReactorRuntimeAdapters;
   /** The compiled topology (Forme's output) + per-node contract fingerprints. */
   readonly topology: ReconcilerTopology;
   /** The SYNC render body per node identity (the test/fake path). */
@@ -121,15 +144,40 @@ export type AssembledReactor = Reactor;
  * memo-skips the unchanged nodes instead of re-rendering them.
  */
 export function createReactor(input: CreateReactorInput): Reactor {
-  const { adapters, topology } = input;
+  const { topology } = input;
 
-  const store = adapters.worldModel ?? defaultWorldModelStore(input);
+  // Merge the blessed `substrate` with the back-compat à-la-carte `adapters`;
+  // `adapters` fields win when both supply the same key (the explicit override).
+  const substrate: Partial<Substrate> = input.substrate ?? {};
+  const adapters: Partial<ReactorRuntimeAdapters> = input.adapters ?? {};
+
+  const clock = adapters.clock ?? substrate.clock;
+  if (clock === undefined) {
+    throw new TypeError(
+      "createReactor requires a clock (via substrate.clock or adapters.clock)",
+    );
+  }
+
+  const storage = adapters.storage ?? substrate.storage;
+  if (storage === undefined) {
+    throw new TypeError(
+      "createReactor requires a storage adapter (via substrate.storage or adapters.storage)",
+    );
+  }
+
+  const store =
+    adapters.worldModel ?? substrate.worldModel ?? defaultWorldModelStore(input);
 
   // The PERSISTED receipt ledger — re-derived from the durable trail at
   // construction (fs-ledger.ts; architecture.md §8 "the ledger is the source of
   // truth"). THIS is the wiring gap-audit #10 names: the FS receipt log becomes
-  // a `ReceiptLedgerPort`/`MutableReceiptLedger`.
-  const ledger = createFileSystemReceiptLedger({ storage: adapters.storage });
+  // a `ReceiptLedgerPort`/`MutableReceiptLedger`. A supplied ledger (substrate or
+  // adapters) is the explicit opt-out; otherwise it is derived over the SAME
+  // storage so restart-survival holds (REHOME-MAP invariant #1).
+  const ledger =
+    adapters.ledger ??
+    substrate.ledger ??
+    createFileSystemReceiptLedger({ storage });
 
   const dag = mountDag({
     topology,
@@ -141,7 +189,7 @@ export function createReactor(input: CreateReactorInput): Reactor {
 
   return assembleReactor({
     dag,
-    clock: adapters.clock,
+    clock,
     topology,
     bootSeeds: bootSeeds(topology),
   });

@@ -21,12 +21,12 @@
 // below it cannot — every option is a documented desugaring.
 
 import {
-  createSystemClockAdapter,
-  createFileSystemStorageAdapter,
-  createMemoryStorageAdapter,
+  fileSystemSubstrate,
+  inMemorySubstrate,
+  type Substrate,
 } from "../adapters";
-import type { ReactorClockAdapter, ReactorStorageAdapter } from "../adapters/types";
-import { InMemoryWorldModelStore, type WorldModelStore } from "../world-model";
+import type { ClockAdapter, StorageAdapter } from "../adapters/types";
+import type { WorldModelStore } from "../world-model";
 import type { RenderOptions } from "../adapters/agent-render/passthrough";
 import type { MutableReceiptLedger } from "./mounted-dag";
 import type { NodeFreshnessReader } from "./continuity-scheduler";
@@ -44,9 +44,9 @@ import type { CompileProjectInput } from "./run-project";
  */
 export interface ReactorAdapters {
   /** The clock (the only time source). Defaults to the system clock. */
-  readonly clock?: ReactorClockAdapter;
+  readonly clock?: ClockAdapter;
   /** The durable storage adapter (the ledger's append-only trail). */
-  readonly storage?: ReactorStorageAdapter;
+  readonly storage?: StorageAdapter;
   /** The world-model store. Defaults to a fresh store over `directory`. */
   readonly worldModel?: WorldModelStore;
   /** The receipt ledger. Defaults to the storage-derived durable ledger. */
@@ -152,7 +152,7 @@ export async function reactor(
     ...(options.compile ?? {}),
   });
 
-  const adapters = resolveSubstrate(options);
+  const substrate = resolveSubstrate(options);
   const render = resolveRender(options);
 
   // `runProject` mounts + runs the boot cold-miss sweep, returning the typed
@@ -160,7 +160,7 @@ export async function reactor(
   // later explicit sweep.
   const { reactor: handle, bootResults } = await run.runProject({
     compiled,
-    adapters,
+    substrate,
     ...(options.directory !== undefined ? { directory: options.directory } : {}),
     render,
   } as never);
@@ -187,36 +187,24 @@ export async function reactor(
 // ---------------------------------------------------------------------------
 
 /**
- * Resolve the run substrate from the facade options. `runProject` requires a
- * `clock` + `storage`; the facade defaults them — the system clock, and a
- * filesystem storage adapter over `directory` (durable) or an in-memory adapter
- * (ephemeral, when `directory` is omitted). The caller's explicit adapters win.
- * The world-model store + ledger are left to `createReactor`'s own defaulting
- * (the single source of truth for the storage→ledger derivation) unless supplied.
+ * Resolve the run {@link Substrate} from the facade options. The default base is
+ * the blessed factory — `fileSystemSubstrate({ directory })` (durable) when a
+ * `directory` is set, else `inMemorySubstrate()` (ephemeral, tests/replay) — so
+ * the storage→ledger restart-survival derivation is baked in (REHOME-MAP
+ * invariant #1). The caller's explicit `adapters` fields then override piecewise
+ * (the blessed spread idiom: `{ ...fileSystemSubstrate({ directory }), storage }`).
  */
-function resolveSubstrate(options: ReactorOptions): {
-  readonly clock: ReactorClockAdapter;
-  readonly storage: ReactorStorageAdapter;
-  readonly worldModel?: WorldModelStore;
-} {
+function resolveSubstrate(options: ReactorOptions): Substrate {
   const a = options.adapters ?? {};
-  const ephemeral = options.directory === undefined;
-  const clock = a.clock ?? createSystemClockAdapter();
-  const storage =
-    a.storage ??
-    (ephemeral
-      ? createMemoryStorageAdapter()
-      : createFileSystemStorageAdapter({ directory: options.directory as string }));
-  // The world-model store: the caller's, else the FS store over `directory`
-  // (left to `createReactor`'s defaulting). In the ephemeral posture (no
-  // `directory`) there is nothing to default over, so the facade supplies an
-  // in-memory store to keep the one-call hello-world runnable without a disk path.
-  const worldModel =
-    a.worldModel ?? (ephemeral ? new InMemoryWorldModelStore() : undefined);
+  const base =
+    options.directory !== undefined
+      ? fileSystemSubstrate({ directory: options.directory })
+      : inMemorySubstrate();
   return {
-    clock,
-    storage,
-    ...(worldModel !== undefined ? { worldModel } : {}),
+    clock: a.clock ?? base.clock,
+    storage: a.storage ?? base.storage,
+    worldModel: a.worldModel ?? base.worldModel,
+    ledger: a.ledger ?? base.ledger,
   };
 }
 

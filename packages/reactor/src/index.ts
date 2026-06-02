@@ -58,7 +58,17 @@ export type {
   WakeEvent,
 } from "./reactor";
 
-// ── The durable substrate factories (the blessed persistence builders) ──────
+// ── The one Substrate persistence primitive (the blessed builders) ──────────
+// One record `{ clock, storage, worldModel, ledger }`; `fileSystemSubstrate`
+// bakes in the storage→ledger restart-survival derivation. The à-la-carte leaf
+// factories below remain for the spread-override idiom + custom wiring.
+export {
+  fileSystemSubstrate,
+  inMemorySubstrate,
+  type Substrate,
+  type FileSystemSubstrateInput,
+} from "./adapters";
+
 export {
   createFileSystemStorageAdapter,
   createMemoryStorageAdapter,
@@ -70,6 +80,12 @@ export {
 } from "./adapters/clock-system";
 
 export { createFileSystemReceiptLedger } from "./sdk/fs-ledger";
+
+// ── The substrate port short-names (the headline vocabulary) ────────────────
+export type {
+  ClockAdapter,
+  StorageAdapter,
+} from "./adapters/types";
 
 // ── Observe / replay (the read surface over a ledger) ───────────────────────
 export {

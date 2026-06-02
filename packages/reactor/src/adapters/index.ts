@@ -10,6 +10,16 @@
 
 export * from "./agent-sdk-passthrough";
 export * from "./clock-system";
+// The one Substrate persistence primitive + its two named factories (durable /
+// ephemeral). One record `{ clock, storage, worldModel, ledger }` replacing the
+// three divergent adapter bundles; `fileSystemSubstrate` bakes in the
+// storage→ledger restart-survival derivation.
+export {
+  fileSystemSubstrate,
+  inMemorySubstrate,
+  type Substrate,
+  type FileSystemSubstrateInput,
+} from "./substrate";
 export * from "./connector-poll";
 export * from "./connector-static";
 export * from "./json";

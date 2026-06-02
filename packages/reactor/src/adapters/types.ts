@@ -46,6 +46,13 @@ export interface ReactorClockAdapter {
   readonly now: () => string;
 }
 
+/**
+ * The clock port (the only time source). The short name is the headline
+ * vocabulary used by {@link Substrate}; `ReactorClockAdapter` is the deprecated
+ * `Reactor*`-prefixed original, kept reachable from `/internals` + `/adapters`.
+ */
+export type ClockAdapter = ReactorClockAdapter;
+
 // ---------------------------------------------------------------------------
 // modelGateway — render / compile-step invocation (delta-inference framing)
 // ---------------------------------------------------------------------------
@@ -219,6 +226,14 @@ export interface ReactorStorageAdapter {
   readonly readRegistry: () => ReactorRuntimeRegistrySnapshot;
   readonly writeRegistry?: (registry: ReactorRuntimeRegistrySnapshot) => void;
 }
+
+/**
+ * The storage port (the receipt ledger's durable, append-only trail). The short
+ * name is the headline vocabulary used by {@link Substrate}; `ReactorStorageAdapter`
+ * is the deprecated `Reactor*`-prefixed original, kept reachable from `/internals`
+ * + `/adapters`.
+ */
+export type StorageAdapter = ReactorStorageAdapter;
 
 export interface ReactorStorageRuntimeAdapter extends ReactorStorageAdapter {
   readonly readRegistry: () => ReactorRuntimeRegistrySnapshot;
