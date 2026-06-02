@@ -552,12 +552,14 @@ test(
           worldModel: new FileSystemWorldModelStore({ directory: d.wm }),
         },
         render: {
-          provider,
           contractFor: liveContractFor,
           projectTruthFor,
-          temperature: 0,
-          seed: 7,
-          maxTurns: 16,
+          render: {
+            provider,
+            temperature: 0,
+            seed: 7,
+            maxTurns: 16,
+          },
         },
       });
 

@@ -291,20 +291,10 @@ export interface RunProjectRender {
    * write the producer's structured truth file that `projectTruthFor` reads.
    */
   readonly buildRender?: (store: WorldModelStore) => AsyncMountedRender;
-  /** The render model provider — a fake for offline; the real one is lazy. */
-  readonly provider?: import("@openai/agents").ModelProvider;
-  /** The render model id (defaults to the agent-render default). */
-  readonly model?: string;
   /** Pre-read SKILL system prompt (offline tests pass a stub). */
   readonly skill?: string;
   /** Path to the SKILL when `skill` is not supplied. */
   readonly skillPath?: string;
-  /** Decoding temperature (defaults 0). */
-  readonly temperature?: number;
-  /** Reproducibility seed. */
-  readonly seed?: number;
-  /** Max agentic turns per render. */
-  readonly maxTurns?: number;
   /**
    * Change C — the folded render sandbox (architecture.md §5.3), passed through to
    * {@link createAgentRender}'s `sandbox` so a caller-supplied
@@ -324,20 +314,6 @@ export interface RunProjectRender {
    */
   readonly shellTimeoutMs?: number;
   /**
-   * The full `@openai/agents` escape hatch (the NAMED PRIORITY): the layered
-   * {@link RenderOptions} (Tier A sugar -> Tier B `agent`/`runConfig`/`runOptions`/
-   * `extraTools`/`instructionsSuffix`/`tracing`/`signal` passthrough -> Tier C
-   * `agentFactory`/`runnerFactory`). Spread VERBATIM onto the live
-   * {@link createAgentRender} config so a `runProject` consumer reaches every SDK
-   * knob the render does — the reserved four (`instructions`/`tools`/`outputType`/
-   * `name`) stay Omit-ed (a compile error). The flat `provider`/`model`/.../`seed`
-   * fields above win over the same keys here (they are the existing curated path;
-   * this is the ADDITIVE escape hatch beneath them — the Tier-2 nest reshape that
-   * collapses both into one `render: RenderOptions` is a separate, later step).
-   * Ignored when {@link buildRender} is supplied (the offline fake owns its body).
-   */
-  readonly renderOptions?: RenderOptions;
-  /**
    * The render-backend injection seam (§5.4) — the model session swapped wholesale
    * while the harness keeps instruction/working-dir/harvest/cost. Threaded onto the
    * live {@link createAgentRender} config as `renderBackend`, so a `runProject`
@@ -348,6 +324,19 @@ export interface RunProjectRender {
    * is supplied (the offline fake owns its whole body).
    */
   readonly renderBackend?: RenderBackend;
+  /**
+   * The render's model + full `@openai/agents` escape hatch as ONE nested
+   * {@link RenderOptions} — Tier A sugar (`provider`/`model`/`temperature`/`seed`/
+   * `maxTurns`/`signal`) -> Tier B passthrough (`agent`/`runConfig`/`runOptions`/
+   * `extraTools`/`instructionsSuffix`/`tracing`) -> Tier C
+   * (`agentFactory`/`runnerFactory`). Spread VERBATIM onto the live
+   * {@link createAgentRender} config so a `runProject` consumer reaches every SDK
+   * knob the render does — the reserved four (`instructions`/`tools`/`outputType`/
+   * `name`) stay Omit-ed (a compile error). `maxTurns` is `number | null` here, so
+   * `null` (the deliberate unbounded opt-in) is preserved end-to-end. Ignored when
+   * {@link buildRender} is supplied (the offline fake owns its own body).
+   */
+  readonly render?: RenderOptions;
 }
 
 /** Input to {@link runProject}: the compiled project + the run substrate. */
@@ -433,21 +422,14 @@ export async function runProject(
     : createAgentRender({
         store,
         contractFor,
-        // The full `@openai/agents` escape hatch FIRST (lowest precedence) so the
-        // existing flat curated fields below still win over the same keys — this
-        // is the additive passthrough beneath the curated path.
-        ...(render.renderOptions ?? {}),
-        ...(render.provider !== undefined ? { provider: render.provider } : {}),
-        ...(render.model !== undefined ? { model: render.model } : {}),
+        // The render's model + full `@openai/agents` escape hatch as ONE nested
+        // `RenderOptions` (provider/model/temperature/seed/maxTurns/signal + the
+        // Tier-B/C passthrough). Spread VERBATIM — `maxTurns: null` rides through.
+        ...(render.render ?? {}),
         ...(render.skill !== undefined ? { skill: render.skill } : {}),
         ...(render.skillPath !== undefined
           ? { skillPath: render.skillPath }
           : {}),
-        ...(render.temperature !== undefined
-          ? { temperature: render.temperature }
-          : {}),
-        ...(render.seed !== undefined ? { seed: render.seed } : {}),
-        ...(render.maxTurns !== undefined ? { maxTurns: render.maxTurns } : {}),
         // Change C: thread the caller's render sandbox + shell timeout through to
         // createAgentRender. Both are OPTIONAL and spread the same way every other
         // knob is — unset means the construction is byte-for-byte what it was today.

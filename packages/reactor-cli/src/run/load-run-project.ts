@@ -147,8 +147,9 @@ export async function callRunProject(
 
   // `input.render` IS the SDK `RunProjectRender` (no `Record<string, unknown>`
   // rebuild, no per-field copy): hand it through VERBATIM. Phase 5's `sandbox` /
-  // `shellTimeoutMs` and the curated `provider`/`model`/`temperature`/`seed`/
-  // `maxTurns` ride along as plain typed fields of that one shape.
+  // `shellTimeoutMs` ride along as plain typed fields of that one shape; the model
+  // + the full `@openai/agents` escape hatch (`provider`/`model`/`temperature`/
+  // `seed`/`maxTurns`/…) live in its nested `render: RenderOptions`.
   return runProject({
     compiled: input.compiled,
     adapters: input.adapters,
