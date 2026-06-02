@@ -36,12 +36,15 @@ import {
   Agent,
   applyDiff,
   applyPatchTool,
+  Runner,
   type AgentOutputType,
   type ApplyPatchOperation,
   type ApplyPatchResult,
   type Editor,
+  type Model,
+  type ModelProvider,
   type ModelSettings,
-  type Runner,
+  type RunConfig,
   type Shell,
   type ShellAction,
   type ShellResult,
@@ -49,6 +52,7 @@ import {
   tool,
   type RunContext,
   type Tool,
+  type TracingConfig,
 } from "@openai/agents";
 import { exec } from "node:child_process";
 import {
@@ -76,6 +80,11 @@ import {
   type WorldModelStore,
 } from "../../world-model";
 import { resolveWithinRoot, toUint8, WorkingDirEscapeError } from "./working-dir";
+import {
+  buildRunOptions,
+  resolveRunConfig,
+  type RunOptionsPassthrough,
+} from "./passthrough";
 
 const execAsync = promisify(exec);
 
@@ -971,8 +980,8 @@ function collectFiles(root: string, dir: string, out: string[]): void {
 export interface SpawnSubagentDeps {
   /** The SKILL system prompt — the sub-agent's base, exactly like the render's. */
   readonly skill: string;
-  /** The model id the sub-agent runs on (the same model as the parent render). */
-  readonly model: string;
+  /** The model the sub-agent runs on (the same model as the parent render). */
+  readonly model: string | Model;
   /**
    * A getter for the shared {@link Runner} (carrying the scoped model provider).
    * A getter (not the runner directly) so a keyless construction never forces the
@@ -994,6 +1003,31 @@ export interface SpawnSubagentDeps {
    * push the spawn tool itself onto it AFTER construction to enable recursion.
    */
   readonly subTools: readonly Tool<AgentRenderContext>[];
+  // ── The full `@openai/agents` escape hatch, inherited from the parent render ──
+  // (the SECOND swallow point: a spawned sub-agent reaches the same knobs.)
+  /**
+   * The per-run options passthrough (previousResponseId / conversationId /
+   * session / errorHandlers / …), inherited from the parent render's
+   * `RenderOptions.runOptions`. Folded UNDER the harness-owned context/maxTurns.
+   */
+  readonly runOptions?: RunOptionsPassthrough;
+  /**
+   * The runner-construction RunConfig (tracing/workflowName/…), inherited from
+   * the parent render. When supplied (with {@link getProvider}), the sub-agent
+   * runs through a runner built with this config rather than {@link getRunner}'s
+   * default, so its tracing/workflow framing matches the parent.
+   */
+  readonly runConfig?: Partial<RunConfig>;
+  /** The per-run cancellation signal, inherited from the parent render. */
+  readonly signal?: AbortSignal;
+  /** The tracing toggle/config, inherited from the parent render. */
+  readonly tracing?: boolean | TracingConfig;
+  /**
+   * A getter for the scoped model provider — used to build a runner carrying the
+   * inherited {@link runConfig}/{@link tracing} when those are set. Lazy, so a
+   * keyless construction never forces the provider into existence.
+   */
+  readonly getProvider?: () => ModelProvider;
 }
 
 /**
@@ -1074,11 +1108,38 @@ export function createSpawnSubagentTool(
       // `maxTurns` bounds the helper; on exhaustion the MaxTurnsExceededError is
       // returned as a legible tool result, never thrown out of the tool (a sub-task
       // failure must not crash the parent render).
-      try {
-        const result = await deps.getRunner().run(subAgent, subInput, {
-          context: runContext,
+      //
+      // The sub-agent inherits the parent render's full escape hatch: a runner
+      // carrying the inherited runConfig/tracing when those are set (else the
+      // shared default runner), and the inherited runOptions passthrough folded
+      // UNDER the harness-owned context/maxTurns/signal.
+      const subRunner =
+        (deps.runConfig !== undefined || deps.tracing !== undefined) &&
+        deps.getProvider !== undefined
+          ? new Runner(
+              resolveRunConfig({
+                provider: deps.getProvider(),
+                ...(deps.runConfig !== undefined
+                  ? { runConfig: deps.runConfig }
+                  : {}),
+                ...(deps.tracing !== undefined
+                  ? { tracing: deps.tracing }
+                  : {}),
+              }),
+            )
+          : deps.getRunner();
+      const subRunOptions = buildRunOptions(
+        {
+          // The RunContext INSTANCE is the sanctioned context channel — the SDK
+          // reuses it verbatim, so usage rolls up.
+          context: runContext as unknown as AgentRenderContext,
           ...(deps.maxTurns !== undefined ? { maxTurns: deps.maxTurns } : {}),
-        });
+          ...(deps.signal !== undefined ? { signal: deps.signal } : {}),
+        },
+        deps.runOptions,
+      );
+      try {
+        const result = await subRunner.run(subAgent, subInput, subRunOptions);
         const final = result.finalOutput;
         if (final === undefined || final === null) {
           return "(the sub-agent returned no output)";

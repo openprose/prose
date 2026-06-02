@@ -36,7 +36,7 @@ import {
   Agent,
   MaxTurnsExceededError,
   Runner,
-  setTracingDisabled,
+  type AgentConfiguration,
   type AgentOutputType,
   type ModelProvider,
 } from "@openai/agents";
@@ -84,12 +84,28 @@ import {
   assertSkillBundleInstalled,
   DEFAULT_SKILL_ROOT,
 } from "./skill-preflight";
+import {
+  appendInstructionsSuffix,
+  buildRunOptions,
+  composeTools,
+  mergeModelSettings,
+  resolveRunConfig,
+  type RenderOptions,
+} from "./passthrough";
 
 // ---------------------------------------------------------------------------
 // Config
 // ---------------------------------------------------------------------------
 
-export interface AgentRenderConfig {
+/**
+ * The render config: the harness-owned wiring (`store`/`contractFor` + the
+ * SKILL/workspace knobs) PLUS the full {@link RenderOptions} `@openai/agents`
+ * escape hatch (Tier A sugar → Tier B passthrough → Tier C factories). The
+ * harness owns the four reserved `Agent` fields (`instructions`/`tools`/
+ * `outputType`/`name`); `RenderOptions.agent` Omit-s them, so setting one is a
+ * COMPILE ERROR — extend via `instructionsSuffix` / `extraTools` instead.
+ */
+export interface AgentRenderConfig extends RenderOptions {
   /**
    * The world-model store — the read/write tools go through it, and the harness
    * harvests its workspace. The SAME store instance the harness commits to
@@ -101,15 +117,6 @@ export interface AgentRenderConfig {
    * a whole DAG; the slice mounts a single hand-authored node.
    */
   readonly contractFor: (node: string) => CompiledContractView;
-  /**
-   * The model provider — defaults to the scoped OpenRouter provider
-   * (provider.ts). Pass an explicit provider (e.g. a fake) for tests that must
-   * not hit the network; otherwise this resolves the OpenRouter key lazily on
-   * first render and throws if absent.
-   */
-  readonly provider?: ModelProvider;
-  /** The render model. Defaults to `google/gemini-3.5-flash`. */
-  readonly model?: string;
   /** Pre-read SKILL system prompt. Defaults to reading it once from disk. */
   readonly skill?: string;
   /** Path to the SKILL, when `skill` is not supplied. */
@@ -146,21 +153,10 @@ export interface AgentRenderConfig {
    * (300_000) — the default is UNCHANGED, the passthrough is opt-in.
    */
   readonly shellTimeoutMs?: number;
-  /** Decoding temperature. Defaults to 0 (greedy). */
-  readonly temperature?: number;
-  /** Best-effort reproducibility seed, passed through `providerData.seed`. */
-  readonly seed?: number;
-  /**
-   * Max agentic turns for one render (the SDK's `maxTurns`). A bounded session;
-   * defaults to {@link DEFAULT_MAX_TURNS} (a high explicit cap, not unbounded).
-   *
-   * Pass `null` to opt DELIBERATELY into an unbounded loop — the SDK's
-   * `maxTurns: null` bypasses the turn guard entirely (no `MaxTurnsExceededError`
-   * is ever thrown). The token `Usage → Cost` capture remains the real budget
-   * signal; turns are not themselves cost-bounded, so `null` is a runaway-spend
-   * opt-in.
-   */
-  readonly maxTurns?: number | null;
+  // `provider` / `model` / `maxTurns` / `signal` / `temperature` / `seed` and the
+  // full Tier-B/C escape hatch (`agent` / `runConfig` / `runOptions` /
+  // `extraTools` / `instructionsSuffix` / `tracing` / `agentFactory` /
+  // `runnerFactory`) are inherited from {@link RenderOptions}.
 }
 
 /**
@@ -218,12 +214,38 @@ export function createAgentRender(
 
   // Resolve the provider + runner lazily and ONCE: a keyless build/test that
   // never invokes the render never constructs them (so the OpenRouter-key throw
-  // in `createOpenRouterProvider` is only reached on a real render).
+  // in `createOpenRouterProvider` is only reached on a real render). The scoped
+  // provider is captured so the Tier-C `runnerFactory` backstop and the per-run
+  // `resolveRunConfig` (tracing) both see the SAME provider.
+  let provider: ModelProvider | undefined;
+  const getProvider = (): ModelProvider => {
+    if (provider === undefined) {
+      provider = config.provider ?? createOpenRouterProvider();
+    }
+    return provider;
+  };
   let runner: Runner | undefined;
   const getRunner = (): Runner => {
     if (runner === undefined) {
-      const provider = config.provider ?? createOpenRouterProvider();
-      runner = new Runner({ modelProvider: provider });
+      const p = getProvider();
+      if (config.runnerFactory) {
+        // Tier C: the consumer builds the Runner (and may attach RunHooks.on).
+        runner = config.runnerFactory(p);
+      } else {
+        // The runner CONSTRUCTION carries the RunConfig (tracing, workflowName,
+        // traceId/groupId/metadata, the scoped modelProvider, …). Tracing is now
+        // decided PER-RUN here (default disabled = safe egress, overridable),
+        // REPLACING the old process-global `setTracingDisabled(true)` mutation.
+        runner = new Runner(
+          resolveRunConfig({
+            provider: p,
+            ...(config.runConfig !== undefined
+              ? { runConfig: config.runConfig }
+              : {}),
+            ...(config.tracing !== undefined ? { tracing: config.tracing } : {}),
+          }),
+        );
+      }
     }
     return runner;
   };
@@ -231,12 +253,18 @@ export function createAgentRender(
   return async (
     ctx: RenderContext,
   ): Promise<RenderProduct | RenderFailure> => {
-    // The exporter would POST traces to api.openai.com — an out-of-band network
-    // side-effect. Disable before any live work (provider.ts does the same).
-    setTracingDisabled(true);
+    // NOTE: the default backend NO LONGER calls the process-global
+    // `setTracingDisabled(true)` — that stomped a consumer's
+    // `runConfig.tracingDisabled=false` and leaked across every other
+    // `@openai/agents` user in the process. Tracing is now decided PER-RUN via
+    // `resolveRunConfig` (default disabled = safe egress, but overridable through
+    // `RenderOptions.tracing` / `runConfig.tracingDisabled`).
 
     const contract = config.contractFor(ctx.node);
-    const instructions = composeInstructions(skill, ctx.node, contract, ctx);
+    const instructions = appendInstructionsSuffix(
+      composeInstructions(skill, ctx.node, contract, ctx),
+      config.instructionsSuffix,
+    );
 
     // Prepare the render's REAL per-node working directory, SEEDED with the
     // node's prior published truth (so the agent reads its prior truth through
@@ -248,17 +276,20 @@ export function createAgentRender(
       ctx.prior.files,
     );
 
-    const modelSettings = {
-      temperature,
-      ...(config.seed !== undefined
-        ? { providerData: { seed: config.seed } }
-        : {}),
-    };
+    // Merge the harness decoding sugar (temperature/seed) with the consumer's
+    // `agent.modelSettings` — consumer wins wholesale, sugar fills only unset
+    // fields (decision #3).
+    const modelSettings = mergeModelSettings(
+      { temperature, ...(config.seed !== undefined ? { seed: config.seed } : {}) },
+      config.agent?.modelSettings,
+    );
 
     // The render's full tool surface: wm_* + the cwd-rooted Codex-style tools.
     // Built once per render so the SAME set is given to the render AND offered to
-    // any sub-agent it spawns (a helper shares the parent's affordances).
-    const renderTools: Tool<AgentRenderContext>[] = [
+    // any sub-agent it spawns (a helper shares the parent's affordances). The
+    // consumer's `extraTools` CONCATENATES onto this built-in set (compose, never
+    // replace — the built-ins are always present).
+    const builtinTools: Tool<AgentRenderContext>[] = [
       ...createRenderTools(),
       // Thread the caller-supplied per-command shell timeout into the cwd-rooted
       // LocalShell. Unset → createCwdTools keeps DEFAULT_SHELL_TIMEOUT_MS, so the
@@ -270,6 +301,7 @@ export function createAgentRender(
           : undefined,
       ),
     ];
+    const renderTools = composeTools(builtinTools, config.extraTools);
 
     // The generic sub-agent primitive. The render spawns a focused helper, gets a
     // value back, leaves no node behind; the helper's token Usage rolls up into
@@ -284,24 +316,59 @@ export function createAgentRender(
       modelSettings,
       maxTurns,
       subTools: renderTools,
+      // The second swallow point: spawned sub-agents inherit the SAME per-run
+      // escape hatch (runConfig/runOptions/signal) as the parent render.
+      ...(config.runConfig !== undefined ? { runConfig: config.runConfig } : {}),
+      ...(config.runOptions !== undefined
+        ? { runOptions: config.runOptions }
+        : {}),
+      ...(config.signal !== undefined ? { signal: config.signal } : {}),
+      ...(config.tracing !== undefined ? { tracing: config.tracing } : {}),
+      getProvider,
     });
     renderTools.push(spawnSubagentTool);
 
-    const agent = new Agent<AgentRenderContext, AgentOutputType>({
+    const outputType = renderOutputSchema() as AgentOutputType;
+    // The harness-owned fields (name/instructions/tools/outputType) always merge
+    // OVER the consumer's `agent.*` base so the harvest contract can never be
+    // broken; the consumer base supplies everything else (handoffs, guardrails,
+    // mcpServers, modelSettings, prompt, toolUseBehavior, …) verbatim. The merged
+    // object is assembled once and cast at the single SDK-coupling point — the
+    // consumer's `agent.*` is a `Partial<AgentConfiguration>` over the SDK's
+    // default text-output, and our reserved fields re-pin the output/model types,
+    // so the literal would otherwise carry conflicting field types under
+    // `exactOptionalPropertyTypes`.
+    const agentOptions = {
+      // The consumer's `@openai/agents` passthrough FIRST (lowest precedence);
+      // the reserved four below always win (and are Omit-ed from the type).
+      ...((config.agent as Record<string, unknown> | undefined) ?? {}),
       name: ctx.node,
       instructions,
       model,
       modelSettings,
-      // The wm_* read/upstream/write tools, the cwd-rooted Codex-style tools (fs_*,
-      // shell_exec, apply_patch), AND the generic spawn_subagent primitive.
+      // The wm_* read/upstream/write tools, the cwd-rooted Codex-style tools
+      // (fs_*, shell_exec, apply_patch), AND the generic spawn_subagent
+      // primitive (+ any `extraTools`).
       tools: renderTools,
-      // The small done/failed signal. NO file contents ride here. The
-      // schema is built lazily as a zod object; `output-schema.ts` types its
-      // return as the SDK-independent `z.ZodTypeAny`, so we annotate it here as
-      // the SDK's `AgentOutputType` (a `ZodObject` is a valid one) at the single
-      // SDK-coupling point.
-      outputType: renderOutputSchema() as AgentOutputType,
-    });
+      // The small done/failed signal. NO file contents ride here. The schema is
+      // built lazily as a zod object; `output-schema.ts` types its return as the
+      // SDK-independent `z.ZodTypeAny`, so we annotate it as the SDK's
+      // `AgentOutputType` (a `ZodObject` is valid) at the single SDK-coupling
+      // point.
+      outputType,
+    } as unknown as AgentConfiguration<AgentRenderContext, AgentOutputType>;
+
+    const agent = config.agentFactory
+      ? config.agentFactory({
+          name: ctx.node,
+          instructions,
+          model,
+          modelSettings,
+          tools: renderTools,
+          outputType,
+          ...(config.agent !== undefined ? { agent: config.agent } : {}),
+        })
+      : new Agent<AgentRenderContext, AgentOutputType>(agentOptions);
 
     // The SHORT pointer input: the wake + WHERE prior truth lives, never the
     // truth itself. The agent reads truth by reference.
@@ -333,10 +400,21 @@ export function createAgentRender(
     // it to a `failed` signal so nothing commits. (`maxTurns: null` bypasses the
     // guard entirely, so this branch is unreachable under a deliberate opt-out.)
     try {
-      const result = await getRunner().run(agent, input, {
-        context,
-        maxTurns,
-      });
+      // The per-run options: the consumer's `runOptions` passthrough
+      // (previousResponseId / conversationId / session / errorHandlers / …)
+      // folded UNDER the harness-owned context/maxTurns/signal (which win).
+      const result = await getRunner().run(
+        agent,
+        input,
+        buildRunOptions(
+          {
+            context,
+            maxTurns,
+            ...(config.signal !== undefined ? { signal: config.signal } : {}),
+          },
+          config.runOptions,
+        ),
+      );
 
       // The agent WROTE its world-model into the REAL working DIRECTORY; HARVEST
       // that directory — a plain, deterministic `node:fs` walk, NO model call.
@@ -490,3 +568,21 @@ export {
   workingDirSegment,
   WorkingDirEscapeError,
 } from "./working-dir";
+// The full `@openai/agents` escape hatch — the layered RenderOptions seam + the
+// pure merge helpers (so a consumer building a custom backend can reuse the EXACT
+// precedence the default backend applies).
+export {
+  mergeModelSettings,
+  buildRunOptions,
+  resolveRunConfig,
+  composeTools,
+  appendInstructionsSuffix,
+} from "./passthrough";
+export type {
+  RenderOptions,
+  RenderAgentSpec,
+  AgentPassthrough,
+  RunOptionsPassthrough,
+  ReservedAgentFields,
+  ReservedRunOptionFields,
+} from "./passthrough";

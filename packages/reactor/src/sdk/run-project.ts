@@ -49,6 +49,7 @@ import { compilePostconditions } from "../postcondition";
 import {
   createAgentRender,
   type CompiledContractView,
+  type RenderOptions,
   type RenderSandboxRunner,
 } from "../adapters/agent-render";
 import type { Cost, Fingerprint } from "../shapes";
@@ -320,6 +321,20 @@ export interface RunProjectRender {
    * exactly as today. Ignored when {@link buildRender} is supplied.
    */
   readonly shellTimeoutMs?: number;
+  /**
+   * The full `@openai/agents` escape hatch (the NAMED PRIORITY): the layered
+   * {@link RenderOptions} (Tier A sugar -> Tier B `agent`/`runConfig`/`runOptions`/
+   * `extraTools`/`instructionsSuffix`/`tracing`/`signal` passthrough -> Tier C
+   * `agentFactory`/`runnerFactory`). Spread VERBATIM onto the live
+   * {@link createAgentRender} config so a `runProject` consumer reaches every SDK
+   * knob the render does — the reserved four (`instructions`/`tools`/`outputType`/
+   * `name`) stay Omit-ed (a compile error). The flat `provider`/`model`/.../`seed`
+   * fields above win over the same keys here (they are the existing curated path;
+   * this is the ADDITIVE escape hatch beneath them — the Tier-2 nest reshape that
+   * collapses both into one `render: RenderOptions` is a separate, later step).
+   * Ignored when {@link buildRender} is supplied (the offline fake owns its body).
+   */
+  readonly renderOptions?: RenderOptions;
 }
 
 /** Input to {@link runProject}: the compiled project + the run substrate. */
@@ -377,6 +392,10 @@ export async function runProject(
     : createAgentRender({
         store,
         contractFor,
+        // The full `@openai/agents` escape hatch FIRST (lowest precedence) so the
+        // existing flat curated fields below still win over the same keys — this
+        // is the additive passthrough beneath the curated path.
+        ...(render.renderOptions ?? {}),
         ...(render.provider !== undefined ? { provider: render.provider } : {}),
         ...(render.model !== undefined ? { model: render.model } : {}),
         ...(render.skill !== undefined ? { skill: render.skill } : {}),

@@ -31,9 +31,12 @@
 import {
   Agent,
   Runner,
-  setTracingDisabled,
+  type AgentConfiguration,
   type AgentOutputType,
+  type Model,
   type ModelProvider,
+  type RunConfig,
+  type TracingConfig,
 } from "@openai/agents";
 
 import type { Cost, WakeSource } from "../../shapes";
@@ -44,6 +47,12 @@ import {
 } from "../agent-render/provider";
 import { usageToCost, type RenderUsage } from "../agent-render/cost";
 import { readSkill } from "../agent-render/instructions";
+import {
+  mergeModelSettings,
+  resolveRunConfig,
+  type AgentPassthrough,
+  type RunOptionsPassthrough,
+} from "../agent-render/passthrough";
 import type { ContractSet } from "./contract-loader";
 import { renderContractSet } from "./contract-set-input";
 
@@ -83,8 +92,11 @@ export interface CompileSessionConfig {
    * otherwise this resolves the OpenRouter key lazily on first run.
    */
   readonly provider?: ModelProvider;
-  /** The model. Defaults to `google/gemini-3.5-flash`. */
-  readonly model?: string;
+  /**
+   * The model. Defaults to `google/gemini-3.5-flash`. Widened to `string | Model`
+   * so a consumer may pass a constructed `Model` instance (mirrors the render).
+   */
+  readonly model?: string | Model;
   /** Pre-read SKILL system prompt. Defaults to reading it once from disk. */
   readonly skill?: string;
   /** Path to the SKILL, when `skill` is not supplied. */
@@ -99,6 +111,28 @@ export interface CompileSessionConfig {
    * opt DELIBERATELY into an unbounded loop (the SDK bypasses the turn guard).
    */
   readonly maxTurns?: number | null;
+  // ── The `@openai/agents` escape hatch (the SAME layered seam as the render) ──
+  /**
+   * The consumer's `@openai/agents` `Agent` config, deep-merged OVER the compile
+   * session's base (consumer wins wholesale; the harness-owned `instructions`/
+   * `tools`/`outputType`/`name` are Omit-ed so misuse is a COMPILE ERROR).
+   */
+  readonly agent?: AgentPassthrough;
+  /**
+   * Runner-CONSTRUCTION config (tracing/workflowName/traceId/…). The compile
+   * session, like the render, keeps tracing DISABLED per-run by default (safe
+   * egress) — now overridable here rather than via a process-global mutation.
+   */
+  readonly runConfig?: Partial<RunConfig>;
+  /**
+   * PER-RUN options bag (previousResponseId / conversationId / session /
+   * errorHandlers / …). The harness-owned context/maxTurns/signal are Omit-ed.
+   */
+  readonly runOptions?: RunOptionsPassthrough;
+  /** Per-run cancellation. */
+  readonly signal?: AbortSignal;
+  /** Re-enable tracing with the consumer's own apiKey (default stays disabled). */
+  readonly tracing?: boolean | TracingConfig;
 }
 
 /**
@@ -133,8 +167,11 @@ export async function runCompileSession(
   contracts: ContractSet,
   config: CompileSessionConfig,
 ): Promise<CompileSessionResult> {
-  // The exporter would POST traces to api.openai.com; disable before live work.
-  setTracingDisabled(true);
+  // NOTE: tracing is NO LONGER disabled via the process-global
+  // `setTracingDisabled(true)` mutation (it leaked across every other
+  // `@openai/agents` user in the process). It is decided PER-RUN below via
+  // `resolveRunConfig` — default disabled (safe egress), overridable through
+  // `config.tracing` / `config.runConfig.tracingDisabled`.
 
   const skill = config.skill ?? readSkill(config.skillPath);
   const model = config.model ?? DEFAULT_RENDER_MODEL;
@@ -146,24 +183,46 @@ export async function runCompileSession(
 
   const instructions = composeCompileInstructions(skill, config.task);
 
-  const agent = new Agent({
+  // Merge the harness decoding sugar with the consumer's agent.modelSettings
+  // (consumer wins wholesale; sugar fills only unset fields — decision #3).
+  const modelSettings = mergeModelSettings(
+    { temperature, ...(config.seed !== undefined ? { seed: config.seed } : {}) },
+    config.agent?.modelSettings,
+  );
+
+  // The consumer's `agent.*` passthrough FIRST (lowest precedence); the reserved
+  // four below always win. Assembled once + cast at the single SDK-coupling point
+  // — the passthrough is a `Partial<AgentConfiguration>` over the SDK default
+  // text-output while our `outputType` re-pins it, so the literal would otherwise
+  // carry conflicting field types under `exactOptionalPropertyTypes`.
+  const agentOptions = {
+    ...((config.agent as Record<string, unknown> | undefined) ?? {}),
     name: `compile:${config.step}`,
     instructions,
     model,
-    modelSettings: {
-      temperature,
-      ...(config.seed !== undefined
-        ? { providerData: { seed: config.seed } }
-        : {}),
-    },
+    modelSettings,
     outputType: config.outputType,
-  });
+  } as unknown as AgentConfiguration;
+  const agent = new Agent(agentOptions);
 
   const input = renderContractSet(contracts);
 
   const provider = config.provider ?? createOpenRouterProvider();
-  const runner = new Runner({ modelProvider: provider });
-  const result = await runner.run(agent, input, { maxTurns });
+  const runner = new Runner(
+    resolveRunConfig({
+      provider,
+      ...(config.runConfig !== undefined ? { runConfig: config.runConfig } : {}),
+      ...(config.tracing !== undefined ? { tracing: config.tracing } : {}),
+    }),
+  );
+  // The compile session has no `AgentRenderContext` channel (no node/store/
+  // workspace), so the per-run options are assembled directly: the consumer's
+  // `runOptions` passthrough folded UNDER the harness-owned maxTurns/signal.
+  const result = await runner.run(agent, input, {
+    ...((config.runOptions as Record<string, unknown> | undefined) ?? {}),
+    maxTurns,
+    ...(config.signal !== undefined ? { signal: config.signal } : {}),
+  });
 
   const output = result.finalOutput;
   if (output === undefined || output === null) {
