@@ -12,7 +12,7 @@
 
 import { ATOMIC_FACET } from '@openprose/reactor';
 
-import { rollupCost, type CostRollup, type CostReceipt } from '../run/cost';
+import { rollupCost, type CostRollup } from '../run/cost';
 import type { StateView, LedgerReceiptView, ChainResult } from './state-view';
 
 /**
@@ -54,7 +54,7 @@ export interface StatusProjection {
  * it summarizes every receipt.
  */
 export function projectCost(view: StateView, node?: string): CostRollup {
-  const receipts = toCostReceipts(view.receipts());
+  const receipts = view.receipts();
   return rollupCost(
     node === undefined ? receipts : receipts.filter((r) => r.node === node),
   );
@@ -179,7 +179,7 @@ export function projectInspect(view: StateView, node: string): InspectProjection
     publishedFingerprints: safePublishedFingerprints(view, node),
     lastReceipt: last ?? null,
     receipts: nodeReceipts.length,
-    cost: rollupCost(toCostReceipts(nodeReceipts)),
+    cost: rollupCost(nodeReceipts),
     chain: view.verifyNodeChain(node),
   };
 }
@@ -301,7 +301,7 @@ export function projectReceiptsAudit(view: StateView): ReceiptsAudit {
   const nodes: NodeChainAudit[] = nodeIds.map((node) => {
     const nodeReceipts = view.receiptsForNode(node);
     const chain = view.verifyNodeChain(node);
-    const cost = rollupCost(toCostReceipts(nodeReceipts));
+    const cost = rollupCost(nodeReceipts);
     return {
       node,
       receipts: nodeReceipts.length,
@@ -317,22 +317,4 @@ export function projectReceiptsAudit(view: StateView): ReceiptsAudit {
     receipts: view.receipts().length,
     cost: projectCost(view),
   };
-}
-
-// ---------------------------------------------------------------------------
-// shared helpers
-// ---------------------------------------------------------------------------
-
-/** Narrow ledger receipts to the cost projector's structural input. */
-function toCostReceipts(receipts: readonly LedgerReceiptView[]): readonly CostReceipt[] {
-  return receipts.map((r) => ({
-    node: r.node,
-    status: r.status,
-    cost: {
-      tokens: { fresh: r.cost.tokens.fresh, reused: r.cost.tokens.reused },
-      ...(r.cost.surprise_cause !== undefined
-        ? { surprise_cause: r.cost.surprise_cause }
-        : {}),
-    },
-  }));
 }

@@ -32,6 +32,7 @@ import { join } from 'node:path';
 import {
   createMemoryStorageAdapter,
   createSystemClockAdapter,
+  type LedgerReceipt,
 } from '@openprose/reactor';
 import {
   FileSystemWorldModelStore,
@@ -433,14 +434,30 @@ describe('reactor serve host — HTTP server (offline gate)', () => {
 
 describe('the cost projector (offline gate)', () => {
   it('rolls up by node + surprise cause + disposition; empty → zero', () => {
+    // The cost projector now re-keys the SDK's ONE `observe()` rollup, which
+    // reads only `node`/`status`/`cost` off the trail — so a minimal receipt
+    // shape (cast to the full `LedgerReceipt`) exercises the rollup faithfully.
+    const r = (
+      node: string,
+      status: 'rendered' | 'skipped',
+      fresh: number,
+      reused: number,
+      cause: 'self' | 'input' | 'external',
+    ): LedgerReceipt =>
+      ({
+        node,
+        status,
+        cost: { tokens: { fresh, reused }, surprise_cause: cause },
+      }) as unknown as LedgerReceipt;
+
     const empty = rollupCost([]);
     assert.deepEqual(empty.total, { fresh: 0, reused: 0 });
     assert.equal(empty.receipts, 0);
 
     const rolled = rollupCost([
-      { node: 'a', status: 'rendered', cost: { tokens: { fresh: 10, reused: 2 }, surprise_cause: 'self' } },
-      { node: 'b', status: 'rendered', cost: { tokens: { fresh: 5, reused: 0 }, surprise_cause: 'input' } },
-      { node: 'a', status: 'skipped', cost: { tokens: { fresh: 0, reused: 7 }, surprise_cause: 'self' } },
+      r('a', 'rendered', 10, 2, 'self'),
+      r('b', 'rendered', 5, 0, 'input'),
+      r('a', 'skipped', 0, 7, 'self'),
     ]);
     assert.deepEqual(rolled.total, { fresh: 15, reused: 9 });
     assert.deepEqual(rolled.byNode['a'], { fresh: 10, reused: 9 });

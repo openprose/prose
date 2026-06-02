@@ -1,13 +1,15 @@
 /**
- * The cost projector (CLI plan Phase 3 / §5.4) — the shared, KEYLESS rollup of
- * ledger receipts into the "cost scales with surprise" view.
+ * The cost PRESENTATION projection (CLI plan Phase 3 / §5.4) — the operator-
+ * facing rollup the `serve` line + the HTTP `/cost`/`/status` endpoints + the
+ * observability commands all share.
  *
- * `serve` surfaces its OWN live cost (a periodic line + the HTTP `/cost`
- * endpoint), and the later observability commands (`status`/`logs`, Phase 5)
- * reuse this same projector — so the number an operator watches is computed in
- * ONE place. It reads ONLY the SDK ledger's receipt stream (each receipt carries
- * `node`, `status`, and `cost.tokens.{fresh,reused}` + `cost.surprise_cause`),
- * so it lives entirely on the offline path (no model surface).
+ * The "cost scales with surprise" METRIC is no longer computed here: it is the
+ * SDK's ONE `observe()` rollup (`@openprose/reactor`'s `ReactorView`/`CostRollup`),
+ * computed once over the receipt trail. This module is now a thin presentation
+ * adapter that re-keys that one SDK rollup into the CLI's stable output contract
+ * (the `--json` shape + the text line) — so the number an operator watches and
+ * the number the SDK computes are THE SAME number, derived once. The prior
+ * parallel `rollupCost` loop + the `CostReceipt` structural mirror are gone.
  *
  * The thesis it makes observable (`cli.md` §5.4): a quiet day → near-zero fresh
  * tokens; a loud event → a spike attributable to the node + the wake that caused
@@ -15,19 +17,7 @@
  * `failed` is the memoization made visible.
  */
 
-/** A structural mirror of an SDK ledger receipt's cost (the fields we read). */
-export interface ReceiptCost {
-  readonly tokens: { readonly fresh: number; readonly reused: number };
-  /** The wake source that drove the spend (`input` | `self` | `external`). */
-  readonly surprise_cause?: string;
-}
-
-/** A structural mirror of an SDK ledger receipt (the fields the projector reads). */
-export interface CostReceipt {
-  readonly node: string;
-  readonly status?: string;
-  readonly cost: ReceiptCost;
-}
+import { observe, type LedgerReceipt } from '@openprose/reactor';
 
 /** A fresh/reused token pair. */
 export interface TokenTotals {
@@ -43,13 +33,17 @@ export interface DispositionCounts {
   readonly other: number;
 }
 
-/** The full cost rollup the `serve` line + `/cost` + `status` all share. */
+/**
+ * The operator-facing cost rollup the `serve` line + `/cost` + `status` all
+ * share. A PRESENTATION projection of the SDK's one `CostRollup` (it never
+ * recomputes the metric) — the field names are the stable CLI output contract.
+ */
 export interface CostRollup {
   /** The host-wide token totals across every receipt. */
   readonly total: TokenTotals;
   /** Per-node token totals (so a spike is attributable to the node). */
   readonly byNode: Readonly<Record<string, TokenTotals>>;
-  /** Per-surprise-cause token totals (`input` | `self` | `external` | `unknown`). */
+  /** Per-surprise-cause token totals (`input` | `self` | `external`). */
   readonly bySurpriseCause: Readonly<Record<string, TokenTotals>>;
   /** The disposition tallies (rendered/skipped/failed/other). */
   readonly dispositions: DispositionCounts;
@@ -57,52 +51,45 @@ export interface CostRollup {
   readonly receipts: number;
 }
 
-const ZERO: TokenTotals = { fresh: 0, reused: 0 };
-
-function add(a: TokenTotals, b: { fresh: number; reused: number }): TokenTotals {
-  return { fresh: a.fresh + b.fresh, reused: a.reused + b.reused };
-}
-
 /**
- * Roll up a receipt stream into the {@link CostRollup}. Pure + deterministic:
- * it never mutates the receipts and never touches the model surface. An empty
- * stream yields all-zero totals (the honest quiet-day view).
+ * Shape a receipt trail into the {@link CostRollup} via the SDK's ONE
+ * `observe()` rollup. Pure + deterministic; never mutates the receipts and never
+ * touches the model surface. An empty trail yields all-zero totals (the honest
+ * quiet-day view). The metric is the SDK's — this only re-keys it into the CLI's
+ * output contract: only the surprise causes actually present in the trail are
+ * surfaced, and the `coalesced` disposition (never produced by a receipt trail)
+ * folds into `other`.
  */
-export function rollupCost(receipts: readonly CostReceipt[]): CostRollup {
-  let total = ZERO;
+export function rollupCost(receipts: readonly LedgerReceipt[]): CostRollup {
+  const { cost, dispositions, receipts: trail } = observe({ receipts });
+
   const byNode: Record<string, TokenTotals> = {};
+  for (const [node, bucket] of Object.entries(cost.byNode)) {
+    byNode[node] = { fresh: bucket.fresh, reused: bucket.reused };
+  }
+
+  // Surface only the causes actually present in the trail (the CLI contract omits
+  // zero-receipt causes; the SDK `byCause` always carries all three wake-source
+  // keys, so we drop the absent ones here).
   const bySurpriseCause: Record<string, TokenTotals> = {};
-  const dispositions = { rendered: 0, skipped: 0, failed: 0, other: 0 };
-
-  for (const r of receipts) {
-    const tokens = r.cost.tokens;
-    total = add(total, tokens);
-    byNode[r.node] = add(byNode[r.node] ?? ZERO, tokens);
-    const cause = r.cost.surprise_cause ?? 'unknown';
-    bySurpriseCause[cause] = add(bySurpriseCause[cause] ?? ZERO, tokens);
-
-    switch (r.status) {
-      case 'rendered':
-        dispositions.rendered += 1;
-        break;
-      case 'skipped':
-        dispositions.skipped += 1;
-        break;
-      case 'failed':
-        dispositions.failed += 1;
-        break;
-      default:
-        dispositions.other += 1;
-        break;
+  const seen = new Set<string>(receipts.map((r) => r.cost.surprise_cause));
+  for (const [cause, bucket] of Object.entries(cost.byCause)) {
+    if (seen.has(cause)) {
+      bySurpriseCause[cause] = { fresh: bucket.fresh, reused: bucket.reused };
     }
   }
 
   return {
-    total,
+    total: { fresh: cost.total.fresh, reused: cost.total.reused },
     byNode,
     bySurpriseCause,
-    dispositions,
-    receipts: receipts.length,
+    dispositions: {
+      rendered: dispositions.rendered,
+      skipped: dispositions.skipped,
+      failed: dispositions.failed,
+      other: dispositions.coalesced,
+    },
+    receipts: trail.length,
   };
 }
 

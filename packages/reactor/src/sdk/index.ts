@@ -64,6 +64,19 @@ export {
   type ReplayCostBucket,
 } from "./replay-session";
 
+// --- The unified observe surface (the ONE read-and-rollup entry point) -------
+// `observe(source)` → a `ReactorView` over a live/replayed receipt trail, with
+// the ONE `CostRollup` (the promoted `ReplayCostRollup`): the "fresh-vs-reused $"
+// hero metric is computed HERE, once, and every consumer reads off it (the live
+// handle's `view`, the CLI cost view, DevTools).
+export {
+  observe,
+  type ReactorView,
+  type CostRollup,
+  type CostBucket,
+  type ObserveSource,
+} from "./observe";
+
 // --- The keystone assembler (architecture.md §5.3 + §8; gap-audit #9) --------
 // `createReactor` wires the durable FS world-model store + persisted ledger +
 // clock + the render bodies into the `mountDag` run-phase surface, and exposes

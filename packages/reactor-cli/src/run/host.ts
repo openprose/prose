@@ -34,7 +34,7 @@ import type { RunAdapters, RunRender } from './load-run-project';
 import type { ConnectorFetch } from './connectors';
 import type { CompileCommandOptions } from '../commands/compile';
 import { createWorkerPool, type WorkerPool } from './worker-pool';
-import { rollupCost, type CostReceipt, type CostRollup } from './cost';
+import { rollupCost, type CostRollup } from './cost';
 import {
   loadConfig,
   resolveReactors,
@@ -175,16 +175,9 @@ export async function bootHost(options: BootHostOptions = {}): Promise<HostHandl
 
   const cost = (): HostCost => {
     const byReactor: Record<string, CostRollup> = {};
-    const allReceipts: CostReceipt[] = [];
+    const allReceipts = handles.flatMap((h) => [...h.reactor.ledger.all()]);
     for (const h of handles) {
       byReactor[h.name] = h.cost();
-      for (const r of h.reactor.ledger.all()) {
-        allReceipts.push({
-          node: r.node,
-          status: r.status,
-          cost: r.cost as CostReceipt['cost'],
-        });
-      }
     }
     return { host: rollupCost(allReceipts), byReactor };
   };

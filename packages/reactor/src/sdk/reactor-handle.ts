@@ -37,9 +37,11 @@ import type {
   ReconcilerTopology,
   WakeEvent,
 } from "../reactor";
+import type { LedgerReceipt } from "../receipt";
 import type { ReactorClockAdapter } from "../adapters/types";
 import type { WorldModelStore, WorldModelFiles } from "../world-model";
 import type { MountedDag, MutableReceiptLedger } from "./mounted-dag";
+import { observe, type ReactorView } from "./observe";
 import {
   createAsyncContinuityScheduler,
   type AsyncContinuityScheduler,
@@ -132,6 +134,22 @@ export interface Reactor {
   readonly boot: () => Promise<readonly ReconcileResult[]>;
 
   // ── observe — first-class read accessors (no casts) ──
+  /**
+   * The unified read view over this reactor's receipt trail — the per-node chain
+   * index, the disposition tallies, and the ONE cost rollup ("cost scales with
+   * surprise"). Re-derived on each read off the live ledger, so a fresh read
+   * always reflects the current trail. The single read-and-rollup surface every
+   * consumer (the `serve` line, the HTTP cost endpoint, DevTools) shares.
+   */
+  readonly view: ReactorView;
+  /**
+   * Subscribe to each receipt as the reconciler appends it (the ledger-is-
+   * telemetry tap). Returns an unsubscribe function. Fires for every committed
+   * receipt — `rendered` (real spend), `skipped` (memo hit), and `failed` —
+   * across every drive verb. Load-bearing for live observers and the
+   * per-fixpoint-step convergence hook.
+   */
+  onReceipt(cb: (receipt: LedgerReceipt) => void): () => void;
   /** The durable receipt ledger (re-derived from storage at construction). */
   readonly ledger: MutableReceiptLedger;
   /** The world-model store the DAG commits to (the canonical maintained truth). */
@@ -199,7 +217,31 @@ export function assembleReactor(input: AssembleReactorInput): Reactor {
     return i?.wake;
   };
 
-  return {
+  // The ledger-is-telemetry tap: wrap `append` ONCE so every reconciler-committed
+  // receipt fans out to subscribers (the reconciler appends through this same
+  // ledger instance, so wrapping it here catches every drive verb). `append`
+  // returns the content address (the `prev` pointer), so the fan-out happens
+  // after the durable append succeeds.
+  const subscribers = new Set<(receipt: LedgerReceipt) => void>();
+  const ledger = dag.ledger;
+  const innerAppend = ledger.append.bind(ledger);
+  // The trail is `LedgerReceipt[]`; `append` takes a `Receipt` and stamps it.
+  // After append, the freshly-stamped `LedgerReceipt` is the trail's last entry.
+  (ledger as { append: MutableReceiptLedger["append"] }).append = (receipt) => {
+    const ref = innerAppend(receipt);
+    if (subscribers.size > 0) {
+      const all = ledger.all();
+      const stamped = all[all.length - 1];
+      if (stamped !== undefined) {
+        for (const cb of subscribers) {
+          cb(stamped);
+        }
+      }
+    }
+    return ref;
+  };
+
+  const handle: Reactor = {
     // async-by-default
     ingest: (node, i) => dag.ingestAsync(node, ingestWake(i)),
     tick: (node) => dag.tickAsync(node),
@@ -207,7 +249,16 @@ export function assembleReactor(input: AssembleReactorInput): Reactor {
     boot: () => dag.drainAsync(bootSeeds),
 
     // observe accessors
-    ledger: dag.ledger,
+    get view(): ReactorView {
+      return observe(handle);
+    },
+    onReceipt: (cb) => {
+      subscribers.add(cb);
+      return () => {
+        subscribers.delete(cb);
+      };
+    },
+    ledger,
     store: dag.store,
     clock,
     topology,
@@ -224,4 +275,5 @@ export function assembleReactor(input: AssembleReactorInput): Reactor {
       boot: () => dag.drain(bootSeeds),
     },
   };
+  return handle;
 }

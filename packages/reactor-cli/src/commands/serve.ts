@@ -39,12 +39,7 @@ import {
 import { buildDurableSubstrate } from '../run/substrate';
 import { buildSandboxRunner } from '../run/sandbox';
 import { createSerialQueue, type SerialQueue } from '../run/serial-queue';
-import {
-  rollupCost,
-  formatCostLine,
-  type CostReceipt,
-  type CostRollup,
-} from '../run/cost';
+import { rollupCost, formatCostLine, type CostRollup } from '../run/cost';
 import { bootHost, type PerReactorTestSeam } from '../run/host';
 import {
   startHttpServer,
@@ -411,14 +406,7 @@ export async function bootReactorHandle(
       return { dataDelivered };
     });
 
-  const cost = (): CostRollup =>
-    rollupCost(
-      reactor.ledger.all().map((r): CostReceipt => ({
-        node: r.node,
-        status: r.status,
-        cost: r.cost as CostReceipt['cost'],
-      })),
-    );
+  const cost = (): CostRollup => rollupCost(reactor.ledger.all());
 
   const shutdown = async (): Promise<void> => {
     await queue.onIdle();

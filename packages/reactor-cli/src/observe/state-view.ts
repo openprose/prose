@@ -22,7 +22,7 @@ import {
   createFileSystemReceiptLedger,
   createFileSystemStorageAdapter,
   verifyReceiptChain,
-  type Receipt,
+  type LedgerReceipt,
 } from '@openprose/reactor';
 import { FileSystemWorldModelStore } from '@openprose/reactor/adapters';
 
@@ -34,11 +34,13 @@ import {
 } from '../compile/ir-cache';
 import { receiptsDir, worldModelsDir } from '../run/substrate';
 
-/** A stamped ledger receipt as the durable trail persists it (content-addressed). */
-export interface LedgerReceiptView extends Receipt {
-  /** The receipt's own content address — the chain identity (stamped on append). */
-  readonly content_hash?: string;
-}
+/**
+ * A stamped ledger receipt as the durable trail persists it (content-addressed).
+ * This IS the SDK's {@link LedgerReceipt} — the durable trail on disk carries the
+ * stamped `content_hash`/`schema`/`hash_algorithm`, so the view re-uses the SDK
+ * type directly rather than mirroring it (the observe rollup wants `LedgerReceipt`).
+ */
+export type LedgerReceiptView = LedgerReceipt;
 
 /** The result of {@link verifyReceiptChain} (re-exported shape, structural). */
 export interface ChainResult {

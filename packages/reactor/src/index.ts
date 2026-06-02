@@ -87,7 +87,23 @@ export type {
   StorageAdapter,
 } from "./adapters/types";
 
-// ── Observe / replay (the read surface over a ledger) ───────────────────────
+// ── Observe (the ONE read-and-rollup surface) ───────────────────────────────
+// `observe(source)` over a live `Reactor`, a `{ ledger }`/`{ receipts }` trail,
+// or a `{ results }` drive return → a `ReactorView` carrying the per-node chain
+// index, disposition tallies, and the ONE `CostRollup` (`byCause` + `byNode` +
+// `total`) — the "cost scales with surprise" hero metric, computed ONCE.
+export {
+  observe,
+  type ReactorView,
+  type CostRollup,
+  type CostBucket,
+  type ObserveSource,
+} from "./sdk/observe";
+
+// ── Replay (the DevTools-facing shaping helper over a static ledger) ────────
+// `createReplaySession` shapes a saved trail for the DevTools replay viewer
+// (per-receipt moved-facet diff + cumulative rollup). `ReplayCost*` are the
+// pre-promotion rollup shapes, kept reachable for that consumer.
 export {
   createReplaySession,
   type ReplaySession,
