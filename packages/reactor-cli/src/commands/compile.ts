@@ -19,6 +19,8 @@
  *      without compiling.
  */
 
+import * as path from 'path';
+import { loadContractSet as keylessLoadContractSet } from '../compile/contract-images';
 import {
   contractSetFingerprint,
   isCacheFresh,
@@ -26,7 +28,6 @@ import {
   persistIR,
   readManifest,
   readTopologyShape,
-  type ContractImage,
 } from '../compile/ir-cache';
 import type { ConfigOverrides } from '../config';
 import { loadConfig } from '../config';
@@ -95,8 +96,10 @@ export async function runCompileCommand(
   const sdkVersion = resolveSdk().version ?? 'unknown';
 
   // Load contracts (deterministic) + compute the cache key's contract-set fp.
-  const { contracts, images } = loadContractsForFingerprint(contractsDir);
-  if (contracts === 0) {
+  // Uses the keyless contract loader (N2 — a cache hit / --check must NOT import
+  // the model-bearing barrel).
+  const images = keylessLoadContractSet(contractsDir);
+  if (images.length === 0) {
     const msg = `reactor compile: no .prose.md contracts found under ${contractsDir}`;
     if (options.json === true) {
       write(JSON.stringify({ status: 'error', message: msg }));
@@ -219,26 +222,8 @@ function providerErrorHint(err: unknown): string | undefined {
   return undefined;
 }
 
-import * as path from 'path';
-import {
-  loadContractSet as keylessLoadContractSet,
-} from '../compile/contract-images';
-
 function resolveProjectDir(projectDir: string | undefined): string {
   return path.resolve(projectDir ?? '.');
-}
-
-/**
- * Load the contract images for the fingerprint WITHOUT importing the model-
- * bearing barrel (N2 — a cache hit / --check must stay keyless). Uses the keyless
- * contract loader re-implemented from the SDK's deterministic file-enumerate.
- */
-function loadContractsForFingerprint(contractsDir: string): {
-  contracts: number;
-  images: ContractImage[];
-} {
-  const images = keylessLoadContractSet(contractsDir);
-  return { contracts: images.length, images };
 }
 
 function cacheReport(

@@ -50,6 +50,7 @@ import type { ConfigOverrides } from '../config';
 import { loadConfig, validateStateDirTarget } from '../config';
 import { resolveSdk } from '../meta';
 import { runCompileCommand, type CompileCommandOptions } from './compile';
+import { emitError } from './emit';
 
 /** The SDK external wake (the barrel does not export the const; build it). */
 const EXTERNAL_WAKE = Object.freeze({ source: 'external', refs: [] as string[] });
@@ -77,7 +78,7 @@ export async function runTriggerCommand(
   }
 
   if (typeof options.node !== 'string' || options.node.length === 0) {
-    return emitError('reactor trigger: a node id is required', options, write);
+    return emitError(write, options.json, 'reactor trigger: a node id is required');
   }
 
   // Parse --data (inline JSON or @file) up front — a bad payload fails fast.
@@ -87,9 +88,9 @@ export async function runTriggerCommand(
       parsedData = parseData(options.data);
     } catch (err) {
       return emitError(
-        `reactor trigger: invalid --data (${String((err as Error).message)})`,
-        options,
         write,
+        options.json,
+        `reactor trigger: invalid --data (${String((err as Error).message)})`,
       );
     }
   }
@@ -120,9 +121,9 @@ export async function runTriggerCommand(
   const images = keylessLoadContractSet(contractsDir);
   if (images.length === 0) {
     return emitError(
-      `reactor trigger: no .prose.md contracts found under ${contractsDir}`,
-      options,
       write,
+      options.json,
+      `reactor trigger: no .prose.md contracts found under ${contractsDir}`,
     );
   }
   const setFingerprint = contractSetFingerprint(images);
@@ -144,7 +145,7 @@ export async function runTriggerCommand(
       () => {},
     );
     if (code !== 0) {
-      return emitError('reactor trigger: compile failed (IR stale)', options, write);
+      return emitError(write, options.json, 'reactor trigger: compile failed (IR stale)');
     }
   }
 
@@ -152,9 +153,9 @@ export async function runTriggerCommand(
   const loaded = loadCompiledProject(stateDir);
   if (loaded.ir.topology.topology.nodes.every((n) => n.node !== options.node)) {
     return emitError(
-      `reactor trigger: node '${options.node}' is not in the compiled topology`,
-      options,
       write,
+      options.json,
+      `reactor trigger: node '${options.node}' is not in the compiled topology`,
     );
   }
 
@@ -265,19 +266,6 @@ function parseData(raw: string): unknown {
     return JSON.parse(text);
   }
   return JSON.parse(raw);
-}
-
-function emitError(
-  message: string,
-  options: TriggerCommandOptions,
-  write: (line: string) => void,
-): number {
-  if (options.json === true) {
-    write(JSON.stringify({ status: 'error', message }));
-  } else {
-    write(message);
-  }
-  return 1;
 }
 
 function emitReport(

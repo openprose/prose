@@ -27,25 +27,29 @@ import {
 } from './commands/observe';
 import { cliVersion } from './meta';
 
-/** Pluck the offline observability globals from commander's merged options. */
-interface ObserveGlobals {
-  stateDir?: string;
-  project?: string;
-  json?: boolean;
-  offline?: boolean;
-}
-
-function observeBase(globals: ObserveGlobals): {
+/**
+ * Project the four shared global flags off commander's merged options into the
+ * SDK-facing shape every command spreads on top of its own flags. `--project`
+ * maps to `projectDir`; the rest pass through by name. Absent flags are omitted
+ * (not set to `undefined`) so they never clobber config defaults.
+ */
+function globalsOf(cmd: Command): {
   stateDir?: string;
   projectDir?: string;
   json?: boolean;
   offline?: boolean;
 } {
+  const g = cmd.optsWithGlobals() as {
+    stateDir?: string;
+    project?: string;
+    json?: boolean;
+    offline?: boolean;
+  };
   return {
-    ...(globals.stateDir !== undefined ? { stateDir: globals.stateDir } : {}),
-    ...(globals.project !== undefined ? { projectDir: globals.project } : {}),
-    ...(globals.json !== undefined ? { json: globals.json } : {}),
-    ...(globals.offline !== undefined ? { offline: globals.offline } : {}),
+    ...(g.stateDir !== undefined ? { stateDir: g.stateDir } : {}),
+    ...(g.project !== undefined ? { projectDir: g.project } : {}),
+    ...(g.json !== undefined ? { json: g.json } : {}),
+    ...(g.offline !== undefined ? { offline: g.offline } : {}),
   };
 }
 
@@ -74,13 +78,13 @@ export function buildProgram(onExitCode: (code: number) => void = () => {}): Com
     .argument('[dir]', 'target directory to scaffold into (default .)')
     .option('--force', 'overwrite existing scaffold files (default: refuse)')
     .action(async (dir: string | undefined, cmdOptions: { force?: boolean }, cmd: Command) => {
-      const globals = cmd.optsWithGlobals() as { json?: boolean; offline?: boolean };
+      const { json, offline } = globalsOf(cmd);
       onExitCode(
         await runInitCommand({
           ...(dir !== undefined ? { dir } : {}),
           ...(cmdOptions.force !== undefined ? { force: cmdOptions.force } : {}),
-          ...(globals.json !== undefined ? { json: globals.json } : {}),
-          ...(globals.offline !== undefined ? { offline: globals.offline } : {}),
+          ...(json !== undefined ? { json } : {}),
+          ...(offline !== undefined ? { offline } : {}),
         }),
       );
     });
@@ -92,18 +96,9 @@ export function buildProgram(onExitCode: (code: number) => void = () => {}): Com
     )
     .option('--live', 'additionally probe one live smoke render (requires a key + deps)')
     .action(async (cmdOptions: { live?: boolean }, cmd: Command) => {
-      const globals = cmd.optsWithGlobals() as {
-        offline?: boolean;
-        stateDir?: string;
-        project?: string;
-        json?: boolean;
-      };
       onExitCode(
         await runDoctor({
-          ...(globals.offline !== undefined ? { offline: globals.offline } : {}),
-          ...(globals.stateDir !== undefined ? { stateDir: globals.stateDir } : {}),
-          ...(globals.project !== undefined ? { projectDir: globals.project } : {}),
-          ...(globals.json !== undefined ? { json: globals.json } : {}),
+          ...globalsOf(cmd),
           ...(cmdOptions.live !== undefined ? { live: cmdOptions.live } : {}),
         }),
       );
@@ -117,18 +112,9 @@ export function buildProgram(onExitCode: (code: number) => void = () => {}): Com
     .option('--force', 'recompile regardless of cache freshness')
     .option('--check', 'exit non-zero if the cache is stale; do not compile (CI)')
     .action(async (cmdOptions: { force?: boolean; check?: boolean }, cmd: Command) => {
-      const globals = cmd.optsWithGlobals() as {
-        stateDir?: string;
-        project?: string;
-        json?: boolean;
-        offline?: boolean;
-      };
       onExitCode(
         await runCompileCommand({
-          ...(globals.stateDir !== undefined ? { stateDir: globals.stateDir } : {}),
-          ...(globals.project !== undefined ? { projectDir: globals.project } : {}),
-          ...(globals.json !== undefined ? { json: globals.json } : {}),
-          ...(globals.offline !== undefined ? { offline: globals.offline } : {}),
+          ...globalsOf(cmd),
           ...(cmdOptions.force !== undefined ? { force: cmdOptions.force } : {}),
           ...(cmdOptions.check !== undefined ? { check: cmdOptions.check } : {}),
         }),
@@ -141,20 +127,7 @@ export function buildProgram(onExitCode: (code: number) => void = () => {}): Com
       'Ensure the IR is fresh, boot the reactor, drain to quiescence, and report',
     )
     .action(async (_cmdOptions: Record<string, unknown>, cmd: Command) => {
-      const globals = cmd.optsWithGlobals() as {
-        stateDir?: string;
-        project?: string;
-        json?: boolean;
-        offline?: boolean;
-      };
-      onExitCode(
-        await runRunCommand({
-          ...(globals.stateDir !== undefined ? { stateDir: globals.stateDir } : {}),
-          ...(globals.project !== undefined ? { projectDir: globals.project } : {}),
-          ...(globals.json !== undefined ? { json: globals.json } : {}),
-          ...(globals.offline !== undefined ? { offline: globals.offline } : {}),
-        }),
-      );
+      onExitCode(await runRunCommand(globalsOf(cmd)));
     });
 
   program
@@ -177,12 +150,6 @@ export function buildProgram(onExitCode: (code: number) => void = () => {}): Com
         cmdOptions: { pollInterval?: string; concurrency?: string; http?: string; host?: string },
         cmd: Command,
       ) => {
-        const globals = cmd.optsWithGlobals() as {
-          stateDir?: string;
-          project?: string;
-          json?: boolean;
-          offline?: boolean;
-        };
         const pollIntervalMs =
           cmdOptions.pollInterval !== undefined
             ? Number(cmdOptions.pollInterval)
@@ -195,10 +162,7 @@ export function buildProgram(onExitCode: (code: number) => void = () => {}): Com
           cmdOptions.http !== undefined ? Number(cmdOptions.http) : undefined;
         onExitCode(
           await runServeCommand({
-            ...(globals.stateDir !== undefined ? { stateDir: globals.stateDir } : {}),
-            ...(globals.project !== undefined ? { projectDir: globals.project } : {}),
-            ...(globals.json !== undefined ? { json: globals.json } : {}),
-            ...(globals.offline !== undefined ? { offline: globals.offline } : {}),
+            ...globalsOf(cmd),
             ...(pollIntervalMs !== undefined && Number.isFinite(pollIntervalMs)
               ? { pollIntervalMs }
               : {}),
@@ -225,20 +189,11 @@ export function buildProgram(onExitCode: (code: number) => void = () => {}): Com
         cmdOptions: { data?: string },
         cmd: Command,
       ) => {
-        const globals = cmd.optsWithGlobals() as {
-          stateDir?: string;
-          project?: string;
-          json?: boolean;
-          offline?: boolean;
-        };
         onExitCode(
           await runTriggerCommand({
             node,
             ...(cmdOptions.data !== undefined ? { data: cmdOptions.data } : {}),
-            ...(globals.stateDir !== undefined ? { stateDir: globals.stateDir } : {}),
-            ...(globals.project !== undefined ? { projectDir: globals.project } : {}),
-            ...(globals.json !== undefined ? { json: globals.json } : {}),
-            ...(globals.offline !== undefined ? { offline: globals.offline } : {}),
+            ...globalsOf(cmd),
           }),
         );
       },
@@ -253,14 +208,14 @@ export function buildProgram(onExitCode: (code: number) => void = () => {}): Com
     .command('status')
     .description('Report the standing compile cost beside the live run cost + dispositions')
     .action(async (_opts: Record<string, unknown>, cmd: Command) => {
-      onExitCode(await runStatusCommand(observeBase(cmd.optsWithGlobals())));
+      onExitCode(await runStatusCommand(globalsOf(cmd)));
     });
 
   program
     .command('topology')
     .description('Print the compiled DAG: nodes (+ wake source) and resolved edges')
     .action(async (_opts: Record<string, unknown>, cmd: Command) => {
-      onExitCode(await runTopologyCommand(observeBase(cmd.optsWithGlobals())));
+      onExitCode(await runTopologyCommand(globalsOf(cmd)));
     });
 
   program
@@ -271,7 +226,7 @@ export function buildProgram(onExitCode: (code: number) => void = () => {}): Com
     .action(async (node: string, opts: { strict?: boolean }, cmd: Command) => {
       onExitCode(
         await runInspectCommand({
-          ...observeBase(cmd.optsWithGlobals()),
+          ...globalsOf(cmd),
           node,
           ...(opts.strict !== undefined ? { strict: opts.strict } : {}),
         }),
@@ -285,7 +240,7 @@ export function buildProgram(onExitCode: (code: number) => void = () => {}): Com
     .action(async (opts: { node?: string }, cmd: Command) => {
       onExitCode(
         await runLogsCommand({
-          ...observeBase(cmd.optsWithGlobals()),
+          ...globalsOf(cmd),
           ...(opts.node !== undefined ? { node: opts.node } : {}),
         }),
       );
@@ -298,7 +253,7 @@ export function buildProgram(onExitCode: (code: number) => void = () => {}): Com
     .action(async (node: string | undefined, _opts: Record<string, unknown>, cmd: Command) => {
       onExitCode(
         await runTraceCommand({
-          ...observeBase(cmd.optsWithGlobals()),
+          ...globalsOf(cmd),
           ...(node !== undefined ? { node } : {}),
         }),
       );
@@ -331,7 +286,7 @@ export function buildProgram(onExitCode: (code: number) => void = () => {}): Com
       }
       onExitCode(
         await runReceiptsCommand({
-          ...observeBase(cmd.optsWithGlobals()),
+          ...globalsOf(cmd),
           ...(normalized !== undefined ? { sub: normalized } : {}),
           ...(opts.node !== undefined ? { node: opts.node } : {}),
           ...(opts.rate !== undefined ? { rate: opts.rate } : {}),
@@ -377,16 +332,16 @@ export async function main(argv: string[]): Promise<number> {
   try {
     await program.parseAsync(argv);
   } catch (err) {
-    const code = (err as { code?: string } | undefined)?.code;
+    const errCode = (err as { code?: string } | undefined)?.code;
     // ONLY a genuine commander parser signal is a usage error. Commander
     // namespaces its codes `commander.*`; real runtime errors (ENOENT,
     // ECONNREFUSED, ENOTFOUND, an agents-SDK failure …) ALSO carry a `.code`, so
     // we must NOT mistake them for a usage signal and swallow them as a silent
     // exit 2. Anything that is not `commander.*` rethrows and the caller prints
     // it (exit 1) — a failing command must never exit silently.
-    if (typeof code === "string" && code.startsWith("commander.")) {
+    if (typeof errCode === "string" && errCode.startsWith("commander.")) {
       // help/version are a clean 0; every other parser signal is a usage error (2).
-      return COMMANDER_SUCCESS_CODES.has(code) ? 0 : 2;
+      return COMMANDER_SUCCESS_CODES.has(errCode) ? 0 : 2;
     }
     // A tagged CLI usage fault (e.g. G12: --state-dir points at a file) is a usage
     // error (exit 2) with an actionable, already-legible message on stderr — never

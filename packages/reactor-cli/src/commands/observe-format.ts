@@ -19,56 +19,12 @@ function tokens(c: { fresh: number; reused: number }): string {
   return `fresh=${c.fresh} reused=${c.reused}`;
 }
 
-export function formatStatus(p: StatusProjection): string {
-  const lines: string[] = [];
-  lines.push('reactor status');
-  lines.push('');
-  lines.push(`  state dir      ${p.stateDir}`);
-  lines.push(`  compiled       ${p.compiled ? 'yes' : 'no'}`);
-  if (p.compiled) {
-    lines.push(
-      `  topology       ${p.compile.nodes} nodes, ${p.compile.edges} edges` +
-        `${p.compile.compiledAt ? ` (at ${p.compile.compiledAt})` : ''}`,
-    );
-    lines.push(`  compile cost   ${tokens(p.compile.cost)}`);
-  }
-  lines.push('');
-  lines.push(`  receipts       ${p.run.receipts}`);
-  lines.push(`  run cost       ${tokens(p.run.total)}`);
-  lines.push(
-    `  dispositions   rendered=${p.run.dispositions.rendered} ` +
-      `skipped=${p.run.dispositions.skipped} failed=${p.run.dispositions.failed}`,
-  );
-  const causes = Object.keys(p.run.bySurpriseCause).sort();
-  if (causes.length > 0) {
-    lines.push('');
-    lines.push('  cost by surprise cause:');
-    for (const cause of causes) {
-      lines.push(`    ${cause.padEnd(12)} ${tokens(p.run.bySurpriseCause[cause]!)}`);
-    }
-  }
-  const nodes = Object.keys(p.run.byNode).sort();
-  if (nodes.length > 0) {
-    lines.push('');
-    lines.push('  cost by node:');
-    for (const node of nodes) {
-      lines.push(`    ${node.padEnd(28)} ${tokens(p.run.byNode[node]!)}`);
-    }
-  }
-  return lines.join('\n');
-}
-
 /**
- * Render the `receipts cost` rollup (cli.md §5.4): the run-side fresh/reused
- * totals, the disposition tallies, and the by-surprise-cause / by-node breakdowns
- * that make "spend scales with surprise" legible. This is the cost half of
- * {@link formatStatus} over a bare {@link CostRollup} — the human sibling of the
- * `--json` cost output (the prior human branch wrongly printed the receipts audit).
+ * The shared cost tail: receipts / run-cost / dispositions plus the
+ * by-surprise-cause and by-node breakdowns that make "spend scales with
+ * surprise" legible. Pushed onto `lines` so callers keep their own header.
  */
-export function formatCost(c: CostRollup): string {
-  const lines: string[] = [];
-  lines.push('reactor receipts cost');
-  lines.push('');
+function formatCostBody(lines: string[], c: CostRollup): void {
   lines.push(`  receipts       ${c.receipts}`);
   lines.push(`  run cost       ${tokens(c.total)}`);
   lines.push(
@@ -91,6 +47,38 @@ export function formatCost(c: CostRollup): string {
       lines.push(`    ${node.padEnd(28)} ${tokens(c.byNode[node]!)}`);
     }
   }
+}
+
+export function formatStatus(p: StatusProjection): string {
+  const lines: string[] = [];
+  lines.push('reactor status');
+  lines.push('');
+  lines.push(`  state dir      ${p.stateDir}`);
+  lines.push(`  compiled       ${p.compiled ? 'yes' : 'no'}`);
+  if (p.compiled) {
+    lines.push(
+      `  topology       ${p.compile.nodes} nodes, ${p.compile.edges} edges` +
+        `${p.compile.compiledAt ? ` (at ${p.compile.compiledAt})` : ''}`,
+    );
+    lines.push(`  compile cost   ${tokens(p.compile.cost)}`);
+  }
+  lines.push('');
+  formatCostBody(lines, p.run);
+  return lines.join('\n');
+}
+
+/**
+ * Render the `receipts cost` rollup (cli.md §5.4): the run-side fresh/reused
+ * totals, the disposition tallies, and the by-surprise-cause / by-node breakdowns
+ * that make "spend scales with surprise" legible. This is the cost half of
+ * {@link formatStatus} over a bare {@link CostRollup} — the human sibling of the
+ * `--json` cost output (the prior human branch wrongly printed the receipts audit).
+ */
+export function formatCost(c: CostRollup): string {
+  const lines: string[] = [];
+  lines.push('reactor receipts cost');
+  lines.push('');
+  formatCostBody(lines, c);
   return lines.join('\n');
 }
 

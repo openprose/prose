@@ -33,6 +33,7 @@ import type { ConfigOverrides } from '../config';
 import { loadConfig, validateStateDirTarget } from '../config';
 import { resolveSdk } from '../meta';
 import { runCompileCommand, type CompileCommandOptions } from './compile';
+import { emitError } from './emit';
 
 import * as path from 'path';
 
@@ -93,9 +94,9 @@ export async function runRunCommand(
   const images = keylessLoadContractSet(contractsDir);
   if (images.length === 0) {
     return emitError(
-      `reactor run: no .prose.md contracts found under ${contractsDir}`,
-      options,
       write,
+      options.json,
+      `reactor run: no .prose.md contracts found under ${contractsDir}`,
     );
   }
   const setFingerprint = contractSetFingerprint(images);
@@ -121,9 +122,9 @@ export async function runRunCommand(
     );
     if (compileCode !== 0) {
       return emitError(
-        `reactor run: compile failed (the IR is stale and could not be refreshed)`,
-        options,
         write,
+        options.json,
+        `reactor run: compile failed (the IR is stale and could not be refreshed)`,
       );
     }
   }
@@ -196,19 +197,6 @@ export async function runRunCommand(
 // ---------------------------------------------------------------------------
 // internals
 // ---------------------------------------------------------------------------
-
-function emitError(
-  message: string,
-  options: RunCommandOptions,
-  write: (line: string) => void,
-): number {
-  if (options.json === true) {
-    write(JSON.stringify({ status: 'error', message }));
-  } else {
-    write(message);
-  }
-  return 1;
-}
 
 function emitReport(
   report: RunReport,

@@ -13,6 +13,9 @@
  * chain check, when `--strict`) exits NONZERO on a tampered/broken chain.
  */
 
+import * as fs from 'fs';
+import * as path from 'path';
+
 import { loadConfig, validateStateDirTarget, type ConfigOverrides } from '../config';
 import { StateView } from '../observe/state-view';
 import {
@@ -33,6 +36,7 @@ import {
   formatReceiptsAudit,
   formatCost,
 } from './observe-format';
+import { emitError } from './emit';
 
 /** Shared options for the read-only observability commands. */
 export interface ObserveOptions extends ConfigOverrides {
@@ -71,16 +75,6 @@ function openView(options: ObserveOptions): StateView {
   return StateView.open(stateDir);
 }
 
-/** Emit a fatal error in the right shape; returns exit code 1. */
-function emitError(message: string, options: ObserveOptions, write: Writer): number {
-  if (options.json === true) {
-    write(JSON.stringify({ status: 'error', message }));
-  } else {
-    write(message);
-  }
-  return 1;
-}
-
 // ---------------------------------------------------------------------------
 // status
 // ---------------------------------------------------------------------------
@@ -109,11 +103,7 @@ export async function runStatusCommand(
  * manifest), so a cross-tool dir does not read as a broken project.
  */
 function topologyAbsentMessage(cmd: string, stateDir: string): string {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { existsSync } = require('fs') as typeof import('fs');
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { join } = require('path') as typeof import('path');
-  if (existsSync(join(stateDir, 'compile', 'topology.json'))) {
+  if (fs.existsSync(path.join(stateDir, 'compile', 'topology.json'))) {
     return (
       `reactor ${cmd}: ${stateDir} has compile/topology.json but no compiled CLI ` +
       `manifest — it looks like a reactor-devtools replay fixture, not a compiled ` +
@@ -129,7 +119,7 @@ export async function runTopologyCommand(
 ): Promise<number> {
   const view = openView(options);
   if (!view.hasTopology()) {
-    return emitError(topologyAbsentMessage('topology', view.stateDir), options, write);
+    return emitError(write, options.json, topologyAbsentMessage('topology', view.stateDir));
   }
   const projection = projectTopology(view);
   if (options.json === true) {
@@ -157,17 +147,17 @@ export async function runInspectCommand(
   const view = openView(options);
   if (!view.hasTopology()) {
     return emitError(
-      topologyAbsentMessage('inspect', view.stateDir),
-      options,
       write,
+      options.json,
+      topologyAbsentMessage('inspect', view.stateDir),
     );
   }
   const projection = projectInspect(view, options.node);
   if (!projection.known) {
     return emitError(
-      `reactor inspect: node '${options.node}' is not in the compiled topology`,
-      options,
       write,
+      options.json,
+      `reactor inspect: node '${options.node}' is not in the compiled topology`,
     );
   }
   if (options.json === true) {
@@ -354,10 +344,10 @@ export async function runReceiptsCommand(
       const rate = parseRate(options.rate);
       if (rate === undefined) {
         return emitError(
+          write,
+          options.json,
           `reactor receipts cost: unparseable --rate '${options.rate}' — use ` +
             `\`$/Mtok\` (e.g. 3 or $3/Mtok) or \`<n>tokens-per-dollar\` (e.g. 500000tpd).`,
-          options,
-          write,
         );
       }
       priced = {
