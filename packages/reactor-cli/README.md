@@ -13,9 +13,9 @@ what materially moved (the reconciler is dumb — **no judge step**), and every
 decision leaves a content-addressed **receipt**. Cost scales with surprise, not
 the clock.
 
-> **Versions (live on npm):** `reactor-cli` 0.1.0 ·
-> `@openprose/reactor` 0.2.0 · `reactor-devtools` 0.1.0. `reactor --version`
-> prints the CLI version (0.1.0), not the SDK version (0.2.0) — expected, not a
+> **Versions (live on npm):** `reactor-cli` 0.2.0 ·
+> `@openprose/reactor` 0.3.0 · `reactor-devtools` 0.2.0. `reactor --version`
+> prints the CLI version (0.2.0), not the SDK version (0.3.0) — expected, not a
 > mismatch.
 
 ## Install

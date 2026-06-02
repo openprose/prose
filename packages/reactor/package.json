@@ -1,6 +1,6 @@
 {
   "name": "@openprose/reactor",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "OpenProse Reactor runtime: fresh model spend scales with surprise, not the clock.",
   "type": "commonjs",
   "main": "./dist/index.js",

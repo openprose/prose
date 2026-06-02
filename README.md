@@ -52,10 +52,10 @@ If you *do* know React, you already know the shape — substitute three nouns:
 
 The reconciler that decides *whether to wake* is deliberately **dumb and deterministic** — there is **no judge step**. The intelligence is frozen ahead of time, at compile, into a per-node canonicalizer and the Forme wiring. The memo key has no clock in it.
 
-> **Versions (live on npm):** `@openprose/reactor` 0.2.0 ·
-> `reactor-cli` 0.1.0 · `reactor-devtools` 0.1.0. The `reactor` binary ships from the
-> **`reactor-cli`** package, so `reactor --version` prints the CLI version (0.1.0), not the
-> SDK version (0.2.0) — expected, not a mismatch.
+> **Versions (live on npm):** `@openprose/reactor` 0.3.0 ·
+> `reactor-cli` 0.2.0 · `reactor-devtools` 0.2.0. The `reactor` binary ships from the
+> **`reactor-cli`** package, so `reactor --version` prints the CLI version (0.2.0), not the
+> SDK version (0.3.0) — expected, not a mismatch.
 
 ## Quickstart (60 seconds, no model key)
 
