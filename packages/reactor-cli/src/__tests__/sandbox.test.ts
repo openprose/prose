@@ -26,6 +26,10 @@ import {
   type SandboxExecResponse,
 } from '../run/sandbox';
 import { callRunProject, type RunRender } from '../run/load-run-project';
+import {
+  createMemoryStorageAdapter,
+  createSystemClockAdapter,
+} from '@openprose/reactor';
 import type { SandboxConfig } from '../config';
 
 const WS = '/tmp/openprose-ws';
@@ -127,18 +131,22 @@ describe('render sandbox runner (Phase 5)', () => {
   it('shellTimeoutMs + sandbox flow onto the render config the CLI hands runProject', async () => {
     // Capture the exact `render` object callRunProject builds (Change C forwards
     // both to createAgentRender; the SDK equivalence test proves the forward).
-    let captured: Record<string, unknown> | undefined;
-    const fakeRunProject = async (input: unknown) => {
-      captured = (input as { render: Record<string, unknown> }).render;
-      return {
-        reactor: {} as never,
-        bootResults: [] as never,
-      };
+    // The fake `runProject` is the SDK's own `RunProjectFn` (typed via the
+    // `callRunProject` impl seam): it captures the `render` the CLI hands it.
+    // `render` IS the SDK `RunProjectRender` now (no `Record<string, unknown>`
+    // mirror) — so we read `sandbox`/`shellTimeoutMs` as typed fields.
+    let captured: RunRender | undefined;
+    const fakeRunProject: Parameters<typeof callRunProject>[1] = async (input) => {
+      captured = input.render;
+      return { reactor: {} as never, bootResults: [] };
     };
 
     const sandboxRunner = () => ({ exit_code: 0, stdout: '', stderr: '' });
     const render: RunRender = {
-      buildRender: () => ({}),
+      // The offline fake render body is never invoked here (we only capture the
+      // config), so a no-op factory stands in; cast through `unknown` to the SDK
+      // `AsyncMountedRender` as the suite's fake renders do.
+      buildRender: (() => async () => ({})) as unknown as RunRender['buildRender'],
       sandbox: sandboxRunner,
       shellTimeoutMs: 42_000,
     };
@@ -146,14 +154,17 @@ describe('render sandbox runner (Phase 5)', () => {
     await callRunProject(
       {
         compiled: {} as never,
-        adapters: { clock: {}, storage: {} },
+        adapters: {
+          clock: createSystemClockAdapter(),
+          storage: createMemoryStorageAdapter(),
+        },
         render,
       },
       fakeRunProject,
     );
 
     assert.ok(captured, 'runProject received a render config');
-    assert.equal(captured!['shellTimeoutMs'], 42_000, 'shell timeout flows through');
-    assert.equal(captured!['sandbox'], sandboxRunner, 'the runner flows through');
+    assert.equal(captured!.shellTimeoutMs, 42_000, 'shell timeout flows through');
+    assert.equal(captured!.sandbox, sandboxRunner, 'the runner flows through');
   });
 });

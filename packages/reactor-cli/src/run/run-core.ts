@@ -49,32 +49,33 @@ import {
   runCompileCommand,
   type CompileCommandOptions,
 } from '../commands/compile';
-import type { RunRender } from './load-run-project';
+import type { CallRunProjectResult, RunRender } from './load-run-project';
 import type { SandboxRunner } from './sandbox';
 
 // ---------------------------------------------------------------------------
-// Structural mirrors of the SDK shapes the CLI configures (typed locally so
-// this keyless module never imports the model-bearing `./run-project` barrel).
-// These are STRUCTURAL — `runProject` accepts any object of this shape.
+// The SDK run-phase shapes the CLI configures, derived TYPE-ONLY from the
+// `RunRender` (= the SDK `RunProjectRender`, `@openprose/reactor/run/types`).
+// The pre-`0.3.0` hand-mirrored `ContractView` / `ProjectTruthProjection` /
+// `ProjectFiles` / `ProjectTruth` copies are GONE — these are the SDK's OWN
+// `CompiledContractView` / `TruthProjection` shapes, indexed off `RunRender`, so
+// this keyless module still imports no model-bearing barrel yet a field the SDK
+// adds (or renames) is a CLI compile error, not silent drift.
 // ---------------------------------------------------------------------------
 
-/** A node's published files (path → bytes) — the SDK's `WorldModelFiles`. */
-export type ProjectFiles = Readonly<Record<string, Uint8Array>>;
+/** A node's truth projection — the SDK `TruthProjection` (what
+ * `RunRender.projectTruthFor` returns PER node): files → structured value. */
+export type ProjectTruthProjection = ReturnType<
+  NonNullable<RunRender['projectTruthFor']>
+>;
 
-/** The structured value a compiled canonicalizer reduces (SDK `WorldModelValue`). */
-export type ProjectTruth = unknown;
+/** A node's published files (path → bytes) — the SDK `WorldModelFiles`. */
+export type ProjectFiles = Parameters<ProjectTruthProjection>[0];
 
-/** A node's truth projection (SDK `TruthProjection`): files → structured value. */
-export type ProjectTruthProjection = (files: ProjectFiles) => ProjectTruth;
+/** The structured value a compiled canonicalizer reduces — the SDK `WorldModelValue`. */
+export type ProjectTruth = ReturnType<ProjectTruthProjection>;
 
-/** A minimal per-node contract view (SDK `CompiledContractView`, structural). */
-export interface ContractView {
-  readonly name: string;
-  readonly maintains: readonly string[];
-  readonly requires: readonly string[];
-  readonly continuity?: string;
-  readonly execution?: string;
-}
+/** A minimal per-node contract view — the SDK `CompiledContractView` (`RunRender.contractFor`). */
+export type ContractView = ReturnType<NonNullable<RunRender['contractFor']>>;
 
 /**
  * The SDK `CompiledProject` shape the CLI assembles from the cache. Mirrors
@@ -382,14 +383,12 @@ export interface NodeDisposition {
   readonly disposition: 'rendered' | 'skipped' | 'failed' | 'coalesced';
 }
 
-/** A minimal structural mirror of the SDK `ReconcileResult` (disposition is the
- * SDK's `ReconcileDisposition` string union; typed loosely as `string` so the
- * boot/ingest results flow through without a narrowing cast — `summarizeBoot`
- * normalizes it to the known union). */
-export interface CliReconcileResult {
-  readonly node: string;
-  readonly disposition: string;
-}
+/** The SDK `ReconcileResult` — the element type of `runProject`'s `bootResults`
+ * (`CallRunProjectResult['bootResults']`, the SDK `RunProjectResult`). The
+ * pre-`0.3.0` `{ node; disposition: string }` structural mirror is GONE;
+ * `summarizeBoot` reads its `node` + `disposition` (the SDK's
+ * `ReconcileDisposition` union) and normalizes to the known set. */
+export type CliReconcileResult = CallRunProjectResult['bootResults'][number];
 
 /** The known reconcile dispositions (the SDK `ReconcileDisposition` union). */
 const KNOWN_DISPOSITIONS = new Set([
