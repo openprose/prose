@@ -144,18 +144,36 @@ export interface CompileProjectInput {
 }
 
 /**
- * Per-step option overrides. For the canonicalizer/postcondition steps the
- * override may be a per-NODE map (each node's session emits a node-specific
- * schema) or a single options object applied to every node.
+ * The canonicalizer/postcondition step overrides. Each of those steps runs a
+ * per-NODE session (each node emits a node-specific schema), so the override is
+ * an explicit, discriminated choice — NOT a structurally-sniffed union:
+ *
+ * - `all` applies one {@link CompileStepOptions} to EVERY node's session.
+ * - `byNode` supplies a per-node-id map of {@link CompileStepOptions}; a node
+ *   absent from the map falls back to `all` (and then to the shared
+ *   {@link CompileProjectInput.options}).
+ *
+ * Both may be set: `byNode[node]` is merged OVER `all`. This makes "one provider
+ * for every node" and "a distinct provider per node" two named, unambiguous
+ * shapes — no key-name heuristic deciding which one you meant.
+ */
+export interface NodeStepCompileOptions {
+  /** Options applied to every node's session for this step. */
+  readonly all?: CompileStepOptions;
+  /** Per-node-id option overrides, merged over {@link all}. */
+  readonly byNode?: Readonly<Record<string, CompileStepOptions>>;
+}
+
+/**
+ * Per-step option overrides. The Forme step runs once for the whole topology, so
+ * it takes a single {@link CompileStepOptions}. The canonicalizer/postcondition
+ * steps run per node, so they take the explicit {@link NodeStepCompileOptions}
+ * `{ all?, byNode? }` shape (no structural heuristic).
  */
 export interface PerStepCompileOptions {
   readonly forme?: CompileStepOptions;
-  readonly canonicalizer?:
-    | CompileStepOptions
-    | Readonly<Record<string, CompileStepOptions>>;
-  readonly postcondition?:
-    | CompileStepOptions
-    | Readonly<Record<string, CompileStepOptions>>;
+  readonly canonicalizer?: NodeStepCompileOptions;
+  readonly postcondition?: NodeStepCompileOptions;
 }
 
 /**
@@ -580,45 +598,26 @@ function mergeOptions(
   return { ...base, ...override };
 }
 
+/**
+ * Resolve a per-node step's effective options from the explicit
+ * {@link NodeStepCompileOptions} `{ all?, byNode? }` shape: `byNode[node]` merged
+ * OVER `all`. No structural sniffing — the shape says exactly which is which.
+ */
 function resolveNodeStepOptions(
-  step:
-    | CompileStepOptions
-    | Readonly<Record<string, CompileStepOptions>>
-    | undefined,
+  step: NodeStepCompileOptions | undefined,
   node: string,
 ): CompileStepOptions | undefined {
   if (step === undefined) {
     return undefined;
   }
-  if (isPerNodeOptions(step)) {
-    return step[node];
+  const perNode = step.byNode?.[node];
+  if (step.all === undefined) {
+    return perNode;
   }
-  return step;
-}
-
-/**
- * Distinguish a per-NODE map of options from a single `CompileStepOptions`. A
- * `CompileStepOptions` only ever carries known session knobs (provider/model/
- * skill/temperature/seed/maxTurns); a per-node map is keyed by node id. We treat
- * a record whose own keys are all NON-session keys as a per-node map.
- */
-function isPerNodeOptions(
-  value: CompileStepOptions | Readonly<Record<string, CompileStepOptions>>,
-): value is Readonly<Record<string, CompileStepOptions>> {
-  const SESSION_KEYS = new Set([
-    "provider",
-    "model",
-    "skill",
-    "skillPath",
-    "temperature",
-    "seed",
-    "maxTurns",
-  ]);
-  const keys = Object.keys(value);
-  if (keys.length === 0) {
-    return false;
+  if (perNode === undefined) {
+    return step.all;
   }
-  return keys.every((k) => !SESSION_KEYS.has(k));
+  return { ...step.all, ...perNode };
 }
 
 function resolveStore(input: RunProjectInput): WorldModelStore {

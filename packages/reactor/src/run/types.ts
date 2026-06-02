@@ -10,6 +10,7 @@ export type {
   CompileProjectInput,
   CompiledProject,
   CompiledProjectNode,
+  NodeStepCompileOptions,
   PerStepCompileOptions,
   RunProjectInput,
   RunProjectRender,

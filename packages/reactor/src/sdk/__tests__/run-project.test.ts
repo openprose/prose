@@ -149,12 +149,16 @@ async function compileSmallestProject(): Promise<CompiledProject> {
     perStep: {
       forme: { provider: fakeStructuredProvider(FORME_OUTPUT) },
       canonicalizer: {
-        [MONITOR]: { provider: fakeStructuredProvider(MONITOR_CANON_OUTPUT) },
-        [BRIEF]: { provider: fakeStructuredProvider(BRIEF_CANON_OUTPUT) },
+        byNode: {
+          [MONITOR]: { provider: fakeStructuredProvider(MONITOR_CANON_OUTPUT) },
+          [BRIEF]: { provider: fakeStructuredProvider(BRIEF_CANON_OUTPUT) },
+        },
       },
       postcondition: {
-        [MONITOR]: { provider: fakeStructuredProvider(MONITOR_PC_OUTPUT) },
-        [BRIEF]: { provider: fakeStructuredProvider(BRIEF_PC_OUTPUT) },
+        byNode: {
+          [MONITOR]: { provider: fakeStructuredProvider(MONITOR_PC_OUTPUT) },
+          [BRIEF]: { provider: fakeStructuredProvider(BRIEF_PC_OUTPUT) },
+        },
       },
     },
   });
@@ -254,8 +258,10 @@ test("compileProject skipPostconditions: synthesizes EMPTY validator sets withou
     perStep: {
       forme: { provider: fakeStructuredProvider(FORME_OUTPUT) },
       canonicalizer: {
-        [MONITOR]: { provider: fakeStructuredProvider(MONITOR_CANON_OUTPUT) },
-        [BRIEF]: { provider: fakeStructuredProvider(BRIEF_CANON_OUTPUT) },
+        byNode: {
+          [MONITOR]: { provider: fakeStructuredProvider(MONITOR_CANON_OUTPUT) },
+          [BRIEF]: { provider: fakeStructuredProvider(BRIEF_CANON_OUTPUT) },
+        },
       },
     },
   });

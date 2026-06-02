@@ -71,8 +71,10 @@ const COMPILE = {
   perStep: {
     forme: { provider: fakeStructuredProvider(FORME_OUTPUT) },
     canonicalizer: {
-      [MONITOR]: { provider: fakeStructuredProvider(MONITOR_CANON_OUTPUT) },
-      [BRIEF]: { provider: fakeStructuredProvider(BRIEF_CANON_OUTPUT) },
+      byNode: {
+        [MONITOR]: { provider: fakeStructuredProvider(MONITOR_CANON_OUTPUT) },
+        [BRIEF]: { provider: fakeStructuredProvider(BRIEF_CANON_OUTPUT) },
+      },
     },
   },
 } as const;
