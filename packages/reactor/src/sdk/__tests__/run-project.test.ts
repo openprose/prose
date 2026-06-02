@@ -22,7 +22,7 @@
 // propagates monitor → brief), (ii) TWO receipts land in the ledger, and (iii) a
 // RESTART (a new reactor over the same dirs) boots to ALL-SKIPS (no re-render).
 
-import { deepEqual, equal, notEqual, ok } from "node:assert/strict";
+import { deepEqual, equal, notEqual, ok, rejects } from "node:assert/strict";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -403,6 +403,69 @@ test("runProject RESTART-SURVIVAL: a second reactor over the same dirs boots to 
     // source's cheap `skipped` receipt (the subscriber never woke).
     deepEqual(second.reactor.store.publishedFingerprints(MONITOR), monitorFpBefore);
     equal(second.reactor.ledger.all().length, receiptsBefore + 1);
+  } finally {
+    rmSync(d.wm, { recursive: true, force: true });
+    rmSync(d.storage, { recursive: true, force: true });
+  }
+});
+
+// GOTCHA-1 BOOT GUARD (task 15): the monitor PRODUCES the `funding` facet the
+// brief subscribes to (the fixture's one named-facet edge). Omitting
+// `render.projectTruthFor` means the monitor's facet fingerprint can never move
+// and the brief's edge would SILENTLY never wake — the exact footgun GOTCHA 1
+// warns about. The guard makes that mis-wiring a LOUD boot failure, not a dead
+// edge: runProject throws BEFORE booting (no receipts, no silent all-skips).
+test("runProject GOTCHA-1: a faceted producer with no truth projection fails LOUDLY at boot", async () => {
+  const d = dirs();
+  try {
+    const compiled = await compileSmallestProject();
+
+    // Sanity: the fixture really does carry a named-facet edge (monitor → brief
+    // on `funding`), so the guard's precondition holds.
+    deepEqual(compiled.reconcilerTopology.topology.edges, [
+      { subscriber: BRIEF, producer: MONITOR, facet: "funding" },
+    ]);
+
+    await rejects(
+      () =>
+        runProject({
+          compiled,
+          adapters: {
+            clock: createSystemClockAdapter(),
+            storage: createMemoryStorageAdapter(),
+            worldModel: new FileSystemWorldModelStore({ directory: d.wm }),
+          },
+          // NO projectTruthFor — the footgun. (buildRender supplied so the guard
+          // is proven to fire on the canonicalizer-mount path, not the live one.)
+          render: { buildRender: buildFakeRender },
+        }),
+      (err: unknown) => {
+        ok(err instanceof Error);
+        ok(err.message.includes("GOTCHA-1"));
+        // Names the offending producer so the failure is actionable.
+        ok(err.message.includes(MONITOR));
+        ok(err.message.includes("projectTruthFor"));
+        return true;
+      },
+    );
+
+    // The guard fired at BOOT: the world-model dir saw no committed version (no
+    // node ever rendered behind the dead edge).
+    equal(new FileSystemWorldModelStore({ directory: d.wm }).read(asNodeId(MONITOR)).ref.version, null);
+
+    // And supplying the projection makes the SAME compiled project boot cleanly —
+    // the guard gates only the mis-wired case, never the correct one.
+    const ok2 = await runProject({
+      compiled,
+      adapters: {
+        clock: createSystemClockAdapter(),
+        storage: createMemoryStorageAdapter(),
+        worldModel: new FileSystemWorldModelStore({ directory: d.wm }),
+      },
+      render: { buildRender: buildFakeRender, projectTruthFor },
+    });
+    equal(dispositionOf(ok2.bootResults, MONITOR), "rendered");
+    equal(dispositionOf(ok2.bootResults, BRIEF), "rendered");
   } finally {
     rmSync(d.wm, { recursive: true, force: true });
     rmSync(d.storage, { recursive: true, force: true });

@@ -53,7 +53,7 @@ import {
   type RenderSandboxRunner,
   type RenderBackend,
 } from "../adapters/agent-render";
-import { asFingerprint } from "../shapes";
+import { asFingerprint, ATOMIC_FACET } from "../shapes";
 import type { Cost, Fingerprint } from "../shapes";
 import type { ReconcilerTopology } from "../reactor";
 import { contentAddressOf } from "../world-model/canonical";
@@ -279,6 +279,11 @@ export interface RunProjectRender {
    * canonicalizer reduces. A producer that maintains a named facet MUST supply
    * one so its facet fingerprint moves and propagation fires. A node with no
    * named-facet subscribers may omit it (defaults to the empty projection).
+   *
+   * GOTCHA-1 BOOT GUARD: if the compiled topology has ANY named-facet edge but
+   * this is left undefined, {@link runProject} throws at boot rather than ship a
+   * SILENTLY dead edge (the producer's facet fingerprint could never move). Supply
+   * it whenever a node maintains a subscribed-to named facet.
    */
   readonly projectTruthFor?: (node: string) => TruthProjection;
   /**
@@ -413,6 +418,37 @@ export async function runProject(
   const contractFor = render.contractFor ?? defaultContractFor(compiled);
   const projectTruthFor =
     render.projectTruthFor ?? (() => EMPTY_PROJECTION);
+
+  // GOTCHA-1 BOOT GUARD: a node that PRODUCES a named (non-atomic) facet some
+  // subscriber depends on MUST be given a truth projection — without one its
+  // canonicalizer reduces an empty truth, the facet fingerprint never moves, and
+  // the subscriber's edge SILENTLY never wakes. The footgun is invisible at
+  // runtime (boot just looks all-skips), so fail LOUDLY here at boot instead of
+  // shipping a dead edge. A caller drives the projection through
+  // `render.projectTruthFor`; if it is omitted, EVERY node defaults to the empty
+  // projection, so a faceted producer is necessarily mis-wired. (A node whose
+  // only outbound subscriptions are on `ATOMIC_FACET`, or that no one subscribes
+  // to, needs no projection and is unaffected — the contract's "may omit it".)
+  // This fires regardless of `buildRender`: the canonicalizer mount that consumes
+  // the projection is the same on the live and the offline-fake render paths.
+  if (render.projectTruthFor === undefined) {
+    const facetedProducers = new Set<string>();
+    for (const edge of compiled.reconcilerTopology.topology.edges) {
+      if (edge.facet !== ATOMIC_FACET) {
+        facetedProducers.add(edge.producer);
+      }
+    }
+    if (facetedProducers.size > 0) {
+      const producers = [...facetedProducers].sort().join(", ");
+      throw new Error(
+        `runProject GOTCHA-1: node(s) [${producers}] produce a named facet a ` +
+          `subscriber depends on, but no truth projection was supplied — their ` +
+          `facet fingerprints can never move and the subscriber edges would ` +
+          `SILENTLY never wake. Supply render.projectTruthFor so each faceted ` +
+          `producer's structured truth is projected (see RunProjectRender.projectTruthFor).`,
+      );
+    }
+  }
 
   // The render body: the injected factory (offline fake) or the live agent-render
   // over the SHARED store. Building over `store` is load-bearing — the render's
