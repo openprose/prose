@@ -369,6 +369,18 @@ if (require.main === module) {
       const message = err?.message ?? String(err);
       const detail = process.env.DEBUG && err?.stack ? err.stack : message;
       process.stderr.write(String(detail) + '\n');
+      // Symmetric --json contract: a verify-failure already emits {ok:false} to
+      // stdout, but an *operational* error (e.g. `trigger` with missing model
+      // extras) throws BEFORE any command-level stdout emission and only its
+      // message reaches stderr — a JSON consumer is left with empty, unparseable
+      // stdout. When the global --json flag was passed, mirror the failure as a
+      // machine-readable envelope on stdout too. This is safe against double-emit
+      // because every handled --json command path (emitError, verify, doctor …)
+      // `return`s a code rather than throwing, so it never reaches this catch —
+      // only genuinely-thrown operational errors (which produced no stdout) do.
+      if (process.argv.includes('--json')) {
+        process.stdout.write(JSON.stringify({ ok: false, error: message }) + '\n');
+      }
       process.exitCode = 1;
     });
 }
