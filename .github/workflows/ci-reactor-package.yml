@@ -115,24 +115,38 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Publish reactor packages
-        # Each package publishes at its own package.json version (they diverge:
-        # reactor 0.2.0, reactor-cli 0.1.0, reactor-devtools 0.1.0). Already-published
-        # versions are skipped so re-runs are idempotent. `pnpm publish` rewrites the
-        # `workspace:*` SDK dependency to the concrete version and runs each package's
-        # prepack build.
+        # OIDC trusted publishing: npm (>=11.5.1) exchanges the GitHub Actions id-token
+        # for a short-lived npm token — no NPM_TOKEN secret needed. pnpm has NO OIDC
+        # support, so we pnpm-PACK each package (which rewrites its `workspace:*` SDK
+        # dependency to the concrete version and runs the prepack build) and then
+        # `npm publish` the resulting tarball.
+        # Each package publishes at its own package.json version (they diverge: reactor
+        # 0.2.0, reactor-cli 0.1.0, reactor-devtools 0.1.0); already-published versions are
+        # skipped so re-runs are idempotent. Order matters — reactor first, because cli +
+        # devtools depend on the concrete reactor version.
         run: |
           set -euo pipefail
+          pack_dir="${RUNNER_TEMP}/reactor-publish"
+          mkdir -p "${pack_dir}"
           publish_pkg() {
             local dir="$1"
-            local name version
+            local name version slug tarball
             name="$(node -p "require('./${dir}/package.json').name")"
             version="$(node -p "require('./${dir}/package.json').version")"
             if npm view "${name}@${version}" version >/dev/null 2>&1; then
               echo "Skipping ${name}@${version} — already published."
               return 0
             fi
-            echo "Publishing ${name}@${version}"
-            pnpm --dir "${dir}" publish --access public --no-git-checks --provenance
+            echo "Packing ${name}@${version}"
+            pnpm --dir "${dir}" pack --pack-destination "${pack_dir}"
+            slug="$(printf '%s' "${name}" | sed 's#@##; s#/#-#g')"
+            tarball="$(find "${pack_dir}" -maxdepth 1 -name "${slug}-${version}.tgz" -print -quit)"
+            if [ -z "${tarball}" ]; then
+              echo "::error::No tarball produced for ${name}@${version}."
+              exit 1
+            fi
+            echo "Publishing ${tarball} (OIDC trusted publishing + provenance)"
+            npm publish "${tarball}" --access public --provenance
           }
           publish_pkg packages/reactor
           publish_pkg packages/reactor-cli
