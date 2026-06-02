@@ -34,12 +34,13 @@ import {
   verifyReceiptChain,
   ATOMIC_FACET,
   createFileSystemStorageAdapter,
+  createFileSystemWorldModelStore,
   type ReplaySession,
   type LedgerReceipt,
+  type WorldModelStore,
 } from "@openprose/reactor";
 import {
   FileSystemReceiptLedger,
-  FileSystemWorldModelStore,
 } from "@openprose/reactor/adapters";
 import {
   propagationTargets,
@@ -144,7 +145,7 @@ export interface OpenedStateDir {
    * the dir has no `world-models/` directory (a bare trail). Never serialized to
    * the SPA — it holds an I/O handle; the SPA reaches it through the endpoint.
    */
-  readonly worldModels: FileSystemWorldModelStore | null;
+  readonly worldModels: WorldModelStore | null;
   /**
    * Friendly `nodeId → label` map from `<state-dir>/compile/labels.json`, or
    * `{}` when absent. Carried through to {@link ReplaySnapshot.labels}.
@@ -373,10 +374,10 @@ function isTopologyWorldModel(value: unknown): boolean {
  */
 export function openWorldModels(
   stateDir: string,
-): FileSystemWorldModelStore | null {
+): WorldModelStore | null {
   const directory = join(stateDir, "world-models");
   if (!existsSync(directory)) return null;
-  return new FileSystemWorldModelStore({ directory });
+  return createFileSystemWorldModelStore({ directory });
 }
 
 // --- Click-through: a receipt's node truth at its version (S4) --------------

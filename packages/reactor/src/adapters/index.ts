@@ -42,10 +42,12 @@ export {
   type WorldModelStore,
   atomicCanonicalizer,
   InMemoryWorldModelStore,
+  createInMemoryWorldModelStore,
   COLD_START_FINGERPRINTS,
   resolveFacetFingerprint,
   type FileSystemWorldModelStoreInput,
   FileSystemWorldModelStore,
+  createFileSystemWorldModelStore,
   readTextFile,
 } from "../world-model";
 

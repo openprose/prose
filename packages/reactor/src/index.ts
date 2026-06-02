@@ -81,6 +81,17 @@ export {
 
 export { createFileSystemReceiptLedger } from "./sdk/fs-ledger";
 
+// ── The blessed world-model store builders (one factory per backend) ────────
+// The `new`-vs-`create*` inconsistency across substrate backends is resolved
+// here: one `create*WorldModelStore` factory per backend on the front door. The
+// `*WorldModelStore` classes stay reachable from `/internals` for subclassing.
+export {
+  createFileSystemWorldModelStore,
+  createInMemoryWorldModelStore,
+  type FileSystemWorldModelStoreInput,
+  type WorldModelStore,
+} from "./world-model";
+
 // ── The substrate port short-names (the headline vocabulary) ────────────────
 export type {
   ClockAdapter,
@@ -134,6 +145,16 @@ export {
   textFile,
   jsonFile,
 } from "./world-model";
+
+// ── The wake constructors (one event type, three sources) ───────────────────
+// `inputWake` / `selfWake` / `externalWake` build the `{ source, refs }` wake a
+// driver hands to `ingest` / the reconciler, so the literal is never re-derived
+// by hand at every ingress / continuity-fire site.
+export {
+  externalWake,
+  selfWake,
+  inputWake,
+} from "./sdk/wake";
 
 export {
   ATOMIC_FACET,

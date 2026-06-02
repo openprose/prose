@@ -49,6 +49,7 @@ import {
   ATOMIC_FACET,
   files as wmFiles,
   jsonFile,
+  externalWake,
   type Wake,
 } from '@openprose/reactor';
 import { EMPTY_SEMANTIC_DIFF, createNullSignature } from '@openprose/reactor/internals';
@@ -125,8 +126,8 @@ export function ingressSourceFor(gatewayNode: string): string {
   return `${gatewayNode}::ingress`;
 }
 
-/** The SDK external wake (the barrel does not export the const; build it). */
-export const EXTERNAL_WAKE: Wake = Object.freeze({ source: 'external', refs: [] });
+/** The SDK external wake (the blessed constructor — one event, three sources). */
+export const EXTERNAL_WAKE: Wake = externalWake();
 
 /**
  * A stable arrival id for a triggered payload (mirrors the connector default
@@ -252,7 +253,7 @@ export function buildStageArrival(
     ledger.append({
       node: ingress,
       contract_fingerprint: `${ingress}@edge`,
-      wake: { source: 'external', refs: [] },
+      wake: externalWake(),
       input_fingerprints: [],
       fingerprints: commit.fingerprints,
       semantic_diff: EMPTY_SEMANTIC_DIFF,

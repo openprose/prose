@@ -25,6 +25,7 @@ export {
   type WorldModelStore,
   atomicCanonicalizer,
   InMemoryWorldModelStore,
+  createInMemoryWorldModelStore,
   COLD_START_FINGERPRINTS,
   resolveFacetFingerprint,
 } from "./store";
@@ -32,6 +33,7 @@ export {
 export {
   type FileSystemWorldModelStoreInput,
   FileSystemWorldModelStore,
+  createFileSystemWorldModelStore,
 } from "./fs-store";
 
 export {

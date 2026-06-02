@@ -264,6 +264,18 @@ export class InMemoryWorldModelStore implements WorldModelStore {
   }
 }
 
+/**
+ * The blessed builder for the in-memory world-model store — the headline,
+ * factory-shaped sibling of `createFileSystemWorldModelStore`. The `new`-vs-
+ * `create*` inconsistency across the substrate backends is resolved by one
+ * `create*WorldModelStore` factory per backend on the curated front door; the
+ * `InMemoryWorldModelStore` class itself stays reachable from `/internals` for
+ * subclassing.
+ */
+export function createInMemoryWorldModelStore(): WorldModelStore {
+  return new InMemoryWorldModelStore();
+}
+
 // ---------------------------------------------------------------------------
 // cold-start + internals
 // ---------------------------------------------------------------------------

@@ -44,7 +44,7 @@ import {
   ATOMIC_FACET,
   type Cost,
   type WakeSource,
-  type Wake,
+  externalWake,
   // The render-context type lives on the render-atom surface (front door).
   type RenderContext,
   type RenderProduct,
@@ -631,7 +631,7 @@ export function generateMaskedRelayFixture(opts: GenerateOptions): GenerateResul
     const commitRes = store.commitPublished(SOURCE, fm, ingressCanon);
     const prev = ledger.lastReceipt(SOURCE);
     const prevRef = prev !== null ? ledger.addressOf(prev) : null;
-    const wake: Wake = { source: "external", refs: [] };
+    const wake = externalWake();
     ledger.append({
       node: asNodeId(SOURCE),
       contract_fingerprint: asFingerprint(`contract:${SOURCE}@ingress`),

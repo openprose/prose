@@ -306,6 +306,19 @@ export class FileSystemWorldModelStore implements WorldModelStore {
   }
 }
 
+/**
+ * The blessed builder for the durable, content-addressed world-model store — the
+ * headline, factory-shaped sibling of `createInMemoryWorldModelStore`. One
+ * `create*WorldModelStore` factory per backend on the curated front door; the
+ * `FileSystemWorldModelStore` class itself stays reachable from `/internals` for
+ * subclassing.
+ */
+export function createFileSystemWorldModelStore(
+  input: FileSystemWorldModelStoreInput,
+): WorldModelStore {
+  return new FileSystemWorldModelStore(input);
+}
+
 // ---------------------------------------------------------------------------
 // internals
 // ---------------------------------------------------------------------------

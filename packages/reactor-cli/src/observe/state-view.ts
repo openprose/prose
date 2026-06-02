@@ -4,7 +4,7 @@
  *
  * N2 OFFLINE BOUNDARY: every adapter opened here is on the SDK's offline root
  * barrel (`@openprose/reactor`): `createFileSystemStorageAdapter`,
- * `createFileSystemReceiptLedger`, `FileSystemWorldModelStore`,
+ * `createFileSystemReceiptLedger`, `createFileSystemWorldModelStore`,
  * `verifyReceiptChain`. None pull `@openai/agents`/`zod`. The observability
  * commands are model-FREE — they read the durable trail + truth + cached
  * topology and NEVER reach the model surface (no dynamic import of the live
@@ -24,7 +24,7 @@ import {
   verifyReceiptChain,
   type LedgerReceipt,
 } from '@openprose/reactor';
-import { FileSystemWorldModelStore } from '@openprose/reactor/adapters';
+import { createFileSystemWorldModelStore, type WorldModelStore } from '@openprose/reactor';
 
 import {
   loadIR,
@@ -59,14 +59,14 @@ export interface ChainResult {
 export class StateView {
   readonly stateDir: string;
   readonly #receipts: readonly LedgerReceiptView[];
-  readonly #store: FileSystemWorldModelStore;
+  readonly #store: WorldModelStore;
   #ir: LoadedCompileIR | undefined;
   #irError: Error | undefined;
 
   private constructor(input: {
     stateDir: string;
     receipts: readonly LedgerReceiptView[];
-    store: FileSystemWorldModelStore;
+    store: WorldModelStore;
     ir: LoadedCompileIR | undefined;
     irError: Error | undefined;
   }) {
@@ -108,7 +108,7 @@ export class StateView {
       // and `receipts verify` will report the break; do not fail `open`.
     }
 
-    const store = new FileSystemWorldModelStore({ directory: worldModelsDir(stateDir) });
+    const store = createFileSystemWorldModelStore({ directory: worldModelsDir(stateDir) });
 
     let ir: LoadedCompileIR | undefined;
     let irError: Error | undefined;
@@ -132,7 +132,7 @@ export class StateView {
   }
 
   /** The world-model store (read-only projections only). */
-  get store(): FileSystemWorldModelStore {
+  get store(): WorldModelStore {
     return this.#store;
   }
 
