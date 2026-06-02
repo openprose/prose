@@ -6,18 +6,21 @@ hand from the public SDK — drive the dumb reconciler yourself, wake a graph,
 read back the dispositions and the cost rollup, then replay the resulting ledger
 in devtools.
 
-Everything below uses only the package's public exports — the root
-`@openprose/reactor` barrel (which re-exports the storage adapters) and its
-`/sdk` subpath. See the `"exports"` map in `package.json`. No private internals.
-The snippet below is run verbatim in this package's test suite, so it works as
-written.
+Everything below uses only the package's public exports — the curated front door
+`@openprose/reactor` (the `.` barrel: the driver vocabulary + the storage/ledger
+factories) and `@openprose/reactor/internals` (the one deep shape an eval needs,
+`ReconcilerTopology`). See the `"exports"` map in `package.json`. No private
+internals beyond that named subpath. The snippet below is run verbatim in this
+package's test suite, so it works as written.
 
 > **TypeScript setup:** the package ships its public API as `"exports"` subpaths
-> (`@openprose/reactor/sdk`, `/receipt`, `/projection`, …). Those subpath imports
-> resolve **only** under `"moduleResolution": "nodenext"` (or `"bundler"`) in your
-> `tsconfig.json` — the legacy `"node"` resolver does not read the `"exports"` map
-> and will fail these imports with `Cannot find module '@openprose/reactor/sdk'`.
-> Set `nodenext`/`bundler` before running the snippets here or in the README.
+> (`@openprose/reactor/agents`, `/adapters`, `/run`, `/run/types`, `/internals`).
+> Those subpath imports resolve **only** under `"moduleResolution": "nodenext"`
+> (or `"bundler"`) in your `tsconfig.json` — the legacy `"node"` resolver does not
+> read the `"exports"` map and will fail these imports with `Cannot find module
+> '@openprose/reactor/internals'`. The root `@openprose/reactor` import resolves
+> under legacy `node` too; the cliff bites only the explicit subpaths. Set
+> `nodenext`/`bundler` before running the snippets here or in the README.
 
 ## The shape of an eval
 
@@ -39,20 +42,21 @@ property you are probing: *a node renders if and only if its memo key
 > `require` form below is the most portable.
 
 ```ts
-import { createFileSystemStorageAdapter } from "@openprose/reactor";
 import {
+  createFileSystemStorageAdapter,
   mountDag,
   createFileSystemReceiptLedger,
   createReplaySession,
   files,
   textFile,
   ATOMIC_FACET,
-  type ReconcilerTopology,
   type RenderContext,
-} from "@openprose/reactor/sdk";
+} from "@openprose/reactor";
+// The one deep shape an eval mounts by hand lives on the engine-room subpath:
+import { type ReconcilerTopology } from "@openprose/reactor/internals";
 
 // (Plain CommonJS? The package is `type: commonjs`, so the same names come from
-//  `const { mountDag, ATOMIC_FACET } = require("@openprose/reactor/sdk")`.)
+//  `const { mountDag, ATOMIC_FACET } = require("@openprose/reactor")`.)
 
 // 1. A receipt ledger that persists to a directory you can replay later. The
 //    ledger appends through a storage adapter; the filesystem one writes the
@@ -194,14 +198,19 @@ woke them; `COST ROLLUP (tokens)` is the fresh-vs-reused token spend. The
 
 ## Notes on the public surface
 
-- The exports used here are from `@openprose/reactor` / `@openprose/reactor/sdk`
-  (the `mountDag` front door, `createFileSystemReceiptLedger`, the
-  `createReplaySession` read view, the `files`/`textFile` world-model helpers, and
-  `ATOMIC_FACET`). For the full set of subpaths see the `"exports"` map in
-  `package.json`.
-- The async live path (`ingestAsync`/`tickAsync` + the `asyncMounts` field on the
-  mount input) swaps the deterministic render for a bounded LLM session; the
-  reconciler semantics are identical.
+- The exports used here are all from the curated front door `@openprose/reactor`
+  (the `mountDag` driver, `createFileSystemStorageAdapter` /
+  `createFileSystemReceiptLedger`, the `createReplaySession` read view, the
+  `files`/`textFile` world-model helpers, and `ATOMIC_FACET`) plus the one deep
+  shape `ReconcilerTopology` from `@openprose/reactor/internals`. For the full set
+  of subpaths see the `"exports"` map in `package.json` and the package's
+  capability ledger.
+- This snippet drives the deterministic sync path (`dag.ingest(...)`) — exactly
+  what an eval wants (you're testing the RECONCILER, not a model). The async live
+  path swaps that fake render for a bounded LLM session; the reconciler semantics
+  are identical. On the higher-altitude typed `Reactor` handle (from `reactor()` /
+  `createReactor()`), drive is **async-by-default** (`await r.ingest(...)`) and the
+  deterministic sync verbs live behind `r.sync` (`r.sync.ingest(...)`).
 
 Send us the eval where Reactor *should* skip and doesn't, or *should* render and
 doesn't — that is the most useful thing you can hand us.

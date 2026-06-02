@@ -136,6 +136,83 @@ export function publicReceiptEvidence(proof: ReceiptProofInspection) {
 }
 ```
 
+### Configure the agent fully — the `@openai/agents` escape hatch
+
+The render is one bounded `@openai/agents` session, and **every knob that SDK
+anticipates is reachable** — no lossy wrapper. The harness owns only four fields
+(`instructions` / `tools` / `outputType` / `name`); setting them is a *compile
+error* (extend via `instructionsSuffix` / `extraTools` instead). Everything else
+passes through verbatim, layered: Tier-A sugar (`temperature` / `seed` / `model`
+/ `maxTurns` / `signal`), Tier-B passthrough (`agent` / `runConfig` /
+`runOptions`), and a Tier-C `agentFactory` / `runnerFactory` backstop. The same
+`RenderOptions` is forwarded by the facade's `render` option to every node:
+
+```ts
+import { reactor } from "@openprose/reactor";
+// The escape-hatch types (and createAgentRender) live on the peer-dep-isolated
+// /agents subpath; the facade forwards a RenderOptions verbatim.
+import type { RenderOptions } from "@openprose/reactor/agents";
+
+const render: RenderOptions = {
+  model: "anthropic/claude-sonnet-4",
+  temperature: 0.2,          // Tier-A sugar — fills agent.modelSettings if unset
+  maxTurns: 24,              // null is the deliberate unbounded opt-in
+  agent: { modelSettings: { providerData: { top_p: 0.9 } } },  // Tier-B, wins wholesale
+  runConfig: { workflowName: "nightly-digest" },               // runner-construction config
+  instructionsSuffix: "Prefer terse, sourced claims.",         // extend, never replace
+};
+
+const { reactor: r } = await reactor("./my-project", { directory: "./state", render });
+await r.ingest("source", { wake: { source: "external", refs: [] } });
+```
+
+Precedence is locked: a consumer's `agent.*` wins wholesale; the Tier-A sugar
+fills only fields you left unset. The default backend disables tracing **per
+run** (no process-global mutation), so it never leaks across other
+`@openai/agents` users in your process.
+
+### Swap a backend — the injection seam
+
+The substrate (`clock` / `storage` / `worldModel` / `ledger`) and the model
+session (`RenderBackend`) are injectable. Implement the `@openai/agents`-free
+`RenderBackend` port to swap in record/replay, a proxy, or a non-SDK model —
+while **reusing** the harness's instruction-composition / working-dir / harvest /
+cost machinery (you own only the one bounded session):
+
+```ts
+import { reactor } from "@openprose/reactor";
+import { fileSystemSubstrate, inMemorySubstrate } from "@openprose/reactor/adapters";
+import type {
+  RenderBackend,
+  RenderSessionRequest,
+  RenderSessionOutput,
+} from "@openprose/reactor/agents";
+
+// One bounded session — the harness hands you the resolved request and maps the
+// returned signal + usage into a receipt Cost.
+const recordingBackend: RenderBackend = {
+  async runSession(req: RenderSessionRequest): Promise<RenderSessionOutput> {
+    // ... call your model / replay a fixture using req.instructions, req.tools, …
+    return {
+      signal: undefined,  // undefined ⇒ the harness treats the session as failed
+      usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
+    };
+  },
+};
+
+const { reactor: r } = await reactor("./my-project", {
+  directory: "./state",
+  adapters: { renderBackend: recordingBackend },
+});
+void r;
+
+// The substrate factories build the persistence record correctly (the durable
+// ledger is re-derived from the same storage — the restart-survival mechanism):
+const durable = fileSystemSubstrate({ directory: "./state" });
+const ephemeral = inMemorySubstrate();      // tests / replay
+void durable; void ephemeral;
+```
+
 ## Public Subpaths
 
 The package exposes **six reasoned entrypoints** (the `0.3.0` ideal surface). The

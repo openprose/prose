@@ -11,17 +11,20 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { createFileSystemStorageAdapter } from "./index";
+// Mirrors EVALS.md's public homes: the front door `.` (here `./index`) carries
+// the driver vocabulary; the deep `ReconcilerTopology` shape re-homes to
+// `@openprose/reactor/internals` (here `./internals`).
 import {
+  createFileSystemStorageAdapter,
   mountDag,
   createFileSystemReceiptLedger,
   createReplaySession,
   files,
   textFile,
   ATOMIC_FACET,
-  type ReconcilerTopology,
   type RenderContext,
-} from "./sdk";
+} from "./index";
+import { type ReconcilerTopology } from "./internals";
 
 test("EVALS.md: quiet wakes skip, a contract edit renders + propagates", () => {
   const dir = mkdtempSync(join(tmpdir(), "evals-guide-"));
