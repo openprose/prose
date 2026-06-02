@@ -93,7 +93,7 @@ registry once for the CLI's `commander` dependency — replay / `doctor` / `comp
 afterward do not.
 </details>
 
-**2. See the thesis — keyless, no model call.** Replay a real saved run and read the per-node `rendered`/`skipped` dispositions, the receipt counts by `surprise_cause`, the token **cost rollup**, and per-node chain-verify:
+**2. See the thesis — keyless, no model call.** Replay a saved sample run (synthetic, illustrative tokens) and read the per-node `rendered`/`skipped` dispositions, the receipt counts by `surprise_cause`, the token **cost rollup**, and per-node chain-verify:
 
 ```bash
 npx -p @openprose/reactor-devtools reactor-devtools --example masked-relay --describe

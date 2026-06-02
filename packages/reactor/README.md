@@ -119,11 +119,18 @@ The package exposes these entrypoints:
 - `@openprose/reactor`
 - `@openprose/reactor/receipt`
 - `@openprose/reactor/cost`
+- `@openprose/reactor/world-model`
+- `@openprose/reactor/forme`
+- `@openprose/reactor/evidence-plan`
 - `@openprose/reactor/memo`
 - `@openprose/reactor/forecast`
 - `@openprose/reactor/sdk`
 - `@openprose/reactor/composition`
 - `@openprose/reactor/projection`
+- `@openprose/reactor/adapters/agent-compile`
+- `@openprose/reactor/adapters/agent-render`
+- `@openprose/reactor/run-project`
+- `@openprose/reactor/canonicalizer`
 
 ## Author a scenario / write an eval
 

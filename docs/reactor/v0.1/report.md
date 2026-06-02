@@ -16,7 +16,7 @@ Reactor is a small, open-source harness (`@openprose/reactor`) for AI work that 
 
 ### See the proof in one keyless command
 
-Don't take the metaphor on faith — run the proof first. Replay a saved run's receipt ledger with no model key and no model call. Only this replay step is keyless; the live steps below (compile/serve/run) need a key.
+Don't take the metaphor on faith — run the proof first. Replay a saved sample run's receipt ledger (synthetic, illustrative tokens) with no model key and no model call. Only this replay step is keyless; the live steps below (compile/serve/run) need a key.
 
 ```bash
 # all three packages are live on npm; the keyless replay needs no install at all:
