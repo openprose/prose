@@ -34,22 +34,19 @@ Parallel delegation without reduction. Send briefs to N delegates, collect all r
   - `delegate_1..delegate_N`: execute assigned brief
 - `prohibited`: merging or synthesizing results — that is the instantiating system's job
 
-### Requires
+### Parameters
 
 - Pattern instance receives:
-    delegates: string[]     -- service or system names for each delegate
+    delegates: string[]     -- responsibility or function names for each delegate
     briefs: string[]        -- one brief per delegate (same length as delegates)
                                OR a single string applied to all delegates
 
-### Ensures
+### Returns
 
-- Each delegate receives exactly one brief
-- All delegates execute in parallel
-- No delegate knows other delegates exist
-- Results are returned as an ordered array matching the input delegates
-- No merging or synthesis — the raw results are the output
-- `result`: array of all delegate outputs
+- `result`: array of all delegate outputs, in order matching the input delegates
 - `results`: same array, provided as a keyed alias
+
+The returned collection contains exactly one result per delegate, each from a delegate that received exactly one brief, ran in parallel, and saw no other delegate's output. The raw results are the output: the pattern returns them unmerged and unsynthesized.
 
 ### Delegation
 

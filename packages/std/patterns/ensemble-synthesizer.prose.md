@@ -18,11 +18,7 @@ Fans out the same task to K independent services and synthesizes their results b
 ### Slots
 
 - `ensemble_member` (primary)
-  - requires: task_brief
-  - ensures: result text
 - `synthesizer`
-  - requires: K member results, original task_brief
-  - ensures: synthesized result with confidence assessment
 
 ### Config
 
@@ -42,23 +38,20 @@ Fans out the same task to K independent services and synthesizes their results b
   - `synthesizer`: merge K results by reasoning about disagreements
 - `prohibited`: none
 
-### Requires
+### Parameters
 
 - Pattern instance receives:
-    ensemble_member: string   -- service or system name for each ensemble member
-    synthesizer: string       -- service or system name for the synthesizer
+    ensemble_member: string   -- responsibility or function name for each ensemble member
+    synthesizer: string       -- responsibility or function name for the synthesizer
     task_brief: string        -- the task (same brief goes to all members)
     ensemble_size: number     -- (optional, default 3)
 
-### Ensures
+### Returns
 
-- All K members receive the SAME brief independently
-- Synthesizer receives all K results — its job is NOT majority voting
-- Synthesizer reasons about WHY results differ — disagreements are signal
-  about ambiguity or difficulty
-- Returns the synthesized result plus a confidence assessment
-- `result`: the synthesis
+- `result`: the synthesis, plus a confidence assessment
 - `member_results`: the K individual results
+
+The synthesis is produced by a synthesizer that received all K member results — each member having independently received the SAME brief — and reasoned about WHY the results differ rather than majority-voting, treating disagreement as signal about ambiguity or difficulty.
 
 ### Delegation
 

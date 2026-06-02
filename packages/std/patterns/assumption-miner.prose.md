@@ -50,7 +50,7 @@ Heterogeneous services independently surface unstated assumptions; cross-tier di
     tiers: object[]         -- miner configurations, e.g. [{ model: "opus", count: 3 }, { model: "sonnet", count: 2 }]
     context: string         -- (optional) domain context to help miners distinguish assumptions from common knowledge
 
-### Ensures
+### Returns
 
 - Each miner receives the same material and is asked: "What does this assume is true but not explicitly state?"
 - Miners work independently — no miner sees another's output

@@ -18,13 +18,14 @@ subject: prose-author
 
 ### Expects
 
-- `source_package`: includes a runnable `kind: system` file
-- `source_package`: maps `input topic` into a `### Requires` item named
+- `source_package`: includes a runnable `kind: function` file
+- `source_package`: maps `input topic` into a `### Parameters` item named
   `topic`
-- `source_package`: maps `return report` into a `### Ensures` item named
+- `source_package`: maps `return report` into a `### Returns` item named
   `report`
-- `source_package`: converts the three pseudo `session` steps into resolvable
-  services or explicit dependencies for research, drafting, and review
+- `source_package`: converts the three pseudo `session` steps into intra-node
+  sub-agent sessions or delegated `function` calls for research, drafting, and
+  review
 - `source_package`: includes a fenced `prose` `### Execution` block with a
   bounded `loop until` and `max: 5`
 - `authoring_notes`: records that `prosescript.md` was loaded because the
@@ -40,6 +41,6 @@ subject: prose-author
 - `source_package`: leaves standalone legacy-style `input topic` outside
   Contract Markdown sections
 - `source_package`: leaves raw pseudo `session "..."` lines when they should be
-  named services in the system graph
-- `lint_report`: hides unbounded-loop or unresolved-service diagnostics behind
+  intra-node sub-agent sessions in `### Execution`
+- `lint_report`: hides unbounded-loop or unresolved-call diagnostics behind
   warnings

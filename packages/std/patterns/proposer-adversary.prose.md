@@ -42,21 +42,20 @@ One service proposes, another attacks the proposal, and the unresolved tension i
   - `adversary`: find flaws in the proposal
 - `prohibited`: none
 
-### Requires
+### Parameters
 
 - Pattern instance receives:
-    proposer: string      -- service or system name for the proposer
-    adversary: string     -- service or system name for the adversary
+    proposer: string      -- function or responsibility name for the proposer
+    adversary: string     -- function or responsibility name for the adversary
     task_brief: string    -- what to propose
 
-### Ensures
+### Returns
 
-- Proposer receives only the task brief
-- Adversary receives the proposal and the task brief — its job is to find flaws,
-  edge cases, and counterexamples
-- This pattern does NOT resolve the tension
-- Returns { proposal, attack } — the instantiating system reasons about the disagreement
-- `result`: object containing `{ proposal, attack }`
+- `result`: object containing `{ proposal, attack }`.
+  The proposer receives only the task brief; the adversary receives the proposal and
+  the task brief — its job is to find flaws, edge cases, and counterexamples. The
+  pattern does NOT resolve the tension: it returns both `proposal` and `attack` so the
+  instantiating system reasons about the disagreement.
 
 ### Delegation
 

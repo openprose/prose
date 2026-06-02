@@ -1,25 +1,17 @@
 ---
 name: eval-calibrator
-kind: system
+kind: function
 ---
 
 # Eval Calibrator
 
 Validate that light inspections reliably predict deep inspection outcomes. This is the meta-eval — it measures whether the fast, cheap eval (light) is a trustworthy proxy for the thorough, expensive eval (deep). If light and deep agree consistently, teams can use light inspections in CI and reserve deep inspections for investigation.
 
-### Services
-
-- sampler
-- runner
-- comparator
-- statistician
-- advisor
-
-### Requires
+### Parameters
 
 - subjects: run[] — completed runs to calibrate on (minimum 3, recommended 10+)
 
-### Ensures
+### Returns
 
 - report: calibration report containing:
     - sample_size: number of runs analyzed
@@ -29,6 +21,8 @@ Validate that light inspections reliably predict deep inspection outcomes. This 
     - bias_direction: whether light tends to be optimistic (scores higher than deep) or pessimistic (scores lower) or neutral
     - confidence: "high" (20+ runs, agreement > 90%), "medium" (10+ runs, agreement > 75%), or "low" (fewer runs or lower agreement)
     - recommendations: prioritized list of improvements to light eval criteria based on disagreement patterns
+
+The returned report is well-formed only when every run in the sample received both a light and a deep inspection (none skipped); when the confidence field reflects the sample size and agreement rate per the thresholds above; and when, for a small sample (3-5 runs), confidence is lowered accordingly and the results are noted as preliminary. When all runs agree, the report still reports the result but flags that adversarial or edge-case runs would strengthen the calibration. When disagreements cluster around a specific failure mode, that mode is highlighted as the priority improvement target.
 
 ### Errors
 
@@ -40,162 +34,18 @@ Validate that light inspections reliably predict deep inspection outcomes. This 
 - all statistical calculations are performed deterministically via code execution, never by LLM arithmetic
 - every run in the sample receives both a light and deep inspection — no run is skipped
 
-### Strategies
+### Execution
 
-- when sample is small (3-5 runs): lower confidence accordingly, note that results are preliminary
-- when all runs agree: still report the result but flag that adversarial or edge-case runs would strengthen the calibration
-- when disagreements cluster around a specific failure mode: highlight that mode as the priority improvement target
+The render orchestrates five internal stages, in order. Each stage is an internal step in producing the report — none is a node; the only cross-contract call is the `std/evals/inspector` invocation inside the runner stage.
 
----
+1. **sampler** — Select and validate the sample of runs for calibration, ensuring diversity across systems, outcomes, and complexity. Takes the `subjects` run[] and produces a validated list of run paths with metadata (system name, completion status, service count) sorted by diversity score, plus a summary of sample composition (systems represented, success/failure ratio, size distribution). Raise `insufficient-runs` if fewer than 3 valid runs are in the input, or `homogeneous-sample` if all runs are from the same system. When more runs are provided than needed, prefer a diverse subset — different systems, mix of pass/fail, different sizes. When validating, confirm each run has vm.log.md, root.prose.md, and at least one binding.
 
-## sampler
+2. **runner** — `call std/evals/inspector` on each sampled run at both depths. This step invokes the inspector — it does not re-implement inspection logic, judge run quality, or perform inspection directly. For each run, invoke `std/evals/inspector` with `depth: light`, then invoke again with `depth: deep`; collect a pair of inspection results per run, each pair carrying run_id, light_inspection (full inspector output), and deep_inspection (full inspector output). Do not inspect a run and its inspection simultaneously — sequential per run, parallel across runs if possible. If the inspector fails on a run, record the failure (which run and why), continue to the next run, and report partial results.
 
-Select and validate the sample of runs for calibration. Ensure diversity across systems, outcomes, and complexity.
+3. **comparator** — Compare light and deep inspection results for each run, identifying agreements, disagreements, and patterns. For each run, produce a structured comparison containing run_id, verdict_match (light verdict == deep verdict), runtime_fidelity_delta (deep score minus light score; positive means light underestimated), task_effectiveness_delta, flag_overlap (flags found by both, only by light, only by deep), disagreement_type (null if agree, or one of "false_positive" — light flagged, deep did not; "false_negative" — light missed, deep caught; "severity_mismatch" — same flag, different severity; "verdict_split" — different verdict category), and notes explaining significant differences. When scores differ by less than 10 points but verdicts match, classify as agreement with minor calibration noise. When verdicts differ, always classify as disagreement regardless of score proximity. When light finds flags that deep does not, treat as a false positive — note it but recognize it may indicate light is being overly cautious (not necessarily bad).
 
-### Requires
+4. **statistician** — Compute aggregate statistics from the comparisons. All calculations must be performed via code execution — never by LLM arithmetic, mental estimation, or uncomputed correlations. Produce computed metrics: agreement_rate (percentage of verdict matches with 95% confidence interval), score_correlation (Pearson r for runtime_fidelity scores and task_effectiveness scores between light and deep), mean_score_delta (average deep - light for each score type), bias_direction ("optimistic" if mean delta < -5, "pessimistic" if > 5, "neutral" otherwise), disagreement_breakdown (count by disagreement_type), and confidence_level ("high", "medium", or "low" per the Returns thresholds). When computing correlation with fewer than 5 points, report "insufficient data for correlation" instead of a misleading r value. When computing confidence intervals, use the Wilson score interval for proportions, not the normal approximation. Always show the work: include the raw numbers alongside computed statistics. Raise `computation-failed` if code execution fails (include the error).
 
-- subjects: the run[] binding from the caller
+5. **advisor** — Analyze disagreement patterns and recommend improvements to the light evaluation criteria, drawing on both the comparisons and the statistics. Produce a prioritized list of recommendations, each with priority (1 highest through N), target (which aspect of light eval to change), rationale (what disagreement pattern motivates it), proposed_change (specific description of what to adjust), and expected_impact (how much this would improve agreement rate). When agreement is high (> 90%), focus recommendations on edge cases and maintaining reliability. When agreement is low (< 75%), focus on the most common disagreement type first. When light is consistently optimistic, recommend adding specific structural checks that catch the issues deep finds. When light is consistently pessimistic, recommend relaxing specific criteria that trigger false positives.
 
-### Ensures
-
-- sample: validated list of run paths with metadata (system name, completion status, service count) sorted by diversity score
-- sample-stats: summary of sample composition (systems represented, success/failure ratio, size distribution)
-
-### Errors
-
-- insufficient-runs: fewer than 3 valid runs in the input
-- homogeneous-sample: all runs are from the same system
-
-### Strategies
-
-- when more runs are provided than needed: prefer a diverse subset — different systems, mix of pass/fail, different sizes
-- when validating: confirm each run has vm.log.md, root.prose.md, and at least one binding
-
----
-
-## runner
-
-Execute the inspector on each sampled run at both depths. This step invokes the `std/evals/inspector` system — it does not re-implement inspection logic.
-
-### Shape
-
-- `self`:
-  - invoke inspector at both depths for each run
-  - collect results
-- `delegates`:
-  - `inspector`: perform the actual inspection
-- `prohibited`:
-  - performing inspection logic directly
-  - judging run quality
-
-
-### Requires
-
-- sample: validated run list from sampler
-
-### Ensures
-
-- inspections: for each run in the sample, a pair of inspection results — one from `depth: light` and one from `depth: deep`
-- each inspection pair has: run_id, light_inspection (full inspector output), deep_inspection (full inspector output)
-
-### Errors
-
-- inspector-failed: the inspector system itself failed on one or more runs (include which runs and why)
-
-### Strategies
-
-- for each run: invoke `std/evals/inspector` with `depth: light`, then invoke again with `depth: deep`
-- if inspector fails on a run: record the failure, continue to next run, report partial results
-- do not attempt to inspect a run and its inspection simultaneously — sequential per run, parallel across runs if possible
-
----
-
-## comparator
-
-Compare light and deep inspection results for each run. Identify agreements, disagreements, and patterns.
-
-### Requires
-
-- inspections: paired light/deep results from runner
-
-### Ensures
-
-- comparisons: for each run, a structured comparison containing:
-    - run_id: string
-    - verdict_match: boolean (light verdict == deep verdict)
-    - runtime_fidelity_delta: deep score minus light score (positive means light underestimated)
-    - task_effectiveness_delta: deep score minus light score
-    - flag_overlap: flags found by both, flags found only by light, flags found only by deep
-    - disagreement_type: null if agree, or one of "false_positive" (light flagged, deep did not), "false_negative" (light missed, deep caught), "severity_mismatch" (same flag, different severity), "verdict_split" (different verdict category)
-    - notes: explanation of significant differences
-
-### Strategies
-
-- when scores differ by less than 10 points but verdicts match: classify as agreement with minor calibration noise
-- when verdicts differ: always classify as disagreement regardless of score proximity
-- when light finds flags that deep does not: this is a false positive — note it but recognize it may indicate light is being overly cautious (not necessarily bad)
-
----
-
-## statistician
-
-Compute aggregate statistics from the comparisons. All calculations must be performed via code execution — never by LLM arithmetic.
-
-### Shape
-
-- `self`: compute statistics using code execution
-- `prohibited`:
-  - performing arithmetic mentally
-  - estimating correlations without calculation
-
-
-### Requires
-
-- comparisons: per-run comparison data from comparator
-
-### Ensures
-
-- statistics: computed metrics containing:
-    - agreement_rate: percentage of verdict matches (with 95% confidence interval)
-    - score_correlation: Pearson r for runtime_fidelity scores and task_effectiveness scores between light and deep
-    - mean_score_delta: average (deep - light) for each score type
-    - bias_direction: "optimistic" if mean delta < -5 (light scores higher), "pessimistic" if > 5, "neutral" otherwise
-    - disagreement_breakdown: count by disagreement_type
-    - confidence_level: "high", "medium", or "low" per the system's ensures criteria
-
-### Errors
-
-- computation-failed: code execution failed (include the error)
-
-### Strategies
-
-- when computing correlation with fewer than 5 points: report "insufficient data for correlation" instead of a misleading r value
-- when computing confidence intervals: use Wilson score interval for proportions, not the normal approximation
-- always show your work: include the raw numbers alongside computed statistics
-
----
-
-## advisor
-
-Analyze disagreement patterns and recommend improvements to the light evaluation criteria.
-
-### Requires
-
-- comparisons: from comparator
-- statistics: from statistician
-
-### Ensures
-
-- recommendations: prioritized list of improvements, each with:
-    - priority: 1 (highest) through N
-    - target: which aspect of light eval to change
-    - rationale: what disagreement pattern motivates this
-    - proposed_change: specific description of what to adjust
-    - expected_impact: how much this would improve agreement rate
-
-### Strategies
-
-- when agreement is high (> 90%): recommendations should focus on edge cases and maintaining reliability
-- when agreement is low (< 75%): recommendations should focus on the most common disagreement type first
-- when light is consistently optimistic: recommend adding specific structural checks that catch the issues deep finds
-- when light is consistently pessimistic: recommend relaxing specific criteria that trigger false positives
+The final report assembles the sampler's sample_size, the statistician's statistics (agreement_rate, score_correlation, bias_direction, confidence), the comparator's disagreements, and the advisor's recommendations into the `report` value described in `### Returns`.

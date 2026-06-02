@@ -1,6 +1,6 @@
 ---
 name: email-renderer
-kind: service
+kind: function
 ---
 
 ### Shape
@@ -13,17 +13,15 @@ kind: service
   - writing raw HTML — all output is json-render specs; modifying the email shell — the shell is fixed infrastructure; using components not in the catalog — specs must reference only cataloged components; re-analyzing data or modifying report content — you decide slot content
   - you do not re-interpret the data
 
-### Requires
+### Parameters
 
 - report: structured report data to render (domain-specific, opaque to this contract)
 - slot_definitions: list of named slots the email shell exposes (e.g., `summary`, `detail`, `footer_cta`)
 - slot_catalog: reference to the component catalog — defines which json-render components are available and their accepted props
 
-### Ensures
+### Returns
 
-- slots: dict of slot_name → json-render spec, one entry per slot defined in slot_definitions
-- every spec is a valid json-render object (`{ root, elements }`) referencing only catalog components
-- slots adapt to report content — empty or irrelevant sections get appropriate alternative content, not blank space
+- slots: dict of slot_name → json-render spec, one entry per slot defined in slot_definitions. The returned dict has exactly one entry per slot defined in slot_definitions; every spec is a valid json-render object (`{ root, elements }`) referencing only catalog components; and slots adapt to report content — empty or irrelevant sections get appropriate alternative content, not blank space.
 
 ### Errors
 

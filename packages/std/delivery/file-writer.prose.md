@@ -1,6 +1,6 @@
 ---
 name: file-writer
-kind: service
+kind: function
 ---
 
 ### Shape
@@ -14,16 +14,18 @@ kind: service
   - modifying the content substance — you serialize and write
   - you do not edit
 
-### Requires
+### Parameters
 
 - content: structured output to write
 - destination: file path or URI — local path, s3:// URI, or gs:// URI
 - format: (optional, default "md") output format — one of "md", "json", "csv", "html"
 
-### Ensures
+### Returns
 
 - written_path: the resolved path or URI where the file was written
 - bytes_written: the size of the written file in bytes
+
+On return, the file exists at `written_path` holding `content` serialized in the requested format, and `bytes_written` equals the size of that written file in bytes.
 
 ### Errors
 

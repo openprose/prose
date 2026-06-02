@@ -1,6 +1,6 @@
 # OpenProse Standard Library
 
-Reusable OpenProse services, systems, patterns, roles, delivery adapters, memory services, and operational tools.
+Reusable OpenProse functions, responsibilities, patterns, roles, delivery adapters, memory contracts, and operational tools.
 
 ## Usage
 
@@ -19,16 +19,16 @@ Install with `prose install`. `std/...` is the shorthand for `github.com/openpro
 
 ## Library
 
-Authored Prose sources use `*.prose.md` and the current Contract Markdown section form (`### Services`, `### Requires`, `### Ensures`, and related sections). `README.md` files remain plain Markdown.
+Authored Prose sources use `*.prose.md` and the current Contract Markdown section form: `### Parameters` / `### Returns` for a `function`, `### Requires` / `### Maintains` / `### Continuity` for a `responsibility` or `gateway`, intra-node composition via `call` in `### Execution`, and related sections. `README.md` files remain plain Markdown.
 
 ### evals/
 
-Systems for evaluating and improving OpenProse runs, contracts, and platform behavior.
+Contracts for evaluating and improving OpenProse runs, contracts, and platform behavior.
 
-| System | Purpose |
+| Contract | Purpose |
 |---------|---------|
 | `inspector` | Post-run analysis — runtime fidelity and task effectiveness |
-| `contract-grader` | Scores a system or service against its declared contract |
+| `contract-grader` | Scores a contract against its declared interface |
 | `regression-tracker` | Tracks quality regressions across runs |
 | `cross-run-differ` | Compares runs and recommends follow-up investigation |
 | `eval-calibrator` | Validates light evals against deep evals for reliability |
@@ -43,12 +43,12 @@ explicit user approval before pushing a branch or opening a PR.
 
 ### ops/
 
-Operational systems for profiling, debugging, validation, and wiring.
+Operational contracts for profiling, debugging, validation, and wiring.
 
-| System | Purpose |
+| Contract | Purpose |
 |---------|---------|
-| `lint` | Validate structure, schema, shapes, and contract consistency for a system and its service tree |
-| `preflight` | Check that all runtime dependencies are satisfied before executing a system |
+| `lint` | Validate structure, schema, shapes, and contract consistency for a contract and its sub-unit tree |
+| `preflight` | Check that all runtime dependencies are satisfied before executing a contract |
 | `status` | Summarize recent runs from `<openprose-root>/runs/` |
 | `wire` | Run Forme wiring to produce `forme.manifest.json` |
 | `prose-author` | Turn pseudo-Prose or logical English into a fully validated OpenProse program package, asking targeted questions when the host supports interaction |
@@ -57,9 +57,9 @@ Operational systems for profiling, debugging, validation, and wiring.
 
 ### delivery/
 
-Services for delivering outputs to humans and external systems.
+Contracts for delivering outputs to humans and external systems.
 
-| Service | Purpose |
+| Contract | Purpose |
 |---------|---------|
 | `human-gate` | Present output for human review, block until approved or rejected |
 | `slack-notifier` | Format and deliver content to Slack via webhook or API |
@@ -97,7 +97,7 @@ Reusable coordination and control-flow patterns (`kind: pattern`).
 
 ### roles/
 
-Single-service role guides for systems and patterns.
+Single-contract role guides for responsibilities and patterns.
 
 | Role | Purpose |
 |---------|---------|
@@ -114,9 +114,9 @@ Single-service role guides for systems and patterns.
 
 ### memory/
 
-Services for persistent agent memory management.
+Contracts for persistent agent memory management.
 
-| Service | Purpose |
+| Contract | Purpose |
 |---------|---------|
 | `project-memory` | Project-scoped memory |
 | `user-memory` | Cross-project memory (user-scoped) |

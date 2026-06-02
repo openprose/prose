@@ -36,23 +36,18 @@ Split input, delegate chunks to mappers in parallel, merge results with a reduce
   - `reducer`: merge all mapper outputs into a single result
 - `prohibited`: none
 
-### Requires
+### Parameters
 
 - Pattern instance receives:
-    mapper: string         -- service or system name for each mapper
-    reducer: string        -- service or system name for the reducer
+    mapper: string         -- function or responsibility name for each mapper
+    reducer: string        -- function or responsibility name for the reducer
     task_brief: string     -- overall task description
     chunks: any[]          -- the pre-partitioned input chunks
 
-### Ensures
+### Returns
 
-- Each mapper receives one chunk and the overall task brief as context
-- Mapper does not know other mappers exist or what chunks they received
-- All mappers execute in parallel
-- Reducer receives ALL mapper outputs and the overall task brief
-- Reducer reasons about how to merge — handles conflicts and overlaps
-- `result`: the merged output
-- `mapper_results`: individual mapper outputs
+- `result`: the merged output, produced solely by the reducer after it reasons about how to merge — handling conflicts and overlaps — over ALL mapper outputs and the overall task brief.
+- `mapper_results`: the individual mapper outputs, one per chunk, each mapper having received its single chunk and the overall task brief as context, run in parallel, with no mapper aware of the others or their chunks.
 
 ### Delegation
 

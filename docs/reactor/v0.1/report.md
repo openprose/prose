@@ -1,273 +1,234 @@
-# Reactor: Cost Scales With Surprise, Not Time
+# Reactor: React, for keeping a world-model true as the world moves
 
-Date: 2026-05-22 (v0.1.0 release)
+#### An open-source harness for standing AI responsibilities — where cost scales with surprise, not the clock
 
-## 0. TL;DR
+*By the OpenProse team · 2026-06-01*
 
-Reactor is an agent harness for responsibilities that keep running after a chat session ends. Its loop fires on predicates over durable state, not on user prompts. Each turn emits a content-addressed receipt naming the contract, evidence, model usage, verdict, freshness, and cost. Because identical evidence reuses the prior verdict instead of asking the model again, cost scales with surprise — plus a bounded, forecast-paced audit floor — not the wall clock: in the static 24-hour Cradle scenario, Reactor reaches and maintains its verdict in 2 model invocations and 46 fresh tokens; with verdict reuse switched off — the same scenario, the same receipt schedule — it takes 4 invocations and 92 fresh tokens. Memoization halves both the model invocations and the fresh token spend, and the fresh spend stays flat across the day instead of climbing with the clock. The policy that drives the loop is model-authored but compiled into a deterministic kernel, so expressiveness and auditability live on opposite sides of an explicit seam. The result is inspectable rather than asserted: the public `46:46` demo is deterministic, and independent first-time evaluators have run the §9 recipe from clean clones and reproduced it byte-for-byte. The published packages, CLI examples, and deterministic evaluation suite let readers check the mechanism instead of trusting the claim.
+---
 
-## 1. The Problem We Are Trying To Solve
+## TL;DR
 
-Most agent harnesses are built around a user-prompted loop: receive an instruction, gather context, act, and optionally verify. That architecture is exactly right for coding assistants and short-lived operational bursts. It is the wrong default for a responsibility an organization expects a system to keep maintaining: "the incident channel has a current briefing," "the release candidate is ready to ship," "customer renewal risk is visible before the meeting," or "audit evidence is fresh enough for the next review." Those states are not answers. They are maintained claims about a changing world.
+Reactor is a small, open-source harness (`@openprose/reactor`) for AI work that has to *keep being true* after a chat ends. You declare the truths you want maintained as OpenProse **Responsibilities**; Reactor keeps a composed **world-model** up to date against a changing world, re-rendering only the responsibilities whose inputs actually moved, and leaving a content-addressed **receipt** behind every decision. If you know React, you already know the shape: it is `React.memo` applied to expensive LLM work — declarative components, a maintained tree, and a deliberately dumb reconciler that skips everything that didn't change. This is the **next step for OpenProse**, not a turn away from it: the missing piece nearly every contract we wrote was pointing at. This report is mostly about the architecture: the metaphor that *is* the design, the components worth a close look, and an honest account of where Reactor is and isn't an RLM, and why nothing on the market is a drop-in replacement. We're publishing the harness before we publish benchmarks, on purpose — the mechanism is built, runnable, and reproducible; the numbers are the next thing we want help designing, not the thing we're leading with.
 
-OpenProse names that maintained claim a responsibility. The durable source is a `*.prose.md` contract — ordinary Markdown authorship over a small typed frontmatter, defined by the OpenProse language specification. The bundled examples show that shape directly in files such as [`incident-channel-current.prose.md`](https://github.com/openprose/prose/blob/reactor-v0.1.0-rc.2/skills/open-prose/examples/incident-briefing-room/src/incident-channel-current.prose.md). Reactor asks a different question from a normal agent loop: not "what should I do next?" but "given this responsibility, this event, the latest observations, and the prior decisions, what reconciliation action is now justified?"
+**New here?** Read §1–§3 for the idea, then run the one keyless command below. **Came from OpenProse?** §4 is where the through-line lands — this is the dependency-across-runs layer your contracts kept asking for.
 
-The practical requirement follows from that shift. The system has to pay when the world changes, stay quiet when nothing material changed, and leave behind enough evidence that a future agent or human can tell why it checked, acted, slept, or escalated. A transcript is not enough. A prompt is not enough. A cron schedule is not enough. We need the maintained state, the evidence identity, the model cost, the decision boundary, and the next scheduled check in a durable artifact.
+---
 
-That is why Reactor exists. It is not an attempt to replace chat-based coding assistants; it is a different bet for a different use case. We want bounded model activations inside a deterministic runtime, not continuity hidden inside a long-running session. We want a policy that can be expressive because a model authored it, and cheap because the hot path executes a compiled artifact. We want cost to track information gain. And when the system cannot honestly decide, we want it to stop and say why.
+### See the proof in one keyless command
 
-## 2. How The Bet Differs From The Harnesses You Already Use
-
-The comparison below is intentionally charitable. Claude Code, Codex, OpenClaw, Pi, and Hermes Agent each made defensible choices for their own use cases. Reactor differs because the maintained-responsibility use case pushes verification, policy, cost, and triggering into different places.
-
-| Axis | Reactor's bet | Public harness docs tend to emphasize | What the other bet buys |
-| --- | --- | --- | --- |
-| Verification | Receipt-as-causal-proof is required to advance. | Prompted verification, transcript visibility, fallback behavior, or human loop control. | Flexibility: a coding assistant can inspect, repair, and ask the user without committing every step to a proof object. |
-| Policy locus | Model-authored, compiled, kernel-evaluated policy artifacts. | Prompt context, project memory, filesystem skills, persona, or orchestrator configuration. | Editability and speed: prompt or skill policy is easy to change inside an interactive session. |
-| Adapter seams | Model gateway and agent SDK are separate required SDK types. | Provider-integrated loops, per-turn executors, or many execution backends under one orchestration story. | Integration: one loop is easier to sell and easier to wire into an interactive tool. |
-| Cost model | Cost is accounted as fresh work versus reused verdict proof. | Length, cache, compaction, summarization, provider choice, or subscription economics. | Operational pragmatism: caches and compaction are proven levers for long conversations. |
-| Loop trigger | Predicate-tripped reconciliation over durable state. | User prompts, goal prompts, chat inboxes, scheduled turns, or consumer chat. | Responsiveness to humans: the system wakes because a person or channel asked for work. |
-
-Source anchors for those characterizations: [Claude Code docs](https://code.claude.com/docs/en/how-claude-code-works), [Codex loop](https://openai.com/index/unrolling-the-codex-agent-loop/), [OpenClaw plugin docs](https://docs.openclaw.ai/plugins/sdk-agent-harness), [Hermes architecture](https://hermes-agent.nousresearch.com/docs/developer-guide/architecture), and public Pi background pieces such as [VentureBeat](https://venturebeat.com/ai/inflection-ai-launches-new-model-for-pi-chatbot-nearly-matches-gpt-4).
-
-Two bits of design DNA are shared. First, Reactor agrees with Claude Code, OpenClaw, and Hermes that state should outlive a single model call. Claude Code has transcripts, OpenClaw has a transcript compatibility layer, Hermes has SQLite and FTS5. Reactor's difference is that the durable state is a receipt graph, not a transcript. Second, Reactor agrees with OpenClaw and Hermes that tools deserve a first-class substrate. The difference is that Reactor treats tool/effect activation as one seam and model inference as another.
-
-The contrarian bet is the cost model. Most public harness documentation treats cost as a function of conversation length, context management, caching, provider choice, or subscription economics. Reactor says the thing worth charging for is information gain: what did the world reveal that the runtime did not already know? That bet can be wrong. If surprise is expensive or noisy to estimate in production, Reactor degenerates toward an ordinary scheduled loop with more ceremony. The v0.1 evidence does not prove the bet for the whole world. It proves the mechanism on deterministic scenarios and gives us a public harness for finding the domains where the bet holds.
-
-The second important difference is failure posture. A chat harness can ask the user, retry, or summarize when it loses the thread. That is often humane in an interactive tool. A maintenance harness has a sharper duty: if the contract has no observable referent, or the receipt graph says the policy is stale, the correct move may be to produce a blocked receipt and surface owner-visible pressure in the local projection. Reactor's "do nothing" state is therefore not absence. Quiescence is an explicit decision with a next recheck; blockage is an explicit decision with evidence. That is why the comparison table focuses less on UI and more on where each system locates proof.
-
-Claude Code and Codex are the best-known examples of the prompt-loop family. Their strengths are speed, tool access, and a fluid working relationship with a developer. OpenClaw and Hermes Agent are closer to a substrate story: both care deeply about tools, sessions, and durable local state. Pi is intentionally kept at the edge of the table because it marks the category boundary; a consumer assistant can have memory and personality without being an execution harness. Reactor borrows none of these systems' marketing claims. It borrows the shared insight that durable state matters, then makes a narrower claim: for maintained responsibilities, the durable state should be a causal receipt log.
-
-## 3. Architectural Deep Dive
-
-The architecture has two compiles, two adapter seams, and one trust unit.
-
-The first compile is source compile: `*.prose.md` source becomes repository IR. It fires when the author changes intent. The CLI path that exercises this for examples lives under [`tools/cli`](https://github.com/openprose/prose/tree/reactor-v0.1.0-rc.2/tools/cli), and the example sources live under [`skills/open-prose/examples`](https://github.com/openprose/prose/tree/reactor-v0.1.0-rc.2/skills/open-prose/examples). The second compile is policy compile: the contract plus accumulated receipt history becomes a token-free policy registry consumed by the runtime. It fires when the world drifted from what the policy predicted, or when a fixed backstop says the policy is too old.
-
-Those two compiles cannot merge. Source compile asks what the author declared. Policy compile asks what the cheapest correct maintenance strategy is, given the declaration and the receipt history. Source IR can remain byte-identical for months; policy can recompile twice in a day. Both artifacts are static before the kernel consumes them, but they have different clocks and different correctness tests.
-
-The two adapter seams are equally load-bearing. `ReactorModelGatewayAdapterV0` is the raw inference socket: shallow judging, recorded replay, and batchable model calls pass through it. `ReactorAgentSdkAdapterV0` is the bounded activation socket: policy authorship and effectful activations pass through it. The public SDK requires both adapters and checks both functions at injection time in [`packages/reactor/src/sdk/index.ts`](https://github.com/openprose/prose/blob/reactor-v0.1.0-rc.2/packages/reactor/src/sdk/index.ts). Cradle's provider-parity bridge deliberately wraps a model gateway under the agent-SDK seam for policy authorship tests, rather than erasing the distinction; see [`packages/reactor-cradle/src/provider-parity`](https://github.com/openprose/prose/tree/reactor-v0.1.0-rc.2/packages/reactor-cradle/src/provider-parity).
-
-The trust unit is the receipt. Receipt v0 records `core`, `sig`, `verdict`, `freshness`, `composition`, and `cost`; it is content-addressed through the canonical receipt hash in [`packages/reactor/src/receipt`](https://github.com/openprose/prose/tree/reactor-v0.1.0-rc.2/packages/reactor/src/receipt). The signer is honest about v0.1: omitted signer support normalizes to `scheme: "none"` with `null_reason: "no-signer-adapter-configured"`, and non-null signing is rejected by the SDK. That is less impressive than a production signer and much better than pretending one exists.
-
-Memoization is how the cost thesis becomes mechanical. The memo key includes the contract revision, evidence receipt identities, dependency receipts, and policy namespace. If those inputs are identical, the runtime can emit a memo-hit receipt with zero fresh tokens and explicit reused work; see [`packages/reactor/src/memo`](https://github.com/openprose/prose/tree/reactor-v0.1.0-rc.2/packages/reactor/src/memo). Forecast prevents "quiet world" from becoming "never check." Evidence-age and plan-age clocks manufacture synthetic recheck turns; plan-age rechecks are allowed to break memoization because a stale policy is itself a risk. That code lives in [`packages/reactor/src/forecast`](https://github.com/openprose/prose/tree/reactor-v0.1.0-rc.2/packages/reactor/src/forecast).
-
-Composition treats upstream receipts as evidence. A downstream responsibility does not consume "A's chat history"; it consumes A's content-addressed receipt with an acceptable signer set and a freshness predicate. Cycle detection is enforced in the kernel and composition layer, not stamped after the fact; see [`packages/reactor/src/composition`](https://github.com/openprose/prose/tree/reactor-v0.1.0-rc.2/packages/reactor/src/composition) and [`packages/reactor/src/kernel`](https://github.com/openprose/prose/tree/reactor-v0.1.0-rc.2/packages/reactor/src/kernel).
-
-Quiescence is deliberately split into three meanings. The runtime can decide not to act because the maintained state is already up to date. It can decide not to check because the forecast says the next audit is not due. And it can decide not to check deeply because shallow evidence is sufficient under the current calibration state. v0.1 demonstrates the first two local paths and the shallow judge path. The third is designed, measured around the K1 cassette, and honestly deferred from runtime dispatch. That distinction matters: if "quiet" collapses all three meanings, a reader cannot tell whether the system saved money, skipped evidence, or hid uncertainty.
-
-The fixed kernel backstops are what keep model-authored policy from becoming model self-permission. Policy artifacts carry falsification predicates, but the kernel does not trust those predicates to be complete. It enforces max policy age, minimum recompile interval, calibration-divergence bounds, no-anchor floors, and rollback-to-last-known-good behavior. Those are intentionally boring checks. They are also the reason we are comfortable letting a model author policy: the model writes the slow expressive artifact; deterministic code decides whether the artifact is admissible and whether it has tripped its own guard.
-
-The loop is easier to see as a diagram.
-
-![Figure 1. Reactor's canonical loop: predicate-tripped reconciliation, two compiles, two adapter seams, receipt output, projection, and forecasted re-entry.](figures/reactor-loop.svg)
-
-## 4. Why This Is Co-Load-Bearing With OpenProse
-
-Reactor needs OpenProse because the contract must be durable, human-readable, versionable, and source-controlled. A YAML file could name parameters. It would not naturally carry the responsibility as a thing a human can read, edit, review, and argue over. OpenProse makes the contract a first-class document; Reactor makes that document operational by producing receipts that cite its current revision.
-
-OpenProse needs Reactor for the symmetric reason. Without a receipt-producing runtime, a responsibility is only a polished prompt prefix. It can say "keep this true," but nothing proves whether the system checked the right evidence, paid a reasonable cost, or stopped when the contract became undecidable. Reactor gives the language teeth.
-
-This symbiosis is not a coincidence of design taste; it falls out of two commitments the language and the harness share. The first: intent has exactly one authored home. The `*.prose.md` contract is the single source of meaning, and everything downstream — compiled IR, policy registry, receipts, projections — is derived and reconcilable. The second: the model authors judgment, and deterministic code only bounds it. A model writes the policy and reaches the verdict; the kernel never authors judgment, it validates, schedules, records, and constrains. Reactor is the runtime where both commitments become observable at once — a receipt is, simultaneously, evidence that the derived artifacts still agree with the authored contract and evidence that the bounded kernel, not the model, decided what was admissible.
-
-The identity split is the small detail that reveals the whole design. The OpenProse language specification defines `responsibility_id` as a tooling-minted, UUIDv7-compatible identifier that is stable for the life of the responsibility, while `contract_revision` is the content fingerprint of the current source. Both appear in receipts. Conflating them would mean that editing the contract creates a new responsibility instead of a new version of the same responsibility. Receipt verification and the SDK surfaces in the runtime package preserve the split deliberately.
-
-The CLI/server and skills split follows from the same boundary. Skills and `*.prose.md` source carry language. The CLI and server carry harness. The model-gateway seam corresponds to the model substrate; the agent-SDK seam corresponds to bounded activations and external effects. That decomposition is not arbitrary. It is how the authored sentence stays the source of meaning while the runtime stays the source of audit.
-
-This also explains why the "responsibility" abstraction is worth keeping distinct from "task." A task can finish. A responsibility persists through source edits, policy recompiles, fulfillment attempts, and forecast rechecks. The stable identity lets humans say "this is still the incident briefing responsibility" while the contract revision lets the runtime say "this is not the same version of the criteria." Human continuity and machine audit need different handles. Reactor is where those handles meet.
-
-## 5. Implementation
-
-The public v0.1.0-rc.2 surface has three parts.
-
-First, [`@openprose/reactor`](https://www.npmjs.com/package/@openprose/reactor/v/0.1.0-rc.2) is the runtime package. Its [`package.json`](https://github.com/openprose/prose/blob/reactor-v0.1.0-rc.2/packages/reactor/package.json) exposes 11 public entrypoints: root, receipt, cost, kernel, evidence-plan, memo, forecast, SDK, policy, composition, and projection. It has zero runtime dependencies. The source reproduction path in §9 checks its package tests.
-
-Second, [`@openprose/reactor-cradle`](https://www.npmjs.com/package/@openprose/reactor-cradle/v/0.1.0-rc.2) is the deterministic eval package. Its [`package.json`](https://github.com/openprose/prose/blob/reactor-v0.1.0-rc.2/packages/reactor-cradle/package.json) exposes 23 entrypoints across assertions, eval helpers, worlds, scenario runners, replay, policy drift/replay, release parity, and K1/K2 spikes. Its only runtime dependency is `@openprose/reactor`.
-
-Third, the OpenProse CLI carries the local Reactor path. The CLI package is `@openprose/prose-cli` in [`tools/cli/package.json`](https://github.com/openprose/prose/blob/reactor-v0.1.0-rc.2/tools/cli/package.json). The reproduction path in §9 runs its spawned integration suite and the package-release verifiers under [`.github/scripts`](https://github.com/openprose/prose/tree/reactor-v0.1.0-rc.2/.github/scripts), including tarball import smoke tests and publish-workflow guards. The OIDC publish workflow is in [`.github/workflows/ci-reactor-package.yml`](https://github.com/openprose/prose/blob/reactor-v0.1.0-rc.2/.github/workflows/ci-reactor-package.yml).
-
-What v0.1.0-rc.2 demonstrates:
-
-| Surface | Demonstrated | Not claimed |
-| --- | --- | --- |
-| Runtime | receipt v0, kernel backstops, memoization, forecast, evidence plans, composition pins, projection tiers, export/import, cold-start policy authorship | production gateway, production oracle, production fulfillment |
-| Judgment | shallow runtime judge with adapter-owned token metadata; K1 live-cassette evaluator evidence | runtime variable-depth ensemble judging or live multi-provider matrix |
-| CLI | real source compile, `prose serve`, HTTP trigger ingestion, fulfillment artifacts, crash-window replay, duplicate-trigger dedupe, `prose status --tier=owner\|subscriber\|public` | hosted operation or live external side effects |
-| Storage/signing | memory/filesystem parity; honest null signer | Postgres parity and cryptographic signer adapter |
-| Release | `@openprose/reactor` and `@openprose/reactor-cradle` published to npm at `0.1.0-rc.2` via OIDC trusted publishing with provenance; packed-tarball flat-tokens smoke; git tag `reactor-v0.1.0-rc.2` | a hosted control plane or managed service |
-
-The three production-equivalent layers are intentionally not smuggled into v0.1. Production ingress would authenticate external events, normalize event identities, dedupe/replay claims, enforce source budgets, and pass typed evidence to Reactor. Production fulfillment would own idempotent side effects, retries, durable claims, and operator-visible failure states. Production oracle support would expose explicit truth and evidence sockets for evaluation and operations. v0.1 proves the local harness and deterministic measurement rig, not those hosted layers.
-
-The CLI evidence is still important because it is no longer a fixture pretending to be an application. The Wave E migration moved examples through real `prose compile`, spawned `prose serve`, HTTP trigger ingestion, Reactor receipt production, forwarded fulfillment artifacts, and `prose status` projection. The crash-window and duplicate-trigger tests are operational scars, not academic examples: they ask whether a process death or duplicate POST changes the fulfillment count. The answer in v0.1 is observable in public tests, which is the level of confidence this release should claim.
-
-## 6. Evaluation Methodology
-
-The cost thesis is measured through Cradle, not through prose substitutions in this report. The public baseline implementation is in [`packages/reactor-cradle/src/baselines`](https://github.com/openprose/prose/tree/reactor-v0.1.0-rc.2/packages/reactor-cradle/src/baselines), and the cost-thesis assertions live in [`packages/reactor-cradle/src/baselines/cost-thesis/__tests__/cost-thesis.test.ts`](https://github.com/openprose/prose/blob/reactor-v0.1.0-rc.2/packages/reactor-cradle/src/baselines/cost-thesis/__tests__/cost-thesis.test.ts). Two scenario tests supply the runtime evidence: W7 static cost in [`w7-static-cost.integration.test.ts`](https://github.com/openprose/prose/blob/reactor-v0.1.0-rc.2/packages/reactor-cradle/src/__tests__/w7-static-cost.integration.test.ts) and event-changing C5 in [`c5-event-changing.integration.test.ts`](https://github.com/openprose/prose/blob/reactor-v0.1.0-rc.2/packages/reactor-cradle/src/__tests__/c5-event-changing.integration.test.ts).
-
-Each scenario compares two rows on the same schedule and the same evidence. Reactor uses runtime-produced receipts. Reactor-no-memo charges that same Reactor receipt schedule as fresh work instead of letting memo hits reuse verdicts. This is deliberately an ablation, not a market benchmark: holding the scenario, the schedule, and the per-turn work identical and removing only verdict reuse isolates exactly what memoization buys. The familiar non-Reactor alternative — a loop that re-reads the world on a fixed cadence — is discussed qualitatively in §1 and §2; the report's quantitative claim is the ablation, because the ablation is the comparison that holds a single identical per-turn token unit across every row.
-
-The metrics are receipt count, model invocation count, fresh tokens, reused tokens, and surprise attribution. `tokens.fresh` is fresh model work. `tokens.reused` is accounted prior work reused by a memo-hit receipt. `fresh + reused` is useful for audit, but the cost claim is about fresh model work and model invocations. We do not dollarize the deterministic Cradle runs because public provider pricing varies, and `tokens_per_dollar` would require a live price oracle we do not ship in v0.1.
-
-The no-memo row deserves special attention because it is easy to cheat accidentally. A weak control would ask a simpler question than Reactor asks, then declare Reactor cheaper. The v0.1 control does the opposite: it starts from the same runtime-produced receipt schedule and charges every token-bearing turn as fresh work. That is why the static control is `92:0`, not a hand-waved "four times the first turn." It isolates the memoization mechanism while keeping the same scenario clock and evidence shape.
-K1 calibration is measured separately. The live OpenRouter recording in [`packages/reactor-cradle/src/spikes/fixtures/k1-live-recorded.json`](https://github.com/openprose/prose/blob/reactor-v0.1.0-rc.2/packages/reactor-cradle/src/spikes/fixtures/k1-live-recorded.json) captures request IDs, response IDs, latency, finish reason, token usage, and spend for three models. The cassette SHA-256 is `f64484990635a61a3dcac973a96e97d6433a576ccc297c23742d4a515e2c1868`. It proves the K1 evaluator and metadata path against a live ensemble cassette. It does not prove runtime ensemble dispatch.
-
-## 7a. Results: The Numbers
-
-On the static 24-hour scenario, Reactor reaches and maintains its verdict in 2 model invocations and 46 fresh tokens. The no-memo control uses 4 invocations and 92 fresh tokens — the same scenario, the same receipt schedule, with verdict reuse switched off. That is the load-bearing result: holding the work and the evidence fixed, memoization halves both the model invocations and the fresh token spend, and the fresh spend stays flat across the day instead of climbing with each scheduled turn. The deterministic scenario keeps the judge cassette and review schedule fixed: the W7 runtime path asserts the `up` verdict shape while the no-memo baseline changes the accounting architecture, not the underlying evidence world.
-
-| Scenario | Row | Provenance | Receipts | Model invocations | Fresh | Reused | Ratio |
-| --- | --- | --- | ---: | ---: | ---: | ---: | --- |
-| Static 24h W7, `incident-briefing-static-zero` | Reactor | runtime-produced | 4 | 2 | 46 | 46 | `46:46` |
-| Static 24h W7 | Reactor no memo | same receipt schedule, no reuse | 4 | 4 | 92 | 0 | `92:0` |
-| Event-changing C5, `incident-briefing-periodic-surprise` | Reactor | runtime-produced | 4 | 2 | 74 | 74 | `74:74` |
-| Event-changing C5 | Reactor no memo | same receipt schedule, no reuse | 4 | 4 | 148 | 0 | `148:0` |
-
-The static per-turn audit is the cost thesis in miniature:
-
-| Turn | Cause | Recheck | Reactor fresh | Reactor reused | Outcome |
-| --- | --- | --- | ---: | ---: | --- |
-| `2026-05-18T12:00:00.000Z` | real input | none | 41 | 0 | model invocation |
-| `2026-05-18T12:15:00.000Z` | forecast recheck | evidence-age | 0 | 41 | memo hit |
-| `2026-05-18T18:00:00.000Z` | forecast recheck | plan-age | 5 | 0 | model invocation |
-| `2026-05-19T12:00:00.000Z` | forecast recheck | evidence-age | 0 | 5 | memo hit |
-
-Two of four turns are memo hits. The memo-hit rate is 50% in this small scenario. That small sample is not a long-horizon production forecast; it is a proof of mechanism. Cost tracks surprise plus a forecast-amortized audit floor, not the wall clock alone.
-
-The event-changing result should be read carefully. Reactor and the no-memo control both account for 148 total tokens (`74 fresh + 74 reused` versus `148 fresh + 0 reused`). Reactor's win is two fresh invocations instead of four, and a receipt trail that proves which work was reused. It is not a claim that every changing world halves total accounted tokens.
-
-![Figure 2. Cumulative fresh model work over four scenario turns.](figures/token-work.svg)
-
-K1's live ensemble recording is small but useful credibility evidence:
-
-| Provider | Model | Family | Size | Latency | Finish | Usage | Spend |
-| --- | --- | --- | --- | ---: | --- | ---: | ---: |
-| google | `google/gemini-3.1-flash-lite-preview` | gemini | small | 1382 ms | stop | 134 in / 53 out | $0.00011300 |
-| mistralai | `mistralai/mistral-small-3.2-24b-instruct` | mistral | small | 790 ms | stop | 139 in / 52 out | $0.00004371 |
-| qwen | `qwen/qwen-2.5-72b-instruct` | qwen | large | 90 ms | stop | 142 in / 51 out | $0.00007152 |
-
-Total spend was `$0.00022823` under a `$2.00` cap. The diversity floor was met: three providers, three families, and two size classes. The K1 evaluator returned a unanimous authored-anchor result with `calibrated_confidence = 1.00` in the current public cassette. This is evidence that the evaluator, cassette metadata, and diversity guard work. It is not evidence that v0.1 performs live runtime ensemble judging.
-
-Composition has its own measured result. The E1 integration test in [`packages/reactor-cradle/src/__tests__/e1-composition.integration.test.ts`](https://github.com/openprose/prose/blob/reactor-v0.1.0-rc.2/packages/reactor-cradle/src/__tests__/e1-composition.integration.test.ts) builds an A/B/C graph through receipt pins, runs A, B, and C once, then repeats the downstream pass with the same upstream receipt and observes memo hits for B and C without calling the model gateway. The lower-level composition unit test [`composition.test.ts`](https://github.com/openprose/prose/blob/reactor-v0.1.0-rc.2/packages/reactor/src/composition/__tests__/composition.test.ts) asserts the same propagation law: a composed dependency pin causes a memo miss on changed input and a memo hit when the composed dependency pins match. That is the v0.1 graph claim: downstream receipts consume upstream receipts as evidence, and unchanged subtrees stop at memoized receipt proof.
-
-## 7b. Results: Stories From The Build
-
-**The measurement had to lead the prose.** We initially had a report-shaped argument before we had the measured table worth standing behind. It looked complete and felt empty. Once the Phase C numbers landed, template-shaped prose could not honestly explain them. The public anchor is the replacement artifact: hand-written assertions in [`cost-thesis.test.ts`](https://github.com/openprose/prose/blob/reactor-v0.1.0-rc.2/packages/reactor-cradle/src/baselines/cost-thesis/__tests__/cost-thesis.test.ts), not generated copy. The lesson is simple and painful: a measured argument is not the same artifact as a generated report.
-
-**The no-memo control was wrong, and we said so.** The first no-memo number undercharged the control. It made Reactor look better for the wrong reason. The corrected public code charges no-memo from Reactor-produced receipt work in [`packages/reactor-cradle/src/baselines/no-memo`](https://github.com/openprose/prose/tree/reactor-v0.1.0-rc.2/packages/reactor-cradle/src/baselines/no-memo), and [`cost-thesis.test.ts`](https://github.com/openprose/prose/blob/reactor-v0.1.0-rc.2/packages/reactor-cradle/src/baselines/cost-thesis/__tests__/cost-thesis.test.ts) asserts `92:0`. The story changed from a flattering number to a defensible one. That is a better result.
-
-**The duplicate-trigger bug found the right content address.** A duplicate webhook originally risked becoming two logical receipts because transport noise could enter the identity. The public CLI now derives a `triggerDedupeKey` in [`tools/cli/src/prose/responsibility-reactor.ts`](https://github.com/openprose/prose/blob/reactor-v0.1.0-rc.2/tools/cli/src/prose/responsibility-reactor.ts), and [`tools/cli/tests/prose/duplicate-trigger.test.ts`](https://github.com/openprose/prose/blob/reactor-v0.1.0-rc.2/tools/cli/tests/prose/duplicate-trigger.test.ts) asserts two identical POSTs produce one receipt and one fulfillment dispatch. Gate checks are valuable when they are allowed to find real bugs.
-
-**Identity semantics beat checklist semantics.** During the build, a checklist line implied that responsibility identity should derive from contract revision. The language spec and the runtime disagree for a reason: `responsibility_id` is a tooling-minted, stable identity for the responsibility, while `contract_revision` is a content fingerprint carried by receipts in [`packages/reactor/src/receipt`](https://github.com/openprose/prose/tree/reactor-v0.1.0-rc.2/packages/reactor/src/receipt). That refusal matters because otherwise every source edit would silently become a new responsibility, breaking continuity exactly where Reactor is supposed to preserve it.
-
-**Crash replay forced durability to be real.** The local CLI path could not merely pass a happy-path trigger test. [`tools/cli/tests/prose/crash-window-replay.test.ts`](https://github.com/openprose/prose/blob/reactor-v0.1.0-rc.2/tools/cli/tests/prose/crash-window-replay.test.ts) kills `prose serve` after receipt pressure lands, restarts it, and expects convergence without a duplicate fulfillment dispatch. That test is small, but it changes the claim. The receipt log is not just explanatory; it is the state the next process uses to avoid doing the wrong work twice.
-
-**The budget guard that never fired.** The K1 live ensemble recording ran under a `$2.00` USD spend cap. Actual spend across three providers came to `$0.00022823` — roughly four orders of magnitude under the cap. The guard was never the binding constraint, and that is the point. A budget cap is cheap insurance worth having, but it is not what makes the system cheap; the run is small because the evaluator asks three models one question once, not because a limiter clamped it. Structural cost discipline and a backstop limit are different tools, and a release should be honest about which one is doing the work.
-
-## 8. Example Use Cases
-
-The public repo ships five CLI examples plus one flat-tokens library demo. Each runs through the same local harness shape: real source compile, local serve or deterministic runtime, receipt production, and observable status or token output.
-
-| Example | Link | What it proves |
-| --- | --- | --- |
-| Release readiness | [`skills/open-prose/examples/release-readiness`](https://github.com/openprose/prose/tree/reactor-v0.1.0-rc.2/skills/open-prose/examples/release-readiness) | Predicate-tripped reconciliation for a release candidate; the spawned CLI integration lives in [`repository-cli-integration.test.ts`](https://github.com/openprose/prose/blob/reactor-v0.1.0-rc.2/tools/cli/tests/prose/repository-cli-integration.test.ts). |
-| Incident briefing room | [`skills/open-prose/examples/incident-briefing-room`](https://github.com/openprose/prose/tree/reactor-v0.1.0-rc.2/skills/open-prose/examples/incident-briefing-room) | Long-lived incident state with `prose status` surprise attribution; tested by [`example-incident-briefing-room.test.ts`](https://github.com/openprose/prose/blob/reactor-v0.1.0-rc.2/tools/cli/tests/prose/example-incident-briefing-room.test.ts). |
-| Customer risk radar | [`skills/open-prose/examples/customer-risk-radar`](https://github.com/openprose/prose/tree/reactor-v0.1.0-rc.2/skills/open-prose/examples/customer-risk-radar) | Customer-risk responsibility with forwarded fulfillment artifact and status attribution; tested by [`example-customer-risk-radar.test.ts`](https://github.com/openprose/prose/blob/reactor-v0.1.0-rc.2/tools/cli/tests/prose/example-customer-risk-radar.test.ts). |
-| Compliance evidence tracker | [`skills/open-prose/examples/compliance-evidence-tracker`](https://github.com/openprose/prose/tree/reactor-v0.1.0-rc.2/skills/open-prose/examples/compliance-evidence-tracker) | Projection privacy and audit-evidence freshness; tested by [`example-compliance-evidence-tracker.test.ts`](https://github.com/openprose/prose/blob/reactor-v0.1.0-rc.2/tools/cli/tests/prose/example-compliance-evidence-tracker.test.ts) and [`projection-tier.test.ts`](https://github.com/openprose/prose/blob/reactor-v0.1.0-rc.2/tools/cli/tests/prose/projection-tier.test.ts). |
-| Research inbox triage | [`skills/open-prose/examples/research-inbox-triage`](https://github.com/openprose/prose/tree/reactor-v0.1.0-rc.2/skills/open-prose/examples/research-inbox-triage) | Forecast-driven recheck and triage state; tested by [`example-research-inbox-triage.test.ts`](https://github.com/openprose/prose/blob/reactor-v0.1.0-rc.2/tools/cli/tests/prose/example-research-inbox-triage.test.ts). |
-| Flat tokens | [`skills/open-prose/examples/flat-tokens`](https://github.com/openprose/prose/tree/reactor-v0.1.0-rc.2/skills/open-prose/examples/flat-tokens) | The literal `46:46` reproduction using `createReactor().ingest`; smoked by [`smoke-reactor-flat-tokens-example.test.mjs`](https://github.com/openprose/prose/blob/reactor-v0.1.0-rc.2/.github/scripts/smoke-reactor-flat-tokens-example.test.mjs). |
-
-The Incident Briefing Room is the most legible operational case. The quickstart in [`tools/cli/QUICKSTART.md`](https://github.com/openprose/prose/blob/reactor-v0.1.0-rc.2/tools/cli/QUICKSTART.md) compiles the bundled source, promotes `manifest.next` to `manifest.active`, runs `prose serve`, posts an incident event, and inspects `prose status --tier=owner` and `prose status --tier=public`. The receipt log lands under `state/reactor/<responsibility-id>/receipts.json`; fulfillment evidence lands under `runs/<run-id>/fulfillment-artifact.json`.
-
-The deterministic event-changing receipt trail has this shape, anchored by [`c5-event-changing.integration.test.ts`](https://github.com/openprose/prose/blob/reactor-v0.1.0-rc.2/packages/reactor-cradle/src/__tests__/c5-event-changing.integration.test.ts):
-
-| Time | Cause | Evidence | Fresh/reused | What the receipt proves |
-| --- | --- | --- | ---: | --- |
-| `2026-05-18T12:00:00.000Z` | real input | initial incident feed | `37/0` | bootstrap judgment spent fresh work |
-| `2026-05-18T12:15:00.000Z` | forecast recheck | evidence unchanged | `0/37` | evidence-age check reused the prior verdict |
-| `2026-05-18T12:30:00.000Z` | real input | `incident-opened`, changed evidence hash | `37/0` | material surprise forced fresh judgment |
-| `2026-05-18T12:45:00.000Z` | forecast recheck | changed evidence unchanged | `0/37` | the updated verdict was reusable |
-
-## 9. Reproducing The Headline And Checking The Evidence
-
-There are two reproduction paths: the npm packages for the library demo, and the public repo for the full CLI/test surface.
-
-To reproduce the library headline from npm:
+Don't take the metaphor on faith — run the proof first. Replay a saved run's receipt ledger with no model key and no model call. Only this replay step is keyless; the live steps below (compile/serve/run) need a key.
 
 ```bash
-mkdir reactor-report-demo
-cd reactor-report-demo
-npm init -y >/dev/null
-npm install @openprose/reactor@0.1.0-rc.2 @openprose/reactor-cradle@0.1.0-rc.2
-git clone https://github.com/openprose/prose
-cd prose
-git checkout reactor-v0.1.0-rc.2
-cd ..
-cp prose/skills/open-prose/examples/flat-tokens/flat-tokens.example.mjs .
-node flat-tokens.example.mjs
-node flat-tokens.example.mjs
+# after npm publish:
+npm i -g @openprose/reactor @openprose/reactor-cli @openprose/reactor-devtools
+# (pre-publish: install the three staged tarballs, SDK first —
+#  npm i -g ./openprose-reactor-0.2.0.tgz ./openprose-reactor-cli-0.1.0.tgz ./openprose-reactor-devtools-0.1.0.tgz)
+reactor-devtools --example masked-relay --describe
 ```
 
-The expected output leads with the no-memo contrast and then prints the raw counters:
+You'll see the thesis made checkable:
 
 ```
-memoization cut fresh model spend 50% (2 model calls, not 4)
-tokens.fresh=46
-tokens.reused=46
-ratio=46:46
-no-memo-fresh=92
+dispositions: rendered 46 · skipped 31   (reuse 32%)
+cost rollup by surprise-cause: external 8 · input 69   total 77
+CHAIN-VERIFY ok
 ```
 
-The run is deterministic. The ratio should match exactly on the second run, and the receipt content hashes should be byte-identical between runs. This is not a claim we are asking the reader to take on faith: independent first-time evaluators, following this recipe from clean clones, have reproduced `46:46` with identical receipt hashes — including one run repeated twenty times without drift. If your numbers do not match, the most likely causes are a non-`0.1.0-rc.2` install, copying the wrong example file, or running against a modified local checkout.
+Forty-six renders, thirty-one memo-skips at zero cost, a per-token cost rollup split by what surprised the system, and a chain-verified ledger — "cost scales with surprise," with no key. (`--describe` lists only the surprise-causes actually present in this ledger; a self-clock wake would add a `self` bucket.)
 
-To reproduce the package and CLI suites from source:
+`masked-relay` is one of **13 runnable examples** that ship with the repo — each a frozen, keyless, chain-verifiable ledger you can replay the same way (`research-tree`, `monorepo-ci`, `inbox-triage`, `agent-observatory`, a tamper-evidence walkthrough, and more), spanning a deliberately wide spread of DAG shapes and domains. Every one is covered by an offline test that runs at zero model spend.
 
-```bash
-git clone https://github.com/openprose/prose
-cd prose
-git checkout reactor-v0.1.0-rc.2
-corepack enable
-pnpm install --frozen-lockfile
-pnpm build
-pnpm --filter @openprose/reactor test
-pnpm --filter @openprose/reactor-cradle test
-pnpm --filter @openprose/prose-cli test
-node --test $(find .github/scripts -name '*reactor*.test.mjs' -type f | sort)
+A keyless reader can stop here; the live steps need a key. Visual reader? `reactor-devtools --example masked-relay` (drop `--describe`) boots a browser DAG viewer at a localhost URL — nodes flash on render, dim-pulse on memo-skip, with a live cost meter. Running ops? `reactor serve --http` exposes the same surface over HTTP (see §5 on ingress). Then read on for the metaphor that *is* the design.
+
+---
+
+## 1. Responsibility, not task
+
+The last two years of agents have been a story about **tasks**. The tools most of us use every day are genuinely good at them: point one at a bug and it finds the bug, writes the fix, runs the tests, and explains what it did. A task has an edge. It begins when you ask and ends when it's done, and the agent is brilliant inside that edge and simply gone outside it.
+
+Most of what an organization actually needs from software is not shaped like that. *The incident channel has a current briefing. Renewal risk is visible before the meeting, not after. Audit evidence is fresh enough to pass review. A competitor's funding is something we already know about.* None of those is a task you finish. Each is a **responsibility** — a claim about the world that has to stay true while the world keeps moving.
+
+The distinction is the whole design, so it's worth stating precisely:
+
+> A goal is a point-in-time requirement. A **responsibility** is a *standing* goal — a goal that must remain true over time.
+
+This isn't a hypothetical category we invented to have something to sell. Across the OpenProse contracts people have been writing in the wild, the shape recurs: "keep this supplied with qualified accounts," "stay prepared to act on this market" — *keep* and *stay*, not *run once*. The missing piece was never the intelligence to do the work. It was the part where a system *stays responsible* for something after the conversation is over.
+
+## 2. Why now: efficient tokens, not just tokens
+
+There are two ways people fake a responsibility today, and both fail in the same place.
+
+You can put a model on a **schedule** — a cron job that re-asks the same question every hour. It works, and it pays full price every single time, including the twenty-three hours a day when nothing changed. Your bill scales with the clock, not with reality. Or you can set an **alert** — cheap, but blind, because an alert only catches the things you already knew to watch for, and the reason you wanted an *intelligence* watching is that it might notice what you didn't think to specify.
+
+Reactor's design principle is a third option:
+
+> A normal loop asks *"what should I do next?"* — and cost scales with wall-clock time. A Reactor-class harness asks *"given this responsibility, and what just moved, what reconciliation is now justified?"* — and **cost scales with surprise.**
+
+A world that sits still costs almost nothing to keep watched. Real model work appears when the world hands the system something genuinely new — plus a bounded, forecast-paced audit floor, so that "quiet" never silently becomes "asleep." That floor is a named, accounted-for line item, not a hidden meter.
+
+For a while this was a quiet preference. It is becoming an urgent one. The first wave of AI tooling was priced for a world where the cost of a token only ever falls, and a great many always-on workflows were built on that assumption. That assumption is now being tested. The buyers we talk to have stopped asking for unlimited spend and started asking for the math — *match the right model to the right work, and show me it's cheaper than the alternative.* If nothing happened in the world, the cheapest conversation is not a shorter one. It is no conversation at all. Most of the industry is making the meeting shorter. We're asking why you're holding the meeting when there's nothing to discuss.
+
+The rest of this report is how we made that structural instead of aspirational.
+
+## 3. The shape: React, the world-model, and intelligent memoization
+
+Here is the part that makes the whole thing legible if you've ever written a React component.
+
+React keeps the DOM consistent with declared component state, re-rendering only what changed. Substitute three nouns and the entire architecture follows. **This is `React.memo`, applied to expensive LLM work.**
+
+If you've never written React: you declare the truths you want kept current, the system watches the world, and it does expensive model work only when something material actually moved — no React vocabulary required to use it.
+
+| React | Reactor |
+| --- | --- |
+| Component | **Responsibility** — a declared standing goal |
+| DOM | **World-model** — the maintained truth, materialized |
+| `render()` | **A bounded LLM session** that computes the next world-model |
+| props | **Subscriptions** to other responsibilities' outputs |
+| `setState` / re-render trigger | **A new signed receipt** on a subscription |
+| Reconciler | **The reconciler** — fingerprints inputs, schedules, commits |
+| `React.memo` (skip if props unchanged) | **Skip the render if subscribed inputs haven't moved** |
+| Commit phase | **Sign a receipt, persist the world-model, notify dependents** |
+| Manual dependency wiring | **Forme** — the graph wires itself from declared contracts |
+| Selector / split context | **Facets** — fine-grained subscriptions to parts of a truth |
+| `ReactDOM.render(<App/>, root)` | **The fixpoint** — the topology is itself a responsibility |
+| The component tree | **The graph of responsibilities (a DAG)** |
+
+Three pieces of that table carry most of the weight.
+
+**The world-model is the universal noun.** Every responsibility maintains exactly one — its "DOM." It is standing (it persists between renders), it is what the *next* render reads as its prior state, and it is what *downstream* responsibilities subscribe to. Crucially, it is **state passed by pointer, not by context window**. The render is an agent session, and it does not get the world-model stuffed into its prompt; it is told *where* the truth lives and reads it as needed — the way you'd work against a repository, pulling in a file on demand rather than pre-serializing everything. The canonical world-model is a content-addressable artifact: by default a small directory of files, packaged into something hashable and versionable. Everything else — a SQL index for query, a vector store, a rendered dashboard — is a *derived projection* of that canonical truth, never the truth itself.
+
+**Intelligent memoization.** Before a render runs, the reconciler fingerprints the responsibility's subscribed inputs and its own contract. If nothing moved, the render does not run — the reconciler records a cheap "nothing changed" receipt and spawns no session. The decision about *what counts as a meaningful change* is intelligent and pushed into the model (more on this in §5), but the decision about *whether to wake* is dumb, deterministic, and instant. The trick is small and it is the whole game: **the memo key has no clock in it.** It is exactly two things — the fingerprint of the responsibility's own contract, and the fingerprint of each input it subscribes to. If neither moved since the last receipt, there is nothing to do, no matter how much time has passed.
+
+**The fractal.** Zoom into any responsibility and you find more responsibilities; zoom out and its output feeds still more. There is no privileged "sensor layer" or "dashboard layer" — every node at every scale is the same shape. World-models all the way down.
+
+## 4. How we got here
+
+We did not arrive at this in one shot, and it would be dishonest to present it that way.
+
+The lineage is long. We've been building agent harnesses for about as long as that's been a category. The pattern of treating the filesystem as the heap — state by pointer, not in a context window — is something we've been writing about since well before the current generation of models. The shape of an agent as "a model with a REPL in a loop" is old news to anyone who was around for the first self-improving-script experiments. Somewhere in there the realization landed that the **harness** differentiates the outcome more than the model does — that the interesting design surface is the environment you put the model in, not the weights.
+
+In **January 2026** we released **OpenProse**: a way to author intent as plain Markdown contracts — declarative specifications of *what should be true*, with an optional imperative layer (ProseScript) for the cases where order genuinely matters — and to push all the remaining decision-making into the agent. It turns a harness into something closer to a VM: it's just a prompt, no framework to install. It found an audience faster than we expected — past **5,000 installs**, a flood of feedback we couldn't keep up with, a **pre-seed from Y Combinator**, and a **first signed customer**. People built real things with it, and we built a lot with it internally.
+
+And across nearly every OpenProse system we wrote — ours and other people's — we kept hitting the *same* missing piece. The contracts were good at saying what should be true in isolation. What they couldn't express was **dependency across runs** — an event-based architecture, a data-flow graph *between* responsibilities, so that when one maintained truth moved, the things that depended on it knew to reconsider. Every system was re-inventing a worse version of that wiring by hand. So this is not a pivot; it is the layer the language had been pointing at the whole time.
+
+We prototyped the missing piece in our private cloud, and then we rewrote its core more than once. One learning from that process is load-bearing enough to state plainly, because it shaped everything that followed: **our first instinct was to put the intelligence in the runtime** — to let a model decide, live, on every wake, whether things had changed and what to do about it. It didn't hold. It was fragile exactly where it needed to be boring. The design we landed on does the opposite: it **freezes the intelligence ahead of time** — in the render and in the wiring — and keeps the runtime dumb, fast, and auditable. Then we pulled the guts of that prototype out into a relatively simple SDK, which is what we're open-sourcing.
+
+That is the whole history this report needs. The rest is architecture.
+
+## 5. The architecture, up close
+
+The system has a clean cleavage: an **intelligent compile phase** that fires rarely (when contracts change) and freezes its judgments into deterministic artifacts, and a **dumb run phase** that fires on every wake and only executes those frozen artifacts. The slogan is *intelligence at compile time, determinism at run time* — and it is the direct payoff of the learning in §4.
+
+**Two intelligent layers over a dumb reconciler.** React puts intelligence *nowhere* at runtime; both hard problems — *what should this component be* and *which components depend on which* — are solved ahead of time by the developer. Reactor puts intelligence in exactly two places and keeps the third dumb:
+
+- **The render** — a bounded LLM session that computes the next world-model. Smart.
+- **The wiring (Forme)** — resolving which responsibility depends on which. Smart.
+- **The reconciler** — fingerprint, schedule, commit, propagate. **Dumb** — and deliberately so.
+
+The reconciler never asks a model "did this change?" There is no judge step. That single discipline is what makes the run phase fast, predictable, and auditable.
+
+**Fingerprinting, in three phases.** The apparent paradox — *decide a semantic question deterministically* — dissolves once you split it across time, exactly as React does (React's equality check is dumb `Object.is`; *which* values you list in a deps array is an intelligent decision made ahead of time). In Reactor: at **compile time**, a natural-language canonicalization spec written inside the contract is lowered into a deterministic **canonicalizer** — what's material, what's volatile-but-immaterial (timestamps, request ids, cosmetic ordering) and dropped, how text and sets and numbers normalize. At **render time**, the model produces data and self-polices its declared postconditions. At **wake time**, the reconciler runs the compiled canonicalizer and compares fingerprints. The fingerprint changes *if and only if* the canonical, material content changed — and "material" was frozen by intelligence at compile time, never judged at wake. This is the single highest-leverage control in the system: without it, a feed re-polled every three minutes always *looks* changed, and "cost scales with surprise" silently degrades back into "cost scales with the clock."
+
+**The render atom.** The unit underneath everything is `(contract, evidence, prior world-model) → (new world-model, receipt)`. A responsibility declares what it needs (`### Requires`, as *contracts* — "I need a current view of competitor funding" — not as pointers to specific producers) and the shape of the truth it maintains (`### Maintains`). It runs standalone — give it evidence, it computes a world-model and signs a fingerprinted receipt, no harness required — or *mounted* as a node in the DAG, woken over time. Mounting is **additive**: it confers identity, a persisted world-model, and resolved subscriptions. A subtle but important point we spent a while getting right: **node-ness is conferred by mounting, never by statefulness.** A responsibility is in the graph because it was mounted as a subscribable producer, not because it holds memory — exactly as a React component is in the tree because it was rendered, not because it has `useState`.
+
+**Facets: the selector boundary, made authorable.** A `### Maintains` can name independently-subscribable parts as sub-headings. A competitor-activity monitor might maintain `funding`, `hiring`, and `product-launches` as separate facets; a downstream that subscribes to *funding* does not wake when *hiring* moves. The part's name is the same name in three places at once — its fingerprint unit, its subscription symbol, and its subtree in the world-model directory:
+
+```markdown
+### Maintains
+A current, corroborated view of each tracked competitor. Each competitor carries a stable
+`name` and a `last_corroborated` field; `fetched_at` and source request-ids are immaterial.
+Postcondition: every competitor cites a corroborating source.
+
+#### funding
+Funding events per competitor — round, amount, date. Material: the event set (unordered)
+and each event's round/amount/date.
+
+#### hiring
+Open-role activity — the department set and the open-role count (exact).
 ```
 
-Expected counts at the `reactor-v0.1.0-rc.2` tag are Reactor 155, Cradle 121, CLI 284, and release verifiers 35, all passing. (These counts are refreshed to the tagged release's green-gate before publication.) To focus on the cost thesis, run the Cradle package test and inspect the assertions in [`cost-thesis.test.ts`](https://github.com/openprose/prose/blob/reactor-v0.1.0-rc.2/packages/reactor-cradle/src/baselines/cost-thesis/__tests__/cost-thesis.test.ts), [`w7-static-cost.integration.test.ts`](https://github.com/openprose/prose/blob/reactor-v0.1.0-rc.2/packages/reactor-cradle/src/__tests__/w7-static-cost.integration.test.ts), and [`c5-event-changing.integration.test.ts`](https://github.com/openprose/prose/blob/reactor-v0.1.0-rc.2/packages/reactor-cradle/src/__tests__/c5-event-changing.integration.test.ts). The headline demo prints the `46:46` number directly; the larger table is test-backed evidence rather than a separate benchmark CLI.
+*Structure is subscription.* Declaring no facets at all yields one atomic truth — the free default. This is React's split-context / selector distinction, made into something you author by writing a sub-heading.
 
-To reproduce the local CLI receipt trail, follow [`tools/cli/QUICKSTART.md`](https://github.com/openprose/prose/blob/reactor-v0.1.0-rc.2/tools/cli/QUICKSTART.md). The output to look for is not just "the command succeeded." It is `prose status` showing `surprise_cause=real-input`, fresh/reused token attribution, provider/model labels, an owner projection, a public projection, and a receipt log on disk.
+**Forme: the graph wires itself.** Deciding which responsibility depends on which — by reading what each is *for* — is a judgment problem, not plumbing. Forme reads the full set of contracts, semantically matches each declared need to the producer(s) that satisfy it, and draws the subscription. The edges of the DAG are Forme's output, not hand-authored config. A need with no producer, or two equally-plausible producers, is a surfaced **diagnostic**, never a silent guess. When a better source appears or a live one dies, Forme rewires — and because a rewire is itself a render that leaves a receipt, every switchover is audited and self-healing. Forme enforces acyclicity as a postcondition on its *own* output: a topology that would close a loop is rejected and surfaced. Genuine feedback — a responsibility's output shaping its *next* input — is not a backward edge; it's a responsibility waking itself on its own clock. **Loops live in time, not in edges.**
 
-We do not recommend re-running K1 live by default. The committed cassette is the reproducible artifact. A live re-run will depend on current provider routing and pricing, and it should be treated as an advanced calibration exercise rather than the default reproduction path.
+**The receipt is the trust unit.** Every decision produces a content-addressed receipt that names its evidence *by fingerprint*, points to the prior receipt, and records what changed and why. The ledger of receipts is the responsibility's durable memory — append-only and chain-verifiable. This is the structural commitment nothing else in the category makes, and it's worth being precise about why it matters: a transcript can tell you what was *said*; it cannot tell you, six months and ten thousand turns later, why one specific decision was made without you finding the right moment in a river of text and trusting it was never edited. A receipt can. It is the difference between *trust me, I'm an AI* and *here is the evidence, check it yourself.* The receipt is also **the next process's state**: kill the system and restart it, and it rebuilds what it was doing from the trail. Continuity lives in the ledger, not in a session that has to stay alive.
 
-## 10. Limitations: What v0.1 Does Not Claim
+**A property worth pausing on: topology change is free.** Because a responsibility's memo key is `(contract-fingerprint, input-fingerprints)`, you don't need a special mechanism to roll out a new wiring. A rewire changes which producer fills a subscriber's input slot, which moves that slot's fingerprint, which moves the memo key — so adopting a new topology produces memo-misses at *exactly* the rewired nodes and skips at every other node, for free. The memo key already treats "my wiring changed" as "my inputs moved." We didn't design this; it fell out of the shape, which is usually the sign a shape is right.
 
-The limitations below are stated plainly and up front; several were sharpened by independent first-contact evaluation of the release candidate before this report was finalized. None of them is hidden in a footnote, and none is a surprise to the team.
+**How the world gets in: ingress.** A render reconciles against evidence, which means something has to deliver that evidence. External arrivals enter through **gateways** — declared entry points that a **connector** feeds. The built-in connectors are *pull-based*, polling a source on a cadence: `static` (a fixed list, for scaffolds and tests), `http` (`GET` a URL), and `file` (watch a directory of JSON). For everything push-shaped, there is a manual ingress path: `POST /<node>/trigger` on the running `serve` host wakes a node with an attached payload. Queues and webhooks integrate via that trigger endpoint or a small custom connector — we do *not* ship a Kafka or streaming connector; the honest surface today is pull-on-a-cadence plus a manual/webhook trigger. A connector dedups arrivals by a per-source cursor, so a restart never re-ingests the backlog.
 
-Runtime variable-depth judging is not implemented. The public judge has a shallow path; the ensemble branch is explicitly not implemented in v0.1, and runtime receipts use `calibration_grade: "none"` for shallow judgment. K1 proves a live ensemble cassette evaluator, not live runtime escalation.
+**The fixpoint (where the tower closes).** Wiring the graph is itself intelligent work that produces a maintained truth — the topology — so it is *a responsibility like any other*. Its world-model is the resolved DAG; its render is Forme. The reconciler reads *that* responsibility's world-model to schedule every node, including the one that draws the graph — bootstrapped by a tiny deterministic seed, almost literally `ReactDOM.render(<App/>, root)`. This is what lets the system respond to the world by re-wiring *itself*: a new competitor appears, and a tracker is spawned and wired, with every rewire a signed receipt. The recursion terminates because **surprise decays with height** — the world moves often, the set of contracts rarely, the wiring-of-contracts almost never — and because it rests on a deterministic floor. This is the most ambitious part of the design, and in the current build it is **specified and deferred**: the substrate is in place, but mounting the compile phase as a live responsibility is the next milestone, not a shipped one. We'd rather say that plainly than imply the tower is already closed.
 
-The provider matrix is recorded, not live. Cradle has recorded OpenRouter and Anthropic parity for policy artifacts, and the K1 cassette includes three OpenRouter-routed providers. We do not claim direct live adapters for OpenAI, Anthropic, Gemini, Grok, and others running in every CI pass.
+## 6. Is it an RLM? An honest accounting
 
-v0.1 ingress does not authenticate or validate external inputs. `prose serve` accepts an HTTP trigger and mints an honest content-addressed `real-input` receipt for it, but it does not yet reject malformed, empty, or wrong-content-type bodies, and it does not authenticate the producer. The receipt stays honest about what it received; production-grade ingress — authenticated sources, normalized event identity, input validation, source budgets — is named v0.2 scope. A v0.1 deployment should not expose `prose serve` to arbitrary public webhook producers.
+Recursive Language Models are having a moment, and the comparison is fair to draw — so let's draw it honestly, including the parts that don't flatter us.
 
-v0.1 is not a high-volume, long-running harness. Memoization keeps the token cost surprise-shaped at scale — a static scenario driven through thousands of events still resolves to a single model invocation — but latency is not flat: memo lookup scans the receipt log, and the log is rewritten whole on each append. For long-lived, high-frequency responsibilities this needs a memo index and log compaction or segmentation. The cost thesis holds; the v0.1 storage engine is honestly a v0.1 storage engine.
+The strict definition is specific: an RLM is a model with access to a REPL, where the REPL has a method for calling an RLM — *real* recursion, a model decomposing a problem by spawning sub-models on slices of context, not a flat fan-out of subagents. By that bar, here is where Reactor lands.
 
-The long-horizon evidence is synthetic. W7 and C5 are useful because they are deterministic and inspectable. They are not a 30-day production incident run. The next version needs real-world calendars, changing evidence streams, and scar tissue from actual operators.
+**Ways Reactor is RLM-class:**
+- **State is passed by pointer, not in-context.** The world-model is a filesystem/git directory; sessions get references and read what they need. This is the defining RLM move — context as *environment*, not as tokens.
+- **Meta-sessions manage ReAct sessions.** The reconciler is a loop that drives bounded child agent sessions; layers of ReAct sit under a managing layer.
+- **Every agent has a shell over the full system state as a git repo** it can write code against. The sandbox is the tool; the filesystem is the truth, and a truth you can't lie about because it's all on disk.
+- **Cost scales with the complexity of what changed, not the size of the input** — the RLM literature's central economic property, which Reactor inherits by construction.
+- **The recursion is real, but structural.** It lives in the composition DAG — zoom in, more nodes; zoom out, the output feeds more — and it's memoized across that structure rather than re-derived.
 
-Postgres parity is deferred. The v0.1 Reactor storage adapter is synchronous; real Postgres IO is async. Rather than flattening that mismatch, the release keeps memory/filesystem parity and names Postgres as a future adapter row.
+**Ways Reactor is *not* a fully generalized RLM:**
+- **The recursion is not a model spawning sub-RLMs at runtime to crack a single giant prompt.** Reactor doesn't slice a ten-million-token variable in the loop; it watches fingerprints of bounded world-models. That deep, in-context decomposition — the thing the RLM papers are really about — is not what Reactor does.
+- **Depth beyond one level is not the value proposition.** RLMs shine on long-context, information-dense aggregation. Reactor's value is standing reconciliation plus memoization across a graph — a different axis.
+- **We sidestep the hard open problem rather than solving it.** Getting today's models to reliably *use* recursive sub-calls is a post-training problem the field hasn't cracked; models default to flat tool calls. Reactor doesn't fight that. By freezing intelligence at compile time and making the recursion structural, it gets RLM-class economics without depending on a capability that isn't reliable yet.
 
-The signer is null, and the trail is tamper-evident rather than non-repudiable. Receipts with `scheme: "none"` and `null_reason: "no-signer-adapter-configured"` are honest local artifacts, not cross-organization attestations. The content hash makes a receipt self-verifying: accidental corruption of a stored receipt is caught, and any field changed without recomputing the hash is rejected. But with no signer the receipt is not an attestation of *who* produced it, and the receipt log is not a hash chain — so an actor with write access to the state directory can re-hash a modified receipt, or drop one, undetected. v0.1 receipts are an honest integrity record, not yet a non-repudiable, compliance-grade audit trail. Relatedly, a receipt names its evidence by content hash but does not retain the raw evidence bytes; a raw-evidence store, a real signer adapter, and tamper-evident (hash-chained or append-only) receipt storage are all future work.
+So: arguably an RLM, and if not a fully generalized one, then a harness that draws on many RLM-class principles. The value we're claiming is the harness, not a claim to have solved recursion — and we think being clear about that line is more useful to you than blurring it.
 
-The risky bet remains cost-scales-with-surprise. Some domains do not have a cheap complete hash for "semantically relevant content changed." Some have no reliable correctness anchor. In those domains Reactor can still be safer than an opaque loop because it emits receipts and limitations, but the cost differentiator weakens toward scheduled checking.
+## 7. Why existing solutions don't replace it
 
-## 11. What's Next
+The honest comparison is structural, not competitive. Each of these made defensible choices for its own problem.
 
-The next engineering line is variable-depth runtime judging: shallow by default, deeper when uncertainty, stakes, calibration drift, or policy requires it. That means wiring the K1-style evidence into the runtime decision path rather than leaving it as an eval spike.
+| | **Cron / scheduled loops** | **Prompt-loop harnesses** (coding assistants, naive ReAct) | **Dynamic workflows** (plan-and-execute) | **Reactor** |
+| --- | --- | --- | --- | --- |
+| Control model | Fixed-interval polling | Imperative loop, "what next?" | An imperative plan, generated then strictly executed | Declarative: declare the truths to keep current |
+| Where orchestration lives | An external scheduler | Inside one running session | A plan executed *from outside* the agents | Pushed *into* the agents; the DAG is Forme's output |
+| Lifetime | Standing but stateless | One session, then gone | One-shot: plan → execute → discard | A standing DAG that persists across runs |
+| State | None (re-fetch each tick) | Linear context in-window | The plan / conversation | World-model by pointer; receipts as durable ledger |
+| Cost scaling | With the clock | With conversation length | With plan/agent count | With **surprise** (re-render only on material change) |
+| Auditability | Logs | "Scroll back and hope" | A plan trace | Content-addressed receipts naming evidence by fingerprint |
+| Best fit | Simple recurring jobs | Interactive, bounded tasks | Orchestrating N calls in order | Keeping a standing set of responsibilities aligned with a changing world |
 
-The next adapter line is production-equivalent ingress, fulfillment, and oracle support. Ingress needs authenticated event sources, normalized event identity, replayable claims, and budget controls. Fulfillment needs idempotent side effects, durable dispatch claims, retry policy, and operator-visible failure modes. Oracle support needs explicit truth/evidence sockets, not ambient knowledge smuggled into tests.
+Cron is the thing Reactor most directly improves on — same standing posture, but it pays for surprise instead of for the clock. The prompt-loop harnesses are the standing/memoized *evolution* of: take the loop you already run, and give it a durable world-model and a memo key.
 
-The next developer-experience line is a higher-level embedding surface. The v0.1 SDK is deliberately explicit — every adapter is injected, nothing is defaulted — which is correct for a runtime but high-ceremony for a first integration. A typed event surface and a higher-level "I have an event and a judge" quickstart are v0.2 DX work; the `*.prose.md` author surface is unaffected.
+The comparison everyone will reach for is **Anthropic's dynamic workflows**, launched days before this writing — mention "workflow" in a prompt and the model builds an orchestration plan it then strictly follows, even across hundreds of agents. We think this is genuinely good, and we don't think it's the same thing, so the honest framing is a different question rather than a better answer:
 
-The next evidence line is longer horizon and broader provider coverage: 7/30/90-day scenarios, direct provider adapters, Postgres parity, and a real signer. The issue tracker for this work is [`openprose/prose/issues`](https://github.com/openprose/prose/issues).
+> Dynamic workflows answer *"how do we plan and execute a sequence of calls?"* Reactor answers *"how do we keep a standing set of responsibilities aligned with a changing world?"*
 
-The most valuable contribution is not a benchmark that makes Reactor look good. It is a responsibility and an evaluation where the harness should pass but does not yet. The architecture is opinionated. Receipts over transcripts, policy compile over prompt convention, two seams over one, surprise over time, predicates over prompts. Some of those opinions will be wrong in some domains. The way we find out is to run real responsibilities, keep the receipt trail, and publish the corrections.
+One generates an imperative plan and runs it to completion; the other maintains a declarative graph that wakes, reconciles, and goes quiet, indefinitely, paying only for what moved. They compose more naturally than they compete — a dynamic workflow is a perfectly good way to *fulfill* a single responsibility's render. Different problem classes.
+
+And we'll name the bet, because this audience will name it for us if we don't: if it turns out that almost all valuable agent work in production is bounded, imperative sequences, then plan-and-execute wins and a standing reconciler is over-engineering. The evidence we see — people authoring standing goals, accumulating durable memory, refreshing daily — bets the other way. But it's a bet, not a proof.
+
+## 8. Why we're open-sourcing it
+
+We built Reactor for our own use, ran it privately, and then decided to open it. The runtime, the language, and the skill are open source, and the SDK core has zero runtime dependencies by design — the live render needs two optional peers (`@openai/agents`, `zod`), pulled lazily only when you compile or render. Part of the reason is principled: we ❤️ open source, and we think infrastructure this foundational shouldn't be something you rent from whoever also sells you the model — an open, inspectable harness is a small counterweight to the concentration of that stack. Part of it is strategic in the ordinary commoditize-the-complement way that open frameworks have always been.
+
+But the most relevant reason is the one that ties back to §2. The buyer who has gotten wise about spend wants *the math* — and the math, in Reactor, is in the open: it's the receipts and the test assertions, not a number in our marketing. We don't hand you a dollar figure (there isn't an honest one to give yet — see §9), but the keyless `reactor-devtools` cost rollup reports **tokens**, split by `surprise_cause`, that you can price against your own model's per-token rate — the conversion is yours to run, reproducibly, on a ledger you can re-verify. An auditable harness is exactly what you want underneath work you intend to leave running unattended. You shouldn't have to take our word for any of it; the point of the whole receipt architecture is that you don't.
+
+That's also why we're releasing it rough, now, rather than after a benchmark sweep. We'd rather get the *shape* in front of people who will tell us where it's wrong than hill-climb a number in private and discover later it didn't survive contact.
+
+## 9. What's built, and what isn't
+
+In the spirit of the receipts: here is the honest status.
+
+**Built and runnable.** The render atom, the world-model store (content-addressed, with the published-truth / private-workspace split), the compiled canonicalizer with facets and a structured-backing lint, Forme's wiring with diagnostics and acyclicity, postcondition-gated commits with no judge step, the receipt ledger with chain verification, composition pins, and the forecast/continuity scheduler are all implemented and exercised by the test suite, which runs offline — no model calls in the commit gate — in about a second. The reconciler's surprise property is enforced as a *tested invariant* rather than asserted as a statistic: when an input fingerprint doesn't move, the render body provably never runs. Integration suites prove the behaviors that matter for a graph of responsibilities — read-isolation (a node cannot read a sibling it didn't subscribe to), selective wake, the diamond single-wake (one wake from several inbound paths), and survival across a process restart. **Thirteen end-to-end examples** ship with the repo, each with a committed, chain-verifiable ledger and an offline test that drives the real reconciler at zero spend. The SDK core is zero-dependency (the live render pulls `@openai/agents` and `zod` as optional peers), strict-typed, published with provenance, and deterministic enough that its replay tests check exact hashes.
+
+**Deliberately not yet here.** We do not have benchmark or dollar numbers, and we're not going to pretend a structural invariant is a measured speedup — designing honest long-horizon benchmarks for systems like this is genuinely unsolved, and it's the help we most want from you. The fixpoint (§5) is specified and deferred. The cryptographic signer is a stub: in this version "signed" means the receipt chain is attributable and tamper-evident at the meaning layer, not non-repudiable at the byte layer. Facet *inference*, ledger compaction, and a few production-grade ingress concerns are named roadmap, not shipped.
+
+And the load-bearing caveat, stated once more so it isn't buried: cost-scales-with-surprise depends on evidence having a **stable, semantically-meaningful identity** and on that bounded audit floor. In a domain where "did the relevant content change?" has no cheap, reliable answer, Reactor degrades toward a scheduled loop with better bookkeeping. We think that's still useful — you get the receipts either way — but it's not magic, and the cost story is weaker there.
+
+## 10. What we're asking for
+
+If you maintain something that has to stay true while the world keeps moving, the fastest way in is the `reactor` binary, with the keyless `reactor-devtools` replay as the first thing to run — it shows the memo-skips, the cost-by-surprise rollup, and chain-verify on a sample ledger without a model key (the README carries the quickstart, and there are thirteen examples to replay). The most useful thing you can send us is not a compliment, and it is not a benchmark that makes Reactor look good. It is a **responsibility, and an evaluation, where the harness *should* pass and does not yet** — a standing goal we can't keep, a domain where the surprise story breaks, a wiring Forme gets wrong. There's a short guide to authoring one from the public SDK — drive the reconciler, wake a graph, read back the dispositions and the cost rollup — at [`packages/reactor/EVALS.md`](https://github.com/openprose/prose/blob/main/packages/reactor/EVALS.md). That is how we find the edges, and finding the edges in the open is the entire reason we're shipping this rough.
+
+The harness is small on purpose. The bet underneath it is not: that the unit worth optimizing is not the conversation but the world, that you should pay for surprise and not for time, and that a thing you intend to leave running should hand you a receipt for every decision it makes on your behalf.
+
+The conversation, eventually, always ends. The responsibility shouldn't have to.
+
+---
+
+*Reactor is open source. The runtime is `@openprose/reactor`; it's built on OpenProse, where intent is authored as Markdown contracts. Vibe-check it, break it, and send us the responsibility it can't keep yet.*

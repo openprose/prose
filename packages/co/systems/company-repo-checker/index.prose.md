@@ -1,15 +1,7 @@
 ---
 name: company-repo-checker
-kind: system
+kind: function
 ---
-
-
-### Services
-
-- `repo-structure-inspector`
-- `contract-test-drift-inspector`
-- `dependency-graph-inspector`
-- `repo-readiness-reporter`
 
 
 # Company Repo Checker
@@ -21,7 +13,7 @@ This is a reusable public contract. It describes what a company-native repo
 should preserve; the agent host executing `prose run` supplies the concrete
 read/search operations.
 
-### Requires
+### Parameters
 
 - `repo_path`: local path to the company-as-prose OpenProse root
 - `source_roots`: optional list of source roots relative to `<openprose-root>`;
@@ -31,21 +23,23 @@ read/search operations.
 - `external_prefixes`: optional service-reference prefixes that are resolved
   outside this package; default `["std/","co/","github.com/","gitlab.com/"]`
 
-### Ensures
+### Returns
 
 - `report`: structured readiness report containing:
     - `source_layout`: authored intent under declared source roots
-    - `contract_surface`: services and systems declare Requires and Ensures
-    - `test_pairing`: every service or system has a paired test subject
+    - `contract_surface`: contracts declare their call/subscription interface
+    - `test_pairing`: every contract has a paired test subject
     - `test_metadata`: tests declare subject, tier, contract_version, Expects,
       Expects Not, and Performance Tracked Over Time
-    - `dependency_graph`: Services references resolve and do not cross
-      system-private boundaries
-    - `counts`: service count, system count, test count, dependency edge count
+    - `dependency_graph`: contract references resolve and do not cross
+      package-private boundaries
+    - `counts`: contract count, test count, dependency edge count
 - `passed`: boolean true only when all hard failures are empty
-- `failures`: array of specific file-grounded failures, empty when passed
+- `failures`: array of specific file-grounded failures, empty when passed; the
+  returned `report` carries `passed: true` exactly when every failure array is
+  empty
 
-### Strategies
+### Invariants
 
 - inspect the repo as a bounded package walk rooted at `repo_path`
 - ignore `<openprose-root>/dist/`, `<openprose-root>/runs/`,
@@ -55,7 +49,7 @@ read/search operations.
   values
 - fail authored Prose source with `kind:` frontmatter that is not stored as
   `*.prose.md`
-- treat cross-system private dependencies as source ownership bugs; promote the
+- treat cross-package private dependencies as source ownership bugs; promote the
   shared primitive or keep the helper local
 - produce file-grounded failures that a maintainer can act on directly
 - avoid quality scoring here; runtime fleet checks own probabilistic and
@@ -64,13 +58,13 @@ read/search operations.
 ### Errors
 
 - `parse_failed`: a Contract Markdown file cannot be read or parsed
-- `unresolved_service`: a Services entry does not resolve in the package walk
-- `test_drift`: a service or system lacks a paired test or a test subject does not
+- `unresolved_service`: a referenced contract does not resolve in the package walk
+- `test_drift`: a contract lacks a paired test or a test subject does not
   resolve
 - `source_layout_violation`: authored Prose source appears outside declared
   source roots
-- `ownership_violation`: shared code depends on system-private code, or one
-  system depends directly on another system's private source
+- `ownership_violation`: shared code depends on package-private code, or one
+  package depends directly on another package's private source
 
 ### Execution
 
@@ -103,13 +97,13 @@ return report
 
 ## repo-structure-inspector
 
-### Requires
+### Parameters
 
 - `repo_path`: local path to inspect
 - `source_roots`: source roots to treat as package-owned authored intent
 - `ignored_roots`: roots to skip in default scope
 
-### Ensures
+### Returns
 
 - `source_layout`: report with:
     - `source_roots`: status for each declared source root
@@ -117,7 +111,7 @@ return report
       that does not use `*.prose.md`
 - `failures`: array of source layout violations
 
-### Strategies
+### Invariants
 
 - use the package root as the boundary
 - treat README.md and other plain documentation as documentation, not authored
@@ -127,93 +121,93 @@ return report
 
 ## contract-test-drift-inspector
 
-### Requires
+### Parameters
 
 - `repo_path`: local path to inspect
 - `source_roots`: source roots to treat as package-owned source
 - `ignored_roots`: roots to skip in default scope
 
-### Ensures
+### Returns
 
 - `contract_surface`: report with:
-    - `services`: every top-level `kind: service` found under source roots
-    - `systems`: every top-level `kind: system` found under source roots
-    - `patterns`: every top-level `kind: pattern` found under source roots
-    - `missing_contract_sections`: services or systems missing `### Requires` or
-      `### Ensures`
-    - `test_pairing`: paired test subject status for each service and system
+    - `contracts`: every top-level contract found under source roots, keyed by
+      its `kind` (`responsibility`, `function`, `gateway`, `pattern`)
+    - `missing_contract_sections`: data-flow contracts missing `### Requires` or
+      `### Maintains`, and callables missing `### Parameters` or `### Returns`
+    - `test_pairing`: paired test subject status for each contract
     - `test_metadata`: subject, tier, contract_version, Expects, Expects Not,
       and Performance Tracked Over Time status for each test
-    - `counts`: service count, system count, pattern count, and test count
+    - `counts`: contract count per kind, and test count
 - `failures`: array of contract or test drift violations
 
-### Strategies
+### Invariants
 
 - parse Contract Markdown according to the OpenProse spec: frontmatter for
   identity, `###` sections for contracts, `#` headings as human titles
-- treat `kind: service` plus `### Services` as a kind mismatch; it should be a
-  system, or the Services section should be removed for a one-session service
-- require system tests to use `tier: system` and service tests to use
-  `tier: service`, not retired tiers from older OpenProse releases
-- require test subjects to resolve to a service or system in the same package
-  or a shared source root
-- allow patterns to be tested only through a service or system that
-  instantiates them
+- treat a `kind: function` plus `### Requires`/`### Maintains` as a kind
+  mismatch; a callable declares `### Parameters`/`### Returns`, while a
+  standing subscribable truth is a `responsibility`
+- require responsibility tests to use `tier: responsibility` and function tests
+  to use `tier: function`, not retired tiers from older OpenProse releases
+- require test subjects to resolve to a contract in the same package or a shared
+  source root
+- allow patterns to be tested only through a contract that instantiates them
 
 
 ## dependency-graph-inspector
 
-### Requires
+### Parameters
 
 - `repo_path`: local path to inspect
 - `source_roots`: source roots to treat as package-owned source
 - `ignored_roots`: roots to skip in default scope
 - `external_prefixes`: service-reference prefixes resolved outside this package
 
-### Ensures
+### Returns
 
 - `dependency_graph`: report with:
-    - `source_names`: globally unique service, system, and pattern names under
-      source roots
-    - `edges`: resolved `### Services` dependency edges
-    - `unresolved`: service or system references that do not resolve by source
-      name or explicit external path
-    - `ownership_violations`: shared-to-system-private or
-      system-to-system-private dependencies
+    - `source_names`: globally unique contract names under source roots
+    - `edges`: resolved dependency edges (intra-node `call` targets and
+      cross-node subscriptions)
+    - `unresolved`: contract references that do not resolve by source name or
+      explicit external path
+    - `ownership_violations`: shared-to-package-private or
+      package-to-package-private dependencies
     - `counts`: dependency edge count
 - `failures`: array of dependency graph violations
 
-### Strategies
+### Invariants
 
-- resolve plain service names by `name:` across the bounded package
+- resolve plain contract names by `name:` across the bounded package
   walk
 - treat `std/...`, `co/...`, host-qualified dependency paths, explicit relative
   paths, and explicit `.prose.md` paths as external references rather than
   unresolved local names
-- fail when a shared service depends on a system-private service
-- fail when one system depends directly on another system's private source
-- if a cross-system dependency is intentional, require promotion into shared or
+- fail when a shared contract depends on a package-private contract
+- fail when one package depends directly on another package's private source
+- if a cross-package dependency is intentional, require promotion into shared or
   an explicit path plus TODO naming the promotion condition
 
 
 ## repo-readiness-reporter
 
-### Requires
+### Parameters
 
 - `source_layout`: output from repo-structure-inspector
 - `contract_surface`: output from contract-test-drift-inspector
 - `dependency_graph`: output from dependency-graph-inspector
 
-### Ensures
+### Returns
 
 - `report`: merged readiness report with sections for source_layout,
   contract_surface, test_pairing, test_metadata, dependency_graph, and counts
 - `passed`: boolean true only when all failure arrays are empty
 - `failures`: concatenated file-grounded failures from all inspectors
 
-### Strategies
+### Invariants
 
 - keep the summary short enough for CI or PR review
 - list failures before counts
-- preserve exact file paths and service/system names from inspector outputs
+- preserve exact file paths and contract names from inspector outputs
 - do not downgrade hard failures to warnings
+```

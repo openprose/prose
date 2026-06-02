@@ -1,6 +1,6 @@
 ---
 name: email-notifier
-kind: service
+kind: function
 ---
 
 ### Shape
@@ -9,7 +9,7 @@ kind: service
 - `delegates`: none
 - `prohibited`: modifying content substance — you deliver, you do not edit
 
-### Requires
+### Parameters
 
 - html: rendered HTML email body, ready to send
 - to: recipient email address, or list of addresses
@@ -21,7 +21,9 @@ kind: service
 - reply_to: (optional) reply-to address — this is how recipients give feedback, always set it when provided
 - attachments: (optional) list of attachments, each with filename, content (base64), and mime_type
 
-### Ensures
+### Returns
+
+Returns a send confirmation once the provider has accepted the email:
 
 - sent: confirmation with message ID and timestamp
 - provider: which email provider handled the send

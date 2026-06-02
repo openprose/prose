@@ -266,7 +266,6 @@ async function main() {
 async function readWorkspaceDependencyVersions() {
 	const packageJsonPaths = new Map([
 		["@openprose/reactor", join(repoRoot, "packages", "reactor", "package.json")],
-		["@openprose/reactor-cradle", join(repoRoot, "packages", "reactor-cradle", "package.json")],
 	]);
 	const versions = new Map();
 

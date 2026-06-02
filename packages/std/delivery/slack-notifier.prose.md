@@ -1,6 +1,6 @@
 ---
 name: slack-notifier
-kind: service
+kind: function
 ---
 
 ### Shape
@@ -13,16 +13,15 @@ kind: service
   - modifying the content substance — you format and deliver
   - you do not edit research or analysis
 
-### Requires
+### Parameters
 
 - content: structured output to deliver
 - channel: Slack channel name
 - format: (optional, default "summary+attachment") one of "summary+attachment", "full", "alert"
 
-### Ensures
+### Returns
 
-- delivered: confirmation with timestamp and permalink
-- attachment_url: link to the uploaded file — present only when format is "summary+attachment"
+Returns the delivery confirmation. `delivered` carries the confirmation with timestamp and permalink, and `attachment_url` links to the uploaded file — present only when format is "summary+attachment". The returned value postcondition: a successful return means the content was posted to the named channel and `delivered` reflects the actual Slack timestamp and permalink.
 
 ### Errors
 

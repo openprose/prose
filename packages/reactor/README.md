@@ -73,29 +73,29 @@ and derive a proof summary that avoids private payload fields:
 
 ```ts
 import {
-  inspectReceiptProofV0,
-  verifyReceiptV0,
-  type ReceiptV0,
+  inspectReceiptProof,
+  verifyReceipt,
+  type LedgerReceipt,
 } from "@openprose/reactor/receipt";
 
-export function inspectStoredReceipt(receipt: ReceiptV0) {
-  const verification = verifyReceiptV0(receipt);
+export function inspectStoredReceipt(receipt: LedgerReceipt) {
+  const verification = verifyReceipt(receipt);
   if (!verification.ok) {
     throw new Error(verification.errors.join("; "));
   }
 
-  return inspectReceiptProofV0(receipt);
+  return inspectReceiptProof(receipt);
 }
 ```
 
 Project a proof for a lower-trust audience:
 
 ```ts
-import { projectReceiptProofV0 } from "@openprose/reactor/projection";
-import type { ReceiptProofInspectionV0 } from "@openprose/reactor/receipt";
+import { projectReceiptProof } from "@openprose/reactor/projection";
+import type { ReceiptProofInspection } from "@openprose/reactor/receipt";
 
-export function publicReceiptEvidence(proof: ReceiptProofInspectionV0) {
-  const result = projectReceiptProofV0({ tier: "public", proof });
+export function publicReceiptEvidence(proof: ReceiptProofInspection) {
+  const result = projectReceiptProof({ tier: "public", proof });
   if (!result.ok) {
     throw new Error(result.errors.join("; "));
   }

@@ -46,7 +46,7 @@ interface Route {
 
 /**
  * The default bind address — LOOPBACK only. v1 has NO auth (an unauthenticated
- * `POST /<node>/trigger` can cause model spend), so the server must NOT be
+ * `POST /trigger/<node>` can cause model spend), so the server must NOT be
  * exposed to the network unless the operator explicitly asks (`--host`). Binding
  * `127.0.0.1` by default keeps a `reactor serve --http` safe on a shared box.
  */

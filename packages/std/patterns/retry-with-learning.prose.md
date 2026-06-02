@@ -46,17 +46,13 @@ Retry a service, passing failure analysis to each subsequent attempt. Each retry
                                 e.g., "result contains 'no results found' or is empty"
                                 Default: retry on thrown error only.
 
-### Ensures
+### Returns
 
-- First attempt: target receives the original brief
-- On failure: analyze what went wrong, construct enriched brief with:
-    original task, what was tried, why it failed, what to try differently
-- Each retry receives the FULL failure history, not just the last attempt
-- Returns on first success
-- After max_retries: returns the last result with `failure_history`
-- `result`: the final output, or `null`
+- `result`: the final output, or `null` after exhaustion
 - `attempts`: attempt count
 - `failure_history`: analysis of each failed attempt
+
+The returned value satisfies these guarantees: the first attempt's target receives the original brief; on failure the coordinator analyzes what went wrong and constructs an enriched brief (original task, what was tried, why it failed, what to try differently); each retry receives the FULL failure history, not just the last attempt; the value is returned on first success; and after `max_retries` the returned `result` is the last result accompanied by its `failure_history`.
 
 ### Delegation
 

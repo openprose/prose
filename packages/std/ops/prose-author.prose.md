@@ -1,6 +1,6 @@
 ---
 name: prose-author
-kind: system
+kind: function
 ---
 
 # Prose Author
@@ -15,8 +15,8 @@ authors create new skills.
 
 Use this when a caller knows the workflow they want but has not yet written the
 `*.prose.md` source. The system may return one standalone file or a small
-folder-shaped package with an `index.prose.md` system and nearby service,
-gateway, responsibility, pattern, or test files.
+folder-shaped package with an `index.prose.md` root contract and nearby
+function, gateway, responsibility, pattern, or test files.
 
 Direct in-harness `prose write` is interactive by default: after a read-only
 landscape scan and initial shape/root decision, ask a small number of targeted
@@ -25,20 +25,7 @@ shell CLI may mark the run non-interactive because it can only pass argv/stdin
 up front; in that mode, return `unresolved-intent` with concrete missing
 decisions instead of guessing.
 
-### Services
-
-- `intent-normalizer`
-- `landscape-scanner`
-- `shape-root-decider`
-- `interactive-triage`
-- `guidance-loader`
-- `source-planner`
-- `source-author`
-- `source-linter`
-- `source-repairer`
-- `package-assembler`
-
-### Requires
+### Parameters
 
 - `output_mode`: output mode requested by the caller. `prose write` passes
   `source-package-only`; in that mode the system must return source content and
@@ -58,7 +45,7 @@ decisions instead of guessing.
   output should be a single file or folder, required inputs, outputs, tools,
   skills, memory, responsibilities, gateways, tests, and naming preferences.
 
-### Ensures
+### Returns
 
 - `source_package`: fully validated generated OpenProse program containing:
     - package shape: `single-file` or `folder`
@@ -85,7 +72,7 @@ decisions instead of guessing.
 ### Errors
 
 - `unresolved-intent`: the request is too underspecified to choose a safe
-  service, system, responsibility, pattern, gateway, test shape, target root, or
+  function, responsibility, pattern, gateway, test shape, target root, or
   root file. The error payload contains:
     - `error`: `unresolved-intent`
     - `missing_decisions`: concrete decisions the caller must provide
@@ -121,15 +108,25 @@ decisions instead of guessing.
 - Generated source uses current Contract Markdown: `###` sections, frontmatter
   `name` and `kind`, and backticked contract item names where practical.
 - Every generated program file path ends in `.prose.md`.
-- A generated `kind: system` has a non-empty `### Services` section whose
-  entries resolve within the returned file tree or to explicit installed
-  dependency references.
-- A generated multi-service single file uses `##` inline service boundaries
+- The retired internally-autowired graph kind is not generated. Composition is
+  intra-node imperative `call` (ProseScript in `### Execution`) within a single
+  contract, or a cross-node `### Requires` → `### Maintains` subscription that
+  Forme wires across responsibilities — never a third graph kind.
+- A generated contract that composes named sub-units folds them into `call`
+  statements in `### Execution`; every `call` target resolves within the
+  returned file tree or to an explicit installed dependency reference.
+- A generated multi-unit single file uses `##` inline sub-unit boundaries
   and keeps all contract sections at `###`.
-- A generated `kind: responsibility` includes stable `id:` frontmatter and a
-  `### Tools` section, using `(none)` when no host capabilities are required.
-- A generated `kind: gateway` stays thin: ingress in `### Receives` or
-  `### Schedule`, trigger target in `### Emits`, payload notes in `### Payload`.
+- A generated `kind: responsibility` declares `### Requires` →
+  `### Maintains`, includes stable `id:` frontmatter and a `### Tools`
+  section (using `(none)` when no host capabilities are required), and
+  declares its wake-source in `### Continuity` (input-driven by default).
+- A generated `kind: function` declares `### Parameters` → `### Returns`
+  (a plain call interface, no world-model and no `### Continuity`).
+- A generated `kind: gateway` stays thin: it is sugar for an
+  external-driven `responsibility` with no `### Requires`, `### Maintains`
+  for the incoming truth, and an external-driven `### Continuity`
+  (webhook / cron / manual trigger).
 - A generated `kind: test` supplies all required fixtures and uses semantic
   assertions over observable bindings, not exact phrasing.
 - `### Execution` is used only when order, loops, retries, gates, or branches
@@ -156,23 +153,25 @@ decisions instead of guessing.
 
 ### Strategies
 
-- Prefer the smallest valid artifact: one service for one competent session,
-  a system when composition matters, a pattern for reusable control flow, a
-  gateway for ingress, a test for behavior checks, and a responsibility for a
-  standing goal.
+- Prefer the smallest valid artifact: one `function` for one competent
+  session, a `function` (or `responsibility`) with `### Execution` `call`s
+  when composition matters, a pattern for reusable control flow, a
+  gateway for ingress, a test for behavior checks, and a `responsibility`
+  for a standing, subscribable truth.
 - If the request implies several unrelated workflows, split only when the
-  files share one public system or responsibility. Otherwise return a
-  validation error naming the split that should be requested separately.
+  files share one public root contract (a `function` or `responsibility`).
+  Otherwise return a validation error naming the split that should be
+  requested separately.
 - When the request is ambiguous but a conservative valid shape is clear, choose
   it and record the assumption in `authoring_notes`.
 - When ambiguity affects root, path, side effects, persistence, or whether a
   responsibility/runtime source is required, prefer `unresolved-intent` over a
   misleading generated package.
 - Preserve user terminology for domain outputs, but normalize file names and
-  service names into lower-kebab-case.
-- Prefer folder output for systems with three or more services, responsibility
-  runtime source, or tests; prefer a single file for compact service-only or
-  two-service examples.
+  sub-unit names into lower-kebab-case.
+- Prefer folder output for contracts with three or more sub-units, responsibility
+  runtime source, or tests; prefer a single file for a compact single-unit or
+  two-unit example.
 - For dependencies, use explicit installed references such as `std/...`,
   `co/...`, or `github.com/owner/repo/path`. Do not invent bare `owner/repo`
   registry references.
@@ -285,7 +284,7 @@ return {
 
 Normalize the caller's rough request into an explicit authoring intent.
 
-### Requires
+### Parameters
 
 - `request`: pseudo-Prose, logical English, copied notes, or rough workflow
   brief from the caller
@@ -296,15 +295,15 @@ Normalize the caller's rough request into an explicit authoring intent.
 - `interactive`: whether targeted follow-up questions are allowed before source
   planning; default `true` in agent-host `prose write`
 
-### Ensures
+### Returns
 
 - `authoring_intent`: structured intent containing:
     - goal: what the generated Prose must accomplish
     - preferred_shape: `single-file`, `folder`, or `unspecified`
-    - likely_kinds: service, system, responsibility, gateway, test, pattern, or
-      a small combination of those kinds
-    - public_inputs: caller-supplied data the source should require
-    - public_outputs: outputs the source should ensure
+    - likely_kinds: function, responsibility, gateway, test, pattern, or
+      a small combination of those kinds (there is no `system` kind)
+    - public_inputs: caller-supplied data the source should require or take as parameters
+    - public_outputs: the truth the source should maintain or the values it should return
     - operational_context: environment variables, tools, skills, dependencies,
       persistence, memory, and safety boundaries implied by the request
     - output_mode: caller output mode, preserved for downstream authoring
@@ -329,13 +328,17 @@ Normalize the caller's rough request into an explicit authoring intent.
   syntax.
 - Recognize common pseudo-Prose shorthands and translate them into Contract
   Markdown intent:
-    - `input name` means a public `### Requires` item named `name`
-    - `input:` or `Inputs:` with comma-separated fields means public
-      `### Requires` items normalized to lower_snake_case
-    - `return name` means a public `### Ensures` item named `name`
+    - `input name` means a public input named `name`: a `### Parameters`
+      item for a `function`, or a `### Requires` subscription for a
+      `responsibility`
+    - `input:` or `Inputs:` with comma-separated fields means public input
+      items (`### Parameters` or `### Requires`) normalized to lower_snake_case
+    - `return name` means a public output named `name`: a `### Returns`
+      item for a `function`, or a `### Maintains` field for a `responsibility`
     - `return a, b, and c` means preserve each named domain output separately,
       normalized to lower_snake_case
-    - `session "..."` usually means a named service in the system graph
+    - `session "..."` usually means a named sub-unit invoked by an
+      intra-node `call` in `### Execution`
     - `loop until/while ... (max: N)` means pinned bounded ProseScript
       choreography with the natural-language condition preserved
 - Recognize `for each ... in parallel` and `run these checks in parallel` as
@@ -349,7 +352,7 @@ Normalize the caller's rough request into an explicit authoring intent.
   and a review history or approval record output.
 - Treat page, notify, create channel, publish, execute, rollback, feature flag,
   status update, and issue creation as side-effect signals that require an
-  explicit service boundary and safety gate.
+  explicit sub-unit boundary and safety gate.
 - Extract obligations before implementation details. Desired outputs and
   invariants matter more than proposed step order.
 - When the request says "always", "keep", "monitor", "every", "when event
@@ -366,11 +369,11 @@ Normalize the caller's rough request into an explicit authoring intent.
 
 Inspect the current repository landscape without modifying it.
 
-### Requires
+### Parameters
 
 - `authoring_intent`: normalized authoring intent from `intent-normalizer`
 
-### Ensures
+### Returns
 
 - `landscape`: read-only local context containing:
     - current working directory and nearest repository boundary
@@ -378,7 +381,7 @@ Inspect the current repository landscape without modifying it.
       `.agents/prose`, and user-global `~/.agents/prose` when relevant
     - presence or absence of `src/`, `prose.lock`, `.agents/prose`, `dist/`,
       `runs/`, `state/`, and `deps/`
-    - existing services, systems, responsibilities, gateways, patterns, tests,
+    - existing functions, responsibilities, gateways, patterns, tests,
       and evals found under likely OpenProse source roots
     - nearby package conventions, README guidance, and whether the caller
       appears to be authoring a new OpenProse project or adding a sidecar to an
@@ -412,18 +415,18 @@ Inspect the current repository landscape without modifying it.
 Choose and record the generated program shape and OpenProse root before source
 planning begins.
 
-### Requires
+### Parameters
 
 - `authoring_intent`: normalized authoring intent from `intent-normalizer`
 - `landscape`: read-only local context from `landscape-scanner`
 
-### Ensures
+### Returns
 
 - `shape_decision`: explicit decision record containing:
     - program_shape: one of:
-        - compact single-file service or system
+        - compact single-file contract (`function` or `responsibility`)
         - imperative-heavy single `index.prose.md` with `### Execution`
-        - multi-service folder with `index.prose.md` plus private services
+        - multi-unit folder with `index.prose.md` plus private sub-units
         - native OpenProse repository rooted at the repository root
         - attached sidecar OpenProse root under `repo/.agents/prose`
         - user-global agent under `~/.agents/prose`
@@ -431,7 +434,7 @@ planning begins.
     - target_root_mode: `native`, `attached`, `user-global`, or `package-only`
     - target_root_path and root_file, using root-relative paths when a concrete
       root is known
-    - private_service_dir when a folder shape contains non-public services
+    - private_subunit_dir when a folder shape contains non-public sub-units
     - rationale grounded in the request and landscape scan
     - confidence: `high`, `medium`, or `low`
     - assumptions that are safe enough to proceed
@@ -447,15 +450,15 @@ planning begins.
 
 ### Strategies
 
-- Choose compact single-file output for one service, a tiny two-service example,
-  or a self-contained system that remains readable with inline `##` service
+- Choose compact single-file output for one sub-unit, a tiny two-unit example,
+  or a self-contained contract that remains readable with inline `##` sub-unit
   boundaries.
 - Choose an imperative-heavy single `index.prose.md` when the request is mostly
   bounded choreography: loops, retries, gates, parallel fan-out/fan-in,
-  conditionals, or pinned service calls.
-- Choose a multi-service folder when there are three or more services,
-  reusable private services, tests, side effects, responsibility/gateway source,
-  or a graph that should be edited service-by-service later.
+  conditionals, or pinned `call` choreography.
+- Choose a multi-unit folder when there are three or more sub-units,
+  reusable private sub-units, tests, side effects, responsibility/gateway source,
+  or a graph that should be edited unit-by-unit later.
 - Choose a native OpenProse root only when the landscape already looks native or
   the user is clearly creating an OpenProse repository.
 - Choose an attached sidecar root for ordinary application repositories where
@@ -473,14 +476,14 @@ planning begins.
 Resolve blocking authoring decisions before source planning when the host can
 ask the user.
 
-### Requires
+### Parameters
 
 - `authoring_intent`: normalized authoring intent from `intent-normalizer`
 - `landscape`: read-only local context from `landscape-scanner`
 - `shape_decision`: initial shape and root decision from `shape-root-decider`
 - `interactive`: whether targeted follow-up questions are allowed
 
-### Ensures
+### Returns
 
 - `triage_result`: decision record containing:
     - authoring_intent: updated intent after any accepted user answers
@@ -524,14 +527,14 @@ ask the user.
 Load the baseline and shape-specific OpenProse guidance required by the
 decision before source planning and authoring.
 
-### Requires
+### Parameters
 
 - `authoring_intent`: normalized authoring intent from `intent-normalizer`
 - `landscape`: read-only local context from `landscape-scanner`
 - `shape_decision`: explicit shape and root decision from
   `interactive-triage`
 
-### Ensures
+### Returns
 
 - `guidance_report`: loaded guidance record containing:
     - baseline docs: `contract-markdown.md`, `guidance/tenets.md`, and
@@ -548,13 +551,14 @@ decision before source planning and authoring.
 ### Strategies
 
 - Load `prosescript.md` when generating imperative-heavy `### Execution`,
-  bounded loops, retries, explicit parallelism, pinned choreography, or service
-  call order.
-- Load `forme.md` when generating a multi-service system, service graph,
-  pattern instance, explicit wiring, dependency reference, or composed folder.
+  bounded loops, retries, explicit parallelism, pinned choreography, or
+  intra-node `call` order.
+- Load `forme.md` when generating a multi-unit contract, cross-node
+  subscription graph, pattern instance, explicit wiring, dependency reference,
+  or composed folder.
 - Load `responsibility-runtime.md` when generating responsibilities, gateways,
-  standing goals, compile/serve-facing source, fulfillment, trigger semantics,
-  pressure, or Reactor-facing behavior.
+  standing subscribable truths, compile/serve-facing source, `### Continuity`
+  wake-source semantics, or Reactor-facing behavior.
 - Load `state/README.md` and `state/filesystem.md` when persistence, memory,
   run state, root layout, attached roots, native roots, or user-global roots
   affect the generated package.
@@ -565,7 +569,7 @@ decision before source planning and authoring.
 
 Plan the generated file tree and contracts before drafting source.
 
-### Requires
+### Parameters
 
 - `authoring_intent`: normalized authoring intent from `intent-normalizer`
 - `landscape`: read-only local context from `landscape-scanner`
@@ -574,20 +578,22 @@ Plan the generated file tree and contracts before drafting source.
 - `guidance_report`: baseline and shape-specific guidance from
   `guidance-loader`
 
-### Ensures
+### Returns
 
 - `source_plan`: concrete generation plan containing:
     - package_shape: `single-file` or `folder`
     - shape_decision: chosen program shape, target root mode, root path, root
-      file, private service directory, and rationale
+      file, private sub-unit directory, and rationale
     - guidance_loaded: docs that must constrain the generated source
     - files: list of paths to generate, with `kind`, `name`, and purpose
-    - root_file: the file the caller should run, test, or compile first
-    - service_graph: services, subsystems, pattern instances, and expected
-      wiring edges
-    - contract_map: required `### Requires`, `### Ensures`, `### Errors`,
-      `### Invariants`, `### Strategies`, `### Runtime`, `### Shape`,
-      `### Tools`, `### Skills`, `### Memory`, and test sections by file
+    - composition_graph: sub-units (intra-node `call` targets), cross-node
+      `### Requires` → `### Maintains` subscriptions, pattern instances, and
+      expected wiring edges
+    - contract_map: required sections per file — `### Parameters` / `### Returns`
+      (function), `### Requires` / `### Maintains` / `### Continuity`
+      (responsibility / gateway), and `### Errors`, `### Invariants`,
+      `### Execution`, `### Strategies`, `### Runtime`, `### Shape`,
+      `### Tools`, `### Skills`, and test sections by file
     - validation_checklist: blocking checks that `source-linter` must apply
     - next_commands: recommended commands after generation, such as
       `prose lint`, `prose test`, or `prose compile`
@@ -597,33 +603,37 @@ Plan the generated file tree and contracts before drafting source.
 - Treat `shape_decision` as binding unless it conflicts with an explicit
   safety invariant or the linter proves it invalid. Do not silently switch root
   modes or package shape during drafting.
-- Choose a single-file package only when all services can remain readable with
+- Choose a single-file package only when all sub-units can remain readable with
   inline `##` headings and no responsibility runtime source is needed.
 - Choose folder output when the graph is large, when tests accompany the source,
   when a responsibility/gateway pair exists, when the request asks for reusable
   workflow source, when parallel review/research branches are present, when
   operational side effects are present, or when future edits should be
-  localized to individual service files.
-- For systems, every service in `### Services` must have a corresponding inline
-  section, sibling file, subsystem path, or explicit dependency reference.
-- For responsibilities, plan a stable id and a `### Tools` section. Use `(none)`
-  only after checking that no judge or fulfillment capability is implied.
+  localized to individual sub-unit files.
+- For a composed contract, every sub-unit named by a `call` in `### Execution`
+  must have a corresponding inline section, sibling file, nested path, or
+  explicit dependency reference.
+- For responsibilities, plan a stable id, `### Requires` → `### Maintains`,
+  a `### Continuity` wake-source, and a `### Tools` section. Use `(none)`
+  only after checking that no host capability is implied.
 - Include at least one test when the request asks for production-ready source or
   when behavior has a clear happy path and an important degradation path.
-- For pseudo-Prose with two or more `session` lines, plan a `kind: system`
-  unless the request explicitly asks for a reusable `kind: pattern`.
+- For pseudo-Prose with two or more `session` lines, plan a single `function`
+  (or `responsibility`) that composes them with intra-node `call`s in
+  `### Execution`, unless the request explicitly asks for a reusable
+  `kind: pattern`.
 - For pseudo-Prose loops, require an explicit bound. If no bound is present,
   add a blocking validation item or choose a conservative bound and record that
   assumption in `authoring_notes`.
 - For review loops, plan a carried-forward notes binding and an exhausted-loop
-  outcome in the root system contract.
+  outcome in the root contract.
 - Preserve user-specified numeric bounds exactly in the planned `### Execution`
   block and in the validation checklist.
 - For parallel research or review workflows, plan explicit `parallel for` or
   `parallel` choreography plus a synthesis step that receives every branch's
   declared outputs.
-- For operational workflows, plan side-effect services separately from analysis
-  services and require mitigation, paging, publishing, channel creation,
+- For operational workflows, plan side-effect sub-units separately from analysis
+  sub-units and require mitigation, paging, publishing, channel creation,
   rollback, or issue creation to be guarded by a prior condition or approval.
 - Add review-history outputs for approval loops unless the request explicitly
   names an equivalent approval record.
@@ -636,7 +646,7 @@ Plan the generated file tree and contracts before drafting source.
 
 Draft the planned source package.
 
-### Requires
+### Parameters
 
 - `source_plan`: concrete file tree and contract plan from `source-planner`
 - `authoring_intent`: normalized authoring intent from `intent-normalizer`
@@ -648,7 +658,7 @@ Draft the planned source package.
 - `output_mode`: caller output mode, usually `source-package-only`
 - `apply`: whether this authoring run may write files, usually `false`
 
-### Ensures
+### Returns
 
 - `draft_source_package`: complete candidate package containing:
     - file tree
@@ -660,9 +670,9 @@ Draft the planned source package.
 
 - Write valid source first, clever source second.
 - Follow the loaded shape-specific guidance. Use `prosescript.md` for pinned
-  choreography, `forme.md` for service graph composition, and
-  `responsibility-runtime.md` for responsibility, gateway, trigger, compile, or
-  serve-facing source.
+  intra-node `call` choreography, `forme.md` for cross-node subscription graph
+  composition, and `responsibility-runtime.md` for responsibility, gateway,
+  `### Continuity`, compile, or serve-facing source.
 - Place generated files under the chosen root and root file from
   `shape_decision`; do not move between native, attached, user-global, or
   package-only output without returning `unresolved-intent`.
@@ -671,21 +681,22 @@ Draft the planned source package.
   filesystem.
 - Use current Contract Markdown headings exactly. Unknown `###` sections may
   be preserved only as documentation, never as hidden runtime behavior.
-- Make every `### Ensures` item named, evaluable, and specific enough for a
-  future agent or test to judge.
-- Use `### Errors` for named failures, conditional `### Ensures` for degraded
-  success, and `### Invariants` for properties that hold regardless of outcome.
+- Make every `### Returns` item (function) and `### Maintains` field
+  (responsibility) named, evaluable, and specific enough for a future agent
+  or test to judge.
+- Use `### Errors` for named failures, conditional `### Returns` /
+  `### Maintains` postconditions for degraded success, and `### Invariants`
+  for properties that hold regardless of outcome.
 - Put runtime configuration and secrets in `### Environment`, not
   `### Requires`.
 - Use `### Shape` to stop coordinator collapse: `self`, `delegates`, and
   `prohibited` should be explicit whenever boundaries matter.
-- Keep ProseScript fenced as `prose`. Keep structured service declarations and
-  memory maps fenced as `yaml`. Do not wrap ordinary Markdown sections in
-  code fences.
-- Convert pseudo `session "..."` lines into `call service-name` statements
-  when the generated source includes a service graph. Use raw `session` only
-  when the request truly needs an ad hoc subagent outside the Contract Markdown
-  graph, and explain that choice in `authoring_notes`.
+- Keep ProseScript fenced as `prose`. Keep structured declarations fenced as
+  `yaml`. Do not wrap ordinary Markdown sections in code fences.
+- Convert pseudo `session "..."` lines into `call sub-unit-name` statements in
+  `### Execution` when the generated contract composes named sub-units. Use raw
+  `session` only when the request truly needs an ad hoc subagent inside the
+  render, and explain that choice in `authoring_notes`.
 - Emit explicit `parallel`, `parallel for`, `if`/`else`, and bounded `loop`
   ProseScript when the request names those control-flow requirements. Do not
   demote them to `### Strategies`.
@@ -693,7 +704,7 @@ Draft the planned source package.
   collapse several outputs into a single vague `report` or `summary`.
 - For approval loops, include the latest draft/result, approval state, notes,
   and exhausted-loop result in the returned shape.
-- For side-effecting operations, name the service for the action and call it
+- For side-effecting operations, name the sub-unit for the action and `call` it
   only after the gating condition or reviewer approval is available.
 
 ---
@@ -702,7 +713,7 @@ Draft the planned source package.
 
 Validate the draft source package against current OpenProse authoring rules.
 
-### Requires
+### Parameters
 
 - `draft_source_package`: candidate source files from `source-author` or
   `source-repairer`
@@ -712,7 +723,7 @@ Validate the draft source package against current OpenProse authoring rules.
 - `guidance_report`: baseline and shape-specific guidance from
   `guidance-loader`
 
-### Ensures
+### Returns
 
 - `lint_report`: structured validation report containing:
     - status: `pass` or `fail`
@@ -733,12 +744,14 @@ Validate the draft source package against current OpenProse authoring rules.
 - Check section legality by kind using Contract Markdown. Preserve unknown
   sections as documentation only when they do not pretend to be runtime
   semantics.
-- Check system resolvability: `### Services` is non-empty, every listed local
-  service resolves in the returned file tree, and every dependency reference is
-  explicit.
+- Check composition resolvability: every sub-unit named by a `call` in
+  `### Execution` resolves in the returned file tree, every `### Requires`
+  subscription has a plausible `### Maintains` producer, and every dependency
+  reference is explicit. The retired autowired-graph section and graph kind are
+  never generated.
 - Check shape/root compliance: generated paths match `shape_decision`, root
   mode and root file are stable, folder output includes an `index.prose.md`
-  when promised, and private services stay under the planned private service
+  when promised, and private sub-units stay under the planned private sub-unit
   directory.
 - Check return-only compliance: when `output_mode` is `source-package-only` or
   `apply` is `false`, the package contains file contents and apply notes rather
@@ -750,16 +763,16 @@ Validate the draft source package against current OpenProse authoring rules.
 - Check contract item quality: named outputs use backticks where practical,
   vague outputs like "good result" are rejected, and `each` clauses attach to a
   clear collection.
-- Check ProseScript when present: fenced `prose`, call targets exist,
-  variables flow from requires or prior outputs, loops have bounds, and return
-  shape satisfies `### Ensures`.
+- Check ProseScript when present: fenced `prose`, `call` targets exist,
+  variables flow from parameters/requires or prior outputs, loops have bounds,
+  and the return shape satisfies `### Returns` / `### Maintains`.
 - Check pseudo-Prose translations: no standalone `input`, `output`, or
   `return` declarations remain outside Contract Markdown or fenced ProseScript;
   no raw pseudo `session "..."` lines remain when they were intended as
-  services.
+  composed sub-units.
 - Check output preservation: every concrete output named in the caller's return
-  text appears as its own `### Ensures` item or explicitly documented field in a
-  structured ensured output.
+  text appears as its own `### Returns` item (function) or `### Maintains` field
+  (responsibility), or an explicitly documented field in a structured output.
 - Check control-flow preservation: parallel fan-out/fan-in, `if`/`else`
   branches, and numeric loop bounds from the request appear in `### Execution`
   when they affect correctness or safety.
@@ -769,10 +782,12 @@ Validate the draft source package against current OpenProse authoring rules.
 - Check side-effect gates: operational actions such as paging, notifications,
   publishing, rollback, mitigation execution, channel creation, and issue
   creation occur only behind the condition or approval named by the request.
-- Check responsibilities: `Goal`, `Continuity`, `Criteria`, `Constraints`,
-  `Tools`, and optional `Fulfillment` are semantic, not runtime machinery.
-- Check gateways: routes, schedules, emits, and payload notes stay in gateway
-  source rather than responsibility source.
+- Check responsibilities: `### Goal`, `### Requires`, `### Maintains`,
+  `### Continuity`, `### Invariants`, and `### Tools` are present and semantic,
+  not runtime machinery; there is no `### Criteria` or `### Fulfillment`.
+- Check gateways: a gateway has no `### Requires`, `### Maintains` for the
+  incoming truth, and an external-driven `### Continuity`; ingress/trigger
+  details stay in gateway source rather than responsibility source.
 - Check tests: fixtures cover subject inputs, assertions are semantic, and
   tests do not name pattern definitions as direct subjects.
 - Check security: no raw secrets, no API key values, no hidden environment
@@ -791,7 +806,7 @@ Validate the draft source package against current OpenProse authoring rules.
 
 Repair blocking lint findings without changing the caller's intent.
 
-### Requires
+### Parameters
 
 - `draft_source_package`: candidate source files with blocking findings
 - `lint_report`: validation report from `source-linter`
@@ -801,7 +816,7 @@ Repair blocking lint findings without changing the caller's intent.
 - `guidance_report`: baseline and shape-specific guidance from
   `guidance-loader`
 
-### Ensures
+### Returns
 
 - `draft_source_package`: repaired candidate package with all blocking findings
   addressed or explicitly marked impossible to repair without changing intent
@@ -821,7 +836,7 @@ Repair blocking lint findings without changing the caller's intent.
 - If an issue cannot be repaired without a missing user decision, keep the
   blocking finding and explain the exact missing decision.
 - Do not repair an `unresolved-intent` situation by inventing a root, path,
-  service graph, persistence scope, or side-effect policy.
+  composition graph, persistence scope, or side-effect policy.
 
 ---
 
@@ -829,7 +844,7 @@ Repair blocking lint findings without changing the caller's intent.
 
 Publish the validated source package and concise next-step notes.
 
-### Requires
+### Parameters
 
 - `draft_source_package`: final candidate package from `source-author` or
   `source-repairer`
@@ -841,7 +856,7 @@ Publish the validated source package and concise next-step notes.
 - `guidance_report`: baseline and shape-specific guidance from
   `guidance-loader`
 
-### Ensures
+### Returns
 
 - `source_package`: final source package containing:
     - package shape and root file

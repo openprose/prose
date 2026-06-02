@@ -20,13 +20,14 @@ subject: prose-author
 
 - `source_package`: includes a folder file tree with at least one
   `kind: responsibility` file, one `kind: gateway` file, and one
-  `kind: system` file
+  `kind: function` file
 - `source_package`: every generated program file path ends in `.prose.md`
 - `source_package`: every generated `kind: responsibility` file includes
-  `### Goal`, `### Continuity`, `### Criteria`, `### Constraints`, and
+  `### Goal`, `### Continuity`, `### Maintains`, `### Invariants`, and
   `### Tools`
-- `source_package`: the generated system has a non-empty `### Services`
-  section and every local service listed there is present in the package
+- `source_package`: the generated orchestrating `kind: function` has a
+  non-empty `### Execution` section whose ProseScript `call`s reach every
+  local unit it composes, and each such unit is present in the package
 - `lint_report`: has status `pass` and no blocking findings
 - `authoring_notes`: names the assumptions made while translating the rough
   brief into Contract Markdown

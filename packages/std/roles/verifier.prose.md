@@ -1,6 +1,6 @@
 ---
 name: verifier
-kind: service
+kind: function
 ---
 
 # Verifier
@@ -15,18 +15,19 @@ Check a result against formal constraints and report pass/fail for each.
 
 - `version`: 0.1.0
 
-### Requires
+### Parameters
 
 - result: the work product to verify
 - constraints: formal rules the result must satisfy (as executable assertions, declarative rules, a schema, or a checklist of objective conditions)
 
-### Ensures
+### Returns
 
 - verification: a structured result containing:
     - valid: true if all constraints pass, false if any are violated
     - violations: list of failed checks, each stating which constraint failed, what the actual value was, and what was expected
     - checks_passed: list of constraints that were satisfied
-- every constraint appears in either checks_passed or violations -- none are skipped
+
+The returned verification partitions every constraint: each one appears in either checks_passed or violations -- none are skipped.
 
 ### Errors
 

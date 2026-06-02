@@ -135,14 +135,14 @@ single reactor):
 | `GET /health` | Liveness — `200` with `{ "status": "ok" }` once the host is up. |
 | `GET /status` | Standing compile cost beside live run cost + per-node dispositions (the `status` command's JSON). |
 | `GET /cost` | The cost rollup by `surprise_cause` (the `receipts cost` JSON). |
-| `POST /<node>/trigger` | Wake `<node>` with an optional JSON body as an external arrival; returns the resulting disposition. |
+| `POST /trigger/<node>` | Wake `<node>` with an optional JSON body as an external arrival; returns the resulting disposition. |
 
 It drains in-flight work on `SIGINT`/`SIGTERM` before exiting.
 
 > **⚠ Bind address and auth — read before exposing this.** As of this release
 > `serve --http` binds **`127.0.0.1` by default** — it is *not* reachable off the
 > host unless you pass an explicit `--host 0.0.0.0`. And **v1 ships no auth.**
-> `POST /<node>/trigger` is unauthenticated, so anything that can reach the port
+> `POST /trigger/<node>` is unauthenticated, so anything that can reach the port
 > can wake a node and **cause model spend**. Exposing it externally (`--host
 > 0.0.0.0`) is only safe behind a **reverse proxy or network policy** that adds
 > authentication and rate-limiting. Treat the bare HTTP surface as a

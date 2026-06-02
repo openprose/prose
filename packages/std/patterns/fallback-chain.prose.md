@@ -34,24 +34,22 @@ Try delegate A. If it fails, try B. If B fails, try C. Ordered list of fallbacks
   - `fallback_1..fallback_N`: attempt the task
 - `prohibited`: trying the next fallback when the current one succeeded
 
-### Requires
+### Parameters
 
 - Pattern instance receives:
-    chain: string[]         -- ordered list of service or system names (first = most preferred)
+    chain: string[]         -- ordered list of delegate names (first = most preferred)
     task_brief: string      -- the task (same brief goes to each attempt)
     failure_criteria: string -- (optional) declarative description of what constitutes failure.
                                 Default: only thrown errors count as failure.
 
-### Ensures
+### Returns
 
-- Delegates are tried sequentially in chain order
-- First successful result is returned immediately — no further delegates are tried
-- Each delegate receives the ORIGINAL brief — no failure context from prior attempts
-- If all delegates fail: return null with full failure history
 - `result`: the winning result, or `null`
 - `winner`: the winning delegate name, or `null`
 - `attempts`: number of delegates tried
 - `failure_history`: reasons for each failed attempt
+
+Delegates were tried sequentially in chain order, each receiving the ORIGINAL brief with no failure context from prior attempts. The returned `result` is the first successful result, returned immediately with no further delegates tried; if every delegate failed, `result` and `winner` are `null` and `failure_history` records the reason for every attempt.
 
 ### Delegation
 

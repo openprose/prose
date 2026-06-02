@@ -1,6 +1,6 @@
 ---
 name: writer
-kind: service
+kind: function
 ---
 
 # Writer
@@ -15,19 +15,15 @@ Produce a written artifact given requirements, audience, and constraints.
 
 - `version`: 0.1.0
 
-### Requires
+### Parameters
 
 - brief: what to write, including the purpose and key points to cover
 - audience: who will read this and what they need from it
 - format: (optional) structural requirements -- length, sections, tone, style guide
 
-### Ensures
+### Returns
 
-- artifact: the written document where:
-    - every claim is specific rather than vague ("revenue grew 40% YoY" not "revenue grew significantly")
-    - structure follows the format requirements if provided, or uses a sensible default structure
-    - content addresses the audience's needs and knowledge level
-    - no filler -- every sentence earns its place
+- artifact: the written document. Every claim in the returned artifact is specific rather than vague ("revenue grew 40% YoY" not "revenue grew significantly"); its structure follows the format requirements if provided, or uses a sensible default structure; its content addresses the audience's needs and knowledge level; and it contains no filler -- every sentence earns its place.
 
 ### Errors
 
@@ -44,3 +40,5 @@ Produce a written artifact given requirements, audience, and constraints.
 ### Notes
 
 Writer creates new content. Summarizer compresses existing content. Formatter reshapes structured data into a presentation format. Researcher gathers information. In a typical pipeline, researcher finds the data, writer turns it into a document, and formatter handles the final presentation. Writer is the role that synthesizes, argues, explains, and persuades.
+</content>
+</invoke>

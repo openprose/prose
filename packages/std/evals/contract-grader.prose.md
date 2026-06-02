@@ -1,137 +1,108 @@
 ---
 name: contract-grader
-kind: system
+kind: function
 ---
 
 # Contract Grader
 
-The most fundamental eval: did the system do what it promised? Given a completed run, evaluate whether each service's `ensures` clause was actually satisfied by its output. This operates at per-service granularity — a system can have some services that satisfied their contracts and others that did not.
+The most fundamental eval: did the system do what it promised? Given a completed run, evaluate whether each contract's commitments were actually satisfied by its output. This operates at per-contract granularity — a run can have some contracts that satisfied their commitments and others that did not.
 
-Contract grading is distinct from inspection. The inspector evaluates runtime fidelity (did the OpenProse VM run correctly?) and task effectiveness (did the output achieve the goal?). The contract grader evaluates contract satisfaction (did each service produce what it declared it would produce?). A system can pass inspection but fail contract grading if its contracts are vague and the inspector cannot distinguish "met" from "not met."
+Contract grading is distinct from inspection. The inspector evaluates runtime fidelity (did the OpenProse VM run correctly?) and task effectiveness (did the output achieve the goal?). The contract grader evaluates contract satisfaction (did each contract produce what it declared it would produce?). A run can pass inspection but fail contract grading if its contracts are vague and the inspector cannot distinguish "met" from "not met."
 
-### Services
+### Goal
 
-- extractor
-- grader
-- scorer
+Grade whether each contract in a completed run satisfied the commitments it declared, returning a structured per-contract satisfaction report.
 
-### Requires
+### Parameters
 
 - subject: run — the completed run to grade
 
-### Ensures
+### Returns
 
 - grade: structured contract satisfaction report containing:
     - run_id: string
     - system: string
     - overall_score: 0-100 percentage of contract clauses satisfied
-    - overall_verdict: "satisfied" (all services pass), "partial" (some services pass), or "violated" (majority of services fail)
-    - services: list of per-service grades, each containing:
-        - name: service name
-        - ensures_clauses: list of the service's declared ensures clauses
+    - overall_verdict: "satisfied" (all contracts pass), "partial" (some contracts pass), or "violated" (majority of contracts fail)
+    - contracts: list of per-contract grades, each containing:
+        - name: contract name
+        - clauses: list of the contract's declared return/maintain clauses
         - each clause has: text (the declared clause), verdict ("satisfied", "partially_satisfied", "violated", "not_evaluable"), evidence (specific output content that supports the verdict), confidence (0-100 how certain the grader is)
-        - service_score: 0-100 percentage of clauses satisfied for this service
-    - conditional_ensures: list of conditional ensures clauses (if X: Y) with whether the condition was triggered and whether the degraded output was provided
-    - unevaluable_clauses: list of ensures clauses that are too vague to grade, with explanation of why
+        - contract_score: 0-100 percentage of clauses satisfied for this contract
+    - conditional_clauses: list of conditional clauses (if X: Y) with whether the condition was triggered and whether the degraded output was provided
+    - unevaluable_clauses: list of clauses that are too vague to grade, with explanation of why
     - recommendations: suggestions for making unevaluable clauses more specific
+
+The returned `grade` is guaranteed to account for every declared clause in every contract — each is either graded or listed as unevaluable — and `overall_score` is the arithmetic mean of contract_scores, weighted by number of clauses per contract.
 
 ### Errors
 
 - missing-root: the run directory does not contain root.prose.md
-- missing-manifest: the run directory does not contain forme.manifest.json (cannot determine expected services)
+- missing-manifest: the run directory does not contain forme.manifest.json (cannot determine expected contracts)
 - no-outputs: the run has no bindings at all (nothing to grade)
 
 ### Invariants
 
-- every ensures clause in every service is accounted for — either graded or listed as unevaluable
-- the overall_score is the arithmetic mean of service_scores, weighted by number of clauses per service
+- every declared clause in every contract is accounted for — either graded or listed as unevaluable
+- the overall_score is the arithmetic mean of contract_scores, weighted by number of clauses per contract
 
-### Strategies
+### Execution
 
-- when grading a clause: read the declared ensures text, then read the actual output in the service's bindings. Determine if the output satisfies the commitment. Be strict — "a summary" is satisfied by any summary, but "a 2-3 paragraph summary preserving key claims" requires paragraphs, requires 2-3 of them, and requires that key claims from the input are present.
+Grade the run in three sequential phases, each an internal sub-agent session producing intermediate data for the next. None of these phases is a node; they are intra-node orchestration internal to producing the `grade` return value.
+
+```prose
+const contracts = session extract(subject)
+const grades = session grade(contracts)
+const grade = session score(grades, contracts)
+return grade
+```
+
+#### extract
+
+Read the run's artifacts and extract all contract information: what each contract promised and what each contract produced.
+
+Produces, for each contract in the run, a structured record containing:
+- name: contract name
+- clauses: list of declared return/maintain clauses from the contract's source snapshot in `sources/`
+- conditional_clauses: list of conditional clauses
+- actual_output: content of the contract's bindings (truncated to 2000 chars per binding if longer)
+- had_error: boolean (whether `__error.md` exists in workspace)
+- error_name: the error name if errored, null otherwise
+
+Also produces `system_clauses` (the top-level contract's declared clauses) and `system_output` (the final output binding content).
+
+Strategies:
+- read contracts from `sources/*.prose.md` in the run directory — these are the snapshots from when the system ran
+- read declared clauses by parsing the contract section of each file
+- read actual output from `bindings/{contract}/` directories
+- for large outputs: include enough content to evaluate each clause, but truncate responsibly
+- raise missing-root if root.prose.md not found; raise missing-manifest if forme.manifest.json not found
+
+#### grade
+
+Evaluate each declared clause against the actual output. This is the core judgment phase — it must be precise, evidence-based, and honest about uncertainty.
+
+Produces, for each contract, for each declared clause: verdict, evidence, and confidence. Each grade has: contract_name, clause_text, verdict ("satisfied" / "partially_satisfied" / "violated" / "not_evaluable"), evidence (quoted output content or absence thereof), confidence (0-100).
+
+Strategies:
+- grade each clause independently — do not let the verdict on one clause influence another
+- when grading a clause: read the declared clause text, then read the actual output in the contract's bindings. Determine if the output satisfies the commitment. Be strict — "a summary" is satisfied by any summary, but "a 2-3 paragraph summary preserving key claims" requires paragraphs, requires 2-3 of them, and requires that key claims from the input are present.
 - when a clause mentions a specific format (JSON, markdown, list): check that the output is in that format
 - when a clause mentions a specific count ("3+ sources", "at least 5"): count the actual items
 - when a clause mentions a quality criterion ("critically evaluated", "well-sourced"): apply informed judgment but note the subjectivity in the confidence score (lower confidence for subjective criteria)
-- when a clause is too vague to evaluate meaningfully: mark as "not_evaluable" and explain why. "A good report" is not evaluable. "A report containing X, Y, and Z" is.
-- when conditional ensures exist: first determine if the condition was triggered (did the error occur?), then grade the conditional output if so
-- when a service errored: check if the system declared that error and provided a conditional ensures, then grade the degraded path
-
----
-
-## extractor
-
-Read the run's artifacts and extract all contract information: what each service promised and what each service produced.
-
-### Requires
-
-- subject: the run binding
-
-### Ensures
-
-- contracts: for each service in the run, a structured record containing:
-    - name: service name
-    - ensures_clauses: list of ensures clauses from the service's source snapshot in `sources/`
-    - conditional_ensures: list of conditional ensures clauses
-    - actual_output: content of the service's bindings (truncated to 2000 chars per binding if longer)
-    - had_error: boolean (whether `__error.md` exists in workspace)
-    - error_name: the error name if errored, null otherwise
-- system_ensures: the top-level system's ensures clauses
-- system_output: the final output binding content
-
-### Errors
-
-- missing-root: root.prose.md not found
-- missing-manifest: forme.manifest.json not found
-
-### Strategies
-
-- read services from `sources/*.prose.md` in the run directory — these are the snapshots from when the system ran
-- read ensures clauses by parsing the contract section of each service file
-- read actual output from `bindings/{service}/` directories
-- for large outputs: include enough content to evaluate each clause, but truncate responsibly
-
----
-
-## grader
-
-Evaluate each ensures clause against the actual output. This is the core judgment service — it must be precise, evidence-based, and honest about uncertainty.
-
-### Requires
-
-- contracts: extracted contract information from extractor
-
-### Ensures
-
-- grades: for each service, for each ensures clause: verdict, evidence, and confidence
-- each grade has: service_name, clause_text, verdict ("satisfied" / "partially_satisfied" / "violated" / "not_evaluable"), evidence (quoted output content or absence thereof), confidence (0-100)
-
-### Strategies
-
-- grade each clause independently — do not let the verdict on one clause influence another
 - when quoting evidence: use exact text from the output, not paraphrases
 - when a clause has multiple sub-requirements (e.g., "summary with key claims AND confidence scores"): all sub-requirements must be met for "satisfied", some met for "partially_satisfied"
-- when confidence is below 50: mark as "not_evaluable" rather than guessing — it is better to flag an ambiguous clause than to give a false verdict
-- when a service errored and has a conditional ensures: grade the conditional path, not the primary ensures
+- when a clause is too vague to evaluate meaningfully, or confidence is below 50: mark as "not_evaluable" and explain why — it is better to flag an ambiguous clause than to give a false verdict. "A good report" is not evaluable. "A report containing X, Y, and Z" is.
+- when conditional clauses exist: first determine if the condition was triggered (did the error occur?), then grade the conditional output if so
+- when a contract errored: check if the run declared that error and provided a conditional clause, then grade the degraded path
 - assign confidence based on clause specificity: specific, measurable clauses get high confidence (80-100), subjective quality clauses get medium confidence (50-80), vague clauses get low confidence (below 50)
 
----
+#### score
 
-## scorer
+Aggregate per-clause grades into per-contract and overall scores, and format the final report matching the `### Returns` schema exactly.
 
-Aggregate per-clause grades into per-service and overall scores. Format the final report.
-
-### Requires
-
-- grades: per-clause verdicts from grader
-- contracts: from extractor (for context and recommendations)
-
-### Ensures
-
-- grade: the final output matching the system's top-level ensures schema exactly
-
-### Strategies
-
-- compute service_score as: (satisfied_clauses + 0.5 * partially_satisfied_clauses) / total_evaluable_clauses * 100
-- compute overall_score as weighted mean of service_scores, weighted by clause count
+Strategies:
+- compute contract_score as: (satisfied_clauses + 0.5 * partially_satisfied_clauses) / total_evaluable_clauses * 100
+- compute overall_score as weighted mean of contract_scores, weighted by clause count
 - for recommendations on unevaluable clauses: suggest specific rewrites that would make the clause testable (e.g., "change 'a good summary' to 'a 2-3 paragraph summary that includes all named entities from the input'")
-- when all clauses are satisfied: still check for conditional ensures that were not tested — note them as untested paths
+- when all clauses are satisfied: still check for conditional clauses that were not tested — note them as untested paths

@@ -52,16 +52,9 @@ Advancer proposes incremental steps; certifier validates each one; certified pro
     max_steps: number            -- (optional, default 5)
     certified_progress: any[]    -- (optional, default []) — prior certified steps
 
-### Ensures
-
-- Advancer receives the task brief plus all certified progress so far
-- Certifier receives the proposed step and decides: certify or reject
-- Certified steps are appended to `certified_progress` — never removed
-- Rejected steps are discarded — advancer receives the rejection reason and proposes differently
-- Progress is monotonic: the certified_progress array only grows
-- `result`: the final certified progress
-
 ### Delegation
+
+The advancer receives the task brief plus all certified progress so far; the certifier receives the proposed step and decides certify or reject. Certified steps are appended to `certified_progress` and never removed; rejected steps are discarded and the advancer receives the rejection reason to propose differently. Progress is monotonic — the `certified_progress` array only grows. The delegation returns `result`: the final certified progress.
 
 ```prose
 let certified_progress = certified_progress

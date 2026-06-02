@@ -2,7 +2,7 @@
 name: company-repo-checker.eval
 kind: test
 subject: company-repo-checker
-tier: system
+tier: function
 contract_version: v1
 ---
 
@@ -17,15 +17,21 @@ Protects the reusable company-as-prose repository gate.
   repo_path: fixtures/company-prose/current
   expected_result: pass
 - fixture: invalid_tier
-  mutation: change any system test frontmatter from `tier: system` to
+  mutation: change any test frontmatter from a current tier
+    (`tier: function` or `tier: responsibility`) to a retired
     `tier: delivery`
   expected_result: fail
-- fixture: unresolved_service_reference
-  mutation: add `missing-capability` to any `### Services` list
+- fixture: kind_mismatch
+  mutation: give a `kind: function` contract `### Requires`/`### Maintains`
+    instead of `### Parameters`/`### Returns`
   expected_result: fail
-- fixture: shared_depends_on_system_private
-  mutation: make a `shared/` capability depend on a `systems/*/services/*`
-    service that is not promoted to shared
+- fixture: unresolved_call_reference
+  mutation: add a `call missing-capability` to any contract's `### Execution`
+    with no resolving sub-unit
+  expected_result: fail
+- fixture: shared_depends_on_package_private
+  mutation: make a `shared/` contract depend on a package-private contract
+    that is not promoted to shared
   expected_result: fail
 
 ### Expects
@@ -33,20 +39,22 @@ Protects the reusable company-as-prose repository gate.
 - path: report.source_layout
   predicate: authored_source_under(source_roots)
 - path: report.contract_surface
-  predicate: every_service_or_system_has(["Requires","Ensures"])
+  predicate: every_data_flow_contract_has(["Requires","Maintains"])
+- path: report.contract_surface
+  predicate: every_callable_has(["Parameters","Returns"])
 - path: report.test_pairing
-  predicate: every_service_or_system_has_test_subject
+  predicate: every_contract_has_test_subject
 - path: report.test_metadata
   predicate: every_test_has(["subject","tier","contract_version","Expects","Expects Not","Performance Tracked Over Time"])
 - path: report.dependency_graph
-  predicate: all_services_entries_resolve_to_service_or_system_or_explicit_external_reference
+  predicate: all_contract_references_resolve_to_contract_or_explicit_external_reference
 - path: report.counts
-  predicate: includes(["services","systems","tests","dependency_edges"])
+  predicate: includes(["contracts","tests","dependency_edges"])
 
 ### Expects Not
 
 - path: failures[*]
-  predicate: no_false_positive_from_h1_or_description_text_after("### Services")
+  predicate: no_false_positive_from_h1_or_description_text_after("### Execution")
 - path: failures[*]
   predicate: ignores_root("runs") during default scope
 - path: failures[*]
@@ -54,9 +62,9 @@ Protects the reusable company-as-prose repository gate.
 - path: execution
   predicate: no_repo_local_python_or_bash_script_required
 - path: report.dependency_graph
-  predicate: no_shared_service_depends_on_system_private_source
+  predicate: no_shared_contract_depends_on_package_private_source
 - path: report.test_metadata
-  predicate: no_tier("delivery")
+  predicate: no_retired_tier(["delivery","system"])
 
 ### Performance Tracked Over Time
 

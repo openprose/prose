@@ -1,15 +1,15 @@
 ---
 name: prose-contributor
-kind: system
+kind: function
 ---
 
 # Prose Contributor
 
-Given one or more completed OpenProse runs, turn real run friction into a small, reviewable contribution to `openprose/prose`. This system is the standard path from "this run taught us something" to "there is a draft pull request that improves the library for the next agent."
+Given one or more completed OpenProse runs, turn real run friction into a small, reviewable contribution to `openprose/prose`. This function is the standard path from "this run taught us something" to "there is a draft pull request that improves the library for the next agent."
 
-Use this when a run exposes confusing docs, missing examples, weak std contracts, brittle eval criteria, or a repeated pattern that belongs in `packages/std/`. It is not a general refactoring system. It should open one focused PR, grounded in run evidence and aligned with the repository contribution guidelines, after explicit approval to use the current GitHub identity.
+Use this when a run exposes confusing docs, missing examples, weak std contracts, brittle eval criteria, or a repeated pattern that belongs in `packages/std/`. It is not a general refactoring function. It should open one focused PR, grounded in run evidence and aligned with the repository contribution guidelines, after explicit approval to use the current GitHub identity.
 
-### Services
+### Stages
 
 - contribution-context
 - evidence-collector
@@ -18,7 +18,7 @@ Use this when a run exposes confusing docs, missing examples, weak std contracts
 - verifier
 - pr-opener
 
-### Requires
+### Parameters
 
 - subjects: run[] -- completed runs, inspection runs, improver runs, or cross-run comparisons that contain the evidence for the contribution
 - repository: path -- local checkout of `openprose/prose` or a fork
@@ -26,7 +26,7 @@ Use this when a run exposes confusing docs, missing examples, weak std contracts
 - base-branch: target branch for the PR (default: "main")
 - pr-approval: explicit user approval to create a branch, push it, and open a GitHub pull request using the current authenticated GitHub identity
 
-### Ensures
+### Returns
 
 - contribution: structured report containing:
     - evidence: run IDs and specific findings that motivated the change
@@ -37,9 +37,8 @@ Use this when a run exposes confusing docs, missing examples, weak std contracts
     - branch: branch name created for the contribution
     - pull_request: URL, title, draft/ready status, and base branch
     - follow_ups: related opportunities intentionally left out of this PR
-- pull_request is opened as draft unless the user explicitly asks for a ready-for-review PR
-- PR body includes the run evidence, verification performed, and any residual risk
-- if no evidence-backed, PR-sized improvement exists: no branch is pushed and no PR is opened
+
+The returned `pull_request` is opened as draft unless the user explicitly asks for a ready-for-review PR; its body includes the run evidence, verification performed, and any residual risk. If no evidence-backed, PR-sized improvement exists, the function returns with no branch pushed and no PR opened.
 
 ### Errors
 
@@ -80,12 +79,12 @@ Use this when a run exposes confusing docs, missing examples, weak std contracts
 
 Read the repository's contribution guidelines, project tenets, public docs, and relevant implementation docs before proposing any patch.
 
-### Requires
+### Parameters
 
 - repository: local checkout path
 - scope: requested contribution scope
 
-### Ensures
+### Returns
 
 - context-pack: structured context containing:
     - contribution_bar: the requirements from `CONTRIBUTING.md`
@@ -114,14 +113,14 @@ Read the repository's contribution guidelines, project tenets, public docs, and 
 
 Read the subject runs and extract the evidence that could justify an upstream contribution.
 
-### Requires
+### Parameters
 
 - subjects: run[] binding from the caller
 - context-pack: contribution context from contribution-context
 - repository: local checkout path
 - scope: requested contribution scope
 
-### Ensures
+### Returns
 
 - evidence-pack: structured evidence containing:
     - runs: list of run IDs, paths, systems, timestamps, and statuses
@@ -147,13 +146,13 @@ Read the subject runs and extract the evidence that could justify an upstream co
 
 Choose exactly one PR-sized improvement from the evidence pack.
 
-### Requires
+### Parameters
 
 - evidence-pack: collected run evidence
 - context-pack: contribution context from contribution-context
 - scope: requested contribution scope
 
-### Ensures
+### Returns
 
 - selected-opportunity: one improvement containing:
     - title: short human-readable title
@@ -184,14 +183,14 @@ Choose exactly one PR-sized improvement from the evidence pack.
 
 Create a branch and apply the selected opportunity as a concrete patch.
 
-### Requires
+### Parameters
 
 - selected-opportunity: selected PR-sized improvement
 - repository: local checkout path
 - base-branch: target base branch
 - pr-approval: explicit approval to create a contribution branch
 
-### Ensures
+### Returns
 
 - patch: applied change containing:
     - branch: created branch name
@@ -218,14 +217,14 @@ Create a branch and apply the selected opportunity as a concrete patch.
 
 Validate the patch before it is pushed.
 
-### Requires
+### Parameters
 
 - patch: applied patch from patch-author
 - selected-opportunity: selected opportunity
 - context-pack: contribution context from contribution-context
 - repository: local checkout path
 
-### Ensures
+### Returns
 
 - verification: validation record containing:
     - commands: commands or evals run
@@ -251,7 +250,7 @@ Validate the patch before it is pushed.
 
 Push the branch and open a pull request.
 
-### Requires
+### Parameters
 
 - patch: committed patch
 - verification: verification record with ready_to_push true
@@ -261,7 +260,7 @@ Push the branch and open a pull request.
 - base-branch: target base branch
 - pr-approval: explicit approval to push and open the PR
 
-### Ensures
+### Returns
 
 - pull_request: PR record containing:
     - url: GitHub PR URL

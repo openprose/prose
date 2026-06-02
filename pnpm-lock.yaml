@@ -35,6 +35,9 @@ importers:
       '@openai/agents':
         specifier: '*'
         version: 0.11.6(ws@8.21.0)(zod@4.4.3)
+      '@openprose/reactor':
+        specifier: workspace:*
+        version: link:../reactor
       commander:
         specifier: ^12.0.0
         version: 12.1.0
@@ -42,9 +45,6 @@ importers:
         specifier: '*'
         version: 4.4.3
     devDependencies:
-      '@openprose/reactor':
-        specifier: workspace:*
-        version: link:../reactor
       '@types/node':
         specifier: ^22.10.7
         version: 22.19.19
@@ -67,8 +67,6 @@ importers:
       typescript:
         specifier: ^5.6.3
         version: 5.9.3
-
-  skills/open-prose/examples/flat-tokens: {}
 
   tools/cli:
     dependencies:

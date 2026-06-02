@@ -11,6 +11,18 @@ Two corpora that should describe the same system are read independently. Readers
 
 Detects drift between two corpora by having independent readers predict what the counterpart should say, then classifying where predictions fail.
 
+When instantiated and expanded into nodes, the pattern guarantees:
+
+- Each reader builds understanding from its assigned corpus, then predicts what the counterpart corpus should contain.
+- The sync analyst receives predictions alongside actuals and classifies each discrepancy:
+  - Stale: corpus B once matched corpus A but has not been updated (common with docs)
+  - Undocumented: corpus A describes behavior that corpus B does not mention at all
+  - Contradictory: both corpora address the same topic but make incompatible claims
+  - Redundant divergence: both say the same thing differently — not a real drift, just style
+- Analysis is BIDIRECTIONAL — drift from A→B is a different finding than drift from B→A.
+
+The expansion returns `result` (the sync analyst's bidirectional drift report) and `predictions` (the raw predictions from both directions).
+
 ### Metadata
 
 - `version`: 0.1.0
@@ -53,19 +65,6 @@ Detects drift between two corpora by having independent readers predict what the
     label_a: string           -- (optional, default "Corpus A") human label for corpus A
     label_b: string           -- (optional, default "Corpus B") human label for corpus B
     readers_per_direction: number -- (optional, default 3) reader instances per direction
-
-### Ensures
-
-- Readers of corpus A never see corpus B, and vice versa
-- Each reader builds understanding from its assigned corpus, then predicts what the counterpart corpus should contain
-- Sync analyst receives predictions alongside actuals and classifies each discrepancy:
-  - Stale: corpus B once matched corpus A but has not been updated (common with docs)
-  - Undocumented: corpus A describes behavior that corpus B does not mention at all
-  - Contradictory: both corpora address the same topic but make incompatible claims
-  - Redundant divergence: both say the same thing differently — not a real drift, just style
-- Analysis is BIDIRECTIONAL — drift from A→B is a different finding than drift from B→A
-- `result`: the sync analyst's bidirectional drift report
-- `predictions`: raw predictions from both directions
 
 ### Delegation
 
