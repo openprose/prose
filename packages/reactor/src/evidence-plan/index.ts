@@ -1,29 +1,11 @@
-// evidence-plan — RESHAPE (mostly delete): the evidence-by-reference seam.
-//
-// DISPOSITION (delta.md §A1 L76, §A3.7 L187–L190): the shallow/deep-roam *judge*
-// plan — `executeShallowEvidencePlan`, `reconcileDeepRoam`, `DeepRoamTrigger`,
-// `CompiledEvidencePlan` (policy-artifact spine), the kernel-safety fail-safe
-// receipt — is judge-depth plumbing and is DELETED. What survives is the one
-// idea delta keeps: "the *evidence-by-reference* seam survives conceptually"
-// (delta.md §A3.7 L188). That idea is absorbed into the reconciler seam — this
-// module is the small, pure, deterministic resolver the reconciler's
-// "resolve evidence by reference from the waking receipt(s)" step delegates to
-// (delta.md §A3.1 L140).
-//
-// THE PRINCIPLE (architecture.md §1 L44–L48, §8 L321–L323): "A render reads …
-// the evidence the wake delivered, *by reference* (the waking receipt(s) carry
-// fingerprints + a `semantic_diff`; the render reaches the upstream *published*
-// world-model by reference)." Evidence is NEVER inlined into context by default.
-// So resolution here is: turn a node's wake + its waking upstream receipt(s)
-// into (a) the per-edge `WorldModelRef`s the render should read by reference,
-// pinned to the exact published version each producer committed, and (b) the
-// consumed `input_fingerprints` tuple — the memo key's second half — in resolved
-// subscription order (SHAPES.md §3; architecture.md §6.1 "the consumed tuple,
-// one per subscribed facet").
-//
-// There is NO judge, NO policy artifact, NO deep-roam, NO fail-safe receipt, NO
-// `ReceiptV0`/`createKernelSafetyReceipt` import here (those modules embody the
-// retired spine — SHAPES.md §9). This module imports ONLY the shared shapes.
+// evidence-plan — the pure, deterministic evidence-by-reference resolver the
+// reconciler delegates to. It turns a node's wake plus its waking upstream
+// receipt(s) into (a) the per-edge `WorldModelRef`s the render should read by
+// reference, each pinned to the exact published version its producer committed,
+// and (b) the consumed `input_fingerprints` tuple — the memo key's second half —
+// in resolved subscription order (architecture.md §6.1 "the consumed tuple, one
+// per subscribed facet"). Evidence is reached by reference, never inlined into
+// context.
 
 import {
   ATOMIC_FACET,

@@ -1,21 +1,15 @@
 // receipt/ — the single commit object and the unit of the ledger.
 //
-// RESHAPED to the ideal Receipt (SHAPES.md §4; architecture.md §6.1). The judge
-// era (verdict.{status,confidence,blocked}, role:judge, freshness.*,
-// composition.*, core.memo_key, V0 naming) is demolished (delta.md §A6, §C7;
-// world-model.md §3 "do not reintroduce it").
-//
-// What is KEPT verbatim as machinery (delta.md §A3.2, lines 152-158):
-//   - the deterministic sorted-key canonical serialization, and
-//   - sha256 over that canonical form,
-// re-pointed so the receipt's own `content_hash` is the *chain identity*
-// (architecture.md §5.1: "each receipt commits to its fingerprints and its
-// `prev`; verification is chain-consistency").
-//
 // The semantic shapes (Receipt, Wake, Cost, FingerprintMap, ReceiptStatus,
-// ReceiptSignature, ContentAddress, …) are the foundation-wave canonical types
-// from ../shapes; this module owns the *envelope*, *canonicalization*,
-// *hashing*, *verification*, and *chain/proof inspection* over them.
+// ReceiptSignature, ContentAddress, …) are the canonical types from ../shapes;
+// this module owns the *envelope* (schema + hash-algorithm tags),
+// *canonicalization* (deterministic sorted-key serialization), *hashing*
+// (sha256 over that canonical form), *verification*, and *chain/proof
+// inspection* over them.
+//
+// The receipt's own `content_hash` is the chain identity: each receipt commits
+// to its fingerprints and its `prev`, and verification is chain-consistency
+// (architecture.md §5.1).
 
 import { createHash } from "node:crypto";
 
@@ -287,7 +281,7 @@ export function verifyReceiptChain(
 }
 
 // ---------------------------------------------------------------------------
-// Canonicalization + hashing (kept machinery, re-pointed — delta.md §A3.2)
+// Canonicalization + hashing
 // ---------------------------------------------------------------------------
 
 export function serializeReceipt(receipt: LedgerReceipt): string {
@@ -570,7 +564,7 @@ function validateCost(
 }
 
 // ---------------------------------------------------------------------------
-// Primitive readers + canonicalizer (kept verbatim machinery)
+// Primitive readers + canonicalizer
 // ---------------------------------------------------------------------------
 
 function readRecord(

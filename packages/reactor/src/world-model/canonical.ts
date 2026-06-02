@@ -195,18 +195,8 @@ export function fingerprintArtifact(files: WorldModelFiles): ContentAddress {
   return contentAddressOf(serializeArtifact(files));
 }
 
-// Note on facet layout. The SINGLE facet-fingerprint authority is the COMPILED
-// canonicalizer that travels with the contract (architecture.md §3.2; SHAPES §6):
-// it reduces the STRUCTURED `WorldModelValue` (material, dotted paths) to the
-// `{facet → token}` map. There is NO `published/<facet>/…` file-subtree layout in
-// the commit path: the store organizes bytes and applies the handed canonicalizer
-// (`commitPublished`), and the compiled canonicalizer fingerprints over the
-// structured value, never over file subtrees. A `facetSubtree`/`facetSubtreePath`
-// layout helper pair once lived here, used ONLY by the store's
-// `subtreeFacetCanonicalizer` (a second, store-sourced facet-fingerprinting
-// convention with no production caller); both were removed in the v2-facets
-// consolidation so there is exactly one facet-fingerprint authority
-// (world-model.md §3; delta.md Part G).
+// The compiled canonicalizer that travels with the contract is the single
+// facet-fingerprint authority; the store only supplies deterministic serialization.
 
 // ---------------------------------------------------------------------------
 // internals

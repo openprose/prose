@@ -1,31 +1,15 @@
 // forecast/ — self-driven `### Continuity` + the freshness bridge.
 //
-// RESHAPED (delta.md §A3.5, lines 180-184): the old judge-gated
-// `evaluateForecastScheduleV0` / `createForecastRecheckReceiptV0` become the
-// **synthetic self-receipt** mechanism (world-model.md §5, lines 234-236) and
-// the **`valid_until` → fingerprint freshness bridge** (world-model.md §6,
-// architecture.md §4.2 lines 185-191).
+// A continuity tick is a receipt whose `wake.source === "self"`. A lapsed
+// `valid_until` moves a facet's fingerprint, so "time becoming material"
+// propagates as ordinary surprise — there is no special clock path.
 //
-// The retired model is gone: no `verdict.status:"blocked"` on tick receipts, no
-// `role: judge`, no `memo_key`/`evidence_input_ids`/`event_cause` enum. A tick
-// is a receipt whose `wake.source === "self"`. A tick that finds no material
-// move writes an *unmoved* fingerprint and stops (delta.md §A3.5 line 184;
-// world-model.md §5 lines 235-236 "writes a moved fingerprint (surprise
-// propagates) or an unmoved one (the tick stops there, costing nothing
-// downstream)").
-//
-// Two senses of "stale" stay in two places (world-model.md §6 lines 267-274):
-//   - Freshness *state* (`valid_until`) is DATA in the world-model and reaches
-//     us as the per-facet freshness map we read.
-//   - Freshness *policy* (the recheck cadence) is `### Continuity` and reaches
-//     us as the schedule. `### Continuity` may *read* the soonest `valid_until`
-//     to drive its cadence (world-model.md §6 lines 278-280) — that is the
-//     `next_self_recheck` we compute and surface.
-//
-// The bridge is mechanical (world-model.md §6 lines 276-283; architecture.md
-// §4.2 lines 187-189): a lapsed `valid_until` flips a facet's status, which
-// MOVES that facet's fingerprint — "time becoming material" is just another
-// change that propagates as surprise, with no special clock path.
+// Two senses of "stale" live in two places (world-model.md §6):
+//   - Freshness *state* (`valid_until`) is DATA in the world-model, reaching us
+//     as the per-facet freshness map we read.
+//   - Freshness *policy* (the recheck cadence) is `### Continuity`, reaching us
+//     as the schedule. It may read the soonest `valid_until` to drive its
+//     cadence — that is the `next_self_recheck` we compute and surface.
 
 import {
   ATOMIC_FACET,
@@ -328,15 +312,16 @@ function soonestValidUntil(
 ): string | null {
   const expiries = facets
     .map((facet) => facet.valid_until)
-    .filter((value): value is string => value !== null);
+    .filter((value): value is string => value !== null)
+    .map((iso) => ({ iso, ms: parseInstantMs(iso, "valid_until") }));
 
   if (expiries.length === 0) {
     return null;
   }
 
-  return [...expiries].sort(
-    (left, right) => parseInstantMs(left, left) - parseInstantMs(right, right),
-  )[0] as string;
+  return expiries.reduce((soonest, candidate) =>
+    candidate.ms < soonest.ms ? candidate : soonest,
+  ).iso;
 }
 
 function prevRefs(prev: ContentAddress | null): readonly ContentAddress[] {

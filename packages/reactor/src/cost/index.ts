@@ -1,11 +1,5 @@
 // cost/ — surprise-attribution + flat-spend-under-static.
 //
-// KEPT (delta.md §A4 L193-197): the cost field makes "cost scales with surprise"
-// observable. It is a *superset* of architecture.md §6.1's `cost` — it carries
-// `surprise_cause`, which we keep. The judge era is gone: `surprise_cause` is now
-// the wake source (input | self | external), not the retired event-cause enum
-// (delta.md §A6 L227,234; SHAPES.md §2,§4).
-//
 // Two relationships are evaluated here:
 //   - surprise-attribution-complete — every token-bearing receipt names exactly
 //     one allowed surprise cause that matches its wake source (world-model.md §5

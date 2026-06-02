@@ -2,14 +2,12 @@
 // redaction. The shareable-trust tiers (plan.md "trust is demonstrated, not
 // asserted").
 //
-// KEPT (delta.md §A4 L198-201) but re-pointed onto the ideal Receipt: a
-// projection is a DERIVED VIEW of a receipt, never truth (SHAPES.md §0 invariant
-// 3: "SQL / vector / dashboards are derived projections, never the truth"). The
-// judge era — verdict.{status,confidence,blocked}, role, freshness.*,
-// composition pins, contract_revision — is demolished (delta.md §A6). The new
-// projectable surface is the ideal receipt's own fields (architecture.md §6.1):
-// node, contract_fingerprint, wake, input_fingerprints, fingerprints (the
-// published-truth facet map), status (render outcome), cost, sig.
+// A projection is a DERIVED VIEW of a receipt, never truth (SHAPES.md §0
+// invariant 3: "SQL / vector / dashboards are derived projections, never the
+// truth"). The projectable surface is the ideal receipt's own fields
+// (architecture.md §6.1): node, contract_fingerprint, wake, input_fingerprints,
+// fingerprints (the published-truth facet map), status (render outcome), cost,
+// sig.
 //
 // Redaction posture is preserved: public/subscriber tiers fail closed if a
 // public field would carry secret-shaped data or a known-private key.
@@ -191,7 +189,6 @@ const CONTENT_ADDRESS_PATTERN = /^sha256:[a-f0-9]{64}$/;
 const PROJECTION_TIERS = new Set<string>(RECEIPT_PROJECTION_TIERS);
 const ALLOWED_STATUSES = new Set<string>(["rendered", "skipped", "failed"]);
 const ALLOWED_WAKE_SOURCES = new Set<string>(["input", "self", "external"]);
-const ALLOWED_SURPRISE_CAUSES = new Set<string>(["input", "self", "external"]);
 const OPENROUTER_SECRET_PREFIX = ["sk", "or"].join("-");
 const PRIVATE_OUTPUT_KEYS = new Set([
   "customer_payload",
@@ -569,7 +566,7 @@ function normalizeCost(
     errors.push("cost model is malformed");
     return null;
   }
-  if (surprise_cause === null || !ALLOWED_SURPRISE_CAUSES.has(surprise_cause)) {
+  if (surprise_cause === null || !ALLOWED_WAKE_SOURCES.has(surprise_cause)) {
     errors.push("cost surprise_cause is malformed");
     return null;
   }
