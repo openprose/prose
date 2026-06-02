@@ -15,3 +15,13 @@ export type {
   RunProjectRender,
   RunProjectResult,
 } from "../sdk/run-project";
+
+// The typed `Reactor` handle is `RunProjectResult.reactor`. Re-exported here as a
+// TYPE-ONLY name so a consumer (e.g. the reference CLI) can type the running
+// handle it drives WITHOUT crossing the offline boundary — killing the CLI's
+// hand-mirrored `AssembledReactorLike` structural copy and its drive casts.
+export type {
+  Reactor,
+  SyncDriveSurface,
+  IngestInput,
+} from "../sdk/reactor-handle";

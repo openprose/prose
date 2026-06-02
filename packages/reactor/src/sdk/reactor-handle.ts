@@ -1,0 +1,227 @@
+// The typed `Reactor` running handle — the ONE object a driver holds.
+//
+// `mountDag` (mounted-dag.ts) wires the dumb reconciler over a world-model store
+// + a receipt ledger and exposes SIX co-equal drive verbs (sync `ingest`/`tick`/
+// `drain` + their `*Async` siblings) plus the raw `reconciler` primitive. That
+// shape is honest but low-altitude: a consumer wanting "deliver an input, settle
+// to a fixpoint, read the ledger/store" had to reach through `.dag` and cast to
+// the un-surfaced `store`/`ledger` accessors (the reference CLI's ~11
+// `as unknown as { store }` / `(reactor as { dag }).dag` casts).
+//
+// THIS module hoists the run-phase surface onto ONE typed `Reactor` interface:
+//
+//   - drive verbs are ASYNC-BY-DEFAULT (the live path — a real render IS one
+//     bounded LLM session = one `await`). A sync render is trivially an
+//     already-resolved promise (mounted-dag.ts:90-98), so the async verbs subsume
+//     the sync ones losslessly.
+//   - the SYNC verbs (the deterministic fake-render / test path) are preserved
+//     verbatim behind `handle.sync` — never amputated, just demoted from co-equal
+//     to a named door.
+//   - observe accessors (`ledger` / `store` / `clock` / `topology`) are
+//     FIRST-CLASS — no casts.
+//   - `scheduler(readFreshness)` wires the self-driven continuity cadence off the
+//     handle (it already holds the dag + topology the scheduler needs).
+//
+// The full reconciler primitive (`ReconcilerHandle`) is NOT on this handle — it
+// is engine-room altitude and stays reachable via `@openprose/reactor/internals`
+// (same home as the rest of the reconciler-construction spine). A power user
+// re-hosting the loop reaches it there.
+//
+// Source of truth: architecture.md §4.1 (reconciler), §4.2 (continuity), §5.1
+// (ledger), §5.2 (world-model store), §8 (boot); the API ideal-surface plan §3.5
+// (one typed handle; the casts vanish) + §3.3 (the facade returns this handle).
+
+import type { Wake } from "../shapes";
+import type {
+  ReconcileResult,
+  ReconcilerTopology,
+  WakeEvent,
+} from "../reactor";
+import type { ReactorClockAdapter } from "../adapters/types";
+import type { WorldModelStore, WorldModelFiles } from "../world-model";
+import type { MountedDag, MutableReceiptLedger } from "./mounted-dag";
+import {
+  createAsyncContinuityScheduler,
+  type AsyncContinuityScheduler,
+  type NodeFreshnessReader,
+} from "./continuity-scheduler";
+
+// ---------------------------------------------------------------------------
+// The drive-verb inputs (shared sync/async)
+// ---------------------------------------------------------------------------
+
+/**
+ * The ingress payload for {@link Reactor.ingest}. The bare `{ wake }` form
+ * delivers a raw wake (the advanced path); the `{ data }` form folds the
+ * phantom-ingress stage-and-move dance into one call (a future Tier-2 step wires
+ * the connector staging; today `data` is reserved on the type so a consumer can
+ * be typed against the final shape — passing `data` without an armed connector
+ * throws a legible error rather than silently dropping it).
+ */
+export interface IngestInput {
+  /** The wake to deliver. Defaults to a full external wake `{ source: "external", refs: [] }`. */
+  readonly wake?: Wake;
+  /**
+   * The input payload to stage for the node (the ingress-arming path). RESERVED
+   * for the Tier-2 connector-staging wiring; today the SDK handle delivers it via
+   * the caller's armed connectors and throws if none is armed.
+   */
+  readonly data?: WorldModelFiles;
+}
+
+// ---------------------------------------------------------------------------
+// The sync drive surface (the deterministic fake-render / test path)
+// ---------------------------------------------------------------------------
+
+/**
+ * The SYNCHRONOUS drive verbs — the deterministic fake-render / test path. These
+ * are the exact sync `ingest`/`tick`/`drain` + boot the mounted DAG always had,
+ * preserved verbatim behind an explicit door (never amputated). Live drive is
+ * async-by-default on the handle itself; this surface is for callers who render
+ * synchronously (fake renders, replay, deterministic tests).
+ */
+export interface SyncDriveSurface {
+  /** Deliver a wake for a node and reconcile to a fixpoint, synchronously. */
+  readonly ingest: (
+    node: string,
+    input?: IngestInput,
+  ) => readonly ReconcileResult[];
+  /** Emit a self-sourced wake for a node and reconcile, synchronously. */
+  readonly tick: (node: string) => readonly ReconcileResult[];
+  /** Drain an arbitrary set of seed wakes, synchronously. */
+  readonly drain: (
+    seeds: readonly WakeEvent[],
+  ) => readonly ReconcileResult[];
+  /** Run the boot cold-miss sweep synchronously (architecture.md §8). */
+  readonly boot: () => readonly ReconcileResult[];
+}
+
+// ---------------------------------------------------------------------------
+// The typed Reactor handle
+// ---------------------------------------------------------------------------
+
+/**
+ * The typed `Reactor` running handle — the return of `reactor()` /
+ * `createReactor()` / `runProject()`. ONE object graph at multiple altitudes,
+ * never two parallel APIs. Drive verbs are async-by-default (the live path); the
+ * deterministic sync verbs live behind {@link Reactor.sync}.
+ */
+export interface Reactor {
+  // ── drive — async-by-default (the live path) ──
+  /**
+   * Deliver an input for a node and reconcile to a fixpoint (memo/skip, schedule,
+   * commit, propagate; architecture.md §4.1). The wake defaults to a full external
+   * wake. Awaits the live agent render(s) the wake reaches.
+   */
+  readonly ingest: (
+    node: string,
+    input?: IngestInput,
+  ) => Promise<readonly ReconcileResult[]>;
+  /** Emit a self-sourced wake for a node — the continuity cadence (architecture.md §4.2). */
+  readonly tick: (node: string) => Promise<readonly ReconcileResult[]>;
+  /** Drain an arbitrary set of seed wakes (e.g. a boot cold-miss sweep). */
+  readonly drain: (
+    seeds: readonly WakeEvent[],
+  ) => Promise<readonly ReconcileResult[]>;
+  /**
+   * Run the boot cold-miss sweep (architecture.md §8): seed a wake at every SOURCE
+   * node and drain to a fixpoint. A cold node renders once; a node that already
+   * has a receipt (a restart) memo-skips. Boot is NOT run at construction — call
+   * this to run it (so a caller can inspect the cold state first).
+   */
+  readonly boot: () => Promise<readonly ReconcileResult[]>;
+
+  // ── observe — first-class read accessors (no casts) ──
+  /** The durable receipt ledger (re-derived from storage at construction). */
+  readonly ledger: MutableReceiptLedger;
+  /** The world-model store the DAG commits to (the canonical maintained truth). */
+  readonly store: WorldModelStore;
+  /** The clock the system reads time from (the only time source). */
+  readonly clock: ReactorClockAdapter;
+  /**
+   * The compiled topology the reactor was mounted over. Load-bearing for the
+   * self-driven {@link Reactor.scheduler} (it threads the topology) and for the
+   * reserved `createEpochDriver` seam (§5.7).
+   */
+  readonly topology: ReconcilerTopology;
+
+  // ── self-driven cadence — wired off the handle ──
+  /**
+   * Build the self-driven continuity scheduler over this reactor, reading
+   * per-node freshness via the supplied {@link NodeFreshnessReader}. The handle
+   * already holds the dag + topology the scheduler needs, so the caller no longer
+   * threads them (or casts to reach the un-surfaced `.dag`).
+   */
+  readonly scheduler: (
+    readFreshness: NodeFreshnessReader,
+    nodes: readonly string[],
+  ) => AsyncContinuityScheduler;
+
+  // ── sync drive — the deterministic test path, behind an explicit door ──
+  /** The synchronous drive verbs (the deterministic fake-render / test path). */
+  readonly sync: SyncDriveSurface;
+}
+
+// ---------------------------------------------------------------------------
+// The builder — adapt a mounted DAG + substrate into the typed handle
+// ---------------------------------------------------------------------------
+
+/** The pieces {@link assembleReactor} wires into the typed handle. */
+export interface AssembleReactorInput {
+  /** The mounted run-phase DAG (the drive verbs + reconciler). */
+  readonly dag: MountedDag;
+  /** The clock (the only time source). */
+  readonly clock: ReactorClockAdapter;
+  /** The compiled topology the DAG was mounted over (for the scheduler + boot seeds). */
+  readonly topology: ReconcilerTopology;
+  /** The boot cold-miss seed wakes (architecture.md §8). */
+  readonly bootSeeds: readonly WakeEvent[];
+}
+
+/**
+ * Adapt a mounted DAG + its substrate into the typed {@link Reactor} handle. The
+ * async drive verbs forward to the DAG's `*Async` path; the sync verbs forward to
+ * the DAG's synchronous path behind `.sync`. Boot drains the supplied seeds.
+ */
+export function assembleReactor(input: AssembleReactorInput): Reactor {
+  const { dag, clock, topology, bootSeeds } = input;
+
+  const ingestWake = (i: IngestInput | undefined): Wake | undefined => {
+    if (i?.data !== undefined) {
+      // The connector-staging delivery is a Tier-2 wiring; until it lands the
+      // SDK handle cannot stage a `data` payload itself (the `Wake` shape carries
+      // no payload slot). Fail loudly rather than silently dropping the input.
+      throw new TypeError(
+        "Reactor.ingest({ data }) requires an armed connector to stage the payload; " +
+          "arm one via reactor({ adapters: { connectors } }), or deliver a raw { wake }.",
+      );
+    }
+    return i?.wake;
+  };
+
+  return {
+    // async-by-default
+    ingest: (node, i) => dag.ingestAsync(node, ingestWake(i)),
+    tick: (node) => dag.tickAsync(node),
+    drain: (seeds) => dag.drainAsync(seeds),
+    boot: () => dag.drainAsync(bootSeeds),
+
+    // observe accessors
+    ledger: dag.ledger,
+    store: dag.store,
+    clock,
+    topology,
+
+    // self-driven cadence
+    scheduler: (readFreshness, nodes) =>
+      createAsyncContinuityScheduler({ dag, topology, nodes, readFreshness }),
+
+    // sync drive (deterministic test path)
+    sync: {
+      ingest: (node, i) => dag.ingest(node, ingestWake(i)),
+      tick: (node) => dag.tick(node),
+      drain: (seeds) => dag.drain(seeds),
+      boot: () => dag.drain(bootSeeds),
+    },
+  };
+}

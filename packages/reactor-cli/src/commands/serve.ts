@@ -23,7 +23,7 @@
  * `serve` builds the substrate and blocks on the loop.
  */
 
-import { createAsyncContinuityScheduler } from '@openprose/reactor';
+import type { NodeFreshnessReader, Wake } from '@openprose/reactor';
 
 import {
   loadCompiledProject,
@@ -63,6 +63,8 @@ import {
   type ResolvedGatewayPoller,
   type StageStore,
   type StageLedger,
+  type RegistryStorage,
+  type GatewayRuntime,
 } from '../run/connectors';
 import { isCacheFresh, contractSetFingerprint } from '../compile/ir-cache';
 import { loadContractSet as keylessLoadContractSet } from '../compile/contract-images';
@@ -112,7 +114,7 @@ export interface ServeHandle {
    */
   readonly trigger: (
     node: string,
-    opts?: { wake?: unknown; data?: unknown },
+    opts?: { wake?: Wake; data?: unknown },
   ) => Promise<TriggerOutcome>;
   /** This reactor's current cost rollup, read off its ledger. */
   readonly cost: () => CostRollup;
@@ -320,12 +322,14 @@ export async function bootReactorHandle(
     (input.testReadFreshness as (node: string) => never | null | undefined) ??
     (() => null);
 
-  const scheduler = createAsyncContinuityScheduler({
-    dag: (reactor as { dag: unknown }).dag,
-    topology: (loaded.compiled as { reconcilerTopology: unknown }).reconcilerTopology,
-    nodes: loaded.selfDrivenNodes,
-    readFreshness: readFreshness as never,
-  } as never);
+  // The typed handle wires the continuity scheduler off itself — it already holds
+  // the dag + topology the scheduler needs, so the `(reactor as { dag }).dag` +
+  // `as never` casts are gone. `readFreshness` (the SDK `NodeFreshnessReader`) is
+  // OPT-IN; the offline gate injects a fake.
+  const scheduler = reactor.scheduler(
+    readFreshness as NodeFreshnessReader,
+    loaded.selfDrivenNodes,
+  );
   // Arm once at boot (idempotent; re-derivable from the ledger + world-model).
   scheduler.arm();
 
@@ -341,11 +345,20 @@ export async function bootReactorHandle(
   // (keyed by source id) replaces the I/O.
   const plugins =
     input.testGatewayFetch === undefined ? loadConnectorPlugin(contractsDir) : {};
-  const gatewayRuntime = {
-    store: reactor.store as never,
-    ledger: reactor.ledger as never,
-    dag: (reactor as { dag: unknown }).dag as never,
-    storage: adapters.storage as never,
+  // The gateway poller drives the reactor's async ingress. The typed handle's
+  // `ingest(node, { wake })` IS the former `dag.ingestAsync(node, wake)` — adapt
+  // it to the narrow `AsyncIngest` the poller expects (no `.dag` cast; store +
+  // ledger are first-class on the handle).
+  const gatewayRuntime: GatewayRuntime = {
+    // The handle's `store`/`ledger` are first-class — narrow them to the gateway's
+    // structural views (no `as unknown as { store }` reach into an un-surfaced field).
+    store: reactor.store as StageStore,
+    ledger: reactor.ledger as StageLedger,
+    dag: {
+      ingestAsync: (node: string, wake?: Wake) =>
+        reactor.ingest(node, wake !== undefined ? { wake } : undefined),
+    },
+    storage: adapters.storage as RegistryStorage,
   };
   const gatewayPollers: ResolvedGatewayPoller[] = gateways.map((gw) =>
     resolveGatewayPoller(gw, gatewayRuntime, {
@@ -370,11 +383,12 @@ export async function bootReactorHandle(
     });
 
   const gatewayNodeSet = new Set(gatewayNodes);
-  const trigger = (node: string, opts?: { wake?: unknown; data?: unknown }): Promise<TriggerOutcome> =>
+  const trigger = (node: string, opts?: { wake?: Wake; data?: unknown }): Promise<TriggerOutcome> =>
     queue.enqueue(async () => {
       // The running-daemon trigger path: an external wake through the reactor's
-      // async ingest (serialized — at most one drain in flight).
-      const dag = (reactor as { dag: { ingestAsync: (n: string, w: unknown) => Promise<unknown> } }).dag;
+      // async ingest (serialized — at most one drain in flight). The typed handle's
+      // `ingest` IS the former `dag.ingestAsync` — no `.dag` cast.
+      //
       // Deliver a trigger BODY by STAGING it into the node's ingress inbox (so the
       // upcoming ingest is a memo-miss that re-renders the node reading the
       // payload). Staging needs the node to carry an ingress edge — true for a
@@ -386,14 +400,14 @@ export async function bootReactorHandle(
         if (gatewayNodeSet.has(node)) {
           const stage = buildStageArrival(
             node,
-            (reactor as unknown as { store: StageStore }).store,
-            (reactor as unknown as { ledger: StageLedger }).ledger,
+            reactor.store as StageStore,
+            reactor.ledger as StageLedger,
           );
           stage({ id: triggerArrivalId(opts.data), item: opts.data });
           dataDelivered = true;
         }
       }
-      await dag.ingestAsync(node, opts?.wake ?? EXTERNAL_WAKE);
+      await reactor.ingest(node, { wake: opts?.wake ?? EXTERNAL_WAKE });
       return { dataDelivered };
     });
 

@@ -102,7 +102,7 @@ test("boot cold-miss sweep renders the source AND propagates to the subscriber",
       },
     });
 
-    const results = reactor.boot();
+    const results = reactor.sync.boot();
 
     const producer = results.find((r) => r.node === PRODUCER);
     const sub = results.find((r) => r.node === SUBSCRIBER);
@@ -140,7 +140,7 @@ test("RESTART-SURVIVAL: a second reactor over the same dirs boots to all-skips (
         [SUBSCRIBER]: { render: subscriber(s1), canonicalizer: statusCanon },
       },
     });
-    first.boot();
+    first.sync.boot();
     equal(p1.n, 1);
     equal(s1.n, 1);
     const producerFpBefore = first.store.publishedFingerprints(PRODUCER);
@@ -164,7 +164,7 @@ test("RESTART-SURVIVAL: a second reactor over the same dirs boots to all-skips (
       },
     });
 
-    const bootResults = second.boot();
+    const bootResults = second.sync.boot();
 
     // NEITHER render body ran on the restart boot — "cost scales with surprise,
     // not the restart" (architecture.md §4.1; §8).
@@ -211,7 +211,7 @@ test("RESTART after an EDITED source contract re-renders the moved node + propag
         [SUBSCRIBER]: { render: subscriber({ n: 0 }), canonicalizer: statusCanon },
       },
     });
-    first.boot();
+    first.sync.boot();
 
     // process 2: same dirs, but the producer's contract was EDITED to `@2` and
     // it now renders "churned". The bumped contract fingerprint moves the
@@ -241,7 +241,7 @@ test("RESTART after an EDITED source contract re-renders the moved node + propag
         [SUBSCRIBER]: { render: subscriber(s2), canonicalizer: statusCanon },
       },
     });
-    const bootResults = second.boot();
+    const bootResults = second.sync.boot();
 
     const producer = bootResults.find((r) => r.node === PRODUCER);
     const sub = bootResults.find((r) => r.node === SUBSCRIBER);
@@ -273,7 +273,7 @@ test("createReactor defaults the world-model store to a FileSystemWorldModelStor
       },
     });
     ok(reactor.store instanceof FileSystemWorldModelStore);
-    const results = reactor.boot();
+    const results = reactor.sync.boot();
     equal(results.find((r) => r.node === PRODUCER)?.disposition, "rendered");
   } finally {
     rmSync(d.wm, { recursive: true, force: true });
@@ -281,7 +281,7 @@ test("createReactor defaults the world-model store to a FileSystemWorldModelStor
   }
 });
 
-test("bootAsync drives the same cold-miss sweep through the async path", async () => {
+test("boot() drives the same cold-miss sweep through the async path", async () => {
   const d = dirs();
   try {
     const p = { n: 0 };
@@ -308,7 +308,7 @@ test("bootAsync drives the same cold-miss sweep through the async path", async (
       },
     });
 
-    const results = await reactor.bootAsync();
+    const results = await reactor.boot();
     equal(results.find((r) => r.node === PRODUCER)?.disposition, "rendered");
     equal(results.find((r) => r.node === SUBSCRIBER)?.disposition, "rendered");
     equal(p.n, 1);

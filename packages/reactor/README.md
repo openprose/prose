@@ -68,69 +68,94 @@ signature scheme it doesn't have.
 
 ## SDK quickstart
 
-These TypeScript examples use the package's public subpaths (`@openprose/reactor/receipt`,
-`/projection`, …).
+### Hello world — the `reactor()` facade
 
-> **TypeScript needs `nodenext` or `bundler` module resolution.** These subpaths are
-> declared through the package's `"exports"` map, which the legacy `"moduleResolution":
-> "node"` resolver does not read — under it the imports fail with `Cannot find module
-> '@openprose/reactor/receipt'`. Set `"moduleResolution": "nodenext"` (or `"bundler"`)
-> in your `tsconfig.json`.
-
-Verify a receipt and derive a proof summary that avoids private payload fields:
+One call takes a directory of `.prose.md` contracts all the way to a booted,
+reconciling reactor and hands back **one typed `Reactor` handle**. The facade is
+pure sugar over the rungs below it (`compileProject` + `createReactor` + `boot()`);
+its return value **is** that handle, so there is never a second parallel API.
 
 ```ts
+import { reactor } from "@openprose/reactor";
+
+// Compile ./my-project, assemble a durable reactor over ./state, boot to a
+// fixpoint (cold nodes render once; warm nodes memo-skip), hand back a live handle.
+const { reactor: r } = await reactor("./my-project", { directory: "./state" });
+
+// Observe — first-class accessors, no casts.
+console.log(r.ledger.all().length);                 // the receipt trail
+console.log(r.store.publishedFingerprints("source")); // a node's published facets
+
+// Drive — async-by-default (a live render is one bounded LLM session).
+await r.ingest("source", { wake: { source: "external", refs: [] } });
+
+// The deterministic / fake-render test path lives behind `r.sync`:
+//   r.sync.boot(); r.sync.ingest("source");
+```
+
+The same typed `Reactor` handle is the return of `createReactor()` and
+`runProject()` (`@openprose/reactor/run`) — one object graph at every altitude.
+`{ mode: "inspect" }` is the keyless posture (it never loads a render provider).
+
+> **TypeScript needs `nodenext` or `bundler` module resolution** for the escape-hatch
+> subpaths (`/agents`, `/adapters`, `/run`, `/run/types`, `/internals`). These are
+> declared through the package's `"exports"` map, which the legacy `"moduleResolution":
+> "node"` resolver does not read. The root `@openprose/reactor` import (the facade +
+> the curated front door) resolves under legacy `node` resolution too; the cliff bites
+> only the explicit subpaths. Set `"moduleResolution": "nodenext"` (or `"bundler"`).
+
+### Verify a receipt
+
+Verify a receipt and derive a proof summary that avoids private payload fields.
+The receipt/projection helpers live on `@openprose/reactor/internals` (the deep
+domain shapes), with `verifyReceipt` / `verifyReceiptChain` also on the front door:
+
+```ts
+import { verifyReceipt } from "@openprose/reactor";
 import {
   inspectReceiptProof,
-  verifyReceipt,
+  projectReceiptProof,
   type LedgerReceipt,
-} from "@openprose/reactor/receipt";
+  type ReceiptProofInspection,
+} from "@openprose/reactor/internals";
 
 export function inspectStoredReceipt(receipt: LedgerReceipt) {
   const verification = verifyReceipt(receipt);
   if (!verification.ok) {
     throw new Error(verification.errors.join("; "));
   }
-
   return inspectReceiptProof(receipt);
 }
-```
-
-Project a proof for a lower-trust audience:
-
-```ts
-import { projectReceiptProof } from "@openprose/reactor/projection";
-import type { ReceiptProofInspection } from "@openprose/reactor/receipt";
 
 export function publicReceiptEvidence(proof: ReceiptProofInspection) {
   const result = projectReceiptProof({ tier: "public", proof });
   if (!result.ok) {
     throw new Error(result.errors.join("; "));
   }
-
   return result.projection;
 }
 ```
 
 ## Public Subpaths
 
-The package exposes these entrypoints:
+The package exposes **six reasoned entrypoints** (the `0.3.0` ideal surface). The
+curated front door is `.`; everything deep stays reachable via `/internals` (no
+name was removed — see the package's capability ledger):
 
-- `@openprose/reactor`
-- `@openprose/reactor/receipt`
-- `@openprose/reactor/cost`
-- `@openprose/reactor/world-model`
-- `@openprose/reactor/forme`
-- `@openprose/reactor/evidence-plan`
-- `@openprose/reactor/memo`
-- `@openprose/reactor/forecast`
-- `@openprose/reactor/sdk`
-- `@openprose/reactor/composition`
-- `@openprose/reactor/projection`
-- `@openprose/reactor/adapters/agent-compile`
-- `@openprose/reactor/adapters/agent-render`
-- `@openprose/reactor/run-project`
-- `@openprose/reactor/canonicalizer`
+- `@openprose/reactor` — **the front door**: the `reactor()` facade, the typed
+  `Reactor` handle, the assemblers, the substrate factories, and the vocabulary a
+  driver needs.
+- `@openprose/reactor/agents` — the full `@openai/agents` escape hatch
+  (peer-dep-isolated render + compile config).
+- `@openprose/reactor/adapters` — the injection boundary: substrate backends +
+  gateway-ingress + record/replay + passthrough adapters.
+- `@openprose/reactor/run` — the **offline boundary**: `runProject` /
+  `compileProject` (model-bearing; dynamic-import only).
+- `@openprose/reactor/run/types` — type-only run-phase shapes (incl. the `Reactor`
+  handle type) that never cross the offline boundary.
+- `@openprose/reactor/internals` — the engine room: the reconciler-construction
+  spine + every deep domain shape (receipt / cost / forme / memo / composition /
+  forecast / evidence-plan / projection / canonicalizer).
 
 ## Author a scenario / write an eval
 

@@ -14,12 +14,22 @@
  * the mount loop (Correction #3 / N3).
  */
 
+import type { Reactor } from '@openprose/reactor/run/types';
+
 import type {
   CliCompiledProject,
   ContractView,
   ProjectTruthProjection,
 } from './run-core';
 import type { SandboxRunner } from './sandbox';
+
+// The typed SDK running handle (`@openprose/reactor/run/types`, a TYPE-ONLY entry
+// that never crosses the offline boundary). The CLI drives THIS — its async-by-
+// default verbs (`ingest`/`tick`/`drain`/`boot`), its first-class `store`/`ledger`/
+// `clock` accessors, and `scheduler(...)` — so the pre-`0.3.0` `AssembledReactorLike`
+// structural mirror + the `(reactor as { dag }).dag` / `as unknown as { store }`
+// drive casts are GONE.
+export type ReactorHandle = Reactor;
 
 /** The substrate the run/serve path injects (clock + storage + world-model). */
 export interface RunAdapters {
@@ -66,34 +76,20 @@ export interface CallRunProjectInput {
   readonly render: RunRender;
 }
 
-/** A structural mirror of an SDK ledger receipt (the fields the CLI reads). */
-export interface ReactorReceipt {
-  readonly node: string;
-  readonly status: string;
-  readonly cost: { readonly tokens: { readonly fresh: number; readonly reused: number } };
-  readonly input_fingerprints: readonly string[];
-  readonly fingerprints: Readonly<Record<string, string>>;
-}
+/**
+ * The SDK running handle the CLI drives — the typed {@link Reactor} from
+ * `@openprose/reactor/run/types` (re-exported above as {@link ReactorHandle}).
+ *
+ * @deprecated Prefer {@link ReactorHandle} (= the SDK `Reactor`). This alias keeps
+ * the old name compiling; it is no longer a structural MIRROR — it IS the SDK
+ * type, so the `(reactor as { dag }).dag` / `as unknown as { store }` drive casts
+ * that the mirror forced are deleted at the call sites.
+ */
+export type AssembledReactorLike = ReactorHandle;
 
-/** A structural mirror of the SDK `AssembledReactor` surface the CLI drives. */
-export interface AssembledReactorLike {
-  readonly dag: unknown;
-  readonly ledger: {
-    readonly all: () => readonly ReactorReceipt[];
-  };
-  readonly store: {
-    readonly read: (node: string, workspace?: string) => unknown;
-    readonly publishedFingerprints: (node: string) => Record<string, string>;
-  };
-  readonly clock: { readonly now: () => string };
-  readonly bootAsync: () => Promise<
-    readonly { node: string; disposition: string }[]
-  >;
-}
-
-/** The result of {@link callRunProject}: the assembled reactor + boot results. */
+/** The result of {@link callRunProject}: the typed reactor handle + boot results. */
 export interface CallRunProjectResult {
-  readonly reactor: AssembledReactorLike;
+  readonly reactor: ReactorHandle;
   readonly bootResults: readonly { node: string; disposition: string }[];
 }
 

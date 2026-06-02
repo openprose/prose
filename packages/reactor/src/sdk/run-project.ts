@@ -64,10 +64,8 @@ import type {
   ReactorClockAdapter,
   ReactorStorageAdapter,
 } from "../adapters/types";
-import {
-  createReactor,
-  type AssembledReactor,
-} from "./create-reactor";
+import { createReactor } from "./create-reactor";
+import type { Reactor } from "./reactor-handle";
 import {
   compiledStoreCanonicalizer,
   type TruthProjection,
@@ -353,9 +351,9 @@ export interface RunProjectInput {
   readonly render: RunProjectRender;
 }
 
-/** The booted project: the assembled reactor + the boot sweep's results. */
+/** The booted project: the typed reactor handle + the boot sweep's results. */
 export interface RunProjectResult {
-  readonly reactor: AssembledReactor;
+  readonly reactor: Reactor;
   readonly bootResults: readonly ReconcileResult[];
 }
 
@@ -448,11 +446,11 @@ export async function runProject(
     asyncMounts,
   });
 
-  // GOTCHA 2: bootAsync is the honest FIRST render of a pure source (a bare
-  // re-wake of a source memo-skips on (contract_fp, [])). Only sources are
-  // seeded; the input-driven subscriber wakes via the producer's propagated
-  // facet.
-  const bootResults = await reactor.bootAsync();
+  // GOTCHA 2: boot() is the honest FIRST render of a pure source (a bare re-wake
+  // of a source memo-skips on (contract_fp, [])). Only sources are seeded; the
+  // input-driven subscriber wakes via the producer's propagated facet. The handle
+  // drive verbs are async-by-default, so `boot()` IS the async cold-miss sweep.
+  const bootResults = await reactor.boot();
 
   return { reactor, bootResults };
 }

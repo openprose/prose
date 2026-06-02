@@ -49,6 +49,7 @@ import {
   ATOMIC_FACET,
   files as wmFiles,
   jsonFile,
+  type Wake,
 } from '@openprose/reactor';
 import { EMPTY_SEMANTIC_DIFF, createNullSignature } from '@openprose/reactor/internals';
 import {
@@ -106,7 +107,7 @@ export interface StageLedger {
 
 /** The narrow async DAG surface the gateway driver wakes (SDK `AsyncGatewayIngest`). */
 export interface AsyncIngest {
-  readonly ingestAsync: (node: string, wake?: unknown) => Promise<unknown>;
+  readonly ingestAsync: (node: string, wake?: Wake) => Promise<unknown>;
 }
 
 /** The storage adapter surface the durable cursor round-trips through. */
@@ -125,7 +126,7 @@ export function ingressSourceFor(gatewayNode: string): string {
 }
 
 /** The SDK external wake (the barrel does not export the const; build it). */
-export const EXTERNAL_WAKE = Object.freeze({ source: 'external', refs: [] as string[] });
+export const EXTERNAL_WAKE: Wake = Object.freeze({ source: 'external', refs: [] });
 
 /**
  * A stable arrival id for a triggered payload (mirrors the connector default

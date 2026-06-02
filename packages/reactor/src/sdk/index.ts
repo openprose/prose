@@ -75,6 +75,18 @@ export {
   type ReactorRuntimeAdapters,
 } from "./create-reactor";
 
+// --- The typed running handle (the return of createReactor / runProject) -----
+// One object graph at multiple altitudes: async-by-default drive verbs, the
+// deterministic sync verbs under `.sync`, and first-class `ledger`/`store`/
+// `clock`/`topology` accessors (no `.dag` cast).
+export {
+  assembleReactor,
+  type Reactor,
+  type SyncDriveSurface,
+  type IngestInput,
+  type AssembleReactorInput,
+} from "./reactor-handle";
+
 // --- The self-driven continuity scheduler (the clock-driven cadence loop) ---
 // The driver that finally arms `next_self_recheck` off the `forecast/` math and
 // fires a `self` wake through the reconciler when a `valid_until` lapses

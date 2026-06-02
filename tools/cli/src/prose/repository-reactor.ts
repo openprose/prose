@@ -400,14 +400,15 @@ export interface IngestRepositoryReactorResult {
  * `cold_start` / `compiled_evidence_plan` / `forecast_schedule` /
  * `RepositoryTriggerReactorEvent` shapes are deleted: a source node memo-SKIPS on
  * a bare re-wake `(contract_fp, input_fps=[])`, so the honest first render is the
- * cold-miss boot — `reactor.bootAsync()` seeds every source node, renders it once
+ * cold-miss boot — `reactor.boot()` seeds every source node, renders it once
  * (no prior receipt), and propagates the moved facets to its subscribers (run-loop
- * invariant; ROADMAP §"Run-loop invariants").
+ * invariant; ROADMAP §"Run-loop invariants"). The handle's drive verbs are
+ * async-by-default, so `boot()` IS the async cold-miss sweep.
  */
 export async function bootRepositoryReactor(
 	bridge: RepositoryReactorBridge,
 ): Promise<IngestRepositoryReactorResult> {
-	const results = await bridge.reactor.bootAsync();
+	const results = await bridge.reactor.boot();
 	return { results, receipts: bridge.reactor.ledger.all() };
 }
 

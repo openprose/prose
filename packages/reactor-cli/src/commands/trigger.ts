@@ -203,24 +203,21 @@ export async function runTriggerCommand(
   // node's `input_fingerprints`. The arrival id is content-stable so a re-trigger of
   // the same payload dedups at the inbox (append-style stage).
   if (hasData) {
-    const store = (reactor as unknown as { store: StageStore }).store;
-    const ledger = (reactor as unknown as { ledger: StageLedger }).ledger;
-    const stage = buildStageArrival(options.node, store, ledger);
+    // The typed handle surfaces `store`/`ledger` first-class — no cast. The
+    // `StageStore`/`StageLedger` params are narrow structural views the SDK
+    // store/ledger satisfy.
+    const stage = buildStageArrival(
+      options.node,
+      reactor.store as StageStore,
+      reactor.ledger as StageLedger,
+    );
     stage({ id: triggerArrivalId(parsedData), item: parsedData });
   }
 
-  // Ingest the named node with the full external wake, drain to quiescence.
-  const dag = (
-    reactor as {
-      dag: {
-        ingestAsync: (
-          node: string,
-          wake: unknown,
-        ) => Promise<readonly { node: string; disposition: string }[]>;
-      };
-    }
-  ).dag;
-  const results = await dag.ingestAsync(options.node, EXTERNAL_WAKE);
+  // Ingest the named node with the full external wake, drain to quiescence. The
+  // handle's async-by-default `ingest` IS the former `dag.ingestAsync` — no `.dag`
+  // cast.
+  const results = await reactor.ingest(options.node, { wake: EXTERNAL_WAKE });
 
   const report = summarizeBoot(
     results,

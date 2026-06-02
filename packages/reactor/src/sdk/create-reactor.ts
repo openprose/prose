@@ -37,7 +37,6 @@ import {
   inboundEdges,
   type ReconcilerTopology,
   type WakeEvent,
-  type ReconcileResult,
 } from "../reactor";
 import type { WorldModelStore } from "../world-model";
 import { FileSystemWorldModelStore } from "../world-model/fs-store";
@@ -45,13 +44,12 @@ import type { ReactorClockAdapter, ReactorStorageAdapter } from "../adapters/typ
 import {
   mountDag,
   type AsyncNodeMount,
-  type MountedDag,
-  type MutableReceiptLedger,
   type NodeMount,
 } from "./mounted-dag";
 import {
   createFileSystemReceiptLedger,
 } from "./fs-ledger";
+import { assembleReactor, type Reactor } from "./reactor-handle";
 
 /**
  * The assembler's injected substrate. Mirrors the architecture.md §5.3 adapter
@@ -100,43 +98,29 @@ export interface CreateReactorInput {
 }
 
 /**
- * The assembled reactor: the `mountDag` run-phase surface plus the durable
- * substrates it was wired over, plus the boot sweep. Boot is NOT run in the
- * constructor (so a caller can inspect the cold state first); call `boot()` /
- * `bootAsync()` to run the cold-miss sweep.
+ * @deprecated Use the typed {@link Reactor} handle returned by
+ * {@link createReactor}. `AssembledReactor` was the pre-`0.3.0` nested shape
+ * (`.dag` + `.boot()`/`.bootAsync()`); it now ALIASES `Reactor` so existing
+ * deep-import call sites that named the type keep compiling. The handle hoists
+ * the drive verbs (async-by-default, sync under `.sync`) and surfaces
+ * `ledger`/`store`/`clock`/`topology` first-class (no `.dag` cast). Reachable
+ * from `@openprose/reactor/internals`.
  */
-export interface AssembledReactor {
-  /** The mounted run-phase DAG (ingest / tick / drain + their async siblings). */
-  readonly dag: MountedDag;
-  /** The durable receipt ledger (re-derived from storage at construction). */
-  readonly ledger: MutableReceiptLedger;
-  /** The world-model store the DAG commits to. */
-  readonly store: WorldModelStore;
-  /** The clock the system reads time from. */
-  readonly clock: ReactorClockAdapter;
-  /**
-   * The SYNC boot / cold-miss sweep (architecture.md §8). Seeds a wake at every
-   * SOURCE node (gateways / self-driven / no-inbound-edge roots) in topological
-   * order and drains to a fixpoint: a cold node renders once; a node that
-   * already has a receipt (a restart) memo-skips. Returns the per-node results.
-   */
-  readonly boot: () => readonly ReconcileResult[];
-  /** The ASYNC boot sweep — the same seeds drained through the async path (live agent renders). */
-  readonly bootAsync: () => Promise<readonly ReconcileResult[]>;
-}
+export type AssembledReactor = Reactor;
 
 /**
  * Assemble a reactor over durable substrates (the keystone, gap-audit #9). Wires
  * the FS world-model store + a persisted receipt ledger + clock + the per-node
- * render bodies into the `mountDag` run-phase surface, and exposes the boot /
- * cold-miss sweep (architecture.md §8) so state survives a restart.
+ * render bodies into the `mountDag` run-phase surface, and returns the typed
+ * {@link Reactor} handle (the boot / cold-miss sweep is `reactor.boot()`,
+ * architecture.md §8) so state survives a restart.
  *
  * Restart-survival: construct a second `createReactor` over the SAME `storage`
  * adapter (re-opened on the same directory) + the SAME world-model `directory`,
  * and the durable ledger re-derives every node's last receipt — so `boot()`
  * memo-skips the unchanged nodes instead of re-rendering them.
  */
-export function createReactor(input: CreateReactorInput): AssembledReactor {
+export function createReactor(input: CreateReactorInput): Reactor {
   const { adapters, topology } = input;
 
   const store = adapters.worldModel ?? defaultWorldModelStore(input);
@@ -155,16 +139,12 @@ export function createReactor(input: CreateReactorInput): AssembledReactor {
     ledger,
   });
 
-  const seeds = bootSeeds(topology);
-
-  return {
+  return assembleReactor({
     dag,
-    ledger,
-    store,
     clock: adapters.clock,
-    boot: () => dag.drain(seeds),
-    bootAsync: () => dag.drainAsync(seeds),
-  };
+    topology,
+    bootSeeds: bootSeeds(topology),
+  });
 }
 
 // ---------------------------------------------------------------------------

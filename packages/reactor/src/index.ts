@@ -9,6 +9,22 @@
 // record/replay + passthrough backends), `/run` + `/run/types` (the offline
 // run-phase boundary).
 
+// ── TIER 1: the facade (start here) ─────────────────────────────────────────
+export {
+  reactor,
+  type ReactorOptions,
+  type ReactorAdapters,
+  type ReactorFacadeResult,
+  type ScheduleOptions,
+} from "./sdk/facade";
+
+// ── The typed running handle (the return of reactor/createReactor/runProject) ─
+export type {
+  Reactor,
+  SyncDriveSurface,
+  IngestInput,
+} from "./sdk/reactor-handle";
+
 // ── The assemblers (the rungs a driver mounts against) ──────────────────────
 export {
   createReactor,
