@@ -295,3 +295,59 @@ export function assembleReactor(input: AssembleReactorInput): Reactor {
   };
   return handle;
 }
+
+// ===========================================================================
+// RESERVED FORWARD SEAM (type-only; nothing built ahead) — the epoch driver
+// ===========================================================================
+//
+// Decision #5 (API-CHANGE-PLAN §2; API-ANALYSIS §5.7): the FIXPOINT's epoch
+// rollover lands as a STRICTLY-ADDITIVE SIBLING `createEpochDriver(reactor, …)`
+// layered OVER the fixed-topology {@link Reactor} — NOT a reshape of `mountDag`
+// / `createReactor` (delta.md's "reshape mountDag" wording is explicitly
+// overridden). The {@link Reactor} handle ALREADY exposes everything a
+// `rollAtQuiescence` loop needs: `topology` (the current epoch), `drain` (settle
+// to a fixpoint), and `onReceipt` (observe quiescence) — so re-snapshotting the
+// topology at quiescence forces NO breaking change later.
+//
+// Declared, NOT built: these are TYPE-ONLY shapes. No `createEpochDriver`
+// VALUE/implementation ships in `0.3.0`. They reserve the names + contract so
+// the milestone is a pure additive landing. Reachable from
+// `@openprose/reactor/internals`.
+
+/**
+ * RESERVED (type-only). The compile-phase input the future epoch driver
+ * re-derives the topology from at each rollover. `forme` is the compile render
+ * that produces a fresh {@link ReconcilerTopology}; the milestone fixes its
+ * concrete shape (left `unknown` so it can be fixed without a breaking widening).
+ */
+export interface ReservedEpochDriverInput {
+  readonly forme: unknown;
+}
+
+/**
+ * RESERVED (type-only). The handle the future `createEpochDriver` would return:
+ * a sibling loop that, at each quiescence, re-snapshots the topology (the new
+ * epoch) and re-drives the fixed-topology {@link Reactor}. Declared so the
+ * milestone adds the implementation without reshaping any v1 type.
+ */
+export interface ReservedEpochDriver {
+  /** The reactor this driver is layered over (the fixed-topology run handle). */
+  readonly reactor: Reactor;
+  /**
+   * Roll to the next epoch once the current one reaches quiescence: re-derive the
+   * topology from `forme`, then re-drive. RESERVED — declared, not built.
+   */
+  readonly rollAtQuiescence: () => Promise<readonly ReconcileResult[]>;
+}
+
+/**
+ * RESERVED (type-only). The signature the future strictly-additive
+ * `createEpochDriver` sibling will satisfy: `(reactor, { forme }) =>
+ * EpochDriver`, layered over the fixed-topology {@link Reactor}. No VALUE is
+ * exported in `0.3.0` — this reserves the contract so the FIXPOINT milestone
+ * lands additively (decision #5).
+ */
+export type ReservedCreateEpochDriver = (
+  reactor: Reactor,
+  input: ReservedEpochDriverInput,
+) => ReservedEpochDriver;

@@ -115,6 +115,40 @@ export interface AsyncNodeMount {
   readonly canonicalizer?: Canonicalizer;
 }
 
+/**
+ * RESERVED FORWARD SEAM (type-only; nothing built ahead). The resolver form of a
+ * mount map: `(node) => NodeMount | undefined`. The FIXPOINT milestone
+ * (architecture.md §11) needs a mount for a node SPAWNED by an epoch rollover —
+ * one not present in the boot-time record. A resolver supplies it on demand.
+ *
+ * {@link ReservedMounts} (below) is the strict SUPERSET of today's
+ * `Record<string, NodeMount>`: a record is the eager resolver. `mountDag`'s
+ * runtime accepts ONLY the record in `0.3.0` (build nothing ahead); when the
+ * milestone lands, {@link MountDagInput.mounts} widens to {@link ReservedMounts}
+ * ADDITIVELY (a record is already a valid `ReservedMounts`), so no current
+ * caller breaks. Declared, NOT consumed.
+ */
+export type NodeMountResolver = (node: string) => NodeMount | undefined;
+
+/** The async sibling of {@link NodeMountResolver} (RESERVED, type-only). */
+export type AsyncNodeMountResolver = (
+  node: string,
+) => AsyncNodeMount | undefined;
+
+/**
+ * RESERVED FORWARD SEAM (type-only). The additive superset
+ * {@link MountDagInput.mounts} widens to when dynamic mounts land: either the
+ * boot-time record (today's only accepted form) OR a {@link NodeMountResolver}.
+ */
+export type ReservedMounts =
+  | Readonly<Record<string, NodeMount>>
+  | NodeMountResolver;
+
+/** The async sibling of {@link ReservedMounts} (RESERVED, type-only). */
+export type ReservedAsyncMounts =
+  | Readonly<Record<string, AsyncNodeMount>>
+  | AsyncNodeMountResolver;
+
 export interface MountDagInput {
   /** The compiled topology (Forme's output) + per-node contract fingerprints. */
   readonly topology: ReconcilerTopology;

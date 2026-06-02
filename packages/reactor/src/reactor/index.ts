@@ -171,6 +171,20 @@ export type SpawnRenderAsync = (
 ) => Promise<RenderOutcome>;
 
 /**
+ * RESERVED FORWARD SEAM (type-only; nothing built ahead). The privileged
+ * `active_graph` subscription the FIXPOINT milestone (architecture.md §11) will
+ * fill — a notification that the compiled topology was re-derived (a rewire /
+ * epoch rollover). v1 holds the topology as a fixed input per scheduling epoch
+ * ({@link ReconcilerTopology}); "an epoch *names* that fact." When the fixpoint
+ * lands, the reconciler reports a pending rollover through this callback rather
+ * than a breaking {@link ReconcileResult} reshape — the memo key already absorbs
+ * a rewire as relocated `input_fingerprints` with no `Receipt`-field change.
+ *
+ * Declared, NOT consumed — no reconciler path invokes it in `0.3.0`.
+ */
+export type OnTopologyMoved = (next: ReconcilerTopology) => void;
+
+/**
  * Resolve the consumed-facet tuple for a node from the current published truth
  * of its upstreams (the memo key's second half — one slot per subscribed
  * facet, in resolved subscription order, SHAPES.md §3). The reconciler reads
@@ -210,6 +224,15 @@ export interface ReconcilerPorts {
    * one without forcing every caller to migrate at once (05 §5 Phase A).
    */
   readonly spawnRenderAsync?: SpawnRenderAsync;
+  /**
+   * RESERVED FORWARD SEAM (type-only; OPTIONAL, nothing built ahead). The
+   * fixpoint's privileged `active_graph` subscription — exactly the
+   * optional-additive pattern already set by {@link spawnRenderAsync} above. The
+   * reconciler does NOT invoke it in `0.3.0`; it is declared so the FIXPOINT
+   * milestone (architecture.md §11) lands as a new optional port rather than a
+   * breaking {@link ReconcilerPorts} reshape. See {@link OnTopologyMoved}.
+   */
+  readonly onTopologyMoved?: OnTopologyMoved;
 }
 
 /**

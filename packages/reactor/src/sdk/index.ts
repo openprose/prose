@@ -35,6 +35,12 @@ export {
   type MutableReceiptLedger,
   type NodeMount,
   type AsyncNodeMount,
+  // RESERVED forward seams (type-only; build nothing ahead) — the resolver-form
+  // mount the FIXPOINT milestone widens `MountDagInput.mounts` to additively.
+  type NodeMountResolver,
+  type AsyncNodeMountResolver,
+  type ReservedMounts,
+  type ReservedAsyncMounts,
 } from "./mounted-dag";
 
 // --- The durable receipt ledger (re-derived from the storage trail) ---------
@@ -98,6 +104,11 @@ export {
   type SyncDriveSurface,
   type IngestInput,
   type AssembleReactorInput,
+  // RESERVED forward seam (type-only; build nothing ahead) — the strictly-
+  // additive epoch-driver sibling over the fixed-topology Reactor (decision #5).
+  type ReservedEpochDriverInput,
+  type ReservedEpochDriver,
+  type ReservedCreateEpochDriver,
 } from "./reactor-handle";
 
 // --- The self-driven continuity scheduler (the clock-driven cadence loop) ---

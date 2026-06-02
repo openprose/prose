@@ -279,6 +279,30 @@ export function createNullSignature(): NullSignature {
 
 export type ReceiptSignature = NullSignature;
 
+/**
+ * RESERVED FORWARD SEAM (type-only; nothing built ahead). The signer injection
+ * port the crypto-byte-hash milestone (architecture.md §9; delta.md Part F
+ * "Crypto byte-hash today, deferred in spec") will fill. Declaring it now means
+ * the milestone is a pure backend swap rather than a breaking API change:
+ *   - {@link ReceiptSignature} widens ADDITIVELY (a non-null branch joins the
+ *     {@link NullSignature} union) when a real signer lands; and
+ *   - a `SignerPort` is supplied alongside the other reactor ports, exactly as
+ *     the storage/ledger/world-model ports are today.
+ *
+ * The ONLY honest v1 state is the null signer ({@link createNullSignature}); the
+ * default reactor supplies no `SignerPort`, so v1 receipts carry
+ * {@link NullSignature}. This interface is declared, NOT consumed — no reactor
+ * path reads it in `0.3.0`. Reachable from `@openprose/reactor/internals`.
+ */
+export interface SignerPort {
+  /**
+   * Attest a receipt's canonical content hash, producing the receipt's
+   * {@link ReceiptSignature}. The milestone widens the return type additively;
+   * the v1 contract is "no signer ⇒ {@link createNullSignature}".
+   */
+  readonly sign: (contentHash: string) => ReceiptSignature;
+}
+
 // ---------------------------------------------------------------------------
 // Receipt: the single commit object and the unit of the ledger
 // ---------------------------------------------------------------------------

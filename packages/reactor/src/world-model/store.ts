@@ -137,6 +137,25 @@ export interface WorldModelStore {
    * §8 L335–L337), so subscribers always see a valid "no data yet" state.
    */
   publishedFingerprints(node: string): FingerprintMap;
+
+  /**
+   * RESERVED FORWARD SEAM (type-only; OPTIONAL, nothing built ahead). A
+   * projection-query escape hatch for a backend that maintains a DERIVED index
+   * (SQLite / vector / dashboard) over the canonical published truth
+   * (world-model.md §1 L42–L48: "a derived projection of that canonical truth,
+   * never the truth itself"). The million-row derived-index / semantic-search
+   * case attaches HERE without touching the file `ref`/`read` path — the
+   * canonical store stays the read-by-reference primitive; a backend that has a
+   * query engine MAY additionally expose it.
+   *
+   * OPTIONAL + additive: existing stores ({@link InMemoryWorldModelStore},
+   * `FileSystemWorldModelStore`) do NOT implement it and stay conformant. No
+   * reactor path reads it in `0.3.0` — declared, not consumed. The result shape
+   * is left open (`unknown`) so the milestone can fix it without a breaking
+   * widening. Reachable from `@openprose/reactor` (the front door re-exports
+   * `WorldModelStore`) and `@openprose/reactor/internals`.
+   */
+  query?(node: string, projectionId: string, q: unknown): unknown;
 }
 
 interface PublishedEntry {
