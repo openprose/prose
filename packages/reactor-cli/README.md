@@ -124,7 +124,7 @@ The CLI is the reference client for the SDK's three-phase lifecycle:
 Every receipt carries a `surprise_cause`. A node that re-wakes but whose inputs
 did not move **memo-skips** at zero render cost; a node renders (and spends
 tokens) only when its `(contract_fp, input_fps)` memo key actually moves. So the
-standing cost of a quiet system trends to zero, and a cost spike is always a real
+standing cost of a quiet system trends to a bounded audit floor, not zero, and a cost spike is always a real
 change propagating — `reactor receipts cost` and `reactor status` roll cost up by
 `surprise_cause` so you can see exactly *what surprised the system*.
 

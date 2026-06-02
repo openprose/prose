@@ -218,6 +218,8 @@ of scraping the report. Shape (top-level keys):
 }
 ```
 
+_(Numbers above are an illustrative shape — not masked-relay's actual counts.)_
+
 Exit codes are **unchanged** from text mode: a clean or empty ledger exits `0`; a
 detected tamper (`chainVerify.ok === false`) exits `1`. (Token figures are
 illustrative for a shipped `--example` sample; `synthetic` flags that.)

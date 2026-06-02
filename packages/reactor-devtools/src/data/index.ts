@@ -1159,7 +1159,9 @@ export function describeStateDir(
 
   // ---- per-frame "what happened" ----
   lines.push("");
-  lines.push(`FRAMES  (frame  node  status  moved[…]  fresh tokens  woke[…])`);
+  lines.push(
+    `FRAMES  (frame  node  status  moved[output facets that changed]  fresh tokens  woke[…])`,
+  );
   // The structured per-frame rows for the JSON surface — filled in the SAME walk.
   const frameData: DescribeFrame[] = [];
   for (const f of snapshot.frames) {

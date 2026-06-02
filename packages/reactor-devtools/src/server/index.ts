@@ -89,7 +89,31 @@ export async function startDevToolsServer(
     handle(req, res, opened, snapshotJson, assetsDir);
   });
 
-  await new Promise<void>((resolve) => server.listen(port, host, resolve));
+  await new Promise<void>((resolve, reject) => {
+    // Attach an 'error' listener BEFORE listen() so a bind failure (most
+    // commonly EADDRINUSE when the default port is already taken) rejects the
+    // Promise with a clean, actionable message instead of emitting an uncaught
+    // 'error' event that prints a raw Node stack trace and kills the process.
+    const onError = (err: NodeJS.ErrnoException) => {
+      if (err.code === "EADDRINUSE") {
+        reject(
+          new Error(
+            `Port ${port} on ${host} is already in use. ` +
+              `Pass a different port with --port/-p (e.g. --port ${port + 1}).`,
+          ),
+        );
+      } else {
+        reject(err);
+      }
+    };
+    server.once("error", onError);
+    server.listen(port, host, () => {
+      // Success: drop the bind-time error listener so it never fires for
+      // unrelated runtime errors later in the server's lifetime.
+      server.removeListener("error", onError);
+      resolve();
+    });
+  });
   // Report the ACTUAL bound port, not the requested one — `port: 0` asks the OS
   // for an ephemeral port (used by tests and any "just give me a free port"
   // caller), so the URL must reflect what was assigned.
