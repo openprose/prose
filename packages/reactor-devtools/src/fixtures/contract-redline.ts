@@ -81,8 +81,7 @@ import {
   type TopologyWorldModel,
   type TopologyNode,
   type TopologyEdge,
-  type ReconcilerTopology,
-} from "@openprose/reactor/internals";
+  type ReconcilerTopology, asFacet, asFingerprint, asNodeId} from "@openprose/reactor/internals";
 
 import { materialFingerprint, readJson } from "./_fixture-shared";
 
@@ -119,26 +118,26 @@ const REDLINE_REPORT = "responsibility.redline-report";
 // the fingerprint of ONLY that section's NORMALIZED clause text, so a cosmetic
 // edit that normalizes away does NOT move it (the memo-hit half of the Aha).
 const SECTION_FACET: Record<Section, Facet> = {
-  1: "section:1",
-  2: "section:2",
-  3: "section:3",
-  4: "section:4",
-  5: "section:5",
-  6: "section:6",
-  7: "section:7",
-  8: "section:8",
+  1: asFacet("section:1"),
+  2: asFacet("section:2"),
+  3: asFacet("section:3"),
+  4: asFacet("section:4"),
+  5: asFacet("section:5"),
+  6: asFacet("section:6"),
+  7: asFacet("section:7"),
+  8: asFacet("section:8"),
 };
 
 // The risk facet the Exec Summary reads — moves whenever the rollup's risk
 // posture changes (i.e. any section summary moved).
-const RISK_FACET: Facet = "risk";
+const RISK_FACET = asFacet("risk");
 
 // The MATERIAL facet the ingress exposes to the gateway: the fingerprint of ALL
 // sections' NORMALIZED content. The gateway subscribes to THIS, not the raw
 // `@atomic` — so a cosmetic edit (which normalizes away) does NOT move it ⇒ the
 // gateway is never even woken (the cleanest memo hit: no gateway re-render, no
 // fresh spent, the whole chain idle).
-const MATERIAL_FACET: Facet = "material";
+const MATERIAL_FACET = asFacet("material");
 
 // ---------------------------------------------------------------------------
 // Friendly labels for the SPA (nodeId → human label). Load-bearing for the
@@ -147,7 +146,7 @@ const MATERIAL_FACET: Facet = "material";
 
 const LABELS: Record<string, string> = {
   [SOURCE]: "Contract Doc",
-  [GATEWAY]: "Clauses",
+  [GATEWAY]: asFingerprint("Clauses"),
   [SUMMARIZE[1]]: "Summarize §1",
   [SUMMARIZE[2]]: "Summarize §2",
   [SUMMARIZE[3]]: "Summarize §3",
@@ -261,7 +260,7 @@ function commit(world: unknown, cost: Cost): RenderProduct {
 // ---------------------------------------------------------------------------
 
 const atomicTruth = (fm: WorldModelFiles) => ({
-  [ATOMIC_FACET]: fingerprintArtifact(fm),
+  [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(fm)),
 });
 
 // The ingress source exposes one facet per section — the fingerprint of ONLY
@@ -272,7 +271,7 @@ const ingressCanon = (fm: WorldModelFiles) => {
   const bytes = fm["contract.json"];
   const doc: Partial<ContractDoc> =
     bytes === undefined ? {} : (JSON.parse(readTextFile(bytes)) as ContractDoc);
-  const out: Record<string, Fingerprint> = { [ATOMIC_FACET]: fingerprintArtifact(fm) };
+  const out: Record<string, Fingerprint> = { [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(fm)) };
   const material: Record<string, unknown> = {};
   for (const sec of SECTIONS) {
     const s = doc[sec];
@@ -295,7 +294,7 @@ const ingressCanon = (fm: WorldModelFiles) => {
 const gatewayCanon = (fm: WorldModelFiles) => {
   const t = readTruth(fm);
   const sections = (t["sections"] ?? {}) as Record<string, { norm?: string; risk?: string }>;
-  const out: Record<string, Fingerprint> = { [ATOMIC_FACET]: fingerprintArtifact(fm) };
+  const out: Record<string, Fingerprint> = { [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(fm)) };
   for (const sec of SECTIONS) {
     const s = sections[String(sec)];
     out[SECTION_FACET[sec]] = materialFingerprint(
@@ -312,8 +311,8 @@ const gatewayCanon = (fm: WorldModelFiles) => {
 const riskRollupCanon = (fm: WorldModelFiles) => {
   const t = readTruth(fm);
   return {
-    [ATOMIC_FACET]: fingerprintArtifact(fm),
-    [RISK_FACET]: materialFingerprint(t["posture"] ?? null),
+    [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(fm)),
+    [RISK_FACET]: asFingerprint(materialFingerprint(t["posture"] ?? null)),
   };
 };
 
@@ -482,18 +481,18 @@ function buildReconcilerTopology(decls: readonly NodeDecl[]): ReconcilerTopology
   for (const d of decls) contract_fingerprints[d.id] = contractFingerprint(d);
 
   const nodes: TopologyNode[] = decls.map((d) => ({
-    node: d.id,
+    node: asNodeId(d.id),
     contract_fingerprint: contract_fingerprints[d.id]!,
     wake_source: (d.kind === "gateway" ? "external" : "input") as WakeSource,
   }));
   const edges: TopologyEdge[] = decls.flatMap((d) =>
     d.requires.map((r) => ({
-      subscriber: d.id,
-      producer: r.producer,
+      subscriber: asNodeId(d.id),
+      producer: asNodeId(r.producer),
       facet: r.facet ?? ATOMIC_FACET,
     })),
   );
-  const entry_points = decls.filter((d) => d.kind === "gateway").map((d) => d.id);
+  const entry_points = decls.filter((d) => d.kind === "gateway").map((d) => asNodeId(d.id));
   const declared = new Set(decls.map((d) => d.id));
   const topology: TopologyWorldModel = {
     nodes,
@@ -717,8 +716,8 @@ export function generateContractRedlineFixture(opts: GenerateOptions): GenerateR
     const prevRef = prev !== null ? ledger.addressOf(prev) : null;
     const wake: Wake = { source: "external", refs: [] };
     ledger.append({
-      node: SOURCE,
-      contract_fingerprint: `contract:${SOURCE}@ingress`,
+      node: asNodeId(SOURCE),
+      contract_fingerprint: asFingerprint(`contract:${SOURCE}@ingress`),
       wake,
       input_fingerprints: [],
       fingerprints: commitRes.fingerprints,

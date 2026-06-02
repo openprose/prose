@@ -20,8 +20,7 @@ import {
   type Receipt,
   type TopologyEdge,
   type Wake,
-  createNullSignature,
-} from "../../shapes";
+  createNullSignature, asFacet, asFingerprint, asNodeId} from "../../shapes";
 
 const CA_A =
   "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" as const;
@@ -34,14 +33,14 @@ const FP_FACET =
 
 test("resolves one input per subscribed edge, pinned to the producer's published version", () => {
   const edges: TopologyEdge[] = [
-    { subscriber: "briefing", producer: "incidents", facet: ATOMIC_FACET },
+    { subscriber: asNodeId("briefing"), producer: asNodeId("incidents"), facet: ATOMIC_FACET },
   ];
   const wake: Wake = { source: "input", refs: [CA_A] };
   const waking: WakingReceipt[] = [
     {
       ref: CA_A,
       receipt: makeReceipt("incidents", {
-        [ATOMIC_FACET]: FP_PUBLISHED,
+        [ATOMIC_FACET]: asFingerprint(FP_PUBLISHED),
       }),
     },
   ];
@@ -67,20 +66,20 @@ test("resolves one input per subscribed edge, pinned to the producer's published
 
 test("input_fingerprints is the consumed tuple in resolved subscription (edge) order", () => {
   const edges: TopologyEdge[] = [
-    { subscriber: "briefing", producer: "incidents", facet: ATOMIC_FACET },
-    { subscriber: "briefing", producer: "owners", facet: "directory" },
+    { subscriber: asNodeId("briefing"), producer: asNodeId("incidents"), facet: ATOMIC_FACET },
+    { subscriber: asNodeId("briefing"), producer: asNodeId("owners"), facet: asFacet("directory") },
   ];
   const wake: Wake = { source: "input", refs: [CA_A, CA_B] };
   const waking: WakingReceipt[] = [
     {
       ref: CA_A,
-      receipt: makeReceipt("incidents", { [ATOMIC_FACET]: FP_PUBLISHED }),
+      receipt: makeReceipt("incidents", { [ATOMIC_FACET]: asFingerprint(FP_PUBLISHED) }),
     },
     {
       ref: CA_B,
       receipt: makeReceipt("owners", {
-        [ATOMIC_FACET]: CA_B,
-        directory: FP_FACET,
+        [ATOMIC_FACET]: asFingerprint(CA_B),
+        directory: asFingerprint(FP_FACET),
       }),
     },
   ];
@@ -98,14 +97,14 @@ test("input_fingerprints is the consumed tuple in resolved subscription (edge) o
 
 test("a facet subscription pins the producer's per-facet fingerprint, not the atomic one", () => {
   const edges: TopologyEdge[] = [
-    { subscriber: "briefing", producer: "owners", facet: "directory" },
+    { subscriber: asNodeId("briefing"), producer: asNodeId("owners"), facet: asFacet("directory") },
   ];
   const waking: WakingReceipt[] = [
     {
       ref: CA_B,
       receipt: makeReceipt("owners", {
-        [ATOMIC_FACET]: CA_B,
-        directory: FP_FACET,
+        [ATOMIC_FACET]: asFingerprint(CA_B),
+        directory: asFingerprint(FP_FACET),
       }),
     },
   ];
@@ -124,13 +123,13 @@ test("a facet subscription pins the producer's per-facet fingerprint, not the at
 
 test("ignores edges that belong to other subscribers", () => {
   const edges: TopologyEdge[] = [
-    { subscriber: "other", producer: "incidents", facet: ATOMIC_FACET },
-    { subscriber: "briefing", producer: "incidents", facet: ATOMIC_FACET },
+    { subscriber: asNodeId("other"), producer: asNodeId("incidents"), facet: ATOMIC_FACET },
+    { subscriber: asNodeId("briefing"), producer: asNodeId("incidents"), facet: ATOMIC_FACET },
   ];
   const waking: WakingReceipt[] = [
     {
       ref: CA_A,
-      receipt: makeReceipt("incidents", { [ATOMIC_FACET]: FP_PUBLISHED }),
+      receipt: makeReceipt("incidents", { [ATOMIC_FACET]: asFingerprint(FP_PUBLISHED) }),
     },
   ];
 
@@ -155,7 +154,7 @@ test("self-driven and external wakes resolve uniformly (every wake is a receipt)
     [
       {
         ref: CA_A,
-        receipt: makeReceipt("scheduler", { [ATOMIC_FACET]: FP_PUBLISHED }),
+        receipt: makeReceipt("scheduler", { [ATOMIC_FACET]: asFingerprint(FP_PUBLISHED) }),
       },
     ],
   );
@@ -166,12 +165,12 @@ test("self-driven and external wakes resolve uniformly (every wake is a receipt)
 
 test("uses a supplied location map when the store provides concrete artifact paths", () => {
   const edges: TopologyEdge[] = [
-    { subscriber: "briefing", producer: "incidents", facet: ATOMIC_FACET },
+    { subscriber: asNodeId("briefing"), producer: asNodeId("incidents"), facet: ATOMIC_FACET },
   ];
   const waking: WakingReceipt[] = [
     {
       ref: CA_A,
-      receipt: makeReceipt("incidents", { [ATOMIC_FACET]: FP_PUBLISHED }),
+      receipt: makeReceipt("incidents", { [ATOMIC_FACET]: asFingerprint(FP_PUBLISHED) }),
     },
   ];
 
@@ -188,7 +187,7 @@ test("uses a supplied location map when the store provides concrete artifact pat
 
 test("throws when a subscribed edge has no waking receipt (topology invariant)", () => {
   const edges: TopologyEdge[] = [
-    { subscriber: "briefing", producer: "incidents", facet: ATOMIC_FACET },
+    { subscriber: asNodeId("briefing"), producer: asNodeId("incidents"), facet: ATOMIC_FACET },
   ];
 
   throws(
@@ -205,13 +204,13 @@ test("throws when a subscribed edge has no waking receipt (topology invariant)",
 
 test("throws when the producer published no fingerprint for the required facet", () => {
   const edges: TopologyEdge[] = [
-    { subscriber: "briefing", producer: "owners", facet: "directory" },
+    { subscriber: asNodeId("briefing"), producer: asNodeId("owners"), facet: asFacet("directory") },
   ];
   const waking: WakingReceipt[] = [
     {
       ref: CA_B,
       // No `directory` facet published.
-      receipt: makeReceipt("owners", { [ATOMIC_FACET]: CA_B }),
+      receipt: makeReceipt("owners", { [ATOMIC_FACET]: asFingerprint(CA_B) }),
     },
   ];
 
@@ -231,11 +230,11 @@ test("throws on ambiguous waking receipts for one producer", () => {
   const waking: WakingReceipt[] = [
     {
       ref: CA_A,
-      receipt: makeReceipt("incidents", { [ATOMIC_FACET]: FP_PUBLISHED }),
+      receipt: makeReceipt("incidents", { [ATOMIC_FACET]: asFingerprint(FP_PUBLISHED) }),
     },
     {
       ref: CA_B,
-      receipt: makeReceipt("incidents", { [ATOMIC_FACET]: CA_B }),
+      receipt: makeReceipt("incidents", { [ATOMIC_FACET]: asFingerprint(CA_B) }),
     },
   ];
 
@@ -243,7 +242,7 @@ test("throws on ambiguous waking receipts for one producer", () => {
     () =>
       resolveEvidenceByReference(
         "briefing",
-        [{ subscriber: "briefing", producer: "incidents", facet: ATOMIC_FACET }],
+        [{ subscriber: asNodeId("briefing"), producer: asNodeId("incidents"), facet: ATOMIC_FACET }],
         { source: "input", refs: [CA_A, CA_B] },
         waking,
       ),
@@ -253,18 +252,18 @@ test("throws on ambiguous waking receipts for one producer", () => {
 
 test("readPublishedFacetFingerprint + atomicFingerprintOf read the published map", () => {
   const fps: FingerprintMap = {
-    [ATOMIC_FACET]: FP_PUBLISHED,
-    directory: FP_FACET,
+    [ATOMIC_FACET]: asFingerprint(FP_PUBLISHED),
+    directory: asFingerprint(FP_FACET),
   };
-  equal(readPublishedFacetFingerprint(fps, "directory"), FP_FACET);
-  equal(readPublishedFacetFingerprint(fps, "missing"), undefined);
+  equal(readPublishedFacetFingerprint(fps, asFacet("directory")), FP_FACET);
+  equal(readPublishedFacetFingerprint(fps, asFacet("missing")), undefined);
   equal(atomicFingerprintOf(fps), FP_PUBLISHED);
 });
 
 function makeReceipt(node: string, fingerprints: FingerprintMap): Receipt {
   return {
-    node,
-    contract_fingerprint: CA_A,
+    node: asNodeId(node),
+    contract_fingerprint: asFingerprint(CA_A),
     wake: { source: "input", refs: [] },
     input_fingerprints: [],
     fingerprints,

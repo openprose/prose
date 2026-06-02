@@ -78,8 +78,7 @@ import {
   type TopologyWorldModel,
   type TopologyNode,
   type TopologyEdge,
-  type ReconcilerTopology,
-} from "@openprose/reactor/internals";
+  type ReconcilerTopology, asFacet, asFingerprint, asNodeId} from "@openprose/reactor/internals";
 
 import { materialFingerprint, readJson } from "./_fixture-shared";
 
@@ -137,19 +136,19 @@ const MERGE_GATE = "gate.merge";
 
 // One facet per package on the gateway — the dark-lane boundary.
 const PKG_FACET: Record<Pkg, Facet> = {
-  "pkg-core": "pkg-core",
-  "pkg-ui": "pkg-ui",
-  "pkg-api": "pkg-api",
-  "pkg-utils": "pkg-utils",
-  "pkg-auth": "pkg-auth",
-  "pkg-billing": "pkg-billing",
+  "pkg-core": asFacet("pkg-core"),
+  "pkg-ui": asFacet("pkg-ui"),
+  "pkg-api": asFacet("pkg-api"),
+  "pkg-utils": asFacet("pkg-utils"),
+  "pkg-auth": asFacet("pkg-auth"),
+  "pkg-billing": asFacet("pkg-billing"),
 };
 
 // The compiled-output facet that build.pkg-core exposes to its dependents'
 // builds. It moves ONLY when the core build's compiled artifact changes — so a
 // pkg-core source change fans out, but a pkg-ui change (which doesn't touch
 // core) leaves it byte-identical and the fan-out stays asleep.
-const CORE_OUT_FACET: Facet = "core-dist";
+const CORE_OUT_FACET = asFacet("core-dist");
 
 // ---------------------------------------------------------------------------
 // Friendly labels for the SPA (nodeId → human label). Load-bearing for the
@@ -158,7 +157,7 @@ const CORE_OUT_FACET: Facet = "core-dist";
 
 const LABELS: Record<string, string> = {
   [SOURCE]: "Working Tree",
-  [GATEWAY]: "Workspace",
+  [GATEWAY]: asFingerprint("Workspace"),
   [BUILD["pkg-core"]]: "build · pkg-core",
   [BUILD["pkg-ui"]]: "build · pkg-ui",
   [BUILD["pkg-api"]]: "build · pkg-api",
@@ -266,7 +265,7 @@ function commit(world: unknown, cost: Cost): RenderProduct {
 // ---------------------------------------------------------------------------
 
 const atomicTruth = (fm: WorldModelFiles) => ({
-  [ATOMIC_FACET]: fingerprintArtifact(fm),
+  [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(fm)),
 });
 
 // The ingress source exposes one facet per package — the fingerprint of ONLY
@@ -276,7 +275,7 @@ const ingressCanon = (fm: WorldModelFiles) => {
   const bytes = fm["repo.json"];
   const repo: Partial<Repo> =
     bytes === undefined ? {} : (JSON.parse(readTextFile(bytes)) as Repo);
-  const out: Record<string, Fingerprint> = { [ATOMIC_FACET]: fingerprintArtifact(fm) };
+  const out: Record<string, Fingerprint> = { [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(fm)) };
   for (const pkg of PACKAGES) {
     out[PKG_FACET[pkg]] = materialFingerprint(repo[pkg] ?? null);
   }
@@ -290,7 +289,7 @@ const ingressCanon = (fm: WorldModelFiles) => {
 const gatewayCanon = (fm: WorldModelFiles) => {
   const t = readTruth(fm);
   const packages = (t["packages"] ?? {}) as Record<string, unknown>;
-  const out: Record<string, Fingerprint> = { [ATOMIC_FACET]: fingerprintArtifact(fm) };
+  const out: Record<string, Fingerprint> = { [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(fm)) };
   for (const pkg of PACKAGES) {
     out[PKG_FACET[pkg]] = materialFingerprint(packages[pkg] ?? null);
   }
@@ -304,8 +303,8 @@ const gatewayCanon = (fm: WorldModelFiles) => {
 const coreBuildCanon = (fm: WorldModelFiles) => {
   const t = readTruth(fm);
   return {
-    [ATOMIC_FACET]: fingerprintArtifact(fm),
-    [CORE_OUT_FACET]: materialFingerprint(t["dist"] ?? null),
+    [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(fm)),
+    [CORE_OUT_FACET]: asFingerprint(materialFingerprint(t["dist"] ?? null)),
   };
 };
 
@@ -503,18 +502,18 @@ function buildReconcilerTopology(decls: readonly NodeDecl[]): ReconcilerTopology
   for (const d of decls) contract_fingerprints[d.id] = contractFingerprint(d);
 
   const nodes: TopologyNode[] = decls.map((d) => ({
-    node: d.id,
+    node: asNodeId(d.id),
     contract_fingerprint: contract_fingerprints[d.id]!,
     wake_source: (d.kind === "gateway" ? "external" : "input") as WakeSource,
   }));
   const edges: TopologyEdge[] = decls.flatMap((d) =>
     d.requires.map((r) => ({
-      subscriber: d.id,
-      producer: r.producer,
+      subscriber: asNodeId(d.id),
+      producer: asNodeId(r.producer),
       facet: r.facet ?? ATOMIC_FACET,
     })),
   );
-  const entry_points = decls.filter((d) => d.kind === "gateway").map((d) => d.id);
+  const entry_points = decls.filter((d) => d.kind === "gateway").map((d) => asNodeId(d.id));
   const declared = new Set(decls.map((d) => d.id));
   const topology: TopologyWorldModel = {
     nodes,
@@ -676,8 +675,8 @@ export function generateMonorepoCiFixture(opts: GenerateOptions): GenerateResult
     const prevRef = prev !== null ? ledger.addressOf(prev) : null;
     const wake: Wake = { source: "external", refs: [] };
     ledger.append({
-      node: SOURCE,
-      contract_fingerprint: `contract:${SOURCE}@ingress`,
+      node: asNodeId(SOURCE),
+      contract_fingerprint: asFingerprint(`contract:${SOURCE}@ingress`),
       wake,
       input_fingerprints: [],
       fingerprints: commitRes.fingerprints,

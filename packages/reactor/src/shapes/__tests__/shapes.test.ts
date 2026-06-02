@@ -1,3 +1,4 @@
+import { asFacet, asFingerprint, asNodeId } from "../../shapes";
 import { deepEqual, equal, ok, throws } from "node:assert/strict";
 import { test } from "node:test";
 
@@ -13,7 +14,7 @@ import {
 } from "../index";
 
 test("memo key is exactly (contract_fingerprint, input_fingerprints)", () => {
-  const key = makeMemoKey("contract:abc", ["fp:1", "fp:2"]);
+  const key = makeMemoKey(asFingerprint("contract:abc"), [asFingerprint("fp:1"), asFingerprint("fp:2")]);
 
   deepEqual(Object.keys(key).sort(), [
     "contract_fingerprint",
@@ -25,16 +26,16 @@ test("memo key is exactly (contract_fingerprint, input_fingerprints)", () => {
 
 test("memo key copies the input tuple so callers cannot mutate it after construction", () => {
   const inputs = ["fp:1"];
-  const key = makeMemoKey("contract:abc", inputs);
+  const key = makeMemoKey(asFingerprint("contract:abc"), inputs);
   inputs.push("fp:2");
   deepEqual([...key.input_fingerprints], ["fp:1"]);
   throws(() => {
-    (key.input_fingerprints as string[]).push("fp:3");
+    (key.input_fingerprints as unknown as string[]).push("fp:3");
   });
 });
 
 test("the no-facet case is the singleton atomic map", () => {
-  const fingerprints: FingerprintMap = { [ATOMIC_FACET]: "fp:whole" };
+  const fingerprints: FingerprintMap = { [ATOMIC_FACET]: asFingerprint("fp:whole") };
   deepEqual(Object.keys(fingerprints), [ATOMIC_FACET]);
   ok(ATOMIC_FACET in fingerprints);
 });
@@ -47,11 +48,11 @@ test("the null signer is the only honest v1 signature state", () => {
 
 test("a rendered receipt carries fingerprints, a chain pointer, and surprise cost", () => {
   const receipt: Receipt = {
-    node: "responsibility.competitor-activity",
-    contract_fingerprint: "contract:v1",
+    node: asNodeId("responsibility.competitor-activity"),
+    contract_fingerprint: asFingerprint("contract:v1"),
     wake: { source: "input", refs: [`sha256:${"a".repeat(64)}` as const] },
-    input_fingerprints: ["fp:funding"],
-    fingerprints: { [ATOMIC_FACET]: "fp:whole", funding: "fp:funding-new" },
+    input_fingerprints: [asFingerprint("fp:funding")],
+    fingerprints: { [ATOMIC_FACET]: asFingerprint("fp:whole"), funding: asFingerprint("fp:funding-new") },
     semantic_diff: { moved: ["funding"] },
     prev: null,
     status: "rendered",
@@ -78,43 +79,43 @@ test("the compile-phase IR carries topology + canonicalizers + validators", () =
     topology: {
       nodes: [
         {
-          node: "gateway.funding-feed",
-          contract_fingerprint: "contract:gw",
+          node: asNodeId("gateway.funding-feed"),
+          contract_fingerprint: asFingerprint("contract:gw"),
           wake_source: "external",
         },
         {
-          node: "responsibility.competitor-activity",
-          contract_fingerprint: "contract:resp",
+          node: asNodeId("responsibility.competitor-activity"),
+          contract_fingerprint: asFingerprint("contract:resp"),
           wake_source: "input",
         },
       ],
       edges: [
         {
-          subscriber: "responsibility.competitor-activity",
-          producer: "gateway.funding-feed",
+          subscriber: asNodeId("responsibility.competitor-activity"),
+          producer: asNodeId("gateway.funding-feed"),
           facet: ATOMIC_FACET,
         },
       ],
-      entry_points: ["gateway.funding-feed"],
+      entry_points: [asNodeId("gateway.funding-feed")],
       acyclic: true,
     },
     canonicalizers: [
       {
-        node: "responsibility.competitor-activity",
+        node: asNodeId("responsibility.competitor-activity"),
         artifact: "canonicalizers/competitor-activity.js",
-        facets: [ATOMIC_FACET, "funding"],
+        facets: [ATOMIC_FACET, asFacet("funding")],
       },
     ],
     postconditions: [
       {
-        node: "responsibility.competitor-activity",
+        node: asNodeId("responsibility.competitor-activity"),
         artifact: "validators/competitor-activity.js",
         mode: "deterministic",
       },
     ],
     contract_fingerprints: {
-      "gateway.funding-feed": "contract:gw",
-      "responsibility.competitor-activity": "contract:resp",
+      "gateway.funding-feed": asFingerprint("contract:gw"),
+      "responsibility.competitor-activity": asFingerprint("contract:resp"),
     },
   };
 
@@ -134,43 +135,43 @@ test("the compile-phase IR survives the harness seam JSON round-trip structurall
     topology: {
       nodes: [
         {
-          node: "gateway.funding-feed",
-          contract_fingerprint: "contract:gw",
+          node: asNodeId("gateway.funding-feed"),
+          contract_fingerprint: asFingerprint("contract:gw"),
           wake_source: "external",
         },
         {
-          node: "responsibility.competitor-activity",
-          contract_fingerprint: "contract:resp",
+          node: asNodeId("responsibility.competitor-activity"),
+          contract_fingerprint: asFingerprint("contract:resp"),
           wake_source: "input",
         },
       ],
       edges: [
         {
-          subscriber: "responsibility.competitor-activity",
-          producer: "gateway.funding-feed",
-          facet: "funding",
+          subscriber: asNodeId("responsibility.competitor-activity"),
+          producer: asNodeId("gateway.funding-feed"),
+          facet: asFacet("funding"),
         },
       ],
-      entry_points: ["gateway.funding-feed"],
+      entry_points: [asNodeId("gateway.funding-feed")],
       acyclic: true,
     },
     canonicalizers: [
       {
-        node: "responsibility.competitor-activity",
+        node: asNodeId("responsibility.competitor-activity"),
         artifact: "canonicalizers/competitor-activity.js",
-        facets: [ATOMIC_FACET, "funding"],
+        facets: [ATOMIC_FACET, asFacet("funding")],
       },
     ],
     postconditions: [
       {
-        node: "responsibility.competitor-activity",
+        node: asNodeId("responsibility.competitor-activity"),
         artifact: "validators/competitor-activity.js",
         mode: "deterministic",
       },
     ],
     contract_fingerprints: {
-      "gateway.funding-feed": "contract:gw",
-      "responsibility.competitor-activity": "contract:resp",
+      "gateway.funding-feed": asFingerprint("contract:gw"),
+      "responsibility.competitor-activity": asFingerprint("contract:resp"),
     },
   };
 

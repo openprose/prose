@@ -9,7 +9,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 
-import { ATOMIC_FACET } from "../../shapes";
+import { ATOMIC_FACET, asFingerprint, asNodeId} from "../../shapes";
 import {
   jsonFile,
   files,
@@ -29,23 +29,23 @@ const SUBSCRIBER = "responsibility.renewal-watch";
 // Fingerprint only the material `status` so "moved vs unmoved" is deterministic.
 const statusCanon: Canonicalizer = (wm) => {
   const parsed = JSON.parse(readTextFile(wm["t.json"] as Uint8Array));
-  return { [ATOMIC_FACET]: `status:${parsed.status}` };
+  return { [ATOMIC_FACET]: asFingerprint(`status:${parsed.status}`) };
 };
 
 function topology(): ReconcilerTopology {
   return {
     topology: {
       nodes: [
-        { node: PRODUCER, contract_fingerprint: "c:producer@1", wake_source: "external" },
-        { node: SUBSCRIBER, contract_fingerprint: "c:subscriber@1", wake_source: "input" },
+        { node: asNodeId(PRODUCER), contract_fingerprint: asFingerprint("c:producer@1"), wake_source: "external" },
+        { node: asNodeId(SUBSCRIBER), contract_fingerprint: asFingerprint("c:subscriber@1"), wake_source: "input" },
       ],
-      edges: [{ subscriber: SUBSCRIBER, producer: PRODUCER, facet: ATOMIC_FACET }],
-      entry_points: [PRODUCER],
+      edges: [{ subscriber: asNodeId(SUBSCRIBER), producer: asNodeId(PRODUCER), facet: ATOMIC_FACET }],
+      entry_points: [asNodeId(PRODUCER)],
       acyclic: true,
     },
     contract_fingerprints: {
-      [PRODUCER]: "c:producer@1",
-      [SUBSCRIBER]: "c:subscriber@1",
+      [PRODUCER]: asFingerprint("c:producer@1"),
+      [SUBSCRIBER]: asFingerprint("c:subscriber@1"),
     },
   };
 }
@@ -114,7 +114,7 @@ test("boot cold-miss sweep renders the source AND propagates to the subscriber",
     deepEqual(sub?.receipt?.input_fingerprints, ["status:active"]);
 
     // The durable substrates hold the committed truth + the receipt trail.
-    deepEqual(reactor.store.publishedFingerprints(PRODUCER), { [ATOMIC_FACET]: "status:active" });
+    deepEqual(reactor.store.publishedFingerprints(PRODUCER), { [ATOMIC_FACET]: asFingerprint("status:active") });
     ok(reactor.ledger.all().length >= 2);
   } finally {
     rmSync(d.wm, { recursive: true, force: true });
@@ -222,10 +222,10 @@ test("RESTART after an EDITED source contract re-renders the moved node + propag
       topology: {
         ...editedTopo.topology,
         nodes: editedTopo.topology.nodes.map((n) =>
-          n.node === PRODUCER ? { ...n, contract_fingerprint: "c:producer@2" } : n,
+          n.node === PRODUCER ? { ...n, contract_fingerprint: asFingerprint("c:producer@2") } : n,
         ),
       },
-      contract_fingerprints: { ...editedTopo.contract_fingerprints, [PRODUCER]: "c:producer@2" },
+      contract_fingerprints: { ...editedTopo.contract_fingerprints, [PRODUCER]: asFingerprint("c:producer@2") },
     };
     const p2 = { n: 0 };
     const s2 = { n: 0 };
@@ -249,7 +249,7 @@ test("RESTART after an EDITED source contract re-renders the moved node + propag
     equal(sub?.disposition, "rendered");
     equal(p2.n, 1);
     equal(s2.n, 1);
-    deepEqual(second.store.publishedFingerprints(PRODUCER), { [ATOMIC_FACET]: "status:churned" });
+    deepEqual(second.store.publishedFingerprints(PRODUCER), { [ATOMIC_FACET]: asFingerprint("status:churned") });
     deepEqual(sub?.receipt?.input_fingerprints, ["status:churned"]);
   } finally {
     rmSync(d.wm, { recursive: true, force: true });

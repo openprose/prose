@@ -23,6 +23,8 @@
 
 import {
   ATOMIC_FACET,
+  asFingerprint,
+  asNodeId,
   type ContentAddress,
   type FingerprintMap,
   type WorldModelCommit,
@@ -61,7 +63,7 @@ export type Canonicalizer = (files: WorldModelFiles) => FingerprintMap;
  * mandatory"; SHAPES.md §1 L39 "the no-facet case is the singleton map").
  */
 export const atomicCanonicalizer: Canonicalizer = (files) => {
-  return { [ATOMIC_FACET]: fingerprintArtifact(files) };
+  return { [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(files)) };
 };
 
 // The store organizes bytes and applies the handed canonicalizer on commit; it
@@ -165,7 +167,7 @@ export class InMemoryWorldModelStore implements WorldModelStore {
     assertNode(node);
     if (workspace === "workspace") {
       return {
-        node,
+        node: asNodeId(node),
         workspace,
         location: workspaceLocation(node),
         version: null,
@@ -173,7 +175,7 @@ export class InMemoryWorldModelStore implements WorldModelStore {
     }
     const entry = this.#published.get(node);
     return {
-      node,
+      node: asNodeId(node),
       workspace: "published",
       location: publishedLocation(node),
       version: entry ? entry.version : null,
@@ -200,7 +202,7 @@ export class InMemoryWorldModelStore implements WorldModelStore {
     const frozen = freezeFiles(files);
     this.#workspace.set(node, frozen);
     return {
-      node,
+      node: asNodeId(node),
       workspace: "workspace",
       location: workspaceLocation(node),
       version: null,
@@ -229,7 +231,7 @@ export class InMemoryWorldModelStore implements WorldModelStore {
     }
     history.set(version, frozen);
 
-    return { node, version, fingerprints };
+    return { node: asNodeId(node), version, fingerprints };
   }
 
   readVersion(node: string, version: ContentAddress): WorldModelRead | null {
@@ -240,7 +242,7 @@ export class InMemoryWorldModelStore implements WorldModelStore {
     }
     return {
       ref: {
-        node,
+        node: asNodeId(node),
         workspace: "published",
         location: publishedLocation(node),
         version,
@@ -274,7 +276,7 @@ const EMPTY_FILES: WorldModelFiles = Object.freeze({});
  * (architecture.md §8 L335–L337).
  */
 export const COLD_START_FINGERPRINTS: FingerprintMap = Object.freeze({
-  [ATOMIC_FACET]: fingerprintArtifact(EMPTY_FILES),
+  [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(EMPTY_FILES)),
 });
 
 function freezeFiles(files: WorldModelFiles): WorldModelFiles {

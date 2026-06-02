@@ -4,6 +4,7 @@ import { test } from "node:test";
 import {
   ATOMIC_FACET,
   EMPTY_SEMANTIC_DIFF,
+  asFingerprint,
   createNullSignature,
 } from "../../shapes/index";
 import {
@@ -97,7 +98,7 @@ test("content hash is deterministic and sha256 over the canonical form", () => {
 test("a moved fingerprint changes the content hash", () => {
   const base = createReceipt(makeReceiptInput());
   const moved = createReceipt(
-    makeReceiptInput({ fingerprints: { [ATOMIC_FACET]: "fp:atomic:v2" } }),
+    makeReceiptInput({ fingerprints: { [ATOMIC_FACET]: asFingerprint("fp:atomic:v2") } }),
   );
   ok(base.content_hash !== moved.content_hash);
 });
@@ -233,7 +234,7 @@ test("prev chains the node-scoped ledger", () => {
   const second = createReceipt(
     makeReceiptInput({
       prev: first.content_hash,
-      fingerprints: { [ATOMIC_FACET]: "fp:atomic:v2" },
+      fingerprints: { [ATOMIC_FACET]: asFingerprint("fp:atomic:v2") },
     }),
   );
 

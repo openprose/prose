@@ -29,6 +29,7 @@ import {
   type ReceiptSignature,
   type ReceiptStatus,
   type SemanticDiff,
+  type Unbrand,
   type Wake,
   type WakeSource,
 } from "../shapes/index";
@@ -60,10 +61,12 @@ export interface LedgerReceipt extends Receipt {
 export type ReceiptHashPayload = Omit<LedgerReceipt, "content_hash">;
 
 /**
- * The caller-supplied body — exactly the canonical `Receipt` fields. The
- * envelope (schema, hash_algorithm, content_hash) is stamped by createReceipt.
+ * The caller-supplied body — exactly the canonical `Receipt` fields, with the
+ * branded identity leaves loosened to plain `string` for authoring (decision #2:
+ * input positions accept strings). `createReceipt` brands them into the returned
+ * hard-typed {@link LedgerReceipt}.
  */
-export type ReceiptInput = Receipt;
+export type ReceiptInput = Unbrand<Receipt>;
 
 const WAKE_SOURCES = new Set<WakeSource>(["input", "self", "external"]);
 const RECEIPT_STATUSES = new Set<ReceiptStatus>([
@@ -85,19 +88,23 @@ const CONTENT_ADDRESS_PATTERN = /^sha256:[a-f0-9]{64}$/;
  * a valid ideal receipt.
  */
 export function createReceipt(input: ReceiptInput): LedgerReceipt {
+  // The input loosens the branded identity leaves to plain strings (decision #2);
+  // brand them back into the canonical Receipt body here at the construction
+  // boundary. The brand is a runtime no-op — the values are already canonical.
+  const body = input as unknown as Receipt;
   const payload: ReceiptHashPayload = {
     schema: RECEIPT_SCHEMA,
     hash_algorithm: RECEIPT_HASH_ALGORITHM,
-    node: input.node,
-    contract_fingerprint: input.contract_fingerprint,
-    wake: input.wake,
-    input_fingerprints: input.input_fingerprints,
-    fingerprints: input.fingerprints,
-    semantic_diff: input.semantic_diff,
-    prev: input.prev,
-    status: input.status,
-    cost: input.cost,
-    sig: input.sig,
+    node: body.node,
+    contract_fingerprint: body.contract_fingerprint,
+    wake: body.wake,
+    input_fingerprints: body.input_fingerprints,
+    fingerprints: body.fingerprints,
+    semantic_diff: body.semantic_diff,
+    prev: body.prev,
+    status: body.status,
+    cost: body.cost,
+    sig: body.sig,
   };
 
   const receipt: LedgerReceipt = {
@@ -122,10 +129,10 @@ export function createReceipt(input: ReceiptInput): LedgerReceipt {
  */
 export function createSkippedReceipt(params: {
   readonly node: string;
-  readonly contract_fingerprint: Fingerprint;
+  readonly contract_fingerprint: string;
   readonly wake: Wake;
-  readonly input_fingerprints: InputFingerprints;
-  readonly fingerprints: FingerprintMap;
+  readonly input_fingerprints: Unbrand<InputFingerprints>;
+  readonly fingerprints: Unbrand<FingerprintMap>;
   readonly prev: ContentAddress | null;
   readonly cost?: Cost;
   readonly sig?: ReceiptSignature;

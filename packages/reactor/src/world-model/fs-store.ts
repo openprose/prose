@@ -58,6 +58,7 @@ import {
 import { join } from "node:path";
 
 import {
+  asNodeId,
   type ContentAddress,
   type FingerprintMap,
   type WorldModelCommit,
@@ -114,7 +115,7 @@ export class FileSystemWorldModelStore implements WorldModelStore {
     assertNode(node);
     if (workspace === "workspace") {
       return {
-        node,
+        node: asNodeId(node),
         workspace,
         location: this.#workspaceFile(node),
         version: null,
@@ -122,7 +123,7 @@ export class FileSystemWorldModelStore implements WorldModelStore {
     }
     const pointer = this.#readPublishedPointer(node);
     return {
-      node,
+      node: asNodeId(node),
       workspace: "published",
       location: this.#publishedLocation(node),
       version: pointer ? pointer.version : null,
@@ -155,7 +156,7 @@ export class FileSystemWorldModelStore implements WorldModelStore {
     this.#ensureNodeDir(node);
     atomicWrite(this.#workspaceFile(node), bytes);
     return {
-      node,
+      node: asNodeId(node),
       workspace: "workspace",
       location: this.#workspaceFile(node),
       version: null,
@@ -190,7 +191,7 @@ export class FileSystemWorldModelStore implements WorldModelStore {
     }
     this.#writePublishedPointer(node, { version, fingerprints });
 
-    return { node, version, fingerprints };
+    return { node: asNodeId(node), version, fingerprints };
   }
 
   readVersion(node: string, version: ContentAddress): WorldModelRead | null {
@@ -201,7 +202,7 @@ export class FileSystemWorldModelStore implements WorldModelStore {
     }
     return {
       ref: {
-        node,
+        node: asNodeId(node),
         workspace: "published",
         location: this.#publishedLocation(node),
         version,

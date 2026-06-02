@@ -32,6 +32,7 @@
 // ⇒ the devtools replays the same animation every time.
 
 import { createHash } from "node:crypto";
+import { asFacet, asFingerprint, asNodeId } from "@openprose/reactor/internals";
 import { mkdirSync, writeFileSync, rmSync, existsSync } from "node:fs";
 import { join } from "node:path";
 
@@ -101,10 +102,10 @@ const CRITICS = [CRITIC_STRONG, CRITIC_WEAK] as const;
 const SYNTHESIZER = "responsibility.insight-synthesizer";
 const AUDITOR = "responsibility.diversity-auditor";
 
-const LEDGER_FACET: Facet = "ledger";
-const INBOX_FACET: Facet = "inbox";
-const VIEW_E1: Facet = "view_e1";
-const VIEW_E2: Facet = "view_e2";
+const LEDGER_FACET = asFacet("ledger");
+const INBOX_FACET = asFacet("inbox");
+const VIEW_E1 = asFacet("view_e1");
+const VIEW_E2 = asFacet("view_e2");
 
 const MASK_SEED = 1729;
 
@@ -205,14 +206,14 @@ function commit(world: unknown, cost: Cost): RenderProduct {
 // ---------------------------------------------------------------------------
 
 const atomicTruth = (fm: WorldModelFiles) => ({
-  [ATOMIC_FACET]: fingerprintArtifact(fm),
+  [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(fm)),
 });
 
 const gatewayCanon = (fm: WorldModelFiles) => {
   const t = readTruth(fm);
   return {
-    [ATOMIC_FACET]: fingerprintArtifact(fm),
-    [LEDGER_FACET]: materialFingerprint(t["items"] ?? []),
+    [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(fm)),
+    [LEDGER_FACET]: asFingerprint(materialFingerprint(t["items"] ?? [])),
   };
 };
 
@@ -220,8 +221,8 @@ const ingressCanon = (fm: WorldModelFiles) => {
   const bytes = fm["inbox.json"];
   const inbox = bytes === undefined ? [] : JSON.parse(readTextFile(bytes));
   return {
-    [ATOMIC_FACET]: fingerprintArtifact(fm),
-    [INBOX_FACET]: materialFingerprint(inbox),
+    [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(fm)),
+    [INBOX_FACET]: asFingerprint(materialFingerprint(inbox)),
   };
 };
 
@@ -232,9 +233,9 @@ const maskerCanon = (fm: WorldModelFiles) => {
   const t = readTruth(fm);
   const views = (t["views"] ?? {}) as Record<string, MaskedView>;
   return {
-    [ATOMIC_FACET]: fingerprintArtifact(fm),
-    [VIEW_E1]: materialFingerprint(views[EXPANDER_1]?.visible ?? []),
-    [VIEW_E2]: materialFingerprint(views[EXPANDER_2]?.visible ?? []),
+    [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(fm)),
+    [VIEW_E1]: asFingerprint(materialFingerprint(views[EXPANDER_1]?.visible ?? [])),
+    [VIEW_E2]: asFingerprint(materialFingerprint(views[EXPANDER_2]?.visible ?? [])),
   };
 };
 
@@ -280,7 +281,7 @@ function signalLedgerRender(deps: Deps): Render {
       observed_at: s.id,
     }));
     return commit(
-      { items: ledger, stable_fingerprint: materialFingerprint(ledger) },
+      { items: ledger, stable_fingerprint: asFingerprint(materialFingerprint(ledger)) },
       renderCost(ctx, ledger.length, 1),
     );
   };
@@ -435,18 +436,18 @@ function buildReconcilerTopology(decls: readonly NodeDecl[]): ReconcilerTopology
   for (const d of decls) contract_fingerprints[d.id] = contractFingerprint(d);
 
   const nodes: TopologyNode[] = decls.map((d) => ({
-    node: d.id,
+    node: asNodeId(d.id),
     contract_fingerprint: contract_fingerprints[d.id]!,
     wake_source: (d.kind === "gateway" ? "external" : "input") as WakeSource,
   }));
   const edges: TopologyEdge[] = decls.flatMap((d) =>
     d.requires.map((r) => ({
-      subscriber: d.id,
-      producer: r.producer,
+      subscriber: asNodeId(d.id),
+      producer: asNodeId(r.producer),
       facet: r.facet ?? ATOMIC_FACET,
     })),
   );
-  const entry_points = decls.filter((d) => d.kind === "gateway").map((d) => d.id);
+  const entry_points = decls.filter((d) => d.kind === "gateway").map((d) => asNodeId(d.id));
   const declared = new Set(decls.map((d) => d.id));
   const topology: TopologyWorldModel = {
     nodes,
@@ -631,8 +632,8 @@ export function generateMaskedRelayFixture(opts: GenerateOptions): GenerateResul
     const prevRef = prev !== null ? ledger.addressOf(prev) : null;
     const wake: Wake = { source: "external", refs: [] };
     ledger.append({
-      node: SOURCE,
-      contract_fingerprint: `contract:${SOURCE}@ingress`,
+      node: asNodeId(SOURCE),
+      contract_fingerprint: asFingerprint(`contract:${SOURCE}@ingress`),
       wake,
       input_fingerprints: [],
       fingerprints: commitRes.fingerprints,

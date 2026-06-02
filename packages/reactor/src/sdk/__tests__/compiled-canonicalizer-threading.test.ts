@@ -30,7 +30,7 @@ import {
   atomicOnlySpec,
   type WorldModelValue,
 } from "../../canonicalizer";
-import { ATOMIC_FACET } from "../../shapes";
+import { ATOMIC_FACET, asFingerprint, asNodeId} from "../../shapes";
 import { type ReconcilerTopology } from "../../reactor";
 
 const NODE = "responsibility.vendor-truth";
@@ -64,14 +64,14 @@ test("renderAtom threads the COMPILED canonicalizer: immaterial churn does not m
   const storeA = new InMemoryWorldModelStore();
   const a1 = renderAtom({
     node: NODE,
-    contract_fingerprint: CONTRACT_FP,
+    contract_fingerprint: asFingerprint(CONTRACT_FP),
     canonicalizer,
     store: storeA,
     render: () => renderWith("active", "2026-05-01T00:00:00Z"),
   });
   const a2 = renderAtom({
     node: NODE,
-    contract_fingerprint: CONTRACT_FP,
+    contract_fingerprint: asFingerprint(CONTRACT_FP),
     canonicalizer,
     store: storeA,
     render: () => renderWith("active", "2099-12-31T23:59:59Z"),
@@ -86,14 +86,14 @@ test("renderAtom threads the COMPILED canonicalizer: immaterial churn does not m
   const storeB = new InMemoryWorldModelStore();
   const b1 = renderAtom({
     node: NODE,
-    contract_fingerprint: CONTRACT_FP,
+    contract_fingerprint: asFingerprint(CONTRACT_FP),
     canonicalizer,
     store: storeB,
     render: () => renderWith("active", "2026-05-01T00:00:00Z"),
   });
   const b2 = renderAtom({
     node: NODE,
-    contract_fingerprint: CONTRACT_FP,
+    contract_fingerprint: asFingerprint(CONTRACT_FP),
     canonicalizer,
     store: storeB,
     render: () => renderWith("expired", "2026-05-01T00:00:00Z"),
@@ -152,12 +152,12 @@ test("mountDag threads each node's COMPILED canonicalizer into commitPublished",
 
   const topology: ReconcilerTopology = {
     topology: {
-      nodes: [{ node: NODE, contract_fingerprint: CONTRACT_FP, wake_source: "external" }],
+      nodes: [{ node: asNodeId(NODE), contract_fingerprint: asFingerprint(CONTRACT_FP), wake_source: "external" }],
       edges: [],
-      entry_points: [NODE],
+      entry_points: [asNodeId(NODE)],
       acyclic: true,
     },
-    contract_fingerprints: { [NODE]: CONTRACT_FP },
+    contract_fingerprints: { [NODE]: asFingerprint(CONTRACT_FP) },
   };
 
   const dag = mountDag({

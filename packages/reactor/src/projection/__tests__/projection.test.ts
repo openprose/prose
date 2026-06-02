@@ -1,3 +1,4 @@
+import { asFingerprint, asNodeId, type Fingerprint } from "../../shapes";
 import { deepEqual, equal, ok } from "node:assert/strict";
 import { test } from "node:test";
 
@@ -189,8 +190,7 @@ test("projection failures never echo malformed private receipt data", () => {
   // Tamper with the content_hash so verification fails; attach hostile data.
   const malformed = {
     ...base,
-    content_hash:
-      "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    content_hash: asFingerprint("sha256:0000000000000000000000000000000000000000000000000000000000000000"),
     raw_evidence_payload: { customer_payload: customerPayload },
   };
 
@@ -227,11 +227,13 @@ interface MakeReceiptOptions {
 function makeReceipt(options: MakeReceiptOptions): LedgerReceipt {
   const wakeSource = options.wakeSource ?? "input";
   const input: Receipt = {
-    node: "node.incident-briefing",
-    contract_fingerprint: CONTRACT_FP,
+    node: asNodeId("node.incident-briefing"),
+    contract_fingerprint: asFingerprint(CONTRACT_FP),
     wake: { source: wakeSource, refs: [WAKE_REF] },
-    input_fingerprints: [INPUT_FP],
-    fingerprints: options.fingerprints ?? { "@atomic": ATOMIC_TOKEN },
+    input_fingerprints: [asFingerprint(INPUT_FP)],
+    fingerprints: (options.fingerprints ?? {
+      "@atomic": ATOMIC_TOKEN,
+    }) as Readonly<Record<string, Fingerprint>>,
     semantic_diff: {},
     prev: null,
     status: options.status ?? "rendered",

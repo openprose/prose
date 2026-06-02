@@ -37,6 +37,9 @@ import {
 	type WorldModelStore,
 } from "@openprose/reactor/adapters";
 import {
+	asFacet,
+	asFingerprint,
+	asNodeId,
 	inboundEdges,
 	type AssembledReactor,
 	type AsyncMountedRender,
@@ -135,8 +138,8 @@ export function repositoryIrToTopology(manifest: RepositoryIrV0): ReconcilerTopo
 				if (input.from === "service" && input.sourceNodeId !== undefined) {
 					hasServiceInput = true;
 					edges.push({
-						subscriber: node.id,
-						producer: input.sourceNodeId,
+						subscriber: asNodeId(node.id),
+						producer: asNodeId(input.sourceNodeId),
 						facet: resolveEdgeFacet(input.sourceOutput),
 					});
 				}
@@ -148,7 +151,7 @@ export function repositoryIrToTopology(manifest: RepositoryIrV0): ReconcilerTopo
 			}
 
 			nodes.push({
-				node: node.id,
+				node: asNodeId(node.id),
 				contract_fingerprint: fingerprint,
 				wake_source: deriveWakeSource({
 					hasCallerInput,
@@ -162,7 +165,7 @@ export function repositoryIrToTopology(manifest: RepositoryIrV0): ReconcilerTopo
 	const topology: TopologyWorldModel = {
 		nodes,
 		edges,
-		entry_points: [...entryPoints],
+		entry_points: [...entryPoints].map(asNodeId),
 		acyclic: isAcyclicByExecutionOrder(manifest),
 	};
 
@@ -195,11 +198,13 @@ export function fingerprintNode(node: RepositoryIrFormeNode): Fingerprint {
 		})),
 	};
 	const digest = createHash("sha256").update(JSON.stringify(snapshot)).digest("hex");
-	return `sha256:${digest}`;
+	return asFingerprint(`sha256:${digest}`);
 }
 
 function resolveEdgeFacet(sourceOutput: string | undefined): Facet {
-	return sourceOutput !== undefined && sourceOutput.length > 0 ? sourceOutput : ATOMIC_FACET;
+	return sourceOutput !== undefined && sourceOutput.length > 0
+		? asFacet(sourceOutput)
+		: ATOMIC_FACET;
 }
 
 function deriveWakeSource(options: {

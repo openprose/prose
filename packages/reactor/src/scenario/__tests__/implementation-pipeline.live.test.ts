@@ -50,8 +50,7 @@ import {
   ATOMIC_FACET,
   EMPTY_SEMANTIC_DIFF,
   createNullSignature,
-  type Facet,
-} from "../../shapes";
+  type Facet, type Fingerprint, asFacet, asFingerprint, asNodeId} from "../../shapes";
 import {
   fingerprintArtifact,
   files,
@@ -100,17 +99,17 @@ const INTEGRATION_BUILDER = "responsibility.integration-builder";
 const VERIFICATION_RUNNER = "responsibility.verification-runner";
 const IMPLEMENTATION_REPORT = "responsibility.implementation-report";
 
-const PLAN_INGRESS: Facet = "plan_docs";
-const REPO_INGRESS: Facet = "repo_snapshot";
-const FACET_A: Facet = "facet_a";
-const FACET_B: Facet = "facet_b";
-const FACET_C: Facet = "facet_c";
+const PLAN_INGRESS = asFacet("plan_docs");
+const REPO_INGRESS = asFacet("repo_snapshot");
+const FACET_A = asFacet("facet_a");
+const FACET_B = asFacet("facet_b");
+const FACET_C = asFacet("facet_c");
 const FACET_BY_LANE: Record<string, Facet> = {
   [LANE_A]: FACET_A,
   [LANE_B]: FACET_B,
   [LANE_C]: FACET_C,
 };
-const FOUNDATION_FACET: Facet = "foundation";
+const FOUNDATION_FACET = asFacet("foundation");
 
 const TRUTH = "truth.json";
 const PLAN_FILE = "planning.json";
@@ -157,37 +156,37 @@ function readTruth(fm: WorldModelFiles): Record<string, unknown> {
 }
 
 const atomicTruth: Canonicalizer = (fm) => ({
-  [ATOMIC_FACET]: fingerprintArtifact(fm),
+  [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(fm)),
 });
 
 const planIngressCanon: Canonicalizer = (fm) => {
   const bytes = fm[PLAN_FILE];
   const docs = bytes === undefined ? {} : JSON.parse(readTextFile(bytes));
   return {
-    [ATOMIC_FACET]: fingerprintArtifact(fm),
-    [PLAN_INGRESS]: materialFingerprint(docs),
+    [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(fm)),
+    [PLAN_INGRESS]: asFingerprint(materialFingerprint(docs)),
   };
 };
 const repoIngressCanon: Canonicalizer = (fm) => {
   const bytes = fm[REPO_FILE];
   const snap = bytes === undefined ? {} : JSON.parse(readTextFile(bytes));
   return {
-    [ATOMIC_FACET]: fingerprintArtifact(fm),
-    [REPO_INGRESS]: materialFingerprint(snap),
+    [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(fm)),
+    [REPO_INGRESS]: asFingerprint(materialFingerprint(snap)),
   };
 };
 const planGatewayCanon: Canonicalizer = (fm) => {
   const t = readTruth(fm);
   return {
-    [ATOMIC_FACET]: fingerprintArtifact(fm),
-    [PLAN_INGRESS]: materialFingerprint(t["docs"] ?? {}),
+    [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(fm)),
+    [PLAN_INGRESS]: asFingerprint(materialFingerprint(t["docs"] ?? {})),
   };
 };
 const repoGatewayCanon: Canonicalizer = (fm) => {
   const t = readTruth(fm);
   return {
-    [ATOMIC_FACET]: fingerprintArtifact(fm),
-    [REPO_INGRESS]: materialFingerprint(t["snapshot"] ?? {}),
+    [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(fm)),
+    [REPO_INGRESS]: asFingerprint(materialFingerprint(t["snapshot"] ?? {})),
   };
 };
 
@@ -196,10 +195,10 @@ const workPlanCanon: Canonicalizer = (fm) => {
   const t = readTruth(fm);
   const byLane = (t["lane_assignments"] ?? {}) as Record<string, unknown>;
   return {
-    [ATOMIC_FACET]: fingerprintArtifact(fm),
-    [FACET_A]: materialFingerprint(byLane[LANE_A] ?? []),
-    [FACET_B]: materialFingerprint(byLane[LANE_B] ?? []),
-    [FACET_C]: materialFingerprint(byLane[LANE_C] ?? []),
+    [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(fm)),
+    [FACET_A]: asFingerprint(materialFingerprint(byLane[LANE_A] ?? [])),
+    [FACET_B]: asFingerprint(materialFingerprint(byLane[LANE_B] ?? [])),
+    [FACET_C]: asFingerprint(materialFingerprint(byLane[LANE_C] ?? [])),
   };
 };
 
@@ -207,8 +206,8 @@ const workPlanCanon: Canonicalizer = (fm) => {
 const foundationCanon: Canonicalizer = (fm) => {
   const t = readTruth(fm);
   return {
-    [ATOMIC_FACET]: fingerprintArtifact(fm),
-    [FOUNDATION_FACET]: materialFingerprint(t["shared_shapes"] ?? {}),
+    [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(fm)),
+    [FOUNDATION_FACET]: asFingerprint(materialFingerprint(t["shared_shapes"] ?? {})),
   };
 };
 
@@ -490,25 +489,25 @@ const NODE_SPECS: readonly NodeSpec[] = [
 ];
 
 function pipelineTopology(): ReconcilerTopology {
-  const contract_fingerprints: Record<string, string> = {};
+  const contract_fingerprints: Record<string, Fingerprint> = {};
   for (const s of NODE_SPECS) {
-    contract_fingerprints[s.id] = `contract:${s.id}@live`;
+    contract_fingerprints[s.id] = asFingerprint(`contract:${s.id}@live`);
   }
   return {
     topology: {
       nodes: NODE_SPECS.map((s) => ({
-        node: s.id,
-        contract_fingerprint: contract_fingerprints[s.id] as string,
+        node: asNodeId(s.id),
+        contract_fingerprint: contract_fingerprints[s.id] as Fingerprint,
         wake_source: s.wake,
       })),
       edges: NODE_SPECS.flatMap((s) =>
         s.edges.map((e) => ({
-          subscriber: s.id,
-          producer: e.producer,
+          subscriber: asNodeId(s.id),
+          producer: asNodeId(e.producer),
           facet: e.facet,
         })),
       ),
-      entry_points: [PLANNING_GATEWAY, REPO_GATEWAY],
+      entry_points: [asNodeId(PLANNING_GATEWAY), asNodeId(REPO_GATEWAY)],
       acyclic: true,
     },
     contract_fingerprints,
@@ -528,8 +527,8 @@ function stageIngress(
   const prev = ledger.lastReceipt(source);
   const prevRef = prev !== null ? ledger.addressOf(prev) : null;
   ledger.append({
-    node: source,
-    contract_fingerprint: `contract:${source}@ingress`,
+    node: asNodeId(source),
+    contract_fingerprint: asFingerprint(`contract:${source}@ingress`),
     wake: { source: "external", refs: [] },
     input_fingerprints: [],
     fingerprints: commit.fingerprints,

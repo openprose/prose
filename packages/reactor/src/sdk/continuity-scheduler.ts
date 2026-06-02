@@ -55,7 +55,7 @@ import {
   type ReconcileResult,
   type ReconcilerTopology,
 } from "../reactor";
-import type { Facet, FingerprintMap } from "../shapes";
+import type { Facet, Fingerprint, FingerprintMap } from "../shapes";
 import type { LedgerReceipt } from "../receipt";
 import type { MountedDag } from "./mounted-dag";
 
@@ -418,7 +418,7 @@ function computeNextRecheck(
 
 /** The schedule's per-facet published fingerprints (the unmoved tokens, pre-lapse). */
 function scheduleFingerprints(schedule: ContinuitySchedule): FingerprintMap {
-  const out: Record<Facet, string> = {};
+  const out: Record<string, Fingerprint> = {};
   for (const facet of schedule.facets) {
     out[facet.facet] = facet.fingerprint;
   }

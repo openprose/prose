@@ -28,6 +28,27 @@
  */
 export type ContentAddress = `sha256:${string}`;
 
+// ---------------------------------------------------------------------------
+// Branded identity (decision #2): Fingerprint / NodeId / Facet
+// ---------------------------------------------------------------------------
+//
+// These three identity strings carry a nominal brand so the type checker keeps
+// them apart from arbitrary text. Branding closes two real footguns at compile
+// time — a stray `"*"` facet that would never propagate, and a `Fingerprint`
+// crossed with a node id — and makes every SDK-returned identity self-describing.
+//
+// The boundary rule (decision #2): the SDK *returns* branded values everywhere
+// (so they stay tracked through the engine), but public *input* positions accept
+// plain `string` via {@link NodeIdInput} / {@link FacetInput}, so author literals
+// like `reactor.ingest("scout-desire")` still compile with zero ceremony.
+// `Fingerprint` is branded HARD — consumers never author one, so there is no
+// string-accepting input form; the SDK is the only producer (via the compiled
+// canonicalizer) and brands it with {@link asFingerprint}.
+
+declare const FINGERPRINT_BRAND: unique symbol;
+declare const NODE_ID_BRAND: unique symbol;
+declare const FACET_BRAND: unique symbol;
+
 /**
  * A fingerprint of meaning: a cheaply-computed token that changes if and only
  * if the semantically-relevant content changed (world-model.md §3, "the
@@ -35,11 +56,90 @@ export type ContentAddress = `sha256:${string}`;
  * is a swappable detail. v1 computes it as a `ContentAddress` (sha256 over the
  * canonical serialization produced by the compiled canonicalizer), but the type
  * deliberately admits any string token to keep the convention open.
+ *
+ * Branded HARD: consumers never author a fingerprint — the SDK is the only
+ * producer (the compiled canonicalizer, via {@link asFingerprint}). The brand
+ * makes a hand-rolled fingerprint a compile error.
  */
-export type Fingerprint = string;
+export type Fingerprint = string & { readonly [FINGERPRINT_BRAND]: "Fingerprint" };
 
-/** A named, independently-subscribable part of a node's maintained truth. */
-export type Facet = string;
+/**
+ * A node's identity — the ledger is node-scoped and the topology keys on it.
+ * Branded so SDK-returned ids stay tracked; author literals reach input
+ * positions through {@link NodeIdInput} (which also accepts plain `string`).
+ */
+export type NodeId = string & { readonly [NODE_ID_BRAND]: "NodeId" };
+
+/**
+ * A named, independently-subscribable part of a node's maintained truth.
+ * Branded so a stray non-facet string (e.g. `"*"`) is a compile error; author
+ * literals reach input positions through {@link FacetInput}.
+ */
+export type Facet = string & { readonly [FACET_BRAND]: "Facet" };
+
+/**
+ * The string-friendly INPUT type for a node id. Public input positions accept
+ * either a tracked {@link NodeId} or a plain string literal, so authoring stays
+ * ceremony-free (`reactor.ingest("scout-desire")`). The SDK brands on the way in.
+ */
+export type NodeIdInput = NodeId | string;
+
+/**
+ * The string-friendly INPUT type for a facet. Public input positions accept
+ * either a tracked {@link Facet} or a plain string literal. The SDK brands on
+ * the way in.
+ */
+export type FacetInput = Facet | string;
+
+/**
+ * Brand a raw string as a {@link Fingerprint}. The SOLE producer boundary — the
+ * compiled canonicalizer digest and the receipt/topology builders call this to
+ * mint the tracked token. A no-op at runtime (identity); the value is already
+ * the canonical string.
+ */
+export function asFingerprint(value: string): Fingerprint {
+  return value as Fingerprint;
+}
+
+/**
+ * Brand a raw string (or pass through an already-branded id) as a {@link NodeId}.
+ * Called at the SDK's input boundary so author literals enter the engine tracked.
+ */
+export function asNodeId(value: NodeIdInput): NodeId {
+  return value as NodeId;
+}
+
+/**
+ * Brand a raw string (or pass through an already-branded facet) as a
+ * {@link Facet}. Called at the SDK's input boundary so author literals enter the
+ * engine tracked.
+ */
+export function asFacet(value: FacetInput): Facet {
+  return value as Facet;
+}
+
+/**
+ * The string-friendly INPUT projection of a branded shape (decision #2). Maps the
+ * branded identity leaves ({@link Fingerprint}/{@link NodeId}/{@link Facet}) back
+ * to plain `string` recursively, so a SDK *input* position can be authored from
+ * literals (`{ node: "scout", fingerprints: { "@atomic": "fp-1" } }`) while the
+ * SDK *returns* the hard-branded shape. The builder brands on the way in. A plain
+ * `string` matches none of the brands and is left untouched; `ContentAddress`
+ * (its own template-literal type) is likewise preserved.
+ */
+export type Unbrand<T> = T extends Fingerprint
+  ? string
+  : T extends NodeId
+    ? string
+    : T extends Facet
+      ? string
+      : T extends ContentAddress
+        ? T
+        : T extends readonly (infer E)[]
+          ? readonly Unbrand<E>[]
+          : T extends object
+            ? { readonly [K in keyof T]: Unbrand<T[K]> }
+            : T;
 
 /**
  * The reserved facet name for the whole-truth (atomic) fingerprint. A node that
@@ -47,14 +147,14 @@ export type Facet = string;
  * (architecture.md §6.1: "the atomic fingerprint is the reserved whole-truth
  * facet, so the no-facet case is the singleton map").
  */
-export const ATOMIC_FACET = "@atomic" as const;
+export const ATOMIC_FACET = "@atomic" as "@atomic" & Facet;
 export type AtomicFacet = typeof ATOMIC_FACET;
 
 /**
  * The published-truth fingerprint map: `{ facet → token }`. Always contains
  * `ATOMIC_FACET` (the whole-truth token); declared facets simply add keys.
  */
-export type FingerprintMap = Readonly<Record<Facet, Fingerprint>>;
+export type FingerprintMap = Readonly<Record<string, Fingerprint>>;
 
 /**
  * The subscriber's facet resolver — the single read-half of a `FingerprintMap`
@@ -67,9 +167,9 @@ export type FingerprintMap = Readonly<Record<Facet, Fingerprint>>;
  */
 export function resolveFacetFingerprint(
   fingerprints: FingerprintMap,
-  facet: Facet,
+  facet: FacetInput,
 ): Fingerprint {
-  const direct = fingerprints[facet];
+  const direct = fingerprints[facet as Facet];
   if (direct !== undefined) {
     return direct;
   }
@@ -197,7 +297,7 @@ export type ReceiptStatus = "rendered" | "skipped" | "failed";
  */
 export interface Receipt {
   /** The node's identity; the ledger is node-scoped. */
-  readonly node: string;
+  readonly node: NodeId;
   /** Which contract version produced this receipt. */
   readonly contract_fingerprint: Fingerprint;
   /** The wake's source + reference to the waking receipt(s) or tick. */
@@ -248,7 +348,7 @@ export type WorldModelWorkspaceKind = "published" | "workspace";
  * case).
  */
 export interface WorldModelRef {
-  readonly node: string;
+  readonly node: NodeId;
   readonly workspace: WorldModelWorkspaceKind;
   /** Implementation-defined location (a directory path, an object key, …). */
   readonly location: string;
@@ -268,7 +368,7 @@ export interface WorldModelRef {
  * is the content address of that canonical serialization.
  */
 export interface WorldModelCommit {
-  readonly node: string;
+  readonly node: NodeId;
   readonly version: ContentAddress;
   readonly fingerprints: FingerprintMap;
 }
@@ -290,20 +390,20 @@ export interface TopologyWorldModel {
   /** Resolved subscriptions: subscriber.Requires.<facet> → producer.Maintains.<facet>. */
   readonly edges: readonly TopologyEdge[];
   /** External-driven triggers (gateways) — the system's ingress points. */
-  readonly entry_points: readonly string[];
+  readonly entry_points: readonly NodeId[];
   /** Acyclicity postcondition result (Forme's own `### Maintains`, §3.1). */
   readonly acyclic: boolean;
 }
 
 export interface TopologyNode {
-  readonly node: string;
+  readonly node: NodeId;
   readonly contract_fingerprint: Fingerprint;
   readonly wake_source: WakeSource;
 }
 
 export interface TopologyEdge {
-  readonly subscriber: string;
-  readonly producer: string;
+  readonly subscriber: NodeId;
+  readonly producer: NodeId;
   /** The producer facet the subscriber depends on (ATOMIC_FACET if none declared). */
   readonly facet: Facet;
 }
@@ -316,7 +416,7 @@ export interface TopologyEdge {
  * so the reference resolves to a deterministic artifact, not a model call.
  */
 export interface CanonicalizerRef {
-  readonly node: string;
+  readonly node: NodeId;
   /** Locator for the compiled canonicalizer artifact (path / module id). */
   readonly artifact: string;
   /** The facet boundaries the canonicalizer emits (always includes ATOMIC_FACET). */
@@ -330,7 +430,7 @@ export interface CanonicalizerRef {
  * semantic. The deterministic engine is `cycle/evaluatePredicate`.
  */
 export interface PostconditionValidatorRef {
-  readonly node: string;
+  readonly node: NodeId;
   /** Locator for the compiled validator artifact (path / module id). */
   readonly artifact: string;
   /**
@@ -364,11 +464,11 @@ export interface CompilePhaseIR {
  * fingerprint tuple. No other input is admissible (world-model.md §4).
  */
 export function makeMemoKey(
-  contract_fingerprint: Fingerprint,
-  input_fingerprints: InputFingerprints,
+  contract_fingerprint: string,
+  input_fingerprints: readonly string[],
 ): MemoKey {
   return {
-    contract_fingerprint,
-    input_fingerprints: Object.freeze([...input_fingerprints]),
+    contract_fingerprint: asFingerprint(contract_fingerprint),
+    input_fingerprints: Object.freeze(input_fingerprints.map(asFingerprint)),
   };
 }

@@ -13,7 +13,7 @@
 import { deepEqual, equal, notEqual, ok } from "node:assert/strict";
 import { test } from "node:test";
 
-import { ATOMIC_FACET } from "../../../shapes";
+import { ATOMIC_FACET, asFacet, asFingerprint} from "../../../shapes";
 import {
   atomicCanonicalizer,
   InMemoryWorldModelStore,
@@ -74,8 +74,8 @@ function loadSampleSet(): ContractSet {
 }
 
 const CONTRACT_FPS = {
-  "competitor-monitor": "cf:monitor",
-  "weekly-brief": "cf:brief",
+  "competitor-monitor": asFingerprint("cf:monitor"),
+  "weekly-brief": asFingerprint("cf:brief"),
 };
 
 // The canned Forme session output: the semantic match (names DIFFER — the
@@ -214,7 +214,7 @@ test("compile-session: canonicalizer session → a run-time canonicalizer that d
 
   equal(cost.surprise_cause, "self");
   const canon = compiled.canonicalizer;
-  ok(canon.facets.includes("funding"));
+  ok(canon.facets.includes(asFacet("funding")));
   // the produced canonicalizer is deterministic + drops fetched_at churn
   const a = canon.apply({ funding: ["x"], fetched_at: "t1" });
   const churn = canon.apply({ funding: ["x"], fetched_at: "t2" });

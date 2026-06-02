@@ -17,6 +17,7 @@ import { renderAdapterJson } from "../adapters/json";
 import {
   ATOMIC_FACET,
   EMPTY_SEMANTIC_DIFF,
+  asNodeId,
   type Fingerprint,
   type FingerprintMap,
   type InputFingerprints,
@@ -50,8 +51,8 @@ export type MemoKeyDigest = string;
  * from `../shapes` and validates the two halves are well-formed.
  */
 export function computeMemoKey(
-  contract_fingerprint: Fingerprint,
-  input_fingerprints: InputFingerprints,
+  contract_fingerprint: string,
+  input_fingerprints: readonly string[],
 ): MemoKey {
   assertFingerprint(contract_fingerprint, "contract_fingerprint");
   input_fingerprints.forEach((fp, index) =>
@@ -197,7 +198,7 @@ export function createSkippedReceipt(input: SkippedReceiptInput): Receipt {
   assertFingerprintMap(input.entry.fingerprints);
 
   return {
-    node: input.node,
+    node: asNodeId(input.node),
     contract_fingerprint: input.contract_fingerprint,
     wake: input.wake,
     input_fingerprints: [...input.key.input_fingerprints],

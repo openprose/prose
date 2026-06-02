@@ -8,8 +8,7 @@ import {
   ATOMIC_FACET,
   EMPTY_SEMANTIC_DIFF,
   createNullSignature,
-  type Receipt,
-} from "../../shapes";
+  type Receipt, asFingerprint, asNodeId} from "../../shapes";
 import { renderAdapterJson } from "../json";
 import { createFileSystemStorageAdapter } from "../storage-fs";
 import { createMemoryStorageAdapter } from "../storage-memory";
@@ -166,11 +165,11 @@ function makeRegistry(topologyTag: string): ReactorRuntimeRegistrySnapshot {
 
 function makeReceipt(status: "rendered" | "skipped"): Receipt {
   return {
-    node: "node.release-risk",
-    contract_fingerprint: CONTRACT_FP,
+    node: asNodeId("node.release-risk"),
+    contract_fingerprint: asFingerprint(CONTRACT_FP),
     wake: { source: "input", refs: [CONTRACT_FP as `sha256:${string}`] },
-    input_fingerprints: [ATOMIC_FP],
-    fingerprints: { [ATOMIC_FACET]: ATOMIC_FP },
+    input_fingerprints: [asFingerprint(ATOMIC_FP)],
+    fingerprints: { [ATOMIC_FACET]: asFingerprint(ATOMIC_FP) },
     semantic_diff: status === "skipped" ? EMPTY_SEMANTIC_DIFF : { moved: true },
     prev: null,
     status,

@@ -25,8 +25,7 @@ import {
   type TopologyWorldModel,
   type Wake,
   type WorldModelCommit,
-  type WorldModelRef,
-} from "../../shapes";
+  type WorldModelRef, asFacet, asFingerprint, asNodeId} from "../../shapes";
 import {
   type ReconcilerPorts,
   type ReconcilerTopology,
@@ -50,7 +49,7 @@ const CONTRACT_A = "sha256:" + "a".repeat(64);
 const CONTRACT_B = "sha256:" + "b".repeat(64);
 
 function atomic(token: string): FingerprintMap {
-  return { [ATOMIC_FACET]: token };
+  return { [ATOMIC_FACET]: asFingerprint(token) };
 }
 
 const RENDER_COST: Cost = {
@@ -93,7 +92,7 @@ class FakeLedger {
 
 function fakeWorldModelRef(node: string): WorldModelRef {
   return {
-    node,
+    node: asNodeId(node),
     workspace: "published",
     location: `/wm/${node}`,
     version: null,
@@ -137,7 +136,7 @@ function harness(input: {
         return queued.shift() as RenderOutcome;
       }
       const commit: WorldModelCommit = {
-        node: req.node,
+        node: asNodeId(req.node),
         version: ("sha256:" +
           ("c".repeat(63) + String(renderSeq % 10))) as ContentAddress,
         fingerprints: atomic(`v${renderSeq}`),
@@ -175,14 +174,14 @@ const externalWake: Wake = { source: "external", refs: [] };
 // --------------------------------------------------------------------------
 
 function receiptWith(
-  contract_fingerprint: Fingerprint,
-  input_fingerprints: InputFingerprints,
+  contract_fingerprint: string,
+  input_fingerprints: readonly string[],
 ): Receipt {
   return {
-    node: "n",
-    contract_fingerprint,
+    node: asNodeId("n"),
+    contract_fingerprint: asFingerprint(contract_fingerprint),
     wake: inputWake,
-    input_fingerprints,
+    input_fingerprints: input_fingerprints.map(asFingerprint),
     fingerprints: atomic("x"),
     semantic_diff: {},
     prev: null,
@@ -193,7 +192,7 @@ function receiptWith(
 }
 
 test("memoKeyMoved: unchanged contract + inputs ⇒ not moved (skip)", () => {
-  const last = receiptWith(CONTRACT_A, ["i1", "i2"]);
+  const last = receiptWith(asFingerprint(CONTRACT_A), ["i1", "i2"]);
   equal(
     memoKeyMoved(last, {
       contract_fingerprint: CONTRACT_A,
@@ -204,7 +203,7 @@ test("memoKeyMoved: unchanged contract + inputs ⇒ not moved (skip)", () => {
 });
 
 test("memoKeyMoved: a moved input fingerprint ⇒ moved (render)", () => {
-  const last = receiptWith(CONTRACT_A, ["i1", "i2"]);
+  const last = receiptWith(asFingerprint(CONTRACT_A), ["i1", "i2"]);
   equal(
     memoKeyMoved(last, {
       contract_fingerprint: CONTRACT_A,
@@ -215,7 +214,7 @@ test("memoKeyMoved: a moved input fingerprint ⇒ moved (render)", () => {
 });
 
 test("memoKeyMoved: a moved contract fingerprint ⇒ moved (schema migration = forced render)", () => {
-  const last = receiptWith(CONTRACT_A, ["i1"]);
+  const last = receiptWith(asFingerprint(CONTRACT_A), ["i1"]);
   equal(
     memoKeyMoved(last, {
       contract_fingerprint: CONTRACT_B,
@@ -226,7 +225,7 @@ test("memoKeyMoved: a moved contract fingerprint ⇒ moved (schema migration = f
 });
 
 test("memoKeyMoved: input arity change ⇒ moved", () => {
-  const last = receiptWith(CONTRACT_A, ["i1"]);
+  const last = receiptWith(asFingerprint(CONTRACT_A), ["i1"]);
   equal(
     memoKeyMoved(last, {
       contract_fingerprint: CONTRACT_A,
@@ -241,19 +240,19 @@ test("memoKeyMoved: input arity change ⇒ moved", () => {
 // --------------------------------------------------------------------------
 
 test("movedFacetsBetween: cold start (null prior) moves every published facet", () => {
-  const moved = movedFacetsBetween(null, { [ATOMIC_FACET]: "v1", price: "p1" });
+  const moved = movedFacetsBetween(null, { [ATOMIC_FACET]: asFingerprint("v1"), price: asFingerprint("p1") });
   ok(moved.has(ATOMIC_FACET));
-  ok(moved.has("price"));
+  ok(moved.has(asFacet("price")));
   equal(moved.size, 2);
 });
 
 test("movedFacetsBetween: unchanged facets are not moved", () => {
   const moved = movedFacetsBetween(
-    { [ATOMIC_FACET]: "v1", price: "p1" },
-    { [ATOMIC_FACET]: "v2", price: "p1" },
+    { [ATOMIC_FACET]: asFingerprint("v1"), price: asFingerprint("p1") },
+    { [ATOMIC_FACET]: asFingerprint("v2"), price: asFingerprint("p1") },
   );
   ok(moved.has(ATOMIC_FACET));
-  ok(!moved.has("price"));
+  ok(!moved.has(asFacet("price")));
   equal(moved.size, 1);
 });
 
@@ -265,10 +264,10 @@ test("propagationTargets: only subscribers of a moved facet are woken, once each
   const topology: TopologyWorldModel = {
     nodes: [],
     edges: [
-      { subscriber: "down1", producer: "up", facet: ATOMIC_FACET },
-      { subscriber: "down2", producer: "up", facet: "price" },
-      { subscriber: "down1", producer: "up", facet: "price" },
-      { subscriber: "other", producer: "elsewhere", facet: ATOMIC_FACET },
+      { subscriber: asNodeId("down1"), producer: asNodeId("up"), facet: ATOMIC_FACET },
+      { subscriber: asNodeId("down2"), producer: asNodeId("up"), facet: asFacet("price") },
+      { subscriber: asNodeId("down1"), producer: asNodeId("up"), facet: asFacet("price") },
+      { subscriber: asNodeId("other"), producer: asNodeId("elsewhere"), facet: ATOMIC_FACET },
     ],
     entry_points: [],
     acyclic: true,
@@ -276,7 +275,7 @@ test("propagationTargets: only subscribers of a moved facet are woken, once each
   const targets = propagationTargets({
     topology,
     producer: "up",
-    movedFacets: new Set([ATOMIC_FACET, "price"]),
+    movedFacets: new Set([ATOMIC_FACET, asFacet("price")]),
     wakeRef: ("sha256:" + "9".repeat(64)) as ContentAddress,
   });
   // down1 (atomic + price) woken once; down2 (price) woken; other not woken.
@@ -289,14 +288,14 @@ test("propagationTargets: only subscribers of a moved facet are woken, once each
 test("propagationTargets: a facet with no subscriber propagates to nothing", () => {
   const topology: TopologyWorldModel = {
     nodes: [],
-    edges: [{ subscriber: "down", producer: "up", facet: "price" }],
+    edges: [{ subscriber: asNodeId("down"), producer: asNodeId("up"), facet: asFacet("price") }],
     entry_points: [],
     acyclic: true,
   };
   const targets = propagationTargets({
     topology,
     producer: "up",
-    movedFacets: new Set(["unsubscribed"]),
+    movedFacets: new Set([asFacet("unsubscribed")]),
     wakeRef: ("sha256:" + "9".repeat(64)) as ContentAddress,
   });
   equal(targets.length, 0);
@@ -306,9 +305,9 @@ test("inboundEdges: returns only edges where the node is the subscriber", () => 
   const topology: TopologyWorldModel = {
     nodes: [],
     edges: [
-      { subscriber: "n", producer: "a", facet: ATOMIC_FACET },
-      { subscriber: "n", producer: "b", facet: ATOMIC_FACET },
-      { subscriber: "m", producer: "a", facet: ATOMIC_FACET },
+      { subscriber: asNodeId("n"), producer: asNodeId("a"), facet: ATOMIC_FACET },
+      { subscriber: asNodeId("n"), producer: asNodeId("b"), facet: ATOMIC_FACET },
+      { subscriber: asNodeId("m"), producer: asNodeId("a"), facet: ATOMIC_FACET },
     ],
     entry_points: [],
     acyclic: true,
@@ -323,7 +322,7 @@ test("inboundEdges: returns only edges where the node is the subscriber", () => 
 // --------------------------------------------------------------------------
 
 const singleNodeTopology: TopologyWorldModel = {
-  nodes: [{ node: "n", contract_fingerprint: CONTRACT_A, wake_source: "input" }],
+  nodes: [{ node: asNodeId("n"), contract_fingerprint: asFingerprint(CONTRACT_A), wake_source: "input" }],
   edges: [],
   entry_points: [],
   acyclic: true,
@@ -332,8 +331,8 @@ const singleNodeTopology: TopologyWorldModel = {
 test("reconcile: cold start (no prior receipt) always renders", () => {
   const h = harness({
     topology: singleNodeTopology,
-    contract_fingerprints: { n: CONTRACT_A },
-    inputs: { n: ["i1"] },
+    contract_fingerprints: { n: asFingerprint(CONTRACT_A) },
+    inputs: { n: [asFingerprint("i1")] },
   });
   const r = createReconciler(h.ports, h.topo);
   const result = r.reconcile({ node: "n", wake: inputWake });
@@ -345,8 +344,8 @@ test("reconcile: cold start (no prior receipt) always renders", () => {
 test("reconcile: unmoved inputs ⇒ SKIP, no render, cheap receipt (cost scales with surprise)", () => {
   const h = harness({
     topology: singleNodeTopology,
-    contract_fingerprints: { n: CONTRACT_A },
-    inputs: { n: ["i1"] },
+    contract_fingerprints: { n: asFingerprint(CONTRACT_A) },
+    inputs: { n: [asFingerprint("i1")] },
   });
   const r = createReconciler(h.ports, h.topo);
   r.reconcile({ node: "n", wake: inputWake }); // cold render
@@ -363,8 +362,8 @@ test("reconcile: unmoved inputs ⇒ SKIP, no render, cheap receipt (cost scales 
 test("reconcile: a skip copies the prior fingerprints forward and chains prev", () => {
   const h = harness({
     topology: singleNodeTopology,
-    contract_fingerprints: { n: CONTRACT_A },
-    inputs: { n: ["i1"] },
+    contract_fingerprints: { n: asFingerprint(CONTRACT_A) },
+    inputs: { n: [asFingerprint("i1")] },
   });
   const r = createReconciler(h.ports, h.topo);
   const first = r.reconcile({ node: "n", wake: inputWake });
@@ -384,12 +383,12 @@ test("reconcile: a skip copies the prior fingerprints forward and chains prev", 
 test("reconcile: a moved input fingerprint ⇒ a fresh render", () => {
   const h = harness({
     topology: singleNodeTopology,
-    contract_fingerprints: { n: CONTRACT_A },
-    inputs: { n: ["i1"] },
+    contract_fingerprints: { n: asFingerprint(CONTRACT_A) },
+    inputs: { n: [asFingerprint("i1")] },
   });
   const r = createReconciler(h.ports, h.topo);
   r.reconcile({ node: "n", wake: inputWake }); // cold render
-  h.setInputs("n", ["i2"]); // upstream moved
+  h.setInputs("n", [asFingerprint("i2")]); // upstream moved
   const second = r.reconcile({ node: "n", wake: inputWake });
   equal(second.disposition, "rendered");
   equal(h.renderCount(), 2);
@@ -402,14 +401,14 @@ test("reconcile: a moved input fingerprint ⇒ a fresh render", () => {
 test("reconcile (failure path): failed render keeps prior truth and does not propagate", () => {
   const diamondTopology: TopologyWorldModel = {
     nodes: [],
-    edges: [{ subscriber: "down", producer: "n", facet: ATOMIC_FACET }],
+    edges: [{ subscriber: asNodeId("down"), producer: asNodeId("n"), facet: ATOMIC_FACET }],
     entry_points: [],
     acyclic: true,
   };
   const h = harness({
     topology: diamondTopology,
-    contract_fingerprints: { n: CONTRACT_A, down: CONTRACT_B },
-    inputs: { n: ["i1"], down: [] },
+    contract_fingerprints: { n: asFingerprint(CONTRACT_A), down: asFingerprint(CONTRACT_B) },
+    inputs: { n: [asFingerprint("i1")], down: [] },
     renders: {
       n: [
         {
@@ -432,21 +431,21 @@ test("reconcile (failure path): failed render keeps prior truth and does not pro
 test("reconcile (failure path): a failure after a prior render copies the prior truth forward, does not propagate", () => {
   const chainTopology: TopologyWorldModel = {
     nodes: [],
-    edges: [{ subscriber: "down", producer: "n", facet: ATOMIC_FACET }],
+    edges: [{ subscriber: asNodeId("down"), producer: asNodeId("n"), facet: ATOMIC_FACET }],
     entry_points: [],
     acyclic: true,
   };
   const h = harness({
     topology: chainTopology,
-    contract_fingerprints: { n: CONTRACT_A, down: CONTRACT_B },
-    inputs: { n: ["i1"], down: [] },
+    contract_fingerprints: { n: asFingerprint(CONTRACT_A), down: asFingerprint(CONTRACT_B) },
+    inputs: { n: [asFingerprint("i1")], down: [] },
     renders: {
       n: [
         // first render succeeds (cold start), establishing prior truth
         {
           status: "rendered",
           commit: {
-            node: "n",
+            node: asNodeId("n"),
             version: ("sha256:" + "f".repeat(64)) as ContentAddress,
             fingerprints: atomic("good"),
           },
@@ -461,7 +460,7 @@ test("reconcile (failure path): a failure after a prior render copies the prior 
   const r = createReconciler(h.ports, h.topo);
   const first = r.reconcile({ node: "n", wake: inputWake });
   equal(first.disposition, "rendered");
-  h.setInputs("n", ["i2"]); // move inputs so the second wake renders (and fails)
+  h.setInputs("n", [asFingerprint("i2")]); // move inputs so the second wake renders (and fails)
   const second = r.reconcile({ node: "n", wake: inputWake });
   equal(second.disposition, "failed");
   equal(
@@ -479,14 +478,14 @@ test("reconcile (failure path): a failure after a prior render copies the prior 
 test("drain: a rendered+moved producer wakes its downstream; the downstream renders too", () => {
   const chainTopology: TopologyWorldModel = {
     nodes: [],
-    edges: [{ subscriber: "down", producer: "up", facet: ATOMIC_FACET }],
-    entry_points: ["up"],
+    edges: [{ subscriber: asNodeId("down"), producer: asNodeId("up"), facet: ATOMIC_FACET }],
+    entry_points: [asNodeId("up")],
     acyclic: true,
   };
   const h = harness({
     topology: chainTopology,
-    contract_fingerprints: { up: CONTRACT_A, down: CONTRACT_B },
-    inputs: { up: [], down: ["seed"] },
+    contract_fingerprints: { up: asFingerprint(CONTRACT_A), down: asFingerprint(CONTRACT_B) },
+    inputs: { up: [], down: [asFingerprint("seed")] },
   });
   const r = createReconciler(h.ports, h.topo);
   const results = r.drain([{ node: "up", wake: externalWake }]);
@@ -501,14 +500,14 @@ test("drain: a rendered+moved producer wakes its downstream; the downstream rend
 test("drain: a producer whose facet did not move (skip) wakes no downstream", () => {
   const chainTopology: TopologyWorldModel = {
     nodes: [],
-    edges: [{ subscriber: "down", producer: "up", facet: ATOMIC_FACET }],
-    entry_points: ["up"],
+    edges: [{ subscriber: asNodeId("down"), producer: asNodeId("up"), facet: ATOMIC_FACET }],
+    entry_points: [asNodeId("up")],
     acyclic: true,
   };
   const h = harness({
     topology: chainTopology,
-    contract_fingerprints: { up: CONTRACT_A, down: CONTRACT_B },
-    inputs: { up: ["fixed"], down: ["seed"] },
+    contract_fingerprints: { up: asFingerprint(CONTRACT_A), down: asFingerprint(CONTRACT_B) },
+    inputs: { up: [asFingerprint("fixed")], down: [asFingerprint("seed")] },
   });
   const r = createReconciler(h.ports, h.topo);
   // First drain: cold render of up wakes down.
@@ -529,7 +528,7 @@ test("single-flight: a wake arriving mid-render coalesces into one follow-up ren
   const reentryTopology: TopologyWorldModel = {
     nodes: [],
     edges: [],
-    entry_points: ["n"],
+    entry_points: [asNodeId("n")],
     acyclic: true,
   };
   const ledger = new FakeLedger();
@@ -537,7 +536,7 @@ test("single-flight: a wake arriving mid-render coalesces into one follow-up ren
   let reenteredOnce = false;
   let handle: ReturnType<typeof createReconciler>;
 
-  const inputs: Record<string, InputFingerprints> = { n: ["i1"] };
+  const inputs: Record<string, InputFingerprints> = { n: [asFingerprint("i1")] };
 
   const ports: ReconcilerPorts = {
     ledger,
@@ -549,7 +548,7 @@ test("single-flight: a wake arriving mid-render coalesces into one follow-up ren
       // NOT spawn a nested render; it marks the node dirty + coalesces.
       if (!reenteredOnce) {
         reenteredOnce = true;
-        inputs.n = ["i2"]; // the mid-render wake reflects moved inputs
+        inputs.n = [asFingerprint("i2")]; // the mid-render wake reflects moved inputs
         const nested = handle.reconcile({ node: "n", wake: inputWake });
         equal(
           nested.disposition,
@@ -560,7 +559,7 @@ test("single-flight: a wake arriving mid-render coalesces into one follow-up ren
       return {
         status: "rendered",
         commit: {
-          node: req.node,
+          node: asNodeId(req.node),
           version: ("sha256:" + "d".repeat(64)) as ContentAddress,
           fingerprints: atomic(`r${renderCount}`),
         },
@@ -571,7 +570,7 @@ test("single-flight: a wake arriving mid-render coalesces into one follow-up ren
   };
   const topo: ReconcilerTopology = {
     topology: reentryTopology,
-    contract_fingerprints: { n: CONTRACT_A },
+    contract_fingerprints: { n: asFingerprint(CONTRACT_A) },
   };
   handle = createReconciler(ports, topo);
 
@@ -586,14 +585,14 @@ test("single-flight: a coalesced follow-up whose inputs did not move skips (no r
   const topology: TopologyWorldModel = {
     nodes: [],
     edges: [],
-    entry_points: ["n"],
+    entry_points: [asNodeId("n")],
     acyclic: true,
   };
   const ledger = new FakeLedger();
   let renderCount = 0;
   let reenteredOnce = false;
   let handle: ReturnType<typeof createReconciler>;
-  const inputs: Record<string, InputFingerprints> = { n: ["i1"] };
+  const inputs: Record<string, InputFingerprints> = { n: [asFingerprint("i1")] };
 
   const ports: ReconcilerPorts = {
     ledger,
@@ -610,7 +609,7 @@ test("single-flight: a coalesced follow-up whose inputs did not move skips (no r
       return {
         status: "rendered",
         commit: {
-          node: req.node,
+          node: asNodeId(req.node),
           version: ("sha256:" + "e".repeat(64)) as ContentAddress,
           fingerprints: atomic("stable"),
         },
@@ -621,7 +620,7 @@ test("single-flight: a coalesced follow-up whose inputs did not move skips (no r
   };
   const topo: ReconcilerTopology = {
     topology,
-    contract_fingerprints: { n: CONTRACT_A },
+    contract_fingerprints: { n: asFingerprint(CONTRACT_A) },
   };
   handle = createReconciler(ports, topo);
 
@@ -686,8 +685,8 @@ const SEED_CONTRACT = "sha256:" + "e".repeat(64);
  */
 function producerReceipt(node: string, fingerprints: FingerprintMap): Receipt {
   return {
-    node,
-    contract_fingerprint: SEED_CONTRACT,
+    node: asNodeId(node),
+    contract_fingerprint: asFingerprint(SEED_CONTRACT),
     wake: inputWake,
     input_fingerprints: [],
     fingerprints,
@@ -747,7 +746,7 @@ function facetHarness(input: {
       // map is what its receipt carries into the ledger).
       const existing = table[req.node];
       const commit: WorldModelCommit = {
-        node: req.node,
+        node: asNodeId(req.node),
         version: ("sha256:" +
           ("c".repeat(63) + String(renderSeq % 10))) as ContentAddress,
         fingerprints: existing ?? atomic(`r${renderSeq}`),
@@ -780,27 +779,27 @@ function facetHarness(input: {
 
 const FACETED_TOPOLOGY: TopologyWorldModel = {
   nodes: [
-    { node: "vendor", contract_fingerprint: CONTRACT_A, wake_source: "input" },
-    { node: "x_sub", contract_fingerprint: CONTRACT_B, wake_source: "input" },
+    { node: asNodeId("vendor"), contract_fingerprint: asFingerprint(CONTRACT_A), wake_source: "input" },
+    { node: asNodeId("x_sub"), contract_fingerprint: asFingerprint(CONTRACT_B), wake_source: "input" },
   ],
-  edges: [{ subscriber: "x_sub", producer: "vendor", facet: "X" }],
-  entry_points: ["vendor"],
+  edges: [{ subscriber: asNodeId("x_sub"), producer: asNodeId("vendor"), facet: asFacet("X") }],
+  entry_points: [asNodeId("vendor")],
   acyclic: true,
 };
 
 test("facet eval: move facet Y (X held) ⇒ the X-subscriber SKIPS", () => {
   const h = facetHarness({
     topology: FACETED_TOPOLOGY,
-    contract_fingerprints: { vendor: CONTRACT_A, x_sub: CONTRACT_B },
+    contract_fingerprints: { vendor: asFingerprint(CONTRACT_A), x_sub: asFingerprint(CONTRACT_B) },
     producerFingerprints: {
-      vendor: { [ATOMIC_FACET]: "fp:whole-1", X: "fp:x-1", Y: "fp:y-1" },
+      vendor: { [ATOMIC_FACET]: asFingerprint("fp:whole-1"), X: asFingerprint("fp:x-1"), Y: asFingerprint("fp:y-1") },
     },
   });
   // Cold render of x_sub establishes its last receipt (tuple = [fp:x-1]).
   const cold = h.reconciler.reconcile({ node: "x_sub", wake: inputWake });
   equal(cold.disposition, "rendered");
   // Move ONLY facet Y (the atomic whole-token moves too; X holds).
-  h.setProducer("vendor", { [ATOMIC_FACET]: "fp:whole-2", X: "fp:x-1", Y: "fp:y-2" });
+  h.setProducer("vendor", { [ATOMIC_FACET]: asFingerprint("fp:whole-2"), X: asFingerprint("fp:x-1"), Y: asFingerprint("fp:y-2") });
   const after = h.reconciler.reconcile({ node: "x_sub", wake: inputWake });
   equal(after.disposition, "skipped", "Y moving must NOT wake an X-subscriber");
   equal(h.renderCount(), 1, "no second render — the selector boundary held");
@@ -809,14 +808,14 @@ test("facet eval: move facet Y (X held) ⇒ the X-subscriber SKIPS", () => {
 test("facet eval: move facet X ⇒ the X-subscriber WAKES", () => {
   const h = facetHarness({
     topology: FACETED_TOPOLOGY,
-    contract_fingerprints: { vendor: CONTRACT_A, x_sub: CONTRACT_B },
+    contract_fingerprints: { vendor: asFingerprint(CONTRACT_A), x_sub: asFingerprint(CONTRACT_B) },
     producerFingerprints: {
-      vendor: { [ATOMIC_FACET]: "fp:whole-1", X: "fp:x-1", Y: "fp:y-1" },
+      vendor: { [ATOMIC_FACET]: asFingerprint("fp:whole-1"), X: asFingerprint("fp:x-1"), Y: asFingerprint("fp:y-1") },
     },
   });
   h.reconciler.reconcile({ node: "x_sub", wake: inputWake }); // cold render
   // Move facet X (Y holds).
-  h.setProducer("vendor", { [ATOMIC_FACET]: "fp:whole-2", X: "fp:x-2", Y: "fp:y-1" });
+  h.setProducer("vendor", { [ATOMIC_FACET]: asFingerprint("fp:whole-2"), X: asFingerprint("fp:x-2"), Y: asFingerprint("fp:y-1") });
   const after = h.reconciler.reconcile({ node: "x_sub", wake: inputWake });
   equal(after.disposition, "rendered", "X moving must wake the X-subscriber");
   equal(h.renderCount(), 2);
@@ -825,20 +824,20 @@ test("facet eval: move facet X ⇒ the X-subscriber WAKES", () => {
 test("facet eval: an atomic-only subscriber wakes on ANY producer change (unchanged behavior)", () => {
   const atomicTopology: TopologyWorldModel = {
     nodes: [],
-    edges: [{ subscriber: "a_sub", producer: "vendor", facet: ATOMIC_FACET }],
-    entry_points: ["vendor"],
+    edges: [{ subscriber: asNodeId("a_sub"), producer: asNodeId("vendor"), facet: ATOMIC_FACET }],
+    entry_points: [asNodeId("vendor")],
     acyclic: true,
   };
   const h = facetHarness({
     topology: atomicTopology,
-    contract_fingerprints: { vendor: CONTRACT_A, a_sub: CONTRACT_B },
+    contract_fingerprints: { vendor: asFingerprint(CONTRACT_A), a_sub: asFingerprint(CONTRACT_B) },
     producerFingerprints: {
-      vendor: { [ATOMIC_FACET]: "fp:whole-1", X: "fp:x-1", Y: "fp:y-1" },
+      vendor: { [ATOMIC_FACET]: asFingerprint("fp:whole-1"), X: asFingerprint("fp:x-1"), Y: asFingerprint("fp:y-1") },
     },
   });
   h.reconciler.reconcile({ node: "a_sub", wake: inputWake }); // cold render
   // Move ONLY facet Y; the atomic whole-token moves, so the atomic-only sub wakes.
-  h.setProducer("vendor", { [ATOMIC_FACET]: "fp:whole-2", X: "fp:x-1", Y: "fp:y-2" });
+  h.setProducer("vendor", { [ATOMIC_FACET]: asFingerprint("fp:whole-2"), X: asFingerprint("fp:x-1"), Y: asFingerprint("fp:y-2") });
   const after = h.reconciler.reconcile({ node: "a_sub", wake: inputWake });
   equal(
     after.disposition,
@@ -855,17 +854,17 @@ test("facet eval (diamond): a subscriber reachable by two moved facets of one pr
   const diamond: TopologyWorldModel = {
     nodes: [],
     edges: [
-      { subscriber: "x_sub", producer: "vendor", facet: "X" },
-      { subscriber: "x_sub", producer: "vendor", facet: "Y" },
+      { subscriber: asNodeId("x_sub"), producer: asNodeId("vendor"), facet: asFacet("X") },
+      { subscriber: asNodeId("x_sub"), producer: asNodeId("vendor"), facet: asFacet("Y") },
     ],
-    entry_points: ["vendor"],
+    entry_points: [asNodeId("vendor")],
     acyclic: true,
   };
   const h = facetHarness({
     topology: diamond,
-    contract_fingerprints: { vendor: CONTRACT_A, x_sub: CONTRACT_B },
+    contract_fingerprints: { vendor: asFingerprint(CONTRACT_A), x_sub: asFingerprint(CONTRACT_B) },
     producerFingerprints: {
-      vendor: { [ATOMIC_FACET]: "fp:whole-1", X: "fp:x-1", Y: "fp:y-1" },
+      vendor: { [ATOMIC_FACET]: asFingerprint("fp:whole-1"), X: asFingerprint("fp:x-1"), Y: asFingerprint("fp:y-1") },
     },
   });
   // Seed x_sub's last receipt against the producer's published truth.
@@ -874,7 +873,7 @@ test("facet eval (diamond): a subscriber reachable by two moved facets of one pr
   // Vendor publishes its move through its OWN render (the live propagation path:
   // its commit {X-2,Y-2} vs its prior receipt {X-1,Y-1} moves BOTH facets). Both
   // inbound edges resolve to x_sub, which must wake exactly once.
-  h.setRenderOutput("vendor", { [ATOMIC_FACET]: "fp:whole-2", X: "fp:x-2", Y: "fp:y-2" });
+  h.setRenderOutput("vendor", { [ATOMIC_FACET]: asFingerprint("fp:whole-2"), X: asFingerprint("fp:x-2"), Y: asFingerprint("fp:y-2") });
   const results = h.reconciler.drain([{ node: "vendor", wake: externalWake }]);
   const xWakes = results.filter((r) => r.node === "x_sub");
   equal(xWakes.length, 1, "the diamond reconverges to ONE wake, not one per edge");
@@ -886,8 +885,8 @@ test("no judge: a skip never invokes the render (the harness never asks an LLM '
   let rendered = 0;
   const h = harness({
     topology: singleNodeTopology,
-    contract_fingerprints: { n: CONTRACT_A },
-    inputs: { n: ["i1"] },
+    contract_fingerprints: { n: asFingerprint(CONTRACT_A) },
+    inputs: { n: [asFingerprint("i1")] },
     onRender: () => {
       rendered += 1;
     },

@@ -28,7 +28,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 
-import { ATOMIC_FACET } from "../../shapes";
+import { ATOMIC_FACET, asFacet, asNodeId} from "../../shapes";
 import { readTextFile, type WorldModelFiles } from "../../world-model";
 import { FileSystemWorldModelStore } from "../../world-model/fs-store";
 import { createMemoryStorageAdapter } from "../../adapters/storage-memory";
@@ -228,7 +228,7 @@ test("compileProject: the on-disk two-node fixture compiles to a mountable topol
   ok(compiled.perNode[BRIEF]);
   // The monitor's compiled canonicalizer emits the `funding` facet (load-bearing
   // for propagation along the edge Forme drew).
-  ok(compiled.perNode[MONITOR]?.compiled.canonicalizer.facets.includes("funding"));
+  ok(compiled.perNode[MONITOR]?.compiled.canonicalizer.facets.includes(asFacet("funding")));
 
   // Contract fingerprints were derived (the existing content-address helper) —
   // distinct per node, stable shape.
@@ -263,7 +263,7 @@ test("compileProject skipPostconditions: synthesizes EMPTY validator sets withou
   // Both nodes compiled; the monitor still emits the `funding` facet.
   ok(compiled.perNode[MONITOR]);
   ok(compiled.perNode[BRIEF]);
-  ok(compiled.perNode[MONITOR]?.compiled.canonicalizer.facets.includes("funding"));
+  ok(compiled.perNode[MONITOR]?.compiled.canonicalizer.facets.includes(asFacet("funding")));
 
   // The synthesized postcondition sets are EMPTY + well-formed (pure lowering).
   for (const node of [MONITOR, BRIEF]) {
@@ -663,9 +663,9 @@ function spawnProbeTopology(): ReconcilerTopology {
   });
   return {
     topology: {
-      nodes: [{ node: SPAWN_NODE, contract_fingerprint: fp, wake_source: "self" }],
+      nodes: [{ node: asNodeId(SPAWN_NODE), contract_fingerprint: fp, wake_source: "self" }],
       edges: [],
-      entry_points: [SPAWN_NODE],
+      entry_points: [asNodeId(SPAWN_NODE)],
       acyclic: true,
     },
     contract_fingerprints: { [SPAWN_NODE]: fp },

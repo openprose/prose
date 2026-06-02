@@ -40,7 +40,7 @@
 //     reconverge to a SINGLE render for their fan-in tuple.
 //   - restart-skip: re-running with unchanged inputs boots to all-skips.
 
-import { ATOMIC_FACET, type Facet } from "../shapes";
+import { ATOMIC_FACET, asFacet, asFingerprint, type Facet } from "../shapes";
 import {
   fingerprintArtifact,
   files,
@@ -87,9 +87,9 @@ export const VERIFICATION_RUNNER = "responsibility.verification-runner";
 export const IMPLEMENTATION_REPORT = "responsibility.implementation-report";
 
 /** The work-plan's per-lane facets — one per fixed construction lane. */
-export const FACET_A: Facet = "facet_a";
-export const FACET_B: Facet = "facet_b";
-export const FACET_C: Facet = "facet_c";
+export const FACET_A = asFacet("facet_a");
+export const FACET_B = asFacet("facet_b");
+export const FACET_C = asFacet("facet_c");
 export const FACET_BY_LANE: Record<string, Facet> = {
   [LANE_A]: FACET_A,
   [LANE_B]: FACET_B,
@@ -97,10 +97,10 @@ export const FACET_BY_LANE: Record<string, Facet> = {
 };
 
 /** The foundation's shared-shape facet — every lane subscribes to it. */
-export const FOUNDATION_FACET: Facet = "foundation";
+export const FOUNDATION_FACET = asFacet("foundation");
 
-export const PLAN_INGRESS: Facet = "plan_docs";
-export const REPO_INGRESS: Facet = "repo_snapshot";
+export const PLAN_INGRESS = asFacet("plan_docs");
+export const REPO_INGRESS = asFacet("repo_snapshot");
 
 // ---------------------------------------------------------------------------
 // The external payloads + harness deps the fake renders close over
@@ -158,7 +158,7 @@ function tick(deps: PipelineDeps, node: string): void {
 // ---------------------------------------------------------------------------
 
 const atomicTruth: Canonicalizer = (fm) => ({
-  [ATOMIC_FACET]: fingerprintArtifact(fm),
+  [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(fm)),
 });
 
 function readTruth(fm: WorldModelFiles): Record<string, unknown> {
@@ -173,7 +173,7 @@ const planIngressCanon: Canonicalizer = (fm) => {
   const bytes = fm["planning.json"];
   const docs = bytes === undefined ? {} : JSON.parse(readTextFile(bytes));
   return {
-    [ATOMIC_FACET]: fingerprintArtifact(fm),
+    [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(fm)),
     [PLAN_INGRESS]: materialFingerprint(docs),
   };
 };
@@ -183,7 +183,7 @@ const repoIngressCanon: Canonicalizer = (fm) => {
   const bytes = fm["repo.json"];
   const snap = bytes === undefined ? {} : JSON.parse(readTextFile(bytes));
   return {
-    [ATOMIC_FACET]: fingerprintArtifact(fm),
+    [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(fm)),
     [REPO_INGRESS]: materialFingerprint(snap),
   };
 };
@@ -192,14 +192,14 @@ const repoIngressCanon: Canonicalizer = (fm) => {
 const planGatewayCanon: Canonicalizer = (fm) => {
   const t = readTruth(fm);
   return {
-    [ATOMIC_FACET]: fingerprintArtifact(fm),
+    [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(fm)),
     [PLAN_INGRESS]: materialFingerprint(t["docs"] ?? {}),
   };
 };
 const repoGatewayCanon: Canonicalizer = (fm) => {
   const t = readTruth(fm);
   return {
-    [ATOMIC_FACET]: fingerprintArtifact(fm),
+    [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(fm)),
     [REPO_INGRESS]: materialFingerprint(t["snapshot"] ?? {}),
   };
 };
@@ -214,7 +214,7 @@ export const workPlanCanon: Canonicalizer = (fm) => {
   const t = readTruth(fm);
   const byLane = (t["lane_assignments"] ?? {}) as Record<string, unknown>;
   return {
-    [ATOMIC_FACET]: fingerprintArtifact(fm),
+    [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(fm)),
     [FACET_A]: materialFingerprint(byLane[LANE_A] ?? []),
     [FACET_B]: materialFingerprint(byLane[LANE_B] ?? []),
     [FACET_C]: materialFingerprint(byLane[LANE_C] ?? []),
@@ -228,7 +228,7 @@ export const workPlanCanon: Canonicalizer = (fm) => {
 export const foundationCanon: Canonicalizer = (fm) => {
   const t = readTruth(fm);
   return {
-    [ATOMIC_FACET]: fingerprintArtifact(fm),
+    [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(fm)),
     [FOUNDATION_FACET]: materialFingerprint(t["shared_shapes"] ?? {}),
   };
 };

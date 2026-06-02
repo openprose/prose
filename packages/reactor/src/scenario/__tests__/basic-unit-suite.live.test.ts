@@ -42,8 +42,7 @@ import {
   ATOMIC_FACET,
   EMPTY_SEMANTIC_DIFF,
   createNullSignature,
-  type Facet,
-} from "../../shapes";
+  type Facet, type Fingerprint, asFacet, asFingerprint, asNodeId} from "../../shapes";
 import {
   fingerprintArtifact,
   files,
@@ -89,7 +88,7 @@ const RAW_EVENT_AUDITOR = "responsibility.raw-event-auditor";
 const COUNT_TREND = "responsibility.count-trend";
 const EXECUTIVE_SNAPSHOT = "responsibility.executive-snapshot";
 
-const INBOX: Facet = "inbox";
+const INBOX = asFacet("inbox");
 
 const TRUTH = "truth.json";
 const INBOX_FILE = "inbox.json";
@@ -116,9 +115,9 @@ function readTruth(fm: WorldModelFiles): Record<string, unknown> {
 const gatewayCanon: Canonicalizer = (fm) => {
   const t = readTruth(fm);
   return {
-    [ATOMIC_FACET]: fingerprintArtifact(fm),
-    [RAW_EVENTS]: materialFingerprint(t["events"] ?? []),
-    [COUNTS]: materialFingerprint(t["counts_by_kind"] ?? {}),
+    [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(fm)),
+    [RAW_EVENTS]: asFingerprint(materialFingerprint(t["events"] ?? [])),
+    [COUNTS]: asFingerprint(materialFingerprint(t["counts_by_kind"] ?? {})),
   };
 };
 
@@ -127,8 +126,8 @@ const ingressCanon: Canonicalizer = (fm) => {
   const bytes = fm[INBOX_FILE];
   const inbox = bytes === undefined ? [] : JSON.parse(readTextFile(bytes));
   return {
-    [ATOMIC_FACET]: fingerprintArtifact(fm),
-    [INBOX]: materialFingerprint(inbox),
+    [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(fm)),
+    [INBOX]: asFingerprint(materialFingerprint(inbox)),
   };
 };
 
@@ -136,14 +135,14 @@ const ingressCanon: Canonicalizer = (fm) => {
 const projectionCanon: Canonicalizer = (fm) => {
   const t = readTruth(fm);
   return {
-    [ATOMIC_FACET]: fingerprintArtifact(fm),
-    [STRUCTURED]: materialFingerprint(t["structured_summary"] ?? {}),
+    [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(fm)),
+    [STRUCTURED]: asFingerprint(materialFingerprint(t["structured_summary"] ?? {})),
   };
 };
 
 /** Whole-truth canonicalizer — any byte change moves the @atomic token. */
 const atomicTruth: Canonicalizer = (fm) => ({
-  [ATOMIC_FACET]: fingerprintArtifact(fm),
+  [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(fm)),
 });
 
 // ---------------------------------------------------------------------------
@@ -334,25 +333,25 @@ const NODE_SPECS: readonly NodeSpec[] = [
 ];
 
 function counterTopology(): ReconcilerTopology {
-  const contract_fingerprints: Record<string, string> = {};
+  const contract_fingerprints: Record<string, Fingerprint> = {};
   for (const s of NODE_SPECS) {
-    contract_fingerprints[s.id] = `contract:${s.id}@live`;
+    contract_fingerprints[s.id] = asFingerprint(`contract:${s.id}@live`);
   }
   return {
     topology: {
       nodes: NODE_SPECS.map((s) => ({
-        node: s.id,
-        contract_fingerprint: contract_fingerprints[s.id] as string,
+        node: asNodeId(s.id),
+        contract_fingerprint: contract_fingerprints[s.id] as Fingerprint,
         wake_source: s.wake,
       })),
       edges: NODE_SPECS.flatMap((s) =>
         s.edges.map((e) => ({
-          subscriber: s.id,
-          producer: e.producer,
+          subscriber: asNodeId(s.id),
+          producer: asNodeId(e.producer),
           facet: e.facet,
         })),
       ),
-      entry_points: [GATEWAY],
+      entry_points: [asNodeId(GATEWAY)],
       acyclic: true,
     },
     contract_fingerprints,
@@ -378,8 +377,8 @@ function stageInbox(
   const prev = ledger.lastReceipt(SOURCE);
   const prevRef = prev !== null ? ledger.addressOf(prev) : null;
   ledger.append({
-    node: SOURCE,
-    contract_fingerprint: `contract:${SOURCE}@ingress`,
+    node: asNodeId(SOURCE),
+    contract_fingerprint: asFingerprint(`contract:${SOURCE}@ingress`),
     wake: { source: "external", refs: [] },
     input_fingerprints: [],
     fingerprints: commit.fingerprints,

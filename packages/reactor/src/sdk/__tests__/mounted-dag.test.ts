@@ -14,7 +14,7 @@ import {
   readTextFile,
   type Canonicalizer,
 } from "../../world-model";
-import { ATOMIC_FACET } from "../../shapes";
+import { ATOMIC_FACET, asFingerprint, asNodeId} from "../../shapes";
 import { type ReconcilerTopology } from "../../reactor";
 
 const PRODUCER = "responsibility.vendor-truth";
@@ -24,23 +24,23 @@ const SUBSCRIBER = "responsibility.renewal-watch";
 // "moved vs unmoved" deterministically (architecture.md §3.2).
 const statusCanon: Canonicalizer = (wm) => {
   const parsed = JSON.parse(readTextFile(wm["t.json"] as Uint8Array));
-  return { [ATOMIC_FACET]: `status:${parsed.status}` };
+  return { [ATOMIC_FACET]: asFingerprint(`status:${parsed.status}`) };
 };
 
 function topology(): ReconcilerTopology {
   return {
     topology: {
       nodes: [
-        { node: PRODUCER, contract_fingerprint: "c:producer@1", wake_source: "external" },
-        { node: SUBSCRIBER, contract_fingerprint: "c:subscriber@1", wake_source: "input" },
+        { node: asNodeId(PRODUCER), contract_fingerprint: asFingerprint("c:producer@1"), wake_source: "external" },
+        { node: asNodeId(SUBSCRIBER), contract_fingerprint: asFingerprint("c:subscriber@1"), wake_source: "input" },
       ],
-      edges: [{ subscriber: SUBSCRIBER, producer: PRODUCER, facet: ATOMIC_FACET }],
-      entry_points: [PRODUCER],
+      edges: [{ subscriber: asNodeId(SUBSCRIBER), producer: asNodeId(PRODUCER), facet: ATOMIC_FACET }],
+      entry_points: [asNodeId(PRODUCER)],
       acyclic: true,
     },
     contract_fingerprints: {
-      [PRODUCER]: "c:producer@1",
-      [SUBSCRIBER]: "c:subscriber@1",
+      [PRODUCER]: asFingerprint("c:producer@1"),
+      [SUBSCRIBER]: asFingerprint("c:subscriber@1"),
     },
   };
 }
@@ -126,10 +126,10 @@ test("a MOVED producer fingerprint propagates and re-renders the subscriber", ()
     topology: {
       ...topo.topology,
       nodes: topo.topology.nodes.map((n) =>
-        n.node === PRODUCER ? { ...n, contract_fingerprint: "c:producer@2" } : n,
+        n.node === PRODUCER ? { ...n, contract_fingerprint: asFingerprint("c:producer@2") } : n,
       ),
     },
-    contract_fingerprints: { ...topo.contract_fingerprints, [PRODUCER]: "c:producer@2" },
+    contract_fingerprints: { ...topo.contract_fingerprints, [PRODUCER]: asFingerprint("c:producer@2") },
   };
   const dag2 = mountDag({
     topology: bumped,

@@ -27,8 +27,7 @@ import {
 } from "@openprose/reactor/adapters";
 import {
   propagationTargets,
-  type TopologyWorldModel,
-} from "@openprose/reactor/internals";
+  type TopologyWorldModel, asNodeId} from "@openprose/reactor/internals";
 import { createFileSystemStorageAdapter } from "@openprose/reactor";
 
 import { generateMonorepoCiFixture } from "./monorepo-ci";
@@ -145,7 +144,7 @@ test("generated monorepo-ci fixture loads via the SDK replay read surface", () =
     "six package lints",
   );
   assert.equal(topology.acyclic, true);
-  assert.ok(topology.entry_points.includes(GATEWAY), "gateway is the entry point");
+  assert.ok(topology.entry_points.includes(asNodeId(GATEWAY)), "gateway is the entry point");
 
   // per-package facet edges exist on the gateway (the dark-lane boundary).
   for (const pkg of PACKAGES) {

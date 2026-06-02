@@ -26,8 +26,7 @@ import {
 } from "@openprose/reactor/adapters";
 import {
   propagationTargets,
-  type TopologyWorldModel,
-} from "@openprose/reactor/internals";
+  type TopologyWorldModel, asFacet, asNodeId} from "@openprose/reactor/internals";
 import { createFileSystemStorageAdapter } from "@openprose/reactor";
 
 import { generateInboxTriageFixture } from "./inbox-triage";
@@ -80,7 +79,7 @@ test("generated inbox-triage fixture loads via the SDK replay read surface", () 
     "four per-thread renders",
   );
   assert.equal(topology.acyclic, true);
-  assert.ok(topology.entry_points.includes(GATEWAY), "gateway is the entry point");
+  assert.ok(topology.entry_points.includes(asNodeId(GATEWAY)), "gateway is the entry point");
 
   // per-email facet edges exist on the gateway (the dark-lane boundary).
   for (const id of ["nl1", "nl2", "nl3", "nl4", "nl5", "ship1", "invoice1", "bad1"]) {
@@ -145,7 +144,7 @@ test("THE INVARIANT: 5 identical emails → ONE thread render (4 dedup'd away); 
     const r = session.receipts[i]!;
     if (r.node !== THREADER || r.status !== "rendered") continue;
     const moved = session.movedFacetsByIndex[i]!;
-    if (moved.has("thread:newsletter")) continue; // this is the FIRST (collapsing) render
+    if (moved.has(asFacet("thread:newsletter"))) continue; // this is the FIRST (collapsing) render
     // a threader re-run that did NOT move the shared content facet…
     const targets = propagationTargets({
       topology,
@@ -257,7 +256,7 @@ test("THE DEDUP, in the threader facet: the thread:newsletter facet stays still 
     const r = session.receipts[i]!;
     if (r.node !== THREADER) continue;
     const moved = session.movedFacetsByIndex[i]!;
-    if (moved.has("thread:newsletter")) newsletterFacetMoves += 1;
+    if (moved.has(asFacet("thread:newsletter"))) newsletterFacetMoves += 1;
   }
   assert.equal(
     newsletterFacetMoves,

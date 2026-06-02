@@ -62,7 +62,7 @@ import { FileSystemWorldModelStore } from "../../../world-model";
 import { mountDag } from "../../../sdk/mounted-dag";
 import { contractFingerprint } from "../../../scenario/fixture";
 import { dispositionOf, lastReceipt } from "../../../scenario/trace";
-import { ATOMIC_FACET } from "../../../shapes";
+import { ATOMIC_FACET, asNodeId} from "../../../shapes";
 
 // ---------------------------------------------------------------------------
 // helpers
@@ -354,9 +354,9 @@ function writerTopology(): ReconcilerTopology {
   });
   return {
     topology: {
-      nodes: [{ node: NODE, contract_fingerprint: fp, wake_source: "external" }],
+      nodes: [{ node: asNodeId(NODE), contract_fingerprint: fp, wake_source: "external" }],
       edges: [],
-      entry_points: [NODE],
+      entry_points: [asNodeId(NODE)],
       acyclic: true,
     },
     contract_fingerprints: { [NODE]: fp },

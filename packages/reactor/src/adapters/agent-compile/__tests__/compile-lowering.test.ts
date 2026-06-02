@@ -10,7 +10,7 @@ import { test } from "node:test";
 
 import { z } from "zod";
 
-import { ATOMIC_FACET } from "../../../shapes";
+import { ATOMIC_FACET, asFacet, asFingerprint, asNodeId } from "../../../shapes";
 import {
   lowerFormeOutput,
   sessionMatcher,
@@ -81,12 +81,12 @@ test("forme lowering: session matches drive the deterministic wire, drawing the 
     ],
   };
 
-  const fps = { monitor: "cf:monitor", brief: "cf:brief" };
+  const fps = { monitor: asFingerprint("cf:monitor"), brief: asFingerprint("cf:brief") };
   const { reconcilerTopology, forme } = lowerFormeOutput(signal, fps);
 
   deepEqual(forme.diagnostics, []);
   deepEqual(reconcilerTopology.topology.edges, [
-    { subscriber: "brief", producer: "monitor", facet: "funding" },
+    { subscriber: asNodeId("brief"), producer: asNodeId("monitor"), facet: asFacet("funding") },
   ]);
   equal(reconcilerTopology.topology.acyclic, true);
   // contract fingerprints scoped to topology nodes, ready to mount
@@ -106,7 +106,7 @@ test("forme lowering: a need the session left unmatched surfaces an `unsatisfied
     ],
     matches: [], // session reported NO match for `needs-x`
   };
-  const { forme } = lowerFormeOutput(signal, { a: "cf:a" });
+  const { forme } = lowerFormeOutput(signal, { a: asFingerprint("cf:a") });
   equal(forme.diagnostics.length, 1);
   equal(forme.diagnostics[0]?.kind, "unsatisfied");
   equal(forme.diagnostics[0]?.subscriber, "a");
@@ -131,9 +131,9 @@ test("forme lowering: deliberate fan-in adds one slot per matched producer (the 
     ],
   };
   const { reconcilerTopology, forme } = lowerFormeOutput(signal, {
-    p1: "cf:p1",
-    p2: "cf:p2",
-    agg: "cf:agg",
+    p1: asFingerprint("cf:p1"),
+    p2: asFingerprint("cf:p2"),
+    agg: asFingerprint("cf:agg"),
   });
   deepEqual(forme.diagnostics, []);
   // two edges into `agg`, one slot per producer
@@ -149,7 +149,7 @@ test("forme lowering: a gateway becomes an external-driven entry point; non-data
     ],
     matches: [],
   };
-  const { reconcilerTopology } = lowerFormeOutput(signal, { gw: "cf:gw", lib: "cf:lib" });
+  const { reconcilerTopology } = lowerFormeOutput(signal, { gw: asFingerprint("cf:gw"), lib: asFingerprint("cf:lib") });
   deepEqual(reconcilerTopology.topology.entry_points, ["gw"]);
   // the function is not a topology node
   deepEqual(
@@ -172,9 +172,9 @@ test("sessionMatcher: matches exactly the reported pairs, atomic included", () =
   const matcher = sessionMatcher([
     { subscriber: "s", requirement: "need", producer: "p", facet: ATOMIC_FACET },
   ]);
-  equal(matcher({ subscriber: "s", facet: "need" }, { producer: "p", facet: ATOMIC_FACET }), true);
-  equal(matcher({ subscriber: "s", facet: "need" }, { producer: "p", facet: "other" }), false);
-  equal(matcher({ subscriber: "s", facet: "other" }, { producer: "p", facet: ATOMIC_FACET }), false);
+  equal(matcher({ subscriber: "s", facet: asFacet("need") }, { producer: "p", facet: ATOMIC_FACET }), true);
+  equal(matcher({ subscriber: "s", facet: asFacet("need") }, { producer: "p", facet: asFacet("other") }), false);
+  equal(matcher({ subscriber: "s", facet: asFacet("other") }, { producer: "p", facet: ATOMIC_FACET }), false);
 });
 
 // ---------------------------------------------------------------------------

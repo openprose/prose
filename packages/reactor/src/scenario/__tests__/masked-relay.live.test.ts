@@ -46,8 +46,7 @@ import {
   ATOMIC_FACET,
   EMPTY_SEMANTIC_DIFF,
   createNullSignature,
-  type Facet,
-} from "../../shapes";
+  type Facet, type Fingerprint, asFacet, asFingerprint, asNodeId} from "../../shapes";
 import {
   files,
   jsonFile,
@@ -90,10 +89,10 @@ const CRITICS = [CRITIC_STRONG, CRITIC_WEAK] as const;
 const SYNTHESIZER = "responsibility.insight-synthesizer";
 const AUDITOR = "responsibility.diversity-auditor";
 
-const INBOX: Facet = "inbox";
-const LEDGER: Facet = "ledger";
-const VIEW_E1: Facet = "view_e1";
-const VIEW_E2: Facet = "view_e2";
+const INBOX = asFacet("inbox");
+const LEDGER = asFacet("ledger");
+const VIEW_E1 = asFacet("view_e1");
+const VIEW_E2 = asFacet("view_e2");
 
 const TRUTH = "truth.json";
 const INBOX_FILE = "inbox.json";
@@ -120,7 +119,7 @@ const atomicTruth: Canonicalizer = (fm) => ({
   [ATOMIC_FACET]: fingerprintFm(fm),
 });
 
-function fingerprintFm(fm: WorldModelFiles): string {
+function fingerprintFm(fm: WorldModelFiles): Fingerprint {
   // Inline the artifact fingerprint over the whole file map (avoids importing the
   // helper name; same semantics as the offline fixture's atomicTruth).
   return materialFingerprint(
@@ -137,7 +136,7 @@ const gatewayCanon: Canonicalizer = (fm) => {
   const t = readTruth(fm);
   return {
     [ATOMIC_FACET]: fingerprintFm(fm),
-    [LEDGER]: materialFingerprint(t["items"] ?? []),
+    [LEDGER]: asFingerprint(materialFingerprint(t["items"] ?? [])),
   };
 };
 
@@ -147,7 +146,7 @@ const ingressCanon: Canonicalizer = (fm) => {
   const inbox = bytes === undefined ? [] : JSON.parse(readTextFile(bytes));
   return {
     [ATOMIC_FACET]: fingerprintFm(fm),
-    [INBOX]: materialFingerprint(inbox),
+    [INBOX]: asFingerprint(materialFingerprint(inbox)),
   };
 };
 
@@ -162,8 +161,8 @@ const maskerCanon: Canonicalizer = (fm) => {
   const views = (t["views"] ?? {}) as Record<string, { visible?: unknown }>;
   return {
     [ATOMIC_FACET]: fingerprintFm(fm),
-    [VIEW_E1]: materialFingerprint(views[EXPANDER_1]?.visible ?? []),
-    [VIEW_E2]: materialFingerprint(views[EXPANDER_2]?.visible ?? []),
+    [VIEW_E1]: asFingerprint(materialFingerprint(views[EXPANDER_1]?.visible ?? [])),
+    [VIEW_E2]: asFingerprint(materialFingerprint(views[EXPANDER_2]?.visible ?? [])),
   };
 };
 
@@ -402,25 +401,25 @@ const NODE_SPECS: readonly NodeSpec[] = [
 ];
 
 function relayTopology(): ReconcilerTopology {
-  const contract_fingerprints: Record<string, string> = {};
+  const contract_fingerprints: Record<string, Fingerprint> = {};
   for (const s of NODE_SPECS) {
-    contract_fingerprints[s.id] = `contract:${s.id}@live`;
+    contract_fingerprints[s.id] = asFingerprint(`contract:${s.id}@live`);
   }
   return {
     topology: {
       nodes: NODE_SPECS.map((s) => ({
-        node: s.id,
-        contract_fingerprint: contract_fingerprints[s.id] as string,
+        node: asNodeId(s.id),
+        contract_fingerprint: contract_fingerprints[s.id] as Fingerprint,
         wake_source: s.wake,
       })),
       edges: NODE_SPECS.flatMap((s) =>
         s.edges.map((e) => ({
-          subscriber: s.id,
-          producer: e.producer,
+          subscriber: asNodeId(s.id),
+          producer: asNodeId(e.producer),
           facet: e.facet,
         })),
       ),
-      entry_points: [GATEWAY],
+      entry_points: [asNodeId(GATEWAY)],
       acyclic: true,
     },
     contract_fingerprints,
@@ -441,8 +440,8 @@ function stageInbox(
   const prev = ledger.lastReceipt(SOURCE);
   const prevRef = prev !== null ? ledger.addressOf(prev) : null;
   ledger.append({
-    node: SOURCE,
-    contract_fingerprint: `contract:${SOURCE}@ingress`,
+    node: asNodeId(SOURCE),
+    contract_fingerprint: asFingerprint(`contract:${SOURCE}@ingress`),
     wake: { source: "external", refs: [] },
     input_fingerprints: [],
     fingerprints: commit.fingerprints,
@@ -560,7 +559,7 @@ test(
         // None of the scout's subscriptions is a sibling scout.
         for (const sib of SCOUTS) {
           if (sib === scout) continue;
-          ok(!producers.includes(sib), `${scout} must not subscribe to ${sib}`);
+          ok(!producers.includes(asNodeId(sib)), `${scout} must not subscribe to ${sib}`);
         }
         // Each scout consumed exactly its one (ledger) upstream fingerprint.
         const rec = lastReceipt(dag.ledger, scout);
@@ -615,7 +614,7 @@ test(
           .filter((e) => e.subscriber === exp)
           .map((e) => e.producer);
         const peer = exp === EXPANDER_1 ? EXPANDER_2 : EXPANDER_1;
-        ok(!expProducers.includes(peer), `${exp} must not subscribe to ${peer}`);
+        ok(!expProducers.includes(asNodeId(peer)), `${exp} must not subscribe to ${peer}`);
       }
       // The two expanders saw DIFFERENT masked views (real masking, not pass-through).
       notEqual(

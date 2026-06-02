@@ -1,3 +1,4 @@
+import { asFingerprint, asNodeId } from "../../shapes";
 import { deepEqual, equal, ok } from "node:assert/strict";
 import { test } from "node:test";
 
@@ -162,11 +163,11 @@ interface MakeReceiptOptions {
 function makeReceipt(options: MakeReceiptOptions = {}): LedgerReceipt {
   const wakeSource = options.wakeSource ?? "input";
   const input: Receipt = {
-    node: "node.incident-briefing",
-    contract_fingerprint: CONTRACT_FP,
+    node: asNodeId("node.incident-briefing"),
+    contract_fingerprint: asFingerprint(CONTRACT_FP),
     wake: { source: wakeSource, refs: [WAKE_REF] },
-    input_fingerprints: [INPUT_FP],
-    fingerprints: { "@atomic": ATOMIC_TOKEN },
+    input_fingerprints: [asFingerprint(INPUT_FP)],
+    fingerprints: { "@atomic": asFingerprint(ATOMIC_TOKEN) },
     semantic_diff: {},
     prev: null,
     status: "rendered",

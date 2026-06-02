@@ -17,6 +17,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { asFacet } from '@openprose/reactor/internals';
 import { mkdtempSync, rmSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -207,7 +208,7 @@ describe('reactor init (offline gate)', () => {
       // `items` facet (the propagation facet), proving the spec round-trips.
       assert.ok(existsSync(manifestPath(stateDir)));
       const ir = loadIR(stateDir);
-      assert.ok(ir.perNode[INBOX]!.compiled.canonicalizer.facets.includes('items'));
+      assert.ok(ir.perNode[INBOX]!.compiled.canonicalizer.facets.includes(asFacet('items')));
       assert.deepEqual(ir.topology.topology.edges, [
         { subscriber: DIGEST, producer: INBOX, facet: 'items' },
       ]);

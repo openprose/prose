@@ -1,3 +1,4 @@
+import { asFingerprint, asNodeId } from "../../shapes";
 import { deepEqual, equal, ok } from "node:assert/strict";
 import { test } from "node:test";
 
@@ -76,11 +77,11 @@ function makeReceipt(
   tokens: { readonly fresh: number; readonly reused: number },
 ): LedgerReceipt {
   const input: Receipt = {
-    node: "node.incident-briefing",
-    contract_fingerprint: CONTRACT_FP,
+    node: asNodeId("node.incident-briefing"),
+    contract_fingerprint: asFingerprint(CONTRACT_FP),
     wake: { source: wakeSource, refs: [WAKE_REF] },
     input_fingerprints: [],
-    fingerprints: { "@atomic": ATOMIC_TOKEN },
+    fingerprints: { "@atomic": asFingerprint(ATOMIC_TOKEN) },
     semantic_diff: {},
     prev: null,
     status: "rendered",

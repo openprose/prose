@@ -1,3 +1,4 @@
+import { asFacet } from "../../../shapes";
 import { equal, deepEqual, match, ok } from "node:assert/strict";
 import { test } from "node:test";
 
@@ -159,8 +160,8 @@ test("wm_list_upstream: lists the (producer, facet) subscriptions this node has"
   const store = new InMemoryWorldModelStore();
   const ctx = makeContext(store, {
     upstream: [
-      { producer: "monitor", facet: "funding" },
-      { producer: "feed", facet: "@atomic" },
+      { producer: "monitor", facet: asFacet("funding") },
+      { producer: "feed", facet: asFacet("@atomic") },
     ],
   });
   const out = await invokeTool(wmListUpstreamTool(), ctx, { producer: null });
@@ -172,9 +173,9 @@ test("wm_list_upstream: narrows to one producer's facets when given a producer",
   const store = new InMemoryWorldModelStore();
   const ctx = makeContext(store, {
     upstream: [
-      { producer: "monitor", facet: "funding" },
-      { producer: "monitor", facet: "hiring" },
-      { producer: "feed", facet: "@atomic" },
+      { producer: "monitor", facet: asFacet("funding") },
+      { producer: "monitor", facet: asFacet("hiring") },
+      { producer: "feed", facet: asFacet("@atomic") },
     ],
   });
   const out = await invokeTool(wmListUpstreamTool(), ctx, {
@@ -194,7 +195,7 @@ test("wm_list_upstream: no subscriptions returns a legible empty note", async ()
 test("wm_list_upstream: a non-subscribed producer is reported, not an error", async () => {
   const store = new InMemoryWorldModelStore();
   const ctx = makeContext(store, {
-    upstream: [{ producer: "monitor", facet: "funding" }],
+    upstream: [{ producer: "monitor", facet: asFacet("funding") }],
   });
   const out = await invokeTool(wmListUpstreamTool(), ctx, { producer: "other" });
   match(out, /not subscribed/i);
@@ -210,7 +211,7 @@ test("wm_read_upstream: reads a SUBSCRIBED producer's published file by referenc
   // The subscriber's render context lists `monitor` on its inbound edges.
   const ctx = makeContext(store, {
     node: "brief",
-    upstream: [{ producer: "monitor", facet: "funding" }],
+    upstream: [{ producer: "monitor", facet: asFacet("funding") }],
   });
   const out = await invokeTool(wmReadUpstreamTool(), ctx, {
     producer: "monitor",
@@ -225,7 +226,7 @@ test("wm_read_upstream: REJECTS a producer the node does not subscribe to (read-
   store.commitPublished("secret", { "state/x.json": textFile("classified") });
   const ctx = makeContext(store, {
     node: "brief",
-    upstream: [{ producer: "monitor", facet: "funding" }],
+    upstream: [{ producer: "monitor", facet: asFacet("funding") }],
   });
   const out = await invokeTool(wmReadUpstreamTool(), ctx, {
     producer: "secret",
@@ -242,7 +243,7 @@ test("wm_read_upstream: reads PUBLISHED, never the producer's workspace scratch"
   store.writeWorkspace("monitor", { "f.json": textFile("scratch") });
   const ctx = makeContext(store, {
     node: "brief",
-    upstream: [{ producer: "monitor", facet: "@atomic" }],
+    upstream: [{ producer: "monitor", facet: asFacet("@atomic") }],
   });
   const out = await invokeTool(wmReadUpstreamTool(), ctx, {
     producer: "monitor",
@@ -256,7 +257,7 @@ test("wm_read_upstream: missing path on a subscribed producer returns not-found,
   store.commitPublished("monitor", { "a.json": textFile("a") });
   const ctx = makeContext(store, {
     node: "brief",
-    upstream: [{ producer: "monitor", facet: "@atomic" }],
+    upstream: [{ producer: "monitor", facet: asFacet("@atomic") }],
   });
   const out = await invokeTool(wmReadUpstreamTool(), ctx, {
     producer: "monitor",

@@ -32,8 +32,7 @@ import {
   type Receipt,
   type TopologyWorldModel,
   type Wake,
-  type WorldModelCommit,
-} from "../../shapes";
+  type WorldModelCommit, asFingerprint, asNodeId} from "../../shapes";
 import {
   InMemoryWorldModelStore,
   jsonFile,
@@ -93,7 +92,7 @@ test("§8 read-isolation: a render's pin reads its start-version snapshot even a
 const CONTRACT = ("sha256:" + "a".repeat(64)) as Fingerprint;
 
 const oneNode: TopologyWorldModel = {
-  nodes: [{ node: "n", contract_fingerprint: CONTRACT, wake_source: "input" }],
+  nodes: [{ node: asNodeId("n"), contract_fingerprint: CONTRACT, wake_source: "input" }],
   edges: [],
   entry_points: [],
   acyclic: true,
@@ -144,7 +143,7 @@ function portsOver(
     ledger,
     worldModel: {
       publishedRef: (node) => ({
-        node,
+        node: asNodeId(node),
         workspace: "published",
         location: `/wm/${node}`,
         version: null,
@@ -154,9 +153,9 @@ function portsOver(
     spawnRender: (req): RenderOutcome => {
       renderCounter.n += 1;
       const commit: WorldModelCommit = {
-        node: req.node,
+        node: asNodeId(req.node),
         version: ("sha256:" + "c".repeat(64)) as ContentAddress,
-        fingerprints: { [ATOMIC_FACET]: "fp:rendered" } as FingerprintMap,
+        fingerprints: { [ATOMIC_FACET]: asFingerprint("fp:rendered") } as FingerprintMap,
       };
       return { status: "rendered", commit, semantic_diff: {}, cost: RENDER_COST };
     },
@@ -170,7 +169,7 @@ const topo: ReconcilerTopology = {
 
 test("§8 crash re-derivation: a fresh reconciler over the persisted ledger SKIPS when inputs are unmoved (state re-derived, not lost)", () => {
   const ledger = new DurableLedger();
-  const inputs = { current: ["i1"] as InputFingerprints };
+  const inputs = { current: [asFingerprint("i1")] as InputFingerprints };
   const renders = { n: 0 };
 
   // Epoch 1: cold render commits a receipt to the durable ledger.
@@ -191,7 +190,7 @@ test("§8 crash re-derivation: a fresh reconciler over the persisted ledger SKIP
 
 test("§8 crash re-derivation: a fresh reconciler RENDERS when an upstream moved while it was down (a missed wake is re-derived, not lost)", () => {
   const ledger = new DurableLedger();
-  const inputs = { current: ["i1"] as InputFingerprints };
+  const inputs = { current: [asFingerprint("i1")] as InputFingerprints };
   const renders = { n: 0 };
 
   const before = createReconciler(portsOver(ledger, inputs, renders), topo);
@@ -200,7 +199,7 @@ test("§8 crash re-derivation: a fresh reconciler RENDERS when an upstream moved
 
   // While the reconciler was "down", the upstream truth moved (its current
   // input-fingerprint tuple differs from the one the persisted receipt consumed).
-  inputs.current = ["i2"];
+  inputs.current = [asFingerprint("i2")];
 
   // CRASH + restart: a fresh reconciler re-derives the pending work from the
   // ledger (last receipt's memo key vs. the now-moved inputs) and renders.

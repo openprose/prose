@@ -21,6 +21,8 @@
 
 import {
   ATOMIC_FACET,
+  asFacet,
+  asFingerprint,
   type ContentAddress,
   type Facet,
   type Fingerprint,
@@ -405,7 +407,7 @@ export function computeMovedFacets(
   for (const facet of Object.keys(current).sort(compareFacet)) {
     const currentToken = current[facet];
     if (prior === null || prior[facet] !== currentToken) {
-      moved.push(facet);
+      moved.push(asFacet(facet));
     }
   }
   return moved;
@@ -455,7 +457,7 @@ function normalizeConsumedReceiptPin(value: unknown, path: string): ConsumedRece
     producer,
     facet,
     version: value["version"],
-    fingerprint,
+    fingerprint: asFingerprint(fingerprint),
   };
 }
 
@@ -483,7 +485,7 @@ function comparePropagationTarget(
   );
 }
 
-function compareFacet(left: Facet, right: Facet): number {
+function compareFacet(left: string, right: string): number {
   return left.localeCompare(right);
 }
 
@@ -491,7 +493,7 @@ function normalizeFacet(value: unknown): Facet {
   if (typeof value !== "string" || value.length === 0) {
     throw new Error("facet must be a non-empty string");
   }
-  return value;
+  return asFacet(value);
 }
 
 function assertTopology(topology: unknown): asserts topology is TopologyWorldModel {

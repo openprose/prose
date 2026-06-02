@@ -30,8 +30,7 @@ import {
 } from "@openprose/reactor/adapters";
 import {
   propagationTargets,
-  type TopologyWorldModel,
-} from "@openprose/reactor/internals";
+  type TopologyWorldModel, asFacet, asNodeId} from "@openprose/reactor/internals";
 import { createFileSystemStorageAdapter } from "@openprose/reactor";
 
 import { generateNewsDeskFixture } from "./news-desk";
@@ -83,7 +82,7 @@ test("generated news-desk fixture loads via the SDK replay read surface", () => 
     "twelve feed normalizers (the 12 wires, mostly dark)",
   );
   assert.equal(topology.acyclic, true);
-  assert.ok(topology.entry_points.includes(GATEWAY), "gateway is the entry point");
+  assert.ok(topology.entry_points.includes(asNodeId(GATEWAY)), "gateway is the entry point");
 
   // per-feed facet edges exist on the gateway (the dark-lane boundary).
   for (const f of FEED_FACETS) {
@@ -102,7 +101,7 @@ test("generated news-desk fixture loads via the SDK replay read surface", () => 
     // cluster's OWN exposed facets (visible in receipts). Assert ≥1 story facet
     // actually moved at least once in the trail.
     assert.ok(
-      session.receipts.some((_, i) => session.movedFacetsByIndex[i]!.has(`story:${sid}`)),
+      session.receipts.some((_, i) => session.movedFacetsByIndex[i]!.has(asFacet(`story:${sid}`))),
       `the cluster surfaced a "story:${sid}" facet move at least once`,
     );
   }
@@ -261,7 +260,7 @@ test("THE INVARIANT: long flat-cost quiet → ONE briefing spike → dedup is a 
     if (topicIdx !== undefined) {
       const topicMoved = session.movedFacetsByIndex[topicIdx]!;
       assert.ok(
-        !topicMoved.has("brief-gate"),
+        !topicMoved.has(asFacet("brief-gate")),
         "the deduped cluster did NOT move the Topic Index brief-gate (briefing stays dark)",
       );
       const targets = propagationTargets({

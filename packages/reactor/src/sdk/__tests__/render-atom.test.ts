@@ -14,7 +14,7 @@ import {
   readTextFile,
   type Canonicalizer,
 } from "../../world-model";
-import { ATOMIC_FACET } from "../../shapes";
+import { ATOMIC_FACET, asFingerprint} from "../../shapes";
 import { verifyReceipt } from "../../receipt";
 
 const CONTRACT_FP = "contract:incident-briefing@1";
@@ -24,7 +24,7 @@ test("renderAtom standalone commits a world-model and signs a rendered receipt",
   const store = new InMemoryWorldModelStore();
   const result = renderAtom({
     node: "responsibility.incident-briefing",
-    contract_fingerprint: CONTRACT_FP,
+    contract_fingerprint: asFingerprint(CONTRACT_FP),
     store,
     render: () => ({
       world_model: files({ "truth.json": jsonFile({ open_incidents: 3 }) }),
@@ -45,7 +45,7 @@ test("renderAtom standalone commits a world-model and signs a rendered receipt",
   deepEqual(result.receipt.input_fingerprints, []);
   // The receipt carries a fingerprinted truth (the atomic whole-truth facet).
   ok(result.receipt.fingerprints[ATOMIC_FACET]);
-  match(result.receipt.fingerprints[ATOMIC_FACET], CONTENT_ADDRESS);
+  match(result.receipt.fingerprints[ATOMIC_FACET]!, CONTENT_ADDRESS);
   // The receipt is content-addressed + verifies (architecture.md §5.1).
   ok(verifyReceipt(result.receipt).ok);
   // The world-model committed to the store; read-by-reference returns it.
@@ -62,7 +62,7 @@ test("renderAtom signals failed (returned) — nothing commits, prior truth stan
   // Seed a prior truth.
   renderAtom({
     node: "n",
-    contract_fingerprint: CONTRACT_FP,
+    contract_fingerprint: asFingerprint(CONTRACT_FP),
     store,
     render: () => ({
       world_model: files({ "t.json": jsonFile({ v: 1 }) }),
@@ -73,7 +73,7 @@ test("renderAtom signals failed (returned) — nothing commits, prior truth stan
 
   const failed = renderAtom({
     node: "n",
-    contract_fingerprint: CONTRACT_FP,
+    contract_fingerprint: asFingerprint(CONTRACT_FP),
     store,
     render: () => ({ failed: true, reason: "postcondition unsatisfied", cost: zero() }),
   });
@@ -90,7 +90,7 @@ test("renderAtom signals failed (thrown) — the throw is the failed signal", ()
   const store = new InMemoryWorldModelStore();
   const result = renderAtom({
     node: "n",
-    contract_fingerprint: CONTRACT_FP,
+    contract_fingerprint: asFingerprint(CONTRACT_FP),
     store,
     render: () => {
       throw new Error("render blew up");
@@ -107,7 +107,7 @@ test("renderAtom applies the compiled canonicalizer locally (immaterial churn is
   const materialOnly: Canonicalizer = (wm) => {
     const parsed = JSON.parse(readTextFile(wm["truth.json"] as Uint8Array));
     const token = `count:${parsed.count}`;
-    return { [ATOMIC_FACET]: token };
+    return { [ATOMIC_FACET]: asFingerprint(token) };
   };
 
   const render = (count: number, fetchedAt: string): RenderProduct => ({
@@ -117,7 +117,7 @@ test("renderAtom applies the compiled canonicalizer locally (immaterial churn is
 
   const a = renderAtom({
     node: "n",
-    contract_fingerprint: CONTRACT_FP,
+    contract_fingerprint: asFingerprint(CONTRACT_FP),
     canonicalizer: materialOnly,
     render: () => render(5, "2026-05-01T00:00:00Z"),
   });
@@ -125,14 +125,14 @@ test("renderAtom applies the compiled canonicalizer locally (immaterial churn is
   const store2 = new InMemoryWorldModelStore();
   const b1 = renderAtom({
     node: "n",
-    contract_fingerprint: CONTRACT_FP,
+    contract_fingerprint: asFingerprint(CONTRACT_FP),
     canonicalizer: materialOnly,
     store: store2,
     render: () => render(5, "2026-05-01T00:00:00Z"),
   });
   const b2 = renderAtom({
     node: "n",
-    contract_fingerprint: CONTRACT_FP,
+    contract_fingerprint: asFingerprint(CONTRACT_FP),
     canonicalizer: materialOnly,
     store: store2,
     render: () => render(5, "2099-12-31T23:59:59Z"),

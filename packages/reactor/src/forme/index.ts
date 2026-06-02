@@ -36,6 +36,7 @@
 
 import {
   ATOMIC_FACET,
+  asNodeId,
   type ContentAddress,
   type Facet,
   type Fingerprint,
@@ -309,7 +310,7 @@ export function wire(
   assertUniqueIds(dataFlow);
 
   const nodes: TopologyNode[] = dataFlow.map((c) => ({
-    node: c.id,
+    node: asNodeId(c.id),
     contract_fingerprint: c.contract_fingerprint,
     wake_source: c.wakeSource,
   }));
@@ -376,8 +377,8 @@ export function wire(
       // rule, plan.md §5). With no fan-in there is exactly one match here.
       for (const cand of matched) {
         edges.push({
-          subscriber: c.id,
-          producer: cand.producer,
+          subscriber: asNodeId(c.id),
+          producer: asNodeId(cand.producer),
           facet: cand.facet,
         });
         subscriptions.push({ producer: cand.producer, facet: cand.facet });
@@ -391,7 +392,7 @@ export function wire(
   // `### Continuity`; it never infers a trigger (plan.md §5).
   const entry_points = dataFlow
     .filter((c) => c.wakeSource === "external")
-    .map((c) => c.id)
+    .map((c) => asNodeId(c.id))
     .sort(compareString);
 
   // 4. Acyclicity postcondition — reuse detectReceiptCycles over node-level

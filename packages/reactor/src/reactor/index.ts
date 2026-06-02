@@ -41,12 +41,16 @@ import {
   type SemanticDiff,
   type TopologyEdge,
   type TopologyWorldModel,
+  type Unbrand,
   type Wake,
   type WakeSource,
   type WorldModelCommit,
   type WorldModelRef,
   ATOMIC_FACET,
   EMPTY_SEMANTIC_DIFF,
+  asFacet,
+  asFingerprint,
+  asNodeId,
   createNullSignature,
   makeMemoKey,
 } from "../shapes";
@@ -757,7 +761,10 @@ async function renderAndCommitAsync(input: {
  * is admissible. Returns `true` iff either half differs — the React.memo
  * "props changed" test, applied to fingerprints of meaning.
  */
-export function memoKeyMoved(last: Receipt, key: MemoKey): boolean {
+export function memoKeyMoved(
+  last: Unbrand<Receipt>,
+  key: Unbrand<MemoKey>,
+): boolean {
   if (last.contract_fingerprint !== key.contract_fingerprint) {
     return true;
   }
@@ -768,8 +775,8 @@ export function memoKeyMoved(last: Receipt, key: MemoKey): boolean {
 }
 
 function fingerprintTuplesEqual(
-  left: InputFingerprints,
-  right: InputFingerprints,
+  left: readonly string[],
+  right: readonly string[],
 ): boolean {
   if (left.length !== right.length) {
     return false;
@@ -795,7 +802,7 @@ export function movedFacetsBetween(
   for (const facet of Object.keys(next)) {
     const before = prior?.[facet];
     if (before === undefined || before !== next[facet]) {
-      moved.add(facet);
+      moved.add(asFacet(facet));
     }
   }
   return moved;
@@ -868,7 +875,7 @@ function buildRenderedReceipt(input: {
   cost: Cost;
 }): Receipt {
   return {
-    node: input.node,
+    node: asNodeId(input.node),
     contract_fingerprint: input.contractFp,
     wake: input.wake,
     input_fingerprints: input.key.input_fingerprints,
@@ -898,7 +905,7 @@ function buildSkippedReceipt(input: {
   prev: ContentAddress | null;
 }): Receipt {
   return {
-    node: input.node,
+    node: asNodeId(input.node),
     contract_fingerprint: input.contractFp,
     wake: input.wake,
     input_fingerprints: input.key.input_fingerprints,
@@ -928,7 +935,7 @@ function buildFailedReceipt(input: {
   const priorFingerprints: FingerprintMap =
     input.last?.fingerprints ?? coldStartFingerprints();
   return {
-    node: input.node,
+    node: asNodeId(input.node),
     contract_fingerprint: input.contractFp,
     wake: input.wake,
     input_fingerprints: input.key.input_fingerprints,
@@ -962,7 +969,7 @@ function coldStartFingerprints(): FingerprintMap {
 }
 
 /** The reserved fingerprint of the empty "no data yet" world-model (§8). */
-export const COLD_START_ATOMIC_FINGERPRINT = "cold-start:empty" as const;
+export const COLD_START_ATOMIC_FINGERPRINT = asFingerprint("cold-start:empty");
 
 // ===========================================================================
 // Topology helpers

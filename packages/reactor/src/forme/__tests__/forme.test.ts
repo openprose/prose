@@ -1,7 +1,7 @@
 import { deepEqual, equal, ok, throws } from "node:assert/strict";
 import { test } from "node:test";
 
-import { ATOMIC_FACET } from "../../shapes";
+import { ATOMIC_FACET, asFacet, asFingerprint, asNodeId} from "../../shapes";
 import {
   applyWiring,
   exactFacetMatcher,
@@ -29,10 +29,13 @@ function responsibility(
 ): RenderContract {
   return {
     id,
-    contract_fingerprint: fp(id),
+    contract_fingerprint: asFingerprint(fp(id)),
     kind: opts.kind ?? "responsibility",
-    requires: opts.requires ?? [],
-    maintains: opts.maintains ?? [],
+    requires: (opts.requires ?? []).map((r) => ({
+      facet: asFacet(r.facet),
+      ...(r.fanIn !== undefined ? { fanIn: r.fanIn } : {}),
+    })),
+    maintains: (opts.maintains ?? []).map(asFacet),
     wakeSource: opts.wakeSource ?? "input",
   };
 }
@@ -208,13 +211,13 @@ test("acyclic is true for a real DAG and false when a cycle closes", () => {
 test("hasNodeCycle detects a back-edge over topology edges", () => {
   equal(
     hasNodeCycle([
-      { subscriber: "a", producer: "b", facet: "f" },
-      { subscriber: "b", producer: "a", facet: "g" },
+      { subscriber: asNodeId("a"), producer: asNodeId("b"), facet: asFacet("f") },
+      { subscriber: asNodeId("b"), producer: asNodeId("a"), facet: asFacet("g") },
     ]),
     true,
   );
   equal(
-    hasNodeCycle([{ subscriber: "a", producer: "b", facet: "f" }]),
+    hasNodeCycle([{ subscriber: asNodeId("a"), producer: asNodeId("b"), facet: asFacet("f") }]),
     false,
   );
 });
@@ -239,11 +242,11 @@ test("a custom FacetMatcher drives semantic wiring (string-match is only the def
 
 test("the default matcher is exact-name equality", () => {
   equal(
-    exactFacetMatcher({ subscriber: "c", facet: "a" }, { producer: "p", facet: "a" }),
+    exactFacetMatcher({ subscriber: "c", facet: asFacet("a") }, { producer: "p", facet: asFacet("a") }),
     true,
   );
   equal(
-    exactFacetMatcher({ subscriber: "c", facet: "a" }, { producer: "p", facet: "b" }),
+    exactFacetMatcher({ subscriber: "c", facet: asFacet("a") }, { producer: "p", facet: asFacet("b") }),
     false,
   );
 });

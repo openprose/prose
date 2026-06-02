@@ -4,6 +4,7 @@
 // reactor's public surface.
 
 import { createHash } from "node:crypto";
+import { asFingerprint } from "@openprose/reactor/internals";
 
 import { readTextFile, type WorldModelStore } from "@openprose/reactor/adapters";
 import type { Fingerprint } from "@openprose/reactor/internals";
@@ -13,7 +14,9 @@ import type { Fingerprint } from "@openprose/reactor/internals";
 // projected sub-value moves.
 
 export function materialFingerprint(value: unknown): Fingerprint {
-  return `sha256:${createHash("sha256").update(stableStringify(value)).digest("hex")}`;
+  return asFingerprint(
+    `sha256:${createHash("sha256").update(stableStringify(value)).digest("hex")}`,
+  );
 }
 
 function stableStringify(value: unknown): string {

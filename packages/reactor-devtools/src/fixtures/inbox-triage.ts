@@ -77,8 +77,7 @@ import {
   type TopologyWorldModel,
   type TopologyNode,
   type TopologyEdge,
-  type ReconcilerTopology,
-} from "@openprose/reactor/internals";
+  type ReconcilerTopology, asFacet, asFingerprint, asNodeId} from "@openprose/reactor/internals";
 
 import { materialFingerprint, readJson } from "./_fixture-shared";
 
@@ -136,15 +135,15 @@ const EMAIL_FACET: Record<EmailId, Facet> = Object.fromEntries(
 // recipient. That is the dedup: copies 2..5 leave it byte-identical ⇒ the
 // per-thread render memo-skips.
 const THREAD_FACET: Record<ThreadKey, Facet> = {
-  newsletter: "thread:newsletter",
-  ship: "thread:ship",
-  invoice: "thread:invoice",
-  alert: "thread:alert",
+  newsletter: asFacet("thread:newsletter"),
+  ship: asFacet("thread:ship"),
+  invoice: asFacet("thread:invoice"),
+  alert: asFacet("thread:alert"),
 };
 
 // The cheap rollup facet the Priority + Digest read — moves on every threader
 // render (a thread set / membership change).
-const ROLLUP_FACET: Facet = "rollup";
+const ROLLUP_FACET = asFacet("rollup");
 
 // Which thread an email belongs to (its canonical grouping). All five newsletter
 // copies map to `newsletter` — that is the collapse.
@@ -174,12 +173,12 @@ const LABELS: Record<string, string> = {
   [CLASSIFIER.ship1]: "Classifier [shipping]",
   [CLASSIFIER.invoice1]: "Classifier [invoice]",
   [CLASSIFIER.bad1]: "Classifier [alert]",
-  [THREADER]: "Threader",
+  [THREADER]: asFingerprint("Threader"),
   [THREAD_RENDER.newsletter]: "Thread Render [newsletter]",
   [THREAD_RENDER.ship]: "Thread Render [shipping]",
   [THREAD_RENDER.invoice]: "Thread Render [invoice]",
   [THREAD_RENDER.alert]: "Thread Render [alert]",
-  [PRIORITY]: "Priority",
+  [PRIORITY]: asFingerprint("Priority"),
   [DIGEST]: "Daily Digest",
 };
 
@@ -301,7 +300,7 @@ function commit(world: unknown, cost: Cost): RenderProduct {
 // ---------------------------------------------------------------------------
 
 const atomicTruth = (fm: WorldModelFiles) => ({
-  [ATOMIC_FACET]: fingerprintArtifact(fm),
+  [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(fm)),
 });
 
 // The ingress source exposes one facet per email — the fingerprint of ONLY that
@@ -311,7 +310,7 @@ const ingressCanon = (fm: WorldModelFiles) => {
   const bytes = fm["mail-feed.json"];
   const feed: MailFeed =
     bytes === undefined ? {} : (JSON.parse(readTextFile(bytes)) as MailFeed);
-  const out: Record<string, Fingerprint> = { [ATOMIC_FACET]: fingerprintArtifact(fm) };
+  const out: Record<string, Fingerprint> = { [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(fm)) };
   for (const id of EMAIL_IDS) {
     out[EMAIL_FACET[id]!] = materialFingerprint(feed[id] ?? null);
   }
@@ -325,7 +324,7 @@ const ingressCanon = (fm: WorldModelFiles) => {
 const gatewayCanon = (fm: WorldModelFiles) => {
   const t = readTruth(fm);
   const emails = (t["emails"] ?? {}) as Record<string, unknown>;
-  const out: Record<string, Fingerprint> = { [ATOMIC_FACET]: fingerprintArtifact(fm) };
+  const out: Record<string, Fingerprint> = { [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(fm)) };
   for (const id of EMAIL_IDS) {
     out[EMAIL_FACET[id]!] = materialFingerprint(emails[id] ?? null);
   }
@@ -343,8 +342,8 @@ const threaderCanon = (fm: WorldModelFiles) => {
   const t = readTruth(fm);
   const threads = (t["threads"] ?? {}) as Record<string, { content?: unknown }>;
   const out: Record<string, Fingerprint> = {
-    [ATOMIC_FACET]: fingerprintArtifact(fm),
-    [ROLLUP_FACET]: materialFingerprint(t["rollup"] ?? null),
+    [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(fm)),
+    [ROLLUP_FACET]: asFingerprint(materialFingerprint(t["rollup"] ?? null)),
   };
   for (const key of THREAD_KEYS) {
     // Fingerprint ONLY the canonical content — the dedup invariant.
@@ -559,18 +558,18 @@ function buildReconcilerTopology(decls: readonly NodeDecl[]): ReconcilerTopology
   for (const d of decls) contract_fingerprints[d.id] = contractFingerprint(d);
 
   const nodes: TopologyNode[] = decls.map((d) => ({
-    node: d.id,
+    node: asNodeId(d.id),
     contract_fingerprint: contract_fingerprints[d.id]!,
     wake_source: (d.kind === "gateway" ? "external" : "input") as WakeSource,
   }));
   const edges: TopologyEdge[] = decls.flatMap((d) =>
     d.requires.map((r) => ({
-      subscriber: d.id,
-      producer: r.producer,
+      subscriber: asNodeId(d.id),
+      producer: asNodeId(r.producer),
       facet: r.facet ?? ATOMIC_FACET,
     })),
   );
-  const entry_points = decls.filter((d) => d.kind === "gateway").map((d) => d.id);
+  const entry_points = decls.filter((d) => d.kind === "gateway").map((d) => asNodeId(d.id));
   const declared = new Set(decls.map((d) => d.id));
   const topology: TopologyWorldModel = {
     nodes,
@@ -717,8 +716,8 @@ export function generateInboxTriageFixture(opts: GenerateOptions): GenerateResul
     const prevRef = prev !== null ? ledger.addressOf(prev) : null;
     const wake: Wake = { source: "external", refs: [] };
     ledger.append({
-      node: SOURCE,
-      contract_fingerprint: `contract:${SOURCE}@ingress`,
+      node: asNodeId(SOURCE),
+      contract_fingerprint: asFingerprint(`contract:${SOURCE}@ingress`),
       wake,
       input_fingerprints: [],
       fingerprints: commitRes.fingerprints,

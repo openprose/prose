@@ -1,7 +1,7 @@
 import { deepEqual, equal, match, notEqual, ok, throws } from "node:assert/strict";
 import { test } from "node:test";
 
-import { ATOMIC_FACET } from "../../shapes";
+import { ATOMIC_FACET, asFingerprint} from "../../shapes";
 import {
   COLD_START_FINGERPRINTS,
   InMemoryWorldModelStore,
@@ -100,9 +100,9 @@ test("a faceted canonicalizer makes propagation finer-grained per facet", () => 
       hiring: unknown;
     };
     return {
-      [ATOMIC_FACET]: fingerprintArtifact(files),
-      funding: fingerprintArtifact({ f: jsonFile(data.funding) }),
-      hiring: fingerprintArtifact({ f: jsonFile(data.hiring) }),
+      [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(files)),
+      funding: asFingerprint(fingerprintArtifact({ f: jsonFile(data.funding) })),
+      hiring: asFingerprint(fingerprintArtifact({ f: jsonFile(data.hiring) })),
     };
   };
   const a = s.commitPublished(
@@ -122,7 +122,7 @@ test("a faceted canonicalizer makes propagation finer-grained per facet", () => 
 });
 
 test("resolveFacetFingerprint falls back to the atomic token for unknown facets", () => {
-  const map = { [ATOMIC_FACET]: "sha256:x", funding: "sha256:fund" };
+  const map = { [ATOMIC_FACET]: asFingerprint("sha256:x"), funding: asFingerprint("sha256:fund") };
   equal(resolveFacetFingerprint(map, "funding"), "sha256:fund");
   equal(resolveFacetFingerprint(map, "hiring"), "sha256:x");
   equal(resolveFacetFingerprint(map, ATOMIC_FACET), "sha256:x");

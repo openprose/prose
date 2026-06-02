@@ -52,6 +52,7 @@ import {
   type RenderOptions,
   type RenderSandboxRunner,
 } from "../adapters/agent-render";
+import { asFingerprint } from "../shapes";
 import type { Cost, Fingerprint } from "../shapes";
 import type { ReconcilerTopology } from "../reactor";
 import { contentAddressOf } from "../world-model/canonical";
@@ -495,7 +496,9 @@ function deriveContractFingerprints(
       `execution:${contract.execution ?? ""}`,
       `criteria:${contract.criteria ?? ""}`,
     ].join("\n");
-    out[contract.id] = contentAddressOf(new TextEncoder().encode(image));
+    out[contract.id] = asFingerprint(
+      contentAddressOf(new TextEncoder().encode(image)),
+    );
   }
   return out;
 }

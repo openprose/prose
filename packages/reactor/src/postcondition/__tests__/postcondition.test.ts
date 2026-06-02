@@ -1,3 +1,4 @@
+import { asFacet } from "../../shapes";
 import { deepEqual, equal, ok, throws } from "node:assert/strict";
 import { test } from "node:test";
 
@@ -22,7 +23,7 @@ test("compile sorts validators by id and splits by mode", () => {
     {
       id: "p1",
       mode: "deterministic",
-      facet: "funding",
+      facet: asFacet("funding"),
       predicate: { kind: "less-than", fact: "confidence", value: 0.5 },
       source: "fail if confidence < 0.5",
     },
@@ -138,7 +139,7 @@ test("gate returns failed when a deterministic violation predicate trips", () =>
   const set = setWith([
     {
       id: "p1",
-      facet: "funding",
+      facet: asFacet("funding"),
       predicate: { kind: "less-than", fact: "confidence", value: 0.5 },
       source: "fail if confidence < 0.5",
     },

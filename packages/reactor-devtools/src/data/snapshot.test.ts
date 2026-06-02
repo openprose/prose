@@ -14,8 +14,7 @@ import {
 import {
   createReceipt,
   createNullSignature,
-  type TopologyWorldModel,
-} from "@openprose/reactor/internals";
+  type TopologyWorldModel, asFacet, asFingerprint, asNodeId} from "@openprose/reactor/internals";
 
 import { buildSnapshot, type OpenedStateDir } from "./index";
 
@@ -65,11 +64,11 @@ function skippedReceipt(): LedgerReceipt {
 
 const TOPOLOGY: TopologyWorldModel = {
   nodes: [
-    { node: "alpha", contract_fingerprint: fp("a1"), wake_source: "external" },
-    { node: "beta", contract_fingerprint: fp("a2"), wake_source: "input" },
+    { node: asNodeId("alpha"), contract_fingerprint: asFingerprint(fp("a1")), wake_source: "external" },
+    { node: asNodeId("beta"), contract_fingerprint: asFingerprint(fp("a2")), wake_source: "input" },
   ],
-  edges: [{ subscriber: "beta", producer: "alpha", facet: "funding" }],
-  entry_points: ["alpha"],
+  edges: [{ subscriber: asNodeId("beta"), producer: asNodeId("alpha"), facet: asFacet("funding") }],
+  entry_points: [asNodeId("alpha")],
   acyclic: true,
 };
 
@@ -155,16 +154,16 @@ test("diamond single-wake: a node reached by ≥2 moved facets wakes once", () =
 
   const topology: TopologyWorldModel = {
     nodes: [
-      { node: "producer", contract_fingerprint: fp("e0"), wake_source: "self" },
-      { node: "sink", contract_fingerprint: fp("e2"), wake_source: "input" },
-      { node: "only1", contract_fingerprint: fp("e3"), wake_source: "input" },
+      { node: asNodeId("producer"), contract_fingerprint: asFingerprint(fp("e0")), wake_source: "self" },
+      { node: asNodeId("sink"), contract_fingerprint: asFingerprint(fp("e2")), wake_source: "input" },
+      { node: asNodeId("only1"), contract_fingerprint: asFingerprint(fp("e3")), wake_source: "input" },
     ],
     edges: [
-      { subscriber: "sink", producer: "producer", facet: "f1" },
-      { subscriber: "sink", producer: "producer", facet: "f2" },
-      { subscriber: "only1", producer: "producer", facet: "f1" },
+      { subscriber: asNodeId("sink"), producer: asNodeId("producer"), facet: asFacet("f1") },
+      { subscriber: asNodeId("sink"), producer: asNodeId("producer"), facet: asFacet("f2") },
+      { subscriber: asNodeId("only1"), producer: asNodeId("producer"), facet: asFacet("f1") },
     ],
-    entry_points: ["producer"],
+    entry_points: [asNodeId("producer")],
     acyclic: true,
   };
 

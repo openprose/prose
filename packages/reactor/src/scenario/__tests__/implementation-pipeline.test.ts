@@ -1,3 +1,4 @@
+import { asNodeId } from "../../shapes";
 // IT-3 — Implementation Pipeline, scaled (the fs/shell + subagent stress test).
 // Source: tests/implementation-pipeline.md; INTEGRATION-TESTS-PLAN.md §3 IT-3.
 //
@@ -87,7 +88,7 @@ test("IT-3 inventory: ~12 nodes, two gateway entry points, acyclic; the 3 lanes 
   );
   equal(scn.topology.topology.acyclic, true);
   for (const lane of LANES) {
-    ok(nodeIds.includes(lane), `lane ${lane} must be mounted`);
+    ok(nodeIds.includes(asNodeId(lane)), `lane ${lane} must be mounted`);
   }
 });
 
@@ -150,7 +151,7 @@ test("IT-3 fixed topology: extra work for an unknown lane becomes `unassigned_wo
   // The topology still has exactly the declared nodes — no seventh/ghost lane.
   const nodeIds = scn.topology.topology.nodes.map((n) => n.node);
   equal(nodeIds.length, 12);
-  ok(!nodeIds.includes("responsibility.lane-ghost"));
+  ok(!nodeIds.includes(asNodeId("responsibility.lane-ghost")));
 
   // The rogue work surfaced as `unassigned_work` in the work plan, not a node.
   const plan = readJson(scn.store, WORK_PLAN);

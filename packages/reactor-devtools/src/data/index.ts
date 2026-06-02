@@ -46,6 +46,7 @@ import {
   type ReplaySessionCostOptions,
   type TopologyWorldModel,
   type ContentAddress,
+  type Facet,
 } from "@openprose/reactor/internals";
 
 /** The chain-verify result shape (the return of `verifyReceiptChain`). */
@@ -687,7 +688,7 @@ function deriveEdgeLights(
   const targets = propagationTargets({
     topology,
     producer: node,
-    movedFacets: moved,
+    movedFacets: moved as ReadonlySet<Facet>,
     wakeRef,
   });
   const wokenSubscribers = targets.map((t) => t.node);

@@ -41,7 +41,7 @@ import type {
 } from "../../postcondition";
 import { compilePostconditions } from "../../postcondition";
 import type { PredicateExpression } from "../../cycle";
-import { ATOMIC_FACET } from "../../shapes";
+import { ATOMIC_FACET, asFacet } from "../../shapes";
 
 // ---------------------------------------------------------------------------
 // The FLAT, non-recursive predicate schema (the Defect-A fix)
@@ -332,14 +332,14 @@ export function toAuthoredPostconditions(
       ? {
           id: pc.id,
           mode: "deterministic",
-          facet: pc.facet,
+          facet: asFacet(pc.facet),
           predicate: decodeFlatPredicate(pc.predicate),
           source: pc.source,
         }
       : {
           id: pc.id,
           mode: "render-attested",
-          facet: pc.facet,
+          facet: asFacet(pc.facet),
           source: pc.source,
         },
   );

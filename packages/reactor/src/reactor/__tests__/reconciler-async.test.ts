@@ -26,8 +26,7 @@ import {
   type TopologyWorldModel,
   type Wake,
   type WorldModelCommit,
-  type WorldModelRef,
-} from "../../shapes";
+  type WorldModelRef, asFingerprint, asNodeId} from "../../shapes";
 import {
   type ReconcilerPorts,
   type ReconcilerTopology,
@@ -44,7 +43,7 @@ import {
 const CONTRACT_A = "sha256:" + "a".repeat(64);
 
 function atomic(token: string): FingerprintMap {
-  return { [ATOMIC_FACET]: token };
+  return { [ATOMIC_FACET]: asFingerprint(token) };
 }
 
 const RENDER_COST: Cost = {
@@ -86,7 +85,7 @@ class FakeLedger {
 
 function fakeWorldModelRef(node: string): WorldModelRef {
   return {
-    node,
+    node: asNodeId(node),
     workspace: "published",
     location: `/wm/${node}`,
     version: null,
@@ -98,7 +97,7 @@ const inputWake: Wake = { source: "input", refs: [] };
 const singleNodeTopology: TopologyWorldModel = {
   nodes: [],
   edges: [],
-  entry_points: ["n"],
+  entry_points: [asNodeId("n")],
   acyclic: true,
 };
 
@@ -116,7 +115,7 @@ function deferred<T>(): {
 
 function renderedOutcome(node: string, token: string): RenderOutcome {
   const commit: WorldModelCommit = {
-    node,
+    node: asNodeId(node),
     version: ("sha256:" + "d".repeat(64)) as ContentAddress,
     fingerprints: atomic(token),
   };
@@ -129,7 +128,7 @@ function renderedOutcome(node: string, token: string): RenderOutcome {
 
 test("drainAsync: cold start renders and returns the per-node result", async () => {
   const ledger = new FakeLedger();
-  const inputs: Record<string, InputFingerprints> = { n: ["i1"] };
+  const inputs: Record<string, InputFingerprints> = { n: [asFingerprint("i1")] };
   let renderCount = 0;
   const ports: ReconcilerPorts = {
     ledger,
@@ -145,7 +144,7 @@ test("drainAsync: cold start renders and returns the per-node result", async () 
   };
   const topo: ReconcilerTopology = {
     topology: singleNodeTopology,
-    contract_fingerprints: { n: CONTRACT_A },
+    contract_fingerprints: { n: asFingerprint(CONTRACT_A) },
   };
   const handle = createReconciler(ports, topo);
 
@@ -157,7 +156,7 @@ test("drainAsync: cold start renders and returns the per-node result", async () 
 
 test("drainAsync: unmoved inputs ⇒ skip, no async render spawned", async () => {
   const ledger = new FakeLedger();
-  const inputs: Record<string, InputFingerprints> = { n: ["i1"] };
+  const inputs: Record<string, InputFingerprints> = { n: [asFingerprint("i1")] };
   let renderCount = 0;
   const ports: ReconcilerPorts = {
     ledger,
@@ -173,7 +172,7 @@ test("drainAsync: unmoved inputs ⇒ skip, no async render spawned", async () =>
   };
   const topo: ReconcilerTopology = {
     topology: singleNodeTopology,
-    contract_fingerprints: { n: CONTRACT_A },
+    contract_fingerprints: { n: asFingerprint(CONTRACT_A) },
   };
   const handle = createReconciler(ports, topo);
 
@@ -188,7 +187,7 @@ test("drainAsync: an async render that falls back to the sync mount still commit
   // spawnRender (a sync render is an already-resolved promise) — additive
   // subsumption (05 §5 Phase A).
   const ledger = new FakeLedger();
-  const inputs: Record<string, InputFingerprints> = { n: ["i1"] };
+  const inputs: Record<string, InputFingerprints> = { n: [asFingerprint("i1")] };
   let renderCount = 0;
   const ports: ReconcilerPorts = {
     ledger,
@@ -202,7 +201,7 @@ test("drainAsync: an async render that falls back to the sync mount still commit
   };
   const topo: ReconcilerTopology = {
     topology: singleNodeTopology,
-    contract_fingerprints: { n: CONTRACT_A },
+    contract_fingerprints: { n: asFingerprint(CONTRACT_A) },
   };
   const handle = createReconciler(ports, topo);
 
@@ -217,7 +216,7 @@ test("drainAsync: an async render that falls back to the sync mount still commit
 
 test("coalescing-under-await: a wake arriving DURING an in-flight awaited render produces exactly ONE coalesced follow-up against the freshest inputs", async () => {
   const ledger = new FakeLedger();
-  const inputs: Record<string, InputFingerprints> = { n: ["i1"] };
+  const inputs: Record<string, InputFingerprints> = { n: [asFingerprint("i1")] };
 
   // The first render's suspension handle: it stays pending until we resolve it,
   // so the single-flight lock is genuinely held across the await while a second
@@ -253,7 +252,7 @@ test("coalescing-under-await: a wake arriving DURING an in-flight awaited render
   };
   const topo: ReconcilerTopology = {
     topology: singleNodeTopology,
-    contract_fingerprints: { n: CONTRACT_A },
+    contract_fingerprints: { n: asFingerprint(CONTRACT_A) },
   };
   handle = createReconciler(ports, topo);
 
@@ -269,7 +268,7 @@ test("coalescing-under-await: a wake arriving DURING an in-flight awaited render
   // (2) While the first render is parked, the inputs move and a SECOND wake is
   // delivered concurrently (e.g. a separate ingest() caller). It must COALESCE,
   // never spawn a second concurrent render.
-  inputs.n = ["i2"];
+  inputs.n = [asFingerprint("i2")];
   const secondPromise = handle.reconcileAsync({ node: "n", wake: inputWake });
   const secondResult = await secondPromise;
   equal(
@@ -326,7 +325,7 @@ test("coalescing-under-await: a coalesced follow-up whose inputs did NOT move sk
   // finds the memo key unmoved, and SKIPS. Coalescing never forces a redundant
   // render (05 §1.3.4).
   const ledger = new FakeLedger();
-  const inputs: Record<string, InputFingerprints> = { n: ["i1"] };
+  const inputs: Record<string, InputFingerprints> = { n: [asFingerprint("i1")] };
   const firstRenderGate = deferred<void>();
   let renderCount = 0;
 
@@ -351,7 +350,7 @@ test("coalescing-under-await: a coalesced follow-up whose inputs did NOT move sk
   };
   const topo: ReconcilerTopology = {
     topology: singleNodeTopology,
-    contract_fingerprints: { n: CONTRACT_A },
+    contract_fingerprints: { n: asFingerprint(CONTRACT_A) },
   };
   handle = createReconciler(ports, topo);
 
@@ -377,7 +376,7 @@ test("coalescing-under-await: a coalesced follow-up whose inputs did NOT move sk
 
 test("coalescing-under-await: MANY wakes during one render collapse to a single follow-up against the LAST wake's inputs (last-writer-wins)", async () => {
   const ledger = new FakeLedger();
-  const inputs: Record<string, InputFingerprints> = { n: ["i1"] };
+  const inputs: Record<string, InputFingerprints> = { n: [asFingerprint("i1")] };
   const firstRenderGate = deferred<void>();
   let renderCount = 0;
   const renderedInputs: InputFingerprints[] = [];
@@ -402,7 +401,7 @@ test("coalescing-under-await: MANY wakes during one render collapse to a single 
   };
   const topo: ReconcilerTopology = {
     topology: singleNodeTopology,
-    contract_fingerprints: { n: CONTRACT_A },
+    contract_fingerprints: { n: asFingerprint(CONTRACT_A) },
   };
   handle = createReconciler(ports, topo);
 
@@ -411,11 +410,11 @@ test("coalescing-under-await: MANY wakes during one render collapse to a single 
   await Promise.resolve();
 
   // THREE wakes land during the in-flight render, each moving the inputs.
-  inputs.n = ["i2"];
+  inputs.n = [asFingerprint("i2")];
   const w1 = await handle.reconcileAsync({ node: "n", wake: inputWake });
-  inputs.n = ["i3"];
+  inputs.n = [asFingerprint("i3")];
   const w2 = await handle.reconcileAsync({ node: "n", wake: inputWake });
-  inputs.n = ["i4"];
+  inputs.n = [asFingerprint("i4")];
   const w3 = await handle.reconcileAsync({ node: "n", wake: inputWake });
 
   equal(w1.disposition, "coalesced");

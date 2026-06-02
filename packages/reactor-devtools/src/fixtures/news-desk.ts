@@ -76,8 +76,7 @@ import {
   type TopologyWorldModel,
   type TopologyNode,
   type TopologyEdge,
-  type ReconcilerTopology,
-} from "@openprose/reactor/internals";
+  type ReconcilerTopology, asFacet, asFingerprint, asNodeId} from "@openprose/reactor/internals";
 
 import { materialFingerprint, readJson } from "./_fixture-shared";
 
@@ -136,9 +135,9 @@ const STORY_FACET: Record<StoryId, Facet> = Object.fromEntries(
 // The gating facet the Topic Index exposes to the expensive Briefing: it moves
 // ONLY when the DISTINCT STORY SET changes (a real new event), not on every
 // feed tick. That is why the Briefing stays dark on noise and only spikes once.
-const BRIEF_GATE_FACET: Facet = "brief-gate";
+const BRIEF_GATE_FACET = asFacet("brief-gate");
 // The cheap incremental facet the Headline reads — moves on every rollup.
-const ROLLUP_FACET: Facet = "rollup";
+const ROLLUP_FACET = asFacet("rollup");
 
 // ---------------------------------------------------------------------------
 // Friendly labels for the SPA (nodeId → human label).
@@ -155,8 +154,8 @@ const LABELS: Record<string, string> = {
   ),
   [DEDUP_CLUSTER]: "Dedup Cluster",
   [TOPIC_INDEX]: "Topic Index",
-  [BRIEFING]: "Briefing",
-  [HEADLINE]: "Headline",
+  [BRIEFING]: asFingerprint("Briefing"),
+  [HEADLINE]: asFingerprint("Headline"),
 };
 
 // ---------------------------------------------------------------------------
@@ -249,7 +248,7 @@ function commit(world: unknown, cost: Cost): RenderProduct {
 // ---------------------------------------------------------------------------
 
 const atomicTruth = (fm: WorldModelFiles) => ({
-  [ATOMIC_FACET]: fingerprintArtifact(fm),
+  [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(fm)),
 });
 
 // The ingress source exposes one facet per feed — the fingerprint of ONLY that
@@ -259,7 +258,7 @@ const ingressCanon = (fm: WorldModelFiles) => {
   const bytes = fm["feed-inbox.json"];
   const inbox: Partial<FeedInbox> =
     bytes === undefined ? {} : (JSON.parse(readTextFile(bytes)) as FeedInbox);
-  const out: Record<string, Fingerprint> = { [ATOMIC_FACET]: fingerprintArtifact(fm) };
+  const out: Record<string, Fingerprint> = { [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(fm)) };
   for (const f of FEEDS) {
     out[FEED_FACET[f]] = materialFingerprint(inbox[f] ?? null);
   }
@@ -273,7 +272,7 @@ const ingressCanon = (fm: WorldModelFiles) => {
 const gatewayCanon = (fm: WorldModelFiles) => {
   const t = readTruth(fm);
   const feeds = (t["feeds"] ?? {}) as Record<string, unknown>;
-  const out: Record<string, Fingerprint> = { [ATOMIC_FACET]: fingerprintArtifact(fm) };
+  const out: Record<string, Fingerprint> = { [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(fm)) };
   for (const f of FEEDS) {
     out[FEED_FACET[f]] = materialFingerprint(feeds[f] ?? null);
   }
@@ -288,7 +287,7 @@ const gatewayCanon = (fm: WorldModelFiles) => {
 const clusterCanon = (fm: WorldModelFiles) => {
   const t = readTruth(fm);
   const stories = (t["stories"] ?? {}) as Record<string, unknown>;
-  const out: Record<string, Fingerprint> = { [ATOMIC_FACET]: fingerprintArtifact(fm) };
+  const out: Record<string, Fingerprint> = { [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(fm)) };
   for (const sid of STORY_IDS) {
     out[STORY_FACET[sid]] = materialFingerprint(stories[sid] ?? null);
   }
@@ -306,9 +305,9 @@ const clusterCanon = (fm: WorldModelFiles) => {
 const topicIndexCanon = (fm: WorldModelFiles) => {
   const t = readTruth(fm);
   return {
-    [ATOMIC_FACET]: fingerprintArtifact(fm),
-    [ROLLUP_FACET]: materialFingerprint(t["rollup"] ?? null),
-    [BRIEF_GATE_FACET]: materialFingerprint(t["story_digest"] ?? []),
+    [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(fm)),
+    [ROLLUP_FACET]: asFingerprint(materialFingerprint(t["rollup"] ?? null)),
+    [BRIEF_GATE_FACET]: asFingerprint(materialFingerprint(t["story_digest"] ?? [])),
   };
 };
 
@@ -496,18 +495,18 @@ function buildReconcilerTopology(decls: readonly NodeDecl[]): ReconcilerTopology
   for (const d of decls) contract_fingerprints[d.id] = contractFingerprint(d);
 
   const nodes: TopologyNode[] = decls.map((d) => ({
-    node: d.id,
+    node: asNodeId(d.id),
     contract_fingerprint: contract_fingerprints[d.id]!,
     wake_source: (d.kind === "gateway" ? "external" : "input") as WakeSource,
   }));
   const edges: TopologyEdge[] = decls.flatMap((d) =>
     d.requires.map((r) => ({
-      subscriber: d.id,
-      producer: r.producer,
+      subscriber: asNodeId(d.id),
+      producer: asNodeId(r.producer),
       facet: r.facet ?? ATOMIC_FACET,
     })),
   );
-  const entry_points = decls.filter((d) => d.kind === "gateway").map((d) => d.id);
+  const entry_points = decls.filter((d) => d.kind === "gateway").map((d) => asNodeId(d.id));
   const declared = new Set(decls.map((d) => d.id));
   const topology: TopologyWorldModel = {
     nodes,
@@ -658,8 +657,8 @@ export function generateNewsDeskFixture(opts: GenerateOptions): GenerateResult {
     const prevRef = prev !== null ? ledger.addressOf(prev) : null;
     const wake: Wake = { source: "external", refs: [] };
     ledger.append({
-      node: SOURCE,
-      contract_fingerprint: `contract:${SOURCE}@ingress`,
+      node: asNodeId(SOURCE),
+      contract_fingerprint: asFingerprint(`contract:${SOURCE}@ingress`),
       wake,
       input_fingerprints: [],
       fingerprints: commitRes.fingerprints,

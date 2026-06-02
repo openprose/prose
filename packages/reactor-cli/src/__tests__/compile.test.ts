@@ -16,6 +16,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { asFacet } from '@openprose/reactor/internals';
 import { mkdtempSync, rmSync, readFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -171,7 +172,7 @@ describe('reactor compile (offline gate)', () => {
       assert.ok(ir.perNode[BRIEF], 'brief spec persisted + re-lowered');
       // The re-lowered monitor canonicalizer emits the `funding` facet (the
       // load-bearing propagation facet) — proving the spec round-tripped.
-      assert.ok(ir.perNode[MONITOR]!.compiled.canonicalizer.facets.includes('funding'));
+      assert.ok(ir.perNode[MONITOR]!.compiled.canonicalizer.facets.includes(asFacet('funding')));
       // The topology persisted the edge Forme drew.
       assert.deepEqual(ir.topology.topology.edges, [
         { subscriber: BRIEF, producer: MONITOR, facet: 'funding' },

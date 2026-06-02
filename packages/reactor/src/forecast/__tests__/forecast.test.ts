@@ -1,3 +1,4 @@
+import { asFacet, asFingerprint } from "../../shapes";
 import { deepEqual, equal, ok } from "node:assert/strict";
 import { test } from "node:test";
 
@@ -25,13 +26,13 @@ test("continuity clock sleeps before any facet lapses, manufacturing no receipt"
     as_of: "2026-05-18T12:30:00Z",
     schedule: {
       node: "node.incident-briefing",
-      contract_fingerprint: CONTRACT_FP,
-      input_fingerprints: [INPUT_FP],
+      contract_fingerprint: asFingerprint(CONTRACT_FP),
+      input_fingerprints: [asFingerprint(INPUT_FP)],
       prev: PREV_RECEIPT,
       facets: [
         {
           facet: ATOMIC_FACET,
-          fingerprint: "fp-briefing-v1",
+          fingerprint: asFingerprint("fp-briefing-v1"),
           valid_until: "2026-05-18T13:00:00Z",
         },
       ],
@@ -54,13 +55,13 @@ test("a lapsed valid_until manufactures a self-receipt with a MOVED fingerprint"
     as_of: "2026-05-18T13:00:00Z",
     schedule: {
       node: "node.incident-briefing",
-      contract_fingerprint: CONTRACT_FP,
-      input_fingerprints: [INPUT_FP],
+      contract_fingerprint: asFingerprint(CONTRACT_FP),
+      input_fingerprints: [asFingerprint(INPUT_FP)],
       prev: PREV_RECEIPT,
       facets: [
         {
           facet: ATOMIC_FACET,
-          fingerprint: "fp-briefing-v1",
+          fingerprint: asFingerprint("fp-briefing-v1"),
           valid_until: "2026-05-18T13:00:00Z",
         },
       ],
@@ -96,12 +97,12 @@ test("only lapsed facets move; non-lapsed facets keep their unmoved token", () =
     as_of: "2026-05-18T14:00:00Z",
     schedule: {
       node: "node.dossier",
-      contract_fingerprint: CONTRACT_FP,
-      input_fingerprints: [INPUT_FP],
+      contract_fingerprint: asFingerprint(CONTRACT_FP),
+      input_fingerprints: [asFingerprint(INPUT_FP)],
       prev: PREV_RECEIPT,
       facets: [
-        { facet: "funding", fingerprint: "fp-funding", valid_until: "2026-05-18T14:00:00Z" },
-        { facet: "headcount", fingerprint: "fp-headcount", valid_until: "2026-05-20T00:00:00Z" },
+        { facet: asFacet("funding"), fingerprint: asFingerprint("fp-funding"), valid_until: "2026-05-18T14:00:00Z" },
+        { facet: asFacet("headcount"), fingerprint: asFingerprint("fp-headcount"), valid_until: "2026-05-20T00:00:00Z" },
       ],
     },
   });
@@ -127,10 +128,10 @@ test("a facet with null valid_until never lapses and never schedules a recheck",
     as_of: "2099-01-01T00:00:00Z",
     schedule: {
       node: "node.constants",
-      contract_fingerprint: CONTRACT_FP,
+      contract_fingerprint: asFingerprint(CONTRACT_FP),
       input_fingerprints: [],
       prev: null,
-      facets: [{ facet: ATOMIC_FACET, fingerprint: "fp-const", valid_until: null }],
+      facets: [{ facet: ATOMIC_FACET, fingerprint: asFingerprint("fp-const"), valid_until: null }],
     },
   });
 
@@ -144,9 +145,9 @@ test("a facet with null valid_until never lapses and never schedules a recheck",
 test("cold-start self-receipt (prev:null) has empty wake refs and verifies", () => {
   const receipt = createSelfRecheckReceipt({
     node: "node.cold",
-    contract_fingerprint: CONTRACT_FP,
+    contract_fingerprint: asFingerprint(CONTRACT_FP),
     input_fingerprints: [],
-    fingerprints: { [ATOMIC_FACET]: "stale:fp-x" },
+    fingerprints: { [ATOMIC_FACET]: asFingerprint("stale:fp-x") },
     prev: null,
     as_of: "2026-05-18T13:00:00Z",
     lapsed_facets: [ATOMIC_FACET],
@@ -163,16 +164,16 @@ test("cold-start self-receipt (prev:null) has empty wake refs and verifies", () 
 
 test("applyFreshnessMove synthesizes ATOMIC_FACET when the node declares none", () => {
   const map = applyFreshnessMove(
-    [{ facet: "funding", fingerprint: "fp-funding", valid_until: null }],
-    ["funding"],
+    [{ facet: asFacet("funding"), fingerprint: asFingerprint("fp-funding"), valid_until: null }],
+    [asFacet("funding")],
   );
 
   equal(map["funding"], "stale:fp-funding");
   ok(map[ATOMIC_FACET] !== undefined);
-  ok(map[ATOMIC_FACET].startsWith("stale:"));
+  ok(map[ATOMIC_FACET]!.startsWith("stale:"));
 });
 
 test("moveFingerprint is idempotent — a lapse marker is applied at most once", () => {
-  equal(moveFingerprint("fp"), "stale:fp");
-  equal(moveFingerprint("stale:fp"), "stale:fp");
+  equal(moveFingerprint(asFingerprint("fp")), "stale:fp");
+  equal(moveFingerprint(asFingerprint("stale:fp")), "stale:fp");
 });

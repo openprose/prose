@@ -28,6 +28,7 @@ import { z } from "zod";
 
 import {
   ATOMIC_FACET,
+  asFacet,
   type Fingerprint,
   type WakeSource,
 } from "../../shapes";
@@ -168,15 +169,15 @@ export function lowerFormeOutput(
     }
     const requires: RequiresContract[] = node.requires.map((need) =>
       need.fan_in === true
-        ? { facet: need.facet, fanIn: true }
-        : { facet: need.facet },
+        ? { facet: asFacet(need.facet), fanIn: true }
+        : { facet: asFacet(need.facet) },
     );
     return {
       id: node.id,
       contract_fingerprint: fingerprint,
       kind: node.kind,
       requires,
-      maintains: node.maintains.slice(),
+      maintains: node.maintains.map(asFacet),
       wakeSource: node.wake_source,
     };
   });

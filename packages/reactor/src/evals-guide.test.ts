@@ -1,3 +1,4 @@
+import { asFingerprint, asNodeId } from "./shapes";
 // Runs the EVALS.md "Drive the reconciler yourself" + "A worked epoch" snippets
 // VERBATIM against the public surface, so the guide can never silently drift from
 // the real API again (blind-onboarding cycle-4 shipped an EVALS.md broken three
@@ -41,14 +42,14 @@ test("EVALS.md: quiet wakes skip, a contract edit renders + propagates", () => {
     const topology: ReconcilerTopology = {
       topology: {
         nodes: [
-          { node: "source", contract_fingerprint: "fp-source", wake_source: "external" },
-          { node: "digest", contract_fingerprint: "fp-digest", wake_source: "input" },
+          { node: asNodeId("source"), contract_fingerprint: asFingerprint("fp-source"), wake_source: "external" },
+          { node: asNodeId("digest"), contract_fingerprint: asFingerprint("fp-digest"), wake_source: "input" },
         ],
-        edges: [{ subscriber: "digest", producer: "source", facet: ATOMIC_FACET }],
-        entry_points: ["source"],
+        edges: [{ subscriber: asNodeId("digest"), producer: asNodeId("source"), facet: ATOMIC_FACET }],
+        entry_points: [asNodeId("source")],
         acyclic: true,
       },
-      contract_fingerprints: { source: "fp-source", digest: "fp-digest" },
+      contract_fingerprints: { source: asFingerprint("fp-source"), digest: asFingerprint("fp-digest") },
     };
     const dag = mountDag({
       topology,
@@ -82,14 +83,14 @@ test("EVALS.md: quiet wakes skip, a contract edit renders + propagates", () => {
     const topology2: ReconcilerTopology = {
       topology: {
         nodes: [
-          { node: "source", contract_fingerprint: "fp-source-v2", wake_source: "external" },
-          { node: "digest", contract_fingerprint: "fp-digest", wake_source: "input" },
+          { node: asNodeId("source"), contract_fingerprint: asFingerprint("fp-source-v2"), wake_source: "external" },
+          { node: asNodeId("digest"), contract_fingerprint: asFingerprint("fp-digest"), wake_source: "input" },
         ],
-        edges: [{ subscriber: "digest", producer: "source", facet: ATOMIC_FACET }],
-        entry_points: ["source"],
+        edges: [{ subscriber: asNodeId("digest"), producer: asNodeId("source"), facet: ATOMIC_FACET }],
+        entry_points: [asNodeId("source")],
         acyclic: true,
       },
-      contract_fingerprints: { source: "fp-source-v2", digest: "fp-digest" },
+      contract_fingerprints: { source: asFingerprint("fp-source-v2"), digest: asFingerprint("fp-digest") },
     };
     const dag2 = mountDag({
       topology: topology2,

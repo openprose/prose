@@ -74,8 +74,7 @@ import {
   type TopologyWorldModel,
   type TopologyNode,
   type TopologyEdge,
-  type ReconcilerTopology,
-} from "@openprose/reactor/internals";
+  type ReconcilerTopology, asFacet, asFingerprint, asNodeId} from "@openprose/reactor/internals";
 
 import { materialFingerprint, readJson } from "./_fixture-shared";
 
@@ -110,7 +109,7 @@ const ROOT = "synthesis.root";
 
 // One facet per leaf finding on the gateway — the dark-lane boundary. Revising
 // leaf B2 moves ONLY `leaf:B2`; every sibling leaf token is byte-identical.
-const LEAF_FACET = (leaf: string): Facet => `leaf:${leaf}`;
+const LEAF_FACET = (leaf: string): Facet => asFacet(`leaf:${leaf}`);
 
 // ---------------------------------------------------------------------------
 // Friendly labels for the SPA (nodeId → human label). Load-bearing for the
@@ -222,7 +221,7 @@ function commit(world: unknown, cost: Cost): RenderProduct {
 // ---------------------------------------------------------------------------
 
 const atomicTruth = (fm: WorldModelFiles) => ({
-  [ATOMIC_FACET]: fingerprintArtifact(fm),
+  [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(fm)),
 });
 
 // The ingress source exposes one facet per leaf — the fingerprint of ONLY that
@@ -232,7 +231,7 @@ const ingressCanon = (fm: WorldModelFiles) => {
   const bytes = fm["corpus.json"];
   const corpus: Partial<Corpus> =
     bytes === undefined ? {} : (JSON.parse(readTextFile(bytes)) as Corpus);
-  const out: Record<string, Fingerprint> = { [ATOMIC_FACET]: fingerprintArtifact(fm) };
+  const out: Record<string, Fingerprint> = { [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(fm)) };
   for (const leaf of LEAVES) {
     out[LEAF_FACET(leaf)] = materialFingerprint(corpus[leaf] ?? null);
   }
@@ -245,7 +244,7 @@ const ingressCanon = (fm: WorldModelFiles) => {
 const gatewayCanon = (fm: WorldModelFiles) => {
   const t = readTruth(fm);
   const leaves = (t["leaves"] ?? {}) as Record<string, unknown>;
-  const out: Record<string, Fingerprint> = { [ATOMIC_FACET]: fingerprintArtifact(fm) };
+  const out: Record<string, Fingerprint> = { [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(fm)) };
   for (const leaf of LEAVES) {
     out[LEAF_FACET(leaf)] = materialFingerprint(leaves[leaf] ?? null);
   }
@@ -384,18 +383,18 @@ function buildReconcilerTopology(decls: readonly NodeDecl[]): ReconcilerTopology
   for (const d of decls) contract_fingerprints[d.id] = contractFingerprint(d);
 
   const nodes: TopologyNode[] = decls.map((d) => ({
-    node: d.id,
+    node: asNodeId(d.id),
     contract_fingerprint: contract_fingerprints[d.id]!,
     wake_source: (d.kind === "gateway" ? "external" : "input") as WakeSource,
   }));
   const edges: TopologyEdge[] = decls.flatMap((d) =>
     d.requires.map((r) => ({
-      subscriber: d.id,
-      producer: r.producer,
+      subscriber: asNodeId(d.id),
+      producer: asNodeId(r.producer),
       facet: r.facet ?? ATOMIC_FACET,
     })),
   );
-  const entry_points = decls.filter((d) => d.kind === "gateway").map((d) => d.id);
+  const entry_points = decls.filter((d) => d.kind === "gateway").map((d) => asNodeId(d.id));
   const declared = new Set(decls.map((d) => d.id));
   const topology: TopologyWorldModel = {
     nodes,
@@ -522,8 +521,8 @@ export function generateResearchTreeFixture(opts: GenerateOptions): GenerateResu
     const prevRef = prev !== null ? ledger.addressOf(prev) : null;
     const wake: Wake = { source: "external", refs: [] };
     ledger.append({
-      node: SOURCE,
-      contract_fingerprint: `contract:${SOURCE}@ingress`,
+      node: asNodeId(SOURCE),
+      contract_fingerprint: asFingerprint(`contract:${SOURCE}@ingress`),
       wake,
       input_fingerprints: [],
       fingerprints: commitRes.fingerprints,

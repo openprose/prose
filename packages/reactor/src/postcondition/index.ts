@@ -26,6 +26,7 @@ import {
   type PredicateExpression,
   type PredicateFacts,
 } from "../cycle/index";
+import { asNodeId } from "../shapes/index";
 import type {
   Facet,
   PostconditionValidatorRef,
@@ -169,7 +170,7 @@ export function compilePostconditions(
 
   return {
     set,
-    ref: { node, artifact, mode },
+    ref: { node: asNodeId(node), artifact, mode },
   };
 }
 

@@ -14,6 +14,7 @@
 import {
   ATOMIC_FACET,
   EMPTY_SEMANTIC_DIFF,
+  asFingerprint,
   type ContentAddress,
   type Cost,
   type Facet,
@@ -284,16 +285,18 @@ export function applyFreshnessMove(
  * distinct from the unmoved token.
  */
 export function moveFingerprint(prior: Fingerprint): Fingerprint {
-  return prior.startsWith("stale:") ? prior : `stale:${prior}`;
+  return prior.startsWith("stale:") ? prior : asFingerprint(`stale:${prior}`);
 }
 
 function atomicSeed(facets: readonly FacetFreshness[]): Fingerprint {
   // A stable summary of the per-facet tokens — order-independent so it depends
   // only on material content, not on facet enumeration order.
-  return [...facets]
-    .map((facet) => `${facet.facet}=${facet.fingerprint}`)
-    .sort()
-    .join("|");
+  return asFingerprint(
+    [...facets]
+      .map((facet) => `${facet.facet}=${facet.fingerprint}`)
+      .sort()
+      .join("|"),
+  );
 }
 
 // ---------------------------------------------------------------------------

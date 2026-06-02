@@ -6,8 +6,7 @@ import {
   type FingerprintMap,
   type Receipt,
   type TopologyWorldModel,
-  type WorldModelRef,
-} from "../../shapes";
+  type WorldModelRef, asFacet, asFingerprint, asNodeId} from "../../shapes";
 import {
   type ConsumedReceiptPin,
   buildInputFingerprints,
@@ -26,11 +25,11 @@ const VERSION_B =
   "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" as const;
 
 function published(node: string, version: typeof VERSION_A): WorldModelRef {
-  return { node, workspace: "published", location: `/wm/${node}`, version };
+  return { node: asNodeId(node), workspace: "published", location: `/wm/${node}`, version };
 }
 
 function atomic(token: string): FingerprintMap {
-  return { [ATOMIC_FACET]: token };
+  return { [ATOMIC_FACET]: asFingerprint(token) };
 }
 
 // --- pins: cross-node read isolation (architecture.md §8; delta.md §A3.4) ---
@@ -47,14 +46,14 @@ test("pinConsumedWorldModel captures version + consumed facet token", () => {
     producer: "vendor",
     facet: ATOMIC_FACET,
     version: VERSION_A,
-    fingerprint: "fp:vendor-1",
+    fingerprint: asFingerprint("fp:vendor-1"),
   } satisfies ConsumedReceiptPin);
 });
 
 test("pinConsumedWorldModel resolves an undeclared facet through the atomic token", () => {
   const pin = pinConsumedWorldModel({
     producer: "vendor",
-    facet: "recommendation",
+    facet: asFacet("recommendation"),
     world_model: published("vendor", VERSION_A),
     fingerprints: atomic("fp:vendor-1"),
   });
@@ -65,9 +64,9 @@ test("pinConsumedWorldModel resolves an undeclared facet through the atomic toke
 test("pinConsumedWorldModel uses a declared facet token when present", () => {
   const pin = pinConsumedWorldModel({
     producer: "vendor",
-    facet: "recommendation",
+    facet: asFacet("recommendation"),
     world_model: published("vendor", VERSION_A),
-    fingerprints: { [ATOMIC_FACET]: "fp:whole", recommendation: "fp:rec" },
+    fingerprints: { [ATOMIC_FACET]: asFingerprint("fp:whole"), recommendation: asFingerprint("fp:rec") },
   });
   equal(pin.fingerprint, "fp:rec");
 });
@@ -78,7 +77,7 @@ test("pinConsumedWorldModel rejects a workspace (never-fingerprinted) ref", () =
       pinConsumedWorldModel({
         producer: "vendor",
         facet: ATOMIC_FACET,
-        world_model: { node: "vendor", workspace: "workspace", location: "/scratch", version: null },
+        world_model: { node: asNodeId("vendor"), workspace: "workspace", location: "/scratch", version: null },
         fingerprints: atomic("fp:vendor-1"),
       }),
     /workspace is never pinned/,
@@ -91,7 +90,7 @@ test("pinConsumedWorldModel rejects a cold-start (null version) world-model", ()
       pinConsumedWorldModel({
         producer: "vendor",
         facet: ATOMIC_FACET,
-        world_model: { node: "vendor", workspace: "published", location: "/wm/vendor", version: null },
+        world_model: { node: asNodeId("vendor"), workspace: "published", location: "/wm/vendor", version: null },
         fingerprints: atomic("fp:vendor-1"),
       }),
     /cold-start/,
@@ -100,7 +99,7 @@ test("pinConsumedWorldModel rejects a cold-start (null version) world-model", ()
 
 test("resolveFacetFingerprint requires the reserved atomic token", () => {
   throws(
-    () => resolveFacetFingerprint({ recommendation: "fp:rec" } as FingerprintMap, "missing"),
+    () => resolveFacetFingerprint({ recommendation: asFingerprint("fp:rec") }, "missing"),
     new RegExp(ATOMIC_FACET),
   );
 });
@@ -112,7 +111,7 @@ test("evaluateTransitiveFreshness reports fresh when no pinned facet moved", () 
     producer: "vendor",
     facet: ATOMIC_FACET,
     version: VERSION_A,
-    fingerprint: "fp:vendor-1",
+    fingerprint: asFingerprint("fp:vendor-1"),
   };
   const result = evaluateTransitiveFreshness({
     consumed: [{ pin, current_fingerprints: atomic("fp:vendor-1") }],
@@ -126,7 +125,7 @@ test("evaluateTransitiveFreshness reports moved when a pinned facet token change
     producer: "vendor",
     facet: ATOMIC_FACET,
     version: VERSION_A,
-    fingerprint: "fp:vendor-1",
+    fingerprint: asFingerprint("fp:vendor-1"),
   };
   const result = evaluateTransitiveFreshness({
     consumed: [{ pin, current_fingerprints: atomic("fp:vendor-2") }],
@@ -140,13 +139,13 @@ test("evaluateTransitiveFreshness reports moved when a pinned facet token change
 
 const TOPOLOGY: TopologyWorldModel = {
   nodes: [
-    { node: "risk", contract_fingerprint: "c:risk", wake_source: "input" },
-    { node: "spend", contract_fingerprint: "c:spend", wake_source: "input" },
-    { node: "owner", contract_fingerprint: "c:owner", wake_source: "input" },
+    { node: asNodeId("risk"), contract_fingerprint: asFingerprint("c:risk"), wake_source: "input" },
+    { node: asNodeId("spend"), contract_fingerprint: asFingerprint("c:spend"), wake_source: "input" },
+    { node: asNodeId("owner"), contract_fingerprint: asFingerprint("c:owner"), wake_source: "input" },
   ],
   edges: [
-    { subscriber: "risk", producer: "spend", facet: ATOMIC_FACET },
-    { subscriber: "risk", producer: "owner", facet: "signal" },
+    { subscriber: asNodeId("risk"), producer: asNodeId("spend"), facet: ATOMIC_FACET },
+    { subscriber: asNodeId("risk"), producer: asNodeId("owner"), facet: asFacet("signal") },
   ],
   entry_points: [],
   acyclic: true,
@@ -161,8 +160,8 @@ test("resolveSubscriptions returns a subscriber's edges in deterministic order",
 
 test("buildInputFingerprints orders tokens by resolved subscription order", () => {
   const pins: ConsumedReceiptPin[] = [
-    { producer: "spend", facet: ATOMIC_FACET, version: VERSION_A, fingerprint: "fp:spend" },
-    { producer: "owner", facet: "signal", version: VERSION_B, fingerprint: "fp:owner" },
+    { producer: "spend", facet: ATOMIC_FACET, version: VERSION_A, fingerprint: asFingerprint("fp:spend") },
+    { producer: "owner", facet: asFacet("signal"), version: VERSION_B, fingerprint: asFingerprint("fp:owner") },
   ];
   const subscriptions = resolveSubscriptions(TOPOLOGY, "risk");
   // owner.signal sorts before spend.@atomic
@@ -174,7 +173,7 @@ test("buildInputFingerprints rejects a missing pin", () => {
   throws(
     () =>
       buildInputFingerprints(subscriptions, [
-        { producer: "spend", facet: ATOMIC_FACET, version: VERSION_A, fingerprint: "fp:spend" },
+        { producer: "spend", facet: ATOMIC_FACET, version: VERSION_A, fingerprint: asFingerprint("fp:spend") },
       ]),
     /no pin for subscription owner.signal/,
   );
@@ -185,9 +184,9 @@ test("buildInputFingerprints rejects an unmatched pin", () => {
   throws(
     () =>
       buildInputFingerprints(subscriptions, [
-        { producer: "spend", facet: ATOMIC_FACET, version: VERSION_A, fingerprint: "fp:spend" },
-        { producer: "owner", facet: "signal", version: VERSION_B, fingerprint: "fp:owner" },
-        { producer: "ghost", facet: ATOMIC_FACET, version: VERSION_A, fingerprint: "fp:ghost" },
+        { producer: "spend", facet: ATOMIC_FACET, version: VERSION_A, fingerprint: asFingerprint("fp:spend") },
+        { producer: "owner", facet: asFacet("signal"), version: VERSION_B, fingerprint: asFingerprint("fp:owner") },
+        { producer: "ghost", facet: ATOMIC_FACET, version: VERSION_A, fingerprint: asFingerprint("fp:ghost") },
       ]),
     /has no matching subscription/,
   );
@@ -195,11 +194,11 @@ test("buildInputFingerprints rejects an unmatched pin", () => {
 
 test("composeSubscriberMemoKey is exactly (contract_fingerprint, input_fingerprints)", () => {
   const pins: ConsumedReceiptPin[] = [
-    { producer: "spend", facet: ATOMIC_FACET, version: VERSION_A, fingerprint: "fp:spend" },
-    { producer: "owner", facet: "signal", version: VERSION_B, fingerprint: "fp:owner" },
+    { producer: "spend", facet: ATOMIC_FACET, version: VERSION_A, fingerprint: asFingerprint("fp:spend") },
+    { producer: "owner", facet: asFacet("signal"), version: VERSION_B, fingerprint: asFingerprint("fp:owner") },
   ];
   const key = composeSubscriberMemoKey({
-    contract_fingerprint: "c:risk",
+    contract_fingerprint: asFingerprint("c:risk"),
     subscriptions: resolveSubscriptions(TOPOLOGY, "risk"),
     pins,
   });
@@ -219,8 +218,8 @@ test("composeSubscriberMemoKey is exactly (contract_fingerprint, input_fingerpri
 
 function rendered(node: string, fingerprints: FingerprintMap): Receipt {
   return {
-    node,
-    contract_fingerprint: `c:${node}`,
+    node: asNodeId(node),
+    contract_fingerprint: asFingerprint(`c:${node}`),
     wake: { source: "input", refs: [] },
     input_fingerprints: [],
     fingerprints,
@@ -234,7 +233,7 @@ function rendered(node: string, fingerprints: FingerprintMap): Receipt {
 
 test("computeMovedFacets treats cold start (null prior) as every facet moved", () => {
   deepEqual(
-    computeMovedFacets({ [ATOMIC_FACET]: "fp:1", signal: "fp:s" }, null),
+    computeMovedFacets({ [ATOMIC_FACET]: asFingerprint("fp:1"), signal: asFingerprint("fp:s") }, null),
     [ATOMIC_FACET, "signal"],
   );
 });
@@ -242,8 +241,8 @@ test("computeMovedFacets treats cold start (null prior) as every facet moved", (
 test("computeMovedFacets reports only the facets whose token changed", () => {
   deepEqual(
     computeMovedFacets(
-      { [ATOMIC_FACET]: "fp:2", signal: "fp:s" },
-      { [ATOMIC_FACET]: "fp:1", signal: "fp:s" },
+      { [ATOMIC_FACET]: asFingerprint("fp:2"), signal: asFingerprint("fp:s") },
+      { [ATOMIC_FACET]: asFingerprint("fp:1"), signal: asFingerprint("fp:s") },
     ),
     [ATOMIC_FACET],
   );
@@ -252,8 +251,8 @@ test("computeMovedFacets reports only the facets whose token changed", () => {
 test("planCompositionPropagation wakes only subscribers to the moved facet", () => {
   const plan = planCompositionPropagation({
     topology: TOPOLOGY,
-    receipt: rendered("owner", { [ATOMIC_FACET]: "fp:o2", signal: "fp:s2" }),
-    prior_fingerprints: { [ATOMIC_FACET]: "fp:o1", signal: "fp:s1" },
+    receipt: rendered("owner", { [ATOMIC_FACET]: asFingerprint("fp:o2"), signal: asFingerprint("fp:s2") }),
+    prior_fingerprints: { [ATOMIC_FACET]: asFingerprint("fp:o1"), signal: asFingerprint("fp:s1") },
   });
   equal(plan.outcome, "propagate");
   if (plan.outcome !== "propagate") return;
@@ -265,8 +264,8 @@ test("planCompositionPropagation does not wake when the subscribed facet is unmo
   const plan = planCompositionPropagation({
     topology: TOPOLOGY,
     // only the atomic token moved; risk subscribes to owner.signal which held.
-    receipt: rendered("owner", { [ATOMIC_FACET]: "fp:o2", signal: "fp:s1" }),
-    prior_fingerprints: { [ATOMIC_FACET]: "fp:o1", signal: "fp:s1" },
+    receipt: rendered("owner", { [ATOMIC_FACET]: asFingerprint("fp:o2"), signal: asFingerprint("fp:s1") }),
+    prior_fingerprints: { [ATOMIC_FACET]: asFingerprint("fp:o1"), signal: asFingerprint("fp:s1") },
   });
   equal(plan.outcome, "propagate");
   if (plan.outcome !== "propagate") return;
@@ -298,8 +297,8 @@ test("planCompositionPropagation does not propagate a failed receipt", () => {
 test("planCompositionPropagation does not propagate when no facet moved", () => {
   const plan = planCompositionPropagation({
     topology: TOPOLOGY,
-    receipt: rendered("owner", { [ATOMIC_FACET]: "fp:o1", signal: "fp:s1" }),
-    prior_fingerprints: { [ATOMIC_FACET]: "fp:o1", signal: "fp:s1" },
+    receipt: rendered("owner", { [ATOMIC_FACET]: asFingerprint("fp:o1"), signal: asFingerprint("fp:s1") }),
+    prior_fingerprints: { [ATOMIC_FACET]: asFingerprint("fp:o1"), signal: asFingerprint("fp:s1") },
   });
   equal(plan.outcome, "no-propagation");
   if (plan.outcome !== "no-propagation") return;

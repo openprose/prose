@@ -23,6 +23,8 @@ import { createHash } from "node:crypto";
 import {
   ATOMIC_FACET,
   EMPTY_SEMANTIC_DIFF,
+  asFingerprint,
+  asNodeId,
   createNullSignature,
   type Facet,
   type Fingerprint,
@@ -132,7 +134,9 @@ export function materialFingerprint(value: unknown): Fingerprint {
 }
 
 function hashValue(value: unknown): Fingerprint {
-  return `sha256:${createHash("sha256").update(stableStringify(value)).digest("hex")}`;
+  return asFingerprint(
+    `sha256:${createHash("sha256").update(stableStringify(value)).digest("hex")}`,
+  );
 }
 
 /** Canonical JSON with recursively sorted object keys (stable across runs). */
@@ -179,7 +183,7 @@ export function buildScenario(
   }
 
   const nodes = decls.map((d) => ({
-    node: d.id,
+    node: asNodeId(d.id),
     contract_fingerprint: contract_fingerprints[d.id] as Fingerprint,
     wake_source: (d.kind === "gateway" ? "external" : "input") as
       | "external"
@@ -188,15 +192,15 @@ export function buildScenario(
 
   const edges = decls.flatMap((d) =>
     d.requires.map((r) => ({
-      subscriber: d.id,
-      producer: r.producer,
+      subscriber: asNodeId(d.id),
+      producer: asNodeId(r.producer),
       facet: r.facet ?? ATOMIC_FACET,
     })),
   );
 
   const entry_points = decls
     .filter((d) => d.kind === "gateway")
-    .map((d) => d.id);
+    .map((d) => asNodeId(d.id));
 
   const topology: ReconcilerTopology = {
     topology: {
@@ -272,8 +276,8 @@ export function injectExternalReceipt(
   const prev = scn.ledger.lastReceipt(node);
   const prevRef = prev !== null ? scn.ledger.addressOf(prev) : null;
   scn.ledger.append({
-    node,
-    contract_fingerprint: `contract:${node}@ingress`,
+    node: asNodeId(node),
+    contract_fingerprint: asFingerprint(`contract:${node}@ingress`),
     wake: { source: "external", refs: [] },
     input_fingerprints: [],
     fingerprints: commit.fingerprints,
@@ -324,7 +328,7 @@ export function facetCanonicalizer(
         ? {}
         : (JSON.parse(readTextFile(bytes)) as Record<string, unknown>);
     return {
-      [ATOMIC_FACET]: fingerprintArtifact(fm),
+      [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(fm)),
       [facet]: materialFingerprint(project(truth)),
     };
   };

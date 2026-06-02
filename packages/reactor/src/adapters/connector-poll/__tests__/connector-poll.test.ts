@@ -9,7 +9,7 @@
 import { deepEqual, equal, ok, throws } from "node:assert/strict";
 import { test } from "node:test";
 
-import { ATOMIC_FACET, EMPTY_SEMANTIC_DIFF } from "../../../shapes";
+import { ATOMIC_FACET, EMPTY_SEMANTIC_DIFF, asFingerprint, asNodeId} from "../../../shapes";
 import { createNullSignature } from "../../../receipt";
 import {
   jsonFile,
@@ -40,7 +40,7 @@ const GATEWAY = "gateway.event-ledger";
 // staged inbox by reference and folds it into its `count` truth.
 const gatewayCanon: Canonicalizer = (wm) => {
   const parsed = JSON.parse(readTextFile(wm["g.json"] as Uint8Array));
-  return { [ATOMIC_FACET]: `count:${parsed.count}` };
+  return { [ATOMIC_FACET]: asFingerprint(`count:${parsed.count}`) };
 };
 
 function topology(): ReconcilerTopology {
@@ -49,13 +49,13 @@ function topology(): ReconcilerTopology {
   return {
     topology: {
       nodes: [
-        { node: GATEWAY, contract_fingerprint: "c:gateway@1", wake_source: "external" },
+        { node: asNodeId(GATEWAY), contract_fingerprint: asFingerprint("c:gateway@1"), wake_source: "external" },
       ],
-      edges: [{ subscriber: GATEWAY, producer: INGRESS, facet: ATOMIC_FACET }],
-      entry_points: [GATEWAY],
+      edges: [{ subscriber: asNodeId(GATEWAY), producer: asNodeId(INGRESS), facet: ATOMIC_FACET }],
+      entry_points: [asNodeId(GATEWAY)],
       acyclic: true,
     },
-    contract_fingerprints: { [GATEWAY]: "c:gateway@1" },
+    contract_fingerprints: { [GATEWAY]: asFingerprint("c:gateway@1") },
   };
 }
 
@@ -65,7 +65,7 @@ function cost(source: "input" | "self" | "external") {
 
 const ingressCanon: Canonicalizer = (wm) => {
   const parsed = JSON.parse(readTextFile(wm["inbox.json"] as Uint8Array));
-  return { [ATOMIC_FACET]: `inbox:${parsed.length}` };
+  return { [ATOMIC_FACET]: asFingerprint(`inbox:${parsed.length}`) };
 };
 
 // The gateway render: read the ingress inbox by reference, count the events.
@@ -105,8 +105,8 @@ function harness() {
     );
     const prev = dag.ledger.lastReceipt(INGRESS);
     dag.ledger.append({
-      node: INGRESS,
-      contract_fingerprint: "c:ingress@edge",
+      node: asNodeId(INGRESS),
+      contract_fingerprint: asFingerprint("c:ingress@edge"),
       wake: { source: "external", refs: [] },
       input_fingerprints: [],
       fingerprints: commit.fingerprints,

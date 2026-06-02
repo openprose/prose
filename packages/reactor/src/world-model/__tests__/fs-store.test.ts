@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 
-import { ATOMIC_FACET } from "../../shapes";
+import { ATOMIC_FACET, asFingerprint} from "../../shapes";
 import {
   fingerprintArtifact,
   type WorldModelFiles,
@@ -151,9 +151,9 @@ test("a faceted canonicalizer drives finer-grained per-facet propagation, durabl
         hiring: unknown;
       };
       return {
-        [ATOMIC_FACET]: fingerprintArtifact(files),
-        funding: fingerprintArtifact({ f: jsonFile(data.funding) }),
-        hiring: fingerprintArtifact({ f: jsonFile(data.hiring) }),
+        [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(files)),
+        funding: asFingerprint(fingerprintArtifact({ f: jsonFile(data.funding) })),
+        hiring: asFingerprint(fingerprintArtifact({ f: jsonFile(data.hiring) })),
       };
     };
     const a = s.commitPublished(
@@ -169,7 +169,7 @@ test("a faceted canonicalizer drives finer-grained per-facet propagation, durabl
     notEqual(a.fingerprints.funding, b.fingerprints.funding);
     equal(a.fingerprints.hiring, b.fingerprints.hiring);
     // The faceted map round-trips through the durable published pointer.
-    const reader = new FileSystemWorldModelStore({ directory: dir });
+    const reader = new FileSystemWorldModelStore({ directory: asFingerprint(dir) });
     deepEqual(reader.publishedFingerprints("competitor"), b.fingerprints);
   } finally {
     rmSync(dir, { recursive: true, force: true });

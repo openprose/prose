@@ -20,7 +20,7 @@ import {
   readTextFile,
   type Canonicalizer,
 } from "../../world-model";
-import { ATOMIC_FACET, type Cost, type WakeSource } from "../../shapes";
+import { ATOMIC_FACET, type Cost, type WakeSource, asFingerprint, asNodeId} from "../../shapes";
 import { type ReconcilerTopology } from "../../reactor";
 
 const PRODUCER = "responsibility.vendor-truth";
@@ -28,7 +28,7 @@ const SUBSCRIBER = "responsibility.renewal-watch";
 
 const statusCanon: Canonicalizer = (wm) => {
   const parsed = JSON.parse(readTextFile(wm["t.json"] as Uint8Array));
-  return { [ATOMIC_FACET]: `status:${parsed.status}` };
+  return { [ATOMIC_FACET]: asFingerprint(`status:${parsed.status}`) };
 };
 
 function cost(surprise: WakeSource): Cost {
@@ -44,16 +44,16 @@ function topology(): ReconcilerTopology {
   return {
     topology: {
       nodes: [
-        { node: PRODUCER, contract_fingerprint: "c:producer@1", wake_source: "external" },
-        { node: SUBSCRIBER, contract_fingerprint: "c:subscriber@1", wake_source: "input" },
+        { node: asNodeId(PRODUCER), contract_fingerprint: asFingerprint("c:producer@1"), wake_source: "external" },
+        { node: asNodeId(SUBSCRIBER), contract_fingerprint: asFingerprint("c:subscriber@1"), wake_source: "input" },
       ],
-      edges: [{ subscriber: SUBSCRIBER, producer: PRODUCER, facet: ATOMIC_FACET }],
-      entry_points: [PRODUCER],
+      edges: [{ subscriber: asNodeId(SUBSCRIBER), producer: asNodeId(PRODUCER), facet: ATOMIC_FACET }],
+      entry_points: [asNodeId(PRODUCER)],
       acyclic: true,
     },
     contract_fingerprints: {
-      [PRODUCER]: "c:producer@1",
-      [SUBSCRIBER]: "c:subscriber@1",
+      [PRODUCER]: asFingerprint("c:producer@1"),
+      [SUBSCRIBER]: asFingerprint("c:subscriber@1"),
     },
   };
 }
@@ -120,12 +120,12 @@ test("ingestAsync: an async render that throws degrades to a failed receipt (pri
   const dag = mountDag({
     topology: {
       topology: {
-        nodes: [{ node: "n", contract_fingerprint: "c@1", wake_source: "external" }],
+        nodes: [{ node: asNodeId("n"), contract_fingerprint: asFingerprint("c@1"), wake_source: "external" }],
         edges: [],
-        entry_points: ["n"],
+        entry_points: [asNodeId("n")],
         acyclic: true,
       },
-      contract_fingerprints: { n: "c@1" },
+      contract_fingerprints: { n: asFingerprint("c@1") },
     },
     mounts: {},
     asyncMounts: {
@@ -150,12 +150,12 @@ test("ingestAsync: falls back to the SYNC mounts render when no async mount exis
   const dag = mountDag({
     topology: {
       topology: {
-        nodes: [{ node: "n", contract_fingerprint: "c@1", wake_source: "external" }],
+        nodes: [{ node: asNodeId("n"), contract_fingerprint: asFingerprint("c@1"), wake_source: "external" }],
         edges: [],
-        entry_points: ["n"],
+        entry_points: [asNodeId("n")],
         acyclic: true,
       },
-      contract_fingerprints: { n: "c@1" },
+      contract_fingerprints: { n: asFingerprint("c@1") },
     },
     mounts: { n: { render: syncRender, canonicalizer: statusCanon } },
     // no asyncMounts — the async spawn wraps the sync render
@@ -163,19 +163,19 @@ test("ingestAsync: falls back to the SYNC mounts render when no async mount exis
 
   const results = await dag.ingestAsync("n");
   equal(results[0]?.disposition, "rendered");
-  deepEqual(results[0]?.receipt?.fingerprints, { [ATOMIC_FACET]: "status:sync-rendered" });
+  deepEqual(results[0]?.receipt?.fingerprints, { [ATOMIC_FACET]: asFingerprint("status:sync-rendered") });
 });
 
 test("tickAsync: a self-sourced wake drives the async path", async () => {
   const dag = mountDag({
     topology: {
       topology: {
-        nodes: [{ node: "n", contract_fingerprint: "c@1", wake_source: "self" }],
+        nodes: [{ node: asNodeId("n"), contract_fingerprint: asFingerprint("c@1"), wake_source: "self" }],
         edges: [],
-        entry_points: ["n"],
+        entry_points: [asNodeId("n")],
         acyclic: true,
       },
-      contract_fingerprints: { n: "c@1" },
+      contract_fingerprints: { n: asFingerprint("c@1") },
     },
     mounts: {},
     asyncMounts: {

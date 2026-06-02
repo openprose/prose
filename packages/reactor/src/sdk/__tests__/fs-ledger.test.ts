@@ -9,7 +9,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 
-import { ATOMIC_FACET, type ContentAddress, type Receipt } from "../../shapes";
+import { ATOMIC_FACET, type ContentAddress, type Receipt, asFingerprint, asNodeId} from "../../shapes";
 import { createNullSignature } from "../../receipt";
 import { createFileSystemStorageAdapter } from "../../adapters/storage-fs";
 import { createMemoryStorageAdapter } from "../../adapters/storage-memory";
@@ -33,11 +33,11 @@ function receiptBody(
     surprise_cause: "external" as const,
   };
   return {
-    node,
-    contract_fingerprint: `c:${node}@1`,
+    node: asNodeId(node),
+    contract_fingerprint: asFingerprint(`c:${node}@1`),
     wake: { source: "external", refs: [] },
     input_fingerprints: [],
-    fingerprints: { [ATOMIC_FACET]: token },
+    fingerprints: { [ATOMIC_FACET]: asFingerprint(token) },
     semantic_diff: {},
     prev,
     status,
@@ -57,11 +57,11 @@ test("append persists through the storage trail and indexes lastReceipt", () => 
     const ref1 = ledger.append(receiptBody("monitor", "rendered", "t1", null));
     const last1 = ledger.lastReceipt("monitor");
     ok(last1);
-    deepEqual(last1?.fingerprints, { [ATOMIC_FACET]: "t1" });
+    deepEqual(last1?.fingerprints, { [ATOMIC_FACET]: asFingerprint("t1") });
 
     const ref2 = ledger.append(receiptBody("monitor", "rendered", "t2", ref1));
     notEqual(ref1, ref2);
-    deepEqual(ledger.lastReceipt("monitor")?.fingerprints, { [ATOMIC_FACET]: "t2" });
+    deepEqual(ledger.lastReceipt("monitor")?.fingerprints, { [ATOMIC_FACET]: asFingerprint("t2") });
 
     // The durable trail holds both receipts in append order.
     equal(storage.listReceipts().length, 2);

@@ -23,6 +23,7 @@
 
 import { z } from "zod";
 
+import { asFacet } from "../../shapes";
 import {
   ATOMIC_FACET,
   type CanonicalizationSpec,
@@ -139,7 +140,7 @@ export function toCanonicalizationSpec(
   });
 
   const facets: FacetSpec[] = signal.facets.map((f) => ({
-    facet: f.facet,
+    facet: asFacet(f.facet),
     paths: f.paths.slice(),
   }));
 

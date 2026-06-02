@@ -24,8 +24,7 @@ import {
 } from "@openprose/reactor/adapters";
 import {
   type TopologyWorldModel,
-  type ContentAddress,
-} from "@openprose/reactor/internals";
+  type ContentAddress, asFacet, asNodeId} from "@openprose/reactor/internals";
 import { createFileSystemStorageAdapter } from "@openprose/reactor";
 import { FileSystemWorldModelStore } from "@openprose/reactor/adapters";
 
@@ -59,13 +58,13 @@ test("generated masked-relay fixture loads via the SDK replay read surface", () 
   assert.ok(topology.nodes.length >= 10, "≥10 nodes (the ~10-node relay)");
   assert.ok(topology.edges.length > topology.nodes.length, "edges outnumber nodes");
   assert.equal(topology.acyclic, true);
-  assert.ok(topology.entry_points.includes("gateway.signal-inbox"));
+  assert.ok(topology.entry_points.includes(asNodeId("gateway.signal-inbox")));
 
   // FACETS: the masker's per-consumer view lanes are real topology edges.
   const facetEdges = topology.edges.filter((e) => e.facet !== ATOMIC_FACET);
   const facetNames = new Set(facetEdges.map((e) => e.facet));
-  assert.ok(facetNames.has("view_e1"), "view_e1 facet edge present");
-  assert.ok(facetNames.has("view_e2"), "view_e2 facet edge present");
+  assert.ok(facetNames.has(asFacet("view_e1")), "view_e1 facet edge present");
+  assert.ok(facetNames.has(asFacet("view_e2")), "view_e2 facet edge present");
 
   // DIAMOND: a node reachable by ≥2 producers (the critics over both expanders;
   // the masker over all three scouts; the synthesizer over the whole trail).

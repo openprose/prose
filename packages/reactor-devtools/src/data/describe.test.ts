@@ -20,6 +20,7 @@ import { mkdtempSync, mkdirSync, cpSync, readFileSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import { asFingerprint } from "@openprose/reactor/internals";
 import {
   openStateDir,
   describeStateDir,
@@ -56,7 +57,9 @@ test("unwrapTopology tolerates the NESTED `reactor compile` envelope", () => {
   // `contract_fingerprints`.
   const flat = readTopology(FIXTURE)!;
   const nested = {
-    contract_fingerprints: { "responsibility.x": "sha256:" + "a".repeat(64) },
+    contract_fingerprints: {
+      "responsibility.x": asFingerprint("sha256:" + "a".repeat(64)),
+    },
     topology: {
       nodes: flat.nodes,
       edges: flat.edges,

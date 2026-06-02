@@ -18,7 +18,7 @@
 //      Raw Event Audit ───┼─► Executive Snapshot  (diamond fan-in)
 //      Count Trend ───────┘
 
-import { ATOMIC_FACET, type Facet } from "../shapes";
+import { ATOMIC_FACET, asFacet, asFingerprint, type Facet } from "../shapes";
 import {
   fingerprintArtifact,
   files,
@@ -57,10 +57,10 @@ export const EXECUTIVE_SNAPSHOT = "responsibility.executive-snapshot";
 /** Format Alert Copy is a FUNCTION, never a node (U07). Named only for asserts. */
 export const FORMAT_ALERT_COPY = "function.format-alert-copy";
 
-export const INBOX: Facet = "inbox";
-export const RAW_EVENTS: Facet = "raw_events";
-export const COUNTS: Facet = "counts";
-export const STRUCTURED: Facet = "structured";
+export const INBOX = asFacet("inbox");
+export const RAW_EVENTS = asFacet("raw_events");
+export const COUNTS = asFacet("counts");
+export const STRUCTURED = asFacet("structured");
 
 // ---------------------------------------------------------------------------
 // The external event + the harness deps the fake renders close over
@@ -128,7 +128,7 @@ export function formatAlertCopy(alert: {
 
 /** The whole-truth (`@atomic`) canonicalizer — any byte change moves the token. */
 const atomicTruth: Canonicalizer = (fm) => ({
-  [ATOMIC_FACET]: fingerprintArtifact(fm),
+  [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(fm)),
 });
 
 function readTruth(fm: WorldModelFiles): Record<string, unknown> {
@@ -142,7 +142,7 @@ function readTruth(fm: WorldModelFiles): Record<string, unknown> {
 const gatewayCanon: Canonicalizer = (fm) => {
   const t = readTruth(fm);
   return {
-    [ATOMIC_FACET]: fingerprintArtifact(fm),
+    [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(fm)),
     [RAW_EVENTS]: materialFingerprint(t["events"] ?? []),
     [COUNTS]: materialFingerprint(t["counts_by_kind"] ?? {}),
   };
@@ -153,7 +153,7 @@ const ingressCanon: Canonicalizer = (fm) => {
   const bytes = fm["inbox.json"];
   const inbox = bytes === undefined ? [] : JSON.parse(readTextFile(bytes));
   return {
-    [ATOMIC_FACET]: fingerprintArtifact(fm),
+    [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(fm)),
     [INBOX]: materialFingerprint(inbox),
   };
 };
@@ -167,7 +167,7 @@ const ingressCanon: Canonicalizer = (fm) => {
 export const projectionCanon: Canonicalizer = (fm) => {
   const t = readTruth(fm);
   return {
-    [ATOMIC_FACET]: fingerprintArtifact(fm),
+    [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(fm)),
     [STRUCTURED]: materialFingerprint(t["structured_summary"] ?? {}),
   };
 };

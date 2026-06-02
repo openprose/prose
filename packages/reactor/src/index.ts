@@ -105,8 +105,17 @@ export {
 
 export {
   ATOMIC_FACET,
+  asNodeId,
+  asFacet,
   type Receipt,
   type Cost,
   type Wake,
   type WakeSource,
+  // ── branded identity (decision #2): the public input vocabulary ──
+  type NodeId,
+  type NodeIdInput,
+  type Facet,
+  type FacetInput,
+  type Fingerprint,
+  type FingerprintMap,
 } from "./shapes";

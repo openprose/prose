@@ -24,8 +24,7 @@ import {
 } from "@openprose/reactor/adapters";
 import {
   propagationTargets,
-  type TopologyWorldModel,
-} from "@openprose/reactor/internals";
+  type TopologyWorldModel, asNodeId} from "@openprose/reactor/internals";
 import { createFileSystemStorageAdapter } from "@openprose/reactor";
 
 import { generateResearchTreeFixture } from "./research-tree";
@@ -82,7 +81,7 @@ test("generated research-tree fixture loads via the SDK replay read surface", ()
     "three sub-syntheses",
   );
   assert.equal(topology.acyclic, true);
-  assert.ok(topology.entry_points.includes(GATEWAY), "gateway is the entry point");
+  assert.ok(topology.entry_points.includes(asNodeId(GATEWAY)), "gateway is the entry point");
 
   // Per-leaf facet edges exist on the gateway (the dark-lane boundary): each
   // finding subscribes to ONLY its own `leaf:<id>` facet.

@@ -19,9 +19,9 @@ import {
   ATOMIC_FACET,
   type ContentAddress,
   type FingerprintMap,
+  type Fingerprint,
   type Receipt,
-  type WakeSource,
-} from "../../shapes";
+  type WakeSource, asFingerprint, asNodeId} from "../../shapes";
 import { createNullSignature } from "../../receipt";
 import { movedFacetsBetween } from "../../reactor";
 import { InMemoryReceiptLedger } from "../mounted-dag";
@@ -51,8 +51,8 @@ function receiptBody(opts: {
     surprise_cause: opts.surprise_cause ?? "external",
   };
   return {
-    node: opts.node,
-    contract_fingerprint: `c:${opts.node}@1`,
+    node: asNodeId(opts.node),
+    contract_fingerprint: asFingerprint(`c:${opts.node}@1`),
     wake: { source: cost.surprise_cause, refs: [] },
     input_fingerprints: [],
     fingerprints: opts.fingerprints,
@@ -65,7 +65,9 @@ function receiptBody(opts: {
 }
 
 function fp(token: string, extra?: Record<string, string>): FingerprintMap {
-  return { [ATOMIC_FACET]: token, ...extra };
+  const branded: Record<string, Fingerprint> = {};
+  for (const [k, v] of Object.entries(extra ?? {})) branded[k] = asFingerprint(v);
+  return { [ATOMIC_FACET]: asFingerprint(token), ...branded };
 }
 
 test("ordering: session.receipts equals ledger.all() in append order", () => {
@@ -175,7 +177,7 @@ test("moved-facet diff: cold start moves all, a single changed facet moves one, 
   );
 
   // An UNKNOWN receipt (not from this trail) falls back to a cold-start full move.
-  const foreign = { ...rc0, node: "ghost" };
+  const foreign = { ...rc0, node: asNodeId("ghost") };
   deepEqual(
     new Set(session.movedFacetsFor(foreign)),
     new Set(movedFacetsBetween(null, foreign.fingerprints)),

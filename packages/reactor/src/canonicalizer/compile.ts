@@ -16,6 +16,8 @@
 
 import {
   ATOMIC_FACET,
+  asFingerprint,
+  asNodeId,
   type CanonicalizerRef,
   type Facet,
   type Fingerprint,
@@ -96,7 +98,7 @@ export function compileNode(
   const apply = (worldModel: WorldModelValue): FingerprintMap => {
     const map: Record<Facet, Fingerprint> = {};
     for (const facet of facets) {
-      map[facet] = digestCanonical(serialize(worldModel, facet));
+      map[facet] = asFingerprint(digestCanonical(serialize(worldModel, facet)));
     }
     return Object.freeze(map);
   };
@@ -109,7 +111,7 @@ export function compileNode(
   };
 
   const ref: CanonicalizerRef = {
-    node: spec.node,
+    node: asNodeId(spec.node),
     artifact,
     facets,
   };

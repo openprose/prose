@@ -72,8 +72,7 @@ import {
   type TopologyWorldModel,
   type TopologyNode,
   type TopologyEdge,
-  type ReconcilerTopology,
-} from "@openprose/reactor/internals";
+  type ReconcilerTopology, asFacet, asFingerprint, asNodeId} from "@openprose/reactor/internals";
 
 import { materialFingerprint, readJson } from "./_fixture-shared";
 
@@ -125,28 +124,28 @@ const DASHBOARD = "responsibility.dashboard";
 
 // One facet per runtime on the gateway — the dark-lane boundary.
 const RUNTIME_FACET: Record<Runtime, Facet> = {
-  claude: "claude",
-  codex: "codex",
-  opencode: "opencode",
-  pi: "pi",
-  hermes: "hermes",
-  openclaw: "openclaw",
+  claude: asFacet("claude"),
+  codex: asFacet("codex"),
+  opencode: asFacet("opencode"),
+  pi: asFacet("pi"),
+  hermes: asFacet("hermes"),
+  openclaw: asFacet("openclaw"),
 };
 
 // One facet per session on the session ledger — the second dark lane.
 const SESSION_FACET: Record<SessionId, Facet> = {
-  claudeA: "session:claudeA",
-  claudeB: "session:claudeB",
-  codexA: "session:codexA",
+  claudeA: asFacet("session:claudeA"),
+  claudeB: asFacet("session:claudeB"),
+  codexA: asFacet("session:codexA"),
 };
 
 // The gating facet the Workstream Index exposes to the expensive Clusterer: it
 // moves ONLY when the set of distinct workstreams changes (a "major new
 // project"), not on every session edit. That is why the Clusterer stays dark on
 // small deltas and only spikes once.
-const CLUSTER_GATE_FACET: Facet = "cluster-gate";
+const CLUSTER_GATE_FACET = asFacet("cluster-gate");
 // The cheap incremental facet the Dashboard reads — moves on every rollup.
-const ROLLUP_FACET: Facet = "rollup";
+const ROLLUP_FACET = asFacet("rollup");
 
 // ---------------------------------------------------------------------------
 // Friendly labels for the SPA (nodeId → human label). Load-bearing for the
@@ -267,7 +266,7 @@ function commit(world: unknown, cost: Cost): RenderProduct {
 // ---------------------------------------------------------------------------
 
 const atomicTruth = (fm: WorldModelFiles) => ({
-  [ATOMIC_FACET]: fingerprintArtifact(fm),
+  [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(fm)),
 });
 
 // The ingress source exposes one facet per runtime — the fingerprint of ONLY
@@ -277,7 +276,7 @@ const ingressCanon = (fm: WorldModelFiles) => {
   const bytes = fm["agent-fs.json"];
   const fs: Partial<AgentFs> =
     bytes === undefined ? {} : (JSON.parse(readTextFile(bytes)) as AgentFs);
-  const out: Record<string, Fingerprint> = { [ATOMIC_FACET]: fingerprintArtifact(fm) };
+  const out: Record<string, Fingerprint> = { [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(fm)) };
   for (const rt of RUNTIMES) {
     out[RUNTIME_FACET[rt]] = materialFingerprint(fs[rt] ?? []);
   }
@@ -291,7 +290,7 @@ const ingressCanon = (fm: WorldModelFiles) => {
 const gatewayCanon = (fm: WorldModelFiles) => {
   const t = readTruth(fm);
   const runtimes = (t["runtimes"] ?? {}) as Record<string, unknown>;
-  const out: Record<string, Fingerprint> = { [ATOMIC_FACET]: fingerprintArtifact(fm) };
+  const out: Record<string, Fingerprint> = { [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(fm)) };
   for (const rt of RUNTIMES) {
     out[RUNTIME_FACET[rt]] = materialFingerprint(runtimes[rt] ?? []);
   }
@@ -304,7 +303,7 @@ const gatewayCanon = (fm: WorldModelFiles) => {
 const sessionLedgerCanon = (fm: WorldModelFiles) => {
   const t = readTruth(fm);
   const sessions = (t["sessions"] ?? {}) as Record<string, unknown>;
-  const out: Record<string, Fingerprint> = { [ATOMIC_FACET]: fingerprintArtifact(fm) };
+  const out: Record<string, Fingerprint> = { [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(fm)) };
   for (const sid of SESSIONS) {
     out[SESSION_FACET[sid]] = materialFingerprint(sessions[sid] ?? null);
   }
@@ -321,9 +320,9 @@ const sessionLedgerCanon = (fm: WorldModelFiles) => {
 const workstreamIndexCanon = (fm: WorldModelFiles) => {
   const t = readTruth(fm);
   return {
-    [ATOMIC_FACET]: fingerprintArtifact(fm),
-    [ROLLUP_FACET]: materialFingerprint(t["rollup"] ?? null),
-    [CLUSTER_GATE_FACET]: materialFingerprint(t["workstreams"] ?? []),
+    [ATOMIC_FACET]: asFingerprint(fingerprintArtifact(fm)),
+    [ROLLUP_FACET]: asFingerprint(materialFingerprint(t["rollup"] ?? null)),
+    [CLUSTER_GATE_FACET]: asFingerprint(materialFingerprint(t["workstreams"] ?? [])),
   };
 };
 
@@ -530,18 +529,18 @@ function buildReconcilerTopology(decls: readonly NodeDecl[]): ReconcilerTopology
   for (const d of decls) contract_fingerprints[d.id] = contractFingerprint(d);
 
   const nodes: TopologyNode[] = decls.map((d) => ({
-    node: d.id,
+    node: asNodeId(d.id),
     contract_fingerprint: contract_fingerprints[d.id]!,
     wake_source: (d.kind === "gateway" ? "external" : "input") as WakeSource,
   }));
   const edges: TopologyEdge[] = decls.flatMap((d) =>
     d.requires.map((r) => ({
-      subscriber: d.id,
-      producer: r.producer,
+      subscriber: asNodeId(d.id),
+      producer: asNodeId(r.producer),
       facet: r.facet ?? ATOMIC_FACET,
     })),
   );
-  const entry_points = decls.filter((d) => d.kind === "gateway").map((d) => d.id);
+  const entry_points = decls.filter((d) => d.kind === "gateway").map((d) => asNodeId(d.id));
   const declared = new Set(decls.map((d) => d.id));
   const topology: TopologyWorldModel = {
     nodes,
@@ -696,8 +695,8 @@ export function generateAgentObservatoryFixture(opts: GenerateOptions): Generate
     const prevRef = prev !== null ? ledger.addressOf(prev) : null;
     const wake: Wake = { source: "external", refs: [] };
     ledger.append({
-      node: SOURCE,
-      contract_fingerprint: `contract:${SOURCE}@ingress`,
+      node: asNodeId(SOURCE),
+      contract_fingerprint: asFingerprint(`contract:${SOURCE}@ingress`),
       wake,
       input_fingerprints: [],
       fingerprints: commitRes.fingerprints,

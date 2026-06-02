@@ -9,7 +9,7 @@
 import { deepEqual, equal, ok } from "node:assert/strict";
 import { test } from "node:test";
 
-import { ATOMIC_FACET } from "../../shapes";
+import { ATOMIC_FACET, asFacet, asFingerprint, asNodeId, type Fingerprint } from "../../shapes";
 import {
   jsonFile,
   files,
@@ -26,7 +26,7 @@ import {
 
 const MONITOR = "responsibility.freshness-monitor";
 const ALERT = "responsibility.staleness-alert";
-const FRESHNESS: string = "freshness";
+const FRESHNESS = asFacet("freshness");
 
 // The monitor maintains a single `freshness` facet (its corroborated view). The
 // canonicalizer fingerprints the material `view` + the facet token; the atomic
@@ -34,29 +34,29 @@ const FRESHNESS: string = "freshness";
 const monitorCanon: Canonicalizer = (wm) => {
   const parsed = JSON.parse(readTextFile(wm["t.json"] as Uint8Array));
   return {
-    [ATOMIC_FACET]: `view:${parsed.view}`,
-    [FRESHNESS]: `view:${parsed.view}`,
+    [ATOMIC_FACET]: asFingerprint(`view:${parsed.view}`),
+    [FRESHNESS]: asFingerprint(`view:${parsed.view}`),
   };
 };
 
 // The downstream alert just records that it woke and what input it saw.
 const alertCanon: Canonicalizer = (wm) => {
   const parsed = JSON.parse(readTextFile(wm["a.json"] as Uint8Array));
-  return { [ATOMIC_FACET]: `runs:${parsed.runs}` };
+  return { [ATOMIC_FACET]: asFingerprint(`runs:${parsed.runs}`) };
 };
 
 function topology(): ReconcilerTopology {
   return {
     topology: {
       nodes: [
-        { node: MONITOR, contract_fingerprint: "c:monitor@1", wake_source: "self" },
-        { node: ALERT, contract_fingerprint: "c:alert@1", wake_source: "input" },
+        { node: asNodeId(MONITOR), contract_fingerprint: asFingerprint("c:monitor@1"), wake_source: "self" },
+        { node: asNodeId(ALERT), contract_fingerprint: asFingerprint("c:alert@1"), wake_source: "input" },
       ],
-      edges: [{ subscriber: ALERT, producer: MONITOR, facet: FRESHNESS }],
-      entry_points: [MONITOR],
+      edges: [{ subscriber: asNodeId(ALERT), producer: asNodeId(MONITOR), facet: asFacet(FRESHNESS) }],
+      entry_points: [asNodeId(MONITOR)],
       acyclic: true,
     },
-    contract_fingerprints: { [MONITOR]: "c:monitor@1", [ALERT]: "c:alert@1" },
+    contract_fingerprints: { [MONITOR]: asFingerprint("c:monitor@1"), [ALERT]: asFingerprint("c:alert@1") },
   };
 }
 
@@ -111,10 +111,10 @@ function freshnessReader(
     }
     return {
       node: MONITOR,
-      contract_fingerprint: "c:monitor@1",
+      contract_fingerprint: asFingerprint("c:monitor@1"),
       input_fingerprints: last.input_fingerprints,
       facets: [
-        { facet: FRESHNESS, fingerprint: last.fingerprints[FRESHNESS] as string, valid_until },
+        { facet: FRESHNESS, fingerprint: last.fingerprints[FRESHNESS] as Fingerprint, valid_until },
       ],
       prev: dag.ledger.addressOf(last),
     };

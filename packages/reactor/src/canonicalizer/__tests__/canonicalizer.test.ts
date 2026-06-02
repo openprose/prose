@@ -1,7 +1,7 @@
 import { deepEqual, equal, notEqual, ok, throws } from "node:assert/strict";
 import { test } from "node:test";
 
-import { ATOMIC_FACET } from "../../shapes";
+import { ATOMIC_FACET, asFacet} from "../../shapes";
 import {
   atomicOnlySpec,
   canonicalizerArtifactId,
@@ -35,8 +35,8 @@ function vendorSpec(): CanonicalizationSpec {
       { path: "controls", material: true, collection: "set" },
     ],
     facets: [
-      { facet: "recommendation", paths: ["recommendation"] },
-      { facet: "controls", paths: ["controls"] },
+      { facet: asFacet("recommendation"), paths: ["recommendation"] },
+      { facet: asFacet("controls"), paths: ["controls"] },
     ],
   };
 }
@@ -142,7 +142,7 @@ test("structured-backing lint flags a subscribed facet with no structured backin
   const spec: CanonicalizationSpec = {
     node: "prose-node",
     default_material: true,
-    facets: [{ facet: "summary", paths: [] }], // free-form prose, no backing
+    facets: [{ facet: asFacet("summary"), paths: [] }], // free-form prose, no backing
     fields: [],
   };
   const lints = lintStructuredBacking(spec);
@@ -167,7 +167,7 @@ test("redeclaring the reserved atomic facet is rejected", () => {
 
 test("serialize over an unknown facet throws", () => {
   const { canonicalizer } = compileNode(atomicOnlySpec("leaf"));
-  throws(() => canonicalizer.serialize({ a: 1 }, "nope"), /does not declare facet/);
+  throws(() => canonicalizer.serialize({ a: 1 }, asFacet("nope")), /does not declare facet/);
 });
 
 test("digestCanonical is the sha256 content-address convention", () => {

@@ -16,6 +16,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { asFacet } from '@openprose/reactor/internals';
 import { mkdtempSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -136,7 +137,7 @@ describe('shipped examples (offline gate)', () => {
         assert.equal(report['edges'], 1);
         assert.ok(existsSync(manifestPath(stateDir)));
         const ir = loadIR(stateDir);
-        assert.ok(ir.perNode[INBOX]!.compiled.canonicalizer.facets.includes(example.facet));
+        assert.ok(ir.perNode[INBOX]!.compiled.canonicalizer.facets.includes(asFacet(example.facet)));
       } finally {
         rmSync(stateDir, { recursive: true, force: true });
       }

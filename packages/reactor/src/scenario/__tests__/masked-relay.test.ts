@@ -28,6 +28,7 @@ import { RunContext, type FunctionTool } from "@openai/agents";
 import { ATOMIC_FACET } from "../../shapes";
 import {
   wmReadUpstreamTool,
+  type UpstreamSubscription,
   type AgentRenderContext,
 } from "../../adapters/agent-render/tools";
 import {
@@ -81,7 +82,7 @@ const SIG_C: Signal = { id: "s3", source: "competitor", text: "rival shipped X" 
 function upstreamOf(
   scn: ReturnType<typeof maskedRelayScenario>,
   node: string,
-): { producer: string; facet: string }[] {
+): UpstreamSubscription[] {
   return scn.topology.topology.edges
     .filter((e) => e.subscriber === node)
     .map((e) => ({ producer: e.producer, facet: e.facet }));

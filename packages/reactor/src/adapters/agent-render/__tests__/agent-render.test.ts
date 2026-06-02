@@ -31,7 +31,7 @@ import {
   type ModelResponse,
 } from "@openai/agents";
 
-import { ATOMIC_FACET } from "../../../shapes";
+import { ATOMIC_FACET, asFacet, asNodeId} from "../../../shapes";
 import {
   atomicCanonicalizer,
   readTextFile,
@@ -93,9 +93,9 @@ function greetingTopology(): ReconcilerTopology {
   });
   return {
     topology: {
-      nodes: [{ node: NODE, contract_fingerprint: fp, wake_source: "external" }],
+      nodes: [{ node: asNodeId(NODE), contract_fingerprint: fp, wake_source: "external" }],
       edges: [],
-      entry_points: [NODE],
+      entry_points: [asNodeId(NODE)],
       acyclic: true,
     },
     contract_fingerprints: { [NODE]: fp },
@@ -378,7 +378,7 @@ function twoNodeTopology(): ReconcilerTopology {
     id: BRIEF,
     kind: "responsibility",
     name: BRIEF_CONTRACT.name,
-    requires: [{ producer: MONITOR, facet: FUNDING_FACET }],
+    requires: [{ producer: MONITOR, facet: asFacet(FUNDING_FACET) }],
     maintains: [],
     continuity: "",
     render: () => {
@@ -389,12 +389,12 @@ function twoNodeTopology(): ReconcilerTopology {
   return {
     topology: {
       nodes: [
-        { node: MONITOR, contract_fingerprint: monitorFp, wake_source: "self" },
-        { node: BRIEF, contract_fingerprint: briefFp, wake_source: "input" },
+        { node: asNodeId(MONITOR), contract_fingerprint: monitorFp, wake_source: "self" },
+        { node: asNodeId(BRIEF), contract_fingerprint: briefFp, wake_source: "input" },
       ],
       // The resolved subscription: BRIEF consumes MONITOR's `funding` facet.
-      edges: [{ subscriber: BRIEF, producer: MONITOR, facet: FUNDING_FACET }],
-      entry_points: [MONITOR],
+      edges: [{ subscriber: asNodeId(BRIEF), producer: asNodeId(MONITOR), facet: asFacet(FUNDING_FACET) }],
+      entry_points: [asNodeId(MONITOR)],
       acyclic: true,
     },
     contract_fingerprints: { [MONITOR]: monitorFp, [BRIEF]: briefFp },
