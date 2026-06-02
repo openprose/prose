@@ -119,6 +119,7 @@ The `surprise-cause` line counts *receipts* by what woke them (8 external + 69 i
 **3. Scaffold and inspect — keyless.** Everything here runs offline:
 
 ```bash
+# local install? prepend: npx reactor … (see the "Local install?" note above)
 reactor init my-project && cd my-project
 reactor doctor                          # what's present + the exact fix for anything missing
 reactor compile --check; echo "exit=$?" # offline; exits 1 if the contract set is STALE (CI-wireable)
