@@ -51,6 +51,7 @@ import {
   type CompiledContractView,
   type RenderOptions,
   type RenderSandboxRunner,
+  type RenderBackend,
 } from "../adapters/agent-render";
 import { asFingerprint } from "../shapes";
 import type { Cost, Fingerprint } from "../shapes";
@@ -336,6 +337,17 @@ export interface RunProjectRender {
    * Ignored when {@link buildRender} is supplied (the offline fake owns its body).
    */
   readonly renderOptions?: RenderOptions;
+  /**
+   * The render-backend injection seam (§5.4) — the model session swapped wholesale
+   * while the harness keeps instruction/working-dir/harvest/cost. Threaded onto the
+   * live {@link createAgentRender} config as `renderBackend`, so a `runProject`
+   * consumer points the live render at record/replay, a proxy, or a
+   * non-`@openai/agents` model WITHOUT dropping to the deepest `buildRender`
+   * backstop. The port is `@openai/agents`-free (type-only), so naming it here
+   * keeps the `/run/types` offline boundary clean. Ignored when {@link buildRender}
+   * is supplied (the offline fake owns its whole body).
+   */
+  readonly renderBackend?: RenderBackend;
 }
 
 /** Input to {@link runProject}: the compiled project + the run substrate. */
@@ -442,6 +454,12 @@ export async function runProject(
         ...(render.sandbox !== undefined ? { sandbox: render.sandbox } : {}),
         ...(render.shellTimeoutMs !== undefined
           ? { shellTimeoutMs: render.shellTimeoutMs }
+          : {}),
+        // §5.4: the injected render backend (default = the `@openai/agents`
+        // session). Spread like every other knob; unset means the live render
+        // keeps its default backend, byte-for-byte what it was before the seam.
+        ...(render.renderBackend !== undefined
+          ? { renderBackend: render.renderBackend }
           : {}),
       });
 

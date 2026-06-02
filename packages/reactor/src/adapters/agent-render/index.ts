@@ -32,15 +32,6 @@
  * require the SDK.
  */
 
-import {
-  Agent,
-  MaxTurnsExceededError,
-  Runner,
-  type AgentConfiguration,
-  type AgentOutputType,
-  type ModelProvider,
-} from "@openai/agents";
-
 import type { WakeSource } from "../../shapes";
 import type {
   RenderContext,
@@ -50,7 +41,6 @@ import type {
 import type { AsyncMountedRender } from "../../sdk/mounted-dag";
 import type { WorldModelFiles, WorldModelStore } from "../../world-model";
 import {
-  createOpenRouterProvider,
   DEFAULT_RENDER_MODEL,
   DEFAULT_TEMPERATURE,
 } from "./provider";
@@ -59,15 +49,13 @@ import {
   renderOutputSchema,
   type RenderOutputSignal,
 } from "./output-schema";
-import type { RenderUsage } from "./cost";
 import {
   createCwdTools,
   createRenderTools,
-  createSpawnSubagentTool,
   type AgentRenderContext,
   type RenderSandboxRunner,
 } from "./tools";
-import type { Tool } from "@openai/agents";
+import type { Model, Tool } from "@openai/agents";
 import {
   harvestDirectory,
   prepareWorkingDir,
@@ -86,12 +74,14 @@ import {
 } from "./skill-preflight";
 import {
   appendInstructionsSuffix,
-  buildRunOptions,
   composeTools,
   mergeModelSettings,
-  resolveRunConfig,
   type RenderOptions,
 } from "./passthrough";
+import {
+  createDefaultRenderBackend,
+  type RenderBackend,
+} from "./render-backend";
 
 // ---------------------------------------------------------------------------
 // Config
@@ -145,6 +135,19 @@ export interface AgentRenderConfig extends RenderOptions {
   readonly workspaceRoot?: string;
   /** Optional folded sandbox for `sandbox_exec`. */
   readonly sandbox?: RenderSandboxRunner;
+  /**
+   * The render-backend injection seam (API-ANALYSIS §5.4). The model session is
+   * owned by an injected {@link RenderBackend}; the harness keeps the instruction-
+   * composition / working-dir / harvest / cost machinery and hands the backend the
+   * resolved per-render request. Defaults to {@link createDefaultRenderBackend} —
+   * the `@openai/agents` session, BEHAVIOR-IDENTICAL to the historic inline body
+   * (minus the global-tracing mutation). Inject a custom backend to swap in
+   * record/replay, a proxy, or a non-`@openai/agents` model (Claude/local) while
+   * REUSING this harness's machinery. The default backend threads the full Tier-A/
+   * B/C escape hatch (`agent`/`runConfig`/`runOptions`/`tracing`/`agentFactory`/
+   * `runnerFactory`); a custom backend may honour or ignore those as it sees fit.
+   */
+  readonly renderBackend?: RenderBackend;
   /**
    * Per-command `shell_exec` timeout (ms) for the cwd-rooted {@link LocalShell}.
    * Threaded into {@link createCwdTools} as `{ timeoutMs }`, so a
@@ -212,54 +215,40 @@ export function createAgentRender(
     return workspaceBase;
   };
 
-  // Resolve the provider + runner lazily and ONCE: a keyless build/test that
-  // never invokes the render never constructs them (so the OpenRouter-key throw
-  // in `createOpenRouterProvider` is only reached on a real render). The scoped
-  // provider is captured so the Tier-C `runnerFactory` backstop and the per-run
-  // `resolveRunConfig` (tracing) both see the SAME provider.
-  let provider: ModelProvider | undefined;
-  const getProvider = (): ModelProvider => {
-    if (provider === undefined) {
-      provider = config.provider ?? createOpenRouterProvider();
-    }
-    return provider;
-  };
-  let runner: Runner | undefined;
-  const getRunner = (): Runner => {
-    if (runner === undefined) {
-      const p = getProvider();
-      if (config.runnerFactory) {
-        // Tier C: the consumer builds the Runner (and may attach RunHooks.on).
-        runner = config.runnerFactory(p);
-      } else {
-        // The runner CONSTRUCTION carries the RunConfig (tracing, workflowName,
-        // traceId/groupId/metadata, the scoped modelProvider, …). Tracing is now
-        // decided PER-RUN here (default disabled = safe egress, overridable),
-        // REPLACING the old process-global `setTracingDisabled(true)` mutation.
-        runner = new Runner(
-          resolveRunConfig({
-            provider: p,
-            ...(config.runConfig !== undefined
-              ? { runConfig: config.runConfig }
-              : {}),
-            ...(config.tracing !== undefined ? { tracing: config.tracing } : {}),
-          }),
-        );
-      }
-    }
-    return runner;
-  };
+  // The render-backend injection seam (§5.4). The model session is owned by the
+  // backend; the harness keeps the instruction/working-dir/harvest/cost
+  // machinery. Default: the `@openai/agents` session (behavior-identical to the
+  // historic inline body, minus the global-tracing mutation), constructed ONCE
+  // here so its lazy provider/runner caching spans every render of every node.
+  //
+  // NOTE: the default backend NO LONGER calls the process-global
+  // `setTracingDisabled(true)` — that stomped a consumer's
+  // `runConfig.tracingDisabled=false` and leaked across every other
+  // `@openai/agents` user in the process. Tracing is decided PER-RUN inside the
+  // backend (default disabled = safe egress, overridable via
+  // `RenderOptions.tracing` / `runConfig.tracingDisabled`).
+  const backend: RenderBackend =
+    config.renderBackend ??
+    createDefaultRenderBackend({
+      skill,
+      ...(config.provider !== undefined ? { provider: config.provider } : {}),
+      ...(config.agent !== undefined ? { agent: config.agent } : {}),
+      ...(config.runConfig !== undefined ? { runConfig: config.runConfig } : {}),
+      ...(config.runOptions !== undefined
+        ? { runOptions: config.runOptions }
+        : {}),
+      ...(config.tracing !== undefined ? { tracing: config.tracing } : {}),
+      ...(config.agentFactory !== undefined
+        ? { agentFactory: config.agentFactory }
+        : {}),
+      ...(config.runnerFactory !== undefined
+        ? { runnerFactory: config.runnerFactory }
+        : {}),
+    });
 
   return async (
     ctx: RenderContext,
   ): Promise<RenderProduct | RenderFailure> => {
-    // NOTE: the default backend NO LONGER calls the process-global
-    // `setTracingDisabled(true)` — that stomped a consumer's
-    // `runConfig.tracingDisabled=false` and leaked across every other
-    // `@openai/agents` user in the process. Tracing is now decided PER-RUN via
-    // `resolveRunConfig` (default disabled = safe egress, but overridable through
-    // `RenderOptions.tracing` / `runConfig.tracingDisabled`).
-
     const contract = config.contractFor(ctx.node);
     const instructions = appendInstructionsSuffix(
       composeInstructions(skill, ctx.node, contract, ctx),
@@ -303,72 +292,10 @@ export function createAgentRender(
     ];
     const renderTools = composeTools(builtinTools, config.extraTools);
 
-    // The generic sub-agent primitive. The render spawns a focused helper, gets a
-    // value back, leaves no node behind; the helper's token Usage rolls up into
-    // THIS render's receipt Cost because the tool runs the sub-agent through the
-    // parent's RunContext. The sub-agent inherits the render's tool subset; pushing
-    // the spawn tool itself onto that subset lets a helper recurse, bounded by the
-    // SAME `maxTurns`/Usage backstop.
-    const spawnSubagentTool = createSpawnSubagentTool({
-      skill,
-      model,
-      getRunner,
-      modelSettings,
-      maxTurns,
-      subTools: renderTools,
-      // The second swallow point: spawned sub-agents inherit the SAME per-run
-      // escape hatch (runConfig/runOptions/signal) as the parent render.
-      ...(config.runConfig !== undefined ? { runConfig: config.runConfig } : {}),
-      ...(config.runOptions !== undefined
-        ? { runOptions: config.runOptions }
-        : {}),
-      ...(config.signal !== undefined ? { signal: config.signal } : {}),
-      ...(config.tracing !== undefined ? { tracing: config.tracing } : {}),
-      getProvider,
-    });
-    renderTools.push(spawnSubagentTool);
-
-    const outputType = renderOutputSchema() as AgentOutputType;
-    // The harness-owned fields (name/instructions/tools/outputType) always merge
-    // OVER the consumer's `agent.*` base so the harvest contract can never be
-    // broken; the consumer base supplies everything else (handoffs, guardrails,
-    // mcpServers, modelSettings, prompt, toolUseBehavior, …) verbatim. The merged
-    // object is assembled once and cast at the single SDK-coupling point — the
-    // consumer's `agent.*` is a `Partial<AgentConfiguration>` over the SDK's
-    // default text-output, and our reserved fields re-pin the output/model types,
-    // so the literal would otherwise carry conflicting field types under
-    // `exactOptionalPropertyTypes`.
-    const agentOptions = {
-      // The consumer's `@openai/agents` passthrough FIRST (lowest precedence);
-      // the reserved four below always win (and are Omit-ed from the type).
-      ...((config.agent as Record<string, unknown> | undefined) ?? {}),
-      name: ctx.node,
-      instructions,
-      model,
-      modelSettings,
-      // The wm_* read/upstream/write tools, the cwd-rooted Codex-style tools
-      // (fs_*, shell_exec, apply_patch), AND the generic spawn_subagent
-      // primitive (+ any `extraTools`).
-      tools: renderTools,
-      // The small done/failed signal. NO file contents ride here. The schema is
-      // built lazily as a zod object; `output-schema.ts` types its return as the
-      // SDK-independent `z.ZodTypeAny`, so we annotate it as the SDK's
-      // `AgentOutputType` (a `ZodObject` is valid) at the single SDK-coupling
-      // point.
-      outputType,
-    } as unknown as AgentConfiguration<AgentRenderContext, AgentOutputType>;
-
-    const agent = config.agentFactory
-      ? config.agentFactory({
-          name: ctx.node,
-          instructions,
-          model,
-          modelSettings,
-          tools: renderTools,
-          outputType,
-          ...(config.agent !== undefined ? { agent: config.agent } : {}),
-        })
-      : new Agent<AgentRenderContext, AgentOutputType>(agentOptions);
+    // The small done/failed signal schema. NO file contents ride here. Built
+    // lazily as a zod object; the backend re-pins it to the SDK's
+    // `AgentOutputType` at its single SDK-coupling point.
+    const outputType: unknown = renderOutputSchema();
 
     // The SHORT pointer input: the wake + WHERE prior truth lives, never the
     // truth itself. The agent reads truth by reference.
@@ -394,68 +321,41 @@ export function createAgentRender(
       ...(config.sandbox !== undefined ? { sandbox: config.sandbox } : {}),
     };
 
-    // A render that exhausts its turn cap is a RenderFailure (the prior truth
-    // stands), NOT a crash out of the adapter. The SDK throws
-    // `MaxTurnsExceededError` when `currentTurn > maxTurns`; map
-    // it to a `failed` signal so nothing commits. (`maxTurns: null` bypasses the
-    // guard entirely, so this branch is unreachable under a deliberate opt-out.)
-    try {
-      // The per-run options: the consumer's `runOptions` passthrough
-      // (previousResponseId / conversationId / session / errorHandlers / …)
-      // folded UNDER the harness-owned context/maxTurns/signal (which win).
-      const result = await getRunner().run(
-        agent,
-        input,
-        buildRunOptions(
-          {
-            context,
-            maxTurns,
-            ...(config.signal !== undefined ? { signal: config.signal } : {}),
-          },
-          config.runOptions,
-        ),
-      );
+    // Hand the resolved per-render request to the backend (the model session).
+    // The backend owns the `@openai/agents` Agent/Runner/run + the spawn-subagent
+    // tool + the turn-cap → failed-signal mapping; the harness keeps everything
+    // around it. A render that exhausts its turn cap comes back as a `failed`
+    // signal (the prior truth stands), never a crash out of the adapter.
+    const session = await backend.runSession({
+      node: ctx.node,
+      instructions,
+      model,
+      modelSettings,
+      // The wm_* read/upstream/write tools + the cwd-rooted Codex-style tools
+      // (fs_*, shell_exec, apply_patch) + any `extraTools`. The default backend
+      // appends its own `spawn_subagent`.
+      tools: renderTools,
+      outputType,
+      input,
+      context,
+      maxTurns,
+      ...(config.signal !== undefined ? { signal: config.signal } : {}),
+    });
 
-      // The agent WROTE its world-model into the REAL working DIRECTORY; HARVEST
-      // that directory — a plain, deterministic `node:fs` walk, NO model call.
-      // The harness (mountDag's async spawn) then promotes-and-fingerprints these
-      // harvested files with the COMPILED canonicalizer at commit.
-      const harvested = harvestDirectory(workingDir);
+    // The agent WROTE its world-model into the REAL working DIRECTORY; HARVEST
+    // that directory — a plain, deterministic `node:fs` walk, NO model call. The
+    // harness (mountDag's async spawn) then promotes-and-fingerprints these
+    // harvested files with the COMPILED canonicalizer at commit. (`mapRenderOutput`
+    // ignores `harvested` on a `failed` signal, so a turn-cap/declined render
+    // commits nothing regardless of what is on disk.)
+    const harvested = harvestDirectory(workingDir);
 
-      // `result.state.usage` (NOT `result.state.context.usage` — that getter does
-      // not exist) is the run's accumulated token usage. `Usage` structurally
-      // satisfies `RenderUsage`.
-      const usage = result.state.usage as unknown as RenderUsage;
-
-      const signal = result.finalOutput as RenderOutputSignal | undefined;
-      return mapRenderOutput({
-        signal: normalizeSignal(signal),
-        harvested: harvested as WorldModelFiles,
-        usage,
-        surprise_cause: ctx.wake.source satisfies WakeSource,
-      });
-    } catch (error) {
-      if (error instanceof MaxTurnsExceededError) {
-        return mapRenderOutput({
-          signal: {
-            status: "failed",
-            reason:
-              `render exceeded its ${String(maxTurns)}-turn cap without ` +
-              `emitting a done signal (${error.message})`,
-          },
-          harvested: {} as WorldModelFiles,
-          // No usage is recoverable from the thrown error; report an empty
-          // Cost so the receipt still attributes a (zero-token) failed render.
-          usage: {
-            inputTokens: 0,
-            outputTokens: 0,
-            totalTokens: 0,
-          } satisfies RenderUsage,
-          surprise_cause: ctx.wake.source satisfies WakeSource,
-        });
-      }
-      throw error;
-    }
+    return mapRenderOutput({
+      signal: normalizeSignal(session.signal),
+      harvested: harvested as WorldModelFiles,
+      usage: session.usage,
+      surprise_cause: ctx.wake.source satisfies WakeSource,
+    });
   };
 }
 
@@ -586,3 +486,16 @@ export type {
   ReservedAgentFields,
   ReservedRunOptionFields,
 } from "./passthrough";
+// The render-backend injection seam (§5.4) — the port + its harness-composed
+// request/output shapes + the default `@openai/agents` backend factory. Inject a
+// custom backend to swap in record/replay, a proxy, or a non-`@openai/agents`
+// model while REUSING the harness's instruction/working-dir/harvest/cost
+// machinery; the default factory is the behavior-identical `@openai/agents`
+// session.
+export { createDefaultRenderBackend } from "./render-backend";
+export type {
+  RenderBackend,
+  RenderSessionRequest,
+  RenderSessionOutput,
+  DefaultRenderBackendConfig,
+} from "./render-backend";
