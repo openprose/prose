@@ -57,8 +57,8 @@ reactor-devtools <state-dir> --describe
 Every decision produces a content-addressed receipt that names its evidence by
 fingerprint, points to the prior receipt, and records what changed and why. The
 ledger of receipts is append-only and chain-verifiable — the responsibility's
-durable memory, and the next process's state (kill the system and it rebuilds
-what it was doing from the trail).
+durable memory, and the next process's state (stop it cleanly and restart, and
+it rebuilds its memo state from the trail).
 
 **Signer caveat:** in v1, *signed* means tamper-evident at the meaning layer and
 chain-consistent — **not** yet a cryptographic byte hash. The signer is an

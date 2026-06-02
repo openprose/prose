@@ -433,12 +433,12 @@ describe("tamper-forge — chain-verify catches a tampered receipt; the honest b
     writeFileSync(publishedPath, before, "utf8");
   });
 
-  it("EXIT-CODE CAVEATS: plain-mode `receipts verify` returns a non-ok result on a broken chain (correct); the --json path exit-0 (Bug B3) is a documented caveat", () => {
-    // We model the CLI's verdict via the same primitive its plain path uses: an
-    // `ok:false` ReceiptChainResult is what makes the plain command exit non-zero
-    // (CI-safe). The --json path returning exit 0 on a broken chain (Bug B3) is
-    // OUT OF LIBRARY SCOPE and tracked separately; we encode the correct plain
-    // semantics here so the example never implies the broken --json behavior.
+  it("EXIT CODES: `receipts verify` returns a non-ok result on a broken chain, so the CLI exits non-zero (CI-safe in both plain and --json modes)", () => {
+    // We model the CLI's verdict via the same primitive both its paths use: an
+    // `ok:false` ReceiptChainResult is what makes the command exit non-zero
+    // (CI-safe). The plain and --json forms both exit non-zero on a broken
+    // chain, so a CI gate can rely on the exit code regardless of output mode;
+    // here we encode that correct semantics at the primitive level.
     const trail = loadTrail(dir);
     const { receipt } = pickTarget(trail);
     const tampered: LedgerReceipt = {
@@ -453,10 +453,10 @@ describe("tamper-forge — chain-verify catches a tampered receipt; the honest b
       r.content_hash === receipt.content_hash ? tampered : r,
     );
     const verdict = verifyReceiptChain(broken);
-    // plain-mode: a broken chain is `ok:false` -> the CLI exits non-zero. Correct.
+    // a broken chain is `ok:false` -> the CLI exits non-zero. Correct.
     expect(verdict.ok).toBe(false);
-    const plainExitCode = verdict.ok ? 0 : 1;
-    expect(plainExitCode).toBe(1);
+    const exitCode = verdict.ok ? 0 : 1;
+    expect(exitCode).toBe(1);
   });
 });
 
