@@ -30,6 +30,7 @@
 import { readFileSync, readdirSync, lstatSync } from "node:fs";
 import { join } from "node:path";
 
+import { unquote } from "../string-util";
 import type { WakeSource } from "../../shapes";
 import type { RenderKind } from "../../forme";
 
@@ -330,17 +331,6 @@ function fileStem(path: string): string {
   return base.endsWith(CONTRACT_SUFFIX)
     ? base.slice(0, -CONTRACT_SUFFIX.length)
     : base.replace(/\.md$/, "");
-}
-
-function unquote(value: string): string {
-  if (value.length >= 2) {
-    const first = value[0];
-    const last = value[value.length - 1];
-    if ((first === '"' && last === '"') || (first === "'" && last === "'")) {
-      return value.slice(1, -1);
-    }
-  }
-  return value;
 }
 
 function nonEmpty(value: string | undefined): string | undefined {

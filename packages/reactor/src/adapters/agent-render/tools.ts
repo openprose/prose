@@ -1,29 +1,28 @@
 /**
- * The render session's tools over the world-model store + sandbox (Phase 1,
- * step 3). The agent navigates its prior truth and writes scratch through SDK
- * `tool(...)` functions; the harness — never a tool — promotes-and-fingerprints.
+ * The render session's tools over the world-model store + sandbox. The agent
+ * navigates its prior truth and writes scratch through SDK `tool(...)`
+ * functions; the harness — never a tool — promotes-and-fingerprints.
  *
- * Design (research/agents-sdk/05 §2.3, 02 §5–§6; world-model.md §1):
  *   - The tools carry NO per-node state of their own. They reach the node
  *     identity + the store + the (optional) sandbox off the SDK `RunContext`
  *     (`run(agent, input, { context })`), the only sanctioned channel for those
- *     handles (02 §5). One tool set therefore serves any node; the harness sets
+ *     handles. One tool set therefore serves any node; the harness sets
  *     `context.node` per render.
- *   - `wm_read` / `wm_list` read the PRIOR PUBLISHED truth BY REFERENCE
- *     (world-model.md §1 L24–L33): the agent is told *where* the truth lives and
- *     reads it *as needed*, never having it pre-stuffed into the prompt.
+ *   - `wm_read` / `wm_list` read the PRIOR PUBLISHED truth BY REFERENCE: the
+ *     agent is told *where* the truth lives and reads it *as needed*, never
+ *     having it pre-stuffed into the prompt.
  *   - `wm_write_workspace` writes the PRIVATE workspace scratch — NEVER
- *     fingerprinted, NEVER subscribed (world-model.md §1 L50–L54). Multiple
- *     writes across the agentic loop accumulate (the store's `writeWorkspace`
- *     replaces the whole map, so we MERGE each write onto the current workspace).
- *   - `sandbox_exec` is the folded sandbox path (architecture.md §5.3); it runs
- *     a command through the injected sandbox runner.
+ *     fingerprinted, NEVER subscribed. Multiple writes across the agentic loop
+ *     accumulate (the store's `writeWorkspace` replaces the whole map, so we
+ *     MERGE each write onto the current workspace).
+ *   - `sandbox_exec` is the folded sandbox path; it runs a command through the
+ *     injected sandbox runner.
  *
- * CRUCIAL DISCIPLINE (05 §2.3): there is NO `wm_commit` / `commitPublished`
- * tool. The agent NEVER commits the published truth. It writes its world-model
- * to the workspace; the harness harvests that workspace, promotes it to
- * published, and applies the COMPILED canonicalizer on commit (the fingerprint
- * is never a model call — world-model.md §3).
+ * CRUCIAL DISCIPLINE: there is NO `wm_commit` / `commitPublished` tool. The
+ * agent NEVER commits the published truth. It writes its world-model to the
+ * workspace; the harness harvests that workspace, promotes it to published, and
+ * applies the COMPILED canonicalizer on commit (the fingerprint is never a
+ * model call).
  *
  * Offline-build guard: this module imports `@openai/agents` (for `tool`) and
  * `zod` (for the parameter schemas), both dev/optional deps. Nothing executes at
@@ -76,7 +75,7 @@ import {
   type WorldModelFiles,
   type WorldModelStore,
 } from "../../world-model";
-import { resolveWithinRoot, WorkingDirEscapeError } from "./working-dir";
+import { resolveWithinRoot, toUint8, WorkingDirEscapeError } from "./working-dir";
 
 const execAsync = promisify(exec);
 
@@ -85,11 +84,11 @@ const execAsync = promisify(exec);
 // ---------------------------------------------------------------------------
 
 /**
- * The sandbox runner the `sandbox_exec` tool drives — the folded-sandbox port
- * (architecture.md §5.3), shaped exactly like `ReactorAgentSdkAdapter.runSandbox`
- * (`adapters/types.ts:144–147`). Kept structural (not the whole adapter) so the
- * tool depends only on the one capability it needs, and so a test can inject a
- * trivial fake. Async because a real sandbox call awaits a subprocess.
+ * The sandbox runner the `sandbox_exec` tool drives — the folded-sandbox port,
+ * shaped exactly like `ReactorAgentSdkAdapter.runSandbox`. Kept structural (not
+ * the whole adapter) so the tool depends only on the one capability it needs,
+ * and so a test can inject a trivial fake. Async because a real sandbox call
+ * awaits a subprocess.
  */
 export type RenderSandboxRunner = (
   request: ReactorSandboxRequest,
@@ -98,10 +97,10 @@ export type RenderSandboxRunner = (
 /**
  * One resolved upstream subscription the render may read by reference — a
  * producer node id this node subscribes to, plus the facet of that producer's
- * published truth the edge depends on (architecture.md §6.3; SHAPES.md §3). The
- * `wm_*_upstream` tools resolve a producer against this list; a producer NOT in
- * the list is rejected (the read-isolation pin — a subscriber reads only the
- * producers it actually subscribes to, architecture.md §4.2 / world-model.md §1).
+ * published truth the edge depends on. The `wm_*_upstream` tools resolve a
+ * producer against this list; a producer NOT in the list is rejected (the
+ * read-isolation pin — a subscriber reads only the producers it actually
+ * subscribes to).
  *
  * A producer may appear more than once when the node subscribes to several of its
  * facets; `wm_list_upstream` reports each (producer, facet) pair it sees here.
@@ -116,8 +115,8 @@ export interface UpstreamSubscription {
 /**
  * The object the harness passes as `run(agent, input, { context })`. Every render
  * tool reaches the node identity + store (+ optional sandbox) through this — the
- * only sanctioned channel for these handles (research/agents-sdk/02 §5). It is
- * shared & mutable across the run, but the tools only READ it.
+ * only sanctioned channel for these handles. It is shared & mutable across the
+ * run, but the tools only READ it.
  */
 export interface AgentRenderContext {
   /** The node being rendered — scopes every world-model read/write. */
@@ -130,21 +129,20 @@ export interface AgentRenderContext {
    * the harness from the render's `RenderContext.inbound_edges` and threaded here
    * (the same tuple that formed the memo key). A render with no subscriptions
    * carries `[]` and the upstream tools find nothing to read. The read-isolation
-   * pin: a producer absent from this list is REJECTED (architecture.md §4.2 /
-   * world-model.md §1).
+   * pin: a producer absent from this list is REJECTED.
    */
   readonly upstream?: readonly UpstreamSubscription[];
   /**
-   * The render's REAL per-node working ROOT (Phase 1.5 / Option B; SPEC §4). When
-   * present, `wm_write_workspace` writes into THIS directory (the same place the
-   * `fs_*` / `shell_exec` tools operate and the harness harvests), so a render's
-   * legacy workspace writes and its real-file writes land in one harvested truth.
-   * When ABSENT (the standalone tool tests / a virtual-store render),
-   * `wm_write_workspace` falls back to the store's virtual workspace map. Never
-   * model state — a per-render absolute path set by the harness.
+   * The render's REAL per-node working ROOT. When present, `wm_write_workspace`
+   * writes into THIS directory (the same place the `fs_*` / `shell_exec` tools
+   * operate and the harness harvests), so a render's legacy workspace writes and
+   * its real-file writes land in one harvested truth. When ABSENT (the standalone
+   * tool tests / a virtual-store render), `wm_write_workspace` falls back to the
+   * store's virtual workspace map. Never model state — a per-render absolute
+   * path set by the harness.
    */
   readonly workingDir?: string;
-  /** Optional folded sandbox (architecture.md §5.3); absent → `sandbox_exec` declines. */
+  /** Optional folded sandbox; absent → `sandbox_exec` declines. */
   readonly sandbox?: RenderSandboxRunner;
 }
 
@@ -159,16 +157,16 @@ export const WM_LIST_UPSTREAM_TOOL = "wm_list_upstream";
 export const WM_WRITE_WORKSPACE_TOOL = "wm_write_workspace";
 export const SANDBOX_EXEC_TOOL = "sandbox_exec";
 
-// The cwd-rooted Codex-style tools (Phase 1.5 step 6.4; SPEC §3.5). These operate
-// on the render's REAL per-node working directory, not the virtual store.
+// The cwd-rooted Codex-style tools. These operate on the render's REAL per-node
+// working directory, not the virtual store.
 export const FS_READ_TOOL = "fs_read";
 export const FS_LIST_TOOL = "fs_list";
 export const FS_WRITE_TOOL = "fs_write";
 export const SHELL_EXEC_TOOL = "shell_exec";
 export const APPLY_PATCH_TOOL = "apply_patch";
 
-// The generic sub-agent primitive (Phase 1.5 step 6.5; SPEC §3.6). The render
-// spawns a focused helper, gets a value back, leaves no node behind.
+// The generic sub-agent primitive. The render spawns a focused helper, gets a
+// value back, leaves no node behind.
 export const SPAWN_SUBAGENT_TOOL = "spawn_subagent";
 
 /** Returned by `sandbox_exec` when no sandbox runner is wired into the context. */
@@ -317,8 +315,9 @@ function subscribedProducers(context: AgentRenderContext): Set<string> {
  * argument, narrows to that one producer's subscribed facets (and reports a
  * legible note — not an error — for a producer the node does not subscribe to, so
  * the agent can probe without aborting the turn). This is how the render
- * DISCOVERS what upstream truth it may read before reading it (read-by-reference;
- * world-model.md §1). It does NOT pre-stuff the upstream truth — only the pointers.
+ * DISCOVERS what upstream truth it may read before reading it
+ * (read-by-reference). It does NOT pre-stuff the upstream truth — only the
+ * pointers.
  */
 export function wmListUpstreamTool(): Tool<AgentRenderContext> {
   return tool({
@@ -369,8 +368,8 @@ export function wmListUpstreamTool(): Tool<AgentRenderContext> {
  * `wm_read_upstream(producer, path)` — read ONE file of a PRODUCER's prior
  * PUBLISHED truth by reference, keyed by an inbound edge's producer node id.
  * Exactly like `wm_read`, but scoped to a producer this node ACTUALLY subscribes
- * to (the read-isolation pin, architecture.md §4.2 / world-model.md §1): a read of
- * a non-subscribed producer is REJECTED with a legible message (not the file).
+ * to (the read-isolation pin): a read of a non-subscribed producer is REJECTED
+ * with a legible message (not the file).
  * Reads PUBLISHED truth only — NEVER a producer's private workspace. Returns the
  * file's UTF-8 text, or a not-found message when the path is absent, so the agent
  * can probe upstream truth without a tool error aborting the turn.
@@ -401,9 +400,8 @@ export function wmReadUpstreamTool(): Tool<AgentRenderContext> {
     strict: true,
     execute: async ({ producer, path }, runContext) => {
       const context = requireContext(runContext);
-      // The read-isolation pin: reject any producer the node does not subscribe to
-      // (architecture.md §4.2 / world-model.md §1). The agent only ever sees the
-      // producers on its resolved inbound edges.
+      // The read-isolation pin: reject any producer the node does not subscribe
+      // to. The agent only ever sees the producers on its resolved inbound edges.
       if (!subscribedProducers(context).has(producer)) {
         const subscribed = [...subscribedProducers(context)].sort();
         return (
@@ -427,12 +425,12 @@ export function wmReadUpstreamTool(): Tool<AgentRenderContext> {
 
 /**
  * `wm_write_workspace(path, content)` — write one file into the node's PRIVATE
- * workspace scratch (NEVER fingerprinted, NEVER subscribed — world-model.md §1
- * L50–L54). The render builds its world-model here; the harness later harvests
- * it and promotes-and-fingerprints. NOT a commit.
+ * workspace scratch (NEVER fingerprinted, NEVER subscribed). The render builds
+ * its world-model here; the harness later harvests it and
+ * promotes-and-fingerprints. NOT a commit.
  *
- * Option B (SPEC §4): when the context carries a real `workingDir`, this writes
- * the file INTO that directory (the same place `fs_write` / `shell_exec` operate
+ * When the context carries a real `workingDir`, this writes the file INTO that
+ * directory (the same place `fs_write` / `shell_exec` operate
  * and the harness harvests), through the SAME path-escape guard as `fs_write`, so
  * a render's legacy workspace writes and its real-file writes are one harvested
  * truth. When NO `workingDir` is present (the standalone tool tests / a virtual
@@ -459,7 +457,7 @@ export function wmWriteWorkspaceTool(): Tool<AgentRenderContext> {
     execute: async ({ path, content }, runContext) => {
       const context = requireContext(runContext);
       if (context.workingDir !== undefined) {
-        // Option B: write the real file into the per-node working dir, guarded.
+        // Write the real file into the per-node working dir, guarded.
         try {
           writeFileWithinRoot(context.workingDir, path, textFile(content));
         } catch (error) {
@@ -482,7 +480,7 @@ export function wmWriteWorkspaceTool(): Tool<AgentRenderContext> {
 }
 
 // ---------------------------------------------------------------------------
-// The cwd-rooted Codex-style tools (SPEC §3.5 / §4 Option B)
+// The cwd-rooted Codex-style tools
 // ---------------------------------------------------------------------------
 //
 // These operate on the render's REAL per-node working directory, NOT the virtual
@@ -491,15 +489,15 @@ export function wmWriteWorkspaceTool(): Tool<AgentRenderContext> {
 // `createCwdTools(root)` — `shellTool`'s `Shell` is bound at tool-construction, so
 // the cwd is fixed at build time (one tool set per render, not per process).
 //
-// SANDBOX LIMITATION (SPEC §5; STOP invariant N3): the `fs_*` tools enforce a
-// path-escape guard (reject any path resolving outside the root); `shell_exec`
-// runs with `cwd` = root. This is a SCOPED dir + guards, NOT an OS sandbox — a
-// shell command can still escape `cwd` and reach the machine/network. Safe for
-// TRUSTED, self-authored `.prose` projects only; NOT safe for untrusted contract
-// sets. The OS sandbox is DEFERRED (D5). Do NOT claim isolation we don't have.
+// SANDBOX LIMITATION: the `fs_*` tools enforce a path-escape guard (reject any
+// path resolving outside the root); `shell_exec` runs with `cwd` = root. This is
+// a SCOPED dir + guards, NOT an OS sandbox — a shell command can still escape
+// `cwd` and reach the machine/network. Safe for TRUSTED, self-authored `.prose`
+// projects only; NOT safe for untrusted contract sets. The OS sandbox is
+// DEFERRED. Do NOT claim isolation we don't have.
 
 /**
- * Build the cwd-rooted tool set over a render's REAL working `root` (SPEC §3.5):
+ * Build the cwd-rooted tool set over a render's REAL working `root`:
  * `fs_read` / `fs_list` / `fs_write` (guarded `node:fs`), `shell_exec` (the SDK's
  * `shellTool()` over a `LocalShell(root)`), and `apply_patch` (the SDK's
  * `applyPatchTool()` — Codex's edit primitive). All rooted at the per-node working
@@ -521,8 +519,8 @@ export function createCwdTools(
 
 /**
  * Write `bytes` to `relPath` under `root`, creating parent dirs, REJECTING any
- * path that escapes the root (the path-escape guard, SPEC §3.5 / §5). Shared by
- * `fs_write` and the Option-B `wm_write_workspace`.
+ * path that escapes the root (the path-escape guard). Shared by `fs_write` and
+ * `wm_write_workspace`.
  */
 export function writeFileWithinRoot(
   root: string,
@@ -536,9 +534,9 @@ export function writeFileWithinRoot(
 
 /**
  * `fs_read(path)` — read one file under the working directory by its relative
- * path (the real-FS sibling of `wm_read`; folds §3.4 skill_read — the skill bundle
- * is reachable under/near the root, D3). Returns the file's UTF-8 text, or a
- * legible not-found / escape message (never a throw to the model).
+ * path (the real-FS sibling of `wm_read`; folds skill_read — the skill bundle is
+ * reachable under/near the root). Returns the file's UTF-8 text, or a legible
+ * not-found / escape message (never a throw to the model).
  */
 export function fsReadTool(root: string): Tool<AgentRenderContext> {
   return tool({
@@ -615,7 +613,7 @@ export function fsListTool(root: string): Tool<AgentRenderContext> {
 /**
  * `fs_write(path, content)` — write one UTF-8 text file under the working
  * directory, creating parent dirs, with the path-escape guard. The real-FS sibling
- * of `wm_write_workspace`; both land in the same harvested directory (SPEC §4).
+ * of `wm_write_workspace`; both land in the same harvested directory.
  */
 export function fsWriteTool(root: string): Tool<AgentRenderContext> {
   return tool({
@@ -645,22 +643,22 @@ export function fsWriteTool(root: string): Tool<AgentRenderContext> {
 
 /**
  * `shell_exec(commands)` — run shell commands with `cwd` set to the per-node
- * working ROOT (the `examples/tools/local-shell.ts` LocalShell pattern; SPEC
- * §3.5). Returns the per-command `{ command, exit_code, stdout, stderr }` as JSON.
+ * working ROOT (the `examples/tools/local-shell.ts` LocalShell pattern).
+ * Returns the per-command `{ command, exit_code, stdout, stderr }` as JSON.
  *
  * IMPLEMENTATION NOTE (provider compatibility): the SDK's `shellTool()` emits a
  * HOSTED tool of `type: "shell"`, which the OpenRouter ChatCompletions API the
  * render runs on REJECTS ("Hosted tools are not supported with the ChatCompletions
  * API"). So `shell_exec` is exposed as a plain `tool({...})` (`type: "function"`)
- * whose `execute` drives the SAME {@link LocalShell} (cwd-rooted `execAsync`) — the
- * capability of SPEC §3.5 (a real cwd-rooted shell the agent invokes), realized as
- * a function tool so it works on the live ChatCompletions provider. The
+ * whose `execute` drives the SAME {@link LocalShell} (cwd-rooted `execAsync`) — a
+ * real cwd-rooted shell the agent invokes, realized as a function tool so it
+ * works on the live ChatCompletions provider. The
  * SDK-`shellTool` path is kept available as {@link hostedShellExecTool} for a
  * future Responses-API provider.
  *
- * SANDBOX LIMITATION (N3): `cwd` is scoped to the root but the subprocess is NOT
+ * SANDBOX LIMITATION: `cwd` is scoped to the root but the subprocess is NOT
  * OS-isolated — it can `cd` out, read/write elsewhere, reach the network. Trusted
- * contracts only (SPEC §5). Every command IS time-/output-bounded (a runaway is
+ * contracts only. Every command IS time-/output-bounded (a runaway is
  * SIGTERM'd into `outcome: 'timeout'`), so a render cannot hang; true OS isolation
  * for untrusted contracts is a separate decision (see RENDER-SANDBOX-OPTIONS).
  */
@@ -712,8 +710,8 @@ export function hostedShellExecTool(root: string): Tool<AgentRenderContext> {
 
 /**
  * `apply_patch(operation)` — apply a V4A diff to a file under the working `root`
- * (Codex's edit primitive; SPEC §3.5, "optionally apply_patch"). Create / update /
- * delete, each guarded by the path-escape check via the {@link RootedEditor}.
+ * (Codex's edit primitive). Create / update / delete, each guarded by the
+ * path-escape check via the {@link RootedEditor}.
  *
  * IMPLEMENTATION NOTE (provider compatibility): like `shell_exec`, the SDK's
  * `applyPatchTool()` emits a HOSTED tool (`type: "apply_patch"`) the OpenRouter
@@ -795,7 +793,7 @@ export interface ShellExecOptions {
 /**
  * A `Shell` that runs each command with `cwd` set to the per-node working ROOT
  * (the `examples/tools/local-shell.ts` LocalShell). Bound at tool-construction so
- * the cwd is fixed for the render. NOT OS-isolated (N3) — but every command is
+ * the cwd is fixed for the render. NOT OS-isolated — but every command is
  * time- and output-bounded (see {@link DEFAULT_SHELL_TIMEOUT_MS}) so a runaway
  * cannot hang the render; OS isolation for untrusted contracts is deferred to the
  * Agents-SDK sandbox (see RENDER-SANDBOX-OPTIONS).
@@ -860,8 +858,8 @@ export class LocalShell implements Shell {
 
 /**
  * The {@link Editor} `applyPatchTool()` drives, rooted at the working dir so every
- * create/update/delete goes through the same path-escape guard as `fs_*` (SPEC
- * §5). It applies the SDK's V4A diffs via the SDK's own `applyDiff` (the
+ * create/update/delete goes through the same path-escape guard as `fs_*`. It
+ * applies the SDK's V4A diffs via the SDK's own `applyDiff` (the
  * `examples/tools/apply-patch.ts` WorkspaceEditor pattern), so apply_patch is a
  * Codex-equivalent edit path confined to the per-node directory.
  */
@@ -929,32 +927,27 @@ function collectFiles(root: string, dir: string, out: string[]): void {
   }
 }
 
-function toUint8(buf: Uint8Array): Uint8Array {
-  return Uint8Array.prototype.slice.call(buf);
-}
-
 // ---------------------------------------------------------------------------
-// spawn_subagent — the generic sub-agent primitive (SPEC §3.6 / step 6.5)
+// spawn_subagent — the generic sub-agent primitive
 // ---------------------------------------------------------------------------
 //
 // ProseScript's `agent`/`session` primitives are "spin up a focused helper, get a
 // value back, leave no node behind." That is exactly the SDK's `agent.asTool()`
-// isolated nested-run path (agent.ts:665). We expose it as a GENERIC tool because
-// the calling render's body decides WHO to spawn — the sub-task instructions ride
-// in the tool call, not a pre-declared child (D4). `handoff()` stays UNUSED: it
-// never returns a value (a baton pass), the wrong primitive here.
+// isolated nested-run path. We expose it as a GENERIC tool because the calling
+// render's body decides WHO to spawn — the sub-task instructions ride in the tool
+// call, not a pre-declared child. `handoff()` stays UNUSED: it never returns a
+// value (a baton pass), the wrong primitive here.
 //
 // THREE load-bearing disciplines:
-//   1. FRESH AGENT per call: SKILL as the base system prompt (the only base, §3.2)
+//   1. FRESH AGENT per call: SKILL as the base system prompt (the only base)
 //      + the caller's sub-task instructions + an optional tool subset.
 //   2. INHERIT THE PARENT RunContext: we run the sub-agent through the SAME
 //      `RunContext` instance the render's tools receive (the parent), so the
-//      nested run's token Usage ACCUMULATES onto the shared `RunContext.usage`
-//      (run.ts:1029 `state._context.usage.add(...)`; the same instance survives
-//      because the runner reuses an `options.context instanceof RunContext`
-//      verbatim — run.ts:822). The child tokens therefore ROLL UP into the
-//      render's receipt Cost (runContext.ts:149).
-//   3. NO NODE LEFT BEHIND (§7.4 ephemeral session): the sub-agent never commits,
+//      nested run's token Usage ACCUMULATES onto the shared `RunContext.usage`;
+//      the same instance survives because the runner reuses an
+//      `options.context instanceof RunContext` verbatim. The child tokens
+//      therefore ROLL UP into the render's receipt Cost.
+//   3. NO NODE LEFT BEHIND (ephemeral session): the sub-agent never commits,
 //      never publishes, never touches the world-model store's published truth — it
 //      returns its final value as the tool result and evaporates. It carries the
 //      same `AgentRenderContext`, so any wm_/fs_ tools it is given operate on the
@@ -965,8 +958,8 @@ function toUint8(buf: Uint8Array): Uint8Array {
 // tool subset MAY include this very tool (see {@link createSpawnSubagentTool}'s
 // `recursive` wiring in the factory) so a helper can spawn its own helper.
 //
-// N1 (STOP): this is a CAPABILITY the agent invokes, never a control-flow compiler.
-// We do NOT parse ProseScript to "drive" the spawn — the model calls the tool with
+// This is a CAPABILITY the agent invokes, never a control-flow compiler. We do
+// NOT parse ProseScript to "drive" the spawn — the model calls the tool with
 // free-text sub-task instructions; the VM (this session) supplies the affordance.
 
 /**
@@ -991,7 +984,7 @@ export interface SpawnSubagentDeps {
   readonly modelSettings?: ModelSettings;
   /**
    * The turn cap for ONE sub-agent run (the same backstop as the render's
-   * `maxTurns`; D1). `null` opts a sub-agent into an unbounded loop deliberately.
+   * `maxTurns`). `null` opts a sub-agent into an unbounded loop deliberately.
    */
   readonly maxTurns?: number | null;
   /**
@@ -1004,15 +997,14 @@ export interface SpawnSubagentDeps {
 }
 
 /**
- * Build the generic `spawn_subagent(instructions, input?)` tool (SPEC §3.6). Its
- * `execute`:
+ * Build the generic `spawn_subagent(instructions, input?)` tool. Its `execute`:
  *
  *  1. builds a FRESH {@link Agent}: SKILL base + the caller's `instructions` (the
  *     sub-task) + the deps' tool subset,
  *  2. runs it via the deps' shared {@link Runner} through the PARENT's
  *     {@link RunContext} (so the child Usage rolls up into the render's Cost), and
  *  3. returns the sub-agent's final text value as the tool result — no node, no
- *     commit, no published write (§7.4 ephemeral session).
+ *     commit, no published write (ephemeral session).
  *
  * Recursion: the `deps.subTools` array is read at spawn time, so the factory may
  * push this very tool onto it after building it, letting a sub-agent spawn its own
@@ -1047,14 +1039,10 @@ export function createSpawnSubagentTool(
     }),
     strict: true,
     execute: async ({ instructions, input }, runContext) => {
-      // Validate the parent context the same way the other render tools do, so a
-      // misconfigured render surfaces a legible message rather than a TypeError.
-      // We need the RunContext INSTANCE (not just its `.context`) to roll usage up,
-      // so guard `runContext` itself here too.
-      requireContext(runContext);
+      // We need the RunContext INSTANCE (not just its `.context`) to roll usage
+      // up, so guard `runContext` itself — this also narrows the type for the
+      // nested run below.
       if (runContext === undefined) {
-        // requireContext already throws on a missing context, so this is
-        // unreachable in practice; it narrows the type for the nested run below.
         throw new Error(
           "spawn_subagent invoked without a RunContext (cannot roll up usage)",
         );
@@ -1080,12 +1068,12 @@ export function createSpawnSubagentTool(
           : input;
 
       // Run the sub-agent through the PARENT's RunContext — the SAME instance the
-      // render tools received (run.ts:822 reuses an `options.context instanceof
+      // render tools received (the runner reuses an `options.context instanceof
       // RunContext` verbatim), so the nested run's token Usage accumulates onto the
-      // shared `RunContext.usage` (run.ts:1029) and ROLLS UP into the render's
-      // receipt Cost. `maxTurns` (D1) bounds the helper; on exhaustion the
-      // MaxTurnsExceededError is returned as a legible tool result, never thrown out
-      // of the tool (a sub-task failure must not crash the parent render).
+      // shared `RunContext.usage` and ROLLS UP into the render's receipt Cost.
+      // `maxTurns` bounds the helper; on exhaustion the MaxTurnsExceededError is
+      // returned as a legible tool result, never thrown out of the tool (a sub-task
+      // failure must not crash the parent render).
       try {
         const result = await deps.getRunner().run(subAgent, subInput, {
           context: runContext,
@@ -1106,9 +1094,9 @@ export function createSpawnSubagentTool(
 }
 
 /**
- * `sandbox_exec(command, args)` — run a command through the folded sandbox port
- * (architecture.md §5.3). Returns the structured `{ exit_code, stdout, stderr }`
- * as JSON for the model to read. If no sandbox is wired into the context the
+ * `sandbox_exec(command, args)` — run a command through the folded sandbox port.
+ * Returns the structured `{ exit_code, stdout, stderr }` as JSON for the model to
+ * read. If no sandbox is wired into the context the
  * tool declines with {@link NO_SANDBOX_MESSAGE} rather than throwing, so a render
  * configured without a sandbox simply cannot exec.
  */
