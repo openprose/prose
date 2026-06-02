@@ -126,6 +126,5 @@ function nonNegInt(value: number): number {
 
 // A compile-time check that a real SDK `Usage` satisfies `RenderUsage` — keeps
 // the structural surface honest against SDK drift (e.g. if `inputTokensDetails`
-// ever stops being an array of number-records). Erased at build.
-const _usageShapeCheck: (u: Usage) => RenderUsage = (u) => u;
-void _usageShapeCheck;
+// ever stops being an array of number-records). Type-only, emits no runtime artifact.
+type _Assert = Usage extends RenderUsage ? true : never;

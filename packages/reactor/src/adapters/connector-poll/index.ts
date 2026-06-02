@@ -1,30 +1,11 @@
-// connector-poll — a real polling connector + gateway driver with an
-// idempotency cursor (gap-audit 00-INVENTORY #12; build plan Phase 4b).
+// connector-poll — a real polling connector plus a gateway driver that turns
+// each new external arrival into a receipt at the system's edge, backed by a
+// durable per-source idempotency cursor.
 //
-// The shipped `connector-static` adapter is an in-memory Map with ZERO I/O and
-// is never read outside a test; `connectors.read` has no production caller and
-// there is no gateway driver / cron / webhook. This module is the missing real
-// ingress: a connector that performs an actual (injected) fetch against a source,
-// and a GATEWAY DRIVER that turns each NEW external arrival into a receipt at the
-// system's edge — "a gateway turns a webhook / cron / manual trigger into a
-// receipt" (world-model.md §5; architecture.md §4.2 external-driven).
-//
-// The crux is IDEMPOTENCY. An external source is polled repeatedly (cron) or
-// pushed redundantly (at-least-once webhooks); the same item must NOT re-ingest
-// twice. The driver keeps a per-source CURSOR — the set/high-water-mark of
-// already-seen idempotency keys — and only drives `dag.ingest(...)` for items
-// past the cursor. The cursor is the edge's "every wake is a receipt" honesty:
-// re-delivering a seen item produces NO new wake (it would be a no-op render that
-// memo-skips anyway, but the cursor stops it BEFORE the edge so we never even
-// manufacture the external receipt). The cursor is durable (it round-trips
-// through the storage registry) so a restart does not re-ingest the backlog.
-//
-// Source of truth:
-//   - architecture.md §4.2: external-driven continuity — a gateway at the edge.
-//   - architecture.md §5.3 / adapters/types.ts: the `connectors` port
-//     (`read(request) → { payload }`).
-//   - world-model.md §5 (L234–L240): every wake is a receipt; external-driven =
-//     a gateway turning a trigger into a receipt; "one event type, three sources".
+// The cursor dedups BEFORE the edge: a re-delivered arrival is dropped against
+// the set of already-seen idempotency keys, so it never manufactures a second
+// receipt. The cursor round-trips through the storage registry, so a restart
+// does not re-ingest the backlog.
 
 import { cloneAdapterJsonValue } from "../json";
 import type { Wake } from "../../shapes";

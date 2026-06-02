@@ -1,28 +1,6 @@
-// The public front door of @openprose/reactor.
-//
-// RESHAPED (delta.md §A1b "sdk/index.ts minus exit-bundle.ts … RESHAPE (gut);
-// the public entry API … is policy-saturated; rebuild the entry surface around
-// the reconciler + world-model store; drop ./policy/./judge exports, add
-// ./world-model/./forme"). The judge → verdict → policy-drift → recompile →
-// rollback spine is DEMOLISHED (delta.md §A0; world-model.md §3 "do not
-// reintroduce it"); `exit-bundle.ts` is DELETED (it snapshotted the retired
-// policy registry, delta.md §A2). There is no `createReactor`-over-a-policy-
-// registry, no `export()`/`import` of an exit bundle, no registry snapshot.
-//
-// The front door now exposes exactly the two contexts of the render atom
-// (architecture.md §1 L26–L33):
-//   - the RENDER ATOM, STANDALONE — `renderAtom(...)`: one session, no harness;
-//     it computes a world-model, applies its compiled canonicalizer locally, and
-//     signs a fingerprinted receipt (language sovereignty, plan.md §2).
-//   - the MOUNTED DAG — `mountDag(...)`: the render atom mounted as a node and
-//     woken over time, driven by the dumb reconciler (ingest + tick → reconcile,
-//     architecture.md §4.1).
-//
-// The reconciler itself, the world-model store, the receipt ledger, Forme, the
-// canonicalizer/postcondition compilers, and the shared shapes live in their own
-// sibling modules; this file is only the cohesive entry surface over them. The
-// repo-level barrel (`src/index.ts`) is owned by the Integration wave; the
-// exports it should surface are listed in this module's signpost.
+// The public front door of @openprose/reactor: the standalone render atom
+// (`renderAtom`) and the render atom mounted as a node and woken over time
+// (`mountDag`).
 
 // --- The render atom, standalone (architecture.md §1 L29–L31) ---------------
 // `compiledStoreCanonicalizer` + `TruthProjection` are the v1gaps seam that

@@ -1,10 +1,10 @@
 /**
- * Instruction composition for the agent render (Phase 1, step 5; 05 §3).
+ * Instruction composition for the agent render.
  *
- * A render is a render BECAUSE it carries the open-prose SKILL (architecture.md
- * §1 L17–L20, §7.3). The SKILL is the system prompt that teaches a session how
- * to *be a render*; it is loaded ONCE at process start and layered, verbatim,
- * into every render agent. Three layers compose into `Agent.instructions`:
+ * A render is a render BECAUSE it carries the open-prose SKILL. The SKILL is the
+ * system prompt that teaches a session how to *be a render*; it is loaded ONCE at
+ * process start and layered, verbatim, into every render agent. Three layers
+ * compose into `Agent.instructions`:
  *
  *   1. BASE SKILL    — identical across every node; the open-prose system prompt
  *                      (loaded once, {@link readSkill}). This is the "by default"
@@ -12,12 +12,12 @@
  *   2. NODE CONTRACT — this node's compiled `### Requires` / `### Maintains` (+
  *                      its canonicalizer/continuity spec and `### Execution`
  *                      ProseScript body). Layered AFTER the SKILL so node
- *                      specifics refine the general teaching (05 §3).
+ *                      specifics refine the general teaching.
  *   3. WAKE HEADER   — the ONLY per-render-varying layer, and it carries NO
  *                      truth — only POINTERS (the wake + where prior truth
- *                      lives). This honors "read by reference" (world-model.md §1
- *                      L24–L33): the render is told *where* its truth lives and
- *                      reads it *as needed* via the tools, never pre-stuffed.
+ *                      lives). This honors "read by reference": the render is told
+ *                      *where* its truth lives and reads it *as needed* via the
+ *                      tools, never pre-stuffed.
  *
  * Nothing in this module imports the SDK or zod; it is pure string assembly +
  * one filesystem read of the SKILL, so it never trips the offline-build guard.
@@ -31,8 +31,8 @@ import type { RenderContext } from "../../sdk/render-atom";
 
 /**
  * Resolve the open-prose SKILL bundle's `SKILL.md` PORTABLY. The render IS the
- * SKILL (architecture.md §1), so the SDK must locate it on ANY machine — never a
- * baked-in author path. Resolution order (first existing wins):
+ * SKILL, so the SDK must locate it on ANY machine — never a baked-in author
+ * path. Resolution order (first existing wins):
  *   1. `REACTOR_SKILL_PATH` — explicit override (a `SKILL.md` file or its dir).
  *   2. A copy bundled into this package at pack time (`<pkg>/skill/open-prose`),
  *      so a bare `npm i @openprose/reactor` carries its own render VM.
@@ -72,12 +72,8 @@ function resolveSkillMarkdownPath(): string {
   candidates.push(...installed);
 
   for (const c of candidates) {
-    try {
-      if (existsSync(c)) {
-        return c;
-      }
-    } catch {
-      // ignore an unreadable candidate and try the next
+    if (existsSync(c)) {
+      return c;
     }
   }
   // None found — name a standard install location so the error is actionable.
@@ -96,7 +92,7 @@ export const DEFAULT_SKILL_PATH = resolveSkillMarkdownPath();
 const LAYER_SEPARATOR = "\n\n---\n\n";
 
 /**
- * The compiled-contract view the harness supplies per node (05 §3). This is the
+ * The compiled-contract view the harness supplies per node. This is the
  * lowered `### Requires` / `### Maintains` / `### Continuity` / `### Execution`
  * the render must satisfy — the contract layer of the instructions. Kept a small
  * plain shape (not a Forme dependency) so the slice can mount a hand-authored
@@ -112,19 +108,18 @@ export interface CompiledContractView {
   /** The `### Continuity` clause (when/why the node re-renders over time). */
   readonly continuity?: string;
   /**
-   * The `### Execution` ProseScript body, handed to the agent AS INSTRUCTIONS
-   * (05 §3, decision §6.2 v1): the single SDK tool loop is the interpreter. This
-   * is text the render follows, never something this code parses (the session
-   * embodies the VM — there is no ProseScript interpreter here).
+   * The `### Execution` ProseScript body, handed to the agent AS INSTRUCTIONS:
+   * the single SDK tool loop is the interpreter. This is text the render follows,
+   * never something this code parses (the session embodies the VM — there is no
+   * ProseScript interpreter here).
    */
   readonly execution?: string;
 }
 
 /**
  * Read the open-prose SKILL system prompt from disk. Pure; called once at boot
- * by {@link createAgentRender} and cached in the factory closure (05 §3: "load
- * it exactly once"). Throws if the SKILL is missing — a render cannot be a render
- * without it.
+ * by {@link createAgentRender} and cached in the factory closure (load it exactly
+ * once). Throws if the SKILL is missing — a render cannot be a render without it.
  */
 export function readSkill(skillPath: string = DEFAULT_SKILL_PATH): string {
   try {
@@ -145,7 +140,7 @@ export function readSkill(skillPath: string = DEFAULT_SKILL_PATH): string {
  * Build the NODE CONTRACT layer — the compiled `### Requires`/`### Maintains`
  * (+ continuity + the `### Execution` ProseScript body). This tells *this*
  * render what world-model schema to satisfy and what postconditions to leave
- * true (05 §3).
+ * true.
  */
 export function composeNodeContract(
   node: string,
@@ -204,7 +199,7 @@ export function composeNodeContract(
  * Build the WAKE HEADER — the per-render-varying layer. It carries NO truth,
  * only pointers: what woke you, the memo tuple, and WHERE your prior truth lives
  * (its store location + version). The render reads that truth by reference
- * through the tools (world-model.md §1 L24–L33).
+ * through the tools.
  */
 export function composeWakeHeader(ctx: RenderContext): string {
   const priorLocation = ctx.prior.ref.location;
@@ -241,7 +236,7 @@ export function composeWakeHeader(ctx: RenderContext): string {
     );
   }
 
-  // NOTE (§3.2): we do NOT enumerate the `wm_*` / sandbox tools here. The SDK
+  // We do NOT enumerate the `wm_*` / sandbox tools here. The SDK
   // advertises the available tools to the model via the native `tools` request
   // field, not the prompt; hand-listing them in prose is redundant and a drift
   // risk. The SKILL + node contract + this wake header are the only prompt
@@ -269,9 +264,9 @@ export function composeWakeHeader(ctx: RenderContext): string {
 }
 
 /**
- * Compose the full render instructions: BASE SKILL + NODE CONTRACT + WAKE HEADER
- * (05 §3). The SKILL is passed in (loaded once by the factory) so this stays a
- * pure function over the three layers.
+ * Compose the full render instructions: BASE SKILL + NODE CONTRACT + WAKE HEADER.
+ * The SKILL is passed in (loaded once by the factory) so this stays a pure
+ * function over the three layers.
  */
 export function composeInstructions(
   skill: string,

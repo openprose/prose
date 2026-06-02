@@ -30,6 +30,8 @@ import {
   type ModelProvider,
 } from "@openai/agents";
 
+import { unquote } from "../string-util";
+
 // ---------------------------------------------------------------------------
 // Constants — the decided OpenRouter / gemini wiring (research §0, §2.4, §4.1)
 // ---------------------------------------------------------------------------
@@ -133,17 +135,6 @@ function readEnvValue(envPath: string, key: string): string | undefined {
     return unquote(line.slice(eq + 1).trim());
   }
   return undefined;
-}
-
-function unquote(value: string): string {
-  if (value.length >= 2) {
-    const first = value[0];
-    const last = value[value.length - 1];
-    if ((first === '"' && last === '"') || (first === "'" && last === "'")) {
-      return value.slice(1, -1);
-    }
-  }
-  return value;
 }
 
 // ---------------------------------------------------------------------------
