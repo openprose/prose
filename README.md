@@ -3,43 +3,52 @@
 </p>
 
 <p align="center">
-  <strong>Reactor: <code>React.memo</code> for expensive LLM work — cost scales with surprise, not the clock.</strong>
+  <strong>OpenProse: declare the outcomes you want kept true, in Markdown.<br/>
+  Reactor: the harness that keeps them true — cost scales with surprise, not the clock.</strong>
 </p>
 
 <p align="center">
   <a href="#quickstart-60-seconds-no-model-key">Quickstart</a> ·
+  <a href="#the-shape-openprose--reactor">The shape</a> ·
   <a href="skills/open-prose/examples/">Examples</a> ·
-  <a href="#the-technical-report">Technical report</a> ·
-  <a href="packages/reactor/EVALS.md">Send us an eval</a> ·
-  <a href="skills/open-prose/SKILL.md">OpenProse docs</a>
+  <a href="#the-sdk-one-call-then-go-deeper">The SDK</a> ·
+  <a href="#honest-status">Honest status</a> ·
+  <a href="packages/reactor/EVALS.md">Send us an eval</a>
 </p>
 
 ---
 
 ## What this is
 
-**Reactor (`@openprose/reactor`) is a small, open-source harness for AI work that has to *keep being true* after a chat ends.**
+**OpenProse is a programming paradigm: you *declare the outcomes you want kept true* — an ideal world-model — instead of issuing instructions.** You write that intent as familiar structured **Markdown contracts** (`*.prose.md`), with optional imperative **ProseScript** fulfillment plans when order, loops, or exact choreography matter. The render function is not deterministic byte code — it's declarative Markdown fulfilled by a bounded agent session. OpenProse shipped first as a Skill and runs on **any Prose-Complete agent harness**.
 
-You declare the truths you want kept current as OpenProse **Responsibilities** (standing goals). Reactor keeps a composed **world-model** up to date against a changing world, re-renders only the responsibilities whose inputs actually moved, and leaves a content-addressed **receipt** behind every decision.
+**Reactor (`@openprose/reactor`) is the harness built to run OpenProse** — and the recommended **fast path**. It keeps a composed **world-model** up to date against a changing world, re-rendering only the declared facets whose upstream inputs actually moved (memoized agent sessions wired into a DAG), and leaves a content-addressed **receipt** behind every decision.
+
+These are not two systems. They are **one system, two layers that fit together**: OpenProse is the language you author in; Reactor is the deterministic host that serves it efficiently. The thesis Reactor works toward:
+
+> **Inference cost that scales with surprise, not wall-clock time.**
 
 In plain terms: you declare what should stay true, the system watches the world, and it does expensive model work **only when something material actually moved**.
 
-> **New here?** Start with the Quickstart below — one keyless command proves the whole idea in under a second.
+> **New here?** Start with the Quickstart below — one keyless command proves the whole idea in under a second, no model key and no spend.
 >
-> **Came from OpenProse?** This is the *dependency-across-runs* layer your contracts kept asking for — the natural next step, not a turn away. The [technical report](#the-technical-report) §4 is the through-line.
+> **Coming from OpenProse?** Reactor is the *dependency-across-runs* layer your contracts kept asking for — the natural next step, not a turn away. The same `.prose.md` you already write is what Reactor runs.
 
-> ### Coming from OpenProse (v0.14 or earlier)? Read this first.
->
-> The Intelligent-React overhaul (`runtime_contract 1 → 2`) is a **breaking** vocabulary change. The headlines:
->
-> - **The judge loop is retired wholesale.** The old judge → verdict → pressure → fulfillment loop is gone, replaced by a deterministic reconciler — a render runs only when a node's subscribed input fingerprints or its own contract fingerprint move. There is no LLM in the wake/commit decision.
-> - **Kinds renamed/deleted.** `kind: service` is **renamed to `kind: function`** (`### Parameters` → `### Returns`); `kind: system` is **deleted** (composition is now intra-node ProseScript `call` or cross-node subscription, wired by Forme); `kind: responsibility` is **reshaped** into a mounted DAG node that gains `### Requires` + `### Maintains`. `### Ensures` is **renamed to `### Maintains`** (now the world-model schema, not just an output list); `### Criteria`/`### Memory`/`### Fulfillment` fold in.
-> - **Old ledgers are abandoned, not migrated.** Existing runtime data — old `ReceiptV0` ledgers, the policy registry, bundled `runs/`/`state/`/`dist/` — is **greenfield**: there is **no data migrator**. Only your **source text** upgrades. Re-run from a clean state-dir.
-> - **Upgrade your source with a dry run first.** `prose upgrade --dry-run` (a prose skill command, run inside an OpenProse session — not the reactor CLI) inspects your files and reports the concrete migration plan **without editing** — mechanical rewrites where safe, surfaced as manual-review diagnostics where judgment is needed (e.g. a `system`/`### Wiring` flatten-or-split). Run it before `prose upgrade`.
+## The shape: OpenProse → Reactor
 
-**You do not need React to use this.** Reactor is React-*flavored*, not React-gated: the contracts are Markdown, and the CLI, the receipts, and the keyless replay are entirely React-free. The plain-language version of the whole product is two sentences — *you declare what should stay true, the system watches the world, and it does expensive model work only when something material actually moved.* The React table below is an optional mental model for the people who already carry one; skip it freely.
+You author **Responsibilities** — standing goals, written as Markdown contracts:
 
-If you *do* know React, you already know the shape — substitute three nouns:
+- **`### Maintains`** is the world-model schema: what truth this node keeps current, which fields are *material* (and so move the fingerprint) vs immaterial, optional `####` **facets** that split the truth into independently-subscribable parts, and the postconditions a render must satisfy before it may commit.
+- **`### Requires`** names the upstream facets this node subscribes to. Forme — the wiring layer — matches `Requires.<facet>` ↔ `Maintains.<facet>` and draws the subscription edge. *Structure is subscription;* the graph wires itself from the contracts.
+- **`### Continuity`** declares the wake source: input-driven by default, self-driven on a freshness cadence, or external-driven (a gateway turning an ingress event into an edge).
+
+Reactor compiles that set of contracts once (intelligently — Forme topology, a per-node canonicalizer, postcondition validators, all frozen), then runs them forever (dumbly — compare fingerprints, skip / render / propagate). The reconciler that decides *whether to wake* is deliberately deterministic: **there is no judge step.** The memo key has no clock in it. A render that can't satisfy its postconditions commits nothing — the prior truth stands and a `failed` receipt records why.
+
+> **You do not need React to use this.** Reactor is React-*flavored*, not React-gated: the contracts are Markdown, and the CLI, the receipts, and the keyless replay are entirely React-free. The whole product in two sentences — *you declare what should stay true, the system watches the world, and it does expensive model work only when something material actually moved.* The table below is an optional mental model for the people who already carry one; skip it freely.
+
+<details><summary>Optional: the React metaphor (skippable)</summary>
+
+If you know React, you already know the shape — substitute three nouns:
 
 | React | Reactor |
 | --- | --- |
@@ -50,14 +59,27 @@ If you *do* know React, you already know the shape — substitute three nouns:
 | `React.memo` (skip if props unchanged) | **Skip the render if subscribed inputs haven't moved** |
 | Manual dependency wiring | **Forme** — the graph wires itself from declared contracts |
 
-The reconciler that decides *whether to wake* is deliberately **dumb and deterministic** — there is **no judge step**. The intelligence is frozen ahead of time, at compile, into a per-node canonicalizer and the Forme wiring. The memo key has no clock in it.
+The intelligence is frozen ahead of time, at compile, into a per-node canonicalizer and the Forme wiring. The reconciler at run time is dumb on purpose.
+
+</details>
+
+> ### Coming from OpenProse (v0.14 or earlier)? Read this first.
+>
+> The Intelligent-React overhaul (`runtime_contract 1 → 2`) is a **breaking** vocabulary change. The headlines:
+>
+> - **The judge loop is retired wholesale.** The old judge → verdict → pressure → fulfillment loop is gone, replaced by a deterministic reconciler — a render runs only when a node's subscribed input fingerprints or its own contract fingerprint move. There is no LLM in the wake/commit decision.
+> - **Kinds renamed/deleted.** `kind: service` is **renamed to `kind: function`** (`### Parameters` → `### Returns`); `kind: system` is **deleted** (composition is now intra-node ProseScript `call` or cross-node subscription, wired by Forme); `kind: responsibility` is **reshaped** into a mounted DAG node that gains `### Requires` + `### Maintains`. `### Ensures` is **renamed to `### Maintains`** (now the world-model schema, not just an output list); `### Criteria`/`### Memory`/`### Fulfillment` fold in.
+> - **Old ledgers are abandoned, not migrated.** Existing runtime data — old `ReceiptV0` ledgers, the policy registry, bundled `runs/`/`state/`/`dist/` — is **greenfield**: there is **no data migrator**. Only your **source text** upgrades. Re-run from a clean state-dir.
+> - **Upgrade your source with a dry run first.** `prose upgrade --dry-run` (a prose skill command, run inside an OpenProse session — not the reactor CLI) inspects your files and reports the concrete migration plan **without editing** — mechanical rewrites where safe, surfaced as manual-review diagnostics where judgment is needed (e.g. a `system`/`### Wiring` flatten-or-split). Run it before `prose upgrade`.
 
 > **Versions (live on npm):** `@openprose/reactor` 0.3.0 ·
-> `reactor-cli` 0.2.0 · `reactor-devtools` 0.2.0. The `reactor` binary ships from the
+> `@openprose/reactor-cli` 0.2.0 · `@openprose/reactor-devtools` 0.2.0. The `reactor` binary ships from the
 > **`reactor-cli`** package, so `reactor --version` prints the CLI version (0.2.0), not the
 > SDK version (0.3.0) — expected, not a mismatch.
 
 ## Quickstart (60 seconds, no model key)
+
+> **Onboarding an agent on behalf of a user?** Follow these four steps in order. The binary is **`reactor`**. Step 2 is the keyless proof (no key, no spend); steps 3–4 are scaffold-and-go. That's the whole path — the rest of this README is reference.
 
 **1. Install.** All three packages are live on npm. The keyless step below needs no
 install at all — run it straight through `npx`:
@@ -125,6 +147,8 @@ reactor doctor                          # what's present + the exact fix for any
 reactor compile --check; echo "exit=$?" # offline; exits 1 if the contract set is STALE (CI-wireable)
 ```
 
+Author your OpenProse contracts as `*.prose.md` files under the scaffold's `src/` — a `kind: responsibility` per standing goal (its `### Maintains` / `### Requires` / `### Continuity`), optional gateways for ingress, optional functions for stateless helpers. `reactor compile` runs Forme over them.
+
 **4. Go live (needs a model key).** These steps reach the model surface — set `OPENROUTER_API_KEY` and the two optional peers; a keyless reader can stop at step 3.
 
 ```bash
@@ -136,6 +160,23 @@ reactor-devtools .reactor --describe # replay YOUR live run's ledger
 
 > Use `reactor serve` (not `reactor run`) to drive a scaffold's **static** gateway — `serve`
 > ingests its seeded items; `run` is for graphs whose connectors emit on their own.
+
+## The SDK: one call, then go deeper
+
+Reactor is a real SDK you plug into your own stack — not a closed product. The public API is a **curated front door**: `import { reactor } from "@openprose/reactor"`. One call takes a directory of `.prose.md` contracts all the way to a booted, reconciling reactor and hands back **one typed `Reactor` handle**.
+
+```ts
+import { reactor } from "@openprose/reactor";
+
+// Compile ./my-project, assemble a durable reactor over ./state, boot to a fixpoint
+// (cold nodes render once; warm nodes memo-skip), hand back a live handle.
+const { reactor: r } = await reactor("./my-project", { directory: "./state" });
+
+console.log(r.ledger.all().length);   // the receipt trail
+await r.ingest("source", { wake: { source: "external", refs: [] } });
+```
+
+That's the front door. The deeper surface lives behind six reasoned subpaths — `.` (the facade + the vocabulary a driver needs), `/agents` (the full `@openai/agents` escape hatch — every render knob passes through), `/adapters` (the substrate + record/replay injection seam), `/run` and `/run/types` (the offline boundary), and `/internals` (the engine room). The full API reference is the **[SDK README](packages/reactor/README.md)** and the docs site — this page just opens the door.
 
 ## The example library
 
@@ -198,15 +239,17 @@ In the spirit of the receipts:
 - **No timestamp, no actor (yet):** a v1 receipt records *what* changed and *why* (fingerprints, wake cause, status, cost) but not *when* it was committed or *who* committed it — so the ledger is a verifiable record of decisions and their evidence, **not yet a substitute for an external audit log** that must answer "at what time, by which principal."
 - The **fixpoint** (topology-as-responsibility) is specified and deferred; facet inference and ledger compaction are named roadmap.
 
-## Works with any harness — Reactor is the fast path
+This honesty is the point. The harness is young, should be used with caution, and has some way to go before it reaches its ideal form. There's nothing new here — we're applying classical engineering paradigms to our brave new world, and finding that despite our topsy-turvy reality, the wisdom of the ancients still applies.
 
-Reactor is built on **OpenProse**: Markdown contracts that run on any Prose-Complete agent harness. The `.prose.md` contracts in these examples are harness-agnostic. Reactor itself is a real SDK + CLI + devtools you install and run — the deterministic host that compiles, runs, and inspects standing responsibilities, and the recommended fast path for them.
+## OpenProse runs anywhere; Reactor is the fast path
 
-**Agents onboarding on behalf of a user:** the binary is `reactor`. Lead with the keyless `reactor-devtools` replay (step 2) — it proves the mechanism with no key and no spend — then `reactor init → doctor → compile → serve`.
+The `.prose.md` contracts in these examples are **harness-agnostic** — OpenProse Markdown runs on any Prose-Complete agent host (a fresh `git clone` is a first-class experience). The contract is the public artifact; the deployment's secrets and data stay private. Nothing is held hostage: a contract and its trail can leave for any compliant host with no lost meaning.
+
+Reactor is the harness **built to run** that contract well — the deterministic host that compiles, runs, and inspects standing responsibilities, keeps the world-model up to date, and gives you the receipts. We strongly encourage authoring your OpenProse with Reactor — it's the recommended fast path — while OpenProse itself stays free, MIT, and portable, forever.
 
 ## Send us the thing it can't do yet
 
-The most useful thing you can hand us isn't a compliment or a flattering benchmark. It's a **responsibility the harness *should* keep and doesn't** — a standing goal that breaks the surprise story, a wiring Forme gets wrong, a domain where this falls apart. The short guide to authoring one from the public SDK is **[`packages/reactor/EVALS.md`](packages/reactor/EVALS.md)** (shipped inside the SDK tarball too).
+My ask is the one from every honest tool: try it, wire it up to something useful, love it or hate it, and send honest feedback. The most useful thing you can hand us isn't a compliment or a flattering benchmark — it's a **responsibility the harness *should* keep and doesn't**: a standing goal that breaks the surprise story, a wiring Forme gets wrong, a domain where this falls apart. The short guide to authoring one from the public SDK is **[`packages/reactor/EVALS.md`](packages/reactor/EVALS.md)** (shipped inside the SDK tarball too). We're always listening and improving.
 
 - [Issues](https://github.com/openprose/prose/issues) · [Contributing](CONTRIBUTING.md) · [MIT License](LICENSE)
 - [Privacy Policy](PRIVACY.md) · [Terms of Service](TERMS.md)
@@ -214,3 +257,5 @@ The most useful thing you can hand us isn't a compliment or a flattering benchma
 ---
 
 *The conversation always ends. The responsibility shouldn't have to.*
+</content>
+</invoke>
