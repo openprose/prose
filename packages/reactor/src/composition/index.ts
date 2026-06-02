@@ -16,13 +16,8 @@
 //   2. Propagation-by-topology-edge (architecture.md §4.1, §6.3): on a
 //      `rendered` receipt whose fingerprint moved, wake the downstreams
 //      subscribed to the moved facet(s) by reading the topology world-model's
-//      `edges`. The old memoized-*verdict* coupling (CompositionMemoStoreV0) is
-//      gone — there is no judge, and the skip decision is the reconciler
-//      comparing fingerprints (world-model.md §4, §8; delta.md §A3.4).
-//
-// This module imports ONLY the shared shapes (`../shapes`) and the kept cycle
-// engine (`../cycle`). It does not import the retired spine (policy/judge) nor
-// the old receipt envelope; everything is reshaped to the ideal Receipt/MemoKey.
+//      `edges`. The skip decision is the reconciler comparing fingerprints
+//      (world-model.md §4, §8; delta.md §A3.4).
 
 import {
   ATOMIC_FACET,
@@ -266,16 +261,8 @@ export function buildInputFingerprints(
   return Object.freeze(fingerprints);
 }
 
-// The run-half input-fingerprint resolver is LEDGER-SOURCED and lives at
-// `resolveInputs` in `sdk/mounted-dag.ts` (the resolver `mountDag` binds the
-// reconciler's `resolveInputFingerprints` port to): per inbound edge it reads
-// the producer's last receipt `.fingerprints` and resolves the subscribed facet
-// (architecture.md §4.1, §6.1, §6.3; world-model.md §3, §4). A second,
-// store-sourced selector (`selectInputFingerprints`, which read the world-model
-// store's `publishedFingerprints(node)`) once lived here; it had no production
-// call site and was removed in the v2-facets consolidation so the run half has a
-// single input-fingerprint authority. The per-facet read primitive it relied on
-// (`resolveFacetFingerprint`) is shared and still exported here.
+// The run-half input-fingerprint authority is `resolveInputs` in
+// `sdk/mounted-dag.ts`.
 
 /**
  * Compose the full memo key for a subscriber render: the contract fingerprint

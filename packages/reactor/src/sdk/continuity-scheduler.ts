@@ -169,10 +169,20 @@ export interface ContinuityScheduler {
   readonly poll: (as_of: string) => ContinuityPollResult;
 }
 
-/** Build the continuity scheduler over a mounted DAG. */
-export function createContinuityScheduler(
+/**
+ * The armed-state core shared by both schedulers: the per-node `armedByNode` map,
+ * `arm`/`armedFor`/`armed`, and the poll loop parameterized over a `fire` callback.
+ * The only divergence between the sync and async schedulers is which fire it runs
+ * (sync {@link fire} vs async {@link fireAsync}) and the poll return type.
+ */
+function createSchedulerCore<Fired>(
   input: ContinuitySchedulerInput,
-): ContinuityScheduler {
+  fireOne: (
+    node: string,
+    schedule: ContinuitySchedule,
+    decision: Extract<ContinuityTickResult, { outcome: "self-receipt" }>,
+  ) => Fired,
+) {
   const armedByNode = new Map<string, string | null>();
 
   const armOne = (node: string): string | null => {
@@ -184,10 +194,33 @@ export function createContinuityScheduler(
   const arm = (): readonly ArmedRecheck[] =>
     input.nodes.map((node) => ({ node, next_self_recheck: armOne(node) }));
 
-  const poll = (as_of: string): ContinuityPollResult => {
-    const due = dueNodes(input.nodes, armedByNode, as_of);
-    const fired: ContinuityFire[] = [];
-    for (const node of due) {
+  const armedFor = (node: string): string | null =>
+    armedByNode.get(node) ?? null;
+
+  const armed = (): readonly ArmedRecheck[] =>
+    input.nodes.map((node) => ({
+      node,
+      next_self_recheck: armedByNode.get(node) ?? null,
+    }));
+
+  /**
+   * Walk the due nodes for `as_of`, deciding each tick and re-arming. Sleeping
+   * nodes re-arm and fire nothing; lapsing nodes yield a `[node, schedule,
+   * decision]` triple the caller fires (sync or async) and then re-arms from.
+   */
+  const decideDue = (
+    as_of: string,
+  ): readonly [
+    string,
+    ContinuitySchedule,
+    Extract<ContinuityTickResult, { outcome: "self-receipt" }>,
+  ][] => {
+    const firing: [
+      string,
+      ContinuitySchedule,
+      Extract<ContinuityTickResult, { outcome: "self-receipt" }>,
+    ][] = [];
+    for (const node of dueNodes(input.nodes, armedByNode, as_of)) {
       const schedule = input.readFreshness(node);
       const decision =
         schedule === null ? null : evaluateContinuityTick({ as_of, schedule });
@@ -197,22 +230,49 @@ export function createContinuityScheduler(
         armedByNode.set(node, decision?.next_self_recheck ?? null);
         continue;
       }
-      fired.push(
-        fire(input.dag, input.topology, node, schedule as ContinuitySchedule, decision),
-      );
-      armedByNode.set(node, decision.next_self_recheck);
+      firing.push([node, schedule as ContinuitySchedule, decision]);
+    }
+    return firing;
+  };
+
+  const reArm = (
+    node: string,
+    decision: Extract<ContinuityTickResult, { outcome: "self-receipt" }>,
+  ): void => {
+    armedByNode.set(node, decision.next_self_recheck);
+  };
+
+  return {
+    arm,
+    armedFor,
+    armed,
+    decideDue,
+    reArm,
+    fireOne,
+  };
+}
+
+/** Build the continuity scheduler over a mounted DAG. */
+export function createContinuityScheduler(
+  input: ContinuitySchedulerInput,
+): ContinuityScheduler {
+  const core = createSchedulerCore(input, (node, schedule, decision) =>
+    fire(input.dag, input.topology, node, schedule, decision),
+  );
+
+  const poll = (as_of: string): ContinuityPollResult => {
+    const fired: ContinuityFire[] = [];
+    for (const [node, schedule, decision] of core.decideDue(as_of)) {
+      fired.push(core.fireOne(node, schedule, decision));
+      core.reArm(node, decision);
     }
     return { as_of, fired };
   };
 
   return {
-    arm,
-    armedFor: (node) => armedByNode.get(node) ?? null,
-    armed: () =>
-      input.nodes.map((node) => ({
-        node,
-        next_self_recheck: armedByNode.get(node) ?? null,
-      })),
+    arm: core.arm,
+    armedFor: core.armedFor,
+    armed: core.armed,
     poll,
   };
 }
@@ -283,50 +343,23 @@ export interface AsyncContinuityScheduler {
 export function createAsyncContinuityScheduler(
   input: ContinuitySchedulerInput,
 ): AsyncContinuityScheduler {
-  const armedByNode = new Map<string, string | null>();
-
-  const armOne = (node: string): string | null => {
-    const next = computeNextRecheck(input.readFreshness, node);
-    armedByNode.set(node, next);
-    return next;
-  };
-
-  const arm = (): readonly ArmedRecheck[] =>
-    input.nodes.map((node) => ({ node, next_self_recheck: armOne(node) }));
+  const core = createSchedulerCore(input, (node, schedule, decision) =>
+    fireAsync(input.dag, input.topology, node, schedule, decision),
+  );
 
   const poll = async (as_of: string): Promise<ContinuityPollResult> => {
-    const due = dueNodes(input.nodes, armedByNode, as_of);
     const fired: ContinuityFire[] = [];
-    for (const node of due) {
-      const schedule = input.readFreshness(node);
-      const decision =
-        schedule === null ? null : evaluateContinuityTick({ as_of, schedule });
-      if (decision === null || decision.outcome === "sleep") {
-        armedByNode.set(node, decision?.next_self_recheck ?? null);
-        continue;
-      }
-      fired.push(
-        await fireAsync(
-          input.dag,
-          input.topology,
-          node,
-          schedule as ContinuitySchedule,
-          decision,
-        ),
-      );
-      armedByNode.set(node, decision.next_self_recheck);
+    for (const [node, schedule, decision] of core.decideDue(as_of)) {
+      fired.push(await core.fireOne(node, schedule, decision));
+      core.reArm(node, decision);
     }
     return { as_of, fired };
   };
 
   return {
-    arm,
-    armedFor: (node) => armedByNode.get(node) ?? null,
-    armed: () =>
-      input.nodes.map((node) => ({
-        node,
-        next_self_recheck: armedByNode.get(node) ?? null,
-      })),
+    arm: core.arm,
+    armedFor: core.armedFor,
+    armed: core.armed,
     poll,
   };
 }

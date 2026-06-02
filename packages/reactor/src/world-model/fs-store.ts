@@ -58,7 +58,6 @@ import {
 import { join } from "node:path";
 
 import {
-  ATOMIC_FACET,
   type ContentAddress,
   type FingerprintMap,
   type WorldModelCommit,
@@ -67,6 +66,8 @@ import {
 } from "../shapes";
 
 import {
+  assertFingerprintMap,
+  assertNode,
   contentAddressOf,
   deserializeArtifact,
   serializeArtifact,
@@ -362,14 +363,6 @@ function addressFromSegment(segment: string): ContentAddress {
   return segment.replace("_", ":") as ContentAddress;
 }
 
-function assertFingerprintMap(map: FingerprintMap): void {
-  if (map[ATOMIC_FACET] === undefined) {
-    throw new TypeError(
-      "canonicalizer must always emit the atomic facet fingerprint",
-    );
-  }
-}
-
 function assertPointer(value: unknown): asserts value is PublishedPointer {
   if (
     value === null ||
@@ -378,11 +371,5 @@ function assertPointer(value: unknown): asserts value is PublishedPointer {
     typeof (value as PublishedPointer).fingerprints !== "object"
   ) {
     throw new TypeError("corrupt published pointer on disk");
-  }
-}
-
-function assertNode(node: string): void {
-  if (typeof node !== "string" || node.length === 0) {
-    throw new TypeError("world-model node identity must be a non-empty string");
   }
 }

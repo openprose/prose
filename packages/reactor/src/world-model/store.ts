@@ -36,6 +36,8 @@ import {
 export { resolveFacetFingerprint } from "../shapes";
 
 import {
+  assertFingerprintMap,
+  assertNode,
   contentAddressOf,
   fingerprintArtifact,
   serializeArtifact,
@@ -62,18 +64,11 @@ export const atomicCanonicalizer: Canonicalizer = (files) => {
   return { [ATOMIC_FACET]: fingerprintArtifact(files) };
 };
 
-// The SINGLE facet-fingerprint authority is the COMPILED canonicalizer that
-// travels with the contract (architecture.md §3.2; SHAPES.md §6): it reduces the
-// structured `WorldModelValue` (material, dotted paths) to the `{facet → token}`
-// map, and `commitPublished` applies whatever canonicalizer it is handed
-// (`mount.canonicalizer ?? atomicCanonicalizer`). The store does NOT define a
-// second facet-fingerprinting convention. A `subtreeFacetCanonicalizer` once
-// lived here that fingerprinted each facet over its `published/<facet>/…` file
-// subtree — a DIFFERENT token for the same facet, with no production caller; it
-// (and the `facetSubtree` layout helper it relied on) were removed in the
-// v2-facets consolidation so there is exactly one facet-fingerprint authority
-// (world-model.md §3; delta.md Part G). The store's facet job is to ORGANIZE
-// bytes and APPLY the handed canonicalizer on commit — never to fingerprint.
+// The store organizes bytes and applies the handed canonicalizer on commit; it
+// never fingerprints. The SINGLE facet-fingerprint authority is the compiled
+// canonicalizer that travels with the contract (architecture.md §3.2; SHAPES.md
+// §6); `commitPublished` applies whatever canonicalizer it is handed
+// (`mount.canonicalizer ?? atomicCanonicalizer`).
 
 /**
  * Read result of a published or workspace artifact, returned by reference (the
@@ -292,20 +287,6 @@ function freezeFiles(files: WorldModelFiles): WorldModelFiles {
     out[key] = content.slice();
   }
   return Object.freeze(out);
-}
-
-function assertFingerprintMap(map: FingerprintMap): void {
-  if (map[ATOMIC_FACET] === undefined) {
-    throw new TypeError(
-      "canonicalizer must always emit the atomic facet fingerprint",
-    );
-  }
-}
-
-function assertNode(node: string): void {
-  if (typeof node !== "string" || node.length === 0) {
-    throw new TypeError("world-model node identity must be a non-empty string");
-  }
 }
 
 function publishedLocation(node: string): string {

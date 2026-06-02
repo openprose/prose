@@ -24,7 +24,7 @@
 
 import { createHash } from "node:crypto";
 
-import type { ContentAddress } from "../shapes";
+import { ATOMIC_FACET, type ContentAddress, type FingerprintMap } from "../shapes";
 
 /**
  * A world-model artifact: a tree of files keyed by POSIX-style relative path.
@@ -197,6 +197,25 @@ export function fingerprintArtifact(files: WorldModelFiles): ContentAddress {
 
 // The compiled canonicalizer that travels with the contract is the single
 // facet-fingerprint authority; the store only supplies deterministic serialization.
+
+/**
+ * Shared store guards. Exported for the in-memory and filesystem store
+ * implementations (both import this module); NOT re-exported through the
+ * world-model barrel, so they stay internal to the store layer.
+ */
+export function assertNode(node: string): void {
+  if (typeof node !== "string" || node.length === 0) {
+    throw new TypeError("world-model node identity must be a non-empty string");
+  }
+}
+
+export function assertFingerprintMap(map: FingerprintMap): void {
+  if (map[ATOMIC_FACET] === undefined) {
+    throw new TypeError(
+      "canonicalizer must always emit the atomic facet fingerprint",
+    );
+  }
+}
 
 // ---------------------------------------------------------------------------
 // internals
