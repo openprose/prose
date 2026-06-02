@@ -1,9 +1,9 @@
 /**
  * The MODEL-BEARING compile runner — the intelligent compile sessions.
  *
- * N2 OFFLINE BOUNDARY: this module deep-imports `@openprose/reactor/run-project`
- * and `@openprose/reactor/adapters/agent-compile`, which carry `@openai/agents` +
- * `zod`. It is therefore reached ONLY via a dynamic `import()` from the `compile`
+ * N2 OFFLINE BOUNDARY: this module deep-imports `@openprose/reactor/agents` (the
+ * model-bearing compile sessions), which carries `@openai/agents` + `zod`. It is
+ * therefore reached ONLY via a dynamic `import()` from the `compile`
  * command handler, never at the offline entrypoint's load scope. A cache HIT never
  * imports this file (the keyless re-lower lives in `ir-cache.ts`).
  *

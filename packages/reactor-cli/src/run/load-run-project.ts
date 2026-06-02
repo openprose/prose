@@ -2,7 +2,7 @@
  * The MODEL-BEARING run-phase loader — the dynamic-import seam onto the SDK's
  * `runProject`.
  *
- * N2 OFFLINE BOUNDARY: this module deep-imports `@openprose/reactor/run-project`,
+ * N2 OFFLINE BOUNDARY: this module deep-imports `@openprose/reactor/run`,
  * which carries `@openai/agents` + `zod`. It is therefore reached ONLY via a
  * dynamic `import()` from the `run`/`serve` command handlers, never at the
  * offline entrypoint's load scope. The OFFLINE gate hands a fake `buildRender`

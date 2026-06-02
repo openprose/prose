@@ -33,7 +33,7 @@ import type { MutableReceiptLedger } from "./mounted-dag";
 import type { NodeFreshnessReader } from "./continuity-scheduler";
 import type { Reactor } from "./reactor-handle";
 import type { ReconcileResult } from "../reactor";
-import type { CompileProjectInput } from "./run-project";
+import type { CompileProjectInput, RunProjectRender } from "./run-project";
 import {
   augmentTopologyWithIngress,
   armConnectors,
@@ -212,7 +212,7 @@ export async function reactor(
     substrate,
     ...(options.directory !== undefined ? { directory: options.directory } : {}),
     render,
-  } as never);
+  });
 
   // Arm the connectors over the booted handle: a durable cursor over the
   // substrate's storage, staging each NEW arrival through the blessed ingress
@@ -274,15 +274,18 @@ function resolveSubstrate(options: ReactorOptions): Substrate {
 }
 
 /** Resolve the render wiring (the escape hatch + the offline fake + projections). */
-function resolveRender(options: ReactorOptions): unknown {
+function resolveRender(options: ReactorOptions): RunProjectRender {
   const r = options.render ?? {};
   // §5.4: thread the front-door render-backend injection through to the live
   // `createAgentRender` (via `runProject`'s `RunProjectRender.renderBackend`).
   // Omitted → the default `@openai/agents` backend, so the default render is
   // byte-for-byte what it was before this seam was surfaced on the facade.
   const renderBackend = options.adapters?.renderBackend;
+  // The spread is shape-compatible with RunProjectRender; the localized assertion
+  // only suppresses exactOptionalPropertyTypes widening optionals to `| undefined`.
+  // (Keeps the flagship call site cast-free.)
   return {
     ...r,
     ...(renderBackend !== undefined ? { renderBackend } : {}),
-  };
+  } as RunProjectRender;
 }
