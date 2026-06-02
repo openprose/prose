@@ -135,15 +135,17 @@ reactor-devtools .reactor --describe # replay YOUR live run's ledger
 
 Thirteen of the examples in [`skills/open-prose/examples/`](skills/open-prose/examples/) ship a committed, chain-verifiable `replay/` state-dir you can replay keyless — a deliberately wide spread of DAG shapes and domains, each with an offline test that drives the **real** reconciler at **zero model spend**. (The directory holds more contract-only examples without a committed ledger; the thirteen below are the ones with a `replay/`. Two of those thirteen — `masked-relay` and `tamper-forge` — share a **byte-identical** ledger: `tamper-forge` is an audit *lens* over the masked-relay receipts, so the set is **twelve distinct datasets plus one honest tamper-evidence lens**, not thirteen unrelated ledgers.)
 
+> The six examples marked with **\*** below are also reachable **by name** from any directory via the devtools fixture bundle — e.g. `reactor-devtools --example masked-relay --describe`. The remaining examples replay by path.
+
 | Example | What it shows | Domain |
 | --- | --- | --- |
-| `surprise-cost` | memoized skip → surprise-render when the memo key moves | the core thesis |
+| `surprise-cost` * | memoized skip → surprise-render when the memo key moves | the core thesis |
 | `renewal-risk` | a standing responsibility re-judging only the accounts that moved | SaaS / finance |
-| `inbox-triage` | diamond fan-in + failure isolation | email / ops |
-| `monorepo-ci` | hub fan-out blast radius; a failing test blocks the merge gate | dev tooling / CI |
-| `research-tree` | recursive propagation up a tree, branch-memoized | research |
-| `masked-relay` | peer-blind fan-out with deterministic masked projections | competitive intel |
-| `agent-observatory` | many cheap watchers → batched synthesis | agent ops |
+| `inbox-triage` * | diamond fan-in + failure isolation | email / ops |
+| `monorepo-ci` * | hub fan-out blast radius; a failing test blocks the merge gate | dev tooling / CI |
+| `research-tree` * | recursive propagation up a tree, branch-memoized | research |
+| `masked-relay` * | peer-blind fan-out with deterministic masked projections | competitive intel |
+| `agent-observatory` * | many cheap watchers → batched synthesis | agent ops |
 | `tamper-forge` | attack a real ledger; watch chain-verify catch it (and where it honestly can't) | audit / security |
 | `oblique-weave` | hidden-context adversarial roles | product strategy |
 | `github-star-enricher` | per-entity fan-out + shared receipts + a human gate | growth / GTM |
@@ -167,10 +169,6 @@ reactor --state-dir ./replay receipts             # the per-node ledger (list | 
 > reactor-devtools ./replay --describe
 > reactor --state-dir ./replay receipts
 > ```
-> Six examples are also reachable by name from any directory, via the devtools
-> fixture bundle: `masked-relay`, `surprise-cost`, `agent-observatory`, `inbox-triage`,
-> `monorepo-ci`, and `research-tree` — e.g. `reactor-devtools --example masked-relay --describe`
-> (run `reactor-devtools --help` to see the list). The remaining examples replay by path.
 
 **Or run the offline gate** (this is what CI runs — all thirteen replay examples, zero spend):
 
