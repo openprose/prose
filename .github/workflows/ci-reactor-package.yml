@@ -114,6 +114,17 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build reactor packages
+        # Build up front so cross-package types resolve during each `pnpm pack`'s
+        # prepack build — even when a package's publish is SKIPPED (idempotent re-run).
+        # Without this, an already-published reactor short-circuits before its pack
+        # builds `reactor/dist`, and reactor-cli / reactor-devtools then fail to resolve
+        # `@openprose/reactor` (TS2307). Order matters: the SDK first.
+        run: |
+          pnpm --filter @openprose/reactor build
+          pnpm --filter @openprose/reactor-cli build
+          pnpm --filter @openprose/reactor-devtools build
+
       - name: Publish reactor packages
         # OIDC trusted publishing: npm (>=11.5.1) exchanges the GitHub Actions id-token
         # for a short-lived npm token — no NPM_TOKEN secret needed. pnpm has NO OIDC
