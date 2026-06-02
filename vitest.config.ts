@@ -29,16 +29,14 @@ const reactorDist = (sub: string) =>
 export default defineConfig({
   resolve: {
     // Order matters: more-specific subpaths must precede the bare barrel.
+    // The 0.3.0 ideal surface is six subpaths: `.`, /agents, /adapters, /run,
+    // /run/types, /internals.
     alias: [
-      {
-        find: "@openprose/reactor/adapters/agent-render",
-        replacement: reactorDist("adapters/agent-render/index.js"),
-      },
-      {
-        find: "@openprose/reactor/receipt",
-        replacement: reactorDist("receipt/index.js"),
-      },
-      { find: "@openprose/reactor/sdk", replacement: reactorDist("sdk/index.js") },
+      { find: "@openprose/reactor/agents", replacement: reactorDist("agents/index.js") },
+      { find: "@openprose/reactor/adapters", replacement: reactorDist("adapters/index.js") },
+      { find: "@openprose/reactor/run/types", replacement: reactorDist("run/types.js") },
+      { find: "@openprose/reactor/run", replacement: reactorDist("run/index.js") },
+      { find: "@openprose/reactor/internals", replacement: reactorDist("internals/index.js") },
       { find: "@openprose/reactor", replacement: reactorDist("index.js") },
     ],
   },

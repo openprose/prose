@@ -26,7 +26,9 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { createFileSystemStorageAdapter } from "@openprose/reactor";
+import {
+  createFileSystemStorageAdapter,
+} from "@openprose/reactor";
 import {
   mountDag,
   createFileSystemReceiptLedger,
@@ -35,11 +37,13 @@ import {
   files,
   textFile,
   ATOMIC_FACET,
-  type ReconcilerTopology,
   type RenderContext,
-  type TopologyWorldModel,
   type LedgerReceipt,
-} from "@openprose/reactor/sdk";
+} from "@openprose/reactor";
+import type {
+  ReconcilerTopology,
+  TopologyWorldModel,
+} from "@openprose/reactor/internals";
 
 import { generateMaskedRelayExample } from "./generate";
 

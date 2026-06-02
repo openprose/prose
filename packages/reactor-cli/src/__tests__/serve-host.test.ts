@@ -32,9 +32,11 @@ import { join } from 'node:path';
 import {
   createMemoryStorageAdapter,
   createSystemClockAdapter,
+} from '@openprose/reactor';
+import {
   FileSystemWorldModelStore,
   type WorldModelStore,
-} from '@openprose/reactor';
+} from '@openprose/reactor/adapters';
 
 import { bootHost } from '../run/host';
 import { startHttpServer } from '../run/http-server';

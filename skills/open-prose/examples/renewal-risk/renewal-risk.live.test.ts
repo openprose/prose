@@ -20,26 +20,32 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import {
-  FileSystemWorldModelStore,
   createFileSystemStorageAdapter,
 } from "@openprose/reactor";
 import {
+  FileSystemWorldModelStore,
+} from "@openprose/reactor/adapters";
+import {
   mountDag,
-  FileSystemReceiptLedger,
   createReplaySession,
   files,
   jsonFile,
   ATOMIC_FACET,
-  type ReconcilerTopology,
-  type AsyncMountedRender,
   type RenderContext,
-} from "@openprose/reactor/sdk";
+} from "@openprose/reactor";
+import {
+  FileSystemReceiptLedger,
+} from "@openprose/reactor/adapters";
+import type {
+  ReconcilerTopology,
+  AsyncMountedRender,
+} from "@openprose/reactor/internals";
 import {
   createAgentRender,
   createOpenRouterProvider,
   hasOpenRouterKey,
   type CompiledContractView,
-} from "@openprose/reactor/adapters/agent-render";
+} from "@openprose/reactor/agents";
 
 const GATEWAY = "gateway.account-signals";
 const RENEWAL_RISK = "responsibility.renewal-risk";

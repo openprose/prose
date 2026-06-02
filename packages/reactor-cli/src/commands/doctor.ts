@@ -269,7 +269,7 @@ function inspectIrFreshness(
 
 /** The model-bearing render barrel specifier (a variable so TS does not statically
  * resolve the deep subpath; it resolves at runtime against the SDK exports map). */
-const AGENT_RENDER_SPECIFIER = '@openprose/reactor/adapters/agent-render';
+const AGENT_RENDER_SPECIFIER = '@openprose/reactor/agents';
 
 /**
  * Probe ONE live smoke render. Dynamic-imports the live checks (which live in the

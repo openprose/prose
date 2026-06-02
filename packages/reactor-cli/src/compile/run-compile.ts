@@ -268,9 +268,9 @@ function toContractImage(c: LoadedContractLike): ContractImage {
 function deriveContractFingerprints(
   contracts: readonly LoadedContractLike[],
 ): Record<string, string> {
-  // contentAddressOf is on the keyless root barrel.
+  // contentAddressOf is on the keyless /adapters barrel.
 
-  const { contentAddressOf } = require('@openprose/reactor') as {
+  const { contentAddressOf } = require('@openprose/reactor/adapters') as {
     contentAddressOf: (bytes: Uint8Array) => string;
   };
   const out: Record<string, string> = {};
@@ -307,7 +307,7 @@ interface AgentCompileModule {
     fps: Readonly<Record<string, string>>,
     options: Record<string, unknown>,
   ) => Promise<{
-    reconcilerTopology: import('@openprose/reactor').ReconcilerTopology;
+    reconcilerTopology: import('@openprose/reactor/internals').ReconcilerTopology;
     forme: { diagnostics?: readonly { kind: string; subscriber?: string }[] };
     cost: { provider: string; model: string; tokens: { fresh: number; reused: number } };
   }>;
@@ -336,7 +336,7 @@ interface AgentCompileModule {
  * type-resolve the subpath under `moduleResolution: Node` — runtime resolves it
  * against the built `dist`, exactly as the offline boundary intends: this is
  * reached ONLY via dynamic import inside the compile handler). */
-const AGENT_COMPILE_SPECIFIER = '@openprose/reactor/adapters/agent-compile';
+const AGENT_COMPILE_SPECIFIER = '@openprose/reactor/agents';
 
 /**
  * Reduce a thrown error to its single legible first line — dropping the multi-line

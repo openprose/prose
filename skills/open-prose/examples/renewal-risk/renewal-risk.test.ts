@@ -25,7 +25,9 @@ import { mkdtempSync, rmSync, readFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { createFileSystemStorageAdapter } from "@openprose/reactor";
+import {
+  createFileSystemStorageAdapter,
+} from "@openprose/reactor";
 import {
   mountDag,
   createFileSystemReceiptLedger,
@@ -34,10 +36,12 @@ import {
   files,
   textFile,
   ATOMIC_FACET,
-  type ReconcilerTopology,
   type RenderContext,
-  type TopologyWorldModel,
-} from "@openprose/reactor/sdk";
+} from "@openprose/reactor";
+import type {
+  ReconcilerTopology,
+  TopologyWorldModel,
+} from "@openprose/reactor/internals";
 
 import { generateRenewalRiskFixture } from "./generate";
 

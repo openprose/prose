@@ -49,31 +49,40 @@ import { join } from "node:path";
 
 import {
   mountDag,
-  FileSystemWorldModelStore,
-  FileSystemReceiptLedger,
   createFileSystemStorageAdapter,
   files,
   jsonFile,
+  ATOMIC_FACET,
+  type Cost,
+  type WakeSource,
+  type Wake,
+} from "@openprose/reactor";
+import {
+  FileSystemWorldModelStore,
+  FileSystemReceiptLedger,
   readTextFile,
   fingerprintArtifact,
-  zeroCost,
-  ATOMIC_FACET,
-  createNullSignature,
-  EMPTY_SEMANTIC_DIFF,
   type WorldModelStore,
   type WorldModelFiles,
-  type Cost,
+} from "@openprose/reactor/adapters";
+import {
+  zeroCost,
+  createNullSignature,
+  EMPTY_SEMANTIC_DIFF,
   type Fingerprint,
   type Facet,
-  type WakeSource,
   type TopologyWorldModel,
   type TopologyNode,
   type TopologyEdge,
-  type Wake,
-} from "@openprose/reactor";
+} from "@openprose/reactor/internals";
 
-import type { ReconcilerTopology } from "@openprose/reactor/sdk";
-import type { RenderContext, RenderProduct } from "@openprose/reactor/sdk";
+import type {
+  ReconcilerTopology,
+} from "@openprose/reactor/internals";
+import type {
+  RenderContext,
+  RenderProduct,
+} from "@openprose/reactor";
 
 // ---------------------------------------------------------------------------
 // Node identities.

@@ -33,20 +33,26 @@ import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { createFileSystemStorageAdapter } from "@openprose/reactor";
+import {
+  createFileSystemStorageAdapter,
+} from "@openprose/reactor";
 import {
   mountDag,
   createFileSystemReceiptLedger,
-  FileSystemReceiptLedger,
   createReplaySession,
   verifyReceiptChain,
   files,
   textFile,
   ATOMIC_FACET,
-  type ReconcilerTopology,
   type RenderContext,
-  type TopologyWorldModel,
-} from "@openprose/reactor/sdk";
+} from "@openprose/reactor";
+import {
+  FileSystemReceiptLedger,
+} from "@openprose/reactor/adapters";
+import type {
+  ReconcilerTopology,
+  TopologyWorldModel,
+} from "@openprose/reactor/internals";
 
 import { generateSurpriseCostFixture } from "./generate";
 

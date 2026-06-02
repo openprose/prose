@@ -27,11 +27,13 @@ import { join } from 'node:path';
 import {
   createMemoryStorageAdapter,
   createSystemClockAdapter,
+  verifyReceiptChain,
+} from '@openprose/reactor';
+import {
   FileSystemWorldModelStore,
   readTextFile,
-  verifyReceiptChain,
   type WorldModelStore,
-} from '@openprose/reactor';
+} from '@openprose/reactor/adapters';
 
 import { runRunCommand } from '../commands/run';
 import { bootServe } from '../commands/serve';

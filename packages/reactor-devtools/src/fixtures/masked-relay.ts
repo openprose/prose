@@ -37,35 +37,40 @@ import { join } from "node:path";
 
 import {
   mountDag,
-  FileSystemWorldModelStore,
-  FileSystemReceiptLedger,
   createFileSystemStorageAdapter,
   files,
   jsonFile,
+  ATOMIC_FACET,
+  type Cost,
+  type WakeSource,
+  type Wake,
+  // The render-context type lives on the render-atom surface (front door).
+  type RenderContext,
+  type RenderProduct,
+} from "@openprose/reactor";
+
+import {
+  FileSystemWorldModelStore,
+  FileSystemReceiptLedger,
   readTextFile,
   fingerprintArtifact,
-  zeroCost,
-  ATOMIC_FACET,
-  createNullSignature,
-  EMPTY_SEMANTIC_DIFF,
   type WorldModelStore,
   type WorldModelFiles,
-  type Cost,
+} from "@openprose/reactor/adapters";
+
+import {
+  zeroCost,
+  createNullSignature,
+  EMPTY_SEMANTIC_DIFF,
   type Fingerprint,
   type Facet,
-  type WakeSource,
   type TopologyWorldModel,
   type TopologyNode,
   type TopologyEdge,
-  type Wake,
-} from "@openprose/reactor";
-
-// The reconciler topology shape (the nested `{ topology, contract_fingerprints }`
-// mountDag wants) is re-exported from the reconciler barrel as ReconcilerTopology.
-import type { ReconcilerTopology } from "@openprose/reactor/sdk";
-
-// The render-context type lives on the render-atom surface.
-import type { RenderContext, RenderProduct } from "@openprose/reactor/sdk";
+  // The reconciler topology shape (the nested `{ topology, contract_fingerprints }`
+  // mountDag wants) is re-exported as ReconcilerTopology.
+  type ReconcilerTopology,
+} from "@openprose/reactor/internals";
 
 import { materialFingerprint, readJson } from "./_fixture-shared";
 

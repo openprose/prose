@@ -5,15 +5,19 @@ import { createRequire } from "node:module";
 import * as path from "node:path";
 
 /**
- * Export-map / offline-boundary test (SDK Change A).
+ * Export-map / offline-boundary test (0.3.0 ideal surface — 6 subpaths).
+ *
+ * The exports map is the curated six: `.`, `./agents`, `./adapters`, `./run`,
+ * `./run/types`, `./internals` (+ `./package.json`).
  *
  * Asserts:
  *  (a) the model-bearing subpaths resolve and surface their primary symbols
- *      (`./run-project`, `./adapters/agent-compile`, `./adapters/agent-render`);
- *  (b) the offline barrels (".", "./sdk", "./canonicalizer") load in a clean
+ *      (`./run` -> compileProject / runProject; `./agents` -> the unified
+ *      agent-render + agent-compile escape hatch);
+ *  (b) the offline barrels (".", "./internals", "./adapters") load in a clean
  *      child process WITHOUT pulling `@openai/agents` or `zod` into the module
  *      cache — i.e. the keyless boundary is intact;
- *  (c) the keyless re-lower path (`./canonicalizer` -> compileNode + spec types)
+ *  (c) the keyless re-lower path (`./internals` -> compileNode + spec types)
  *      imports clean with no OPENROUTER_API_KEY present.
  *
  * Subpath resolution is exercised through the package self-link
@@ -67,37 +71,43 @@ function loadedModulesFor(
 
 describe("package exports map (Change A)", () => {
   it("(a) resolves the model-bearing subpaths and surfaces their primary symbols", () => {
-    // ./run-project — compileProject / runProject + CompiledProject (type, erased at runtime)
-    const runProjectPath = resolveSub("./run-project");
-    assert.ok(runProjectPath.length > 0, "./run-project must resolve");
-    const runProject = selfRequire("@openprose/reactor/run-project");
+    // ./run — compileProject / runProject (the offline run-phase boundary).
+    const runPath = resolveSub("./run");
+    assert.ok(runPath.length > 0, "./run must resolve");
+    const run = selfRequire("@openprose/reactor/run");
     assert.equal(
-      typeof runProject.compileProject,
+      typeof run.compileProject,
       "function",
-      "./run-project must export compileProject",
+      "./run must export compileProject",
     );
     assert.equal(
-      typeof runProject.runProject,
+      typeof run.runProject,
       "function",
-      "./run-project must export runProject",
+      "./run must export runProject",
     );
 
-    // ./adapters/agent-compile
-    const agentCompilePath = resolveSub("./adapters/agent-compile");
-    assert.ok(agentCompilePath.length > 0, "./adapters/agent-compile must resolve");
-    const agentCompile = selfRequire("@openprose/reactor/adapters/agent-compile");
-    assert.ok(
-      Object.keys(agentCompile).length > 0,
-      "./adapters/agent-compile must surface a non-empty barrel",
-    );
+    // ./run/types — the type-only run-phase shapes (erased at runtime; the
+    // module resolves and loads as an empty/near-empty CJS object).
+    const runTypesPath = resolveSub("./run/types");
+    assert.ok(runTypesPath.length > 0, "./run/types must resolve");
 
-    // ./adapters/agent-render
-    const agentRenderPath = resolveSub("./adapters/agent-render");
-    assert.ok(agentRenderPath.length > 0, "./adapters/agent-render must resolve");
-    const agentRender = selfRequire("@openprose/reactor/adapters/agent-render");
+    // ./agents — the unified @openai/agents escape hatch (render + compile).
+    const agentsPath = resolveSub("./agents");
+    assert.ok(agentsPath.length > 0, "./agents must resolve");
+    const agents = selfRequire("@openprose/reactor/agents");
     assert.ok(
-      Object.keys(agentRender).length > 0,
-      "./adapters/agent-render must surface a non-empty barrel",
+      Object.keys(agents).length > 0,
+      "./agents must surface a non-empty barrel",
+    );
+    assert.equal(
+      typeof agents.createAgentRender,
+      "function",
+      "./agents must export createAgentRender (render surface)",
+    );
+    assert.equal(
+      typeof agents.compileForme,
+      "function",
+      "./agents must export compileForme (compile surface)",
     );
   });
 
@@ -113,9 +123,9 @@ describe("package exports map (Change A)", () => {
     assert.equal(pkg.name, "@openprose/reactor");
   });
 
-  it("(b) offline barrels ('.', './sdk', './canonicalizer') load without @openai/agents or zod", () => {
+  it("(b) offline barrels ('.', './internals', './adapters') load without @openai/agents or zod", () => {
     const env: NodeJS.ProcessEnv = { ...process.env, REACTOR_OFFLINE: "1" };
-    const leaked = loadedModulesFor([".", "./sdk", "./canonicalizer"], env);
+    const leaked = loadedModulesFor([".", "./internals", "./adapters"], env);
     assert.deepEqual(
       leaked,
       [],
@@ -123,24 +133,24 @@ describe("package exports map (Change A)", () => {
     );
   });
 
-  it("(c) the keyless re-lower path (./canonicalizer) imports clean with no key and exposes compileNode", () => {
-    const canonicalizer = selfRequire("@openprose/reactor/canonicalizer");
+  it("(c) the keyless re-lower path (./internals) imports clean with no key and exposes compileNode", () => {
+    const internals = selfRequire("@openprose/reactor/internals");
     assert.equal(
-      typeof canonicalizer.compileNode,
+      typeof internals.compileNode,
       "function",
-      "./canonicalizer must export compileNode (keyless re-lower)",
+      "./internals must export compileNode (keyless re-lower)",
     );
 
-    // Hermetic: even with the key explicitly removed, loading ./canonicalizer
+    // Hermetic: even with the key explicitly removed, loading ./internals
     // alone must not drag in @openai/agents or zod.
     const env: NodeJS.ProcessEnv = { ...process.env };
     delete env.OPENROUTER_API_KEY;
     env.REACTOR_OFFLINE = "1";
-    const leaked = loadedModulesFor(["./canonicalizer"], env);
+    const leaked = loadedModulesFor(["./internals"], env);
     assert.deepEqual(
       leaked,
       [],
-      `./canonicalizer must stay keyless; leaked: ${leaked.join(", ")}`,
+      `./internals must stay keyless; leaked: ${leaked.join(", ")}`,
     );
   });
 });

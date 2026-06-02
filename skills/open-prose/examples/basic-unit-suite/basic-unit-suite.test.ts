@@ -35,7 +35,9 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, afterAll } from "vitest";
 
-import { createFileSystemStorageAdapter } from "@openprose/reactor";
+import {
+  createFileSystemStorageAdapter,
+} from "@openprose/reactor";
 import {
   mountDag,
   createFileSystemReceiptLedger,
@@ -44,10 +46,12 @@ import {
   files,
   textFile,
   ATOMIC_FACET,
-  type ReconcilerTopology,
   type RenderContext,
-  type TopologyWorldModel,
-} from "@openprose/reactor/sdk";
+} from "@openprose/reactor";
+import type {
+  ReconcilerTopology,
+  TopologyWorldModel,
+} from "@openprose/reactor/internals";
 
 import {
   generateBasicUnitSuiteFixture,
@@ -514,7 +518,7 @@ describe("basic-unit-suite — the micro-mechanics (U05–U10)", () => {
     });
 
     const sharedStore = store;
-    const fsStore = new (require("@openprose/reactor").FileSystemWorldModelStore)({
+    const fsStore = new (require("@openprose/reactor/adapters").FileSystemWorldModelStore)({
       directory: join(dir, "wm"),
     });
     void sharedStore;

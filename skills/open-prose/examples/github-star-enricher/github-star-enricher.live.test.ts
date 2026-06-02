@@ -26,15 +26,19 @@ import {
   createFileSystemReceiptLedger,
   createReplaySession,
   ATOMIC_FACET,
-  type ReconcilerTopology,
-} from "@openprose/reactor/sdk";
-import { createFileSystemStorageAdapter } from "@openprose/reactor";
+} from "@openprose/reactor";
+import type {
+  ReconcilerTopology,
+} from "@openprose/reactor/internals";
+import {
+  createFileSystemStorageAdapter,
+} from "@openprose/reactor";
 import {
   createAgentRender,
   createOpenRouterProvider,
   hasOpenRouterKey,
   isOfflineForced,
-} from "@openprose/reactor/adapters/agent-render";
+} from "@openprose/reactor/agents";
 
 const GATEWAY = "gateway.star-events";
 const FOOTPRINT = "responsibility.footprint-alice";

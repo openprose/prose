@@ -18,12 +18,14 @@
 // {@link loadRepositoryReactor}, carrying the injected render factory.
 
 import {
-	EMPTY_SEMANTIC_DIFF,
-	type AsyncMountedRender,
 	type Cost,
 	type WakeSource,
-	type WorldModelStore,
 } from "@openprose/reactor";
+import { type WorldModelStore } from "@openprose/reactor/adapters";
+import {
+	EMPTY_SEMANTIC_DIFF,
+	type AsyncMountedRender,
+} from "@openprose/reactor/internals";
 import type { RepositoryServeReactorOptions } from "./repository-serve.js";
 import type { RepositoryRenderFactory } from "./repository-reactor.js";
 

@@ -19,7 +19,7 @@ import { describe, it, expect } from "vitest";
 import {
   hasOpenRouterKey,
   isOfflineForced,
-} from "@openprose/reactor/adapters/agent-render";
+} from "@openprose/reactor/agents";
 
 const live = hasOpenRouterKey() && !isOfflineForced();
 const skip = live ? false : "no OPENROUTER_API_KEY (or REACTOR_OFFLINE=1) — live tier skipped";
@@ -33,14 +33,14 @@ describe("monorepo-ci — live reliability (tier-3, key-gated)", () => {
       const { mkdtempSync, rmSync } = await import("node:fs");
       const { tmpdir } = await import("node:os");
       const { join } = await import("node:path");
-      const { createFileSystemStorageAdapter } = await import("@openprose/reactor");
       const {
+        createFileSystemStorageAdapter,
         mountDag,
         createFileSystemReceiptLedger,
         createReplaySession,
         ATOMIC_FACET,
-      } = await import("@openprose/reactor/sdk");
-      const { createAgentRender } = await import("@openprose/reactor/adapters/agent-render");
+      } = await import("@openprose/reactor");
+      const { createAgentRender } = await import("@openprose/reactor/agents");
 
       const dir = mkdtempSync(join(tmpdir(), "mci-live-"));
       try {

@@ -25,21 +25,25 @@ import {
   mountDag,
   createFileSystemReceiptLedger,
   ATOMIC_FACET,
-  type ReconcilerTopology,
-  type AsyncMountedRender,
-} from "@openprose/reactor/sdk";
+} from "@openprose/reactor";
+import type {
+  ReconcilerTopology,
+  AsyncMountedRender,
+} from "@openprose/reactor/internals";
 import {
   createFileSystemStorageAdapter,
-  FileSystemWorldModelStore,
   files,
   jsonFile,
-  readTextFile,
 } from "@openprose/reactor";
+import {
+  FileSystemWorldModelStore,
+  readTextFile,
+} from "@openprose/reactor/adapters";
 import {
   createAgentRender,
   createOpenRouterProvider,
   hasOpenRouterKey,
-} from "@openprose/reactor/adapters/agent-render";
+} from "@openprose/reactor/agents";
 
 const LANES = [
   "sdk-world-model",

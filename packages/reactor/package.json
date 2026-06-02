@@ -5,66 +5,39 @@
   "type": "commonjs",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "agents": ["./dist/agents/index.d.ts"],
+      "adapters": ["./dist/adapters/index.d.ts"],
+      "run": ["./dist/run/index.d.ts"],
+      "run/types": ["./dist/run/types.d.ts"],
+      "internals": ["./dist/internals/index.d.ts"]
+    }
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
-    "./receipt": {
-      "types": "./dist/receipt/index.d.ts",
-      "default": "./dist/receipt/index.js"
+    "./agents": {
+      "types": "./dist/agents/index.d.ts",
+      "default": "./dist/agents/index.js"
     },
-    "./cost": {
-      "types": "./dist/cost/index.d.ts",
-      "default": "./dist/cost/index.js"
+    "./adapters": {
+      "types": "./dist/adapters/index.d.ts",
+      "default": "./dist/adapters/index.js"
     },
-    "./world-model": {
-      "types": "./dist/world-model/index.d.ts",
-      "default": "./dist/world-model/index.js"
+    "./run": {
+      "types": "./dist/run/index.d.ts",
+      "default": "./dist/run/index.js"
     },
-    "./forme": {
-      "types": "./dist/forme/index.d.ts",
-      "default": "./dist/forme/index.js"
+    "./run/types": {
+      "types": "./dist/run/types.d.ts",
+      "default": "./dist/run/types.js"
     },
-    "./evidence-plan": {
-      "types": "./dist/evidence-plan/index.d.ts",
-      "default": "./dist/evidence-plan/index.js"
-    },
-    "./memo": {
-      "types": "./dist/memo/index.d.ts",
-      "default": "./dist/memo/index.js"
-    },
-    "./forecast": {
-      "types": "./dist/forecast/index.d.ts",
-      "default": "./dist/forecast/index.js"
-    },
-    "./sdk": {
-      "types": "./dist/sdk/index.d.ts",
-      "default": "./dist/sdk/index.js"
-    },
-    "./composition": {
-      "types": "./dist/composition/index.d.ts",
-      "default": "./dist/composition/index.js"
-    },
-    "./projection": {
-      "types": "./dist/projection/index.d.ts",
-      "default": "./dist/projection/index.js"
-    },
-    "./adapters/agent-compile": {
-      "types": "./dist/adapters/agent-compile/index.d.ts",
-      "default": "./dist/adapters/agent-compile/index.js"
-    },
-    "./adapters/agent-render": {
-      "types": "./dist/adapters/agent-render/index.d.ts",
-      "default": "./dist/adapters/agent-render/index.js"
-    },
-    "./run-project": {
-      "types": "./dist/sdk/run-project.d.ts",
-      "default": "./dist/sdk/run-project.js"
-    },
-    "./canonicalizer": {
-      "types": "./dist/canonicalizer/index.d.ts",
-      "default": "./dist/canonicalizer/index.js"
+    "./internals": {
+      "types": "./dist/internals/index.d.ts",
+      "default": "./dist/internals/index.js"
     },
     "./package.json": "./package.json"
   },

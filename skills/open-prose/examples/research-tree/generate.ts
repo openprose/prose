@@ -37,34 +37,42 @@ import { join } from "node:path";
 
 import {
   createFileSystemStorageAdapter,
+  type Cost,
+  type WakeSource,
+  type Wake,
+} from "@openprose/reactor";
+import {
   FileSystemWorldModelStore,
   fingerprintArtifact,
   type WorldModelFiles,
-  type Cost,
-  type Fingerprint,
-  type Facet,
-  type WakeSource,
-  type TopologyWorldModel,
-  type TopologyNode,
-  type TopologyEdge,
-  type Wake,
-} from "@openprose/reactor";
+} from "@openprose/reactor/adapters";
+import type {
+  Fingerprint,
+  Facet,
+  TopologyWorldModel,
+  TopologyNode,
+  TopologyEdge,
+} from "@openprose/reactor/internals";
 
 import {
   mountDag,
-  FileSystemReceiptLedger,
   files,
   jsonFile,
-  readTextFile,
-  zeroCost,
   ATOMIC_FACET,
-  createNullSignature,
-  EMPTY_SEMANTIC_DIFF,
-  type WorldModelStore,
-  type ReconcilerTopology,
   type RenderContext,
   type RenderProduct,
-} from "@openprose/reactor/sdk";
+} from "@openprose/reactor";
+import {
+  FileSystemReceiptLedger,
+  readTextFile,
+  type WorldModelStore,
+} from "@openprose/reactor/adapters";
+import {
+  zeroCost,
+  createNullSignature,
+  EMPTY_SEMANTIC_DIFF,
+  type ReconcilerTopology,
+} from "@openprose/reactor/internals";
 
 // ---------------------------------------------------------------------------
 // The tree shape. Three sub-questions; A and B have three finding leaves each,

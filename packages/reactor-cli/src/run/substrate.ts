@@ -21,10 +21,10 @@
 import * as path from 'path';
 
 import {
-  FileSystemWorldModelStore,
   createFileSystemStorageAdapter,
   createSystemClockAdapter,
 } from '@openprose/reactor';
+import { FileSystemWorldModelStore } from '@openprose/reactor/adapters';
 
 import type { RunAdapters } from './load-run-project';
 

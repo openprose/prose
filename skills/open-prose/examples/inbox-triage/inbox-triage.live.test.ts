@@ -26,30 +26,36 @@ import { createHash } from "node:crypto";
 import { describe, it, expect } from "vitest";
 
 import {
-  FileSystemWorldModelStore,
-  FileSystemReceiptLedger,
   createFileSystemStorageAdapter,
 } from "@openprose/reactor";
+import {
+  FileSystemWorldModelStore,
+  FileSystemReceiptLedger,
+} from "@openprose/reactor/adapters";
 import {
   mountDag,
   files,
   jsonFile,
+  ATOMIC_FACET,
+  type RenderContext,
+} from "@openprose/reactor";
+import {
   readTextFile,
+  type WorldModelStore,
+  type WorldModelFiles,
+} from "@openprose/reactor/adapters";
+import {
   zeroCost,
   createNullSignature,
   EMPTY_SEMANTIC_DIFF,
-  ATOMIC_FACET,
-  type WorldModelStore,
-  type WorldModelFiles,
-  type RenderContext,
   type ReconcilerTopology,
   type Fingerprint,
-} from "@openprose/reactor/sdk";
+} from "@openprose/reactor/internals";
 import {
   createAgentRender,
   createOpenRouterProvider,
   hasOpenRouterKey,
-} from "@openprose/reactor/adapters/agent-render";
+} from "@openprose/reactor/agents";
 
 // hasOpenRouterKey() short-circuits on REACTOR_OFFLINE (process env + .env
 // fallback), so this single gate covers both "no key" and "hermetic offline".

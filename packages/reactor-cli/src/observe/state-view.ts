@@ -22,9 +22,9 @@ import {
   createFileSystemReceiptLedger,
   createFileSystemStorageAdapter,
   verifyReceiptChain,
-  FileSystemWorldModelStore,
   type Receipt,
 } from '@openprose/reactor';
+import { FileSystemWorldModelStore } from '@openprose/reactor/adapters';
 
 import {
   loadIR,

@@ -27,23 +27,27 @@ import {
 	createFileSystemStorageAdapter,
 	createReactor,
 	createSystemClockAdapter,
+	type ReconcileResult,
+	type Receipt,
+	type WakeSource,
+} from "@openprose/reactor";
+import {
+	FileSystemWorldModelStore,
+	type ReactorClockAdapter,
+	type WorldModelStore,
+} from "@openprose/reactor/adapters";
+import {
 	inboundEdges,
 	type AssembledReactor,
 	type AsyncMountedRender,
 	type AsyncNodeMount,
 	type Facet,
 	type Fingerprint,
-	type ReactorClockAdapter,
-	type ReconcileResult,
-	type Receipt,
 	type ReconcilerTopology,
 	type TopologyEdge,
 	type TopologyNode,
 	type TopologyWorldModel,
-	type WakeSource,
-	type WorldModelStore,
-} from "@openprose/reactor";
-import { FileSystemWorldModelStore } from "@openprose/reactor";
+} from "@openprose/reactor/internals";
 import type { OpenProseRoot } from "./openprose-root.js";
 import type {
 	RepositoryIrFormeManifest,

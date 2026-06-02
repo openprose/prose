@@ -21,10 +21,14 @@ import { join } from "node:path";
 
 import {
   createReplaySession,
+} from "@openprose/reactor";
+import {
   FileSystemReceiptLedger,
+} from "@openprose/reactor/adapters";
+import {
   propagationTargets,
   type TopologyWorldModel,
-} from "@openprose/reactor/sdk";
+} from "@openprose/reactor/internals";
 import { createFileSystemStorageAdapter } from "@openprose/reactor";
 
 import { generateMonorepoCiFixture } from "./monorepo-ci";

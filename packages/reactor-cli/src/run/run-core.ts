@@ -29,12 +29,12 @@
  * (Correction #3 / N3).
  */
 
+import { contentAddressOf } from '@openprose/reactor/adapters';
 import {
-  contentAddressOf,
   type CanonicalizationSpec,
   type CompiledNode,
   type ReconcilerTopology,
-} from '@openprose/reactor';
+} from '@openprose/reactor/internals';
 
 import {
   loadIR,

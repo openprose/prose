@@ -21,21 +21,25 @@ import { mkdtempSync, rmSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { createFileSystemStorageAdapter } from "@openprose/reactor";
+import {
+  createFileSystemStorageAdapter,
+} from "@openprose/reactor";
 import {
   mountDag,
   createFileSystemReceiptLedger,
   createReplaySession,
   verifyReceiptChain,
-  propagationTargets,
   files,
   textFile,
   ATOMIC_FACET,
-  type ReconcilerTopology,
   type RenderContext,
-  type TopologyWorldModel,
   type LedgerReceipt,
-} from "@openprose/reactor/sdk";
+} from "@openprose/reactor";
+import {
+  propagationTargets,
+  type ReconcilerTopology,
+  type TopologyWorldModel,
+} from "@openprose/reactor/internals";
 
 import { generateInboxTriageExample } from "./generate";
 

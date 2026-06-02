@@ -36,36 +36,42 @@ import { mkdirSync, writeFileSync, rmSync, existsSync } from "node:fs";
 import { join } from "node:path";
 
 import {
-  FileSystemWorldModelStore,
   createFileSystemStorageAdapter,
-  fingerprintArtifact,
 } from "@openprose/reactor";
+import {
+  FileSystemWorldModelStore,
+  fingerprintArtifact,
+} from "@openprose/reactor/adapters";
 
 import {
   mountDag,
-  FileSystemReceiptLedger,
   files,
   jsonFile,
   textFile,
-  readTextFile,
-  zeroCost,
   ATOMIC_FACET,
-  createNullSignature,
-  EMPTY_SEMANTIC_DIFF,
+  type Cost,
+  type WakeSource,
+  type Wake,
+  type RenderContext,
+  type RenderProduct,
+} from "@openprose/reactor";
+import {
+  FileSystemReceiptLedger,
+  readTextFile,
   type WorldModelStore,
   type WorldModelFiles,
-  type Cost,
+} from "@openprose/reactor/adapters";
+import {
+  zeroCost,
+  createNullSignature,
+  EMPTY_SEMANTIC_DIFF,
   type Fingerprint,
   type Facet,
-  type WakeSource,
   type TopologyWorldModel,
   type TopologyNode,
   type TopologyEdge,
-  type Wake,
   type ReconcilerTopology,
-  type RenderContext,
-  type RenderProduct,
-} from "@openprose/reactor/sdk";
+} from "@openprose/reactor/internals";
 
 // ---------------------------------------------------------------------------
 // Node identities. The friendly labels the SPA shows come from LABELS below;

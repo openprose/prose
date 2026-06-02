@@ -28,21 +28,27 @@ import { mkdtempSync, rmSync, readFileSync, existsSync, readdirSync } from "node
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { createFileSystemStorageAdapter } from "@openprose/reactor";
+import {
+  createFileSystemStorageAdapter,
+} from "@openprose/reactor";
 import {
   mountDag,
   createFileSystemReceiptLedger,
-  FileSystemReceiptLedger,
   createReplaySession,
   verifyReceiptChain,
-  propagationTargets,
   files,
   textFile,
   ATOMIC_FACET,
-  type ReconcilerTopology,
   type RenderContext,
+} from "@openprose/reactor";
+import {
+  FileSystemReceiptLedger,
+} from "@openprose/reactor/adapters";
+import {
+  propagationTargets,
+  type ReconcilerTopology,
   type TopologyWorldModel,
-} from "@openprose/reactor/sdk";
+} from "@openprose/reactor/internals";
 
 import { generateObliqueWeaveFixture } from "./generate";
 

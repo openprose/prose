@@ -264,7 +264,7 @@ async function callJudgeModel({ prompt, envPath }) {
   const req = createRequire(
     join(root, "packages", "reactor-devtools", "package.json"),
   );
-  const ar = req("@openprose/reactor/adapters/agent-render");
+  const ar = req("@openprose/reactor/agents");
   const { Agent, Runner, setTracingDisabled } = req("@openai/agents");
   setTracingDisabled(true);
   const providerInstance = ar.createOpenRouterProvider({ envPath });

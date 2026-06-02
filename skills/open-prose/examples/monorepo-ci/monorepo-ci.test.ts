@@ -30,20 +30,24 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { createFileSystemStorageAdapter } from "@openprose/reactor";
+import {
+  createFileSystemStorageAdapter,
+} from "@openprose/reactor";
 import {
   mountDag,
   createFileSystemReceiptLedger,
   createReplaySession,
   verifyReceiptChain,
-  propagationTargets,
   files,
   textFile,
   ATOMIC_FACET,
-  type ReconcilerTopology,
   type RenderContext,
+} from "@openprose/reactor";
+import {
+  propagationTargets,
+  type ReconcilerTopology,
   type TopologyWorldModel,
-} from "@openprose/reactor/sdk";
+} from "@openprose/reactor/internals";
 
 import { generate } from "./generate";
 

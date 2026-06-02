@@ -51,11 +51,13 @@ const DEVTOOLS_PKG = join(
 // itself would.
 const wsRequire = createRequire(DEVTOOLS_PKG);
 
-/** `@openprose/reactor/sdk` — the runtime-independent receipt/replay surface. */
-export const sdk = wsRequire("@openprose/reactor/sdk");
+/** `@openprose/reactor` — the curated front door: the runtime-independent
+ * receipt/replay surface (`createReplaySession`, `verifyReceiptChain`, …). */
+export const sdk = wsRequire("@openprose/reactor");
 
-/** `@openprose/reactor/receipt` — chain-verify primitives over a raw trail. */
-export const receipt = wsRequire("@openprose/reactor/receipt");
+/** `@openprose/reactor` — chain-verify primitives over a raw trail
+ * (`verifyReceiptChain` / `verifyReceipt` are on the curated front door). */
+export const receipt = wsRequire("@openprose/reactor");
 
 /**
  * `@openprose/reactor-devtools/data` — the data layer that opens a committed
@@ -72,7 +74,7 @@ export const devtoolsData = wsRequire("@openprose/reactor-devtools/data");
  * already returns false when `REACTOR_OFFLINE` is set (readOpenRouterKey
  * short-circuits on `isOfflineForced`), so it is the single correct gate.
  */
-export const provider = wsRequire("@openprose/reactor/adapters/agent-render");
+export const provider = wsRequire("@openprose/reactor/agents");
 
 /** The default env file the key is read from — the openprose project `.env`. */
 export const DEFAULT_ENV_PATH =

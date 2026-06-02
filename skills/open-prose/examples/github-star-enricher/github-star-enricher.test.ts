@@ -34,23 +34,29 @@ import { join } from "node:path";
 
 import {
   createFileSystemStorageAdapter,
+} from "@openprose/reactor";
+import {
   FileSystemWorldModelStore,
   readTextFile,
-} from "@openprose/reactor";
+} from "@openprose/reactor/adapters";
 import {
   mountDag,
   createFileSystemReceiptLedger,
-  FileSystemReceiptLedger,
   createReplaySession,
   verifyReceiptChain,
-  propagationTargets,
   files,
   textFile,
   ATOMIC_FACET,
-  type ReconcilerTopology,
   type RenderContext,
+} from "@openprose/reactor";
+import {
+  FileSystemReceiptLedger,
+} from "@openprose/reactor/adapters";
+import {
+  propagationTargets,
+  type ReconcilerTopology,
   type TopologyWorldModel,
-} from "@openprose/reactor/sdk";
+} from "@openprose/reactor/internals";
 
 import { generateGithubStarEnricherFixture } from "./generate";
 

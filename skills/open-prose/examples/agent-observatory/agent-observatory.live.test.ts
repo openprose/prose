@@ -41,32 +41,38 @@ import { describe, expect, it } from "vitest";
 // Storage/store/fingerprint live on the bare `@openprose/reactor` barrel; the
 // reconciler primitives + receipt helpers live on `/sdk`. Both are public.
 import {
-  FileSystemWorldModelStore,
   createFileSystemStorageAdapter,
-  fingerprintArtifact,
 } from "@openprose/reactor";
 import {
+  FileSystemWorldModelStore,
+  fingerprintArtifact,
+} from "@openprose/reactor/adapters";
+import {
   mountDag,
-  FileSystemReceiptLedger,
   files,
   jsonFile,
+  ATOMIC_FACET,
+  type Wake,
+} from "@openprose/reactor";
+import {
+  FileSystemReceiptLedger,
   readTextFile,
+  type WorldModelStore,
+  type WorldModelFiles,
+} from "@openprose/reactor/adapters";
+import {
   zeroCost,
   createNullSignature,
   EMPTY_SEMANTIC_DIFF,
-  ATOMIC_FACET,
-  type WorldModelStore,
-  type WorldModelFiles,
   type Fingerprint,
-  type Wake,
   type ReconcilerTopology,
   type AsyncMountedRender,
-} from "@openprose/reactor/sdk";
+} from "@openprose/reactor/internals";
 import {
   createAgentRender,
   createOpenRouterProvider,
   hasOpenRouterKey,
-} from "@openprose/reactor/adapters/agent-render";
+} from "@openprose/reactor/agents";
 
 // Honor REACTOR_OFFLINE and require a real key — otherwise this is a no-op.
 const offline = process.env.REACTOR_OFFLINE === "1" || process.env.REACTOR_OFFLINE === "true";

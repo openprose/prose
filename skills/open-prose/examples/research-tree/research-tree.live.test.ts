@@ -20,26 +20,32 @@ import { join } from "node:path";
 import { createHash } from "node:crypto";
 import { describe, it, expect } from "vitest";
 
-import { FileSystemWorldModelStore } from "@openprose/reactor";
+import {
+  FileSystemWorldModelStore,
+} from "@openprose/reactor/adapters";
 import {
   mountDag,
   files,
   jsonFile,
+  ATOMIC_FACET,
+  type RenderContext,
+} from "@openprose/reactor";
+import {
   readTextFile,
   fingerprintArtifact,
-  ATOMIC_FACET,
   type WorldModelStore,
   type WorldModelFiles,
-  type RenderContext,
-  type ReconcilerTopology,
-  type Fingerprint,
-  type Facet,
-} from "@openprose/reactor/sdk";
+} from "@openprose/reactor/adapters";
+import type {
+  ReconcilerTopology,
+  Fingerprint,
+  Facet,
+} from "@openprose/reactor/internals";
 import {
   createAgentRender,
   createOpenRouterProvider,
   hasOpenRouterKey,
-} from "@openprose/reactor/adapters/agent-render";
+} from "@openprose/reactor/agents";
 
 const HAS_KEY = hasOpenRouterKey();
 
@@ -199,12 +205,13 @@ describe("research-tree (LIVE) — propagation UP a tree with model-produced fin
           L2: { rev: 1, claim: "retrieval grounds generation in fresh sources" },
         };
 
-        const { FileSystemReceiptLedger, createFileSystemStorageAdapter } = await import("@openprose/reactor");
+        const { createFileSystemStorageAdapter } = await import("@openprose/reactor");
+        const { FileSystemReceiptLedger } = await import("@openprose/reactor/adapters");
         const storage = createFileSystemStorageAdapter({ directory: ledgerDir });
         const ledger = new FileSystemReceiptLedger({ storage });
         const dag = mountDag({ topology: topology(), mounts: {}, asyncMounts, store, ledger });
 
-        const { zeroCost, createNullSignature, EMPTY_SEMANTIC_DIFF } = await import("@openprose/reactor/sdk");
+        const { zeroCost, createNullSignature, EMPTY_SEMANTIC_DIFF } = await import("@openprose/reactor/internals");
         const publishAndWake = async () => {
           const fm = files({ "corpus.json": jsonFile({ leaves: corpus }) });
           const commitRes = store.commitPublished(SOURCE, fm, perLeafCanon("corpus.json"));

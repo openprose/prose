@@ -7,13 +7,15 @@ import { strict as assert } from "node:assert";
 import { test } from "node:test";
 
 import {
-  createReceipt,
   createReplaySession,
-  createNullSignature,
   ATOMIC_FACET,
   type LedgerReceipt,
+} from "@openprose/reactor";
+import {
+  createReceipt,
+  createNullSignature,
   type TopologyWorldModel,
-} from "@openprose/reactor/sdk";
+} from "@openprose/reactor/internals";
 
 import { buildSnapshot, type OpenedStateDir } from "./index";
 

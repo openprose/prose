@@ -58,35 +58,41 @@ import { join } from "node:path";
 
 import {
   mountDag,
-  FileSystemWorldModelStore,
-  FileSystemReceiptLedger,
   createFileSystemStorageAdapter,
   files,
   jsonFile,
+  ATOMIC_FACET,
+  type Cost,
+  type WakeSource,
+  type Wake,
+} from "@openprose/reactor";
+import {
+  FileSystemWorldModelStore,
+  FileSystemReceiptLedger,
   readTextFile,
   fingerprintArtifact,
+  type WorldModelStore,
+  type WorldModelFiles,
+} from "@openprose/reactor/adapters";
+import {
   zeroCost,
   createNullSignature,
   EMPTY_SEMANTIC_DIFF,
-  ATOMIC_FACET,
-  type WorldModelStore,
-  type WorldModelFiles,
-  type Cost,
   type Fingerprint,
   type Facet,
-  type WakeSource,
-  type Wake,
   type TopologyWorldModel,
   type TopologyNode,
   type TopologyEdge,
-} from "@openprose/reactor";
+} from "@openprose/reactor/internals";
 
 import type {
-  ReconcilerTopology,
   RenderContext,
   RenderProduct,
   RenderFailure,
-} from "@openprose/reactor/sdk";
+} from "@openprose/reactor";
+import type {
+  ReconcilerTopology,
+} from "@openprose/reactor/internals";
 
 // ---------------------------------------------------------------------------
 // The synthetic-safe world. THREE stargazers from a single batch of new stars.

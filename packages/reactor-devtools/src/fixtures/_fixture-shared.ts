@@ -5,7 +5,8 @@
 
 import { createHash } from "node:crypto";
 
-import { readTextFile, type WorldModelStore, type Fingerprint } from "@openprose/reactor";
+import { readTextFile, type WorldModelStore } from "@openprose/reactor/adapters";
+import type { Fingerprint } from "@openprose/reactor/internals";
 
 // Deterministic fingerprint of a structured sub-value (own facet tokens): a
 // sha256 over a stable, key-sorted JSON encoding, so a facet token moves iff its

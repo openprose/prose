@@ -29,9 +29,11 @@ import { spawnSync } from 'node:child_process';
 import {
   createFileSystemStorageAdapter,
   createSystemClockAdapter,
+} from '@openprose/reactor';
+import {
   FileSystemWorldModelStore,
   type WorldModelStore,
-} from '@openprose/reactor';
+} from '@openprose/reactor/adapters';
 
 import { runRunCommand } from '../commands/run';
 import {

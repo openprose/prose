@@ -1,51 +1,96 @@
-// @openprose/reactor — the public barrel.
+// @openprose/reactor — THE curated front door (the ~45 headline names).
+//
+// This is the one obvious entry point for engineers AND coding agents. It is a
+// DELIBERATE curation, not the firehose: the deep domain shapes, the reconciler
+// construction spine, and the nine ex-doc-only domains all re-home under
+// `@openprose/reactor/internals` (nothing is removed — see the capability
+// ledger / REHOME-MAP). The escape hatches live at `/agents` (the
+// `@openai/agents` surface), `/adapters` (substrate + gateway-ingress +
+// record/replay + passthrough backends), `/run` + `/run/types` (the offline
+// run-phase boundary).
 
-// --- The shared shapes: the coordination spine (SHAPES.md) ------------------
-export * from "./shapes";
+// ── The assemblers (the rungs a driver mounts against) ──────────────────────
+export {
+  createReactor,
+  type CreateReactorInput,
+} from "./sdk/create-reactor";
 
-// --- Cycle + predicate keep-home (SHAPES.md §8) -----------------------------
-export * from "./cycle";
+export {
+  mountDag,
+  type MountDagInput,
+  type MountedDag,
+  type NodeMount,
+  type MutableReceiptLedger,
+} from "./sdk/mounted-dag";
 
-// --- The world-model store (architecture.md §5.2, §10; world-model.md §1) ---
-export * from "./world-model";
+export {
+  renderAtom,
+  renderAtomAsync,
+  type RenderAtomInput,
+  type RenderAtomAsyncInput,
+  type RenderAtomResult,
+  type RenderContext,
+  type RenderProduct,
+  type RenderFailure,
+} from "./sdk/render-atom";
 
-// --- The compiled canonicalizer (architecture.md §3.2) ----------------------
-export * from "./canonicalizer";
+// ── Reconcile result vocabulary (what the drive verbs return) ───────────────
+export type {
+  ReconcileResult,
+  ReconcileDisposition,
+  RenderOutcome,
+  WakeEvent,
+} from "./reactor";
 
-// --- The compiled postcondition validators (architecture.md §3.3) -----------
-export * from "./postcondition";
+// ── The durable substrate factories (the blessed persistence builders) ──────
+export {
+  createFileSystemStorageAdapter,
+  createMemoryStorageAdapter,
+} from "./adapters";
 
-// --- Forme: the compile-phase wiring (architecture.md §3.1, §6.3) -----------
-export * from "./forme";
+export {
+  createFixedClockAdapter,
+  createSystemClockAdapter,
+} from "./adapters/clock-system";
 
-// --- The receipt ledger object (SHAPES.md §4; delta.md §A3.2) ---------------
-export * from "./receipt";
+export { createFileSystemReceiptLedger } from "./sdk/fs-ledger";
 
-// --- The memo re-key + skip decision (SHAPES.md §3; delta.md §A3.3) ---------
-export * from "./memo";
+// ── Observe / replay (the read surface over a ledger) ───────────────────────
+export {
+  createReplaySession,
+  type ReplaySession,
+  type ReplaySessionInput,
+  type ReplaySessionOptions,
+  type ReplayCostRollup,
+  type ReplayCostBucket,
+} from "./sdk/replay-session";
 
-// --- Composition: subscriptions = props, pins = read isolation (§7) ---------
-export * from "./composition";
+// ── The self-driven continuity cadence ──────────────────────────────────────
+export {
+  createContinuityScheduler,
+  createAsyncContinuityScheduler,
+  type ContinuityScheduler,
+  type AsyncContinuityScheduler,
+  type NodeFreshnessReader,
+} from "./sdk/continuity-scheduler";
 
-// --- Forecast: continuity clock + self-recheck (architecture.md §3.5) -------
-export * from "./forecast";
+// ── The vocabulary a driver actually needs ──────────────────────────────────
+export {
+  verifyReceipt,
+  verifyReceiptChain,
+  type LedgerReceipt,
+} from "./receipt";
 
-// --- Evidence resolution by reference (delta.md §A3.1) ----------------------
-export * from "./evidence-plan";
+export {
+  files,
+  textFile,
+  jsonFile,
+} from "./world-model";
 
-// --- Observable surprise-cost + receipt projection (delta.md §A4) -----------
-export * from "./cost";
-export * from "./projection";
-
-// --- The run-phase reconciler spine (architecture.md §4.1) ------------------
-export * from "./reactor";
-
-// --- The injection boundary: adapter port contracts (architecture.md §5.3) --
-export * from "./adapters";
-
-// --- The SDK front door: renderAtom + mountDag (architecture.md §1) ---------
-export * from "./sdk";
-
-// `createSkippedReceipt` ships from both ./receipt and ./memo; pin ./receipt's
-// (the canonical Receipt builder) over the ./memo star-export.
-export { createSkippedReceipt } from "./receipt";
+export {
+  ATOMIC_FACET,
+  type Receipt,
+  type Cost,
+  type Wake,
+  type WakeSource,
+} from "./shapes";

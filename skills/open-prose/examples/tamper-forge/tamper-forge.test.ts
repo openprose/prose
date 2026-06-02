@@ -36,7 +36,9 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { createFileSystemStorageAdapter } from "@openprose/reactor";
+import {
+  createFileSystemStorageAdapter,
+} from "@openprose/reactor";
 import {
   mountDag,
   createFileSystemReceiptLedger,
@@ -46,14 +48,18 @@ import {
   files,
   textFile,
   ATOMIC_FACET,
-  type ReconcilerTopology,
   type RenderContext,
-  type TopologyWorldModel,
   type LedgerReceipt,
-} from "@openprose/reactor/sdk";
+} from "@openprose/reactor";
+import type {
+  ReconcilerTopology,
+  TopologyWorldModel,
+} from "@openprose/reactor/internals";
 // computeReceiptContentHash lives on the public ./receipt subpath (it is NOT
 // re-exported through /sdk). The re-stamp attack uses it to heal the chain.
-import { computeReceiptContentHash } from "@openprose/reactor/receipt";
+import {
+  computeReceiptContentHash,
+} from "@openprose/reactor/internals";
 
 import { generateTamperForgeExample } from "./generate";
 

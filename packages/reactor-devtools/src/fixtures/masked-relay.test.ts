@@ -16,16 +16,18 @@ import { join } from "node:path";
 
 import {
   createReplaySession,
-  FileSystemReceiptLedger,
   verifyReceiptChain,
   ATOMIC_FACET,
+} from "@openprose/reactor";
+import {
+  FileSystemReceiptLedger,
+} from "@openprose/reactor/adapters";
+import {
   type TopologyWorldModel,
   type ContentAddress,
-} from "@openprose/reactor/sdk";
-import {
-  FileSystemWorldModelStore,
-  createFileSystemStorageAdapter,
-} from "@openprose/reactor";
+} from "@openprose/reactor/internals";
+import { createFileSystemStorageAdapter } from "@openprose/reactor";
+import { FileSystemWorldModelStore } from "@openprose/reactor/adapters";
 
 import { generateMaskedRelayFixture } from "./masked-relay";
 

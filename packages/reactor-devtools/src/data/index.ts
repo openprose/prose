@@ -30,22 +30,26 @@ import { join } from "node:path";
 
 import {
   createReplaySession,
-  propagationTargets,
-  FileSystemReceiptLedger,
   verifyReceipt,
   verifyReceiptChain,
   ATOMIC_FACET,
+  createFileSystemStorageAdapter,
   type ReplaySession,
-  type ReplaySessionCostOptions,
   type LedgerReceipt,
+} from "@openprose/reactor";
+import {
+  FileSystemReceiptLedger,
+  FileSystemWorldModelStore,
+} from "@openprose/reactor/adapters";
+import {
+  propagationTargets,
+  type ReplaySessionCostOptions,
   type TopologyWorldModel,
   type ContentAddress,
-} from "@openprose/reactor/sdk";
-import { createFileSystemStorageAdapter } from "@openprose/reactor";
+} from "@openprose/reactor/internals";
 
 /** The chain-verify result shape (the return of `verifyReceiptChain`). */
 type ChainResult = ReturnType<typeof verifyReceiptChain>;
-import { FileSystemWorldModelStore } from "@openprose/reactor/world-model";
 
 /** Options for opening a replayable state directory. */
 export interface OpenStateDirOptions {

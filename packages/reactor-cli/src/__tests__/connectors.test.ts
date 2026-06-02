@@ -28,10 +28,12 @@ import { join } from 'node:path';
 import {
   createMemoryStorageAdapter,
   createSystemClockAdapter,
+} from '@openprose/reactor';
+import {
   FileSystemWorldModelStore,
   readTextFile,
   type WorldModelStore,
-} from '@openprose/reactor';
+} from '@openprose/reactor/adapters';
 
 import { bootReactorHandle } from '../commands/serve';
 import { runTriggerCommand } from '../commands/trigger';

@@ -101,7 +101,7 @@ export interface CallRunProjectResult {
  * statically resolve the subpath under Node resolution — runtime resolves it
  * against the built `dist`, exactly as the offline boundary intends: reached
  * ONLY via dynamic import inside the run/serve handler). */
-const RUN_PROJECT_SPECIFIER = '@openprose/reactor/run-project';
+const RUN_PROJECT_SPECIFIER = '@openprose/reactor/run';
 
 /** The shape of the model-bearing run-project barrel we dynamically import. */
 interface RunProjectModule {

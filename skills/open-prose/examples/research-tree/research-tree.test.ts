@@ -25,31 +25,37 @@ import { describe, expect, it } from "vitest";
 
 import {
   createFileSystemStorageAdapter,
-  FileSystemWorldModelStore,
-  fingerprintArtifact,
   type ReconcileResult,
 } from "@openprose/reactor";
+import {
+  FileSystemWorldModelStore,
+  fingerprintArtifact,
+} from "@openprose/reactor/adapters";
 import {
   mountDag,
   createFileSystemReceiptLedger,
   createReplaySession,
-  propagationTargets,
   files,
   jsonFile,
+  ATOMIC_FACET,
+  verifyReceiptChain,
+  type RenderContext,
+  type RenderProduct,
+} from "@openprose/reactor";
+import {
   readTextFile,
+  type WorldModelFiles,
+} from "@openprose/reactor/adapters";
+import {
+  propagationTargets,
   zeroCost,
   createNullSignature,
   EMPTY_SEMANTIC_DIFF,
-  ATOMIC_FACET,
-  verifyReceiptChain,
   type ReconcilerTopology,
-  type RenderContext,
-  type RenderProduct,
-  type WorldModelFiles,
   type Facet,
   type Fingerprint,
   type TopologyWorldModel,
-} from "@openprose/reactor/sdk";
+} from "@openprose/reactor/internals";
 
 import { generateResearchTree } from "./generate";
 

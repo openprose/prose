@@ -27,16 +27,20 @@ import {
   createReplaySession,
   verifyReceiptChain,
   ATOMIC_FACET,
-  type ReconcilerTopology,
   type LedgerReceipt,
-} from "@openprose/reactor/sdk";
-import { createFileSystemStorageAdapter } from "@openprose/reactor";
+} from "@openprose/reactor";
+import type {
+  ReconcilerTopology,
+} from "@openprose/reactor/internals";
+import {
+  createFileSystemStorageAdapter,
+} from "@openprose/reactor";
 import {
   createAgentRender,
   createOpenRouterProvider,
   hasOpenRouterKey,
   isOfflineForced,
-} from "@openprose/reactor/adapters/agent-render";
+} from "@openprose/reactor/agents";
 
 const FEED = "ledger-feed";
 const AUDITOR = "chain-auditor";

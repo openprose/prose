@@ -37,15 +37,19 @@ import {
   createFileSystemReceiptLedger,
   createReplaySession,
   verifyReceiptChain,
-  propagationTargets,
   files,
   textFile,
   ATOMIC_FACET,
-  type ReconcilerTopology,
   type RenderContext,
+} from "@openprose/reactor";
+import {
+  propagationTargets,
+  type ReconcilerTopology,
   type TopologyWorldModel,
-} from "@openprose/reactor/sdk";
-import { createFileSystemStorageAdapter } from "@openprose/reactor";
+} from "@openprose/reactor/internals";
+import {
+  createFileSystemStorageAdapter,
+} from "@openprose/reactor";
 
 import { generateImplementationPipelineFixture } from "./generate";
 

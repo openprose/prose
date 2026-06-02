@@ -47,19 +47,20 @@
 
 import {
   ATOMIC_FACET,
-  EMPTY_SEMANTIC_DIFF,
+  files as wmFiles,
+  jsonFile,
+} from '@openprose/reactor';
+import { EMPTY_SEMANTIC_DIFF, createNullSignature } from '@openprose/reactor/internals';
+import {
   contentAddressOf,
-  createNullSignature,
   createPollConnectorAdapter,
   createIdempotencyCursor,
   loadIdempotencyCursor,
   cursorRegistryPatch,
-  files as wmFiles,
-  jsonFile,
   readTextFile,
   pollGatewayAsync,
   type GatewayArrival,
-} from '@openprose/reactor';
+} from '@openprose/reactor/adapters';
 
 import * as fs from 'fs';
 import * as path from 'path';
