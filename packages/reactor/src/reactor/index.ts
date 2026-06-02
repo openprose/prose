@@ -157,14 +157,10 @@ export interface RenderRequest {
 export type SpawnRender = (request: RenderRequest) => RenderOutcome;
 
 /**
- * The async render spawn — Phase-1 live execution (architecture.md §1 seam;
- * 05-reactor-integration §1.1). A real render is one bounded LLM session = one
- * `await run(...)`, so the production spawn returns a `Promise<RenderOutcome>`.
- * This sits ALONGSIDE the sync `SpawnRender` (additive: D1 in 00-SYNTHESIS) so
- * the existing synchronous reconcile/drain path stays bit-identical and green.
- * A sync render is trivially an already-resolved promise, so this async shape
- * subsumes the sync one; both are kept transiently for test-blast-radius
- * control (05 §5 Phase A).
+ * The async render spawn (architecture.md §1 seam). A real render is one bounded
+ * LLM session = one `await run(...)`, so the production spawn returns a
+ * `Promise<RenderOutcome>`. A sync render is trivially an already-resolved
+ * promise, so this async shape subsumes the sync `SpawnRender`.
  */
 export type SpawnRenderAsync = (
   request: RenderRequest,
@@ -359,11 +355,6 @@ export function createReconciler(
     // receipt. If neither half of the key moved, write a cheap `skipped` receipt
     // and spawn NOTHING (architecture.md §4.1). "Cost scales with surprise."
     const last = ports.ledger.lastReceipt(node);
-    // A prior FAILED receipt is NOT a memoizable result — the render committed
-    // nothing, so the node must RE-ATTEMPT on its next wake rather than skip
-    // forever (world-model.md §8: "the next upstream receipt or the Continuity
-    // self-tick re-attempts"). A transient failure (e.g. a provider 402) must not
-    // poison the node into a permanent skip.
     if (last !== null && last.status !== "failed" && !memoKeyMoved(last, key)) {
       const skipped = buildSkippedReceipt({
         node,
@@ -434,12 +425,10 @@ export function createReconciler(
   };
 
   // -------------------------------------------------------------------------
-  // The ASYNC path (Phase-1 live execution) — ADDITIVE alongside the sync path
-  // above. The sync `reconcile`/`drain`/`renderAndCommit` are untouched and stay
-  // bit-identical (D1 in 00-SYNTHESIS; 05 §5 Phase A). The async body mirrors the
-  // sync one EXACTLY except the render is now `await`ed — so the single-flight
-  // lock at (B)→(D) is released across the await, and a wake landing mid-render
-  // from another async caller hits the (A) coalesce guard for real (05 §1.3).
+  // The ASYNC path. The body mirrors the sync one except the render is `await`ed
+  // — so the single-flight lock at (B)→(D) is released across the await, and a
+  // wake landing mid-render from another async caller hits the (A) coalesce
+  // guard for real.
   // -------------------------------------------------------------------------
 
   const reconcileAsync = async (
@@ -472,12 +461,10 @@ export function createReconciler(
     const key = makeMemoKey(contractFp, inputFingerprints);
 
     // --- MEMO / SKIP. Pure-sync fingerprint comparison; no render spawned.
+    // A prior FAILED receipt is NOT memoizable — the render committed nothing, so
+    // a transient failure (e.g. a provider 402) must re-attempt on its next wake
+    // rather than poison the node into a permanent skip (world-model.md §8).
     const last = ports.ledger.lastReceipt(node);
-    // A prior FAILED receipt is NOT a memoizable result — the render committed
-    // nothing, so the node must RE-ATTEMPT on its next wake rather than skip
-    // forever (world-model.md §8: "the next upstream receipt or the Continuity
-    // self-tick re-attempts"). A transient failure (e.g. a provider 402) must not
-    // poison the node into a permanent skip.
     if (last !== null && last.status !== "failed" && !memoKeyMoved(last, key)) {
       const skipped = buildSkippedReceipt({
         node,
@@ -611,29 +598,60 @@ function renderAndCommit(input: {
     };
   }
 
-  // --- COMMIT: the render already persisted its published world-model to the
-  // store (returning the WorldModelCommit: version + fingerprints); the
-  // reconciler signs the receipt and appends it to the node-scoped ledger
-  // (architecture.md §4.1, §5.1).
+  return commitRendered({
+    ports,
+    topology,
+    node,
+    contractFp,
+    wake,
+    key,
+    last,
+    prevRef,
+    commit: outcome.commit,
+    semantic_diff: outcome.semantic_diff,
+    cost: outcome.cost,
+  });
+}
+
+/**
+ * The post-render commit + propagate tail, shared by `renderAndCommit` and
+ * `renderAndCommitAsync` (pure-sync once the render outcome is resolved): the
+ * render already persisted its published world-model to the store, so the
+ * reconciler signs the `rendered` receipt, appends it to the node-scoped ledger,
+ * and wakes downstreams subscribed to a MOVED facet. Only a moved fingerprint
+ * propagates (world-model.md §8); cold start (no prior receipt) is a move for
+ * every facet the node publishes.
+ */
+function commitRendered(input: {
+  ports: ReconcilerPorts;
+  topology: ReconcilerTopology;
+  node: string;
+  contractFp: Fingerprint;
+  wake: Wake;
+  key: MemoKey;
+  last: Receipt | null;
+  prevRef: ContentAddress | null;
+  commit: WorldModelCommit;
+  semantic_diff: SemanticDiff;
+  cost: Cost;
+}): ReconcileResult {
+  const { ports, topology, node, contractFp, wake, key, last, prevRef } = input;
+
   const rendered = buildRenderedReceipt({
     node,
     contractFp,
     wake,
     key,
-    fingerprints: outcome.commit.fingerprints,
-    semantic_diff: outcome.semantic_diff,
+    fingerprints: input.commit.fingerprints,
+    semantic_diff: input.semantic_diff,
     prev: prevRef,
-    cost: outcome.cost,
+    cost: input.cost,
   });
   const ref = ports.ledger.append(rendered);
 
-  // --- PROPAGATE: wake downstreams subscribed to a MOVED facet. Only a moved
-  // fingerprint propagates (world-model.md §8: "Only `rendered` with a moved
-  // fingerprint propagates"). Cold start (no prior receipt) is a move for every
-  // facet the node publishes.
   const movedFacets = movedFacetsBetween(
     last?.fingerprints ?? null,
-    outcome.commit.fingerprints,
+    input.commit.fingerprints,
   );
   const propagated =
     movedFacets.size > 0
@@ -655,12 +673,11 @@ function renderAndCommit(input: {
 }
 
 /**
- * The ASYNC sibling of `renderAndCommit` (05 §1.1, §1.4). Identical commit /
- * sign / propagate machinery — all pure-sync — but the render spawn is AWAITED.
- * Prefers the async port `spawnRenderAsync` (a real bounded LLM session); when
- * absent, wraps the sync `spawnRender` (a render is trivially an already-resolved
- * promise), so the async path subsumes the sync one without forcing every wiring
- * to supply an async spawn (additive, 05 §5 Phase A).
+ * The ASYNC sibling of `renderAndCommit`: identical commit / sign / propagate
+ * machinery, but the render spawn is AWAITED. Prefers the async port
+ * `spawnRenderAsync` (a real bounded LLM session); when absent, wraps the sync
+ * `spawnRender` (a render is trivially an already-resolved promise), so the async
+ * path subsumes the sync one without forcing every wiring to supply an async spawn.
  */
 async function renderAndCommitAsync(input: {
   ports: ReconcilerPorts;
@@ -715,39 +732,19 @@ async function renderAndCommitAsync(input: {
   }
 
   // --- COMMIT + PROPAGATE: identical pure-sync machinery as the sync path.
-  const rendered = buildRenderedReceipt({
+  return commitRendered({
+    ports,
+    topology,
     node,
     contractFp,
     wake,
     key,
-    fingerprints: outcome.commit.fingerprints,
+    last,
+    prevRef,
+    commit: outcome.commit,
     semantic_diff: outcome.semantic_diff,
-    prev: prevRef,
     cost: outcome.cost,
   });
-  const ref = ports.ledger.append(rendered);
-
-  const movedFacets = movedFacetsBetween(
-    last?.fingerprints ?? null,
-    outcome.commit.fingerprints,
-  );
-  const propagated =
-    movedFacets.size > 0
-      ? propagationTargets({
-          topology: topology.topology,
-          producer: node,
-          movedFacets,
-          wakeRef: ref,
-        })
-      : [];
-
-  return {
-    node,
-    disposition: "rendered",
-    receipt: rendered,
-    receipt_ref: ref,
-    propagated,
-  };
 }
 
 // ===========================================================================

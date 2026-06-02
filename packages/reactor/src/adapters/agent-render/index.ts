@@ -1,28 +1,27 @@
 /**
- * The agent render — the vertical slice (Phase 1, step 5; 05 §2).
+ * The agent render.
  *
  * `createAgentRender(config)` returns an `AsyncMountedRender`: a `RenderContext`
- * in, a `Promise<RenderProduct | RenderFailure>` out — the atom seam
- * (architecture.md §1 L26–L31), now backed by ONE bounded `@openai/agents`
- * session. The factory closes over the SKILL (loaded once, 05 §3), the model
- * provider (the scoped OpenRouter wiring, provider.ts), and the world-model
- * store, so per-render work is just: compose instructions → build a POINTER
- * input → run one bounded session with the step-3 tools → harvest the workspace
- * files → map to a `RenderProduct`.
+ * in, a `Promise<RenderProduct | RenderFailure>` out — the atom seam, backed by
+ * ONE bounded `@openai/agents` session. The factory closes over the SKILL
+ * (loaded once), the model provider (the scoped OpenRouter wiring, provider.ts),
+ * and the world-model store, so per-render work is just: compose instructions →
+ * build a POINTER input → run one bounded session with the tools → harvest the
+ * workspace files → map to a `RenderProduct`.
  *
- * The load-bearing disciplines (all settled, D6 + 05 §2.3/§3):
+ * The load-bearing disciplines:
  *   - READ BY REFERENCE. The run `input` is the WAKE (a short pointer payload),
  *     never the prior truth pre-stuffed. The agent reads its prior + upstream
- *     truth through `wm_read`/`wm_list` as needed (world-model.md §1 L24–L33).
+ *     truth through `wm_read`/`wm_list` as needed.
  *   - THE AGENT WRITES FILES; THE HARNESS PROMOTES-AND-FINGERPRINTS. The agent
  *     writes its world-model into its PRIVATE workspace via `wm_write_workspace`;
  *     this render HARVESTS those workspace files into the `RenderProduct`. It
  *     does NOT return file contents in `finalOutput` (a small done/failed signal
  *     only, output-schema.ts), and it does NOT commit — `commitPublished` is the
- *     harness's job in `mountDag`'s async spawn (D6; 05 §2.3).
- *   - DETERMINISM KNOBS. temperature 0 + seed via `providerData` (05 §4.1); the
- *     compiled canonicalizer (the harness's, on commit) is the fingerprint-stable
- *     backstop, never a model call (world-model.md §3).
+ *     harness's job in `mountDag`'s async spawn.
+ *   - DETERMINISM KNOBS. temperature 0 + seed via `providerData`; the compiled
+ *     canonicalizer (the harness's, on commit) is the fingerprint-stable
+ *     backstop, never a model call.
  *
  * Offline-build guard: this module imports `@openai/agents` (Agent/Runner) +
  * (transitively, via tools.ts/output-schema.ts) `zod`, all dev/optional deps.
@@ -98,8 +97,8 @@ export interface AgentRenderConfig {
    */
   readonly store: WorldModelStore;
   /**
-   * The per-node compiled-contract view (05 §3). `(node) => view`, so one
-   * factory serves a whole DAG; the slice mounts a single hand-authored node.
+   * The per-node compiled-contract view. `(node) => view`, so one factory serves
+   * a whole DAG; the slice mounts a single hand-authored node.
    */
   readonly contractFor: (node: string) => CompiledContractView;
   /**
@@ -116,7 +115,7 @@ export interface AgentRenderConfig {
   /** Path to the SKILL, when `skill` is not supplied. */
   readonly skillPath?: string;
   /**
-   * The SKILL-bundle root the install preflight checks (6.3; §3.4). Defaults to
+   * The SKILL-bundle root the install preflight checks. Defaults to
    * {@link DEFAULT_SKILL_ROOT} (the directory holding `SKILL.md`). On
    * construction, this factory asserts the bundle is installed there — `SKILL.md`
    * plus its sub-doc manifest exist — and throws a legible
@@ -126,48 +125,47 @@ export interface AgentRenderConfig {
   readonly skillRoot?: string;
   /**
    * The BASE directory under which each render's REAL per-node working directory
-   * lives (Option B; SPEC §4). Each render mounts against `<workspaceRoot>/<node>/`
-   * — a real dir the agent writes with `fs_*` / `shell_exec` / `apply_patch`, that
-   * the harness HARVESTS on commit (replacing the virtual-workspace harvest). When
-   * omitted, a fresh OS temp directory is allocated once per factory, so a keyless
-   * test or a caller that does not care about durability still gets real cwd tools.
+   * lives. Each render mounts against `<workspaceRoot>/<node>/` — a real dir the
+   * agent writes with `fs_*` / `shell_exec` / `apply_patch`, that the harness
+   * HARVESTS on commit. When omitted, a fresh OS temp directory is allocated once
+   * per factory, so a keyless test or a caller that does not care about durability
+   * still gets real cwd tools.
    *
-   * SANDBOX LIMITATION (SPEC §5; N3): this is a SCOPED dir with path-escape guards,
-   * NOT an OS sandbox — a shell command can still escape `cwd`. Trusted,
-   * self-authored `.prose` projects only; the OS sandbox is DEFERRED (D5).
+   * SANDBOX LIMITATION: this is a SCOPED dir with path-escape guards, NOT an OS
+   * sandbox — a shell command can still escape `cwd`. Trusted, self-authored
+   * `.prose` projects only; the OS sandbox is DEFERRED.
    */
   readonly workspaceRoot?: string;
-  /** Optional folded sandbox (architecture.md §5.3) for `sandbox_exec`. */
+  /** Optional folded sandbox for `sandbox_exec`. */
   readonly sandbox?: RenderSandboxRunner;
   /**
-   * Per-command `shell_exec` timeout (ms) for the cwd-rooted {@link LocalShell}
-   * (Change C). Threaded into {@link createCwdTools} as `{ timeoutMs }`, so a
+   * Per-command `shell_exec` timeout (ms) for the cwd-rooted {@link LocalShell}.
+   * Threaded into {@link createCwdTools} as `{ timeoutMs }`, so a
    * caller (the CLI's `[sandbox].shell_timeout_ms`) can tune the bound the render's
    * shell enforces. When unset, the shell keeps {@link DEFAULT_SHELL_TIMEOUT_MS}
    * (300_000) — the default is UNCHANGED, the passthrough is opt-in.
    */
   readonly shellTimeoutMs?: number;
-  /** Decoding temperature. Defaults to 0 (greedy; 05 §4.1). */
+  /** Decoding temperature. Defaults to 0 (greedy). */
   readonly temperature?: number;
   /** Best-effort reproducibility seed, passed through `providerData.seed`. */
   readonly seed?: number;
   /**
-   * Max agentic turns for one render (the SDK's `maxTurns`). A bounded session
-   * (architecture.md §1: "one bounded session"); defaults to
-   * {@link DEFAULT_MAX_TURNS} (D1: a high explicit cap, not unbounded).
+   * Max agentic turns for one render (the SDK's `maxTurns`). A bounded session;
+   * defaults to {@link DEFAULT_MAX_TURNS} (a high explicit cap, not unbounded).
    *
    * Pass `null` to opt DELIBERATELY into an unbounded loop — the SDK's
    * `maxTurns: null` bypasses the turn guard entirely (no `MaxTurnsExceededError`
    * is ever thrown). The token `Usage → Cost` capture remains the real budget
    * signal; turns are not themselves cost-bounded, so `null` is a runaway-spend
-   * opt-in (D1).
+   * opt-in.
    */
   readonly maxTurns?: number | null;
 }
 
 /**
- * Default agentic-loop turn bound for one render (D1). A render is "one bounded
- * session" (architecture.md §1); this is a deliberately HIGH explicit cap (not
+ * Default agentic-loop turn bound for one render. A render is "one bounded
+ * session"; this is a deliberately HIGH explicit cap (not
  * the SDK's default 10, and not unbounded). A render that exceeds it yields a
  * {@link RenderFailure} (the prior truth stands), never an unhandled throw. A
  * caller may pass `maxTurns: null` to opt out of the cap entirely.
@@ -179,8 +177,8 @@ export const DEFAULT_MAX_TURNS = 200;
 // ---------------------------------------------------------------------------
 
 /**
- * Produce the `AsyncMountedRender` the harness mounts per node (05 §2.1). The
- * SKILL is read ONCE here (or taken from `config.skill`); the provider is built
+ * Produce the `AsyncMountedRender` the harness mounts per node. The SKILL is
+ * read ONCE here (or taken from `config.skill`); the provider is built
  * lazily on first render so a keyless build/test never constructs it.
  *
  * Mount the returned render via
@@ -190,8 +188,8 @@ export const DEFAULT_MAX_TURNS = 200;
 export function createAgentRender(
   config: AgentRenderConfig,
 ): AsyncMountedRender {
-  // SKILL-bundle install preflight (6.3; §3.4): assert the open-prose bundle is
-  // installed at the expected root — `SKILL.md` + its sub-doc manifest exist —
+  // SKILL-bundle install preflight: assert the open-prose bundle is installed at
+  // the expected root — `SKILL.md` + its sub-doc manifest exist —
   // and throw a LEGIBLE error here, at construction, BEFORE any model call. A
   // render cannot teach a session to be a render without the bundle, so fail
   // early rather than mid-render. Pure (a handful of `fs` stats; no model).
@@ -200,14 +198,14 @@ export function createAgentRender(
   const skill = config.skill ?? readSkill(config.skillPath);
   const model = config.model ?? DEFAULT_RENDER_MODEL;
   const temperature = config.temperature ?? DEFAULT_TEMPERATURE;
-  // `null` is a DELIBERATE unbounded opt-in (D1), so distinguish "not supplied"
+  // `null` is a DELIBERATE unbounded opt-in, so distinguish "not supplied"
   // (→ the high default cap) from an explicit `null` (→ SDK bypasses the guard).
   // `??` would collapse `null` into the default, erasing the opt-in.
   const maxTurns =
     config.maxTurns === undefined ? DEFAULT_MAX_TURNS : config.maxTurns;
 
-  // The BASE for per-node working directories (Option B; SPEC §4). Resolved ONCE
-  // here so every render of every node lands a sibling `<base>/<nodeSeg>/` dir.
+  // The BASE for per-node working directories. Resolved ONCE here so every
+  // render of every node lands a sibling `<base>/<nodeSeg>/` dir.
   // Default: a fresh OS temp dir (allocated lazily on first render so a keyless
   // construction makes no filesystem side-effect at factory time).
   let workspaceBase = config.workspaceRoot;
@@ -240,11 +238,10 @@ export function createAgentRender(
     const contract = config.contractFor(ctx.node);
     const instructions = composeInstructions(skill, ctx.node, contract, ctx);
 
-    // Option B (SPEC §4): prepare the render's REAL per-node working directory,
-    // SEEDED with the node's prior published truth (so the agent reads its prior
-    // truth through the same `fs_read`, folding §3.4 — D3). The harness harvests
-    // THIS directory after the run (replacing the virtual-workspace harvest). A
-    // pure `node:fs` op — no model call (N2).
+    // Prepare the render's REAL per-node working directory, SEEDED with the
+    // node's prior published truth (so the agent reads its prior truth through
+    // the same `fs_read`). The harness harvests THIS directory after the run. A
+    // pure `node:fs` op — no model call.
     const workingDir = prepareWorkingDir(
       getWorkspaceBase(),
       ctx.node,
@@ -260,12 +257,12 @@ export function createAgentRender(
 
     // The render's full tool surface: wm_* + the cwd-rooted Codex-style tools.
     // Built once per render so the SAME set is given to the render AND offered to
-    // any sub-agent it spawns (SPEC §3.6 — a helper shares the parent's affordances).
+    // any sub-agent it spawns (a helper shares the parent's affordances).
     const renderTools: Tool<AgentRenderContext>[] = [
       ...createRenderTools(),
-      // Change C: thread the caller-supplied per-command shell timeout into the
-      // cwd-rooted LocalShell. Unset → createCwdTools keeps DEFAULT_SHELL_TIMEOUT_MS,
-      // so the default render is byte-for-byte unchanged (the passthrough is opt-in).
+      // Thread the caller-supplied per-command shell timeout into the cwd-rooted
+      // LocalShell. Unset → createCwdTools keeps DEFAULT_SHELL_TIMEOUT_MS, so the
+      // default render is byte-for-byte unchanged (the passthrough is opt-in).
       ...createCwdTools(
         workingDir,
         config.shellTimeoutMs !== undefined
@@ -274,12 +271,12 @@ export function createAgentRender(
       ),
     ];
 
-    // The generic sub-agent primitive (SPEC §3.6 / step 6.5). The render spawns a
-    // focused helper, gets a value back, leaves no node behind; the helper's token
-    // Usage rolls up into THIS render's receipt Cost because the tool runs the
-    // sub-agent through the parent's RunContext. The sub-agent inherits the render's
-    // tool subset; pushing the spawn tool itself onto that subset lets a helper
-    // recurse, bounded by the SAME `maxTurns`/Usage backstop (D1).
+    // The generic sub-agent primitive. The render spawns a focused helper, gets a
+    // value back, leaves no node behind; the helper's token Usage rolls up into
+    // THIS render's receipt Cost because the tool runs the sub-agent through the
+    // parent's RunContext. The sub-agent inherits the render's tool subset; pushing
+    // the spawn tool itself onto that subset lets a helper recurse, bounded by the
+    // SAME `maxTurns`/Usage backstop.
     const spawnSubagentTool = createSpawnSubagentTool({
       skill,
       model,
@@ -296,9 +293,9 @@ export function createAgentRender(
       model,
       modelSettings,
       // The wm_* read/upstream/write tools, the cwd-rooted Codex-style tools (fs_*,
-      // shell_exec, apply_patch), AND the generic spawn_subagent primitive (§3.6).
+      // shell_exec, apply_patch), AND the generic spawn_subagent primitive.
       tools: renderTools,
-      // The small done/failed signal (D6). NO file contents ride here. The
+      // The small done/failed signal. NO file contents ride here. The
       // schema is built lazily as a zod object; `output-schema.ts` types its
       // return as the SDK-independent `z.ZodTypeAny`, so we annotate it here as
       // the SDK's `AgentOutputType` (a `ZodObject` is a valid one) at the single
@@ -306,15 +303,15 @@ export function createAgentRender(
       outputType: renderOutputSchema() as AgentOutputType,
     });
 
-    // The SHORT pointer input (05 §2.2 step 2): the wake + WHERE prior truth
-    // lives, never the truth itself. The agent reads truth by reference.
+    // The SHORT pointer input: the wake + WHERE prior truth lives, never the
+    // truth itself. The agent reads truth by reference.
     const input = buildRunInput(ctx);
 
     // The per-render context the tools read off `RunContext.context` (the only
-    // sanctioned channel for node/store/sandbox — 02 §5). The resolved inbound
-    // edges (producer → facet) become the `upstream` subscriptions the
-    // `wm_*_upstream` tools read by reference — the same tuple that formed the
-    // memo key (step 6.2 / §3.3). A node with no subscriptions carries `[]`.
+    // sanctioned channel for node/store/sandbox). The resolved inbound edges
+    // (producer → facet) become the `upstream` subscriptions the `wm_*_upstream`
+    // tools read by reference — the same tuple that formed the memo key. A node
+    // with no subscriptions carries `[]`.
     const upstream = ctx.inbound_edges.map((edge) => ({
       producer: edge.producer,
       facet: edge.facet,
@@ -323,16 +320,16 @@ export function createAgentRender(
       node: ctx.node,
       store: config.store,
       upstream,
-      // Option B: wm_write_workspace writes into the SAME working dir the cwd
-      // tools use and the harness harvests (SPEC §4), so legacy and real-file
-      // writes are one harvested truth.
+      // wm_write_workspace writes into the SAME working dir the cwd tools use and
+      // the harness harvests, so workspace and real-file writes are one harvested
+      // truth.
       workingDir,
       ...(config.sandbox !== undefined ? { sandbox: config.sandbox } : {}),
     };
 
     // A render that exhausts its turn cap is a RenderFailure (the prior truth
-    // stands — architecture.md §4.1), NOT a crash out of the adapter (D1, §3.1).
-    // The SDK throws `MaxTurnsExceededError` when `currentTurn > maxTurns`; map
+    // stands), NOT a crash out of the adapter. The SDK throws
+    // `MaxTurnsExceededError` when `currentTurn > maxTurns`; map
     // it to a `failed` signal so nothing commits. (`maxTurns: null` bypasses the
     // guard entirely, so this branch is unreachable under a deliberate opt-out.)
     try {
@@ -342,16 +339,14 @@ export function createAgentRender(
       });
 
       // The agent WROTE its world-model into the REAL working DIRECTORY; HARVEST
-      // that directory (Option B; SPEC §4) — a plain, deterministic `node:fs`
-      // walk, NO model call (N2). The harness (mountDag's async spawn) then
-      // promotes-and-fingerprints these harvested files with the COMPILED
-      // canonicalizer at commit, exactly as before — D6 is unchanged except the
-      // harvest reads a directory instead of the store's virtual workspace map.
+      // that directory — a plain, deterministic `node:fs` walk, NO model call.
+      // The harness (mountDag's async spawn) then promotes-and-fingerprints these
+      // harvested files with the COMPILED canonicalizer at commit.
       const harvested = harvestDirectory(workingDir);
 
-      // `result.state.usage` (NOT `result.state.context.usage` — that getter
-      // does not exist) is the run's accumulated token usage (05 §4.2 + the
-      // step-1 correction). `Usage` structurally satisfies `RenderUsage`.
+      // `result.state.usage` (NOT `result.state.context.usage` — that getter does
+      // not exist) is the run's accumulated token usage. `Usage` structurally
+      // satisfies `RenderUsage`.
       const usage = result.state.usage as unknown as RenderUsage;
 
       const signal = result.finalOutput as RenderOutputSignal | undefined;
@@ -391,8 +386,8 @@ export function createAgentRender(
 // ---------------------------------------------------------------------------
 
 /**
- * Build the SHORT pointer run input (05 §2.2 step 2). Carries the wake + the
- * memo tuple + a POINTER to where prior truth lives — NEVER the truth itself.
+ * Build the SHORT pointer run input. Carries the wake + the memo tuple + a
+ * POINTER to where prior truth lives — NEVER the truth itself.
  * "Here is what woke you and where your prior truth lives. Read it as needed."
  */
 function buildRunInput(ctx: RenderContext): string {
@@ -421,8 +416,7 @@ function buildRunInput(ctx: RenderContext): string {
  * Normalize the SDK's parsed `finalOutput` into a {@link RenderOutputSignal}. A
  * session that somehow produced no structured output (an empty/undefined
  * `finalOutput`) is treated as a `failed` signal so nothing commits and the
- * prior truth stands (architecture.md §4.1) — the mapper then yields a
- * `RenderFailure`.
+ * prior truth stands — the mapper then yields a `RenderFailure`.
  */
 function normalizeSignal(
   signal: RenderOutputSignal | undefined,
