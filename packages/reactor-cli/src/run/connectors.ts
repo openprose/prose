@@ -50,8 +50,10 @@ import {
   files as wmFiles,
   jsonFile,
   externalWake,
+  augmentTopologyWithIngress as sdkAugmentTopologyWithIngress,
   type Wake,
 } from '@openprose/reactor';
+import type { ReconcilerTopology } from '@openprose/reactor/internals';
 import { EMPTY_SEMANTIC_DIFF, createNullSignature } from '@openprose/reactor/internals';
 import {
   contentAddressOf,
@@ -62,6 +64,13 @@ import {
   readTextFile,
   pollGatewayAsync,
   type GatewayArrival,
+  // The real SDK ingress surfaces (keyless, under /adapters) — imported directly so
+  // the connector driver types against them instead of structural mirrors + casts.
+  type ConnectorFetch,
+  type ExtractArrivals,
+  type AsyncGatewayIngest,
+  type ReactorConnectorRequest,
+  type ReactorRuntimeRegistrySnapshot,
 } from '@openprose/reactor/adapters';
 
 import * as fs from 'fs';
@@ -70,21 +79,20 @@ import * as path from 'path';
 import type { GatewayConfig } from '../config';
 
 // ---------------------------------------------------------------------------
-// Structural mirrors of the SDK surfaces the connector drives (typed locally so
-// this keyless module stays decoupled from the run-project barrel).
+// The SDK ingress surfaces the connector drives (the REAL `/adapters` types — no
+// structural mirrors, no `as never` casts). The keyless `/adapters` barrel carries
+// the connector primitives + their types, so this keyless module types against
+// them directly.
 // ---------------------------------------------------------------------------
 
-/** A connector request the `fetch` receives (SDK `ReactorConnectorRequest`). */
-export interface ConnectorRequest {
-  readonly source_id: string;
-  readonly as_of?: string;
-}
+/** A connector request the `fetch` receives (the SDK `ReactorConnectorRequest`). */
+export type ConnectorRequest = ReactorConnectorRequest;
 
-/** The injected fetch (SDK `ConnectorFetch`): source I/O → raw payload. */
-export type ConnectorFetch = (request: ConnectorRequest) => unknown;
-
-/** Map a raw payload into discrete, idempotency-keyed arrivals (SDK `ExtractArrivals`). */
-export type ExtractArrivals = (payload: unknown) => readonly GatewayArrival[];
+// `ConnectorFetch` / `ExtractArrivals` are the SDK types (imported above), used
+// verbatim — the poller passes them to `createPollConnectorAdapter` / `pollGatewayAsync`
+// with no cast. Re-exported here so this module stays the connector vocabulary's
+// single CLI home (serve.ts / host.ts import them from here).
+export type { ConnectorFetch, ExtractArrivals };
 
 /** The minimal world-model store surface `stage` commits the ingress inbox through. */
 export interface StageStore {
@@ -106,15 +114,13 @@ export interface StageLedger {
   readonly addressOf: (receipt: unknown) => unknown;
 }
 
-/** The narrow async DAG surface the gateway driver wakes (SDK `AsyncGatewayIngest`). */
-export interface AsyncIngest {
-  readonly ingestAsync: (node: string, wake?: Wake) => Promise<unknown>;
-}
+/** The narrow async DAG surface the gateway driver wakes (the SDK `AsyncGatewayIngest`). */
+export type AsyncIngest = AsyncGatewayIngest;
 
-/** The storage adapter surface the durable cursor round-trips through. */
+/** The storage adapter surface the durable cursor round-trips through (SDK shape). */
 export interface RegistryStorage {
-  readonly readRegistry: () => Readonly<Record<string, unknown>>;
-  readonly writeRegistry?: (registry: Record<string, unknown>) => void;
+  readonly readRegistry: () => ReactorRuntimeRegistrySnapshot;
+  readonly writeRegistry?: (registry: ReactorRuntimeRegistrySnapshot) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -154,56 +160,26 @@ export function triggerArrivalId(data: unknown): string {
 const DEFAULT_ID_FIELD = 'id';
 const INGRESS_INBOX_PATH = 'inbox.json';
 
-/** A minimal structural mirror of a `ReconcilerTopology` (only the fields we read). */
-interface MutableTopology {
-  readonly topology: {
-    readonly nodes: readonly { readonly node: string; readonly wake_source: string }[];
-    readonly edges: { readonly subscriber: string; readonly producer: string; readonly facet: string }[];
-    readonly entry_points: readonly string[];
-    readonly acyclic: boolean;
-  };
-  readonly contract_fingerprints: Readonly<Record<string, string>>;
-}
-
 /**
- * Augment a loaded {@link MutableTopology} with a PHANTOM INGRESS edge per
+ * Augment a loaded {@link ReconcilerTopology} with a PHANTOM INGRESS edge per
  * configured gateway (`<gateway> ⟵ <gateway>::ingress` on `@atomic`), so a staged
- * arrival moves the gateway's `input_fingerprints` and the gateway re-renders
- * (the staging mechanism above). Returns a NEW topology object (the loaded IR is
- * not mutated). A gateway that already carries an inbound ingress edge is left
- * alone (idempotent). Only gateways present in the topology are wired — a config
- * gateway naming an unknown node is ignored here (the caller surfaces it).
- *
- * The phantom producer is deliberately NOT added to `topology.nodes`: it must not
- * be a boot seed or a render target — it is purely the edge the connector's staged
- * receipts move (correction #5).
+ * arrival moves the gateway's `input_fingerprints` and the gateway re-renders (the
+ * staging mechanism above). Thin wrapper over the SDK's blessed
+ * {@link sdkAugmentTopologyWithIngress} (the ingress workstream gave it a first-
+ * class SDK home) — this maps the CLI's {@link GatewayConfig} list to the node
+ * names the SDK function wires. A gateway already carrying its ingress edge is left
+ * alone, and a config gateway naming an unknown node is ignored (both handled by
+ * the SDK function). Returns a NEW topology (the loaded IR is not mutated); the
+ * phantom producer is NOT a topology node, so it is never seeded/rendered.
  */
-export function augmentTopologyWithIngress<T>(
-  topology: T,
+export function augmentTopologyWithIngress(
+  topology: ReconcilerTopology,
   gateways: readonly GatewayConfig[],
-): T {
-  const t = topology as unknown as MutableTopology;
-  const nodeIds = new Set(t.topology.nodes.map((n) => n.node));
-  const newEdges = [...t.topology.edges];
-  for (const gw of gateways) {
-    if (!nodeIds.has(gw.node)) {
-      continue;
-    }
-    const ingress = ingressSourceFor(gw.node);
-    const exists = newEdges.some(
-      (e) => e.subscriber === gw.node && e.producer === ingress,
-    );
-    if (!exists) {
-      newEdges.push({ subscriber: gw.node, producer: ingress, facet: ATOMIC_FACET });
-    }
-  }
-  return {
-    ...(topology as unknown as MutableTopology),
-    topology: {
-      ...t.topology,
-      edges: newEdges,
-    },
-  } as unknown as T;
+): ReconcilerTopology {
+  return sdkAugmentTopologyWithIngress(
+    topology,
+    gateways.map((gw) => gw.node),
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -483,24 +459,26 @@ export function resolveGatewayPoller(
     impl = buildBuiltinConnector(gateway.connector, options.fetchOverride);
   }
 
-  const connectorAdapter = createPollConnectorAdapter(impl.fetch as never);
+  // No casts: `impl.fetch`/`impl.extract` are the SDK `ConnectorFetch`/`ExtractArrivals`,
+  // `runtime.dag` is `AsyncGatewayIngest`, `registry` is `ReactorRuntimeRegistrySnapshot`.
+  const connectorAdapter = createPollConnectorAdapter(impl.fetch);
   const stage = buildStageArrival(gateway.node, runtime.store, runtime.ledger);
 
   const poll = async (now: string): Promise<GatewayPollOutcome> => {
     // Rehydrate the durable cursor from the storage registry (so a restart resumes
     // without re-ingesting the backlog), poll, then persist the advanced cursor.
     const registry = runtime.storage.readRegistry();
-    const cursor = loadIdempotencyCursor(registry as never);
+    const cursor = loadIdempotencyCursor(registry);
 
-    const result = await pollGatewayAsync(runtime.dag as never, {
+    const result = await pollGatewayAsync(runtime.dag, {
       connector: connectorAdapter,
       source_id: sourceId,
       node: gateway.node,
-      extract: impl.extract as never,
+      extract: impl.extract,
       cursor,
       stage,
       as_of: now,
-    } as never);
+    });
 
     if (runtime.storage.writeRegistry !== undefined) {
       runtime.storage.writeRegistry({

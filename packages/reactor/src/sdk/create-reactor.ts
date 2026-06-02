@@ -52,6 +52,7 @@ import {
   createFileSystemReceiptLedger,
 } from "./fs-ledger";
 import { assembleReactor, type Reactor } from "./reactor-handle";
+import { buildIngressStager } from "./ingress";
 
 /**
  * The assembler's injected substrate. Mirrors the architecture.md §5.3 adapter
@@ -192,6 +193,12 @@ export function createReactor(input: CreateReactorInput): Reactor {
     clock,
     topology,
     bootSeeds: bootSeeds(topology),
+    // The blessed ingress stager over the SAME store + ledger the reactor commits
+    // to, so `reactor.ingest(node, { data })` stages the payload into the node's
+    // phantom-ingress truth and re-renders it as a memo-MISS (ingress.ts). The
+    // node must carry its phantom-ingress edge (augmentTopologyWithIngress) for the
+    // moved fingerprint to reach it — the `reactor()` facade augments the topology.
+    stage: buildIngressStager({ store, ledger }),
   });
 }
 

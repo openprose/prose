@@ -47,6 +47,7 @@ import {
   type AsyncContinuityScheduler,
   type NodeFreshnessReader,
 } from "./continuity-scheduler";
+import type { IngressStager } from "./ingress";
 
 // ---------------------------------------------------------------------------
 // The drive-verb inputs (shared sync/async)
@@ -55,18 +56,23 @@ import {
 /**
  * The ingress payload for {@link Reactor.ingest}. The bare `{ wake }` form
  * delivers a raw wake (the advanced path); the `{ data }` form folds the
- * phantom-ingress stage-and-move dance into one call (a future Tier-2 step wires
- * the connector staging; today `data` is reserved on the type so a consumer can
- * be typed against the final shape — passing `data` without an armed connector
- * throws a legible error rather than silently dropping it).
+ * phantom-ingress stage-and-move dance into one call (ingress.ts): the payload is
+ * staged into the node's `<node>::ingress` truth — moving its `input_fingerprints`
+ * — and then a memo-MISS external wake fires so the node re-renders reading the
+ * staged input.
+ *
+ * The `{ data }` form requires an armed ingress stager (the `reactor()` facade
+ * wires one, augmenting the topology with the node's phantom-ingress edge). A
+ * handle assembled WITHOUT a stager throws a legible error on `{ data }` rather
+ * than silently dropping the payload — deliver a raw `{ wake }` instead.
  */
 export interface IngestInput {
   /** The wake to deliver. Defaults to a full external wake `{ source: "external", refs: [] }`. */
   readonly wake?: Wake;
   /**
-   * The input payload to stage for the node (the ingress-arming path). RESERVED
-   * for the Tier-2 connector-staging wiring; today the SDK handle delivers it via
-   * the caller's armed connectors and throws if none is armed.
+   * The input payload to STAGE for the node (the ingress-arming path): a files map
+   * (`{ "in.txt": bytes }`) written into the node's phantom-ingress truth so the
+   * subsequent wake is a memo-MISS. Requires an armed stager (see the doc above).
    */
   readonly data?: WorldModelFiles;
 }
@@ -194,6 +200,12 @@ export interface AssembleReactorInput {
   readonly topology: ReconcilerTopology;
   /** The boot cold-miss seed wakes (architecture.md §8). */
   readonly bootSeeds: readonly WakeEvent[];
+  /**
+   * The ingress stager that delivers a `Reactor.ingest({ data })` payload (ingress.ts).
+   * When omitted, `ingest({ data })` throws a legible error (no armed ingress); the
+   * `reactor()` facade wires one over the substrate's store + ledger.
+   */
+  readonly stage?: IngressStager;
 }
 
 /**
@@ -202,17 +214,23 @@ export interface AssembleReactorInput {
  * the DAG's synchronous path behind `.sync`. Boot drains the supplied seeds.
  */
 export function assembleReactor(input: AssembleReactorInput): Reactor {
-  const { dag, clock, topology, bootSeeds } = input;
+  const { dag, clock, topology, bootSeeds, stage } = input;
 
-  const ingestWake = (i: IngestInput | undefined): Wake | undefined => {
+  // Resolve the ingress: stage a `{ data }` payload into the node's phantom-ingress
+  // truth (moving its `input_fingerprints`) BEFORE the wake, so the subsequent
+  // ingest is a memo-MISS and the node re-renders reading the staged input
+  // (ingress.ts). Returns the wake to deliver. With no `data`, this is the bare
+  // wake. The `Wake` shape carries no payload slot, so `{ data }` REQUIRES an armed
+  // stager — fail loudly rather than silently drop the input.
+  const ingestWake = (node: string, i: IngestInput | undefined): Wake | undefined => {
     if (i?.data !== undefined) {
-      // The connector-staging delivery is a Tier-2 wiring; until it lands the
-      // SDK handle cannot stage a `data` payload itself (the `Wake` shape carries
-      // no payload slot). Fail loudly rather than silently dropping the input.
-      throw new TypeError(
-        "Reactor.ingest({ data }) requires an armed connector to stage the payload; " +
-          "arm one via reactor({ adapters: { connectors } }), or deliver a raw { wake }.",
-      );
+      if (stage === undefined) {
+        throw new TypeError(
+          "Reactor.ingest({ data }) requires an armed ingress stager to deliver the payload; " +
+            "use the reactor() facade (it arms one), or deliver a raw { wake }.",
+        );
+      }
+      stage(node, i.data);
     }
     return i?.wake;
   };
@@ -243,7 +261,7 @@ export function assembleReactor(input: AssembleReactorInput): Reactor {
 
   const handle: Reactor = {
     // async-by-default
-    ingest: (node, i) => dag.ingestAsync(node, ingestWake(i)),
+    ingest: (node, i) => dag.ingestAsync(node, ingestWake(node, i)),
     tick: (node) => dag.tickAsync(node),
     drain: (seeds) => dag.drainAsync(seeds),
     boot: () => dag.drainAsync(bootSeeds),
@@ -269,7 +287,7 @@ export function assembleReactor(input: AssembleReactorInput): Reactor {
 
     // sync drive (deterministic test path)
     sync: {
-      ingest: (node, i) => dag.ingest(node, ingestWake(i)),
+      ingest: (node, i) => dag.ingest(node, ingestWake(node, i)),
       tick: (node) => dag.tick(node),
       drain: (seeds) => dag.drain(seeds),
       boot: () => dag.drain(bootSeeds),

@@ -353,7 +353,9 @@ export async function bootReactorHandle(
       ingestAsync: (node: string, wake?: Wake) =>
         reactor.ingest(node, wake !== undefined ? { wake } : undefined),
     },
-    storage: adapters.storage as RegistryStorage,
+    // `adapters.storage` (the SDK StorageAdapter) satisfies RegistryStorage's
+    // `readRegistry`/`writeRegistry` shape directly — no cast.
+    storage: adapters.storage,
   };
   const gatewayPollers: ResolvedGatewayPoller[] = gateways.map((gw) =>
     resolveGatewayPoller(gw, gatewayRuntime, {

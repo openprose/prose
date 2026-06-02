@@ -32,6 +32,14 @@ import type { MutableReceiptLedger } from "./mounted-dag";
 import type { NodeFreshnessReader } from "./continuity-scheduler";
 import type { Reactor } from "./reactor-handle";
 import type { CompileProjectInput } from "./run-project";
+import {
+  augmentTopologyWithIngress,
+  armConnectors,
+  type ConnectorAdapter,
+  type PollConnectors,
+} from "./ingress";
+import type { StorageAdapter as StorageAdapterPort } from "../adapters/types";
+import type { AsyncGatewayIngest } from "../adapters/connector-poll";
 
 // ---------------------------------------------------------------------------
 // Facade configuration
@@ -51,10 +59,15 @@ export interface ReactorAdapters {
   readonly worldModel?: WorldModelStore;
   /** The receipt ledger. Defaults to the storage-derived durable ledger. */
   readonly ledger?: MutableReceiptLedger;
-  // NOTE [seam — later workstream]: `renderBackend` (the §5.4 model-injection
-  // port) and `connectors` (the §5.6 ingress-arming path) land additively in the
-  // Substrate + RenderBackend + ingress workstreams. They attach here without a
-  // breaking change (this interface widens), so the facade shape is stable now.
+  /**
+   * The ingress-arming path (§5.6 / decision #7): external sources whose new
+   * arrivals wake a gateway/ingress node. The facade augments the topology with
+   * each connector's phantom-ingress edge, wires a durable idempotency cursor over
+   * the substrate's storage, and exposes {@link ReactorFacadeResult.pollConnectors}
+   * to drive a poll. Each new arrival is staged through the blessed ingress stager
+   * (the SAME mechanism `reactor.ingest(node, { data })` uses).
+   */
+  readonly connectors?: readonly ConnectorAdapter[];
 }
 
 /** The continuity-arming options the facade forwards to {@link Reactor.scheduler}. */
@@ -112,6 +125,13 @@ export interface ReactorFacadeResult {
   readonly reactor: Reactor;
   /** The boot cold-miss sweep's per-node results (empty when `boot: false`). */
   readonly bootResults: readonly unknown[];
+  /**
+   * Drive ONE poll of every armed connector (§5.6). Resolves with each source's
+   * outcome (`ingested_ids` / `skipped_ids` / the reconciler results). Present
+   * only when {@link ReactorAdapters.connectors} were armed; a no-op resolving to
+   * `[]` otherwise, so a caller can always call it.
+   */
+  readonly pollConnectors: PollConnectors;
 }
 
 // ---------------------------------------------------------------------------
@@ -155,15 +175,46 @@ export async function reactor(
   const substrate = resolveSubstrate(options);
   const render = resolveRender(options);
 
+  // INGRESS (§5.6 / decision #7): augment the compiled topology with a phantom-
+  // ingress edge per armed connector BEFORE mounting, so a staged arrival moves the
+  // gateway node's `input_fingerprints` and it re-renders as a memo-MISS. The edges
+  // are added once here so the reactor mounts over the ingress-aware topology.
+  const connectors = options.adapters?.connectors ?? [];
+  const compiledForRun =
+    connectors.length === 0
+      ? compiled
+      : {
+          ...compiled,
+          reconcilerTopology: augmentTopologyWithIngress(
+            compiled.reconcilerTopology,
+            connectors.map((c) => c.node),
+          ),
+        };
+
   // `runProject` mounts + runs the boot cold-miss sweep, returning the typed
   // handle. The handle's drive verbs (incl. `boot()`) remain callable for a
   // later explicit sweep.
   const { reactor: handle, bootResults } = await run.runProject({
-    compiled,
+    compiled: compiledForRun,
     substrate,
     ...(options.directory !== undefined ? { directory: options.directory } : {}),
     render,
   } as never);
+
+  // Arm the connectors over the booted handle: a durable cursor over the
+  // substrate's storage, staging each NEW arrival through the blessed ingress
+  // stager. Exposed as `pollConnectors`; a no-op when none are armed.
+  const pollConnectors: PollConnectors =
+    connectors.length === 0
+      ? async () => []
+      : armConnectors({
+          connectors,
+          store: handle.store,
+          ledger: handle.ledger,
+          storage: substrate.storage as StorageAdapterPort,
+          dag: { ingestAsync: (node, wake) => handle.ingest(node, wake !== undefined ? { wake } : undefined) } as AsyncGatewayIngest,
+          clock: handle.clock,
+        });
 
   // Arm the self-driven cadence off the handle when requested (the handle holds
   // the topology + dag the scheduler needs — no casting).
@@ -179,6 +230,7 @@ export async function reactor(
   return {
     reactor: handle,
     bootResults: options.boot === false ? [] : bootResults,
+    pollConnectors,
   };
 }
 

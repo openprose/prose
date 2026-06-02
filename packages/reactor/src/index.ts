@@ -156,6 +156,22 @@ export {
   inputWake,
 } from "./sdk/wake";
 
+// ── Ingress — deliver an external input + arm connectors (§5.6 / decision #7) ─
+// `ingest(node, { data })` stages a payload into the node's phantom-ingress truth
+// and re-renders it as a memo-MISS; `armConnectors` / `augmentTopologyWithIngress`
+// are the building blocks the `reactor({ adapters: { connectors } })` facade wires
+// (also reachable for a power user hand-rolling the same loop over the lower
+// `pollGateway`/cursor primitives at `@openprose/reactor/adapters`).
+export {
+  ingressSourceFor,
+  augmentTopologyWithIngress,
+  buildIngressStager,
+  armConnectors,
+  type ConnectorAdapter,
+  type IngressStager,
+  type PollConnectors,
+} from "./sdk/ingress";
+
 export {
   ATOMIC_FACET,
   asNodeId,
