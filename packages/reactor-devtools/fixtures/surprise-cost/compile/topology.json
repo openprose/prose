@@ -1,0 +1,25 @@
+{
+  "nodes": [
+    {
+      "node": "gateway.signals",
+      "contract_fingerprint": "contract:gateway.signals@v2",
+      "wake_source": "external"
+    },
+    {
+      "node": "responsibility.digest",
+      "contract_fingerprint": "contract:responsibility.digest@v1",
+      "wake_source": "input"
+    }
+  ],
+  "edges": [
+    {
+      "subscriber": "responsibility.digest",
+      "producer": "gateway.signals",
+      "facet": "@atomic"
+    }
+  ],
+  "entry_points": [
+    "gateway.signals"
+  ],
+  "acyclic": true
+}

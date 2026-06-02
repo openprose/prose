@@ -25,7 +25,28 @@ import { ATOMIC_FACET } from '@openprose/reactor';
 
 import { runCompileCommand } from '../commands/compile';
 import { manifestPath, loadIR, readTopologyShape, compileDir } from '../compile/ir-cache';
+import { firstErrorLine } from '../compile/run-compile';
 import { fakeStructuredProvider } from './fake-provider';
+
+describe('firstErrorLine (G21b: suppress the raw Require stack dump)', () => {
+  it('keeps the legible first line and drops the multi-line Require stack', () => {
+    const err = new Error(
+      "Cannot find module '@openai/agents'\n" +
+        'Require stack:\n' +
+        '- /usr/local/lib/node_modules/@openprose/reactor-cli/dist/compile/run-compile.js\n' +
+        '- /usr/local/lib/node_modules/@openprose/reactor-cli/dist/cli.js',
+    );
+    const line = firstErrorLine(err);
+    assert.equal(line, "Cannot find module '@openai/agents'");
+    assert.doesNotMatch(line, /Require stack/);
+    assert.doesNotMatch(line, /node_modules/);
+  });
+
+  it('passes a single-line error through unchanged', () => {
+    assert.equal(firstErrorLine(new Error('boom')), 'boom');
+    assert.equal(firstErrorLine('plain string'), 'plain string');
+  });
+});
 
 // The on-disk two-node fixture (NOT copied into dist — resolve against the SDK's
 // SOURCE tree). The SDK exports map does not expose package.json, so resolve the

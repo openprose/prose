@@ -29,9 +29,25 @@ and **S5** (facet / diamond polish) are follow-ons (see below).
 
 ```bash
 reactor-devtools <state-dir> [--port 4555] [--host 127.0.0.1] [--describe]
-reactor-devtools --example masked-relay [--describe]   # bundled fixture, no path
-reactor-devtools --example masked-relay --copy-to ./.reactor [--force]  # seed it into your own dir
+reactor-devtools --example surprise-cost [--describe]   # bundled fixture, no path
+reactor-devtools --example surprise-cost --copy-to ./.reactor [--force]  # seed it into your own dir
 ```
+
+**No global install?** The `reactor-devtools` bin ships only in this package, so a
+`cli`-only or SDK-only install does **not** put it on your `PATH` (`command not
+found`). Run it without any global install via `npx`, which fetches this package
+and runs its bin in one shot:
+
+```bash
+npx -p @openprose/reactor-devtools reactor-devtools --example surprise-cost --describe
+npx -p @openprose/reactor-devtools reactor-devtools <state-dir>   # boot the viewer
+```
+
+(`-p @openprose/reactor-devtools` tells `npx` which package provides the
+`reactor-devtools` bin; the trailing args are passed straight through.) A global
+`npm i -g @openprose/reactor-devtools` then makes `reactor-devtools` available
+directly; the future `reactor dev <state-dir>` CLI verb is the eventual no-extra-
+install path once the `reactor` CLI wires it (see *Future `reactor dev` …* below).
 
 **Boot the browser DAG viewer (the visual hero shot):** `reactor-devtools <state-dir>`
 (or `reactor-devtools --example masked-relay`) with **no `--describe`** starts a small
@@ -46,9 +62,12 @@ the other machine-readable cost surface.)
 
 `--example <name>` replays a fixture **shipped inside this package** — it resolves
 the bundled state-dir internally (relative to the installed package), so it works
-after `npm i -g` from **any** directory with **no path to compute**. The only
-fixture in the tarball is `masked-relay` (see *Fixture coverage* below); an unknown
-name lists the shipped ones and exits non-zero.
+after `npm i -g` (or `npx -p @openprose/reactor-devtools …`) from **any** directory
+with **no path to compute**. The bundled set is the narrated headline corpus:
+`masked-relay`, **`surprise-cost`** (the core *cost-scales-with-surprise* thesis),
+`agent-observatory`, `inbox-triage`, `monorepo-ci`, and `research-tree` (see
+*Fixture coverage* below). An unknown / un-bundled name lists the shipped ones and
+**exits non-zero** — a typo never silently succeeds.
 
 `--describe` prints a headless run summary (per-node + per-frame dispositions,
 moved-facet diff, cost rollup split by **surprise-cause** — `wake-cause` is the old
@@ -93,16 +112,20 @@ path or schema translation.
 You don't need a model key or a running reactor to see the payoff. Three ways,
 fastest first:
 
-1. **Replay the bundled fixture (ships in the tarball) — no path to compute.**
-   `masked-relay` is a small, deterministic sample ledger committed to the package
-   and included in the npm `files`, so it is present after a tarball install. Use
-   `--example` and the package resolves it internally:
+1. **Replay a bundled fixture (ships in the tarball) — no path to compute.**
+   A handful of small, deterministic sample ledgers are committed to the package
+   and included in the npm `files`, so they are present after a tarball install.
+   Use `--example` and the package resolves them internally:
 
    ```bash
+   reactor-devtools --example surprise-cost --describe  # the thesis fixture, any cwd
    reactor-devtools --example masked-relay --describe   # works from any cwd
    # (in this repo you can also point at the path directly:)
-   reactor-devtools packages/reactor-devtools/fixtures/masked-relay --describe
+   reactor-devtools packages/reactor-devtools/fixtures/surprise-cost --describe
    ```
+
+   Bundled names: `masked-relay`, `surprise-cost`, `agent-observatory`,
+   `inbox-triage`, `monorepo-ci`, `research-tree`.
 
    When you replay a shipped sample (via `--example`), `--describe` prints a
    `(synthetic sample ledger — token counts are illustrative, not a bill)` banner,
@@ -129,10 +152,16 @@ fastest first:
 
 #### Fixture coverage (what ships vs. what you generate)
 
-**Exactly one fixture ships in the npm tarball: `masked-relay`** — it is the only
-entry in the package's `files` list, so it is the only one present after an
-`npm i -g` install. Replay it with `reactor-devtools --example masked-relay`
-(no path, any cwd).
+**The bundled headline corpus ships in the npm tarball:** `masked-relay`,
+`surprise-cost`, `agent-observatory`, `inbox-triage`, `monorepo-ci`, and
+`research-tree` are each listed in the package's `files`, so they are present after
+an `npm i -g` install and reachable by name from any cwd
+(`reactor-devtools --example <name>` — no path). `surprise-cost` is the core
+*cost-scales-with-surprise* thesis fixture. Every other named fixture
+(`contract-redline`, `news-desk`, `tamper-forge`) is **repo-only**: it does not
+ship in the tarball and must be generated / replayed locally from a checkout (see
+step 2). An unknown / un-bundled `--example` name lists the bundled ones and exits
+non-zero.
 
 > **What `masked-relay` is, in plain terms:** a small content-pipeline scenario —
 > an upstream source feeds a *masker* that redacts sensitive spans, *expander*
@@ -140,11 +169,13 @@ entry in the package's `files` list, so it is the only one present after an
 > the digest. It stands in for any "watch a feed, do expensive model work only on
 > the items that actually moved, re-use the rest" demo (e.g. renewal-risk briefs,
 > incident summaries, an audit digest). The node names are abstract; the *shape* is
-> the post's "cost scales with surprise" story. Every *other* named fixture (`observatory`/agent-observatory,
-`monorepo-ci`, `news-desk`, `inbox-triage`, `contract-redline`, `research-tree`)
-is **repo-only**: it does not ship in the tarball and must be generated locally
-from a checkout with `node dist/fixtures/generate.js <key>` (see step 2). So
-`--example` accepts `masked-relay` only; the rest are a build step away.
+> the post's "cost scales with surprise" story.
+
+The remaining named fixtures (`news-desk`, `contract-redline`) are **repo-only**:
+they do not ship in the tarball and must be generated locally from a checkout with
+`node dist/fixtures/generate.js <key>` (see step 2). So `--example` accepts the
+bundled headline corpus above; `news-desk` / `contract-redline` are a build step
+away.
 
 > **Empty (compile-only) ledger?** A state-dir that was compiled but not yet run
 > has `receipts.json = []`. `--describe` treats that as a legitimate first-run

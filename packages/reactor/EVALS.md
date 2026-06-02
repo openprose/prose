@@ -12,6 +12,13 @@ Everything below uses only the package's public exports — the root
 The snippet below is run verbatim in this package's test suite, so it works as
 written.
 
+> **TypeScript setup:** the package ships its public API as `"exports"` subpaths
+> (`@openprose/reactor/sdk`, `/receipt`, `/projection`, …). Those subpath imports
+> resolve **only** under `"moduleResolution": "nodenext"` (or `"bundler"`) in your
+> `tsconfig.json` — the legacy `"node"` resolver does not read the `"exports"` map
+> and will fail these imports with `Cannot find module '@openprose/reactor/sdk'`.
+> Set `nodenext`/`bundler` before running the snippets here or in the README.
+
 ## The shape of an eval
 
 A surprise-cost eval is a sequence of wakes against a mounted DAG plus an
@@ -22,14 +29,14 @@ property you are probing: *a node renders if and only if its memo key
 
 ## Drive the reconciler yourself
 
-> **Driving the SDK needs it as a LOCAL dependency, not a global install.** The
-> `npm i -g …` from the quickstart installs the `reactor`/`reactor-devtools`
+> **Driving the SDK needs it as a LOCAL dependency, not a global install.** A
+> global `npm i -g @openprose/reactor-cli` installs the `reactor`/`reactor-devtools`
 > *binaries*; a bare `import`/`require` of `@openprose/reactor` resolves only when
 > the package is in your project's `node_modules`. So for an eval: `npm init -y &&
-> npm i ./openprose-reactor-0.2.0.tgz` (or `npm link @openprose/reactor` against a
-> global install), then run with `node eval.mjs` (CommonJS `require`) or `tsx
-> eval.ts`. The package is `type: commonjs`, so the `require` form below is the
-> most portable.
+> npm i @openprose/reactor` (the package is live on npm; or `npm link
+> @openprose/reactor` against a global install), then run with `node eval.mjs`
+> (CommonJS `require`) or `tsx eval.ts`. The package is `type: commonjs`, so the
+> `require` form below is the most portable.
 
 ```ts
 import { createFileSystemStorageAdapter } from "@openprose/reactor";
@@ -169,9 +176,15 @@ shelling out. To eyeball it in the keyless devtools `--describe` surface:
 ```sh
 reactor-devtools ./eval.reactor --describe
 #   dispositions rendered=4 · skipped=1 · failed=0
-#   surprise-cause  external=3 · input=2
-#   COST ROLLUP (tokens) ...  CHAIN-VERIFY ok
+#   surprise-cause  external=3 · input=2     <- receipt COUNTS by wake cause, not tokens
+#   COST ROLLUP (tokens)  total fresh=… reused=…   <- the actual token spend
+#   CHAIN-VERIFY ok
 ```
+
+Read those two lines as different units: `surprise-cause` counts *receipts* by what
+woke them; `COST ROLLUP (tokens)` is the fresh-vs-reused token spend. The
+`replay.costRollup` you assert on in-process carries both — `byCause[c].receipts`
+(the count) and `byCause[c].fresh`/`.reused` (the tokens).
 
 > Your hand-mounted ledger has no `compile/topology.json` (that comes from
 > `reactor compile`), so devtools draws a **node-only** graph (nodes, no edges) —

@@ -34,6 +34,7 @@ import {
 } from '@openprose/reactor';
 
 import { bootReactorHandle } from '../commands/serve';
+import { runTriggerCommand } from '../commands/trigger';
 import { ingressSourceFor, type ConnectorFetch } from '../run/connectors';
 import { fakeStructuredProvider } from './fake-provider';
 import type { GatewayConfig } from '../config';
@@ -395,6 +396,118 @@ describe('reactor connectors / gateway ingress (offline gate)', () => {
       assert.equal(ticketCount(handle.reactor.store as never), 2);
       await handle.shutdown();
       assert.equal(handle.queue.size(), 0, 'the queue drained to idle');
+    } finally {
+      rmSync(stateDir, { recursive: true, force: true });
+    }
+  });
+
+  // -------------------------------------------------------------------------
+  // B3: a trigger PAYLOAD is actually DELIVERED into the node (not just reported)
+  // -------------------------------------------------------------------------
+
+  it('the running-daemon trigger STAGES --data into a gateway so it reaches the render (B3)', async () => {
+    const stateDir = freshState();
+    try {
+      const handle = await bootReactorHandle({
+        name: 'default',
+        contractsDir: FIXTURE_DIR,
+        stateDir,
+        model: 'fake',
+        offline: true,
+        gateways: [GATEWAY_CONFIG],
+        testGatewayFetch: fakeFetchFactory(() => []),
+        testAdapters: {
+          clock: createSystemClockAdapter(),
+          storage: createMemoryStorageAdapter(),
+          worldModel: new FileSystemWorldModelStore({ directory: join(stateDir, 'world-models') }),
+        },
+        testRender: { buildRender: buildFakeRender as never },
+        testCompileOptions: testCompileOptions() as never,
+      });
+
+      // No poll has run — the inbox is empty.
+      assert.equal(ticketCount(handle.reactor.store as never), 0);
+
+      // Trigger the gateway WITH a payload. It must be staged into the ingress
+      // inbox so the gateway re-renders folding it (a memo-miss), NOT silently
+      // dropped (the B3 trust hazard).
+      const outcome = await handle.trigger(INBOX, { data: { id: 'manual-1', body: 'hand-fed ticket' } });
+      assert.equal(outcome.dataDelivered, true, 'a gateway trigger body is staged');
+      assert.equal(
+        ticketCount(handle.reactor.store as never),
+        1,
+        'the triggered payload reached the gateway render',
+      );
+
+      await handle.shutdown();
+    } finally {
+      rmSync(stateDir, { recursive: true, force: true });
+    }
+  });
+
+  it('a trigger --data to a NON-gateway node reports it was NOT delivered (honest, B3)', async () => {
+    const stateDir = freshState();
+    try {
+      const handle = await bootReactorHandle({
+        name: 'default',
+        contractsDir: FIXTURE_DIR,
+        stateDir,
+        model: 'fake',
+        offline: true,
+        gateways: [GATEWAY_CONFIG],
+        testGatewayFetch: fakeFetchFactory(() => []),
+        testAdapters: {
+          clock: createSystemClockAdapter(),
+          storage: createMemoryStorageAdapter(),
+          worldModel: new FileSystemWorldModelStore({ directory: join(stateDir, 'world-models') }),
+        },
+        testRender: { buildRender: buildFakeRender as never },
+        testCompileOptions: testCompileOptions() as never,
+      });
+
+      // DIGEST is not a gateway — it has no ingress edge in the serve topology, so
+      // a bare wake cannot carry a body. Report that honestly rather than dropping
+      // the data silently.
+      const outcome = await handle.trigger(DIGEST, { data: { id: 'x', body: 'nope' } });
+      assert.equal(outcome.dataDelivered, false);
+
+      await handle.shutdown();
+    } finally {
+      rmSync(stateDir, { recursive: true, force: true });
+    }
+  });
+
+  it('the ONE-SHOT `reactor trigger <node> --data` mount folds the payload into the node (B3)', async () => {
+    const stateDir = freshState();
+    try {
+      const lines: string[] = [];
+      const code = await runTriggerCommand(
+        {
+          node: INBOX,
+          data: JSON.stringify({ id: 'one-shot-1', body: 'one-shot ticket' }),
+          projectDir: FIXTURE_DIR,
+          stateDir,
+          json: true,
+          offline: true,
+          testAdapters: {
+            clock: createSystemClockAdapter(),
+            storage: createMemoryStorageAdapter(),
+            worldModel: new FileSystemWorldModelStore({ directory: join(stateDir, 'world-models') }),
+          },
+          testRender: { buildRender: buildFakeRender as never },
+          testCompileOptions: testCompileOptions() as never,
+        },
+        (l) => lines.push(l),
+      );
+      assert.equal(code, 0);
+      const report = JSON.parse(lines.join('\n')) as { status: string };
+      assert.equal(report.status, 'triggered');
+
+      // Re-open the SAME world-model store the one-shot mount committed to and
+      // confirm the staged payload actually reached the INBOX render (folded into
+      // its tickets), proving --data is delivered, not merely echoed in the report.
+      const store = new FileSystemWorldModelStore({ directory: join(stateDir, 'world-models') });
+      assert.equal(ticketCount(store as never), 1, 'the one-shot --data was folded into the node');
     } finally {
       rmSync(stateDir, { recursive: true, force: true });
     }

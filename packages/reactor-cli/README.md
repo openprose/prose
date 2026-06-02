@@ -13,36 +13,41 @@ what materially moved (the reconciler is dumb — **no judge step**), and every
 decision leaves a content-addressed **receipt**. Cost scales with surprise, not
 the clock.
 
-> **Versions (currently staged tarballs, pre-publish):** `reactor-cli` 0.1.0 ·
+> **Versions (live on npm):** `reactor-cli` 0.1.0 ·
 > `@openprose/reactor` 0.2.0 · `reactor-devtools` 0.1.0. `reactor --version`
 > prints the CLI version (0.1.0), not the SDK version (0.2.0) — expected, not a
 > mismatch.
 
 ## Install
 
-After npm publish:
+All three packages are live on npm. Prefer a **project-local** install (no root,
+no global binary collisions) and call the binaries through `npx`:
+
+```sh
+npm install --save-dev @openprose/reactor-cli @openprose/reactor @openai/agents zod
+# then: `npx reactor …` / `npx reactor-devtools …`
+```
+
+To touch the keyless replay with **no install at all**:
+
+```sh
+npx -p @openprose/reactor-devtools reactor-devtools --example masked-relay --describe
+```
+
+A global install is an alternative — but `-g` can collide with other tools'
+binaries and is `EACCES`-prone on Linux/WSL (use a user prefix/nvm or `sudo`):
 
 ```sh
 npm i -g @openprose/reactor-cli @openprose/reactor-devtools
-# or, per-project:
-npm install --save-dev @openprose/reactor-cli @openprose/reactor @openai/agents zod
-```
-
-**Pre-publish (from the staged tarballs).** The CLI and devtools peer-depend on
-the SDK, which isn't on npm yet — so install all three together, **SDK first**,
-in one `npm install`:
-
-```sh
-npm i -g openprose-reactor-0.2.0.tgz \
-         openprose-reactor-cli-0.1.0.tgz \
-         openprose-reactor-devtools-0.1.0.tgz
-# The live render also needs two peers, installed in the same -g tree:
-npm i -g @openai/agents zod
+# The live render also needs two peers:
+npm i -g @openprose/reactor @openai/agents zod
 ```
 
 > Zero *runtime* deps in the SDK core. The live render needs two peers
 > (`@openai/agents`, `zod`); `doctor`, `init`, the whole observability suite, and
 > the `reactor-devtools` replay need neither.
+>
+> Requires **Node >=20** (matches the SDK's `engines` floor).
 
 ## Quickstart
 
@@ -264,18 +269,18 @@ Run `reactor <command> --help` for the full options of any command.
 
 | Command | Live? | What it does |
 | --- | --- | --- |
-| `reactor init [dir]` | offline | Scaffold a minimal project (gateway + responsibility + `reactor.yml` + `.gitignore`). |
+| `reactor init [dir]` | offline | Scaffold a minimal project (gateway + responsibility + `reactor.yml` + `.gitignore`). Refuses a non-empty target dir without `--force`. |
 | `reactor doctor [--live]` | offline (`--live` probes) | Report node/SDK/key/deps/offline/sandbox/state-dir/IR health. `--live` runs one smoke render. |
 | `reactor compile [--force] [--check]` | live (cache hit/`--check` offline) | Run compile sessions → IR cache. `--check` exits non-zero when stale. |
 | `reactor run` | live | Ensure IR fresh, boot, drain to quiescence, report + exit. |
 | `reactor serve [--http <port>] [--concurrency <n>] [--poll-interval <ms>]` | live | Boot the durable host + continuity loop + HTTP surface. |
-| `reactor trigger <node> [--data <json>|@file]` | live | Trigger a node with an external wake (one-shot mount, or POST to a daemon). |
+| `reactor trigger <node> [--data <json>|@file]` | live | Trigger a node with an external wake (one-shot mount, or POST to a daemon). With `--data`, the payload is STAGED into the node's ingress so it actually reaches the render (not just the report). |
 | `reactor status` | offline | Standing compile cost beside live run cost + dispositions. |
 | `reactor topology` | offline | Print the compiled DAG: nodes (+ wake source) and resolved edges. |
 | `reactor inspect <node> [--strict]` | offline | A node's topology position, fingerprints, last receipt, chain. |
 | `reactor logs [--node <node>]` | offline | The receipt stream (optionally filtered to one node). |
 | `reactor trace [<node>]` | offline | Each node's receipt chain: wake → disposition. |
-| `reactor receipts [list\|verify\|cost] [--node <node>]` | offline | Audit the receipt trail (`verify` is non-zero on a broken chain). |
+| `reactor receipts [list\|verify\|cost] [--node <node>] [--rate <rate>]` | offline | Audit the receipt trail (`verify` is non-zero on a broken chain). An unknown subcommand is a usage error (exit 2). `cost --rate $3/Mtok` (or `500000tpd`) prices the token rollup into a dollar column. |
 
 > **What `receipts verify` proves (and doesn't).** It proves **receipt-chain
 > consistency**: each receipt's `content_hash` matches its payload, and each
@@ -292,7 +297,7 @@ The CLI uses stable, documented exit codes so it composes in CI/scripts:
 | --- | --- |
 | `0` | Success / healthy. |
 | `1` | A reported failure with an actionable message: stale cache (`compile --check`), a broken receipt chain (`receipts verify`, `inspect --strict`), no contracts found, a bad config, an unhealthy environment (`doctor`), a missing live key/dep (`--live`), or a connector/render error. |
-| `2` | A usage error (unknown command/flag — emitted by the arg parser). |
+| `2` | A usage error: an unknown command/flag (emitted by the arg parser), an unknown `receipts` subcommand (e.g. `receipts verifyy`), or a `--state-dir` that points at a file instead of a directory. |
 
 Failure modes carry actionable messages, e.g. a missing live key → "set
 `OPENROUTER_API_KEY`"; `mode: docker` with no daemon → "install/start Docker, or

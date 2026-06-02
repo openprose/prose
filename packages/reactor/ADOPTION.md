@@ -27,22 +27,29 @@ not the clock.
 
 ## Install
 
-The on-ramp is the CLI plus the devtools viewer.
+All three packages are live on npm. The on-ramp is the CLI plus the devtools
+viewer. The keyless replay needs **no install at all** — run it through `npx`:
 
 ```sh
-# After npm publish:
-npm i -g @openprose/reactor-cli @openprose/reactor-devtools
+# keyless, no install:
+npx -p @openprose/reactor-devtools reactor-devtools --example masked-relay --describe
 ```
 
-**Pre-publish (from the staged tarballs).** The CLI and devtools peer-depend on
-the SDK, so install all three together (SDK first), in one command:
+For the full CLI, prefer a project-local install (no root, no global collisions):
 
 ```sh
-npm i -g openprose-reactor-0.2.0.tgz \
-         openprose-reactor-cli-0.1.0.tgz \
-         openprose-reactor-devtools-0.1.0.tgz
-# The live render also needs two peers, installed in the same -g tree:
-npm i -g @openai/agents zod
+npm install @openprose/reactor @openprose/reactor-cli @openprose/reactor-devtools
+# then call the binaries with `npx reactor …` / `npx reactor-devtools …`.
+# The live render also needs two peers:
+npm install @openai/agents zod
+```
+
+A global install is an alternative — but `-g` can collide with other tools'
+binaries and is `EACCES`-prone on Linux/WSL (use a user prefix/nvm or `sudo`):
+
+```sh
+npm i -g @openprose/reactor @openprose/reactor-cli @openprose/reactor-devtools \
+         @openai/agents zod
 ```
 
 Use Node 20 or newer.

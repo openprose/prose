@@ -20,7 +20,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -435,6 +435,28 @@ describe('reactor trigger (offline gate)', () => {
       assert.match(out.lines.join('\n'), /not in the compiled topology/);
     } finally {
       rmSync(d.state, { recursive: true, force: true });
+    }
+  });
+
+  it('a --state-dir that points at a FILE is a clean usage error (exit 2), not a raw EEXIST (G12)', async () => {
+    const base = mkdtempSync(join(tmpdir(), 'reactor-cli-g12-'));
+    const stateFile = join(base, 'not-a-dir');
+    try {
+      // Make the state-dir target a FILE; the substrate's mkdir would otherwise
+      // throw a guidance-free EEXIST/ENOTDIR.
+      writeFileSync(stateFile, 'i am a file', 'utf8');
+      const out = capture();
+      const code = await runTriggerCommand(
+        { node: MONITOR, projectDir: FIXTURE_DIR, stateDir: stateFile, json: true, offline: true },
+        out.write,
+      );
+      assert.equal(code, 2, 'a file-as-state-dir is a usage error (exit 2)');
+      const report = JSON.parse(out.lines.join('\n')) as { status: string; message: string };
+      assert.equal(report.status, 'error');
+      assert.match(report.message, /not a directory/);
+      assert.doesNotMatch(report.message, /EEXIST|ENOTDIR/, 'no raw errno leaks');
+    } finally {
+      rmSync(base, { recursive: true, force: true });
     }
   });
 });

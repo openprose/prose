@@ -4,11 +4,13 @@
 // The `forecast/` module (evaluateContinuityTick + createSelfRecheckReceipt)
 // holds the self-driven `### Continuity` math — "which facets have lapsed as of
 // `as_of`, what is the soonest remaining `valid_until`, and the SYNTHETIC
-// self-receipt that records the lapse" — but it has ZERO callers. Nothing arms a
-// timer off `next_self_recheck`; nothing manufactures the tick; `dag.tick`
-// bypasses the forecast math entirely. That is exactly why U09 (self-driven
-// recheck on a `valid_until` lapse) has never been driveable end-to-end. This
-// module is the missing driver.
+// self-receipt that records the lapse". This module is the DRIVER that turns
+// that math into an end-to-end loop: it arms a timer off `next_self_recheck`,
+// manufactures the tick, and (on a lapse) appends the synthetic self-receipt and
+// drains propagation — the forecast path `dag.tick` deliberately bypasses. The
+// CLI `serve` command now wires it live: `createAsyncContinuityScheduler` is
+// armed once at boot and polled on a flat `--poll-interval` cadence, so U09
+// (self-driven recheck on a `valid_until` lapse) is driveable end-to-end.
 //
 // THE MECHANISM (world-model.md §5/§6; forecast/index.ts header). A self-driven
 // node's continuity clock emits a SYNTHETIC SELF-RECEIPT — a tick whose

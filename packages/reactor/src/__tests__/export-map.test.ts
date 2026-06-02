@@ -101,6 +101,18 @@ describe("package exports map (Change A)", () => {
     );
   });
 
+  it("(a2) exposes ./package.json so require('@openprose/reactor/package.json') resolves (G13)", () => {
+    // Before the fix the exports map omitted ./package.json, so a consumer that
+    // does `require('@openprose/reactor/package.json')` (a very common pattern —
+    // version probes, tooling) hit ERR_PACKAGE_PATH_NOT_EXPORTED.
+    const pkgJsonPath = selfRequire.resolve("@openprose/reactor/package.json");
+    assert.ok(pkgJsonPath.endsWith("package.json"), "./package.json must resolve");
+    const pkg = selfRequire("@openprose/reactor/package.json") as {
+      name: string;
+    };
+    assert.equal(pkg.name, "@openprose/reactor");
+  });
+
   it("(b) offline barrels ('.', './sdk', './canonicalizer') load without @openai/agents or zod", () => {
     const env: NodeJS.ProcessEnv = { ...process.env, REACTOR_OFFLINE: "1" };
     const leaked = loadedModulesFor([".", "./sdk", "./canonicalizer"], env);

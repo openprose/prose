@@ -13,7 +13,7 @@
  * chain check, when `--strict`) exits NONZERO on a tampered/broken chain.
  */
 
-import { loadConfig, type ConfigOverrides } from '../config';
+import { loadConfig, validateStateDirTarget, type ConfigOverrides } from '../config';
 import { StateView } from '../observe/state-view';
 import {
   projectStatus,
@@ -61,6 +61,13 @@ function openView(options: ObserveOptions): StateView {
       ...(options.stateDir !== undefined ? { stateDir: options.stateDir } : {}),
       ...(options.projectDir !== undefined ? { projectDir: options.projectDir } : {}),
     }).state.dir;
+  // Validate the state-dir target before the world-model store mkdir's
+  // `<state-dir>/world-models` (G12): a FILE at the state-dir path otherwise
+  // surfaces a raw ENOTDIR. Tagged so `main` maps it to the usage exit code (2).
+  const stateDirError = validateStateDirTarget(stateDir);
+  if (stateDirError !== undefined) {
+    throw Object.assign(new Error(stateDirError), { reactorCliUsageError: true });
+  }
   return StateView.open(stateDir);
 }
 
@@ -232,6 +239,73 @@ export interface ReceiptsOptions extends ObserveOptions {
   readonly sub?: ReceiptsSubcommand;
   /** Filter to a single node (list/cost). */
   readonly node?: string;
+  /**
+   * `cost` only (G9): a price to fill the dollar column. Two forms:
+   *   - `$/Mtok` (dollars per MILLION tokens): a bare number `3`, or `$3/Mtok`.
+   *   - `<n>tokens-per-dollar`: `500000tpd` (or `…tokens-per-dollar`).
+   * Unset → no dollar column (the token-only view, unchanged).
+   */
+  readonly rate?: string;
+}
+
+/** Format a USD amount to 4 decimals (sub-cent token spend is common). */
+function usd(amount: number): string {
+  return `$${amount.toFixed(4)}`;
+}
+
+/** The dollar lines appended to `formatCost` output under `--rate` (G9). */
+function formatDollarLine(priced: {
+  rate: ParsedRate;
+  usd: { total: number; fresh: number; reused: number };
+}): string {
+  return (
+    `\n  rate           ${priced.rate.label}` +
+    `\n  cost (USD)     total=${usd(priced.usd.total)} ` +
+    `fresh=${usd(priced.usd.fresh)} reused=${usd(priced.usd.reused)}`
+  );
+}
+
+/** A parsed `--rate`: dollars charged per token (the normalized unit). */
+export interface ParsedRate {
+  /** Dollars per single token (so `tokens * usdPerToken` is the bill). */
+  readonly usdPerToken: number;
+  /** The human echo of how the rate was read (for the cost line). */
+  readonly label: string;
+}
+
+/**
+ * Parse `--rate` into a per-token USD price (G9). Accepts `$/Mtok` (dollars per
+ * million tokens — a bare number or `$N/Mtok`) and `<n>tokens-per-dollar`
+ * (`Ntpd` / `Ntokens-per-dollar`). Returns `undefined` for an unparseable/
+ * non-positive rate (the caller surfaces a clear error rather than billing zero).
+ */
+export function parseRate(raw: string): ParsedRate | undefined {
+  const trimmed = raw.trim();
+  // tokens-per-dollar: `500000tpd` | `500000 tokens-per-dollar`.
+  const tpd = /^([0-9]*\.?[0-9]+)\s*(?:tpd|tokens-per-dollar)$/i.exec(trimmed);
+  if (tpd) {
+    const tokensPerDollar = Number(tpd[1]);
+    if (Number.isFinite(tokensPerDollar) && tokensPerDollar > 0) {
+      return {
+        usdPerToken: 1 / tokensPerDollar,
+        label: `${tokensPerDollar} tokens/$`,
+      };
+    }
+    return undefined;
+  }
+  // $/Mtok: `3` | `$3` | `$3/Mtok` | `3/Mtok` | `3 mtok`.
+  const mtok = /^\$?\s*([0-9]*\.?[0-9]+)\s*(?:\/?\s*mtok)?$/i.exec(trimmed);
+  if (mtok) {
+    const dollarsPerMillion = Number(mtok[1]);
+    if (Number.isFinite(dollarsPerMillion) && dollarsPerMillion >= 0) {
+      return {
+        usdPerToken: dollarsPerMillion / 1_000_000,
+        label: `$${dollarsPerMillion}/Mtok`,
+      };
+    }
+    return undefined;
+  }
+  return undefined;
 }
 
 export async function runReceiptsCommand(
@@ -272,10 +346,44 @@ export async function runReceiptsCommand(
     // branch prints the COST rollup (r3a: it previously printed the receipts
     // audit, the same table `verify` prints).
     const cost = projectCost(view, options.node);
+
+    // G9: with `--rate`, price the token rollup into a dollar column. A bad rate is
+    // a usage error (never silently bill zero — the trust trap the report warns of).
+    let priced: { rate: ParsedRate; usd: { total: number; fresh: number; reused: number } } | undefined;
+    if (options.rate !== undefined) {
+      const rate = parseRate(options.rate);
+      if (rate === undefined) {
+        return emitError(
+          `reactor receipts cost: unparseable --rate '${options.rate}' — use ` +
+            `\`$/Mtok\` (e.g. 3 or $3/Mtok) or \`<n>tokens-per-dollar\` (e.g. 500000tpd).`,
+          options,
+          write,
+        );
+      }
+      priced = {
+        rate,
+        usd: {
+          total: (cost.total.fresh + cost.total.reused) * rate.usdPerToken,
+          fresh: cost.total.fresh * rate.usdPerToken,
+          reused: cost.total.reused * rate.usdPerToken,
+        },
+      };
+    }
+
     if (options.json === true) {
-      write(JSON.stringify(cost));
+      write(
+        JSON.stringify(
+          priced === undefined
+            ? cost
+            : {
+                ...cost,
+                rate: { ...priced.rate },
+                dollars: priced.usd,
+              },
+        ),
+      );
     } else {
-      write(formatCost(cost));
+      write(formatCost(cost) + (priced === undefined ? '' : formatDollarLine(priced)));
     }
     return 0;
   }

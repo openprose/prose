@@ -29,6 +29,7 @@ import { createAsyncContinuityScheduler } from '@openprose/reactor';
 
 import {
   loadCompiledProject,
+  contentAddressOf,
   type ContractView,
   type ProjectTruthProjection,
 } from '../run/run-core';
@@ -55,16 +56,19 @@ import {
 } from '../run/http-server';
 import {
   augmentTopologyWithIngress,
+  buildStageArrival,
   loadConnectorPlugin,
   resolveGatewayPoller,
   type ConnectorFetch,
   type GatewayPollOutcome,
   type ResolvedGatewayPoller,
+  type StageStore,
+  type StageLedger,
 } from '../run/connectors';
 import { isCacheFresh, contractSetFingerprint } from '../compile/ir-cache';
 import { loadContractSet as keylessLoadContractSet } from '../compile/contract-images';
 import type { ConfigOverrides, GatewayConfig, SandboxConfig } from '../config';
-import { loadConfig } from '../config';
+import { loadConfig, validateStateDirTarget } from '../config';
 import { resolveSdk } from '../meta';
 import { runCompileCommand, type CompileCommandOptions } from './compile';
 
@@ -102,9 +106,15 @@ export interface ServeHandle {
   readonly gatewayNodes: readonly string[];
   /**
    * Enqueue an external trigger of `node` (the running-daemon path). Serialized.
-   * Passes the SDK external wake `{ source: "external", refs: [] }`.
+   * Passes the SDK external wake `{ source: "external", refs: [] }`. When `data`
+   * is supplied AND the node is a configured gateway, the data is STAGED into the
+   * node's ingress inbox so it actually reaches the render (B3); the returned
+   * `dataDelivered` reports whether staging happened.
    */
-  readonly trigger: (node: string, wake?: unknown) => Promise<void>;
+  readonly trigger: (
+    node: string,
+    opts?: { wake?: unknown; data?: unknown },
+  ) => Promise<TriggerOutcome>;
   /** This reactor's current cost rollup, read off its ledger (§5.4). */
   readonly cost: () => CostRollup;
   /** Drain the queue to idle then resolve (graceful shutdown). */
@@ -184,8 +194,35 @@ export interface ServeCommandOptions extends ConfigOverrides {
   readonly onHttpReady?: (http: HttpServerHandle | undefined) => void;
 }
 
+/** The outcome of a running-daemon trigger: whether a `--data` body was staged. */
+export interface TriggerOutcome {
+  /** True when a supplied trigger body was staged into the node's ingress (B3). */
+  readonly dataDelivered: boolean;
+}
+
 /** The SDK external wake (the barrel does not export the const; build it). */
 const EXTERNAL_WAKE = Object.freeze({ source: 'external', refs: [] as string[] });
+
+/**
+ * A stable arrival id for a triggered payload (mirrors the trigger command +
+ * connector default `id_field`): prefer the payload's own `id`, else a content-
+ * stable hash of the payload so a re-trigger of the same body dedups at the inbox.
+ */
+function triggerArrivalId(data: unknown): string {
+  if (
+    data !== null &&
+    typeof data === 'object' &&
+    'id' in (data as Record<string, unknown>)
+  ) {
+    const id = (data as Record<string, unknown>)['id'];
+    if (typeof id === 'string' || typeof id === 'number') {
+      return String(id);
+    }
+  }
+  return `trigger:${contentAddressOf(
+    new TextEncoder().encode(JSON.stringify(data ?? null)),
+  )}`;
+}
 
 /**
  * Boot ONE reactor handle from already-RESOLVED inputs (the shared core of both
@@ -204,6 +241,15 @@ export async function bootReactorHandle(
 
   const { contractsDir, stateDir, model } = input;
   const sdkVersion = resolveSdk().version ?? 'unknown';
+
+  // Validate the state-dir target before the substrate mkdir's it (G12). A file at
+  // the state-dir path otherwise surfaces a raw EEXIST with no guidance. Tag the
+  // error so `runServeCommand` maps it to the usage exit code (2), not the generic
+  // boot-failure 1.
+  const stateDirError = validateStateDirTarget(stateDir);
+  if (stateDirError !== undefined) {
+    throw Object.assign(new Error(stateDirError), { reactorCliUsageError: true });
+  }
 
   // 1. Ensure the IR is fresh (compile if stale).
   const images = keylessLoadContractSet(contractsDir);
@@ -349,12 +395,32 @@ export async function bootReactorHandle(
       return outcomes;
     });
 
-  const trigger = (node: string, wake?: unknown): Promise<void> =>
+  const gatewayNodeSet = new Set(gatewayNodes);
+  const trigger = (node: string, opts?: { wake?: unknown; data?: unknown }): Promise<TriggerOutcome> =>
     queue.enqueue(async () => {
       // The running-daemon trigger path: an external wake through the reactor's
       // async ingest (serialized — at most one drain in flight, correction #4).
       const dag = (reactor as { dag: { ingestAsync: (n: string, w: unknown) => Promise<unknown> } }).dag;
-      await dag.ingestAsync(node, wake ?? EXTERNAL_WAKE);
+      // B3: deliver a trigger BODY by STAGING it into the node's ingress inbox (so
+      // the upcoming ingest is a memo-miss that re-renders the node reading the
+      // payload). Staging needs the node to carry an ingress edge — true for a
+      // configured GATEWAY (its edge was augmented at boot). For a non-gateway node
+      // there is no ingress input to move, so the body cannot be delivered through a
+      // bare wake; report that honestly rather than silently dropping it.
+      let dataDelivered = false;
+      if (opts?.data !== undefined) {
+        if (gatewayNodeSet.has(node)) {
+          const stage = buildStageArrival(
+            node,
+            (reactor as unknown as { store: StageStore }).store,
+            (reactor as unknown as { ledger: StageLedger }).ledger,
+          );
+          stage({ id: triggerArrivalId(opts.data), item: opts.data });
+          dataDelivered = true;
+        }
+      }
+      await dag.ingestAsync(node, opts?.wake ?? EXTERNAL_WAKE);
+      return { dataDelivered };
     });
 
   const cost = (): CostRollup =>
@@ -458,6 +524,8 @@ export async function runServeCommand(
     // Boot failure (stale IR / compile failed / no contracts) gets a clean
     // one-liner + exit 1 — mirroring run/topology/compile — never a raw stack.
     const msg = err instanceof Error ? err.message : String(err);
+    // A state-dir usage error (G12) is a usage fault (exit 2), not a boot failure.
+    const usage = (err as { reactorCliUsageError?: boolean })?.reactorCliUsageError === true;
     const hint = /stale|compile/i.test(msg)
       ? ' — run `reactor compile` first (it needs a model key); the keyless surface works without one.'
       : '';
@@ -466,7 +534,7 @@ export async function runServeCommand(
     } else {
       write(`${msg}${hint}`);
     }
-    return 1;
+    return usage ? 2 : 1;
   }
 
   let httpServer: HttpServerHandle | undefined;

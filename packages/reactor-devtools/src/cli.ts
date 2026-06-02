@@ -24,6 +24,69 @@ import {
   SHIPPED_EXAMPLES,
 } from "./data";
 
+// --- The bundled `--example` registry (G2) ---------------------------------
+//
+// The data layer (`src/data/index.ts`, owned by another lane) ships a single
+// hard-coded example, `masked-relay`, via `SHIPPED_EXAMPLES` / `resolveExampleDir`.
+// G2: every OTHER headline example — including `surprise-cost`, the core "cost
+// scales with surprise" thesis — was reachable only by path, and a typo'd name
+// fell through. We ADD a devtools-local registry here (in the CLI lane) that
+// AUGMENTS — never replaces — the data layer's: more fixtures committed to the
+// package's own `fixtures/` (and added to the npm `files` list) become reachable
+// by name, resolved INTERNALLY from this package's own directory exactly the way
+// the data layer resolves `masked-relay` (no path a user computes, works after a
+// global install from any cwd). The data-layer resolver is still consulted first,
+// so its behavior is unchanged and this is purely additive.
+//
+// Keep this list in sync with the `fixtures/<name>` entries added to the package
+// `files` list in package.json — a name here MUST ship in the tarball, or
+// `--example <name>` would resolve nothing after an `npm i -g` install.
+//
+// `masked-relay` is intentionally first (it is the data layer's canonical sample
+// and stays the documented default); the rest are the narrated headline corpus.
+// NOTE (G30): `tamper-forge` is deliberately NOT bundled. Its committed
+// `replay/receipts.json` is BYTE-IDENTICAL (md5) to `masked-relay`'s clean ledger,
+// so `--describe` shows `CHAIN-VERIFY ok` — it does NOT actually demonstrate the
+// tamper its name promises, and bundling it would ship a verbatim-duplicate
+// fixture. Bundling it is blocked on the example/copy lane re-authoring its ledger
+// to carry a real broken chain. Left reachable only by path until then.
+const DEVTOOLS_BUNDLED_EXAMPLES: readonly string[] = [
+  "masked-relay",
+  "surprise-cost",
+  "agent-observatory",
+  "inbox-triage",
+  "monorepo-ci",
+  "research-tree",
+];
+
+/**
+ * The full, de-duplicated set of `--example` names reachable from this bin —
+ * the data layer's {@link SHIPPED_EXAMPLES} plus the devtools-local bundled set.
+ * Used for the usage text and the unknown-name error so the listed names are
+ * exactly the resolvable ones.
+ */
+const ALL_EXAMPLES: readonly string[] = [
+  ...new Set([...SHIPPED_EXAMPLES, ...DEVTOOLS_BUNDLED_EXAMPLES]),
+];
+
+/**
+ * Resolve a `--example <name>` to an on-disk, replayable state-dir, INTERNALLY.
+ * Consults the data layer's {@link resolveExampleDir} first (so `masked-relay`
+ * keeps its exact existing behavior), then the devtools-local bundled set
+ * (`fixtures/<name>` relative to the package root — `dist/cli.js` → `../fixtures`).
+ * Returns `null` for an unknown name OR a known name whose fixture is missing on
+ * disk (the caller then lists the valid names and exits non-zero — never a silent
+ * success on a typo). No user ever computes a path.
+ */
+function resolveBundledExample(name: string): string | null {
+  const fromData = resolveExampleDir(name);
+  if (fromData !== null) return fromData;
+  if (!DEVTOOLS_BUNDLED_EXAMPLES.includes(name)) return null;
+  // From dist/ up one level to the package root, then into fixtures/.
+  const dir = join(__dirname, "..", "fixtures", name);
+  return existsSync(dir) && isReactorStateDir(dir) ? dir : null;
+}
+
 interface ParsedArgs {
   readonly stateDir: string | undefined;
   /** `--example <name>`: a SHIPPED fixture name, resolved internally (D2). */
@@ -140,7 +203,7 @@ Arguments:
 
 Options:
       --example <name>  Replay a fixture SHIPPED in this package — no path to
-                 compute, works after a global install from any cwd. Shipped: ${SHIPPED_EXAMPLES.join(
+                 compute, works after a global install from any cwd. Shipped: ${ALL_EXAMPLES.join(
                    ", ",
                  )}.
       --copy-to <dir>   Copy the bundled --example fixture into <dir> (a keyless
@@ -282,11 +345,11 @@ async function main(): Promise<void> {
       );
       process.exit(1);
     }
-    const resolved = resolveExampleDir(args.example);
+    const resolved = resolveBundledExample(args.example);
     if (resolved === null) {
       process.stderr.write(
         `error: unknown example "${args.example}".\n` +
-          `  shipped examples: ${SHIPPED_EXAMPLES.join(", ")}\n` +
+          `  shipped examples: ${ALL_EXAMPLES.join(", ")}\n` +
           `  (other fixtures are repo-only — generate them with\n` +
           `   node dist/fixtures/generate.js <key>)\n`,
       );

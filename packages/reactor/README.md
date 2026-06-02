@@ -68,8 +68,16 @@ signature scheme it doesn't have.
 
 ## SDK quickstart
 
-These TypeScript examples use the package's public subpaths. Verify a receipt
-and derive a proof summary that avoids private payload fields:
+These TypeScript examples use the package's public subpaths (`@openprose/reactor/receipt`,
+`/projection`, …).
+
+> **TypeScript needs `nodenext` or `bundler` module resolution.** These subpaths are
+> declared through the package's `"exports"` map, which the legacy `"moduleResolution":
+> "node"` resolver does not read — under it the imports fail with `Cannot find module
+> '@openprose/reactor/receipt'`. Set `"moduleResolution": "nodenext"` (or `"bundler"`)
+> in your `tsconfig.json`.
+
+Verify a receipt and derive a proof summary that avoids private payload fields:
 
 ```ts
 import {

@@ -30,7 +30,7 @@ import { buildSandboxRunner } from '../run/sandbox';
 import { isCacheFresh, contractSetFingerprint } from '../compile/ir-cache';
 import { loadContractSet as keylessLoadContractSet } from '../compile/contract-images';
 import type { ConfigOverrides } from '../config';
-import { loadConfig } from '../config';
+import { loadConfig, validateStateDirTarget } from '../config';
 import { resolveSdk } from '../meta';
 import { runCompileCommand, type CompileCommandOptions } from './compile';
 
@@ -75,6 +75,18 @@ export async function runRunCommand(
   const contractsDir = path.resolve(options.projectDir ?? '.');
   const model = config.model.compile_model;
   const sdkVersion = resolveSdk().version ?? 'unknown';
+
+  // Validate the state-dir target before anything tries to mkdir it (G12) — a
+  // file at the state-dir path otherwise surfaces a raw EEXIST with no guidance.
+  const stateDirError = validateStateDirTarget(stateDir);
+  if (stateDirError !== undefined) {
+    if (options.json === true) {
+      write(JSON.stringify({ status: 'error', message: stateDirError }));
+    } else {
+      write(stateDirError);
+    }
+    return 2;
+  }
 
   // 1. Ensure the IR is fresh (compile if stale). Compute the contract-set fp
   //    (keyless) and compare to the cached manifest. A stale cache → compile.

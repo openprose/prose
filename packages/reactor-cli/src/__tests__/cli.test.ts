@@ -123,4 +123,18 @@ describe('main() honors the documented exit codes', () => {
       restore();
     }
   });
+
+  it('an UNKNOWN receipts subcommand is a usage error (exit 2), NOT a silent list (G4)', async () => {
+    const restore = hush();
+    try {
+      // A typo'd subcommand must NOT silently run `list` and report success — that
+      // is a trust hazard (`reactor receipts verifyy` would falsely exit 0).
+      assert.equal(await main(['node', 'reactor', 'receipts', 'verifyy']), 2);
+      assert.equal(await main(['node', 'reactor', 'receipts', 'coast']), 2);
+      // The KNOWN subcommands still run (exit 0 over an empty state dir).
+      assert.equal(await main(['node', 'reactor', 'receipts', 'list']), 0);
+    } finally {
+      restore();
+    }
+  });
 });

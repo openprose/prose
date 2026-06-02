@@ -309,14 +309,32 @@ export function buildProgram(onExitCode: (code: number) => void = () => {}): Com
     .description('Audit the receipt trail: list | verify (nonzero on a broken chain) | cost')
     .argument('[sub]', 'list | verify | cost (default: list)')
     .option('--node <node>', 'filter to a single node (list/cost)')
-    .action(async (sub: string | undefined, opts: { node?: string }, cmd: Command) => {
+    .option(
+      '--rate <rate>',
+      'price the cost rollup: `$/Mtok` (dollars per million tokens, e.g. 3 or $3/Mtok) ' +
+        'or `<n>tokens-per-dollar` (e.g. 500000tpd). Fills the dollar column on `cost`.',
+    )
+    .action(async (sub: string | undefined, opts: { node?: string; rate?: string }, cmd: Command) => {
       const normalized: ReceiptsSubcommand | undefined =
         sub === 'verify' || sub === 'cost' || sub === 'list' ? sub : undefined;
+      // An UNKNOWN receipts subcommand must be a usage error — never silently fall
+      // through to `list` and exit 0 (a trust hazard: `reactor receipts verifyy`
+      // would report success). Reject to stderr + exit 2, matching the top-level
+      // unknown-command behavior.
+      if (sub !== undefined && normalized === undefined) {
+        process.stderr.write(
+          `reactor receipts: unknown subcommand '${sub}' — expected one of ` +
+            `list | verify | cost\n`,
+        );
+        onExitCode(2);
+        return;
+      }
       onExitCode(
         await runReceiptsCommand({
           ...observeBase(cmd.optsWithGlobals()),
           ...(normalized !== undefined ? { sub: normalized } : {}),
           ...(opts.node !== undefined ? { node: opts.node } : {}),
+          ...(opts.rate !== undefined ? { rate: opts.rate } : {}),
         }),
       );
     });
@@ -369,6 +387,13 @@ export async function main(argv: string[]): Promise<number> {
     if (typeof code === "string" && code.startsWith("commander.")) {
       // help/version are a clean 0; every other parser signal is a usage error (2).
       return COMMANDER_SUCCESS_CODES.has(code) ? 0 : 2;
+    }
+    // A tagged CLI usage fault (e.g. G12: --state-dir points at a file) is a usage
+    // error (exit 2) with an actionable, already-legible message on stderr — never
+    // a raw stack.
+    if ((err as { reactorCliUsageError?: boolean })?.reactorCliUsageError === true) {
+      process.stderr.write(String((err as Error)?.message ?? err) + '\n');
+      return 2;
     }
     throw err; // a real error — let the caller's catch report it (exit 1).
   }

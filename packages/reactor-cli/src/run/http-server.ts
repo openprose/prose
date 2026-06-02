@@ -215,8 +215,10 @@ function matchTrigger(rest: string): string | null {
 
 /**
  * Handle `POST /trigger/<node>`: validate the node is in the topology, read the
- * (optional) JSON body (reserved for the Phase-4 connector arrival), then enqueue
- * the external wake onto the reactor's serialization queue + wait for the drain.
+ * (optional) JSON body, then enqueue the external wake onto the reactor's
+ * serialization queue + wait for the drain. When a body is present AND the node is
+ * a configured gateway, the body is STAGED into the node's ingress so it actually
+ * reaches the render (B3) — `dataDelivered` reports whether that happened.
  */
 async function handleTrigger(
   handle: ServeHandle,
@@ -241,14 +243,16 @@ async function handleTrigger(
   }
 
   const before = handle.reactor.ledger.all().length;
-  await handle.trigger(node);
+  const outcome = await handle.trigger(node, body !== undefined ? { data: body } : undefined);
   const after = handle.reactor.ledger.all().length;
 
   sendJson(res, 200, {
     reactor: handle.name,
     triggered: node,
     receiptsAdded: after - before,
-    ...(body !== undefined ? { data: body } : {}),
+    ...(body !== undefined
+      ? { data: body, dataDelivered: outcome.dataDelivered }
+      : {}),
   });
 }
 

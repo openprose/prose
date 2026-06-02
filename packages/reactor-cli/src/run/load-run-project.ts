@@ -114,11 +114,17 @@ async function importRunProject(): Promise<RunProjectModule> {
     const mod = (await import(RUN_PROJECT_SPECIFIER)) as unknown;
     return mod as RunProjectModule;
   } catch (err) {
+    // G21(b): keep only the legible first line of the underlying error — never the
+    // multi-line raw `Require stack:` dump Node appends to a MODULE_NOT_FOUND.
+    const message = String((err as Error)?.message ?? err);
+    const firstLine = (message.split('\nRequire stack:')[0] ?? message)
+      .split('\n')[0]!
+      .trim();
     throw new Error(
       'reactor run/serve needs the model extras (@openai/agents + zod). Install ' +
         'them (`npm i @openai/agents zod`) or run an offline gate with a fake ' +
         'render.\n' +
-        `underlying error: ${String((err as Error)?.message ?? err)}`,
+        `underlying error: ${firstLine}`,
     );
   }
 }

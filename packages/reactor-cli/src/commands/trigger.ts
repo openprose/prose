@@ -13,10 +13,14 @@
  * OFFLINE-SAFE (N2): keyless at load; the model surface is reached ONLY via
  * `callRunProject`'s dynamic import. The offline gate injects a fake render.
  *
- * `--data` is parsed (JSON inline or `@file`) and validated here; v1's one-shot
- * mount passes the external wake (the SDK wake carries no payload slot, so the
- * parsed data is reserved for the Phase-4 connector ingress and is surfaced in
- * the report rather than smuggled into the wake).
+ * `--data` is parsed (JSON inline or `@file`) and validated here. The SDK `Wake`
+ * shape carries NO payload slot (`{ source, refs }` only — architecture.md §6.1),
+ * so a payload cannot be smuggled into the wake. The architecturally-sanctioned
+ * delivery is the SAME staging mechanism the connector ingress uses (cli.md §6.1):
+ * augment the triggered node's topology with a phantom-ingress edge, STAGE the
+ * `--data` into that ingress inbox (moving the node's input fingerprint), then
+ * ingest — so the wake is a memo-MISS and the node re-renders reading the staged
+ * payload. With NO `--data`, the trigger is a bare external wake (unchanged).
  */
 
 import * as fs from 'fs';
@@ -25,6 +29,7 @@ import * as path from 'path';
 import {
   loadCompiledProject,
   summarizeBoot,
+  contentAddressOf,
   type RunReport,
 } from '../run/run-core';
 import {
@@ -33,10 +38,16 @@ import {
   type RunRender,
 } from '../run/load-run-project';
 import { buildDurableSubstrate } from '../run/substrate';
+import {
+  augmentTopologyWithIngress,
+  buildStageArrival,
+  type StageStore,
+  type StageLedger,
+} from '../run/connectors';
 import { isCacheFresh, contractSetFingerprint } from '../compile/ir-cache';
 import { loadContractSet as keylessLoadContractSet } from '../compile/contract-images';
 import type { ConfigOverrides } from '../config';
-import { loadConfig } from '../config';
+import { loadConfig, validateStateDirTarget } from '../config';
 import { resolveSdk } from '../meta';
 import { runCompileCommand, type CompileCommandOptions } from './compile';
 
@@ -93,6 +104,18 @@ export async function runTriggerCommand(
   const model = config.model.compile_model;
   const sdkVersion = resolveSdk().version ?? 'unknown';
 
+  // Validate the state-dir target before the substrate mkdir's it (G12) — a file
+  // at the state-dir path otherwise surfaces a raw EEXIST with no guidance.
+  const stateDirError = validateStateDirTarget(stateDir);
+  if (stateDirError !== undefined) {
+    if (options.json === true) {
+      write(JSON.stringify({ status: 'error', message: stateDirError }));
+    } else {
+      write(stateDirError);
+    }
+    return 2;
+  }
+
   // Ensure IR fresh (compile if stale).
   const images = keylessLoadContractSet(contractsDir);
   if (images.length === 0) {
@@ -139,6 +162,25 @@ export async function runTriggerCommand(
   // injected event's receipt persists to the SAME flat `<state-dir>/receipts.json`
   // trail that `serve`/`run` write and `reactor-devtools <state-dir>` replays
   // (crosscheck dt-receiptspath-1).
+  //
+  // PAYLOAD DELIVERY (B3): the SDK `Wake` carries no payload, so when `--data` is
+  // given we deliver it via the connector STAGING mechanism — give the node a
+  // phantom-ingress edge so a staged arrival moves its input fingerprint. The
+  // compiled topology is augmented BEFORE the mount (so the reconciler resolves
+  // the ingress input), then we stage the parsed `--data` and ingest, which is a
+  // memo-MISS and re-renders the node reading the staged payload. With NO `--data`
+  // the topology + wake are unchanged (a bare external wake).
+  const hasData = options.data !== undefined;
+  const compiledForMount = hasData
+    ? {
+        ...loaded.compiled,
+        reconcilerTopology: augmentTopologyWithIngress(
+          loaded.compiled.reconcilerTopology,
+          [{ node: options.node, source_id: options.node }],
+        ),
+      }
+    : loaded.compiled;
+
   const adapters: RunAdapters =
     options.testAdapters ?? buildDurableSubstrate(stateDir);
   const baseRender: RunRender = options.testRender ?? {};
@@ -150,10 +192,23 @@ export async function runTriggerCommand(
   };
 
   const { reactor } = await callRunProject({
-    compiled: loaded.compiled,
+    compiled: compiledForMount,
     adapters,
     render,
   });
+
+  // When `--data` is given, STAGE it into the node's phantom-ingress inbox so the
+  // upcoming ingest is a memo-miss that delivers the payload (B3). `buildStageArrival`
+  // appends the item to the ingress source's published inbox, commits it (moving the
+  // ingress atomic fingerprint), and appends an EXTERNAL receipt — which moves the
+  // node's `input_fingerprints`. The arrival id is content-stable so a re-trigger of
+  // the same payload dedups at the inbox (append-style stage).
+  if (hasData) {
+    const store = (reactor as unknown as { store: StageStore }).store;
+    const ledger = (reactor as unknown as { ledger: StageLedger }).ledger;
+    const stage = buildStageArrival(options.node, store, ledger);
+    stage({ id: triggerArrivalId(parsedData), item: parsedData });
+  }
 
   // Ingest the named node with the full external wake, drain to quiescence.
   const dag = (
@@ -179,6 +234,28 @@ export async function runTriggerCommand(
 // ---------------------------------------------------------------------------
 // internals
 // ---------------------------------------------------------------------------
+
+/**
+ * A stable arrival id for a triggered payload. Prefer the payload's own `id`
+ * field (so a caller controls idempotency, matching the connector's default
+ * `id_field`); otherwise derive a content-stable id from the payload bytes so
+ * re-triggering the same `--data` dedups at the ingress inbox.
+ */
+function triggerArrivalId(data: unknown): string {
+  if (
+    data !== null &&
+    typeof data === 'object' &&
+    'id' in (data as Record<string, unknown>)
+  ) {
+    const id = (data as Record<string, unknown>)['id'];
+    if (typeof id === 'string' || typeof id === 'number') {
+      return String(id);
+    }
+  }
+  return `trigger:${contentAddressOf(
+    new TextEncoder().encode(JSON.stringify(data ?? null)),
+  )}`;
+}
 
 /** Parse `--data`: `@path` reads a JSON file; otherwise inline JSON. */
 function parseData(raw: string): unknown {

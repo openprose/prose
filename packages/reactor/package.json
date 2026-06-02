@@ -65,7 +65,8 @@
     "./canonicalizer": {
       "types": "./dist/canonicalizer/index.d.ts",
       "default": "./dist/canonicalizer/index.js"
-    }
+    },
+    "./package.json": "./package.json"
   },
   "files": [
     "dist/**/*.js",
@@ -95,6 +96,18 @@
     "test:runtime": "pnpm build && node --test $(find dist -name '*.test.js' -type f | sort)",
     "test": "pnpm typecheck && pnpm test:runtime",
     "test:offline": "REACTOR_OFFLINE=1 pnpm test"
+  },
+  "peerDependencies": {
+    "@openai/agents": "^0.11.6",
+    "zod": "^4.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@openai/agents": {
+      "optional": true
+    },
+    "zod": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@openai/agents": "^0.11.6",

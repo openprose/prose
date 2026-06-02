@@ -179,16 +179,35 @@ export interface BeatsMap {
   readonly beats: readonly Beat[];
 }
 
+/** Thrown by {@link openStateDir} when the target is not a Reactor state-dir. */
+export class NotAStateDirError extends Error {
+  constructor(public readonly stateDir: string) {
+    super(`not a Reactor state-dir: ${stateDir}`);
+    this.name = "NotAStateDirError";
+  }
+}
+
 /**
- * Open a saved `<state-dir>` for replay. Pure read: opens the durable trail,
- * re-derives the ledger, shapes a {@link ReplaySession}, and loads the saved
- * topology if present. No model key, no running reactor (plan §1.3).
+ * Open a saved `<state-dir>` for replay. PURE READ (B5): the storage adapter is
+ * opened `read_only`, so it NEVER `mkdir`s the target or seeds empty
+ * `registry.json` / `receipts.json` — a non-existent or bare directory is left
+ * byte-for-byte untouched, preserving the not-a-state-dir signal that
+ * {@link isReactorStateDir} reads. An absent/bare path raises
+ * {@link NotAStateDirError} (a clean signal) rather than being silently
+ * created. Re-derives the ledger, shapes a {@link ReplaySession}, and loads the
+ * saved topology if present. No model key, no running reactor (plan §1.3).
  */
 export function openStateDir(
   stateDir: string,
   options: OpenStateDirOptions = {},
 ): OpenedStateDir {
-  const storage = createFileSystemStorageAdapter({ directory: stateDir });
+  if (!isReactorStateDir(stateDir)) {
+    throw new NotAStateDirError(stateDir);
+  }
+  const storage = createFileSystemStorageAdapter({
+    directory: stateDir,
+    read_only: true,
+  });
   // The RAW persisted trail, ORIGINAL content_hashes intact — the authoritative
   // input to chain-verify (D8/bug#6: it must NOT be the re-stamped ledger). A
   // throw here (a receipts file that is not a JSON array, etc.) is a TRUE error

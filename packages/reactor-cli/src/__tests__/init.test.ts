@@ -17,7 +17,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, existsSync, readFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -113,6 +113,28 @@ describe('reactor init (offline gate)', () => {
       assert.equal(JSON.parse(out.lines.join('\n'))['status'], 'exists');
       // --force overwrites and succeeds.
       assert.equal(await runInitCommand({ dir, force: true }, () => {}), 0);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('refuses to scaffold into a NON-EMPTY dir without --force, even with NO name collision (G21c)', async () => {
+    const dir = freshDir();
+    try {
+      // An unrelated pre-existing file (no scaffold-name collision) must still
+      // block — silently sprinkling contracts into an existing project is a footgun.
+      writeFileSync(join(dir, 'unrelated.txt'), 'i was here first', 'utf8');
+      const out = capture();
+      const code = await runInitCommand({ dir, json: true }, out.write);
+      assert.equal(code, 1);
+      const report = JSON.parse(out.lines.join('\n')) as Record<string, unknown>;
+      assert.equal(report['status'], 'non-empty');
+      assert.deepEqual(report['existingEntries'], ['unrelated.txt']);
+      // It scaffolded NOTHING.
+      assert.ok(!existsSync(join(dir, 'reactor.yml')), 'no scaffold written into a non-empty dir');
+      // --force scaffolds anyway.
+      assert.equal(await runInitCommand({ dir, force: true }, () => {}), 0);
+      assert.ok(existsSync(join(dir, 'reactor.yml')));
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

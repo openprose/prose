@@ -151,6 +151,58 @@ export function loadConfig(overrides: ConfigOverrides = {}): ReactorConfig {
 }
 
 /**
+ * Validate that a resolved `--state-dir` target is usable as a DIRECTORY before a
+ * command tries to `mkdir` it (the durable substrate + world-model store both
+ * `mkdirSync(stateDir, { recursive: true })`, which throws a raw, guidance-free
+ * `EEXIST`/`ENOTDIR` when the path already exists as a FILE — G12). Returns an
+ * actionable one-line message when the target exists and is not a directory, or
+ * when an ancestor on the path is a file (so the mkdir cannot create it); returns
+ * `undefined` when the target is a directory or does not yet exist (the normal
+ * create case). Pure + keyless: a `statSync` only.
+ */
+export function validateStateDirTarget(stateDir: string): string | undefined {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const fsMod = require('fs') as typeof import('fs');
+  let stat: import('fs').Stats | undefined;
+  try {
+    stat = fsMod.statSync(stateDir);
+  } catch {
+    stat = undefined; // does not exist (yet) — mkdir will create it.
+  }
+  if (stat !== undefined && !stat.isDirectory()) {
+    return (
+      `reactor: --state-dir '${stateDir}' exists but is not a directory ` +
+      `(it is a file). The state dir holds receipts.json, world-models/, and the ` +
+      `compile/ IR cache — point --state-dir at a directory (or a path that does ` +
+      `not exist yet), or remove the conflicting file.`
+    );
+  }
+  if (stat === undefined) {
+    // The target does not exist; confirm the nearest existing ancestor is a
+    // directory, else the recursive mkdir fails just as opaquely (ENOTDIR).
+    let ancestor = path.dirname(stateDir);
+    while (ancestor !== path.dirname(ancestor)) {
+      let ancestorStat: import('fs').Stats | undefined;
+      try {
+        ancestorStat = fsMod.statSync(ancestor);
+      } catch {
+        ancestor = path.dirname(ancestor);
+        continue;
+      }
+      if (!ancestorStat.isDirectory()) {
+        return (
+          `reactor: --state-dir '${stateDir}' cannot be created — its parent ` +
+          `'${ancestor}' is a file, not a directory. Choose a --state-dir whose ` +
+          `parents are directories.`
+        );
+      }
+      break;
+    }
+  }
+  return undefined;
+}
+
+/**
  * A fully-resolved hosted reactor: absolute paths + concrete gateways. The
  * commands' multi-reactor host ({@link import('./run/host')}) consumes these.
  */

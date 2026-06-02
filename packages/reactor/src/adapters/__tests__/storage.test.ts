@@ -1,5 +1,5 @@
-import { deepEqual, equal, throws } from "node:assert/strict";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { deepEqual, equal, ok, throws } from "node:assert/strict";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -81,6 +81,74 @@ test("filesystem storage round-trips deterministic JSON and survives reopen", (t
     readFileSync(join(directory, "receipts.json"), "utf8"),
     `${renderAdapterJson([first, second])}\n`,
   );
+});
+
+test("read-only filesystem storage NEVER creates the dir or seeds files (B5)", () => {
+  // An absent target: a read-only open must leave it absent (no mkdir, no seed).
+  const base = mkdtempSync(join(tmpdir(), "reactor-ro-"));
+  const absent = join(base, "does-not-exist");
+  try {
+    const storage = createFileSystemStorageAdapter({
+      directory: absent,
+      read_only: true,
+    });
+
+    // Construction touched nothing.
+    equal(existsSync(absent), false);
+
+    // Reads of an absent trail are the legitimate empty case, not a create.
+    deepEqual(storage.listReceipts(), []);
+    deepEqual(storage.readRegistry(), {});
+    equal(existsSync(absent), false);
+    equal(existsSync(join(absent, "receipts.json")), false);
+    equal(existsSync(join(absent, "registry.json")), false);
+
+    // Write paths refuse on a read-only adapter.
+    throws(() => storage.writeRegistry({}), /read-only/);
+    throws(() => storage.appendReceipt(makeReceipt("rendered")), /read-only/);
+    equal(existsSync(absent), false);
+  } finally {
+    rmSync(base, { recursive: true, force: true });
+  }
+});
+
+test("read-only filesystem storage reads an EXISTING trail without mutating it", () => {
+  const directory = mkdtempSync(join(tmpdir(), "reactor-ro-existing-"));
+  try {
+    const first = makeReceipt("rendered");
+    const writer = createFileSystemStorageAdapter({
+      directory,
+      initial_registry: makeRegistry("topology-1"),
+    });
+    writer.appendReceipt(first);
+    const before = readFileSync(join(directory, "receipts.json"), "utf8");
+
+    const reader = createFileSystemStorageAdapter({ directory, read_only: true });
+    deepEqual(reader.listReceipts(), [first]);
+    deepEqual(reader.readRegistry(), makeRegistry("topology-1"));
+
+    // The read left the on-disk bytes untouched.
+    equal(readFileSync(join(directory, "receipts.json"), "utf8"), before);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("read-only open of a bare (existing-but-empty) dir does NOT seed files (B5)", () => {
+  const directory = mkdtempSync(join(tmpdir(), "reactor-ro-bare-"));
+  try {
+    const storage = createFileSystemStorageAdapter({
+      directory,
+      read_only: true,
+    });
+    deepEqual(storage.listReceipts(), []);
+    // The bare dir stays bare — no receipts.json / registry.json seeded, so the
+    // "not a state dir" signal is preserved.
+    ok(!existsSync(join(directory, "receipts.json")));
+    ok(!existsSync(join(directory, "registry.json")));
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });
 
 function makeRegistry(topologyTag: string): ReactorRuntimeRegistrySnapshot {

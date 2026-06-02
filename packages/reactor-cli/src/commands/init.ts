@@ -46,10 +46,12 @@ export interface ScaffoldFile {
 
 /** The structured init report (also the `--json` payload). */
 export interface InitReport {
-  readonly status: 'scaffolded' | 'exists';
+  readonly status: 'scaffolded' | 'exists' | 'non-empty';
   readonly dir: string;
   readonly written: readonly string[];
   readonly skipped: readonly string[];
+  /** When `status: 'non-empty'`, the pre-existing entries that blocked the scaffold. */
+  readonly existingEntries?: readonly string[];
 }
 
 /**
@@ -220,7 +222,7 @@ export async function runInitCommand(
   const dir = path.resolve(options.dir ?? '.');
   const files = scaffoldFiles();
 
-  // Refuse to clobber existing files unless --force. Report exactly which exist.
+  // Refuse to clobber existing SCAFFOLD files unless --force. Report exactly which exist.
   const existing = files.filter((f) => fs.existsSync(path.join(dir, f.relativePath)));
   if (existing.length > 0 && options.force !== true) {
     const report: InitReport = {
@@ -231,6 +233,29 @@ export async function runInitCommand(
     };
     emit(report, options, write);
     return 1;
+  }
+
+  // Refuse to scaffold into a NON-EMPTY directory unless --force, even when no
+  // scaffold-file name collides (G21(c)) — silently sprinkling contracts into an
+  // existing project is a footgun. A missing dir (about to be created) is fine.
+  if (options.force !== true) {
+    let entries: string[] = [];
+    try {
+      entries = fs.readdirSync(dir);
+    } catch {
+      entries = []; // dir does not exist yet → a clean scaffold target.
+    }
+    if (entries.length > 0) {
+      const report: InitReport = {
+        status: 'non-empty',
+        dir,
+        written: [],
+        skipped: [],
+        existingEntries: entries.sort(),
+      };
+      emit(report, options, write);
+      return 1;
+    }
   }
 
   fs.mkdirSync(dir, { recursive: true });
@@ -275,6 +300,15 @@ export function formatInitReport(report: InitReport): string {
     }
     lines.push('');
     lines.push('  Re-run with --force to overwrite, or choose an empty directory.');
+    return lines.join('\n');
+  }
+  if (report.status === 'non-empty') {
+    lines.push(`  refused: ${report.dir} is not empty:`);
+    for (const f of report.existingEntries ?? []) {
+      lines.push(`    - ${f}`);
+    }
+    lines.push('');
+    lines.push('  Re-run with --force to scaffold here anyway, or choose an empty directory.');
     return lines.join('\n');
   }
   lines.push(`  scaffolded into ${report.dir}`);

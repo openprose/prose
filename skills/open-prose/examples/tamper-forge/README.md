@@ -42,7 +42,7 @@ byte-identical re-read does not move it, so a clean re-audit memo-**skips**
 | **(a)** | inflate `cost.tokens.fresh`, keep the stale `content_hash` | `verifyReceiptChain` | **CHAIN-VERIFY FAILED** — the body no longer hashes to its recorded `content_hash` |
 | **(b)** | re-stamp the public `content_hash` via `computeReceiptContentHash` | `computeReceiptContentHash` | chain **PASSES** again — **honest book-keeping, NOT non-repudiation**: under the v1 null signer, whoever rewrites the file can also recompute the hash |
 | **(c)** | forge `sig.scheme` (claim a signed posture the run never had) | `verifyReceipt` | **REJECTED** — `sig.scheme must be "none"`; the null signer is the only honest v1 state |
-| **(d)** | edit a `world-models/<hex>/published.json` artifact, leave `receipts.json` intact | `verifyReceiptChain` | **STILL PASSES** — the documented integrity gap (Bug B6 / OUTSTANDING #3): the maintained truth sits *outside* the receipt envelope. Asserted as **current** behavior so it can't regress silently |
+| **(d)** | edit a `world-models/<hex>/published.json` artifact, leave `receipts.json` intact | `verifyReceiptChain` | **STILL PASSES** — the documented integrity gap: the maintained truth (the world-model artifact layer) sits *outside* the receipt envelope, so chain-verify does not cover it. Asserted as **current** behavior so it can't regress silently |
 
 **The honest boundary, stated plainly:** Reactor v1 receipts are **tamper-evident**
 (a `prev`-linked, content-addressed trail catches an accidental or careless
@@ -50,11 +50,12 @@ mutation of a *receipt* field) — they are **not** cryptographic **non-repudiat
 (the v1 signer is null; a re-stamped trail heals; the world-model artifact layer is
 not covered). Never let an audit claim more than (a)–(d) prove.
 
-**Exit-code caveats (documented, not fixed here):** the *plain*-mode `reactor
-receipts verify` returns a non-zero exit on a broken chain (CI-safe — the gate
-asserts this). The `reactor --json receipts verify` path exits **0** on a broken
-chain today (**Bug B3**) — out of library scope, tracked separately; the example
-never implies the broken `--json` behavior.
+**Exit codes (CI-safe in both modes):** `reactor receipts verify` returns a
+non-zero exit on a broken chain — and the `--json` form
+(`reactor --json receipts verify`) exits non-zero on a broken chain too, so a CI
+gate can rely on the exit code whether or not it asks for JSON output. (An
+empty/unreadable ledger is also a non-zero exit — never a green "ALL OK" on zero
+receipts.)
 
 ## Replay it keyless (the universal "aha")
 
@@ -77,7 +78,7 @@ the Reactor harness.
 reactor doctor                 # honest health report (the best command in the kit)
 reactor compile --check        # exits 1 (stale) until the audit lens is compiled
 reactor topology               # the compiled lens once frozen (2 nodes)
-reactor receipts verify ./replay   # PLAIN mode: exits non-zero on a broken chain
+reactor --state-dir ./replay receipts verify   # exits non-zero on a broken chain
 ```
 
 ### Live (needs OPENROUTER_API_KEY + @openai/agents + zod)

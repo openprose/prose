@@ -338,6 +338,17 @@ interface AgentCompileModule {
  * reached ONLY via dynamic import inside the compile handler). */
 const AGENT_COMPILE_SPECIFIER = '@openprose/reactor/adapters/agent-compile';
 
+/**
+ * Reduce a thrown error to its single legible first line — dropping the multi-line
+ * `Require stack:\n  - …` dump Node appends to a `MODULE_NOT_FOUND` (G21(b)). The
+ * good "Cannot find module 'X'" stays; the raw require-stack internals are cut.
+ */
+export function firstErrorLine(err: unknown): string {
+  const message = String((err as Error)?.message ?? err);
+  const [first] = message.split('\nRequire stack:');
+  return (first ?? message).split('\n')[0]!.trim();
+}
+
 /** Dynamic-import the model-bearing agent-compile barrel with a legible failure. */
 async function importAgentCompile(): Promise<AgentCompileModule> {
   try {
@@ -352,7 +363,10 @@ async function importAgentCompile(): Promise<AgentCompileModule> {
         'compile or render (the keyless paths — `compile --check`, `status`, `topology`, ' +
         '`receipts` — do not need them). Note: REACTOR_OFFLINE=1 only skips the live key ' +
         'check; it does NOT substitute a provider, so it cannot stand in for the extras here.\n' +
-        `underlying error: ${String((err as Error)?.message ?? err)}`,
+        // G21(b): keep only the legible first line of the underlying error (e.g.
+        // "Cannot find module '@openai/agents'") — never the multi-line raw
+        // `Require stack:` dump Node appends, which leaks install internals.
+        `underlying error: ${firstErrorLine(err)}`,
     );
   }
 }

@@ -22,6 +22,18 @@ export interface FileSystemStorageAdapterInput {
   readonly registry_file?: string;
   readonly receipts_file?: string;
   readonly initial_registry?: ReactorRuntimeRegistrySnapshot;
+  /**
+   * Open the trail READ-ONLY (B5). When `true`, construction NEVER touches the
+   * filesystem: it does not `mkdir` the directory and does not seed empty
+   * `registry.json` / `receipts.json`. `listReceipts()` / `readRegistry()` then
+   * read what is on disk, treating an ABSENT file as the legitimate empty case
+   * (`[]` / the empty registry) rather than creating it — so a pure-read open of
+   * a bare or non-existent directory leaves the target byte-for-byte untouched.
+   * The write paths (`appendReceipt` / `writeRegistry`) throw, since a read-only
+   * adapter has no mutable trail. Default `false` keeps the write-path behavior
+   * (mkdir + seed) UNCHANGED.
+   */
+  readonly read_only?: boolean;
 }
 
 export interface FileSystemStorageAdapter extends ReactorStorageRuntimeAdapter {
@@ -46,27 +58,49 @@ export function createFileSystemStorageAdapter(
     input.receipts_file ?? "receipts.json",
   );
 
-  mkdirSync(input.directory, { recursive: true });
-  initializeFile(registryPath, input.initial_registry ?? EMPTY_RUNTIME_REGISTRY);
-  initializeFile(receiptsPath, []);
+  const readOnly = input.read_only === true;
+
+  if (!readOnly) {
+    mkdirSync(input.directory, { recursive: true });
+    initializeFile(
+      registryPath,
+      input.initial_registry ?? EMPTY_RUNTIME_REGISTRY,
+    );
+    initializeFile(receiptsPath, []);
+  }
 
   return {
     directory: input.directory,
     registryPath,
     receiptsPath,
     appendReceipt(receipt: Receipt): void {
+      if (readOnly) {
+        throw new Error("read-only filesystem storage cannot append receipts");
+      }
       const receipts = readReceiptLog(receiptsPath);
       writeJsonFile(receiptsPath, [...receipts, cloneReceipt(receipt)]);
     },
     listReceipts(): readonly Receipt[] {
+      // Read-only open of an absent trail is the legitimate empty case — never
+      // a create. A PRESENT but malformed file still throws (a corrupt trail is
+      // a real error, not empty).
+      if (readOnly && !existsSync(receiptsPath)) {
+        return [];
+      }
       return readReceiptLog(receiptsPath);
     },
     readRegistry(): ReactorRuntimeRegistrySnapshot {
+      if (readOnly && !existsSync(registryPath)) {
+        return cloneRuntimeRegistrySnapshot(EMPTY_RUNTIME_REGISTRY);
+      }
       const value = readJsonFile(registryPath);
       assertRuntimeRegistrySnapshot(value);
       return cloneRuntimeRegistrySnapshot(value);
     },
     writeRegistry(registry: ReactorRuntimeRegistrySnapshot): void {
+      if (readOnly) {
+        throw new Error("read-only filesystem storage cannot write the registry");
+      }
       writeJsonFile(registryPath, cloneRuntimeRegistrySnapshot(registry));
     },
   };

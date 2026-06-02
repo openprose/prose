@@ -8,6 +8,9 @@
   "bin": {
     "reactor": "dist/cli.js"
   },
+  "engines": {
+    "node": ">=20"
+  },
   "files": [
     "dist",
     "README.md",

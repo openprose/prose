@@ -41,6 +41,7 @@ import {
   runLogsCommand,
   runTraceCommand,
   runReceiptsCommand,
+  parseRate,
 } from '../commands/observe';
 import { fakeStructuredProvider } from './fake-provider';
 import { receiptsDir } from '../run/substrate';
@@ -378,6 +379,61 @@ describe('reactor observability (offline gate)', () => {
         nodes.length === 0 || (nodes.length === 1 && nodes[0] === MONITOR),
         `--node should scope the rollup to ${MONITOR}, got nodes: ${nodes.join(',')}`,
       );
+    } finally {
+      rmSync(stateDir, { recursive: true, force: true });
+    }
+  });
+
+  it('parseRate reads $/Mtok and tokens-per-dollar; rejects garbage (G9)', () => {
+    // $/Mtok: bare number, $-prefixed, and the /Mtok suffix all normalize the same.
+    assert.equal(parseRate('3')?.usdPerToken, 3 / 1_000_000);
+    assert.equal(parseRate('$3/Mtok')?.usdPerToken, 3 / 1_000_000);
+    assert.equal(parseRate('3/Mtok')?.usdPerToken, 3 / 1_000_000);
+    // tokens-per-dollar.
+    assert.equal(parseRate('500000tpd')?.usdPerToken, 1 / 500_000);
+    assert.equal(parseRate('500000 tokens-per-dollar')?.usdPerToken, 1 / 500_000);
+    // Garbage / non-positive tpd → undefined (the caller surfaces a clear error,
+    // never bills a silent zero).
+    assert.equal(parseRate('cheap'), undefined);
+    assert.equal(parseRate('0tpd'), undefined);
+    assert.equal(parseRate(''), undefined);
+  });
+
+  it('receipts cost --rate fills a dollar column over the token rollup (G9)', async () => {
+    const stateDir = freshState();
+    try {
+      await populateState(stateDir);
+      const out = capture();
+      const code = await runReceiptsCommand(
+        { directStateDir: stateDir, json: true, sub: 'cost', rate: '$3/Mtok' },
+        out.write,
+      );
+      assert.equal(code, 0);
+      const priced = out.json() as {
+        total: { fresh: number; reused: number };
+        rate: { usdPerToken: number; label: string };
+        dollars: { total: number; fresh: number; reused: number };
+      };
+      const tokens = priced.total.fresh + priced.total.reused;
+      assert.equal(priced.rate.usdPerToken, 3 / 1_000_000);
+      assert.equal(priced.dollars.total, tokens * (3 / 1_000_000));
+      assert.equal(priced.dollars.fresh, priced.total.fresh * (3 / 1_000_000));
+    } finally {
+      rmSync(stateDir, { recursive: true, force: true });
+    }
+  });
+
+  it('receipts cost --rate rejects an unparseable rate (no silent zero bill, G9)', async () => {
+    const stateDir = freshState();
+    try {
+      await populateState(stateDir);
+      const out = capture();
+      const code = await runReceiptsCommand(
+        { directStateDir: stateDir, json: true, sub: 'cost', rate: 'free-please' },
+        out.write,
+      );
+      assert.equal(code, 1);
+      assert.match((out.json() as { message: string }).message, /unparseable --rate/);
     } finally {
       rmSync(stateDir, { recursive: true, force: true });
     }

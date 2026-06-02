@@ -13,8 +13,16 @@
   "files": [
     "dist",
     "src/public",
-    "fixtures/masked-relay"
+    "fixtures/masked-relay",
+    "fixtures/surprise-cost",
+    "fixtures/agent-observatory",
+    "fixtures/inbox-triage",
+    "fixtures/monorepo-ci",
+    "fixtures/research-tree"
   ],
+  "engines": {
+    "node": ">=20"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",

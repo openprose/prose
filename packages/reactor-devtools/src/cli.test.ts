@@ -42,10 +42,56 @@ test("--example masked-relay --describe resolves the bundled fixture from any cw
 });
 
 test("--example with an unknown name lists the shipped ones and exits non-zero", () => {
-  const res = run(["--example", "research-tree", "--describe"]);
-  assert.notEqual(res.status, 0, "unknown example → non-zero");
+  // A genuinely unknown name (a typo / never-bundled fixture) MUST list the valid
+  // names and exit non-zero — never silently succeed (G2). `contract-redline` and
+  // `news-desk` are committed devtools fixtures that are deliberately NOT bundled
+  // in the tarball, so they exercise the unknown-name path from a global install.
+  const res = run(["--example", "contract-redline", "--describe"]);
+  assert.notEqual(res.status, 0, "unknown (un-bundled) example → non-zero");
   assert.ok(/unknown example/.test(res.stderr), "names the problem");
-  assert.ok(/masked-relay/.test(res.stderr), "lists the shipped example");
+  assert.ok(/masked-relay/.test(res.stderr), "lists the shipped examples");
+  // The listing must name the newly-bundled headline examples too, so the user
+  // sees what IS reachable rather than just the old single fixture.
+  assert.ok(/surprise-cost/.test(res.stderr), "lists the bundled surprise-cost");
+});
+
+test("--example with a totally bogus name exits non-zero (silent-success guard)", () => {
+  // The G2 regression: `--example <bad-name>` used to exit 0 on a typo. Assert the
+  // exit code explicitly so a future change can't reintroduce the silent success.
+  const res = run(["--example", "definitely-not-a-fixture-xyz", "--describe"]);
+  assert.equal(res.status, 1, "a typo'd example exits 1, never 0");
+  assert.ok(/unknown example/.test(res.stderr), "explains the typo");
+});
+
+// --- G2: the headline examples are reachable BY NAME (not just masked-relay) ----
+
+test("--example surprise-cost replays the bundled thesis fixture from any cwd (exit 0)", () => {
+  // The core "cost scales with surprise" thesis fixture must be reachable by name
+  // after a global install (no path to compute), exactly like masked-relay (G2).
+  const res = run(["--example", "surprise-cost", "--describe"]);
+  assert.equal(res.status, 0, "the bundled surprise-cost replays clean → exit 0");
+  assert.ok(res.stdout.includes("CHAIN-VERIFY  ok"), "surprise-cost chain-verifies");
+  assert.ok(
+    /surprise-cost/.test(res.stdout),
+    "the report names the resolved surprise-cost state-dir",
+  );
+  assert.ok(
+    res.stdout.includes("synthetic sample ledger"),
+    "a bundled sample prints the synthetic banner",
+  );
+});
+
+test("a newly-bundled example resolves the same way via --copy-to", () => {
+  // The bundled set is a real, copyable state-dir — the --copy-to keyless loop
+  // works for any bundled name, not just masked-relay.
+  const work = mkdtempSync(join(tmpdir(), "rdt-copyto-sc-"));
+  const dest = join(work, ".reactor");
+  const res = run(["--example", "surprise-cost", "--copy-to", dest]);
+  assert.equal(res.status, 0, "copy a bundled fixture into a fresh dir → exit 0");
+  assert.ok(existsSync(join(dest, "receipts.json")), "receipts.json copied");
+  const replay = run([dest, "--describe"]);
+  assert.equal(replay.status, 0, "the seeded surprise-cost ledger replays clean");
+  assert.ok(replay.stdout.includes("CHAIN-VERIFY  ok"), "seeded ledger chain-verifies");
 });
 
 test("a non-existent <state-dir> errors non-zero (never silent LEDGER EMPTY)", () => {
