@@ -1,0 +1,4 @@
+# Test-only compile output (the offline gate compiles the whole src tree —
+# including the test suite — here, away from the production `dist/`). Never
+# committed and never published (it is not in package.json `files`).
+dist-test/

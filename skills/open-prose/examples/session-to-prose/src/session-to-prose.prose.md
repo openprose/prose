@@ -1,6 +1,6 @@
 ---
 name: session-to-prose
-kind: system
+kind: function
 version: 0.5.0
 ---
 
@@ -10,38 +10,25 @@ Convert an agent session log into a generalized OpenProse Contract Markdown
 program. The source may be a Claude Code, Codex, or Pi JSONL path, or a bare
 session id that can be resolved from local session roots.
 
-### Services
+This is a sequential generation pipeline, so it flattens into a single called
+`function` whose `### Execution` drives the steps in order; each former service
+is now an inline `function` this render `call`s (`plan.md` §3, §7). The 15 steps
+appear below as `## name` sections with `### Parameters` → `### Returns`.
 
-- `session-resolver`
-- `harness-adapter`
-- `source-snapshotter`
-- `session-parser`
-- `decision-classifier`
-- `phase-identifier`
-- `contract-extractor`
-- `pattern-recognizer`
-- `strategy-miner`
-- `program-assembler`
-- `validator`
-- `report-writer`
-- `quality-regression-gate`
-- `receipt-auditor`
-- `tail-and-citation-auditor`
-
-### Requires
+### Parameters
 
 - `session-source`: path to a `.jsonl` session log, or a bare full or prefix session id. Supported path families include Claude Code logs under `~/.claude/projects/`, Codex logs under `~/.codex/sessions/`, and Pi logs under `~/.pi/agent/sessions/`.
 - `additional-context`: optional caller guidance about the session or desired extracted program.
 - `agent-harness`: optional execution harness request. Use `auto` by default. Supported adapter families include `in-session`, `prose-cli`, `codex-sdk`, `claude-sdk`, `pi-agent-rust`, and `mock`.
 - `baseline-run`: optional completed run id or run path to use as the quality floor for generated program/report richness. When omitted, infer an earlier matching run only from explicit caller context or session digest; never guess silently.
 
-### Ensures
+### Returns
 
 - `resolved-session`: canonical path, detected harness format, session id, source kind, project path, and resolver warnings.
 - `harness-plan`: normalized harness adapter plan describing selected harness, runtime/provider, capabilities, result protocol, stdout/stderr contract, recursion policy, and warnings.
 - `source-snapshot`: immutable parse input with snapshot path, sha256, byte count, line count, mtime, and source-change status.
-- `program`: a valid OpenProse `*.prose.md` service or system that generalizes the session workflow.
-- `program`: uses current Contract Markdown sections, including `### Services` for multi-service output and `### Requires`, `### Ensures`, `### Shape`, `### Errors`, and `### Strategies` where applicable.
+- `program`: a valid OpenProse `*.prose.md` `responsibility` or `function` that generalizes the session workflow. A standing, world-model-maintaining workflow becomes a `responsibility` (`### Requires` → `### Maintains`); a stateless called transform becomes a `function` (`### Parameters` → `### Returns`); a single file may host inline helper `function`s under `## name` headings that the render `call`s.
+- `program`: uses current Contract Markdown sections — `### Requires`, `### Maintains`, `### Continuity` for a `responsibility`; `### Parameters`, `### Returns` for a `function`; plus `### Shape`, `### Errors`, `### Strategies`, and `### Execution` where applicable.
 - `program`: captures iteration loops, parallel work, decision gates, and phase transitions evidenced by the session.
 - `extraction-report`: concise summary of phases found, patterns identified, strategies mined, validation status, and confidence notes.
 - `quality-comparison`: baseline-aware regression gate proving the generated program and report are at least as concrete, cited, and structurally complete as the selected baseline.
@@ -360,11 +347,11 @@ return { resolved-session: resolved_session, harness-plan: harness_plan, source-
 - `self`: identify the harness family before parsing.
 - `prohibited`: parsing the workflow or making extraction decisions.
 
-### Requires
+### Parameters
 
 - `session-source`: path to a `.jsonl` log, or a bare full or prefix session id.
 
-### Ensures
+### Returns
 
 - `resolved-session`: object containing `path`, `format`, `session-id`, `source-kind`, `project-path`, `candidate-count`, and `warnings`.
 - `resolved-session.path`: canonical absolute path to an existing `.jsonl` file.
@@ -398,14 +385,14 @@ return { resolved-session: resolved_session, harness-plan: harness_plan, source-
 - `self`: distinguish source-session format from execution harness; a Pi session log and a Pi execution harness are related but not the same contract.
 - `prohibited`: executing the generated program, parsing the workflow, or silently falling back to another harness.
 
-### Requires
+### Parameters
 
 - `agent-harness`: optional requested harness adapter such as `auto`, `in-session`, `prose-cli`, `codex-sdk`, `claude-sdk`, `pi-agent-rust`, or `mock`.
 - `resolved-session`: canonical source path, detected source format, session id, source kind, and resolver warnings.
 - `additional-context`: optional caller guidance that may name a preferred harness, model, sandbox, or provider.
 - `baseline-run`: optional completed run id or path used only to record baseline comparison intent in the harness plan.
 
-### Ensures
+### Returns
 
 - `harness-plan`: object containing `adapter`, `provider`, `runtime`, `spawn-session`, `ask-user`, `state-backend`, `copy-binding`, `check-env`, `result-protocol`, `stdout-contract`, `stderr-contract`, `recursion-policy`, `session-persistence`, `capabilities`, and `warnings`.
 - `harness-plan.outer-runner`: object recording whether this activation was launched by the `prose` CLI, the selected provider harness, the observed command or log path when available, and whether a structured result path such as `PROSE_RUN_RESULT_PATH` was provided.
@@ -442,12 +429,12 @@ return { resolved-session: resolved_session, harness-plan: harness_plan, source-
 - `self`: record enough metadata to prove the parser read a stable source.
 - `prohibited`: interpreting workflow content or modifying the original session log.
 
-### Requires
+### Parameters
 
 - `resolved-session`: canonical path, detected format, session id, source kind, and resolver warnings.
 - `harness-plan`: selected execution harness and persistence policy from `harness-adapter`.
 
-### Ensures
+### Returns
 
 - `source-snapshot`: object containing `original-path`, `snapshot-path`, `sha256`, `byte-count`, `line-count`, `mtime-before`, `mtime-after`, `changed-during-snapshot`, and `warnings`.
 - `source-snapshot.snapshot-path`: run-local copy used by all downstream parsing.
@@ -482,12 +469,12 @@ return { resolved-session: resolved_session, harness-plan: harness_plan, source-
 - `self`: assign stable evidence identifiers that every downstream citation must preserve.
 - `prohibited`: interpreting the reusable workflow.
 
-### Requires
+### Parameters
 
 - `resolved-session`: canonical path, detected format, session id, and project path from `session-resolver`.
 - `source-snapshot`: immutable parse input from `source-snapshotter`.
 
-### Ensures
+### Returns
 
 - `timeline`: ordered list of session events, each with `event-id`, source line, timestamp, actor, content summary, harness record type, and event class.
 - `user-messages`: all real user messages with timestamps, excluding system reminders and hook noise.
@@ -520,14 +507,14 @@ return { resolved-session: resolved_session, harness-plan: harness_plan, source-
 - `self`: classify every user message as a human decision or a human message.
 - `prohibited`: skipping user messages or classifying without justification.
 
-### Requires
+### Parameters
 
 - `user-messages`: all user messages with timestamps.
 - `assistant-actions`: assistant actions before and after each user message.
 - `timeline`: full event timeline for surrounding context.
 - `evidence-index`: stable event-id map from `session-parser`.
 
-### Ensures
+### Returns
 
 - `human-decisions`: user messages that changed trajectory in a way the agent could not have chosen autonomously, each with `event-id`, source line, message, what changed, and why.
 - `human-messages`: user messages that steered, encouraged, confirmed, or clarified without introducing load-bearing new information, each with `event-id`.
@@ -553,7 +540,7 @@ return { resolved-session: resolved_session, harness-plan: harness_plan, source-
 - `self`: segment the timeline into distinct workflow phases.
 - `prohibited`: inventing phases not evidenced by the timeline.
 
-### Requires
+### Parameters
 
 - `timeline`: parsed session timeline.
 - `user-messages`: extracted user messages.
@@ -564,7 +551,7 @@ return { resolved-session: resolved_session, harness-plan: harness_plan, source-
 - `gate-candidates`: user messages that should become gate points.
 - `evidence-index`: stable event-id map from `session-parser`.
 
-### Ensures
+### Returns
 
 - `phases`: ordered workflow phases with names, start/end timestamps, evidence event ranges, and one-sentence descriptions.
 - `phases`: each phase has a dominant activity type such as research, implementation, testing, refactoring, coordination, or verification.
@@ -594,14 +581,14 @@ return { resolved-session: resolved_session, harness-plan: harness_plan, source-
 - `self`: derive public contracts for each phase by analyzing inputs consumed and outputs produced.
 - `prohibited`: fabricating contracts not evidenced by file reads, commands, messages, or generated artifacts.
 
-### Requires
+### Parameters
 
 - `phases`: identified workflow phases.
 - `assistant-actions`: full action log including reads, writes, shell commands, and spawned agents.
 - `tool-results`: significant tool outputs.
 - `evidence-index`: stable event-id map from `session-parser`.
 
-### Ensures
+### Returns
 
 - `phase-contracts`: requires and ensures for each phase.
 - `phase-contracts`: every requires and ensures entry uses semantic names rather than session-specific file paths.
@@ -625,7 +612,7 @@ return { resolved-session: resolved_session, harness-plan: harness_plan, source-
 - `self`: identify loops, parallelism, gates, and conditional branches from the phase graph and timeline.
 - `prohibited`: imposing patterns not evidenced by the session.
 
-### Requires
+### Parameters
 
 - `phases`: workflow phases.
 - `phase-transitions`: transition triggers.
@@ -634,7 +621,7 @@ return { resolved-session: resolved_session, harness-plan: harness_plan, source-
 - `user-messages`: user messages for gate detection.
 - `evidence-index`: stable event-id map from `session-parser`.
 
-### Ensures
+### Returns
 
 - `iteration-loops`: phases that repeated with feedback, including TDD cycles and fix-and-retry loops.
 - `parallel-opportunities`: independent phases that could run concurrently.
@@ -663,7 +650,7 @@ return { resolved-session: resolved_session, harness-plan: harness_plan, source-
 - `self`: extract hard-won lessons, corrections, failure recoveries, and non-obvious choices.
 - `prohibited`: inventing strategies not grounded in session evidence.
 
-### Requires
+### Parameters
 
 - `timeline`: full event timeline.
 - `phases`: identified phases.
@@ -672,7 +659,7 @@ return { resolved-session: resolved_session, harness-plan: harness_plan, source-
 - `tool-results`: significant outputs, especially errors and test failures.
 - `evidence-index`: stable event-id map from `session-parser`.
 
-### Ensures
+### Returns
 
 - `strategies`: per-phase guidance derived from observed events.
 - `strategies`: every strategy is grounded in a specific failure, correction, non-obvious choice, or successful approach pattern.
@@ -695,7 +682,7 @@ return { resolved-session: resolved_session, harness-plan: harness_plan, source-
 - `self`: assemble all extracted components into a valid current OpenProse source file.
 - `prohibited`: adding services, contracts, or strategies not provided by upstream extractors.
 
-### Requires
+### Parameters
 
 - `phases`: workflow phases that become services or service responsibilities.
 - `phase-contracts`: requires and ensures per phase.
@@ -723,10 +710,10 @@ return { resolved-session: resolved_session, harness-plan: harness_plan, source-
 - `baseline-run`: optional completed run id or path to use as the generated-program/report quality floor.
 - `invoked-contract`: optional host-provided digest, version, path, and copied source paths for the contract being executed.
 
-### Ensures
+### Returns
 
 - `program`: a complete `*.prose.md` file with provenance comment, YAML frontmatter, current Contract Markdown sections, and inline services when the output has multiple phases.
-- `program`: uses `kind: service` for a single-service output or `kind: system` with `### Services` for multi-service output.
+- `program`: uses `kind: function` for a single-helper output, or a `kind: responsibility` with inline helper functions (and additional responsibilities wired by Forme matching `### Requires` → `### Maintains`) for multi-part output.
 - `program`: includes `### Requires` and `### Ensures`, and includes `### Shape`, `### Errors`, `### Strategies`, and `### Execution` when evidenced by the source.
 - `program`: uses generalized names, not session-specific project names, file names, or ids.
 - `program`: can run on a similar but different codebase with the same domain problem.
@@ -783,7 +770,7 @@ return { resolved-session: resolved_session, harness-plan: harness_plan, source-
 - `self`: validate the assembled `*.prose.md` source structurally and semantically.
 - `prohibited`: modifying the program.
 
-### Requires
+### Parameters
 
 - `program`: assembled OpenProse source.
 - `program-contract`: extracted root requires and ensures.
@@ -791,7 +778,7 @@ return { resolved-session: resolved_session, harness-plan: harness_plan, source-
 - `source-snapshot`: immutable source snapshot metadata.
 - `harness-plan`: selected harness adapter, result protocol, primitive support, and recursion policy from `harness-adapter`.
 
-### Ensures
+### Returns
 
 - `validation-result`: pass or fail with specific blocking issues and warnings.
 - `lint-output`: raw structural validation output from `prose lint` or the best available Contract Markdown validator.
@@ -854,7 +841,7 @@ return { resolved-session: resolved_session, harness-plan: harness_plan, source-
 - `self`: compile extraction metadata into a human-readable report.
 - `prohibited`: modifying the program.
 
-### Requires
+### Parameters
 
 - `resolved-session`: canonical source, format, id, and resolver warnings.
 - `source-snapshot`: immutable source snapshot metadata.
@@ -876,7 +863,7 @@ return { resolved-session: resolved_session, harness-plan: harness_plan, source-
 - `harness-plan`: selected harness adapter, result protocol, primitive support, and recursion policy from `harness-adapter`.
 - `baseline-run`: optional completed run id or path used as the report-detail quality floor.
 
-### Ensures
+### Returns
 
 - `extraction-report`: structured Markdown report under 500 lines.
 - `extraction-report`: includes source path, snapshot path, snapshot sha256, source line count, harness format, duration, message count, project, and resolver warnings.
@@ -917,7 +904,7 @@ return { resolved-session: resolved_session, harness-plan: harness_plan, source-
 - `self`: decide whether the candidate keeps V3-style concrete workflow quality while adding V4-style audit surfaces.
 - `prohibited`: modifying the generated program, report, receipt, or baseline run.
 
-### Requires
+### Parameters
 
 - `baseline-run`: optional completed run id or path to use as the quality floor; if absent, use only explicit prior-run references in `additional-context` or `harness-plan`.
 - `resolved-session`: canonical source path, format, id, project path, and resolver warnings.
@@ -932,7 +919,7 @@ return { resolved-session: resolved_session, harness-plan: harness_plan, source-
 - `evidence-index`: stable event-id map from `session-parser`.
 - `harness-plan`: selected harness adapter, outer runner proof, and recursion policy.
 
-### Ensures
+### Returns
 
 - `quality-comparison`: pass, pass-with-warnings, or fail with baseline id, compared artifacts, blocking regressions, warnings, and repair guidance.
 - `quality-comparison.generated-program`: records whether the candidate is better, equal, or worse than the baseline for concrete contract language, inline service completeness, control flow, evidence citations, and syntax.
@@ -965,7 +952,7 @@ return { resolved-session: resolved_session, harness-plan: harness_plan, source-
 - `self`: audit the run receipt, manifest, bindings, result metadata, and validation caveats before success is reported.
 - `prohibited`: modifying the generated program.
 
-### Requires
+### Parameters
 
 - `resolved-session`: canonical source, format, id, and resolver warnings.
 - `source-snapshot`: immutable source snapshot metadata.
@@ -977,7 +964,7 @@ return { resolved-session: resolved_session, harness-plan: harness_plan, source-
 - `result-contract`: expected result keys and output paths from `program-assembler`.
 - `harness-plan`: selected harness adapter, result protocol, primitive support, and recursion policy from `harness-adapter`.
 
-### Ensures
+### Returns
 
 - `receipt-audit`: pass or fail with blocking receipt issues and warnings.
 - `receipt-audit`: verifies result paths exist and point to raw declared outputs, not binding-wrapper prose unless the wrapper itself is the declared output format.
@@ -1033,7 +1020,7 @@ return { resolved-session: resolved_session, harness-plan: harness_plan, source-
 - `self`: produce a machine-readable warning surface that downstream receipts and final summaries must include verbatim.
 - `prohibited`: modifying the generated program, source snapshot, or receipt files.
 
-### Requires
+### Parameters
 
 - `resolved-session`: canonical source path, format, id, project path, and resolver warnings.
 - `source-snapshot`: snapshot path, sha256, line count, byte count, retention policy, and snapshot timing.
@@ -1045,7 +1032,7 @@ return { resolved-session: resolved_session, harness-plan: harness_plan, source-
 - `evidence-index`: stable event-id map from `session-parser`.
 - `harness-plan`: selected harness adapter, result protocol, primitive support, and recursion policy from `harness-adapter`.
 
-### Ensures
+### Returns
 
 - `tail-citation-audit`: pass, pass-with-warnings, or fail with blocking issues and warnings.
 - `tail-citation-audit`: records snapshot line count, live source line count, live source mtime, excluded tail count, and whether the generated program claims latest-tail coverage.

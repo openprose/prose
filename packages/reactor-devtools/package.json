@@ -1,0 +1,59 @@
+{
+  "name": "@openprose/reactor-devtools",
+  "version": "0.2.0",
+  "license": "MIT",
+  "description": "DevTools / visualization for the @openprose/reactor harness: replays a saved receipt ledger and animates the DAG (flashes on render, dim pulses on memo-skip, per-facet edge lights, a fresh-vs-reused token/$ meter).",
+  "type": "commonjs",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "bin": {
+    "reactor-devtools": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "src/public",
+    "fixtures/masked-relay",
+    "fixtures/surprise-cost",
+    "fixtures/agent-observatory",
+    "fixtures/inbox-triage",
+    "fixtures/monorepo-ci",
+    "fixtures/research-tree"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./server": {
+      "types": "./dist/server/index.d.ts",
+      "default": "./dist/server/index.js"
+    },
+    "./data": {
+      "types": "./dist/data/index.d.ts",
+      "default": "./dist/data/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && pnpm run copy:public",
+    "prepack": "pnpm build",
+    "copy:public": "node -e \"const fs=require('fs'),p=require('path');const s=p.join('src','public'),d=p.join('dist','public');fs.mkdirSync(d,{recursive:true});for(const f of fs.readdirSync(s))fs.copyFileSync(p.join(s,f),p.join(d,f));\"",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "fixtures:gen": "pnpm build && node dist/fixtures/generate.js",
+    "record": "pnpm build && node scripts/record-demo.mjs",
+    "test:runtime": "pnpm build && node --test $(find dist -name '*.test.js' -type f | sort)",
+    "test": "pnpm typecheck && pnpm test:runtime"
+  },
+  "dependencies": {
+    "@openprose/reactor": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "playwright": "1.60.0",
+    "typescript": "^5.6.3"
+  }
+}

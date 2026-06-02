@@ -1,0 +1,34 @@
+{
+  "scenario": "renewal-risk",
+  "title": "A standing customer-health truth that re-judges ONLY the accounts whose signals moved.",
+  "beats": [
+    {
+      "name": "cold-boot",
+      "caption": "the portfolio wires up · gateway, the standing truth, the alert feed — lit once"
+    },
+    {
+      "name": "quiet",
+      "caption": "re-deliver the same signals · every re-tick memo-skips · cost flat near zero"
+    },
+    {
+      "name": "self-tick",
+      "caption": "a weekly self-wake with no moved signal · a self skipped receipt (the floor)"
+    },
+    {
+      "name": "surprise",
+      "caption": "acme usage drops near renewal · only acct:acme moves · the verdict flips → an alert fires"
+    },
+    {
+      "name": "non-material",
+      "caption": "a tiny usage wobble on acme · the verdict is unchanged · the alert feed memo-SKIPS"
+    },
+    {
+      "name": "second-surprise",
+      "caption": "globex churns · a second verdict flip → a second alert (cost tracks surprise)"
+    },
+    {
+      "name": "final-quiet",
+      "caption": "re-deliver the steady state · flat again (the bookend)"
+    }
+  ]
+}

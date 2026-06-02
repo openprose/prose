@@ -1,0 +1,350 @@
+{
+  "nodes": [
+    {
+      "node": "gateway.planning-corpus",
+      "contract_fingerprint": "sha256:c882fe1b4dd9b4d9605262a94253f0f83365f3ec4eedde24c0d8a7aca5e4afac",
+      "wake_source": "external"
+    },
+    {
+      "node": "responsibility.implementation-corpus",
+      "contract_fingerprint": "sha256:957ccd783e6b387f0d0ad286bc9e37355c21d29fbefe087bb76084e4afde0323",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.implementation-work-plan",
+      "contract_fingerprint": "sha256:bf440712ecfda3a5743abb74e4c419aa84aa9d786f4d94d7c9d4401235bad95c",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.foundation-builder",
+      "contract_fingerprint": "sha256:4bd54f47e3931cd51cb109590a2395b6edb3307d8f8a02f0f7eef8e6d5d57c92",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.foundation-review",
+      "contract_fingerprint": "sha256:dd4da80492e2d8c7a6334037309157909e3dd3d693b75688010a6ca97fbd9f01",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.lane-sdk-world-model",
+      "contract_fingerprint": "sha256:c81bea4674eec38578ab3930d55d764b4928c2db8b7e7369f12fe4097ad0d8e1",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.lane-sdk-runtime",
+      "contract_fingerprint": "sha256:e221880a47cea49e57b1dd1829ef463e80f28e78bbc2b76642609f2fe0a91872",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.lane-sdk-compile",
+      "contract_fingerprint": "sha256:4ddd629b285812d87887fcd74065c40cbc72b0c48984e1d4a41fb8864ba138ba",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.lane-skill-contract",
+      "contract_fingerprint": "sha256:69754c2ff8a57dc4da9e48b400752a1676f1c9ee2458776d41322eb1feb4f165",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.lane-examples-tests",
+      "contract_fingerprint": "sha256:85d0981135ce45e08bdeab21d3b7f30292bc78203f9037a48824cbe68a3671d1",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.lane-docs-signposts",
+      "contract_fingerprint": "sha256:abe755802cfcbb8de5e7457326ddb20b09301fa0cab60ee0a834f9c7a08877ea",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.construction-review",
+      "contract_fingerprint": "sha256:4d400d28ce7ec576e3a1c102637c46f64a78f5461e77eeb9fb14fe2e04772429",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.integration-builder",
+      "contract_fingerprint": "sha256:f5e1064b30ce52af7ea8353a04026e7e7ac73c2cb161625c1718b204a19db369",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.verification-runner",
+      "contract_fingerprint": "sha256:ca04d3d8ec25715da43b618efce7b04169fef9f551a456892381d1af4bdc4f00",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.signpost-index",
+      "contract_fingerprint": "sha256:ba1103785db41c9767a1795d720ff526ec6652d8f1d869560bf90aaced1a9afc",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.implementation-report",
+      "contract_fingerprint": "sha256:bf90d5e108aae1aa369f84664dc88d966c2ff7413bea41178a1cef3cb8723db2",
+      "wake_source": "input"
+    }
+  ],
+  "edges": [
+    {
+      "subscriber": "gateway.planning-corpus",
+      "producer": "ingress.planning-corpus",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.implementation-corpus",
+      "producer": "gateway.planning-corpus",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.implementation-work-plan",
+      "producer": "responsibility.implementation-corpus",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.foundation-builder",
+      "producer": "responsibility.implementation-corpus",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.foundation-review",
+      "producer": "responsibility.foundation-builder",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.lane-sdk-world-model",
+      "producer": "responsibility.implementation-work-plan",
+      "facet": "lane:sdk-world-model"
+    },
+    {
+      "subscriber": "responsibility.lane-sdk-world-model",
+      "producer": "responsibility.foundation-builder",
+      "facet": "shared-shapes"
+    },
+    {
+      "subscriber": "responsibility.lane-sdk-world-model",
+      "producer": "responsibility.foundation-review",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.lane-sdk-runtime",
+      "producer": "responsibility.implementation-work-plan",
+      "facet": "lane:sdk-runtime"
+    },
+    {
+      "subscriber": "responsibility.lane-sdk-runtime",
+      "producer": "responsibility.foundation-builder",
+      "facet": "shared-shapes"
+    },
+    {
+      "subscriber": "responsibility.lane-sdk-runtime",
+      "producer": "responsibility.foundation-review",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.lane-sdk-compile",
+      "producer": "responsibility.implementation-work-plan",
+      "facet": "lane:sdk-compile"
+    },
+    {
+      "subscriber": "responsibility.lane-sdk-compile",
+      "producer": "responsibility.foundation-builder",
+      "facet": "shared-shapes"
+    },
+    {
+      "subscriber": "responsibility.lane-sdk-compile",
+      "producer": "responsibility.foundation-review",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.lane-skill-contract",
+      "producer": "responsibility.implementation-work-plan",
+      "facet": "lane:skill-contract"
+    },
+    {
+      "subscriber": "responsibility.lane-skill-contract",
+      "producer": "responsibility.foundation-builder",
+      "facet": "shared-shapes"
+    },
+    {
+      "subscriber": "responsibility.lane-skill-contract",
+      "producer": "responsibility.foundation-review",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.lane-examples-tests",
+      "producer": "responsibility.implementation-work-plan",
+      "facet": "lane:examples-tests"
+    },
+    {
+      "subscriber": "responsibility.lane-examples-tests",
+      "producer": "responsibility.foundation-builder",
+      "facet": "shared-shapes"
+    },
+    {
+      "subscriber": "responsibility.lane-examples-tests",
+      "producer": "responsibility.foundation-review",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.lane-docs-signposts",
+      "producer": "responsibility.implementation-work-plan",
+      "facet": "lane:docs-signposts"
+    },
+    {
+      "subscriber": "responsibility.lane-docs-signposts",
+      "producer": "responsibility.foundation-builder",
+      "facet": "shared-shapes"
+    },
+    {
+      "subscriber": "responsibility.lane-docs-signposts",
+      "producer": "responsibility.foundation-review",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.construction-review",
+      "producer": "responsibility.lane-sdk-world-model",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.construction-review",
+      "producer": "responsibility.lane-sdk-runtime",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.construction-review",
+      "producer": "responsibility.lane-sdk-compile",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.construction-review",
+      "producer": "responsibility.lane-skill-contract",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.construction-review",
+      "producer": "responsibility.lane-examples-tests",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.construction-review",
+      "producer": "responsibility.lane-docs-signposts",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.construction-review",
+      "producer": "responsibility.foundation-builder",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.integration-builder",
+      "producer": "responsibility.construction-review",
+      "facet": "accepted"
+    },
+    {
+      "subscriber": "responsibility.integration-builder",
+      "producer": "responsibility.lane-sdk-world-model",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.integration-builder",
+      "producer": "responsibility.lane-sdk-runtime",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.integration-builder",
+      "producer": "responsibility.lane-sdk-compile",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.integration-builder",
+      "producer": "responsibility.lane-skill-contract",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.integration-builder",
+      "producer": "responsibility.lane-examples-tests",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.integration-builder",
+      "producer": "responsibility.lane-docs-signposts",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.verification-runner",
+      "producer": "responsibility.integration-builder",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.signpost-index",
+      "producer": "responsibility.foundation-builder",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.signpost-index",
+      "producer": "responsibility.lane-sdk-world-model",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.signpost-index",
+      "producer": "responsibility.lane-sdk-runtime",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.signpost-index",
+      "producer": "responsibility.lane-sdk-compile",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.signpost-index",
+      "producer": "responsibility.lane-skill-contract",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.signpost-index",
+      "producer": "responsibility.lane-examples-tests",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.signpost-index",
+      "producer": "responsibility.lane-docs-signposts",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.signpost-index",
+      "producer": "responsibility.integration-builder",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.signpost-index",
+      "producer": "responsibility.verification-runner",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.implementation-report",
+      "producer": "responsibility.implementation-work-plan",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.implementation-report",
+      "producer": "responsibility.construction-review",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.implementation-report",
+      "producer": "responsibility.integration-builder",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.implementation-report",
+      "producer": "responsibility.verification-runner",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.implementation-report",
+      "producer": "responsibility.signpost-index",
+      "facet": "@atomic"
+    }
+  ],
+  "entry_points": [
+    "gateway.planning-corpus"
+  ],
+  "acyclic": true
+}

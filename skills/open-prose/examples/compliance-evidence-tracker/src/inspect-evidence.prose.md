@@ -1,6 +1,6 @@
 ---
 name: inspect-evidence
-kind: service
+kind: function
 ---
 
 # Inspect Evidence
@@ -9,14 +9,14 @@ kind: service
 
 Evaluates scoped controls and classifies evidence readiness.
 
-### Requires
+### Parameters
 
-- `control_scope`: controls needing review with current artifact references,
+- `control-scope`: controls needing review with current artifact references,
   evidence requirements, prior status, owners, and trigger reason
 
-### Ensures
+### Returns
 
-- `evidence_assessments`: controls labeled `accepted`, `stale`, `missing`,
+- `evidence-assessments`: controls labeled `accepted`, `stale`, `missing`,
   `exception`, or `needs-human-review` with cited evidence, freshness,
   confidence, and review notes
 - each assessment has: artifact references, evidence fingerprint, gap reason,

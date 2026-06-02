@@ -62,6 +62,21 @@ PostgreSQL state provides:
 
 **Key principle:** The database is a flexible, shared workspace. The Prose VM and spawned sessions coordinate through it, and external tools can observe and query execution state in real-time.
 
+### SQL/vector are derived projections, not the truth
+
+The load-bearing invariant (`world-model.md` §1): **the canonical world-model is a
+single content-addressable artifact, and PostgreSQL rows and vector indices are
+derived projections of it, never the truth.** Under this backend PostgreSQL holds
+two canonical things — the **append-only receipt ledger** and the
+**content-addressed world-model versioning** (committed artifact objects keyed by
+`ContentAddress`) — plus SQL/JSONB and optional vector indices that are **derived
+projections** for query/retrieval, rebuildable from the canonical truth. A render
+may query a projection by reference (e.g. a vector index over a million-row truth),
+but the fingerprint is always computed over the canonical serialization of the
+artifact, never over a row. There is **no policy / responsibility-status /
+pressure registry**: the wake decision is the reconciler comparing fingerprints —
+deterministic, total, no judge.
+
 ---
 
 ## Security Model
@@ -231,10 +246,10 @@ The connection string is stored in `<openprose-root>/.env`:
 │   └── system/index.prose.md
 └── runs/                       # Source snapshots and attachments
     └── {YYYYMMDD}-{HHMMSS}-{random}/
-        ├── forme.manifest.json # Optional filesystem snapshot of compiled Forme manifest
-        ├── root.prose.md       # Copy of the invoked service or system source
-        ├── sources/            # Service, system, and pattern source snapshots
-        └── attachments/        # Large outputs (optional)
+        ├── compiled-intent.json # Optional snapshot of compiled intent (topology WM + canonicalizers + validators)
+        ├── root.prose.md       # Copy of the invoked source
+        ├── sources/            # Source snapshots
+        └── attachments/        # Large canonical artifact blobs (optional)
 ```
 
 **Run ID format:** `{YYYYMMDD}-{HHMMSS}-{random6}`
@@ -242,9 +257,10 @@ The connection string is stored in `<openprose-root>/.env`:
 Example: `20260116-143052-a7b3c9`
 
 PostgreSQL state preserves the same run identity and source snapshot files as
-the filesystem backend. It stores execution events, bindings, and agent memory
-in PostgreSQL instead of filesystem `workspace/`, `bindings/`, and `vm.log.md`
-artifacts.
+the filesystem backend. It holds the receipt ledger and the content-addressed
+world-model versioning in PostgreSQL tables (the filesystem backend's
+`receipts/` + `world-model/`), with SQL/vector indices as **derived
+projections**, plus optional attachment files for large artifact blobs.
 
 ### Environment Variable Precedence
 
@@ -368,7 +384,45 @@ CREATE TABLE IF NOT EXISTS openprose.execution (
     metadata JSONB DEFAULT '{}'::jsonb
 );
 
--- All named values (binding input/output, let, const)
+-- === CANONICAL: content-addressed world-model versioning ===
+-- Each committed world-model version, keyed by ContentAddress (sha256 over the
+-- canonical serialization). Canonical truth, NOT a projection.
+CREATE TABLE IF NOT EXISTS openprose.world_model_version (
+    version TEXT PRIMARY KEY,        -- ContentAddress: sha256:<hex>
+    node TEXT NOT NULL,
+    artifact BYTEA,                  -- canonical serialization (or attachment_path for large)
+    attachment_path TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- The current published version per node.
+CREATE TABLE IF NOT EXISTS openprose.world_model_published (
+    node TEXT PRIMARY KEY,
+    version TEXT NOT NULL REFERENCES openprose.world_model_version(version),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- === CANONICAL: append-only receipt ledger (node-scoped, chained by prev) ===
+-- The single commit object. No verdict, no judge, no policy artifact.
+CREATE TABLE IF NOT EXISTS openprose.receipt (
+    id SERIAL PRIMARY KEY,
+    run_id TEXT REFERENCES openprose.run(id) ON DELETE CASCADE,
+    node TEXT NOT NULL,
+    contract_fingerprint TEXT NOT NULL,
+    wake JSONB NOT NULL,             -- { source: input|self|external, refs: [...] }
+    input_fingerprints JSONB NOT NULL, -- array — memo key's second half
+    fingerprints JSONB NOT NULL,     -- { facet -> token }, always incl. "@atomic"
+    semantic_diff JSONB DEFAULT '{}'::jsonb, -- render-input context; never a wake signal
+    prev TEXT,                       -- ContentAddress of prior receipt; NULL at cold start
+    status TEXT NOT NULL CHECK (status IN ('rendered', 'skipped', 'failed')),
+    cost JSONB DEFAULT '{}'::jsonb,  -- { provider, model, tokens, surprise_cause }
+    sig JSONB NOT NULL,              -- null-signature: { scheme:"none", null_reason }
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- === DERIVED PROJECTION: named values for single-session function/service runs ===
+-- A query convenience for stateless `function`/`service` call results. NOT the
+-- canonical truth for nodes — a node's truth is the world_model_version artifact.
 CREATE TABLE IF NOT EXISTS openprose.bindings (
     name TEXT NOT NULL,
     run_id TEXT NOT NULL REFERENCES openprose.run(id) ON DELETE CASCADE,
@@ -869,8 +923,10 @@ The database is your workspace. Use it.
 
 | Aspect | filesystem.md | in-context.md | sqlite.md | postgres.md |
 |--------|---------------|---------------|-----------|-------------|
+| **Canonical truth** | `world-model/` + `receipts/` | Conversation history | `world_model_version`/`receipt` tables | `world_model_version`/`receipt` tables |
+| **Derived projections** | optional rebuildable index | none | SQL query tables | SQL/JSONB + optional vector index |
 | **State location** | `<openprose-root>/runs/{id}/` files | Conversation history | `<openprose-root>/runs/{id}/state.db` | PostgreSQL database |
-| **Queryable** | Via file reads | No | Yes (SQL) | Yes (SQL) |
+| **Queryable** | Via file reads | No | Yes (SQL projections) | Yes (SQL/vector projections over canonical truth) |
 | **Atomic updates** | No | N/A | Yes (transactions) | Yes (ACID) |
 | **Concurrent writes** | Yes (different files) | N/A | **No (table locks)** | **Yes (row locks)** |
 | **Network access** | No | No | No | **Yes** |
@@ -889,12 +945,13 @@ The database is your workspace. Use it.
 PostgreSQL state management:
 
 1. Uses a **shared PostgreSQL database** for all runs
-2. Provides **true concurrent writes** via row-level locking
-3. Enables **network access** for external tools and dashboards
-4. Supports **team collaboration** on shared run state
-5. Allows **flexible schema evolution** with JSONB and custom tables
-6. Requires the **psql CLI** and a running PostgreSQL server
-7. Is **experimental**—expect changes
+2. Holds the **canonical** receipt ledger + content-addressed world-model versioning in tables
+3. Exposes **SQL/JSONB + vector indices as derived projections** — never the canonical truth (`world-model.md` §1)
+4. Has **no policy/responsibility-status/pressure registry** — the wake decision is the reconciler comparing fingerprints
+5. Provides **true concurrent writes** via row-level locking; **network access** for dashboards; **team collaboration**
+6. Allows **flexible schema evolution** for projections with JSONB and custom tables
+7. Requires the **psql CLI** and a running PostgreSQL server
+8. Is **experimental**—expect changes
 
 The core contract: the Prose VM manages execution flow and spawns sessions; spawned sessions write their own outputs directly to the database. Completion is signaled through the `spawn_session` return, not database updates. External tools can query execution state in real-time.
 

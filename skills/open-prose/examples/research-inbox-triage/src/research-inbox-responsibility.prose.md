@@ -11,37 +11,84 @@ id: 067NC4KG15XNS7AYBXG62RK3CG
 The research inbox stays deduplicated, prioritized, and converted into clear
 next actions for the team's active questions.
 
+### Requires
+
+- `inbox-items`: a current view of new papers, links, notes, or questions
+  awaiting triage
+- `active-questions`: research questions, initiatives, or watch areas that
+  should influence priority
+- `available-owners`: people or roles who can accept follow-up work
+
+### Maintains
+
+- `triage`: the current triage truth. Its subscribable parts are the three
+  `####` facets below — each `####` part *is* a facet, naming its own fingerprint
+  unit, its `Requires.<facet>` ↔ `Maintains.<facet>` subscription symbol, and its
+  `published/<facet>/…` subtree.
+- immaterial everywhere: scan timestamps and submission receipt ids
+- postcondition: each item is either linked to an existing cluster or starts a
+  new cluster with a concise rationale
+- postcondition: priority reflects relevance to active questions, novelty,
+  credibility, and urgency
+- postcondition: the strongest source is preserved for any duplicate set; an
+  item is never discarded solely because it is duplicated
+
+#### report
+
+Material: a scan-friendly summary of clusters, priorities, and next actions —
+each follow-up names an owner role, next step, and reason. A downstream that
+surfaces the triage report subscribes here and wakes when priorities move, not
+when the topic register or ignore list churns.
+
+#### topics
+
+Material: durable topic clusters, canonical sources, and duplicate
+cross-references, carried forward across renders.
+
+#### ignored
+
+Material: items that do not deserve follow-up, with enough rationale to avoid
+repeated re-triage.
+
 ### Continuity
 
-- New inbox items should be triaged before they are more than one business day
-  old.
-- Topic clusters and ignored-item reasoning should remain available across
-  runs.
-- Stale high-priority items should be resurfaced when no owner has accepted the
-  follow-up.
+- input-driven: new inbox items wake triage; they should be triaged before they
+  are more than one business day old
+- self-driven: re-surface stale high-priority items when no owner has accepted
+  the follow-up
 
-### Criteria
+### Invariants
 
-- Each item is either linked to an existing cluster or starts a new cluster with
-  a concise rationale.
-- Priority reflects relevance to active research questions, novelty, credibility,
-  and urgency.
-- Follow-up actions name an owner role, next step, and reason the action matters.
-- Ignored items keep enough explanation to avoid repeated re-triage.
-
-### Constraints
-
-- Do not discard an item solely because it is duplicated; preserve the strongest
-  source and cross-reference the rest.
 - Keep summaries short enough for a researcher to scan before deciding what to
   read.
 - Do not invent claims that are not present in the submitted item.
 
-### Tools
+### Execution
 
-(none)
+```prose
+let normalized = call inbox-ingestor
+  inbox-items: inbox-items
 
-### Fulfillment
+let clustered = call topic-clusterer
+  normalized-items: normalized.normalized-items
+  batch-duplicate-hints: normalized.batch-duplicate-hints
+  active-questions: active-questions
+  prior-topics: triage.topics
+  prior-ignored: triage.ignored
 
-Prefer the local `research-inbox-triage` system when the responsibility drifts
-or receives new inbox evidence.
+let ranking = call priority-scorer
+  clustered-items: clustered.clustered-items
+  active-questions: active-questions
+
+let report = call action-planner
+  clustered-items: clustered.clustered-items
+  priority-ranking: ranking
+  ignored-item-log: clustered.ignored-item-log
+  available-owners: available-owners
+
+return {
+  report: report,
+  topics: clustered.topic-map-updates,
+  ignored: clustered.ignored-item-log
+}
+```

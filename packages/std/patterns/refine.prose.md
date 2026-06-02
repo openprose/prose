@@ -22,13 +22,6 @@ Iteratively improve a result through delegation rounds until a quality threshold
 - `max_rounds` (integer, default: 3): Maximum number of refinement rounds
 - `threshold` (number, default: 0.8): Score at which the result is accepted
 
-### Invariants
-
-- The loop is bounded by `max_rounds`
-- The evaluator scores only the current result against the original task
-- The refiner receives its prior output and evaluator feedback on retries
-- The final output is the first result meeting `threshold`, or the last attempted result when the budget is exhausted
-
 ### Shape
 
 - `self`: manage refinement rounds, pass evaluator feedback to refiner
@@ -46,8 +39,12 @@ Iteratively improve a result through delegation rounds until a quality threshold
     max_rounds: number     -- (optional, default 3)
     threshold: number      -- (optional, default 0.8) score at which to stop
 
-### Ensures
+### Invariants
 
+- The loop is bounded by `max_rounds`
+- The evaluator scores only the current result against the original task
+- The refiner receives its prior output and evaluator feedback on retries
+- The final output is the first result meeting `threshold`, or the last attempted result when the budget is exhausted
 - Round 1: refiner produces initial result from the task brief
 - Evaluator scores the result (0..1) and provides specific improvement suggestions
 - If score >= threshold: return immediately

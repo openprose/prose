@@ -1,6 +1,6 @@
 ---
 name: researcher
-kind: service
+kind: function
 ---
 
 # Researcher
@@ -15,12 +15,12 @@ Investigate a topic using available tools and return sourced, confidence-scored 
 
 - `version`: 0.1.0
 
-### Requires
+### Parameters
 
 - topic: the question or subject to investigate
 - scope: (optional) constraints on the investigation -- time period, geography, source types, depth
 
-### Ensures
+### Returns
 
 - findings: a list of sourced claims, each with:
     - claim: a specific, falsifiable statement

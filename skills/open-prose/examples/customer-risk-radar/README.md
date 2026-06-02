@@ -4,7 +4,6 @@
 
 ```bash
 prose compile
-cp dist/manifest.next.json dist/manifest.active.json
 prose serve
 ```
 
@@ -19,8 +18,9 @@ recommended next actions.
 
 ## Source Shape
 
-- `src/`: responsibility, weekly gateway, risk system, and services
-- `dist/`: compiled intent produced by `prose compile`
-- `runs/`: bounded activation receipts
-- `state/`: durable account risk history
+- `src/`: the `customer-risk-maintained` responsibility, the
+  `customer-risk-review` gateway, and the helper `function`s it `call`s
+- `dist/`: compiled topology + canonicalizers produced by `prose compile`
+- `runs/`: append-only receipt ledger
+- `state/`: the canonical world-model (account risk + decision history)
 - `deps/`: installed OpenProse dependencies

@@ -19,10 +19,10 @@ Runs any measurement pattern on two candidates independently, then ranks which s
 
 - `measurement` (primary)
   - requires: candidate_config
-  - ensures: diagnostic_profile
+  - maintains: diagnostic_profile
 - `ranker`
   - requires: profile_a, profile_b, dimension
-  - ensures: verdict, magnitude, evidence
+  - maintains: verdict, magnitude, evidence
 
 ### Config
 
@@ -56,7 +56,7 @@ Runs any measurement pattern on two candidates independently, then ranks which s
     label_b: string           -- (optional, default "Candidate B")
     dimension: string         -- what is being compared (e.g. "clarity", "determinism", "assumption count")
 
-### Ensures
+### Maintains
 
 - The same measurement pattern runs independently on both candidates
 - Candidates are measured in isolation — the measurement of A does not influence B

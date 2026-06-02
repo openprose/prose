@@ -1,57 +1,57 @@
-import type {
-  ReactorModelGatewayRequestV0,
-  ReactorModelGatewayUsageV0,
-} from "../../sdk";
-import { cloneAdapterJsonValueV0, renderAdapterJsonV0 } from "../json";
+import { cloneAdapterJsonValue, renderAdapterJson } from "../json";
 import {
-  assertModelGatewayUsageV0,
-  cloneModelGatewayUsageV0,
-  type ReactorModelGatewayResponseWithUsageV0,
-  type ReactorModelGatewayRuntimeAdapterV0,
+  assertModelGatewayUsage,
+  cloneModelGatewayUsage,
+  type ReactorModelGatewayRequest,
+  type ReactorModelGatewayResponseWithUsage,
+  type ReactorModelGatewayRuntimeAdapter,
+  type ReactorModelGatewayUsage,
 } from "../types";
 
-export interface RecordReplayModelGatewayRecordV0 {
+export interface RecordReplayModelGatewayRecord {
   readonly id: string;
-  readonly request: ReactorModelGatewayRequestV0;
+  readonly request: ReactorModelGatewayRequest;
   readonly response: {
     readonly payload: unknown;
-    readonly usage: ReactorModelGatewayUsageV0;
+    readonly usage: ReactorModelGatewayUsage;
   };
 }
 
-export interface RecordReplayModelGatewayCallV0 {
+export interface RecordReplayModelGatewayCall {
   readonly record_id: string;
-  readonly request: ReactorModelGatewayRequestV0;
-  readonly usage: ReactorModelGatewayUsageV0;
+  readonly request: ReactorModelGatewayRequest;
+  readonly usage: ReactorModelGatewayUsage;
 }
 
-export interface RecordReplayModelGatewayAdapterV0
-  extends ReactorModelGatewayRuntimeAdapterV0 {
-  readonly calls: () => readonly RecordReplayModelGatewayCallV0[];
+export interface RecordReplayModelGatewayAdapter
+  extends ReactorModelGatewayRuntimeAdapter {
+  readonly calls: () => readonly RecordReplayModelGatewayCall[];
   readonly remaining: () => number;
 }
 
-export interface RecordReplayModelGatewayInputV0 {
-  readonly records: readonly RecordReplayModelGatewayRecordV0[];
+export interface RecordReplayModelGatewayInput {
+  readonly records: readonly RecordReplayModelGatewayRecord[];
 }
 
-export function createRecordReplayModelGatewayAdapterV0(
-  input: RecordReplayModelGatewayInputV0,
-): RecordReplayModelGatewayAdapterV0 {
+export function createRecordReplayModelGatewayAdapter(
+  input: RecordReplayModelGatewayInput,
+): RecordReplayModelGatewayAdapter {
   const records = input.records.map((record) => normalizeRecord(record));
-  const calls: RecordReplayModelGatewayCallV0[] = [];
+  const calls: RecordReplayModelGatewayCall[] = [];
   let cursor = 0;
 
   return {
-    invoke(request: ReactorModelGatewayRequestV0): ReactorModelGatewayResponseWithUsageV0 {
-      const requestCopy = cloneAdapterJsonValueV0(request);
+    invoke(
+      request: ReactorModelGatewayRequest,
+    ): ReactorModelGatewayResponseWithUsage {
+      const requestCopy = cloneAdapterJsonValue(request);
       const record = records[cursor];
       if (record === undefined) {
         throw new Error("record-replay model gateway has no remaining records");
       }
 
-      const expected = renderAdapterJsonV0(record.request);
-      const actual = renderAdapterJsonV0(requestCopy);
+      const expected = renderAdapterJson(record.request);
+      const actual = renderAdapterJson(requestCopy);
       if (actual !== expected) {
         throw new Error(
           `record-replay model gateway request mismatch at record ${record.id}`,
@@ -59,7 +59,7 @@ export function createRecordReplayModelGatewayAdapterV0(
       }
 
       cursor += 1;
-      const usage = cloneModelGatewayUsageV0(record.response.usage);
+      const usage = cloneModelGatewayUsage(record.response.usage);
       calls.push({
         record_id: record.id,
         request: requestCopy,
@@ -67,12 +67,12 @@ export function createRecordReplayModelGatewayAdapterV0(
       });
 
       return {
-        payload: cloneAdapterJsonValueV0(record.response.payload),
+        payload: cloneAdapterJsonValue(record.response.payload),
         usage,
       };
     },
-    calls(): readonly RecordReplayModelGatewayCallV0[] {
-      return calls.map((call) => cloneAdapterJsonValueV0(call));
+    calls(): readonly RecordReplayModelGatewayCall[] {
+      return calls.map((call) => cloneAdapterJsonValue(call));
     },
     remaining(): number {
       return records.length - cursor;
@@ -81,20 +81,20 @@ export function createRecordReplayModelGatewayAdapterV0(
 }
 
 function normalizeRecord(
-  record: RecordReplayModelGatewayRecordV0,
-): RecordReplayModelGatewayRecordV0 {
+  record: RecordReplayModelGatewayRecord,
+): RecordReplayModelGatewayRecord {
   if (record.id.length === 0) {
     throw new Error("record-replay model gateway record id must be non-empty");
   }
 
-  assertModelGatewayUsageV0(record.response.usage);
+  assertModelGatewayUsage(record.response.usage);
 
   return {
     id: record.id,
-    request: cloneAdapterJsonValueV0(record.request),
+    request: cloneAdapterJsonValue(record.request),
     response: {
-      payload: cloneAdapterJsonValueV0(record.response.payload),
-      usage: cloneModelGatewayUsageV0(record.response.usage),
+      payload: cloneAdapterJsonValue(record.response.payload),
+      usage: cloneModelGatewayUsage(record.response.usage),
     },
   };
 }

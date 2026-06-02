@@ -1,69 +1,44 @@
-import { deepEqual, ok } from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
-import { createRequire } from "node:module";
-import { join } from "node:path";
+import { asFingerprint, asNodeId } from "../../shapes";
+import { deepEqual, equal, ok } from "node:assert/strict";
 import { test } from "node:test";
 
 import {
-  ALLOWED_SURPRISE_CAUSES_V0,
-  type ReceiptV0Input,
-  createReceiptV0,
-  evaluateFlatSpendUnderStaticV0,
-  evaluateSurpriseAttributionCompleteV0,
-  isTokenBearingReceiptV0,
-  readTokenTruthV0,
-} from "../../index";
+  ALLOWED_SURPRISE_CAUSES,
+  evaluateFlatSpendUnderStatic,
+  evaluateSurpriseAttributionComplete,
+  isAllowedSurpriseCause,
+  isSelfRecheckObservation,
+  isTokenBearingReceipt,
+  validateReceiptSurpriseAttribution,
+} from "../index";
+import { createReceipt, type LedgerReceipt } from "../../receipt";
+import type { Receipt, WakeSource } from "../../shapes/index";
 
-const HASH_A =
+const CONTRACT_FP =
   "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" as const;
-const HASH_B =
-  "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" as const;
+const ATOMIC_TOKEN =
+  "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" as const;
+const WAKE_REF =
+  "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" as const;
 
-interface ReactorPackageJson {
-  readonly exports?: Record<string, unknown>;
-  readonly dependencies?: Record<string, string>;
-  readonly devDependencies?: Record<string, string>;
-  readonly optionalDependencies?: Record<string, string>;
-  readonly peerDependencies?: Record<string, string>;
-}
-
-test("package declares the W7 cost subpath export", () => {
-  const packageJson = readPackageJson();
-
-  deepEqual(packageJson.exports?.["./cost"], {
-    types: "./dist/cost/index.d.ts",
-    default: "./dist/cost/index.js",
-  });
+test("cost module exports the surprise-attribution surface", () => {
+  equal(typeof isAllowedSurpriseCause, "function");
+  equal(typeof isTokenBearingReceipt, "function");
+  equal(typeof isSelfRecheckObservation, "function");
+  equal(typeof validateReceiptSurpriseAttribution, "function");
+  equal(typeof evaluateSurpriseAttributionComplete, "function");
+  equal(typeof evaluateFlatSpendUnderStatic, "function");
 });
 
-test("reactor package does not depend on the Cradle package", () => {
-  const packageJson = readPackageJson();
-  const dependencyMaps = [
-    packageJson.dependencies,
-    packageJson.devDependencies,
-    packageJson.optionalDependencies,
-    packageJson.peerDependencies,
-  ];
-
-  ok(
-    dependencyMaps.every(
-      (dependencies) =>
-        dependencies === undefined ||
-        dependencies["@openprose/reactor-cradle"] === undefined,
-    ),
-  );
+test("allowed surprise causes are exactly the three wake sources", () => {
+  deepEqual([...ALLOWED_SURPRISE_CAUSES], ["input", "self", "external"]);
 });
 
-test("root package surface composes W7 cost helpers with receipt fixtures", () => {
-  const receipt = createReceiptV0(makeReceiptInput());
+test("cost helpers compose over an ideal self-driven recheck receipt", () => {
+  const receipt = makeReceipt("self", { fresh: 0, reused: 144 });
 
-  deepEqual(ALLOWED_SURPRISE_CAUSES_V0, [
-    "real-input",
-    "forecast-recheck",
-    "escalation",
-  ]);
-  ok(isTokenBearingReceiptV0(receipt));
-  deepEqual(evaluateSurpriseAttributionCompleteV0([receipt]), {
+  ok(isTokenBearingReceipt(receipt));
+  deepEqual(evaluateSurpriseAttributionComplete([receipt]), {
     ok: true,
     relationship: "surprise-attribution-complete",
     summary: "all token-bearing receipts name exactly one allowed surprise cause",
@@ -72,11 +47,11 @@ test("root package surface composes W7 cost helpers with receipt fixtures", () =
       receipts: 1,
       token_bearing_receipts: 1,
       post_bootstrap_token_bearing_receipts: 0,
-      plan_age_audit_floor_receipts: 0,
+      self_recheck_floor_receipts: 0,
     },
   });
   deepEqual(
-    evaluateFlatSpendUnderStaticV0({
+    evaluateFlatSpendUnderStatic({
       receipts: [receipt],
       bootstrap_receipt_count: 0,
       world_profile: "static",
@@ -85,99 +60,39 @@ test("root package surface composes W7 cost helpers with receipt fixtures", () =
       ok: true,
       relationship: "flat-spend-under-static",
       summary:
-        "static-world post-bootstrap fresh spend stayed flat apart from the plan-age audit floor",
+        "static-world post-bootstrap fresh spend stayed flat apart from the self-driven recheck floor",
       issues: [],
       checked: {
         receipts: 1,
         token_bearing_receipts: 1,
         post_bootstrap_token_bearing_receipts: 1,
-        plan_age_audit_floor_receipts: 1,
+        self_recheck_floor_receipts: 1,
       },
     },
   );
-  deepEqual(readTokenTruthV0(receipt), {
-    responsibility_id: "responsibility.incident-briefing",
-    run_id: "run-static-world",
-    provider: "cradle-double",
-    model: "deterministic-replay",
-    role: "judge",
-    tags: ["static-world", "plan-audit"],
-    as_of: "2026-05-18T12:00:00Z",
-    fresh: 0,
-    reused: 144,
-    surprise_cause: "forecast-recheck",
-  });
 });
 
-const packageRootPath = join(__dirname, "..", "..", "..");
-const sourceCostIndexPath = join(packageRootPath, "src", "cost", "index.ts");
-const builtCostIndexPath = join(__dirname, "..", "index.js");
-
-test(
-  "cost subpath is importable once Worker A implementation lands",
-  {
-    skip: existsSync(sourceCostIndexPath)
-      ? false
-      : "Worker A cost implementation is not present in this worktree yet",
-  },
-  () => {
-    const require = createRequire(__filename);
-    const costModule = require(builtCostIndexPath) as Record<string, unknown>;
-
-    ok(Object.keys(costModule).length > 0);
-  },
-);
-
-function readPackageJson(): ReactorPackageJson {
-  const packageJsonPath = join(packageRootPath, "package.json");
-  return JSON.parse(readFileSync(packageJsonPath, "utf8")) as ReactorPackageJson;
-}
-
-function makeReceiptInput(): ReceiptV0Input {
-  const asOf = "2026-05-18T12:00:00Z";
-
-  return {
-    core: {
-      responsibility_id: "responsibility.incident-briefing",
-      contract_revision: HASH_A,
-      event_cause: "forecast-recheck",
-      recheck_kind: "plan-age",
-      memo_key: "memo-key-static-world",
-      evidence_input_ids: [HASH_B],
-      as_of: asOf,
-      role: "judge",
-    },
-    sig: {
-      scheme: "none",
-      null_reason: "single-host v0.1 fixture; no cross-domain non-repudiation",
-    },
-    verdict: {
-      status: "up",
-      confidence: {
-        value: 0.95,
-        derivation_method: "cradle-double-calibration",
-        calibration_grade: "authored",
-        label_source: "static-world-anchor",
-      },
-    },
-    freshness: {
-      as_of: asOf,
-      next_forecast_recheck: "2026-05-19T12:00:00Z",
-    },
-    composition: {
-      consumed_receipts: [],
-      cycle_checked: true,
-    },
+function makeReceipt(
+  wakeSource: WakeSource,
+  tokens: { readonly fresh: number; readonly reused: number },
+): LedgerReceipt {
+  const input: Receipt = {
+    node: asNodeId("node.incident-briefing"),
+    contract_fingerprint: asFingerprint(CONTRACT_FP),
+    wake: { source: wakeSource, refs: [WAKE_REF] },
+    input_fingerprints: [],
+    fingerprints: { "@atomic": asFingerprint(ATOMIC_TOKEN) },
+    semantic_diff: {},
+    prev: null,
+    status: "rendered",
     cost: {
       provider: "cradle-double",
       model: "deterministic-replay",
-      role: "judge",
-      tags: ["static-world", "plan-audit"],
-      responsibility_id: "responsibility.incident-briefing",
-      run_id: "run-static-world",
-      as_of: asOf,
-      tokens: { fresh: 0, reused: 144 },
-      surprise_cause: "forecast-recheck",
+      tokens,
+      surprise_cause: wakeSource,
     },
+    sig: { scheme: "none", null_reason: "cost public-surface fixture" },
   };
+
+  return createReceipt(input);
 }

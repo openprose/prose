@@ -1,25 +1,25 @@
 ---
 name: collect-incident-signals
-kind: service
+kind: function
 ---
 
 # Collect Incident Signals
 
 ### Shape
 
-- `self`: normalize safe incident evidence from the event, prior brief, and timeline
+- `self`: normalize safe incident evidence from the event and the prior briefing
 - `prohibited`: fetching private logs, exposing secrets, or deciding severity alone
 
-### Requires
+### Parameters
 
-- `incident_event`: the latest safe event context for an active incident
-- `prior_brief`: the last published incident brief, if one exists
-- `timeline`: current incident timeline and decision log from project state
+- `incident-events`: the latest safe event context for an active incident
+- `prior-briefing`: the responsibility's prior briefing truth, including the last
+  published brief and the incident timeline, read from its world-model
 
-### Ensures
+### Returns
 
-- `signal_summary`: normalized facts, timestamps, sources, contradictions, and gaps
-- `timeline_updates`: candidate timeline entries safe to persist
+- `signal-summary`: normalized facts, timestamps, sources, contradictions, and gaps
+- `timeline-updates`: candidate timeline entries safe to persist
 
 ### Errors
 
@@ -29,8 +29,3 @@ kind: service
 
 - Prefer explicit timestamps from the event; otherwise mark timing as reported order.
 - Carry forward unresolved questions from the prior brief unless new evidence answers them.
-
-### Runtime
-
-- `persist`: project
-

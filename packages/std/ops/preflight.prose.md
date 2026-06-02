@@ -1,31 +1,33 @@
 ---
 name: preflight
-kind: system
+kind: function
 ---
 
-### Services
+### Goal
 
-- resolver
-- env-checker
-- dep-checker
+Report the dependency-installation and environment-variable readiness of a target `*.prose.md` contract before it is run.
 
-### Requires
+### Parameters
 
-- target: path to the system `*.prose.md` file to preflight
+- target: path to the `*.prose.md` file to preflight
 
-### Ensures
+### Returns
 
-- report: preflight report listing dependency installation status and environment variable status (set/not set, never revealing values)
+- report: preflight report listing dependency installation status and environment variable status (set/not set, never revealing values). The report reads `pass` when every `use` dependency is installed and every declared environment variable is set, and `fail` (with the missing items listed) otherwise.
 
 ### Errors
 
 - not-found: target file does not exist
-- not-system: target file is not a valid system
+- not-system: target file is not a valid contract to preflight
 
-### Strategies
+### Invariants
 
-- resolve all services transitively from the system's `### Services` section
-- collect all `environment:` declarations across the service tree
-- check each env var with `test -n "${VAR+x}"` via Bash — this returns whether the variable exists without ever reading its value. Never log, print, or include environment variable values in any output
-- check that all `use` dependencies are installed in `<openprose-root>/deps/`
-- report readiness as pass (all satisfied) or fail (with missing items listed)
+- Never log, print, or include environment variable values in any output — only their set/not-set status.
+
+### Execution
+
+- Resolve the full set of contracts the target depends on, transitively, from the target's declared dependencies (the resolver).
+- Collect all `environment:` declarations across the resolved contract tree (the env-checker).
+- Check each env var with `test -n "${VAR+x}"` via Bash — this returns whether the variable exists without ever reading its value.
+- Check that all `use` dependencies are installed in `<openprose-root>/deps/` (the dep-checker).
+- Report readiness as `pass` (all satisfied) or `fail` (with missing items listed).

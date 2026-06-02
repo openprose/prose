@@ -1,6 +1,6 @@
 ---
 name: critic
-kind: service
+kind: function
 ---
 
 # Critic
@@ -15,22 +15,21 @@ Evaluate a work product against quality criteria and render a subjective verdict
 
 - `version`: 0.1.0
 
-### Requires
+### Parameters
 
 - result: the work product to evaluate
 - criteria: what constitutes acceptance (quality standards, not formal rules)
 - task: the original task description, for context on what the result was supposed to accomplish
 
-### Ensures
+### Returns
 
 - evaluation: a structured verdict containing:
     - verdict: "accept" or "reject"
     - reasoning: why the criteria are or are not met -- specific, not "looks good"
     - issues: specific, actionable problems found (each states what is wrong and why)
     - suggestions: concrete next steps to address each issue (not restatements of the issues)
-- if accepting: reasoning explains why criteria are satisfied, with evidence
-- if rejecting: at least one issue is listed
-- the critic does not fix the result -- it identifies problems and suggests directions
+
+The returned evaluation satisfies these postconditions: if the verdict is "accept", the reasoning explains why the criteria are satisfied, with evidence; if the verdict is "reject", at least one issue is listed. The critic does not fix the result -- the returned evaluation identifies problems and suggests directions only.
 
 ### Errors
 

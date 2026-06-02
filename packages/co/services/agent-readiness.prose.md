@@ -1,6 +1,6 @@
 ---
 name: agent-readiness
-kind: service
+kind: function
 ---
 
 
@@ -15,14 +15,14 @@ Designed as a short interactive intake that asks for the minimum input,
 fetches a fixed set of well-known paths (no JavaScript rendering required),
 and writes the report as a public binding the caller can open immediately.
 
-### Requires
+### Parameters
 
 - `company_name`: company name (e.g. "Acme")
 - `domain`: primary domain or full URL (e.g. `acme.com` or `https://acme.com`)
 - `focus`: what agents most need to access — one of `marketing-site`,
   `product-docs`, `public-api`, or `all`. Default `all`.
 
-### Ensures
+### Returns
 
 - `workspace_dir`: absolute path to the scratch workspace for this probe,
   conventionally `<run_dir>/workspace/agent-readiness/<slug>/` where `<slug>`

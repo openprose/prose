@@ -52,7 +52,7 @@ Run the same service on identical inputs N times; variance in responses measures
     sample_size: number       -- (optional, default 7) number of runs
     model: string             -- (optional) model tier to probe at — fixing the tier isolates material variance from capability variance
 
-### Ensures
+### Maintains
 
 - All N runs receive IDENTICAL inputs — same brief, same material, same model
 - Temperature and sampling inherent to the model are the ONLY source of variation

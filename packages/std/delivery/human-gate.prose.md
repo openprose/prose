@@ -1,6 +1,6 @@
 ---
 name: human-gate
-kind: service
+kind: function
 ---
 
 ### Shape
@@ -14,17 +14,18 @@ kind: service
   - approving on behalf of the human
   - proceeding without explicit approval when gate_level requires it
 
-### Requires
+### Parameters
 
 - content: the output to review
 - gate_level: one of "all", "external", "none"
 - review_channel: where to present the review request — e.g. Slack channel ID or email address
 
-### Ensures
+### Returns
 
 - approved: boolean — true if the reviewer approved, or if gate_level is "none" (auto-approved without review)
 - feedback: (optional) structured edits from the reviewer, suitable for `apply(content, feedback)` — present only when the reviewer provides modifications
-- if gate_level is "none": approved is true immediately with no human review and no feedback
+- if gate_level is "none": approved is returned true immediately with no human review and no feedback
+- when gate_level is "all" or "external", approved is true only after a human has explicitly approved
 
 ### Errors
 

@@ -1,41 +1,74 @@
+import { cloneAdapterJsonValue } from "../json";
 import type {
-  ReactorAgentRequestV0,
-  ReactorAgentResponseV0,
-  ReactorAgentSdkAdapterV0,
-} from "../../sdk";
-import { cloneAdapterJsonValueV0 } from "../json";
+  ReactorAgentRequest,
+  ReactorAgentResponse,
+  ReactorAgentSdkAdapter,
+  ReactorSandboxRequest,
+  ReactorSandboxResponse,
+} from "../types";
 
-export type ReactorAgentSdkLaunchHandlerV0 = (
-  request: ReactorAgentRequestV0,
-) => ReactorAgentResponseV0;
+export type ReactorAgentSdkLaunchHandler = (
+  request: ReactorAgentRequest,
+) => ReactorAgentResponse;
 
-export interface RecordingAgentSdkAdapterV0 extends ReactorAgentSdkAdapterV0 {
-  readonly launches: () => readonly ReactorAgentRequestV0[];
+export type ReactorAgentSdkSandboxHandler = (
+  request: ReactorSandboxRequest,
+) => ReactorSandboxResponse;
+
+export interface RecordingAgentSdkAdapter extends ReactorAgentSdkAdapter {
+  readonly launches: () => readonly ReactorAgentRequest[];
+  readonly runSandbox: (
+    request: ReactorSandboxRequest,
+  ) => ReactorSandboxResponse;
+  readonly sandboxRuns: () => readonly ReactorSandboxRequest[];
 }
 
-export function createPassthroughAgentSdkAdapterV0(
-  handler: ReactorAgentSdkLaunchHandlerV0 = (request) => ({
-    payload: request.payload,
-  }),
-): RecordingAgentSdkAdapterV0 {
-  const launches: ReactorAgentRequestV0[] = [];
+export interface PassthroughAgentSdkAdapterInput {
+  readonly launch?: ReactorAgentSdkLaunchHandler;
+  readonly sandbox?: ReactorAgentSdkSandboxHandler;
+}
+
+const DEFAULT_SANDBOX_RESPONSE: ReactorSandboxResponse = {
+  exit_code: 0,
+  stdout: "",
+  stderr: "",
+};
+
+export function createPassthroughAgentSdkAdapter(
+  input: PassthroughAgentSdkAdapterInput = {},
+): RecordingAgentSdkAdapter {
+  const launchHandler: ReactorAgentSdkLaunchHandler =
+    input.launch ?? ((request) => ({ payload: request.payload }));
+  const sandboxHandler: ReactorAgentSdkSandboxHandler =
+    input.sandbox ?? (() => ({ ...DEFAULT_SANDBOX_RESPONSE }));
+
+  const launches: ReactorAgentRequest[] = [];
+  const sandboxRuns: ReactorSandboxRequest[] = [];
 
   return {
-    launch(request: ReactorAgentRequestV0): ReactorAgentResponseV0 {
-      const requestCopy = cloneAdapterJsonValueV0(request);
+    launch(request: ReactorAgentRequest): ReactorAgentResponse {
+      const requestCopy = cloneAdapterJsonValue(request);
       launches.push(requestCopy);
-      return cloneAdapterJsonValueV0(handler(requestCopy));
+      return cloneAdapterJsonValue(launchHandler(requestCopy));
     },
-    launches(): readonly ReactorAgentRequestV0[] {
-      return launches.map((launch) => cloneAdapterJsonValueV0(launch));
+    runSandbox(request: ReactorSandboxRequest): ReactorSandboxResponse {
+      const requestCopy = cloneAdapterJsonValue(request);
+      sandboxRuns.push(requestCopy);
+      return cloneAdapterJsonValue(sandboxHandler(requestCopy));
+    },
+    launches(): readonly ReactorAgentRequest[] {
+      return launches.map((launch) => cloneAdapterJsonValue(launch));
+    },
+    sandboxRuns(): readonly ReactorSandboxRequest[] {
+      return sandboxRuns.map((run) => cloneAdapterJsonValue(run));
     },
   };
 }
 
-export function createNullAgentSdkAdapterV0(
+export function createNullAgentSdkAdapter(
   payload: unknown = null,
-): RecordingAgentSdkAdapterV0 {
-  return createPassthroughAgentSdkAdapterV0(() => ({
-    payload: cloneAdapterJsonValueV0(payload),
-  }));
+): RecordingAgentSdkAdapter {
+  return createPassthroughAgentSdkAdapter({
+    launch: () => ({ payload: cloneAdapterJsonValue(payload) }),
+  });
 }

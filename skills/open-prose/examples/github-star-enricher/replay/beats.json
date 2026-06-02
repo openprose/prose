@@ -1,0 +1,70 @@
+{
+  "scenario": "github-star-enricher",
+  "title": "New GitHub stars fan out into per-stargazer intelligence. Company enrichment is shared, expensive calls are cost-gated, and the outreach packet NEVER auto-sends.",
+  "beats": [
+    {
+      "name": "cold-fan-out",
+      "park": 1,
+      "from": 0,
+      "to": 12,
+      "holdMs": 3000,
+      "caption": "a batch of new stars · the registry dedupes · three per-person lanes light up"
+    },
+    {
+      "name": "shared-company",
+      "park": 8,
+      "from": 5,
+      "to": 12,
+      "holdMs": 3200,
+      "caption": "alice + bob both at acme · the company resolver renders ONCE · both lanes share the receipt"
+    },
+    {
+      "name": "cost-gate",
+      "park": 10,
+      "from": 8,
+      "to": 12,
+      "holdMs": 3000,
+      "caption": "casey is low-signal · her Exa People call is gated OFF · no sample is built for her"
+    },
+    {
+      "name": "human-gate",
+      "park": 12,
+      "from": 11,
+      "to": 12,
+      "holdMs": 3400,
+      "caption": "alice's sample is built + run · the packet reaches ready_for_review · it STOPS — never auto-sent"
+    },
+    {
+      "name": "move-one-stargazer",
+      "park": 15,
+      "from": 13,
+      "to": 16,
+      "holdMs": 3200,
+      "caption": "new evidence on ALICE alone · only her lane lights · bob + casey stay DARK · absorbed at the footprint"
+    },
+    {
+      "name": "exa-fails",
+      "park": 18,
+      "from": 17,
+      "to": 19,
+      "holdMs": 3200,
+      "caption": "Exa People is DOWN for bob · person-bob fails LOUD (provider=exa) · prior identity stands · nothing downstream"
+    },
+    {
+      "name": "exa-recovers",
+      "park": 21,
+      "from": 20,
+      "to": 22,
+      "holdMs": 3000,
+      "caption": "Exa is back · bob's lane heals · the shared acme company render is STILL not re-run"
+    },
+    {
+      "name": "quiet-repoll",
+      "park": 25,
+      "from": 23,
+      "to": 27,
+      "holdMs": 3000,
+      "caption": "a re-poll with the same stars · the whole graph memo-SKIPS · cost flat near zero"
+    }
+  ]
+}

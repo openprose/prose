@@ -1,0 +1,9 @@
+{
+  "gateway.contract-source-files": "Contract Source Files",
+  "gateway.operator-pins": "Operator Pins",
+  "responsibility.contract-registry": "Contract Registry",
+  "responsibility.topology-maintainer": "Topology Maintainer (Forme)",
+  "responsibility.schedule-plan": "Schedule Plan",
+  "responsibility.topology-change-reporter": "Topology Change Reporter",
+  "responsibility.topology-safety-auditor": "Topology Safety Auditor"
+}

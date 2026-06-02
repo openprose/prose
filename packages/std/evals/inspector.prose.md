@@ -1,25 +1,18 @@
 ---
 name: inspector
-kind: system
+kind: function
 ---
 
 # Post-Run Inspector
 
 Analyze a completed OpenProse run for runtime fidelity (did the OpenProse VM execute the system correctly?) and task effectiveness (did the system accomplish its goal?). This is the foundational eval — every other eval in the standard library depends on inspector output.
 
-### Services
-
-- index
-- extractor
-- evaluator
-- synthesizer
-
-### Requires
+### Parameters
 
 - subject: run — the completed run to inspect
 - depth: inspection depth — "light" (fast, checks structure and outputs exist) or "deep" (thorough, reads all artifacts, traces execution against system spec)
 
-### Ensures
+### Returns
 
 - inspection: structured inspection report containing:
     - run_id: the inspected run's identifier
@@ -44,10 +37,33 @@ Analyze a completed OpenProse run for runtime fidelity (did the OpenProse VM exe
 ### Strategies
 
 - when depth is light: check structural completeness only — vm.log.md has `---end` or `---error`, all declared services have bindings, output files are non-empty, no `__error.md` files. Do not read output content in detail. Target: under 30 seconds, under 10K tokens.
-- when depth is deep: read root.prose.md to understand intent, read forme.manifest.json to understand expected wiring, trace vm.log.md event markers against the manifest's execution order, read each service's workspace artifacts and bindings, evaluate output quality against the system's ensures clauses. Target: thorough analysis, no shortcuts.
-- when a service has `__error.md`: read it, classify the error, check whether the system's conditional ensures handled the degradation correctly
+- when depth is deep: read root.prose.md to understand intent, read forme.manifest.json to understand expected wiring, trace vm.log.md event markers against the manifest's execution order, read each sub-unit's workspace artifacts and bindings, evaluate output quality against the system's `### Maintains` / `### Returns` clauses. Target: thorough analysis, no shortcuts.
+- when a sub-unit has `__error.md`: read it, classify the error, check whether the system's conditional returns / maintained postconditions handled the degradation correctly
 - when scoring runtime fidelity: weight heavily on execution order correctness (did services run in the right order?), binding integrity (did outputs get copied correctly?), and vm.log.md completeness (are all markers present?)
-- when scoring task effectiveness: weight heavily on whether the system's top-level ensures clauses are satisfied by the final output in bindings
+- when scoring task effectiveness: weight heavily on whether the system's top-level maintained truth is satisfied by the final output in bindings
+
+### Execution
+
+```prose
+let index_result = call index
+  subject: subject
+
+let extraction = call extractor
+  subject: subject
+  depth: depth
+  prior-inspections: index_result.prior-inspections
+
+let evaluation = call evaluator
+  extraction: extraction.extraction
+  depth: depth
+
+let result = call synthesizer
+  extraction: extraction.extraction
+  evaluation: evaluation.evaluation
+  prior-inspections: index_result.prior-inspections
+
+return { inspection: result.inspection }
+```
 
 ---
 
@@ -64,7 +80,9 @@ The index is a persistent agent that maintains a registry of all inspections per
 
 - subject: the run binding from the caller
 
-### Ensures
+### Maintains
+
+A standing registry of all inspections performed, persisted across runs. For the requested subject:
 
 - prior-inspections: JSON list of any prior inspections of this run, with their depth and verdict. Empty list if none found.
 
@@ -80,13 +98,13 @@ The index is a persistent agent that maintains a registry of all inspections per
 
 Read the run's artifacts and produce a structured extraction suitable for evaluation. The extractor does not judge — it reads and organizes.
 
-### Requires
+### Parameters
 
 - subject: the run binding
 - depth: "light" or "deep"
 - prior-inspections: from index
 
-### Ensures
+### Returns
 
 - extraction: structured data containing:
     - run_id: string
@@ -121,12 +139,12 @@ Read the run's artifacts and produce a structured extraction suitable for evalua
 
 Apply judgment to the extraction. Score runtime fidelity and task effectiveness independently. The evaluator is the most critical service — it must be precise, evidence-based, and calibrated.
 
-### Requires
+### Parameters
 
 - extraction: structured extraction from extractor
 - depth: "light" or "deep"
 
-### Ensures
+### Returns
 
 - evaluation: structured judgment containing:
     - runtime_fidelity: object with score (0-100), breakdown (execution_order, binding_integrity, vm_log_completeness, error_handling — each 0-100), and evidence (list of specific observations)
@@ -141,7 +159,7 @@ Apply judgment to the extraction. Score runtime fidelity and task effectiveness 
 ### Strategies
 
 - when depth is light: evaluate only structural metrics — completion, binding existence, error absence. Score conservatively (cap at 85 for runtime fidelity, 80 for task effectiveness) since light cannot verify content quality.
-- when depth is deep: evaluate everything — trace execution against manifest, read outputs against ensures, check for shape violations, assess output quality
+- when depth is deep: evaluate everything — trace execution against manifest, read outputs against the subject's maintained truth / returns, check for shape violations, assess output quality
 - when scoring: use the full 0-100 range. A perfect run scores 95-100, not 100 (reserve 100 for extraordinary cases). A run with minor issues scores 70-85. A run with significant problems scores 40-69. A fundamentally broken run scores below 40.
 - when a run failed but produced partial output: evaluate what exists. A failed run can still have high task effectiveness if the partial output is useful.
 - when evidence conflicts: note the conflict explicitly in flags rather than silently resolving it
@@ -152,15 +170,15 @@ Apply judgment to the extraction. Score runtime fidelity and task effectiveness 
 
 Combine evaluation results into the final inspection report. Format for both machine consumption (structured JSON) and human readability (summary text).
 
-### Requires
+### Parameters
 
 - extraction: from extractor
 - evaluation: from evaluator
 - prior-inspections: from index
 
-### Ensures
+### Returns
 
-- inspection: the final inspection report matching the system's top-level ensures schema exactly
+- inspection: the final inspection report matching the function's top-level returns schema exactly
 
 ### Strategies
 

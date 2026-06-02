@@ -1,0 +1,15 @@
+{
+  "ingress.signal-inbox": "Signal Inbox (edge)",
+  "gateway.signal-inbox": "Signal Inbox",
+  "responsibility.signal-ledger": "Signal Ledger",
+  "responsibility.scout-price": "Scout · Price",
+  "responsibility.scout-friction": "Scout · Friction",
+  "responsibility.scout-desire": "Scout · Desire",
+  "responsibility.viewport-masker": "Viewport Masker",
+  "responsibility.expander-1": "Expander 1",
+  "responsibility.expander-2": "Expander 2",
+  "responsibility.critic-strong": "Critic · Strong",
+  "responsibility.critic-weak": "Critic · Weak",
+  "responsibility.insight-synthesizer": "Insight Synthesizer",
+  "responsibility.diversity-auditor": "Diversity Auditor"
+}

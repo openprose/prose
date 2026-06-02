@@ -1,472 +1,216 @@
 <p align="center">
-  <img src="https://openprose.ai/readme-header.png" alt="OpenProse - Author Outcomes" width="100%" />
+  <img src="https://openprose.ai/readme-header.png" alt="OpenProse — Reactor" width="100%" />
 </p>
 
 <p align="center">
-  <strong>Write the future as a Markdown contract agents can run, review, and maintain.</strong>
+  <strong>Reactor: <code>React.memo</code> for expensive LLM work — cost scales with surprise, not the clock.</strong>
 </p>
 
 <p align="center">
-  <a href="https://prose.md">Website</a> |
-  <a href="skills/open-prose/SKILL.md">Docs</a> |
-  <a href="skills/open-prose/examples/">Examples</a> |
-  <a href="skills/open-prose/contract-markdown.md">Spec</a> |
-  <a href="tools/cli/">CLI</a> |
-  <a href="packages/std/">Stdlib</a> |
-  <a href="packages/co/">Company-as-Prose</a>
-</p>
-
-<p align="center">
-  <code>npx skills add openprose/prose</code>
+  <a href="#quickstart-60-seconds-no-model-key">Quickstart</a> ·
+  <a href="skills/open-prose/examples/">Examples</a> ·
+  <a href="#the-technical-report">Technical report</a> ·
+  <a href="packages/reactor/EVALS.md">Send us an eval</a> ·
+  <a href="skills/open-prose/SKILL.md">OpenProse docs</a>
 </p>
 
 ---
 
-## Reactor
+## What this is
 
-**Reactor makes fresh model spend scale with surprise — plus a bounded periodic audit floor — not the arbitrary clock.**
+**Reactor (`@openprose/reactor`) is a small, open-source harness for AI work that has to *keep being true* after a chat ends.**
 
-> v0.1.0 released 2026-05-22 — public on [npm](https://www.npmjs.com/package/@openprose/reactor) (`latest`, SLSA v1 provenance), source at tag [`reactor-v0.1.0`](https://github.com/openprose/prose/releases/tag/reactor-v0.1.0). See [`packages/reactor/ADOPTION.md`](packages/reactor/ADOPTION.md) for v0.1 scope.
+You declare the truths you want kept current as OpenProse **Responsibilities** (standing goals). Reactor keeps a composed **world-model** up to date against a changing world, re-renders only the responsibilities whose inputs actually moved, and leaves a content-addressed **receipt** behind every decision.
 
-Reactor is a small local runtime for *responsibilities* — things you need to
-stay true while the world keeps moving: a release that is still safe to ship,
-an incident channel with a current briefing, a customer account that hasn't
-quietly gone sideways. It wakes on an event, checks the evidence, and decides
-whether the responsibility still holds.
+In plain terms: you declare what should stay true, the system watches the world, and it does expensive model work **only when something material actually moved**.
 
-The trick is what happens when nothing changed. If the evidence is identical to
-last time, Reactor reuses its previous verdict for free — no model call — and
-records that it did. Real model spend appears only when the world hands it
-something genuinely new. Every check, reused or fresh, leaves a
-content-addressed receipt: a tamper-evident record of what it saw, what it
-decided, and what it cost.
+> **New here?** Start with the Quickstart below — one keyless command proves the whole idea in under a second.
+>
+> **Came from OpenProse?** This is the *dependency-across-runs* layer your contracts kept asking for — the natural next step, not a turn away. The [technical report](#the-technical-report) §4 is the through-line.
 
-See it in one run. The flat-tokens example drives four checks of a single
-responsibility:
+> ### Coming from OpenProse (v0.14 or earlier)? Read this first.
+>
+> The Intelligent-React overhaul (`runtime_contract 1 → 2`) is a **breaking** vocabulary change. The headlines:
+>
+> - **The judge loop is retired wholesale.** The old judge → verdict → pressure → fulfillment loop is gone, replaced by a deterministic reconciler — a render runs only when a node's subscribed input fingerprints or its own contract fingerprint move. There is no LLM in the wake/commit decision.
+> - **Kinds renamed/deleted.** `kind: service` is **renamed to `kind: function`** (`### Parameters` → `### Returns`); `kind: system` is **deleted** (composition is now intra-node ProseScript `call` or cross-node subscription, wired by Forme); `kind: responsibility` is **reshaped** into a mounted DAG node that gains `### Requires` + `### Maintains`. `### Ensures` is **renamed to `### Maintains`** (now the world-model schema, not just an output list); `### Criteria`/`### Memory`/`### Fulfillment` fold in.
+> - **Old ledgers are abandoned, not migrated.** Existing runtime data — old `ReceiptV0` ledgers, the policy registry, bundled `runs/`/`state/`/`dist/` — is **greenfield**: there is **no data migrator**. Only your **source text** upgrades. Re-run from a clean state-dir.
+> - **Upgrade your source with a dry run first.** `prose upgrade --dry-run` (a prose skill command, run inside an OpenProse session — not the reactor CLI) inspects your files and reports the concrete migration plan **without editing** — mechanical rewrites where safe, surfaced as manual-review diagnostics where judgment is needed (e.g. a `system`/`### Wiring` flatten-or-split). Run it before `prose upgrade`.
+
+**You do not need React to use this.** Reactor is React-*flavored*, not React-gated: the contracts are Markdown, and the CLI, the receipts, and the keyless replay are entirely React-free. The plain-language version of the whole product is two sentences — *you declare what should stay true, the system watches the world, and it does expensive model work only when something material actually moved.* The React table below is an optional mental model for the people who already carry one; skip it freely.
+
+If you *do* know React, you already know the shape — substitute three nouns:
+
+| React | Reactor |
+| --- | --- |
+| Component | **Responsibility** — a declared standing goal |
+| DOM | **World-model** — the maintained truth, on disk, passed by pointer |
+| `render()` | **A bounded LLM session** that computes the next world-model |
+| props | **Subscriptions** to other responsibilities' outputs |
+| `React.memo` (skip if props unchanged) | **Skip the render if subscribed inputs haven't moved** |
+| Manual dependency wiring | **Forme** — the graph wires itself from declared contracts |
+
+The reconciler that decides *whether to wake* is deliberately **dumb and deterministic** — there is **no judge step**. The intelligence is frozen ahead of time, at compile, into a per-node canonicalizer and the Forme wiring. The memo key has no clock in it.
+
+> **Versions (live on npm):** `@openprose/reactor` 0.3.0 ·
+> `reactor-cli` 0.2.0 · `reactor-devtools` 0.2.0. The `reactor` binary ships from the
+> **`reactor-cli`** package, so `reactor --version` prints the CLI version (0.2.0), not the
+> SDK version (0.3.0) — expected, not a mismatch.
+
+## Quickstart (60 seconds, no model key)
+
+**1. Install.** All three packages are live on npm. The keyless step below needs no
+install at all — run it straight through `npx`:
 
 ```bash
-cd skills/open-prose/examples/flat-tokens
-npm install
-node flat-tokens.example.mjs
-# memoization cut fresh model spend 50% (2 model calls, not 4)
-#
-# tokens.fresh=46
-# tokens.reused=46
-# ratio=46:46
-# no-memo-fresh=92
+# no install — run the keyless replay directly:
+npx -p @openprose/reactor-devtools reactor-devtools --example masked-relay --describe
 ```
 
-The four checks would have cost 92 fresh tokens of model work without
-memoization. With it, fresh stays at 46 — half — and 46 more tokens are reused
-for free. Two model calls instead of four. Re-run it and the receipts come back
-byte-for-byte identical.
+For the full CLI, prefer a project-local install (no root, no global collisions):
 
-Use Reactor when you are maintaining a stateful promise that deserves an
-auditable "why" over time: release readiness, incident briefing, customer risk,
-compliance evidence, or research inbox triage. Skip it when a one-off prompt or
-ordinary cron job already gives you enough truth.
+```bash
+npm install @openprose/reactor @openprose/reactor-cli @openprose/reactor-devtools
+# then call the binaries with `npx reactor …` / `npx reactor-devtools …`
+```
+
+> **Local install?** The bare `reactor …` / `reactor-devtools …` commands shown below assume the
+> binaries are on your `PATH` (a global install). After the project-local `npm install` above,
+> prepend `npx` to them — e.g. `npx reactor init my-project`, `npx reactor-devtools ./replay --describe`.
+> (The keyless `npx -p @openprose/reactor-devtools …` lines already do this and need no change.)
+
+<details><summary>Global install (alternative — collision- and EACCES-prone)</summary>
+
+```bash
+npm i -g @openprose/reactor @openprose/reactor-cli @openprose/reactor-devtools
+```
+
+A global `-g` can collide with other tools' binaries, and on Linux/WSL it may fail with
+`EACCES` — use a user prefix (nvm) or `sudo`, or just prefer the local install above.
+
+**Air-gapped?** The *runtime* is offline-clean, but any `npm i`/`npm i -g` still reaches the
+registry once for the CLI's `commander` dependency — replay / `doctor` / `compile --check`
+afterward do not.
+</details>
+
+**2. See the thesis — keyless, no model call.** Replay a saved sample run (synthetic, illustrative tokens) and read the per-node `rendered`/`skipped` dispositions, the receipt counts by `surprise_cause`, the token **cost rollup**, and per-node chain-verify:
+
+```bash
+npx -p @openprose/reactor-devtools reactor-devtools --example masked-relay --describe
+```
+
+```
+dispositions  rendered=46 · skipped=31 · failed=0
+surprise-cause  external=8 · input=69   (a.k.a. wake-cause)   ← receipt COUNTS, 77 total
+
+COST ROLLUP  (tokens)
+  total       fresh=27180 tokens · reused=12840 tokens · reuse=32%
+    external  receipts=  8 fresh=   1080 tokens reused=840 tokens
+    input     receipts= 69 fresh=  26100 tokens reused=12000 tokens
+CHAIN-VERIFY ok
+```
+
+The `surprise-cause` line counts *receipts* by what woke them (8 external + 69 input = the 77 total receipts); the **cost rollup** below it is the actual token spend — `fresh` tokens are what each surprise cost, `reused` is what memoization saved (32% of the would-be tokens). That's "cost scales with surprise" — checkable, with no key and no spend. Frames where a memo-skip happened show as `skipped moved[—] fresh 0`.
+
+> **Prefer the browser?** Drop `--describe` — `reactor-devtools --example masked-relay` boots an
+> animated DAG viewer at a localhost URL: nodes flash on render, dim-pulse on memo-skip, with a
+> live cost meter.
+
+**3. Scaffold and inspect — keyless.** Everything here runs offline:
+
+```bash
+# local install? prepend: npx reactor … (see the "Local install?" note above)
+reactor init my-project && cd my-project
+reactor doctor                          # what's present + the exact fix for anything missing
+reactor compile --check; echo "exit=$?" # offline; exits 1 if the contract set is STALE (CI-wireable)
+```
+
+**4. Go live (needs a model key).** These steps reach the model surface — set `OPENROUTER_API_KEY` and the two optional peers; a keyless reader can stop at step 3.
+
+```bash
+npm i -g @openai/agents zod          # the two optional live peers
+reactor compile                      # Forme wires the DAG; freezes per-node canonicalizers
+reactor serve --http 8080            # drive the scaffold's static gateway to a real receipt
+reactor-devtools .reactor --describe # replay YOUR live run's ledger
+```
+
+> Use `reactor serve` (not `reactor run`) to drive a scaffold's **static** gateway — `serve`
+> ingests its seeded items; `run` is for graphs whose connectors emit on their own.
+
+## The example library
+
+Thirteen of the examples in [`skills/open-prose/examples/`](skills/open-prose/examples/) ship a committed, chain-verifiable `replay/` state-dir you can replay keyless — a deliberately wide spread of DAG shapes and domains, each with an offline test that drives the **real** reconciler at **zero model spend**. (The directory holds more contract-only examples without a committed ledger; the thirteen below are the ones with a `replay/`. Two of those thirteen — `masked-relay` and `tamper-forge` — share a **byte-identical** ledger: `tamper-forge` is an audit *lens* over the masked-relay receipts, so the set is **twelve distinct datasets plus one honest tamper-evidence lens**, not thirteen unrelated ledgers.)
+
+> The six examples marked with **\*** below are also reachable **by name** from any directory via the devtools fixture bundle — e.g. `reactor-devtools --example masked-relay --describe`. The remaining examples replay by path.
+
+| Example | What it shows | Domain |
+| --- | --- | --- |
+| `surprise-cost` * | memoized skip → surprise-render when the memo key moves | the core thesis |
+| `renewal-risk` | a standing responsibility re-judging only the accounts that moved | SaaS / finance |
+| `inbox-triage` * | diamond fan-in + failure isolation | email / ops |
+| `monorepo-ci` * | hub fan-out blast radius; a failing test blocks the merge gate | dev tooling / CI |
+| `research-tree` * | recursive propagation up a tree, branch-memoized | research |
+| `masked-relay` * | peer-blind fan-out with deterministic masked projections | competitive intel |
+| `agent-observatory` * | many cheap watchers → batched synthesis | agent ops |
+| `tamper-forge` | attack a real ledger; watch chain-verify catch it (and where it honestly can't) | audit / security |
+| `oblique-weave` | hidden-context adversarial roles | product strategy |
+| `github-star-enricher` | per-entity fan-out + shared receipts + a human gate | growth / GTM |
+| `implementation-pipeline` | fixed wide fan-out with per-facet lane wake | software delivery |
+| `forme-fixpoint` | the topology as a responsibility (the self-wiring bootstrap) | meta |
+| `basic-unit-suite` | the 13 micro-mechanics, one by one | substrate |
+
+**Run any of them, keyless** (from a clone of this repo):
+
+```bash
+cd skills/open-prose/examples/surprise-cost
+reactor-devtools ./replay --describe              # the render/skip/cost trail — no key, no spend
+reactor --state-dir ./replay receipts             # the per-node ledger (list | verify | cost)
+```
+
+> **Installed from npm, not a repo clone?** The examples ship inside the SDK tarball at
+> `node_modules/@openprose/reactor/skill/open-prose/examples/<name>/` (note: `skill`, singular,
+> in the tarball — `skills`, plural, in the repo). So the same two commands are:
+> ```bash
+> cd node_modules/@openprose/reactor/skill/open-prose/examples/surprise-cost
+> reactor-devtools ./replay --describe
+> reactor --state-dir ./replay receipts
+> ```
+
+**Or run the offline gate** (this is what CI runs — all thirteen replay examples, zero spend):
+
+```bash
+REACTOR_OFFLINE=1 pnpm test:examples
+```
+
+To take one live, `cd` into its dir and run `reactor doctor → compile → topology → run → serve` with a key set. Each example's `README.md` carries its standing goal, DAG sketch, and the full flow.
+
+## The technical report
+
+The full architecture write-up — the React metaphor that *is* the design, the Forme wiring, the receipt model, an honest RLM accounting, and why nothing on the market is a drop-in replacement — is the **[Reactor technical report](docs/reactor/v0.1/report.md)**.
+
+## Honest status
+
+In the spirit of the receipts:
+
+- **Built and runnable:** the render atom, the content-addressed world-model store, the compiled canonicalizer with facets, Forme's wiring with diagnostics + acyclicity, postcondition-gated commits (no judge step), the chain-verifiable receipt ledger, and the forecast/continuity scheduler — all exercised by an offline test suite (no model calls in the commit gate) plus the 13 example gates.
+- **Benchmarks are openly pending — on purpose.** We're publishing the harness before the numbers; we won't imply a measured speedup we haven't run. The proof you can check today is the keyless replay above.
+- **Signer caveat:** in v1, *signed* means tamper-evident at the meaning layer and chain-consistent — not yet a cryptographic byte hash. `reactor receipts verify` proves the receipt **chain** is consistent, but does not yet bind the world-model artifacts (editing a `world-models/*/published.json` while leaving `receipts.json` intact is not caught). The `tamper-forge` example demonstrates exactly this boundary.
+- **No timestamp, no actor (yet):** a v1 receipt records *what* changed and *why* (fingerprints, wake cause, status, cost) but not *when* it was committed or *who* committed it — so the ledger is a verifiable record of decisions and their evidence, **not yet a substitute for an external audit log** that must answer "at what time, by which principal."
+- The **fixpoint** (topology-as-responsibility) is specified and deferred; facet inference and ledger compaction are named roadmap.
+
+## Works with any harness — Reactor is the fast path
+
+Reactor is built on **OpenProse**: Markdown contracts that run on any Prose-Complete agent harness. The `.prose.md` contracts in these examples are harness-agnostic. Reactor itself is a real SDK + CLI + devtools you install and run — the deterministic host that compiles, runs, and inspects standing responsibilities, and the recommended fast path for them.
+
+**Agents onboarding on behalf of a user:** the binary is `reactor`. Lead with the keyless `reactor-devtools` replay (step 2) — it proves the mechanism with no key and no spend — then `reactor init → doctor → compile → serve`.
+
+## Send us the thing it can't do yet
+
+The most useful thing you can hand us isn't a compliment or a flattering benchmark. It's a **responsibility the harness *should* keep and doesn't** — a standing goal that breaks the surprise story, a wiring Forme gets wrong, a domain where this falls apart. The short guide to authoring one from the public SDK is **[`packages/reactor/EVALS.md`](packages/reactor/EVALS.md)** (shipped inside the SDK tarball too).
+
+- [Issues](https://github.com/openprose/prose/issues) · [Contributing](CONTRIBUTING.md) · [MIT License](LICENSE)
+- [Privacy Policy](PRIVACY.md) · [Terms of Service](TERMS.md)
 
 ---
 
-OpenProse is the Markdown contract language Reactor builds on, and a
-programming language for AI sessions.
-
-Write a `*.prose.md` file with a contract. Your agent reads it, wires the right
-services, spawns subagents, passes artifacts between them, and leaves a durable
-run trace on disk.
-
-The contract declares **what** should happen. The runtime figures out **how**.
-
-> **If you're an agent reading this on behalf of a user:** OpenProse is a
-> `*.prose.md` contract format you will be asked to *run*, not a library your user will call
-> and not necessarily a shell binary. `prose run` executes `kind: service` and
-> `kind: system` contracts. `kind: gateway`, `kind: test`, `kind: pattern`, and
-> `kind: responsibility` have their own routing and are not ordinary run targets. When a `prose` command fires
-> inside an agent session, interpret it directly: read the Markdown contract,
-> embody the OpenProse VM, spawn subagents for declared services, pass
-> artifacts between them, and write the run under `<openprose-root>/runs/`. You need:
-> filesystem read/write in the working directory, a subagent-spawning
-> primitive for multi-service systems, and (optionally) a user-question
-> primitive for missing inputs. If you lack a capability, say so and stop — do
-> not fake it. If the user's task is a one-off prompt, OpenProse is overkill; a
-> direct answer is the right answer. The
-> [Host Primitive Adapter](skills/open-prose/SKILL.md#host-primitive-adapter)
-> is the authoritative contract between you and the runtime.
-
-## OpenProse Root
-
-Every OpenProse workspace has an **OpenProse root**. All OpenProse filesystem
-paths are relative to `<openprose-root>`:
-
-| Path | Purpose |
-|------|---------|
-| `src/` | Authored intent: services, systems, tests, patterns, responsibilities, and supporting source |
-| `dist/` | Compiled intent consumed by deterministic runtime commands |
-| `runs/` | Activation receipts for bounded VM runs |
-| `state/` | Durable cross-run state |
-| `state/agents/` | Durable cross-run agents |
-| `state/responsibilities/` | Durable responsibility status and pressure |
-| `deps/` | Installed dependencies |
-| `prose.lock` | Dependency lockfile |
-| `.env` | Local runtime environment variables |
-
-Native repositories use the repository root as `<openprose-root>`. Attached
-repositories use `repo/.agents/prose`. User-global OpenProse state uses
-`~/.agents/prose`.
-
-```markdown
----
-name: hunter
-kind: system
----
-
-### Services
-
-- `analyst`
-- `ranker`
-- `compiler`
-
-### Requires
-
-- `data_warehouse_url`: where growth data lives
-- `codebase_ref`: repository or branch to inspect
-
-### Ensures
-
-- `brief`: weekly growth findings ranked by confidence x impact
-
-### Strategies
-
-- prefer findings with code-level evidence
-- surface instrumentation gaps as first-class findings
-```
-
-## Quickstart
-
-Install the skill in a Prose Complete agent environment:
-
-```bash
-npx skills add openprose/prose
-```
-
-Create `src/hello.prose.md`:
-
-```markdown
----
-name: hello
-kind: service
----
-
-### Ensures
-
-- `message`: a warm one-paragraph introduction to OpenProse
-```
-
-Run it inside an agent session:
-
-```text
-prose run src/hello.prose.md
-```
-
-The activated OpenProse skill interprets that as an instruction to the current
-agent, not as a request to find a `prose` executable on PATH. OpenProse writes
-the run state to `<openprose-root>/runs/{run-id}/`, including inputs, outputs, service
-workspaces, and the execution log.
-
-From a shell outside an agent session, pass the same instruction to a Prose
-Complete runner:
-
-```bash
-claude -p "prose run src/hello.prose.md"
-codex exec "prose run src/hello.prose.md"
-```
-
-The [CLI package](tools/cli/) is the shell entrypoint for that same command
-language. `prose run` forwards bounded VM activations to the selected harness;
-Responsibility Runtime commands add a thin deterministic host layer for
-compiling, serving, and inspecting repository IR. The CLI checks for the
-`open-prose` skill before invoking a harness and can install the selected
-provider's global skill target automatically; run `prose doctor` to inspect the
-local setup. Automatic skill install uses `npx`; in a minimal shell where
-`prose` is available but `npx` is not, install the skill from this checkout:
-
-```bash
-mkdir -p "$HOME/.codex/skills" "$HOME/.agents/skills" "$HOME/.claude/skills"
-ln -sfn "$PWD/skills/open-prose" "$HOME/.codex/skills/open-prose"
-ln -sfn "$PWD/skills/open-prose" "$HOME/.agents/skills/open-prose"
-ln -sfn "$PWD/skills/open-prose" "$HOME/.claude/skills/open-prose"
-prose doctor
-```
-
-> By installing, you agree to the [Privacy Policy](PRIVACY.md) and
-> [Terms of Service](TERMS.md).
-
-## Recommended Codex configuration
-
-Add to `~/.codex/config.toml` for the best experience with OpenProse's recursive multi-service systems:
-
-```toml
-[agents]
-max_threads = 12              # Concurrent open agent threads (default 6)
-max_depth = 2                 # Subagent nesting depth (default 1)
-job_max_runtime_seconds = 2700  # Per-worker timeout (default 1800)
-```
-
-Why these values: OpenProse systems commonly spawn a top-level coordinator that itself spawns subagents (one extra nesting level beyond Codex's default), and 45-minute jobs are realistic for multi-service runs.
-
-## Why It Exists
-
-Plain prompts are easy to start and hard to maintain. As soon as an agent
-workflow has multiple roles, retries, memory, security boundaries, or handoffs,
-you need something more durable than "please do the right thing."
-
-OpenProse gives agents a small set of primitives that fit naturally in a repo:
-
-| Primitive | What it gives you |
-|-----------|-------------------|
-| `### Requires` | Inputs the caller, host, or upstream services must provide |
-| `### Ensures` | Outputs the contract promises to produce |
-| `### Services` | Named services and pattern instances Forme can auto-wire by semantic contract |
-| `### Runtime` | Execution hints such as persistence or model choice |
-| `### Shape` | Capability boundaries: what a service may do, delegate, or avoid |
-| `### Strategies` | Judgment rules for edge cases and degraded conditions |
-| `### Execution` | Optional ProseScript when you want exact order, loops, branches, or retries |
-| `runs/` | Auditable activation receipts for every bounded VM run |
-| `state/` | Durable cross-run state for agents, responsibilities, and runtime continuity |
-
-The result is agent software that can be read, reviewed, versioned, forked, and
-improved like code.
-
-## How It Works
-
-OpenProse has two authoring surfaces:
-
-**Contract Markdown** is the default. You write `*.prose.md` services, systems,
-tests, and patterns with `### Requires`, `### Ensures`, and optional sections
-like `### Strategies`, `### Environment`, `### Errors`, and `### Invariants`.
-Multi-service systems are wired by the Forme container.
-
-**ProseScript** is the pinning layer. Use it inside `### Execution` blocks when
-order matters:
-
-````markdown
-### Execution
-
-```prose
-let findings = call researcher
-  topic: topic
-
-let report = call writer
-  findings: findings
-
-return report
-```
-````
-
-For multi-service systems, execution has two phases:
-
-| Phase | System | Job |
-|-------|--------|-----|
-| 1 | [Forme](skills/open-prose/forme.md) | Read contracts, resolve services, build the compiled Forme manifest |
-| 2 | [Prose VM](skills/open-prose/prose.md) | Walk the compiled manifest, spawn sessions, pass artifacts, enforce constraints |
-
-Single services skip Forme and run directly in the VM.
-
-## Responsibility Runtime Direction
-
-OpenProse enables Responsibility-Oriented Architecture: standing goals that
-must remain true over time.
-
-Not every OpenProse program is responsibility-oriented. A single service,
-composed system, test, or pattern can still run normally. Responsibility
-Runtime is the continuity layer for repositories that need standing goals to
-be checked, maintained, and restored across bounded runs:
-
-| Command | Role |
-|---------|------|
-| `prose compile` | Run the bundled OpenProse compiler program, emit `<openprose-root>/dist/manifest.next.json`, and validate it before success |
-| `prose serve` | Load active IR and run local cron and HTTP trigger adapters |
-| `prose run` | Execute one bounded OpenProse VM activation |
-| `prose write` | Author a validated OpenProse program package from rough English/pseudo-Prose, asking targeted shape/root questions in interactive hosts and returning `unresolved-intent` only for non-interactive missing decisions |
-| `prose status` | Inspect active IR, diagnostics, trigger plan, recent runs, and responsibility status/pressure |
-
-The compiled Responsibility Runtime manifest preserves responsibilities as
-semantic sections, emits concrete triggers and activation intent, and includes
-structured Forme manifests for fulfillment systems. `prose serve` launches
-judge activations as normal bounded runs of the bundled judge service, records
-responsibility status under `<openprose-root>/state/responsibilities/`, and
-turns unhealthy status into deduped pressure that launches ordinary fulfillment
-runs. The first live adapters are local cron timers and HTTP webhook/API
-routes. `prose compile` writes `<openprose-root>/dist/manifest.next.json`; promote it to
-`<openprose-root>/dist/manifest.active.json` when you want `prose serve`
-to consume it.
-
-`prose status` is deterministic local inspection. It reads compiled IR and
-runtime receipts without running the VM or registering live adapters.
-
-The design doctrine is:
-
-```text
-Markdown source defines intent.
-Skill and interpreter docs define semantics.
-Compiler programs lower semantics into IR.
-The harness serves IR.
-Runs interpret and act.
-```
-
-In Responsibility Runtime, Responsibilities, Reactor, and Forme are not
-competing frameworks:
-
-- **Responsibilities** define standing goals: goals that must remain true over
-  time.
-- **Reactor** is the evented reconciliation model: timers, webhooks, queues,
-  file changes, judge drift, and manual requests are all events.
-- **Forme** wires the services and systems used to fulfill responsibilities.
-
-The harness should stay deterministic: validate IR, register triggers, receive
-events, and launch normal runs. Semantic intelligence belongs in Markdown,
-compiler programs, and bounded VM activations.
-
-## Your Contract With The Runtime
-
-OpenProse specs describe abstract operations. The agent running a contract
-maps those onto the primitives its host exposes. If you are that agent, this
-is the contract you are agreeing to when the skill activates:
-
-| Operation | What you'll do | What to do if you can't |
-|-----------|----------------|--------------------------|
-| `spawn_session` | Launch each service in an isolated subagent | Run a single service inline; refuse multi-service systems and say which primitive is missing |
-| `ask_user` | Pause and ask for missing `### Requires` inputs | Ask in plain chat; do not invent values |
-| `read_state` / `write_state` | Read and write `<openprose-root>/runs/{id}/` artifacts and `<openprose-root>/state/` data | Stop and tell the user their workspace is read-only |
-| `copy_binding` | Publish declared `### Ensures` outputs from `workspace/` to `bindings/` | Do not publish undeclared scratch files — the boundary exists for a reason |
-| `check_env` | Verify an environment variable is *present* | Never reveal or log the value, even if the user asks |
-
-The full adapter lives in
-[skills/open-prose/SKILL.md](skills/open-prose/SKILL.md#host-primitive-adapter).
-When docs or examples say "Task tool" or "AskUserQuestion," read those as
-`spawn_session` and `ask_user` respectively.
-
-## For The Agent: Why You'd Reach For This
-
-You know the ways you fail at complex tasks. OpenProse is built around them.
-
-- **Your context bloats with scratch by step seven, and you lose the original goal.** When you spawn a subagent through `spawn_session`, its scratch stays in its session. Only declared `### Ensures` outputs cross back to you via `copy_binding`. You keep your context clean.
-- **You have no basis to push back on scope creep.** Without a contract, "add one more thing" is always free. With `### Requires` and `### Ensures` written down, "that's not what I promised" becomes a sentence you can say and cite.
-- **When you spawn parallel subagents, you improvise the handoff.** The contract `### Requires` / `### Ensures` is the handoff protocol you would otherwise invent on the fly — and forget the details of by the next turn.
-- **Users ask "why did you do that?" and you reconstruct from a compressed transcript.** `<openprose-root>/runs/{id}/` is the receipt. Point at it.
-- **Workflows the user will want again get thrown away at the end of the session.** A `*.prose.md` contract is the version the user can run next week without re-explaining.
-- **Your retry logic is "try again and hope."** The service contract is the boundary a retry actually means something at — you know what to preserve, what to re-derive, and when to escalate.
-
-Once the skill activates, it loads the operational playbook — recognition signals for proposing OpenProse unprompted, a proposal script, a cognitive model you can borrow, and explicit guidance on when to decline. See [skills/open-prose/SKILL.md](skills/open-prose/SKILL.md#proposing-this-skill-on-your-own-judgment).
-
-## What You Can Build
-
-- Research pipelines with specialist agents and source-grounded reports
-- Code review teams with security, performance, and style reviewers
-- Feature factories that plan, implement, test, document, and summarize
-- Persistent captains that retain project memory across runs
-- Evaluation loops, worker-critic systems, and recursive reasoning workflows
-- Reusable services published through git-native dependencies
-
-Start with:
-
-| Path | Why open it |
-|------|-------------|
-| [stargazer-outreach](skills/open-prose/examples/stargazer-outreach/) | GitHub stars to qualified, thoughtful outreach |
-| [incident-briefing-room](skills/open-prose/examples/incident-briefing-room/) | Incident updates, impact, and next actions |
-| [customer-risk-radar](skills/open-prose/examples/customer-risk-radar/) | Customer risk monitoring before renewals or escalations |
-| [release-readiness](skills/open-prose/examples/release-readiness/) | Release evidence, risk, notes, and rollback context |
-| [compliance-evidence-tracker](skills/open-prose/examples/compliance-evidence-tracker/) | Audit evidence freshness and gap tracking |
-| [grant-radar](https://github.com/openprose/grant-finder/tree/main/examples/openprose) | External example: source-cited funding research for labs, startups, and technical teams |
-
-## Libraries
-
-Two first-party libraries ship in this repository under [`packages/`](packages/):
-
-- **[`packages/std/`](packages/std/)** — use-case-agnostic primitives: evals,
-  roles, patterns, delivery adapters, memory, ops.
-- **[`packages/co/`](packages/co/)** — company-as-prose: opinionated starter
-  services, systems, tests, and patterns for running an operating company as Prose.
-
-Reference them with the `std/` and `co/` shorthands, then install and pin:
-
-```prose
-use "std/evals/inspector"
-use "std/evals/prose-contributor"
-use "co/systems/company-repo-checker"
-```
-
-Both shorthands expand to paths inside this repo (`packages/std/...` and
-`packages/co/...`). `prose install` clones this repository into
-`<openprose-root>/deps/github.com/openprose/prose/` and pins the SHA in
-`<openprose-root>/prose.lock`.
-
-```bash
-prose install
-```
-
-Dependencies are cloned into `<openprose-root>/deps/`, locked in
-`<openprose-root>/prose.lock`, and read from disk at runtime. No network fetch
-happens for dependency resolution during execution.
-
-If a run teaches an agent how OpenProse itself should improve, use
-`std/evals/prose-contributor`. It consumes run evidence, makes one focused
-change, verifies it, and opens a draft PR after explicit approval to use the
-current GitHub identity.
-
-## Project Map
-
-| Path | Purpose |
-|------|---------|
-| [skills/open-prose/SKILL.md](skills/open-prose/SKILL.md) | Skill activation and command routing |
-| [skills/open-prose/contract-markdown.md](skills/open-prose/contract-markdown.md) | Canonical `*.prose.md` service/system/gateway/test/pattern/responsibility format |
-| [skills/open-prose/prosescript.md](skills/open-prose/prosescript.md) | Imperative scripting syntax |
-| [skills/open-prose/forme.md](skills/open-prose/forme.md) | Semantic dependency-injection container |
-| [skills/open-prose/prose.md](skills/open-prose/prose.md) | VM execution semantics |
-| [skills/open-prose/deps.md](skills/open-prose/deps.md) | Git-native dependency resolution |
-| [skills/open-prose/examples/](skills/open-prose/examples/) | Example services, systems, tests, and patterns |
-| [tools/](tools/) | Shippable tooling published as standalone artifacts |
-| [tools/cli/](tools/cli/) | Optional shell wrapper for sending `prose ...` commands to agent harnesses |
-| [skills/open-prose/guidance/authoring.md](skills/open-prose/guidance/authoring.md) | Authoring practices and antipatterns |
-| [skills/open-prose/state/](skills/open-prose/state/) | State backend specs |
-
-Use `src/` for authored intent, `dist/` for compiled intent, `runs/` for
-activation receipts, `state/` for durable cross-run state, and `deps/` plus
-`prose.lock` for installed dependencies.
-
-## FAQ
-
-**Where does OpenProse run?**
-
-Any Prose Complete system: an agent plus harness that can read files, write
-files, run tools, and spawn subagents. The current docs target Codex-style and
-Claude Code-style environments.
-
-**Why not LangChain, CrewAI, or AutoGen?**
-
-Those are orchestration libraries. OpenProse is an agent-native `*.prose.md` contract format:
-the workflow lives in Markdown, runs inside the agent session, and stays
-portable across harnesses.
-
-**Why not just plain English?**
-
-Plain English is great for one-offs. Durable workflows need contracts, named
-services, systems, patterns, state, tests, and a way to say "this must happen
-before that."
-
-**How do Contract Markdown and ProseScript fit together?**
-
-Contract Markdown declares promises and lets Forme wire the graph. ProseScript
-pins choreography when a workflow needs exact calls, loops, conditionals,
-parallelism, or retries. Both are first-class.
-
-## Beta
-
-OpenProse is early. Expect sharp edges, review source before execution, and
-open issues when something feels clumsy or underpowered:
-
-- [Issues](https://github.com/openprose/prose/issues)
-- [Contributing](CONTRIBUTING.md)
-- [MIT License](LICENSE)
-- [Privacy Policy](PRIVACY.md)
-- [Terms of Service](TERMS.md)
+*The conversation always ends. The responsibility shouldn't have to.*

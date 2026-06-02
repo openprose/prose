@@ -1,0 +1,6 @@
+{
+  "ingress.account-signals": "Signal Inbox",
+  "gateway.account-signals": "Account Signals",
+  "responsibility.renewal-risk": "Renewal Risk",
+  "responsibility.renewal-alert-feed": "Renewal Alert Feed"
+}

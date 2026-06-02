@@ -5,6 +5,10 @@ kind: gateway
 
 # Customer Risk Review
 
+### Continuity
+
+- external-driven
+
 ### Schedule
 
 - Every weekday at 08:30 local time.
@@ -15,13 +19,20 @@ kind: gateway
 - Provider: Internal customer data pipeline
 - Event: account-signal-change
 
+### Maintains
+
+- `account-signals`: the latest incoming customer signals as structured truth —
+  scheduled review request, changed account ids, or account signal batch
+- each signal carries: account id, signal kind, observed value or note, and the
+  source timestamp
+- immaterial: webhook delivery ids and receipt timestamps
+
 ### Emits
 
-- customer-risk-maintained.evidence-change
+- customer-risk-maintained
 
 ### Payload
 
 Pass the scheduled review request, changed account ids, or account signal batch
-as activation event context. The fulfillment system should accept a scheduled
-portfolio scan, a small batch of changed accounts, or an explicit manual review
-request.
+as the incoming truth. Accept a scheduled portfolio scan, a small batch of
+changed accounts, or an explicit manual review request.

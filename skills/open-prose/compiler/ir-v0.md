@@ -1,19 +1,35 @@
 ---
-role: repository-ir-v0-contract
+role: compile-phase-ir-contract
 summary: |
-  Canonical v0 repository IR contract for `prose compile`. Load this before
-  emitting or validating `dist/manifest.next.json`.
+  Canonical compile-phase IR contract for `prose compile`. Load this before
+  emitting or validating `dist/manifest.next.json`. The IR carries the
+  compile-phase OUTPUTS — the topology world-model, per-node canonicalizers,
+  per-node postcondition validators, and frozen contract fingerprints — NOT a
+  judge-era activations/criteria manifest.
 see-also:
   - index.prose.md: ProseScript compiler program
-  - ../responsibility-runtime.md: Runtime stack and compile/serve doctrine
-  - ../forme.md: Forme wiring semantics
+  - ../responsibility-runtime.md: Compile/run reconciler doctrine
+  - ../forme.md: Forme wiring semantics (the topology world-model)
+  - ../concepts/reactor.md: The fingerprint-comparison reconciler
 ---
 
-# Repository IR v0
+# Compile-Phase IR
 
-Repository IR is generated JSON for the deterministic harness. It is not an
+The compile-phase IR is generated JSON for the dumb reconciler. It is not an
 authoring surface. Keep authored intent in Markdown; keep compiled intent in
 JSON.
+
+This is **the compile-phase seam**: the compile phase emits it on contract-set
+change, the run phase (the reconciler) consumes it, and this doc authors to it.
+There is no judge, no verdict, no pressure, and no fulfillment activation in the
+IR. Commit-gating is compiled postcondition validators plus render
+self-attestation, never an LLM judging "did this change" at wake time
+(`world-model.md` §3; `architecture.md` §3.3).
+
+The IR is the JSON realization of the `CompilePhaseIR` shape in
+`packages/reactor/src/shapes/index.ts` (the shared shapes spine), wrapped in a
+thin doc envelope of `sources` and `diagnostics`. Where this doc and that TS
+shape disagree, the TS shape wins.
 
 Emit only the fields listed here. Unknown notes, provider details, payload
 shape, confidence, and source commentary belong in `diagnostics`, not in custom
@@ -23,286 +39,309 @@ IR fields.
 
 ```json
 {
-  "kind": "openprose.repository-ir",
-  "version": 0,
+  "kind": "openprose.compile-phase-ir",
+  "version": 2,
   "sources": [],
-  "responsibilities": [],
-  "triggers": [],
-  "activations": [],
-  "formeManifests": [],
+  "topology": {
+    "nodes": [],
+    "edges": [],
+    "entry_points": [],
+    "acyclic": true
+  },
+  "canonicalizers": [],
+  "postconditions": [],
+  "contract_fingerprints": {},
   "diagnostics": []
 }
 ```
 
-All arrays must be present. Paths are root-relative, forward-slash paths with
-no empty, current, parent, or absolute segments.
+All fields must be present. `kind` is the literal
+`"openprose.compile-phase-ir"`. `version` is the integer `2` (it tracks the
+SKILL `runtime_contract`, which the format re-cleave bumped from `1` to `2`).
+`sources`, `canonicalizers`, `postconditions`, and `diagnostics` are arrays.
+`topology` is a single object. `contract_fingerprints` is an object map.
+
+Paths are root-relative, forward-slash paths with no empty, current, parent, or
+absolute segments.
+
+## Fingerprints
+
+A **fingerprint** is a string token that changes if and only if the
+semantically-material content changed (`world-model.md` §3). The reference
+computation is `sha256:<64 lowercase hex>` — a content address over a canonical
+serialization. The IR carries fingerprints as opaque strings; the reconciler
+only ever *compares* them.
+
+Three fingerprints of meaning appear (`world-model.md` §4): the
+**contract-fingerprint** of each node's own contract, the **input-fingerprint**
+of each upstream facet a node subscribes to, and the **world-model-fingerprint**
+of a node's own published truth. The compile phase freezes the first;
+the run phase observes the other two on receipts.
+
+A facet is a named, independently-subscribable part of a node's truth. The
+reserved facet `"@atomic"` is the whole-truth fingerprint; a node that declares
+no facets exposes the singleton `{ "@atomic": token }` map. Facet arrays in this
+IR always include `"@atomic"`.
 
 ## Sources
 
 ```json
-{ "path": "src/example.prose.md", "kind": "service", "name": "example" }
+{ "path": "src/competitor-monitor.prose.md", "kind": "responsibility", "name": "competitor-monitor" }
 ```
 
-Allowed `kind` values: `responsibility`, `gateway`, `system`, `service`,
-`test`, `pattern`, `unknown`. `name` is optional.
+`sources` is the discovered contract set the compile phase read. Allowed `kind`
+values: `responsibility`, `function`, `gateway`, `pattern`, `test`, `unknown`.
+`name` is optional.
 
-## Responsibilities
+There is no `system` kind and no `service` kind. Composition is intra-node
+ProseScript `call` or a cross-node subscription, never an internally-autowired
+graph kind (`plan.md` §3; `architecture.md` §7.1). A `kind: function` is a
+called helper with no world-model and no node identity; functions appear in
+`sources` only when discovered, and never appear as topology nodes.
+
+## Topology
+
+The topology world-model is Forme's output: the resolved DAG drawn from the
+contract set (`architecture.md` §6.3, §3.1). It is a maintained truth like any
+other. The reconciler reads `edges` to resolve propagation targets.
 
 ```json
 {
-  "id": "067NC4KG01RG50R40M30E20918",
-  "sourcePath": "src/customer-health.prose.md",
-  "goal": "Customer risk is surfaced before it surprises the team.",
-  "continuity": ["Review risk signals every weekday."],
-  "criteria": ["Risk notes include evidence and next action."],
-  "constraints": ["Do not invent customer facts."],
-  "tools": [
-    { "kind": "mcp", "name": "gmail" },
-    { "kind": "cli", "name": "gh" }
-  ],
-  "fulfillment": {
-    "mode": "inferred",
-    "targetName": "customer-risk-radar",
-    "sourcePath": "src/customer-risk-radar.prose.md"
-  }
-}
-```
-
-Required fields: `id`, `sourcePath`, `goal`, `continuity`, `criteria`,
-`constraints`, `tools`. `id` is the exact frontmatter `id:` from the
-responsibility Markdown, not a slug derived from `name:` or filepath. It must
-be an uppercase Crockford-base32 UUIDv7 Markdown id. `continuity`, `criteria`,
-and `constraints` are non-empty string arrays. `tools` is the resolved
-responsibility-level `### Tools` declaration lowered to `{ "kind": "cli" |
-"mcp", "name": "capability" }` records. Use an empty array when the source
-declares no required tools; do not omit the field.
-
-`fulfillment` is optional. When present, `mode` is `declared` or `inferred`,
-`targetName` names the target system or service, and `sourcePath` is present
-when the target source is known.
-
-Do not emit `sections`, `fingerprint`, `target`, `targetKind`, `resolution`,
-`requiredBy`, or `formeManifestId` inside a responsibility.
-
-## Triggers
-
-Every trigger has `id`, `responsibilityId`, `kind`, and `reason`.
-
-Cron trigger:
-
-```json
-{
-  "id": "customer-health.weekday-check",
-  "responsibilityId": "067NC4KG01RG50R40M30E20918",
-  "kind": "cron",
-  "reason": "Continuity requires weekday review.",
-  "cron": "0 9 * * 1-5",
-  "timezone": "America/Los_Angeles"
-}
-```
-
-HTTP trigger:
-
-```json
-{
-  "id": "customer-health.signal-webhook",
-  "responsibilityId": "067NC4KG01RG50R40M30E20918",
-  "kind": "http",
-  "reason": "New customer-risk evidence should wake the judge.",
-  "method": "POST",
-  "path": "/webhooks/customer-risk/signals"
-}
-```
-
-Manual trigger:
-
-```json
-{
-  "id": "customer-health.manual",
-  "responsibilityId": "067NC4KG01RG50R40M30E20918",
-  "kind": "manual",
-  "reason": "A human asked for reconciliation."
-}
-```
-
-Use standard five-field cron expressions. HTTP methods are `GET`, `POST`,
-`PUT`, `PATCH`, or `DELETE`; paths start with `/`.
-
-Do not emit `wakes`, `activationId`, `emits`, `sourcePath`, `payload`, or
-`metadata` on triggers.
-
-## Activations
-
-Every activation has `id`, `responsibilityId`, `kind`, and `reason`.
-
-Judge activation:
-
-```json
-{
-  "id": "customer-health.judge",
-  "responsibilityId": "067NC4KG01RG50R40M30E20918",
-  "kind": "judge",
-  "reason": "Determine whether the responsibility is up, drifting, down, or blocked.",
-  "triggerIds": ["customer-health.weekday-check", "customer-health.signal-webhook"]
-}
-```
-
-Fulfillment activation:
-
-```json
-{
-  "id": "customer-health.fulfillment",
-  "responsibilityId": "067NC4KG01RG50R40M30E20918",
-  "kind": "fulfillment",
-  "reason": "Use the fulfillment system when pressure says the responsibility needs work.",
-  "targetName": "customer-risk-radar",
-  "sourcePath": "src/customer-risk-radar.prose.md",
-  "formeManifestId": "customer-risk-radar"
-}
-```
-
-Allowed `kind` values: `judge`, `fulfillment`, `retry`, `escalation`.
-`triggerIds` is optional but live cron and HTTP triggers must be referenced by
-the responsibility's judge activation.
-
-Fulfillment activations require `targetName` and `sourcePath`. If `sourcePath`
-points at a system, `formeManifestId` is required and must reference that
-system's Forme manifest. If `sourcePath` points at a service,
-`formeManifestId` must be omitted.
-
-Do not emit `service`, `source`, `sourceName`, `target`, `triggeredBy`,
-`wakesOn`, `statePath`, `inputs`, or `run`.
-
-## Forme Manifests
-
-```json
-{
-  "id": "customer-risk-radar",
-  "systemName": "customer-risk-radar",
-  "sourcePath": "src/customer-risk-radar.prose.md",
-  "caller": {
-    "requires": [{ "name": "activation_event", "description": "Event that woke the run." }],
-    "returns": [{ "name": "risk_brief", "source": "draft-risk-brief" }]
-  },
-  "graph": [
+  "nodes": [
     {
-      "id": "draft-risk-brief",
-      "sourcePath": "src/draft-risk-brief.prose.md",
-      "workspacePath": "workspace/draft-risk-brief/",
-      "inputs": [
-        {
-          "name": "activation_event",
-          "from": "caller",
-          "path": "bindings/caller/activation_event.md"
-        }
-      ],
-      "outputs": [
-        {
-          "name": "risk_brief",
-          "workspacePath": "workspace/draft-risk-brief/risk_brief.md",
-          "bindingPath": "bindings/draft-risk-brief/risk_brief.md",
-          "public": true
-        }
-      ]
+      "node": "competitor-monitor",
+      "contract_fingerprint": "sha256:0000000000000000000000000000000000000000000000000000000000000001",
+      "wake_source": "input"
     }
   ],
-  "executionOrder": [
-    { "nodeId": "draft-risk-brief", "dependsOn": ["caller"] }
-  ],
-  "environment": [],
-  "tools": [
+  "edges": [
     {
-      "kind": "cli",
-      "name": "jq",
-      "requiredBy": ["draft-risk-brief"]
-    },
-    {
-      "kind": "mcp",
-      "name": "gmail",
-      "requiredBy": ["draft-risk-brief"]
+      "subscriber": "risk-brief",
+      "producer": "competitor-monitor",
+      "facet": "funding"
     }
   ],
-  "warnings": []
+  "entry_points": ["stargazer-events"],
+  "acyclic": true
 }
 ```
 
-`caller.requires`, `caller.returns`, and node `errors` use field objects with
-`name`, optional `description`, and optional `source` where allowed. Node
-`delegates` use `{ "name": "...", "sourcePath": "..." }`. Service inputs use
-`from: "caller"` or `from: "service"`; service inputs must include
-`sourceNodeId` and `sourceOutput`.
+### nodes
 
-`executionOrder` is one object per graph node: `{ "nodeId": "...",
-"dependsOn": [...] }`. It is not a numbered step list.
+Each node is one mounted producer (a `responsibility` or `gateway`). Required
+fields: `node` (the node identity — its stable name), `contract_fingerprint`
+(the frozen fingerprint of its contract/source), and `wake_source`.
 
-`environment` is an array of `{ "name": "ENV_VAR", "requiredBy": ["node-id"] }`.
-`tools` is an array of `{ "kind": "cli" | "mcp", "name": "capability",
-"requiredBy": ["node-id"] }`. `requiredBy` entries must reference graph node
-ids in the same Forme manifest. `cli` names are executable names resolved on
-PATH. `mcp` names are host MCP server names resolved from the host MCP
-registry.
-`warnings` is an array of non-empty strings.
+`wake_source` is one of `input`, `self`, or `external`
+(`world-model.md` §5): input-driven by default, self-driven when `### Continuity`
+declares a cadence, external-driven for a gateway. It is the node's intrinsic
+wake-source declaration, carried from `### Continuity`.
+
+Functions are never nodes. Patterns expand into nodes at compile time; the
+expanded responsibilities appear here, the pattern source does not.
+
+### edges
+
+Each edge is one resolved subscription:
+`subscriber.Requires.<facet-contract>` → `producer.Maintains.<facet>`. Required
+fields: `subscriber` (the consuming node), `producer` (the producing node),
+`facet` (the producer facet consumed; `"@atomic"` when the producer declares no
+facets). `subscriber` and `producer` must be `node` ids present in `nodes`.
+
+Fan-in (one need, many producers) is several edges with the same `subscriber`
+and `facet`-contract but different `producer`s; each adds a slot to the
+subscriber's input tuple (`architecture.md` §3.1). Edges are not a step list and
+carry no ordering; propagation order falls out of the DAG.
+
+### entry_points
+
+`entry_points` lists the `node` ids that are external-driven ingress points
+(gateways) — the nodes a webhook / cron / manual trigger turns into an edge
+receipt at the system's edge (`world-model.md` §5). Every entry point must be a
+`node` with `wake_source: "external"`.
+
+### acyclic
+
+`acyclic` is Forme's own acyclicity postcondition over `edges`
+(`architecture.md` §3.1). It is computed by the deterministic cycle check
+(`packages/reactor/src/cycle` `detectReceiptCycles`, the kept-half kernel DFS).
+The acyclicity check rejects *graph* cycles only; legitimate feedback (a node's
+output shaping its *next* input) is self-driven `### Continuity`, not a
+back-edge — loops live in time, not in edges. When a contract set is
+irreducibly cyclic, `acyclic` is `false` and a `severity: error` diagnostic
+names the cycle; the compiler does not write the IR.
+
+## Canonicalizers
+
+One canonicalizer per node. The canonicalizer is the compiled, deterministic
+lowering of the node's `### Maintains` canonicalization spec; it travels with
+the compiled contract and a standalone render applies it locally to fingerprint
+its own receipt (`architecture.md` §3.2, §1). `canonicalizer(world-model) →
+fingerprints`.
+
+### The `####`-part → facet lowering (the named-parts rule)
+
+The compile phase reads the **named parts** of `### Maintains` into the facet
+boundaries this canonicalizer emits. A `####` sub-heading inside `### Maintains`
+**is a facet**: its heading text is the facet name and its body's material field
+paths are that facet's `paths` (`architecture.md` §3.2 L154–L171, "a `####`
+sub-heading inside `### Maintains` is a facet; its body describes that part's
+fields and which are material"; `delta.md` Part G L576–L579). The lowering is:
+
+- Each `#### <name>` part → one facet `<name>` whose fingerprint is computed over
+  that part's **material** field paths. Materiality and normalization (text/sets/
+  numbers) stay prose **inside** the part, lowered at compile time to that facet's
+  material paths; a part is **default-material within itself** (everything the
+  part names is material unless the part's prose drops it).
+- Un-facetted top-level `### Maintains` fields (the shared truth sitting outside
+  any `####` part — e.g. a node-wide `name` / `last_corroborated`) bind to the
+  **atomic facet only**. They move only the always-on `"@atomic"` token, never a
+  declared facet's token (`architecture.md` §3.2 L194–L197, "The shared `name` /
+  `last_corroborated` sit outside any part, so they move only the atomic token").
+- **Name no parts → atomic-only.** A `### Maintains` with no `####` parts lowers
+  to a single facet `["@atomic"]` over the whole material truth — the free
+  default and the leaf-node case (`architecture.md` §3.2 L171). This is
+  byte-identical to the pre-facet behaviour; faceting is purely additive.
+
+This is the JSON realization of the `CanonicalizationSpec.facets: FacetSpec[]`
+input the SDK canonicalizer-compiler consumes
+(`packages/reactor/src/canonicalizer/spec.ts`, `compile.ts`): one `FacetSpec
+{ facet: <heading>, paths: <material fields> }` per `####` part, plus the
+reserved atomic facet the compiler always prepends. The `facets` array below is
+the *output* projection of that lowering — the facet names the canonicalizer
+emits, atomic always included.
+
+```json
+{
+  "node": "competitor-monitor",
+  "artifact": "dist/canonicalizers/competitor-monitor.js",
+  "facets": ["@atomic", "funding", "hiring", "product-launches"]
+}
+```
+
+Here `competitor-monitor`'s `### Maintains` declared three `####` parts —
+`#### funding`, `#### hiring`, `#### product-launches` — so the canonicalizer
+emits three declared facets plus the always-on atomic token over the whole truth
+(`architecture.md` §3.2 L173–L197, the worked competitor-activity-monitor
+example).
+
+Required fields: `node` (a node id present in `topology.nodes`), `artifact`
+(a root-relative locator for the compiled canonicalizer artifact), and `facets`
+(the facet boundaries the canonicalizer emits). `facets` always includes
+`"@atomic"`; a leaf truth that declares no facets has `facets: ["@atomic"]`.
+
+The `facets` listed here are the producer side of the `edges`: every
+`edge.facet` whose `producer` is this node must appear in this node's `facets`.
+
+The **structured-backing rule** (`architecture.md` §3.2; `world-model.md` §3):
+anything subscribed must have a structured, canonicalizable backing. Free-form
+rendered prose is a derived projection excluded from the fingerprint. The
+compiler lints subscribed fields without structured backing and surfaces them as
+a diagnostic.
+
+## Postconditions
+
+One postcondition validator per node. The folded-in `### Criteria` compile to
+validators (`architecture.md` §3.3). There is no separate judge beat.
+
+```json
+{
+  "node": "competitor-monitor",
+  "artifact": "dist/postconditions/competitor-monitor.js",
+  "mode": "deterministic"
+}
+```
+
+Required fields: `node` (a node id present in `topology.nodes`), `artifact`
+(a root-relative locator for the compiled validator artifact), and `mode`.
+
+`mode` is one of:
+
+- `deterministic` — the harness verifies the validator on commit; a render that
+  fails verification commits nothing and writes a `failed` receipt. The
+  deterministic engine is `packages/reactor/src/cycle` `evaluatePredicate`.
+- `render-attested` — the postcondition is irreducibly semantic; the render
+  self-polices it before signing.
+
+Either way there is no LLM in the wake/commit decision.
+
+## Contract Fingerprints
+
+`contract_fingerprints` is a `{ node → fingerprint }` map: the per-node contract
+fingerprints frozen at compile time (`architecture.md` §6.1; `world-model.md`
+§4). Every `node` id in `topology.nodes` must have an entry, and each entry must
+equal that node's `contract_fingerprint`. Editing a node's `### Maintains` (or
+any material part of its contract) moves its contract fingerprint, which causes
+a memo miss and a forced render at run time (`architecture.md` §8: "schema
+migration = a forced render").
+
+These are the first half of the memo key `(contract_fingerprint,
+input_fingerprints)` — and nothing else is in the key (`world-model.md` §4).
 
 ## Diagnostics
 
 ```json
 {
   "severity": "warning",
-  "message": "Fulfillment was ambiguous; no fulfillment activation was emitted.",
-  "sourcePath": "src/customer-health.prose.md"
+  "message": "Subscribed field `summary` has no structured backing; it is excluded from the fingerprint.",
+  "sourcePath": "src/competitor-monitor.prose.md"
 }
 ```
 
 Allowed severities: `info`, `warning`, `error`. `sourcePath` is optional and
 must reference a discovered source when present.
 
-The compiler program should not write `manifest.next.json` when any diagnostic
-has severity `error`. Warnings and info diagnostics may be written with a valid
-manifest.
+The compiler program must not write `manifest.next.json` when any diagnostic
+has severity `error` (e.g. an ambiguous Forme match, an unsatisfied
+subscription, or a cyclic contract set). Warnings and info diagnostics may be
+written with a valid IR.
+
+A wiring failure is always a surfaced diagnostic, never a silent guess: no
+producer for a `### Requires` facet, or an ambiguous match between candidate
+producers, is reported (`architecture.md` §3.1).
 
 ## Compact Valid Example
 
 ```json
 {
-  "kind": "openprose.repository-ir",
-  "version": 0,
+  "kind": "openprose.compile-phase-ir",
+  "version": 2,
   "sources": [
     {
-      "path": "src/customer-health.prose.md",
+      "path": "src/competitor-monitor.prose.md",
       "kind": "responsibility",
-      "name": "customer-health"
+      "name": "competitor-monitor"
     }
   ],
-  "responsibilities": [
+  "topology": {
+    "nodes": [
+      {
+        "node": "competitor-monitor",
+        "contract_fingerprint": "sha256:0000000000000000000000000000000000000000000000000000000000000001",
+        "wake_source": "self"
+      }
+    ],
+    "edges": [],
+    "entry_points": [],
+    "acyclic": true
+  },
+  "canonicalizers": [
     {
-      "id": "067NC4KG01RG50R40M30E20918",
-      "sourcePath": "src/customer-health.prose.md",
-      "goal": "Customer health is reviewed before risk surprises the team.",
-      "continuity": ["Review customer risk signals every weekday."],
-      "criteria": ["Risk notes include evidence and a next action."],
-      "constraints": ["Do not invent customer facts."],
-      "tools": []
+      "node": "competitor-monitor",
+      "artifact": "dist/canonicalizers/competitor-monitor.js",
+      "facets": ["@atomic"]
     }
   ],
-  "triggers": [
+  "postconditions": [
     {
-      "id": "customer-health.weekday-check",
-      "responsibilityId": "067NC4KG01RG50R40M30E20918",
-      "kind": "cron",
-      "reason": "Continuity requires weekday review.",
-      "cron": "0 9 * * 1-5"
+      "node": "competitor-monitor",
+      "artifact": "dist/postconditions/competitor-monitor.js",
+      "mode": "render-attested"
     }
   ],
-  "activations": [
-    {
-      "id": "customer-health.judge",
-      "responsibilityId": "067NC4KG01RG50R40M30E20918",
-      "kind": "judge",
-      "reason": "Determine whether the responsibility is up, drifting, down, or blocked.",
-      "triggerIds": ["customer-health.weekday-check"]
-    }
-  ],
-  "formeManifests": [],
+  "contract_fingerprints": {
+    "competitor-monitor": "sha256:0000000000000000000000000000000000000000000000000000000000000001"
+  },
   "diagnostics": []
 }
 ```

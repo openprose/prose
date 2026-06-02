@@ -1,6 +1,6 @@
 {
-  "kind": "openprose.repository-ir",
-  "version": 0,
+  "kind": "openprose.compile-phase-ir",
+  "version": 2,
   "sources": [
     {
       "path": "tests/open-prose/compiler/fixtures/ambiguous-fulfillment/customer-intake.prose.md",
@@ -8,58 +8,89 @@
       "name": "customer-intake"
     },
     {
-      "path": "tests/open-prose/compiler/fixtures/ambiguous-fulfillment/research-system.prose.md",
-      "kind": "system",
-      "name": "research-system"
+      "path": "tests/open-prose/compiler/fixtures/ambiguous-fulfillment/outreach-source.prose.md",
+      "kind": "responsibility",
+      "name": "outreach-source"
     },
     {
-      "path": "tests/open-prose/compiler/fixtures/ambiguous-fulfillment/outreach-system.prose.md",
-      "kind": "system",
-      "name": "outreach-system"
+      "path": "tests/open-prose/compiler/fixtures/ambiguous-fulfillment/research-source.prose.md",
+      "kind": "responsibility",
+      "name": "research-source"
     }
   ],
-  "responsibilities": [
+  "topology": {
+    "nodes": [
+      {
+        "node": "customer-intake",
+        "contract_fingerprint": "sha256:c1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f80",
+        "wake_source": "self"
+      },
+      {
+        "node": "outreach-source",
+        "contract_fingerprint": "sha256:0b1c2d3e4f5061728394a5b6c7d8e9f00b1c2d3e4f5061728394a5b6c7d8e9f0",
+        "wake_source": "self"
+      },
+      {
+        "node": "research-source",
+        "contract_fingerprint": "sha256:1c2d3e4f5061728394a5b6c7d8e9f0011c2d3e4f5061728394a5b6c7d8e9f001",
+        "wake_source": "self"
+      }
+    ],
+    "edges": [],
+    "entry_points": [],
+    "acyclic": true
+  },
+  "canonicalizers": [
     {
-      "id": "067NC4KG05XGS38E1W8124GK2G",
-      "sourcePath": "tests/open-prose/compiler/fixtures/ambiguous-fulfillment/customer-intake.prose.md",
-      "goal": "Promising customer requests are noticed, understood, and routed to a useful next action.",
-      "continuity": [
-        "Review open requests often enough that promising requests are not stale for more than one week."
-      ],
-      "criteria": [
-        "Each promising request has evidence, context, and a recommended next action."
-      ],
-      "constraints": [
-        "Do not fabricate context or overstate certainty."
-      ],
-      "tools": []
-    }
-  ],
-  "triggers": [
+      "node": "customer-intake",
+      "artifact": "dist/canonicalizers/customer-intake.js",
+      "facets": [
+        "@atomic"
+      ]
+    },
     {
-      "id": "customer-intake.periodic-check",
-      "responsibilityId": "067NC4KG05XGS38E1W8124GK2G",
-      "kind": "cron",
-      "cron": "0 9 * * *",
-      "reason": "Continuity requires checking often enough that promising requests are not stale for more than one week."
-    }
-  ],
-  "activations": [
+      "node": "outreach-source",
+      "artifact": "dist/canonicalizers/outreach-source.js",
+      "facets": [
+        "@atomic",
+        "customer_signal"
+      ]
+    },
     {
-      "id": "customer-intake.judge",
-      "responsibilityId": "067NC4KG05XGS38E1W8124GK2G",
-      "kind": "judge",
-      "triggerIds": [
-        "customer-intake.periodic-check"
-      ],
-      "reason": "Determine whether the responsibility is up, drifting, down, or blocked."
+      "node": "research-source",
+      "artifact": "dist/canonicalizers/research-source.js",
+      "facets": [
+        "@atomic",
+        "customer_signal"
+      ]
     }
   ],
-  "formeManifests": [],
+  "postconditions": [
+    {
+      "node": "customer-intake",
+      "artifact": "dist/postconditions/customer-intake.js",
+      "mode": "render-attested"
+    },
+    {
+      "node": "outreach-source",
+      "artifact": "dist/postconditions/outreach-source.js",
+      "mode": "render-attested"
+    },
+    {
+      "node": "research-source",
+      "artifact": "dist/postconditions/research-source.js",
+      "mode": "render-attested"
+    }
+  ],
+  "contract_fingerprints": {
+    "customer-intake": "sha256:c1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f80",
+    "outreach-source": "sha256:0b1c2d3e4f5061728394a5b6c7d8e9f00b1c2d3e4f5061728394a5b6c7d8e9f0",
+    "research-source": "sha256:1c2d3e4f5061728394a5b6c7d8e9f0011c2d3e4f5061728394a5b6c7d8e9f001"
+  },
   "diagnostics": [
     {
       "severity": "warning",
-      "message": "Fulfillment could not be inferred because multiple systems appear plausible.",
+      "message": "Could not wire customer-intake.Requires.customer_signal: multiple producers maintain customer_signal (outreach-source, research-source). The subscription is left unwired pending an explicit choice.",
       "sourcePath": "tests/open-prose/compiler/fixtures/ambiguous-fulfillment/customer-intake.prose.md"
     }
   ]

@@ -1,6 +1,6 @@
 ---
 name: normalize-performance-signals
-kind: service
+kind: function
 ---
 
 # Normalize Performance Signals
@@ -10,19 +10,19 @@ kind: service
 - `self`: reconcile supplied metrics, content metadata, and campaign context
 - `prohibited`: inventing missing measurements or changing source data
 
-### Requires
+### Parameters
 
-- `content_inventory`: content assets and their intended audience or job
-- `performance_exports`: raw metrics from analytics, search, CRM, email, and
+- `content-inventory`: content assets and their intended audience or job
+- `performance-exports`: raw metrics from analytics, search, CRM, email, and
   distribution channels
-- `campaign_notes`: promotions, launches, measurement gaps, or external events
+- `campaign-notes`: promotions, launches, measurement gaps, or external events
   relevant to the review window
 
-### Ensures
+### Returns
 
-- `performance_snapshot`: normalized evidence table grouped by content asset,
+- `performance-snapshot`: normalized evidence table grouped by content asset,
   channel, funnel role, and review period
-- `measurement_caveats`: known gaps, stale sources, attribution issues, and
+- `measurement-caveats`: known gaps, stale sources, attribution issues, and
   outliers that should constrain interpretation
 
 ### Errors
@@ -35,4 +35,3 @@ kind: service
 - Separate absolute performance from relative movement.
 - Preserve caveats beside the affected asset instead of burying them in a
   general note.
-

@@ -77,6 +77,37 @@ Use these when deciding whether a change belongs:
 | Examples that teach a complete pattern | `skills/open-prose/examples/` | Include enough context for an agent to run or adapt them |
 | Public contribution/process guidance | `CONTRIBUTING.md` | Keep it public, practical, and aligned with the repo |
 
+## Reactor (`packages/reactor*`)
+
+Reactor is the SDK + CLI + devtools harness that compiles and runs OpenProse
+Responsibilities. It lives in a **pnpm monorepo** under `packages/reactor`
+(`@openprose/reactor`, the SDK), `packages/reactor-cli` (the `reactor` binary),
+and `packages/reactor-devtools` (the keyless replay viewer). Note this is `pnpm`
+and per-package scripts — not the `npm`/`tools/cli` flow the rest of this guide
+describes.
+
+**Setup and build.** From the repo root:
+
+```bash
+pnpm install                              # install the workspace
+pnpm -C packages/reactor build            # build a single package
+pnpm -C packages/reactor test             # test a single package
+```
+
+**Use the offline gate as your default test command.** The plain `pnpm test`
+includes **LIVE** tests that reach the model provider — they go red without an
+OpenRouter key, or on a `402 Insufficient credits`, even when your change is
+correct. The contributor default is the **offline** gate, which runs no model
+calls:
+
+```bash
+pnpm -C packages/reactor test:offline     # or: REACTOR_OFFLINE=1 pnpm -C packages/reactor test
+```
+
+Run `test:offline` (equivalently `REACTOR_OFFLINE=1`) for the commit gate; the
+LIVE tests are gated on a funded key and are not expected to pass in a keyless
+or out-of-credits environment. State in your PR which gate you ran.
+
 ## Testing Expectations
 
 Every PR should say how it was tested. Prefer the narrowest check that can fail

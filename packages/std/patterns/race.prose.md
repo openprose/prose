@@ -34,25 +34,22 @@ Multiple delegates work on the same task in parallel. First acceptable result wi
   - `candidate_1..candidate_N`: attempt the task
 - `prohibited`: waiting for all candidates when one has already succeeded
 
-### Requires
+### Parameters
 
 - Pattern instance receives:
-    candidates: string[]    -- service or system names for each candidate
+    candidates: string[]    -- responsibility or function names for each candidate
     task_brief: string      -- the task (same brief goes to all candidates)
     acceptance_criteria: string -- (optional) declarative description of what makes a result
                                   acceptable. Default: any non-error result is accepted.
 
-### Ensures
+### Returns
 
-- All candidates receive the same brief and start in parallel
-- First result that meets acceptance criteria is returned immediately
-- Remaining candidates are cancelled (best-effort)
-- No candidate knows other candidates exist
-- If no candidate produces an acceptable result: return null with all attempts in failure_history
 - `result`: the winning result, or `null`
 - `winner`: the winning candidate name, or `null`
 - `attempts`: number of candidates that completed before a winner
 - `failure_history`: rejected or failed candidate attempts
+
+All candidates received the same brief and started in parallel, and no candidate knew the others existed. The returned `result` is the first candidate result that met the acceptance criteria, returned immediately with the remaining candidates cancelled (best-effort); if no candidate produced an acceptable result, `result` and `winner` are `null` and every attempt is recorded in `failure_history`.
 
 ### Delegation
 

@@ -1,459 +1,391 @@
 ---
-role: session-context-management
+role: render-harness-contract
 summary: |
-  Guidelines for subagents on context handling, state management, and memory compaction.
-  This file is loaded into all subagent sessions at start time to ensure consistent
-  behavior around workspace output, error signaling, and context flow.
+  The render's harness contract: how a bounded session that is a render works
+  with the context it receives, queries the prior world-model by reference,
+  satisfies its `### Maintains` postconditions, writes the canonical world-model,
+  and signs a receipt with the fingerprints. Loaded into every render session at
+  start. A render is complete standalone (no harness) and merely mounted when a
+  harness is present — language-layer sovereignty.
 see-also:
-  - ../prose.md: VM execution semantics
-  - ../forme.md: Wiring semantics (produces the manifest)
-  - ../state/filesystem.md: File-system state management
+  - ../prose.md: Bounded render execution semantics
+  - ../forme.md: Wiring (produces the topology world-model)
+  - ../state/filesystem.md: The canonical world-model artifact on disk
+  - ../concepts/reactor.md: The reconciler that wakes you and compares fingerprints
 ---
 
-# Session Context Management
+# The Render's Harness Contract
 
-You are a subagent executing a service within an OpenProse system. This document explains how to work with the context you receive, how to write your outputs, and how to preserve state for future sessions.
+You are a **render**: a bounded session that produces one node's world-model from
+its contract, the evidence a wake delivered, and the node's prior world-model.
+This document explains how to read the context you receive, how to write your
+world-model, and how to sign the receipt that commits it.
+
+The render atom is `(contract, evidence, prior world-model) → (new world-model,
+receipt)`. It runs in two contexts:
+
+- **standalone** — one session, no harness. Give it evidence; it computes a
+  world-model and signs a fingerprinted receipt by applying its contract's
+  compiled canonicalizer locally. It depends on nothing above it.
+- **mounted** — a node in the reactor DAG, woken over time by the reconciler.
+
+You only know about **your own** node. You do not receive the topology, the
+reconciler, other nodes' contracts, or the global compiled IR. Mounting adds
+identity, a persisted world-model, and resolved subscriptions around you — it
+does not intrude on what you do as a render.
 
 ---
 
 ## 1. Understanding Your Context
 
-When you start, you receive context from several sources. You do NOT receive the global manifest or other services' definitions—you only know about your own responsibilities.
+When you start, you receive context from several sources. You do NOT receive the
+global topology or other nodes' definitions — you only know about your own
+contract, your inputs by reference, and where your prior world-model lives.
 
-### 1.1 Your Service Definition
+### 1.1 Your Contract
 
-Your service definition is a Markdown file with a contract. It tells you:
+Your contract is a Markdown file with a `kind:` and a set of sections. For a
+`responsibility` (a mounted node) it tells you:
 
-- **What you require** — your inputs (`### Requires`)
-- **What you ensure** — your outputs (`### Ensures`)
-- **What errors you can signal** — declared failure conditions (`### Errors`)
-- **What is always true** — invariants regardless of outcome (`### Invariants`)
-- **How to behave** — behavioral guidance (`### Strategies`)
+- **What you require** — your subscriptions (`### Requires`), naming facet-level
+  needs. You do not know *who* produces them; you read them by reference.
+- **What you maintain** — your world-model **schema** (`### Maintains`). This
+  section does four jobs: it is the **type** (the fields, including freshness
+  fields like `valid_until`); the **canonicalization spec** (what is material,
+  what is dropped, how text / sets / numbers normalize); the optional **facets**
+  (named sub-truths); and the **postconditions** (properties your committed
+  world-model must satisfy).
+- **How you wake** — your wake-source policy (`### Continuity`): input-driven
+  (default), self-driven (a declared cadence), or external-driven (a gateway).
+- **What is always true** — invariants regardless of outcome (`### Invariants`).
+- **How to behave** — behavioral guidance (`### Strategies`, `### Shape`).
 
 ```markdown
 ---
-name: researcher
-kind: service
+name: vuln-monitor
+kind: responsibility
 ---
 
-### Shape
+### Goal
 
-- `self`: evaluate sources, score confidence
-- `prohibited`: direct web scraping
+Keep the set of known-exploitable CVEs affecting tracked services current.
 
 ### Requires
 
-- `topic`: a research question to investigate
+- `advisories`: the upstream advisory feed's published facet
 
-### Ensures
+### Maintains
 
-- `findings`: sourced claims from 3+ distinct sources, each with confidence 0-1
-- `sources`: all URLs consulted with relevance ratings
+- `exposures`: one record per affected service — { service, cve, severity,
+  valid_until }. Material: the (service, cve) set and each severity. Immaterial:
+  rendered summary prose. Facet `critical` covers severity >= 9.0.
+- Postcondition: every exposure cites at least one advisory id.
 
-### Errors
+### Continuity
 
-- `no-results`: no relevant sources found for this topic
-
-### Strategies
-
-- when few sources found: broaden search terms
+- self-driven: re-check every 24h so a lapsed `valid_until` moves the fingerprint
 ```
 
-**Your job is to satisfy the `### Ensures` contract.** Everything else guides how you do it.
+A `function` (a called helper, not a node) instead carries `### Parameters` →
+`### Returns`, has no world-model and no `### Continuity`, and simply returns its
+result to the caller.
 
-### 1.2 Your Inputs
+**Your job is to leave your `### Maintains` postconditions satisfied and write
+the world-model they describe.** Everything else guides how you do it.
 
-The VM tells you where to read your input data:
+### 1.2 Your Inputs — Read by Reference
+
+The wake that woke you delivers **evidence by reference**, not inlined. The
+waking receipt(s) carry the upstream fingerprints and a `semantic_diff` ("3
+controls went stale"); you reach each subscribed upstream's **published**
+world-model by reference:
 
 ```
-Your Inputs:
-- topic: <openprose-root>/runs/{id}/bindings/caller/question.md
+Your Inputs (by reference):
+- advisories: <openprose-root>/state/world-models/advisory-feed/published/
+  (pinned version: sha256:…)
 ```
 
-Read these files to get your input data. For large inputs, read selectively—focus on what's relevant to your task.
+Query these locations agentically — read selectively, focus on what is material
+to your task. The `semantic_diff` is render-input context only; it tells you
+*what moved* so you can focus, but it is never the reason you commit. To avoid
+torn reads, the version you were handed is a pinned, content-addressed snapshot;
+read that snapshot, not a live-moving directory.
 
-### 1.3 Shape Constraints
+### 1.3 Your Prior World-Model — Read by Reference
 
-If your service has a `### Shape` section:
+If you are a mounted node, you have a persisted world-model: the canonical
+maintained truth you wrote on your last render. The harness tells you where the
+canonical artifact lives; query it by reference, never pre-stuffed into context:
+
+```
+Your prior world-model:
+  <openprose-root>/state/world-models/{node}/published/
+```
+
+Read it first. This is your continuity. Build on it: update the facts that moved,
+carry forward the ones that did not, and do not gratuitously rewrite unchanged
+structured truth (a re-rendered identical fact still re-hashes only if you
+rewrite its material content — so leave settled facts settled). The world-model
+**subsumes** the old per-agent memory ledger: there is one world-model per node,
+and it is your accumulated truth.
+
+A `function` is stateless: it has no prior world-model to read.
+
+### 1.4 Shape Constraints
+
+If your contract has a `### Shape` section:
 
 | Field | Meaning |
 |-------|---------|
 | `self` | What YOU handle directly — stay within these responsibilities |
-| `delegates` | What you delegate to others — if present, spawn sub-sessions for these |
+| `delegates` | What you delegate — spawn `session`/`agent` sub-renders or `call` a `function` |
 | `prohibited` | What you must NOT do — hard constraints on your behavior |
 
-Respect these boundaries. If `prohibited` says no direct web scraping, don't scrape. If `self` says evaluate and score, don't also do the work your delegates are supposed to do.
-
-### 1.4 Persistent Agent Memory
-
-If you are a **persistent agent** (your service has `persist` in `### Runtime`), you'll receive a memory file path:
-
-```
-Your memory is at:
-  <openprose-root>/runs/{id}/agents/{name}/memory.md
-```
-
-Read it first. This is your continuity across invocations. Reference your prior decisions. Build on your accumulated understanding. Don't contradict yourself without acknowledging the change.
+Respect these boundaries. Any agents you spawn are ephemeral and internal to
+producing this node's world-model — **none of them is itself a node.** The only
+thing that makes something a node is being mounted as a subscribable producer.
 
 ### 1.5 Layering Order
 
 When context feels overwhelming, process in this order:
 
-1. **Read your service definition** → What am I? What do I promise?
-2. **Read your memory** (if persistent) → What do I already know?
-3. **Read your inputs** → What am I working with right now?
-4. **Synthesize** → How does my prior knowledge inform this task?
+1. **Read your contract** → What do I maintain? What are my postconditions?
+2. **Read your prior world-model** (if mounted) → What is already true?
+3. **Read your inputs by reference** → What evidence did this wake deliver, and
+   what does the `semantic_diff` say moved?
+4. **Synthesize** → How does the prior truth plus the new evidence change the
+   world-model?
 
 ---
 
-## 2. Writing Your Output
+## 2. Writing Your World-Model
 
-You write ALL your work to your **workspace** directory. This is your private working area.
+You do your scratch work in a **private workspace**, then commit the canonical
+**world-model**. These are two different things, and the difference is
+load-bearing for fingerprinting.
 
-### 2.1 Your Workspace
+### 2.1 Your Workspace — Never Fingerprinted
 
-The VM tells you your workspace path:
-
-```
-Your workspace: <openprose-root>/runs/{id}/workspace/{service-name}/
-```
-
-Write everything here — intermediate notes, drafts, scratch work, and your final outputs. All files are preserved for post-run inspection.
-
-### 2.2 Required Output Files
-
-The VM tells you which files you must produce — these correspond to your `ensures` contract:
+The harness tells you your workspace path:
 
 ```
-Required outputs:
-- findings: workspace/{service-name}/findings.md
-- sources: workspace/{service-name}/sources.md
+Your workspace: <openprose-root>/runs/{id}/workspace/{node}/
 ```
 
-Each `ensures` clause maps to one file. Write your final output for each clause to the specified file.
+Write everything here — intermediate notes, drafts, raw evidence, scratch
+reasoning. **The workspace is never fingerprinted and is never subscribed to.**
+Nothing here reaches anyone downstream. It is preserved for post-run inspection
+only.
 
-### 2.3 Output File Format
+### 2.2 Your World-Model — The Canonical Artifact
 
-Output files are simple Markdown. No special frontmatter required — just your content:
+The truth you maintain is committed to the **canonical world-model artifact** — a
+content-addressable directory (a single file is the degenerate case):
+
+```
+Your world-model: <openprose-root>/state/world-models/{node}/workspace/
+  → committed to .../{node}/published/ on a successful render
+```
+
+Write the structured truth your `### Maintains` schema describes. The store
+produces a deterministic canonical serialization (stable file ordering, path /
+encoding normalization); the compiled canonicalizer computes the fingerprints
+over that serialization. So:
+
+- **Fingerprint the structured truth.** Anything subscribed must have a
+  structured, canonicalizable backing.
+- **Render prose from it.** Free-form rendered prose is a derived projection,
+  excluded from the fingerprint — otherwise re-rendering the same paragraph
+  re-hashes and falsely re-triggers downstreams. Write the facts as data; render
+  any human-facing prose *from* those facts.
+
+Query indices, vector stores, and dashboards are derived projections — never the
+truth. You may read them by reference, but you commit the canonical artifact.
+
+### 2.3 Satisfy Your Postconditions
+
+Before you commit, leave your `### Maintains` postconditions satisfied:
+
+- Where a postcondition is **deterministic**, the harness will verify it on
+  commit; if it fails, nothing commits and your receipt is `failed`.
+- Where a postcondition is **irreducibly semantic**, you **attest** it yourself
+  before signing — you are self-policed. There is no separate judge.
+
+---
+
+## 3. Failure
+
+If you genuinely cannot produce a world-model that satisfies your contract, you
+**fail the render**. A failed render commits nothing: the prior world-model
+stands, a `failed` receipt is logged, and no downstream is woken (the fingerprint
+did not move).
+
+### 3.1 When to Fail
+
+Fail when:
+- You cannot satisfy your `### Maintains` postconditions
+- Required evidence, credentials, or upstream truth is unavailable
+- Committing would write misleading or empty truth
+
+Do NOT fail when:
+- A conditional `### Maintains` clause still applies (degraded-but-true)
+- A `### Strategies` alternative you have not tried yet might work
+- The result is imperfect but still satisfies the schema and postconditions
+
+### 3.2 How to Signal Failure
+
+Write a failure note to your workspace:
+
+**Path:** `workspace/{node}/__error.md`
 
 ```markdown
-# Findings
+# Render failed: advisories-unavailable
 
-## Claim 1: Transformer architectures dominate NLP benchmarks
-- Source: arxiv.org/abs/1706.03762 (Vaswani et al. 2017)
-- Confidence: 0.95
-- Evidence: Cited by 90,000+ papers, basis for GPT/BERT/T5 families
+The advisory feed's published world-model could not be read at the pinned
+version sha256:abc…. No exposures could be recomputed.
 
-## Claim 2: ...
+Prior world-model stands unchanged.
 ```
 
-Write clearly. Downstream services will read these files. Structure your output so it's easy to consume.
+The harness reads this, logs a `failed` receipt, and leaves the prior truth in
+place. You never decide whether to retry — that is the reconciler's job. Just
+signal clearly.
 
-### 2.4 Intermediate Work
-
-You can write any additional files to your workspace:
-
-```
-workspace/researcher/
-├── notes.md              # Your scratch notes
-├── raw-search-results.md # Intermediate data
-├── findings.md           # Required output (ensures)
-└── sources.md            # Required output (ensures)
-```
-
-Only the declared `ensures` outputs get published to `bindings/`. Everything else stays private in your workspace but is preserved for debugging.
+`skipped` is **never** your signal. Skipping is the reconciler's decision, made
+*before* it spawns you, by comparing fingerprints. You only ever produce
+`rendered` (committed) or `failed`.
 
 ---
 
-## 3. Error Signaling
+## 4. Signing the Receipt
 
-If you cannot satisfy your `ensures` contract, signal an error.
+When your render completes, you emit a **receipt** — the single commit object and
+the unit of the ledger. You do not return your world-model in your reply; the
+harness tracks references, not values.
 
-### 3.1 When to Signal an Error
+### 4.1 The Receipt
 
-Signal an error when:
-- You genuinely cannot produce what `ensures` promises
-- The condition matches one of your declared `errors`
-- Continuing would produce misleading or empty output
+A receipt records:
 
-Do NOT signal an error when:
-- You can satisfy a conditional `ensures` clause (e.g., "if sources unavailable: return partial findings")
-- Your `strategies` suggest an alternative approach you haven't tried yet
-- The result is imperfect but still satisfies the contract
+- `node` — your node identity
+- `contract_fingerprint` — which contract version produced this
+- `wake` — the wake's source (input / self / external) + the waking receipt refs
+- `input_fingerprints` — the consumed tuple (one per subscribed facet)
+- `fingerprints` — the `{ facet → token }` map of your published truth (the
+  atomic whole-truth token is always present)
+- `semantic_diff` — render-input context, never a wake signal
+- `prev` — pointer to your prior receipt (chains the ledger)
+- `status` — `rendered` or `failed` (the reconciler writes `skipped` ones itself)
+- `cost` — token attribution (fresh vs. reused)
+- `sig` — the meaning-layer attestation (v1 signer is an explicit null state)
 
-### 3.2 How to Signal
+You compute `fingerprints` by applying your contract's compiled canonicalizer to
+your committed world-model. **This works standalone** — the canonicalizer is
+plain deterministic code that travels with your contract, so a render with no
+harness present still signs a fingerprinted receipt. The reconciler in the
+harness layer merely *compares* those fingerprints; it never asks you "did this
+change."
 
-Write an error file to your workspace:
+### 4.2 On Success
 
-**Path:** `workspace/{service-name}/__error.md`
-
-**Format:**
-
-```markdown
-# Error: no-results
-
-No relevant sources found for the topic "quantum gravity in 11 dimensions."
-
-Searched:
-- Google Scholar: 0 relevant results
-- arXiv: 2 results, both tangential
-- Semantic Scholar: 0 relevant results
-
-Partial data: None available.
+```
+Render committed: vuln-monitor
+World-model: state/world-models/vuln-monitor/published/ (sha256:def…)
+Receipt: rendered
+Fingerprints moved: { @atomic, critical }
+Summary: 3 new critical exposures, 1 cleared; carried 41 unchanged.
 ```
 
-The error name (`no-results`) must match one of your declared `errors`. Undeclared error names propagate as unhandled faults.
+### 4.3 On Failure
 
-### 3.3 What Happens After
+```
+Render failed: vuln-monitor
+Error: advisories-unavailable
+Details: workspace/vuln-monitor/__error.md
+Prior world-model stands.
+```
 
-The VM reads your `__error.md` and decides how to proceed:
-- If the system's `ensures` has a conditional clause covering this error, the VM produces the degraded output
-- If not, the error propagates upward
+### 4.4 Why References, Not Values
 
-You don't need to worry about recovery — that's the orchestrator's job. Just signal clearly.
+The harness never holds your full world-model in working memory. This is
+intentional:
+
+1. **Scalability** — a world-model can be arbitrarily large (a million-row truth)
+2. **Context efficiency** — the harness's context stays lean regardless of size
+3. **Concurrent access** — many renders read pinned snapshots simultaneously
+
+Do NOT return your full world-model in your reply. The harness will ignore it —
+it reads your committed canonical artifact and your receipt.
 
 ---
 
-## 4. Returning to the VM
+## 5. Maintaining the World-Model Across Wakes
 
-When your session completes, return a **confirmation message** to the VM — not your full output. The VM tracks pointers, not values.
+A mounted node is woken many times. Each wake is a render against the freshly
+moved inputs; your prior world-model is your continuity.
 
-### 4.1 On Success
+### 5.1 Build On, Don't Replace
 
-```
-Service complete: researcher
-Outputs written:
-  - findings: workspace/researcher/findings.md
-  - sources: workspace/researcher/sources.md
-Summary: Found 5 sources on quantum computing, extracted 12 claims with confidence scores ranging 0.4-0.95.
-```
+- Reference it: "Prior truth had 44 exposures; advisory feed moved 3."
+- Carry forward settled facts unchanged — do not rewrite their material content,
+  or you will move fingerprints that should not move.
+- Update only what the evidence and the lapsing of `valid_until` actually changed.
 
-### 4.2 On Error
+### 5.2 Freshness Lives in the World-Model
 
-```
-Service error: researcher
-Error: no-results
-Details: workspace/researcher/__error.md
-```
+Freshness *state* — `valid_until`, `last_corroborated`, `confidence` — lives in
+the world-model as material fields. Freshness *policy* — the recheck cadence —
+lives in your `### Continuity`. When a `valid_until` lapses, the affected fact's
+status flips, which moves that facet's fingerprint, which propagates as surprise.
+"Time becoming material" is just another change. For the silent-staleness case,
+the self-driven tick wakes you to recheck.
 
-### 4.3 For Persistent Agents
+### 5.3 Compaction Is Not Summarization
 
-Also confirm your memory update:
+When you update the world-model, preserve specifics, not generalities.
 
-```
-Service complete: captain
-Outputs written:
-  - evaluation: workspace/captain/evaluation.md
-Summary: Approved research phase, flagged 2 concerns for next iteration.
-
-Memory updated: captain
-Location: <openprose-root>/runs/{id}/agents/captain/memory.md
-Segment: captain-003.md
-```
-
-### 4.4 Why Pointers, Not Values
-
-The VM never holds full output values in its working memory. This is intentional:
-
-1. **Scalability**: Outputs can be arbitrarily large
-2. **Context efficiency**: The VM's context stays lean regardless of data size
-3. **Concurrent access**: Multiple services can read/write simultaneously
-
-Do NOT return your full output in the Task response. The VM will ignore it.
-
-**Bad:**
-```
-Here's my research:
-
-AI safety is a field that studies how to create artificial intelligence
-systems that are beneficial... [5000 more words]
-```
-
-**Good:**
-```
-Service complete: researcher
-Outputs written:
-  - findings: workspace/researcher/findings.md
-  - sources: workspace/researcher/sources.md
-Summary: 5200-word overview covering alignment, robustness, interpretability with 15 citations.
-```
-
----
-
-## 5. Working with Persistent State
-
-If you're a persistent agent, you maintain state across invocations via a memory file.
-
-### Two Distinct Outputs
-
-Persistent agents have **two separate outputs** that must not be confused:
-
-| Output | What It Is | Where It Goes | Purpose |
-|--------|------------|---------------|---------|
-| **Workspace outputs** | The results of THIS task | `workspace/{name}/` | Consumed by downstream services |
-| **Memory** | Your accumulated knowledge | `agents/{name}/memory.md` | Carried forward to YOUR future invocations |
-
-The workspace output is task-specific. The memory is agent-specific. Always write both.
-
-### Reading Your Memory
-
-At session start, read your memory file. It contains:
-
-- **Current Understanding**: Your overall grasp of the project/task
-- **Decisions Made**: What you've decided and why
-- **Open Concerns**: Things you're watching for
-- **Recent Segments**: What happened in recent sessions
-
-**Read it carefully.** A persistent agent that ignores its memory is just a stateless agent with extra steps.
-
-### Building on Prior Knowledge
-
-- Reference it explicitly: "In my previous review, I noted X..."
-- Build on it: "Given that I already approved the plan, I'm now checking implementation alignment..."
-- Update it if wrong: "I previously thought X, but now I see Y..."
-
-### Maintaining Consistency
-
-Your decisions should be consistent across segments unless you explicitly change your position. If you approved a plan in segment 1, don't reject the same approach in segment 3 without acknowledging the change and explaining why.
-
----
-
-## 6. Memory Compaction Guidelines
-
-At the end of your session, update your memory file. This is **compaction** — preserving what matters for future sessions.
-
-### 6.1 Compaction is NOT Summarization
-
-**Wrong approach:** "I reviewed the code and found some issues."
-
-This loses all useful information. A summary generalizes; compaction preserves specifics.
-
-**Right approach:** "Reviewed auth module (src/auth/login.ts:45-120). Found: (1) SQL injection risk in query builder line 67, (2) missing rate limiting on login endpoint, (3) good error handling pattern worth reusing. Requested fixes for #1 and #2, approved overall structure."
-
-### 6.2 What to Preserve
+**Wrong:** "Reviewed the advisories and found some issues."
+**Right:** "CVE-2026-1234 (severity 9.8) now affects `payments-api`; `valid_until`
+2026-06-12. Cleared CVE-2025-9911 on `auth-svc` (vendor patched)."
 
 | Preserve | Example |
 |----------|---------|
-| **Specific locations** | "src/auth/login.ts:67" not "the auth code" |
-| **Exact findings** | "SQL injection in query builder" not "security issues" |
-| **Decisions with rationale** | "Approved because X" not just "Approved" |
-| **Numbers and thresholds** | "Coverage at 73%, target is 80%" not "coverage is low" |
-| **Names and identifiers** | "User.authenticate() method" not "the login function" |
-| **Open questions** | "Need to verify: does rate limiter apply to OAuth flow?" |
-
-### 6.3 What to Drop
-
-| Drop | Why |
-|------|-----|
-| Reasoning chains | The conclusion matters, not how you got there |
-| False starts | Record your final choice and a brief note about why not X |
-| Obvious context | Don't repeat the task prompt back |
-| Verbose quotes | Reference by location, don't copy large blocks |
-
-### 6.4 Compaction Structure
-
-```markdown
-## Current Understanding
-
-[What you know about the overall project/task—update, don't replace entirely]
-
-## Decisions Made
-
-[Append new decisions with dates and rationale]
-- [date]: [decision] — [why]
-
-## Open Concerns
-
-[Things to watch for in future sessions—add new, remove resolved]
-
-## Segment [N] Summary
-
-[What happened THIS session—specific, not general]
-- Reviewed: [what, where]
-- Found: [specific findings]
-- Decided: [specific decisions]
-- Next: [what should happen next]
-```
-
-### 6.5 The Specificity Test
-
-Before finalizing your compaction, ask: "If I read only this summary in a week, could I understand exactly what happened and make consistent follow-up decisions?"
-
-If the answer is no, add more specifics.
-
-### 6.6 When Your Memory Gets Long
-
-Over many segments, your memory file grows. When it becomes unwieldy:
-
-1. **Preserve recent segments in full** (last 2-3)
-2. **Compress older segments** into key decisions only
-3. **Archive ancient history** as bullet points
-
-```markdown
-## Recent Segments (full detail)
-[Segments 7-9]
-
-## Earlier Segments (compressed)
-- Segment 4-6: Completed initial implementation review, approved with minor fixes
-- Segment 1-3: Established review criteria, approved design doc
-
-## Key Prior Decisions
-- Chose JWT over session tokens (segment 2)
-- Established 80% coverage threshold (segment 1)
-```
+| Specific identifiers | "CVE-2026-1234 on payments-api" not "a vuln" |
+| Exact values | "severity 9.8" not "high severity" |
+| Freshness fields | "valid_until 2026-06-12" not "current" |
+| Decisions with rationale | "cleared: vendor patched" not "cleared" |
 
 ---
 
-## 7. Structured Notes for Your Workspace
+## 6. The Render Checklist
 
-These are structured markers for your own workspace notes and memory compaction. **The VM does not read or act on these.** They are for your own continuity across segments and for post-run inspection.
+Before you finish:
 
-### Decision Markers
-
-When you make a decision, record it in your workspace notes or memory:
-
-```
-DECISION: Proceed with implementation
-RATIONALE: Plan addresses all concerns raised in previous review
-```
-
-### Concern Markers
-
-When you notice something that doesn't block progress but should be tracked:
-
-```
-CONCERN: [specific concern]
-SEVERITY: [low/medium/high]
-TRACKING: [what to watch for]
-```
-
-Write these in your workspace files or memory — not as standalone files, and not in your return message to the VM. The VM only reads your declared `ensures` outputs (via copy-on-return) and `__error.md` (if you signal an error).
-
----
-
-## 8. Output Writing Checklist
-
-Before completing your session:
-
-- [ ] Write your required outputs to workspace (one file per `ensures` clause)
-- [ ] Write any intermediate work to workspace (notes, drafts, scratch)
-- [ ] If error: write `__error.md` to workspace
-- [ ] If persistent agent: update `memory.md`
-- [ ] If persistent agent: write segment file
-- [ ] Return confirmation message (pointers + summary, not full content)
+- [ ] Read your contract → what you maintain and your postconditions
+- [ ] Read your prior world-model by reference (if mounted)
+- [ ] Read your inputs by reference; consult the `semantic_diff` for what moved
+- [ ] Do scratch work in your private workspace (never fingerprinted)
+- [ ] Write the structured truth to the canonical world-model artifact
+- [ ] Leave your `### Maintains` postconditions satisfied (attest the semantic ones)
+- [ ] If you cannot: write `__error.md` and fail the render (nothing commits)
+- [ ] Sign the receipt: apply the compiled canonicalizer, record the fingerprints
+- [ ] Return references + a summary, not your full world-model
 
 ---
 
 ## Summary
 
-As a subagent in an OpenProse system:
+As a render in OpenProse:
 
-1. **Read your service definition** — understand your contract
-2. **Read your inputs from disk** — the VM gives you file paths
-3. **Write everything to your workspace** — intermediate and final work
-4. **Satisfy your `ensures` contract** — or signal a declared error
-5. **Build on your memory** (if persistent) — you have continuity, use it
-6. **Compact, don't summarize** — preserve specifics, drop reasoning chains
-7. **Return pointers, not values** — the VM tracks locations, not content
+1. **Read your contract** — what you maintain, and your postconditions
+2. **Read your inputs and prior world-model by reference** — never pre-stuffed
+3. **Do scratch work in your private workspace** — never fingerprinted
+4. **Write the structured truth to the canonical world-model** — render prose from it
+5. **Satisfy your `### Maintains` postconditions** — or fail the render
+6. **Sign a receipt with the fingerprints** — by applying your compiled canonicalizer
+7. **Return references, not values** — the harness tracks locations and receipts
 
-Your workspace is your private sandbox. Your ensures outputs are your public interface. The VM handles copying them to where they need to go.
+You are complete standalone. Mounting adds composition around you; it never
+intrudes on the render atom. You never decide "did this change" — that is the
+reconciler comparing fingerprints, in the layer kept dumb.

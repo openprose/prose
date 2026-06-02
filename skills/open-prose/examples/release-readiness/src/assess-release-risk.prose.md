@@ -1,6 +1,6 @@
 ---
 name: assess-release-risk
-kind: service
+kind: function
 ---
 
 # Assess Release Risk
@@ -10,19 +10,19 @@ kind: service
 Classifies readiness evidence into blockers, non-blocking risks, and missing
 validation.
 
-### Requires
+### Parameters
 
-- `evidence_packet`: normalized release evidence with candidate version,
+- `evidence-packet`: normalized release evidence with candidate version,
   validation results, docs and migration status, known risks, rollback notes,
   contradictions, and missing evidence
-- `history_context`: relevant prior decisions, repeated risks, and unresolved
-  follow-up from project state
+- `history-context`: relevant prior decisions, repeated risks, and unresolved
+  follow-up from the prior readiness truth
 
-### Ensures
+### Returns
 
-- `risk_assessment`: ship posture, blockers, non-blocking risks, missing
+- `risk-assessment`: ship posture, blockers, non-blocking risks, missing
   evidence, confidence, and rationale
-- `release_questions`: open questions that need an owner, source, or next
+- `release-questions`: open questions that need an owner, source, or next
   review time before the recommendation can be trusted
 
 ### Invariants

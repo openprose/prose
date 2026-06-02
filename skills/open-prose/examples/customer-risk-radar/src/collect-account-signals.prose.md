@@ -1,6 +1,6 @@
 ---
 name: collect-account-signals
-kind: service
+kind: function
 ---
 
 # Collect Account Signals
@@ -9,37 +9,24 @@ kind: service
 
 Normalizes incoming customer events and selects accounts that need risk review.
 
-### Requires
+### Parameters
 
-- `activation_event`: a scheduled review request, account signal change, risk
-  pressure record, or manual account review request
+- `account-signals`: a scheduled review request, account signal change, risk
+  pressure record, or manual account review request, plus the prior account
+  risk state the calling responsibility reads from its own world-model
 
-### Ensures
+### Returns
 
-- `account_signals`: accounts needing review with usage trend, support
+- `accounts-for-review`: accounts needing review with usage trend, support
   friction, renewal timing, stakeholder notes, prior risk state, and trigger
   reason
 - each account has: account id, owner, newest evidence timestamp, and missing
   signal flags
 
-### Runtime
-
-- `persist`: project
-
-### Memory
-
-```yaml
-reads:
-  - risk_ledger: prior account risk states, owner handoffs, and next review timing
-  - latest_signal_at: newest processed customer signal timestamp
-writes:
-  - latest_signal_at: advanced when newer customer signals are accepted for review
-```
-
 ### Shape
 
-- `self`: normalize activation events, deduplicate against project memory, and
-  choose accounts for review
+- `self`: normalize activation events, deduplicate against the prior risk state,
+  and choose accounts for review
 - `prohibited`: guessing unavailable product, support, or commercial facts
 
 ### Strategies
@@ -47,4 +34,4 @@ writes:
 - when the activation is scheduled: include accounts whose next review is due
   or whose renewal window is approaching
 - when the activation is pressure without specific accounts: select accounts
-  with stale high or unknown risk from the ledger
+  with stale high or unknown risk from the prior state

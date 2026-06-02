@@ -1,27 +1,31 @@
 ---
 name: openprose-compiler
-kind: service
+kind: function
 ---
 
 # OpenProse Compiler
 
-Compile semantic OpenProse source into repository IR that a deterministic
-harness can validate and serve.
+Compile semantic OpenProse source into the compile-phase IR that the dumb
+reconciler consumes and a deterministic harness can validate and serve.
 
-This is a pinned ProseScript compiler program. It is not a Forme-wired system:
-the compiler itself owns the execution order and uses short, isolated sessions
-to keep each lowering step on a narrow context budget.
+This is a pinned ProseScript compiler program. It is not a mounted node and is
+not Forme-wired: the compiler itself owns its execution order and uses short,
+isolated sessions to keep each lowering step on a narrow context budget. It is
+the **intelligent compile phase**; the run phase that reads its output is dumb
+(`architecture.md` §2).
 
-### Requires
+### Parameters
 
 - `source_root`: source directory to compile; default `<openprose-root>/src`
   unless `prose compile` supplies a path.
 - `output_dir`: build output directory; default `dist`.
 
-### Ensures
+### Returns
 
-- `manifest_next`: valid repository IR written to
-  `output_dir/manifest.next.json`.
+- `manifest_next`: valid compile-phase IR written to
+  `output_dir/manifest.next.json` (the topology world-model, per-node
+  canonicalizers, per-node postcondition validators, and frozen contract
+  fingerprints — see `ir-v0.md`).
 - `diagnostics`: concise compile diagnostics with enough source paths to fix
   ambiguity.
 
@@ -30,11 +34,11 @@ to keep each lowering step on a narrow context budget.
 - `self`: orchestrate the compile flow, enforce the IR contract, and write only
   a valid manifest.
 - `delegates`: source discovery, responsibility lowering, gateway lowering,
-  skill resolution, tool resolution, Forme lowering, IR emission, and IR
-  validation.
-- `prohibited`: inventing schema fields, silently guessing ambiguous timing or
-  fulfillment, installing host capabilities, recursively invoking the `prose`
-  CLI.
+  skill resolution, tool resolution, Forme topology lowering, canonicalizer
+  compilation, postcondition compilation, IR emission, and IR validation.
+- `prohibited`: inventing schema fields, reintroducing a judge / verdict /
+  pressure / fulfillment-activation beat, silently guessing ambiguous wiring or
+  cadence, installing host capabilities, recursively invoking the `prose` CLI.
 
 ### Strategies
 
@@ -44,14 +48,17 @@ to keep each lowering step on a narrow context budget.
   the whole skill into every delegate.
 - Use `ir-v0.md` as the canonical schema. When it conflicts with natural naming
   instinct, `ir-v0.md` wins.
-- Infer responsibilities, concrete trigger registrations, and fulfillment only
-  when the source graph makes the relationship clear.
+- Lower contracts into topology nodes, canonicalizers, and postcondition
+  validators only when the source graph makes the relationship clear.
 - Do not invent connector routes, queue names, provider payloads, secrets, or
   provider subscription setup.
 - Do not invent host skill or tool availability.
 - Stay inside `source_root`; do not inspect sibling examples, parent
   repositories, or unrelated source trees.
-- Prefer warnings over silent assumptions when timing, fulfillment, or Forme
+- A wiring failure — no producer for a `### Requires` facet, or an ambiguous
+  match between candidate producers — is always a surfaced `error` diagnostic,
+  never a silent guess.
+- Prefer warnings over silent assumptions when cadence, facet backing, or Forme
   wiring is ambiguous.
 - Write `manifest.next.json` only after validation accepts the manifest.
 - After writing `manifest.next.json`, return the result. Do not run optional
@@ -70,7 +77,9 @@ agent source_discoverer:
   Treat source_root as a hard boundary. Do not read parent directories or
   sibling repositories while discovering source.
   Return root-relative source records with path, kind, and optional name.
-  Recognize responsibility, gateway, system, service, test, pattern, and unknown.
+  Recognize responsibility, function, gateway, pattern, test, and unknown.
+  There is no system kind and no service kind; classify a callable helper as
+  function and never as a topology node.
   Ignore dist/, runs/, state/, deps/, and generated output.
   Emit diagnostics for unreadable files, unknown structures, and duplicate names.
   """
@@ -82,47 +91,49 @@ agent responsibility_compiler:
   model: "fast"
   persist: false
   prompt: """
-  Lower kind: responsibility source into responsibility records, inferred
-  triggers, judge activations, optional fulfillment intent, and diagnostics.
+  Lower kind: responsibility source into topology node records, the node's
+  intrinsic wake_source, its contract fingerprint inputs, and diagnostics.
   Load concepts/responsibility.md, concepts/reactor.md, and compiler/ir-v0.md.
-  Preserve Goal, Continuity, Criteria, and Constraints in the exact IR fields:
-  goal, continuity, criteria, constraints.
-  Use frontmatter `id:` as the responsibility `id` in IR. Never derive
-  responsibility identity from `name:`, filepath, title, or a slug; those are
-  display and source-location fields only.
-  Emit one judge activation per responsibility.
-  Infer cron triggers from Continuity only when cadence is clear enough for a
-  standard five-field cron expression. Otherwise emit a diagnostic.
-  Infer fulfillment only when one system or service relationship is clearly
-  strongest. Otherwise emit a diagnostic and omit fulfillment activation.
+  Preserve Goal, Requires, Maintains, and Continuity as the node's contract.
+  Derive wake_source from Continuity: input-driven by default, self when a
+  cadence is declared, external for a gateway.
+  Use frontmatter `id:` as the responsibility identity backing the node. Never
+  derive identity from `name:`, filepath, title, or a slug; those are display
+  and source-location fields only.
+  Do not emit a judge activation, a verdict, pressure, or a fulfillment
+  activation; commit-gating is compiled postconditions plus render
+  self-attestation.
+  Surface a self-driven cadence from Continuity only when it is clear enough to
+  carry as the node's wake_source. Otherwise emit a diagnostic.
   """
   shape:
-    self: ["responsibility semantics", "judge cadence", "fulfillment inference"]
-    prohibited: ["provider-specific connector setup", "Forme graph emission"]
+    self: ["responsibility node semantics", "wake-source derivation"]
+    prohibited: ["judge/verdict/pressure beats", "provider-specific connector setup"]
 
 agent gateway_compiler:
   model: "fast"
   persist: false
   prompt: """
-  Lower kind: gateway source into concrete trigger records.
+  Lower kind: gateway source into external-driven topology nodes and entry
+  points.
   Load concepts/reactor.md and compiler/ir-v0.md.
-  Compile Schedule sections into cron triggers.
-  Compile Receives plus Emits sections into HTTP triggers when method, path,
-  responsibility, and target judge activation are clear.
+  A gateway is sugar for an external-driven responsibility: it has wake_source
+  external and appears in topology.entry_points.
+  Compile Schedule, Receives, and Emits sections into the node's external
+  ingress and the subscription edge it wakes when method, path, producer, and
+  target node are clear.
   Preserve provider, auth, payload, and subscription ambiguity as diagnostics.
-  Do not put sourcePath, payload, metadata, emits, wakes, or activationId on
-  trigger records.
   """
   shape:
-    self: ["gateway lowering", "trigger registration"]
+    self: ["gateway lowering", "entry-point registration"]
     prohibited: ["fulfillment work", "provider subscription setup"]
 
 agent skills_resolver:
   model: "fast"
   persist: false
   prompt: """
-  Resolve declared `### Skills` for every system and service in the source
-  graph.
+  Resolve declared `### Skills` for every responsibility and function in the
+  source graph.
   Load contract-markdown.md (Skills) and compiler/ir-v0.md.
   For each declared skill in colon form (namespace:name), search in order:
     1. <project>/skills/
@@ -132,9 +143,9 @@ agent skills_resolver:
   A skill resolves when one of those paths contains a directory whose name
   matches the skill name in either flat (<name>) or namespaced
   (<namespace>/<name>) layout.
-  Aggregate scope: a system's declared skills apply to every sub-service, and
-  a service's declarations are additive — they extend, never replace, the
-  inherited set.
+  Aggregate scope: a responsibility's declared skills apply to every function
+  its render calls; node-level declarations are additive — they extend, never
+  replace, the inherited set.
   Never install, modify, or remove host skills.
   Return one record per declared skill with its source component path and the
   resolved location, plus an `unresolved` array of `{ skill, sourcePath,
@@ -150,8 +161,8 @@ agent tools_resolver:
   model: "fast"
   persist: false
   prompt: """
-  Resolve declared `### Tools` for every system, service, and responsibility in
-  the source graph.
+  Resolve declared `### Tools` for every responsibility and function in the
+  source graph.
   Load contract-markdown.md (Tools) and compiler/ir-v0.md.
   Accept deterministic CLI executable declarations in the exact
   `cli:<executable-name>` form and deterministic MCP server declarations in the
@@ -167,20 +178,19 @@ agent tools_resolver:
   checks.
   For each supported MCP declaration, check the deterministic host MCP registry
   for that server name. Do not install, contact, or introspect the MCP server.
-  Aggregate scope: a system's declared tools apply to every sub-service, and a
-  service's declarations are additive -- they extend, never replace, the
-  inherited set. A responsibility's declarations apply to judge observation and
-  fulfillment actuation for that responsibility.
+  Aggregate scope: a responsibility's declared tools apply to every function its
+  render calls; node-level declarations are additive — they extend, never
+  replace, the inherited set. A responsibility's declarations are the host
+  capabilities its render may use to observe and act on the maintained truth.
   Tool declarations do not satisfy `### Requires` and do not create Forme
-  dependency-graph edges.
+  subscription edges.
   Never install, modify, upgrade, or remove host tools.
-  Return one aggregated Forme manifest tool record per resolved system/service
+  Return one aggregated node tool record per resolved responsibility/gateway
   tool using `{ kind: "cli" | "mcp", name, requiredBy }`, where `requiredBy`
-  names the graph nodes that need the capability.
-  Return one responsibility tool list per responsibility using
-  `{ responsibilityId, tools: [{ kind: "cli" | "mcp", name }] }`; use an empty
-  `tools` array when the responsibility explicitly declares no required tools.
-  Responsibility tool records do not have `requiredBy`.
+  names the topology nodes that need the capability.
+  Return one function tool list per function using
+  `{ functionName, tools: [{ kind: "cli" | "mcp", name }] }`; use an empty
+  `tools` array when the function explicitly declares no required tools.
   Return an `unresolved` array of `{ tool, sourcePath, checked }` entries for
   any executable absent from PATH or MCP server absent from the registry. Emit
   one diagnostic with severity `error` and message code `tool_unresolved` for
@@ -194,32 +204,82 @@ agent forme_compiler:
   model: "fast"
   persist: false
   prompt: """
-  Lower systems and services into structured Forme manifest objects.
+  Lower the responsibility and gateway nodes into the topology world-model.
   Load forme.md and compiler/ir-v0.md.
-  Produce only the formeManifests array entries described by ir-v0.md.
-  Use executionOrder entries with exactly nodeId and dependsOn fields.
-  Include resolved system/service tool requirements from tools_resolution in each Forme
-  manifest's tools array. Use only `{ kind: "cli" | "mcp", name, requiredBy }`
-  records, and make `requiredBy` reference graph node ids in that manifest.
-  Do not include responsibility-level judge tools in a Forme manifest unless a
-  system or service also declares the same tool.
-  Link fulfillment activations that target systems to the matching
-  formeManifestId.
-  Emit warnings for wiring that cannot be represented in v0.
+  Produce only the topology object described by ir-v0.md: nodes, edges,
+  entry_points, and acyclic.
+  Resolve each subscriber `### Requires` facet-contract to the producer
+  `### Maintains` facet that satisfies it semantically, and draw one edge
+  `subscriber.Requires.<facet> -> producer.Maintains.<facet>` (use "@atomic"
+  when the producer declares no facets). Functions are never nodes; they do not
+  appear in the topology.
+  Entry points are exactly the nodes whose wake_source is external (gateways).
+  Compute acyclic with the deterministic cycle check; when the contract set is
+  irreducibly cyclic, set acyclic false and emit a severity error diagnostic
+  naming the cycle.
+  A missing producer or an ambiguous match for a `### Requires` facet is a
+  surfaced diagnostic, never a silent guess.
   """
   shape:
-    self: ["Forme wiring", "dependency graph", "execution order"]
-    prohibited: ["responsibility semantics", "custom manifest fields"]
+    self: ["Forme wiring", "topology world-model", "acyclicity postcondition"]
+    prohibited: ["responsibility semantics", "judge/verdict beats", "custom topology fields"]
+
+agent canonicalizer_compiler:
+  model: "fast"
+  persist: false
+  prompt: """
+  Compile each node's `### Maintains` canonicalization spec into a deterministic
+  canonicalizer reference.
+  Load compiler/ir-v0.md and concepts/responsibility.md.
+  Read the named parts of `### Maintains` (the named-parts rule, ir-v0.md
+  "The `####`-part -> facet lowering"). Each `#### <name>` sub-heading IS a facet:
+  lower it to a FacetSpec { facet: <heading text>, paths: <the part's material
+  field paths> }, default-material WITHIN the part. Bind un-facetted top-level
+  `### Maintains` fields (the shared truth outside any `####` part) to the atomic
+  facet only. A `### Maintains` with no `####` parts lowers to atomic-only.
+  Produce one canonicalizer record per topology node with node, artifact, and
+  facets. facets always includes "@atomic" and then every `#### <name>` part as a
+  facet; a leaf truth that declares no facets has facets ["@atomic"]. Every
+  edge.facet whose producer is this node must appear in this node's facets.
+  Apply the structured-backing rule: anything subscribed must have a structured,
+  canonicalizable backing. Lint subscribed fields (every `#### ` part) without
+  structured backing and surface them as diagnostics; a part with no material
+  field paths is backing-less, and free-form rendered prose is excluded from the
+  fingerprint.
+  """
+  shape:
+    self: ["canonicalization-spec lowering", "facet boundaries", "structured-backing lint"]
+    prohibited: ["judge/verdict beats", "fingerprint value invention"]
+
+agent postcondition_compiler:
+  model: "fast"
+  persist: false
+  prompt: """
+  Compile each node's `### Maintains` postconditions (the folded-in `### Criteria`)
+  into a postcondition validator reference.
+  Load compiler/ir-v0.md and architecture-aligned concepts/reactor.md.
+  Produce one postcondition record per topology node with node, artifact, and
+  mode. mode is deterministic when the postcondition is expressible as a
+  deterministic predicate the harness verifies on commit, render-attested when
+  it is irreducibly semantic and the render self-polices before signing.
+  There is no separate judge beat and no LLM in the wake/commit decision.
+  """
+  shape:
+    self: ["postcondition lowering", "deterministic-vs-attested mode"]
+    prohibited: ["judge/verdict beats", "LLM commit gating"]
 
 agent ir_emitter:
   model: "fast"
   persist: false
   prompt: """
-  Assemble the final repository IR object.
+  Assemble the final compile-phase IR object.
   Load compiler/ir-v0.md only.
-  Emit JSON matching ir-v0.md exactly: kind, version, sources,
-  responsibilities, triggers, activations, formeManifests, diagnostics.
-  Arrays must always be present. Omit custom fields.
+  Emit JSON matching ir-v0.md exactly: kind, version, sources, topology,
+  canonicalizers, postconditions, contract_fingerprints, diagnostics.
+  kind is the literal "openprose.compile-phase-ir"; version is the integer 2.
+  Arrays must always be present; topology is a single object;
+  contract_fingerprints is an object map with one entry per topology node equal
+  to that node's contract_fingerprint. Omit custom fields.
   Move commentary into diagnostics. Do not emit Markdown fences.
   """
   shape:
@@ -230,12 +290,13 @@ agent ir_validator:
   model: "fast"
   persist: false
   prompt: """
-  Validate the repository IR against compiler/ir-v0.md.
-  Check exact top-level fields, required fields, allowed enum values,
-  root-relative paths, trigger-to-judge links, exactly one judge activation per
-  responsibility, fulfillment/source/Forme links, Forme graph references,
-  executionOrder dependencies, tool requiredBy references, and diagnostic
-  shape.
+  Validate the compile-phase IR against compiler/ir-v0.md.
+  Check exact top-level fields and literal kind/version, required fields, allowed
+  enum values, root-relative paths, topology node/edge/entry-point integrity
+  (edges reference existing nodes; entry points are external nodes; acyclic is
+  honest), one canonicalizer and one postcondition per node, producer facets
+  covering subscribed edge facets, contract_fingerprints covering every node and
+  matching node fingerprints, and diagnostic shape.
   Treat any diagnostic with severity error as invalid for writing.
   Return valid: true only when the manifest should be written.
   Return concrete errors with JSON paths when invalid.
@@ -262,34 +323,45 @@ let discovered = session: source_discoverer
   context: { source_root }
 
 let responsibility_output = session: responsibility_compiler
-  prompt: "Compile responsibilities into v0 responsibility, trigger, and activation records."
+  prompt: "Lower responsibilities into topology nodes with their wake sources and contract fingerprints."
   context: { source_root, discovered }
 
 let gateway_output = session: gateway_compiler
-  prompt: "Compile gateways into v0 trigger records and activation links."
+  prompt: "Lower gateways into external-driven nodes and entry points."
   context: { source_root, discovered, responsibility_output }
 
 let skills_resolution = session: skills_resolver
-  prompt: "Resolve declared skills for every system and service."
+  prompt: "Resolve declared skills for every responsibility and function."
   context: { source_root, discovered }
 
 if skills_resolution reports unresolved skills:
   return skills_resolution
 
 let tools_resolution = session: tools_resolver
-  prompt: "Resolve declared host tools for every system, service, and responsibility."
+  prompt: "Resolve declared host tools for every responsibility and function."
   context: { source_root, discovered }
 
 if tools_resolution reports invalid, unsupported, or unresolved tools:
   return tools_resolution
 
 let forme_output = session: forme_compiler
-  prompt: "Compile systems and services into v0 Forme manifests."
+  prompt: "Wire the responsibility DAG into the topology world-model."
   context: { source_root, discovered, responsibility_output, gateway_output, tools_resolution }
 
+if forme_output reports an ambiguous match, an unsatisfied subscription, or a cyclic contract set:
+  return forme_output
+
+let canonicalizer_output = session: canonicalizer_compiler
+  prompt: "Compile each node's Maintains canonicalization spec into a canonicalizer reference. Lower each #### part under Maintains into a facet; un-facetted top-level fields bind to @atomic only."
+  context: { source_root, discovered, responsibility_output, gateway_output, forme_output }
+
+let postcondition_output = session: postcondition_compiler
+  prompt: "Compile each node's Maintains postconditions into a validator reference."
+  context: { source_root, discovered, responsibility_output, gateway_output, forme_output }
+
 let manifest = session: ir_emitter
-  prompt: "Assemble the complete v0 repository IR JSON object, including resolved tools on every responsibility."
-  context: { discovered, responsibility_output, gateway_output, tools_resolution, forme_output }
+  prompt: "Assemble the complete compile-phase IR JSON object: topology, canonicalizers, postconditions, and frozen contract fingerprints."
+  context: { discovered, responsibility_output, gateway_output, tools_resolution, forme_output, canonicalizer_output, postcondition_output }
 
 let validation = session: ir_validator
   prompt: "Validate the complete manifest before it is written."

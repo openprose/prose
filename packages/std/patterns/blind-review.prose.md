@@ -53,7 +53,7 @@ Heterogeneous reviewers build understanding progressively; cross-tier divergence
     task_brief: string        -- what reviewers should focus on (e.g. "describe what this system is and intends to do")
     output_dir: string        -- (optional) directory for reviewer reports
 
-### Ensures
+### Returns
 
 - Reviewers are independent — no reviewer sees another's output
 - Materials are disclosed one at a time, in order — each reviewer reports understanding after each disclosure

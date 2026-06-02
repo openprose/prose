@@ -1,0 +1,240 @@
+{
+  "nodes": [
+    {
+      "node": "gateway.wire-feeds",
+      "contract_fingerprint": "sha256:6c9612c0822196a47c174f6545750b82fce93d234d62386f34f0f155947f8bc2",
+      "wake_source": "external"
+    },
+    {
+      "node": "responsibility.normalize-reuters",
+      "contract_fingerprint": "sha256:a48f3d121ba08633397509033959f7d18311f605a69f3838ad724ea268c73286",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.normalize-ap",
+      "contract_fingerprint": "sha256:86831be65852c0310b3812a54becd9d6d1d007a22725eaf1cacebf008ad87d2a",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.normalize-bloomberg",
+      "contract_fingerprint": "sha256:a53bc7030fd5bd924f0349c7b244121cf2a106b2fb629f57a6973c035c9a2f95",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.normalize-afp",
+      "contract_fingerprint": "sha256:e862fc3282ee40be5f6a938cfdee7f9e7c951096c47f852f13eb60f9da9ecf50",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.normalize-dpa",
+      "contract_fingerprint": "sha256:d59c7755fcc5c0b7edf2c3c5bc6de55fddbe3cc191dade8e28ad3e79dfe59c4a",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.normalize-kyodo",
+      "contract_fingerprint": "sha256:1eac3f63bb479c890068494891a7c4e3e1c42a7666d6c82e3510bd1d650bd27b",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.normalize-pti",
+      "contract_fingerprint": "sha256:c3572862a8f977bb0c5e154c456adeb3b1122faab36bfbce4701dfbd8802e231",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.normalize-tass",
+      "contract_fingerprint": "sha256:496d4faeeed5f642e373226099a55e0166a3bcd90a80d6661a5a38d182494839",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.normalize-efe",
+      "contract_fingerprint": "sha256:54eacb36436ecbcf6acb98e5ab0dda753e70477e5491e048d2423e495fcf0993",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.normalize-ansa",
+      "contract_fingerprint": "sha256:147fa9a07e2ab4e441f5b58c54b94df2e1fdd509a9ddffac05ed4d750aa62cd0",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.normalize-yonhap",
+      "contract_fingerprint": "sha256:b1bd2d914ee2d5706fbf96bef3bddc50bfbe1840fec0049a1f7c52be7f92ccc7",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.normalize-xinhua",
+      "contract_fingerprint": "sha256:68460d5df189b0503af4da28f2f8cf54be65a2941b112170b63a43226f2c9ae2",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.dedup-cluster",
+      "contract_fingerprint": "sha256:1379892c1b5ba70f69009922c100d92f618d7a01bc6fdcb55eb8d6eef0b03558",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.topic-index",
+      "contract_fingerprint": "sha256:0a1cf5fe34f1a56e9d9d0bee8cb082740b48d5471cf80efb6ebdd4109918875c",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.briefing",
+      "contract_fingerprint": "sha256:66439ebecde0d9391d70ed771446803781ff652aa3bfc6f74dab71a6d48a740c",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.headline",
+      "contract_fingerprint": "sha256:c4aaa8e43d05d16f4d6faccf9985de9d166af9a37f15d381b9e831a2cc4fd3d3",
+      "wake_source": "input"
+    }
+  ],
+  "edges": [
+    {
+      "subscriber": "gateway.wire-feeds",
+      "producer": "ingress.wire-feeds",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.normalize-reuters",
+      "producer": "gateway.wire-feeds",
+      "facet": "reuters"
+    },
+    {
+      "subscriber": "responsibility.normalize-ap",
+      "producer": "gateway.wire-feeds",
+      "facet": "ap"
+    },
+    {
+      "subscriber": "responsibility.normalize-bloomberg",
+      "producer": "gateway.wire-feeds",
+      "facet": "bloomberg"
+    },
+    {
+      "subscriber": "responsibility.normalize-afp",
+      "producer": "gateway.wire-feeds",
+      "facet": "afp"
+    },
+    {
+      "subscriber": "responsibility.normalize-dpa",
+      "producer": "gateway.wire-feeds",
+      "facet": "dpa"
+    },
+    {
+      "subscriber": "responsibility.normalize-kyodo",
+      "producer": "gateway.wire-feeds",
+      "facet": "kyodo"
+    },
+    {
+      "subscriber": "responsibility.normalize-pti",
+      "producer": "gateway.wire-feeds",
+      "facet": "pti"
+    },
+    {
+      "subscriber": "responsibility.normalize-tass",
+      "producer": "gateway.wire-feeds",
+      "facet": "tass"
+    },
+    {
+      "subscriber": "responsibility.normalize-efe",
+      "producer": "gateway.wire-feeds",
+      "facet": "efe"
+    },
+    {
+      "subscriber": "responsibility.normalize-ansa",
+      "producer": "gateway.wire-feeds",
+      "facet": "ansa"
+    },
+    {
+      "subscriber": "responsibility.normalize-yonhap",
+      "producer": "gateway.wire-feeds",
+      "facet": "yonhap"
+    },
+    {
+      "subscriber": "responsibility.normalize-xinhua",
+      "producer": "gateway.wire-feeds",
+      "facet": "xinhua"
+    },
+    {
+      "subscriber": "responsibility.dedup-cluster",
+      "producer": "responsibility.normalize-reuters",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.dedup-cluster",
+      "producer": "responsibility.normalize-ap",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.dedup-cluster",
+      "producer": "responsibility.normalize-bloomberg",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.dedup-cluster",
+      "producer": "responsibility.normalize-afp",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.dedup-cluster",
+      "producer": "responsibility.normalize-dpa",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.dedup-cluster",
+      "producer": "responsibility.normalize-kyodo",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.dedup-cluster",
+      "producer": "responsibility.normalize-pti",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.dedup-cluster",
+      "producer": "responsibility.normalize-tass",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.dedup-cluster",
+      "producer": "responsibility.normalize-efe",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.dedup-cluster",
+      "producer": "responsibility.normalize-ansa",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.dedup-cluster",
+      "producer": "responsibility.normalize-yonhap",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.dedup-cluster",
+      "producer": "responsibility.normalize-xinhua",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.topic-index",
+      "producer": "responsibility.dedup-cluster",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.briefing",
+      "producer": "responsibility.topic-index",
+      "facet": "brief-gate"
+    },
+    {
+      "subscriber": "responsibility.headline",
+      "producer": "responsibility.topic-index",
+      "facet": "rollup"
+    },
+    {
+      "subscriber": "responsibility.headline",
+      "producer": "responsibility.briefing",
+      "facet": "@atomic"
+    }
+  ],
+  "entry_points": [
+    "gateway.wire-feeds"
+  ],
+  "acyclic": true
+}

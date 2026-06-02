@@ -1,43 +1,30 @@
 ---
 name: collect-release-evidence
-kind: service
+kind: function
 ---
 
 # Collect Release Evidence
 
 ### Description
 
-Normalizes the latest release event with candidate state and prior decisions.
+Normalizes the latest release event with candidate state and the prior readiness
+truth.
 
-### Requires
+### Parameters
 
-- `activation_event`: the latest release-readiness event, pressure record, or
-  manual review request
-- `candidate_snapshot`: current candidate metadata, change summary, CI links,
+- `release-events`: the latest release-readiness event, candidate snapshot, or
+  manual review request, including candidate metadata, change summary, CI links,
   docs status, migration notes, and known risks
-- `decision_history`: previous readiness briefs and release decisions, if any
+- `prior-readiness`: previous readiness briefs, decisions, and unresolved
+  follow-up read from the responsibility's world-model
 
-### Ensures
+### Returns
 
-- `evidence_packet`: normalized release evidence with candidate version,
+- `evidence-packet`: normalized release evidence with candidate version,
   change groups, validation results, docs and migration status, known risks,
   rollback notes, source links, contradictions, and missing evidence
-- `history_context`: relevant prior decisions, repeated risks, and unresolved
-  follow-up from project state
-
-### Runtime
-
-- `persist`: project
-
-### Memory
-
-```yaml
-reads:
-  - release_decisions: prior release readiness records and follow-up actions
-  - latest_release_event_at: newest processed release-readiness event timestamp
-writes:
-  - latest_release_event_at: advanced when newer evidence is accepted for review
-```
+- `history-context`: relevant prior decisions, repeated risks, and unresolved
+  follow-up from the prior readiness truth
 
 ### Shape
 

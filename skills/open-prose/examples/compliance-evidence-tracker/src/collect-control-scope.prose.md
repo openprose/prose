@@ -1,6 +1,6 @@
 ---
 name: collect-control-scope
-kind: service
+kind: function
 ---
 
 # Collect Control Scope
@@ -9,40 +9,27 @@ kind: service
 
 Normalizes incoming evidence events and selects controls that need review.
 
-### Requires
+### Parameters
 
-- `activation_event`: a scheduled review request, evidence change event,
-  responsibility pressure record, audit request, or manual control review
-  request
+- `evidence-signals`: a scheduled review request, evidence change event, audit
+  request, or manual control review request
+- `prior-controls`: prior control evidence states, accepted artifacts,
+  exceptions, and next review timing read from the responsibility's world-model
 
-### Ensures
+### Returns
 
-- `control_scope`: controls needing review with owner, framework mapping,
+- `control-scope`: controls needing review with owner, framework mapping,
   evidence requirement, current artifact references, prior status, and trigger
   reason
 - each control has: control id, owner, framework tags, newest evidence
   timestamp, review due date, and missing-context flags
 
-### Runtime
-
-- `persist`: project
-
-### Memory
-
-```yaml
-reads:
-  - evidence_register: prior control evidence states, accepted artifacts, exceptions, and next review timing
-  - latest_evidence_at: newest processed evidence artifact timestamp
-writes:
-  - latest_evidence_at: advanced when newer evidence events are accepted for review
-```
-
 ### Shape
 
-- `self`: normalize activation events, deduplicate against project memory, and
-  choose controls whose evidence needs review
+- `self`: normalize activation events, deduplicate against the prior control
+  truth, and choose controls whose evidence needs review
 - `prohibited`: guessing control owners, frameworks, or evidence requirements
-  that are not present in the input or register
+  that are not present in the input or prior truth
 
 ### Strategies
 
@@ -51,4 +38,4 @@ writes:
 - when the activation is an audit request: prioritize requested frameworks,
   control families, and artifacts
 - when the activation is pressure without specific controls: select stale,
-  missing, or exception-backed evidence from the register
+  missing, or exception-backed evidence from the prior truth

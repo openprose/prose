@@ -1,23 +1,17 @@
 ---
 name: cross-run-differ
-kind: system
+kind: function
 ---
 
 # Cross-Run Differ
 
 Given 2 or more runs of the same system (different models, inputs, or system versions), produce a structured comparison of outputs, timing, cost, and quality. This enables A/B testing across model tiers, input variations, and system iterations.
 
-### Services
-
-- collector
-- differ
-- recommender
-
-### Requires
+### Parameters
 
 - subjects: run[] — completed runs to compare (minimum 2, must be runs of the same system or explicitly related systems)
 
-### Ensures
+### Returns
 
 - comparison: structured diff report containing:
     - system: the system name (or names if comparing across versions)
@@ -28,6 +22,16 @@ Given 2 or more runs of the same system (different models, inputs, or system ver
     - quality_diff: if inspector results are available for these runs, compare scores; otherwise note "no inspection data"
     - summary: narrative comparison highlighting the most significant differences and their likely causes
     - recommendation: which run produced the best result and why, or "inconclusive" with reasoning
+
+### Execution
+
+Orchestrate the comparison in three sequential steps, each a `call` to the internal helper below:
+
+1. `call collector` with `subjects` to read all runs and extract comparable data, validating that the runs are meaningfully comparable.
+2. `call differ` with the collected `run-data` to produce structured diffs across output, timing, cost, and quality.
+3. `call recommender` with the `diffs` and `run-data` to synthesize the final `comparison`.
+
+Return the `comparison` produced by `recommender`.
 
 ### Errors
 
@@ -54,11 +58,11 @@ Given 2 or more runs of the same system (different models, inputs, or system ver
 
 Read all runs and extract comparable data. Validate that the runs are meaningfully comparable.
 
-### Requires
+### Parameters
 
-- subjects: the run[] binding
+- subjects: the run[] argument
 
-### Ensures
+### Returns
 
 - run-data: for each run, a structured record containing:
     - run_id: string
@@ -90,11 +94,11 @@ Read all runs and extract comparable data. Validate that the runs are meaningful
 
 Produce structured diffs across all dimensions: output content, timing, cost, and quality.
 
-### Requires
+### Parameters
 
 - run-data: collected data from collector
 
-### Ensures
+### Returns
 
 - diffs: structured comparison containing:
     - output_diff: per-service comparison with semantic similarity assessment and highlighted divergences
@@ -117,14 +121,14 @@ Produce structured diffs across all dimensions: output content, timing, cost, an
 
 Synthesize the diffs into actionable recommendations.
 
-### Requires
+### Parameters
 
 - diffs: structured comparison from differ
 - run-data: from collector (for context)
 
-### Ensures
+### Returns
 
-- comparison: the final output matching the system's top-level ensures schema, with recommendation and summary
+- comparison: the final output matching the top-level `### Returns` schema, with recommendation and summary
 
 ### Strategies
 

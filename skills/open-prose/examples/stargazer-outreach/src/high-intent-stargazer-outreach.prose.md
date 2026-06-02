@@ -11,34 +11,63 @@ id: 067NC4KG19TPD9V8D5N6PV3DDR
 High-intent GitHub stargazers are identified, enriched, qualified, and prepared
 for thoughtful OpenProse outreach.
 
+### Requires
+
+- `stargazers`: a current view of new high-intent GitHub stargazers, with the
+  repository and source context needed for bounded public enrichment
+
+### Maintains
+
+- `outreach`: per-stargazer truth. Its subscribable parts are the two `####`
+  facets below — each `####` part *is* a facet (fingerprint unit +
+  `Requires.<facet>` ↔ `Maintains.<facet>` subscription symbol +
+  `published/<facet>/…` subtree).
+- each entry has: login, repository, first seen time, latest evidence, status,
+  draft summary, and contact safety notes
+- immaterial everywhere: enrichment scan timestamps and source request ids
+- postcondition: recommended outreach names a specific workflow the person could
+  reuse or adapt — never generic
+- postcondition: a stargazer is never contacted twice without new evidence
+- postcondition: final send decisions are left to a human owner
+
+#### qualification
+
+Material: fit verdict, evidence summary, outreach angle, and recommended next
+action. A downstream that drafts or queues outreach subscribes here and wakes
+when the verdict moves, not when contact history is appended.
+
+#### contact-history
+
+Material: first seen time, prior contact decisions, and duplicate-contact
+safeguards, preserved across renders.
+
 ### Continuity
 
-- New stargazers should be reviewed within one business day of first sighting.
-- Outreach history should prevent duplicate contact unless new evidence changes
-  the person's fit.
-- Stale qualified leads should be revisited when repository, company, or
-  project evidence changes materially.
+- input-driven: new stargazers should be reviewed within one business day of
+  first sighting
+- self-driven: revisit stale qualified leads when repository, company, or
+  project evidence changes materially
 
-### Criteria
-
-- Qualification includes public GitHub activity, repository context, company or
-  project context, and plausible OpenProse pain.
-- Recommended outreach names a specific workflow the person could reuse or
-  adapt.
-- The durable ledger records first seen time, latest evidence, status, draft
-  summary, and contact safety notes.
-
-### Constraints
+### Invariants
 
 - Do not send generic outreach or claim private knowledge.
-- Do not contact the same person repeatedly without new evidence.
 - Keep enrichment bounded to public, low-cost sources.
-- Leave final send decisions to a human owner.
 
-### Tools
+### Execution
 
-(none)
+```prose
+let candidates = call collect-new-stargazers
+  stargazers: stargazers
+  prior-outreach: outreach
 
-### Fulfillment
+let profiles = call enrich-stargazer
+  candidate-stargazers: candidates
 
-Prefer the local `stargazer-outreach` system.
+let leads = call qualify-stargazer
+  stargazer-profiles: profiles
+
+let batch = call draft-outreach
+  qualified-leads: leads
+
+return { outreach: batch }
+```

@@ -1,6 +1,6 @@
 ---
 name: draft-release-brief
-kind: service
+kind: function
 ---
 
 # Draft Release Brief
@@ -9,22 +9,22 @@ kind: service
 
 Turns normalized evidence and risk assessment into a release-owner brief.
 
-### Requires
+### Parameters
 
-- `evidence_packet`: normalized release evidence with candidate version,
+- `evidence-packet`: normalized release evidence with candidate version,
   validation results, docs and migration status, known risks, rollback notes,
   contradictions, and missing evidence
-- `risk_assessment`: ship posture, blockers, non-blocking risks, missing
+- `risk-assessment`: ship posture, blockers, non-blocking risks, missing
   evidence, confidence, and rationale
-- `release_questions`: open questions that need an owner, source, or next
+- `release-questions`: open questions that need an owner, source, or next
   review time before the recommendation can be trusted
 
-### Ensures
+### Returns
 
-- `release_brief`: concise readiness brief with candidate version, ship or hold
+- `release-brief`: concise readiness brief with candidate version, ship or hold
   recommendation, evidence summary, blockers, risks, user-facing notes,
   rollback context, open questions, and next review timing
-- `brief_followups`: owned follow-up actions needed before ship or after hold
+- `brief-followups`: owned follow-up actions needed before ship or after hold
 
 ### Invariants
 

@@ -5,7 +5,7 @@ kind: pattern
 
 # Worker-Critic
 
-One service works, another evaluates. Retry until the critic accepts or budget exhausts.
+One worker works, another evaluates. Retry until the critic accepts or budget exhausts.
 
 ### Description
 
@@ -46,13 +46,13 @@ Iteratively refines a worker's output by looping through critic evaluation until
 ### Requires
 
 - Pattern instance receives:
-    worker: string        -- service or system name to use as worker
-    critic: string        -- service or system name to use as critic
+    worker: string        -- function or responsibility name to use as worker
+    critic: string        -- function or responsibility name to use as critic
     task_brief: string    -- the task to pass to the worker
     criteria: string      -- acceptance criteria for the critic
     max_rounds: number    -- (optional, default 3)
 
-### Ensures
+### Returns
 
 - Worker receives only the task brief (first attempt) or task brief + critique (retries)
 - Critic receives the worker's result AND the original task brief AND the criteria

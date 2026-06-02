@@ -1,0 +1,62 @@
+{
+  "scenario": "contract-redline",
+  "title": "60-page contract. You changed one clause. One section re-summarized. The risk-rollup updated. Nothing else moved.",
+  "beats": [
+    {
+      "name": "cold-boot",
+      "park": 19,
+      "from": 0,
+      "to": 19,
+      "holdMs": 2600,
+      "caption": "the whole contract graph lights up once — 8 sections, rollup, exec, report"
+    },
+    {
+      "name": "quiet",
+      "park": 27,
+      "from": 20,
+      "to": 27,
+      "holdMs": 2400,
+      "caption": "a re-scan with no edits · every node memo-skips · cost flat near zero"
+    },
+    {
+      "name": "self-tick",
+      "park": 29,
+      "from": 28,
+      "to": 29,
+      "holdMs": 2400,
+      "caption": "self-tick audit floor · a lone self-pulse on the rollup, no edges, no cost"
+    },
+    {
+      "name": "hero-one-clause",
+      "park": 35,
+      "from": 30,
+      "to": 35,
+      "holdMs": 4000,
+      "caption": "HERO: edit ONE clause in §3 · only Summarize §3 wakes · 7 sibling sections stay DARK · rollup → exec → report update"
+    },
+    {
+      "name": "memo-hit",
+      "park": 37,
+      "from": 36,
+      "to": 37,
+      "holdMs": 4000,
+      "caption": "cosmetic edit to §3 (reflow only) · the gateway memo-SKIPS · no lane lit · no rollup · the edit was not material"
+    },
+    {
+      "name": "second-clause",
+      "park": 43,
+      "from": 38,
+      "to": 43,
+      "holdMs": 3200,
+      "caption": "a substantive edit to §5 · a DIFFERENT single lane lights · the dark lane is real, not luck"
+    },
+    {
+      "name": "final-quiet",
+      "park": 61,
+      "from": 44,
+      "to": 61,
+      "holdMs": 2600,
+      "caption": "it goes quiet again · cost back to flat"
+    }
+  ]
+}

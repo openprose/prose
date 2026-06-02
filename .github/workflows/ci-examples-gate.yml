@@ -1,0 +1,71 @@
+name: CI - OpenProse Examples Gate
+
+# Runs the DETERMINISTIC, OFFLINE example suite on every PR that touches the
+# shipped learning examples, their conformance tests, the eval harness, or the
+# shared gate wiring. Three tiers, all at zero model spend (REACTOR_OFFLINE=1):
+#
+#   - tier-1 doc-conformance  (tests/open-prose/examples/**)
+#   - tier-2 ledger-replay     (skills/open-prose/examples/**/*.test.ts)
+#   - eval-harness deterministic checker (tools/eval-harness/eval-harness.test.mjs)
+#
+# The key-gated LLM judge panel is NEVER run here: REACTOR_OFFLINE=1 forces
+# hasOpenRouterKey() to false, and no OPENROUTER_API_KEY secret is wired into
+# this workflow, so the judge path stays a passing-skipped no-op.
+
+on:
+  pull_request:
+    paths:
+      - "skills/open-prose/examples/**"
+      - "tests/open-prose/examples/**"
+      - "tools/eval-harness/**"
+      - "vitest.config.ts"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "packages/reactor/**"
+      - "packages/reactor-devtools/**"
+      - ".github/workflows/ci-examples-gate.yml"
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-examples-gate-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  examples:
+    name: CI - Examples Gate (offline)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # Force the offline path everywhere: no network, no model spend, and the
+      # LLM judge panel stays a passing-skipped no-op (no key resolvable).
+      REACTOR_OFFLINE: "1"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "pnpm"
+          cache-dependency-path: "pnpm-lock.yaml"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build reactor + devtools (the example tests replay their dist)
+        run: |
+          pnpm --filter @openprose/reactor build
+          pnpm --filter @openprose/reactor-devtools build
+
+      - name: Tier-2 ledger-replay + tier-1 doc-conformance + eval-harness
+        run: pnpm test:examples

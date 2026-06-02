@@ -1,18 +1,18 @@
 ---
 name: user-memory
-kind: service
+kind: function
 ---
 
 ### Runtime
 
 - `persist`: user
 
-### Requires
+### Parameters
 
 - mode: "teach" (add knowledge), "query" (ask questions), or "reflect" (summarize topic)
 - content: what to teach, ask, or reflect on
 
-### Ensures
+### Returns
 
 - result: learning confirmation, answer from accumulated knowledge, or reflection with confidence levels and knowledge gaps
 

@@ -1,14 +1,19 @@
 {
-  "kind": "openprose.repository-ir",
+  "kind": "openprose.compile-phase-ir",
   "sources": [
     {
       "path": "bad.prose.md",
       "kind": "responsibility"
     }
   ],
-  "responsibilities": [],
-  "triggers": [],
-  "activations": [],
-  "formeManifests": [],
+  "topology": {
+    "nodes": [],
+    "edges": [],
+    "entry_points": [],
+    "acyclic": true
+  },
+  "canonicalizers": [],
+  "postconditions": [],
+  "contract_fingerprints": {},
   "diagnostics": []
 }

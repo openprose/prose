@@ -1,0 +1,96 @@
+{
+  "nodes": [
+    {
+      "node": "gateway.contract-source-files",
+      "contract_fingerprint": "sha256:2e773a002546ab252c5f2e60e89fd03cd3d4cd41ff569a2589a39eb58d7c6c6f",
+      "wake_source": "external"
+    },
+    {
+      "node": "gateway.operator-pins",
+      "contract_fingerprint": "sha256:a78d572ea8150081b325abf25263d9e72bc649d96f3e01c7c3645de251adeef6",
+      "wake_source": "external"
+    },
+    {
+      "node": "responsibility.contract-registry",
+      "contract_fingerprint": "sha256:591b6f30dd49317add7dd5288220d096ac4149193b678a29a8966dfbfdef0c17",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.topology-maintainer",
+      "contract_fingerprint": "sha256:830392ce1683939553302546f998122063c60c97903c1a9bd2f3c6622a91f60f",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.schedule-plan",
+      "contract_fingerprint": "sha256:cde8f65481b8215dc214b2aaae519ac0a2e2b5f96d3624af3ff9d6599c944e5a",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.topology-change-reporter",
+      "contract_fingerprint": "sha256:7ae7d8118eb62bdf8c19975508f0b5999debf8751f833470c3a6b3badc42e3f3",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.topology-safety-auditor",
+      "contract_fingerprint": "sha256:f69ceacdc738aa173bc25d03e27e334b9b7dd7c5ed83dcc4fee0c0f2d04c437c",
+      "wake_source": "input"
+    }
+  ],
+  "edges": [
+    {
+      "subscriber": "gateway.contract-source-files",
+      "producer": "ingress.contract-sources",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "gateway.operator-pins",
+      "producer": "ingress.operator-pins",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.contract-registry",
+      "producer": "gateway.contract-source-files",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.topology-maintainer",
+      "producer": "responsibility.contract-registry",
+      "facet": "contract-set"
+    },
+    {
+      "subscriber": "responsibility.topology-maintainer",
+      "producer": "gateway.operator-pins",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.schedule-plan",
+      "producer": "responsibility.topology-maintainer",
+      "facet": "active-graph"
+    },
+    {
+      "subscriber": "responsibility.topology-change-reporter",
+      "producer": "responsibility.topology-maintainer",
+      "facet": "active-graph"
+    },
+    {
+      "subscriber": "responsibility.topology-change-reporter",
+      "producer": "responsibility.topology-maintainer",
+      "facet": "diagnostics"
+    },
+    {
+      "subscriber": "responsibility.topology-safety-auditor",
+      "producer": "responsibility.topology-maintainer",
+      "facet": "active-graph"
+    },
+    {
+      "subscriber": "responsibility.topology-safety-auditor",
+      "producer": "responsibility.topology-maintainer",
+      "facet": "diagnostics"
+    }
+  ],
+  "entry_points": [
+    "gateway.contract-source-files",
+    "gateway.operator-pins"
+  ],
+  "acyclic": true
+}

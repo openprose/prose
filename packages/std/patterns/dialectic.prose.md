@@ -42,15 +42,15 @@ Thesis and antithesis argue opposing positions; the unresolved tension is the ou
   - `antithesis`: argue against it
 - `prohibited`: none
 
-### Requires
+### Parameters
 
 - Pattern instance receives:
-    thesis: string        -- service or system name for thesis service
-    antithesis: string    -- service or system name for antithesis service
+    thesis: string        -- function or responsibility name for thesis service
+    antithesis: string    -- function or responsibility name for antithesis service
     task_brief: string    -- the question or proposition to argue
     rounds: number        -- (optional, default 2)
 
-### Ensures
+### Returns
 
 - Round 1: thesis argues first, antithesis responds
 - Subsequent rounds: each service sees the other's prior argument

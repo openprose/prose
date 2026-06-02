@@ -1,0 +1,190 @@
+{
+  "nodes": [
+    {
+      "node": "gateway.runtime-watch",
+      "contract_fingerprint": "sha256:177e2f6ca10e735bdfae817432ce1100b52beb77faa8986d669349a81aa80df4",
+      "wake_source": "external"
+    },
+    {
+      "node": "responsibility.adapter-claude",
+      "contract_fingerprint": "sha256:dfbd48e3fae3dbeac0fd451e97a4bcfff4b25c1861405f237039d284610fafbb",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.adapter-codex",
+      "contract_fingerprint": "sha256:bd62486aee9c0bb5b4e56412a1d6df03beba9b69651539aa10f7996637c715de",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.adapter-opencode",
+      "contract_fingerprint": "sha256:314df27261adb53d88dd3201f8a4edb11799602a08457386af216ce8f9f66afa",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.adapter-pi",
+      "contract_fingerprint": "sha256:e99c50df5f4cab773284a3ddb1790c4d30377a3d5ddc87c0f86ae4923e6ef600",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.adapter-hermes",
+      "contract_fingerprint": "sha256:7dcd58d05df4a00f3716fc609e262b1f804fe4c45b60db65679d60bb289cbaf1",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.adapter-openclaw",
+      "contract_fingerprint": "sha256:77384ad6faa4f927889a181091f4a2af9f800f959932a80f5b8170d5e39fc7bb",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.session-ledger",
+      "contract_fingerprint": "sha256:bdb219a183c2c16dbb6f6575fe1036325ddbbef22d714fe86cfb6c02bc8237ee",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.summary-claudeA",
+      "contract_fingerprint": "sha256:ed00ee0f0db073bbc85340e95f17e00c0b473e146d8eeea14bbabfc199b3fdee",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.summary-claudeB",
+      "contract_fingerprint": "sha256:e83f3139a08ea558355121e653b6a0dbe0971c605d1d81353c9180448a9e71c6",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.summary-codexA",
+      "contract_fingerprint": "sha256:d96fdb1cd990c46709540ad074d04d42405d1f6e2c6a4cb1baf4a1472f03681d",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.workstream-index",
+      "contract_fingerprint": "sha256:4285fcf3971043622bd5d0b37607e13014eedaed6c1d724455db5191502c6a79",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.concept-clusterer",
+      "contract_fingerprint": "sha256:652d31a2934aedab496142b9afcf9a6e45a1e2f4fc958c57f15a1e87f84f8269",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.dashboard",
+      "contract_fingerprint": "sha256:128e1e22d22d98fef74d5af53b9605936b346501a222163818c6ae41528ce9fe",
+      "wake_source": "input"
+    }
+  ],
+  "edges": [
+    {
+      "subscriber": "gateway.runtime-watch",
+      "producer": "ingress.agent-fs",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.adapter-claude",
+      "producer": "gateway.runtime-watch",
+      "facet": "claude"
+    },
+    {
+      "subscriber": "responsibility.adapter-codex",
+      "producer": "gateway.runtime-watch",
+      "facet": "codex"
+    },
+    {
+      "subscriber": "responsibility.adapter-opencode",
+      "producer": "gateway.runtime-watch",
+      "facet": "opencode"
+    },
+    {
+      "subscriber": "responsibility.adapter-pi",
+      "producer": "gateway.runtime-watch",
+      "facet": "pi"
+    },
+    {
+      "subscriber": "responsibility.adapter-hermes",
+      "producer": "gateway.runtime-watch",
+      "facet": "hermes"
+    },
+    {
+      "subscriber": "responsibility.adapter-openclaw",
+      "producer": "gateway.runtime-watch",
+      "facet": "openclaw"
+    },
+    {
+      "subscriber": "responsibility.session-ledger",
+      "producer": "responsibility.adapter-claude",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.session-ledger",
+      "producer": "responsibility.adapter-codex",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.session-ledger",
+      "producer": "responsibility.adapter-opencode",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.session-ledger",
+      "producer": "responsibility.adapter-pi",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.session-ledger",
+      "producer": "responsibility.adapter-hermes",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.session-ledger",
+      "producer": "responsibility.adapter-openclaw",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.summary-claudeA",
+      "producer": "responsibility.session-ledger",
+      "facet": "session:claudeA"
+    },
+    {
+      "subscriber": "responsibility.summary-claudeB",
+      "producer": "responsibility.session-ledger",
+      "facet": "session:claudeB"
+    },
+    {
+      "subscriber": "responsibility.summary-codexA",
+      "producer": "responsibility.session-ledger",
+      "facet": "session:codexA"
+    },
+    {
+      "subscriber": "responsibility.workstream-index",
+      "producer": "responsibility.summary-claudeA",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.workstream-index",
+      "producer": "responsibility.summary-claudeB",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.workstream-index",
+      "producer": "responsibility.summary-codexA",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.concept-clusterer",
+      "producer": "responsibility.workstream-index",
+      "facet": "cluster-gate"
+    },
+    {
+      "subscriber": "responsibility.dashboard",
+      "producer": "responsibility.workstream-index",
+      "facet": "rollup"
+    },
+    {
+      "subscriber": "responsibility.dashboard",
+      "producer": "responsibility.concept-clusterer",
+      "facet": "@atomic"
+    }
+  ],
+  "entry_points": [
+    "gateway.runtime-watch"
+  ],
+  "acyclic": true
+}

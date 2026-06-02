@@ -1,6 +1,6 @@
 ---
 name: inbox-ingestor
-kind: service
+kind: function
 ---
 
 # Inbox Ingestor
@@ -8,7 +8,7 @@ kind: service
 ### Description
 
 Normalizes raw inbox submissions into compact item records that downstream
-triage services can compare.
+triage steps can compare.
 
 ### Shape
 
@@ -16,15 +16,15 @@ triage services can compare.
   duplicates in the submitted batch
 - `prohibited`: ranking long-term importance or assigning owners
 
-### Requires
+### Parameters
 
-- `inbox_items`: new papers, links, notes, or questions awaiting triage
+- `inbox-items`: new papers, links, notes, or questions awaiting triage
 
-### Ensures
+### Returns
 
-- `normalized_items`: cleaned item records with title, source, submitted note,
+- `normalized-items`: cleaned item records with title, source, submitted note,
   received timestamp when known, and extracted tags
-- `batch_duplicate_hints`: likely duplicates within this batch, with the reason
+- `batch-duplicate-hints`: likely duplicates within this batch, with the reason
   they appear related
 
 ### Strategies

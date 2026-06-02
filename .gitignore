@@ -22,3 +22,4 @@ openprose-smoke-results/
 # Local agent overrides — never checked in
 AGENTS.override.md
 CLAUDE.local.md
+.reactor/

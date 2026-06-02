@@ -1,0 +1,15 @@
+{
+  "ingress.contract-doc": "Contract Doc",
+  "gateway.clauses": "Clauses",
+  "responsibility.summarize-section-1": "Summarize §1",
+  "responsibility.summarize-section-2": "Summarize §2",
+  "responsibility.summarize-section-3": "Summarize §3",
+  "responsibility.summarize-section-4": "Summarize §4",
+  "responsibility.summarize-section-5": "Summarize §5",
+  "responsibility.summarize-section-6": "Summarize §6",
+  "responsibility.summarize-section-7": "Summarize §7",
+  "responsibility.summarize-section-8": "Summarize §8",
+  "responsibility.risk-rollup": "Risk Rollup",
+  "responsibility.exec-summary": "Exec Summary",
+  "responsibility.redline-report": "Redline Report"
+}

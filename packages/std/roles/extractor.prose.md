@@ -1,6 +1,6 @@
 ---
 name: extractor
-kind: service
+kind: function
 ---
 
 # Extractor
@@ -15,18 +15,20 @@ Pull structured data from unstructured input given a target schema.
 
 - `version`: 0.1.0
 
-### Requires
+### Parameters
 
 - input: the unstructured data (text, log output, raw observations, HTML, etc.)
 - schema: the target structure with field names, types, and descriptions of what each field should contain
 
-### Ensures
+### Returns
 
 - extracted: an object conforming to the target schema where:
     - each field has a confidence indicator (high, medium, low)
     - fields that cannot be confidently extracted are null with a reason -- never hallucinated
     - no information in the output that was not in the input
 - if the input contains multiple valid extractions: all are returned, or the ambiguity is flagged, depending on the schema's cardinality
+
+The returned object is guaranteed to conform to the target schema, to carry no information that was not present in the input, and to render unconfident fields as null-with-a-reason rather than fabricated values.
 
 ### Errors
 

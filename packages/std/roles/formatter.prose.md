@@ -1,6 +1,6 @@
 ---
 name: formatter
-kind: service
+kind: function
 ---
 
 # Formatter
@@ -15,17 +15,14 @@ Transform structured data into a specified output format with no information los
 
 - `version`: 0.1.0
 
-### Requires
+### Parameters
 
 - data: the structured input to format
 - target_format: the desired output format (e.g., Markdown, JSON, HTML, CSV) with any style or layout requirements
 
-### Ensures
+### Returns
 
-- formatted: the data rendered in the target format where:
-    - all information from the input is present in the output -- no fields dropped silently
-    - the output is valid in the target format (valid JSON parses, valid HTML renders, valid CSV has consistent columns)
-    - missing or null fields are handled gracefully (omitted with a note, rendered as empty, or replaced with a placeholder -- consistent throughout)
+- formatted: the data rendered in the target format. The returned value guarantees that all information from the input is present in the output -- no fields dropped silently; that the output is valid in the target format (valid JSON parses, valid HTML renders, valid CSV has consistent columns); and that missing or null fields are handled gracefully (omitted with a note, rendered as empty, or replaced with a placeholder -- consistent throughout).
 
 ### Errors
 

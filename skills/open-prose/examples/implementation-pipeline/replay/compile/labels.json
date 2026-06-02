@@ -1,0 +1,19 @@
+{
+  "ingress.planning-corpus": "Planning Inbox",
+  "gateway.planning-corpus": "Planning Corpus",
+  "responsibility.implementation-corpus": "Implementation Corpus",
+  "responsibility.implementation-work-plan": "Implementation Work Plan",
+  "responsibility.foundation-builder": "Foundation Builder",
+  "responsibility.foundation-review": "Foundation Review",
+  "responsibility.lane-sdk-world-model": "Lane · SDK World-Model",
+  "responsibility.lane-sdk-runtime": "Lane · SDK Runtime",
+  "responsibility.lane-sdk-compile": "Lane · SDK Compile",
+  "responsibility.lane-skill-contract": "Lane · Skill Contract",
+  "responsibility.lane-examples-tests": "Lane · Examples/Test",
+  "responsibility.lane-docs-signposts": "Lane · Docs/Signpost",
+  "responsibility.construction-review": "Construction Review",
+  "responsibility.integration-builder": "Integration Builder",
+  "responsibility.verification-runner": "Verification Runner",
+  "responsibility.signpost-index": "Signpost Index",
+  "responsibility.implementation-report": "Implementation Report"
+}

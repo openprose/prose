@@ -14,6 +14,6 @@ the VM interprets and executes systems.
 
 ## Contents
 
-- `authoring.md` — canonical guidance for services, systems, patterns, tests, responsibility-oriented repositories, memory, and security boundaries
-- `tenets.md` — architectural tenets behind the OpenProse specs
+- `authoring.md` — canonical guidance for responsibilities, functions, gateways, patterns, tests, the world-model, and security boundaries
+- `tenets.md` — architectural tenets behind the OpenProse specs (the two-layer / two-phase architecture)
 - `system-prompt.md` — system-prompt text injected when the skill is active

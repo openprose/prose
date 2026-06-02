@@ -1,0 +1,34 @@
+{
+  "scenario": "masked-relay",
+  "title": "A 12-node peer-blind relay. A new signal arrives and one path re-renders; a no-change re-wake memo-skips the whole relay; cost scales with surprise, never the clock.",
+  "beats": [
+    {
+      "name": "cold-boot",
+      "from": 0,
+      "to": 11,
+      "holdMs": 2600,
+      "caption": "cold start · all 12 nodes render once · scouts fan out peer-blind · masker projects per-consumer view facets · synthesizer commits over the full trail"
+    },
+    {
+      "name": "surprise-s2",
+      "from": 12,
+      "to": 23,
+      "holdMs": 3200,
+      "caption": "a NEW signal (S2) arrives · the gateway memo-misses · the relay re-renders down its path · fresh tokens spike with the surprise"
+    },
+    {
+      "name": "quiet-skip",
+      "from": 24,
+      "to": 35,
+      "holdMs": 2400,
+      "caption": "a byte-identical re-wake · the GATEWAY memo-SKIPS and nothing downstream wakes · no facet moves · no lane lights · fresh 0 — the flat-line"
+    },
+    {
+      "name": "surprise-s3",
+      "from": 36,
+      "to": 47,
+      "holdMs": 3200,
+      "caption": "a third distinct signal (S3) · another surprise spike · the masked projections re-derive deterministically"
+    }
+  ]
+}

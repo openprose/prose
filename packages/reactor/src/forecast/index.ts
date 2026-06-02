@@ -1,183 +1,334 @@
+// forecast/ — self-driven `### Continuity` + the freshness bridge.
+//
+// A continuity tick is a receipt whose `wake.source === "self"`. A lapsed
+// `valid_until` moves a facet's fingerprint, so "time becoming material"
+// propagates as ordinary surprise — there is no special clock path.
+//
+// Two senses of "stale" live in two places (world-model.md §6):
+//   - Freshness *state* (`valid_until`) is DATA in the world-model, reaching us
+//     as the per-facet freshness map we read.
+//   - Freshness *policy* (the recheck cadence) is `### Continuity`, reaching us
+//     as the schedule. It may read the soonest `valid_until` to drive its
+//     cadence — that is the `next_self_recheck` we compute and surface.
+
 import {
-  type ContentHashV0,
-  type ReceiptRecheckKindV0,
-  type ReceiptV0,
-  createNullSignerReceiptSignatureV0,
-  createReceiptV0,
-} from "../receipt";
+  ATOMIC_FACET,
+  EMPTY_SEMANTIC_DIFF,
+  asFingerprint,
+  type ContentAddress,
+  type Cost,
+  type Facet,
+  type Fingerprint,
+  type FingerprintMap,
+  type InputFingerprints,
+  type Wake,
+} from "../shapes/index";
+import {
+  type LedgerReceipt,
+  createNullSignature,
+  createReceipt,
+} from "../receipt/index";
 
-export interface ForecastScheduleStateV0 {
-  readonly responsibility_id: string;
-  readonly contract_revision: ContentHashV0;
-  readonly memo_key: string;
-  readonly evidence_input_ids: readonly ContentHashV0[];
-  readonly next_evidence_recheck: string;
-  readonly next_plan_recheck: string;
+// ---------------------------------------------------------------------------
+// Freshness state (DATA in the world-model — world-model.md §6 lines 269-272)
+// ---------------------------------------------------------------------------
+
+/**
+ * A single facet's published fingerprint paired with its freshness expiry. This
+ * is the world-model's freshness *state* (`valid_until`) carried as data in the
+ * truth (world-model.md §6 line 269-272; architecture.md §4.2 lines 185-186).
+ * `valid_until` is `null` for a facet with no expiry policy (timeless truth).
+ */
+export interface FacetFreshness {
+  readonly facet: Facet;
+  /** The facet's currently-published fingerprint (the unmoved token). */
+  readonly fingerprint: Fingerprint;
+  /** The instant this facet's truth lapses, or `null` if it never expires. */
+  readonly valid_until: string | null;
 }
 
-export interface ForecastScheduleInputV0 {
+/**
+ * The self-driven continuity schedule (delta.md §A3.5). The freshness *policy*
+ * (`### Continuity` cadence) is the schedule's clock; the freshness *state* is
+ * the per-facet freshness it carries. `node` and `contract_fingerprint` replace
+ * the old `responsibility_id` / `contract_revision` (delta.md §A6 lines
+ * 225-226). `input_fingerprints` replaces `evidence_input_ids` (delta.md §A6
+ * line 228) — the consumed-facet tuple the last render saw.
+ */
+export interface ContinuitySchedule {
+  readonly node: string;
+  readonly contract_fingerprint: Fingerprint;
+  readonly input_fingerprints: InputFingerprints;
+  /** Per-facet published fingerprints + their `valid_until` (freshness state). */
+  readonly facets: readonly FacetFreshness[];
+  /** The prior receipt this node committed; chains the ledger (`prev`). */
+  readonly prev: ContentAddress | null;
+  /** Provider/model labels for the synthetic-tick cost attribution. */
+  readonly provider?: string;
+  readonly model?: string;
+}
+
+export interface ContinuityTickInput {
   readonly as_of: string;
-  readonly schedule: ForecastScheduleStateV0;
-  readonly real_input_observed: boolean;
+  readonly schedule: ContinuitySchedule;
 }
 
-export type ForecastScheduleResultV0 =
+// ---------------------------------------------------------------------------
+// Tick evaluation
+// ---------------------------------------------------------------------------
+
+/**
+ * The outcome of the node's continuity clock ticking.
+ *
+ *   - `sleep`  — no facet has lapsed as of `as_of`; nothing to re-examine. The
+ *     node stays asleep until `next_self_recheck` (the soonest `valid_until`,
+ *     world-model.md §6 lines 278-280). No receipt is manufactured.
+ *   - `self-receipt` — at least one facet's `valid_until` has lapsed. We
+ *     manufacture a single synthetic self-receipt (the tick, world-model.md §5
+ *     lines 234-236) that flips the lapsed facets' status, moving their
+ *     fingerprints. `next_self_recheck` is the soonest *remaining* expiry, if
+ *     any.
+ */
+export type ContinuityTickResult =
   | {
       readonly outcome: "sleep";
-      readonly next_due_at: string;
-      readonly token_bearing_receipts: readonly ReceiptV0[];
-      readonly due_rechecks: readonly ReceiptRecheckKindV0[];
+      readonly next_self_recheck: string | null;
     }
   | {
-      readonly outcome: "manufacture-recheck";
-      readonly next_due_at?: string;
-      readonly receipts: readonly ReceiptV0[];
-      readonly token_bearing_receipts: readonly ReceiptV0[];
-      readonly due_rechecks: readonly ReceiptRecheckKindV0[];
-      readonly reason: "forecast-clock-crossed" | "adversarial-silent";
+      readonly outcome: "self-receipt";
+      readonly next_self_recheck: string | null;
+      readonly lapsed_facets: readonly Facet[];
+      readonly receipt: LedgerReceipt;
     };
 
-export function evaluateForecastScheduleV0(
-  input: ForecastScheduleInputV0,
-): ForecastScheduleResultV0 {
+/**
+ * Evaluate the continuity clock. Reads the world-model's freshness *state* (the
+ * per-facet `valid_until`) under the `### Continuity` *policy* (this clock), and
+ * either sleeps or manufactures one synthetic self-receipt whose lapsed facets'
+ * fingerprints have moved.
+ *
+ * This is the freshness bridge made mechanical (world-model.md §6 lines
+ * 276-283): a lapsed `valid_until` MOVES the facet's fingerprint, so the move
+ * propagates as ordinary surprise — there is no special clock path in the
+ * reconciler; the tick is just a receipt with `wake.source === "self"`.
+ */
+export function evaluateContinuityTick(
+  input: ContinuityTickInput,
+): ContinuityTickResult {
   const asOfMs = parseInstantMs(input.as_of, "as_of");
-  const dueRechecks = dueRecheckKinds(input.schedule, asOfMs);
+  const { schedule } = input;
 
-  if (dueRechecks.length === 0) {
+  const lapsed = schedule.facets.filter(
+    (facet) => isLapsed(facet.valid_until, asOfMs),
+  );
+
+  if (lapsed.length === 0) {
     return {
       outcome: "sleep",
-      next_due_at: earliestInstant([
-        input.schedule.next_evidence_recheck,
-        input.schedule.next_plan_recheck,
-      ]),
-      token_bearing_receipts: [],
-      due_rechecks: [],
+      next_self_recheck: soonestValidUntil(schedule.facets),
     };
   }
 
-  const receipts = dueRechecks.map((recheckKind) =>
-    createForecastRecheckReceiptV0({
-      responsibility_id: input.schedule.responsibility_id,
-      contract_revision: input.schedule.contract_revision,
-      memo_key: input.schedule.memo_key,
-      evidence_input_ids: input.schedule.evidence_input_ids,
-      as_of: input.as_of,
-      recheck_kind: recheckKind,
-    }),
+  const lapsedFacetNames = lapsed.map((facet) => facet.facet);
+  const fingerprints = applyFreshnessMove(schedule.facets, lapsedFacetNames);
+
+  const receipt = createSelfRecheckReceipt({
+    node: schedule.node,
+    contract_fingerprint: schedule.contract_fingerprint,
+    input_fingerprints: schedule.input_fingerprints,
+    fingerprints,
+    prev: schedule.prev,
+    as_of: input.as_of,
+    lapsed_facets: lapsedFacetNames,
+    // `exactOptionalPropertyTypes`: only thread provider/model when present, so
+    // an absent label stays absent rather than becoming an explicit `undefined`.
+    ...(schedule.provider !== undefined ? { provider: schedule.provider } : {}),
+    ...(schedule.model !== undefined ? { model: schedule.model } : {}),
+  });
+
+  // The soonest expiry that survives this tick (lapsed facets are now moved and
+  // carry a fresh expiry the next commit will set; we only schedule against the
+  // still-future expiries we know about).
+  const remaining = schedule.facets.filter(
+    (facet) => !lapsedFacetNames.includes(facet.facet),
   );
 
-  const nextDueAt = nextDueAfter(input.schedule, dueRechecks);
-
   return {
-    outcome: "manufacture-recheck",
-    ...(nextDueAt === undefined ? {} : { next_due_at: nextDueAt }),
-    receipts,
-    token_bearing_receipts: tokenBearingReceipts(receipts),
-    due_rechecks: dueRechecks,
-    reason: input.real_input_observed ? "forecast-clock-crossed" : "adversarial-silent",
+    outcome: "self-receipt",
+    next_self_recheck: soonestValidUntil(remaining),
+    lapsed_facets: lapsedFacetNames,
+    receipt,
   };
 }
 
-export interface ForecastRecheckReceiptInputV0 {
-  readonly responsibility_id: string;
-  readonly contract_revision: ContentHashV0;
-  readonly memo_key: string;
-  readonly evidence_input_ids: readonly ContentHashV0[];
+// ---------------------------------------------------------------------------
+// Synthetic self-receipt construction (the tick)
+// ---------------------------------------------------------------------------
+
+export interface SelfRecheckReceiptInput {
+  readonly node: string;
+  readonly contract_fingerprint: Fingerprint;
+  readonly input_fingerprints: InputFingerprints;
+  readonly fingerprints: FingerprintMap;
+  readonly prev: ContentAddress | null;
   readonly as_of: string;
-  readonly recheck_kind: ReceiptRecheckKindV0;
+  readonly lapsed_facets: readonly Facet[];
+  readonly provider?: string;
+  readonly model?: string;
 }
 
-export function createForecastRecheckReceiptV0(
-  input: ForecastRecheckReceiptInputV0,
-): ReceiptV0 {
-  return createReceiptV0({
-    core: {
-      responsibility_id: input.responsibility_id,
-      contract_revision: input.contract_revision,
-      event_cause: "forecast-recheck",
-      recheck_kind: input.recheck_kind,
-      memo_key: input.memo_key,
-      evidence_input_ids: input.evidence_input_ids,
-      as_of: input.as_of,
-      role: "judge",
-    },
-    sig: createNullSignerReceiptSignatureV0(),
-    verdict: {
-      status: "blocked",
-      confidence: {
-        value: 0,
-        derivation_method: "forecast-gated-synthetic-input",
-        calibration_grade: "none",
-        label_source: "forecast-clock",
-      },
-      blocked: {
-        reason: `forecast-${input.recheck_kind}-recheck-required`,
-        fix_target: "judge",
-        interrupt_cause: "needs-judgment",
-      },
-    },
-    freshness: {
-      as_of: input.as_of,
-      next_forecast_recheck: input.as_of,
-    },
-    composition: {
-      consumed_receipts: [],
-      cycle_checked: true,
-    },
-    cost: {
-      provider: "forecast",
-      model: "deterministic-scheduler",
-      role: "judge",
-      tags: ["forecast-recheck", input.recheck_kind],
-      responsibility_id: input.responsibility_id,
-      run_id: `forecast-${input.recheck_kind}-${input.as_of}`,
-      as_of: input.as_of,
-      tokens: { fresh: 0, reused: 0 },
-      surprise_cause: "forecast-recheck",
-    },
+/**
+ * Build the synthetic self-receipt for a continuity tick (world-model.md §5
+ * lines 234-236). `wake.source === "self"` (SHAPES.md §2; the continuity-clock
+ * self-receipt). `cost.surprise_cause === "self"` — the deterministic tick
+ * spends zero tokens but its surprise is self-driven, keeping "cost scales with
+ * surprise" observable (delta.md §A4 lines 194-197; SHAPES.md §4 line 114).
+ *
+ * `status` is `rendered`: a self-receipt that flips a lapsed facet has MOVED
+ * that facet's fingerprint, so it propagates (world-model.md §8 "only rendered
+ * with a moved fingerprint propagates"). There is no judge verdict and no
+ * `blocked` state here (delta.md §A3.5 line 183: "Drop the
+ * verdict.status:"blocked" that recheck receipts carry today").
+ */
+export function createSelfRecheckReceipt(
+  input: SelfRecheckReceiptInput,
+): LedgerReceipt {
+  const wake: Wake = {
+    source: "self",
+    refs: prevRefs(input.prev),
+  };
+
+  const cost: Cost = {
+    provider: input.provider ?? "forecast",
+    model: input.model ?? "deterministic-continuity-clock",
+    tokens: { fresh: 0, reused: 0 },
+    // The wake source that drove the spend — self-driven continuity.
+    surprise_cause: "self",
+  };
+
+  // The semantic diff is render-input context (which facets time made material),
+  // NEVER a wake signal (SHAPES.md §4 line 110; world-model.md §3). A skipped
+  // (sleeping) tick would carry EMPTY_SEMANTIC_DIFF; an active tick records the
+  // lapsed facets so a render that consumes this receipt has the context.
+  const semantic_diff =
+    input.lapsed_facets.length === 0
+      ? EMPTY_SEMANTIC_DIFF
+      : Object.freeze({
+          freshness_lapsed: [...input.lapsed_facets],
+          as_of: input.as_of,
+        });
+
+  return createReceipt({
+    node: input.node,
+    contract_fingerprint: input.contract_fingerprint,
+    wake,
+    input_fingerprints: input.input_fingerprints,
+    fingerprints: input.fingerprints,
+    semantic_diff,
+    prev: input.prev,
+    status: "rendered",
+    cost,
+    sig: createNullSignature(),
   });
 }
 
-export function tokenBearingReceipts(
-  receipts: readonly ReceiptV0[],
-): readonly ReceiptV0[] {
-  return receipts.filter(
-    (receipt) => receipt.cost.tokens.fresh + receipt.cost.tokens.reused > 0,
+// ---------------------------------------------------------------------------
+// The freshness move (world-model.md §6 lines 276-283)
+// ---------------------------------------------------------------------------
+
+/**
+ * Apply the freshness bridge: a lapsed facet's status flips, which MOVES its
+ * fingerprint. We compute the moved fingerprint deterministically from the prior
+ * fingerprint + a lapse marker, so the move is replayable and the tuple is
+ * stable. Non-lapsed facets keep their unmoved tokens. Always includes
+ * ATOMIC_FACET (SHAPES.md §1 line 40).
+ */
+export function applyFreshnessMove(
+  facets: readonly FacetFreshness[],
+  lapsedFacets: readonly Facet[],
+): FingerprintMap {
+  const lapsed = new Set<Facet>(lapsedFacets);
+  const out: Record<Facet, Fingerprint> = {};
+
+  let sawAtomic = false;
+  for (const facet of facets) {
+    if (facet.facet === ATOMIC_FACET) {
+      sawAtomic = true;
+    }
+    out[facet.facet] = lapsed.has(facet.facet)
+      ? moveFingerprint(facet.fingerprint)
+      : facet.fingerprint;
+  }
+
+  // The atomic whole-truth token moves whenever any facet moved (the whole truth
+  // changed), so downstreams subscribed at the atomic grain still wake.
+  if (!sawAtomic) {
+    const anyMoved = facets.some((facet) => lapsed.has(facet.facet));
+    out[ATOMIC_FACET] = anyMoved
+      ? moveFingerprint(atomicSeed(facets))
+      : atomicSeed(facets);
+  } else if (lapsedFacets.length > 0) {
+    const atomic = out[ATOMIC_FACET];
+    if (atomic !== undefined) {
+      out[ATOMIC_FACET] = moveFingerprint(atomic);
+    }
+  }
+
+  return Object.freeze(out);
+}
+
+/**
+ * The deterministic move a lapse applies to a fingerprint. A fingerprint is an
+ * opaque token (SHAPES.md §1 line 39); the *invariant* is "changes iff material
+ * content changed" — a lapse is exactly such a change. The reference move tags
+ * the prior token with a stale marker, which is total, replayable, and visibly
+ * distinct from the unmoved token.
+ */
+export function moveFingerprint(prior: Fingerprint): Fingerprint {
+  return prior.startsWith("stale:") ? prior : asFingerprint(`stale:${prior}`);
+}
+
+function atomicSeed(facets: readonly FacetFreshness[]): Fingerprint {
+  // A stable summary of the per-facet tokens — order-independent so it depends
+  // only on material content, not on facet enumeration order.
+  return asFingerprint(
+    [...facets]
+      .map((facet) => `${facet.facet}=${facet.fingerprint}`)
+      .sort()
+      .join("|"),
   );
 }
 
-function dueRecheckKinds(
-  schedule: ForecastScheduleStateV0,
-  asOfMs: number,
-): readonly ReceiptRecheckKindV0[] {
-  const due: ReceiptRecheckKindV0[] = [];
-  if (parseInstantMs(schedule.next_evidence_recheck, "next_evidence_recheck") <= asOfMs) {
-    due.push("evidence-age");
-  }
-  if (parseInstantMs(schedule.next_plan_recheck, "next_plan_recheck") <= asOfMs) {
-    due.push("plan-age");
-  }
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
-  return due;
+function isLapsed(validUntil: string | null, asOfMs: number): boolean {
+  if (validUntil === null) {
+    return false;
+  }
+  return parseInstantMs(validUntil, "valid_until") <= asOfMs;
 }
 
-function earliestInstant(values: readonly string[]): string {
-  return [...values].sort((left, right) => parseInstantMs(left, left) - parseInstantMs(right, right))[0] ?? "";
+function soonestValidUntil(
+  facets: readonly FacetFreshness[],
+): string | null {
+  const expiries = facets
+    .map((facet) => facet.valid_until)
+    .filter((value): value is string => value !== null)
+    .map((iso) => ({ iso, ms: parseInstantMs(iso, "valid_until") }));
+
+  if (expiries.length === 0) {
+    return null;
+  }
+
+  return expiries.reduce((soonest, candidate) =>
+    candidate.ms < soonest.ms ? candidate : soonest,
+  ).iso;
 }
 
-function nextDueAfter(
-  schedule: ForecastScheduleStateV0,
-  dueRechecks: readonly ReceiptRecheckKindV0[],
-): string | undefined {
-  const candidates: string[] = [];
-  if (!dueRechecks.includes("evidence-age")) {
-    candidates.push(schedule.next_evidence_recheck);
-  }
-  if (!dueRechecks.includes("plan-age")) {
-    candidates.push(schedule.next_plan_recheck);
-  }
-
-  return candidates.length === 0 ? undefined : earliestInstant(candidates);
+function prevRefs(prev: ContentAddress | null): readonly ContentAddress[] {
+  return prev === null ? [] : [prev];
 }
 
 function parseInstantMs(value: string, name: string): number {

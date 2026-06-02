@@ -1,6 +1,6 @@
 ---
 name: summarizer
-kind: service
+kind: function
 ---
 
 # Summarizer
@@ -15,12 +15,12 @@ Compress content while preserving specified key information.
 
 - `version`: 0.1.0
 
-### Requires
+### Parameters
 
 - content: the material to summarize
 - preserve: what must survive compression (key facts, decisions, open questions, specific entities, etc.)
 
-### Ensures
+### Returns
 
 - summary: a compressed version of the content where:
     - length is proportional to information density, not input length

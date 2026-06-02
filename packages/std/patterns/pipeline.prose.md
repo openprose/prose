@@ -34,21 +34,17 @@ Sequential transformation through multiple stages. Each stage sees only its pred
   - `stage_1..stage_N`: transform input to output
 - `prohibited`: none
 
-### Requires
+### Parameters
 
 - Pattern instance receives:
-    stages: string[]       -- ordered list of service or system names
+    stages: string[]       -- ordered list of responsibility or function names
     task_brief: string     -- initial input (goes to stage 1)
 
-### Ensures
+### Returns
 
-- Stage 1 receives the task brief as its input
-- Stage N receives stage N-1's output as its input — not the original brief
-- The pipeline does NOT curate between stages — it is a pure pass-through
-- If curation is needed: insert a role (e.g., summarizer) as an explicit stage
-- Each stage operates on a clean interface — no accumulated context
-- `result`: the final stage's output
-- `stage_outputs`: each stage's output
+- `result`: the final stage's output — produced by feeding the task brief into stage 1 and each subsequent stage only its predecessor's output, never the original brief.
+- `stage_outputs`: each stage's output, in declared order.
+- The returned values reflect a pure pass-through: the pipeline does NOT curate between stages, so each stage operated on a clean interface with no accumulated context. If curation is needed, insert a role (e.g., summarizer) as an explicit stage.
 
 ### Delegation
 

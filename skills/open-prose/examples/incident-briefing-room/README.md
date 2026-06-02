@@ -4,7 +4,6 @@
 
 ```bash
 prose compile
-cp dist/manifest.next.json dist/manifest.active.json
 prose serve
 ```
 
@@ -19,8 +18,9 @@ resolved and ready for retrospective.
 
 ## Source Shape
 
-- `src/`: responsibility, gateway, briefing system, and services
-- `dist/`: compiled intent produced by `prose compile`
-- `runs/`: bounded activation receipts
-- `state/`: durable incident timeline and decision log
+- `src/`: the `incident-channel-current` responsibility, the `incident-events`
+  gateway, and the helper `function`s it `call`s
+- `dist/`: compiled topology + canonicalizers produced by `prose compile`
+- `runs/`: append-only receipt ledger
+- `state/`: the canonical world-model (incident timeline + decision log)
 - `deps/`: installed OpenProse dependencies

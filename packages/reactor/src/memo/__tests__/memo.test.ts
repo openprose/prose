@@ -1,266 +1,178 @@
-import { deepEqual, equal, ok, notEqual } from "node:assert/strict";
+import { deepEqual, equal, notEqual, ok, throws } from "node:assert/strict";
 import { test } from "node:test";
 
 import {
-  InMemoryMemoStoreV0,
-  computeMemoKeyV0,
-  createMemoHitReceiptV0,
-  createMemoizedVerdictEntryV0,
-  namespaceKey,
-  normalizeMemoKeyInput,
+  InMemoryMemoStore,
+  type MemoEntry,
+  computeMemoKey,
+  createSkippedReceipt,
+  memoKeyDigest,
+  memoKeysEqual,
 } from "../index";
-import {
-  type ReceiptV0Input,
-  createReceiptV0,
-  readTokenTruthV0,
-} from "../../receipt";
+import { ATOMIC_FACET, type FingerprintMap, type Wake, asFingerprint} from "../../shapes";
 
-const CONTRACT_HASH =
-  "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" as const;
-const EVIDENCE_A =
-  "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" as const;
-const EVIDENCE_B =
-  "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" as const;
-const DEPENDENCY_A =
-  "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" as const;
-const DEPENDENCY_B =
-  "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" as const;
+const CONTRACT_A = "sha256:aaaa";
+const CONTRACT_B = "sha256:bbbb";
+const INPUT_A = "sha256:1111";
+const INPUT_B = "sha256:2222";
+const RECEIPT_REF =
+  "sha256:0000000000000000000000000000000000000000000000000000000000000000" as const;
 
-test("memo key hashes exactly contract revision, evidence receipts, and dependency receipts", () => {
-  const left = computeMemoKeyV0({
-    contract_revision: CONTRACT_HASH,
-    evidence_receipts: [EVIDENCE_B, EVIDENCE_A],
-    dependency_receipts: [
-      {
-        upstream_content_hash: DEPENDENCY_B,
-        contract_revision: CONTRACT_HASH,
-        acceptable_signer_set: ["signer-b", "signer-a"],
-      },
-      {
-        upstream_content_hash: DEPENDENCY_A,
-        contract_revision: CONTRACT_HASH,
-        acceptable_signer_set: ["none"],
-      },
-    ],
-  });
-  const right = computeMemoKeyV0({
-    contract_revision: CONTRACT_HASH,
-    evidence_receipts: [EVIDENCE_A, EVIDENCE_B],
-    dependency_receipts: [
-      {
-        upstream_content_hash: DEPENDENCY_A,
-        contract_revision: CONTRACT_HASH,
-        acceptable_signer_set: ["none"],
-      },
-      {
-        upstream_content_hash: DEPENDENCY_B,
-        contract_revision: CONTRACT_HASH,
-        acceptable_signer_set: ["signer-a", "signer-b"],
-      },
-    ],
-  });
-  const changedDependency = computeMemoKeyV0({
-    contract_revision: CONTRACT_HASH,
-    evidence_receipts: [EVIDENCE_A, EVIDENCE_B],
-    dependency_receipts: [
-      {
-        upstream_content_hash: DEPENDENCY_A,
-        contract_revision: EVIDENCE_A,
-        acceptable_signer_set: ["none"],
-      },
-    ],
-  });
-
-  equal(left, right);
-  notEqual(left, changedDependency);
-  deepEqual(normalizeMemoKeyInput({
-    contract_revision: CONTRACT_HASH,
-    evidence_receipts: [EVIDENCE_B, EVIDENCE_A],
-    dependency_receipts: [],
-  }).evidence_receipts, [EVIDENCE_A, EVIDENCE_B]);
+const FP: FingerprintMap = Object.freeze({
+  [ATOMIC_FACET]: asFingerprint("sha256:wm-atomic"),
+  recommendation: asFingerprint("sha256:wm-rec"),
 });
 
-test("policy artifact namespace scopes reuse without becoming a fourth key term", () => {
-  const memoKey = computeMemoKeyV0({
-    contract_revision: CONTRACT_HASH,
-    evidence_receipts: [EVIDENCE_A],
-    dependency_receipts: [],
-  });
-  const store = new InMemoryMemoStoreV0();
-  const receipt = makeReceipt({ memoKey, tokens: { fresh: 42, reused: 0 } });
+const WAKE_INPUT: Wake = { source: "input", refs: [RECEIPT_REF] };
 
-  store.store(
-    {
-      policy_artifact_namespace: "policy.static",
-      policy_artifact_revision: "v1",
-    },
-    createMemoizedVerdictEntryV0(memoKey, receipt),
-  );
+function entry(overrides: Partial<MemoEntry> = {}): MemoEntry {
+  const key = computeMemoKey(asFingerprint(CONTRACT_A), [INPUT_A]);
+  return {
+    node: "node.vendor-watch",
+    key,
+    digest: memoKeyDigest(key),
+    fingerprints: FP,
+    receipt_ref: RECEIPT_REF,
+    ...overrides,
+  };
+}
 
-  equal(
-    store.lookup(
-      {
-        policy_artifact_namespace: "policy.static",
-        policy_artifact_revision: "v1",
-      },
-      memoKey,
-    ).outcome,
-    "hit",
-  );
-  equal(
-    store.lookup(
-      {
-        policy_artifact_namespace: "policy.static",
-        policy_artifact_revision: "v2",
-      },
-      memoKey,
-    ).outcome,
-    "miss",
-  );
-  equal(
-    memoKey,
-    computeMemoKeyV0({
-      contract_revision: CONTRACT_HASH,
-      evidence_receipts: [EVIDENCE_A],
-      dependency_receipts: [],
-    }),
-  );
-  notEqual(
-    namespaceKey({
-      policy_artifact_namespace: "policy.static",
-      policy_artifact_revision: "v1",
-    }),
-    namespaceKey({
-      policy_artifact_namespace: "policy.static",
-      policy_artifact_revision: "v2",
-    }),
-  );
+// ---------------------------------------------------------------------------
+// Memo key = EXACTLY (contract_fingerprint, input_fingerprints) — nothing else.
+// world-model.md §4; SHAPES.md §3.
+// ---------------------------------------------------------------------------
+
+test("memo key is exactly (contract_fingerprint, input_fingerprints)", () => {
+  const key = computeMemoKey(asFingerprint(CONTRACT_A), [INPUT_A, INPUT_B]);
+  deepEqual(Object.keys(key).sort(), ["contract_fingerprint", "input_fingerprints"]);
+  equal(key.contract_fingerprint, CONTRACT_A);
+  deepEqual([...key.input_fingerprints], [INPUT_A, INPUT_B]);
 });
 
-test("unchanged input hash returns a memo-hit receipt with reused tokens and zero fresh tokens", () => {
-  const memoKey = computeMemoKeyV0({
-    contract_revision: CONTRACT_HASH,
-    evidence_receipts: [EVIDENCE_A],
-    dependency_receipts: [],
-  });
-  const sourceReceipt = makeReceipt({ memoKey, tokens: { fresh: 37, reused: 0 } });
-  const hitReceipt = createMemoHitReceiptV0({
-    source_receipt: sourceReceipt,
-    as_of: "2026-05-18T13:00:00Z",
-    next_forecast_recheck: "2026-05-19T13:00:00Z",
-  });
-
-  deepEqual(readTokenTruthV0(hitReceipt), {
-    responsibility_id: "responsibility.incident-briefing",
-    run_id: "memo-hit-2026-05-18T13:00:00Z",
-    provider: "memo",
-    model: "memoized-verdict",
-    role: "judge",
-    tags: ["memo-hit", "bootstrap"],
-    as_of: "2026-05-18T13:00:00Z",
-    fresh: 0,
-    reused: 37,
-    surprise_cause: "real-input",
-  });
+test("equal halves ⇒ equal key digest (the skip condition)", () => {
+  const left = computeMemoKey(asFingerprint(CONTRACT_A), [INPUT_A, INPUT_B]);
+  const right = computeMemoKey(asFingerprint(CONTRACT_A), [INPUT_A, INPUT_B]);
+  ok(memoKeysEqual(left, right));
+  equal(memoKeyDigest(left), memoKeyDigest(right));
 });
 
-test("forecast recheck changes the key as an evidence receipt, not a fourth term", () => {
-  const baseline = computeMemoKeyV0({
-    contract_revision: CONTRACT_HASH,
-    evidence_receipts: [EVIDENCE_A],
-    dependency_receipts: [],
-  });
-  const forecastRecheck = computeMemoKeyV0({
-    contract_revision: CONTRACT_HASH,
-    evidence_receipts: [EVIDENCE_A, EVIDENCE_B],
-    dependency_receipts: [],
-  });
-  const forecastReceipt = createMemoHitReceiptV0({
-    source_receipt: makeReceipt({ memoKey: baseline, tokens: { fresh: 10, reused: 0 } }),
-    as_of: "2026-05-18T14:00:00Z",
-    next_forecast_recheck: "2026-05-19T14:00:00Z",
-    event_cause: "forecast-recheck",
-    recheck_kind: "plan-age",
-  });
-
-  notEqual(baseline, forecastRecheck);
-  equal(forecastReceipt.core.event_cause, "forecast-recheck");
-  equal(forecastReceipt.core.recheck_kind, "plan-age");
-  equal(forecastReceipt.cost.surprise_cause, "forecast-recheck");
+test("a moved contract fingerprint moves the key (contract change ⇒ memo miss)", () => {
+  const before = computeMemoKey(asFingerprint(CONTRACT_A), [INPUT_A]);
+  const after = computeMemoKey(asFingerprint(CONTRACT_B), [INPUT_A]);
+  ok(!memoKeysEqual(before, after));
 });
 
-test("memo key canonicalization rejects duplicates instead of normalizing silently", () => {
-  assertThrows(() =>
-    computeMemoKeyV0({
-      contract_revision: CONTRACT_HASH,
-      evidence_receipts: [EVIDENCE_A, EVIDENCE_A],
-      dependency_receipts: [],
-    }),
-  );
+test("a moved input fingerprint moves the key (the watched thing changed)", () => {
+  const before = computeMemoKey(asFingerprint(CONTRACT_A), [INPUT_A]);
+  const after = computeMemoKey(asFingerprint(CONTRACT_A), [INPUT_B]);
+  ok(!memoKeysEqual(before, after));
 });
 
-function assertThrows(fn: () => unknown): void {
-  let threw = false;
-  try {
-    fn();
-  } catch (error) {
-    threw = true;
-    ok(error instanceof Error);
-    equal(error.message, `duplicate evidence_receipts ref ${EVIDENCE_A}`);
+test("input fingerprint order is significant (subscription-slot meaning)", () => {
+  const ab = computeMemoKey(asFingerprint(CONTRACT_A), [INPUT_A, INPUT_B]);
+  const ba = computeMemoKey(asFingerprint(CONTRACT_A), [INPUT_B, INPUT_A]);
+  ok(!memoKeysEqual(ab, ba));
+});
+
+test("computeMemoKey rejects an empty fingerprint token", () => {
+  throws(() => computeMemoKey(asFingerprint(""), [asFingerprint(INPUT_A)]), /contract_fingerprint/);
+  throws(() => computeMemoKey(asFingerprint(CONTRACT_A), [""]), /input_fingerprints\[0\]/);
+});
+
+// ---------------------------------------------------------------------------
+// The skip decision (replaces the cached verdict). architecture.md §4.1.
+// ---------------------------------------------------------------------------
+
+test("cold start ⇒ render (no prior receipt for the node)", () => {
+  const store = new InMemoryMemoStore();
+  const decision = store.decide("node.vendor-watch", computeMemoKey(asFingerprint(CONTRACT_A), [INPUT_A]));
+  equal(decision.outcome, "render");
+  if (decision.outcome === "render") equal(decision.reason, "cold-start");
+});
+
+test("unmoved key ⇒ skip, carrying the prior entry forward", () => {
+  const store = new InMemoryMemoStore();
+  store.record(entry());
+  const decision = store.decide("node.vendor-watch", computeMemoKey(asFingerprint(CONTRACT_A), [INPUT_A]));
+  equal(decision.outcome, "skip");
+  if (decision.outcome === "skip") {
+    deepEqual(decision.entry.fingerprints, FP);
+    equal(decision.entry.receipt_ref, RECEIPT_REF);
   }
-  equal(threw, true);
-}
+});
 
-function makeReceipt(input: {
-  readonly memoKey: string;
-  readonly tokens: {
-    readonly fresh: number;
-    readonly reused: number;
-  };
-}): ReturnType<typeof createReceiptV0> {
-  const receiptInput: ReceiptV0Input = {
-    core: {
-      responsibility_id: "responsibility.incident-briefing",
-      contract_revision: CONTRACT_HASH,
-      event_cause: "real-input",
-      memo_key: input.memoKey,
-      evidence_input_ids: [EVIDENCE_A],
-      as_of: "2026-05-18T12:00:00Z",
-      role: "judge",
-    },
-    sig: {
-      scheme: "none",
-      null_reason: "memo fixture",
-    },
-    verdict: {
-      status: "up",
-      confidence: {
-        value: 0.9,
-        derivation_method: "fixture",
-        calibration_grade: "authored",
-        label_source: "fixture",
-      },
-    },
-    freshness: {
-      as_of: "2026-05-18T12:00:00Z",
-      next_forecast_recheck: "2026-05-19T12:00:00Z",
-    },
-    composition: {
-      consumed_receipts: [],
-      cycle_checked: true,
-    },
-    cost: {
-      provider: "cradle-double",
-      model: "deterministic-replay",
-      role: "judge",
-      tags: ["bootstrap"],
-      responsibility_id: "responsibility.incident-briefing",
-      run_id: "run-bootstrap",
-      as_of: "2026-05-18T12:00:00Z",
-      tokens: input.tokens,
-      surprise_cause: "real-input",
-    },
-  };
+test("moved key ⇒ render with reason key-moved", () => {
+  const store = new InMemoryMemoStore();
+  store.record(entry());
+  const decision = store.decide("node.vendor-watch", computeMemoKey(asFingerprint(CONTRACT_A), [INPUT_B]));
+  equal(decision.outcome, "render");
+  if (decision.outcome === "render") equal(decision.reason, "key-moved");
+});
 
-  return createReceiptV0(receiptInput);
-}
+test("store is node-scoped, with no policy-artifact namespace term", () => {
+  const store = new InMemoryMemoStore();
+  store.record(entry({ node: "node.a" }));
+  // A different node with the same key still cold-starts (independent ledger).
+  equal(store.decide("node.b", computeMemoKey(asFingerprint(CONTRACT_A), [INPUT_A])).outcome, "render");
+  equal(store.decide("node.a", computeMemoKey(asFingerprint(CONTRACT_A), [INPUT_A])).outcome, "skip");
+});
+
+test("record requires the atomic facet in the fingerprint map", () => {
+  const store = new InMemoryMemoStore();
+  throws(
+    () => store.record(entry({ fingerprints: Object.freeze({ recommendation: asFingerprint("sha256:x") }) })),
+    /atomic facet/,
+  );
+});
+
+// ---------------------------------------------------------------------------
+// The skipped receipt (architecture.md §4.1, §8; SHAPES.md §4).
+// ---------------------------------------------------------------------------
+
+test("createSkippedReceipt copies fingerprints forward, empty diff, zero cost, chains prev", () => {
+  const key = computeMemoKey(asFingerprint(CONTRACT_A), [INPUT_A]);
+  const receipt = createSkippedReceipt({
+    node: "node.vendor-watch",
+    contract_fingerprint: asFingerprint(CONTRACT_A),
+    wake: WAKE_INPUT,
+    key,
+    entry: entry(),
+  });
+
+  equal(receipt.status, "skipped");
+  deepEqual(receipt.fingerprints, FP); // unchanged truth carried forward
+  deepEqual(receipt.semantic_diff, {}); // EMPTY_SEMANTIC_DIFF
+  equal(receipt.cost.tokens.fresh, 0);
+  equal(receipt.cost.tokens.reused, 0);
+  equal(receipt.cost.surprise_cause, "input");
+  equal(receipt.prev, RECEIPT_REF); // chains the ledger
+  deepEqual([...receipt.input_fingerprints], [INPUT_A]);
+  equal(receipt.sig.scheme, "none");
+});
+
+test("createSkippedReceipt rejects a node/entry mismatch", () => {
+  throws(
+    () =>
+      createSkippedReceipt({
+        node: "node.x",
+        contract_fingerprint: asFingerprint(CONTRACT_A),
+        wake: WAKE_INPUT,
+        key: computeMemoKey(asFingerprint(CONTRACT_A), [INPUT_A]),
+        entry: entry({ node: "node.y" }),
+      }),
+    /node must match/,
+  );
+});
+
+test("a skipped receipt at cold-start-of-chain has null prev", () => {
+  const key = computeMemoKey(asFingerprint(CONTRACT_A), [INPUT_A]);
+  const receipt = createSkippedReceipt({
+    node: "node.vendor-watch",
+    contract_fingerprint: asFingerprint(CONTRACT_A),
+    wake: { source: "self", refs: [] },
+    key,
+    entry: entry({ receipt_ref: null }),
+  });
+  equal(receipt.prev, null);
+  equal(receipt.cost.surprise_cause, "self");
+});

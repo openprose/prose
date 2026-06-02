@@ -1,21 +1,21 @@
 ---
 name: json-verifier
-kind: service
+kind: function
 ---
 
 # JSON Verifier
 
 ### Description
 
-Validates generated JSON before a downstream system consumes it.
+Validates generated JSON before a downstream consumer uses it.
 
-### Requires
+### Parameters
 
-- `candidate_json`: JSON text to validate
+- `candidate-json`: JSON text to validate
 
-### Ensures
+### Returns
 
-- `validation_report`: whether the JSON is valid, with parse errors and line
+- `validation-report`: whether the JSON is valid, with parse errors and line
   references when validation fails
 
 ### Tools

@@ -1,6 +1,6 @@
 ---
 name: prepare-gap-brief
-kind: service
+kind: function
 ---
 
 # Prepare Gap Brief
@@ -9,14 +9,14 @@ kind: service
 
 Turns evidence assessments into a concise compliance-owner brief.
 
-### Requires
+### Parameters
 
-- `evidence_assessments`: controls labeled with readiness status, evidence,
+- `evidence-assessments`: controls labeled with readiness status, evidence,
   freshness, confidence, gap reason, and sensitivity notes
 
-### Ensures
+### Returns
 
-- `evidence_brief`: reviewed controls with status, evidence references, owner
+- `evidence-brief`: reviewed controls with status, evidence references, owner
   follow-up, severity, due date, and audit-ready notes
 - owner follow-up requests are grouped by control owner and avoid exposing
   sensitive details beyond need-to-know context

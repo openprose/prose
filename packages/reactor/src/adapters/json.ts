@@ -1,11 +1,11 @@
-import { canonicalizeForReceiptV0 } from "../receipt";
+import { canonicalizeForReceipt } from "../receipt";
 
-export function renderAdapterJsonV0(value: unknown): string {
-  return canonicalizeForReceiptV0(toAdapterJsonValue(value));
+export function renderAdapterJson(value: unknown): string {
+  return canonicalizeForReceipt(toAdapterJsonValue(value));
 }
 
-export function cloneAdapterJsonValueV0<T>(value: T): T {
-  return JSON.parse(renderAdapterJsonV0(value)) as T;
+export function cloneAdapterJsonValue<T>(value: T): T {
+  return JSON.parse(renderAdapterJson(value)) as T;
 }
 
 function toAdapterJsonValue(value: unknown): unknown {

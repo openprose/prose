@@ -1,303 +1,219 @@
-import { createKernelSafetyReceipt } from "../kernel";
+// evidence-plan — the pure, deterministic evidence-by-reference resolver the
+// reconciler delegates to. It turns a node's wake plus its waking upstream
+// receipt(s) into (a) the per-edge `WorldModelRef`s the render should read by
+// reference, each pinned to the exact published version its producer committed,
+// and (b) the consumed `input_fingerprints` tuple — the memo key's second half —
+// in resolved subscription order (architecture.md §6.1 "the consumed tuple, one
+// per subscribed facet"). Evidence is reached by reference, never inlined into
+// context.
+
 import {
-  type ContentHashV0,
-  type ReceiptV0,
-  canonicalizeForReceiptV0,
-  hashCanonicalReceiptV0,
-  verifyReceiptV0,
-} from "../receipt";
+  ATOMIC_FACET,
+  type ContentAddress,
+  type Facet,
+  type Fingerprint,
+  type FingerprintMap,
+  type InputFingerprints,
+  type Receipt,
+  type TopologyEdge,
+  type Wake,
+  type WorldModelRef,
+} from "../shapes";
 
-export type EvidenceSourceKind = "adapter" | "forecast" | "dependency";
-export type EvidenceReceiptOrder = "unordered" | "declared";
-export type DeepRoamTrigger =
-  | "confidence-escalation"
-  | "stakes-escalation"
-  | "forecast-evidence-age"
-  | "forecast-plan-age"
-  | "no-anchor-forced-deep"
-  | "degraded-calibration";
+// ---------------------------------------------------------------------------
+// The waking receipts a wake refers to, resolved by reference.
+// ---------------------------------------------------------------------------
 
-export interface CompiledEvidenceSource {
-  readonly id: string;
-  readonly kind: EvidenceSourceKind;
-  readonly required: boolean;
-  readonly receipt_order?: EvidenceReceiptOrder;
+/**
+ * A producer's receipt that woke the subscriber, addressed by its content
+ * address. The wake's `refs` are content addresses (SHAPES.md §2); this pairs
+ * each address with the receipt it points at so the resolver can read the
+ * producer's published `fingerprints` and pin the exact version that moved.
+ *
+ * `self` / `external` wakes carry synthetic self/gateway receipts here too — the
+ * resolver treats them uniformly (every wake is a receipt; world-model.md §5).
+ */
+export interface WakingReceipt {
+  readonly ref: ContentAddress;
+  readonly receipt: Receipt;
 }
 
-export interface CompiledEvidencePlan {
-  readonly responsibility_id: string;
-  readonly contract_revision: ContentHashV0;
-  readonly policy_artifact_namespace: string;
-  readonly policy_artifact_revision: string;
-  readonly plan_revision: string;
-  readonly as_of: string;
-  readonly evidence_order: EvidenceReceiptOrder;
-  readonly sources: readonly CompiledEvidenceSource[];
+/**
+ * One resolved upstream input the render should read BY REFERENCE: which facet
+ * of which producer the subscriber consumes, the producer's published version to
+ * pin (read-isolation; architecture.md §8 L328–L330), and the consumed
+ * fingerprint token. A render reaches the artifact via the `world-model` store's
+ * `readVersion(producer, version)` — it is told where the truth lives and reads
+ * it as needed, never pre-stuffed into context (architecture.md §1 L44–L48).
+ */
+export interface ResolvedEvidence {
+  readonly subscriber: string;
+  readonly producer: string;
+  readonly facet: Facet;
+  readonly fingerprint: Fingerprint;
+  /**
+   * The published artifact reference to pin and read by reference. `version` is
+   * the exact `ContentAddress` of the producer's published world-model — never
+   * `null` for resolved input evidence (a wake means the producer committed a
+   * published version).
+   */
+  readonly ref: WorldModelRef;
 }
 
-export interface EvidenceReceiptRef {
-  readonly source_id: string;
-  readonly receipt_hash: ContentHashV0;
+/**
+ * The full evidence-by-reference resolution for one wake of one subscriber node.
+ * This is the seam value the reconciler hands the render and uses to build the
+ * memo key's second half.
+ */
+export interface EvidenceResolution {
+  readonly subscriber: string;
+  readonly wake: Wake;
+  /** One resolved input per subscribed edge, in resolved subscription order. */
+  readonly inputs: readonly ResolvedEvidence[];
+  /**
+   * The consumed facet tuple — the memo key's second half (SHAPES.md §3;
+   * architecture.md §6.1). Order matches `inputs`, so the tuple is stable across
+   * renders (topology-edge order is the resolved subscription order).
+   */
+  readonly input_fingerprints: InputFingerprints;
 }
 
-export type EvidenceSourceCollector = (
-  source: CompiledEvidenceSource,
-) => ReceiptV0 | undefined;
+// ---------------------------------------------------------------------------
+// Resolution.
+// ---------------------------------------------------------------------------
 
-export type ShallowEvidencePlanResult =
-  | {
-      readonly outcome: "ready";
-      readonly consulted_source_ids: readonly string[];
-      readonly evidence_receipts: readonly EvidenceReceiptRef[];
-      readonly canonical_evidence_receipts: readonly EvidenceReceiptRef[];
+/**
+ * Resolve a subscriber's evidence BY REFERENCE from the topology edges and the
+ * waking receipt(s).
+ *
+ * For each edge `subscriber.Requires.<facet> → producer.Maintains.<facet>`
+ * (`edges` for this subscriber, in resolved subscription order — SHAPES.md §6),
+ * find the producer's waking receipt, read the producer's published fingerprint
+ * for that facet, and emit a `WorldModelRef` pinned to the producer's committed
+ * `published` version. The location convention is the producer's published
+ * artifact directory (`world-model.md §1`); the resolver does not invent a
+ * filesystem layout — it carries `node`, `workspace:"published"`, and the
+ * version to pin, and the world-model store maps that to a concrete location.
+ *
+ * Deterministic and total: it reads only its inputs, never an LLM, never a
+ * judge. Throws only on a structurally-impossible wake (an edge whose producer
+ * left no waking receipt, or a producer receipt missing the subscribed facet) —
+ * a compiled-topology invariant violation the reconciler surfaces, not a
+ * judgment call.
+ */
+export function resolveEvidenceByReference(
+  subscriber: string,
+  edges: readonly TopologyEdge[],
+  wake: Wake,
+  waking: readonly WakingReceipt[],
+  options: ResolveOptions = {},
+): EvidenceResolution {
+  const byNode = new Map<string, WakingReceipt>();
+  for (const w of waking) {
+    // Last writer wins is undefined for a node; a node commits one published
+    // version per wake. Reject ambiguity rather than silently pick.
+    if (byNode.has(w.receipt.node)) {
+      throw new Error(
+        `ambiguous waking receipts for producer ${w.receipt.node}`,
+      );
     }
-  | {
-      readonly outcome: "fail-safe";
-      readonly consulted_source_ids: readonly string[];
-      readonly reason: string;
-      readonly receipt: ReceiptV0;
-    };
-
-export interface DeepRoamDiscovery {
-  readonly source_id: string;
-  readonly kind: EvidenceSourceKind;
-  readonly receipt_hash?: ContentHashV0;
-}
-
-export type DeepRoamReconciliation =
-  | {
-      readonly outcome: "plan-confirmed";
-      readonly trigger: DeepRoamTrigger;
-      readonly confirmed_source_ids: readonly string[];
-    }
-  | {
-      readonly outcome: "force-recompile";
-      readonly trigger: DeepRoamTrigger;
-      readonly discovered_source_ids: readonly string[];
-      readonly discovered_receipt_hashes: readonly ContentHashV0[];
-      readonly reason: string;
-    };
-
-export function executeShallowEvidencePlan(
-  plan: CompiledEvidencePlan,
-  collectors: Readonly<Record<string, EvidenceSourceCollector>>,
-): ShallowEvidencePlanResult {
-  const validation = validateCompiledEvidencePlan(plan);
-  if (validation.length > 0) {
-    return failSafe(plan, [], validation.join("; "));
+    byNode.set(w.receipt.node, w);
   }
 
-  const consultedSourceIds: string[] = [];
-  const evidenceReceipts: EvidenceReceiptRef[] = [];
+  const subscribedEdges = edges.filter((e) => e.subscriber === subscriber);
 
-  for (const source of plan.sources) {
-    consultedSourceIds.push(source.id);
-    const collector = collectors[source.id];
-
-    if (collector === undefined) {
-      if (!source.required) {
-        continue;
-      }
-      return failSafe(
-        plan,
-        consultedSourceIds,
-        `planned source ${source.id} has no collector`,
+  const inputs: ResolvedEvidence[] = [];
+  for (const edge of subscribedEdges) {
+    const wkg = byNode.get(edge.producer);
+    if (wkg === undefined) {
+      throw new Error(
+        `no waking receipt for producer ${edge.producer} ` +
+          `subscribed by ${subscriber} on facet ${edge.facet}`,
       );
     }
 
-    const receipt = collector(source);
-    if (receipt === undefined) {
-      if (!source.required) {
-        continue;
-      }
-      return failSafe(
-        plan,
-        consultedSourceIds,
-        `planned source ${source.id} produced no receipt`,
+    const fingerprint = readPublishedFacetFingerprint(
+      wkg.receipt.fingerprints,
+      edge.facet,
+    );
+    if (fingerprint === undefined) {
+      throw new Error(
+        `producer ${edge.producer} published no fingerprint for facet ` +
+          `${edge.facet} required by ${subscriber}`,
       );
     }
 
-    const verification = verifyReceiptV0(receipt);
-    if (!verification.ok) {
-      return failSafe(
-        plan,
-        consultedSourceIds,
-        `planned source ${source.id} produced an unverifiable receipt`,
-      );
-    }
-
-    evidenceReceipts.push({
-      source_id: source.id,
-      receipt_hash: verification.content_hash,
+    inputs.push({
+      subscriber,
+      producer: edge.producer,
+      facet: edge.facet,
+      fingerprint,
+      ref: {
+        node: edge.producer,
+        workspace: "published",
+        location: locatePublished(edge.producer, options),
+        // Pin the exact version that woke us. The version-of-meaning is the
+        // producer's atomic published fingerprint when it is a content address
+        // (the v1 reference computation, SHAPES.md §1); otherwise null (the
+        // store resolves the latest published, still read-isolated by the
+        // reconciler's own pin).
+        version: pinnedVersion(wkg),
+      },
     });
   }
 
-  const canonicalEvidenceReceipts =
-    canonicalizeEvidenceReceiptRefsForPlan(plan, evidenceReceipts);
-
   return {
-    outcome: "ready",
-    consulted_source_ids: consultedSourceIds,
-    evidence_receipts: evidenceReceipts,
-    canonical_evidence_receipts: canonicalEvidenceReceipts,
+    subscriber,
+    wake,
+    inputs,
+    input_fingerprints: inputs.map((i) => i.fingerprint),
   };
 }
 
-export function reconcileDeepRoam(
-  plan: CompiledEvidencePlan,
-  trigger: DeepRoamTrigger,
-  discoveries: readonly DeepRoamDiscovery[],
-): DeepRoamReconciliation {
-  const plannedSourceIds = new Set(plan.sources.map((source) => source.id));
-  const discovered = discoveries.filter(
-    (discovery) => !plannedSourceIds.has(discovery.source_id),
-  );
-
-  if (discovered.length === 0) {
-    return {
-      outcome: "plan-confirmed",
-      trigger,
-      confirmed_source_ids: plan.sources.map((source) => source.id),
-    };
-  }
-
-  return {
-    outcome: "force-recompile",
-    trigger,
-    discovered_source_ids: discovered.map((discovery) => discovery.source_id),
-    discovered_receipt_hashes: discovered.flatMap((discovery) =>
-      discovery.receipt_hash === undefined ? [] : [discovery.receipt_hash],
-    ),
-    reason: "deep roaming discovered evidence outside the compiled plan",
-  };
+export interface ResolveOptions {
+  /**
+   * Optional mapping from producer node → published artifact location, supplied
+   * by the world-model store. When absent, the resolver carries the node id as
+   * the location and the store resolves the concrete directory (the location is
+   * implementation-defined — SHAPES.md §5).
+   */
+  readonly locations?: Readonly<Record<string, string>>;
 }
 
-export function canonicalizeEvidenceReceiptRefsForPlan(
-  plan: Pick<CompiledEvidencePlan, "evidence_order">,
-  refs: readonly EvidenceReceiptRef[],
-): readonly EvidenceReceiptRef[] {
-  const seen = new Set<string>();
-  for (const ref of refs) {
-    if (seen.has(ref.receipt_hash)) {
-      throw new Error(`duplicate evidence receipt ref ${ref.receipt_hash}`);
-    }
-    seen.add(ref.receipt_hash);
-  }
-
-  if (plan.evidence_order === "declared") {
-    return [...refs];
-  }
-
-  return [...refs].sort((left, right) =>
-    left.receipt_hash.localeCompare(right.receipt_hash),
-  );
+/**
+ * Read a producer's published fingerprint for a required facet. A subscriber
+ * that declares no facet consumes the producer's whole-truth atomic fingerprint
+ * (`ATOMIC_FACET`) — the no-facet case is the singleton map (SHAPES.md §1;
+ * architecture.md §6.1). Returns `undefined` if the producer never published the
+ * requested facet.
+ */
+export function readPublishedFacetFingerprint(
+  fingerprints: FingerprintMap,
+  facet: Facet,
+): Fingerprint | undefined {
+  return fingerprints[facet];
 }
 
-export function validateCompiledEvidencePlan(
-  plan: CompiledEvidencePlan,
-): readonly string[] {
-  const errors: string[] = [];
-
-  if (plan.responsibility_id.length === 0) {
-    errors.push("plan.responsibility_id must be non-empty");
-  }
-  if (!isContentHash(plan.contract_revision)) {
-    errors.push("plan.contract_revision must be a sha256 content address");
-  }
-  if (plan.policy_artifact_namespace.length === 0) {
-    errors.push("plan.policy_artifact_namespace must be non-empty");
-  }
-  if (plan.policy_artifact_revision.length === 0) {
-    errors.push("plan.policy_artifact_revision must be non-empty");
-  }
-  if (plan.plan_revision.length === 0) {
-    errors.push("plan.plan_revision must be non-empty");
-  }
-  if (!isReplayableInstant(plan.as_of)) {
-    errors.push("plan.as_of must be a replayable ISO instant");
-  }
-  if (plan.evidence_order !== "unordered" && plan.evidence_order !== "declared") {
-    errors.push("plan.evidence_order is malformed");
-  }
-
-  const seenSourceIds = new Set<string>();
-  for (const source of plan.sources) {
-    if (source.id.length === 0) {
-      errors.push("source.id must be non-empty");
-    }
-    if (seenSourceIds.has(source.id)) {
-      errors.push(`source ${source.id} is duplicated`);
-    }
-    seenSourceIds.add(source.id);
-    if (
-      source.kind !== "adapter" &&
-      source.kind !== "forecast" &&
-      source.kind !== "dependency"
-    ) {
-      errors.push(`source ${source.id} has malformed kind`);
-    }
-    if (typeof source.required !== "boolean") {
-      errors.push(`source ${source.id} required flag is malformed`);
-    }
-    if (
-      source.receipt_order !== undefined &&
-      source.receipt_order !== "unordered" &&
-      source.receipt_order !== "declared"
-    ) {
-      errors.push(`source ${source.id} receipt_order is malformed`);
-    }
-  }
-
-  return errors;
+/**
+ * The atomic (whole-truth) published fingerprint of a producer — the version a
+ * subscriber pins when it consumes the producer wholesale. Always present on a
+ * published `FingerprintMap` (SHAPES.md §1: "always contains ATOMIC_FACET").
+ */
+export function atomicFingerprintOf(
+  fingerprints: FingerprintMap,
+): Fingerprint | undefined {
+  return fingerprints[ATOMIC_FACET];
 }
 
-function failSafe(
-  plan: CompiledEvidencePlan,
-  consultedSourceIds: readonly string[],
-  reason: string,
-): ShallowEvidencePlanResult {
-  return {
-    outcome: "fail-safe",
-    consulted_source_ids: consultedSourceIds,
-    reason,
-    receipt: createKernelSafetyReceipt({
-      responsibility_id: plan.responsibility_id,
-      contract_revision: plan.contract_revision,
-      memo_key: `evidence-plan-fail-safe:${plan.policy_artifact_namespace}:${plan.plan_revision}`,
-      evidence_input_ids: [failSafeEvidenceInputId(plan, consultedSourceIds, reason)],
-      as_of: plan.as_of,
-      reason,
-      fix_target: "policy-artifact",
-      interrupt_cause: "needs-judgment",
-      event_cause: "escalation",
-    }),
-  };
+function pinnedVersion(wkg: WakingReceipt): ContentAddress | null {
+  const atomic = atomicFingerprintOf(wkg.receipt.fingerprints);
+  return isContentAddress(atomic) ? atomic : null;
 }
 
-function failSafeEvidenceInputId(
-  plan: CompiledEvidencePlan,
-  consultedSourceIds: readonly string[],
-  reason: string,
-): ContentHashV0 {
-  return hashCanonicalReceiptV0(
-    canonicalizeForReceiptV0({
-      schema: "openprose.evidence-plan.fail-safe-input",
-      v: 0,
-      contract_revision: plan.contract_revision,
-      policy_artifact_namespace: plan.policy_artifact_namespace,
-      policy_artifact_revision: plan.policy_artifact_revision,
-      plan_revision: plan.plan_revision,
-      consulted_source_ids: consultedSourceIds,
-      reason,
-      as_of: plan.as_of,
-    }),
-  );
+function locatePublished(producer: string, options: ResolveOptions): string {
+  return options.locations?.[producer] ?? producer;
 }
 
-function isContentHash(value: string): value is ContentHashV0 {
-  return /^sha256:[a-f0-9]{64}$/.test(value);
-}
-
-function isReplayableInstant(value: string): boolean {
-  return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(value);
+function isContentAddress(value: string | undefined): value is ContentAddress {
+  return value !== undefined && /^sha256:[a-f0-9]{64}$/.test(value);
 }

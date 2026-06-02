@@ -11,33 +11,70 @@ id: 067NC4KG0SYKXFT085146H258R
 The current release candidate has a current, evidence-backed readiness decision
 that a release owner can trust before shipping.
 
+### Requires
+
+- `release-events`: a current view of release-readiness evidence — candidate
+  cuts, CI results, merged change summaries, migration notes, docs updates, risk
+  reviews, manual approvals, and rollback notes
+
+### Maintains
+
+- `readiness`: the current readiness truth. Its subscribable parts are the two
+  `####` facets below — each `####` part *is* a facet (fingerprint unit +
+  `Requires.<facet>` ↔ `Maintains.<facet>` subscription symbol +
+  `published/<facet>/…` subtree).
+- immaterial everywhere: render scan timestamps and event delivery ids
+- freshness: `valid_until` reflects the next review timing; during an active
+  release window the brief should not be stale for more than one business day
+- postcondition: risk levels distinguish missing evidence from confirmed failures
+- postcondition: every ship or hold recommendation cites the evidence that drove it
+- postcondition: a ship recommendation never hides unresolved blockers in caveats,
+  and rollback context is present before any ship recommendation is final
+
+#### decision
+
+Material: candidate version, ship or hold recommendation, blocking issues,
+non-blocking risks, validation evidence, user-facing notes, rollback context,
+open questions, and next review timing. A release-gate or notification consumer
+subscribes here and wakes when the ship/hold decision moves, not when the
+decision history is appended.
+
+#### history
+
+Material: prior readiness decisions, repeated risks, and unresolved follow-up,
+preserved across renders for rollback and retrospective.
+
 ### Continuity
 
-- Reconcile readiness when CI, merged changes, migration notes, docs, known
-  risks, or owner overrides change.
-- During an active release window, the readiness brief should not be stale for
-  more than one business day.
-- Preserve enough decision history for rollback, handoff, and the next release
-  retrospective.
+- input-driven: reconcile readiness when CI, merged changes, migration notes,
+  docs, known risks, or owner overrides change
+- self-driven: re-check during an active release window so the brief does not go
+  stale for more than one business day
 
-### Criteria
+### Invariants
 
-- The brief names the candidate version, ship recommendation, blocking issues,
-  non-blocking risks, validation evidence, user-facing notes, and rollback
-  context.
-- Risk levels distinguish missing evidence from confirmed failures.
-- Every ship or hold recommendation cites the evidence that drove it.
-
-### Constraints
-
-- Do not recommend shipping with unresolved blockers hidden in caveats.
 - Do not invent CI, migration, documentation, or customer evidence.
+- Never claim that a release was shipped.
 - Keep the brief concise enough for a release owner to review quickly.
 
-### Tools
+### Execution
 
-(none)
+```prose
+let evidence = call collect-release-evidence
+  release-events: release-events
+  prior-readiness: readiness
 
-### Fulfillment
+let risk = call assess-release-risk
+  evidence-packet: evidence.evidence-packet
+  history-context: evidence.history-context
 
-Prefer the local `release-readiness` system.
+let drafted = call draft-release-brief
+  evidence-packet: evidence.evidence-packet
+  risk-assessment: risk.risk-assessment
+  release-questions: risk.release-questions
+
+return {
+  decision: drafted.release-brief,
+  history: drafted.brief-followups
+}
+```

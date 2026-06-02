@@ -78,9 +78,9 @@ workspace for these specification files.
 
 When executing:
 
-- Load `contract-markdown.md` for `*.prose.md` services and systems.
-- Load `forme.md` only when wiring is needed: `kind: system` with `### Services`,
-  multi-service files, patterns, or explicit wiring.
+- Load `contract-markdown.md` for `*.prose.md` responsibilities and functions.
+- Load `forme.md` only when wiring is needed: wiring across responsibilities
+  (matching `### Requires` → `### Maintains`), multi-node files, or patterns.
 - Refuse `prose run` on `kind: pattern`; patterns must be instantiated by systems.
 - Refuse `prose run` on `kind: responsibility`; responsibilities are compiled
   into compiled intent and reconciled by the Responsibility Runtime.

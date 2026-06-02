@@ -1,30 +1,16 @@
-name: CI - @openprose/reactor
+name: CI - Reactor packages
 
 on:
   pull_request:
     paths:
       - "packages/reactor/**"
-      - "packages/reactor-cradle/**"
+      - "packages/reactor-cli/**"
+      - "packages/reactor-devtools/**"
       - "package.json"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
       - "turbo.json"
-      - ".github/scripts/verify-reactor-pin.mjs"
-      - ".github/scripts/verify-reactor-pin.test.mjs"
-      - ".github/scripts/smoke-reactor-tarball-import.mjs"
-      - ".github/scripts/smoke-reactor-tarball-import.test.mjs"
-      - ".github/scripts/smoke-reactor-cradle-tarball-import.mjs"
-      - ".github/scripts/smoke-reactor-cradle-tarball-import.test.mjs"
-      - ".github/scripts/build-reactor-release-candidate-evidence.mjs"
-      - ".github/scripts/build-reactor-release-candidate-evidence.test.mjs"
-      - ".github/scripts/smoke-reactor-release-readiness-example.mjs"
-      - ".github/scripts/smoke-reactor-release-readiness-example.test.mjs"
-      - ".github/scripts/smoke-reactor-flat-tokens-example.mjs"
-      - ".github/scripts/smoke-reactor-flat-tokens-example.test.mjs"
-      - ".github/scripts/verify-reactor-publish-workflow.test.mjs"
       - ".github/workflows/ci-reactor-package.yml"
-      - "skills/open-prose/examples/release-readiness/reactor-package-example/**"
-      - "skills/open-prose/examples/flat-tokens/**"
   push:
     branches: [main]
     tags:
@@ -39,9 +25,10 @@ permissions:
 
 jobs:
   ci:
+    # NOTE: this job name is a required status check on the release PR — do not rename.
     name: CI - Reactor Package
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
 
     steps:
       - name: Checkout
@@ -60,96 +47,36 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Test Reactor package
-        run: pnpm --filter @openprose/reactor test
-
-      - name: Test Cradle package
-        run: pnpm --filter @openprose/reactor-cradle test
-
-      - name: Test release-gate verifiers
+      - name: Build reactor packages
         run: |
-          node --test \
-            .github/scripts/verify-reactor-pin.test.mjs \
-            .github/scripts/smoke-reactor-tarball-import.test.mjs \
-            .github/scripts/smoke-reactor-cradle-tarball-import.test.mjs \
-            .github/scripts/build-reactor-release-candidate-evidence.test.mjs \
-            .github/scripts/smoke-reactor-release-readiness-example.test.mjs \
-            .github/scripts/smoke-reactor-flat-tokens-example.test.mjs \
-            .github/scripts/verify-reactor-publish-workflow.test.mjs
+          pnpm --filter @openprose/reactor build
+          pnpm --filter @openprose/reactor-cli build
+          pnpm --filter @openprose/reactor-devtools build
 
-      - name: Pack Reactor package
-        id: pack_reactor
+      - name: Test reactor packages (offline, zero model spend)
+        run: pnpm test:reactor:offline
+
+      - name: Pack reactor packages (validates publishability)
+        id: pack
         run: |
           set -euo pipefail
-          pack_dir="${RUNNER_TEMP}/openprose-reactor-pack"
+          pack_dir="${RUNNER_TEMP}/reactor-pack"
           mkdir -p "${pack_dir}"
+          # pnpm pack rewrites each package's `workspace:*` dependency on
+          # @openprose/reactor to the concrete published version; npm pack does not.
           pnpm --dir packages/reactor pack --pack-destination "${pack_dir}"
-          tarball="$(find "${pack_dir}" -maxdepth 1 -name "openprose-reactor-*.tgz" -print -quit)"
-          if [ -z "${tarball}" ]; then
-            echo "::error::No Reactor package tarball was produced."
-            exit 1
-          fi
-          echo "tarball=${tarball}" >> "$GITHUB_OUTPUT"
+          pnpm --dir packages/reactor-cli pack --pack-destination "${pack_dir}"
+          pnpm --dir packages/reactor-devtools pack --pack-destination "${pack_dir}"
+          echo "Packed tarballs:"
+          ls -1 "${pack_dir}"
+          echo "pack_dir=${pack_dir}" >> "$GITHUB_OUTPUT"
 
-      - name: Pack Cradle package
-        id: pack_cradle
-        run: |
-          set -euo pipefail
-          pack_dir="${RUNNER_TEMP}/openprose-reactor-cradle-pack"
-          mkdir -p "${pack_dir}"
-          pnpm --dir packages/reactor-cradle pack --pack-destination "${pack_dir}"
-          tarball="$(find "${pack_dir}" -maxdepth 1 -name "openprose-reactor-cradle-*.tgz" -print -quit)"
-          if [ -z "${tarball}" ]; then
-            echo "::error::No Cradle package tarball was produced."
-            exit 1
-          fi
-          echo "tarball=${tarball}" >> "$GITHUB_OUTPUT"
-
-      - name: Verify Reactor package pin
-        run: |
-          node .github/scripts/verify-reactor-pin.mjs \
-            --tarball "${{ steps.pack_reactor.outputs.tarball }}"
-
-      - name: Smoke Reactor tarball imports
-        run: |
-          node .github/scripts/smoke-reactor-tarball-import.mjs \
-            --tarball "${{ steps.pack_reactor.outputs.tarball }}"
-
-      - name: Smoke Cradle tarball imports
-        run: |
-          node .github/scripts/smoke-reactor-cradle-tarball-import.mjs \
-            --reactorTarball "${{ steps.pack_reactor.outputs.tarball }}" \
-            --cradleTarball "${{ steps.pack_cradle.outputs.tarball }}"
-
-      - name: Smoke release readiness example
-        run: |
-          node .github/scripts/smoke-reactor-release-readiness-example.mjs \
-            --reactorTarball "${{ steps.pack_reactor.outputs.tarball }}" \
-            --cradleTarball "${{ steps.pack_cradle.outputs.tarball }}" \
-            --exampleDir skills/open-prose/examples/release-readiness/reactor-package-example
-
-      - name: Smoke flat tokens example
-        run: |
-          node .github/scripts/smoke-reactor-flat-tokens-example.mjs \
-            --reactorTarball "${{ steps.pack_reactor.outputs.tarball }}" \
-            --cradleTarball "${{ steps.pack_cradle.outputs.tarball }}" \
-            --exampleDir skills/open-prose/examples/flat-tokens
-
-      - name: Upload Reactor package artifact
+      - name: Upload reactor tarballs
         if: ${{ startsWith(github.ref, 'refs/tags/reactor-v') }}
         uses: actions/upload-artifact@v4
         with:
-          name: openprose-reactor-tarball
-          path: ${{ steps.pack_reactor.outputs.tarball }}
-          if-no-files-found: error
-          retention-days: 7
-
-      - name: Upload Cradle package artifact
-        if: ${{ startsWith(github.ref, 'refs/tags/reactor-v') }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: openprose-reactor-cradle-tarball
-          path: ${{ steps.pack_cradle.outputs.tarball }}
+          name: reactor-tarballs
+          path: ${{ steps.pack.outputs.pack_dir }}/*.tgz
           if-no-files-found: error
           retention-days: 7
 
@@ -158,81 +85,69 @@ jobs:
     needs: ci
     if: ${{ startsWith(github.ref, 'refs/tags/reactor-v') }}
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     permissions:
       contents: read
       id-token: write
 
+    env:
+      NPM_CONFIG_PROVENANCE: "true"
+
     steps:
-      - name: Setup Node.js
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js for trusted publishing
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          registry-url: https://registry.npmjs.org
+          cache: "pnpm"
+          cache-dependency-path: "pnpm-lock.yaml"
 
       - name: Upgrade npm for trusted publishing
-        run: npm install -g npm@11.5.1
+        run: npm install -g npm@latest
 
-      - name: Download Reactor tarball
-        uses: actions/download-artifact@v4
-        with:
-          name: openprose-reactor-tarball
-          path: ${{ runner.temp }}/openprose-reactor-publish/reactor
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
-      - name: Download Cradle tarball
-        uses: actions/download-artifact@v4
-        with:
-          name: openprose-reactor-cradle-tarball
-          path: ${{ runner.temp }}/openprose-reactor-publish/cradle
-
-      - name: Resolve publish metadata
-        id: publish_meta
+      - name: Publish reactor packages
+        # OIDC trusted publishing: npm (>=11.5.1) exchanges the GitHub Actions id-token
+        # for a short-lived npm token — no NPM_TOKEN secret needed. pnpm has NO OIDC
+        # support, so we pnpm-PACK each package (which rewrites its `workspace:*` SDK
+        # dependency to the concrete version and runs the prepack build) and then
+        # `npm publish` the resulting tarball.
+        # Each package publishes at its own package.json version (they diverge: reactor
+        # 0.2.0, reactor-cli 0.1.0, reactor-devtools 0.1.0); already-published versions are
+        # skipped so re-runs are idempotent. Order matters — reactor first, because cli +
+        # devtools depend on the concrete reactor version.
         run: |
           set -euo pipefail
-          expected_version="${GITHUB_REF_NAME#reactor-v}"
-          if [ -z "${expected_version}" ] || [ "${expected_version}" = "${GITHUB_REF_NAME}" ]; then
-            echo "::error::Publish tags must be named reactor-v<package-version>."
-            exit 1
-          fi
-
-          dist_tag="latest"
-          if [[ "${expected_version}" == *-* ]]; then
-            prerelease="${expected_version#*-}"
-            dist_tag="${prerelease%%.*}"
-            if [ -z "${dist_tag}" ]; then
-              echo "::error::Could not derive npm prerelease dist-tag from ${expected_version}."
+          pack_dir="${RUNNER_TEMP}/reactor-publish"
+          mkdir -p "${pack_dir}"
+          publish_pkg() {
+            local dir="$1"
+            local name version slug tarball
+            name="$(node -p "require('./${dir}/package.json').name")"
+            version="$(node -p "require('./${dir}/package.json').version")"
+            if npm view "${name}@${version}" version >/dev/null 2>&1; then
+              echo "Skipping ${name}@${version} — already published."
+              return 0
+            fi
+            echo "Packing ${name}@${version}"
+            pnpm --dir "${dir}" pack --pack-destination "${pack_dir}"
+            slug="$(printf '%s' "${name}" | sed 's#@##; s#/#-#g')"
+            tarball="$(find "${pack_dir}" -maxdepth 1 -name "${slug}-${version}.tgz" -print -quit)"
+            if [ -z "${tarball}" ]; then
+              echo "::error::No tarball produced for ${name}@${version}."
               exit 1
             fi
-          fi
-
-          echo "expected_version=${expected_version}" >> "$GITHUB_OUTPUT"
-          echo "dist_tag=${dist_tag}" >> "$GITHUB_OUTPUT"
-
-      - name: Publish Reactor package
-        run: |
-          set -euo pipefail
-          reactor_tarball="$(find "${RUNNER_TEMP}/openprose-reactor-publish/reactor" -maxdepth 1 -name "openprose-reactor-*.tgz" -print -quit)"
-          if [ -z "${reactor_tarball}" ]; then
-            echo "::error::Downloaded Reactor tarball artifact is missing."
-            exit 1
-          fi
-          package_version="$(tar -xOf "${reactor_tarball}" package/package.json | node -e "let input=''; process.stdin.on('data', chunk => input += chunk); process.stdin.on('end', () => console.log(JSON.parse(input).version));")"
-          if [ "${package_version}" != "${{ steps.publish_meta.outputs.expected_version }}" ]; then
-            echo "::error::Reactor package version ${package_version} does not match tag version ${{ steps.publish_meta.outputs.expected_version }}."
-            exit 1
-          fi
-          npm publish "${reactor_tarball}" --access public --tag "${{ steps.publish_meta.outputs.dist_tag }}" --provenance
-
-      - name: Publish Cradle package
-        run: |
-          set -euo pipefail
-          cradle_tarball="$(find "${RUNNER_TEMP}/openprose-reactor-publish/cradle" -maxdepth 1 -name "openprose-reactor-cradle-*.tgz" -print -quit)"
-          if [ -z "${cradle_tarball}" ]; then
-            echo "::error::Downloaded Cradle tarball artifact is missing."
-            exit 1
-          fi
-          package_version="$(tar -xOf "${cradle_tarball}" package/package.json | node -e "let input=''; process.stdin.on('data', chunk => input += chunk); process.stdin.on('end', () => console.log(JSON.parse(input).version));")"
-          if [ "${package_version}" != "${{ steps.publish_meta.outputs.expected_version }}" ]; then
-            echo "::error::Cradle package version ${package_version} does not match tag version ${{ steps.publish_meta.outputs.expected_version }}."
-            exit 1
-          fi
-          npm publish "${cradle_tarball}" --access public --tag "${{ steps.publish_meta.outputs.dist_tag }}" --provenance
+            echo "Publishing ${tarball} (OIDC trusted publishing + provenance)"
+            npm publish "${tarball}" --access public --provenance
+          }
+          publish_pkg packages/reactor
+          publish_pkg packages/reactor-cli
+          publish_pkg packages/reactor-devtools

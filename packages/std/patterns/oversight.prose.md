@@ -56,7 +56,7 @@ Actor executes, observer independently analyzes outcomes, arbiter decides whethe
     task_brief: string    -- the task to execute
     max_cycles: number    -- (optional, default 3)
 
-### Ensures
+### Returns
 
 - Actor receives the task brief (first cycle) or adjusted brief (subsequent cycles)
 - Observer receives ONLY the outcome — not the actor's reasoning or self-assessment

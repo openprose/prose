@@ -1,0 +1,48 @@
+{
+  "scenario": "tamper-forge",
+  "title": "An audit/replay lens over the masked-relay ledger. Chain-verify catches a naive cost-inflation edit; a public-hash re-stamp heals the chain (honest book-keeping, NOT cryptographic non-repudiation under the v1 null signer); a forged sig.scheme is rejected; and the documented world-model integrity gap is asserted so it can't regress silently.",
+  "beats": [
+    {
+      "name": "cold-audit",
+      "from": 0,
+      "to": 76,
+      "holdMs": 2600,
+      "caption": "cold audit · verifyReceiptChain passes over all 13 per-node chains · 77/77 receipts recompute their content_hash via computeReceiptContentHash · the trail is internally consistent"
+    },
+    {
+      "name": "quiet-reaudit",
+      "from": 0,
+      "to": 76,
+      "holdMs": 2200,
+      "caption": "a byte-identical re-presentation of the SAME ledger · the trail fingerprint did not move · the auditor memo-SKIPS · fresh 0 — cost scales with surprise, not the clock"
+    },
+    {
+      "name": "attack-a-naive-edit",
+      "from": 1,
+      "to": 1,
+      "holdMs": 3200,
+      "caption": "ATTACK (a) · inflate a receipt's cost.tokens.fresh and leave the stale content_hash · CHAIN-VERIFY FAILED · the mutated body no longer hashes to its recorded content_hash"
+    },
+    {
+      "name": "attack-b-restamp",
+      "from": 1,
+      "to": 1,
+      "holdMs": 3200,
+      "caption": "ATTACK (b) · re-stamp the edited receipt's public content_hash via computeReceiptContentHash · chain PASSES again · HONEST book-keeping, NOT non-repudiation — a null signer means whoever rewrites the file can also recompute the hash"
+    },
+    {
+      "name": "attack-c-forged-sig",
+      "from": 0,
+      "to": 0,
+      "holdMs": 3000,
+      "caption": "ATTACK (c) · forge sig.scheme to claim a signed posture the run never had · REJECTED · verifyReceipt flags the receipt whose content_hash no longer covers its mutated signature envelope"
+    },
+    {
+      "name": "boundary-d-world-model-gap",
+      "from": 0,
+      "to": 0,
+      "holdMs": 3400,
+      "caption": "BOUNDARY (d) · edit a world-models/<hex>/published.json artifact but leave receipts.json intact · receipts chain-verify still PASSES (Bug B6 / OUTSTANDING #3) · the maintained truth sits OUTSIDE the receipt integrity envelope · asserted as CURRENT behavior so it can't regress silently"
+    }
+  ]
+}

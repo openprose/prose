@@ -46,6 +46,22 @@ SQLite state provides:
 
 **Key principle:** The database is a flexible workspace. The Prose VM and spawned sessions share it as a coordination mechanism, not a rigid contract.
 
+### SQL is a derived projection, not the truth
+
+The load-bearing invariant (`world-model.md` §1): **the canonical world-model is a
+single content-addressable artifact, and SQL is a derived projection of it, never
+the truth.** SQLite under this backend holds two things that *are* canonical — the
+**append-only receipt ledger** and the **content-addressed world-model versioning**
+(the committed artifact blobs keyed by `ContentAddress`) — plus query tables that
+are **derived projections** of the canonical truth, rebuildable at any time. A
+render may *query a projection by reference* (e.g. a SQL index over a million-row
+truth), but the fingerprint is always computed over the canonical serialization of
+the artifact, never over a SQL row. Do not treat the query tables as canonical.
+
+There is no policy / responsibility-status / pressure registry. The wake decision
+is the reconciler comparing fingerprints — deterministic, total, no LLM, no judge,
+no stored verdict.
+
 ---
 
 ## Database Location
@@ -54,11 +70,11 @@ The database lives within the standard run directory:
 
 ```
 <openprose-root>/runs/{YYYYMMDD}-{HHMMSS}-{random}/
-├── forme.manifest.json     # Optional filesystem snapshot of compiled Forme manifest
-├── root.prose.md           # Copy of the invoked service or system source
-├── sources/                # Service, system, and pattern source snapshots
-├── state.db                # SQLite database for execution events and bindings
-└── attachments/            # Large outputs that don't fit in DB (optional)
+├── compiled-intent.json    # Optional snapshot of compiled intent (topology WM + canonicalizers + validators)
+├── root.prose.md           # Copy of the invoked source
+├── sources/                # Source snapshots
+├── state.db                # SQLite: receipt ledger + WM versioning (canonical) + query projections (derived)
+└── attachments/            # Large canonical artifact blobs that don't fit in DB (optional)
 ```
 
 **Run ID format:** Same as filesystem state: `{YYYYMMDD}-{HHMMSS}-{random6}`
@@ -66,8 +82,10 @@ The database lives within the standard run directory:
 Example: `<openprose-root>/runs/20260116-143052-a7b3c9/state.db`
 
 SQLite state preserves the same run identity and source snapshot files as the
-filesystem backend. It replaces filesystem `workspace/`, `bindings/`, and
-`vm.log.md` artifacts with database tables plus optional attachment files.
+filesystem backend. It holds the receipt ledger and the canonical world-model
+versioning in tables (the filesystem backend's `receipts/` + `world-model/`),
+plus optional attachment files for large artifact blobs — and exposes derived
+query projections over that truth.
 
 ### Project-Scoped and User-Scoped Agents
 
@@ -195,7 +213,44 @@ CREATE TABLE IF NOT EXISTS execution (
     metadata TEXT  -- JSON for construct-specific data (loop iteration, parallel branch, etc.)
 );
 
--- All named values (binding input/output, let, const)
+-- === CANONICAL: the content-addressed world-model versioning ===
+-- Each committed world-model version, keyed by its ContentAddress (sha256 over
+-- the canonical serialization). This is canonical truth, NOT a projection.
+CREATE TABLE IF NOT EXISTS world_model_version (
+    version TEXT PRIMARY KEY,        -- ContentAddress: sha256:<hex>
+    node TEXT,                       -- which node's truth this is
+    artifact BLOB,                   -- the canonical serialization (or attachment_path for large)
+    attachment_path TEXT,            -- set when artifact is offloaded to attachments/
+    created_at TEXT DEFAULT (datetime('now'))
+);
+
+-- The current published version per node (the "published" pointer).
+CREATE TABLE IF NOT EXISTS world_model_published (
+    node TEXT PRIMARY KEY,
+    version TEXT REFERENCES world_model_version(version),
+    updated_at TEXT DEFAULT (datetime('now'))
+);
+
+-- === CANONICAL: the append-only receipt ledger (node-scoped, chained by prev) ===
+-- The single commit object. No verdict, no judge, no policy artifact.
+CREATE TABLE IF NOT EXISTS receipt (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    node TEXT,                       -- node identity; ledger is node-scoped
+    contract_fingerprint TEXT,       -- which contract version produced this
+    wake TEXT,                       -- JSON: { source: input|self|external, refs: [...] }
+    input_fingerprints TEXT,         -- JSON array — the memo key's second half
+    fingerprints TEXT,               -- JSON { facet -> token }, always incl. "@atomic"
+    semantic_diff TEXT,              -- JSON render-input context; never a wake signal
+    prev TEXT,                       -- ContentAddress of prior receipt; NULL at cold start
+    status TEXT,                     -- rendered | skipped | failed
+    cost TEXT,                       -- JSON { provider, model, tokens, surprise_cause }
+    sig TEXT,                        -- JSON null-signature: { scheme:"none", null_reason }
+    created_at TEXT DEFAULT (datetime('now'))
+);
+
+-- === DERIVED PROJECTION: named values for single-session function/service runs ===
+-- A query convenience for stateless `function`/`service` call results. NOT the
+-- canonical truth for nodes — a node's truth is the world_model_version artifact.
 CREATE TABLE IF NOT EXISTS bindings (
     name TEXT,
     execution_id INTEGER,  -- NULL for root scope, non-null for block invocations
@@ -563,8 +618,10 @@ The database is your workspace. Use it.
 
 | Aspect | filesystem.md | in-context.md | sqlite.md |
 |--------|---------------|---------------|-----------|
+| **Canonical truth** | `world-model/` artifact + `receipts/` | Conversation history | `world_model_version`/`receipt` tables |
+| **Derived projections** | optional rebuildable index | none | SQL query tables (`bindings`, custom) |
 | **State location** | `<openprose-root>/runs/{id}/` files | Conversation history | `<openprose-root>/runs/{id}/state.db` |
-| **Queryable** | Via file reads | No | Yes (SQL) |
+| **Queryable** | Via file reads | No | Yes (SQL projections over canonical truth) |
 | **Atomic updates** | No | N/A | Yes (transactions) |
 | **Schema flexibility** | Rigid file structure | N/A | Flexible (add tables/columns) |
 | **Resumption** | Read vm.log.md | Re-read conversation | Query database |
@@ -579,11 +636,12 @@ The database is your workspace. Use it.
 SQLite state management:
 
 1. Uses a **single database file** per run
-2. Uses **append-only writes** for minimal token overhead
-3. Provides **clear responsibility separation** between the Prose VM and spawned sessions
-4. Enables **structured queries** for state inspection
-5. Allows **flexible schema evolution** as needed
-6. Requires the **sqlite3 CLI** tool
-7. Is **experimental**—expect changes
+2. Holds the **canonical** receipt ledger + content-addressed world-model versioning in tables
+3. Exposes **SQL query tables as derived projections** — never the canonical truth (`world-model.md` §1)
+4. Has **no policy/responsibility-status/pressure registry** — the wake decision is the reconciler comparing fingerprints
+5. Uses **append-only writes** for the ledger
+6. Allows **flexible schema evolution** for projections as needed
+7. Requires the **sqlite3 CLI** tool
+8. Is **experimental**—expect changes
 
 The core contract: the Prose VM appends execution events (not updates); spawned sessions write their own outputs directly to the database. The conversation is primary state; the database is for persistence and inspection.

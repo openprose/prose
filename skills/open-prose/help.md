@@ -6,7 +6,7 @@ Load this file when a user invokes `prose help` or asks about OpenProse.
 
 ## Welcome
 
-OpenProse is a programming language for AI sessions. You write structured systems that orchestrate AI agents, and the VM (this session) executes them by spawning real subagents.
+OpenProse is a programming language for AI sessions. You declare the truths you want kept current as responsibilities (and the helper functions they call), and the VM (this session) executes them by spawning real subagents — running a render only when a node's inputs or its own contract have materially moved.
 
 **A long-running AI session is a Turing-complete computer. OpenProse is a programming language for it.**
 
@@ -22,9 +22,9 @@ question plainly in chat:
 Question: "What would you like to automate with OpenProse?"
 Header: "Goal"
 Options:
-  1. "Run a service/system" - "I have a service or system file to execute"
-  2. "Build something new" - "Help me create a service or system for a specific task"
-  3. "Keep a goal true" - "Define a standing goal with compile/serve/status"
+  1. "Run a contract" - "I have a `.prose.md` file to execute"
+  2. "Build something new" - "Help me create a contract for a specific task"
+  3. "Keep a goal true" - "Define a standing responsibility with compile/serve/status"
   4. "Learn the syntax" - "Show me examples and explain how it works"
   5. "Improve OpenProse" - "Turn run evidence into a focused upstream PR"
   6. "Explore possibilities" - "What can OpenProse do?"
@@ -32,8 +32,8 @@ Options:
 
 **After the user responds:**
 
-- **Run a service/system**: Ask for the file path, then load `prose.md` and execute
-- **Build something new**: Ask them to describe their task, then help write a service or system (load `guidance/authoring.md`)
+- **Run a contract**: Ask for the file path, then load `prose.md` and execute
+- **Build something new**: Ask them to describe their task, then help write a contract (load `guidance/authoring.md`)
 - **Keep a goal true**: Help author a `kind: responsibility`, then explain `prose compile`, `prose serve`, and `prose status`
 - **Learn the syntax**: Show examples from `examples/`, explain the VM model
 - **Improve OpenProse**: Run `std/evals/prose-contributor` on relevant run IDs; require explicit user approval before pushing or opening a PR
@@ -47,7 +47,7 @@ Options:
 |---------|--------------|
 | `prose compile [path] [--out <dir>]` | Compile source into `<openprose-root>/dist/manifest.next.json` |
 | `prose serve` | Serve the active IR as local cron and HTTP trigger adapters |
-| `prose run <file.prose.md>` | Run a service or system |
+| `prose run <file.prose.md>` | Run a responsibility or function contract |
 | `prose write [request...]` | Interactive-by-default authoring from rough English/pseudo-Prose into a validated source package; non-interactive runs return `unresolved-intent` when more detail is required |
 | `prose lint <file.prose.md>` | Validate structure, schema, and contracts |
 | `prose preflight <file.prose.md>` | Check dependencies and environment |
@@ -73,7 +73,7 @@ cp dist/manifest.next.json dist/manifest.active.json
 prose serve
 ```
 
-**Create your first service or system:**
+**Create your first contract:**
 ```
 prose help
 -> Select "Build something new"
@@ -84,7 +84,7 @@ Default project source lives under `<openprose-root>/src/`. Multi-file systems
 conventionally start at `<openprose-root>/src/{system}/index.prose.md`; runs are
 written to `<openprose-root>/runs/`.
 
-**Use a library service or system:**
+**Use a library function or responsibility:**
 ```text
 prose run std/evals/inspector -- subject: 20260406-201439-1a3369
 ```
@@ -130,11 +130,11 @@ English is already an agent framework -- we're not replacing it, we're structuri
 
 ### Why not all YAML?
 
-We started with YAML. The problem: loops, conditionals, and variable declarations aren't self-evident in YAML. More fundamentally, YAML optimizes for machine parseability. OpenProse optimizes for intelligent machine legibility. It uses YAML only where structured nesting is doing real work, such as pattern instances in `### Services`. Contracts themselves stay in Markdown because they need to be understood, not merely parsed.
+We started with YAML. The problem: loops, conditionals, and variable declarations aren't self-evident in YAML. More fundamentally, YAML optimizes for machine parseability. OpenProse optimizes for intelligent machine legibility. It uses YAML only where structured nesting is doing real work, such as pattern instances. Contracts themselves stay in Markdown because they need to be understood, not merely parsed.
 
 ### How do dependencies work?
 
-OpenProse uses a git-native dependency model -- any git host works, written explicitly as `host/owner/repo/path` (e.g. `github.com/alice/research`). A system can reference dependencies with `use "host/owner/repo/path"`, dependency-like entries in `### Services`, or `pattern:` references. Run `prose install` to clone dependencies into `<openprose-root>/deps/` and pin their versions in `<openprose-root>/prose.lock`. The lockfile is committed to git; `<openprose-root>/deps/` is gitignored (it's a cache, reproducible from the lockfile). `std/` is shorthand for `github.com/openprose/prose/packages/std/` (the standard library) and `co/` is shorthand for `github.com/openprose/prose/packages/co/` (company-as-prose). At runtime, dependencies are read from disk only -- no network calls. If deps are missing, `prose run` errors and tells you to run `prose install`.
+OpenProse uses a git-native dependency model -- any git host works, written explicitly as `host/owner/repo/path` (e.g. `github.com/alice/research`). A contract can reference dependencies with `use "host/owner/repo/path"` or `pattern:` references, and call resolved `function`s via ProseScript `call`. Run `prose install` to clone dependencies into `<openprose-root>/deps/` and pin their versions in `<openprose-root>/prose.lock`. The lockfile is committed to git; `<openprose-root>/deps/` is gitignored (it's a cache, reproducible from the lockfile). `std/` is shorthand for `github.com/openprose/prose/packages/std/` (the standard library) and `co/` is shorthand for `github.com/openprose/prose/packages/co/` (company-as-prose). At runtime, dependencies are read from disk only -- no network calls. If deps are missing, `prose run` errors and tells you to run `prose install`.
 
 ### Why not LangChain/CrewAI/AutoGen?
 
@@ -153,39 +153,36 @@ adapter changes.
 
 ### Contract Markdown (`*.prose.md` files)
 
-Services and systems are `*.prose.md` files with tiny YAML identity frontmatter and readable `###` sections. The Forme Container wires systems; the Prose VM executes services and systems.
+Contracts are `*.prose.md` files with tiny YAML identity frontmatter and readable `###` sections. Forme wires the responsibility DAG at compile time; the Prose VM executes the frozen output at run time.
 
 **Identity frontmatter:**
 
 ```yaml
 ---
-name: my-service
-kind: service          # service | system | gateway | test | pattern | responsibility
+name: competitor-watch
+kind: responsibility   # responsibility | function | gateway | test | pattern
 ---
 ```
 
-**Sections:**
+**A `responsibility` (a mounted, subscribed data-flow node):**
 
 ```markdown
-### Runtime
-
-- `persist`: project
-
-### Shape
-
-- `self`: evaluate, decide
-- `delegates`:
-  - `helper`: research
-- `prohibited`: direct web scraping
+---
+name: competitor-watch
+kind: responsibility
+---
 
 ### Requires
 
-- `topic`: a research question to investigate
+- `funding`: competitor funding signals
 
-### Ensures
+### Maintains
 
-- `findings`: sourced claims from 3+ distinct sources
-- each finding includes: confidence score 0-1
+- `summary`: the current competitor-activity truth, with sources
+
+### Continuity
+
+- input-driven
 
 ### Errors
 
@@ -200,36 +197,33 @@ kind: service          # service | system | gateway | test | pattern | responsib
 - `API_KEY`: required for external service access
 ```
 
-**System (multi-service):**
+`### Requires` declares the inputs as subscription contracts; `### Maintains` declares the **schema** of the standing truth the render keeps current (type, canonicalization, facets, postconditions) — it is Forme's match target. `### Continuity` declares what can wake the node: `input-driven` (default), `self-driven` (a cadence), or `external-driven` (a gateway).
+
+**A `function` (a called, ephemeral helper):**
 
 ```markdown
 ---
-name: deep-research
-kind: system
+name: summarize-funding
+kind: function
 ---
 
-### Services
+### Parameters
 
-- `researcher`
-- `critic`
-- `synthesizer`
+- `signals`: raw funding signals
 
-### Requires
+### Returns
 
-- `question`: the question to investigate
-
-### Ensures
-
-- `report`: a concise answer with sources
+- `summary`: a concise digest with sources
 ```
 
-Each entry in `### Services` is a separate service or subsystem `*.prose.md` file. Forme auto-wires them by matching `### Requires` to `### Ensures` across services and systems.
+A `function` is the library tier — arguments in, value out, no world-model and no `### Continuity`. You call functions constantly via ProseScript `call` and author them rarely (most ship pre-built in `std/`).
 
-**Three levels of author control:**
+Forme wires the DAG by matching each responsibility's `### Requires` to the `### Maintains` that satisfies it **semantically** across mounted responsibilities, and freezes the resolved edges. There is no `kind: system` and no `### Services` graph kind: composition is intra-node `call` (inside one render) or a cross-node subscription (Forme-wired edge between responsibilities).
 
-1. **Contracts only** (default) -- Forme auto-wires everything from `### Requires` / `### Ensures`
-2. **Wiring declaration** -- author adds a `### Wiring` section to pin specific connections
-3. **Execution block** -- author adds a `### Execution` section with explicit `let`/`call` statements
+**Two levels of author control:**
+
+1. **Contracts only** (default) -- Forme wires the edges from `### Requires` / `### Maintains`
+2. **Execution block** -- author adds a `### Execution` section with explicit `let`/`call` choreography inside a render
 
 **Test files:**
 
@@ -265,13 +259,13 @@ kind: pattern
 ```
 
 Patterns define reusable agent design patterns with slots, config, invariants,
-and delegation rules. They are not run directly; systems instantiate them with
-`pattern:` declarations in `### Services`. A nested pattern declaration may
-appear inside another pattern instance's `with:` block as a slot value.
+and delegation rules. They are not run directly; a responsibility instantiates
+them with a `pattern:` reference. A nested pattern declaration may appear inside
+another pattern instance's `with:` block as a slot value.
 
 ### ProseScript (`### Execution`)
 
-ProseScript is the imperative layer. Use it inside `### Execution` when a Contract Markdown service or system needs pinned choreography.
+ProseScript is the imperative layer. Use it inside `### Execution` when a render needs pinned choreography.
 
 ```prose
 let research = call researcher
@@ -299,7 +293,7 @@ Also valid: `session`, `agent`, `repeat`, `for`, `loop until`, `try/catch`, `if/
 
 The `examples/` directory contains small OpenProse Native Repositories. Each
 example has `src/`, `dist/`, `runs/`, `state/`, `deps/`, a top-level README,
-and source files for a responsibility, gateway, system, and focused services.
+and source files for a responsibility, a gateway, and focused functions.
 
 **Recommended starting points:**
 

@@ -1,13 +1,13 @@
 ---
 role: contract-markdown-format
 summary: |
-  Canonical Markdown format for OpenProse services, systems, gateways, tests,
-  patterns, and responsibilities. Defines the header hierarchy, contract
-  sections, and how interpreters should extract `*.prose.md` source.
+  Canonical Markdown format for OpenProse responsibilities, functions, gateways,
+  patterns, and tests. Defines the header hierarchy, contract sections, and how
+  interpreters extract `*.prose.md` source for the mounted-node DAG.
 see-also:
-  - forme.md: Wiring semantics
-  - prose.md: Execution semantics
-  - responsibility-runtime.md: Responsibility Runtime semantics
+  - forme.md: Wiring semantics (the responsibility DAG)
+  - prose.md: Execution semantics (the render harness)
+  - responsibility-runtime.md: Compile/run reconciler semantics
   - prosescript.md: Imperative scripting layer for `### Execution`
   - guidance/tenets.md: Design reasoning
   - guidance/authoring.md: Authoring guidance
@@ -16,49 +16,64 @@ see-also:
 # Contract Markdown
 
 Contract Markdown is the human-facing `*.prose.md` format for OpenProse
-services, systems, gateways, tests, patterns, and responsibilities. It uses
-tiny YAML frontmatter for file identity, then Markdown sections for the
-human-facing language: contracts, runtime hints, shape, execution, and standing
-goals.
+responsibilities, functions, gateways, patterns, and tests. It uses tiny YAML
+frontmatter for file identity, then Markdown sections for the human-facing
+language: contracts, the world-model schema, runtime hints, and the render body.
+
+Every authored file is **one render** — a declaration plus the bounded session
+that runs it. The `kind` field is sugar over that single render atom: each kind
+is the same render with different or missing sections (`plan.md` §1).
 
 The format optimizes for two readers:
 
 1. Humans scanning a workflow.
-2. Agents extracting contracts and wiring services and systems.
+2. Agents extracting contracts and wiring the responsibility DAG with Forme.
 
-## Authored Shapes
+## Authored Kinds
 
-`prose run` accepts two authored shapes:
+`prose run` and the reactor recognize five kinds. Two are **data-flow kinds**
+(sugar over the render atom); three are **tooling kinds**.
 
-- **Service** — an atomic execution boundary: one contract, one session, one
-  workspace. A service does work directly.
-- **System** — a composition boundary: one contract whose implementation is a
-  graph of services and systems. A system owns domain intent and concrete
-  wiring.
+- **Responsibility** — a *mounted node*: the headline kind. A responsibility
+  declares its inputs as subscription contracts (`### Requires`) and the shape
+  of the standing truth it keeps current (`### Maintains`), and is woken over
+  time. Mounting (a harness act) gives it identity, a persisted world-model, and
+  resolved subscriptions. A responsibility is a node because it is mounted as a
+  subscribable producer — **not** because it holds state (`plan.md` §2).
 
-A run starts from the file the caller invokes, which may be either a service or a system.
+- **Function** — a *called* render: the library tier, and the replacement for the
+  retired `service`. A function is stateless and ephemeral. Its interface is
+  `### Parameters` → `### Returns` — a plain call interface, not a subscription
+  contract — so it carries no world-model and no `### Continuity`. You call
+  functions constantly and author them rarely; most ship pre-built in `std/`.
 
-A **test** is a harness executed by `prose test`: it supplies fixtures, runs a
-subject service or system, and evaluates assertions.
+- **Gateway** — *sugar for an external-driven responsibility*. A gateway is how
+  time or the outside world enters the graph: schedules, local HTTP routes,
+  webhooks, or provider events. It has no `### Requires` (its input arrives from
+  outside the graph) and declares `### Continuity: external-driven`. It maintains
+  the latest incoming truth. Forme finds the entry-point set precisely by finding
+  the responsibilities whose `### Continuity` is external-driven.
 
-A **pattern** is not domain work by itself. It is a reusable agent design
-pattern: slots, config, invariants, and delegation rules for how filled
-services interact. Patterns are not run directly; systems instantiate them
-inside `### Services`.
+- **Pattern** — a reusable agent design pattern: slots, config, invariants, and
+  delegation rules. Patterns are not run directly; they are instantiated at
+  compile time and expanded into nodes.
 
-A **responsibility** is responsibility-oriented source, not a direct run
-target. It defines a standing goal that must remain true over time. The
-compiler lowers it into responsibility, concrete triggers, and activation
-intent.
-Pressure is runtime feedback produced when the Reactor judges the standing goal
-to be drifting, down, or blocked.
+- **Test** — a harness executed by `prose test`: it supplies fixtures, runs a
+  subject responsibility or function, and evaluates assertions over the subject's
+  world-model / returned value.
 
-A **gateway** is optional ingress source, not a direct run target. It describes
-how time or the outside world enters OpenProse: schedules, local HTTP routes,
-webhooks, or provider events. The compiler lowers gateways into concrete
-serve-facing `triggers[]`.
+There is **no `system` kind**. Composition is imperative `call` *inside* a render
+(ProseScript `### Execution`) or a cross-node *subscription* across
+responsibilities (wired by Forme) — never a third "internally-autowired graph"
+kind in the middle (`plan.md` §3).
 
-Gateway sections are intentionally small:
+A run starts from the file the caller invokes, which is a responsibility,
+function, or gateway.
+
+### Gateway shape
+
+Gateway sections are intentionally small. A gateway always declares
+`### Continuity: external-driven`:
 
 ```markdown
 ---
@@ -66,34 +81,40 @@ name: github-stars
 kind: gateway
 ---
 
+### Continuity
+
+- external-driven
+
 ### Receives
 
 - POST /webhooks/github/stars
 - Provider: GitHub
 - Event: star
 
+### Maintains
+
+- `stargazers`: the latest incoming star events as structured truth
+
 ### Emits
 
-- high-intent-stargazer-outreach.evidence-change
-
-### Payload
-
-Pass the webhook payload as activation event context.
+- high-intent-stargazer-outreach
 ```
 
 ## Core Shape
 
+A `function` declares a plain call interface:
+
 ````markdown
 ---
 name: research-report
-kind: service
+kind: function
 ---
 
-### Requires
+### Parameters
 
 - `topic`: the question to investigate
 
-### Ensures
+### Returns
 
 - `report`: concise answer with sources
 
@@ -111,18 +132,72 @@ return findings
 ```
 ````
 
+A `responsibility` declares subscription contracts and the world-model schema it
+maintains:
+
+````markdown
+---
+name: competitor-activity-monitor
+kind: responsibility
+id: 067NC4KG01RG50R40M30E20918
+---
+
+### Goal
+
+A current, corroborated view of each tracked competitor's material activity.
+
+### Requires
+
+- `funding`: a current view of competitor funding events
+- `hiring`: a current view of competitor hiring activity
+
+### Maintains
+
+A current, corroborated view of each tracked competitor. Each competitor carries a
+stable `name` and a `last_corroborated` field; `fetched_at` and source request-ids
+are immaterial everywhere. Postcondition: every competitor cites a corroborating
+source.
+
+#### funding
+Funding events per competitor — round, amount, date. Material: the event set
+(unordered) and each event's round/amount/date.
+
+#### hiring
+Open-role activity — the department set and the open-role count (exact).
+
+#### product-launches
+Announced or shipped products — the launch set; a ship-date slipping past today
+flips `shipped`, which is material.
+
+### Continuity
+
+- self-driven: re-check every 6h
+````
+
+The three `####` parts under `### Maintains` are facets: a subscriber that
+`### Requires` *funding* wakes only when `#### funding`'s fingerprint moves. The
+`### Requires` bullets name the producer facet they subscribe to —
+`Requires.<facet>` ↔ `Maintains.<facet>`.
+
 ## Header Hierarchy
 
 | Level | Meaning |
 |-------|---------|
 | `#` | Optional human title. Ignored by Forme unless no frontmatter `name` exists. |
-| `##` | Inline service boundary in multi-service files. |
-| `###` | Section inside the current service or system. |
-| `####`+ | Free-form nested documentation inside a section. |
+| `##` | Inline responsibility/function boundary in multi-node files. |
+| `###` | Section inside the current responsibility, function, or gateway. |
+| `####` inside `### Maintains` | **Semantic: a facet.** A named, independently-subscribable part of the maintained truth (the named-parts rule, §[Facets](#facets--the-named-parts-rule)). Its name is the fingerprint unit, subscription symbol, and world-model subtree. |
+| `####` inside `### Requires` | **Semantic: a facet-need.** A named subscription to a producer's facet; Forme matches `Requires.<facet>` ↔ `Maintains.<facet>`. |
+| `####`+ elsewhere | Free-form nested documentation inside a section. |
 
-`##` is reserved for inline service names so files can contain several
-services without ambiguous parsing. Contract sections use `###` so they work
-uniformly in standalone service files and inside inline services.
+`##` is reserved for inline node names so a file can contain several
+responsibilities or functions without ambiguous parsing. Contract sections use
+`###` so they work uniformly in standalone files and inside inline nodes.
+
+Inside `### Maintains` and `### Requires`, a `####` sub-heading is **not** free-form
+documentation — it is a facet (a named part of the truth) or a facet-need (a named
+subscription to one). Everywhere else `####` is plain nested prose
+(`architecture.md` §3.2 / §10.2; `delta.md` Part G).
 
 ## Canonical Sections
 
@@ -130,106 +205,127 @@ Forme and the Prose VM recognize these `###` sections case-insensitively:
 
 | Section | Applies To | Purpose |
 |---------|------------|---------|
-| `### Description` | system, service, test, pattern | Human summary. Preserved for readers; not used as a contract |
-| `### Services` | system | Services or systems Forme should resolve and wire |
-| `### Requires` | system, service, test, pattern slots | Inputs or dependencies the caller/container must provide |
-| `### Ensures` | system, service, pattern | Outputs or postconditions the service, system, or pattern commits to |
-| `### Errors` | system, service | Declared failures the service or system may signal |
-| `### Invariants` | system, service, pattern | Properties that must hold regardless of outcome |
-| `### Strategies` | system, service, test | Guidance for judgment calls and edge cases |
-| `### Environment` | system, service | Runtime variables supplied by host infrastructure |
-| `### Runtime` | system, service | Execution hints such as `persist` and `model` |
-| `### Memory` | service | Declared reads from and writes to persistent agent memory. Only meaningful when `### Runtime` sets `persist: project` or `persist: user` |
-| `### Skills` | system, service | Agent harness skills the component requires the host harness to provide. See [Skills](#skills) |
-| `### Tools` | system, service, responsibility | Host tools the component requires the host environment to provide. See [Tools](#tools) |
-| `### Shape` | service | Capability boundaries: self, delegates, and prohibited work |
-| `### Wiring` | system | Explicit Level 2 wiring declaration |
-| `### Execution` | system, service | ProseScript choreography that pins execution |
+| `### Description` | all | Human summary. Preserved for readers; not used as a contract |
+| `### Goal` | responsibility, gateway | The render's one-sentence standing intent |
+| `### Requires` | responsibility, pattern slots | Subscription contracts naming facet-level needs; a `####` sub-heading is a facet-need. Forme's match target (`Requires.<facet> ↔ Maintains.<facet>`) |
+| `### Maintains` | responsibility, gateway | The world-model **schema** — type, canonicalization spec, facets (a `####` sub-heading is a facet, the named-parts rule), and postconditions (see [Maintains](#maintains)) |
+| `### Parameters` | function | Inputs the caller passes at call time |
+| `### Returns` | function | The value the function returns |
+| `### Continuity` | responsibility, gateway | The intrinsic wake-source declaration: input-driven, self-driven, or external-driven (see [Continuity](#continuity)) |
+| `### Errors` | responsibility, function | Declared failures the node may signal |
+| `### Invariants` | responsibility, function, pattern | Properties that must hold regardless of outcome |
+| `### Strategies` | responsibility, function, test | Guidance for judgment calls and edge cases |
+| `### Environment` | responsibility, function | Runtime variables supplied by host infrastructure |
+| `### Runtime` | responsibility, function | Execution hints such as `model` |
+| `### Skills` | responsibility, function | Agent harness skills the component requires the host harness to provide. See [Skills](#skills) |
+| `### Tools` | responsibility, function | Host tools the component requires the host environment to provide. See [Tools](#tools) |
+| `### Shape` | responsibility, function | Capability boundaries: self, delegates, and prohibited work |
+| `### Execution` | responsibility, function | ProseScript render body that pins choreography |
 | `### Fixtures` | test | Test inputs supplied without prompting |
 | `### Expects` | test | Positive natural-language assertions |
 | `### Expects Not` | test | Negative natural-language assertions |
-| `### Slots` | pattern | Services a pattern requires from its caller |
+| `### Slots` | pattern | Responsibilities or functions a pattern requires from its caller |
 | `### Config` | pattern | Pattern-level parameters and defaults |
 | `### Delegation` | pattern | ProseScript or pseudocode describing slot interaction |
-| `### Goal` | responsibility | The invariant: what must remain true over time |
-| `### Continuity` | responsibility | How time qualifies the obligation |
-| `### Criteria` | responsibility | What counts as satisfactory fulfillment |
-| `### Constraints` | responsibility | What must remain bounded or prohibited |
-| `### Fulfillment` | responsibility | Optional hint naming a system or service that may fulfill the responsibility |
 | `### Schedule` | gateway | Optional cron-like ingress cadence |
 | `### Receives` | gateway | Optional HTTP/event ingress description |
-| `### Emits` | gateway | Responsibility trigger id the gateway should emit |
+| `### Emits` | gateway | Responsibility name the gateway should wake |
 | `### Payload` | gateway | Notes about the event payload shape |
 
 Unknown `###` sections are preserved as documentation. They are not contract
 sections unless a future spec names them.
+
+### Folded and deleted sections
+
+The judge-era responsibility vocabulary folds into the world-model model:
+
+| Legacy section | Folds into |
+|----------------|------------|
+| `### Ensures` | `### Maintains` (data-flow) / `### Returns` (function) — re-purpose, not just rename |
+| `### Criteria` | `### Maintains` postconditions |
+| `### Fulfillment` | the render itself, or a delegated `function` |
+| `### Constraints` | `### Invariants` / `### Shape` |
+| `### Memory` | the single persisted world-model (responsibility); dropped (function) |
+| `### Services` / `### Wiring` | deleted with `system`; composition is `call` or subscription |
+
+`### Memory` is gone: one persisted world-model per node subsumes the old
+reads/writes ledger (`world-model.md` §9.4). A `function` is stateless and has no
+world-model, so it simply has no memory; a former `service`-with-memory that was
+genuinely stateful is really a `responsibility`, and its persisted state is its
+world-model.
 
 ## File Extraction
 
 Interpreters parse a file in this order:
 
 1. Read YAML frontmatter for identity metadata (`name`, `kind`; `kind: test`
-   files also declare `subject`).
-2. Create the file-level service, system, gateway, test, pattern, or
-   responsibility from the frontmatter.
+   files also declare `subject`; `kind: responsibility` files declare `id`).
+2. Create the file-level responsibility, function, gateway, pattern, or test from
+   the frontmatter.
 3. Attach all `###` sections before the first `##` to the file-level entry.
-4. For every `## {name}` heading, create an inline service named `{name}`.
-5. Attach subsequent `###` sections to that inline service until the next `##`.
+4. For every `## {name}` heading, create an inline node named `{name}`.
+5. Attach subsequent `###` sections to that inline node until the next `##`.
 
-Example:
+Example — a file with one responsibility and two helper functions it `call`s:
 
 ````markdown
 ---
 name: content-pipeline
-kind: system
+kind: responsibility
 ---
-
-### Services
-
-- `review`
-- `polish`
 
 ### Requires
 
 - `draft`: text to improve
 
-### Ensures
+### Maintains
 
-- `final`: polished text
+- `final`: the current polished text
+
+### Execution
+
+```prose
+let notes = call review
+  draft: draft
+
+let polished = call polish
+  draft: draft
+  feedback: notes
+
+return polished
+```
 
 ## review
 
-### Shape
-
-- `self`: read draft, write feedback
-- `prohibited`: editing final copy
-
-### Requires
+### Parameters
 
 - `draft`: text to review
 
-### Ensures
+### Returns
 
 - `feedback`: editorial notes
 
 ## polish
 
-### Requires
+### Parameters
 
 - `draft`: original text
 - `feedback`: editorial notes
 
-### Ensures
+### Returns
 
 - `final`: polished text
 ````
 
-The file-level system requires `draft` and ensures `final`. It also
-contains inline services `review` and `polish`.
+The file-level responsibility requires `draft` and maintains `final`. It also
+contains inline functions `review` and `polish` that its render `call`s.
 
 ## Responsibilities
 
-Responsibility-oriented repositories may contain `kind: responsibility` files:
+A `kind: responsibility` is a mounted DAG node: a standing truth kept current
+over time. It declares both halves of its interface — `### Requires` (what it
+subscribes to) and `### Maintains` (the shape of the truth it keeps) — and its
+wake-source in `### Continuity`.
 
 ```markdown
 ---
@@ -243,82 +339,256 @@ id: 067NC4KG01RG50R40M30E20918
 High-intent GitHub stargazers are identified, enriched, and thoughtfully
 followed up with.
 
+### Requires
+
+- `stargazers`: a current view of new high-intent stargazers
+
+### Maintains
+
+Per-stargazer outreach truth. Each entry carries GitHub activity, company context,
+plausible pain, and the outreach already sent; scan timestamps are immaterial.
+Postcondition: outreach is specific (a concrete program idea or sample result),
+never generic. Postcondition: a stargazer is never contacted twice without new
+evidence.
+
+#### qualification
+The qualification verdict per stargazer. Material: the verdict and its supporting
+signals.
+
+#### enrichment
+Company and profile context. Material: the resolved company, role, and plausible
+pain.
+
+#### contact-history
+What outreach has been sent. Material: each sent contact and its evidence basis.
+
 ### Continuity
 
-- New high-intent stargazers should not remain unattended for more than one
-  business day.
-- Outreach history should prevent duplicate contact without new evidence.
-
-### Criteria
-
-- Qualification includes GitHub activity, company context, and plausible pain.
-- Outreach includes a specific OpenProse program idea or sample result.
-
-### Constraints
-
-- Do not send generic outreach.
-- Keep enrichment and outreach costs bounded.
+- input-driven
 
 ### Tools
 
 (none)
 ```
 
-Responsibilities are semantic and normative. They do not directly define
-gateways, tests, schedules, listeners, queues, or implementation steps.
-Load `responsibility-runtime.md` and `concepts/responsibility.md` for
-responsibility semantics.
+Forme matches each `### Requires` facet-contract to the `### Maintains` facet
+that satisfies it semantically, across all mounted responsibilities, and draws
+the subscription edge (`plan.md` §5). `### Requires` is the *need* (intent stays
+with the human); the resolved producer is Forme's choice (mechanism).
 
-## Services
+Load `responsibility-runtime.md` and `concepts/responsibility.md` for the
+compile/run reconciler semantics.
 
-Declare a system's graph with `### Services`:
+## Maintains
 
-```markdown
-### Services
+`### Maintains` declares the **shape** of the world-model — the schema, not the
+instance. It is not just a renamed `### Ensures`: a maintained truth is a
+standing, typed, subscribable artifact, so its declaration does **four jobs**
+(`world-model.md` §2):
 
-- `researcher`
-- `writer`
-```
+1. **A type** — the fields and their shapes, including any freshness fields
+   (`valid_until`, `last_corroborated`, `confidence`; see [Continuity](#continuity)).
+2. **A canonicalization spec** — *what equality means* for the fingerprint: which
+   fields are material, which are volatile-but-immaterial and excluded
+   (timestamps, request ids, cosmetic ordering), and how sets / numbers / text
+   normalize. This is the single highest-leverage memoization control: without
+   it, a feed re-polled every few minutes always *looks* changed and "cost scales
+   with surprise" degrades into "cost scales with the clock."
+3. **Facets** (optional) — named, independently-subscribable parts of the truth,
+   declared by the **named-parts rule**: a `#### {name}` sub-heading inside
+   `### Maintains` *is* a facet. A downstream that subscribes to facet *X* does
+   not wake when facet *Y* moves. A single-truth (leaf) node declares no `####`
+   parts; its atomic world-model is the one implicit facet, so a `### Requires`
+   match still resolves. See [Facets — the named-parts rule](#facets--the-named-parts-rule).
+4. **Postconditions** — the folded-in `### Criteria`: validators the render must
+   leave the truth satisfying before it signs. Not a separate judge beat; just
+   conditions on the output. Deterministically-expressible postconditions are
+   verified by the harness on commit; irreducibly-semantic ones are self-attested
+   by the render.
 
-Simple service names are Markdown list items. Structured `### Services` entries
-use a fenced YAML list:
+All four jobs live **inside** `### Maintains` — none gets its own block. The
+canonicalization spec and facet declarations may be written as semantically rich
+natural language, as long as they are unambiguous, because the spec is **compiled
+into a deterministic canonicalizer ahead of run time** (`world-model.md` §3). The
+compiled canonicalizer travels with the contract, so a standalone render computes
+its own fingerprints and signs a fingerprinted receipt with no harness present.
+
+**The structured-backing rule.** Anything *subscribed* must have a structured,
+canonicalizable backing. Free-form rendered prose is a derived projection excluded
+from the fingerprint — otherwise an LLM re-rendering the same paragraph hashes
+differently every time and falsely re-triggers downstreams. Rule: fingerprint the
+structured truth; render prose *from* it (`world-model.md` §3). The compiler lints
+subscribed fields that lack a structured backing.
+
+The world-model itself — the materialized truth the render writes and commits —
+is a content-addressable artifact, a directory by default. `### Maintains`
+describes its shape; `state/filesystem.md` describes its on-disk canonical form.
+
+### Facets — the named-parts rule
+
+A **facet** is a *named part* of a maintained truth, and authors declare facets
+simply by **naming the parts**: a `#### {name}` sub-heading inside `### Maintains`
+**is** a facet, and its body describes that part's fields and which are material —
+in prose. Name no parts and the node has one truth: the **atomic facet**, the free
+default that costs nothing. Atomic-only — no `####` parts — is the v1 default and
+the leaf-node case (`world-model.md` §9.5; `architecture.md` §10.2 records the
+decision: *"a `####` sub-heading inside `### Maintains` declares a facet … Atomic-only
+(no `####`) stays the default"*).
+
+The name an author writes is the **same name in three places at once**
+(`architecture.md` §3.2, "the named-parts rule"; `delta.md` Part G):
+
+1. **Fingerprint unit** — the compiled canonicalizer emits one token per `####`
+   part, plus the always-on atomic token over the whole truth. A part moves only
+   *its* token; fields that sit outside any part move only the atomic token.
+2. **Subscription symbol** — a consumer names the part in `### Requires`, and the
+   reconciler wakes that consumer only when *that* part's token moves. The join is
+   `Requires.<facet>` ↔ `Maintains.<facet>` (`architecture.md` §6.3: edges are
+   `subscriber.Requires.<facet-contract>` → `producer.Maintains.<facet>`).
+3. **World-model subtree** — the part is a named region of the content-addressed
+   artifact, `published/<facet>/…`, so "the directory structure *is* the state"
+   shows the facets literally (`state/filesystem.md`).
+
+Faceting therefore adds **no new grammar**: it reuses the heading hierarchy the
+format already has (`####` = structure inside a `###` section), the
+Requires↔Maintains join already specified, and the directory store. *Structure is
+subscription.* Material/immaterial and normalization stay prose **inside** each
+part, lowered at compile time into that part's facet name + material field-paths;
+a part subscribed without a structured backing is a lint (the structured-backing
+rule, above).
+
+Worked example — the competitor-activity monitor maintains three subscribable
+parts:
 
 ````markdown
-### Services
+### Maintains
 
-```yaml
-- name: reviewed-result
-  pattern: std/patterns/worker-critic
-  with:
-    worker: writer
-    critic: reviewer
-  config:
-    max_rounds: 4
+A current, corroborated view of each tracked competitor. Each competitor carries
+a stable `name` and a `last_corroborated` field; `fetched_at` and source
+request-ids are immaterial everywhere. Postcondition: every competitor cites a
+corroborating source.
+
+#### funding
+Funding events per competitor — round, amount, date. Material: the event set
+(unordered) and each event's round/amount/date.
+
+#### hiring
+Open-role activity — the department set and the open-role count (exact).
+
+#### product-launches
+Announced or shipped products — the launch set; a ship-date slipping past today
+flips `shipped`, which is material.
+````
+
+A downstream that `### Requires` *funding* wakes only when `#### funding`'s
+fingerprint moves — not when hiring or launches move. The shared `name` /
+`last_corroborated` sit outside any part, so they move only the atomic token. This
+is React's selector boundary made authorable.
+
+The symmetry is total: a producer's `#### funding` part under `### Maintains` is
+exactly the symbol a subscriber names in its `### Requires` (`Requires.funding`
+↔ `Maintains.funding`). The memo key is unchanged — `(contract_fingerprint,
+input_fingerprints)`; facet granularity lives in *which* input-fingerprints a
+subscriber consumes (one per subscribed facet), not in the key shape
+(`delta.md` Part G).
+
+## Continuity
+
+`### Continuity` is the node's **wake-source** declaration — *what can wake this
+node* — and is **intrinsic** to the responsibility: it travels with the contract,
+not the mount (`plan.md` §4; `architecture.md` §4.2). It has three modes:
+
+- **input-driven** (the default) — woken by an upstream node's receipt whose
+  subscribed facet-fingerprint moved. Falls out of `### Requires`, so it needs no
+  explicit declaration.
+- **self-driven** — a declared cadence (e.g. "re-check every 6h", "re-validate
+  when stale"). The node's own continuity clock emits a *synthetic self-receipt*
+  (a tick); the node re-renders and either writes a moved fingerprint (surprise
+  propagates) or an unmoved one (the tick stops there, costing nothing
+  downstream).
+- **external-driven** — a declared outside trigger (webhook / cron / manual kick).
+  This is the `gateway` case; its input arrives from outside the graph.
+
+Every wake is a receipt; the only variable is who emitted it (`world-model.md`
+§5). `### Continuity` declares *which* sources may wake a node — it never makes the
+wake decision intelligent; the reconciler stays dumb.
+
+**Freshness — state vs. policy.** Freshness *state* (`valid_until`,
+`last_corroborated`, `confidence`) lives **in the world-model** as data declared
+by `### Maintains`. Freshness *policy* — the recheck cadence — lives in
+`### Continuity`. The bridge: a `valid_until` lapsing flips a fact's status, which
+moves that facet's fingerprint, so "time becoming material" is just another change
+that propagates as surprise (`world-model.md` §6). `### Continuity` may *read* the
+world-model's soonest `valid_until` to drive a data-driven recheck cadence, but
+the cadence rule stays in `### Continuity` and the expiry data stays in the
+world-model.
+
+## Functions
+
+A `kind: function` is a called helper — stateless, ephemeral, and the replacement
+for the retired `service`. Its interface is `### Parameters` → `### Returns`, a
+plain call interface: arguments in, a value out. A function carries no
+world-model, no `### Maintains`, and no `### Continuity`.
+
+```markdown
+---
+name: summarizer
+kind: function
+---
+
+### Parameters
+
+- `text`: the document to compress
+
+### Returns
+
+- `summary`: a five-bullet précis preserving key claims
+```
+
+Functions are invoked from a render body with ProseScript `call`:
+
+```prose
+let s = call summarizer
+  text: document
+```
+
+You author functions rarely and call them constantly; most ship pre-built in
+`std/`. They are the standard-library tier — the place the "unmounted" render
+actually lives (`plan.md` §3).
+
+## Patterns
+
+A `pattern` is a reusable agent design pattern: slots, config, invariants, and
+delegation rules for how filled nodes interact. Patterns are not run directly;
+they are instantiated at compile time and expanded into nodes.
+
+````markdown
+---
+name: worker-critic
+kind: pattern
+---
+
+### Slots
+
+- `worker`: produces the draft
+- `critic`: reviews and returns notes
+
+### Config
+
+- `max_rounds`: 3
+
+### Delegation
+
+```prose
+loop up to config.max_rounds:
+  let draft = call worker ...
+  let notes = call critic draft: draft
+  if notes.accepted: break
 ```
 ````
 
-Use `with:` only for slot bindings. Use `config:` for pattern parameters.
-
-## Structured Blocks
-
-Use Markdown structure directly for Markdown: section headers, bullets, and
-tables are the language surface and should not be wrapped in code fences.
-
-Use fenced `yaml` only for structured YAML declarations such as pattern
-instances in `### Services` or maps in `### Memory`. Use fenced `prose` only for
-ProseScript in `### Execution` and pattern `### Delegation`. Do not use
-`markdown` or `text` fences as structured data formats.
-
-## How Systems Compose Work
-
-Systems compose work in four ways:
-
-1. **Plain services.** List service names in `### Services`; Forme wires them by matching `### Requires` to `### Ensures`.
-2. **Subsystems.** List a `kind: system` file in `### Services`; Forme recursively wires it and treats the subsystem as one graph node.
-3. **Explicit wiring.** Add `### Wiring` when a system must pin exact bindings between services.
-4. **Pattern instances.** Use a fenced `yaml` declaration in `### Services` with `pattern:`, `with:`, and optional `config:`.
-
-Canonical pattern instance shape inside a system's `### Services` section:
+A pattern is instantiated with a fenced `yaml` declaration. Use `with:` for slot
+bindings and `config:` for pattern parameters:
 
 ```yaml
 - name: reviewed-draft
@@ -330,25 +600,28 @@ Canonical pattern instance shape inside a system's `### Services` section:
     max_rounds: 3
 ```
 
-`pattern:` names a `kind: pattern` file. `with:` binds slots to services,
-subsystems, or nested pattern instances. `config:` sets pattern parameters.
-After expansion, the named pattern instance behaves like a graph node in the
-system.
+`pattern:` names a `kind: pattern` file. `with:` binds slots to responsibilities,
+functions, or nested pattern instances. After expansion, the named instance
+behaves like a node. Nested pattern declarations are allowed only as slot values
+inside another pattern instance's `with:` block.
 
-Only `kind: system` files instantiate patterns directly. A `kind: service` does
-work; it does not call a pattern. A `kind: test` names a service or system as
-its subject; it does not test a pattern directly. Nested pattern declarations
-are allowed only as slot values inside another pattern instance's `with:`
-block.
+## Structured Blocks
+
+Use Markdown structure directly for Markdown: section headers, bullets, and
+tables are the language surface and should not be wrapped in code fences.
+
+Use fenced `yaml` only for structured YAML declarations such as pattern
+instances. Use fenced `prose` only for ProseScript in `### Execution` and pattern
+`### Delegation`. Do not use `markdown` or `text` fences as structured data
+formats.
 
 ## Runtime and Shape
 
-Runtime hints and behavioral boundaries are also sections:
+Runtime hints and behavioral boundaries are sections:
 
 ```markdown
 ### Runtime
 
-- `persist`: project
 - `model`: sonnet
 
 ### Shape
@@ -359,52 +632,18 @@ Runtime hints and behavioral boundaries are also sections:
 - `prohibited`: direct web scraping
 ```
 
-## Memory
-
-A service with `persist: project` or `persist: user` in `### Runtime` reaches
-into memory files that outlive the current run. The `### Memory` section
-declares what that service *reads from* and *writes to* memory — the
-persistent equivalent of `### Requires` / `### Ensures`:
-
-````markdown
-### Memory
-
-```yaml
-reads:
-  - high_water_mark: ISO timestamp of the newest item processed in a prior run
-  - cumulative_registry: map of id → { first_seen, last_seen, hit_count }
-writes:
-  - high_water_mark: advanced to the newest item observed this run
-  - cumulative_registry: merged with items observed this run
-  - last_run_at: ISO timestamp of this run's completion
-```
-````
-
-Rules:
-
-- `### Memory` is only meaningful when `### Runtime` sets `persist: project`
-  or `persist: user`. A service with execution-scoped memory (`persist:
-  true`) does not need this section — its memory dies with the run.
-- `reads:` names fields the service expects to exist in memory; missing
-  fields should be handled as "first run" rather than as errors.
-- `writes:` names fields the service commits to update on a successful run.
-  A failed run that does not reach the memory write leaves state untouched
-  — see `guidance/authoring.md`, State and Memory Authoring.
-- Fields that downstream responsibilities also need (high-water marks,
-  cursors, run IDs) should *also* appear at the top level of `### Ensures`
-  — see `guidance/authoring.md`, State and Memory Authoring. Memory is for
-  the next invocation of *this* service; the return value is for the next
-  responsibility.
-
-See `prose.md` (Persistent Agents) and `state/filesystem.md` (Memory
-Scoping) for the on-disk format of memory files.
+`### Shape` describes the capability boundary of *this render*. `delegates` names
+the helper functions the render `call`s inside the node (intra-node, ephemeral) —
+it is not a DAG edge and not a subscription. Cross-node dependency is expressed
+only through `### Requires` / `### Maintains`.
 
 ## Skills
 
-A system or service that depends on the host agent's harness skills declares
-them in a `### Skills` section. The compiler resolves the named skills against
-the host's installed skills before emitting the component's IR, and `prose
-compile` fails closed with a `skill_unresolved` diagnostic if any are missing.
+A responsibility or function that depends on the host agent's harness skills
+declares them in a `### Skills` section. The compiler resolves the named skills
+against the host's installed skills before emitting the component's IR, and
+`prose compile` fails closed with a `skill_unresolved` diagnostic if any are
+missing.
 
 ```markdown
 ### Skills
@@ -418,10 +657,8 @@ marketplace convention shown in `/skill` invocations.
 
 Rules:
 
-- System-level declarations apply to every sub-service inside the system.
-  Service-level declarations are *additive*, not exclusive — declaring `###
-  Skills` on a `## sub-service` does not remove the system-level skills, it
-  adds to them.
+- A responsibility's skill declarations apply to every function its render
+  `call`s. Node-level declarations are *additive*, not exclusive.
 - The compiler resolves each declared skill by looking, in order, in:
   1. The project's `./skills/` directory.
   2. `~/.claude/skills/`.
@@ -443,11 +680,11 @@ are present and stops the compile when they are not.
 
 ## Tools
 
-A system, service, or responsibility that depends on host capabilities declares
-them in a `### Tools` section. Tool declarations are host capability
-requirements: they do not satisfy `### Requires`, do not create Forme
-dependency-graph edges, and do not grant or restrict tool use. Use `### Shape`
-for service boundaries and prohibited actions.
+A responsibility or function that depends on host capabilities declares them in a
+`### Tools` section. Tool declarations are host capability requirements: they do
+not satisfy `### Requires`, do not create Forme dependency-graph edges, and do not
+grant or restrict tool use. Use `### Shape` for capability boundaries and
+prohibited actions.
 
 ```markdown
 ### Tools
@@ -457,38 +694,35 @@ for service boundaries and prohibited actions.
 - `mcp:gmail`: MCP server registered with the host
 ```
 
-The supported deterministic tool declaration shapes are
-`cli:<executable-name>` and `mcp:<server-name>`. A CLI executable name is the
-command name the host should find by PATH lookup. An MCP server name is the
-registered server name the host advertises. Names must be non-empty and must
-not contain path separators. Tool declarations belong only in the `### Tools`
-section; there is no frontmatter form.
+The supported deterministic tool declaration shapes are `cli:<executable-name>`
+and `mcp:<server-name>`. A CLI executable name is the command name the host should
+find by PATH lookup. An MCP server name is the registered server name the host
+advertises. Names must be non-empty and must not contain path separators. Tool
+declarations belong only in the `### Tools` section; there is no frontmatter form.
 
 Rules:
 
-- System-level declarations apply to every sub-service inside the system.
-  Service-level declarations are additive, not exclusive.
+- A responsibility's tool declarations apply to every function its render `call`s.
+  Node-level declarations are additive, not exclusive.
 - `cli:<name>` checks only executable presence on PATH. Version ranges, auth
   checks, and installer behavior are outside the declaration.
-- `mcp:<name>` checks only server presence in the host MCP registry. The
-  compiler does not install, contact, or introspect the server during this
-  check.
-- For `kind: responsibility`, declared tools are the host capabilities the
-  judge may use to observe the contract and that the fulfillment system named
-  in `### Fulfillment` may use to act on it. The compiler does not pre-split
-  read vs write; capability scope is enforced by the connector adapter at
-  runtime.
-- Namespaces other than `cli` and `mcp` are reserved. The current compiler
-  reports `tool_unsupported_kind` for reserved but unsupported namespaces such
-  as `http:example`.
+- `mcp:<name>` checks only server presence in the host MCP registry. The compiler
+  does not install, contact, or introspect the server during this check.
+- For `kind: responsibility`, declared tools are the host capabilities the render
+  may use to observe and act on the maintained truth. The compiler does not
+  pre-split read vs write; capability scope is enforced by the connector adapter
+  at runtime.
+- Namespaces other than `cli` and `mcp` are reserved. The current compiler reports
+  `tool_unsupported_kind` for reserved but unsupported namespaces such as
+  `http:example`.
 - A malformed declaration, such as `gh`, `cli:`, or `mcp:`, reports
   `tool_invalid`.
 - A supported `cli:<name>` declaration that cannot be found on PATH reports
   `tool_unresolved`.
 - A supported `mcp:<name>` declaration that cannot be found in the host MCP
   registry reports `tool_unresolved`.
-- `prose compile` fails closed when any `tool_invalid`,
-  `tool_unsupported_kind`, or `tool_unresolved` diagnostic is emitted.
+- `prose compile` fails closed when any `tool_invalid`, `tool_unsupported_kind`,
+  or `tool_unresolved` diagnostic is emitted.
 
 The compiler program implements this resolution rule; see
 `skills/open-prose/compiler/index.prose.md` (`tools_resolver`) for the
@@ -502,27 +736,27 @@ verifies declared tools are present and stops the compile when they are not.
 
 ## Frontmatter
 
-Every service, system, gateway, test, pattern, or responsibility declares
-identity with `name` and `kind`:
+Every responsibility, function, gateway, pattern, or test declares identity with
+`name` and `kind`:
 
 ```yaml
 ---
 name: entry-name
-kind: service | system | gateway | test | pattern | responsibility
+kind: responsibility | function | gateway | pattern | test
 ---
 ```
 
 Frontmatter should stay structural. If a field would be useful to read, review,
 or discuss, it should usually be a `###` section.
 
-A `kind: test` file also declares `subject:` to name the service or system it
-runs.
+A `kind: test` file also declares `subject:` to name the responsibility or
+function it runs.
 
-A `kind: responsibility` file also declares required `id:` frontmatter to name
-the stable Markdown identity for the responsibility. The id is generated once
-by tooling as a UUIDv7-compatible 16-byte value, rendered as uppercase
-Crockford base32, and preserved across filename and `name:` renames. The slug
-is display; `id:` is identity.
+A `kind: responsibility` file also declares required `id:` frontmatter to name the
+stable Markdown identity for the responsibility. The id is generated once by
+tooling as a UUIDv7-compatible 16-byte value, rendered as uppercase Crockford
+base32, and preserved across filename and `name:` renames. The slug is display;
+`id:` is identity.
 
 ## Contract Item Style
 
@@ -544,30 +778,29 @@ This is visually clear and easy for agents to extract.
 
 ## Typed Caller Inputs
 
-Most `### Requires` entries are free-form values the caller provides at run
-time. Two keywords are reserved for passing *completed runs* as inputs — the
+Most `### Parameters` and `### Requires` entries are free-form values provided at
+run time. Two keywords are reserved for passing *completed runs* as inputs — the
 typical shape for inspectors, regression checkers, and meta-systems:
 
 ```markdown
-### Requires
+### Parameters
 
 - `subject`: run — a completed run to inspect
 - `cohort`: run[] — a set of completed runs to compare
 ```
 
-When an entry's type is `run` or `run[]`, the caller supplies a run ID (or a
-list of them). The Prose VM resolves each ID to its run directory and writes a
+When an entry's type is `run` or `run[]`, the caller supplies a run ID (or a list
+of them). The Prose VM resolves each ID to its run directory and writes a
 structured binding at `bindings/caller/{name}.md` containing the run ID, path,
-root source name, and status. The service reads that binding and then reaches into
-the run's own `bindings/`, `vm.log.md`, and compiled activation manifest
-directly.
+root source name, and status. The render reads that binding and then reaches into
+the run's own `bindings/`, `vm.log.md`, and compiled artifacts directly.
 
-See `prose.md` (Run-Typed Inputs) for binding format, resolution order (bare
-ID, `~/{id}` for user scope, absolute path), and staleness validation.
+See `prose.md` (Run-Typed Inputs) for binding format, resolution order (bare ID,
+`~/{id}` for user scope, absolute path), and staleness validation.
 
 ## Execution Sections
 
-`### Execution` contains ProseScript. Use a fenced block:
+`### Execution` contains the render body in ProseScript. Use a fenced block:
 
 ````markdown
 ### Execution
@@ -580,14 +813,18 @@ return research
 ```
 ````
 
-When `### Execution` is present, it is a Level 3 pin: Forme validates contracts
-and extracts the call graph, but the Prose VM follows the written order.
+`### Execution` is the intra-node render body: `call` (invoke a function),
+`session` / `agent` / `resume` (spawn ephemeral sub-agents), plus control flow.
+All of it is internal to producing this node's world-model, and **none of it is a
+node** (`plan.md` §7). Cross-node connection is only ever a subscription. When
+`### Execution` is present, Forme validates contracts and extracts the call graph,
+but the Prose VM follows the written order.
 
 ## Tests
 
-Test files use the same section grammar. A `kind: test` names a subject service
-or system, supplies fixtures as caller inputs, then evaluates semantic
-assertions against the subject's public bindings:
+Test files use the same section grammar. A `kind: test` names a subject
+responsibility or function, supplies fixtures as caller inputs, then evaluates
+semantic assertions against the subject's world-model or returned value:
 
 ```markdown
 ---
@@ -598,7 +835,7 @@ subject: summarizer
 
 ### Fixtures
 
-- `topic`: recent developments in quantum error correction
+- `text`: recent developments in quantum error correction
 
 ### Expects
 
@@ -612,11 +849,11 @@ subject: summarizer
 
 Rules:
 
-- `subject:` must name a service or system. Tests do not execute patterns
+- `subject:` must name a responsibility or function. Tests do not execute patterns
   directly.
-- Path-like subjects use normal service/system resolution. Bare subjects may
-  resolve by matching frontmatter `name:` in the test file's directory and
-  nearest OpenProse source/package root.
+- Path-like subjects use normal resolution. Bare subjects may resolve by matching
+  frontmatter `name:` in the test file's directory and nearest OpenProse
+  source/package root.
 - `### Fixtures` must provide every caller input needed by the subject; tests do
   not prompt the user.
 - `### Expects` and `### Expects Not` assert observable behavior, not exact
@@ -627,8 +864,9 @@ Rules:
 ## Design Guidance
 
 Use Contract Markdown when the author cares about the promise more than the
-choreography. Use ProseScript when the author needs exact order, control flow,
-or human-readable procedural steps.
+choreography — declare a `### Requires` need and let Forme choose the graph when
+the end-state matters. Use ProseScript `### Execution` when the author needs exact
+order, control flow, or human-readable procedural steps inside a render.
 
-For canonical service, system, gateway, pattern, test, memory, and security
-guidance, load `guidance/authoring.md`.
+For canonical responsibility, function, gateway, pattern, test, world-model, and
+security guidance, load `guidance/authoring.md`.

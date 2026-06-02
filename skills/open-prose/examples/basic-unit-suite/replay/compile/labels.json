@@ -1,0 +1,10 @@
+{
+  "ingress.counter-events": "Counter Events Inbox",
+  "gateway.counter-events": "Counter Events",
+  "responsibility.count-summary": "Count Summary",
+  "responsibility.alert-state": "Alert State",
+  "responsibility.alert-projection": "Alert Projection",
+  "responsibility.raw-event-auditor": "Raw Event Auditor",
+  "responsibility.count-trend": "Count Trend",
+  "responsibility.executive-snapshot": "Executive Snapshot"
+}

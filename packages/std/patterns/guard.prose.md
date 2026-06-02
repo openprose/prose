@@ -43,7 +43,7 @@ Check before delegating. Fail-fast pattern.
     target: string         -- service or system name for the target
     task_brief: string     -- the task (goes to both guard and target)
 
-### Ensures
+### Returns
 
 - Guard receives the brief and returns structured JSON: { proceed: boolean, reason: string }
 - If proceed: target receives the ORIGINAL brief unchanged

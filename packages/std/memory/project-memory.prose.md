@@ -1,20 +1,20 @@
 ---
 name: project-memory
-kind: service
+kind: function
 ---
 
 ### Runtime
 
 - `persist`: project
 
-### Requires
+### Parameters
 
 - mode: "ingest" (learn from content), "query" (answer questions), "update" (record decisions), or "summarize" (overview)
 - content: what to ingest, ask, record, or summarize
 
-### Ensures
+### Returns
 
-- result: ingestion confirmation, answer from project knowledge, update acknowledgment, or project summary depending on mode
+- result: depending on mode, the returned value is an ingestion confirmation, an answer drawn from project knowledge, an update acknowledgment, or a project summary
 
 ### Errors
 

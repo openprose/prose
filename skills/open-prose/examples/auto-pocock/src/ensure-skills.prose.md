@@ -1,6 +1,6 @@
 ---
 name: ensure-skills
-kind: service
+kind: function
 ---
 
 # Ensure Skills
@@ -13,13 +13,13 @@ live. The system runs even when the user has never set up Pocock's skill
 conventions before — first-time users get sensible defaults at the
 conventional location and a clear note that they were auto-created.
 
-### Ensures
+### Returns
 
-- `issue_tracker_convention`: contents of the repo's `issue-tracker.md`
+- `issue-tracker-convention`: contents of the repo's `issue-tracker.md`
   (either found in place or freshly scaffolded with Pocock's defaults)
-- `triage_label_convention`: contents of `triage-labels.md` (same)
-- `domain_doc_layout`: contents of `domain.md` (same)
-- `conventions_path`: the directory the conventions live at, so the
+- `triage-label-convention`: contents of `triage-labels.md` (same)
+- `domain-doc-layout`: contents of `domain.md` (same)
+- `conventions-path`: the directory the conventions live at, so the
   user knows where to edit later
 
 ### Skills

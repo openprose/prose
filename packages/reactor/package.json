@@ -1,55 +1,45 @@
 {
   "name": "@openprose/reactor",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "description": "OpenProse Reactor runtime: fresh model spend scales with surprise, not the clock.",
   "type": "commonjs",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "agents": ["./dist/agents/index.d.ts"],
+      "adapters": ["./dist/adapters/index.d.ts"],
+      "run": ["./dist/run/index.d.ts"],
+      "run/types": ["./dist/run/types.d.ts"],
+      "internals": ["./dist/internals/index.d.ts"]
+    }
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
-    "./receipt": {
-      "types": "./dist/receipt/index.d.ts",
-      "default": "./dist/receipt/index.js"
+    "./agents": {
+      "types": "./dist/agents/index.d.ts",
+      "default": "./dist/agents/index.js"
     },
-    "./cost": {
-      "types": "./dist/cost/index.d.ts",
-      "default": "./dist/cost/index.js"
+    "./adapters": {
+      "types": "./dist/adapters/index.d.ts",
+      "default": "./dist/adapters/index.js"
     },
-    "./kernel": {
-      "types": "./dist/kernel/index.d.ts",
-      "default": "./dist/kernel/index.js"
+    "./run": {
+      "types": "./dist/run/index.d.ts",
+      "default": "./dist/run/index.js"
     },
-    "./evidence-plan": {
-      "types": "./dist/evidence-plan/index.d.ts",
-      "default": "./dist/evidence-plan/index.js"
+    "./run/types": {
+      "types": "./dist/run/types.d.ts",
+      "default": "./dist/run/types.js"
     },
-    "./memo": {
-      "types": "./dist/memo/index.d.ts",
-      "default": "./dist/memo/index.js"
+    "./internals": {
+      "types": "./dist/internals/index.d.ts",
+      "default": "./dist/internals/index.js"
     },
-    "./forecast": {
-      "types": "./dist/forecast/index.d.ts",
-      "default": "./dist/forecast/index.js"
-    },
-    "./sdk": {
-      "types": "./dist/sdk/index.d.ts",
-      "default": "./dist/sdk/index.js"
-    },
-    "./policy": {
-      "types": "./dist/policy/index.d.ts",
-      "default": "./dist/policy/index.js"
-    },
-    "./composition": {
-      "types": "./dist/composition/index.d.ts",
-      "default": "./dist/composition/index.js"
-    },
-    "./projection": {
-      "types": "./dist/projection/index.d.ts",
-      "default": "./dist/projection/index.js"
-    }
+    "./package.json": "./package.json"
   },
   "files": [
     "dist/**/*.js",
@@ -59,7 +49,9 @@
     "!dist/**/*.test.js",
     "!dist/**/*.test.d.ts",
     "!dist/**/*.test.d.ts.map",
+    "skill/**",
     "ADOPTION.md",
+    "EVALS.md",
     "README.md"
   ],
   "sideEffects": false,
@@ -71,14 +63,31 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
+    "bundle-skill": "node scripts/bundle-skill.mjs",
+    "prepack": "pnpm build && node scripts/bundle-skill.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test:runtime": "pnpm build && node --test $(find dist -name '*.test.js' -type f | sort)",
-    "test": "pnpm typecheck && pnpm test:runtime"
+    "test": "pnpm typecheck && pnpm test:runtime",
+    "test:offline": "REACTOR_OFFLINE=1 pnpm test"
   },
-  "dependencies": {},
+  "peerDependencies": {
+    "@openai/agents": "^0.11.6",
+    "zod": "^4.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@openai/agents": {
+      "optional": true
+    },
+    "zod": {
+      "optional": true
+    }
+  },
   "devDependencies": {
+    "@openai/agents": "^0.11.6",
+    "@openai/agents-openai": "^0.11.6",
     "@types/node": "^22.10.7",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "zod": "^4.0.0"
   },
   "publishConfig": {
     "access": "public",

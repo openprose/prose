@@ -1,6 +1,6 @@
 ---
 name: invoice-extractor
-kind: system
+kind: function
 ---
 
 # Invoice Extractor
@@ -9,13 +9,13 @@ kind: system
 
 Extracts structured line items, totals, and metadata from a vendor invoice PDF.
 
-### Requires
+### Parameters
 
 - `invoice`: a vendor invoice as a PDF document
 
-### Ensures
+### Returns
 
-- `line_items`: ordered list of `{ description, quantity, unit_price, total }`
+- `line-items`: ordered list of `{ description, quantity, unit_price, total }`
   rows extracted from the invoice
 - `totals`: `{ subtotal, tax, total, currency }` reconciled against the rows
 - `metadata`: `{ vendor, invoice_number, issue_date, due_date }` extracted from

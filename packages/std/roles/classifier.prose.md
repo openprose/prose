@@ -1,6 +1,6 @@
 ---
 name: classifier
-kind: service
+kind: function
 ---
 
 # Classifier
@@ -15,20 +15,19 @@ Assign a category label to an input given a defined category set.
 
 - `version`: 0.1.0
 
-### Requires
+### Parameters
 
 - item: the thing to classify
 - categories: the category set, each with a description of what belongs in it
 - rules: (optional) disambiguation rules for edge cases where categories overlap
 
-### Ensures
+### Returns
 
 - classification: a structured result containing:
     - category: the selected category name
     - confidence: a score from 0 to 1 where 0.5 means genuine uncertainty, not "probably"
     - reasoning: which features of the item matched which category description
-- if the item fits multiple categories: the best fit is returned with reasoning about why alternatives were rejected
-- if the item fits no category: category is "uncategorized" with reasoning explaining why no category matched
+- the returned classification is guaranteed to hold: when the item fits multiple categories, the best fit is returned with reasoning about why alternatives were rejected; when the item fits no category, category is "uncategorized" with reasoning explaining why no category matched.
 
 ### Errors
 

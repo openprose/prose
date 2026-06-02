@@ -1,6 +1,6 @@
 ---
 name: planner
-kind: service
+kind: function
 ---
 
 # Planner
@@ -15,13 +15,13 @@ Produce an ordered plan with dependencies, decision points, and fallback paths.
 
 - `version`: 0.1.0
 
-### Requires
+### Parameters
 
 - goal: what the plan should achieve
 - constraints: limits on time, resources, tools, or scope
 - context: (optional) current state, prior attempts, or known blockers
 
-### Ensures
+### Returns
 
 - plan: an ordered sequence of steps, each with:
     - step: what to do

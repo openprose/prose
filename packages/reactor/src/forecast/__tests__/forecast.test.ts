@@ -1,95 +1,179 @@
-import { deepEqual, equal } from "node:assert/strict";
+import { asFacet, asFingerprint } from "../../shapes";
+import { deepEqual, equal, ok } from "node:assert/strict";
 import { test } from "node:test";
 
 import {
-  createForecastRecheckReceiptV0,
-  evaluateForecastScheduleV0,
-  tokenBearingReceipts,
+  applyFreshnessMove,
+  createSelfRecheckReceipt,
+  evaluateContinuityTick,
+  moveFingerprint,
 } from "../index";
-import { verifyReceiptV0 } from "../../receipt";
+import { verifyReceipt } from "../../receipt/index";
+import { ATOMIC_FACET } from "../../shapes/index";
 
-const CONTRACT_HASH =
+const CONTRACT_FP =
   "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" as const;
-const EVIDENCE_HASH =
-  "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" as const;
+const PREV_RECEIPT =
+  "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" as const;
+const INPUT_FP = "facet:funding=v1";
 
-test("virtual-clock schedule sleeps before forecast clocks without token-bearing receipts", () => {
-  const result = evaluateForecastScheduleV0({
+// ---------------------------------------------------------------------------
+// Tick evaluation: sleep when nothing has lapsed (freshness state is current)
+// ---------------------------------------------------------------------------
+
+test("continuity clock sleeps before any facet lapses, manufacturing no receipt", () => {
+  const result = evaluateContinuityTick({
     as_of: "2026-05-18T12:30:00Z",
-    real_input_observed: false,
     schedule: {
-      responsibility_id: "responsibility.incident-briefing",
-      contract_revision: CONTRACT_HASH,
-      memo_key: "memo-static",
-      evidence_input_ids: [EVIDENCE_HASH],
-      next_evidence_recheck: "2026-05-18T13:00:00Z",
-      next_plan_recheck: "2026-05-18T18:00:00Z",
+      node: "node.incident-briefing",
+      contract_fingerprint: asFingerprint(CONTRACT_FP),
+      input_fingerprints: [asFingerprint(INPUT_FP)],
+      prev: PREV_RECEIPT,
+      facets: [
+        {
+          facet: ATOMIC_FACET,
+          fingerprint: asFingerprint("fp-briefing-v1"),
+          valid_until: "2026-05-18T13:00:00Z",
+        },
+      ],
     },
   });
 
   deepEqual(result, {
     outcome: "sleep",
-    next_due_at: "2026-05-18T13:00:00Z",
-    token_bearing_receipts: [],
-    due_rechecks: [],
+    next_self_recheck: "2026-05-18T13:00:00Z",
   });
 });
 
-test("adversarial-silent world still manufactures an evidence-age recheck", () => {
-  const result = evaluateForecastScheduleV0({
+// ---------------------------------------------------------------------------
+// The freshness bridge: a lapsed valid_until MOVES the facet's fingerprint and
+// manufactures a self-driven (wake.source:"self") receipt. world-model.md §6.
+// ---------------------------------------------------------------------------
+
+test("a lapsed valid_until manufactures a self-receipt with a MOVED fingerprint", () => {
+  const result = evaluateContinuityTick({
     as_of: "2026-05-18T13:00:00Z",
-    real_input_observed: false,
     schedule: {
-      responsibility_id: "responsibility.incident-briefing",
-      contract_revision: CONTRACT_HASH,
-      memo_key: "memo-static",
-      evidence_input_ids: [EVIDENCE_HASH],
-      next_evidence_recheck: "2026-05-18T13:00:00Z",
-      next_plan_recheck: "2026-05-18T18:00:00Z",
+      node: "node.incident-briefing",
+      contract_fingerprint: asFingerprint(CONTRACT_FP),
+      input_fingerprints: [asFingerprint(INPUT_FP)],
+      prev: PREV_RECEIPT,
+      facets: [
+        {
+          facet: ATOMIC_FACET,
+          fingerprint: asFingerprint("fp-briefing-v1"),
+          valid_until: "2026-05-18T13:00:00Z",
+        },
+      ],
     },
   });
 
-  equal(result.outcome, "manufacture-recheck");
-  equal(result.reason, "adversarial-silent");
-  deepEqual(result.due_rechecks, ["evidence-age"]);
-  equal(result.token_bearing_receipts.length, 0);
-  equal(result.receipts[0]?.core.event_cause, "forecast-recheck");
-  equal(result.receipts[0]?.core.recheck_kind, "evidence-age");
-  equal(result.receipts[0]?.cost.surprise_cause, "forecast-recheck");
-  equal(result.receipts[0] === undefined ? false : verifyReceiptV0(result.receipts[0]).ok, true);
+  equal(result.outcome, "self-receipt");
+  if (result.outcome !== "self-receipt") return;
+
+  deepEqual(result.lapsed_facets, [ATOMIC_FACET]);
+  // wake is structured and self-driven (SHAPES.md §2; world-model.md §5).
+  equal(result.receipt.wake.source, "self");
+  deepEqual(result.receipt.wake.refs, [PREV_RECEIPT]);
+  // The atomic fingerprint MOVED — surprise propagates (world-model.md §8).
+  equal(result.receipt.fingerprints[ATOMIC_FACET], "stale:fp-briefing-v1");
+  // Render outcome, NOT a judge verdict; no "blocked" (delta.md §A3.5 line 183).
+  equal(result.receipt.status, "rendered");
+  // Cost keeps surprise_cause, now a WakeSource (delta.md §A4; SHAPES.md §4).
+  equal(result.receipt.cost.surprise_cause, "self");
+  equal(result.receipt.cost.tokens.fresh, 0);
+  equal(result.receipt.cost.tokens.reused, 0);
+  // The receipt is a valid, chain-consistent ledger envelope.
+  ok(verifyReceipt(result.receipt).ok);
 });
 
-test("plan-age audit is represented as forecast-recheck synthetic evidence", () => {
-  const result = evaluateForecastScheduleV0({
-    as_of: "2026-05-18T18:00:00Z",
-    real_input_observed: true,
+// ---------------------------------------------------------------------------
+// Per-facet moves: only the lapsed facet moves; the atomic token also moves
+// because the whole truth changed. Non-lapsed facets keep unmoved tokens.
+// ---------------------------------------------------------------------------
+
+test("only lapsed facets move; non-lapsed facets keep their unmoved token", () => {
+  const result = evaluateContinuityTick({
+    as_of: "2026-05-18T14:00:00Z",
     schedule: {
-      responsibility_id: "responsibility.incident-briefing",
-      contract_revision: CONTRACT_HASH,
-      memo_key: "memo-static",
-      evidence_input_ids: [EVIDENCE_HASH],
-      next_evidence_recheck: "2026-05-19T13:00:00Z",
-      next_plan_recheck: "2026-05-18T18:00:00Z",
+      node: "node.dossier",
+      contract_fingerprint: asFingerprint(CONTRACT_FP),
+      input_fingerprints: [asFingerprint(INPUT_FP)],
+      prev: PREV_RECEIPT,
+      facets: [
+        { facet: asFacet("funding"), fingerprint: asFingerprint("fp-funding"), valid_until: "2026-05-18T14:00:00Z" },
+        { facet: asFacet("headcount"), fingerprint: asFingerprint("fp-headcount"), valid_until: "2026-05-20T00:00:00Z" },
+      ],
     },
   });
 
-  equal(result.outcome, "manufacture-recheck");
-  equal(result.reason, "forecast-clock-crossed");
-  deepEqual(result.due_rechecks, ["plan-age"]);
-  equal(result.receipts[0]?.core.recheck_kind, "plan-age");
-  equal(result.receipts[0]?.cost.tokens.fresh, 0);
-  equal(result.receipts[0]?.cost.tokens.reused, 0);
+  equal(result.outcome, "self-receipt");
+  if (result.outcome !== "self-receipt") return;
+
+  deepEqual(result.lapsed_facets, ["funding"]);
+  equal(result.receipt.fingerprints["funding"], "stale:fp-funding");
+  equal(result.receipt.fingerprints["headcount"], "fp-headcount");
+  // Atomic always present and moved (the whole truth changed) (SHAPES.md §1).
+  ok(result.receipt.fingerprints[ATOMIC_FACET]!.startsWith("stale:"));
+  // The surviving expiry drives the next recheck cadence (world-model.md §6).
+  equal(result.next_self_recheck, "2026-05-20T00:00:00Z");
 });
 
-test("token-bearing receipt filter catches only receipts with token work", () => {
-  const synthetic = createForecastRecheckReceiptV0({
-    responsibility_id: "responsibility.incident-briefing",
-    contract_revision: CONTRACT_HASH,
-    memo_key: "memo-static",
-    evidence_input_ids: [EVIDENCE_HASH],
-    as_of: "2026-05-18T18:00:00Z",
-    recheck_kind: "plan-age",
+// ---------------------------------------------------------------------------
+// Timeless facets (valid_until: null) never lapse and never drive a recheck.
+// ---------------------------------------------------------------------------
+
+test("a facet with null valid_until never lapses and never schedules a recheck", () => {
+  const result = evaluateContinuityTick({
+    as_of: "2099-01-01T00:00:00Z",
+    schedule: {
+      node: "node.constants",
+      contract_fingerprint: asFingerprint(CONTRACT_FP),
+      input_fingerprints: [],
+      prev: null,
+      facets: [{ facet: ATOMIC_FACET, fingerprint: asFingerprint("fp-const"), valid_until: null }],
+    },
   });
 
-  deepEqual(tokenBearingReceipts([synthetic]), []);
+  deepEqual(result, { outcome: "sleep", next_self_recheck: null });
+});
+
+// ---------------------------------------------------------------------------
+// Cold start: prev:null yields empty wake refs but still a verifiable receipt.
+// ---------------------------------------------------------------------------
+
+test("cold-start self-receipt (prev:null) has empty wake refs and verifies", () => {
+  const receipt = createSelfRecheckReceipt({
+    node: "node.cold",
+    contract_fingerprint: asFingerprint(CONTRACT_FP),
+    input_fingerprints: [],
+    fingerprints: { [ATOMIC_FACET]: asFingerprint("stale:fp-x") },
+    prev: null,
+    as_of: "2026-05-18T13:00:00Z",
+    lapsed_facets: [ATOMIC_FACET],
+  });
+
+  deepEqual(receipt.wake, { source: "self", refs: [] });
+  equal(receipt.prev, null);
+  ok(verifyReceipt(receipt).ok);
+});
+
+// ---------------------------------------------------------------------------
+// applyFreshnessMove unit: idempotent move + atomic synthesis when undeclared.
+// ---------------------------------------------------------------------------
+
+test("applyFreshnessMove synthesizes ATOMIC_FACET when the node declares none", () => {
+  const map = applyFreshnessMove(
+    [{ facet: asFacet("funding"), fingerprint: asFingerprint("fp-funding"), valid_until: null }],
+    [asFacet("funding")],
+  );
+
+  equal(map["funding"], "stale:fp-funding");
+  ok(map[ATOMIC_FACET] !== undefined);
+  ok(map[ATOMIC_FACET]!.startsWith("stale:"));
+});
+
+test("moveFingerprint is idempotent — a lapse marker is applied at most once", () => {
+  equal(moveFingerprint(asFingerprint("fp")), "stale:fp");
+  equal(moveFingerprint(asFingerprint("stale:fp")), "stale:fp");
 });

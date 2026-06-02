@@ -1,6 +1,6 @@
 ---
 name: router
-kind: service
+kind: function
 ---
 
 # Router
@@ -15,12 +15,12 @@ Select the best handler for an input from a set of candidates and explain the ch
 
 - `version`: 0.1.0
 
-### Requires
+### Parameters
 
 - input: the request, message, or data to be routed
 - handlers: a list of possible handlers, each with a name and description of what it handles well
 
-### Ensures
+### Returns
 
 - routing: a structured decision containing:
     - selected: the name of the chosen handler

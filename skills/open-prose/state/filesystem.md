@@ -1,12 +1,13 @@
 ---
 role: file-system-state-management
 summary: |
-  File-system state management for OpenProse systems. Describes the directory
-  structure, file formats, and protocols for the workspace/bindings model, manifest
-  storage, and execution logging.
+  File-system state management for OpenProse. The normative reference for the
+  canonical world-model artifact layout, deterministic serialization, the
+  append-only receipt ledger, and the workspace (private scratch) vs published
+  (canonical truth) discipline.
 see-also:
-  - ../prose.md: VM execution semantics
-  - ../forme.md: Wiring semantics (produces the manifest)
+  - ../prose.md: VM execution semantics + the render harness seam
+  - ../forme.md: Wiring semantics (produces the topology world-model)
   - ../primitives/session.md: Session context and compaction guidelines
 ---
 
@@ -27,11 +28,22 @@ serialization formats.
 File-based state persists all execution artifacts to disk. This enables:
 
 - **Inspection**: See exactly what happened at each step, including intermediate work
-- **Resumption**: Pick up interrupted systems from the last completed service
-- **Debugging**: Trace through the manifest, workspace artifacts, and published bindings
-- **Auditability**: Every service's full working state is preserved
+- **Resumption**: Pick up interrupted runs from the last completed receipt
+- **Debugging**: Trace through the compiled intent, workspace scratch, and the published world-model
+- **Auditability**: The append-only receipt ledger chains every commit; the world-model is content-addressed and diffable
 
 **Key principle:** Files are inspectable artifacts. The directory structure IS the execution state.
+
+**The load-bearing distinction** (`world-model.md` §1): a node's **published**
+world-model is the canonical, deterministically-serialized, fingerprinted
+artifact — the truth downstreams subscribe to. The render's **workspace** is
+private scratch — intermediate reasoning, working notes — and is **never
+fingerprinted and never subscribed to**. This is *not* mere output-visibility
+(the pre-reactor `workspace/`→`bindings/` distinction): it is
+fingerprint-materiality. A node updates its published world-model only when
+something semantically material actually changed; immaterial churn stays in the
+workspace. SQL/vector indices are **derived projections** of the canonical
+artifact, never the truth.
 
 ---
 
@@ -48,44 +60,47 @@ File-based state persists all execution artifacts to disk. This enables:
 │   │   └── worker-critic.prose.md
 │   └── tests/
 │       └── research-system.test.prose.md
-├── dist/                                   # Compiled intent
-│   ├── manifest.next.json
-│   └── manifest.active.json
+├── dist/                                   # Compiled intent (topology WM + canonicalizers + validators)
+│   ├── intent.next.json                    # Newly compiled, pending activation
+│   └── intent.active.json                  # Currently active compiled intent
 ├── runs/
 │   └── {YYYYMMDD}-{HHMMSS}-{random}/
-│       ├── forme.manifest.json                 # Compiled Forme manifest for systems
-│       ├── root.prose.md                         # Copy of the invoked service or system file
-│       ├── sources/                        # Service, system, and pattern source files copied by Phase 1
+│       ├── compiled-intent.json            # Topology world-model + canonicalizers + validators (snapshot)
+│       ├── root.prose.md                   # Copy of the invoked source file
+│       ├── sources/                        # Source files copied at compile time
 │       │   ├── researcher.prose.md
 │       │   ├── critic.prose.md
 │       │   └── synthesizer.prose.md
-│       ├── workspace/                      # Private working directories
+│       ├── workspace/                      # Private render scratch — NEVER fingerprinted, NEVER subscribed to
 │       │   ├── researcher/
 │       │   │   ├── notes.md                # Intermediate scratch work
-│       │   │   ├── raw-results.md          # Intermediate data
-│       │   │   ├── findings.md             # Ensures output (working copy)
-│       │   │   ├── sources.md              # Ensures output (working copy)
+│       │   │   ├── raw-results.md          # Intermediate data (e.g. raw poll w/ fetched_at)
 │       │   │   └── __delegate/             # Runtime delegation state (if any)
 │       │   │       └── {delegate}/
 │       │   │           ├── {id}.md          # Request payload
 │       │   │           └── {id}-response.md # Response payload
 │       │   ├── critic/
-│       │   │   ├── evaluation.md
-│       │   │   └── verdict.md
+│       │   │   └── evaluation.md
 │       │   └── synthesizer/
 │       │       └── report.md
-│       ├── bindings/                       # Public outputs (copied from workspace)
-│       │   ├── caller/                     # Caller-provided inputs
+│       ├── world-model/                    # Published canonical truth (one per node) — deterministically serialized + fingerprinted
+│       │   ├── caller/                     # Caller-provided inputs (gateway-style)
 │       │   │   └── question.md
-│       │   ├── researcher/                 # Researcher's published outputs
+│       │   ├── researcher/                 # Researcher's published world-model artifact
 │       │   │   ├── findings.md
-│       │   │   └── sources.md
+│       │   │   ├── sources.md
+│       │   │   └── .version                # ContentAddress of this committed version
 │       │   ├── critic/
 │       │   │   ├── evaluation.md
-│       │   │   └── verdict.md
+│       │   │   └── .version
 │       │   └── synthesizer/
-│       │       └── report.md
-│       ├── vm.log.md                        # Append-only execution log
+│       │       ├── report.md
+│       │       └── .version
+│       ├── receipts/                       # Append-only receipt ledger (one chain per node)
+│       │   ├── researcher.jsonl            # Receipt chain (prev pointers); status/fingerprints/wake/cost
+│       │   ├── critic.jsonl
+│       │   └── synthesizer.jsonl
+│       ├── vm.log.md                        # Append-only human-readable execution log
 │       └── agents/                         # Run-scoped agent memory
 │           └── {name}/
 │               ├── memory.md
@@ -96,12 +111,11 @@ File-based state persists all execution artifacts to disk. This enables:
 │   │   └── {name}/
 │   │       ├── memory.md
 │   │       └── ...
-│   └── responsibilities/
-│       └── {responsibility-id}/
-│           ├── latest.json
-│           ├── status.jsonl
-│           ├── pressure.latest.json
-│           └── pressure.jsonl
+│   └── world-model/                        # Durable per-node canonical truth (survives runs)
+│       └── {node}/
+│           ├── published/                  # Current committed canonical artifact
+│           ├── versions/                   # Content-addressed prior versions ({ContentAddress})
+│           └── receipts.jsonl              # The node's durable receipt ledger
 ├── deps/                                  # Cloned dependency repos (gitignored)
 │   ├── github.com/
 │   │   ├── openprose/
@@ -128,7 +142,7 @@ File-based state persists all execution artifacts to disk. This enables:
 ├── runs/                                  # User/global scoped run state
 ├── state/                                 # User-global durable cross-run state
 │   ├── agents/
-│   └── responsibilities/
+│   └── world-model/
 ├── deps/                                  # User/global scoped dependency cache
 ├── prose.lock
 └── .env
@@ -149,77 +163,176 @@ Agent segments use 3-digit zero-padded numbers: `captain-001.md`, `captain-002.m
 ## The Three Directories
 
 The core of Prose state management is the separation of three directories:
+**`sources/`** (immutable compiled snapshots), **`workspace/`** (private,
+never-fingerprinted render scratch), and **`world-model/`** (the published,
+deterministically-serialized, fingerprinted canonical truth).
 
 ### `sources/` — Source Snapshots
 
-Service, system, and pattern `*.prose.md` files copied by Forme during Phase 1. These are the definitions as they were at wiring time — stable snapshots even if source files change during execution.
+`*.prose.md` files copied at compile time. These are the definitions as they were at compile time — stable snapshots even if source files change during execution.
 
-**Written by:** Forme (Phase 1)
-**Read by:** The VM when constructing session prompts
+**Written by:** the compile phase
+**Read by:** The VM when constructing render prompts
 **Immutable during execution.**
 
-### `workspace/` — Private Working State
+### `workspace/` — Private Render Scratch
 
-One subdirectory per service. Each service writes all its work here — intermediate notes, drafts, scratch data, and final output files.
+One subdirectory per node. The render writes all its working state here — intermediate notes, drafts, raw poll data, scratch reasoning.
 
-**Written by:** Subagents (each service writes to its own subdirectory)
-**Read by:** The VM reads only two things from workspace: declared `ensures` outputs (to copy to bindings) and `__error.md` (to detect errors). No other files are inspected during execution. Everything is preserved for post-run debugging.
+**Written by:** the render (each node writes to its own subdirectory)
+**Read by:** only the render that owns it, and the VM for `__error.md`. **Never fingerprinted, never subscribed to.** Everything is preserved for post-run debugging.
 
-The workspace is the service's private sandbox. It can contain anything:
+The workspace is the render's private sandbox. Critically, **immaterial churn lives and dies here**: a re-poll that only bumps a `fetched_at` timestamp writes to workspace, the canonicalizer drops the immaterial field, the fingerprint does not move, and nothing reaches the published truth. It can contain anything:
 
 ```
 workspace/researcher/
 ├── search-log.md           # What searches were attempted
-├── raw-results.md          # Unfiltered search results
+├── raw-results.md          # Unfiltered search results (may carry fetched_at, request ids)
 ├── filtered-results.md     # After relevance filtering
-├── notes.md                # Scratch thinking
-├── findings.md             # Final output (ensures)
-└── sources.md              # Final output (ensures)
+└── notes.md                # Scratch thinking
 ```
 
-Only the files named in the manifest's `outputs` section get copied to `bindings/`.
+### `world-model/` — Published Canonical Truth
 
-### `bindings/` — Public Interface
+One subdirectory per node (plus `caller/` for external/caller inputs). The node's **maintained truth** — a content-addressable artifact (a directory by default), the public interface downstream nodes subscribe to.
 
-One subdirectory per service (plus `caller/` for inputs). Contains only declared `ensures` outputs — the public interface that downstream services consume.
-
-**Written by:** The VM (copies from workspace after each service completes)
-**Read by:** Downstream subagents (via input file paths in the manifest)
+**Written by:** the VM via `commit_world_model`, on a `rendered` receipt with a moved fingerprint (the **canonical-serialization-before-fingerprint pass**, below).
+**Read by:** downstream renders — by reference, at a pinned content-addressed version (never inlined into context).
 
 ```
-bindings/
+world-model/
 ├── caller/
-│   └── question.md         # Input from the user
+│   └── question.md         # External/caller input (gateway-style node)
 ├── researcher/
-│   ├── findings.md         # Copied from workspace/researcher/findings.md
-│   └── sources.md          # Copied from workspace/researcher/sources.md
-├── critic/
-│   └── evaluation.md       # Copied from workspace/critic/evaluation.md
+│   ├── findings.md         # Published, structured, canonicalizable truth
+│   ├── sources.md
+│   └── .version            # ContentAddress of this committed version
 └── synthesizer/
-    └── report.md           # Copied from workspace/synthesizer/report.md
+    ├── report.md
+    └── .version
 ```
+
+Note: `report.md` here is the *structured* truth that backs the fingerprint.
+Free-form rendered prose is a **derived projection excluded from the
+fingerprint** (`world-model.md` §3, the structured-backing rule) — otherwise an
+LLM re-rendering the same paragraph hashes differently every time and falsely
+re-triggers downstreams. Fingerprint the structured truth; render prose *from* it.
+
+#### Faceted layout — one subtree per facet
+
+When a node's `### Maintains` declares facets by **naming the parts** (a `####`
+sub-heading inside `### Maintains` *is* a facet — the named-parts rule,
+`delta.md` Part G; `world-model.md` §3, "Declaring facets"), the published
+artifact lays each facet out as its own subtree under the node directory:
+`published/<facet>/…`. The directory structure *is* the subscription surface —
+the same name is the facet's fingerprint unit, its
+`Requires.<facet>` ↔ `Maintains.<facet>` subscription symbol, and its on-disk
+region. The canonical `competitor-activity-monitor` example
+(`examples/competitor-activity/`) declares `#### funding`, `#### hiring`, and
+`#### product-launches`, so its published artifact is:
+
+```
+world-model/
+└── competitor-activity-monitor/
+    ├── competitors.md          # shared, un-facetted fields (name, last_corroborated)
+    ├── published/
+    │   ├── funding/            # #### funding facet subtree
+    │   │   └── events.md       # structured funding events (round, amount, date)
+    │   ├── hiring/             # #### hiring facet subtree
+    │   │   └── roles.md        # department set + open-role count
+    │   └── product-launches/   # #### product-launches facet subtree
+    │       └── launches.md     # launch set + shipped status
+    └── .version                # ContentAddress of this committed version
+```
+
+**The fingerprinting rule with facets** (`world-model.md` §3; the
+canonical-serialization pass below). The single authority for facet tokens is the
+**compiled canonicalizer** that travels with the contract: it reduces the
+node's *structured* material truth (the `### Maintains` canonicalization spec,
+frozen at compile, addressing material fields by their dotted structured paths)
+to the `{ facet → token }` map. The `published/<facet>/…` directory layout above
+is a *legibility convention* for the on-disk artifact — it mirrors the facets so
+"the directory *is* the state" reads literally — but the per-facet **token is
+not** a digest of that on-disk subtree's bytes; it is what the compiled
+canonicalizer computes over the facet's material structured content.
+
+- The **atomic `@atomic` token is computed over the whole `published/` tree** —
+  every facet's material content plus the shared un-facetted fields — and is
+  always emitted. It is the diamond-reconvergence primitive and the free default.
+- Each declared facet additionally emits **one token computed over only that
+  facet's material content** (its `#### funding` material fields). A downstream
+  that `### Requires` `funding` and resolves to `#### funding` subscribes to that
+  facet's token: a move in the `hiring` facet advances the `hiring` token and the
+  `@atomic` token but **not** the `funding` token, so the funding-only subscriber
+  does not wake (the selector boundary, `world-model.md` §3).
+- Shared un-facetted fields (here `competitors.md`'s `name` /
+  `last_corroborated`) belong to no facet's material content, so they move only
+  the `@atomic` token.
+
+Atomic-only nodes (no `####` parts) keep the flat layout above — facets are
+purely additive, and the `@atomic` token over the whole artifact is unchanged.
+Correctness holds either way: the compiled canonicalizer fingerprints the
+structured material truth regardless of the on-disk directory shape; the subtree
+layout is the legibility surface, not a second fingerprinting convention.
+
+---
+
+## The Canonical-Serialization-Before-Fingerprint Pass
+
+This is the pass the old `workspace/`→`bindings/` copy lacked. Publishing a
+node's world-model is **not a dumb file copy**; it is *serialize canonically →
+canonicalize (drop immaterial) → fingerprint → sign receipt*:
+
+1. **Collect** the node's published artifact files from its commit set.
+2. **Canonically serialize** the artifact deterministically: stable file
+   ordering (sorted by normalized path), path/encoding normalization, and
+   sorted-key JSON for any structured records (reuses the receipt's canonical-JSON
+   machinery). The same byte sequence must result regardless of write order or
+   filesystem enumeration order (`architecture.md` §5.2, §10).
+3. **Apply the compiled canonicalizer** for this node (`### Maintains`
+   canonicalization spec, frozen at compile time): drop immaterial fields
+   (`fetched_at`, request ids, cosmetic ordering), normalize sets/numbers/text to
+   declared tolerances. This yields the **canonical (material) form**.
+4. **Fingerprint** = the compiled canonicalizer's digest over the canonical
+   material form, producing the `FingerprintMap` — the atomic `@atomic` token
+   (over the whole material truth) always, plus one token per declared facet (over
+   only that facet's material content; see *Faceted layout* above). The token
+   authority is the compiled canonicalizer over the structured truth, not a digest
+   of the on-disk `published/<facet>/` subtree bytes.
+5. **Compare** against the node's prior receipt `fingerprints`. If nothing moved,
+   write a `skipped` receipt (unchanged fingerprints copied forward, empty
+   `semantic_diff`, zero `cost`) and **publish nothing new**. If a fingerprint
+   moved, write the canonical artifact to `world-model/{node}/`, stamp its
+   `.version` with the content address, and emit a `rendered` receipt carrying the
+   new `fingerprints`.
+
+The reconciler's wake decision is this fingerprint comparison — deterministic,
+total, no LLM. **Only a `rendered` receipt with a moved fingerprint propagates to
+downstreams** (`world-model.md` §8).
 
 ---
 
 ## File Formats
 
-### Compiled Activation Manifest
+### Compiled Intent
 
-The wiring graph produced by Forme. For filesystem runs, systems may snapshot
-the compiled JSON object as `forme.manifest.json`. See `forme.md` for the full
-format specification. Contains:
+The compile-phase output. For filesystem runs it may be snapshotted as
+`compiled-intent.json`. See `forme.md` and the compiler IR for the full format.
+Contains:
 
-- Caller interface (requires/returns)
-- Per-service entries (source, workspace, inputs with `←` mappings, outputs)
-- Execution order with parallelization notes
-- Warnings
+- the **topology world-model** (Forme's output): `nodes` (declared contracts),
+  `edges` (resolved subscriptions: `subscriber.Requires.<facet>` →
+  `producer.Maintains.<facet>`), `entry_points`, and `acyclic: true`
+- per-node **canonicalizers** (the frozen `### Maintains` canonicalization spec)
+- per-node **postcondition validators** (`deterministic` | `render-attested`)
+- `contract_fingerprints` frozen at compile
 
-**Written by:** Forme (Phase 1)
-**Read by:** The VM (Phase 2)
+**Written by:** the compile phase (Forme + canonicalizer-compile + postcondition-compile)
+**Read by:** the run phase (the reconciler resolves propagation targets from `edges`)
 
-### Caller Input Files
+### Caller / Gateway Input Files
 
-**Path:** `bindings/caller/{name}.md`
+**Path:** `world-model/caller/{name}.md`
 
 ```markdown
 # question
@@ -277,10 +390,10 @@ type: run[]
   status: complete
 ```
 
-The downstream service receives the path and can read the run's bindings,
-`vm.log.md`, and compiled activation manifest directly. The structured header
-gives the service immediate access to key metadata without traversing the
-filesystem.
+The downstream render receives the path and can read the run's published
+`world-model/`, `receipts/`, `vm.log.md`, and compiled intent directly. The
+structured header gives the render immediate access to key metadata without
+traversing the filesystem.
 
 **Resolution order for run references:**
 
@@ -290,12 +403,12 @@ filesystem.
 
 **Written by:** The VM at binding time (before service execution begins)
 
-### Service Output Files
+### World-Model Artifact Files
 
-**Path:** `workspace/{service}/{output-name}.md` (working copy)
-**Path:** `bindings/{service}/{output-name}.md` (published copy)
+**Path:** `workspace/{node}/{name}.md` (private render scratch — never fingerprinted)
+**Path:** `world-model/{node}/{name}.md` (published canonical truth — fingerprinted)
 
-Output files are simple Markdown — just the content. No special frontmatter required:
+Artifact files are simple Markdown — just the structured content. No special frontmatter required:
 
 ```markdown
 # Findings
@@ -309,11 +422,13 @@ Output files are simple Markdown — just the content. No special frontmatter re
 - Confidence: 0.88
 ```
 
-**Written by:** Subagent (to workspace). VM copies to bindings.
+**Written by:** the render (to workspace). The VM commits the published artifact via
+`commit_world_model` — *serialize canonically → canonicalize → fingerprint → sign* — and
+publishes only when a fingerprint moved.
 
 ### Error Files
 
-**Path:** `workspace/{service}/__error.md`
+**Path:** `workspace/{node}/__error.md`
 
 ```markdown
 # Error: no-results
@@ -327,9 +442,9 @@ Searched:
 Partial data: None available.
 ```
 
-The `__` prefix signals to the VM that this is an error, not a regular output.
+The `__` prefix signals to the VM that this is an error, not a committed artifact.
 
-**Written by:** Subagent (when it cannot satisfy ensures)
+**Written by:** the render (when it cannot satisfy its `### Maintains`). Triggers a `failed` receipt; nothing commits, no fingerprint moves.
 
 ---
 
@@ -367,7 +482,8 @@ The header is the block between the `#` heading and the first event marker:
 | Marker | Meaning | Example |
 |--------|---------|---------|
 | `N→ [input] name ✓` | Caller input bound | `1→ [input] question ✓` |
-| `N→ service ✓` | Service completed, outputs copied to bindings | `2→ researcher ✓` |
+| `N→ node ✓ rendered` | Render committed a moved world-model | `2→ researcher ✓ rendered` |
+| `N→ node ∅ skipped` | Reconciler skipped: no fingerprint moved | `2→ researcher ∅ skipped` |
 | `N→ ∥start a,b` | Parallel services started | `3→ ∥start critic,fact-checker` |
 | `Na→ a ✓` | Parallel service completed | `3a→ critic ✓` |
 | `N→ ∥done` | All parallel services complete | `3→ ∥done` |
@@ -401,10 +517,10 @@ The VM does NOT rewrite the entire file. Each write is a single line append.
 
 To resume an interrupted run:
 
-1. Read `vm.log.md` — find the last completed service
-2. Read the compiled activation manifest — get the execution order
-3. Scan `bindings/` — confirm existing outputs
-4. Continue from the next service in execution order
+1. Read the `receipts/` ledger — the append-only chain is the source of truth; find the last committed receipt per node
+2. Read the compiled intent — get the topology and propagation edges
+3. Scan `world-model/` — confirm published canonical artifacts (and their `.version`)
+4. Re-derive reconciler dirty/coalesce state from unconsumed upstream receipts and continue (`architecture.md` §8)
 
 ---
 
@@ -412,44 +528,54 @@ To resume an interrupted run:
 
 | Artifact | Written By | When |
 |----------|------------|------|
-| compiled activation manifest | Forme for systems; VM for single-service runs | Before execution |
-| `root.prose.md` | Forme for systems; VM for single-service runs | Before execution |
-| `sources/*.prose.md` | Forme for systems; VM for single-service runs | Before execution |
-| `bindings/caller/*.md` | VM | At system start |
-| `bindings/caller/*.md` (run-typed) | VM | At binding time (before service execution) |
-| `workspace/{service}/*` | Subagent | During service execution |
-| `workspace/{service}/__delegate/{delegate}/{id}.md` | Subagent | Before delegation yield |
-| `workspace/{service}/__delegate/{delegate}/{id}-response.md` | VM | After delegate completes |
-| `bindings/{service}/*` | VM (copy from workspace) | After service completes |
+| compiled intent | the compile phase | Before execution |
+| `root.prose.md` | the compile phase | Before execution |
+| `sources/*.prose.md` | the compile phase | Before execution |
+| `world-model/caller/*.md` | VM | At entry / gateway boot |
+| `workspace/{node}/*` | the render | During the render |
+| `workspace/{node}/__delegate/{delegate}/{id}.md` | the render | Before delegation yield |
+| `workspace/{node}/__delegate/{delegate}/{id}-response.md` | VM | After delegate completes |
+| `world-model/{node}/*` + `.version` | VM (`commit_world_model`) | On a `rendered` receipt with a moved fingerprint |
+| `receipts/{node}.jsonl` | VM | After each render or skip |
 | `vm.log.md` | VM | After each event |
-| `runs/{id}/agents/{name}/memory.md` | Execution-scoped agent | During service execution |
-| `runs/{id}/agents/{name}/{name}-NNN.md` | Execution-scoped agent | During service execution |
-| `state/agents/{name}/memory.md` | Durable cross-run agent | During service execution |
-| `state/agents/{name}/{name}-NNN.md` | Durable cross-run agent | During service execution |
+| `runs/{id}/agents/{name}/memory.md` | Execution-scoped agent | During the render |
+| `runs/{id}/agents/{name}/{name}-NNN.md` | Execution-scoped agent | During the render |
+| `state/agents/{name}/memory.md` | Durable cross-run agent | During the render |
+| `state/agents/{name}/{name}-NNN.md` | Durable cross-run agent | During the render |
+| `state/world-model/{node}/published/` + `versions/` + `receipts.jsonl` | VM | On durable commit |
 
-**Key principle:** The VM orchestrates and copies. Subagents write their own outputs to workspace. The VM publishes them to bindings. The VM never reads full output content — it tracks file paths and copies files.
+**Key principle:** The VM orchestrates. The render writes its working state to its
+private workspace. The VM publishes the canonical world-model via the
+canonical-serialization-before-fingerprint pass and signs a receipt — never a dumb copy.
 
 ---
 
-## The Copy-on-Return Protocol
+## The Commit-and-Sign Protocol
 
-This is the core mechanism of Prose state management. When a service completes:
+This replaces the old copy-on-return for nodes. When a render completes:
 
-1. **Service writes** all its work to `workspace/{service}/`
-2. **Service returns** a confirmation message listing its output files
-3. **VM verifies** the listed outputs exist in workspace
-4. **VM copies** each declared `ensures` output:
-   `workspace/{service}/{output}.md` → `bindings/{service}/{output}.md`
-5. **VM appends** completion marker to `vm.log.md`
+1. **The render writes** all its working state to `workspace/{node}/`.
+2. **The render returns** a confirmation listing its committed artifact files and
+   attesting its `### Maintains` postconditions (no separate judge beat).
+3. **The VM runs the canonical-serialization-before-fingerprint pass**
+   (serialize canonically → apply the compiled canonicalizer → fingerprint).
+4. **The VM compares** the new `FingerprintMap` against the node's prior receipt.
+   - *No fingerprint moved* → write a `skipped` receipt (unchanged fingerprints
+     copied forward, empty `semantic_diff`, zero `cost`); publish nothing.
+   - *A fingerprint moved* → write the canonical artifact to `world-model/{node}/`,
+     stamp `.version`, and emit a `rendered` receipt with the new `fingerprints`.
+5. **The VM appends** the receipt to `receipts/{node}.jsonl` (with its `prev`
+   pointer) and a marker to `vm.log.md`.
 
-The copy is the "publish" step. Before the copy, the output exists only in the service's private workspace. After the copy, it's available to downstream services via `bindings/`.
+Publishing is *write world-model + sign receipt*. Only a `rendered` receipt with a
+moved fingerprint propagates to downstreams.
 
-If the service wrote `__error.md` instead:
+If the render wrote `__error.md` instead:
 
-1. **VM reads** `workspace/{service}/__error.md`
-2. **VM checks** for conditional ensures clauses in the system
-3. **VM either** handles the degraded case or propagates the error
-4. **VM appends** error marker to `vm.log.md`
+1. **VM reads** `workspace/{node}/__error.md`
+2. **VM emits a `failed` receipt** — a failed render commits nothing; the prior
+   world-model stands and no fingerprint moves (`architecture.md` §8: failure = no-commit)
+3. **VM appends** error marker to `vm.log.md`
 
 ---
 
@@ -525,11 +651,12 @@ local file), the imported system runs in its own subdirectory:
 
 ```
 <openprose-root>/runs/{id}/imports/{handle}--{slug}/
-├── forme.manifest.json
+├── compiled-intent.json
 ├── root.prose.md
 ├── sources/
 ├── workspace/
-├── bindings/
+├── world-model/
+├── receipts/
 ├── vm.log.md
 ├── imports/                    # Further nesting
 │   └── ...
@@ -542,10 +669,18 @@ Same structure recursively, enabling unlimited nesting depth.
 
 ## Summary
 
-Prose file-system state management is built on three directories:
+Prose file-system state management separates **private scratch** from
+**published, fingerprinted truth**:
 
-1. **`sources/`** — immutable source snapshots (what was wired)
-2. **`workspace/`** — private working state (how each service did its work)
-3. **`bindings/`** — public interface (what each service produced)
+1. **`sources/`** — immutable source snapshots (what was compiled)
+2. **`workspace/`** — private render scratch (how a node did its work) — **never fingerprinted, never subscribed to**
+3. **`world-model/`** — the published canonical truth per node (deterministically serialized + fingerprinted) — what downstreams subscribe to
+4. **`receipts/`** — the append-only receipt ledger (the source of truth for reconciler state)
 
-The manifest defines the graph. The VM walks it. Services write to workspace. The VM copies ensures outputs to bindings. `vm.log.md` logs every event. Everything is on disk, everything is inspectable.
+The compiled intent defines the topology. The reconciler walks it by comparing
+fingerprints — deterministic, total, no LLM. The render writes to workspace. The
+VM commits the canonical world-model through the
+canonical-serialization-before-fingerprint pass and signs a receipt — never a
+dumb copy. SQL/vector indices, when present, are **derived projections** of the
+canonical truth (`world-model.md` §1). Everything is on disk, everything is
+inspectable, everything is auditable through the signed receipt chain.

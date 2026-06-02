@@ -1,104 +1,107 @@
-# Reactor v0.1 Adoption Contract
+# Reactor Adoption Contract
 
-This page is the current first-contact contract for `@openprose/reactor` and
-`@openprose/reactor-cradle`.
+This page is the first-contact contract for the Reactor harness: the SDK
+(`@openprose/reactor`), the CLI (`@openprose/reactor-cli`, the `reactor`
+binary), and the replay viewer (`@openprose/reactor-devtools`).
 
-## Current Release
+## What Reactor is
 
-- npm packages: `@openprose/reactor@0.1.0` and
-  `@openprose/reactor-cradle@0.1.0`.
-- npm dist-tags: `latest` points at `0.1.0`; `rc` remains on the last
-  release candidate as frozen registry history.
-- Source: <https://github.com/openprose/prose>, under `packages/reactor`,
-  `packages/reactor-cradle`, `tools/cli`, and
-  `skills/open-prose/examples`.
-- Publish path: GitHub Actions trusted publishing with npm provenance. The
-  stable Reactor release uses the `reactor-v0.1.0` git tag.
-- Current local gate: 155 Reactor tests, 121 Cradle tests, 284 CLI tests,
-  35 release-verifier tests, and `pnpm build` are green after the rc-to-stable
-  hardening pass. The rc passed 12 independent first-contact validations.
+Reactor is `React.memo` applied to expensive LLM work. You declare standing
+**Responsibilities**; Reactor maintains a composed **world-model**, re-renders
+only the responsibilities whose subscribed inputs actually moved (the reconciler
+is dumb — fingerprint, schedule, commit, **no judge step**), and leaves a
+content-addressed **receipt** behind every decision. Cost scales with surprise,
+not the clock.
+
+## Posture
+
+- **Benchmarks are openly pending.** We publish the harness before the numbers.
+  The proof you can check today is the keyless `reactor-devtools` replay — real
+  per-node dispositions, cost by `surprise_cause`, and chain-verify — not a
+  marketing figure.
+- **Signer caveat (v1):** *signed* = tamper-evident at the meaning layer and
+  chain-consistent, **not** yet a cryptographic byte hash. The null signer is the
+  only honest v1 state.
+- **Zero *runtime* deps in the SDK core.** The live render needs two peers
+  (`@openai/agents`, `zod`); the keyless inspection/replay surface needs neither.
 
 ## Install
 
-Use Node 20 or newer. Enable Corepack if you are working from the repo:
+All three packages are live on npm. The on-ramp is the CLI plus the devtools
+viewer. The keyless replay needs **no install at all** — run it through `npx`:
 
 ```sh
-corepack enable
-pnpm install
-pnpm build
+# keyless, no install:
+npx -p @openprose/reactor-devtools reactor-devtools --example masked-relay --describe
 ```
 
-Use npm when trying the published packages outside the workspace:
+For the full CLI, prefer a project-local install (no root, no global collisions):
 
 ```sh
-npm install @openprose/reactor@0.1.0 @openprose/reactor-cradle@0.1.0
+npm install @openprose/reactor @openprose/reactor-cli @openprose/reactor-devtools
+# then call the binaries with `npx reactor …` / `npx reactor-devtools …`.
+# The live render also needs two peers:
+npm install @openai/agents zod
 ```
 
-## Golden Path
-
-Run the package-only token demo:
+A global install is an alternative — but `-g` can collide with other tools'
+binaries and is `EACCES`-prone on Linux/WSL (use a user prefix/nvm or `sudo`):
 
 ```sh
-tmp="$(mktemp -d)"
-cp -R skills/open-prose/examples/flat-tokens "$tmp/"
-cd "$tmp/flat-tokens"
-npm install
-npm run example
+npm i -g @openprose/reactor @openprose/reactor-cli @openprose/reactor-devtools \
+         @openai/agents zod
 ```
 
-Expected headline:
+Use Node 20 or newer.
 
-```text
-"fresh": 46
-"reused": 46
-"ratio": "46:46"
-```
+## Golden path
 
-Run the CLI demo from a prepared checkout:
+The keyless replay is the first thing to touch — it works with no key and no
+model call. Then scaffold and check your own responsibility offline; only the
+live `compile`/`run` needs a model key.
 
 ```sh
-cd /path/to/prose
-corepack enable
-pnpm install
-pnpm build
-cd tools/cli
-npm link
-cd ../..
-demo_parent="$(mktemp -d)"
-cp -R skills/open-prose/examples/incident-briefing-room "$demo_parent/"
-cd "$demo_parent/incident-briefing-room"
-prose compile src --harness mock
-cp dist/manifest.next.json dist/manifest.active.json
-PROSE_REACTOR_LOCAL_STATUS=down prose serve --port 7331 --harness mock
+# 1. Keyless: replay a saved run and read dispositions + cost + chain-verify.
+reactor-devtools <state-dir> --describe
+reactor-devtools <state-dir>                 # browser viewer
+
+# 2. Scaffold and check your own responsibility — offline.
+reactor init my-responsibility && cd my-responsibility
+reactor doctor                               # node / SDK / skill-bundle / peers / key
+reactor compile --check                      # honest STALE + contract fingerprint; zero cost
+
+# 3. Run it live (needs a model key).
+export OPENROUTER_API_KEY=...
+reactor compile                              # freeze the canonicalizer + Forme topology into IR
+reactor topology                             # the DAG Forme wired from your contracts
+reactor run                                  # drain to quiescence; per-node dispositions + cost
+reactor-devtools .reactor                    # replay YOUR run's receipts in the viewer
 ```
 
-In a second terminal, post the example incident event from
-`tools/cli/QUICKSTART.md`, then inspect:
+See **[`@openprose/reactor-cli`'s README](https://github.com/openprose/prose/blob/main/packages/reactor-cli/README.md)**
+for the full command surface and the `reactor.yml` schema.
 
-```sh
-prose status --tier=owner
-prose status --tier=public
-```
+> **If you're an agent onboarding on behalf of a user:** the binary is `reactor`.
+> Run `reactor init → doctor → compile → run`, then open
+> `reactor-devtools <state-dir>` to inspect the receipt ledger. OpenProse
+> contracts run on any Prose-Complete harness; the Reactor CLI is the
+> deterministic host layer that compiles, runs, and inspects them.
 
-Look for a receipt log under `state/reactor/`, a fulfillment artifact under
-`runs/`, and `surprise_cause=real-input` in status output.
+## Supported today
 
-## Supported For v0.1
+- Local, deterministic receipt production through `reactor compile`/`run` and the
+  SDK's render atom.
+- Receipt verification, projection, and composition pins.
+- The keyless `reactor-devtools` replay (per-node dispositions, cost rollup by
+  `surprise_cause`, moved-facet diff, chain-verify) over any saved state-dir.
 
-- Local deterministic receipt production through `createReactor().ingest()`.
-- Receipt verification, projection, export/import, and composition pins.
-- Cradle scenario replay, storage doubles, release parity, provider replay,
-  and package smoke checks.
-- Local CLI compile/serve/status demos that write real Reactor receipts.
-- Package-only reproduction of the static token headline (`46:46`).
-
-## Do Not Use v0.1 For
+## Not yet supported
 
 - Hosted production ingress, fulfillment quality, or oracle guarantees.
-- Compliance-grade raw-evidence retention or non-null signing.
-- Runtime live ensemble judging on every turn.
-- Postgres parity as a supported storage row.
-- Large unbounded receipt logs without an external compaction/indexing plan.
+- A non-null cryptographic signer / non-repudiable byte-layer signatures.
+- The fixpoint (the topology as a live responsibility) — specified and deferred.
+- Postgres storage parity; large unbounded receipt logs without an external
+  compaction/indexing plan.
 
-If that boundary matches your use case, v0.1 is suitable for a technical spike,
-local evaluation, integration prototyping, and receipt-shape review.
+If that boundary matches your use case, Reactor is suitable for a technical
+spike, local evaluation, integration prototyping, and receipt-shape review.

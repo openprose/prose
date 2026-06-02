@@ -1,66 +1,36 @@
+import { asFingerprint, asNodeId, type Fingerprint } from "../../shapes";
 import { deepEqual, equal, ok } from "node:assert/strict";
-import { readFileSync } from "node:fs";
-import { createRequire } from "node:module";
-import { join } from "node:path";
 import { test } from "node:test";
 
-import * as rootSurface from "../../index";
-import {
-  type ReceiptV0Input,
-  createReceiptV0,
-  inspectReceiptProofV0,
-} from "../../receipt";
+import { createReceipt, inspectReceiptProof, type LedgerReceipt } from "../../receipt";
+import type { Receipt, WakeSource } from "../../shapes/index";
 import {
   RECEIPT_PROJECTION_SCHEMA,
+  RECEIPT_PROJECTION_TIERS,
   RECEIPT_PROJECTION_VERSION,
-  RECEIPT_PROJECTION_TIERS_V0,
-  type ReceiptProjectionResultV0,
-  projectReceiptProofV0,
-  projectReceiptV0,
+  type ReceiptProjectionResult,
+  projectReceipt,
+  projectReceiptProof,
 } from "../index";
 
-const HASH_A =
+const CONTRACT_FP =
   "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" as const;
-const HASH_B =
+const INPUT_FP =
   "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" as const;
-const HASH_C =
+const ATOMIC_TOKEN =
   "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" as const;
-const HASH_D =
+const FACET_TOKEN =
   "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" as const;
-const AS_OF = "2026-05-18T12:00:00Z";
-const NEXT_RECHECK = "2026-05-19T12:00:00Z";
+const WAKE_REF =
+  "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" as const;
 
 test("receipt projections are deterministic across owner subscriber and public tiers", () => {
-  const receipt = createReceiptV0(
-    makeReceiptInput({
-      status: "drifting",
-      tokens: { fresh: 12, reused: 34 },
-      composition: {
-        consumed_receipts: [
-          {
-            upstream_content_hash: HASH_C,
-            contract_revision: HASH_D,
-            acceptable_signer_set: ["none", "ed25519:team-a"],
-          },
-        ],
-        cycle_checked: true,
-      },
-      freshness: {
-        as_of: AS_OF,
-        next_forecast_recheck: NEXT_RECHECK,
-        transitive_freshness_policy_ref: "policy.transitive-freshness@v0",
-        consumed_freshness_evaluated: [
-          {
-            receipt_hash: HASH_C,
-            next_forecast_recheck: "2026-05-19T00:00:00Z",
-            staleness_outcome: "fresh",
-          },
-        ],
-      },
-    }),
-  );
+  const receipt = makeReceipt({
+    tokens: { fresh: 12, reused: 34 },
+    fingerprints: { "@atomic": ATOMIC_TOKEN, "funding": FACET_TOKEN },
+  });
 
-  const publicResult = projectReceiptV0({ tier: "public", receipt });
+  const publicResult = projectReceipt({ tier: "public", receipt });
   assertProjectionOk(publicResult);
   deepEqual(publicResult.projection, {
     schema: RECEIPT_PROJECTION_SCHEMA,
@@ -68,38 +38,19 @@ test("receipt projections are deterministic across owner subscriber and public t
     tier: "public",
     receipt_id: receipt.content_hash,
     content_hash: receipt.content_hash,
-    contract_revision: HASH_A,
-    status: "drifting",
-    signer: {
-      kind: "null",
-      scheme: "none",
+    contract_fingerprint: CONTRACT_FP,
+    status: "rendered",
+    wake: { source: "input", ref_count: 1 },
+    signer: { kind: "null", scheme: "none" },
+    fingerprints: {
+      facet_count: 2,
+      atomic_facet_present: true,
     },
-    freshness: {
-      as_of: AS_OF,
-      next_forecast_recheck: NEXT_RECHECK,
-      transitive_freshness_policy_ref: "policy.transitive-freshness@v0",
-      consumed_freshness_evaluated_count: 1,
-    },
-    composition: {
-      consumed_receipt_count: 1,
-      consumed_receipts: [
-        {
-          upstream_content_hash: HASH_C,
-          contract_revision: HASH_D,
-          acceptable_signer_set_count: 2,
-        },
-      ],
-      cycle_checked: true,
-    },
-    token_truth: {
-      fresh: 12,
-      reused: 34,
-      role: "judge",
-      surprise_cause: "real-input",
-    },
+    cost: { fresh: 12, reused: 34, surprise_cause: "input" },
+    input_fingerprint_count: 1,
   });
 
-  const subscriberResult = projectReceiptV0({ tier: "subscriber", receipt });
+  const subscriberResult = projectReceipt({ tier: "subscriber", receipt });
   assertProjectionOk(subscriberResult);
   deepEqual(subscriberResult.projection, {
     schema: RECEIPT_PROJECTION_SCHEMA,
@@ -107,223 +58,152 @@ test("receipt projections are deterministic across owner subscriber and public t
     tier: "subscriber",
     receipt_id: receipt.content_hash,
     content_hash: receipt.content_hash,
-    contract_revision: HASH_A,
-    status: "drifting",
-    signer: {
-      kind: "null",
-      scheme: "none",
+    contract_fingerprint: CONTRACT_FP,
+    status: "rendered",
+    wake: { source: "input", ref_count: 1 },
+    signer: { kind: "null", scheme: "none" },
+    node: "node.incident-briefing",
+    input_fingerprints: [INPUT_FP],
+    fingerprints: {
+      facets: ["@atomic", "funding"],
+      atomic_facet_present: true,
+      fingerprints: { "@atomic": ATOMIC_TOKEN, "funding": FACET_TOKEN },
     },
-    freshness: {
-      as_of: AS_OF,
-      next_forecast_recheck: NEXT_RECHECK,
-      transitive_freshness_policy_ref: "policy.transitive-freshness@v0",
-      consumed_freshness_evaluated_count: 1,
-    },
-    responsibility_id: "responsibility.incident-briefing",
-    role: "judge",
-    composition: {
-      consumed_receipt_count: 1,
-      consumed_receipts: [
-        {
-          upstream_content_hash: HASH_C,
-          contract_revision: HASH_D,
-          acceptable_signer_set: ["none", "ed25519:team-a"],
-        },
-      ],
-      cycle_checked: true,
-    },
-    token_truth: {
+    cost: {
       fresh: 12,
       reused: 34,
+      surprise_cause: "input",
       provider: "cradle-double",
       model: "deterministic-replay",
-      role: "judge",
-      surprise_cause: "real-input",
     },
   });
 
-  const ownerResult = projectReceiptV0({ tier: "owner", receipt });
+  const ownerResult = projectReceipt({ tier: "owner", receipt });
   assertProjectionOk(ownerResult);
   equal(ownerResult.projection.tier, "owner");
   if (ownerResult.projection.tier !== "owner") {
     throw new Error("expected owner projection");
   }
   equal(ownerResult.projection.proof.content_hash, receipt.content_hash);
-  deepEqual(ownerResult.projection.verdict.confidence, {
-    value: 0.91,
-    derivation_method: "cradle-double-calibration",
-    calibration_grade: "authored",
-    label_source: "static-world-anchor",
-  });
+  equal(ownerResult.projection.prev, null);
 });
 
-test("receipt proof projection consumes inspection output without the raw receipt", () => {
-  const receipt = createReceiptV0(makeReceiptInput({ status: "down" }));
-  const proof = inspectReceiptProofV0(receipt);
-
-  const subscriberResult = projectReceiptProofV0({
-    tier: "subscriber",
-    proof,
-    status: "down",
+test("a proof summary projects only to the public tier", () => {
+  const receipt = makeReceipt({
+    status: "skipped",
+    tokens: { fresh: 0, reused: 0 },
   });
-  assertProjectionOk(subscriberResult);
-  equal(subscriberResult.projection.status, "down");
-  equal(subscriberResult.projection.content_hash, receipt.content_hash);
+  const proof = inspectReceiptProof(receipt);
 
-  const publicResult = projectReceiptProofV0({ tier: "public", proof });
+  const publicResult = projectReceiptProof({ tier: "public", proof });
   assertProjectionOk(publicResult);
-  equal(publicResult.projection.status, null);
+  equal(publicResult.projection.status, "skipped");
   equal(publicResult.projection.content_hash, receipt.content_hash);
-});
+  equal(publicResult.projection.tier, "public");
+  if (publicResult.projection.tier !== "public") {
+    throw new Error("expected public projection");
+  }
+  // The proof summary carries the wake source but not its refs.
+  equal(publicResult.projection.wake.ref_count, null);
+  equal(publicResult.projection.fingerprints.facet_count, 1);
 
-test("public and subscriber projections omit hostile private receipt payloads", () => {
-  const hostileSecret = ["sk", "or-hostile-secret-1234567890"].join("-");
-  const hostileBearer = ["Bear", "er"].join("") + " credential_1234567890";
-  const hostileEmail = "customer.owner@example.com";
-  const hostilePrivateUrl =
-    "https://case.internal/v1/raw/customer?token=alpha1234567890";
-  const hostileApiKey = ["api", "key"].join("_") + "=value_1234567890";
-  const customerPayload = "customer payload: legal matter alpha";
-  const receipt = createReceiptV0(
-    makeReceiptInput({
-      memoKey: hostileSecret,
-      runId: hostileEmail,
-      tags: [hostilePrivateUrl, hostileApiKey, "raw-evidence-ish"],
-      providerNorm: {
-        schema: "provider.norm.fixture",
-        raw_evidence_payload: {
-          customer_payload: customerPayload,
-          judge_rationale: hostileBearer,
-          private_url: hostilePrivateUrl,
-        },
-        auth_trace: hostileSecret,
-      },
-    }),
-  );
-
-  const publicResult = projectReceiptV0({ tier: "public", receipt });
-  const subscriberResult = projectReceiptV0({ tier: "subscriber", receipt });
-  assertProjectionOk(publicResult);
-  assertProjectionOk(subscriberResult);
-
-  const serialized = JSON.stringify([
-    publicResult.projection,
-    subscriberResult.projection,
+  // A proof summary lacks the raw facet map, so richer tiers fail closed.
+  const subscriberResult = projectReceiptProof({ tier: "subscriber", proof });
+  assertProjectionFailure(subscriberResult);
+  deepEqual(subscriberResult.errors, [
+    "a proof summary can only be projected to the public tier",
   ]);
-  for (const hostileValue of [
-    hostileSecret,
-    hostileBearer,
-    hostileEmail,
-    hostilePrivateUrl,
-    hostileApiKey,
-    customerPayload,
-  ]) {
-    ok(!serialized.includes(hostileValue));
-  }
-
-  const keys = collectKeys([publicResult.projection, subscriberResult.projection]);
-  for (const privateKey of [
-    "customer_payload",
-    "judge_rationale",
-    "memo_key",
-    "provider_norm",
-    "rationale",
-    "raw_evidence_payload",
-    "run_id",
-    "tags",
-  ]) {
-    ok(!keys.has(privateKey));
-  }
-  ok(serialized.includes(receipt.content_hash));
-  ok(serialized.includes(HASH_A));
 });
 
-test("public and subscriber projections fail closed when a public field is secret shaped", () => {
-  const privatePolicyRef =
-    "https://policy.internal/freshness?token=secret1234567890";
-  const receipt = createReceiptV0(
-    makeReceiptInput({
-      freshness: {
-        as_of: AS_OF,
-        next_forecast_recheck: NEXT_RECHECK,
-        transitive_freshness_policy_ref: privatePolicyRef,
-        consumed_freshness_evaluated: [
-          {
-            receipt_hash: HASH_C,
-            next_forecast_recheck: "2026-05-19T00:00:00Z",
-            staleness_outcome: "fresh",
-          },
-        ],
-      },
-      composition: {
-        consumed_receipts: [
-          {
-            upstream_content_hash: HASH_C,
-            contract_revision: HASH_D,
-            acceptable_signer_set: ["none"],
-          },
-        ],
-        cycle_checked: true,
-      },
-    }),
-  );
-
-  for (const tier of ["public", "subscriber"] as const) {
-    const result = projectReceiptV0({ tier, receipt });
-    assertProjectionFailure(result);
-    deepEqual(result.errors, ["projection would expose secret-shaped data"]);
-    ok(!JSON.stringify(result).includes(privatePolicyRef));
-  }
-
-  const ownerResult = projectReceiptV0({ tier: "owner", receipt });
-  assertProjectionOk(ownerResult);
-});
-
-test("projection failures never echo malformed private receipt or proof data", () => {
+test("the strict receipt envelope keeps hostile out-of-schema payloads out of any projection", () => {
+  const customerPayload = "customer payload: legal matter alpha";
   const hostileBearer = ["Bear", "er"].join("") + " credential_1234567890";
-  const customerPayload = "customer payload: sealed evidence beta";
-  const receipt = createReceiptV0(makeReceiptInput());
-  const malformedReceipt = {
-    ...receipt,
-    verdict: {
-      ...receipt.verdict,
-      rationale: hostileBearer,
-    },
-    raw_evidence_payload: {
-      customer_payload: customerPayload,
-    },
+  // Out-of-schema keys make the receipt fail verification (exact-keys envelope),
+  // so hostile data can never ride into a projection in the first place.
+  const base = makeReceipt({});
+  const receipt = {
+    ...base,
+    run_id: "customer.owner@example.com",
+    raw_evidence_payload: { customer_payload: customerPayload, b: hostileBearer },
   };
 
-  const malformedReceiptResult = projectReceiptV0({
-    tier: "public",
-    receipt: malformedReceipt,
-  });
-  assertProjectionFailure(malformedReceiptResult);
-  deepEqual(malformedReceiptResult.errors, ["receipt failed verification"]);
-  ok(!JSON.stringify(malformedReceiptResult).includes(hostileBearer));
-  ok(!JSON.stringify(malformedReceiptResult).includes(customerPayload));
+  for (const tier of ["public", "subscriber", "owner"] as const) {
+    const result = projectReceipt({ tier, receipt });
+    assertProjectionFailure(result);
+    deepEqual(result.errors, ["receipt failed verification"]);
+    const serialized = JSON.stringify(result);
+    ok(!serialized.includes(customerPayload));
+    ok(!serialized.includes(hostileBearer));
+  }
+});
 
-  const proof = inspectReceiptProofV0(receipt);
-  const malformedProofResult = projectReceiptProofV0({
-    tier: "subscriber",
-    status: "up",
-    proof: {
-      ...proof,
-      content_hash: "not-a-content-hash",
-      token_truth: {
-        ...proof.token_truth,
-        provider: "customer.owner@example.com",
-      },
-    },
+test("subscriber projection never surfaces non-private receipt body keys", () => {
+  const receipt = makeReceipt({});
+  const subscriberResult = projectReceipt({ tier: "subscriber", receipt });
+  const publicResult = projectReceipt({ tier: "public", receipt });
+  assertProjectionOk(subscriberResult);
+  assertProjectionOk(publicResult);
+
+  const keys = collectKeys([subscriberResult.projection, publicResult.projection]);
+  for (const privateKey of ["semantic_diff", "hash_algorithm", "sig"]) {
+    ok(!keys.has(privateKey));
+  }
+  const serialized = JSON.stringify([
+    subscriberResult.projection,
+    publicResult.projection,
+  ]);
+  ok(serialized.includes(receipt.content_hash));
+  ok(serialized.includes(CONTRACT_FP));
+});
+
+test("subscriber projection fails closed when a shared fingerprint token is secret shaped", () => {
+  // A secret-shaped fingerprint token would be surfaced verbatim in the
+  // subscriber tier's full facet map — it must fail closed instead of leaking.
+  const privateUrl =
+    "https://policy.internal/freshness?token=secret1234567890";
+  const receipt = makeReceipt({
+    fingerprints: { "@atomic": ATOMIC_TOKEN, "leak": privateUrl },
   });
-  assertProjectionFailure(malformedProofResult);
-  ok(!JSON.stringify(malformedProofResult).includes("customer.owner@example.com"));
+
+  const subscriberResult = projectReceipt({ tier: "subscriber", receipt });
+  assertProjectionFailure(subscriberResult);
+  deepEqual(subscriberResult.errors, [
+    "projection would expose secret-shaped data",
+  ]);
+  ok(!JSON.stringify(subscriberResult).includes(privateUrl));
+
+  // The public tier exposes only the facet *count*, never the tokens, so the
+  // secret-shaped token cannot leak — it projects cleanly.
+  const publicResult = projectReceipt({ tier: "public", receipt });
+  assertProjectionOk(publicResult);
+  ok(!JSON.stringify(publicResult).includes(privateUrl));
+
+  // The owner tier is allowed to see the full (non-redacted) projection.
+  const ownerResult = projectReceipt({ tier: "owner", receipt });
+  assertProjectionOk(ownerResult);
+  ok(JSON.stringify(ownerResult).includes(privateUrl));
+});
+
+test("projection failures never echo malformed private receipt data", () => {
+  const customerPayload = "customer payload: sealed evidence beta";
+  const base = makeReceipt({});
+  // Tamper with the content_hash so verification fails; attach hostile data.
+  const malformed = {
+    ...base,
+    content_hash: asFingerprint("sha256:0000000000000000000000000000000000000000000000000000000000000000"),
+    raw_evidence_payload: { customer_payload: customerPayload },
+  };
+
+  const result = projectReceipt({ tier: "public", receipt: malformed });
+  assertProjectionFailure(result);
+  deepEqual(result.errors, ["receipt failed verification"]);
+  ok(!JSON.stringify(result).includes(customerPayload));
 });
 
 test("unknown projection tiers fail closed", () => {
-  const receipt = createReceiptV0(makeReceiptInput());
+  const receipt = makeReceipt({});
 
-  deepEqual(projectReceiptV0({ tier: "partner", receipt }), {
+  deepEqual(projectReceipt({ tier: "partner", receipt }), {
     ok: false,
     tier: null,
     errors: ["unknown projection tier"],
@@ -331,102 +211,53 @@ test("unknown projection tiers fail closed", () => {
   });
 });
 
-test("projection public surface is exported from root and package subpath", () => {
-  equal(typeof rootSurface.projectReceiptV0, "function");
-  equal(typeof rootSurface.projectReceiptProofV0, "function");
-  deepEqual(RECEIPT_PROJECTION_TIERS_V0, ["owner", "subscriber", "public"]);
-
-  const packageJson = readPackageJson();
-  deepEqual(packageJson.exports?.["./projection"], {
-    types: "./dist/projection/index.d.ts",
-    default: "./dist/projection/index.js",
-  });
-
-  const require = createRequire(__filename);
-  const projectionModule = require(join(__dirname, "..", "index.js")) as Record<
-    string,
-    unknown
-  >;
-  equal(typeof projectionModule["projectReceiptV0"], "function");
-  equal(typeof projectionModule["projectReceiptProofV0"], "function");
+test("projection public surface exposes the three tiers and the project functions", () => {
+  equal(typeof projectReceipt, "function");
+  equal(typeof projectReceiptProof, "function");
+  deepEqual([...RECEIPT_PROJECTION_TIERS], ["owner", "subscriber", "public"]);
 });
 
 interface MakeReceiptOptions {
-  readonly status?: "up" | "drifting" | "down" | "blocked";
-  readonly memoKey?: string;
-  readonly runId?: string;
-  readonly tags?: readonly string[];
-  readonly providerNorm?: ReceiptV0Input["cost"]["provider_norm"];
-  readonly freshness?: ReceiptV0Input["freshness"];
-  readonly composition?: ReceiptV0Input["composition"];
-  readonly tokens?: {
-    readonly fresh: number;
-    readonly reused: number;
-  };
+  readonly status?: "rendered" | "skipped" | "failed";
+  readonly wakeSource?: WakeSource;
+  readonly tokens?: { readonly fresh: number; readonly reused: number };
+  readonly fingerprints?: Readonly<Record<string, string>>;
 }
 
-interface ReactorPackageJson {
-  readonly exports?: Record<string, unknown>;
-}
-
-function makeReceiptInput(options: MakeReceiptOptions = {}): ReceiptV0Input {
-  return {
-    core: {
-      responsibility_id: "responsibility.incident-briefing",
-      contract_revision: HASH_A,
-      event_cause: "real-input",
-      memo_key: options.memoKey ?? "memo-key-static-world",
-      evidence_input_ids: [HASH_B],
-      as_of: AS_OF,
-      role: "judge",
-    },
-    sig: {
-      scheme: "none",
-      null_reason: "single-host v0.1 fixture; no cross-domain non-repudiation",
-    },
-    verdict: {
-      status: options.status ?? "up",
-      confidence: {
-        value: 0.91,
-        derivation_method: "cradle-double-calibration",
-        calibration_grade: "authored",
-        label_source: "static-world-anchor",
-      },
-    },
-    freshness: options.freshness ?? {
-      as_of: AS_OF,
-      next_forecast_recheck: NEXT_RECHECK,
-    },
-    composition: options.composition ?? {
-      consumed_receipts: [],
-      cycle_checked: true,
-    },
+function makeReceipt(options: MakeReceiptOptions): LedgerReceipt {
+  const wakeSource = options.wakeSource ?? "input";
+  const input: Receipt = {
+    node: asNodeId("node.incident-briefing"),
+    contract_fingerprint: asFingerprint(CONTRACT_FP),
+    wake: { source: wakeSource, refs: [WAKE_REF] },
+    input_fingerprints: [asFingerprint(INPUT_FP)],
+    fingerprints: (options.fingerprints ?? {
+      "@atomic": ATOMIC_TOKEN,
+    }) as Readonly<Record<string, Fingerprint>>,
+    semantic_diff: {},
+    prev: null,
+    status: options.status ?? "rendered",
     cost: {
       provider: "cradle-double",
       model: "deterministic-replay",
-      role: "judge",
-      tags: options.tags ?? ["static-world"],
-      responsibility_id: "responsibility.incident-briefing",
-      run_id: options.runId ?? "run-static-world",
-      as_of: AS_OF,
       tokens: options.tokens ?? { fresh: 37, reused: 0 },
-      surprise_cause: "real-input",
-      ...(options.providerNorm === undefined
-        ? {}
-        : { provider_norm: options.providerNorm }),
+      surprise_cause: wakeSource,
     },
+    sig: { scheme: "none", null_reason: "projection fixture" },
   };
+
+  return createReceipt(input);
 }
 
 function assertProjectionOk(
-  result: ReceiptProjectionResultV0,
-): asserts result is Extract<ReceiptProjectionResultV0, { readonly ok: true }> {
+  result: ReceiptProjectionResult,
+): asserts result is Extract<ReceiptProjectionResult, { readonly ok: true }> {
   equal(result.ok, true);
 }
 
 function assertProjectionFailure(
-  result: ReceiptProjectionResultV0,
-): asserts result is Extract<ReceiptProjectionResultV0, { readonly ok: false }> {
+  result: ReceiptProjectionResult,
+): asserts result is Extract<ReceiptProjectionResult, { readonly ok: false }> {
   equal(result.ok, false);
 }
 
@@ -446,14 +277,8 @@ function visitKeys(value: unknown, keys: Set<string>): void {
   if (typeof value !== "object" || value === null) {
     return;
   }
-
   for (const [key, item] of Object.entries(value)) {
     keys.add(key);
     visitKeys(item, keys);
   }
-}
-
-function readPackageJson(): ReactorPackageJson {
-  const packageJsonPath = join(__dirname, "..", "..", "..", "package.json");
-  return JSON.parse(readFileSync(packageJsonPath, "utf8")) as ReactorPackageJson;
 }

@@ -1,0 +1,7 @@
+# Ignore live runtime churn — NOT the committed, reviewable replay/ fixture.
+state/
+runs/
+deps/
+dist/
+.reactor/
+*.reactor/

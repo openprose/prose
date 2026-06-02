@@ -1,6 +1,6 @@
 ---
 name: html-renderer
-kind: service
+kind: function
 ---
 
 ### Shape
@@ -11,18 +11,19 @@ kind: service
   - fetching external data
   - modifying the data — you render what you're given
 
-### Requires
+### Parameters
 
 - template: path to an HTML template with placeholder markers
 - data: structured output from services or systems
 - output_path: where to write the rendered HTML
 - strict: (optional, default false) boolean — if true, error on missing data fields; if false, use "data pending" markers for missing fields
 
-### Ensures
+### Returns
 
 - rendered: confirmation the file was written successfully
 - html_path: the output file path
-- all template placeholders are resolved to data values, or marked "data pending" in non-strict mode
+
+Every template placeholder is resolved to a data value, or marked "data pending" in non-strict mode, before the rendered file path is returned.
 
 ### Errors
 

@@ -1,14 +1,15 @@
 import { deepEqual, equal } from "node:assert/strict";
 import { test } from "node:test";
 
-import { createPassthroughAgentSdkAdapterV0, createNullAgentSdkAdapterV0 } from "../agent-sdk-passthrough";
-import { createFixedClockAdapterV0 } from "../clock-system";
-import { createStaticConnectorAdapterV0 } from "../connector-static";
-import { createMemoryEventSinkAdapterV0 } from "../event-sink-memory";
-import { createNullSandboxAdapterV0 } from "../sandbox-null";
+import {
+  createNullAgentSdkAdapter,
+  createPassthroughAgentSdkAdapter,
+} from "../agent-sdk-passthrough";
+import { createFixedClockAdapter } from "../clock-system";
+import { createStaticConnectorAdapter } from "../connector-static";
 
 test("local helper adapters keep deterministic observable state", () => {
-  const clock = createFixedClockAdapterV0("2026-05-18T12:00:00Z");
+  const clock = createFixedClockAdapter("2026-05-18T12:00:00Z");
   equal(clock.now(), "2026-05-18T12:00:00Z");
   equal(clock.advanceByMs(60_000), "2026-05-18T12:01:00.000Z");
   equal(clock.now(), "2026-05-18T12:01:00.000Z");
@@ -17,7 +18,7 @@ test("local helper adapters keep deterministic observable state", () => {
     "2026-05-18T12:01:00.000Z",
   ]);
 
-  const connector = createStaticConnectorAdapterV0([
+  const connector = createStaticConnectorAdapter([
     {
       source_id: "source.release-risk",
       payload: { state: "quiet" },
@@ -36,47 +37,54 @@ test("local helper adapters keep deterministic observable state", () => {
       as_of: "2026-05-18T12:01:00Z",
     },
   ]);
+});
 
-  const eventSink = createMemoryEventSinkAdapterV0();
-  eventSink.emit({
-    type: "ingest",
-    responsibility_id: "responsibility.adapters",
-    as_of: "2026-05-18T12:01:00Z",
-    payload: { kind: "real-input" },
-  });
-  deepEqual(eventSink.events(), [
-    {
-      type: "ingest",
-      responsibility_id: "responsibility.adapters",
-      as_of: "2026-05-18T12:01:00Z",
-      payload: { kind: "real-input" },
-    },
-  ]);
-
-  const passthroughAgent = createPassthroughAgentSdkAdapterV0();
+test("agentSdk launches with the ideal render kind and records launches", () => {
+  const agent = createPassthroughAgentSdkAdapter();
   deepEqual(
-    passthroughAgent.launch({
-      kind: "bounded-activation",
+    agent.launch({
+      kind: "bounded-render",
       payload: { step: "echo" },
     }),
     { payload: { step: "echo" } },
   );
-  deepEqual(passthroughAgent.launches(), [
+  deepEqual(agent.launches(), [
     {
-      kind: "bounded-activation",
+      kind: "bounded-render",
       payload: { step: "echo" },
     },
   ]);
+});
 
-  const nullAgent = createNullAgentSdkAdapterV0();
-  deepEqual(
-    nullAgent.launch({ kind: "policy-author", payload: { step: "unused" } }),
-    { payload: null },
-  );
+test("agentSdk absorbs the folded sandbox execution port", () => {
+  const agent = createPassthroughAgentSdkAdapter({
+    sandbox: (request) => ({
+      exit_code: 0,
+      stdout: `${request.command} ${request.args.join(" ")}`,
+      stderr: "",
+    }),
+  });
 
-  deepEqual(createNullSandboxAdapterV0().run({ command: "noop", args: [] }), {
+  deepEqual(agent.runSandbox({ command: "echo", args: ["hi"] }), {
+    exit_code: 0,
+    stdout: "echo hi",
+    stderr: "",
+  });
+  deepEqual(agent.sandboxRuns(), [{ command: "echo", args: ["hi"] }]);
+
+  // The default sandbox handler is a no-op exit-0.
+  const idle = createPassthroughAgentSdkAdapter();
+  deepEqual(idle.runSandbox({ command: "noop", args: [] }), {
     exit_code: 0,
     stdout: "",
     stderr: "",
   });
+});
+
+test("null agentSdk returns a fixed payload independent of request kind", () => {
+  const nullAgent = createNullAgentSdkAdapter();
+  deepEqual(
+    nullAgent.launch({ kind: "sandbox-exec", payload: { step: "unused" } }),
+    { payload: null },
+  );
 });
