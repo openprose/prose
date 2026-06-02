@@ -199,7 +199,7 @@ of scraping the report. Shape (top-level keys):
   "tool": "reactor-devtools",
   "stateDir": "…",
   "empty": false,                 // true on a compile-only / first-run ledger
-  "synthetic": true,              // true for a shipped --example sample
+  "synthetic": true,              // true for any shipped --example fixture
   "topology": { "present": true, "nodes": 6, "edges": 7, "acyclic": true },
   "receipts": 84,
   "dispositions": { "rendered": 41, "skipped": 31, "failed": 12 },
