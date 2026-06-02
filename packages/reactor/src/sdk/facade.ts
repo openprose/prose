@@ -28,9 +28,11 @@ import {
 import type { ClockAdapter, StorageAdapter } from "../adapters/types";
 import type { WorldModelStore } from "../world-model";
 import type { RenderOptions } from "../adapters/agent-render/passthrough";
+import type { RenderBackend } from "../adapters/agent-render/render-backend";
 import type { MutableReceiptLedger } from "./mounted-dag";
 import type { NodeFreshnessReader } from "./continuity-scheduler";
 import type { Reactor } from "./reactor-handle";
+import type { ReconcileResult } from "../reactor";
 import type { CompileProjectInput } from "./run-project";
 import {
   augmentTopologyWithIngress,
@@ -68,6 +70,17 @@ export interface ReactorAdapters {
    * (the SAME mechanism `reactor.ingest(node, { data })` uses).
    */
   readonly connectors?: readonly ConnectorAdapter[];
+  /**
+   * The render-backend injection seam (§5.4) — the one bounded model session,
+   * swapped wholesale while the harness keeps instruction-composition /
+   * working-dir / harvest / cost. Surfaced on the front door so
+   * `reactor(path, { adapters: { renderBackend } })` points the live render at
+   * record/replay, a proxy, or a non-`@openai/agents` model WITHOUT dropping to
+   * the deepest `render.buildRender` backstop. Omit → the default
+   * `@openai/agents` backend (identical behavior). Ignored in `{ mode: "inspect" }`
+   * when a `render.buildRender` fake owns the whole render body.
+   */
+  readonly renderBackend?: RenderBackend;
 }
 
 /** The continuity-arming options the facade forwards to {@link Reactor.scheduler}. */
@@ -124,7 +137,7 @@ export interface ReactorFacadeResult {
   /** The typed reactor handle (drive / observe / schedule). */
   readonly reactor: Reactor;
   /** The boot cold-miss sweep's per-node results (empty when `boot: false`). */
-  readonly bootResults: readonly unknown[];
+  readonly bootResults: readonly ReconcileResult[];
   /**
    * Drive ONE poll of every armed connector (§5.6). Resolves with each source's
    * outcome (`ingested_ids` / `skipped_ids` / the reconciler results). Present
@@ -263,5 +276,13 @@ function resolveSubstrate(options: ReactorOptions): Substrate {
 /** Resolve the render wiring (the escape hatch + the offline fake + projections). */
 function resolveRender(options: ReactorOptions): unknown {
   const r = options.render ?? {};
-  return { ...r };
+  // §5.4: thread the front-door render-backend injection through to the live
+  // `createAgentRender` (via `runProject`'s `RunProjectRender.renderBackend`).
+  // Omitted → the default `@openai/agents` backend, so the default render is
+  // byte-for-byte what it was before this seam was surfaced on the facade.
+  const renderBackend = options.adapters?.renderBackend;
+  return {
+    ...r,
+    ...(renderBackend !== undefined ? { renderBackend } : {}),
+  };
 }

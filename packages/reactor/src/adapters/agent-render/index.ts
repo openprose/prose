@@ -499,3 +499,9 @@ export type {
   RenderSessionOutput,
   DefaultRenderBackendConfig,
 } from "./render-backend";
+// The two RenderBackend-author shapes a custom backend returns: the render's
+// token usage (mapped to the receipt Cost) and the structured done/failed signal.
+// Surfaced on /agents alongside the request/output shapes so a consumer
+// implementing `RenderBackend.runSession` can name every field it builds.
+export type { RenderUsage } from "./cost";
+export type { RenderOutputSignal } from "./output-schema";

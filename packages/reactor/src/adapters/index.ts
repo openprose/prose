@@ -53,6 +53,12 @@ export {
 
 export type { WorldModelValue } from "../canonicalizer";
 
+// --- Re-homed deep names also reachable on /adapters (additive; they remain on
+// /internals too). The memo store a custom backend may persist against, and the
+// published/workspace truth-kind discriminant. ----------------------------------
+export { InMemoryMemoStore } from "../memo";
+export type { WorldModelWorkspaceKind } from "../shapes";
+
 // --- The receipt-ledger backends + the published-fingerprint reader ---------
 export {
   FileSystemReceiptLedger,

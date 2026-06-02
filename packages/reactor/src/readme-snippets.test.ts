@@ -81,6 +81,18 @@ test("README snippets type-check against the public surface", () => {
   };
   void recordingBackend;
 
+  // The load-bearing assertion: the README invokes the facade with the backend on
+  // `adapters: { renderBackend }`. Type-check that EXACT call shape (the front-door
+  // injection seam from the README snippet) — not merely the port types in
+  // isolation. We reference, never invoke, the typed call (invoking would compile a
+  // project + load a provider), so the snippet check stays keyless.
+  const swapBackend = (): ReturnType<typeof reactor> =>
+    reactor("./my-project", {
+      directory: "./state",
+      adapters: { renderBackend: recordingBackend },
+    });
+  void swapBackend;
+
   // The substrate factories build the persistence record correctly. The README
   // shows `directory: "./state"`; here we point the (eagerly-created) durable
   // store at an OS temp dir and clean it up so the snippet check never litters
