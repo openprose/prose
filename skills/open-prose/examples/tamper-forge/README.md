@@ -40,7 +40,7 @@ byte-identical re-read does not move it, so a clean re-audit memo-**skips**
 | | attack | primitive | outcome |
 |---|---|---|---|
 | **(a)** | inflate `cost.tokens.fresh`, keep the stale `content_hash` | `verifyReceiptChain` | **CHAIN-VERIFY FAILED** — the body no longer hashes to its recorded `content_hash` |
-| **(b)** | re-stamp the public `content_hash` via `computeReceiptContentHash` | `computeReceiptContentHash` | chain **PASSES** again — **honest book-keeping, NOT non-repudiation**: under the v1 null signer, whoever rewrites the file can also recompute the hash |
+| **(b)** | **full forward re-stamp**: recompute the public `content_hash` via `computeReceiptContentHash` *and* relink every successor's `prev` to the new hash, node by node down the chain | `computeReceiptContentHash` | chain **PASSES** again — **honest book-keeping, NOT non-repudiation**: a *single* receipt re-stamp would orphan the next receipt's `prev` and still FAIL; only re-stamping forward through the whole chain heals it — and under the v1 null signer, whoever rewrites the file can do exactly that |
 | **(c)** | forge `sig.scheme` (claim a signed posture the run never had) | `verifyReceipt` | **REJECTED** — `sig.scheme must be "none"`; the null signer is the only honest v1 state |
 | **(d)** | edit a `world-models/<hex>/published.json` artifact, leave `receipts.json` intact | `verifyReceiptChain` | **STILL PASSES** — the documented integrity gap: the maintained truth (the world-model artifact layer) sits *outside* the receipt envelope, so chain-verify does not cover it. Asserted as **current** behavior so it can't regress silently |
 

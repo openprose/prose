@@ -517,13 +517,13 @@ export async function runServeCommand(
     httpServer = await startHttpServer(host, options.httpPort, bindHost);
     if (options.json !== true) {
       write(`reactor serve — HTTP on ${bindHost}:${httpServer.port}`);
-      // v1 has NO auth: an exposed POST /<node>/trigger can cause model spend.
+      // v1 has NO auth: an exposed POST /trigger/<node> can cause model spend.
       const loopback =
         bindHost === '127.0.0.1' || bindHost === '::1' || bindHost === 'localhost';
       if (!loopback) {
         write(
           `  WARNING: bound to ${bindHost} (not loopback) with NO auth in v1 — an ` +
-            `unauthenticated POST /<node>/trigger can cause model spend. Put it ` +
+            `unauthenticated POST /trigger/<node> can cause model spend. Put it ` +
             `behind a reverse proxy / network policy.`,
         );
       }

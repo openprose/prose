@@ -362,7 +362,13 @@ if (require.main === module) {
       process.exitCode = code;
     })
     .catch((err) => {
-      process.stderr.write(String(err?.stack ?? err) + '\n');
+      // Print the clean, actionable message by default (e.g. the missing-peer
+      // message from compile/run-compile.ts already strips Node's "Require
+      // stack:" per G21b). Only dump the JS stack when a debug signal is set,
+      // so handled errors don't read like a crash.
+      const message = err?.message ?? String(err);
+      const detail = process.env.DEBUG && err?.stack ? err.stack : message;
+      process.stderr.write(String(detail) + '\n');
       process.exitCode = 1;
     });
 }

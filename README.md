@@ -167,9 +167,10 @@ reactor --state-dir ./replay receipts             # the per-node ledger (list | 
 > reactor-devtools ./replay --describe
 > reactor --state-dir ./replay receipts
 > ```
-> Only `masked-relay` is also reachable by name from any directory, via the devtools
-> fixture bundle: `reactor-devtools --example masked-relay --describe`. The other twelve
-> replay by path.
+> Six examples are also reachable by name from any directory, via the devtools
+> fixture bundle: `masked-relay`, `surprise-cost`, `agent-observatory`, `inbox-triage`,
+> `monorepo-ci`, and `research-tree` — e.g. `reactor-devtools --example masked-relay --describe`
+> (run `reactor-devtools --help` to see the list). The remaining examples replay by path.
 
 **Or run the offline gate** (this is what CI runs — all thirteen replay examples, zero spend):
 
