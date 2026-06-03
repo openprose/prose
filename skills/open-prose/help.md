@@ -34,7 +34,7 @@ Options:
 
 - **Run a contract**: Ask for the file path, then load `prose.md` and execute
 - **Build something new**: Ask them to describe their task, then help write a contract (load `guidance/authoring.md`)
-- **Keep a goal true**: Help author a `kind: responsibility`, then explain `prose compile`, `prose serve`, and `prose status`
+- **Keep a goal true**: Help author a `kind: responsibility`, then explain `prose compile`, `prose serve`, and `prose status` — or run `prose react "<use case>"` to stand up a Reactor end to end on the `reactor` CLI (load `reactor.md`)
 - **Learn the syntax**: Show examples from `examples/`, explain the VM model
 - **Improve OpenProse**: Run `std/evals/prose-contributor` on relevant run IDs; require explicit user approval before pushing or opening a PR
 - **Explore possibilities**: Walk through examples like `stargazer-outreach/`
@@ -47,6 +47,7 @@ Options:
 |---------|--------------|
 | `prose compile [path] [--out <dir>]` | Compile source into `<openprose-root>/dist/manifest.next.json` |
 | `prose serve` | Serve the active IR as local cron and HTTP trigger adapters |
+| `prose react [use case...] [--start]` | Take an English standing goal to a running Reactor on the `reactor` CLI: author the contracts + `reactor.yml`, then compile/serve. Prints the commands by default; `--start` runs them |
 | `prose run <file.prose.md>` | Run a responsibility or function contract |
 | `prose write [request...]` | Interactive-by-default authoring from rough English/pseudo-Prose into a validated source package; non-interactive runs return `unresolved-intent` when more detail is required |
 | `prose lint <file.prose.md>` | Validate structure, schema, and contracts |
