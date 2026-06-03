@@ -46,6 +46,10 @@ import {
  * engines.node ">=20.0.0"). */
 export const MIN_NODE_MAJOR = 20;
 
+/** The model the `--live` smoke uses for a native-Anthropic project with no
+ * explicit `render_model` configured. */
+const DEFAULT_NATIVE_ANTHROPIC_MODEL = 'claude-haiku-4-5';
+
 /** The compiled-IR freshness disposition reported for the project. */
 export type IrFreshness = 'fresh' | 'stale' | 'absent' | 'no-contracts';
 
@@ -231,6 +235,7 @@ export async function collectDoctorReport(
       provider: config.model.provider || 'openrouter',
       baseURL: '',
       apiKeyEnv: 'OPENROUTER_API_KEY',
+      transport: 'openai-compat',
       custom: false,
     };
   }
@@ -330,6 +335,7 @@ export async function runLiveSmoke(
       provider: 'openrouter',
       baseURL: 'https://openrouter.ai/api/v1',
       apiKeyEnv: 'OPENROUTER_API_KEY',
+      transport: 'openai-compat',
       custom: false,
     };
   // Forced offline → never reach for a key or the network. This keeps the offline
@@ -363,6 +369,7 @@ export async function runLiveSmoke(
         readonly baseURL?: string;
         readonly model?: string;
         readonly input?: string;
+        readonly provider?: unknown;
       }) => Promise<{
         readonly text: string;
         readonly totalTokens: number;
@@ -373,9 +380,7 @@ export async function runLiveSmoke(
       provider.assertSkillBundleInstalled();
     }
     // Drive ONE real bounded render against the CONFIGURED endpoint (cli.md §3:
-    // `--live` proves provider reachability via a single live render). We pass the
-    // resolved `apiKey` + `baseURL` + `model` so `smokeRun` builds a scoped provider
-    // for whatever vendor `reactor.yml` selected — not just OpenRouter. The key was
+    // `--live` proves provider reachability via a single live render). The key was
     // confirmed present above, so this is safe to invoke.
     if (typeof provider.smokeRun !== 'function') {
       return {
@@ -384,11 +389,33 @@ export async function runLiveSmoke(
         detail: 'live render smoke unavailable (smokeRun not exported by the render barrel)',
       };
     }
-    const smoke = await provider.smokeRun({
-      apiKey,
-      ...(plan.baseURL.length > 0 ? { baseURL: plan.baseURL } : {}),
-      model: config.renderModel ?? 'google/gemini-3.5-flash',
-    });
+    // The native Anthropic path can't be smoked via a base-URL'd OpenAIProvider —
+    // it routes through the AI-SDK adapter. Build the SAME scoped provider the live
+    // compile/run would use and hand it to `smokeRun`, so the smoke proves the
+    // ACTUAL Claude wiring. Every other vendor passes apiKey + baseURL and lets
+    // `smokeRun` build the scoped OpenAIProvider itself.
+    let smokeConfig: {
+      apiKey?: string;
+      baseURL?: string;
+      model?: string;
+      provider?: unknown;
+    };
+    if (plan.transport === 'anthropic-native') {
+      // Build the SAME scoped AI-SDK provider the live compile/run would use, via
+      // a dynamic import so the model-bearing module never loads on the offline path.
+      const { buildLiveProvider } = await import('../model/live-provider');
+      smokeConfig = {
+        provider: buildLiveProvider(plan, apiKey),
+        model: config.renderModel ?? DEFAULT_NATIVE_ANTHROPIC_MODEL,
+      };
+    } else {
+      smokeConfig = {
+        apiKey,
+        ...(plan.baseURL.length > 0 ? { baseURL: plan.baseURL } : {}),
+        model: config.renderModel ?? 'google/gemini-3.5-flash',
+      };
+    }
+    const smoke = await provider.smokeRun(smokeConfig);
     if (typeof smoke.text !== 'string' || smoke.totalTokens <= 0) {
       return {
         ran: true,

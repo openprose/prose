@@ -13,20 +13,17 @@ describe('resolveProviderPlan', () => {
     assert.equal(plan.provider, 'openrouter');
     assert.equal(plan.baseURL, 'https://openrouter.ai/api/v1');
     assert.equal(plan.apiKeyEnv, 'OPENROUTER_API_KEY');
+    assert.equal(plan.transport, 'openai-compat');
     // Non-custom: the SDK builds its scoped provider lazily, unchanged.
     assert.equal(plan.custom, false);
   });
 
-  it('resolves each built-in provider to the right base URL + key env, all custom', () => {
+  it('resolves the OpenAI-compat built-ins to the right base URL + key env, all custom', () => {
     const openai = resolveProviderPlan({ provider: 'openai' });
     assert.equal(openai.baseURL, 'https://api.openai.com/v1');
     assert.equal(openai.apiKeyEnv, 'OPENAI_API_KEY');
+    assert.equal(openai.transport, 'openai-compat');
     assert.equal(openai.custom, true);
-
-    const anthropic = resolveProviderPlan({ provider: 'anthropic' });
-    assert.equal(anthropic.baseURL, 'https://api.anthropic.com/v1/');
-    assert.equal(anthropic.apiKeyEnv, 'ANTHROPIC_API_KEY');
-    assert.equal(anthropic.custom, true);
 
     const google = resolveProviderPlan({ provider: 'google' });
     assert.equal(
@@ -34,7 +31,27 @@ describe('resolveProviderPlan', () => {
       'https://generativelanguage.googleapis.com/v1beta/openai/',
     );
     assert.equal(google.apiKeyEnv, 'GEMINI_API_KEY');
+    assert.equal(google.transport, 'openai-compat');
     assert.equal(google.custom, true);
+  });
+
+  it('routes the anthropic built-in through the NATIVE adapter (no compat base URL)', () => {
+    const anthropic = resolveProviderPlan({ provider: 'anthropic' });
+    assert.equal(anthropic.apiKeyEnv, 'ANTHROPIC_API_KEY');
+    assert.equal(anthropic.transport, 'anthropic-native');
+    assert.equal(anthropic.custom, true);
+    // The OpenAI-compat URL is NEVER handed to the AI-SDK adapter; with no
+    // explicit override the adapter uses its own Messages API base (`''`).
+    assert.equal(anthropic.baseURL, '');
+  });
+
+  it('passes an explicit base_url through to the native anthropic adapter (a proxy)', () => {
+    const anthropic = resolveProviderPlan({
+      provider: 'anthropic',
+      base_url: 'https://anthropic-proxy.internal/v1',
+    });
+    assert.equal(anthropic.transport, 'anthropic-native');
+    assert.equal(anthropic.baseURL, 'https://anthropic-proxy.internal/v1');
   });
 
   it('is case-insensitive and treats an empty provider as the OpenRouter default', () => {

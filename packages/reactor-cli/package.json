@@ -1,6 +1,6 @@
 {
   "name": "@openprose/reactor-cli",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/openprose/prose.git",
@@ -32,8 +32,11 @@
     "prepublishOnly": "pnpm build"
   },
   "dependencies": {
-    "commander": "^12.0.0",
-    "@openprose/reactor": "workspace:*"
+    "@ai-sdk/anthropic": "3.0.81",
+    "@openai/agents-extensions": "0.11.6",
+    "@openprose/reactor": "workspace:*",
+    "ai": "6.0.195",
+    "commander": "^12.0.0"
   },
   "peerDependencies": {
     "@openai/agents": "*",

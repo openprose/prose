@@ -58,6 +58,11 @@ const VENDORS: readonly Vendor[] = [
     baseURL: "https://api.openai.com/v1",
     model: "gpt-4o-mini",
   },
+  // Anthropic's OpenAI-COMPAT surface. This proves plain-text reachability ONLY:
+  // the compat endpoint ignores `response_format` and rejects our JSON-schema
+  // structured outputs (`400 …json_schema.strict`), so it is NOT the production
+  // Claude path. The SUPPORTED structured route is the native AI-SDK adapter,
+  // covered by reactor-cli's `anthropic-native.live.test.ts` (`provider: anthropic`).
   {
     label: "anthropic",
     keyEnv: "ANTHROPIC_API_KEY",
