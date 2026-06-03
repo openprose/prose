@@ -42,6 +42,7 @@ After activation, choose the narrowest path that matches the user's intent:
 | Write pinned choreography | `prosescript.md` | `contract-markdown.md` if inside `### Execution` |
 | Lint or review a responsibility or function | `contract-markdown.md` | `forme.md` for multi-responsibility wiring; `guidance/authoring.md` for design review |
 | Work on Responsibility Runtime, responsibility-oriented source, Reactor, compile, or serve semantics | `responsibility-runtime.md` | `compiler/index.prose.md`, `compiler/ir-v0.md`, `concepts/responsibility.md`, `concepts/reactor.md`, `forme.md` |
+| Stand up, run, or serve a Reactor for a standing goal — incl. `prose react "<use case>"` | `reactor.md` | `concepts/responsibility.md` and `contract-markdown.md` to author the contracts; `concepts/reactor.md` for reconciler semantics |
 | Install or update dependencies | `deps.md` | `contract-markdown.md` only if dependency references are ambiguous |
 | Debug a completed run | `prose.md` | `state/README.md` and the run's backend doc; then `std/evals/inspector` if available |
 
@@ -120,10 +121,16 @@ directly and embody the OpenProse VM. Do not run a `prose` shell binary or
 executing the contract. The shell executable is the agent runner, e.g.
 `claude -p "prose run foo.prose.md"` or `codex exec "prose run foo.prose.md"`.
 
+The one exception is the **`reactor` binary** (`@openprose/reactor-cli`), driven
+by `prose react`. It is a genuine deterministic host — a dumb reconciler that
+never calls an agent wrapper — so you *do* install and shell out to it. You
+author the `*.prose.md` contracts; the binary runs them. See `reactor.md`.
+
 | Command | Action |
 |---------|--------|
 | `prose compile [path] [--out <dir>]` | Load `responsibility-runtime.md`, then `compiler/index.prose.md`; run the pinned ProseScript compiler and emit concrete trigger registrations, activations, and Forme manifests into `<openprose-root>/dist/manifest.next.json` by default |
 | `prose serve` | Load and validate `<openprose-root>/dist/manifest.active.json`; register local cron and HTTP trigger adapters; launch ordinary bounded activations |
+| `prose react [use case...] [--start]` | Load `reactor.md`. Take an English standing goal to a running, inspectable Reactor on the real `reactor` binary: pick a home, ensure the harness, author the `kind: responsibility`/`gateway` contracts (per `concepts/responsibility.md` + `contract-markdown.md`) and `reactor.yml`, then `compile → serve` and show the user `reactor-devtools` replay. **Default prints the `reactor` commands for the user to run; `--start` drives the live lifecycle directly.** Unlike embodied `prose run`, the `reactor` binary is a real deterministic host you *do* shell out to |
 | `prose run <file.prose.md>` | Detect Contract Markdown, load `contract-markdown.md`, select state with `state/README.md` plus the backend doc, then `forme.md` if multi-responsibility, then `prose.md` || `prose run <host>/<owner>/<repo>[/path]` | Resolve installed dependency contract, detect format, then route as above |
 | `prose run std/...` / `co/...` | Expand OpenProse package shorthand, resolve installed dependency contract, then route as above |
 | `prose write [request...]` | Interactive-by-default authoring: load `contract-markdown.md`, `guidance/tenets.md`, and `guidance/authoring.md`; run `std/ops/prose-author`; scan the local landscape read-only, decide shape/root/path, load shape-specific guidance, ask a small number of targeted `ask_user` questions when the host can support them, then return a fully validated source package. If the caller or host marks the run non-interactive, return `unresolved-intent` with the missing decisions instead of guessing. Do not apply files unless the caller explicitly asks for that follow-up |
@@ -251,7 +258,9 @@ user workspace for these docs.
 | `prosescript.md` | Imperative scripting syntax for `### Execution` and pattern `### Delegation` |
 | `forme.md` | Forme container wiring semantics |
 | `prose.md` | Prose VM execution semantics |
-| `responsibility-runtime.md` | Responsibility Runtime doctrine: Responsibilities, Reactor, compile, serve, run, and status || `compiler/index.prose.md` | Bundled ProseScript compiler program |
+| `responsibility-runtime.md` | Responsibility Runtime doctrine: Responsibilities, Reactor, compile, serve, run, and status |
+| `reactor.md` | Reactor CLI operator guide: the `reactor` binary, install, `reactor.yml`, the `prose react` playbook, driving and inspecting a running harness |
+| `compiler/index.prose.md` | Bundled ProseScript compiler program |
 | `compiler/ir-v0.md` | Canonical repository IR contract emitted by compile and served by the harness |
 | `deps.md` | Dependency resolution and `prose install` |
 | `changelog.md` | Compact version history and model-guided upgrade instructions; load only for `prose upgrade` or outdated-structure diagnosis |
