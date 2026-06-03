@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://openprose.ai/opengraph-image" alt="OpenProse — Reactor" width="100%" />
+  <img src="assets/readme-header.png" alt="OpenProse — Reactor" width="100%" />
 </p>
 
 <p align="center">
