@@ -37,6 +37,14 @@ import {
   formatCost,
 } from './observe-format';
 import { emitError } from './emit';
+import {
+  NOOP_TELEMETRY,
+  TelemetryEvent,
+  buildEventProperties,
+  type ObserveSub,
+  type Outcome,
+  type Telemetry,
+} from '../telemetry';
 
 /** Shared options for the read-only observability commands. */
 export interface ObserveOptions extends ConfigOverrides {
@@ -75,6 +83,36 @@ function openView(options: ObserveOptions): StateView {
   return StateView.open(stateDir);
 }
 
+/**
+ * Fire one `reactor.observe` event for a read-only observability sub-command. The
+ * six observe commands collapse to a single event distinguished only by the
+ * coarse `sub` tag (a fixed vocabulary — never a node/path/argument). A failure
+ * outcome also fires `reactor.error` with a coarse category.
+ */
+function fireObserve(
+  telemetry: Telemetry,
+  sub: ObserveSub,
+  outcome: Outcome,
+  startedAt: number,
+): void {
+  telemetry.event(
+    TelemetryEvent.OBSERVE,
+    buildEventProperties(
+      { command: 'observe', outcome, durationMs: Date.now() - startedAt },
+      { sub },
+    ),
+  );
+  if (outcome === 'failure') {
+    telemetry.event(
+      TelemetryEvent.ERROR,
+      buildEventProperties(
+        { command: 'observe', outcome: 'failure', durationMs: Date.now() - startedAt },
+        { errorCategory: 'config' },
+      ),
+    );
+  }
+}
+
 // ---------------------------------------------------------------------------
 // status
 // ---------------------------------------------------------------------------
@@ -82,7 +120,9 @@ function openView(options: ObserveOptions): StateView {
 export async function runStatusCommand(
   options: ObserveOptions = {},
   write: Writer = stdout,
+  telemetry: Telemetry = NOOP_TELEMETRY,
 ): Promise<number> {
+  const startedAt = Date.now();
   const view = openView(options);
   const projection = projectStatus(view);
   if (options.json === true) {
@@ -90,6 +130,7 @@ export async function runStatusCommand(
   } else {
     write(formatStatus(projection));
   }
+  fireObserve(telemetry, 'status', 'success', startedAt);
   return 0;
 }
 
@@ -116,9 +157,12 @@ function topologyAbsentMessage(cmd: string, stateDir: string): string {
 export async function runTopologyCommand(
   options: ObserveOptions = {},
   write: Writer = stdout,
+  telemetry: Telemetry = NOOP_TELEMETRY,
 ): Promise<number> {
+  const startedAt = Date.now();
   const view = openView(options);
   if (!view.hasTopology()) {
+    fireObserve(telemetry, 'topology', 'failure', startedAt);
     return emitError(write, options.json, topologyAbsentMessage('topology', view.stateDir));
   }
   const projection = projectTopology(view);
@@ -127,6 +171,7 @@ export async function runTopologyCommand(
   } else {
     write(formatTopology(projection));
   }
+  fireObserve(telemetry, 'topology', 'success', startedAt);
   return 0;
 }
 
@@ -143,9 +188,12 @@ export interface InspectOptions extends ObserveOptions {
 export async function runInspectCommand(
   options: InspectOptions,
   write: Writer = stdout,
+  telemetry: Telemetry = NOOP_TELEMETRY,
 ): Promise<number> {
+  const startedAt = Date.now();
   const view = openView(options);
   if (!view.hasTopology()) {
+    fireObserve(telemetry, 'inspect', 'failure', startedAt);
     return emitError(
       write,
       options.json,
@@ -154,6 +202,7 @@ export async function runInspectCommand(
   }
   const projection = projectInspect(view, options.node);
   if (!projection.known) {
+    fireObserve(telemetry, 'inspect', 'failure', startedAt);
     return emitError(
       write,
       options.json,
@@ -168,8 +217,10 @@ export async function runInspectCommand(
   // The chain check exits nonzero only under --strict (so a plain inspect is a
   // pure read; a CI gate opts into the failure).
   if (options.strict === true && !projection.chain.ok) {
+    fireObserve(telemetry, 'inspect', 'failure', startedAt);
     return 1;
   }
+  fireObserve(telemetry, 'inspect', 'success', startedAt);
   return 0;
 }
 
@@ -185,7 +236,9 @@ export interface LogsOptions extends ObserveOptions {
 export async function runLogsCommand(
   options: LogsOptions = {},
   write: Writer = stdout,
+  telemetry: Telemetry = NOOP_TELEMETRY,
 ): Promise<number> {
+  const startedAt = Date.now();
   const view = openView(options);
   const entries = projectLogs(view, options.node);
   if (options.json === true) {
@@ -193,6 +246,7 @@ export async function runLogsCommand(
   } else {
     write(formatLogs(entries));
   }
+  fireObserve(telemetry, 'logs', 'success', startedAt);
   return 0;
 }
 
@@ -207,7 +261,9 @@ export interface TraceOptions extends ObserveOptions {
 export async function runTraceCommand(
   options: TraceOptions = {},
   write: Writer = stdout,
+  telemetry: Telemetry = NOOP_TELEMETRY,
 ): Promise<number> {
+  const startedAt = Date.now();
   const view = openView(options);
   const traces = projectTrace(view, options.node);
   if (options.json === true) {
@@ -215,6 +271,7 @@ export async function runTraceCommand(
   } else {
     write(formatTrace(traces));
   }
+  fireObserve(telemetry, 'trace', 'success', startedAt);
   return 0;
 }
 
@@ -301,7 +358,9 @@ export function parseRate(raw: string): ParsedRate | undefined {
 export async function runReceiptsCommand(
   options: ReceiptsOptions = {},
   write: Writer = stdout,
+  telemetry: Telemetry = NOOP_TELEMETRY,
 ): Promise<number> {
+  const startedAt = Date.now();
   const view = openView(options);
   const sub = options.sub ?? 'list';
 
@@ -320,6 +379,7 @@ export async function runReceiptsCommand(
             'point --state-dir at a populated ledger.',
         );
       }
+      fireObserve(telemetry, 'receipts', 'failure', startedAt);
       return 1;
     }
     if (options.json === true) {
@@ -328,6 +388,7 @@ export async function runReceiptsCommand(
       write(formatReceiptsAudit(audit));
     }
     // A tampered/broken chain ⇒ NONZERO exit (the audit's whole point).
+    fireObserve(telemetry, 'receipts', audit.ok ? 'success' : 'failure', startedAt);
     return audit.ok ? 0 : 1;
   }
 
@@ -343,6 +404,7 @@ export async function runReceiptsCommand(
     if (options.rate !== undefined) {
       const rate = parseRate(options.rate);
       if (rate === undefined) {
+        fireObserve(telemetry, 'receipts', 'failure', startedAt);
         return emitError(
           write,
           options.json,
@@ -375,6 +437,7 @@ export async function runReceiptsCommand(
     } else {
       write(formatCost(cost) + (priced === undefined ? '' : formatDollarLine(priced)));
     }
+    fireObserve(telemetry, 'receipts', 'success', startedAt);
     return 0;
   }
 
@@ -385,5 +448,6 @@ export async function runReceiptsCommand(
   } else {
     write(formatLogs(entries, 'reactor receipts'));
   }
+  fireObserve(telemetry, 'receipts', 'success', startedAt);
   return 0;
 }

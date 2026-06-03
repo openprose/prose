@@ -27,6 +27,8 @@ import { runCompileCommand } from '../commands/compile';
 import { loadConfig } from '../config';
 import { loadIR, manifestPath } from '../compile/ir-cache';
 import { fakeStructuredProvider } from './fake-provider';
+import { fakeTelemetry } from './fake-telemetry';
+import { TelemetryEvent, NOOP_TELEMETRY } from '../telemetry';
 
 const INBOX = 'inbox';
 const DIGEST = 'digest';
@@ -214,6 +216,58 @@ describe('reactor init (offline gate)', () => {
       ]);
     } finally {
       rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('reactor init telemetry fire points', () => {
+  it('fires reactor.init success on a clean scaffold', async () => {
+    const dir = freshDir();
+    const fake = fakeTelemetry();
+    try {
+      const code = await runInitCommand({ dir, json: true }, () => {}, fake.telemetry);
+      assert.equal(code, 0);
+      const inits = fake.events.filter((e) => e.name === TelemetryEvent.INIT);
+      assert.equal(inits.length, 1, 'exactly one reactor.init');
+      assert.equal(inits[0]!.properties.command, 'init');
+      assert.equal(inits[0]!.properties.outcome, 'success');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('fires reactor.init failure when refusing to clobber existing files', async () => {
+    const dir = freshDir();
+    const fake = fakeTelemetry();
+    try {
+      await runInitCommand({ dir }, () => {}, NOOP_TELEMETRY);
+      const code = await runInitCommand({ dir, json: true }, () => {}, fake.telemetry);
+      assert.equal(code, 1);
+      const inits = fake.events.filter((e) => e.name === TelemetryEvent.INIT);
+      assert.equal(inits.length, 1);
+      assert.equal(inits[0]!.properties.outcome, 'failure');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('the NOOP telemetry default leaves the scaffold output identical', async () => {
+    const a = freshDir();
+    const b = freshDir();
+    try {
+      const outA = capture();
+      const codeA = await runInitCommand({ dir: a, json: true }, outA.write, NOOP_TELEMETRY);
+      const outB = capture();
+      const codeB = await runInitCommand({ dir: b, json: true }, outB.write, fakeTelemetry().telemetry);
+      assert.equal(codeA, codeB);
+      // The report payload (minus the dir path) is identical regardless of sink.
+      const ra = JSON.parse(outA.lines.join('\n')) as Record<string, unknown>;
+      const rb = JSON.parse(outB.lines.join('\n')) as Record<string, unknown>;
+      assert.equal(ra['status'], rb['status']);
+      assert.deepEqual(ra['written'], rb['written']);
+    } finally {
+      rmSync(a, { recursive: true, force: true });
+      rmSync(b, { recursive: true, force: true });
     }
   });
 });

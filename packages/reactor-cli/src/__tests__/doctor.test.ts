@@ -1,4 +1,4 @@
-import { describe, it } from 'node:test';
+import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -11,6 +11,8 @@ import {
   runLiveSmoke,
 } from '../commands/doctor';
 import { runInitCommand } from '../commands/init';
+import { fakeTelemetry } from './fake-telemetry';
+import { TelemetryEvent, readMachineConfig } from '../telemetry';
 
 describe('doctor', () => {
   it('collects a report with the running node version', async () => {
@@ -193,5 +195,99 @@ describe('doctor', () => {
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
+  });
+});
+
+/**
+ * The first-run disclosure + `reactor.first_run` are the single most trust-
+ * sensitive behavior (00-POLICY.md principle #2, 03-DECISIONS.md #3). These tests
+ * isolate the machine config through the REACTOR_CONFIG_DIR seam — the SAME seam
+ * the notice stamp and doctor's first-run detection (via readMachineConfig) both
+ * honor — so they also guard the notice/first-run coherence across the seam.
+ */
+describe('doctor first-run disclosure + reactor.first_run', () => {
+  let configDir: string;
+  const prevConfigDir = process.env.REACTOR_CONFIG_DIR;
+  const prevOffline = process.env.REACTOR_OFFLINE;
+
+  beforeEach(() => {
+    configDir = mkdtempSync(join(tmpdir(), 'reactor-doctor-cfg-'));
+    process.env.REACTOR_CONFIG_DIR = configDir;
+  });
+
+  afterEach(() => {
+    if (prevConfigDir === undefined) delete process.env.REACTOR_CONFIG_DIR;
+    else process.env.REACTOR_CONFIG_DIR = prevConfigDir;
+    if (prevOffline === undefined) delete process.env.REACTOR_OFFLINE;
+    else process.env.REACTOR_OFFLINE = prevOffline;
+    rmSync(configDir, { recursive: true, force: true });
+  });
+
+  it('first run prints the disclosure via write AND fires exactly one reactor.first_run', async () => {
+    const fake = fakeTelemetry();
+    const lines: string[] = [];
+    const code = await runDoctor({}, (l) => lines.push(l), fake.telemetry);
+    assert.equal(code, 0);
+    // The disclosure went to the write() stdout sink.
+    const text = lines.join('\n');
+    assert.match(text, /anonymous/i);
+    assert.match(text, /reactor telemetry disable/);
+    // Exactly one reactor.first_run fired.
+    const firstRuns = fake.events.filter((e) => e.name === TelemetryEvent.FIRST_RUN);
+    assert.equal(firstRuns.length, 1, 'exactly one reactor.first_run on a first machine run');
+    assert.equal(firstRuns[0]!.properties.command, 'doctor');
+  });
+
+  it('second run prints no disclosure and fires no reactor.first_run', async () => {
+    // First run stamps the notice.
+    await runDoctor({}, () => {}, fakeTelemetry().telemetry);
+    // Second run over the SAME seam config: silent.
+    const fake = fakeTelemetry();
+    const lines: string[] = [];
+    const code = await runDoctor({}, (l) => lines.push(l), fake.telemetry);
+    assert.equal(code, 0);
+    const text = lines.join('\n');
+    assert.doesNotMatch(text, /reactor telemetry disable/, 'no disclosure on the second run');
+    assert.equal(
+      fake.events.filter((e) => e.name === TelemetryEvent.FIRST_RUN).length,
+      0,
+      'no reactor.first_run on the second run',
+    );
+  });
+
+  it('--json suppresses the human disclosure lines on stdout (still fires first_run)', async () => {
+    const fake = fakeTelemetry();
+    const lines: string[] = [];
+    const code = await runDoctor({ json: true }, (l) => lines.push(l), fake.telemetry);
+    assert.equal(code, 0);
+    // stdout must remain machine-parseable: the disclosure copy is NOT present, and
+    // the single line parses as JSON.
+    const text = lines.join('\n');
+    assert.doesNotMatch(text, /reactor telemetry disable/, '--json must not print the disclosure');
+    assert.doesNotThrow(() => JSON.parse(text), 'stdout stays valid JSON under --json');
+    // first_run still computes from readMachineConfig and fires once.
+    assert.equal(
+      fake.events.filter((e) => e.name === TelemetryEvent.FIRST_RUN).length,
+      1,
+      'first_run still fires under --json',
+    );
+  });
+
+  it('the notice stamp and the first_run detection agree across runs (seam coherence)', async () => {
+    // Before any run, the seam config has no notice stamp → first run is "first".
+    assert.equal(readMachineConfig()?.noticeShownVersion, undefined);
+    await runDoctor({}, () => {}, fakeTelemetry().telemetry);
+    // After the first run, the stamp lands in the SAME seam file readMachineConfig
+    // reads — proving the notice (which writes via the identity leaf) and doctor's
+    // first-run detection (which reads readMachineConfig) share one file. If notice
+    // wrote to ~/.reactor instead, this read would still be undefined and first_run
+    // would re-fire on the next run.
+    const stamped = readMachineConfig();
+    assert.equal(typeof stamped?.noticeShownVersion, 'string');
+    // And a subsequent run sees the stamp → no re-fire (already asserted above, but
+    // re-checked here against the explicit seam read for coherence).
+    const fake = fakeTelemetry();
+    await runDoctor({}, () => {}, fake.telemetry);
+    assert.equal(fake.events.filter((e) => e.name === TelemetryEvent.FIRST_RUN).length, 0);
   });
 });

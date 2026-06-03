@@ -32,6 +32,14 @@ import {
 import type { ConfigOverrides } from '../config';
 import { loadConfig } from '../config';
 import { resolveSdk } from '../meta';
+import {
+  NOOP_TELEMETRY,
+  TelemetryEvent,
+  buildEventProperties,
+  buildGraphProperties,
+  errorCategory,
+  type Telemetry,
+} from '../telemetry';
 
 export interface CompileCommandOptions extends ConfigOverrides {
   /** Re-compile regardless of cache freshness. */
@@ -80,10 +88,41 @@ export interface CompileReport {
 export async function runCompileCommand(
   options: CompileCommandOptions = {},
   write: (line: string) => void = (line) => process.stdout.write(line + '\n'),
+  telemetry: Telemetry = NOOP_TELEMETRY,
 ): Promise<number> {
   if (options.offline === true) {
     process.env['REACTOR_OFFLINE'] = '1';
   }
+
+  // Wall-clock start for the bucketed duration on the outcome event. Telemetry is
+  // a no-op when disabled, so this perturbs nothing on the hot path.
+  const startedAt = Date.now();
+  /** Fire `reactor.compile` with the bucketed shared block + graph extras. */
+  const fireCompile = (
+    outcome: 'success' | 'failure' | 'cache_hit',
+    graph?: { nodes?: number; edges?: number; costFresh?: number; costReused?: number },
+  ): void => {
+    telemetry.event(
+      TelemetryEvent.COMPILE,
+      buildEventProperties(
+        { command: 'compile', outcome, durationMs: Date.now() - startedAt },
+        buildGraphProperties({
+          ...(graph ?? {}),
+          provider: config?.model.provider,
+        }),
+      ),
+    );
+  };
+  /** Fire `reactor.error` with a coarse category (never a message/stack). */
+  const fireError = (err: unknown): void => {
+    telemetry.event(
+      TelemetryEvent.ERROR,
+      buildEventProperties(
+        { command: 'compile', outcome: 'failure', durationMs: Date.now() - startedAt },
+        { errorCategory: errorCategory(err) },
+      ),
+    );
+  };
 
   const config = loadConfig({
     stateDir: options.stateDir,
@@ -106,6 +145,7 @@ export async function runCompileCommand(
     } else {
       write(msg);
     }
+    fireError(new Error(msg));
     return 1;
   }
   const setFingerprint = contractSetFingerprint(images);
@@ -115,10 +155,13 @@ export async function runCompileCommand(
   // --check: never compile; non-zero exit if stale.
   if (options.check === true) {
     if (fresh) {
-      emitReport(cacheReport(stateDir, setFingerprint, sdkVersion, model, 'cache-hit'), options, write);
+      const report = cacheReport(stateDir, setFingerprint, sdkVersion, model, 'cache-hit');
+      emitReport(report, options, write);
+      fireCompile('cache_hit', { nodes: report.nodes, edges: report.edges });
       return 0;
     }
     emitReport(staleReport(stateDir, setFingerprint, sdkVersion, model), options, write);
+    fireCompile('failure');
     return 1;
   }
 
@@ -126,11 +169,9 @@ export async function runCompileCommand(
   // prove the cache is mountable from a fresh process (compileNode, no model).
   if (fresh && options.force !== true) {
     loadIR(stateDir); // throws if the cache is incomplete — a hit must be whole.
-    emitReport(
-      cacheReport(stateDir, setFingerprint, sdkVersion, model, 'cache-hit'),
-      options,
-      write,
-    );
+    const report = cacheReport(stateDir, setFingerprint, sdkVersion, model, 'cache-hit');
+    emitReport(report, options, write);
+    fireCompile('cache_hit', { nodes: report.nodes, edges: report.edges });
     return 0;
   }
 
@@ -154,6 +195,7 @@ export async function runCompileCommand(
     // handler (which prints it and exits 1).
     const hint = providerErrorHint(err);
     if (hint === undefined) {
+      fireError(err);
       throw err;
     }
     if (options.json === true) {
@@ -161,6 +203,7 @@ export async function runCompileCommand(
     } else {
       write(`reactor compile failed: ${hint}`);
     }
+    fireError(err);
     return 1;
   }
 
@@ -184,6 +227,12 @@ export async function runCompileCommand(
     state_dir: stateDir,
   };
   emitReport(report, options, write);
+  fireCompile('success', {
+    nodes: report.nodes,
+    edges: report.edges,
+    costFresh: report.cost.fresh,
+    costReused: report.cost.reused,
+  });
   return 0;
 }
 

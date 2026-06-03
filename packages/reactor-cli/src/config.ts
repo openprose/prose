@@ -37,6 +37,17 @@ export interface StateConfig {
   readonly dir: string;
 }
 
+/**
+ * Project-level telemetry preference (`reactor.yml` → `telemetry:`). Both fields
+ * are optional: `enabled: false` is the project opt-out the gate honors, and
+ * `endpoint` redirects the analytics POST (self-host / dev). Content-free; this is
+ * the ONLY telemetry surface the config exposes.
+ */
+export interface TelemetryConfig {
+  readonly enabled?: boolean;
+  readonly endpoint?: string;
+}
+
 /** One external-driven gateway entry point (`cli.md` §6 / §6.1). */
 export interface GatewayConfig {
   readonly node: string;
@@ -75,6 +86,12 @@ export interface ReactorConfig {
    * top-level `state`/`project`/`gateways`. A multi-reactor host declares N.
    */
   readonly reactors: readonly RawReactorEntry[];
+  /**
+   * Project-level telemetry preference (`reactor.yml` → `telemetry:`). Absent when
+   * the project expresses no preference; the CLI telemetry gate reads
+   * `enabled`/`endpoint` from here.
+   */
+  readonly telemetry?: TelemetryConfig;
 }
 
 /** A loosely-typed `reactors:` list entry as parsed from `reactor.yml`. */
@@ -147,6 +164,7 @@ export function loadConfig(overrides: ConfigOverrides = {}): ReactorConfig {
     sandbox: merged.sandbox,
     gateways: merged.gateways,
     reactors: merged.reactors,
+    ...(merged.telemetry !== undefined ? { telemetry: merged.telemetry } : {}),
   };
 }
 
@@ -292,6 +310,7 @@ interface RawConfig {
   sandbox?: MutableSandbox;
   gateways?: GatewayConfig[];
   reactors?: RawReactorEntry[];
+  telemetry?: TelemetryConfig;
 }
 
 /** Shape a parsed YAML value into the partial raw config (best-effort, typed). */
@@ -343,6 +362,14 @@ function shapeRawConfig(tree: unknown): Partial<RawConfig> {
     out.reactors = reactors.filter(isRecord).map(shapeReactorEntry);
   }
 
+  const telemetry = tree['telemetry'];
+  if (isRecord(telemetry)) {
+    const t: { -readonly [K in keyof TelemetryConfig]?: TelemetryConfig[K] } = {};
+    if (typeof telemetry['enabled'] === 'boolean') t.enabled = telemetry['enabled'];
+    if (typeof telemetry['endpoint'] === 'string') t.endpoint = telemetry['endpoint'];
+    out.telemetry = t;
+  }
+
   return out;
 }
 
@@ -388,6 +415,9 @@ function mergeConfig(base: ReactorConfig, over: Partial<RawConfig>): ReactorConf
     sandbox,
     gateways: over.gateways ?? [...base.gateways],
     reactors: over.reactors ?? [...base.reactors],
+    // Telemetry is preference-only: carry the project's block through when present
+    // (the bare defaults express no preference, so there is nothing to merge under).
+    ...(over.telemetry !== undefined ? { telemetry: over.telemetry } : {}),
   };
 }
 

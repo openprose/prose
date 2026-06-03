@@ -29,6 +29,14 @@ import {
 } from '../compile/ir-cache';
 import { loadContractSet } from '../compile/contract-images';
 import { defaultSandboxHost } from '../run/sandbox';
+import {
+  NOOP_TELEMETRY,
+  TelemetryEvent,
+  buildEventProperties,
+  maybeShowDoctorNotice,
+  readMachineConfig,
+  type Telemetry,
+} from '../telemetry';
 
 /** Minimum node major version the CLI is validated against (matches the SDK's
  * engines.node ">=20.0.0"). */
@@ -442,16 +450,56 @@ function formatIr(ir: DoctorReport['ir']): string {
 export async function runDoctor(
   options: DoctorCommandOptions = {},
   write: (line: string) => void = (line) => process.stdout.write(line + '\n'),
+  telemetry: Telemetry = NOOP_TELEMETRY,
 ): Promise<number> {
   if (options.offline === true) {
     process.env['REACTOR_OFFLINE'] = '1';
   }
+
+  const startedAt = Date.now();
+
+  // FIRST-RUN DISCLOSURE — doctor is the ONLY surface (03-DECISIONS.md #3). The
+  // notice prints to STDOUT via `write`, once per machine. Detect a first machine
+  // run BEFORE the notice stamps `noticeShownVersion`, so `reactor.first_run`
+  // fires exactly once alongside the disclosure. Fail-closed: a config read fault
+  // never blocks doctor (the notice leaf is itself defensive). The notice prints
+  // human text, so under `--json` we suppress it to keep stdout machine-parseable.
+  const firstRun = (() => {
+    try {
+      const cfg = readMachineConfig();
+      return cfg?.noticeShownVersion === undefined;
+    } catch {
+      return false;
+    }
+  })();
+  if (options.json !== true) {
+    maybeShowDoctorNotice(write);
+  }
+  if (firstRun) {
+    telemetry.event(
+      TelemetryEvent.FIRST_RUN,
+      buildEventProperties({ command: 'doctor', outcome: 'success', durationMs: 0 }),
+    );
+  }
+
   const report = await collectDoctorReport(options);
   if (options.json === true) {
     write(JSON.stringify(report));
   } else {
     write(formatDoctorReport(report));
   }
+
+  // `reactor.doctor` — outcome tracks the offline-health verdict (+ a requested
+  // `--live` smoke), the same boolean the exit code below reflects.
+  const healthy = report.healthyForOffline && (options.live !== true || report.live?.ok === true);
+  telemetry.event(
+    TelemetryEvent.DOCTOR,
+    buildEventProperties({
+      command: 'doctor',
+      outcome: healthy ? 'success' : 'failure',
+      durationMs: Date.now() - startedAt,
+    }),
+  );
   // Exit 0 only when healthy-for-offline AND (no --live requested, or the live
   // smoke passed). A requested `--live` that FAILS must exit non-zero so it
   // composes in CI as the documented exit-code table promises — while a

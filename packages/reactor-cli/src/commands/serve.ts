@@ -67,6 +67,15 @@ import type { ConfigOverrides, GatewayConfig, SandboxConfig } from '../config';
 import { loadConfig, validateStateDirTarget } from '../config';
 import { resolveSdk } from '../meta';
 import { runCompileCommand, type CompileCommandOptions } from './compile';
+import {
+  NOOP_TELEMETRY,
+  TelemetryEvent,
+  bucketCount,
+  bucketMs,
+  buildEventProperties,
+  errorCategory,
+  type Telemetry,
+} from '../telemetry';
 
 import * as path from 'path';
 
@@ -487,7 +496,21 @@ export async function bootServe(
 export async function runServeCommand(
   options: ServeCommandOptions = {},
   write: (line: string) => void = (line) => process.stdout.write(line + '\n'),
+  telemetry: Telemetry = NOOP_TELEMETRY,
 ): Promise<number> {
+  const startedAt = Date.now();
+  const intervalMs = options.pollIntervalMs ?? 60_000;
+  const concurrency = options.concurrency ?? 1;
+  /**
+   * Build the `reactor.serve` extras (`ServeProperties`): the poll cadence +
+   * concurrency, both bucketed. Carried on the boot event and the sampled
+   * poll-cycle event.
+   */
+  const serveExtras = {
+    pollIntervalBucket: bucketMs(intervalMs),
+    concurrencyBucket: bucketCount(concurrency),
+  };
+
   let host: Awaited<ReturnType<typeof bootHost>>;
   try {
     host = await bootHost({
@@ -512,8 +535,34 @@ export async function runServeCommand(
     } else {
       write(`${msg}${hint}`);
     }
+    // A boot failure fires the coarse serve failure + a categorized error, then
+    // returns — telemetry never alters the exit code.
+    telemetry.event(
+      TelemetryEvent.SERVE,
+      buildEventProperties(
+        { command: 'serve', outcome: 'failure', durationMs: Date.now() - startedAt },
+        serveExtras,
+      ),
+    );
+    telemetry.event(
+      TelemetryEvent.ERROR,
+      buildEventProperties(
+        { command: 'serve', outcome: 'failure', durationMs: Date.now() - startedAt },
+        { errorCategory: errorCategory(err) },
+      ),
+    );
     return usage ? 2 : 1;
   }
+
+  // The host booted: fire ONE `reactor.serve` success at boot (the daemon may run
+  // for hours, so the boot event is the reliable "a serve started" signal).
+  telemetry.event(
+    TelemetryEvent.SERVE,
+    buildEventProperties(
+      { command: 'serve', outcome: 'success', durationMs: Date.now() - startedAt },
+      serveExtras,
+    ),
+  );
 
   let httpServer: HttpServerHandle | undefined;
   if (options.httpPort !== undefined) {
@@ -547,13 +596,17 @@ export async function runServeCommand(
     );
   }
 
-  const intervalMs = options.pollIntervalMs ?? 60_000;
   let stopped = false;
   const stop = (): void => {
     stopped = true;
   };
   process.once('SIGTERM', stop);
   process.once('SIGINT', stop);
+
+  // Poll-cycle telemetry is SAMPLED (first cycle only) so a long-running daemon
+  // cannot flood the backend — the boot event already proved a serve started; the
+  // first cycle proves the loop is live. A flag suffices for the first-only sample.
+  let pollCycleSampled = false;
 
   // The driver loop: poll gateways (ingress) + continuity across all reactors,
   // surface live cost, sleep, until SIGTERM. Gateways poll BEFORE continuity each
@@ -563,6 +616,16 @@ export async function runServeCommand(
     const now = host.reactors[0]?.reactor.clock.now() ?? new Date().toISOString();
     await host.pollGatewaysAll(now);
     await host.pollAll(now);
+    if (!pollCycleSampled) {
+      pollCycleSampled = true;
+      telemetry.event(
+        TelemetryEvent.SERVE,
+        buildEventProperties(
+          { command: 'serve', outcome: 'success', durationMs: Date.now() - startedAt },
+          serveExtras,
+        ),
+      );
+    }
     if (options.json !== true) {
       write(formatCostLine(host.cost().host));
     }

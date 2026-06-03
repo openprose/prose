@@ -40,6 +40,8 @@ import { bootServe } from '../commands/serve';
 import { runTriggerCommand } from '../commands/trigger';
 import { createSerialQueue } from '../run/serial-queue';
 import { fakeStructuredProvider } from './fake-provider';
+import { fakeTelemetry } from './fake-telemetry';
+import { TelemetryEvent } from '../telemetry';
 
 // The on-disk two-node fixture (resolve against the SDK SOURCE tree, as the
 // Phase-1 compile gate does).
@@ -493,6 +495,104 @@ describe('receipt chain integrity (offline gate)', () => {
         assert.equal(verification.ok, true, `node ${node} receipt chain must verify`);
       }
       await handle.shutdown();
+    } finally {
+      rmSync(d.state, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('command telemetry fire points (run / trigger)', () => {
+  it('reactor.run fires success with bucketed dispositions on a boot', async () => {
+    const d = freshDirs();
+    const fake = fakeTelemetry();
+    try {
+      const out = capture();
+      const code = await runRunCommand(
+        {
+          projectDir: FIXTURE_DIR,
+          stateDir: d.state,
+          json: true,
+          testAdapters: {
+            clock: createSystemClockAdapter(),
+            storage: createMemoryStorageAdapter(),
+            worldModel: new FileSystemWorldModelStore({
+              directory: join(d.state, 'world-models'),
+            }),
+          },
+          testRender: { buildRender: buildFakeRender as never },
+          testCompileOptions: testCompileOptions() as never,
+        },
+        out.write,
+        fake.telemetry,
+      );
+      assert.equal(code, 0);
+      const runs = fake.events.filter((e) => e.name === TelemetryEvent.RUN);
+      assert.equal(runs.length, 1, 'exactly one reactor.run event');
+      const props = runs[0]!.properties;
+      assert.equal(props.command, 'run');
+      assert.equal(props.outcome, 'success');
+      // Dispositions are tallied + bucketed by fixed kind (never node identities).
+      assert.ok(props.dispositions, 'dispositions tally present');
+      assert.equal(props.dispositions!['rendered'], '1-5');
+      // The values are bucket labels, not raw counts.
+      for (const v of Object.values(props.dispositions!)) {
+        assert.match(String(v), /^(0|1-5|6-20|21\+)$/);
+      }
+    } finally {
+      rmSync(d.state, { recursive: true, force: true });
+    }
+  });
+
+  it('reactor.run fires failure when no contracts are found', async () => {
+    const empty = mkdtempSync(join(tmpdir(), 'reactor-cli-run-empty-'));
+    const state = mkdtempSync(join(tmpdir(), 'reactor-cli-run-state-'));
+    const fake = fakeTelemetry();
+    try {
+      const out = capture();
+      const code = await runRunCommand(
+        { projectDir: empty, stateDir: state, json: true, offline: true },
+        out.write,
+        fake.telemetry,
+      );
+      assert.notEqual(code, 0);
+      const runs = fake.events.filter((e) => e.name === TelemetryEvent.RUN);
+      assert.equal(runs.length, 1);
+      assert.equal(runs[0]!.properties.outcome, 'failure');
+    } finally {
+      rmSync(empty, { recursive: true, force: true });
+      rmSync(state, { recursive: true, force: true });
+    }
+  });
+
+  it('reactor.trigger fires on an external-wake one-shot mount', async () => {
+    const d = freshDirs();
+    const fake = fakeTelemetry();
+    try {
+      const out = capture();
+      const code = await runTriggerCommand(
+        {
+          node: MONITOR,
+          projectDir: FIXTURE_DIR,
+          stateDir: d.state,
+          json: true,
+          testAdapters: {
+            clock: createSystemClockAdapter(),
+            storage: createMemoryStorageAdapter(),
+            worldModel: new FileSystemWorldModelStore({
+              directory: join(d.state, 'world-models'),
+            }),
+          },
+          testRender: { buildRender: buildFakeRender as never },
+          testCompileOptions: testCompileOptions() as never,
+        },
+        out.write,
+        fake.telemetry,
+      );
+      assert.equal(code, 0);
+      const triggers = fake.events.filter((e) => e.name === TelemetryEvent.TRIGGER);
+      assert.equal(triggers.length, 1, 'exactly one reactor.trigger event');
+      assert.equal(triggers[0]!.properties.command, 'trigger');
+      assert.equal(triggers[0]!.properties.outcome, 'success');
     } finally {
       rmSync(d.state, { recursive: true, force: true });
     }

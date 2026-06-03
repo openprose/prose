@@ -40,10 +40,13 @@ import {
 } from '@openprose/reactor/adapters';
 
 import { bootHost } from '../run/host';
+import { runServeCommand } from '../commands/serve';
 import { startHttpServer } from '../run/http-server';
 import { rollupCost } from '../run/cost';
 import { createWorkerPool } from '../run/worker-pool';
 import { fakeStructuredProvider } from './fake-provider';
+import { fakeTelemetry } from './fake-telemetry';
+import { TelemetryEvent } from '../telemetry';
 
 const SDK_ROOT = join(require.resolve('@openprose/reactor'), '..', '..');
 const FIXTURE_DIR = join(
@@ -465,5 +468,127 @@ describe('the cost projector (offline gate)', () => {
     assert.deepEqual(rolled.bySurpriseCause['self'], { fresh: 10, reused: 9 });
     assert.equal(rolled.dispositions.rendered, 2);
     assert.equal(rolled.dispositions.skipped, 1);
+  });
+});
+
+describe('reactor serve telemetry fire points', () => {
+  it('fires exactly one reactor.serve boot event with bucketed cadence/concurrency', async () => {
+    const stateRoot = freshState();
+    const fake = fakeTelemetry();
+    try {
+      const code = await runServeCommand(
+        {
+          projectDir: FIXTURE_DIR,
+          stateDir: stateRoot,
+          offline: true,
+          pollIntervalMs: 10,
+          concurrency: 1,
+          returnHost: true, // boot + bind, then return before the loop.
+          testSeams: { default: seamFor(stateRoot, 'default') },
+        },
+        () => {},
+        fake.telemetry,
+      );
+      assert.equal(code, 0);
+      const serve = fake.events.filter((e) => e.name === TelemetryEvent.SERVE);
+      assert.equal(serve.length, 1, 'exactly one serve boot event (no loop ran)');
+      const props = serve[0]!.properties;
+      assert.equal(props.command, 'serve');
+      assert.equal(props.outcome, 'success');
+      // ServeProperties: cadence + concurrency, both bucketed (never raw ms/N).
+      assert.equal(props.pollIntervalBucket, '<1s');
+      assert.equal(props.concurrencyBucket, '1-5');
+      assert.equal((props as unknown as Record<string, unknown>).pollIntervalMs, undefined);
+    } finally {
+      rmSync(stateRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('SAMPLES the poll-cycle event first-cycle-only across many cycles', async () => {
+    const stateRoot = freshState();
+    const fake = fakeTelemetry();
+    try {
+      // Snapshot the SIGINT listeners present BEFORE serve boots (the test
+      // runner's own handler lives here); serve installs ITS handler during boot.
+      const preexistingBeforeBoot = process.listeners('SIGINT').slice();
+      // Drive the FULL blocking daemon loop with a tiny cadence so several cycles
+      // run, then stop via SIGINT. The poll-cycle SERVE event is first-only-sampled
+      // (serve.ts:609-628), so regardless of how many cycles fire we must see at
+      // most ONE sampled poll event in addition to the single boot event.
+      const serveDone = runServeCommand(
+        {
+          projectDir: FIXTURE_DIR,
+          stateDir: stateRoot,
+          offline: true,
+          json: true,
+          pollIntervalMs: 5,
+          concurrency: 1,
+          testSeams: { default: seamFor(stateRoot, 'default') },
+        },
+        () => {},
+        fake.telemetry,
+      );
+      // Let multiple poll cycles elapse, then signal a graceful shutdown. We must
+      // not let the SYNTHETIC SIGINT reach the test runner's own SIGINT handler
+      // (which would terminate the file with code 130). So temporarily detach any
+      // pre-existing SIGINT listeners, emit (reaching only serve's `process.once`
+      // handler installed during boot), then restore them.
+      await new Promise((r) => setTimeout(r, 120));
+      const preexisting = process.listeners('SIGINT').slice();
+      // Keep only the serve loop's handler: remove the listeners that were present
+      // BEFORE this serve booted (i.e. the test runner's), emit, then restore.
+      const serveHandlers = process
+        .listeners('SIGINT')
+        .filter((l) => !preexistingBeforeBoot.includes(l));
+      process.removeAllListeners('SIGINT');
+      for (const h of serveHandlers) process.on('SIGINT', h as never);
+      process.emit('SIGINT');
+      const code = await serveDone;
+      // Restore the original listeners (whatever the runner had installed).
+      process.removeAllListeners('SIGINT');
+      for (const h of preexisting) {
+        if (!serveHandlers.includes(h)) process.on('SIGINT', h as never);
+      }
+      assert.equal(code, 0);
+      const serve = fake.events.filter((e) => e.name === TelemetryEvent.SERVE);
+      // One boot event + exactly one sampled poll-cycle event = 2 total, never more,
+      // even though many cycles ran. Both carry success + the serve extras.
+      assert.equal(serve.length, 2, 'boot + exactly one sampled poll-cycle event');
+      for (const e of serve) {
+        assert.equal(e.properties.outcome, 'success');
+        assert.equal(e.properties.command, 'serve');
+        assert.equal(e.properties.pollIntervalBucket, '<1s');
+      }
+    } finally {
+      rmSync(stateRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('fires reactor.serve failure + reactor.error when boot fails (no contracts)', async () => {
+    const stateRoot = freshState();
+    const emptyProject = mkdtempSync(join(tmpdir(), 'reactor-cli-serve-empty-'));
+    const fake = fakeTelemetry();
+    try {
+      const code = await runServeCommand(
+        {
+          projectDir: emptyProject,
+          stateDir: stateRoot,
+          offline: true,
+          json: true,
+          returnHost: true,
+        },
+        () => {},
+        fake.telemetry,
+      );
+      assert.notEqual(code, 0);
+      const serve = fake.events.filter((e) => e.name === TelemetryEvent.SERVE);
+      const errors = fake.events.filter((e) => e.name === TelemetryEvent.ERROR);
+      assert.equal(serve.length, 1);
+      assert.equal(serve[0]!.properties.outcome, 'failure');
+      assert.equal(errors.length, 1, 'a categorized reactor.error accompanies the boot failure');
+    } finally {
+      rmSync(stateRoot, { recursive: true, force: true });
+      rmSync(emptyProject, { recursive: true, force: true });
+    }
   });
 });

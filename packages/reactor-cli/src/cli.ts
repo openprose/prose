@@ -26,6 +26,9 @@ import {
   type ReceiptsSubcommand,
 } from './commands/observe';
 import { cliVersion } from './meta';
+import { loadConfig } from './config';
+import { initTelemetry, NOOP_TELEMETRY, type Telemetry } from './telemetry';
+import { runTelemetryCommand, type TelemetryCliOptions } from './commands/telemetry';
 
 /**
  * Project the four shared global flags off commander's merged options into the
@@ -59,7 +62,10 @@ function globalsOf(cmd: Command): {
  * the exit code does not depend on the parser's internal post-action behavior
  * (which differs across commander majors).
  */
-export function buildProgram(onExitCode: (code: number) => void = () => {}): Command {
+export function buildProgram(
+  onExitCode: (code: number) => void = () => {},
+  telemetry: Telemetry = NOOP_TELEMETRY,
+): Command {
   const program = new Command();
 
   program
@@ -80,12 +86,16 @@ export function buildProgram(onExitCode: (code: number) => void = () => {}): Com
     .action(async (dir: string | undefined, cmdOptions: { force?: boolean }, cmd: Command) => {
       const { json, offline } = globalsOf(cmd);
       onExitCode(
-        await runInitCommand({
-          ...(dir !== undefined ? { dir } : {}),
-          ...(cmdOptions.force !== undefined ? { force: cmdOptions.force } : {}),
-          ...(json !== undefined ? { json } : {}),
-          ...(offline !== undefined ? { offline } : {}),
-        }),
+        await runInitCommand(
+          {
+            ...(dir !== undefined ? { dir } : {}),
+            ...(cmdOptions.force !== undefined ? { force: cmdOptions.force } : {}),
+            ...(json !== undefined ? { json } : {}),
+            ...(offline !== undefined ? { offline } : {}),
+          },
+          undefined,
+          telemetry,
+        ),
       );
     });
 
@@ -97,10 +107,14 @@ export function buildProgram(onExitCode: (code: number) => void = () => {}): Com
     .option('--live', 'additionally probe one live smoke render (requires a key + deps)')
     .action(async (cmdOptions: { live?: boolean }, cmd: Command) => {
       onExitCode(
-        await runDoctor({
-          ...globalsOf(cmd),
-          ...(cmdOptions.live !== undefined ? { live: cmdOptions.live } : {}),
-        }),
+        await runDoctor(
+          {
+            ...globalsOf(cmd),
+            ...(cmdOptions.live !== undefined ? { live: cmdOptions.live } : {}),
+          },
+          undefined,
+          telemetry,
+        ),
       );
     });
 
@@ -113,11 +127,15 @@ export function buildProgram(onExitCode: (code: number) => void = () => {}): Com
     .option('--check', 'exit non-zero if the cache is stale; do not compile (CI)')
     .action(async (cmdOptions: { force?: boolean; check?: boolean }, cmd: Command) => {
       onExitCode(
-        await runCompileCommand({
-          ...globalsOf(cmd),
-          ...(cmdOptions.force !== undefined ? { force: cmdOptions.force } : {}),
-          ...(cmdOptions.check !== undefined ? { check: cmdOptions.check } : {}),
-        }),
+        await runCompileCommand(
+          {
+            ...globalsOf(cmd),
+            ...(cmdOptions.force !== undefined ? { force: cmdOptions.force } : {}),
+            ...(cmdOptions.check !== undefined ? { check: cmdOptions.check } : {}),
+          },
+          undefined,
+          telemetry,
+        ),
       );
     });
 
@@ -127,7 +145,7 @@ export function buildProgram(onExitCode: (code: number) => void = () => {}): Com
       'Ensure the IR is fresh, boot the reactor, drain to quiescence, and report',
     )
     .action(async (_cmdOptions: Record<string, unknown>, cmd: Command) => {
-      onExitCode(await runRunCommand(globalsOf(cmd)));
+      onExitCode(await runRunCommand(globalsOf(cmd), undefined, telemetry));
     });
 
   program
@@ -161,19 +179,23 @@ export function buildProgram(onExitCode: (code: number) => void = () => {}): Com
         const httpPort =
           cmdOptions.http !== undefined ? Number(cmdOptions.http) : undefined;
         onExitCode(
-          await runServeCommand({
-            ...globalsOf(cmd),
-            ...(pollIntervalMs !== undefined && Number.isFinite(pollIntervalMs)
-              ? { pollIntervalMs }
-              : {}),
-            ...(concurrency !== undefined && Number.isFinite(concurrency)
-              ? { concurrency }
-              : {}),
-            ...(httpPort !== undefined && Number.isFinite(httpPort)
-              ? { httpPort }
-              : {}),
-            ...(cmdOptions.host !== undefined ? { httpHost: cmdOptions.host } : {}),
-          }),
+          await runServeCommand(
+            {
+              ...globalsOf(cmd),
+              ...(pollIntervalMs !== undefined && Number.isFinite(pollIntervalMs)
+                ? { pollIntervalMs }
+                : {}),
+              ...(concurrency !== undefined && Number.isFinite(concurrency)
+                ? { concurrency }
+                : {}),
+              ...(httpPort !== undefined && Number.isFinite(httpPort)
+                ? { httpPort }
+                : {}),
+              ...(cmdOptions.host !== undefined ? { httpHost: cmdOptions.host } : {}),
+            },
+            undefined,
+            telemetry,
+          ),
         );
       },
     );
@@ -190,11 +212,15 @@ export function buildProgram(onExitCode: (code: number) => void = () => {}): Com
         cmd: Command,
       ) => {
         onExitCode(
-          await runTriggerCommand({
-            node,
-            ...(cmdOptions.data !== undefined ? { data: cmdOptions.data } : {}),
-            ...globalsOf(cmd),
-          }),
+          await runTriggerCommand(
+            {
+              node,
+              ...(cmdOptions.data !== undefined ? { data: cmdOptions.data } : {}),
+              ...globalsOf(cmd),
+            },
+            undefined,
+            telemetry,
+          ),
         );
       },
     );
@@ -208,14 +234,14 @@ export function buildProgram(onExitCode: (code: number) => void = () => {}): Com
     .command('status')
     .description('Report the standing compile cost beside the live run cost + dispositions')
     .action(async (_opts: Record<string, unknown>, cmd: Command) => {
-      onExitCode(await runStatusCommand(globalsOf(cmd)));
+      onExitCode(await runStatusCommand(globalsOf(cmd), undefined, telemetry));
     });
 
   program
     .command('topology')
     .description('Print the compiled DAG: nodes (+ wake source) and resolved edges')
     .action(async (_opts: Record<string, unknown>, cmd: Command) => {
-      onExitCode(await runTopologyCommand(globalsOf(cmd)));
+      onExitCode(await runTopologyCommand(globalsOf(cmd), undefined, telemetry));
     });
 
   program
@@ -225,11 +251,15 @@ export function buildProgram(onExitCode: (code: number) => void = () => {}): Com
     .option('--strict', 'exit non-zero if the node receipt chain does not verify (CI)')
     .action(async (node: string, opts: { strict?: boolean }, cmd: Command) => {
       onExitCode(
-        await runInspectCommand({
-          ...globalsOf(cmd),
-          node,
-          ...(opts.strict !== undefined ? { strict: opts.strict } : {}),
-        }),
+        await runInspectCommand(
+          {
+            ...globalsOf(cmd),
+            node,
+            ...(opts.strict !== undefined ? { strict: opts.strict } : {}),
+          },
+          undefined,
+          telemetry,
+        ),
       );
     });
 
@@ -239,10 +269,14 @@ export function buildProgram(onExitCode: (code: number) => void = () => {}): Com
     .option('--node <node>', 'filter the stream to a single node')
     .action(async (opts: { node?: string }, cmd: Command) => {
       onExitCode(
-        await runLogsCommand({
-          ...globalsOf(cmd),
-          ...(opts.node !== undefined ? { node: opts.node } : {}),
-        }),
+        await runLogsCommand(
+          {
+            ...globalsOf(cmd),
+            ...(opts.node !== undefined ? { node: opts.node } : {}),
+          },
+          undefined,
+          telemetry,
+        ),
       );
     });
 
@@ -252,10 +286,14 @@ export function buildProgram(onExitCode: (code: number) => void = () => {}): Com
     .argument('[node]', 'a single node to trace (default: every node with receipts)')
     .action(async (node: string | undefined, _opts: Record<string, unknown>, cmd: Command) => {
       onExitCode(
-        await runTraceCommand({
-          ...globalsOf(cmd),
-          ...(node !== undefined ? { node } : {}),
-        }),
+        await runTraceCommand(
+          {
+            ...globalsOf(cmd),
+            ...(node !== undefined ? { node } : {}),
+          },
+          undefined,
+          telemetry,
+        ),
       );
     });
 
@@ -285,13 +323,38 @@ export function buildProgram(onExitCode: (code: number) => void = () => {}): Com
         return;
       }
       onExitCode(
-        await runReceiptsCommand({
-          ...globalsOf(cmd),
-          ...(normalized !== undefined ? { sub: normalized } : {}),
-          ...(opts.node !== undefined ? { node: opts.node } : {}),
-          ...(opts.rate !== undefined ? { rate: opts.rate } : {}),
-        }),
+        await runReceiptsCommand(
+          {
+            ...globalsOf(cmd),
+            ...(normalized !== undefined ? { sub: normalized } : {}),
+            ...(opts.node !== undefined ? { node: opts.node } : {}),
+            ...(opts.rate !== undefined ? { rate: opts.rate } : {}),
+          },
+          undefined,
+          telemetry,
+        ),
       );
+    });
+
+  // -------------------------------------------------------------------------
+  // `reactor telemetry` — the opt-out / inspection subcommand (status | enable |
+  // disable | --dump). Keyless + read/writes only ~/.reactor/config.json + env.
+  // -------------------------------------------------------------------------
+  program
+    .command('telemetry')
+    .description(
+      'Inspect or change anonymous CLI telemetry: status | enable | disable (--dump prints what would be sent)',
+    )
+    .argument('[sub]', 'status | enable | disable (default: status)')
+    .option('--dump', 'print the exact JSON a representative event WOULD send, then exit')
+    .action(async (sub: string | undefined, opts: { dump?: boolean }, cmd: Command) => {
+      const { json } = globalsOf(cmd);
+      const telemetryOptions: TelemetryCliOptions = {
+        ...(sub !== undefined ? { sub } : {}),
+        ...(opts.dump !== undefined ? { dump: opts.dump } : {}),
+        ...(json !== undefined ? { json } : {}),
+      };
+      onExitCode(await runTelemetryCommand(telemetryOptions));
     });
 
   return program;
@@ -318,9 +381,24 @@ const COMMANDER_SUCCESS_CODES = new Set([
  */
 export async function main(argv: string[]): Promise<number> {
   let code = 0;
+
+  // Initialize telemetry ONCE at entry. The gate (CI/non-TTY/DO_NOT_TRACK/env/
+  // config) returns a NO-OP when disabled — a disabled run does zero work + zero
+  // egress, so this never perturbs the hot path. The project-level preference
+  // (`reactor.yml` → `telemetry:`) is read from the resolved `--project` dir.
+  // initTelemetry never throws (it fails closed to the no-op), so the CLI never
+  // depends on it. NO first-run notice is printed here — that lives in `doctor`.
+  const projectTelemetry = projectTelemetryFromArgv(argv);
+  const telemetry = await initTelemetry(
+    projectTelemetry !== undefined ? { projectTelemetry } : {},
+  ).then(
+    (r) => r.telemetry,
+    () => NOOP_TELEMETRY,
+  );
+
   const program = buildProgram((c) => {
     code = c;
-  });
+  }, telemetry);
   // Take ownership of commander's process-exit so usage errors exit 2 (the
   // documented code), and help/version exit 0 — instead of commander's blanket 1.
   // exitOverride must be set on EACH command: an unknown option on a subcommand
@@ -351,8 +429,69 @@ export async function main(argv: string[]): Promise<number> {
       return 2;
     }
     throw err; // a real error — let the caller's catch report it (exit 1).
+  } finally {
+    // Drain queued telemetry on EVERY exit path (success, usage error, or a
+    // rethrown failure) behind a hard, bounded wall so a slow/down endpoint can
+    // never delay or hang the CLI's exit. `flush()` is already self-bounding +
+    // non-throwing; this is a belt-and-braces ceiling, and a no-op telemetry
+    // resolves instantly.
+    await flushBounded(telemetry);
   }
   return code;
+}
+
+/** A hard wall-clock ceiling (ms) on the exit-path telemetry flush. */
+const FLUSH_EXIT_BUDGET_MS = 2500;
+
+/**
+ * Await `telemetry.flush()` but never longer than {@link FLUSH_EXIT_BUDGET_MS}.
+ * The flush client is already bounded + swallows transport errors; this races it
+ * against a timer so a pathological hang still cannot delay CLI exit, and any
+ * rejection is swallowed (telemetry must never affect the exit code).
+ */
+async function flushBounded(telemetry: Telemetry): Promise<void> {
+  try {
+    await Promise.race([
+      telemetry.flush(),
+      new Promise<void>((resolve) => {
+        const t = setTimeout(resolve, FLUSH_EXIT_BUDGET_MS);
+        // Don't let the timer itself keep the event loop alive past a clean exit.
+        if (typeof t.unref === 'function') t.unref();
+      }),
+    ]);
+  } catch {
+    // Telemetry is best-effort; a flush fault never perturbs the CLI.
+  }
+}
+
+/**
+ * Resolve the project-level telemetry preference (`reactor.yml` → `telemetry:`)
+ * from argv, BEFORE commander parses — so the gate can honor a project opt-out and
+ * the endpoint override on the very first run. Reads `--project <dir>` (default
+ * `.`) and loads the config keyless; any fault yields `undefined` (no preference),
+ * never a throw. This is the only argv pre-read the entrypoint performs.
+ */
+function projectTelemetryFromArgv(
+  argv: string[],
+): { enabled?: boolean; endpoint?: string } | undefined {
+  try {
+    let projectDir: string | undefined;
+    for (let i = 0; i < argv.length; i++) {
+      if (argv[i] === '--project') {
+        projectDir = argv[i + 1];
+        break;
+      }
+      const eq = argv[i]?.startsWith('--project=') ? argv[i]!.slice('--project='.length) : undefined;
+      if (eq !== undefined) {
+        projectDir = eq;
+        break;
+      }
+    }
+    const config = loadConfig(projectDir !== undefined ? { projectDir } : {});
+    return config.telemetry;
+  } catch {
+    return undefined;
+  }
 }
 
 // Only run when invoked as a binary, not when imported by tests.

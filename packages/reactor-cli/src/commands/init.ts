@@ -26,6 +26,13 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
+import {
+  NOOP_TELEMETRY,
+  TelemetryEvent,
+  buildEventProperties,
+  type Telemetry,
+} from '../telemetry';
+
 /** Options for {@link runInitCommand}. */
 export interface InitCommandOptions {
   /** Target directory (the positional `[dir]`; default `.`). */
@@ -214,10 +221,20 @@ export function scaffoldFiles(): readonly ScaffoldFile[] {
 export async function runInitCommand(
   options: InitCommandOptions = {},
   write: (line: string) => void = (line) => process.stdout.write(line + '\n'),
+  telemetry: Telemetry = NOOP_TELEMETRY,
 ): Promise<number> {
   if (options.offline === true) {
     process.env['REACTOR_OFFLINE'] = '1';
   }
+
+  const startedAt = Date.now();
+  /** Fire `reactor.init` with the bucketed shared block (init carries no graph). */
+  const fireInit = (outcome: 'success' | 'failure'): void => {
+    telemetry.event(
+      TelemetryEvent.INIT,
+      buildEventProperties({ command: 'init', outcome, durationMs: Date.now() - startedAt }),
+    );
+  };
 
   const dir = path.resolve(options.dir ?? '.');
   const files = scaffoldFiles();
@@ -232,6 +249,7 @@ export async function runInitCommand(
       skipped: existing.map((f) => f.relativePath),
     };
     emit(report, options, write);
+    fireInit('failure');
     return 1;
   }
 
@@ -254,6 +272,7 @@ export async function runInitCommand(
         existingEntries: entries.sort(),
       };
       emit(report, options, write);
+      fireInit('failure');
       return 1;
     }
   }
@@ -273,6 +292,7 @@ export async function runInitCommand(
     skipped: [],
   };
   emit(report, options, write);
+  fireInit('success');
   return 0;
 }
 

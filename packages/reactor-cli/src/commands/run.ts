@@ -31,6 +31,14 @@ import type { ConfigOverrides } from '../config';
 import { loadConfig, validateStateDirTarget } from '../config';
 import type { CompileCommandOptions } from './compile';
 import { emitError } from './emit';
+import {
+  NOOP_TELEMETRY,
+  TelemetryEvent,
+  buildEventProperties,
+  buildGraphProperties,
+  errorCategory,
+  type Telemetry,
+} from '../telemetry';
 
 import * as path from 'path';
 
@@ -59,10 +67,42 @@ export interface RunCommandOptions extends ConfigOverrides {
 export async function runRunCommand(
   options: RunCommandOptions = {},
   write: (line: string) => void = (line) => process.stdout.write(line + '\n'),
+  telemetry: Telemetry = NOOP_TELEMETRY,
 ): Promise<number> {
   if (options.offline === true) {
     process.env['REACTOR_OFFLINE'] = '1';
   }
+
+  const startedAt = Date.now();
+  /** Fire `reactor.run` with the bucketed shared block + graph/disposition extras. */
+  const fireRun = (
+    outcome: 'success' | 'failure',
+    graph?: {
+      nodes?: number;
+      edges?: number;
+      costFresh?: number;
+      costReused?: number;
+      dispositions?: readonly { readonly disposition: string }[];
+    },
+  ): void => {
+    telemetry.event(
+      TelemetryEvent.RUN,
+      buildEventProperties(
+        { command: 'run', outcome, durationMs: Date.now() - startedAt },
+        buildGraphProperties({ ...(graph ?? {}), provider: config?.model.provider }),
+      ),
+    );
+  };
+  /** Fire `reactor.error` with a coarse category (never a message/stack). */
+  const fireError = (err: unknown): void => {
+    telemetry.event(
+      TelemetryEvent.ERROR,
+      buildEventProperties(
+        { command: 'run', outcome: 'failure', durationMs: Date.now() - startedAt },
+        { errorCategory: errorCategory(err) },
+      ),
+    );
+  };
 
   const config = loadConfig({
     stateDir: options.stateDir,
@@ -82,9 +122,11 @@ export async function runRunCommand(
     } else {
       write(stateDirError);
     }
+    fireError(Object.assign(new Error(stateDirError), { code: 'ENOTDIR' }));
     return 2;
   }
 
+  try {
   // 1. Ensure the IR is fresh (compile if stale).
   const ensured = await ensureCompiledIR({
     contractsDir,
@@ -97,6 +139,7 @@ export async function runRunCommand(
       : {}),
   });
   if (ensured.kind === 'no-contracts') {
+    fireRun('failure');
     return emitError(
       write,
       options.json,
@@ -104,6 +147,7 @@ export async function runRunCommand(
     );
   }
   if (ensured.kind === 'compile-failed') {
+    fireRun('failure');
     return emitError(
       write,
       options.json,
@@ -161,7 +205,21 @@ export async function runRunCommand(
   // signal the whole pitch rests on, and CI/agents read the exit code. (The
   // documented exit table: 0 = ran clean, 1 = a node failed.)
   const anyFailed = report.dispositions.some((d) => d.disposition === 'failed');
+  fireRun(anyFailed ? 'failure' : 'success', {
+    nodes: loaded.ir.topology.topology.nodes.length,
+    edges: loaded.ir.topology.topology.edges.length,
+    costFresh: report.cost.fresh,
+    costReused: report.cost.reused,
+    dispositions: report.dispositions,
+  });
   return anyFailed ? 1 : 0;
+  } catch (err) {
+    // A thrown run (e.g. a live render/provider failure inside callRunProject)
+    // fires the coarse error signal, then rethrows so the top-level handler still
+    // prints + exits 1 exactly as before — telemetry never changes control flow.
+    fireError(err);
+    throw err;
+  }
 }
 
 // ---------------------------------------------------------------------------

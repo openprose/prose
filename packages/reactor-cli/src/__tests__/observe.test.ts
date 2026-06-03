@@ -46,6 +46,8 @@ import {
   parseRate,
 } from '../commands/observe';
 import { fakeStructuredProvider } from './fake-provider';
+import { fakeTelemetry } from './fake-telemetry';
+import { TelemetryEvent } from '../telemetry';
 import { receiptsDir } from '../run/substrate';
 
 const SDK_ROOT = join(require.resolve('@openprose/reactor'), '..', '..');
@@ -544,5 +546,61 @@ describe('observability offline boundary', () => {
     assert.equal(res.status, 0, `probe failed: ${res.stderr}`);
     const leaked = JSON.parse(res.stdout || '[]') as string[];
     assert.deepEqual(leaked, [], `live deps leaked: ${leaked.join(', ')}`);
+  });
+});
+
+describe('reactor observe telemetry fire points (per-sub tag)', () => {
+  it('each observe sub-command fires reactor.observe with the correct `sub` tag', async () => {
+    const stateDir = freshState();
+    try {
+      await populateState(stateDir);
+
+      // status / topology / inspect / logs / trace / receipts each collapse to one
+      // reactor.observe event distinguished ONLY by the coarse `sub` tag.
+      const cases: { sub: string; run: (t: ReturnType<typeof fakeTelemetry>) => Promise<number> }[] = [
+        { sub: 'status', run: (t) => runStatusCommand({ directStateDir: stateDir, json: true }, () => {}, t.telemetry) },
+        { sub: 'topology', run: (t) => runTopologyCommand({ directStateDir: stateDir, json: true }, () => {}, t.telemetry) },
+        { sub: 'inspect', run: (t) => runInspectCommand({ directStateDir: stateDir, json: true, node: MONITOR }, () => {}, t.telemetry) },
+        { sub: 'logs', run: (t) => runLogsCommand({ directStateDir: stateDir, json: true }, () => {}, t.telemetry) },
+        { sub: 'trace', run: (t) => runTraceCommand({ directStateDir: stateDir, json: true }, () => {}, t.telemetry) },
+        { sub: 'receipts', run: (t) => runReceiptsCommand({ directStateDir: stateDir, json: true, sub: 'verify' }, () => {}, t.telemetry) },
+      ];
+
+      for (const c of cases) {
+        const fake = fakeTelemetry();
+        const code = await c.run(fake);
+        assert.equal(code, 0, `${c.sub} succeeded`);
+        const observes = fake.events.filter((e) => e.name === TelemetryEvent.OBSERVE);
+        assert.equal(observes.length, 1, `${c.sub}: exactly one reactor.observe`);
+        const props = observes[0]!.properties;
+        assert.equal(props.command, 'observe');
+        assert.equal(props.outcome, 'success');
+        assert.equal(props.sub, c.sub, `${c.sub}: correct sub tag`);
+      }
+    } finally {
+      rmSync(stateDir, { recursive: true, force: true });
+    }
+  });
+
+  it('a failing observe sub fires reactor.observe failure + a coarse reactor.error', async () => {
+    const stateDir = freshState(); // never populated → no compiled topology.
+    const fake = fakeTelemetry();
+    try {
+      const code = await runTopologyCommand(
+        { directStateDir: stateDir, json: true },
+        () => {},
+        fake.telemetry,
+      );
+      assert.notEqual(code, 0);
+      const observes = fake.events.filter((e) => e.name === TelemetryEvent.OBSERVE);
+      const errors = fake.events.filter((e) => e.name === TelemetryEvent.ERROR);
+      assert.equal(observes.length, 1);
+      assert.equal(observes[0]!.properties.sub, 'topology');
+      assert.equal(observes[0]!.properties.outcome, 'failure');
+      assert.equal(errors.length, 1, 'a categorized reactor.error accompanies the failure');
+      assert.equal(errors[0]!.properties.errorCategory, 'config');
+    } finally {
+      rmSync(stateDir, { recursive: true, force: true });
+    }
   });
 });

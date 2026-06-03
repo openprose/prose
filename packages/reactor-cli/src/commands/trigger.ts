@@ -52,6 +52,14 @@ import { loadConfig, validateStateDirTarget } from '../config';
 import { resolveSdk } from '../meta';
 import { runCompileCommand, type CompileCommandOptions } from './compile';
 import { emitError } from './emit';
+import {
+  NOOP_TELEMETRY,
+  TelemetryEvent,
+  buildEventProperties,
+  buildGraphProperties,
+  errorCategory,
+  type Telemetry,
+} from '../telemetry';
 
 export interface TriggerCommandOptions extends ConfigOverrides {
   /** The node to trigger (required). */
@@ -70,12 +78,48 @@ export interface TriggerCommandOptions extends ConfigOverrides {
 export async function runTriggerCommand(
   options: TriggerCommandOptions,
   write: (line: string) => void = (line) => process.stdout.write(line + '\n'),
+  telemetry: Telemetry = NOOP_TELEMETRY,
 ): Promise<number> {
   if (options.offline === true) {
     process.env['REACTOR_OFFLINE'] = '1';
   }
 
+  const startedAt = Date.now();
+  // Captured via a mutable holder (not the later `const config`) so an EARLY fire
+  // — before config is resolved — never trips the const's temporal-dead-zone.
+  let providerClassInput: string | undefined;
+  /** Fire `reactor.trigger` with the bucketed shared block + graph/disposition extras. */
+  const fireTrigger = (
+    outcome: 'success' | 'failure',
+    graph?: {
+      nodes?: number;
+      edges?: number;
+      costFresh?: number;
+      costReused?: number;
+      dispositions?: readonly { readonly disposition: string }[];
+    },
+  ): void => {
+    telemetry.event(
+      TelemetryEvent.TRIGGER,
+      buildEventProperties(
+        { command: 'trigger', outcome, durationMs: Date.now() - startedAt },
+        buildGraphProperties({ ...(graph ?? {}), provider: providerClassInput }),
+      ),
+    );
+  };
+  /** Fire `reactor.error` with a coarse category (never a message/stack). */
+  const fireError = (err: unknown): void => {
+    telemetry.event(
+      TelemetryEvent.ERROR,
+      buildEventProperties(
+        { command: 'trigger', outcome: 'failure', durationMs: Date.now() - startedAt },
+        { errorCategory: errorCategory(err) },
+      ),
+    );
+  };
+
   if (typeof options.node !== 'string' || options.node.length === 0) {
+    fireTrigger('failure');
     return emitError(write, options.json, 'reactor trigger: a node id is required');
   }
 
@@ -85,6 +129,7 @@ export async function runTriggerCommand(
     try {
       parsedData = parseData(options.data);
     } catch (err) {
+      fireError(err);
       return emitError(
         write,
         options.json,
@@ -98,6 +143,7 @@ export async function runTriggerCommand(
     projectDir: options.projectDir,
     model: options.model,
   });
+  providerClassInput = config.model.provider;
   const stateDir = config.state.dir;
   const contractsDir = path.resolve(options.projectDir ?? '.');
   const model = config.model.compile_model;
@@ -112,12 +158,15 @@ export async function runTriggerCommand(
     } else {
       write(stateDirError);
     }
+    fireError(Object.assign(new Error(stateDirError), { code: 'ENOTDIR' }));
     return 2;
   }
 
+  try {
   // Ensure IR fresh (compile if stale).
   const images = keylessLoadContractSet(contractsDir);
   if (images.length === 0) {
+    fireTrigger('failure');
     return emitError(
       write,
       options.json,
@@ -143,6 +192,7 @@ export async function runTriggerCommand(
       () => {},
     );
     if (code !== 0) {
+      fireTrigger('failure');
       return emitError(write, options.json, 'reactor trigger: compile failed (IR stale)');
     }
   }
@@ -150,6 +200,7 @@ export async function runTriggerCommand(
   // Load + re-lower (KEYLESS).
   const loaded = loadCompiledProject(stateDir);
   if (loaded.ir.topology.topology.nodes.every((n) => n.node !== options.node)) {
+    fireTrigger('failure');
     return emitError(
       write,
       options.json,
@@ -224,7 +275,22 @@ export async function runTriggerCommand(
     reactor.ledger.all().map((r) => ({ node: r.node, cost: r.cost })),
   );
   emitReport(report, parsedData, options, write);
+  const anyFailed = report.dispositions.some((d) => d.disposition === 'failed');
+  fireTrigger(anyFailed ? 'failure' : 'success', {
+    nodes: loaded.ir.topology.topology.nodes.length,
+    edges: loaded.ir.topology.topology.edges.length,
+    costFresh: report.cost.fresh,
+    costReused: report.cost.reused,
+    dispositions: report.dispositions,
+  });
   return 0;
+  } catch (err) {
+    // A thrown trigger (e.g. a live render/provider failure) fires the coarse
+    // error signal, then rethrows so the top-level handler prints + exits 1 —
+    // telemetry never alters control flow.
+    fireError(err);
+    throw err;
+  }
 }
 
 // ---------------------------------------------------------------------------

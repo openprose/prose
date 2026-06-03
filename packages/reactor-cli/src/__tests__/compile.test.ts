@@ -28,6 +28,8 @@ import { runCompileCommand } from '../commands/compile';
 import { manifestPath, loadIR, readTopologyShape, compileDir } from '../compile/ir-cache';
 import { firstErrorLine } from '../compile/run-compile';
 import { fakeStructuredProvider } from './fake-provider';
+import { fakeTelemetry } from './fake-telemetry';
+import { TelemetryEvent, NOOP_TELEMETRY, type Telemetry } from '../telemetry';
 
 describe('firstErrorLine (G21b: suppress the raw Require stack dump)', () => {
   it('keeps the legible first line and drops the multi-line Require stack', () => {
@@ -134,7 +136,7 @@ function capture(): { write: (l: string) => void; lines: string[] } {
   return { write: (l) => lines.push(l), lines };
 }
 
-async function compileOnce(stateDir: string, force = false) {
+async function compileOnce(stateDir: string, force = false, telemetry: Telemetry = NOOP_TELEMETRY) {
   const out = capture();
   const code = await runCompileCommand(
     {
@@ -146,6 +148,7 @@ async function compileOnce(stateDir: string, force = false) {
       testSkill: 'TEST SKILL',
     },
     out.write,
+    telemetry,
   );
   const report = JSON.parse(out.lines.join('\n')) as Record<string, unknown>;
   return { code, report };
@@ -334,6 +337,85 @@ describe('reactor compile (offline gate)', () => {
       assert.deepEqual(out.leaked, [], `live deps leaked on cache load: ${out.leaked.join(', ')}`);
     } finally {
       rmSync(stateDir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('reactor compile telemetry fire points', () => {
+  it('fires reactor.compile success with bucketed graph extras on a fresh compile', async () => {
+    const stateDir = freshStateDir();
+    const fake = fakeTelemetry();
+    try {
+      const { code } = await compileOnce(stateDir, false, fake.telemetry);
+      assert.equal(code, 0);
+      const compile = fake.events.filter((e) => e.name === TelemetryEvent.COMPILE);
+      assert.equal(compile.length, 1, 'exactly one reactor.compile event');
+      const props = compile[0]!.properties;
+      assert.equal(props.command, 'compile');
+      assert.equal(props.outcome, 'success');
+      // Content-free buckets only — the 2-node/1-edge fixture lands in the '1-5' band.
+      assert.equal(props.nodesBucket, '1-5');
+      assert.equal(props.edgesBucket, '1-5');
+      assert.ok(props.cost, 'cost buckets present');
+      // No raw counts leaked onto the properties object.
+      assert.equal((props as unknown as Record<string, unknown>).nodes, undefined);
+      assert.equal((props as unknown as Record<string, unknown>).edges, undefined);
+    } finally {
+      rmSync(stateDir, { recursive: true, force: true });
+    }
+  });
+
+  it('fires reactor.compile cache_hit on a warm re-run', async () => {
+    const stateDir = freshStateDir();
+    try {
+      await compileOnce(stateDir);
+      const fake = fakeTelemetry();
+      const { code } = await compileOnce(stateDir, false, fake.telemetry);
+      assert.equal(code, 0);
+      const compile = fake.events.filter((e) => e.name === TelemetryEvent.COMPILE);
+      assert.equal(compile.length, 1);
+      assert.equal(compile[0]!.properties.outcome, 'cache_hit');
+    } finally {
+      rmSync(stateDir, { recursive: true, force: true });
+    }
+  });
+
+  it('fires reactor.error with a config category when no contracts are found', async () => {
+    const stateDir = freshStateDir();
+    const emptyDir = mkdtempSync(join(tmpdir(), 'reactor-cli-empty-'));
+    const fake = fakeTelemetry();
+    try {
+      const out = capture();
+      const code = await runCompileCommand(
+        { projectDir: emptyDir, stateDir, json: true },
+        out.write,
+        fake.telemetry,
+      );
+      assert.equal(code, 1);
+      const errors = fake.events.filter((e) => e.name === TelemetryEvent.ERROR);
+      assert.equal(errors.length, 1, 'exactly one reactor.error');
+      assert.equal(errors[0]!.properties.outcome, 'failure');
+      assert.equal(errors[0]!.properties.errorCategory, 'config');
+    } finally {
+      rmSync(stateDir, { recursive: true, force: true });
+      rmSync(emptyDir, { recursive: true, force: true });
+    }
+  });
+
+  it('the NOOP telemetry default leaves the report identical to an injected fake', async () => {
+    const a = freshStateDir();
+    const b = freshStateDir();
+    try {
+      const noop = await compileOnce(a, false, NOOP_TELEMETRY);
+      const fake = await compileOnce(b, false, fakeTelemetry().telemetry);
+      // Behavior/output is identical regardless of the telemetry sink injected.
+      assert.equal(noop.code, fake.code);
+      assert.equal(noop.report['status'], fake.report['status']);
+      assert.equal(noop.report['nodes'], fake.report['nodes']);
+      assert.equal(noop.report['edges'], fake.report['edges']);
+    } finally {
+      rmSync(a, { recursive: true, force: true });
+      rmSync(b, { recursive: true, force: true });
     }
   });
 });
