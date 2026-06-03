@@ -57,6 +57,25 @@ export interface CallRunProjectInput {
   readonly adapters: RunAdapters;
   readonly directory?: string;
   readonly render: RunRender;
+  /**
+   * The keyless provider plan for a CUSTOM (non-default) provider. When present
+   * (with {@link apiKey}), {@link callRunProject} builds a scoped live
+   * `ModelProvider` behind the dynamic-import boundary and sets it as
+   * `render.provider`, so the run-phase renders hit the configured
+   * OpenAI/Anthropic/Google/custom endpoint. Omitted on the default OpenRouter
+   * path (the SDK builds its scoped provider lazily) and the offline gate.
+   */
+  readonly providerPlan?: import('../model/provider-plan').ProviderPlan;
+  /** The resolved API key for {@link providerPlan}. Required when it is set. */
+  readonly apiKey?: string;
+  /**
+   * The configured render model id. Threaded into the render so the run phase uses
+   * `model.render_model` (NOT the SDK's gemini default) — required for a custom
+   * provider, whose endpoint would 404 on the default model id.
+   */
+  readonly renderModel?: string;
+  /** The provider label for the receipt cost (set with a custom provider). */
+  readonly providerLabel?: string;
 }
 
 /**
@@ -145,6 +164,38 @@ export async function callRunProject(
   const runProject =
     runProjectImpl ?? (await importRunProject()).runProject;
 
+  // CUSTOM provider: build the scoped live `ModelProvider` HERE — past the dynamic-
+  // import boundary — and set it as the render's first-class `provider`, so the
+  // run-phase renders hit the configured endpoint. The offline gate / default
+  // OpenRouter path leave `providerPlan` unset and the render is byte-for-byte what
+  // it was (a test `buildRender`, or the SDK's lazy scoped OpenRouter provider).
+  let render = input.render;
+  // Thread the configured render model into the NESTED `render: RenderOptions` so
+  // the run phase uses `model.render_model` rather than the SDK's gemini default.
+  // This is REQUIRED for a custom provider (whose endpoint 404s on the default id)
+  // and simply honors the config for the default provider.
+  if (input.renderModel !== undefined) {
+    render = { ...render, render: { ...(render.render ?? {}), model: input.renderModel } };
+  }
+  if (input.providerPlan !== undefined && input.apiKey !== undefined) {
+    const { buildLiveProvider } = await import('../model/live-provider');
+    // The `@openai/agents` escape hatch (incl. `provider`) lives in the NESTED
+    // `render: RenderOptions` field of `RunProjectRender`, not at the top level
+    // (top level is contractFor/projectTruthFor/sandbox/shellTimeoutMs). Merge into
+    // it so the live `createAgentRender` receives the scoped provider. The provider
+    // LABEL is a top-level cost-only field.
+    render = {
+      ...render,
+      render: {
+        ...(render.render ?? {}),
+        provider: buildLiveProvider(input.providerPlan, input.apiKey),
+      },
+      ...(input.providerLabel !== undefined
+        ? { providerLabel: input.providerLabel }
+        : {}),
+    };
+  }
+
   // `input.render` IS the SDK `RunProjectRender` (no `Record<string, unknown>`
   // rebuild, no per-field copy): hand it through VERBATIM. Phase 5's `sandbox` /
   // `shellTimeoutMs` ride along as plain typed fields of that one shape; the model
@@ -154,6 +205,6 @@ export async function callRunProject(
     compiled: input.compiled,
     adapters: input.adapters,
     ...(input.directory !== undefined ? { directory: input.directory } : {}),
-    render: input.render,
+    render,
   });
 }

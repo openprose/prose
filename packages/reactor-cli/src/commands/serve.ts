@@ -65,6 +65,12 @@ import { isCacheFresh, contractSetFingerprint } from '../compile/ir-cache';
 import { loadContractSet as keylessLoadContractSet } from '../compile/contract-images';
 import type { ConfigOverrides, GatewayConfig, SandboxConfig } from '../config';
 import { loadConfig, validateStateDirTarget } from '../config';
+import { hasModelKey, readModelKey } from '../env';
+import {
+  missingProviderKeyHint,
+  resolveProviderPlan,
+  type ProviderPlan,
+} from '../model/provider-plan';
 import { resolveSdk } from '../meta';
 import { runCompileCommand, type CompileCommandOptions } from './compile';
 import {
@@ -140,6 +146,21 @@ export interface BootReactorInput {
   readonly offline?: boolean;
   /** A model override applied to compile-if-stale. */
   readonly modelOverride?: string;
+  /**
+   * The keyless provider plan for a CUSTOM (non-default) provider, resolved by the
+   * caller from the top-level `model:` config. When present (with {@link apiKey}),
+   * the live render points at the configured endpoint. Omitted on the default
+   * OpenRouter path and the offline gate.
+   */
+  readonly providerPlan?: ProviderPlan;
+  /** The resolved API key for {@link providerPlan}. Required when it is set. */
+  readonly apiKey?: string;
+  /**
+   * The configured render model id (`model.render_model`). Threaded into the
+   * render so the run phase uses it rather than the SDK's gemini default —
+   * required for a custom provider whose endpoint 404s on the default id.
+   */
+  readonly renderModel?: string;
   /**
    * The reactor's `[sandbox]` config. Drives the workspace-scoped render sandbox
    * runner + the per-command shell timeout. Omitted → the `mode: none` default (no
@@ -310,11 +331,34 @@ export async function bootReactorHandle(
       : {}),
   };
 
+  // A LIVE custom-provider render needs its key NOW (the compile-if-stale step
+  // checked it on a miss; a warm cache jumps straight to the render). Fail clean +
+  // NON-ZERO. Skipped for the offline gate (test render) and the OpenRouter default.
+  const liveCustomRender =
+    input.providerPlan?.custom === true &&
+    input.testRender === undefined &&
+    input.offline !== true;
+  if (
+    liveCustomRender &&
+    input.apiKey === undefined &&
+    !hasModelKey(input.providerPlan!.apiKeyEnv, input.contractsDir)
+  ) {
+    throw new Error(missingProviderKeyHint(input.providerPlan!));
+  }
+
   // 4. CONFIGURE + boot runProject (the SDK self-mounts + runs the boot sweep).
   const { reactor } = await callRunProject({
     compiled: compiledForRun,
     adapters,
     render,
+    ...(input.renderModel !== undefined ? { renderModel: input.renderModel } : {}),
+    ...(liveCustomRender && input.providerPlan !== undefined && input.apiKey !== undefined
+      ? {
+          providerPlan: input.providerPlan,
+          apiKey: input.apiKey,
+          providerLabel: input.providerPlan.provider,
+        }
+      : {}),
   });
 
   // 5. The PER-REACTOR serialization queue + the continuity scheduler.
@@ -457,13 +501,23 @@ export async function bootServe(
     model: options.model,
   });
 
+  const projectDir = path.resolve(options.projectDir ?? '.');
+  const providerPlan = resolveProviderPlan(config.model);
+  const apiKey =
+    providerPlan.custom && options.offline !== true
+      ? readModelKey(providerPlan.apiKeyEnv, projectDir)
+      : undefined;
+
   return bootReactorHandle({
     name: 'default',
-    contractsDir: path.resolve(options.projectDir ?? '.'),
+    contractsDir: projectDir,
     stateDir: config.state.dir,
     model: config.model.compile_model,
+    renderModel: config.model.render_model,
     sandbox: config.sandbox,
     gateways: config.gateways,
+    ...(providerPlan.custom ? { providerPlan } : {}),
+    ...(apiKey !== undefined ? { apiKey } : {}),
     ...(options.offline !== undefined ? { offline: options.offline } : {}),
     ...(options.model !== undefined ? { modelOverride: options.model } : {}),
     ...(options.testGatewayFetch !== undefined

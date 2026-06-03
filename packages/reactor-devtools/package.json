@@ -44,7 +44,7 @@
     "./package.json": "./package.json"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && pnpm run copy:public",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json && pnpm run copy:public",
     "prepack": "pnpm build",
     "copy:public": "node -e \"const fs=require('fs'),p=require('path');const s=p.join('src','public'),d=p.join('dist','public');fs.mkdirSync(d,{recursive:true});for(const f of fs.readdirSync(s))fs.copyFileSync(p.join(s,f),p.join(d,f));\"",
     "typecheck": "tsc --noEmit -p tsconfig.json",

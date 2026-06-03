@@ -93,27 +93,43 @@ export function sumCachedTokens(usage: RenderUsage): number {
  */
 export function usageToGatewayUsage(
   usage: RenderUsage,
+  labels: CostLabels = {},
 ): ReactorModelGatewayUsage {
   const input = nonNegInt(usage.inputTokens);
   const output = nonNegInt(usage.outputTokens);
   const reused = Math.min(sumCachedTokens(usage), input);
   const fresh = input - reused + output;
   return {
-    provider: OPENROUTER_PROVIDER_LABEL,
-    model: DEFAULT_RENDER_MODEL,
+    // The cost is a LABEL only (never fingerprinted / never in the cache key), so
+    // it must reflect the provider + model that ACTUALLY ran. Both default to the
+    // OpenRouter/gemini wiring for back-compat; a caller pointing the render at
+    // another vendor passes the real labels so receipts do not misreport
+    // "openrouter / gemini-3.5-flash" for, say, an Anthropic render.
+    provider: labels.provider ?? OPENROUTER_PROVIDER_LABEL,
+    model: labels.model ?? DEFAULT_RENDER_MODEL,
     tokens: { fresh, reused },
   };
+}
+
+/** The provider/model LABELS stamped onto a receipt `Cost` (never fingerprinted). */
+export interface CostLabels {
+  /** The provider label (e.g. `openrouter`, `anthropic`). Defaults to OpenRouter. */
+  readonly provider?: string;
+  /** The model id that ran. Defaults to {@link DEFAULT_RENDER_MODEL}. */
+  readonly model?: string;
 }
 
 /**
  * Project a render's `Usage` + the wake's surprise cause into the receipt
  * `Cost`. The single cost entry point the agent-render mapper calls (05 §2.5).
+ * `labels` stamps the real provider/model; omit for the OpenRouter default.
  */
 export function usageToCost(
   usage: RenderUsage,
   surprise_cause: WakeSource,
+  labels: CostLabels = {},
 ): Cost {
-  return toReceiptCost(usageToGatewayUsage(usage), surprise_cause);
+  return toReceiptCost(usageToGatewayUsage(usage, labels), surprise_cause);
 }
 
 /** Coerce a possibly-fractional/NaN token count to a non-negative integer. */

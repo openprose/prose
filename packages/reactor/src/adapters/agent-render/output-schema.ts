@@ -37,7 +37,7 @@ import type {
   RenderProduct,
 } from "../../sdk/render-atom";
 import type { WorldModelFiles } from "../../world-model";
-import { usageToCost, type RenderUsage } from "./cost";
+import { usageToCost, type CostLabels, type RenderUsage } from "./cost";
 
 // ---------------------------------------------------------------------------
 // The structured finalOutput schema (zod `outputType`)
@@ -113,6 +113,12 @@ export interface MapRenderOutputInput {
   readonly usage: RenderUsage;
   /** The wake source — supplies the cost's `surprise_cause` (ctx.wake.source). */
   readonly surprise_cause: WakeSource;
+  /**
+   * The provider/model LABELS for the receipt `Cost` (never fingerprinted). Omit
+   * for the OpenRouter/gemini default; a render pointed at another vendor passes
+   * the real labels so the receipt reports the truth.
+   */
+  readonly cost_labels?: CostLabels;
 }
 
 /**
@@ -132,7 +138,7 @@ export function mapRenderOutput(
   input: MapRenderOutputInput,
 ): RenderProduct | RenderFailure {
   const { signal, usage, surprise_cause } = input;
-  const cost = usageToCost(usage, surprise_cause);
+  const cost = usageToCost(usage, surprise_cause, input.cost_labels ?? {});
 
   if (signal.status === "failed") {
     return {

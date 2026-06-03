@@ -19,9 +19,13 @@
  *       `--live`, the live smoke failed (no key / missing deps / render error).
  */
 
-import { hasOpenRouterKey, isOfflineForced } from '../env';
+import { hasModelKey, readModelKey, isOfflineForced } from '../env';
 import { checkLiveDeps, resolveSdk } from '../meta';
 import { loadConfig, type ConfigOverrides, type SandboxMode } from '../config';
+import {
+  resolveProviderPlan,
+  type ProviderPlan,
+} from '../model/provider-plan';
 import {
   contractSetFingerprint,
   isCacheFresh,
@@ -52,9 +56,20 @@ export interface LiveSmokeResult {
   readonly detail: string;
 }
 
+/** Inputs to {@link runLiveSmoke}: the configured provider + render model. */
+export interface LiveSmokeOptions {
+  /** The resolved provider plan; defaults to the OpenRouter wiring. */
+  readonly plan?: ProviderPlan;
+  /** The render model id to smoke; defaults to the OpenRouter gemini default. */
+  readonly renderModel?: string;
+}
+
 export interface DoctorReport {
   node: { version: string; major: number; ok: boolean };
   sdk: { resolved: boolean; version?: string };
+  /** The configured provider label + the env var its key is read from. */
+  provider: string;
+  apiKeyEnv: string;
   liveKeyPresent: boolean;
   liveDeps: { name: string; present: boolean }[];
   offlineForced: boolean;
@@ -204,7 +219,22 @@ export async function collectDoctorReport(
   const healthyForOffline = major >= MIN_NODE_MAJOR && sdk.resolved;
 
   const skill = probeSkillBundle();
-  const liveKeyPresent = hasOpenRouterKey();
+  // Resolve the configured provider so the key check + report name the RIGHT env
+  // var (an Anthropic user must not be told to set OPENROUTER_API_KEY). A malformed
+  // provider config falls back to OpenRouter for the presence check but is surfaced
+  // in the live line via `resolveProviderPlan` throwing at compile/run time.
+  let providerPlan: ProviderPlan;
+  try {
+    providerPlan = resolveProviderPlan(config.model);
+  } catch {
+    providerPlan = {
+      provider: config.model.provider || 'openrouter',
+      baseURL: '',
+      apiKeyEnv: 'OPENROUTER_API_KEY',
+      custom: false,
+    };
+  }
+  const liveKeyPresent = hasModelKey(providerPlan.apiKeyEnv);
   // Cleared to spend a key: everything a live `compile`/`run` render needs.
   const healthyForLive =
     healthyForOffline &&
@@ -216,6 +246,8 @@ export async function collectDoctorReport(
   const report: DoctorReport = {
     node: { version, major, ok: major >= MIN_NODE_MAJOR },
     sdk: { resolved: sdk.resolved, version: sdk.version },
+    provider: providerPlan.provider,
+    apiKeyEnv: providerPlan.apiKeyEnv,
     liveKeyPresent,
     liveDeps,
     offlineForced: isOfflineForced(),
@@ -228,7 +260,10 @@ export async function collectDoctorReport(
   };
 
   if (options.live === true) {
-    const live = await runLiveSmoke();
+    const live = await runLiveSmoke({
+      plan: providerPlan,
+      renderModel: config.model.render_model,
+    });
     report.live = live;
     // Offline health is INDEPENDENT of the live smoke — the keyless surface works
     // regardless of a live-only failure (e.g. a 402 out-of-credits), so a failed
@@ -285,13 +320,35 @@ const AGENT_RENDER_SPECIFIER = '@openprose/reactor/agents';
  * them. Returns a structured outcome; it NEVER throws (a missing key / dep / render
  * error is reported as `ok:false`, not an exception).
  */
-export async function runLiveSmoke(): Promise<LiveSmokeResult> {
-  // No key → the smoke cannot run; report honestly without importing anything.
-  if (!hasOpenRouterKey()) {
+export async function runLiveSmoke(
+  config: LiveSmokeOptions = {},
+): Promise<LiveSmokeResult> {
+  // The configured provider (default OpenRouter). Names the right key env so the
+  // smoke checks ANTHROPIC_API_KEY for an Anthropic project, not OpenRouter's.
+  const plan: ProviderPlan =
+    config.plan ?? {
+      provider: 'openrouter',
+      baseURL: 'https://openrouter.ai/api/v1',
+      apiKeyEnv: 'OPENROUTER_API_KEY',
+      custom: false,
+    };
+  // Forced offline → never reach for a key or the network. This keeps the offline
+  // gate hermetic now that we pass an explicit `apiKey` into `smokeRun` (which
+  // bypasses the SDK's own offline check). Message mentions "key" for honesty.
+  if (isOfflineForced()) {
     return {
       ran: false,
       ok: false,
-      detail: 'no OPENROUTER_API_KEY present — set a live key to run the smoke',
+      detail: 'REACTOR_OFFLINE is set — skipping the live key smoke',
+    };
+  }
+  const apiKey = readModelKey(plan.apiKeyEnv);
+  // No key → the smoke cannot run; report honestly without importing anything.
+  if (apiKey === undefined) {
+    return {
+      ran: false,
+      ok: false,
+      detail: `no ${plan.apiKeyEnv} present — set a live key to run the smoke`,
     };
   }
   try {
@@ -300,11 +357,12 @@ export async function runLiveSmoke(): Promise<LiveSmokeResult> {
     // specifier is a variable so TS does not statically resolve the deep subpath
     // (it is only resolvable at runtime against the SDK's exports map).
     const provider = (await import(AGENT_RENDER_SPECIFIER)) as {
-      hasOpenRouterKey?: () => boolean;
       assertSkillBundleInstalled?: () => void;
       smokeRun?: (config?: {
+        readonly apiKey?: string;
+        readonly baseURL?: string;
+        readonly model?: string;
         readonly input?: string;
-        readonly maxTurns?: number;
       }) => Promise<{
         readonly text: string;
         readonly totalTokens: number;
@@ -314,17 +372,11 @@ export async function runLiveSmoke(): Promise<LiveSmokeResult> {
     if (typeof provider.assertSkillBundleInstalled === 'function') {
       provider.assertSkillBundleInstalled();
     }
-    if (typeof provider.hasOpenRouterKey === 'function' && !provider.hasOpenRouterKey()) {
-      return {
-        ran: true,
-        ok: false,
-        detail: 'the live provider reports no usable key',
-      };
-    }
-    // Drive ONE real bounded render against the live gateway (cli.md §3: `--live`
-    // proves provider reachability via a single live render, not just a key/bundle
-    // presence check). `smokeRun` performs a real network call; we reached it only
-    // after `hasOpenRouterKey` gated above, so it is safe to invoke here.
+    // Drive ONE real bounded render against the CONFIGURED endpoint (cli.md §3:
+    // `--live` proves provider reachability via a single live render). We pass the
+    // resolved `apiKey` + `baseURL` + `model` so `smokeRun` builds a scoped provider
+    // for whatever vendor `reactor.yml` selected — not just OpenRouter. The key was
+    // confirmed present above, so this is safe to invoke.
     if (typeof provider.smokeRun !== 'function') {
       return {
         ran: true,
@@ -332,7 +384,11 @@ export async function runLiveSmoke(): Promise<LiveSmokeResult> {
         detail: 'live render smoke unavailable (smokeRun not exported by the render barrel)',
       };
     }
-    const smoke = await provider.smokeRun();
+    const smoke = await provider.smokeRun({
+      apiKey,
+      ...(plan.baseURL.length > 0 ? { baseURL: plan.baseURL } : {}),
+      model: config.renderModel ?? 'google/gemini-3.5-flash',
+    });
     if (typeof smoke.text !== 'string' || smoke.totalTokens <= 0) {
       return {
         ran: true,
@@ -378,7 +434,7 @@ export function formatDoctorReport(report: DoctorReport): string {
     `  offline mode   ${report.offlineForced ? 'forced (REACTOR_OFFLINE)' : 'not forced'}`,
   );
   lines.push(
-    `  live key       ${report.liveKeyPresent ? 'present (OPENROUTER_API_KEY)' : 'absent'}`,
+    `  live key       ${report.liveKeyPresent ? `present (${report.apiKeyEnv})` : `absent (${report.apiKeyEnv})`}`,
   );
   for (const dep of report.liveDeps) {
     lines.push(`  live dep       ${dep.name}: ${mark(dep.present)}`);

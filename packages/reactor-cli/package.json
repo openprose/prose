@@ -1,6 +1,6 @@
 {
   "name": "@openprose/reactor-cli",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/openprose/prose.git",
@@ -22,9 +22,9 @@
     "examples"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
     "prepack": "pnpm build",
-    "build:test": "tsc -p tsconfig.test.json",
+    "build:test": "rm -rf dist-test && tsc -p tsconfig.test.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test:runtime": "pnpm build:test && node --test $(find dist-test -name '*.test.js' -type f | sort)",
     "test": "pnpm typecheck && pnpm test:runtime",

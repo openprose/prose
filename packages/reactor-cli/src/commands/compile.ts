@@ -31,6 +31,12 @@ import {
 } from '../compile/ir-cache';
 import type { ConfigOverrides } from '../config';
 import { loadConfig } from '../config';
+import { hasModelKey, readModelKey } from '../env';
+import {
+  missingProviderKeyHint,
+  resolveProviderPlan,
+  type ProviderPlan,
+} from '../model/provider-plan';
 import { resolveSdk } from '../meta';
 import {
   NOOP_TELEMETRY,
@@ -134,6 +140,22 @@ export async function runCompileCommand(
   const model = config.model.compile_model;
   const sdkVersion = resolveSdk().version ?? 'unknown';
 
+  // Resolve the provider plan (keyless). A malformed provider config is a clean
+  // exit-1 here, not a stack trace inside the model surface later.
+  let providerPlan: ProviderPlan;
+  try {
+    providerPlan = resolveProviderPlan(config.model);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (options.json === true) {
+      write(JSON.stringify({ status: 'error', message: msg }));
+    } else {
+      write(msg);
+    }
+    fireError(err);
+    return 1;
+  }
+
   // Load contracts (deterministic) + compute the cache key's contract-set fp.
   // Uses the keyless contract loader (N2 — a cache hit / --check must NOT import
   // the model-bearing barrel).
@@ -175,6 +197,25 @@ export async function runCompileCommand(
     return 0;
   }
 
+  // Live miss with a CUSTOM provider: the configured key must be present NOW.
+  // Fail clean + NON-ZERO with the exact env var (a missing live key must never
+  // exit 0 and silently pass CI). The default OpenRouter path is left to the SDK's
+  // own key resolution + the 401 hint below.
+  if (
+    providerPlan.custom &&
+    options.offline !== true &&
+    !hasModelKey(providerPlan.apiKeyEnv, contractsDir)
+  ) {
+    const msg = missingProviderKeyHint(providerPlan);
+    if (options.json === true) {
+      write(JSON.stringify({ status: 'error', message: msg }));
+    } else {
+      write(`reactor compile failed: ${msg}`);
+    }
+    fireError(new Error(msg));
+    return 1;
+  }
+
   // Cache miss / --force: run the compile sessions (model surface, dynamic import).
   const { runCompile } = await import('../compile/run-compile');
   let result: Awaited<ReturnType<typeof runCompile>>;
@@ -187,13 +228,16 @@ export async function runCompileCommand(
       maxTurns: config.model.max_turns,
       ...(options.testProviders !== undefined ? { providers: options.testProviders } : {}),
       ...(options.testSkill !== undefined ? { skill: options.testSkill } : {}),
+      ...(providerPlan.custom
+        ? { providerPlan, apiKey: readModelKey(providerPlan.apiKeyEnv, contractsDir)! }
+        : {}),
     });
   } catch (err) {
     // A live-provider failure (auth/billing/rate-limit) must NOT exit 0 with a raw
     // stack — map it to a one-line actionable message and exit non-zero so a CI
     // `compile` step fails loudly. Anything else propagates to the top-level
     // handler (which prints it and exits 1).
-    const hint = providerErrorHint(err);
+    const hint = providerErrorHint(err, providerPlan);
     if (hint === undefined) {
       fireError(err);
       throw err;
@@ -246,7 +290,10 @@ export async function runCompileCommand(
  * error propagates normally (and the top-level handler prints + exits 1). Keeps
  * the keyless escape hatch in view (the devtools replay needs no key).
  */
-function providerErrorHint(err: unknown): string | undefined {
+function providerErrorHint(
+  err: unknown,
+  plan: ProviderPlan,
+): string | undefined {
   const e = err as { status?: number; message?: string } | undefined;
   const text = String(e?.message ?? err ?? '');
   const status = typeof e?.status === 'number' ? e.status : undefined;
@@ -254,19 +301,19 @@ function providerErrorHint(err: unknown): string | undefined {
     status === code || words.some((w) => text.includes(w));
   if (matches(402, '402', 'Insufficient credits', 'insufficient_quota')) {
     return (
-      'the model provider returned 402 — out of credits/quota. Top up your ' +
-      'OpenRouter account, or use the keyless `reactor-devtools` replay (no key ' +
-      'needed). Confirm the exact error with `reactor doctor --live`.'
+      `the ${plan.provider} provider returned 402 — out of credits/quota. Top up ` +
+      `the account behind ${plan.apiKeyEnv}, or use the keyless \`reactor-devtools\` ` +
+      'replay (no key needed). Confirm the exact error with `reactor doctor --live`.'
     );
   }
   if (matches(401, '401', 'Unauthorized', 'invalid api key', 'No auth credentials')) {
     return (
-      'the model provider returned 401 — bad or missing key. Check ' +
-      'OPENROUTER_API_KEY (`reactor doctor` reports its presence without printing it).'
+      `the ${plan.provider} provider returned 401 — bad or missing key. Check ` +
+      `${plan.apiKeyEnv} (\`reactor doctor\` reports its presence without printing it).`
     );
   }
   if (matches(429, '429', 'rate limit', 'Too Many Requests')) {
-    return 'the model provider returned 429 — rate limited. Retry shortly, or lower --concurrency.';
+    return `the ${plan.provider} provider returned 429 — rate limited. Retry shortly, or lower --concurrency.`;
   }
   return undefined;
 }

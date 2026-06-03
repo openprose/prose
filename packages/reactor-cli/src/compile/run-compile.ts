@@ -72,6 +72,17 @@ export interface CompileRunOptions {
   readonly providers?: CompileStepProviders;
   /** Pre-read SKILL system prompt (offline tests pass a stub). */
   readonly skill?: string;
+  /**
+   * The keyless provider plan for a CUSTOM (non-default) provider. When present
+   * (with {@link apiKey}), the runner builds a scoped live `ModelProvider` and
+   * makes it the default for every compile session — so a configured
+   * OpenAI/Anthropic/Google/custom endpoint actually drives the compile. Omitted
+   * for the default OpenRouter path (the SDK builds its scoped provider lazily) and
+   * for the offline gate (which injects per-step fakes via {@link providers}).
+   */
+  readonly providerPlan?: import('../model/provider-plan').ProviderPlan;
+  /** The resolved API key for {@link providerPlan}. Required when it is set. */
+  readonly apiKey?: string;
 }
 
 /** Per-step provider seam for the offline gate (each step's schema differs). */
@@ -115,6 +126,19 @@ export async function runCompile(options: CompileRunOptions): Promise<CompileRun
 
   const stepCosts: StepCost[] = [];
   const sessionBase = sessionOptions(options);
+
+  // CUSTOM provider: build a scoped live `ModelProvider` ONCE and make it the
+  // default for every compile session, so a configured non-OpenRouter endpoint
+  // (OpenAI/Anthropic/Google/custom) actually drives the compile. The per-step
+  // fake provider (offline gate) still overrides it; the default OpenRouter path
+  // leaves `providerPlan` unset and the SDK builds its scoped provider lazily.
+  if (options.providerPlan !== undefined && options.apiKey !== undefined) {
+    const { buildLiveProvider } = await import('../model/live-provider');
+    sessionBase['provider'] = buildLiveProvider(options.providerPlan, options.apiKey);
+    // Stamp the configured provider label on the compile cost (label-only). The
+    // model label is already `options.model` (the compile_model) via sessionOptions.
+    sessionBase['providerLabel'] = options.providerPlan.provider;
+  }
 
   // 1. FORME — the topology session.
   const formeProvider = options.providers?.forme;
