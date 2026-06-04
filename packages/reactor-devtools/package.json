@@ -46,7 +46,7 @@
   "scripts": {
     "build": "rm -rf dist && tsc -p tsconfig.build.json && pnpm run copy:public",
     "prepack": "pnpm build",
-    "copy:public": "node -e \"const fs=require('fs'),p=require('path');const s=p.join('src','public'),d=p.join('dist','public');fs.mkdirSync(d,{recursive:true});for(const f of fs.readdirSync(s))fs.copyFileSync(p.join(s,f),p.join(d,f));\"",
+    "copy:public": "node -e \"require('fs').cpSync('src/public','dist/public',{recursive:true})\"",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "fixtures:gen": "pnpm build && node dist/fixtures/generate.js",
     "record": "pnpm build && node scripts/record-demo.mjs",
