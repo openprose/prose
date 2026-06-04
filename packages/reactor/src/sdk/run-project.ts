@@ -360,6 +360,13 @@ export interface RunProjectRender {
    * {@link buildRender} is supplied (the offline fake owns its own body).
    */
   readonly render?: RenderOptions;
+  /**
+   * The provider LABEL stamped onto each render's receipt `Cost` (e.g.
+   * `anthropic`). Cost-only, never fingerprinted; defaults to `openrouter`. Set it
+   * (alongside a `render.provider` pointing at another vendor) so receipts report
+   * the truth. Ignored when {@link buildRender} owns the body.
+   */
+  readonly providerLabel?: string;
 }
 
 /** Input to {@link runProject}: the compiled project + the run substrate. */
@@ -496,6 +503,11 @@ export async function runProject(
         // keeps its default backend, byte-for-byte what it was before the seam.
         ...(render.renderBackend !== undefined
           ? { renderBackend: render.renderBackend }
+          : {}),
+        // The cost-only provider LABEL (never fingerprinted). Spread like every
+        // other knob; unset → the render stamps the default `openrouter` label.
+        ...(render.providerLabel !== undefined
+          ? { providerLabel: render.providerLabel }
           : {}),
       });
 

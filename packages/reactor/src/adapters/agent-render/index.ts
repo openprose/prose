@@ -156,6 +156,13 @@ export interface AgentRenderConfig extends RenderOptions {
    * (300_000) — the default is UNCHANGED, the passthrough is opt-in.
    */
   readonly shellTimeoutMs?: number;
+  /**
+   * The provider LABEL stamped onto each receipt `Cost` (e.g. `anthropic`). A
+   * cost-only label, never fingerprinted; defaults to `openrouter`. Set it when a
+   * `provider` points the render at another vendor so receipts report the truth
+   * instead of a misleading `openrouter`. The model label is taken from `model`.
+   */
+  readonly providerLabel?: string;
   // `provider` / `model` / `maxTurns` / `signal` / `temperature` / `seed` and the
   // full Tier-B/C escape hatch (`agent` / `runConfig` / `runOptions` /
   // `extraTools` / `instructionsSuffix` / `tracing` / `agentFactory` /
@@ -355,6 +362,16 @@ export function createAgentRender(
       harvested: harvested as WorldModelFiles,
       usage: session.usage,
       surprise_cause: ctx.wake.source satisfies WakeSource,
+      // Stamp the REAL provider/model onto the receipt cost (label-only, never
+      // fingerprinted). Both default to the OpenRouter/gemini wiring when unset.
+      // A constructed `Model` instance has no string id, so fall back to the
+      // default id for the label in that case.
+      cost_labels: {
+        ...(config.providerLabel !== undefined
+          ? { provider: config.providerLabel }
+          : {}),
+        model: typeof model === "string" ? model : DEFAULT_RENDER_MODEL,
+      },
     });
   };
 }

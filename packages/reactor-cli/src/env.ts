@@ -21,18 +21,46 @@ export function isOfflineForced(): boolean {
 }
 
 /**
+ * Read a named model API key: `process.env[apiKeyEnv]` first, then a `.env`
+ * discovered by walking up from `cwd`. Returns the value (trimmed) or undefined.
+ * Keyless: reads env + plain files only, so a command handler can resolve any
+ * configured provider's key (e.g. `ANTHROPIC_API_KEY`) without touching the model
+ * deps. Does NOT rely on the SDK's dev-only hardcoded `DEFAULT_ENV_PATH`.
+ */
+export function readModelKey(
+  apiKeyEnv: string,
+  cwd: string = process.cwd(),
+): string | undefined {
+  const fromProcess = process.env[apiKeyEnv];
+  if (readEnvKey(fromProcess)) {
+    return fromProcess!.trim();
+  }
+  const fromDotEnv = readDotEnvKey(apiKeyEnv, cwd);
+  return readEnvKey(fromDotEnv) ? fromDotEnv : undefined;
+}
+
+/**
+ * True when a live key for `apiKeyEnv` is present in the process env or a
+ * discoverable `.env`. The general form of {@link hasOpenRouterKey}, so a command
+ * can gate the live path on whatever provider `reactor.yml` configured.
+ */
+export function hasModelKey(
+  apiKeyEnv: string,
+  cwd: string = process.cwd(),
+): boolean {
+  return readModelKey(apiKeyEnv, cwd) !== undefined;
+}
+
+/**
  * True when a live OpenRouter API key is present in the process env, or in a
  * `.env` file discoverable from the current working directory upward.
  *
  * Mirrors `cli.md`: read `OPENROUTER_API_KEY` from env first, then a `.env`
- * fallback. Does NOT rely on the SDK's dev-only hardcoded `DEFAULT_ENV_PATH`.
+ * fallback. Kept as the default-provider convenience; the general check is
+ * {@link hasModelKey}.
  */
 export function hasOpenRouterKey(cwd: string = process.cwd()): boolean {
-  if (readEnvKey(process.env.OPENROUTER_API_KEY)) {
-    return true;
-  }
-  const fromDotEnv = readDotEnvKey('OPENROUTER_API_KEY', cwd);
-  return readEnvKey(fromDotEnv);
+  return hasModelKey('OPENROUTER_API_KEY', cwd);
 }
 
 function readEnvKey(value: string | undefined): boolean {

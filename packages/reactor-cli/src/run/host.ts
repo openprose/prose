@@ -41,6 +41,9 @@ import {
   type ConfigOverrides,
   type ResolvedReactor,
 } from '../config';
+import { readModelKey } from '../env';
+import { resolveProviderPlan } from '../model/provider-plan';
+import * as path from 'path';
 
 /** Per-reactor test seams, keyed by reactor name (the offline gate injects these). */
 export interface PerReactorTestSeam {
@@ -123,6 +126,17 @@ export async function bootHost(options: BootHostOptions = {}): Promise<HostHandl
   const model = config.model.compile_model;
   const seams = options.testSeams ?? {};
 
+  // The provider config is TOP-LEVEL (shared by every hosted reactor). Resolve the
+  // plan + read its key ONCE; each reactor's live render gets the same scoped
+  // provider. The default OpenRouter path leaves the plan non-custom (the SDK
+  // builds its provider lazily, unchanged).
+  const providerPlan = resolveProviderPlan(config.model);
+  const hostProjectDir = path.resolve(options.projectDir ?? '.');
+  const apiKey =
+    providerPlan.custom && options.offline !== true
+      ? readModelKey(providerPlan.apiKeyEnv, hostProjectDir)
+      : undefined;
+
   // Boot each reactor's isolated handle. Booting is sequential (each reactor's
   // boot is its own serial cold-miss sweep) — the pool parallelizes the steady
   // state (polls/ingress), not the one-time boot.
@@ -134,8 +148,11 @@ export async function bootHost(options: BootHostOptions = {}): Promise<HostHandl
       contractsDir: entry.projectDir,
       stateDir: entry.stateDir,
       model,
+      renderModel: config.model.render_model,
       sandbox: config.sandbox,
       gateways: entry.gateways,
+      ...(providerPlan.custom ? { providerPlan } : {}),
+      ...(apiKey !== undefined ? { apiKey } : {}),
       ...(options.offline !== undefined ? { offline: options.offline } : {}),
       ...(options.model !== undefined ? { modelOverride: options.model } : {}),
       ...(seam.testGatewayFetch !== undefined

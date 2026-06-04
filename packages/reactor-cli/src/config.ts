@@ -24,6 +24,18 @@ export interface ModelConfig {
   readonly compile_model: string;
   readonly temperature: number;
   readonly max_turns: number;
+  /**
+   * Override the provider's OpenAI-compatible base URL. Optional: a built-in
+   * provider (openrouter/openai/anthropic/google) supplies its own. Set this (with
+   * {@link api_key_env}) to point at any other OpenAI-compatible endpoint.
+   */
+  readonly base_url?: string;
+  /**
+   * The env var holding this provider's API key (e.g. `ANTHROPIC_API_KEY`).
+   * Optional: a built-in provider supplies its own default. Set it to read the key
+   * from a non-default variable, or alongside {@link base_url} for a custom vendor.
+   */
+  readonly api_key_env?: string;
 }
 
 export interface SandboxConfig {
@@ -333,6 +345,9 @@ function shapeRawConfig(tree: unknown): Partial<RawConfig> {
       out.model.render_model = model['render_model'];
     if (typeof model['compile_model'] === 'string')
       out.model.compile_model = model['compile_model'];
+    if (typeof model['base_url'] === 'string') out.model.base_url = model['base_url'];
+    if (typeof model['api_key_env'] === 'string')
+      out.model.api_key_env = model['api_key_env'];
     const temp = toNumber(model['temperature']);
     if (temp !== undefined) out.model.temperature = temp;
     const turns = toNumber(model['max_turns']);
@@ -408,6 +423,10 @@ function mergeConfig(base: ReactorConfig, over: Partial<RawConfig>): ReactorConf
     compile_model: over.model?.compile_model ?? base.model.compile_model,
     temperature: over.model?.temperature ?? base.model.temperature,
     max_turns: over.model?.max_turns ?? base.model.max_turns,
+    ...(over.model?.base_url !== undefined ? { base_url: over.model.base_url } : {}),
+    ...(over.model?.api_key_env !== undefined
+      ? { api_key_env: over.model.api_key_env }
+      : {}),
   };
   return {
     state: { dir: over.state?.dir ?? base.state.dir },

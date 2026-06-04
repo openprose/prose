@@ -29,6 +29,11 @@ import { buildDurableSubstrate } from '../run/substrate';
 import { buildSandboxRunner } from '../run/sandbox';
 import type { ConfigOverrides } from '../config';
 import { loadConfig, validateStateDirTarget } from '../config';
+import { hasModelKey, readModelKey } from '../env';
+import {
+  missingProviderKeyHint,
+  resolveProviderPlan,
+} from '../model/provider-plan';
 import type { CompileCommandOptions } from './compile';
 import { emitError } from './emit';
 import {
@@ -113,6 +118,22 @@ export async function runRunCommand(
   const contractsDir = path.resolve(options.projectDir ?? '.');
   const model = config.model.compile_model;
 
+  // Resolve the provider plan (keyless). A malformed provider config is a clean
+  // exit-1, not a stack later. The plan also tells us whether the live render
+  // needs a CLI-built provider (custom) or the SDK default (OpenRouter).
+  let providerPlan;
+  try {
+    providerPlan = resolveProviderPlan(config.model);
+  } catch (err) {
+    fireError(err);
+    fireRun('failure');
+    return emitError(
+      write,
+      options.json,
+      err instanceof Error ? err.message : String(err),
+    );
+  }
+
   // Validate the state-dir target before anything tries to mkdir it (G12) — a
   // file at the state-dir path otherwise surfaces a raw EEXIST with no guidance.
   const stateDirError = validateStateDirTarget(stateDir);
@@ -187,12 +208,36 @@ export async function runRunCommand(
     shellTimeoutMs: config.sandbox.shell_timeout_ms,
   });
 
+  // A LIVE custom-provider render needs its key NOW (the compile-if-stale step
+  // already checked it on a miss, but a warm cache jumps straight to the render).
+  // Fail clean + NON-ZERO with the exact env var. Skipped for the offline gate
+  // (a test render owns the body) and the default OpenRouter path.
+  const liveCustomRender =
+    providerPlan.custom &&
+    options.testRender === undefined &&
+    options.offline !== true;
+  if (liveCustomRender && !hasModelKey(providerPlan.apiKeyEnv, contractsDir)) {
+    fireError(new Error('missing provider key'));
+    fireRun('failure');
+    return emitError(write, options.json, missingProviderKeyHint(providerPlan));
+  }
+
   // 4. Run the dumb run phase (the SDK self-mounts + bootAsync). Drain to
   //    quiescence is bootAsync's cold-miss sweep + the propagation it cascades.
   const { reactor, bootResults } = await callRunProject({
     compiled: loaded.compiled,
     adapters,
     render: renderWithDefaults,
+    // Always honor the configured render model (so a non-default model id actually
+    // reaches the run-phase render, not just the SDK's gemini default).
+    renderModel: config.model.render_model,
+    ...(liveCustomRender
+      ? {
+          providerPlan,
+          apiKey: readModelKey(providerPlan.apiKeyEnv, contractsDir)!,
+          providerLabel: providerPlan.provider,
+        }
+      : {}),
   });
 
   // 5. Project the boot results + the ledger receipts into the run report.

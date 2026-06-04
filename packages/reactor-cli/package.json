@@ -1,6 +1,6 @@
 {
   "name": "@openprose/reactor-cli",
-  "version": "0.2.0",
+  "version": "0.2.2",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/openprose/prose.git",
@@ -22,9 +22,9 @@
     "examples"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
     "prepack": "pnpm build",
-    "build:test": "tsc -p tsconfig.test.json",
+    "build:test": "rm -rf dist-test && tsc -p tsconfig.test.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test:runtime": "pnpm build:test && node --test $(find dist-test -name '*.test.js' -type f | sort)",
     "test": "pnpm typecheck && pnpm test:runtime",
@@ -32,8 +32,11 @@
     "prepublishOnly": "pnpm build"
   },
   "dependencies": {
-    "commander": "^12.0.0",
-    "@openprose/reactor": "workspace:*"
+    "@ai-sdk/anthropic": "3.0.81",
+    "@openai/agents-extensions": "0.11.6",
+    "@openprose/reactor": "workspace:*",
+    "ai": "6.0.195",
+    "commander": "^12.0.0"
   },
   "peerDependencies": {
     "@openai/agents": "*",

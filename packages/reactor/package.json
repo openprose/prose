@@ -1,6 +1,6 @@
 {
   "name": "@openprose/reactor",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "OpenProse Reactor runtime: fresh model spend scales with surprise, not the clock.",
   "type": "commonjs",
   "main": "./dist/index.js",
@@ -62,7 +62,7 @@
     "directory": "packages/reactor"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
     "bundle-skill": "node scripts/bundle-skill.mjs",
     "prepack": "pnpm build && node scripts/bundle-skill.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",

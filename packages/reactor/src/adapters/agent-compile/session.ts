@@ -97,6 +97,12 @@ export interface CompileSessionConfig {
    * so a consumer may pass a constructed `Model` instance (mirrors the render).
    */
   readonly model?: string | Model;
+  /**
+   * The provider LABEL stamped onto the compile-session cost (e.g. `anthropic`).
+   * Cost-only, never fingerprinted; defaults to `openrouter`. Set it (with a real
+   * `provider`) so the persisted cost reports the truth instead of `openrouter`.
+   */
+  readonly providerLabel?: string;
   /** Pre-read SKILL system prompt. Defaults to reading it once from disk. */
   readonly skill?: string;
   /** Path to the SKILL, when `skill` is not supplied. */
@@ -233,7 +239,17 @@ export async function runCompileSession(
   }
 
   const usage = result.state.usage as unknown as RenderUsage;
-  const cost: Cost = usageToCost(usage, "self" satisfies WakeSource);
+  // Stamp the REAL provider/model onto the compile cost (label-only, never
+  // fingerprinted). The model label is a string id; a constructed `Model` instance
+  // falls back to the default id. Both default to the OpenRouter/gemini wiring.
+  const modelLabel =
+    typeof config.model === "string" ? config.model : DEFAULT_RENDER_MODEL;
+  const cost: Cost = usageToCost(usage, "self" satisfies WakeSource, {
+    ...(config.providerLabel !== undefined
+      ? { provider: config.providerLabel }
+      : {}),
+    model: modelLabel,
+  });
 
   return { output, cost };
 }
