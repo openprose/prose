@@ -6,15 +6,15 @@
 // same gateway -> theme-tagger edge this example ships (createAgentRender mounted
 // at `asyncMounts`, driven by `dag.ingestAsync`) on ~4 labelled feedback emails
 // spanning the four themes, reads the published tag truth, and asks a SMART judge
-// model (anthropic/claude-opus-4.8) to grade each tagging with STRICT JSON
+// model (gpt-5.5) to grade each tagging with STRICT JSON
 // {theme_correct, sentiment_reasonable, quote_grounded, score}. It passes at a
 // reliability >= 0.8 across the labelled set.
 //
-// Every model call routes through `createOpenRouterProvider`; gating is
-// `hasOpenRouterKey()` (which itself honors REACTOR_OFFLINE), and a keyless /
-// offline run is a passing-skipped no-op.
+// Every model call routes through a scoped OpenAI-direct provider; gating reads
+// OPENAI_API_KEY (process env + .env fallback, honoring REACTOR_OFFLINE), and a
+// keyless / offline run is a passing-skipped no-op.
 
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
@@ -48,22 +48,69 @@ import {
 import {
   createAgentRender,
   createOpenRouterProvider,
-  hasOpenRouterKey,
   smokeRun,
 } from "@openprose/reactor/agents";
 
-// hasOpenRouterKey() short-circuits on REACTOR_OFFLINE (process env + .env
-// fallback), so this single gate covers both "no key" and "hermetic offline".
-const OFFLINE =
-  process.env.REACTOR_OFFLINE === "1" || process.env.REACTOR_OFFLINE === "true";
-const LIVE = hasOpenRouterKey();
+// Direct-OpenAI wiring: createOpenRouterProvider is a scoped OpenAIProvider that
+// accepts an explicit apiKey + baseURL, so we point it straight at the OpenAI
+// Chat Completions surface with OPENAI_API_KEY. The render runs on the cheap
+// model; the judge on a smarter one — both via the SAME OpenAI key.
+const OPENAI_BASE_URL = "https://api.openai.com/v1";
+// The cheap RENDER model the triage filter runs on (distinct from the judge).
+const RENDER_MODEL = "gpt-5.4-mini";
+// The SMART judge model — graded through the SAME OpenAI provider.
+const JUDGE_MODEL = "gpt-5.5";
+
+// REACTOR_OFFLINE forces the gate closed (hermetic offline run). Mirrors the
+// reactor provider's isOfflineForced semantics.
+function isOffline(): boolean {
+  const v = process.env.REACTOR_OFFLINE;
+  return (
+    typeof v === "string" && v.length > 0 && v !== "0" && v.toLowerCase() !== "false"
+  );
+}
+
+// Resolve OPENAI_API_KEY without a dotenv dep and WITHOUT ever printing it:
+// process.env first, then a minimal parse of the .env at REACTOR_ENV_PATH (or
+// <cwd>/.env). Returns undefined when offline or absent so the live body
+// passing-skips.
+function readOpenAiKey(): string | undefined {
+  if (isOffline()) return undefined;
+  const fromProcess = process.env.OPENAI_API_KEY;
+  if (typeof fromProcess === "string" && fromProcess.length > 0) return fromProcess;
+  const envPath = process.env.REACTOR_ENV_PATH ?? join(process.cwd(), ".env");
+  try {
+    for (const rawLine of readFileSync(envPath, "utf8").split(/\r?\n/)) {
+      const line = rawLine.trim();
+      if (line.length === 0 || line.startsWith("#")) continue;
+      const eq = line.indexOf("=");
+      if (eq <= 0 || line.slice(0, eq).trim() !== "OPENAI_API_KEY") continue;
+      let val = line.slice(eq + 1).trim();
+      if (
+        (val.startsWith('"') && val.endsWith('"')) ||
+        (val.startsWith("'") && val.endsWith("'"))
+      ) {
+        val = val.slice(1, -1);
+      }
+      return val.length > 0 ? val : undefined;
+    }
+  } catch {
+    /* no .env — fall through to undefined */
+  }
+  return undefined;
+}
+
+const OFFLINE = isOffline();
+const OPENAI_KEY = readOpenAiKey();
+const LIVE = OPENAI_KEY !== undefined;
 const SKIP_REASON = OFFLINE
   ? "REACTOR_OFFLINE set — hermetic offline run"
-  : "no OPENROUTER_API_KEY — tier-3 live check skipped";
+  : "no OPENAI_API_KEY — tier-3 live check skipped";
 
-// The cheap RENDER model the live taggers run, and the SMART judge model.
-const RENDER_MODEL = "openai/gpt-5.4-mini";
-const JUDGE_MODEL = "anthropic/claude-opus-4.8";
+/** A scoped OpenAI-direct provider (never global). Only call when LIVE. */
+function openAiProvider(): ReturnType<typeof createOpenRouterProvider> {
+  return createOpenRouterProvider({ apiKey: OPENAI_KEY!, baseURL: OPENAI_BASE_URL });
+}
 
 // Reliability threshold across the labelled feedback set.
 const THRESHOLD = 0.8;
@@ -139,7 +186,7 @@ async function judgeWithRubric(args: {
   readonly payload: unknown;
   readonly rubric: string;
 }): Promise<RubricVerdict> {
-  const provider = args.provider ?? createOpenRouterProvider();
+  const provider = args.provider ?? openAiProvider();
   const input =
     `You are a STRICT grader. Evaluate the artifact labelled "${args.label}".\n\n` +
     `RUBRIC:\n${args.rubric}\n\n` +
@@ -153,7 +200,7 @@ async function judgeWithRubric(args: {
     provider,
     model: JUDGE_MODEL,
     input,
-    temperature: 0,
+    temperature: 1,
     seed: 7,
   });
 
@@ -254,7 +301,7 @@ describe("feedback-pulse — tier-3 live reliability (key-gated)", () => {
   it.skipIf(!LIVE)(
     `live theme-tagger renders span the four themes and a smart judge grades them at >= ${THRESHOLD}`,
     async () => {
-      const provider = createOpenRouterProvider();
+      const provider = openAiProvider();
       expect(provider).toBeTruthy();
 
       let passes = 0;
@@ -271,7 +318,7 @@ describe("feedback-pulse — tier-3 live reliability (key-gated)", () => {
             contractFor: liveContractFor(id),
             provider,
             model: RENDER_MODEL,
-            temperature: 0,
+            temperature: 1,
             seed: 11,
             maxTurns: 12,
           });
@@ -378,7 +425,7 @@ describe("feedback-pulse — tier-3 live reliability (key-gated)", () => {
     if (LIVE) {
       expect(LIVE).toBe(true);
     } else {
-      expect(SKIP_REASON).toMatch(/REACTOR_OFFLINE|no OPENROUTER_API_KEY/);
+      expect(SKIP_REASON).toMatch(/REACTOR_OFFLINE|no OPENAI_API_KEY/);
     }
   });
 });
