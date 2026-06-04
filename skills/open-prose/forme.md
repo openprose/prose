@@ -15,6 +15,7 @@ see-also:
   - compiler/ir-v0.md: The compile-phase IR Forme's topology rides inside
   - responsibility-runtime.md: How the reconciler executes the resolved DAG
   - prosescript.md: Intra-node imperative composition (`call`) — the alternative to a subscription
+  - visual-source.md: The typed image — a visual projection of this topology world-model that the compile resolve inverts back into contracts
   - guidance/tenets.md: Design reasoning behind the specs
 ---
 
