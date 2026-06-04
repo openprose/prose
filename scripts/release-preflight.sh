@@ -79,9 +79,12 @@ if [[ "$require_main" -eq 1 ]]; then
   fi
 fi
 
+# This preflight publishes @openprose/prose-cli, so it validates the `cli` track
+# only. The `skill` plugin/SKILL track versions independently (see RELEASE.md) and
+# must not be required to match a CLI release version.
 (
   cd "$REPO_ROOT"
-  ./scripts/bump-version.sh --check >/tmp/openprose-release-version-check.txt
+  ./scripts/bump-version.sh --check --track cli >/tmp/openprose-release-version-check.txt
 )
 cat /tmp/openprose-release-version-check.txt
 

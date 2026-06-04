@@ -1,9 +1,20 @@
 {
-  "files": [
-    { "path": ".claude-plugin/plugin.json", "kind": "json", "field": "version" },
-    { "path": ".codex-plugin/plugin.json", "kind": "json", "field": "version" },
-    { "path": "skills/open-prose/SKILL.md", "kind": "yaml", "field": "version" },
-    { "path": "tools/cli/package.json", "kind": "json", "field": "version" },
-    { "path": "tools/cli/install.sh", "kind": "shell-var", "field": "DEFAULT_VERSION" }
-  ]
+  "$comment": "OpenProse version surfaces, grouped into independently-released TRACKS. bump-version.sh keeps each track internally consistent but lets tracks move independently. See RELEASE.md.",
+  "tracks": {
+    "skill": {
+      "description": "The open-prose SKILL and the Claude + Codex plugin envelopes that deliver it. Locked together because the Claude Code marketplace deduplicates by manifest version: skill changes only reach plugin users when the manifest version advances, so the two plugin.json files and SKILL.md must move as one. Machine compatibility is carried separately by SKILL.md's runtime_contract, not by this X.Y.Z.",
+      "files": [
+        { "path": ".claude-plugin/plugin.json", "kind": "json", "field": "version" },
+        { "path": ".codex-plugin/plugin.json", "kind": "json", "field": "version" },
+        { "path": "skills/open-prose/SKILL.md", "kind": "yaml", "field": "version" }
+      ]
+    },
+    "cli": {
+      "description": "The prose CLI npm package (@openprose/prose-cli) and its tarball installer default. Versioned independently of the skill/plugin and published through the OpenProse Release workflow.",
+      "files": [
+        { "path": "tools/cli/package.json", "kind": "json", "field": "version" },
+        { "path": "tools/cli/install.sh", "kind": "shell-var", "field": "DEFAULT_VERSION" }
+      ]
+    }
+  }
 }

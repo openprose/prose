@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-06-04 — open-prose skill & plugin
+
+Skill/plugin-track release. The `@openprose/prose-cli` CLI is unaffected and
+stays at 0.14.0: the SKILL, the Claude/Codex plugin manifests, and the CLI now
+version on independent release tracks (see `RELEASE.md`).
+
+### Changed
+
+- **Intelligent React overhaul (`runtime_contract: 1 → 2`).** The
+  judge → verdict → pressure → fulfillment loop is retired for a deterministic
+  reconciler: a render runs only when a node's subscribed input fingerprints or
+  its own contract fingerprint move, and each commit is a `Receipt`
+  (`rendered | skipped | failed`) with no LLM in the wake/commit decision. The
+  kind taxonomy is re-cleaved around the single render atom — `kind: service` →
+  `kind: function`, `kind: system` removed, `kind: responsibility` reshaped with
+  `### Requires` / `### Maintains`, and `### Ensures` → `### Maintains`.
+  ProseScript and the `prose compile`/`serve`/`run` command surface are
+  unchanged in shape. Full migration map and `prose upgrade` rewrites live in
+  `skills/open-prose/changelog.md`.
+
+### Release process
+
+- **Decoupled version tracks.** `.version-bump.json` now groups version surfaces
+  into independent tracks — `skill` (both plugin manifests + `SKILL.md`, locked
+  together for Claude Code marketplace dedup) and `cli` (`@openprose/prose-cli` +
+  installer). `bump-version.sh` gains `--track <name> <X.Y.Z>` and per-track
+  `--check`/`--list`; the CLI release preflight validates only the `cli` track.
+  Restores the plugin↔CLI independence the packaging originally intended and
+  lets the skill release without a CLI bump.
+
 ## [0.14.0] - 2026-05-19
 
 ### Added
