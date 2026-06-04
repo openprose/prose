@@ -1,21 +1,49 @@
 # OpenProse Release Process
 
-OpenProse uses one release train. The SKILL/plugin metadata, CLI npm package,
-package lock, and tarball installer all share the same `X.Y.Z` version and ship
-through the protected **OpenProse Release** GitHub Actions workflow.
+OpenProse releases on **two independent tracks**, declared in
+`.version-bump.json`:
 
-## Prepare
+- **`skill`** — the open-prose SKILL plus the Claude + Codex plugin manifests
+  that deliver it (`skills/open-prose/SKILL.md`, `.claude-plugin/plugin.json`,
+  `.codex-plugin/plugin.json`). These move **together**: the Claude Code
+  marketplace deduplicates by manifest version, so a skill change only reaches
+  plugin users when the manifest version advances. Machine compatibility is a
+  separate signal — `SKILL.md`'s `runtime_contract` — not this `X.Y.Z`.
+- **`cli`** — the `@openprose/prose-cli` npm package and its tarball installer
+  (`tools/cli/package.json`, `tools/cli/install.sh`), published through the
+  protected **OpenProse Release** GitHub Actions workflow.
 
-1. Choose the next SemVer version.
+The two tracks version and ship **independently** — a skill release does not
+require a CLI bump, and vice versa. (The `@openprose/reactor*` packages are a
+third, fully separate train under `reactor-v*` tags; see their own flow.)
+
+Bump one track at a time and verify:
+
+```bash
+./scripts/bump-version.sh --track <skill|cli> X.Y.Z   # bump that track's files
+./scripts/bump-version.sh --check                     # every track internally consistent
+./scripts/bump-version.sh --list                      # print each track's version
+```
+
+`--check` passes as long as each track is internally consistent; the tracks may
+(and usually do) sit at different versions.
+
+## Prepare (cli track)
+
+1. Choose the next SemVer version for the CLI.
 2. Move relevant `CHANGELOG.md` notes into `## [X.Y.Z] - YYYY-MM-DD`.
-3. Bump every declared version surface:
+3. Bump the `cli` track and run preflight:
 
    ```bash
-   ./scripts/bump-version.sh X.Y.Z
+   ./scripts/bump-version.sh --track cli X.Y.Z
    ./scripts/bump-version.sh --check
    ./scripts/sync-copy.sh --check
    ./scripts/release-preflight.sh --version X.Y.Z --npm-tag latest
    ```
+
+   `release-preflight.sh` validates the **`cli`** track only; the `skill` track
+   is checked for internal consistency but is not required to match the CLI
+   version.
 
 4. Open and merge a release-prep PR after CI passes.
 
@@ -71,6 +99,44 @@ PROSE_INSTALL_DIR="$tmpdir/install" \
 For broader release validation, run the maintainer playtest in
 [tools/cli/POST_RELEASE_PLAYTEST.md](tools/cli/POST_RELEASE_PLAYTEST.md).
 
+## Releasing the skill / plugin track
+
+The skill ships from the repository (the `skills` CLI reads it directly) and
+through the plugin marketplace (which reads the manifests). There is no npm
+publish for this track, so its release is a version bump + tag + marketplace
+resubmission — independent of any CLI release.
+
+1. Land the skill changes on `main`, then bump the `skill` track:
+
+   ```bash
+   ./scripts/bump-version.sh --track skill X.Y.Z
+   ./scripts/bump-version.sh --check
+   ```
+
+   Bump the **major** of `runtime_contract` in `SKILL.md` as well only when the
+   skill's machine contract changes incompatibly (it is independent of `X.Y.Z`).
+
+2. Add a `## [X.Y.Z]` section to `CHANGELOG.md` and the migration notes to
+   `skills/open-prose/changelog.md` (the deferred upgrade brain consumed by
+   `prose upgrade`).
+
+3. Merge the PR. The `Plugin Manifest` workflow enforces `--check` and the
+   manifest structure on every PR.
+
+4. Tag and publish a GitHub Release for provenance (this tag triggers **no**
+   workflow — it is a marker, kept distinct from the CLI's `v*` tags):
+
+   ```bash
+   git tag -a "skill-vX.Y.Z" -m "open-prose skill X.Y.Z"
+   git push origin "skill-vX.Y.Z"
+   gh release create "skill-vX.Y.Z" --title "open-prose skill X.Y.Z" \
+     --notes-file <(./scripts/extract-changelog.sh X.Y.Z)
+   ```
+
+5. Resubmit the plugin to the marketplaces (manual — see below), referencing the
+   `skill-vX.Y.Z` tag SHA. Until the manifest version advances in the
+   marketplace, plugin users stay on the previous cached copy.
+
 ## Marketplace Submission
 
 Marketplace publication remains manual after the GitHub Release exists.
@@ -81,7 +147,7 @@ Claude Code marketplace:
 - Plugin path: leave blank; `.claude-plugin/` is auto-detected
 - Marketplace name: `openprose`
 - Plugin name: `open-prose`
-- Version: the `vX.Y.Z` tag SHA
+- Version: the `skill-vX.Y.Z` tag SHA
 
 Codex Plugin Directory submission is staged through `.codex-plugin/`,
 `.agents/plugins/marketplace.json`, and `assets/plugin/` once the public
