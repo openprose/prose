@@ -18,7 +18,27 @@
 // "Performance" = cost vs a committed baseline rollup (createReplaySession
 // costRollup.total.fresh) — supplied by the adjudicator, not invented here.
 
-import { provider, DEFAULT_ENV_PATH } from "./resolve.mjs";
+import { readFileSync } from "node:fs";
+
+import { provider, DEFAULT_ENV_PATH, REPO_ROOT } from "./resolve.mjs";
+
+// Judge provider selection — ADDITIVE and non-breaking. Default is OpenRouter (the
+// shipped behavior). Set JUDGE_PROVIDER=anthropic (+ optional JUDGE_MODEL, default
+// claude-opus-4-8) to run the panel on a native-Anthropic model via the CLI's
+// provider builder. Nothing changes unless JUDGE_PROVIDER is set, so other
+// examples' eval runs are unaffected. REACTOR_OFFLINE still forces judges OFF.
+function judgeProvider() {
+  return (process.env.JUDGE_PROVIDER ?? "").trim().toLowerCase();
+}
+function anthropicKeyFrom(envPath) {
+  if (process.env.ANTHROPIC_API_KEY) return process.env.ANTHROPIC_API_KEY;
+  try {
+    const m = readFileSync(envPath, "utf8").match(/^ANTHROPIC_API_KEY=(.*)$/m);
+    return m ? m[1].trim().replace(/^["']|["']$/g, "") : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 export const JUDGE_DIMENSIONS = [
   "program_semantics",
@@ -47,6 +67,8 @@ export const JUDGE_DIMENSIONS = [
  */
 export function judgesEnabled(envPath = DEFAULT_ENV_PATH) {
   try {
+    if (process.env.REACTOR_OFFLINE) return false;
+    if (judgeProvider() === "anthropic") return Boolean(anthropicKeyFrom(envPath));
     return provider.hasOpenRouterKey(envPath) === true;
   } catch {
     return false;
@@ -257,12 +279,38 @@ async function judgeOne({
 async function callJudgeModel({ prompt, envPath }) {
   // Lazy import the heavy agents-SDK-backed adapter ONLY on the live path.
   const { createRequire } = await import("node:module");
-  const { join, dirname } = await import("node:path");
-  const { fileURLToPath } = await import("node:url");
-  const here = dirname(fileURLToPath(import.meta.url));
-  const root = findRoot(here, existsSyncSafe);
+  const { join } = await import("node:path");
+
+  // Anthropic judge (opt-in via JUDGE_PROVIDER=anthropic): the expensive panel
+  // runs on a native-Anthropic model through the CLI's provider builder. Built
+  // additively so the default OpenRouter path below is unchanged.
+  if (judgeProvider() === "anthropic") {
+    const cliReq = createRequire(
+      join(REPO_ROOT, "packages", "reactor-cli", "package.json"),
+    );
+    const { buildLiveProvider } = cliReq("./dist/model/live-provider.js");
+    const { resolveProviderPlan } = cliReq("./dist/model/provider-plan.js");
+    const { Agent, Runner, setTracingDisabled } = cliReq("@openai/agents");
+    setTracingDisabled(true);
+    const plan = resolveProviderPlan({ provider: "anthropic" });
+    const providerInstance = buildLiveProvider(plan, anthropicKeyFrom(envPath));
+    const agent = new Agent({
+      name: "reactor-eval-judge",
+      instructions:
+        "You are a rigorous, evidence-citing evaluator. Reply with STRICT JSON only.",
+      model: process.env.JUDGE_MODEL ?? "claude-opus-4-8",
+      modelSettings: { temperature: 0 },
+    });
+    const runner = new Runner({ modelProvider: providerInstance });
+    const result = await runner.run(agent, prompt);
+    return typeof result.finalOutput === "string"
+      ? result.finalOutput
+      : String(result.finalOutput ?? "");
+  }
+
+  // Default: OpenRouter via the agent-render adapter's scoped provider.
   const req = createRequire(
-    join(root, "packages", "reactor-devtools", "package.json"),
+    join(REPO_ROOT, "packages", "reactor-devtools", "package.json"),
   );
   const ar = req("@openprose/reactor/agents");
   const { Agent, Runner, setTracingDisabled } = req("@openai/agents");
@@ -280,25 +328,6 @@ async function callJudgeModel({ prompt, envPath }) {
   return typeof result.finalOutput === "string"
     ? result.finalOutput
     : String(result.finalOutput ?? "");
-}
-
-function findRoot(start, exists) {
-  let dir = start;
-  for (let i = 0; i < 8; i += 1) {
-    if (exists(`${dir}/packages/reactor-devtools/package.json`)) return dir;
-    const parent = dir.slice(0, dir.lastIndexOf("/")) || "/";
-    if (parent === dir) break;
-    dir = parent;
-  }
-  return start;
-}
-function existsSyncSafe(p) {
-  try {
-    // eslint-disable-next-line no-undef
-    return require("node:fs").existsSync(p);
-  } catch {
-    return false;
-  }
 }
 
 function parseJudgeJson(text) {

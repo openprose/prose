@@ -1,0 +1,121 @@
+{
+  "contract_fingerprints": {
+    "attention-queue": "sha256:395b0f562b36cb36d2c9f08168f910daa22059911b223d7c50621fc5e82eb9fb",
+    "claude-sessions": "sha256:6f8557c7279532f5058b64aa7f18153c0917600c9c6e25a724a59caff5c847e2",
+    "dashboard": "sha256:1090b34fc4813b0ec47a691802e0ac1f69d68e6d9a6ae270188c4128b670ddbd",
+    "decisions-log": "sha256:b3e9a905931dedd007c7810e2f9c31b4196425e002527a42c470b079d869695a",
+    "eng-backlog": "sha256:94bc6add9d5aa8a49a0cf9ef2b4590815f914fbf5c15dc49a85a251c6451ee58",
+    "session-signal": "sha256:76c27b01b75786dc0cc58c6ef9cfa8e4f24a6906ed8220233d9cc8d77a259956",
+    "use-case-guide": "sha256:847a11c1b335602e6c34316325fe63a8cbbeb4e68919f80c72864589f6847a22"
+  },
+  "topology": {
+    "acyclic": true,
+    "edges": [
+      {
+        "facet": "open-decisions",
+        "producer": "decisions-log",
+        "subscriber": "attention-queue"
+      },
+      {
+        "facet": "attention-signal",
+        "producer": "session-signal",
+        "subscriber": "attention-queue"
+      },
+      {
+        "facet": "decision-blocked",
+        "producer": "attention-queue",
+        "subscriber": "dashboard"
+      },
+      {
+        "facet": "needs-user",
+        "producer": "attention-queue",
+        "subscriber": "dashboard"
+      },
+      {
+        "facet": "decision-history",
+        "producer": "decisions-log",
+        "subscriber": "dashboard"
+      },
+      {
+        "facet": "open-decisions",
+        "producer": "decisions-log",
+        "subscriber": "dashboard"
+      },
+      {
+        "facet": "by-project-counts",
+        "producer": "eng-backlog",
+        "subscriber": "dashboard"
+      },
+      {
+        "facet": "open-items",
+        "producer": "eng-backlog",
+        "subscriber": "dashboard"
+      },
+      {
+        "facet": "active-patterns",
+        "producer": "use-case-guide",
+        "subscriber": "dashboard"
+      },
+      {
+        "facet": "decision-signal",
+        "producer": "session-signal",
+        "subscriber": "decisions-log"
+      },
+      {
+        "facet": "bug-signal",
+        "producer": "session-signal",
+        "subscriber": "eng-backlog"
+      },
+      {
+        "facet": "sessions",
+        "producer": "claude-sessions",
+        "subscriber": "session-signal"
+      },
+      {
+        "facet": "use-case-signal",
+        "producer": "session-signal",
+        "subscriber": "use-case-guide"
+      }
+    ],
+    "entry_points": [
+      "claude-sessions"
+    ],
+    "nodes": [
+      {
+        "contract_fingerprint": "sha256:395b0f562b36cb36d2c9f08168f910daa22059911b223d7c50621fc5e82eb9fb",
+        "node": "attention-queue",
+        "wake_source": "input"
+      },
+      {
+        "contract_fingerprint": "sha256:6f8557c7279532f5058b64aa7f18153c0917600c9c6e25a724a59caff5c847e2",
+        "node": "claude-sessions",
+        "wake_source": "external"
+      },
+      {
+        "contract_fingerprint": "sha256:1090b34fc4813b0ec47a691802e0ac1f69d68e6d9a6ae270188c4128b670ddbd",
+        "node": "dashboard",
+        "wake_source": "input"
+      },
+      {
+        "contract_fingerprint": "sha256:b3e9a905931dedd007c7810e2f9c31b4196425e002527a42c470b079d869695a",
+        "node": "decisions-log",
+        "wake_source": "input"
+      },
+      {
+        "contract_fingerprint": "sha256:94bc6add9d5aa8a49a0cf9ef2b4590815f914fbf5c15dc49a85a251c6451ee58",
+        "node": "eng-backlog",
+        "wake_source": "input"
+      },
+      {
+        "contract_fingerprint": "sha256:76c27b01b75786dc0cc58c6ef9cfa8e4f24a6906ed8220233d9cc8d77a259956",
+        "node": "session-signal",
+        "wake_source": "input"
+      },
+      {
+        "contract_fingerprint": "sha256:847a11c1b335602e6c34316325fe63a8cbbeb4e68919f80c72864589f6847a22",
+        "node": "use-case-guide",
+        "wake_source": "input"
+      }
+    ]
+  }
+}

@@ -1,0 +1,181 @@
+// connectors.cjs — REAL Claude Code session scanner (opt-in live path).
+//
+// Keyed `claude` to match `source_id: claude` in reactor.yml. When this file is
+// present alongside reactor.yml, the plugin connector for source_id `claude`
+// wins over the built-in `static` connector at run/serve time (except under the
+// offline gate, which injects a fake fetch and ignores the plugin).
+//
+// fetch(req): scan ~/.claude/projects/<encoded-cwd>/<uuid>.jsonl at depth 2,
+//   stat each file for an `mtimeMs:size` fingerprint, compare to a persisted
+//   cursor, and return ONLY changed sessions with a short tail snippet. It never
+//   reads or returns full transcript content.
+// extract(payload): map each changed session to { id, item }, where item is the
+//   exact shape session-summary reads.
+//
+// Plain Node, no dependencies. Privacy-safe: tail snippet is capped at 300 chars
+// and only `last-prompt` / last assistant text are surfaced.
+
+const fs = require("fs");
+const path = require("path");
+const os = require("os");
+
+const PROJECTS_ROOT = path.join(os.homedir(), ".claude", "projects");
+const CURSOR_PATH = path.join(__dirname, ".reactor", "claude-scan-cursor.json");
+const TAIL_BYTES = 8192;
+const SNIPPET_MAX = 300;
+
+function loadCursor() {
+  try {
+    return JSON.parse(fs.readFileSync(CURSOR_PATH, "utf8"));
+  } catch {
+    return {};
+  }
+}
+
+function saveCursor(map) {
+  try {
+    fs.mkdirSync(path.dirname(CURSOR_PATH), { recursive: true });
+    fs.writeFileSync(CURSOR_PATH, JSON.stringify(map, null, 2));
+  } catch {
+    // best-effort cursor; a failed write just means a re-scan next poll
+  }
+}
+
+function fingerprint(st) {
+  return `${Math.trunc(st.mtimeMs)}:${st.size}`;
+}
+
+// Read the last TAIL_BYTES, parse complete JSON lines, collect tail metadata.
+// Returns only short, derived fields. Never returns full transcript content.
+function extractTail(filePath) {
+  let fd;
+  try {
+    fd = fs.openSync(filePath, "r");
+    const st = fs.fstatSync(fd);
+    const offset = Math.max(0, st.size - TAIL_BYTES);
+    const len = Math.min(TAIL_BYTES, st.size);
+    const buf = Buffer.alloc(len);
+    fs.readSync(fd, buf, 0, len, offset);
+    const lines = buf.toString("utf8").split("\n").filter((l) => l.trim());
+    let cwd, branch, aiTitle, lastPrompt, lastAssistantText;
+    for (const raw of lines) {
+      let obj;
+      try {
+        obj = JSON.parse(raw);
+      } catch {
+        continue; // skip a truncated leading line in the tail window
+      }
+      const t = obj.type;
+      if (t === "user" || t === "assistant" || t === "system") {
+        if (obj.cwd) cwd = obj.cwd;
+        if (obj.gitBranch) branch = obj.gitBranch;
+      }
+      if (t === "ai-title" && obj.aiTitle) aiTitle = obj.aiTitle;
+      if (t === "last-prompt" && obj.lastPrompt) lastPrompt = obj.lastPrompt;
+      if (t === "assistant") {
+        const content = obj.message && obj.message.content;
+        if (Array.isArray(content)) {
+          for (const block of content) {
+            if (block && block.type === "text" && typeof block.text === "string") {
+              lastAssistantText = block.text.slice(0, SNIPPET_MAX);
+              break;
+            }
+          }
+        }
+      }
+    }
+    return { cwd, branch, aiTitle, lastPrompt, lastAssistantText };
+  } finally {
+    if (fd !== undefined) fs.closeSync(fd);
+  }
+}
+
+// Scan every <project>/<uuid>.jsonl at depth 2 (not subagents) and return the
+// changed-session arrivals plus the next cursor map.
+function scan() {
+  const prev = loadCursor();
+  const next = { ...prev };
+  const arrivals = [];
+
+  let projectDirs = [];
+  try {
+    projectDirs = fs.readdirSync(PROJECTS_ROOT);
+  } catch {
+    return { arrivals: [], next }; // no Claude projects dir on this machine
+  }
+
+  for (const projectDir of projectDirs) {
+    const projectPath = path.join(PROJECTS_ROOT, projectDir);
+    let stat;
+    try {
+      stat = fs.statSync(projectPath);
+    } catch {
+      continue;
+    }
+    if (!stat.isDirectory()) continue;
+
+    let entries = [];
+    try {
+      entries = fs.readdirSync(projectPath);
+    } catch {
+      continue;
+    }
+
+    for (const entry of entries) {
+      if (!entry.endsWith(".jsonl")) continue; // depth-2 main sessions only
+      const filePath = path.join(projectPath, entry);
+      const sessionId = entry.slice(0, -6); // strip ".jsonl"
+
+      let st;
+      try {
+        st = fs.statSync(filePath);
+      } catch {
+        continue;
+      }
+      const fp = fingerprint(st);
+      if (prev[filePath] === fp) continue; // unchanged -> no arrival
+      next[filePath] = fp;
+
+      const tail = extractTail(filePath);
+      arrivals.push({
+        id: sessionId,
+        item: {
+          runtime: "claude-code",
+          path: filePath,
+          project: projectDir,
+          branch: tail.branch || null,
+          // status/goal/blockers/next_action are inferred downstream by
+          // session-summary from the tail; the connector ships raw signal only.
+          status: "active",
+          goal: tail.aiTitle || tail.lastPrompt || "(infer from tail)",
+          blockers: [],
+          open_questions: [],
+          next_action: null,
+          fingerprint: `${sessionId}:${fp}`,
+          tail: {
+            lastPrompt: tail.lastPrompt || null,
+            lastAssistantText: tail.lastAssistantText || null,
+          },
+        },
+      });
+    }
+  }
+
+  return { arrivals, next };
+}
+
+module.exports = {
+  connectors: {
+    claude: {
+      // fetch returns the raw changed-session arrivals; the cursor is persisted
+      // here so a re-poll dedups even before the host cursor sees it.
+      fetch: async () => {
+        const { arrivals, next } = scan();
+        saveCursor(next);
+        return arrivals; // already in { id, item } shape
+      },
+      // arrivals are already { id, item }; pass them through unchanged.
+      extract: (payload) => (Array.isArray(payload) ? payload : []),
+    },
+  },
+};
