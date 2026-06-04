@@ -1,0 +1,55 @@
+# agent-observatory — Claude Code sessions piped into domain world-state.
+#
+# A `claude-sessions` GATEWAY accepts session deltas (identity + tail receipt,
+# never the full transcript). A `session-summary` responsibility turns each
+# changed session into a compact summary, then four domain truths
+# (decisions-log, eng-backlog, use-case-guide, attention-queue) subscribe to the
+# summary FACETS they care about, and a `dashboard` composes the four truths into
+# one Markdown index. Unrelated sessions memo-skip the domains they do not touch.
+#
+# Offline: the built-in `static` connector below ships fixture session deltas, so
+# `reactor serve` (or `reactor trigger`) ingests them with no key and no network.
+# Live: drop in connectors.cjs (keyed `claude`) to scan ~/.claude/projects.
+state:
+  dir: ./.reactor
+
+model:
+  # ONE cheap global model for the whole pipeline. The tiered design makes every
+  # render a small typed transform (classify a tail, append one entry, compose
+  # facets), so a fast, cheap model is adequate everywhere. The llm-as-judge tier
+  # uses an expensive Anthropic model instead (configured in the eval harness, not
+  # here). True per-node tiering (a cheap model for the high-volume classifier, a
+  # stronger model only for rare synthesis) is declarable via a node's `### Runtime`
+  # model but is NOT yet honored by the CLI — tracked as RB-NodeModel.
+  provider: openai
+  # Cheap model for the high-volume RENDERS (classify, append, compose). Compile
+  # is the rare phase (once per contract change) and needs stricter structured-
+  # output fidelity than the mini gives (it omitted a required boolean in the
+  # canonicalizer schema), so it uses the medium model — amortized across the
+  # whole life of a stable contract.
+  render_model: gpt-5.4-mini
+  compile_model: gpt-5.4
+  temperature: 0
+  # Bounded renders: each render is a short transform, not an open-ended agent
+  # loop. The cap is the backstop; the contracts' ### Invariants do the real
+  # bounding (read only the inline input; never scan the filesystem).
+  max_turns: 24
+
+sandbox:
+  mode: none
+  shell_timeout_ms: 300000
+
+gateways:
+  - node: claude-sessions
+    source_id: claude
+    poll: 30s
+    connector:
+      type: static
+      id_field: id
+      # NOTE: the CLI's reactor.yml parser accepts inline FLOW maps/lists for
+      # connector items (one line), with scalar fields only — block-style list
+      # items and nested maps/arrays do not parse here. Two fixtures: one
+      # decision chat (moves decisions-log + attention-queue) and one bug-repro
+      # chat (moves eng-backlog + attention-queue). tail_last is the flattened
+      # tail snippet. Add more {...} entries (same line) for a fuller demo.
+      items: [{ id: sess-design-auth, runtime: claude-code, project: app, branch: main, status: blocked, goal: "Decide whether to adopt session cookies or JWTs for auth.", blocker: "needs a call on token storage before any code lands", next_action: "Pick a strategy and record the rationale.", fingerprint: "sess-design-auth:1718000000:4096", tail_last: "Two viable paths: HTTP-only session cookies, or short-lived JWTs. Cookies are simpler to revoke; JWTs scale stateless. This is a decision, not a task." }, { id: sess-bug-upload, runtime: claude-code, project: app, branch: fix/upload-timeout, status: active, goal: "Reproduce and fix the file-upload timeout on large files.", blocker: "", next_action: "Add a streaming read path and a regression test.", fingerprint: "sess-bug-upload:1718000100:8192", tail_last: "Reproduced: the handler buffers the whole file in memory. Fix is to stream the body to disk. Filing a bug and a refactor item." }]
