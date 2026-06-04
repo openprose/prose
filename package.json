@@ -13,6 +13,6 @@
     "lint": "pnpm --filter @openprose/reactor run lint --if-present && pnpm --filter @openprose/reactor-cli run lint --if-present && pnpm --filter @openprose/reactor-devtools run lint --if-present && pnpm --filter @openprose/prose-cli run lint --if-present"
   },
   "devDependencies": {
-    "vitest": "^3.2.4"
+    "vitest": "^4.1.8"
   }
 }
