@@ -2,10 +2,11 @@ name: CI - OpenProse Examples Gate
 
 # Runs the DETERMINISTIC, OFFLINE example suite on every PR that touches the
 # shipped learning examples, their conformance tests, the eval harness, or the
-# shared gate wiring. Three tiers, all at zero model spend (REACTOR_OFFLINE=1):
+# shared gate wiring. All at zero model spend (REACTOR_OFFLINE=1):
 #
-#   - tier-1 doc-conformance  (tests/open-prose/examples/**)
-#   - tier-2 ledger-replay     (skills/open-prose/examples/**/*.test.ts)
+#   - the vitest example suites (tests/open-prose/examples/**): doc-conformance
+#     corpus checks plus the deterministic ledger-replay tests that drive the
+#     reactor over a committed replay state-dir
 #   - eval-harness deterministic checker (tools/eval-harness/eval-harness.test.mjs)
 #
 # The key-gated LLM judge panel is NEVER run here: REACTOR_OFFLINE=1 forces
@@ -67,5 +68,5 @@ jobs:
           pnpm --filter @openprose/reactor build
           pnpm --filter @openprose/reactor-devtools build
 
-      - name: Tier-2 ledger-replay + tier-1 doc-conformance + eval-harness
+      - name: Example suites + eval-harness (offline)
         run: pnpm test:examples
