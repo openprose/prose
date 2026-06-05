@@ -16,8 +16,10 @@ import {
 	type ResponsibilityStatusRecord,
 } from "../../src/prose/index.js";
 
-const repoRoot = fileURLToPath(new URL("../../../../", import.meta.url));
-const stargazerFixture = join(repoRoot, "tests/open-prose/compiler/expected/stargazer.manifest.next.json");
+// CLI-owned repository-ir v0 fixture (see ./fixtures/repository-ir/README.md).
+const stargazerFixture = fileURLToPath(
+	new URL("./fixtures/repository-ir/expected/stargazer.manifest.next.json", import.meta.url),
+);
 
 describe("responsibility status", () => {
 	it("fingerprints the compiled responsibility contract", () => {
