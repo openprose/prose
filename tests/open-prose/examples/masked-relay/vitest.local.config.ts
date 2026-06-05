@@ -6,26 +6,43 @@ import { defineConfig } from "vitest/config";
 // the SAME bytes a consumer imports) but scopes the run to masked-relay.test.ts.
 //
 // RUN (offline, zero spend):
-//   cd /Users/sl/code/prose && REACTOR_OFFLINE=1 \
-//     npx vitest run --config skills/open-prose/examples/masked-relay/vitest.local.config.ts
+//   REACTOR_OFFLINE=1 \
+//     npx vitest run --config tests/open-prose/examples/masked-relay/vitest.local.config.ts
 const reactorDist = (sub: string) =>
-  fileURLToPath(new URL(`../../../../packages/reactor/dist/${sub}`, import.meta.url));
+  fileURLToPath(
+    new URL(`../../../../packages/reactor/dist/${sub}`, import.meta.url),
+  );
 
 export default defineConfig({
   resolve: {
     // Order matters: more-specific subpaths must precede the bare barrel.
     alias: [
-      { find: "@openprose/reactor/agents", replacement: reactorDist("agents/index.js") },
-      { find: "@openprose/reactor/adapters", replacement: reactorDist("adapters/index.js") },
-      { find: "@openprose/reactor/run/types", replacement: reactorDist("run/types.js") },
-      { find: "@openprose/reactor/run", replacement: reactorDist("run/index.js") },
-      { find: "@openprose/reactor/internals", replacement: reactorDist("internals/index.js") },
+      {
+        find: "@openprose/reactor/agents",
+        replacement: reactorDist("agents/index.js"),
+      },
+      {
+        find: "@openprose/reactor/adapters",
+        replacement: reactorDist("adapters/index.js"),
+      },
+      {
+        find: "@openprose/reactor/run/types",
+        replacement: reactorDist("run/types.js"),
+      },
+      {
+        find: "@openprose/reactor/run",
+        replacement: reactorDist("run/index.js"),
+      },
+      {
+        find: "@openprose/reactor/internals",
+        replacement: reactorDist("internals/index.js"),
+      },
       { find: "@openprose/reactor", replacement: reactorDist("index.js") },
     ],
   },
   test: {
     environment: "node",
-    include: ["skills/open-prose/examples/masked-relay/masked-relay.test.ts"],
+    include: ["tests/open-prose/examples/masked-relay/masked-relay.test.ts"],
     exclude: ["**/*.live.test.ts", "**/node_modules/**"],
   },
 });

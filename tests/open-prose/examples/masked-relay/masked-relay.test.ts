@@ -1,4 +1,4 @@
-// masked-relay — the tier-2 DETERMINISTIC gate (offline, zero model spend).
+// masked-relay: the offline DETERMINISTIC gate (zero model spend).
 //
 // This file IS the worked snippet the README/AUTHORING points at, run verbatim:
 // it drives the REAL @openprose/reactor reconciler with deterministic fake
@@ -6,8 +6,8 @@
 // ledger — the same shapes reactor-devtools replays.
 //
 // RUN (offline, green at zero spend):
-//   cd /Users/sl/code/prose && REACTOR_OFFLINE=1 pnpm test:examples
-//     (or scope: REACTOR_OFFLINE=1 npx vitest run skills/open-prose/examples/masked-relay)
+//   REACTOR_OFFLINE=1 pnpm test:examples
+//     (or scope: REACTOR_OFFLINE=1 npx vitest run tests/open-prose/examples/masked-relay)
 //
 // The six clauses of the validity contract, each asserted below:
 //   1. Compiles to the frozen artifact set (topology valid, single entry
@@ -20,15 +20,19 @@
 //   6. Byte-deterministic: a second regeneration yields identical
 //      receipts.json / topology.json / labels.json.
 
-import { mkdtempSync, rmSync, readFileSync, existsSync, readdirSync } from "node:fs";
+import {
+  mkdtempSync,
+  rmSync,
+  readFileSync,
+  existsSync,
+  readdirSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import {
-  createFileSystemStorageAdapter,
-} from "@openprose/reactor";
+import { createFileSystemStorageAdapter } from "@openprose/reactor";
 import {
   mountDag,
   createFileSystemReceiptLedger,
@@ -102,7 +106,9 @@ describe("masked-relay — frozen artifact set (validity contract §1)", () => {
     for (const e of topology.edges) {
       expect(ids.has(e.subscriber)).toBe(true);
       // ingress.signal-inbox is the phantom external producer (not a node).
-      expect(e.producer === "ingress.signal-inbox" || ids.has(e.producer)).toBe(true);
+      expect(e.producer === "ingress.signal-inbox" || ids.has(e.producer)).toBe(
+        true,
+      );
       expect(typeof e.facet).toBe("string");
     }
   });
@@ -119,7 +125,7 @@ describe("masked-relay — frozen artifact set (validity contract §1)", () => {
     }
   });
 
-  it("ATOMIC_FACET for facet-less producers; NO \"*\" tokens anywhere (validity contract §4)", () => {
+  it('ATOMIC_FACET for facet-less producers; NO "*" tokens anywhere (validity contract §4)', () => {
     const topoRaw = readFileSync(join(dir, "compile", "topology.json"), "utf8");
     // No wildcard token leaked into the resolved edges.
     expect(topoRaw).not.toMatch(/"\*"/);
@@ -169,7 +175,10 @@ describe("masked-relay — frozen artifact set (validity contract §1)", () => {
 
     // §5: every node's prev-linked chain verifies over the raw on-disk receipts.
     for (const [node, chain] of session.chainByNode) {
-      expect(verifyReceiptChain(chain as LedgerReceipt[]).ok, `chain ${node}`).toBe(true);
+      expect(
+        verifyReceiptChain(chain as LedgerReceipt[]).ok,
+        `chain ${node}`,
+      ).toBe(true);
     }
   });
 });
@@ -183,27 +192,37 @@ describe("masked-relay — frozen artifact set (validity contract §1)", () => {
 // A tiny three-node slice of the relay (gateway -> ledger -> scout) with the
 // SAME render/cost discipline, driven directly so the dispositions + the
 // quiet-skip vs contract-edit-render contrast are asserted in-line.
-const render =
-  (text: string) =>
-  (ctx: RenderContext) => ({
-    world_model: files({ "out.txt": textFile(text) }),
-    cost: {
-      provider: "fixture",
-      model: "deterministic-fake",
-      tokens: { fresh: 1, reused: 0 },
-      // surprise_cause MUST equal the wake source — read off the context, never
-      // hardcoded (the commit verifies this invariant).
-      surprise_cause: ctx.wake.source,
-    },
-  });
+const render = (text: string) => (ctx: RenderContext) => ({
+  world_model: files({ "out.txt": textFile(text) }),
+  cost: {
+    provider: "fixture",
+    model: "deterministic-fake",
+    tokens: { fresh: 1, reused: 0 },
+    // surprise_cause MUST equal the wake source — read off the context, never
+    // hardcoded (the commit verifies this invariant).
+    surprise_cause: ctx.wake.source,
+  },
+});
 
 function topo(sourceFp: string): ReconcilerTopology {
   return {
     topology: {
       nodes: [
-        { node: "gateway", contract_fingerprint: sourceFp, wake_source: "external" },
-        { node: "ledger", contract_fingerprint: "fp-ledger", wake_source: "input" },
-        { node: "scout", contract_fingerprint: "fp-scout", wake_source: "input" },
+        {
+          node: "gateway",
+          contract_fingerprint: sourceFp,
+          wake_source: "external",
+        },
+        {
+          node: "ledger",
+          contract_fingerprint: "fp-ledger",
+          wake_source: "input",
+        },
+        {
+          node: "scout",
+          contract_fingerprint: "fp-scout",
+          wake_source: "input",
+        },
       ],
       edges: [
         // facet-less producers subscribe via ATOMIC_FACET, never "*".
@@ -213,7 +232,11 @@ function topo(sourceFp: string): ReconcilerTopology {
       entry_points: ["gateway"],
       acyclic: true,
     },
-    contract_fingerprints: { gateway: sourceFp, ledger: "fp-ledger", scout: "fp-scout" },
+    contract_fingerprints: {
+      gateway: sourceFp,
+      ledger: "fp-ledger",
+      scout: "fp-scout",
+    },
   };
 }
 
@@ -242,29 +265,35 @@ describe("masked-relay — cold renders all, quiet skips all, surprise renders (
 
     // 1) cold-start: every node renders.
     const cold = dag1.ingest("gateway");
-    const coldByNode = Object.fromEntries(cold.map((r) => [r.node, r.disposition]));
+    const coldByNode = Object.fromEntries(
+      cold.map((r) => [r.node, r.disposition]),
+    );
     expect(coldByNode["gateway"]).toBe("rendered");
     expect(coldByNode["ledger"]).toBe("rendered");
     expect(coldByNode["scout"]).toBe("rendered");
 
-    const freshAfterCold = createReplaySession({ ledger }).costRollup.total.fresh;
+    const freshAfterCold = createReplaySession({ ledger }).costRollup.total
+      .fresh;
     expect(freshAfterCold).toBe(3); // three cold renders, fresh:1 each
 
     // 2) an identical re-wake: nothing moved -> the gateway SKIPS, and a skip
     //    propagates NOTHING, so ledger/scout are never even woken.
     const quiet = dag1.ingest("gateway");
-    const quietByNode = Object.fromEntries(quiet.map((r) => [r.node, r.disposition]));
+    const quietByNode = Object.fromEntries(
+      quiet.map((r) => [r.node, r.disposition]),
+    );
     expect(quietByNode["gateway"]).toBe("skipped");
     // a skip wakes nothing downstream: ledger/scout are absent from the result.
-    expect(quiet.some((r) => r.node === "ledger" && r.disposition === "rendered")).toBe(
-      false,
-    );
-    expect(quiet.some((r) => r.node === "scout" && r.disposition === "rendered")).toBe(
-      false,
-    );
+    expect(
+      quiet.some((r) => r.node === "ledger" && r.disposition === "rendered"),
+    ).toBe(false);
+    expect(
+      quiet.some((r) => r.node === "scout" && r.disposition === "rendered"),
+    ).toBe(false);
 
     // the flat-line: a quiet re-wake does NOT move total.fresh.
-    const freshAfterQuiet = createReplaySession({ ledger }).costRollup.total.fresh;
+    const freshAfterQuiet = createReplaySession({ ledger }).costRollup.total
+      .fresh;
     expect(freshAfterQuiet).toBe(freshAfterCold);
 
     // 3) MOVE the memo key — edit the gateway's contract_fingerprint — and
@@ -280,13 +309,16 @@ describe("masked-relay — cold renders all, quiet skips all, surprise renders (
       ledger,
     });
     const surprise = dag2.ingest("gateway");
-    const surpriseByNode = Object.fromEntries(surprise.map((r) => [r.node, r.disposition]));
+    const surpriseByNode = Object.fromEntries(
+      surprise.map((r) => [r.node, r.disposition]),
+    );
     expect(surpriseByNode["gateway"]).toBe("rendered");
     expect(surpriseByNode["ledger"]).toBe("rendered");
     expect(surpriseByNode["scout"]).toBe("rendered");
 
     // total.fresh DID move (+3) on the contract edit.
-    const freshAfterSurprise = createReplaySession({ ledger }).costRollup.total.fresh;
+    const freshAfterSurprise = createReplaySession({ ledger }).costRollup.total
+      .fresh;
     expect(freshAfterSurprise).toBe(freshAfterCold + 3);
 
     // surprise_cause === wake.source still holds on every receipt.

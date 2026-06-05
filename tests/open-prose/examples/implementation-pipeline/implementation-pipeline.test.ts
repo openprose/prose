@@ -1,8 +1,8 @@
-// The Implementation Pipeline — tier-2 DETERMINISTIC gate (offline, zero spend).
+// The Implementation Pipeline: DETERMINISTIC offline gate (zero spend).
 //
 // This file is the example's load-bearing proof. It drives the REAL
 // `@openprose/reactor` reconciler (through the committed `generate.ts`) with
-// deterministic fake renders — NO model key — and asserts the whole validity
+// deterministic fake renders (NO model key) and asserts the whole validity
 // contract off the persisted ledger:
 //
 //   1. Compiles to the frozen artifact set: a valid TopologyWorldModel (16 nodes,
@@ -16,8 +16,8 @@
 //   6. Byte-deterministic: a second generation yields identical
 //      receipts.json / topology.json / labels.json.
 //
-// Plus the example's own tenet — FACET-LEVEL LANE INVALIDATION UNDER A FIXED
-// TOPOLOGY — encoded as the IP00..IP06 scenarios of the seed spec:
+// Plus the example's own tenet, FACET-LEVEL LANE INVALIDATION UNDER A FIXED
+// TOPOLOGY, encoded as the IP00..IP06 scenarios of the seed spec:
 //   IP00 the graph is FIXED at 16 nodes; extra work is `unassigned_work`, never a
 //        7th node.   IP02 a foundation change fans out to ALL SIX lanes once.
 //   IP03 a lane-local change lights ONE lane; the five siblings stay dark.
@@ -47,9 +47,7 @@ import {
   type ReconcilerTopology,
   type TopologyWorldModel,
 } from "@openprose/reactor/internals";
-import {
-  createFileSystemStorageAdapter,
-} from "@openprose/reactor";
+import { createFileSystemStorageAdapter } from "@openprose/reactor";
 
 import { generateImplementationPipelineFixture } from "./generate";
 
@@ -92,7 +90,7 @@ function readPublished(
   ) as { version: string | null; fingerprints: Record<string, string> };
 }
 // Every committed world-model version body for a node (the durable truth bodies
-// the audit surface replays — receipts.json carries fingerprints, not bodies).
+// the audit surface replays; receipts.json carries fingerprints, not bodies).
 function worldModelBodies(stateDir: string, node: string): string[] {
   const hex = Buffer.from(node, "utf8").toString("hex");
   const dir = join(stateDir, "world-models", hex, "versions");
@@ -120,7 +118,9 @@ describe("implementation-pipeline — the frozen replay artifact set (validity #
     // world-models/<hexNodeId>/{published.json, versions/sha256_*.bin}. The node
     // dir is the HEX-encoded id (e.g. finding.B2 -> 66696e64696e672e4232).
     const hex = Buffer.from(GATEWAY, "utf8").toString("hex");
-    expect(existsSync(join(dir, "world-models", hex, "published.json"))).toBe(true);
+    expect(existsSync(join(dir, "world-models", hex, "published.json"))).toBe(
+      true,
+    );
     const versions = readdirSync(join(dir, "world-models", hex, "versions"));
     expect(versions.some((f) => /^sha256_[0-9a-f]+\.bin$/.test(f))).toBe(true);
 
@@ -144,7 +144,10 @@ describe("implementation-pipeline — the frozen replay artifact set (validity #
     // verification + signpost + report = 16. NEVER a 7th lane.
     expect(topo.nodes.length).toBe(16);
     expect(res.nodeCount).toBe(16);
-    expect(topo.nodes.filter((n) => n.node.startsWith("responsibility.lane-")).length).toBe(6);
+    expect(
+      topo.nodes.filter((n) => n.node.startsWith("responsibility.lane-"))
+        .length,
+    ).toBe(6);
 
     expect(topo.acyclic).toBe(true);
     expect(topo.entry_points).toEqual([GATEWAY]); // the SINGLE entry gateway
@@ -153,7 +156,10 @@ describe("implementation-pipeline — the frozen replay artifact set (validity #
     for (const l of LANES) {
       expect(
         topo.edges.some(
-          (e) => e.producer === WORKPLAN && e.facet === `lane:${l}` && e.subscriber === LANE_NODE(l),
+          (e) =>
+            e.producer === WORKPLAN &&
+            e.facet === `lane:${l}` &&
+            e.subscriber === LANE_NODE(l),
         ),
       ).toBe(true);
     }
@@ -161,13 +167,16 @@ describe("implementation-pipeline — the frozen replay artifact set (validity #
     for (const l of LANES) {
       expect(
         topo.edges.some(
-          (e) => e.producer === FOUNDATION && e.facet === "shared-shapes" && e.subscriber === LANE_NODE(l),
+          (e) =>
+            e.producer === FOUNDATION &&
+            e.facet === "shared-shapes" &&
+            e.subscriber === LANE_NODE(l),
         ),
       ).toBe(true);
     }
   });
 
-  it("uses the ATOMIC_FACET constant for facet-less producers — and NO \"*\" token anywhere (validity #4)", () => {
+  it('uses the ATOMIC_FACET constant for facet-less producers — and NO "*" token anywhere (validity #4)', () => {
     const dir = mkdtempSync(join(tmpdir(), "ip-facet-"));
     generateImplementationPipelineFixture({ stateDir: dir });
     const topo = readTopology(dir);
@@ -178,8 +187,12 @@ describe("implementation-pipeline — the frozen replay artifact set (validity #
     expect(topo.edges.every((e) => e.facet !== "*")).toBe(true);
 
     // belt-and-braces: no literal "*" token in the whole on-disk corpus.
-    expect(readFileSync(join(dir, "compile", "topology.json"), "utf8")).not.toContain('"*"');
-    expect(readFileSync(join(dir, "receipts.json"), "utf8")).not.toContain('facet":"*"');
+    expect(
+      readFileSync(join(dir, "compile", "topology.json"), "utf8"),
+    ).not.toContain('"*"');
+    expect(readFileSync(join(dir, "receipts.json"), "utf8")).not.toContain(
+      'facet":"*"',
+    );
   });
 });
 
@@ -229,7 +242,7 @@ describe("implementation-pipeline — dispositions, cost cause, chain-verify (va
 });
 
 // =====================================================================
-// THE TENET — facet-level lane invalidation under a FIXED topology (IP00..IP04).
+// THE TENET: facet-level lane invalidation under a FIXED topology (IP00..IP04).
 // =====================================================================
 describe("implementation-pipeline — facet-level lane invalidation (the tenet)", () => {
   it("IP00 · extra work the six lanes cannot cover is `unassigned_work`, NOT a 7th node", () => {
@@ -239,7 +252,10 @@ describe("implementation-pipeline — facet-level lane invalidation (the tenet)"
 
     // the graph stays at exactly 16 nodes (no 7th lane was ever mounted).
     expect(topo.nodes.length).toBe(16);
-    expect(topo.nodes.filter((n) => n.node.startsWith("responsibility.lane-")).length).toBe(6);
+    expect(
+      topo.nodes.filter((n) => n.node.startsWith("responsibility.lane-"))
+        .length,
+    ).toBe(6);
 
     // the work-plan published a real truth (its @atomic version is content-addressed).
     const published = readPublished(dir, WORKPLAN);
@@ -249,10 +265,18 @@ describe("implementation-pipeline — facet-level lane invalidation (the tenet)"
     // its OWN maintained truth), never as a mounted node. Read its committed
     // world-model bodies (the audit surface), not a rerun.
     const wpTruth = worldModelBodies(dir, WORKPLAN);
-    expect(wpTruth.some((b) => b.includes('"unassigned_work":["a telemetry dashboard nobody owns"]'))).toBe(true);
+    expect(
+      wpTruth.some((b) =>
+        b.includes('"unassigned_work":["a telemetry dashboard nobody owns"]'),
+      ),
+    ).toBe(true);
 
     // and the report surfaced it (the terminal projection cites unassigned_work).
-    expect(worldModelBodies(dir, REPORT).some((b) => b.includes("telemetry dashboard"))).toBe(true);
+    expect(
+      worldModelBodies(dir, REPORT).some((b) =>
+        b.includes("telemetry dashboard"),
+      ),
+    ).toBe(true);
   });
 
   it("IP03 · a lane-local change lights ONE lane; the five siblings stay dark", () => {
@@ -262,12 +286,14 @@ describe("implementation-pipeline — facet-level lane invalidation (the tenet)"
     const topo = readTopology(dir);
 
     // find a work-plan render that moved EXACTLY ONE lane facet (the lane-local
-    // beat — distinct from the cold-boot cascade that moves all six at once).
+    // beat, distinct from the cold-boot cascade that moves all six at once).
     let sawLaneLocal = false;
     for (let i = 0; i < s.receipts.length; i++) {
       const r = s.receipts[i]!;
       if (r.node !== WORKPLAN || r.status !== "rendered") continue;
-      const movedLanes = [...s.movedFacetsByIndex[i]!].filter((f) => f.startsWith("lane:"));
+      const movedLanes = [...s.movedFacetsByIndex[i]!].filter((f) =>
+        f.startsWith("lane:"),
+      );
       if (movedLanes.length !== 1) continue;
       sawLaneLocal = true;
 
@@ -277,9 +303,13 @@ describe("implementation-pipeline — facet-level lane invalidation (the tenet)"
         movedFacets: s.movedFacetsByIndex[i]!,
         wakeRef: r.content_hash,
       });
-      const litLanes = targets.map((t) => t.node).filter((n) => n.startsWith("responsibility.lane-"));
+      const litLanes = targets
+        .map((t) => t.node)
+        .filter((n) => n.startsWith("responsibility.lane-"));
       expect(litLanes.length).toBe(1);
-      expect(litLanes[0]).toBe(`responsibility.lane-${movedLanes[0]!.slice("lane:".length)}`);
+      expect(litLanes[0]).toBe(
+        `responsibility.lane-${movedLanes[0]!.slice("lane:".length)}`,
+      );
     }
     expect(sawLaneLocal).toBe(true);
   });
@@ -306,7 +336,9 @@ describe("implementation-pipeline — facet-level lane invalidation (the tenet)"
         wakeRef: r.content_hash,
       });
       const litLanes = new Set(
-        targets.map((t) => t.node).filter((n) => n.startsWith("responsibility.lane-")),
+        targets
+          .map((t) => t.node)
+          .filter((n) => n.startsWith("responsibility.lane-")),
       );
       if (litLanes.size === 6) sawFanout = true;
     }
@@ -320,16 +352,20 @@ describe("implementation-pipeline — facet-level lane invalidation (the tenet)"
     // the construction-review committed a truth that REJECTED the unsafe lane
     // (its patch escaped its owned paths / hit a forbidden file).
     const reviewBodies = worldModelBodies(dir, CONSTRUCTION_REVIEW);
-    const rejecting = reviewBodies.find((b) => b.includes('"rejected_lanes":[{'));
+    const rejecting = reviewBodies.find((b) =>
+      b.includes('"rejected_lanes":[{'),
+    );
     expect(rejecting).toBeTruthy();
     expect(rejecting!).toContain("escapes owned paths");
     expect(rejecting!).toContain('"lane":"sdk-runtime"');
 
     // and the integration truth that recorded the exclusion NEVER lists the
-    // forbidden file in its integrated_patch_set — the rejected lane is excluded
+    // forbidden file in its integrated_patch_set; the rejected lane is excluded
     // by construction (the forbidden `sign.ts` patch never integrates).
     const integBodies = worldModelBodies(dir, INTEGRATION);
-    const excluding = integBodies.find((b) => b.includes('"excluded_lanes":["sdk-runtime"]'));
+    const excluding = integBodies.find((b) =>
+      b.includes('"excluded_lanes":["sdk-runtime"]'),
+    );
     expect(excluding).toBeTruthy();
     expect(excluding!).not.toContain("sign.ts");
 
@@ -342,7 +378,7 @@ describe("implementation-pipeline — facet-level lane invalidation (the tenet)"
 });
 
 // =====================================================================
-// The cost rollup — the EVALS-style claim: a quiet re-wake does NOT move
+// The cost rollup: the EVALS-style claim: a quiet re-wake does NOT move
 // total.fresh; a memo-key move (the lane-local / fanout / review beats) DOES.
 // This is the README "what to assert" snippet, run verbatim.
 // =====================================================================
@@ -363,14 +399,24 @@ describe("implementation-pipeline — cost rollup moves IFF the memo key moves (
       },
     });
 
-    // A facet-less producer subscribes on ATOMIC_FACET — NEVER a "*" wildcard.
+    // A facet-less producer subscribes on ATOMIC_FACET, NEVER a "*" wildcard.
     const topo: ReconcilerTopology = {
       topology: {
         nodes: [
-          { node: GATEWAY, contract_fingerprint: "fp-gw", wake_source: "external" },
-          { node: WORKPLAN, contract_fingerprint: "fp-wp", wake_source: "input" },
+          {
+            node: GATEWAY,
+            contract_fingerprint: "fp-gw",
+            wake_source: "external",
+          },
+          {
+            node: WORKPLAN,
+            contract_fingerprint: "fp-wp",
+            wake_source: "input",
+          },
         ],
-        edges: [{ subscriber: WORKPLAN, producer: GATEWAY, facet: ATOMIC_FACET }],
+        edges: [
+          { subscriber: WORKPLAN, producer: GATEWAY, facet: ATOMIC_FACET },
+        ],
         entry_points: [GATEWAY],
         acyclic: true,
       },
@@ -378,7 +424,10 @@ describe("implementation-pipeline — cost rollup moves IFF the memo key moves (
     };
     const dag = mountDag({
       topology: topo,
-      mounts: { [GATEWAY]: { render: render("v1") }, [WORKPLAN]: { render: render("plan v1") } },
+      mounts: {
+        [GATEWAY]: { render: render("v1") },
+        [WORKPLAN]: { render: render("plan v1") },
+      },
       ledger,
     });
 
@@ -390,17 +439,29 @@ describe("implementation-pipeline — cost rollup moves IFF the memo key moves (
     expect(fresh(createReplaySession({ ledger }))).toBe(2);
 
     const quiet = dag.ingest(GATEWAY); // nothing moved -> gateway skips, plan untouched
-    expect(quiet.map((r) => `${r.node}:${r.disposition}`)).toEqual([`${GATEWAY}:skipped`]);
+    expect(quiet.map((r) => `${r.node}:${r.disposition}`)).toEqual([
+      `${GATEWAY}:skipped`,
+    ]);
     expect(fresh(createReplaySession({ ledger }))).toBe(2); // total.fresh did NOT move
 
     // A contract edit moves the memo key -> render + propagate.
     const topo2: ReconcilerTopology = {
       topology: {
         nodes: [
-          { node: GATEWAY, contract_fingerprint: "fp-gw-v2", wake_source: "external" },
-          { node: WORKPLAN, contract_fingerprint: "fp-wp", wake_source: "input" },
+          {
+            node: GATEWAY,
+            contract_fingerprint: "fp-gw-v2",
+            wake_source: "external",
+          },
+          {
+            node: WORKPLAN,
+            contract_fingerprint: "fp-wp",
+            wake_source: "input",
+          },
         ],
-        edges: [{ subscriber: WORKPLAN, producer: GATEWAY, facet: ATOMIC_FACET }],
+        edges: [
+          { subscriber: WORKPLAN, producer: GATEWAY, facet: ATOMIC_FACET },
+        ],
         entry_points: [GATEWAY],
         acyclic: true,
       },
@@ -408,7 +469,10 @@ describe("implementation-pipeline — cost rollup moves IFF the memo key moves (
     };
     const dag2 = mountDag({
       topology: topo2,
-      mounts: { [GATEWAY]: { render: render("v2") }, [WORKPLAN]: { render: render("plan v2") } },
+      mounts: {
+        [GATEWAY]: { render: render("v2") },
+        [WORKPLAN]: { render: render("plan v2") },
+      },
       ledger,
     });
     const moved = dag2.ingest(GATEWAY);
@@ -426,7 +490,10 @@ describe("implementation-pipeline — cost rollup moves IFF the memo key moves (
     const { byCause, total } = s.costRollup;
 
     const sumFresh = Object.values(byCause).reduce((a, b) => a + b.fresh, 0);
-    const sumReceipts = Object.values(byCause).reduce((a, b) => a + b.receipts, 0);
+    const sumReceipts = Object.values(byCause).reduce(
+      (a, b) => a + b.receipts,
+      0,
+    );
     expect(sumFresh).toBe(total.fresh);
     expect(sumReceipts).toBe(total.receipts);
     expect(total.fresh).toBeGreaterThan(0); // the meter sang (real renders)
@@ -449,7 +516,9 @@ describe("implementation-pipeline — byte-deterministic regeneration (validity 
       join("compile", "labels.json"),
       "beats.json",
     ]) {
-      expect(readFileSync(join(a, rel), "utf8")).toBe(readFileSync(join(b, rel), "utf8"));
+      expect(readFileSync(join(a, rel), "utf8")).toBe(
+        readFileSync(join(b, rel), "utf8"),
+      );
     }
   });
 

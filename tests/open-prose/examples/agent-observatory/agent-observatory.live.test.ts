@@ -1,14 +1,14 @@
-// agent-observatory — the OPTIONAL tier-3 live / async-render reliability check.
+// agent-observatory: the OPTIONAL key-gated live / async-render reliability check.
 //
-// This tier is ADDITIVE and KEY-GATED. With no key (or REACTOR_OFFLINE=1) it is
-// a PASSING-SKIPPED no-op that never touches the network — the hermetic CI gate
-// (`REACTOR_OFFLINE=1`) runs tiers 1–2 green and reports this body as skipped.
+// This check is ADDITIVE and KEY-GATED. With no key (or REACTOR_OFFLINE=1) it is
+// a PASSING-SKIPPED no-op that never touches the network: the hermetic CI gate
+// (`REACTOR_OFFLINE=1`) runs the offline gates green and reports this body as skipped.
 //
 // The reliability question is "is the responsibility's `### Maintains`
 // postcondition actually met by a REAL render?". Unlike a stub that only asserts
 // the gate flipped, this WIRES the live adapter for real: it mounts the two
-// load-bearing observatory nodes — the Concept Clusterer (the expensive batched
-// synthesis) and the Agent Dashboard (HTML) terminal artifact — through
+// load-bearing observatory nodes (the Concept Clusterer, the expensive batched
+// synthesis, and the Agent Dashboard (HTML) terminal artifact) through
 // `createAgentRender` at the `asyncMounts` seam, drives the async reconcile path
 // with `dag.ingestAsync`, then reads the committed truth with
 // `store.read(node, "published")` and scores it against each node's
@@ -23,14 +23,14 @@
 // exports `createAgentRender` / `createOpenRouterProvider` / `hasOpenRouterKey`.
 // Note: that barrel does NOT currently export `isOfflineForced` (a shared-file
 // gap, out of scope for this example), so the offline gate here reads
-// `process.env.REACTOR_OFFLINE` directly — the same pattern the package's own
+// `process.env.REACTOR_OFFLINE` directly, the same pattern the package's own
 // research-tree live test uses. All model calls route through
 // `createOpenRouterProvider`; nothing here hits the network unless a key is
 // present and REACTOR_OFFLINE is unset.
 //
 // Run live with a key:
 //   OPENROUTER_API_KEY=… npx vitest run --config \
-//     skills/open-prose/examples/agent-observatory/vitest.local.config.ts
+//     tests/open-prose/examples/agent-observatory/vitest.local.config.ts
 
 import { mkdtempSync, rmSync } from "node:fs";
 import { createHash } from "node:crypto";
@@ -40,9 +40,7 @@ import { describe, expect, it } from "vitest";
 
 // Storage/store/fingerprint live on the bare `@openprose/reactor` barrel; the
 // reconciler primitives + receipt helpers live on `/sdk`. Both are public.
-import {
-  createFileSystemStorageAdapter,
-} from "@openprose/reactor";
+import { createFileSystemStorageAdapter } from "@openprose/reactor";
 import {
   FileSystemWorldModelStore,
   fingerprintArtifact,
@@ -74,12 +72,13 @@ import {
   hasOpenRouterKey,
 } from "@openprose/reactor/agents";
 
-// Honor REACTOR_OFFLINE and require a real key — otherwise this is a no-op.
-const offline = process.env.REACTOR_OFFLINE === "1" || process.env.REACTOR_OFFLINE === "true";
+// Honor REACTOR_OFFLINE and require a real key, otherwise this is a no-op.
+const offline =
+  process.env.REACTOR_OFFLINE === "1" || process.env.REACTOR_OFFLINE === "true";
 const live = hasOpenRouterKey() && !offline;
 const skipReason = offline
-  ? "REACTOR_OFFLINE=1 — live tier disabled"
-  : "no OPENROUTER_API_KEY — live tier skipped";
+  ? "REACTOR_OFFLINE=1 (live check disabled)"
+  : "no OPENROUTER_API_KEY (live check skipped)";
 
 // --- Node identities for the live slice (a sub-graph of the full observatory).
 const SOURCE = "ingress.workstreams";
@@ -90,16 +89,21 @@ const DASHBOARD_HTML = "responsibility.dashboard-html";
 const fp = (value: unknown): Fingerprint =>
   `sha256:${createHash("sha256").update(JSON.stringify(value)).digest("hex")}`;
 
-const atomic = (fm: WorldModelFiles) => ({ [ATOMIC_FACET]: fingerprintArtifact(fm) });
+const atomic = (fm: WorldModelFiles) => ({
+  [ATOMIC_FACET]: fingerprintArtifact(fm),
+});
 
 // The Workstream Index exposes the `rollup` (cheap, every render) and the gating
-// `cluster-gate` (moves only when the distinct workstream set moves) facets —
+// `cluster-gate` (moves only when the distinct workstream set moves) facets,
 // the same two-facet contract the deterministic generator uses.
 const ROLLUP_FACET = "rollup";
 const CLUSTER_GATE_FACET = "cluster-gate";
 const workstreamIndexCanon = (fm: WorldModelFiles) => {
   const bytes = fm["truth.json"];
-  const t = bytes === undefined ? {} : (JSON.parse(readTextFile(bytes)) as Record<string, unknown>);
+  const t =
+    bytes === undefined
+      ? {}
+      : (JSON.parse(readTextFile(bytes)) as Record<string, unknown>);
   return {
     [ATOMIC_FACET]: fingerprintArtifact(fm),
     [ROLLUP_FACET]: fp(t["rollup"] ?? null),
@@ -119,7 +123,8 @@ function liveContractFor(node: string) {
         "`clusters`: `Cluster[]`, each `{ cluster_id, workstream, concepts }`",
         "`cluster_count`: the number of clusters",
       ],
-      continuity: "Wake when the distinct workstream set changes (a major new project).",
+      continuity:
+        "Wake when the distinct workstream set changes (a major new project).",
       execution:
         "Read your upstream producer BY REFERENCE via `wm_list_upstream` + " +
         "`wm_read_upstream` (path `truth.json`). Read its `workstreams` (a string[] of " +
@@ -142,7 +147,8 @@ function liveContractFor(node: string) {
         "`html`: a self-contained static HTML document (no server, no external assets)",
         "`content_hash`: a stable digest so an unchanged render is a memo hit",
       ],
-      continuity: "Input-driven: a moved `rollup` facet or a changed cluster graph wakes the dashboard.",
+      continuity:
+        "Input-driven: a moved `rollup` facet or a changed cluster graph wakes the dashboard.",
       execution:
         "Read BOTH upstream producers BY REFERENCE via `wm_list_upstream` + " +
         "`wm_read_upstream` (path `truth.json`): the workstream-index `rollup` (with " +
@@ -157,7 +163,10 @@ function liveContractFor(node: string) {
   return {
     name: "Workstream Index",
     requires: ["the per-session summaries"],
-    maintains: ["`rollup`: the cheap incremental rollup", "`workstreams`: the distinct workstream set"],
+    maintains: [
+      "`rollup`: the cheap incremental rollup",
+      "`workstreams`: the distinct workstream set",
+    ],
     continuity: "Input-driven, convergent diamond fan-in.",
     execution:
       "Read your upstream producer BY REFERENCE via `wm_list_upstream` + " +
@@ -172,18 +181,46 @@ function topology(): ReconcilerTopology {
   return {
     topology: {
       nodes: [
-        { node: SOURCE, contract_fingerprint: "fp-src", wake_source: "external" },
-        { node: WORKSTREAM_INDEX, contract_fingerprint: "fp-wi", wake_source: "input" },
-        { node: CONCEPT_CLUSTERER, contract_fingerprint: "fp-cl", wake_source: "input" },
-        { node: DASHBOARD_HTML, contract_fingerprint: "fp-db", wake_source: "input" },
+        {
+          node: SOURCE,
+          contract_fingerprint: "fp-src",
+          wake_source: "external",
+        },
+        {
+          node: WORKSTREAM_INDEX,
+          contract_fingerprint: "fp-wi",
+          wake_source: "input",
+        },
+        {
+          node: CONCEPT_CLUSTERER,
+          contract_fingerprint: "fp-cl",
+          wake_source: "input",
+        },
+        {
+          node: DASHBOARD_HTML,
+          contract_fingerprint: "fp-db",
+          wake_source: "input",
+        },
       ],
       edges: [
         { subscriber: WORKSTREAM_INDEX, producer: SOURCE, facet: ATOMIC_FACET },
         // The Clusterer reads ONLY the gating facet (the batch gate).
-        { subscriber: CONCEPT_CLUSTERER, producer: WORKSTREAM_INDEX, facet: CLUSTER_GATE_FACET },
+        {
+          subscriber: CONCEPT_CLUSTERER,
+          producer: WORKSTREAM_INDEX,
+          facet: CLUSTER_GATE_FACET,
+        },
         // The Dashboard reads the cheap rollup + the cluster graph (atomic).
-        { subscriber: DASHBOARD_HTML, producer: WORKSTREAM_INDEX, facet: ROLLUP_FACET },
-        { subscriber: DASHBOARD_HTML, producer: CONCEPT_CLUSTERER, facet: ATOMIC_FACET },
+        {
+          subscriber: DASHBOARD_HTML,
+          producer: WORKSTREAM_INDEX,
+          facet: ROLLUP_FACET,
+        },
+        {
+          subscriber: DASHBOARD_HTML,
+          producer: CONCEPT_CLUSTERER,
+          facet: ATOMIC_FACET,
+        },
       ],
       entry_points: [SOURCE],
       acyclic: true,
@@ -197,14 +234,19 @@ function topology(): ReconcilerTopology {
   };
 }
 
-function readTruth(store: WorldModelStore, node: string): Record<string, unknown> | null {
+function readTruth(
+  store: WorldModelStore,
+  node: string,
+): Record<string, unknown> | null {
   const read = store.read(node, "published");
   if (read.ref.version === null) return null;
   const b = read.files["truth.json"];
-  return b === undefined ? null : (JSON.parse(readTextFile(b)) as Record<string, unknown>);
+  return b === undefined
+    ? null
+    : (JSON.parse(readTextFile(b)) as Record<string, unknown>);
 }
 
-describe("agent-observatory — live reliability (tier 3, key-gated)", () => {
+describe("agent-observatory live reliability (key-gated)", () => {
   it.skipIf(!live)(
     "renders the observatory with live agent renders and meets the ### Maintains postconditions",
     async () => {
@@ -212,14 +254,23 @@ describe("agent-observatory — live reliability (tier 3, key-gated)", () => {
       const ledgerDir = mkdtempSync(join(tmpdir(), "agent-obs-live-ledger-"));
       try {
         const store = new FileSystemWorldModelStore({ directory: wmDir });
-        const storage = createFileSystemStorageAdapter({ directory: ledgerDir });
+        const storage = createFileSystemStorageAdapter({
+          directory: ledgerDir,
+        });
         const ledger = new FileSystemReceiptLedger({ storage });
         const provider = createOpenRouterProvider();
 
         // Seed the ingress: three distinct workstreams across three sessions.
-        const WORKSTREAMS = ["observatory-launch", "growth-loops", "infra-migration"];
+        const WORKSTREAMS = [
+          "observatory-launch",
+          "growth-loops",
+          "infra-migration",
+        ];
         const fm = files({
-          "truth.json": jsonFile({ workstreams: WORKSTREAMS, session_count: WORKSTREAMS.length }),
+          "truth.json": jsonFile({
+            workstreams: WORKSTREAMS,
+            session_count: WORKSTREAMS.length,
+          }),
         });
         const commitRes = store.commitPublished(SOURCE, fm, atomic);
         const prev = ledger.lastReceipt(SOURCE);
@@ -249,19 +300,27 @@ describe("agent-observatory — live reliability (tier 3, key-gated)", () => {
         });
         const live3: AsyncMountedRender = { render: baseRender };
         const asyncMounts = {
-          [WORKSTREAM_INDEX]: { render: baseRender, canonicalizer: workstreamIndexCanon },
+          [WORKSTREAM_INDEX]: {
+            render: baseRender,
+            canonicalizer: workstreamIndexCanon,
+          },
           [CONCEPT_CLUSTERER]: { render: baseRender, canonicalizer: atomic },
           [DASHBOARD_HTML]: { render: baseRender, canonicalizer: atomic },
         };
 
         const dag = mountDag({
           topology: topology(),
-          // The source has no live body — a zero-cost sync fallback.
+          // The source has no live body: a zero-cost sync fallback.
           mounts: {
             [SOURCE]: {
               render: () => ({
                 world_model: files({}),
-                cost: { provider: "none", model: "fake", tokens: { fresh: 0, reused: 0 }, surprise_cause: "external" },
+                cost: {
+                  provider: "none",
+                  model: "fake",
+                  tokens: { fresh: 0, reused: 0 },
+                  surprise_cause: "external",
+                },
               }),
             },
           },
@@ -275,10 +334,12 @@ describe("agent-observatory — live reliability (tier 3, key-gated)", () => {
         await dag.ingestAsync(SOURCE);
         void live3;
 
-        // POSTCONDITION 1 — concept-clusterer `### Maintains`.
+        // POSTCONDITION 1: concept-clusterer `### Maintains`.
         const cl = readTruth(store, CONCEPT_CLUSTERER);
         expect(cl, "concept-clusterer published truth").not.toBeNull();
-        expect(Array.isArray(cl!["clusters"]), "clusters is an array").toBe(true);
+        expect(Array.isArray(cl!["clusters"]), "clusters is an array").toBe(
+          true,
+        );
         expect(typeof cl!["cluster_count"]).toBe("number");
         const clusters = cl!["clusters"] as Array<Record<string, unknown>>;
         expect(clusters.length).toBeGreaterThanOrEqual(1);
@@ -287,7 +348,7 @@ describe("agent-observatory — live reliability (tier 3, key-gated)", () => {
           expect(WORKSTREAMS).toContain(c["workstream"]);
         }
 
-        // POSTCONDITION 2 — agent-dashboard-html `### Maintains`.
+        // POSTCONDITION 2: agent-dashboard-html `### Maintains`.
         const db = readTruth(store, DASHBOARD_HTML);
         expect(db, "dashboard-html published truth").not.toBeNull();
         expect(db!["path"]).toBe("agent-dashboard.html");

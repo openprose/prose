@@ -6,7 +6,7 @@ transcript: a **fixed, wide fan-out** of six parallel construction lanes with
 topology**.
 
 > **Standing goal.** Every planning-corpus work item is built, reviewed, and
-> integrated as a legible, auditable, memoized DAG — the planner may reassign what
+> integrated as a legible, auditable, memoized DAG; the planner may reassign what
 > each lane builds, but it can never grow the graph.
 
 **One-line scenario.** Planning docs + a repo snapshot + run config fan into a
@@ -19,10 +19,10 @@ lanes; verification and a report/signpost index close it out.
 > **The work plan may change lane CONTENTS; it may not mutate the GRAPH.**
 
 - Work the six fixed lanes cannot own becomes `unassigned_work` on the work-plan's
-  own truth — **never a 7th mounted node**. The topology is frozen at **16 nodes**.
+  own truth (**never a 7th mounted node**). The topology is frozen at **16 nodes**.
 - A change to ONE lane's contents lights **one lane**; the five siblings stay dark
   (independent per-lane facet tokens).
-- A change to the **foundation** fans out to **all six lanes once** — the
+- A change to the **foundation** fans out to **all six lanes once**: the
   intentional, auditable blast radius.
 - A **rejected** lane never reaches integration.
 
@@ -79,20 +79,6 @@ reactor compile --check        # exits 1 (stale) until the project is compiled
 reactor topology               # the compiled DAG once an IR cache exists
 ```
 
-### Replay the committed fixture (keyless, one second)
-
-```sh
-reactor-devtools ./replay --describe
-#   dispositions rendered=… · skipped=… · failed=0
-#   surprise-cause  external=… · input=…
-#   COST ROLLUP (tokens) …   CHAIN-VERIFY ok
-```
-
-The committed `replay/` state-dir is the frozen artifact set: `compile/topology.json`
-+ `compile/labels.json`, a flat `receipts.json`, the per-node `world-models/`, and a
-scripted `beats.json` (cold-boot → quiet → lane-local → foundation-fanout →
-review-blocks → quiet bookend).
-
 ### Live (needs a key)
 
 ```sh
@@ -101,11 +87,28 @@ reactor run                    # boot, drain, print dispositions + cost
 reactor receipts               # the audit trail
 ```
 
-## What to assert (mirrors `implementation-pipeline.test.ts`)
+### Replay any run you produce
 
-The deterministic gate drives the REAL reconciler through `generate.ts` (no key)
-and asserts off the persisted ledger via the public `@openprose/reactor` +
-`@openprose/reactor/sdk` exports:
+A `reactor run` (or `reactor serve`) writes a chain-verifiable state-dir you can
+replay keyless in devtools:
+
+```sh
+reactor-devtools <state-dir> --describe
+#   dispositions rendered=… · skipped=… · failed=0
+#   surprise-cause  external=… · input=…
+#   COST ROLLUP (tokens) …   CHAIN-VERIFY ok
+```
+
+A replayed state-dir holds the compiled topology and labels, the flat
+chain-verifiable receipt ledger, and the per-node world-models, walking the
+trajectory cold-boot → quiet → lane-local → foundation-fanout → review-blocks →
+quiet bookend.
+
+## What it asserts
+
+The example is covered by the project's offline test suite, which drives the REAL
+reconciler with deterministic fake renders (no key) and asserts off the persisted
+ledger via the public `@openprose/reactor` + `@openprose/reactor/sdk` exports:
 
 1. **Frozen artifacts.** `compile/topology.json` is a valid `TopologyWorldModel`
    (16 nodes, a single entry gateway, `acyclic:true`), `labels.json` is present,
@@ -113,34 +116,20 @@ and asserts off the persisted ledger via the public `@openprose/reactor` +
    `published.json` + `versions/sha256_*.bin`.
 2. **Dispositions.** Cold-start renders all 16 nodes; a byte-identical re-wake
    memo-SKIPS them (a skip carries zero fresh and wakes nothing).
-3. **`cost.surprise_cause === wake.source`** on every committed receipt (read off
+3. **`cost.surprise_cause === wake.source`** on every receipt (read off
    `ctx.wake.source`, never hardcoded).
 4. **`ATOMIC_FACET`** for facet-less producers; no `"*"` token anywhere.
 5. **Chain-verify.** `verifyReceiptChain` passes over every per-node chain.
 6. **Byte-determinism.** A second generation yields identical
    `receipts.json` / `topology.json` / `labels.json` / `beats.json`.
 
-Plus the tenet, encoded as the seed spec's IP00–IP06:
+Plus the tenet, encoded as IP00–IP06:
 
-- **IP00** — extra work is `unassigned_work`, the graph stays at 16 nodes.
-- **IP03** — a lane-local change lights one lane; `propagationTargets` confirms the
+- **IP00**: extra work is `unassigned_work`, the graph stays at 16 nodes.
+- **IP03**: a lane-local change lights one lane; `propagationTargets` confirms the
   five siblings stay dark.
-- **IP02** — a foundation change fans out to all six lanes.
-- **IP04** — `construction-review` rejects the unsafe lane; the forbidden patch
+- **IP02**: a foundation change fans out to all six lanes.
+- **IP04**: `construction-review` rejects the unsafe lane; the forbidden patch
   never appears in any `integrated_patch_set`.
-- **IP06** — a no-change replay memo-skips the whole graph; `costRollup.total.fresh`
+- **IP06**: a no-change replay memo-skips the whole graph; `costRollup.total.fresh`
   does not move on a quiet re-wake and DOES move when a memo key moves.
-
-Run it offline at zero spend:
-
-```sh
-cd /Users/sl/code/prose && REACTOR_OFFLINE=1 \
-  npx vitest run skills/open-prose/examples/implementation-pipeline   # or: pnpm test:examples
-```
-
-## Regenerate the fixture
-
-`generate.ts` is the single regeneration source of truth. It drives the real
-reconciler with deterministic fake renders and self-writes `beats.json`, so a
-regen is lossless and byte-identical — the determinism test catches any drift
-against the SDK.

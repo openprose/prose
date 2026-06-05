@@ -1,4 +1,4 @@
-// forme-fixpoint — OPTIONAL tier-3 live reliability check (KEY-GATED).
+// forme-fixpoint: OPTIONAL key-gated live reliability check.
 //
 // Additive and never required for the commit gate. It honors REACTOR_OFFLINE and
 // is gated on a real OpenRouter key: a keyless or REACTOR_OFFLINE=1 run reports a
@@ -12,7 +12,7 @@
 // contract promises:
 //
 //   an UNCHANGED contract set re-wake SKIPS the Topology Maintainer at ZERO model
-//   calls (Forme renders at most once per changed contract-set fingerprint —
+//   calls (Forme renders at most once per changed contract-set fingerprint:
 //   finite recursion / topology memoization, on the live path).
 
 import { describe, it, expect } from "vitest";
@@ -20,12 +20,8 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import {
-  createFileSystemStorageAdapter,
-} from "@openprose/reactor";
-import {
-  FileSystemWorldModelStore,
-} from "@openprose/reactor/adapters";
+import { createFileSystemStorageAdapter } from "@openprose/reactor";
+import { FileSystemWorldModelStore } from "@openprose/reactor/adapters";
 import {
   mountDag,
   createReplaySession,
@@ -34,9 +30,7 @@ import {
   ATOMIC_FACET,
   type RenderContext,
 } from "@openprose/reactor";
-import {
-  FileSystemReceiptLedger,
-} from "@openprose/reactor/adapters";
+import { FileSystemReceiptLedger } from "@openprose/reactor/adapters";
 import type {
   ReconcilerTopology,
   AsyncMountedRender,
@@ -53,12 +47,13 @@ const MAINTAINER = "responsibility.topology-maintainer";
 const TRUTH = "truth.json";
 
 // Honor REACTOR_OFFLINE (the hermetic CI switch) AND the key gate.
-const OFFLINE = process.env.REACTOR_OFFLINE === "1" || process.env.REACTOR_OFFLINE === "true";
+const OFFLINE =
+  process.env.REACTOR_OFFLINE === "1" || process.env.REACTOR_OFFLINE === "true";
 const SKIP_REASON = OFFLINE
-  ? "REACTOR_OFFLINE=1 — live tier is a passing-skipped no-op"
+  ? "REACTOR_OFFLINE=1 (live check is a passing-skipped no-op)"
   : hasOpenRouterKey()
     ? false
-    : "no OPENROUTER_API_KEY — live tier is a passing-skipped no-op";
+    : "no OPENROUTER_API_KEY (live check is a passing-skipped no-op)";
 
 function liveContractFor(node: string): CompiledContractView {
   if (node === MAINTAINER) {
@@ -100,21 +95,40 @@ describe("forme-fixpoint (live) — an unchanged contract set skips Forme at zer
     async () => {
       const dir = mkdtempSync(join(tmpdir(), "forme-fixpoint-live-"));
       try {
-        const store = new FileSystemWorldModelStore({ directory: join(dir, "world-models") });
+        const store = new FileSystemWorldModelStore({
+          directory: join(dir, "world-models"),
+        });
         const storage = createFileSystemStorageAdapter({ directory: dir });
         const ledger = new FileSystemReceiptLedger({ storage });
 
         const topology: ReconcilerTopology = {
           topology: {
             nodes: [
-              { node: REGISTRY, contract_fingerprint: "fp-reg", wake_source: "external" },
-              { node: MAINTAINER, contract_fingerprint: "fp-forme", wake_source: "input" },
+              {
+                node: REGISTRY,
+                contract_fingerprint: "fp-reg",
+                wake_source: "external",
+              },
+              {
+                node: MAINTAINER,
+                contract_fingerprint: "fp-forme",
+                wake_source: "input",
+              },
             ],
-            edges: [{ subscriber: MAINTAINER, producer: REGISTRY, facet: ATOMIC_FACET }],
+            edges: [
+              {
+                subscriber: MAINTAINER,
+                producer: REGISTRY,
+                facet: ATOMIC_FACET,
+              },
+            ],
             entry_points: [REGISTRY],
             acyclic: true,
           },
-          contract_fingerprints: { [REGISTRY]: "fp-reg", [MAINTAINER]: "fp-forme" },
+          contract_fingerprints: {
+            [REGISTRY]: "fp-reg",
+            [MAINTAINER]: "fp-forme",
+          },
         };
 
         // A deterministic registry truth so the live Forme has a contract set to
@@ -122,8 +136,18 @@ describe("forme-fixpoint (live) — an unchanged contract set skips Forme at zer
         const registryTruth = files({
           [TRUTH]: jsonFile({
             contract_set: [
-              { contract_id: "customer-signal-inbox", kind: "gateway", requires_facets: [], maintains_facets: ["CustomerSignals"] },
-              { contract_id: "insight-memo", kind: "responsibility", requires_facets: ["CustomerSignals"], maintains_facets: ["InsightMemo"] },
+              {
+                contract_id: "customer-signal-inbox",
+                kind: "gateway",
+                requires_facets: [],
+                maintains_facets: ["CustomerSignals"],
+              },
+              {
+                contract_id: "insight-memo",
+                kind: "responsibility",
+                requires_facets: ["CustomerSignals"],
+                maintains_facets: ["InsightMemo"],
+              },
             ],
           }),
         });
@@ -142,14 +166,24 @@ describe("forme-fixpoint (live) — an unchanged contract set skips Forme at zer
             [REGISTRY]: {
               render: (ctx: RenderContext) => ({
                 world_model: registryTruth,
-                cost: { provider: "none", model: "fake", tokens: { fresh: 0, reused: 0 }, surprise_cause: ctx.wake.source },
+                cost: {
+                  provider: "none",
+                  model: "fake",
+                  tokens: { fresh: 0, reused: 0 },
+                  surprise_cause: ctx.wake.source,
+                },
               }),
             },
             // sync fallback for Forme (the live one is on asyncMounts).
             [MAINTAINER]: {
               render: (ctx: RenderContext) => ({
                 world_model: files({}),
-                cost: { provider: "none", model: "fake", tokens: { fresh: 0, reused: 0 }, surprise_cause: ctx.wake.source },
+                cost: {
+                  provider: "none",
+                  model: "fake",
+                  tokens: { fresh: 0, reused: 0 },
+                  surprise_cause: ctx.wake.source,
+                },
               }),
             },
           },
@@ -159,11 +193,15 @@ describe("forme-fixpoint (live) — an unchanged contract set skips Forme at zer
         });
 
         await dag.ingestAsync(REGISTRY); // cold: the live Forme render fires
-        const freshAfterCold = createReplaySession({ ledger }).costRollup.total.fresh;
+        const freshAfterCold = createReplaySession({ ledger }).costRollup.total
+          .fresh;
 
         const second = await dag.ingestAsync(REGISTRY); // identical re-wake: must skip
-        expect(second.map((r) => `${r.node}:${r.disposition}`)).toEqual([`${REGISTRY}:skipped`]);
-        const freshAfterReWake = createReplaySession({ ledger }).costRollup.total.fresh;
+        expect(second.map((r) => `${r.node}:${r.disposition}`)).toEqual([
+          `${REGISTRY}:skipped`,
+        ]);
+        const freshAfterReWake = createReplaySession({ ledger }).costRollup
+          .total.fresh;
         expect(freshAfterReWake).toBe(freshAfterCold); // the skip spent no fresh tokens
       } finally {
         rmSync(dir, { recursive: true, force: true });

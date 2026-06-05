@@ -1,4 +1,4 @@
-// inbox-triage — OPTIONAL tier-3 live reliability check (key-gated).
+// inbox-triage: OPTIONAL key-gated live reliability check.
 //
 // This body is a PASSING-SKIPPED no-op when there is no key or when
 // REACTOR_OFFLINE is set, so the hermetic CI gate (REACTOR_OFFLINE=1) never
@@ -8,11 +8,11 @@
 // `### Maintains` postcondition off the persisted truth:
 //
 //   the classification carries the canonical { subject, body } the threader
-//   fingerprints — IDENTICAL to the delivered email's content.
+//   fingerprints, IDENTICAL to the delivered email's content.
 //
 // We read that postcondition straight off `store.read(node, "published")` (the
 // real published world-model the harness committed), so a keyed run actually
-// exercises the model and a fake/empty answer FAILS the rubric — the tier-3
+// exercises the model and a fake/empty answer FAILS the rubric, so the live
 // reliability rate is real, not trivially 1.0.
 //
 // It reuses the existing live-gating helpers: every model call routes through
@@ -25,9 +25,7 @@ import { join } from "node:path";
 import { createHash } from "node:crypto";
 import { describe, it, expect } from "vitest";
 
-import {
-  createFileSystemStorageAdapter,
-} from "@openprose/reactor";
+import { createFileSystemStorageAdapter } from "@openprose/reactor";
 import {
   FileSystemWorldModelStore,
   FileSystemReceiptLedger,
@@ -63,8 +61,8 @@ const OFFLINE =
   process.env.REACTOR_OFFLINE === "1" || process.env.REACTOR_OFFLINE === "true";
 const LIVE = hasOpenRouterKey();
 const SKIP_REASON = OFFLINE
-  ? "REACTOR_OFFLINE set — hermetic offline run"
-  : "no OPENROUTER_API_KEY — tier-3 live check skipped";
+  ? "REACTOR_OFFLINE set (hermetic offline run)"
+  : "no OPENROUTER_API_KEY (live check skipped)";
 
 // N-run reliability threshold for this example's headline postcondition.
 const RUNS = 3;
@@ -78,7 +76,7 @@ const EMAIL_ID = "ship1";
 const CLASSIFIER = `responsibility.classifier-${EMAIL_ID}`;
 const EMAIL_FACET = `email:${EMAIL_ID}`;
 
-// The canonical email the gateway delivers — the classifier's `### Maintains`
+// The canonical email the gateway delivers; the classifier's `### Maintains`
 // postcondition is that this exact { subject, body } survives into the
 // classification truth the threader fingerprints.
 const EMAIL = {
@@ -102,38 +100,47 @@ function readJson(
   const read = store.read(node, "published");
   if (read.ref.version === null) return null;
   const b = read.files[path];
-  return b === undefined ? null : (JSON.parse(readTextFile(b)) as Record<string, unknown>);
+  return b === undefined
+    ? null
+    : (JSON.parse(readTextFile(b)) as Record<string, unknown>);
 }
 
 // The gateway's dark-lane canonicalizer: one independent facet per email slice
 // (here, the single watched email). A delivery moves ONLY `email:ship1`.
 const gatewayCanon = (fm: WorldModelFiles) => {
-  const t = JSON.parse(readTextFile(fm["truth.json"]!)) as Record<string, unknown>;
+  const t = JSON.parse(readTextFile(fm["truth.json"]!)) as Record<
+    string,
+    unknown
+  >;
   const emails = (t["emails"] ?? {}) as Record<string, unknown>;
   return {
     [ATOMIC_FACET]: fp(t),
     [EMAIL_FACET]: fp(emails[EMAIL_ID] ?? null),
   };
 };
-const atomic = (fm: WorldModelFiles) => ({ [ATOMIC_FACET]: fp(readTextFile(fm["truth.json"]!)) });
+const atomic = (fm: WorldModelFiles) => ({
+  [ATOMIC_FACET]: fp(readTextFile(fm["truth.json"]!)),
+});
 
-// The per-node compiled-contract view the agent render follows — the lowered
+// The per-node compiled-contract view the agent render follows: the lowered
 // ### Maintains / ### Requires / ### Continuity / ### Execution of THIS example's
 // gateway + classifier contracts (the same words src/*.prose.md ship).
 function liveContractFor(node: string) {
   if (node === GATEWAY) {
     return {
       name: "Inbox Stream",
-      maintains: ["`mailbox`: the per-email view of the watched inboxes, keyed by email id."],
+      maintains: [
+        "`mailbox`: the per-email view of the watched inboxes, keyed by email id.",
+      ],
       requires: ["the raw mail feed"],
       continuity: "External-driven.",
       execution:
         "Read your upstream producer BY REFERENCE: call `wm_list_upstream`, then " +
         "`wm_read_upstream` with that producer and path `mail-feed.json` to read JSON " +
         `{"emails": { "${EMAIL_ID}": { id, recipient, thread, subject, body, rev } }}. ` +
-        'Write `truth.json` to your workspace as valid JSON of EXACTLY that same ' +
+        "Write `truth.json` to your workspace as valid JSON of EXACTLY that same " +
         '`{"emails": …}` shape (copy every field of each email through UNCHANGED — ' +
-        "do not paraphrase the subject or body). Then report status \"done\".",
+        'do not paraphrase the subject or body). Then report status "done".',
     };
   }
   // The classifier (the postcondition under test).
@@ -164,8 +171,16 @@ function topology(): ReconcilerTopology {
   return {
     topology: {
       nodes: [
-        { node: GATEWAY, contract_fingerprint: "fp-gw", wake_source: "external" },
-        { node: CLASSIFIER, contract_fingerprint: "fp-cls", wake_source: "input" },
+        {
+          node: GATEWAY,
+          contract_fingerprint: "fp-gw",
+          wake_source: "external",
+        },
+        {
+          node: CLASSIFIER,
+          contract_fingerprint: "fp-cls",
+          wake_source: "input",
+        },
       ],
       edges: [
         { subscriber: GATEWAY, producer: SOURCE, facet: ATOMIC_FACET },
@@ -178,7 +193,7 @@ function topology(): ReconcilerTopology {
   };
 }
 
-describe("inbox-triage — tier-3 live reliability (key-gated)", () => {
+describe("inbox-triage live reliability (key-gated)", () => {
   it.skipIf(!LIVE)(
     `a live classifier render meets its ### Maintains postcondition across ${RUNS} runs (>= ${THRESHOLD})`,
     async () => {
@@ -212,7 +227,9 @@ describe("inbox-triage — tier-3 live reliability (key-gated)", () => {
             [CLASSIFIER]: { render, canonicalizer: atomic },
           };
 
-          const storage = createFileSystemStorageAdapter({ directory: ledgerDir });
+          const storage = createFileSystemStorageAdapter({
+            directory: ledgerDir,
+          });
           const ledger = new FileSystemReceiptLedger({ storage });
           const dag = mountDag({
             topology: topology(),
@@ -224,11 +241,19 @@ describe("inbox-triage — tier-3 live reliability (key-gated)", () => {
 
           // Publish the canonical email at the phantom feed + emit its external
           // edge receipt, then wake the gateway down the async path.
-          const fm = files({ "mail-feed.json": jsonFile({ emails: { [EMAIL_ID]: EMAIL } }) });
+          const fm = files({
+            "mail-feed.json": jsonFile({ emails: { [EMAIL_ID]: EMAIL } }),
+          });
           const sourceCanon = (f: WorldModelFiles) => {
-            const t = JSON.parse(readTextFile(f["mail-feed.json"]!)) as Record<string, unknown>;
+            const t = JSON.parse(readTextFile(f["mail-feed.json"]!)) as Record<
+              string,
+              unknown
+            >;
             const emails = (t["emails"] ?? {}) as Record<string, unknown>;
-            return { [ATOMIC_FACET]: fp(t), [EMAIL_FACET]: fp(emails[EMAIL_ID] ?? null) };
+            return {
+              [ATOMIC_FACET]: fp(t),
+              [EMAIL_FACET]: fp(emails[EMAIL_ID] ?? null),
+            };
           };
           const commitRes = store.commitPublished(SOURCE, fm, sourceCanon);
           const prev = ledger.lastReceipt(SOURCE);
@@ -247,15 +272,18 @@ describe("inbox-triage — tier-3 live reliability (key-gated)", () => {
 
           const results = await dag.ingestAsync(GATEWAY);
           const rendered = new Set(
-            results.filter((r) => r.disposition === "rendered").map((r) => r.node),
+            results
+              .filter((r) => r.disposition === "rendered")
+              .map((r) => r.node),
           );
 
           // SCORE the ### Maintains postcondition off the PUBLISHED classification
           // truth: the canonical { subject, body } must be carried VERBATIM.
           const truth = readJson(store, CLASSIFIER, "truth.json");
-          const content = (truth?.["content"] ?? null) as
-            | { subject?: unknown; body?: unknown }
-            | null;
+          const content = (truth?.["content"] ?? null) as {
+            subject?: unknown;
+            body?: unknown;
+          } | null;
           const ok =
             rendered.has(GATEWAY) &&
             rendered.has(CLASSIFIER) &&
@@ -274,9 +302,9 @@ describe("inbox-triage — tier-3 live reliability (key-gated)", () => {
     180_000,
   );
 
-  // A visible, passing-skipped marker so an offline/keyless run reports the tier
+  // A visible, passing-skipped marker so an offline/keyless run reports the check
   // as intentionally skipped rather than absent.
-  it("offline/keyless: the tier-3 live body is intentionally skipped", () => {
+  it("offline/keyless: the live body is intentionally skipped", () => {
     if (LIVE) {
       expect(LIVE).toBe(true);
     } else {

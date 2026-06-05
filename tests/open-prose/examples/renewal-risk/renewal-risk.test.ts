@@ -1,4 +1,4 @@
-// renewal-risk — the deterministic tier-2 gate (offline, ZERO model spend).
+// renewal-risk: the deterministic offline gate (ZERO model spend).
 //
 // This is the EVALS-style "the README snippet IS the test" body: it drives the
 // REAL @openprose/reactor reconciler with deterministic fake renders (no key),
@@ -25,9 +25,7 @@ import { mkdtempSync, rmSync, readFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import {
-  createFileSystemStorageAdapter,
-} from "@openprose/reactor";
+import { createFileSystemStorageAdapter } from "@openprose/reactor";
 import {
   mountDag,
   createFileSystemReceiptLedger,
@@ -81,7 +79,9 @@ describe("renewal-risk — (1) compiles to the frozen artifact set", () => {
       expect(existsSync(join(stateDir, "beats.json"))).toBe(true);
       // the per-node world-model dir is hex-encoded (finding.B2 -> 66...).
       const hex = Buffer.from(RENEWAL_RISK, "utf8").toString("hex");
-      expect(existsSync(join(stateDir, "world-models", hex, "published.json"))).toBe(true);
+      expect(
+        existsSync(join(stateDir, "world-models", hex, "published.json")),
+      ).toBe(true);
     });
   });
 
@@ -111,7 +111,9 @@ describe("renewal-risk — (1) compiles to the frozen artifact set", () => {
         ).toBe(true);
       }
       // the alert feed subscribes to the `risk` facet ONLY (never `history`).
-      const feedEdges = topology.edges.filter((e) => e.subscriber === ALERT_FEED);
+      const feedEdges = topology.edges.filter(
+        (e) => e.subscriber === ALERT_FEED,
+      );
       expect(feedEdges).toHaveLength(1);
       expect(feedEdges[0]!.producer).toBe(RENEWAL_RISK);
       expect(feedEdges[0]!.facet).toBe("risk");
@@ -140,10 +142,24 @@ describe("renewal-risk — (2) cold renders all; an identical re-wake skips all"
       const topology: ReconcilerTopology = {
         topology: {
           nodes: [
-            { node: GATEWAY, contract_fingerprint: "fp-gw", wake_source: "external" },
-            { node: RENEWAL_RISK, contract_fingerprint: "fp-rr", wake_source: "input" },
+            {
+              node: GATEWAY,
+              contract_fingerprint: "fp-gw",
+              wake_source: "external",
+            },
+            {
+              node: RENEWAL_RISK,
+              contract_fingerprint: "fp-rr",
+              wake_source: "input",
+            },
           ],
-          edges: [{ subscriber: RENEWAL_RISK, producer: GATEWAY, facet: ATOMIC_FACET }],
+          edges: [
+            {
+              subscriber: RENEWAL_RISK,
+              producer: GATEWAY,
+              facet: ATOMIC_FACET,
+            },
+          ],
           entry_points: [GATEWAY],
           acyclic: true,
         },
@@ -174,14 +190,31 @@ describe("renewal-risk — (2) cold renders all; an identical re-wake skips all"
       const topology2: ReconcilerTopology = {
         topology: {
           nodes: [
-            { node: GATEWAY, contract_fingerprint: "fp-gw-v2", wake_source: "external" },
-            { node: RENEWAL_RISK, contract_fingerprint: "fp-rr", wake_source: "input" },
+            {
+              node: GATEWAY,
+              contract_fingerprint: "fp-gw-v2",
+              wake_source: "external",
+            },
+            {
+              node: RENEWAL_RISK,
+              contract_fingerprint: "fp-rr",
+              wake_source: "input",
+            },
           ],
-          edges: [{ subscriber: RENEWAL_RISK, producer: GATEWAY, facet: ATOMIC_FACET }],
+          edges: [
+            {
+              subscriber: RENEWAL_RISK,
+              producer: GATEWAY,
+              facet: ATOMIC_FACET,
+            },
+          ],
           entry_points: [GATEWAY],
           acyclic: true,
         },
-        contract_fingerprints: { [GATEWAY]: "fp-gw-v2", [RENEWAL_RISK]: "fp-rr" },
+        contract_fingerprints: {
+          [GATEWAY]: "fp-gw-v2",
+          [RENEWAL_RISK]: "fp-rr",
+        },
       };
       const dag2 = mountDag({
         topology: topology2,
@@ -234,10 +267,15 @@ describe("renewal-risk — selective wake + the non-material memo-hit", () => {
         .map((r, i) => ({ r, i }))
         .filter(({ r }) => r.node === GATEWAY && r.status === "rendered")
         .find(({ i }) => {
-          const acct = [...session.movedFacetsByIndex[i]!].filter((f) => f.startsWith("acct:"));
+          const acct = [...session.movedFacetsByIndex[i]!].filter((f) =>
+            f.startsWith("acct:"),
+          );
           return acct.length === 1;
         });
-      expect(single, "a single-account gateway delta exists (the surprise)").toBeTruthy();
+      expect(
+        single,
+        "a single-account gateway delta exists (the surprise)",
+      ).toBeTruthy();
     });
   });
 
@@ -257,25 +295,36 @@ describe("renewal-risk — selective wake + the non-material memo-hit", () => {
             r.status === "rendered" &&
             !session.movedFacetsByIndex[i]!.has("risk"),
         );
-      expect(stable, "a verdict-stable renewal-risk render exists").toBeTruthy();
+      expect(
+        stable,
+        "a verdict-stable renewal-risk render exists",
+      ).toBeTruthy();
 
       // Across that render the alert feed must NOT produce a new receipt — the
       // unmoved `risk` facet never wakes it (cost scales with surprise).
       const feedCountUpTo = (idx: number) =>
-        session.receipts.slice(0, idx + 1).filter((r) => r.node === ALERT_FEED).length;
+        session.receipts.slice(0, idx + 1).filter((r) => r.node === ALERT_FEED)
+          .length;
       // the next gateway/ingress frame bounds this beat.
       let nextBoundary = n;
       for (let j = stable!.i + 1; j < n; j++) {
-        if (session.receipts[j]!.node === GATEWAY || session.receipts[j]!.node.startsWith("ingress")) {
+        if (
+          session.receipts[j]!.node === GATEWAY ||
+          session.receipts[j]!.node.startsWith("ingress")
+        ) {
           nextBoundary = j;
           break;
         }
       }
-      expect(feedCountUpTo(stable!.i - 1)).toBe(feedCountUpTo(nextBoundary - 1));
+      expect(feedCountUpTo(stable!.i - 1)).toBe(
+        feedCountUpTo(nextBoundary - 1),
+      );
 
       // The alert feed still fired on REAL verdict flips elsewhere in the trail.
       const feed = session.receipts.filter((r) => r.node === ALERT_FEED);
-      expect(feed.some((r) => r.status === "rendered" && r.cost.tokens.fresh > 0)).toBe(true);
+      expect(
+        feed.some((r) => r.status === "rendered" && r.cost.tokens.fresh > 0),
+      ).toBe(true);
     });
   });
 });
@@ -297,10 +346,15 @@ describe("renewal-risk — (4) ATOMIC_FACET, never a `*` token", () => {
     withFixture((stateDir) => {
       const topology = readTopology(stateDir);
       // the gateway's atomic ingress edge resolves to the ATOMIC_FACET token.
-      const atomicEdges = topology.edges.filter((e) => e.facet === ATOMIC_FACET);
+      const atomicEdges = topology.edges.filter(
+        (e) => e.facet === ATOMIC_FACET,
+      );
       expect(atomicEdges.length).toBeGreaterThanOrEqual(1);
       // no "*" token anywhere in the frozen topology or receipts.
-      const topoRaw = readFileSync(join(stateDir, "compile", "topology.json"), "utf8");
+      const topoRaw = readFileSync(
+        join(stateDir, "compile", "topology.json"),
+        "utf8",
+      );
       const receiptsRaw = readFileSync(join(stateDir, "receipts.json"), "utf8");
       expect(topoRaw).not.toContain('"*"');
       expect(receiptsRaw).not.toContain('"*"');

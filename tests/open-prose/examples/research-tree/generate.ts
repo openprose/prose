@@ -27,7 +27,7 @@
 //   replay/compile/topology.json      (the flat TopologyWorldModel)
 //   replay/compile/labels.json        (nodeId -> friendly label)
 //   replay/beats.json                 (scripted beat timeline; SELF-WRITTEN here so
-//                                       a regen is LOSSLESS — see plan §6 caveat)
+//                                       a regen is LOSSLESS, see the caveat below)
 //
 // Everything below uses ONLY the public @openprose/reactor + /sdk exports.
 
@@ -202,7 +202,12 @@ function seedCorpus(): Corpus {
     C2: "contamination inflates benchmark scores",
   };
   for (const leaf of LEAVES) {
-    out[leaf] = { leaf, sub: SUB_OF_LEAF[leaf]!, rev: 1, claim: seedClaim[leaf]! };
+    out[leaf] = {
+      leaf,
+      sub: SUB_OF_LEAF[leaf]!,
+      rev: 1,
+      claim: seedClaim[leaf]!,
+    };
   }
   return out;
 }
@@ -249,7 +254,9 @@ const ingressCanon = (fm: WorldModelFiles) => {
   const bytes = fm["corpus.json"];
   const corpus: Partial<Corpus> =
     bytes === undefined ? {} : (JSON.parse(readTextFile(bytes)) as Corpus);
-  const out: Record<string, Fingerprint> = { [ATOMIC_FACET]: fingerprintArtifact(fm) };
+  const out: Record<string, Fingerprint> = {
+    [ATOMIC_FACET]: fingerprintArtifact(fm),
+  };
   for (const leaf of LEAVES) {
     out[LEAF_FACET(leaf)] = materialFingerprint(corpus[leaf] ?? null);
   }
@@ -261,7 +268,9 @@ const ingressCanon = (fm: WorldModelFiles) => {
 const gatewayCanon = (fm: WorldModelFiles) => {
   const t = readTruth(fm);
   const leaves = (t["leaves"] ?? {}) as Record<string, unknown>;
-  const out: Record<string, Fingerprint> = { [ATOMIC_FACET]: fingerprintArtifact(fm) };
+  const out: Record<string, Fingerprint> = {
+    [ATOMIC_FACET]: fingerprintArtifact(fm),
+  };
   for (const leaf of LEAVES) {
     out[LEAF_FACET(leaf)] = materialFingerprint(leaves[leaf] ?? null);
   }
@@ -280,15 +289,28 @@ type Render = (ctx: RenderContext) => RenderProduct;
 
 function gatewayRender(deps: Deps): Render {
   return (ctx) => {
-    const corpus = (readJson<Partial<Corpus>>(deps.store, SOURCE, "corpus.json") ?? {}) as Partial<Corpus>;
+    const corpus = (readJson<Partial<Corpus>>(
+      deps.store,
+      SOURCE,
+      "corpus.json",
+    ) ?? {}) as Partial<Corpus>;
     const leaves: Record<string, unknown> = {};
     for (const leaf of LEAVES) {
       const s = corpus[leaf];
       leaves[leaf] = s
-        ? { leaf: s.leaf, sub: s.sub, rev: s.rev, claim: s.claim, corrupt: s.corrupt ?? false }
+        ? {
+            leaf: s.leaf,
+            sub: s.sub,
+            rev: s.rev,
+            claim: s.claim,
+            corrupt: s.corrupt ?? false,
+          }
         : null;
     }
-    return commit({ leaves, leaf_count: LEAVES.length }, renderCost(ctx, LEAVES.length, 1));
+    return commit(
+      { leaves, leaf_count: LEAVES.length },
+      renderCost(ctx, LEAVES.length, 1),
+    );
   };
 }
 
@@ -300,7 +322,9 @@ function findingRender(deps: Deps, leaf: string): Render {
     const leaves = (gw?.["leaves"] ?? {}) as Record<string, LeafState | null>;
     const mine = leaves[leaf] ?? null;
     if (mine?.corrupt) {
-      throw new Error(`finding ${leaf}: unparseable source excerpt (rev ${mine.rev})`);
+      throw new Error(
+        `finding ${leaf}: unparseable source excerpt (rev ${mine.rev})`,
+      );
     }
     return commit(
       {
@@ -336,7 +360,12 @@ function subSynthRender(deps: Deps, sub: SubId): Render {
         version: maxRev,
         answer: `sub-answer[${sub}]: ${moved} findings woven (v${maxRev})`,
       },
-      renderCost(ctx, Math.max(1, moved), 2, FRESH_PER_UNIT * SUBSYNTH_FRESH_MULTIPLIER),
+      renderCost(
+        ctx,
+        Math.max(1, moved),
+        2,
+        FRESH_PER_UNIT * SUBSYNTH_FRESH_MULTIPLIER,
+      ),
     );
   };
 }
@@ -380,11 +409,15 @@ function contractFingerprint(decl: NodeDecl): Fingerprint {
   return materialFingerprint({
     kind: decl.kind,
     id: decl.id,
-    requires: decl.requires.map((r) => `${r.producer}:${r.facet ?? ATOMIC_FACET}`).sort(),
+    requires: decl.requires
+      .map((r) => `${r.producer}:${r.facet ?? ATOMIC_FACET}`)
+      .sort(),
   });
 }
 
-function buildReconcilerTopology(decls: readonly NodeDecl[]): ReconcilerTopology {
+function buildReconcilerTopology(
+  decls: readonly NodeDecl[],
+): ReconcilerTopology {
   const contract_fingerprints: Record<string, Fingerprint> = {};
   for (const d of decls) contract_fingerprints[d.id] = contractFingerprint(d);
 
@@ -400,7 +433,9 @@ function buildReconcilerTopology(decls: readonly NodeDecl[]): ReconcilerTopology
       facet: r.facet ?? ATOMIC_FACET,
     })),
   );
-  const entry_points = decls.filter((d) => d.kind === "gateway").map((d) => d.id);
+  const entry_points = decls
+    .filter((d) => d.kind === "gateway")
+    .map((d) => d.id);
   const declared = new Set(decls.map((d) => d.id));
   const topology: TopologyWorldModel = {
     nodes,
@@ -418,7 +453,9 @@ function isAcyclic(
   const adj = new Map<string, string[]>();
   for (const e of edges) {
     if (!declared.has(e.producer) || !declared.has(e.subscriber)) continue;
-    (adj.get(e.producer) ?? adj.set(e.producer, []).get(e.producer)!).push(e.subscriber);
+    (adj.get(e.producer) ?? adj.set(e.producer, []).get(e.producer)!).push(
+      e.subscriber,
+    );
   }
   const state = new Map<string, 0 | 1 | 2>();
   const visit = (n: string): boolean => {
@@ -448,7 +485,8 @@ const BEATS = {
       from: 0,
       to: 20,
       holdMs: 2600,
-      caption: "the research tree builds bottom-up · 8 findings → 3 sub-syntheses → root, lit once",
+      caption:
+        "the research tree builds bottom-up · 8 findings → 3 sub-syntheses → root, lit once",
     },
     {
       name: "quiet",
@@ -456,7 +494,8 @@ const BEATS = {
       from: 21,
       to: 30,
       holdMs: 2400,
-      caption: "dim skip pulses · the whole tree memo-skips · cost flat near zero",
+      caption:
+        "dim skip pulses · the whole tree memo-skips · cost flat near zero",
     },
     {
       name: "self-tick",
@@ -464,7 +503,8 @@ const BEATS = {
       from: 27,
       to: 28,
       holdMs: 2600,
-      caption: "self-tick audit floor · a lone self-pulse on the root, no edges, no cost",
+      caption:
+        "self-tick audit floor · a lone self-pulse on the root, no edges, no cost",
     },
     {
       name: "hero-ancestor-path",
@@ -481,7 +521,8 @@ const BEATS = {
       from: 36,
       to: 40,
       holdMs: 3600,
-      caption: "revise Finding A1 · a DIFFERENT path lights: A1 → Synthesis A → same Root · B & C stay dark",
+      caption:
+        "revise Finding A1 · a DIFFERENT path lights: A1 → Synthesis A → same Root · B & C stay dark",
     },
     {
       name: "red-fail",
@@ -489,7 +530,8 @@ const BEATS = {
       from: 41,
       to: 43,
       holdMs: 3000,
-      caption: "Finding C1 source is unparseable · it fails RED · no ancestor wakes, prior answer stands",
+      caption:
+        "Finding C1 source is unparseable · it fails RED · no ancestor wakes, prior answer stands",
     },
     {
       name: "recover",
@@ -590,8 +632,12 @@ export function generateResearchTree(opts: GenerateOptions): GenerateResult {
   ];
 
   const reconcilerTopology = buildReconcilerTopology(decls);
-  const mounts: Record<string, { render: Render; canonicalizer: NodeDecl["canonicalizer"] }> = {};
-  for (const d of decls) mounts[d.id] = { render: d.render, canonicalizer: d.canonicalizer };
+  const mounts: Record<
+    string,
+    { render: Render; canonicalizer: NodeDecl["canonicalizer"] }
+  > = {};
+  for (const d of decls)
+    mounts[d.id] = { render: d.render, canonicalizer: d.canonicalizer };
 
   const dag = mountDag({ topology: reconcilerTopology, mounts, store, ledger });
 
@@ -651,23 +697,37 @@ export function generateResearchTree(opts: GenerateOptions): GenerateResult {
   publishAndWake();
 
   // --- Beat 4: THE HERO. Revise ONE leaf finding three levels down — B2.
-  reviseLeaf("B2", { claim: "chunk size of ~512 tokens balances recall and precision" });
+  reviseLeaf("B2", {
+    claim: "chunk size of ~512 tokens balances recall and precision",
+  });
 
   // --- Beat 5: A DIFFERENT BRANCH, SAME ROOT — A1.
-  reviseLeaf("A1", { claim: "transformers scale predictably with data, compute, and params" });
+  reviseLeaf("A1", {
+    claim: "transformers scale predictably with data, compute, and params",
+  });
 
   // --- Beat 6: FAIL. A leaf's source excerpt is unparseable — Finding C1 THROWS.
   reviseLeaf("C1", { corrupt: true });
 
   // --- Beat 7: RECOVER. The next C1 revision parses cleanly.
-  reviseLeaf("C1", { claim: "evals must isolate exactly one capability per probe" });
+  reviseLeaf("C1", {
+    claim: "evals must isolate exactly one capability per probe",
+  });
 
   // --- Beat 8: DEEP TWO-LEAF CONVERGENCE — B1 and B3 in one drain.
   {
     const b1 = corpus["B1"]!;
-    corpus["B1"] = { ...b1, rev: b1.rev + 1, claim: "retrieval grounds generation in the freshest sources" };
+    corpus["B1"] = {
+      ...b1,
+      rev: b1.rev + 1,
+      claim: "retrieval grounds generation in the freshest sources",
+    };
     const b3 = corpus["B3"]!;
-    corpus["B3"] = { ...b3, rev: b3.rev + 1, claim: "cross-encoder rerankers lift top-k relevance sharply" };
+    corpus["B3"] = {
+      ...b3,
+      rev: b3.rev + 1,
+      claim: "cross-encoder rerankers lift top-k relevance sharply",
+    };
     publishAndWake();
   }
 
@@ -694,8 +754,8 @@ export function generateResearchTree(opts: GenerateOptions): GenerateResult {
     `${JSON.stringify(LABELS, null, 2)}\n`,
     "utf8",
   );
-  // SELF-WRITE beats.json so a regen never clobbers a co-located beat map
-  // (plan §6: the news-desk/inbox-triage/research-tree clean:true caveat).
+  // SELF-WRITE beats.json so a regen never clobbers an adjacent beat map
+  // (the news-desk/inbox-triage/research-tree clean:true caveat).
   writeFileSync(
     join(stateDir, "beats.json"),
     `${JSON.stringify(BEATS, null, 2)}\n`,

@@ -1,4 +1,4 @@
-// The oblique-weave TIER-3 LIVE check (OPTIONAL, key-gated) — a reliability smoke
+// The oblique-weave LIVE check (OPTIONAL, key-gated): a reliability smoke
 // that drives a masked-viewport slice (a Viewport Policy + two adversarial roles)
 // with a REAL model at the `asyncMounts` seam (createAgentRender), instead of the
 // deterministic fake.
@@ -26,12 +26,8 @@ import {
   createReplaySession,
   ATOMIC_FACET,
 } from "@openprose/reactor";
-import type {
-  ReconcilerTopology,
-} from "@openprose/reactor/internals";
-import {
-  createFileSystemStorageAdapter,
-} from "@openprose/reactor";
+import type { ReconcilerTopology } from "@openprose/reactor/internals";
+import { createFileSystemStorageAdapter } from "@openprose/reactor";
 import {
   createAgentRender,
   createOpenRouterProvider,
@@ -49,7 +45,9 @@ const VIEW_ADVERSARY = "view:adversary";
 // The single gate: a key present AND not offline-forced. Otherwise the body is a
 // passing skipped no-op.
 const LIVE = hasOpenRouterKey() && !isOfflineForced();
-const skip = LIVE ? false : "no OPENROUTER_API_KEY (or REACTOR_OFFLINE=1) — live render skipped";
+const skip = LIVE
+  ? false
+  : "no OPENROUTER_API_KEY (or REACTOR_OFFLINE=1) — live render skipped";
 
 describe("oblique-weave — LIVE reliability (key-gated)", () => {
   it(
@@ -64,13 +62,33 @@ describe("oblique-weave — LIVE reliability (key-gated)", () => {
         const topology: ReconcilerTopology = {
           topology: {
             nodes: [
-              { node: VIEWPORT, contract_fingerprint: "fp-viewport", wake_source: "external" },
-              { node: ANALOGIST, contract_fingerprint: "fp-analogist", wake_source: "input" },
-              { node: ADVERSARY, contract_fingerprint: "fp-adversary", wake_source: "input" },
+              {
+                node: VIEWPORT,
+                contract_fingerprint: "fp-viewport",
+                wake_source: "external",
+              },
+              {
+                node: ANALOGIST,
+                contract_fingerprint: "fp-analogist",
+                wake_source: "input",
+              },
+              {
+                node: ADVERSARY,
+                contract_fingerprint: "fp-adversary",
+                wake_source: "input",
+              },
             ],
             edges: [
-              { subscriber: ANALOGIST, producer: VIEWPORT, facet: VIEW_ANALOGIST },
-              { subscriber: ADVERSARY, producer: VIEWPORT, facet: VIEW_ADVERSARY },
+              {
+                subscriber: ANALOGIST,
+                producer: VIEWPORT,
+                facet: VIEW_ANALOGIST,
+              },
+              {
+                subscriber: ADVERSARY,
+                producer: VIEWPORT,
+                facet: VIEW_ADVERSARY,
+              },
             ],
             entry_points: [VIEWPORT],
             acyclic: true,
@@ -83,12 +101,15 @@ describe("oblique-weave — LIVE reliability (key-gated)", () => {
         };
 
         const provider = createOpenRouterProvider();
-        const liveRender = (instructions: string) => createAgentRender({ provider, instructions });
+        const liveRender = (instructions: string) =>
+          createAgentRender({ provider, instructions });
 
         // The viewport canonicalizer exposes one masked facet per role (so a cold
         // start lights both lanes). ATOMIC_FACET for the role producers.
         const viewportCanon = (fm: Record<string, Uint8Array>) => {
-          const text = fm["truth.json"] ? new TextDecoder().decode(fm["truth.json"]!) : "";
+          const text = fm["truth.json"]
+            ? new TextDecoder().decode(fm["truth.json"]!)
+            : "";
           return {
             [ATOMIC_FACET]: `sha:${text}`,
             [VIEW_ANALOGIST]: `sha:analogist:${text}`,
@@ -98,13 +119,21 @@ describe("oblique-weave — LIVE reliability (key-gated)", () => {
 
         const zero = (cause: "external" | "input") => ({
           world_model: {},
-          cost: { provider: "none", model: "fake", tokens: { fresh: 0, reused: 0 }, surprise_cause: cause },
+          cost: {
+            provider: "none",
+            model: "fake",
+            tokens: { fresh: 0, reused: 0 },
+            surprise_cause: cause,
+          },
         });
 
         const dag = mountDag({
           topology,
           mounts: {
-            [VIEWPORT]: { render: () => zero("external"), canonicalizer: viewportCanon },
+            [VIEWPORT]: {
+              render: () => zero("external"),
+              canonicalizer: viewportCanon,
+            },
             [ANALOGIST]: { render: () => zero("input") },
             [ADVERSARY]: { render: () => zero("input") },
           },
@@ -135,15 +164,20 @@ describe("oblique-weave — LIVE reliability (key-gated)", () => {
           "the viewport rendered cold",
         );
         assert.ok(
-          cold.some((r) => r.node === ANALOGIST && r.disposition === "rendered"),
+          cold.some(
+            (r) => r.node === ANALOGIST && r.disposition === "rendered",
+          ),
           "the analogist masked view propagated",
         );
         assert.ok(
-          cold.some((r) => r.node === ADVERSARY && r.disposition === "rendered"),
+          cold.some(
+            (r) => r.node === ADVERSARY && r.disposition === "rendered",
+          ),
           "the adversary masked view propagated",
         );
 
-        const freshAfterCold = createReplaySession({ ledger }).costRollup.total.fresh;
+        const freshAfterCold = createReplaySession({ ledger }).costRollup.total
+          .fresh;
 
         const quiet = await dag.ingestAsync(VIEWPORT);
         assert.deepEqual(

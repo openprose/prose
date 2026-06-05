@@ -1,4 +1,4 @@
-# Ignore live runtime churn — NOT the committed, reviewable replay/ fixture.
+# Local runtime churn, not committed.
 state/
 runs/
 deps/

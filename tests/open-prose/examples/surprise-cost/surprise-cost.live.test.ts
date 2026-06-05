@@ -1,4 +1,4 @@
-// The surprise-cost TIER-3 LIVE check (OPTIONAL, key-gated) — a reliability
+// The surprise-cost LIVE check (OPTIONAL, key-gated): a reliability
 // smoke that drives the SAME gateway→digest topology with a REAL model at the
 // `asyncMounts` seam (createAgentRender), instead of the deterministic fake.
 //
@@ -25,12 +25,8 @@ import {
   createReplaySession,
   ATOMIC_FACET,
 } from "@openprose/reactor";
-import type {
-  ReconcilerTopology,
-} from "@openprose/reactor/internals";
-import {
-  createFileSystemStorageAdapter,
-} from "@openprose/reactor";
+import type { ReconcilerTopology } from "@openprose/reactor/internals";
+import { createFileSystemStorageAdapter } from "@openprose/reactor";
 import {
   createAgentRender,
   createOpenRouterProvider,
@@ -44,7 +40,9 @@ const DIGEST = "responsibility.digest";
 // The single gate: a key present AND not offline-forced. Otherwise the body is a
 // passing skipped no-op.
 const LIVE = hasOpenRouterKey() && !isOfflineForced();
-const skip = LIVE ? false : "no OPENROUTER_API_KEY (or REACTOR_OFFLINE=1) — live render skipped";
+const skip = LIVE
+  ? false
+  : "no OPENROUTER_API_KEY (or REACTOR_OFFLINE=1) — live render skipped";
 
 describe("surprise-cost — LIVE reliability (key-gated)", () => {
   it(
@@ -59,14 +57,27 @@ describe("surprise-cost — LIVE reliability (key-gated)", () => {
         const topology: ReconcilerTopology = {
           topology: {
             nodes: [
-              { node: GATEWAY, contract_fingerprint: "fp-gateway", wake_source: "external" },
-              { node: DIGEST, contract_fingerprint: "fp-digest", wake_source: "input" },
+              {
+                node: GATEWAY,
+                contract_fingerprint: "fp-gateway",
+                wake_source: "external",
+              },
+              {
+                node: DIGEST,
+                contract_fingerprint: "fp-digest",
+                wake_source: "input",
+              },
             ],
-            edges: [{ subscriber: DIGEST, producer: GATEWAY, facet: ATOMIC_FACET }],
+            edges: [
+              { subscriber: DIGEST, producer: GATEWAY, facet: ATOMIC_FACET },
+            ],
             entry_points: [GATEWAY],
             acyclic: true,
           },
-          contract_fingerprints: { [GATEWAY]: "fp-gateway", [DIGEST]: "fp-digest" },
+          contract_fingerprints: {
+            [GATEWAY]: "fp-gateway",
+            [DIGEST]: "fp-digest",
+          },
         };
 
         const provider = createOpenRouterProvider();
@@ -77,8 +88,28 @@ describe("surprise-cost — LIVE reliability (key-gated)", () => {
           topology,
           // a sync fallback is never used here — asyncMounts drives both nodes.
           mounts: {
-            [GATEWAY]: { render: () => ({ world_model: {}, cost: { provider: "none", model: "fake", tokens: { fresh: 0, reused: 0 }, surprise_cause: "external" } }) },
-            [DIGEST]: { render: () => ({ world_model: {}, cost: { provider: "none", model: "fake", tokens: { fresh: 0, reused: 0 }, surprise_cause: "input" } }) },
+            [GATEWAY]: {
+              render: () => ({
+                world_model: {},
+                cost: {
+                  provider: "none",
+                  model: "fake",
+                  tokens: { fresh: 0, reused: 0 },
+                  surprise_cause: "external",
+                },
+              }),
+            },
+            [DIGEST]: {
+              render: () => ({
+                world_model: {},
+                cost: {
+                  provider: "none",
+                  model: "fake",
+                  tokens: { fresh: 0, reused: 0 },
+                  surprise_cause: "input",
+                },
+              }),
+            },
           },
           asyncMounts: {
             [GATEWAY]: {
@@ -105,7 +136,8 @@ describe("surprise-cost — LIVE reliability (key-gated)", () => {
           "the moved truth propagated to the digest",
         );
 
-        const freshAfterCold = createReplaySession({ ledger }).costRollup.total.fresh;
+        const freshAfterCold = createReplaySession({ ledger }).costRollup.total
+          .fresh;
 
         const quiet = await dag.ingestAsync(GATEWAY);
         assert.deepEqual(

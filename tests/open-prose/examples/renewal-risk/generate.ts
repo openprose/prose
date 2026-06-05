@@ -80,13 +80,8 @@ import {
   type TopologyEdge,
 } from "@openprose/reactor/internals";
 
-import type {
-  RenderContext,
-  RenderProduct,
-} from "@openprose/reactor";
-import type {
-  ReconcilerTopology,
-} from "@openprose/reactor/internals";
+import type { RenderContext, RenderProduct } from "@openprose/reactor";
+import type { ReconcilerTopology } from "@openprose/reactor/internals";
 
 // ---------------------------------------------------------------------------
 // Node identities + the accounts in the portfolio.
@@ -152,7 +147,11 @@ function materialFingerprint(value: unknown): Fingerprint {
 const FRESH_PER_UNIT = 200; // fresh tokens per account re-judged
 const REUSED_FLOOR = 260; // prior frame + contract always carried
 
-function renderCost(ctx: RenderContext, freshUnits: number, reusedUnits = 0): Cost {
+function renderCost(
+  ctx: RenderContext,
+  freshUnits: number,
+  reusedUnits = 0,
+): Cost {
   return {
     provider: "fixture",
     model: "deterministic-fake",
@@ -190,7 +189,11 @@ function seedInbox(): SignalInbox {
   return Object.fromEntries(
     ACCOUNTS.map((a) => [
       a,
-      { usage_trend: "steady", renewal_in_days: 180, support_friction: 0 } satisfies AccountSignal,
+      {
+        usage_trend: "steady",
+        renewal_in_days: 180,
+        support_friction: 0,
+      } satisfies AccountSignal,
     ]),
   ) as SignalInbox;
 }
@@ -281,7 +284,9 @@ const ingressCanon = (fm: WorldModelFiles) => {
   const bytes = fm["signal-inbox.json"];
   const inbox: Partial<SignalInbox> =
     bytes === undefined ? {} : (JSON.parse(readTextFile(bytes)) as SignalInbox);
-  const out: Record<string, Fingerprint> = { [ATOMIC_FACET]: fingerprintArtifact(fm) };
+  const out: Record<string, Fingerprint> = {
+    [ATOMIC_FACET]: fingerprintArtifact(fm),
+  };
   for (const a of ACCOUNTS) {
     const s = inbox[a];
     out[ACCT_FACET[a]] = materialFingerprint(s ? verdictInputs(s) : null);
@@ -296,9 +301,13 @@ const ingressCanon = (fm: WorldModelFiles) => {
 const gatewayCanon = (fm: WorldModelFiles) => {
   const t = readTruth(fm);
   const accts = (t["accounts"] ?? {}) as Record<string, AccountSignal>;
-  const out: Record<string, Fingerprint> = { [ATOMIC_FACET]: fingerprintArtifact(fm) };
+  const out: Record<string, Fingerprint> = {
+    [ATOMIC_FACET]: fingerprintArtifact(fm),
+  };
   for (const a of ACCOUNTS) {
-    out[ACCT_FACET[a]] = materialFingerprint(accts[a] ? verdictInputs(accts[a]!) : null);
+    out[ACCT_FACET[a]] = materialFingerprint(
+      accts[a] ? verdictInputs(accts[a]!) : null,
+    );
   }
   return out;
 };
@@ -345,15 +354,20 @@ type Render = (ctx: RenderContext) => RenderProduct;
 // The gateway: read the raw signal inbox, normalize into a per-account view.
 function gatewayRender(deps: Deps): Render {
   return (ctx) => {
-    const inbox =
-      (readJson<Partial<SignalInbox>>(deps.store, SOURCE, "signal-inbox.json") ??
-        {}) as Partial<SignalInbox>;
+    const inbox = (readJson<Partial<SignalInbox>>(
+      deps.store,
+      SOURCE,
+      "signal-inbox.json",
+    ) ?? {}) as Partial<SignalInbox>;
     const accounts: Record<string, AccountSignal> = {};
     for (const a of ACCOUNTS) {
       const s = inbox[a];
       if (s) accounts[a] = s;
     }
-    return commit({ accounts, watched: ACCOUNTS.length }, renderCost(ctx, 1, 1));
+    return commit(
+      { accounts, watched: ACCOUNTS.length },
+      renderCost(ctx, 1, 1),
+    );
   };
 }
 
@@ -374,7 +388,10 @@ function renewalRiskRender(deps: Deps): Render {
       level: string;
     }[];
 
-    const accounts: Record<string, { verdict: ReturnType<typeof classify>; renewal_in_days: number }> = {};
+    const accounts: Record<
+      string,
+      { verdict: ReturnType<typeof classify>; renewal_in_days: number }
+    > = {};
     const history = [...priorHistory];
     let reJudged = 0;
     for (const a of ACCOUNTS) {
@@ -408,9 +425,19 @@ function alertFeedRender(deps: Deps): Render {
     const alerts = ACCOUNTS.flatMap((a) => {
       const v = accounts[a]?.verdict;
       if (!v || v.level === "low") return [];
-      return [{ account: a, level: v.level, cause: v.evidence, next_action: v.next_action }];
+      return [
+        {
+          account: a,
+          level: v.level,
+          cause: v.evidence,
+          next_action: v.next_action,
+        },
+      ];
     }).sort((x, y) => (x.level < y.level ? 1 : x.level > y.level ? -1 : 0));
-    return commit({ alerts, alert_count: alerts.length }, renderCost(ctx, Math.max(1, alerts.length), 1));
+    return commit(
+      { alerts, alert_count: alerts.length },
+      renderCost(ctx, Math.max(1, alerts.length), 1),
+    );
   };
 }
 
@@ -430,7 +457,9 @@ function contractFingerprint(decl: NodeDecl): Fingerprint {
   return materialFingerprint({
     kind: decl.kind,
     id: decl.id,
-    requires: decl.requires.map((r) => `${r.producer}:${r.facet ?? ATOMIC_FACET}`).sort(),
+    requires: decl.requires
+      .map((r) => `${r.producer}:${r.facet ?? ATOMIC_FACET}`)
+      .sort(),
   });
 }
 
@@ -441,7 +470,9 @@ function isAcyclic(
   const adj = new Map<string, string[]>();
   for (const e of edges) {
     if (!declared.has(e.producer) || !declared.has(e.subscriber)) continue;
-    (adj.get(e.producer) ?? adj.set(e.producer, []).get(e.producer)!).push(e.subscriber);
+    (adj.get(e.producer) ?? adj.set(e.producer, []).get(e.producer)!).push(
+      e.subscriber,
+    );
   }
   const state = new Map<string, 0 | 1 | 2>();
   const visit = (n: string): boolean => {
@@ -456,7 +487,9 @@ function isAcyclic(
   return true;
 }
 
-function buildReconcilerTopology(decls: readonly NodeDecl[]): ReconcilerTopology {
+function buildReconcilerTopology(
+  decls: readonly NodeDecl[],
+): ReconcilerTopology {
   const contract_fingerprints: Record<string, Fingerprint> = {};
   for (const d of decls) contract_fingerprints[d.id] = contractFingerprint(d);
 
@@ -472,7 +505,9 @@ function buildReconcilerTopology(decls: readonly NodeDecl[]): ReconcilerTopology
       facet: r.facet ?? ATOMIC_FACET,
     })),
   );
-  const entry_points = decls.filter((d) => d.kind === "gateway").map((d) => d.id);
+  const entry_points = decls
+    .filter((d) => d.kind === "gateway")
+    .map((d) => d.id);
   const declared = new Set(decls.map((d) => d.id));
   const topology: TopologyWorldModel = {
     nodes,
@@ -484,7 +519,7 @@ function buildReconcilerTopology(decls: readonly NodeDecl[]): ReconcilerTopology
 }
 
 // ---------------------------------------------------------------------------
-// The beat timeline self-write (so a regen is lossless — no co-located
+// The beat timeline self-write (so a regen is lossless: no adjacent
 // beats.json is clobbered).
 // ---------------------------------------------------------------------------
 
@@ -494,13 +529,40 @@ interface Beat {
 }
 
 const BEATS: readonly Beat[] = [
-  { name: "cold-boot", caption: "the portfolio wires up · gateway, the standing truth, the alert feed — lit once" },
-  { name: "quiet", caption: "re-deliver the same signals · every re-tick memo-skips · cost flat near zero" },
-  { name: "self-tick", caption: "a weekly self-wake with no moved signal · a self skipped receipt (the floor)" },
-  { name: "surprise", caption: "acme usage drops near renewal · only acct:acme moves · the verdict flips → an alert fires" },
-  { name: "non-material", caption: "a tiny usage wobble on acme · the verdict is unchanged · the alert feed memo-SKIPS" },
-  { name: "second-surprise", caption: "globex churns · a second verdict flip → a second alert (cost tracks surprise)" },
-  { name: "final-quiet", caption: "re-deliver the steady state · flat again (the bookend)" },
+  {
+    name: "cold-boot",
+    caption:
+      "the portfolio wires up · gateway, the standing truth, the alert feed — lit once",
+  },
+  {
+    name: "quiet",
+    caption:
+      "re-deliver the same signals · every re-tick memo-skips · cost flat near zero",
+  },
+  {
+    name: "self-tick",
+    caption:
+      "a weekly self-wake with no moved signal · a self skipped receipt (the floor)",
+  },
+  {
+    name: "surprise",
+    caption:
+      "acme usage drops near renewal · only acct:acme moves · the verdict flips → an alert fires",
+  },
+  {
+    name: "non-material",
+    caption:
+      "a tiny usage wobble on acme · the verdict is unchanged · the alert feed memo-SKIPS",
+  },
+  {
+    name: "second-surprise",
+    caption:
+      "globex churns · a second verdict flip → a second alert (cost tracks surprise)",
+  },
+  {
+    name: "final-quiet",
+    caption: "re-deliver the steady state · flat again (the bookend)",
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -528,7 +590,9 @@ export interface GenerateResult {
  * FileSystem store + ledger, then writes compile/topology.json, compile/
  * labels.json, and beats.json. Re-running reproduces the bytes.
  */
-export function generateRenewalRiskFixture(opts: GenerateOptions): GenerateResult {
+export function generateRenewalRiskFixture(
+  opts: GenerateOptions,
+): GenerateResult {
   const { stateDir } = opts;
   if (opts.clean !== false && existsSync(stateDir)) {
     rmSync(stateDir, { recursive: true, force: true });
@@ -554,7 +618,10 @@ export function generateRenewalRiskFixture(opts: GenerateOptions): GenerateResul
       kind: "responsibility",
       // Subscribes to every per-account facet of the gateway — a single
       // account's material change wakes a re-judgement of THAT account only.
-      requires: ACCOUNTS.map((a) => ({ producer: GATEWAY, facet: ACCT_FACET[a] })),
+      requires: ACCOUNTS.map((a) => ({
+        producer: GATEWAY,
+        facet: ACCT_FACET[a],
+      })),
       render: renewalRiskRender(deps),
       canonicalizer: renewalRiskCanon,
     },
@@ -570,8 +637,12 @@ export function generateRenewalRiskFixture(opts: GenerateOptions): GenerateResul
   ];
 
   const reconcilerTopology = buildReconcilerTopology(decls);
-  const mounts: Record<string, { render: Render; canonicalizer: NodeDecl["canonicalizer"] }> = {};
-  for (const d of decls) mounts[d.id] = { render: d.render, canonicalizer: d.canonicalizer };
+  const mounts: Record<
+    string,
+    { render: Render; canonicalizer: NodeDecl["canonicalizer"] }
+  > = {};
+  for (const d of decls)
+    mounts[d.id] = { render: d.render, canonicalizer: d.canonicalizer };
 
   const dag = mountDag({ topology: reconcilerTopology, mounts, store, ledger });
 

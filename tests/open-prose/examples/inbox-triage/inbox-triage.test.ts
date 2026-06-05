@@ -1,8 +1,8 @@
-// inbox-triage — the deterministic tier-2 gate (offline, ZERO model spend).
+// inbox-triage: the deterministic offline gate (ZERO model spend).
 //
 // This file IS the worked example the README/AUTHORING points at: it drives the
 // REAL `@openprose/reactor` reconciler through the public exports, asserts the
-// validity contract off the persisted ledger, and proves this example's tenet —
+// validity contract off the persisted ledger, and proves this example's tenet:
 // a failed receipt carries zero fresh and wakes nothing downstream; diamond dedup
 // is a single wake. If this test breaks, the example is invalid.
 //
@@ -21,9 +21,7 @@ import { mkdtempSync, rmSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import {
-  createFileSystemStorageAdapter,
-} from "@openprose/reactor";
+import { createFileSystemStorageAdapter } from "@openprose/reactor";
 import {
   mountDag,
   createFileSystemReceiptLedger,
@@ -80,8 +78,8 @@ function rawReceipts(stateDir: string): LedgerReceipt[] {
 }
 
 // ===========================================================================
-// (1) Compiles to the frozen artifact set — topology valid, single entry,
-//     acyclic — and the committed replay/ matches a fresh generation.
+// (1) Compiles to the frozen artifact set (topology valid, single entry,
+//     acyclic) and the committed replay/ matches a fresh generation.
 // ===========================================================================
 
 describe("inbox-triage — (1) frozen artifact set", () => {
@@ -101,20 +99,26 @@ describe("inbox-triage — (1) frozen artifact set", () => {
       expect(ids.has(e.producer) || e.producer === SOURCE).toBe(true);
     }
     // exactly one external entry point.
-    const externals = topology.nodes.filter((n) => n.wake_source === "external");
+    const externals = topology.nodes.filter(
+      (n) => n.wake_source === "external",
+    );
     expect(externals.map((n) => n.node)).toEqual([GATEWAY]);
   });
 
   it("ships every mandatory replay artifact", () => {
-    // topology, labels, beats, receipts, world-models — present on disk.
+    // topology, labels, beats, receipts, world-models: present on disk.
     expect(() => readTopology(COMMITTED)).not.toThrow();
-    expect(() => readFileSync(join(COMMITTED, "compile", "labels.json"))).not.toThrow();
+    expect(() =>
+      readFileSync(join(COMMITTED, "compile", "labels.json")),
+    ).not.toThrow();
     expect(() => readFileSync(join(COMMITTED, "beats.json"))).not.toThrow();
     expect(() => readFileSync(join(COMMITTED, "receipts.json"))).not.toThrow();
     // hex-encoded world-model dir for the digest exists.
     const hexDigest = Buffer.from(DIGEST, "utf8").toString("hex");
     expect(() =>
-      readFileSync(join(COMMITTED, "world-models", hexDigest, "published.json")),
+      readFileSync(
+        join(COMMITTED, "world-models", hexDigest, "published.json"),
+      ),
     ).not.toThrow();
   });
 });
@@ -123,19 +127,24 @@ describe("inbox-triage — (1) frozen artifact set", () => {
 // (4) ATOMIC_FACET for facet-less producers; NO "*" tokens anywhere.
 // ===========================================================================
 
-describe("inbox-triage — (4) ATOMIC_FACET, never \"*\"", () => {
+describe('inbox-triage — (4) ATOMIC_FACET, never "*"', () => {
   it("facet-less fan-in edges subscribe to the exported ATOMIC_FACET constant", () => {
     const topology = readTopology(COMMITTED);
     // The threader fans in from each classifier with no named facet -> ATOMIC_FACET.
     const fanIn = topology.edges.filter(
-      (e) => e.subscriber === THREADER && e.producer.startsWith(CLASSIFIER_PREFIX),
+      (e) =>
+        e.subscriber === THREADER && e.producer.startsWith(CLASSIFIER_PREFIX),
     );
     expect(fanIn.length).toBe(8);
     for (const e of fanIn) expect(e.facet).toBe(ATOMIC_FACET);
   });
 
-  it("no \"*\" wildcard token appears in any committed artifact", () => {
-    for (const rel of ["compile/topology.json", "compile/labels.json", "receipts.json"]) {
+  it('no "*" wildcard token appears in any committed artifact', () => {
+    for (const rel of [
+      "compile/topology.json",
+      "compile/labels.json",
+      "receipts.json",
+    ]) {
       const txt = readFileSync(join(COMMITTED, rel), "utf8");
       expect(txt.includes('"*"')).toBe(false);
     }
@@ -175,7 +184,7 @@ describe("inbox-triage — (5) chain-verifies", () => {
 
 // ===========================================================================
 // (2) Cold-start renders all; an identical re-wake SKIPS all; a skip
-//     propagates nothing and wakes nothing — driven through the REAL reconciler.
+//     propagates nothing and wakes nothing, driven through the REAL reconciler.
 //     (EVALS.md "drive the reconciler yourself" shape, on a minimal 2-node DAG
 //     that mirrors this example's gateway -> responsibility edge.)
 // ===========================================================================
@@ -192,7 +201,7 @@ describe("inbox-triage — (2) cold renders, quiet re-wake skips, contract edit 
           provider: "none",
           model: "fake",
           tokens: { fresh: 1, reused: 0 },
-          // the load-bearing invariant — off the wake, never hardcoded.
+          // the load-bearing invariant: off the wake, never hardcoded.
           surprise_cause: ctx.wake.source,
         },
       });
@@ -200,10 +209,20 @@ describe("inbox-triage — (2) cold renders, quiet re-wake skips, contract edit 
       const topo = (sourceFp: string): ReconcilerTopology => ({
         topology: {
           nodes: [
-            { node: "inbox", contract_fingerprint: sourceFp, wake_source: "external" },
-            { node: "digest", contract_fingerprint: "fp-digest", wake_source: "input" },
+            {
+              node: "inbox",
+              contract_fingerprint: sourceFp,
+              wake_source: "external",
+            },
+            {
+              node: "digest",
+              contract_fingerprint: "fp-digest",
+              wake_source: "input",
+            },
           ],
-          edges: [{ subscriber: "digest", producer: "inbox", facet: ATOMIC_FACET }],
+          edges: [
+            { subscriber: "digest", producer: "inbox", facet: ATOMIC_FACET },
+          ],
           entry_points: ["inbox"],
           acyclic: true,
         },
@@ -228,7 +247,9 @@ describe("inbox-triage — (2) cold renders, quiet re-wake skips, contract edit 
       const quiet = dag.ingest("inbox");
       // nothing moved -> inbox skips; digest is NOT even woken (skip propagates
       // nothing, wakes nothing).
-      expect(quiet.map((r) => `${r.node}:${r.disposition}`)).toEqual(["inbox:skipped"]);
+      expect(quiet.map((r) => `${r.node}:${r.disposition}`)).toEqual([
+        "inbox:skipped",
+      ]);
       expect(createReplaySession({ ledger }).costRollup.total.fresh).toBe(2);
 
       // a contract_fingerprint edit MOVES the memo key -> render + propagate.
@@ -269,7 +290,11 @@ describe("inbox-triage — THE TENET: failure isolation + diamond single-wake", 
       // content-fingerprinted facet (a single wake out).
       const nlClassified = new Set(
         session.receipts
-          .filter((r) => /^responsibility\.classifier-nl[1-5]$/.test(r.node) && r.status === "rendered")
+          .filter(
+            (r) =>
+              /^responsibility\.classifier-nl[1-5]$/.test(r.node) &&
+              r.status === "rendered",
+          )
           .map((r) => r.node),
       );
       expect(nlClassified.size).toBeGreaterThanOrEqual(5);
@@ -280,7 +305,7 @@ describe("inbox-triage — THE TENET: failure isolation + diamond single-wake", 
       expect(newsletterRenders.length).toBe(1);
 
       // every threader re-run that did NOT move thread:newsletter (copies 2..5)
-      // must NOT re-light the shared render — the dedup, at the propagation seam.
+      // must NOT re-light the shared render; the dedup, at the propagation seam.
       let dedupedFrames = 0;
       for (let i = 0; i < session.receipts.length; i++) {
         const r = session.receipts[i]!;
@@ -304,7 +329,7 @@ describe("inbox-triage — THE TENET: failure isolation + diamond single-wake", 
       expect(failed.length).toBeGreaterThanOrEqual(1);
       expect(failed.some((r) => r.node === ALERT_CLASSIFIER)).toBe(true);
       for (const f of failed) {
-        expect(f.cost.tokens.fresh).toBe(0); // zero fresh — no work landed.
+        expect(f.cost.tokens.fresh).toBe(0); // zero fresh, no work landed.
       }
       // a failed receipt moves NO facet, so it lights NO downstream lane.
       for (let i = 0; i < session.receipts.length; i++) {
@@ -317,25 +342,40 @@ describe("inbox-triage — THE TENET: failure isolation + diamond single-wake", 
           movedFacets: moved,
           wakeRef: r.content_hash,
         });
-        expect(targets.length, "a failed receipt wakes nothing downstream").toBe(0);
+        expect(
+          targets.length,
+          "a failed receipt wakes nothing downstream",
+        ).toBe(0);
       }
 
       // the failure stays isolated: the digest NEVER fails…
-      expect(session.receipts.some((r) => r.node === DIGEST && r.status === "failed")).toBe(false);
+      expect(
+        session.receipts.some(
+          (r) => r.node === DIGEST && r.status === "failed",
+        ),
+      ).toBe(false);
       // …and still ships after the failure (the digest still renders).
       const failIdx = session.receipts.findIndex(
         (r) => r.node === ALERT_CLASSIFIER && r.status === "failed",
       );
       const digestAfterFail = session.receipts
         .map((r, i) => ({ r, i }))
-        .filter(({ r, i }) => r.node === DIGEST && r.status === "rendered" && i > failIdx);
+        .filter(
+          ({ r, i }) =>
+            r.node === DIGEST && r.status === "rendered" && i > failIdx,
+        );
       expect(digestAfterFail.length).toBeGreaterThanOrEqual(1);
 
       // --- RECOVER: a later fixed copy yields a rendered classifier receipt
       // AFTER the failure.
       const recovered = session.receipts
         .map((r, i) => ({ r, i }))
-        .filter(({ r, i }) => r.node === ALERT_CLASSIFIER && r.status === "rendered" && i > failIdx);
+        .filter(
+          ({ r, i }) =>
+            r.node === ALERT_CLASSIFIER &&
+            r.status === "rendered" &&
+            i > failIdx,
+        );
       expect(recovered.length).toBeGreaterThanOrEqual(1);
     });
   });
@@ -346,7 +386,9 @@ describe("inbox-triage — THE TENET: failure isolation + diamond single-wake", 
       const session = openSession(dir);
       const topology = readTopology(dir);
       const emailFacets = new Set(
-        ["nl1", "nl2", "nl3", "nl4", "nl5", "ship1", "invoice1", "bad1"].map((id) => `email:${id}`),
+        ["nl1", "nl2", "nl3", "nl4", "nl5", "ship1", "invoice1", "bad1"].map(
+          (id) => `email:${id}`,
+        ),
       );
       let sawSingle = false;
       for (let i = 0; i < session.receipts.length; i++) {
@@ -362,9 +404,13 @@ describe("inbox-triage — THE TENET: failure isolation + diamond single-wake", 
           movedFacets: moved,
           wakeRef: r.content_hash,
         });
-        const lit = targets.map((t) => t.node).filter((n) => n.startsWith(CLASSIFIER_PREFIX));
+        const lit = targets
+          .map((t) => t.node)
+          .filter((n) => n.startsWith(CLASSIFIER_PREFIX));
         expect(lit.length).toBeLessThanOrEqual(1);
-        expect(lit[0]).toBe(`${CLASSIFIER_PREFIX}${movedEmails[0]!.slice("email:".length)}`);
+        expect(lit[0]).toBe(
+          `${CLASSIFIER_PREFIX}${movedEmails[0]!.slice("email:".length)}`,
+        );
       }
       expect(sawSingle).toBe(true);
     });
@@ -401,8 +447,14 @@ describe("inbox-triage — (6) byte-deterministic", () => {
       withTempDir((b) => {
         generateInboxTriageExample({ stateDir: a });
         generateInboxTriageExample({ stateDir: b });
-        for (const rel of ["receipts.json", "compile/topology.json", "compile/labels.json"]) {
-          expect(readFileSync(join(a, rel), "utf8")).toBe(readFileSync(join(b, rel), "utf8"));
+        for (const rel of [
+          "receipts.json",
+          "compile/topology.json",
+          "compile/labels.json",
+        ]) {
+          expect(readFileSync(join(a, rel), "utf8")).toBe(
+            readFileSync(join(b, rel), "utf8"),
+          );
         }
       }),
     );

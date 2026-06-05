@@ -25,7 +25,7 @@
 //
 // Determinism: every render body is a pure function of (upstream truth, own
 // prior); cost is a pure function of how much moved. Same generator ⇒
-// byte-identical state-dir. The co-located monorepo-ci.test.ts asserts that.
+// byte-identical state-dir. The monorepo-ci.test.ts asserts that.
 
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";

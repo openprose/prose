@@ -1,4 +1,4 @@
-// renewal-risk — OPTIONAL tier-3 live reliability check (KEY-GATED).
+// renewal-risk: OPTIONAL live reliability check (KEY-GATED).
 //
 // Additive and never required for the commit gate. It honors REACTOR_OFFLINE and
 // is gated on a real OpenRouter key: a keyless or REACTOR_OFFLINE=1 run reports a
@@ -19,12 +19,8 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import {
-  createFileSystemStorageAdapter,
-} from "@openprose/reactor";
-import {
-  FileSystemWorldModelStore,
-} from "@openprose/reactor/adapters";
+import { createFileSystemStorageAdapter } from "@openprose/reactor";
+import { FileSystemWorldModelStore } from "@openprose/reactor/adapters";
 import {
   mountDag,
   createReplaySession,
@@ -33,9 +29,7 @@ import {
   ATOMIC_FACET,
   type RenderContext,
 } from "@openprose/reactor";
-import {
-  FileSystemReceiptLedger,
-} from "@openprose/reactor/adapters";
+import { FileSystemReceiptLedger } from "@openprose/reactor/adapters";
 import type {
   ReconcilerTopology,
   AsyncMountedRender,
@@ -52,12 +46,13 @@ const RENEWAL_RISK = "responsibility.renewal-risk";
 const TRUTH = "truth.json";
 
 // Honor REACTOR_OFFLINE (the hermetic CI switch) AND the key gate.
-const OFFLINE = process.env.REACTOR_OFFLINE === "1" || process.env.REACTOR_OFFLINE === "true";
+const OFFLINE =
+  process.env.REACTOR_OFFLINE === "1" || process.env.REACTOR_OFFLINE === "true";
 const SKIP_REASON = OFFLINE
-  ? "REACTOR_OFFLINE=1 — live tier is a passing-skipped no-op"
+  ? "REACTOR_OFFLINE=1: the live check is a passing-skipped no-op"
   : hasOpenRouterKey()
     ? false
-    : "no OPENROUTER_API_KEY — live tier is a passing-skipped no-op";
+    : "no OPENROUTER_API_KEY: the live check is a passing-skipped no-op";
 
 function liveContractFor(node: string): CompiledContractView {
   if (node === RENEWAL_RISK) {
@@ -94,21 +89,40 @@ describe("renewal-risk (live) — a no-change re-wake skips at zero model calls"
     async () => {
       const dir = mkdtempSync(join(tmpdir(), "renewal-risk-live-"));
       try {
-        const store = new FileSystemWorldModelStore({ directory: join(dir, "world-models") });
+        const store = new FileSystemWorldModelStore({
+          directory: join(dir, "world-models"),
+        });
         const storage = createFileSystemStorageAdapter({ directory: dir });
         const ledger = new FileSystemReceiptLedger({ storage });
 
         const topology: ReconcilerTopology = {
           topology: {
             nodes: [
-              { node: GATEWAY, contract_fingerprint: "fp-gw", wake_source: "external" },
-              { node: RENEWAL_RISK, contract_fingerprint: "fp-rr", wake_source: "input" },
+              {
+                node: GATEWAY,
+                contract_fingerprint: "fp-gw",
+                wake_source: "external",
+              },
+              {
+                node: RENEWAL_RISK,
+                contract_fingerprint: "fp-rr",
+                wake_source: "input",
+              },
             ],
-            edges: [{ subscriber: RENEWAL_RISK, producer: GATEWAY, facet: ATOMIC_FACET }],
+            edges: [
+              {
+                subscriber: RENEWAL_RISK,
+                producer: GATEWAY,
+                facet: ATOMIC_FACET,
+              },
+            ],
             entry_points: [GATEWAY],
             acyclic: true,
           },
-          contract_fingerprints: { [GATEWAY]: "fp-gw", [RENEWAL_RISK]: "fp-rr" },
+          contract_fingerprints: {
+            [GATEWAY]: "fp-gw",
+            [RENEWAL_RISK]: "fp-rr",
+          },
         };
 
         // A deterministic gateway truth so the live responsibility has signals to
@@ -116,7 +130,11 @@ describe("renewal-risk (live) — a no-change re-wake skips at zero model calls"
         const gatewayTruth = files({
           [TRUTH]: jsonFile({
             accounts: {
-              acme: { usage_trend: "dropping", renewal_in_days: 30, support_friction: 1 },
+              acme: {
+                usage_trend: "dropping",
+                renewal_in_days: 30,
+                support_friction: 1,
+              },
             },
           }),
         });
@@ -135,14 +153,24 @@ describe("renewal-risk (live) — a no-change re-wake skips at zero model calls"
             [GATEWAY]: {
               render: (ctx: RenderContext) => ({
                 world_model: gatewayTruth,
-                cost: { provider: "none", model: "fake", tokens: { fresh: 0, reused: 0 }, surprise_cause: ctx.wake.source },
+                cost: {
+                  provider: "none",
+                  model: "fake",
+                  tokens: { fresh: 0, reused: 0 },
+                  surprise_cause: ctx.wake.source,
+                },
               }),
             },
             // sync fallback for the responsibility (the live one is on asyncMounts).
             [RENEWAL_RISK]: {
               render: (ctx: RenderContext) => ({
                 world_model: files({}),
-                cost: { provider: "none", model: "fake", tokens: { fresh: 0, reused: 0 }, surprise_cause: ctx.wake.source },
+                cost: {
+                  provider: "none",
+                  model: "fake",
+                  tokens: { fresh: 0, reused: 0 },
+                  surprise_cause: ctx.wake.source,
+                },
               }),
             },
           },
@@ -152,11 +180,15 @@ describe("renewal-risk (live) — a no-change re-wake skips at zero model calls"
         });
 
         await dag.ingestAsync(GATEWAY); // cold: the live render fires
-        const freshAfterCold = createReplaySession({ ledger }).costRollup.total.fresh;
+        const freshAfterCold = createReplaySession({ ledger }).costRollup.total
+          .fresh;
 
         const second = await dag.ingestAsync(GATEWAY); // identical re-wake: must skip
-        expect(second.map((r) => `${r.node}:${r.disposition}`)).toEqual([`${GATEWAY}:skipped`]);
-        const freshAfterReWake = createReplaySession({ ledger }).costRollup.total.fresh;
+        expect(second.map((r) => `${r.node}:${r.disposition}`)).toEqual([
+          `${GATEWAY}:skipped`,
+        ]);
+        const freshAfterReWake = createReplaySession({ ledger }).costRollup
+          .total.fresh;
         expect(freshAfterReWake).toBe(freshAfterCold); // the skip spent no fresh tokens
       } finally {
         rmSync(dir, { recursive: true, force: true });

@@ -1,4 +1,4 @@
-// The oblique-weave TIER-2 GATE — deterministic, offline, zero model spend.
+// The oblique-weave OFFLINE GATE: deterministic, offline, zero model spend.
 //
 // It drives the REAL `@openprose/reactor` reconciler with deterministic fake
 // renders and asserts the whole validity contract off the persisted ledger. Its
@@ -12,7 +12,7 @@
 //   - a TERMINAL Novelty Auditor whose recommendation becomes a NEW EXPLICIT
 //     Weave Config receipt the NEXT epoch — DAG-preserving, no same-epoch cycle.
 //
-// THE VALIDITY CONTRACT this asserts (plan §5):
+// THE VALIDITY CONTRACT this asserts:
 //   1. Compiles to the frozen artifact set (topology valid, single-kind entry
 //      gateways, acyclic; labels + flat receipts.json + hex world-models present).
 //   2. Cold-start renders all nodes; an identical re-wake SKIPS; a skip
@@ -24,13 +24,17 @@
 
 import { strict as assert } from "node:assert";
 import { describe, it } from "vitest";
-import { mkdtempSync, rmSync, readFileSync, existsSync, readdirSync } from "node:fs";
+import {
+  mkdtempSync,
+  rmSync,
+  readFileSync,
+  existsSync,
+  readdirSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import {
-  createFileSystemStorageAdapter,
-} from "@openprose/reactor";
+import { createFileSystemStorageAdapter } from "@openprose/reactor";
 import {
   mountDag,
   createFileSystemReceiptLedger,
@@ -41,9 +45,7 @@ import {
   ATOMIC_FACET,
   type RenderContext,
 } from "@openprose/reactor";
-import {
-  FileSystemReceiptLedger,
-} from "@openprose/reactor/adapters";
+import { FileSystemReceiptLedger } from "@openprose/reactor/adapters";
 import {
   propagationTargets,
   type ReconcilerTopology,
@@ -119,14 +121,34 @@ describe("oblique-weave — masked viewports (a role wakes IFF its slice moved)"
       const topology: ReconcilerTopology = {
         topology: {
           nodes: [
-            { node: VIEWPORT, contract_fingerprint: "fp-viewport", wake_source: "external" },
-            { node: ANALOGIST, contract_fingerprint: "fp-analogist", wake_source: "input" },
-            { node: ADVERSARY, contract_fingerprint: "fp-adversary", wake_source: "input" },
+            {
+              node: VIEWPORT,
+              contract_fingerprint: "fp-viewport",
+              wake_source: "external",
+            },
+            {
+              node: ANALOGIST,
+              contract_fingerprint: "fp-analogist",
+              wake_source: "input",
+            },
+            {
+              node: ADVERSARY,
+              contract_fingerprint: "fp-adversary",
+              wake_source: "input",
+            },
           ],
           // each role subscribes to its OWN masked facet (never "*").
           edges: [
-            { subscriber: ANALOGIST, producer: VIEWPORT, facet: VIEW_FACET[ANALOGIST]! },
-            { subscriber: ADVERSARY, producer: VIEWPORT, facet: VIEW_FACET[ADVERSARY]! },
+            {
+              subscriber: ANALOGIST,
+              producer: VIEWPORT,
+              facet: VIEW_FACET[ANALOGIST]!,
+            },
+            {
+              subscriber: ADVERSARY,
+              producer: VIEWPORT,
+              facet: VIEW_FACET[ADVERSARY]!,
+            },
           ],
           entry_points: [VIEWPORT],
           acyclic: true,
@@ -154,7 +176,10 @@ describe("oblique-weave — masked viewports (a role wakes IFF its slice moved)"
         mountDag({
           topology,
           mounts: {
-            [VIEWPORT]: { render: render(viewportText), canonicalizer: viewportCanon },
+            [VIEWPORT]: {
+              render: render(viewportText),
+              canonicalizer: viewportCanon,
+            },
             [ANALOGIST]: { render: render("analogist thread") },
             [ADVERSARY]: { render: render("adversary thread") },
           },
@@ -165,7 +190,11 @@ describe("oblique-weave — masked viewports (a role wakes IFF its slice moved)"
       const cold = mountAt("A1|B1").ingest(VIEWPORT);
       assert.deepEqual(
         cold.map((r) => `${r.node}:${r.disposition}`).sort(),
-        [`${ADVERSARY}:rendered`, `${ANALOGIST}:rendered`, `${VIEWPORT}:rendered`].sort(),
+        [
+          `${ADVERSARY}:rendered`,
+          `${ANALOGIST}:rendered`,
+          `${VIEWPORT}:rendered`,
+        ].sort(),
         "cold start renders the viewport and both role lanes",
       );
 
@@ -175,10 +204,15 @@ describe("oblique-weave — masked viewports (a role wakes IFF its slice moved)"
       const topology2: ReconcilerTopology = {
         ...topology,
         topology: { ...topology.topology },
-        contract_fingerprints: { ...topology.contract_fingerprints, [VIEWPORT]: "fp-viewport-d2" },
+        contract_fingerprints: {
+          ...topology.contract_fingerprints,
+          [VIEWPORT]: "fp-viewport-d2",
+        },
       };
       topology2.topology.nodes = topology.topology.nodes.map((n) =>
-        n.node === VIEWPORT ? { ...n, contract_fingerprint: "fp-viewport-d2" } : n,
+        n.node === VIEWPORT
+          ? { ...n, contract_fingerprint: "fp-viewport-d2" }
+          : n,
       );
       const surprise = mountDag({
         topology: topology2,
@@ -206,7 +240,11 @@ describe("oblique-weave — masked viewports (a role wakes IFF its slice moved)"
 
       // cost.surprise_cause === wake.source on EVERY committed receipt.
       for (const r of createReplaySession({ ledger }).receipts) {
-        assert.equal(r.cost.surprise_cause, r.wake.source, `surprise_cause==wake.source on ${r.node}`);
+        assert.equal(
+          r.cost.surprise_cause,
+          r.wake.source,
+          `surprise_cause==wake.source on ${r.node}`,
+        );
       }
     } finally {
       rmSync(dir, { recursive: true, force: true });
@@ -224,15 +262,35 @@ describe("oblique-weave — the committed replay fixture (validity contract)", (
     try {
       const result = generateObliqueWeaveFixture({ stateDir: dir });
 
-      assert.ok(existsSync(join(dir, "receipts.json")), "flat root receipts.json present");
-      assert.ok(existsSync(join(dir, "compile", "topology.json")), "topology snapshot present");
-      assert.ok(existsSync(join(dir, "compile", "labels.json")), "labels map present");
+      assert.ok(
+        existsSync(join(dir, "receipts.json")),
+        "flat root receipts.json present",
+      );
+      assert.ok(
+        existsSync(join(dir, "compile", "topology.json")),
+        "topology snapshot present",
+      );
+      assert.ok(
+        existsSync(join(dir, "compile", "labels.json")),
+        "labels map present",
+      );
       assert.ok(existsSync(join(dir, "beats.json")), "beats map present");
-      assert.ok(existsSync(join(dir, "world-models")), "world-models dir present");
+      assert.ok(
+        existsSync(join(dir, "world-models")),
+        "world-models dir present",
+      );
 
       const topology = readTopology(dir);
-      assert.equal(topology.nodes.length, 11, "eleven real nodes (2 gateways + 9 responsibilities)");
-      assert.equal(topology.acyclic, true, "the mounted graph is acyclic (no same-epoch cycle)");
+      assert.equal(
+        topology.nodes.length,
+        11,
+        "eleven real nodes (2 gateways + 9 responsibilities)",
+      );
+      assert.equal(
+        topology.acyclic,
+        true,
+        "the mounted graph is acyclic (no same-epoch cycle)",
+      );
       // two external-driven entry gateways (the Signal Inbox + the Weave Config).
       assert.deepEqual(
         [...topology.entry_points].sort(),
@@ -245,7 +303,10 @@ describe("oblique-weave — the committed replay fixture (validity contract)", (
       for (const role of ROLES) {
         assert.ok(
           topology.edges.some(
-            (e) => e.producer === VIEWPORT && e.subscriber === role && e.facet === VIEW_FACET[role],
+            (e) =>
+              e.producer === VIEWPORT &&
+              e.subscriber === role &&
+              e.facet === VIEW_FACET[role],
           ),
           `${role} subscribes to its masked facet ${VIEW_FACET[role]} on the viewport`,
         );
@@ -258,7 +319,9 @@ describe("oblique-weave — the committed replay fixture (validity contract)", (
         "the Novelty Auditor is terminal — no node subscribes to it",
       );
       assert.ok(
-        !topology.edges.some((e) => e.subscriber === VIEWPORT && e.producer === AUDITOR),
+        !topology.edges.some(
+          (e) => e.subscriber === VIEWPORT && e.producer === AUDITOR,
+        ),
         "the auditor has NO edge back to the viewport policy (DAG-preserving)",
       );
 
@@ -266,12 +329,17 @@ describe("oblique-weave — the committed replay fixture (validity contract)", (
       const wmDirs = readdirSync(join(dir, "world-models"));
       for (const node of [SIGNALS, WEAVE, VIEWPORT, ANALOGIST, MEMO, AUDITOR]) {
         const hex = Buffer.from(node, "utf8").toString("hex");
-        assert.ok(wmDirs.includes(hex), `world-model dir for ${node} is hex-encoded (${hex})`);
+        assert.ok(
+          wmDirs.includes(hex),
+          `world-model dir for ${node} is hex-encoded (${hex})`,
+        );
         assert.ok(
           existsSync(join(dir, "world-models", hex, "published.json")),
           `${node} has a published.json`,
         );
-        const versions = readdirSync(join(dir, "world-models", hex, "versions"));
+        const versions = readdirSync(
+          join(dir, "world-models", hex, "versions"),
+        );
         assert.ok(
           versions.some((f) => f.startsWith("sha256_") && f.endsWith(".bin")),
           `${node} has a sha256_*.bin version blob`,
@@ -293,7 +361,16 @@ describe("oblique-weave — the committed replay fixture (validity contract)", (
       const topology = readTopology(dir);
 
       // (a) cold start renders every node at least once.
-      for (const node of [SIGNALS, WEAVE, LEDGER, VIEWPORT, ...ROLES, OBLIQUE, MEMO, AUDITOR]) {
+      for (const node of [
+        SIGNALS,
+        WEAVE,
+        LEDGER,
+        VIEWPORT,
+        ...ROLES,
+        OBLIQUE,
+        MEMO,
+        AUDITOR,
+      ]) {
         assert.ok(
           r.some((x) => x.node === node && x.status === "rendered"),
           `${node} rendered at cold start`,
@@ -302,12 +379,25 @@ describe("oblique-weave — the committed replay fixture (validity contract)", (
 
       // (b) THE QUIET SKIP: a re-delivery with the SAME gateway contract skips the
       // signals gateway, which propagates nothing.
-      const signalsSkip = r.find((x) => x.node === SIGNALS && x.status === "skipped");
-      assert.ok(signalsSkip, "the quiet re-wake produced a signals-gateway skip");
-      assert.equal(signalsSkip!.cost.tokens.fresh, 0, "the skip burns zero fresh");
+      const signalsSkip = r.find(
+        (x) => x.node === SIGNALS && x.status === "skipped",
+      );
+      assert.ok(
+        signalsSkip,
+        "the quiet re-wake produced a signals-gateway skip",
+      );
+      assert.equal(
+        signalsSkip!.cost.tokens.fresh,
+        0,
+        "the skip burns zero fresh",
+      );
       // a skipped producer moves no facet ⇒ wakes nothing.
       const idx = r.indexOf(signalsSkip!);
-      assert.equal(session.movedFacetsByIndex[idx]!.size, 0, "the skip moved no facet");
+      assert.equal(
+        session.movedFacetsByIndex[idx]!.size,
+        0,
+        "the skip moved no facet",
+      );
       assert.equal(
         propagationTargets({
           topology,
@@ -326,23 +416,36 @@ describe("oblique-weave — the committed replay fixture (validity contract)", (
         .map((x, i) => ({ x, i }))
         .filter(({ x }) => x.node === VIEWPORT && x.status === "rendered");
       const soloRoleMove = viewportRenders.find(({ i }) => {
-        const movedViews = [...session.movedFacetsByIndex[i]!].filter((f) => f.startsWith("view:"));
+        const movedViews = [...session.movedFacetsByIndex[i]!].filter((f) =>
+          f.startsWith("view:"),
+        );
         return movedViews.length === 1;
       });
-      assert.ok(soloRoleMove, "a viewport render moved exactly ONE role's masked facet (the surprise)");
+      assert.ok(
+        soloRoleMove,
+        "a viewport render moved exactly ONE role's masked facet (the surprise)",
+      );
 
-      const movedView = [...session.movedFacetsByIndex[soloRoleMove!.i]!].find((f) =>
-        f.startsWith("view:"),
+      const movedView = [...session.movedFacetsByIndex[soloRoleMove!.i]!].find(
+        (f) => f.startsWith("view:"),
       )!;
-      const wokenRole = Object.keys(VIEW_FACET).find((role) => VIEW_FACET[role] === movedView)!;
+      const wokenRole = Object.keys(VIEW_FACET).find(
+        (role) => VIEW_FACET[role] === movedView,
+      )!;
       const targets = propagationTargets({
         topology,
         producer: VIEWPORT,
         movedFacets: session.movedFacetsByIndex[soloRoleMove!.i]!,
         wakeRef: r[soloRoleMove!.i]!.content_hash,
       });
-      const wokenRoles = targets.map((t) => t.node).filter((n) => ROLES.includes(n));
-      assert.deepEqual(wokenRoles, [wokenRole], "exactly the role whose masked slice moved was woken");
+      const wokenRoles = targets
+        .map((t) => t.node)
+        .filter((n) => ROLES.includes(n));
+      assert.deepEqual(
+        wokenRoles,
+        [wokenRole],
+        "exactly the role whose masked slice moved was woken",
+      );
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
@@ -358,7 +461,9 @@ describe("oblique-weave — the committed replay fixture (validity contract)", (
       // The Weave Config gateway delivered MORE THAN ONCE (the cold config + the
       // auditor-recommended re-weave) — the terminal recommendation became a new
       // explicit config the NEXT epoch.
-      const weaveRenders = r.filter((x) => x.node === WEAVE && x.status === "rendered");
+      const weaveRenders = r.filter(
+        (x) => x.node === WEAVE && x.status === "rendered",
+      );
       assert.ok(
         weaveRenders.length >= 2,
         "the Weave Config gateway rendered on a SECOND delivery (the auditor re-weave)",
@@ -367,8 +472,12 @@ describe("oblique-weave — the committed replay fixture (validity contract)", (
       // The auditor rendered BEFORE the second weave delivery (its recommendation
       // is what drove the operator to apply the new config) — a cross-epoch loop,
       // not a same-epoch cycle.
-      const firstAuditor = r.findIndex((x) => x.node === AUDITOR && x.status === "rendered");
-      const lastWeaveRender = r.map((x) => x.node === WEAVE && x.status === "rendered").lastIndexOf(true);
+      const firstAuditor = r.findIndex(
+        (x) => x.node === AUDITOR && x.status === "rendered",
+      );
+      const lastWeaveRender = r
+        .map((x) => x.node === WEAVE && x.status === "rendered")
+        .lastIndexOf(true);
       assert.ok(firstAuditor >= 0, "the auditor rendered at least once");
       assert.ok(
         lastWeaveRender > firstAuditor,
@@ -387,20 +496,35 @@ describe("oblique-weave — the committed replay fixture (validity contract)", (
 
       const { byCause, total } = session.costRollup;
       const buckets = Object.values(byCause);
-      assert.equal(buckets.reduce((s, b) => s + b.fresh, 0), total.fresh, "byCause.fresh sums to total.fresh");
+      assert.equal(
+        buckets.reduce((s, b) => s + b.fresh, 0),
+        total.fresh,
+        "byCause.fresh sums to total.fresh",
+      );
       assert.equal(
         buckets.reduce((s, b) => s + b.receipts, 0),
         total.receipts,
         "byCause.receipts sums to total.receipts",
       );
 
-      const trailFresh = session.receipts.reduce((s, x) => s + x.cost.tokens.fresh, 0);
-      assert.equal(total.fresh, trailFresh, "the rollup's total.fresh matches the trail");
+      const trailFresh = session.receipts.reduce(
+        (s, x) => s + x.cost.tokens.fresh,
+        0,
+      );
+      assert.equal(
+        total.fresh,
+        trailFresh,
+        "the rollup's total.fresh matches the trail",
+      );
       assert.ok(total.fresh > 0, "the weave drove real fresh spend");
 
       for (const x of session.receipts) {
         if (x.status === "skipped" || x.status === "failed") {
-          assert.equal(x.cost.tokens.fresh, 0, `${x.node} (${x.status}) carries zero fresh`);
+          assert.equal(
+            x.cost.tokens.fresh,
+            0,
+            `${x.node} (${x.status}) carries zero fresh`,
+          );
         }
       }
     } finally {
@@ -428,7 +552,10 @@ describe("oblique-weave — the committed replay fixture (validity contract)", (
     const dir = tmp("oblique-weave-facet-");
     try {
       generateObliqueWeaveFixture({ stateDir: dir });
-      const topoRaw = readFileSync(join(dir, "compile", "topology.json"), "utf8");
+      const topoRaw = readFileSync(
+        join(dir, "compile", "topology.json"),
+        "utf8",
+      );
       const receiptsRaw = readFileSync(join(dir, "receipts.json"), "utf8");
 
       assert.ok(!/"\*"/.test(topoRaw), 'no "*" token in topology.json');
@@ -436,9 +563,15 @@ describe("oblique-weave — the committed replay fixture (validity contract)", (
 
       const topology = readTopology(dir);
       // every edge is either a masked role facet (view:<role>) or the ATOMIC_FACET.
-      const allowed = new Set<string>([ATOMIC_FACET, ...Object.values(VIEW_FACET)]);
+      const allowed = new Set<string>([
+        ATOMIC_FACET,
+        ...Object.values(VIEW_FACET),
+      ]);
       for (const e of topology.edges) {
-        assert.ok(allowed.has(e.facet), `edge facet "${e.facet}" is ATOMIC_FACET or a named masked facet`);
+        assert.ok(
+          allowed.has(e.facet),
+          `edge facet "${e.facet}" is ATOMIC_FACET or a named masked facet`,
+        );
       }
       // the facet-less producers expose ATOMIC_FACET in their fingerprints.
       for (const r of openSession(dir).receipts) {
@@ -457,19 +590,38 @@ describe("oblique-weave — the committed replay fixture (validity contract)", (
     const dir = tmp("oblique-weave-chain-");
     try {
       generateObliqueWeaveFixture({ stateDir: dir });
-      const raw = JSON.parse(readFileSync(join(dir, "receipts.json"), "utf8")) as { node: string }[];
-      const allNodes = [SIGNALS, WEAVE, LEDGER, VIEWPORT, ...ROLES, OBLIQUE, MEMO, AUDITOR];
+      const raw = JSON.parse(
+        readFileSync(join(dir, "receipts.json"), "utf8"),
+      ) as { node: string }[];
+      const allNodes = [
+        SIGNALS,
+        WEAVE,
+        LEDGER,
+        VIEWPORT,
+        ...ROLES,
+        OBLIQUE,
+        MEMO,
+        AUDITOR,
+      ];
       for (const node of allNodes) {
         const slice = raw.filter((r) => r.node === node);
         assert.ok(slice.length > 0, `${node} has on-disk receipts`);
         const result = verifyReceiptChain(slice);
-        assert.equal(result.ok, true, `${node}'s on-disk receipt chain verifies`);
+        assert.equal(
+          result.ok,
+          true,
+          `${node}'s on-disk receipt chain verifies`,
+        );
       }
 
       // also per-node via the replay read view (the same view devtools renders).
       const session = openSession(dir);
       for (const node of allNodes) {
-        assert.equal(session.verifyNodeChain(node).ok, true, `${node}'s chain verifies via replay`);
+        assert.equal(
+          session.verifyNodeChain(node).ok,
+          true,
+          `${node}'s chain verifies via replay`,
+        );
       }
     } finally {
       rmSync(dir, { recursive: true, force: true });

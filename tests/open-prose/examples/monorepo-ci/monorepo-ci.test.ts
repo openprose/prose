@@ -1,4 +1,4 @@
-// Deterministic tier-2 gate for the monorepo-ci example (offline, zero spend).
+// Deterministic offline gate for the monorepo-ci example (zero spend).
 //
 // It proves THE VALIDITY CONTRACT off the persisted ledger:
 //   1. Compiles to the frozen artifact set (topology valid, single entry
@@ -22,17 +22,21 @@
 //    and chain-verify + byte-determinism.
 //
 // RUN (offline):
-//   cd /Users/sl/code/prose && REACTOR_OFFLINE=1 pnpm test:examples
-//     (or scope: REACTOR_OFFLINE=1 npx vitest run skills/open-prose/examples/monorepo-ci)
+//   REACTOR_OFFLINE=1 pnpm test:examples
+//     (or scope: REACTOR_OFFLINE=1 npx vitest run tests/open-prose/examples/monorepo-ci)
 
-import { mkdtempSync, rmSync, readFileSync, readdirSync, existsSync } from "node:fs";
+import {
+  mkdtempSync,
+  rmSync,
+  readFileSync,
+  readdirSync,
+  existsSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import {
-  createFileSystemStorageAdapter,
-} from "@openprose/reactor";
+import { createFileSystemStorageAdapter } from "@openprose/reactor";
 import {
   mountDag,
   createFileSystemReceiptLedger,
@@ -53,7 +57,14 @@ import { generate } from "./generate";
 
 const GATEWAY = "gateway.workspace";
 const MERGE_GATE = "gate.merge";
-const PACKAGES = ["pkg-core", "pkg-ui", "pkg-api", "pkg-utils", "pkg-auth", "pkg-billing"] as const;
+const PACKAGES = [
+  "pkg-core",
+  "pkg-ui",
+  "pkg-api",
+  "pkg-utils",
+  "pkg-auth",
+  "pkg-billing",
+] as const;
 const PKG_FACETS = new Set<string>(PACKAGES);
 
 // --- temp-dir helpers -------------------------------------------------------
@@ -94,14 +105,21 @@ function rendersInWindow(
   const out = new Set<string>();
   for (let i = from; i <= to && i < session.receipts.length; i++) {
     const r = session.receipts[i]!;
-    if (r.status === "rendered" && r.node !== GATEWAY && !r.node.startsWith("ingress.")) {
+    if (
+      r.status === "rendered" &&
+      r.node !== GATEWAY &&
+      !r.node.startsWith("ingress.")
+    ) {
       out.add(r.node);
     }
   }
   return out;
 }
 
-function gatewayMoveOf(session: ReturnType<typeof openSession>, facet: string): number {
+function gatewayMoveOf(
+  session: ReturnType<typeof openSession>,
+  facet: string,
+): number {
   for (let i = 0; i < session.receipts.length; i++) {
     const r = session.receipts[i]!;
     if (r.node !== GATEWAY || r.status !== "rendered") continue;
@@ -112,7 +130,10 @@ function gatewayMoveOf(session: ReturnType<typeof openSession>, facet: string): 
   return -1;
 }
 
-function nextGatewayAfter(session: ReturnType<typeof openSession>, idx: number): number {
+function nextGatewayAfter(
+  session: ReturnType<typeof openSession>,
+  idx: number,
+): number {
   for (let i = idx + 1; i < session.receipts.length; i++) {
     if (session.receipts[i]!.node === GATEWAY) return i;
   }
@@ -128,7 +149,9 @@ function readMergeGateTruth(stateDir: string): string[] {
   if (!existsSync(versionsDir)) return out;
   for (const entry of readdirSync(versionsDir)) {
     if (!entry.endsWith(".bin")) continue;
-    const m = /"merge":"([A-Z]+)"/.exec(readFileSync(join(versionsDir, entry), "utf8"));
+    const m = /"merge":"([A-Z]+)"/.exec(
+      readFileSync(join(versionsDir, entry), "utf8"),
+    );
     if (m) out.push(m[1]!);
   }
   return out;
@@ -151,7 +174,9 @@ describe("monorepo-ci — compiles to the frozen artifact set", () => {
       expect(existsSync(join(stateDir, "receipts"))).toBe(false);
       // hex-encoded node dirs: gate.merge -> 676174652e6d65726765
       const hexMerge = Buffer.from(MERGE_GATE, "utf8").toString("hex");
-      expect(existsSync(join(stateDir, "world-models", hexMerge, "published.json"))).toBe(true);
+      expect(
+        existsSync(join(stateDir, "world-models", hexMerge, "published.json")),
+      ).toBe(true);
     });
   });
 
@@ -162,9 +187,15 @@ describe("monorepo-ci — compiles to the frozen artifact set", () => {
       expect(topology.nodes.length).toBe(22);
       expect(topology.acyclic).toBe(true);
       expect(topology.entry_points).toEqual([GATEWAY]);
-      expect(topology.nodes.filter((n) => n.node.startsWith("build.")).length).toBe(6);
-      expect(topology.nodes.filter((n) => n.node.startsWith("test.")).length).toBe(6);
-      expect(topology.nodes.filter((n) => n.node.startsWith("lint.")).length).toBe(6);
+      expect(
+        topology.nodes.filter((n) => n.node.startsWith("build.")).length,
+      ).toBe(6);
+      expect(
+        topology.nodes.filter((n) => n.node.startsWith("test.")).length,
+      ).toBe(6);
+      expect(
+        topology.nodes.filter((n) => n.node.startsWith("lint.")).length,
+      ).toBe(6);
     });
   });
 
@@ -184,7 +215,10 @@ describe("monorepo-ci — compiles to the frozen artifact set", () => {
       expect(fanIn.length).toBe(6);
       for (const e of fanIn) expect(e.facet).toBe(ATOMIC_FACET);
       // And the raw on-disk topology bytes contain no "*" facet token.
-      const raw = readFileSync(join(stateDir, "compile", "topology.json"), "utf8");
+      const raw = readFileSync(
+        join(stateDir, "compile", "topology.json"),
+        "utf8",
+      );
       expect(raw).not.toMatch(/"facet"\s*:\s*"\*"/);
     });
   });
@@ -196,7 +230,10 @@ describe("monorepo-ci — compiles to the frozen artifact set", () => {
       for (const pkg of PACKAGES) {
         expect(
           topology.edges.some(
-            (e) => e.producer === GATEWAY && e.facet === pkg && e.subscriber === `build.${pkg}`,
+            (e) =>
+              e.producer === GATEWAY &&
+              e.facet === pkg &&
+              e.subscriber === `build.${pkg}`,
           ),
         ).toBe(true);
       }
@@ -213,7 +250,9 @@ describe("monorepo-ci — compiles to the frozen artifact set", () => {
       for (const leaf of ["pkg-utils", "pkg-billing"]) {
         expect(
           topology.edges.some(
-            (e) => e.producer === "build.pkg-core" && e.subscriber === `build.${leaf}`,
+            (e) =>
+              e.producer === "build.pkg-core" &&
+              e.subscriber === `build.${leaf}`,
           ),
         ).toBe(false);
       }
@@ -244,7 +283,9 @@ describe("monorepo-ci — the committed ledger is sound", () => {
       // The flat ledger interleaves every node; verifyReceiptChain validates a
       // single node-scoped `prev`-linked slice, so group by node first (preserving
       // append order) and verify each chain.
-      const raw = JSON.parse(readFileSync(join(stateDir, "receipts.json"), "utf8")) as {
+      const raw = JSON.parse(
+        readFileSync(join(stateDir, "receipts.json"), "utf8"),
+      ) as {
         node: string;
       }[];
       const byNode = new Map<string, unknown[]>();
@@ -285,14 +326,31 @@ describe("monorepo-ci — memoization: quiet wakes skip, a contract edit renders
     return {
       topology: {
         nodes: [
-          { node: "build.pkg-core", contract_fingerprint: coreFp, wake_source: "external" },
-          { node: "build.pkg-ui", contract_fingerprint: "fp-ui", wake_source: "input" },
+          {
+            node: "build.pkg-core",
+            contract_fingerprint: coreFp,
+            wake_source: "external",
+          },
+          {
+            node: "build.pkg-ui",
+            contract_fingerprint: "fp-ui",
+            wake_source: "input",
+          },
         ],
-        edges: [{ subscriber: "build.pkg-ui", producer: "build.pkg-core", facet: ATOMIC_FACET }],
+        edges: [
+          {
+            subscriber: "build.pkg-ui",
+            producer: "build.pkg-core",
+            facet: ATOMIC_FACET,
+          },
+        ],
         entry_points: ["build.pkg-core"],
         acyclic: true,
       },
-      contract_fingerprints: { "build.pkg-core": coreFp, "build.pkg-ui": "fp-ui" },
+      contract_fingerprints: {
+        "build.pkg-core": coreFp,
+        "build.pkg-ui": "fp-ui",
+      },
     };
   }
 
@@ -319,7 +377,9 @@ describe("monorepo-ci — memoization: quiet wakes skip, a contract edit renders
 
       // Identical re-wake: the hub SKIPS and the dependent is not even woken.
       const second = dag.ingest("build.pkg-core");
-      expect(second.map((r) => `${r.node}:${r.disposition}`)).toEqual(["build.pkg-core:skipped"]);
+      expect(second.map((r) => `${r.node}:${r.disposition}`)).toEqual([
+        "build.pkg-core:skipped",
+      ]);
       expect(createReplaySession({ ledger }).costRollup.total.fresh).toBe(2);
 
       // A contract_fingerprint edit moves the memo key → render + propagate.
@@ -374,10 +434,18 @@ describe("monorepo-ci — hub fan-out blast radius + failing test → BLOCKED", 
         movedFacets: session.movedFacetsByIndex[leafIdx]!,
         wakeRef: session.receipts[leafIdx]!.content_hash,
       }).map((t) => t.node);
-      expect(targets.filter((n) => n.startsWith("build.")).sort()).toEqual(["build.pkg-ui"]);
-      expect(targets.filter((n) => n.startsWith("lint.")).sort()).toEqual(["lint.pkg-ui"]);
+      expect(targets.filter((n) => n.startsWith("build.")).sort()).toEqual([
+        "build.pkg-ui",
+      ]);
+      expect(targets.filter((n) => n.startsWith("lint.")).sort()).toEqual([
+        "lint.pkg-ui",
+      ]);
 
-      const rendered = rendersInWindow(session, leafIdx + 1, nextGatewayAfter(session, leafIdx) - 1);
+      const rendered = rendersInWindow(
+        session,
+        leafIdx + 1,
+        nextGatewayAfter(session, leafIdx) - 1,
+      );
       expect(rendered.has("build.pkg-ui")).toBe(true);
       expect(rendered.has("test.pkg-ui")).toBe(true);
       expect(rendered.has(MERGE_GATE)).toBe(true);
@@ -386,7 +454,9 @@ describe("monorepo-ci — hub fan-out blast radius + failing test → BLOCKED", 
         expect(rendered.has(`build.${pkg}`)).toBe(false);
         expect(rendered.has(`test.${pkg}`)).toBe(false);
       }
-      expect([...rendered].filter((n) => n.startsWith("build.")).sort()).toEqual(["build.pkg-ui"]);
+      expect(
+        [...rendered].filter((n) => n.startsWith("build.")).sort(),
+      ).toEqual(["build.pkg-ui"]);
     });
   });
 
@@ -396,13 +466,23 @@ describe("monorepo-ci — hub fan-out blast radius + failing test → BLOCKED", 
       const session = openSession(stateDir);
 
       const leafIdx = gatewayMoveOf(session, "pkg-ui");
-      const leafRendered = rendersInWindow(session, leafIdx + 1, nextGatewayAfter(session, leafIdx) - 1);
+      const leafRendered = rendersInWindow(
+        session,
+        leafIdx + 1,
+        nextGatewayAfter(session, leafIdx) - 1,
+      );
 
       const hubIdx = gatewayMoveOf(session, "pkg-core");
       expect(hubIdx).toBeGreaterThanOrEqual(0);
-      const hubRendered = rendersInWindow(session, hubIdx + 1, nextGatewayAfter(session, hubIdx) - 1);
+      const hubRendered = rendersInWindow(
+        session,
+        hubIdx + 1,
+        nextGatewayAfter(session, hubIdx) - 1,
+      );
 
-      expect([...hubRendered].filter((n) => n.startsWith("build.")).sort()).toEqual([
+      expect(
+        [...hubRendered].filter((n) => n.startsWith("build.")).sort(),
+      ).toEqual([
         "build.pkg-api",
         "build.pkg-auth",
         "build.pkg-core",

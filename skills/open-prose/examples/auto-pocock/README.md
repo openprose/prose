@@ -2,7 +2,7 @@
 
 An automated, non-interactive OpenProse adaptation of [Matt Pocock's public
 engineering-skill workflow][pocock-skills]. One service grills, another
-decides — because there is no human in the loop.
+decides, because there is no human in the loop.
 
 The system in [`src/auto-pocock.prose.md`](./src/auto-pocock.prose.md) chains
 nine inner services that apply Pocock's published skills (`grill-with-docs`,
@@ -48,17 +48,17 @@ implementation_report + verify_report + review_report + commit_sha
 
 ## What's Pocock's, what's our adaptation
 
-| Service | Source |
-| --- | --- |
-| `ensure-skills` | Finds the per-repo conventions Pocock's `setup-matt-pocock-skills` produces, or scaffolds them at `docs/agents/` with Pocock's defaults if absent. The scaffold path is an **OpenProse adaptation**: Pocock's setup skill is interactive ("present what you found, confirm with the user, then write"), and this unattended version uses defaults instead of prompting, with a banner on each scaffolded file noting it was auto-created. |
-| `grill-plan` | Applies Pocock's `grill-with-docs`. **Adaptation:** non-interactive — recommends answers grounded in repository evidence rather than asking the user one question at a time, which is how Pocock's own grilling is designed to run. |
-| `decide-plan` | **OpenProse adaptation.** Pocock resolves decisions inline within `grill-with-docs`; this service stands in for the human judgment normally provided mid-session. |
-| `produce-prd` | Applies Pocock's `to-prd` verbatim — Problem Statement, Solution, User Stories, Implementation Decisions, Testing Decisions, Out of Scope, Further Notes. |
-| `produce-issues` | Applies Pocock's `to-issues` verbatim — vertical-slice tracer-bullet thinking, HITL vs AFK split. |
-| `triage-and-pick` | Applies Pocock's five canonical labels from `setup-matt-pocock-skills/triage-labels.md`: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. |
-| `implement-tdd` | Applies Pocock's `tdd` red-green-refactor loop and the rules in `tdd/tests.md`, `tdd/mocking.md`, `tdd/deep-modules.md`, `tdd/refactoring.md`, `tdd/interface-design.md`. **Adaptation:** `red_evidence` / `green_evidence` / `refactor_notes` are harness-level bindings; `tdd/SKILL.md` describes the loop in prose without naming those artifacts. |
-| `verify-slice` | **OpenProse adaptation.** Deliberately not named `qa`, because Pocock's `qa` skill is a different thing: an interactive **upstream** session where the user reports bugs conversationally and the agent files issues. This service is a downstream pass/fail acceptance gate. |
-| `review-and-commit` | Inspects the implementation diff and TDD evidence, re-runs the verification command, and creates a single local commit if it passes. Returns the commit SHA, or `null` with a reason if verification did not pass. |
+| Service             | Source                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ensure-skills`     | Finds the per-repo conventions Pocock's `setup-matt-pocock-skills` produces, or scaffolds them at `docs/agents/` with Pocock's defaults if absent. The scaffold path is an **OpenProse adaptation**: Pocock's setup skill is interactive ("present what you found, confirm with the user, then write"), and this unattended version uses defaults instead of prompting, with a banner on each scaffolded file noting it was auto-created. |
+| `grill-plan`        | Applies Pocock's `grill-with-docs`. **Adaptation:** non-interactive, recommending answers grounded in repository evidence rather than asking the user one question at a time, which is how Pocock's own grilling is designed to run.                                                                                                                                                                                                      |
+| `decide-plan`       | **OpenProse adaptation.** Pocock resolves decisions inline within `grill-with-docs`; this service stands in for the human judgment normally provided mid-session.                                                                                                                                                                                                                                                                         |
+| `produce-prd`       | Applies Pocock's `to-prd` verbatim: Problem Statement, Solution, User Stories, Implementation Decisions, Testing Decisions, Out of Scope, Further Notes.                                                                                                                                                                                                                                                                                  |
+| `produce-issues`    | Applies Pocock's `to-issues` verbatim: vertical-slice tracer-bullet thinking, HITL vs AFK split.                                                                                                                                                                                                                                                                                                                                          |
+| `triage-and-pick`   | Applies Pocock's five canonical labels from `setup-matt-pocock-skills/triage-labels.md`: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`.                                                                                                                                                                                                                                                                   |
+| `implement-tdd`     | Applies Pocock's `tdd` red-green-refactor loop and the rules in `tdd/tests.md`, `tdd/mocking.md`, `tdd/deep-modules.md`, `tdd/refactoring.md`, `tdd/interface-design.md`. **Adaptation:** `red_evidence` / `green_evidence` / `refactor_notes` are harness-level bindings; `tdd/SKILL.md` describes the loop in prose without naming those artifacts.                                                                                     |
+| `verify-slice`      | **OpenProse adaptation.** Deliberately not named `qa`, because Pocock's `qa` skill is a different thing: an interactive **upstream** session where the user reports bugs conversationally and the agent files issues. This service is a downstream pass/fail acceptance gate.                                                                                                                                                             |
+| `review-and-commit` | Inspects the implementation diff and TDD evidence, re-runs the verification command, and creates a single local commit if it passes. Returns the commit SHA, or `null` with a reason if verification did not pass.                                                                                                                                                                                                                        |
 
 ## Prerequisites
 
@@ -77,9 +77,9 @@ npx skills@latest add mattpocock/skills/grill-with-docs \
 [`setup-matt-pocock-skills`][pocock-setup] in this repo, auto-pocock will
 find and use the conventions it produced at `docs/agents/`:
 
-- `docs/agents/issue-tracker.md` — where PRDs, issues, and notes live
-- `docs/agents/triage-labels.md` — the canonical label vocabulary
-- `docs/agents/domain.md` — where the domain glossary and ADRs live
+- `docs/agents/issue-tracker.md`: where PRDs, issues, and notes live
+- `docs/agents/triage-labels.md`: the canonical label vocabulary
+- `docs/agents/domain.md`: where the domain glossary and ADRs live
 
 If you have not run that setup, `ensure-skills` will scaffold Pocock's
 defaults inline at `docs/agents/` with a banner noting they were
@@ -116,7 +116,7 @@ prose run /path/to/openprose-prose/skills/open-prose/examples/auto-pocock/src/au
 
 The system is currently multi-file under `src/`, so URL-fetch shortcuts
 like `prose run https://raw.githubusercontent.com/.../auto-pocock.prose.md`
-do **not** work — they only fetch the top-level file and the run halts
+do **not** work: they only fetch the top-level file and the run halts
 when it cannot resolve the nine sibling service files. Use a local
 clone or copy the example directory.
 
@@ -133,7 +133,7 @@ The run produces:
 - `implementation_report` plus TDD `red_evidence`, `green_evidence`,
   `refactor_notes`
 - `verify_report` from the acceptance check
-- `review_report` and `commit_sha` — `commit_sha: null` with a reason if
+- `review_report` and `commit_sha`; `commit_sha: null` with a reason if
   verification did not pass
 
 ## Credit

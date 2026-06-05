@@ -1,4 +1,4 @@
-// OPTIONAL tier-3 live reliability check for research-tree (key-gated).
+// OPTIONAL live reliability check for research-tree (key-gated).
 //
 // It boots a small live research tree with REAL renders at the `asyncMounts`
 // seam (createAgentRender over OpenRouter) and asserts the SAME load-bearing
@@ -20,9 +20,7 @@ import { join } from "node:path";
 import { createHash } from "node:crypto";
 import { describe, it, expect } from "vitest";
 
-import {
-  FileSystemWorldModelStore,
-} from "@openprose/reactor/adapters";
+import { FileSystemWorldModelStore } from "@openprose/reactor/adapters";
 import {
   mountDag,
   files,
@@ -61,20 +59,30 @@ function fp(value: unknown): Fingerprint {
   return `sha256:${createHash("sha256").update(JSON.stringify(value)).digest("hex")}`;
 }
 
-function readJson(store: WorldModelStore, node: string, path: string): Record<string, unknown> | null {
+function readJson(
+  store: WorldModelStore,
+  node: string,
+  path: string,
+): Record<string, unknown> | null {
   const read = store.read(node, "published");
   if (read.ref.version === null) return null;
   const b = read.files[path];
-  return b === undefined ? null : (JSON.parse(readTextFile(b)) as Record<string, unknown>);
+  return b === undefined
+    ? null
+    : (JSON.parse(readTextFile(b)) as Record<string, unknown>);
 }
 
-const atomic = (fm: WorldModelFiles) => ({ [ATOMIC_FACET]: fingerprintArtifact(fm) });
+const atomic = (fm: WorldModelFiles) => ({
+  [ATOMIC_FACET]: fingerprintArtifact(fm),
+});
 
 // The dark-lane boundary: each leaf slice -> an independent facet token.
 const perLeafCanon = (key: string) => (fm: WorldModelFiles) => {
   const t = JSON.parse(readTextFile(fm[key]!)) as Record<string, unknown>;
   const leaves = (t["leaves"] ?? {}) as Record<string, unknown>;
-  const out: Record<string, Fingerprint> = { [ATOMIC_FACET]: fingerprintArtifact(fm) };
+  const out: Record<string, Fingerprint> = {
+    [ATOMIC_FACET]: fingerprintArtifact(fm),
+  };
   for (const leaf of LEAVES) out[`leaf:${leaf}`] = fp(leaves[leaf] ?? null);
   return out;
 };
@@ -90,8 +98,8 @@ function liveContractFor(node: string) {
         "Read your upstream producer BY REFERENCE: call `wm_list_upstream`, then " +
         "`wm_read_upstream` with that producer and path `corpus.json` to read JSON " +
         '{"leaves": { "L1": {claim, rev}, "L2": {claim, rev} }}. Write `truth.json` ' +
-        "to your workspace as valid JSON of EXACTLY that same `{\"leaves\": …}` shape " +
-        "(copy each leaf's claim and rev through unchanged). Then report status \"done\".",
+        'to your workspace as valid JSON of EXACTLY that same `{"leaves": …}` shape ' +
+        '(copy each leaf\'s claim and rev through unchanged). Then report status "done".',
     };
   }
   if (node === L1 || node === L2) {
@@ -139,7 +147,11 @@ function topology(): ReconcilerTopology {
   return {
     topology: {
       nodes: [
-        { node: GATEWAY, contract_fingerprint: "fp-gw", wake_source: "external" },
+        {
+          node: GATEWAY,
+          contract_fingerprint: "fp-gw",
+          wake_source: "external",
+        },
         { node: L1, contract_fingerprint: "fp-L1", wake_source: "input" },
         { node: L2, contract_fingerprint: "fp-L2", wake_source: "input" },
         { node: SUB, contract_fingerprint: "fp-sub", wake_source: "input" },
@@ -189,7 +201,10 @@ describe("research-tree (LIVE) — propagation UP a tree with model-produced fin
           return baseRender(ctx);
         };
 
-        const canonOf: Record<string, (fm: WorldModelFiles) => Record<string, Fingerprint>> = {
+        const canonOf: Record<
+          string,
+          (fm: WorldModelFiles) => Record<string, Fingerprint>
+        > = {
           [GATEWAY]: perLeafCanon("truth.json"),
           [L1]: atomic,
           [L2]: atomic,
@@ -197,24 +212,45 @@ describe("research-tree (LIVE) — propagation UP a tree with model-produced fin
           [ROOT]: atomic,
         };
         const asyncMounts = Object.fromEntries(
-          [GATEWAY, L1, L2, SUB, ROOT].map((id) => [id, { render: counting, canonicalizer: canonOf[id]! }]),
+          [GATEWAY, L1, L2, SUB, ROOT].map((id) => [
+            id,
+            { render: counting, canonicalizer: canonOf[id]! },
+          ]),
         );
 
         let corpus: Record<string, { rev: number; claim: string }> = {
           L1: { rev: 1, claim: "transformers scale with data and compute" },
-          L2: { rev: 1, claim: "retrieval grounds generation in fresh sources" },
+          L2: {
+            rev: 1,
+            claim: "retrieval grounds generation in fresh sources",
+          },
         };
 
-        const { createFileSystemStorageAdapter } = await import("@openprose/reactor");
-        const { FileSystemReceiptLedger } = await import("@openprose/reactor/adapters");
-        const storage = createFileSystemStorageAdapter({ directory: ledgerDir });
+        const { createFileSystemStorageAdapter } =
+          await import("@openprose/reactor");
+        const { FileSystemReceiptLedger } =
+          await import("@openprose/reactor/adapters");
+        const storage = createFileSystemStorageAdapter({
+          directory: ledgerDir,
+        });
         const ledger = new FileSystemReceiptLedger({ storage });
-        const dag = mountDag({ topology: topology(), mounts: {}, asyncMounts, store, ledger });
+        const dag = mountDag({
+          topology: topology(),
+          mounts: {},
+          asyncMounts,
+          store,
+          ledger,
+        });
 
-        const { zeroCost, createNullSignature, EMPTY_SEMANTIC_DIFF } = await import("@openprose/reactor/internals");
+        const { zeroCost, createNullSignature, EMPTY_SEMANTIC_DIFF } =
+          await import("@openprose/reactor/internals");
         const publishAndWake = async () => {
           const fm = files({ "corpus.json": jsonFile({ leaves: corpus }) });
-          const commitRes = store.commitPublished(SOURCE, fm, perLeafCanon("corpus.json"));
+          const commitRes = store.commitPublished(
+            SOURCE,
+            fm,
+            perLeafCanon("corpus.json"),
+          );
           const prev = ledger.lastReceipt(SOURCE);
           ledger.append({
             node: SOURCE,
@@ -238,10 +274,19 @@ describe("research-tree (LIVE) — propagation UP a tree with model-produced fin
         // Revise ONE leaf (L1). Only `leaf:L1` moves -> only Finding L1 wakes; SUB
         // and ROOT re-synthesize; Finding L2 stays DARK.
         Object.keys(renderCounts).forEach((k) => (renderCounts[k] = 0));
-        corpus = { ...corpus, L1: { rev: 2, claim: "transformers scale predictably with data, compute, and params" } };
+        corpus = {
+          ...corpus,
+          L1: {
+            rev: 2,
+            claim:
+              "transformers scale predictably with data, compute, and params",
+          },
+        };
         const oneLeaf = await publishAndWake();
         const rendered = new Set(
-          oneLeaf.filter((r) => r.disposition === "rendered").map((r) => r.node),
+          oneLeaf
+            .filter((r) => r.disposition === "rendered")
+            .map((r) => r.node),
         );
         expect(rendered.has(L1)).toBe(true);
         expect(rendered.has(SUB)).toBe(true);

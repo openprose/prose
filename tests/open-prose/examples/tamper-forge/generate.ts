@@ -44,7 +44,7 @@ export interface GenerateResult {
 
 // The tamper-forge beat timeline — the 3-attack escalation the README + the
 // deterministic gate walk. SELF-WRITTEN so a regen is lossless (never clobbers a
-// co-located beats file), exactly as the masked-relay normalization requires.
+// adjacent beats file), exactly as the masked-relay normalization requires.
 const BEATS = {
   scenario: "tamper-forge",
   title:
@@ -107,14 +107,20 @@ const BEATS = {
  * tamper-forge `beats.json`. Re-running with the same path reproduces the same
  * bytes (lossless regen).
  */
-export function generateTamperForgeExample(opts: GenerateOptions): GenerateResult {
+export function generateTamperForgeExample(
+  opts: GenerateOptions,
+): GenerateResult {
   const masked = generateMaskedRelayExample(opts);
   const { stateDir } = opts;
 
   // --- Overlay the tamper-forge beat timeline (the 3-attack escalation). ----
   // Self-written so a regen is LOSSLESS — it replaces the masked-relay beats
   // with the audit narrative this example teaches.
-  writeFileSync(join(stateDir, "beats.json"), `${JSON.stringify(BEATS, null, 2)}\n`, "utf8");
+  writeFileSync(
+    join(stateDir, "beats.json"),
+    `${JSON.stringify(BEATS, null, 2)}\n`,
+    "utf8",
+  );
 
   // --- Keep labels.json present + self-contained for this example. ----------
   // (Re-emit the same masked-relay labels so devtools can still draw the graph

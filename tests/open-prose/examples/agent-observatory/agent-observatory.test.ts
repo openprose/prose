@@ -1,8 +1,8 @@
-// agent-observatory — the deterministic tier-2 gate (offline, ZERO model spend).
+// agent-observatory: the deterministic offline gate (ZERO model spend).
 //
 // This file IS the worked snippet from the README/AUTHORING on-ramp, run
 // verbatim as a test (the EVALS.md / evals-guide.test.ts discipline: if this
-// breaks, the docs are wrong — fix both together). It drives the REAL
+// breaks, the docs are wrong, so fix both together). It drives the REAL
 // @openprose/reactor reconciler with deterministic fake renders through the
 // public `@openprose/reactor` + `/sdk` exports, then asserts the six clauses of
 // the validity contract directly off the persisted ledger.
@@ -19,17 +19,21 @@
 //
 // RUN (offline, green): from the prose repo root,
 //   REACTOR_OFFLINE=1 pnpm test:examples
-//     (or scope: REACTOR_OFFLINE=1 npx vitest run skills/open-prose/examples/agent-observatory)
+//     (or scope: REACTOR_OFFLINE=1 npx vitest run tests/open-prose/examples/agent-observatory)
 
-import { mkdtempSync, rmSync, readFileSync, existsSync, readdirSync } from "node:fs";
+import {
+  mkdtempSync,
+  rmSync,
+  readFileSync,
+  existsSync,
+  readdirSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import {
-  createFileSystemStorageAdapter,
-} from "@openprose/reactor";
+import { createFileSystemStorageAdapter } from "@openprose/reactor";
 import {
   mountDag,
   createFileSystemReceiptLedger,
@@ -80,11 +84,13 @@ function openSession(dir: string) {
 }
 
 function readTopology(dir: string): TopologyWorldModel {
-  return JSON.parse(readFileSync(join(dir, "compile", "topology.json"), "utf8")) as TopologyWorldModel;
+  return JSON.parse(
+    readFileSync(join(dir, "compile", "topology.json"), "utf8"),
+  ) as TopologyWorldModel;
 }
 
 // ===========================================================================
-// CLAUSE 1 — compiles to the frozen artifact set.
+// CLAUSE 1: compiles to the frozen artifact set.
 // ===========================================================================
 
 describe("clause 1 — the frozen artifact set", () => {
@@ -105,7 +111,9 @@ describe("clause 1 — the frozen artifact set", () => {
   });
 
   it("normalizes a label for every node (and the phantom ingress source)", () => {
-    const labels = JSON.parse(readFileSync(join(stateDir, "compile", "labels.json"), "utf8")) as Record<string, string>;
+    const labels = JSON.parse(
+      readFileSync(join(stateDir, "compile", "labels.json"), "utf8"),
+    ) as Record<string, string>;
     const topology = readTopology(stateDir);
     for (const n of topology.nodes) {
       expect(labels[n.node], `label for ${n.node}`).toBeTruthy();
@@ -122,12 +130,18 @@ describe("clause 1 — the frozen artifact set", () => {
     // Session → Prose watches exactly one session transcript facet.
     expect(
       topology.edges.some(
-        (e) => e.subscriber === SESSION_TO_PROSE && e.producer === SESSION_LEDGER && e.facet === "session:claudeA",
+        (e) =>
+          e.subscriber === SESSION_TO_PROSE &&
+          e.producer === SESSION_LEDGER &&
+          e.facet === "session:claudeA",
       ),
     ).toBe(true);
     // The Markdown index reads the Session → Prose program (the fold-in is wired in).
     expect(
-      topology.edges.some((e) => e.subscriber === INDEX_MARKDOWN && e.producer === SESSION_TO_PROSE),
+      topology.edges.some(
+        (e) =>
+          e.subscriber === INDEX_MARKDOWN && e.producer === SESSION_TO_PROSE,
+      ),
     ).toBe(true);
   });
 
@@ -136,7 +150,10 @@ describe("clause 1 — the frozen artifact set", () => {
     for (const rt of ["claude", "codex", "opencode", "pi"]) {
       expect(
         topology.edges.some(
-          (e) => e.producer === GATEWAY && e.facet === rt && e.subscriber === `${ADAPTER_PREFIX}${rt}`,
+          (e) =>
+            e.producer === GATEWAY &&
+            e.facet === rt &&
+            e.subscriber === `${ADAPTER_PREFIX}${rt}`,
         ),
         `gateway exposes an independent "${rt}" facet edge`,
       ).toBe(true);
@@ -145,12 +162,12 @@ describe("clause 1 — the frozen artifact set", () => {
 });
 
 // ===========================================================================
-// CLAUSE 2 — cold-start renders all; an identical re-wake SKIPS all.
+// CLAUSE 2: cold-start renders all; an identical re-wake SKIPS all.
 // ===========================================================================
 //
 // We replay the property in-process on a fresh ledger (the worked snippet), the
 // same way the README narrates it: ingest the gateway once (cold), ingest again
-// (quiet) — the second wake must skip and propagate nothing.
+// (quiet): the second wake must skip and propagate nothing.
 
 describe("clause 2 — cold renders all, an identical re-wake skips all", () => {
   it("a quiet re-wake skips and wakes nothing (no fresh moves)", () => {
@@ -173,10 +190,20 @@ describe("clause 2 — cold renders all, an identical re-wake skips all", () => 
       const topology: ReconcilerTopology = {
         topology: {
           nodes: [
-            { node: "source", contract_fingerprint: "fp-source", wake_source: "external" },
-            { node: "digest", contract_fingerprint: "fp-digest", wake_source: "input" },
+            {
+              node: "source",
+              contract_fingerprint: "fp-source",
+              wake_source: "external",
+            },
+            {
+              node: "digest",
+              contract_fingerprint: "fp-digest",
+              wake_source: "input",
+            },
           ],
-          edges: [{ subscriber: "digest", producer: "source", facet: ATOMIC_FACET }],
+          edges: [
+            { subscriber: "digest", producer: "source", facet: ATOMIC_FACET },
+          ],
           entry_points: ["source"],
           acyclic: true,
         },
@@ -184,19 +211,28 @@ describe("clause 2 — cold renders all, an identical re-wake skips all", () => 
       };
       const dag = mountDag({
         topology,
-        mounts: { source: { render: render("v1") }, digest: { render: render("digest of v1") } },
+        mounts: {
+          source: { render: render("v1") },
+          digest: { render: render("digest of v1") },
+        },
         ledger,
       });
 
       const first = dag.ingest("source");
-      const firstDisp = Object.fromEntries(first.map((r) => [r.node, r.disposition]));
+      const firstDisp = Object.fromEntries(
+        first.map((r) => [r.node, r.disposition]),
+      );
       expect(firstDisp["source"]).toBe("rendered");
       expect(firstDisp["digest"]).toBe("rendered");
 
       const second = dag.ingest("source");
       // Nothing material moved ⇒ source SKIPS; digest is never even woken.
-      expect(second.find((r) => r.node === "source")?.disposition).toBe("skipped");
-      expect(second.some((r) => r.node === "digest" && r.disposition === "rendered")).toBe(false);
+      expect(second.find((r) => r.node === "source")?.disposition).toBe(
+        "skipped",
+      );
+      expect(
+        second.some((r) => r.node === "digest" && r.disposition === "rendered"),
+      ).toBe(false);
 
       const replay = createReplaySession({ ledger });
       expect(replay.costRollup.total.fresh).toBe(2); // two cold renders; the skip cost 0
@@ -233,10 +269,20 @@ describe("clause 2 — cold renders all, an identical re-wake skips all", () => 
       const mk = (sourceFp: string): ReconcilerTopology => ({
         topology: {
           nodes: [
-            { node: "source", contract_fingerprint: sourceFp, wake_source: "external" },
-            { node: "digest", contract_fingerprint: "fp-digest", wake_source: "input" },
+            {
+              node: "source",
+              contract_fingerprint: sourceFp,
+              wake_source: "external",
+            },
+            {
+              node: "digest",
+              contract_fingerprint: "fp-digest",
+              wake_source: "input",
+            },
           ],
-          edges: [{ subscriber: "digest", producer: "source", facet: ATOMIC_FACET }],
+          edges: [
+            { subscriber: "digest", producer: "source", facet: ATOMIC_FACET },
+          ],
           entry_points: ["source"],
           acyclic: true,
         },
@@ -245,7 +291,10 @@ describe("clause 2 — cold renders all, an identical re-wake skips all", () => 
 
       const dag1 = mountDag({
         topology: mk("fp-source"),
-        mounts: { source: { render: render("v1") }, digest: { render: render("digest of v1") } },
+        mounts: {
+          source: { render: render("v1") },
+          digest: { render: render("digest of v1") },
+        },
         ledger,
       });
       dag1.ingest("source"); // cold: 2 fresh
@@ -255,7 +304,10 @@ describe("clause 2 — cold renders all, an identical re-wake skips all", () => 
       // Move the memo key (a new contract_fingerprint) over the SAME ledger.
       const dag2 = mountDag({
         topology: mk("fp-source-v2"),
-        mounts: { source: { render: render("v2") }, digest: { render: render("digest of v2") } },
+        mounts: {
+          source: { render: render("v2") },
+          digest: { render: render("digest of v2") },
+        },
         ledger,
       });
       dag2.ingest("source"); // render + propagate: +2 fresh
@@ -267,7 +319,7 @@ describe("clause 2 — cold renders all, an identical re-wake skips all", () => 
 });
 
 // ===========================================================================
-// CLAUSE 3 — cost.surprise_cause === wake.source on every committed receipt.
+// CLAUSE 3: cost.surprise_cause === wake.source on every committed receipt.
 // ===========================================================================
 
 describe("clause 3 — surprise_cause equals the wake source", () => {
@@ -275,7 +327,9 @@ describe("clause 3 — surprise_cause equals the wake source", () => {
     const session = openSession(stateDir);
     expect(session.receipts.length).toBeGreaterThan(0);
     for (const r of session.receipts) {
-      expect(r.cost.surprise_cause, `receipt for ${r.node}`).toBe(r.wake.source);
+      expect(r.cost.surprise_cause, `receipt for ${r.node}`).toBe(
+        r.wake.source,
+      );
     }
   });
 
@@ -291,7 +345,7 @@ describe("clause 3 — surprise_cause equals the wake source", () => {
 });
 
 // ===========================================================================
-// CLAUSE 4 — ATOMIC_FACET for facet-less producers; NO "*" tokens anywhere.
+// CLAUSE 4: ATOMIC_FACET for facet-less producers; NO "*" tokens anywhere.
 // ===========================================================================
 
 describe("clause 4 — ATOMIC_FACET, never a star token", () => {
@@ -309,19 +363,22 @@ describe("clause 4 — ATOMIC_FACET, never a star token", () => {
       expect(e.facet).not.toBe("*");
     }
     // And the on-disk topology bytes never contain a bare "*" facet either.
-    const raw = readFileSync(join(stateDir, "compile", "topology.json"), "utf8");
+    const raw = readFileSync(
+      join(stateDir, "compile", "topology.json"),
+      "utf8",
+    );
     expect(raw).not.toContain('"facet": "*"');
   });
 });
 
 // ===========================================================================
-// CLAUSE 5 — verifyReceiptChain passes over the raw on-disk receipts.
+// CLAUSE 5: verifyReceiptChain passes over the raw on-disk receipts.
 // ===========================================================================
 
 describe("clause 5 — the receipt chain verifies", () => {
   // verifyReceiptChain verifies ONE node's `prev`-linked chain (it is node-scoped
   // by construction). A multi-node ledger is the union of per-node chains, so we
-  // run verifyReceiptChain over every node's slice — the on-disk trail must
+  // run verifyReceiptChain over every node's slice; the on-disk trail must
   // chain-verify with no tampering anywhere.
   it("verifyReceiptChain is ok for every node's on-disk chain", () => {
     const session = openSession(stateDir);
@@ -342,7 +399,7 @@ describe("clause 5 — the receipt chain verifies", () => {
 });
 
 // ===========================================================================
-// CLAUSE 6 — byte-deterministic regeneration.
+// CLAUSE 6: byte-deterministic regeneration.
 // ===========================================================================
 
 describe("clause 6 — regeneration is byte-identical", () => {
@@ -352,8 +409,15 @@ describe("clause 6 — regeneration is byte-identical", () => {
     try {
       generateAgentObservatory({ stateDir: a });
       generateAgentObservatory({ stateDir: b });
-      for (const rel of ["receipts.json", "beats.json", join("compile", "topology.json"), join("compile", "labels.json")]) {
-        expect(readFileSync(join(a, rel), "utf8"), rel).toBe(readFileSync(join(b, rel), "utf8"));
+      for (const rel of [
+        "receipts.json",
+        "beats.json",
+        join("compile", "topology.json"),
+        join("compile", "labels.json"),
+      ]) {
+        expect(readFileSync(join(a, rel), "utf8"), rel).toBe(
+          readFileSync(join(b, rel), "utf8"),
+        );
       }
     } finally {
       rmSync(a, { recursive: true, force: true });
@@ -368,10 +432,16 @@ describe("clause 6 — regeneration is byte-identical", () => {
     const fresh = mkdtempSync(join(tmpdir(), "agent-obs-fresh-"));
     try {
       generateAgentObservatory({ stateDir: fresh });
-      for (const rel of ["receipts.json", "beats.json", join("compile", "topology.json"), join("compile", "labels.json")]) {
-        expect(readFileSync(join(committedReplay, rel), "utf8"), `committed ${rel}`).toBe(
-          readFileSync(join(fresh, rel), "utf8"),
-        );
+      for (const rel of [
+        "receipts.json",
+        "beats.json",
+        join("compile", "topology.json"),
+        join("compile", "labels.json"),
+      ]) {
+        expect(
+          readFileSync(join(committedReplay, rel), "utf8"),
+          `committed ${rel}`,
+        ).toBe(readFileSync(join(fresh, rel), "utf8"));
       }
     } finally {
       rmSync(fresh, { recursive: true, force: true });
@@ -380,17 +450,21 @@ describe("clause 6 — regeneration is byte-identical", () => {
 });
 
 // ===========================================================================
-// The tenet shots — the lessons this example teaches (observatory behaviors).
+// The tenet shots: the lessons this example teaches (observatory behaviors).
 // ===========================================================================
 
 describe("the observatory tenets", () => {
   it("the Concept Clusterer holds the single tallest fresh spike (batched synthesis)", () => {
     const session = openSession(stateDir);
     const clusterer = session.receipts.filter(
-      (r) => r.node === "responsibility.concept-clusterer" && r.status === "rendered",
+      (r) =>
+        r.node === "responsibility.concept-clusterer" &&
+        r.status === "rendered",
     );
     expect(clusterer.length).toBeGreaterThanOrEqual(1);
-    const maxFresh = Math.max(...session.receipts.map((r) => r.cost.tokens.fresh));
+    const maxFresh = Math.max(
+      ...session.receipts.map((r) => r.cost.tokens.fresh),
+    );
     const clustererMax = Math.max(...clusterer.map((r) => r.cost.tokens.fresh));
     expect(clustererMax).toBe(maxFresh);
   });
@@ -405,7 +479,9 @@ describe("the observatory tenets", () => {
 
   it("has at least one `self` receipt (the audit-floor self-tick) carrying zero fresh", () => {
     const session = openSession(stateDir);
-    const selfReceipts = session.receipts.filter((r) => r.wake.source === "self");
+    const selfReceipts = session.receipts.filter(
+      (r) => r.wake.source === "self",
+    );
     expect(selfReceipts.length).toBeGreaterThanOrEqual(1);
     for (const s of selfReceipts) expect(s.cost.tokens.fresh).toBe(0);
   });

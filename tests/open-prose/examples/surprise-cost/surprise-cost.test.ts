@@ -1,11 +1,11 @@
-// The surprise-cost TIER-2 GATE — deterministic, offline, zero model spend.
+// The surprise-cost OFFLINE GATE: deterministic, offline, zero model spend.
 //
 // This is the worked, executable form of `packages/reactor/EVALS.md`: it drives
 // the REAL `@openprose/reactor` reconciler with deterministic fake renders and
 // asserts the whole validity contract off the persisted ledger. Its body mirrors
-// the README walkthrough; if this breaks, the README is wrong — fix both together.
+// the README walkthrough; if this breaks, the README is wrong, so fix both together.
 //
-// THE VALIDITY CONTRACT this asserts (plan §5):
+// THE VALIDITY CONTRACT this asserts:
 //   1. Compiles to the frozen artifact set (topology valid, single entry
 //      gateway, acyclic; labels + flat receipts.json + hex world-models present).
 //   2. Cold-start renders all nodes; an identical re-wake SKIPS all; a skip
@@ -33,9 +33,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import {
-  createFileSystemStorageAdapter,
-} from "@openprose/reactor";
+import { createFileSystemStorageAdapter } from "@openprose/reactor";
 import {
   mountDag,
   createFileSystemReceiptLedger,
@@ -46,9 +44,7 @@ import {
   ATOMIC_FACET,
   type RenderContext,
 } from "@openprose/reactor";
-import {
-  FileSystemReceiptLedger,
-} from "@openprose/reactor/adapters";
+import { FileSystemReceiptLedger } from "@openprose/reactor/adapters";
 import type {
   ReconcilerTopology,
   TopologyWorldModel,
@@ -64,7 +60,10 @@ function tmp(prefix: string): string {
 }
 
 // The committed state-dir, used by (6) to prove the regen is lossless against it.
-const COMMITTED_REPLAY = join(dirname(fileURLToPath(import.meta.url)), "replay");
+const COMMITTED_REPLAY = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "replay",
+);
 
 // Recursively list every file under a directory (depth-first, no dirs).
 function walk(root: string): string[] {
@@ -115,15 +114,28 @@ describe("surprise-cost — the EVALS walkthrough (quiet skip → surprise rende
       const topology: ReconcilerTopology = {
         topology: {
           nodes: [
-            { node: GATEWAY, contract_fingerprint: "fp-gateway", wake_source: "external" },
-            { node: DIGEST, contract_fingerprint: "fp-digest", wake_source: "input" },
+            {
+              node: GATEWAY,
+              contract_fingerprint: "fp-gateway",
+              wake_source: "external",
+            },
+            {
+              node: DIGEST,
+              contract_fingerprint: "fp-digest",
+              wake_source: "input",
+            },
           ],
           // facet-less producer → ATOMIC_FACET, never "*".
-          edges: [{ subscriber: DIGEST, producer: GATEWAY, facet: ATOMIC_FACET }],
+          edges: [
+            { subscriber: DIGEST, producer: GATEWAY, facet: ATOMIC_FACET },
+          ],
           entry_points: [GATEWAY],
           acyclic: true,
         },
-        contract_fingerprints: { [GATEWAY]: "fp-gateway", [DIGEST]: "fp-digest" },
+        contract_fingerprints: {
+          [GATEWAY]: "fp-gateway",
+          [DIGEST]: "fp-digest",
+        },
       };
       const dag = mountDag({
         topology,
@@ -160,14 +172,27 @@ describe("surprise-cost — the EVALS walkthrough (quiet skip → surprise rende
       const topology2: ReconcilerTopology = {
         topology: {
           nodes: [
-            { node: GATEWAY, contract_fingerprint: "fp-gateway-v2", wake_source: "external" },
-            { node: DIGEST, contract_fingerprint: "fp-digest", wake_source: "input" },
+            {
+              node: GATEWAY,
+              contract_fingerprint: "fp-gateway-v2",
+              wake_source: "external",
+            },
+            {
+              node: DIGEST,
+              contract_fingerprint: "fp-digest",
+              wake_source: "input",
+            },
           ],
-          edges: [{ subscriber: DIGEST, producer: GATEWAY, facet: ATOMIC_FACET }],
+          edges: [
+            { subscriber: DIGEST, producer: GATEWAY, facet: ATOMIC_FACET },
+          ],
           entry_points: [GATEWAY],
           acyclic: true,
         },
-        contract_fingerprints: { [GATEWAY]: "fp-gateway-v2", [DIGEST]: "fp-digest" },
+        contract_fingerprints: {
+          [GATEWAY]: "fp-gateway-v2",
+          [DIGEST]: "fp-digest",
+        },
       };
       const dag2 = mountDag({
         topology: topology2,
@@ -213,26 +238,49 @@ describe("surprise-cost — the committed replay fixture (validity contract)", (
     try {
       const result = generateSurpriseCostFixture({ stateDir: dir });
 
-      assert.ok(existsSync(join(dir, "receipts.json")), "flat root receipts.json present");
+      assert.ok(
+        existsSync(join(dir, "receipts.json")),
+        "flat root receipts.json present",
+      );
       // The storage adapter intentionally initializes a runtime-registry snapshot
       // alongside the ledger; with no live runtime mounted it is the empty `{}`.
       // It is a real, reproduced artifact (not an orphan) — assert it explicitly so
       // the full-tree byte-determinism check (#6) has a documented anchor.
-      assert.ok(existsSync(join(dir, "registry.json")), "runtime-registry snapshot present");
+      assert.ok(
+        existsSync(join(dir, "registry.json")),
+        "runtime-registry snapshot present",
+      );
       assert.deepEqual(
         JSON.parse(readFileSync(join(dir, "registry.json"), "utf8")),
         {},
         "the registry is the empty snapshot (no live runtime is mounted)",
       );
-      assert.ok(existsSync(join(dir, "compile", "topology.json")), "topology snapshot present");
-      assert.ok(existsSync(join(dir, "compile", "labels.json")), "labels map present");
+      assert.ok(
+        existsSync(join(dir, "compile", "topology.json")),
+        "topology snapshot present",
+      );
+      assert.ok(
+        existsSync(join(dir, "compile", "labels.json")),
+        "labels map present",
+      );
       assert.ok(existsSync(join(dir, "beats.json")), "beats map present");
-      assert.ok(existsSync(join(dir, "world-models")), "world-models dir present");
+      assert.ok(
+        existsSync(join(dir, "world-models")),
+        "world-models dir present",
+      );
 
       const topology = readTopology(dir);
-      assert.equal(topology.nodes.length, 2, "two real nodes (gateway → digest)");
+      assert.equal(
+        topology.nodes.length,
+        2,
+        "two real nodes (gateway → digest)",
+      );
       assert.equal(topology.acyclic, true, "the graph is acyclic");
-      assert.deepEqual(topology.entry_points, [GATEWAY], "single entry gateway");
+      assert.deepEqual(
+        topology.entry_points,
+        [GATEWAY],
+        "single entry gateway",
+      );
       assert.equal(topology.edges.length, 1, "one edge");
       assert.deepEqual(
         topology.edges[0],
@@ -244,12 +292,17 @@ describe("surprise-cost — the committed replay fixture (validity contract)", (
       const wmDirs = readdirSync(join(dir, "world-models"));
       for (const node of [GATEWAY, DIGEST]) {
         const hex = Buffer.from(node, "utf8").toString("hex");
-        assert.ok(wmDirs.includes(hex), `world-model dir for ${node} is hex-encoded (${hex})`);
+        assert.ok(
+          wmDirs.includes(hex),
+          `world-model dir for ${node} is hex-encoded (${hex})`,
+        );
         assert.ok(
           existsSync(join(dir, "world-models", hex, "published.json")),
           `${node} has a published.json`,
         );
-        const versions = readdirSync(join(dir, "world-models", hex, "versions"));
+        const versions = readdirSync(
+          join(dir, "world-models", hex, "versions"),
+        );
         assert.ok(
           versions.some((f) => f.startsWith("sha256_") && f.endsWith(".bin")),
           `${node} has a sha256_*.bin version blob`,
@@ -288,7 +341,11 @@ describe("surprise-cost — the committed replay fixture (validity contract)", (
       // the quiet epoch — the digest was never woken).
       const skips = r.filter((x) => x.status === "skipped");
       assert.equal(skips.length, 1, "exactly one memo-skip (the quiet epoch)");
-      assert.equal(skips[0]!.node, GATEWAY, "the gateway is the node that skipped");
+      assert.equal(
+        skips[0]!.node,
+        GATEWAY,
+        "the gateway is the node that skipped",
+      );
       assert.equal(skips[0]!.cost.tokens.fresh, 0, "the skip burns zero fresh");
     } finally {
       rmSync(dir, { recursive: true, force: true });
@@ -317,9 +374,20 @@ describe("surprise-cost — the committed replay fixture (validity contract)", (
 
       // Only the three rendered receipts carry fresh; the skip carries none.
       const rendered = session.receipts.filter((x) => x.status === "rendered");
-      assert.equal(rendered.length, 4, "four rendered receipts (2 cold + 2 surprise)");
-      const totalFresh = session.receipts.reduce((s, x) => s + x.cost.tokens.fresh, 0);
-      assert.equal(total.fresh, totalFresh, "the rollup's total.fresh matches the trail");
+      assert.equal(
+        rendered.length,
+        4,
+        "four rendered receipts (2 cold + 2 surprise)",
+      );
+      const totalFresh = session.receipts.reduce(
+        (s, x) => s + x.cost.tokens.fresh,
+        0,
+      );
+      assert.equal(
+        total.fresh,
+        totalFresh,
+        "the rollup's total.fresh matches the trail",
+      );
       assert.ok(total.fresh > 0, "the surprise drove real fresh spend");
     } finally {
       rmSync(dir, { recursive: true, force: true });
@@ -342,15 +410,18 @@ describe("surprise-cost — the committed replay fixture (validity contract)", (
     }
   });
 
-  it("(4) ATOMIC_FACET everywhere — no \"*\" wildcard tokens in topology or receipts", () => {
+  it('(4) ATOMIC_FACET everywhere — no "*" wildcard tokens in topology or receipts', () => {
     const dir = tmp("surprise-cost-facet-");
     try {
       generateSurpriseCostFixture({ stateDir: dir });
-      const topoRaw = readFileSync(join(dir, "compile", "topology.json"), "utf8");
+      const topoRaw = readFileSync(
+        join(dir, "compile", "topology.json"),
+        "utf8",
+      );
       const receiptsRaw = readFileSync(join(dir, "receipts.json"), "utf8");
 
-      assert.ok(!/"\*"/.test(topoRaw), "no \"*\" token in topology.json");
-      assert.ok(!/"\*"/.test(receiptsRaw), "no \"*\" token in receipts.json");
+      assert.ok(!/"\*"/.test(topoRaw), 'no "*" token in topology.json');
+      assert.ok(!/"\*"/.test(receiptsRaw), 'no "*" token in receipts.json');
 
       const topology = readTopology(dir);
       assert.ok(
@@ -377,20 +448,30 @@ describe("surprise-cost — the committed replay fixture (validity contract)", (
       // verifyReceiptChain takes a NODE-SCOPED prev-linked slice (all the same
       // node, chain[0].prev === null), so verify each node's slice off the raw
       // on-disk trail — catching any tampered field byte-for-byte.
-      const raw = JSON.parse(readFileSync(join(dir, "receipts.json"), "utf8")) as {
+      const raw = JSON.parse(
+        readFileSync(join(dir, "receipts.json"), "utf8"),
+      ) as {
         node: string;
       }[];
       for (const node of [GATEWAY, DIGEST]) {
         const slice = raw.filter((r) => r.node === node);
         assert.ok(slice.length > 0, `${node} has on-disk receipts`);
         const result = verifyReceiptChain(slice);
-        assert.equal(result.ok, true, `${node}'s on-disk receipt chain verifies`);
+        assert.equal(
+          result.ok,
+          true,
+          `${node}'s on-disk receipt chain verifies`,
+        );
       }
 
       // also per-node via the replay read view (the same view devtools renders).
       const session = openSession(dir);
       for (const node of [GATEWAY, DIGEST]) {
-        assert.equal(session.verifyNodeChain(node).ok, true, `${node}'s chain verifies`);
+        assert.equal(
+          session.verifyNodeChain(node).ok,
+          true,
+          `${node}'s chain verifies`,
+        );
       }
     } finally {
       rmSync(dir, { recursive: true, force: true });

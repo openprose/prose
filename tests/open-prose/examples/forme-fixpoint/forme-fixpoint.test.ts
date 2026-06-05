@@ -1,14 +1,14 @@
-// forme-fixpoint — the TIER-2 deterministic gate (offline, zero model spend).
+// forme-fixpoint: the deterministic offline gate (zero model spend).
 //
 // This is the "doc-snippet-is-the-test" pattern from packages/reactor/EVALS.md:
 // the body mirrors the README/AUTHORING walkthrough and drives the REAL
 // @openprose/reactor reconciler with deterministic fake renders (no key), then
 // asserts every clause of the validity contract OFF THE PERSISTED LEDGER.
 //
-// THE FLAGSHIP LESSON — topology-as-world-model:
+// THE FLAGSHIP LESSON, topology-as-world-model:
 //   A seed runs Forme; Forme commits the active graph as a versioned truth;
 //   invalid candidates (an ambiguous producer, a cycle) move ONLY the
-//   `diagnostics` facet, NOT the `active-graph` facet — so the Schedule Plan
+//   `diagnostics` facet, NOT the `active-graph` facet, so the Schedule Plan
 //   (which subscribes to `active-graph` ONLY) MEMO-SKIPS, and the prior valid
 //   active graph stands. THE CRADLE: the seed + reconciler are fixed ground.
 //
@@ -25,17 +25,15 @@
 // Plus the active/candidate split + the costRollup quiet-vs-surprise invariant.
 //
 // RUN (offline, zero spend):
-//   cd /Users/sl/code/prose && REACTOR_OFFLINE=1 pnpm test:examples
-//     (or scope: REACTOR_OFFLINE=1 npx vitest run skills/open-prose/examples/forme-fixpoint)
+//   REACTOR_OFFLINE=1 pnpm test:examples
+//     (or scope: REACTOR_OFFLINE=1 npx vitest run tests/open-prose/examples/forme-fixpoint)
 
 import { describe, it, expect } from "vitest";
 import { mkdtempSync, readFileSync, existsSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import {
-  createFileSystemStorageAdapter,
-} from "@openprose/reactor";
+import { createFileSystemStorageAdapter } from "@openprose/reactor";
 import {
   mountDag,
   createFileSystemReceiptLedger,
@@ -90,7 +88,7 @@ function withTempFixture<T>(fn: (dir: string) => T): T {
 }
 
 // ===========================================================================
-// THE WORKED SNIPPET — the AUTHORING walkthrough, run verbatim as a test. This
+// THE WORKED SNIPPET: the AUTHORING walkthrough, run verbatim as a test. This
 // is the minimal hand-mounted active/candidate split: a contract registry
 // produces a `contract-set` gate; Forme exposes `active-graph` + `diagnostics`;
 // the schedule reads `active-graph` ONLY. A rejected candidate moves diagnostics
@@ -106,30 +104,40 @@ describe("forme-fixpoint — the active/candidate split (the worked AUTHORING sn
 
       // A deterministic render per node. The invariant the commit verifies:
       // cost.surprise_cause === ctx.wake.source (read off the wake, NEVER hardcoded).
-      const render =
-        (text: string) =>
-        (ctx: RenderContext) => ({
-          world_model: files({ "out.txt": textFile(text) }),
-          cost: {
-            provider: "none",
-            model: "fake",
-            tokens: { fresh: 1, reused: 0 },
-            surprise_cause: ctx.wake.source,
-          },
-        });
+      const render = (text: string) => (ctx: RenderContext) => ({
+        world_model: files({ "out.txt": textFile(text) }),
+        cost: {
+          provider: "none",
+          model: "fake",
+          tokens: { fresh: 1, reused: 0 },
+          surprise_cause: ctx.wake.source,
+        },
+      });
 
       // The minimal control-plane chain: registry -> Forme -> schedule. The
       // facet-less producers expose the atomic facet via ATOMIC_FACET (NEVER a
-      // "*" wildcard — an unknown facet token silently never propagates). The
+      // "*" wildcard; an unknown facet token silently never propagates). The
       // FULL active/candidate FACET split (active-graph vs diagnostics) is proven
       // against the committed fixture in "THE INVARIANT" below, where Forme's real
       // canonicalizer emits the two independent facets.
       const topology: ReconcilerTopology = {
         topology: {
           nodes: [
-            { node: REGISTRY, contract_fingerprint: "fp-reg-v1", wake_source: "external" },
-            { node: MAINTAINER, contract_fingerprint: "fp-forme", wake_source: "input" },
-            { node: SCHEDULE, contract_fingerprint: "fp-sched", wake_source: "input" },
+            {
+              node: REGISTRY,
+              contract_fingerprint: "fp-reg-v1",
+              wake_source: "external",
+            },
+            {
+              node: MAINTAINER,
+              contract_fingerprint: "fp-forme",
+              wake_source: "input",
+            },
+            {
+              node: SCHEDULE,
+              contract_fingerprint: "fp-sched",
+              wake_source: "input",
+            },
           ],
           edges: [
             { subscriber: MAINTAINER, producer: REGISTRY, facet: ATOMIC_FACET },
@@ -138,7 +146,11 @@ describe("forme-fixpoint — the active/candidate split (the worked AUTHORING sn
           entry_points: [REGISTRY],
           acyclic: true,
         },
-        contract_fingerprints: { [REGISTRY]: "fp-reg-v1", [MAINTAINER]: "fp-forme", [SCHEDULE]: "fp-sched" },
+        contract_fingerprints: {
+          [REGISTRY]: "fp-reg-v1",
+          [MAINTAINER]: "fp-forme",
+          [SCHEDULE]: "fp-sched",
+        },
       };
       const dag = mountDag({
         topology,
@@ -153,27 +165,49 @@ describe("forme-fixpoint — the active/candidate split (the worked AUTHORING sn
       // Cold-start: all three render.
       const first = dag.ingest(REGISTRY);
       expect(first.map((r) => `${r.node}:${r.disposition}`).sort()).toEqual(
-        [`${MAINTAINER}:rendered`, `${REGISTRY}:rendered`, `${SCHEDULE}:rendered`].sort(),
+        [
+          `${MAINTAINER}:rendered`,
+          `${REGISTRY}:rendered`,
+          `${SCHEDULE}:rendered`,
+        ].sort(),
       );
 
       // Quiet re-wake: nothing moved -> registry skips, nothing downstream wakes.
       const second = dag.ingest(REGISTRY);
-      expect(second.map((r) => `${r.node}:${r.disposition}`)).toEqual([`${REGISTRY}:skipped`]);
+      expect(second.map((r) => `${r.node}:${r.disposition}`)).toEqual([
+        `${REGISTRY}:skipped`,
+      ]);
       expect(createReplaySession({ ledger }).costRollup.total.fresh).toBe(3);
 
       // The worked epoch: a contract-set edit (new contract_fingerprint) moves
-      // the registry's memo key -> registry renders and wakes Forme + schedule.
+      // the registry's memo key, so registry renders and wakes Forme + schedule.
       const topology2: ReconcilerTopology = {
         ...topology,
         topology: {
           ...topology.topology,
           nodes: [
-            { node: REGISTRY, contract_fingerprint: "fp-reg-v2", wake_source: "external" },
-            { node: MAINTAINER, contract_fingerprint: "fp-forme", wake_source: "input" },
-            { node: SCHEDULE, contract_fingerprint: "fp-sched", wake_source: "input" },
+            {
+              node: REGISTRY,
+              contract_fingerprint: "fp-reg-v2",
+              wake_source: "external",
+            },
+            {
+              node: MAINTAINER,
+              contract_fingerprint: "fp-forme",
+              wake_source: "input",
+            },
+            {
+              node: SCHEDULE,
+              contract_fingerprint: "fp-sched",
+              wake_source: "input",
+            },
           ],
         },
-        contract_fingerprints: { [REGISTRY]: "fp-reg-v2", [MAINTAINER]: "fp-forme", [SCHEDULE]: "fp-sched" },
+        contract_fingerprints: {
+          [REGISTRY]: "fp-reg-v2",
+          [MAINTAINER]: "fp-forme",
+          [SCHEDULE]: "fp-sched",
+        },
       };
       const dag2 = mountDag({
         topology: topology2,
@@ -186,7 +220,11 @@ describe("forme-fixpoint — the active/candidate split (the worked AUTHORING sn
       });
       const third = dag2.ingest(REGISTRY);
       expect(third.map((r) => `${r.node}:${r.disposition}`).sort()).toEqual(
-        [`${MAINTAINER}:rendered`, `${REGISTRY}:rendered`, `${SCHEDULE}:rendered`].sort(),
+        [
+          `${MAINTAINER}:rendered`,
+          `${REGISTRY}:rendered`,
+          `${SCHEDULE}:rendered`,
+        ].sort(),
       );
       // A real change rendered + propagated -> fresh moves 3 -> 6.
       expect(createReplaySession({ ledger }).costRollup.total.fresh).toBe(6);
@@ -197,7 +235,7 @@ describe("forme-fixpoint — the active/candidate split (the worked AUTHORING sn
 });
 
 // ===========================================================================
-// THE COMMITTED FIXTURE — the full forme-fixpoint state-dir, asserted off the
+// THE COMMITTED FIXTURE: the full forme-fixpoint state-dir, asserted off the
 // persisted ledger via the SAME read view devtools renders.
 // ===========================================================================
 
@@ -232,16 +270,26 @@ describe("forme-fixpoint — clause 1: compiles to the frozen artifact set", () 
     // ONLY; the reporter + auditor read BOTH facets.
     expect(
       topology.edges.some(
-        (e) => e.subscriber === SCHEDULE && e.producer === MAINTAINER && e.facet === ACTIVE_GRAPH_FACET,
+        (e) =>
+          e.subscriber === SCHEDULE &&
+          e.producer === MAINTAINER &&
+          e.facet === ACTIVE_GRAPH_FACET,
       ),
     ).toBe(true);
     expect(
-      topology.edges.some((e) => e.subscriber === SCHEDULE && e.facet === DIAGNOSTICS_FACET),
+      topology.edges.some(
+        (e) => e.subscriber === SCHEDULE && e.facet === DIAGNOSTICS_FACET,
+      ),
     ).toBe(false);
     for (const sub of [REPORTER, AUDITOR]) {
       for (const facet of [ACTIVE_GRAPH_FACET, DIAGNOSTICS_FACET]) {
         expect(
-          topology.edges.some((e) => e.subscriber === sub && e.producer === MAINTAINER && e.facet === facet),
+          topology.edges.some(
+            (e) =>
+              e.subscriber === sub &&
+              e.producer === MAINTAINER &&
+              e.facet === facet,
+          ),
         ).toBe(true);
       }
     }
@@ -255,7 +303,15 @@ describe("forme-fixpoint — clause 2: cold-start renders all; an identical re-w
     expect(receipts.length).toBeGreaterThan(0);
 
     // The cold-start burst: each control-plane node renders at least once.
-    for (const node of [GW_CONTRACTS, GW_PINS, REGISTRY, MAINTAINER, SCHEDULE, REPORTER, AUDITOR]) {
+    for (const node of [
+      GW_CONTRACTS,
+      GW_PINS,
+      REGISTRY,
+      MAINTAINER,
+      SCHEDULE,
+      REPORTER,
+      AUDITOR,
+    ]) {
       expect(
         receipts.some((r) => r.node === node && r.status === "rendered"),
         `${node} rendered at least once (cold-start)`,
@@ -271,7 +327,8 @@ describe("forme-fixpoint — clause 2: cold-start renders all; an identical re-w
     let longestZeroRun = 0;
     let run = 0;
     for (const r of receipts) {
-      if (r.cost.tokens.fresh === 0) longestZeroRun = Math.max(longestZeroRun, ++run);
+      if (r.cost.tokens.fresh === 0)
+        longestZeroRun = Math.max(longestZeroRun, ++run);
       else run = 0;
     }
     expect(longestZeroRun).toBeGreaterThanOrEqual(7);
@@ -284,20 +341,43 @@ describe("forme-fixpoint — clause 2: cold-start renders all; an identical re-w
     try {
       const storage = createFileSystemStorageAdapter({ directory: dir });
       const ledger = createFileSystemReceiptLedger({ storage });
-      const render =
-        (text: string) =>
-        (ctx: RenderContext) => ({
-          world_model: files({ "out.txt": textFile(text) }),
-          cost: { provider: "none", model: "fake", tokens: { fresh: 1, reused: 0 }, surprise_cause: ctx.wake.source },
-        });
+      const render = (text: string) => (ctx: RenderContext) => ({
+        world_model: files({ "out.txt": textFile(text) }),
+        cost: {
+          provider: "none",
+          model: "fake",
+          tokens: { fresh: 1, reused: 0 },
+          surprise_cause: ctx.wake.source,
+        },
+      });
       const topology: ReconcilerTopology = {
         topology: {
           nodes: [
-            { node: REGISTRY, contract_fingerprint: "fp-reg", wake_source: "external" },
-            { node: MAINTAINER, contract_fingerprint: "fp-forme", wake_source: "input" },
-            { node: SCHEDULE, contract_fingerprint: "fp-sched", wake_source: "input" },
-            { node: REPORTER, contract_fingerprint: "fp-rep", wake_source: "input" },
-            { node: AUDITOR, contract_fingerprint: "fp-aud", wake_source: "input" },
+            {
+              node: REGISTRY,
+              contract_fingerprint: "fp-reg",
+              wake_source: "external",
+            },
+            {
+              node: MAINTAINER,
+              contract_fingerprint: "fp-forme",
+              wake_source: "input",
+            },
+            {
+              node: SCHEDULE,
+              contract_fingerprint: "fp-sched",
+              wake_source: "input",
+            },
+            {
+              node: REPORTER,
+              contract_fingerprint: "fp-rep",
+              wake_source: "input",
+            },
+            {
+              node: AUDITOR,
+              contract_fingerprint: "fp-aud",
+              wake_source: "input",
+            },
           ],
           edges: [
             { subscriber: MAINTAINER, producer: REGISTRY, facet: ATOMIC_FACET },
@@ -308,10 +388,19 @@ describe("forme-fixpoint — clause 2: cold-start renders all; an identical re-w
           entry_points: [REGISTRY],
           acyclic: true,
         },
-        contract_fingerprints: { [REGISTRY]: "fp-reg", [MAINTAINER]: "fp-forme", [SCHEDULE]: "fp-sched", [REPORTER]: "fp-rep", [AUDITOR]: "fp-aud" },
+        contract_fingerprints: {
+          [REGISTRY]: "fp-reg",
+          [MAINTAINER]: "fp-forme",
+          [SCHEDULE]: "fp-sched",
+          [REPORTER]: "fp-rep",
+          [AUDITOR]: "fp-aud",
+        },
       };
       const mounts = Object.fromEntries(
-        [REGISTRY, MAINTAINER, SCHEDULE, REPORTER, AUDITOR].map((n) => [n, { render: render(`${n}-v1`) }]),
+        [REGISTRY, MAINTAINER, SCHEDULE, REPORTER, AUDITOR].map((n) => [
+          n,
+          { render: render(`${n}-v1`) },
+        ]),
       );
       const dag = mountDag({ topology, mounts, ledger });
 
@@ -319,7 +408,9 @@ describe("forme-fixpoint — clause 2: cold-start renders all; an identical re-w
       expect(cold.filter((r) => r.disposition === "rendered").length).toBe(5);
 
       const requiet = dag.ingest(REGISTRY);
-      expect(requiet.map((r) => `${r.node}:${r.disposition}`)).toEqual([`${REGISTRY}:skipped`]);
+      expect(requiet.map((r) => `${r.node}:${r.disposition}`)).toEqual([
+        `${REGISTRY}:skipped`,
+      ]);
       // The skip propagated nothing: only the registry receipt was written.
       expect(requiet.length).toBe(1);
     } finally {
@@ -353,7 +444,10 @@ describe("forme-fixpoint — clause 4: ATOMIC_FACET for facet-less producers; no
     // subscribes to the contract-source gateway's whole truth atomically.
     expect(
       topology.edges.some(
-        (e) => e.subscriber === REGISTRY && e.producer === GW_CONTRACTS && e.facet === ATOMIC_FACET,
+        (e) =>
+          e.subscriber === REGISTRY &&
+          e.producer === GW_CONTRACTS &&
+          e.facet === ATOMIC_FACET,
       ),
     ).toBe(true);
     // ATOMIC_FACET is a real, non-empty token (never the "*" wildcard).
@@ -364,11 +458,14 @@ describe("forme-fixpoint — clause 4: ATOMIC_FACET for facet-less producers; no
 
 describe("forme-fixpoint — clause 5: the raw on-disk receipts chain-verify", () => {
   it("verifyReceiptChain passes over the committed receipts.json", () => {
-    const raw = JSON.parse(readFileSync(join(COMMITTED, "receipts.json"), "utf8")) as LedgerReceipt[];
+    const raw = JSON.parse(
+      readFileSync(join(COMMITTED, "receipts.json"), "utf8"),
+    ) as LedgerReceipt[];
     expect(raw.length).toBeGreaterThan(0);
     // Per-node chains: verifyReceiptChain checks a single node's append-only chain.
     const byNode = new Map<string, LedgerReceipt[]>();
-    for (const r of raw) (byNode.get(r.node) ?? byNode.set(r.node, []).get(r.node)!).push(r);
+    for (const r of raw)
+      (byNode.get(r.node) ?? byNode.set(r.node, []).get(r.node)!).push(r);
     for (const [, chain] of byNode) {
       const result = verifyReceiptChain(chain);
       expect(result.ok, `chain for ${chain[0]!.node} verifies`).toBe(true);
@@ -389,7 +486,9 @@ describe("forme-fixpoint — clause 6: byte-deterministic regeneration", () => {
         join("compile", "labels.json"),
         "beats.json",
       ]) {
-        expect(readFileSync(join(a, rel), "utf8")).toBe(readFileSync(join(b, rel), "utf8"));
+        expect(readFileSync(join(a, rel), "utf8")).toBe(
+          readFileSync(join(b, rel), "utf8"),
+        );
       }
     } finally {
       rmSync(a, { recursive: true, force: true });
@@ -415,7 +514,7 @@ describe("forme-fixpoint — clause 6: byte-deterministic regeneration", () => {
 });
 
 // ===========================================================================
-// THE FLAGSHIP INVARIANT — topology-as-world-model: a rejected candidate moves
+// THE FLAGSHIP INVARIANT, topology-as-world-model: a rejected candidate moves
 // `diagnostics` but NOT `active-graph`, so the Schedule Plan memo-skips.
 // ===========================================================================
 
@@ -426,21 +525,25 @@ describe("forme-fixpoint — THE INVARIANT: invalid candidates cannot corrupt sc
 
     // Find a Forme render whose diagnostics facet moved but active-graph did NOT
     // (a rejected candidate). The fixture scripts an ambiguous-producer beat and
-    // a bad-cycle beat — at least one such render must exist.
+    // a bad-cycle beat; at least one such render must exist.
     let sawRejection = false;
     for (let i = 0; i < receipts.length; i++) {
       const r = receipts[i]!;
       if (r.node !== MAINTAINER || r.status !== "rendered") continue;
       const moved = session.movedFacetsByIndex[i]!;
-      if (!moved.has(DIAGNOSTICS_FACET) || moved.has(ACTIVE_GRAPH_FACET)) continue;
+      if (!moved.has(DIAGNOSTICS_FACET) || moved.has(ACTIVE_GRAPH_FACET))
+        continue;
       // This is a rejection: diagnostics moved, active-graph held.
       sawRejection = true;
 
-      // The Schedule Plan must NOT re-render before the next Forme render — it
+      // The Schedule Plan must NOT re-render before the next Forme render: it
       // subscribes to active-graph ONLY, which did not move.
       let nextMaintainer = receipts.length;
       for (let j = i + 1; j < receipts.length; j++) {
-        if (receipts[j]!.node === MAINTAINER) { nextMaintainer = j; break; }
+        if (receipts[j]!.node === MAINTAINER) {
+          nextMaintainer = j;
+          break;
+        }
       }
       const scheduleRendersInWindow = receipts
         .slice(i + 1, nextMaintainer)
@@ -450,7 +553,10 @@ describe("forme-fixpoint — THE INVARIANT: invalid candidates cannot corrupt sc
         "the schedule plan does NOT re-render across a rejected candidate (active-graph held)",
       ).toBe(0);
     }
-    expect(sawRejection, "the fixture contains a rejected candidate (diagnostics moved, active-graph held)").toBe(true);
+    expect(
+      sawRejection,
+      "the fixture contains a rejected candidate (diagnostics moved, active-graph held)",
+    ).toBe(true);
   });
 
   it("at least one accepted candidate DID move active-graph and drove a schedule render (the accept path)", () => {
@@ -465,19 +571,28 @@ describe("forme-fixpoint — THE INVARIANT: invalid candidates cannot corrupt sc
       // A schedule render must follow before the next Forme render.
       let nextMaintainer = receipts.length;
       for (let j = i + 1; j < receipts.length; j++) {
-        if (receipts[j]!.node === MAINTAINER) { nextMaintainer = j; break; }
+        if (receipts[j]!.node === MAINTAINER) {
+          nextMaintainer = j;
+          break;
+        }
       }
       const scheduleRendered = receipts
         .slice(i + 1, nextMaintainer)
         .some((rr) => rr.node === SCHEDULE && rr.status === "rendered");
-      expect(scheduleRendered, "an accepted active-graph move replans the schedule").toBe(true);
+      expect(
+        scheduleRendered,
+        "an accepted active-graph move replans the schedule",
+      ).toBe(true);
     }
-    expect(sawAccept, "the fixture contains an accepted candidate (active-graph moved)").toBe(true);
+    expect(
+      sawAccept,
+      "the fixture contains an accepted candidate (active-graph moved)",
+    ).toBe(true);
   });
 });
 
 // ===========================================================================
-// THE COST ROLLUP — quiet stays flat; a forced render moves total.fresh. The
+// THE COST ROLLUP: quiet stays flat; a forced render moves total.fresh. The
 // SAME read view devtools renders (createReplaySession), asserted in-process.
 // ===========================================================================
 
@@ -487,25 +602,41 @@ describe("forme-fixpoint — costRollup: quiet does not move fresh; a contract e
     try {
       const storage = createFileSystemStorageAdapter({ directory: dir });
       const ledger = createFileSystemReceiptLedger({ storage });
-      const render =
-        (text: string) =>
-        (ctx: RenderContext) => ({
-          world_model: files({ "out.txt": textFile(text) }),
-          cost: { provider: "none", model: "fake", tokens: { fresh: 5, reused: 0 }, surprise_cause: ctx.wake.source },
-        });
+      const render = (text: string) => (ctx: RenderContext) => ({
+        world_model: files({ "out.txt": textFile(text) }),
+        cost: {
+          provider: "none",
+          model: "fake",
+          tokens: { fresh: 5, reused: 0 },
+          surprise_cause: ctx.wake.source,
+        },
+      });
       const mk = (regFp: string): ReconcilerTopology => ({
         topology: {
           nodes: [
-            { node: REGISTRY, contract_fingerprint: regFp, wake_source: "external" },
-            { node: MAINTAINER, contract_fingerprint: "fp-forme", wake_source: "input" },
+            {
+              node: REGISTRY,
+              contract_fingerprint: regFp,
+              wake_source: "external",
+            },
+            {
+              node: MAINTAINER,
+              contract_fingerprint: "fp-forme",
+              wake_source: "input",
+            },
           ],
-          edges: [{ subscriber: MAINTAINER, producer: REGISTRY, facet: ATOMIC_FACET }],
+          edges: [
+            { subscriber: MAINTAINER, producer: REGISTRY, facet: ATOMIC_FACET },
+          ],
           entry_points: [REGISTRY],
           acyclic: true,
         },
         contract_fingerprints: { [REGISTRY]: regFp, [MAINTAINER]: "fp-forme" },
       });
-      const mounts = { [REGISTRY]: { render: render("v1") }, [MAINTAINER]: { render: render("d1") } };
+      const mounts = {
+        [REGISTRY]: { render: render("v1") },
+        [MAINTAINER]: { render: render("d1") },
+      };
 
       const dag = mountDag({ topology: mk("fp-v1"), mounts, ledger });
       dag.ingest(REGISTRY); // cold: both render -> fresh 10
@@ -518,13 +649,18 @@ describe("forme-fixpoint — costRollup: quiet does not move fresh; a contract e
       // byCause partitions total exactly.
       const rollup = createReplaySession({ ledger }).costRollup;
       const causeSum =
-        rollup.byCause.external.fresh + rollup.byCause.input.fresh + rollup.byCause.self.fresh;
+        rollup.byCause.external.fresh +
+        rollup.byCause.input.fresh +
+        rollup.byCause.self.fresh;
       expect(causeSum).toBe(rollup.total.fresh);
 
       // A contract_fingerprint edit forces a render -> fresh MOVES.
       const dag2 = mountDag({
         topology: mk("fp-v2"),
-        mounts: { [REGISTRY]: { render: render("v2") }, [MAINTAINER]: { render: render("d2") } },
+        mounts: {
+          [REGISTRY]: { render: render("v2") },
+          [MAINTAINER]: { render: render("d2") },
+        },
         ledger,
       });
       dag2.ingest(REGISTRY);

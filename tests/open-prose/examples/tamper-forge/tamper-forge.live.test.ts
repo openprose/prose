@@ -1,4 +1,4 @@
-// The tamper-forge TIER-3 LIVE check (OPTIONAL, key-gated) — a reliability smoke
+// The tamper-forge LIVE check (OPTIONAL, key-gated): a reliability smoke
 // that drives the audit lens (ledger-feed → chain-auditor) with a REAL model at
 // the `asyncMounts` seam (createAgentRender) instead of the deterministic fake.
 //
@@ -29,12 +29,8 @@ import {
   ATOMIC_FACET,
   type LedgerReceipt,
 } from "@openprose/reactor";
-import type {
-  ReconcilerTopology,
-} from "@openprose/reactor/internals";
-import {
-  createFileSystemStorageAdapter,
-} from "@openprose/reactor";
+import type { ReconcilerTopology } from "@openprose/reactor/internals";
+import { createFileSystemStorageAdapter } from "@openprose/reactor";
 import {
   createAgentRender,
   createOpenRouterProvider,
@@ -54,7 +50,12 @@ const skip = LIVE
 
 const zero = (cause: "external" | "input") => ({
   world_model: {},
-  cost: { provider: "none", model: "fake", tokens: { fresh: 0, reused: 0 }, surprise_cause: cause },
+  cost: {
+    provider: "none",
+    model: "fake",
+    tokens: { fresh: 0, reused: 0 },
+    surprise_cause: cause,
+  },
 });
 
 describe("tamper-forge — LIVE audit reliability (key-gated)", () => {
@@ -70,10 +71,20 @@ describe("tamper-forge — LIVE audit reliability (key-gated)", () => {
         const topology: ReconcilerTopology = {
           topology: {
             nodes: [
-              { node: FEED, contract_fingerprint: "fp-feed", wake_source: "external" },
-              { node: AUDITOR, contract_fingerprint: "fp-auditor", wake_source: "input" },
+              {
+                node: FEED,
+                contract_fingerprint: "fp-feed",
+                wake_source: "external",
+              },
+              {
+                node: AUDITOR,
+                contract_fingerprint: "fp-auditor",
+                wake_source: "input",
+              },
             ],
-            edges: [{ subscriber: AUDITOR, producer: FEED, facet: ATOMIC_FACET }],
+            edges: [
+              { subscriber: AUDITOR, producer: FEED, facet: ATOMIC_FACET },
+            ],
             entry_points: [FEED],
             acyclic: true,
           },

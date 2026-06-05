@@ -1,7 +1,7 @@
 # OpenProse Examples
 
 These examples are small OpenProse Native Repositories. Each one models a real
-standing goal as a mounted `responsibility` — the headline kind — that maintains
+standing goal as a mounted `responsibility` (the headline kind) that maintains
 a world-model, with cross-node helper `function`s it `call`s and a `gateway`
 that brings outside events in.
 
@@ -10,12 +10,12 @@ the truth it keeps current (`### Maintains`), and its wake-source
 (`### Continuity`: input-driven, self-driven, or external-driven). Forme wires
 the `### Requires` ↔ `### Maintains` edges at compile time; the dumb reconciler
 skips a render when neither the contract nor any subscribed input fingerprint
-moved — so cost scales with surprise, not the clock.
+moved, so cost scales with surprise, not the clock.
 
 ## Reactor verbs
 
-Every shipped example is a Reactor state-dir. Drive any of them with the same
-verbs (`reactor` / `reactor-cli`):
+Each example ships its `.prose.md` contracts under `src/`. Drive any of them with
+the same verbs (`reactor` / `reactor-cli`):
 
 ```bash
 cd skills/open-prose/examples/<example>
@@ -27,77 +27,75 @@ reactor serve             # stand the graph up and watch it react to events
 reactor receipts          # read the per-node ledger (render/skip/failed + cost)
 ```
 
-The committed `replay/` state-dir under each substrate example is a frozen,
-deterministic ledger you can replay at **zero model spend** — open it in
-`reactor-devtools` to scrub the render/skip trail, or run its co-located
-`<name>.test.ts` (the tier-2 gate) offline.
+A `reactor run` (or `reactor serve`) writes a frozen, deterministic state-dir you
+can replay at **zero model spend**: open it in `reactor-devtools` to scrub the
+render/skip trail.
 
 ---
 
 ## Intelligent-React substrate examples (grouped by property)
 
-These examples are authored to the full validity contract — each ships a
-committed `replay/` state-dir + a deterministic tier-2 test that drives the REAL
-`@openprose/reactor` reconciler offline, asserting the property it teaches. They
-are wired into `pnpm test:examples`.
+These examples are authored to the full validity contract and exercised by the
+project's offline test suite, which drives the REAL `@openprose/reactor`
+reconciler offline, asserting the property each one teaches.
 
 ### Memoization & cost-scales-with-surprise
 
-- [surprise-cost](./surprise-cost/) — the minimal linear form (one gateway → one
+- [surprise-cost](./surprise-cost/): the minimal linear form (one gateway → one
   responsibility, one `@atomic` edge): cold renders both, a quiet re-wake
   memo-skips at fresh 0, and bumping the gateway's `contract_fingerprint` is the
   only thing that re-renders. The marquee skipped/fresh-0 frame.
-- [basic-unit-suite](./basic-unit-suite/) — the **substrate**: the smallest graph
-  that exercises *every* micro-mechanic (memo-skip, linear propagation, facet
+- [basic-unit-suite](./basic-unit-suite/): the **substrate**: the smallest graph
+  that exercises _every_ micro-mechanic (memo-skip, linear propagation, facet
   subscription, function boundary, projection boundary, self-continuity, failure
   containment) the bigger examples stand on.
 
 ### Selective wake & facet subscription
 
-- [renewal-risk](./renewal-risk/) — a single standing maintained truth re-judges
+- [renewal-risk](./renewal-risk/): a single standing maintained truth re-judges
   ONLY the accounts whose signals moved; a downstream alert feed subscribes to
   the `risk` facet alone, so a cosmetic re-render that leaves `risk` byte-identical
   never wakes it.
-- [research-tree](./research-tree/) — propagation UP a recursive tree with
+- [research-tree](./research-tree/): propagation UP a recursive tree with
   per-branch memoization: revising one leaf wakes only its ancestor path; siblings
   stay dark.
 
 ### Fan-in, diamonds & failure isolation
 
-- [inbox-triage](./inbox-triage/) — diamond fan-in + failure isolation: a `failed`
+- [inbox-triage](./inbox-triage/): diamond fan-in + failure isolation: a `failed`
   classifier carries zero fresh and wakes nothing downstream; the digest still
   renders; a shared content-fingerprinted facet collapses N identical inputs to a
   single wake.
-- [monorepo-ci](./monorepo-ci/) — memoization + hub fan-out blast radius: a leaf
+- [monorepo-ci](./monorepo-ci/): memoization + hub fan-out blast radius: a leaf
   diff rebuilds one lane; a hub diff fans out to its dependents once; a failing
   test is a zero-fresh `failed` receipt that drives the merge gate to BLOCKED.
-- [implementation-pipeline](./implementation-pipeline/) — a FIXED wide fan-out of
+- [implementation-pipeline](./implementation-pipeline/): a FIXED wide fan-out of
   parallel construction lanes with per-facet wake: a lane-local change lights one
   lane, a foundation change fans out to all lanes once, and a rejected lane never
   reaches integration.
 
 ### Masked projections & hidden-context composition
 
-- [masked-relay](./masked-relay/) — peer-blind fan-out: scouts and critics never
+- [masked-relay](./masked-relay/): peer-blind fan-out: scouts and critics never
   subscribe to siblings; deterministic per-consumer masked projection facets;
   full-provenance commit at the synthesizer.
-- [oblique-weave](./oblique-weave/) — hidden-context adversarial role composition:
+- [oblique-weave](./oblique-weave/): hidden-context adversarial role composition:
   one masked facet per role so a new anomaly wakes exactly the role it routes to;
   the loop closes across an epoch boundary so the graph stays acyclic.
 
 ### Per-entity fan-out, gates & enrichment
 
-- [github-star-enricher](./github-star-enricher/) — per-entity fan-out + shared
+- [github-star-enricher](./github-star-enricher/): per-entity fan-out + shared
   company receipts (diamond reuse) + cost-gated enrichment + a hard human gate
   that stops at `ready_for_review` with `auto_send:false`.
 
 ### Receipts, audit & tamper-evidence
 
-- [tamper-forge](./tamper-forge/) — an audit/replay LENS over the masked-relay
+- [tamper-forge](./tamper-forge/): an audit/replay LENS over the masked-relay
   ledger: naive fresh-token inflation breaks `verifyReceiptChain`; an honest
   re-stamp heals the chain; a forged signature scheme is rejected. Depends on
   masked-relay.
-- [agent-observatory](./agent-observatory/) — the Agent State Observatory: runtime
+- [agent-observatory](./agent-observatory/): the Agent State Observatory: runtime
   adapters on independent dark lanes → a session ledger → summaries → a diamond
   workstream index → a batched concept clusterer → dual terminal artifacts. (WIP
   doc-conformance: Continuity sections describe their wake-source in prose rather
@@ -105,7 +103,7 @@ are wired into `pnpm test:examples`.
 
 ### Topology-as-world-model (The Cradle)
 
-- [forme-fixpoint](./forme-fixpoint/) — the harness wires its own graph: a Topology
+- [forme-fixpoint](./forme-fixpoint/): the harness wires its own graph: a Topology
   Maintainer publishes a versioned `active-graph` facet that moves only on an
   ACCEPTED candidate, so a rejected (ambiguous/cyclic) candidate cannot corrupt
   scheduling. (WIP: ships the conservative deterministic split; the full
@@ -113,7 +111,7 @@ are wired into `pnpm test:examples`.
 
 ### Eval harness
 
-- [`tools/eval-harness/`](../../../tools/eval-harness/) — the Reactor eval harness:
+- [`tools/eval-harness/`](../../../tools/eval-harness/): the Reactor eval harness:
   a Trajectory Normalizer over the devtools replay view, a no-LLM Deterministic
   Checker (7 spec checks), 5 canonical scenarios, and a key-gated LLM judge panel
   that is OFF in CI. Run offline: `pnpm test:eval:offline`.
@@ -169,7 +167,7 @@ source code or should keep their own release cadence.
 ## Quick Start
 
 Open one example directory, then compile and serve it. `reactor compile` is the
-only intelligent phase — it runs Forme to wire the responsibility DAG and lowers
+only intelligent phase: it runs Forme to wire the responsibility DAG and lowers
 each `### Maintains` into a deterministic canonicalizer; `reactor serve` runs the
 dumb reconciler over that frozen output.
 

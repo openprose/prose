@@ -2,8 +2,8 @@
 // `replay/` state-dir by driving the REAL `@openprose/reactor` reconciler with
 // deterministic fake renders (NO model key). It is lifted from the devtools
 // fixture generator (`packages/reactor-devtools/src/fixtures/inbox-triage.ts`)
-// and made LOSSLESS on regeneration: it SELF-WRITES `beats.json` (the devtools
-// generator does not — the known caveat in the plan §6) so a regen reproduces
+// and made LOSSLESS on regeneration: it SELF-WRITES `beats.json` (a known caveat
+// the devtools generator does not handle) so a regen reproduces
 // the committed `replay/` byte-for-byte, including the beat timeline.
 //
 // THE STORY (the architecture this example stakes out — diamond fan-in +
@@ -76,13 +76,8 @@ import {
   type TopologyEdge,
 } from "@openprose/reactor/internals";
 
-import type {
-  ReconcilerTopology,
-} from "@openprose/reactor/internals";
-import type {
-  RenderContext,
-  RenderProduct,
-} from "@openprose/reactor";
+import type { ReconcilerTopology } from "@openprose/reactor/internals";
+import type { RenderContext, RenderProduct } from "@openprose/reactor";
 
 // ---------------------------------------------------------------------------
 // Node identities.
@@ -420,7 +415,9 @@ const threaderCanon = (fm: WorldModelFiles) => {
     [ROLLUP_FACET]: materialFingerprint(t["rollup"] ?? null),
   };
   for (const key of THREAD_KEYS) {
-    out[THREAD_FACET[key]!] = materialFingerprint(threads[key]?.content ?? null);
+    out[THREAD_FACET[key]!] = materialFingerprint(
+      threads[key]?.content ?? null,
+    );
   }
   return out;
 };
@@ -602,7 +599,10 @@ function priorityRender(deps: Deps): Render {
 function digestRender(deps: Deps): Render {
   return (ctx) => {
     const pr = readJson(deps.store, PRIORITY);
-    const ranked = (pr?.["ranked"] ?? []) as { thread: string; score: number }[];
+    const ranked = (pr?.["ranked"] ?? []) as {
+      thread: string;
+      score: number;
+    }[];
     const sections: Record<string, unknown> = {};
     let shipped = 0;
     for (const key of THREAD_KEYS) {
@@ -645,7 +645,9 @@ function contractFingerprint(decl: NodeDecl): Fingerprint {
   });
 }
 
-function buildReconcilerTopology(decls: readonly NodeDecl[]): ReconcilerTopology {
+function buildReconcilerTopology(
+  decls: readonly NodeDecl[],
+): ReconcilerTopology {
   const contract_fingerprints: Record<string, Fingerprint> = {};
   for (const d of decls) contract_fingerprints[d.id] = contractFingerprint(d);
 
@@ -661,7 +663,9 @@ function buildReconcilerTopology(decls: readonly NodeDecl[]): ReconcilerTopology
       facet: r.facet ?? ATOMIC_FACET,
     })),
   );
-  const entry_points = decls.filter((d) => d.kind === "gateway").map((d) => d.id);
+  const entry_points = decls
+    .filter((d) => d.kind === "gateway")
+    .map((d) => d.id);
   const declared = new Set(decls.map((d) => d.id));
   const topology: TopologyWorldModel = {
     nodes,
@@ -722,7 +726,9 @@ export interface GenerateResult {
  * `compile/labels.json`, and (LOSSLESSLY) `beats.json`. Re-running with the same
  * path reproduces the bytes.
  */
-export function generateInboxTriageExample(opts: GenerateOptions): GenerateResult {
+export function generateInboxTriageExample(
+  opts: GenerateOptions,
+): GenerateResult {
   const { stateDir } = opts;
   if (opts.clean !== false && existsSync(stateDir)) {
     rmSync(stateDir, { recursive: true, force: true });
@@ -789,7 +795,8 @@ export function generateInboxTriageExample(opts: GenerateOptions): GenerateResul
     string,
     { render: Render; canonicalizer: NodeDecl["canonicalizer"] }
   > = {};
-  for (const d of decls) mounts[d.id] = { render: d.render, canonicalizer: d.canonicalizer };
+  for (const d of decls)
+    mounts[d.id] = { render: d.render, canonicalizer: d.canonicalizer };
 
   const dag = mountDag({ topology: reconcilerTopology, mounts, store, ledger });
 

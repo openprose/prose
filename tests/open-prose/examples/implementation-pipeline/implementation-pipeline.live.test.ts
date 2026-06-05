@@ -1,20 +1,20 @@
-// The Implementation Pipeline — OPTIONAL tier-3 LIVE reliability check (key-gated).
+// The Implementation Pipeline: OPTIONAL key-gated LIVE reliability check.
 //
 // The offline sibling (`implementation-pipeline.test.ts`) asserts the run-loop
-// MECHANICS with DETERMINISTIC fake renders — zero model calls, the green bar that
+// MECHANICS with DETERMINISTIC fake renders: zero model calls, the green bar that
 // gates the commit. THIS file is the additive, key-gated LIVE smoke: it boots the
 // work-plan node with the live `createAgentRender` adapter and checks the node's
 // `### Maintains` POSTCONDITION (the rubric IS the contract, not a parallel one):
 //
 //   every work item is assigned to one of the SIX FIXED lanes or recorded as
-//   `unassigned_work` — and the planner NEVER invents a seventh lane.
+//   `unassigned_work`, and the planner NEVER invents a seventh lane.
 //
 // Gated `{ skip: hasOpenRouterKey() && !isOffline ? false : "…" }` exactly like
 // every other live test, so a keyless / REACTOR_OFFLINE run reports a PASSING
-// (skipped-body) subtest and never touches the network — the offline gate stays
+// (skipped-body) subtest and never touches the network, so the offline gate stays
 // green and is unaffected by this file. Run live with a key:
 //   OPENROUTER_API_KEY=… npx vitest run --config \
-//     skills/open-prose/examples/implementation-pipeline/vitest.local.config.ts
+//     tests/open-prose/examples/implementation-pipeline/vitest.local.config.ts
 
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -54,13 +54,14 @@ const LANES = [
   "docs-signposts",
 ] as const;
 
-const isOffline = process.env.REACTOR_OFFLINE === "1" || process.env.REACTOR_OFFLINE === "true";
+const isOffline =
+  process.env.REACTOR_OFFLINE === "1" || process.env.REACTOR_OFFLINE === "true";
 const live = hasOpenRouterKey() && !isOffline;
 const skipReason = isOffline
   ? "REACTOR_OFFLINE=1 — live render disabled (offline gate)"
   : "no OPENROUTER_API_KEY — set one to run the live reliability check";
 
-describe("implementation-pipeline — LIVE work-plan reliability (tier-3, key-gated)", () => {
+describe("implementation-pipeline LIVE work-plan reliability (key-gated)", () => {
   it.skipIf(!live)(
     "the live work-plan assigns every item to a FIXED lane or unassigned — never a 7th lane",
     async () => {
@@ -68,7 +69,9 @@ describe("implementation-pipeline — LIVE work-plan reliability (tier-3, key-ga
       try {
         const storage = createFileSystemStorageAdapter({ directory: dir });
         const ledger = createFileSystemReceiptLedger({ storage });
-        const store = new FileSystemWorldModelStore({ directory: join(dir, "world-models") });
+        const store = new FileSystemWorldModelStore({
+          directory: join(dir, "world-models"),
+        });
 
         // Seed a planning corpus the live planner must triage: six placeable items
         // (one per fixed lane) + one un-ownable item.
@@ -90,16 +93,28 @@ describe("implementation-pipeline — LIVE work-plan reliability (tier-3, key-ga
               ],
             }),
           }),
-          (fm) => ({ [ATOMIC_FACET]: `sha256:${readTextFile(fm["corpus.json"]!).length}` }),
+          (fm) => ({
+            [ATOMIC_FACET]: `sha256:${readTextFile(fm["corpus.json"]!).length}`,
+          }),
         );
 
         const topology: ReconcilerTopology = {
           topology: {
             nodes: [
-              { node: SOURCE, contract_fingerprint: "fp-src", wake_source: "external" },
-              { node: WORKPLAN, contract_fingerprint: "fp-wp", wake_source: "input" },
+              {
+                node: SOURCE,
+                contract_fingerprint: "fp-src",
+                wake_source: "external",
+              },
+              {
+                node: WORKPLAN,
+                contract_fingerprint: "fp-wp",
+                wake_source: "input",
+              },
             ],
-            edges: [{ subscriber: WORKPLAN, producer: SOURCE, facet: ATOMIC_FACET }],
+            edges: [
+              { subscriber: WORKPLAN, producer: SOURCE, facet: ATOMIC_FACET },
+            ],
             entry_points: [SOURCE],
             acyclic: true,
           },
@@ -122,7 +137,17 @@ describe("implementation-pipeline — LIVE work-plan reliability (tier-3, key-ga
           topology,
           mounts: {
             // sync fallback for the source (it has no live body)
-            [SOURCE]: { render: () => ({ world_model: files({}), cost: { provider: "none", model: "fake", tokens: { fresh: 0, reused: 0 }, surprise_cause: "external" } }) },
+            [SOURCE]: {
+              render: () => ({
+                world_model: files({}),
+                cost: {
+                  provider: "none",
+                  model: "fake",
+                  tokens: { fresh: 0, reused: 0 },
+                  surprise_cause: "external",
+                },
+              }),
+            },
             [WORKPLAN]: liveRender,
           },
           asyncMounts: { [WORKPLAN]: liveRender },

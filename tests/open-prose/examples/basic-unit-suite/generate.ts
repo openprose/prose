@@ -73,13 +73,8 @@ import {
   type TopologyEdge,
 } from "@openprose/reactor/internals";
 
-import type {
-  RenderContext,
-  RenderProduct,
-} from "@openprose/reactor";
-import type {
-  ReconcilerTopology,
-} from "@openprose/reactor/internals";
+import type { RenderContext, RenderProduct } from "@openprose/reactor";
+import type { ReconcilerTopology } from "@openprose/reactor/internals";
 
 // ---------------------------------------------------------------------------
 // Node identities. Exported so the test (and any example that imports this
@@ -135,7 +130,10 @@ function stableStringify(value: unknown): string {
   }
   const entries = Object.keys(value as Record<string, unknown>)
     .sort()
-    .map((k) => `${JSON.stringify(k)}:${stableStringify((value as Record<string, unknown>)[k])}`);
+    .map(
+      (k) =>
+        `${JSON.stringify(k)}:${stableStringify((value as Record<string, unknown>)[k])}`,
+    );
   return `{${entries.join(",")}}`;
 }
 
@@ -149,7 +147,11 @@ function stableStringify(value: unknown): string {
 const FRESH_PER_UNIT = 120;
 const REUSED_FLOOR = 200;
 
-function renderCost(ctx: RenderContext, freshUnits: number, reusedUnits = 1): Cost {
+function renderCost(
+  ctx: RenderContext,
+  freshUnits: number,
+  reusedUnits = 1,
+): Cost {
   return {
     provider: "fixture",
     model: "deterministic-fake",
@@ -185,7 +187,8 @@ type EventLedger = CounterEvent[];
 function buildLedgerTruth(events: EventLedger): Record<string, unknown> {
   const material = events.filter((e) => e.material !== false && !e.malformed);
   const countsByKind: Record<string, number> = {};
-  for (const e of material) countsByKind[e.kind] = (countsByKind[e.kind] ?? 0) + 1;
+  for (const e of material)
+    countsByKind[e.kind] = (countsByKind[e.kind] ?? 0) + 1;
   const total = material.length;
   return {
     // The `counts` facet projects ONLY this slice (numeric tallies).
@@ -218,7 +221,9 @@ function readJson<T = Record<string, unknown>>(
 
 function readTruth(fm: WorldModelFiles): Record<string, unknown> {
   const bytes = fm["truth.json"];
-  return bytes === undefined ? {} : (JSON.parse(readTextFile(bytes)) as Record<string, unknown>);
+  return bytes === undefined
+    ? {}
+    : (JSON.parse(readTextFile(bytes)) as Record<string, unknown>);
 }
 
 function commit(world: unknown, cost: Cost): RenderProduct {
@@ -229,7 +234,9 @@ function commit(world: unknown, cost: Cost): RenderProduct {
 // Canonicalizers (which facets a node's truth exposes).
 // ---------------------------------------------------------------------------
 
-const atomicTruth = (fm: WorldModelFiles) => ({ [ATOMIC_FACET]: fingerprintArtifact(fm) });
+const atomicTruth = (fm: WorldModelFiles) => ({
+  [ATOMIC_FACET]: fingerprintArtifact(fm),
+});
 
 // THE facet boundary (U05). The gateway re-projects the ledger into TWO
 // INDEPENDENT facet tokens: `counts` (the numeric tallies) and `raw_events` (the
@@ -269,7 +276,9 @@ interface Deps {
 // The gateway: read the raw inbox, fold into the canonical CounterEventLedger.
 function gatewayRender(deps: Deps): Render {
   return (ctx) => {
-    const inbox = readJson<{ events?: EventLedger }>(deps.store, SOURCE, "inbox.json")?.events ?? [];
+    const inbox =
+      readJson<{ events?: EventLedger }>(deps.store, SOURCE, "inbox.json")
+        ?.events ?? [];
     const truth = buildLedgerTruth(inbox);
     const counts = truth["counts"] as { total: number };
     return commit(truth, renderCost(ctx, Math.max(1, counts.total)));
@@ -313,7 +322,9 @@ function alertStateRender(deps: Deps): Render {
   return (ctx) => {
     const cs = readJson(deps.store, COUNT_SUMMARY);
     if (cs?.["force_fail"] === true) {
-      throw new Error("alert-state: forced render failure after reading CountSummary (U10)");
+      throw new Error(
+        "alert-state: forced render failure after reading CountSummary (U10)",
+      );
     }
     const total = (cs?.["total"] ?? 0) as number;
     const crossed = (cs?.["threshold_crossed"] ?? false) as boolean;
@@ -343,7 +354,10 @@ function formatAlertCopy(alert: { status: string; threshold: number }): {
 // internally, then commits a MATERIAL `structured_summary` PLUS cosmetic
 // markdown/html. The structured facet only moves when the structured truth moves
 // (U08): a `cosmeticNonce` perturbs ONLY the markdown bytes.
-function alertProjectionRender(deps: Deps, cosmeticNonce: () => number): Render {
+function alertProjectionRender(
+  deps: Deps,
+  cosmeticNonce: () => number,
+): Render {
   return (ctx) => {
     const as = readJson(deps.store, ALERT_STATE);
     const status = (as?.["status"] ?? "quiet") as string;
@@ -403,13 +417,19 @@ function countTrendRender(deps: Deps): Render {
     const prior = readJson(deps.store, COUNT_TREND); // read prior BY REFERENCE
     const previousTotal = (prior?.["current_total"] ?? 0) as number;
     const current = counts.total;
-    const direction = current > previousTotal ? "up" : current < previousTotal ? "down" : "flat";
+    const direction =
+      current > previousTotal
+        ? "up"
+        : current < previousTotal
+          ? "down"
+          : "flat";
     // `valid_until` is recomputed deterministically from the material total; a
     // self-tick that finds the same total re-derives the SAME truth (no move).
     return commit(
       {
         current_total: current,
-        previous_total: ctx.wake.source === "self" ? previousTotal : previousTotal,
+        previous_total:
+          ctx.wake.source === "self" ? previousTotal : previousTotal,
         direction,
         valid_until: current, // immaterial-shaped but kept deterministic
       },
@@ -431,7 +451,9 @@ function executiveSnapshotRender(deps: Deps): Render {
         status: (as?.["status"] ?? "quiet") as string,
         total: (trend?.["current_total"] ?? 0) as number,
         audit_health:
-          ((audit?.["malformed_events"] ?? []) as string[]).length === 0 ? "clean" : "flagged",
+          ((audit?.["malformed_events"] ?? []) as string[]).length === 0
+            ? "clean"
+            : "flagged",
         trend: (trend?.["direction"] ?? "flat") as string,
         evidence_refs: [ALERT_STATE, RAW_EVENT_AUDITOR, COUNT_TREND],
       },
@@ -456,7 +478,9 @@ function contractFingerprint(decl: NodeDecl): Fingerprint {
   return materialFingerprint({
     kind: decl.kind,
     id: decl.id,
-    requires: decl.requires.map((r) => `${r.producer}:${r.facet ?? ATOMIC_FACET}`).sort(),
+    requires: decl.requires
+      .map((r) => `${r.producer}:${r.facet ?? ATOMIC_FACET}`)
+      .sort(),
   });
 }
 
@@ -467,7 +491,9 @@ function isAcyclic(
   const adj = new Map<string, string[]>();
   for (const e of edges) {
     if (!declared.has(e.producer) || !declared.has(e.subscriber)) continue;
-    (adj.get(e.producer) ?? adj.set(e.producer, []).get(e.producer)!).push(e.subscriber);
+    (adj.get(e.producer) ?? adj.set(e.producer, []).get(e.producer)!).push(
+      e.subscriber,
+    );
   }
   const state = new Map<string, 0 | 1 | 2>();
   const visit = (n: string): boolean => {
@@ -482,7 +508,9 @@ function isAcyclic(
   return true;
 }
 
-function buildReconcilerTopology(decls: readonly NodeDecl[]): ReconcilerTopology {
+function buildReconcilerTopology(
+  decls: readonly NodeDecl[],
+): ReconcilerTopology {
   const contract_fingerprints: Record<string, Fingerprint> = {};
   for (const d of decls) contract_fingerprints[d.id] = contractFingerprint(d);
 
@@ -498,7 +526,9 @@ function buildReconcilerTopology(decls: readonly NodeDecl[]): ReconcilerTopology
       facet: r.facet ?? ATOMIC_FACET,
     })),
   );
-  const entry_points = decls.filter((d) => d.kind === "gateway").map((d) => d.id);
+  const entry_points = decls
+    .filter((d) => d.kind === "gateway")
+    .map((d) => d.id);
   const declared = new Set(decls.map((d) => d.id));
   const topology: TopologyWorldModel = {
     nodes,
@@ -511,8 +541,8 @@ function buildReconcilerTopology(decls: readonly NodeDecl[]): ReconcilerTopology
 
 // ---------------------------------------------------------------------------
 // The scripted beat timeline. SELF-WRITTEN into beats.json so a regen is lossless
-// (the plan's mandated fix: a generator must own its beats.json, never clobber a
-// co-located one). Frame indices are the receipt ordinals each beat parks on.
+// (a generator must own its beats.json, never clobber a sibling one). Frame
+// indices are the receipt ordinals each beat parks on.
 // ---------------------------------------------------------------------------
 
 export const BEATS = {
@@ -526,7 +556,8 @@ export const BEATS = {
       from: 0,
       to: 9,
       holdMs: 2600,
-      caption: "cold start (U01–U02) · the whole graph lights once · gateway → summary → alert → projection",
+      caption:
+        "cold start (U01–U02) · the whole graph lights once · gateway → summary → alert → projection",
     },
     {
       name: "memo-skip",
@@ -534,7 +565,8 @@ export const BEATS = {
       from: 10,
       to: 11,
       holdMs: 2600,
-      caption: "U03: a byte-identical re-wake · the gateway memo-SKIPS · nothing propagates · fresh 0",
+      caption:
+        "U03: a byte-identical re-wake · the gateway memo-SKIPS · nothing propagates · fresh 0",
     },
     {
       name: "linear-propagation",
@@ -542,7 +574,8 @@ export const BEATS = {
       from: 12,
       to: 19,
       holdMs: 3000,
-      caption: "U04: a real new event · the counts lane wakes summary → alert → projection in DAG order",
+      caption:
+        "U04: a real new event · the counts lane wakes summary → alert → projection in DAG order",
     },
     {
       name: "facet-subscription",
@@ -550,7 +583,8 @@ export const BEATS = {
       from: 20,
       to: 23,
       holdMs: 3000,
-      caption: "U05: a metadata-only event · raw_events moves, counts does NOT · the auditor lights, summary stays dark",
+      caption:
+        "U05: a metadata-only event · raw_events moves, counts does NOT · the auditor lights, summary stays dark",
     },
     {
       name: "diamond-single-wake",
@@ -558,7 +592,8 @@ export const BEATS = {
       from: 24,
       to: 33,
       holdMs: 3200,
-      caption: "U06: a material event reaches the snapshot down THREE paths · it renders ONCE for the tuple",
+      caption:
+        "U06: a material event reaches the snapshot down THREE paths · it renders ONCE for the tuple",
     },
     {
       name: "projection-boundary",
@@ -566,7 +601,8 @@ export const BEATS = {
       from: 34,
       to: 34,
       holdMs: 3000,
-      caption: "U08: a cosmetic contract revision RE-RENDERS the projection · @atomic truth MOVES but the structured facet does NOT · no subscriber, no downstream wake",
+      caption:
+        "U08: a cosmetic contract revision RE-RENDERS the projection · @atomic truth MOVES but the structured facet does NOT · no subscriber, no downstream wake",
     },
     {
       name: "self-recheck",
@@ -574,7 +610,8 @@ export const BEATS = {
       from: 35,
       to: 36,
       holdMs: 2800,
-      caption: "U09: the projection then Count Trend self-tick · each re-derives the same truth · a no-op recheck propagates nothing",
+      caption:
+        "U09: the projection then Count Trend self-tick · each re-derives the same truth · a no-op recheck propagates nothing",
     },
     {
       name: "failure-containment",
@@ -582,7 +619,8 @@ export const BEATS = {
       from: 37,
       to: 44,
       holdMs: 3000,
-      caption: "U10: Alert State render fails RED · a failure receipt · the prior alert truth still stands",
+      caption:
+        "U10: Alert State render fails RED · a failure receipt · the prior alert truth still stands",
     },
   ],
 };
@@ -613,7 +651,9 @@ export interface GenerateResult {
  * store + ledger, then writes `compile/topology.json` + `compile/labels.json` +
  * `beats.json`. Re-running with the same path reproduces the bytes.
  */
-export function generateBasicUnitSuiteFixture(opts: GenerateOptions): GenerateResult {
+export function generateBasicUnitSuiteFixture(
+  opts: GenerateOptions,
+): GenerateResult {
   const { stateDir } = opts;
   if (opts.clean !== false && existsSync(stateDir)) {
     rmSync(stateDir, { recursive: true, force: true });
@@ -690,8 +730,12 @@ export function generateBasicUnitSuiteFixture(opts: GenerateOptions): GenerateRe
   ];
 
   const reconcilerTopology = buildReconcilerTopology(decls);
-  const mounts: Record<string, { render: Render; canonicalizer: NodeDecl["canonicalizer"] }> = {};
-  for (const d of decls) mounts[d.id] = { render: d.render, canonicalizer: d.canonicalizer };
+  const mounts: Record<
+    string,
+    { render: Render; canonicalizer: NodeDecl["canonicalizer"] }
+  > = {};
+  for (const d of decls)
+    mounts[d.id] = { render: d.render, canonicalizer: d.canonicalizer };
 
   const dag = mountDag({ topology: reconcilerTopology, mounts, store, ledger });
 
@@ -705,7 +749,10 @@ export function generateBasicUnitSuiteFixture(opts: GenerateOptions): GenerateRe
       ...reconcilerTopology.topology,
       nodes: reconcilerTopology.topology.nodes.map((n) =>
         n.node === nodeId
-          ? { ...n, contract_fingerprint: `${n.contract_fingerprint}+rev:${revision}` }
+          ? {
+              ...n,
+              contract_fingerprint: `${n.contract_fingerprint}+rev:${revision}`,
+            }
           : n,
       ),
     };
@@ -796,7 +843,10 @@ export function generateBasicUnitSuiteFixture(opts: GenerateOptions): GenerateRe
   // the headline U08 frame, now visible in the committed receipts.json, not just in
   // the in-process test.
   cosmeticNonce = 1;
-  const projectionRevisedDag = remountWithBumpedContract(ALERT_PROJECTION, "reworded-copy-v2");
+  const projectionRevisedDag = remountWithBumpedContract(
+    ALERT_PROJECTION,
+    "reworded-copy-v2",
+  );
   projectionRevisedDag.ingest(ALERT_PROJECTION);
 
   // --- Beat: PROJECTION SELF-RECHECK (U08/U09 sibling). The projection self-ticks
@@ -826,10 +876,18 @@ export function generateBasicUnitSuiteFixture(opts: GenerateOptions): GenerateRe
     `${JSON.stringify(reconcilerTopology.topology, null, 2)}\n`,
     "utf8",
   );
-  writeFileSync(join(compileDir, "labels.json"), `${JSON.stringify(LABELS, null, 2)}\n`, "utf8");
+  writeFileSync(
+    join(compileDir, "labels.json"),
+    `${JSON.stringify(LABELS, null, 2)}\n`,
+    "utf8",
+  );
 
   // --- Persist the scripted beat timeline (SELF-WRITTEN; never clobbered) ----
-  writeFileSync(join(stateDir, "beats.json"), `${JSON.stringify(BEATS, null, 2)}\n`, "utf8");
+  writeFileSync(
+    join(stateDir, "beats.json"),
+    `${JSON.stringify(BEATS, null, 2)}\n`,
+    "utf8",
+  );
 
   const receipts = ledger.all();
   return {

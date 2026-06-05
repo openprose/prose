@@ -1,4 +1,4 @@
-// The deterministic tier-2 gate for the research-tree example (offline, ZERO
+// The deterministic offline gate for the research-tree example (ZERO
 // model spend). It drives the REAL @openprose/reactor reconciler through the
 // public exports — exactly the snippet the README/AUTHORING flow describes — and
 // asserts the SIX validity-contract invariants off the persisted ledger:
@@ -65,9 +65,14 @@ const FINDING_PREFIX = "finding.";
 const SUBSYNTH_PREFIX = "synthesis.sub-";
 
 const SUB_OF_LEAF: Record<string, string> = {
-  A1: "A", A2: "A", A3: "A",
-  B1: "B", B2: "B", B3: "B",
-  C1: "C", C2: "C",
+  A1: "A",
+  A2: "A",
+  A3: "A",
+  B1: "B",
+  B2: "B",
+  B3: "B",
+  C1: "C",
+  C2: "C",
 };
 const ALL_LEAVES = Object.keys(SUB_OF_LEAF);
 
@@ -105,7 +110,9 @@ describe("research-tree — the worked snippet: propagation UP a tree with per-b
     withTmp("rt-snippet-", (dir) => {
       const storage = createFileSystemStorageAdapter({ directory: dir });
       const ledger = createFileSystemReceiptLedger({ storage });
-      const store = new FileSystemWorldModelStore({ directory: join(dir, "world-models") });
+      const store = new FileSystemWorldModelStore({
+        directory: join(dir, "world-models"),
+      });
 
       const SOURCE = "ingress.corpus";
       const L1 = `${FINDING_PREFIX}L1`;
@@ -120,19 +127,28 @@ describe("research-tree — the worked snippet: propagation UP a tree with per-b
         `sha256:${Buffer.from(JSON.stringify(v)).toString("hex")}`;
 
       // A facet-less producer exposes its truth as ATOMIC_FACET — NEVER "*".
-      const atomic = (fm: WorldModelFiles) => ({ [ATOMIC_FACET]: fingerprintArtifact(fm) });
+      const atomic = (fm: WorldModelFiles) => ({
+        [ATOMIC_FACET]: fingerprintArtifact(fm),
+      });
       // The ingress + gateway re-project EACH leaf into an INDEPENDENT facet token
       // (the dark-lane boundary): revising one leaf moves only that token.
       const perLeafCanon = (key: string) => (fm: WorldModelFiles) => {
-        const t = JSON.parse(readTextFile(fm[`${key}.json`]!)) as Record<string, unknown>;
+        const t = JSON.parse(readTextFile(fm[`${key}.json`]!)) as Record<
+          string,
+          unknown
+        >;
         const leaves = (t["leaves"] ?? t) as Record<string, unknown>;
-        const out: Record<string, Fingerprint> = { [ATOMIC_FACET]: fingerprintArtifact(fm) };
-        for (const leaf of ["L1", "L2"]) out[`leaf:${leaf}`] = fpOf(leaves[leaf] ?? null);
+        const out: Record<string, Fingerprint> = {
+          [ATOMIC_FACET]: fingerprintArtifact(fm),
+        };
+        for (const leaf of ["L1", "L2"])
+          out[`leaf:${leaf}`] = fpOf(leaves[leaf] ?? null);
         return out;
       };
 
       // surprise_cause MUST equal the wake source — read it off ctx, never hardcode.
-      const render = (build: (ctx: RenderContext) => unknown) =>
+      const render =
+        (build: (ctx: RenderContext) => unknown) =>
         (ctx: RenderContext): RenderProduct => ({
           world_model: files({ "truth.json": jsonFile(build(ctx)) }),
           cost: {
@@ -146,16 +162,26 @@ describe("research-tree — the worked snippet: propagation UP a tree with per-b
         const read = store.read(node, "published");
         if (read.ref.version === null) return null;
         const b = read.files[path];
-        return b === undefined ? null : (JSON.parse(readTextFile(b)) as Record<string, unknown>);
+        return b === undefined
+          ? null
+          : (JSON.parse(readTextFile(b)) as Record<string, unknown>);
       };
 
       const topology = (gwFp: Fingerprint): ReconcilerTopology => ({
         topology: {
           nodes: [
-            { node: GATEWAY, contract_fingerprint: gwFp, wake_source: "external" },
+            {
+              node: GATEWAY,
+              contract_fingerprint: gwFp,
+              wake_source: "external",
+            },
             { node: L1, contract_fingerprint: "fp-L1", wake_source: "input" },
             { node: L2, contract_fingerprint: "fp-L2", wake_source: "input" },
-            { node: ROOT, contract_fingerprint: "fp-root", wake_source: "input" },
+            {
+              node: ROOT,
+              contract_fingerprint: "fp-root",
+              wake_source: "input",
+            },
           ],
           // Per-leaf facet edges (the dark-lane boundary) fan UP to the root.
           edges: [
@@ -168,24 +194,50 @@ describe("research-tree — the worked snippet: propagation UP a tree with per-b
           entry_points: [GATEWAY],
           acyclic: true,
         },
-        contract_fingerprints: { [GATEWAY]: gwFp, [L1]: "fp-L1", [L2]: "fp-L2", [ROOT]: "fp-root" },
+        contract_fingerprints: {
+          [GATEWAY]: gwFp,
+          [L1]: "fp-L1",
+          [L2]: "fp-L2",
+          [ROOT]: "fp-root",
+        },
       });
 
       const mounts = {
         [GATEWAY]: {
-          render: render(() => ({ leaves: (readJson(SOURCE, "corpus.json")?.["leaves"] ?? {}) })),
+          render: render(() => ({
+            leaves: readJson(SOURCE, "corpus.json")?.["leaves"] ?? {},
+          })),
           canonicalizer: perLeafCanon("truth"),
         },
-        [L1]: { render: render(() => ({ leaf: "L1", at: fpOf(readJson(GATEWAY)?.["leaves"]) })), canonicalizer: atomic },
-        [L2]: { render: render(() => ({ leaf: "L2", at: fpOf(readJson(GATEWAY)?.["leaves"]) })), canonicalizer: atomic },
-        [ROOT]: { render: render(() => ({ root: true })), canonicalizer: atomic },
+        [L1]: {
+          render: render(() => ({
+            leaf: "L1",
+            at: fpOf(readJson(GATEWAY)?.["leaves"]),
+          })),
+          canonicalizer: atomic,
+        },
+        [L2]: {
+          render: render(() => ({
+            leaf: "L2",
+            at: fpOf(readJson(GATEWAY)?.["leaves"]),
+          })),
+          canonicalizer: atomic,
+        },
+        [ROOT]: {
+          render: render(() => ({ root: true })),
+          canonicalizer: atomic,
+        },
       };
 
       // Publish the raw corpus as the ingress source's truth, then wake the
       // gateway — exactly how generate.ts drives the real episode.
       const publishAndWake = (dag: ReturnType<typeof mountDag>) => {
         const fm = files({ "corpus.json": jsonFile({ leaves: corpus }) });
-        const commitRes = store.commitPublished(SOURCE, fm, perLeafCanon("corpus"));
+        const commitRes = store.commitPublished(
+          SOURCE,
+          fm,
+          perLeafCanon("corpus"),
+        );
         const prev = ledger.lastReceipt(SOURCE);
         ledger.append({
           node: SOURCE,
@@ -202,24 +254,36 @@ describe("research-tree — the worked snippet: propagation UP a tree with per-b
         return dag.ingest(GATEWAY);
       };
 
-      const dag = mountDag({ topology: topology("fp-gateway-v1"), mounts, store, ledger });
+      const dag = mountDag({
+        topology: topology("fp-gateway-v1"),
+        mounts,
+        store,
+        ledger,
+      });
 
       // Cold start: every node renders bottom-up (the root is a fan-in, so a
       // second convergent wake on it coalesces to a skip — assert each node
       // RENDERED at least once).
       const cold = publishAndWake(dag);
       const renderedIn = (rs: ReconcileResult[]) =>
-        new Set(rs.filter((r) => r.disposition === "rendered").map((r) => r.node));
+        new Set(
+          rs.filter((r) => r.disposition === "rendered").map((r) => r.node),
+        );
       const coldRendered = renderedIn(cold);
       for (const n of [GATEWAY, L1, L2, ROOT]) {
         expect(coldRendered.has(n), `${n} rendered on cold start`).toBe(true);
       }
-      const freshAfterCold = createReplaySession({ ledger }).costRollup.total.fresh;
+      const freshAfterCold = createReplaySession({ ledger }).costRollup.total
+        .fresh;
 
       // Quiet re-wake: nothing moved -> the gateway SKIPS and propagates nothing.
       const quiet = publishAndWake(dag);
-      expect(quiet.map((r) => `${r.node}:${r.disposition}`)).toEqual([`${GATEWAY}:skipped`]);
-      expect(createReplaySession({ ledger }).costRollup.total.fresh).toBe(freshAfterCold);
+      expect(quiet.map((r) => `${r.node}:${r.disposition}`)).toEqual([
+        `${GATEWAY}:skipped`,
+      ]);
+      expect(createReplaySession({ ledger }).costRollup.total.fresh).toBe(
+        freshAfterCold,
+      );
 
       // Revise ONE leaf (L1). Only `leaf:L1` moves -> only Finding L1 wakes; the
       // root re-synthesizes; Finding L2 stays DARK.
@@ -235,10 +299,19 @@ describe("research-tree — the worked snippet: propagation UP a tree with per-b
       // A contract_fingerprint edit on the gateway forces a render even with an
       // unchanged corpus (the memo MISS) — fresh moves again.
       const beforeEdit = createReplaySession({ ledger }).costRollup.total.fresh;
-      const dag2 = mountDag({ topology: topology("fp-gateway-v2"), mounts, store, ledger });
+      const dag2 = mountDag({
+        topology: topology("fp-gateway-v2"),
+        mounts,
+        store,
+        ledger,
+      });
       const edited = publishAndWake(dag2);
-      expect(edited.some((r) => r.node === GATEWAY && r.disposition === "rendered")).toBe(true);
-      expect(createReplaySession({ ledger }).costRollup.total.fresh).toBeGreaterThan(beforeEdit);
+      expect(
+        edited.some((r) => r.node === GATEWAY && r.disposition === "rendered"),
+      ).toBe(true);
+      expect(
+        createReplaySession({ ledger }).costRollup.total.fresh,
+      ).toBeGreaterThan(beforeEdit);
 
       // Every committed receipt honors the surprise-cost invariant + the cost
       // rollup partitions by cause exactly.
@@ -250,7 +323,10 @@ describe("research-tree — the worked snippet: propagation UP a tree with per-b
       }
       const byCause = session.costRollup.byCause;
       const summed = Object.values(byCause).reduce(
-        (acc, b) => ({ fresh: acc.fresh + b.fresh, reused: acc.reused + b.reused }),
+        (acc, b) => ({
+          fresh: acc.fresh + b.fresh,
+          reused: acc.reused + b.reused,
+        }),
         { fresh: 0, reused: 0 },
       );
       expect(summed.fresh).toBe(session.costRollup.total.fresh);
@@ -277,14 +353,20 @@ describe("research-tree — the frozen replay/ fixture (the full episode)", () =
 
       // world-models use the HEX-encoded node id (finding.B2 -> 66696e64696e672e4232).
       const hexB2 = Buffer.from("finding.B2", "utf8").toString("hex");
-      expect(existsSync(join(dir, "world-models", hexB2, "published.json"))).toBe(true);
+      expect(
+        existsSync(join(dir, "world-models", hexB2, "published.json")),
+      ).toBe(true);
 
       const topology = readTopology(dir);
       expect(topology.acyclic).toBe(true);
       expect(topology.entry_points).toEqual([GATEWAY]); // SINGLE entry gateway
       expect(topology.nodes.length).toBe(13); // gateway + 8 findings + 3 sub-synth + root
-      expect(topology.nodes.filter((n) => n.node.startsWith(FINDING_PREFIX)).length).toBe(8);
-      expect(topology.nodes.filter((n) => n.node.startsWith(SUBSYNTH_PREFIX)).length).toBe(3);
+      expect(
+        topology.nodes.filter((n) => n.node.startsWith(FINDING_PREFIX)).length,
+      ).toBe(8);
+      expect(
+        topology.nodes.filter((n) => n.node.startsWith(SUBSYNTH_PREFIX)).length,
+      ).toBe(3);
 
       // labels cover every node.
       const labels = JSON.parse(
@@ -297,18 +379,27 @@ describe("research-tree — the frozen replay/ fixture (the full episode)", () =
         const sub = SUB_OF_LEAF[leaf]!;
         expect(
           topology.edges.some(
-            (e) => e.producer === GATEWAY && e.facet === `leaf:${leaf}` && e.subscriber === `${FINDING_PREFIX}${leaf}`,
+            (e) =>
+              e.producer === GATEWAY &&
+              e.facet === `leaf:${leaf}` &&
+              e.subscriber === `${FINDING_PREFIX}${leaf}`,
           ),
         ).toBe(true);
         expect(
           topology.edges.some(
-            (e) => e.producer === `${FINDING_PREFIX}${leaf}` && e.subscriber === `${SUBSYNTH_PREFIX}${sub}`,
+            (e) =>
+              e.producer === `${FINDING_PREFIX}${leaf}` &&
+              e.subscriber === `${SUBSYNTH_PREFIX}${sub}`,
           ),
         ).toBe(true);
       }
       for (const sub of ["A", "B", "C"]) {
         expect(
-          topology.edges.some((e) => e.producer === `${SUBSYNTH_PREFIX}${sub}` && e.subscriber === ROOT),
+          topology.edges.some(
+            (e) =>
+              e.producer === `${SUBSYNTH_PREFIX}${sub}` &&
+              e.subscriber === ROOT,
+          ),
         ).toBe(true);
       }
     });
@@ -326,9 +417,12 @@ describe("research-tree — the frozen replay/ fixture (the full episode)", () =
       // the cold boot rendered every real node at least once.
       const topology = readTopology(dir);
       const renderedNodes = new Set(
-        session.receipts.filter((r) => r.status === "rendered").map((r) => r.node),
+        session.receipts
+          .filter((r) => r.status === "rendered")
+          .map((r) => r.node),
       );
-      for (const n of topology.nodes) expect(renderedNodes.has(n.node)).toBe(true);
+      for (const n of topology.nodes)
+        expect(renderedNodes.has(n.node)).toBe(true);
     });
   });
 
@@ -340,13 +434,15 @@ describe("research-tree — the frozen replay/ fixture (the full episode)", () =
         expect(r.cost.surprise_cause).toBe(r.wake.source);
       }
       // and a `self` receipt exists (the audit floor), causing zero fresh.
-      const selfReceipts = session.receipts.filter((r) => r.wake.source === "self");
+      const selfReceipts = session.receipts.filter(
+        (r) => r.wake.source === "self",
+      );
       expect(selfReceipts.length).toBeGreaterThanOrEqual(1);
       for (const s of selfReceipts) expect(s.cost.tokens.fresh).toBe(0);
     });
   });
 
-  it("(4) ATOMIC_FACET for facet-less producers; NO \"*\" tokens anywhere", () => {
+  it('(4) ATOMIC_FACET for facet-less producers; NO "*" tokens anywhere', () => {
     withTmp("rt-atomic-", (dir) => {
       generateResearchTree({ stateDir: dir });
       const topology = readTopology(dir);
@@ -432,7 +528,9 @@ describe("research-tree — THE TENET: propagation UP a recursive tree with per-
           movedFacets: moved,
           wakeRef: r.content_hash,
         });
-        const litFindings = gwTargets.map((t) => t.node).filter((n) => n.startsWith(FINDING_PREFIX));
+        const litFindings = gwTargets
+          .map((t) => t.node)
+          .filter((n) => n.startsWith(FINDING_PREFIX));
         expect(litFindings).toEqual([`${FINDING_PREFIX}${leaf}`]);
 
         // trace the drain to the next external wake.
@@ -448,7 +546,8 @@ describe("research-tree — THE TENET: propagation UP a recursive tree with per-
         if (findingFailed) continue; // the red-fail beat wakes no ancestor (asserted below)
 
         const drainRendered = new Set<string>();
-        for (const f of drainReceipts) if (f.status === "rendered") drainRendered.add(f.node);
+        for (const f of drainReceipts)
+          if (f.status === "rendered") drainRendered.add(f.node);
         // exactly the depth-bounded ancestor path rendered.
         expect([...drainRendered].sort()).toEqual(
           [`${FINDING_PREFIX}${leaf}`, ROOT, `${SUBSYNTH_PREFIX}${sub}`].sort(),
@@ -464,7 +563,9 @@ describe("research-tree — THE TENET: propagation UP a recursive tree with per-
       // two different leaf revisions light two DIFFERENT sub-syntheses, SAME root.
       expect(litSubByLeaf["B2"]).toBe("B");
       expect(litSubByLeaf["A1"]).toBe("A");
-      const rootRenders = session.receipts.filter((r) => r.node === ROOT && r.status === "rendered");
+      const rootRenders = session.receipts.filter(
+        (r) => r.node === ROOT && r.status === "rendered",
+      );
       expect(rootRenders.length).toBeGreaterThanOrEqual(2);
     });
   });
@@ -501,7 +602,9 @@ describe("research-tree — THE TENET: propagation UP a recursive tree with per-
         const r = session.receipts[i]!;
         if (r.node !== GATEWAY || r.status !== "rendered") continue;
         const moved = session.movedFacetsByIndex[i]!;
-        const movedLeaves = [...moved].filter((f) => f.startsWith("leaf:")).map((f) => f.slice(5));
+        const movedLeaves = [...moved]
+          .filter((f) => f.startsWith("leaf:"))
+          .map((f) => f.slice(5));
         if (movedLeaves.length < 2) continue;
         const subs = new Set(movedLeaves.map((l) => SUB_OF_LEAF[l]!));
         if (subs.size !== 1) continue;
@@ -512,7 +615,8 @@ describe("research-tree — THE TENET: propagation UP a recursive tree with per-
         for (let j = i + 1; j < session.receipts.length; j++) {
           const f = session.receipts[j]!;
           if (f.node === GATEWAY || f.node === "ingress.corpus") break;
-          if (f.node === `${SUBSYNTH_PREFIX}${sub}` && f.status === "rendered") subRenders += 1;
+          if (f.node === `${SUBSYNTH_PREFIX}${sub}` && f.status === "rendered")
+            subRenders += 1;
         }
         expect(subRenders).toBe(1);
       }

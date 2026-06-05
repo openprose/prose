@@ -1,5 +1,5 @@
 // The Masked Relay LEARNING-EXAMPLE generator — produces a deterministic,
-// replayable `replay/` state-dir that the tier-2 gate asserts against and that
+// replayable `replay/` state-dir that the offline gate asserts against and that
 // reactor-devtools can replay UNCHANGED (it emits the exact devtools fixture
 // state-dir shape: receipts.json flat at the root, world-models/<HEX>/…, and
 // compile/{topology,labels}.json + beats.json).
@@ -14,7 +14,7 @@
 // requires:
 //   1. it SELF-WRITES `compile/labels.json` (the devtools fixture lacked one), and
 //   2. it SELF-WRITES `beats.json` (a scripted cold -> quiet-skip -> surprise
-//      timeline) so a regen is LOSSLESS — never clobbers a co-located beats file.
+//      timeline) so a regen is LOSSLESS (never clobbers an adjacent beats file).
 //
 // Determinism: every render body is a PURE function of (upstream truth read by
 // reference, own prior); the mask is a stable hash mod; the cost is a pure
@@ -53,13 +53,8 @@ import {
   type TopologyEdge,
 } from "@openprose/reactor/internals";
 
-import type {
-  ReconcilerTopology,
-} from "@openprose/reactor/internals";
-import type {
-  RenderContext,
-  RenderProduct,
-} from "@openprose/reactor";
+import type { ReconcilerTopology } from "@openprose/reactor/internals";
+import type { RenderContext, RenderProduct } from "@openprose/reactor";
 
 // ---------------------------------------------------------------------------
 // Node identities + facets (mirror the .prose.md contract under src/)
@@ -190,7 +185,11 @@ function stableStringify(value: unknown): string {
 const FRESH_PER_UNIT = 180;
 const REUSED_FLOOR = 240;
 
-function renderCost(ctx: RenderContext, freshUnits: number, reusedUnits = 0): Cost {
+function renderCost(
+  ctx: RenderContext,
+  freshUnits: number,
+  reusedUnits = 0,
+): Cost {
   return {
     provider: "fixture",
     model: "deterministic-fake",
@@ -208,12 +207,18 @@ function renderCost(ctx: RenderContext, freshUnits: number, reusedUnits = 0): Co
 
 interface Signal {
   readonly id: string;
-  readonly source: "customer_call" | "support_ticket" | "lost_deal" | "competitor";
+  readonly source:
+    | "customer_call"
+    | "support_ticket"
+    | "lost_deal"
+    | "competitor";
   readonly text: string;
 }
 
 function isVisible(seed: number, consumer: string, claimId: string): boolean {
-  const h = createHash("sha256").update(`${seed} ${consumer} ${claimId}`).digest();
+  const h = createHash("sha256")
+    .update(`${seed} ${consumer} ${claimId}`)
+    .digest();
   return h[0]! % 3 !== 0; // keep 2/3, hide 1/3 — deterministic, replay-stable
 }
 
@@ -235,7 +240,9 @@ function maskFor(
     if (isVisible(seed, consumer, id)) {
       visible.push(id);
     } else {
-      hidden_hashes.push(createHash("sha256").update(id).digest("hex").slice(0, 12));
+      hidden_hashes.push(
+        createHash("sha256").update(id).digest("hex").slice(0, 12),
+      );
     }
   }
   return {
@@ -337,9 +344,13 @@ type Render = (ctx: RenderContext) => RenderProduct;
 
 function gatewayRender(deps: Deps): Render {
   return (ctx) => {
-    const inbox = (readJson<Signal[]>(deps.store, SOURCE, "inbox.json") ?? []) as Signal[];
+    const inbox = (readJson<Signal[]>(deps.store, SOURCE, "inbox.json") ??
+      []) as Signal[];
     const items = dedupById(inbox);
-    return commit({ items, count: items.length }, renderCost(ctx, items.length, 1));
+    return commit(
+      { items, count: items.length },
+      renderCost(ctx, items.length, 1),
+    );
   };
 }
 
@@ -382,7 +393,8 @@ function maskerRender(deps: Deps): Render {
     const allClaimIds: string[] = [];
     for (const scout of SCOUTS) {
       const s = readJson(deps.store, scout);
-      for (const id of (s?.["claim_ids"] ?? []) as string[]) allClaimIds.push(id);
+      for (const id of (s?.["claim_ids"] ?? []) as string[])
+        allClaimIds.push(id);
     }
     allClaimIds.sort();
     const views: Record<string, MaskedView> = {};
@@ -398,7 +410,8 @@ function maskerRender(deps: Deps): Render {
         consumers: [...EXPANDERS],
         views,
         coverage_matrix,
-        policy_reason: "deterministic 2/3 keep, 1/3 hide per (seed, consumer, claim)",
+        policy_reason:
+          "deterministic 2/3 keep, 1/3 hide per (seed, consumer, claim)",
       },
       renderCost(ctx, allClaimIds.length, 2),
     );
@@ -473,7 +486,8 @@ function auditorRender(deps: Deps): Render {
     const cov = (mask?.["coverage_matrix"] ?? {}) as Record<string, number>;
     return commit(
       {
-        convergence_score: ((memo?.["evidence_refs"] ?? []) as unknown[]).length,
+        convergence_score: ((memo?.["evidence_refs"] ?? []) as unknown[])
+          .length,
         coverage_matrix: cov,
         mask_rate_recommendation: "hold",
         show_all_baseline_recommendation: "no",
@@ -499,11 +513,15 @@ function contractFingerprint(decl: NodeDecl): Fingerprint {
   return materialFingerprint({
     kind: decl.kind,
     id: decl.id,
-    requires: decl.requires.map((r) => `${r.producer}:${r.facet ?? ATOMIC_FACET}`).sort(),
+    requires: decl.requires
+      .map((r) => `${r.producer}:${r.facet ?? ATOMIC_FACET}`)
+      .sort(),
   });
 }
 
-function buildReconcilerTopology(decls: readonly NodeDecl[]): ReconcilerTopology {
+function buildReconcilerTopology(
+  decls: readonly NodeDecl[],
+): ReconcilerTopology {
   const contract_fingerprints: Record<string, Fingerprint> = {};
   for (const d of decls) contract_fingerprints[d.id] = contractFingerprint(d);
 
@@ -519,7 +537,9 @@ function buildReconcilerTopology(decls: readonly NodeDecl[]): ReconcilerTopology
       facet: r.facet ?? ATOMIC_FACET,
     })),
   );
-  const entry_points = decls.filter((d) => d.kind === "gateway").map((d) => d.id);
+  const entry_points = decls
+    .filter((d) => d.kind === "gateway")
+    .map((d) => d.id);
   const declared = new Set(decls.map((d) => d.id));
   const topology: TopologyWorldModel = {
     nodes,
@@ -537,7 +557,9 @@ function isAcyclic(
   const adj = new Map<string, string[]>();
   for (const e of edges) {
     if (!declared.has(e.producer) || !declared.has(e.subscriber)) continue;
-    (adj.get(e.producer) ?? adj.set(e.producer, []).get(e.producer)!).push(e.subscriber);
+    (adj.get(e.producer) ?? adj.set(e.producer, []).get(e.producer)!).push(
+      e.subscriber,
+    );
   }
   const state = new Map<string, 0 | 1 | 2>();
   const visit = (n: string): boolean => {
@@ -583,7 +605,9 @@ export interface GenerateResult {
  *   3. a NO-CHANGE re-wake (the WHOLE relay MEMO-SKIPS — fresh:0 flat-line)
  *   4. a second distinct signal (another surprise spike)
  */
-export function generateMaskedRelayExample(opts: GenerateOptions): GenerateResult {
+export function generateMaskedRelayExample(
+  opts: GenerateOptions,
+): GenerateResult {
   const { stateDir } = opts;
   if (opts.clean !== false && existsSync(stateDir)) {
     rmSync(stateDir, { recursive: true, force: true });
@@ -672,7 +696,9 @@ export function generateMaskedRelayExample(opts: GenerateOptions): GenerateResul
     {
       id: SYNTHESIZER,
       kind: "responsibility",
-      requires: [...SCOUTS, ...EXPANDERS, ...CRITICS].map((p) => ({ producer: p })),
+      requires: [...SCOUTS, ...EXPANDERS, ...CRITICS].map((p) => ({
+        producer: p,
+      })),
       render: synthesizerRender(deps),
       canonicalizer: atomicTruth,
     },
@@ -686,9 +712,12 @@ export function generateMaskedRelayExample(opts: GenerateOptions): GenerateResul
   ];
 
   const reconcilerTopology = buildReconcilerTopology(decls);
-  const mounts: Record<string, { render: Render; canonicalizer: NodeDecl["canonicalizer"] }> =
-    {};
-  for (const d of decls) mounts[d.id] = { render: d.render, canonicalizer: d.canonicalizer };
+  const mounts: Record<
+    string,
+    { render: Render; canonicalizer: NodeDecl["canonicalizer"] }
+  > = {};
+  for (const d of decls)
+    mounts[d.id] = { render: d.render, canonicalizer: d.canonicalizer };
 
   const dag = mountDag({ topology: reconcilerTopology, mounts, store, ledger });
 
@@ -719,13 +748,25 @@ export function generateMaskedRelayExample(opts: GenerateOptions): GenerateResul
 
   // --- The scripted, deterministic episode -------------------------------
   // 1) cold boot: the first signal boots the whole relay (every node renders).
-  deliver({ id: "S1", source: "customer_call", text: "pricing felt opaque at renewal" });
+  deliver({
+    id: "S1",
+    source: "customer_call",
+    text: "pricing felt opaque at renewal",
+  });
   // 2) a NEW distinct signal — a real surprise; the relay re-renders down its path.
-  deliver({ id: "S2", source: "lost_deal", text: "switched to a cheaper competitor" });
+  deliver({
+    id: "S2",
+    source: "lost_deal",
+    text: "switched to a cheaper competitor",
+  });
   // 3) a NO-CHANGE re-wake — byte-identical inbox; the WHOLE relay memo-SKIPS.
   deliver(null);
   // 4) a third distinct signal — another surprise spike.
-  deliver({ id: "S3", source: "support_ticket", text: "exports keep timing out" });
+  deliver({
+    id: "S3",
+    source: "support_ticket",
+    text: "exports keep timing out",
+  });
 
   // --- Persist the topology snapshot (MANDATORY for replay) ---------------
   // The data layer reads the FLAT TopologyWorldModel from compile/topology.json,
@@ -744,7 +785,11 @@ export function generateMaskedRelayExample(opts: GenerateOptions): GenerateResul
     "utf8",
   );
   // --- Self-write beats.json so a regen is LOSSLESS -----------------------
-  writeFileSync(join(stateDir, "beats.json"), `${JSON.stringify(BEATS, null, 2)}\n`, "utf8");
+  writeFileSync(
+    join(stateDir, "beats.json"),
+    `${JSON.stringify(BEATS, null, 2)}\n`,
+    "utf8",
+  );
 
   const receipts = ledger.all();
   return {

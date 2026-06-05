@@ -1,4 +1,4 @@
-// tamper-forge — the tier-2 DETERMINISTIC gate (offline, zero model spend).
+// tamper-forge: the offline DETERMINISTIC gate (zero model spend).
 //
 // tamper-forge is an AUDIT/REPLAY LENS over the masked-relay ledger — it teaches
 // CHAIN-VERIFY and the HONEST tamper-evidence-vs-non-repudiation boundary (v1 null
@@ -20,8 +20,8 @@
 //         caveats, documented as assertions over the verify result.
 //
 // RUN (offline, green at zero spend):
-//   cd /Users/sl/code/prose && REACTOR_OFFLINE=1 pnpm test:examples
-//     (or scope: REACTOR_OFFLINE=1 npx vitest run skills/open-prose/examples/tamper-forge)
+//   REACTOR_OFFLINE=1 pnpm test:examples
+//     (or scope: REACTOR_OFFLINE=1 npx vitest run tests/open-prose/examples/tamper-forge)
 
 import {
   mkdtempSync,
@@ -36,9 +36,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import {
-  createFileSystemStorageAdapter,
-} from "@openprose/reactor";
+import { createFileSystemStorageAdapter } from "@openprose/reactor";
 import {
   mountDag,
   createFileSystemReceiptLedger,
@@ -57,9 +55,7 @@ import type {
 } from "@openprose/reactor/internals";
 // computeReceiptContentHash lives on the public ./receipt subpath (it is NOT
 // re-exported through /sdk). The re-stamp attack uses it to heal the chain.
-import {
-  computeReceiptContentHash,
-} from "@openprose/reactor/internals";
+import { computeReceiptContentHash } from "@openprose/reactor/internals";
 
 import { generateTamperForgeExample } from "./generate";
 
@@ -82,7 +78,9 @@ function loadTrail(dir: string): LedgerReceipt[] {
 
 // Group the flat trail into per-node, prev-linked chains (verifyReceiptChain is
 // node-scoped). Append order within a node is the chain order.
-function chainsByNode(trail: readonly LedgerReceipt[]): Map<string, LedgerReceipt[]> {
+function chainsByNode(
+  trail: readonly LedgerReceipt[],
+): Map<string, LedgerReceipt[]> {
   const byNode = new Map<string, LedgerReceipt[]>();
   for (const r of trail) {
     const list = byNode.get(r.node) ?? [];
@@ -122,7 +120,7 @@ describe("tamper-forge — the audited masked-relay ledger is a valid frozen art
     expect(sample.every((f) => /^sha256_[0-9a-f]+\.bin$/.test(f))).toBe(true);
   });
 
-  it("topology.json is a valid TopologyWorldModel: single entry gateway, acyclic, no \"*\" tokens (validity §1/§4)", () => {
+  it('topology.json is a valid TopologyWorldModel: single entry gateway, acyclic, no "*" tokens (validity §1/§4)', () => {
     const topoRaw = readFileSync(join(dir, "compile", "topology.json"), "utf8");
     expect(topoRaw).not.toMatch(/"\*"/); // ATOMIC_FACET, never the wildcard.
     const topology = JSON.parse(topoRaw) as TopologyWorldModel;
@@ -173,7 +171,10 @@ describe("tamper-forge — the audited masked-relay ledger is a valid frozen art
 
     // §5: every node's prev-linked chain verifies over the raw on-disk receipts.
     for (const [node, chain] of session.chainByNode) {
-      expect(verifyReceiptChain(chain as LedgerReceipt[]).ok, `chain ${node}`).toBe(true);
+      expect(
+        verifyReceiptChain(chain as LedgerReceipt[]).ok,
+        `chain ${node}`,
+      ).toBe(true);
     }
   });
 });
@@ -184,34 +185,47 @@ describe("tamper-forge — the audited masked-relay ledger is a valid frozen art
 // render and MOVES total.fresh. (validity contract §2, EVALS-style)
 // ---------------------------------------------------------------------------
 
-const render =
-  (text: string) =>
-  (ctx: RenderContext) => ({
-    world_model: files({ "out.txt": textFile(text) }),
-    cost: {
-      provider: "fixture",
-      model: "deterministic-fake",
-      tokens: { fresh: 1, reused: 0 },
-      // surprise_cause MUST equal the wake source — read off ctx, never hardcoded.
-      surprise_cause: ctx.wake.source,
-    },
-  });
+const render = (text: string) => (ctx: RenderContext) => ({
+  world_model: files({ "out.txt": textFile(text) }),
+  cost: {
+    provider: "fixture",
+    model: "deterministic-fake",
+    tokens: { fresh: 1, reused: 0 },
+    // surprise_cause MUST equal the wake source — read off ctx, never hardcoded.
+    surprise_cause: ctx.wake.source,
+  },
+});
 
 function auditTopo(feedFp: string): ReconcilerTopology {
   return {
     topology: {
       nodes: [
-        { node: "ledger-feed", contract_fingerprint: feedFp, wake_source: "external" },
-        { node: "chain-auditor", contract_fingerprint: "fp-auditor", wake_source: "input" },
+        {
+          node: "ledger-feed",
+          contract_fingerprint: feedFp,
+          wake_source: "external",
+        },
+        {
+          node: "chain-auditor",
+          contract_fingerprint: "fp-auditor",
+          wake_source: "input",
+        },
       ],
       edges: [
         // facet-less producer subscribes via ATOMIC_FACET, never "*".
-        { subscriber: "chain-auditor", producer: "ledger-feed", facet: ATOMIC_FACET },
+        {
+          subscriber: "chain-auditor",
+          producer: "ledger-feed",
+          facet: ATOMIC_FACET,
+        },
       ],
       entry_points: ["ledger-feed"],
       acyclic: true,
     },
-    contract_fingerprints: { "ledger-feed": feedFp, "chain-auditor": "fp-auditor" },
+    contract_fingerprints: {
+      "ledger-feed": feedFp,
+      "chain-auditor": "fp-auditor",
+    },
   };
 }
 
@@ -239,21 +253,29 @@ describe("tamper-forge — the audit lens: cold renders all, quiet skips all, su
 
     // 1) cold-start: feed + auditor both render.
     const cold = dag1.ingest("ledger-feed");
-    const coldByNode = Object.fromEntries(cold.map((r) => [r.node, r.disposition]));
+    const coldByNode = Object.fromEntries(
+      cold.map((r) => [r.node, r.disposition]),
+    );
     expect(coldByNode["ledger-feed"]).toBe("rendered");
     expect(coldByNode["chain-auditor"]).toBe("rendered");
-    const freshAfterCold = createReplaySession({ ledger }).costRollup.total.fresh;
+    const freshAfterCold = createReplaySession({ ledger }).costRollup.total
+      .fresh;
     expect(freshAfterCold).toBe(2);
 
     // 2) an identical re-wake: nothing moved -> the feed SKIPS, and a skip
     //    propagates NOTHING, so the auditor is never even woken.
     const quiet = dag1.ingest("ledger-feed");
-    const quietByNode = Object.fromEntries(quiet.map((r) => [r.node, r.disposition]));
+    const quietByNode = Object.fromEntries(
+      quiet.map((r) => [r.node, r.disposition]),
+    );
     expect(quietByNode["ledger-feed"]).toBe("skipped");
     expect(
-      quiet.some((r) => r.node === "chain-auditor" && r.disposition === "rendered"),
+      quiet.some(
+        (r) => r.node === "chain-auditor" && r.disposition === "rendered",
+      ),
     ).toBe(false);
-    const freshAfterQuiet = createReplaySession({ ledger }).costRollup.total.fresh;
+    const freshAfterQuiet = createReplaySession({ ledger }).costRollup.total
+      .fresh;
     expect(freshAfterQuiet).toBe(freshAfterCold); // the flat-line.
 
     // 3) MOVE the memo key — edit the feed's contract_fingerprint — over the SAME
@@ -267,10 +289,13 @@ describe("tamper-forge — the audit lens: cold renders all, quiet skips all, su
       ledger,
     });
     const surprise = dag2.ingest("ledger-feed");
-    const surpriseByNode = Object.fromEntries(surprise.map((r) => [r.node, r.disposition]));
+    const surpriseByNode = Object.fromEntries(
+      surprise.map((r) => [r.node, r.disposition]),
+    );
     expect(surpriseByNode["ledger-feed"]).toBe("rendered");
     expect(surpriseByNode["chain-auditor"]).toBe("rendered");
-    const freshAfterSurprise = createReplaySession({ ledger }).costRollup.total.fresh;
+    const freshAfterSurprise = createReplaySession({ ledger }).costRollup.total
+      .fresh;
     expect(freshAfterSurprise).toBe(freshAfterCold + 2);
 
     // surprise_cause === wake.source still holds on every receipt.
@@ -306,7 +331,10 @@ describe("tamper-forge — chain-verify catches a tampered receipt; the honest b
         r.status === "rendered" &&
         r.cost.tokens.fresh > 0,
     );
-    expect(index, "a rendered gateway receipt with fresh>0 exists").toBeGreaterThanOrEqual(0);
+    expect(
+      index,
+      "a rendered gateway receipt with fresh>0 exists",
+    ).toBeGreaterThanOrEqual(0);
     return { index, receipt: trail[index]! };
   }
 
@@ -322,7 +350,10 @@ describe("tamper-forge — chain-verify catches a tampered receipt; the honest b
       ...receipt,
       cost: {
         ...receipt.cost,
-        tokens: { ...receipt.cost.tokens, fresh: receipt.cost.tokens.fresh + 100_000 },
+        tokens: {
+          ...receipt.cost.tokens,
+          fresh: receipt.cost.tokens.fresh + 100_000,
+        },
       },
     };
 
@@ -351,7 +382,10 @@ describe("tamper-forge — chain-verify catches a tampered receipt; the honest b
       ...receipt,
       cost: {
         ...receipt.cost,
-        tokens: { ...receipt.cost.tokens, fresh: receipt.cost.tokens.fresh + 100_000 },
+        tokens: {
+          ...receipt.cost.tokens,
+          fresh: receipt.cost.tokens.fresh + 100_000,
+        },
       },
     };
     const restamped: LedgerReceipt = {
@@ -431,9 +465,10 @@ describe("tamper-forge — chain-verify catches a tampered receipt; the honest b
     for (const [, chain] of chainsByNode(trail)) {
       if (!verifyReceiptChain(chain).ok) allOk = false;
     }
-    expect(allOk, "receipts verify passes despite a tampered world-model artifact").toBe(
-      true,
-    );
+    expect(
+      allOk,
+      "receipts verify passes despite a tampered world-model artifact",
+    ).toBe(true);
 
     // restore so the determinism assertions downstream are unaffected.
     writeFileSync(publishedPath, before, "utf8");
@@ -451,7 +486,10 @@ describe("tamper-forge — chain-verify catches a tampered receipt; the honest b
       ...receipt,
       cost: {
         ...receipt.cost,
-        tokens: { ...receipt.cost.tokens, fresh: receipt.cost.tokens.fresh + 1 },
+        tokens: {
+          ...receipt.cost.tokens,
+          fresh: receipt.cost.tokens.fresh + 1,
+        },
       },
     };
     const chain = chainsByNode(trail).get(receipt.node)!;

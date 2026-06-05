@@ -1,4 +1,4 @@
-// OPTIONAL tier-3 live reliability check for monorepo-ci (key-gated).
+// OPTIONAL key-gated live reliability check for monorepo-ci.
 //
 // The offline sibling (monorepo-ci.test.ts) is the green bar: it drives the REAL
 // reconciler with DETERMINISTIC fake renders and asserts the whole validity
@@ -11,20 +11,19 @@
 //
 // It is gated `{ skip: hasOpenRouterKey() && !isOfflineForced() ? false : "…" }`
 // exactly like every other live test, so a keyless / REACTOR_OFFLINE=1 run reports
-// a PASSING (skipped-body) subtest and NEVER touches the network — the offline gate
+// a PASSING (skipped-body) subtest and NEVER touches the network, so the offline gate
 // stays green and is unaffected by this file.
 
 import { describe, it, expect } from "vitest";
 
-import {
-  hasOpenRouterKey,
-  isOfflineForced,
-} from "@openprose/reactor/agents";
+import { hasOpenRouterKey, isOfflineForced } from "@openprose/reactor/agents";
 
 const live = hasOpenRouterKey() && !isOfflineForced();
-const skip = live ? false : "no OPENROUTER_API_KEY (or REACTOR_OFFLINE=1) — live tier skipped";
+const skip = live
+  ? false
+  : "no OPENROUTER_API_KEY (or REACTOR_OFFLINE=1); live check skipped";
 
-describe("monorepo-ci — live reliability (tier-3, key-gated)", () => {
+describe("monorepo-ci live reliability (key-gated)", () => {
   it.skipIf(!!skip)(
     "a no-change re-wake memo-skips with zero live model calls",
     async () => {
@@ -50,14 +49,31 @@ describe("monorepo-ci — live reliability (tier-3, key-gated)", () => {
         const topology = {
           topology: {
             nodes: [
-              { node: "build.pkg-core", contract_fingerprint: "fp-core", wake_source: "external" as const },
-              { node: "build.pkg-ui", contract_fingerprint: "fp-ui", wake_source: "input" as const },
+              {
+                node: "build.pkg-core",
+                contract_fingerprint: "fp-core",
+                wake_source: "external" as const,
+              },
+              {
+                node: "build.pkg-ui",
+                contract_fingerprint: "fp-ui",
+                wake_source: "input" as const,
+              },
             ],
-            edges: [{ subscriber: "build.pkg-ui", producer: "build.pkg-core", facet: ATOMIC_FACET }],
+            edges: [
+              {
+                subscriber: "build.pkg-ui",
+                producer: "build.pkg-core",
+                facet: ATOMIC_FACET,
+              },
+            ],
             entry_points: ["build.pkg-core"],
             acyclic: true,
           },
-          contract_fingerprints: { "build.pkg-core": "fp-core", "build.pkg-ui": "fp-ui" },
+          contract_fingerprints: {
+            "build.pkg-core": "fp-core",
+            "build.pkg-ui": "fp-ui",
+          },
         };
 
         const agent = (instruction: string) =>
@@ -70,8 +86,14 @@ describe("monorepo-ci — live reliability (tier-3, key-gated)", () => {
         const dag = mountDag({
           topology,
           asyncMounts: {
-            "build.pkg-core": { render: agent("Compile pkg-core. Emit a one-line build summary.") },
-            "build.pkg-ui": { render: agent("Compile pkg-ui against the core build. One-line summary.") },
+            "build.pkg-core": {
+              render: agent("Compile pkg-core. Emit a one-line build summary."),
+            },
+            "build.pkg-ui": {
+              render: agent(
+                "Compile pkg-ui against the core build. One-line summary.",
+              ),
+            },
           },
           ledger,
         });

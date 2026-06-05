@@ -1,4 +1,4 @@
-// The masked-relay TIER-3 LIVE check (OPTIONAL, key-gated) — a reliability smoke
+// The masked-relay LIVE check (OPTIONAL, key-gated): a reliability smoke
 // that drives a peer-blind slice of the relay (signal-inbox → signal-ledger →
 // scout) with a REAL model at the `asyncMounts` seam (createAgentRender) instead
 // of the deterministic fake.
@@ -26,12 +26,8 @@ import {
   createReplaySession,
   ATOMIC_FACET,
 } from "@openprose/reactor";
-import type {
-  ReconcilerTopology,
-} from "@openprose/reactor/internals";
-import {
-  createFileSystemStorageAdapter,
-} from "@openprose/reactor";
+import type { ReconcilerTopology } from "@openprose/reactor/internals";
+import { createFileSystemStorageAdapter } from "@openprose/reactor";
 import {
   createAgentRender,
   createOpenRouterProvider,
@@ -52,7 +48,12 @@ const skip = LIVE
 
 const zero = (cause: "external" | "input") => ({
   world_model: {},
-  cost: { provider: "none", model: "fake", tokens: { fresh: 0, reused: 0 }, surprise_cause: cause },
+  cost: {
+    provider: "none",
+    model: "fake",
+    tokens: { fresh: 0, reused: 0 },
+    surprise_cause: cause,
+  },
 });
 
 describe("masked-relay — LIVE reliability (key-gated)", () => {
@@ -68,9 +69,21 @@ describe("masked-relay — LIVE reliability (key-gated)", () => {
         const topology: ReconcilerTopology = {
           topology: {
             nodes: [
-              { node: GATEWAY, contract_fingerprint: "fp-gateway", wake_source: "external" },
-              { node: LEDGER, contract_fingerprint: "fp-ledger", wake_source: "input" },
-              { node: SCOUT, contract_fingerprint: "fp-scout", wake_source: "input" },
+              {
+                node: GATEWAY,
+                contract_fingerprint: "fp-gateway",
+                wake_source: "external",
+              },
+              {
+                node: LEDGER,
+                contract_fingerprint: "fp-ledger",
+                wake_source: "input",
+              },
+              {
+                node: SCOUT,
+                contract_fingerprint: "fp-scout",
+                wake_source: "input",
+              },
             ],
             edges: [
               { subscriber: LEDGER, producer: GATEWAY, facet: ATOMIC_FACET },
@@ -127,7 +140,8 @@ describe("masked-relay — LIVE reliability (key-gated)", () => {
           "the moved truth propagated down the relay to the scout",
         );
 
-        const freshAfterCold = createReplaySession({ ledger }).costRollup.total.fresh;
+        const freshAfterCold = createReplaySession({ ledger }).costRollup.total
+          .fresh;
 
         const quiet = await dag.ingestAsync(GATEWAY);
         assert.deepEqual(
