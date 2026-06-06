@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`prose react "<use case>"`** — A command for taking an English standing goal
+  to a running, inspectable Reactor on the `@openprose/reactor-cli` (`reactor`)
+  binary. The open-prose skill gains a `reactor.md` operator guide (install, the
+  `compile → run → serve` lifecycle, `reactor.yml`, the `prose react` playbook,
+  and the keyless `reactor-devtools` replay), `SKILL.md`/`help.md` routing, and
+  the note that — unlike embodied `prose run` — `reactor` is a deterministic host
+  the agent does shell out to. The `prose` CLI registers `react` as a forwarded
+  command (`prose react [use case...] [--start]`); by default it prints the
+  `reactor` commands for the user to run, and `--start` drives the live lifecycle.
+
 ## [0.15.0] - 2026-06-04 — open-prose skill & plugin
 
 Skill/plugin-track release. The `@openprose/prose-cli` CLI is unaffected and
