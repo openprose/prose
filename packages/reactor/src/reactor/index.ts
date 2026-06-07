@@ -332,6 +332,51 @@ export interface ReconcilerHandle {
   ) => Promise<readonly ReconcileResult[]>;
 }
 
+/** A plain `input` wake — the fallback delivered to a downstream the drain
+ * fires before any producer propagated a wake-carrying receipt to it. */
+const INPUT_WAKE: Wake = { source: "input", refs: [] };
+
+/**
+ * The compile-time height of every node — Minsky's cheap partial order over the
+ * static topology (MK-1). `height(n) = 0` if `n` has no inbound edge (an entry
+ * node), else `1 + max(height(producer))`. Memoized DFS with a cycle guard
+ * (acyclicity is a compile-time postcondition — architecture.md §2 — but the
+ * run-phase throw is O(nodes), runs once per epoch, and is Tenet-5 evidence).
+ *
+ * The node set MUST be supplied by the caller from `edges ∪ entry_points` (NOT
+ * `topology.nodes`, which is `[]` in the compiled IR / tests) so a producer-only
+ * or entry-only node still gets a height.
+ */
+export function computeHeights(
+  nodeIds: readonly string[],
+  edges: readonly { readonly producer: string; readonly subscriber: string }[],
+): Readonly<Record<string, number>> {
+  const producersOf: Record<string, string[]> = {};
+  for (const n of nodeIds) producersOf[n] = [];
+  for (const e of edges) (producersOf[e.subscriber] ??= []).push(e.producer);
+
+  const height: Record<string, number> = {};
+  const visiting = new Set<string>();
+  const visit = (n: string): number => {
+    const cached = height[n];
+    if (cached !== undefined) return cached;
+    if (visiting.has(n)) {
+      throw new Error(
+        `reactor: cycle detected at "${n}" — the reconciler topology must be ` +
+          "acyclic (architecture.md §2: compile-time acyclicity postcondition).",
+      );
+    }
+    visiting.add(n);
+    let h = 0;
+    for (const p of producersOf[n] ?? []) h = Math.max(h, visit(p) + 1);
+    visiting.delete(n);
+    height[n] = h;
+    return h;
+  };
+  for (const n of nodeIds) visit(n);
+  return height;
+}
+
 /**
  * Construct the dumb reconciler over injected ports + a fixed compiled
  * topology. No judge, no policy, no backstop — the entire decision is
@@ -350,6 +395,162 @@ export function createReconciler(
       flight.set(node, state);
     }
     return state;
+  };
+
+  // --- MK-1: compile-time height table + producer/subscriber adjacency, the
+  // ordering substrate for the height-ordered, dirty-count-gated drain. Derived
+  // once here from the FROZEN topology edges ∪ entry_points.
+  //
+  // static-topology assumption: heights are compile-time constants per scheduling
+  // epoch; the fixpoint (C3, architecture.md §11) makes height dynamic — recompute
+  // on epoch rollover (createReconciler is already per-epoch), never cache across a
+  // rewire. Add NO dynamic-height / pseudo-height / GC-of-orphaned-nodes machinery
+  // here (it re-pays the Minsky costs this fix exists to avoid).
+  const drainEdges = topology.topology.edges.map((e) => ({
+    producer: String(e.producer),
+    subscriber: String(e.subscriber),
+  }));
+  const drainNodeIds = [
+    ...new Set<string>([
+      ...drainEdges.flatMap((e) => [e.producer, e.subscriber]),
+      ...topology.topology.entry_points.map(String),
+    ]),
+  ];
+  const heightOf = computeHeights(drainNodeIds, drainEdges);
+  const subscribersOf: Record<string, string[]> = {};
+  const producersOf: Record<string, string[]> = {};
+  for (const n of drainNodeIds) {
+    subscribersOf[n] = [];
+    producersOf[n] = [];
+  }
+  for (const e of drainEdges) {
+    (subscribersOf[e.producer] ??= []).push(e.subscriber);
+    (producersOf[e.subscriber] ??= []).push(e.producer);
+  }
+
+  // PASS 1 of a drain (shared by the sync + async paths): from the seed wakes,
+  // mark the transitive-closure DIRTY set and, for each dirty node, count its
+  // DISTINCT dirty producers — the number of upstream settle events it must
+  // observe before it may fire. Seeds with no dirty producer are ready at once
+  // (count 0); an INTERIOR seed (downstream of another seed) keeps a non-zero
+  // count and waits on its dirty upstreams — the interior-seed gate that stops
+  // the staggered glitch from re-appearing. Pure; only PASS 2's render call
+  // differs across sync/async, so the two loops stay split by function color.
+  const planDrain = (
+    initial: readonly WakeEvent[],
+  ): { seedNodes: Set<string>; dirty: Set<string>; remaining: Map<string, number> } => {
+    const seedNodes = new Set(initial.map((e) => String(e.node)));
+    const dirty = new Set<string>();
+    const stack = [...seedNodes];
+    while (stack.length > 0) {
+      const n = stack.pop() as string;
+      if (dirty.has(n)) continue;
+      dirty.add(n);
+      for (const s of subscribersOf[n] ?? []) {
+        if (!dirty.has(s)) stack.push(s);
+      }
+    }
+    const remaining = new Map<string, number>();
+    for (const n of dirty) {
+      const dirtyProducers = new Set(
+        (producersOf[n] ?? []).filter((p) => dirty.has(p)),
+      );
+      remaining.set(n, dirtyProducers.size);
+    }
+    return { seedNodes, dirty, remaining };
+  };
+
+  // The drain frontier: the per-drain bookkeeping shared by `drain` and
+  // `drainAsync`. Everything except the single render call (sync `reconcile` vs
+  // `await reconcileAsync`) lives here, so there is ONE implementation of the
+  // height ordering, the dirty-count gate, the settle-based decrement, and the
+  // move-aware prune — no two-copies drift, and the per-node single-flight guard
+  // in `reconcile`/`reconcileAsync` is reused untouched.
+  const startFrontier = (initial: readonly WakeEvent[]) => {
+    const { seedNodes, dirty, remaining } = planDrain(initial);
+    const done = new Set<string>(); // fired OR pruned — removed from the frontier
+    const moved = new Set<string>(); // a fired dirty producer propagated to this node
+    const wakeFor = new Map<string, Wake>();
+    for (const e of initial) wakeFor.set(String(e.node), e.wake);
+    const maxIter = drainNodeIds.length * 4 + 16;
+    let guard = 0;
+
+    return {
+      /**
+       * The next node to fire: the lowest-height ready node (dirty ∧ not done ∧
+       * all dirty producers settled), tie-broken by node id for determinism;
+       * `null` at quiescence. Throws on the iteration guard (deadlock defense).
+       */
+      next(): string | null {
+        const ready = [...dirty].filter(
+          (n) => !done.has(n) && (remaining.get(n) ?? 0) === 0,
+        );
+        if (ready.length === 0) return null;
+        if (++guard > maxIter) {
+          throw new Error(
+            "reactor: drain exceeded its iteration guard (possible topology deadlock).",
+          );
+        }
+        ready.sort(
+          (a, b) => (heightOf[a] ?? 0) - (heightOf[b] ?? 0) || (a < b ? -1 : 1),
+        );
+        return ready[0] as string;
+      },
+      /**
+       * Does this ready node actually render? A directly-woken seed always fires
+       * (its wake IS the move). A downstream fires only if ≥1 dirty producer
+       * propagated to it; one whose producers all settled WITHOUT moving it
+       * cannot itself have moved — it is PRUNED (no render, no skipped receipt).
+       */
+      shouldFire(node: string): boolean {
+        return seedNodes.has(node) || moved.has(node);
+      },
+      wakeOf(node: string): Wake {
+        return wakeFor.get(node) ?? INPUT_WAKE;
+      },
+      /**
+       * Record a processed node: carry a fired node's propagated wakes + mark
+       * the movement it caused, mark the node done, then SETTLE its downstreams
+       * — decrement EVERY dirty, not-yet-done subscriber whether or not this node
+       * moved (a memo-skipping or pruned producer must still settle its
+       * subscriber, else a join deadlocks). `result === null` is the prune path:
+       * suppress only the render, never the settle bookkeeping.
+       */
+      commit(node: string, result: ReconcileResult | null): void {
+        if (result !== null) {
+          for (const p of result.propagated) {
+            const target = String(p.node);
+            if (!dirty.has(target)) {
+              // Under static acyclic topology a propagated wake is always inside
+              // the precomputed dirty closure; a target outside it is a topology
+              // / propagation bug — surface it rather than silently fold it in.
+              throw new Error(
+                `reactor: drain propagation reached a non-dirty node "${target}" — ` +
+                  "the precomputed dirty closure is incomplete (topology/propagation bug).",
+              );
+            }
+            wakeFor.set(target, p.wake);
+            moved.add(target);
+          }
+        }
+        done.add(node);
+        for (const s of new Set(subscribersOf[node] ?? [])) {
+          if (!dirty.has(s) || done.has(s)) continue;
+          const r = remaining.get(s) ?? 0;
+          if (r > 0) remaining.set(s, r - 1);
+        }
+      },
+      /** Post-loop sanity: every dirty node must have been fired or pruned. */
+      finish(): void {
+        const unfinished = [...dirty].filter((n) => !done.has(n));
+        if (unfinished.length > 0) {
+          throw new Error(
+            "reactor: drain left dirty nodes unfired (deadlock): " +
+              unfinished.join(","),
+          );
+        }
+      },
+    };
   };
 
   const reconcile = (event: WakeEvent): ReconcileResult => {
@@ -436,18 +637,23 @@ export function createReconciler(
   const drain = (
     initial: readonly WakeEvent[],
   ): readonly ReconcileResult[] => {
+    // MK-1: height-ordered, dirty-count-gated drain (replaces the arrival-order
+    // FIFO queue). A recombinant (diamond) node with UNEQUAL path lengths fires
+    // exactly ONCE per wave, against FULLY-SETTLED inputs — no glitch render, no
+    // redundant render. `reconcile` (memo/skip, single-flight, commit, propagate)
+    // is reused byte-for-byte; only the SCHEDULING of wakes changes (the seam
+    // MK-1 lives in — the spec pins the per-node decision, never the drain order).
+    const frontier = startFrontier(initial);
     const results: ReconcileResult[] = [];
-    const queue: WakeEvent[] = [...initial];
-    while (queue.length > 0) {
-      const event = queue.shift() as WakeEvent;
-      const result = reconcile(event);
-      results.push(result);
-      // Propagation: only `rendered`-with-a-moved-fingerprint enqueues
-      // downstreams (architecture.md §4.1; world-model.md §8).
-      for (const downstream of result.propagated) {
-        queue.push(downstream);
+    for (let node = frontier.next(); node !== null; node = frontier.next()) {
+      let result: ReconcileResult | null = null;
+      if (frontier.shouldFire(node)) {
+        result = reconcile({ node, wake: frontier.wakeOf(node) });
+        results.push(result);
       }
+      frontier.commit(node, result);
     }
+    frontier.finish();
     return results;
   };
 
@@ -551,20 +757,25 @@ export function createReconciler(
   const drainAsync = async (
     initial: readonly WakeEvent[],
   ): Promise<readonly ReconcileResult[]> => {
+    // MK-1, async twin: the same height-ordered, dirty-count-gated frontier as the
+    // sync `drain`, but each fire is `await`ed FULLY before its settle/propagate
+    // bookkeeping is applied and the frontier re-evaluates `next()` — closing the
+    // await-frontier gap (the height frontier must not advance until the awaited
+    // render commits). Stays a serial pick-lowest-ready loop: NO node-level
+    // parallelism (Change B is deferred). `reconcileAsync` — including its per-node
+    // single-flight/coalesce guard — is reused untouched; the drain serialization
+    // and that guard are independent safety layers.
+    const frontier = startFrontier(initial);
     const results: ReconcileResult[] = [];
-    const queue: WakeEvent[] = [...initial];
-    // Serialized fixpoint loop: await each reconcile fully before shifting the
-    // next event (05 §1.2). Preserves today's FIFO ordering + "one render in
-    // flight per node" exactly; the only difference from the sync drain is the
-    // `await`.
-    while (queue.length > 0) {
-      const event = queue.shift() as WakeEvent;
-      const result = await reconcileAsync(event);
-      results.push(result);
-      for (const downstream of result.propagated) {
-        queue.push(downstream);
+    for (let node = frontier.next(); node !== null; node = frontier.next()) {
+      let result: ReconcileResult | null = null;
+      if (frontier.shouldFire(node)) {
+        result = await reconcileAsync({ node, wake: frontier.wakeOf(node) });
+        results.push(result);
       }
+      frontier.commit(node, result);
     }
+    frontier.finish();
     return results;
   };
 

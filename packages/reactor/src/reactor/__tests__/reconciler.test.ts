@@ -33,6 +33,7 @@ import {
   type RenderRequest,
   type WakeEvent,
   COLD_START_ATOMIC_FINGERPRINT,
+  computeHeights,
   createReconciler,
   inboundEdges,
   memoKeyMoved,
@@ -879,6 +880,323 @@ test("facet eval (diamond): a subscriber reachable by two moved facets of one pr
   equal(xWakes.length, 1, "the diamond reconverges to ONE wake, not one per edge");
   equal(xWakes[0]?.disposition, "rendered");
   equal(h.renderCount(), before + 2, "one vendor render + one single x_sub render");
+});
+
+// ==========================================================================
+// MK-1 — the height-ordered, dirty-count-gated drain + the staggered
+// (unequal-path) diamond regression.
+//
+// The stock FIFO drain renders a recombinant join with UNEQUAL path lengths
+// TWICE: once prematurely against a half-propagated input set (a GLITCH — the
+// short edge moved, the long path is still stale), then again once the long
+// path settles (a REDUNDANT render). "Cost scales with surprise" (Invariant 5)
+// visibly fails for that topology. The height-ordered drain fires each node
+// once, in ascending height, only after all its dirty producers have settled —
+// so the join renders EXACTLY ONCE against fully-settled inputs.
+//
+// These tests drive the REAL `reconciler.drain` over an independent A→B→C→E
+// chain (the existing `harness` hand-feeds tuples; `facetHarness` is
+// single-producer — neither models a multi-hop chain), porting the C1 live-repro
+// mechanism: each node reads its upstreams' CURRENT published fingerprints from a
+// mutable table and moves its own fingerprint iff its inputs moved.
+// ==========================================================================
+
+/** Cheap dependency-respecting (Kahn) order for cold-starting a chain. */
+function topoOrder(
+  nodeIds: readonly string[],
+  edges: readonly { producer: string; subscriber: string }[],
+): string[] {
+  const indeg: Record<string, number> = {};
+  const out: Record<string, string[]> = {};
+  for (const n of nodeIds) {
+    indeg[n] = 0;
+    out[n] = [];
+  }
+  for (const e of edges) {
+    indeg[e.subscriber] = (indeg[e.subscriber] ?? 0) + 1;
+    (out[e.producer] ??= []).push(e.subscriber);
+  }
+  const q = nodeIds.filter((n) => (indeg[n] ?? 0) === 0);
+  const order: string[] = [];
+  while (q.length > 0) {
+    const n = q.shift() as string;
+    order.push(n);
+    for (const m of out[n] ?? []) {
+      indeg[m] = (indeg[m] ?? 0) - 1;
+      if (indeg[m] === 0) q.push(m);
+    }
+  }
+  return order;
+}
+
+interface ChainRender {
+  node: string;
+  inputs: { producer: string; fp: string }[];
+  moved: boolean;
+}
+
+/**
+ * A chain-capable, table-sourced harness (port of `c1-diamond-glitch`): each
+ * node reads its inbound producers' CURRENT published fingerprints and, on
+ * render, moves its own published fingerprint iff its input tuple moved since it
+ * last rendered. Drives the REAL `reconciler.drain`/`drainAsync`. `stableNodes`
+ * render but never move their published truth (so they settle their downstreams
+ * WITHOUT propagating — the prune path).
+ */
+function chainHarness(
+  edges: readonly { producer: string; subscriber: string }[],
+  opts?: { stableNodes?: readonly string[] },
+): {
+  reconciler: ReturnType<typeof createReconciler>;
+  nodeIds: string[];
+  renderCounts: Record<string, number>;
+  renderLog: ChainRender[];
+  ledger: FakeLedger;
+  preWake: Record<string, string>;
+  resetBookkeeping: () => void;
+  bumpInput: () => void;
+} {
+  const stable = new Set(opts?.stableNodes ?? []);
+  const nodeIds = [...new Set(edges.flatMap((e) => [e.producer, e.subscriber]))];
+  const ledger = new FakeLedger();
+  const published: Record<string, string> = {};
+  for (const n of nodeIds) published[n] = "seed:" + n;
+  let extInput = "ext:0";
+  const lastRenderedInputs: Record<string, string> = {};
+  const renderCounts: Record<string, number> = {};
+  for (const n of nodeIds) renderCounts[n] = 0;
+  const renderLog: ChainRender[] = [];
+  let renderSeq = 0;
+
+  const topology: TopologyWorldModel = {
+    nodes: nodeIds.map((n) => ({
+      node: asNodeId(n),
+      contract_fingerprint: asFingerprint(CONTRACT_A),
+      wake_source: "input",
+    })),
+    edges: edges.map((e) => ({
+      subscriber: asNodeId(e.subscriber),
+      producer: asNodeId(e.producer),
+      facet: ATOMIC_FACET,
+    })),
+    entry_points: [asNodeId("A")],
+    acyclic: true,
+  };
+
+  const ports: ReconcilerPorts = {
+    ledger,
+    worldModel: { publishedRef: (node) => fakeWorldModelRef(node) },
+    resolveInputFingerprints: (node, inEdges) =>
+      node === "A"
+        ? [asFingerprint(extInput)]
+        : inEdges.map((e) =>
+            asFingerprint(published[String(e.producer)] ?? "seed:" + String(e.producer)),
+          ),
+    spawnRender: (req) => {
+      const node = req.node;
+      renderCounts[node] = (renderCounts[node] ?? 0) + 1;
+      renderSeq += 1;
+      const seenInputs = req.input_fingerprints.map(String);
+      const inbound = req.inbound_edges.map((e) => String(e.producer));
+      const seen = inbound.map((p, i) => ({ producer: p, fp: seenInputs[i] ?? "" }));
+      const prevKey = lastRenderedInputs[node];
+      const nowKey = JSON.stringify(seenInputs);
+      const moved = prevKey === undefined || prevKey !== nowKey;
+      lastRenderedInputs[node] = nowKey;
+      renderLog.push({ node, inputs: seen, moved });
+      if (moved && !stable.has(node)) {
+        published[node] = "v" + renderSeq + ":" + node;
+      }
+      const commit: WorldModelCommit = {
+        node: asNodeId(node),
+        version: ("sha256:" +
+          ("c".repeat(63) + String(renderSeq % 10))) as ContentAddress,
+        fingerprints: atomic(published[node] ?? "seed:" + node),
+      };
+      return { status: "rendered", commit, semantic_diff: {}, cost: RENDER_COST };
+    },
+  };
+
+  const reconciler = createReconciler(ports, {
+    topology,
+    contract_fingerprints: Object.fromEntries(
+      nodeIds.map((n) => [n, asFingerprint(CONTRACT_A)]),
+    ),
+  });
+
+  // Cold-start every node to a committed baseline in dependency order.
+  for (const n of topoOrder(nodeIds, edges)) {
+    reconciler.reconcile({ node: n, wake: inputWake });
+  }
+  const preWake: Record<string, string> = { ...published };
+
+  return {
+    reconciler,
+    nodeIds,
+    renderCounts,
+    renderLog,
+    ledger,
+    preWake,
+    resetBookkeeping: () => {
+      for (const n of nodeIds) renderCounts[n] = 0;
+      renderLog.length = 0;
+    },
+    bumpInput: () => {
+      extInput = "ext:1";
+    },
+  };
+}
+
+const STAGGERED_DIAMOND = [
+  { producer: "A", subscriber: "B" },
+  { producer: "B", subscriber: "C" },
+  { producer: "A", subscriber: "E" }, // short edge (1 hop)
+  { producer: "C", subscriber: "E" }, // long path tail (3 hops)
+];
+
+const SYMMETRIC_DIAMOND = [
+  { producer: "A", subscriber: "B" },
+  { producer: "A", subscriber: "C" },
+  { producer: "B", subscriber: "E" },
+  { producer: "C", subscriber: "E" },
+];
+
+/** Did any E render fire against A-moved-but-C-still-pre-wake (the glitch)? */
+function eGlitched(log: ChainRender[], cPreWake: string): boolean {
+  for (const er of log.filter((x) => x.node === "E")) {
+    const aIn = er.inputs.find((i) => i.producer === "A");
+    const cIn = er.inputs.find((i) => i.producer === "C");
+    if (!aIn || !cIn) continue;
+    if (aIn.fp !== "seed:A" && cIn.fp === cPreWake) return true;
+  }
+  return false;
+}
+
+// --- U1: computeHeights ----------------------------------------------------
+
+test("computeHeights: staggered diamond → A:0,B:1,C:2,E:3 (unequal path lengths)", () => {
+  deepEqual(computeHeights(["A", "B", "C", "E"], STAGGERED_DIAMOND), {
+    A: 0,
+    B: 1,
+    C: 2,
+    E: 3,
+  });
+});
+
+test("computeHeights: symmetric diamond → A:0,B:1,C:1,E:2 (equal path lengths)", () => {
+  deepEqual(computeHeights(["A", "B", "C", "E"], SYMMETRIC_DIAMOND), {
+    A: 0,
+    B: 1,
+    C: 1,
+    E: 2,
+  });
+});
+
+test("computeHeights: a forged cyclic topology throws (acyclicity is load-bearing)", () => {
+  let threw = false;
+  try {
+    computeHeights(
+      ["X", "Y"],
+      [
+        { producer: "X", subscriber: "Y" },
+        { producer: "Y", subscriber: "X" },
+      ],
+    );
+  } catch {
+    threw = true;
+  }
+  ok(threw, "a cycle must throw, not loop forever or return a bogus height");
+});
+
+// --- U0 (the primary) + U6 -------------------------------------------------
+
+test("drain (MK-1 PRIMARY): staggered unequal-path diamond — the join renders ONCE against settled inputs", () => {
+  const h = chainHarness(STAGGERED_DIAMOND);
+  const cPreWake = h.preWake["C"] as string;
+  h.resetBookkeeping();
+  h.bumpInput();
+  const results = h.reconciler.drain([{ node: "A", wake: externalWake }]);
+
+  equal(h.renderCounts["E"], 1, "E renders exactly once (stock FIFO renders it twice)");
+  equal(
+    eGlitched(h.renderLog, cPreWake),
+    false,
+    "no E render fired against A-moved-but-C-stale (no glitch)",
+  );
+  // The single E render saw the SETTLED C (moved off its pre-wake fingerprint).
+  const eRender = h.renderLog.find((x) => x.node === "E");
+  const cInput = eRender?.inputs.find((i) => i.producer === "C");
+  ok(cInput && cInput.fp !== cPreWake, "E saw the settled (post-wave) C fingerprint");
+  equal(h.renderCounts["A"], 1);
+  equal(h.renderCounts["B"], 1);
+  equal(h.renderCounts["C"], 1);
+  // Every node fired and the drain returned one result per fired node.
+  equal(results.filter((r) => r.disposition === "rendered").length, 4);
+});
+
+test("drain (MK-1 control): symmetric equal-path diamond — the join also renders once (the trigger is UNEQUAL length, not the shape)", () => {
+  const h = chainHarness(SYMMETRIC_DIAMOND);
+  h.resetBookkeeping();
+  h.bumpInput();
+  h.reconciler.drain([{ node: "A", wake: externalWake }]);
+  equal(h.renderCounts["E"], 1, "the symmetric control never glitched and still renders E once");
+  equal(h.renderCounts["A"], 1);
+  equal(h.renderCounts["B"], 1);
+  equal(h.renderCounts["C"], 1);
+});
+
+test("drain (MK-1): a no-change re-drain renders ZERO nodes and mints exactly one (seed) skip — the move-aware prune", () => {
+  const h = chainHarness(STAGGERED_DIAMOND);
+  // First, a real wave to settle everything.
+  h.bumpInput();
+  h.reconciler.drain([{ node: "A", wake: externalWake }]);
+  // Re-drain with NO input change: A skips, its whole downstream closure prunes.
+  h.resetBookkeeping();
+  const results = h.reconciler.drain([{ node: "A", wake: externalWake }]);
+  equal(
+    Object.values(h.renderCounts).reduce((a, b) => a + b, 0),
+    0,
+    "a no-change re-drain renders nothing (cost scales with surprise)",
+  );
+  equal(results.length, 1, "only the seed produced a receipt; the closure was pruned");
+  equal(results[0]?.node, "A");
+  equal(results[0]?.disposition, "skipped");
+});
+
+test("drain (MK-1): two seeds on one chain — the interior seed waits for its dirty upstream (no glitch)", () => {
+  // A→B→C; wake BOTH A and C. C is a directly-woken seed AND downstream of A→B.
+  // Without the interior-seed gate, C fires on its own wake against a pre-wake B,
+  // then again once B settles. The gate makes C wait until B settles ⇒ C renders
+  // once, against the moved B.
+  const h = chainHarness([
+    { producer: "A", subscriber: "B" },
+    { producer: "B", subscriber: "C" },
+  ]);
+  const bPreWake = h.preWake["B"] as string;
+  h.resetBookkeeping();
+  h.bumpInput();
+  h.reconciler.drain([
+    { node: "A", wake: externalWake },
+    { node: "C", wake: externalWake },
+  ]);
+  equal(h.renderCounts["C"], 1, "the interior seed fired exactly once (gate held)");
+  const cRender = h.renderLog.find((x) => x.node === "C");
+  const bInput = cRender?.inputs.find((i) => i.producer === "B");
+  ok(bInput && bInput.fp !== bPreWake, "C saw the settled (moved) B, not the pre-wake B");
+});
+
+test("drain (MK-1): a pruned interior node still settles a deeper join — no prune-deadlock", () => {
+  // Staggered diamond with B STABLE: A moves and wakes both E (short) and B
+  // (long). B renders but does NOT move its truth ⇒ C is settled-without-moved
+  // ⇒ C is PRUNED (no render). C must STILL settle E, or the depth-3 join
+  // deadlocks. E fires once (woken by A's short edge) against the unchanged C.
+  const h = chainHarness(STAGGERED_DIAMOND, { stableNodes: ["B"] });
+  h.resetBookkeeping();
+  h.bumpInput();
+  h.reconciler.drain([{ node: "A", wake: externalWake }]); // must not throw (no deadlock)
+  equal(h.renderCounts["C"], 0, "C was pruned (its only producer B settled without moving)");
+  equal(h.renderCounts["E"], 1, "the depth-3 join still fired exactly once — C settled it");
+  equal(h.renderCounts["A"], 1);
 });
 
 test("no judge: a skip never invokes the render (the harness never asks an LLM 'did this change')", () => {
