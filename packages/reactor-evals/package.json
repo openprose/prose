@@ -1,0 +1,20 @@
+{
+  "name": "@openprose/reactor-evals",
+  "version": "0.0.0",
+  "private": true,
+  "description": "FR-3 SURPRISE-COST benchmark: the first preregistered, equal-correctness-gated measurement that Reactor's fresh-token spend scales with surprise, not time.",
+  "type": "commonjs",
+  "bin": {
+    "reactor-evals": "./bin/reactor-evals.cjs"
+  },
+  "scripts": {
+    "evals": "node bin/reactor-evals.cjs",
+    "evals:offline": "REACTOR_OFFLINE=1 node bin/reactor-evals.cjs",
+    "test": "REACTOR_OFFLINE=1 node --test test/*.test.cjs",
+    "guards": "node tools/guards.cjs"
+  },
+  "dependencies": {
+    "@openprose/reactor": "workspace:^"
+  },
+  "license": "MIT"
+}
