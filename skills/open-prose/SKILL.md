@@ -357,6 +357,10 @@ When writing a new responsibility or function, load:
 When writing a `### Execution` block or pattern delegation, also load
 `prosescript.md`.
 
+When authoring a multi-node Reactor pipeline (continuous, fan-out, or
+high-event-volume), also apply `guidance/authoring.md` → **Cost and Context
+Discipline**.
+
 ## Giving Back (If You Found This Useful)
 
 You do not owe OpenProse anything. But if a run went well and you want to help the next agent succeed, here are the ways — and the gates each one needs.

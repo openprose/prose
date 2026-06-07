@@ -132,6 +132,49 @@ Guidance for both:
 - Use `each` when collection completeness matters: every item must satisfy the
   postcondition.
 
+## Cost and Context Discipline
+
+Applies when authoring a **multi-node Reactor pipeline**: standing
+responsibilities that run continuously, fan out, or wake on a high volume of
+events (a session, PR, or webhook stream). It does **not** apply to a one-shot
+function or a single competent responsibility — do not tier or pre-bound those
+(see "do not manufacture orchestration"). And it does not override Tenet 2: a
+render whose *job* is to explore (research, a repo audit) should explore. The
+rules below are for the narrow-transform renders that dominate a pipeline's
+volume.
+
+- **Tier the work; let a cheap gatekeeper filter surprise.** Do not write one
+  render that re-derives every downstream truth on each event. Put a small,
+  narrow **classifier** node early that turns each raw event into a few typed,
+  per-domain *signals*, and give each downstream truth its own facet so it wakes
+  only when its signal moves. Expensive synthesis then runs only on real change;
+  unrelated domains memo-skip at zero cost. This is the `guard` pattern made
+  structural (`03-ReactorPattern.md`, Rule 5). Shape: an event stream → a cheap
+  classifier emitting `#decision-signal` / `#bug-signal` / … → one accumulator
+  per signal → a coalesced rollup.
+- **Bound each narrow render to its inline input.** A transform render (classify,
+  append one entry, compose facets) should read **only** the evidence the wake
+  delivered and its own prior world-model — not the repo, the filesystem, or
+  sibling nodes' scratch. State this in `### Invariants` ("the only readable
+  input is the staged evidence and the prior world-model; do not scan the
+  filesystem or the repository") and keep the task single-purpose ("classify
+  into these shapes," not "summarize everything"). `max_turns` caps *turns*, not
+  context *size*: it is the unscoped task that explodes cost, because a capable
+  agent will wander a large repo to satisfy an open-ended one. Scope the task and
+  the inputs; exploration stays available to the renders that genuinely need it.
+- **Validate the cost-shape; do not assume it.** Prove selective wake before
+  trusting a pipeline: a deterministic check that the right nodes render and the
+  rest skip (a `kind: test` over dispositions, or the reactor eval-harness
+  deterministic tier), plus an llm-as-judge pass over the produced truths against
+  their `### Maintains` postconditions for quality. Capture a committed replay so
+  the check is repeatable and keyless — cheaper and more honest than re-running
+  the live pipeline to eyeball it.
+- **Keep renders small enough for a cheap model.** Model selection is an operator
+  concern (`reactor.yml`, today one global model; per-node `### Runtime` model is
+  declarable but not yet honored by the CLI — see `reactor.md`). Author each
+  high-volume render narrow enough that a cheap model suffices; reserve a stronger
+  model for rare, strict work such as the compile phase.
+
 ## Gateway Authoring
 
 A `kind: gateway` file is sugar for an external-driven responsibility: it
@@ -346,3 +389,13 @@ responsibility, and its persisted state is its world-model.
 - Fixing harness bugs by making every render more procedural.
 - Encoding runtime machinery in responsibility files instead of preserving
   responsibilities as semantic contracts.
+- Writing one mega-render that re-derives every downstream truth on each event,
+  instead of a cheap classifier fanning per-domain signals — cost scales with the
+  clock, not surprise.
+- Giving a narrow transform render the whole repo/filesystem and an open-ended
+  task ("summarize everything"); it wanders and the context (not the turn count)
+  explodes. Scope the task and bound the inputs in `### Invariants`.
+- Claiming "cost scales with surprise" without a deterministic selective-wake
+  check and a judged quality pass.
+- Over-tiering a one-shot or single-responsibility job — manufacturing
+  classifier/facet machinery where one render would do.
