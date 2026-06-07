@@ -23,6 +23,7 @@ import {
   type FingerprintMap,
   type InputFingerprints,
   type Receipt,
+  type TopologyEdge,
   type TopologyWorldModel,
   type Wake,
   type WorldModelCommit,
@@ -93,6 +94,7 @@ function fakeWorldModelRef(node: string): WorldModelRef {
 }
 
 const inputWake: Wake = { source: "input", refs: [] };
+const externalWake: Wake = { source: "external", refs: [] };
 
 const singleNodeTopology: TopologyWorldModel = {
   nodes: [],
@@ -433,4 +435,198 @@ test("coalescing-under-await: MANY wakes during one render collapse to a single 
     ["i4"],
     "the single follow-up renders against the freshest inputs (i4, last-writer-wins)",
   );
+});
+
+// ==========================================================================
+// MK-1 (async twin) — the height-ordered drain over `drainAsync`, with an
+// OBSERVABLY-SLOW long path. The await-frontier gap: the height frontier must
+// not advance until the awaited render commits. If `drainAsync` advanced before
+// a producer settled, the staggered glitch returns ON THE ASYNC PATH ONLY (the
+// path `serve` uses) — the slow long path makes a premature E fire detectable.
+// ==========================================================================
+
+const STAGGERED_DIAMOND = [
+  { producer: "A", subscriber: "B" },
+  { producer: "B", subscriber: "C" },
+  { producer: "A", subscriber: "E" }, // short edge (1 hop)
+  { producer: "C", subscriber: "E" }, // long path tail (3 hops)
+];
+
+const SYMMETRIC_DIAMOND = [
+  { producer: "A", subscriber: "B" },
+  { producer: "A", subscriber: "C" },
+  { producer: "B", subscriber: "E" },
+  { producer: "C", subscriber: "E" },
+];
+
+interface AsyncChainRender {
+  node: string;
+  inputs: { producer: string; fp: string }[];
+}
+
+/**
+ * Async chain harness (the async twin of reconciler.test.ts's `chainHarness`):
+ * table-sourced, drives the REAL `reconciler.drainAsync`. `delays[node]` makes a
+ * node's awaited render observably slow (the long path), so a frontier that
+ * advanced before settling would fire E against a stale C.
+ */
+function asyncChainHarness(
+  edges: readonly { producer: string; subscriber: string }[],
+  delays: Record<string, number> = {},
+): {
+  reconciler: ReturnType<typeof createReconciler>;
+  renderCounts: Record<string, number>;
+  renderLog: AsyncChainRender[];
+  resetBookkeeping: () => void;
+  bumpInput: () => void;
+} {
+  const nodeIds = [...new Set(edges.flatMap((e) => [e.producer, e.subscriber]))];
+  const ledger = new FakeLedger();
+  const published: Record<string, string> = {};
+  for (const n of nodeIds) published[n] = "seed:" + n;
+  let extInput = "ext:0";
+  const lastRenderedInputs: Record<string, string> = {};
+  const renderCounts: Record<string, number> = {};
+  for (const n of nodeIds) renderCounts[n] = 0;
+  const renderLog: AsyncChainRender[] = [];
+  let renderSeq = 0;
+
+  const topology: TopologyWorldModel = {
+    nodes: nodeIds.map((n) => ({
+      node: asNodeId(n),
+      contract_fingerprint: asFingerprint(CONTRACT_A),
+      wake_source: "input",
+    })),
+    edges: edges.map((e) => ({
+      subscriber: asNodeId(e.subscriber),
+      producer: asNodeId(e.producer),
+      facet: ATOMIC_FACET,
+    })),
+    entry_points: [asNodeId("A")],
+    acyclic: true,
+  };
+
+  const renderOnce = (req: RenderRequest): RenderOutcome => {
+    const node = req.node;
+    renderCounts[node] = (renderCounts[node] ?? 0) + 1;
+    renderSeq += 1;
+    const seenInputs = req.input_fingerprints.map(String);
+    const inbound = req.inbound_edges.map((e) => String(e.producer));
+    renderLog.push({
+      node,
+      inputs: inbound.map((p, i) => ({ producer: p, fp: seenInputs[i] ?? "" })),
+    });
+    const nowKey = JSON.stringify(seenInputs);
+    const moved =
+      lastRenderedInputs[node] === undefined || lastRenderedInputs[node] !== nowKey;
+    lastRenderedInputs[node] = nowKey;
+    if (moved) published[node] = "v" + renderSeq + ":" + node;
+    const commit: WorldModelCommit = {
+      node: asNodeId(node),
+      version: ("sha256:" +
+        ("c".repeat(63) + String(renderSeq % 10))) as ContentAddress,
+      fingerprints: atomic(published[node] ?? "seed:" + node),
+    };
+    return { status: "rendered", commit, semantic_diff: {}, cost: RENDER_COST };
+  };
+
+  const ports: ReconcilerPorts = {
+    ledger,
+    worldModel: { publishedRef: (node) => fakeWorldModelRef(node) },
+    resolveInputFingerprints: (node: string, inEdges: readonly TopologyEdge[]) =>
+      node === "A"
+        ? [asFingerprint(extInput)]
+        : inEdges.map((e) =>
+            asFingerprint(published[String(e.producer)] ?? "seed:" + String(e.producer)),
+          ),
+    spawnRender: () => {
+      throw new Error("sync spawnRender must not be used on the async path");
+    },
+    spawnRenderAsync: async (req: RenderRequest) => {
+      const d = delays[req.node] ?? 0;
+      // A real suspension on the slow long path — exercises the await-frontier.
+      await new Promise<void>((r) => setTimeout(r, d));
+      return renderOnce(req);
+    },
+  };
+
+  const reconciler = createReconciler(ports, {
+    topology,
+    contract_fingerprints: Object.fromEntries(
+      nodeIds.map((n) => [n, asFingerprint(CONTRACT_A)]),
+    ),
+  });
+  return {
+    reconciler,
+    renderCounts,
+    renderLog,
+    resetBookkeeping: () => {
+      for (const n of nodeIds) renderCounts[n] = 0;
+      renderLog.length = 0;
+    },
+    bumpInput: () => {
+      extInput = "ext:1";
+    },
+  };
+}
+
+/** Cold-start a chain in dependency order, returning the pre-wake published map. */
+async function coldStartAsync(
+  reconciler: ReturnType<typeof createReconciler>,
+  order: readonly string[],
+): Promise<void> {
+  for (const n of order) {
+    await reconciler.drainAsync([{ node: n, wake: inputWake }]);
+  }
+}
+
+test("drainAsync (MK-1): staggered diamond with a SLOW long path — the join renders ONCE against settled inputs (await-frontier closed)", async () => {
+  const h = asyncChainHarness(STAGGERED_DIAMOND, { B: 15, C: 25 });
+  // Cold-start A,B,C,E in dependency order so the next wake is an incremental wave.
+  await coldStartAsync(h.reconciler, ["A", "B", "C", "E"]);
+  h.resetBookkeeping();
+  h.bumpInput();
+  await h.reconciler.drainAsync([{ node: "A", wake: externalWake }]);
+
+  equal(h.renderCounts["E"], 1, "E renders exactly once on the async path (no premature fire)");
+  // No E render saw A-moved-but-C-still-seed (the async glitch).
+  const glitched = h.renderLog
+    .filter((x) => x.node === "E")
+    .some((er) => {
+      const a = er.inputs.find((i) => i.producer === "A");
+      const c = er.inputs.find((i) => i.producer === "C");
+      return !!a && !!c && a.fp !== "seed:A" && c.fp.startsWith("seed:");
+    });
+  equal(glitched, false, "no async glitch — E never fired against a stale (seed) C");
+  equal(h.renderCounts["A"], 1);
+  equal(h.renderCounts["B"], 1);
+  equal(h.renderCounts["C"], 1);
+});
+
+test("drainAsync (MK-1 control): symmetric equal-path diamond renders the join once", async () => {
+  const h = asyncChainHarness(SYMMETRIC_DIAMOND, { B: 10, C: 20 });
+  await coldStartAsync(h.reconciler, ["A", "B", "C", "E"]);
+  h.resetBookkeeping();
+  h.bumpInput();
+  await h.reconciler.drainAsync([{ node: "A", wake: externalWake }]);
+  equal(h.renderCounts["E"], 1);
+  equal(h.renderCounts["A"], 1);
+  equal(h.renderCounts["B"], 1);
+  equal(h.renderCounts["C"], 1);
+});
+
+test("drainAsync (MK-1): a no-change re-drain renders zero (prune holds on the async path)", async () => {
+  const h = asyncChainHarness(STAGGERED_DIAMOND, { B: 10, C: 15 });
+  await coldStartAsync(h.reconciler, ["A", "B", "C", "E"]);
+  h.bumpInput();
+  await h.reconciler.drainAsync([{ node: "A", wake: externalWake }]); // a real wave
+  h.resetBookkeeping();
+  const results = await h.reconciler.drainAsync([{ node: "A", wake: externalWake }]);
+  equal(
+    Object.values(h.renderCounts).reduce((a, b) => a + b, 0),
+    0,
+    "a no-change async re-drain renders nothing",
+  );
+  equal(results.length, 1, "only the seed produced a receipt; the closure pruned");
+  equal(results[0]?.disposition, "skipped");
 });
