@@ -2,17 +2,8 @@
 //
 // This asserts the doc embodies the Intelligent React end-state (delta.md Part B,
 // §B1 kinds + §B2 sections; plan.md §3-§5; world-model.md §2/§5/§6;
-// architecture.md §7). It is a doc-conformance test in the style of
-// tools/cli/tests/prose/prose-author-contract.test.ts — it reads the source doc
+// architecture.md §7). It is a doc-conformance test — it reads the source doc
 // and asserts on its content, no runtime.
-//
-// RUN-WIRING NOTE: vitest in tools/cli is configured with
-// include: ["tests/**/*.test.ts"] relative to tools/cli, so this repo-root
-// tests/open-prose/ file is NOT yet picked up by the default `pnpm test`. The
-// integration/test wave must add the repo-root tests/ dir to a vitest project
-// include (or relocate this file under tools/cli/tests/open-prose/). Until then,
-// run it directly with:
-//   cd /Users/sl/code/prose && npx vitest run tests/open-prose/contract-markdown
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";

@@ -7,14 +7,6 @@
 // (delta.md Part B §B4/§B6; architecture.md §1/§2/§4/§6/§7; world-model.md
 // §1/§2/§3/§5/§6/§8). Doc-conformance style: read the source doc, assert on
 // content, no runtime.
-//
-// RUN-WIRING NOTE: vitest in tools/cli is configured with
-// include: ["tests/**/*.test.ts"] relative to tools/cli, so this repo-root
-// tests/open-prose/ file is NOT yet picked up by the default `pnpm test`. The
-// integration/test wave must add the repo-root tests/ dir to a vitest project
-// include (or relocate this file under tools/cli/tests/open-prose/). Until
-// then, run it directly with:
-//   cd /Users/sl/code/prose && npx vitest run tests/open-prose/concepts
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";

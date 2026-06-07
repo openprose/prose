@@ -97,15 +97,14 @@ export function canonicalizerTask(node: string): string {
 
 /**
  * The postcondition-compiler task for ONE node. The session reads that node's
- * `### Maintains` postconditions (+ folded-in `### Criteria`) and tags each
- * deterministic or render-attested.
+ * `### Maintains` postconditions and tags each deterministic or render-attested.
  */
 export function postconditionTask(node: string): string {
   return [
     "## Your compile step: the postcondition-compiler",
     "",
-    `Compile node \`${node}\`'s \`### Maintains\` postconditions (the folded-in`,
-    "`### Criteria`) into commit-gate validators. There is NO separate judge: each",
+    `Compile node \`${node}\`'s \`### Maintains\` postconditions into`,
+    "commit-gate validators. There is NO separate judge: each",
     "postcondition is either deterministically checkable on commit, or the render",
     "self-attests it before signing.",
     "",

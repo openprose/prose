@@ -270,7 +270,6 @@ interface LoadedContractLike {
   readonly maintains?: string;
   readonly continuity?: string;
   readonly execution?: string;
-  readonly criteria?: string;
 }
 
 function toContractImage(c: LoadedContractLike): ContractImage {
@@ -279,7 +278,6 @@ function toContractImage(c: LoadedContractLike): ContractImage {
   if (c.maintains !== undefined) out['maintains'] = c.maintains;
   if (c.continuity !== undefined) out['continuity'] = c.continuity;
   if (c.execution !== undefined) out['execution'] = c.execution;
-  if (c.criteria !== undefined) out['criteria'] = c.criteria;
   return out as unknown as ContractImage;
 }
 
@@ -307,7 +305,6 @@ function deriveContractFingerprints(
       `maintains:${c.maintains ?? ''}`,
       `continuity:${c.continuity ?? ''}`,
       `execution:${c.execution ?? ''}`,
-      `criteria:${c.criteria ?? ''}`,
     ].join('\n');
     out[c.id] = contentAddressOf(new TextEncoder().encode(image));
   }

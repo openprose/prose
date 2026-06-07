@@ -19,8 +19,8 @@ A strong OpenProse PR should:
 - Address one responsibility. If the work fixes docs, CLI behavior, and a std
   pattern independently, open separate PRs.
 - Respect the language/framework/harness boundary. Put semantics in the skill
-  and interpreter docs, reusable contracts in `packages/std/`, and shell or
-  deterministic host behavior in `tools/cli/`.
+  and interpreter docs, reusable contracts in `packages/std/`, and deterministic
+  harness behavior in `packages/reactor*/`.
 - Make the library more developer-friendly and agent-friendly at the same time:
   clearer for humans to review, easier for agents to execute correctly.
 - Add or identify a retestable mechanism. Use existing tests when they cover
@@ -73,7 +73,7 @@ Use these when deciding whether a change belongs:
 | Reusable roles, patterns, evals, ops, delivery, memory | `packages/std/` | Only promote repeated, use-case-agnostic behavior |
 | Company-operation starter contracts | `packages/co/` | Opinionated company-as-prose building blocks |
 | Agent-facing routing and activation guidance | `skills/open-prose/SKILL.md`, `AGENTS.md` | Keep globally loaded guidance concise |
-| Shell entrypoint, harness forwarding, deterministic local commands | `tools/cli/` | CLI wraps and validates; it does not replace the VM |
+| Reactor harness: SDK, `reactor` CLI, replay devtools | `packages/reactor*/` | The deterministic harness that compiles and runs Responsibilities; it does not replace the VM |
 | Examples that teach a complete pattern | `skills/open-prose/examples/` | Include enough context for an agent to run or adapt them |
 | Public contribution/process guidance | `CONTRIBUTING.md` | Keep it public, practical, and aligned with the repo |
 
@@ -83,8 +83,7 @@ Reactor is the SDK + CLI + devtools harness that compiles and runs OpenProse
 Responsibilities. It lives in a **pnpm monorepo** under `packages/reactor`
 (`@openprose/reactor`, the SDK), `packages/reactor-cli` (the `reactor` binary),
 and `packages/reactor-devtools` (the keyless replay viewer). Note this is `pnpm`
-and per-package scripts — not the `npm`/`tools/cli` flow the rest of this guide
-describes.
+and per-package scripts.
 
 **Setup and build.** From the repo root:
 
@@ -115,8 +114,8 @@ again in the future when the behavior regresses.
 
 | Change Type | Expected Checks |
 | --- | --- |
-| CLI or harness behavior | `cd tools/cli && npm run typecheck && npm test`, or the narrow affected Vitest file |
-| Repository IR, compile, serve, status, pressure | Relevant tests under `tools/cli/tests/prose/` |
+| Reactor SDK or harness behavior | `pnpm --filter @openprose/reactor test` (offline: `REACTOR_OFFLINE=1`), or the narrow affected Vitest file |
+| Skill or doc behavior | `pnpm test:skill` |
 | Skill/spec docs | Link/structure checks plus a small scenario showing how an agent should route the command or file |
 | `*.prose.md` std/co contracts | Structural check for frontmatter and required sections; add or update a `kind: test` when behavior is executable |
 | Examples | Run or dry-run the example in a Prose Complete host when practical; otherwise document the missing host capability |

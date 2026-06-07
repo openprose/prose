@@ -449,7 +449,7 @@ export interface CanonicalizerRef {
 
 /**
  * A reference to a per-node compiled postcondition validator (architecture.md
- * §3.3). The folded-in `### Criteria` compile to validators: deterministic
+ * §3.3). The `### Maintains` postconditions compile to validators: deterministic
  * verify-on-commit where expressible, render-attested where irreducibly
  * semantic. The deterministic engine is `cycle/evaluatePredicate`.
  */

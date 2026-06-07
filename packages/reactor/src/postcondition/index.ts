@@ -1,7 +1,7 @@
 // Postcondition validators — the commit gate without a judge.
 //
 // This module is the SDK realization of architecture.md §3.3 ("Postcondition
-// validators"): the `### Maintains` postconditions (the folded-in `### Criteria`)
+// validators"): the `### Maintains` postconditions
 // compile to per-node validators. Where a postcondition is deterministically
 // expressible the harness verifies it on commit; where it is irreducibly
 // semantic the render attests it before signing. Either way there is NO separate
@@ -38,7 +38,7 @@ import type {
 
 /**
  * A single postcondition as authored inside `### Maintains` (world-model.md §2:
- * "Postconditions — the folded-in `### Criteria`: validators the render must
+ * "Postconditions: validators the render must
  * leave the truth satisfying"). The compiler decides each one's `mode`:
  *
  *   - `deterministic`   — carries a `PredicateExpression`; the harness verifies

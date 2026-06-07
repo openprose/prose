@@ -29,9 +29,8 @@
 // tests/open-prose/skill-meta — it reads the source docs and asserts on their
 // content; no runtime.
 //
-// RUN: the repo-root vitest config (tools/cli/vitest.config.ts) includes
-// ../../tests/open-prose/**/*.test.ts, so the default `pnpm test` discovers this.
-//   cd /Users/sl/code/prose && npx vitest run tests/open-prose/stale-docs
+// RUN: the repo-root vitest config discovers tests/open-prose/**/*.test.ts, so
+// `pnpm test:skill` picks this up.
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
