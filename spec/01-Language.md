@@ -128,9 +128,9 @@ Part II is honest about how far the current skill has climbed toward them.
 ### What the responsibility's load-bearing sections mean
 
 Most `###` sections' meaning is self-evident
-from their name. Three carry the semantic load of a `kind: responsibility` and
+from their name. Four carry the semantic load of a `kind: responsibility` and
 the Ideal must state them rather than defer: `### Requires`, `### Maintains`,
-and `### Continuity`.
+`### Continuity`, and `### Invariants`.
 
 **`### Maintains` is the world-model schema — the truth this node keeps
 current.** It does four jobs at once: it *types* the maintained truth; it
@@ -181,6 +181,19 @@ Freshness *state* lives in the world-model as data; `### Continuity` carries onl
 the *policy* that reads it. When a `valid_until` lapses, the harness mechanically
 moves the affected facet's fingerprint and wakes the node — no model call to
 decide that time has passed.
+
+**`### Invariants` declares the render's actuation boundary — the bound on how it
+may touch the world.** A render may act (send the mail, write the register), but
+`### Invariants` states the rate and scope of that world-mutation and the
+mutations it must not make ("only the published truth is writable; never modify
+the observed system"). It is the authoring-time half of the render/commit split:
+only the canonicalized published truth re-enters the memo, and `### Invariants`
+bounds everything else the render may do. (This is the capability *rate/scope*
+bound; which collaborators a render may call is `### Shape`'s job.) In the ideal
+the harness lowers and enforces this boundary at the render/commit split; today
+it is authored prose the render is asked to honor, not yet harness-enforced —
+see [02-ReactorHarness.md](./02-ReactorHarness.md) Part II gap cluster 3 and
+Part III §3.
 
 The author writes these; the harness owns the fingerprinting, the forecast
 cadence, the receipts, and the subscription wiring. The granular how-to —
@@ -348,7 +361,7 @@ The root layout is:
 | `runs/` | Activation receipts for bounded VM runs |
 | `state/` | Durable cross-run state |
 | `state/agents/` | Durable agent memory |
-| `state/world-model/{node}/` | Each responsibility's persisted canonical world-model, with its signed, append-only `receipts.jsonl` ledger (no separate status/pressure store — the judge loop is retired) |
+| `state/world-model/{node}/` | Each responsibility's persisted canonical world-model, with its signed, append-only `receipts.jsonl` ledger — the language VM root layout (the Reactor harness's own state-dir uses a flat `receipts.json`, [02-ReactorHarness.md](./02-ReactorHarness.md)); no separate status/pressure store — the judge loop is retired |
 | `deps/` | Installed git-native dependencies |
 | `prose.lock` | Dependency lockfile |
 | `.env` | Local runtime environment |
@@ -409,7 +422,7 @@ The five current authored kinds are:
 | --- | --- | --- |
 | `responsibility` | Served (continuously reconciled) | The headline kind: a mounted DAG node maintaining a standing truth over time |
 | `function` | Called (one-shot) | A stateless, ephemeral helper: bind `### Parameters`, run one render, return `### Returns`. No Forme phase, no world-model. (Renamed from `service`.) |
-| `gateway` | Mounted as external-driven | Sugar for an external-driven responsibility; compiled into a trigger registration for `prose serve` |
+| `gateway` | Mounted as external-driven | Sugar for an external-driven responsibility; compiled into a trigger registration the Reactor harness serves (`reactor serve`) |
 | `test` | Via `prose test` | Fixtures plus natural-language assertions against a subject responsibility or function |
 | `pattern` | Instantiated at compile time | Reusable coordination algorithm expanded into nodes; never directly run |
 
@@ -786,8 +799,9 @@ or platform improvements.
 
 **Migration status:** `packages/std/` and `packages/co/` are now **migrated** to
 the current vocabulary — **zero** `kind: service`, `kind: system`, or
-`### Ensures` remain. Their contracts use `kind: function` (≈35 files),
-`kind: responsibility`, the unchanged `kind: pattern` (19), and `kind: test`. (`co`
+`### Ensures` remain. Their contracts use `kind: function` (≈35 files), the
+unchanged `kind: pattern` (19), `kind: test`, and `kind: responsibility` (in
+`std` only — `co` is functions, patterns, and tests). (`co`
 keeps its on-disk directory names `services/` and `systems/` for path stability,
 even though the contracts inside are migrated.)
 

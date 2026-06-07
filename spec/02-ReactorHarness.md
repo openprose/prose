@@ -994,9 +994,9 @@ The packages are already published (`@openprose/reactor` 0.3.1,
 `@openprose/reactor-cli` 0.2.2, `@openprose/reactor-devtools` 0.2.0) with OIDC
 provenance, so the headline of earlier roadmaps is done. The remaining work is
 **closing the three gap clusters** the Conformance Ledger names (§1–§5 below
-correspond to them), then publish hardening and the deferred enhancements and
-recursions (§6–§9). It is ordered by leverage: the commit-gate and freshness
-items are load-bearing.
+correspond to them), then publish hardening, the deferred enhancements and
+recursions, and production hardening (§6–§10). It is ordered by leverage: the
+commit-gate and freshness items are load-bearing.
 
 #### 1. Wire `gateCommit` Into The Run-Phase Commit  *(gap cluster 1)*
 
@@ -1085,6 +1085,20 @@ and deferred past v1.
 and within a reactor drains stay serial behind a per-reactor queue. Adding a
 node-level render worker pool (the pool pulling individual ready node-renders,
 preserving single-flight-per-node) is the deferred Change B.
+
+#### 10. Declared-Capability Resolution + Production Hardening
+
+Three honest deferrals share one theme — the harness does not yet act on what the
+contract or operator declares: (a) **declared capabilities are inert** —
+`### Tools` / `### Environment` / `### Skills` are authored name-only but the
+harness neither resolves nor enforces them (compile reads only
+Requires/Maintains/Continuity/Execution; the render runs a fixed built-in
+toolset), so resolving them fail-closed and passing the declared surface to the
+render is owed; (b) **`serve` ships no auth** — the HTTP surface is
+single-operator / trusted-network until fronted by a proxy, and an auth layer is
+needed before the trigger route is exposed; (c) **no async storage seam** — the
+storage adapter is synchronous, so a Postgres / durable-cloud adapter is out of
+scope until the seam goes async.
 
 ### Required Evaluation Suite
 
@@ -1203,8 +1217,8 @@ Sober. Make a strong claim, then show the evidence and the limits.
 ### Definition Of Done For Launch
 
 - `@openprose/reactor`, `@openprose/reactor-cli`, and
-  `@openprose/reactor-devtools` are public, version-consistent, and provenance-
-  verified through the OIDC gate.
+  `@openprose/reactor-devtools` are public, each published at its own version on
+  the `reactor-v*` train, and provenance-verified through the OIDC gate.
 - `gateCommit`'s compiled validators are wired into the run-phase commit (invariant
   6 / gap cluster 1 closed), not only the render's self-attestation.
 - The durable receipt carries `as_of`, a failure `reason`, and an author-addressing

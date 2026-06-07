@@ -19,8 +19,9 @@ corrupting the truth (correctness) and whose fail-closed default makes a render
 that cannot satisfy its obligations commit nothing rather than act (safety,
 Tenet 4). Below that floor the stack is the resolution rule for the
 safety → cost → silence trade-offs — Tenet 4's "safety outranks cost; cost
-outranks silence": safety is Tenet 4, cost is the resource budget the gates are
-constrained by, and interrupt-minimization is a downstream goal rather than an
+outranks silence": safety is Tenet 4, cost is the spend weighed against safety
+and silence — observed, never an enforced budget the gates run against — and
+interrupt-minimization is a downstream goal rather than an
 authority the other tenets bend around. The stack is not a separate runtime
 policy dial and does not override the numbered precedence — it projects that
 precedence onto the operational decisions; the numbered precedence governs
@@ -41,11 +42,12 @@ config, or a separate scoring artifact.
 The model acts as a bounded *agent* — with an environment, a filesystem, and
 the ability to read, write, and run code — that dynamically explores rather
 than consuming a one-shot context. Intelligence lives in exactly two layers it
-authors: the compilation (the canonicalizer and the postcondition validators,
-frozen once per contract) and the render (the bounded session that computes the
-next world-model). Deterministic code validates, schedules, records, and
-executes what the agent authored, and constrains it with limits the agent
-cannot override — it never decides meaning itself.
+authors: the compilation (the Forme topology, the per-node canonicalizer, and
+the postcondition validators, frozen once per contract) and the render (the
+bounded session that computes the next world-model). Deterministic code
+validates, schedules, records, and executes what the agent authored, and
+constrains it with limits the agent cannot override — it never decides meaning
+itself.
 
 ## 3. Continuity lives in the trail, not a session.
 

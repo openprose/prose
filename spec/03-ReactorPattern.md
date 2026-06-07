@@ -488,7 +488,7 @@ kinds and sections Part I names, and only those.
 | `kind: responsibility` with `### Goal` / `### Requires` / `### Maintains` / `### Continuity` / `### Invariants` (+ `### Tools` / `### Shape` / `### Runtime`) | Present and canonical (`concepts/responsibility.md`, `contract-markdown.md`); `id:` is tooling-minted and stable across `name:`/filename renames |
 | `kind: function` with `### Parameters` / `### Returns` — a stateless called helper (the former `service`) | Present; run as a lone render with no Forme phase |
 | `kind: gateway` — sugar for an external-driven responsibility; Forme's entry-point set | Present; `reactor serve` registers it and stages ingress (fetch → extract → stage + a durable idempotency cursor) |
-| `kind: pattern` / `kind: test` | Present; patterns expand at compile time, tests route to `prose test` / `reactor` test semantics |
+| `kind: pattern` / `kind: test` | Present; patterns expand at compile time, tests route to the in-session `prose test` semantic (there is no `reactor test` subcommand) |
 | Facets: `####` parts under `### Maintains` — name = fingerprint unit + subscription symbol; atomic default | Present and **facet-granular propagation is live in production** (the v2 named-parts model); a downstream subscribed to one facet does not wake when another moves |
 | `### Maintains` as the world-model schema doing four jobs (type, canonicalization spec, facets, postconditions) | Present; the postconditions live **inside `### Maintains`**, compiled to validators (there is no separate `### Criteria` section — it was removed) |
 | `### Continuity` as the structural wake-source declaration (input / self / external) | Present; self-driven recheck and the gateway entry point are both wired (Phase 4) |
@@ -518,7 +518,7 @@ reality is honest, rule by rule.
 | --- | --- | --- |
 | 1. Intent lives in the responsibility | Conformant | Fully authorable today |
 | 2. Materiality stated semantically in `### Maintains` | Conformant (authoring) | The author states materiality in prose; it is lowered to a deterministic canonicalizer. The lowering runs **only spec→code** — a compile session reads the `### Maintains` prose and emits the canonicalization spec, which the deterministic producer compiles. There is no `.prose` *parser*; compile is sessions, not a grammar |
-| 3. No host-specific contract logic | Conformant | `### Tools` (`cli:` / `mcp:`) and `### Environment` are name-only; resolution is fail-closed and never installs or contacts at compile |
+| 3. No host-specific contract logic | Conformant (authoring); harness resolution deferred | `### Tools` (`cli:` / `mcp:`), `### Environment`, and `### Skills` are authored name-only and never install or contact at compile — but the Reactor harness does not yet **consume** them: compile reads only `### Requires`/`### Maintains`/`### Continuity`/`### Execution`, and the render runs a fixed built-in toolset, so declared capability names are inert today. Fail-closed resolution/enforcement of the declared surface is a forward item (02 Part III §10) |
 | 4. Bounded activations | Conformant | Idiomatic; the "loop until done" anti-pattern is author error, not a skill gap |
 | 5. Written for memoization / variable depth | Conformant | The reconciler's skip on `(contract_fp, input_fp)` is live (cost scales with surprise, including an immaterial-churn re-poll that still skips); facet selectors are live; depth is an `if`-gated `call` in `### Execution`. The author's leverage is real today |
 | 6. Composition via a subscribed upstream facet | Conformant (meaning-layer) | A downstream names the upstream facet in `### Requires` and Forme wires the edge; receipts are content-addressed and the chain is verifiable. The **cryptographic** signer is a null-state — v1 "signed" is meaning-layer chain-consistency, not a byte-hash — so cross-trust-domain *pinning to a signer set* is not yet enforceable |
@@ -614,9 +614,9 @@ should mirror the load they bear:
   is an expected, high-value `failed` receipt routed to the author — **never** a
   `blocked`/`drifting` status enum (those are retired).
 - The failed receipt that *names the gap and routes it to the author* depends on
-  the harness widening the durable receipt with a `reason` + author-addressing
-  field (02 gap cluster 2); until that lands, the doctrine is authorable but the
-  routed reason is dropped at commit. Author to it now.
+  the harness widening the durable receipt with `as_of`, a `reason`, and an
+  author-addressing field (02 gap cluster 2); until that lands, the doctrine is
+  authorable but the routed reason is dropped at commit. Author to it now.
 
 ### 3. Land the materiality lowering's prose→spec half
 
@@ -658,8 +658,11 @@ a zero-token fingerprint move), but `reactor serve` polls it on a flat
 `--poll-interval`. The deferred work is arming each node's soonest
 `next_self_recheck` off its freshness so an idle reactor sleeps to the next real
 expiry instead of waking every interval — the *forecast-paced quiescence* Part I
-implies. The author already writes the `valid_until` that feeds it; the cadence
-tightens harness-side, without a source change.
+implies. The same step is owed for a gateway's declared `### Schedule`, which the
+compiler drops today (so the gateway runs on the flat serve poll, not its
+authored cadence); honoring it as a freshness-paced cadence rides with this work.
+The author already writes the `valid_until` (and the `### Schedule`) that feeds
+it; the cadence tightens harness-side, without a source change.
 
 ### 7. Richer serve ingress adapters
 
@@ -672,8 +675,9 @@ intended ingress form should be noted in the contract so it migrates cleanly.
 ### 8. The cryptographic signer (cross-trust-domain composition)
 
 The receipt ledger is content-addressed and chain-verifiable, and the `signer`
-is an explicit null-state (`kind: "null" | "signed"`, only `null` shipped). v1
-"signed" means meaning-layer chain-consistency. The deferred milestone is the
+is an explicit null-state (`{ scheme: "none", null_reason: ... }`; the signature
+union ships only the null branch). v1 "signed" means meaning-layer
+chain-consistency. The deferred milestone is the
 cryptographic byte-hash signer, after which a downstream can pin an *acceptable
 signer set* in `### Requires` and have it enforced — closing the cross-trust-domain
 supply-chain edge that is, today, the author's discipline rather than the
