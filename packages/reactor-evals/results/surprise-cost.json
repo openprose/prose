@@ -1,0 +1,946 @@
+{
+  "schema": "reactor-evals/results@1",
+  "prereg_hash": "b0490e56158bec486631f6310cab5b689cdca7e1fe5063697863d77235f20a58",
+  "model_pin": "openrouter:openai/gpt-5.4-mini (live cell only; offline uses deterministic-cost-v1)",
+  "headline": "At lambda=1%, Reactor spends ~173.71x fewer fresh tokens than an equal-correctness cron (240 vs 41690 fresh); Reactor's per-tick spend scales ~linearly through the origin with the material-change rate (slope=30 fresh/material-tick, intercept~0, p=0.0001) while the cron's stays flat (slope=-0.5696, intercept~41.6946).",
+  "null_rejected": true,
+  "folds": [
+    {
+      "lambda": 0,
+      "reactor_fresh": 30,
+      "cron_fresh": 41690,
+      "fold": 1389.67,
+      "equal_correctness": true,
+      "cost_win_reportable": true
+    },
+    {
+      "lambda": 0.01,
+      "reactor_fresh": 240,
+      "cron_fresh": 41690,
+      "fold": 173.71,
+      "equal_correctness": true,
+      "cost_win_reportable": true
+    },
+    {
+      "lambda": 0.1,
+      "reactor_fresh": 3646,
+      "cron_fresh": 43208,
+      "fold": 11.85,
+      "equal_correctness": true,
+      "cost_win_reportable": true
+    },
+    {
+      "lambda": 0.5,
+      "reactor_fresh": 16842,
+      "cron_fresh": 45308,
+      "fold": 2.69,
+      "equal_correctness": true,
+      "cost_win_reportable": true
+    },
+    {
+      "lambda": 1,
+      "reactor_fresh": 33604,
+      "cron_fresh": 45563,
+      "fold": 1.36,
+      "equal_correctness": true,
+      "cost_win_reportable": true
+    }
+  ],
+  "regressions": {
+    "reactor": {
+      "n": 1000,
+      "materialTicks": 8,
+      "slope_fresh_per_material_tick": 30,
+      "intercept_fresh_per_immaterial_tick": 0,
+      "material_mean_fresh": 30,
+      "p_value": 0.0001,
+      "rejects_null": true
+    },
+    "oracle-cron": {
+      "n": 1000,
+      "materialTicks": 8,
+      "slope_fresh_per_material_tick": -0.5696,
+      "intercept_fresh_per_immaterial_tick": 41.6946,
+      "material_mean_fresh": 41.125,
+      "p_value": 0.063094,
+      "rejects_null": false
+    },
+    "content-cache": {
+      "n": 1000,
+      "materialTicks": 8,
+      "slope_fresh_per_material_tick": 21.3175,
+      "intercept_fresh_per_immaterial_tick": 37.1825,
+      "material_mean_fresh": 58.5,
+      "p_value": 0.0001,
+      "rejects_null": true
+    },
+    "no-memo-reactor": {
+      "n": 1000,
+      "materialTicks": 8,
+      "slope_fresh_per_material_tick": -0.5706,
+      "intercept_fresh_per_immaterial_tick": 41.6956,
+      "material_mean_fresh": 41.125,
+      "p_value": 0.062494,
+      "rejects_null": false
+    },
+    "byte-diff": {
+      "n": 1000,
+      "materialTicks": 8,
+      "slope_fresh_per_material_tick": 21.3175,
+      "intercept_fresh_per_immaterial_tick": 37.1825,
+      "material_mean_fresh": 58.5,
+      "p_value": 0.0001,
+      "rejects_null": true
+    },
+    "react-loop": {
+      "n": 1000,
+      "materialTicks": 8,
+      "slope_fresh_per_material_tick": -0.5696,
+      "intercept_fresh_per_immaterial_tick": 41.6946,
+      "material_mean_fresh": 41.125,
+      "p_value": 0.063094,
+      "rejects_null": false
+    }
+  },
+  "gated_rows": [
+    {
+      "contestant": "reactor",
+      "provenance": "runtime-reactor",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 0,
+      "fresh": 30,
+      "correct_rate": 1,
+      "matches_oracle_correctness": true,
+      "cost_win_reportable": true
+    },
+    {
+      "contestant": "reactor",
+      "provenance": "runtime-reactor",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 0.01,
+      "fresh": 240,
+      "correct_rate": 1,
+      "matches_oracle_correctness": true,
+      "cost_win_reportable": true
+    },
+    {
+      "contestant": "reactor",
+      "provenance": "runtime-reactor",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 0.1,
+      "fresh": 3646,
+      "correct_rate": 1,
+      "matches_oracle_correctness": true,
+      "cost_win_reportable": true
+    },
+    {
+      "contestant": "reactor",
+      "provenance": "runtime-reactor",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 0.5,
+      "fresh": 16842,
+      "correct_rate": 1,
+      "matches_oracle_correctness": true,
+      "cost_win_reportable": true
+    },
+    {
+      "contestant": "reactor",
+      "provenance": "runtime-reactor",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 1,
+      "fresh": 33604,
+      "correct_rate": 1,
+      "matches_oracle_correctness": true,
+      "cost_win_reportable": true
+    },
+    {
+      "contestant": "oracle-cron",
+      "provenance": "naive-control",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 0,
+      "fresh": 41690,
+      "correct_rate": 1,
+      "matches_oracle_correctness": true,
+      "cost_win_reportable": true
+    },
+    {
+      "contestant": "oracle-cron",
+      "provenance": "naive-control",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 0.01,
+      "fresh": 41690,
+      "correct_rate": 1,
+      "matches_oracle_correctness": true,
+      "cost_win_reportable": true
+    },
+    {
+      "contestant": "oracle-cron",
+      "provenance": "naive-control",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 0.1,
+      "fresh": 43208,
+      "correct_rate": 1,
+      "matches_oracle_correctness": true,
+      "cost_win_reportable": true
+    },
+    {
+      "contestant": "oracle-cron",
+      "provenance": "naive-control",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 0.5,
+      "fresh": 45308,
+      "correct_rate": 1,
+      "matches_oracle_correctness": true,
+      "cost_win_reportable": true
+    },
+    {
+      "contestant": "oracle-cron",
+      "provenance": "naive-control",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 1,
+      "fresh": 45563,
+      "correct_rate": 1,
+      "matches_oracle_correctness": true,
+      "cost_win_reportable": true
+    },
+    {
+      "contestant": "content-cache",
+      "provenance": "naive-control",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 0,
+      "fresh": 37206,
+      "correct_rate": 1,
+      "matches_oracle_correctness": true,
+      "cost_win_reportable": true
+    },
+    {
+      "contestant": "content-cache",
+      "provenance": "naive-control",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 0.01,
+      "fresh": 37353,
+      "correct_rate": 1,
+      "matches_oracle_correctness": true,
+      "cost_win_reportable": true
+    },
+    {
+      "contestant": "content-cache",
+      "provenance": "naive-control",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 0.1,
+      "fresh": 39946,
+      "correct_rate": 1,
+      "matches_oracle_correctness": true,
+      "cost_win_reportable": true
+    },
+    {
+      "contestant": "content-cache",
+      "provenance": "naive-control",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 0.5,
+      "fresh": 49961,
+      "correct_rate": 1,
+      "matches_oracle_correctness": true,
+      "cost_win_reportable": true
+    },
+    {
+      "contestant": "content-cache",
+      "provenance": "naive-control",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 1,
+      "fresh": 61879,
+      "correct_rate": 1,
+      "matches_oracle_correctness": true,
+      "cost_win_reportable": true
+    },
+    {
+      "contestant": "no-memo-reactor",
+      "provenance": "no-memo-simulation",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 0,
+      "fresh": 41691,
+      "correct_rate": 1,
+      "matches_oracle_correctness": true,
+      "cost_win_reportable": true
+    },
+    {
+      "contestant": "no-memo-reactor",
+      "provenance": "no-memo-simulation",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 0.01,
+      "fresh": 41691,
+      "correct_rate": 1,
+      "matches_oracle_correctness": true,
+      "cost_win_reportable": true
+    },
+    {
+      "contestant": "no-memo-reactor",
+      "provenance": "no-memo-simulation",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 0.1,
+      "fresh": 43209,
+      "correct_rate": 1,
+      "matches_oracle_correctness": true,
+      "cost_win_reportable": true
+    },
+    {
+      "contestant": "no-memo-reactor",
+      "provenance": "no-memo-simulation",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 0.5,
+      "fresh": 45309,
+      "correct_rate": 1,
+      "matches_oracle_correctness": true,
+      "cost_win_reportable": true
+    },
+    {
+      "contestant": "no-memo-reactor",
+      "provenance": "no-memo-simulation",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 1,
+      "fresh": 45563,
+      "correct_rate": 1,
+      "matches_oracle_correctness": true,
+      "cost_win_reportable": true
+    },
+    {
+      "contestant": "byte-diff",
+      "provenance": "naive-control",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 0,
+      "fresh": 37206,
+      "correct_rate": 1,
+      "matches_oracle_correctness": true,
+      "cost_win_reportable": true
+    },
+    {
+      "contestant": "byte-diff",
+      "provenance": "naive-control",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 0.01,
+      "fresh": 37353,
+      "correct_rate": 1,
+      "matches_oracle_correctness": true,
+      "cost_win_reportable": true
+    },
+    {
+      "contestant": "byte-diff",
+      "provenance": "naive-control",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 0.1,
+      "fresh": 39946,
+      "correct_rate": 1,
+      "matches_oracle_correctness": true,
+      "cost_win_reportable": true
+    },
+    {
+      "contestant": "byte-diff",
+      "provenance": "naive-control",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 0.5,
+      "fresh": 49961,
+      "correct_rate": 1,
+      "matches_oracle_correctness": true,
+      "cost_win_reportable": true
+    },
+    {
+      "contestant": "byte-diff",
+      "provenance": "naive-control",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 1,
+      "fresh": 61879,
+      "correct_rate": 1,
+      "matches_oracle_correctness": true,
+      "cost_win_reportable": true
+    },
+    {
+      "contestant": "react-loop",
+      "provenance": "naive-control",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 0,
+      "fresh": 41690,
+      "correct_rate": 1,
+      "matches_oracle_correctness": true,
+      "cost_win_reportable": true
+    },
+    {
+      "contestant": "react-loop",
+      "provenance": "naive-control",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 0.01,
+      "fresh": 41690,
+      "correct_rate": 1,
+      "matches_oracle_correctness": true,
+      "cost_win_reportable": true
+    },
+    {
+      "contestant": "react-loop",
+      "provenance": "naive-control",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 0.1,
+      "fresh": 43208,
+      "correct_rate": 1,
+      "matches_oracle_correctness": true,
+      "cost_win_reportable": true
+    },
+    {
+      "contestant": "react-loop",
+      "provenance": "naive-control",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 0.5,
+      "fresh": 45308,
+      "correct_rate": 1,
+      "matches_oracle_correctness": true,
+      "cost_win_reportable": true
+    },
+    {
+      "contestant": "react-loop",
+      "provenance": "naive-control",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 1,
+      "fresh": 45563,
+      "correct_rate": 1,
+      "matches_oracle_correctness": true,
+      "cost_win_reportable": true
+    }
+  ],
+  "contestants": [
+    {
+      "contestant": "reactor",
+      "provenance": "runtime-reactor",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 0,
+      "fresh": 30,
+      "reused": 0,
+      "correct_rate": 1,
+      "dispositions": {
+        "rendered": 5,
+        "skipped": 999,
+        "failed": 0,
+        "coalesced": 0
+      },
+      "receipts": 1004
+    },
+    {
+      "contestant": "reactor",
+      "provenance": "runtime-reactor",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 0.01,
+      "fresh": 240,
+      "reused": 0,
+      "correct_rate": 1,
+      "dispositions": {
+        "rendered": 40,
+        "skipped": 992,
+        "failed": 0,
+        "coalesced": 0
+      },
+      "receipts": 1032
+    },
+    {
+      "contestant": "reactor",
+      "provenance": "runtime-reactor",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 0.1,
+      "fresh": 3646,
+      "reused": 0,
+      "correct_rate": 1,
+      "dispositions": {
+        "rendered": 595,
+        "skipped": 881,
+        "failed": 0,
+        "coalesced": 0
+      },
+      "receipts": 1476
+    },
+    {
+      "contestant": "reactor",
+      "provenance": "runtime-reactor",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 0.5,
+      "fresh": 16842,
+      "reused": 0,
+      "correct_rate": 1,
+      "dispositions": {
+        "rendered": 2535,
+        "skipped": 493,
+        "failed": 0,
+        "coalesced": 0
+      },
+      "receipts": 3028
+    },
+    {
+      "contestant": "reactor",
+      "provenance": "runtime-reactor",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 1,
+      "fresh": 33604,
+      "reused": 0,
+      "correct_rate": 1,
+      "dispositions": {
+        "rendered": 5000,
+        "skipped": 0,
+        "failed": 0,
+        "coalesced": 0
+      },
+      "receipts": 5000
+    },
+    {
+      "contestant": "oracle-cron",
+      "provenance": "naive-control",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 0,
+      "fresh": 41690,
+      "reused": 0,
+      "correct_rate": 1,
+      "dispositions": {
+        "rendered": 5000,
+        "skipped": 0,
+        "failed": 0,
+        "coalesced": 0
+      },
+      "receipts": 5000
+    },
+    {
+      "contestant": "oracle-cron",
+      "provenance": "naive-control",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 0.01,
+      "fresh": 41690,
+      "reused": 0,
+      "correct_rate": 1,
+      "dispositions": {
+        "rendered": 5000,
+        "skipped": 0,
+        "failed": 0,
+        "coalesced": 0
+      },
+      "receipts": 5000
+    },
+    {
+      "contestant": "oracle-cron",
+      "provenance": "naive-control",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 0.1,
+      "fresh": 43208,
+      "reused": 0,
+      "correct_rate": 1,
+      "dispositions": {
+        "rendered": 5000,
+        "skipped": 0,
+        "failed": 0,
+        "coalesced": 0
+      },
+      "receipts": 5000
+    },
+    {
+      "contestant": "oracle-cron",
+      "provenance": "naive-control",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 0.5,
+      "fresh": 45308,
+      "reused": 0,
+      "correct_rate": 1,
+      "dispositions": {
+        "rendered": 5000,
+        "skipped": 0,
+        "failed": 0,
+        "coalesced": 0
+      },
+      "receipts": 5000
+    },
+    {
+      "contestant": "oracle-cron",
+      "provenance": "naive-control",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 1,
+      "fresh": 45563,
+      "reused": 0,
+      "correct_rate": 1,
+      "dispositions": {
+        "rendered": 5000,
+        "skipped": 0,
+        "failed": 0,
+        "coalesced": 0
+      },
+      "receipts": 5000
+    },
+    {
+      "contestant": "content-cache",
+      "provenance": "naive-control",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 0,
+      "fresh": 37206,
+      "reused": 0,
+      "correct_rate": 1,
+      "dispositions": {
+        "rendered": 2003,
+        "skipped": 0,
+        "failed": 0,
+        "coalesced": 0
+      },
+      "receipts": 2003
+    },
+    {
+      "contestant": "content-cache",
+      "provenance": "naive-control",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 0.01,
+      "fresh": 37353,
+      "reused": 0,
+      "correct_rate": 1,
+      "dispositions": {
+        "rendered": 2024,
+        "skipped": 0,
+        "failed": 0,
+        "coalesced": 0
+      },
+      "receipts": 2024
+    },
+    {
+      "contestant": "content-cache",
+      "provenance": "naive-control",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 0.1,
+      "fresh": 39946,
+      "reused": 0,
+      "correct_rate": 1,
+      "dispositions": {
+        "rendered": 2357,
+        "skipped": 0,
+        "failed": 0,
+        "coalesced": 0
+      },
+      "receipts": 2357
+    },
+    {
+      "contestant": "content-cache",
+      "provenance": "naive-control",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 0.5,
+      "fresh": 49961,
+      "reused": 0,
+      "correct_rate": 1,
+      "dispositions": {
+        "rendered": 3521,
+        "skipped": 0,
+        "failed": 0,
+        "coalesced": 0
+      },
+      "receipts": 3521
+    },
+    {
+      "contestant": "content-cache",
+      "provenance": "naive-control",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 1,
+      "fresh": 61879,
+      "reused": 0,
+      "correct_rate": 1,
+      "dispositions": {
+        "rendered": 5000,
+        "skipped": 0,
+        "failed": 0,
+        "coalesced": 0
+      },
+      "receipts": 5000
+    },
+    {
+      "contestant": "no-memo-reactor",
+      "provenance": "no-memo-simulation",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 0,
+      "fresh": 41691,
+      "reused": 0,
+      "correct_rate": 1,
+      "dispositions": {
+        "rendered": 5000,
+        "skipped": 0,
+        "failed": 0,
+        "coalesced": 0
+      },
+      "receipts": 5000
+    },
+    {
+      "contestant": "no-memo-reactor",
+      "provenance": "no-memo-simulation",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 0.01,
+      "fresh": 41691,
+      "reused": 0,
+      "correct_rate": 1,
+      "dispositions": {
+        "rendered": 5000,
+        "skipped": 0,
+        "failed": 0,
+        "coalesced": 0
+      },
+      "receipts": 5000
+    },
+    {
+      "contestant": "no-memo-reactor",
+      "provenance": "no-memo-simulation",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 0.1,
+      "fresh": 43209,
+      "reused": 0,
+      "correct_rate": 1,
+      "dispositions": {
+        "rendered": 5000,
+        "skipped": 0,
+        "failed": 0,
+        "coalesced": 0
+      },
+      "receipts": 5000
+    },
+    {
+      "contestant": "no-memo-reactor",
+      "provenance": "no-memo-simulation",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 0.5,
+      "fresh": 45309,
+      "reused": 0,
+      "correct_rate": 1,
+      "dispositions": {
+        "rendered": 5000,
+        "skipped": 0,
+        "failed": 0,
+        "coalesced": 0
+      },
+      "receipts": 5000
+    },
+    {
+      "contestant": "no-memo-reactor",
+      "provenance": "no-memo-simulation",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 1,
+      "fresh": 45563,
+      "reused": 0,
+      "correct_rate": 1,
+      "dispositions": {
+        "rendered": 5000,
+        "skipped": 0,
+        "failed": 0,
+        "coalesced": 0
+      },
+      "receipts": 5000
+    },
+    {
+      "contestant": "byte-diff",
+      "provenance": "naive-control",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 0,
+      "fresh": 37206,
+      "reused": 0,
+      "correct_rate": 1,
+      "dispositions": {
+        "rendered": 2003,
+        "skipped": 0,
+        "failed": 0,
+        "coalesced": 0
+      },
+      "receipts": 2003
+    },
+    {
+      "contestant": "byte-diff",
+      "provenance": "naive-control",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 0.01,
+      "fresh": 37353,
+      "reused": 0,
+      "correct_rate": 1,
+      "dispositions": {
+        "rendered": 2024,
+        "skipped": 0,
+        "failed": 0,
+        "coalesced": 0
+      },
+      "receipts": 2024
+    },
+    {
+      "contestant": "byte-diff",
+      "provenance": "naive-control",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 0.1,
+      "fresh": 39946,
+      "reused": 0,
+      "correct_rate": 1,
+      "dispositions": {
+        "rendered": 2357,
+        "skipped": 0,
+        "failed": 0,
+        "coalesced": 0
+      },
+      "receipts": 2357
+    },
+    {
+      "contestant": "byte-diff",
+      "provenance": "naive-control",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 0.5,
+      "fresh": 49961,
+      "reused": 0,
+      "correct_rate": 1,
+      "dispositions": {
+        "rendered": 3521,
+        "skipped": 0,
+        "failed": 0,
+        "coalesced": 0
+      },
+      "receipts": 3521
+    },
+    {
+      "contestant": "byte-diff",
+      "provenance": "naive-control",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 1,
+      "fresh": 61879,
+      "reused": 0,
+      "correct_rate": 1,
+      "dispositions": {
+        "rendered": 5000,
+        "skipped": 0,
+        "failed": 0,
+        "coalesced": 0
+      },
+      "receipts": 5000
+    },
+    {
+      "contestant": "react-loop",
+      "provenance": "naive-control",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 0,
+      "fresh": 41690,
+      "reused": 0,
+      "correct_rate": 1,
+      "dispositions": {
+        "rendered": 5000,
+        "skipped": 0,
+        "failed": 0,
+        "coalesced": 0
+      },
+      "receipts": 5000
+    },
+    {
+      "contestant": "react-loop",
+      "provenance": "naive-control",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 0.01,
+      "fresh": 41690,
+      "reused": 0,
+      "correct_rate": 1,
+      "dispositions": {
+        "rendered": 5000,
+        "skipped": 0,
+        "failed": 0,
+        "coalesced": 0
+      },
+      "receipts": 5000
+    },
+    {
+      "contestant": "react-loop",
+      "provenance": "naive-control",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 0.1,
+      "fresh": 43208,
+      "reused": 0,
+      "correct_rate": 1,
+      "dispositions": {
+        "rendered": 5000,
+        "skipped": 0,
+        "failed": 0,
+        "coalesced": 0
+      },
+      "receipts": 5000
+    },
+    {
+      "contestant": "react-loop",
+      "provenance": "naive-control",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 0.5,
+      "fresh": 45308,
+      "reused": 0,
+      "correct_rate": 1,
+      "dispositions": {
+        "rendered": 5000,
+        "skipped": 0,
+        "failed": 0,
+        "coalesced": 0
+      },
+      "receipts": 5000
+    },
+    {
+      "contestant": "react-loop",
+      "provenance": "naive-control",
+      "cost_confidence": "deterministic-surrogate",
+      "lambda": 1,
+      "fresh": 45563,
+      "reused": 0,
+      "correct_rate": 1,
+      "dispositions": {
+        "rendered": 5000,
+        "skipped": 0,
+        "failed": 0,
+        "coalesced": 0
+      },
+      "receipts": 5000
+    }
+  ],
+  "propagation": {
+    "tp": 8,
+    "fp": 0,
+    "fn": 0,
+    "tn": 992,
+    "precision": 1,
+    "recall": 1,
+    "exact": true
+  },
+  "amortization": {
+    "n_dependents": 3,
+    "digest_renders": 8,
+    "note": "each digest render fans out to N dependents in one wave; immaterial ticks wake zero dependents"
+  },
+  "gatecommit": {
+    "failed_count": 0,
+    "violations": [],
+    "ok": true
+  },
+  "chain_verified": {
+    "ok": true,
+    "cells": 30,
+    "bad": []
+  },
+  "invariants": {
+    "implemented": [
+      {
+        "eval": "#4 duplicate-idempotency",
+        "first": "rendered",
+        "second": "skipped",
+        "ok": true
+      },
+      {
+        "eval": "#5 crash-recovery",
+        "recovered_disposition": "skipped",
+        "ok": true
+      }
+    ],
+    "scaffolded": [
+      {
+        "eval": "#8 contract-set-fencing",
+        "status": "scaffolded",
+        "note": "needs the compile/contract-fingerprint surface (reactor compile); deterministic, off the cost spine."
+      },
+      {
+        "eval": "#12 undecidable-contract",
+        "status": "scaffolded",
+        "note": "needs a failed-receipt-naming-the-gap path from compile; off the cost spine."
+      }
+    ]
+  },
+  "live_n1": {
+    "status": "blocked",
+    "reason": "OPENROUTER_API_KEY not present; refusing to fabricate a live ledger (risk R3).",
+    "lead_metric": "skip-hit-rate (the real unit economic) — NOT reuse-% (0% on the default model).",
+    "procedure": "see src/live/run.cjs header + PLAN U10"
+  }
+}
