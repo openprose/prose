@@ -323,10 +323,10 @@ All reads go through `src/data` — the only place this package touches the SDK:
 | Need | SDK surface |
 |---|---|
 | Open the durable trail | `createFileSystemStorageAdapter({ directory })` (`@openprose/reactor`) |
-| Re-derive the ledger (= replay) | `new FileSystemReceiptLedger({ storage })` (`@openprose/reactor/sdk`) |
-| Order + chain index + moved-facet diff + cost rollup | `createReplaySession({ ledger })` (`@openprose/reactor/sdk`) |
+| Re-derive the ledger (= replay) | `createFileSystemReceiptLedger({ storage })` (`@openprose/reactor`) |
+| Order + chain index + moved-facet diff + cost rollup | `createReplaySession({ ledger })` (`@openprose/reactor`) |
 | Topology graph | `<state-dir>/compile/topology.json` (`TopologyWorldModel`) — `MountedDag` has no `.topology` in replay |
-| Chain / tamper badge | `verifyReceiptChain` / `verifyReceipt` (`@openprose/reactor/sdk`), run over the **raw on-disk receipts** (original `content_hash`), so an edited field is caught — the re-stamped replay ledger would heal it. It verifies **meaning-layer chain-consistency** (each receipt's `content_hash` matches its canonical payload and links its `prev`), **not** a cryptographic signature: tamper-evident against accidental / independent edits, **not** against a forge that re-stamps the whole trail with the public `computeReceiptContentHash` (v1 has a null signer). Meaning-layer tamper-evidence, not byte-level non-repudiation. |
+| Chain / tamper badge | `verifyReceiptChain` / `verifyReceipt` (`@openprose/reactor`), run over the **raw on-disk receipts** (original `content_hash`), so an edited field is caught — the re-stamped replay ledger would heal it. It verifies **meaning-layer chain-consistency** (each receipt's `content_hash` matches its canonical payload and links its `prev`), **not** a cryptographic signature: tamper-evident against accidental / independent edits, **not** against a forge that re-stamps the whole trail with the public `computeReceiptContentHash` (v1 has a null signer; the cryptographic byte-hash signer that closes this is **targeted for 2026 H2**, tracked as `C3`). Meaning-layer tamper-evidence, not byte-level non-repudiation. |
 | Click-through world-model (S4) | `FileSystemWorldModelStore.readVersion(node, version)` where `version === receipt.fingerprints["@atomic"]` |
 
 The event → visual mapping:

@@ -64,7 +64,9 @@ it rebuilds its memo state from the trail).
 chain-consistent — **not** yet a cryptographic byte hash. The signer is an
 explicit null state (`{ scheme: "none", null_reason: "no-signer-adapter-configured" }`);
 a real signing adapter is named roadmap. The library refuses to claim a
-signature scheme it doesn't have.
+signature scheme it doesn't have. The cryptographic byte-hash signer — binding
+`world-models/*/published.json` to its receipt so cross-boundary composition is
+non-repudiable — is **targeted for 2026 H2** (tracked as `C3` in the Reactor backlog).
 
 ## SDK quickstart
 
@@ -215,7 +217,7 @@ void durable; void ephemeral;
 
 ## Public Subpaths
 
-The package exposes **six reasoned entrypoints** (the `0.3.0` ideal surface). The
+The package exposes **six reasoned entrypoints** (the `0.3.1` ideal surface). The
 curated front door is `.`; everything deep stays reachable via `/internals` (no
 name was removed — see the package's capability ledger):
 

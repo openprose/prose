@@ -243,6 +243,17 @@ test("describe labels every cost figure with the `tokens` unit", () => {
   const result = describeStateDir(openStateDir(FIXTURE)).text;
   assert.ok(/COST ROLLUP\s+\(tokens\)/.test(result), "rollup header carries the unit");
   assert.ok(/total\s+fresh=\d+ tokens · reused=\d+ tokens/.test(result), "total is in tokens");
+  // IDD-reuse: the defensible memo-skip count leads the rollup; provider-reported
+  // `reuse=%` is demoted to a clearly-labeled secondary line (not the headline).
+  assert.ok(/memo-skips\s+\d+/.test(result), "memo-skip count is present in the rollup");
+  assert.ok(
+    result.indexOf("memo-skips") < result.indexOf("total       fresh="),
+    "memo-skip count leads, before the total fresh/reused line",
+  );
+  assert.ok(
+    /prompt-cache reuse\s+\d+%\s+\(provider-reported/.test(result),
+    "reuse% is demoted to a provider-reported secondary line",
+  );
   // a per-cause line and a per-node line each carry the unit.
   assert.ok(/receipts=\s*\d+\s+fresh=\d+\s+tokens reused=\d+ tokens/.test(result), "per-cause in tokens");
   assert.ok(/fresh=\d+\s+tokens chain[✓✗]/.test(result), "per-node fresh is in tokens");

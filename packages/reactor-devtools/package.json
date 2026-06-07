@@ -54,7 +54,7 @@
     "test": "pnpm typecheck && pnpm test:runtime"
   },
   "dependencies": {
-    "@openprose/reactor": "workspace:*"
+    "@openprose/reactor": "workspace:^"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",

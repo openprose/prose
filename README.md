@@ -74,10 +74,10 @@ The intelligence is frozen ahead of time, at compile, into a per-node canonicali
 > - **Old ledgers are abandoned, not migrated.** Existing runtime data (old `ReceiptV0` ledgers, the policy registry, bundled `runs/`/`state/`/`dist/`) is **greenfield**: there is **no data migrator**. Only your **source text** upgrades. Re-run from a clean state-dir.
 > - **Upgrade your source with a dry run first.** `prose upgrade --dry-run` (a prose skill command, run inside an OpenProse session, not the reactor CLI) inspects your files and reports the concrete migration plan **without editing**: mechanical rewrites where safe, surfaced as manual-review diagnostics where judgment is needed (e.g. a `system`/`### Wiring` flatten-or-split). Run it before `prose upgrade`.
 
-> **Versions (live on npm):** `@openprose/reactor` 0.3.0 ·
-> `@openprose/reactor-cli` 0.2.0 · `@openprose/reactor-devtools` 0.2.0. The `reactor` binary ships from the
-> **`reactor-cli`** package, so `reactor --version` prints the CLI version (0.2.0), not the
-> SDK version (0.3.0). Expected, not a mismatch.
+> **Versions (live on npm):** `@openprose/reactor` 0.3.1 ·
+> `@openprose/reactor-cli` 0.2.2 · `@openprose/reactor-devtools` 0.2.0. The `reactor` binary ships from the
+> **`reactor-cli`** package, so `reactor --version` prints the CLI version (0.2.2), not the
+> SDK version (0.3.1). Expected, not a mismatch.
 
 ## Quickstart (60 seconds, no model key)
 
@@ -98,6 +98,11 @@ npm install @openprose/reactor @openprose/reactor-cli @openprose/reactor-devtool
 # then call the binaries with `npx reactor …` / `npx reactor-devtools …`
 ```
 
+> **Footprint:** the keyless replay above needs **no install**; the **SDK core**
+> (`@openprose/reactor`) alone is zero-runtime-dependency; the **full quickstart** (CLI +
+> devtools + the live-render peers `@openai/agents`/`zod`) pulls the agent/provider tree —
+> on the order of **~99 MB / ~100 packages** (measured 2026-06-06).
+
 > **Local install?** The bare `reactor …` / `reactor-devtools …` commands shown below assume the
 > binaries are on your `PATH` (a global install). After the project-local `npm install` above,
 > prepend `npx` to them, e.g. `npx reactor init my-project`, `npx reactor-devtools ./replay --describe`.
@@ -112,9 +117,12 @@ npm i -g @openprose/reactor @openprose/reactor-cli @openprose/reactor-devtools
 A global `-g` can collide with other tools' binaries, and on Linux/WSL it may fail with
 `EACCES`. Use a user prefix (nvm) or `sudo`, or just prefer the local install above.
 
-**Air-gapped?** The _runtime_ is offline-clean, but any `npm i`/`npm i -g` still reaches the
-registry once for the CLI's `commander` dependency; replay / `doctor` / `compile --check`
-afterward do not.
+**Air-gapped?** The _runtime_ is offline-clean, but the full quickstart `npm install` of all
+three packages still reaches the registry once and pulls the CLI plus the live-render
+agent/provider stack (`@openai/agents`, `zod`, and their transitive express/MCP/realtime tree)
+— on the order of **~99 MB / ~100 packages** (measured 2026-06-06). The **SDK core**
+(`@openprose/reactor`) is genuinely zero-runtime-dependency, and the keyless replay / `doctor` /
+`compile --check` paths need none of that tree afterward.
 
 </details>
 
@@ -239,7 +247,7 @@ In the spirit of the receipts:
 
 - **Built and runnable:** the render atom, the content-addressed world-model store, the compiled canonicalizer with facets, Forme's wiring with diagnostics + acyclicity, postcondition-gated commits (no judge step), the chain-verifiable receipt ledger, and the forecast/continuity scheduler, all exercised by an offline test suite (no model calls in the commit gate) plus the 13 example gates.
 - **Benchmarks are openly pending, on purpose.** We're publishing the harness before the numbers; we won't imply a measured speedup we haven't run. The proof you can check today is the keyless replay above.
-- **Signer caveat:** in v1, _signed_ means tamper-evident at the meaning layer and chain-consistent, not yet a cryptographic byte hash. `reactor receipts verify` proves the receipt **chain** is consistent, but does not yet bind the world-model artifacts (editing a `world-models/*/published.json` while leaving `receipts.json` intact is not caught). The `tamper-forge` example demonstrates exactly this boundary.
+- **Signer caveat:** in v1, _signed_ means tamper-evident at the meaning layer and chain-consistent, not yet a cryptographic byte hash. `reactor receipts verify` proves the receipt **chain** is consistent, but does not yet bind the world-model artifacts (editing a `world-models/*/published.json` while leaving `receipts.json` intact is not caught). The `tamper-forge` example demonstrates exactly this boundary. So the chain is tamper-_evident_ (it catches an independent edit) but not tamper-_proof_: a forge that re-stamps the **whole** trail with the public `computeReceiptContentHash` re-heals it. The cryptographic byte-hash signer that closes this — binding the published world-model to its receipt and making cross-boundary composition non-repudiable — is **targeted for 2026 H2** (tracked as `C3` in the Reactor backlog).
 - **No timestamp, no actor (yet):** a v1 receipt records _what_ changed and _why_ (fingerprints, wake cause, status, cost) but not _when_ it was committed or _who_ committed it, so the ledger is a verifiable record of decisions and their evidence, **not yet a substitute for an external audit log** that must answer "at what time, by which principal."
 - The **fixpoint** (topology-as-responsibility) is specified and deferred; facet inference and ledger compaction are named roadmap.
 

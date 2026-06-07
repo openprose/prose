@@ -1017,8 +1017,15 @@ export function describeStateDir(
   lines.push("");
   lines.push(`COST ROLLUP  (tokens)`);
   lines.push(
-    `  total       fresh=${t.fresh} tokens · reused=${t.reused} tokens · ` +
-      `reuse=${t.fresh + t.reused > 0 ? Math.round((t.reused / (t.fresh + t.reused)) * 100) : 0}%`,
+    `  memo-skips  ${status.skipped}  (Reactor renders skipped — zero fresh tokens each)`,
+  );
+  lines.push(
+    `  total       fresh=${t.fresh} tokens · reused=${t.reused} tokens`,
+  );
+  lines.push(
+    `  prompt-cache reuse  ${
+      t.fresh + t.reused > 0 ? Math.round((t.reused / (t.fresh + t.reused)) * 100) : 0
+    }%  (provider-reported; can be 0% on the default model)`,
   );
   for (const [cause, b] of Object.entries(snapshot.costRollup.byCause)) {
     if (b.receipts === 0) continue;
