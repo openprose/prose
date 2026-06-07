@@ -1,0 +1,144 @@
+// connectors.cjs — REAL merged-PR scanner over `git log` (opt-in live path).
+//
+// Keyed `github` to match `source_id: github` in reactor.yml. When this file is
+// present alongside reactor.yml, the plugin connector for source_id `github` wins
+// over the built-in `static` connector at run/serve time (except under the offline
+// gate, which injects a fake fetch and ignores the plugin).
+//
+// fetch(req): run `git log` on the watched repo for first-parent merges to the
+//   default branch since a persisted cursor (last-seen commit sha), and return ONE
+//   arrival per merged PR with the inline evidence change-signal needs: number,
+//   title, body, the semicolon-delimited changed-file-path list, and a diffstat.
+//   It never returns the full diff.
+// extract(payload): the arrivals are already { id, item }; pass them through.
+//
+// Plain Node, no dependencies. Point it at the repo whose merges drive the public
+// docs: by default the prose monorepo this example lives in. Override with
+// DOCS_SYNTH_REPO=/path/to/repo.
+
+const fs = require("fs");
+const path = require("path");
+const { execFileSync } = require("child_process");
+
+const CURSOR_PATH = path.join(__dirname, ".reactor", "git-scan-cursor.json");
+const BODY_MAX = 600;
+const MAX_PRS_PER_POLL = 25; // cap a cold scan so one poll stays bounded
+
+function repoRoot() {
+  if (process.env.DOCS_SYNTH_REPO) return process.env.DOCS_SYNTH_REPO;
+  // default: the git toplevel containing this example
+  try {
+    return git(["rev-parse", "--show-toplevel"], __dirname).trim();
+  } catch {
+    return __dirname;
+  }
+}
+
+function git(args, cwd) {
+  return execFileSync("git", args, { cwd, encoding: "utf8", maxBuffer: 32 * 1024 * 1024 });
+}
+
+function loadCursor() {
+  try {
+    return JSON.parse(fs.readFileSync(CURSOR_PATH, "utf8"));
+  } catch {
+    return {};
+  }
+}
+
+function saveCursor(map) {
+  try {
+    fs.mkdirSync(path.dirname(CURSOR_PATH), { recursive: true });
+    fs.writeFileSync(CURSOR_PATH, JSON.stringify(map, null, 2));
+  } catch {
+    // best-effort cursor; a failed write just means a re-scan next poll
+  }
+}
+
+// Pull a PR number out of a merge commit subject/body:
+//   "Merge pull request #123 from ..."  or  "Squash title (#123)"
+function prNumber(subject, body) {
+  const m = (subject + "\n" + body).match(/(?:pull request #|\(#)(\d+)\)?/);
+  return m ? Number(m[1]) : null;
+}
+
+function scan() {
+  const root = repoRoot();
+  const prev = loadCursor();
+  const sinceSha = prev[root];
+
+  // First-parent log: each entry is a merge (or squash) onto the default branch.
+  // Record separator \x1e, field separator \x1f.
+  const range = sinceSha ? `${sinceSha}..HEAD` : "-30"; // cold start: last 30
+  const fmt = "%H%x1f%s%x1f%b%x1e";
+  let out = "";
+  try {
+    const args = ["log", "--first-parent", `--pretty=format:${fmt}`];
+    if (sinceSha) args.push(range);
+    else args.push("-n", "30");
+    out = git(args, root);
+  } catch {
+    return { arrivals: [], next: prev }; // not a git repo / git unavailable
+  }
+
+  const records = out.split("\x1e").map((r) => r.trim()).filter(Boolean);
+  const arrivals = [];
+  let newestSha = sinceSha;
+
+  for (const rec of records.slice(0, MAX_PRS_PER_POLL)) {
+    const [sha, subject = "", body = ""] = rec.split("\x1f");
+    if (!newestSha) newestSha = sha; // records are newest-first
+    const number = prNumber(subject, body);
+    if (number === null) continue; // not a PR merge — skip
+
+    let files = "";
+    let diffstat = "";
+    try {
+      files = git(["show", "--name-only", "--pretty=format:", sha], root)
+        .split("\n")
+        .map((l) => l.trim())
+        .filter(Boolean)
+        .join(";");
+      const stat = git(["show", "--stat", "--pretty=format:", sha], root)
+        .trim()
+        .split("\n")
+        .filter(Boolean);
+      diffstat = stat.length ? stat[stat.length - 1].trim() : "";
+    } catch {
+      // a malformed/empty commit — emit identity only
+    }
+
+    arrivals.push({
+      id: `pr-${number}`,
+      item: {
+        number,
+        title: subject,
+        body: body.slice(0, BODY_MAX),
+        files,
+        diffstat,
+        merge_sha: sha.slice(0, 7),
+        fingerprint: `pr-${number}:${sha.slice(0, 7)}`,
+      },
+    });
+  }
+
+  const next = { ...prev };
+  if (newestSha) next[root] = newestSha;
+  return { arrivals, next };
+}
+
+module.exports = {
+  connectors: {
+    github: {
+      // fetch returns the raw merged-PR arrivals; the cursor is persisted here so
+      // a re-poll dedups even before the host cursor sees it.
+      fetch: async () => {
+        const { arrivals, next } = scan();
+        saveCursor(next);
+        return arrivals; // already in { id, item } shape
+      },
+      // arrivals are already { id, item }; pass them through unchanged.
+      extract: (payload) => (Array.isArray(payload) ? payload : []),
+    },
+  },
+};
