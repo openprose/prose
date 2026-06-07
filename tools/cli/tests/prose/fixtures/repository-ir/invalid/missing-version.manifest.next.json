@@ -1,0 +1,14 @@
+{
+  "kind": "openprose.repository-ir",
+  "sources": [
+    {
+      "path": "bad.prose.md",
+      "kind": "responsibility"
+    }
+  ],
+  "responsibilities": [],
+  "triggers": [],
+  "activations": [],
+  "formeManifests": [],
+  "diagnostics": []
+}

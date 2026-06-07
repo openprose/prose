@@ -1,0 +1,66 @@
+{
+  "kind": "openprose.repository-ir",
+  "version": 0,
+  "sources": [
+    {
+      "path": "tests/open-prose/compiler/fixtures/ambiguous-fulfillment/customer-intake.prose.md",
+      "kind": "responsibility",
+      "name": "customer-intake"
+    },
+    {
+      "path": "tests/open-prose/compiler/fixtures/ambiguous-fulfillment/research-system.prose.md",
+      "kind": "system",
+      "name": "research-system"
+    },
+    {
+      "path": "tests/open-prose/compiler/fixtures/ambiguous-fulfillment/outreach-system.prose.md",
+      "kind": "system",
+      "name": "outreach-system"
+    }
+  ],
+  "responsibilities": [
+    {
+      "id": "067NC4KG05XGS38E1W8124GK2G",
+      "sourcePath": "tests/open-prose/compiler/fixtures/ambiguous-fulfillment/customer-intake.prose.md",
+      "goal": "Promising customer requests are noticed, understood, and routed to a useful next action.",
+      "continuity": [
+        "Review open requests often enough that promising requests are not stale for more than one week."
+      ],
+      "criteria": [
+        "Each promising request has evidence, context, and a recommended next action."
+      ],
+      "constraints": [
+        "Do not fabricate context or overstate certainty."
+      ],
+      "tools": []
+    }
+  ],
+  "triggers": [
+    {
+      "id": "customer-intake.periodic-check",
+      "responsibilityId": "067NC4KG05XGS38E1W8124GK2G",
+      "kind": "cron",
+      "cron": "0 9 * * *",
+      "reason": "Continuity requires checking often enough that promising requests are not stale for more than one week."
+    }
+  ],
+  "activations": [
+    {
+      "id": "customer-intake.judge",
+      "responsibilityId": "067NC4KG05XGS38E1W8124GK2G",
+      "kind": "judge",
+      "triggerIds": [
+        "customer-intake.periodic-check"
+      ],
+      "reason": "Determine whether the responsibility is up, drifting, down, or blocked."
+    }
+  ],
+  "formeManifests": [],
+  "diagnostics": [
+    {
+      "severity": "warning",
+      "message": "Fulfillment could not be inferred because multiple systems appear plausible.",
+      "sourcePath": "tests/open-prose/compiler/fixtures/ambiguous-fulfillment/customer-intake.prose.md"
+    }
+  ]
+}

@@ -22,6 +22,10 @@ import { existsSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, 
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { ATOMIC_FACET, type Receipt } from "@openprose/reactor";
+// `node`/`contract_fingerprint`/`fingerprints` on a Receipt are branded
+// (NodeId/Fingerprint); author fixtures with the same constructors the bridge
+// uses (`repository-reactor.ts` imports them from the same /internals surface).
+import { asFingerprint, asNodeId } from "@openprose/reactor/internals";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -293,11 +297,11 @@ describe("fingerprintNode", () => {
 describe("deriveRepositoryReactorStatus (G6)", () => {
 	function receiptWithStatus(status: Receipt["status"]): Receipt {
 		return {
-			node: "monitor-funding",
-			contract_fingerprint: "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+			node: asNodeId("monitor-funding"),
+			contract_fingerprint: asFingerprint("sha256:0000000000000000000000000000000000000000000000000000000000000000"),
 			wake: { source: "external", refs: [] },
 			input_fingerprints: [],
-			fingerprints: { [ATOMIC_FACET]: "sha256:1111111111111111111111111111111111111111111111111111111111111111" },
+			fingerprints: { [ATOMIC_FACET]: asFingerprint("sha256:1111111111111111111111111111111111111111111111111111111111111111") },
 			semantic_diff: {},
 			prev: null,
 			status,

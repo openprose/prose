@@ -4,13 +4,13 @@
   "private": true,
   "packageManager": "pnpm@9.15.0",
   "scripts": {
-    "build": "pnpm --filter @openprose/reactor build && pnpm --filter @openprose/reactor-cli build && pnpm --filter @openprose/reactor-devtools build && pnpm --filter @openprose/prose-cli build",
-    "test": "pnpm --filter @openprose/reactor test && pnpm --filter @openprose/reactor-cli test && pnpm --filter @openprose/reactor-devtools test && pnpm --filter @openprose/prose-cli test && pnpm test:skill && pnpm test:examples",
+    "build": "pnpm --filter @openprose/reactor build && pnpm --filter @openprose/reactor-cli build && pnpm --filter @openprose/reactor-devtools build",
+    "test": "pnpm --filter @openprose/reactor test && pnpm --filter @openprose/reactor-cli test && pnpm --filter @openprose/reactor-devtools test && pnpm test:skill && pnpm test:examples",
     "test:reactor:offline": "REACTOR_OFFLINE=1 pnpm --filter @openprose/reactor test && REACTOR_OFFLINE=1 pnpm --filter @openprose/reactor-cli test && REACTOR_OFFLINE=1 pnpm --filter @openprose/reactor-devtools test",
-    "test:skill": "vitest run tests/open-prose",
-    "test:examples": "REACTOR_OFFLINE=1 vitest run tests/open-prose/examples skills/open-prose/examples && pnpm test:eval:offline",
+    "test:skill": "REACTOR_OFFLINE=1 vitest run tests/open-prose",
+    "test:examples": "REACTOR_OFFLINE=1 vitest run tests/open-prose/examples && pnpm test:eval:offline",
     "test:eval:offline": "REACTOR_OFFLINE=1 node --test tools/eval-harness/eval-harness.test.mjs",
-    "lint": "pnpm --filter @openprose/reactor run lint --if-present && pnpm --filter @openprose/reactor-cli run lint --if-present && pnpm --filter @openprose/reactor-devtools run lint --if-present && pnpm --filter @openprose/prose-cli run lint --if-present"
+    "lint": "pnpm --filter @openprose/reactor run lint --if-present && pnpm --filter @openprose/reactor-cli run lint --if-present && pnpm --filter @openprose/reactor-devtools run lint --if-present"
   },
   "devDependencies": {
     "vitest": "^4.1.8"

@@ -1,4 +1,4 @@
-# Live runtime churn — the committed replay/ fixture is NOT ignored.
+# Local runtime churn, not committed.
 /state/
 /runs/
 *.log

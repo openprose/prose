@@ -384,8 +384,9 @@ defense is structural, not a confidence score:
 - **No judge, no calibration, no ensemble in the loop.** There is no confidence
   signal to calibrate and no ensemble-diversity floor, because the commit
   decision is deterministic. How well an individual model renders is a
-  model-choice question measured *offline* (see [04-Evals.md](./04-Evals.md)),
-  never a runtime control input.
+  model-choice question measured *offline* (the eval methodology and suite are
+  tracked in the Reactor backlog, not in this corpus), never a runtime control
+  input.
 
 **Privacy is a failure mode, and the published/workspace split is the
 safeguard.** A render works in a **private workspace** that never leaves the

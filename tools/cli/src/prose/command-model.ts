@@ -1,6 +1,7 @@
 export type CommandName =
 	| "compile"
 	| "run"
+	| "react"
 	| "write"
 	| "lint"
 	| "preflight"
@@ -25,6 +26,7 @@ export class CommandModelError extends Error {
 export const supportedCommands = [
 	"compile",
 	"run",
+	"react",
 	"write",
 	"lint",
 	"preflight",
@@ -40,6 +42,7 @@ export const supportedCommands = [
 const usageByCommand: Record<CommandName, string> = {
 	compile: "prose compile [path] [--out <dir>]",
 	run: "prose run <file.prose.md|package/handle> [inputs...]",
+	react: "prose react [use case...] [--start]",
 	write: "prose write [request...]",
 	lint: "prose lint <file.prose.md>",
 	preflight: "prose preflight <file.prose.md>",
@@ -89,6 +92,9 @@ function validate(command: CommandName, args: readonly string[]): void {
 			if (args[0]?.endsWith(".prose") || (args[0]?.endsWith(".md") && !args[0].endsWith(".prose.md"))) {
 				fail(command, `Expected <file.prose.md|package/handle> for 'prose run', got '${args[0]}'.`);
 			}
+			return;
+		case "react":
+			requireReactArgs(command, args);
 			return;
 		case "write":
 			requireNonBlankWriteRequest(command, args);
@@ -168,6 +174,26 @@ function requireExactlyOne(command: CommandName, args: readonly string[], label:
 	if (args.length > 1) {
 		const extra = args[1] ?? "";
 		fail(command, `Unexpected ${extra.startsWith("-") ? "option" : "argument"} '${extra}' for 'prose ${command}'.`);
+	}
+}
+
+function requireReactArgs(command: "react", args: readonly string[]): void {
+	// `prose react [use case...] [--start]`: free-form use-case text (optional —
+	// the agent may ask interactively) plus an optional `--start` flag. Reject any
+	// other long option so a typo'd flag fails loudly instead of leaking into the
+	// forwarded prompt.
+	let sawStart = false;
+	for (const arg of args) {
+		if (arg === "--start") {
+			if (sawStart) {
+				fail(command, "Duplicate option for 'prose react'.");
+			}
+			sawStart = true;
+			continue;
+		}
+		if (arg.startsWith("--") && arg !== "--") {
+			fail(command, `Unexpected option '${arg}' for 'prose react'.`);
+		}
 	}
 }
 

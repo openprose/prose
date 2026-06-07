@@ -5,52 +5,81 @@
  * S2 animation hooks (flash / dim-pulse / red / edge-light / sparkline) layer
  * on top of these same classes — colors are defined here as CSS variables so
  * S2 only adds keyframes + a few transient classes. */
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/jetbrains-mono-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/jetbrains-mono-500.woff2") format("woff2");
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/jetbrains-mono-700.woff2") format("woff2");
+}
+
 :root {
-  --bg: #0b0e14;
-  --bg-grad: radial-gradient(1200px 700px at 28% -10%, #131a27 0%, #0b0e14 60%);
-  --panel: #11151f;
-  --panel-2: #0e121b;
-  --ink: #d7dce5;
-  --ink-dim: #6b7484;
-  --ink-faint: #424b5c;
-  --line: #1d2433;
-  --line-soft: #161c28;
+  /* ── Machine surface (OpenProse Run · DESIGN.md §2 machine sub-palette) ──
+   * The devtools is the sanctioned dark "Reactor monitor". Flat charcoal,
+   * no gradients, single-voice JetBrains Mono. Var NAMES are unchanged from
+   * the original dark theme so app.js + every selector keep working. */
 
-  /* disposition colors (shared by graph + timeline) */
-  --rendered: #6ee7ff;
-  --rendered-deep: #2bb6da;
-  --skipped: #5b6678;
-  --failed: #ff5d6c;
-  --recovered: #4ee08a;
+  --bg:        #1a1c22;            /* machine — FLAT page ground */
+  --bg-grad:   none;              /* design: no gradients (was a radial) */
+  --panel:     #23262e;            /* machine-bar — chrome bars (scrubber) */
+  --panel-2:   #1e2026;            /* sidebar/panel body, one hair off machine */
+  --ink:       #e8e5de;            /* machine-fg — body text */
+  --ink-dim:   #9aa1ac;            /* machine-dim — labels / eyebrows */
+  --ink-faint: rgba(154,161,172,0.5);  /* faint marginalia (machine-dim @50%) */
+  --line:      rgba(255,255,255,0.09); /* machine hairline (~#2b2f37), 1px */
+  --line-soft: rgba(255,255,255,0.05); /* fainter inner rules */
 
-  /* The "lit / freshly-rendered" accent — matches the orange `--fresh` /
-   * "rendered" legend swatch so a node that just rendered POPS the same warm hue
-   * the cost meter spends in. This is the hero contrast: a lit box is hot orange,
-   * a dark box recedes toward the page background. */
-  --lit: #ff9a4d;
-  --lit-soft: #ffb877;
+  /* disposition colors (shared by graph + timeline). All verified on #1a1c22:
+   *   machine-ok  #5bbf7a ≈7.4:1 · machine-gold #caa96b ≈7.6:1
+   *   machine-dim #9aa1ac ≈6.5:1 · violet #b39ddb ≈7.0:1 · red #e0635a ≈4.7:1 */
+  --rendered:      #5bbf7a;   /* input-wake render = machine-ok GREEN */
+  --rendered-deep: #4a9e64;   /* deeper green for fills/underlays */
+  --skipped:       #9aa1ac;   /* machine-dim GREY — "correctly did nothing" */
+  --failed:        #e0635a;   /* machine red (deeper than design #f87171 for AA) */
+  --recovered:     #5bbf7a;   /* recovery resolves to machine-ok GREEN */
 
-  /* wake-cause accents */
-  --cause-input: #6ee7ff;
-  --cause-self: #c08bff;
-  --cause-external: #ffce6e;
+  /* The "lit / freshly-rendered" + active-propagation accent. On the machine
+   * surface the ACTIVE thing traveling the dark graph (lit path, edge beads,
+   * the spend) is machine-gold — the prompt/keyword/spend hue. */
+  --lit:      #caa96b;        /* machine-gold — lit path + render head */
+  --lit-soft: #d8be8c;        /* a lighter gold for path-node floor / dash */
 
-  --entry: #ffce6e;
-  --edge: #283143;
-  --edge-atomic: #2f3a4f;
-  --node-fill: #161d2b;
-  --node-stroke: #2c3548;
-  --fresh: #ff8a5c;
-  --reused: #3f8f6b;
+  /* wake-cause accents (the render-flash hue encodes WHY a node woke).
+   * input → green (default render), external → gold, self → labeled violet. */
+  --cause-input:    #5bbf7a;  /* machine-ok GREEN */
+  --cause-self:     #b39ddb;  /* labeled VIOLET — distinct self-tick */
+  --cause-external: #caa96b;  /* machine-gold */
+
+  --entry:       #caa96b;     /* entry/gateway node = machine-gold border */
+  --edge:        rgba(255,255,255,0.10);  /* resting dark-lane edge */
+  --edge-atomic: rgba(255,255,255,0.16);  /* @atomic lane, a touch brighter */
+  --node-fill:   #23262e;     /* machine-bar — resting node box */
+  --node-stroke: rgba(255,255,255,0.14);  /* resting node border */
+  --fresh:       #caa96b;     /* cost meter: fresh tokens = machine-gold (spend) */
+  --reused:      #5bbf7a;     /* cost meter: reused = machine-ok green (used @ ~45%) */
 }
 
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; }
 body {
   background: var(--bg);
-  background-image: var(--bg-grad);
   color: var(--ink);
-  font: 12.5px/1.5 ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+  font: 12.5px/1.5 "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
   display: grid;
   grid-template-rows: auto 1fr auto;
   height: 100vh;
@@ -64,14 +93,23 @@ body {
   gap: 18px;
   padding: 10px 16px;
   border-bottom: 1px solid var(--line);
-  background: linear-gradient(180deg, #0e131d, #0b0e14);
+  background: var(--panel);        /* was a linear-gradient — now flat machine-bar */
 }
-.brand { font-weight: 600; letter-spacing: 0.04em; font-size: 13px; }
+/* three faint window-chrome dots (mirrors RunTerminal.tsx: white/15, 10px) */
+.windots { display: inline-flex; align-items: center; gap: 7px; }
+.windots i {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: rgba(255,255,255,0.15);
+  display: inline-block;
+}
+/* wordmark: machine-dim, mono, the single gold accent on "reactor" */
+.brand { font-weight: 500; letter-spacing: 0.08em; font-size: 13px; color: var(--ink-dim); text-transform: lowercase; }
+.brand .brand-accent { color: var(--lit); }   /* gold "reactor" — the one accent */
 .brand-dim { color: var(--ink-dim); }
 .legend { display: flex; gap: 14px; color: var(--ink-dim); font-size: 11px; }
 .lg { display: inline-flex; align-items: center; gap: 5px; }
 .lg i { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
-.lg-rendered i { background: var(--lit); box-shadow: 0 0 6px var(--lit); }
+.lg-rendered i { background: var(--rendered); box-shadow: 0 0 4px var(--lit); }
 .lg-skipped i { background: var(--skipped); }
 .lg-failed i { background: var(--failed); }
 .lg-entry i { background: transparent; border: 1.5px solid var(--entry); border-radius: 50%; }
@@ -114,14 +152,13 @@ body {
   transform: translate(-50%, -6px);
   padding: 7px 14px;
   border-radius: 999px;
-  background: rgba(14, 18, 27, 0.82);
+  background: var(--panel);
   border: 1px solid var(--line);
   color: var(--ink);
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.01em;
-  backdrop-filter: blur(6px);
-  box-shadow: 0 8px 24px -10px #000, 0 0 0 1px rgba(110, 231, 255, 0.06);
+  box-shadow: 0 4px 6px -1px rgba(0,0,0,.45), 0 2px 4px -2px rgba(0,0,0,.45);
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.28s ease, transform 0.28s ease;
@@ -133,7 +170,7 @@ body {
   width: 7px; height: 7px;
   border-radius: 50%;
   background: var(--rendered);
-  box-shadow: 0 0 8px var(--rendered);
+  box-shadow: 0 0 4px var(--rendered);
   margin-right: 8px;
   vertical-align: middle;
 }
@@ -164,7 +201,7 @@ body {
   stroke-width: 2.6;
   opacity: 1;
   stroke-dasharray: none;
-  filter: drop-shadow(0 0 5px rgba(255, 154, 77, 0.85)) drop-shadow(0 0 2px rgba(255, 154, 77, 0.9));
+  filter: drop-shadow(0 0 5px rgba(202, 169, 107, 0.85)) drop-shadow(0 0 2px rgba(202, 169, 107, 0.9));
 }
 .edge-label {
   fill: var(--ink-faint);
@@ -191,7 +228,7 @@ body {
 .node-label.labeled {
   font-size: 14.5px;
   font-weight: 600;
-  font-family: -apple-system, "SF Pro Text", "Inter", system-ui, sans-serif;
+  font-family: "JetBrains Mono", ui-monospace, monospace;   /* was system sans */
   letter-spacing: 0.01em;
 }
 .node-sub {
@@ -207,8 +244,8 @@ body {
  * rendered head is the bright lit orange (the `.rendered-now`/`.recovered-now`
  * classes above carry the saturated glow); a skipped head is grey; a failed head
  * is red. */
-.node.hit .node-box { stroke: var(--lit); stroke-width: 2.4; fill: #20170f; }
-.node.hit.skipped .node-box { stroke: var(--skipped); fill: #161b24; filter: none; }
+.node.hit .node-box { stroke: var(--lit); stroke-width: 2.4; fill: #2b2f37; }
+.node.hit.skipped .node-box { stroke: var(--skipped); fill: #1e2026; filter: none; }
 /* The FAILED head must POP as hard as the orange wake (review #3): a saturated
  * red FILL + a double glow, not a thin outline. A parked still on the fail beat
  * reads "this node failed" instantly at Twitter scale, and the lit-path overlay
@@ -216,8 +253,8 @@ body {
 .node.hit.failed .node-box {
   stroke: var(--failed);
   stroke-width: 3.2;
-  fill: #3a131a;
-  filter: drop-shadow(0 0 12px rgba(255, 93, 108, 0.75)) drop-shadow(0 0 4px rgba(255, 93, 108, 0.9));
+  fill: #2e1a1d;
+  filter: drop-shadow(0 0 6px rgba(255, 93, 108, 0.75)) drop-shadow(0 0 4px rgba(255, 93, 108, 0.9));
 }
 .node.hit .node-label { fill: #ffe8d4; }
 .node.hit.skipped .node-label { fill: var(--ink-dim); }
@@ -230,7 +267,7 @@ body {
  * makes a node "come alive" smoothly the first time a receipt hits it.) */
 .node.untouched .node-box {
   opacity: 0.26;
-  fill: #0a0e16;
+  fill: #15171c;
   stroke: var(--line-soft);
 }
 .node.untouched .node-label, .node.untouched .node-sub { opacity: 0.24; }
@@ -242,7 +279,7 @@ body {
  * deep-link, so the keyframe PNG is shot at full brightness, not mid-decay). */
 .node.lit-floor .node-box {
   stroke: #3a4252;
-  fill: #11151e;
+  fill: #1e2026;
 }
 .node.lit-floor .node-label { fill: #aab4c4; }
 .node.lit-floor .node-sub { fill: var(--ink-dim); }
@@ -254,14 +291,14 @@ body {
 .node.path-node .node-box {
   stroke: var(--lit-soft);
   stroke-width: 1.8;
-  fill: #1d1610;
-  filter: drop-shadow(0 0 4px rgba(255, 154, 77, 0.32));
+  fill: #2b2f37;
+  filter: drop-shadow(0 0 4px rgba(202, 169, 107, 0.32));
 }
 .node.path-node .node-label { fill: #ffd9b8; }
 .node.path-node .node-sub { fill: #b48a63; }
 /* the head node's own `.rendered-now` / `.recovered-now` glow wins over path-node */
 .node.path-node.rendered-now .node-box,
-.node.path-node.recovered-now .node-box { fill: #241a12; }
+.node.path-node.recovered-now .node-box { fill: #2b2f37; }
 
 /* THE freshly-rendered node at the head — bright saturated orange border + a
  * subtle warm fill glow, matching the "rendered" legend swatch. This is the
@@ -271,21 +308,21 @@ body {
 .node.rendered-now .node-box {
   stroke: var(--lit);
   stroke-width: 2.6;
-  fill: #241a12;
-  filter: drop-shadow(0 0 10px rgba(255, 154, 77, 0.55)) drop-shadow(0 0 3px rgba(255, 154, 77, 0.7));
+  fill: #2b2f37;
+  filter: drop-shadow(0 0 6px rgba(202, 169, 107, 0.55)) drop-shadow(0 0 3px rgba(202, 169, 107, 0.7));
 }
 .node.rendered-now .node-label { fill: #ffd9b8; }
 .node.rendered-now.cause-self .node-box {
   stroke: var(--cause-self);
-  fill: #1d1626;
-  filter: drop-shadow(0 0 10px rgba(192, 139, 255, 0.5)) drop-shadow(0 0 3px rgba(192, 139, 255, 0.7));
+  fill: #262433;
+  filter: drop-shadow(0 0 6px rgba(179, 157, 219, 0.5)) drop-shadow(0 0 3px rgba(179, 157, 219, 0.7));
 }
 .node.rendered-now.cause-self .node-label { fill: #e6d6ff; }
 .node.recovered-now .node-box {
   stroke: var(--recovered);
   stroke-width: 2.6;
-  fill: #122218;
-  filter: drop-shadow(0 0 10px rgba(78, 224, 138, 0.5)) drop-shadow(0 0 3px rgba(78, 224, 138, 0.7));
+  fill: #1c2a22;
+  filter: drop-shadow(0 0 6px rgba(91, 191, 122, 0.5)) drop-shadow(0 0 3px rgba(91, 191, 122, 0.7));
 }
 .node.recovered-now .node-label { fill: #c8f7da; }
 
@@ -296,8 +333,8 @@ body {
 .node.self-now .node-box {
   stroke: var(--cause-self);
   stroke-width: 2.4;
-  fill: #1c1430;
-  filter: drop-shadow(0 0 12px rgba(192, 139, 255, 0.6)) drop-shadow(0 0 4px rgba(192, 139, 255, 0.55));
+  fill: #262433;
+  filter: drop-shadow(0 0 6px rgba(179, 157, 219, 0.6)) drop-shadow(0 0 4px rgba(179, 157, 219, 0.55));
 }
 .node.self-now .node-label { fill: #e8ddff; }
 .node.self-now .node-halo {
@@ -344,12 +381,12 @@ body {
   100% { opacity: 0;    transform: scale(1.14); }
 }
 @keyframes nodeFlashBox {
-  0%   { stroke: var(--flash); stroke-width: 4; filter: drop-shadow(0 0 18px var(--flash)) drop-shadow(0 0 7px var(--flash)); fill: #2a1d12; }
-  60%  { stroke: var(--flash); stroke-width: 2.8; filter: drop-shadow(0 0 9px var(--flash)); fill: #20170f; }
+  0%   { stroke: var(--flash); stroke-width: 4; filter: drop-shadow(0 0 6px var(--flash)) drop-shadow(0 0 5px var(--flash)); fill: #2b2f37; }
+  60%  { stroke: var(--flash); stroke-width: 2.8; filter: drop-shadow(0 0 5px var(--flash)); fill: #2b2f37; }
   /* decays to the cool lit-floor steady state, NOT all the way back to dark — so
    * the node stays visibly "alive" between pulses (review #1/#3) while the FRESH
-   * head node (`.rendered-now`) stays blazing orange so the hero contrast holds. */
-  100% { stroke: #3a4252; stroke-width: 1.6; filter: none; fill: #11151e; }
+   * head node (`.rendered-now`) stays blazing gold so the hero contrast holds. */
+  100% { stroke: #3a4252; stroke-width: 1.6; filter: none; fill: #1e2026; }
 }
 @keyframes nodeFlashLabel {
   0%   { fill: #f3fbff; }
@@ -381,7 +418,7 @@ body {
   100% { opacity: 0;    transform: scale(1.12); }
 }
 @keyframes nodeSelfBox {
-  0%   { stroke: var(--cause-self); stroke-width: 2.6; filter: drop-shadow(0 0 10px var(--cause-self)); fill: #1d1626; }
+  0%   { stroke: var(--cause-self); stroke-width: 2.6; filter: drop-shadow(0 0 6px var(--cause-self)); fill: #262433; }
   100% { stroke: var(--node-stroke); stroke-width: 1.4; filter: none; }
 }
 
@@ -395,11 +432,11 @@ body {
   100% { opacity: 0;    transform: scale(1.12); }
 }
 @keyframes nodeFailBox {
-  0%   { stroke: var(--failed); stroke-width: 4; filter: drop-shadow(0 0 16px var(--failed)) drop-shadow(0 0 6px var(--failed)); fill: #45131c; }
-  60%  { stroke: var(--failed); stroke-width: 3.2; filter: drop-shadow(0 0 10px var(--failed)); fill: #3a131a; }
+  0%   { stroke: var(--failed); stroke-width: 4; filter: drop-shadow(0 0 6px var(--failed)) drop-shadow(0 0 6px var(--failed)); fill: #2e1a1d; }
+  60%  { stroke: var(--failed); stroke-width: 3.2; filter: drop-shadow(0 0 5px var(--failed)); fill: #2e1a1d; }
   /* decays to the held red fail state (the `.hit.failed` steady style), so the
    * red stays POPPED on a parked still instead of fading back to dark. */
-  100% { stroke: var(--failed); stroke-width: 3.2; filter: drop-shadow(0 0 12px rgba(255,93,108,0.75)); fill: #3a131a; }
+  100% { stroke: var(--failed); stroke-width: 3.2; filter: drop-shadow(0 0 6px rgba(255,93,108,0.75)); fill: #2e1a1d; }
 }
 
 /* Per-facet EDGE LIGHT — a receipt propagated producer→subscriber on a moved
@@ -495,12 +532,12 @@ body {
  * lights — so the "cost ticks ONCE off a flat line" reads instantly on camera. */
 #meter.spike .meter-total .big {
   color: #ffd9c2;
-  text-shadow: 0 0 18px var(--fresh), 0 0 6px var(--fresh);
+  text-shadow: 0 0 6px var(--fresh), 0 0 3px var(--fresh);
   animation: meterBigPulse 1s cubic-bezier(0.16, 0.84, 0.44, 1);
 }
 #meter.spike .spark {
   border-color: var(--fresh);
-  box-shadow: 0 0 18px -2px var(--fresh), inset 0 0 12px -6px var(--fresh);
+  box-shadow: 0 0 6px -1px var(--fresh), inset 0 0 12px -6px var(--fresh);
 }
 @keyframes meterBigPulse {
   0%   { transform: scale(1); }
@@ -517,9 +554,10 @@ body {
   display: block;
   width: 100%;
   height: 92px;
-  background: linear-gradient(180deg, #0a0d13, #0c1018);
-  border: 1px solid var(--line-soft);
+  background: var(--panel-2);          /* flat — was a linear-gradient */
+  border: 1px solid var(--line);
   border-radius: 6px;
+  box-shadow: 0 4px 6px -1px rgba(0,0,0,.45), 0 2px 4px -2px rgba(0,0,0,.45);
   transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 .spark-baseline { stroke: var(--line); stroke-width: 1; }
@@ -556,7 +594,7 @@ body {
  * not as a hot spend (review #5). It re-warms the instant a fresh tick lands. */
 .meter-total .big.quiet { color: var(--ink-dim); }
 .meter-total .unit { font-size: 10.5px; color: var(--ink-dim); }
-.meter-bar { height: 8px; border-radius: 4px; background: #0a0d13; overflow: hidden; display: flex; }
+.meter-bar { height: 8px; border-radius: 4px; background: var(--panel-2); overflow: hidden; display: flex; }
 .meter-bar .seg-fresh { background: var(--fresh); }
 .meter-bar .seg-reused { background: var(--reused); }
 .meter-rows { display: grid; gap: 5px; font-size: 11px; }
@@ -588,12 +626,14 @@ body {
   grid-template-columns: 30px 6px 1fr auto;
   align-items: center;
   gap: 8px;
-  padding: 4px 6px;
+  /* extra right padding keeps the cause tag (INPUT/EXTERNAL/SELF) off the
+   * scrollbar gutter at narrow widths (critic polish #2: frames 21/53). */
+  padding: 4px 12px 4px 6px;
   border-radius: 5px;
   cursor: pointer;
   color: var(--ink-dim);
 }
-.ritem:hover { background: #131a26; }
+.ritem:hover { background: rgba(255,255,255,0.04); }
 .ritem .idx { color: var(--ink-faint); font-variant-numeric: tabular-nums; text-align: right; }
 .ritem .tick { width: 6px; height: 6px; border-radius: 50%; justify-self: center; }
 .ritem.s-rendered .tick { background: var(--rendered); }
@@ -607,7 +647,7 @@ body {
 .ritem .cause.c-external { color: var(--cause-external); }
 .ritem.future { opacity: 0.4; }
 .ritem.current {
-  background: #16222e;
+  background: var(--panel);
   box-shadow: inset 2px 0 0 var(--rendered);
 }
 .ritem.current.s-skipped { box-shadow: inset 2px 0 0 var(--skipped); }
@@ -632,10 +672,13 @@ body.focus .timeline { opacity: 0.38; transition: opacity 0.4s ease; }
   gap: 14px;
 }
 .transport { display: flex; align-items: center; gap: 6px; }
+
+/* GHOST buttons: transparent, machine-dim text; hairline appears + text deepens
+ * to machine-fg on hover. (DESIGN.md §5 ghost button, dark tone.) */
 .tbtn {
-  background: #161d2a;
-  color: var(--ink);
-  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink-dim);
+  border: 1px solid transparent;
   border-radius: 6px;
   height: 28px;
   min-width: 30px;
@@ -643,18 +686,40 @@ body.focus .timeline { opacity: 0.38; transition: opacity 0.4s ease; }
   font: inherit;
   font-size: 12px;
   cursor: pointer;
-  transition: background 0.12s ease, border-color 0.12s ease;
+  transition: color 0.12s ease, border-color 0.12s ease, background 0.12s ease;
 }
-.tbtn:hover { background: #1d2636; border-color: #34405a; }
+.tbtn:hover { color: var(--ink); border-color: var(--line); background: rgba(255,255,255,0.03); }
 .tbtn:active { transform: translateY(1px); }
-.tbtn-play { background: #15303a; border-color: #1f4e5e; color: #aef0ff; min-width: 38px; }
-.tbtn-play.playing { background: #3a1f24; border-color: #5e2730; color: #ffb3bb; }
+
+/* PLAY: the one OUTLINED GOLD control that FILLS gold on hover (the Copy-button
+ * pattern). Default = transparent fill, gold border + gold glyph. */
+.tbtn-play {
+  background: transparent;
+  border-color: var(--lit);
+  color: var(--lit);
+  min-width: 38px;
+}
+.tbtn-play:hover { background: var(--lit); color: var(--bg); border-color: var(--lit); }
+/* while playing, invert to a filled machine-bar "pause" affordance (no second
+ * brand color — stays in the gold/charcoal family, just de-emphasized). */
+.tbtn-play.playing { background: var(--panel); border-color: var(--line); color: var(--ink); }
+.tbtn-play.playing:hover { color: var(--lit); border-color: var(--lit); }
+
+/* speed select: sunken machine-bar well + hairline (DESIGN.md §5 input, dark) */
 .speed { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-dim); font-size: 11px; margin-left: 6px; }
 .speed select {
-  background: #161d2a; color: var(--ink); border: 1px solid var(--line);
-  border-radius: 5px; padding: 3px 6px; font: inherit; font-size: 11px;
+  background: var(--panel);
+  color: var(--ink);
+  border: 1px solid rgba(154,161,172,0.25);   /* machine-dim/25 input hairline */
+  border-radius: 5px;
+  padding: 3px 6px;
+  font: inherit;
+  font-size: 11px;
 }
-.seek { width: 100%; accent-color: var(--rendered); cursor: pointer; }
+.speed select:focus-visible { outline: 2px solid rgba(202,169,107,0.4); outline-offset: 1px; }
+
+/* seek: gold accent (the active scrub position is "the machine working") */
+.seek { width: 100%; accent-color: var(--lit); cursor: pointer; }
 .scrubreadout {
   color: var(--ink-dim);
   font-size: 11px;
@@ -664,3 +729,25 @@ body.focus .timeline { opacity: 0.38; transition: opacity 0.4s ease; }
   text-align: right;
 }
 .scrubreadout .hl { color: var(--ink); }
+
+/* =====================================================================
+ * prefers-reduced-motion — neutralize every TRANSIENT pulse/flash/chase.
+ * The steady-state (parked) treatments — `.path-lit`, `.path-node`,
+ * `.rendered-now`, `.hit.failed`, `.lit-floor`, the held halos — are plain
+ * declarations (no animation), so they survive untouched and the lit-vs-dark
+ * hero still reads on a still. We only flatten the decaying motion + the
+ * smooth opacity/transform transitions used as effects, so a scrub lands
+ * instantly on its end state instead of animating there.
+ * ===================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  /* the chasing edge dash + travelling bead are pure motion ornaments with no
+   * meaningful end state — hide them so nothing flickers at frame 0. */
+  .flow-dash, .flow-bead { display: none !important; }
+}

@@ -42,6 +42,15 @@ const forwardCommandDefinitions = {
 		summary: "Preflight an OpenProse service or system.",
 		usage: "preflight <file.prose.md> [--harness <name>]",
 	},
+	react: {
+		command: "react",
+		examples: [
+			'<%= config.bin %> react "keep an incident briefing current" --harness codex-sdk',
+			'<%= config.bin %> react "surface renewal risks before account reviews" --start',
+		],
+		summary: "Stand up a Reactor for a standing goal.",
+		usage: "react [use case...] [--start] [--harness <name>]",
+	},
 	run: {
 		command: "run",
 		examples: [

@@ -1,15 +1,15 @@
 # monorepo-ci
 
-**Standing goal:** keep a monorepo's merge gate honest — re-run only the CI work
+**Standing goal:** keep a monorepo's merge gate honest: re-run only the CI work
 a diff actually invalidates, and block the merge the moment a test regresses.
 
-**One-line scenario:** Your CI re-ran 200 checks. Reactor re-ran 3 — the ones
+**One-line scenario:** Your CI re-ran 200 checks. Reactor re-ran 3, the ones
 your 4-line diff actually touched; and when a `pkg-api` test throws, the merge
 gate goes BLOCKED while the rest of the graph stays cached.
 
 This is the **largest** example in the library (22 nodes / 48 edges) and the one
 that teaches **memoization + hub fan-out blast radius**: a single `pkg-core` hub
-edits fans out to its dependents, while a leaf edit lights only one lane.
+edit fans out to its dependents, while a leaf edit lights only one lane.
 
 ## The DAG
 
@@ -46,7 +46,7 @@ each subscribe to its `core-dist` compiled-output facet. `pkg-utils` and
   only `build.pkg-ui` → `test.pkg-ui` (+ `lint.pkg-ui`, typecheck, review, merge)
   wake. The other five packages' build/test/lint lanes stay dark.
 - **Hub fan-out blast radius.** A `pkg-core` diff moves the `core-dist` facet and
-  rebuilds core + ui + api + auth (+ their tests) — a visibly wider lane, still
+  rebuilds core + ui + api + auth (+ their tests): a visibly wider lane, still
   far short of "rebuild everything" (`pkg-utils` + `pkg-billing` stay dark).
 - **Failure drives BLOCKED.** A `pkg-api` test render throws → a `failed` receipt
   (zero fresh, no published truth, wakes nothing) → the merge gate reads the
@@ -69,32 +69,32 @@ reactor receipts verify        # chain-verify the on-disk ledger
 
 ## Replay it keyless (no model key)
 
-The committed `replay/` state-dir is a frozen, chain-verifiable ledger. Replay it
-in devtools with zero spend:
+A `reactor run` (or `reactor serve`) writes a frozen, chain-verifiable state-dir.
+Replay it in devtools with zero spend:
 
 ```sh
-reactor-devtools --example monorepo-ci --describe
+reactor-devtools <state-dir> --describe
 #   dispositions rendered=… · skipped=… · failed=1
 #   surprise-cause  external · input · self
 #   COST ROLLUP (tokens) …   CHAIN-VERIFY ok
 ```
 
-Watch the leaf beat — `skipped moved[—] fresh 0` across five dark packages — then
+Watch the leaf beat (`skipped moved[] fresh 0` across five dark packages), then
 the hub beat widen the lane, then the RED beat block the merge.
 
-## How it was built (the two phases)
+## How it works (the two phases)
 
 1. **Compile (intelligent).** A SKILL-loaded session embodies the VM and compiles
    the `src/*.prose.md` contracts into the deterministic topology + fingerprints.
    No parser ran; the session IS the compiler.
-2. **Run (dumb).** `generate.ts` drives the **real `@openprose/reactor`
-   reconciler** with deterministic fake renders (no key) over a scripted beat
+2. **Run (dumb).** The reconciler drives deterministic renders over a scripted beat
    timeline (cold → quiet skip → leaf diff → hub fan-out → RED → recover → quiet)
-   and freezes the result into `replay/`. The reconciler replays it; a node
+   and freezes the result into a state-dir. The reconciler replays it; a node
    renders IFF its memo key `(contract_fingerprint, input_fingerprints)` moved.
 
-Regeneration is byte-deterministic: `monorepo-ci.test.ts` regenerates `replay/`
-into a temp dir and asserts the receipts / topology / labels are byte-identical,
-that a quiet re-wake spends `fresh == 0`, that a contract edit forces a render,
-that `cost.surprise_cause === wake.source` on every receipt, and that
+The example is covered by the project's offline test suite, which drives the
+**real `@openprose/reactor` reconciler** with deterministic fake renders (no key)
+and asserts the receipts / topology / labels are byte-identical across runs, that
+a quiet re-wake spends `fresh == 0`, that a contract edit forces a render, that
+`cost.surprise_cause === wake.source` on every receipt, and that
 `verifyReceiptChain` passes over the raw on-disk receipts.

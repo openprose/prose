@@ -10,12 +10,16 @@ import {
 	validateRepositoryIr,
 } from "../../src/prose/index.js";
 
-const repoRoot = fileURLToPath(new URL("../../../../", import.meta.url));
+// CLI-OWNED repository-ir v0 fixtures. These used to borrow the SKILL compiler's
+// golden outputs under the repo-root tests/open-prose/compiler/, but PR #106
+// migrated those to compile-phase-ir v2 while the CLI compiler + validator stayed
+// v0. See ./fixtures/repository-ir/README.md.
+const fixturesDir = fileURLToPath(new URL("./fixtures/repository-ir/", import.meta.url));
 const stargazerResponsibilityId = "067NC4KG01RG50R40M30E20918";
 const otherResponsibilityId = "067NC4KG0DZJ18924CJ2A9H750";
 
 function readFixture(path: string): unknown {
-	return JSON.parse(readFileSync(join(repoRoot, path), "utf8"));
+	return JSON.parse(readFileSync(join(fixturesDir, path), "utf8"));
 }
 
 function cloneFixture(path: string): any {
@@ -30,28 +34,28 @@ describe("repository IR v0", () => {
 	});
 
 	it("accepts the empty manifest fixture", () => {
-		expect(validateRepositoryIr(readFixture("tests/open-prose/compiler/expected/empty.manifest.next.json"))).toEqual({
+		expect(validateRepositoryIr(readFixture("expected/empty.manifest.next.json"))).toEqual({
 			valid: true,
 			errors: [],
 		});
 	});
 
 	it("accepts the stargazer manifest fixture", () => {
-		expect(validateRepositoryIr(readFixture("tests/open-prose/compiler/expected/stargazer.manifest.next.json"))).toEqual({
+		expect(validateRepositoryIr(readFixture("expected/stargazer.manifest.next.json"))).toEqual({
 			valid: true,
 			errors: [],
 		});
 	});
 
 	it("accepts an ambiguous responsibility manifest with diagnostics", () => {
-		expect(validateRepositoryIr(readFixture("tests/open-prose/compiler/expected/ambiguous-fulfillment.manifest.next.json"))).toEqual({
+		expect(validateRepositoryIr(readFixture("expected/ambiguous-fulfillment.manifest.next.json"))).toEqual({
 			valid: true,
 			errors: [],
 		});
 	});
 
 	it("rejects malformed manifest output", () => {
-		const result = validateRepositoryIr(readFixture("tests/open-prose/compiler/invalid/missing-version.manifest.next.json"));
+		const result = validateRepositoryIr(readFixture("invalid/missing-version.manifest.next.json"));
 
 		expect(result.valid).toBe(false);
 		expect(result.errors).toContain("version must be 0");
@@ -59,7 +63,7 @@ describe("repository IR v0", () => {
 
 	it("rejects malformed responsibility IR", () => {
 		const result = validateRepositoryIr(
-			readFixture("tests/open-prose/compiler/invalid/malformed-responsibility.manifest.next.json"),
+			readFixture("invalid/malformed-responsibility.manifest.next.json"),
 		);
 
 		expect(result.valid).toBe(false);
@@ -76,7 +80,7 @@ describe("repository IR v0", () => {
 	});
 
 	it("rejects responsibility ids that are still slug-derived", () => {
-		const manifest = cloneFixture("tests/open-prose/compiler/expected/stargazer.manifest.next.json");
+		const manifest = cloneFixture("expected/stargazer.manifest.next.json");
 		manifest.responsibilities[0].id = "high-intent-stargazer-outreach";
 		manifest.triggers[0].responsibilityId = "high-intent-stargazer-outreach";
 		manifest.activations[0].responsibilityId = "high-intent-stargazer-outreach";
@@ -90,7 +94,7 @@ describe("repository IR v0", () => {
 	});
 
 	it("rejects responsibility ids that are Crockford-shaped but not UUIDv7", () => {
-		const manifest = cloneFixture("tests/open-prose/compiler/expected/stargazer.manifest.next.json");
+		const manifest = cloneFixture("expected/stargazer.manifest.next.json");
 		manifest.responsibilities[0].id = "067NC4KG00GG50R40M30E20918";
 		manifest.triggers[0].responsibilityId = "067NC4KG00GG50R40M30E20918";
 		manifest.activations[0].responsibilityId = "067NC4KG00GG50R40M30E20918";
@@ -104,7 +108,7 @@ describe("repository IR v0", () => {
 	});
 
 	it("accepts responsibility-level declared tools in repository IR", () => {
-		const manifest = cloneFixture("tests/open-prose/compiler/expected/stargazer.manifest.next.json");
+		const manifest = cloneFixture("expected/stargazer.manifest.next.json");
 		manifest.responsibilities[0].tools = [
 			{ kind: "cli", name: "gh" },
 			{ kind: "mcp", name: "github" },
@@ -117,7 +121,7 @@ describe("repository IR v0", () => {
 	});
 
 	it("rejects missing or malformed responsibility-level declared tools", () => {
-		const manifest = cloneFixture("tests/open-prose/compiler/expected/stargazer.manifest.next.json");
+		const manifest = cloneFixture("expected/stargazer.manifest.next.json");
 		delete manifest.responsibilities[0].tools;
 		manifest.responsibilities.push({
 			id: otherResponsibilityId,
@@ -154,7 +158,7 @@ describe("repository IR v0", () => {
 	});
 
 	it("rejects malformed concrete trigger registrations", () => {
-		const manifest = cloneFixture("tests/open-prose/compiler/expected/stargazer.manifest.next.json");
+		const manifest = cloneFixture("expected/stargazer.manifest.next.json");
 		manifest.triggers[0].cron = "daily";
 		manifest.triggers[1].method = "TRACE";
 		manifest.triggers[1].path = "webhooks/github/stars";
@@ -172,7 +176,7 @@ describe("repository IR v0", () => {
 	});
 
 	it("rejects cron ranges and timezones that serve cannot run", () => {
-		const manifest = cloneFixture("tests/open-prose/compiler/expected/stargazer.manifest.next.json");
+		const manifest = cloneFixture("expected/stargazer.manifest.next.json");
 		manifest.triggers[0].cron = "99 * * * *";
 		manifest.triggers[0].timezone = "Not/AZone";
 
@@ -206,7 +210,7 @@ describe("repository IR v0", () => {
 	});
 
 	it("rejects trigger fields that do not belong to the trigger kind", () => {
-		const manifest = cloneFixture("tests/open-prose/compiler/expected/stargazer.manifest.next.json");
+		const manifest = cloneFixture("expected/stargazer.manifest.next.json");
 		manifest.triggers[0].method = "POST";
 		manifest.triggers[1].cron = "0 * * * *";
 		manifest.triggers.push({
@@ -230,7 +234,7 @@ describe("repository IR v0", () => {
 	});
 
 	it("rejects live triggers that do not wake an activation", () => {
-		const manifest = cloneFixture("tests/open-prose/compiler/expected/stargazer.manifest.next.json");
+		const manifest = cloneFixture("expected/stargazer.manifest.next.json");
 		manifest.triggers.push({
 			id: "high-intent-stargazer-outreach.unbound",
 			responsibilityId: stargazerResponsibilityId,
@@ -247,7 +251,7 @@ describe("repository IR v0", () => {
 	});
 
 	it("rejects live triggers that bypass the judge", () => {
-		const manifest = cloneFixture("tests/open-prose/compiler/expected/stargazer.manifest.next.json");
+		const manifest = cloneFixture("expected/stargazer.manifest.next.json");
 		manifest.activations[0].triggerIds = ["high-intent-stargazer-outreach.periodic-check"];
 
 		const result = validateRepositoryIr(manifest);
@@ -257,13 +261,13 @@ describe("repository IR v0", () => {
 	});
 
 	it("rejects source paths that are not root-relative", () => {
-		const absolute = cloneFixture("tests/open-prose/compiler/expected/stargazer.manifest.next.json");
+		const absolute = cloneFixture("expected/stargazer.manifest.next.json");
 		absolute.sources[0].path = "/tmp/responsibility.prose.md";
 
-		const parent = cloneFixture("tests/open-prose/compiler/expected/stargazer.manifest.next.json");
+		const parent = cloneFixture("expected/stargazer.manifest.next.json");
 		parent.sources[0].path = "../responsibility.prose.md";
 
-		const emptySegment = cloneFixture("tests/open-prose/compiler/expected/stargazer.manifest.next.json");
+		const emptySegment = cloneFixture("expected/stargazer.manifest.next.json");
 		emptySegment.sources[0].path = "src//responsibility.prose.md";
 
 		expect(validateRepositoryIr(absolute).errors).toContain("sources[0].path must be root-relative");
@@ -276,7 +280,7 @@ describe("repository IR v0", () => {
 	});
 
 	it("rejects malformed Forme manifest IR", () => {
-		const result = validateRepositoryIr(readFixture("tests/open-prose/compiler/invalid/malformed-forme.manifest.next.json"));
+		const result = validateRepositoryIr(readFixture("invalid/malformed-forme.manifest.next.json"));
 
 		expect(result.valid).toBe(false);
 		expect(result.errors).toEqual(
@@ -296,7 +300,7 @@ describe("repository IR v0", () => {
 	});
 
 	it("accepts Forme manifest tool requirements", () => {
-		const manifest = cloneFixture("tests/open-prose/compiler/expected/stargazer.manifest.next.json");
+		const manifest = cloneFixture("expected/stargazer.manifest.next.json");
 		manifest.formeManifests[0].tools = [
 			{
 				kind: "cli",
@@ -317,7 +321,7 @@ describe("repository IR v0", () => {
 	});
 
 	it("rejects malformed Forme manifest tool requirements", () => {
-		const manifest = cloneFixture("tests/open-prose/compiler/expected/stargazer.manifest.next.json");
+		const manifest = cloneFixture("expected/stargazer.manifest.next.json");
 		manifest.formeManifests[0].tools = [
 			{
 				kind: "http",
@@ -351,7 +355,7 @@ describe("repository IR v0", () => {
 	});
 
 	it("rejects responsibilities without exactly one judge activation", () => {
-		const manifest = cloneFixture("tests/open-prose/compiler/expected/stargazer.manifest.next.json");
+		const manifest = cloneFixture("expected/stargazer.manifest.next.json");
 		manifest.activations = manifest.activations.filter((activation: any) => activation.kind !== "judge");
 
 		const result = validateRepositoryIr(manifest);
@@ -363,7 +367,7 @@ describe("repository IR v0", () => {
 	});
 
 	it("rejects trigger references across responsibilities", () => {
-		const manifest = cloneFixture("tests/open-prose/compiler/expected/stargazer.manifest.next.json");
+		const manifest = cloneFixture("expected/stargazer.manifest.next.json");
 		manifest.sources.push({
 			path: "other-responsibility.prose.md",
 			kind: "responsibility",
@@ -400,7 +404,7 @@ describe("repository IR v0", () => {
 	});
 
 	it("rejects fulfillment activations that do not match fulfillment intent", () => {
-		const manifest = cloneFixture("tests/open-prose/compiler/expected/stargazer.manifest.next.json");
+		const manifest = cloneFixture("expected/stargazer.manifest.next.json");
 		delete manifest.responsibilities[0].fulfillment;
 
 		const result = validateRepositoryIr(manifest);
@@ -412,7 +416,7 @@ describe("repository IR v0", () => {
 	});
 
 	it("rejects non-runnable Forme wiring references", () => {
-		const manifest = cloneFixture("tests/open-prose/compiler/expected/stargazer.manifest.next.json");
+		const manifest = cloneFixture("expected/stargazer.manifest.next.json");
 		const forme = manifest.formeManifests[0];
 		forme.graph[1].inputs[0].sourceOutput = "missing-output";
 		forme.caller.returns[0].source = "missing-node";
@@ -431,7 +435,7 @@ describe("repository IR v0", () => {
 	});
 
 	it("rejects diagnostics that point outside discovered sources", () => {
-		const manifest = cloneFixture("tests/open-prose/compiler/expected/stargazer.manifest.next.json");
+		const manifest = cloneFixture("expected/stargazer.manifest.next.json");
 		manifest.diagnostics[0].sourcePath = "missing.prose.md";
 
 		const result = validateRepositoryIr(manifest);
@@ -441,7 +445,7 @@ describe("repository IR v0", () => {
 	});
 
 	it("rejects error diagnostics in written manifests", () => {
-		const manifest = cloneFixture("tests/open-prose/compiler/expected/stargazer.manifest.next.json");
+		const manifest = cloneFixture("expected/stargazer.manifest.next.json");
 		manifest.diagnostics[0].severity = "error";
 
 		const result = validateRepositoryIr(manifest);
