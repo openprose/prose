@@ -6,7 +6,7 @@ The OpenProse corpus divides labor exactly, and each document maps to what
 ships:
 
 - [01-Language.md](./01-Language.md) — **the Language & Framework**, bundled as
-  the **SKILL**: syntax, kinds, sections, compile model, std/co, CLI surface.
+  the **SKILL**: syntax, kinds, sections, compile model, std/co.
 - [02-ReactorHarness.md](./02-ReactorHarness.md) — **this
   document, the Reactor Harness**, bundled as the **CLI/Server**: the runtime
   control architecture — the loop, invariants, the reconciler, memoization, forecast,
@@ -42,14 +42,16 @@ Start from the lived loop, not the machinery. The architecture is the
 consequence of this promise, not the thing itself.
 
 > You write one sentence of durable intent and what makes it true. Then you
-> walk away — there is no session to babysit. The system interrupts you on
+> walk away — there is no session to babysit. The system needs you back on
 > exactly two conditions: it needs a judgment only a human can make, or an
-> input or permission only you can grant. Otherwise it is silent. Everything it
+> input or permission only you can grant. On either it stops and files a
+> `failed` receipt — addressed to you, naming exactly what it needs — for you to
+> pull; otherwise it is silent. Everything it
 > did, you can verify afterward from a trail you never had to ask for — and you
 > can take that trail and that sentence and run them somewhere else.
 
-Four beats: **author**, **walk away**, **interrupted only when genuinely
-needed**, **verifiable and exitable trail**.
+Four beats: **author**, **walk away**, **back only when genuinely needed**,
+**verifiable and exitable trail**.
 
 One honesty note belongs in the promise itself: interruptions **front-load
 during authoring and asymptote toward silence**. "Walk away" is the steady
@@ -85,9 +87,10 @@ an upstream node's new receipt, or a freshness lapse.
 
 ```text
 event (a receipt arrives)
-  -> the reconciler compares (contract_fingerprint, input_fingerprints)
+  -> the reconciler compares (contract_fingerprint, input_fingerprints, freshness_epoch)
   -> unmoved: write a cheap `skipped` receipt, render nothing
-  -> moved: spawn one bounded render session -> gateCommit -> sign a receipt
+  -> moved (an input changed, the contract changed, or a freshness window lapsed):
+       spawn one bounded render session -> gateCommit -> sign a receipt
   -> propagate: a moved fingerprint wakes the downstream subscribers
 ```
 
@@ -122,7 +125,7 @@ transition.
 The loop above is the **base case**. The full architecture is one mechanism
 applied recursively:
 
-> **A render is a pure step `(contract, evidence, prior world-model) → (new
+> **A render is a single step `(contract, evidence, prior world-model) → (new
 > world-model, signed receipt)`. Everything else — composition, freshness, even
 > the topology itself — is that same render, applied again.**
 
@@ -177,7 +180,7 @@ auditable and replayable like any other run. The output is a static IR consumed
 and validated by deterministic code: **the language is never on the execution or
 safety path** — a model authors the IR, code validates it, and the dumb
 reconciler executes it. This is the same safe pattern throughout: a model
-authors, the CLI validates, the reconciler runs.
+authors, deterministic code validates, the reconciler runs.
 
 Compile re-fires only when the **contract-set fingerprint** moves — an author
 changed intent. A quiet contract set compiles zero times for as long as it stays
@@ -200,7 +203,7 @@ ordered by how much they save:
 
 1. **Don't act.** Nothing the node subscribes to moved, so it writes a cheap
    `skipped` receipt and renders nothing. The trivial case.
-2. **Don't check now.** each self-driven facet carries a `valid_until`;
+2. **Don't check now.** Each self-driven facet carries a `valid_until`;
    until the soonest one lapses, the node sleeps. Provable quiescence is genuinely
    zero tokens on a static world. (= don't re-render until a dependency changes or freshness
    lapses.)
@@ -209,21 +212,31 @@ ordered by how much they save:
    changed region, not the tree.)
 
 The rigorous core is **memoization**: a render is keyed by
-`(contract_fingerprint, input_fingerprints)` — the node's own contract plus the
-fingerprints of every facet it subscribes to. Unchanged key → the render is
-skipped at zero token cost, `React.memo` semantics applied to a bounded LLM
-session. The key contains **nothing else**: no judge verdict, no policy artifact,
-no confidence score. What "counts as a change" was decided once, at compile, by
-the canonicalizer; the run phase only compares.
+`(contract_fingerprint, input_fingerprints, freshness_epoch)` — the node's own
+contract, the fingerprints of every facet it subscribes to, and the freshness
+epoch that advances when a declared `valid_until` lapses (see *The missing-webhook
+problem*). A node that declares no facets exposes one always-on whole-truth
+token, and a consumer whose `### Requires` names that producer *without* a facet
+binds to that token — waking on the OR of every facet. Unchanged key → the
+render is skipped at zero token cost, `React.memo`
+semantics applied to a bounded LLM session. The key contains **nothing judged**:
+no judge verdict, no policy artifact, no confidence score — its three parts are
+the contract, the subscribed inputs, and time, nothing more. What "counts as a
+change" was decided once, at compile, by the canonicalizer; the run phase only
+compares. (The shipped v1 SDK realizes the freshness term as a forecast-driven
+self-receipt over a two-part `(contract_fp, input_fps)` key rather than a literal
+third element — Part II; the decision semantics are identical.)
 
 **Completeness is a compile-time property, not a runtime audit.** A memo key is
 only safe if it captures every input that could change the truth — the classic
 cache-invalidation trap, whose failure is silent (confident staleness). OpenProse
-makes the key complete *by construction*: the canonicalizer fixes, at compile
-time, exactly which fields are material and which facets a node subscribes to. A
-render never improvises a new dependency mid-run, so the key cannot drift out of
-completeness between compiles; discovering a genuinely new dependency is an
-authoring change that re-compiles the contract. There is no roaming judge and no
+makes the key complete *relative to the declared material set*: the canonicalizer
+fixes, at compile time, exactly which fields are material and which facets a node
+subscribes to. A render never improvises a new dependency mid-run, so the key
+cannot drift out of completeness *between compiles* — an under-declared dependency
+stays silently stale until an author notices and re-compiles, but the key never
+degrades on its own. Discovering a genuinely new dependency is an authoring change
+that re-compiles the contract. There is no roaming judge and no
 second "plan-age" clock to police — the completeness guarantee is the
 canonicalizer's, frozen ahead of time.
 
@@ -232,10 +245,11 @@ Memoizing on an input fingerprint means the system could quiesce confidently
 while the world changed silently because no event fired. The defense is freshness:
 a node declares, in `### Continuity`, that a facet stays valid only until some
 `valid_until`. When that instant passes, the harness does not call a model to ask
-whether time elapsed — it **mechanically moves that facet's fingerprint** and
-wakes the node through the ordinary reconcile path, emitting a zero-token
-self-receipt. The lapse *is* a fingerprint move, so "the world will not announce
-it changed" becomes an ordinary wake. Forecast's job is exactly this: manufacture
+whether time elapsed — it **mechanically advances the node's freshness epoch**
+(and, for a *consumed* upstream facet whose window lapsed, moves that facet's
+input fingerprint) and wakes the node through the ordinary reconcile path,
+emitting a zero-token self-receipt. The lapse *is* a memo-key move, so "the world
+will not announce it changed" becomes an ordinary wake. Forecast's job is exactly this: manufacture
 the minimum necessary re-render when no external event will. That is what makes
 silence *safe* rather than *negligent*.
 
@@ -266,9 +280,9 @@ are design defaults and live in **Architecture**, not here.
      "I don't know when"; freshness is "I computed when." Where a source cannot
      push, polling is pushed to a gateway adapter and is itself freshness-paced,
      never a heartbeat.
-   - **Memoization is real.** Unchanged input fingerprint → the render body
-     provably never runs, recoverable from the `tokens.fresh` vs `tokens.reused`
-     split in the receipt.
+   - **Memoization is real.** Unchanged memo key → the render body provably
+     never runs, recoverable from the `tokens.fresh` vs `tokens.reused` split in
+     the receipt.
    - **Every token traces to a named surprise** ∈ {a subscribed input moved, a
      declared freshness window lapsed, the contract itself changed}. A `skipped`
      receipt carries zero cost and copies its fingerprints forward, so the proof
@@ -279,8 +293,13 @@ are design defaults and live in **Architecture**, not here.
    `### Maintains` obligations where it is semantic. A render that fails commits
    nothing: the prior truth stands, no downstream wakes, and a `failed` receipt
    records why. There is no judge and no confidence score in the commit decision.
-   Negate it and an inadmissible render can corrupt the maintained truth — the
-   class's safety claim is void.
+   The hard guarantee — an inadmissible render cannot corrupt the truth — is the
+   **deterministic** validators'; where an obligation is only semantic, the
+   render's self-attestation is a *soft* gate (the render attesting its own
+   `### Maintains` obligations), and how honestly a
+   model attests is a model-choice property measured offline, not a runtime
+   guarantee. Negate the deterministic gate and an inadmissible render can corrupt
+   the maintained truth — the class's correctness guarantee is void.
 7. **Receipts are content-addressed.** Consumers verify evidence instead of
    trusting the producer's claim. The receipt is simultaneously the audit unit, the
    composition unit, and the exit unit. Negate it and Tenets 5 and 6 break at
@@ -299,15 +318,20 @@ not as a class-defining invariant.
 
 ### Precedence stack
 
-When invariants tension, this ordering decides:
+Correctness is the non-negotiable floor (Tenets 1, 2, and 5, realized at compile
+and the commit gate). Below it, when invariants tension over the
+safety → cost → silence trade-offs, this ordering decides:
 
 ```text
 correctness  >  safety  >  cost  >  interrupt-minimization
 ```
 
+It is the operational projection of the numbered tenet precedence
+([00-Tenets.md](./00-Tenets.md)), not a separate runtime policy dial that
+resolves every invariant collision on its own.
 Interrupt-minimization is a downstream ergonomic property, not a pillar. If
 minimizing interrupts ever conflicts with failing safe, safety wins — the
-system interrupts even though it would rather be silent. "Rare interruption" is
+system surfaces the need even though it would rather be silent. "Rare interruption" is
 a target, not a constraint other invariants bend around.
 
 ### Architecture
@@ -342,15 +366,17 @@ Renders interpret and act inside bounded activations.
 The reconciler skips or renders; gateCommit attests; receipts record.
 ```
 
-**Two adapter seams, never merged.** The bounded-activation **agent SDK**
-(`codex-sdk`, `claude-sdk`, …) is an adapter and nothing more: no reconciler
-logic ever lives inside it — memoization, the commit gate, and the continuity
-clock are the package's, not the activation runtime's. Distinct from it is the
+**Two adapter seams, never merged.** The bounded-activation **agent SDK** (the
+host-supplied agent runner, e.g. `@openai/agents`) is an adapter and nothing more:
+no reconciler logic ever lives inside it — memoization, the commit gate, and the
+continuity clock are the package's, not the activation runtime's. Distinct from it is the
 **model-gateway socket** (OpenRouter as the batteries-included default; direct
 Anthropic/OpenAI first-class), which serves raw multi-provider inference — the
 *inference substrate* that compile sessions and renders draw on. Keeping the two
 seams separate is invariant 3 doing load-bearing work: a clone and a long-lived
-deployment differ only by which adapters they bind.
+deployment differ only by which adapters they bind. These two seams are how a host
+realizes the abstract `spawn_session` / inference primitives the Language doc's
+*Prose Complete* table names ([01-Language.md](./01-Language.md)).
 
 **Failure surfaces as a receipt, not a status enum.** There is no
 `up`/`drifting`/`down`/`blocked` status and no pressure projection. A render that
@@ -360,9 +386,12 @@ not yet decidable — there is nothing observable to maintain against" surfaces 
 same way: a `failed` render whose receipt names the gap, routed to the contract
 author (Tenet 2). This is the flagship instance of "surface what only a human can
 decide," realized as an honest receipt rather than a typed runtime interrupt
-class. Richer human-facing interrupts — a typed `needs-input` for a missing
-credential, or `contract-declared` paging the author asked for — are a future
-affordance layered on the same receipt, not a v1 runtime decision class.
+class. Even the human-facing signal stays a *pull*: a `needs-input` for a missing
+credential or a `contract-declared` flag the author asked for is a **reason on
+the same receipt**, surfaced in the trail for the author to pull — never a fourth
+runtime decision class, and never a push the harness owns. Active out-of-band
+delivery (paging, email) is a notification layer someone may build *over* the
+trail, outside this promise.
 
 ### Failure model
 
@@ -424,7 +453,7 @@ the _rigorous_ model, with literal mappings:
 | the render function | a bounded LLM session that computes the next world-model |
 | props | subscriptions (`### Requires` ↔ `### Maintains`) |
 | setState | a new signed receipt (the world-model moved) |
-| React.memo / dependency array | skip the render when `(contract_fp, input_fps)` is unmoved |
+| React.memo / dependency array | skip the render when `(contract_fp, input_fps, freshness_epoch)` is unmoved |
 | the commit phase | sign the receipt, persist the world-model, notify subscribers |
 | partial reconciliation | quiescence; only the changed subtree re-renders |
 | composition / lifting state up | responsibilities consuming each other's receipts |
@@ -450,10 +479,16 @@ dimension. Three seams are where they meet, stated as resolution rules:
    but the reconciler's *decision* stays pure: it reads only fingerprints.
    World-mutation is quarantined inside the bounded render, and only the
    canonicalized published truth re-enters the memo key — so the dumb compare
-   never depends on a side effect.
+   never depends on a side effect. The author bounds that actuation in
+   `### Invariants` — the rate, scope, and prohibited actions the render may not
+   exceed — which the harness lowers and enforces as the render's actuation
+   quarantine. (Today that boundary is authored but not yet lowered — see Part II
+   gap cluster 3.)
 3. **Synchronous tree vs. asynchronous world.** A render's output is always
    `as_of` a timestamp, never "now." Every receipt carries `as_of`; that is where
-   control-systems time-awareness patches React's frozen-tree assumption.
+   control-systems time-awareness patches React's frozen-tree assumption. (The
+   shipped v0 receipt does not yet carry an `as_of` field — Part II gap
+   cluster 2.)
 
 ### Composition
 
@@ -499,40 +534,44 @@ Three genuine collisions, with their resolutions:
 Deferred by design — named here so they are tracked, not invented or silently
 dropped:
 
-1. **Receipt schema — the as-built `v0` shape.** Every decision writes a
+1. **Receipt schema.** Every decision writes a
    content-addressed receipt: the `node`, its `contract_fingerprint`, the `wake`
    (`source ∈ {input, self, external}` plus the upstream `refs` that caused it),
+   an `as_of` timestamp (the instant the truth is asserted as-of, never "now"),
    the `input_fingerprints` it depended on, the per-facet `fingerprints` it
-   produced, a `status ∈ {rendered, skipped, failed}`, the `prev` link that makes
+   produced, a `status ∈ {rendered, skipped, failed}` carrying — on a `failed`
+   receipt — a `reason` that names exactly what the render could not satisfy and
+   the author it is addressed to, the `prev` link that makes
    the per-node chain verifiable, and a `cost` block (`provider`, `model`,
    `tokens.fresh` vs `tokens.reused`, `surprise_cause`) that makes the
    cost-scales-with-surprise and memoization proofs recoverable from a single
    receipt. A `sig` block where `scheme: "none"` carries a `null_reason` is a
    first-class, non-deceptive state. There is **no** `verdict`, no confidence or
    calibration grade, no `role` enum, and no `judge`/`policy-compile` cause —
-   those were retired with the judge. The ledger is an append-only, flat
-   `<state-dir>/receipts.json`.
-2. **The cryptographic signer.** v1 "signed" means tamper-evident at the meaning
-   layer and chain-consistent — *not* yet a cryptographic byte hash. The null
-   signer is the only honest v1 state; a real signing adapter (and the byte hash
-   that makes cross-boundary trust non-repudiable) is a named, deferred
-   milestone. The composition pinning surface (contract revision + acceptable
-   signer set) is specified ahead of it.
+   those were retired with the judge. The ledger is append-only and
+   chain-verifiable. (The shipped v0 receipt is thinner — it carries no `as_of`,
+   no failure `reason`, and no author-addressing field, and persists to a flat
+   `<state-dir>/receipts.json`; that delta is Part II gap cluster 2.)
+2. **The cryptographic signer.** A cryptographic byte-hash signer — binding the
+   published world-model to its receipt so cross-boundary trust is
+   non-repudiable — and the composition pinning surface it backs (contract
+   revision + acceptable signer set) are specified here and deferred. (Part II is
+   honest about the shipped state: v1 "signed" is meaning-layer chain-consistency
+   over a null signer, not yet a byte hash.)
 3. **Ledger compaction.** The receipt ledger grows without bound; an external
    compaction/indexing plan for long-running responsibilities is named roadmap,
    not shipped.
-4. **Facet inference.** Authors declare facets explicitly today (`####` parts
-   under `### Maintains`). Inferring a good facet split from a contract —
-   proposing the material/immaterial boundary — is a v-next compile-phase
-   enhancement, not v1.
+4. **Facet inference.** Facets are author-declared (`####` parts under
+   `### Maintains`). Inferring a good facet split from a contract — proposing the
+   material/immaterial boundary — is a deferred compile-phase enhancement.
 5. **The fixpoint.** The topology-as-responsibility recursion (*The unification
    thesis*) — the system maintaining its own wiring as just another memoized
    render, with epoch rollover when the contract set changes — is specified and
    deferred past v1.
-6. **Default freshness derivation.** A `serve` default that reconstructs each
+6. **Default freshness derivation.** A serve default that reconstructs each
    node's freshness schedule from a `valid_until` convention in published truth —
-   so the common case self-paces with zero per-project wiring — is specified; v1
-   ships a fixed `--poll-interval` cadence and the default projector is deferred.
+   so the common case self-paces with zero per-project wiring — is specified and
+   deferred. (Part II carries the shipped fixed-interval cadence shortfall.)
 
 ### Where it excels
 
@@ -592,11 +631,45 @@ actually changed. Additional worked examples are catalogued in Part II.
 
 ## II. What Exists Today
 
-This section is the conformance ledger: what `@openprose/reactor` (the SDK,
-v0.2.0) and `@openprose/reactor-cli` (the `reactor` binary, v0.1.0) physically
-ship today, measured against Part I and honest about what is partial or not yet
-wired. The companion keyless replay viewer `@openprose/reactor-devtools`
-(v0.1.0) ships alongside.
+This section measures the shipped harness against Part I as a **delta from a
+substantially-realized architecture** — not a gap inventory against vaporware.
+The load-bearing core is real and exact: `@openprose/reactor` (the SDK, v0.3.1)
+and `@openprose/reactor-cli` (the `reactor` binary, v0.2.2) ship the judge-free
+decision spine end to end — the 2-tuple memo reconcile, real memoization with
+zero-token `skipped` receipts, the model-free content-addressed canonicalizer
+with its mandatory always-on `@atomic` facet, bounded one-render-one-world-model
+activations, the facet-bound acyclic Forme DAG, no-new-primitive composition with
+diamond coalescing, the published/private world-model split, content-addressed
+independently-verifiable v0 receipts, and the surprise-attributed cost ledger.
+The companion keyless replay viewer `@openprose/reactor-devtools` (v0.2.0) ships
+alongside, and all three packages are published on npm.
+
+Where reality falls short of Part I it clusters on **three seams**, and the rest
+of this section is honest about each:
+
+1. **The deterministic enforcement layer is built but unwired.**
+   `compilePostconditions(...)` runs on the compile path and emits each node's
+   validator set into the IR — but the gate that would *evaluate* it,
+   `gateCommit(...)`, has **zero non-test callers**: the live run path does not
+   consult postconditions on commit (`packages/reactor/src/sdk/run-project.ts`),
+   so the commit decision rides the render's own coarse done/failed
+   self-attestation of `### Maintains`. The "an inadmissible render cannot corrupt
+   the truth" guarantee (Invariant 6) is aspirational until the compiled
+   validators are threaded onto the commit step.
+2. **The durable receipt is too thin to carry the promises pinned to it.** The
+   exact-keyed v0 `Receipt` shape (`packages/reactor/src/shapes/index.ts`) has no
+   `as_of`, no failure `reason`, and no author-addressing field — so the
+   failed-receipt-that-names-the-gap (Part I's "files a `failed` receipt …
+   naming exactly what it needs"), per-receipt `as_of` (the seam-3 fix), and
+   ask-a-human routing are honored only ephemerally in-render and dropped at
+   commit.
+3. **The world-mutating / freshness / cross-trust halves are deferred.**
+   `### Invariants` is never lowered into the render (the authored
+   rate/scope/prohibited-action quarantine survives only as prose the model may
+   ignore); the serve daemon's freshness clock arms nothing by default (so it
+   does the fixed-interval work Part I forbids); cost is observed, not budgeted;
+   and the topology edge pins a revision but no acceptable-signer-set — all gated
+   behind the honestly-deferred null signer.
 
 **The retired judge/policy spine is gone, not current.** The earlier
 `@openprose/responsibility` package — with its judge, verdict/status enum,
@@ -615,9 +688,9 @@ recovery) — never as a policy core being extended.
 
 | Surface           | What Exists                                                                                                                                                                          |
 | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| SDK core          | `@openprose/reactor` v0.2.0 — the headless, zero-runtime-dependency reconciler, world-model store, canonicalizer, postcondition `gateCommit`, receipt ledger, forecast/freshness bridge |
-| CLI               | `@openprose/reactor-cli` v0.1.0 — the `reactor` binary: `init`, `doctor`, `compile`, `run`, `serve`, `trigger`, `status`, `topology`, `inspect`, `logs`, `trace`, `receipts`            |
-| Replay viewer     | `@openprose/reactor-devtools` v0.1.0 — keyless offline receipt-ledger replay (`--describe` headless summary + browser graph)                                                            |
+| SDK core          | `@openprose/reactor` v0.3.1 — the headless, zero-runtime-dependency reconciler, world-model store, canonicalizer, postcondition `gateCommit`, receipt ledger, forecast/freshness bridge |
+| CLI               | `@openprose/reactor-cli` v0.2.2 — the `reactor` binary: thirteen commands — `init`, `doctor`, `compile`, `run`, `serve`, `trigger`, `status`, `topology`, `inspect`, `logs`, `trace`, `receipts`, `telemetry` |
+| Replay viewer     | `@openprose/reactor-devtools` v0.2.0 — keyless offline receipt-ledger replay (`--describe` headless summary + browser graph)                                                            |
 | Contract kinds    | `responsibility`, `function`, `gateway`, `pattern`, `test` (authored in `*.prose.md`); compiled by intelligent sessions, never a `.prose` parser                                        |
 | State layout      | a `<state-dir>` (default `./.reactor`): flat `receipts.json`, `world-models/<node>/published.json`, and a content-addressed `compile/` IR cache                                         |
 | Render seam       | the bounded-activation agent SDK adapter (host-supplied `@openai/agents`) over a model gateway (OpenRouter default); the live render needs a key, every observability command is keyless         |
@@ -631,10 +704,11 @@ replay offline.
 ### Responsibility Catalog
 
 These worked examples were moved out of Part I (one example is enough to teach
-the thesis) but remain a useful catalog. The two scaffolded contracts ship today
-as runnable CLI examples (`examples/quickstart`, `examples/gateway-connector`);
-the rest are authoring targets phrased in the current section vocabulary
-(`### Goal` / `### Requires` / `### Maintains` / `### Continuity`).
+the thesis) but remain a useful catalog. The three scaffolded contracts ship
+today as runnable CLI examples (`examples/agent-observatory`,
+`examples/gateway-connector`, `examples/quickstart`); the rest are authoring
+targets phrased in the current section vocabulary (`### Goal` / `### Requires` /
+`### Maintains` / `### Continuity`).
 
 - **Release readiness** — `### Goal:` the release candidate is ready to ship;
   `### Continuity` wakes before every planned release and when release evidence
@@ -653,57 +727,68 @@ the rest are authoring targets phrased in the current section vocabulary
 
 ### The SDK: `@openprose/reactor`
 
-`@openprose/reactor` v0.2.0 is the **headless, zero-runtime-dependency SDK core**
+`@openprose/reactor` v0.3.1 is the **headless, zero-runtime-dependency SDK core**
 — the reconciler, the receipt ledger, the world-model store, and the
 compile/render seams. It installs no provider, no key, and no UI; the live render
 needs two host-supplied deps (`@openai/agents`, `zod`), while the
-inspection/replay surface needs neither. It exposes deterministic, content-addressed building blocks
-through typed subpaths (verified against `package.json` exports):
+inspection/replay surface needs neither. The published `exports` map is **seven**
+entries: `.` (the root barrel re-exporting the building blocks), `./agents` (the
+compile + render agent adapters), `./adapters` (storage + connector seams),
+`./run` and `./run/types` (the reconcile loop and its types), `./internals` (the
+lower-level building blocks), and `./package.json`. The deterministic,
+content-addressed pieces those entrypoints expose live as internal `src/` modules
+— located below by path, reachable through the root barrel and `./internals`, and
+**not** each a separately-published subpath:
 
-| Subpath                          | Ships                                                                                                                     |
-| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `@openprose/reactor/reactor` *   | the **dumb reconciler** — memo/skip → schedule (single-flight + dirty-coalescing) → commit → propagate; no judge step      |
-| `@openprose/reactor/canonicalizer` | the per-node compiled fingerprint function over `### Maintains`; re-lowered keylessly from a serializable spec at mount    |
-| `@openprose/reactor/forme`       | the topology render — `### Requires` ↔ `### Maintains` wiring with diagnostics and an acyclicity postcondition             |
-| `@openprose/reactor/postcondition` * | `compilePostconditions(...)` + `gateCommit(...)` — deterministic validators + the render's `### Maintains` self-attestation |
-| `@openprose/reactor/receipt`     | receipt v0 build/verify/inspect; status `{rendered, skipped, failed}`; `verifyReceipt` + `verifyReceiptChain` check a receipt and the ledger chain |
-| `@openprose/reactor/world-model` | the content-addressed store with the published-truth / private-workspace split (`fs-store`, `store`, `canonical`)          |
-| `@openprose/reactor/memo`        | the `(contract_fingerprint, input_fingerprints)` memo key — and nothing else                                              |
-| `@openprose/reactor/forecast`    | self-driven `### Continuity`: a lapsed `valid_until` mechanically moves a facet fingerprint and wakes the node (zero-token) |
-| `@openprose/reactor/composition` | the read-isolation pin — a content-addressed snapshot of each consumed upstream facet (the dependency = evidence graph)    |
-| `@openprose/reactor/cost`        | token-truth: `tokens.fresh` vs `tokens.reused` + `surprise_cause`                                                          |
-| `@openprose/reactor/projection`  | tiered receipt-proof projection (owner / subscriber / public) that keeps private payload fields out of lower-trust views   |
-| `@openprose/reactor/sdk`         | `createReactor` + `run-project` — mount a DAG, drive wakes, read dispositions                                              |
-| `@openprose/reactor/adapters/*`  | the two seams: `agent-compile` (compile sessions → IR), `agent-render` (bounded render); plus fs/memory storage, connectors |
+| Module (`src/…`)       | Ships                                                                                                                     |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `reactor/`             | the **dumb reconciler** — memo/skip → schedule (single-flight + dirty-coalescing) → commit → propagate; no judge step      |
+| `canonicalizer/`       | the per-node compiled fingerprint function over `### Maintains`; re-lowered keylessly from a serializable spec at mount    |
+| `forme/`               | the topology render — `### Requires` ↔ `### Maintains` wiring with diagnostics and an acyclicity postcondition             |
+| `postcondition/`       | `compilePostconditions(...)` + `gateCommit(...)` — deterministic validators + the render's `### Maintains` self-attestation (built and tested; **not yet called on the live commit path** — see below) |
+| `receipt/`             | receipt v0 build/verify/inspect; status `{rendered, skipped, failed}`; `verifyReceipt` + `verifyReceiptChain` check a receipt and the ledger chain |
+| `world-model/`         | the content-addressed store with the published-truth / private-workspace split (`fs-store`, `store`, `canonical`)          |
+| `memo/`                | the `(contract_fingerprint, input_fingerprints)` memo key — and nothing else                                              |
+| `forecast/`            | self-driven `### Continuity`: a lapsed `valid_until` mechanically moves a facet fingerprint and wakes the node (zero-token) |
+| `composition/`         | the read-isolation pin — a content-addressed snapshot of each consumed upstream facet (the dependency = evidence graph)    |
+| `cost/`                | token-truth: `tokens.fresh` vs `tokens.reused` + `surprise_cause`                                                          |
+| `projection/`          | tiered receipt-proof projection (owner / subscriber / public) that keeps private payload fields out of lower-trust views   |
+| `sdk/`, `run/`         | `createReactor` + `run-project` — mount a DAG, drive wakes, read dispositions                                              |
+| `adapters/`            | the two seams: `agent-compile` (compile sessions → IR), `agent-render` (bounded render); plus fs/memory storage, connectors |
 
-\* The `reactor` and `postcondition` modules are internal-by-subpath today
-(barrels under `src/`, not in the published `exports` map); the table names them
-to locate the shipped behavior. The `exports` map itself publishes **fifteen**
-subpaths: the non-starred rows above (with `adapters/*` covering both
-`agent-compile` and `agent-render`), plus the root `.`, `./run-project`, and
-`./evidence-plan` (not separately tabled). `reactor` and `postcondition` are
-**not** among them.
+The `exports` map deliberately keeps the published surface small while the
+building blocks above stay reachable through the root barrel and `./internals`.
+(Earlier drafts of this section over-counted the published surface as fifteen
+named subpaths; the shipped map is the seven entries above.)
 
 The reconciler's surprise property is an enforced, tested invariant: when an
 input fingerprint does not move, the render body provably never runs, recoverable
 from the `tokens.fresh` vs `tokens.reused` split in the receipt. The commit gate
 is offline — no model call is on the commit path.
 
-**gateCommit run-phase wiring is partial — state it plainly.** The deterministic
-commit gate `gateCommit(...)` and `compilePostconditions(...)` are built and
-unit-tested, and the `agent-compile` adapter emits each node's validator set into
-the compiled IR. But the live `agent-render` adapter today gates a commit on the
-render's **own structured done/failed self-attestation** of its `### Maintains`
-obligations — it returns `rendered` or `failed`, and the reconciler trusts that
-outcome — rather than re-running the compiled `gateCommit(...)` validators over
-the render's output in the run phase. The two halves exist; threading the
-compiled deterministic validators into the render adapter's commit path is the
-named remaining wiring (see Part III). A failed render still commits nothing: the
-prior world-model stands and nothing downstream wakes.
+**The deterministic commit gate is built but unwired — state it plainly.**
+`compilePostconditions(...)` is built, unit-tested, and **runs on the compile
+path**: the `agent-compile` adapter lowers and emits each node's validator set
+into the compiled IR. But the gate that would evaluate that set at commit,
+`gateCommit(...)`, has **zero non-test callers**: the live run path does not
+consult postconditions on commit (`packages/reactor/src/sdk/run-project.ts`).
+The commit decision today rides the render's **own structured done/failed
+self-attestation** of its `### Maintains` obligations — the render returns
+`rendered` or `failed` and the reconciler trusts that outcome — rather than
+re-running the compiled `gateCommit(...)` validators over the render's output.
+Both halves exist; threading the compiled deterministic validators onto the live
+commit step is the named remaining wiring (see Part III), and until it lands the
+Invariant 6 "an inadmissible render cannot corrupt the truth" guarantee is
+carried by the render's self-attestation, not by the deterministic gate. (Even
+once wired, the deterministic predicate DSL covers `=`/`≠`/`≥`/`<` plus
+`and`/`or`/`not` over flat scalar facts; quantified obligations like "every claim
+cites a source" stay render-attested, not deterministically checkable.) A failed
+render still commits nothing: the prior world-model stands and nothing downstream
+wakes.
 
 ### The CLI: `@openprose/reactor-cli`
 
-`@openprose/reactor-cli` v0.1.0 ships the `reactor` binary as the deterministic
+`@openprose/reactor-cli` v0.2.2 ships the `reactor` binary as the deterministic
 **reference client** that configures the SDK — it never re-implements the
 reconciler and never parses `.prose`. The three-phase lifecycle is
 `compile → run → serve`:
@@ -718,26 +803,32 @@ reconciler and never parses `.prose`. The three-phase lifecycle is
 - **`run`** ensures the IR is fresh, boots the reactor, drains to quiescence,
   prints per-node dispositions + cost, and exits (one-shot).
 - **`serve`** boots the durable host (flat `receipts.json` + filesystem
-  world-models), runs the continuity driver loop, and exposes a small HTTP
-  surface (`GET /health`, `GET /status`, `GET /cost`, `POST /<node>/trigger`).
-  It binds `127.0.0.1` by default and ships **no auth in v1** (the trigger route
-  can cause model spend; front it with a proxy before exposing). It drains
-  in-flight work on `SIGINT`/`SIGTERM`.
+  world-models), runs the continuity driver loop, and exposes a small,
+  reactor-namespaced HTTP surface — `GET /health`, `GET /<reactor>/status`,
+  `GET /<reactor>/cost`, `GET /<reactor>/topology`, `GET /<reactor>/receipts`,
+  `GET /<reactor>/nodes/<node>`, and `POST /<reactor>/trigger/<node>`. It binds
+  `127.0.0.1` by default and ships **no auth in v1** (the trigger route can cause
+  model spend; front it with a proxy before exposing). It drains in-flight work
+  on `SIGINT`/`SIGTERM`.
 
-The full command surface (verified against the README + `src/commands/`):
-`init`, `doctor` (`--live` runs one smoke render), `compile`, `run`, `serve`,
-`trigger`, `status`, `topology`, `inspect`, `logs`, `trace`, and
-`receipts [list|verify|cost]`. Documented stable exit codes: `0` success, `1` a
-reported failure with an actionable message (stale cache, broken chain, no
-contracts, bad config, unhealthy env, missing live key/dep), `2` a usage error.
+The full command surface is **thirteen** commands: `init`, `doctor` (`--live`
+runs one smoke render), `compile`, `run`, `serve`, `trigger`, `status`,
+`topology`, `inspect`, `logs`, `trace`, `receipts [list|verify|cost]`, and
+`telemetry` (the anonymous-analytics control). The six observability commands
+(`status`, `topology`, `inspect`, `logs`, `trace`, `receipts`) are deterministic
+**projections** implemented together in `src/commands/observe.ts`, not one file
+per command. Documented stable exit codes: `0` success, `1` a reported failure
+with an actionable message (stale cache, broken chain, no contracts, bad config,
+unhealthy env, missing live key/dep), `2` a usage error.
 
 **The offline boundary is real and load-bearing.** Requiring the CLI entrypoint
 loads neither `@openai/agents` nor `zod`; only `compile`/`run`/`serve`/`trigger`
-reach the model surface, via dynamic `import()` inside the handler. `init`,
-`doctor`, and the **whole observability suite** (`status`, `topology`, `inspect`,
-`logs`, `trace`, `receipts`) run fully offline with the model deps absent — and
-so does the keyless `reactor-devtools` replay. The per-package
-`pnpm test:offline` (no key, no network) is the contributor commit gate.
+and `doctor --live` reach the model surface, via dynamic `import()` inside the
+handler. `init`, plain `doctor`, and the **whole observability suite** (`status`,
+`topology`, `inspect`, `logs`, `trace`, `receipts`) run fully offline with the
+model deps absent — and so does the keyless `reactor-devtools` replay. The
+offline test gate (`REACTOR_OFFLINE=1`, run with no key and no network, via the
+root `pnpm test:reactor:offline`) is the contributor commit gate.
 
 **Durable substrate.** `serve` persists to a flat `<state-dir>/receipts.json`
 (the chain-verifiable ledger, the same file `reactor-devtools <state-dir>` reads)
@@ -763,7 +854,7 @@ reconstructs the same trail.
 
 Part I states the invariants as an unqualified north star. This ledger is where
 reality is honest, keyed to the eight Part I invariants. The verdict is reported
-against the shipped `@openprose/reactor` v0.2.0 / `@openprose/reactor-cli` v0.1.0
+against the shipped `@openprose/reactor` v0.3.1 / `@openprose/reactor-cli` v0.2.2
 build, not the retired judge package.
 
 | Invariant                              | State   | Evidence / Gap                                                                                                                                                                                                                                |
@@ -773,12 +864,13 @@ build, not the retired judge package.
 | 3. Adapters are the only reason hosts differ | Conformant (surface), unmeasured (live) | The SDK seam injects all adapters with no hidden defaults; the live render seam is the agent SDK over a model gateway. Recorded provider parity is not yet a shipped multi-provider matrix.                                                          |
 | 4. Activations are bounded             | Conformant | Continuity lives in the durable receipt trail + world-model store; no long-running session. Renders are bounded, single-flight-per-node, dirty-coalescing.                                                                                          |
 | 5. Cost scales with surprise           | Conformant as a tested invariant; unmeasured empirically | The memo-skip is an enforced test invariant — an unmoved input fingerprint provably never runs the render body, recoverable from `tokens.fresh` vs `tokens.reused` + `surprise_cause`. **No benchmark/dollar numbers** are claimed; honest long-horizon benchmarks are the named open ask (README "Deliberately not yet here"). |
-| 6. The commit gate is deterministic (`gateCommit`) | **Partial** | `gateCommit(...)` + `compilePostconditions(...)` are built and unit-tested; `agent-compile` emits each node's validator set into the IR. The live `agent-render` adapter commits on the render's **own done/failed self-attestation** of `### Maintains`, not yet on a run-phase `gateCommit(...)` call over the render output. A failed render still commits nothing. Wiring the compiled validators into the render commit path is the named remaining work. |
-| 7. Receipts are content-addressed      | Conformant; meaning-layer signer only | Receipt v0 is content-addressed and chain-verifiable (`verifyReceiptChain`, `receipts verify`), persisted to flat `<state-dir>/receipts.json`. Tiered `projection` keeps private payload fields out of subscriber/public proofs. The signer is an explicit **null state** (`{ scheme: "none", null_reason: "no-signer-adapter-configured" }`) — v1 "signed" = chain-consistency, not a cryptographic byte hash. |
+| 6. The commit gate is deterministic (`gateCommit`) | **Built, not wired** | `compilePostconditions(...)` is built, unit-tested, and runs on the compile path (`agent-compile` emits each node's validator set into the IR) — but the gate that evaluates it, `gateCommit(...)`, has **zero non-test callers**: the live run path does not consult postconditions on commit (`sdk/run-project.ts`), so the commit rides the render's **own done/failed self-attestation** of `### Maintains`. A failed render still commits nothing. Threading the compiled validators onto the live commit step is the named remaining work. |
+| 7. Receipts are content-addressed      | Conformant; thin shape + meaning-layer signer | Receipt v0 is content-addressed and chain-verifiable (`verifyReceiptChain`, `receipts verify`), persisted to flat `<state-dir>/receipts.json`. Tiered `projection` keeps private payload fields out of subscriber/public proofs. Two honest gaps: the exact-keyed v0 shape carries **no `as_of`, no failure `reason`, and no author-addressing**, so per-receipt as-of time and the failed-receipt-that-names-the-gap are dropped at commit (Part I's seam-3 and "names exactly what it needs"); and the signer is an explicit **null state** (`{ scheme: "none", null_reason: "no-signer-adapter-configured" }`) — v1 "signed" = chain-consistency, not a cryptographic byte hash. |
 | 8. State is replayable and exitable    | Conformant (chain), partial (artifacts) | A fresh reactor imports a runtime-produced ledger and produces the same next receipt hash; `reactor-devtools <state-dir>` replays it offline. Caveat: `receipts verify` proves chain consistency, **not** the world-model artifacts on disk — editing a `world-models/*/published.json` while leaving `receipts.json` intact is not caught (the null-signer boundary). |
 
-The same honesty discipline applies to the null signer, the partial gateCommit
-wiring, and the pre-publish package state (see Honest Current Limits).
+The same honesty discipline applies to the null signer, the unwired gateCommit,
+the thin receipt shape, and the deferred actuation / freshness-pacing / trust
+seams (see Honest Current Limits).
 
 ### Tests And Release Gate
 
@@ -793,9 +885,11 @@ The shipped suites (verified against the package `scripts` and `src/` layout):
   suite — including the test asserting the **flat `<state-dir>/receipts.json`**
   at the state-dir root for DevTools interop.
 - The devtools replay suite (keyless).
-- The **offline commit gate** — `pnpm -C packages/<pkg> test:offline`, run with
-  no model key and no network. The published GitHub Actions release gate uses npm
-  trusted publishing/OIDC and rejects tag/package-version mismatches.
+- The **offline gate** — the root `pnpm test:reactor:offline` (`REACTOR_OFFLINE=1`,
+  no model key, no network) covering the SDK + CLI + devtools. The published
+  GitHub Actions release gate uses npm trusted publishing/OIDC and publishes each
+  reactor package at its own version on its `reactor-v*` train (an idempotent
+  skip when that version is already on npm — not a tag/version equality assertion).
 
 What they prove: the SDK builds, packs, imports, and reconciles deterministically;
 the memo-skip invariant holds; receipts are content-addressed and chain-verify;
@@ -811,39 +905,54 @@ hardening. These are the deliberately-pending items the README and Part III name
 
 | Area              | Location                                                              | Role                                                                                       |
 | ----------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| SDK package       | `packages/reactor/` (`@openprose/reactor` v0.2.0)                     | The headless reconciler + canonicalizer + postcondition + receipt + world-model + forecast + composition SDK |
+| SDK package       | `packages/reactor/` (`@openprose/reactor` v0.3.1)                     | The headless reconciler + canonicalizer + postcondition + receipt + world-model + forecast + composition SDK |
 | Reconciler        | `packages/reactor/src/reactor/index.ts`                              | The dumb run phase: memo/skip → schedule → commit → propagate; no judge                     |
 | Canonicalizer     | `packages/reactor/src/canonicalizer/`                               | Per-node compiled fingerprint function over `### Maintains`; facet boundaries               |
-| Postcondition     | `packages/reactor/src/postcondition/index.ts`                       | `compilePostconditions(...)` + `gateCommit(...)` (built/tested; run-phase wiring partial)   |
+| Postcondition     | `packages/reactor/src/postcondition/index.ts`                       | `compilePostconditions(...)` (runs on the compile path) + `gateCommit(...)` (built/tested; **zero live callers** — unwired) |
 | Receipt ledger    | `packages/reactor/src/receipt/index.ts`                             | Receipt v0 build/verify/inspect; status `{rendered, skipped, failed}`; null signature       |
 | World-model store | `packages/reactor/src/world-model/`                                 | Content-addressed store; published-truth / private-workspace split; `fs-store`              |
 | Forecast          | `packages/reactor/src/forecast/index.ts`                            | Self-driven `### Continuity`; `valid_until` → fingerprint freshness bridge (zero-token)      |
 | Composition       | `packages/reactor/src/composition/index.ts`                         | The read-isolation pin over each consumed upstream facet                                     |
 | Render seam       | `packages/reactor/src/adapters/agent-render/`                       | The bounded LLM render; commits on self-attested done/failed                                 |
 | Compile seam      | `packages/reactor/src/adapters/agent-compile/`                      | Compile sessions → topology / canonicalizer / postcondition IR                              |
-| CLI package       | `packages/reactor-cli/` (`@openprose/reactor-cli` v0.1.0)           | The `reactor` binary; `src/commands/` holds the 12 commands + serve HTTP surface             |
-| Replay viewer     | `packages/reactor-devtools/` (`@openprose/reactor-devtools` v0.1.0) | Keyless offline receipt-ledger replay (`--describe` + browser graph)                         |
-| Examples          | `packages/reactor-cli/examples/`                                    | `quickstart` (gateway + responsibility) and `gateway-connector`, runnable from a fresh checkout |
+| CLI package       | `packages/reactor-cli/` (`@openprose/reactor-cli` v0.2.2)           | The `reactor` binary; `src/commands/` holds the 13 commands (observability via `observe.ts`) + serve HTTP surface |
+| Replay viewer     | `packages/reactor-devtools/` (`@openprose/reactor-devtools` v0.2.0) | Keyless offline receipt-ledger replay (`--describe` + browser graph)                         |
+| Examples          | `packages/reactor-cli/examples/`                                    | `agent-observatory`, `gateway-connector`, and `quickstart` (gateway + responsibility) — three, runnable from a fresh checkout |
 
 This is enough to say the Reactor-class harness exists as shipped software. It is
 not yet enough to say the public category claim is empirically proven.
 
 ### Honest Current Limits
 
-- The three packages are staged as pre-publish tarballs; they must hit public npm
-  before a clean `npm i -g` story (the CLI/devtools peer-depend on the SDK).
-- **`gateCommit`'s compiled validators are not yet wired into the live render
-  commit path** — the run phase trusts the render's `### Maintains`
-  self-attestation (invariant 6 is Partial).
+- **`gateCommit`'s compiled validators have zero live callers** — the run phase
+  does not consult postconditions on commit and trusts the render's `### Maintains`
+  self-attestation (invariant 6: built, not wired). This is gap cluster 1.
+- **The durable receipt shape is too thin to carry its promises** — the exact-keyed
+  v0 `Receipt` has no `as_of`, no failure `reason`, and no author-addressing, so
+  per-receipt as-of time and the failed-receipt-that-names-the-gap are honored only
+  in-render and dropped at commit. This is gap cluster 2.
+- **`### Invariants` is never lowered into the render** — the authored
+  rate/scope/prohibited-action actuation boundary is neither compiled, attested,
+  nor harness-enforced; it survives only as prose the render may ignore, bounded
+  in practice by the cwd-rooted workspace sandbox and the turn cap. There is no
+  world-mutation actuation sink (render tools are fs/shell over a private
+  workspace; connectors are read-only ingress). Part of gap cluster 3.
 - The signer is null-only (meaning-layer chain consistency); no cryptographic
   byte hash, so `receipts verify` does not bind the world-model artifacts on disk.
+  The topology edge pins a consumed **revision** but no **acceptable-signer-set**,
+  so cross-trust-domain composition has no pin even ahead of the signer.
 - No benchmark or dollar numbers — the surprise property is a tested invariant,
   not a measured speedup; honest long-horizon benchmarks are the named open ask.
+  Cost is **observed, not budgeted** (no enforced token ceiling per node/run).
 - No Postgres / durable cloud storage adapter (the storage seam is synchronous).
 - Within-reactor node-level parallelism (Change B) is deferred; `--concurrency`
   parallelizes reactors, not nodes.
-- `serve` uses a fixed `--poll-interval` cadence; the default `valid_until`
-  freshness projector (and adaptive idle-to-soonest-recheck) is deferred.
+- **`serve`'s freshness clock arms nothing by default** — the SDK computes
+  `next_self_recheck` from the soonest `valid_until`, but the shipped daemon's
+  freshness reader defaults to none and no node emits `valid_until` by default, so
+  `serve` sleeps a flat `--poll-interval` (default 60s) and does the fixed-interval
+  work Part I forbids. Forecast-paced / adaptive idle is deferred. Part of gap
+  cluster 3.
 - The fixpoint (topology-as-responsibility), facet inference, and ledger
   compaction are specified and deferred.
 - `serve` ships no auth in v1 — the HTTP surface is a single-operator,
@@ -881,16 +990,15 @@ time?
 
 ### Required Engineering Work
 
-#### 1. Publish And Pin The Packages
+The packages are already published (`@openprose/reactor` 0.3.1,
+`@openprose/reactor-cli` 0.2.2, `@openprose/reactor-devtools` 0.2.0) with OIDC
+provenance, so the headline of earlier roadmaps is done. The remaining work is
+**closing the three gap clusters** the Conformance Ledger names (§1–§5 below
+correspond to them), then publish hardening and the deferred enhancements and
+recursions (§6–§9). It is ordered by leverage: the commit-gate and freshness
+items are load-bearing.
 
-The three packages are staged tarballs (`@openprose/reactor` 0.2.0,
-`@openprose/reactor-cli` 0.1.0, `@openprose/reactor-devtools` 0.1.0). Ship them to
-public npm with provenance via the existing OIDC/trusted-publishing GitHub Actions
-gate (it already rejects tag/package-version mismatches), so the CLI and devtools
-can peer-depend on the published SDK cleanly. This is the minimum that turns
-"install all three tarballs, SDK first" into `npm i -g @openprose/reactor-cli`.
-
-#### 2. Wire `gateCommit` Into The Run-Phase Commit
+#### 1. Wire `gateCommit` Into The Run-Phase Commit  *(gap cluster 1)*
 
 The deterministic commit gate is the half-built invariant. `gateCommit(...)` and
 `compilePostconditions(...)` exist and are tested, and `agent-compile` already
@@ -901,26 +1009,59 @@ into the render adapter's commit path so a commit must pass deterministic
 postconditions **and** the render's self-attestation, closing invariant 6. A
 failure on either path still commits nothing and writes a `failed` receipt.
 
-#### 3. The Cryptographic Signer
+#### 2. Widen The Durable Receipt  *(gap cluster 2)*
+
+The exact-keyed v0 `Receipt` (`src/shapes/index.ts`) is too thin to carry the
+promises pinned to it: it has no `as_of`, no failure `reason`, and no
+author-addressing field, so per-receipt as-of time (seam 3) and the
+failed-receipt-that-names-the-gap ("addressed to you, naming exactly what it
+needs") are honored only in-render and dropped at commit. Add `as_of`, a failure
+`reason`, and an author-addressing field to the durable shape — and persist them
+through the ledger and tiered projections — so the Ideal receipt schema is what
+actually survives a commit.
+
+#### 3. Lower And Enforce The Actuation Boundary  *(gap cluster 3)*
+
+`### Invariants` declares a render's world-mutation bounds (rate, scope,
+prohibited actions), but the section is never lowered into the render — it
+constrains the model only as prose, bounded in practice by the cwd-rooted
+workspace sandbox and the turn cap. Lower it into the render and add a
+world-mutation actuation sink, so the published/workspace split and "the only
+writable surface is the published truth" become harness-enforced rather than
+author-trusted.
+
+#### 4. The Default Freshness Projector + Adaptive Serve Cadence  *(gap cluster 3)*
+
+`serve` runs a fixed poll cadence because `readFreshness` arms no instants today
+(no node emits `valid_until` by default), so it does the fixed-interval work Part
+I forbids. Build the default `valid_until` freshness projector that reconstructs
+each node's recheck schedule from a `valid_until` convention in published truth,
+honor a gateway's declared `### Schedule` as a freshness-paced cadence rather than
+dropping it, then let `serve` sleep to the soonest armed `next_self_recheck`
+instead of a flat heartbeat — so the common case self-paces with zero per-project
+wiring and a quiet system trends to genuinely zero tokens.
+
+#### 5. The Cryptographic Signer  *(gap cluster 3)*
 
 Today's signer is the honest null state (`scheme: "none"`); `receipts verify`
-proves chain consistency but not the world-model artifacts on disk. Add a real
+proves chain consistency but not the world-model artifacts on disk, and the
+topology edge pins a consumed revision but no acceptable-signer-set. Add a real
 signing adapter that produces a cryptographic byte hash binding the published
 world-model to its receipt, so `verify` catches an edited
 `world-models/*/published.json`, and so cross-boundary composition (the
 contract-revision + acceptable-signer pin) becomes non-repudiable. The pinning
 surface (the read-isolation pin in `composition`) is already specified ahead of it.
 
-#### 4. The Default Freshness Projector + Adaptive Serve Cadence
+#### 6. Pin And Harden The Publish Train
 
-`serve` runs a fixed `--poll-interval` cadence because `readFreshness` arms no
-instants today. Build the default `valid_until` freshness projector that
-reconstructs each node's recheck schedule from a `valid_until` convention in
-published truth, then let `serve` sleep to the soonest armed `next_self_recheck`
-instead of a flat heartbeat — so the common case self-paces with zero per-project
-wiring and a quiet system trends to genuinely zero tokens.
+The three packages publish with provenance via the OIDC/trusted-publishing
+GitHub Actions gate on the `reactor-v*` train (each package publishes at its own
+version — an idempotent skip when that version is already on npm), so the CLI and
+devtools peer-depend on the published SDK and `npm i -g @openprose/reactor-cli`
+works. The package work itself is done; the residual is pinning/policy hardening
+of the publish train only.
 
-#### 5. Ledger Compaction And Facet Inference
+#### 7. Ledger Compaction And Facet Inference
 
 The flat `receipts.json` grows without bound; a compaction/indexing plan for
 long-running responsibilities is named, not shipped. And authors declare facets
@@ -928,17 +1069,17 @@ explicitly (`####` parts under `### Maintains`) — inferring a good
 material/immaterial facet split from a contract is a v-next compile-phase
 enhancement.
 
-#### 6. The Fixpoint (Topology-As-Responsibility)
+#### 8. The Fixpoint (Topology-As-Responsibility)
 
 The closing recursion: mount Forme + the compile sessions as ordinary reactor
 nodes so the reactor maintains its **own** topology, memoized on the contract-set
 fingerprint, with an epoch rollover when the contract set changes (and a
-cold-miss sweep). The CLI surface stays the same — `compile` shifts from an
+cold-miss sweep). The `reactor` command surface stays the same — `compile` shifts from an
 external batch to forcing/inspecting the compile nodes, `serve` stops
 special-casing re-compile, and `status`/`topology` gain an epoch view. Specified
 and deferred past v1.
 
-#### 7. Within-Reactor Parallelism (Change B)
+#### 9. Within-Reactor Parallelism (Change B)
 
 `--concurrency` parallelizes reactors, not nodes; the SDK has no `maxConcurrency`
 and within a reactor drains stay serial behind a per-reactor queue. Adding a
@@ -1065,7 +1206,12 @@ Sober. Make a strong claim, then show the evidence and the limits.
   `@openprose/reactor-devtools` are public, version-consistent, and provenance-
   verified through the OIDC gate.
 - `gateCommit`'s compiled validators are wired into the run-phase commit (invariant
-  6 closed), not only the render's self-attestation.
+  6 / gap cluster 1 closed), not only the render's self-attestation.
+- The durable receipt carries `as_of`, a failure `reason`, and an author-addressing
+  field (gap cluster 2 closed), so per-receipt as-of time and the
+  failed-receipt-that-names-the-gap survive commit.
+- The `### Invariants` actuation boundary is lowered and harness-enforced at the
+  render/commit split (gap cluster 3), not author-trusted prose.
 - A fresh clone runs the `quickstart` and `gateway-connector` examples end to end;
   the keyless `reactor-devtools` replay shows dispositions + cost-by-surprise.
 - The eval suite includes the offline invariant tests **plus** the empirical

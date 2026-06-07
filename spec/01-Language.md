@@ -4,16 +4,16 @@
 
 This document is the specification of **the OpenProse Language & Framework** —
 the durable `*.prose.md` contract format, the skill semantics that interpret
-it, the model-run compiler that lowers it, the standard library that packages
-reusable behavior, and the CLI surface that drives it. It is the spec for what
-ships **bundled as the SKILL**.
+it, the model-run compiler that lowers it, and the standard library that
+packages reusable behavior. It is the spec for what ships **bundled as the
+SKILL**.
 
 The OpenProse corpus divides labor exactly, and each document maps to what
 ships:
 
 - [01-Language.md](./01-Language.md) — **this document, the Language &
   Framework**, bundled as the **SKILL**: syntax, kinds, sections, compile
-  model, std/co, CLI surface.
+  model, std/co.
 - [02-ReactorHarness.md](./02-ReactorHarness.md) — **the Reactor
   Harness**, bundled as the **CLI/Server**: the runtime control architecture
   (loop, invariants, the reconciler, memoization, forecast, receipts, composition)
@@ -39,12 +39,12 @@ This file has three parts, mirroring its companions:
 
 ## Part I — The Ideal OpenProse Language & Framework
 
-OpenProse is a contract format, runtime doctrine, skill package, standard
-library, and CLI wrapper for making agent work readable, reviewable, versioned,
-reusable, and inspectable. A user writes one `*.prose.md` file of durable
-intent. A Prose Complete agent host reads it, wires the responsibility DAG, spawns
-isolated bounded sessions, and
-leaves a durable receipt under an OpenProse root.
+OpenProse is a contract format, runtime doctrine, skill package, and standard
+library for making agent work readable, reviewable, versioned, reusable, and
+inspectable. A user writes one `*.prose.md` file of durable intent. The
+compile phase (Forme) wires the responsibility DAG from the contract set; a
+Prose Complete agent host then serves that DAG — spawning isolated bounded
+sessions and leaving a durable receipt under an OpenProse root.
 
 The central idea:
 
@@ -79,17 +79,21 @@ Part II is honest about how far the current skill has climbed toward them.
 - **Intelligence lives in the model, not in deterministic code (Tenet 2).**
   Compilation is itself model work — intelligent sessions lower a contract into
   its IR (the Forme topology, the per-node canonicalizer, and the postcondition
-  validators); deterministic code only validates that IR, wires connectors,
+  validators — deterministic where the obligation is expressible, render-attested
+  where it is semantic); deterministic code only validates that IR, wires connectors,
   enforces boundaries, schedules, and signs. The language never grows a config
   format to encode what the model should decide.
 - **The authored surface is small, stable, and complete.** Five kinds
   (`responsibility`, `function`, `gateway`, `pattern`, `test`), the canonical
-  `###` section set (`### Goal`, `### Requires`, `### Maintains`,
-  `### Continuity`, `### Invariants`, `### Execution`, plus
-  `### Parameters`/`### Returns` for a `function`, and the carried
-  `### Shape`/`### Environment`/`### Tools`/`### Runtime`), and the header
-  hierarchy are the
-  entire language. Persistence is conferred by *mounting* a responsibility — the
+  `###` section set (`### Description`, `### Goal`, `### Requires`,
+  `### Maintains`, `### Continuity`, `### Invariants`, `### Errors`,
+  `### Strategies`, `### Execution`, plus `### Parameters`/`### Returns` for a
+  `function`, the gateway ingress sections
+  (`### Schedule`/`### Receives`/`### Emits`/`### Payload`), the test and pattern
+  sections (`### Fixtures`/`### Expects` for a `test`,
+  `### Slots`/`### Config`/`### Delegation` for a `pattern`), and the carried
+  `### Shape`/`### Environment`/`### Skills`/`### Tools`/`### Runtime`), and the
+  header hierarchy are the entire language. Persistence is conferred by *mounting* a responsibility — the
   harness gives a mounted node its single durable world-model — not by a config
   flag. New capability is new *semantics* in skill docs, never new syntax or a
   YAML overlay.
@@ -100,7 +104,11 @@ Part II is honest about how far the current skill has climbed toward them.
   into a deterministic **canonicalizer**, and the run phase fingerprints each
   render's output through it. An unmoved fingerprint means the world did not
   materially change, so the dumb reconciler skips the render at zero cost —
-  there is no judge re-deciding "did this change." Absent a material/immaterial
+  there is no judge re-deciding "did this change." The fingerprint is one term
+  of the node's three-part memo key `(contract_fingerprint, input_fingerprints,
+  freshness_epoch)`; a declared freshness window (`valid_until`) is the third
+  term, so silent staleness still forces a re-render even when nothing observable
+  moved (see `### Requires`). Absent a material/immaterial
   split, maintenance cost scales with the clock, not with surprise. The
   *normalization convention* is the author's prose inside `### Maintains`; the
   compiled mechanics are the harness's
@@ -133,7 +141,10 @@ before it may commit. There is no separate judge and no `### Criteria`:
 satisfaction folds into `### Maintains`, checked deterministically where it can
 be expressed as a validator and self-attested by the render where it is
 semantic. A render that cannot satisfy its postconditions commits nothing — the
-prior truth stands and a `failed` receipt records why.
+prior truth stands and a `failed` receipt records why: a reason addressed to the
+contract author, naming exactly what the render could not satisfy. (The shipped
+v0 receipt does not yet carry that reason field — see
+[02-ReactorHarness.md](./02-ReactorHarness.md) Part II.)
 
 **Facets make subscription structural.** A `####` sub-heading inside
 `### Maintains` declares a facet — a named part of the truth. Its name is, at
@@ -142,15 +153,23 @@ an always-on atomic token over the whole truth), its *subscription symbol* (a
 consumer names it in `### Requires`, and the reconciler wakes that consumer only
 when *that* facet's token moves — `Requires.<facet>` ↔ `Maintains.<facet>`), and
 its region of the world-model. Declaring no parts is the atomic default — one
-truth, one token — and costs nothing. This adds no new grammar; it reuses the
-heading hierarchy and the Requires↔Maintains join. *Structure is subscription.*
+truth, one token — and costs nothing. Symmetrically, a consumer whose
+`### Requires` names the producer *without* a facet binds to that always-on atomic
+token and so wakes on *any* material change (the OR of every facet); naming a
+facet is how a consumer narrows that to one region. This adds no new grammar; it
+reuses the heading hierarchy and the Requires↔Maintains join. *Structure is
+subscription.*
 
 **`### Requires` declares what the node subscribes to.** It names the upstream
 facets this node consumes; Forme matches each `### Requires` entry to a
 producer's `### Maintains` facet and draws the subscription edge. `### Requires`
 is the input side of the memo key: the run phase fingerprints the node's
-contract together with its subscribed inputs, and re-renders only when one of
-them moves.
+contract together with its subscribed inputs and its freshness epoch, and
+re-renders only when one of them moves. (Shipped v1 realizes the freshness term
+as a forecast-driven self-receipt over a two-part `(contract_fingerprint,
+input_fingerprints)` key rather than a literal third element; the decision
+semantics are identical — see [02-ReactorHarness.md](./02-ReactorHarness.md)
+Part II.)
 
 **`### Continuity` declares the wake source — when, beyond an input change, a
 node should re-render.** It is not a schedule. A node is *input-driven* by
@@ -170,9 +189,12 @@ identity, projection-only shapes — is the Reactor authoring pattern's
 ([03-ReactorPattern.md](./03-ReactorPattern.md)); the runtime mechanics are the
 harness's ([02-ReactorHarness.md](./02-ReactorHarness.md)).
 
-The full mechanics of the runtime that *serves* these contracts — the two-phase
-compile/run split, memoization, the deterministic continuity clock, receipts,
-composition — are **not** specified here. They are the Reactor harness's concern
+The full *mechanics* of the runtime that *serves* these contracts — the
+two-phase compile/run split, the memo engine, the deterministic continuity
+clock, the receipt ledger, composition — are **not** specified here. This
+document states their *language-level semantics* — what the author declares (a
+freshness window, a postcondition, the receipt as the commit object) and what it
+means — and leaves the mechanics that realize them to the Reactor harness
 ([02-ReactorHarness.md](./02-ReactorHarness.md)). This document's ideal is the
 *language*: the contract a human or agent writes, and the semantics by which it
 is understood.
@@ -182,18 +204,22 @@ is understood.
 ## Part II — What Exists Today
 
 > This part is a synthesis of the current `openprose/prose` repository, treated
-> as the source of truth, measured honestly against Part I. The skill is **mid-migration**:
-> its `runtime_contract` advanced from `1` to `2` in the `v0.15.0` "Intelligent
-> React" overhaul, which retired the judge / verdict / pressure / fulfillment
-> loop and re-cleaved the kind taxonomy around a single render atom. The
-> *teaching docs* (`SKILL.md`, `contract-markdown.md`, `concepts/`, `changelog.md`)
-> are on the new model; the *library examples* under `skills/open-prose/examples/`
-> are migrated; the bundled `packages/std/` and `packages/co/` contracts are
-> **not yet migrated** (they still carry the retired vocabulary). This part says
-> so plainly rather than projecting completion. Older framing around hosted cloud
-> products, social execution networks, company financing, `kind: program`,
-> standalone `.prose` source files, and the old registry model is not part of
-> this synthesis unless the current repo still contains a live implementation.
+> as the source of truth, measured honestly against Part I. The `v0.15.0`
+> "Intelligent React" overhaul advanced the skill's `runtime_contract` from `1`
+> to `2`, retiring the judge / verdict / pressure / fulfillment loop and
+> re-cleaving the kind taxonomy around a single render atom. That migration is now
+> **essentially complete across the corpus**: the teaching docs (`SKILL.md`,
+> `contract-markdown.md`, `concepts/`, `changelog.md`), the library examples under
+> `skills/open-prose/examples/`, and the bundled `packages/std/` and `packages/co/`
+> contracts all carry the current vocabulary — **zero** `kind: service`,
+> `kind: system`, or `### Ensures` remain. The legacy `@openprose/prose-cli`
+> binary has been **removed**: the language is embodied by the SKILL in-session,
+> and the Reactor (the SDK + `reactor` CLI,
+> [02-ReactorHarness.md](./02-ReactorHarness.md)) is the deterministic harness
+> that compiles and runs served responsibilities. Older framing around hosted
+> cloud products, social execution networks, company financing, `kind: program`,
+> standalone `.prose` source files, and the old registry model is not part of this
+> synthesis unless the current repo still contains a live implementation.
 
 ### Current Shape
 
@@ -213,19 +239,21 @@ The shippable repository also contains:
 
 | Area | Location | Role |
 | --- | --- | --- |
-| OpenProse skill | `skills/open-prose/` | Agent-facing runtime/spec bundle |
-| CLI | `tools/cli/` (`@openprose/prose-cli`) | Shell entrypoint and deterministic host for compile/serve/status/doctor |
-| Standard library | `packages/std/` | Reusable roles, patterns, ops, delivery, memory, and evals (**not yet migrated** to the v0.15.0 vocabulary) |
-| Company-as-Prose package | `packages/co/` | Generic company-operations starter contracts (**not yet migrated**) |
-| Reactor packages | `packages/reactor/` (`0.2.0`), `packages/reactor-cli/` (`0.1.0`), `packages/reactor-devtools/` | The Reactor harness runtime and its `reactor` CLI/replay viewer; specified in [02-ReactorHarness.md](./02-ReactorHarness.md), **not** language material |
+| OpenProse skill | `skills/open-prose/` | Agent-facing runtime/spec bundle — the language's execution surface (the agent embodies the VM in-session) |
+| Standard library | `packages/std/` | Reusable roles, patterns, ops, delivery, memory, and evals (migrated to the current vocabulary) |
+| Company-as-Prose package | `packages/co/` | Generic company-operations starter contracts (migrated to the current vocabulary) |
+| Reactor packages | `packages/reactor/` (`0.3.1`), `packages/reactor-cli/` (`0.2.2`), `packages/reactor-devtools/` (`0.2.0`) | The Reactor harness runtime and its `reactor` CLI/replay viewer; specified in [02-ReactorHarness.md](./02-ReactorHarness.md), **not** language material |
 | Examples | `skills/open-prose/examples/` | Native OpenProse repositories; migrated to responsibility/function/gateway |
-| Tests and fixtures | `tools/cli/tests/`, package test suites | Command-model, harness, compile-validation, and IR/runtime tests |
+| Tests and fixtures | repo-root skill tests (`tests/open-prose/`) + package test suites | Skill/spec conformance, compile-validation, and reactor runtime/IR tests |
 | Plugin envelopes | `.codex-plugin/`, `.claude-plugin/`, `.agents/plugins/` | Marketplace/install metadata |
 
-OpenProse is distributed as an MIT-licensed beta and collects no telemetry. Note
-that this document's CLI is the **`prose` CLI** (`@openprose/prose-cli`); the
-separate **`reactor` CLI** (`packages/reactor-cli/`) drives the Reactor harness
-and is the Harness doc's concern, not this one.
+OpenProse is distributed as an MIT-licensed beta. The SKILL and the language
+collect no telemetry; the `reactor` CLI ships anonymous, opt-out usage analytics
+(disabled by `DO_NOT_TRACK`, `CI`, a non-TTY, or offline mode) — a harness
+concern documented in [02-ReactorHarness.md](./02-ReactorHarness.md). There is no
+longer a `prose` binary: the language is embodied by the SKILL in-session, and
+the **`reactor` CLI** (`packages/reactor-cli/`) is the deterministic harness that
+compiles and runs served responsibilities.
 
 ### What OpenProse Is Not
 
@@ -281,22 +309,25 @@ the abstract VM primitives onto real capabilities:
 | `spawn_session` | Run a render (a responsibility or a called function) in an isolated agent/session with a prompt, optional model, and access to declared input/output paths |
 | `ask_user` | Pause for missing required caller input and resume with the answer |
 | `read_state` / `write_state` | Read and write run state through the selected backend (`<openprose-root>/runs/{id}/` artifacts and durable records) |
-| `copy_binding` | Publish a declared output through the active backend (filesystem copies `workspace/` → `bindings/`; never publishes undeclared scratch) |
+| `copy_binding` | Publish a declared output through the active backend (filesystem writes the canonical artifact to `world-model/` and signs a receipt; never publishes undeclared scratch) |
 | `check_env` | Confirm an environment variable exists without exposing its value |
 
-Codex-style and Claude Code-style environments are the primary documented
-targets. The `prose` CLI can forward runs to `codex-sdk`, `claude-sdk`, or a
-local `mock` harness (the three harnesses under `tools/cli/src/harnesses/`);
-`codex-sdk` is the default. OpenProse commands are therefore first an
-agent-session command language. A shell command such as:
+Codex-style and Claude Code-style coding agents are the primary documented hosts.
+There is no `prose` binary that forwards to a separate harness: the SKILL-loaded
+coding-agent session **is** the host and embodies the VM directly. OpenProse
+commands are therefore first an agent-session command language. An in-session
+instruction such as:
 
 ```bash
 prose run src/hello.prose.md
 ```
 
-means "ask the selected agent harness to embody the OpenProse VM and execute
-this contract." The CLI is not a replacement VM; it never parses `.prose`
-semantics — the SKILL-loaded session embodies the VM.
+means "embody the OpenProse VM and execute this contract here, in-session" — the
+agent maps the primitives onto its own host tools (spawning sub-sessions, reading
+and writing run state, checking env). It never parses `.prose` semantics
+mechanically; the SKILL-loaded session embodies the VM. Continuous, *served*
+responsibilities are run by the Reactor harness (the `reactor` CLI), which the
+skill hands off to via `prose react` ([02-ReactorHarness.md](./02-ReactorHarness.md)).
 
 ### OpenProse Root
 
@@ -317,7 +348,7 @@ The root layout is:
 | `runs/` | Activation receipts for bounded VM runs |
 | `state/` | Durable cross-run state |
 | `state/agents/` | Durable agent memory |
-| `state/responsibilities/{id}/` | Each responsibility's persisted world-model and its signed, append-only receipt ledger (no separate status/pressure store — the judge loop is retired) |
+| `state/world-model/{node}/` | Each responsibility's persisted canonical world-model, with its signed, append-only `receipts.jsonl` ledger (no separate status/pressure store — the judge loop is retired) |
 | `deps/` | Installed git-native dependencies |
 | `prose.lock` | Dependency lockfile |
 | `.env` | Local runtime environment |
@@ -369,7 +400,7 @@ A `kind: responsibility` file carries a required `id:` frontmatter field: a
 tooling-generated, UUIDv7-compatible identifier (rendered as uppercase Crockford
 base32) minted once by `prose` and preserved across `name:` and filename
 renames. `name:` is the human-facing slug; `id:` is the durable identity used to
-key world-model and receipt-ledger state under `state/responsibilities/{id}/`.
+key world-model and receipt-ledger state under `state/world-model/{node}/`.
 Authors do not hand-write `id:`; tooling manages it.
 
 The five current authored kinds are:
@@ -458,9 +489,9 @@ Forme:
    the dumb reconciler reads to schedule and propagate.
 
 The repository keeps the Forme doctrine in `skills/open-prose/forme.md`. The
-older `packages/std/ops/wire.prose.md` contract still exists but, like the rest
-of `std/`, predates the v0.15.0 vocabulary and is pending migration. Forme
-running standalone (no harness) is still well-defined: a single responsibility
+`packages/std/ops/wire.prose.md` contract is a migrated `kind: function` (invoked
+in-session as `prose run std/ops/wire`). Forme running standalone (no harness) is
+still well-defined: a single responsibility
 applies its compiled canonicalizer locally to fingerprint its own receipt.
 
 ### Prose VM
@@ -483,8 +514,8 @@ For a called function:
 For a responsibility render:
 
 1. The reconciler computes the memo key `(contract_fingerprint,
-   input_fingerprints)`; if neither half moved since the last receipt, it writes
-   a `skipped` receipt and spawns nothing.
+   input_fingerprints)`; if neither half moved and no `valid_until` has lapsed
+   since the last receipt, it writes a `skipped` receipt and spawns nothing.
 2. Otherwise spawn one bounded session — the render — which reads the evidence
    the wake delivered and queries the prior world-model **by reference** (never
    pre-stuffed into context).
@@ -502,7 +533,8 @@ runs/{run-id}/
   root.prose.md
   sources/
   workspace/
-  bindings/
+  world-model/
+  receipts/
   vm.log.md
   agents/
 ```
@@ -512,8 +544,9 @@ The separation matters:
 | Directory | Meaning |
 | --- | --- |
 | `sources/` | Immutable source snapshots for the run |
-| `workspace/` | Private scratch and outputs per render |
-| `bindings/` | Public declared outputs visible downstream |
+| `workspace/` | Private, never-fingerprinted render scratch |
+| `world-model/` | The published, canonically-serialized + fingerprinted truth visible downstream |
+| `receipts/` | The signed, append-only receipt ledger for the run |
 
 OpenProse also specifies in-context, SQLite, and PostgreSQL state backends.
 Filesystem is the default and normative reference. In-context is for small
@@ -584,7 +617,8 @@ The reconcile loop is **dumb on purpose** (the full semantics are in
    `self` (the continuity clock's synthetic self-receipt), or `external` (a
    gateway turning a trigger into an edge receipt).
 2. Compute the memo key `(contract_fingerprint, input_fingerprints)`. If neither
-   half moved, write a `skipped` receipt and spawn nothing.
+   half moved and no `valid_until` has lapsed, write a `skipped` receipt and spawn
+   nothing.
 3. Otherwise spawn one render. It computes the new truth, leaves its
    `### Maintains` postconditions satisfied, writes the world-model, and signs a
    receipt with `status` `rendered` or `failed`.
@@ -632,7 +666,7 @@ The canonical output files are:
 | File | Meaning |
 | --- | --- |
 | `dist/manifest.next.json` | Fresh compile output |
-| `dist/manifest.active.json` | Manifest consumed by `prose serve` |
+| `dist/manifest.active.json` | The promoted manifest the served runtime consumes |
 
 Promotion from next to active is explicit.
 
@@ -640,7 +674,7 @@ IR records include:
 
 | Record | Meaning |
 | --- | --- |
-| `sources[]` | Discovered contract set (allowed kinds: responsibility, gateway; functions appear only when discovered, never as topology nodes) |
+| `sources[]` | Discovered contract set (allowed kinds: `responsibility`, `function`, `gateway`, `pattern`, `test`, `unknown`); only responsibilities and gateways become topology nodes — functions appear when discovered but never as nodes |
 | `topology` | Forme's resolved DAG: nodes (each with `contract_fingerprint` and `wake_source`), `edges`, and the `acyclic` postcondition |
 | `canonicalizers[]` | One per node: the deterministic lowering of `### Maintains` — `canonicalizer(world-model) → fingerprints` |
 | `postconditions[]` | One set per node: validators lowered from `### Maintains` postconditions (deterministic where expressible, render-attested otherwise) |
@@ -650,12 +684,11 @@ IR records include:
 The canonical compiler is a pinned ProseScript program at
 `skills/open-prose/compiler/index.prose.md` whose agents are **compile-step
 renders** — Forme (wiring), the canonicalizer compiler, and the postcondition
-compiler — so the compile output is itself auditable (Tenet 2). The `prose` CLI
-also ships a deterministic TypeScript source-compiler
-(`tools/cli/src/prose/repository-source-compiler.ts`) used as a validating
-fallback when the harness produces no manifest. Whether that fallback should be
-reframed as a *structural validator only* or acknowledged as a permitted,
-semantics-free mechanical lowering remains open roadmap work (Part III §3).
+compiler — so the compile output is itself auditable (Tenet 2). The Reactor
+harness realizes the same compile phase through its `agent-compile` adapter
+(content-addressed IR cache; [02-ReactorHarness.md](./02-ReactorHarness.md)).
+There is no separate deterministic source-compiler binary — the deprecated `prose`
+CLI that once shipped one has been removed.
 
 Important compiler doctrine:
 
@@ -666,61 +699,46 @@ Important compiler doctrine:
 - Do not invent provider auth, queue names, routes, payload schemas, or
   subscription setup the source does not supply.
 - Write `manifest.next.json` only after the IR shape is valid.
-- Stop after writing; the CLI performs deterministic validation.
+- Stop after writing; the harness performs deterministic validation.
 
 The compile-phase IR is **source-derived**: it is a function of the `*.prose.md`
 source set and nothing else. The Reactor harness's token-truth receipts,
 forecasts, freshness state, and reconciler decisions are **sibling runtime state**
 owned by `@openprose/reactor` — not IR fields and not new source syntax. See
-Part III §3 and [02-ReactorHarness.md](./02-ReactorHarness.md).
+*Boundary with the Reactor harness* (Part III) and
+[02-ReactorHarness.md](./02-ReactorHarness.md).
 
-### CLI
+### Commands
 
-The CLI package is `@openprose/prose-cli`, version `0.14.0` in the repository
-(`tools/cli/package.json`). It is an Oclif TypeScript package published as the
-`prose` binary. (This is distinct from the `reactor` CLI in
-`packages/reactor-cli/`, which drives the harness and belongs to the Harness doc.)
+There is **no `prose` binary**. `prose …` is a command vocabulary the SKILL
+**embodies in-session**: the user (or an agent) types `prose <verb>` and the
+SKILL-loaded session performs it by mapping to host tools — not a shell-out to an
+installed package. The legacy `@openprose/prose-cli` (an Oclif binary) has been
+removed.
 
-Its two jobs are:
-
-1. Turn user-facing commands into canonical OpenProse prompts for agent
-   harnesses.
-2. Host deterministic local runtime pieces for compile-phase IR, status, and
-   trigger serving.
-
-Current local deterministic commands (the Oclif commands under
-`tools/cli/src/commands/`):
+The served, continuously-reconciled lifecycle for responsibilities — repository-IR
+`compile`, `run`, `serve`, and observability — is delivered by the deterministic
+**`reactor` CLI** (the harness, [02-ReactorHarness.md](./02-ReactorHarness.md)),
+which the skill hands off to via `prose react`. The in-session command vocabulary:
 
 | Command | Role |
 | --- | --- |
-| `prose compile [path] [--out <dir>]` | Forward compile to the harness, then validate the generated IR |
-| `prose serve` | Serve active IR with local cron and HTTP adapters |
-| `prose status` | Read active IR and runtime receipts locally |
-| `prose doctor` | Inspect or install selected provider skill targets |
-
-Current forwarded commands (the agent-prompt model in
-`tools/cli/src/prose/command-model.ts`):
-
-| Command | Role |
-| --- | --- |
-| `prose run <file.prose.md\|package/handle>` | Run a responsibility (served/reconciled) or a called function |
+| `prose run <file.prose.md\|package/handle>` | Run a responsibility or a called function in-session |
+| `prose react "<use case>" [--start]` | Take a standing goal to a running, inspectable Reactor (hands off to the `reactor` CLI) |
 | `prose test <path>` | Execute `kind: test` contracts |
 | `prose lint <file.prose.md>` | Validate source structure and contract consistency |
 | `prose preflight <file.prose.md>` | Check dependencies and `### Environment` without executing |
 | `prose inspect <run-id>` | Inspect a completed run (`std/evals/inspector`) |
-| `prose install [--update]` | Install and pin dependencies |
+| `prose install [--update]` | Install and pin git-native dependencies |
 | `prose examples [name]` | List or run bundled examples |
-| `prose upgrade [--dry-run]` | Migrate legacy source/layout conventions (now including the v0.15.0 kind/section rewrites) |
-| `prose write [request...]` | Generate validated OpenProse source from rough English or pseudo-Prose (backed by `std/ops/prose-author`); non-interactive by default in CLI forwarding |
+| `prose upgrade [--dry-run]` | Migrate legacy source/layout conventions (including the v0.15.0 kind/section rewrites) |
+| `prose write [request...]` | Generate validated OpenProse source from rough English or pseudo-Prose (backed by `std/ops/prose-author`) |
 
-Harness selection uses `--harness` or `PROSE_HARNESS`. The harnesses are
-`codex-sdk`, `claude-sdk`, and `mock` (`tools/cli/src/harnesses/`); `codex-sdk`
-is the default.
-
-`prose serve` loads `dist/manifest.active.json`, validates it, registers local
-cron timers and HTTP routes, exposes a health endpoint, and dispatches accepted
-events into ordinary bounded activations. HTTP triggers return `202 Accepted`
-before long-running agent work completes.
+The host for an in-session `prose run` is the coding agent itself (Codex- or
+Claude-Code-style); there is no harness-selection binary. The served
+`compile → run → serve` lifecycle — its durable continuity loop, HTTP trigger
+surface, and connector ingress — is the Reactor harness's, documented in
+[02-ReactorHarness.md](./02-ReactorHarness.md).
 
 ### Dependencies
 
@@ -766,14 +784,12 @@ make the feedback loop explicit: a run can be inspected, graded against
 contracts, compared across runs, diagnosed, profiled, and used to propose source
 or platform improvements.
 
-**Honest gap:** `packages/std/` and `packages/co/` have **not** been migrated to
-the v0.15.0 vocabulary. Their contracts still declare `kind: service` (≈25 files)
-/ `kind: system` (≈18) and `### Ensures` (across ≈62 files); **no** contract yet
-uses the renamed `kind: function` / `kind: responsibility`. The only non-retired
-kinds present are the unchanged `kind: pattern` (≈19) and `kind: test`. The
-teaching docs and the bundled `examples/` are on the new model, but `std`/`co`
-source still carries the retired vocabulary and is the largest pending migration
-task (Part III §1).
+**Migration status:** `packages/std/` and `packages/co/` are now **migrated** to
+the current vocabulary — **zero** `kind: service`, `kind: system`, or
+`### Ensures` remain. Their contracts use `kind: function` (≈35 files),
+`kind: responsibility`, the unchanged `kind: pattern` (19), and `kind: test`. (`co`
+keeps its on-disk directory names `services/` and `systems/` for path stability,
+even though the contracts inside are migrated.)
 
 ### Company-As-Prose Package
 
@@ -790,15 +806,14 @@ company as an OpenProse-native repository. Current public contracts include:
 | `co/evals/*` | Evaluations for the package contracts |
 
 The package explicitly avoids OpenProse, Inc. private business logic. It is
-generic company-operations scaffolding. Like `std/`, its on-disk paths
-(`services/`, `systems/`) and contracts still use the pre-v0.15.0 vocabulary and
-are pending migration to `function` / `responsibility`.
+generic company-operations scaffolding. Its on-disk directory names (`services/`,
+`systems/`) are kept for path stability, but the contracts inside are migrated to
+the current `function` / `responsibility` vocabulary.
 
 ### Examples
 
 The examples under `skills/open-prose/examples/` are OpenProse Native
-Repositories, and — unlike `std/` and `co/` — they **are migrated** to the
-v0.15.0 vocabulary (their `src/` carries only `kind: function`,
+Repositories on the current vocabulary (their `src/` carries only `kind: function`,
 `kind: responsibility`, and `kind: gateway`; no `service`, no `system`). Each
 uses:
 
@@ -814,9 +829,10 @@ prose.lock
 The shared lifecycle is:
 
 ```bash
-prose compile
-cp dist/manifest.next.json dist/manifest.active.json
-prose serve
+# Embody and run the repository in-session:
+prose run
+# Or hand its standing goal to a durable, served Reactor (the harness):
+prose react "<the repository's standing goal>" --start
 ```
 
 Current standing-goal example repositories include `stargazer-outreach`,
@@ -835,27 +851,27 @@ language feature:
 | --- | --- |
 | `declared-skills` | `### Skills` resolution and the `skill_unresolved` diagnostic |
 | `declared-tools` | `### Tools` resolution and the `tool_unresolved` diagnostic |
-| `auto-pocock` | A non-interactive multi-step responsibility adapting an external skill workflow |
+| `auto-pocock` | A non-interactive multi-step `function` pipeline adapting an external skill workflow |
 | `session-to-prose` | Turning a working session into authored `*.prose.md` source |
-| `flat-tokens` | A Reactor-runtime token-accounting demo (Reactor-harness material, not language material) |
 
 ### Tests And Release
 
-The current repository validates the language surface at several layers
-(`tools/cli/tests/` and the package test suites):
+The current repository validates the language surface at several layers (the
+repo-root `tests/open-prose/` skill suite and the package test suites):
 
 | Layer | Coverage |
 | --- | --- |
-| Command-model tests | Argument validation and the canonical agent-prompt forwarding for each `prose` command |
-| Harness tests | `codex-sdk` / `claude-sdk` / `mock` selection and dispatch |
-| Compile-validation tests | Compile-phase IR shape (topology, canonicalizers, postconditions, contract fingerprints), root resolution, status, serve dispatch |
-| Reactor-runtime tests | Fingerprint comparison, skip/render/propagate, receipt `status` (`rendered`/`skipped`/`failed`), freshness — in `packages/reactor/` (harness material) |
-| CI workflows | CLI release checks, real harness smoke, skill install smoke, OpenProse smoke, plugin manifest validation, release publishing |
+| Skill/spec conformance | `tests/open-prose/` asserts the SKILL docs (contract-markdown, concepts, state, compiler) embody the current model — kinds, sections, the no-judge reconciler, and the world-model state shape |
+| Compile-validation tests | Compile-phase IR shape (topology, canonicalizers, postconditions, contract fingerprints) and root resolution |
+| Reactor-runtime tests | Fingerprint comparison, skip/render/propagate, receipt `status` (`rendered`/`skipped`/`failed`), freshness — in `packages/reactor*/` (harness material) |
+| CI workflows | Skill install smoke, OpenProse smoke, plugin manifest validation, and the reactor package (`reactor-v*`) publish train |
 
-The release process uses one release train: skill metadata, plugin metadata, the
-CLI npm package, package lock, and tarball installer share the same `X.Y.Z`
-version. The protected release workflow verifies CLI/package/plugin surfaces,
-publishes `@openprose/prose-cli`, and creates a GitHub Release.
+The release process uses **independent tracks** (`.version-bump.json`): the
+`skill` track moves the SKILL and both plugin manifests together — `SKILL.md`,
+`.claude-plugin/plugin.json`, `.codex-plugin/plugin.json` — because the Claude
+Code marketplace deduplicates by manifest version. The Reactor packages publish on
+their own `reactor-v*` OIDC train. There is **no `prose-cli` release train** (the
+binary was removed).
 
 ### Mental Model
 
@@ -883,8 +899,8 @@ receipt)`:
 
 | Term | Meaning |
 | --- | --- |
-| Activation | One bounded VM render, launched by `prose run` or `prose serve` |
-| Binding | A public declared output artifact |
+| Activation | One bounded VM render, launched in-session by `prose run` or by the Reactor harness (`reactor run` / `serve`) |
+| Binding | A published declared output: the canonical world-model artifact a downstream subscribes to |
 | Canonicalizer | The deterministic lowering of `### Maintains` that maps a world-model to its fingerprints |
 | Contract Markdown | The canonical `*.prose.md` source format |
 | Facet | A `####` part under `### Maintains`: a named, independently-subscribable unit of truth (fingerprint unit + subscription symbol) |
@@ -901,107 +917,101 @@ receipt)`:
 | Receipt | The signed commit object; `status` ∈ {`rendered`, `skipped`, `failed`}; the unit of the append-only ledger |
 | Repository IR | The compile-phase IR (topology + canonicalizers + postconditions + contract fingerprints) consumed by deterministic infrastructure |
 | Responsibility | The headline kind: a standing truth kept current over time, mounted as a DAG node |
-| World-model | A node's maintained truth (the DOM analogue), persisted under `state/responsibilities/{id}/` |
+| World-model | A node's maintained truth (the DOM analogue), persisted under `state/world-model/{node}/` |
 
 ---
 
 ## Part III — What Is Next
 
-The gap between Part I and Part II is now **mostly migration, not invention.**
-The `v0.15.0` "Intelligent React" overhaul already reshaped the taught taxonomy
-to the Ideal (five kinds; the load-bearing `### Requires` / `### Maintains` /
-`### Continuity` sections; facets; the dumb reconciler; receipts with
-`status` ∈ {`rendered`, `skipped`, `failed`}). What remains is **finishing the
-migration across the corpus that the teaching docs already lead**, closing a few
-in-flight SKILL inconsistencies, and shipping the genuine runtime affordances the
-Ideal assumes (which are mostly harness work, surfaced through the language).
-No new `*.prose.md` syntax is owed.
+Part I is now substantially real at the **language layer**. The `v0.15.0`
+"Intelligent React" overhaul reshaped the taught taxonomy to the Ideal (five
+kinds; the load-bearing `### Requires` / `### Maintains` / `### Continuity`
+sections; facets; the dumb reconciler; receipts with `status` ∈ {`rendered`,
+`skipped`, `failed`}), and the corpus migration that once dominated this roadmap
+is **done**: `packages/std/` and `packages/co/` carry **zero** `kind: service`,
+`kind: system`, or `### Ensures`, and the teaching docs (`SKILL.md`,
+`contract-markdown.md`, `concepts/`, `changelog.md`) are on the current model.
+The legacy `prose` CLI binary is gone; the language is embodied by the SKILL
+in-session, and the deterministic-source-compiler fallback it once carried is
+resolved by removal (compilation is model-run, Tenet 2). **No new `*.prose.md`
+syntax is owed.**
 
-### 1. Complete the kind/section migration across the corpus (the central item)
+What remains is not language work but **harness affordances the language already
+describes** — promised by the contract an author writes, delivered by the Reactor
+harness ([02-ReactorHarness.md](./02-ReactorHarness.md)) — plus the one
+language-level recursion the Ideal keeps as its closing item. Each item below is
+scoped to the *residual* gap and cross-linked to the Reactor harness gap cluster
+it closes; the engineering detail lives in 02 Part III.
 
-The teaching docs (`SKILL.md`, `contract-markdown.md`, `concepts/`,
-`changelog.md`) and the bundled `examples/` are on the new model; the largest
-remaining work is everything they reference but that still carries the retired
-vocabulary:
+### 1. Data-driven freshness (the default `valid_until` projector)
 
-- **Migrate `packages/std/` and `packages/co/`.** Their contracts still
-  declare `kind: service` (≈25) / `kind: system` (≈18) and `### Ensures`; **no**
-  contract yet uses `kind: function` / `kind: responsibility` (the only
-  non-retired kinds present are the unchanged `kind: pattern` and `kind: test`).
-  Run the `prose upgrade`
-  kind/section rewrites (the `runtime_contract: 1 → 2` migration map in
-  `changelog.md`) across both packages: `service` → `function`
-  (`### Requires`/`### Ensures` → `### Parameters`/`### Returns`); flatten or
-  split each `system` (a manual-review diagnostic, never auto-guessed);
-  re-home directory names (`co/services/`, `co/systems/`).
-- **Drive the count to zero.** Until `std`/`co` are migrated, an author who
-  composes from them sees both vocabularies side by side. This is the single
-  most visible Part-I/Part-II divergence and the clearest definition-of-done.
+Part I's self-driven continuity — a lapsed `valid_until` mechanically moves a
+facet fingerprint via the self-tick — needs a default projector in the served
+continuity loop. Today that loop (the Reactor's, which `prose react` hands off to)
+runs on a flat poll cadence and arms no per-facet `valid_until` by default, so
+`### Continuity: self-driven` runs at a fixed interval rather than the Ideal's
+"wake exactly when the soonest `valid_until` lapses." The author already writes
+the `valid_until`; the cadence tightens harness-side without a source change.
+(Reactor gap cluster 3 — [02-ReactorHarness.md](./02-ReactorHarness.md) Part III §4.)
 
-### 2. Close the in-flight SKILL inconsistencies
+### 2. The deterministic commit gate, wired
 
-The SKILL is mid-migration and still carries a few stale fragments that should be
-swept to match its own new model:
+`### Maintains` postconditions lower to deterministic validators today
+(`compilePostconditions` runs on the compile path), but the gate that evaluates
+them at commit, `gateCommit`, is built and **unwired** — the live commit rides the
+render's own `### Maintains` self-attestation. The language promises "a render
+that cannot satisfy its postconditions commits nothing"; making that
+deterministic rather than self-attested is harness wiring, not a syntax change.
+(Reactor gap cluster 1 — [02-ReactorHarness.md](./02-ReactorHarness.md) Part III §1.)
 
-- The **"Contract Markdown Sections" example block in `SKILL.md`** still shows
-  `### Ensures` (and a `### Runtime: persist` hint from the retired `### Memory`
-  era). Replace with a `### Requires` / `### Maintains` responsibility or a
-  `### Parameters` / `### Returns` function example, matching `contract-markdown.md`.
-- A few SKILL routing lines still say "service or system" or "inline service";
-  align them to "responsibility or function" and the no-`system` rule already
-  stated in the Format Detection section.
-- The `### Tools` "required even when `(none)`" rule and the `id:` Crockford
-  base32 format should be stated once, consistently, across `SKILL.md`,
-  `contract-markdown.md`, and `changelog.md`.
+### 3. The failed-receipt reason (durable receipt shape)
 
-### 3. Ship the runtime affordances the Ideal assumes
+The language promises a `failed` receipt "addressed to the author, naming exactly
+what it needs." The shipped v0 receipt is too thin to carry that — no `as_of`, no
+failure `reason`, no author-addressing field — so the naming is honored only
+in-render and dropped at commit. Widening the durable receipt is harness work the
+language's failed-receipt promise depends on. (Reactor gap cluster 2 —
+[02-ReactorHarness.md](./02-ReactorHarness.md) Part III §2.)
 
-These are real deferrals — the language describes them, but they are not yet
-fully shipped. Most are harness work surfaced through the language:
+### 4. The actuation boundary, enforced
 
-- **Default `valid_until` freshness projector for `serve`.** Part I's
-  data-driven freshness (a lapsed `valid_until` mechanically moves a facet
-  fingerprint via the self-tick) needs a default projector in the continuity loop;
-  today that loop (which `prose serve` delegates to `@openprose/reactor`) runs on a
-  fixed poll cadence and does not yet read per-facet `valid_until`. Until it lands,
-  `### Continuity: self-driven` runs on a flat cadence, not the Ideal's "wake
-  exactly when the soonest `valid_until` lapses."
-- **Adaptive serve cadence.** With the freshness projector, `serve` should sleep
-  until the soonest armed recheck instead of a fixed poll cadence (the flat
-  `--poll-interval` is the `reactor serve` flag, not a `prose serve` flag), so a
-  quiet system is genuinely idle.
-- **Facet inference.** Facets are declared today (`####` under `### Maintains`).
-  Inferring a reasonable facet split from an undivided `### Maintains` (so authors
-  get subscription granularity without hand-faceting) is future compiler work;
-  the atomic default is correct but coarse until then.
-- **Cryptographic byte-hash signer.** The receipt's `sig` is a v1 meaning-layer
-  attestation and the `signer` is an explicit null state (chain-consistency, not
-  a cryptographic byte-hash). A real signing identity and byte-hash chain are
-  deferred.
-- **Ledger compaction.** The per-node receipt ledger is append-only and grows
-  without bound; compaction / snapshotting of `state/responsibilities/{id}/` is
-  not yet specified.
-- **Live serve adapters beyond cron + HTTP.** Queues, file watches, provider
-  subscription setup, and webhook auth remain later phases (per
-  `responsibility-runtime.md`).
+`### Invariants` declares the rate/scope/prohibited-action bounds on a render's
+world-mutation. Today that boundary is authored prose the render may ignore —
+never lowered or harness-enforced. Lowering it into the render (with an actuation
+sink) makes "the only writable surface is the published truth" a guarantee rather
+than a request. (Reactor gap cluster 3 —
+[02-ReactorHarness.md](./02-ReactorHarness.md) Part III §3.)
 
-### 4. The fixpoint (topology-as-responsibility)
+### 5. Facet inference
+
+Facets are author-declared today (`####` parts under `### Maintains`). Inferring a
+reasonable facet split from an undivided `### Maintains` — so authors get
+subscription granularity without hand-faceting — is deferred compile-phase work;
+the atomic default is correct but coarse until then.
+
+### 6. Richer served ingress
+
+A served responsibility's wake sources beyond local cron-poll and HTTP — queues,
+file watches, provider subscription setup, and webhook authentication — are later
+harness phases. Until they land, a file-watch-shaped contract is authored as a
+poll `### Continuity` with the intended ingress noted, so it migrates cleanly.
+
+### 7. Cross-trust composition (the cryptographic signer)
+
+`### Requires` can pin a consumed revision today, but the acceptable-signer-set
+half of cross-trust composition waits on a real signing identity: the receipt's
+`sig` is a meaning-layer attestation over a null signer, not a cryptographic
+byte-hash chain. A signing adapter and byte-hash chain are deferred. (Reactor gap
+cluster 3 — [02-ReactorHarness.md](./02-ReactorHarness.md) Part III §5.)
+
+### 8. The fixpoint (topology-as-responsibility)
 
 Part I keeps, as its closing recursion, the **fixpoint**: wiring the graph is
 itself a maintained truth, so Forme is a `kind: responsibility` whose world-model
 is the resolved DAG and whose render is the wiring step — memoized like any node,
 bootstrapped by a tiny deterministic seed. Today Forme is a compile-phase render
-that produces the topology, but it is not yet *mounted as a node in the graph it
-draws*. Closing the loop (topology-as-responsibility) is explicitly **post-v1**.
-
-### 5. The deterministic compiler fallback
-
-The `prose` CLI carries a deterministic TypeScript source-compiler
-(`tools/cli/src/prose/repository-source-compiler.ts`) used as a validating
-fallback when the harness produces no manifest. The Ideal commits compilation to
-be model-run (Tenet 2). Resolving whether this fallback is reframed as a
-*structural validator only* or acknowledged as a permitted, semantics-free
-mechanical lowering is open roadmap work.
+that produces the topology but is not yet *mounted as a node in the graph it
+draws*. Closing the loop is explicitly **post-v1**.
 
 ### Boundary with the Reactor harness
 
@@ -1009,21 +1019,27 @@ The language has one source-derived compile: `prose compile` (source →
 compile-phase IR). The IR is a function of the `*.prose.md` source set and
 nothing else. The harness's token-truth receipts, forecasts, freshness state, and
 reconciler decisions are **sibling runtime state owned by `@openprose/reactor`** —
-not IR fields and not new `*.prose.md` syntax. The `--harness`
-(`codex-sdk`/`claude-sdk`/`mock`) surface is a bounded-activation SDK adapter and
-carries no reconciler control logic. The full runtime mechanics live in
+not IR fields and not new `*.prose.md` syntax. The render seam (a
+bounded-activation agent SDK adapter over a model gateway) carries no reconciler
+control logic. The full runtime mechanics live in
 [02-ReactorHarness.md](./02-ReactorHarness.md); this disclaimer is the language
 side of that seam.
 
 ### Definition of done for the language layer
 
-- `packages/std/` and `packages/co/` are migrated to `function` /
-  `responsibility` / `### Maintains`; no retired-vocabulary contract remains in
-  the bundled corpus.
-- The remaining stale SKILL fragments (the `### Ensures` example block, the
-  "service or system" routing lines) are swept to the new model.
-- The default `valid_until` freshness projector and adaptive `serve` cadence
-  ship, so self-driven continuity is data-driven rather than fixed-interval.
-- The deterministic-compiler-fallback question is resolved one way or the other.
+The corpus migration and the SKILL sweep that headlined earlier roadmaps are
+**done** (std/co and the teaching docs carry zero retired vocabulary). What
+remains is the harness delivering the language's standing promises:
+
+- The default `valid_until` freshness projector and adaptive serve cadence ship,
+  so self-driven continuity is data-driven rather than fixed-interval.
+- `gateCommit`'s deterministic validators are wired onto the live commit step, so
+  "a render that cannot satisfy its postconditions commits nothing" is enforced,
+  not only self-attested.
+- The durable receipt carries `as_of`, a failure `reason`, and an
+  author-addressing field, so the failed-receipt-that-names-the-gap survives
+  commit.
+- The `### Invariants` actuation boundary is lowered and enforced at the
+  render/commit split.
 - No new `*.prose.md` syntax is introduced; the fixpoint remains the explicitly
   labeled post-v1 recursion.

@@ -6,7 +6,7 @@ The OpenProse corpus divides labor exactly, and each document maps to what
 ships:
 
 - [01-Language.md](./01-Language.md) — **the Language & Framework**, bundled as
-  the **SKILL**: syntax, kinds, sections, compile model, std/co, CLI surface.
+  the **SKILL**: syntax, kinds, sections, compile model, std/co.
 - [02-ReactorHarness.md](./02-ReactorHarness.md) — **the Reactor
   Harness**, bundled as the **CLI/Server**: the runtime control architecture
   (loop, invariants, the reconciler, memoization, forecast, receipts, composition). It
@@ -78,7 +78,7 @@ It grows only as the work demands:
 
 | File | `kind:` | What the author is really writing |
 | --- | --- | --- |
-| The standing goal | `responsibility` | One `### Goal` sentence + the `### Maintains` world-model that makes it true (facets, canonicalization, postconditions) |
+| The standing goal | `responsibility` | One `### Goal` sentence + the `### Maintains` world-model that makes it true (type, facets, canonicalization, postconditions) |
 | Event ingress | `gateway` | How and when the world is allowed to wake the loop |
 | A helper | `function` | A called, ephemeral computation a render invokes — `### Parameters` → `### Returns` |
 
@@ -101,7 +101,7 @@ table is the spine of the pattern; the prose after it only elaborates.
 | 2. Materiality is compiled and shared | Declare *what counts as a material change* as natural language inside `### Maintains` — which fields matter, how they normalize, where the facets fall. The compile phase lowers that into a deterministic canonicalizer; you state the materiality, not the hash. |
 | 3. Adapters are the only reason homes differ | Author no host-specific logic in contracts. Declare needs in `### Tools` / `### Environment` by name only. The same contract must run local and cloud. |
 | 4. Activations are bounded | Never write a render that assumes it keeps running. No "while true," no in-session waiting for the next event. Continuity lives in the receipt ledger, not a session. |
-| 5. Cost scales with surprise | Write `### Maintains` so "did anything material change?" is **cheaply decidable** — give the truth a stable content identity and facet it so an unrelated change wakes nobody. Declare freshness (`valid_until`) in `### Continuity` so silent staleness still wakes the node. This is the rule authors most often violate. |
+| 5. Cost scales with surprise | Write `### Maintains` so "did anything material change?" is **cheaply decidable** — give the truth a stable content identity and facet it so an unrelated change wakes nobody. Declare freshness (`valid_until`) in `### Continuity` so silent staleness still wakes the node. This is a rule authors often violate. |
 | 6. The commit gate is deterministic | State satisfaction as **postconditions inside `### Maintains`** — deterministic where you can express a validator, self-attested by the render where it is semantic. There is no separate judge and no `### Criteria`. |
 | 7. Receipts are content-addressed | Trust the harness's signed receipt ledger as the audit / composition / exit unit. Do not hand-roll a scratch log. |
 | 8. State is replayable and exitable | Keep all durable truth in the responsibility's `### Maintains` world-model, in plain structured records. A reader must be able to take the contract and its trail to another harness. |
@@ -122,8 +122,8 @@ silent.
 
 ### Rule 2 — `### Continuity` declares the wake source; `### Maintains` carries the materiality
 
-These were once one rule; they are two jobs, and conflating them is the most
-common authoring mistake.
+These were once one rule; they are two jobs, and conflating them is a common
+authoring mistake.
 
 `### Continuity` answers **when, beyond an input change, this node should
 re-render**:
@@ -157,7 +157,9 @@ There is no `### Criteria` and no judge. State what "satisfied" means as
   validator the harness runs at commit. If it fails, the render commits nothing.
 - **Self-attested where it is semantic.** Where the obligation cannot be reduced
   to a validator, the render must attest it satisfied its own `### Maintains`
-  before it signs. `gateCommit` fails closed: no attestation, no commit.
+  before it signs. `gateCommit` fails closed: no attestation, no commit. (Part II:
+  the deterministic gate is built but currently unwired, so the live commit rides
+  the render's self-attestation until the compiled validators are threaded on.)
 
 When the truth genuinely has *nothing observable to maintain against*, the render
 cannot satisfy its postcondition and writes a `failed` receipt naming the gap —
@@ -171,7 +173,9 @@ the `failed` receipt and its reason carry it.
 `### Invariants` (the section that absorbs the old `### Constraints`) is where the
 author quarantines world-mutation — the authoring-time expression of the
 render/commit split: a render may act, but only the canonicalized published truth
-re-enters the memo, and `### Invariants` bounds what the render may touch.
+re-enters the memo, and `### Invariants` is where the author bounds what the
+render may touch — the actuation boundary the harness is to enforce at the
+render/commit split. (Part II: authored but not yet lowered into the render.)
 
 Two boundary shapes recur:
 
@@ -192,7 +196,11 @@ deliberately, not by backing into it.
 
 Authors most often write the anti-pattern: a render that re-derives everything
 every time. The fix is not a service decomposition — it is shaping `### Maintains`
-so the dumb reconciler can skip:
+so the dumb reconciler can skip. The reconciler keys each render on the 3-tuple
+`(contract_fingerprint, input_fingerprints, freshness_epoch)`; your leverage is
+to make the input fingerprints move only on real change. (Shipped v1 realizes the
+freshness term as a forecast self-receipt over a 2-tuple key — identical decision
+semantics; see [02-ReactorHarness.md](./02-ReactorHarness.md) Part II.)
 
 1. **Give the truth a stable content identity.** The canonicalizer fingerprints
    the published truth; make sure an unchanged world yields an unchanged
@@ -222,9 +230,9 @@ obligations make it safe:
   facet as a declared subscription, not a copied value.
 - **Pin revision and trust.** For cross-trust-domain composition, pin which
   revision of A you accept and an acceptable signer set; unpinned composition is
-  a supply-chain attack the author closes, not the runtime. (In v1 "signed" is
-  meaning-layer chain-consistency; the cryptographic signer is a deferred
-  milestone.)
+  a supply-chain attack the author closes, not the runtime. (Part II: v1 "signed"
+  is meaning-layer chain-consistency over a null signer; the cryptographic
+  byte-hash signer is deferred.)
 
 Freshness needs no special authoring: each facet carries its own `valid_until`,
 so a stale upstream facet's fingerprint lapses and wakes B through the ordinary
@@ -247,9 +255,8 @@ Reactor-native contracts and should be the author's default vocabulary:
 | `oversight` | The actor / observer / arbiter split — the canonical projection-only shape |
 
 These coordinate `call`s to `function`s *inside a render*; none is a separate
-node, a judge tier, or an autowired graph. Depth — running a critic only on the
-uncertain branch — is ordinary `### Execution` control flow, not a
-confidence-gated judge ensemble.
+node or an autowired graph. Depth — running a critic only on the uncertain
+branch — is ordinary `### Execution` control flow.
 
 ### A worked example: the competitor-activity monitor
 
@@ -274,6 +281,9 @@ launches — is current.
 ### Requires
 
 - `competitors`: the watchlist (names + domains) this monitor tracks.
+- `pages` from `competitor-sources-gateway`: the latest fetched source content,
+  staged with a cheap content identity so unchanged sources don't wake the
+  extraction.
 
 ### Maintains
 
@@ -295,9 +305,11 @@ no observable source is not committed (the render attests this).
 
 ### Continuity
 
-- Input-driven: wake when the `competitors` watchlist changes.
-- Self-driven: each part carries a `valid_until` of +1 business day; when it
-  lapses, that part is re-checked against the world.
+- Input-driven: wake when `pages` (new staged source content) or the
+  `competitors` watchlist changes. Unchanged sources leave the `pages`
+  fingerprint still, so the expensive extraction memo-skips at zero render tokens.
+- Self-driven: each part carries a `valid_until` of +1 business day as a safety
+  net, so a silently stale part is re-checked even if the gateway missed a change.
 
 ### Invariants
 
@@ -306,9 +318,48 @@ no observable source is not committed (the render attests this).
 
 ### Tools
 
-- cli:web-fetch
-- cli:fs-read
+- cli:fs-read   # reads staged source content; the gateway owns web-fetch
 ```
+
+**The gateway** that feeds it — cheap, deterministic ingress with a stable
+content identity, so the monitor's render only fires on real change:
+
+```markdown
+---
+name: competitor-sources-gateway
+kind: gateway
+id: 067NC4KG01RG50R40M30E2091A
+---
+
+### Goal
+
+The latest fetched source content for each tracked competitor is staged for
+extraction — fetched and staged only, never interpreted here (extraction is the
+monitor's render).
+
+### Continuity
+
+external-driven: the competitor sources cannot push, so the gateway re-checks
+them on a *freshness-paced* cadence — a `valid_until` of +6h on the staged
+`pages`, not a blind heartbeat (invariant 5).
+
+### Maintains
+
+#### pages
+The fetched source content per competitor, normalized to its stable main text.
+Material: the content hash of a competitor's normalized text changed. Immaterial:
+fetch timestamp, request ids, response headers, ads, and boilerplate.
+
+### Schedule
+
+- Re-fetch each competitor's funding, careers, and product pages when the staged
+  `pages` freshness window (+6h) lapses — the freshness-paced recheck for sources
+  that cannot push, not a fixed-interval poll.
+```
+
+The gateway does the cheap, deterministic half (fetch + normalize + hash); the
+monitor does the expensive, semantic half (extract funding / hiring / launches),
+and only when the gateway's `pages` fingerprint actually moves.
 
 **A downstream consumer** subscribes to one facet, and wakes only on that facet:
 
@@ -333,19 +384,28 @@ A short brief summarizing the latest funding activity for the watchlist.
   if funding stays quiet.
 ```
 
-What the harness does with this, for free:
+What an ideal Reactor harness does with this:
 
-- A re-poll that finds **no material funding change** produces an unchanged
-  `funding` fingerprint, so the monitor writes a `skipped` receipt and the brief
-  never wakes — *cost scales with surprise.*
+- A gateway poll that finds **no changed source content** leaves the `pages`
+  fingerprint unmoved, so the monitor's extraction **memo-skips at zero render
+  tokens** (the gateway pays only a cheap, non-LLM fetch + hash) and the brief
+  never wakes — *cost scales with surprise.* When sources change but the funding
+  *facet* does not, the monitor renders, re-derives an unchanged `funding`
+  fingerprint, and still leaves the brief asleep.
 - A new **hiring** signal moves only the `hiring` fingerprint; the brief
   subscribes to `funding`, so it stays asleep — *facets make subscription
   selective.*
-- When `funding`'s `valid_until` lapses, the continuity clock moves its
-  fingerprint and wakes the monitor with a zero-token self-receipt; if the
-  re-check finds real news, *that* propagates to the brief.
+- When `funding`'s `valid_until` safety net lapses, the continuity clock advances
+  the monitor's freshness epoch and wakes it with a zero-token self-receipt; the
+  monitor re-extracts from the latest staged `pages`, and only real news
+  propagates to the brief.
 - A render that cannot cite a source for an entry fails its postcondition,
   commits nothing, and leaves a `failed` receipt — the prior truth stands.
+
+Two of these are ideal harness behavior the contract is authored to, not yet
+delivered: forecast-paced freshness arming (today `serve` polls a flat interval)
+and the gateway's `### Schedule` cadence (today dropped by the compiler) are Part
+II deferrals — the contract above is correct; the harness climbs to it.
 
 No `kind: system`, no `### Services`, no judge, no ledger service: the render
 maintains the world-model, the canonicalizer senses change, `gateCommit` gates
@@ -378,7 +438,8 @@ Each is the natural non-Reactor instinct and why it breaks an invariant:
   id, a re-ordered list — so the fingerprint moves on noise (breaks invariant 5).
 - **Consuming another responsibility's value by copying it into the contract.**
   Not a verifiable, revision-pinned subscription; a supply-chain hole (breaks
-  invariants 6/7). Name the facet in `### Requires` instead.
+  Rule 6 composition and invariant 7's content-addressed receipts). Name the
+  facet in `### Requires` instead.
 - **"Swarm of subagents that continuously watches."** The cron-plus-prompt shape
   the Reactor replaces. The Reactor-native form is: a subscribed input or a
   lapsed `valid_until` wakes one bounded render; nothing watches in between.
@@ -408,12 +469,13 @@ authors against. This section is the conformance ledger: what the skill routes
 today, measured honestly against that pattern.
 
 The reference harness backing the skill is the three packages that ship
-together — `@openprose/reactor` (the engine SDK, `0.2.0`), `@openprose/reactor-cli`
-(command `reactor`, `0.1.0`, twelve commands), and `@openprose/reactor-devtools`
-(the replay viewer, `0.1.0`). The skill's `responsibility-runtime.md` and
+together — `@openprose/reactor` (the engine SDK, `0.3.1`), `@openprose/reactor-cli`
+(command `reactor`, `0.2.2`, thirteen commands), and `@openprose/reactor-devtools`
+(the replay viewer, `0.2.0`). The skill's `responsibility-runtime.md` and
 `concepts/{responsibility,reactor}.md` are already written to this model; the
 retired judge/verdict/status/pressure/fulfillment vocabulary is gone from the
-authoring surface, not merely deprecated.
+authoring surface, not merely deprecated, and the legacy `prose` CLI binary has
+been removed (the language is embodied by the SKILL in-session).
 
 ### The authoring surface that already exists
 
@@ -428,20 +490,24 @@ kinds and sections Part I names, and only those.
 | `kind: gateway` — sugar for an external-driven responsibility; Forme's entry-point set | Present; `reactor serve` registers it and stages ingress (fetch → extract → stage + a durable idempotency cursor) |
 | `kind: pattern` / `kind: test` | Present; patterns expand at compile time, tests route to `prose test` / `reactor` test semantics |
 | Facets: `####` parts under `### Maintains` — name = fingerprint unit + subscription symbol; atomic default | Present and **facet-granular propagation is live in production** (the v2 named-parts model); a downstream subscribed to one facet does not wake when another moves |
-| `### Maintains` as the world-model schema doing four jobs (type, canonicalization spec, facets, postconditions) | Present; the postconditions are the folded-in `### Criteria`, compiled to validators |
+| `### Maintains` as the world-model schema doing four jobs (type, canonicalization spec, facets, postconditions) | Present; the postconditions live **inside `### Maintains`**, compiled to validators (there is no separate `### Criteria` section — it was removed) |
 | `### Continuity` as the structural wake-source declaration (input / self / external) | Present; self-driven recheck and the gateway entry point are both wired (Phase 4) |
 | `### Execution` ProseScript for variable-depth work inside one render | Present — an `if`-gated `call` to a `function` is the depth mechanism, not a judge tier |
 | Compile as SKILL-loaded sessions (Forme / canonicalizer / postcondition) → deterministic lowering → content-addressed IR cache | Present; a `.prose` set mounts without hand-authoring via a true semantic `Requires ↔ Maintains` match |
 | Run: dumb reconciler — memo-skip on unmoved `(contract_fp, input_fp)`, single-flight + coalescing, failure = no-commit, propagate only on a `rendered` moved fingerprint | Present (`@openprose/reactor`); restart-survival proven (truth + ledger survive a fresh process) |
-| `gateCommit`: deterministic postcondition validators + render self-attestation of `### Maintains`; receipt status in `{rendered, skipped, failed}` | Present; no judge, no verdict, no status enum |
+| `gateCommit`: deterministic postcondition validators + render self-attestation of `### Maintains`; receipt status in `{rendered, skipped, failed}` | Partial; no judge, no verdict, no status enum — but the commit rides the render's **self-attestation** today: the deterministic `gateCommit(...)` validators are built and tested yet have **zero live callers** (02-ReactorHarness gap cluster 1) |
 | Content-addressed, chain-verifiable receipt ledger; cost = `tokens.fresh` vs `tokens.reused` + `surprise_cause` | Present (`reactor receipts` chain-verifies and tamper-detects; the devtools meter renders "cost scales with surprise") |
 | Composition: a downstream responsibility names an upstream facet in `### Requires`; Forme draws the subscription edge | Present; the reconciler reads the topology `edges` to resolve propagation |
 
 The skill can already express a Reactor-native program end to end *in the current
 model*: one responsibility with a faceted `### Maintains`, a gateway for ingress,
-a `function` helper for an expensive sub-step, a projection-only or full
-actuation boundary in `### Invariants`, postcondition-gated commit, and a
-composition edge that is a real subscription rather than a copied value.
+a `function` helper for an expensive sub-step, an actuation boundary in
+`### Invariants`, postcondition-gated commit, and a composition edge that is a
+real subscription rather than a copied value. Two honest caveats the author must
+hold (see limits): the `### Invariants` actuation boundary is **authored but not
+yet harness-enforced** — it is never lowered into the render, so it constrains the
+model only as prose; and the postcondition gate currently rides the render's
+self-attestation, not the deterministic `gateCommit(...)` validators.
 
 ### Current authoring limits
 
@@ -461,23 +527,39 @@ reality is honest, rule by rule.
 
 ### Honest current limits for authors
 
-- **`### Continuity` self-driven recheck is wired, but the cadence is flat.**
-  The continuity scheduler drives the freshness-lapse → synthetic self-receipt
-  bridge (a lapsed `valid_until` flips a fact's status, moves the facet
-  fingerprint, and wakes the node — a **zero-token** fingerprint move, not a
-  model re-render). `reactor serve` polls it on a flat `--poll-interval`
-  (default 60s); **forecast-paced / adaptive idle** off each node's soonest
-  `next_self_recheck` is deferred. Declare `valid_until` now; the cadence
-  tightens later without a source change.
+- **`### Continuity` self-driven recheck exists, but `serve`'s freshness clock
+  arms nothing by default.** The bridge is real (a lapsed `valid_until` flips a
+  fact's status, moves the facet fingerprint, and wakes the node — a **zero-token**
+  fingerprint move, not a model re-render), and the SDK computes each node's
+  soonest `next_self_recheck`. But the shipped `serve` daemon's freshness reader
+  defaults to none and no node emits `valid_until` by default, so it sleeps a flat
+  `--poll-interval` (default 60s) and does the fixed-interval work the ideal
+  forbids. Forecast-paced / adaptive idle is the deferred next step. Declare
+  `valid_until` now; the cadence tightens later without a source change.
+- **The `### Invariants` actuation boundary is authored, not enforced.** The
+  authored rate/scope/prohibited-action quarantine is never lowered into the
+  render — neither compiled, attested, nor harness-checked — so it constrains the
+  model only as prose, bounded in practice by the cwd-rooted workspace sandbox and
+  the turn cap. There is also no world-mutation actuation sink yet (render tools
+  are fs/shell over a private workspace; connectors are read-only ingress).
+- **A gateway's `### Schedule` cadence is not yet honored.** Gateways poll
+  external sources, but a per-gateway `### Schedule` (e.g. "every 6h") is dropped
+  by the compiler today; cadence is the serve loop's flat poll interval. Declare
+  the intended schedule now; it binds once the compiler carries it.
+- **The deterministic commit gate is unwired.** `compilePostconditions(...)`
+  runs on the compile path, but the gate that evaluates it, `gateCommit(...)`, has
+  zero live callers; the commit rides the render's `### Maintains` self-attestation
+  (02-ReactorHarness gap cluster 1).
 - **Serve ingress is local cron-poll + HTTP only.** Gateway poll connectors and
   an HTTP trigger surface ship; **queues, file watches, and provider
   subscriptions** do not. A worktree/planning-dir watcher must use a poll
   `### Continuity` today and note the intended file-watch form.
-- **The cryptographic signer is a null-state.** Composition pins a revision and
-  is chain-verifiable at the meaning layer, but pinning an *acceptable signer
-  set* for cross-trust-domain composition is not enforceable until the
-  byte-hash signer lands. Functionally adequate within one trust domain;
-  cryptographically weaker than the ideal across domains.
+- **The cryptographic signer is a null-state, and the dependency edge pins no
+  signer set.** Composition pins a content-addressed *revision* and is
+  chain-verifiable at the meaning layer, but the topology edge carries no
+  *acceptable-signer-set* pin, and the byte-hash signer that would enforce one is
+  deferred. Functionally adequate within one trust domain; cryptographically
+  weaker than the ideal across domains.
 - **Materiality is authored, not yet inferred.** The author writes the
   material/immaterial split in `### Maintains` prose and the compile session
   lowers it. The skill does **not** infer facets or materiality from the truth's
@@ -531,6 +613,10 @@ should mirror the load they bear:
   referents; when the truth has *nothing observable to maintain against*, that
   is an expected, high-value `failed` receipt routed to the author — **never** a
   `blocked`/`drifting` status enum (those are retired).
+- The failed receipt that *names the gap and routes it to the author* depends on
+  the harness widening the durable receipt with a `reason` + author-addressing
+  field (02 gap cluster 2); until that lands, the doctrine is authorable but the
+  routed reason is dropped at commit. Author to it now.
 
 ### 3. Land the materiality lowering's prose→spec half
 
@@ -542,7 +628,30 @@ the spec reliably — so that "state the materiality, not the hash" is trustwort
 across more contract shapes. This is a compile-session quality effort, not a new
 grammar; there is no `.prose` parser to build.
 
-### 4. Forecast-paced continuity cadence
+### 4. Wire the deterministic commit gate
+
+The author states satisfaction as postconditions inside `### Maintains`, and the
+compile phase lowers them to deterministic validators (`compilePostconditions`
+runs on the compile path). But the gate that would evaluate them at commit,
+`gateCommit(...)`, has zero live callers — the commit rides the render's own
+`### Maintains` self-attestation. So the author's postconditions are *compiled*
+but not yet the *enforced* commit gate. Threading the compiled validators onto
+the live commit step (02 gap cluster 1) makes Rule 3's "no attestation, no
+commit" a deterministic guarantee rather than a render self-report. The author
+writes postconditions to it now; the enforcement tightens harness-side.
+
+### 5. Lower and enforce the `### Invariants` actuation boundary
+
+Rule 4's actuation quarantine is authored prose today: `### Invariants` declares
+the rate/scope/prohibited-action bounds, but the section is never lowered into
+the render — it constrains the model only as prose, bounded in practice by the
+cwd-rooted workspace sandbox and the turn cap, with no world-mutation actuation
+sink. Lowering it into the render (02 gap cluster 3) makes a projection-only
+contract's "the only writable surface is the published truth" a harness-enforced
+guarantee rather than an author's request. Author the boundary now; it binds once
+the harness lowers it.
+
+### 6. Forecast-paced continuity cadence
 
 The self-driven recheck path is wired (freshness-lapse → synthetic self-receipt,
 a zero-token fingerprint move), but `reactor serve` polls it on a flat
@@ -552,7 +661,7 @@ expiry instead of waking every interval — the *forecast-paced quiescence* Part
 implies. The author already writes the `valid_until` that feeds it; the cadence
 tightens harness-side, without a source change.
 
-### 5. Richer serve ingress adapters
+### 7. Richer serve ingress adapters
 
 `reactor serve` supports local cron-poll and HTTP, plus gateway poll connectors
 with a durable idempotency cursor. Queues, file watches, provider subscriptions,
@@ -560,7 +669,7 @@ and webhook authentication remain later runtime phases. Until they land, a
 file-watch-shaped responsibility is authored as a poll `### Continuity`; the
 intended ingress form should be noted in the contract so it migrates cleanly.
 
-### 6. The cryptographic signer (cross-trust-domain composition)
+### 8. The cryptographic signer (cross-trust-domain composition)
 
 The receipt ledger is content-addressed and chain-verifiable, and the `signer`
 is an explicit null-state (`kind: "null" | "signed"`, only `null` shipped). v1
@@ -578,6 +687,12 @@ runtime's guarantee.
 - A facet under-faceting lint exists; doctrine never promises an on-disk
   `published/<facet>/…` subtree.
 - The prose→spec materiality lowering is hardened across the example corpus.
+- The compiled postconditions are wired onto the live commit (`gateCommit`), so
+  the author's `### Maintains` postconditions are the enforced commit gate, not
+  only the render's self-attestation.
+- The `### Invariants` actuation boundary is lowered and harness-enforced, so a
+  projection-only contract's "only the published truth is writable" is a
+  guarantee, and the failed receipt carries the routed `reason`.
 - `reactor serve` arms `next_self_recheck` (forecast-paced cadence) so an idle
   reactor sleeps to the next real expiry.
 - The cryptographic signer lands and a pinned signer set is enforceable for
