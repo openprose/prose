@@ -109,6 +109,32 @@ reconciler offline, asserting the property each one teaches.
   scheduling. (WIP: ships the conservative deterministic split; the full
   self-hosting fixpoint is deferred. Continuity uses prose wake-source phrasing.)
 
+### Inbound email as a trigger (primitive.dev inboxes)
+
+Three examples wire a [primitive.dev](https://primitive.dev) email inbox in as an
+external-driven gateway — the outside world reaches the graph by sending mail —
+and keep a downstream world-model current from what arrives. Each is a distinct
+reactor shape, and each ships a key-gated tier-3 LLM-as-judge live test (a cheap
+render model, a smart judge model) alongside its deterministic tier-2 gate.
+
+- [support-inbox-router](./support-inbox-router/) — a cheap-model **spam/content
+  filter** + a **faceted router whose facets are channels**: a `triage` per email
+  drops spam (its `routed` facet stays the fixed NULL token, so junk lights
+  nothing) and tags ham to a channel; the `router` catalogues one facet per
+  channel (`bug-reports`, `feature-requests`, `docs-questions`, `billing`) so a
+  docs question wakes ONLY the docs-gap tracker — never the bug board. `billing`
+  has no consumer on purpose (a facet is a subscription symbol that may have zero
+  subscribers). The docs-gap tracker feeds the agent-native docs / `llms.txt`
+  surface.
+- [feedback-pulse](./feedback-pulse/) — **rollup aggregation + self-driven weekly
+  freshness**: themed feedback aggregates into per-theme facets, and a
+  `weekly-pulse` brief refreshes on a `valid_until` self-tick — staying current
+  even when the inbox is quiet, at zero tokens on an unmoved rollup.
+- [press-desk](./press-desk/) — a deterministic **human gate** + a **privacy
+  projection**: a high-stakes inquiry commits the register update but stops the
+  outward action at `needs_human` (`auto_reply:false`), and a `public` projection
+  facet keeps sender PII out of the public view by construction.
+
 ### Eval harness
 
 - [`tools/eval-harness/`](../../../tools/eval-harness/): the Reactor eval harness:
