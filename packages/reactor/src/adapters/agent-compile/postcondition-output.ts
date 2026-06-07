@@ -4,7 +4,7 @@
  * architecture.md §3.3; world-model.md §8). This is the Determinism boundary:
  *
  *   - The SESSION (intelligent, SKILL-loaded) reads a contract's `### Maintains`
- *     postconditions (the folded-in `### Criteria`) and decides, per obligation,
+ *     postconditions and decides, per obligation,
  *     whether it is DETERMINISTICALLY expressible (a predicate over canonicalized
  *     facts) or IRREDUCIBLY SEMANTIC (render-attested). It emits the lowered
  *     predicates + the attested obligations as STRUCTURED output (this schema).

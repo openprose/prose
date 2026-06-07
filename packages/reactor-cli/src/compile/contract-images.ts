@@ -127,7 +127,6 @@ export function sliceContract(text: string, path: string): ContractImage {
   if (sections['Maintains'] !== undefined) out['maintains'] = sections['Maintains'];
   if (sections['Continuity'] !== undefined) out['continuity'] = sections['Continuity'];
   if (sections['Execution'] !== undefined) out['execution'] = sections['Execution'];
-  if (sections['Criteria'] !== undefined) out['criteria'] = sections['Criteria'];
   return out as unknown as ContractImage;
 }
 

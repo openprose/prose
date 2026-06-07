@@ -10,14 +10,6 @@
 //     rules; every expected/ fixture must PASS it and every invalid/ fixture
 //     must FAIL it. The validator mirrors the CompilePhaseIR shape in
 //     packages/reactor/src/shapes/index.ts (the shared shapes spine).
-//
-// RUN-WIRING NOTE: vitest in tools/cli is configured with
-// include: ["tests/**/*.test.ts"] relative to tools/cli, so this repo-root
-// tests/open-prose/ file is NOT yet picked up by the default `pnpm test`. The
-// integration/test wave must add the repo-root tests/ dir to a vitest project
-// include (or relocate this file under tools/cli/tests/open-prose/). Until then,
-// run it directly with:
-//   cd /Users/sl/code/prose && npx vitest run tests/open-prose/compiler
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";

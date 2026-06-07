@@ -5,10 +5,10 @@ are out of scope here:
 
 - The **`@openprose/reactor*`** packages release on their own `reactor-v*` tag
   train (see their flow).
-- **`@openprose/prose-cli`** is **deprecated** and no longer published. Its npm
-  publish flow (the "OpenProse Release" workflow, the release preflight, and the
-  CLI release checks) was removed; the package is marked deprecated on npm. Do
-  not cut new `prose-cli` versions.
+- **`@openprose/prose-cli`** has been **removed from the repo**. The Reactor SDK
+  + `reactor` CLI + replay devtools replaced it, so there is no `prose-cli`
+  release train: its package, npm publish flow ("OpenProse Release" workflow,
+  release preflight, and CLI release checks) are all gone.
 
 The single remaining track here is **`skill`** — the open-prose SKILL plus the
 Claude + Codex plugin manifests that deliver it (`skills/open-prose/SKILL.md`,

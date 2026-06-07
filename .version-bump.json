@@ -1,5 +1,5 @@
 {
-  "$comment": "OpenProse version surfaces. bump-version.sh keeps each track internally consistent. Only the SKILL/plugin track is released here; the reactor packages have their own reactor-v* train, and @openprose/prose-cli is deprecated (its npm publish flow was removed). See RELEASE.md.",
+  "$comment": "OpenProse version surfaces. bump-version.sh keeps each track internally consistent. Only the SKILL/plugin track is released here; the reactor packages have their own reactor-v* train, and @openprose/prose-cli has been removed from the repo (the Reactor SDK + CLI replaced it). See RELEASE.md.",
   "tracks": {
     "skill": {
       "description": "The open-prose SKILL and the Claude + Codex plugin envelopes that deliver it. Locked together because the Claude Code marketplace deduplicates by manifest version: skill changes only reach plugin users when the manifest version advances, so the two plugin.json files and SKILL.md must move as one. Machine compatibility is carried separately by SKILL.md's runtime_contract, not by this X.Y.Z.",

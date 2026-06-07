@@ -15,9 +15,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `compile → run → serve` lifecycle, `reactor.yml`, the `prose react` playbook,
   and the keyless `reactor-devtools` replay), `SKILL.md`/`help.md` routing, and
   the note that — unlike embodied `prose run` — `reactor` is a deterministic host
-  the agent does shell out to. The `prose` CLI registers `react` as a forwarded
-  command (`prose react [use case...] [--start]`); by default it prints the
-  `reactor` commands for the user to run, and `--start` drives the live lifecycle.
+  the agent does shell out to. `prose react [use case...] [--start]` is embodied
+  by the skill in-session (there is no `prose` binary): by default the agent
+  prints the `reactor` commands for the user to run, and `--start` drives the
+  live lifecycle.
+
+### Removed
+
+- **The legacy `@openprose/prose-cli` (`tools/cli/`) is removed.** The Oclif
+  `prose` binary and its `codex-sdk`/`claude-sdk`/`mock` harnesses are deleted;
+  the OpenProse language is embodied by the SKILL in-session and the Reactor
+  SDK + `reactor` CLI are the deterministic harness. The separately-authored
+  `### Criteria` section is also removed (postconditions live solely in
+  `### Maintains`).
 
 ## [0.15.0] - 2026-06-04 — open-prose skill & plugin
 

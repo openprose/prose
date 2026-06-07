@@ -591,7 +591,6 @@ function deriveContractFingerprints(
       `maintains:${contract.maintains ?? ""}`,
       `continuity:${contract.continuity ?? ""}`,
       `execution:${contract.execution ?? ""}`,
-      `criteria:${contract.criteria ?? ""}`,
     ].join("\n");
     out[contract.id] = asFingerprint(
       contentAddressOf(new TextEncoder().encode(image)),

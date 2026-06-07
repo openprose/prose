@@ -6,13 +6,6 @@
 // vocabulary (delta.md Part B §B5/§B6, Part C §C3/§C5/§C7; plan.md §3-§7). It is
 // a doc-conformance test in the style of tests/open-prose/contract-markdown —
 // it reads the source docs and asserts on their content, no runtime.
-//
-// RUN-WIRING NOTE: vitest in tools/cli is configured with
-// include: ["tests/**/*.test.ts"] relative to tools/cli, so this repo-root
-// tests/open-prose/ file is NOT yet picked up by the default `pnpm test`. The
-// integration/test wave must add the repo-root tests/ dir to a vitest project
-// include (or relocate under tools/cli/tests/open-prose/). Until then run with:
-//   cd /Users/sl/code/prose && npx vitest run tests/open-prose/skill-meta
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";

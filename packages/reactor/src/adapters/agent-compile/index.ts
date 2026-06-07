@@ -166,8 +166,8 @@ export interface PostconditionCompileResult {
 /**
  * Run the postcondition-compiler as a compile SESSION for ONE node and lower its
  * decisions into the deterministic commit-gate validator set (architecture.md
- * §3.3). The session reads `node`'s `### Maintains` postconditions (+ folded-in
- * `### Criteria`) and tags each `deterministic` (a predicate) or
+ * §3.3). The session reads `node`'s `### Maintains` postconditions
+ * and tags each `deterministic` (a predicate) or
  * `render-attested`; `compilePostconditions(...)` mode-sorts them into the
  * run-time set `gateCommit(...)` executes.
  */

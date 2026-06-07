@@ -13,13 +13,6 @@
 //
 // Doc-conformance only (read the source docs, assert on content), matching
 // tests/open-prose/contract-markdown/contract-markdown.test.ts.
-//
-// RUN-WIRING NOTE: vitest in tools/cli is configured with
-// include: ["tests/**/*.test.ts"] relative to tools/cli, so this repo-root
-// tests/open-prose/ file is NOT yet picked up by the default `pnpm test`. The
-// integration/test wave must add the repo-root tests/ dir to a vitest project
-// include (or relocate under tools/cli/tests/open-prose/). Until then run with:
-//   cd /Users/sl/code/prose && npx vitest run tests/open-prose/state
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
