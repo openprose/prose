@@ -1,7 +1,7 @@
-// Regenerate the committed `replay/` state-dir for the monorepo-ci learning
-// example.
+// Regenerate the monorepo-ci learning example's `replay/` state-dir for local
+// inspection (the tests regenerate into a tmpdir; nothing here is committed).
 //
-//   npx tsx skills/open-prose/examples/monorepo-ci/generate.ts
+//   npx tsx tests/open-prose/examples/monorepo-ci/generate.ts
 //
 // This example SHARES its generator with the devtools fixture
 // (packages/reactor-devtools/src/fixtures/monorepo-ci.ts) so the learning corpus

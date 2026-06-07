@@ -10,7 +10,7 @@
 //      gateway, acyclic; labels + flat receipts.json + hex world-models present).
 //   2. Cold-start renders all nodes; an identical re-wake SKIPS all; a skip
 //      propagates nothing and wakes nothing.
-//   3. cost.surprise_cause === wake.source on every committed receipt.
+//   3. cost.surprise_cause === wake.source on every receipt.
 //   4. ATOMIC_FACET for the facet-less producers; no "*" tokens anywhere.
 //   5. Chain-verifies: verifyReceiptChain passes over the raw on-disk receipts.
 //   6. Byte-deterministic: a second regeneration is identical.
@@ -30,8 +30,7 @@ import {
   statSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join, relative } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join, relative } from "node:path";
 
 import { createFileSystemStorageAdapter } from "@openprose/reactor";
 import {
@@ -58,12 +57,6 @@ const DIGEST = "responsibility.digest";
 function tmp(prefix: string): string {
   return mkdtempSync(join(tmpdir(), prefix));
 }
-
-// The committed state-dir, used by (6) to prove the regen is lossless against it.
-const COMMITTED_REPLAY = join(
-  dirname(fileURLToPath(import.meta.url)),
-  "replay",
-);
 
 // Recursively list every file under a directory (depth-first, no dirs).
 function walk(root: string): string[] {
@@ -214,7 +207,7 @@ describe("surprise-cost — the EVALS walkthrough (quiet skip → surprise rende
         "two more renders → fresh moves 2 → 4 (cost scales with surprise)",
       );
 
-      // cost.surprise_cause === wake.source on EVERY committed receipt.
+      // cost.surprise_cause === wake.source on EVERY receipt.
       for (const r of createReplaySession({ ledger }).receipts) {
         assert.equal(
           r.cost.surprise_cause,
@@ -229,10 +222,10 @@ describe("surprise-cost — the EVALS walkthrough (quiet skip → surprise rende
 });
 
 // ===========================================================================
-// (2) THE COMMITTED FIXTURE: the generator drives the real reconciler and emits
-//     the replay/ state-dir. Assert the validity contract off the persisted dir.
+// (2) THE FULL FIXTURE: the generator drives the real reconciler and emits the
+//     replay/ state-dir into a tmpdir. Assert the validity contract off it.
 // ===========================================================================
-describe("surprise-cost — the committed replay fixture (validity contract)", () => {
+describe("surprise-cost — the generated replay fixture (validity contract)", () => {
   it("(1) compiles to the frozen artifact set: single entry gateway, acyclic, labels + hex world-models", () => {
     const dir = tmp("surprise-cost-shape-");
     try {
@@ -394,7 +387,7 @@ describe("surprise-cost — the committed replay fixture (validity contract)", (
     }
   });
 
-  it("(3) cost.surprise_cause === wake.source on every committed receipt", () => {
+  it("(3) cost.surprise_cause === wake.source on every receipt", () => {
     const dir = tmp("surprise-cost-cause-");
     try {
       generateSurpriseCostFixture({ stateDir: dir });
@@ -499,15 +492,7 @@ describe("surprise-cost — the committed replay fixture (validity contract)", (
       assert.deepEqual(
         aFiles,
         bFiles,
-        "both regenerations emit the EXACT same file set — no orphan-file drift",
-      );
-      // and the contract's own claim: the regen is lossless against the committed
-      // replay/ — the file set on disk matches what a fresh generate produces.
-      const committed = tree(COMMITTED_REPLAY);
-      assert.deepEqual(
-        aFiles,
-        committed,
-        "the committed replay/ tree has no files a fresh regen omits (and vice-versa)",
+        "both regenerations emit the EXACT same file set (no orphan-file drift)",
       );
 
       for (const rel of aFiles) {

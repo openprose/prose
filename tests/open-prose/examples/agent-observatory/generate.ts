@@ -2,26 +2,34 @@
 //
 // It drives the REAL @openprose/reactor reconciler with DETERMINISTIC fake
 // renders (NO model key) through the public SDK primitives, then freezes the
-// `replay/` state-dir the way every devtools fixture does — PLUS a self-written
-// `beats.json` and `labels.json`, so a regeneration is LOSSLESS (the plan's
-// determinism boundary; §6 "the generators must self-write beats.json").
+// `replay/` state-dir the way every devtools fixture does, plus a self-written
+// `beats.json` and `labels.json` so a regeneration is lossless.
+//
+// This example is INTENTIONALLY DISTINCT from the reactor-devtools
+// agent-observatory corpus fixture (packages/reactor-devtools/src/fixtures/
+// agent-observatory.ts). They share the state-dir SHAPE, so reactor-devtools can
+// replay either unchanged, but they tell different stories: the devtools fixture
+// is a six-runtime corpus sample with a single dashboard, while this example
+// teaches a focused four-runtime story with a Session → Prose node and dual
+// Markdown+HTML artifacts (the nine src/*.prose.md contracts a learner lifts).
+// They are kept separate on purpose; this is not a stale copy of the fixture.
 //
 // THE STORY (the tenet this example teaches):
-//   Your laptop is a sprawling multi-runtime agent state machine — Claude Code,
+//   Your laptop is a sprawling multi-runtime agent state machine: Claude Code,
 //   Codex, OpenCode, Pi. ONE "Runtime Watch" gateway watches a normalized
 //   agent-fs and exposes ONE INDEPENDENT FACET TOKEN PER RUNTIME. Four runtime
-//   adapters each subscribe to ONLY their own runtime facet — the quiet
-//   watchers. A change to a single Claude session moves ONLY the `claude` facet
+//   adapters each subscribe to ONLY their own runtime facet (the quiet
+//   watchers). A change to a single Claude session moves ONLY the `claude` facet
 //   ⇒ ONLY the Claude Adapter lane lights; the three sibling adapter lanes stay
 //   DARK. The adapters feed a Session Ledger that exposes a `session:<id>` facet
 //   per active session; each per-session Summary subscribes to exactly one. The
-//   summaries fan into a Workstream Index (a DIAMOND — woken exactly ONCE even
+//   summaries fan into a Workstream Index (a DIAMOND, woken exactly ONCE even
 //   when two summaries move). A gating facet ("cluster-gate") drives the
 //   expensive, BATCHED Concept Clusterer, which stays DARK on small deltas and
 //   spikes only on a "major new project" delta. A folded-in Session → Prose node
 //   watches one Claude transcript and emits a generalized `.prose` contract. Two
-//   terminal artifacts — an Agent Index (Markdown) and an Agent Dashboard (HTML)
-//   — render the rollup (the dual MD+HTML artifact tenet).
+//   terminal artifacts, an Agent Index (Markdown) and an Agent Dashboard (HTML),
+//   render the rollup (the dual MD+HTML artifact tenet).
 //
 // State-dir shape (identical to the devtools fixtures so reactor-devtools can
 // replay it unchanged):
@@ -35,9 +43,7 @@ import { createHash } from "node:crypto";
 import { mkdirSync, writeFileSync, rmSync, existsSync } from "node:fs";
 import { join } from "node:path";
 
-import {
-  createFileSystemStorageAdapter,
-} from "@openprose/reactor";
+import { createFileSystemStorageAdapter } from "@openprose/reactor";
 import {
   FileSystemWorldModelStore,
   fingerprintArtifact,
@@ -246,10 +252,30 @@ function seedFs(): AgentFs {
   // cascade does not plant a tall fresh spike that rivals the batch beat.
   return {
     claude: [
-      { id: "claudeA", runtime: "claude", rev: 1, head: "scaffold reactor devtools", workstream: "bootstrap" },
-      { id: "claudeB", runtime: "claude", rev: 1, head: "draft launch plan", workstream: "bootstrap" },
+      {
+        id: "claudeA",
+        runtime: "claude",
+        rev: 1,
+        head: "scaffold reactor devtools",
+        workstream: "bootstrap",
+      },
+      {
+        id: "claudeB",
+        runtime: "claude",
+        rev: 1,
+        head: "draft launch plan",
+        workstream: "bootstrap",
+      },
     ],
-    codex: [{ id: "codexA", runtime: "codex", rev: 1, head: "port cli tests", workstream: "bootstrap" }],
+    codex: [
+      {
+        id: "codexA",
+        runtime: "codex",
+        rev: 1,
+        head: "port cli tests",
+        workstream: "bootstrap",
+      },
+    ],
     opencode: [],
     pi: [],
   };
@@ -297,7 +323,9 @@ const ingressCanon = (fm: WorldModelFiles) => {
   const bytes = fm["agent-fs.json"];
   const fs: Partial<AgentFs> =
     bytes === undefined ? {} : (JSON.parse(readTextFile(bytes)) as AgentFs);
-  const out: Record<string, Fingerprint> = { [ATOMIC_FACET]: fingerprintArtifact(fm) };
+  const out: Record<string, Fingerprint> = {
+    [ATOMIC_FACET]: fingerprintArtifact(fm),
+  };
   for (const rt of RUNTIMES) {
     out[RUNTIME_FACET[rt]] = materialFingerprint(fs[rt] ?? []);
   }
@@ -309,7 +337,9 @@ const ingressCanon = (fm: WorldModelFiles) => {
 const gatewayCanon = (fm: WorldModelFiles) => {
   const t = readTruth(fm);
   const runtimes = (t["runtimes"] ?? {}) as Record<string, unknown>;
-  const out: Record<string, Fingerprint> = { [ATOMIC_FACET]: fingerprintArtifact(fm) };
+  const out: Record<string, Fingerprint> = {
+    [ATOMIC_FACET]: fingerprintArtifact(fm),
+  };
   for (const rt of RUNTIMES) {
     out[RUNTIME_FACET[rt]] = materialFingerprint(runtimes[rt] ?? []);
   }
@@ -320,7 +350,9 @@ const gatewayCanon = (fm: WorldModelFiles) => {
 const sessionLedgerCanon = (fm: WorldModelFiles) => {
   const t = readTruth(fm);
   const sessions = (t["sessions"] ?? {}) as Record<string, unknown>;
-  const out: Record<string, Fingerprint> = { [ATOMIC_FACET]: fingerprintArtifact(fm) };
+  const out: Record<string, Fingerprint> = {
+    [ATOMIC_FACET]: fingerprintArtifact(fm),
+  };
   for (const sid of SESSIONS) {
     out[SESSION_FACET[sid]] = materialFingerprint(sessions[sid] ?? null);
   }
@@ -350,7 +382,11 @@ type Render = (ctx: RenderContext) => RenderProduct;
 
 function gatewayRender(deps: Deps): Render {
   return (ctx) => {
-    const fs = (readJson<Partial<AgentFs>>(deps.store, SOURCE, "agent-fs.json") ?? {}) as Partial<AgentFs>;
+    const fs = (readJson<Partial<AgentFs>>(
+      deps.store,
+      SOURCE,
+      "agent-fs.json",
+    ) ?? {}) as Partial<AgentFs>;
     const runtimes: Record<string, unknown> = {};
     let moved = 0;
     for (const rt of RUNTIMES) {
@@ -364,7 +400,10 @@ function gatewayRender(deps: Deps): Render {
       runtimes[rt] = sessions;
       moved += sessions.length;
     }
-    return commit({ runtimes, watched: RUNTIMES.length }, renderCost(ctx, Math.max(1, moved), 1));
+    return commit(
+      { runtimes, watched: RUNTIMES.length },
+      renderCost(ctx, Math.max(1, moved), 1),
+    );
   };
 }
 
@@ -377,7 +416,9 @@ function adapterRender(deps: Deps, runtime: Runtime): Render {
     const mine = runtimes[runtime] ?? [];
     const normalized = mine.map((s) => {
       if (s.corrupt) {
-        throw new Error(`${runtime} adapter: truncated session JSONL for "${s.id}" (rev ${s.rev})`);
+        throw new Error(
+          `${runtime} adapter: truncated session JSONL for "${s.id}" (rev ${s.rev})`,
+        );
       }
       return {
         session: s.id,
@@ -421,7 +462,10 @@ function sessionLedgerRender(deps: Deps): Render {
 function summaryRender(deps: Deps, sid: SessionId): Render {
   return (ctx) => {
     const ledger = readJson(deps.store, SESSION_LEDGER);
-    const sessions = (ledger?.["sessions"] ?? {}) as Record<string, Record<string, unknown>>;
+    const sessions = (ledger?.["sessions"] ?? {}) as Record<
+      string,
+      Record<string, unknown>
+    >;
     const me = sessions[sid] ?? null;
     return commit(
       {
@@ -445,7 +489,10 @@ function summaryRender(deps: Deps, sid: SessionId): Render {
 function sessionToProseRender(deps: Deps): Render {
   return (ctx) => {
     const ledger = readJson(deps.store, SESSION_LEDGER);
-    const sessions = (ledger?.["sessions"] ?? {}) as Record<string, Record<string, unknown>>;
+    const sessions = (ledger?.["sessions"] ?? {}) as Record<
+      string,
+      Record<string, unknown>
+    >;
     const me = sessions[TRANSCRIPT_SESSION] ?? null;
     const head = (me?.["head"] as string) ?? "";
     const rev = (me?.["rev"] as number) ?? 0;
@@ -518,7 +565,12 @@ function clustererRender(deps: Deps): Render {
     const freshUnits = clusters.length * 3;
     return commit(
       { clusters, cluster_count: clusters.length },
-      renderCost(ctx, Math.max(1, freshUnits), 3, FRESH_PER_UNIT * CLUSTERER_FRESH_MULTIPLIER),
+      renderCost(
+        ctx,
+        Math.max(1, freshUnits),
+        3,
+        FRESH_PER_UNIT * CLUSTERER_FRESH_MULTIPLIER,
+      ),
     );
   };
 }
@@ -587,11 +639,15 @@ function contractFingerprint(decl: NodeDecl): Fingerprint {
   return materialFingerprint({
     kind: decl.kind,
     id: decl.id,
-    requires: decl.requires.map((r) => `${r.producer}:${r.facet ?? ATOMIC_FACET}`).sort(),
+    requires: decl.requires
+      .map((r) => `${r.producer}:${r.facet ?? ATOMIC_FACET}`)
+      .sort(),
   });
 }
 
-function buildReconcilerTopology(decls: readonly NodeDecl[]): ReconcilerTopology {
+function buildReconcilerTopology(
+  decls: readonly NodeDecl[],
+): ReconcilerTopology {
   const contract_fingerprints: Record<string, Fingerprint> = {};
   for (const d of decls) contract_fingerprints[d.id] = contractFingerprint(d);
 
@@ -607,7 +663,9 @@ function buildReconcilerTopology(decls: readonly NodeDecl[]): ReconcilerTopology
       facet: r.facet ?? ATOMIC_FACET,
     })),
   );
-  const entry_points = decls.filter((d) => d.kind === "gateway").map((d) => d.id);
+  const entry_points = decls
+    .filter((d) => d.kind === "gateway")
+    .map((d) => d.id);
   const declared = new Set(decls.map((d) => d.id));
   const topology: TopologyWorldModel = {
     nodes,
@@ -625,7 +683,9 @@ function isAcyclic(
   const adj = new Map<string, string[]>();
   for (const e of edges) {
     if (!declared.has(e.producer) || !declared.has(e.subscriber)) continue;
-    (adj.get(e.producer) ?? adj.set(e.producer, []).get(e.producer)!).push(e.subscriber);
+    (adj.get(e.producer) ?? adj.set(e.producer, []).get(e.producer)!).push(
+      e.subscriber,
+    );
   }
   const state = new Map<string, 0 | 1 | 2>();
   const visit = (n: string): boolean => {
@@ -676,7 +736,9 @@ export interface GenerateResult {
  * store + ledger, then writes `compile/topology.json`, `compile/labels.json`,
  * and `beats.json`. Re-running with the same path reproduces the bytes.
  */
-export function generateAgentObservatory(opts: GenerateOptions): GenerateResult {
+export function generateAgentObservatory(
+  opts: GenerateOptions,
+): GenerateResult {
   const { stateDir } = opts;
   if (opts.clean !== false && existsSync(stateDir)) {
     rmSync(stateDir, { recursive: true, force: true });
@@ -725,7 +787,9 @@ export function generateAgentObservatory(opts: GenerateOptions): GenerateResult 
       id: SESSION_TO_PROSE,
       kind: "responsibility",
       // Watches ONLY the claudeA transcript facet.
-      requires: [{ producer: SESSION_LEDGER, facet: SESSION_FACET[TRANSCRIPT_SESSION] }],
+      requires: [
+        { producer: SESSION_LEDGER, facet: SESSION_FACET[TRANSCRIPT_SESSION] },
+      ],
       render: sessionToProseRender(deps),
       canonicalizer: atomicTruth,
     },
@@ -768,8 +832,12 @@ export function generateAgentObservatory(opts: GenerateOptions): GenerateResult 
   ];
 
   const reconcilerTopology = buildReconcilerTopology(decls);
-  const mounts: Record<string, { render: Render; canonicalizer: NodeDecl["canonicalizer"] }> = {};
-  for (const d of decls) mounts[d.id] = { render: d.render, canonicalizer: d.canonicalizer };
+  const mounts: Record<
+    string,
+    { render: Render; canonicalizer: NodeDecl["canonicalizer"] }
+  > = {};
+  for (const d of decls)
+    mounts[d.id] = { render: d.render, canonicalizer: d.canonicalizer };
 
   const dag = mountDag({ topology: reconcilerTopology, mounts, store, ledger });
 
@@ -818,76 +886,144 @@ export function generateAgentObservatory(opts: GenerateOptions): GenerateResult 
   // Track frame indices so beats.json is anchored to real receipt positions.
   const frame = (): number => ledger.all().length - 1;
   const beats: Beat[] = [];
-  const beat = (name: string, from: number, to: number, caption: string, holdMs = 3000): void => {
+  const beat = (
+    name: string,
+    from: number,
+    to: number,
+    caption: string,
+    holdMs = 3000,
+  ): void => {
     beats.push({ name, park: to, from, to, holdMs, caption });
   };
 
   // === Beat 1: COLD BOOT — every node renders once (the full flash cascade). ===
   const coldFrom = ledger.all().length;
   publishAndWake();
-  beat("cold-boot", coldFrom, frame(), "the observatory wires up · 14 nodes lit once", 2600);
+  beat(
+    "cold-boot",
+    coldFrom,
+    frame(),
+    "the observatory wires up · 14 nodes lit once",
+    2600,
+  );
 
   // === Beat 2: QUIET STRETCH — byte-identical re-scans memo-SKIP the graph. ===
   const quietFrom = ledger.all().length;
   publishAndWake();
   publishAndWake();
   publishAndWake();
-  beat("quiet", quietFrom, frame(), "no session changed · every re-tick memo-skips · cost flat near zero", 2800);
+  beat(
+    "quiet",
+    quietFrom,
+    frame(),
+    "no session changed · every re-tick memo-skips · cost flat near zero",
+    2800,
+  );
 
   // === Beat 3: SELF-TICK FLOOR — a lone self-sourced wake on the Clusterer. ===
   const selfFrom = ledger.all().length;
   dag.tick(CONCEPT_CLUSTERER);
   dag.tick(CONCEPT_CLUSTERER);
-  beat("self-tick", selfFrom, frame(), "self-tick audit floor · the Clusterer re-checks itself · no input, no cost", 2400);
+  beat(
+    "self-tick",
+    selfFrom,
+    frame(),
+    "self-tick audit floor · the Clusterer re-checks itself · no input, no cost",
+    2400,
+  );
   publishAndWake(); // a little more quiet
 
   // === Beat 4: THE HERO — one Claude session moves ⇒ only the Claude lane. ===
   const heroFrom = ledger.all().length;
   editSession("claudeA", { head: "wire the per-runtime facet canonicalizer" });
-  beat("hero-one-runtime", heroFrom, frame(), "HERO: one Claude turn · only the Claude lane lights · 3 sibling adapters DARK · the index re-writes ONCE", 3800);
+  beat(
+    "hero-one-runtime",
+    heroFrom,
+    frame(),
+    "HERO: one Claude turn · only the Claude lane lights · 3 sibling adapters DARK · the index re-writes ONCE",
+    3800,
+  );
 
   // === Beat 5: DIAMOND — claudeA AND codexA in one drain; index woken once. ===
   const diamondFrom = ledger.all().length;
   {
     const ca = fs.claude.find((s) => s.id === "claudeA")!;
-    fs.claude[fs.claude.indexOf(ca)] = { ...ca, rev: ca.rev + 1, head: "tighten the dark-lane test" };
+    fs.claude[fs.claude.indexOf(ca)] = {
+      ...ca,
+      rev: ca.rev + 1,
+      head: "tighten the dark-lane test",
+    };
     const cx = fs.codex.find((s) => s.id === "codexA")!;
-    fs.codex[fs.codex.indexOf(cx)] = { ...cx, rev: cx.rev + 1, head: "green the cli error-code assert" };
+    fs.codex[fs.codex.indexOf(cx)] = {
+      ...cx,
+      rev: cx.rev + 1,
+      head: "green the cli error-code assert",
+    };
     publishAndWake();
   }
-  beat("diamond", diamondFrom, frame(), "two sessions move in one drain · the Workstream Index is woken EXACTLY once", 3400);
+  beat(
+    "diamond",
+    diamondFrom,
+    frame(),
+    "two sessions move in one drain · the Workstream Index is woken EXACTLY once",
+    3400,
+  );
 
   // === Beat 6: FAIL — a corrupt Codex session JSONL ⇒ the Codex adapter throws. ===
   const failFrom = ledger.all().length;
   editSession("codexA", { corrupt: true });
-  beat("red-fail", failFrom, frame(), "a corrupt Codex dispatch fails RED · no downstream · prior truth stands", 3000);
+  beat(
+    "red-fail",
+    failFrom,
+    frame(),
+    "a corrupt Codex dispatch fails RED · no downstream · prior truth stands",
+    3000,
+  );
 
   // === Beat 7: RECOVER — the next Codex delivery parses cleanly. ===
   const recoverFrom = ledger.all().length;
   editSession("codexA", { head: "codex session recovered cleanly" });
-  beat("recover", recoverFrom, frame(), "the next Codex delivery parses · the Codex lane re-lights green", 2800);
+  beat(
+    "recover",
+    recoverFrom,
+    frame(),
+    "the next Codex delivery parses · the Codex lane re-lights green",
+    2800,
+  );
 
   // === Beat 8: BATCH SPIKE — a "major new project" delta; clusterer wakes once. ===
   const batchFrom = ledger.all().length;
   {
     const ca = fs.claude.find((s) => s.id === "claudeA")!;
     fs.claude[fs.claude.indexOf(ca)] = {
-      ...ca, rev: ca.rev + 1, workstream: "observatory-launch",
+      ...ca,
+      rev: ca.rev + 1,
+      workstream: "observatory-launch",
       head: "spin up the observatory launch project",
     };
     const cb = fs.claude.find((s) => s.id === "claudeB")!;
     fs.claude[fs.claude.indexOf(cb)] = {
-      ...cb, rev: cb.rev + 1, workstream: "growth-loops",
+      ...cb,
+      rev: cb.rev + 1,
+      workstream: "growth-loops",
       head: "open the growth-loops workstream",
     };
     const cx = fs.codex.find((s) => s.id === "codexA")!;
     fs.codex[fs.codex.indexOf(cx)] = {
-      ...cx, rev: cx.rev + 1, workstream: "infra-migration",
+      ...cx,
+      rev: cx.rev + 1,
+      workstream: "infra-migration",
       head: "kick off the infra migration",
     };
     publishAndWake();
   }
-  beat("batch-spike", batchFrom, frame(), "a major-new-project delta · distinct workstreams 1 → 3 · the Clusterer wakes ONCE · the single tall spike", 4000);
+  beat(
+    "batch-spike",
+    batchFrom,
+    frame(),
+    "a major-new-project delta · distinct workstreams 1 → 3 · the Clusterer wakes ONCE · the single tall spike",
+    4000,
+  );
 
   // === Beat 9: FINAL QUIET — byte-identical re-scans, flat line bookend. ===
   const finalFrom = ledger.all().length;
@@ -897,7 +1033,13 @@ export function generateAgentObservatory(opts: GenerateOptions): GenerateResult 
   publishAndWake();
   publishAndWake();
   publishAndWake();
-  beat("final-quiet", finalFrom, frame(), "the laptop goes quiet again · every re-tick memo-skips · flat line bookend", 2800);
+  beat(
+    "final-quiet",
+    finalFrom,
+    frame(),
+    "the laptop goes quiet again · every re-tick memo-skips · flat line bookend",
+    2800,
+  );
 
   // --- Persist the compile snapshot + labels (MANDATORY for replay). ---
   const compileDir = join(stateDir, "compile");
@@ -920,7 +1062,11 @@ export function generateAgentObservatory(opts: GenerateOptions): GenerateResult 
       "Many cheap watchers, one expensive synthesis. Your agent dashboard only re-writes when some session state actually changed.",
     beats,
   };
-  writeFileSync(join(stateDir, "beats.json"), `${JSON.stringify(beatsDoc, null, 2)}\n`, "utf8");
+  writeFileSync(
+    join(stateDir, "beats.json"),
+    `${JSON.stringify(beatsDoc, null, 2)}\n`,
+    "utf8",
+  );
 
   const receipts = ledger.all();
   return {

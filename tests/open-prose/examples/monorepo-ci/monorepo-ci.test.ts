@@ -5,7 +5,7 @@
 //      gateway, acyclic, labels present, flat receipts.json, hex world-models).
 //   2. Cold-start renders all nodes; an identical re-wake SKIPS all (a skip
 //      propagates nothing, wakes nothing).
-//   3. cost.surprise_cause === wake.source on every committed receipt.
+//   3. cost.surprise_cause === wake.source on every receipt.
 //   4. ATOMIC_FACET for facet-less producers; no "*" tokens anywhere.
 //   5. verifyReceiptChain passes over the raw on-disk receipts.
 //   6. Byte-deterministic: a second regeneration yields identical
@@ -17,7 +17,7 @@
 //  - A SMALL in-test mountDag drive (the EVALS.md "drive the reconciler
 //    yourself" snippet) proves the cold/quiet/contract-edit cost mechanics on
 //    the hub→dependent edge in isolation.
-//  - The committed replay/ state-dir (produced by the SHARED generator) proves
+//  - A freshly generated state-dir (produced by the SHARED generator) proves
 //    the full-graph structural claims (leaf dark lanes, hub fan-out, RED→BLOCKED)
 //    and chain-verify + byte-determinism.
 //
@@ -261,12 +261,12 @@ describe("monorepo-ci — compiles to the frozen artifact set", () => {
 });
 
 // ===========================================================================
-// 3 + 5. Every committed receipt has surprise_cause === wake.source; the raw
+// 3 + 5. Every receipt has surprise_cause === wake.source; the raw
 // on-disk chain verifies.
 // ===========================================================================
 
-describe("monorepo-ci — the committed ledger is sound", () => {
-  it("cost.surprise_cause === wake.source on EVERY committed receipt", () => {
+describe("monorepo-ci — the generated ledger is sound", () => {
+  it("cost.surprise_cause === wake.source on EVERY receipt", () => {
     withTempDir((dir) => {
       const { stateDir } = genInto(dir);
       const session = openSession(stateDir);
@@ -402,7 +402,7 @@ describe("monorepo-ci — memoization: quiet wakes skip, a contract edit renders
 });
 
 // ===========================================================================
-// The full-graph lesson off the committed replay: a quiet re-scan skips the
+// The full-graph lesson off a fresh generation: a quiet re-scan skips the
 // whole graph (fresh flat); a leaf diff lights ONE lane; a hub diff fans out;
 // a failing test drives the merge gate to BLOCKED.
 // ===========================================================================

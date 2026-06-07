@@ -3,9 +3,8 @@
 // tamper-forge is an AUDIT/REPLAY LENS over the masked-relay ledger — it teaches
 // CHAIN-VERIFY and the HONEST tamper-evidence-vs-non-repudiation boundary (v1 null
 // signer). This file IS the worked snippet the README points at, run verbatim: it
-// loads the committed `replay/` trail (regenerated through the REAL
-// @openprose/reactor reconciler with deterministic fake renders, NO key) and
-// asserts:
+// regenerates the masked-relay trail through the REAL @openprose/reactor
+// reconciler with deterministic fake renders (NO key) and asserts:
 //
 //   the validity contract (§1-§6, as in every example), PLUS the four audit facts:
 //     (a) a naive cost-inflation edit with a STALE content_hash -> CHAIN-VERIFY
@@ -13,10 +12,10 @@
 //     (b) a public-hash RE-STAMP via computeReceiptContentHash -> chain PASSES
 //         again (honest book-keeping, NOT cryptographic non-repudiation);
 //     (c) a forged sig.scheme is REJECTED;
-//     (d) the KNOWN BOUNDARY (Bug B6 / OUTSTANDING #3): editing a
+//     (d) the KNOWN BOUNDARY: editing a
 //         world-models/<hex>/published.json while leaving receipts.json intact
-//         currently PASSES receipts verify — asserted as CURRENT behavior so it
-//         can't regress silently. Plus the plain-mode exit-code + --json (Bug B3)
+//         currently PASSES receipts verify, asserted as CURRENT behavior so it
+//         can't regress silently. Plus the plain-mode exit-code + --json
 //         caveats, documented as assertions over the verify result.
 //
 // RUN (offline, green at zero spend):
@@ -33,7 +32,6 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { createFileSystemStorageAdapter } from "@openprose/reactor";
@@ -58,9 +56,7 @@ import type {
 import { computeReceiptContentHash } from "@openprose/reactor/internals";
 
 import { generateTamperForgeExample } from "./generate";
-
-const exampleDir = fileURLToPath(new URL(".", import.meta.url));
-const committedReplay = join(exampleDir, "replay");
+import { generateMaskedRelayExample } from "../masked-relay/generate";
 
 // A throwaway state-dir for the regenerate-and-assert flow.
 function freshGen() {
@@ -91,8 +87,8 @@ function chainsByNode(
 }
 
 // ---------------------------------------------------------------------------
-// PART A — the committed `replay/` state-dir is a valid, replayable, chain-
-// verifiable masked-relay ledger (the audit subject). (validity contract §1-§6)
+// PART A — the regenerated state-dir is a valid, replayable, chain-verifiable
+// masked-relay ledger (the audit subject). (validity contract §1-§6)
 // ---------------------------------------------------------------------------
 
 describe("tamper-forge — the audited masked-relay ledger is a valid frozen artifact set (validity §1)", () => {
@@ -150,7 +146,7 @@ describe("tamper-forge — the audited masked-relay ledger is a valid frozen art
 
     expect(session.receipts.length).toBe(41); // the strangers' 41-receipt trail.
 
-    // §3: cost.surprise_cause === wake.source on EVERY committed receipt.
+    // §3: cost.surprise_cause === wake.source on EVERY receipt.
     for (const r of session.receipts) {
       expect(r.cost.surprise_cause, `receipt ${r.node}`).toBe(r.wake.source);
     }
@@ -440,7 +436,7 @@ describe("tamper-forge — chain-verify catches a tampered receipt; the honest b
     }
   });
 
-  it("BOUNDARY (d): editing a world-models/<hex>/published.json while receipts.json is intact STILL PASSES receipts verify (Bug B6 / OUTSTANDING #3 — asserted so it can't regress silently)", () => {
+  it("BOUNDARY (d): editing a world-models/<hex>/published.json while receipts.json is intact STILL PASSES receipts verify (asserted so it can't regress silently)", () => {
     // The maintained truth (the world-model artifact) sits OUTSIDE the receipt
     // integrity envelope: `receipts verify` only chain-verifies receipts.json. We
     // mutate a published world-model artifact on disk and assert the receipts
@@ -505,9 +501,9 @@ describe("tamper-forge — chain-verify catches a tampered receipt; the honest b
 });
 
 // ---------------------------------------------------------------------------
-// PART D — byte-determinism: two regenerations identical AND the committed
-// replay/ matches a fresh regeneration AND it stays byte-identical to the
-// masked-relay ledger it audits (no drift). (validity contract §6)
+// PART D — byte-determinism: two regenerations identical AND the audited trail
+// stays byte-identical to the masked-relay ledger it lenses (no drift between
+// the two generators). (validity contract §6)
 // ---------------------------------------------------------------------------
 
 describe("tamper-forge — byte-deterministic regeneration (validity §6)", () => {
@@ -533,34 +529,17 @@ describe("tamper-forge — byte-deterministic regeneration (validity §6)", () =
     }
   });
 
-  it("the COMMITTED replay/ matches a fresh regeneration (no drift)", () => {
+  it("the audited receipts.json is byte-identical to a fresh masked-relay ledger it lenses (the audit reads the SAME trail)", () => {
     const fresh = freshGen().dir;
+    const masked = mkdtempSync(join(tmpdir(), "masked-relay-ref-"));
     try {
-      for (const rel of RELS) {
-        expect(readFileSync(join(committedReplay, rel), "utf8"), rel).toBe(
-          readFileSync(join(fresh, rel), "utf8"),
-        );
-      }
-    } finally {
-      rmSync(fresh, { recursive: true, force: true });
-    }
-  });
-
-  it("the audited receipts.json is byte-identical to the masked-relay ledger it lenses (the audit reads the SAME trail)", () => {
-    const fresh = freshGen().dir;
-    try {
-      const maskedReceipts = join(
-        exampleDir,
-        "..",
-        "masked-relay",
-        "replay",
-        "receipts.json",
-      );
+      generateMaskedRelayExample({ stateDir: masked });
       expect(readFileSync(join(fresh, "receipts.json"), "utf8")).toBe(
-        readFileSync(maskedReceipts, "utf8"),
+        readFileSync(join(masked, "receipts.json"), "utf8"),
       );
     } finally {
       rmSync(fresh, { recursive: true, force: true });
+      rmSync(masked, { recursive: true, force: true });
     }
   });
 });
