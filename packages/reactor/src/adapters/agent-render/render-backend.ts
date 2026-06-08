@@ -54,7 +54,7 @@ import {
   type AgentRenderContext,
 } from "./tools";
 import type { RenderOutputSignal } from "./output-schema";
-import { createOpenRouterProvider } from "./provider";
+import { createOpenRouterProvider, redactError } from "./provider";
 import {
   buildRunOptions,
   resolveRunConfig,
@@ -357,7 +357,9 @@ export function createDefaultRenderBackend(
             },
           };
         }
-        throw error;
+        // Any other render error (e.g. a provider 403 whose body echoes a key
+        // fingerprint) must leave the adapter scrubbed of key material.
+        throw redactError(error);
       }
     },
   };
