@@ -12,14 +12,23 @@ to read the specific pages its proposals name, draft the concrete `.mdx` changes
 and open a single PR. It runs only when there is real doc work, so its cost is paid
 only on genuine surprise.
 
-For each pending edit, draft the change to its target page under
-`content/docs/<section>/<page>.mdx`, preserving the Fumadocs frontmatter
-convention (a `title` and a `description` only) and the section's existing voice.
-Write all drafted changes onto one branch of a local clone of the docs repo,
-commit, and open one PR that lists the source PRs it was derived from. When live,
-use git and the GitHub CLI (`gh`) for the branch, commit, and PR. Derive the branch
-name deterministically from the set of cited source-PR numbers, so a re-run with
-the same pending edits updates the same branch instead of opening a duplicate PR.
+Operate on a local clone of the docs repository at the path in the
+`DOCS_SYNTH_DOCS_REPO` environment variable. For each pending edit, draft the
+change to its target page under `content/docs/<section>/<page>.mdx`, preserving the
+Fumadocs frontmatter convention (a `title` and a `description` only) and the
+section's existing voice. Then, when live (see the dry-run guard below):
+
+1. `cd "$DOCS_SYNTH_DOCS_REPO"` and ensure a clean checkout of the default branch.
+2. Create one branch named `docs-synthesis/prs-<sorted-cited-PR-numbers>` (e.g.
+   `docs-synthesis/prs-101-102-103`) — a deterministic function of the cited
+   source-PR numbers, so a re-run with the same pending edits reuses the branch
+   instead of opening a duplicate PR.
+3. Write the drafted `.mdx` changes to the named pages, `git add` exactly those
+   pages, and commit with a message listing the source PRs.
+4. `git push` the branch and open one PR with `gh pr create` (base = the docs
+   default branch), whose body lists each source PR and the page it touched.
+
+Capture the resulting branch name and PR url/number for the world-model.
 
 ### Requires
 

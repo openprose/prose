@@ -106,8 +106,9 @@ at it the same way; each merged PR wakes only the sections it touches.
 
 `docs-pr` is the one node with an external effect. Live, it drafts the `.mdx`
 changes for the pages its pending edits name, writes them to a branch on a local
-clone of `openprose/docs`, and opens one PR (via `git` + `gh`) listing the source
-PRs it addresses. The branch name is derived from the cited PR numbers, so a re-run
+clone of `openprose/docs` (the path in `DOCS_SYNTH_DOCS_REPO`), and opens one PR
+(via `git` + `gh`) listing the source PRs it addresses. The branch name is derived
+from the cited PR numbers, so a re-run
 updates the same branch instead of opening duplicates. It never pushes to the docs
 default branch and never touches the watched code repo. Under `REACTOR_OFFLINE` —
 or with `DOCS_SYNTH_DRY_RUN=1` — it runs dry: it writes the proposed unified diff
