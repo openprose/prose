@@ -239,7 +239,7 @@ To take one live, `cd` into its dir and run `reactor doctor → compile → topo
 
 ## The technical report
 
-The full architecture write-up (the React metaphor that _is_ the design, the Forme wiring, the receipt model, an honest RLM accounting, and why nothing on the market is a drop-in replacement) is the **[Reactor technical report](https://docs.openprose.ai/reactor)**.
+The full architecture write-up (the React metaphor that _is_ the design, the Forme wiring, the receipt model, an honest RLM accounting, and why nothing on the market is a drop-in replacement) is the **[Reactor technical report](https://docs.prose.md/reactor)**.
 
 ## Honest status
 

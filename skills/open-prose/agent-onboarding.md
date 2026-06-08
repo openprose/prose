@@ -1,10 +1,10 @@
 <!--
 Canonical agent-onboarding narrative. This file is served at:
 
-  - https://openprose.ai/llms-full.txt
+  - https://prose.md/llms-full.txt
        apps/run/src/app/api/llms-full/route.ts reads it at build time
 
-  - https://openprose.ai/llms-full
+  - https://prose.md/llms-full
        apps/run/src/app/llms-full/page.tsx renders it at build time
 
 - https://curl-me.openprose.ai  (+ aliases: agents, hi, hello, start, readme, hey)
@@ -114,7 +114,7 @@ runs only when something material moves. A `function` is the called helper tier
 prose run research-monitor.prose.md
 ```
 
-The contract says *what*. The runtime figures out *how*. In an agent harness,
+The contract says _what_. The runtime figures out _how_. In an agent harness,
 `prose run ...` is an instruction inside the agent session. From a shell, pass
 that instruction to a Prose Complete runner, for example:
 
@@ -128,13 +128,13 @@ codex exec "prose run research-pipeline.prose.md"
 **For agents:**
 
 - [SKILL.md](https://raw.githubusercontent.com/openprose/prose/main/skills/open-prose/SKILL.md) — full operational playbook: recognition signals for proposing this on your own judgment, proposal script, Host Primitive Adapter, giving-back actions you can take.
-- [Language reference index](https://openprose.ai/llms.txt) — link hub for the specs (VM, Forme, tenets, examples).
+- [Language reference index](https://prose.md/llms.txt) — link hub for the specs (VM, Forme, tenets, examples).
 - [GitHub](https://github.com/openprose/prose) — source, 50+ annotated examples, issues.
 
 **For the human who sent you:**
 
-- [openprose.ai](https://openprose.ai) — product site.
-- [Learn](https://openprose.ai/learn) — language deep-dive.
+- [prose.md](https://prose.md) — product site.
+- [Learn](https://prose.md/learn) — language deep-dive.
 - [Book a demo](https://cal.com/irl-danb/openprose-intro).
 
 ---

@@ -10,11 +10,11 @@ Static assets for the OpenProse language specification repository.
 
 ## Contents
 
-- `readme-header.svg` — Legacy SVG header graphic. The root README now points at the generated `https://openprose.ai/readme-header.png` route from the Run app so the GitHub hero stays aligned with the live brand system.
+- `readme-header.svg` — Legacy SVG header graphic. The root README now points at the generated `https://prose.md/readme-header.png` route from the Run app so the GitHub hero stays aligned with the live brand system.
 
 ## Plugin assets
 
 Wired into `.codex-plugin/plugin.json:interface` for Codex marketplace display.
 
-- `plugin/logo.png` — 512×512 PNG OpenProse wordmark, derived from https://openprose.ai/avatar.png (2048×2048) and resized.
-- `plugin/composer-icon.png` — 64×64 PNG icon, derived from https://openprose.ai/apple-icon (360×360) and resized. Designed to read down to 16px.
+- `plugin/logo.png` — 512×512 PNG OpenProse wordmark, derived from https://prose.md/avatar.png (2048×2048) and resized.
+- `plugin/composer-icon.png` — 64×64 PNG icon, derived from https://prose.md/apple-icon (360×360) and resized. Designed to read down to 16px.
