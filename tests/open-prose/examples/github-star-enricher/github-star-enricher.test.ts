@@ -344,9 +344,10 @@ describe("github-star-enricher — the committed replay fixture (validity contra
       );
       assert.equal(last.cost.tokens.fresh, 0, "the skip burns zero fresh");
 
-      // EVERY skipped receipt (the terminal re-poll AND the diamond-reuse skips in
-      // the cold cascade, e.g. bob waking the already-rendered shared company)
-      // carries zero fresh and was driven by a memo HIT: a skip never spends.
+      // EVERY skipped receipt (here, the terminal quiet re-poll of the star
+      // gateway) carries zero fresh and was driven by a memo HIT: a skip never
+      // spends. Shared-company reuse shows up as a single coalesced render, not a
+      // skip receipt; see (2c).
       for (const s of r.filter((x) => x.status === "skipped")) {
         assert.equal(
           s.cost.tokens.fresh,
@@ -359,28 +360,32 @@ describe("github-star-enricher — the committed replay fixture (validity contra
     }
   });
 
-  it("(2c) the SHARED company receipt is REUSED: bob waking acme after alice memo-skips it", () => {
+  it("(2c) the SHARED company receipt is REUSED: alice + bob fan into ONE acme render, paid once", () => {
     const dir = tmp("gse-reuse-");
     try {
       generateGithubStarEnricherFixture({ stateDir: dir });
       const session = openSession(dir);
       const acme = COMPANY("acme");
       const acmeReceipts = session.receipts.filter((x) => x.node === acme);
-      // The diamond's second arm: company.acme is woken twice (alice's footprint,
-      // then bob's) but renders ONCE: the second wake is a memo HIT (skipped,
-      // fresh 0). The shared enrichment is paid once and reused, not re-run.
-      assert.ok(
-        acmeReceipts.length >= 2,
-        "company.acme was woken by both footprints",
+      // The diamond's two arms (alice's footprint, then bob's) both wake
+      // company.acme, but the join settles both arms before it fires: company.acme
+      // renders EXACTLY ONCE and the trail carries a SINGLE acme receipt that both
+      // intent scorers then read. The shared enrichment is paid once and reused;
+      // the second arm adds zero fresh spend and no extra receipt. Reuse is read
+      // off the render count (the stable signal), not a per-wake skip receipt.
+      assert.equal(
+        acmeReceipts.length,
+        1,
+        "company.acme appears exactly once in the trail (the two arms coalesce into one fire)",
       );
       assert.equal(
-        acmeReceipts.filter((x) => x.status === "rendered").length,
-        1,
-        "company.acme rendered EXACTLY once (the shared receipt)",
+        acmeReceipts[0]!.status,
+        "rendered",
+        "the single acme receipt is the shared render",
       );
       assert.ok(
-        acmeReceipts.some((x) => x.status === "skipped"),
-        "the second arm of the diamond memo-SKIPS the shared company render (reuse, not re-spend)",
+        acmeReceipts[0]!.cost.tokens.fresh > 0,
+        "the shared enrichment paid real fresh ONCE; the reuse is the absence of a second spend",
       );
     } finally {
       rmSync(dir, { recursive: true, force: true });

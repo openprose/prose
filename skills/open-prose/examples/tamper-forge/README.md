@@ -5,7 +5,7 @@ ledger and keep a living verdict on its integrity, proving exactly what the
 Reactor v1 receipt model _does_ and _does not_ guarantee, so an auditor (or an
 agent) never over-claims.
 
-**One-line scenario:** replay the **masked-relay** ledger (77 receipts / 13
+**One-line scenario:** replay the **masked-relay** ledger (41 receipts / 13
 node-chains), then run a guided 3-attack escalation against it: a naive
 cost-inflation edit is caught, a public-hash re-stamp heals the chain (honest
 book-keeping, _not_ cryptographic non-repudiation under the v1 null signer), a
@@ -24,7 +24,7 @@ Ledger Feed (gateway, external-driven)
     |  trail            the masked-relay receipts.json, read-only, as evidence
     v
 Chain Auditor (responsibility)
-    - verdict   : verifyReceiptChain over all 13 per-node chains + 77/77
+    - verdict   : verifyReceiptChain over all 13 per-node chains + 41/41
                   computeReceiptContentHash recompute
     - boundary  : the asserted honest limits (immaterial documentary state)
 ```

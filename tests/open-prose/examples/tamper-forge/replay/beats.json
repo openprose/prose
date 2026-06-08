@@ -5,14 +5,14 @@
     {
       "name": "cold-audit",
       "from": 0,
-      "to": 76,
+      "to": 40,
       "holdMs": 2600,
-      "caption": "cold audit · verifyReceiptChain passes over all 13 per-node chains · 77/77 receipts recompute their content_hash via computeReceiptContentHash · the trail is internally consistent"
+      "caption": "cold audit · verifyReceiptChain passes over all 13 per-node chains · 41/41 receipts recompute their content_hash via computeReceiptContentHash · the trail is internally consistent"
     },
     {
       "name": "quiet-reaudit",
       "from": 0,
-      "to": 76,
+      "to": 40,
       "holdMs": 2200,
       "caption": "a byte-identical re-presentation of the SAME ledger · the trail fingerprint did not move · the auditor memo-SKIPS · fresh 0 — cost scales with surprise, not the clock"
     },

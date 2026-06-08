@@ -148,7 +148,7 @@ describe("tamper-forge — the audited masked-relay ledger is a valid frozen art
     const ledger = createFileSystemReceiptLedger({ storage });
     const session = createReplaySession({ ledger });
 
-    expect(session.receipts.length).toBe(77); // the strangers' 77-receipt trail.
+    expect(session.receipts.length).toBe(41); // the strangers' 41-receipt trail.
 
     // §3: cost.surprise_cause === wake.source on EVERY committed receipt.
     for (const r of session.receipts) {

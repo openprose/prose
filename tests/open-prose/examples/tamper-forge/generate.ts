@@ -15,8 +15,8 @@
 //
 // The receipts.json / topology.json / world-models/<HEX>/… bytes are produced by
 // the shared masked-relay generator verbatim, so:
-//   - the audit operates on the SAME 77-receipt trail the strangers' corpus cites
-//     (the 77/77 computeReceiptContentHash recompute), and
+//   - the audit operates on the SAME 41-receipt trail the strangers' corpus cites
+//     (the 41/41 computeReceiptContentHash recompute), and
 //   - any drift between masked-relay and tamper-forge is caught by the byte-equal
 //     determinism assertion in tamper-forge.test.ts.
 //
@@ -53,15 +53,15 @@ const BEATS = {
     {
       name: "cold-audit",
       from: 0,
-      to: 76,
+      to: 40,
       holdMs: 2600,
       caption:
-        "cold audit · verifyReceiptChain passes over all 13 per-node chains · 77/77 receipts recompute their content_hash via computeReceiptContentHash · the trail is internally consistent",
+        "cold audit · verifyReceiptChain passes over all 13 per-node chains · 41/41 receipts recompute their content_hash via computeReceiptContentHash · the trail is internally consistent",
     },
     {
       name: "quiet-reaudit",
       from: 0,
-      to: 76,
+      to: 40,
       holdMs: 2200,
       caption:
         "a byte-identical re-presentation of the SAME ledger · the trail fingerprint did not move · the auditor memo-SKIPS · fresh 0 — cost scales with surprise, not the clock",

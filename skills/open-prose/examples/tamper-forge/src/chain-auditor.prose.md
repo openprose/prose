@@ -38,13 +38,15 @@ A chain-audit verdict over the masked-relay trail. Material: the verdict and its
 evidence.
 
 #### verdict
+
 For every node in the trail, the result of `verifyReceiptChain` over that node's
 `prev`-linked slice (`ok` / the list of errors), plus the recomputed
-`content_hash` for each receipt via `computeReceiptContentHash` (the 77/77 public
+`content_hash` for each receipt via `computeReceiptContentHash` (the 41/41 public
 recompute over the masked-relay ledger). A re-presentation of a byte-identical
 trail does not move the verdict.
 
 #### boundary
+
 The honest, asserted limits of v1 receipt verification, kept as immaterial
 documentary state so a doc-only edit does not falsely re-render the verdict:
 tamper-evidence is NOT non-repudiation under a null signer; a re-stamped trail
