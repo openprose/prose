@@ -31,7 +31,7 @@ cleared; a PR that introduces no new sdk doc-impact leaves the set unchanged.
 Postcondition: every pending edit cites the PR number it was derived from and names
 a page that exists in the `sdk` section.
 
-#### pending-edits
+#### sdk-pending
 The pending edits for the `sdk` section, each with its target page, description,
 and cited PR. Subscribed to by docs-pr.
 

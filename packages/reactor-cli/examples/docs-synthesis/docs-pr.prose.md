@@ -32,11 +32,11 @@ Capture the resulting branch name and PR url/number for the world-model.
 
 ### Requires
 
-- the pending-edits facet of cli-docs
-- the pending-edits facet of sdk-docs
-- the pending-edits facet of reactor-docs
-- the pending-edits facet of devtools-docs
-- the pending-edits facet of openprose-docs
+- the cli-pending facet of cli-docs
+- the sdk-pending facet of sdk-docs
+- the reactor-pending facet of reactor-docs
+- the devtools-pending facet of devtools-docs
+- the openprose-pending facet of openprose-docs
 
 ### Maintains
 

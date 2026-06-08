@@ -33,7 +33,7 @@ unchanged.
 Postcondition: every pending edit cites the PR number it was derived from and names
 a page that exists in the `reactor-devtools` section.
 
-#### pending-edits
+#### devtools-pending
 The pending edits for the `reactor-devtools` section, each with its target page,
 description, and cited PR. Subscribed to by docs-pr.
 

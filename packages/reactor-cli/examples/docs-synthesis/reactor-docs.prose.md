@@ -32,7 +32,7 @@ cleared; a PR that introduces no new reactor doc-impact leaves the set unchanged
 Postcondition: every pending edit cites the PR number it was derived from and names
 a page that exists in the `reactor` section.
 
-#### pending-edits
+#### reactor-pending
 The pending edits for the `reactor` section, each with its target page,
 description, and cited PR. Subscribed to by docs-pr.
 
