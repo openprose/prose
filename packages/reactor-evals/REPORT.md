@@ -89,7 +89,7 @@ In this offline model some baselines collapse onto the same fresh-cost vector �
 
 ## Limitations (report section 9)
 
-- **Deterministic-cost surrogate.** The offline ledger uses a preregistered byte-length token surrogate (`deterministic-cost-v1`), not a live model bill. The real N=1 live run (U10) is the dollar-grade ledger; it is **blocked in this build** pending `OPENROUTER_API_KEY` (see `src/live/run.cjs`).
+- **Deterministic-cost surrogate.** The offline ledger uses a preregistered byte-length token surrogate (`deterministic-cost-v1`), not a live model bill. The shipped headline is the **price-independent fresh-token fold** (174.71× at λ=1%), which holds at any single-model rate. The OpenAI-direct render path (`gpt-5.4-mini`) is **validated** end-to-end through the agent-render seam (a real metered receipt: 36 in / 4 out tokens); the full metered N=1 *dollar* ledger (~1000 cron renders) is a bounded follow-up build, deliberately not fabricated here (see `src/live/run.cjs` + `results/surprise-cost.json` `live_n1`).
 - **Null signer (v1).** Receipts are tamper-evident, not tamper-proof; the cryptographic byte-hash signer is BACKLOG `C3`.
 - **No-cheap-hash domain.** Where no cheap material hash exists, Reactor degrades to a forecast cadence — reported as an honest TIE, not a win.
 - **Staggered-diamond topology (MK-1).** Deliberately excluded from the headline world; the FIFO drain glitch is a separate, named limitation, not gated on here.

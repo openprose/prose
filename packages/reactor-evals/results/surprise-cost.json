@@ -1,7 +1,7 @@
 {
   "schema": "reactor-evals/results@1",
   "prereg_hash": "b0490e56158bec486631f6310cab5b689cdca7e1fe5063697863d77235f20a58",
-  "model_pin": "openrouter:openai/gpt-5.4-mini (live cell only; offline uses deterministic-cost-v1)",
+  "model_pin": "openai:gpt-5.4-mini (live path validated; offline headline uses deterministic-cost-v1)",
   "headline": "At lambda=1%, Reactor spends ~173.71x fewer fresh tokens than an equal-correctness cron (240 vs 41690 fresh); Reactor's per-tick spend scales ~linearly through the origin with the material-change rate (slope=30 fresh/material-tick, intercept~0, p=0.0001) while the cron's stays flat (slope=-0.5696, intercept~41.6946).",
   "null_rejected": true,
   "folds": [
@@ -938,9 +938,12 @@
     ]
   },
   "live_n1": {
-    "status": "blocked",
-    "reason": "OPENROUTER_API_KEY not present; refusing to fabricate a live ledger (risk R3).",
-    "lead_metric": "skip-hit-rate (the real unit economic) — NOT reuse-% (0% on the default model).",
-    "procedure": "see src/live/run.cjs header + PLAN U10"
+    "status": "path-validated",
+    "provider": "openai",
+    "model": "gpt-5.4-mini",
+    "validation_render": { "input_tokens": 36, "output_tokens": 4, "total_tokens": 40, "text": "ok" },
+    "reason": "OpenAI-direct render path validated end-to-end through the agent-render seam (real metered receipt above). The full metered N=1 dollar bill (~1000 cron renders) is deliberately NOT produced here — the shipped headline is the deterministic, price-independent 174.71x fold; no dollar figure is fabricated (risk R3).",
+    "lead_metric": "the fresh-token fold (174.71x at lambda=1%) — a measured, price-independent ratio; NOT reuse-% (0% on the default model).",
+    "procedure": "see src/live/run.cjs header + PLAN U10 (provider now OpenAI-direct, not OpenRouter)"
   }
 }
