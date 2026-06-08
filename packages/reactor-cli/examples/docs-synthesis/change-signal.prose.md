@@ -5,12 +5,17 @@ kind: responsibility
 
 ### Goal
 
-For each changed PR, classify its inline evidence into small, typed, per-section
+For each changed PR, classify its evidence into small, typed, per-section
 doc-impact signals so each downstream documentation section wakes only when its
 own source was touched. This is the cheap gatekeeper of the pipeline: it does not
 read the diff, draft prose, or open the repo — it maps the changed file paths (and
 the title and body) to at most a one-line signal per affected doc section, or
 nothing.
+
+Read the `changes` set from your upstream (repo-changes) by reference. For each PR
+record, split its `files` field on `;` to get the changed file paths, and route by
+those paths (the title and body are only tie-breakers). Your input is these
+upstream records — never run `git`, open a diff, or scan the filesystem.
 
 The public docs site has five sections, each tracking one source area of the
 watched repo. Route by changed path:

@@ -5,11 +5,19 @@ kind: gateway
 
 ### Goal
 
-Accept merged-PR deltas arriving from the edge and expose them as a materialized
-set of changed PRs that responsibilities can subscribe to. A delta carries only a
-PR's identity and a change receipt: its number, title, body, the set of changed
-file paths (as a delimited list), and a one-line diffstat. It never carries the
-full diff.
+Fold the merged-PR records staged in this node's upstream inbox into a
+materialized set of changed PRs that responsibilities can subscribe to.
+
+Your ONLY input is your upstream ingress, which publishes a single file
+`inbox.json`: a JSON array of merged-PR records. Each record has `number`,
+`title`, `body`, `files` (a semicolon-delimited list of changed file paths),
+`diffstat`, and `merge_sha`. Read `inbox.json` from your upstream by reference
+(use your upstream-list / upstream-read tools — the ingress is your upstream
+producer even though it carries no `### Requires` line), and add or update each
+record in the `changes` set, keyed by PR number, carrying its number, title, body,
+files, and diffstat forward as the change receipt. There is NO git repository, no
+source tree, and no working-directory file to inspect — `inbox.json` is the only
+source of truth.
 
 ### Maintains
 
@@ -34,11 +42,10 @@ classifier needs and nothing more.
 
 ### Invariants
 
-- This render is a bounded fold. Take exactly the arrivals already staged at the
-  edge and add or update their entries in the changed-PR set. Complete in a few
-  steps.
-- The only readable input is the staged arrivals and this node's prior
-  world-model. Never run git, scan the filesystem, open the repository or
-  node_modules, or run shell commands to look for changes: the staged arrivals are
-  the only input.
+- This render is a bounded fold over `inbox.json` from your upstream and this
+  node's prior world-model. Read `inbox.json`, fold each PR record into `changes`,
+  and finish in a few steps.
+- Do NOT run `git`, `ls`, `find`, `grep`, or any shell command to discover
+  changes, and do NOT scan the filesystem or the working directory: there is no
+  repository here. The staged `inbox.json` from your upstream is the only input.
 - The only writable surface is this gateway's published world-model.
