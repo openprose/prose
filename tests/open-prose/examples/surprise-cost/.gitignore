@@ -1,0 +1,3 @@
+# The replay/ state-dir is regenerated into a tmpdir at test time and is not
+# committed. `tsx generate.ts` writes it here only for local inspection.
+replay/

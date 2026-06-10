@@ -11,7 +11,7 @@
 //      gateway, acyclic; labels + receipts + world-models on disk).
 //   2. Cold-start renders all; an identical re-wake SKIPS all (a skip
 //      propagates nothing, wakes nothing).
-//   3. cost.surprise_cause === wake.source on every committed receipt.
+//   3. cost.surprise_cause === wake.source on every receipt.
 //   4. ATOMIC_FACET for facet-less producers; no "*" tokens anywhere.
 //   5. verifyReceiptChain passes over the raw on-disk receipts.
 //   6. Byte-deterministic: a second regeneration yields identical
@@ -30,7 +30,6 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { createFileSystemStorageAdapter } from "@openprose/reactor";
@@ -51,9 +50,6 @@ import type {
 } from "@openprose/reactor/internals";
 
 import { generateAgentObservatory } from "./generate";
-
-const exampleDir = fileURLToPath(new URL(".", import.meta.url));
-const committedReplay = join(exampleDir, "replay");
 
 const GATEWAY = "gateway.runtime-watch";
 const SESSION_LEDGER = "responsibility.session-ledger";
@@ -422,29 +418,6 @@ describe("clause 6 — regeneration is byte-identical", () => {
     } finally {
       rmSync(a, { recursive: true, force: true });
       rmSync(b, { recursive: true, force: true });
-    }
-  });
-
-  it("the committed replay/ matches a fresh generation (the fixture is not stale)", () => {
-    // Guard on the ledger file, not the (possibly empty) dir, so the assertion
-    // only runs once the replay/ bytes are actually committed.
-    if (!existsSync(join(committedReplay, "receipts.json"))) return;
-    const fresh = mkdtempSync(join(tmpdir(), "agent-obs-fresh-"));
-    try {
-      generateAgentObservatory({ stateDir: fresh });
-      for (const rel of [
-        "receipts.json",
-        "beats.json",
-        join("compile", "topology.json"),
-        join("compile", "labels.json"),
-      ]) {
-        expect(
-          readFileSync(join(committedReplay, rel), "utf8"),
-          `committed ${rel}`,
-        ).toBe(readFileSync(join(fresh, rel), "utf8"));
-      }
-    } finally {
-      rmSync(fresh, { recursive: true, force: true });
     }
   });
 });

@@ -29,7 +29,6 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { createFileSystemStorageAdapter } from "@openprose/reactor";
@@ -51,9 +50,6 @@ import type {
 
 import { generateMaskedRelayExample } from "./generate";
 
-const exampleDir = fileURLToPath(new URL(".", import.meta.url));
-const committedReplay = join(exampleDir, "replay");
-
 // A throwaway state-dir for the regenerate-and-assert flow.
 function freshGen() {
   const dir = mkdtempSync(join(tmpdir(), "masked-relay-"));
@@ -62,7 +58,7 @@ function freshGen() {
 }
 
 // ---------------------------------------------------------------------------
-// PART A — the example's committed `replay/` state-dir is valid + replayable.
+// PART A — a freshly generated state-dir is valid + replayable.
 // ---------------------------------------------------------------------------
 
 describe("masked-relay — frozen artifact set (validity contract §1)", () => {
@@ -329,8 +325,7 @@ describe("masked-relay — cold renders all, quiet skips all, surprise renders (
 });
 
 // ---------------------------------------------------------------------------
-// PART C — byte-determinism: two regenerations are identical (validity §6) AND
-// the committed `replay/` matches a fresh regeneration (drift guard).
+// PART C — byte-determinism: two fresh regenerations are identical (validity §6).
 // ---------------------------------------------------------------------------
 
 describe("masked-relay — byte-deterministic regeneration (validity contract §6)", () => {
@@ -351,24 +346,6 @@ describe("masked-relay — byte-deterministic regeneration (validity contract §
     } finally {
       rmSync(a, { recursive: true, force: true });
       rmSync(b, { recursive: true, force: true });
-    }
-  });
-
-  it("the COMMITTED replay/ matches a fresh regeneration (no drift)", () => {
-    const fresh = freshGen().dir;
-    try {
-      for (const rel of [
-        "receipts.json",
-        join("compile", "topology.json"),
-        join("compile", "labels.json"),
-        "beats.json",
-      ]) {
-        expect(readFileSync(join(committedReplay, rel), "utf8"), rel).toBe(
-          readFileSync(join(fresh, rel), "utf8"),
-        );
-      }
-    } finally {
-      rmSync(fresh, { recursive: true, force: true });
     }
   });
 });

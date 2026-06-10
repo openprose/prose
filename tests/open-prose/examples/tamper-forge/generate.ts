@@ -96,7 +96,7 @@ const BEATS = {
       to: 0,
       holdMs: 3400,
       caption:
-        "BOUNDARY (d) · edit a world-models/<hex>/published.json artifact but leave receipts.json intact · receipts chain-verify still PASSES (Bug B6 / OUTSTANDING #3) · the maintained truth sits OUTSIDE the receipt integrity envelope · asserted as CURRENT behavior so it can't regress silently",
+        "BOUNDARY (d) · edit a world-models/<hex>/published.json artifact but leave receipts.json intact · receipts chain-verify still PASSES · the maintained truth sits OUTSIDE the receipt integrity envelope · asserted as CURRENT behavior so it can't regress silently",
     },
   ],
 };

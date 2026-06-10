@@ -10,13 +10,13 @@
 //   1. Compiles to the frozen artifact set (topology valid, single entry, acyclic).
 //   2. Cold-start renders all; an identical re-wake skips all (skip propagates
 //      nothing, wakes nothing).
-//   3. cost.surprise_cause === wake.source on every committed receipt.
+//   3. cost.surprise_cause === wake.source on every receipt.
 //   4. ATOMIC_FACET for facet-less producers; no "*" tokens anywhere.
 //   5. verifyReceiptChain passes over the raw on-disk receipts.
 //   6. Byte-deterministic regeneration (receipts/topology/labels identical).
 //   + the example's tenet: failure isolation + diamond single-wake.
 
-import { describe, it, expect } from "vitest";
+import { afterAll, beforeAll, describe, it, expect } from "vitest";
 import { mkdtempSync, rmSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -48,7 +48,19 @@ const THREAD_NEWSLETTER = "responsibility.thread-newsletter";
 const ALERT_CLASSIFIER = "responsibility.classifier-bad1";
 const CLASSIFIER_PREFIX = "responsibility.classifier-";
 
-const COMMITTED = join(__dirname, "replay");
+// One fresh, deterministic generation shared by the read-only validity
+// assertions below. The example regenerates its state at test time; nothing is
+// committed, so determinism (not a frozen byte set) is what the gate proves.
+let replayDir: string;
+
+beforeAll(() => {
+  replayDir = mkdtempSync(join(tmpdir(), "inbox-triage-frozen-"));
+  generateInboxTriageExample({ stateDir: replayDir });
+});
+
+afterAll(() => {
+  if (replayDir) rmSync(replayDir, { recursive: true, force: true });
+});
 
 function withTempDir<T>(fn: (dir: string) => T): T {
   const dir = mkdtempSync(join(tmpdir(), "inbox-triage-"));
@@ -79,12 +91,12 @@ function rawReceipts(stateDir: string): LedgerReceipt[] {
 
 // ===========================================================================
 // (1) Compiles to the frozen artifact set (topology valid, single entry,
-//     acyclic) and the committed replay/ matches a fresh generation.
+//     acyclic), asserted over a fresh generation.
 // ===========================================================================
 
 describe("inbox-triage — (1) frozen artifact set", () => {
-  it("the committed topology is a valid TopologyWorldModel: single entry gateway, acyclic", () => {
-    const topology = readTopology(COMMITTED);
+  it("the generated topology is a valid TopologyWorldModel: single entry gateway, acyclic", () => {
+    const topology = readTopology(replayDir);
     expect(topology.acyclic).toBe(true);
     expect(topology.entry_points).toEqual([GATEWAY]);
     // 16 real nodes: gateway + 8 classifiers + threader + 4 thread-renders +
@@ -107,17 +119,17 @@ describe("inbox-triage — (1) frozen artifact set", () => {
 
   it("ships every mandatory replay artifact", () => {
     // topology, labels, beats, receipts, world-models: present on disk.
-    expect(() => readTopology(COMMITTED)).not.toThrow();
+    expect(() => readTopology(replayDir)).not.toThrow();
     expect(() =>
-      readFileSync(join(COMMITTED, "compile", "labels.json")),
+      readFileSync(join(replayDir, "compile", "labels.json")),
     ).not.toThrow();
-    expect(() => readFileSync(join(COMMITTED, "beats.json"))).not.toThrow();
-    expect(() => readFileSync(join(COMMITTED, "receipts.json"))).not.toThrow();
+    expect(() => readFileSync(join(replayDir, "beats.json"))).not.toThrow();
+    expect(() => readFileSync(join(replayDir, "receipts.json"))).not.toThrow();
     // hex-encoded world-model dir for the digest exists.
     const hexDigest = Buffer.from(DIGEST, "utf8").toString("hex");
     expect(() =>
       readFileSync(
-        join(COMMITTED, "world-models", hexDigest, "published.json"),
+        join(replayDir, "world-models", hexDigest, "published.json"),
       ),
     ).not.toThrow();
   });
@@ -129,7 +141,7 @@ describe("inbox-triage — (1) frozen artifact set", () => {
 
 describe('inbox-triage — (4) ATOMIC_FACET, never "*"', () => {
   it("facet-less fan-in edges subscribe to the exported ATOMIC_FACET constant", () => {
-    const topology = readTopology(COMMITTED);
+    const topology = readTopology(replayDir);
     // The threader fans in from each classifier with no named facet -> ATOMIC_FACET.
     const fanIn = topology.edges.filter(
       (e) =>
@@ -139,25 +151,25 @@ describe('inbox-triage — (4) ATOMIC_FACET, never "*"', () => {
     for (const e of fanIn) expect(e.facet).toBe(ATOMIC_FACET);
   });
 
-  it('no "*" wildcard token appears in any committed artifact', () => {
+  it('no "*" wildcard token appears in any generated artifact', () => {
     for (const rel of [
       "compile/topology.json",
       "compile/labels.json",
       "receipts.json",
     ]) {
-      const txt = readFileSync(join(COMMITTED, rel), "utf8");
+      const txt = readFileSync(join(replayDir, rel), "utf8");
       expect(txt.includes('"*"')).toBe(false);
     }
   });
 });
 
 // ===========================================================================
-// (3) cost.surprise_cause === wake.source on every committed receipt.
+// (3) cost.surprise_cause === wake.source on every receipt.
 // ===========================================================================
 
 describe("inbox-triage — (3) surprise_cause === wake.source", () => {
-  it("holds on every committed receipt (read off the wake, never hardcoded)", () => {
-    for (const r of rawReceipts(COMMITTED)) {
+  it("holds on every receipt (read off the wake, never hardcoded)", () => {
+    for (const r of rawReceipts(replayDir)) {
       expect(r.cost.surprise_cause).toBe(r.wake.source);
     }
   });
@@ -169,7 +181,7 @@ describe("inbox-triage — (3) surprise_cause === wake.source", () => {
 
 describe("inbox-triage — (5) chain-verifies", () => {
   it("every node's prev-linked chain verifies over the raw receipts.json", () => {
-    const receipts = rawReceipts(COMMITTED);
+    const receipts = rawReceipts(replayDir);
     const byNode = new Map<string, LedgerReceipt[]>();
     for (const r of receipts) {
       (byNode.get(r.node) ?? byNode.set(r.node, []).get(r.node)!).push(r);
@@ -437,8 +449,7 @@ describe("inbox-triage — THE TENET: failure isolation + diamond single-wake", 
 });
 
 // ===========================================================================
-// (6) Byte-deterministic regeneration: two fresh generations are byte-identical,
-//     and they match the COMMITTED replay/ bytes (the strong drift guard).
+// (6) Byte-deterministic regeneration: two fresh generations are byte-identical.
 // ===========================================================================
 
 describe("inbox-triage — (6) byte-deterministic", () => {
@@ -458,22 +469,5 @@ describe("inbox-triage — (6) byte-deterministic", () => {
         }
       }),
     );
-  });
-
-  it("a fresh generation matches the COMMITTED replay/ bytes", () => {
-    withTempDir((dir) => {
-      generateInboxTriageExample({ stateDir: dir });
-      for (const rel of [
-        "receipts.json",
-        "beats.json",
-        "compile/topology.json",
-        "compile/labels.json",
-      ]) {
-        expect(
-          readFileSync(join(dir, rel), "utf8"),
-          `${rel} must match the committed bytes`,
-        ).toBe(readFileSync(join(COMMITTED, rel), "utf8"));
-      }
-    });
   });
 });

@@ -51,7 +51,7 @@ The honest, asserted limits of v1 receipt verification, kept as immaterial
 documentary state so a doc-only edit does not falsely re-render the verdict:
 tamper-evidence is NOT non-repudiation under a null signer; a re-stamped trail
 heals the chain; and a `world-models/<hex>/published.json` edit with an intact
-`receipts.json` is NOT caught by `receipts verify` today (Bug B6 / OUTSTANDING #3).
+`receipts.json` is NOT caught by `receipts verify` today.
 
 The auditor self-polices these postconditions before signing its verdict — there
 is no separate judge beat. The verdict is read by reference against the prior

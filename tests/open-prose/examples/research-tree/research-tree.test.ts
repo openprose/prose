@@ -7,7 +7,7 @@
 //      gateway, acyclic, labels present, world-models per hex node id).
 //   2. Cold-start renders all; an identical re-wake SKIPS all (a skip
 //      propagates nothing, wakes nothing).
-//   3. cost.surprise_cause === wake.source on every committed receipt.
+//   3. cost.surprise_cause === wake.source on every receipt.
 //   4. ATOMIC_FACET for facet-less producers; no "*" tokens anywhere.
 //   5. Chain-verifies: verifyReceiptChain passes over the raw on-disk receipts.
 //   6. Byte-deterministic: a second regeneration is byte-identical.
@@ -313,7 +313,7 @@ describe("research-tree — the worked snippet: propagation UP a tree with per-b
         createReplaySession({ ledger }).costRollup.total.fresh,
       ).toBeGreaterThan(beforeEdit);
 
-      // Every committed receipt honors the surprise-cost invariant + the cost
+      // Every receipt honors the surprise-cost invariant + the cost
       // rollup partitions by cause exactly.
       const session = createReplaySession({ ledger });
       for (const r of session.receipts) {
@@ -336,11 +336,11 @@ describe("research-tree — the worked snippet: propagation UP a tree with per-b
 });
 
 // ===========================================================================
-// THE FROZEN FIXTURE — the committed replay/ state-dir the example ships and
-// devtools replays unchanged. Generated into a fresh temp dir for each test.
+// THE FULL EPISODE — the complete recorded run (the same state-dir shape
+// devtools replays), generated into a fresh temp dir for each test.
 // ===========================================================================
 
-describe("research-tree — the frozen replay/ fixture (the full episode)", () => {
+describe("research-tree — the full recorded episode", () => {
   it("(1) compiles to the frozen artifact set: valid topology, single gateway, acyclic, labels + world-models present", () => {
     withTmp("rt-compile-", (dir) => {
       const result = generateResearchTree({ stateDir: dir });
@@ -426,7 +426,7 @@ describe("research-tree — the frozen replay/ fixture (the full episode)", () =
     });
   });
 
-  it("(3) cost.surprise_cause === wake.source on EVERY committed receipt", () => {
+  it("(3) cost.surprise_cause === wake.source on EVERY receipt", () => {
     withTmp("rt-cause-", (dir) => {
       generateResearchTree({ stateDir: dir });
       const session = openSession(dir);
