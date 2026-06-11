@@ -19,9 +19,11 @@
  *     does NOT return file contents in `finalOutput` (a small done/failed signal
  *     only, output-schema.ts), and it does NOT commit — `commitPublished` is the
  *     harness's job in `mountDag`'s async spawn.
- *   - DETERMINISM KNOBS. temperature 0 + seed via `providerData`; the compiled
- *     canonicalizer (the harness's, on commit) is the fingerprint-stable
- *     backstop, never a model call.
+ *   - DETERMINISM KNOBS. temperature + seed (via `providerData`) when
+ *     configured — an unset temperature is OMITTED from the request (the
+ *     provider's default; OpenAI reasoning models reject explicit values); the
+ *     compiled canonicalizer (the harness's, on commit) is the
+ *     fingerprint-stable backstop, never a model call.
  *
  * Offline-build guard: this module imports `@openai/agents` (Agent/Runner) +
  * (transitively, via tools.ts/output-schema.ts) `zod`, all dev/optional deps.
@@ -40,10 +42,7 @@ import type {
 } from "../../sdk/render-atom";
 import type { AsyncMountedRender } from "../../sdk/mounted-dag";
 import type { WorldModelFiles, WorldModelStore } from "../../world-model";
-import {
-  DEFAULT_RENDER_MODEL,
-  DEFAULT_TEMPERATURE,
-} from "./provider";
+import { DEFAULT_RENDER_MODEL } from "./provider";
 import {
   mapRenderOutput,
   renderOutputSchema,
@@ -203,7 +202,10 @@ export function createAgentRender(
 
   const skill = config.skill ?? readSkill(config.skillPath);
   const model = config.model ?? DEFAULT_RENDER_MODEL;
-  const temperature = config.temperature ?? DEFAULT_TEMPERATURE;
+  // No temperature default: unset stays unset all the way to the request body,
+  // where the key is omitted (required by OpenAI reasoning models, which 400 on
+  // any explicit value). Pass 0 explicitly for greedy decoding.
+  const temperature = config.temperature;
   // `null` is a DELIBERATE unbounded opt-in, so distinguish "not supplied"
   // (→ the high default cap) from an explicit `null` (→ SDK bypasses the guard).
   // `??` would collapse `null` into the default, erasing the opt-in.
@@ -272,11 +274,17 @@ export function createAgentRender(
       ctx.prior.files,
     );
 
-    // Merge the harness decoding sugar (temperature/seed) with the consumer's
-    // `agent.modelSettings` — consumer wins wholesale, sugar fills only unset
-    // fields (decision #3).
+    // Merge the harness decoding sugar (temperature/seed/reasoningEffort) with
+    // the consumer's `agent.modelSettings` — consumer wins wholesale, sugar
+    // fills only unset fields (decision #3).
     const modelSettings = mergeModelSettings(
-      { temperature, ...(config.seed !== undefined ? { seed: config.seed } : {}) },
+      {
+        ...(temperature !== undefined ? { temperature } : {}),
+        ...(config.seed !== undefined ? { seed: config.seed } : {}),
+        ...(config.reasoningEffort !== undefined
+          ? { reasoningEffort: config.reasoningEffort }
+          : {}),
+      },
       config.agent?.modelSettings,
     );
 

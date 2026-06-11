@@ -144,8 +144,10 @@ The render is one bounded `@openai/agents` session, and **every knob that SDK
 anticipates is reachable** — no lossy wrapper. The harness owns only four fields
 (`instructions` / `tools` / `outputType` / `name`); setting them is a *compile
 error* (extend via `instructionsSuffix` / `extraTools` instead). Everything else
-passes through verbatim, layered: Tier-A sugar (`temperature` / `seed` / `model`
-/ `maxTurns` / `signal`), Tier-B passthrough (`agent` / `runConfig` /
+passes through verbatim, layered: Tier-A sugar (`temperature` / `seed` /
+`reasoningEffort` / `model` / `maxTurns` / `signal` — an unset `temperature` is
+omitted from requests, which reasoning models require), Tier-B passthrough
+(`agent` / `runConfig` /
 `runOptions`), and a Tier-C `agentFactory` / `runnerFactory` backstop. The same
 `RenderOptions` is forwarded by the facade's `render` option to every node:
 

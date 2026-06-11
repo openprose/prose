@@ -19,6 +19,11 @@ export interface FakeModelOptions {
   /** The token usage the run reports (drives the receipt Cost). */
   readonly inputTokens?: number;
   readonly outputTokens?: number;
+  /**
+   * Observe each SDK `ModelRequest` before the canned reply — lets a test
+   * assert what the session actually sends (e.g. `modelSettings.temperature`).
+   */
+  readonly onRequest?: (request: unknown) => void;
 }
 
 /**
@@ -33,7 +38,8 @@ export function fakeStructuredProvider(
   const outputTokens = options.outputTokens ?? 20;
 
   const model: Model = {
-    async getResponse(): Promise<ModelResponse> {
+    async getResponse(request: unknown): Promise<ModelResponse> {
+      options.onRequest?.(request);
       const usage = new Usage({
         inputTokens,
         outputTokens,

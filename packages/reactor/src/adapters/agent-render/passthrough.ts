@@ -12,9 +12,10 @@
  *
  * The escape-hatch contract (API-ANALYSIS §4):
  *   - Tier A — harness-specific sugar (`provider`/`model`/`maxTurns`/`signal`/
- *     `temperature`/`seed`/skill+workspace knobs). These are NOT plain
- *     `@openai/agents` fields; they map onto the SDK config, and the sugar
- *     (`temperature`/`seed`) FILLS ONLY fields the consumer left unset.
+ *     `temperature`/`seed`/`reasoningEffort`/skill+workspace knobs). These are
+ *     NOT plain `@openai/agents` fields; they map onto the SDK config, and the
+ *     sugar (`temperature`/`seed`/`reasoningEffort`) FILLS ONLY fields the
+ *     consumer left unset.
  *   - Tier B — the verbatim `@openai/agents` passthrough: `agent`
  *     (`Partial<AgentConfiguration>` minus the reserved four), `runConfig`
  *     (`Partial<RunConfig>`), `runOptions` (per-run `NonStreamRunOptions` minus
@@ -168,10 +169,23 @@ export interface RenderOptions {
    * `runOptions` (where it is Omit-ed).
    */
   readonly signal?: AbortSignal;
-  /** Decoding temperature — sugar for `agent.modelSettings.temperature`. Defaults 0. */
+  /**
+   * Decoding temperature — sugar for `agent.modelSettings.temperature`. Unset →
+   * the key is OMITTED from the request (the provider applies its own default).
+   * Set `0` for greedy decoding on models that accept it; OpenAI reasoning
+   * models (gpt-5.x, o-series) reject any explicit value unless
+   * {@link reasoningEffort} is `none`.
+   */
   readonly temperature?: number;
   /** Reproducibility seed — sugar for `agent.modelSettings.providerData.seed`. */
   readonly seed?: number;
+  /**
+   * Reasoning effort — sugar for `agent.modelSettings.reasoning.effort`, passed
+   * VERBATIM (values are model-dependent; the provider validates). Unset → the
+   * key is omitted. OpenAI reasoning models accept a custom temperature only
+   * with effort `none`.
+   */
+  readonly reasoningEffort?: string;
 
   // ── Tier B: the @openai/agents passthrough (closes the P0 gap) ──
   /**
@@ -244,12 +258,23 @@ export interface RenderOptions {
 /**
  * Merge the harness's decoding settings with the consumer's `agent.modelSettings`.
  * Decision #3 precedence: the consumer's explicit `agent.modelSettings.*` win
- * WHOLESALE; the Tier-A `temperature`/`seed` sugar FILLS ONLY fields the consumer
- * left unset. `providerData` is shallow-merged so the `seed` sugar coexists with
- * a consumer's own `providerData` (the consumer's keys still win).
+ * WHOLESALE; the Tier-A `temperature`/`seed`/`reasoningEffort` sugar FILLS ONLY
+ * fields the consumer left unset. `providerData` is shallow-merged so the `seed`
+ * sugar coexists with a consumer's own `providerData` (the consumer's keys still
+ * win).
+ *
+ * A temperature that resolves to undefined is OMITTED from the returned
+ * settings — the key never reaches the request body, so the provider applies
+ * its own default. OpenAI reasoning models reject any explicit temperature
+ * (unless reasoning effort is `none`), so "no temperature" must stay
+ * representable on the wire rather than being coerced to a number here.
  */
 export function mergeModelSettings(
-  harness: { readonly temperature: number; readonly seed?: number },
+  harness: {
+    readonly temperature?: number;
+    readonly seed?: number;
+    readonly reasoningEffort?: string;
+  },
   consumer?: ModelSettings,
 ): ModelSettings {
   const sugarProviderData =
@@ -260,6 +285,18 @@ export function mergeModelSettings(
     consumer?.temperature !== undefined
       ? consumer.temperature
       : harness.temperature;
+
+  // The effort sugar rides verbatim: the SDK types enumerate today's effort
+  // levels, but the wire accepts whatever the model supports, so a newer value
+  // must not be rejected at compile time here.
+  const reasoning =
+    consumer?.reasoning !== undefined
+      ? consumer.reasoning
+      : harness.reasoningEffort !== undefined
+        ? ({
+            effort: harness.reasoningEffort,
+          } as ModelSettings['reasoning'])
+        : undefined;
 
   const providerData =
     consumer?.providerData !== undefined || sugarProviderData !== undefined
@@ -273,7 +310,8 @@ export function mergeModelSettings(
 
   return {
     ...(consumer ?? {}),
-    temperature,
+    ...(temperature !== undefined ? { temperature } : {}),
+    ...(reasoning !== undefined ? { reasoning } : {}),
     ...(providerData !== undefined ? { providerData } : {}),
   };
 }
