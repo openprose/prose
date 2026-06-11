@@ -22,6 +22,7 @@ import {
 } from '../run/run-core';
 import {
   callRunProject,
+  renderDecodingInputs,
   type RunAdapters,
   type RunRender,
 } from '../run/load-run-project';
@@ -231,14 +232,7 @@ export async function runRunCommand(
     // Always honor the configured render model (so a non-default model id actually
     // reaches the run-phase render, not just the SDK's gemini default).
     renderModel: config.model.render_model,
-    // Honor the configured decoding knobs at RENDER too, not only compile.
-    // Absent stays absent — the render then omits the keys entirely.
-    ...(config.model.temperature !== undefined
-      ? { renderTemperature: config.model.temperature }
-      : {}),
-    ...(config.model.reasoning_effort !== undefined
-      ? { renderReasoningEffort: config.model.reasoning_effort }
-      : {}),
+    ...renderDecodingInputs(config.model),
     ...(liveCustomRender
       ? {
           providerPlan,

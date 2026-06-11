@@ -32,6 +32,7 @@ import {
 } from '../run/run-core';
 import {
   callRunProject,
+  renderDecodingInputs,
   type AssembledReactorLike,
   type RunAdapters,
   type RunRender,
@@ -527,12 +528,7 @@ export async function bootServe(
     stateDir: config.state.dir,
     model: config.model.compile_model,
     renderModel: config.model.render_model,
-    ...(config.model.temperature !== undefined
-      ? { renderTemperature: config.model.temperature }
-      : {}),
-    ...(config.model.reasoning_effort !== undefined
-      ? { renderReasoningEffort: config.model.reasoning_effort }
-      : {}),
+    ...renderDecodingInputs(config.model),
     sandbox: config.sandbox,
     gateways: config.gateways,
     ...(providerPlan.custom ? { providerPlan } : {}),

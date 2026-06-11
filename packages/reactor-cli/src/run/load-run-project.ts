@@ -22,6 +22,7 @@ import type {
 } from '@openprose/reactor/run/types';
 
 import type { CliCompiledProject } from './run-core';
+import type { ModelConfig } from '../config';
 
 // The typed SDK running handle (`@openprose/reactor/run/types`, a TYPE-ONLY entry
 // that never crosses the offline boundary). The CLI drives THIS — its async-by-
@@ -88,6 +89,27 @@ export interface CallRunProjectInput {
   readonly renderReasoningEffort?: string;
   /** The provider label for the receipt cost (set with a custom provider). */
   readonly providerLabel?: string;
+}
+
+/**
+ * The configured decoding knobs (`model.temperature` / `model.reasoning_effort`)
+ * as optional {@link CallRunProjectInput} fields. Absent stays absent — the
+ * render then omits the keys from the model request entirely, which reasoning
+ * models require. Shared by `run`, `serve`, and the multi-reactor host so the
+ * threading can never drift between entry points.
+ */
+export function renderDecodingInputs(model: ModelConfig): {
+  renderTemperature?: number;
+  renderReasoningEffort?: string;
+} {
+  return {
+    ...(model.temperature !== undefined
+      ? { renderTemperature: model.temperature }
+      : {}),
+    ...(model.reasoning_effort !== undefined
+      ? { renderReasoningEffort: model.reasoning_effort }
+      : {}),
+  };
 }
 
 /**
@@ -192,16 +214,18 @@ export async function callRunProject(
   // Thread the configured decoding knobs the same way: `reactor.yml`'s
   // `temperature`/`reasoning_effort` must govern run/serve renders, not only
   // compile. Absent stays absent so the render omits the keys.
-  if (input.renderTemperature !== undefined) {
+  if (input.renderTemperature !== undefined || input.renderReasoningEffort !== undefined) {
     render = {
       ...render,
-      render: { ...(render.render ?? {}), temperature: input.renderTemperature },
-    };
-  }
-  if (input.renderReasoningEffort !== undefined) {
-    render = {
-      ...render,
-      render: { ...(render.render ?? {}), reasoningEffort: input.renderReasoningEffort },
+      render: {
+        ...(render.render ?? {}),
+        ...(input.renderTemperature !== undefined
+          ? { temperature: input.renderTemperature }
+          : {}),
+        ...(input.renderReasoningEffort !== undefined
+          ? { reasoningEffort: input.renderReasoningEffort }
+          : {}),
+      },
     };
   }
   if (input.providerPlan !== undefined && input.apiKey !== undefined) {
