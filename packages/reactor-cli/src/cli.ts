@@ -144,9 +144,28 @@ export function buildProgram(
     .description(
       'Ensure the IR is fresh, boot the reactor, drain to quiescence, and report',
     )
-    .action(async (_cmdOptions: Record<string, unknown>, cmd: Command) => {
-      onExitCode(await runRunCommand(globalsOf(cmd), undefined, telemetry));
-    });
+    .option(
+      '--budget-tokens <n>',
+      'enforced ceiling on fresh tokens for this run; renders past it fail closed (prior truth stands)',
+    )
+    .action(
+      async (cmdOptions: { budgetTokens?: string }, cmd: Command) => {
+        const budgetTokens =
+          cmdOptions.budgetTokens !== undefined
+            ? Number(cmdOptions.budgetTokens)
+            : undefined;
+        onExitCode(
+          await runRunCommand(
+            {
+              ...globalsOf(cmd),
+              ...(budgetTokens !== undefined ? { budgetTokens } : {}),
+            },
+            undefined,
+            telemetry,
+          ),
+        );
+      },
+    );
 
   program
     .command('serve')

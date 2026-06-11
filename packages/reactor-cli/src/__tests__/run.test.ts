@@ -25,6 +25,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import {
+  createFileSystemReceiptLedger,
   createMemoryStorageAdapter,
   createSystemClockAdapter,
   verifyReceiptChain,
@@ -260,6 +261,111 @@ describe('reactor run (offline gate)', () => {
         report2.dispositions.find((x) => x.node === BRIEF),
         undefined,
       );
+    } finally {
+      rmSync(d.state, { recursive: true, force: true });
+    }
+  });
+
+  // EXPERIMENT A: `--budget-tokens 0` makes the boot's first dispatch refuse —
+  // a budget-refused node is a `failed` disposition, so the existing
+  // "any failed → exit 1" contract applies; the refusal receipts land on the
+  // durable substrate (zero cost) and chain-verify.
+  it('budget: --budget-tokens 0 fails the boot closed (exit 1, ok:false, zero fresh cost, chain verifies)', async () => {
+    const d = freshDirs();
+    const storage = createMemoryStorageAdapter();
+    try {
+      let renders = 0;
+      const countingRender = (store: WorldModelStore) => {
+        const inner = buildFakeRender(store);
+        return async (ctx: { node: string; wake: { source: string } }) => {
+          renders += 1;
+          return inner(ctx);
+        };
+      };
+
+      const out = capture();
+      const code = await runRunCommand(
+        {
+          projectDir: FIXTURE_DIR,
+          stateDir: d.state,
+          json: true,
+          budgetTokens: 0,
+          testAdapters: {
+            clock: createSystemClockAdapter(),
+            storage,
+            worldModel: new FileSystemWorldModelStore({
+              directory: join(d.state, 'world-models'),
+            }),
+          },
+          testRender: { buildRender: countingRender as never },
+          testCompileOptions: testCompileOptions() as never,
+        },
+        out.write,
+      );
+
+      // A budget-refused node is a failed disposition → exit 1, ok:false.
+      assert.equal(code, 1);
+      const report = JSON.parse(out.lines.join('\n')) as {
+        status: string;
+        ok: boolean;
+        dispositions: { node: string; disposition: string }[];
+        cost: { fresh: number; reused: number };
+      };
+      assert.equal(report.status, 'ran');
+      assert.equal(report.ok, false);
+      // The source's dispatch was refused (the render body NEVER ran); the
+      // subscriber never woke (a refusal propagates nothing).
+      assert.equal(renders, 0);
+      assert.equal(
+        report.dispositions.find((x) => x.node === MONITOR)?.disposition,
+        'failed',
+      );
+      assert.equal(
+        report.dispositions.find((x) => x.node === BRIEF),
+        undefined,
+      );
+      assert.ok(report.dispositions.every((x) => x.disposition === 'failed'));
+      // The refusal is FREE: zero fresh tokens across the whole run.
+      assert.equal(report.cost.fresh, 0);
+
+      // The refusal receipts landed on the DURABLE substrate and chain-verify:
+      // re-derive the ledger over the same storage trail (the restart path).
+      const ledger = createFileSystemReceiptLedger({ storage });
+      const monitorChain = ledger.all().filter((r) => r.node === MONITOR);
+      assert.ok(monitorChain.length >= 1);
+      assert.equal(monitorChain[monitorChain.length - 1]?.status, 'failed');
+      assert.ok(
+        monitorChain.every(
+          (r) => r.cost.tokens.fresh === 0 && r.cost.tokens.reused === 0,
+        ),
+      );
+      assert.equal(verifyReceiptChain(monitorChain).ok, true);
+    } finally {
+      rmSync(d.state, { recursive: true, force: true });
+    }
+  });
+
+  it('budget: a malformed --budget-tokens is a USAGE error (exit 2), not a failed run', async () => {
+    const d = freshDirs();
+    try {
+      const out = capture();
+      const code = await runRunCommand(
+        {
+          projectDir: FIXTURE_DIR,
+          stateDir: d.state,
+          json: true,
+          budgetTokens: -3,
+        },
+        out.write,
+      );
+      assert.equal(code, 2);
+      const report = JSON.parse(out.lines.join('\n')) as {
+        status: string;
+        message: string;
+      };
+      assert.equal(report.status, 'error');
+      assert.ok(report.message.includes('--budget-tokens'));
+      assert.ok(report.message.includes('-3'));
     } finally {
       rmSync(d.state, { recursive: true, force: true });
     }

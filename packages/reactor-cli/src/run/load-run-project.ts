@@ -76,6 +76,13 @@ export interface CallRunProjectInput {
   readonly renderModel?: string;
   /** The provider label for the receipt cost (set with a custom provider). */
   readonly providerLabel?: string;
+  /**
+   * EXPERIMENT A: the opt-in enforced fresh-token ceiling — threads to
+   * `RunProjectInput.budget`. Renders dispatched past it fail closed (zero-cost
+   * `failed` receipts; the prior truth stands); memo-skips stay free. Unset
+   * means unlimited (today's behavior).
+   */
+  readonly budget?: NonNullable<RunProjectInput['budget']>;
 }
 
 /**
@@ -205,6 +212,7 @@ export async function callRunProject(
     compiled: input.compiled,
     adapters: input.adapters,
     ...(input.directory !== undefined ? { directory: input.directory } : {}),
+    ...(input.budget !== undefined ? { budget: input.budget } : {}),
     render,
   });
 }
