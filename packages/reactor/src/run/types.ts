@@ -15,6 +15,8 @@ export type {
   RunProjectInput,
   RunProjectRender,
   RunProjectResult,
+  RunCommitGateOptions,
+  FactsProjection,
 } from "../sdk/run-project";
 
 // The typed `Reactor` handle is `RunProjectResult.reactor`. Re-exported here as a

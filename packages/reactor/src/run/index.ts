@@ -24,4 +24,6 @@ export type {
   RunProjectInput,
   RunProjectRender,
   RunProjectResult,
+  RunCommitGateOptions,
+  FactsProjection,
 } from "../sdk/run-project";
