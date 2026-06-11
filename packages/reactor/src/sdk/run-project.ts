@@ -76,6 +76,12 @@ import {
 } from "./render-atom";
 import type { ReconcileResult } from "../reactor";
 import type { AsyncNodeMount, AsyncMountedRender } from "./mounted-dag";
+import {
+  isCompiledPostconditionSet,
+  withCommitGate,
+  type FactsProjection,
+  type RunCommitGateOptions,
+} from "./commit-gate";
 
 // ---------------------------------------------------------------------------
 // 1. compileProject — the compile phase as SESSIONS → a mountable project
@@ -395,6 +401,19 @@ export interface RunProjectInput {
   readonly directory?: string;
   /** The render wiring. */
   readonly render: RunProjectRender;
+  /**
+   * EXPERIMENT C — the deterministic commit gate + bounded validate-and-retry
+   * (`withCommitGate`). Default OFF: absent (or `enforcePostconditions !==
+   * true`) ⇒ the render is never wrapped and behavior is byte-identical to
+   * today. When on, each render's candidate output is gated through
+   * `gateCommit(...)` BEFORE commit; a gate failure re-renders up to
+   * `maxCommitRetries` times (deterministic failures fed back via
+   * `RenderContext.commit_gate_retry`), then fails closed (failed receipt,
+   * nothing commits, prior truth stands). NOTE: a retried render's receipt
+   * `cost.tokens` honestly sums every attempt. Memo-skips are decided PRE-spawn
+   * and never reach the gate (skips stay free).
+   */
+  readonly commitGate?: RunCommitGateOptions;
 }
 
 /** The booted project: the typed reactor handle + the boot sweep's results. */
@@ -475,6 +494,56 @@ export async function runProject(
     }
   }
 
+  // EXPERIMENT-C BOOT GUARD (the commit gate, opt-in): under enforcement, a
+  // mis-wired gate must be a LOUD boot refusal, never silent non-enforcement or
+  // a permanently fail-closed node (mirrors the GOTCHA-1 loud-boot precedent).
+  //   (a) `maxCommitRetries` must be a non-negative safe integer (the bounded
+  //       retry budget — never unbounded, never negative).
+  //   (b) every topology node must carry a WELL-FORMED CompiledPostconditionSet.
+  //       The reactor-cli IR cache coarsens postconditions to the persisted REF
+  //       only — gating over that shape would silently enforce nothing.
+  //   (c) any node with ≥1 DETERMINISTIC validator needs a caller `factsFor`: a
+  //       missing fact evaluates `indeterminate` → permanent fail-closed
+  //       (burning every retry). Refuse here, legibly, instead.
+  const commitGate = input.commitGate;
+  if (commitGate?.enforcePostconditions === true) {
+    const maxCommitRetries = commitGate.maxCommitRetries ?? 0;
+    if (!Number.isSafeInteger(maxCommitRetries) || maxCommitRetries < 0) {
+      throw new TypeError(
+        `runProject commitGate.maxCommitRetries must be a non-negative safe ` +
+          `integer; got ${String(commitGate.maxCommitRetries)}`,
+      );
+    }
+    const coarsened: string[] = [];
+    const needsFacts: string[] = [];
+    for (const node of compiled.reconcilerTopology.topology.nodes) {
+      const set = compiled.perNode[node.node]?.postconditions?.set;
+      if (!isCompiledPostconditionSet(set)) {
+        coarsened.push(node.node);
+      } else if (set.deterministic.length > 0) {
+        needsFacts.push(node.node);
+      }
+    }
+    if (coarsened.length > 0) {
+      throw new Error(
+        `runProject commitGate: node(s) [${coarsened.sort().join(", ")}] carry ` +
+          `no well-formed compiled postcondition set (CompiledPostconditionSet). ` +
+          `Enforcement over a coarsened/ref-only IR shape would silently gate ` +
+          `nothing — re-compile with compileProject (which emits the full set) ` +
+          `or turn enforcePostconditions off.`,
+      );
+    }
+    if (needsFacts.length > 0 && commitGate.factsFor === undefined) {
+      throw new Error(
+        `runProject commitGate: node(s) [${needsFacts.sort().join(", ")}] carry ` +
+          `deterministic postcondition validators but no commitGate.factsFor was ` +
+          `supplied — a missing fact evaluates indeterminate and FAILS CLOSED on ` +
+          `every attempt. Supply commitGate.factsFor so each node's candidate ` +
+          `output projects the facts its predicates read.`,
+      );
+    }
+  }
+
   // The render body: the injected factory (offline fake) or the live agent-render
   // over the SHARED store. Building over `store` is load-bearing — the render's
   // workspace write must be visible to the harness harvest in that same render.
@@ -511,6 +580,20 @@ export async function runProject(
           : {}),
       });
 
+  // EXPERIMENT C: under enforcement, wrap the render with the deterministic
+  // commit gate + bounded retry (`withCommitGate`). Harness-side and render-
+  // body-agnostic — it wraps the live createAgentRender path AND the injected
+  // `buildRender` offline-fake path identically. Off (the default) ⇒ the
+  // unwrapped render mounts, byte-identical to today.
+  const nodeRender =
+    commitGate?.enforcePostconditions === true
+      ? withCommitGate(agentRender, {
+          setFor: (node) => compiled.perNode[node]?.postconditions.set,
+          factsFor: commitGate.factsFor ?? (() => () => ({})),
+          maxCommitRetries: commitGate.maxCommitRetries ?? 0,
+        })
+      : agentRender;
+
   // GOTCHA 1: mount each node with the canonicalizer its canonicalizer-SESSION
   // emitted — `compiledStoreCanonicalizer` over the per-node compiled
   // canonicalizer — NOT `atomicCanonicalizer`. With atomic, `movedFacets` is
@@ -525,7 +608,7 @@ export async function runProject(
       );
     }
     asyncMounts[nodeId] = {
-      render: agentRender,
+      render: nodeRender,
       canonicalizer: compiledStoreCanonicalizer(
         perNode.compiled.canonicalizer,
         projectTruthFor(nodeId),
@@ -679,3 +762,8 @@ function defaultContractFor(
 
 /** Re-export the workspace file shape so a caller's projectTruth typing aligns. */
 export type { WorldModelFiles };
+
+// EXPERIMENT C: the opt-in commit-gate option shapes, re-exported so a caller
+// types `RunProjectInput.commitGate` from the same module it builds the input
+// for (and so `/run/types` can surface them type-only, offline-clean).
+export type { RunCommitGateOptions, FactsProjection } from "./commit-gate";

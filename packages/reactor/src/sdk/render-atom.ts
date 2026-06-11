@@ -34,6 +34,11 @@ import {
   createNullSignature,
 } from "../shapes";
 import { createReceipt, type LedgerReceipt } from "../receipt";
+// Type-only: postcondition imports only ../cycle + ../shapes; no import cycle.
+import type {
+  PostconditionFailure,
+  RenderAttestation,
+} from "../postcondition";
 import {
   atomicCanonicalizer,
   COLD_START_FINGERPRINTS,
@@ -67,6 +72,15 @@ export interface RenderProduct {
   readonly semantic_diff?: SemanticDiff;
   /** Mechanical token attribution observed during the render. */
   readonly cost: Cost;
+  /**
+   * EXPERIMENT C (optional, additive): the render's self-attestation over its
+   * `render-attested` obligations (architecture.md §3.3 "the render attests it
+   * before signing"). Read ONLY by the opt-in commit gate (`withCommitGate`);
+   * absent ⇒ `{}` ⇒ an attested obligation FAILS CLOSED under enforcement —
+   * exactly `gateCommit`'s existing semantics. Unset and un-consumed when the
+   * gate is off, so today's renders are untouched.
+   */
+  readonly attestation?: RenderAttestation;
 }
 
 /**
@@ -128,6 +142,29 @@ export interface RenderContext {
   readonly inbound_edges: readonly TopologyEdge[];
   /** The prior published world-model, by reference + its files. */
   readonly prior: WorldModelRead;
+  /**
+   * EXPERIMENT C (optional, additive): set ONLY by the opt-in commit-gate
+   * wrapper (`withCommitGate`) on RETRY attempts (attempt ≥ 2) — the previous
+   * attempt's DETERMINISTIC postcondition failures, fed back so the retry
+   * render can fix its candidate output. Never set on a first attempt, never
+   * set when the gate is off, never consulted by the harness itself.
+   */
+  readonly commit_gate_retry?: CommitGateRetry;
+}
+
+/**
+ * The commit-gate retry feedback (EXPERIMENT C). Carried on
+ * {@link RenderContext.commit_gate_retry} by the opt-in `withCommitGate`
+ * wrapper; the live agent-render appends it to its pointer input, an offline
+ * stub reads it directly.
+ */
+export interface CommitGateRetry {
+  /** This attempt's ordinal: `2 .. max_attempts` (attempt 1 carries no field). */
+  readonly attempt: number;
+  /** The total attempt budget: `1 + maxCommitRetries`. */
+  readonly max_attempts: number;
+  /** The previous attempt's deterministic gate failures (what to fix). */
+  readonly failures: readonly PostconditionFailure[];
 }
 
 /** The inputs to a standalone render of the atom. */

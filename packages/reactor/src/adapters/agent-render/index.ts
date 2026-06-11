@@ -404,6 +404,27 @@ function buildRunInput(ctx: RenderContext): string {
     "Follow your contract's `### Maintains` postconditions, write your " +
       "world-model files to your workspace, then emit your done/failed signal.",
   );
+  // EXPERIMENT C: the commit-gate retry feedback. Set ONLY by the opt-in
+  // `withCommitGate` wrapper on retry attempts — unset, the composed input is
+  // byte-identical to today. The failures are the DETERMINISTIC validation
+  // errors the previous attempt's candidate output tripped; the model must fix
+  // the world-model files so every postcondition holds.
+  if (ctx.commit_gate_retry !== undefined) {
+    const retry = ctx.commit_gate_retry;
+    lines.push("");
+    lines.push(
+      `COMMIT-GATE RETRY ${retry.attempt}/${retry.max_attempts}: your previous ` +
+        `render was refused by the deterministic commit gate. The violated ` +
+        `postconditions:`,
+    );
+    for (const failure of retry.failures) {
+      lines.push(`- [${failure.id}] (${failure.kind}) ${failure.reason}`);
+    }
+    lines.push(
+      "Fix your world-model files so EVERY postcondition above holds, then " +
+        "re-emit your done/failed signal.",
+    );
+  }
   return lines.join("\n");
 }
 
