@@ -836,9 +836,11 @@ plus `world-models/<node>/published.json`. Connector idempotency is durable: a
 per-source cursor dedups arrivals so a restart never re-ingests the backlog.
 Built-in connectors are `static`, `http`, `file`, plus a `connectors.{cjs,js}`
 plugin seam. A `reactors:` list hosts N isolated reactors; `--concurrency N`
-bounds *across-reactor* parallelism (within a reactor, drains stay strictly
-serial behind a per-reactor queue — node-level parallelism is the deferred
-Change B).
+bounds *across-reactor* parallelism. Within a reactor the CLI per-reactor queue
+stays strictly serial by default; the SDK ships an opt-in `maxConcurrency` on
+`createReconciler`/`mountDag` (default 1 = serial) that lets `drainAsync`
+render simultaneously-ready independent nodes concurrently (Change B, Part III
+§9) — the CLI does not thread it yet.
 
 ### Storage and parity
 
@@ -945,8 +947,10 @@ not yet enough to say the public category claim is empirically proven.
   not a measured speedup; honest long-horizon benchmarks are the named open ask.
   Cost is **observed, not budgeted** (no enforced token ceiling per node/run).
 - No Postgres / durable cloud storage adapter (the storage seam is synchronous).
-- Within-reactor node-level parallelism (Change B) is deferred; `--concurrency`
-  parallelizes reactors, not nodes.
+- Within-reactor node-level parallelism (Change B) is opt-in and SDK-only: the
+  reconciler's `maxConcurrency` (default 1 = serial) pools `drainAsync` renders,
+  but `--concurrency` still parallelizes reactors, not nodes, and the CLI
+  per-reactor queue stays serial.
 - **`serve`'s freshness clock arms nothing by default** — the SDK computes
   `next_self_recheck` from the soonest `valid_until`, but the shipped daemon's
   freshness reader defaults to none and no node emits `valid_until` by default, so
@@ -1081,10 +1085,17 @@ and deferred past v1.
 
 #### 9. Within-Reactor Parallelism (Change B)
 
-`--concurrency` parallelizes reactors, not nodes; the SDK has no `maxConcurrency`
-and within a reactor drains stay serial behind a per-reactor queue. Adding a
-node-level render worker pool (the pool pulling individual ready node-renders,
-preserving single-flight-per-node) is the deferred Change B.
+`--concurrency` parallelizes reactors, not nodes. The SDK now ships the
+node-level render worker pool as an opt-in: `createReconciler(ports, topology,
+{ maxConcurrency })` (threaded through `mountDag`'s `maxConcurrency`) lets one
+`drainAsync` render simultaneously-ready independent nodes concurrently, up to
+the pool width. Default 1 keeps today's serial loop byte-for-byte; the drain
+frontier's readiness gate preserves topological ordering, per-node
+single-flight + dirty-coalescing are reused untouched, memo-skips stay
+zero-token, and a rank-deterministic wake writer keeps join receipts identical
+to a serial run (the equivalence is pinned by test). The CLI per-reactor queue
+remains serial by default — threading `maxConcurrency` into
+`createReactor`/`reactor.yml` is the remaining follow-up.
 
 #### 10. Declared-Capability Resolution + Production Hardening
 

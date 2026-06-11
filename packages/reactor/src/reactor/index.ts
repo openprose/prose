@@ -236,6 +236,31 @@ export interface ReconcilerPorts {
 }
 
 /**
+ * EXPERIMENT B (spec 02 Part III §9, Change B): opt-in construction options for
+ * {@link createReconciler}. Additive — omitting the bag (or every field) keeps
+ * today's behavior byte-for-byte.
+ */
+export interface ReconcilerOptions {
+  /**
+   * The maximum number of node renders one `drainAsync` may hold in flight at
+   * once. Default `1` — the serialized loop, byte-for-byte today's behavior.
+   * Values > 1 let nodes that are SIMULTANEOUSLY ready (all dirty producers
+   * settled) render concurrently within one drain; dependent nodes still wait
+   * for their upstream settle (the frontier's readiness gate IS the topological
+   * ordering), per-node single-flight + dirty-coalescing are preserved
+   * untouched, and memo-skips stay free (the skip decision runs inside
+   * `reconcileAsync` before any render spawns). Affects ONLY `drainAsync`;
+   * `drain` / `reconcile` / `reconcileAsync` are unchanged. When > 1, the
+   * drain's results arrive in COMPLETION order (not fire order) — compare by
+   * node, not by index. Must be an integer >= 1 (TypeError otherwise — fail
+   * closed). NOTE: the pool assumes the ledger/store commit seams stay
+   * synchronous (they are today); an async storage seam would need a commit
+   * lock here.
+   */
+  readonly maxConcurrency?: number;
+}
+
+/**
  * The reconciler's view of the compiled DAG (architecture.md §6.3). v1 holds
  * the topology as a fixed input per scheduling epoch (architecture.md §2: "the
  * topology a fixed input per scheduling epoch — no topology-changes-mid-
@@ -385,8 +410,20 @@ export function computeHeights(
 export function createReconciler(
   ports: ReconcilerPorts,
   topology: ReconcilerTopology,
+  options: ReconcilerOptions = {},
 ): ReconcilerHandle {
   const flight = new Map<string, NodeFlightState>();
+
+  // EXPERIMENT B: the drainAsync render-pool width. Default 1 = the serial
+  // loop, byte-for-byte today's behavior. Validated eagerly — a malformed
+  // width fails closed at construction, never mid-drain.
+  const maxConcurrency = options.maxConcurrency ?? 1;
+  if (!Number.isInteger(maxConcurrency) || maxConcurrency < 1) {
+    throw new TypeError(
+      `reactor: maxConcurrency must be an integer >= 1, got ${String(maxConcurrency)} ` +
+        "(EXPERIMENT B, spec 02 Part III §9 — fail closed at construction).",
+    );
+  }
 
   const flightFor = (node: string): NodeFlightState => {
     let state = flight.get(node);
@@ -470,6 +507,20 @@ export function createReconciler(
     const { seedNodes, dirty, remaining } = planDrain(initial);
     const done = new Set<string>(); // fired OR pruned — removed from the frontier
     const moved = new Set<string>(); // a fired dirty producer propagated to this node
+    // EXPERIMENT B: nodes handed out by `next()` whose render is still in
+    // flight (pooled drainAsync only — the serial loops never leave a gap
+    // between `next()` and `commit()`, so this set is empty on their path).
+    const launched = new Set<string>();
+    // EXPERIMENT B: at a multi-producer join, the (height, id)-ranked writer of
+    // the recorded pending wake — the rank guard in `commit()` keeps the wake
+    // refs identical to a serial run even when pooled producers settle out of
+    // order. Empty/no-op on the serial path (see the guard's invariance note).
+    const wakeWriter = new Map<string, string>();
+    const ranksLater = (a: string, b: string): boolean => {
+      const ha = heightOf[a] ?? 0;
+      const hb = heightOf[b] ?? 0;
+      return ha !== hb ? ha > hb : a > b;
+    };
     const wakeFor = new Map<string, Wake>();
     for (const e of initial) wakeFor.set(String(e.node), e.wake);
     const maxIter = drainNodeIds.length * 4 + 16;
@@ -478,12 +529,14 @@ export function createReconciler(
     return {
       /**
        * The next node to fire: the lowest-height ready node (dirty ∧ not done ∧
-       * all dirty producers settled), tie-broken by node id for determinism;
-       * `null` at quiescence. Throws on the iteration guard (deadlock defense).
+       * not in flight ∧ all dirty producers settled), tie-broken by node id for
+       * determinism; `null` at quiescence. Throws on the iteration guard
+       * (deadlock defense).
        */
       next(): string | null {
         const ready = [...dirty].filter(
-          (n) => !done.has(n) && (remaining.get(n) ?? 0) === 0,
+          (n) =>
+            !done.has(n) && !launched.has(n) && (remaining.get(n) ?? 0) === 0,
         );
         if (ready.length === 0) return null;
         if (++guard > maxIter) {
@@ -509,6 +562,14 @@ export function createReconciler(
         return wakeFor.get(node) ?? INPUT_WAKE;
       },
       /**
+       * EXPERIMENT B: mark a node handed out by `next()` as in flight so the
+       * pooled drain never launches it twice before its `commit()` lands. The
+       * serial loops never call this (they commit immediately after firing).
+       */
+      begin(node: string): void {
+        launched.add(node);
+      },
+      /**
        * Record a processed node: carry a fired node's propagated wakes + mark
        * the movement it caused, mark the node done, then SETTLE its downstreams
        * — decrement EVERY dirty, not-yet-done subscriber whether or not this node
@@ -529,11 +590,28 @@ export function createReconciler(
                   "the precomputed dirty closure is incomplete (topology/propagation bug).",
               );
             }
-            wakeFor.set(target, p.wake);
+            // EXPERIMENT B: rank-deterministic wake writer at a multi-producer
+            // join. Overwrite the pending wake only when this producer ranks
+            // LATER in (height, node-id) order than the recorded writer.
+            // Serial invariance: the serial frontier fires in strictly
+            // ascending (height, id) order (every dirty height-0 node is ready
+            // from the start and `next()` always picks lowest, so each height
+            // level fully settles before the next), hence each successive
+            // propagation already ranks later and the guard always overwrites —
+            // identical to the previous unconditional last-writer-wins. Under
+            // the pool, arrival order is latency-dependent; the guard keeps the
+            // join's recorded wake (and so its receipts) byte-identical to a
+            // serial run.
+            const recorded = wakeWriter.get(target);
+            if (recorded === undefined || ranksLater(node, recorded)) {
+              wakeFor.set(target, p.wake);
+              wakeWriter.set(target, node);
+            }
             moved.add(target);
           }
         }
         done.add(node);
+        launched.delete(node);
         for (const s of new Set(subscribersOf[node] ?? [])) {
           if (!dirty.has(s) || done.has(s)) continue;
           const r = remaining.get(s) ?? 0;
@@ -757,14 +835,19 @@ export function createReconciler(
   const drainAsync = async (
     initial: readonly WakeEvent[],
   ): Promise<readonly ReconcileResult[]> => {
+    // EXPERIMENT B (opt-in): with maxConcurrency > 1 the pooled loop below
+    // renders simultaneously-ready nodes concurrently. The default (1) keeps
+    // this serial loop byte-for-byte.
+    if (maxConcurrency > 1) return drainPooledAsync(initial);
     // MK-1, async twin: the same height-ordered, dirty-count-gated frontier as the
     // sync `drain`, but each fire is `await`ed FULLY before its settle/propagate
     // bookkeeping is applied and the frontier re-evaluates `next()` — closing the
     // await-frontier gap (the height frontier must not advance until the awaited
     // render commits). Stays a serial pick-lowest-ready loop: NO node-level
-    // parallelism (Change B is deferred). `reconcileAsync` — including its per-node
-    // single-flight/coalesce guard — is reused untouched; the drain serialization
-    // and that guard are independent safety layers.
+    // parallelism (Change B is opt-in via `maxConcurrency`, default off).
+    // `reconcileAsync` — including its per-node single-flight/coalesce guard —
+    // is reused untouched; the drain serialization and that guard are
+    // independent safety layers.
     const frontier = startFrontier(initial);
     const results: ReconcileResult[] = [];
     for (let node = frontier.next(); node !== null; node = frontier.next()) {
@@ -775,6 +858,85 @@ export function createReconciler(
       }
       frontier.commit(node, result);
     }
+    frontier.finish();
+    return results;
+  };
+
+  // EXPERIMENT B (spec 02 Part III §9, Change B): the node-level render worker
+  // pool — `drainAsync` with `maxConcurrency > 1`. The SAME frontier as the
+  // serial loops supplies ALL the safety: `next()` only returns nodes whose
+  // dirty producers have all settled (the readiness gate IS the topological
+  // ordering, so any set of simultaneously-ready nodes is mutually independent),
+  // `begin()` keeps an in-flight node from being handed out twice, `commit()`
+  // applies settle/propagate bookkeeping synchronously as each render lands
+  // (the ledger/store commit seams are synchronous single-threaded JS — no
+  // tearing), and the rank-guarded wake writer keeps join receipts identical to
+  // a serial run. `reconcileAsync` — memo/skip, per-node single-flight,
+  // dirty-coalescing — is reused untouched; a memo-skip inside the pool spawns
+  // nothing and stays zero-token. Fail closed: a render returning
+  // status:"failed" flows through the normal commit path (no propagation,
+  // downstream prunes, prior truth stands); a THROWN reconcileAsync stops new
+  // launches, awaits every in-flight render (no abandoned promises), then
+  // rethrows — mirroring the serial loop's propagate-the-throw behavior.
+  // Results arrive in COMPLETION order (documented on ReconcilerOptions).
+  const drainPooledAsync = async (
+    initial: readonly WakeEvent[],
+  ): Promise<readonly ReconcileResult[]> => {
+    const frontier = startFrontier(initial);
+    const results: ReconcileResult[] = [];
+    const inFlight = new Map<string, Promise<void>>();
+    let errored = false;
+    let firstError: unknown;
+
+    const recordError = (error: unknown): void => {
+      if (!errored) {
+        errored = true;
+        firstError = error;
+      }
+    };
+
+    const launchReady = (): void => {
+      while (!errored && inFlight.size < maxConcurrency) {
+        const node = frontier.next();
+        if (node === null) return;
+        if (!frontier.shouldFire(node)) {
+          // Prune-without-render, exactly as the serial loop: settle the
+          // bookkeeping, never spawn, never write a receipt.
+          frontier.commit(node, null);
+          continue;
+        }
+        frontier.begin(node);
+        const wake = frontier.wakeOf(node);
+        // The chained promise ALWAYS fulfills (both branches handle their own
+        // errors), so racing it never throws and nothing is left unhandled. The
+        // self-delete from `inFlight` happens in the same tick as the
+        // settle/commit, so the race loop never re-races a settled slot.
+        const slot = reconcileAsync({ node, wake }).then(
+          (result) => {
+            inFlight.delete(node);
+            try {
+              results.push(result);
+              frontier.commit(node, result);
+            } catch (error) {
+              // e.g. the non-dirty-closure propagation guard — fail closed.
+              recordError(error);
+            }
+          },
+          (error) => {
+            inFlight.delete(node);
+            recordError(error);
+          },
+        );
+        inFlight.set(node, slot);
+      }
+    };
+
+    launchReady();
+    while (inFlight.size > 0) {
+      await Promise.race(inFlight.values());
+      launchReady();
+    }
+    if (errored) throw firstError;
     frontier.finish();
     return results;
   };

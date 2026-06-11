@@ -172,6 +172,16 @@ export interface MountDagInput {
    * append-only receipt trail, architecture.md §5.1).
    */
   readonly ledger?: MutableReceiptLedger;
+  /**
+   * EXPERIMENT B (spec 02 Part III §9, Change B): forwarded to
+   * `createReconciler` as `maxConcurrency`. Default 1 (serial — today's
+   * behavior byte-for-byte). When > 1, only `ingestAsync`/`tickAsync`/
+   * `drainAsync` can overlap renders of simultaneously-ready independent
+   * nodes; the sync verbs never do. Per-node single-flight, dirty-coalescing,
+   * topological ordering, and zero-token memo-skips are preserved; pooled
+   * results arrive in completion order. Must be an integer >= 1.
+   */
+  readonly maxConcurrency?: number;
 }
 
 /**
@@ -335,7 +345,15 @@ export function mountDag(input: MountDagInput): MountedDag {
     resolveInputFingerprints,
   };
 
-  const reconciler = createReconciler(ports, input.topology);
+  const reconciler = createReconciler(
+    ports,
+    input.topology,
+    // exactOptionalPropertyTypes: only materialize the option when supplied
+    // (the spread-guard idiom used for `asyncMounts` in create-reactor.ts).
+    input.maxConcurrency !== undefined
+      ? { maxConcurrency: input.maxConcurrency }
+      : {},
+  );
 
   return {
     ingest: (node, wake) =>

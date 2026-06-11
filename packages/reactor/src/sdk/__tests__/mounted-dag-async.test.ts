@@ -193,3 +193,66 @@ test("tickAsync: a self-sourced wake drives the async path", async () => {
   equal(results[0]?.disposition, "rendered");
   equal(results[0]?.receipt?.wake.source, "self");
 });
+
+test("drainAsync (EXPERIMENT B): mountDag threads maxConcurrency through — independent seeds overlap; the default stays serial", async () => {
+  const twoSeedTopology = (): ReconcilerTopology => ({
+    topology: {
+      nodes: [
+        { node: asNodeId("x"), contract_fingerprint: asFingerprint("c@1"), wake_source: "external" },
+        { node: asNodeId("y"), contract_fingerprint: asFingerprint("c@1"), wake_source: "external" },
+      ],
+      edges: [],
+      entry_points: [asNodeId("x"), asNodeId("y")],
+      acyclic: true,
+    },
+    contract_fingerprints: { x: asFingerprint("c@1"), y: asFingerprint("c@1") },
+  });
+  const overlapProbe = (): {
+    asyncMounts: Record<string, { render: AsyncMountedRender }>;
+    maxInFlight: () => number;
+  } => {
+    let inFlight = 0;
+    let maxInFlight = 0;
+    const render: AsyncMountedRender = async (ctx) => {
+      inFlight += 1;
+      maxInFlight = Math.max(maxInFlight, inFlight);
+      await new Promise<void>((r) => setTimeout(r, 5));
+      inFlight -= 1;
+      return {
+        world_model: files({ "t.json": jsonFile({ node: ctx.node }) }),
+        cost: cost(ctx.wake.source),
+      };
+    };
+    return {
+      asyncMounts: { x: { render }, y: { render } },
+      maxInFlight: () => maxInFlight,
+    };
+  };
+  const wake = { source: "external", refs: [] } as const;
+  const seeds = [
+    { node: "x", wake },
+    { node: "y", wake },
+  ];
+
+  const pooledProbe = overlapProbe();
+  const pooled = mountDag({
+    topology: twoSeedTopology(),
+    mounts: {},
+    asyncMounts: pooledProbe.asyncMounts,
+    maxConcurrency: 2,
+  });
+  const pooledResults = await pooled.drainAsync(seeds);
+  equal(pooledResults.length, 2);
+  equal(pooledProbe.maxInFlight(), 2, "maxConcurrency:2 overlaps the two seeds");
+
+  const serialProbe = overlapProbe();
+  const serial = mountDag({
+    topology: twoSeedTopology(),
+    mounts: {},
+    asyncMounts: serialProbe.asyncMounts,
+    // no maxConcurrency — the default stays serial
+  });
+  const serialResults = await serial.drainAsync(seeds);
+  equal(serialResults.length, 2);
+  equal(serialProbe.maxInFlight(), 1, "the default path never overlaps renders");
+});

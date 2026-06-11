@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`@openprose/reactor`: opt-in node-level render worker pool (Change B,
+  spec 02 Part III §9).** `createReconciler(ports, topology, { maxConcurrency })`
+  — threaded through `mountDag`'s new `maxConcurrency` input — lets one
+  `drainAsync` render simultaneously-ready independent nodes concurrently, up
+  to the pool width. Default `1` keeps the serial loop byte-for-byte (every
+  existing surface is unchanged; the sync verbs never overlap). The drain
+  frontier's readiness gate preserves topological ordering, per-node
+  single-flight + dirty-coalescing are reused untouched, memo-skips stay
+  zero-token, failures stay isolated (failed node's downstream prunes; a thrown
+  render rethrows only after all in-flight renders settle), and a
+  rank-deterministic wake writer keeps per-node receipt chains byte-identical
+  to a serial run. Pooled results arrive in completion order. The CLI
+  per-reactor queue remains serial by default.
 - **`prose react "<use case>"`** — A command for taking an English standing goal
   to a running, inspectable Reactor on the `@openprose/reactor-cli` (`reactor`)
   binary. The open-prose skill gains a `reactor.md` operator guide (install, the
