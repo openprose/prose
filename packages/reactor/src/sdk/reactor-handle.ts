@@ -32,6 +32,7 @@
 // (one typed handle; the casts vanish) + §3.3 (the facade returns this handle).
 
 import type { Wake } from "../shapes";
+import { createBudgetTracker, type ReactorBudget } from "../cost/budget";
 import type {
   ReconcileResult,
   ReconcilerTopology,
@@ -168,6 +169,14 @@ export interface Reactor {
    * reserved `createEpochDriver` seam (§5.7).
    */
   readonly topology: ReconcilerTopology;
+  /**
+   * EXPERIMENT A — the Workflow-shaped fresh-token budget accessor:
+   * `budget.total` / `budget.spent()` / `budget.remaining()`. With no budget
+   * configured, `total` is `null` and `remaining()` is `Infinity` (unlimited).
+   * `spent()` is SESSION-scoped (0 at assembly): a restarted reactor over the
+   * same durable ledger starts a fresh ceiling.
+   */
+  readonly budget: ReactorBudget;
 
   // ── self-driven cadence — wired off the handle ──
   /**
@@ -280,6 +289,9 @@ export function assembleReactor(input: AssembleReactorInput): Reactor {
     store: dag.store,
     clock,
     topology,
+    // `mountDag` always supplies the budget view; a hand-assembled structural
+    // `MountedDag` without one gets the unlimited view (total null / Infinity).
+    budget: dag.budget ?? createBudgetTracker().view,
 
     // self-driven cadence
     scheduler: (readFreshness, nodes) =>

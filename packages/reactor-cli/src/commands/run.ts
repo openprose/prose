@@ -53,6 +53,14 @@ export interface RunCommandOptions extends ConfigOverrides {
   /** Force offline mode (sets REACTOR_OFFLINE=1 for the process). */
   readonly offline?: boolean;
   /**
+   * EXPERIMENT A (`--budget-tokens <n>`, opt-in): the enforced ceiling on fresh
+   * tokens for this run's session. Renders dispatched past the ceiling fail
+   * closed (a zero-cost `failed` receipt; the prior truth stands), so the
+   * existing "any failed → exit 1" contract applies. Must be a non-negative
+   * safe integer (usage error, exit 2, otherwise). Unset means unlimited.
+   */
+  readonly budgetTokens?: number;
+  /**
    * Test seam (OFFLINE gate): inject the durable substrate + the fake render
    * wiring so the run is hermetic (no model, no network). When set, `run` skips
    * its own compile-if-stale (the caller has populated the cache) unless
@@ -147,6 +155,25 @@ export async function runRunCommand(
     return 2;
   }
 
+  // EXPERIMENT A: validate `--budget-tokens` before any work — a malformed
+  // ceiling is a USAGE error (exit 2, mirroring the state-dir validation), not
+  // a failed run.
+  if (
+    options.budgetTokens !== undefined &&
+    (!Number.isSafeInteger(options.budgetTokens) || options.budgetTokens < 0)
+  ) {
+    const budgetError =
+      `reactor run: --budget-tokens must be a non-negative integer; got ` +
+      `${String(options.budgetTokens)}`;
+    if (options.json === true) {
+      write(JSON.stringify({ status: 'error', message: budgetError }));
+    } else {
+      write(budgetError);
+    }
+    fireError(new TypeError(budgetError));
+    return 2;
+  }
+
   try {
   // 1. Ensure the IR is fresh (compile if stale).
   const ensured = await ensureCompiledIR({
@@ -231,6 +258,11 @@ export async function runRunCommand(
     // Always honor the configured render model (so a non-default model id actually
     // reaches the run-phase render, not just the SDK's gemini default).
     renderModel: config.model.render_model,
+    // EXPERIMENT A: thread the validated `--budget-tokens` ceiling to the SDK
+    // (`RunProjectInput.budget`). Unset means unlimited — byte-identical to today.
+    ...(options.budgetTokens !== undefined
+      ? { budget: { maxFreshTokens: options.budgetTokens } }
+      : {}),
     ...(liveCustomRender
       ? {
           providerPlan,

@@ -667,7 +667,9 @@ of this section is honest about each:
    `### Invariants` is never lowered into the render (the authored
    rate/scope/prohibited-action quarantine survives only as prose the model may
    ignore); the serve daemon's freshness clock arms nothing by default (so it
-   does the fixed-interval work Part I forbids); cost is observed, not budgeted;
+   does the fixed-interval work Part I forbids); cost is observed by default
+   (an opt-in enforced fresh-token ceiling per run/serve session exists —
+   `budget: { maxFreshTokens }` / `--budget-tokens` — but per-node budgets do not);
    and the topology edge pins a revision but no acceptable-signer-set — all gated
    behind the honestly-deferred null signer.
 
@@ -945,7 +947,13 @@ not yet enough to say the public category claim is empirically proven.
   so cross-trust-domain composition has no pin even ahead of the signer.
 - No benchmark or dollar numbers — the surprise property is a tested invariant,
   not a measured speedup; honest long-horizon benchmarks are the named open ask.
-  Cost is **observed, not budgeted** (no enforced token ceiling per node/run).
+  Cost is **observed by default, budgeted only opt-in**: a run/serve session may
+  set an enforced fresh-token ceiling (`budget: { maxFreshTokens }` on
+  `reactor()`/`createReactor()`/`runProject()`, `--budget-tokens` on the CLI run
+  command; read back via `reactor.budget.total/spent()/remaining()`). A dispatch
+  past the ceiling fails closed — a zero-cost `failed` receipt, prior truth
+  stands, memo-skips stay free. There is still **no per-node ceiling**, and the
+  ceiling is session-scoped (a restart resets the spend counter).
 - No Postgres / durable cloud storage adapter (the storage seam is synchronous).
 - Within-reactor node-level parallelism (Change B) is opt-in and SDK-only: the
   reconciler's `maxConcurrency` (default 1 = serial) pools `drainAsync` renders,

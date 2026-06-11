@@ -55,6 +55,7 @@ import {
 } from "../adapters/agent-render";
 import { asFingerprint, ATOMIC_FACET } from "../shapes";
 import type { Cost, Fingerprint } from "../shapes";
+import type { ReactorBudgetOption } from "../cost/budget";
 import type { ReconcilerTopology } from "../reactor";
 import { contentAddressOf } from "../world-model/canonical";
 import type {
@@ -414,6 +415,13 @@ export interface RunProjectInput {
    * and never reach the gate (skips stay free).
    */
   readonly commitGate?: RunCommitGateOptions;
+  /**
+   * EXPERIMENT A (opt-in, default OFF): the enforced fresh-token ceiling for
+   * this run's session — threaded to {@link CreateReactorInput.budget}. Unset
+   * means unlimited (behavior identical to today). Compile-phase cost never
+   * lands in the run ledger and is out of the budget's scope.
+   */
+  readonly budget?: ReactorBudgetOption;
 }
 
 /** The booted project: the typed reactor handle + the boot sweep's results. */
@@ -625,6 +633,7 @@ export async function runProject(
     },
     topology: compiled.reconcilerTopology,
     asyncMounts,
+    ...(input.budget !== undefined ? { budget: input.budget } : {}),
   });
 
   // GOTCHA 2: boot() is the honest FIRST render of a pure source (a bare re-wake

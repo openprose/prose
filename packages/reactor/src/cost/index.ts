@@ -471,3 +471,17 @@ function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
 function isNonNegativeSafeInteger(value: unknown): value is number {
   return Number.isSafeInteger(value) && (value as number) >= 0;
 }
+
+// ---------------------------------------------------------------------------
+// EXPERIMENT A — the opt-in enforced fresh-token budget (./budget)
+// ---------------------------------------------------------------------------
+
+export {
+  createBudgetTracker,
+  budgetExhaustedCost,
+  isBudgetExhaustedReceipt,
+  BUDGET_EXHAUSTED_MODEL,
+  type ReactorBudget,
+  type ReactorBudgetOption,
+  type BudgetTracker,
+} from "./budget";

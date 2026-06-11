@@ -25,6 +25,18 @@ export type {
   IngestInput,
 } from "./sdk/reactor-handle";
 
+// ── EXPERIMENT A: the opt-in enforced fresh-token budget ────────────────────
+// `{ budget: { maxFreshTokens } }` on reactor()/createReactor()/runProject();
+// read back via `reactor.budget` (total / spent() / remaining()). A refused
+// render commits a zero-cost `failed` receipt queryable via
+// `isBudgetExhaustedReceipt` — the prior truth stands, skips stay free.
+export {
+  isBudgetExhaustedReceipt,
+  BUDGET_EXHAUSTED_MODEL,
+  type ReactorBudget,
+  type ReactorBudgetOption,
+} from "./cost/budget";
+
 // ── The assemblers (the rungs a driver mounts against) ──────────────────────
 export {
   createReactor,

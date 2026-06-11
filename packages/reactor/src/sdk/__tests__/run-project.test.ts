@@ -44,6 +44,8 @@ import {
 } from "../index";
 import { dispositionOf, lastReceipt } from "../../scenario/trace";
 import { contractFingerprint } from "../../scenario/fixture";
+import { isBudgetExhaustedReceipt } from "../../cost/budget";
+import { verifyReceiptChain } from "../../receipt";
 import { fakeStructuredProvider } from "../../adapters/agent-compile/__tests__/fake-provider";
 import {
   createOpenRouterProvider,
@@ -409,6 +411,76 @@ test("runProject RESTART-SURVIVAL: a second reactor over the same dirs boots to 
     // source's cheap `skipped` receipt (the subscriber never woke).
     deepEqual(second.reactor.store.publishedFingerprints(MONITOR), monitorFpBefore);
     equal(second.reactor.ledger.all().length, receiptsBefore + 1);
+  } finally {
+    rmSync(d.wm, { recursive: true, force: true });
+    rmSync(d.storage, { recursive: true, force: true });
+  }
+});
+
+// EXPERIMENT A: the opt-in enforced fresh-token budget threads runProject →
+// createReactor → mountDag. With `maxFreshTokens: 0` the boot sweep's very
+// first dispatch refuses — a zero-cost `failed` receipt (prior truth: cold
+// start), nothing propagates, the trail chain-verifies, and the handle's
+// Workflow-shaped accessor reports {0, 0, 0}. Without the option the handle
+// reports the unlimited view (null / Infinity) — default OFF.
+test("runProject budget: maxFreshTokens 0 fails the boot dispatch closed; the accessor reports; default-off is unlimited", async () => {
+  const d = dirs();
+  try {
+    const compiled = await compileSmallestProject();
+
+    let renders = 0;
+    const countingRender = (store: WorldModelStore): AsyncMountedRender => {
+      const inner = buildFakeRender(store);
+      return async (ctx: RenderContext) => {
+        renders += 1;
+        return inner(ctx);
+      };
+    };
+
+    const { reactor, bootResults } = await runProject({
+      compiled,
+      adapters: {
+        clock: createSystemClockAdapter(),
+        storage: createMemoryStorageAdapter(),
+        worldModel: new FileSystemWorldModelStore({ directory: d.wm }),
+      },
+      render: { buildRender: countingRender, projectTruthFor },
+      budget: { maxFreshTokens: 0 },
+    });
+
+    // The source's boot dispatch REFUSED (no render body ever ran); the
+    // subscriber never woke (a refusal propagates nothing).
+    equal(dispositionOf(bootResults, MONITOR), "failed");
+    equal(bootResults.find((r) => r.node === BRIEF), undefined);
+    equal(renders, 0);
+
+    // The refusal receipt: zero cost + the durable marker; the trail verifies.
+    const receipt = reactor.ledger.lastReceipt(MONITOR);
+    ok(receipt);
+    ok(isBudgetExhaustedReceipt(receipt!));
+    deepEqual(receipt?.cost.tokens, { fresh: 0, reused: 0 });
+    equal(
+      verifyReceiptChain(reactor.ledger.all().filter((r) => r.node === MONITOR)).ok,
+      true,
+    );
+
+    // The Workflow-shaped accessor reports the configured session budget.
+    equal(reactor.budget.total, 0);
+    equal(reactor.budget.spent(), 0);
+    equal(reactor.budget.remaining(), 0);
+
+    // Default OFF: the existing no-budget path exposes the unlimited view.
+    const unbudgeted = await runProject({
+      compiled,
+      adapters: {
+        clock: createSystemClockAdapter(),
+        storage: createMemoryStorageAdapter(),
+        worldModel: new FileSystemWorldModelStore({ directory: d.wm }),
+      },
+      render: { buildRender: buildFakeRender, projectTruthFor },
+    });
+    equal(unbudgeted.reactor.budget.total, null);
+    equal(unbudgeted.reactor.budget.remaining(), Infinity);
   } finally {
     rmSync(d.wm, { recursive: true, force: true });
     rmSync(d.storage, { recursive: true, force: true });
