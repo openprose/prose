@@ -29,6 +29,7 @@ import type { ClockAdapter, StorageAdapter } from "../adapters/types";
 import type { WorldModelStore } from "../world-model";
 import type { RenderOptions } from "../adapters/agent-render/passthrough";
 import type { RenderBackend } from "../adapters/agent-render/render-backend";
+import type { ReactorBudgetOption } from "../cost/budget";
 import type { MutableReceiptLedger } from "./mounted-dag";
 import type { NodeFreshnessReader } from "./continuity-scheduler";
 import type { Reactor } from "./reactor-handle";
@@ -118,6 +119,13 @@ export interface ReactorOptions {
     /** Per-node truth projection (GOTCHA 1's other half). */
     readonly projectTruthFor?: (node: string) => unknown;
   };
+  /**
+   * EXPERIMENT A (opt-in, default OFF): the enforced fresh-token ceiling — a
+   * documented desugaring of {@link RunProjectInput.budget}. Renders past the
+   * ceiling fail closed (zero-cost `failed` receipts; prior truth stands);
+   * memo-skips stay free. Read it back via `reactor.budget`.
+   */
+  readonly budget?: ReactorBudgetOption;
   /** The backends to swap in (a Partial substrate). */
   readonly adapters?: ReactorAdapters;
   /** Arm the self-driven continuity cadence off the handle's topology. */
@@ -211,6 +219,7 @@ export async function reactor(
     compiled: compiledForRun,
     substrate,
     ...(options.directory !== undefined ? { directory: options.directory } : {}),
+    ...(options.budget !== undefined ? { budget: options.budget } : {}),
     render,
   });
 

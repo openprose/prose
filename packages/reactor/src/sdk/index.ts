@@ -175,6 +175,20 @@ export {
   type LedgerReceipt,
 } from "../receipt";
 
+// --- EXPERIMENT A: the opt-in enforced fresh-token budget (cost/budget.ts) ---
+// The Workflow-shaped accessor (`budget.total` / `spent()` / `remaining()`)
+// exposed on the MountedDag + the typed Reactor handle, the option every
+// assembly rung threads, and the refusal-receipt query seam.
+export {
+  createBudgetTracker,
+  budgetExhaustedCost,
+  isBudgetExhaustedReceipt,
+  BUDGET_EXHAUSTED_MODEL,
+  type ReactorBudget,
+  type ReactorBudgetOption,
+  type BudgetTracker,
+} from "../cost/budget";
+
 // --- The shared shapes (SHAPES.md) ------------------------------------------
 export {
   ATOMIC_FACET,

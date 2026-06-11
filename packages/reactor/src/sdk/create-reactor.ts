@@ -33,6 +33,7 @@
 //     "blocks any assembled runtime" / "blocks restart-survival".
 
 import type { Wake, WakeSource } from "../shapes";
+import type { ReactorBudgetOption } from "../cost/budget";
 import {
   inboundEdges,
   type ReconcilerTopology,
@@ -119,6 +120,12 @@ export interface CreateReactorInput {
    * defaulted.
    */
   readonly directory?: string;
+  /**
+   * EXPERIMENT A (opt-in, default OFF): the enforced fresh-token ceiling for
+   * this reactor's session — threaded to {@link MountDagInput.budget}. Unset
+   * means unlimited (behavior identical to today).
+   */
+  readonly budget?: ReactorBudgetOption;
 }
 
 /**
@@ -184,6 +191,7 @@ export function createReactor(input: CreateReactorInput): Reactor {
     topology,
     mounts: input.mounts ?? {},
     ...(input.asyncMounts !== undefined ? { asyncMounts: input.asyncMounts } : {}),
+    ...(input.budget !== undefined ? { budget: input.budget } : {}),
     store,
     ledger,
   });

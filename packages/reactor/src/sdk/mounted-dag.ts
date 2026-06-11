@@ -51,6 +51,12 @@ import {
   type Receipt,
 } from "../receipt";
 import {
+  budgetExhaustedCost,
+  createBudgetTracker,
+  type ReactorBudget,
+  type ReactorBudgetOption,
+} from "../cost/budget";
+import {
   atomicCanonicalizer,
   resolveFacetFingerprint,
   COLD_START_FINGERPRINTS,
@@ -172,6 +178,14 @@ export interface MountDagInput {
    * append-only receipt trail, architecture.md §5.1).
    */
   readonly ledger?: MutableReceiptLedger;
+  /**
+   * EXPERIMENT A (opt-in, default OFF): the enforced fresh-token ceiling for
+   * this mounted reactor's SESSION. When set, a render dispatch past the
+   * ceiling REFUSES — a zero-cost `failed` receipt is committed (prior truth
+   * stands, no propagation) instead of spawning the render. Memo-skips happen
+   * in the reconciler before any spawn and are never blocked or charged.
+   */
+  readonly budget?: ReactorBudgetOption;
 }
 
 /**
@@ -216,6 +230,13 @@ export interface MountedDag {
   readonly store: WorldModelStore;
   /** The underlying reconciler (for advanced callers). */
   readonly reconciler: ReconcilerHandle;
+  /**
+   * The Workflow-shaped budget accessor — `total` / `spent()` / `remaining()`
+   * (null/Infinity semantics when no {@link MountDagInput.budget} was set).
+   * OPTIONAL on the interface so hand-built structural `MountedDag` values
+   * keep compiling; `mountDag` always supplies it.
+   */
+  readonly budget?: ReactorBudget;
 }
 
 /**
@@ -228,6 +249,10 @@ export interface MountedDag {
 export function mountDag(input: MountDagInput): MountedDag {
   const store = input.store ?? new InMemoryWorldModelStore();
   const ledger = input.ledger ?? new InMemoryReceiptLedger();
+  // EXPERIMENT A: one session-scoped budget tracker per mounted reactor. With
+  // no `input.budget` this is the unlimited tracker (`exhausted()` always
+  // false), so the guards below are inert and behavior is identical to today.
+  const budget = createBudgetTracker(input.budget);
 
   const worldModelPort: WorldModelStorePort = {
     publishedRef: (node) => store.ref(node, "published"),
@@ -248,7 +273,24 @@ export function mountDag(input: MountDagInput): MountedDag {
       };
     }
     const canonicalizer = mount.canonicalizer ?? atomicCanonicalizer;
+    // EXPERIMENT A: refuse the dispatch once the session ceiling is reached —
+    // fail closed (a zero-cost failed outcome the reconciler turns into a
+    // failed receipt: fingerprint unmoved, prior truth stands, no propagation).
+    // The memo-skip decision happened in the reconciler BEFORE this port, so a
+    // skip is structurally never blocked or charged.
+    if (budget.exhausted()) {
+      return {
+        status: "failed",
+        reason: budgetExhaustedReason(budget.view),
+        cost: budgetExhaustedCost(request.wake.source),
+      };
+    }
     const product = runMountedRender(mount.render, toRenderContext(request, store));
+    // Charge the outcome's fresh tokens (rendered AND failed — a failed live
+    // render may still have burned tokens; this is the exact cost object the
+    // reconciler stamps into the committed receipt, so budget truth equals
+    // receipt truth).
+    budget.charge(product.cost);
     if (isFailure(product)) {
       return {
         status: "failed",
@@ -288,6 +330,15 @@ export function mountDag(input: MountDagInput): MountedDag {
     }
     const canonicalizer =
       (asyncMount ?? syncMount)?.canonicalizer ?? atomicCanonicalizer;
+    // EXPERIMENT A: the same dispatch-time refusal as the sync spawn above —
+    // fail closed before contacting any provider (skips never reach this port).
+    if (budget.exhausted()) {
+      return {
+        status: "failed",
+        reason: budgetExhaustedReason(budget.view),
+        cost: budgetExhaustedCost(request.wake.source),
+      };
+    }
     const context = toRenderContext(request, store);
     const product =
       asyncMount !== undefined
@@ -295,6 +346,9 @@ export function mountDag(input: MountDagInput): MountedDag {
         : // A sync render is trivially an already-resolved promise, so the async
           // path subsumes it.
           runMountedRender((syncMount as NodeMount).render, context);
+    // Charge the outcome's fresh tokens (rendered AND failed) — see the sync
+    // spawn's note: the charged value is the committed receipt's cost verbatim.
+    budget.charge(product.cost);
     if (isFailure(product)) {
       return {
         status: "failed",
@@ -349,6 +403,7 @@ export function mountDag(input: MountDagInput): MountedDag {
     ledger,
     store,
     reconciler,
+    budget: budget.view,
   };
 }
 
@@ -506,6 +561,19 @@ async function runAsyncMountedRender(
 
 function isFailure(value: RenderProduct | RenderFailure): value is RenderFailure {
   return (value as RenderFailure).failed === true;
+}
+
+/**
+ * EXPERIMENT A: the human-readable refusal reason. It rides the in-process
+ * `RenderOutcome.reason` (observable to drivers) and is dropped at commit like
+ * every other failure reason — the durable marker is the refusal `Cost`
+ * (`cost/budget.ts`, queryable via `isBudgetExhaustedReceipt`).
+ */
+function budgetExhaustedReason(view: ReactorBudget): string {
+  return (
+    `budget exhausted: spent ${view.spent()} of ${view.total} fresh tokens — ` +
+    "render refused, prior truth stands"
+  );
 }
 
 /** The zero/none cost of a render that produced nothing (a failure or unmounted node). */

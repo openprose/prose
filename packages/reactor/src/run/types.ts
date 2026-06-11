@@ -26,3 +26,11 @@ export type {
   SyncDriveSurface,
   IngestInput,
 } from "../sdk/reactor-handle";
+
+// EXPERIMENT A: the budget option (`RunProjectInput.budget`) + the handle's
+// accessor shape — TYPE-ONLY, so describing a budgeted run configuration never
+// crosses the offline boundary.
+export type {
+  ReactorBudget,
+  ReactorBudgetOption,
+} from "../cost/budget";
