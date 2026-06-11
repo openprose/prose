@@ -149,6 +149,12 @@ export async function bootHost(options: BootHostOptions = {}): Promise<HostHandl
       stateDir: entry.stateDir,
       model,
       renderModel: config.model.render_model,
+      ...(config.model.temperature !== undefined
+        ? { renderTemperature: config.model.temperature }
+        : {}),
+      ...(config.model.reasoning_effort !== undefined
+        ? { renderReasoningEffort: config.model.reasoning_effort }
+        : {}),
       sandbox: config.sandbox,
       gateways: entry.gateways,
       ...(providerPlan.custom ? { providerPlan } : {}),

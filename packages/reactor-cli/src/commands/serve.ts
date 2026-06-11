@@ -162,6 +162,13 @@ export interface BootReactorInput {
    */
   readonly renderModel?: string;
   /**
+   * The configured decoding temperature (`model.temperature`). Threaded so
+   * hosted renders honor `reactor.yml`; unset → the render omits the key.
+   */
+  readonly renderTemperature?: number;
+  /** The configured reasoning effort (`model.reasoning_effort`), verbatim. */
+  readonly renderReasoningEffort?: string;
+  /**
    * The reactor's `[sandbox]` config. Drives the workspace-scoped render sandbox
    * runner + the per-command shell timeout. Omitted → the `mode: none` default (no
    * runner; bounded LocalShell).
@@ -352,6 +359,12 @@ export async function bootReactorHandle(
     adapters,
     render,
     ...(input.renderModel !== undefined ? { renderModel: input.renderModel } : {}),
+    ...(input.renderTemperature !== undefined
+      ? { renderTemperature: input.renderTemperature }
+      : {}),
+    ...(input.renderReasoningEffort !== undefined
+      ? { renderReasoningEffort: input.renderReasoningEffort }
+      : {}),
     ...(liveCustomRender && input.providerPlan !== undefined && input.apiKey !== undefined
       ? {
           providerPlan: input.providerPlan,
@@ -514,6 +527,12 @@ export async function bootServe(
     stateDir: config.state.dir,
     model: config.model.compile_model,
     renderModel: config.model.render_model,
+    ...(config.model.temperature !== undefined
+      ? { renderTemperature: config.model.temperature }
+      : {}),
+    ...(config.model.reasoning_effort !== undefined
+      ? { renderReasoningEffort: config.model.reasoning_effort }
+      : {}),
     sandbox: config.sandbox,
     gateways: config.gateways,
     ...(providerPlan.custom ? { providerPlan } : {}),

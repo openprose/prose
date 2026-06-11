@@ -139,6 +139,10 @@ model:
   provider: openrouter
   render_model: google/gemini-3.5-flash
   compile_model: google/gemini-3.5-flash
+  # Greedy decoding for reproducible runs. OpenAI reasoning models (gpt-5.x,
+  # o-series) reject an explicit temperature: delete this line for those (no
+  # temperature is sent when it is absent), or keep it and set
+  # reasoning_effort: none.
   temperature: 0
   max_turns: 200
   # base_url: https://api.anthropic.com/v1/   # e.g. to use Anthropic directly

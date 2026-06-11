@@ -67,6 +67,51 @@ describe('provider config parsing', () => {
   });
 });
 
+describe('model temperature / reasoning_effort config parsing', () => {
+  function loadFromYml(lines: readonly string[]): ReturnType<typeof loadConfig> {
+    const projectDir = mkdtempSync(join(tmpdir(), 'reactor-cli-temp-cfg-'));
+    try {
+      writeFileSync(join(projectDir, 'reactor.yml'), lines.join('\n'));
+      return loadConfig({ projectDir });
+    } finally {
+      rmSync(projectDir, { recursive: true, force: true });
+    }
+  }
+
+  it('NO temperature line → temperature stays UNDEFINED (omitted from requests, not 0)', () => {
+    // The reasoning-model unblock: deleting the temperature line must actually
+    // remove the temperature, not silently re-default it to 0.
+    const config = loadFromYml(['model:', '  render_model: openai/gpt-5.5']);
+    assert.equal(config.model.temperature, undefined);
+    assert.equal(config.model.reasoning_effort, undefined);
+  });
+
+  it('no reactor.yml at all → temperature stays UNDEFINED', () => {
+    const projectDir = mkdtempSync(join(tmpdir(), 'reactor-cli-temp-cfg-'));
+    try {
+      const config = loadConfig({ projectDir });
+      assert.equal(config.model.temperature, undefined);
+    } finally {
+      rmSync(projectDir, { recursive: true, force: true });
+    }
+  });
+
+  it('explicit temperature: 0 survives (falsy zero is a real value, not "unset")', () => {
+    const config = loadFromYml(['model:', '  temperature: 0']);
+    assert.equal(config.model.temperature, 0);
+  });
+
+  it('a non-zero temperature parses and survives the merge', () => {
+    const config = loadFromYml(['model:', '  temperature: 0.7']);
+    assert.equal(config.model.temperature, 0.7);
+  });
+
+  it('reasoning_effort parses as a verbatim string', () => {
+    const config = loadFromYml(['model:', '  reasoning_effort: none']);
+    assert.equal(config.model.reasoning_effort, 'none');
+  });
+});
+
 describe('reactor compile — custom provider, missing key', () => {
   it('exits NON-ZERO with the exact env var when a custom provider has no key (DEFECT B / stranded user)', async () => {
     // Delete the hermetic key just in case a prior run leaked it into the env.

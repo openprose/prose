@@ -148,6 +148,10 @@ describe('reactor init (offline gate)', () => {
     try {
       await runInitCommand({ dir }, () => {});
       const config = loadConfig({ projectDir: dir });
+      // The scaffold pins an EXPLICIT temperature 0 (reproducible runs for the
+      // default models); deleting that line omits temperature entirely (the
+      // reasoning-model path), so the scaffold must keep writing it.
+      assert.equal(config.model.temperature, 0);
       assert.equal(config.sandbox.mode, 'none');
       assert.equal(config.gateways.length, 1);
       const gw = config.gateways[0]!;

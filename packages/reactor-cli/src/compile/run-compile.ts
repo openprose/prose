@@ -60,8 +60,10 @@ export interface CompileRunOptions {
   readonly model: string;
   /** The SDK version (the cache key's second component). */
   readonly sdkVersion: string;
-  /** Decoding temperature (determinism knob). */
+  /** Decoding temperature (determinism knob). Unset → omitted from requests. */
   readonly temperature?: number;
+  /** Reasoning effort, passed verbatim to the provider. Unset → omitted. */
+  readonly reasoningEffort?: string;
   /** Max agentic turns per compile session. */
   readonly maxTurns?: number;
   /**
@@ -311,11 +313,13 @@ function deriveContractFingerprints(
   return out;
 }
 
-/** Shared per-session options (skill / temperature / maxTurns). */
+/** Shared per-session options (skill / temperature / effort / maxTurns). */
 function sessionOptions(options: CompileRunOptions): Record<string, unknown> {
   const base: Record<string, unknown> = { model: options.model };
   if (options.skill !== undefined) base['skill'] = options.skill;
   if (options.temperature !== undefined) base['temperature'] = options.temperature;
+  if (options.reasoningEffort !== undefined)
+    base['reasoningEffort'] = options.reasoningEffort;
   if (options.maxTurns !== undefined) base['maxTurns'] = options.maxTurns;
   return base;
 }

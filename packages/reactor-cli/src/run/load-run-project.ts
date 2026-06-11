@@ -74,6 +74,18 @@ export interface CallRunProjectInput {
    * provider, whose endpoint would 404 on the default model id.
    */
   readonly renderModel?: string;
+  /**
+   * The configured decoding temperature (`model.temperature`). Threaded into the
+   * render so run/serve honor `reactor.yml` exactly like compile does. Unset →
+   * the render omits the key (the provider's default; required by reasoning
+   * models, which reject explicit values).
+   */
+  readonly renderTemperature?: number;
+  /**
+   * The configured reasoning effort (`model.reasoning_effort`), passed verbatim.
+   * Unset → omitted.
+   */
+  readonly renderReasoningEffort?: string;
   /** The provider label for the receipt cost (set with a custom provider). */
   readonly providerLabel?: string;
 }
@@ -176,6 +188,21 @@ export async function callRunProject(
   // and simply honors the config for the default provider.
   if (input.renderModel !== undefined) {
     render = { ...render, render: { ...(render.render ?? {}), model: input.renderModel } };
+  }
+  // Thread the configured decoding knobs the same way: `reactor.yml`'s
+  // `temperature`/`reasoning_effort` must govern run/serve renders, not only
+  // compile. Absent stays absent so the render omits the keys.
+  if (input.renderTemperature !== undefined) {
+    render = {
+      ...render,
+      render: { ...(render.render ?? {}), temperature: input.renderTemperature },
+    };
+  }
+  if (input.renderReasoningEffort !== undefined) {
+    render = {
+      ...render,
+      render: { ...(render.render ?? {}), reasoningEffort: input.renderReasoningEffort },
+    };
   }
   if (input.providerPlan !== undefined && input.apiKey !== undefined) {
     const { buildLiveProvider } = await import('../model/live-provider');
