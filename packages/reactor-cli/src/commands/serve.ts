@@ -683,7 +683,7 @@ export async function runServeCommand(
   // sweep; both run behind each reactor's serialization queue.
   while (!stopped) {
     const now = host.reactors[0]?.reactor.clock.now() ?? new Date().toISOString();
-    await host.pollGatewaysAll(now);
+    const gatewayOutcomes = await host.pollGatewaysAll(now);
     await host.pollAll(now);
     if (!pollCycleSampled) {
       pollCycleSampled = true;
@@ -696,6 +696,10 @@ export async function runServeCommand(
       );
     }
     if (options.json !== true) {
+      const gatewayLine = formatGatewayLine(gatewayOutcomes);
+      if (gatewayLine !== undefined) {
+        write(gatewayLine);
+      }
       write(formatCostLine(host.cost().host));
     }
     await sleep(intervalMs, () => stopped);
@@ -710,6 +714,27 @@ export async function runServeCommand(
     write('reactor serve — drained in-flight work; exiting.');
   }
   return 0;
+}
+
+/**
+ * Render the per-cycle gateway activity line, or undefined when the host has no
+ * configured gateways (the line would be noise). One segment per gateway:
+ * `<source_id> ingested=N skipped=M` — `ingested` are arrivals staged + woken
+ * this cycle, `skipped` are arrivals the durable cursor deduped. This is the
+ * operator's only view of ingress: without it a connector that stages nothing
+ * (an empty payload, a fully-deduped backlog) is indistinguishable from a
+ * healthy one across `cost:` heartbeats.
+ */
+export function formatGatewayLine(
+  outcomes: readonly GatewayPollOutcome[],
+): string | undefined {
+  if (outcomes.length === 0) {
+    return undefined;
+  }
+  const segments = outcomes.map(
+    (o) => `${o.source_id} ingested=${o.ingested_ids.length} skipped=${o.skipped_ids.length}`,
+  );
+  return `gateways: ${segments.join('; ')}`;
 }
 
 /** Sleep `ms`, waking early when `cancelled()` flips true (responsive SIGTERM). */

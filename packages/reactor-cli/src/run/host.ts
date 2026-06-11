@@ -35,7 +35,7 @@ import {
   type RunAdapters,
   type RunRender,
 } from './load-run-project';
-import type { ConnectorFetch } from './connectors';
+import type { ConnectorFetch, GatewayPollOutcome } from './connectors';
 import type { CompileCommandOptions } from '../commands/compile';
 import { createWorkerPool, type WorkerPool } from './worker-pool';
 import { rollupCost, type CostRollup } from './cost';
@@ -89,9 +89,12 @@ export interface HostHandle {
   /**
    * Phase 4 — poll EVERY reactor's gateways at `now`, bounded by the same
    * across-reactor worker pool; each reactor's gateway poll is itself serialized
-   * behind its own queue (correction #4). Resolves once every reactor settled.
+   * behind its own queue (correction #4). Resolves once every reactor settled,
+   * with the flattened per-gateway outcomes (ingested vs deduped arrival ids) so
+   * the driver loop can SHOW gateway activity — a poll that stages nothing was
+   * previously indistinguishable from a healthy one.
    */
-  readonly pollGatewaysAll: (now: string) => Promise<void>;
+  readonly pollGatewaysAll: (now: string) => Promise<readonly GatewayPollOutcome[]>;
   /** The host-wide cost rollup (every reactor's ledger summed) + per-reactor. */
   readonly cost: () => HostCost;
   /** Drain every reactor's queue to idle then resolve (graceful shutdown). */
@@ -186,13 +189,14 @@ export async function bootHost(options: BootHostOptions = {}): Promise<HostHandl
     );
   };
 
-  const pollGatewaysAll = async (now: string): Promise<void> => {
+  const pollGatewaysAll = async (now: string): Promise<readonly GatewayPollOutcome[]> => {
     // Each reactor's gateway poll is submitted to the across-reactor pool; the
     // poll itself enqueues onto that reactor's serialization queue (correction #4),
     // so within a reactor a gateway poll never overlaps a continuity poll/trigger.
-    await Promise.all(
+    const perReactor = await Promise.all(
       handles.map((h) => pool.submit(() => h.pollGatewaysOnce(now))),
     );
+    return perReactor.flat();
   };
 
   const cost = (): HostCost => {

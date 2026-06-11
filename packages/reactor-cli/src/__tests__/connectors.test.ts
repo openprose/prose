@@ -35,7 +35,7 @@ import {
   type WorldModelStore,
 } from '@openprose/reactor/adapters';
 
-import { bootReactorHandle } from '../commands/serve';
+import { bootReactorHandle, formatGatewayLine } from '../commands/serve';
 import { runTriggerCommand } from '../commands/trigger';
 import { ingressSourceFor, type ConnectorFetch } from '../run/connectors';
 import { fakeStructuredProvider } from './fake-provider';
@@ -244,6 +244,55 @@ describe('reactor connectors / gateway ingress (offline gate)', () => {
       assert.deepEqual(second[0]?.skipped_ids, ['t1', 't2']);
       assert.equal(renders, rendersAfterFirst, 'the gateway did NOT re-render (idempotent)');
       assert.equal(ticketCount(handle.reactor.store as never), 2, 'no duplicate tickets');
+
+      await handle.shutdown();
+    } finally {
+      rmSync(stateDir, { recursive: true, force: true });
+    }
+  });
+
+  it('the serve heartbeat gateway line shows ingested vs deduped arrivals per cycle', async () => {
+    const stateDir = freshState();
+    try {
+      const batch: unknown[] = [
+        { id: 't1', body: 'first ticket' },
+        { id: 't2', body: 'second ticket' },
+      ];
+      const handle = await bootReactorHandle({
+        name: 'default',
+        contractsDir: FIXTURE_DIR,
+        stateDir,
+        model: 'fake',
+        offline: true,
+        gateways: [GATEWAY_CONFIG],
+        testGatewayFetch: fakeFetchFactory(() => batch),
+        testAdapters: {
+          clock: createSystemClockAdapter(),
+          storage: createMemoryStorageAdapter(),
+          worldModel: new FileSystemWorldModelStore({ directory: join(stateDir, 'world-models') }),
+        },
+        testRender: { buildRender: buildFakeRender as never },
+        testCompileOptions: testCompileOptions() as never,
+      });
+
+      // First cycle: both arrivals stage — the line says so.
+      const first = await handle.pollGatewaysOnce(handle.reactor.clock.now());
+      assert.equal(
+        formatGatewayLine(first),
+        'gateways: support-tickets ingested=2 skipped=0',
+      );
+
+      // Second cycle: the cursor dedups everything. Previously this cycle was
+      // INDISTINGUISHABLE from a healthy one (the driver loop discarded the
+      // outcomes); the line now shows the poll ran and staged nothing new.
+      const second = await handle.pollGatewaysOnce(handle.reactor.clock.now());
+      assert.equal(
+        formatGatewayLine(second),
+        'gateways: support-tickets ingested=0 skipped=2',
+      );
+
+      // No configured gateways → no line (the heartbeat stays as before).
+      assert.equal(formatGatewayLine([]), undefined);
 
       await handle.shutdown();
     } finally {
