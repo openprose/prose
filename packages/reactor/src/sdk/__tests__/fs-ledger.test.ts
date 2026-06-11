@@ -9,7 +9,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 
-import { ATOMIC_FACET, type ContentAddress, type Receipt, asFingerprint, asNodeId} from "../../shapes";
+import { ATOMIC_FACET, FAILURE_REASON_DIFF_KEY, type ContentAddress, type Receipt, asFingerprint, asNodeId} from "../../shapes";
 import { createNullSignature } from "../../receipt";
 import { createFileSystemStorageAdapter } from "../../adapters/storage-fs";
 import { createMemoryStorageAdapter } from "../../adapters/storage-memory";
@@ -101,6 +101,39 @@ test("RESTART-SURVIVAL: a fresh ledger over the same directory re-derives every 
     ok(restoredHash);
     ledger2.append(receiptBody("alpha", "rendered", "a3", restoredHash));
     equal(ledger2.all().length, 4);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("RESTART-SURVIVAL: a failed receipt carrying a reason re-derives with its hash intact", () => {
+  const dir = tempDir();
+  try {
+    // --- process 1: a rendered receipt, then a failed one carrying a reason.
+    const storage1 = createFileSystemStorageAdapter({ directory: dir });
+    const ledger1 = new FileSystemReceiptLedger({ storage: storage1 });
+    const r1 = ledger1.append(receiptBody("monitor", "rendered", "t1", null));
+    const failed: Receipt = {
+      ...receiptBody("monitor", "rendered", "t1", r1),
+      status: "failed",
+      semantic_diff: { [FAILURE_REASON_DIFF_KEY]: "provider 402: insufficient credits" },
+      cost: {
+        provider: "none",
+        model: "none",
+        tokens: { fresh: 0, reused: 0 },
+        surprise_cause: "external" as const,
+      },
+    };
+    const r2 = ledger1.append(failed);
+
+    // --- process 2: re-derivation re-stamps every receipt through createReceipt;
+    // the reason survives byte-faithfully and the content address is unchanged.
+    const storage2 = createFileSystemStorageAdapter({ directory: dir });
+    const ledger2 = new FileSystemReceiptLedger({ storage: storage2 });
+    const head = ledger2.lastReceipt("monitor");
+    equal(head?.status, "failed");
+    equal(head?.semantic_diff[FAILURE_REASON_DIFF_KEY], "provider 402: insufficient credits");
+    equal(ledger2.addressOf(head as Receipt), r2);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

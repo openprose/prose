@@ -20,7 +20,7 @@ import {
   readTextFile,
   type Canonicalizer,
 } from "../../world-model";
-import { ATOMIC_FACET, type Cost, type WakeSource, asFingerprint, asNodeId} from "../../shapes";
+import { ATOMIC_FACET, FAILURE_REASON_DIFF_KEY, type Cost, type WakeSource, asFingerprint, asNodeId} from "../../shapes";
 import { type ReconcilerTopology } from "../../reactor";
 
 const PRODUCER = "responsibility.vendor-truth";
@@ -140,6 +140,9 @@ test("ingestAsync: an async render that throws degrades to a failed receipt (pri
   const results = await dag.ingestAsync("n");
   equal(results[0]?.disposition, "failed");
   equal(results[0]?.receipt?.status, "failed");
+  // The thrown message becomes the persisted failure reason.
+  equal(results[0]?.reason, "session blew up");
+  equal(results[0]?.receipt?.semantic_diff[FAILURE_REASON_DIFF_KEY], "session blew up");
 });
 
 test("ingestAsync: falls back to the SYNC mounts render when no async mount exists (additive subsumption)", async () => {

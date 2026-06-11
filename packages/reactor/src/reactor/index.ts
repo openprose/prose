@@ -48,12 +48,14 @@ import {
   type WorldModelRef,
   ATOMIC_FACET,
   EMPTY_SEMANTIC_DIFF,
+  FAILURE_REASON_DIFF_KEY,
   asFacet,
   asFingerprint,
   asNodeId,
   createNullSignature,
   makeMemoKey,
 } from "../shapes";
+import { redactSecrets } from "../redact";
 
 // ===========================================================================
 // Seam ports — the injection boundary (architecture.md §5.3).
@@ -274,6 +276,13 @@ export interface ReconcileResult {
   readonly receipt?: Receipt;
   /** The receipt's content address in the ledger (absent for `coalesced`). */
   readonly receipt_ref?: ContentAddress;
+  /**
+   * WHY the render failed (present only for `failed`, when the render supplied
+   * one). The same sanitized text the failed receipt carries under
+   * {@link FAILURE_REASON_DIFF_KEY} — secret-scrubbed and truncated before it
+   * leaves the reconciler, so callers may print or persist it as-is.
+   */
+  readonly reason?: string;
   /** Downstream nodes woken by a moved fingerprint (empty unless `rendered` + moved). */
   readonly propagated: readonly WakeEvent[];
 }
@@ -817,6 +826,7 @@ function renderAndCommit(input: {
   // commits nothing; the prior world-model stands; a `failed` receipt is logged;
   // NO downstream wakes (the fingerprint didn't move) (architecture.md §4.1).
   if (outcome.status === "failed") {
+    const reason = sanitizeFailureReason(outcome.reason);
     const failed = buildFailedReceipt({
       node,
       contractFp,
@@ -825,6 +835,7 @@ function renderAndCommit(input: {
       prev: prevRef,
       last,
       cost: outcome.cost,
+      ...(reason !== undefined ? { reason } : {}),
     });
     const ref = ports.ledger.append(failed);
     return {
@@ -832,6 +843,7 @@ function renderAndCommit(input: {
       disposition: "failed",
       receipt: failed,
       receipt_ref: ref,
+      ...(reason !== undefined ? { reason } : {}),
       propagated: [],
     };
   }
@@ -950,6 +962,7 @@ async function renderAndCommitAsync(input: {
 
   // --- FAILURE: identical to the sync path. Commits nothing; prior truth stands.
   if (outcome.status === "failed") {
+    const reason = sanitizeFailureReason(outcome.reason);
     const failed = buildFailedReceipt({
       node,
       contractFp,
@@ -958,6 +971,7 @@ async function renderAndCommitAsync(input: {
       prev: prevRef,
       last,
       cost: outcome.cost,
+      ...(reason !== undefined ? { reason } : {}),
     });
     const ref = ports.ledger.append(failed);
     return {
@@ -965,6 +979,7 @@ async function renderAndCommitAsync(input: {
       disposition: "failed",
       receipt: failed,
       receipt_ref: ref,
+      ...(reason !== undefined ? { reason } : {}),
       propagated: [],
     };
   }
@@ -1154,8 +1169,13 @@ function buildSkippedReceipt(input: {
 
 /**
  * A `failed` receipt commits nothing: it copies the prior `fingerprints`
- * forward (the prior truth stands), carries the empty diff, and the observed
- * cost. It does NOT propagate (architecture.md §4.1).
+ * forward (the prior truth stands), carries the render's failure reason in its
+ * `semantic_diff` (under {@link FAILURE_REASON_DIFF_KEY}; the empty diff when
+ * the render supplied none), and the observed cost. It does NOT propagate
+ * (architecture.md §4.1). The reason is diagnostic context the diff already
+ * exists to carry — and because the content hash covers the diff, the persisted
+ * reason is tamper-evident while old ledgers and old verifiers stay valid (no
+ * new top-level receipt field, no schema change).
  */
 function buildFailedReceipt(input: {
   node: string;
@@ -1165,6 +1185,8 @@ function buildFailedReceipt(input: {
   prev: ContentAddress | null;
   last: Receipt | null;
   cost: Cost;
+  /** Sanitized via {@link sanitizeFailureReason} before it gets here. */
+  reason?: string;
 }): Receipt {
   const priorFingerprints: FingerprintMap =
     input.last?.fingerprints ?? coldStartFingerprints();
@@ -1174,12 +1196,37 @@ function buildFailedReceipt(input: {
     wake: input.wake,
     input_fingerprints: input.key.input_fingerprints,
     fingerprints: priorFingerprints,
-    semantic_diff: EMPTY_SEMANTIC_DIFF,
+    semantic_diff:
+      input.reason !== undefined
+        ? Object.freeze({ [FAILURE_REASON_DIFF_KEY]: input.reason })
+        : EMPTY_SEMANTIC_DIFF,
     prev: input.prev,
     status: "failed" satisfies ReceiptStatus,
     cost: input.cost,
     sig: nullSig(),
   };
+}
+
+/** The persisted-reason length cap — keeps the canonical receipt line compact. */
+const FAILURE_REASON_MAX_LENGTH = 500;
+
+/**
+ * Make a render's failure reason safe to persist and print: keep the first
+ * line only (stack traces and module-resolution dumps stay out of receipts),
+ * scrub key material (reasons originate from provider errors, harness throws,
+ * and model-authored text — none guaranteed pre-redacted), and cap the length.
+ * Applied BEFORE the receipt is built so the content hash covers the exact
+ * persisted form. Returns `undefined` for an empty reason (the diff key is
+ * then omitted entirely — the canonicalizer rejects undefined-valued fields).
+ */
+function sanitizeFailureReason(reason: string): string | undefined {
+  const firstLine = redactSecrets(reason).split("\n")[0]!.trim();
+  if (firstLine.length === 0) {
+    return undefined;
+  }
+  return firstLine.length > FAILURE_REASON_MAX_LENGTH
+    ? `${firstLine.slice(0, FAILURE_REASON_MAX_LENGTH)}…`
+    : firstLine;
 }
 
 /** Zero cost for a skip — no fresh or reused tokens were spent. */

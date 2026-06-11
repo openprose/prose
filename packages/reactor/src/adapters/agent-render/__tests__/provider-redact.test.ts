@@ -26,6 +26,23 @@ test("redactSecrets strips a middle-masked fingerprint form", () => {
   doesNotMatch(redactSecrets("auth failed for sk-or-v1-feedface…dec0de99"), /dec0de99/);
 });
 
+test("redactSecrets strips the asterisk-masked echo an OpenAI 401 body carries", () => {
+  // OpenAI's invalid_api_key error echoes the key as sk-proj-****<last4>; the
+  // mask AND the surviving key tail are key-derived and must both go.
+  const out = redactSecrets(
+    "401 Incorrect API key provided: sk-proj-*******************************face.",
+  );
+  doesNotMatch(out, /face\./);
+  doesNotMatch(out, /\*{4,}/);
+  match(out, /sk-\*\*\*REDACTED\*\*\*/);
+});
+
+test("redactSecrets strips a Google AIza-family key", () => {
+  const out = redactSecrets("400 API key not valid: AIzafeedface00feedface00feedface00feed");
+  doesNotMatch(out, /AIza[0-9A-Za-z_-]{4,}/);
+  match(out, /\*\*\*REDACTED\*\*\*/);
+});
+
 test("redactSecrets strips OpenAI/Anthropic key families + bearer + auth header", () => {
   doesNotMatch(redactSecrets("sk-svcacct-feedfacefeedfacefeedface"), SECRET_RE);
   doesNotMatch(redactSecrets("sk-ant-api03-feedfacefeedfacefeedfa"), SECRET_RE);

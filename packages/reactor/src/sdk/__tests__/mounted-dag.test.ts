@@ -14,7 +14,7 @@ import {
   readTextFile,
   type Canonicalizer,
 } from "../../world-model";
-import { ATOMIC_FACET, asFingerprint, asNodeId} from "../../shapes";
+import { ATOMIC_FACET, FAILURE_REASON_DIFF_KEY, asFingerprint, asNodeId} from "../../shapes";
 import { type ReconcilerTopology } from "../../reactor";
 
 const PRODUCER = "responsibility.vendor-truth";
@@ -161,7 +161,11 @@ test("a failed render commits nothing and does not propagate", () => {
   });
 
   const results = dag.ingest(PRODUCER);
-  equal(results.find((r) => r.node === PRODUCER)?.disposition, "failed");
+  const producer = results.find((r) => r.node === PRODUCER);
+  equal(producer?.disposition, "failed");
+  // The render's reason survives onto the result and the persisted receipt.
+  equal(producer?.reason, "boom");
+  equal(producer?.receipt?.semantic_diff[FAILURE_REASON_DIFF_KEY], "boom");
   // No subscriber wake — the fingerprint did not move.
   equal(results.find((r) => r.node === SUBSCRIBER), undefined);
   // The producer never committed a published world-model.
