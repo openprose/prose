@@ -345,7 +345,10 @@ export async function runTriggerCommand(
     costReused: report.cost.reused,
     dispositions: report.dispositions,
   });
-  return 0;
+  // A trigger with a `failed` node exits NONZERO, matching `run`: CI and agents
+  // read the exit code, and a failed render is the audit signal. (Previously
+  // trigger returned 0 even when the triggered render failed.)
+  return anyFailed ? 1 : 0;
   } catch (err) {
     // A thrown trigger (e.g. a live render/provider failure) fires the coarse
     // error signal, then rethrows so the top-level handler prints + exits 1 —
@@ -389,6 +392,9 @@ function emitReport(
   lines.push('  dispositions:');
   for (const d of report.dispositions) {
     lines.push(`    ${d.node.padEnd(28)} ${d.disposition}`);
+    if (d.reason !== undefined) {
+      lines.push(`      reason: ${d.reason}`);
+    }
   }
   lines.push('');
   lines.push(`  receipts       ${report.receipts}`);

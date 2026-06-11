@@ -10,10 +10,23 @@
  * place ("cost scales with surprise" made observable, `cli.md` §5.4).
  */
 
-import { ATOMIC_FACET } from '@openprose/reactor';
+import { ATOMIC_FACET, FAILURE_REASON_DIFF_KEY } from '@openprose/reactor';
 
 import { rollupCost, type CostRollup } from '../run/cost';
 import type { StateView, LedgerReceiptView, ChainResult } from './state-view';
+
+/**
+ * The failure reason a `failed` receipt carries in its `semantic_diff` (under
+ * the SDK's shared key), or undefined — older trails' failed receipts carry the
+ * empty diff, and non-failed receipts never carry one.
+ */
+function failureReasonOf(r: LedgerReceiptView): string | undefined {
+  if (r.status !== 'failed') {
+    return undefined;
+  }
+  const reason = r.semantic_diff?.[FAILURE_REASON_DIFF_KEY];
+  return typeof reason === 'string' && reason.length > 0 ? reason : undefined;
+}
 
 /**
  * The NAMED facets a node maintains — the compiled canonicalizer always exposes
@@ -205,18 +218,24 @@ export interface LogEntry {
   readonly wake_source: string;
   readonly cost: { readonly fresh: number; readonly reused: number };
   readonly content_hash: string | null;
+  /** WHY a `failed` receipt failed, when the trail recorded it. */
+  readonly reason?: string;
 }
 
 /** Project the receipt stream into compact log entries (optional node filter). */
 export function projectLogs(view: StateView, node?: string): readonly LogEntry[] {
   const stream = node === undefined ? view.receipts() : view.receiptsForNode(node);
-  return stream.map((r) => ({
-    node: r.node,
-    status: r.status,
-    wake_source: r.wake?.source ?? 'unknown',
-    cost: { fresh: r.cost.tokens.fresh, reused: r.cost.tokens.reused },
-    content_hash: r.content_hash ?? null,
-  }));
+  return stream.map((r) => {
+    const reason = failureReasonOf(r);
+    return {
+      node: r.node,
+      status: r.status,
+      wake_source: r.wake?.source ?? 'unknown',
+      cost: { fresh: r.cost.tokens.fresh, reused: r.cost.tokens.reused },
+      content_hash: r.content_hash ?? null,
+      ...(reason !== undefined ? { reason } : {}),
+    };
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -232,6 +251,8 @@ export interface TraceStep {
   readonly cost: { readonly fresh: number; readonly reused: number };
   readonly content_hash: string | null;
   readonly prev: string | null;
+  /** WHY a `failed` receipt failed, when the trail recorded it. */
+  readonly reason?: string;
 }
 
 export interface NodeTrace {
@@ -253,15 +274,19 @@ export function projectTrace(view: StateView, node?: string): readonly NodeTrace
       : [...new Set(view.receipts().map((r) => r.node))].sort();
   return nodes.map((n) => ({
     node: n,
-    steps: view.receiptsForNode(n).map((r, index) => ({
-      index,
-      wake_source: r.wake?.source ?? 'unknown',
-      status: r.status,
-      surprise_cause: r.cost.surprise_cause ?? 'unknown',
-      cost: { fresh: r.cost.tokens.fresh, reused: r.cost.tokens.reused },
-      content_hash: r.content_hash ?? null,
-      prev: r.prev ?? null,
-    })),
+    steps: view.receiptsForNode(n).map((r, index) => {
+      const reason = failureReasonOf(r);
+      return {
+        index,
+        wake_source: r.wake?.source ?? 'unknown',
+        status: r.status,
+        surprise_cause: r.cost.surprise_cause ?? 'unknown',
+        cost: { fresh: r.cost.tokens.fresh, reused: r.cost.tokens.reused },
+        content_hash: r.content_hash ?? null,
+        prev: r.prev ?? null,
+        ...(reason !== undefined ? { reason } : {}),
+      };
+    }),
     chain: view.verifyNodeChain(n),
   }));
 }

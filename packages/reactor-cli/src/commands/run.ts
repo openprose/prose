@@ -299,6 +299,9 @@ export function formatRunReport(report: RunReport): string {
   } else {
     for (const d of report.dispositions) {
       lines.push(`    ${d.node.padEnd(28)} ${d.disposition}`);
+      if (d.reason !== undefined) {
+        lines.push(`      reason: ${d.reason}`);
+      }
     }
   }
   lines.push('');
