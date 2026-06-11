@@ -33,9 +33,16 @@ import {
 } from '../run/run-core';
 import {
   callRunProject,
+  renderDecodingInputs,
   type RunAdapters,
+  type RunProjectFn,
   type RunRender,
 } from '../run/load-run-project';
+import { hasModelKey, readModelKey } from '../env';
+import {
+  missingProviderKeyHint,
+  resolveProviderPlan,
+} from '../model/provider-plan';
 import { buildDurableSubstrate } from '../run/substrate';
 import {
   augmentTopologyWithIngress,
@@ -72,6 +79,13 @@ export interface TriggerCommandOptions extends ConfigOverrides {
   readonly testAdapters?: RunAdapters;
   readonly testRender?: RunRender;
   readonly testCompileOptions?: CompileCommandOptions;
+  /**
+   * Test seam: inject the `runProject` implementation so a test can CAPTURE the
+   * exact render config trigger hands it (prove the provider/model threading)
+   * WITHOUT the dynamic import + a real provider. Mirrors `callRunProject`'s
+   * own seam.
+   */
+  readonly testRunProjectImpl?: RunProjectFn;
 }
 
 /** Run `reactor trigger`. Returns the process exit code. */
@@ -148,6 +162,23 @@ export async function runTriggerCommand(
   const contractsDir = path.resolve(options.projectDir ?? '.');
   const model = config.model.compile_model;
   const sdkVersion = resolveSdk().version ?? 'unknown';
+
+  // Resolve the provider plan (keyless) BEFORE any compile/staging side effect —
+  // a malformed provider config is a clean exit-1 naming the problem, mirroring
+  // `run`. Left to the compile-if-stale step it would surface as the generic
+  // 'compile failed (IR stale)' (trigger discards the compile's own output).
+  let providerPlan;
+  try {
+    providerPlan = resolveProviderPlan(config.model);
+  } catch (err) {
+    fireError(err);
+    fireTrigger('failure');
+    return emitError(
+      write,
+      options.json,
+      err instanceof Error ? err.message : String(err),
+    );
+  }
 
   // Validate the state-dir target before the substrate mkdir's it (G12) — a file
   // at the state-dir path otherwise surfaces a raw EEXIST with no guidance.
@@ -241,11 +272,42 @@ export async function runTriggerCommand(
       baseRender.projectTruthFor ?? ((node) => loaded.projectTruthFor(node)),
   };
 
-  const { reactor } = await callRunProject({
-    compiled: compiledForMount,
-    adapters,
-    render,
-  });
+  // A LIVE custom-provider render needs its key NOW (the compile-if-stale step
+  // already checked it on a miss, but a warm cache jumps straight to the render).
+  // Fail clean + NON-ZERO with the exact env var BEFORE any render attempt.
+  // Skipped for the offline gate (a test render owns the body) and the default
+  // OpenRouter path — exactly `run`'s guard.
+  const liveCustomRender =
+    providerPlan.custom &&
+    options.testRender === undefined &&
+    options.offline !== true;
+  if (liveCustomRender && !hasModelKey(providerPlan.apiKeyEnv, contractsDir)) {
+    fireError(new Error('missing provider key'));
+    fireTrigger('failure');
+    return emitError(write, options.json, missingProviderKeyHint(providerPlan));
+  }
+
+  const { reactor } = await callRunProject(
+    {
+      compiled: compiledForMount,
+      adapters,
+      render,
+      // Always honor the configured render model + decoding knobs, and inject
+      // the CLI-built provider for a custom plan — the same threading as
+      // `run`/`serve`, so a trigger render hits the configured endpoint instead
+      // of silently falling back to the SDK's OpenRouter default.
+      renderModel: config.model.render_model,
+      ...renderDecodingInputs(config.model),
+      ...(liveCustomRender
+        ? {
+            providerPlan,
+            apiKey: readModelKey(providerPlan.apiKeyEnv, contractsDir)!,
+            providerLabel: providerPlan.provider,
+          }
+        : {}),
+    },
+    options.testRunProjectImpl,
+  );
 
   // When `--data` is given, STAGE it into the node's phantom-ingress inbox so the
   // upcoming ingest is a memo-miss that delivers the payload (B3). `buildStageArrival`
