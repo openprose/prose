@@ -13,6 +13,8 @@
 import { deepEqual, equal, notEqual, ok } from "node:assert/strict";
 import { test } from "node:test";
 
+import type { ModelSettings } from "@openai/agents";
+
 import { ATOMIC_FACET, asFacet, asFingerprint} from "../../../shapes";
 import {
   atomicCanonicalizer,
@@ -249,6 +251,50 @@ test("compile-session: postcondition session → a deterministic commit-gate val
   equal(result.ref.mode, "deterministic");
   equal(result.set.deterministic.length, 1);
   equal(result.set.deterministic[0]?.id, "has-funding");
+});
+
+// ---------------------------------------------------------------------------
+// Decoding settings on the wire — what a compile session actually sends
+// ---------------------------------------------------------------------------
+
+/** Pull `modelSettings` out of a captured SDK ModelRequest. */
+function settingsOf(requests: unknown[]): ModelSettings {
+  ok(requests.length > 0, "the fake provider captured at least one request");
+  return (requests[0] as { modelSettings: ModelSettings }).modelSettings;
+}
+
+test("compile-session: NO configured temperature → the request's modelSettings OMITS the key", async () => {
+  // The reasoning-model day-one shape: nothing configures a temperature, so the
+  // session must send NONE (the provider default stands; gpt-5.5-class models
+  // 400 on any explicit value).
+  const requests: unknown[] = [];
+  await compileForme(loadSampleSet(), CONTRACT_FPS, {
+    skill: "TEST SKILL",
+    provider: fakeStructuredProvider(FORME_OUTPUT, {
+      onRequest: (r) => requests.push(r),
+    }),
+  });
+  const settings = settingsOf(requests);
+  equal(
+    "temperature" in settings,
+    false,
+    "an unset temperature must not be coerced to a number on the wire",
+  );
+});
+
+test("compile-session: explicit temperature: 0 → the request sends exactly 0; effort rides verbatim", async () => {
+  const requests: unknown[] = [];
+  await compileForme(loadSampleSet(), CONTRACT_FPS, {
+    skill: "TEST SKILL",
+    temperature: 0,
+    reasoningEffort: "none",
+    provider: fakeStructuredProvider(FORME_OUTPUT, {
+      onRequest: (r) => requests.push(r),
+    }),
+  });
+  const settings = settingsOf(requests);
+  equal(settings.temperature, 0, "greedy compiles must survive end to end");
+  equal(settings.reasoning?.effort, "none");
 });
 
 // ---------------------------------------------------------------------------

@@ -16,8 +16,9 @@
  *
  * This is the SAME agent machinery the Phase-1 render uses (the SKILL is the
  * system prompt that makes a session a Prose-aware render; the scoped OpenRouter
- * provider; temperature 0 + seed for reproducibility; usage → receipt `Cost`),
- * reused for the compile phase rather than re-implemented.
+ * provider; temperature + seed for reproducibility when configured — an unset
+ * temperature is omitted from the request; usage → receipt `Cost`), reused for
+ * the compile phase rather than re-implemented.
  *
  * Offline-build guard (identical discipline to agent-render): this module imports
  * `@openai/agents` (Agent/Runner) + (transitively, via the *-output schemas) `zod`,
@@ -43,7 +44,6 @@ import type { Cost, WakeSource } from "../../shapes";
 import {
   createOpenRouterProvider,
   DEFAULT_RENDER_MODEL,
-  DEFAULT_TEMPERATURE,
 } from "../agent-render/provider";
 import { usageToCost, type RenderUsage } from "../agent-render/cost";
 import { readSkill } from "../agent-render/instructions";
@@ -107,10 +107,20 @@ export interface CompileSessionConfig {
   readonly skill?: string;
   /** Path to the SKILL, when `skill` is not supplied. */
   readonly skillPath?: string;
-  /** Decoding temperature. Defaults to 0 (greedy). */
+  /**
+   * Decoding temperature. Unset → the key is OMITTED from the request (the
+   * provider's default). Set `0` for reproducible greedy compiles on models
+   * that accept it; OpenAI reasoning models reject any explicit value unless
+   * {@link reasoningEffort} is `none`.
+   */
   readonly temperature?: number;
   /** Best-effort reproducibility seed, passed through `providerData.seed`. */
   readonly seed?: number;
+  /**
+   * Reasoning effort, passed VERBATIM into `modelSettings.reasoning.effort`
+   * (values are model-dependent; the provider validates). Unset → omitted.
+   */
+  readonly reasoningEffort?: string;
   /**
    * Max agentic turns for one compile session. Defaults to
    * {@link DEFAULT_COMPILE_MAX_TURNS} (D1: a high explicit cap). Pass `null` to
@@ -181,7 +191,10 @@ export async function runCompileSession(
 
   const skill = config.skill ?? readSkill(config.skillPath);
   const model = config.model ?? DEFAULT_RENDER_MODEL;
-  const temperature = config.temperature ?? DEFAULT_TEMPERATURE;
+  // No temperature default: unset stays unset all the way to the request body,
+  // where the key is omitted (required by OpenAI reasoning models, which 400 on
+  // any explicit value). Pass 0 explicitly for reproducible greedy compiles.
+  const temperature = config.temperature;
   // `null` is a deliberate unbounded opt-in (D1); distinguish "not supplied"
   // (→ the high default cap) from an explicit `null` (`??` would erase it).
   const maxTurns =
@@ -192,7 +205,13 @@ export async function runCompileSession(
   // Merge the harness decoding sugar with the consumer's agent.modelSettings
   // (consumer wins wholesale; sugar fills only unset fields — decision #3).
   const modelSettings = mergeModelSettings(
-    { temperature, ...(config.seed !== undefined ? { seed: config.seed } : {}) },
+    {
+      ...(temperature !== undefined ? { temperature } : {}),
+      ...(config.seed !== undefined ? { seed: config.seed } : {}),
+      ...(config.reasoningEffort !== undefined
+        ? { reasoningEffort: config.reasoningEffort }
+        : {}),
+    },
     config.agent?.modelSettings,
   );
 

@@ -224,7 +224,14 @@ export async function runCompileCommand(
       contractsDir,
       model,
       sdkVersion,
-      temperature: config.model.temperature,
+      // Forward only a CONFIGURED temperature/effort: absent stays absent so
+      // the session omits the key (reasoning models reject explicit values).
+      ...(config.model.temperature !== undefined
+        ? { temperature: config.model.temperature }
+        : {}),
+      ...(config.model.reasoning_effort !== undefined
+        ? { reasoningEffort: config.model.reasoning_effort }
+        : {}),
       maxTurns: config.model.max_turns,
       ...(options.testProviders !== undefined ? { providers: options.testProviders } : {}),
       ...(options.testSkill !== undefined ? { skill: options.testSkill } : {}),
@@ -314,6 +321,14 @@ function providerErrorHint(
   }
   if (matches(429, '429', 'rate limit', 'Too Many Requests')) {
     return `the ${plan.provider} provider returned 429 — rate limited. Retry shortly, or lower --concurrency.`;
+  }
+  if (matches(400, "Unsupported value: 'temperature'", "'temperature' does not support")) {
+    return (
+      `the model rejected the configured temperature — reasoning models only ` +
+      `accept their default unless reasoning_effort is 'none'. Delete the ` +
+      `\`temperature:\` line from reactor.yml (no temperature is sent when it ` +
+      `is absent), or set \`reasoning_effort: none\` to keep a custom value.`
+    );
   }
   return undefined;
 }

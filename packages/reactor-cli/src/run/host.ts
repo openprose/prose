@@ -30,7 +30,11 @@ import {
   type FreshnessReader,
   type ServeHandle,
 } from '../commands/serve';
-import type { RunAdapters, RunRender } from './load-run-project';
+import {
+  renderDecodingInputs,
+  type RunAdapters,
+  type RunRender,
+} from './load-run-project';
 import type { ConnectorFetch } from './connectors';
 import type { CompileCommandOptions } from '../commands/compile';
 import { createWorkerPool, type WorkerPool } from './worker-pool';
@@ -149,6 +153,7 @@ export async function bootHost(options: BootHostOptions = {}): Promise<HostHandl
       stateDir: entry.stateDir,
       model,
       renderModel: config.model.render_model,
+      ...renderDecodingInputs(config.model),
       sandbox: config.sandbox,
       gateways: entry.gateways,
       ...(providerPlan.custom ? { providerPlan } : {}),

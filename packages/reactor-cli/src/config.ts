@@ -22,7 +22,21 @@ export interface ModelConfig {
   readonly provider: string;
   readonly render_model: string;
   readonly compile_model: string;
-  readonly temperature: number;
+  /**
+   * Decoding temperature. Optional: when the `temperature:` line is absent from
+   * `reactor.yml`, NO temperature is sent (the provider applies its own
+   * default). Set `0` for reproducible greedy decoding on models that accept
+   * it; OpenAI reasoning models (gpt-5.x, o-series) reject any explicit value
+   * unless {@link reasoning_effort} is `none`.
+   */
+  readonly temperature?: number;
+  /**
+   * Reasoning effort for reasoning models, passed VERBATIM to the provider
+   * (values are model-dependent, e.g. `none`/`low`/`medium`/`high`; the
+   * provider validates). Optional: absent → omitted from requests. Reasoning
+   * models accept a custom temperature only with effort `none`.
+   */
+  readonly reasoning_effort?: string;
   readonly max_turns: number;
   /**
    * Override the provider's OpenAI-compatible base URL. Optional: a built-in
@@ -127,11 +141,13 @@ export interface ConfigOverrides {
 /** The defaults from `cli.md` §6 (the keyless, no-file baseline). */
 export const DEFAULT_CONFIG: ReactorConfig = Object.freeze({
   state: { dir: './.reactor' },
+  // No `temperature` here: an unset temperature must stay unset (omitted from
+  // requests) rather than silently becoming 0 — OpenAI reasoning models reject
+  // any explicit value. The init scaffold writes an explicit `temperature: 0`.
   model: {
     provider: 'openrouter',
     render_model: 'google/gemini-3.5-flash',
     compile_model: 'google/gemini-3.5-flash',
-    temperature: 0,
     max_turns: 200,
   },
   sandbox: {
@@ -350,6 +366,8 @@ function shapeRawConfig(tree: unknown): Partial<RawConfig> {
       out.model.api_key_env = model['api_key_env'];
     const temp = toNumber(model['temperature']);
     if (temp !== undefined) out.model.temperature = temp;
+    if (typeof model['reasoning_effort'] === 'string')
+      out.model.reasoning_effort = model['reasoning_effort'];
     const turns = toNumber(model['max_turns']);
     if (turns !== undefined) out.model.max_turns = turns;
   }
@@ -417,11 +435,17 @@ function mergeConfig(base: ReactorConfig, over: Partial<RawConfig>): ReactorConf
     ...(over.sandbox?.image !== undefined ? { image: over.sandbox.image } : {}),
     ...(over.sandbox?.network !== undefined ? { network: over.sandbox.network } : {}),
   };
+  // Temperature carries through only when SOME source set it (file or base):
+  // an absent `temperature:` line must yield an absent field, not 0, so the
+  // request can genuinely omit it (reasoning models reject explicit values).
+  const temperature = over.model?.temperature ?? base.model.temperature;
+  const reasoningEffort = over.model?.reasoning_effort ?? base.model.reasoning_effort;
   const model: ModelConfig = {
     provider: over.model?.provider ?? base.model.provider,
     render_model: over.model?.render_model ?? base.model.render_model,
     compile_model: over.model?.compile_model ?? base.model.compile_model,
-    temperature: over.model?.temperature ?? base.model.temperature,
+    ...(temperature !== undefined ? { temperature } : {}),
+    ...(reasoningEffort !== undefined ? { reasoning_effort: reasoningEffort } : {}),
     max_turns: over.model?.max_turns ?? base.model.max_turns,
     ...(over.model?.base_url !== undefined ? { base_url: over.model.base_url } : {}),
     ...(over.model?.api_key_env !== undefined

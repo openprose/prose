@@ -19,6 +19,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   by the skill in-session (there is no `prose` binary): by default the agent
   prints the `reactor` commands for the user to run, and `--start` drives the
   live lifecycle.
+- **`model.reasoning_effort` (`reactor.yml`) / `reasoningEffort` (SDK render and
+  compile options).** Passed verbatim into `modelSettings.reasoning.effort` —
+  values are model-dependent and validated by the provider. OpenAI reasoning
+  models accept a custom temperature only when effort is `none`, so this keeps
+  deterministic setups expressible on those models
+  (`temperature: 0` + `reasoning_effort: none`).
+
+### Changed
+
+- **An unset `temperature` is now omitted from model requests instead of
+  silently becoming 0.** OpenAI reasoning models (gpt-5.5, the o-series) reject
+  any explicit temperature, so "send no temperature" has to be representable:
+  deleting the `temperature:` line from `reactor.yml` — or leaving the SDK's
+  `RenderOptions.temperature` / `CompileSessionConfig.temperature` unset — now
+  sends none, and the provider's default applies. Projects that relied on the
+  implicit 0 should set `temperature: 0` explicitly (the `reactor init`
+  scaffold already writes it). Type surface: `ModelConfig.temperature` is now
+  optional, and `mergeModelSettings` omits the temperature key when none
+  resolves.
 
 ### Removed
 
@@ -28,6 +47,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   SDK + `reactor` CLI are the deterministic harness. The separately-authored
   `### Criteria` section is also removed (postconditions live solely in
   `### Maintains`).
+
+### Fixed
+
+- **`reactor.yml`'s `temperature` now governs run/serve renders, not only
+  compile.** `run`, `serve`, and the multi-reactor host thread
+  `model.temperature` / `model.reasoning_effort` into the render exactly like
+  `render_model`; previously a configured temperature reached compile sessions
+  while renders silently used the SDK default. `reactor doctor --live` no
+  longer pins temperature 0 in its connectivity probe (it 400ed against
+  reasoning render models), and the temperature-rejection 400 from a provider
+  now maps to an actionable hint naming the `reactor.yml` line to fix.
 
 ## [0.15.0] - 2026-06-04 — open-prose skill & plugin
 

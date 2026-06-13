@@ -22,6 +22,7 @@ import type {
 } from '@openprose/reactor/run/types';
 
 import type { CliCompiledProject } from './run-core';
+import type { ModelConfig } from '../config';
 
 // The typed SDK running handle (`@openprose/reactor/run/types`, a TYPE-ONLY entry
 // that never crosses the offline boundary). The CLI drives THIS — its async-by-
@@ -74,8 +75,41 @@ export interface CallRunProjectInput {
    * provider, whose endpoint would 404 on the default model id.
    */
   readonly renderModel?: string;
+  /**
+   * The configured decoding temperature (`model.temperature`). Threaded into the
+   * render so run/serve honor `reactor.yml` exactly like compile does. Unset →
+   * the render omits the key (the provider's default; required by reasoning
+   * models, which reject explicit values).
+   */
+  readonly renderTemperature?: number;
+  /**
+   * The configured reasoning effort (`model.reasoning_effort`), passed verbatim.
+   * Unset → omitted.
+   */
+  readonly renderReasoningEffort?: string;
   /** The provider label for the receipt cost (set with a custom provider). */
   readonly providerLabel?: string;
+}
+
+/**
+ * The configured decoding knobs (`model.temperature` / `model.reasoning_effort`)
+ * as optional {@link CallRunProjectInput} fields. Absent stays absent — the
+ * render then omits the keys from the model request entirely, which reasoning
+ * models require. Shared by `run`, `serve`, and the multi-reactor host so the
+ * threading can never drift between entry points.
+ */
+export function renderDecodingInputs(model: ModelConfig): {
+  renderTemperature?: number;
+  renderReasoningEffort?: string;
+} {
+  return {
+    ...(model.temperature !== undefined
+      ? { renderTemperature: model.temperature }
+      : {}),
+    ...(model.reasoning_effort !== undefined
+      ? { renderReasoningEffort: model.reasoning_effort }
+      : {}),
+  };
 }
 
 /**
@@ -176,6 +210,23 @@ export async function callRunProject(
   // and simply honors the config for the default provider.
   if (input.renderModel !== undefined) {
     render = { ...render, render: { ...(render.render ?? {}), model: input.renderModel } };
+  }
+  // Thread the configured decoding knobs the same way: `reactor.yml`'s
+  // `temperature`/`reasoning_effort` must govern run/serve renders, not only
+  // compile. Absent stays absent so the render omits the keys.
+  if (input.renderTemperature !== undefined || input.renderReasoningEffort !== undefined) {
+    render = {
+      ...render,
+      render: {
+        ...(render.render ?? {}),
+        ...(input.renderTemperature !== undefined
+          ? { temperature: input.renderTemperature }
+          : {}),
+        ...(input.renderReasoningEffort !== undefined
+          ? { reasoningEffort: input.renderReasoningEffort }
+          : {}),
+      },
+    };
   }
   if (input.providerPlan !== undefined && input.apiKey !== undefined) {
     const { buildLiveProvider } = await import('../model/live-provider');

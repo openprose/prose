@@ -42,7 +42,12 @@ export const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 /** The render model. A bare string resolved by the scoped provider's getModel. */
 export const DEFAULT_RENDER_MODEL = "google/gemini-3.5-flash";
 
-/** Greedy decoding — determinism knob #1 (research §4.1). */
+/**
+ * Greedy decoding — determinism knob #1 (research §4.1). No longer applied
+ * implicitly: an unset temperature is OMITTED from requests (OpenAI reasoning
+ * models reject explicit values), so pass this explicitly where greedy decoding
+ * is wanted. Kept exported for consumers that reference the canonical value.
+ */
 export const DEFAULT_TEMPERATURE = 0;
 
 /** The provider label that rides into the receipt `Cost` (research §3, §4.2). */
@@ -227,7 +232,7 @@ export function createOpenRouterProvider(
 export interface SmokeRunConfig extends OpenRouterProviderConfig {
   /** Model id. Defaults to {@link DEFAULT_RENDER_MODEL}. */
   readonly model?: string;
-  /** Decoding temperature. Defaults to {@link DEFAULT_TEMPERATURE}. */
+  /** Decoding temperature. Unset → omitted from the request (provider default). */
   readonly temperature?: number;
   /** Best-effort reproducibility seed, passed through `providerData.seed`. */
   readonly seed?: number;
@@ -260,7 +265,10 @@ export async function smokeRun(
   setTracingDisabled(true);
 
   const model = config.model ?? DEFAULT_RENDER_MODEL;
-  const temperature = config.temperature ?? DEFAULT_TEMPERATURE;
+  // Unset temperature is omitted, not defaulted: the probe must work against
+  // reasoning models (which reject explicit values), e.g. via `doctor --live`
+  // with a configured reasoning render model.
+  const temperature = config.temperature;
   const provider = config.provider ?? createOpenRouterProvider(config);
 
   const agent = new Agent({
@@ -270,7 +278,7 @@ export async function smokeRun(
       "Answer in the fewest words possible.",
     model,
     modelSettings: {
-      temperature,
+      ...(temperature !== undefined ? { temperature } : {}),
       ...(config.seed !== undefined
         ? { providerData: { seed: config.seed } }
         : {}),

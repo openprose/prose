@@ -145,8 +145,10 @@ model:
   provider: openrouter         # ask the user — see note below
   render_model: google/gemini-3.5-flash
   compile_model: google/gemini-3.5-flash
-  temperature: 0
+  temperature: 0               # optional — delete the line to send no temperature
   max_turns: 200
+  # reasoning_effort: none     # reasoning models (gpt-5.x, o-series) reject an
+                               # explicit temperature unless effort is none
 
 sandbox:
   mode: none                   # none (default, bounded shell) | docker (network-disabled container)

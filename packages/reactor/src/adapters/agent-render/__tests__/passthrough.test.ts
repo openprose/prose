@@ -98,6 +98,42 @@ test("mergeModelSettings: no consumer settings → just the harness sugar", () =
   equal(merged.providerData, undefined);
 });
 
+test("mergeModelSettings: NO temperature anywhere → the key is OMITTED, not defaulted", () => {
+  // The load-bearing omission: reasoning models reject any explicit temperature,
+  // so an unset temperature must never be coerced to a number on its way to the
+  // request body.
+  const merged = mergeModelSettings({});
+  equal("temperature" in merged, false, "no temperature key may appear");
+  equal(merged.providerData, undefined);
+});
+
+test("mergeModelSettings: unset harness temperature leaves a consumer's explicit 0 intact", () => {
+  const merged = mergeModelSettings({}, { temperature: 0 });
+  equal(merged.temperature, 0, "an explicit (falsy) consumer 0 survives");
+});
+
+test("mergeModelSettings: consumer's explicit 0 beats a non-zero harness sugar (falsy wins wholesale)", () => {
+  const merged = mergeModelSettings({ temperature: 0.7 }, { temperature: 0 });
+  equal(merged.temperature, 0, "consumer 0 must not be trampled by the sugar");
+});
+
+test("mergeModelSettings: reasoningEffort sugar fills reasoning.effort; unset → omitted", () => {
+  const filled = mergeModelSettings({ reasoningEffort: "none" });
+  deepEqual(filled.reasoning, { effort: "none" });
+  equal("temperature" in filled, false);
+
+  const omitted = mergeModelSettings({});
+  equal("reasoning" in omitted, false, "no effort sugar → no reasoning key");
+});
+
+test("mergeModelSettings: consumer's own reasoning wins wholesale over the effort sugar", () => {
+  const merged = mergeModelSettings(
+    { reasoningEffort: "none" },
+    { reasoning: { effort: "high" } },
+  );
+  deepEqual(merged.reasoning, { effort: "high" });
+});
+
 // ---------------------------------------------------------------------------
 // (ii) resolveRunConfig — per-run tracing (NOT the global mutation)
 // ---------------------------------------------------------------------------
