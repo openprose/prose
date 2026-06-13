@@ -25,6 +25,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   models accept a custom temperature only when effort is `none`, so this keeps
   deterministic setups expressible on those models
   (`temperature: 0` + `reasoning_effort: none`).
+- **A failed render now records why it failed, and every command surfaces it.**
+  The reason is persisted on the `failed` receipt (inside its `semantic_diff`,
+  so no receipt field or schema changed and existing `.reactor/` ledgers keep
+  verifying) and shown by `reactor run`, `reactor trigger`, `reactor logs`,
+  `reactor trace`, and `reactor inspect`. API keys and other secret material in
+  a reason are scrubbed before it is stored or printed. Previously a failed
+  render surfaced only `failed`, with no way to learn the cause without editing
+  the source.
+- **`reactor serve` reports per-gateway poll activity in its heartbeat.** Each
+  cycle now prints `gateways: <source> ingested=N skipped=M`, so a poll that
+  stages nothing (an empty payload, or a backlog the cursor already deduped) is
+  no longer indistinguishable from a healthy one. Hosts with no configured
+  gateways print nothing new.
 
 ### Changed
 
@@ -38,6 +51,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   scaffold already writes it). Type surface: `ModelConfig.temperature` is now
   optional, and `mergeModelSettings` omits the temperature key when none
   resolves.
+- **`reactor trigger` now exits non-zero when a render fails or the configured
+  provider is missing its key.** It previously returned `0` even when the
+  triggered render failed, and a project configured for a non-default provider
+  with only `OPENROUTER_API_KEY` present appeared to succeed by rendering
+  through the wrong provider. `trigger` now fails fast with an actionable error
+  naming the exact env var when a custom provider's key is absent, and exits `1`
+  on any `failed` disposition — matching `reactor run`.
 
 ### Removed
 
@@ -58,6 +78,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   longer pins temperature 0 in its connectivity probe (it 400ed against
   reasoning render models), and the temperature-rejection 400 from a provider
   now maps to an actionable hint naming the `reactor.yml` line to fix.
+- **`reactor trigger` now honors `reactor.yml`'s provider and model.** It
+  threaded no provider, model, or decoding settings into the render, so a live
+  trigger always fell back to the SDK's default OpenRouter provider and model
+  regardless of configuration — and with only the configured provider's key
+  present, every trigger produced a bare, causeless `failed` receipt
+  (`model: "none"`, zero tokens). `trigger` now resolves the provider plan and
+  threads `render_model`, `temperature`, and `reasoning_effort` into the render
+  exactly like `run` and `serve`.
 
 ## [0.15.0] - 2026-06-04 — open-prose skill & plugin
 
