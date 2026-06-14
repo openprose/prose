@@ -224,15 +224,14 @@ function commit(world: unknown, cost: Cost): RenderProduct {
 }
 
 // A DEBUGGABLE render failure. The default thrown-render path stamps the failed
-// receipt with `provider/model = "none"`, `fresh 0`, and drops the reason — a
-// bare `failed` disposition with no clue WHICH external call broke. The
-// reconciler does NOT persist a `RenderFailure.reason` onto the on-disk receipt
-// (the receipt has no reason field — see SHAPES Receipt), so the only durable,
-// debuggable surface a failed receipt carries is its `cost`. We therefore name
-// the failing adapter on the cost (`provider`/`model`) so the on-disk failed
-// receipt records WHICH expensive external call failed, attribute the spend to
-// the real wake source (NEVER hardcoded), AND carry a human-readable `reason`
-// the dispatch site (the ReconcileResult) can log. A real failure is now
+// receipt with `provider/model = "none"` and `fresh 0`, a bare `failed`
+// disposition with no clue WHICH external call broke. We make the failure
+// legible on two durable surfaces of the on-disk receipt: the reconciler
+// persists this `reason` onto the failed receipt (under
+// `semantic_diff.failure_reason`, secret-scrubbed before it is written), and we
+// also name the failing adapter on the `cost` (`provider`/`model`) so the spend
+// attribution records WHICH expensive external call failed. The cost is
+// attributed to the real wake source (NEVER hardcoded). A real failure is now
 // debuggable rather than an anonymous red node.
 function failedRender(
   ctx: RenderContext,

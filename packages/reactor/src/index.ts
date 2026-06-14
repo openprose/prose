@@ -174,6 +174,10 @@ export {
 
 export {
   ATOMIC_FACET,
+  // The semantic_diff key a failed receipt's reason rides under — exported so
+  // receipt readers (the CLI's projections, devtools) share the writer's
+  // convention instead of hardcoding the string.
+  FAILURE_REASON_DIFF_KEY,
   asNodeId,
   asFacet,
   type Receipt,

@@ -15,6 +15,7 @@ import { test } from "node:test";
 
 import {
   ATOMIC_FACET,
+  FAILURE_REASON_DIFF_KEY,
   type Cost,
   type ContentAddress,
   type Fingerprint,
@@ -470,6 +471,54 @@ test("reconcile (failure path): a failure after a prior render copies the prior 
     "the prior truth stands after a failed render",
   );
   equal(second.propagated.length, 0);
+});
+
+/** A single-failed-render harness over one node; returns the reconcile result. */
+function failOnceWith(reason: string) {
+  const h = harness({
+    topology: singleNodeTopology,
+    contract_fingerprints: { n: asFingerprint(CONTRACT_A) },
+    inputs: { n: [asFingerprint("i1")] },
+    renders: { n: [{ status: "failed", reason, cost: RENDER_COST }] },
+  });
+  const r = createReconciler(h.ports, h.topo);
+  return r.reconcile({ node: "n", wake: inputWake });
+}
+
+test("reconcile (failure path): the render's reason lands on the result and the receipt", () => {
+  const result = failOnceWith("provider 402: insufficient credits");
+  equal(result.disposition, "failed");
+  equal(result.reason, "provider 402: insufficient credits");
+  equal(
+    result.receipt?.semantic_diff[FAILURE_REASON_DIFF_KEY],
+    "provider 402: insufficient credits",
+    "the failed receipt carries the reason in its semantic_diff",
+  );
+});
+
+test("reconcile (failure path): a reason carrying key material is scrubbed before persisting", () => {
+  // Fabricated, syntactically key-shaped values only — never real key material.
+  const result = failOnceWith(
+    "403: key sk-or-v1-feedface00feedface00feedface00 limit exceeded (Authorization: Bearer feedface00feedface00)",
+  );
+  const persisted = String(result.receipt?.semantic_diff[FAILURE_REASON_DIFF_KEY]);
+  ok(persisted.includes("sk-***REDACTED***"), "sk-family token scrubbed");
+  ok(!/sk-[A-Za-z0-9_-]{6,}/.test(persisted), "no key-shaped sk- token survives");
+  ok(!persisted.includes("Bearer feedface"), "bearer value scrubbed");
+  equal(result.reason, persisted, "printed reason === persisted reason");
+});
+
+test("reconcile (failure path): the reason is first-line-only and length-capped", () => {
+  const result = failOnceWith(`x${"y".repeat(600)}\n  at someFrame (file.js:1:1)`);
+  const persisted = String(result.receipt?.semantic_diff[FAILURE_REASON_DIFF_KEY]);
+  ok(!persisted.includes("someFrame"), "stack frames stay out of receipts");
+  equal(persisted.length, 501, "capped at 500 chars + ellipsis");
+});
+
+test("reconcile (failure path): an empty reason keeps the empty diff and no result reason", () => {
+  const result = failOnceWith("");
+  deepEqual(result.receipt?.semantic_diff, {}, "no reason ⇒ the empty diff, as before");
+  equal(result.reason, undefined);
 });
 
 // --------------------------------------------------------------------------

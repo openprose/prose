@@ -151,6 +151,43 @@ async function populateState(stateDir: string): Promise<void> {
   );
 }
 
+/**
+ * Populate a durable state-dir whose MONITOR render FAILS with a reason that
+ * deliberately carries fabricated key-shaped material — proving the persisted
+ * reason is scrubbed end to end. The subscriber never wakes (no propagation
+ * from a failure), so the trail holds the failed receipt(s) only.
+ */
+async function populateFailedState(stateDir: string): Promise<void> {
+  const failingRender = (_store: WorldModelStore) => async (ctx: { wake: { source: string } }) => ({
+    failed: true,
+    reason:
+      'provider 402: insufficient credits (key sk-or-v1-feedface00feedface00 rejected)',
+    cost: {
+      provider: 'none',
+      model: 'none',
+      tokens: { fresh: 0, reused: 0 },
+      surprise_cause: ctx.wake.source,
+    },
+  });
+  await runRunCommand(
+    {
+      projectDir: FIXTURE_DIR,
+      stateDir,
+      json: true,
+      testAdapters: {
+        clock: createSystemClockAdapter(),
+        storage: createFileSystemStorageAdapter({ directory: receiptsDir(stateDir) }),
+        worldModel: new FileSystemWorldModelStore({
+          directory: join(stateDir, 'world-models'),
+        }),
+      },
+      testRender: { buildRender: failingRender as never },
+      testCompileOptions: testCompileOptions() as never,
+    },
+    () => {},
+  );
+}
+
 function capture() {
   const lines: string[] = [];
   return { write: (l: string) => lines.push(l), lines, json: () => JSON.parse(lines.join('\n')) };
@@ -282,6 +319,71 @@ describe('reactor observability (offline gate)', () => {
       for (const t of trace.traces) {
         assert.equal(t.chain.ok, true, `node ${t.node} chain must verify`);
       }
+    } finally {
+      rmSync(stateDir, { recursive: true, force: true });
+    }
+  });
+
+  it('logs/trace/inspect surface a failed render reason; the trail still verifies', async () => {
+    const stateDir = freshState();
+    try {
+      await populateFailedState(stateDir);
+
+      // logs: the failed entry carries the persisted (scrubbed) reason.
+      const logsOut = capture();
+      await runLogsCommand({ directStateDir: stateDir, json: true }, logsOut.write);
+      const logs = logsOut.json() as {
+        entries: { node: string; status: string; reason?: string }[];
+      };
+      const failedEntry = logs.entries.find((e) => e.node === MONITOR && e.status === 'failed');
+      assert.ok(failedEntry, 'the failed receipt appears in logs');
+      assert.match(String(failedEntry!.reason), /provider 402: insufficient credits/);
+      assert.match(String(failedEntry!.reason), /sk-\*\*\*REDACTED\*\*\*/, 'key material scrubbed');
+      assert.doesNotMatch(String(failedEntry!.reason), /sk-or-v1/, 'no key shape survives');
+
+      // logs (human): the reason rides under the failed line.
+      const logsTextOut = capture();
+      await runLogsCommand({ directStateDir: stateDir }, logsTextOut.write);
+      assert.match(logsTextOut.lines.join('\n'), /reason: provider 402/);
+
+      // trace: the failed step carries the reason; the chain still verifies.
+      const traceOut = capture();
+      await runTraceCommand({ directStateDir: stateDir, json: true }, traceOut.write);
+      const trace = traceOut.json() as {
+        traces: { node: string; chain: { ok: boolean }; steps: { status: string; reason?: string }[] }[];
+      };
+      const monitorTrace = trace.traces.find((t) => t.node === MONITOR);
+      assert.equal(monitorTrace?.chain.ok, true, 'a reason-bearing trail chain-verifies');
+      const failedStep = monitorTrace?.steps.find((s) => s.status === 'failed');
+      assert.match(String(failedStep?.reason), /provider 402/);
+
+      // inspect: the full lastReceipt exposes the reason via semantic_diff
+      // (zero projection change), and the text format prints it.
+      const inspectOut = capture();
+      await runInspectCommand(
+        { directStateDir: stateDir, node: MONITOR, json: true },
+        inspectOut.write,
+      );
+      const inspect = inspectOut.json() as {
+        lastReceipt: { status: string; semantic_diff: Record<string, unknown> } | null;
+        chain: { ok: boolean };
+      };
+      assert.equal(inspect.lastReceipt?.status, 'failed');
+      assert.match(
+        String(inspect.lastReceipt?.semantic_diff['failure_reason']),
+        /provider 402/,
+      );
+      const inspectTextOut = capture();
+      await runInspectCommand({ directStateDir: stateDir, node: MONITOR }, inspectTextOut.write);
+      assert.match(inspectTextOut.lines.join('\n'), /last reason\s+provider 402/);
+
+      // receipts verify: a reason-bearing trail is still a valid chain (exit 0).
+      const verifyOut = capture();
+      const verifyCode = await runReceiptsCommand(
+        { directStateDir: stateDir, json: true, sub: 'verify' },
+        verifyOut.write,
+      );
+      assert.equal(verifyCode, 0, 'the persisted reason does not break verification');
     } finally {
       rmSync(stateDir, { recursive: true, force: true });
     }

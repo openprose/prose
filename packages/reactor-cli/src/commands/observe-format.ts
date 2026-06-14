@@ -5,6 +5,8 @@
  * operator view) evolve independently.
  */
 
+import { FAILURE_REASON_DIFF_KEY } from '@openprose/reactor';
+
 import type {
   StatusProjection,
   TopologyProjection,
@@ -132,6 +134,10 @@ export function formatInspect(p: InspectProjection): string {
   lines.push(`  cost           ${tokens(p.cost.total)}`);
   if (p.lastReceipt) {
     lines.push(`  last status    ${p.lastReceipt.status}`);
+    const reason = p.lastReceipt.semantic_diff?.[FAILURE_REASON_DIFF_KEY];
+    if (p.lastReceipt.status === 'failed' && typeof reason === 'string' && reason.length > 0) {
+      lines.push(`  last reason    ${reason}`);
+    }
   }
   lines.push(
     `  chain          ${p.chain.ok ? `ok (${p.chain.length ?? p.receipts} receipts)` : 'BROKEN'}`,
@@ -157,6 +163,9 @@ export function formatLogs(
       `  ${e.node.padEnd(28)} ${e.status.padEnd(8)} wake=${e.wake_source.padEnd(8)} ` +
         `${tokens(e.cost)}`,
     );
+    if (e.reason !== undefined) {
+      lines.push(`    reason: ${e.reason}`);
+    }
   }
   return lines.join('\n');
 }
@@ -173,6 +182,9 @@ export function formatTrace(traces: readonly NodeTrace[]): string {
         `    #${step.index} ${step.status.padEnd(8)} wake=${step.wake_source.padEnd(8)} ` +
           `cause=${step.surprise_cause.padEnd(8)} ${tokens(step.cost)}`,
       );
+      if (step.reason !== undefined) {
+        lines.push(`      reason: ${step.reason}`);
+      }
     }
     if (!t.chain.ok && t.chain.errors) {
       for (const err of t.chain.errors) {

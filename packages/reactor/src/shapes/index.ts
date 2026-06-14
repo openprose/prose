@@ -346,10 +346,24 @@ export interface Receipt {
  * A semantic diff — render-input context carried in the receipt, never a wake
  * *signal* (world-model.md §3: "valuable — but as render input … It is never a
  * wake signal"). Free-form per node; a `skipped` receipt carries the empty diff.
+ * A `failed` receipt MAY carry failure context under
+ * {@link FAILURE_REASON_DIFF_KEY} — diagnostic data, like the rest of the diff.
  */
 export type SemanticDiff = Readonly<Record<string, unknown>>;
 
 export const EMPTY_SEMANTIC_DIFF: SemanticDiff = Object.freeze({});
+
+/**
+ * The `semantic_diff` key under which a `failed` receipt carries WHY the render
+ * failed. A shared constant so the writer (the reconciler's failed-receipt
+ * builder) and every reader (CLI projections, devtools) cannot drift on a
+ * convention the receipt schema deliberately does not enforce: `semantic_diff`
+ * is free-form, which is exactly what keeps existing ledgers and verifiers
+ * compatible in both directions (no new top-level receipt field, no schema
+ * bump; the content hash already covers the diff, so the reason is
+ * tamper-evident).
+ */
+export const FAILURE_REASON_DIFF_KEY = "failure_reason";
 
 // ---------------------------------------------------------------------------
 // World-model: the maintained truth a node keeps current

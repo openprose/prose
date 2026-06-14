@@ -148,7 +148,7 @@ const RUN_PROJECT_SPECIFIER = '@openprose/reactor/run';
  * else (`adapters`/`render`/the result) is the real SDK type, so the
  * `Record<string, unknown>` render rebuild + the `(input: unknown)` cast are gone.
  */
-type RunProjectFn = (
+export type RunProjectFn = (
   input: Omit<RunProjectInput, 'compiled'> & { readonly compiled: CliCompiledProject },
 ) => Promise<RunProjectResult>;
 

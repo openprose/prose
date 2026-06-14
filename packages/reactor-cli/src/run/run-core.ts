@@ -381,6 +381,12 @@ export function contractViewFor(ir: LoadedCompileIR, node: string): ContractView
 export interface NodeDisposition {
   readonly node: string;
   readonly disposition: 'rendered' | 'skipped' | 'failed' | 'coalesced';
+  /**
+   * WHY the render failed (present only for `failed`, when the SDK surfaced
+   * one). Already sanitized by the reconciler — identical to the reason the
+   * failed receipt persists, so output and trail can never disagree.
+   */
+  readonly reason?: string;
 }
 
 /** The SDK `ReconcileResult` — the element type of `runProject`'s `bootResults`
@@ -431,6 +437,7 @@ export function summarizeBoot(
   const dispositions = bootResults.map((r) => ({
     node: r.node,
     disposition: normalizeDisposition(r.disposition),
+    ...(r.reason !== undefined ? { reason: r.reason } : {}),
   }));
   let fresh = 0;
   let reused = 0;

@@ -366,6 +366,121 @@ describe('the per-reactor serialization queue', () => {
   });
 });
 
+describe('failed render reasons (run/trigger output)', () => {
+  /** A render that always fails with a reason carrying fabricated key material. */
+  const failingRender = (_store: WorldModelStore) => async (ctx: { wake: { source: string } }) => ({
+    failed: true,
+    reason: 'provider 402: insufficient credits (key sk-or-v1-feedface00feedface00 rejected)',
+    cost: {
+      provider: 'none',
+      model: 'none',
+      tokens: { fresh: 0, reused: 0 },
+      surprise_cause: ctx.wake.source,
+    },
+  });
+
+  it('run --json carries the failed reason per disposition and exits 1', async () => {
+    const d = freshDirs();
+    try {
+      const out = capture();
+      const code = await runRunCommand(
+        {
+          projectDir: FIXTURE_DIR,
+          stateDir: d.state,
+          json: true,
+          testAdapters: {
+            clock: createSystemClockAdapter(),
+            storage: createMemoryStorageAdapter(),
+            worldModel: new FileSystemWorldModelStore({
+              directory: join(d.state, 'world-models'),
+            }),
+          },
+          testRender: { buildRender: failingRender as never },
+          testCompileOptions: testCompileOptions() as never,
+        },
+        out.write,
+      );
+      assert.equal(code, 1, 'a failed node exits non-zero');
+      const report = JSON.parse(out.lines.join('\n')) as {
+        ok: boolean;
+        dispositions: { node: string; disposition: string; reason?: string }[];
+      };
+      assert.equal(report.ok, false);
+      const failed = report.dispositions.find((x) => x.disposition === 'failed');
+      assert.ok(failed, 'a failed disposition is reported');
+      assert.match(String(failed!.reason), /provider 402: insufficient credits/);
+      assert.match(String(failed!.reason), /sk-\*\*\*REDACTED\*\*\*/, 'key material scrubbed');
+      assert.doesNotMatch(out.lines.join('\n'), /sk-or-v1/, 'no key shape in any output');
+    } finally {
+      rmSync(d.state, { recursive: true, force: true });
+    }
+  });
+
+  it('run (human) prints the reason under the failed disposition', async () => {
+    const d = freshDirs();
+    try {
+      const out = capture();
+      const code = await runRunCommand(
+        {
+          projectDir: FIXTURE_DIR,
+          stateDir: d.state,
+          testAdapters: {
+            clock: createSystemClockAdapter(),
+            storage: createMemoryStorageAdapter(),
+            worldModel: new FileSystemWorldModelStore({
+              directory: join(d.state, 'world-models'),
+            }),
+          },
+          testRender: { buildRender: failingRender as never },
+          testCompileOptions: testCompileOptions() as never,
+        },
+        out.write,
+      );
+      assert.equal(code, 1);
+      assert.match(out.lines.join('\n'), /reason: provider 402: insufficient credits/);
+    } finally {
+      rmSync(d.state, { recursive: true, force: true });
+    }
+  });
+
+  it('trigger --json carries the failed reason and exits 1 (matching run)', async () => {
+    const d = freshDirs();
+    try {
+      const out = capture();
+      const code = await runTriggerCommand(
+        {
+          node: MONITOR,
+          projectDir: FIXTURE_DIR,
+          stateDir: d.state,
+          json: true,
+          testAdapters: {
+            clock: createSystemClockAdapter(),
+            storage: createMemoryStorageAdapter(),
+            worldModel: new FileSystemWorldModelStore({
+              directory: join(d.state, 'world-models'),
+            }),
+          },
+          testRender: { buildRender: failingRender as never },
+          testCompileOptions: testCompileOptions() as never,
+        },
+        out.write,
+      );
+      assert.equal(code, 1, 'a failed trigger render exits non-zero');
+      const report = JSON.parse(out.lines.join('\n')) as {
+        status: string;
+        dispositions: { node: string; disposition: string; reason?: string }[];
+      };
+      assert.equal(report.status, 'triggered');
+      const failed = report.dispositions.find((x) => x.disposition === 'failed');
+      assert.ok(failed, 'the failed disposition is reported');
+      assert.match(String(failed!.reason), /provider 402: insufficient credits/);
+      assert.doesNotMatch(out.lines.join('\n'), /sk-or-v1/, 'no key shape in any output');
+    } finally {
+      rmSync(d.state, { recursive: true, force: true });
+    }
+  });
+});
+
 describe('reactor trigger (offline gate)', () => {
   it('an external-wake one-shot mount renders the named node', async () => {
     const d = freshDirs();

@@ -4,6 +4,7 @@ import { test } from "node:test";
 import {
   ATOMIC_FACET,
   EMPTY_SEMANTIC_DIFF,
+  FAILURE_REASON_DIFF_KEY,
   asFingerprint,
   createNullSignature,
 } from "../../shapes/index";
@@ -227,6 +228,52 @@ test("failed receipts are valid audit signal", () => {
   );
   equal(failed.status, "failed");
   equal(verifyReceipt(failed).ok, true);
+});
+
+test("a failed receipt carrying a failure reason verifies and chains", () => {
+  const failed = createReceipt(
+    makeReceiptInput({
+      status: "failed",
+      semantic_diff: { [FAILURE_REASON_DIFF_KEY]: "provider 402: insufficient credits" },
+    }),
+  );
+  equal(verifyReceipt(failed).ok, true);
+
+  // A fail-then-render trail stays a well-formed prev-linked chain.
+  const recovered = createReceipt(
+    makeReceiptInput({
+      prev: failed.content_hash,
+      fingerprints: { [ATOMIC_FACET]: asFingerprint("fp:atomic:v2") },
+    }),
+  );
+  const chain = verifyReceiptChain([failed, recovered]);
+  equal(chain.ok, true);
+});
+
+test("a failed receipt with the empty diff still verifies (trails written before reasons)", () => {
+  // The compatibility pin: failed receipts predating the reason convention
+  // carry EMPTY_SEMANTIC_DIFF and must keep verifying unchanged.
+  const legacy = createReceipt(
+    makeReceiptInput({
+      status: "failed",
+      semantic_diff: EMPTY_SEMANTIC_DIFF,
+    }),
+  );
+  equal(verifyReceipt(legacy).ok, true);
+});
+
+test("tampering with a persisted failure reason is detected", () => {
+  const failed = createReceipt(
+    makeReceiptInput({
+      status: "failed",
+      semantic_diff: { [FAILURE_REASON_DIFF_KEY]: "provider 402: insufficient credits" },
+    }),
+  );
+  const verification = verifyReceipt({
+    ...failed,
+    semantic_diff: { [FAILURE_REASON_DIFF_KEY]: "looked fine to me" },
+  });
+  equal(verification.ok, false, "the content hash covers the reason");
 });
 
 test("prev chains the node-scoped ledger", () => {
