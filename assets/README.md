@@ -1,5 +1,5 @@
 ---
-purpose: Static assets for the prose repo — images and graphics used in the root README and documentation
+purpose: Static assets for the prose repo: images and graphics used in the root README and documentation
 related:
   - ../README.md
 ---
@@ -10,11 +10,11 @@ Static assets for the OpenProse language specification repository.
 
 ## Contents
 
-- `readme-header.svg` — Legacy SVG header graphic. The root README now points at the generated `https://prose.md/readme-header.png` route from the Run app so the GitHub hero stays aligned with the live brand system.
+- `readme-header.png`: Header banner shown at the top of the root README. Carries the OpenProse brand hero: the wordmark, the headline, and the install command.
 
 ## Plugin assets
 
 Wired into `.codex-plugin/plugin.json:interface` for Codex marketplace display.
 
-- `plugin/logo.png` — 512×512 PNG OpenProse wordmark, derived from https://prose.md/avatar.png (2048×2048) and resized.
-- `plugin/composer-icon.png` — 64×64 PNG icon, derived from https://prose.md/apple-icon (360×360) and resized. Designed to read down to 16px.
+- `plugin/logo.png`: 512×512 PNG OpenProse wordmark, derived from https://prose.md/avatar.png (2048×2048) and resized.
+- `plugin/composer-icon.png`: 64×64 PNG icon, derived from https://prose.md/apple-icon (360×360) and resized. Designed to read down to 16px.

@@ -3,8 +3,7 @@
 </p>
 
 <p align="center">
-  <strong>OpenProse: a declarative language for AI sessions.<br/>
-  Declare the world as it should be; Reactor keeps it true.</strong>
+  <strong>Declare the world as it should be; Reactor keeps it true.</strong>
 </p>
 
 <p align="center">

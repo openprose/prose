@@ -1,6 +1,6 @@
 # OpenProse
 
-###### A programming language for AI sessions, expressed as durable Markdown contracts.
+###### Standing AI jobs, declared as durable Markdown contracts.
 
 This document is the specification of **the OpenProse Language & Framework** —
 the durable `*.prose.md` contract format, the skill semantics that interpret
