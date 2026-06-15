@@ -1,7 +1,7 @@
 {
   "name": "openprose",
   "metadata": {
-    "description": "A programming language for AI sessions. Declare outcomes, not instructions."
+    "description": "Stop scripting agents. Declare them."
   },
   "owner": {
     "name": "OpenProse",
