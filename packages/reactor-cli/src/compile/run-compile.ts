@@ -272,6 +272,7 @@ interface LoadedContractLike {
   readonly maintains?: string;
   readonly continuity?: string;
   readonly execution?: string;
+  readonly tools?: string;
 }
 
 function toContractImage(c: LoadedContractLike): ContractImage {
@@ -280,6 +281,7 @@ function toContractImage(c: LoadedContractLike): ContractImage {
   if (c.maintains !== undefined) out['maintains'] = c.maintains;
   if (c.continuity !== undefined) out['continuity'] = c.continuity;
   if (c.execution !== undefined) out['execution'] = c.execution;
+  if (c.tools !== undefined) out['tools'] = c.tools;
   return out as unknown as ContractImage;
 }
 
