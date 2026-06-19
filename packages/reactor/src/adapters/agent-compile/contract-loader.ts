@@ -59,6 +59,13 @@ export interface LoadedContract {
   readonly continuity?: string;
   /** Verbatim `### Execution` body (the ProseScript render body). */
   readonly execution?: string;
+  /**
+   * Verbatim `### Tools` body (host capability declarations: `cli:<name>` /
+   * `mcp:<name>`). Resolved DETERMINISTICALLY (presence-only PATH / host MCP
+   * registry) by the tools resolver — never a model call. The loader stays a
+   * dumb slicer here; semantics live in `tools-resolver.ts`.
+   */
+  readonly tools?: string;
   /** The source file path (audit). */
   readonly path: string;
 }
@@ -187,6 +194,7 @@ export function sliceContract(text: string, path: string): LoadedContract {
   if (sections["Maintains"] !== undefined) out["maintains"] = sections["Maintains"];
   if (sections["Continuity"] !== undefined) out["continuity"] = sections["Continuity"];
   if (sections["Execution"] !== undefined) out["execution"] = sections["Execution"];
+  if (sections["Tools"] !== undefined) out["tools"] = sections["Tools"];
   return out as unknown as LoadedContract;
 }
 

@@ -41,6 +41,10 @@ Self-driven: re-check on a daily forecast cadence.
 
 ### Execution
 Fetch sources, corroborate, write the world-model.
+
+### Tools
+- \`cli:jq\`: JSON CLI on PATH
+- \`mcp:gmail\`: registered MCP server
 `;
 
 test("sliceContract: reads frontmatter id/name/kind (flat scalars only)", () => {
@@ -65,6 +69,17 @@ test("sliceContract: #### facet parts stay INSIDE the ### Maintains body (the se
   ok(c.maintains?.includes("the event set (unordered)"));
   // facet bodies did NOT leak into a separate section
   equal((c as unknown as Record<string, unknown>)["funding"], undefined);
+});
+
+test("sliceContract: captures the verbatim ### Tools body", () => {
+  const c = sliceContract(SAMPLE, "/x/c.prose.md");
+  ok(c.tools?.includes("cli:jq"), "tools body present");
+  ok(c.tools?.includes("mcp:gmail"));
+});
+
+test("sliceContract: no ### Tools section ⇒ tools is undefined", () => {
+  const c = sliceContract("---\nname: bare\n---\n### Maintains\nx\n", "/x/bare.prose.md");
+  equal(c.tools, undefined);
 });
 
 test("sliceContract: id falls back to the file stem when no frontmatter name", () => {
