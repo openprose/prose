@@ -117,6 +117,10 @@ test("renderContractSet: lays out every contract's identity + sections as stable
   ok(text.includes("kind: responsibility"));
   ok(text.includes("### Maintains"));
   ok(text.includes("#### funding"));
+  // declared ### Tools reach the session evidence too (so a model compile session
+  // SEES them; authoritative resolution is still the deterministic resolver).
+  ok(text.includes("### Tools"));
+  ok(text.includes("cli:jq"));
   // deterministic: rendering twice is byte-identical
   equal(renderContractSet([a]), text);
 });

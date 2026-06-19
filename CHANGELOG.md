@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`reactor compile` now honors `### Tools`.** Declared `cli:<name>` /
+  `mcp:<name>` host-capability dependencies are resolved deterministically at
+  compile — presence-only (host `PATH` for `cli:`, the host MCP registry for
+  `mcp:`), never executing the tool and never performing version/auth checks —
+  and compile **fails closed** on `tool_invalid`, `tool_unsupported_kind`, or
+  `tool_unresolved`, matching the canonical VM `tools_resolver`. Resolved tools
+  are emitted into the compile-phase IR (`tools.json`) as
+  `{ kind, name, requiredBy }` per node, and a `### Tools` edit now moves the
+  contract-set fingerprint so the cache re-resolves. The host MCP registry is an
+  empty injected set in v1 (so `mcp:` declarations resolve to `tool_unresolved`
+  until a host provides one), and run-activation consumption is a tracked
+  follow-on. (`agent-experience`: previously a contract declaring a tool the
+  spec resolves compiled green on the harness even when the tool was absent.)
 - **`prose react "<use case>"`** — A command for taking an English standing goal
   to a running, inspectable Reactor on the `@openprose/reactor-cli` (`reactor`)
   binary. The open-prose skill gains a `reactor.md` operator guide (install, the

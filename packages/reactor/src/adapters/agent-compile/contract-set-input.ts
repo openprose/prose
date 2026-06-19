@@ -16,8 +16,8 @@ import type { ContractSet, LoadedContract } from "./contract-loader";
 /**
  * Render the whole contract set as the compile session's run input. Each
  * contract is a fenced block carrying its id/name/kind and its verbatim
- * `### Requires` / `### Maintains` / `### Continuity` / `### Execution`
- * sections. Contracts are emitted in the (already-sorted) set
+ * `### Requires` / `### Maintains` / `### Continuity` / `### Execution` /
+ * `### Tools` sections. Contracts are emitted in the (already-sorted) set
  * order so the evidence is stable across runs (reproducibility).
  */
 export function renderContractSet(contracts: ContractSet): string {
@@ -47,6 +47,9 @@ export function renderContract(contract: LoadedContract): string {
   appendSection(lines, "Maintains", contract.maintains);
   appendSection(lines, "Continuity", contract.continuity);
   appendSection(lines, "Execution", contract.execution);
+  // Declared host-capability deps — a model compile session SEES them as
+  // evidence; the authoritative resolution is the deterministic tools resolver.
+  appendSection(lines, "Tools", contract.tools);
 
   return lines.join("\n").trimEnd();
 }
