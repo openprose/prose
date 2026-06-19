@@ -20,6 +20,7 @@
  */
 
 import * as path from 'path';
+import { resolveTools, type ResolvedTool } from '@openprose/reactor/adapters';
 import { loadContractSet as keylessLoadContractSet } from '../compile/contract-images';
 import {
   contractSetFingerprint,
@@ -28,6 +29,7 @@ import {
   persistIR,
   readManifest,
   readTopologyShape,
+  type ResolvedToolRecord,
 } from '../compile/ir-cache';
 import type { ConfigOverrides } from '../config';
 import { loadConfig } from '../config';
@@ -172,6 +174,37 @@ export async function runCompileCommand(
   }
   const setFingerprint = contractSetFingerprint(images);
 
+  // Resolve declared `### Tools` DETERMINISTICALLY (keyless, exec-free) BEFORE any
+  // cache decision or model session — parity with the canonical VM tools_resolver.
+  // FAIL-CLOSED on any tool_invalid / tool_unsupported_kind / tool_unresolved
+  // (contract-markdown.md: "prose compile fails closed when any ... is emitted").
+  // The host MCP registry is an empty set in v1 (no host-provided registry yet),
+  // so every `mcp:` declaration resolves to tool_unresolved until one is injected.
+  const toolsResult = resolveTools(
+    images.map((c) => ({
+      id: c.id,
+      kind: c.kind,
+      ...(c.tools !== undefined ? { tools: c.tools } : {}),
+      requiredBy: [c.id],
+    })),
+    { pathEnv: process.env['PATH'] ?? '', mcp: new Set<string>() },
+  );
+  if (toolsResult.diagnostics.length > 0) {
+    const lines = toolsResult.diagnostics.map((d) => `  - ${d.detail}`);
+    const msg = `reactor compile: declared tool resolution failed:\n${lines.join('\n')}`;
+    if (options.json === true) {
+      write(JSON.stringify({ status: 'error', message: msg }));
+    } else {
+      write(msg);
+    }
+    fireError(new Error(msg));
+    // Do NOT persist IR on a hard tool failure (a half-written cache has no
+    // manifest; here nothing is written at all — the precedent fail-closed branch).
+    return 1;
+  }
+  // Group the resolved tools per topology node for the compile IR (`tools.json`).
+  const resolvedTools = groupResolvedByNode(toolsResult.resolved);
+
   const fresh = isCacheFresh(stateDir, setFingerprint, sdkVersion, model);
 
   // --check: never compile; non-zero exit if stale.
@@ -235,6 +268,7 @@ export async function runCompileCommand(
       maxTurns: config.model.max_turns,
       ...(options.testProviders !== undefined ? { providers: options.testProviders } : {}),
       ...(options.testSkill !== undefined ? { skill: options.testSkill } : {}),
+      ...(Object.keys(resolvedTools).length > 0 ? { resolvedTools } : {}),
       ...(providerPlan.custom
         ? { providerPlan, apiKey: readModelKey(providerPlan.apiKeyEnv, contractsDir)! }
         : {}),
@@ -335,6 +369,32 @@ function providerErrorHint(
 
 function resolveProjectDir(projectDir: string | undefined): string {
   return path.resolve(projectDir ?? '.');
+}
+
+/**
+ * Group the flat resolved-tool list (each carrying its `requiredBy` node ids)
+ * into a per-node record for the compile IR (`tools.json`). A node's list is
+ * sorted by (kind,name) for byte-stable persistence.
+ */
+function groupResolvedByNode(
+  resolved: readonly ResolvedTool[],
+): Record<string, ResolvedToolRecord[]> {
+  const byNode: Record<string, ResolvedToolRecord[]> = {};
+  for (const tool of resolved) {
+    for (const node of tool.requiredBy) {
+      (byNode[node] ??= []).push({
+        kind: tool.kind,
+        name: tool.name,
+        requiredBy: [...tool.requiredBy],
+      });
+    }
+  }
+  for (const node of Object.keys(byNode)) {
+    byNode[node]!.sort((a, b) =>
+      a.kind === b.kind ? (a.name < b.name ? -1 : a.name > b.name ? 1 : 0) : a.kind < b.kind ? -1 : 1,
+    );
+  }
+  return byNode;
 }
 
 function cacheReport(
