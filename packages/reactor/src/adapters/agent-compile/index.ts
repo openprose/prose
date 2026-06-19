@@ -208,6 +208,18 @@ export {
 export { renderContractSet, renderContract } from "./contract-set-input";
 
 export {
+  resolveTools,
+  type NodeToolsInput,
+  type ToolsResolveHost,
+  type ResolvedTool,
+  type FunctionTools,
+  type ToolDiagnostic,
+  type ToolsResolveResult,
+} from "./tools-resolver";
+
+export { existsOnPath, mcpServerRegistered } from "./tool-presence";
+
+export {
   runCompileSession,
   composeCompileInstructions,
   DEFAULT_COMPILE_MAX_TURNS,
