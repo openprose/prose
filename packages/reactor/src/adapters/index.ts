@@ -84,3 +84,19 @@ export type {
   WorldModelCommit,
   WorldModelRef,
 } from "../shapes";
+
+// --- The DETERMINISTIC `### Tools` resolver (keyless, exec-free) -------------
+// Imported from the leaf modules DIRECTLY (NOT the agent-compile barrel, which
+// pulls `zod` via the `*-output` schemas) so the offline path — the CLI's
+// `compile` command runs tool resolution before any model session — stays free
+// of `@openai/agents`/`zod`. These two files import only `node:fs`/`node:path`.
+export {
+  resolveTools,
+  type NodeToolsInput,
+  type ToolsResolveHost,
+  type ResolvedTool,
+  type FunctionTools,
+  type ToolDiagnostic,
+  type ToolsResolveResult,
+} from "./agent-compile/tools-resolver";
+export { existsOnPath, mcpServerRegistered } from "./agent-compile/tool-presence";

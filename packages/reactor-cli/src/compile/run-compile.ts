@@ -25,6 +25,7 @@ import type {
   ContractImage,
   PersistedCost,
   PersistedPostcondition,
+  ResolvedToolRecord,
   SerializableCompileIR,
 } from './ir-cache';
 import { contractSetFingerprint } from './ir-cache';
@@ -85,6 +86,12 @@ export interface CompileRunOptions {
   readonly providerPlan?: import('../model/provider-plan').ProviderPlan;
   /** The resolved API key for {@link providerPlan}. Required when it is set. */
   readonly apiKey?: string;
+  /**
+   * Resolved declared `### Tools` per topology node, computed DETERMINISTICALLY
+   * by the command (keyless, exec-free) before the sessions run. Threaded through
+   * so it lands in the persisted compile IR (`tools.json`). Absent ⇒ none declared.
+   */
+  readonly resolvedTools?: Readonly<Record<string, readonly ResolvedToolRecord[]>>;
 }
 
 /** Per-step provider seam for the offline gate (each step's schema differs). */
@@ -233,6 +240,7 @@ export async function runCompile(options: CompileRunOptions): Promise<CompileRun
     perNodeSpec: perNodeSpec as SerializableCompileIR['perNodeSpec'],
     postconditions,
     contractFingerprints,
+    ...(options.resolvedTools !== undefined ? { resolvedTools: options.resolvedTools } : {}),
     manifest: {
       contract_set_fingerprint: setFingerprint,
       sdk_version: options.sdkVersion,
