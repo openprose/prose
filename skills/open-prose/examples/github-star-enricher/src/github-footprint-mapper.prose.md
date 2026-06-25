@@ -1,6 +1,7 @@
 ---
 name: github-footprint-mapper
 kind: responsibility
+version: 0.15.0
 ---
 
 # GitHub Footprint Mapper

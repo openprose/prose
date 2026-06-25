@@ -1,6 +1,7 @@
 ---
 name: auto-pocock
 kind: function
+version: 0.15.0
 ---
 
 # Auto-Pocock

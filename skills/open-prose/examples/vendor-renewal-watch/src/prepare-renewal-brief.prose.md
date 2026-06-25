@@ -1,6 +1,7 @@
 ---
 name: prepare-renewal-brief
 kind: responsibility
+version: 0.15.0
 id: 067NC4KG11RN54TMANB5EP2SBA
 ---
 

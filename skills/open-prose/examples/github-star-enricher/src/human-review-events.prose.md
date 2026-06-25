@@ -1,6 +1,7 @@
 ---
 name: human-review-events
 kind: gateway
+version: 0.15.0
 ---
 
 # Human Review Events

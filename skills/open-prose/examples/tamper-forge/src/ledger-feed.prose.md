@@ -1,6 +1,7 @@
 ---
 name: ledger-feed
 kind: gateway
+version: 0.15.0
 ---
 
 ### Goal

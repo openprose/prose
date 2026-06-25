@@ -1,6 +1,7 @@
 ---
 name: opportunity-register
 kind: responsibility
+version: 0.15.0
 ---
 
 # Opportunity Register

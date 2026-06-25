@@ -1,6 +1,7 @@
 ---
 name: planning-corpus
 kind: gateway
+version: 0.15.0
 ---
 
 # Planning Corpus

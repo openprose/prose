@@ -1,6 +1,7 @@
 ---
 name: workstream-index
 kind: responsibility
+version: 0.15.0
 ---
 
 # Workstream Index

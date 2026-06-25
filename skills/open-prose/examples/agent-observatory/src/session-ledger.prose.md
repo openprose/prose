@@ -1,6 +1,7 @@
 ---
 name: session-ledger
 kind: responsibility
+version: 0.15.0
 ---
 
 # Session Ledger

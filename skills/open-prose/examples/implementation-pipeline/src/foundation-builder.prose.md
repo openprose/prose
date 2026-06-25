@@ -1,6 +1,7 @@
 ---
 name: foundation-builder
 kind: responsibility
+version: 0.15.0
 ---
 
 # Foundation Builder

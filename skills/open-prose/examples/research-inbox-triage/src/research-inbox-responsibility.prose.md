@@ -1,6 +1,7 @@
 ---
 name: research-inbox-responsibility
 kind: responsibility
+version: 0.15.0
 id: 067NC4KG15XNS7AYBXG62RK3CG
 ---
 

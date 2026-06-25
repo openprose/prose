@@ -1,6 +1,7 @@
 ---
 name: alert-projection
 kind: responsibility
+version: 0.15.0
 ---
 
 # Alert Projection

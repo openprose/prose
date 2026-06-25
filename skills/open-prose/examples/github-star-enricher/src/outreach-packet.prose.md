@@ -1,6 +1,7 @@
 ---
 name: outreach-packet
 kind: responsibility
+version: 0.15.0
 ---
 
 # Outreach Packet

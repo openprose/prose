@@ -1,6 +1,7 @@
 ---
 name: enrich-stargazer
 kind: function
+version: 0.15.0
 ---
 
 # Enrich Stargazer

@@ -1,6 +1,7 @@
 ---
 name: viewport-masker
 kind: responsibility
+version: 0.15.0
 ---
 
 ### Goal

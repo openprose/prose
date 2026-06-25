@@ -1,6 +1,7 @@
 ---
 name: normalize-performance-signals
 kind: function
+version: 0.15.0
 ---
 
 # Normalize Performance Signals

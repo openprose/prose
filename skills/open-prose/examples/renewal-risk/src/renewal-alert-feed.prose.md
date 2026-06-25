@@ -1,6 +1,7 @@
 ---
 name: renewal-alert-feed
 kind: responsibility
+version: 0.15.0
 ---
 
 # Renewal Alert Feed

@@ -1,6 +1,7 @@
 ---
 name: json-verifier
 kind: function
+version: 0.15.0
 ---
 
 # JSON Verifier

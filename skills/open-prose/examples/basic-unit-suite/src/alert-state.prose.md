@@ -1,6 +1,7 @@
 ---
 name: alert-state
 kind: responsibility
+version: 0.15.0
 ---
 
 # Alert State

@@ -1,6 +1,7 @@
 ---
 name: implementation-work-plan
 kind: responsibility
+version: 0.15.0
 ---
 
 # Implementation Work Plan

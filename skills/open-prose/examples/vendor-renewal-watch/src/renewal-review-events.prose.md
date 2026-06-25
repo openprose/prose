@@ -1,6 +1,7 @@
 ---
 name: renewal-review-events
 kind: gateway
+version: 0.15.0
 ---
 
 # Renewal Review Events

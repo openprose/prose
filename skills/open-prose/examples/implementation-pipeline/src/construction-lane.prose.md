@@ -1,6 +1,7 @@
 ---
 name: construction-lane
 kind: responsibility
+version: 0.15.0
 ---
 
 # Construction Lane

@@ -1,6 +1,7 @@
 ---
 name: theme-tagger
 kind: responsibility
+version: 0.15.0
 ---
 
 # Theme Tagger

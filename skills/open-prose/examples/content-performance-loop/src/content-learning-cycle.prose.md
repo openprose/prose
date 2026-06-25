@@ -1,6 +1,7 @@
 ---
 name: content-learning-cycle
 kind: responsibility
+version: 0.15.0
 id: 067NC4KG0DZJ18924CJ2A9H750
 ---
 

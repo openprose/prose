@@ -1,6 +1,7 @@
 ---
 name: sub-synthesis
 kind: responsibility
+version: 0.15.0
 ---
 
 # Sub-Synthesis (an interior node of the research tree)

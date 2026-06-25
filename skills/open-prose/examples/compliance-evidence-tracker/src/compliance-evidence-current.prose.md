@@ -1,6 +1,7 @@
 ---
 name: compliance-evidence-current
 kind: responsibility
+version: 0.15.0
 id: 067NC4KG0HWJNASC5MQ2YC1H68
 ---
 

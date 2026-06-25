@@ -1,6 +1,7 @@
 ---
 name: oblique-ledger
 kind: responsibility
+version: 0.15.0
 ---
 
 # Oblique Thread Ledger

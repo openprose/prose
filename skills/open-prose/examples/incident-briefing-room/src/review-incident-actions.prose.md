@@ -1,6 +1,7 @@
 ---
 name: review-incident-actions
 kind: function
+version: 0.15.0
 ---
 
 # Review Incident Actions

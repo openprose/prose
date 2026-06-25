@@ -1,6 +1,7 @@
 ---
 name: render-digest-line
 kind: function
+version: 0.15.0
 ---
 
 # Render Digest Line

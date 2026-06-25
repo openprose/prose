@@ -1,6 +1,7 @@
 ---
 name: decide-plan
 kind: function
+version: 0.15.0
 ---
 
 # Decide Plan

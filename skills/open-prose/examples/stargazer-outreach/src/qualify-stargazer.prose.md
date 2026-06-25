@@ -1,6 +1,7 @@
 ---
 name: qualify-stargazer
 kind: function
+version: 0.15.0
 ---
 
 # Qualify Stargazer

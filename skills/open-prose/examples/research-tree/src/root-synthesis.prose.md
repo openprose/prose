@@ -1,6 +1,7 @@
 ---
 name: root-synthesis
 kind: responsibility
+version: 0.15.0
 ---
 
 # Root Synthesis (the apex of the research tree)

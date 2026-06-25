@@ -1,6 +1,7 @@
 ---
 name: critic-strong
 kind: responsibility
+version: 0.15.0
 ---
 
 ### Goal

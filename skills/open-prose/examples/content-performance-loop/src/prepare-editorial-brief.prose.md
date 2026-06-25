@@ -1,6 +1,7 @@
 ---
 name: prepare-editorial-brief
 kind: function
+version: 0.15.0
 ---
 
 # Prepare Editorial Brief

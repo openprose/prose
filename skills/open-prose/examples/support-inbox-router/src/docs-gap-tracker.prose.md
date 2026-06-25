@@ -1,6 +1,7 @@
 ---
 name: docs-gap-tracker
 kind: responsibility
+version: 0.15.0
 ---
 
 # Docs Gap Tracker

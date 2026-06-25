@@ -26,7 +26,7 @@ up the new bytes. No sync script.
 
 # OpenProse — Agent Onboarding
 
-> Stop scripting agents. Declare them.
+> Declare outcomes. Not instructions.
 
 ## Install
 

@@ -1,6 +1,7 @@
 ---
 name: customer-risk-review
 kind: gateway
+version: 0.15.0
 ---
 
 # Customer Risk Review

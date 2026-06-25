@@ -1,6 +1,7 @@
 ---
 name: integration-builder
 kind: responsibility
+version: 0.15.0
 ---
 
 # Integration Builder

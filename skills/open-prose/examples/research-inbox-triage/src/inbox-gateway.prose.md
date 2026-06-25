@@ -1,6 +1,7 @@
 ---
 name: inbox-gateway
 kind: gateway
+version: 0.15.0
 ---
 
 # Inbox Gateway

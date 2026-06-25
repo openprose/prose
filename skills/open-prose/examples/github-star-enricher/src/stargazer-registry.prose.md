@@ -1,6 +1,7 @@
 ---
 name: stargazer-registry
 kind: responsibility
+version: 0.15.0
 ---
 
 # Stargazer Registry

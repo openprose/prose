@@ -1,6 +1,7 @@
 ---
 name: format-alert-copy
 kind: function
+version: 0.15.0
 ---
 
 # Format Alert Copy

@@ -1,6 +1,7 @@
 ---
 name: triage-and-pick
 kind: function
+version: 0.15.0
 ---
 
 # Triage And Pick

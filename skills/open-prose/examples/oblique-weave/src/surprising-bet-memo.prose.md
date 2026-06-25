@@ -1,6 +1,7 @@
 ---
 name: surprising-bet
 kind: responsibility
+version: 0.15.0
 ---
 
 # Surprising Bet Memo

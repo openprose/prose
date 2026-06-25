@@ -1,6 +1,7 @@
 ---
 name: relevance-filter
 kind: responsibility
+version: 0.15.0
 ---
 
 # Relevance Filter

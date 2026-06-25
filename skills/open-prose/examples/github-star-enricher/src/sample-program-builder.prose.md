@@ -1,6 +1,7 @@
 ---
 name: sample-program-builder
 kind: responsibility
+version: 0.15.0
 ---
 
 # Sample Program Builder

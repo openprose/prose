@@ -1,6 +1,7 @@
 ---
 name: intent-safety-scorer
 kind: responsibility
+version: 0.15.0
 ---
 
 # Intent & Safety Scorer

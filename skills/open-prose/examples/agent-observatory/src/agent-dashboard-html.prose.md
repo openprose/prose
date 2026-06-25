@@ -1,6 +1,7 @@
 ---
 name: agent-dashboard-html
 kind: responsibility
+version: 0.15.0
 ---
 
 # Agent Dashboard (HTML)

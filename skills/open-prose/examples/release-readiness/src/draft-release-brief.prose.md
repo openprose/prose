@@ -1,6 +1,7 @@
 ---
 name: draft-release-brief
 kind: function
+version: 0.15.0
 ---
 
 # Draft Release Brief
