@@ -1,6 +1,7 @@
 ---
 name: company-repo-checker
 kind: function
+version: 0.15.0
 ---
 
 
@@ -210,4 +211,3 @@ return report
 - list failures before counts
 - preserve exact file paths and contract names from inspector outputs
 - do not downgrade hard failures to warnings
-```
