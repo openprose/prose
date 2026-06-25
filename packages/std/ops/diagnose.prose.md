@@ -1,6 +1,7 @@
 ---
 name: diagnose
 kind: function
+version: 0.15.0
 ---
 
 ### Parameters

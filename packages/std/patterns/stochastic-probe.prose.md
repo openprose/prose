@@ -1,6 +1,7 @@
 ---
 name: stochastic-probe
 kind: pattern
+version: 0.15.0
 ---
 
 # Stochastic Probe

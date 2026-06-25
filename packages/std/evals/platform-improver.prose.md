@@ -1,6 +1,7 @@
 ---
 name: platform-improver
 kind: function
+version: 0.15.0
 ---
 
 # Platform Improver

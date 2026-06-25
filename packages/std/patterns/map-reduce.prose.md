@@ -1,6 +1,7 @@
 ---
 name: map-reduce
 kind: pattern
+version: 0.15.0
 ---
 
 # Map-Reduce

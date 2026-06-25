@@ -1,6 +1,7 @@
 ---
 name: retry-with-learning
 kind: pattern
+version: 0.15.0
 ---
 
 # Retry With Learning

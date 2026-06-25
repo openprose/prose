@@ -1,6 +1,7 @@
 ---
 name: smoke-single-service
 kind: service
+version: 0.15.0
 ---
 
 ### Description

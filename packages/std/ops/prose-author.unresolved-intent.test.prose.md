@@ -1,6 +1,7 @@
 ---
 name: test-prose-author-unresolved-intent
 kind: test
+version: 0.15.0
 subject: prose-author
 ---
 

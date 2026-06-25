@@ -1,6 +1,7 @@
 ---
 name: researcher
 kind: function
+version: 0.15.0
 ---
 
 # Researcher

@@ -1,6 +1,7 @@
 ---
 name: attention-queue
 kind: responsibility
+version: 0.15.0
 ---
 
 ### Goal

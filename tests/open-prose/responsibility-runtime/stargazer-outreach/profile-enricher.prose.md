@@ -1,6 +1,7 @@
 ---
 name: profile-enricher
 kind: service
+version: 0.15.0
 ---
 
 ### Requires

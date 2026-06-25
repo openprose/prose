@@ -1,6 +1,7 @@
 ---
 name: pipeline
 kind: pattern
+version: 0.15.0
 ---
 
 # Pipeline

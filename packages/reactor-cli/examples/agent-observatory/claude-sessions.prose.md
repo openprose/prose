@@ -1,6 +1,7 @@
 ---
 name: claude-sessions
 kind: gateway
+version: 0.15.0
 ---
 
 ### Goal

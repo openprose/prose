@@ -1,6 +1,7 @@
 ---
 name: research-source
 kind: responsibility
+version: 0.15.0
 id: 067NC4KG05XGS38E1W8124GK3A
 ---
 

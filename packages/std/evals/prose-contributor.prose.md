@@ -1,6 +1,7 @@
 ---
 name: prose-contributor
 kind: function
+version: 0.15.0
 ---
 
 # Prose Contributor

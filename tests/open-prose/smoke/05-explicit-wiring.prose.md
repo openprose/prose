@@ -1,6 +1,7 @@
 ---
 name: smoke-explicit-wiring
 kind: system
+version: 0.15.0
 ---
 
 ### Services

@@ -1,6 +1,7 @@
 ---
 name: weekly-brief
 kind: responsibility
+version: 0.15.0
 ---
 
 ### Goal

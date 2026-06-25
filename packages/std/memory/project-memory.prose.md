@@ -1,6 +1,7 @@
 ---
 name: project-memory
 kind: function
+version: 0.15.0
 ---
 
 ### Runtime

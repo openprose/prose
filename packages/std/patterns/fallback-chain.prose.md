@@ -1,6 +1,7 @@
 ---
 name: fallback-chain
 kind: pattern
+version: 0.15.0
 ---
 
 # Fallback Chain

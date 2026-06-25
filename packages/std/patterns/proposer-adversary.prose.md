@@ -1,6 +1,7 @@
 ---
 name: proposer-adversary
 kind: pattern
+version: 0.15.0
 ---
 
 # Proposer-Adversary
