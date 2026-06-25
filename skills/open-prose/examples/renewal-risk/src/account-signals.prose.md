@@ -1,6 +1,7 @@
 ---
 name: account-signals
 kind: gateway
+version: 0.15.0
 ---
 
 # Account Signals

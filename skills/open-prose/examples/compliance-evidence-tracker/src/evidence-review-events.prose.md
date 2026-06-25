@@ -1,6 +1,7 @@
 ---
 name: evidence-review-events
 kind: gateway
+version: 0.15.0
 ---
 
 # Evidence Review Events

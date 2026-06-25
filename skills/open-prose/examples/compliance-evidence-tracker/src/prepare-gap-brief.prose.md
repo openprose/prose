@@ -1,6 +1,7 @@
 ---
 name: prepare-gap-brief
 kind: function
+version: 0.15.0
 ---
 
 # Prepare Gap Brief

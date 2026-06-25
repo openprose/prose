@@ -1,6 +1,7 @@
 ---
 name: weave-config
 kind: gateway
+version: 0.15.0
 ---
 
 # Weave Config

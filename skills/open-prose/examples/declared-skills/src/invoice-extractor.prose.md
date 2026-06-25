@@ -1,6 +1,7 @@
 ---
 name: invoice-extractor
 kind: function
+version: 0.15.0
 ---
 
 # Invoice Extractor

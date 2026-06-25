@@ -1,6 +1,7 @@
 ---
 name: produce-issues
 kind: function
+version: 0.15.0
 ---
 
 # Produce Issues

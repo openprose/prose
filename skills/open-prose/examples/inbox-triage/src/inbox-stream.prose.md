@@ -1,6 +1,7 @@
 ---
 name: inbox-stream
 kind: gateway
+version: 0.15.0
 ---
 
 # Inbox Stream

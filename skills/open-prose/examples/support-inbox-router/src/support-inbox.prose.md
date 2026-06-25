@@ -1,6 +1,7 @@
 ---
 name: support-inbox
 kind: gateway
+version: 0.15.0
 ---
 
 # Support Inbox

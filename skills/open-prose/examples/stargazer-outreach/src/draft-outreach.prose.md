@@ -1,6 +1,7 @@
 ---
 name: draft-outreach
 kind: function
+version: 0.15.0
 ---
 
 # Draft Outreach

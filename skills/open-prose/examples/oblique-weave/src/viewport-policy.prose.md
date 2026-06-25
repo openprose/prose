@@ -1,6 +1,7 @@
 ---
 name: viewport-policy
 kind: responsibility
+version: 0.15.0
 ---
 
 # Viewport Policy

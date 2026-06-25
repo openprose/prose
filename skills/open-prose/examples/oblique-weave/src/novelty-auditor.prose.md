@@ -1,6 +1,7 @@
 ---
 name: novelty-auditor
 kind: responsibility
+version: 0.15.0
 ---
 
 # Novelty Auditor

@@ -1,6 +1,7 @@
 ---
 name: topic-clusterer
 kind: function
+version: 0.15.0
 ---
 
 # Topic Clusterer

@@ -1,5 +1,7 @@
 ---
+name: workspace
 kind: gateway
+version: 0.15.0
 id: gateway.workspace
 ---
 

@@ -1,6 +1,7 @@
 ---
 name: draft-incident-brief
 kind: function
+version: 0.15.0
 ---
 
 # Draft Incident Brief

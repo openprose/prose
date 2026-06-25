@@ -1,6 +1,7 @@
 ---
 name: finding
 kind: responsibility
+version: 0.15.0
 ---
 
 # Finding (a leaf of the research tree)

@@ -1,6 +1,7 @@
 ---
 name: session-to-prose
 kind: responsibility
+version: 0.15.0
 ---
 
 # Session → Prose

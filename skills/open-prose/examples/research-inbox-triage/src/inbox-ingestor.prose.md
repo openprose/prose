@@ -1,6 +1,7 @@
 ---
 name: inbox-ingestor
 kind: function
+version: 0.15.0
 ---
 
 # Inbox Ingestor

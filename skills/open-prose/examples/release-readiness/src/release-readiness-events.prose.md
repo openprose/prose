@@ -1,6 +1,7 @@
 ---
 name: release-readiness-events
 kind: gateway
+version: 0.15.0
 ---
 
 # Release Readiness Events

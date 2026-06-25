@@ -1,6 +1,7 @@
 ---
 name: count-summary
 kind: responsibility
+version: 0.15.0
 ---
 
 # Count Summary

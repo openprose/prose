@@ -1,6 +1,7 @@
 ---
 name: runtime-watch
 kind: gateway
+version: 0.15.0
 ---
 
 # Runtime Watch

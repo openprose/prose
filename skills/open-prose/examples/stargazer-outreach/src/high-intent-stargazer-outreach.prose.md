@@ -1,6 +1,7 @@
 ---
 name: high-intent-stargazer-outreach
 kind: responsibility
+version: 0.15.0
 id: 067NC4KG19TPD9V8D5N6PV3DDR
 ---
 

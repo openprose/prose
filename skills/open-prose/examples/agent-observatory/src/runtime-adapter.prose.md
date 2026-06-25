@@ -1,6 +1,7 @@
 ---
 name: runtime-adapter
 kind: responsibility
+version: 0.15.0
 ---
 
 # Runtime Adapter [runtime]

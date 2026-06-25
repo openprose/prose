@@ -1,6 +1,7 @@
 ---
 name: voice-of-customer
 kind: responsibility
+version: 0.15.0
 ---
 
 # Voice of Customer

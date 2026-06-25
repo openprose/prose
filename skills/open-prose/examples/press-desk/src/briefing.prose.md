@@ -1,6 +1,7 @@
 ---
 name: briefing
 kind: responsibility
+version: 0.15.0
 ---
 
 # Leadership Briefing

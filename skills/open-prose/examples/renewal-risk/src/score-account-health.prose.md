@@ -1,6 +1,7 @@
 ---
 name: score-account-health
 kind: function
+version: 0.15.0
 ---
 
 # Score Account Health

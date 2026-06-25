@@ -1,6 +1,7 @@
 ---
 name: sources-gateway
 kind: gateway
+version: 0.15.0
 ---
 
 # Sources Gateway

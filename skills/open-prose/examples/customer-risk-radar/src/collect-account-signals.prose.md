@@ -1,6 +1,7 @@
 ---
 name: collect-account-signals
 kind: function
+version: 0.15.0
 ---
 
 # Collect Account Signals

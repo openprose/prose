@@ -1,6 +1,7 @@
 ---
 name: collect-control-scope
 kind: function
+version: 0.15.0
 ---
 
 # Collect Control Scope

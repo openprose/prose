@@ -1,6 +1,7 @@
 ---
 name: collect-incident-signals
 kind: function
+version: 0.15.0
 ---
 
 # Collect Incident Signals

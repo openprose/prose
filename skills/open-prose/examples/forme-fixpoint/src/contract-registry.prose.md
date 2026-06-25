@@ -1,5 +1,7 @@
 ---
+name: contract-registry
 kind: responsibility
+version: 0.15.0
 id: contract-registry
 ---
 

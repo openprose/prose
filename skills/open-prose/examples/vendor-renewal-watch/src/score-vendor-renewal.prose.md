@@ -1,6 +1,7 @@
 ---
 name: score-vendor-renewal
 kind: function
+version: 0.15.0
 ---
 
 # Score Vendor Renewal

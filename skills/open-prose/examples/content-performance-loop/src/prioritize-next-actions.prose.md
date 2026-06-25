@@ -1,6 +1,7 @@
 ---
 name: prioritize-next-actions
 kind: function
+version: 0.15.0
 ---
 
 # Prioritize Next Actions

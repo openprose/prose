@@ -1,5 +1,7 @@
 ---
+name: schedule-plan
 kind: responsibility
+version: 0.15.0
 id: schedule-plan
 ---
 

@@ -1,6 +1,7 @@
 ---
 name: company-resolver
 kind: responsibility
+version: 0.15.0
 ---
 
 # Company Resolver

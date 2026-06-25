@@ -1,6 +1,7 @@
 ---
 name: weekly-pulse
 kind: responsibility
+version: 0.15.0
 ---
 
 # Weekly Pulse

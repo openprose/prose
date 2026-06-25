@@ -1,6 +1,7 @@
 ---
 name: diagnose-content-lessons
 kind: function
+version: 0.15.0
 ---
 
 # Diagnose Content Lessons

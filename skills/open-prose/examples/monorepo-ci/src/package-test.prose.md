@@ -1,5 +1,7 @@
 ---
+name: package-test
 kind: responsibility
+version: 0.15.0
 id: test.pkg-api
 ---
 

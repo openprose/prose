@@ -1,6 +1,7 @@
 ---
 name: grill-plan
 kind: function
+version: 0.15.0
 ---
 
 # Grill Plan

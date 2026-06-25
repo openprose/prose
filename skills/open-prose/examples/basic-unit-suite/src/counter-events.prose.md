@@ -1,6 +1,7 @@
 ---
 name: counter-events
 kind: gateway
+version: 0.15.0
 ---
 
 # Counter Events

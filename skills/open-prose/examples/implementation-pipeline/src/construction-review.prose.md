@@ -1,6 +1,7 @@
 ---
 name: construction-review
 kind: responsibility
+version: 0.15.0
 ---
 
 # Construction Review

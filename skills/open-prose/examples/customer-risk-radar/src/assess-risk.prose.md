@@ -1,6 +1,7 @@
 ---
 name: assess-risk
 kind: function
+version: 0.15.0
 ---
 
 # Assess Risk

@@ -1,6 +1,7 @@
 ---
 name: session-summary
 kind: responsibility
+version: 0.15.0
 ---
 
 # Session Summary [session]

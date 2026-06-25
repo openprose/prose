@@ -1,6 +1,7 @@
 ---
 name: incident-channel-current
 kind: responsibility
+version: 0.15.0
 id: 067NC4KG0NSK9D9P6WW3JEHV7G
 ---
 

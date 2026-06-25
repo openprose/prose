@@ -1,6 +1,7 @@
 ---
 name: bug-board
 kind: responsibility
+version: 0.15.0
 ---
 
 # Bug Board

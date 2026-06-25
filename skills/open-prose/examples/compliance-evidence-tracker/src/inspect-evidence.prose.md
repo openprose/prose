@@ -1,6 +1,7 @@
 ---
 name: inspect-evidence
 kind: function
+version: 0.15.0
 ---
 
 # Inspect Evidence

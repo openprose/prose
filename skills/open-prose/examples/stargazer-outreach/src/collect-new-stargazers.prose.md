@@ -1,6 +1,7 @@
 ---
 name: collect-new-stargazers
 kind: function
+version: 0.15.0
 ---
 
 # Collect New Stargazers

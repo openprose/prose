@@ -1,6 +1,7 @@
 ---
 name: concept-clusterer
 kind: responsibility
+version: 0.15.0
 ---
 
 # Concept Clusterer

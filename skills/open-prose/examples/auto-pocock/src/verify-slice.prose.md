@@ -1,6 +1,7 @@
 ---
 name: verify-slice
 kind: function
+version: 0.15.0
 ---
 
 # Verify Slice

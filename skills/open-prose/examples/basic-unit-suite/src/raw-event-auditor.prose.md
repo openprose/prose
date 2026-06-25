@@ -1,6 +1,7 @@
 ---
 name: raw-event-auditor
 kind: responsibility
+version: 0.15.0
 ---
 
 # Raw Event Auditor
