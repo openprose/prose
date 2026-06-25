@@ -1,6 +1,7 @@
 ---
 name: test-prose-author-shape-root-guidance
 kind: test
+version: 0.15.0
 subject: prose-author
 ---
 

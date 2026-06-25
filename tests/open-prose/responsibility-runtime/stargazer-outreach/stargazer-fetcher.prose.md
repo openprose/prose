@@ -1,6 +1,7 @@
 ---
 name: stargazer-fetcher
 kind: service
+version: 0.15.0
 ---
 
 ### Requires

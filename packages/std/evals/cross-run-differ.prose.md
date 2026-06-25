@@ -1,6 +1,7 @@
 ---
 name: cross-run-differ
 kind: function
+version: 0.15.0
 ---
 
 # Cross-Run Differ

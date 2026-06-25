@@ -1,6 +1,7 @@
 ---
 name: wire
 kind: function
+version: 0.15.0
 ---
 
 Run Forme wiring to produce a manifest. This function implements the Forme wiring layer's

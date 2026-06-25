@@ -1,6 +1,7 @@
 ---
 name: contrastive-probe
 kind: pattern
+version: 0.15.0
 ---
 
 # Contrastive Probe

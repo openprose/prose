@@ -1,6 +1,7 @@
 ---
 name: agent-readiness.eval
 kind: test
+version: 0.15.0
 subject: agent-readiness
 tier: service
 contract_version: v1

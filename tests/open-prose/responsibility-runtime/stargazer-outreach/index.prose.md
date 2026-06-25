@@ -1,6 +1,7 @@
 ---
 name: stargazer-outreach
 kind: system
+version: 0.15.0
 ---
 
 # Stargazer Outreach

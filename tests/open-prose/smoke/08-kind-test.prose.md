@@ -1,6 +1,7 @@
 ---
 name: smoke-kind-test
 kind: test
+version: 0.15.0
 subject: smoke-caller-input
 ---
 

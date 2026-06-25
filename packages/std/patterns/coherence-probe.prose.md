@@ -1,6 +1,7 @@
 ---
 name: coherence-probe
 kind: pattern
+version: 0.15.0
 ---
 
 # Coherence Probe

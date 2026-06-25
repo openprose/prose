@@ -1,6 +1,7 @@
 ---
 name: company-repo-checker.eval
 kind: test
+version: 0.15.0
 subject: company-repo-checker
 tier: function
 contract_version: v1

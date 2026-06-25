@@ -1,6 +1,7 @@
 ---
 name: agent-readiness
 kind: function
+version: 0.15.0
 ---
 
 

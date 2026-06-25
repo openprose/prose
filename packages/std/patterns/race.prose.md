@@ -1,6 +1,7 @@
 ---
 name: race
 kind: pattern
+version: 0.15.0
 ---
 
 # Race

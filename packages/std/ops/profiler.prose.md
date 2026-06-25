@@ -1,6 +1,7 @@
 ---
 name: profiler
 kind: function
+version: 0.15.0
 ---
 
 ### Goal

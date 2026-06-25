@@ -1,6 +1,7 @@
 ---
 name: smoke-errors-strategies
 kind: service
+version: 0.15.0
 ---
 
 ### Description

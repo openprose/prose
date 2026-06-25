@@ -1,5 +1,6 @@
 ---
 kind: gateway
+version: 0.15.0
 name: stargazer-events
 ---
 

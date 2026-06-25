@@ -1,6 +1,7 @@
 ---
 name: assumption-miner
 kind: pattern
+version: 0.15.0
 ---
 
 # Assumption Miner

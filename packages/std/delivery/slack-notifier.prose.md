@@ -1,6 +1,7 @@
 ---
 name: slack-notifier
 kind: function
+version: 0.15.0
 ---
 
 ### Shape

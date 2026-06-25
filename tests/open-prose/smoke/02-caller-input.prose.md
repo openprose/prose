@@ -1,6 +1,7 @@
 ---
 name: smoke-caller-input
 kind: service
+version: 0.15.0
 ---
 
 ### Description

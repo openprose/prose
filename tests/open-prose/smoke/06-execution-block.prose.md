@@ -1,6 +1,7 @@
 ---
 name: smoke-execution-block
 kind: system
+version: 0.15.0
 ---
 
 ### Services

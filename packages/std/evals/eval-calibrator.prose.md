@@ -1,6 +1,7 @@
 ---
 name: eval-calibrator
 kind: function
+version: 0.15.0
 ---
 
 # Eval Calibrator

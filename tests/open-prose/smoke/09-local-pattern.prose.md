@@ -1,6 +1,7 @@
 ---
 name: smoke-local-pattern
 kind: system
+version: 0.15.0
 ---
 
 ### Services

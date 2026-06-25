@@ -1,6 +1,7 @@
 ---
 name: session-signal
 kind: responsibility
+version: 0.15.0
 ---
 
 ### Goal

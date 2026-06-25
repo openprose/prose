@@ -1,6 +1,7 @@
 ---
 name: blind-review
 kind: pattern
+version: 0.15.0
 ---
 
 # Blind Review
