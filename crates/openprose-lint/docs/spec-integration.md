@@ -55,6 +55,9 @@ The current CLI default remains `compat` to preserve the existing smoke-test wor
 4. Refresh the packaged snapshot with
    `bash crates/openprose-lint/scripts/sync-spec-snapshot.sh --sync`, then keep
    `bash crates/openprose-lint/scripts/sync-spec-snapshot.sh --check` green.
+   Generated example `dist/` directories are intentionally excluded from the
+   snapshot because they can be created during install/test runs and are not
+   part of the authored language surface.
 5. For package bundles, run `specs verify` in direct manifest mode with every
    declared package's `package.json`; package versions are provenance labels,
    while file hashes and the source identity are the contract.
