@@ -1,0 +1,89 @@
+{
+  "schema_version": "0.1.0",
+  "adapter_id": "hermes-v1-md",
+  "subject": "Hermes Agent deterministic OpenProse initializer for v1 markdown programs",
+  "runtime_manifest": "../runtime-subjects/hermes-host-mediated-self-declared.json",
+  "source": "openprose/prose",
+  "sourceUrl": "https://github.com/openprose/prose.git",
+  "spec_ref": "openprose/prose@HEAD",
+  "skill_root": "skills/open-prose",
+  "supported_program_formats": [
+    "v1-single-file",
+    "v1-multi-service"
+  ],
+  "phases": {
+    "wire-v1": {
+      "channels": [
+        {
+          "name": "initial-user-inline",
+          "role": "user",
+          "files": [
+            "guidance/system-prompt.md",
+            "forme.md"
+          ]
+        }
+      ],
+      "attachments": [
+        {
+          "kind": "program",
+          "channel": "initial-user-inline",
+          "label": "target_program"
+        }
+      ]
+    },
+    "execute-v1": {
+      "channels": [
+        {
+          "name": "initial-user-inline",
+          "role": "user",
+          "files": [
+            "guidance/system-prompt.md",
+            "prose.md",
+            "state/filesystem.md"
+          ]
+        }
+      ],
+      "attachments": [
+        {
+          "kind": "manifest",
+          "channel": "initial-user-inline",
+          "label": "wired_manifest"
+        }
+      ]
+    },
+    "subagent-v1": {
+      "channels": [
+        {
+          "name": "initial-user-inline",
+          "role": "user",
+          "files": [
+            "primitives/session.md"
+          ]
+        }
+      ],
+      "attachments": [
+        {
+          "kind": "service-definition",
+          "channel": "initial-user-inline",
+          "label": "service_definition"
+        },
+        {
+          "kind": "inputs",
+          "channel": "initial-user-inline",
+          "label": "input_bindings"
+        },
+        {
+          "kind": "workspace",
+          "channel": "initial-user-inline",
+          "label": "workspace_path"
+        },
+        {
+          "kind": "output-instructions",
+          "channel": "initial-user-inline",
+          "label": "output_contract"
+        }
+      ]
+    }
+  },
+  "notes": "Deterministic adapter contract for Hermes Agent CLI. `hermes chat --help` shows a single query channel plus toolset selection but no CLI flag for a separate system/developer prompt append, so the pinned OpenProse phase files are injected inline through the user query in this host-mediated adapted path. This manifest is not a claim of native Hermes runtime conformance."
+}

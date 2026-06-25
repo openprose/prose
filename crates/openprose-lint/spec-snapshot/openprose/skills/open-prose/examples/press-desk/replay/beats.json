@@ -1,0 +1,54 @@
+{
+  "scenario": "press-desk",
+  "title": "Inbound press inquiries become a live opportunity register — a high-stakes inquiry STOPS at a human gate, and the public view never leaks sender PII.",
+  "beats": [
+    {
+      "name": "cold-boot",
+      "park": 12,
+      "from": 0,
+      "to": 12,
+      "holdMs": 2800,
+      "caption": "the press desk lights up · gateway → relevance filters → opportunity register → briefing"
+    },
+    {
+      "name": "quiet",
+      "park": 24,
+      "from": 13,
+      "to": 24,
+      "holdMs": 2400,
+      "caption": "dim skip pulses · nothing changed · cost flat near zero"
+    },
+    {
+      "name": "pr-blast-dark",
+      "park": 27,
+      "from": 25,
+      "to": 27,
+      "holdMs": 3400,
+      "caption": "HERO: a PR blast lands · its relevance filter marks it irrelevant · the `qualified` facet stays NULL · the register never wakes (the dark lane)"
+    },
+    {
+      "name": "human-gate",
+      "park": 33,
+      "from": 28,
+      "to": 33,
+      "holdMs": 4200,
+      "caption": "HERO: a HIGH-importance partnership inquiry · the register updates AND the briefing stops at needs_human · auto_reply:false · a human must own the reply"
+    },
+    {
+      "name": "self-tick",
+      "park": 35,
+      "from": 34,
+      "to": 35,
+      "holdMs": 2600,
+      "caption": "self-tick audit floor · the briefing re-checks itself · no edges, no cost"
+    },
+    {
+      "name": "final-quiet",
+      "park": 47,
+      "from": 36,
+      "to": 47,
+      "holdMs": 2600,
+      "caption": "it goes quiet again · the gate holds · the public view carries kind + ask, never the sender · cost back to flat"
+    }
+  ]
+}

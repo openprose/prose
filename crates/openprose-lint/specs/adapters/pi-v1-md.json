@@ -1,0 +1,100 @@
+{
+  "schema_version": "0.1.0",
+  "adapter_id": "pi-v1-md",
+  "subject": "pi deterministic OpenProse initializer for v1 markdown programs",
+  "source": "openprose/prose",
+  "sourceUrl": "https://github.com/openprose/prose.git",
+  "spec_ref": "openprose/prose@HEAD",
+  "skill_root": "skills/open-prose",
+  "supported_program_formats": [
+    "v1-single-file",
+    "v1-multi-service"
+  ],
+  "phases": {
+    "wire-v1": {
+      "channels": [
+        {
+          "name": "system-append",
+          "role": "system",
+          "files": [
+            "guidance/system-prompt.md"
+          ]
+        },
+        {
+          "name": "initial-user",
+          "role": "user",
+          "files": [
+            "forme.md"
+          ]
+        }
+      ],
+      "attachments": [
+        {
+          "kind": "program",
+          "channel": "initial-user",
+          "label": "target_program"
+        }
+      ]
+    },
+    "execute-v1": {
+      "channels": [
+        {
+          "name": "system-append",
+          "role": "system",
+          "files": [
+            "guidance/system-prompt.md"
+          ]
+        },
+        {
+          "name": "initial-user",
+          "role": "user",
+          "files": [
+            "prose.md",
+            "state/filesystem.md"
+          ]
+        }
+      ],
+      "attachments": [
+        {
+          "kind": "manifest",
+          "channel": "initial-user",
+          "label": "wired_manifest"
+        }
+      ]
+    },
+    "subagent-v1": {
+      "channels": [
+        {
+          "name": "initial-user",
+          "role": "user",
+          "files": [
+            "primitives/session.md"
+          ]
+        }
+      ],
+      "attachments": [
+        {
+          "kind": "service-definition",
+          "channel": "initial-user",
+          "label": "service_definition"
+        },
+        {
+          "kind": "inputs",
+          "channel": "initial-user",
+          "label": "input_bindings"
+        },
+        {
+          "kind": "workspace",
+          "channel": "initial-user",
+          "label": "workspace_path"
+        },
+        {
+          "kind": "output-instructions",
+          "channel": "initial-user",
+          "label": "output_contract"
+        }
+      ]
+    }
+  },
+  "notes": "Deterministic adapter contract for Pi. The coding agent still embodies the VM, but initialization is pinned to explicit OpenProse files, channels, and attachments."
+}

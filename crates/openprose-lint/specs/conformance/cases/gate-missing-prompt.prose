@@ -1,0 +1,2 @@
+gate deploy:
+  allow: ["user"]

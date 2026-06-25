@@ -1,0 +1,100 @@
+{
+  "nodes": [
+    {
+      "node": "gateway.feedback-inbox",
+      "contract_fingerprint": "sha256:d648771049daf494e8a4a032461c16f9fe8c5c4f86b3de6ad3e13015ac73f624",
+      "wake_source": "external"
+    },
+    {
+      "node": "responsibility.theme-tagger-f1",
+      "contract_fingerprint": "sha256:6e603223b40f109008de4a504c7663e0c073603550fd3295c39330f32a295912",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.theme-tagger-f2",
+      "contract_fingerprint": "sha256:0c1ec5d5b382b1ff8cfcfafbec1cf3b06b5ee2a14e6b4a83f67e4146ba560049",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.theme-tagger-f3",
+      "contract_fingerprint": "sha256:c4f7420faaf942a588e79092fc0065407529b19d535c0117d51a2565d4f839fe",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.theme-tagger-f4",
+      "contract_fingerprint": "sha256:7396dcef8275482bcb885377ca6c8dde2971ed01d84c2558e3172a3e6b42653e",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.voice-of-customer",
+      "contract_fingerprint": "sha256:ddc02c904c4c043a9746664f3192ed762490a996a073de68f27c10d9c0bc8266",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.weekly-pulse",
+      "contract_fingerprint": "sha256:d80373366e428cd22462f548d742947a4d4b0cd2c7d2965f86b94a7aed590e87",
+      "wake_source": "input"
+    }
+  ],
+  "edges": [
+    {
+      "subscriber": "gateway.feedback-inbox",
+      "producer": "ingress.feedback-feed",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.theme-tagger-f1",
+      "producer": "gateway.feedback-inbox",
+      "facet": "feedback:f1"
+    },
+    {
+      "subscriber": "responsibility.theme-tagger-f2",
+      "producer": "gateway.feedback-inbox",
+      "facet": "feedback:f2"
+    },
+    {
+      "subscriber": "responsibility.theme-tagger-f3",
+      "producer": "gateway.feedback-inbox",
+      "facet": "feedback:f3"
+    },
+    {
+      "subscriber": "responsibility.theme-tagger-f4",
+      "producer": "gateway.feedback-inbox",
+      "facet": "feedback:f4"
+    },
+    {
+      "subscriber": "responsibility.voice-of-customer",
+      "producer": "responsibility.theme-tagger-f1",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.voice-of-customer",
+      "producer": "responsibility.theme-tagger-f2",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.voice-of-customer",
+      "producer": "responsibility.theme-tagger-f3",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.voice-of-customer",
+      "producer": "responsibility.theme-tagger-f4",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.weekly-pulse",
+      "producer": "responsibility.voice-of-customer",
+      "facet": "rollup"
+    },
+    {
+      "subscriber": "responsibility.weekly-pulse",
+      "producer": "gateway.feedback-inbox",
+      "facet": "week"
+    }
+  ],
+  "entry_points": [
+    "gateway.feedback-inbox"
+  ],
+  "acyclic": true
+}

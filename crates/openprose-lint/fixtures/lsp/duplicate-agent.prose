@@ -1,0 +1,9 @@
+session "test"
+
+agent reviewer:
+  model: sonnet
+  prompt: "review code"
+
+agent reviewer:
+  model: opus
+  prompt: "also review code"

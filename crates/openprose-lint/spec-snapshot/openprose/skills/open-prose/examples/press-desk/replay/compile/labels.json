@@ -1,0 +1,11 @@
+{
+  "ingress.press-feed": "Press Feed",
+  "gateway.press-inbox": "Press Inbox",
+  "responsibility.relevance-filter-media1": "Relevance Filter [media]",
+  "responsibility.relevance-filter-partner1": "Relevance Filter [partnership]",
+  "responsibility.relevance-filter-speak1": "Relevance Filter [speaking]",
+  "responsibility.relevance-filter-blast1": "Relevance Filter [PR blast]",
+  "responsibility.relevance-filter-partner2": "Relevance Filter [partnership · HIGH]",
+  "responsibility.opportunity-register": "Opportunity Register",
+  "responsibility.briefing": "Leadership Briefing"
+}

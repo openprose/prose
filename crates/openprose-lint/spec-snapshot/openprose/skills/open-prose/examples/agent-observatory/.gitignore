@@ -1,0 +1,5 @@
+# Local runtime churn, not committed.
+/state/
+/runs/
+/dist/
+node_modules/

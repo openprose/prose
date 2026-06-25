@@ -74,6 +74,7 @@ Use these when deciding whether a change belongs:
 | Company-operation starter contracts | `packages/co/` | Opinionated company-as-prose building blocks |
 | Agent-facing routing and activation guidance | `skills/open-prose/SKILL.md`, `AGENTS.md` | Keep globally loaded guidance concise |
 | Reactor harness: SDK, `reactor` CLI, replay devtools | `packages/reactor*/` | The deterministic harness that compiles and runs Responsibilities; it does not replace the VM |
+| Deterministic linting, LSP diagnostics, source identity, and linter conformance fixtures | `crates/openprose-lint/` | Language changes and lint support should land together; keep policy in repo scripts, not workflow YAML |
 | Examples that teach a complete pattern | `skills/open-prose/examples/` | Include enough context for an agent to run or adapt them |
 | Public contribution/process guidance | `CONTRIBUTING.md` | Keep it public, practical, and aligned with the repo |
 
@@ -117,12 +118,33 @@ again in the future when the behavior regresses.
 | Reactor SDK or harness behavior | `pnpm --filter @openprose/reactor test` (offline: `REACTOR_OFFLINE=1`), or the narrow affected Vitest file |
 | Skill or doc behavior | `pnpm test:skill` |
 | Skill/spec docs | Link/structure checks plus a small scenario showing how an agent should route the command or file |
+| Linter behavior or language-surface support | `bash scripts/lint-prose.sh`, or the narrow affected `cargo test -p openprose-lint <test-name>` during iteration |
 | `*.prose.md` std/co contracts | Structural check for frontmatter and required sections; add or update a `kind: test` when behavior is executable |
 | Examples | Run or dry-run the example in a Prose Complete host when practical; otherwise document the missing host capability |
 | Docs-only copy | `git diff --check`, link existence checks, and examples reviewed for current command names |
 
 If no deterministic test exists yet, say that plainly in the PR and either add
 the smallest useful test or explain why a future eval is the right follow-up.
+
+### Optional maintainer drift checks
+
+`bash scripts/lint-prose.sh advisory` runs non-blocking linter discovery output.
+If `true-up` is available on `PATH`, or if `TRUE_UP_BIN` points to a true-up
+binary, the advisory profile also reports the committed `.true-up.json` drift
+policy. This is intentionally optional maintainer tooling, not required
+contributor setup.
+
+The `OpenProse Lint` GitHub Actions workflow runs the same repository scripts on
+pull requests and `main` pushes. Keep linter policy in `scripts/lint-prose.sh`;
+the workflow should stay a thin runner that installs toolchains and invokes the
+shared gate.
+
+`bash scripts/lint-prose.sh package` is the crate packaging gate for
+`openprose-lint`: it lists the Cargo package contents, runs `cargo publish
+--dry-run --allow-dirty`, and verifies `specs verify --spec openprose` from the
+packaged source tree. Release commits should additionally pass
+`bash scripts/lint-prose.sh release-package`, which requires a clean worktree and
+omits `--allow-dirty`.
 
 ## PR Description Shape
 

@@ -1,0 +1,65 @@
+{
+  "meta": {
+    "schema_version": "0.1.0",
+    "spec_ref": "openprose/prose@HEAD",
+    "description": "OpenProse adapter manifest schema for deterministic coding-agent initialization"
+  },
+  "program_formats": [
+    "v1-single-file",
+    "v1-multi-service"
+  ],
+  "channel_roles": [
+    "system",
+    "developer",
+    "user"
+  ],
+  "attachment_kinds": [
+    "program",
+    "manifest",
+    "service-definition",
+    "inputs",
+    "workspace",
+    "output-instructions"
+  ],
+  "phases": {
+    "wire-v1": {
+      "required_for_formats": [
+        "v1-multi-service"
+      ],
+      "required_files": [
+        "forme.md"
+      ],
+      "required_attachments": [
+        "program"
+      ]
+    },
+    "execute-v1": {
+      "required_for_formats": [
+        "v1-single-file",
+        "v1-multi-service"
+      ],
+      "required_files": [
+        "prose.md",
+        "state/filesystem.md"
+      ],
+      "required_attachments": [
+        "manifest"
+      ]
+    },
+    "subagent-v1": {
+      "required_for_formats": [
+        "v1-single-file",
+        "v1-multi-service"
+      ],
+      "required_files": [
+        "primitives/session.md"
+      ],
+      "required_attachments": [
+        "service-definition",
+        "inputs",
+        "workspace",
+        "output-instructions"
+      ]
+    }
+  }
+}

@@ -1,0 +1,120 @@
+{
+  "nodes": [
+    {
+      "node": "gateway.press-inbox",
+      "contract_fingerprint": "sha256:6cd1e7f6ab3d21dc7dbf2a5f546e637c72ddf6cabf4ac7a5e3ad6e7d4b85f7ff",
+      "wake_source": "external"
+    },
+    {
+      "node": "responsibility.relevance-filter-media1",
+      "contract_fingerprint": "sha256:62256ca2b8dbbbd717802e25e61a3471b3fa14ac2be793dab3627de724727c6a",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.relevance-filter-partner1",
+      "contract_fingerprint": "sha256:cb96ba0a5b974d1fa6f3c74b07941bd26c713a44d485bd1f76309df892529ad4",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.relevance-filter-speak1",
+      "contract_fingerprint": "sha256:613576669483ed3772144846090b3f1264cfb50a2624c2c89cc5f34975793a87",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.relevance-filter-blast1",
+      "contract_fingerprint": "sha256:a3dad9cf11ebc93480843925a89a670622fd0e640a23e7a69860a7b8644c0152",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.relevance-filter-partner2",
+      "contract_fingerprint": "sha256:10ffac669e109fe95d1510d05ae9d31635fe42a228417001e422e1e0cb1d03af",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.opportunity-register",
+      "contract_fingerprint": "sha256:1b26343490b6652e5ce410b2ca6af4e48201af08e70d4d837fa8b9e94e436b16",
+      "wake_source": "input"
+    },
+    {
+      "node": "responsibility.briefing",
+      "contract_fingerprint": "sha256:1656285d3854ae29a2dc6f6b4aca3ad1815348f379c12408b9e5befd433b3d36",
+      "wake_source": "input"
+    }
+  ],
+  "edges": [
+    {
+      "subscriber": "gateway.press-inbox",
+      "producer": "ingress.press-feed",
+      "facet": "@atomic"
+    },
+    {
+      "subscriber": "responsibility.relevance-filter-media1",
+      "producer": "gateway.press-inbox",
+      "facet": "email:media1"
+    },
+    {
+      "subscriber": "responsibility.relevance-filter-partner1",
+      "producer": "gateway.press-inbox",
+      "facet": "email:partner1"
+    },
+    {
+      "subscriber": "responsibility.relevance-filter-speak1",
+      "producer": "gateway.press-inbox",
+      "facet": "email:speak1"
+    },
+    {
+      "subscriber": "responsibility.relevance-filter-blast1",
+      "producer": "gateway.press-inbox",
+      "facet": "email:blast1"
+    },
+    {
+      "subscriber": "responsibility.relevance-filter-partner2",
+      "producer": "gateway.press-inbox",
+      "facet": "email:partner2"
+    },
+    {
+      "subscriber": "responsibility.opportunity-register",
+      "producer": "responsibility.relevance-filter-media1",
+      "facet": "qualified"
+    },
+    {
+      "subscriber": "responsibility.opportunity-register",
+      "producer": "responsibility.relevance-filter-partner1",
+      "facet": "qualified"
+    },
+    {
+      "subscriber": "responsibility.opportunity-register",
+      "producer": "responsibility.relevance-filter-speak1",
+      "facet": "qualified"
+    },
+    {
+      "subscriber": "responsibility.opportunity-register",
+      "producer": "responsibility.relevance-filter-blast1",
+      "facet": "qualified"
+    },
+    {
+      "subscriber": "responsibility.opportunity-register",
+      "producer": "responsibility.relevance-filter-partner2",
+      "facet": "qualified"
+    },
+    {
+      "subscriber": "responsibility.briefing",
+      "producer": "responsibility.opportunity-register",
+      "facet": "media"
+    },
+    {
+      "subscriber": "responsibility.briefing",
+      "producer": "responsibility.opportunity-register",
+      "facet": "partnership"
+    },
+    {
+      "subscriber": "responsibility.briefing",
+      "producer": "responsibility.opportunity-register",
+      "facet": "speaking"
+    }
+  ],
+  "entry_points": [
+    "gateway.press-inbox"
+  ],
+  "acyclic": true
+}

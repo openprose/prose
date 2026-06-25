@@ -8,6 +8,12 @@ node_modules/
 **/.turbo/
 *.tsbuildinfo
 
+# Rust build output
+target/
+
+# Optional true-up generated cache
+.true-up/
+
 # Current OpenProse generated state
 .agents/prose/.env
 .agents/prose/deps/
