@@ -174,6 +174,10 @@ bash crates/openprose-lint/scripts/sync-spec-snapshot.sh --sync
 bash crates/openprose-lint/scripts/sync-spec-snapshot.sh --check
 ```
 
+Do not edit `spec-snapshot/openprose/` directly. Treat it as generated package
+input copied from `skills/open-prose/`; direct edits will either be overwritten
+by `--sync` or rejected by the snapshot check.
+
 ### Spec Identity
 
 `openprose-lint specs verify` checks a spec identity manifest without relying on

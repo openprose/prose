@@ -17,6 +17,10 @@ OpenProse language inside the `openprose/prose` repository.
 Do not reintroduce `reference/openprose-prose` as a submodule while this crate is
 colocated with the language source.
 
+Do not hand-edit `spec-snapshot/openprose/`. It is a packaged copy of
+`../../skills/open-prose/` for crates.io builds. Edit the source docs, then run
+`bash crates/openprose-lint/scripts/sync-spec-snapshot.sh --sync`.
+
 ## Invariant
 
 No `openprose/prose` commit should promote or retain an official frontmatter

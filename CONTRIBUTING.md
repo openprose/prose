@@ -126,6 +126,11 @@ again in the future when the behavior regresses.
 If no deterministic test exists yet, say that plainly in the PR and either add
 the smallest useful test or explain why a future eval is the right follow-up.
 
+The root `pnpm lint` command is the whole-repo gate: it runs Reactor package
+linting and the Rust-backed OpenProse linter, so it requires the Node/pnpm and
+Rust/Cargo toolchains. For a Reactor-only edit, use `pnpm lint:reactor` during
+iteration and state that narrower scope in the PR.
+
 ### Optional maintainer drift checks
 
 `bash scripts/lint-prose.sh advisory` runs non-blocking linter discovery output.

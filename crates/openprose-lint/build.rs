@@ -1,13 +1,14 @@
 //! Parses the compiler spec markdown to generate linter vocabulary.
 //!
-//! Extracts from the colocated OpenProse spec checkout:
+//! Extracts from the colocated OpenProse spec checkout during repository
+//! development, and from the vendored package snapshot after `cargo package`:
 //! - Agent property names and known model values
 //! - Permission types and values
 //! - Block/statement keywords
 //!
 //! The generated file is written to OUT_DIR/spec_vocab.rs and included
-//! by src/lint.rs at compile time. Update the parent prose checkout to update
-//! vocabulary.
+//! by src/lint.rs at compile time. Update the parent prose checkout and refresh
+//! the package snapshot to update vocabulary.
 
 use std::collections::BTreeSet;
 use std::env;
@@ -15,14 +16,26 @@ use std::fs;
 use std::path::Path;
 
 fn main() {
-    let spec_candidates = [
+    let checkout_spec_candidates = [
         "../../skills/open-prose/compiler/index.prose.md",
         "../../skills/open-prose/v0/compiler.md",
         "../../skills/open-prose/compiler.md",
+    ];
+    let package_spec_candidates = [
         "spec-snapshot/openprose/skills/open-prose/compiler/index.prose.md",
         "spec-snapshot/openprose/skills/open-prose/v0/compiler.md",
         "spec-snapshot/openprose/skills/open-prose/compiler.md",
     ];
+
+    let spec_candidates: Vec<&str> = if is_packaged_crate_build() {
+        package_spec_candidates.to_vec()
+    } else {
+        checkout_spec_candidates
+            .iter()
+            .chain(package_spec_candidates.iter())
+            .copied()
+            .collect::<Vec<_>>()
+    };
 
     for candidate in &spec_candidates {
         println!("cargo:rerun-if-changed={candidate}");
@@ -85,6 +98,13 @@ pub const SPEC_PERMISSION_VALUES: &[&str] = &[{perm_values}];
     );
 
     fs::write(&out_path, code).expect("failed to write spec_vocab.rs");
+}
+
+fn is_packaged_crate_build() -> bool {
+    let manifest_dir = env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".to_string());
+    Path::new(&manifest_dir)
+        .join(".cargo_vcs_info.json")
+        .exists()
 }
 
 fn write_fallback() {
