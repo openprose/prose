@@ -270,7 +270,7 @@ function visitCycleNode(
 
   const existingIndex = path.indexOf(node);
   if (visiting.has(node) && existingIndex >= 0) {
-    return [...path.slice(existingIndex), node];
+    return path.slice(existingIndex);
   }
 
   visiting.add(node);
