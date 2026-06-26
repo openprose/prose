@@ -14,7 +14,7 @@ and this crate follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html
   `openprose/prose`.
 - Switched the OpenProse registry mapping from a nested reference checkout to
   the parent repository checkout, with `spec-snapshot/openprose` as the packaged
-  Cargo fallback.
+  curated Cargo fallback.
 - Moved blocking linter policy into the root `scripts/lint-prose.sh` gate.
 - Added an optional true-up advisory path for maintainer drift checks while
   keeping generated `.true-up/` cache ignored.
@@ -26,7 +26,7 @@ and this crate follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 ### Added
 
 - `crates/openprose-lint/scripts/sync-spec-snapshot.sh` to refresh and check the
-  packaged OpenProse spec snapshot.
+  curated packaged OpenProse spec bundle.
 
 ## [0.2.0]
 

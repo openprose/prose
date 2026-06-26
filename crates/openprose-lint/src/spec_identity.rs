@@ -185,9 +185,10 @@ pub fn verify_spec_source_identity(
         !spec.repo.trim().is_empty(),
         format!("registry={}", spec.repo),
     );
-    discover_registry_source_capabilities(spec, &root, &mut report);
+    let uses_package_checkout = spec.uses_package_checkout(repo_root);
+    discover_registry_source_capabilities(spec, &root, uses_package_checkout, &mut report);
 
-    if spec.uses_package_checkout(repo_root) {
+    if uses_package_checkout {
         if let Some(package_path) = &spec.package_source_path {
             report.check(
                 "source.package_snapshot",
@@ -337,6 +338,7 @@ fn registry_identity_artifacts(spec: &SpecSource) -> Vec<String> {
 fn discover_registry_source_capabilities(
     spec: &SpecSource,
     root: &Path,
+    uses_package_checkout: bool,
     report: &mut SpecIdentityReport,
 ) {
     let mut capabilities = vec![
@@ -362,12 +364,23 @@ fn discover_registry_source_capabilities(
             "responsibility-runtime.md".to_string(),
         ),
         ("reactor", "reactor.md".to_string()),
-        ("examples", "examples".to_string()),
     ]);
 
     for (id, relative) in capabilities {
         let (present, detail) = probe_source_capability(root, &relative);
         report.source_capability(id, relative, present, detail);
+    }
+
+    if uses_package_checkout {
+        report.source_capability(
+            "examples",
+            "examples",
+            false,
+            "intentionally excluded from curated package snapshot; repository CI lints examples from the parent checkout",
+        );
+    } else {
+        let (present, detail) = probe_source_capability(root, "examples");
+        report.source_capability("examples", "examples", present, detail);
     }
 }
 

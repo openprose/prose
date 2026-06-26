@@ -8,7 +8,7 @@ This is the deterministic linter, LSP, and WASM build for [OpenProse](https://gi
 - **OpenProse checkout.** This crate is colocated in `openprose/prose`, and
   `build.rs` reads `../../skills/open-prose/compiler/index.prose.md` at compile
   time to generate `spec_vocab.rs`. Packaged Cargo builds use the vendored
-  snapshot under `spec-snapshot/openprose`.
+  curated spec bundle under `spec-snapshot/openprose`.
 - **jq** for repository package profiles such as `bash scripts/lint-prose.sh
   package` and `bash scripts/lint-prose.sh release-package`.
 
@@ -130,9 +130,10 @@ crate is colocated, `specs/openprose.json` points at the parent checkout:
 Build-time vocabulary extraction reads the parent spec during `cargo build` and
 regenerates `spec_vocab.rs`, so source changes can change lint behavior. The
 package snapshot exists so `cargo package` and `cargo publish --dry-run` do not
-depend on parent files after packaging. Re-run
-`bash crates/openprose-lint/scripts/sync-spec-snapshot.sh --sync` when the skill
-docs change, then `bash scripts/lint-prose.sh`.
+depend on parent files after packaging. It is a curated spec bundle, not a copy
+of the full examples tree. Re-run `bash
+crates/openprose-lint/scripts/sync-spec-snapshot.sh --sync` when one of the
+listed source files changes, then `bash scripts/lint-prose.sh`.
 
 ## Decisions and agent notes
 

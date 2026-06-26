@@ -108,6 +108,19 @@ write_package_list() {
   note "package file list: $count file(s) recorded at $list_file"
 }
 
+run_packaged_adapter_validations() {
+  local manifest package_root adapter count=0
+  manifest="$(packaged_manifest)"
+  package_root="$(dirname "$manifest")"
+
+  while IFS= read -r adapter; do
+    count=$((count + 1))
+    step cargo run --manifest-path "$manifest" -- adapter validate "$package_root/$adapter"
+  done < <(cd "$package_root" && find specs/adapters -name '*.json' -type f | sort)
+
+  [[ "$count" -gt 0 ]] || fail "packaged crate contains no adapter manifests"
+}
+
 usage() {
   cat >&2 <<'EOF'
 Usage: scripts/lint-prose.sh [ci|advisory|package|release-package]
@@ -155,6 +168,7 @@ case "$profile" in
     step cargo publish -p openprose-lint --dry-run "${dirty_args[@]}"
     manifest="$(packaged_manifest)"
     step cargo run --manifest-path "$manifest" -- specs verify --spec openprose
+    run_packaged_adapter_validations
     ;;
   -h|--help|help)
     usage

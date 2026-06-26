@@ -1,7 +1,0 @@
-# Local runtime churn, not committed.
-state/
-runs/
-deps/
-dist/
-.reactor/
-*.reactor/

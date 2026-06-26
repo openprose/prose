@@ -52,12 +52,12 @@ The current CLI default remains `compat` to preserve the existing smoke-test wor
    pinned spec ships `skills/open-prose/spec-version.json`, set
    `paths.version_manifest` in `specs/openprose.json`; otherwise the command
    uses the registry-declared source-identity fallback.
-4. Refresh the packaged snapshot with
+4. Refresh the curated packaged spec bundle with
    `bash crates/openprose-lint/scripts/sync-spec-snapshot.sh --sync`, then keep
    `bash crates/openprose-lint/scripts/sync-spec-snapshot.sh --check` green.
-   Generated example `dist/` directories are intentionally excluded from the
-   snapshot because they can be created during install/test runs and are not
-   part of the authored language surface.
+   The snapshot contains only the explicit source-file list in that script. The
+   full example corpus and replay fixtures stay in the parent repository and are
+   linted from there; they are not part of the crate package payload.
 5. For package bundles, run `specs verify` in direct manifest mode with every
    declared package's `package.json`; package versions are provenance labels,
    while file hashes and the source identity are the contract.

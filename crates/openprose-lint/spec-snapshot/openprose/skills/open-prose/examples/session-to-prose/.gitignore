@@ -1,5 +1,0 @@
-dist/manifest.*.json
-runs/*
-state/*
-deps/*
-!*/.gitkeep

@@ -11,6 +11,24 @@ readme = "README.md"
 keywords = ["openprose", "linter", "lsp", "agents", "markdown"]
 categories = ["development-tools", "command-line-utilities"]
 default-run = "openprose-lint"
+# Keep the published crate payload explicit. The exact file set inside
+# spec-snapshot is maintained by scripts/sync-spec-snapshot.sh.
+include = [
+    "/AGENTS.md",
+    "/CHANGELOG.md",
+    "/CONTRIBUTING.md",
+    "/LICENSE",
+    "/README.md",
+    "/build.rs",
+    "/docs/**",
+    "/fixtures/**",
+    "/scripts/**",
+    "/spec-support.json",
+    "/spec-snapshot/**",
+    "/specs/**",
+    "/src/**",
+    "/tests/**",
+]
 
 [lib]
 crate-type = ["lib", "cdylib"]

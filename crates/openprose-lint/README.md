@@ -163,11 +163,13 @@ source during repository development:
 - source identity: see `specs/openprose.json`
 
 Build-time vocabulary extraction reads the compiler spec from the parent
-checkout during normal development. Packaged Cargo builds use the vendored
-snapshot under `spec-snapshot/openprose`, so the crate can build after
-`cargo package` without reading files outside the package.
+checkout during normal development. Packaged Cargo builds use the curated
+vendored spec bundle under `spec-snapshot/openprose`, so the crate can build
+after `cargo package` without reading files outside the package.
 
-When `skills/open-prose/` changes, refresh or check the package snapshot:
+When one of the source files listed in
+`crates/openprose-lint/scripts/sync-spec-snapshot.sh` changes, refresh or check
+the package snapshot:
 
 ```bash
 bash crates/openprose-lint/scripts/sync-spec-snapshot.sh --sync
@@ -175,8 +177,10 @@ bash crates/openprose-lint/scripts/sync-spec-snapshot.sh --check
 ```
 
 Do not edit `spec-snapshot/openprose/` directly. Treat it as generated package
-input copied from `skills/open-prose/`; direct edits will either be overwritten
-by `--sync` or rejected by the snapshot check.
+input copied from the curated source-file list; direct edits will either be
+overwritten by `--sync` or rejected by the snapshot check. The full example
+corpus stays in the parent repository and is linted from there; it is not part
+of the published crate payload.
 
 ### Spec Identity
 

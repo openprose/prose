@@ -11,8 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **`openprose-lint` Rust crate colocated under `crates/openprose-lint/`.**
   The repo now has a Cargo workspace, a script-owned deterministic lint gate
-  (`scripts/lint-prose.sh`), a package-local OpenProse spec snapshot for future
-  crates.io distribution, and an independent `openprose-lint` version track.
+  (`scripts/lint-prose.sh`), a curated package-local OpenProse spec bundle for
+  future crates.io distribution, and an independent `openprose-lint` version
+  track.
 - **Optional true-up advisory config.** `.true-up.json` records maintainer drift
   relationships for the linter integration while `.true-up/` remains ignored;
   `scripts/lint-prose.sh advisory` uses true-up only when it is explicitly
