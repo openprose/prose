@@ -123,6 +123,11 @@
       "description": "Resume interrupted runs from artifacts and state.md",
       "depends_on": ["file-io", "state-markers"]
     },
+    "context-boundary": {
+      "layer": "protocol",
+      "description": "Preserve declared Context sections, avoid treating undeclared ambient context as input, and record bounded launch-context artifacts when child activations are used",
+      "depends_on": ["subagents", "state-markers"]
+    },
     "secret-hygiene": {
       "layer": "policy",
       "description": "Verify environment presence without leaking raw secret values into artifacts or logs",

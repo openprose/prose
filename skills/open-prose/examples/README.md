@@ -59,6 +59,9 @@ reconciler offline, asserting the property each one teaches.
 - [research-tree](./research-tree/): propagation UP a recursive tree with
   per-branch memoization: revising one leaf wakes only its ancestor path; siblings
   stay dark.
+- [context-boundary](./context-boundary/): a gateway-triggered request brief that
+  uses `### Context` as read-only grounding while proving the request payload
+  still flows through gateway `Maintains` -> subscriber `Requires`.
 
 ### Fan-in, diamonds & failure isolation
 

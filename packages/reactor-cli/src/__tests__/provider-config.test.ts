@@ -4,7 +4,7 @@ import { cpSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { loadConfig } from '../config';
+import { loadConfig, modelCompatibilityWarnings } from '../config';
 import { runCompileCommand } from '../commands/compile';
 
 const SDK_ROOT = join(require.resolve('@openprose/reactor'), '..', '..');
@@ -109,6 +109,80 @@ describe('model temperature / reasoning_effort config parsing', () => {
   it('reasoning_effort parses as a verbatim string', () => {
     const config = loadFromYml(['model:', '  reasoning_effort: none']);
     assert.equal(config.model.reasoning_effort, 'none');
+  });
+});
+
+describe('model compatibility warnings', () => {
+  it('warns when a reasoning-class OpenAI model has an explicit temperature', () => {
+    const warnings = modelCompatibilityWarnings({
+      provider: 'openrouter',
+      render_model: 'openai/gpt-5.4',
+      compile_model: 'openai/gpt-5.4',
+      temperature: 0,
+      max_turns: 200,
+    });
+    assert.equal(warnings.length, 1);
+    assert.match(warnings[0]!, /explicit temperature/);
+    assert.match(warnings[0]!, /openai\/gpt-5\.4/);
+  });
+
+  it('does not warn when reasoning_effort is none', () => {
+    const warnings = modelCompatibilityWarnings({
+      provider: 'openrouter',
+      render_model: 'openai/gpt-5.4',
+      compile_model: 'openai/gpt-5.4',
+      temperature: 0,
+      reasoning_effort: 'none',
+      max_turns: 200,
+    });
+    assert.deepEqual(warnings, []);
+  });
+
+  it('does not warn for non-reasoning models with explicit temperature', () => {
+    const warnings = modelCompatibilityWarnings({
+      provider: 'openrouter',
+      render_model: 'google/gemini-3.5-flash',
+      compile_model: 'google/gemini-3.5-flash',
+      temperature: 0,
+      max_turns: 200,
+    });
+    assert.deepEqual(warnings, []);
+  });
+
+  it('warns for Claude 4-class models with explicit temperature', () => {
+    const warnings = modelCompatibilityWarnings({
+      provider: 'openrouter',
+      render_model: 'anthropic/claude-sonnet-4.6',
+      compile_model: 'anthropic/claude-sonnet-4.6',
+      temperature: 0,
+      max_turns: 200,
+    });
+    assert.equal(warnings.length, 1);
+    assert.match(warnings[0]!, /claude-sonnet-4\.6/);
+  });
+
+  it('warns for Claude Haiku 4-class models with explicit temperature', () => {
+    const warnings = modelCompatibilityWarnings({
+      provider: 'openrouter',
+      render_model: 'anthropic/claude-haiku-4-5',
+      compile_model: 'anthropic/claude-haiku-4-5',
+      temperature: 0,
+      max_turns: 200,
+    });
+    assert.equal(warnings.length, 1);
+    assert.match(warnings[0]!, /claude-haiku-4-5/);
+  });
+
+  it('warns for o-series models beyond the initially known ids', () => {
+    const warnings = modelCompatibilityWarnings({
+      provider: 'openrouter',
+      render_model: 'openai/o7-mini',
+      compile_model: 'openai/o7-mini',
+      temperature: 0,
+      max_turns: 200,
+    });
+    assert.equal(warnings.length, 1);
+    assert.match(warnings[0]!, /o7-mini/);
   });
 });
 

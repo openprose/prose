@@ -27,6 +27,8 @@ and this crate follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 - `crates/openprose-lint/scripts/sync-spec-snapshot.sh` to refresh and check the
   curated packaged OpenProse spec bundle.
+- Current Contract Markdown support for `### Context`, including strict lint
+  recognition and `context-boundary` capability reporting.
 
 ## [0.2.0]
 

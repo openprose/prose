@@ -22,6 +22,10 @@ plan.
   support both `cli:<name>` and `mcp:<name>` and fail closed when the host
   cannot resolve a declared capability. Resolved responsibility tools are
   preserved in the compile-phase IR and run activation payloads.
+- `### Context` declares bounded, read-only context a render may consult. It is
+  preserved in compile/run evidence and contract identity, but does not create
+  Forme dependency edges or satisfy `### Requires`, `### Maintains`, or
+  `### Returns`.
 - Every workspace has an active OpenProse root.
 - Native repositories use the repository root as the OpenProse root.
 - Attached repositories use `repo/.agents/prose`.

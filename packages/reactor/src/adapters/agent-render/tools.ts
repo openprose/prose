@@ -325,8 +325,8 @@ function subscribedProducers(context: AgentRenderContext): Set<string> {
  * legible note — not an error — for a producer the node does not subscribe to, so
  * the agent can probe without aborting the turn). This is how the render
  * DISCOVERS what upstream truth it may read before reading it
- * (read-by-reference). It does NOT pre-stuff the upstream truth — only the
- * pointers.
+ * (read-by-reference). It lists producer/facet pointers and published file paths.
+ * It does NOT pre-stuff upstream file contents.
  */
 export function wmListUpstreamTool(): Tool<AgentRenderContext> {
   return tool({
@@ -334,8 +334,9 @@ export function wmListUpstreamTool(): Tool<AgentRenderContext> {
     description:
       "List the upstream producers (and their facets) this node subscribes to — " +
       "the only upstream truth you may read. Optionally pass a producer node id to " +
-      "narrow to that producer's subscribed facets. Use this to discover what " +
-      "upstream truth exists before reading it with wm_read_upstream.",
+      "narrow to that producer's subscribed facets. The listing includes the " +
+      "producer's published file paths, so use it to discover the path to pass to " +
+      "wm_read_upstream.",
     parameters: z.object({
       producer: z
         .string()
@@ -365,8 +366,18 @@ export function wmListUpstreamTool(): Tool<AgentRenderContext> {
         );
       }
       // One line per (producer, facet), sorted + de-duplicated for a stable list.
+      // File paths are pointers only: contents still require wm_read_upstream.
       const lines = [
-        ...new Set(selected.map((s) => `${s.producer}\t${s.facet}`)),
+        ...new Set(
+          selected.map((s) => {
+            const paths = Object.keys(
+              context.store.read(s.producer, "published").files,
+            ).sort();
+            const pathList =
+              paths.length === 0 ? "(no published files)" : paths.join(", ");
+            return `${s.producer}\t${s.facet}\t${pathList}`;
+          }),
+        ),
       ].sort();
       return lines.join("\n");
     },

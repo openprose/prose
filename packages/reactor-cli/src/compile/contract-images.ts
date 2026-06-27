@@ -124,6 +124,7 @@ export function sliceContract(text: string, path: string): ContractImage {
 
   const out: Record<string, unknown> = { id, name, kind };
   if (sections['Requires'] !== undefined) out['requires'] = sections['Requires'];
+  if (sections['Context'] !== undefined) out['context'] = sections['Context'];
   if (sections['Maintains'] !== undefined) out['maintains'] = sections['Maintains'];
   if (sections['Continuity'] !== undefined) out['continuity'] = sections['Continuity'];
   if (sections['Execution'] !== undefined) out['execution'] = sections['Execution'];
@@ -184,7 +185,7 @@ function splitSections(body: string): Record<string, string> {
     const h2OrH1 = /^#{1,2}\s+/.exec(line);
     if (h3 !== null) {
       flush();
-      current = firstWord(h3[1] ?? '');
+      current = canonicalSectionKey(firstWord(h3[1] ?? ''));
       continue;
     }
     if (h2OrH1 !== null) {
@@ -203,6 +204,23 @@ function splitSections(body: string): Record<string, string> {
 function firstWord(heading: string): string {
   const match = /^(\S+)/.exec(heading.trim());
   return match ? (match[1] ?? heading) : heading;
+}
+
+function canonicalSectionKey(section: string): string {
+  switch (section.toLowerCase()) {
+    case 'requires':
+      return 'Requires';
+    case 'context':
+      return 'Context';
+    case 'maintains':
+      return 'Maintains';
+    case 'continuity':
+      return 'Continuity';
+    case 'execution':
+      return 'Execution';
+    default:
+      return section;
+  }
 }
 
 function normalizeKind(value: string | undefined): string {

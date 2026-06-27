@@ -21,6 +21,10 @@ A strong OpenProse PR should:
 - Respect the language/framework/harness boundary. Put semantics in the skill
   and interpreter docs, reusable contracts in `packages/std/`, and deterministic
   harness behavior in `packages/reactor*/`.
+- Preserve the data-flow boundary when changing language features. Runtime data
+  should flow through `### Requires`/`### Maintains`, gateway ingress, function
+  parameters, or returns; `### Context` is read-only grounding and should not be
+  used as a hidden payload or wake mechanism.
 - Make the library more developer-friendly and agent-friendly at the same time:
   clearer for humans to review, easier for agents to execute correctly.
 - Add or identify a retestable mechanism. Use existing tests when they cover

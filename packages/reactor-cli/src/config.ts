@@ -197,6 +197,44 @@ export function loadConfig(overrides: ConfigOverrides = {}): ReactorConfig {
 }
 
 /**
+ * Keyless model-config compatibility warnings. These are preflight heuristics for
+ * known provider failure classes, not a substitute for `reactor doctor --live`.
+ * The load-bearing case: reasoning-class model ids often reject an explicit
+ * temperature unless `reasoning_effort: none` is set. Deleting `temperature:` is
+ * the most portable fix because the request then omits the key entirely.
+ */
+export function modelCompatibilityWarnings(model: ModelConfig): string[] {
+  const warnings: string[] = [];
+  if (
+    model.temperature !== undefined &&
+    (model.reasoning_effort ?? '').toLowerCase() !== 'none'
+  ) {
+    const reasoningModels = [model.compile_model, model.render_model]
+      .filter(isReasoningClassModelId)
+      .filter((value, index, values) => values.indexOf(value) === index);
+    if (reasoningModels.length > 0) {
+      warnings.push(
+        `explicit temperature is configured for reasoning-class model(s) ` +
+          `${reasoningModels.join(', ')}. Some providers reject this unless ` +
+          `reasoning_effort is 'none'. Delete the temperature line to omit it, ` +
+          `or set reasoning_effort: none if the provider supports that mode.`,
+      );
+    }
+  }
+  return warnings;
+}
+
+function isReasoningClassModelId(modelId: string): boolean {
+  const id = modelId.trim().toLowerCase();
+  const leaf = id.split('/').pop() ?? id;
+  return (
+    /^gpt-5(?:[.\-]|$)/.test(leaf) ||
+    /^o\d+(?:[.\-]|$)/.test(leaf) ||
+    /^claude-(?:haiku|opus|sonnet)-4(?:[.\-]|$)/.test(leaf)
+  );
+}
+
+/**
  * Validate that a resolved `--state-dir` target is usable as a DIRECTORY before a
  * command tries to `mkdir` it (the durable substrate + world-model store both
  * `mkdirSync(stateDir, { recursive: true })`, which throws a raw, guidance-free

@@ -1,5 +1,5 @@
 import { asFacet } from "../../../shapes";
-import { equal, deepEqual, match, ok } from "node:assert/strict";
+import { equal, deepEqual, match, ok, doesNotMatch } from "node:assert/strict";
 import { test } from "node:test";
 
 import { RunContext, type FunctionTool } from "@openai/agents";
@@ -158,6 +158,9 @@ test("wm_list: cold start (no prior truth) returns a legible empty note", async 
 
 test("wm_list_upstream: lists the (producer, facet) subscriptions this node has", async () => {
   const store = new InMemoryWorldModelStore();
+  store.commitPublished("monitor", {
+    "state/funding.json": textFile('{"round":"A"}'),
+  });
   const ctx = makeContext(store, {
     upstream: [
       { producer: "monitor", facet: asFacet("funding") },
@@ -166,11 +169,20 @@ test("wm_list_upstream: lists the (producer, facet) subscriptions this node has"
   });
   const out = await invokeTool(wmListUpstreamTool(), ctx, { producer: null });
   // sorted, one (producer \t facet) per line
-  equal(out, "feed\t@atomic\nmonitor\tfunding");
+  equal(
+    out,
+    "feed\t@atomic\t(no published files)\nmonitor\tfunding\tstate/funding.json",
+  );
+  doesNotMatch(out, /round/);
+  doesNotMatch(out, /"A"/);
 });
 
 test("wm_list_upstream: narrows to one producer's facets when given a producer", async () => {
   const store = new InMemoryWorldModelStore();
+  store.commitPublished("monitor", {
+    "state/funding.json": textFile('{"round":"A"}'),
+    "state/hiring.json": textFile('{"roles":2}'),
+  });
   const ctx = makeContext(store, {
     upstream: [
       { producer: "monitor", facet: asFacet("funding") },
@@ -181,7 +193,11 @@ test("wm_list_upstream: narrows to one producer's facets when given a producer",
   const out = await invokeTool(wmListUpstreamTool(), ctx, {
     producer: "monitor",
   });
-  equal(out, "monitor\tfunding\nmonitor\thiring");
+  equal(
+    out,
+    "monitor\tfunding\tstate/funding.json, state/hiring.json\n" +
+      "monitor\thiring\tstate/funding.json, state/hiring.json",
+  );
 });
 
 test("wm_list_upstream: no subscriptions returns a legible empty note", async () => {

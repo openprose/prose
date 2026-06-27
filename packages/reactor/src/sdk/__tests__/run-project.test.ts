@@ -44,6 +44,7 @@ import {
 } from "../index";
 import { dispositionOf, lastReceipt } from "../../scenario/trace";
 import { contractFingerprint } from "../../scenario/fixture";
+import { sliceContract } from "../../adapters/agent-compile";
 import { fakeStructuredProvider } from "../../adapters/agent-compile/__tests__/fake-provider";
 import {
   createOpenRouterProvider,
@@ -242,6 +243,59 @@ test("compileProject: the on-disk two-node fixture compiles to a mountable topol
   // A real session cost was summed across every compile step.
   ok(compiled.cost.tokens.fresh > 0);
   equal(compiled.cost.surprise_cause, "self");
+});
+
+test("compileProject: Context edits move the per-node contract fingerprint", async () => {
+  const node = "context-grounded-summary";
+  const source = `---
+name: context-grounded-summary
+kind: responsibility
+---
+
+### Context
+- style guide A
+
+### Maintains
+- summary
+`;
+  const changed = source.replace("style guide A", "style guide B");
+  const formeOutput = JSON.stringify({
+    nodes: [
+      {
+        id: node,
+        kind: "responsibility",
+        wake_source: "input",
+        requires: [],
+        maintains: [],
+      },
+    ],
+    matches: [],
+  });
+  const canonOutput = JSON.stringify({
+    fields: [{ path: "summary", material: true }],
+    default_material: true,
+    facets: [],
+  });
+  const pcOutput = JSON.stringify({ postconditions: [] });
+  const compileOne = (text: string) =>
+    compileProject({
+      contracts: [sliceContract(text, `/x/${node}.prose.md`)],
+      options: { skill: "TEST SKILL" },
+      perStep: {
+        forme: { provider: fakeStructuredProvider(formeOutput) },
+        canonicalizer: {
+          byNode: { [node]: { provider: fakeStructuredProvider(canonOutput) } },
+        },
+        postcondition: {
+          byNode: { [node]: { provider: fakeStructuredProvider(pcOutput) } },
+        },
+      },
+    });
+
+  const a = await compileOne(source);
+  const b = await compileOne(changed);
+
+  notEqual(a.contractFingerprints[node], b.contractFingerprints[node]);
 });
 
 test("compileProject skipPostconditions: synthesizes EMPTY validator sets without a postcondition session", async () => {

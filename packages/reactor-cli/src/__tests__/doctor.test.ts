@@ -196,6 +196,37 @@ describe('doctor', () => {
       rmSync(dir, { recursive: true, force: true });
     }
   });
+
+  it('surfaces keyless model compatibility warnings in JSON and human output', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'reactor-cli-doctor-'));
+    try {
+      writeFileSync(
+        join(dir, 'reactor.yml'),
+        [
+          'model:',
+          '  provider: openrouter',
+          '  render_model: openai/gpt-5.4',
+          '  compile_model: openai/gpt-5.4',
+          '  temperature: 0',
+        ].join('\n'),
+        'utf8',
+      );
+      const report = await collectDoctorReport({ projectDir: dir });
+      assert.equal(report.model.renderModel, 'openai/gpt-5.4');
+      assert.equal(report.model.compileModel, 'openai/gpt-5.4');
+      assert.equal(report.model.compatibilityWarnings.length, 1);
+      assert.match(report.model.compatibilityWarnings[0]!, /temperature/);
+      assert.equal(report.healthyForOffline, true);
+      assert.equal(report.healthyForLive, false);
+
+      const text = formatDoctorReport(report);
+      assert.match(text, /model\s+render openai\/gpt-5\.4 \/ compile openai\/gpt-5\.4/);
+      assert.match(text, /model warning\s+explicit temperature/);
+      assert.match(text, /live:\s+not ready/);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });
 
 /**

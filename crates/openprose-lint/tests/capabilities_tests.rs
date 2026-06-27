@@ -57,6 +57,21 @@ fn capabilities_reports_test_requirements() {
 }
 
 #[test]
+fn capabilities_reports_context_boundary_for_context_sections() {
+    let output = run(&[
+        "capabilities",
+        "fixtures/current/context-grounded-summary.prose.md",
+    ]);
+    let json = parse_json(&output);
+
+    assert_eq!(json["program"], "context-grounded-summary");
+    assert_eq!(json["requires"]["context-boundary"], true);
+    assert_eq!(json["requires"]["ask-user"], false);
+    assert_eq!(json["implied_substrate"]["subagents"], true);
+    assert_eq!(json["implied_substrate"]["file-io"], true);
+}
+
+#[test]
 fn capabilities_accepts_program_directory_targets() {
     let dir = Path::new("../../skills/open-prose/examples/competitor-activity/src");
     let output = run(&["capabilities", dir.to_str().unwrap()]);
@@ -110,5 +125,37 @@ fn capabilities_runtime_check_accepts_claude_manifest_shape() {
             .unwrap()
             .iter()
             .any(|line| line.as_str().unwrap().contains("incidental"))
+    );
+}
+
+#[test]
+fn capabilities_runtime_check_blocks_context_when_runtime_lacks_boundary_support() {
+    let output = run(&[
+        "capabilities",
+        "--runtime-manifest",
+        "specs/runtime-subjects/codex-host-mediated-self-declared.json",
+        "fixtures/current/context-grounded-summary.prose.md",
+    ]);
+    assert_eq!(output.status.code(), Some(1), "status: {:?}", output.status);
+    let json = parse_json_any_status(&output);
+
+    assert_eq!(
+        json["runtime_check"]["subject"],
+        "Codex CLI via openprose-lint host-mediated OpenProse runner"
+    );
+    assert_eq!(json["runtime_check"]["compatible"], false);
+    assert!(
+        json["runtime_check"]["blocking"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|line| line.as_str().unwrap().contains("context-boundary")),
+        "expected context-boundary blocking diagnostic: {json:#?}"
+    );
+    let blocking = json["runtime_check"]["blocking"].as_array().unwrap();
+    assert_eq!(
+        blocking.len(),
+        1,
+        "context fixture should isolate the context-boundary blocker: {json:#?}"
     );
 }

@@ -351,16 +351,19 @@ function projectStructuredJson(files: ProjectFiles): ProjectTruth {
 
 /**
  * A minimal per-node `CompiledContractView`. The cache does not persist the
- * loaded contract source (only the re-lowerable spec + fingerprints), so the
- * run/serve path supplies a coarse view derived from the topology: the node id
- * as the name + its maintained/required facets read off the spec + edges. The
- * load-bearing run-time behavior (materiality, propagation) comes from the
- * COMPILED canonicalizer, not this view (the view is the instruction layer, only
- * material on the LIVE render path; the offline gate uses a fake render that
- * ignores it). For an offline run this is sufficient; a live `run` would
- * typically re-compile to recover the rich contract view.
+ * loaded contract source in older caches, so the fallback supplies a coarse view
+ * derived from the topology: the node id as the name + its maintained/required
+ * facets read off the spec + edges. Current caches persist the richer
+ * instruction-layer view, including `### Context`; the fallback keeps older
+ * caches loadable. The load-bearing run-time behavior (materiality,
+ * propagation) comes from the COMPILED canonicalizer, not this view.
  */
 export function contractViewFor(ir: LoadedCompileIR, node: string): ContractView {
+  const persisted = ir.contractViews[node];
+  if (persisted !== undefined) {
+    return persisted;
+  }
+
   const entry = ir.perNode[node];
   const maintains = entry?.compiled.canonicalizer.facets ?? [];
   const requires = ir.topology.topology.edges

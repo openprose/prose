@@ -89,6 +89,11 @@
     "resume": {
       "mode": "unsupported",
       "verification": "self-declared"
+    },
+    "context-boundary": {
+      "mode": "unsupported",
+      "verification": "self-declared",
+      "notes": "Bare pi has no OpenProse adapter that preserves declared Context sections or writes bounded launch-context artifacts."
     }
   },
   "profile_assessment": {

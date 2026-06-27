@@ -140,7 +140,7 @@ single reactor):
 | `GET /health` | Liveness — `200` with `{ "status": "ok" }` once the host is up. |
 | `GET /status` | Standing compile cost beside live run cost + per-node dispositions (the `status` command's JSON). |
 | `GET /cost` | The cost rollup by `surprise_cause` (the `receipts cost` JSON). |
-| `POST /trigger/<node>` | Wake `<node>` with an optional JSON body as an external arrival; returns the resulting disposition. |
+| `POST /trigger/<node>` | Wake `<node>`; an optional JSON body is delivered only when `<node>` is a configured gateway. |
 
 It drains in-flight work on `SIGINT`/`SIGTERM` before exiting.
 
@@ -201,8 +201,8 @@ model:
   compile_model: google/gemini-3.5-flash
   temperature: 0               # optional — delete the line to send no temperature
   max_turns: 200
-  # reasoning_effort: none     # reasoning models (gpt-5.x, o-series) reject an
-                               # explicit temperature unless effort is none
+  # reasoning_effort: none     # reasoning-class models (GPT-5/o-series/Claude 4)
+                               # often reject explicit temperature unless effort is none
 
 sandbox:
   mode: none                   # none (default) | docker
@@ -218,6 +218,12 @@ gateways:                      # external-driven entry points
 
 reactors: []                   # optional: a multi-reactor host (see below)
 ```
+
+Run `reactor doctor --json` before live `compile`/`run`. Doctor is keyless, and
+reports model compatibility warnings for known provider failure classes. For
+GPT-5/o-series/Claude 4-class models through OpenRouter-compatible endpoints,
+prefer deleting `temperature:` unless you deliberately set `reasoning_effort:
+none`.
 
 Global flags `--state-dir`, `--project`, `--json`, `--offline` override the file
 on every command.
@@ -272,11 +278,11 @@ Run `reactor <command> --help` for the full options of any command.
 | Command | Live? | What it does |
 | --- | --- | --- |
 | `reactor init [dir]` | offline | Scaffold a minimal project (gateway + responsibility + `reactor.yml` + `.gitignore`). Refuses a non-empty target dir without `--force`. |
-| `reactor doctor [--live]` | offline (`--live` probes) | Report node/SDK/key/deps/offline/sandbox/state-dir/IR health. `--live` runs one smoke render. |
+| `reactor doctor [--live]` | offline (`--live` probes) | Report node/SDK/key/deps/offline/sandbox/state-dir/IR health plus keyless model-config warnings. `--live` runs one smoke render. |
 | `reactor compile [--force] [--check]` | live (cache hit/`--check` offline) | Run compile sessions → IR cache. `--check` exits non-zero when stale. |
 | `reactor run` | live | Ensure IR fresh, boot, drain to quiescence, report + exit. |
 | `reactor serve [--http <port>] [--concurrency <n>] [--poll-interval <ms>]` | live | Boot the durable host + continuity loop + HTTP surface. |
-| `reactor trigger <node> [--data <json>|@file]` | live | Trigger a node with an external wake (one-shot mount, or POST to a daemon). With `--data`, the payload is STAGED into the node's ingress so it actually reaches the render (not just the report). |
+| `reactor trigger <node> [--data <json>|@file]` | live | Trigger a node with an external wake (one-shot mount, or POST to a daemon). With `--data`, `<node>` must be an external gateway; the payload is STAGED into gateway ingress so downstream responsibilities receive it through `### Requires`/`### Maintains`. |
 | `reactor status` | offline | Standing compile cost beside live run cost + dispositions. |
 | `reactor topology` | offline | Print the compiled DAG: nodes (+ wake source) and resolved edges. |
 | `reactor inspect <node> [--strict]` | offline | A node's topology position, fingerprints, last receipt, chain. |

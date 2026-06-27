@@ -208,6 +208,7 @@ Forme and the Prose VM recognize these `###` sections case-insensitively:
 | `### Description` | all | Human summary. Preserved for readers; not used as a contract |
 | `### Goal` | responsibility, gateway | The render's one-sentence standing intent |
 | `### Requires` | responsibility, pattern slots | Subscription contracts naming facet-level needs; a `####` sub-heading is a facet-need. Forme's match target (`Requires.<facet> ↔ Maintains.<facet>`) |
+| `### Context` | responsibility, function | Declared read-only context the render may consult. It is preserved for compile/run evidence and contract identity, but it does not create Forme edges or satisfy `### Requires`, `### Maintains`, or `### Returns` |
 | `### Maintains` | responsibility, gateway | The world-model **schema** — type, canonicalization spec, facets (a `####` sub-heading is a facet, the named-parts rule), and postconditions (see [Maintains](#maintains)) |
 | `### Parameters` | function | Inputs the caller passes at call time |
 | `### Returns` | function | The value the function returns |
@@ -378,6 +379,31 @@ with the human); the resolved producer is Forme's choice (mechanism).
 
 Load `responsibility-runtime.md` and `concepts/responsibility.md` for the
 compile/run reconciler semantics.
+
+## Context
+
+`### Context` declares bounded, read-only context the render may consult while
+doing its work: style guides, policy notes, domain glossaries, source paths,
+prior decisions, or operator guidance. It is part of the source contract, so
+compilers and harnesses preserve it in the contract image they hand to the
+render and include it when deriving contract identity.
+
+`### Context` is not dependency injection. It does not subscribe to another
+responsibility, does not wake a node, and does not publish truth. Use
+`### Requires` for subscribed inputs, `### Maintains` for responsibility output
+truth, and `### Returns` for function results. A source with only `### Context`
+and no `### Maintains`/`### Returns` is still missing its output contract.
+
+For Reactor-triggered work, incoming JSON or webhook payloads belong in a
+`kind: gateway` that `### Maintains` normalized ingress truth. Downstream
+responsibilities then read that truth through `### Requires` and the compiled
+edge Forme draws. `### Context` may explain how to interpret the request, name a
+source path, or bound a policy decision, but the payload itself is not ambient
+context and should not be treated as if it magically appeared in the render.
+
+Harnesses that claim Context support must avoid silently adding undeclared
+ambient parent-session context to a child render. When a child activation is
+used, the launch artifact should make the declared context boundary inspectable.
 
 ## Maintains
 

@@ -40,6 +40,7 @@ pub struct Frontmatter {
 #[derive(Clone, Debug, Default)]
 pub(crate) struct ContractSections {
     pub(crate) requires: Vec<ContractItem>,
+    pub(crate) context: Vec<ContractItem>,
     pub(crate) ensures: Vec<ContractItem>,
     pub(crate) maintains: Vec<ContractItem>,
     pub(crate) parameters: Vec<ContractItem>,
@@ -124,6 +125,7 @@ pub(crate) const KNOWN_CONTRACT_SECTIONS: &[&str] = &[
     "description",
     "goal",
     "requires",
+    "context",
     "maintains",
     "parameters",
     "returns",
@@ -1014,6 +1016,7 @@ pub(crate) fn parse_markdown_body(
 fn push_contract_item(sections: &mut ContractSections, section: &str, item: ContractItem) {
     match section {
         "requires" => sections.requires.push(item),
+        "context" => sections.context.push(item),
         "ensures" => sections.ensures.push(item),
         "maintains" => sections.maintains.push(item),
         "parameters" => sections.parameters.push(item),
@@ -1044,6 +1047,19 @@ fn validate_contracts(
                 "MDW010",
                 Severity::Warning,
                 "Empty requires clause",
+                item.line,
+                1,
+            ));
+        }
+    }
+
+    for item in &sections.context {
+        if item.text.trim().is_empty() {
+            diagnostics.push(Diagnostic::new(
+                path,
+                "MDW010",
+                Severity::Warning,
+                "Empty context clause",
                 item.line,
                 1,
             ));
@@ -1772,6 +1788,10 @@ Keep the account risk model current.
 
 - `signals`: account signals
 
+### Context
+
+- `style-guide`: read-only style guidance for the render
+
 ### Maintains
 
 - `risk`: current account risk
@@ -1885,7 +1905,7 @@ call worker
     }
 
     #[test]
-    fn discovery_reports_potential_undocumented_contract_sections() {
+    fn discovery_treats_context_as_documented_contract_section() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("context.prose.md");
         fs::write(
@@ -1911,20 +1931,159 @@ id: 067NC4KG01RG50R40M30E20918
 
         let discovery = discover_spec_gaps(&[path]).unwrap();
         assert!(
-            discovery.undocumented_sections.contains_key("context"),
-            "discovery should surface recurring section candidates: {discovery:#?}"
+            !discovery.undocumented_sections.contains_key("context"),
+            "Context is an official section and should not be reported as drift: {discovery:#?}"
         );
         assert!(
-            discovery.doc_heading_patterns.contains_key("Context"),
-            "discovery should print documentation heading patterns: {discovery:#?}"
+            !discovery.doc_heading_patterns.contains_key("Context"),
+            "Context is an official section, not a documentation heading pattern: {discovery:#?}"
         );
 
         let rendered = discovery.to_string();
         assert!(
-            rendered.contains("Potential undocumented contract sections")
-                && rendered.contains("### context")
-                && rendered.contains("Documentation heading patterns"),
-            "rendered discovery should include section drift: {rendered}"
+            !rendered.contains("### context"),
+            "rendered discovery should not include known Context as drift: {rendered}"
+        );
+    }
+
+    #[test]
+    fn context_after_maintains_preserves_facets_and_later_sections() {
+        let source = "\
+---
+name: context-after-maintains
+kind: responsibility
+version: 0.15.0
+id: 067NC4KG01RG50R40M30E20918
+---
+
+### Maintains
+
+- `answer`: answer grounded in declared inputs.
+
+#### evidence
+
+Material evidence supporting the answer.
+
+### Context
+
+- `style-guide`: `docs/style-guide.md` at the compiled source revision.
+
+### Strategies
+
+- quote the context only when it directly clarifies the answer.
+";
+        let result = current_lint_source_with_profile(
+            Path::new("context-after-maintains.prose.md"),
+            source,
+            LintProfile::Strict,
+        );
+        assert!(
+            !result.diagnostics.iter().any(|d| d.code == "MDW014"),
+            "context after maintains should not hide maintains/facets: {:?}",
+            result.diagnostics
+        );
+        assert!(
+            result
+                .diagnostics
+                .iter()
+                .all(|d| d.code != "MDW020" && d.code != "MDW030"),
+            "context and facet headings should not become components: {:?}",
+            result.diagnostics
+        );
+
+        let mut parse_diags = Vec::new();
+        let (frontmatter, body_start) = parse_frontmatter(
+            Path::new("context-after-maintains.prose.md"),
+            source,
+            &mut parse_diags,
+        );
+        let body = source
+            .lines()
+            .skip(body_start)
+            .collect::<Vec<_>>()
+            .join("\n");
+        let (_headings, sections) = parse_markdown_body(
+            Path::new("context-after-maintains.prose.md"),
+            &body,
+            body_start,
+            &frontmatter,
+            &mut parse_diags,
+        );
+        assert_eq!(
+            sections.context.len(),
+            1,
+            "post-Maintains Context must be parsed as a Context section"
+        );
+        assert!(
+            sections.context[0].text.contains("style-guide"),
+            "Context item should stay in sections.context: {:?}",
+            sections.context
+        );
+        assert_eq!(
+            sections.strategies.len(),
+            1,
+            "later Strategies must remain its own section"
+        );
+        assert!(
+            !sections.maintains.iter().any(|item| {
+                item.text.contains("style-guide") || item.text.contains("quote the context")
+            }),
+            "Context/Strategies text must not leak into Maintains: {:?}",
+            sections.maintains
+        );
+    }
+
+    #[test]
+    fn context_does_not_satisfy_required_output_contracts() {
+        let responsibility = "\
+---
+name: context-only-responsibility
+kind: responsibility
+version: 0.15.0
+id: 067NC4KG01RG50R40M30E20918
+---
+
+### Context
+
+- `answer`: tempting but read-only orientation, not maintained truth.
+";
+        let responsibility_result = current_lint_source_with_profile(
+            Path::new("context-only-responsibility.prose.md"),
+            responsibility,
+            LintProfile::Strict,
+        );
+        assert!(
+            responsibility_result
+                .diagnostics
+                .iter()
+                .any(|d| d.code == "MDW014" && d.message.contains("maintains")),
+            "Context must not satisfy a responsibility's Maintains contract: {:?}",
+            responsibility_result.diagnostics
+        );
+
+        let function = "\
+---
+name: context-only-function
+kind: function
+version: 0.15.0
+---
+
+### Context
+
+- `summary`: tempting but read-only orientation, not a return value.
+";
+        let function_result = current_lint_source_with_profile(
+            Path::new("context-only-function.prose.md"),
+            function,
+            LintProfile::Strict,
+        );
+        assert!(
+            function_result
+                .diagnostics
+                .iter()
+                .any(|d| d.code == "MDW014" && d.message.contains("returns")),
+            "Context must not satisfy a function's Returns contract: {:?}",
+            function_result.diagnostics
         );
     }
 
