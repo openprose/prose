@@ -16,7 +16,7 @@ import type { ContractSet, LoadedContract } from "./contract-loader";
 /**
  * Render the whole contract set as the compile session's run input. Each
  * contract is a fenced block carrying its id/name/kind and its verbatim
- * `### Requires` / `### Maintains` / `### Continuity` / `### Execution`
+ * `### Requires` / `### Context` / `### Maintains` / `### Continuity` / `### Execution`
  * sections. Contracts are emitted in the (already-sorted) set
  * order so the evidence is stable across runs (reproducibility).
  */
@@ -44,6 +44,7 @@ export function renderContract(contract: LoadedContract): string {
   lines.push("");
 
   appendSection(lines, "Requires", contract.requires);
+  appendSection(lines, "Context", contract.context);
   appendSection(lines, "Maintains", contract.maintains);
   appendSection(lines, "Continuity", contract.continuity);
   appendSection(lines, "Execution", contract.execution);

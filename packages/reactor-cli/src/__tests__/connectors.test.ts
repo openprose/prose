@@ -528,7 +528,7 @@ describe('reactor connectors / gateway ingress (offline gate)', () => {
     }
   });
 
-  it('the ONE-SHOT `reactor trigger <node> --data` mount folds the payload into the node (B3)', async () => {
+  it('the ONE-SHOT `reactor trigger <gateway> --data` mount folds the payload into the gateway (B3)', async () => {
     const stateDir = freshState();
     try {
       const lines: string[] = [];
@@ -559,6 +559,40 @@ describe('reactor connectors / gateway ingress (offline gate)', () => {
       // its tickets), proving --data is delivered, not merely echoed in the report.
       const store = new FileSystemWorldModelStore({ directory: join(stateDir, 'world-models') });
       assert.equal(ticketCount(store as never), 1, 'the one-shot --data was folded into the node');
+    } finally {
+      rmSync(stateDir, { recursive: true, force: true });
+    }
+  });
+
+  it('the ONE-SHOT `reactor trigger <non-gateway> --data` path fails closed (B3)', async () => {
+    const stateDir = freshState();
+    try {
+      const lines: string[] = [];
+      const code = await runTriggerCommand(
+        {
+          node: DIGEST,
+          data: JSON.stringify({ id: 'one-shot-bad', body: 'must not be ambient' }),
+          projectDir: FIXTURE_DIR,
+          stateDir,
+          json: true,
+          offline: true,
+          testAdapters: {
+            clock: createSystemClockAdapter(),
+            storage: createMemoryStorageAdapter(),
+            worldModel: new FileSystemWorldModelStore({ directory: join(stateDir, 'world-models') }),
+          },
+          testRender: { buildRender: buildFakeRender as never },
+          testCompileOptions: testCompileOptions() as never,
+        },
+        (l) => lines.push(l),
+      );
+      assert.equal(code, 1);
+      const report = JSON.parse(lines.join('\n')) as { status: string; message: string };
+      assert.equal(report.status, 'error');
+      assert.match(report.message, /--data can only be delivered to an external gateway node/);
+
+      const store = new FileSystemWorldModelStore({ directory: join(stateDir, 'world-models') });
+      assert.equal(ticketCount(store as never), 0, 'non-gateway --data did not stage ingress truth');
     } finally {
       rmSync(stateDir, { recursive: true, force: true });
     }

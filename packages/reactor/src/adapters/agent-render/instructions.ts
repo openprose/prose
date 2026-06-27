@@ -9,9 +9,9 @@
  *   1. BASE SKILL    — identical across every node; the open-prose system prompt
  *                      (loaded once, {@link readSkill}). This is the "by default"
  *                      injection: every render carries the same SKILL.
- *   2. NODE CONTRACT — this node's compiled `### Requires` / `### Maintains` (+
- *                      its canonicalizer/continuity spec and `### Execution`
- *                      ProseScript body). Layered AFTER the SKILL so node
+ *   2. NODE CONTRACT — this node's compiled `### Requires` / `### Context` /
+ *                      `### Maintains` (+ its canonicalizer/continuity spec and
+ *                      `### Execution` ProseScript body). Layered AFTER the SKILL so node
  *                      specifics refine the general teaching.
  *   3. WAKE HEADER   — the ONLY per-render-varying layer, and it carries NO
  *                      truth — only POINTERS (the wake + where prior truth
@@ -93,7 +93,7 @@ const LAYER_SEPARATOR = "\n\n---\n\n";
 
 /**
  * The compiled-contract view the harness supplies per node. This is the
- * lowered `### Requires` / `### Maintains` / `### Continuity` / `### Execution`
+ * lowered `### Requires` / `### Context` / `### Maintains` / `### Continuity` / `### Execution`
  * the render must satisfy — the contract layer of the instructions. Kept a small
  * plain shape (not a Forme dependency) so the slice can mount a hand-authored
  * node; a real compile phase produces a richer view later.
@@ -105,6 +105,8 @@ export interface CompiledContractView {
   readonly maintains: readonly string[];
   /** The `### Requires` upstream facet-contracts this render subscribes to. */
   readonly requires: readonly string[];
+  /** The `### Context` read-only render guidance carried by the source. */
+  readonly context?: string;
   /** The `### Continuity` clause (when/why the node re-renders over time). */
   readonly continuity?: string;
   /**
@@ -137,10 +139,10 @@ export function readSkill(skillPath: string = DEFAULT_SKILL_PATH): string {
 }
 
 /**
- * Build the NODE CONTRACT layer — the compiled `### Requires`/`### Maintains`
- * (+ continuity + the `### Execution` ProseScript body). This tells *this*
- * render what world-model schema to satisfy and what postconditions to leave
- * true.
+ * Build the NODE CONTRACT layer — the compiled `### Requires`/`### Context`/
+ * `### Maintains` (+ continuity + the `### Execution` ProseScript body). This
+ * tells *this* render what read-only guidance it may consult, what world-model
+ * schema to satisfy, and what postconditions to leave true.
  */
 export function composeNodeContract(
   node: string,
@@ -154,6 +156,12 @@ export function composeNodeContract(
       "`### Maintains` postcondition below true, reading any `### Requires` " +
       "upstream truth by reference through your tools.",
   );
+
+  if (contract.context !== undefined && contract.context.length > 0) {
+    lines.push("");
+    lines.push("### Context");
+    lines.push(contract.context);
+  }
 
   lines.push("");
   lines.push("### Maintains");
@@ -236,11 +244,32 @@ export function composeWakeHeader(ctx: RenderContext): string {
     );
   }
 
-  // We do NOT enumerate the `wm_*` / sandbox tools here. The SDK
+  lines.push("");
+  lines.push("### Upstream truth you may read");
+  if (ctx.inbound_edges.length === 0) {
+    lines.push("This node subscribes to no upstream producers.");
+  } else {
+    const edges = [
+      ...new Set(
+        ctx.inbound_edges.map((edge) => `${edge.producer}\t${edge.facet}`),
+      ),
+    ].sort();
+    for (const edge of edges) {
+      const [producer, facet] = edge.split("\t");
+      lines.push(`- producer \`${producer}\`, facet \`${facet}\``);
+    }
+    lines.push(
+      "Call `wm_list_upstream` to see each producer's published file paths, " +
+        "then call `wm_read_upstream` with the producer id and path you need.",
+    );
+  }
+
+  // We do NOT enumerate the full `wm_*` / sandbox tool catalog here. The SDK
   // advertises the available tools to the model via the native `tools` request
-  // field, not the prompt; hand-listing them in prose is redundant and a drift
-  // risk. The SKILL + node contract + this wake header are the only prompt
-  // layers — the render reads/writes through whatever tools the session is given.
+  // field. The upstream section above names only the two relevant read-by-
+  // reference helpers when inbound edges exist, because those producer/facet
+  // pointers are part of this render's wake context. The SKILL + node contract +
+  // this wake header are the only prompt layers.
   lines.push("");
   lines.push("### How to render");
   lines.push(

@@ -588,6 +588,7 @@ function deriveContractFingerprints(
       `name:${contract.name}`,
       `kind:${contract.kind}`,
       `requires:${contract.requires ?? ""}`,
+      `context:${contract.context ?? ""}`,
       `maintains:${contract.maintains ?? ""}`,
       `continuity:${contract.continuity ?? ""}`,
       `execution:${contract.execution ?? ""}`,
@@ -667,6 +668,9 @@ function defaultContractFor(
     const maintains = contract?.maintains ? [contract.maintains] : [];
     const requires = contract?.requires ? [contract.requires] : [];
     const view: Record<string, unknown> = { name, maintains, requires };
+    if (contract?.context !== undefined) {
+      view["context"] = contract.context;
+    }
     if (contract?.continuity !== undefined) {
       view["continuity"] = contract.continuity;
     }

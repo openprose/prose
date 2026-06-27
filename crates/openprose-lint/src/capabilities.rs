@@ -48,6 +48,8 @@ pub struct CapabilityRequirements {
     #[serde(rename = "test-evaluation")]
     pub test_evaluation: bool,
     pub resume: bool,
+    #[serde(rename = "context-boundary")]
+    pub context_boundary: bool,
     #[serde(rename = "secret-hygiene")]
     pub secret_hygiene: bool,
 }
@@ -206,6 +208,11 @@ fn build_report(
                 let trimmed = line.trim_start().to_ascii_lowercase();
                 trimmed.starts_with("expects:") || trimmed.starts_with("expects-not:")
             }));
+    let context_boundary = !sections.context.is_empty()
+        || source.lines().any(|line| {
+            let trimmed = line.trim_start().to_ascii_lowercase();
+            trimmed.starts_with("context:")
+        });
     let delegation = frontmatter.all_keys.contains_key("delegates")
         || source.contains("\nDelegate:")
         || source.starts_with("Delegate:")
@@ -238,6 +245,7 @@ fn build_report(
         test_execution,
         test_evaluation,
         resume,
+        context_boundary,
         secret_hygiene: environment.required,
     };
     let provenance = requirement_provenance(schema, &requires)?;
@@ -404,6 +412,7 @@ fn validate_schema_capabilities(schema: &CapabilitySchema) -> Result<()> {
         "test-execution",
         "test-evaluation",
         "resume",
+        "context-boundary",
         "secret-hygiene",
     ];
 
@@ -508,6 +517,9 @@ fn direct_required_capabilities(requires: &CapabilityRequirements) -> BTreeSet<S
     }
     if requires.resume {
         caps.insert("resume".to_string());
+    }
+    if requires.context_boundary {
+        caps.insert("context-boundary".to_string());
     }
     if requires.secret_hygiene {
         caps.insert("secret-hygiene".to_string());
@@ -724,6 +736,34 @@ subject: summarizer
         assert_eq!(report.program, "test-summarizer");
         assert!(report.requires.test_execution);
         assert!(report.requires.test_evaluation);
+        assert!(!report.requires.context_boundary);
+        assert!(!report.requires.ask_user);
+        assert!(report.implied_substrate.subagents);
+        assert!(report.implied_substrate.file_io);
+    }
+
+    #[test]
+    fn infers_context_boundary_from_context_section() {
+        let source = r#"---
+name: context-grounded-summary
+kind: responsibility
+version: 0.15.0
+id: 067NC4KG01RG50R40M30E20918
+---
+
+### Context
+
+- `style-guide`: `docs/style-guide.md` at the compiled source revision
+
+### Maintains
+
+- `summary`: concise current summary matching the style guide
+"#;
+        let report =
+            capability_report_from_source(Path::new("context-grounded-summary.prose.md"), source)
+                .unwrap();
+
+        assert!(report.requires.context_boundary);
         assert!(!report.requires.ask_user);
         assert!(report.implied_substrate.subagents);
         assert!(report.implied_substrate.file_io);

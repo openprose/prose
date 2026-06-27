@@ -4,7 +4,8 @@ import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync, rmSync } from 'node
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { enumerateContractFiles } from '../compile/contract-images';
+import { enumerateContractFiles, sliceContract } from '../compile/contract-images';
+import { contractSetFingerprint } from '../compile/ir-cache';
 
 // Regression for the `reactor doctor` hang found by Wave-0 stranger validation:
 // the contract walk used `stat` (follows symlinks) with no cycle guard, so a walk
@@ -28,4 +29,48 @@ test('enumerateContractFiles terminates on a symlink cycle and finds only real c
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
+});
+
+test('contract images preserve Context and Context edits move the set fingerprint', () => {
+  const source = `---
+name: context-grounded-summary
+kind: responsibility
+---
+
+### Requires
+- source signal
+
+### Context
+- style guide A
+
+### Maintains
+- summary
+`;
+  const changed = source.replace('style guide A', 'style guide B');
+
+  const a = sliceContract(source, '/x/context-grounded-summary.prose.md');
+  const b = sliceContract(changed, '/x/context-grounded-summary.prose.md');
+
+  assert.equal(a.context, '- style guide A');
+  assert.equal(b.context, '- style guide B');
+  assert.notEqual(contractSetFingerprint([a]), contractSetFingerprint([b]));
+});
+
+test('contract images read recognized Contract Markdown sections case-insensitively', () => {
+  const source = `---
+name: mixed-case
+kind: responsibility
+---
+
+### context
+- lowercase context
+
+### MAINTAINS
+- uppercase maintains
+`;
+
+  const image = sliceContract(source, '/x/mixed-case.prose.md');
+
+  assert.equal(image.context, '- lowercase context');
+  assert.equal(image.maintains, '- uppercase maintains');
 });

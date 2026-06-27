@@ -16,11 +16,11 @@
  * `--data` is parsed (JSON inline or `@file`) and validated here. The SDK `Wake`
  * shape carries NO payload slot (`{ source, refs }` only — architecture.md §6.1),
  * so a payload cannot be smuggled into the wake. The architecturally-sanctioned
- * delivery is the SAME staging mechanism the connector ingress uses (cli.md §6.1):
- * augment the triggered node's topology with a phantom-ingress edge, STAGE the
- * `--data` into that ingress inbox (moving the node's input fingerprint), then
- * ingest — so the wake is a memo-MISS and the node re-renders reading the staged
- * payload. With NO `--data`, the trigger is a bare external wake (unchanged).
+ * delivery is the SAME staging mechanism the connector ingress uses (cli.md §6.1),
+ * and it is only valid for external gateway nodes: augment the gateway topology
+ * with a phantom-ingress edge, STAGE the `--data` into that ingress inbox
+ * (moving the gateway's input fingerprint), then ingest. With NO `--data`, the
+ * trigger is a bare external wake for any compiled node.
  */
 
 import * as fs from 'fs';
@@ -230,7 +230,8 @@ export async function runTriggerCommand(
 
   // Load + re-lower (KEYLESS).
   const loaded = loadCompiledProject(stateDir);
-  if (loaded.ir.topology.topology.nodes.every((n) => n.node !== options.node)) {
+  const triggerNode = loaded.ir.topology.topology.nodes.find((n) => n.node === options.node);
+  if (triggerNode === undefined) {
     fireTrigger('failure');
     return emitError(
       write,
@@ -245,13 +246,21 @@ export async function runTriggerCommand(
   // (crosscheck dt-receiptspath-1).
   //
   // PAYLOAD DELIVERY (B3): the SDK `Wake` carries no payload, so when `--data` is
-  // given we deliver it via the connector STAGING mechanism — give the node a
-  // phantom-ingress edge so a staged arrival moves its input fingerprint. The
-  // compiled topology is augmented BEFORE the mount (so the reconciler resolves
-  // the ingress input), then we stage the parsed `--data` and ingest, which is a
-  // memo-MISS and re-renders the node reading the staged payload. With NO `--data`
-  // the topology + wake are unchanged (a bare external wake).
+  // given we deliver it via the connector STAGING mechanism. That delivery is
+  // only valid for external gateway nodes. A non-gateway trigger may still wake
+  // the node, but it cannot receive a hidden body; model the payload as gateway
+  // maintained truth and let downstream nodes subscribe via Requires.
   const hasData = options.data !== undefined;
+  if (hasData && triggerNode.wake_source !== 'external') {
+    fireTrigger('failure');
+    return emitError(
+      write,
+      options.json,
+      `reactor trigger: --data can only be delivered to an external gateway node; ` +
+        `'${options.node}' has wake_source '${triggerNode.wake_source}'. ` +
+        `Trigger a gateway and connect downstream data with Requires/Maintains.`,
+    );
+  }
   const compiledForMount = hasData
     ? {
         ...loaded.compiled,
@@ -309,12 +318,12 @@ export async function runTriggerCommand(
     options.testRunProjectImpl,
   );
 
-  // When `--data` is given, STAGE it into the node's phantom-ingress inbox so the
-  // upcoming ingest is a memo-miss that delivers the payload (B3). `buildStageArrival`
-  // appends the item to the ingress source's published inbox, commits it (moving the
-  // ingress atomic fingerprint), and appends an EXTERNAL receipt — which moves the
-  // node's `input_fingerprints`. The arrival id is content-stable so a re-trigger of
-  // the same payload dedups at the inbox (append-style stage).
+  // When `--data` is given, STAGE it into the gateway's phantom-ingress inbox so
+  // the upcoming ingest is a memo-miss that delivers the payload (B3).
+  // `buildStageArrival` appends the item to the ingress source's published inbox,
+  // commits it (moving the ingress atomic fingerprint), and appends an EXTERNAL
+  // receipt — which moves the gateway's `input_fingerprints`. The arrival id is
+  // content-stable so a re-trigger of the same payload dedups at the inbox.
   if (hasData) {
     // The typed handle surfaces `store`/`ledger` first-class — no cast. The
     // `StageStore`/`StageLedger` params are narrow structural views the SDK

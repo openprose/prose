@@ -23,6 +23,7 @@
 
 import type {
   ContractImage,
+  PersistedContractView,
   PersistedCost,
   PersistedPostcondition,
   SerializableCompileIR,
@@ -124,6 +125,7 @@ export async function runCompile(options: CompileRunOptions): Promise<CompileRun
   // Deterministic, keyless: the per-node contract fingerprints (the memo key's
   // first half) + the contract-set fingerprint (the cache key's first component).
   const contractFingerprints = deriveContractFingerprints(contracts);
+  const contractViews = deriveContractViews(contracts);
   const setFingerprint = contractSetFingerprint(contracts.map(toContractImage));
 
   const stepCosts: StepCost[] = [];
@@ -233,6 +235,7 @@ export async function runCompile(options: CompileRunOptions): Promise<CompileRun
     perNodeSpec: perNodeSpec as SerializableCompileIR['perNodeSpec'],
     postconditions,
     contractFingerprints,
+    contractViews,
     manifest: {
       contract_set_fingerprint: setFingerprint,
       sdk_version: options.sdkVersion,
@@ -269,6 +272,7 @@ interface LoadedContractLike {
   readonly name: string;
   readonly kind: string;
   readonly requires?: string;
+  readonly context?: string;
   readonly maintains?: string;
   readonly continuity?: string;
   readonly execution?: string;
@@ -277,10 +281,28 @@ interface LoadedContractLike {
 function toContractImage(c: LoadedContractLike): ContractImage {
   const out: Record<string, unknown> = { id: c.id, name: c.name, kind: c.kind };
   if (c.requires !== undefined) out['requires'] = c.requires;
+  if (c.context !== undefined) out['context'] = c.context;
   if (c.maintains !== undefined) out['maintains'] = c.maintains;
   if (c.continuity !== undefined) out['continuity'] = c.continuity;
   if (c.execution !== undefined) out['execution'] = c.execution;
   return out as unknown as ContractImage;
+}
+
+function deriveContractViews(
+  contracts: readonly LoadedContractLike[],
+): Record<string, PersistedContractView> {
+  const out: Record<string, PersistedContractView> = {};
+  for (const c of contracts) {
+    out[c.id] = {
+      name: c.name,
+      maintains: c.maintains !== undefined ? [c.maintains] : [],
+      requires: c.requires !== undefined ? [c.requires] : [],
+      ...(c.context !== undefined ? { context: c.context } : {}),
+      ...(c.continuity !== undefined ? { continuity: c.continuity } : {}),
+      ...(c.execution !== undefined ? { execution: c.execution } : {}),
+    };
+  }
+  return out;
 }
 
 /**
@@ -304,6 +326,7 @@ function deriveContractFingerprints(
       `name:${c.name}`,
       `kind:${c.kind}`,
       `requires:${c.requires ?? ''}`,
+      `context:${c.context ?? ''}`,
       `maintains:${c.maintains ?? ''}`,
       `continuity:${c.continuity ?? ''}`,
       `execution:${c.execution ?? ''}`,

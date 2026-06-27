@@ -101,6 +101,11 @@ devtools `--describe`) the agent may always run directly to validate its output.
    helpers for expensive sub-steps. Apply the anti-pattern checklist: no
    "loop until done", no volatile fields in `### Maintains`, declare `valid_until`
    in `### Continuity`, facet the truth so an unrelated change wakes nobody.
+   If a downstream node needs a trigger body, webhook body, file event, or any
+   other runtime payload, model that payload as gateway-maintained truth and add
+   a `### Requires` facet on the downstream responsibility. Do not put runtime
+   payloads in `### Context`; Context is read-only grounding and does not create
+   the Forme edge that wakes the subscriber.
 
 5. **Author `reactor.yml`.** State dir, model block, sandbox, and the gateway
    connector (see *Configuration* below). **Ask the user for provider/model** here
@@ -147,8 +152,8 @@ model:
   compile_model: google/gemini-3.5-flash
   temperature: 0               # optional — delete the line to send no temperature
   max_turns: 200
-  # reasoning_effort: none     # reasoning models (gpt-5.x, o-series) reject an
-                               # explicit temperature unless effort is none
+  # reasoning_effort: none     # reasoning-class models (GPT-5/o-series/Claude 4)
+                               # often reject explicit temperature unless effort is none
 
 sandbox:
   mode: none                   # none (default, bounded shell) | docker (network-disabled container)
@@ -167,6 +172,12 @@ reactors: []                   # optional: a multi-reactor host
 
 Global flags `--state-dir`, `--project`, `--json`, `--offline` override the file
 on every command.
+
+Run `reactor doctor --json` before live `compile`/`run`. Doctor is keyless, and
+reports model compatibility warnings for known provider failure classes. For
+GPT-5/o-series/Claude 4-class models through OpenRouter-compatible endpoints,
+prefer deleting `temperature:` unless you deliberately set `reasoning_effort:
+none`.
 
 **Provider/model — ask, don't assume.** The scaffold default is OpenRouter +
 `google/gemini-3.5-flash`. When generating `reactor.yml`, ask the user which
@@ -209,6 +220,16 @@ note (never crashes). `reactor doctor` reports Docker availability under
 | `GET /status` | Standing compile cost + live run cost + per-node dispositions |
 | `GET /cost` | Cost rollup by `surprise_cause` |
 | `POST /trigger/<node>` | Wake `<node>` with an optional JSON body as an external arrival; returns the disposition |
+
+When using `POST /trigger/<gateway>` or
+`reactor trigger <gateway> --data ...`, the payload is staged into that gateway's
+ingress truth. A downstream subscriber sees it only if the gateway
+`### Maintains` a facet and the subscriber `### Requires` that facet. A bare
+trigger of a non-gateway node can wake the node, but it is not the payload
+delivery pattern. Verify the result with `reactor topology`,
+`reactor inspect <subscriber>`, `reactor trace <subscriber>`, and
+`reactor receipts verify`; a successful payload delivery should show the ingress
+receipt, the gateway receipt, and the subscriber receipt.
 
 > **⚠ No auth in v1.** `POST /trigger/<node>` is unauthenticated and can cause
 > model spend. The default `127.0.0.1` bind is loopback-only; expose it

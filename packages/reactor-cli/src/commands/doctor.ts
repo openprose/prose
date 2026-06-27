@@ -21,7 +21,12 @@
 
 import { hasModelKey, readModelKey, isOfflineForced } from '../env';
 import { checkLiveDeps, resolveSdk } from '../meta';
-import { loadConfig, type ConfigOverrides, type SandboxMode } from '../config';
+import {
+  loadConfig,
+  modelCompatibilityWarnings,
+  type ConfigOverrides,
+  type SandboxMode,
+} from '../config';
 import {
   resolveProviderPlan,
   type ProviderPlan,
@@ -73,6 +78,12 @@ export interface DoctorReport {
   sdk: { resolved: boolean; version?: string };
   /** The configured provider label + the env var its key is read from. */
   provider: string;
+  /** Configured render/compile model ids plus keyless compatibility warnings. */
+  model: {
+    renderModel: string;
+    compileModel: string;
+    compatibilityWarnings: string[];
+  };
   apiKeyEnv: string;
   liveKeyPresent: boolean;
   liveDeps: { name: string; present: boolean }[];
@@ -240,18 +251,25 @@ export async function collectDoctorReport(
     };
   }
   const liveKeyPresent = hasModelKey(providerPlan.apiKeyEnv);
+  const compatibilityWarnings = modelCompatibilityWarnings(config.model);
   // Cleared to spend a key: everything a live `compile`/`run` render needs.
   const healthyForLive =
     healthyForOffline &&
     liveKeyPresent &&
     liveDeps.every((d) => d.present) &&
     skill.present &&
-    stateWritable;
+    stateWritable &&
+    compatibilityWarnings.length === 0;
 
   const report: DoctorReport = {
     node: { version, major, ok: major >= MIN_NODE_MAJOR },
     sdk: { resolved: sdk.resolved, version: sdk.version },
     provider: providerPlan.provider,
+    model: {
+      renderModel: config.model.render_model,
+      compileModel: config.model.compile_model,
+      compatibilityWarnings,
+    },
     apiKeyEnv: providerPlan.apiKeyEnv,
     liveKeyPresent,
     liveDeps,
@@ -463,6 +481,12 @@ export function formatDoctorReport(report: DoctorReport): string {
   lines.push(
     `  live key       ${report.liveKeyPresent ? `present (${report.apiKeyEnv})` : `absent (${report.apiKeyEnv})`}`,
   );
+  lines.push(
+    `  model          render ${report.model.renderModel} / compile ${report.model.compileModel}`,
+  );
+  for (const warning of report.model.compatibilityWarnings) {
+    lines.push(`  model warning  ${warning}`);
+  }
   for (const dep of report.liveDeps) {
     lines.push(`  live dep       ${dep.name}: ${mark(dep.present)}`);
   }
@@ -506,7 +530,9 @@ export function formatDoctorReport(report: DoctorReport): string {
   lines.push(
     report.healthyForLive
       ? '  live:   READY — key + model peers + SKILL present; `reactor compile`/`run` can render'
-      : '  live:   not ready — needs a key + `@openai/agents`+`zod` + the SKILL bundle (the keyless surface works without them)',
+      : report.model.compatibilityWarnings.length > 0
+        ? '  live:   not ready — fix model compatibility warnings above before spending a live render'
+        : '  live:   not ready — needs a key + `@openai/agents`+`zod` + the SKILL bundle (the keyless surface works without them)',
   );
   return lines.join('\n');
 }

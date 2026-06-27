@@ -55,6 +55,28 @@ const MONITOR = 'competitor-monitor';
 const BRIEF = 'weekly-brief';
 const FUNDING_PATH = 'state/funding.json';
 const BRIEF_PATH = 'state/brief.md';
+const REQUEST_INBOX = 'request-inbox';
+const CONTEXT_BRIEF = 'context-brief';
+const CONTEXT_EXAMPLE_SRC = join(
+  __dirname,
+  '..',
+  '..',
+  '..',
+  '..',
+  'skills/open-prose/examples/context-boundary/src',
+);
+const REQUEST_INGRESS = `${REQUEST_INBOX}::ingress`;
+const REQUEST_PATH = 'state/request.json';
+const CONTEXT_BRIEF_PATH = 'state/brief.md';
+const CONTEXT_REQUEST_ID = 'ctx-eval-001';
+const CONTEXT_SOURCE_REVISION = '7059b90';
+const CONTEXT_REQUEST = {
+  id: CONTEXT_REQUEST_ID,
+  goal: 'Summarize what the bounded Context section authorizes.',
+  source_revision: CONTEXT_SOURCE_REVISION,
+};
+
+const TEXT_ENCODER = new TextEncoder();
 
 // The canned per-step compile outputs (verbatim from the SDK run-project.test.ts).
 const FORME_OUTPUT = JSON.stringify({
@@ -86,6 +108,40 @@ const BRIEF_CANON_OUTPUT = JSON.stringify({
   facets: [],
 });
 
+const CONTEXT_FORME_OUTPUT = JSON.stringify({
+  nodes: [
+    {
+      id: REQUEST_INBOX,
+      kind: 'gateway',
+      wake_source: 'external',
+      requires: [],
+      maintains: ['request'],
+    },
+    {
+      id: CONTEXT_BRIEF,
+      kind: 'responsibility',
+      wake_source: 'input',
+      requires: [{ facet: 'request' }],
+      maintains: ['brief'],
+    },
+  ],
+  matches: [
+    { subscriber: CONTEXT_BRIEF, requirement: 'request', producer: REQUEST_INBOX, facet: 'request' },
+  ],
+});
+
+const REQUEST_CANON_OUTPUT = JSON.stringify({
+  fields: [{ path: 'request', material: true }],
+  default_material: true,
+  facets: [{ facet: 'request', paths: ['request'] }],
+});
+
+const CONTEXT_BRIEF_CANON_OUTPUT = JSON.stringify({
+  fields: [{ path: 'brief', material: true }],
+  default_material: true,
+  facets: [],
+});
+
 /** The per-step compile providers (the offline cache-populate seam). */
 function testCompileOptions() {
   return {
@@ -103,6 +159,24 @@ function testCompileOptions() {
   };
 }
 
+function contextCompileOptions() {
+  return {
+    testSkill: 'TEST SKILL',
+    testProviders: {
+      forme: fakeStructuredProvider(CONTEXT_FORME_OUTPUT),
+      canonicalizer: {
+        [REQUEST_INBOX]: fakeStructuredProvider(REQUEST_CANON_OUTPUT),
+        [CONTEXT_BRIEF]: fakeStructuredProvider(CONTEXT_BRIEF_CANON_OUTPUT),
+      },
+      skipPostconditions: true as const,
+    },
+  };
+}
+
+function explicitContextProject(): string {
+  return CONTEXT_EXAMPLE_SRC;
+}
+
 /** The FAKE render: writes each node's workspace truth (what the live render's
  * tool loop would), returns a `done` RenderProduct whose world_model is the
  * harvest. Mirrors run-project.test.ts buildFakeRender. */
@@ -118,6 +192,59 @@ function buildFakeRender(store: WorldModelStore) {
       store.writeWorkspace(ctx.node, {
         [BRIEF_PATH]: new TextEncoder().encode('brief derived from funding'),
       });
+    }
+    return {
+      world_model: store.read(ctx.node, 'workspace').files,
+      cost: {
+        provider: 'fake',
+        model: 'fake',
+        tokens: { fresh: 1, reused: 0 },
+        surprise_cause: ctx.wake.source,
+      },
+    };
+  };
+}
+
+function buildContextFakeRender(store: WorldModelStore) {
+  return async (ctx: {
+    node: string;
+    wake: { source: string };
+    inbound_edges: readonly { producer: string; facet: string }[];
+    input_fingerprints: readonly string[];
+  }) => {
+    if (ctx.node === REQUEST_INBOX) {
+      const staged = store.read(REQUEST_INGRESS, 'published').files['inbox.json'];
+      assert.ok(staged, 'trigger --data must be staged through the ingress source');
+      const inbox = JSON.parse(readTextFile(staged as Uint8Array)) as unknown[];
+      assert.equal(inbox.length, 1, 'the trigger payload lands exactly once');
+      const request = inbox[0] as typeof CONTEXT_REQUEST;
+      assert.equal(request.id, CONTEXT_REQUEST_ID);
+      store.writeWorkspace(ctx.node, {
+        [REQUEST_PATH]: TEXT_ENCODER.encode(JSON.stringify({ request }, null, 2)),
+      });
+    } else if (ctx.node === CONTEXT_BRIEF) {
+      assert.equal(ctx.wake.source, 'input', 'Context brief must wake from the request facet');
+      assert.deepEqual(
+        ctx.inbound_edges.map((edge) => `${edge.producer}:${edge.facet}`),
+        [`${REQUEST_INBOX}:request`],
+      );
+      assert.ok(ctx.input_fingerprints.length > 0, 'the staged request moved the input fingerprint');
+      const requestBytes = store.read(REQUEST_INBOX, 'published').files[REQUEST_PATH];
+      assert.ok(requestBytes, 'Context brief must read request-inbox published truth');
+      const { request } = JSON.parse(readTextFile(requestBytes as Uint8Array)) as {
+        request: typeof CONTEXT_REQUEST;
+      };
+      store.writeWorkspace(ctx.node, {
+        [CONTEXT_BRIEF_PATH]: TEXT_ENCODER.encode(
+          [
+            `Context-bound brief for request ${request.id}.`,
+            `Source revision: ${request.source_revision}.`,
+            'Used only declared Context and upstream request truth.',
+          ].join('\n'),
+        ),
+      });
+    } else {
+      throw new Error(`unexpected context render node ${ctx.node}`);
     }
     return {
       world_model: store.read(ctx.node, 'workspace').files,
@@ -523,6 +650,87 @@ describe('reactor trigger (offline gate)', () => {
         `the triggered node reconciled (got ${disp?.disposition})`,
       );
       assert.ok(report.receipts >= 1, 'the trigger drove at least one receipt');
+    } finally {
+      rmSync(d.state, { recursive: true, force: true });
+    }
+  });
+
+  it('stages --data, propagates request truth, and renders a Context-grounded subscriber', async () => {
+    const projectDir = explicitContextProject();
+    const d = freshDirs();
+    const storage = createMemoryStorageAdapter();
+    const worldModel = new FileSystemWorldModelStore({
+      directory: join(d.state, 'world-models'),
+    });
+    try {
+      const out = capture();
+      const code = await runTriggerCommand(
+        {
+          node: REQUEST_INBOX,
+          data: JSON.stringify(CONTEXT_REQUEST),
+          projectDir,
+          stateDir: d.state,
+          json: true,
+          testAdapters: {
+            clock: createSystemClockAdapter(),
+            storage,
+            worldModel,
+          },
+          testRender: { buildRender: buildContextFakeRender as never },
+          testCompileOptions: contextCompileOptions() as never,
+        },
+        out.write,
+      );
+      assert.equal(code, 0);
+
+      const report = JSON.parse(out.lines.join('\n')) as {
+        status: string;
+        data: { id: string; source_revision: string };
+        dispositions: { node: string; disposition: string }[];
+        receipts: number;
+      };
+      assert.equal(report.status, 'triggered');
+      assert.deepEqual(
+        report.dispositions.map((x) => `${x.node}:${x.disposition}`).sort(),
+        [`${CONTEXT_BRIEF}:rendered`, `${REQUEST_INBOX}:rendered`],
+      );
+      assert.equal(report.data.id, CONTEXT_REQUEST_ID);
+      assert.equal(report.data.source_revision, CONTEXT_SOURCE_REVISION);
+      assert.ok(report.receipts >= 3, 'ingress, gateway, and subscriber receipts landed');
+
+      const requestTruth = worldModel.read(REQUEST_INBOX, 'published').files[REQUEST_PATH];
+      assert.ok(requestTruth, 'request gateway published structured truth');
+      assert.equal(
+        (JSON.parse(readTextFile(requestTruth as Uint8Array)) as { request: { id: string } })
+          .request.id,
+        CONTEXT_REQUEST_ID,
+      );
+
+      const briefTruth = worldModel.read(CONTEXT_BRIEF, 'published').files[CONTEXT_BRIEF_PATH];
+      assert.ok(briefTruth, 'Context subscriber published its brief');
+      const brief = readTextFile(briefTruth as Uint8Array);
+      assert.match(brief, new RegExp(CONTEXT_REQUEST_ID));
+      assert.match(brief, new RegExp(CONTEXT_SOURCE_REVISION));
+
+      const receipts = storage.listReceipts();
+      assert.ok(
+        receipts.some((r) => r.node === REQUEST_INGRESS && r.wake.source === 'external'),
+        'the staged ingress receipt is persisted',
+      );
+      const requestReceipt = receipts.find((r) => r.node === REQUEST_INBOX && r.status === 'rendered');
+      assert.equal(requestReceipt?.wake.source, 'external');
+      const briefReceipt = receipts.find((r) => r.node === CONTEXT_BRIEF && r.status === 'rendered');
+      assert.equal(briefReceipt?.wake.source, 'input');
+      assert.ok(
+        (briefReceipt?.input_fingerprints ?? []).length > 0,
+        'the Context subscriber consumed a non-empty request fingerprint tuple',
+      );
+
+      for (const node of [REQUEST_INGRESS, REQUEST_INBOX, CONTEXT_BRIEF]) {
+        const chain = receipts.filter((r) => r.node === node);
+        const verification = verifyReceiptChain(chain as never);
+        assert.equal(verification.ok, true, `node ${node} receipt chain must verify`);
+      }
     } finally {
       rmSync(d.state, { recursive: true, force: true });
     }

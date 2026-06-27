@@ -27,6 +27,7 @@ import { ATOMIC_FACET } from '@openprose/reactor';
 import { runCompileCommand } from '../commands/compile';
 import { manifestPath, loadIR, readTopologyShape, compileDir } from '../compile/ir-cache';
 import { firstErrorLine } from '../compile/run-compile';
+import { contractViewFor } from '../run/run-core';
 import { fakeStructuredProvider } from './fake-provider';
 import { fakeTelemetry } from './fake-telemetry';
 import { TelemetryEvent, NOOP_TELEMETRY, type Telemetry } from '../telemetry';
@@ -137,14 +138,24 @@ function capture(): { write: (l: string) => void; lines: string[] } {
 }
 
 async function compileOnce(stateDir: string, force = false, telemetry: Telemetry = NOOP_TELEMETRY) {
+  return compileProjectOnce(FIXTURE_DIR, stateDir, force, telemetry);
+}
+
+async function compileProjectOnce(
+  projectDir: string,
+  stateDir: string,
+  force = false,
+  telemetry: Telemetry = NOOP_TELEMETRY,
+  providers: ReturnType<typeof testProviders> | ReturnType<typeof explicitContextProviders> = testProviders(),
+) {
   const out = capture();
   const code = await runCompileCommand(
     {
-      projectDir: FIXTURE_DIR,
+      projectDir,
       stateDir,
       json: true,
       force,
-      testProviders: testProviders(),
+      testProviders: providers,
       testSkill: 'TEST SKILL',
     },
     out.write,
@@ -152,6 +163,88 @@ async function compileOnce(stateDir: string, force = false, telemetry: Telemetry
   );
   const report = JSON.parse(out.lines.join('\n')) as Record<string, unknown>;
   return { code, report };
+}
+
+function contextProject(): string {
+  const dir = mkdtempSync(join(tmpdir(), 'reactor-cli-context-project-'));
+  const monitor = readFileSync(join(FIXTURE_DIR, 'competitor-monitor.prose.md'), 'utf8');
+  const brief = readFileSync(join(FIXTURE_DIR, 'weekly-brief.prose.md'), 'utf8').replace(
+    '### Maintains',
+    '### Context\n\n- `style-guide`: read-only briefing tone guidance.\n\n### Maintains',
+  );
+  writeFileSync(join(dir, 'competitor-monitor.prose.md'), monitor, 'utf8');
+  writeFileSync(join(dir, 'weekly-brief.prose.md'), brief, 'utf8');
+  return dir;
+}
+
+const REQUEST_INBOX = 'request-inbox';
+const CONTEXT_BRIEF = 'context-brief';
+const CONTEXT_EXAMPLE_SRC = join(
+  __dirname,
+  '..',
+  '..',
+  '..',
+  '..',
+  'skills/open-prose/examples/context-boundary/src',
+);
+const REQUEST_CONTEXT = [
+  '- Source of truth: read the triggered request payload from `request-inbox` on facet `request`.',
+  '- Treat this section as read-only grounding; do not invent a request id, source revision, or user goal.',
+  '- Context can explain how to interpret the request, but it does not satisfy the `request` requirement.',
+].join('\n');
+
+const CONTEXT_FORME_OUTPUT = JSON.stringify({
+  nodes: [
+    {
+      id: REQUEST_INBOX,
+      kind: 'gateway',
+      wake_source: 'external',
+      requires: [],
+      maintains: ['request'],
+    },
+    {
+      id: CONTEXT_BRIEF,
+      kind: 'responsibility',
+      wake_source: 'input',
+      requires: [{ facet: 'request' }],
+      maintains: ['brief'],
+    },
+  ],
+  matches: [
+    { subscriber: CONTEXT_BRIEF, requirement: 'request', producer: REQUEST_INBOX, facet: 'request' },
+  ],
+});
+
+const REQUEST_CANON_OUTPUT = JSON.stringify({
+  fields: [{ path: 'request', material: true }],
+  default_material: true,
+  facets: [{ facet: 'request', paths: ['request'] }],
+});
+
+const CONTEXT_BRIEF_CANON_OUTPUT = JSON.stringify({
+  fields: [{ path: 'brief', material: true }],
+  default_material: true,
+  facets: [],
+});
+
+const EMPTY_POSTCONDITION_OUTPUT = JSON.stringify({ postconditions: [] });
+
+function explicitContextProject(): string {
+  return CONTEXT_EXAMPLE_SRC;
+}
+
+function explicitContextProviders() {
+  return {
+    forme: fakeStructuredProvider(CONTEXT_FORME_OUTPUT),
+    canonicalizer: {
+      [REQUEST_INBOX]: fakeStructuredProvider(REQUEST_CANON_OUTPUT),
+      [CONTEXT_BRIEF]: fakeStructuredProvider(CONTEXT_BRIEF_CANON_OUTPUT),
+    },
+    postcondition: {
+      [REQUEST_INBOX]: fakeStructuredProvider(EMPTY_POSTCONDITION_OUTPUT),
+      [CONTEXT_BRIEF]: fakeStructuredProvider(EMPTY_POSTCONDITION_OUTPUT),
+    },
+  };
 }
 
 describe('reactor compile (offline gate)', () => {
@@ -180,6 +273,65 @@ describe('reactor compile (offline gate)', () => {
       assert.deepEqual(ir.topology.topology.edges, [
         { subscriber: BRIEF, producer: MONITOR, facet: 'funding' },
       ]);
+    } finally {
+      rmSync(stateDir, { recursive: true, force: true });
+    }
+  });
+
+  it('persists Context in the run-phase contract view cache', async () => {
+    const projectDir = contextProject();
+    const stateDir = freshStateDir();
+    try {
+      const { code } = await compileProjectOnce(projectDir, stateDir);
+      assert.equal(code, 0);
+
+      const ir = loadIR(stateDir);
+      assert.equal(
+        ir.contractViews[BRIEF]?.context,
+        '- `style-guide`: read-only briefing tone guidance.',
+      );
+      assert.equal(
+        contractViewFor(ir, BRIEF).context,
+        '- `style-guide`: read-only briefing tone guidance.',
+      );
+    } finally {
+      rmSync(stateDir, { recursive: true, force: true });
+    }
+  });
+
+  it('preserves an explicit Context program through topology and run contract views', async () => {
+    const projectDir = explicitContextProject();
+    const stateDir = freshStateDir();
+    try {
+      const { code } = await compileProjectOnce(
+        projectDir,
+        stateDir,
+        false,
+        NOOP_TELEMETRY,
+        explicitContextProviders(),
+      );
+      assert.equal(code, 0);
+
+      const ir = loadIR(stateDir);
+      assert.deepEqual(ir.topology.topology.edges, [
+        { subscriber: CONTEXT_BRIEF, producer: REQUEST_INBOX, facet: 'request' },
+      ]);
+      assert.equal(
+        ir.topology.topology.nodes.find((n) => n.node === REQUEST_INBOX)?.wake_source,
+        'external',
+      );
+      assert.equal(
+        ir.topology.topology.nodes.find((n) => n.node === CONTEXT_BRIEF)?.wake_source,
+        'input',
+      );
+
+      const persisted = ir.contractViews[CONTEXT_BRIEF];
+      assert.equal(persisted?.context, REQUEST_CONTEXT);
+      assert.match(String(persisted?.execution), /wm_read_upstream/);
+
+      const runView = contractViewFor(ir, CONTEXT_BRIEF);
+      assert.equal(runView.context, REQUEST_CONTEXT);
+      assert.match(String(runView.execution), /request-inbox/);
     } finally {
       rmSync(stateDir, { recursive: true, force: true });
     }

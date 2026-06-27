@@ -109,6 +109,11 @@
       "mode": "incidental",
       "verification": "unverified",
       "notes": "Claude Code has session resume (--continue, --resume flags) which restores conversation context. However, OpenProse resume requires resuming from structured artifacts and state.md markers, which is a different protocol. The substrate supports continuation; the OpenProse-specific semantics are incidental."
+    },
+    "context-boundary": {
+      "mode": "incidental",
+      "verification": "unverified",
+      "notes": "Claude Code can use isolated subagents and write files, but raw CLI usage does not deterministically preserve declared OpenProse Context sections, exclude undeclared ambient context, or write bounded launch-context artifacts without an OpenProse adapter."
     }
   },
   "profile_assessment": {

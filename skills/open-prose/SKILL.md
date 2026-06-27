@@ -219,6 +219,10 @@ Contract Markdown uses Markdown headers as the canonical human-facing syntax:
 
 - `topic`: the question to investigate
 
+### Context
+
+- `style-guide`: read-only guidance to consult during the render
+
 ### Maintains
 
 - `report`: concise answer with sources
@@ -250,6 +254,12 @@ Header hierarchy:
 - `#` is optional human title.
 - `##` starts an inline contract in multi-contract files.
 - `###` starts a section inside the current responsibility or function.
+
+Authoring rule for `### Context`: use it for bounded, read-only grounding such
+as policy notes, style guides, source paths, or prior decisions. Do not use it
+to carry runtime data. If data should wake a node, author a gateway that
+`### Maintains` the incoming truth and a downstream responsibility that
+`### Requires` the relevant facet.
 
 ## File Locations
 

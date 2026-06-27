@@ -27,6 +27,9 @@ Intro prose the session reads.
 ### Requires
 - a current view of the market
 
+### Context
+- style-guide: read-only style rules for the rendered summary.
+
 ### Maintains
 A corroborated view of each competitor.
 
@@ -54,8 +57,18 @@ test("sliceContract: reads frontmatter id/name/kind (flat scalars only)", () => 
 test("sliceContract: splits the body into verbatim ### sections", () => {
   const c = sliceContract(SAMPLE, "/x/c.prose.md");
   ok(c.requires?.includes("a current view of the market"));
+  ok(c.context?.includes("style-guide"));
   ok(c.continuity?.includes("daily forecast cadence"));
   ok(c.execution?.includes("Fetch sources"));
+});
+
+test("sliceContract: recognized Contract Markdown sections are case-insensitive", () => {
+  const c = sliceContract(
+    "---\nname: mixed-case\nkind: responsibility\n---\n\n### context\n- lowercase context\n\n### MAINTAINS\n- uppercase maintains\n",
+    "/x/mixed-case.prose.md",
+  );
+  equal(c.context, "- lowercase context");
+  equal(c.maintains, "- uppercase maintains");
 });
 
 test("sliceContract: #### facet parts stay INSIDE the ### Maintains body (the session sees them)", () => {
@@ -100,6 +113,8 @@ test("renderContractSet: lays out every contract's identity + sections as stable
   const text = renderContractSet([a]);
   ok(text.includes("Contract `competitor-activity`"));
   ok(text.includes("kind: responsibility"));
+  ok(text.includes("### Context"));
+  ok(text.includes("style-guide"));
   ok(text.includes("### Maintains"));
   ok(text.includes("#### funding"));
   // deterministic: rendering twice is byte-identical

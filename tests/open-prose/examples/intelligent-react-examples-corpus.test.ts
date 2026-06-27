@@ -1,5 +1,5 @@
 // Doc-conformance test for the SHIPPED Intelligent-React learning examples: the
-// 13 reactor-substrate examples authored to the validity contract and wired into
+// reactor-substrate examples authored to the validity contract and wired into
 // the offline gate alongside their ledger-replay tests under
 // tests/open-prose/examples/.
 //
@@ -40,6 +40,7 @@ const OWNED_EXAMPLES = [
   // green, gated ledger-replay tests.
   "agent-observatory",
   "basic-unit-suite",
+  "context-boundary",
   "forme-fixpoint",
   "github-star-enricher",
   "implementation-pipeline",
