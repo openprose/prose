@@ -35,26 +35,27 @@ Use these when deciding whether a change belongs:
 - **Markdown source defines intent.** Authored `*.prose.md` files say what must
   be true; runtime and harness code should not smuggle in semantic policy.
 - **Outcomes stay decoupled from implementation.** Users declare the result or
-  desired state; OpenProse can improve models, judges, retries, and program
-  structure beneath that contract without changing the user's intent.
+  desired state; OpenProse can improve models, retries, and program structure
+  beneath that contract without changing the user's intent.
 - **The skill and interpreter docs define semantics.** Contract Markdown,
   Forme, Prose VM, ProseScript, and Responsibility Runtime are the load-bearing
   language/framework surface.
 - **The harness serves IR and launches runs.** The CLI can validate, compile,
   serve local triggers, forward commands to a selected harness, and report
   deterministic status. It should not become a second VM.
-- **Contracts before choreography.** Prefer `### Requires`, `### Ensures`,
-  `### Errors`, `### Invariants`, `### Shape`, and `### Strategies`; use
+- **Contracts before choreography.** Prefer `### Goal`, `### Requires`,
+  `### Maintains`, `### Continuity`, and `### Invariants`; use
   `### Execution` only when order, loops, retries, gates, or branches are
   actually part of the requirement.
-- **Services stay isolated.** Services write private scratch to `workspace/`;
-  only declared outputs become public `bindings/`.
-- **Forme wires; services do not discover each other.** Services declare data
-  they require and ensure. Wiring belongs to Forme manifests or explicit
-  `### Wiring` when ambiguity must be pinned.
+- **Renders stay isolated.** A node's scratch stays private to its session and
+  `workspace/`; only the declared `### Maintains` truth (or a function's
+  `### Returns`) is published.
+- **Forme wires; nodes do not discover each other.** Responsibilities declare
+  what they require and maintain; Forme matches `Requires.<facet>` to
+  `Maintains.<facet>` and draws the subscription edge.
 - **Responsibilities are standing goals, not cron jobs.** Keep the source
-  semantic; compile and serve lower it into triggers, activations, status, and
-  pressure.
+  semantic; compile and serve lower it into a wired topology, wake sources,
+  and receipts.
 - **Harness and model agnostic by default.** A change should work across Prose
   Complete hosts unless it is explicitly in a host adapter or CLI harness.
 - **The public OSS repo remains disciplined.** Hosted product concepts such as
