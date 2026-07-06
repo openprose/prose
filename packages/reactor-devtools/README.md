@@ -258,7 +258,7 @@ to a specific receipt (useful for screenshots / sharing a moment).
 Pressing **▶** (or stepping forward) fires, per receipt, a **transient,
 fire-and-forget** pulse — the cascade. These are layered onto the same DOM as
 idempotent state, so a backward scrub or a long jump never replays a cascade;
-only a real step/play tick animates. The mapping (plan §4):
+only a real step/play tick animates. The mapping:
 
 - **node flash** — `rendered` + a moved fingerprint: a bright decaying halo bloom
   + box glow, hued by `wake.source` (input cyan / self violet / external gold).
@@ -395,7 +395,7 @@ console.log(`reactor dev: ${url}`);
 
 Keep it lazy so a keyless `reactor` install pulls no UI deps unless `dev` runs.
 
-## Follow-ons (out of scope for the launch workflow)
+## Follow-ons (not yet shipped)
 
 - **S3 — live attach.** Attach to a running `reactor serve` (poll `GET /receipts`)
   or share a process with the mounted DAG and subscribe via the **deferred

@@ -263,7 +263,7 @@ serialization queue (the SDK's single-flight atomicity requires this).
 
 > **Within-reactor parallelism is a future enhancement.** The current SDK has no
 > `maxConcurrency` option, so `--concurrency` parallelizes *reactors*, not nodes
-> within a reactor. See the Change-B deferral note in the implementation plan.
+> within a reactor.
 
 ## Command reference
 
