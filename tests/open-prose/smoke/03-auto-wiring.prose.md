@@ -1,43 +1,36 @@
 ---
 name: smoke-auto-wiring
-kind: system
+kind: responsibility
 version: 0.15.0
 ---
 
-### Services
-
-- `collector`
-- `summarizer`
-
 ### Description
 
-Verifies auto-wiring from one service's declared output to another service's
-declared input.
+Verifies Forme wires a producer's `### Maintains` truth to a consumer's
+`### Requires` need without explicit routing.
 
 ### Requires
 
-- `subject`: a short phrase supplied by the smoke runner
+- `raw-notes`: notes maintained by the collector
 
-### Ensures
+### Maintains
 
 - `summary`: a two-sentence summary containing the exact phrase `auto-wiring-smoke-pass`
+
+### Continuity
+
+- input-driven
 
 ## collector
 
 ### Requires
 
-- `subject`: the phrase to collect
+- `subject`: the phrase to collect, supplied by the caller
 
-### Ensures
+### Maintains
 
 - `raw-notes`: notes that include the subject and the exact phrase `collected-for-auto-wiring`
 
-## summarizer
+### Continuity
 
-### Requires
-
-- `raw-notes`: notes produced by the collector
-
-### Ensures
-
-- `summary`: a two-sentence summary containing the exact phrase `auto-wiring-smoke-pass`
+- input-driven

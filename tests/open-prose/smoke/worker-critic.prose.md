@@ -17,19 +17,10 @@ version: 0.15.0
 
 - `max_rounds`: integer, default `2`
 
-### Requires
-
-- `task`: what to produce
-- `quality-bar`: acceptance criteria
-
-### Ensures
-
-- `result`: accepted worker output, or the best output with final critique when the round budget is exhausted
-
 ### Invariants
 
 - stop when `critic.accepted` is true or after `max_rounds`
-- On exhaustion: return the latest worker output with final feedback
+- on exhaustion: return the latest worker output with final feedback
 
 ### Delegation
 
