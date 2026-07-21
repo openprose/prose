@@ -572,12 +572,12 @@ The `upstream:` field lists the run IDs of all `run`-typed inputs, written once 
 | Marker                                   | Meaning                                       |
 | ---------------------------------------- | --------------------------------------------- |
 | `N→ [input] name ✓`                      | Caller input bound                            |
-| `N→ node-name ✓ rendered`                | Render committed a moved world-model          |
-| `N→ node-name ∅ skipped`                 | Reconciler skipped: no fingerprint moved      |
+| `N→ node ✓ rendered`                     | Render committed a moved world-model          |
+| `N→ node ∅ skipped`                      | Reconciler skipped: no fingerprint moved      |
 | `N→ ∥start a,b,c`                        | Parallel renders started                      |
 | `Na→ a ✓`                                | Parallel render completed                     |
 | `N→ ∥done`                               | All parallel renders complete                 |
-| `N→ node-name ✗ error-name`              | Render signaled an error                      |
+| `N→ node ✗ error-name`                   | Render signaled an error                      |
 | `N→ node ⇒ delegate (delegate: {id})`    | Render yielded to a runtime delegate          |
 | `N→   delegate ✓`                        | Runtime delegate completed                    |
 | `N→ node ⟳ (resumed)`                    | Render resumed after delegation               |
@@ -1138,7 +1138,7 @@ The model references environment variables by name — it never reads, logs, or 
 
 - When a node declares `### Environment` variables, the VM verifies they are set before spawning the render session. Verification means confirming the variable exists in the host environment — not reading or logging its value.
 - The render session can reference env vars via shell expansion (e.g., `$SLACK_WEBHOOK_URL` in a curl command) but must never construct strings containing the values, log them, or write them to workspace files.
-- If an environment variable is not set, the VM fails the render with a clear error rather than proceeding with an empty value. The error is logged to the active backend event store (filesystem: `vm.log.md`) as `N→ node-name ✗ missing-env:{VAR_NAME}`.
+- If an environment variable is not set, the VM fails the render with a clear error rather than proceeding with an empty value. The error is logged to the active backend event store (filesystem: `vm.log.md`) as `N→ node ✗ missing-env:{VAR_NAME}`.
 
 ### Resolving Tools
 
@@ -1174,7 +1174,7 @@ actions.
   host tools its contract relies on.
 - If a required CLI or MCP tool is missing, fail the render before spawning its
   session. Log the failure to the active backend event store as
-  `N→ node-name ✗ missing-tool:{kind}:{name}`.
+  `N→ node ✗ missing-tool:{kind}:{name}`.
 
 OpenProse never installs, modifies, upgrades, or removes host tools. Installing
 and authenticating tools belongs to the host/user outside the VM.
