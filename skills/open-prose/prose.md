@@ -1,12 +1,12 @@
 ---
 role: execution-semantics
 summary: |
-  How to execute OpenProse services and systems. You embody the OpenProse VM—a virtual machine that
+  How to execute OpenProse contracts. You embody the OpenProse VM—a virtual machine that
   reads a compiled Forme manifest, spawns sessions through the host's
   `spawn_session` primitive, manages state via the selected backend, and
-  coordinates execution across services and systems. Read this file to run service and system files.
+  coordinates execution across responsibilities and functions. Read this file to run responsibility and function files.
 see-also:
-  - contract-markdown.md: System and service file format
+  - contract-markdown.md: Contract file format (kinds and sections)
   - forme.md: Wiring semantics (Phase 1 — produces the compiled manifest you consume)
   - prosescript.md: Imperative syntax for pinned execution blocks
   - state/README.md: State backend router and shared run-envelope rules
@@ -17,9 +17,9 @@ see-also:
 
 # OpenProse VM
 
-This document defines how to execute OpenProse services and systems. You are
-the OpenProse VM—an intelligent virtual machine that reads a service file or
-compiled Forme manifest, spawns subagent sessions for each service, passes
+This document defines how to execute OpenProse contracts. You are
+the OpenProse VM—an intelligent virtual machine that reads a contract file or
+compiled Forme manifest, spawns a bounded render session for each node, passes
 data between them through the selected state backend, and returns the run's
 output.
 
@@ -31,15 +31,15 @@ shell executable. If a host also ships a native CLI, the same strings can be
 passed to it. Otherwise wrap the command in the host runner, for example:
 
 ```bash
-claude -p "prose run system.prose.md"
-codex exec "prose run system.prose.md"
+claude -p "prose run research.prose.md"
+codex exec "prose run research.prose.md"
 ```
 
 | Command                     | Action                                                          |
 | --------------------------- | --------------------------------------------------------------- |
 | `prose compile [path]` | Compile Responsibility Runtime source into validated repository IR |
 | `prose serve` | Serve active repository IR as local cron and HTTP trigger adapters |
-| `prose run <file.prose.md>`      | Execute a local service or system                                        |
+| `prose run <file.prose.md>`      | Execute a local responsibility or function                               |
 | `prose run <host>/<owner>/<repo>` | Explicit git host (e.g. `github.com/alice/research`); resolve from `<openprose-root>/deps/` |
 | `prose run std/...` / `co/...`     | Expand OpenProse package shorthand and resolve from `<openprose-root>/deps/github.com/openprose/prose/` |
 | `prose run <owner>/<repo>`       | Reserved for the OpenProse registry (future home at `p.prose.md`)         |
@@ -129,7 +129,7 @@ anyone who wrote explicit hosts.
 
 ## Two Phases of a Run
 
-A Prose system runs in two phases:
+A Prose run has two phases:
 
 | Phase                  | Who                      | Input                 | Output         |
 | ---------------------- | ------------------------ | --------------------- | -------------- |
@@ -167,11 +167,19 @@ compile time and expanded into nodes. There is no `service`/`system`: a function
 `call`ed inside a render, and responsibilities are wired to each other by Forme
 matching `### Requires` → `### Maintains` — never an internally-autowired graph kind.
 
+**Retired kinds never execute.** If an invoked file declares a retired kind
+(`service`, `system`) or an unknown kind — or carries retired sections taught
+as live (`### Ensures`, `### Services`, `### Wiring`) — do not run it under
+any semantics, old or new. Halt and route the user to `prose upgrade`
+(`changelog.md` holds the migration map), which rewrites legacy source to
+current conventions; then run the migrated source. Legacy compatibility is
+migration at the source, never interpretation at runtime.
+
 ---
 
 ## Why This Is a VM
 
-Large language models are simulators. When given a detailed description of a system, they don't just _describe_ that system—they _simulate_ it. This document leverages that property: it describes a virtual machine with enough specificity that reading it causes a Prose Complete system to simulate that VM.
+Large language models are simulators. When given a detailed description of a machine, they don't just _describe_ that machine—they _simulate_ it. This document leverages that property: it describes a virtual machine with enough specificity that reading it causes a Prose Complete host to simulate that VM.
 
 But simulation with sufficient fidelity _is_ implementation. When the simulated VM spawns real subagents, produces real artifacts, and maintains real state, the distinction between "simulating a VM" and "being a VM" collapses.
 
@@ -183,12 +191,12 @@ But simulation with sufficient fidelity _is_ implementation. When the simulated 
 | Instruction pointer | Current position in execution order | Tracked in the active backend event store; filesystem uses `vm.log.md` |
 | Working memory      | Conversation history                | The context window holds ephemeral state |
 | Persistent storage  | Selected state backend rooted at `<openprose-root>` | Files or database rows hold durable state across sessions |
-| Registers/variables | Named bindings                      | Stored by the active backend; filesystem uses `bindings/{service}/{name}.md` |
+| Registers/variables | Named bindings                      | Stored by the active backend; filesystem uses `world-model/caller/{name}.md` and published world-model artifacts |
 | I/O                 | Tool calls and results              | Host primitives spawn sessions, ask users, and return pointers |
 
 ### What Makes It Real
 
-The OpenProse VM isn't a metaphor. Each service in the manifest triggers a
+The OpenProse VM isn't a metaphor. Each node in the topology triggers a
 _real_ host session through `spawn_session`. The outputs are _real_ artifacts on
 disk. The simulation produces actual computation—it just happens through a
 different substrate than silicon executing bytecode.
@@ -197,7 +205,7 @@ different substrate than silicon executing bytecode.
 
 ## Embodying the VM
 
-When you execute a system, you ARE the virtual machine. This is not a metaphor—it's a mode of operation:
+When you execute a compiled topology, you ARE the virtual machine. This is not a metaphor—it's a mode of operation:
 
 | You                        | The VM                          |
 | -------------------------- | ------------------------------- |
@@ -209,8 +217,8 @@ When you execute a system, you ARE the virtual machine. This is not a metaphor�
 **What this means in practice:**
 
 - You don't _simulate_ execution—you _perform_ it
-- Each service spawns a real subagent through the host's `spawn_session`
-  primitive
+- Each woken node renders in a real subagent spawned through the host's
+  `spawn_session` primitive
 - Your state persists through the selected backend rooted at `<openprose-root>/runs/`
 - You follow the manifest strictly, but apply intelligence where needed
 
@@ -236,37 +244,43 @@ own tools:
 
 Load `state/README.md` and the selected backend spec before execution. Durable
 backends always create `<openprose-root>/runs/{id}/` with `root.prose.md`, source
-snapshots, and either a compiled Forme manifest or a service activation
+snapshots, and either a compiled Forme manifest or a function activation
 record. The default filesystem backend stores all execution state in that
 directory:
 
 ```
 <openprose-root>/runs/{id}/
-├── forme.manifest.json               # Optional filesystem snapshot of compiled Forme manifest
-├── root.prose.md                        # Copy of the invoked service or system file
-├── sources/                       # Service, system, and pattern source files copied by Phase 1
+├── compiled-intent.json           # Snapshot of compiled intent (topology world-model + canonicalizers + validators)
+├── root.prose.md                  # Copy of the invoked contract file
+├── sources/                       # Contract and pattern source files copied by Phase 1
 │   ├── researcher.prose.md
 │   ├── critic.prose.md
 │   └── synthesizer.prose.md
-├── workspace/                    # Private working directories (one per service)
+├── workspace/                     # Private render scratch — never fingerprinted, never subscribed to
 │   ├── researcher/
-│   │   ├── notes.md              # Intermediate work
-│   │   ├── findings.md           # Working copy of output
-│   │   └── sources.md            # Working copy of output
+│   │   ├── notes.md               # Intermediate work
+│   │   └── raw-results.md         # Intermediate data
 │   ├── critic/
 │   │   └── ...
 │   └── synthesizer/
 │       └── ...
-├── bindings/                     # Public outputs (copied from workspace)
+├── world-model/                   # Published canonical truth (one per node, plus caller/)
+│   ├── caller/
+│   │   └── question.md            # Caller-provided input (gateway-style)
 │   ├── researcher/
-│   │   ├── findings.md           # Declared Ensures output
-│   │   └── sources.md            # Declared Ensures output
+│   │   ├── findings.md            # Declared `### Maintains` truth — deterministically serialized, fingerprinted
+│   │   ├── sources.md
+│   │   └── .version               # ContentAddress of this committed version
 │   ├── critic/
-│   │   └── evaluation.md
+│   │   └── ...
 │   └── synthesizer/
 │       └── report.md
+├── receipts/                      # Append-only receipt ledger (one chain per node)
+│   ├── researcher.jsonl
+│   ├── critic.jsonl
+│   └── synthesizer.jsonl
 ├── vm.log.md                      # Append-only execution log
-└── agents/                       # Run-scoped agent memory
+└── agents/                        # Run-scoped agent memory
     └── {name}/
         ├── memory.md
         └── {name}-NNN.md
@@ -319,26 +333,26 @@ receipt the render reads by reference.
 ### Step 1: Read the Compiled Manifest
 
 Read the compiled Forme manifest from activation context, compiled intent, or the
-filesystem snapshot at `<openprose-root>/runs/{id}/forme.manifest.json`. Extract:
+filesystem snapshot at `<openprose-root>/runs/{id}/compiled-intent.json`. Extract:
 
-- **Caller Interface** — what inputs the system needs, what it returns
-- **Graph** — each service with its source file, workspace path, inputs (with `←` mappings), and outputs
-- **Execution Order** — the sequence (with parallelization notes)
+- **Caller Interface** — what inputs the run needs, what it returns
+- **Graph** — each node with its source file, workspace path, subscriptions (with `←` mappings), and maintained outputs
+- **Execution Order** — the topology order (with parallelization notes)
 - **Tools** — host executable requirements attributed to graph nodes
 - **Warnings** — present to the user before executing
 
 ### Step 2: Bind Caller Inputs
 
-The manifest's Caller Interface lists what the system requires. Bind these values:
+The manifest's Caller Interface lists what the run requires. Bind these values:
 
 | Source                                                           | Behavior                                              |
 | ---------------------------------------------------------------- | ----------------------------------------------------- |
-| CLI arguments (`prose run system.prose.md --question "..."`)    | Bind immediately                                      |
-| Config file (`<openprose-root>/.env` or system-level config)              | Bind immediately                                      |
-| Pre-supplied by calling system (if this is a nested invocation) | Bind immediately                                      |
+| CLI arguments (`prose run research.prose.md --question "..."`)  | Bind immediately                                      |
+| Config file (`<openprose-root>/.env` or project-level config)             | Bind immediately                                      |
+| Pre-supplied by a calling render (if this is a nested invocation) | Bind immediately                                    |
 | No value available                                               | Pause execution, prompt user via `ask_user` |
 
-Write each bound input to `bindings/caller/{name}.md`:
+Write each bound input to `world-model/caller/{name}.md`:
 
 ```markdown
 # question
@@ -353,46 +367,46 @@ What are the latest developments in quantum computing?
 
 ### Step 3: Create Working Directories
 
-For each service in the manifest, create:
+For each node in the manifest, create:
 
-- `workspace/{service-name}/`
-- `bindings/{service-name}/`
+- `workspace/{node-name}/`
+- `world-model/{node-name}/`
 
-### Step 4: Execute Services
+### Step 4: Render Nodes
 
-Walk the execution order from the manifest. For each service:
+Walk the execution order from the manifest. For each node:
 
 #### 4a. Check Dependencies
 
-All services listed in the service's `inputs` (the `←` mappings) must have their bindings available. If not, wait—an earlier service hasn't completed yet.
+All upstreams listed in the node's subscriptions (the `←` mappings) must have their published outputs available. If not, wait—an earlier node hasn't rendered yet.
 
 #### 4b. Spawn Session
 
 Spawn a subagent via the host's `spawn_session` primitive with:
 
-1. **The service's source file** — read `sources/{service-name}.prose.md` and include its full content as the service definition
+1. **The node's source file** — read `sources/{node-name}.prose.md` and include its full content as the contract
 2. **Input file paths** — list each input with its binding path
-3. **Workspace path** — where the service should write ALL its work
-4. **Output instructions** — which files in the workspace are declared `### Ensures` outputs
+3. **Workspace path** — where the render should write ALL its work
+4. **Output instructions** — which files in the workspace are declared `### Maintains` (or, for a called function, `### Returns`) outputs
 
 The session prompt follows this structure:
 
 ```
-You are executing a Prose service.
+You are rendering an OpenProse node.
 
-## Your Service Definition
+## Your Contract
 
-{contents of sources/{service-name}.prose.md}
+{contents of sources/{node-name}.prose.md}
 
 ## Your Inputs
 
 Read these files for your input data:
-- {input-name}: {bindings-path}
-- {input-name}: {bindings-path}
+- {input-name}: {input-path}
+- {input-name}: {input-path}
 
 ## Your Workspace
 
-Write all your work to: <openprose-root>/runs/{id}/workspace/{service-name}/
+Write all your work to: <openprose-root>/runs/{id}/workspace/{node-name}/
 
 This is your private working directory. Write intermediate notes, drafts, scratch
 work — whatever you need. All files here are preserved for inspection after the run.
@@ -401,11 +415,13 @@ work — whatever you need. All files here are preserved for inspection after th
 
 When you are done, write these files to your workspace:
 
-- {output-name}: workspace/{service-name}/{output-name}.md
-- {output-name}: workspace/{service-name}/{output-name}.md
+- {output-name}: workspace/{node-name}/{output-name}.md
+- {output-name}: workspace/{node-name}/{output-name}.md
 
-These correspond to your `### Ensures` contract. Each file should contain your final
-output for that clause.
+These correspond to your `### Maintains` (or `### Returns`) contract. Each file
+should contain your final output for that clause. Check them against your
+postconditions before you finish — you police your own contract; no one
+re-judges your output after you sign off.
 
 ## Constraints
 
@@ -415,14 +431,15 @@ output for that clause.
 
 ## Declared Host Tools
 
-{if tools exist for this service: "The manifest declares these host tools for this service: {tool list}"}
-{if no tools exist for this service: "No host tools are declared for this service."}
+{if tools exist for this node: "The manifest declares these host tools for this node: {tool list}"}
+{if no tools exist for this node: "No host tools are declared for this node."}
 
 ## Error Signaling
 
-If you cannot satisfy your `### Ensures` contract, signal an error by writing:
+If you cannot satisfy your `### Maintains` postconditions (or `### Returns`
+value), signal an error by writing:
 
-  workspace/{service-name}/__error.md
+  workspace/{node-name}/__error.md
 
 With the format:
   # Error: {error-name}
@@ -435,42 +452,45 @@ The error name must match one of your declared errors:
 
 Return a confirmation message (not your full output):
 
-  Service complete: {service-name}
+  Render complete: {node-name}
   Outputs written:
-    - {output-name}: workspace/{service-name}/{output-name}.md
-    - {output-name}: workspace/{service-name}/{output-name}.md
+    - {output-name}: workspace/{node-name}/{output-name}.md
+    - {output-name}: workspace/{node-name}/{output-name}.md
   Summary: {1-2 sentence summary}
 
 OR if errored:
 
-  Service error: {service-name}
+  Render error: {node-name}
   Error: {error-name}
-  Details: workspace/{service-name}/__error.md
+  Details: workspace/{node-name}/__error.md
 ```
 
 #### 4c. Receive Confirmation
 
-The subagent returns either a completion message or a delegation request. If the response contains `Delegate:` lines, handle as a runtime delegation (see Runtime Delegation) — spawn the delegate, wait, resume the service with the response path, and loop back to 4c.
+The subagent returns either a completion message or a delegation request. If the response contains `Delegate:` lines, handle as a runtime delegation (see Runtime Delegation) — spawn the delegate, wait, resume the render with the response path, and loop back to 4c.
 
 Otherwise, the subagent has completed. The VM:
 
-1. Checks if the service wrote `__error.md` — if so, handle error (see Error Handling)
-2. For each declared output, publishes it through the active backend. Filesystem
-   runs copy from workspace to bindings:
-   - `workspace/{service-name}/{output-name}.md` → `bindings/{service-name}/{output-name}.md`
+1. Checks if the render wrote `__error.md` — if so, handle error (see Error Handling)
+2. Publishes the node's declared truth via `commit_world_model`: the canonical
+   world-model artifact is written from the render's workspace scratch, the
+   compiled canonicalizer fingerprints it, and the receipt is signed and
+   appended to `receipts/{node-name}.jsonl`. (Functions never reach this step
+   as nodes — they are `call`ed inside renders and return their value to the
+   caller; see Copy-on-Return for the standalone-function case.)
 3. Appends a completion marker to the active backend event store
-4. Continues to the next service in execution order
+4. Continues to the next node in execution order
 
-**Critical:** The VM never reads the full output files. It tracks pointers and copies files. This keeps the VM's context lean.
+**Critical:** The VM never reads the full output files. It tracks pointers and publishes artifacts. This keeps the VM's context lean.
 
 #### 4d. Parallel Execution
 
-If the manifest notes that services can run concurrently (no dependencies between them), spawn multiple Task calls in a single response:
+If the manifest notes that nodes can render concurrently (no subscription edges between them), spawn multiple Task calls in a single response:
 
 ```
-// Services with no mutual dependencies — spawn simultaneously
-spawn_session({ prompt: "Service: researcher ..." })
-spawn_session({ prompt: "Service: critic ..." })
+// Nodes with no mutual dependencies — spawn simultaneously
+spawn_session({ prompt: "Node: researcher ..." })
+spawn_session({ prompt: "Node: critic ..." })
 // Wait for all to complete, then continue
 ```
 
@@ -482,26 +502,26 @@ constraints derived from pattern invariants, enforce them during execution:
 
 | Constraint Type          | Enforcement                                                                                                                                                                                                                                                                           |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Information firewall** | When passing data between services that have a firewall constraint, strip internal reasoning and intermediate state before copying output to bindings. The downstream service receives only the declared `### Ensures` outputs — no reasoning chains, no scratch work, no internal state. |
-| **Termination bound**    | Count iterations in loop-based delegation patterns. If the iteration count reaches the ceiling (e.g., `max_rounds`), terminate the loop regardless of the critic's verdict and return the last output. Log: `N→ {service} ⊘ terminated (max_rounds)`                                  |
+| **Information firewall** | When passing data between nodes that have a firewall constraint, strip internal reasoning and intermediate state before publishing. The downstream node receives only the declared published outputs — no reasoning chains, no scratch work, no internal state. |
+| **Termination bound**    | Count iterations in loop-based delegation patterns. If the iteration count reaches the ceiling (e.g., `max_rounds`), terminate the loop regardless of the critic's verdict and return the last output. Log: `N→ {node} ⊘ terminated (max_rounds)`                                  |
 | **Monotonicity**         | For ratchet-type patterns, maintain a certified-progress ledger. Each iteration's certified output must be a superset of the previous iteration's. If an iteration would shrink the certified set, discard it and keep the prior state.                                             |
-| **Error propagation**    | If a slot service writes `__error.md` during a pattern loop, terminate the pattern instance immediately. Propagate the error as if the pattern instance itself errored. Do not retry or continue the loop.                                                                       |
+| **Error propagation**    | If a slot node writes `__error.md` during a pattern loop, terminate the pattern instance immediately. Propagate the error as if the pattern instance itself errored. Do not retry or continue the loop.                                                                       |
 
-Constraints are checked at every service boundary within the expanded pattern —
+Constraints are checked at every node boundary within the expanded pattern —
 not just at the final output. If a constraint is violated, log the violation to
 the active backend event store and continue with the corrected state (e.g., the
 stripped output, the terminated loop, the preserved ledger).
 
-### Step 5: Collect System Output
+### Step 5: Collect Run Output
 
-After all services complete, the system's ensured outputs are in `bindings/`. The manifest's Caller Interface specifies which service produces the final output:
+After all nodes render, the run's declared outputs are published. The manifest's Caller Interface specifies which node produces the final output:
 
 ```
 returns:
 - report (from synthesizer): a critically evaluated research report
 ```
 
-Read `bindings/synthesizer/report.md` and return it to the caller.
+Read `world-model/synthesizer/report.md` (the terminal node's published truth) and return it to the caller.
 
 ### Step 6: Finalize
 
@@ -529,18 +549,18 @@ upstream: [20260317-120000-f4e5d6] # present when run-typed inputs exist
 root: deep-research
 
 1→ [input] question ✓
-2→ researcher ✓
-3→ critic ✓
-4→ synthesizer ✓
+2→ researcher ✓ rendered
+3→ critic ✓ rendered
+4→ synthesizer ✓ rendered
 ---end 2026-03-17T14:35:22Z
 ```
 
 The header is the block between the `#` heading and the first event marker:
 
 ```
-# run:{id} {system-name}
+# run:{id} {root-name}
 upstream: [{comma-separated run IDs}]    # optional, present when run has run-typed inputs
-root: {root service or system path}       # always present
+root: {root contract path}                # always present
 
 {event markers follow}
 ```
@@ -552,60 +572,62 @@ The `upstream:` field lists the run IDs of all `run`-typed inputs, written once 
 | Marker                                   | Meaning                                       |
 | ---------------------------------------- | --------------------------------------------- |
 | `N→ [input] name ✓`                      | Caller input bound                            |
-| `N→ service-name ✓`                      | Service completed, outputs copied to bindings |
-| `N→ ∥start a,b,c`                        | Parallel services started                     |
-| `Na→ a ✓`                                | Parallel service completed                    |
-| `N→ ∥done`                               | All parallel services complete                |
-| `N→ service-name ✗ error-name`           | Service signaled an error                     |
-| `N→ service ⇒ delegate (delegate: {id})` | Service yielded to a runtime delegate         |
+| `N→ node ✓ rendered`                     | Render committed a moved world-model          |
+| `N→ node ∅ skipped`                      | Reconciler skipped: no fingerprint moved      |
+| `N→ ∥start a,b,c`                        | Parallel renders started                      |
+| `Na→ a ✓`                                | Parallel render completed                     |
+| `N→ ∥done`                               | All parallel renders complete                 |
+| `N→ node ✗ error-name`                   | Render signaled an error                      |
+| `N→ node ⇒ delegate (delegate: {id})`    | Render yielded to a runtime delegate          |
 | `N→   delegate ✓`                        | Runtime delegate completed                    |
-| `N→ service ⟳ (resumed)`                 | Service resumed after delegation              |
+| `N→ node ⟳ (resumed)`                    | Render resumed after delegation               |
 | `N→ [eval] assertion ✓`                  | Test assertion passed                         |
 | `N→ [eval] assertion ✗`                  | Test assertion failed                         |
 | `---test PASS`                           | Test passed (all assertions satisfied)        |
 | `---test FAIL (N/M assertions)`          | Test failed                                   |
-| `---end TIMESTAMP`                       | System completed successfully                |
-| `---error TIMESTAMP msg`                 | System failed                                |
+| `---end TIMESTAMP`                       | Run completed successfully                    |
+| `---error TIMESTAMP msg`                 | Run failed                                    |
 
 #### Resumption
 
 To resume an interrupted filesystem run:
 
-1. Read `vm.log.md` — find the last completed marker
-2. Scan `bindings/` — confirm existing outputs
-3. Continue from the next service in execution order
+1. Read the `receipts/` ledger — the append-only chain is the source of truth; find the last committed receipt per node
+2. Read the compiled intent — get the topology and propagation edges
+3. Scan `world-model/` — confirm published canonical artifacts (and their `.version`)
+4. Continue from the next unrendered node in execution order (`vm.log.md` gives the human-readable trace)
 
-For SQLite and PostgreSQL, use the selected backend's event and binding tables
+For SQLite and PostgreSQL, use the selected backend's event and receipt tables
 instead.
 
 ---
 
 ## Error Handling
 
-When a service signals an error (writes `__error.md` to its workspace):
+When a render signals an error (writes `__error.md` to its workspace):
 
 ### Step 1: Read the Error
 
-Read `workspace/{service-name}/__error.md` to get the error name and details.
+Read `workspace/{node-name}/__error.md` to get the error name and details.
 
 ### Step 2: Check Caller's Contract
 
-Look at the root system's `### Ensures` for conditional clauses:
+Look at the root contract's `### Maintains` (or a function's `### Returns`) for conditional clauses:
 
 ```markdown
-### Ensures
+### Maintains
 
 - `report`: a critically evaluated research report
 - if research is unavailable: partial report with explanation
 ```
 
-If a conditional clause covers this error, the VM can satisfy the degraded `### Ensures` clause instead.
+If a conditional clause covers this error, the VM can satisfy the degraded clause instead.
 
 ### Step 3: Check Downstream Impact
 
-If the errored service has downstream dependents (services that require its outputs), those services cannot run. Options:
+If the errored node has downstream subscribers (nodes that require its outputs), those nodes cannot render. Options:
 
-1. **Conditional `### Ensures` covers it** — produce the degraded output, skip dependents, return
+1. **A conditional postcondition covers it** — produce the degraded output, skip dependents, return
 2. **No coverage** — propagate the error. Append `---error` to the active backend event store. Return the error to the caller.
 
 ### Step 4: Log
@@ -620,15 +642,23 @@ Append the error marker to the active backend event store:
 
 ## Handling Execution Blocks
 
-If the manifest notes a **pinned execution** (the author wrote an explicit `### Execution` block), the execution order is not derived from the dependency graph—it's the literal sequence the author wrote.
+A pinned `### Execution` block is **intra-node choreography**: the render body
+of the one node that declares it. It runs *inside* the single render session
+the VM spawned for that node (Step 4b) — it is not a second way for the VM to
+walk the graph, and it never replaces the topology's execution order.
+Cross-node composition is always a Forme-wired subscription; `### Execution`
+composes work *within* a node.
 
-In this mode:
+Inside the render:
 
 - Follow the `let` + `call` sequence exactly as written
-- Do NOT reorder or parallelize
-- Each `call` spawns a session for the named service
+- Do NOT reorder or parallelize beyond what the block declares
+- Each `call` invokes the named function — an ephemeral, stateless helper
+  internal to producing this node's world-model
 - `let` bindings name the results for use in subsequent calls
-- `return` identifies the final output
+- `return` is the value the render publishes; it must satisfy the enclosing
+  contract's `### Maintains` (or `### Returns`), which the render self-polices
+  before signing as usual
 
 The execution block uses ProseScript. Its canonical grammar includes `parallel:`,
 `loop until`, `for each`, `try/catch`, `if/elif/else`, `choice`, `block`, `do`,
@@ -639,19 +669,19 @@ syntax.
 
 ## Spawning Sessions
 
-Each service in the manifest becomes a subagent via `spawn_session`:
+Each node in the manifest renders in a subagent via `spawn_session`:
 
 ```
 spawn_session({
-  description: "OpenProse service: {service-name}",
+  description: "OpenProse render: {node-name}",
   prompt: "{the prompt constructed in Step 4b}",
-  isolation: "service-session",
-  model: "{model from service ### Runtime, if specified}"
+  isolation: "render-session",
+  model: "{model from the node's ### Runtime, if specified}"
 })
 ```
 
 Hosts may spell this differently (`Task`, `spawn_agent`, `run_subagent`, or a
-dedicated service runner). The required behavior is isolation plus access to the
+dedicated render runner). The required behavior is isolation plus access to the
 declared input paths and workspace path.
 
 ### Parallel Execution
@@ -660,8 +690,8 @@ Start multiple `spawn_session` calls in the same host turn for true concurrency:
 
 ```
 // Spawn simultaneously
-spawn_session({ description: "OpenProse service: researcher", prompt: "..." })
-spawn_session({ description: "OpenProse service: fact-checker", prompt: "..." })
+spawn_session({ description: "OpenProse render: researcher", prompt: "..." })
+spawn_session({ description: "OpenProse render: fact-checker", prompt: "..." })
 // Wait for all to complete
 ```
 
@@ -669,8 +699,8 @@ spawn_session({ description: "OpenProse service: fact-checker", prompt: "..." })
 
 The subagent receives:
 
-1. Its service definition (the full `*.prose.md` content from `sources/`)
-2. File paths to its inputs (in `bindings/`)
+1. Its contract (the full `*.prose.md` content from `sources/`)
+2. File paths to its inputs (upstream published world-models and `world-model/caller/`, by reference)
 3. Its workspace path
 4. Instructions on which output files to write
 5. Shape constraints (if any)
@@ -679,18 +709,18 @@ The subagent receives:
 The subagent does NOT receive:
 
 - The global manifest
-- Other services' definitions
+- Other nodes' contracts
 - The dependency graph
-- The root system file
+- The root contract file
 
-Each subagent only knows its own responsibilities.
+Each subagent only knows its own contract.
 
 ### What the Subagent Returns
 
 A confirmation message—not the full output:
 
 ```
-Service complete: researcher
+Render complete: researcher
 Outputs written:
   - findings: workspace/researcher/findings.md
   - sources: workspace/researcher/sources.md
@@ -704,20 +734,20 @@ event store, and continues.
 
 ## Runtime Delegation
 
-A running service can trigger another service at runtime via **runtime delegation** — a yield/resume mechanism analogous to `gate()` (which yields to a human), but service-to-service. This is how a persistent service (e.g., a web server) spawns an ephemeral service (e.g., a synthesizer) mid-session.
+A running render can trigger another render at runtime via **runtime delegation** — a yield/resume mechanism analogous to `gate()` (which yields to a human), but render-to-render. This is how a persistent responsibility (e.g., a web server) calls an ephemeral function (e.g., a synthesizer) mid-session.
 
-Only services whose manifest entry includes a `delegates` block may delegate. The VM enforces this — a delegation request naming an unlisted target is an error.
+Only nodes whose `### Shape` declares a `delegates` block may delegate. The VM enforces this — a delegation request naming an unlisted target is an error.
 
 ### The Yield/Resume Protocol
 
-A service yields by returning a **delegation request** instead of a completion message:
+A render yields by returning a **delegation request** instead of a completion message:
 
 ```
 Delegate: {delegate-name}
-Request: workspace/{service}/__delegate/{delegate}/{id}.md
+Request: workspace/{node}/__delegate/{delegate}/{id}.md
 ```
 
-The service writes its request payload to the specified path before yielding. The `{id}` is a caller-chosen identifier (e.g., a timestamp or short hash) scoping this delegation instance.
+The render writes its request payload to the specified path before yielding. The `{id}` is a caller-chosen identifier (e.g., a timestamp or short hash) scoping this delegation instance.
 
 The VM:
 
@@ -725,19 +755,19 @@ The VM:
 2. Spawns the delegate as a new session (same mechanics as Step 4b — the delegate's source, inputs, workspace, and output instructions come from the manifest)
 3. Passes the request file as the delegate's input
 4. Waits for the delegate to complete normally (writes outputs, returns confirmation)
-5. Writes the delegate's output to `workspace/{service}/__delegate/{delegate}/{id}-response.md`
-6. Resumes the original service with a pointer to the response:
+5. Writes the delegate's output to `workspace/{node}/__delegate/{delegate}/{id}-response.md`
+6. Resumes the original render with a pointer to the response:
 
 ```
 Delegation complete: {delegate-name}/{id}
-Response: workspace/{service}/__delegate/{delegate}/{id}-response.md
+Response: workspace/{node}/__delegate/{delegate}/{id}-response.md
 ```
 
-The service reads the response and continues execution.
+The render reads the response and continues execution.
 
 ### Parallel Delegation
 
-A service may request multiple delegates simultaneously by returning multiple `Delegate:` lines in a single yield:
+A render may request multiple delegates simultaneously by returning multiple `Delegate:` lines in a single yield:
 
 ```
 Delegate: synthesizer
@@ -746,7 +776,7 @@ Delegate: validator
 Request: workspace/server/__delegate/validator/req-001.md
 ```
 
-The VM spawns all delegates concurrently, waits for all to complete, and resumes the service once with all response paths.
+The VM spawns all delegates concurrently, waits for all to complete, and resumes the render once with all response paths.
 
 ### State Markers
 
@@ -754,26 +784,26 @@ Runtime delegation appends these markers to the active backend event store
 (filesystem: `vm.log.md`):
 
 ```
-N→ service ⇒ delegate (delegate: {id})
+N→ node ⇒ delegate (delegate: {id})
 N→   delegate ✓
-N→ service ⟳ (resumed)
+N→ node ⟳ (resumed)
 ```
 
 For parallel delegation, each delegate gets its own `⇒` and `✓` lines. The `⟳` (resumed) marker appears once after all delegates complete.
 
 ### Filesystem Layout
 
-Delegation state lives in the delegating service's workspace:
+Delegation state lives in the delegating node's workspace:
 
 ```
-workspace/{service}/__delegate/{delegate}/
-├── {id}.md              # Request payload (written by service before yield)
+workspace/{node}/__delegate/{delegate}/
+├── {id}.md              # Request payload (written by render before yield)
 └── {id}-response.md     # Response payload (written by VM after delegate completes)
 ```
 
-### Interaction with Persistent Services
+### Interaction with Persistent Responsibilities
 
-A persistent service that delegates is simply yielding mid-session. Its memory file and segment records are unaffected — the service resumes in the same session with the same conversation state. The delegate runs as an independent ephemeral session and has no access to the delegating service's memory.
+A persistent responsibility that delegates is simply yielding mid-session. Its memory file and segment records are unaffected — the render resumes in the same session with the same conversation state. The delegate runs as an independent ephemeral session and has no access to the delegating render's memory.
 
 ### Relationship to gate()
 
@@ -781,31 +811,33 @@ Runtime delegation and `gate()` share the same yield/resume shape:
 
 |                  | gate()                           | Runtime delegation                   |
 | ---------------- | -------------------------------- | ------------------------------------ |
-| **Yields to**    | A human reviewer                 | Another service                      |
+| **Yields to**    | A human reviewer                 | Another render                       |
 | **Resumes with** | Human response                   | Delegate output file path            |
 | **Blocking**     | Indefinite (waits for human)     | Bounded (delegate session completes) |
 | **Protocol**     | `await gate(payload)` → response | `Delegate:` line → response path     |
 
-Both are coroutine-style interruptions where the VM mediates between the yielding service and an external actor.
+Both are coroutine-style interruptions where the VM mediates between the yielding render and an external actor.
 
 ---
 
 ## The Copy-on-Return Mechanism
 
-This is the "return" in Prose. When a service completes:
+This is the "return" in Prose — the publish path for a **standalone function
+run** (see Single-Function Runs), where there is no mounted node and no
+world-model. When the function completes:
 
-1. The service writes ALL its work to `workspace/{service-name}/` — intermediate files, notes, drafts, final outputs, everything
-2. The VM identifies the declared `ensures` outputs (from the manifest)
-3. The VM copies each declared output: `workspace/{service}/output.md` → `bindings/{service}/output.md`
-4. Downstream services read from `bindings/` paths
+1. The render writes ALL its work to `workspace/{function-name}/` — intermediate files, notes, drafts, final outputs, everything
+2. The VM identifies the declared `### Returns` outputs (from the manifest)
+3. The VM copies each declared output: `workspace/{function}/output.md` → `bindings/{function}/output.md`
+4. Downstream renders read from `bindings/` paths
 
 **Why this separation:**
 
-- **`workspace/`** is private. The service writes freely. Everything is preserved for post-run inspection and debugging.
-- **`bindings/`** is public. Only declared `ensures` outputs appear here. Downstream services only see what the contract promises.
-- **The copy is the publish step.** A service can write draft findings, revise them, rewrite them—only the final version in workspace gets copied to bindings.
+- **`workspace/`** is private. The render writes freely. Everything is preserved for post-run inspection and debugging.
+- **`bindings/`** is public. Only declared `### Returns` outputs appear here. Downstream renders only see what the contract promises.
+- **The copy is the publish step.** A render can write draft findings, revise them, rewrite them—only the final version in workspace gets copied to bindings.
 
-This copy-on-return mechanism governs a single-session `service`/`function` run:
+This copy-on-return mechanism governs a single-session `function` run:
 a stateless callable that returns a value. A **responsibility node**, which
 maintains a standing world-model and is subscribed to by downstreams, publishes
 through the richer render-harness seam below — not a dumb copy.
@@ -877,7 +909,7 @@ The example above uses `persist: project`, the common case for a responsibility 
 | Project             | `### Runtime` with `persist: project` | `<openprose-root>/state/agents/{name}/`           | Survives runs in project |
 | User                | `### Runtime` with `persist: user`    | `~/.agents/prose/state/agents/{name}/`         | Survives across projects |
 
-Pick `persist: project` or `persist: user` whenever the service's contract references prior-run state — cumulative counts, watermarks, deltas, or any field whose value depends on what happened before. `persist: true` alone is *not* enough for that: its memory lives only for the duration of the current run and is discarded when the run ends.
+Pick `persist: project` or `persist: user` whenever the node's contract references prior-run state — cumulative counts, watermarks, deltas, or any field whose value depends on what happened before. `persist: true` alone is *not* enough for that: its memory lives only for the duration of the current run and is discarded when the run ends.
 
 ### Invocation
 
@@ -912,23 +944,23 @@ See `primitives/session.md` for memory compaction guidelines.
 
 ## Caller Input Handling
 
-The manifest's Caller Interface specifies what the system requires from the user.
+The manifest's Caller Interface specifies what the run requires from the user.
 
 ### Binding Inputs
 
-At system start, the VM resolves each `requires` entry:
+At run start, the VM resolves each `requires` entry:
 
 | Scenario                                              | Behavior                                            |
 | ----------------------------------------------------- | --------------------------------------------------- |
 | Value provided via CLI arg (`--question "..."`)       | Bind immediately                                    |
 | Value provided via config file                        | Bind immediately                                    |
-| Value provided by calling system (nested invocation) | Bind immediately                                    |
+| Value provided by a calling render (nested invocation) | Bind immediately                                   |
 | No value available                                    | Prompt user via `ask_user`, bind response           |
 
 ### Writing Input Bindings
 
 Write each input to the active backend binding store. Filesystem runs use
-`bindings/caller/{name}.md`:
+`world-model/caller/{name}.md`:
 
 ```markdown
 # {name}
@@ -941,7 +973,7 @@ source: caller
 {the value}
 ```
 
-The manifest's input mappings reference these paths: `{input} ← bindings/caller/{name}.md`
+The manifest's input mappings reference these paths: `{input} ← world-model/caller/{name}.md`
 
 ### Binding `run`-Typed Inputs
 
@@ -971,7 +1003,7 @@ Filesystem completion is read from `vm.log.md`: `---end` means completed,
 `---error` means failed, and neither marker means incomplete.
 
 The VM writes the binding to the active backend binding store. Filesystem runs
-use `bindings/caller/{name}.md` with structured metadata:
+use `world-model/caller/{name}.md` with structured metadata:
 
 ```markdown
 # subject
@@ -1025,7 +1057,7 @@ type: run[]
 
 #### Staleness Detection
 
-When binding a `run` input, the VM compares the run's `root.prose.md` snapshot against the current source file on disk. If they differ semantically (a whitespace change is not staleness; a changed `ensures` clause is), the VM emits a warning:
+When binding a `run` input, the VM compares the run's `root.prose.md` snapshot against the current source file on disk. If they differ semantically (a whitespace change is not staleness; a changed `### Maintains` clause is), the VM emits a warning:
 
 ```
 [Warning] Stale run: 20260406-201439-1a3369
@@ -1049,64 +1081,70 @@ Run IDs default to local `<openprose-root>/runs/`. For cross-project references:
 
 ## Evaluating Contracts
 
-The VM applies intelligence at key points:
+Intelligence lives inside bounded renders; scheduling and propagation are
+deterministic. The division of labor:
 
-### Evaluating Ensures
+### Evaluating Postconditions
 
-After a service completes, the VM checks whether the outputs satisfy the `### Ensures` contract. This is a judgment call—read the output summary and the contract clause, and determine if the commitment was met.
+The render itself checks its outputs against its `### Maintains` postconditions
+(or `### Returns` value) before signing off — self-policing, inside the bounded
+session, where the full working context still exists. There is no separate
+judge beat: the VM never re-reads a signed render's outputs to second-guess the
+commitment, and no model call decides whether a result propagates. Propagation
+is the reconciler's job, and it is deterministic — fingerprints moved or they
+didn't.
 
-If the output doesn't satisfy `### Ensures`:
+If a render finds its outputs don't satisfy the postconditions:
 
-1. Check if the service's `### Strategies` suggest a retry
-2. If so, re-run the service with guidance from the strategy
-3. If not, treat as an implicit error
+1. Check whether the contract's `### Strategies` suggest a recovery; apply it within the session
+2. If no strategy helps, signal a declared error (`__error.md`) rather than signing unmet work
 
 ### Evaluating `each` Postconditions
 
-When an `### Ensures` clause begins with `each`, it expresses a collection postcondition: every item in the named collection must satisfy the stated property. For example:
+When a `### Maintains` clause begins with `each`, it expresses a collection postcondition: every item in the named collection must satisfy the stated property. For example:
 
 ```markdown
-### Ensures
+### Maintains
 
 - `articles`: collected articles from the feed
 - each article has: a summary, a relevance score (0-1), and key claims extracted
 ```
 
-The VM evaluates `each` postconditions with the same intelligent judgment as any other `### Ensures` clause. After the service completes, the VM reads the output and verifies that the property holds for every item in the collection — not just some, not just most, but all.
+The render verifies `each` postconditions the same way it verifies any other postcondition, before signing: the property must hold for every item in the collection — not just some, not just most, but all.
 
-This is a contract-level construct, not an execution directive. The `each` clause says nothing about _how_ the service processes items. The service (or Forme) decides whether to iterate, fan out, or batch. The contract only says: when you are done, every item must have been processed.
+This is a contract-level construct, not an execution directive. The `each` clause says nothing about _how_ the render processes items. The render (or Forme) decides whether to iterate, fan out, or batch. The contract only says: when you are done, every item must have been processed.
 
 ### Evaluating Errors
 
-When a service signals an error, verify the error name matches a declared `### Errors` entry. Undeclared errors propagate as unhandled faults.
+When a render signals an error, verify the error name matches a declared `### Errors` entry. Undeclared errors propagate as unhandled faults.
 
 ### Evaluating Invariants
 
-After the run completes (success or failure), check each service's `### Invariants`. These must be true regardless of outcome. If violated, log a warning—but don't fail the run retroactively.
+After the run completes (success or failure), check each node's `### Invariants`. These must be true regardless of outcome. If violated, log a warning—but don't fail the run retroactively.
 
 ### Evaluating Strategies
 
-Strategies are evaluated when the VM needs to make a judgment call during execution. If a service's intermediate state matches a strategy's `when` condition, apply the strategy's guidance.
+Strategies guide judgment calls inside a render. If a render's intermediate state matches a strategy's `when` condition, apply the strategy's guidance.
 
-For intra-service strategies (e.g., "evaluate from multiple perspectives"), these are included in the session prompt and the subagent applies them directly.
+For intra-render strategies (e.g., "evaluate from multiple perspectives"), these are included in the session prompt and the subagent applies them directly.
 
 ### Resolving Environment
 
-`### Environment` declares runtime dependencies provided by the container, not by the caller. The VM resolves these from the host environment (shell env vars, platform secrets, `.env` files). This is distinct from `### Requires`: required values come from callers or upstream services, while environment values come from the runtime infrastructure.
+`### Environment` declares runtime dependencies provided by the container, not by the caller. The VM resolves these from the host environment (shell env vars, platform secrets, `.env` files). This is distinct from `### Requires`: required values come from callers or upstream nodes, while environment values come from the runtime infrastructure.
 
 The model references environment variables by name — it never reads, logs, or includes their raw values in any output or workspace artifact.
 
 **VM behavior for `### Environment` during execution:**
 
-- When a service declares `### Environment` variables, the VM verifies they are set before spawning the service's session. Verification means confirming the variable exists in the host environment — not reading or logging its value.
-- The service session can reference env vars via shell expansion (e.g., `$SLACK_WEBHOOK_URL` in a curl command) but must never construct strings containing the values, log them, or write them to workspace files.
-- If an environment variable is not set, the VM fails the service with a clear error rather than proceeding with an empty value. The error is logged to the active backend event store (filesystem: `vm.log.md`) as `N→ service-name ✗ missing-env:{VAR_NAME}`.
+- When a node declares `### Environment` variables, the VM verifies they are set before spawning the render session. Verification means confirming the variable exists in the host environment — not reading or logging its value.
+- The render session can reference env vars via shell expansion (e.g., `$SLACK_WEBHOOK_URL` in a curl command) but must never construct strings containing the values, log them, or write them to workspace files.
+- If an environment variable is not set, the VM fails the render with a clear error rather than proceeding with an empty value. The error is logged to the active backend event store (filesystem: `vm.log.md`) as `N→ node ✗ missing-env:{VAR_NAME}`.
 
 ### Resolving Tools
 
-`### Tools` declares host capabilities required by a service, system, or
-responsibility. The compiler resolves these declarations before writing
-repository IR, and the compiled Forme manifest carries resolved service/system
+`### Tools` declares host capabilities required by a responsibility, function,
+or gateway. The compiler resolves these declarations before writing
+repository IR, and the compiled Forme manifest carries resolved node
 tools as:
 
 ```json
@@ -1115,29 +1153,28 @@ tools as:
 
 Responsibility-level tools are carried separately on
 `responsibilities[].tools` as `{ "kind": "cli" | "mcp", "name": "capability" }`
-records and are included in activation payloads for judge and fulfillment
-binding.
+records and are included in activation payloads for the render's fulfillment.
 
 Tool declarations are host capability checks. They do not satisfy
 `### Requires`, do not create Forme dependency-graph edges, and do not act as
-an allowlist. Use `### Shape` to describe service boundaries and prohibited
+an allowlist. Use `### Shape` to describe render boundaries and prohibited
 actions.
 
 **VM behavior for manifest `tools` during execution:**
 
-- Before spawning a service, find manifest tool records whose `requiredBy`
-  includes that service's graph node id.
+- Before spawning a render, find manifest tool records whose `requiredBy`
+  includes that node's graph id.
 - For `kind: "cli"`, verify the executable name is present on host PATH. The
   VM checks presence only; it does not run the executable for version or auth
   checks.
 - For `kind: "mcp"`, verify the server name is present in the host MCP
   registry. The VM checks presence only; it does not install, contact, or
   introspect the server during preflight.
-- Include declared tool names in the service prompt so the service knows which
+- Include declared tool names in the render prompt so the render knows which
   host tools its contract relies on.
-- If a required CLI or MCP tool is missing, fail the service before spawning its
+- If a required CLI or MCP tool is missing, fail the render before spawning its
   session. Log the failure to the active backend event store as
-  `N→ service-name ✗ missing-tool:{kind}:{name}`.
+  `N→ node ✗ missing-tool:{kind}:{name}`.
 
 OpenProse never installs, modifies, upgrades, or removes host tools. Installing
 and authenticating tools belongs to the host/user outside the VM.
@@ -1149,8 +1186,8 @@ and authenticating tools belongs to the host/user outside the VM.
 When the VM executes a test manifest (produced by Forme for `kind: test` — see `forme.md`, Handling Tests):
 
 1. **Bind fixtures** — same as binding caller inputs, but from `### Fixtures` in the manifest. Never prompt the user — tests are fully self-contained.
-2. **Execute the subject** — run the service or system exactly as normal (spawn sessions, copy outputs, etc.). The subject does not know it is under test.
-3. **Evaluate assertions** — after execution completes, evaluate each `### Expects` and `### Expects Not` clause against the actual outputs in `bindings/`. Use intelligent judgment, not string matching. Test observable behavior and contract satisfaction, not exact phrasing.
+2. **Execute the subject** — run the subject responsibility or function exactly as normal (spawn renders, publish outputs, etc.). The subject does not know it is under test.
+3. **Evaluate assertions** — after execution completes, evaluate each `### Expects` and `### Expects Not` clause against the subject's published outputs (`world-model/` for a responsibility subject, `bindings/` for a function subject). Use intelligent judgment, not string matching. Test observable behavior and contract satisfaction, not exact phrasing.
 4. **Produce test report** — instead of returning subject output to the caller, produce a structured report with every assertion, pass/fail status, and concise observed evidence for failures:
 
 ```
@@ -1211,7 +1248,7 @@ This is the simplest execution path.
 
 ## Patterns
 
-A pattern is a reusable agent design pattern: slots, config, invariants, and delegation rules for how filled services interact. By the time you execute, patterns are gone — Forme has expanded them into concrete delegation steps and constraints in the manifest. For pattern authoring syntax and expansion mechanics, see `forme.md`, Pattern Expansion.
+A pattern is a reusable agent design pattern: slots, config, invariants, and delegation rules for how filled slots interact. By the time you execute, patterns are gone — Forme has expanded them into concrete delegation steps and constraints in the manifest. For pattern authoring syntax and expansion mechanics, see `forme.md`, Pattern Expansion.
 
 ### Pattern Contract Sections
 
@@ -1219,26 +1256,26 @@ A pattern file declares its pattern with Contract Markdown sections. Understandi
 
 | Section | Purpose |
 |---------|---------|
-| `### Slots` | Services the pattern requires; each slot has a name and a contract |
+| `### Slots` | Renders the pattern requires; each slot has a name and a contract |
 | `### Config` | Pattern-level parameters and defaults |
 | `### Invariants` | Guarantees that Forme encodes and the VM enforces at runtime |
 | `### Delegation` | ProseScript or pseudocode for how the slots interact |
 
 ### Instantiation
 
-Authors instantiate patterns with explicit slot-filling: a structured
-`### Services` entry uses `pattern:` to name the pattern, `with:` to bind slots,
-and `config:` to set pattern parameters. This declaration appears in a
-system's `### Services` section. Nested pattern declarations may appear only as
+Authors instantiate patterns with explicit slot-filling: `pattern:` names the
+pattern, `with:` binds slots, and `config:` sets pattern parameters. Instances
+are declared in contract files and expanded by Forme at compile time into
+concrete nodes. Nested pattern declarations may appear only as
 slot values inside a pattern instance's `with:` block.
-For instantiation syntax, see `forme.md`, Pattern Expansion. No shorthand
-pattern syntax is accepted at runtime.
+For instantiation syntax, see `contract-markdown.md` (Patterns) and `forme.md`,
+Pattern Expansion. No shorthand pattern syntax is accepted at runtime.
 
 Patterns nest — a slot can be filled by another pattern instantiation. Expansion proceeds inside-out. Recursive patterns are prohibited. For nesting examples, see `forme.md`, Pattern Expansion.
 
 ### Patterns in the Manifest
 
-In v0 compiled intent, pattern-backed systems should compile to ordinary graph
+In v0 compiled intent, pattern-backed graphs should compile to ordinary
 wiring when they do not require extra runtime rules. If a pattern needs
 constraints that the manifest cannot represent, compile should warn rather than
 inventing an implicit runtime contract.
@@ -1251,40 +1288,40 @@ inventing an implicit runtime contract.
 function execute(manifest, inputs?):
   1. Read manifest — extract caller interface, graph, execution order
   2. Bind caller inputs:
-     - From CLI args, config, or calling system
-     - For run-typed inputs (run / run[]): validate existence, structure, completion; emit staleness warning if source system changed
+     - From CLI args, config, or a calling render
+     - For run-typed inputs (run / run[]): validate existence, structure, completion; emit staleness warning if the root source changed
      - Prompt user (`ask_user`) for any missing required inputs
-     - Write each to the active backend binding store (filesystem: bindings/caller/{name}.md with structured metadata for run types)
+     - Write each to the active backend binding store (filesystem: world-model/caller/{name}.md with structured metadata for run types)
      - Record upstream in the backend event header for any run-typed inputs
-  3. Initialize backend storage for each service (filesystem: workspace/ and bindings/ directories)
+  3. Initialize backend storage for each node (filesystem: workspace/ and world-model/ directories)
   4. Initialize the backend event store with run header (root always; upstream if run-typed inputs were bound)
-  5. For each service in execution order:
+  5. For each node in execution order:
      a. Verify all input bindings exist (dependencies satisfied)
      b. Build session prompt:
-        - Service definition (from sources/{name}.prose.md)
-        - Input references from the active backend (filesystem: paths from `bindings/`)
+        - Contract (from sources/{name}.prose.md)
+        - Input references from the active backend (filesystem: upstream `world-model/` paths, by reference)
         - Writable output location (filesystem: workspace path)
-        - Output instructions (ensures outputs to write)
+        - Output instructions (declared Maintains / Returns outputs to write)
         - Shape constraints (prohibited, self, delegates)
         - Error signaling format
-     c. Spawn session via `spawn_session`
-        - If multiple services have no mutual dependencies, spawn in parallel
+     c. Spawn render via `spawn_session`
+        - If multiple nodes have no mutual dependencies, spawn in parallel
      d. Receive response:
         - If Delegate: lines → runtime delegation:
           i.  Spawn each delegate as a new session
           ii. Wait for all delegates to complete
           iii. Write delegate outputs to the active backend (filesystem: workspace/{name}/__delegate/)
-          iv. Resume the service with response references
+          iv. Resume the render with response references
           v.  Append ⇒, ✓, ⟳ markers to the backend event store
           vi. Loop back to (d)
         - If completion → continue
      e. Check for __error.md:
-        - If error: check conditional ensures, handle or propagate
+        - If error: check conditional postconditions, handle or propagate
      f. Apply declared manifest constraints when present
-     g. Publish declared outputs through the active backend (filesystem: workspace/{name}/ → bindings/{name}/)
+     g. Publish the node's truth via commit_world_model (canonical artifact + signed receipt appended to receipts/{name}.jsonl)
      h. Append completion marker to the backend event store
-  6. Collect final output from the active backend bindings per manifest's returns
-  7. Evaluate invariants across all services
+  6. Collect final output from the active backend per manifest's returns
+  7. Evaluate invariants across all nodes
   8. Append ---end to the backend event store
   9. Return final output to caller
 ```
@@ -1297,16 +1334,16 @@ The OpenProse VM:
 
 1. **Reads** the compiled manifest produced by Forme
 2. **Binds** caller inputs (from CLI, config, or user prompt)
-3. **Walks** the execution order from the dependency graph
-4. **Spawns** one session per service via `spawn_session`
+3. **Walks** the execution order from the topology
+4. **Spawns** one render session per node via `spawn_session`
 5. **Passes** input data as backend references (filesystem: file pointers), never inline values
-6. **Publishes** declared outputs through the active backend (filesystem: copy from workspace to bindings)
-7. **Handles** errors via conditional ensures or propagation
-8. **Evaluates** contracts, strategies, and invariants intelligently
-9. **Parallelizes** independent services when the graph allows
+6. **Publishes** each node's truth via `commit_world_model` (canonical world-model artifact + signed receipt); a standalone function run returns via copy-on-return
+7. **Handles** errors via conditional postconditions or propagation
+8. **Applies** intelligence inside bounded renders — strategies, postcondition self-policing, invariants — while wakes and propagation stay deterministic
+9. **Parallelizes** independent renders when the graph allows
 10. **Tracks** state in the active backend event store (filesystem: `vm.log.md`)
-11. **Returns** the system's ensures output to the caller
+11. **Returns** the run's declared output to the caller
 
-Each subagent only knows its own service definition, its inputs, and where to write. The global picture exists only in the manifest and the VM's working memory. This keeps sessions focused and context lean.
+Each subagent only knows its own contract, its inputs, and where to write. The global picture exists only in the manifest and the VM's working memory. This keeps sessions focused and context lean.
 
 The language is self-evident by design. When in doubt about a contract, interpret it as natural language with the intent to fulfill the author's commitment.
