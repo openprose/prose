@@ -726,6 +726,7 @@ function buildPrompt(smokeCase: SmokeCase): string {
           "Publish the subject's declared outputs before evaluating assertions: bindings/ for a function subject, world-model/ for a responsibility subject.",
           "Evaluate ### Expects and ### Expects Not against those published outputs, then write ---test PASS or ---test FAIL to vm.log.md.",
           "A test fixture is self-contained; do not prompt for inputs and do not inspect unrelated programs after resolving the subject.",
+          "Create only the run artifacts this prompt requires; a test run needs no compiled intent snapshot.",
         ]
       : outputRoot === "world-model"
         ? [

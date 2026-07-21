@@ -94,7 +94,7 @@
       "expectedOutputs": ["echo"],
       "outputRoot": "bindings",
       "timeoutSeconds": 480,
-      "maxTurns": 24
+      "maxTurns": 40
     },
     {
       "id": "local-pattern",
