@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`openprose-lint` Rust crate colocated under `crates/openprose-lint/`.**
+  The repo now has a Cargo workspace, a script-owned deterministic lint gate
+  (`scripts/lint-prose.sh`), a curated package-local OpenProse spec bundle for
+  future crates.io distribution, and an independent `openprose-lint` version
+  track.
+- **Optional true-up advisory config.** `.true-up.json` records maintainer drift
+  relationships for the linter integration while `.true-up/` remains ignored;
+  `scripts/lint-prose.sh advisory` uses true-up only when it is explicitly
+  installed or supplied through `TRUE_UP_BIN`.
 - **`prose react "<use case>"`** — A command for taking an English standing goal
   to a running, inspectable Reactor on the `@openprose/reactor-cli` (`reactor`)
   binary. The open-prose skill gains a `reactor.md` operator guide (install, the

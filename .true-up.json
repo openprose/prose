@@ -1,0 +1,177 @@
+{
+  "_comment": "Optional true-up config for advisory drift checks. Commit this config; do not commit the generated .true-up/ cache.",
+  "facts": {
+    "crates/openprose-lint/specs/conformance/manifest.json": [
+      [
+        "cases",
+        "id"
+      ]
+    ]
+  },
+  "strictSpans": true,
+  "zones": [
+    {
+      "path": "AGENTS.md",
+      "visibility": "public",
+      "audience": "maintainer-agents",
+      "intent": "repo-agent-instructions",
+      "rules": [
+        "no-machine-local-paths"
+      ]
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "visibility": "public",
+      "audience": "contributors",
+      "intent": "contributor-guide",
+      "rules": [
+        "no-machine-local-paths"
+      ]
+    },
+    {
+      "path": "CHANGELOG.md",
+      "visibility": "public",
+      "audience": "users",
+      "intent": "release-history",
+      "rules": [
+        "no-machine-local-paths"
+      ]
+    },
+    {
+      "path": "RELEASE.md",
+      "visibility": "public",
+      "audience": "maintainers",
+      "intent": "release-process",
+      "rules": [
+        "no-machine-local-paths"
+      ]
+    },
+    {
+      "path": "README.md",
+      "visibility": "public",
+      "audience": "users",
+      "intent": "user-overview",
+      "rules": [
+        "no-machine-local-paths"
+      ]
+    },
+    {
+      "path": "skills/",
+      "visibility": "public",
+      "audience": "agents-and-users",
+      "intent": "language-and-skill-source",
+      "rules": [
+        "no-machine-local-paths"
+      ]
+    },
+    {
+      "path": "crates/openprose-lint/",
+      "visibility": "public",
+      "audience": "maintainers-and-integrators",
+      "intent": "deterministic-linter-crate",
+      "rules": [
+        "no-machine-local-paths"
+      ]
+    },
+    {
+      "path": "**/AGENTS.md",
+      "visibility": "public",
+      "audience": "maintainer-agents",
+      "intent": "agent-instructions",
+      "rules": [
+        "no-machine-local-paths"
+      ]
+    },
+    {
+      "path": "",
+      "visibility": "public",
+      "audience": "world",
+      "intent": "public-default",
+      "rules": [
+        "no-public->private-deps"
+      ]
+    }
+  ],
+  "seed": [
+    {
+      "from": "CHANGELOG.md",
+      "to": "Cargo.toml",
+      "kind": "derives-facts-from"
+    },
+    {
+      "from": "CHANGELOG.md",
+      "to": ".version-bump.json",
+      "kind": "derives-facts-from"
+    },
+    {
+      "from": "CHANGELOG.md",
+      "to": "scripts/lint-prose.sh",
+      "kind": "derives-facts-from"
+    },
+    {
+      "from": "CONTRIBUTING.md",
+      "to": "scripts/lint-prose.sh",
+      "kind": "derives-facts-from"
+    },
+    {
+      "from": "RELEASE.md",
+      "to": ".version-bump.json",
+      "kind": "derives-facts-from"
+    },
+    {
+      "from": "RELEASE.md",
+      "to": "crates/openprose-lint/Cargo.toml",
+      "kind": "derives-facts-from"
+    },
+    {
+      "from": "crates/openprose-lint/README.md",
+      "to": "crates/openprose-lint/Cargo.toml",
+      "kind": "derives-facts-from"
+    },
+    {
+      "from": "crates/openprose-lint/README.md",
+      "to": "crates/openprose-lint/src/cli.rs#command-surface",
+      "kind": "derives-facts-from"
+    },
+    {
+      "from": "crates/openprose-lint/README.md",
+      "to": "crates/openprose-lint/specs/openprose.json",
+      "kind": "derives-facts-from"
+    },
+    {
+      "from": "crates/openprose-lint/CONTRIBUTING.md",
+      "to": "scripts/lint-prose.sh",
+      "kind": "derives-facts-from"
+    },
+    {
+      "from": "crates/openprose-lint/CONTRIBUTING.md",
+      "to": "crates/openprose-lint/scripts/sync-spec-snapshot.sh",
+      "kind": "derives-facts-from"
+    },
+    {
+      "from": "crates/openprose-lint/docs/spec-integration.md",
+      "to": "crates/openprose-lint/specs/openprose.json",
+      "kind": "derives-facts-from"
+    },
+    {
+      "from": "crates/openprose-lint/docs/spec-integration.md",
+      "to": "crates/openprose-lint/src/spec_source.rs",
+      "kind": "derives-facts-from"
+    },
+    {
+      "from": "crates/openprose-lint/docs/spec-integration.md",
+      "to": "crates/openprose-lint/src/spec_identity.rs",
+      "kind": "derives-facts-from"
+    },
+    {
+      "from": "crates/openprose-lint/CHANGELOG.md",
+      "to": "crates/openprose-lint/Cargo.toml",
+      "kind": "derives-facts-from"
+    },
+    {
+      "from": "package.json",
+      "to": "scripts/lint-prose.sh",
+      "kind": "derives-facts-from"
+    }
+  ]
+}

@@ -1,0 +1,141 @@
+{
+  "vocab_version": "0.1.0",
+  "name": "claude-code",
+  "subject": "Claude Code (raw CLI, no OpenProse adapter)",
+  "prose_complete": true,
+  "verification": "self-declared",
+  "declared_by": "lazy-reindeer session, 2026-04-16",
+  "notes": "Claude Code is Prose Complete: it has native subagents (Agent tool), file I/O (Read/Write/Edit), tool execution (Bash), and user prompting (AskUserQuestion). All protocol-layer VM semantics (workspace trees, copy-on-return, state markers, error signaling, dependency scheduling) are incidental without an OpenProse adapter — the model can improvise them using substrate primitives, but there is no stable, deterministically testable interface for the conformance suite to exercise.",
+  "supports": {
+    "subagents": {
+      "mode": "native",
+      "verification": "self-declared",
+      "notes": "Agent tool spawns independent subagent sessions with isolated context. Supports parallel dispatch (multiple Agent calls in one response), named agents, worktree isolation, and background execution."
+    },
+    "file-io": {
+      "mode": "native",
+      "verification": "self-declared",
+      "notes": "Read, Write, Edit tools provide stable file I/O with absolute paths. Glob and Grep provide search. No sandbox restrictions on local filesystem."
+    },
+    "tool-exec": {
+      "mode": "native",
+      "verification": "self-declared",
+      "notes": "Bash tool executes arbitrary shell commands. Supports timeouts, background execution, and working directory persistence between calls."
+    },
+    "workspace-bindings": {
+      "mode": "incidental",
+      "verification": "unverified",
+      "notes": "No native concept of separate workspace and bindings trees. The model can create directory structures that mimic this using file-io, but the separation is not enforced by the harness."
+    },
+    "copy-on-return": {
+      "mode": "incidental",
+      "verification": "unverified",
+      "notes": "No native mechanism for publishing declared outputs from workspace into bindings. The model can copy files, but there is no harness-enforced publication step."
+    },
+    "state-markers": {
+      "mode": "incidental",
+      "verification": "unverified",
+      "notes": "No native append-only state tracking. The model can write to state files using file-io, but append-only semantics are not enforced by the harness."
+    },
+    "error-signaling": {
+      "mode": "incidental",
+      "verification": "unverified",
+      "notes": "No native __error.md detection or propagation. The model can create error files and reason about them, but the harness does not intercept or propagate errors structurally."
+    },
+    "dependency-scheduling": {
+      "mode": "incidental",
+      "verification": "unverified",
+      "notes": "No native dependency-aware service scheduling. The model can reason about execution order and spawn subagents sequentially, but dependency resolution is model-driven, not harness-enforced."
+    },
+    "parallel": {
+      "mode": "incidental",
+      "verification": "unverified",
+      "notes": "The Agent tool supports parallel subagent dispatch (multiple calls in one message). However, dependency-aware parallel scheduling is model-driven. The substrate supports concurrency; the protocol semantics are incidental.",
+      "constraints": {
+        "max_concurrency": 10
+      }
+    },
+    "environment": {
+      "mode": "incidental",
+      "verification": "unverified",
+      "notes": "The model can check env vars via Bash (echo $VAR, test -n, etc.), but there is no harness-level pre-execution environment validation step. Checking is model-initiated, not automatic."
+    },
+    "secret-hygiene": {
+      "mode": "incidental",
+      "verification": "unverified",
+      "notes": "Claude Code has built-in safety training against exposing secrets in output, and hooks can block certain patterns. However, there is no structured OpenProse-specific env contract that prevents secret values from appearing in artifacts. The protection is model-behavioral, not mechanically enforced for OpenProse semantics."
+    },
+    "delegation": {
+      "mode": "incidental",
+      "verification": "unverified",
+      "notes": "No native Delegate:/Request: yield-resume protocol. The model could improvise file-based delegation using subagents and file-io, but there is no stable interface for it."
+    },
+    "persistence-execution": {
+      "mode": "incidental",
+      "verification": "unverified",
+      "notes": "Conversation context persists within a session, and the model can write state to files. But there is no structured OpenProse-compatible persistence mechanism for run-scoped memory."
+    },
+    "persistence-project": {
+      "mode": "incidental",
+      "verification": "unverified",
+      "notes": "Claude Code has CLAUDE.md files and the auto-memory system (~/.claude/projects/), which provide project-level persistence across sessions. These are real persistence mechanisms but are not structured as OpenProse bindings or workspace artifacts. An adapter could bridge them."
+    },
+    "persistence-user": {
+      "mode": "incidental",
+      "verification": "unverified",
+      "notes": "Claude Code has ~/.claude/CLAUDE.md and global memory files that persist across projects. Same caveat as persistence-project: real mechanism, wrong interface for OpenProse without an adapter."
+    },
+    "ask-user": {
+      "mode": "native",
+      "verification": "self-declared",
+      "notes": "AskUserQuestion tool provides a stable interface for prompting the user. The harness presents the question and returns the user's response. This is a first-class, deterministically invocable primitive."
+    },
+    "run-inputs": {
+      "mode": "incidental",
+      "verification": "unverified",
+      "notes": "No native concept of run/run[]-typed caller bindings. The model receives its initial prompt as text, not as structured OpenProse bindings."
+    },
+    "test-execution": {
+      "mode": "incidental",
+      "verification": "unverified",
+      "notes": "The model can spawn test subjects as subagents and collect file artifacts. But there is no harness-level test runner that understands kind: test semantics."
+    },
+    "test-evaluation": {
+      "mode": "incidental",
+      "verification": "unverified",
+      "notes": "The model can evaluate expects/expects-not clauses using its reasoning. This is inherently model-dependent and fuzzy. No deterministic evaluation harness exists."
+    },
+    "resume": {
+      "mode": "incidental",
+      "verification": "unverified",
+      "notes": "Claude Code has session resume (--continue, --resume flags) which restores conversation context. However, OpenProse resume requires resuming from structured artifacts and state.md markers, which is a different protocol. The substrate supports continuation; the OpenProse-specific semantics are incidental."
+    }
+  },
+  "profile_assessment": {
+    "core": {
+      "status": "not-conformant",
+      "reason": "All substrate capabilities are native, but protocol capabilities (workspace-bindings, copy-on-return, state-markers, error-signaling, dependency-scheduling, environment, secret-hygiene) are incidental. An adapter wrapping the native primitives into stable OpenProse protocol interfaces would make Core conformance achievable."
+    },
+    "delegation": {
+      "status": "not-conformant",
+      "reason": "Depends on Core (not conformant) and delegation is incidental."
+    },
+    "persistence": {
+      "status": "not-conformant",
+      "reason": "Depends on Core (not conformant). Claude Code has real persistence mechanisms (memory system, CLAUDE.md) that could back an adapter, but they are not OpenProse-shaped without one."
+    },
+    "interaction": {
+      "status": "not-conformant",
+      "reason": "Depends on Core (not conformant). ask-user is native and would pass independently, but the profile requires Core."
+    },
+    "tests": {
+      "status": "not-conformant",
+      "reason": "Depends on Core (not conformant). test-execution is incidental."
+    },
+    "resume": {
+      "status": "not-conformant",
+      "reason": "Depends on Core (not conformant). resume is incidental despite native session resume support."
+    }
+  },
+  "path_to_conformance": "Claude Code is an unusually strong candidate for adapted conformance because all three substrate capabilities are native and robust. The gap is entirely at the protocol layer: an openprose-adapter wrapping file-io, subagents, and tool-exec into OpenProse workspace/bindings/state/error semantics would likely bring Core profile conformance within reach. The persistence mechanisms (CLAUDE.md, memory system) are also real and could back persistence-project and persistence-user adapters."
+}
