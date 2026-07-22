@@ -7,7 +7,8 @@ subject: smoke-caller-input
 
 ### Description
 
-Verifies `kind: test` fixtures bind inputs and produce `---test PASS`.
+Verifies `kind: test` fixtures bind inputs, run a function subject, and produce
+`---test PASS`.
 
 ### Fixtures
 

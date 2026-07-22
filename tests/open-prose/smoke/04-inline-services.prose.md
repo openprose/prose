@@ -1,43 +1,49 @@
 ---
-name: smoke-inline-services
-kind: system
+name: smoke-inline-functions
+kind: responsibility
 version: 0.15.0
 ---
 
-### Services
-
-- `reviewer`
-- `publisher`
-
 ### Description
 
-Verifies `##` headings define inline services in a multi-service file.
+Verifies `##` headings define inline functions in a multi-node file.
 
 ### Requires
 
-- `draft`: a short draft supplied by the smoke runner
+- `draft`: a short draft supplied by the caller
 
-### Ensures
+### Maintains
 
-- `final`: polished output containing the exact phrase `inline-services-smoke-pass`
+- `final`: polished output containing the exact phrase `inline-functions-smoke-pass`
+
+### Continuity
+
+- input-driven
+
+### Shape
+
+- `self`: sequence the review and publish steps
+- `delegates`:
+  - `reviewer`: editorial feedback
+  - `publisher`: final polish
 
 ## reviewer
 
-### Requires
+### Parameters
 
 - `draft`: source text to review
 
-### Ensures
+### Returns
 
 - `feedback`: concise editorial feedback naming one strength and one improvement
 
 ## publisher
 
-### Requires
+### Parameters
 
 - `draft`: source text to polish
 - `feedback`: editorial feedback to apply
 
-### Ensures
+### Returns
 
-- `final`: polished output containing the exact phrase `inline-services-smoke-pass`
+- `final`: polished output containing the exact phrase `inline-functions-smoke-pass`

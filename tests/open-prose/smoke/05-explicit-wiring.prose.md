@@ -1,39 +1,26 @@
 ---
-name: smoke-explicit-wiring
-kind: system
+name: smoke-fan-in-wiring
+kind: responsibility
 version: 0.15.0
 ---
 
-### Services
-
-- `left`
-- `right`
-- `joiner`
-
 ### Description
 
-Verifies `### Wiring` can pin caller and service data flow.
+Verifies Forme resolves deliberate fan-in: two producers of distinct truths
+reconverge at one consumer.
 
 ### Requires
 
-- `seed`: a short phrase supplied by the smoke runner
+- `left-note`: the note maintained by the left producer
+- `right-note`: the note maintained by the right producer
 
-### Ensures
+### Maintains
 
-- `joined`: combined output containing the exact phrase `explicit-wiring-smoke-pass`
+- `joined`: combined output containing the exact phrase `fan-in-wiring-smoke-pass`
 
-### Wiring
+### Continuity
 
-left:
-  receives: { seed: seed } from caller
-
-right:
-  receives: { seed: seed } from caller
-
-joiner:
-  receives: { left-note } from left
-  receives: { right-note } from right
-  returns to caller
+- input-driven
 
 ## left
 
@@ -41,9 +28,13 @@ joiner:
 
 - `seed`: caller-provided seed text
 
-### Ensures
+### Maintains
 
 - `left-note`: a note derived from the seed
+
+### Continuity
+
+- input-driven
 
 ## right
 
@@ -51,17 +42,10 @@ joiner:
 
 - `seed`: caller-provided seed text
 
-### Ensures
+### Maintains
 
 - `right-note`: a different note derived from the seed
 
-## joiner
+### Continuity
 
-### Requires
-
-- `left-note`: note from the left service
-- `right-note`: note from the right service
-
-### Ensures
-
-- `joined`: combined output containing the exact phrase `explicit-wiring-smoke-pass`
+- input-driven

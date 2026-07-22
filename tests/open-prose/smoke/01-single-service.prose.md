@@ -1,13 +1,14 @@
 ---
-name: smoke-single-service
-kind: service
+name: smoke-single-function
+kind: function
 version: 0.15.0
 ---
 
 ### Description
 
-Smallest required OpenProse smoke fixture.
+Smallest required OpenProse smoke fixture: one called function, one returned
+value.
 
-### Ensures
+### Returns
 
-- `message`: one sentence containing the exact phrase `single-service-smoke-pass`
+- `message`: one sentence containing the exact phrase `single-function-smoke-pass`

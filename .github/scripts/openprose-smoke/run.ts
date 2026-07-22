@@ -7,6 +7,7 @@ import { tmpdir } from "node:os";
 type SmokeTier = "required" | "advisory";
 type SmokeCommand = "run" | "test";
 type SmokeStatus = "pass" | "fail" | "skip";
+type OutputRoot = "bindings" | "world-model";
 
 type SmokeCase = {
   id: string;
@@ -17,6 +18,7 @@ type SmokeCase = {
   inputs?: Record<string, string>;
   expectedArtifacts?: string[];
   expectedOutputs?: string[];
+  outputRoot?: OutputRoot;
   timeoutSeconds?: number;
   maxTurns?: number;
 };
@@ -50,6 +52,7 @@ type CaseResult = {
   reasons: string[];
   expectedArtifacts: string[];
   expectedOutputs: string[];
+  outputRoot: OutputRoot;
   foundOutputs: string[];
   exitCode: number | null;
   timedOut: boolean;
@@ -81,6 +84,7 @@ const DEFAULT_MODEL = process.env.OPENPROSE_SMOKE_MODEL ?? "claude-sonnet-4-6";
 const DEFAULT_TIMEOUT_SECONDS = 360;
 const DEFAULT_MAX_TURNS = 10;
 const DEFAULT_EXPECTED_ARTIFACTS = ["root.prose.md", "vm.log.md"] as const;
+const DEFAULT_OUTPUT_ROOT: OutputRoot = "world-model";
 const RUNS_DIR_SEGMENTS = ["runs"] as const;
 const CLAUDE_TOOLS = "Edit,Read,Write,Glob,Grep,Task,Skill";
 const CLAUDE_DISALLOWED_TOOLS = [
@@ -500,6 +504,13 @@ function validateCase(entry: any, index: number): SmokeCase {
   if (entry.expectedArtifacts !== undefined && !isRunArtifactArray(entry.expectedArtifacts)) {
     throw new Error(`Smoke case ${entry.id} expectedArtifacts must be run artifact filenames`);
   }
+  if (
+    entry.outputRoot !== undefined &&
+    entry.outputRoot !== "bindings" &&
+    entry.outputRoot !== "world-model"
+  ) {
+    throw new Error(`Smoke case ${entry.id} outputRoot must be "bindings" or "world-model"`);
+  }
   if (entry.workspaceSources !== undefined && !isStringArray(entry.workspaceSources)) {
     throw new Error(`Smoke case ${entry.id} workspaceSources must be a string array`);
   }
@@ -525,6 +536,7 @@ function validateCase(entry: any, index: number): SmokeCase {
     inputs: entry.inputs,
     expectedArtifacts: entry.expectedArtifacts ?? [...DEFAULT_EXPECTED_ARTIFACTS],
     expectedOutputs: entry.expectedOutputs ?? [],
+    outputRoot: entry.outputRoot ?? DEFAULT_OUTPUT_ROOT,
     timeoutSeconds: entry.timeoutSeconds,
     maxTurns: entry.maxTurns,
   };
@@ -586,6 +598,7 @@ async function runCase(
   const start = Date.now();
   const expectedArtifacts = smokeCase.expectedArtifacts ?? [...DEFAULT_EXPECTED_ARTIFACTS];
   const expectedOutputs = smokeCase.expectedOutputs ?? [];
+  const outputRoot = smokeCase.outputRoot ?? DEFAULT_OUTPUT_ROOT;
   const caseResultsDir = path.join(resultsDir, "cases", smokeCase.id);
   const stdoutPath = path.join(caseResultsDir, "stdout.txt");
   const stderrPath = path.join(caseResultsDir, "stderr.txt");
@@ -650,6 +663,7 @@ async function runCase(
     reasons: classification.reasons,
     expectedArtifacts,
     expectedOutputs,
+    outputRoot,
     foundOutputs: classification.foundOutputs,
     exitCode,
     timedOut,
@@ -704,14 +718,26 @@ function workspaceSourcesForCase(smokeCase: SmokeCase): string[] {
 function buildPrompt(smokeCase: SmokeCase): string {
   const command = `prose ${smokeCase.command} ${smokeCase.source}`;
   const inputs = Object.entries(smokeCase.inputs ?? {});
+  const outputRoot = smokeCase.outputRoot ?? DEFAULT_OUTPUT_ROOT;
   const commandGuidance =
     smokeCase.command === "test"
       ? [
-          "For prose test: bind fixtures from the test file, resolve and execute the frontmatter subject as the program under test, evaluate ### Expects and ### Expects Not against bindings, and write ---test PASS or ---test FAIL to vm.log.md.",
-          "Write a compact forme.manifest.json before execution; for a test it must name the subject, fixtures, expected outputs, and assertions.",
+          "For prose test: bind fixtures from the test file, resolve the frontmatter subject, and execute it as the program under test.",
+          "Publish the subject's declared outputs before evaluating assertions: bindings/ for a function subject, world-model/ for a responsibility subject.",
+          "Evaluate ### Expects and ### Expects Not against those published outputs, then write ---test PASS or ---test FAIL to vm.log.md.",
           "A test fixture is self-contained; do not prompt for inputs and do not inspect unrelated programs after resolving the subject.",
+          "Create only the run artifacts this prompt requires; a test run needs no compiled intent snapshot.",
         ]
-      : [];
+      : outputRoot === "world-model"
+        ? [
+            "This program mounts responsibilities: prose run on a kind: responsibility source mounts its nodes and reconciles them, per SKILL.md format detection. Do not refuse the run.",
+            "Snapshot the compiled intent (resolved nodes, subscription edges, entry points) to runs/<run-id>/compiled-intent.json before rendering.",
+            "Publish each node's maintained truth as non-empty files under runs/<run-id>/world-model/<node>/, and append one receipt line per completed render to runs/<run-id>/receipts/<node>.jsonl.",
+            "Append a `N→ <node> ✓ rendered` marker to vm.log.md for each node that commits its world-model.",
+          ]
+        : [
+            "This is a standalone function run. Publish each declared ### Returns output via copy-on-return: workspace/<function>/<output>.md copied to runs/<run-id>/bindings/<function>/<output>.md.",
+          ];
   const inputBlock =
     inputs.length > 0
       ? inputs.map(([name, value]) => `- ${name}: ${value}`).join("\n")
@@ -723,9 +749,9 @@ function buildPrompt(smokeCase: SmokeCase): string {
   const artifactBlock =
     expectedOutputs.length > 0
       ? expectedOutputs
-          .map((output) => `- ${output}: <openprose-root>/runs/<run-id>/bindings/**/${output}.md`)
+          .map((output) => `- ${output}: <openprose-root>/runs/<run-id>/${outputRoot}/**/${output}.md`)
           .join("\n")
-      : "- No declared output bindings are expected.";
+      : "- No declared outputs are expected.";
 
   return [
     "You are the OpenProse VM running a CI smoke fixture.",
@@ -741,11 +767,11 @@ function buildPrompt(smokeCase: SmokeCase): string {
     "Use the default filesystem state backend unless the source explicitly requests another backend.",
     "Satisfy the open-prose Run State Gate before reporting success.",
     `The run must create these files directly under runs/<run-id>/: ${artifacts}.`,
-    "The smoke runner checks real files, not stdout. Before replying, ensure each declared output is published as a non-empty binding file:",
+    "The smoke runner checks real files, not stdout. Before replying, ensure each declared output is published as a non-empty file:",
     artifactBlock,
-    "If a binding is missing, create it under the correct service binding directory before reporting success.",
+    "If a declared output file is missing, create it under the correct node directory before reporting success.",
     "Keep all reads and writes inside this workspace.",
-    "As soon as the required run artifacts, log markers, and declared bindings exist, stop and print the summary without further refinement.",
+    "As soon as the required run artifacts, log markers, and declared outputs exist, stop and print the summary without further refinement.",
     `Print a concise result summary with the run id and declared output names: ${outputs}.`,
   ].join("\n");
 }
@@ -819,6 +845,7 @@ async function classifyLiveCase(
   const processReasons: string[] = [];
   const expectedArtifacts = smokeCase.expectedArtifacts ?? [...DEFAULT_EXPECTED_ARTIFACTS];
   const expectedOutputs = smokeCase.expectedOutputs ?? [];
+  const outputRoot = smokeCase.outputRoot ?? DEFAULT_OUTPUT_ROOT;
 
   if (timedOut) {
     processReasons.push(`Claude CLI timed out after ${smokeCase.timeoutSeconds ?? DEFAULT_TIMEOUT_SECONDS} seconds.`);
@@ -868,13 +895,25 @@ async function classifyLiveCase(
     }
   }
   for (const output of expectedOutputs) {
-    const bindingPath = latestRunDir
-      ? await findExpectedBinding(path.join(latestRunDir, "bindings"), output)
+    const outputPath = latestRunDir
+      ? await findExpectedOutput(path.join(latestRunDir, outputRoot), output)
       : undefined;
-    if (bindingPath && (await readTextIfExists(bindingPath)).trim().length > 0) {
+    if (outputPath && (await readTextIfExists(outputPath)).trim().length > 0) {
       foundOutputs.push(output);
     } else {
-      artifactReasons.push(`Missing or empty expected output binding: ${output}`);
+      artifactReasons.push(`Missing or empty expected output under ${outputRoot}/: ${output}`);
+    }
+  }
+
+  if (outputRoot === "world-model" && latestRunDir) {
+    const receiptsDir = path.join(latestRunDir, "receipts");
+    const receiptTexts = (await pathExists(receiptsDir)) ? await readAllTextFiles(receiptsDir) : [];
+    if (!receiptTexts.some((text) => text.trim().length > 0)) {
+      artifactReasons.push("Mounted run wrote no non-empty receipt under receipts/.");
+    }
+    const vmLog = await readTextIfExists(path.join(latestRunDir, "vm.log.md"));
+    if (!vmLog.includes("rendered")) {
+      artifactReasons.push("Mounted run log vm.log.md has no rendered marker.");
     }
   }
 
@@ -904,18 +943,18 @@ async function findLatestRunDir(runsDir: string): Promise<string | undefined> {
   return candidates[0]?.fullPath;
 }
 
-async function findExpectedBinding(bindingsDir: string, output: string): Promise<string | undefined> {
-  if (!(await pathExists(bindingsDir))) return undefined;
+async function findExpectedOutput(outputDir: string, output: string): Promise<string | undefined> {
+  if (!(await pathExists(outputDir))) return undefined;
   const expectedName = `${output}.md`;
-  const entries = await fs.readdir(bindingsDir, { withFileTypes: true });
+  const entries = await fs.readdir(outputDir, { withFileTypes: true });
 
   for (const entry of entries) {
-    const fullPath = path.join(bindingsDir, entry.name);
+    const fullPath = path.join(outputDir, entry.name);
     if (entry.isFile() && entry.name === expectedName) {
       return fullPath;
     }
     if (entry.isDirectory()) {
-      const nested = await findExpectedBinding(fullPath, output);
+      const nested = await findExpectedOutput(fullPath, output);
       if (nested) return nested;
     }
   }

@@ -1,26 +1,21 @@
 ---
 name: smoke-execution-block
-kind: system
+kind: function
 version: 0.15.0
 ---
 
-### Services
-
-- `planner`
-- `finisher`
-
 ### Description
 
-Verifies a pinned `### Execution` block is followed.
+Verifies a pinned `### Execution` block is followed in a standalone function
+run.
 
-### Requires
+### Parameters
 
 - `request`: a short request supplied by the smoke runner
 
-### Ensures
+### Returns
 
 - `result`: final output containing the exact phrase `execution-block-smoke-pass`
-- publish `result` as the system's declared output binding
 
 ### Execution
 
@@ -36,21 +31,20 @@ return result
 
 ## planner
 
-### Requires
+### Parameters
 
 - `request`: caller request
 
-### Ensures
+### Returns
 
 - `plan`: a two-step plan based on the request
 
 ## finisher
 
-### Requires
+### Parameters
 
 - `plan`: plan from the planner
 
-### Ensures
+### Returns
 
 - `result`: final output containing the exact phrase `execution-block-smoke-pass`
-- publish `result` so callers can read it from `<openprose-root>/runs/` bindings
