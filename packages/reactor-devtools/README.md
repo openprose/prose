@@ -31,6 +31,7 @@ and **S5** (facet / diamond polish) are follow-ons (see below).
 reactor-devtools <state-dir> [--port 4555] [--host 127.0.0.1] [--describe]
 reactor-devtools --example surprise-cost [--describe]   # bundled fixture, no path
 reactor-devtools --example surprise-cost --copy-to ./.reactor [--force]  # seed it into your own dir
+reactor-devtools <state-dir> --export run.html [--source ./src] [--title "…"]  # one shareable HTML file
 ```
 
 **No global install?** The `reactor-devtools` bin ships only in this package, so a
@@ -88,6 +89,45 @@ reactor-devtools ./.reactor --describe        # replay a ledger in YOUR tree
 It refuses a non-empty / already-a-state-dir `<dir>` unless you pass `--force`,
 and the confirmation is explicit that this is the **sample** ledger, not your own
 computed run — your real receipts come from `reactor serve`/`run` with a model key.
+
+### `--export <file.html>` — the gist view (one shareable file)
+
+`--export` writes the whole run as **one self-contained HTML file**, laid out the
+way a gist presents a snippet:
+
+1. **Contract** — the `.prose.md` source(s), each with a working *copy* button
+   (paste into your own tree and re-run).
+2. **Run** — the full run artifact, collapsed by default: the per-frame receipt
+   timeline (status, wake source, moved facets, fresh tokens, woken
+   subscribers), per-node dispositions with a per-node **chain-verify** glyph,
+   the cost rollup by surprise-cause, the topology edge list, and the raw
+   as-persisted receipts.
+3. **Outputs** — each node's published world-model at its **last rendered
+   version**. JSON pretty-prints; an `.html`/`.svg` asset gets a **live preview
+   in a no-token sandboxed iframe** (scripts blocked), an **open in tab** button
+   (a `blob:` URL built from the embedded source — the artifact runs live there,
+   in an isolated origin detached via `noopener`; an explicit user action, unlike
+   the always-sandboxed inline preview), and its escaped source underneath.
+
+```bash
+reactor-devtools --example masked-relay --export run.html \
+  --source skills/open-prose/examples/masked-relay/src \
+  --title "Masked Relay — customer-signal fan-out"
+```
+
+Reactor state-dirs carry no source snapshot today, so the contract block is
+opt-in via `--source <file-or-dir>` (a `.prose.md` file, or a directory whose
+`*.prose.md` — including a `src/` child — are embedded; `index.prose.md` sorts
+first). Without it the export says so honestly instead of fabricating one.
+
+The file embeds **no external assets and makes no network requests**; its inline
+script contains exactly two handlers — the copy button and the open-in-tab blob
+handler (the latter being the documented live-run escape hatch above). Exit
+codes mirror `--describe`: clean (or
+legitimately empty) chain → `0`; detected tamper → `1` — the file is still
+written and carries the tamper verdict, because an export that shows the broken
+chain is more useful than no export. An existing target is refused without
+`--force`.
 
 A `<state-dir>` you pass by path must **exist** and look like a reactor state-dir
 (a `receipts.json` or a `compile/` directory inside it). A non-existent path or a
