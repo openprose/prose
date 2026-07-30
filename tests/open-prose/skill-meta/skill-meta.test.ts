@@ -30,21 +30,64 @@ function frontmatter(s: string): string {
 }
 
 function fencedMarkdownAfter(s: string, heading: string): string {
-	const headingStart = s.indexOf(heading);
+	const lines = s.split("\n");
+	const headingStart = lines.findIndex((line) => line.trimEnd() === heading);
 	if (headingStart < 0) return "";
-	const section = s.slice(headingStart + heading.length);
-	const match = /```markdown\s*\n([\s\S]*?)\n```/.exec(section);
+	const relativeEnd = lines
+		.slice(headingStart + 1)
+		.findIndex((line) => /^##\s+/.test(line));
+	const sectionLines = lines.slice(
+		headingStart + 1,
+		relativeEnd < 0 ? undefined : headingStart + 1 + relativeEnd,
+	);
+	const match = /```markdown\s*\n([\s\S]*?)\n```/.exec(sectionLines.join("\n"));
 	return match?.[1] ?? "";
 }
 
 function section(s: string, heading: string): string {
+	const lines = s.split("\n");
 	const marker = `### ${heading}`;
-	const start = s.indexOf(marker);
+	const start = lines.findIndex((line) => line.trimEnd() === marker);
 	if (start < 0) return "";
-	const bodyStart = start + marker.length;
-	const next = s.indexOf("\n### ", bodyStart);
-	return s.slice(bodyStart, next < 0 ? undefined : next).trim();
+	const relativeEnd = lines
+		.slice(start + 1)
+		.findIndex((line) => /^###\s+/.test(line));
+	return lines
+		.slice(start + 1, relativeEnd < 0 ? undefined : start + 1 + relativeEnd)
+		.join("\n")
+		.trim();
 }
+
+describe("skill-meta Markdown helpers", () => {
+	it("keeps fenced Markdown lookup inside the requested H2 section", () => {
+		const doc = [
+			"## What a contract looks like",
+			"No contract fence is present here.",
+			"",
+			"## Later",
+			"```markdown",
+			"---",
+			"kind: responsibility",
+			"---",
+			"```",
+		].join("\n");
+
+		expect(fencedMarkdownAfter(doc, "## What a contract looks like")).toBe("");
+	});
+
+	it("requires exact contract section headings", () => {
+		const contract = [
+			"### RequiresExtra",
+			"- `topic`: string",
+			"",
+			"### MaintainsExtra",
+			"- `report`: string",
+		].join("\n");
+
+		expect(section(contract, "Requires")).toBe("");
+		expect(section(contract, "Maintains")).toBe("");
+	});
+});
 
 describe("SKILL.md frontmatter — versioning (delta.md §C7)", () => {
 	const fm = frontmatter(read("SKILL.md"));
