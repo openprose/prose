@@ -321,10 +321,14 @@ export function buildProjectTruthFor(
  */
 function projectStructuredJson(files: ProjectFiles): ProjectTruth {
   // Prefer a `state/*.json` file (the documented structured-backing convention);
-  // fall back to any single `.json` file. A stable lexicographic pick keeps the
+  // fall back to any single `.json` file. Reserved `@`-prefixed files are never
+  // structured backing (`@atomic.json` is the render status, and `@` sorts
+  // before lowercase letters, so it would shadow the real backing and every
+  // declared facet would reduce to null). A stable lexicographic pick keeps the
   // projection deterministic when several are present.
   const jsonPaths = Object.keys(files)
     .filter((p) => p.endsWith('.json'))
+    .filter((p) => !(p.split('/').pop() ?? p).startsWith('@'))
     .sort();
   const statePath = jsonPaths.find((p) => p.startsWith('state/'));
   const chosen = statePath ?? jsonPaths[0];
