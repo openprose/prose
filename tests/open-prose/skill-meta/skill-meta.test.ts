@@ -29,6 +29,66 @@ function frontmatter(s: string): string {
 	return s.slice(start, end);
 }
 
+function fencedMarkdownAfter(s: string, heading: string): string {
+	const lines = s.split("\n");
+	const headingStart = lines.findIndex((line) => line.trimEnd() === heading);
+	if (headingStart < 0) return "";
+	const relativeEnd = lines
+		.slice(headingStart + 1)
+		.findIndex((line) => /^##\s+/.test(line));
+	const sectionLines = lines.slice(
+		headingStart + 1,
+		relativeEnd < 0 ? undefined : headingStart + 1 + relativeEnd,
+	);
+	const match = /```markdown\s*\n([\s\S]*?)\n```/.exec(sectionLines.join("\n"));
+	return match?.[1] ?? "";
+}
+
+function section(s: string, heading: string): string {
+	const lines = s.split("\n");
+	const marker = `### ${heading}`;
+	const start = lines.findIndex((line) => line.trimEnd() === marker);
+	if (start < 0) return "";
+	const relativeEnd = lines
+		.slice(start + 1)
+		.findIndex((line) => /^###\s+/.test(line));
+	return lines
+		.slice(start + 1, relativeEnd < 0 ? undefined : start + 1 + relativeEnd)
+		.join("\n")
+		.trim();
+}
+
+describe("skill-meta Markdown helpers", () => {
+	it("keeps fenced Markdown lookup inside the requested H2 section", () => {
+		const doc = [
+			"## What a contract looks like",
+			"No contract fence is present here.",
+			"",
+			"## Later",
+			"```markdown",
+			"---",
+			"kind: responsibility",
+			"---",
+			"```",
+		].join("\n");
+
+		expect(fencedMarkdownAfter(doc, "## What a contract looks like")).toBe("");
+	});
+
+	it("requires exact contract section headings", () => {
+		const contract = [
+			"### RequiresExtra",
+			"- `topic`: string",
+			"",
+			"### MaintainsExtra",
+			"- `report`: string",
+		].join("\n");
+
+		expect(section(contract, "Requires")).toBe("");
+		expect(section(contract, "Maintains")).toBe("");
+	});
+});
+
 describe("SKILL.md frontmatter — versioning (delta.md §C7)", () => {
 	const fm = frontmatter(read("SKILL.md"));
 
@@ -201,14 +261,21 @@ describe("deps.md + agent-onboarding.md — KEEP, survive the overhaul (delta.md
 		expect(f).toMatch(/std\/.*github\.com\/openprose\/prose\/packages\/std/);
 	});
 
-	it("agent-onboarding.md keeps the arrival narrative and uses the new kinds", () => {
+	it("agent-onboarding.md teaches an outcome contract without pinning implementation choreography", () => {
 		// delta.md §B6 L361: KEEP (+links); narrative already aligns.
 		const doc = read("agent-onboarding.md");
-		const f = flat(doc);
-		expect(f).toMatch(/Declare outcomes\. Not instructions\./);
-		// The example must not teach the deleted `system` kind.
+		const example = fencedMarkdownAfter(doc, "## What a contract looks like");
+
+		// The arrival example is the observable lesson: declare an input and the
+		// maintained outcome, leaving execution strategy to the runtime. Its
+		// slogan/copy can evolve without breaking that contract.
+		expect(example).not.toBe("");
+		expect(frontmatter(example)).toMatch(/^kind:\s*responsibility\s*$/m);
+		expect(section(example, "Requires")).toMatch(/^-\s+`[^`]+`:\s+\S/m);
+		expect(section(example, "Maintains")).toMatch(/^-\s+`[^`]+`:\s+\S/m);
+		expect(example).not.toContain("### Execution");
+
+		// The example must not teach the deleted `system` kind anywhere.
 		expect(doc).not.toContain("kind: system");
-		expect(doc).toContain("kind: responsibility");
-		expect(doc).toContain("### Maintains");
 	});
 });
