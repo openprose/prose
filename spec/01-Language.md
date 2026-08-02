@@ -22,7 +22,7 @@ ships:
   Reactor-Native Authoring Pattern**, **SKILL-bundled but harness-governed**:
   how to write `*.prose.md` so the harness's mechanisms engage. It bridges
   this doc and the Harness doc.
-- [ReactorFeedback.md](../history/ReactorFeedback.md) — **the
+- `ReactorFeedback.md` — **the
   decision log**, not shipped: the dialectic that produced the Harness doc;
   the clean statements live in the docs above.
 - [00-Tenets.md](./00-Tenets.md) — **the constitution**. When any
@@ -303,10 +303,10 @@ The current repository narrows the ground truth:
 - The current repo does not specify a product/business platform surface like
   Cloud billing, sprites, Constellation, or an investor narrative. The hosted
   product, public/social surface, and go-to-market motion are sketched in
-  [ContinuousOutcomes.md](../ideation/ContinuousOutcomes.md) (stale
+  `ContinuousOutcomes.md` (stale
   product ideation, not a live spec); the forward-looking subscription,
   royalty, and dependency-graph economics are sketched in
-  [SubscriptionsHypothetical.md](../ideation/SubscriptionsHypothetical.md)
+  `SubscriptionsHypothetical.md`
   (hypothetical, not a live spec and not load-bearing); the brand and design
   surface lives in `platform/apps/run/PRODUCT.md`. None of those documents are
   live OpenProse language/runtime material; this file remains the language and

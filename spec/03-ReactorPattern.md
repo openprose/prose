@@ -17,7 +17,7 @@ ships:
   says **what the author writes** so the runtime can do it. It bridges the
   Language doc and the Harness doc and is the definitive guide to writing
   `*.prose.md` for a Reactor-class harness.
-- [ReactorFeedback.md](../history/ReactorFeedback.md) — **the
+- `ReactorFeedback.md` — **the
   decision log**, not shipped: the dialectic that produced the Harness doc;
   the clean statements live in the docs above and it does not repeat them.
 - [00-Tenets.md](./00-Tenets.md) — **the constitution**. When any
