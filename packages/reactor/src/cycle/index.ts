@@ -28,6 +28,11 @@ export interface ConsumedReceiptEdge {
 export interface CycleDetectionResult {
   readonly cycle_checked: true;
   readonly has_cycle: boolean;
+  /**
+   * The detected cycle represented as a closed walk array of node content addresses
+   * (e.g. `[A, B, C, A]`), where the starting node is repeated at the end to record the closing edge.
+   * If `has_cycle` is false, this array is empty (`[]`).
+   */
   readonly cycle: readonly ContentAddress[];
 }
 
@@ -36,6 +41,9 @@ export interface CycleDetectionResult {
  * acyclicity check Forme runs over the topology world-model's edges
  * (architecture.md §6.3, §3.1). Total and order-stable: the same edge set
  * yields the same cycle regardless of input order.
+ * 
+ * If a cycle is detected, `cycle` returns a closed walk array (e.g., `[A, B, C, A]`)
+ * where the final element repeats the initial node to explicitly record the closing edge.
  */
 export function detectReceiptCycles(
   edges: readonly ConsumedReceiptEdge[],
