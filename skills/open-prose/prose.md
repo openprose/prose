@@ -818,6 +818,8 @@ Runtime delegation and `gate()` share the same yield/resume shape:
 
 Both are coroutine-style interruptions where the VM mediates between the yielding render and an external actor.
 
+The ProseScript statement form for gates (`gate expression`, optionally bound with `let`) is specified in the Gates section of `prosescript.md`.
+
 ---
 
 ## The Copy-on-Return Mechanism

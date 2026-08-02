@@ -122,7 +122,8 @@ agent_property  ::= "model:" expression NEWLINE
 shape_property  ::= ("self" | "delegates" | "prohibited") ":" expression NEWLINE
 
 statement       ::= binding | assignment | return_stmt
-                  | call_stmt | session_stmt | resume_stmt | do_block | do_call
+                  | call_stmt | session_stmt | resume_stmt | gate_stmt
+                  | do_block | do_call
                   | parallel_block | repeat_block | for_block | loop_block
                   | if_stmt | choice_block | try_block | throw_stmt
 
@@ -152,6 +153,8 @@ session_expr    ::= "session" ( string | ":" identifier | identifier ":" identif
                     property_block?
 resume_stmt     ::= ["let" target "="] resume_expr NEWLINE?
 resume_expr     ::= "resume" ":" identifier property_block?
+gate_stmt       ::= ["let" target "="] gate_expr NEWLINE?
+gate_expr       ::= "gate" expression
 
 property_block  ::= NEWLINE INDENT property+ DEDENT
 property         ::= identifier ":" expression NEWLINE
@@ -385,6 +388,41 @@ Validation:
 | Duplicate property | Error |
 | Invalid shape property | Error |
 | Direct `session` in `### Execution` when an equivalent `function` exists | Warning |
+
+## Gates
+
+A `gate` yields the run to a human operator and blocks until the operator
+responds. Use it for decisions the render must not absorb: approvals, rulings,
+and anything irreversible.
+
+```prose
+let acceptance = gate "operator reads the decision sheet and rules per item"
+
+gate "confirm the deployment plan before it is applied"
+```
+
+The payload expression is presented to the operator. When the statement is
+bound with `let`, the operator's response becomes the bound value.
+
+Gate forms:
+
+| Form | Meaning |
+|------|---------|
+| `gate "prompt"` | Yield to the operator with a prompt, discard the response |
+| `let x = gate "prompt"` | Yield to the operator, bind the response |
+| `gate reference` | Yield with a structured payload, such as a decision sheet |
+
+Like `call`, `session`, and `resume`, a gate is an implicit yield point; there
+is no `await` keyword in ProseScript. The runtime delegation comparison in
+`prose.md` describes the same interaction at the VM protocol level as
+`await gate(payload)` → response. Unlike runtime delegation, the wait is
+indefinite: a gate resumes only on operator input.
+
+Validation:
+
+| Check | Result |
+|-------|--------|
+| `gate` without a payload expression | Error |
 
 ## Variables And Context
 
@@ -825,7 +863,8 @@ Execution has three phases:
 2. Validate names, scopes, target contracts, inputs, outputs, loop bounds, and
    surface-specific restrictions.
 3. Execute in source order, using the Prose VM from `prose.md` for function
-   calls, sessions, state, bindings, retries, and final result publication.
+   calls, sessions, gates, state, bindings, retries, and final result
+   publication.
 
 Contract Markdown `### Execution`:
 
