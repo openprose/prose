@@ -37,6 +37,8 @@ npx skills add openprose/prose
 
 That installs OpenProse into any Prose-Complete coding agent (Claude Code, Codex CLI, OpenCode, and friends). From there, point your agent at a contract and say `prose run <file>`: the session itself embodies the VM; there is no separate binary. The [`examples/`](skills/open-prose/examples/) directory is the tour; start small and read the contract before you run it.
 
+> **Note:** the examples live at [`skills/open-prose/examples/`](https://github.com/openprose/prose/tree/main/skills/open-prose/examples), not at a top-level `examples/` directory. Older links to `/tree/main/examples` return a 404.
+
 Your first contract is a Markdown file away: `kind: responsibility` frontmatter, a `### Goal` that states what should stay true, and the sections below. The skill teaches your agent the rest.
 
 ## The language: Responsibilities
