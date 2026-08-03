@@ -9,7 +9,7 @@
 <p align="center">
   <a href="#run-it-where-your-agent-lives">Quickstart</a> ·
   <a href="#the-language-responsibilities">The language</a> ·
-  <a href="skills/open-prose/examples/">Examples</a> ·
+  <a href="skills/open-prose/skills/open-prose/examples/">Examples</a> ·
   <a href="#reactor-the-recommended-harness">Reactor</a> ·
   <a href="#honest-status">Honest status</a> ·
   <a href="packages/reactor/EVALS.md">Send us an eval</a>
