@@ -2,7 +2,7 @@
   "name": "openprose-prose",
   "version": "0.0.0",
   "private": true,
-  "packageManager": "pnpm@9.15.0",
+  "packageManager": "pnpm@10.34.5",
   "scripts": {
     "build": "pnpm --filter @openprose/reactor build && pnpm --filter @openprose/reactor-cli build && pnpm --filter @openprose/reactor-devtools build",
     "test": "pnpm --filter @openprose/reactor test && pnpm --filter @openprose/reactor-cli test && pnpm --filter @openprose/reactor-devtools test && pnpm test:skill && pnpm test:examples",
