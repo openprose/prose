@@ -142,6 +142,17 @@ render model, a smart judge model) alongside its deterministic tier-2 gate.
   Checker (7 spec checks), 5 canonical scenarios, and a key-gated LLM judge panel
   that is OFF in CI. Run offline: `pnpm test:eval:offline`.
 
+### Intentional user-input pauses
+
+- [interactive-grill](./interactive-grill/): the **counter-example** to the
+  all-non-interactive set. A `responsibility` whose `### Requires` entries are
+  deliberately left unbound so the VM fires `ask_user` at bind time. There is
+  **no `kind: service`**, **no `### Runtime: interactive: true`**, and no other
+  field that expresses interactivity. An unbound required input *is* the intent
+  signal. If the host cannot pause, the VM returns `unresolved-intent` rather
+  than guessing. This example teaches the author-facing pattern for grilling,
+  interview, or decision services that intentionally pause for human judgment.
+
 ---
 
 ## Named-parts & migrated corpus examples

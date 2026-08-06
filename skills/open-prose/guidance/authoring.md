@@ -105,6 +105,35 @@ world-model, no `### Maintains`, and no `### Continuity`.
 - Author functions rarely and call them constantly; most ship pre-built in
   `std/`. They are the standard-library tier.
 
+## Interactive Authoring
+
+A render intentionally pauses for user input by leaving a required caller input
+**unbound**. The VM's `ask_user` primitive fires at bind time for any `### Requires`
+or `### Parameters` entry with no value from CLI args, config, or a calling render,
+and resumes the run with the answer. This is the only sanctioned mechanism for
+mid-run user prompting; there is **no `kind: service`**, **no `### Runtime:
+interactive: true`**, and no other field that expresses interactivity.
+
+- Declare the question in `### Requires` (for a `responsibility`) or `### Parameters`
+  (for a `function`). Leave it unbound — do not supply a default, do not fake a
+  config fallback. The absence of a value is the signal that this run is designed to
+  pause.
+- When the host can satisfy `ask_user`, the VM prompts the user, binds the response,
+  and resumes. The bound value is written to `world-model/caller/{name}.md` and
+  available to the render as ordinary caller input.
+- When the host **cannot** pause (non-interactive shell, CI, automation), the VM does
+  not guess or fabricate. It returns `unresolved-intent` with the missing inputs
+  listed, exactly as the `prose-author` std-op does when `interactive` is unavailable
+  (`packages/std/ops/prose-author.prose.md`). A downstream service should treat
+  `unresolved-intent` as a contract signal, not a failure.
+- Use intentional pauses for genuine human judgment: a grilling/interview step,
+  a decision gate where the skill cannot ground an answer in repository evidence, or
+  a confirmation where the cost of a wrong guess exceeds the cost of asking.
+- Do **not** use `ask_user` for values the render can derive, discover, or default
+  safely. Prefer `### Environment` for runtime config, `### Requires` bindings from
+  upstream nodes for data, and `### Strategies` for judgment guidance. Reserve
+  `ask_user` for decisions that are irreducibly human.
+
 ## Composition Authoring
 
 Composition is no longer a separate kind. There are exactly two forms:
