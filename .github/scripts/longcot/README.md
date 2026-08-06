@@ -55,7 +55,7 @@ gh workflow run longcot-bench.yml \
 | `concurrency` | `8` | Parallel pi subprocesses. Matches LongCoT's default `num_workers`. |
 | `system_prompt` | `You are a helpful assistant.` | Pi's default is a coding-agent prompt; we override so the model sees only the problem. |
 | `pi_version` | `latest` | npm tag/version for `@mariozechner/pi-coding-agent`. Pin to a version (e.g. `0.5.1`) for reproducibility. |
-| `longcot_ref` | `main` | Git ref of LongCoT repo (branch/tag/SHA). |
+| `longcot_ref` | `fb96494` (`main` @ 2026-04-20) | Git ref of LongCoT repo (branch/tag/SHA). Defaults to a pinned commit, not `main`: this job runs the checked-out repo's Python with five LLM provider keys in scope. Pass `main` explicitly to take upstream HEAD, or bump the default after reviewing the diff. |
 | `run_eval` | `true` | If `false`, produce responses JSONL but skip scoring. |
 | `fallback_judge` | `true` | If `false`, pass `--no-fallback` to `run_eval.py` (disables Gemini judge for math/chem borderline cases). |
 

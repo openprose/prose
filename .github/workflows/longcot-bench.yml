@@ -67,7 +67,10 @@ on:
       longcot_ref:
         description: "git ref (branch/tag/sha) of LongHorizonReasoning/longcot to clone"
         type: string
-        default: "main"
+        # Pinned to an immutable commit rather than `main`: this job executes the
+        # checked-out repo's Python with five LLM provider keys in scope, so a moving ref
+        # would run whatever landed upstream. Bump deliberately after reviewing the diff.
+        default: "fb9649423f15f5b0091f8e988b100596cac592ca" # main @ 2026-04-20
       run_eval:
         description: "Run LongCoT scoring step after responses are generated"
         type: boolean
@@ -113,7 +116,7 @@ jobs:
           pi --version || pi --help | head -1
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@v4
+        uses: astral-sh/setup-uv@38f3f104447c67c051c4a08e39b64a148898af3a # v4.2.0
         with:
           enable-cache: true
 
