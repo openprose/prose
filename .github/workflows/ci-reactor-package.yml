@@ -47,6 +47,28 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Verify registry signatures
+        # Blocking. Every installed dependency must carry a valid npm registry
+        # signature, so a tampered or unsigned tarball fails before we pack a
+        # release from it. npm only sees the tree reachable from the directory
+        # it runs in, and pnpm keeps each workspace package's dependencies under
+        # that package — so check the root plus every publishable package.
+        run: |
+          set -euo pipefail
+          for dir in . packages/reactor packages/reactor-cli packages/reactor-devtools; do
+            echo "::group::npm audit signatures (${dir})"
+            (cd "${dir}" && npm audit signatures)
+            echo "::endgroup::"
+          done
+
+      - name: Dependency advisory audit (informational)
+        # Non-blocking on purpose: advisories here are dominated by deep
+        # transitive packages we do not control, and a permanently red gate
+        # teaches everyone to ignore it. Signature verification above is the
+        # check that blocks; this one is a signal to read.
+        run: pnpm audit --prod
+        continue-on-error: true
+
       - name: Build reactor packages
         run: |
           pnpm --filter @openprose/reactor build

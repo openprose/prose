@@ -63,6 +63,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Dependency advisory audit (informational)
+        # Non-blocking on purpose: advisories here are dominated by deep
+        # transitive packages we do not control, and a permanently red gate
+        # teaches everyone to ignore it. Read the output; it is a signal, not
+        # a verdict.
+        run: pnpm audit --prod
+        continue-on-error: true
+
       - name: Build reactor + devtools (the example tests replay their dist)
         run: |
           pnpm --filter @openprose/reactor build

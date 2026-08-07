@@ -1,0 +1,23 @@
+version: 2
+
+# Third-party actions are pinned to immutable commit SHAs. SHAs never move on
+# their own, so this entry is what keeps them current — without it the pins rot.
+#
+# Only the github-actions ecosystem is enabled. npm version-update PRs are
+# deliberately off: frozen-lockfile installs plus the release cooldown in
+# pnpm-workspace.yaml already manage dependency drift, and a PR per release is
+# noise nobody reads. Dependabot *alerts* are enabled in repo settings and are
+# the signal layer we do want; automated *security-update* PRs are off for the
+# same reason — advisories get triaged against real exposure, not auto-patched.
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    # One PR for all action bumps instead of one per action.
+    groups:
+      actions:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "ci"
