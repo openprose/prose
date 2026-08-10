@@ -39,8 +39,8 @@
     "commander": "^12.0.0"
   },
   "peerDependencies": {
-    "@openai/agents": "*",
-    "zod": "*"
+    "@openai/agents": "^0.11.6",
+    "zod": "^4.4.3"
   },
   "peerDependenciesMeta": {
     "@openai/agents": {

@@ -24,7 +24,7 @@ All three packages are live on npm. Prefer a **project-local** install (no root,
 no global binary collisions) and call the binaries through `npx`:
 
 ```sh
-npm install --save-dev @openprose/reactor-cli @openprose/reactor @openai/agents zod
+npm install --save-dev @openprose/reactor-cli @openprose/reactor "@openai/agents@^0.11.6" zod
 # then: `npx reactor …` / `npx reactor-devtools …`
 ```
 
@@ -40,12 +40,18 @@ binaries and is `EACCES`-prone on Linux/WSL (use a user prefix/nvm or `sudo`):
 ```sh
 npm i -g @openprose/reactor-cli @openprose/reactor-devtools
 # The live render also needs two peers:
-npm i -g @openprose/reactor @openai/agents zod
+npm i -g @openprose/reactor "@openai/agents@^0.11.6" zod
 ```
 
 > Zero *runtime* deps in the SDK core. The live render needs two peers
 > (`@openai/agents`, `zod`); `doctor`, `init`, the whole observability suite, and
 > the `reactor-devtools` replay need neither.
+>
+> The `@openai/agents` range is capped at `0.11.x` on purpose — under 0.x semver
+> a caret does not cross the minor line, and each `@openai/agents` minor has
+> carried breaking changes. Installing it unpinned resolves a newer minor and
+> fails peer resolution. Widen the peer range in `package.json` when upgrading
+> deliberately.
 >
 > Requires **Node >=20** (matches the SDK's `engines` floor).
 
@@ -180,7 +186,7 @@ ingress/proxy that adds auth):
 ```dockerfile
 FROM node:22-slim
 RUN npm i -g @openprose/reactor @openprose/reactor-cli @openprose/reactor-devtools \
-    && npm i -g @openai/agents zod
+    && npm i -g "@openai/agents@^0.11.6" zod
 WORKDIR /app
 COPY . .
 EXPOSE 8080
