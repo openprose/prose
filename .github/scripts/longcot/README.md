@@ -11,7 +11,7 @@ The GitHub Action lives at [`.github/workflows/longcot-bench.yml`](../../workflo
 Per run, the workflow:
 
 1. Clones LongCoT at the ref you pick, `uv sync`s its deps (includes `rdkit`, `chess`, `sympy`, the Python SDKs).
-2. `npm i -g @mariozechner/pi-coding-agent@<pi_version>` to get the `pi` binary.
+2. `npm i -g @mariozechner/pi-coding-agent@0.73.1` to get the `pi` binary. The version is hardcoded in the workflow; change it there.
 3. Runs `run_pi.py` (this directory) — our shim. For each selected question it shells out to:
    ```
    pi --mode json \
@@ -54,8 +54,7 @@ gh workflow run longcot-bench.yml \
 | `seed` | `0` | Shuffle seed. Same seed → same slice across runs. |
 | `concurrency` | `8` | Parallel pi subprocesses. Matches LongCoT's default `num_workers`. |
 | `system_prompt` | `You are a helpful assistant.` | Pi's default is a coding-agent prompt; we override so the model sees only the problem. |
-| `pi_version` | `latest` | npm tag/version for `@mariozechner/pi-coding-agent`. Pin to a version (e.g. `0.5.1`) for reproducibility. |
-| `longcot_ref` | `fb96494` (`main` @ 2026-04-20) | Git ref of LongCoT repo (branch/tag/SHA). Defaults to a pinned commit, not `main`: this job runs the checked-out repo's Python with five LLM provider keys in scope. Pass `main` explicitly to take upstream HEAD, or bump the default after reviewing the diff. |
+| `longcot_ref` | `fb96494` (`main` @ 2026-04-20) | Git ref of LongCoT repo (branch/tag/SHA). Defaults to a pinned commit, not `main`: this job runs the checked-out repo's Python with five LLM provider keys in scope. The clone target repository is fixed, so this only selects a ref within it. Pass `main` explicitly to take upstream HEAD, understanding that you are running unreviewed code with the keys attached. |
 | `run_eval` | `true` | If `false`, produce responses JSONL but skip scoring. |
 | `fallback_judge` | `true` | If `false`, pass `--no-fallback` to `run_eval.py` (disables Gemini judge for math/chem borderline cases). |
 

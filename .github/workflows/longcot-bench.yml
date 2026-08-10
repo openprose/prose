@@ -60,22 +60,18 @@ on:
         description: "System prompt passed to pi"
         type: string
         default: "You are a helpful assistant."
-      pi_version:
-        description: "npm tag/version for @mariozechner/pi-coding-agent"
-        type: string
-        # Pinned to an exact version rather than a moving tag like `latest`: this job
-        # installs pi globally and then runs it with five LLM provider keys in scope,
-        # so a moving tag executes whatever was published most recently. The repo's 48h
-        # publish cooldown does not cover this — `minimumReleaseAge` in
-        # pnpm-workspace.yaml is a pnpm setting and this is a global npm install.
-        # Bump deliberately.
-        default: "0.73.1"
       longcot_ref:
         description: "git ref (branch/tag/sha) of LongHorizonReasoning/longcot to clone"
         type: string
         # Pinned to an immutable commit rather than `main`: this job executes the
         # checked-out repo's Python with five LLM provider keys in scope, so a moving ref
         # would run whatever landed upstream. Bump deliberately after reviewing the diff.
+        #
+        # This override stays free-form as a deliberate escape hatch for whoever is
+        # running the benchmark: `repository:` below is fixed, so the value can only
+        # select a ref inside LongHorizonReasoning/longcot, and getting code there is
+        # its own problem. Treat dispatching a non-default ref as running unreviewed
+        # code with the keys attached.
         default: "fb9649423f15f5b0091f8e988b100596cac592ca" # main @ 2026-04-20
       run_eval:
         description: "Run LongCoT scoring step after responses are generated"
@@ -116,14 +112,20 @@ jobs:
 
       - name: Install pi-mono
         shell: bash
-        # Dispatch inputs reach the script through the environment, never through
-        # `${{ }}` interpolation: expressions are substituted before bash parses the
-        # script, so an input containing shell syntax would run as code.
-        env:
-          LONGCOT_PI_VERSION: ${{ inputs.pi_version }}
+        # Hardcoded, with no dispatch override. npm accepts far more than a version
+        # after the `@` — `npm:other-package@1.0.0`, `github:owner/repo`, an https
+        # tarball URL, a local path — so any input reaching this position could
+        # redirect the install to an arbitrary package source, whose install scripts
+        # then run and whose binary is later executed with five LLM provider keys in
+        # scope. An allowlist would need editing to add a version, which is the same
+        # edit as changing the line below, so it buys nothing.
+        #
+        # Note the 48h publish cooldown does not protect this either:
+        # `minimumReleaseAge` in pnpm-workspace.yaml is a pnpm setting, and this is a
+        # global npm install. Bump deliberately after reviewing the release.
         run: |
           set -euo pipefail
-          npm install -g "@mariozechner/pi-coding-agent@$LONGCOT_PI_VERSION"
+          npm install -g "@mariozechner/pi-coding-agent@0.73.1"
           pi --version || pi --help | head -1
 
       - name: Setup uv
