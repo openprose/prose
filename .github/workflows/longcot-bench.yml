@@ -63,7 +63,13 @@ on:
       pi_version:
         description: "npm tag/version for @mariozechner/pi-coding-agent"
         type: string
-        default: "latest"
+        # Pinned to an exact version rather than a moving tag like `latest`: this job
+        # installs pi globally and then runs it with five LLM provider keys in scope,
+        # so a moving tag executes whatever was published most recently. The repo's 48h
+        # publish cooldown does not cover this — `minimumReleaseAge` in
+        # pnpm-workspace.yaml is a pnpm setting and this is a global npm install.
+        # Bump deliberately.
+        default: "0.73.1"
       longcot_ref:
         description: "git ref (branch/tag/sha) of LongHorizonReasoning/longcot to clone"
         type: string
@@ -110,9 +116,14 @@ jobs:
 
       - name: Install pi-mono
         shell: bash
+        # Dispatch inputs reach the script through the environment, never through
+        # `${{ }}` interpolation: expressions are substituted before bash parses the
+        # script, so an input containing shell syntax would run as code.
+        env:
+          LONGCOT_PI_VERSION: ${{ inputs.pi_version }}
         run: |
           set -euo pipefail
-          npm install -g "@mariozechner/pi-coding-agent@${{ inputs.pi_version }}"
+          npm install -g "@mariozechner/pi-coding-agent@$LONGCOT_PI_VERSION"
           pi --version || pi --help | head -1
 
       - name: Setup uv
@@ -143,19 +154,28 @@ jobs:
           XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
           GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          LONGCOT_MODEL: ${{ inputs.model }}
+          LONGCOT_THINKING: ${{ inputs.thinking }}
+          LONGCOT_DOMAIN: ${{ inputs.domain }}
+          LONGCOT_DIFFICULTY: ${{ inputs.difficulty }}
+          LONGCOT_MAX_QUESTIONS: ${{ inputs.max_questions }}
+          LONGCOT_OFFSET: ${{ inputs.offset }}
+          LONGCOT_SEED: ${{ inputs.seed }}
+          LONGCOT_CONCURRENCY: ${{ inputs.concurrency }}
+          LONGCOT_SYSTEM_PROMPT: ${{ inputs.system_prompt }}
         run: |
           set -euo pipefail
           cd longcot
           uv run python ../.github/scripts/longcot/run_pi.py \
-            --model "${{ inputs.model }}" \
-            --thinking "${{ inputs.thinking }}" \
-            --domain "${{ inputs.domain }}" \
-            --difficulty "${{ inputs.difficulty }}" \
-            --max-questions "${{ inputs.max_questions }}" \
-            --offset "${{ inputs.offset }}" \
-            --seed "${{ inputs.seed }}" \
-            --concurrency "${{ inputs.concurrency }}" \
-            --system-prompt "${{ inputs.system_prompt }}" \
+            --model "$LONGCOT_MODEL" \
+            --thinking "$LONGCOT_THINKING" \
+            --domain "$LONGCOT_DOMAIN" \
+            --difficulty "$LONGCOT_DIFFICULTY" \
+            --max-questions "$LONGCOT_MAX_QUESTIONS" \
+            --offset "$LONGCOT_OFFSET" \
+            --seed "$LONGCOT_SEED" \
+            --concurrency "$LONGCOT_CONCURRENCY" \
+            --system-prompt "$LONGCOT_SYSTEM_PROMPT" \
             --output "$RESPONSES_PATH"
 
       - name: Run LongCoT eval
@@ -164,11 +184,12 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
           GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          LONGCOT_FALLBACK_JUDGE: ${{ inputs.fallback_judge }}
         run: |
           set -euo pipefail
           cd longcot
           EXTRA_ARGS=""
-          if [[ "${{ inputs.fallback_judge }}" == "false" ]]; then
+          if [[ "$LONGCOT_FALLBACK_JUDGE" == "false" ]]; then
             EXTRA_ARGS="--no-fallback"
           fi
           uv run python run_eval.py "$RESPONSES_PATH" --output "$RESULTS_PATH" $EXTRA_ARGS
@@ -176,6 +197,13 @@ jobs:
       - name: Write job summary
         if: always()
         shell: bash
+        env:
+          LONGCOT_MODEL: ${{ inputs.model }}
+          LONGCOT_THINKING: ${{ inputs.thinking }}
+          LONGCOT_DOMAIN: ${{ inputs.domain }}
+          LONGCOT_DIFFICULTY: ${{ inputs.difficulty }}
+          LONGCOT_MAX_QUESTIONS: ${{ inputs.max_questions }}
+          LONGCOT_RUN_EVAL: ${{ inputs.run_eval }}
         run: |
           set -euo pipefail
           {
@@ -183,15 +211,15 @@ jobs:
             echo ""
             echo "| Input | Value |"
             echo "| --- | --- |"
-            echo "| model | \`${{ inputs.model }}\` |"
-            echo "| thinking | \`${{ inputs.thinking }}\` |"
-            echo "| domain | \`${{ inputs.domain }}\` |"
-            echo "| difficulty | \`${{ inputs.difficulty }}\` |"
-            echo "| max_questions | \`${{ inputs.max_questions }}\` |"
+            echo "| model | \`$LONGCOT_MODEL\` |"
+            echo "| thinking | \`$LONGCOT_THINKING\` |"
+            echo "| domain | \`$LONGCOT_DOMAIN\` |"
+            echo "| difficulty | \`$LONGCOT_DIFFICULTY\` |"
+            echo "| max_questions | \`$LONGCOT_MAX_QUESTIONS\` |"
             echo ""
           } >> "$GITHUB_STEP_SUMMARY"
 
-          if [[ "${{ inputs.run_eval }}" == "true" ]]; then
+          if [[ "$LONGCOT_RUN_EVAL" == "true" ]]; then
             RESULTS_FILE="longcot/$RESULTS_PATH"
             if [[ -f "$RESULTS_FILE" ]]; then
               {
