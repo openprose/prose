@@ -131,7 +131,17 @@ jobs:
           cache-dependency-path: "pnpm-lock.yaml"
 
       - name: Upgrade npm for trusted publishing
-        run: npm install -g npm@latest
+        # Pinned to an exact version rather than tracking `latest`. This job holds an
+        # `id-token: write` credential that can publish under our name, so whatever npm
+        # we install here executes with that credential in scope — `latest` would hand a
+        # compromised npm release straight into it, and would roll us onto new majors
+        # untested. 11.19.0 clears the >=11.5.1 floor that OIDC trusted publishing needs
+        # (see the publish step below). Bump deliberately after reviewing the release.
+        # The version check makes a pin that did not take effect fail loudly here rather
+        # than surface as a confusing failure at publish time.
+        run: |
+          npm install -g npm@11.19.0
+          npm --version | grep -qx '11.19.0'
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
