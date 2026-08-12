@@ -1,6 +1,6 @@
 {
   "name": "@openprose/reactor-cli",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/openprose/prose.git",

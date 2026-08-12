@@ -87,6 +87,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   threads `render_model`, `temperature`, and `reasoning_effort` into the render
   exactly like `run` and `serve`.
 
+## [reactor 0.3.2 / reactor-cli 0.2.3 / reactor-devtools 0.3.0] - 2026-08-12
+
+Reactor-train release (`reactor-v*` tag train). Each package publishes at its own
+version; the skill/plugin track is unaffected.
+
+### Fixed
+
+- **`@openprose/reactor-cli` 0.2.3 — reserved `@`-prefixed files no longer win the
+  structured-backing pick (#136, #153).** A render that wrote both the reserved
+  `@atomic.json` status file and its real structured backing (e.g. `sources.json`)
+  had the status file chosen, because `@` sorts before lowercase letters. The
+  canonicalizer then found none of the declared material paths and fingerprinted
+  every facet as `sha256("null")`, so nothing propagated downstream. `@`-prefixed
+  files are now excluded from the candidate set.
+- **`@openprose/reactor-cli` 0.2.3 — `reactor.yml`'s provider and temperature are
+  honored (#137, #138)**, an unset temperature is omitted rather than sent, and
+  render failure reasons are surfaced instead of swallowed.
+- **`@openprose/reactor` 0.3.2 — provider key material is scrubbed** from surfaced
+  render errors.
+- **`@openprose/reactor` 0.3.2 — height-ordered, dirty-count-gated reconciler drain
+  (MK-1).** The FIFO drain could render a diamond-shaped dependent before all its
+  parents settled, producing a transient glitch value and a redundant re-render.
+
+### Changed
+
+- **`@openprose/reactor-devtools` 0.3.0 — the replay viewer is re-skinned** to the
+  OpenProse machine surface (charcoal + gold, JetBrains Mono) and gains the
+  credibility-seam panels (version/reuse/footprint/skew).
+
 ## [0.15.0] - 2026-06-04 — open-prose skill & plugin
 
 Skill/plugin-track release. The `@openprose/prose-cli` CLI is unaffected and
