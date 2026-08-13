@@ -228,6 +228,11 @@ reactors: []                   # optional: a multi-reactor host (see below)
 Global flags `--state-dir`, `--project`, `--json`, `--offline` override the file
 on every command.
 
+The built-in providers are `openrouter` (the default), `openai`, `anthropic`,
+`google`, and `orcarouter`; each supplies its own endpoint and key env var
+(`ORCAROUTER_API_KEY` for OrcaRouter). To point at any other OpenAI-compatible
+endpoint, set `base_url` + `api_key_env` explicitly.
+
 ### Sandbox
 
 The `sandbox` block is the render **threat-model** knob:

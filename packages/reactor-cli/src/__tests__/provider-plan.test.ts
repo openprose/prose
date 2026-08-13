@@ -35,6 +35,16 @@ describe('resolveProviderPlan', () => {
     assert.equal(google.custom, true);
   });
 
+  it('resolves the orcarouter built-in to the OrcaRouter gateway base URL + key env', () => {
+    const orcarouter = resolveProviderPlan({ provider: 'orcarouter' });
+    assert.equal(orcarouter.provider, 'orcarouter');
+    assert.equal(orcarouter.baseURL, 'https://api.orcarouter.ai/v1');
+    assert.equal(orcarouter.apiKeyEnv, 'ORCAROUTER_API_KEY');
+    assert.equal(orcarouter.transport, 'openai-compat');
+    // A non-default provider: the CLI builds + injects the scoped provider.
+    assert.equal(orcarouter.custom, true);
+  });
+
   it('routes the anthropic built-in through the NATIVE adapter (no compat base URL)', () => {
     const anthropic = resolveProviderPlan({ provider: 'anthropic' });
     assert.equal(anthropic.apiKeyEnv, 'ANTHROPIC_API_KEY');

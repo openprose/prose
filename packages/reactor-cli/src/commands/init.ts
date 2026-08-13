@@ -132,10 +132,10 @@ state:
   dir: ./.reactor
 
 model:
-  # Provider: openrouter (default) | openai | anthropic | google | <custom>.
+  # Provider: openrouter (default) | openai | anthropic | google | orcarouter | <custom>.
   # A built-in supplies its own endpoint + key env (OPENROUTER_API_KEY,
-  # OPENAI_API_KEY, ANTHROPIC_API_KEY, GEMINI_API_KEY). To use another vendor,
-  # set base_url + api_key_env. See docs: /cli/configuration#choosing-a-model-provider
+  # OPENAI_API_KEY, ANTHROPIC_API_KEY, GEMINI_API_KEY, ORCAROUTER_API_KEY).
+  # To use another vendor, set base_url + api_key_env. See docs: /cli/configuration#choosing-a-model-provider
   provider: openrouter
   render_model: google/gemini-3.5-flash
   compile_model: google/gemini-3.5-flash

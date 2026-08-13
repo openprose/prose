@@ -93,6 +93,10 @@ const KNOWN_PROVIDERS: Readonly<Record<string, KnownProvider>> = Object.freeze({
     baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
     apiKeyEnv: 'GEMINI_API_KEY',
   },
+  orcarouter: {
+    baseURL: 'https://api.orcarouter.ai/v1',
+    apiKeyEnv: 'ORCAROUTER_API_KEY',
+  },
 });
 
 /** The provider labels the CLI knows out of the box (for error guidance). */
