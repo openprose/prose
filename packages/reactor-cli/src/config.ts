@@ -40,7 +40,7 @@ export interface ModelConfig {
   readonly max_turns: number;
   /**
    * Override the provider's OpenAI-compatible base URL. Optional: a built-in
-   * provider (openrouter/openai/anthropic/google) supplies its own. Set this (with
+   * provider (openrouter/openai/anthropic/google/orcarouter) supplies its own. Set this (with
    * {@link api_key_env}) to point at any other OpenAI-compatible endpoint.
    */
   readonly base_url?: string;
