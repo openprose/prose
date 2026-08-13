@@ -1,0 +1,121 @@
+{
+  "vocab_version": "0.1.0",
+  "name": "pi-no-extensions",
+  "subject": "pi --no-extensions",
+  "prose_complete": false,
+  "verification": "self-declared",
+  "notes": "Conservative self-declaration for bare pi without extensions or an OpenProse adapter. Raw chat is available, but there is no first-class subagent primitive exposed in this mode, so any non-trivial OpenProse execution profile is blocked immediately.",
+  "supports": {
+    "subagents": {
+      "mode": "unsupported",
+      "verification": "self-declared",
+      "notes": "No first-class subagent primitive when extensions are disabled."
+    },
+    "file-io": {
+      "mode": "native",
+      "verification": "self-declared",
+      "notes": "Local file read/write/edit support remains available in the base harness."
+    },
+    "tool-exec": {
+      "mode": "native",
+      "verification": "self-declared",
+      "notes": "Shell command execution remains available in the base harness."
+    },
+    "workspace-bindings": {
+      "mode": "unsupported",
+      "verification": "self-declared"
+    },
+    "copy-on-return": {
+      "mode": "unsupported",
+      "verification": "self-declared"
+    },
+    "state-markers": {
+      "mode": "unsupported",
+      "verification": "self-declared"
+    },
+    "error-signaling": {
+      "mode": "unsupported",
+      "verification": "self-declared"
+    },
+    "dependency-scheduling": {
+      "mode": "unsupported",
+      "verification": "self-declared"
+    },
+    "parallel": {
+      "mode": "unsupported",
+      "verification": "self-declared"
+    },
+    "environment": {
+      "mode": "unsupported",
+      "verification": "self-declared"
+    },
+    "secret-hygiene": {
+      "mode": "unsupported",
+      "verification": "self-declared"
+    },
+    "delegation": {
+      "mode": "unsupported",
+      "verification": "self-declared"
+    },
+    "persistence-execution": {
+      "mode": "unsupported",
+      "verification": "self-declared"
+    },
+    "persistence-project": {
+      "mode": "unsupported",
+      "verification": "self-declared"
+    },
+    "persistence-user": {
+      "mode": "unsupported",
+      "verification": "self-declared"
+    },
+    "ask-user": {
+      "mode": "native",
+      "verification": "self-declared",
+      "notes": "The harness can still ask the human user for clarification through the main chat channel."
+    },
+    "run-inputs": {
+      "mode": "unsupported",
+      "verification": "self-declared"
+    },
+    "test-execution": {
+      "mode": "unsupported",
+      "verification": "self-declared"
+    },
+    "test-evaluation": {
+      "mode": "unsupported",
+      "verification": "self-declared"
+    },
+    "resume": {
+      "mode": "unsupported",
+      "verification": "self-declared"
+    }
+  },
+  "profile_assessment": {
+    "core": {
+      "status": "not-conformant",
+      "reason": "No first-class subagent primitive in --no-extensions mode, and the required protocol capabilities are not exposed through a stable OpenProse interface."
+    },
+    "delegation": {
+      "status": "not-conformant",
+      "reason": "Depends on Core and delegation is unsupported."
+    },
+    "persistence": {
+      "status": "not-conformant",
+      "reason": "Depends on Core and no OpenProse-shaped persistence interface is declared."
+    },
+    "interaction": {
+      "status": "not-conformant",
+      "reason": "Depends on Core. ask-user exists via the main chat channel, but the profile still requires Core."
+    },
+    "tests": {
+      "status": "not-conformant",
+      "reason": "Depends on Core and kind:test execution is unsupported."
+    },
+    "resume": {
+      "status": "not-conformant",
+      "reason": "Depends on Core and OpenProse resume semantics are unsupported."
+    }
+  },
+  "path_to_conformance": "Expose a first-class subagent interface and add an adapter that turns native file I/O + tool execution into stable OpenProse workspace/bindings/state/error protocol surfaces. Without subagents, Core profile conformance is blocked immediately for multi-service programs."
+}

@@ -1,0 +1,200 @@
+{
+  "meta": {
+    "schema_version": "0.1.0",
+    "vocab_version": "0.1.0",
+    "spec_ref": "openprose/prose@HEAD",
+    "description": "OpenProse runtime conformance capability vocabulary and profile definitions"
+  },
+  "layers": ["substrate", "protocol", "policy"],
+  "support_modes": ["unsupported", "incidental", "adapted", "native"],
+  "verification_statuses": ["unverified", "self-declared", "certified"],
+  "capabilities": {
+    "subagents": {
+      "layer": "substrate",
+      "description": "Spawn independent subagent sessions",
+      "depends_on": []
+    },
+    "file-io": {
+      "layer": "substrate",
+      "description": "Read and write files with stable paths",
+      "depends_on": []
+    },
+    "tool-exec": {
+      "layer": "substrate",
+      "description": "Execute tool calls or shell commands",
+      "depends_on": []
+    },
+    "workspace-bindings": {
+      "layer": "protocol",
+      "description": "Maintain separate private workspace and public bindings trees",
+      "depends_on": ["file-io"]
+    },
+    "copy-on-return": {
+      "layer": "protocol",
+      "description": "Publish declared outputs from workspace into bindings",
+      "depends_on": ["file-io", "workspace-bindings"]
+    },
+    "state-markers": {
+      "layer": "protocol",
+      "description": "Record append-only run state and execution progress",
+      "depends_on": ["file-io"]
+    },
+    "error-signaling": {
+      "layer": "protocol",
+      "description": "Detect and propagate __error.md and declared errors",
+      "depends_on": ["file-io"]
+    },
+    "dependency-scheduling": {
+      "layer": "protocol",
+      "description": "Wait for inputs and execute services in dependency order",
+      "depends_on": ["subagents"]
+    },
+    "parallel": {
+      "layer": "protocol",
+      "description": "Run independent services concurrently when the manifest allows",
+      "depends_on": ["subagents", "dependency-scheduling"],
+      "constraints_schema": {
+        "type": "object",
+        "properties": {
+          "max_concurrency": {
+            "type": "integer",
+            "minimum": 2,
+            "description": "Maximum number of concurrent services tested"
+          }
+        }
+      }
+    },
+    "environment": {
+      "layer": "protocol",
+      "description": "Validate required environment variables before execution",
+      "depends_on": ["tool-exec"]
+    },
+    "delegation": {
+      "layer": "protocol",
+      "description": "Support runtime Delegate: / Request: yield-resume behavior",
+      "depends_on": ["subagents", "file-io"]
+    },
+    "persistence-execution": {
+      "layer": "protocol",
+      "description": "Persist agent memory for the lifetime of one run",
+      "depends_on": ["file-io"]
+    },
+    "persistence-project": {
+      "layer": "protocol",
+      "description": "Persist agent memory across runs inside one project",
+      "depends_on": ["file-io"]
+    },
+    "persistence-user": {
+      "layer": "protocol",
+      "description": "Persist agent memory across projects for one user",
+      "depends_on": ["file-io"]
+    },
+    "ask-user": {
+      "layer": "protocol",
+      "description": "Prompt for missing caller inputs when required",
+      "depends_on": []
+    },
+    "run-inputs": {
+      "layer": "protocol",
+      "description": "Support run / run[]-typed caller bindings",
+      "depends_on": ["file-io"]
+    },
+    "test-execution": {
+      "layer": "protocol",
+      "description": "Execute kind: test subjects and collect artifacts",
+      "depends_on": ["subagents", "file-io"]
+    },
+    "test-evaluation": {
+      "layer": "protocol",
+      "description": "Evaluate expects:/expects-not: clauses (may require model judgment)",
+      "depends_on": ["test-execution"],
+      "constraints_schema": {
+        "type": "object",
+        "properties": {
+          "deterministic_only": {
+            "type": "boolean",
+            "description": "If true, only exact-match expects clauses were tested, not fuzzy/semantic"
+          }
+        }
+      }
+    },
+    "resume": {
+      "layer": "protocol",
+      "description": "Resume interrupted runs from artifacts and state.md",
+      "depends_on": ["file-io", "state-markers"]
+    },
+    "secret-hygiene": {
+      "layer": "policy",
+      "description": "Verify environment presence without leaking raw secret values into artifacts or logs",
+      "depends_on": ["environment"]
+    }
+  },
+  "profiles": {
+    "core": {
+      "description": "Minimum profile for executing normal OpenProse programs with deterministic artifact handling",
+      "required": [
+        "subagents",
+        "file-io",
+        "tool-exec",
+        "workspace-bindings",
+        "copy-on-return",
+        "state-markers",
+        "error-signaling",
+        "dependency-scheduling",
+        "environment",
+        "secret-hygiene"
+      ],
+      "optional": [
+        "parallel"
+      ]
+    },
+    "delegation": {
+      "description": "Runtime Delegate:/Request: yield-resume behavior",
+      "extends": "core",
+      "required": [
+        "delegation"
+      ]
+    },
+    "persistence": {
+      "description": "Agent memory persistence (each scope certified separately)",
+      "extends": "core",
+      "required_one_of": [
+        "persistence-execution",
+        "persistence-project",
+        "persistence-user"
+      ]
+    },
+    "interaction": {
+      "description": "Human-in-the-loop and caller-provided input capabilities",
+      "extends": "core",
+      "required": [
+        "ask-user"
+      ],
+      "optional": [
+        "run-inputs"
+      ]
+    },
+    "tests": {
+      "description": "Execute kind: test subjects and collect artifacts for external verification",
+      "extends": "core",
+      "required": [
+        "test-execution"
+      ],
+      "optional": [
+        "test-evaluation"
+      ]
+    },
+    "resume": {
+      "description": "Resume interrupted runs from artifacts and state markers",
+      "extends": "core",
+      "required": [
+        "resume"
+      ]
+    }
+  },
+  "degradation": {
+    "missing_required": "refuse",
+    "missing_certified_but_self_declared": "warn",
+    "missing_optional": "warn"
+  }
+}

@@ -8,6 +8,12 @@
         { "path": ".codex-plugin/plugin.json", "kind": "json", "field": "version" },
         { "path": "skills/open-prose/SKILL.md", "kind": "yaml", "field": "version" }
       ]
+    },
+    "openprose-lint": {
+      "description": "The Rust crate that provides deterministic OpenProse linting, conformance fixtures, source identity checks, and LSP diagnostics. This track versions the crate independently from the SKILL/plugin and reactor package trains.",
+      "files": [
+        { "path": "crates/openprose-lint/Cargo.toml", "kind": "toml", "field": "package.version" }
+      ]
     }
   }
 }

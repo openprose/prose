@@ -1,0 +1,3 @@
+agent researcher:
+  model: turbo
+  prompt: "Research carefully"

@@ -1,0 +1,3 @@
+session "Prepare a draft"
+
+input approval: "Approve the draft?"

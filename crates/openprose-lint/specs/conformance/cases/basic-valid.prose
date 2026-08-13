@@ -1,0 +1,8 @@
+input topic: "A subject to research"
+
+agent researcher:
+  model: sonnet
+  prompt: "Research carefully"
+
+session: researcher
+  prompt: "Research {topic}"

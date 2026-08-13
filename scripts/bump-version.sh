@@ -45,6 +45,23 @@ read_field() {
     yaml)
       sed -n "s/^${field}: *\\([^ ]*\\).*$/\\1/p" "$REPO_ROOT/$path" | sed -n '1p'
       ;;
+    toml)
+      if [[ "$field" != "package.version" ]]; then
+        echo "error: unsupported toml version field: $field" >&2
+        exit 2
+      fi
+      awk '
+        /^\[package\]/ { in_package=1; next }
+        /^\[/ { in_package=0 }
+        in_package && /^[[:space:]]*version[[:space:]]*=/ {
+          value=$0
+          sub(/^[^"]*"/, "", value)
+          sub(/".*$/, "", value)
+          print value
+          exit
+        }
+      ' "$REPO_ROOT/$path"
+      ;;
     *)
       echo "error: unknown version field kind: $kind" >&2
       exit 2
@@ -67,6 +84,28 @@ write_field() {
       ;;
     yaml)
       sed "s/^${field}: .*$/${field}: $value/" "$REPO_ROOT/$path" > "$tmp"
+      mv "$tmp" "$REPO_ROOT/$path"
+      ;;
+    toml)
+      if [[ "$field" != "package.version" ]]; then
+        rm -f "$tmp"
+        echo "error: unsupported toml version field: $field" >&2
+        exit 2
+      fi
+      awk -v value="$value" '
+        /^\[package\]/ { in_package=1; print; next }
+        /^\[/ { in_package=0 }
+        in_package && /^[[:space:]]*version[[:space:]]*=/ && !done {
+          sub(/version[[:space:]]*=[[:space:]]*"[^"]*"/, "version = \"" value "\"")
+          done=1
+        }
+        { print }
+        END { if (!done) exit 3 }
+      ' "$REPO_ROOT/$path" > "$tmp" || {
+        rm -f "$tmp"
+        echo "error: could not update $path:$field" >&2
+        exit 1
+      }
       mv "$tmp" "$REPO_ROOT/$path"
       ;;
     *)

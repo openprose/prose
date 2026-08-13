@@ -1,0 +1,59 @@
+[package]
+name = "openprose-lint"
+version = "0.2.0"
+edition = "2024"
+rust-version = "1.96"
+description = "Deterministic linter for OpenProse"
+license = "MIT"
+repository = "https://github.com/openprose/prose"
+homepage = "https://github.com/openprose/prose"
+readme = "README.md"
+keywords = ["openprose", "linter", "lsp", "agents", "markdown"]
+categories = ["development-tools", "command-line-utilities"]
+default-run = "openprose-lint"
+# Keep the published crate payload explicit. The exact file set inside
+# spec-snapshot is maintained by scripts/sync-spec-snapshot.sh.
+include = [
+    "/AGENTS.md",
+    "/CHANGELOG.md",
+    "/CONTRIBUTING.md",
+    "/LICENSE",
+    "/README.md",
+    "/build.rs",
+    "/docs/**",
+    "/fixtures/**",
+    "/scripts/**",
+    "/spec-support.json",
+    "/spec-snapshot/**",
+    "/specs/**",
+    "/src/**",
+    "/tests/**",
+]
+
+[lib]
+crate-type = ["lib", "cdylib"]
+
+[dependencies]
+anyhow = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+sha2 = "0.10"
+
+# WASM-only deps
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2"
+serde-wasm-bindgen = "0.6"
+
+# Native-only deps (not compiled for WASM)
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+lsp-types = "0.94"
+tokio = { version = "1", features = ["full"] }
+tower-lsp = "0.20"
+walkdir = "2.5"
+
+[dev-dependencies]
+tempfile = "3"
+
+[[bin]]
+name = "openprose-lsp"
+path = "src/bin/lsp.rs"

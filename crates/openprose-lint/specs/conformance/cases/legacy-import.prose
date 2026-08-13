@@ -1,0 +1,3 @@
+import "web-search" from "github:anthropic/skills"
+
+session "Use the imported capability"

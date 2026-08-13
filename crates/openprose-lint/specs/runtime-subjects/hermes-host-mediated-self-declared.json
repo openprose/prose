@@ -1,0 +1,138 @@
+{
+  "vocab_version": "0.1.0",
+  "name": "hermes-host-mediated",
+  "subject": "Hermes Agent CLI via openprose-lint host-mediated OpenProse runner",
+  "prose_complete": true,
+  "verification": "self-declared",
+  "declared_by": "Hermes session, 2026-04-17",
+  "notes": "This manifest describes the adapted execution path proven by `openprose-lint adapter dogfood specs/adapters/hermes-v1-md.json`, not raw Hermes CLI by itself. In this path Hermes performs `wire-v1` from a single query channel, then `openprose-lint` launches one child `hermes chat -q` session per OpenProse service, publishes declared outputs into bindings, and writes `state.md`. Treat this as proof of a host-mediated Hermes OpenProse runner, not proof that raw Hermes alone already exposes the full OpenProse VM surface through a deterministic adapter interface.",
+  "supports": {
+    "subagents": {
+      "mode": "adapted",
+      "verification": "self-declared",
+      "notes": "The proven dogfood path launches one child Hermes session per OpenProse service from the host runner. Raw Hermes also has a native `delegate_task` tool, but that is not the adapted path under proof here."
+    },
+    "file-io": {
+      "mode": "native",
+      "verification": "self-declared",
+      "notes": "Hermes exposes stable file operations (`read_file`, `write_file`, `patch`, `search_files`) inside each session."
+    },
+    "tool-exec": {
+      "mode": "native",
+      "verification": "self-declared",
+      "notes": "Hermes exposes a native `terminal` tool for shell execution, plus process management for background jobs."
+    },
+    "workspace-bindings": {
+      "mode": "adapted",
+      "verification": "self-declared",
+      "notes": "The host runner stages OpenProse run directories, workspace trees, and public bindings explicitly on disk."
+    },
+    "copy-on-return": {
+      "mode": "adapted",
+      "verification": "self-declared",
+      "notes": "After each child Hermes service session finishes, the host driver copies declared workspace outputs into manifest-declared public binding paths."
+    },
+    "state-markers": {
+      "mode": "adapted",
+      "verification": "self-declared",
+      "notes": "The host runner writes `state.md` with an OpenProse end marker after the adapted execute proof completes."
+    },
+    "error-signaling": {
+      "mode": "adapted",
+      "verification": "self-declared",
+      "notes": "The host runner treats `__error.md` in a service workspace as a structured service failure and stops the proof accordingly."
+    },
+    "dependency-scheduling": {
+      "mode": "adapted",
+      "verification": "self-declared",
+      "notes": "The host runner parses the wired manifest and executes services in manifest order."
+    },
+    "parallel": {
+      "mode": "unsupported",
+      "verification": "self-declared",
+      "notes": "The currently proven host-mediated runner executes services sequentially even when the manifest marks them parallelizable."
+    },
+    "environment": {
+      "mode": "incidental",
+      "verification": "unverified",
+      "notes": "Hermes sessions can inspect environment variables through tools, but OpenProse-specific environment preflight is not part of the current proof path."
+    },
+    "secret-hygiene": {
+      "mode": "incidental",
+      "verification": "unverified",
+      "notes": "The current proof path does not add a structured OpenProse-specific secret contract beyond normal model and tool behavior."
+    },
+    "delegation": {
+      "mode": "unsupported",
+      "verification": "self-declared",
+      "notes": "Delegate:/Request: yield-resume semantics are not implemented in the current host-mediated Hermes runner."
+    },
+    "persistence-execution": {
+      "mode": "unsupported",
+      "verification": "self-declared",
+      "notes": "The current proof path stages one run directory per dogfood execution but does not implement reusable OpenProse persistence semantics."
+    },
+    "persistence-project": {
+      "mode": "unsupported",
+      "verification": "self-declared",
+      "notes": "Hermes has session history and memory features, but the host-mediated OpenProse runner does not currently map them into project-scoped OpenProse persistence semantics."
+    },
+    "persistence-user": {
+      "mode": "unsupported",
+      "verification": "self-declared",
+      "notes": "Hermes has cross-session memory features, but the current host-mediated runner does not expose user-scoped OpenProse persistence semantics."
+    },
+    "ask-user": {
+      "mode": "native",
+      "verification": "self-declared",
+      "notes": "Hermes exposes a native `clarify` tool for structured user prompting. The current host-mediated dogfood proof does not exercise it, but the primitive exists in the underlying Hermes CLI."
+    },
+    "run-inputs": {
+      "mode": "adapted",
+      "verification": "self-declared",
+      "notes": "The host runner writes caller-supplied inputs into `bindings/caller/*.md` before service execution."
+    },
+    "test-execution": {
+      "mode": "unsupported",
+      "verification": "self-declared",
+      "notes": "kind:test execution is not implemented in the current Hermes host-mediated runner."
+    },
+    "test-evaluation": {
+      "mode": "unsupported",
+      "verification": "self-declared",
+      "notes": "OpenProse test evaluation is not implemented in the current Hermes host-mediated runner."
+    },
+    "resume": {
+      "mode": "unsupported",
+      "verification": "self-declared",
+      "notes": "OpenProse resume from structured artifacts is not implemented in the current Hermes host-mediated runner."
+    }
+  },
+  "profile_assessment": {
+    "core": {
+      "status": "not-conformant",
+      "reason": "A real host-mediated core execution path now exists, but this manifest remains self-declared and narrower than general-purpose Hermes runtime conformance. Parallel scheduling, environment contracts, and broader runtime semantics remain unproven."
+    },
+    "delegation": {
+      "status": "not-conformant",
+      "reason": "Depends on Core and delegation is unsupported in the current runner."
+    },
+    "persistence": {
+      "status": "not-conformant",
+      "reason": "Depends on Core and persistence semantics are unsupported in the current runner."
+    },
+    "interaction": {
+      "status": "not-conformant",
+      "reason": "Depends on Core. Hermes has a native ask-user primitive, but the broader Interaction profile remains unproven and the manifest is still only self-declared."
+    },
+    "tests": {
+      "status": "not-conformant",
+      "reason": "Depends on Core and test execution/evaluation are unsupported in the current runner."
+    },
+    "resume": {
+      "status": "not-conformant",
+      "reason": "Depends on Core and resume is unsupported in the current runner."
+    }
+  },
+  "path_to_conformance": "Separate what raw Hermes CLI can do natively (especially delegate_task, clarify, session export, and memory) from what the current host runner mediates, then add true parallel service scheduling and broader capability proofs so future manifests can distinguish native Hermes substrate support from host-mediated OpenProse protocol support."
+}

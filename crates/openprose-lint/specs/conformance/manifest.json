@@ -1,0 +1,111 @@
+{
+  "schema_version": 1,
+  "language": "openprose",
+  "default_profile": "strict",
+  "cases": [
+    {
+      "id": "basic-valid",
+      "path": "cases/basic-valid.prose",
+      "description": "Minimal valid program accepted in both profiles.",
+      "expect": {
+        "strict": [],
+        "compat": []
+      }
+    },
+    {
+      "id": "undefined-agent",
+      "path": "cases/undefined-agent.prose",
+      "description": "Undefined session agent references are rejected.",
+      "expect": {
+        "strict": [
+          {
+            "severity": "error",
+            "code": "E007"
+          }
+        ],
+        "compat": [
+          {
+            "severity": "error",
+            "code": "E007"
+          }
+        ]
+      }
+    },
+    {
+      "id": "invalid-model",
+      "path": "cases/invalid-model.prose",
+      "description": "Unknown model names are rejected.",
+      "expect": {
+        "strict": [
+          {
+            "severity": "error",
+            "code": "E008"
+          }
+        ],
+        "compat": [
+          {
+            "severity": "error",
+            "code": "E008"
+          }
+        ]
+      }
+    },
+    {
+      "id": "gate-missing-prompt",
+      "path": "cases/gate-missing-prompt.prose",
+      "description": "Gate blocks require a prompt property.",
+      "expect": {
+        "strict": [
+          {
+            "severity": "error",
+            "code": "OPE002"
+          }
+        ],
+        "compat": [
+          {
+            "severity": "error",
+            "code": "OPE002"
+          }
+        ]
+      }
+    },
+    {
+      "id": "legacy-import",
+      "path": "cases/legacy-import.prose",
+      "description": "Legacy import syntax is rejected in strict mode and tolerated in compat mode.",
+      "expect": {
+        "strict": [
+          {
+            "severity": "error",
+            "code": "OPW003"
+          }
+        ],
+        "compat": [
+          {
+            "severity": "warning",
+            "code": "OPW003"
+          }
+        ]
+      }
+    },
+    {
+      "id": "runtime-input",
+      "path": "cases/runtime-input.prose",
+      "description": "Mid-program input remains a draft drift point: strict rejects it, compat warns.",
+      "expect": {
+        "strict": [
+          {
+            "severity": "error",
+            "code": "OPW007"
+          }
+        ],
+        "compat": [
+          {
+            "severity": "warning",
+            "code": "OPW007"
+          }
+        ]
+      }
+    }
+  ]
+}

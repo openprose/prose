@@ -10,7 +10,12 @@
     "test:skill": "REACTOR_OFFLINE=1 vitest run tests/open-prose",
     "test:examples": "REACTOR_OFFLINE=1 vitest run tests/open-prose/examples && pnpm test:eval:offline",
     "test:eval:offline": "REACTOR_OFFLINE=1 node --test tools/eval-harness/eval-harness.test.mjs",
-    "lint": "pnpm --filter @openprose/reactor run lint --if-present && pnpm --filter @openprose/reactor-cli run lint --if-present && pnpm --filter @openprose/reactor-devtools run lint --if-present"
+    "lint": "pnpm lint:reactor && pnpm lint:prose",
+    "lint:reactor": "pnpm --filter @openprose/reactor run lint --if-present && pnpm --filter @openprose/reactor-cli run lint --if-present && pnpm --filter @openprose/reactor-devtools run lint --if-present",
+    "lint:prose": "bash scripts/lint-prose.sh",
+    "lint:prose:advisory": "bash scripts/lint-prose.sh advisory",
+    "lint:prose:package": "bash scripts/lint-prose.sh package",
+    "lint:prose:release-package": "bash scripts/lint-prose.sh release-package"
   },
   "devDependencies": {
     "vitest": "^4.1.8"

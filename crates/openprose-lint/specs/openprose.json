@@ -1,0 +1,14 @@
+{
+  "id": "openprose",
+  "repo": "openprose/prose",
+  "source_path": "../..",
+  "package_source_path": "spec-snapshot/openprose",
+  "pinned_commit": "HEAD",
+  "paths": {
+    "root": "skills/open-prose",
+    "compiler_spec": "compiler/index.prose.md",
+    "vm_spec": "prose.md",
+    "forme_spec": "forme.md",
+    "deps_spec": "deps.md"
+  }
+}

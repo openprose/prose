@@ -1,0 +1,3 @@
+# Generated package input for the openprose-lint crate. Keep hidden by default
+# in GitHub diffs; review the source docs and sync script instead.
+crates/openprose-lint/spec-snapshot/** linguist-generated

@@ -1,0 +1,138 @@
+{
+  "vocab_version": "0.1.0",
+  "name": "codex-host-mediated",
+  "subject": "Codex CLI via openprose-lint host-mediated OpenProse runner",
+  "prose_complete": true,
+  "verification": "self-declared",
+  "declared_by": "pi session, 2026-04-17",
+  "notes": "This manifest describes the adapted execution path currently proven by `openprose-lint adapter dogfood specs/adapters/codex-v1-md.json`, not raw Codex CLI by itself. In this path Codex performs `wire-v1`, then `openprose-lint` launches one child `codex exec --ephemeral` session per OpenProse service, publishes declared outputs into bindings, and writes `state.md`. Treat this as proof of a host-mediated Codex OpenProse runner, not proof that raw Codex alone already implements the full OpenProse VM surface.",
+  "supports": {
+    "subagents": {
+      "mode": "adapted",
+      "verification": "self-declared",
+      "notes": "Service sessions are implemented by the host driver launching child `codex exec --ephemeral` runs. There is no native Task-like Codex primitive under proof here."
+    },
+    "file-io": {
+      "mode": "native",
+      "verification": "self-declared",
+      "notes": "Codex can inspect and modify local files directly during a run, and the host driver also verifies resulting files on disk."
+    },
+    "tool-exec": {
+      "mode": "native",
+      "verification": "self-declared",
+      "notes": "Codex can execute arbitrary shell commands. JSONL transcripts emit `command_execution` items with command text, exit status, and aggregated output."
+    },
+    "workspace-bindings": {
+      "mode": "adapted",
+      "verification": "self-declared",
+      "notes": "The host runner stages OpenProse run directories and binding trees explicitly on disk."
+    },
+    "copy-on-return": {
+      "mode": "adapted",
+      "verification": "self-declared",
+      "notes": "After each child Codex service run, the host driver copies declared workspace outputs into manifest-declared public binding paths."
+    },
+    "state-markers": {
+      "mode": "adapted",
+      "verification": "self-declared",
+      "notes": "The host runner writes `state.md` with an OpenProse end marker after the adapted execute proof completes."
+    },
+    "error-signaling": {
+      "mode": "adapted",
+      "verification": "self-declared",
+      "notes": "The host runner treats `__error.md` in a service workspace as a structured service failure and stops the proof accordingly."
+    },
+    "dependency-scheduling": {
+      "mode": "adapted",
+      "verification": "self-declared",
+      "notes": "The host runner parses the wired manifest and executes services in manifest order."
+    },
+    "parallel": {
+      "mode": "unsupported",
+      "verification": "self-declared",
+      "notes": "The currently proven host-mediated runner executes services sequentially even when the manifest marks them parallelizable."
+    },
+    "environment": {
+      "mode": "incidental",
+      "verification": "unverified",
+      "notes": "Environment handling beyond normal shell access is not part of the current proof path."
+    },
+    "secret-hygiene": {
+      "mode": "incidental",
+      "verification": "unverified",
+      "notes": "The current proof path does not add a structured OpenProse-specific secret contract beyond normal model behavior."
+    },
+    "delegation": {
+      "mode": "unsupported",
+      "verification": "self-declared",
+      "notes": "Delegate:/Request: yield-resume semantics are not implemented in the current host-mediated Codex runner."
+    },
+    "persistence-execution": {
+      "mode": "unsupported",
+      "verification": "self-declared",
+      "notes": "The current proof path stages one run directory per dogfood execution but does not implement reusable OpenProse persistence semantics."
+    },
+    "persistence-project": {
+      "mode": "unsupported",
+      "verification": "self-declared",
+      "notes": "No project-scoped persistence layer is implemented in the current Codex host-mediated runner."
+    },
+    "persistence-user": {
+      "mode": "unsupported",
+      "verification": "self-declared",
+      "notes": "No user-scoped persistence layer is implemented in the current Codex host-mediated runner."
+    },
+    "ask-user": {
+      "mode": "unsupported",
+      "verification": "self-declared",
+      "notes": "The current proof path does not expose a deterministic ask-user primitive."
+    },
+    "run-inputs": {
+      "mode": "adapted",
+      "verification": "self-declared",
+      "notes": "The host runner writes caller-supplied inputs into `bindings/caller/*.md` before service execution."
+    },
+    "test-execution": {
+      "mode": "unsupported",
+      "verification": "self-declared",
+      "notes": "kind:test execution is not implemented in the current Codex host-mediated runner."
+    },
+    "test-evaluation": {
+      "mode": "unsupported",
+      "verification": "self-declared",
+      "notes": "OpenProse test evaluation is not implemented in the current Codex host-mediated runner."
+    },
+    "resume": {
+      "mode": "unsupported",
+      "verification": "self-declared",
+      "notes": "OpenProse resume from structured artifacts is not implemented in the current Codex host-mediated runner."
+    }
+  },
+  "profile_assessment": {
+    "core": {
+      "status": "not-conformant",
+      "reason": "A real host-mediated core execution path now exists, but this manifest remains self-declared and narrower than general-purpose Codex runtime conformance. Parallel scheduling and broader runtime semantics remain unproven."
+    },
+    "delegation": {
+      "status": "not-conformant",
+      "reason": "Depends on Core and delegation is unsupported in the current runner."
+    },
+    "persistence": {
+      "status": "not-conformant",
+      "reason": "Depends on Core and persistence semantics are unsupported in the current runner."
+    },
+    "interaction": {
+      "status": "not-conformant",
+      "reason": "Depends on Core and ask-user is unsupported in the current runner."
+    },
+    "tests": {
+      "status": "not-conformant",
+      "reason": "Depends on Core and test execution/evaluation are unsupported in the current runner."
+    },
+    "resume": {
+      "status": "not-conformant",
+      "reason": "Depends on Core and resume is unsupported in the current runner."
+    }
+  },
+  "path_to_conformance": "Tighten the semantics of the host-mediated runner, add true parallel service scheduling where the manifest allows it, then separately model and prove what raw Codex CLI can do without host help versus what the adapter layer contributes."
+}

@@ -1,0 +1,20 @@
+{
+  "schema_version": 2,
+  "linter": {
+    "name": "openprose-lint",
+    "version": "0.2.0",
+    "cli_default_profile": "compat"
+  },
+  "spec_registry": "specs/",
+  "default_spec": "openprose",
+  "profiles": {
+    "strict": {
+      "role": "release-gating",
+      "description": "Current normative behavior required for conformance and stable release work."
+    },
+    "compat": {
+      "role": "migration-and-smoke",
+      "description": "Compatibility surface for historical syntax and example-corpus smoke tests."
+    }
+  }
+}

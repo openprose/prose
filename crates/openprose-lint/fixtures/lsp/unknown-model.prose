@@ -1,0 +1,5 @@
+session "test"
+
+agent worker:
+  model: turbo
+  prompt: "do work"
