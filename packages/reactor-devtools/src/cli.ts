@@ -12,6 +12,7 @@ import {
   cpSync,
   mkdirSync,
   readdirSync,
+  writeFileSync,
 } from "node:fs";
 import { join, resolve } from "node:path";
 
@@ -23,6 +24,7 @@ import {
   isReactorStateDir,
   SHIPPED_EXAMPLES,
 } from "./data";
+import { renderRunExport } from "./export";
 
 // --- The bundled `--example` registry (G2) ---------------------------------
 //
@@ -111,8 +113,30 @@ interface ParsedArgs {
    * `--example`.
    */
   readonly copyTo: string | undefined;
-  /** `--force`: overwrite a non-empty / existing state-dir on `--copy-to`. */
+  /** `--force`: overwrite an existing target on `--copy-to` / `--export`. */
   readonly force: boolean;
+  /**
+   * `--export <file.html>`: write the run as ONE self-contained HTML file (the
+   * gist view: copyable contract → expandable receipt timeline → output
+   * assets). Works with `<state-dir>` or `--example`; no server, no browser.
+   */
+  readonly exportPath: string | undefined;
+  /**
+   * `--source <path>`: a `.prose.md` file or directory of them to embed as the
+   * export's copyable contract block. Only meaningful with `--export` (reactor
+   * state-dirs carry no source snapshot today, so the contract is opt-in).
+   */
+  readonly sourcePath: string | undefined;
+  /** `--title <text>`: the export page title (defaults to a state-dir-derived one). */
+  readonly title: string | undefined;
+  /**
+   * Export-family flags (`--export`/`--source`/`--title`) seen WITHOUT a value
+   * (end of argv, or the next token is itself an option). Refused in `main`
+   * like {@link unknown} — a bare `--export` must never fall through to the
+   * blocking server, and `--export --force` must never write a file named
+   * `--force` (bug#6 family).
+   */
+  readonly missingValue: readonly string[];
   /**
    * Any tokens that look like options (`-x` / `--foo`) but are not recognized.
    * An unknown flag must error with usage and exit non-zero — never fall through
@@ -143,7 +167,22 @@ function parseArgs(argv: readonly string[]): ParsedArgs {
   let json = false;
   let copyTo: string | undefined;
   let force = false;
+  let exportPath: string | undefined;
+  let sourcePath: string | undefined;
+  let title: string | undefined;
   const unknown: string[] = [];
+  // Flags whose value is missing (next token absent or itself an option).
+  // bug#6 family: `--export` with no value must NOT fall through to server
+  // mode (or to a file literally named like the next flag) — collect and
+  // refuse in main, exactly like `unknown`.
+  const missingValue: string[] = [];
+  const takeValue = (flag: string, v: string | undefined): string | undefined => {
+    if (v === undefined || v.startsWith("-")) {
+      missingValue.push(flag);
+      return undefined;
+    }
+    return v;
+  };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]!;
     if (arg === "--help" || arg === "-h") {
@@ -160,6 +199,15 @@ function parseArgs(argv: readonly string[]): ParsedArgs {
       example = argv[++i];
     } else if (arg === "--copy-to") {
       copyTo = argv[++i];
+    } else if (arg === "--export") {
+      exportPath = takeValue("--export", argv[i + 1]);
+      if (exportPath !== undefined) i++;
+    } else if (arg === "--source") {
+      sourcePath = takeValue("--source", argv[i + 1]);
+      if (sourcePath !== undefined) i++;
+    } else if (arg === "--title") {
+      title = takeValue("--title", argv[i + 1]);
+      if (title !== undefined) i++;
     } else if (arg === "--port" || arg === "-p") {
       port = Number(argv[++i]);
     } else if (arg === "--host") {
@@ -187,7 +235,11 @@ function parseArgs(argv: readonly string[]): ParsedArgs {
     json,
     copyTo,
     force,
+    exportPath,
+    sourcePath,
+    title,
     unknown,
+    missingValue,
   };
 }
 
@@ -197,6 +249,7 @@ Usage:
   reactor-devtools <state-dir> [--port <n>] [--host <h>] [--describe]
   reactor-devtools --example <name> [--describe]   # replay a bundled fixture
   reactor-devtools --example <name> --copy-to <dir> [--force]  # seed a sample ledger
+  reactor-devtools <state-dir> --export <file.html> [--source <path>] [--title <t>]
 
 Arguments:
   <state-dir>   A saved Reactor state directory (receipts + compile/topology.json).
@@ -210,7 +263,18 @@ Options:
                  way to drop a real-shaped SAMPLE ledger into your OWN project, so
                  \`reactor-devtools <dir> --describe\` replays a ledger sitting in
                  your tree). Refuses a non-empty / existing state-dir unless --force.
-      --force   Overwrite a non-empty / existing state-dir on --copy-to.
+      --force   Overwrite an existing target on --copy-to / --export.
+      --export <file.html>  Write the run as ONE self-contained HTML file — the
+                 gist view: the copyable .prose.md contract on top, the receipt
+                 timeline (frames, per-node chain-verify, cost rollup, raw
+                 receipts) expandable in the middle, and each node's published
+                 world-model assets below. No server, no browser, no network.
+                 Exit 0 on a clean chain; exit 1 when chain-verify fails (the
+                 file is still written and shows the tamper).
+      --source <path>   A .prose.md file or a directory of them to embed as the
+                 export's contract block (reactor state-dirs carry no source
+                 snapshot today). Only valid with --export.
+      --title <text>    Page title for --export (defaults to the state-dir name).
   -p, --port    Port to listen on (default 4555).
       --host    Host to bind (default 127.0.0.1).
       --describe Print a headless run summary (per-node + per-frame
@@ -298,6 +362,15 @@ async function main(): Promise<void> {
     process.stderr.write(USAGE);
     process.exit(1);
   }
+  // A flag that REQUIRES a value but got none (bug#6 family): refuse before
+  // any mode dispatch, so a bare `--export` can never bind the server port.
+  if (args.missingValue.length > 0) {
+    process.stderr.write(
+      `error: option${args.missingValue.length > 1 ? "s" : ""} missing a value: ${args.missingValue.join(", ")}\n` +
+        `  e.g. reactor-devtools --example masked-relay --export run.html\n`,
+    );
+    process.exit(1);
+  }
   if (args.stateDir === undefined && args.example === undefined) {
     process.stdout.write(USAGE);
     process.exit(1);
@@ -314,6 +387,32 @@ async function main(): Promise<void> {
     process.stderr.write(
       `error: --json only applies with --describe (the machine-readable run summary).\n` +
         `  e.g. reactor-devtools --example masked-relay --describe --json\n`,
+    );
+    process.exit(1);
+  }
+
+  // `--export` is its own terminal mode (like `--describe`): refuse ambiguous
+  // combinations loudly instead of silently picking one. `--source`/`--title`
+  // shape the export document, so they are meaningless without it.
+  if (args.exportPath !== undefined && args.describe) {
+    process.stderr.write(
+      `error: pass either --export <file.html> OR --describe, not both.\n`,
+    );
+    process.exit(1);
+  }
+  if (args.exportPath !== undefined && args.copyTo !== undefined) {
+    process.stderr.write(
+      `error: pass either --export <file.html> OR --copy-to <dir>, not both.\n`,
+    );
+    process.exit(1);
+  }
+  if (
+    (args.sourcePath !== undefined || args.title !== undefined) &&
+    args.exportPath === undefined
+  ) {
+    process.stderr.write(
+      `error: --source/--title only apply with --export <file.html>.\n` +
+        `  e.g. reactor-devtools --example masked-relay --export run.html --source ./src\n`,
     );
     process.exit(1);
   }
@@ -387,6 +486,58 @@ async function main(): Promise<void> {
       }
       process.exit(1);
     }
+  }
+
+  // `--export <file.html>`: the gist view — one self-contained HTML file
+  // bundling contract (copyable) + run artifact (expandable) + output assets.
+  // Headless like `--describe`, and the SAME exit-code contract: clean (or
+  // legitimately empty) chain → 0; detected tamper → 1 — but the file is
+  // ALWAYS written on a readable ledger, because an export that shows the
+  // tamper badge is more useful than no export at all.
+  if (args.exportPath !== undefined) {
+    const target = resolve(args.exportPath);
+    if (existsSync(target) && !args.force) {
+      process.stderr.write(
+        `error: ${args.exportPath} already exists — refusing to overwrite.\n` +
+          `  re-run with --force to overwrite it.\n`,
+      );
+      process.exit(1);
+    }
+    let opened;
+    try {
+      opened = openStateDir(stateDir);
+    } catch (err) {
+      process.stderr.write(
+        `reactor-devtools --export: cannot read state-dir "${stateDir}": ${String(err)}\n`,
+      );
+      process.exit(1);
+    }
+    let result;
+    try {
+      result = renderRunExport(opened, {
+        synthetic,
+        ...(args.sourcePath !== undefined ? { sourcePath: args.sourcePath } : {}),
+        ...(args.title !== undefined ? { title: args.title } : {}),
+      });
+    } catch (err) {
+      // Most likely a bad --source path; name it rather than a bare stack.
+      process.stderr.write(
+        `reactor-devtools --export: ${String(err)}\n`,
+      );
+      process.exit(1);
+    }
+    writeFileSync(target, result.html);
+    process.stdout.write(
+      `reactor-devtools: exported ${result.sourceCount} source file(s) + the run artifact + outputs\n` +
+        `  ${target}\n` +
+        (result.chainOk
+          ? ``
+          : `  CHAIN-VERIFY FAILED — the export carries the tamper verdict.\n`) +
+        (result.sourceCount === 0 && args.sourcePath === undefined
+          ? `  (no .prose.md contract embedded — pass --source <file-or-dir> to include one)\n`
+          : ``),
+    );
+    process.exit(result.chainOk ? 0 : 1);
   }
 
   // `--describe`: headless run summary, no server, no browser.
