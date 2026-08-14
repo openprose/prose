@@ -957,6 +957,31 @@ At run start, the VM resolves each `requires` entry:
 | Value provided by a calling render (nested invocation) | Bind immediately                                   |
 | No value available                                    | Prompt user via `ask_user`, bind response           |
 
+### Intentional `ask_user` Pauses
+
+`ask_user` is the VM's only mechanism for pausing a run to collect human input.
+It fires automatically when a required caller input is unbound, but it is also the
+**intended** mechanism for authors who want a render to pause mid-run for a
+decision that cannot be derived from evidence or defaults.
+
+To author an intentional pause:
+
+1. Declare the input in `### Requires` (responsibility) or `### Parameters`
+   (function).
+2. Do **not** supply a value via CLI arg, config, or calling render.
+3. The VM pauses at bind time, prompts the user via `ask_user`, binds the response,
+   and resumes.
+
+There is **no `kind: service`**, **no `### Runtime: interactive: true`**, and no
+other field that expresses interactivity. An unbound required input *is* the intent
+signal.
+
+When the host cannot satisfy `ask_user` (non-interactive shell, CI, automation),
+the VM does **not** guess or fabricate. It returns `unresolved-intent` with the
+missing inputs listed, exactly as the `prose-author` std-op does when `interactive`
+is unavailable. A calling render or harness should treat `unresolved-intent` as a
+contract signal and either supply the missing value or halt rather than invent one.
+
 ### Writing Input Bindings
 
 Write each input to the active backend binding store. Filesystem runs use
