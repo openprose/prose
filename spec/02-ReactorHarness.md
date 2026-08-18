@@ -16,7 +16,7 @@ ships:
   Reactor-Native Authoring Pattern**, **SKILL-bundled but harness-governed**:
   how to write `*.prose.md` so this harness's mechanisms engage. It bridges
   the Language doc and this doc.
-- [ReactorFeedback.md](../history/ReactorFeedback.md) — **the
+- `ReactorFeedback.md` — **the
   decision log**, not shipped: the dialectic that produced this revision. This
   document is the clean statement and does not carry the dialectic.
 - [00-Tenets.md](./00-Tenets.md) — **the constitution**. When any
