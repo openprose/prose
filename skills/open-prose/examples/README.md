@@ -12,32 +12,18 @@ the `### Requires` ↔ `### Maintains` edges at compile time; the dumb reconcile
 skips a render when neither the contract nor any subscribed input fingerprint
 moved, so cost scales with surprise, not the clock.
 
-## Reactor verbs
-
-Each example ships its `.prose.md` contracts under `src/`. Drive any of them with
-the same verbs (`reactor` / `reactor-cli`):
-
-```bash
-cd skills/open-prose/examples/<example>
-reactor doctor            # honest health report (sandbox, IR presence)
-reactor compile           # the ONE intelligent phase: Forme wires the DAG + lowers canonicalizers
-reactor topology          # inspect the compiled responsibility graph
-reactor run               # the dumb reconciler replays the frozen output
-reactor serve             # stand the graph up and watch it react to events
-reactor receipts          # read the per-node ledger (render/skip/failed + cost)
-```
-
-A `reactor run` (or `reactor serve`) writes a frozen, deterministic state-dir you
-can replay at **zero model spend**: open it in `reactor-devtools` to scrub the
-render/skip trail.
+Each example ships its `.prose.md` contracts under `src/`; see
+[Quick Start](#quick-start) below for how to compile and serve one.
 
 ---
 
 ## Intelligent-React substrate examples (grouped by property)
 
-These examples are authored to the full validity contract and exercised by the
-project's offline test suite, which drives the REAL `@openprose/reactor`
-reconciler offline, asserting the property each one teaches.
+These examples are authored to the full validity contract, each teaching one
+property of the reconciler. A conforming harness can replay any of them
+deterministically at zero model spend; the deterministic replay suites that
+drive them against the Reactor harness live with that harness at
+[github.com/openprose/reactor](https://github.com/openprose/reactor).
 
 ### Memoization & cost-scales-with-surprise
 
@@ -135,13 +121,6 @@ render model, a smart judge model) alongside its deterministic tier-2 gate.
   outward action at `needs_human` (`auto_reply:false`), and a `public` projection
   facet keeps sender PII out of the public view by construction.
 
-### Eval harness
-
-- [`tools/eval-harness/`](../../../tools/eval-harness/): the Reactor eval harness:
-  a Trajectory Normalizer over the devtools replay view, a no-LLM Deterministic
-  Checker (7 spec checks), 5 canonical scenarios, and a key-gated LLM judge panel
-  that is OFF in CI. Run offline: `pnpm test:eval:offline`.
-
 ---
 
 ## Named-parts & migrated corpus examples
@@ -192,15 +171,16 @@ source code or should keep their own release cadence.
 
 ## Quick Start
 
-Open one example directory, then compile and serve it. `reactor compile` is the
+Open one example directory, then compile and serve it. `prose compile` is the
 only intelligent phase: it runs Forme to wire the responsibility DAG and lowers
-each `### Maintains` into a deterministic canonicalizer; `reactor serve` runs the
-dumb reconciler over that frozen output.
+each `### Maintains` into a deterministic canonicalizer; `prose serve` runs the
+dumb reconciler over that frozen output. Any conforming harness can serve the
+compiled IR the same way.
 
 ```bash
 cd skills/open-prose/examples/surprise-cost
-reactor compile
-reactor serve
+prose compile
+prose serve
 ```
 
 Each example README explains the standing goal, source layout, and what to try.

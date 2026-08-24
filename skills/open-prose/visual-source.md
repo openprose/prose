@@ -15,7 +15,6 @@ see-also:
   - forme.md: The topology world-model a multi-node image is a visual projection of
   - compiler/ir-v0.md: The compile IR the topology rides inside
   - compiler/index.prose.md: The compiler the resolve hands its emitted contracts to
-  - reactor.md: `prose react <image>` — take a visual brief to a running Reactor
   - guidance/authoring.md: Ratifying the emitted contracts (the `prose write` discipline)
 ---
 
@@ -77,7 +76,7 @@ existence.
 
 | Scope | Boxes | Resolves to | Verb |
 |-------|-------|-------------|------|
-| **System** | many | a Forme graph of `kind: responsibility`/`gateway` contracts + `reactor.yml` | `prose react <image>` / `prose compile <image>` |
+| **System** | many | a Forme graph of `kind: responsibility`/`gateway` contracts | `prose compile <image>` → `prose serve` |
 | **Single responsibility** | one | one `kind: responsibility` contract | `prose compile <image>` |
 | **Single function** | one | one `kind: function` (a visual signature + intent) | `prose compile <image>` → `prose run` |
 
@@ -166,12 +165,6 @@ resolve*. So `run <image>` = resolve → compile → reconcile. A single-node
 `kind: function` image runs as a called helper; a `kind: responsibility`/system
 image mounts a DAG (refuse a bare `prose run` on a lone `kind: gateway`, same as
 text).
-
-### `prose react <image.png> [--start]`
-
-The most natural verb: `react` already takes an English standing goal to a
-running Reactor. An image is the **visual** peer of that brief — resolve →
-author contracts + `reactor.yml` → `compile → serve` → show the devtools replay.
 
 ## Honest limits
 

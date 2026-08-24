@@ -9,9 +9,9 @@ The compiler output convention is:
 - `<openprose-root>/dist/manifest.active.json`: active IR used by `prose serve`
 
 The checked manifest stays intentionally small. Its exact schema is the
-compile-phase IR defined in `skills/open-prose/compiler/ir-v0.md` and realized
-in TypeScript by `CompilePhaseIR` in `packages/reactor/src/shapes/index.ts`. It
-contains:
+compile-phase IR defined in `skills/open-prose/compiler/ir-v0.md` (the
+reference harness at [openprose/reactor](https://github.com/openprose/reactor)
+realizes it in TypeScript as `CompilePhaseIR`). It contains:
 
 - `kind` (literal `openprose.compile-phase-ir`)
 - `version` (integer `2`, tracking the SKILL `runtime_contract`)

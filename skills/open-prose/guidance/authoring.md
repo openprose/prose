@@ -164,14 +164,14 @@ volume.
   the inputs; exploration stays available to the renders that genuinely need it.
 - **Validate the cost-shape; do not assume it.** Prove selective wake before
   trusting a pipeline: a deterministic check that the right nodes render and the
-  rest skip (a `kind: test` over dispositions, or the reactor eval-harness
-  deterministic tier), plus an llm-as-judge pass over the produced truths against
+  rest skip (a `kind: test` over dispositions, or your harness's deterministic
+  replay tier), plus an llm-as-judge pass over the produced truths against
   their `### Maintains` postconditions for quality. Capture a committed replay so
   the check is repeatable and keyless — cheaper and more honest than re-running
   the live pipeline to eyeball it.
 - **Keep renders small enough for a cheap model.** Model selection is an operator
-  concern (`reactor.yml`, today one global model; per-node `### Runtime` model is
-  declarable but not yet honored by the CLI — see `reactor.md`). Author each
+  concern of the harness (typically one global model; a per-node `### Runtime`
+  model is declarable but not every harness honors it yet). Author each
   high-volume render narrow enough that a cheap model suffices; reserve a stronger
   model for rare, strict work such as the compile phase.
 
