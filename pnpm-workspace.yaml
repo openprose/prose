@@ -1,6 +1,5 @@
 packages:
   - "packages/*"
-  - "skills/open-prose/examples/*"
 
 # Freshly published versions are not resolvable for 48h (supply-chain cooldown).
 # Urgent security fix needed sooner? Add the package to minimumReleaseAgeExclude,

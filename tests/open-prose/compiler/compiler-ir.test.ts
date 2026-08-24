@@ -8,8 +8,9 @@
 //     and deletes the judge-era manifest (activations/criteria/formeManifests).
 //  2) Fixture conformance — a self-contained validator that encodes the doc's IR
 //     rules; every expected/ fixture must PASS it and every invalid/ fixture
-//     must FAIL it. The validator mirrors the CompilePhaseIR shape in
-//     packages/reactor/src/shapes/index.ts (the shared shapes spine).
+//     must FAIL it. The validator mirrors the CompilePhaseIR shape a conforming
+//     harness realizes in code (the reference harness's shared shapes spine,
+//     github.com/openprose/reactor).
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
