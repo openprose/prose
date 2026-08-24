@@ -318,9 +318,10 @@ export async function bootReactorHandle(
     input.testAdapters ?? buildDurableSubstrate(stateDir);
   const baseRender: RunRender = input.testRender ?? {};
   // Construct the render sandbox runner from `[sandbox]` (mode none → none; docker
-  // present → workspace-scoped network-off container; docker absent → none + a
-  // note). The workspace root is the reactor's isolated state dir (the harness
-  // harvests host-side). Thread `shell_timeout_ms` onto the render bound.
+  // present → workspace-scoped network-off container; requested isolation that is
+  // unavailable → fail closed). The workspace root is the reactor's isolated
+  // state dir (the harness harvests host-side). Thread `shell_timeout_ms` onto the
+  // render bound.
   const sandboxConfig: SandboxConfig =
     input.sandbox ?? { mode: 'none', shell_timeout_ms: 300_000 };
   const built = buildSandboxRunner(sandboxConfig, stateDir);

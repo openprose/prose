@@ -8,8 +8,8 @@
  *   2. `mode: docker` with Docker PRESENT → the constructed argv is `docker run
  *      --rm --network=none -v <ws>:<ws> -w <ws> <image> <cmd> <args...>` — network
  *      FORCED off, workspace-scoped; the runner execs through the injected host.
- *   3. `mode: docker` with Docker ABSENT → NO runner + a surfaced note (never a
- *      hard-fail; the run degrades to the bounded shell).
+ *   3. `mode: docker` with Docker ABSENT → fail closed before model-generated
+ *      commands can fall through to the host shell.
  *   4. `shell_timeout_ms` flows onto the render config the CLI hands `runProject`
  *      (Change C forwards it to createAgentRender; the SDK equivalence test proves
  *      the forward). Captured via an injected `runProject` impl.
@@ -102,12 +102,20 @@ describe('render sandbox runner (Phase 5)', () => {
     assert.ok(!calls[0]!.includes(DEFAULT_SANDBOX_IMAGE));
   });
 
-  it('mode:docker + Docker absent → no runner + a surfaced note (never hard-fails)', () => {
+  it('mode:docker + Docker absent → fails closed', () => {
     const cfg: SandboxConfig = { mode: 'docker', shell_timeout_ms: 300_000 };
-    const built = buildSandboxRunner(cfg, WS, fakeHost({ available: false }).host);
-    assert.equal(built.runner, undefined);
-    assert.ok(built.note, 'a note is surfaced');
-    assert.match(built.note!, /Docker is not available/i);
+    assert.throws(
+      () => buildSandboxRunner(cfg, WS, fakeHost({ available: false }).host),
+      /refusing to execute without the requested isolation/i,
+    );
+  });
+
+  it('mode:unix-local fails closed while the implementation is unavailable', () => {
+    const cfg: SandboxConfig = { mode: 'unix-local', shell_timeout_ms: 300_000 };
+    assert.throws(
+      () => buildSandboxRunner(cfg, WS, fakeHost({ available: true }).host),
+      /refusing to execute without the requested isolation/i,
+    );
   });
 
   it('buildDockerArgv is a pure, workspace-scoped, network-off argv', () => {

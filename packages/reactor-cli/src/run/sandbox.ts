@@ -24,13 +24,13 @@
  *       docker run --rm --network=none -v <ws>:<ws> -w <ws> <image> <cmd> <args...>
  *     Network is FORCED `none` regardless of `[sandbox].network` (the CLI owns the
  *     threat model; an untrusted render must not reach the network). When Docker
- *     is ABSENT (no daemon / binary), we DO NOT hard-fail the run: we return NO
- *     runner + a surfaced note, so the render falls back to the bounded LocalShell
- *     exactly as `mode: none` would. A missing daemon degrades, never crashes.
+ *     is ABSENT (no daemon / binary), construction FAILS CLOSED. Silently falling
+ *     back to LocalShell would discard the operator's isolation boundary while
+ *     still executing model-generated commands on the host.
  *
- * `unix-local` is accepted by the config type but not yet realized here; it maps
- * to `none` (no runner) with a note until the SDK UnixLocal client is adopted
- * (RENDER-SANDBOX-OPTIONS §6 — deferred). The default stays `none`.
+ * `unix-local` is accepted by the config type but not yet realized here; selecting
+ * it fails closed until the SDK UnixLocal client is adopted. The explicit default
+ * stays `none`.
  */
 
 import { spawnSync } from 'node:child_process';
@@ -60,17 +60,17 @@ export type SandboxRunner = (
   request: SandboxExecRequest,
 ) => SandboxExecResponse | Promise<SandboxExecResponse>;
 
-/** The outcome of {@link buildSandboxRunner}: the runner (or none) + an optional note. */
+/** The outcome of {@link buildSandboxRunner}: a runner, or none for explicit mode `none`. */
 export interface BuiltSandboxRunner {
-  /** The constructed runner, or `undefined` for `mode: none` / Docker-absent. */
+  /** The constructed runner, or `undefined` only for explicit `mode: none`. */
   readonly runner?: SandboxRunner;
-  /** A surfaced note (e.g. "Docker absent — falling back to the bounded shell"). */
+  /** Reserved for non-security operational notices. */
   readonly note?: string;
 }
 
 /** The injectable host hooks (tests stub these; production uses the real `docker`). */
 export interface SandboxHost {
-  /** Probe whether Docker is usable (`docker --version`). Returns true if present. */
+  /** Probe whether Docker is usable (`docker info`). Returns true if the daemon is reachable. */
   readonly dockerAvailable: () => boolean;
   /** Exec the constructed argv synchronously, returning the exec outcome. */
   readonly exec: (argv: readonly string[]) => SandboxExecResponse;
@@ -110,7 +110,7 @@ export function defaultSandboxHost(): SandboxHost {
   return {
     dockerAvailable: () => {
       try {
-        const res = spawnSync('docker', ['--version'], {
+        const res = spawnSync('docker', ['info'], {
           stdio: 'ignore',
           timeout: 5_000,
         });
@@ -139,11 +139,10 @@ export function defaultSandboxHost(): SandboxHost {
  *
  *   - `mode: none` (locked default) → `{ runner: undefined }`. The render relies
  *     on the SDK's cwd-scoped, time/output-bounded LocalShell.
- *   - `mode: unix-local` → `{ runner: undefined, note }` (deferred; maps to none).
+ *   - `mode: unix-local` → throws (deferred; never silently removes isolation).
  *   - `mode: docker`, Docker PRESENT → a runner that execs every command inside a
  *     `docker run --rm --network=none -v <ws>:<ws> -w <ws> <image> ...` container.
- *   - `mode: docker`, Docker ABSENT → `{ runner: undefined, note }`. NEVER throws;
- *     the run degrades to the bounded LocalShell.
+ *   - `mode: docker`, Docker ABSENT → throws before any render starts.
  *
  * `workspaceDir` is the per-project workspace ROOT the container bind-mounts; the
  * render's per-node working dirs live beneath it, and the harness harvests on the
@@ -159,21 +158,20 @@ export function buildSandboxRunner(
   }
 
   if (sandbox.mode === 'unix-local') {
-    return {
-      note:
-        "sandbox mode 'unix-local' is not yet realized; falling back to the " +
-        'bounded cwd-scoped shell (mode none).',
-    };
+    throw new Error(
+      "sandbox mode 'unix-local' is not yet available; refusing to execute " +
+        'without the requested isolation. Choose mode none explicitly only for trusted contracts.',
+    );
   }
 
-  // mode: docker — probe the daemon; a missing daemon degrades, never crashes.
+  // mode: docker — the requested isolation boundary is mandatory. Fail closed
+  // before a model session can reach the host LocalShell.
   if (!host.dockerAvailable()) {
-    return {
-      note:
-        "sandbox mode 'docker' requested but Docker is not available; falling " +
-        'back to the bounded cwd-scoped shell. Install/start Docker to isolate ' +
-        'renders.',
-    };
+    throw new Error(
+      "sandbox mode 'docker' requested but Docker is not available; refusing " +
+        'to execute without the requested isolation. Install/start Docker, or choose ' +
+        'mode none explicitly only for trusted contracts.',
+    );
   }
 
   const image =
