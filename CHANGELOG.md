@@ -7,18 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- **The legacy `@openprose/prose-cli` (`tools/cli/`) is removed.** The Oclif
+  `prose` binary and its `codex-sdk`/`claude-sdk`/`mock` harnesses are deleted;
+  the OpenProse language is embodied by the SKILL in-session and the Reactor
+  SDK + `reactor` CLI are the deterministic harness. The separately-authored
+  `### Criteria` section is also removed (postconditions live solely in
+  `### Maintains`).
+
+## [reactor 0.3.2 / reactor-cli 0.2.3 / reactor-devtools 0.3.0] - 2026-08-12
+
+Reactor-train release (`reactor-v*` tag train). Each package publishes at its own
+version; the skill/plugin track is unaffected.
+
+_Recorded retroactively: the `### Added` entries and the temperature / `reactor
+trigger` entries below shipped in this release (#137, #138, 2026-06-13) but were
+still filed under `[Unreleased]` when it was tagged._
+
 ### Added
 
-- **`prose react "<use case>"`** — A command for taking an English standing goal
-  to a running, inspectable Reactor on the `@openprose/reactor-cli` (`reactor`)
-  binary. The open-prose skill gains a `reactor.md` operator guide (install, the
-  `compile → run → serve` lifecycle, `reactor.yml`, the `prose react` playbook,
-  and the keyless `reactor-devtools` replay), `SKILL.md`/`help.md` routing, and
-  the note that — unlike embodied `prose run` — `reactor` is a deterministic host
-  the agent does shell out to. `prose react [use case...] [--start]` is embodied
-  by the skill in-session (there is no `prose` binary): by default the agent
-  prints the `reactor` commands for the user to run, and `--start` drives the
-  live lifecycle.
 - **`model.reasoning_effort` (`reactor.yml`) / `reasoningEffort` (SDK render and
   compile options).** Passed verbatim into `modelSettings.reasoning.effort` —
   values are model-dependent and validated by the provider. OpenAI reasoning
@@ -41,6 +49,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **`@openprose/reactor-devtools` 0.3.0 — the replay viewer is re-skinned** to the
+  OpenProse machine surface (charcoal + gold, JetBrains Mono) and gains the
+  credibility-seam panels (version/reuse/footprint/skew).
 - **An unset `temperature` is now omitted from model requests instead of
   silently becoming 0.** OpenAI reasoning models (gpt-5.5, the o-series) reject
   any explicit temperature, so "send no temperature" has to be representable:
@@ -59,39 +70,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   naming the exact env var when a custom provider's key is absent, and exits `1`
   on any `failed` disposition — matching `reactor run`.
 
-### Removed
-
-- **The legacy `@openprose/prose-cli` (`tools/cli/`) is removed.** The Oclif
-  `prose` binary and its `codex-sdk`/`claude-sdk`/`mock` harnesses are deleted;
-  the OpenProse language is embodied by the SKILL in-session and the Reactor
-  SDK + `reactor` CLI are the deterministic harness. The separately-authored
-  `### Criteria` section is also removed (postconditions live solely in
-  `### Maintains`).
-
-### Fixed
-
-- **`reactor.yml`'s `temperature` now governs run/serve renders, not only
-  compile.** `run`, `serve`, and the multi-reactor host thread
-  `model.temperature` / `model.reasoning_effort` into the render exactly like
-  `render_model`; previously a configured temperature reached compile sessions
-  while renders silently used the SDK default. `reactor doctor --live` no
-  longer pins temperature 0 in its connectivity probe (it 400ed against
-  reasoning render models), and the temperature-rejection 400 from a provider
-  now maps to an actionable hint naming the `reactor.yml` line to fix.
-- **`reactor trigger` now honors `reactor.yml`'s provider and model.** It
-  threaded no provider, model, or decoding settings into the render, so a live
-  trigger always fell back to the SDK's default OpenRouter provider and model
-  regardless of configuration — and with only the configured provider's key
-  present, every trigger produced a bare, causeless `failed` receipt
-  (`model: "none"`, zero tokens). `trigger` now resolves the provider plan and
-  threads `render_model`, `temperature`, and `reasoning_effort` into the render
-  exactly like `run` and `serve`.
-
-## [reactor 0.3.2 / reactor-cli 0.2.3 / reactor-devtools 0.3.0] - 2026-08-12
-
-Reactor-train release (`reactor-v*` tag train). Each package publishes at its own
-version; the skill/plugin track is unaffected.
-
 ### Fixed
 
 - **`@openprose/reactor-cli` 0.2.3 — reserved `@`-prefixed files no longer win the
@@ -109,18 +87,44 @@ version; the skill/plugin track is unaffected.
 - **`@openprose/reactor` 0.3.2 — height-ordered, dirty-count-gated reconciler drain
   (MK-1).** The FIFO drain could render a diamond-shaped dependent before all its
   parents settled, producing a transient glitch value and a redundant re-render.
-
-### Changed
-
-- **`@openprose/reactor-devtools` 0.3.0 — the replay viewer is re-skinned** to the
-  OpenProse machine surface (charcoal + gold, JetBrains Mono) and gains the
-  credibility-seam panels (version/reuse/footprint/skew).
+- **`reactor.yml`'s `temperature` now governs run/serve renders, not only
+  compile.** `run`, `serve`, and the multi-reactor host thread
+  `model.temperature` / `model.reasoning_effort` into the render exactly like
+  `render_model`; previously a configured temperature reached compile sessions
+  while renders silently used the SDK default. `reactor doctor --live` no
+  longer pins temperature 0 in its connectivity probe (it 400ed against
+  reasoning render models), and the temperature-rejection 400 from a provider
+  now maps to an actionable hint naming the `reactor.yml` line to fix.
+- **`reactor trigger` now honors `reactor.yml`'s provider and model.** It
+  threaded no provider, model, or decoding settings into the render, so a live
+  trigger always fell back to the SDK's default OpenRouter provider and model
+  regardless of configuration — and with only the configured provider's key
+  present, every trigger produced a bare, causeless `failed` receipt
+  (`model: "none"`, zero tokens). `trigger` now resolves the provider plan and
+  threads `render_model`, `temperature`, and `reasoning_effort` into the render
+  exactly like `run` and `serve`.
 
 ## [0.15.0] - 2026-06-04 — open-prose skill & plugin
 
 Skill/plugin-track release. The `@openprose/prose-cli` CLI is unaffected and
 stays at 0.14.0: the SKILL, the Claude/Codex plugin manifests, and the CLI now
 version on independent release tracks (see `RELEASE.md`).
+
+### Added
+
+_Recorded retroactively: this entry shipped in `skill-v0.15.0` (#112, 2026-06-03)
+but was logged under `[Unreleased]` by a merge three days later._
+
+- **`prose react "<use case>"`** — A command for taking an English standing goal
+  to a running, inspectable Reactor on the `@openprose/reactor-cli` (`reactor`)
+  binary. The open-prose skill gains a `reactor.md` operator guide (install, the
+  `compile → run → serve` lifecycle, `reactor.yml`, the `prose react` playbook,
+  and the keyless `reactor-devtools` replay), `SKILL.md`/`help.md` routing, and
+  the note that — unlike embodied `prose run` — `reactor` is a deterministic host
+  the agent does shell out to. `prose react [use case...] [--start]` is embodied
+  by the skill in-session (there is no `prose` binary): by default the agent
+  prints the `reactor` commands for the user to run, and `--start` drives the
+  live lifecycle.
 
 ### Changed
 

@@ -1,0 +1,57 @@
+name: CI - Skill conformance
+
+# Runs the OpenProse conformance suites under tests/open-prose/** on every PR
+# that touches the skill, the spec, the example corpus, the std/co contract
+# libraries, or the gate's own wiring. The suites read Markdown off disk and
+# make string assertions: no build step, no model key, no network.
+
+on:
+  pull_request:
+    paths:
+      - "skills/**"
+      - "spec/**"
+      - "tests/**"
+      - "packages/std/**"
+      - "packages/co/**"
+      - "README.md"
+      - "CONTRIBUTING.md"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "vitest.config.ts"
+      - ".github/workflows/ci-skill.yml"
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-skill-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  skill:
+    name: CI - Skill conformance
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "pnpm"
+          cache-dependency-path: "pnpm-lock.yaml"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Skill conformance suites
+        run: pnpm test:skill

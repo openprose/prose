@@ -4,7 +4,7 @@ OpenProse is a programming language for AI sessions, expressed as durable
 Markdown contracts. Good contributions make agent workflows more readable,
 reviewable, versioned, reusable, inspectable, and cheaper to trust over time.
 
-This repository is the open-source language, skill, CLI, standard library, and
+This repository is the open-source language, skill, standard library, and
 examples. It is not the hosted product roadmap, billing surface, subscription
 marketplace, or private operating plan. Contributions should strengthen the
 public substrate that any Prose Complete host can run.
@@ -19,8 +19,9 @@ A strong OpenProse PR should:
 - Address one responsibility. If the work fixes docs, CLI behavior, and a std
   pattern independently, open separate PRs.
 - Respect the language/framework/harness boundary. Put semantics in the skill
-  and interpreter docs, reusable contracts in `packages/std/`, and deterministic
-  harness behavior in `packages/reactor*/`.
+  and interpreter docs and reusable contracts in `packages/std/`; harness
+  implementations live outside this repo (the reference harness is
+  [openprose/reactor](https://github.com/openprose/reactor)).
 - Make the library more developer-friendly and agent-friendly at the same time:
   clearer for humans to review, easier for agents to execute correctly.
 - Add or identify a retestable mechanism. Use existing tests when they cover
@@ -74,39 +75,22 @@ Use these when deciding whether a change belongs:
 | Reusable roles, patterns, evals, ops, delivery, memory | `packages/std/` | Only promote repeated, use-case-agnostic behavior |
 | Company-operation starter contracts | `packages/co/` | Opinionated company-as-prose building blocks |
 | Agent-facing routing and activation guidance | `skills/open-prose/SKILL.md`, `AGENTS.md` | Keep globally loaded guidance concise |
-| Reactor harness: SDK, `reactor` CLI, replay devtools | `packages/reactor*/` | The deterministic harness that compiles and runs Responsibilities; it does not replace the VM |
 | Examples that teach a complete pattern | `skills/open-prose/examples/` | Include enough context for an agent to run or adapt them |
 | Public contribution/process guidance | `CONTRIBUTING.md` | Keep it public, practical, and aligned with the repo |
 
-## Reactor (`packages/reactor*`)
+## Setup and Tests
 
-Reactor is the SDK + CLI + devtools harness that compiles and runs OpenProse
-Responsibilities. It lives in a **pnpm monorepo** under `packages/reactor`
-(`@openprose/reactor`, the SDK), `packages/reactor-cli` (the `reactor` binary),
-and `packages/reactor-devtools` (the keyless replay viewer). Note this is `pnpm`
-and per-package scripts.
-
-**Setup and build.** From the repo root:
+The repo is Markdown plus one conformance suite. There is nothing to build:
 
 ```bash
-pnpm install                              # install the workspace
-pnpm -C packages/reactor build            # build a single package
-pnpm -C packages/reactor test             # test a single package
+pnpm install --frozen-lockfile   # vitest only
+pnpm test                        # the conformance suites under tests/open-prose/
 ```
 
-**Use the offline gate as your default test command.** The plain `pnpm test`
-includes **LIVE** tests that reach the model provider — they go red without an
-OpenRouter key, or on a `402 Insufficient credits`, even when your change is
-correct. The contributor default is the **offline** gate, which runs no model
-calls:
-
-```bash
-pnpm -C packages/reactor test:offline     # or: REACTOR_OFFLINE=1 pnpm -C packages/reactor test
-```
-
-Run `test:offline` (equivalently `REACTOR_OFFLINE=1`) for the commit gate; the
-LIVE tests are gated on a funded key and are not expected to pass in a keyless
-or out-of-credits environment. State in your PR which gate you ran.
+The suites read `skills/open-prose/**`, `spec/**`, and the example corpus off
+disk and make string assertions; they need no model key and no network. CI runs
+the same command (`CI - Skill conformance`) on every PR that touches the skill,
+spec, tests, or example surface.
 
 ## Testing Expectations
 
@@ -115,7 +99,6 @@ again in the future when the behavior regresses.
 
 | Change Type | Expected Checks |
 | --- | --- |
-| Reactor SDK or harness behavior | `pnpm --filter @openprose/reactor test` (offline: `REACTOR_OFFLINE=1`), or the narrow affected Vitest file |
 | Skill or doc behavior | `pnpm test:skill` |
 | Skill/spec docs | Link/structure checks plus a small scenario showing how an agent should route the command or file |
 | `*.prose.md` std/co contracts | Structural check for frontmatter and required sections; add or update a `kind: test` when behavior is executable |
