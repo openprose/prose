@@ -57,30 +57,27 @@ meta-generator as a standing node, and dual MD + HTML artifacts.
 - **Dual artifacts:** Agent Index (Markdown) + Agent Dashboard (HTML) re-render
   together only when DashboardData moved.
 
-## Try it (the Reactor flow)
+## Run it
 
-The contract under `src/` is harness-neutral; these verbs steer toward the
-Reactor harness. Offline needs no key.
-
-```sh
-reactor doctor                 # honest health report (the best command in the kit)
-reactor compile --check        # exits 1 (stale): recognized, not yet compiled
-```
+The contract under `src/` is harness-neutral. `prose compile` is the intelligent
+phase: a session embodies the VM, Forme wires the 14-node / 22-edge DAG, and
+each `### Maintains` lowers to a deterministic canonicalizer. `prose serve` runs
+the dumb reconciler over that frozen IR. Any conforming harness can serve the
+compiled IR the same way.
 
 ```sh
-reactor compile                # run the compile sessions -> IR cache (needs a key)
-reactor topology               # offline now: the compiled 14-node / 22-edge DAG
-reactor run                    # boot, drain, print dispositions + cost rollup
-reactor serve                  # local server for the dashboard artifact
-reactor receipts verify        # chain-verify the on-disk ledger
+prose compile                                          # the intelligent phase → the frozen 14-node / 22-edge DAG
+cp dist/manifest.next.json dist/manifest.active.json   # promote the compiled IR
+prose serve                                            # the dumb reconciler: a node renders iff its memo key moved
+prose status                                           # dispositions, cost rollup, recent runs
 ```
 
 ## Replay any run you produce
 
-Any run you produce with the Reactor CLI (`reactor run` or `reactor serve`)
-writes a real, chain-verifiable state-dir. Replay it with no key using
-`reactor-devtools <state-dir> --describe` to walk the cold cascade, the quiet
-flat line, the one-runtime delta, the diamond single-wake, and the single tall
+A run leaves a real, chain-verifiable state on disk: the compiled topology, the
+flat receipt ledger, and per-node world-models. Any conforming harness can
+replay it with no model key to walk the cold cascade, the quiet flat line, the
+one-runtime delta, the diamond single-wake, and the single tall
 Concept-Clusterer spike.
 
-The example is also exercised by the project's offline test suite.
+The example is also exercised by the reference harness's offline replay suite.

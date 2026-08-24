@@ -56,28 +56,27 @@ and, finding it false, returns a cheap deferred truth without ever paying for Ex
 And `Outreach Packet[*]` carries `auto_send: false` and can only reach
 `sent_by_human` through a real action at the **Human Review Events** gateway.
 
-## Run it (the Reactor flow)
+## Run it
 
-The `.prose.md` contracts in `src/` are harness-neutral; the verbs below steer the
-Reactor harness. Offline needs no key and no network.
+The `.prose.md` contracts in `src/` are harness-neutral. `prose compile` is the
+intelligent phase: a session embodies the VM and Forme wires the DAG (the
+fan-out + the shared-company diamond) into the frozen IR. `prose serve` runs the
+dumb reconciler over it. Any conforming harness can serve the compiled IR the
+same way; replaying a run needs no key and no network.
 
 ```sh
-reactor doctor                 # honest health report (sandbox none, IR absent)
-reactor compile --check        # exits 1 (stale): recognized, not yet compiled
-reactor compile                # run the compile sessions → IR cache  (needs a key)
-reactor topology               # offline now: the compiled DAG (the fan-out + diamond)
-reactor run                    # boot, drain, print dispositions + cost
-reactor serve                  # serve the world-models + receipts
-reactor receipts verify        # chain-verify the on-disk ledger
+prose compile                                          # the intelligent phase → the frozen DAG (the fan-out + diamond)
+cp dist/manifest.next.json dist/manifest.active.json   # promote the compiled IR
+prose serve                                            # the dumb reconciler: a node renders iff its memo key moved
+prose status                                           # dispositions, cost, recent runs
 ```
 
-A `reactor run` (or `reactor serve`) writes a chain-verifiable state-dir you can
-replay keyless in devtools (the marquee one-liner):
+A run leaves a chain-verifiable state on disk that any conforming harness can
+replay keyless (the marquee frame):
 
-```sh
-reactor-devtools <state-dir> --describe
-#   dispositions rendered=… · skipped=… · failed=1   (a scripted Exa outage)
-#   CHAIN-VERIFY ok
+```text
+dispositions rendered=… · skipped=… · failed=1   (a scripted Exa outage)
+chain-verify ok
 ```
 
 ## What to try
@@ -108,9 +107,9 @@ reactor-devtools <state-dir> --describe
 
 ## How it is exercised
 
-The example is covered by the project's offline test suite, which drives the
-**real `@openprose/reactor` reconciler** with deterministic fake renders (a
-dry-run, synthetic-safe GitHub + Exa adapter, so there is no network and no key)
+The example is covered by the reference harness's offline replay suite, which
+drives the **real reconciler** with deterministic fake renders (a dry-run,
+synthetic-safe GitHub + Exa adapter, so there is no network and no key)
 over the FileSystem store + ledger and asserts the validity contract off the
 persisted ledger: it compiles to the frozen artifact set; cold-start renders all
 and a quiet re-poll skips; `cost.surprise_cause === wake.source` on every receipt

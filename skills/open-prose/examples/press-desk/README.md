@@ -60,51 +60,41 @@ acyclic. (The `speaking` register facet is a *zero-consumer-until-it-moves* lane
 no speaking inquiry is delivered in the scripted episode, so it never wakes — the
 same discipline that keeps the dark lanes still.)
 
-## Run it (Reactor flow)
+## Run it
 
-The contracts in `src/` are harness-neutral; these verbs steer you through the
-Reactor harness. Offline replay needs no key.
+The contracts in `src/` are harness-neutral. `prose compile` is the intelligent
+phase: a session embodies the VM and Forme wires the DAG (gateway → filters →
+register → briefing) into the frozen IR. `prose serve` runs the dumb reconciler
+over it. Any conforming harness can serve the compiled IR the same way;
+replaying a run needs no key.
 
 ```sh
-reactor doctor                 # honest health report (the best command in the kit)
-reactor compile                # the intelligent phase: a session compiles src/*.prose.md
-reactor topology               # the compiled DAG (gateway → filters → register → briefing)
-reactor run                    # boot, drain, print dispositions + cost rollup
-reactor serve                  # serve the receipts + world-models for inspection
-reactor receipts verify        # chain-verify the ledger
+prose compile                                          # the intelligent phase → the frozen 8-node / 14-edge DAG
+cp dist/manifest.next.json dist/manifest.active.json   # promote the compiled IR
+prose serve                                            # the dumb reconciler: a node renders iff its memo key moved
+prose status                                           # dispositions, cost rollup, recent runs
 ```
 
-Replay the committed, keyless fixture in devtools — the universal "aha":
+A run leaves a keyless, chain-verifiable state on disk that any conforming
+harness can replay — the universal "aha":
 
-```sh
-reactor-devtools ./replay --describe
-#   the PR blast stays dark; a HIGH inquiry stops at needs_human (auto_reply:false);
-#   the public view carries kind + ask, never the sender
+```text
+the PR blast stays dark; a HIGH inquiry stops at needs_human (auto_reply:false);
+the public view carries kind + ask, never the sender
 ```
 
 ## What ships here
 
 - `src/*.prose.md` — the press-inbox gateway + relevance-filter + opportunity-
   register + briefing contracts (the durable intent the fake renders mirror).
-- `replay/` — the committed, keyless, chain-verifiable state-dir (topology,
-  labels, beats, receipts, world-models) that `reactor-devtools` replays
-  unchanged.
-- `generate.ts` — drives the **real** `@openprose/reactor` reconciler with
-  deterministic fake renders (no key) and writes `replay/`. Regenerating is
-  byte-identical to the committed bytes.
-- `press-desk.test.ts` — the offline, zero-spend gate (topology,
-  cold-render-then-skip, `cost.surprise_cause === wake.source`, `ATOMIC_FACET`,
-  chain-verify, byte-determinism) plus the two tenets: the human gate holds
-  (`needs_human` + `auto_reply === false`) and the public projection carries NONE
-  of the owner-only sender PII.
-- `press-desk.live.test.ts` — optional key-gated live reliability check: it drives
-  the real relevance-filter render on four labelled inquiries (a PR blast + one of
-  each kind), reads the published truth, and asks a smart judge to grade
-  `{relevance_correct, kind_correct, no_pii_leak_in_public, score}` at reliability
-  ≥ 0.8. A passing-skipped no-op offline.
 
-To regenerate the committed `replay/` after a contract or SDK change:
-
-```sh
-tsx generate.ts
-```
+The reference harness carries this example's replay fixture and two checks for
+it: an offline, zero-spend gate (topology, cold-render-then-skip,
+`cost.surprise_cause === wake.source`, `ATOMIC_FACET`, chain-verify,
+byte-determinism) plus the two tenets — the human gate holds (`needs_human` +
+`auto_reply === false`) and the public projection carries NONE of the
+owner-only sender PII — and an optional key-gated live reliability check that
+drives the real relevance-filter render on four labelled inquiries (a PR blast +
+one of each kind), reads the published truth, and asks a smart judge to grade
+`{relevance_correct, kind_correct, no_pii_leak_in_public, score}` at reliability
+≥ 0.8.

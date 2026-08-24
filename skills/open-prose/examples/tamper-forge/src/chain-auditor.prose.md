@@ -7,7 +7,7 @@ version: 0.15.0
 ### Goal
 
 Stand as the audit surface over the masked-relay ledger: chain-verify the raw
-on-disk receipts and prove the **honest boundary** the Reactor v1 receipt model
+on-disk receipts and prove the **honest boundary** the v1 receipt model
 draws — tamper-EVIDENCE (a `prev`-linked, content-addressed trail catches a
 mutated field) versus cryptographic NON-REPUDIATION (which the v1 null signer does
 NOT provide). The auditor maintains a standing verdict over the trail; it renders a

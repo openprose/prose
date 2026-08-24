@@ -64,28 +64,27 @@ fresh. You cannot wake a role by re-waking a fixed-contract entry node; to deliv
 fresh external truth you **move the entry node's memo key** (each delivery is a new
 gateway contract epoch), and the _masked viewport_ is what then decides _who_ wakes.
 
-## Run it with the Reactor harness
+## Run it
 
-The `.prose.md` contracts work with any harness; these verbs steer to Reactor.
+The `.prose.md` contracts work with any harness. `prose compile` is the
+intelligent phase: a session embodies the VM and Forme wires the masked weave
+(eleven nodes, fourteen edges) into the frozen IR. `prose serve` runs the dumb
+reconciler over it; its receipt ledger is the audit trail (rendered / skipped /
+fresh). Any conforming harness can serve the compiled IR the same way.
 
 ```sh
-reactor doctor                 # honest health report (sandbox, IR presence)
-reactor compile --check        # exits 1 (stale): recognized, not yet compiled
-reactor compile                # run the compile session -> IR cache (needs a key)
-reactor topology               # offline: the compiled DAG (the masked weave)
-reactor run                    # boot, drain, print dispositions + cost
-reactor receipts               # the audit trail (rendered / skipped / fresh)
-reactor serve                  # browse the receipts + world-models locally
+prose compile                                          # the intelligent phase → the frozen DAG (the masked weave)
+cp dist/manifest.next.json dist/manifest.active.json   # promote the compiled IR
+prose serve                                            # the dumb reconciler: a node renders iff its memo key moved
+prose status                                           # dispositions, cost, the receipt trail
 ```
 
-A `reactor run` (or `reactor serve`) writes a keyless state-dir you can replay in
-devtools:
+A run leaves a keyless state on disk that any conforming harness can replay:
 
-```sh
-reactor-devtools <state-dir> --describe
-#   dispositions rendered=... · skipped=... · failed=0
-#   surprise-cause  external=... · input=...
-#   COST ROLLUP (tokens)  fresh=...  CHAIN-VERIFY ok
+```text
+dispositions rendered=... · skipped=... · failed=0
+surprise-cause  external=... · input=...
+cost rollup (tokens)  fresh=...  chain-verify ok
 ```
 
 ## What to try
@@ -107,15 +106,14 @@ reactor-devtools <state-dir> --describe
   Signal Ledger, the **Viewport Policy** (with `#### view:<role>` masked-facet
   sub-headings), the four roles, the Oblique Thread Ledger, the Surprising Bet Memo,
   and the terminal Novelty Auditor.
-- A run writes a keyless, chain-verifiable state-dir: a flat `receipts.json`,
+- A run writes a keyless, chain-verifiable state: a flat `receipts.json`,
   `compile/topology.json` + `compile/labels.json`, and
   `world-models/<hexNodeId>/{published.json, versions/sha256_*.bin}`, the exact
-  shape `reactor-devtools` replays.
+  shape a conforming harness replays.
 
-The example is covered by the project's offline test suite, which drives the
-**real `@openprose/reactor` reconciler** with deterministic fake renders (no key)
-through the public SDK (`createFileSystemStorageAdapter` →
-`createFileSystemReceiptLedger` → `mountDag` → `dag.ingest`). Its body mirrors this
-README; if it breaks, the README is wrong, so fix both. An optional, key-gated
-reliability check covers the same flow live (a passing-skipped no-op when offline
-or keyless).
+The example is covered by the reference harness's offline replay suite, which
+drives the **real reconciler** with deterministic fake renders (no key) through
+that harness's public SDK (storage adapter → receipt ledger → mount the DAG →
+ingest). Its body mirrors this README; if it breaks, the README is wrong, so
+fix both. An optional, key-gated reliability check covers the same flow live (a
+passing-skipped no-op when offline or keyless).

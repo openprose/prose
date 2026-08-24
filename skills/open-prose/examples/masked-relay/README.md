@@ -51,15 +51,14 @@ silently never propagate.
 
 ## Replay any run you produce (the universal "aha")
 
-A `reactor run` (or `reactor serve`) writes a chain-verifiable, keyless ledger.
-Point the devtools at it:
+A run leaves a chain-verifiable, keyless ledger on disk. Any conforming harness
+can replay it and describe what happened:
 
-```sh
-reactor-devtools <state-dir> --describe
-#   dispositions rendered=… · skipped=… · failed=0
-#   surprise-cause  external=… · input=…
-#   COST ROLLUP (tokens) fresh spikes on a surprise, flat on a quiet re-wake
-#   CHAIN-VERIFY ok
+```text
+dispositions rendered=… · skipped=… · failed=0
+surprise-cause  external=… · input=…
+cost rollup (tokens) fresh spikes on a surprise, flat on a quiet re-wake
+chain-verify ok
 ```
 
 The marquee frame is the quiet re-wake: `skipped  moved[]  fresh 0`, **the
@@ -87,33 +86,27 @@ The check pins `byCause.self.fresh === 0`: if a future edit ever introduces a
 self-wake, the offline test goes red and forces the topology change to be
 declared on purpose.
 
-## The reactor flow (compile → run from the contract)
+## Run it (compile → serve from the contract)
 
-The `.prose.md` contract under `src/` works with any harness; these verbs steer to
-the Reactor harness.
-
-### Offline (no key needed)
-
-```sh
-reactor doctor                 # honest health report (the best command in the kit)
-reactor compile --check        # exits 1 (stale) until the project is compiled
-reactor topology               # the compiled DAG once frozen (12 nodes / 23 edges)
-```
-
-### Live (needs OPENROUTER_API_KEY + @openai/agents + zod)
+The `.prose.md` contract under `src/` works with any harness. `prose compile` is
+the intelligent phase: the SKILL session embodies the VM and Forme wires the
+12-node / 23-edge DAG into the frozen IR. `prose serve` stands the relay up and
+runs the dumb reconciler over it, waking on new signals. Any conforming harness
+can serve the compiled IR the same way; compiling is the only step that spends
+model work.
 
 ```sh
-reactor compile                # the SKILL session compiles src/ → the IR cache
-reactor run                    # boot, drain, print dispositions + cost
-reactor serve                  # stand the relay up; wake it on new signals
-reactor receipts verify        # chain-verify the on-disk ledger
+prose compile                                          # the intelligent phase → the frozen DAG (12 nodes / 23 edges)
+cp dist/manifest.next.json dist/manifest.active.json   # promote the compiled IR
+prose serve                                            # stand the relay up; a node renders iff its memo key moved
+prose status                                           # dispositions, cost, recent runs
 ```
 
 ## What the offline check proves
 
-The example is covered by the project's offline test suite, which drives the REAL
-`@openprose/reactor` reconciler with deterministic fake renders (no key) and
-asserts the validity contract:
+The example is covered by the reference harness's offline replay suite, which
+drives the REAL reconciler with deterministic fake renders (no key) and asserts
+the validity contract:
 
 1. compiles to the frozen artifact set (valid `TopologyWorldModel`: 12 nodes, 23
    edges, single entry gateway, acyclic; `labels.json` + flat `receipts.json` +

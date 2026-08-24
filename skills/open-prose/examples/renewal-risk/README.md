@@ -46,43 +46,38 @@ or appends to its decision history.
   the `risk` facet put, so the alert feed never wakes. Only a real verdict flip
   spends fresh tokens downstream.
 
-## The flow (offline, no key)
+## Run it
 
-The contract is harness-neutral; the verbs below steer toward the Reactor harness.
-
-```sh
-reactor doctor                 # honest health report (sandbox, IR presence)
-reactor compile --check        # exits 1 (stale) until the project is compiled
-```
-
-## The flow (live · needs OPENROUTER_API_KEY + @openai/agents + zod)
+The contract is harness-neutral. `prose compile` is the intelligent phase: a
+session embodies the VM and Forme wires the DAG (signals → renewal-risk →
+alerts) into the frozen IR. `prose serve` exposes the gateway's trigger and runs
+the dumb reconciler over the maintained truth; its receipt ledger is the
+chain-verifiable audit trail. Any conforming harness can serve the compiled IR
+the same way; compiling is the only step that spends model work.
 
 ```sh
-reactor compile                # run the compile sessions -> IR cache (the intelligent phase)
-reactor topology               # offline now: the compiled DAG (signals -> renewal-risk -> alerts)
-reactor run                    # boot, drain, print dispositions + cost
-reactor serve                  # expose the gateway webhook + the maintained truth
-reactor receipts               # the chain-verifiable audit ledger
+prose compile                                          # the intelligent phase → the frozen DAG (signals → renewal-risk → alerts)
+cp dist/manifest.next.json dist/manifest.active.json   # promote the compiled IR
+prose serve                                            # expose the gateway trigger + the maintained truth
+prose status                                           # dispositions, cost, the receipt ledger
 ```
 
 ## Replay any run you produce
 
-A `reactor run` (or `reactor serve`) writes a frozen, chain-verifiable state-dir,
-the exact shape `reactor-devtools` replays keyless. The marquee frame is a long
-flat-cost quiet stretch, one alert spike, and a verdict-stable beat that stays
-dark:
+A run leaves a frozen, chain-verifiable state on disk, the exact shape any
+conforming harness replays keyless. The marquee frame is a long flat-cost quiet
+stretch, one alert spike, and a verdict-stable beat that stays dark:
 
-```sh
-reactor-devtools <state-dir> --describe
-#   dispositions rendered · skipped · failed
-#   surprise-cause  external · input · self
-#   COST ROLLUP (tokens) ...  CHAIN-VERIFY ok
+```text
+dispositions rendered · skipped · failed
+surprise-cause  external · input · self
+cost rollup (tokens) ...  chain-verify ok
 ```
 
 ## How it is exercised
 
-The example is covered by the project's offline test suite, which drives the
-**real `@openprose/reactor` reconciler** with deterministic fake renders (no key),
+The example is covered by the reference harness's offline replay suite, which
+drives the **real reconciler** with deterministic fake renders (no key),
 then asserts the six validity-contract properties off the persisted ledger:
 compile artifacts, cold-renders-then-skips, `cost.surprise_cause == wake.source`,
 `ATOMIC_FACET` (never `"*"`), `verifyReceiptChain`, and byte-deterministic

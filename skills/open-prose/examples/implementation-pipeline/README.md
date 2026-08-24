@@ -1,7 +1,8 @@
 # implementation-pipeline
 
-A large software-delivery effort run as a Reactor system instead of one long chat
-transcript: a **fixed, wide fan-out** of six parallel construction lanes with
+A large software-delivery effort run as a standing responsibility graph instead
+of one long chat transcript: a **fixed, wide fan-out** of six parallel
+construction lanes with
 **per-facet wake**. The lesson is **facet-level lane invalidation under a FIXED
 topology**.
 
@@ -66,49 +67,42 @@ World  Runtime Compile Contract /Test  /Signpost
 
 16 mounted nodes; the planning inbox is a phantom ingress edge, not a node.
 
-## The flow (Reactor verbs)
+## Run it
 
-The `.prose.md` contracts in `src/` work with any harness; these verbs steer to the
-Reactor harness.
-
-### Offline (no key needed)
-
-```sh
-reactor doctor                 # honest health report (the best command in the kit)
-reactor compile --check        # exits 1 (stale) until the project is compiled
-reactor topology               # the compiled DAG once an IR cache exists
-```
-
-### Live (needs a key)
+The `.prose.md` contracts in `src/` work with any harness. `prose compile` is
+the intelligent phase: a session embodies the VM and Forme wires the 16-node
+DAG into the frozen IR. `prose serve` runs the dumb reconciler over it; the
+receipt ledger it writes is the audit trail. Any conforming harness can serve
+the compiled IR the same way.
 
 ```sh
-reactor compile                # run the compile sessions -> IR cache
-reactor run                    # boot, drain, print dispositions + cost
-reactor receipts               # the audit trail
+prose compile                                          # the intelligent phase → the frozen 16-node DAG
+cp dist/manifest.next.json dist/manifest.active.json   # promote the compiled IR
+prose serve                                            # the dumb reconciler: a node renders iff its memo key moved
+prose status                                           # dispositions, cost, the receipt trail
 ```
 
 ### Replay any run you produce
 
-A `reactor run` (or `reactor serve`) writes a chain-verifiable state-dir you can
-replay keyless in devtools:
+A run leaves a chain-verifiable state on disk that any conforming harness can
+replay keyless:
 
-```sh
-reactor-devtools <state-dir> --describe
-#   dispositions rendered=… · skipped=… · failed=0
-#   surprise-cause  external=… · input=…
-#   COST ROLLUP (tokens) …   CHAIN-VERIFY ok
+```text
+dispositions rendered=… · skipped=… · failed=0
+surprise-cause  external=… · input=…
+cost rollup (tokens) …   chain-verify ok
 ```
 
-A replayed state-dir holds the compiled topology and labels, the flat
+A replayed state holds the compiled topology and labels, the flat
 chain-verifiable receipt ledger, and the per-node world-models, walking the
 trajectory cold-boot → quiet → lane-local → foundation-fanout → review-blocks →
 quiet bookend.
 
 ## What it asserts
 
-The example is covered by the project's offline test suite, which drives the REAL
-reconciler with deterministic fake renders (no key) and asserts off the persisted
-ledger via the public `@openprose/reactor` + `@openprose/reactor/sdk` exports:
+The example is covered by the reference harness's offline replay suite, which
+drives the REAL reconciler with deterministic fake renders (no key) and asserts
+off the persisted ledger:
 
 1. **Frozen artifacts.** `compile/topology.json` is a valid `TopologyWorldModel`
    (16 nodes, a single entry gateway, `acyclic:true`), `labels.json` is present,

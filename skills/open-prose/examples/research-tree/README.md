@@ -42,28 +42,26 @@ external-driven`; projects the corpus into one `leaf:<id>` facet per finding.
 - `src/root-synthesis.prose.md`: the apex; fans in from the three sub-syntheses;
   the heaviest node and the dominant fresh tick.
 
-## Run it with the Reactor harness
+## Run it
 
-The `.prose.md` contracts are harness-neutral; these verbs steer to the Reactor
-harness. Offline needs no key.
+The `.prose.md` contracts are harness-neutral. `prose compile` is the
+intelligent phase: a session embodies the VM and Forme wires the tree (gateway
+→ leaves → sub-syntheses → root) into the frozen DAG. `prose serve` exposes the
+standing graph and runs the dumb reconciler over it. Any conforming harness can
+serve the compiled IR the same way; replaying a run needs no key.
 
 ```sh
-reactor doctor                 # honest health report (the best command in the kit)
-reactor compile --check        # exits 1 (stale) until the compile sessions run
-reactor compile                # run the compile sessions -> the frozen DAG
-reactor topology               # offline now: the compiled tree (gateway -> leaves -> sub-synth -> root)
-reactor run                    # boot, drain, print dispositions + cost
-reactor serve                  # expose the standing graph
-reactor receipts verify        # chain-verify the on-disk ledger
+prose compile                                          # the intelligent phase → the frozen tree (gateway → leaves → sub-synth → root)
+cp dist/manifest.next.json dist/manifest.active.json   # promote the compiled IR
+prose serve                                            # expose the standing graph; a node renders iff its memo key moved
+prose status                                           # dispositions, cost, recent runs
 ```
 
-A `reactor run` (or `reactor serve`) writes a state-dir you can replay keyless in
-devtools:
+A run leaves a state on disk that any conforming harness can replay keyless:
 
-```sh
-reactor-devtools <state-dir> --describe
-#   the bottom-up cold boot, the quiet skips, then the hero: revise one finding
-#   and watch only its ancestor path re-synthesize.
+```text
+the bottom-up cold boot, the quiet skips, then the hero: revise one finding
+and watch only its ancestor path re-synthesize.
 ```
 
 ## What to try
@@ -87,8 +85,8 @@ reactor-devtools <state-dir> --describe
   beats.json              # the scripted beat timeline (cold -> quiet -> surprise)
 ```
 
-The example is covered by the project's offline test suite, which drives the
-**real `@openprose/reactor` reconciler** with deterministic fake renders (no key):
+The example is covered by the reference harness's offline replay suite, which
+drives the **real reconciler** with deterministic fake renders (no key):
 it asserts the topology compiles, a quiet re-wake skips the whole tree at zero
 fresh, `cost.surprise_cause === wake.source` on every receipt, the ledger
 chain-verifies, and two generations are byte-identical, all offline at zero spend.

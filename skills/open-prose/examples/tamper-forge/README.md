@@ -2,8 +2,8 @@
 
 **Standing goal:** stand a regulated-audit lens over an existing, frozen receipt
 ledger and keep a living verdict on its integrity, proving exactly what the
-Reactor v1 receipt model _does_ and _does not_ guarantee, so an auditor (or an
-agent) never over-claims.
+v1 receipt model _does_ and _does not_ guarantee, so an auditor (or an agent)
+never over-claims.
 
 **One-line scenario:** replay the **masked-relay** ledger (41 receipts / 13
 node-chains), then run a guided 3-attack escalation against it: a naive
@@ -43,57 +43,47 @@ byte-identical re-read does not move it, so a clean re-audit memo-**skips**
 | **(c)** | forge `sig.scheme` (claim a signed posture the run never had)                                                                                                                     | `verifyReceipt`             | **REJECTED**: `sig.scheme must be "none"`; the null signer is the only honest v1 state                                                                                                                                                                                                          |
 | **(d)** | edit a `world-models/<hex>/published.json` artifact, leave `receipts.json` intact                                                                                                 | `verifyReceiptChain`        | **STILL PASSES**: the documented integrity gap: the maintained truth (the world-model artifact layer) sits _outside_ the receipt envelope, so chain-verify does not cover it. Asserted as **current** behavior so it can't regress silently                                                     |
 
-**The honest boundary, stated plainly:** Reactor v1 receipts are **tamper-evident**
+**The honest boundary, stated plainly:** v1 receipts are **tamper-evident**
 (a `prev`-linked, content-addressed trail catches an accidental or careless
 mutation of a _receipt_ field); they are **not** cryptographic **non-repudiation**
 (the v1 signer is null; a re-stamped trail heals; the world-model artifact layer is
 not covered). Never let an audit claim more than (a)–(d) prove.
 
-**Exit codes (CI-safe in both modes):** `reactor receipts verify` returns a
-non-zero exit on a broken chain, and the `--json` form
-(`reactor --json receipts verify`) exits non-zero on a broken chain too, so a CI
-gate can rely on the exit code whether or not it asks for JSON output. (An
-empty/unreadable ledger is also a non-zero exit, never a green "ALL OK" on zero
-receipts.)
+**Exit codes (CI-safe):** the reference harness's chain-verify exits non-zero on
+a broken chain whether or not it is asked for JSON output, so a CI gate can rely
+on the exit code. (An empty/unreadable ledger is also a non-zero exit, never a
+green "ALL OK" on zero receipts.)
 
 ## Replay it keyless (the universal "aha")
 
-A `reactor run` (or `reactor serve`) writes a chain-verifiable, keyless state-dir
-(the masked-relay ledger this lens audits). Point the devtools at it:
+A run leaves a chain-verifiable, keyless state on disk (the masked-relay ledger
+this lens audits). Any conforming harness can replay it:
 
-```sh
-reactor-devtools <state-dir> --describe
-#   dispositions rendered=… · skipped=… · failed=0
-#   CHAIN-VERIFY ok        <- the honest baseline the attacks then break
+```text
+dispositions rendered=… · skipped=… · failed=0
+chain-verify ok        <- the honest baseline the attacks then break
 ```
 
-## The reactor flow (compile → run from the contract)
+## Run it (compile → serve from the contract)
 
-The `.prose.md` contract under `src/` works with any harness; these verbs steer to
-the Reactor harness.
-
-### Offline (no key needed)
-
-```sh
-reactor doctor                 # honest health report (the best command in the kit)
-reactor compile --check        # exits 1 (stale) until the audit lens is compiled
-reactor topology               # the compiled lens once frozen (2 nodes)
-reactor --state-dir <state-dir> receipts verify  # exits non-zero on a broken chain
-```
-
-### Live (needs OPENROUTER_API_KEY + @openai/agents + zod)
+The `.prose.md` contract under `src/` works with any harness. `prose compile` is
+the intelligent phase: the SKILL session embodies the VM and Forme wires the
+two-node lens into the frozen IR. `prose serve` stands the audit up over the
+frozen ledger and re-wakes it on a new trail. Any conforming harness can serve
+the compiled IR the same way; compiling is the only step that spends model work.
 
 ```sh
-reactor compile                # the SKILL session compiles src/ → the IR cache
-reactor run                    # boot the auditor over the frozen ledger
-reactor serve                  # stand the audit up; re-wake it on a new trail
+prose compile                                          # the intelligent phase → the frozen lens (2 nodes)
+cp dist/manifest.next.json dist/manifest.active.json   # promote the compiled IR
+prose serve                                            # stand the audit up; re-wake it on a new trail
+prose status                                           # the auditor's verdict + boundary, recent runs
 ```
 
 ## What the offline check proves
 
-The example is covered by the project's offline test suite, which drives the REAL
-`@openprose/reactor` reconciler with deterministic fake renders (no key) and
-asserts the validity contract **plus** the four audit facts:
+The example is covered by the reference harness's offline replay suite, which
+drives the REAL reconciler with deterministic fake renders (no key) and asserts
+the validity contract **plus** the four audit facts:
 
 1. compiles to the frozen artifact set (valid `TopologyWorldModel`, single entry
    gateway, acyclic; `labels.json` + flat `receipts.json` + `world-models/<HEX>/…`

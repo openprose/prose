@@ -3,5 +3,3 @@ state/
 runs/
 deps/
 dist/
-.reactor/
-*.reactor/
