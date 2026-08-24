@@ -24,6 +24,7 @@
  */
 
 import * as http from 'http';
+import { timingSafeEqual } from 'node:crypto';
 
 import type { HostHandle } from './host';
 import type { ServeHandle } from '../commands/serve';
@@ -62,11 +63,33 @@ export function startHttpServer(
   port: number,
   bindHost: string = DEFAULT_HTTP_HOST,
 ): Promise<HttpServerHandle> {
+  const configuredToken = process.env.REACTOR_HTTP_TOKEN?.trim();
+  const loopback = isLoopbackHost(bindHost);
+  // An explicitly remote bind without authentication turns the observability
+  // API into an unauthenticated control plane (POST /trigger can spend money).
+  // Keep the local, test-friendly default, but fail closed before listening on
+  // a non-loopback interface unless the operator supplies a token.
+  if (!loopback && !configuredToken) {
+    return Promise.reject(
+      new Error(
+        'reactor HTTP server: non-loopback bind requires REACTOR_HTTP_TOKEN; ' +
+          'use loopback or configure a secret token',
+      ),
+    );
+  }
   const server = http.createServer((req, res) => {
+    if (configuredToken !== undefined && !authorized(req, configuredToken)) {
+      sendJson(res, 401, { error: 'unauthorized' });
+      return;
+    }
     handleRequest(host, req, res).catch((err) => {
       sendJson(res, 500, { error: String((err as Error)?.message ?? err) });
     });
   });
+  // Bound slow-client resource consumption for this intentionally tiny server.
+  server.headersTimeout = 10_000;
+  server.requestTimeout = 30_000;
+  server.keepAliveTimeout = 5_000;
 
   return new Promise<HttpServerHandle>((resolve, reject) => {
     server.once('error', reject);
@@ -84,6 +107,22 @@ export function startHttpServer(
       });
     });
   });
+}
+
+function isLoopbackHost(host: string): boolean {
+  const normalized = host.toLowerCase().replace(/^\[|\]$/g, '');
+  return normalized === '127.0.0.1' || normalized === '::1' || normalized === 'localhost';
+}
+
+function authorized(req: http.IncomingMessage, expected: string): boolean {
+  const supplied = req.headers['x-reactor-http-token'] ??
+    (req.headers.authorization?.startsWith('Bearer ')
+      ? req.headers.authorization.slice('Bearer '.length)
+      : undefined);
+  if (typeof supplied !== 'string') return false;
+  const actual = Buffer.from(supplied);
+  const wanted = Buffer.from(expected);
+  return actual.length === wanted.length && timingSafeEqual(actual, wanted);
 }
 
 async function handleRequest(
@@ -319,6 +358,8 @@ function sendJson(
   res.writeHead(status, {
     'content-type': 'application/json',
     'content-length': Buffer.byteLength(payload),
+    'cache-control': 'no-store',
+    'x-content-type-options': 'nosniff',
   });
   res.end(payload);
 }
