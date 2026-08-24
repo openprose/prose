@@ -7,8 +7,8 @@
 // reconciler — not for one implementation of it. This test keeps it that way,
 // the same way stale-docs.test.ts keeps retired kinds from creeping back in.
 //
-// Two kinds of token are checked across the skill, the spec, the std/co
-// contract libraries, and the root docs:
+// Two kinds of token are checked across the skill (its example corpus
+// included), the spec, the std/co contract libraries, and the root docs:
 //   - PRODUCT tokens (package names, the CLI, its config and env vars) — a
 //     line carrying one FAILS unless it is a migration statement (it says the
 //     product moved / is experimental / lives elsewhere) or sits in an
@@ -22,8 +22,9 @@
 //   - skills/open-prose/changelog.md, the upgrade record (it must name what
 //     moved so `prose upgrade` can route users).
 //
-// The example corpus under skills/open-prose/examples/ is swept separately and
-// is not in scope here.
+// Example READMEs get no exemption: they are the first thing a newcomer reads,
+// and a "run it with <product>" walkthrough there is exactly the drift this
+// guard exists to catch. They teach the skill's own verbs instead.
 //
 // Doc-conformance style: read the docs off disk, assert on content, no runtime.
 // The repo-root vitest config discovers tests/open-prose/**/*.test.ts, so
@@ -35,12 +36,11 @@ import { describe, expect, it } from "vitest";
 
 const repoRoot = fileURLToPath(new URL("../../../", import.meta.url));
 
-// Directories walked for every *.md (which includes *.prose.md).
+// Directories walked for every *.md (which includes *.prose.md). The skill
+// root covers its example corpus too.
 const ROOTS = ["skills/open-prose", "spec", "packages/std", "packages/co"];
 // Root-level docs checked as single files.
 const ROOT_FILES = ["README.md", "CONTRIBUTING.md", "AGENTS.md"];
-// Subtrees under ROOTS that are out of scope for this guard.
-const EXCLUDED_DIRS = new Set(["skills/open-prose/examples"]);
 
 // The product: packages, binary, config, env vars, the retired skill verb and
 // operator guide, and source paths that only exist in the harness repository.
@@ -73,8 +73,6 @@ function allDocs(dir: string): string[] {
 	const out: string[] = [];
 	for (const entry of readdirSync(dir)) {
 		const full = join(dir, entry);
-		const rel = relative(repoRoot, full);
-		if (EXCLUDED_DIRS.has(rel)) continue;
 		if (statSync(full).isDirectory()) {
 			out.push(...allDocs(full));
 		} else if (entry.endsWith(".md")) {
@@ -135,8 +133,12 @@ function collect(
 }
 
 describe("harness surface — the OpenProse repo does not teach the Reactor product", () => {
-	it("finds docs to scan (sanity)", () => {
-		expect(scanTargets().length).toBeGreaterThan(20);
+	it("finds docs to scan, the example corpus included (sanity)", () => {
+		const targets = scanTargets().map((path) => relative(repoRoot, path));
+		expect(targets.length).toBeGreaterThan(20);
+		expect(targets).toContain("skills/open-prose/examples/README.md");
+		expect(targets.filter((rel) => rel.startsWith("skills/open-prose/examples/")).length)
+			.toBeGreaterThan(30);
 	});
 
 	it("no OpenProse surface teaches the Reactor product as live", () => {
