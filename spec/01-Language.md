@@ -230,7 +230,7 @@ is understood.
 
 ### Current Shape
 
-The skill (SKILL `version: 0.15.0`, `runtime_contract: 2`) has five load-bearing
+The skill (SKILL `version: 0.16.0`, `runtime_contract: 2`) has five load-bearing
 spec files plus the reconciler-semantics concept docs the `v0.15.0` overhaul added:
 
 | Piece | Location | Role |

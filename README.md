@@ -74,7 +74,7 @@ Installs keep working under the same names.
 
 In the spirit of the receipts:
 
-- **The language:** the skill ships at `version 0.15.0`, `runtime_contract 2`; the spec ([`spec/`](spec/)) and the example corpus are migrated to the current vocabulary. The overhaul is recent: if you find a surface still speaking the old model, that's a bug, and we want the issue.
+- **The language:** the skill ships at `version 0.16.0`, `runtime_contract 2`; the spec ([`spec/`](spec/)) and the example corpus are migrated to the current vocabulary. The overhaul is recent: if you find a surface still speaking the old model, that's a bug, and we want the issue.
 - **Benchmarks are openly pending, on purpose.** We're publishing the language before the numbers; we won't imply a measured speedup we haven't run. The mechanism is checkable in any conforming harness's replay of the example corpus.
 - The **fixpoint** (topology-as-responsibility) is specified and deferred; facet inference and ledger compaction are named roadmap.
 - **Harness status** (what is built, what the receipts do and do not yet prove) is documented by each harness; for the reference harness see [Harnesses](#harnesses).

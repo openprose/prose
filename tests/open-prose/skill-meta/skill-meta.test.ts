@@ -92,9 +92,10 @@ describe("skill-meta Markdown helpers", () => {
 describe("SKILL.md frontmatter — versioning (delta.md §C7)", () => {
 	const fm = frontmatter(read("SKILL.md"));
 
-	it("bumps version to 0.15.0", () => {
-		// delta.md Part C §C7 L465: SKILL bumps (recommend 0.15.0).
-		expect(fm).toMatch(/^version:\s*0\.15\.0\s*$/m);
+	it("pins version to 0.16.0", () => {
+		// 0.15.0 was the Intelligent React overhaul (delta.md Part C §C7 L465);
+		// 0.16.0 removes the harness product surface from the skill.
+		expect(fm).toMatch(/^version:\s*0\.16\.0\s*$/m);
 	});
 
 	it("bumps runtime_contract to 2", () => {
@@ -106,6 +107,7 @@ describe("SKILL.md frontmatter — versioning (delta.md §C7)", () => {
 	it("no longer declares the retired runtime_contract: 1", () => {
 		expect(fm).not.toMatch(/^runtime_contract:\s*1\s*$/m);
 		expect(fm).not.toMatch(/^version:\s*0\.14\.0\s*$/m);
+		expect(fm).not.toMatch(/^version:\s*0\.15\.0\s*$/m);
 	});
 });
 
@@ -117,6 +119,21 @@ describe("changelog.md — the upgrade mechanism (delta.md Part C)", () => {
 		// delta.md §B6 changelog: EXTEND, bump runtime_contract (§C7).
 		expect(f).toMatch(/`v0\.15\.0`/);
 		expect(f).toMatch(/runtime_contract: 1 . 2/); // arrow may be unicode/ascii
+	});
+
+	it("records the 0.16.0 harness-extraction entry", () => {
+		// The upgrade brain must name what left the skill and where it went so
+		// `prose upgrade` can route a workflow that used the retired verb — and
+		// say that the machine contract did not move.
+		expect(f).toMatch(/`v0\.16\.0`/);
+		expect(f).toMatch(/`prose react`.*?removed/);
+		expect(f).toMatch(/`reactor\.md`.*?removed/);
+		expect(f).toMatch(/github\.com\/openprose\/reactor/);
+		expect(f).toMatch(/experimental \(alpha\)/);
+		expect(f).toMatch(/`runtime_contract` is unchanged \(2\)/);
+		expect(f).toMatch(/`concepts\/reactor\.md` → `concepts\/reconciler\.md`/);
+		expect(f).toMatch(/`spec\/02-ReactorHarness\.md` → `spec\/02-Harness\.md`/);
+		expect(f).toMatch(/`spec\/03-ReactorPattern\.md` → `spec\/03-AuthoringPattern\.md`/);
 	});
 
 	it("names the retired judge loop in the overhaul entry", () => {
