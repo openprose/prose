@@ -11,7 +11,7 @@ see-also:
   - ../prose.md: Bounded render execution semantics
   - ../forme.md: Wiring (produces the topology world-model)
   - ../state/filesystem.md: The canonical world-model artifact on disk
-  - ../concepts/reactor.md: The reconciler that wakes you and compares fingerprints
+  - ../concepts/reconciler.md: The reconciler that wakes you and compares fingerprints
 ---
 
 # The Render's Harness Contract
@@ -27,7 +27,7 @@ receipt)`. It runs in two contexts:
 - **standalone** — one session, no harness. Give it evidence; it computes a
   world-model and signs a fingerprinted receipt by applying its contract's
   compiled canonicalizer locally. It depends on nothing above it.
-- **mounted** — a node in the reactor DAG, woken over time by the reconciler.
+- **mounted** — a node in the responsibility DAG, woken over time by the reconciler.
 
 You only know about **your own** node. You do not receive the topology, the
 reconciler, other nodes' contracts, or the global compiled IR. Mounting adds

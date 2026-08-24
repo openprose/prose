@@ -1,6 +1,6 @@
 # OpenProse Tenets
 
-###### Load-bearing principles that constrain every architectural decision. Read alongside [01-Language.md](./01-Language.md), [02-ReactorHarness.md](./02-ReactorHarness.md), and [03-ReactorPattern.md](./03-ReactorPattern.md).
+###### Load-bearing principles that constrain every architectural decision. Read alongside [01-Language.md](./01-Language.md), [02-Harness.md](./02-Harness.md), and [03-AuthoringPattern.md](./03-AuthoringPattern.md).
 
 These are the commitments that make OpenProse what it is. They are not feature
 requirements; they are constraints that shape every downstream decision,

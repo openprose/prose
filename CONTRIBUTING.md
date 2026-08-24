@@ -20,8 +20,8 @@ A strong OpenProse PR should:
   pattern independently, open separate PRs.
 - Respect the language/framework/harness boundary. Put semantics in the skill
   and interpreter docs and reusable contracts in `packages/std/`; harness
-  implementations live outside this repo (the reference harness is
-  [openprose/reactor](https://github.com/openprose/reactor)).
+  implementations live outside this repo (see the README's
+  [Harnesses](README.md#harnesses) section).
 - Make the library more developer-friendly and agent-friendly at the same time:
   clearer for humans to review, easier for agents to execute correctly.
 - Add or identify a retestable mechanism. Use existing tests when they cover

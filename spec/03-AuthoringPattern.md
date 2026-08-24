@@ -1,25 +1,22 @@
-# OpenProse Reactor Pattern
+# OpenProse Authoring Pattern
 
-###### How to write OpenProse for a Reactor-class harness — the language layer beneath evented reconciliation.
+###### How to write OpenProse for a conforming harness — the language layer beneath evented reconciliation.
 
 The OpenProse corpus divides labor exactly, and each document maps to what
 ships:
 
 - [01-Language.md](./01-Language.md) — **the Language & Framework**, bundled as
   the **SKILL**: syntax, kinds, sections, compile model, std/co.
-- [02-ReactorHarness.md](./02-ReactorHarness.md) — **the Reactor
-  Harness**, bundled as the **CLI/Server**: the runtime control architecture
-  (loop, invariants, the reconciler, memoization, forecast, receipts, composition). It
-  answers _what the runtime must do_.
-- [03-ReactorPattern.md](./03-ReactorPattern.md) — **this
-  document, the Reactor-Native Authoring Pattern**: **SKILL-bundled but
-  harness-governed**. Where the Harness doc says what the runtime does, this
-  says **what the author writes** so the runtime can do it. It bridges the
-  Language doc and the Harness doc and is the definitive guide to writing
-  `*.prose.md` for a Reactor-class harness.
-- [ReactorFeedback.md](../history/ReactorFeedback.md) — **the
-  decision log**, not shipped: the dialectic that produced the Harness doc;
-  the clean statements live in the docs above and it does not repeat them.
+- [02-Harness.md](./02-Harness.md) — **the Harness contract**: what any
+  conforming harness must do to serve these contracts (loop, invariants, the
+  reconciler, memoization, forecast, receipts, composition). It answers _what
+  the runtime must do_.
+- [03-AuthoringPattern.md](./03-AuthoringPattern.md) — **this
+  document, the Authoring Pattern**: **SKILL-bundled but harness-governed**.
+  Where the Harness doc says what the runtime does, this says **what the
+  author writes** so the runtime can do it. It bridges the Language doc and the
+  Harness doc and is the definitive guide to writing `*.prose.md` for a
+  conforming harness.
 - [00-Tenets.md](./00-Tenets.md) — **the constitution**. When any
   document tensions with a tenet, the tenet wins.
 
@@ -29,16 +26,16 @@ forecast-gated quiescence, deterministic commit-gating, and receipt composition.
 This doc tells you how to write contracts so those mechanisms actually engage
 instead of degrading to "cron plus a prompt."
 
-This file has three parts, mirroring the harness doc:
+This file has three parts:
 
-1. The ideal Reactor-native authoring pattern.
+1. The ideal authoring pattern.
 2. What the OpenProse skill implements today.
 3. What must change in the skill before the pattern is fully authorable.
 
 The single most important principle, stated once up front so the rest is read
 in its light:
 
-> **The Reactor paradigm does not change OpenProse syntax. It inverts which
+> **The reactive paradigm does not change OpenProse syntax. It inverts which
 > kind is the program.** Every section, kind, and keyword the pattern needs
 > already exists. What changes is doctrine: the responsibility is the
 > top-level authored object, the render is where the work happens (there is no
@@ -48,7 +45,7 @@ in its light:
 
 ---
 
-## I. The Ideal Reactor-Native Authoring Pattern
+## I. The Ideal Authoring Pattern
 
 ### The inversion
 
@@ -72,7 +69,7 @@ entire point. The render of a single responsibility still runs standalone
 
 ### The canonical contract
 
-A Reactor-native unit of work is, at its smallest, **one file**: a
+The unit of work is, at its smallest, **one file**: a
 `kind: responsibility` whose `### Maintains` declares the truth to keep current.
 It grows only as the work demands:
 
@@ -145,7 +142,7 @@ facet it so an unrelated change wakes nobody. If the only way to know whether
 anything changed is to redo the full expensive render, you have written a
 contract whose cost scales with the clock, not surprise — say so deliberately
 (the node will run at freshness cadence), exactly as projection-only is a
-deliberate choice rather than a degenerate Reactor.
+deliberate choice rather than a degenerate responsibility.
 
 ### Rule 3 — satisfaction is a postcondition in `### Maintains`, not a `### Criteria` judge
 
@@ -179,16 +176,16 @@ render/commit split. (Part II: authored but not yet lowered into the render.)
 
 Two boundary shapes recur:
 
-- **Full Reactor.** The render may mutate the world (send the email, update the
+- **Full actuation.** The render may mutate the world (send the email, update the
   briefing, write the register). `### Invariants` bounds _how_ (rate, scope,
   prohibited actions, "leave the final send to a human").
-- **Projection-only Reactor.** The author forbids all world-mutation except
+- **Projection-only.** The author forbids all world-mutation except
   writing the published truth itself: an observe-only overseer, a dashboard that
   must stay true, an audit that watches but never touches. Say so explicitly:
   "the only writable surface is the published truth; never modify, signal, or
   write into the observed system."
 
-A projection-only contract is not a degenerate Reactor. It keeps every cost and
+A projection-only contract is not a degenerate responsibility. It keeps every cost and
 audit property; it simply declines the reconcile-the-world payoff. Choose it
 deliberately, not by backing into it.
 
@@ -198,9 +195,9 @@ Authors most often write the anti-pattern: a render that re-derives everything
 every time. The fix is not a service decomposition — it is shaping `### Maintains`
 so the dumb reconciler can skip. The reconciler keys each render on the 3-tuple
 `(contract_fingerprint, input_fingerprints, freshness_epoch)`; your leverage is
-to make the input fingerprints move only on real change. (Shipped v1 realizes the
-freshness term as a forecast self-receipt over a 2-tuple key — identical decision
-semantics; see [02-ReactorHarness.md](./02-ReactorHarness.md) Part II.)
+to make the input fingerprints move only on real change. (A harness may realize
+the freshness term as a forecast self-receipt over a 2-tuple key — identical
+decision semantics; see [02-Harness.md](./02-Harness.md) *Quiescence*.)
 
 1. **Give the truth a stable content identity.** The canonicalizer fingerprints
    the published truth; make sure an unchanged world yields an unchanged
@@ -242,12 +239,12 @@ staleness comparison to hand-write.
 This is how a downstream responsibility consumes an upstream one — a subscription
 edge, not a special case.
 
-### Patterns that are Reactor-native
+### Patterns that fit the reactive model
 
 The std pattern library is use-case agnostic, but a subset recurs in
-Reactor-native contracts and should be the author's default vocabulary:
+reactive contracts and should be the author's default vocabulary:
 
-| Pattern | Reactor-native role |
+| Pattern | Reactive role |
 | --- | --- |
 | `fan-out`, `map-reduce` | Sensing a wide world cheaply, in parallel, inside one render |
 | `guard` | A precondition gate before an expensive `call` or a world-mutating step |
@@ -384,7 +381,7 @@ A short brief summarizing the latest funding activity for the watchlist.
   if funding stays quiet.
 ```
 
-What an ideal Reactor harness does with this:
+What an ideal harness does with this:
 
 - A gateway poll that finds **no changed source content** leaves the `pages`
   fingerprint unmoved, so the monitor's extraction **memo-skips at zero render
@@ -413,7 +410,7 @@ the commit, and the signed receipt ledger is the trail.
 
 ### Anti-patterns
 
-Each is the natural non-Reactor instinct and why it breaks an invariant:
+Each is the natural task-loop instinct and why it breaks an invariant:
 
 - **Modeling the work as a graph of services instead of one responsibility.**
   Inverts the model; the wiring becomes the source of intent (breaks
@@ -426,10 +423,10 @@ Each is the natural non-Reactor instinct and why it breaks an invariant:
   most common and most expensive mistake.
 - **A contract whose only "did anything change" test is the full render, written
   as if it memoizes.** Not an invariant-5 _correctness_ break (the continuity
-  clock still makes it safe) but a false cost claim. The Reactor-native form names
+  clock still makes it safe) but a false cost claim. The honest form names
   the absence of a cheap identity and accepts freshness-cadence cost
   deliberately — exactly as projection-only is a deliberate choice, not a
-  degenerate Reactor.
+  degenerate responsibility.
 - **Hand-coding a cadence in `### Execution`** instead of declaring the wake in
   `### Continuity` (an input subscription or a `valid_until`). It hides the
   schedule from the harness and defeats forecast-paced quiescence (breaks
@@ -441,7 +438,7 @@ Each is the natural non-Reactor instinct and why it breaks an invariant:
   Rule 6 composition and invariant 7's content-addressed receipts). Name the
   facet in `### Requires` instead.
 - **"Swarm of subagents that continuously watches."** The cron-plus-prompt shape
-  the Reactor replaces. The Reactor-native form is: a subscribed input or a
+  the reconciler replaces. The reactive form is: a subscribed input or a
   lapsed `valid_until` wakes one bounded render; nothing watches in between.
 
 ### Precedence for authors
@@ -468,18 +465,15 @@ over a dumb deterministic run (compare `(contract_fingerprint, input_fingerprint
 authors against. This section is the conformance ledger: what the skill routes
 today, measured honestly against that pattern.
 
-The reference harness backing the skill is the three packages that ship
-together — `@openprose/reactor` (the engine SDK, `0.3.1`), `@openprose/reactor-cli`
-(command `reactor`, `0.2.2`, thirteen commands), and `@openprose/reactor-devtools`
-(the replay viewer, `0.2.0`). The skill's `responsibility-runtime.md` and
-`concepts/{responsibility,reactor}.md` are already written to this model; the
+The skill's `responsibility-runtime.md` and
+`concepts/{responsibility,reconciler}.md` are already written to this model; the
 retired judge/verdict/status/pressure/fulfillment vocabulary is gone from the
 authoring surface, not merely deprecated, and the legacy `prose` CLI binary has
 been removed (the language is embodied by the SKILL in-session).
 
 ### The authoring surface that already exists
 
-The headline finding still holds: **the Reactor-native pattern requires no new
+The headline finding still holds: **the reactive pattern requires no new
 syntax** — but the syntax it requires is the *current* one. The skill routes the
 kinds and sections Part I names, and only those.
 
@@ -487,19 +481,19 @@ kinds and sections Part I names, and only those.
 | --- | --- |
 | `kind: responsibility` with `### Goal` / `### Requires` / `### Maintains` / `### Continuity` / `### Invariants` (+ `### Tools` / `### Shape` / `### Runtime`) | Present and canonical (`concepts/responsibility.md`, `contract-markdown.md`); `id:` is tooling-minted and stable across `name:`/filename renames |
 | `kind: function` with `### Parameters` / `### Returns` — a stateless called helper (the former `service`) | Present; run as a lone render with no Forme phase |
-| `kind: gateway` — sugar for an external-driven responsibility; Forme's entry-point set | Present; `reactor serve` registers it and stages ingress (fetch → extract → stage + a durable idempotency cursor) |
-| `kind: pattern` / `kind: test` | Present; patterns expand at compile time, tests route to the in-session `prose test` semantic (there is no `reactor test` subcommand) |
+| `kind: gateway` — sugar for an external-driven responsibility; Forme's entry-point set | Present; a conforming harness's serve registers it and stages ingress (fetch → extract → stage + a durable idempotency cursor) |
+| `kind: pattern` / `kind: test` | Present; patterns expand at compile time, tests route to the in-session `prose test` semantic (a harness owns no test verb) |
 | Facets: `####` parts under `### Maintains` — name = fingerprint unit + subscription symbol; atomic default | Present and **facet-granular propagation is live in production** (the v2 named-parts model); a downstream subscribed to one facet does not wake when another moves |
 | `### Maintains` as the world-model schema doing four jobs (type, canonicalization spec, facets, postconditions) | Present; the postconditions live **inside `### Maintains`**, compiled to validators (there is no separate `### Criteria` section — it was removed) |
 | `### Continuity` as the structural wake-source declaration (input / self / external) | Present; self-driven recheck and the gateway entry point are both wired (Phase 4) |
 | `### Execution` ProseScript for variable-depth work inside one render | Present — an `if`-gated `call` to a `function` is the depth mechanism, not a judge tier |
 | Compile as SKILL-loaded sessions (Forme / canonicalizer / postcondition) → deterministic lowering → content-addressed IR cache | Present; a `.prose` set mounts without hand-authoring via a true semantic `Requires ↔ Maintains` match |
-| Run: dumb reconciler — memo-skip on unmoved `(contract_fp, input_fp)`, single-flight + coalescing, failure = no-commit, propagate only on a `rendered` moved fingerprint | Present (`@openprose/reactor`); restart-survival proven (truth + ledger survive a fresh process) |
-| `gateCommit`: deterministic postcondition validators + render self-attestation of `### Maintains`; receipt status in `{rendered, skipped, failed}` | Partial; no judge, no verdict, no status enum — but the commit rides the render's **self-attestation** today: the deterministic `gateCommit(...)` validators are built and tested yet have **zero live callers** (02-ReactorHarness gap cluster 1) |
-| Content-addressed, chain-verifiable receipt ledger; cost = `tokens.fresh` vs `tokens.reused` + `surprise_cause` | Present (`reactor receipts` chain-verifies and tamper-detects; the devtools meter renders "cost scales with surprise") |
+| Run: dumb reconciler — memo-skip on unmoved `(contract_fp, input_fp)`, single-flight + coalescing, failure = no-commit, propagate only on a `rendered` moved fingerprint | Specified ([02-Harness.md](./02-Harness.md) *The canonical loop*); the reference harness realizes it, including restart survival (truth + ledger survive a fresh process) |
+| `gateCommit`: deterministic postcondition validators + render self-attestation of `### Maintains`; receipt status in `{rendered, skipped, failed}` | Partial; no judge, no verdict, no status enum — but the commit rides the render's **self-attestation** today: in the reference harness the deterministic `gateCommit(...)` validators are built and tested yet have **zero live callers** ([02-Harness.md](./02-Harness.md) invariant 6) |
+| Content-addressed, chain-verifiable receipt ledger; cost = `tokens.fresh` vs `tokens.reused` + `surprise_cause` | Present (the reference harness chain-verifies and tamper-detects the ledger and renders "cost scales with surprise" from it) |
 | Composition: a downstream responsibility names an upstream facet in `### Requires`; Forme draws the subscription edge | Present; the reconciler reads the topology `edges` to resolve propagation |
 
-The skill can already express a Reactor-native program end to end *in the current
+The skill can already express a reactive program end to end *in the current
 model*: one responsibility with a faceted `### Maintains`, a gateway for ingress,
 a `function` helper for an expensive sub-step, an actuation boundary in
 `### Invariants`, postcondition-gated commit, and a composition edge that is a
@@ -518,12 +512,12 @@ reality is honest, rule by rule.
 | --- | --- | --- |
 | 1. Intent lives in the responsibility | Conformant | Fully authorable today |
 | 2. Materiality stated semantically in `### Maintains` | Conformant (authoring) | The author states materiality in prose; it is lowered to a deterministic canonicalizer. The lowering runs **only spec→code** — a compile session reads the `### Maintains` prose and emits the canonicalization spec, which the deterministic producer compiles. There is no `.prose` *parser*; compile is sessions, not a grammar |
-| 3. No host-specific contract logic | Conformant (authoring); harness resolution deferred | `### Tools` (`cli:` / `mcp:`), `### Environment`, and `### Skills` are authored name-only and never install or contact at compile — but the Reactor harness does not yet **consume** them: compile reads only `### Requires`/`### Maintains`/`### Continuity`/`### Execution`, and the render runs a fixed built-in toolset, so declared capability names are inert today. Fail-closed resolution/enforcement of the declared surface is a forward item (02 Part III §10) |
+| 3. No host-specific contract logic | Conformant (authoring); harness resolution deferred | `### Tools` (`cli:` / `mcp:`), `### Environment`, and `### Skills` are authored name-only and never install or contact at compile — but the reference harness does not yet **consume** them: compile reads only `### Requires`/`### Maintains`/`### Continuity`/`### Execution`, and the render runs a fixed built-in toolset, so declared capability names are inert today. Fail-closed resolution/enforcement of the declared surface is a forward harness item |
 | 4. Bounded activations | Conformant | Idiomatic; the "loop until done" anti-pattern is author error, not a skill gap |
 | 5. Written for memoization / variable depth | Conformant | The reconciler's skip on `(contract_fp, input_fp)` is live (cost scales with surprise, including an immaterial-churn re-poll that still skips); facet selectors are live; depth is an `if`-gated `call` in `### Execution`. The author's leverage is real today |
 | 6. Composition via a subscribed upstream facet | Conformant (meaning-layer) | A downstream names the upstream facet in `### Requires` and Forme wires the edge; receipts are content-addressed and the chain is verifiable. The **cryptographic** signer is a null-state — v1 "signed" is meaning-layer chain-consistency, not a byte-hash — so cross-trust-domain *pinning to a signer set* is not yet enforceable |
 | 7. Receipts as the audit / composition / exit unit | Conformant | The ledger is flat `<state-dir>/receipts.json`, content-addressed, chain-verifiable; `cost` (fresh/reused/surprise_cause) and `status` are first-class. No hand-rolled scratch log is needed |
-| 8. Replayable and exitable | Conformant | Contract + world-model + ledger are plain and portable; `reactor-devtools <state-dir>` replays a saved run with zero running reactor and zero key |
+| 8. Replayable and exitable | Conformant | Contract + world-model + ledger are plain and portable; a replay viewer replays a saved run with no running harness and zero key |
 
 ### Honest current limits for authors
 
@@ -549,7 +543,7 @@ reality is honest, rule by rule.
 - **The deterministic commit gate is unwired.** `compilePostconditions(...)`
   runs on the compile path, but the gate that evaluates it, `gateCommit(...)`, has
   zero live callers; the commit rides the render's `### Maintains` self-attestation
-  (02-ReactorHarness gap cluster 1).
+  ([02-Harness.md](./02-Harness.md) invariant 6).
 - **Serve ingress is local cron-poll + HTTP only.** Gateway poll connectors and
   an HTTP trigger surface ship; **queues, file watches, and provider
   subscriptions** do not. A worktree/planning-dir watcher must use a poll
@@ -578,7 +572,7 @@ reality is honest, rule by rule.
 ## III. What Must Change In The Skill
 
 The retired-model framings are gone: the skill already routes the current kinds
-and sections, the examples are migrated, and `concepts/{responsibility,reactor}.md`
+and sections, the examples are migrated, and `concepts/{responsibility,reconciler}.md`
 teach the no-judge model. What remains is the climb from "fully authorable in the
 current model" to "every Part I payoff is also *delivered*" — a mix of finishing
 the authoring story for the newest sections and the genuine harness deferrals.
@@ -615,7 +609,7 @@ should mirror the load they bear:
   `blocked`/`drifting` status enum (those are retired).
 - The failed receipt that *names the gap and routes it to the author* depends on
   the harness widening the durable receipt with `as_of`, a `reason`, and an
-  author-addressing field (02 gap cluster 2); until that lands, the doctrine is
+  author-addressing field ([02-Harness.md](./02-Harness.md) *Open specification items* §1); until that lands, the doctrine is
   authorable but the routed reason is dropped at commit. Author to it now.
 
 ### 3. Land the materiality lowering's prose→spec half
@@ -636,7 +630,7 @@ runs on the compile path). But the gate that would evaluate them at commit,
 `gateCommit(...)`, has zero live callers — the commit rides the render's own
 `### Maintains` self-attestation. So the author's postconditions are *compiled*
 but not yet the *enforced* commit gate. Threading the compiled validators onto
-the live commit step (02 gap cluster 1) makes Rule 3's "no attestation, no
+the live commit step ([02-Harness.md](./02-Harness.md) invariant 6) makes Rule 3's "no attestation, no
 commit" a deterministic guarantee rather than a render self-report. The author
 writes postconditions to it now; the enforcement tightens harness-side.
 
@@ -646,7 +640,7 @@ Rule 4's actuation quarantine is authored prose today: `### Invariants` declares
 the rate/scope/prohibited-action bounds, but the section is never lowered into
 the render — it constrains the model only as prose, bounded in practice by the
 cwd-rooted workspace sandbox and the turn cap, with no world-mutation actuation
-sink. Lowering it into the render (02 gap cluster 3) makes a projection-only
+sink. Lowering it into the render ([02-Harness.md](./02-Harness.md) *Metaphor*, seam 2) makes a projection-only
 contract's "the only writable surface is the published truth" a harness-enforced
 guarantee rather than an author's request. Author the boundary now; it binds once
 the harness lowers it.
@@ -654,9 +648,9 @@ the harness lowers it.
 ### 6. Forecast-paced continuity cadence
 
 The self-driven recheck path is wired (freshness-lapse → synthetic self-receipt,
-a zero-token fingerprint move), but `reactor serve` polls it on a flat
-`--poll-interval`. The deferred work is arming each node's soonest
-`next_self_recheck` off its freshness so an idle reactor sleeps to the next real
+a zero-token fingerprint move), but the reference harness's serve loop polls it
+on a flat interval. The deferred work is arming each node's soonest
+`next_self_recheck` off its freshness so an idle harness sleeps to the next real
 expiry instead of waking every interval — the *forecast-paced quiescence* Part I
 implies. The same step is owed for a gateway's declared `### Schedule`, which the
 compiler drops today (so the gateway runs on the flat serve poll, not its
@@ -666,7 +660,7 @@ it; the cadence tightens harness-side, without a source change.
 
 ### 7. Richer serve ingress adapters
 
-`reactor serve` supports local cron-poll and HTTP, plus gateway poll connectors
+The reference harness's serve supports local cron-poll and HTTP, plus gateway poll connectors
 with a durable idempotency cursor. Queues, file watches, provider subscriptions,
 and webhook authentication remain later runtime phases. Until they land, a
 file-watch-shaped responsibility is authored as a poll `### Continuity`; the
@@ -697,8 +691,8 @@ runtime's guarantee.
 - The `### Invariants` actuation boundary is lowered and harness-enforced, so a
   projection-only contract's "only the published truth is writable" is a
   guarantee, and the failed receipt carries the routed `reason`.
-- `reactor serve` arms `next_self_recheck` (forecast-paced cadence) so an idle
-  reactor sleeps to the next real expiry.
+- Serve arms `next_self_recheck` (forecast-paced cadence) so an idle
+  harness sleeps to the next real expiry.
 - The cryptographic signer lands and a pinned signer set is enforceable for
   cross-trust-domain composition.
 
@@ -721,8 +715,8 @@ Deferred by design, tracked so they are neither invented nor dropped:
    serve-time projector that surfaces soonest-expiry across nodes (the input to
    adaptive idle) rides with the forecast-paced cadence work above.
 
-> `02-ReactorHarness.md` says what the machine must do.
-> `03-ReactorPattern.md` says what to write so it does it. The pattern is
+> `02-Harness.md` says what the machine must do.
+> `03-AuthoringPattern.md` says what to write so it does it. The pattern is
 > fully writable now in the current model; its full power lands as the harness
 > climbs from flat-poll continuity and a null-state signer to forecast-paced
 > rechecks and a cryptographic chain — and, last, to the fixpoint. Author to the

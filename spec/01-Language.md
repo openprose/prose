@@ -14,17 +14,14 @@ ships:
 - [01-Language.md](./01-Language.md) — **this document, the Language &
   Framework**, bundled as the **SKILL**: syntax, kinds, sections, compile
   model, std/co.
-- [02-ReactorHarness.md](./02-ReactorHarness.md) — **the Reactor
-  Harness**, bundled as the **CLI/Server**: the runtime control architecture
-  (loop, invariants, the reconciler, memoization, forecast, receipts, composition)
-  that *serves* these contracts.
-- [03-ReactorPattern.md](./03-ReactorPattern.md) — **the
-  Reactor-Native Authoring Pattern**, **SKILL-bundled but harness-governed**:
-  how to write `*.prose.md` so the harness's mechanisms engage. It bridges
-  this doc and the Harness doc.
-- [ReactorFeedback.md](../history/ReactorFeedback.md) — **the
-  decision log**, not shipped: the dialectic that produced the Harness doc;
-  the clean statements live in the docs above.
+- [02-Harness.md](./02-Harness.md) — **the Harness contract**: what any
+  conforming harness (a CLI, a server, a hosted runtime) must do to *serve*
+  these contracts — the loop, invariants, the reconciler, memoization,
+  forecast, receipts, composition.
+- [03-AuthoringPattern.md](./03-AuthoringPattern.md) — **the Authoring
+  Pattern**, **SKILL-bundled but harness-governed**: how to write `*.prose.md`
+  so a conforming harness's mechanisms engage. It bridges this doc and the
+  Harness doc.
 - [00-Tenets.md](./00-Tenets.md) — **the constitution**. When any
   document tensions with a tenet, the tenet wins.
 
@@ -112,7 +109,7 @@ Part II is honest about how far the current skill has climbed toward them.
   split, maintenance cost scales with the clock, not with surprise. The
   *normalization convention* is the author's prose inside `### Maintains`; the
   compiled mechanics are the harness's
-  ([02-ReactorHarness.md](./02-ReactorHarness.md)).
+  ([02-Harness.md](./02-Harness.md)).
 - **The language packages reusable behavior and stays a public good.** `std`
   and `co` prove OpenProse programs compose like code. The language, runtime
   doctrine, and skill are MIT and free, forever; commerce is out of scope of
@@ -142,9 +139,9 @@ satisfaction folds into `### Maintains`, checked deterministically where it can
 be expressed as a validator and self-attested by the render where it is
 semantic. A render that cannot satisfy its postconditions commits nothing — the
 prior truth stands and a `failed` receipt records why: a reason addressed to the
-contract author, naming exactly what the render could not satisfy. (The shipped
-v0 receipt does not yet carry that reason field — see
-[02-ReactorHarness.md](./02-ReactorHarness.md) Part II.)
+contract author, naming exactly what the render could not satisfy. (A harness
+whose receipt does not yet carry that reason field honors the naming only
+in-render — see [02-Harness.md](./02-Harness.md) *Open specification items*.)
 
 **Facets make subscription structural.** A `####` sub-heading inside
 `### Maintains` declares a facet — a named part of the truth. Its name is, at
@@ -165,11 +162,10 @@ facets this node consumes; Forme matches each `### Requires` entry to a
 producer's `### Maintains` facet and draws the subscription edge. `### Requires`
 is the input side of the memo key: the run phase fingerprints the node's
 contract together with its subscribed inputs and its freshness epoch, and
-re-renders only when one of them moves. (Shipped v1 realizes the freshness term
-as a forecast-driven self-receipt over a two-part `(contract_fingerprint,
+re-renders only when one of them moves. (A harness may realize the freshness
+term as a forecast-driven self-receipt over a two-part `(contract_fingerprint,
 input_fingerprints)` key rather than a literal third element; the decision
-semantics are identical — see [02-ReactorHarness.md](./02-ReactorHarness.md)
-Part II.)
+semantics are identical — see [02-Harness.md](./02-Harness.md) *Quiescence*.)
 
 **`### Continuity` declares the wake source — when, beyond an input change, a
 node should re-render.** It is not a schedule. A node is *input-driven* by
@@ -191,24 +187,23 @@ only the canonicalized published truth re-enters the memo, and `### Invariants`
 bounds everything else the render may do. (This is the capability *rate/scope*
 bound; which collaborators a render may call is `### Shape`'s job.) In the ideal
 the harness lowers and enforces this boundary at the render/commit split; today
-it is authored prose the render is asked to honor, not yet harness-enforced —
-see [02-ReactorHarness.md](./02-ReactorHarness.md) Part II gap cluster 3 and
-Part III §3.
+it is authored prose the render is asked to honor until a harness lowers it —
+see [02-Harness.md](./02-Harness.md) *Metaphor*, seam 2.
 
 The author writes these; the harness owns the fingerprinting, the forecast
 cadence, the receipts, and the subscription wiring. The granular how-to —
 declaring material fields, faceting the truth, giving the world a cheap content
-identity, projection-only shapes — is the Reactor authoring pattern's
-([03-ReactorPattern.md](./03-ReactorPattern.md)); the runtime mechanics are the
-harness's ([02-ReactorHarness.md](./02-ReactorHarness.md)).
+identity, projection-only shapes — is the authoring pattern's
+([03-AuthoringPattern.md](./03-AuthoringPattern.md)); the runtime mechanics are
+the harness's ([02-Harness.md](./02-Harness.md)).
 
 The full *mechanics* of the runtime that *serves* these contracts — the
 two-phase compile/run split, the memo engine, the deterministic continuity
 clock, the receipt ledger, composition — are **not** specified here. This
 document states their *language-level semantics* — what the author declares (a
 freshness window, a postcondition, the receipt as the commit object) and what it
-means — and leaves the mechanics that realize them to the Reactor harness
-([02-ReactorHarness.md](./02-ReactorHarness.md)). This document's ideal is the
+means — and leaves the mechanics that realize them to the harness
+([02-Harness.md](./02-Harness.md)). This document's ideal is the
 *language*: the contract a human or agent writes, and the semantics by which it
 is understood.
 
@@ -227,9 +222,8 @@ is understood.
 > contracts all carry the current vocabulary — **zero** `kind: service`,
 > `kind: system`, or `### Ensures` remain. The legacy `@openprose/prose-cli`
 > binary has been **removed**: the language is embodied by the SKILL in-session,
-> and the Reactor (the SDK + `reactor` CLI,
-> [02-ReactorHarness.md](./02-ReactorHarness.md)) is the deterministic harness
-> that compiles and runs served responsibilities. Older framing around hosted
+> and a conforming harness ([02-Harness.md](./02-Harness.md)) compiles and
+> serves standing responsibilities. Older framing around hosted
 > cloud products, social execution networks, company financing, `kind: program`,
 > standalone `.prose` source files, and the old registry model is not part of this
 > synthesis unless the current repo still contains a live implementation.
@@ -237,7 +231,7 @@ is understood.
 ### Current Shape
 
 The skill (SKILL `version: 0.15.0`, `runtime_contract: 2`) has five load-bearing
-spec files plus the reactor-semantics concept docs the `v0.15.0` overhaul added:
+spec files plus the reconciler-semantics concept docs the `v0.15.0` overhaul added:
 
 | Piece | Location | Role |
 | --- | --- | --- |
@@ -246,7 +240,7 @@ spec files plus the reactor-semantics concept docs the `v0.15.0` overhaul added:
 | Prose VM | `skills/open-prose/prose.md` | Bounded-render execution semantics: one session reads evidence, queries prior world-model by reference, writes the world-model, signs a receipt |
 | ProseScript | `skills/open-prose/prosescript.md` | Imperative choreography inside `### Execution` and pattern `### Delegation` |
 | Responsibility Runtime | `skills/open-prose/responsibility-runtime.md` | The compile (intelligent) / run (dumb) split, repository IR, `compile`, `serve`, and `status` |
-| Concepts | `skills/open-prose/concepts/{responsibility,reactor}.md` | The `kind: responsibility` semantic contract and the dumb fingerprint-comparison reconciler (no judge) |
+| Concepts | `skills/open-prose/concepts/{responsibility,reconciler}.md` | The `kind: responsibility` semantic contract and the dumb fingerprint-comparison reconciler (no judge) |
 
 The shippable repository also contains:
 
@@ -255,18 +249,15 @@ The shippable repository also contains:
 | OpenProse skill | `skills/open-prose/` | Agent-facing runtime/spec bundle — the language's execution surface (the agent embodies the VM in-session) |
 | Standard library | `packages/std/` | Reusable roles, patterns, ops, delivery, memory, and evals (migrated to the current vocabulary) |
 | Company-as-Prose package | `packages/co/` | Generic company-operations starter contracts (migrated to the current vocabulary) |
-| Reactor packages | `packages/reactor/` (`0.3.1`), `packages/reactor-cli/` (`0.2.2`), `packages/reactor-devtools/` (`0.2.0`) | The Reactor harness runtime and its `reactor` CLI/replay viewer; specified in [02-ReactorHarness.md](./02-ReactorHarness.md), **not** language material |
 | Examples | `skills/open-prose/examples/` | Native OpenProse repositories; migrated to responsibility/function/gateway |
-| Tests and fixtures | repo-root skill tests (`tests/open-prose/`) + package test suites | Skill/spec conformance, compile-validation, and reactor runtime/IR tests |
+| Tests and fixtures | repo-root skill tests (`tests/open-prose/`) | Skill/spec conformance and compile-validation |
 | Plugin envelopes | `.codex-plugin/`, `.claude-plugin/`, `.agents/plugins/` | Marketplace/install metadata |
 
 OpenProse is distributed as an MIT-licensed beta. The SKILL and the language
-collect no telemetry; the `reactor` CLI ships anonymous, opt-out usage analytics
-(disabled by `DO_NOT_TRACK`, `CI`, a non-TTY, or offline mode) — a harness
-concern documented in [02-ReactorHarness.md](./02-ReactorHarness.md). There is no
-longer a `prose` binary: the language is embodied by the SKILL in-session, and
-the **`reactor` CLI** (`packages/reactor-cli/`) is the deterministic harness that
-compiles and runs served responsibilities.
+collect no telemetry; whether a harness does is that harness's own documented
+concern, outside this repository. There is no longer a `prose` binary: the
+language is embodied by the SKILL in-session, and served responsibilities are
+the job of a conforming harness ([02-Harness.md](./02-Harness.md)).
 
 ### What OpenProse Is Not
 
@@ -339,8 +330,8 @@ means "embody the OpenProse VM and execute this contract here, in-session" — t
 agent maps the primitives onto its own host tools (spawning sub-sessions, reading
 and writing run state, checking env). It never parses `.prose` semantics
 mechanically; the SKILL-loaded session embodies the VM. Continuous, *served*
-responsibilities are run by the Reactor harness (the `reactor` CLI), which the
-skill hands off to via `prose react` ([02-ReactorHarness.md](./02-ReactorHarness.md)).
+responsibilities are run by a conforming harness outside the session
+([02-Harness.md](./02-Harness.md)).
 
 ### OpenProse Root
 
@@ -361,7 +352,7 @@ The root layout is:
 | `runs/` | Activation receipts for bounded VM runs |
 | `state/` | Durable cross-run state |
 | `state/agents/` | Durable agent memory |
-| `state/world-model/{node}/` | Each responsibility's persisted canonical world-model, with its signed, append-only `receipts.jsonl` ledger — the language VM root layout (the Reactor harness's own state-dir uses a flat `receipts.json`, [02-ReactorHarness.md](./02-ReactorHarness.md)); no separate status/pressure store — the judge loop is retired |
+| `state/world-model/{node}/` | Each responsibility's persisted canonical world-model, with its signed, append-only `receipts.jsonl` ledger — the language VM root layout (a harness may lay out its own state-dir differently, [02-Harness.md](./02-Harness.md)); no separate status/pressure store — the judge loop is retired |
 | `deps/` | Installed git-native dependencies |
 | `prose.lock` | Dependency lockfile |
 | `.env` | Local runtime environment |
@@ -422,7 +413,7 @@ The five current authored kinds are:
 | --- | --- | --- |
 | `responsibility` | Served (continuously reconciled) | The headline kind: a mounted DAG node maintaining a standing truth over time |
 | `function` | Called (one-shot) | A stateless, ephemeral helper: bind `### Parameters`, run one render, return `### Returns`. No Forme phase, no world-model. (Renamed from `service`.) |
-| `gateway` | Mounted as external-driven | Sugar for an external-driven responsibility; compiled into a trigger registration the Reactor harness serves (`reactor serve`) |
+| `gateway` | Mounted as external-driven | Sugar for an external-driven responsibility; compiled into a trigger registration the harness serves |
 | `test` | Via `prose test` | Fixtures plus natural-language assertions against a subject responsibility or function |
 | `pattern` | Instantiated at compile time | Reusable coordination algorithm expanded into nodes; never directly run |
 
@@ -608,7 +599,7 @@ The stack is:
 | Layer | Role |
 | --- | --- |
 | Responsibility | The standing truth kept current (a mounted node) |
-| Reactor | The dumb reconciler: compare fingerprints, skip / render / propagate |
+| Reconciler | The dumb run phase: compare fingerprints, skip / render / propagate |
 | Forme | Compile-phase wiring of `### Requires` ↔ `### Maintains` |
 | Prose VM | One bounded render that computes the next world-model and signs a receipt |
 
@@ -624,7 +615,7 @@ incoming truth, and describes ingress (schedules, local HTTP routes, webhooks,
 provider events) that inference cannot safely recover.
 
 The reconcile loop is **dumb on purpose** (the full semantics are in
-`concepts/reactor.md`):
+`concepts/reconciler.md`):
 
 1. A receipt arrives. Its `wake.source` is `input` (an upstream facet moved),
    `self` (the continuity clock's synthetic self-receipt), or `external` (a
@@ -697,9 +688,9 @@ IR records include:
 The canonical compiler is a pinned ProseScript program at
 `skills/open-prose/compiler/index.prose.md` whose agents are **compile-step
 renders** — Forme (wiring), the canonicalizer compiler, and the postcondition
-compiler — so the compile output is itself auditable (Tenet 2). The Reactor
-harness realizes the same compile phase through its `agent-compile` adapter
-(content-addressed IR cache; [02-ReactorHarness.md](./02-ReactorHarness.md)).
+compiler — so the compile output is itself auditable (Tenet 2). A conforming
+harness realizes the same compile phase through its own compile adapter
+(content-addressed IR cache; [02-Harness.md](./02-Harness.md)).
 There is no separate deterministic source-compiler binary — the deprecated `prose`
 CLI that once shipped one has been removed.
 
@@ -715,11 +706,10 @@ Important compiler doctrine:
 - Stop after writing; the harness performs deterministic validation.
 
 The compile-phase IR is **source-derived**: it is a function of the `*.prose.md`
-source set and nothing else. The Reactor harness's token-truth receipts,
-forecasts, freshness state, and reconciler decisions are **sibling runtime state**
-owned by `@openprose/reactor` — not IR fields and not new source syntax. See
-*Boundary with the Reactor harness* (Part III) and
-[02-ReactorHarness.md](./02-ReactorHarness.md).
+source set and nothing else. The harness's token-truth receipts, forecasts,
+freshness state, and reconciler decisions are **sibling runtime state** owned by
+the harness — not IR fields and not new source syntax. See *Boundary with the
+harness* (Part III) and [02-Harness.md](./02-Harness.md).
 
 ### Commands
 
@@ -730,14 +720,13 @@ installed package. The legacy `@openprose/prose-cli` (an Oclif binary) has been
 removed.
 
 The served, continuously-reconciled lifecycle for responsibilities — repository-IR
-`compile`, `run`, `serve`, and observability — is delivered by the deterministic
-**`reactor` CLI** (the harness, [02-ReactorHarness.md](./02-ReactorHarness.md)),
-which the skill hands off to via `prose react`. The in-session command vocabulary:
+`compile`, `run`, `serve`, and observability — is delivered by a conforming
+harness ([02-Harness.md](./02-Harness.md)), outside the session. The in-session
+command vocabulary:
 
 | Command | Role |
 | --- | --- |
 | `prose run <file.prose.md\|package/handle>` | Run a responsibility or a called function in-session |
-| `prose react "<use case>" [--start]` | Take a standing goal to a running, inspectable Reactor (hands off to the `reactor` CLI) |
 | `prose test <path>` | Execute `kind: test` contracts |
 | `prose lint <file.prose.md>` | Validate source structure and contract consistency |
 | `prose preflight <file.prose.md>` | Check dependencies and `### Environment` without executing |
@@ -750,8 +739,8 @@ which the skill hands off to via `prose react`. The in-session command vocabular
 The host for an in-session `prose run` is the coding agent itself (Codex- or
 Claude-Code-style); there is no harness-selection binary. The served
 `compile → run → serve` lifecycle — its durable continuity loop, HTTP trigger
-surface, and connector ingress — is the Reactor harness's, documented in
-[02-ReactorHarness.md](./02-ReactorHarness.md).
+surface, and connector ingress — is the harness's, specified in
+[02-Harness.md](./02-Harness.md).
 
 ### Dependencies
 
@@ -845,8 +834,9 @@ The shared lifecycle is:
 ```bash
 # Embody and run the repository in-session:
 prose run
-# Or hand its standing goal to a durable, served Reactor (the harness):
-prose react "<the repository's standing goal>" --start
+# Or compile it and let a conforming harness serve the standing goal
+# (02-Harness.md):
+prose compile
 ```
 
 Current standing-goal example repositories include `stargazer-outreach`,
@@ -871,21 +861,20 @@ language feature:
 ### Tests And Release
 
 The current repository validates the language surface at several layers (the
-repo-root `tests/open-prose/` skill suite and the package test suites):
+repo-root `tests/open-prose/` skill suite):
 
 | Layer | Coverage |
 | --- | --- |
 | Skill/spec conformance | `tests/open-prose/` asserts the SKILL docs (contract-markdown, concepts, state, compiler) embody the current model — kinds, sections, the no-judge reconciler, and the world-model state shape |
 | Compile-validation tests | Compile-phase IR shape (topology, canonicalizers, postconditions, contract fingerprints) and root resolution |
-| Reactor-runtime tests | Fingerprint comparison, skip/render/propagate, receipt `status` (`rendered`/`skipped`/`failed`), freshness — in `packages/reactor*/` (harness material) |
-| CI workflows | Skill install smoke, OpenProse smoke, plugin manifest validation, and the reactor package (`reactor-v*`) publish train |
+| CI workflows | Skill install smoke, OpenProse smoke, plugin manifest validation, and the skill conformance suite |
 
 The release process uses **independent tracks** (`.version-bump.json`): the
 `skill` track moves the SKILL and both plugin manifests together — `SKILL.md`,
 `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json` — because the Claude
-Code marketplace deduplicates by manifest version. The Reactor packages publish on
-their own `reactor-v*` OIDC train. There is **no `prose-cli` release train** (the
-binary was removed).
+Code marketplace deduplicates by manifest version. Harness implementations
+release on their own trains, outside this repository. There is **no `prose-cli`
+release train** (the binary was removed).
 
 ### Mental Model
 
@@ -913,7 +902,7 @@ receipt)`:
 
 | Term | Meaning |
 | --- | --- |
-| Activation | One bounded VM render, launched in-session by `prose run` or by the Reactor harness (`reactor run` / `serve`) |
+| Activation | One bounded VM render, launched in-session by `prose run` or by a conforming harness's run/serve |
 | Binding | A published declared output: the canonical world-model artifact a downstream subscribes to |
 | Canonicalizer | The deterministic lowering of `### Maintains` that maps a world-model to its fingerprints |
 | Contract Markdown | The canonical `*.prose.md` source format |
@@ -927,7 +916,7 @@ receipt)`:
 | Prose Complete | Host capability threshold for running OpenProse |
 | Prose VM | Execution semantics (the render) embodied by the agent host |
 | ProseScript | Imperative choreography language inside `### Execution` and `### Delegation` |
-| Reactor / Reconciler | The dumb run-phase model: compare fingerprints, skip / render / propagate (no judge) |
+| Reconciler | The dumb run-phase model: compare fingerprints, skip / render / propagate (no judge) |
 | Receipt | The signed commit object; `status` ∈ {`rendered`, `skipped`, `failed`}; the unit of the append-only ledger |
 | Repository IR | The compile-phase IR (topology + canonicalizers + postconditions + contract fingerprints) consumed by deterministic infrastructure |
 | Responsibility | The headline kind: a standing truth kept current over time, mounted as a DAG node |
@@ -951,22 +940,22 @@ resolved by removal (compilation is model-run, Tenet 2). **No new `*.prose.md`
 syntax is owed.**
 
 What remains is not language work but **harness affordances the language already
-describes** — promised by the contract an author writes, delivered by the Reactor
-harness ([02-ReactorHarness.md](./02-ReactorHarness.md)) — plus the one
+describes** — promised by the contract an author writes, delivered by a
+conforming harness ([02-Harness.md](./02-Harness.md)) — plus the one
 language-level recursion the Ideal keeps as its closing item. Each item below is
-scoped to the *residual* gap and cross-linked to the Reactor harness gap cluster
-it closes; the engineering detail lives in 02 Part III.
+scoped to the *residual* gap and cross-linked to the harness contract it depends
+on; a harness tracks its own engineering detail.
 
 ### 1. Data-driven freshness (the default `valid_until` projector)
 
 Part I's self-driven continuity — a lapsed `valid_until` mechanically moves a
 facet fingerprint via the self-tick — needs a default projector in the served
-continuity loop. Today that loop (the Reactor's, which `prose react` hands off to)
-runs on a flat poll cadence and arms no per-facet `valid_until` by default, so
+continuity loop. Today the reference harness's loop runs on a flat poll cadence
+and arms no per-facet `valid_until` by default, so
 `### Continuity: self-driven` runs at a fixed interval rather than the Ideal's
 "wake exactly when the soonest `valid_until` lapses." The author already writes
 the `valid_until`; the cadence tightens harness-side without a source change.
-(Reactor gap cluster 3 — [02-ReactorHarness.md](./02-ReactorHarness.md) Part III §4.)
+([02-Harness.md](./02-Harness.md) *Open specification items* §6.)
 
 ### 2. The deterministic commit gate, wired
 
@@ -976,7 +965,7 @@ them at commit, `gateCommit`, is built and **unwired** — the live commit rides
 render's own `### Maintains` self-attestation. The language promises "a render
 that cannot satisfy its postconditions commits nothing"; making that
 deterministic rather than self-attested is harness wiring, not a syntax change.
-(Reactor gap cluster 1 — [02-ReactorHarness.md](./02-ReactorHarness.md) Part III §1.)
+([02-Harness.md](./02-Harness.md) invariant 6.)
 
 ### 3. The failed-receipt reason (durable receipt shape)
 
@@ -984,8 +973,8 @@ The language promises a `failed` receipt "addressed to the author, naming exactl
 what it needs." The shipped v0 receipt is too thin to carry that — no `as_of`, no
 failure `reason`, no author-addressing field — so the naming is honored only
 in-render and dropped at commit. Widening the durable receipt is harness work the
-language's failed-receipt promise depends on. (Reactor gap cluster 2 —
-[02-ReactorHarness.md](./02-ReactorHarness.md) Part III §2.)
+language's failed-receipt promise depends on. ([02-Harness.md](./02-Harness.md)
+*Open specification items* §1.)
 
 ### 4. The actuation boundary, enforced
 
@@ -993,8 +982,7 @@ language's failed-receipt promise depends on. (Reactor gap cluster 2 —
 world-mutation. Today that boundary is authored prose the render may ignore —
 never lowered or harness-enforced. Lowering it into the render (with an actuation
 sink) makes "the only writable surface is the published truth" a guarantee rather
-than a request. (Reactor gap cluster 3 —
-[02-ReactorHarness.md](./02-ReactorHarness.md) Part III §3.)
+than a request. ([02-Harness.md](./02-Harness.md) *Metaphor*, seam 2.)
 
 ### 5. Facet inference
 
@@ -1015,8 +1003,8 @@ poll `### Continuity` with the intended ingress noted, so it migrates cleanly.
 `### Requires` can pin a consumed revision today, but the acceptable-signer-set
 half of cross-trust composition waits on a real signing identity: the receipt's
 `sig` is a meaning-layer attestation over a null signer, not a cryptographic
-byte-hash chain. A signing adapter and byte-hash chain are deferred. (Reactor gap
-cluster 3 — [02-ReactorHarness.md](./02-ReactorHarness.md) Part III §5.)
+byte-hash chain. A signing adapter and byte-hash chain are deferred.
+([02-Harness.md](./02-Harness.md) *Open specification items* §2.)
 
 ### 8. The fixpoint (topology-as-responsibility)
 
@@ -1027,16 +1015,16 @@ bootstrapped by a tiny deterministic seed. Today Forme is a compile-phase render
 that produces the topology but is not yet *mounted as a node in the graph it
 draws*. Closing the loop is explicitly **post-v1**.
 
-### Boundary with the Reactor harness
+### Boundary with the harness
 
 The language has one source-derived compile: `prose compile` (source →
 compile-phase IR). The IR is a function of the `*.prose.md` source set and
 nothing else. The harness's token-truth receipts, forecasts, freshness state, and
-reconciler decisions are **sibling runtime state owned by `@openprose/reactor`** —
+reconciler decisions are **sibling runtime state owned by the harness** —
 not IR fields and not new `*.prose.md` syntax. The render seam (a
 bounded-activation agent SDK adapter over a model gateway) carries no reconciler
 control logic. The full runtime mechanics live in
-[02-ReactorHarness.md](./02-ReactorHarness.md); this disclaimer is the language
+[02-Harness.md](./02-Harness.md); this disclaimer is the language
 side of that seam.
 
 ### Definition of done for the language layer

@@ -10,7 +10,7 @@ see-also:
   - index.prose.md: ProseScript compiler program
   - ../responsibility-runtime.md: Compile/run reconciler doctrine
   - ../forme.md: Forme wiring semantics (the topology world-model)
-  - ../concepts/reactor.md: The fingerprint-comparison reconciler
+  - ../concepts/reconciler.md: The fingerprint-comparison reconciler
 ---
 
 # Compile-Phase IR
@@ -26,8 +26,8 @@ IR. Commit-gating is compiled postcondition validators plus render
 self-attestation, never an LLM judging "did this change" at wake time
 (`world-model.md` §3; `architecture.md` §3.3).
 
-The IR is the JSON realization of the `CompilePhaseIR` shape in
-`packages/reactor/src/shapes/index.ts` (the shared shapes spine), wrapped in a
+The IR is the JSON realization of the `CompilePhaseIR` shape the reference
+harness exports from its SDK (the shared shapes spine), wrapped in a
 thin doc envelope of `sources` and `diagnostics`. Where this doc and that TS
 shape disagree, the TS shape wins.
 
@@ -164,7 +164,7 @@ receipt at the system's edge (`world-model.md` §5). Every entry point must be a
 
 `acyclic` is Forme's own acyclicity postcondition over `edges`
 (`architecture.md` §3.1). It is computed by the deterministic cycle check
-(`packages/reactor/src/cycle` `detectReceiptCycles`, the kept-half kernel DFS).
+(the harness's `detectReceiptCycles`, the kept-half kernel DFS).
 The acyclicity check rejects *graph* cycles only; legitimate feedback (a node's
 output shaping its *next* input) is self-driven `### Continuity`, not a
 back-edge — loops live in time, not in edges. When a contract set is
@@ -204,8 +204,7 @@ fields and which are material"; `delta.md` Part G L576–L579). The lowering is:
   byte-identical to the pre-facet behaviour; faceting is purely additive.
 
 This is the JSON realization of the `CanonicalizationSpec.facets: FacetSpec[]`
-input the SDK canonicalizer-compiler consumes
-(`packages/reactor/src/canonicalizer/spec.ts`, `compile.ts`): one `FacetSpec
+input the harness's canonicalizer-compiler consumes: one `FacetSpec
 { facet: <heading>, paths: <material fields> }` per `####` part, plus the
 reserved atomic facet the compiler always prepends. The `facets` array below is
 the *output* projection of that lowering — the facet names the canonicalizer
@@ -259,7 +258,7 @@ Required fields: `node` (a node id present in `topology.nodes`), `artifact`
 
 - `deterministic` — the harness verifies the validator on commit; a render that
   fails verification commits nothing and writes a `failed` receipt. The
-  deterministic engine is `packages/reactor/src/cycle` `evaluatePredicate`.
+  deterministic engine is the harness's `evaluatePredicate`.
 - `render-attested` — the postcondition is irreducibly semantic; the render
   self-polices it before signing.
 

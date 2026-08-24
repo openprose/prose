@@ -7,7 +7,7 @@ summary: |
   responsibility-oriented OpenProse source.
 see-also:
   - ../responsibility-runtime.md: Compile/run split and layer boundaries
-  - reactor.md: The dumb reconciler — wake sources and fingerprint comparison
+  - reconciler.md: The dumb reconciler — wake sources and fingerprint comparison
   - ../forme.md: Compile-phase wiring of Requires ↔ Maintains
   - ../contract-markdown.md: Markdown source format
 ---
@@ -17,7 +17,7 @@ see-also:
 A goal is a point-in-time requirement.
 
 A **responsibility** is a standing goal: a truth that must remain current over
-time. In the reactive model it is a **mounted node** in the reactor DAG — it
+time. In the reactive model it is a **mounted node** in the responsibility DAG — it
 subscribes to upstream truth (`### Requires`), maintains its own truth in a
 persisted world-model (`### Maintains`), and is woken over time according to its
 `### Continuity`.

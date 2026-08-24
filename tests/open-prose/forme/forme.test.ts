@@ -165,7 +165,7 @@ describe("forme.md — acyclicity as a postcondition; feedback is time, not an e
 		expect(source).toMatch(/never subscribes to its own facet|not.+graph cycle/i);
 	});
 
-	it("reuses the reactor's deterministic cycle detector for the check", () => {
+	it("reuses the reconciler's deterministic cycle detector for the check", () => {
 		const source = doc();
 		// delta.md §A4 L202: detectReceiptCycles moves to Forme as the acyclicity
 		// postcondition.

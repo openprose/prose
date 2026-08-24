@@ -23,7 +23,7 @@ OpenProse has five load-bearing pieces:
 | **Forme** | `forme.md` | Semantic dependency-injection container that wires contracts |
 | **Prose VM** | `prose.md` | Execution engine that runs responsibilities, functions, and pinned execution blocks |
 | **ProseScript** | `prosescript.md` | Imperative scripting layer for `### Execution` blocks and pattern delegation |
-| **Responsibility Runtime** | `responsibility-runtime.md` | Responsibility-Oriented Architecture: standing goals, Reactor, and compile/serve doctrine |
+| **Responsibility Runtime** | `responsibility-runtime.md` | Responsibility-Oriented Architecture: standing goals, the reconciler, and compile/serve doctrine |
 
 Use Contract Markdown when authors want declarations and auto-wiring. Use
 ProseScript when authors want to pin choreography: order, loops, conditionals,
@@ -42,7 +42,7 @@ After activation, choose the narrowest path that matches the user's intent:
 | Write pinned choreography | `prosescript.md` | `contract-markdown.md` if inside `### Execution` |
 | Compile or run a `.png`/`.svg` brief (a typed image) | `visual-source.md` | `forme.md` and `compiler/index.prose.md` to resolve + compile |
 | Lint or review a responsibility or function | `contract-markdown.md` | `forme.md` for multi-responsibility wiring; `guidance/authoring.md` for design review |
-| Work on Responsibility Runtime, responsibility-oriented source, Reactor, compile, or serve semantics | `responsibility-runtime.md` | `compiler/index.prose.md`, `compiler/ir-v0.md`, `concepts/responsibility.md`, `concepts/reactor.md`, `forme.md` |
+| Work on Responsibility Runtime, responsibility-oriented source, the reconciler, compile, or serve semantics | `responsibility-runtime.md` | `compiler/index.prose.md`, `compiler/ir-v0.md`, `concepts/responsibility.md`, `concepts/reconciler.md`, `forme.md` |
 | Install or update dependencies | `deps.md` | `contract-markdown.md` only if dependency references are ambiguous |
 | Debug a completed run | `prose.md` | `state/README.md` and the run's backend doc; then `std/evals/inspector` if available |
 
@@ -108,7 +108,7 @@ Activate this skill when the user:
 - asks to run, lint, test, inspect, upgrade, or write an OpenProse responsibility or function
 - references a `.prose.md` file with `kind:` frontmatter
 - references a `.prose` script
-- mentions OpenProse, Forme, Reactor, Responsibilities, ProseScript, Contract Markdown, or a Prose responsibility or function
+- mentions OpenProse, Forme, Responsibilities, ProseScript, Contract Markdown, or a Prose responsibility or function
 - wants reusable multi-agent orchestration
 
 ## Command Routing
@@ -256,7 +256,7 @@ user workspace for these docs.
 | `visual-source.md` | The typed image: a pixel-only visual source the compile *resolve* turns into `.prose.md` (a brief one rung above markdown) |
 | `forme.md` | Forme container wiring semantics |
 | `prose.md` | Prose VM execution semantics |
-| `responsibility-runtime.md` | Responsibility Runtime doctrine: Responsibilities, Reactor, compile, serve, run, and status |
+| `responsibility-runtime.md` | Responsibility Runtime doctrine: Responsibilities, the reconciler, compile, serve, run, and status |
 | `compiler/index.prose.md` | Bundled ProseScript compiler program |
 | `compiler/ir-v0.md` | Canonical repository IR contract emitted by compile and served by the harness |
 | `deps.md` | Dependency resolution and `prose install` |
@@ -264,7 +264,7 @@ user workspace for these docs.
 | `help.md` | User-facing help |
 | `concepts/README.md` | Responsibility Runtime concept index |
 | `concepts/responsibility.md` | `kind: responsibility` semantic contract |
-| `concepts/reactor.md` | The dumb deterministic reconciler: fingerprint compare/skip/propagate, receipts, and postcondition-gated commits (no judge) |
+| `concepts/reconciler.md` | The dumb deterministic reconciler: fingerprint compare/skip/propagate, receipts, and postcondition-gated commits (no judge) |
 | `state/README.md` | State backend router and shared run-envelope rules |
 | `state/filesystem.md` | Default state backend for Contract Markdown runs |
 | `primitives/session.md` | Subagent session and memory guidelines |
@@ -349,7 +349,7 @@ When writing a new responsibility or function, load:
 When writing a `### Execution` block or pattern delegation, also load
 `prosescript.md`.
 
-When authoring a multi-node Reactor pipeline (continuous, fan-out, or
+When authoring a multi-node responsibility pipeline (continuous, fan-out, or
 high-event-volume), also apply `guidance/authoring.md` → **Cost and Context
 Discipline**.
 
