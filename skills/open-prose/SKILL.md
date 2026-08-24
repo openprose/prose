@@ -40,10 +40,9 @@ After activation, choose the narrowest path that matches the user's intent:
 | Inspect or upgrade source layout | `changelog.md` | `contract-markdown.md`, `prosescript.md` if migration details require them |
 | Write a new `.prose.md` responsibility or function | `contract-markdown.md` | `guidance/tenets.md`, `guidance/authoring.md` |
 | Write pinned choreography | `prosescript.md` | `contract-markdown.md` if inside `### Execution` |
-| Compile or run a `.png`/`.svg` brief (a typed image) | `visual-source.md` | `forme.md` and `compiler/index.prose.md` to resolve + compile; `reactor.md` for `prose react <image>` |
+| Compile or run a `.png`/`.svg` brief (a typed image) | `visual-source.md` | `forme.md` and `compiler/index.prose.md` to resolve + compile |
 | Lint or review a responsibility or function | `contract-markdown.md` | `forme.md` for multi-responsibility wiring; `guidance/authoring.md` for design review |
 | Work on Responsibility Runtime, responsibility-oriented source, Reactor, compile, or serve semantics | `responsibility-runtime.md` | `compiler/index.prose.md`, `compiler/ir-v0.md`, `concepts/responsibility.md`, `concepts/reactor.md`, `forme.md` |
-| Stand up, run, or serve a Reactor for a standing goal — incl. `prose react "<use case>"` | `reactor.md` | `concepts/responsibility.md` and `contract-markdown.md` to author the contracts; `concepts/reactor.md` for reconciler semantics |
 | Install or update dependencies | `deps.md` | `contract-markdown.md` only if dependency references are ambiguous |
 | Debug a completed run | `prose.md` | `state/README.md` and the run's backend doc; then `std/evals/inspector` if available |
 
@@ -122,17 +121,11 @@ directly and embody the OpenProse VM. Do not run a `prose` shell binary or
 executing the contract. The shell executable is the agent runner, e.g.
 `claude -p "prose run foo.prose.md"` or `codex exec "prose run foo.prose.md"`.
 
-The one exception is the **`reactor` binary** (`@openprose/reactor-cli`), driven
-by `prose react`. It is a genuine deterministic host — a dumb reconciler that
-never calls an agent wrapper — so you *do* install and shell out to it. You
-author the `*.prose.md` contracts; the binary runs them. See `reactor.md`.
-
 | Command | Action |
 |---------|--------|
 | `prose compile [path] [--out <dir>]` | Load `responsibility-runtime.md`, then `compiler/index.prose.md`; run the pinned ProseScript compiler and emit concrete trigger registrations, activations, and Forme manifests into `<openprose-root>/dist/manifest.next.json` by default |
 | `prose compile <image.png\|.svg>` | Load `visual-source.md`. The image is a **typed image** (a visual brief, one rung above markdown). Run the *resolve* render: read the pixels against `visual-source.md`'s requirement tiers, emit `.prose.md` contract(s) into `<openprose-root>/src/` for ratification (the `prose write` discipline — interrupt, do not guess, on safety-bearing blanks), then run the ordinary compile. Compiling **is** the typecheck (acyclic + round-trip-stable) |
 | `prose serve` | Load and validate `<openprose-root>/dist/manifest.active.json`; register local cron and HTTP trigger adapters; launch ordinary bounded activations |
-| `prose react [use case...] [--start]` | Load `reactor.md`. Take an English standing goal to a running, inspectable Reactor on the real `reactor` binary: pick a home, ensure the harness, author the `kind: responsibility`/`gateway` contracts (per `concepts/responsibility.md` + `contract-markdown.md`) and `reactor.yml`, then `compile → serve` and show the user `reactor-devtools` replay. **Default prints the `reactor` commands for the user to run; `--start` drives the live lifecycle directly.** Unlike embodied `prose run`, the `reactor` binary is a real deterministic host you *do* shell out to. A **typed image** brief (`prose react <image.png\|.svg>`) is the visual peer of the English goal — also load `visual-source.md` and resolve the pixels to contracts first |
 | `prose run <file.prose.md>` | Detect Contract Markdown, load `contract-markdown.md`, select state with `state/README.md` plus the backend doc, then `forme.md` if multi-responsibility, then `prose.md` || `prose run <host>/<owner>/<repo>[/path]` | Resolve installed dependency contract, detect format, then route as above |
 | `prose run std/...` / `co/...` | Expand OpenProse package shorthand, resolve installed dependency contract, then route as above |
 | `prose run <image.png\|.svg>` | Load `visual-source.md`. `run` already does a compile step; for an image that step *includes the resolve*. So: resolve → compile → reconcile/execute. A single-node `kind: function` image runs as a called helper; a `kind: responsibility`/system image mounts a DAG (a lone `kind: gateway` image is refused, same as text) |
@@ -264,7 +257,6 @@ user workspace for these docs.
 | `forme.md` | Forme container wiring semantics |
 | `prose.md` | Prose VM execution semantics |
 | `responsibility-runtime.md` | Responsibility Runtime doctrine: Responsibilities, Reactor, compile, serve, run, and status |
-| `reactor.md` | Reactor CLI operator guide: the `reactor` binary, install, `reactor.yml`, the `prose react` playbook, driving and inspecting a running harness |
 | `compiler/index.prose.md` | Bundled ProseScript compiler program |
 | `compiler/ir-v0.md` | Canonical repository IR contract emitted by compile and served by the harness |
 | `deps.md` | Dependency resolution and `prose install` |
