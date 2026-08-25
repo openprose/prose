@@ -55,20 +55,12 @@ email take the digest down.
 16 nodes / 27 edges. `gateway.inbox-stream` is the single entry point; the graph
 is acyclic.
 
-## Run it
+## Conformance expectations
 
-The contracts in `src/` are harness-neutral. `prose compile` is the intelligent
-phase: a session embodies the VM and Forme wires the DAG (gateway → classifiers
-→ threader → digest) into the frozen IR. `prose serve` runs the dumb reconciler
-over it. Any conforming harness can serve the compiled IR the same way;
-replaying a run needs no key.
-
-```sh
-prose compile                                          # the intelligent phase → the frozen 16-node / 27-edge DAG
-cp dist/manifest.next.json dist/manifest.active.json   # promote the compiled IR
-prose serve                                            # the dumb reconciler: a node renders iff its memo key moved
-prose status                                           # dispositions, cost rollup, recent runs
-```
+A conforming harness proves dark sibling lanes, one render for duplicate
+newsletter content, contained classifier failure with zero fresh propagation, a
+digest built from healthy inputs, recovery, chain verification, and deterministic
+replay.
 
 A run leaves a keyless, chain-verifiable state on disk that any conforming
 harness can replay (the universal "aha"):
@@ -83,10 +75,4 @@ the shared newsletter thread renders ONCE; copies 2..5 skip; one failed email; d
 - `src/*.prose.md`: the gateway + classifier + threader + digest contracts.
 
 A run writes a keyless, chain-verifiable state (topology, labels, beats,
-receipts, world-models) that a conforming harness replays unchanged. The
-example is also covered by the reference harness's offline replay suite, which
-drives the **real** reconciler with deterministic fake renders (no key) and
-asserts the validity contract: topology, cold-render-then-skip,
-`cost.surprise_cause === wake.source`, `ATOMIC_FACET`, chain-verify,
-byte-determinism, and the failure-isolation invariant. An optional, key-gated live
-reliability check covers the same flow (a passing-skipped no-op offline).
+receipts, world-models) that a conforming harness replays unchanged.

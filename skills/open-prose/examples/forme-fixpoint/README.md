@@ -87,20 +87,11 @@ property, asserted off the persisted ledger.
    the Schedule Plan skips; the prior valid graph stands.
 8. **final-quiet**: back to flat; steady on the last valid active graph.
 
-## Run it
+## Conformance expectations
 
-The `.prose.md` contracts in `src/` are harness-neutral. `prose compile` is the
-intelligent phase: a session embodies the VM and Forme wires the DAG (7 nodes,
-2 entry gateways) into the frozen IR/topology. `prose serve` runs the dumb
-reconciler over it. Any conforming harness can serve the compiled IR the same
-way.
-
-```sh
-prose compile                                          # the intelligent compile → the frozen IR/topology (7 nodes, 2 entry gateways)
-cp dist/manifest.next.json dist/manifest.active.json   # promote the compiled IR
-prose serve                                            # the dumb reconciler over the live world-model + receipt surface
-prose status                                           # dispositions, cost, recent runs
-```
+A conforming harness proves deterministic cold-render-then-skip behavior and the
+active/candidate split: valid candidates move `active-graph`, while ambiguous or
+cyclic candidates move diagnostics but leave scheduling on the last valid graph.
 
 A run leaves a chain-verifiable state on disk that any conforming harness can
 replay keyless to watch the active/candidate split animate (a rejected
@@ -111,14 +102,7 @@ candidate moves diagnostics, the schedule never re-renders).
 - `src/*.prose.md`: the seven contracts (two gateways + five responsibilities).
 
 A replayed state holds the compiled topology and labels, the flat
-chain-verifiable receipt ledger, and per-node world-models. The example is also
-covered by the reference harness's offline replay suite, which drives the
-**real reconciler** with deterministic fake renders (no key) and asserts the
-full validity contract: it compiles, cold-renders then skips,
-`cost.surprise_cause === wake.source`, `ATOMIC_FACET` (no `"*"`), chain-verify,
-byte-determinism, and the active/candidate split. An optional, key-gated
-reliability check covers the same flow live (a passing-skipped no-op offline or
-keyless).
+chain-verifiable receipt ledger, and per-node world-models.
 
 ## Scope note (conservative deterministic version)
 

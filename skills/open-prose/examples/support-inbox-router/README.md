@@ -63,20 +63,11 @@ to — so each downstream wakes only when ITS channel moves.
 11 nodes / 16 edges. `gateway.support-inbox` is the single entry point; the graph
 is acyclic. `#### billing` is a fingerprinted facet with zero subscribers.
 
-## Run it
+## Conformance expectations
 
-The contracts in `src/` are harness-neutral. `prose compile` is the intelligent
-phase: a session embodies the VM and Forme wires the DAG (gateway → triage →
-router → channels) into the frozen IR. `prose serve` runs the dumb reconciler
-over it. Any conforming harness can serve the compiled IR the same way;
-replaying a run needs no key.
-
-```sh
-prose compile                                          # the intelligent phase → the frozen 11-node / 16-edge DAG
-cp dist/manifest.next.json dist/manifest.active.json   # promote the compiled IR
-prose serve                                            # the dumb reconciler: a node renders iff its memo key moved
-prose status                                           # dispositions, cost rollup, recent runs
-```
+A conforming harness proves spam leaves the router and listeners dark, each ham
+message moves only its channel facet, billing has no consumer, duplicate docs
+content skips, and self-driven freshness remains auditable at zero fresh cost.
 
 A run leaves a keyless, chain-verifiable state on disk that any conforming
 harness can replay — the universal "aha":
@@ -93,13 +84,3 @@ billing never lights a consumer — a facet may have zero subscribers
   contracts. The triage's `### Runtime` names the cheap classifier role
   (`anthropic/claude-haiku-4-5`); a harness may substitute another cheap model
   for the same role.
-
-The reference harness carries this example's replay fixture and two checks for
-it: an offline, zero-spend gate (the validity contract: topology, the SPAM
-tenet, the CHANNEL tenet, `cost.surprise_cause === wake.source`,
-`ATOMIC_FACET`, chain-verify, byte-determinism), and an optional key-gated live
-reliability check in which the cheap triage filter (`openai/gpt-5.4-mini`)
-routes a labeled set, graded by a smart judge (`anthropic/claude-opus-4.8`)
-against a strict-JSON rubric
-(`{spam_correct, channel_correct, content_preserved_verbatim, score}`) at
-reliability >= 0.8.

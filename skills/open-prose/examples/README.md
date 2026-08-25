@@ -12,18 +12,18 @@ the `### Requires` ↔ `### Maintains` edges at compile time; the dumb reconcile
 skips a render when neither the contract nor any subscribed input fingerprint
 moved, so cost scales with surprise, not the clock.
 
-Each example ships its `.prose.md` contracts under `src/`; see
-[Run an example](#run-an-example) below for how to compile and serve one.
+Each example ships harness-neutral `.prose.md` contracts under `src/`. Together,
+those contracts and the README define authored intent and the observable behavior
+a conforming harness should preserve.
 
 ---
 
 ## Intelligent-React substrate examples (grouped by property)
 
 These examples are authored to the full validity contract, each teaching one
-property of the reconciler. A conforming harness can replay any of them
-deterministically at zero model spend; the deterministic replay suites that
-exercise them ship with the reference harness (see the Harnesses section of
-the repository README).
+property of the reconciler. Harness implementations prove conformance to that
+intent independently; the corpus does not select an implementation or prescribe
+its commands and fixtures.
 
 ### Memoization & cost-scales-with-surprise
 
@@ -100,9 +100,7 @@ the repository README).
 Three examples wire a [primitive.dev](https://primitive.dev) email inbox in as an
 external-driven gateway — the outside world reaches the graph by sending mail —
 and keep a downstream world-model current from what arrives. Each is a distinct
-graph shape; the reference harness carries a deterministic replay gate and a
-key-gated LLM-as-judge live check (a cheap render model, a smart judge model)
-for each of them.
+graph shape with its own observable conformance expectations.
 
 - [support-inbox-router](./support-inbox-router/): a cheap-model **spam/content
   filter** + a **faceted router whose facets are channels**: a `triage` per email
@@ -170,27 +168,8 @@ source code or should keep their own release cadence.
   technical teams. The `grant-finder` repo remains the source of truth for that
   example.
 
-## Run an example
+## Conformance
 
-Open one example directory, then compile and serve it. `prose compile` is the
-only intelligent phase: a session embodies the VM, runs Forme to wire the
-responsibility DAG, and lowers each `### Maintains` into a deterministic
-canonicalizer, frozen into `dist/manifest.next.json`. Promote that manifest and
-`prose serve` runs the dumb reconciler over it: a node renders if and only if
-its memo key `(contract_fingerprint, input_fingerprints)` moved, and every
-commit lands as a receipt in the append-only ledger under `runs/`. Any
-conforming harness can serve the compiled IR the same way.
-
-```bash
-cd skills/open-prose/examples/surprise-cost
-prose compile                                          # the intelligent phase → dist/manifest.next.json
-cp dist/manifest.next.json dist/manifest.active.json   # promote the compiled IR
-prose serve                                            # the dumb reconciler over the active IR
-prose status                                           # dispositions, trigger plan, recent runs
-```
-
-A lone `kind: function` or `kind: responsibility` file can also be exercised
-directly with `prose run src/<file>.prose.md`; a `kind: gateway` cannot (it
-compiles into a trigger registration for `prose serve`).
-
-Each example README explains the standing goal, source layout, and what to try.
+The examples own authored intent and expected observable behavior. Harness
+implementations prove their own conformance independently, without implementation
+links or blanket run commands in this corpus.

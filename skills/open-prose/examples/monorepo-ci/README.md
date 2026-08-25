@@ -53,19 +53,11 @@ each subscribe to its `core-dist` compiled-output facet. `pkg-utils` and
   build's recorded `RED` status and renders `merge: BLOCKED`. The fix lands and
   the gate returns to `GREEN`.
 
-## Run it
+## Conformance expectations
 
-The `.prose.md` contracts under `src/` work with any harness. `prose compile` is
-the intelligent phase: the session embodies the VM and Forme wires the 22-node /
-48-edge DAG into the frozen IR. `prose serve` runs the dumb reconciler over it.
-Any conforming harness can serve the compiled IR the same way.
-
-```sh
-prose compile                                          # the session embodies the VM → the frozen DAG (22 nodes / 48 edges)
-cp dist/manifest.next.json dist/manifest.active.json   # promote the compiled IR
-prose serve                                            # the dumb reconciler over the live world-models
-prose status                                           # dispositions, cost, recent runs
-```
+A conforming harness proves zero-fresh quiet scans, leaf-lane isolation, bounded
+hub fan-out, failed-test containment, merge-gate BLOCKED and recovery states,
+receipt-chain verification, and byte-identical replay.
 
 ## Replay it keyless (no model key)
 
@@ -90,10 +82,3 @@ the hub beat widen the lane, then the RED beat block the merge.
    timeline (cold → quiet skip → leaf diff → hub fan-out → RED → recover → quiet)
    and freezes the result into a state-dir. The reconciler replays it; a node
    renders IFF its memo key `(contract_fingerprint, input_fingerprints)` moved.
-
-The example is covered by the reference harness's offline replay suite, which
-drives the **real reconciler** with deterministic fake renders (no key) and
-asserts the receipts / topology / labels are byte-identical across runs, that
-a quiet re-wake spends `fresh == 0`, that a contract edit forces a render, that
-`cost.surprise_cause === wake.source` on every receipt, and that
-`verifyReceiptChain` passes over the raw on-disk receipts.

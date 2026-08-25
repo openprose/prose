@@ -46,21 +46,11 @@ or appends to its decision history.
   the `risk` facet put, so the alert feed never wakes. Only a real verdict flip
   spends fresh tokens downstream.
 
-## Run it
+## Conformance expectations
 
-The contract is harness-neutral. `prose compile` is the intelligent phase: a
-session embodies the VM and Forme wires the DAG (signals → renewal-risk →
-alerts) into the frozen IR. `prose serve` exposes the gateway's trigger and runs
-the dumb reconciler over the maintained truth; its receipt ledger is the
-chain-verifiable audit trail. Any conforming harness can serve the compiled IR
-the same way; compiling is the only step that spends model work.
-
-```sh
-prose compile                                          # the intelligent phase → the frozen DAG (signals → renewal-risk → alerts)
-cp dist/manifest.next.json dist/manifest.active.json   # promote the compiled IR
-prose serve                                            # expose the gateway trigger + the maintained truth
-prose status                                           # dispositions, cost, the receipt ledger
-```
+A conforming harness proves account-lane isolation, zero-fresh quiet replay, a
+verdict-stable re-judgement that leaves the alert feed dark, and an alert wake
+only when the `risk` facet changes.
 
 ## Replay any run you produce
 
@@ -73,16 +63,6 @@ dispositions rendered · skipped · failed
 surprise-cause  external · input · self
 cost rollup (tokens) ...  chain-verify ok
 ```
-
-## How it is exercised
-
-The example is covered by the reference harness's offline replay suite, which
-drives the **real reconciler** with deterministic fake renders (no key),
-then asserts the six validity-contract properties off the persisted ledger:
-compile artifacts, cold-renders-then-skips, `cost.surprise_cause == wake.source`,
-`ATOMIC_FACET` (never `"*"`), `verifyReceiptChain`, and byte-deterministic
-regeneration. An optional reliability check covers the same flow live; it is a
-passing-skipped no-op without a key or when offline.
 
 ## Files
 

@@ -86,27 +86,13 @@ The check pins `byCause.self.fresh === 0`: if a future edit ever introduces a
 self-wake, the offline test goes red and forces the topology change to be
 declared on purpose.
 
-## Run it (compile → serve from the contract)
+## Conformance expectations
 
-The `.prose.md` contract under `src/` works with any harness. `prose compile` is
-the intelligent phase: the SKILL session embodies the VM and Forme wires the
-12-node / 23-edge DAG into the frozen IR. `prose serve` stands the relay up and
-runs the dumb reconciler over it, waking on new signals. Any conforming harness
-can serve the compiled IR the same way; compiling is the only step that spends
-model work.
+A conforming harness proves peer blindness, per-consumer masked-facet isolation,
+full-provenance synthesis, diamond single-wake, zero-fresh quiet replay, no
+self-sourced spend, receipt-chain verification, and byte-deterministic artifacts.
 
-```sh
-prose compile                                          # the intelligent phase → the frozen DAG (12 nodes / 23 edges)
-cp dist/manifest.next.json dist/manifest.active.json   # promote the compiled IR
-prose serve                                            # stand the relay up; a node renders iff its memo key moved
-prose status                                           # dispositions, cost, recent runs
-```
-
-## What the offline check proves
-
-The example is covered by the reference harness's offline replay suite, which
-drives the REAL reconciler with deterministic fake renders (no key) and asserts
-the validity contract:
+## Observable invariants
 
 1. compiles to the frozen artifact set (valid `TopologyWorldModel`: 12 nodes, 23
    edges, single entry gateway, acyclic; `labels.json` + flat `receipts.json` +

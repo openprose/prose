@@ -47,20 +47,11 @@ it (U07).
 | U10     | **failure containment**: a failed receipt corrupts no prior truth                  | alert-state `failed`                                                    |
 | U12     | **deterministic replay**: byte-identical regeneration                              | a replayed run reproduces the same receipt ledger                       |
 
-## Run it
+## Conformance expectations
 
-The contract (`src/*.prose.md`) is harness-neutral. `prose compile` is the
-intelligent phase: a session embodies the VM, Forme wires the DAG, and each
-`### Maintains` lowers to a deterministic canonicalizer. `prose serve` runs the
-dumb reconciler over that frozen IR. Any conforming harness can serve the
-compiled IR the same way; compiling is the only step that spends model work.
-
-```sh
-prose compile                                          # the intelligent phase → the frozen DAG (7 nodes, 1 diamond)
-cp dist/manifest.next.json dist/manifest.active.json   # promote the compiled IR
-prose serve                                            # the dumb reconciler: a node renders iff its memo key moved
-prose status                                           # dispositions, cost, recent runs
-```
+A conforming harness proves U00-U12: cold propagation, memo-skip, facet and
+projection isolation, diamond single-wake, function boundaries, no-op self-
+continuity, failure containment, chain verification, and byte-identical replay.
 
 ## Replay any run you produce
 
@@ -83,7 +74,5 @@ chain-verifiable receipt ledger, and per-node world-models (each with a
 The session **embodies the VM**: it compiles the contracts into the deterministic
 artifacts (topology, world-models, receipts). The dumb reconciler then just
 replays them: a node renders **iff** its memo key
-`(contract_fingerprint, input_fingerprints)` moved. The example is exercised by
-the reference harness's offline replay suite, which drives the real reconciler
-with deterministic fake renders (no key) and asserts byte-identical output, so
-a drift between this contract and the harness fails in that harness's CI.
+`(contract_fingerprint, input_fingerprints)` moved. Deterministic renders make
+these expectations checkable without model spend.

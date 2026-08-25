@@ -67,20 +67,12 @@ World  Runtime Compile Contract /Test  /Signpost
 
 16 mounted nodes; the planning inbox is a phantom ingress edge, not a node.
 
-## Run it
+## Conformance expectations
 
-The `.prose.md` contracts in `src/` work with any harness. `prose compile` is
-the intelligent phase: a session embodies the VM and Forme wires the 16-node
-DAG into the frozen IR. `prose serve` runs the dumb reconciler over it; the
-receipt ledger it writes is the audit trail. Any conforming harness can serve
-the compiled IR the same way.
-
-```sh
-prose compile                                          # the intelligent phase → the frozen 16-node DAG
-cp dist/manifest.next.json dist/manifest.active.json   # promote the compiled IR
-prose serve                                            # the dumb reconciler: a node renders iff its memo key moved
-prose status                                           # dispositions, cost, the receipt trail
-```
+A conforming harness proves the graph stays at 16 nodes, extra work remains
+`unassigned_work`, lane-local changes wake one lane, foundation changes wake all
+six lanes once, rejected work never integrates, and quiet replay adds no fresh
+cost.
 
 ### Replay any run you produce
 
@@ -98,11 +90,7 @@ chain-verifiable receipt ledger, and the per-node world-models, walking the
 trajectory cold-boot → quiet → lane-local → foundation-fanout → review-blocks →
 quiet bookend.
 
-## What it asserts
-
-The example is covered by the reference harness's offline replay suite, which
-drives the REAL reconciler with deterministic fake renders (no key) and asserts
-off the persisted ledger:
+## Observable invariants
 
 1. **Frozen artifacts.** `compile/topology.json` is a valid `TopologyWorldModel`
    (16 nodes, a single entry gateway, `acyclic:true`), `labels.json` is present,

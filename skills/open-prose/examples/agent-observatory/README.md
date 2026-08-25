@@ -57,20 +57,11 @@ meta-generator as a standing node, and dual MD + HTML artifacts.
 - **Dual artifacts:** Agent Index (Markdown) + Agent Dashboard (HTML) re-render
   together only when DashboardData moved.
 
-## Run it
+## Conformance expectations
 
-The contract under `src/` is harness-neutral. `prose compile` is the intelligent
-phase: a session embodies the VM, Forme wires the 14-node / 22-edge DAG, and
-each `### Maintains` lowers to a deterministic canonicalizer. `prose serve` runs
-the dumb reconciler over that frozen IR. Any conforming harness can serve the
-compiled IR the same way.
-
-```sh
-prose compile                                          # the intelligent phase → the frozen 14-node / 22-edge DAG
-cp dist/manifest.next.json dist/manifest.active.json   # promote the compiled IR
-prose serve                                            # the dumb reconciler: a node renders iff its memo key moved
-prose status                                           # dispositions, cost rollup, recent runs
-```
+A conforming harness proves deterministic replay, quiet memo-skips, one-runtime
+lane isolation, one wake at the diamond fan-in, and a single expensive concept-
+clusterer spike only when its gate moves.
 
 ## Replay any run you produce
 
@@ -79,5 +70,3 @@ flat receipt ledger, and per-node world-models. Any conforming harness can
 replay it with no model key to walk the cold cascade, the quiet flat line, the
 one-runtime delta, the diamond single-wake, and the single tall
 Concept-Clusterer spike.
-
-The example is also exercised by the reference harness's offline replay suite.

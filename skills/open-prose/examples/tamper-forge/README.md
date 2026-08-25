@@ -49,10 +49,8 @@ mutation of a _receipt_ field); they are **not** cryptographic **non-repudiation
 (the v1 signer is null; a re-stamped trail heals; the world-model artifact layer is
 not covered). Never let an audit claim more than (a)–(d) prove.
 
-**Exit codes (CI-safe):** the reference harness's chain-verify exits non-zero on
-a broken chain whether or not it is asked for JSON output, so a CI gate can rely
-on the exit code. (An empty/unreadable ledger is also a non-zero exit, never a
-green "ALL OK" on zero receipts.)
+**Exit codes (CI-safe):** chain verification must report a broken or unreadable
+chain as failure, never a green result for zero receipts.
 
 ## Replay it keyless (the universal "aha")
 
@@ -64,26 +62,13 @@ dispositions rendered=… · skipped=… · failed=0
 chain-verify ok        <- the honest baseline the attacks then break
 ```
 
-## Run it (compile → serve from the contract)
+## Conformance expectations
 
-The `.prose.md` contract under `src/` works with any harness. `prose compile` is
-the intelligent phase: the SKILL session embodies the VM and Forme wires the
-two-node lens into the frozen IR. `prose serve` stands the audit up over the
-frozen ledger and re-wakes it on a new trail. Any conforming harness can serve
-the compiled IR the same way; compiling is the only step that spends model work.
+A conforming harness proves a stale-hash edit breaks the chain, a complete
+forward re-stamp heals it, a forged signature scheme is rejected, and tampering
+with a world-model outside the receipt envelope remains outside chain coverage.
 
-```sh
-prose compile                                          # the intelligent phase → the frozen lens (2 nodes)
-cp dist/manifest.next.json dist/manifest.active.json   # promote the compiled IR
-prose serve                                            # stand the audit up; re-wake it on a new trail
-prose status                                           # the auditor's verdict + boundary, recent runs
-```
-
-## What the offline check proves
-
-The example is covered by the reference harness's offline replay suite, which
-drives the REAL reconciler with deterministic fake renders (no key) and asserts
-the validity contract **plus** the four audit facts:
+## Observable invariants
 
 1. compiles to the frozen artifact set (valid `TopologyWorldModel`, single entry
    gateway, acyclic; `labels.json` + flat `receipts.json` + `world-models/<HEX>/…`

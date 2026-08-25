@@ -60,20 +60,11 @@ acyclic. (The `speaking` register facet is a *zero-consumer-until-it-moves* lane
 no speaking inquiry is delivered in the scripted episode, so it never wakes — the
 same discipline that keeps the dark lanes still.)
 
-## Run it
+## Conformance expectations
 
-The contracts in `src/` are harness-neutral. `prose compile` is the intelligent
-phase: a session embodies the VM and Forme wires the DAG (gateway → filters →
-register → briefing) into the frozen IR. `prose serve` runs the dumb reconciler
-over it. Any conforming harness can serve the compiled IR the same way;
-replaying a run needs no key.
-
-```sh
-prose compile                                          # the intelligent phase → the frozen 8-node / 14-edge DAG
-cp dist/manifest.next.json dist/manifest.active.json   # promote the compiled IR
-prose serve                                            # the dumb reconciler: a node renders iff its memo key moved
-prose status                                           # dispositions, cost rollup, recent runs
-```
+A conforming harness proves junk leaves the graph dark, high-stakes inquiries
+stop at `needs_human` with `auto_reply:false`, quiet re-polls skip, and the
+`public` projection never contains sender PII.
 
 A run leaves a keyless, chain-verifiable state on disk that any conforming
 harness can replay — the universal "aha":
@@ -87,14 +78,3 @@ the public view carries kind + ask, never the sender
 
 - `src/*.prose.md` — the press-inbox gateway + relevance-filter + opportunity-
   register + briefing contracts (the durable intent the fake renders mirror).
-
-The reference harness carries this example's replay fixture and two checks for
-it: an offline, zero-spend gate (topology, cold-render-then-skip,
-`cost.surprise_cause === wake.source`, `ATOMIC_FACET`, chain-verify,
-byte-determinism) plus the two tenets — the human gate holds (`needs_human` +
-`auto_reply === false`) and the public projection carries NONE of the
-owner-only sender PII — and an optional key-gated live reliability check that
-drives the real relevance-filter render on four labelled inquiries (a PR blast +
-one of each kind), reads the published truth, and asks a smart judge to grade
-`{relevance_correct, kind_correct, no_pii_leak_in_public, score}` at reliability
-≥ 0.8.

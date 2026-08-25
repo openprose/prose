@@ -42,20 +42,11 @@ external-driven`; projects the corpus into one `leaf:<id>` facet per finding.
 - `src/root-synthesis.prose.md`: the apex; fans in from the three sub-syntheses;
   the heaviest node and the dominant fresh tick.
 
-## Run it
+## Conformance expectations
 
-The `.prose.md` contracts are harness-neutral. `prose compile` is the
-intelligent phase: a session embodies the VM and Forme wires the tree (gateway
-→ leaves → sub-syntheses → root) into the frozen DAG. `prose serve` exposes the
-standing graph and runs the dumb reconciler over it. Any conforming harness can
-serve the compiled IR the same way; replaying a run needs no key.
-
-```sh
-prose compile                                          # the intelligent phase → the frozen tree (gateway → leaves → sub-synth → root)
-cp dist/manifest.next.json dist/manifest.active.json   # promote the compiled IR
-prose serve                                            # expose the standing graph; a node renders iff its memo key moved
-prose status                                           # dispositions, cost, recent runs
-```
+A conforming harness proves quiet zero-fresh replay, one-leaf changes that wake
+only the leaf's ancestor path, dark sibling branches, contained corrupt-leaf
+failure, chain verification, and byte-identical regeneration.
 
 A run leaves a state on disk that any conforming harness can replay keyless:
 
@@ -84,9 +75,3 @@ and watch only its ancestor path re-synthesize.
   world-models/<hexNodeId>/published.json + versions/sha256_*.bin
   beats.json              # the scripted beat timeline (cold -> quiet -> surprise)
 ```
-
-The example is covered by the reference harness's offline replay suite, which
-drives the **real reconciler** with deterministic fake renders (no key):
-it asserts the topology compiles, a quiet re-wake skips the whole tree at zero
-fresh, `cost.surprise_cause === wake.source` on every receipt, the ledger
-chain-verifies, and two generations are byte-identical, all offline at zero spend.
