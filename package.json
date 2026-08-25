@@ -9,5 +9,10 @@
   },
   "devDependencies": {
     "vitest": "^4.1.8"
+  },
+  "pnpm": {
+    "overrides": {
+      "vite": "7.3.5"
+    }
   }
 }
