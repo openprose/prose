@@ -13,3 +13,13 @@ not installed.
 See `skills/open-prose/contract-markdown.md` (Skills) and
 `skills/open-prose/compiler/index.prose.md` (`skills_resolver`) for the full
 specification.
+
+## Run it
+
+```bash
+prose compile
+```
+
+This is a lone `kind: function` contract, so there is nothing to serve: the
+compile either resolves the declared skill or fails closed with
+`skill_unresolved`.

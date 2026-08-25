@@ -42,9 +42,10 @@ own repository.
   same content); the spec keeps the contract any conforming harness must
   satisfy (`spec/02-ReactorHarness.md` → `spec/02-Harness.md`, the contract
   part only) and the authoring pattern (`spec/03-ReactorPattern.md` →
-  `spec/03-AuthoringPattern.md`); the example READMEs teach the skill's own
-  verbs. The README's "Harnesses" section is the one pointer to the reference
-  harness.
+  `spec/03-AuthoringPattern.md`); the example READMEs stay harness-neutral
+  (authored intent plus observable behavior; only the Quick Start examples
+  carry the `prose compile → serve` flow). The README's "Harnesses" section
+  is the one pointer to the reference harness.
 - **A `harness-surface` conformance suite** keeps it that way: it fails any
   change that reintroduces harness product tokens, or the product name for the
   run-phase model, anywhere outside the README pointer and the skill changelog.

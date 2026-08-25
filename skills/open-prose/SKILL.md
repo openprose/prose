@@ -123,10 +123,11 @@ executing the contract. The shell executable is the agent runner, e.g.
 
 | Command | Action |
 |---------|--------|
-| `prose compile [path] [--out <dir>]` | Load `responsibility-runtime.md`, then `compiler/index.prose.md`; run the pinned ProseScript compiler and emit concrete trigger registrations, activations, and Forme manifests into `<openprose-root>/dist/manifest.next.json` by default |
+| `prose compile [path] [--out <dir>]` | Load `responsibility-runtime.md`, then `compiler/index.prose.md`; run the pinned ProseScript compiler and emit the compile-phase IR — the topology world-model (nodes, edges, entry points), per-node canonicalizers and postcondition validators, frozen contract fingerprints, and diagnostics — into `<openprose-root>/dist/manifest.next.json` by default |
 | `prose compile <image.png\|.svg>` | Load `visual-source.md`. The image is a **typed image** (a visual brief, one rung above markdown). Run the *resolve* render: read the pixels against `visual-source.md`'s requirement tiers, emit `.prose.md` contract(s) into `<openprose-root>/src/` for ratification (the `prose write` discipline — interrupt, do not guess, on safety-bearing blanks), then run the ordinary compile. Compiling **is** the typecheck (acyclic + round-trip-stable) |
-| `prose serve` | Load and validate `<openprose-root>/dist/manifest.active.json`; register local cron and HTTP trigger adapters; launch ordinary bounded activations |
-| `prose run <file.prose.md>` | Detect Contract Markdown, load `contract-markdown.md`, select state with `state/README.md` plus the backend doc, then `forme.md` if multi-responsibility, then `prose.md` || `prose run <host>/<owner>/<repo>[/path]` | Resolve installed dependency contract, detect format, then route as above |
+| `prose serve` | Load and validate `<openprose-root>/dist/manifest.active.json`, which is promoted from `manifest.next.json` with `cp dist/manifest.next.json dist/manifest.active.json`; register local cron and HTTP trigger adapters; launch ordinary bounded activations |
+| `prose run <file.prose.md>` | Detect Contract Markdown, load `contract-markdown.md`, select state with `state/README.md` plus the backend doc, then `forme.md` if multi-responsibility, then `prose.md` |
+| `prose run <host>/<owner>/<repo>[/path]` | Resolve installed dependency contract, detect format, then route as above |
 | `prose run std/...` / `co/...` | Expand OpenProse package shorthand, resolve installed dependency contract, then route as above |
 | `prose run <image.png\|.svg>` | Load `visual-source.md`. `run` already does a compile step; for an image that step *includes the resolve*. So: resolve → compile → reconcile/execute. A single-node `kind: function` image runs as a called helper; a `kind: responsibility`/system image mounts a DAG (a lone `kind: gateway` image is refused, same as text) |
 | `prose write [request...]` | Interactive-by-default authoring: load `contract-markdown.md`, `guidance/tenets.md`, and `guidance/authoring.md`; run `std/ops/prose-author`; scan the local landscape read-only, decide shape/root/path, load shape-specific guidance, ask a small number of targeted `ask_user` questions when the host can support them, then return a fully validated source package. If the caller or host marks the run non-interactive, return `unresolved-intent` with the missing decisions instead of guessing. Do not apply files unless the caller explicitly asks for that follow-up |
@@ -287,7 +288,7 @@ another repository uses `repo/.agents/prose`. User-global work uses
 | `<openprose-root>/dist/` | Compiled intent and served manifests |
 | `<openprose-root>/runs/` | Activation receipts and run artifacts |
 | `<openprose-root>/state/agents/` | Durable cross-run agents |
-| `<openprose-root>/state/responsibilities/` | Durable per-responsibility world-model and signed, append-only receipt ledger |
+| `<openprose-root>/state/world-model/` | Durable per-responsibility world-model and signed, append-only receipt ledger |
 | `<openprose-root>/deps/` | Installed dependencies, gitignored |
 | `<openprose-root>/prose.lock` | Dependency lockfile, committed |
 | `<openprose-root>/.env` | Runtime configuration |

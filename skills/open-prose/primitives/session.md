@@ -102,7 +102,7 @@ world-model by reference:
 
 ```
 Your Inputs (by reference):
-- advisories: <openprose-root>/state/world-models/advisory-feed/published/
+- advisories: <openprose-root>/state/world-model/advisory-feed/published/
   (pinned version: sha256:…)
 ```
 
@@ -120,7 +120,7 @@ canonical artifact lives; query it by reference, never pre-stuffed into context:
 
 ```
 Your prior world-model:
-  <openprose-root>/state/world-models/{node}/published/
+  <openprose-root>/state/world-model/{node}/published/
 ```
 
 Read it first. This is your continuity. Build on it: update the facts that moved,
@@ -184,7 +184,7 @@ The truth you maintain is committed to the **canonical world-model artifact** �
 content-addressable directory (a single file is the degenerate case):
 
 ```
-Your world-model: <openprose-root>/state/world-models/{node}/workspace/
+Your world-model: <openprose-root>/state/world-model/{node}/workspace/
   → committed to .../{node}/published/ on a successful render
 ```
 
@@ -291,7 +291,7 @@ change."
 
 ```
 Render committed: vuln-monitor
-World-model: state/world-models/vuln-monitor/published/ (sha256:def…)
+World-model: state/world-model/vuln-monitor/published/ (sha256:def…)
 Receipt: rendered
 Fingerprints moved: { @atomic, critical }
 Summary: 3 new critical exposures, 1 cleared; carried 41 unchanged.

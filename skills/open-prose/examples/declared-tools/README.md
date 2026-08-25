@@ -12,3 +12,13 @@ host tool. When `prose compile` is run against this directory, the compiler's
 See `skills/open-prose/contract-markdown.md` (Tools) and
 `skills/open-prose/compiler/index.prose.md` (`tools_resolver`) for the full
 specification.
+
+## Run it
+
+```bash
+prose compile
+```
+
+This is a lone `kind: function` contract, so there is nothing to serve: the
+compile either resolves the declared tool or fails closed with
+`tool_unresolved`.

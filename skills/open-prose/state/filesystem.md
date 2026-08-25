@@ -61,8 +61,8 @@ artifact, never the truth.
 │   └── tests/
 │       └── research-system.test.prose.md
 ├── dist/                                   # Compiled intent (topology WM + canonicalizers + validators)
-│   ├── intent.next.json                    # Newly compiled, pending activation
-│   └── intent.active.json                  # Currently active compiled intent
+│   ├── manifest.next.json                  # Newly compiled, pending activation
+│   └── manifest.active.json                # Currently active compiled intent
 ├── runs/
 │   └── {YYYYMMDD}-{HHMMSS}-{random}/
 │       ├── compiled-intent.json            # Topology world-model + canonicalizers + validators (snapshot)

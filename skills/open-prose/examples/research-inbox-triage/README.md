@@ -4,8 +4,13 @@
 
 ```bash
 prose compile
+cp dist/manifest.next.json dist/manifest.active.json   # promote the compiled IR
 prose serve
 ```
+
+`prose serve` then waits for the `inbox-gateway` to fire: an inbound `POST
+/inbox/items`, a local inbox item created or updated, or the weekday 09:00 check
+for untriaged items, before anything renders.
 
 ## What This Repository Does
 

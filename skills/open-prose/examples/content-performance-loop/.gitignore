@@ -1,6 +1,6 @@
 dist/manifest.*.json
 runs/*
-state/responsibilities/*
+state/world-model/*
 state/agents/*
 deps/*
 !dist/.gitkeep

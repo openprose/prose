@@ -4,8 +4,13 @@
 
 ```bash
 prose compile
+cp dist/manifest.next.json dist/manifest.active.json   # promote the compiled IR
 prose serve
 ```
+
+`prose serve` then waits for the `evidence-review-events` gateway to fire: an
+inbound `POST /webhooks/compliance/evidence` or the Monday 09:00 scheduled
+review, before anything renders.
 
 ## What This Repository Does
 
