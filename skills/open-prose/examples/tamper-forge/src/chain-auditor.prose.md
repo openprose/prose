@@ -24,8 +24,9 @@ This responsibility teaches four facts as assertions, escalating in subtlety:
 3. a forged `sig.scheme` (claiming a signed posture the run never had) is
    REJECTED;
 4. the KNOWN BOUNDARY (the documented `world-model` integrity gap): editing a
-   `world-models/<hex>/published.json` artifact while leaving `receipts.json`
-   intact currently PASSES the receipts chain-verify, because the maintained truth
+   `world-models/<hex>/published.json` artifact (one harness's replay layout)
+   while leaving `receipts.json` intact currently PASSES the receipts
+   chain-verify, because the maintained truth
    sits outside the receipt integrity envelope. The audit asserts this CURRENT
    behavior so it cannot regress silently.
 
@@ -51,8 +52,9 @@ trail does not move the verdict.
 The honest, asserted limits of v1 receipt verification, kept as immaterial
 documentary state so a doc-only edit does not falsely re-render the verdict:
 tamper-evidence is NOT non-repudiation under a null signer; a re-stamped trail
-heals the chain; and a `world-models/<hex>/published.json` edit with an intact
-`receipts.json` is NOT caught by `receipts verify` today.
+heals the chain; and a `world-models/<hex>/published.json` edit (one harness's
+replay layout) with an intact `receipts.json` is NOT caught by `receipts verify`
+today.
 
 The auditor self-polices these postconditions before signing its verdict — there
 is no separate judge beat. The verdict is read by reference against the prior

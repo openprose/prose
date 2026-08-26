@@ -20,7 +20,9 @@ lanes; verification and a report/signpost index close it out.
 > **The work plan may change lane CONTENTS; it may not mutate the GRAPH.**
 
 - Work the six fixed lanes cannot own becomes `unassigned_work` on the work-plan's
-  own truth (**never a 7th mounted node**). The topology is frozen at **16 nodes**.
+  own truth (**never a 7th mounted node**). The expanded topology is frozen at
+  **16 nodes**. `src/` ships the 6 authored contracts; the 16-node topology is
+  what a harness's expansion produces from them.
 - A change to ONE lane's contents lights **one lane**; the five siblings stay dark
   (independent per-lane facet tokens).
 - A change to the **foundation** fans out to **all six lanes once**: the
@@ -65,11 +67,12 @@ World  Runtime Compile Contract /Test  /Signpost
         Signpost Index   Implementation Report
 ```
 
-16 mounted nodes; the planning inbox is a phantom ingress edge, not a node.
+16 mounted nodes in the expanded topology; the planning inbox is a phantom
+ingress edge, not a node.
 
 ## Conformance expectations
 
-A conforming harness proves the graph stays at 16 nodes, extra work remains
+A conforming harness proves the expanded topology stays at 16 nodes, extra work remains
 `unassigned_work`, lane-local changes wake one lane, foundation changes wake all
 six lanes once, rejected work never integrates, and quiet replay adds no fresh
 cost.
@@ -92,11 +95,12 @@ quiet bookend.
 
 ## Observable invariants
 
-1. **Frozen artifacts.** `compile/topology.json` is a valid `TopologyWorldModel`
-   (16 nodes, a single entry gateway, `acyclic:true`), `labels.json` is present,
+1. **Frozen artifacts.** In one harness's replay layout, `compile/topology.json`
+   is a valid `TopologyWorldModel` (16 expanded nodes, a single entry gateway,
+   `acyclic:true`), `labels.json` is present,
    `receipts.json` is a flat root file, and each `world-models/<hexNodeId>/` holds
    `published.json` + `versions/sha256_*.bin`.
-2. **Dispositions.** Cold-start renders all 16 nodes; a byte-identical re-wake
+2. **Dispositions.** Cold-start renders all 16 expanded nodes; a byte-identical re-wake
    memo-SKIPS them (a skip carries zero fresh and wakes nothing).
 3. **`cost.surprise_cause === wake.source`** on every receipt (read off
    `ctx.wake.source`, never hardcoded).
@@ -107,7 +111,7 @@ quiet bookend.
 
 Plus the tenet, encoded as IP00–IP06:
 
-- **IP00**: extra work is `unassigned_work`, the graph stays at 16 nodes.
+- **IP00**: extra work is `unassigned_work`, the expanded topology stays at 16 nodes.
 - **IP03**: a lane-local change lights one lane; `propagationTargets` confirms the
   five siblings stay dark.
 - **IP02**: a foundation change fans out to all six lanes.

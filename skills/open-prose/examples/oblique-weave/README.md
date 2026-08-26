@@ -99,5 +99,7 @@ cost rollup (tokens)  fresh=...  chain-verify ok
   and the terminal Novelty Auditor.
 - A run writes a keyless, chain-verifiable state: a flat `receipts.json`,
   `compile/topology.json` + `compile/labels.json`, and
-  `world-models/<hexNodeId>/{published.json, versions/sha256_*.bin}`, the exact
-  shape a conforming harness replays.
+  `world-models/<hexNodeId>/{published.json, versions/sha256_*.bin}`: one
+  harness's replay layout. The skill's native layout is
+  `state/world-model/{node}/` with a per-node `receipts.jsonl`
+  (`state/filesystem.md`).

@@ -330,8 +330,9 @@ means "embody the OpenProse VM and execute this contract here, in-session" — t
 agent maps the primitives onto its own host tools (spawning sub-sessions, reading
 and writing run state, checking env). It never parses `.prose` semantics
 mechanically; the SKILL-loaded session embodies the VM. Continuous, *served*
-responsibilities are run by a conforming harness outside the session
-([02-Harness.md](./02-Harness.md)).
+responsibilities are reconciled in-session by `prose serve` (a bounded reconcile
+pass); a conforming harness may deliver the same lifecycle durably, outside the
+session ([02-Harness.md](./02-Harness.md)).
 
 ### OpenProse Root
 
@@ -719,13 +720,18 @@ SKILL-loaded session performs it by mapping to host tools — not a shell-out to
 installed package. The legacy `@openprose/prose-cli` (an Oclif binary) has been
 removed.
 
-The served, continuously-reconciled lifecycle for responsibilities — repository-IR
-`compile`, `run`, `serve`, and observability — is delivered by a conforming
-harness ([02-Harness.md](./02-Harness.md)), outside the session. The in-session
-command vocabulary:
+The SKILL also embodies the served lifecycle for responsibilities in-session:
+`prose compile` emits the compile-phase IR, `prose serve` runs a bounded reconcile
+pass over the active manifest, and `prose status` reads the receipt ledger back.
+A conforming harness ([02-Harness.md](./02-Harness.md)) may deliver the same
+lifecycle durably, outside the session, behind a standing cron or HTTP ingress.
+The in-session command vocabulary:
 
 | Command | Role |
 | --- | --- |
+| `prose compile [path] [--out <dir>]` | Emit the compile-phase IR (topology, canonicalizers, validators, fingerprints, diagnostics) into `dist/manifest.next.json` |
+| `prose serve` | Validate `dist/manifest.active.json`, register local cron and HTTP trigger adapters, launch bounded activations |
+| `prose status` | Summarize active IR, diagnostics, trigger plan, recent runs, and responsibility status from the receipt ledger |
 | `prose run <file.prose.md\|package/handle>` | Run a responsibility or a called function in-session |
 | `prose test <path>` | Execute `kind: test` contracts |
 | `prose lint <file.prose.md>` | Validate source structure and contract consistency |
@@ -737,8 +743,8 @@ command vocabulary:
 | `prose write [request...]` | Generate validated OpenProse source from rough English or pseudo-Prose (backed by `std/ops/prose-author`) |
 
 The host for an in-session `prose run` is the coding agent itself (Codex- or
-Claude-Code-style); there is no harness-selection binary. The served
-`compile → run → serve` lifecycle — its durable continuity loop, HTTP trigger
+Claude-Code-style); there is no harness-selection binary. The durable form of
+the `compile → run → serve` lifecycle — a standing continuity loop, HTTP trigger
 surface, and connector ingress — is the harness's, specified in
 [02-Harness.md](./02-Harness.md).
 

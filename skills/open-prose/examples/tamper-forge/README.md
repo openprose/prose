@@ -41,7 +41,7 @@ byte-identical re-read does not move it, so a clean re-audit memo-**skips**
 | **(a)** | inflate `cost.tokens.fresh`, keep the stale `content_hash`                                                                                                                        | `verifyReceiptChain`        | **CHAIN-VERIFY FAILED**: the body no longer hashes to its recorded `content_hash`                                                                                                                                                                                                               |
 | **(b)** | **full forward re-stamp**: recompute the public `content_hash` via `computeReceiptContentHash` _and_ relink every successor's `prev` to the new hash, node by node down the chain | `computeReceiptContentHash` | chain **PASSES** again, **honest book-keeping, NOT non-repudiation**: a _single_ receipt re-stamp would orphan the next receipt's `prev` and still FAIL; only re-stamping forward through the whole chain heals it, and under the v1 null signer, whoever rewrites the file can do exactly that |
 | **(c)** | forge `sig.scheme` (claim a signed posture the run never had)                                                                                                                     | `verifyReceipt`             | **REJECTED**: `sig.scheme must be "none"`; the null signer is the only honest v1 state                                                                                                                                                                                                          |
-| **(d)** | edit a `world-models/<hex>/published.json` artifact, leave `receipts.json` intact                                                                                                 | `verifyReceiptChain`        | **STILL PASSES**: the documented integrity gap: the maintained truth (the world-model artifact layer) sits _outside_ the receipt envelope, so chain-verify does not cover it. Asserted as **current** behavior so it can't regress silently                                                     |
+| **(d)** | edit a `world-models/<hex>/published.json` artifact (one harness's replay layout), leave `receipts.json` intact                                                                                                 | `verifyReceiptChain`        | **STILL PASSES**: the documented integrity gap: the maintained truth (the world-model artifact layer) sits _outside_ the receipt envelope, so chain-verify does not cover it. Asserted as **current** behavior so it can't regress silently                                                     |
 
 **The honest boundary, stated plainly:** v1 receipts are **tamper-evident**
 (a `prev`-linked, content-addressed trail catches an accidental or careless
@@ -71,7 +71,8 @@ with a world-model outside the receipt envelope remains outside chain coverage.
 ## Observable invariants
 
 1. compiles to the frozen artifact set (valid `TopologyWorldModel`, single entry
-   gateway, acyclic; `labels.json` + flat `receipts.json` + `world-models/<HEX>/…`
+   gateway, acyclic; in one harness's replay layout, `labels.json` + flat
+   `receipts.json` + `world-models/<HEX>/…`
    - `beats.json`);
 2. cold-start renders all; an identical re-wake **skips all** (a skip propagates
    nothing, wakes nothing);

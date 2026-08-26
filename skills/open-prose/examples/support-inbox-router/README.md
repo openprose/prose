@@ -61,7 +61,9 @@ to — so each downstream wakes only when ITS channel moves.
 ```
 
 11 nodes / 16 edges. `gateway.support-inbox` is the single entry point; the graph
-is acyclic. `#### billing` is a fingerprinted facet with zero subscribers.
+is acyclic. `#### billing` is a fingerprinted facet with zero subscribers. `src/`
+ships the 6 authored contracts; the 11-node / 16-edge topology is what a
+harness's expansion produces from them.
 
 ## Conformance expectations
 

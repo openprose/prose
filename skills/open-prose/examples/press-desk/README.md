@@ -58,7 +58,9 @@ action a human must own, and no sender PII ever escapes into a public projection
 8 nodes / 14 edges. `gateway.press-inbox` is the single entry point; the graph is
 acyclic. (The `speaking` register facet is a *zero-consumer-until-it-moves* lane:
 no speaking inquiry is delivered in the scripted episode, so it never wakes — the
-same discipline that keeps the dark lanes still.)
+same discipline that keeps the dark lanes still.) `src/` ships the 4 authored
+contracts; the 8-node / 14-edge topology is what a harness's expansion produces
+from them.
 
 ## Conformance expectations
 

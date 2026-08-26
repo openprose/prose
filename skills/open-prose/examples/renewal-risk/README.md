@@ -54,8 +54,10 @@ only when the `risk` facet changes.
 
 ## Replay any run you produce
 
-A run leaves a frozen, chain-verifiable state on disk, the exact shape any
-conforming harness replays keyless. The marquee frame is a long flat-cost quiet
+A run leaves a frozen, chain-verifiable state on disk that a harness replays
+keyless: one harness's replay layout; the skill's native layout is
+`state/world-model/{node}/` with a per-node `receipts.jsonl`
+(`state/filesystem.md`). The marquee frame is a long flat-cost quiet
 stretch, one alert spike, and a verdict-stable beat that stays dark:
 
 ```text

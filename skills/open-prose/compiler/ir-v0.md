@@ -26,10 +26,10 @@ IR. Commit-gating is compiled postcondition validators plus render
 self-attestation, never an LLM judging "did this change" at wake time
 (`world-model.md` §3; `architecture.md` §3.3).
 
-The IR is the JSON realization of the `CompilePhaseIR` shape the reference
-harness exports from its SDK (the shared shapes spine), wrapped in a
-thin doc envelope of `sources` and `diagnostics`. Where this doc and that TS
-shape disagree, the TS shape wins.
+This document is the IR contract: a `CompilePhaseIR` object wrapped in a thin
+doc envelope of `sources` and `diagnostics`. The `CompilePhaseIR` type the
+reference harness exports from its SDK tracks this document; a conforming
+harness must match what is written here.
 
 Emit only the fields listed here. Unknown notes, provider details, payload
 shape, confidence, and source commentary belong in `diagnostics`, not in custom
@@ -164,7 +164,8 @@ receipt at the system's edge (`world-model.md` §5). Every entry point must be a
 
 `acyclic` is Forme's own acyclicity postcondition over `edges`
 (`architecture.md` §3.1). It is computed by the deterministic cycle check
-(the harness's `detectReceiptCycles`, the kept-half kernel DFS).
+(the reference harness implements it as `detectReceiptCycles`, the kept-half
+kernel DFS).
 The acyclicity check rejects *graph* cycles only; legitimate feedback (a node's
 output shaping its *next* input) is self-driven `### Continuity`, not a
 back-edge — loops live in time, not in edges. When a contract set is
@@ -258,7 +259,7 @@ Required fields: `node` (a node id present in `topology.nodes`), `artifact`
 
 - `deterministic` — the harness verifies the validator on commit; a render that
   fails verification commits nothing and writes a `failed` receipt. The
-  deterministic engine is the harness's `evaluatePredicate`.
+  reference harness implements the deterministic engine as `evaluatePredicate`.
 - `render-attested` — the postcondition is irreducibly semantic; the render
   self-polices it before signing.
 

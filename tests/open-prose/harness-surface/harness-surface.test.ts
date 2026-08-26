@@ -10,9 +10,7 @@
 // Two kinds of token are checked across the skill, the spec, the std/co contract
 // libraries, and the root docs:
 //   - PRODUCT tokens (package names, the CLI, its config and env vars) — a
-//     line carrying one FAILS unless it is a migration statement (it says the
-//     product moved / is experimental / lives elsewhere) or sits in an
-//     allowlisted pointer.
+//     line carrying one FAILS unless it sits in an allowlisted pointer.
 //   - The MODEL token (the bare word "Reactor" / "reactor"). The run-phase
 //     model is "the reconciler"; the spec's harness contract is "a conforming
 //     harness".
@@ -101,10 +99,6 @@ const ALLOWLIST_FILES = new Set(["skills/open-prose/changelog.md"]);
 // Files allowed one section: lines from this H2 up to the next H2.
 const ALLOWLIST_SECTIONS: Record<string, string> = { "README.md": "## Harnesses" };
 
-// A product-token line is allowed when it reads as a migration statement.
-const MIGRATION_LINE =
-	/\b(moved|experimental|alpha|retired|removed|no longer|lives at)\b/i;
-
 function allDocs(dir: string): string[] {
 	const out: string[] = [];
 	for (const entry of readdirSync(dir)) {
@@ -151,17 +145,9 @@ function allowlistedLines(rel: string, lines: string[]): Set<number> {
 	return allowed;
 }
 
-// Markdown hard-wraps prose; judge a line together with its neighbours.
-function window(lines: string[], i: number): string {
-	return [lines[i - 1] ?? "", lines[i], lines[i + 1] ?? ""].join(" ").replace(/\s+/g, " ");
-}
-
 type Offender = string;
 
-function collect(
-	matches: (line: string) => boolean,
-	exempt: (lines: string[], i: number) => boolean,
-): Offender[] {
+function collect(matches: (line: string) => boolean): Offender[] {
 	const offenders: Offender[] = [];
 	for (const path of scanTargets()) {
 		const rel = relative(repoRoot, path);
@@ -171,7 +157,6 @@ function collect(
 		lines.forEach((line, i) => {
 			if (!matches(line)) return;
 			if (allowed.has(i + 1)) return;
-			if (exempt(lines, i)) return;
 			offenders.push(`${rel}:${i + 1} — ${line.trim()}`);
 		});
 	}
@@ -188,10 +173,7 @@ describe("harness surface — the OpenProse repo does not teach the Reactor prod
 	});
 
 	it("no OpenProse surface teaches the Reactor product as live", () => {
-		const offenders = collect(
-			(line) => PRODUCT_TOKENS.some((token) => token.test(line)),
-			(lines, i) => MIGRATION_LINE.test(window(lines, i)),
-		);
+		const offenders = collect((line) => PRODUCT_TOKENS.some((token) => token.test(line)));
 		expect(offenders, `product surface taught as live:\n${offenders.join("\n")}`).toEqual([]);
 	});
 
@@ -225,10 +207,7 @@ describe("harness surface — the OpenProse repo does not teach the Reactor prod
 	});
 
 	it("the run-phase model is not named after the product", () => {
-		const offenders = collect(
-			(line) => MODEL_TOKEN.test(line),
-			() => false,
-		);
+		const offenders = collect((line) => MODEL_TOKEN.test(line));
 		expect(offenders, `run-phase model named after the product:\n${offenders.join("\n")}`).toEqual([]);
 	});
 

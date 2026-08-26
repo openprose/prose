@@ -17,6 +17,9 @@ meta-generator as a standing node, and dual MD + HTML artifacts.
 
 ## The DAG (14 nodes / 22 edges)
 
+`src/` ships the 9 authored contracts; the 14-node / 22-edge topology is what a
+harness's expansion produces from them.
+
 ```text
                          Agent FS (external)
                               │ @atomic

@@ -95,8 +95,8 @@ self-sourced spend, receipt-chain verification, and byte-deterministic artifacts
 ## Observable invariants
 
 1. compiles to the frozen artifact set (valid `TopologyWorldModel`: 12 nodes, 23
-   edges, single entry gateway, acyclic; `labels.json` + flat `receipts.json` +
-   `world-models/<hexNodeId>/…`);
+   edges, single entry gateway, acyclic; in one harness's replay layout,
+   `labels.json` + flat `receipts.json` + `world-models/<hexNodeId>/…`);
 2. cold-start renders all nodes; an identical re-wake **skips all** (a skip
    propagates nothing, wakes nothing);
 3. `cost.surprise_cause === wake.source` on every receipt;

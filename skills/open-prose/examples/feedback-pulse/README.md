@@ -63,7 +63,8 @@ This is a different audience (product feedback) and a different graph shape
 ```
 
 7 nodes / 11 edges. `gateway.feedback-inbox` is the single entry point; the graph
-is acyclic.
+is acyclic. `src/` ships the 4 authored contracts; the 7-node / 11-edge topology
+is what a harness's expansion produces from them.
 
 ## Conformance expectations
 

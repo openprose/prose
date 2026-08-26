@@ -173,3 +173,9 @@ source code or should keep their own release cadence.
 The examples own authored intent and expected observable behavior. Harness
 implementations prove their own conformance independently, without implementation
 links or blanket run commands in this corpus.
+Eleven examples carry a native run block (a `## Quick Start` or `## Run it` with
+`prose compile`): competitor-activity, compliance-evidence-tracker,
+content-performance-loop, customer-risk-radar, declared-skills, declared-tools,
+incident-briefing-room, release-readiness, research-inbox-triage,
+stargazer-outreach, and vendor-renewal-watch. The remaining examples are
+conformance corpora whose expanded topologies are produced by a harness.
