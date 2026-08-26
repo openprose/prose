@@ -3,13 +3,15 @@
 **Standing goal:** keep a monorepo's merge gate honest: re-run only the CI work
 a diff actually invalidates, and block the merge the moment a test regresses.
 
-**One-line scenario:** Your CI re-ran 200 checks. Reactor re-ran 3, the ones
-your 4-line diff actually touched; and when a `pkg-api` test throws, the merge
+**One-line scenario:** Your CI re-ran 200 checks. The reconciler re-ran 3, the
+ones your 4-line diff actually touched; and when a `pkg-api` test throws, the merge
 gate goes BLOCKED while the rest of the graph stays cached.
 
 This is the **largest** example in the library (22 nodes / 48 edges) and the one
 that teaches **memoization + hub fan-out blast radius**: a single `pkg-core` hub
 edit fans out to its dependents, while a leaf edit lights only one lane.
+`src/` ships the 4 authored contracts; the 22-node / 48-edge topology is what a
+harness's expansion produces from them.
 
 ## The DAG
 
@@ -53,30 +55,21 @@ each subscribe to its `core-dist` compiled-output facet. `pkg-utils` and
   build's recorded `RED` status and renders `merge: BLOCKED`. The fix lands and
   the gate returns to `GREEN`.
 
-## Run it (the Reactor flow)
+## Conformance expectations
 
-The `.prose.md` contracts under `src/` work with any harness; these verbs steer
-you through the Reactor harness.
-
-```sh
-reactor doctor                 # honest health report (sandbox, IR present?)
-reactor compile                # the session embodies the VM → IR cache / topology
-reactor topology               # the compiled DAG (22 nodes / 48 edges)
-reactor run                    # boot, drain, print dispositions + cost
-reactor serve                  # browse the live world-models
-reactor receipts verify        # chain-verify the on-disk ledger
-```
+A conforming harness proves zero-fresh quiet scans, leaf-lane isolation, bounded
+hub fan-out, failed-test containment, merge-gate BLOCKED and recovery states,
+receipt-chain verification, and byte-identical replay.
 
 ## Replay it keyless (no model key)
 
-A `reactor run` (or `reactor serve`) writes a frozen, chain-verifiable state-dir.
-Replay it in devtools with zero spend:
+A run leaves a frozen, chain-verifiable state on disk. Any conforming harness
+can replay it with zero spend:
 
-```sh
-reactor-devtools <state-dir> --describe
-#   dispositions rendered=… · skipped=… · failed=1
-#   surprise-cause  external · input · self
-#   COST ROLLUP (tokens) …   CHAIN-VERIFY ok
+```text
+dispositions rendered=… · skipped=… · failed=1
+surprise-cause  external · input · self
+cost rollup (tokens) …   chain-verify ok
 ```
 
 Watch the leaf beat (`skipped moved[] fresh 0` across five dark packages), then
@@ -91,10 +84,3 @@ the hub beat widen the lane, then the RED beat block the merge.
    timeline (cold → quiet skip → leaf diff → hub fan-out → RED → recover → quiet)
    and freezes the result into a state-dir. The reconciler replays it; a node
    renders IFF its memo key `(contract_fingerprint, input_fingerprints)` moved.
-
-The example is covered by the project's offline test suite, which drives the
-**real `@openprose/reactor` reconciler** with deterministic fake renders (no key)
-and asserts the receipts / topology / labels are byte-identical across runs, that
-a quiet re-wake spends `fresh == 0`, that a contract edit forces a render, that
-`cost.surprise_cause === wake.source` on every receipt, and that
-`verifyReceiptChain` passes over the raw on-disk receipts.

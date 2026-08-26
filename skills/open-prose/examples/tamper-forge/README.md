@@ -2,8 +2,8 @@
 
 **Standing goal:** stand a regulated-audit lens over an existing, frozen receipt
 ledger and keep a living verdict on its integrity, proving exactly what the
-Reactor v1 receipt model _does_ and _does not_ guarantee, so an auditor (or an
-agent) never over-claims.
+v1 receipt model _does_ and _does not_ guarantee, so an auditor (or an agent)
+never over-claims.
 
 **One-line scenario:** replay the **masked-relay** ledger (41 receipts / 13
 node-chains), then run a guided 3-attack escalation against it: a naive
@@ -41,62 +41,38 @@ byte-identical re-read does not move it, so a clean re-audit memo-**skips**
 | **(a)** | inflate `cost.tokens.fresh`, keep the stale `content_hash`                                                                                                                        | `verifyReceiptChain`        | **CHAIN-VERIFY FAILED**: the body no longer hashes to its recorded `content_hash`                                                                                                                                                                                                               |
 | **(b)** | **full forward re-stamp**: recompute the public `content_hash` via `computeReceiptContentHash` _and_ relink every successor's `prev` to the new hash, node by node down the chain | `computeReceiptContentHash` | chain **PASSES** again, **honest book-keeping, NOT non-repudiation**: a _single_ receipt re-stamp would orphan the next receipt's `prev` and still FAIL; only re-stamping forward through the whole chain heals it, and under the v1 null signer, whoever rewrites the file can do exactly that |
 | **(c)** | forge `sig.scheme` (claim a signed posture the run never had)                                                                                                                     | `verifyReceipt`             | **REJECTED**: `sig.scheme must be "none"`; the null signer is the only honest v1 state                                                                                                                                                                                                          |
-| **(d)** | edit a `world-models/<hex>/published.json` artifact, leave `receipts.json` intact                                                                                                 | `verifyReceiptChain`        | **STILL PASSES**: the documented integrity gap: the maintained truth (the world-model artifact layer) sits _outside_ the receipt envelope, so chain-verify does not cover it. Asserted as **current** behavior so it can't regress silently                                                     |
+| **(d)** | edit a `world-models/<hex>/published.json` artifact (one harness's replay layout), leave `receipts.json` intact                                                                                                 | `verifyReceiptChain`        | **STILL PASSES**: the documented integrity gap: the maintained truth (the world-model artifact layer) sits _outside_ the receipt envelope, so chain-verify does not cover it. Asserted as **current** behavior so it can't regress silently                                                     |
 
-**The honest boundary, stated plainly:** Reactor v1 receipts are **tamper-evident**
+**The honest boundary, stated plainly:** v1 receipts are **tamper-evident**
 (a `prev`-linked, content-addressed trail catches an accidental or careless
 mutation of a _receipt_ field); they are **not** cryptographic **non-repudiation**
 (the v1 signer is null; a re-stamped trail heals; the world-model artifact layer is
 not covered). Never let an audit claim more than (a)–(d) prove.
 
-**Exit codes (CI-safe in both modes):** `reactor receipts verify` returns a
-non-zero exit on a broken chain, and the `--json` form
-(`reactor --json receipts verify`) exits non-zero on a broken chain too, so a CI
-gate can rely on the exit code whether or not it asks for JSON output. (An
-empty/unreadable ledger is also a non-zero exit, never a green "ALL OK" on zero
-receipts.)
+**Exit codes (CI-safe):** chain verification must report a broken or unreadable
+chain as failure, never a green result for zero receipts.
 
 ## Replay it keyless (the universal "aha")
 
-A `reactor run` (or `reactor serve`) writes a chain-verifiable, keyless state-dir
-(the masked-relay ledger this lens audits). Point the devtools at it:
+A run leaves a chain-verifiable, keyless state on disk (the masked-relay ledger
+this lens audits). Any conforming harness can replay it:
 
-```sh
-reactor-devtools <state-dir> --describe
-#   dispositions rendered=… · skipped=… · failed=0
-#   CHAIN-VERIFY ok        <- the honest baseline the attacks then break
+```text
+dispositions rendered=… · skipped=… · failed=0
+chain-verify ok        <- the honest baseline the attacks then break
 ```
 
-## The reactor flow (compile → run from the contract)
+## Conformance expectations
 
-The `.prose.md` contract under `src/` works with any harness; these verbs steer to
-the Reactor harness.
+A conforming harness proves a stale-hash edit breaks the chain, a complete
+forward re-stamp heals it, a forged signature scheme is rejected, and tampering
+with a world-model outside the receipt envelope remains outside chain coverage.
 
-### Offline (no key needed)
-
-```sh
-reactor doctor                 # honest health report (the best command in the kit)
-reactor compile --check        # exits 1 (stale) until the audit lens is compiled
-reactor topology               # the compiled lens once frozen (2 nodes)
-reactor --state-dir <state-dir> receipts verify  # exits non-zero on a broken chain
-```
-
-### Live (needs OPENROUTER_API_KEY + @openai/agents + zod)
-
-```sh
-reactor compile                # the SKILL session compiles src/ → the IR cache
-reactor run                    # boot the auditor over the frozen ledger
-reactor serve                  # stand the audit up; re-wake it on a new trail
-```
-
-## What the offline check proves
-
-The example is covered by the project's offline test suite, which drives the REAL
-`@openprose/reactor` reconciler with deterministic fake renders (no key) and
-asserts the validity contract **plus** the four audit facts:
+## Observable invariants
 
 1. compiles to the frozen artifact set (valid `TopologyWorldModel`, single entry
-   gateway, acyclic; `labels.json` + flat `receipts.json` + `world-models/<HEX>/…`
+   gateway, acyclic; in one harness's replay layout, `labels.json` + flat
+   `receipts.json` + `world-models/<HEX>/…`
    - `beats.json`);
 2. cold-start renders all; an identical re-wake **skips all** (a skip propagates
    nothing, wakes nothing);

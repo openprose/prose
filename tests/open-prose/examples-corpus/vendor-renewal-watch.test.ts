@@ -234,8 +234,9 @@ describe("vendor-renewal-watch — README frames the canonical eval (delta.md §
     expect(r).toMatch(
       /decision history.*watermark|watermark.*decision history/i,
     );
-    // delta.md §B4 / architecture.md §2: compile (intelligent) / run (dumb).
+    // delta.md §B4 / architecture.md §2: compile (intelligent) / run (dumb),
+    // joined by promoting the compiled IR to the active manifest.
     expect(r).toMatch(/intelligent phase|prose compile/i);
-    expect(r).not.toMatch(/manifest\.next\.json/);
+    expect(r).toMatch(/cp dist\/manifest\.next\.json dist\/manifest\.active\.json/);
   });
 });

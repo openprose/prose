@@ -11,9 +11,14 @@
 ```bash
 prose compile      # the intelligent phase: Forme wires the DAG, compiles the
                    # canonicalizers + postcondition validators (topology world-model)
+cp dist/manifest.next.json dist/manifest.active.json   # promote the compiled IR
 prose serve        # the dumb phase: the reconciler compares fingerprints and
                    # wakes only the nodes whose subscribed inputs moved
 ```
+
+`prose serve` then waits for the `renewal-review-events` gateway to fire: an
+inbound `POST /webhooks/vendor-renewals/events` or the weekday 09:00 self-kick
+scan, before anything renders.
 
 ## What This Repository Does
 

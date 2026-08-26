@@ -88,6 +88,18 @@ plan.
   migrated; only **source text** upgrades. `prose upgrade` gains the source
   rewrites below — mechanical where safe, surfaced as manual-review diagnostics
   where judgment is needed (`system`/`### Wiring` flatten-or-split).
+- `v0.16.0`: **Reactor harness extracted.** `prose react` and the `reactor.md`
+  operator guide are removed from the skill; `prose compile` / `prose serve` /
+  `prose run` are the whole command surface, embodied in-session. The Reactor
+  harness (`@openprose/reactor*`, the `reactor` binary) now lives at
+  github.com/openprose/reactor and is experimental (alpha) — early software
+  with no stability guarantees; installs keep working under the same names.
+  `runtime_contract` is unchanged (2): no source rewrite is needed. Renamed,
+  same content, harness-agnostic names: `concepts/reactor.md` →
+  `concepts/reconciler.md`; `spec/02-ReactorHarness.md` → `spec/02-Harness.md`
+  (the contract any conforming harness must satisfy); `spec/03-ReactorPattern.md`
+  → `spec/03-AuthoringPattern.md`. A workflow that invoked `prose react` should
+  compile and serve the same contracts with a conforming harness instead.
 
 ## Upgrade Command
 

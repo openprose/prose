@@ -90,7 +90,7 @@ Read the repository's contribution guidelines, project tenets, public docs, and 
 - context-pack: structured context containing:
     - contribution_bar: the requirements from `CONTRIBUTING.md`
     - project_tenets: the relevant design tenets from `skills/open-prose/guidance/tenets.md` and `skills/open-prose/guidance/authoring.md`
-    - boundary_map: where changes belong across the skill/specs, `packages/std/`, examples, `packages/co/`, and the Reactor harness (`packages/reactor*/`)
+    - boundary_map: where changes belong across the skill/specs, `packages/std/`, examples, and `packages/co/`; harness implementations live outside this repository
     - testing_map: existing tests, evals, or structural checks available for the requested scope
     - public_positioning: public-facing framing from `README.md` and `AGENTS.md` that the PR should preserve
     - private_boundary: any detected hosted-product, billing, subscription, or business-strategy ideas that should remain out of OSS language/runtime changes unless the user explicitly scopes them
@@ -104,7 +104,7 @@ Read the repository's contribution guidelines, project tenets, public docs, and 
 
 - start with `CONTRIBUTING.md`; it is the contribution quality bar
 - read `skills/open-prose/SKILL.md` to understand the agent-facing language/framework surface
-- read `packages/reactor*/README.md` and relevant harness source only when the proposed scope touches the Reactor SDK, the `reactor` CLI, deterministic compile/run/serve behavior, or tests
+- read a harness's own docs and source only when the proposed scope touches deterministic compile/run/serve behavior or tests; harness implementations live outside this repository (see `README.md` → Harnesses)
 - read `packages/std/README.md` and neighboring std contracts when the proposed scope is a reusable library change
 - treat hosted product and subscription ideas as positioning context, not OSS implementation requirements
 

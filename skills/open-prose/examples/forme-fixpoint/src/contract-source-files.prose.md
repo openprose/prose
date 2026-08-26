@@ -38,4 +38,4 @@ registry downstream memo-skips.
 
 External file watcher or scheduled scan. This gateway is an **entry point**:
 wake when contract source content changes. It has no `### Requires` — its truth
-comes from outside the reactor.
+comes from outside the graph.

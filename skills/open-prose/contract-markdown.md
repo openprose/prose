@@ -31,7 +31,7 @@ The format optimizes for two readers:
 
 ## Authored Kinds
 
-`prose run` and the reactor recognize five kinds. Two are **data-flow kinds**
+`prose run` and the reconciler recognize five kinds. Two are **data-flow kinds**
 (sugar over the render atom); three are **tooling kinds**.
 
 - **Responsibility** — a *mounted node*: the headline kind. A responsibility

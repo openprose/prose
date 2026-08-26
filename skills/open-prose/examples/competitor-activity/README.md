@@ -7,8 +7,14 @@ declares three independently-subscribable facets as `####` sub-headings.
 
 ```bash
 prose compile
+cp dist/manifest.next.json dist/manifest.active.json   # promote the compiled IR
 prose serve
 ```
+
+`prose serve` then waits for a subscribed feed to publish: the monitor's
+`funding-signals`, `hiring-signals`, and `launch-signals` upstreams are not part
+of `src/`, so nothing renders until a node that maintains them is mounted (the
+6h self-driven re-check only re-derives truth those inputs already produced).
 
 ## What This Repository Does
 

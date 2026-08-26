@@ -53,40 +53,27 @@ email take the digest down.
 ```
 
 16 nodes / 27 edges. `gateway.inbox-stream` is the single entry point; the graph
-is acyclic.
+is acyclic. `src/` ships the 4 authored contracts; the 16-node / 27-edge topology
+is what a harness's expansion produces from them.
 
-## Run it (Reactor flow)
+## Conformance expectations
 
-The contracts in `src/` are harness-neutral; these verbs steer you through the
-Reactor harness. Offline replay needs no key.
+A conforming harness proves dark sibling lanes, one render for duplicate
+newsletter content, contained classifier failure with zero fresh propagation, a
+digest built from healthy inputs, recovery, chain verification, and deterministic
+replay.
 
-```sh
-reactor doctor                 # honest health report (the best command in the kit)
-reactor compile                # the intelligent phase: a session compiles src/*.prose.md
-reactor topology               # the compiled DAG (gateway → classifiers → threader → digest)
-reactor run                    # boot, drain, print dispositions + cost rollup
-reactor serve                  # serve the receipts + world-models for inspection
-reactor receipts verify        # chain-verify the ledger
-```
+A run leaves a keyless, chain-verifiable state on disk that any conforming
+harness can replay (the universal "aha"):
 
-A `reactor run` (or `reactor serve`) writes a keyless state-dir you can replay in
-devtools (the universal "aha"):
-
-```sh
-reactor-devtools <state-dir> --describe
-#   dispositions rendered=… · skipped=… · failed=1
-#   the shared newsletter thread renders ONCE; copies 2..5 skip; one failed email; digest still ships
+```text
+dispositions rendered=… · skipped=… · failed=1
+the shared newsletter thread renders ONCE; copies 2..5 skip; one failed email; digest still ships
 ```
 
 ## What ships here
 
 - `src/*.prose.md`: the gateway + classifier + threader + digest contracts.
 
-A run writes a keyless, chain-verifiable state-dir (topology, labels, beats,
-receipts, world-models) that `reactor-devtools` replays unchanged. The example is
-also covered by the project's offline test suite, which drives the **real**
-`@openprose/reactor` reconciler with deterministic fake renders (no key) and
-asserts the validity contract: topology, cold-render-then-skip,
-`cost.surprise_cause === wake.source`, `ATOMIC_FACET`, chain-verify,
-byte-determinism, and the failure-isolation invariant. An optional, key-gated live
-reliability check covers the same flow (a passing-skipped no-op offline).
+A run writes a keyless, chain-verifiable state (topology, labels, beats,
+receipts, world-models) that a conforming harness replays unchanged.

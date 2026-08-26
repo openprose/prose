@@ -94,7 +94,7 @@ agent responsibility_compiler:
   prompt: """
   Lower kind: responsibility source into topology node records, the node's
   intrinsic wake_source, its contract fingerprint inputs, and diagnostics.
-  Load concepts/responsibility.md, concepts/reactor.md, and compiler/ir-v0.md.
+  Load concepts/responsibility.md, concepts/reconciler.md, and compiler/ir-v0.md.
   Preserve Goal, Requires, Maintains, and Continuity as the node's contract.
   Derive wake_source from Continuity: input-driven by default, self when a
   cadence is declared, external for a gateway.
@@ -117,7 +117,7 @@ agent gateway_compiler:
   prompt: """
   Lower kind: gateway source into external-driven topology nodes and entry
   points.
-  Load concepts/reactor.md and compiler/ir-v0.md.
+  Load concepts/reconciler.md and compiler/ir-v0.md.
   A gateway is sugar for an external-driven responsibility: it has wake_source
   external and appears in topology.entry_points.
   Compile Schedule, Receives, and Emits sections into the node's external
@@ -258,7 +258,7 @@ agent postcondition_compiler:
   prompt: """
   Compile each node's `### Maintains` postconditions (the folded-in `### Criteria`)
   into a postcondition validator reference.
-  Load compiler/ir-v0.md and architecture-aligned concepts/reactor.md.
+  Load compiler/ir-v0.md and architecture-aligned concepts/reconciler.md.
   Produce one postcondition record per topology node with node, artifact, and
   mode. mode is deterministic when the postcondition is expressible as a
   deterministic predicate the harness verifies on commit, render-attested when

@@ -1,5 +1,5 @@
 ---
-role: reactor-semantics
+role: reconciler-semantics
 summary: |
   The dumb reconciler: the run-phase reactive model for OpenProse. Read this
   file when designing wake sources, fingerprint comparison, propagation, or the
@@ -12,15 +12,15 @@ see-also:
   - ../forme.md: Compile-phase wiring into the topology world-model
 ---
 
-# Reactor
+# The reconciler
 
-Reactor is the run-phase reactive model for OpenProse. It is **dumb on
+The reconciler is the run-phase reactive model for OpenProse. It is **dumb on
 purpose**: all of the intelligence lives in the compile phase, and the
 reconciler only compares fingerprints and propagates.
 
 The mental model is React, made durable:
 
-| React | Reactor |
+| React | OpenProse |
 |-------|---------|
 | the DOM | the **world-model** (a node's maintained truth) |
 | props | **subscriptions** (`### Requires.<facet>` ↔ `### Maintains.<facet>`) |

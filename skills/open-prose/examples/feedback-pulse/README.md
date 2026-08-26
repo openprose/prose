@@ -12,8 +12,8 @@ The standing goal: keep a noisy inbound feedback stream themed and tallied into 
 shipped weekly pulse brief, paying only for what actually changed, and keeping the
 brief no staler than a week — without spending a token in a quiet week.
 
-This is a different audience (product feedback) and a different reactor (faceted
-rollup aggregation) from the inbox-triage diamond — its headline is the
+This is a different audience (product feedback) and a different graph shape
+(faceted rollup aggregation) from the inbox-triage diamond — its headline is the
 **self-driven `valid_until` freshness cadence**.
 
 ## What it teaches
@@ -63,29 +63,22 @@ rollup aggregation) from the inbox-triage diamond — its headline is the
 ```
 
 7 nodes / 11 edges. `gateway.feedback-inbox` is the single entry point; the graph
-is acyclic.
+is acyclic. `src/` ships the 4 authored contracts; the 7-node / 11-edge topology
+is what a harness's expansion produces from them.
 
-## Run it (Reactor flow)
+## Conformance expectations
 
-The contracts in `src/` are harness-neutral; these verbs steer you through the
-Reactor harness. Offline replay needs no key.
+A conforming harness proves per-message and per-theme isolation, cold-render-
+then-skip behavior, chain-verifiable deterministic replay, and a self-sourced
+weekly refresh that costs zero fresh tokens when the rollup is unchanged.
 
-```sh
-reactor doctor                 # honest health report (the best command in the kit)
-reactor compile                # the intelligent phase: a session compiles src/*.prose.md
-reactor topology               # the compiled DAG (inbox → taggers → voice-of-customer → pulse)
-reactor run                    # boot, drain, print dispositions + cost rollup
-reactor serve                  # serve the receipts + world-models for inspection
-reactor receipts verify        # chain-verify the ledger
-```
+A run leaves a keyless, chain-verifiable state on disk that any conforming
+harness can replay — the universal "aha":
 
-Replay the committed, keyless fixture in devtools — the universal "aha":
-
-```sh
-reactor-devtools ./replay --describe
-#   dispositions rendered=… · skipped=… (self-ticks + dedup)
-#   a pricing complaint moves only the pricing facet; the weekly clock advance
-#   refreshes the pulse at ZERO fresh tokens; quiet self-ticks skip at the floor
+```text
+dispositions rendered=… · skipped=… (self-ticks + dedup)
+a pricing complaint moves only the pricing facet; the weekly clock advance
+refreshes the pulse at ZERO fresh tokens; quiet self-ticks skip at the floor
 ```
 
 ## What ships here
@@ -93,28 +86,8 @@ reactor-devtools ./replay --describe
 - `src/*.prose.md` — the gateway + theme-tagger + voice-of-customer + weekly-pulse
   contracts. The weekly-pulse `### Continuity` is the self-driven `valid_until`
   pair (a weekly self-tick + an input-driven rollup move).
-- `replay/` — the committed, keyless, chain-verifiable state-dir (topology, labels,
-  beats, receipts, world-models) that `reactor-devtools` replays unchanged.
-- `generate.ts` — drives the **real** `@openprose/reactor` reconciler with
-  deterministic fake renders (no key) and writes `replay/`. Regenerating is
-  byte-identical to the committed bytes.
-- `feedback-pulse.test.ts` — the offline, zero-spend gate (the validity contract:
-  topology, cold-render-then-skip, `cost.surprise_cause === wake.source`,
-  `ATOMIC_FACET`, chain-verify, byte-determinism, and the freshness tenet — a
-  self-sourced continuity tick on the pulse, a zero-fresh weekly refresh, and
-  per-theme isolation).
-- `feedback-pulse.live.test.ts` — optional key-gated live reliability check: the
-  real theme-tagger render (`openai/gpt-5.4-mini`) over four labelled feedback
-  emails, graded by a smart judge (`anthropic/claude-opus-4.8`) at reliability
-  >= 0.8. A passing-skipped no-op offline.
 
 The freshness note worth internalizing: **time becoming material is just another
 input.** A lapsed `valid_until` is a self-sourced wake; when nothing else moved,
 the refresh re-stamps the freshness fields and the brief stays current at zero
 cost — the cadence is exactly as auditable as a render.
-
-To regenerate the committed `replay/` after a contract or SDK change:
-
-```sh
-tsx generate.ts
-```

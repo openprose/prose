@@ -54,7 +54,7 @@ All filesystem paths are relative to `<openprose-root>`. Native repositories
 use the repository root, attached repositories use `repo/.agents/prose`, and
 user-global work uses `~/.agents/prose`. The root contains `src/`, `dist/`,
 `runs/`, `state/`, `deps/`, `prose.lock`, and `.env`; durable cross-run agents
-and responsibilities live under `state/agents/` and `state/responsibilities/`.
+and responsibilities live under `state/agents/` and `state/world-model/`.
 
 ## Loading Rules
 

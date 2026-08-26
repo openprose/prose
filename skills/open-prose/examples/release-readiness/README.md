@@ -4,8 +4,12 @@
 
 ```bash
 prose compile
+cp dist/manifest.next.json dist/manifest.active.json   # promote the compiled IR
 prose serve
 ```
+
+`prose serve` then waits for an inbound `POST /release/readiness` on the
+`release-readiness-events` gateway before anything renders.
 
 ## What This Repository Does
 

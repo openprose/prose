@@ -8,7 +8,7 @@ see-also:
   - ../contract-markdown.md: Contract Markdown authoring surface
   - ../forme.md: Forme as a compile-phase render producing the topology world-model
   - ../responsibility-runtime.md: Responsibility Runtime doctrine (compile/run split)
-  - ../concepts/reactor.md: The fingerprint-comparison reconciler
+  - ../concepts/reconciler.md: The fingerprint-comparison reconciler
   - ../prose.md: Bounded render execution semantics
   - ../prosescript.md: ProseScript imperative layer
   - ../primitives/session.md: The render's harness contract
@@ -17,7 +17,7 @@ see-also:
 
 # Design Tenets
 
-These are the principles behind the Contract Markdown / Forme / reactor architecture. The specs say *what*. This document says *why* and *how we got there*. Future decisions should be checked against these tenets.
+These are the principles behind the Contract Markdown / Forme / reconciler architecture. The specs say *what*. This document says *why* and *how we got there*. Future decisions should be checked against these tenets.
 
 The system cleaves into two layers and two phases. **Two layers:** the language layer (the SKILL — the contract format and the render's intra-node body) and the harness layer (the SDK — Forme, the world-model store, the reconciler, the receipt ledger). **Two phases:** compile (intelligent, fires on contract-set change) and run (dumb, the reconciler comparing fingerprints on every wake). There is no judge in the wake or commit decision; the skip decision *is* the reconciler comparing fingerprints.
 
@@ -188,9 +188,9 @@ In a traditional language, `accepts: { topic: string }` (type signature) and `re
 
 ## 18. Responsibility-Oriented Architecture adds standing goals, not another framework
 
-Responsibilities, Reactor, and Forme compose into one runtime stack.
+Responsibilities, the reconciler, and Forme compose into one runtime stack.
 Responsibilities define what world-model must remain true over time (`### Requires`
-→ `### Maintains`). Reactor reconciles those truths by **comparing fingerprints**
+→ `### Maintains`). The reconciler keeps those truths current by **comparing fingerprints**
 across three wake sources — no judge, no status enum, no pressure record, no
 separate fulfillment activation. Gateways define how time or the outside world
 enters (sugar for an external-driven responsibility). Forme wires the DAG of
@@ -201,7 +201,7 @@ responsibility-oriented — many are one-shot `function` calls or standalone
 renders.
 
 **How to apply:** Do not create pluggable framework modes for Responsibilities,
-Reactor, and Forme. Treat them as adjacent semantic layers available through
+the reconciler, and Forme. Treat them as adjacent semantic layers available through
 the same OpenProse skill. Do not reintroduce a judge / verdict / pressure loop —
 the reconciler's fingerprint comparison *is* the maintenance loop.
 

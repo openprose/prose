@@ -134,7 +134,7 @@ Guidance for both:
 
 ## Cost and Context Discipline
 
-Applies when authoring a **multi-node Reactor pipeline**: standing
+Applies when authoring a **multi-node responsibility pipeline**: standing
 responsibilities that run continuously, fan out, or wake on a high volume of
 events (a session, PR, or webhook stream). It does **not** apply to a one-shot
 function or a single competent responsibility — do not tier or pre-bound those
@@ -149,7 +149,7 @@ volume.
   per-domain *signals*, and give each downstream truth its own facet so it wakes
   only when its signal moves. Expensive synthesis then runs only on real change;
   unrelated domains memo-skip at zero cost. This is the `guard` pattern made
-  structural (`03-ReactorPattern.md`, Rule 5). Shape: an event stream → a cheap
+  structural (`spec/03-AuthoringPattern.md`, Rule 5). Shape: an event stream → a cheap
   classifier emitting `#decision-signal` / `#bug-signal` / … → one accumulator
   per signal → a coalesced rollup.
 - **Bound each narrow render to its inline input.** A transform render (classify,

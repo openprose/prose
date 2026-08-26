@@ -4,7 +4,7 @@
 (as a maintained, versioned, auditable truth) without ever letting an invalid
 topology candidate corrupt how the runtime schedules nodes.
 
-**One-line scenario:** the Reactor harness wires _itself_ with Forme: contract
+**One-line scenario:** the harness wires _itself_ with Forme: contract
 source files and operator pins flow in, a Contract Registry parses them, and the
 **Topology Maintainer (Forme)** validates a _candidate_ graph and commits it as
 the **active graph**, but only when the candidate is valid. An ambiguous
@@ -87,41 +87,22 @@ property, asserted off the persisted ledger.
    the Schedule Plan skips; the prior valid graph stands.
 8. **final-quiet**: back to flat; steady on the last valid active graph.
 
-## Try it (the reactor flow)
+## Conformance expectations
 
-The `.prose.md` contracts in `src/` are harness-neutral; the commands below steer
-to the Reactor harness.
+A conforming harness proves deterministic cold-render-then-skip behavior and the
+active/candidate split: valid candidates move `active-graph`, while ambiguous or
+cyclic candidates move diagnostics but leave scheduling on the last valid graph.
 
-```sh
-reactor doctor                 # honest health report (sandbox, IR presence)
-reactor compile                # the intelligent compile -> the frozen IR/topology
-reactor topology               # the compiled DAG (offline): 7 nodes, 2 entry gateways
-reactor run                    # boot, drain, print dispositions + cost
-reactor serve                  # the live world-model + receipt surface
-reactor receipts verify        # chain-verify the on-disk ledger
-```
-
-A `reactor run` (or `reactor serve`) writes a chain-verifiable state-dir you can
-replay keyless in devtools to watch the active/candidate split animate (a rejected
-candidate moves diagnostics, the schedule never re-renders):
-
-```sh
-reactor-devtools <state-dir> --describe
-```
+A run leaves a chain-verifiable state on disk that any conforming harness can
+replay keyless to watch the active/candidate split animate (a rejected
+candidate moves diagnostics, the schedule never re-renders).
 
 ## What ships here
 
 - `src/*.prose.md`: the seven contracts (two gateways + five responsibilities).
 
-A replayed state-dir holds the compiled topology and labels, the flat
-chain-verifiable receipt ledger, and per-node world-models. The example is also
-covered by the project's offline test suite, which drives the **real
-`@openprose/reactor` reconciler** with deterministic fake renders (no key) and
-asserts the full validity contract: it compiles, cold-renders then skips,
-`cost.surprise_cause === wake.source`, `ATOMIC_FACET` (no `"*"`), chain-verify,
-byte-determinism, and the active/candidate split. An optional, key-gated
-reliability check covers the same flow live (a passing-skipped no-op offline or
-keyless).
+A replayed state holds the compiled topology and labels, the flat
+chain-verifiable receipt ledger, and per-node world-models.
 
 ## Scope note (conservative deterministic version)
 

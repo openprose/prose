@@ -1,7 +1,8 @@
 # implementation-pipeline
 
-A large software-delivery effort run as a Reactor system instead of one long chat
-transcript: a **fixed, wide fan-out** of six parallel construction lanes with
+A large software-delivery effort run as a standing responsibility graph instead
+of one long chat transcript: a **fixed, wide fan-out** of six parallel
+construction lanes with
 **per-facet wake**. The lesson is **facet-level lane invalidation under a FIXED
 topology**.
 
@@ -19,7 +20,9 @@ lanes; verification and a report/signpost index close it out.
 > **The work plan may change lane CONTENTS; it may not mutate the GRAPH.**
 
 - Work the six fixed lanes cannot own becomes `unassigned_work` on the work-plan's
-  own truth (**never a 7th mounted node**). The topology is frozen at **16 nodes**.
+  own truth (**never a 7th mounted node**). The expanded topology is frozen at
+  **16 nodes**. `src/` ships the 6 authored contracts; the 16-node topology is
+  what a harness's expansion produces from them.
 - A change to ONE lane's contents lights **one lane**; the five siblings stay dark
   (independent per-lane facet tokens).
 - A change to the **foundation** fans out to **all six lanes once**: the
@@ -64,57 +67,40 @@ World  Runtime Compile Contract /Test  /Signpost
         Signpost Index   Implementation Report
 ```
 
-16 mounted nodes; the planning inbox is a phantom ingress edge, not a node.
+16 mounted nodes in the expanded topology; the planning inbox is a phantom
+ingress edge, not a node.
 
-## The flow (Reactor verbs)
+## Conformance expectations
 
-The `.prose.md` contracts in `src/` work with any harness; these verbs steer to the
-Reactor harness.
-
-### Offline (no key needed)
-
-```sh
-reactor doctor                 # honest health report (the best command in the kit)
-reactor compile --check        # exits 1 (stale) until the project is compiled
-reactor topology               # the compiled DAG once an IR cache exists
-```
-
-### Live (needs a key)
-
-```sh
-reactor compile                # run the compile sessions -> IR cache
-reactor run                    # boot, drain, print dispositions + cost
-reactor receipts               # the audit trail
-```
+A conforming harness proves the expanded topology stays at 16 nodes, extra work remains
+`unassigned_work`, lane-local changes wake one lane, foundation changes wake all
+six lanes once, rejected work never integrates, and quiet replay adds no fresh
+cost.
 
 ### Replay any run you produce
 
-A `reactor run` (or `reactor serve`) writes a chain-verifiable state-dir you can
-replay keyless in devtools:
+A run leaves a chain-verifiable state on disk that any conforming harness can
+replay keyless:
 
-```sh
-reactor-devtools <state-dir> --describe
-#   dispositions rendered=… · skipped=… · failed=0
-#   surprise-cause  external=… · input=…
-#   COST ROLLUP (tokens) …   CHAIN-VERIFY ok
+```text
+dispositions rendered=… · skipped=… · failed=0
+surprise-cause  external=… · input=…
+cost rollup (tokens) …   chain-verify ok
 ```
 
-A replayed state-dir holds the compiled topology and labels, the flat
+A replayed state holds the compiled topology and labels, the flat
 chain-verifiable receipt ledger, and the per-node world-models, walking the
 trajectory cold-boot → quiet → lane-local → foundation-fanout → review-blocks →
 quiet bookend.
 
-## What it asserts
+## Observable invariants
 
-The example is covered by the project's offline test suite, which drives the REAL
-reconciler with deterministic fake renders (no key) and asserts off the persisted
-ledger via the public `@openprose/reactor` + `@openprose/reactor/sdk` exports:
-
-1. **Frozen artifacts.** `compile/topology.json` is a valid `TopologyWorldModel`
-   (16 nodes, a single entry gateway, `acyclic:true`), `labels.json` is present,
+1. **Frozen artifacts.** In one harness's replay layout, `compile/topology.json`
+   is a valid `TopologyWorldModel` (16 expanded nodes, a single entry gateway,
+   `acyclic:true`), `labels.json` is present,
    `receipts.json` is a flat root file, and each `world-models/<hexNodeId>/` holds
    `published.json` + `versions/sha256_*.bin`.
-2. **Dispositions.** Cold-start renders all 16 nodes; a byte-identical re-wake
+2. **Dispositions.** Cold-start renders all 16 expanded nodes; a byte-identical re-wake
    memo-SKIPS them (a skip carries zero fresh and wakes nothing).
 3. **`cost.surprise_cause === wake.source`** on every receipt (read off
    `ctx.wake.source`, never hardcoded).
@@ -125,7 +111,7 @@ ledger via the public `@openprose/reactor` + `@openprose/reactor/sdk` exports:
 
 Plus the tenet, encoded as IP00–IP06:
 
-- **IP00**: extra work is `unassigned_work`, the graph stays at 16 nodes.
+- **IP00**: extra work is `unassigned_work`, the expanded topology stays at 16 nodes.
 - **IP03**: a lane-local change lights one lane; `propagationTargets` confirms the
   five siblings stay dark.
 - **IP02**: a foundation change fans out to all six lanes.

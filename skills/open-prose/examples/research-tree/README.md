@@ -42,28 +42,17 @@ external-driven`; projects the corpus into one `leaf:<id>` facet per finding.
 - `src/root-synthesis.prose.md`: the apex; fans in from the three sub-syntheses;
   the heaviest node and the dominant fresh tick.
 
-## Run it with the Reactor harness
+## Conformance expectations
 
-The `.prose.md` contracts are harness-neutral; these verbs steer to the Reactor
-harness. Offline needs no key.
+A conforming harness proves quiet zero-fresh replay, one-leaf changes that wake
+only the leaf's ancestor path, dark sibling branches, contained corrupt-leaf
+failure, chain verification, and byte-identical regeneration.
 
-```sh
-reactor doctor                 # honest health report (the best command in the kit)
-reactor compile --check        # exits 1 (stale) until the compile sessions run
-reactor compile                # run the compile sessions -> the frozen DAG
-reactor topology               # offline now: the compiled tree (gateway -> leaves -> sub-synth -> root)
-reactor run                    # boot, drain, print dispositions + cost
-reactor serve                  # expose the standing graph
-reactor receipts verify        # chain-verify the on-disk ledger
-```
+A run leaves a state on disk that any conforming harness can replay keyless:
 
-A `reactor run` (or `reactor serve`) writes a state-dir you can replay keyless in
-devtools:
-
-```sh
-reactor-devtools <state-dir> --describe
-#   the bottom-up cold boot, the quiet skips, then the hero: revise one finding
-#   and watch only its ancestor path re-synthesize.
+```text
+the bottom-up cold boot, the quiet skips, then the hero: revise one finding
+and watch only its ancestor path re-synthesize.
 ```
 
 ## What to try
@@ -77,6 +66,11 @@ reactor-devtools <state-dir> --describe
 
 ## The state-dir a run produces
 
+`src/` ships the 4 authored contracts; the 13-node / 20-edge topology is what a
+harness's expansion produces from them. Below is one harness's replay layout;
+the skill's native layout is `state/world-model/{node}/` with a per-node
+`receipts.jsonl` (`state/filesystem.md`).
+
 ```
 <state-dir>/
   compile/topology.json   # the TopologyWorldModel (13 nodes, 20 edges, single
@@ -86,9 +80,3 @@ reactor-devtools <state-dir> --describe
   world-models/<hexNodeId>/published.json + versions/sha256_*.bin
   beats.json              # the scripted beat timeline (cold -> quiet -> surprise)
 ```
-
-The example is covered by the project's offline test suite, which drives the
-**real `@openprose/reactor` reconciler** with deterministic fake renders (no key):
-it asserts the topology compiles, a quiet re-wake skips the whole tree at zero
-fresh, `cost.surprise_cause === wake.source` on every receipt, the ledger
-chain-verifies, and two generations are byte-identical, all offline at zero spend.

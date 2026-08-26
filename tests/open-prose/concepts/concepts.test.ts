@@ -1,4 +1,4 @@
-// Conformance tests for the rewritten concept docs: concepts/reactor.md and
+// Conformance tests for the rewritten concept docs: concepts/reconciler.md and
 // concepts/responsibility.md.
 //
 // These assert the docs embody the Intelligent React end-state — the
@@ -34,8 +34,8 @@ const RETIRED_TERMS = [
 	"recommended activation",
 ];
 
-describe("reactor.md — the dumb reconciler (delta.md §B6, architecture.md §4)", () => {
-	const source = doc("reactor.md");
+describe("reconciler.md — the dumb reconciler (delta.md §B6, architecture.md §4)", () => {
+	const source = doc("reconciler.md");
 
 	it("frames the React mapping: world-model=DOM, subscriptions=props, receipt=setState, reconciler=runtime", () => {
 		// world-model.md §1 (L19): the world-model is the node's "DOM".
@@ -136,7 +136,7 @@ describe("reactor.md — the dumb reconciler (delta.md §B6, architecture.md §4
 describe("responsibility.md — mounted reactive node (delta.md §B6, architecture.md §7)", () => {
 	const source = doc("responsibility.md");
 
-	it("reframes a responsibility as a mounted node in the reactor DAG (architecture.md §7.1)", () => {
+	it("reframes a responsibility as a mounted node in the responsibility DAG (architecture.md §7.1)", () => {
 		expect(source).toMatch(/mounted node/i);
 		expect(source).toContain("### Requires");
 		expect(source).toContain("### Maintains");
@@ -199,7 +199,7 @@ describe("responsibility.md — mounted reactive node (delta.md §B6, architectu
 describe("concepts/README.md — index refresh (delta.md §B6 KEEP)", () => {
 	const source = doc("README.md");
 
-	it("describes reactor as the dumb reconciler, not the pressure loop", () => {
+	it("describes the reconciler as the dumb reconciler, not the pressure loop", () => {
 		expect(source).toMatch(/reconciler/i);
 		expect(source).not.toMatch(/creates pressure/i);
 	});

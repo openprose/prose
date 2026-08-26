@@ -4,8 +4,12 @@
 
 ```bash
 prose compile
+cp dist/manifest.next.json dist/manifest.active.json   # promote the compiled IR
 prose serve
 ```
+
+`prose serve` then waits for the `weekly-performance-review` cron tick (Mondays
+at 09:00 America/Los_Angeles) before anything renders.
 
 ## What This Repository Does
 

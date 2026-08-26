@@ -559,7 +559,7 @@ decision before source planning and authoring.
   or composed folder.
 - Load `responsibility-runtime.md` when generating responsibilities, gateways,
   standing subscribable truths, compile/serve-facing source, `### Continuity`
-  wake-source semantics, or Reactor-facing behavior.
+  wake-source semantics, or reconciler-facing behavior.
 - Load `state/README.md` and `state/filesystem.md` when persistence, memory,
   run state, root layout, attached roots, native roots, or user-global roots
   affect the generated package.

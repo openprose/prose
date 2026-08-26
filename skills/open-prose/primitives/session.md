@@ -11,7 +11,7 @@ see-also:
   - ../prose.md: Bounded render execution semantics
   - ../forme.md: Wiring (produces the topology world-model)
   - ../state/filesystem.md: The canonical world-model artifact on disk
-  - ../concepts/reactor.md: The reconciler that wakes you and compares fingerprints
+  - ../concepts/reconciler.md: The reconciler that wakes you and compares fingerprints
 ---
 
 # The Render's Harness Contract
@@ -27,7 +27,7 @@ receipt)`. It runs in two contexts:
 - **standalone** — one session, no harness. Give it evidence; it computes a
   world-model and signs a fingerprinted receipt by applying its contract's
   compiled canonicalizer locally. It depends on nothing above it.
-- **mounted** — a node in the reactor DAG, woken over time by the reconciler.
+- **mounted** — a node in the responsibility DAG, woken over time by the reconciler.
 
 You only know about **your own** node. You do not receive the topology, the
 reconciler, other nodes' contracts, or the global compiled IR. Mounting adds
@@ -102,7 +102,7 @@ world-model by reference:
 
 ```
 Your Inputs (by reference):
-- advisories: <openprose-root>/state/world-models/advisory-feed/published/
+- advisories: <openprose-root>/state/world-model/advisory-feed/published/
   (pinned version: sha256:…)
 ```
 
@@ -120,7 +120,7 @@ canonical artifact lives; query it by reference, never pre-stuffed into context:
 
 ```
 Your prior world-model:
-  <openprose-root>/state/world-models/{node}/published/
+  <openprose-root>/state/world-model/{node}/published/
 ```
 
 Read it first. This is your continuity. Build on it: update the facts that moved,
@@ -184,7 +184,7 @@ The truth you maintain is committed to the **canonical world-model artifact** �
 content-addressable directory (a single file is the degenerate case):
 
 ```
-Your world-model: <openprose-root>/state/world-models/{node}/workspace/
+Your world-model: <openprose-root>/state/world-model/{node}/workspace/
   → committed to .../{node}/published/ on a successful render
 ```
 
@@ -291,7 +291,7 @@ change."
 
 ```
 Render committed: vuln-monitor
-World-model: state/world-models/vuln-monitor/published/ (sha256:def…)
+World-model: state/world-model/vuln-monitor/published/ (sha256:def…)
 Receipt: rendered
 Fingerprints moved: { @atomic, critical }
 Summary: 3 new critical exposures, 1 cleared; carried 41 unchanged.

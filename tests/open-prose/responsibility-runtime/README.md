@@ -15,7 +15,7 @@ evaluation assets, not distributable skill docs.
 - explain concrete trigger compilation without inventing provider auth,
   subscriptions, payload schemas, or queue machinery
 - explain the layer split between responsibility source, compiler, harness,
-  Reactor, Forme, and bounded runs
+  the reconciler, Forme, and bounded runs
 
 ## Advisory Prompts
 

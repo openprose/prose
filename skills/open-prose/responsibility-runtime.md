@@ -1,8 +1,8 @@
 ---
 role: responsibility-runtime-doctrine
 summary: |
-  How OpenProse serves standing goals by composing Responsibilities, Reactor,
-  and Forme over the compile (intelligent) / run (dumb) split. Read this file for
+  How OpenProse serves standing goals by composing Responsibilities, the
+  reconciler, and Forme over the compile (intelligent) / run (dumb) split. Read this file for
   Responsibility Runtime, `kind: responsibility`, or standing-goal work. There is
   no judge beat, no status enum, no pressure, and no fulfillment activation: the
   reconciler decides skip-vs-render by comparing fingerprints.
@@ -10,7 +10,7 @@ see-also:
   - compiler/index.prose.md: Pinned compiler program (the language-layer compile steps)
   - compiler/ir-v0.md: Compiled intent output contract (topology + canonicalizers + validators)
   - concepts/responsibility.md: Responsibility semantic contract
-  - concepts/reactor.md: Fingerprint-comparison reconciler + three wake sources
+  - concepts/reconciler.md: Fingerprint-comparison reconciler + three wake sources
   - contract-markdown.md: Source format and recognized kinds
   - forme.md: Wiring as a compile-phase render producing the topology world-model
   - prose.md: Bounded render harness semantics
@@ -113,7 +113,7 @@ Markdown source defines intent:
 Skill and interpreter docs define semantics:
 
 - how responsibilities are read as mounted nodes
-- how Reactor reconciles by comparing fingerprints across three wake sources
+- how the reconciler decides skip-vs-render by comparing fingerprints across three wake sources
 - how Forme wires the DAG from `Requires ↔ Maintains` matches
 - how a bounded render reads prior world-model by reference and signs a receipt
 
@@ -189,9 +189,9 @@ source graph is clear. Authors add optional `kind: gateway` files (sugar for an
 external-driven responsibility) when inference would be unsafe, such as an
 external webhook route or provider event shape.
 
-## Reactor — The Dumb Reconciler
+## The Reconciler — Dumb On Purpose
 
-Reactor is the run-phase reconciler. It carries **no** judge, no status enum
+The reconciler is the run phase. It carries **no** judge, no status enum
 (`up/drifting/down/blocked` is retired), no pressure record, and no fulfillment
 activation. The loop:
 
@@ -215,7 +215,7 @@ activation. The loop:
    topology world-model's edges. Only `rendered`-with-a-moved-fingerprint
    propagates; `skipped` and `failed` do not.
 
-Load `concepts/reactor.md` before designing Responsibility Runtime behavior or
+Load `concepts/reconciler.md` before designing Responsibility Runtime behavior or
 interpreting reconciler feedback.
 
 ### Freshness — State vs. Policy

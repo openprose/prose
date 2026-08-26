@@ -7,14 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-08-24 — open-prose skill & plugin
+
+Skill/plugin-track release. This repository is now OpenProse only — the
+language spec, the skill, the `std`/`co` contract libraries, and the examples —
+and installs and tests with no build step. The Reactor harness has moved to its
+own repository.
+
 ### Removed
 
+- **The Reactor harness leaves this repository.** `packages/reactor*`, its
+  example replay suites, the eval harness, and both Reactor workflows now live
+  at [github.com/openprose/reactor](https://github.com/openprose/reactor), where
+  `@openprose/reactor`, `@openprose/reactor-cli`, and
+  `@openprose/reactor-devtools` are released under the same names. Reactor is
+  experimental (alpha): early software with no stability guarantees, to be
+  evaluated on your own judgement. Releases up to `reactor-v0.3.2-cli.0.2.3`
+  stay here, where their tarballs were published.
+- **`prose react` and the `reactor.md` operator guide are removed from the
+  skill.** The skill no longer routes to a harness binary; `prose compile` /
+  `prose serve` / `prose run` are the whole command surface. `runtime_contract`
+  stays `2` — the machine contract is unchanged, so no source rewrite is needed.
 - **The legacy `@openprose/prose-cli` (`tools/cli/`) is removed.** The Oclif
   `prose` binary and its `codex-sdk`/`claude-sdk`/`mock` harnesses are deleted;
-  the OpenProse language is embodied by the SKILL in-session and the Reactor
-  SDK + `reactor` CLI are the deterministic harness. The separately-authored
-  `### Criteria` section is also removed (postconditions live solely in
-  `### Maintains`).
+  the OpenProse language is embodied by the SKILL in-session, and a conforming
+  harness (see *Harnesses* in the README) is the deterministic runtime. The
+  separately-authored `### Criteria` section is also removed (postconditions
+  live solely in `### Maintains`).
+
+### Changed
+
+- **The language is described without the harness's name.** The run-phase
+  model is the reconciler (`concepts/reactor.md` → `concepts/reconciler.md`,
+  same content); the spec keeps the contract any conforming harness must
+  satisfy (`spec/02-ReactorHarness.md` → `spec/02-Harness.md`, the contract
+  part only) and the authoring pattern (`spec/03-ReactorPattern.md` →
+  `spec/03-AuthoringPattern.md`); the example READMEs stay harness-neutral
+  (authored intent plus observable behavior; only the Quick Start examples
+  carry the `prose compile → serve` flow). The README's "Harnesses" section
+  is the one pointer to the reference harness.
+- **A `harness-surface` conformance suite** keeps it that way: it fails any
+  change that reintroduces harness product tokens, or the product name for the
+  run-phase model, anywhere outside the README pointer and the skill changelog.
+- **`ci-skill.yml` gates the conformance suites** on every pull request
+  (`pnpm test`; no build, no secrets) — the first workflow to run them.
 
 ## [reactor 0.3.2 / reactor-cli 0.2.3 / reactor-devtools 0.3.0] - 2026-08-12
 

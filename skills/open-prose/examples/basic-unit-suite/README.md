@@ -47,34 +47,24 @@ it (U07).
 | U10     | **failure containment**: a failed receipt corrupts no prior truth                  | alert-state `failed`                                                    |
 | U12     | **deterministic replay**: byte-identical regeneration                              | a replayed run reproduces the same receipt ledger                       |
 
-## Run it with the Reactor harness
+## Conformance expectations
 
-The contract (`src/*.prose.md`) is harness-neutral; the flow below steers toward
-the Reactor CLI. Offline needs no model key.
-
-```sh
-reactor doctor                 # honest health report (sandbox, IR presence)
-reactor compile --check        # exits 1 (stale) until the project is compiled
-reactor compile                # run the compile sessions -> IR cache (needs a key)
-reactor topology               # offline now: the compiled DAG (7 nodes, 1 diamond)
-reactor run                    # boot, drain, print dispositions + cost
-reactor serve                  # browse the standing world-models + receipts
-reactor receipts verify        # chain-verify the on-disk ledger
-```
+A conforming harness proves U00-U12: cold propagation, memo-skip, facet and
+projection isolation, diamond single-wake, function boundaries, no-op self-
+continuity, failure containment, chain verification, and byte-identical replay.
 
 ## Replay any run you produce
 
-A `reactor run` (or `reactor serve`) writes a real, chain-verifiable state-dir.
-Replay it with no model key using `reactor-devtools <state-dir> --describe`:
+A run leaves a real, chain-verifiable state on disk. Any conforming harness can
+replay it with no model key and describe what happened:
 
-```sh
-reactor-devtools <state-dir> --describe
-#   dispositions rendered=… · skipped=… · failed=1
-#   surprise-cause  external=… · input=… · self=…
-#   COST ROLLUP (tokens) …  CHAIN-VERIFY ok
+```text
+dispositions rendered=… · skipped=… · failed=1
+surprise-cause  external=… · input=… · self=…
+cost rollup (tokens) …  chain-verify ok
 ```
 
-A replayed state-dir holds the compiled `TopologyWorldModel` (7 nodes, one
+A replayed state holds the compiled topology world-model (7 nodes, one
 diamond, `acyclic:true`, single entry gateway), node-id labels, the flat
 chain-verifiable receipt ledger, and per-node world-models (each with a
 `published.json` plus a `versions/sha256_*.bin` history).
@@ -84,7 +74,5 @@ chain-verifiable receipt ledger, and per-node world-models (each with a
 The session **embodies the VM**: it compiles the contracts into the deterministic
 artifacts (topology, world-models, receipts). The dumb reconciler then just
 replays them: a node renders **iff** its memo key
-`(contract_fingerprint, input_fingerprints)` moved. The example is exercised by
-the project's offline test suite, which drives the real `@openprose/reactor`
-reconciler with deterministic fake renders (no key) and asserts byte-identical
-output, so a drift against the real SDK fails in CI.
+`(contract_fingerprint, input_fingerprints)` moved. Deterministic renders make
+these expectations checkable without model spend.

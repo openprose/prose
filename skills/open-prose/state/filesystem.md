@@ -39,7 +39,7 @@ world-model is the canonical, deterministically-serialized, fingerprinted
 artifact — the truth downstreams subscribe to. The render's **workspace** is
 private scratch — intermediate reasoning, working notes — and is **never
 fingerprinted and never subscribed to**. This is *not* mere output-visibility
-(the pre-reactor `workspace/`→`bindings/` distinction): it is
+(the earlier `workspace/`→`bindings/` distinction): it is
 fingerprint-materiality. A node updates its published world-model only when
 something semantically material actually changed; immaterial churn stays in the
 workspace. SQL/vector indices are **derived projections** of the canonical
@@ -61,8 +61,8 @@ artifact, never the truth.
 │   └── tests/
 │       └── research-system.test.prose.md
 ├── dist/                                   # Compiled intent (topology WM + canonicalizers + validators)
-│   ├── intent.next.json                    # Newly compiled, pending activation
-│   └── intent.active.json                  # Currently active compiled intent
+│   ├── manifest.next.json                  # Newly compiled, pending activation
+│   └── manifest.active.json                # Currently active compiled intent
 ├── runs/
 │   └── {YYYYMMDD}-{HHMMSS}-{random}/
 │       ├── compiled-intent.json            # Topology world-model + canonicalizers + validators (snapshot)

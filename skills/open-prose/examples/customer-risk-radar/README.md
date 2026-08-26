@@ -4,8 +4,13 @@
 
 ```bash
 prose compile
+cp dist/manifest.next.json dist/manifest.active.json   # promote the compiled IR
 prose serve
 ```
+
+`prose serve` then waits for the `customer-risk-review` gateway to fire: an
+inbound `POST /webhooks/customer-risk/signals` or the weekday 08:30 scheduled
+review, before anything renders.
 
 ## What This Repository Does
 
