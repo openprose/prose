@@ -92,10 +92,11 @@ describe("skill-meta Markdown helpers", () => {
 describe("SKILL.md frontmatter — versioning (delta.md §C7)", () => {
 	const fm = frontmatter(read("SKILL.md"));
 
-	it("pins version to 0.16.0", () => {
+	it("pins version to 0.17.0", () => {
 		// 0.15.0 was the Intelligent React overhaul (delta.md Part C §C7 L465);
 		// 0.16.0 removes the harness product surface from the skill.
-		expect(fm).toMatch(/^version:\s*0\.16\.0\s*$/m);
+		// 0.17.0 introduces guided init/compose and the Compose std package.
+		expect(fm).toMatch(/^version:\s*0\.17\.0\s*$/m);
 	});
 
 	it("bumps runtime_contract to 2", () => {

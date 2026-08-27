@@ -43,12 +43,12 @@ plan.
 
 ## Unreleased
 
-- Introduces `prose init` / `prose compose` and the obligation-centered
-  `std/ops/compose` directory package, including bounded architectural fronts,
-  progressive Contract source, derived visual views, outside-in semantic test
-  ordering, and issue-routed OpenProse feedback.
-
 ## History
+
+- `v0.17.0`: introduced `prose init` / `prose compose` and the
+  obligation-centered `std/ops/compose` directory package, including bounded
+  architectural fronts, progressive Contract source, derived visual views,
+  outside-in semantic test ordering, and issue-routed OpenProse feedback.
 
 - `v0.4.x`: early skill discovery, `prose help`, filesystem state, examples in
   the skill directory, migration guide.
