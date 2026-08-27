@@ -11,10 +11,18 @@ shape/root questions before authoring. The shell CLI wrapper passes request
 text up front and marks the run non-interactive, so missing blocking decisions
 come back as `unresolved-intent` instead of terminal prompts.
 
+The `compose/` directory package powers `prose compose` and the architectural portion of
+`prose init`. It maintains a small human-facing architectural frontier,
+triangulates it with orthogonal constraints, and progressively materializes the
+resolved design into one canonical Contract package plus an outside-in test
+ladder. It routes OpenProse framework pressure to deduplicated public issues
+rather than changing the framework during composition.
+
 ## Systems
 
 | System | CLI Command | Description |
 |---------|-------------|-------------|
+| `compose/` | `prose init` / `prose compose [request...]` | Guided Contract composition with progressive source, semantic tests, visual projection, and issue-routed OpenProse feedback |
 | `lint.prose.md` | `prose lint <file>` | Validate structure, schema, shapes, and contract matching |
 | `preflight.prose.md` | `prose preflight <file>` | Check that dependencies are installed and environment variables are set |
 | `wire.prose.md` | `prose run std/ops/wire` | Run Forme wiring to produce an execution manifest |

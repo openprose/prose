@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`prose init` and `prose compose` now provide guided, progressive program
+  architecture.** The obligation-centered `std/ops/compose` directory package
+  keeps the architect focused on a bounded conceptual frontier, materializes
+  settled decisions into one canonical Contract package, derives a disposable
+  visual view, and creates semantic tests outside-in from the package promise
+  through Contract boundaries, failure behavior, harness portability, and
+  performance. Framework pressure discovered during composition is routed to
+  deduplicated public issues rather than implemented in the target program.
+
 ## [0.16.0] - 2026-08-24 — open-prose skill & plugin
 
 Skill/plugin-track release. This repository is now OpenProse only — the

@@ -37,6 +37,8 @@ codex exec "prose run research.prose.md"
 
 | Command                     | Action                                                          |
 | --------------------------- | --------------------------------------------------------------- |
+| `prose init [request...]` | Initialize an OpenProse root and invoke the `std/ops/compose` package in bootstrap mode |
+| `prose compose [request...]` | Progressively design, test, visualize, and materialize one canonical Contract package |
 | `prose compile [path]` | Compile Responsibility Runtime source into validated repository IR |
 | `prose serve` | Serve active repository IR as local cron and HTTP trigger adapters |
 | `prose run <file.prose.md>`      | Execute a local responsibility or function                               |

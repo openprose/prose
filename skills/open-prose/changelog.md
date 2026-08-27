@@ -26,15 +26,27 @@ plan.
 - Native repositories use the repository root as the OpenProse root.
 - Attached repositories use `repo/.agents/prose`.
 - User-global OpenProse uses `~/.agents/prose`.
-- The root contains `src/`, `dist/`, `runs/`, `state/`, `deps/`,
-  `prose.lock`, and `.env`.
+- The root contains `src/`, `architecture/`, `dist/`, `runs/`, `state/`,
+  `deps/`, `prose.lock`, and `.env`. Canonical authored truth remains in
+  `src/`; `architecture/` contains supporting Compose decisions and projections.
 - Durable cross-run agents live in `state/agents/`.
 - Each responsibility's persisted world-model and its signed, append-only
   receipt ledger are the durable cross-run truth; there is no separate status or
   pressure store (the judge loop is retired).
 - Multi-file systems conventionally use `index.prose.md`.
+- `prose init` and `prose compose` run the `std/ops/compose` directory package.
+  Compose progressively materializes a canonical directory package, develops
+  semantic tests outside-in, and routes framework feedback to public issues
+  rather than implementing it during composition.
 - Generated run internals include the compiled activation manifest,
   `root.prose.md`, and `vm.log.md`.
+
+## Unreleased
+
+- Introduces `prose init` / `prose compose` and the obligation-centered
+  `std/ops/compose` directory package, including bounded architectural fronts,
+  progressive Contract source, derived visual views, outside-in semantic test
+  ordering, and issue-routed OpenProse feedback.
 
 ## History
 

@@ -7,6 +7,7 @@ Reusable OpenProse functions, responsibilities, patterns, roles, delivery adapte
 ```prose
 use "std/evals/inspector"
 use "std/evals/prose-contributor"
+use "std/ops/compose"
 use "std/ops/prose-author"
 use "std/patterns/worker-critic"
 use "std/patterns/pipeline"
@@ -47,6 +48,7 @@ Operational contracts for profiling, debugging, validation, and wiring.
 
 | Contract | Purpose |
 |---------|---------|
+| `compose` | Progressively design, test, visualize, and materialize one canonical OpenProse directory package |
 | `lint` | Validate structure, schema, shapes, and contract consistency for a contract and its sub-unit tree |
 | `preflight` | Check that all runtime dependencies are satisfied before executing a contract |
 | `status` | Summarize recent runs from `<openprose-root>/runs/` |

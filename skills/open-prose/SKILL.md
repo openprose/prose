@@ -36,6 +36,7 @@ After activation, choose the narrowest path that matches the user's intent:
 | User Intent | Load First | Then Load If Needed |
 |-------------|------------|---------------------|
 | Explain OpenProse or answer "how do I..." | `help.md` | `examples/README.md`, then one focused example |
+| Initialize or compose an OpenProse program | `guidance/tenets.md` | `guidance/authoring.md`, then run `std/ops/compose` |
 | Run a `.prose.md` responsibility or function | `contract-markdown.md` | `state/README.md` and the selected backend (`state/filesystem.md` by default); `forme.md` if responsibilities must be wired (`### Requires` → `### Maintains`); `prose.md` to execute |
 | Inspect or upgrade source layout | `changelog.md` | `contract-markdown.md`, `prosescript.md` if migration details require them |
 | Write a new `.prose.md` responsibility or function | `contract-markdown.md` | `guidance/tenets.md`, `guidance/authoring.md` |
@@ -60,9 +61,11 @@ All OpenProse paths are relative to `<openprose-root>`.
 | Attached repository | `repo/.agents/prose` |
 | User-global | `~/.agents/prose` |
 
-The root contains `src/` for authored intent, `dist/` for compiled intent,
-`runs/` for activation receipts, `state/` for durable cross-run state, `deps/`
-for installed dependencies, plus `prose.lock` and `.env`.
+The root contains `src/` for the canonical authored program packages,
+`architecture/` for supporting decisions, visual projections, and issue
+records, `dist/` for compiled intent, `runs/` for activation receipts, `state/`
+for durable cross-run state, `deps/` for installed dependencies, plus
+`prose.lock` and `.env`.
 
 ## Proposing This Skill On Your Own Judgment
 
@@ -123,6 +126,9 @@ executing the contract. The shell executable is the agent runner, e.g.
 
 | Command | Action |
 |---------|--------|
+| `prose init [request...]` | Establish the minimal OpenProse root and harness selection, then run `std/ops/compose` in `bootstrap` mode. Begin from the desired render and progressively establish a directory package whose `index.prose.md` is the public root |
+| `prose compose [request...]` | Load `guidance/tenets.md`, `guidance/authoring.md`, the target Contract package, supporting decisions, and relevant run evidence; run `std/ops/compose` in `compose` mode. Maintain no more than three active conceptual fronts, materialize settled design into source, build tests from package promise through performance, generate a derived HTML view, and route framework pressure to deduplicated public issues when authorized |
+| `prose compose --review` / `--reflect <run-id...>` | Run `std/ops/compose` in `review` mode to challenge static design and test coverage, or `reflect` mode to compare it with completed run evidence. Keep program diagnostics distinct from OpenProse issue feedback |
 | `prose compile [path] [--out <dir>]` | Load `responsibility-runtime.md`, then `compiler/index.prose.md`; run the pinned ProseScript compiler and emit the compile-phase IR — the topology world-model (nodes, edges, entry points), per-node canonicalizers and postcondition validators, frozen contract fingerprints, and diagnostics — into `<openprose-root>/dist/manifest.next.json` by default |
 | `prose compile <image.png\|.svg>` | Load `visual-source.md`. The image is a **typed image** (a visual brief, one rung above markdown). Run the *resolve* render: read the pixels against `visual-source.md`'s requirement tiers, emit `.prose.md` contract(s) into `<openprose-root>/src/` for ratification (the `prose write` discipline — interrupt, do not guess, on safety-bearing blanks), then run the ordinary compile. Compiling **is** the typecheck (acyclic + round-trip-stable) |
 | `prose serve` | Load and validate `<openprose-root>/dist/manifest.active.json`, which is promoted from `manifest.next.json` with `cp dist/manifest.next.json dist/manifest.active.json`; register local cron and HTTP trigger adapters; launch ordinary bounded activations |
@@ -283,6 +289,7 @@ another repository uses `repo/.agents/prose`. User-global work uses
 
 | Path | Purpose |
 |------|---------|
+| `<openprose-root>/architecture/` | Supporting decisions, generated visual map, and OpenProse issue links or drafts; never a second source of truth |
 | `<openprose-root>/src/` | Default source root for project, directory, or repository scoped OpenProse |
 | `<openprose-root>/src/**/index.prose.md` | Conventional multi-file DAG root for a set of wired responsibilities |
 | `<openprose-root>/dist/` | Compiled intent and served manifests |

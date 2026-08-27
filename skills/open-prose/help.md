@@ -33,7 +33,7 @@ Options:
 **After the user responds:**
 
 - **Run a contract**: Ask for the file path, then load `prose.md` and execute
-- **Build something new**: Ask them to describe their task, then help write a contract (load `guidance/authoring.md`)
+- **Build something new**: Start with `prose init` / `prose compose` when the Contract system is not yet clear; use `prose write` when one Contract is already understood
 - **Keep a goal true**: Help author a `kind: responsibility`, then explain `prose compile`, `prose serve`, and `prose status`
 - **Learn the syntax**: Show examples from `examples/`, explain the VM model
 - **Improve OpenProse**: Run `std/evals/prose-contributor` on relevant run IDs; require explicit user approval before pushing or opening a PR
@@ -45,6 +45,8 @@ Options:
 
 | Command | What it does |
 |---------|--------------|
+| `prose init [request...]` | Initialize an OpenProse workspace and begin its architecture |
+| `prose compose [request...]` | Design and evolve the program's Contracts, relationships, and architecture |
 | `prose compile [path] [--out <dir>]` | Compile source into `<openprose-root>/dist/manifest.next.json` |
 | `prose serve` | Serve the active IR as local cron and HTTP trigger adapters |
 | `prose run <file.prose.md>` | Run a responsibility or function contract |
@@ -75,10 +77,19 @@ prose serve
 
 **Create your first contract:**
 ```
-prose help
--> Select "Build something new"
--> Describe what you want to automate
+prose init
+prose compose
+prose write
 ```
+
+`prose compose` progressively turns the project architecture into full Contract
+source while keeping unresolved regions explicit. It creates semantic tests in
+order from the package promise through Contract boundaries, failure behavior,
+portability, and performance. It never edits the OpenProse framework during
+composition; framework feedback is deduplicated and filed as a public issue
+when authorized, or preserved as an issue draft.
+Use `prose compose --review` to challenge the current design and
+`prose compose --reflect <run-id...>` to compare it with execution evidence.
 
 Default project source lives under `<openprose-root>/src/`. Multi-file systems
 conventionally start at `<openprose-root>/src/{system}/index.prose.md`; runs are
