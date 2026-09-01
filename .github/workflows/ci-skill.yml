@@ -1,25 +1,15 @@
 name: CI - Skill conformance
 
-# Runs the OpenProse conformance suites under tests/open-prose/** on every PR
-# that touches the skill, the spec, the example corpus, the std/co contract
-# libraries, or the gate's own wiring. The suites read Markdown off disk and
-# make string assertions: no build step, no model key, no network.
+# Runs the OpenProse conformance suites under tests/open-prose/**. The suites
+# read Markdown off disk and make string assertions: no build step, no model
+# key, no network, well under a minute.
+#
+# There is deliberately no path filter. This job is the required status check
+# on main, and a required check that never reports leaves a pull request
+# waiting on it forever — so every pull request runs it, whatever it touches.
 
 on:
   pull_request:
-    paths:
-      - "skills/**"
-      - "spec/**"
-      - "tests/**"
-      - "packages/std/**"
-      - "packages/co/**"
-      - "README.md"
-      - "CONTRIBUTING.md"
-      - "package.json"
-      - "pnpm-lock.yaml"
-      - "pnpm-workspace.yaml"
-      - "vitest.config.ts"
-      - ".github/workflows/ci-skill.yml"
   push:
     branches: [main]
 
@@ -32,6 +22,7 @@ permissions:
 
 jobs:
   skill:
+    # NOTE: this job name is the required status check on main — do not rename.
     name: CI - Skill conformance
     runs-on: ubuntu-latest
     timeout-minutes: 10
