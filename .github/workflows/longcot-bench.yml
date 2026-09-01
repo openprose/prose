@@ -96,17 +96,17 @@ jobs:
     timeout-minutes: 350
     steps:
       - name: Checkout prose
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Checkout LongCoT
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: LongHorizonReasoning/longcot
           ref: ${{ inputs.longcot_ref }}
           path: longcot
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
 
@@ -129,7 +129,7 @@ jobs:
           pi --version || pi --help | head -1
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@38f3f104447c67c051c4a08e39b64a148898af3a # v4.2.0
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           enable-cache: true
 
@@ -253,7 +253,7 @@ jobs:
 
       - name: Upload responses artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: longcot-responses-${{ github.run_id }}
           path: longcot/responses/**
@@ -262,7 +262,7 @@ jobs:
 
       - name: Upload results artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: longcot-results-${{ github.run_id }}
           path: longcot/results/**
