@@ -1,0 +1,61 @@
+# docs-synthesis — merged PRs in the prose monorepo piped into docs-update PRs.
+#
+# A `repo-changes` GATEWAY accepts merged-PR deltas (number, title, body, the
+# changed-file-path list, and a diffstat — never the full diff). A `change-signal`
+# responsibility classifies each PR's changed paths into per-section doc-impact
+# signals, then five section truths (cli-docs, sdk-docs, reactor-docs,
+# devtools-docs, openprose-docs) each subscribe to the one signal facet they care
+# about and accumulate pending edits, and a `docs-pr` actuator composes the pending
+# edits across sections into ONE pull request against openprose/docs. Unrelated PRs
+# memo-skip the sections they do not touch.
+#
+# Offline: the built-in `static` connector below ships fixture PR deltas, so
+# `reactor serve` (or `reactor trigger`) ingests them with no key and no network.
+# Live: drop in connectors.cjs (keyed `github`) to read merged PRs from `git log`.
+state:
+  dir: ./.reactor
+
+model:
+  # ONE cheap global model for the whole pipeline. The tiered design makes every
+  # upstream render a small typed transform (classify changed paths, append one
+  # pending edit, coalesce facets), so a fast, cheap model is adequate there. The
+  # terminal `docs-pr` actuator is the one render that drafts real .mdx prose and
+  # would most benefit from a stronger model — but per-node model selection (a
+  # node's `### Runtime` model) is NOT yet honored by the CLI (tracked as
+  # RB-NodeModel), so today the actuator runs on this same global model and a human
+  # reviews the opened PR. The llm-as-judge tier uses an expensive model instead
+  # (configured in the eval harness, not here).
+  provider: openai
+  # Cheap model for the high-volume RENDERS (classify, accumulate, coalesce).
+  # Compile is the rare phase (once per contract change) and needs stricter
+  # structured-output fidelity, so it uses the medium model — amortized across the
+  # whole life of a stable contract.
+  render_model: gpt-5.4-mini
+  compile_model: gpt-5.4
+  temperature: 0
+  # Bounded renders: each upstream render is a short transform, not an open-ended
+  # agent loop. The cap is the backstop; the contracts' ### Invariants do the real
+  # bounding (read only the inline input; never run git or scan the repo). The
+  # actuator is allowed to read the specific pages it edits, also bounded.
+  max_turns: 24
+
+sandbox:
+  mode: none
+  shell_timeout_ms: 300000
+
+gateways:
+  - node: repo-changes
+    source_id: github
+    poll: 60s
+    connector:
+      type: static
+      id_field: id
+      # NOTE: the CLI's reactor.yml parser accepts inline FLOW maps/lists for
+      # connector items (one line), with scalar fields only — block-style list
+      # items and nested maps/arrays do not parse here. So `files` is a
+      # semicolon-delimited path list (a scalar), which change-signal splits.
+      # Four fixtures exercise selective wake: a CLI-only PR (moves cli-docs only),
+      # a CLI+SDK PR (moves cli-docs + sdk-docs), an openprose PR (moves
+      # openprose-docs only), and a test-only no-op PR (moves nothing downstream).
+      # Add more {...} entries (same line) for a fuller demo.
+      items: [{ id: pr-101, number: 101, title: "feat(cli): add anonymous opt-out telemetry", body: "Adds a REACTOR_TELEMETRY=0 opt-out and an anonymous usage ping. New env var and a note in the run path.", files: "packages/reactor-cli/src/telemetry.ts;packages/reactor-cli/src/commands/run.ts", diffstat: "2 files changed, 64 insertions", merge_sha: "a1b2c3d", fingerprint: "pr-101:a1b2c3d" }, { id: pr-102, number: 102, title: "feat: bring-your-own LLM provider configuration", body: "Lets users configure a custom provider/base_url/api_key_env. Adds a public adapter export and a CLI config block.", files: "packages/reactor/src/adapters/provider.ts;packages/reactor/src/index.ts;packages/reactor-cli/src/config.ts", diffstat: "3 files changed, 121 insertions, 8 deletions", merge_sha: "b2c3d4e", fingerprint: "pr-102:b2c3d4e" }, { id: pr-103, number: 103, title: "feat(openprose): add the Typed Image authoring surface", body: "Introduces the Typed Image authoring surface to the language skill and the spec reference.", files: "skills/open-prose/SKILL.md;references/01-Language.md", diffstat: "2 files changed, 210 insertions", merge_sha: "c3d4e5f", fingerprint: "pr-103:c3d4e5f" }, { id: pr-104, number: 104, title: "test: stabilize reconciler flake", body: "Flaky same-epoch test; adds a deterministic clock to the test harness. No behavior or API change.", files: "packages/reactor/src/__tests__/reconciler.test.ts;.github/workflows/ci.yml", diffstat: "2 files changed, 30 insertions, 12 deletions", merge_sha: "d4e5f6a", fingerprint: "pr-104:d4e5f6a" }]
