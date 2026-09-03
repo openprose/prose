@@ -109,6 +109,19 @@ describe("reconciler.md — the dumb reconciler (delta.md §B6, architecture.md 
 		expect(source).toMatch(/never a wake signal/i);
 	});
 
+	it("gives the receipt's cost block its sub-shape: fresh vs reused tokens and a surprise_cause equal to wake.source", () => {
+		expect(source).toContain(
+			"`{ provider, model, tokens: { fresh, reused }, surprise_cause }`",
+		);
+		expect(source).toContain("`tokens.fresh`");
+		expect(source).toContain("`tokens.reused`");
+		expect(source).toContain("`surprise_cause`");
+		// The cause of the spend is the wake source — the observable link between
+		// surprise and cost.
+		expect(source).toMatch(/`surprise_cause`[^|]*must equal `wake\.source`/);
+		expect(source).toMatch(/`skipped` receipt carries zero cost/i);
+	});
+
 	it("states the structured-backing rule (world-model.md §3 L167-172)", () => {
 		expect(source).toMatch(/structured[- ]backing/i);
 		expect(source).toMatch(/render prose \*from\* it/i);

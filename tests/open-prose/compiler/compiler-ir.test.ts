@@ -310,6 +310,43 @@ describe("compiler/ir-v0.md — carries compile-phase outputs (delta.md §A5/§B
 	});
 });
 
+describe("compiler/ir-v0.md — node identity and artifact locators", () => {
+	it("states that `node` is mount identity, defaulting to the slug for a single mount", () => {
+		const f = flat();
+		expect(f).toContain("### Node identity");
+		expect(f).toContain("`node` is **mount identity**");
+		// The default every worked example and every compile of src/ alone
+		// produces: one mount per contract, keyed by the contract's slug.
+		expect(f).toContain("defaults it to the contract's slug (frontmatter `name:`)");
+		// Multi-mount and per-entity fan-out keys are the harness's to assign;
+		// the compiler emits the family, never an enumeration.
+		expect(f).toContain("the per-mount node keys are the harness's to assign");
+		expect(f).toContain("the compiler emits one node per contract and never an enumeration");
+	});
+
+	it("ties a node to its source through contract_fingerprint, and keeps `id:` out of the v2 manifest", () => {
+		const f = flat();
+		expect(f).toContain("`contract_fingerprint` is what ties a node to its source");
+		// `id:` is source identity behind the node when an author declares it; the
+		// node record does not carry it, so no fixture or manifest changes shape.
+		expect(f).toContain("Frontmatter `id:`, when an author declares it, is the source identity");
+		expect(f).toContain("the node record has no `id` field");
+		// The retired single-identity rule must not resurface here.
+		expect(f).not.toMatch(/never derive identity from/i);
+	});
+
+	it("resolves `artifact` locators against the OpenProse root, for canonicalizers and postconditions alike", () => {
+		const f = flat();
+		expect(f).toContain("### Artifact locators");
+		expect(f).toContain("`artifact` is a locator, not a payload");
+		expect(f).toContain("the parent of the compile output directory");
+		expect(f).toContain("`<openprose-root>/dist/canonicalizers/competitor-monitor.js`");
+		// The run phase resolves the locator when it loads the active manifest.
+		expect(f).toContain("when it loads `dist/manifest.active.json`");
+		expect(f).toContain("The same rule applies to the `artifact` field of every `postconditions` entry");
+	});
+});
+
 // ---------------------------------------------------------------------------
 // 2) Fixture conformance
 // ---------------------------------------------------------------------------

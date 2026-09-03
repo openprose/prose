@@ -129,8 +129,9 @@ other. The reconciler reads `edges` to resolve propagation targets.
 ### nodes
 
 Each node is one mounted producer (a `responsibility` or `gateway`). Required
-fields: `node` (the node identity — its stable name), `contract_fingerprint`
-(the frozen fingerprint of its contract/source), and `wake_source`.
+fields: `node` (the mount identity; see "Node identity" below),
+`contract_fingerprint` (the frozen fingerprint of its contract/source), and
+`wake_source`.
 
 `wake_source` is one of `input`, `self`, or `external`
 (`world-model.md` §5): input-driven by default, self-driven when `### Continuity`
@@ -139,6 +140,27 @@ wake-source declaration, carried from `### Continuity`.
 
 Functions are never nodes. Patterns expand into nodes at compile time; the
 expanded responsibilities appear here, the pattern source does not.
+
+### Node identity
+
+`node` is **mount identity**: an opaque string assigned when a contract is
+mounted, unique within a manifest, and stable across recompiles of an unchanged
+contract set. A single mount of a contract — the case every example in this
+document and every compile of `src/` alone produces — defaults it to the
+contract's slug (frontmatter `name:`), which is why the worked examples key
+nodes as `"competitor-monitor"` and `"stargazer-events"`. When a harness mounts
+one contract more than once, or instantiates a facet family once per entity
+(`contract-markdown.md`, "Facet families and per-entity mounts"), the per-mount
+node keys are the harness's to assign; the compiler emits one node per contract
+and never an enumeration.
+
+`contract_fingerprint` is what ties a node to its source: two nodes mounted
+from the same contract carry the same fingerprint under different `node` keys.
+Frontmatter `id:`, when an author declares it, is the source identity behind
+the node — it survives filename and `name:` renames where the slug does not —
+but it is not emitted anywhere in a version `2` manifest; the node record has no
+`id` field. `edges`, `entry_points`, `canonicalizers`, `postconditions`, and
+`contract_fingerprints` all refer to a node by its `node` key and nothing else.
 
 ### edges
 
@@ -238,6 +260,20 @@ anything subscribed must have a structured, canonicalizable backing. Free-form
 rendered prose is a derived projection excluded from the fingerprint. The
 compiler lints subscribed fields without structured backing and surfaces them as
 a diagnostic.
+
+### Artifact locators
+
+`artifact` is a locator, not a payload: the compiled canonicalizer lives on
+disk and the manifest says where. Like every path in this IR it is root-relative
+with forward slashes, and the root it is relative to is the **OpenProse root** —
+the directory that holds `src/` and `dist/`, the parent of the compile output
+directory — so `dist/canonicalizers/competitor-monitor.js` names
+`<openprose-root>/dist/canonicalizers/competitor-monitor.js`. The compiler
+writes the artifact and the manifest in the same pass; the run phase resolves
+the locator against that same root when it loads `dist/manifest.active.json`
+(promoted from `manifest.next.json`), so a manifest and its artifacts move
+together or not at all. The same rule applies to the `artifact` field of every
+`postconditions` entry below.
 
 ## Postconditions
 
