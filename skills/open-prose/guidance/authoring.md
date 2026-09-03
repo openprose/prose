@@ -16,10 +16,11 @@ Use this file when writing or reviewing OpenProse author-facing artifacts:
 
 Every authored file is **one render** — a contract plus the bounded session that
 runs it. The `kind` field is sugar over that single render atom: each kind is the
-same render with different or missing sections (`plan.md` §1). There is **no
+same render with different or missing sections (the authored kinds in
+`contract-markdown.md`). There is **no
 `kind: system`** and **no `kind: service`**: composition is imperative `call`
 *inside* a render or a cross-node *subscription* across responsibilities, never a
-third internally-autowired graph kind (`plan.md` §3).
+third internally-autowired graph kind.
 
 ## Core Principles
 
@@ -34,7 +35,7 @@ third internally-autowired graph kind (`plan.md` §3).
   obvious to a caller and to Forme.
 - Use `### Execution` only when order, loops, retries, gates, or branches are
   part of the requirement. It is the intra-node render body, and none of it is a
-  node (`plan.md` §7).
+  node (the execution-section rules in `contract-markdown.md`).
 - Treat the render's private `workspace/` as scratch that is never fingerprinted,
   and the canonical published world-model as the subscribable truth. Downstream
   work reads the published world-model, never upstream scratch.
@@ -47,14 +48,14 @@ A `kind: responsibility` file defines a mounted DAG node: a standing truth kept
 current over time. It declares **both halves of its interface** — `### Requires`
 (its subscription contracts) and `### Maintains` (the shape of the truth it
 keeps) — plus its wake-source in `### Continuity`. It is a node because it is
-mounted as a subscribable producer, **not** because it holds state (`plan.md`
-§2).
+mounted as a subscribable producer, **not** because it holds state.
 
 - Put facet-level needs in `### Requires`. Each entry names a facet contract that
   Forme matches semantically to some producer's `### Maintains` facet
   (`Requires.<facet> ↔ Maintains.<facet>`). `### Requires` is the *need*; the
   resolved producer is Forme's choice.
-- Make `### Maintains` do its four jobs (`world-model.md` §2): a **type** (the
+- Make `### Maintains` do its four jobs (spelled out under `## Maintains` in
+  `contract-markdown.md`): a **type** (the
   fields, including freshness fields like `valid_until` / `last_corroborated`); a
   **canonicalization spec** (what equality means — which fields are material and
   which are volatile-but-immaterial, such as `fetched_at` timestamps and request
@@ -69,11 +70,11 @@ mounted as a subscribable producer, **not** because it holds state (`plan.md`
 - Honor the structured-backing rule: anything subscribed must have a structured,
   canonicalizable backing. Fingerprint the structured truth and render prose
   *from* it; free-form rendered prose is a derived projection excluded from the
-  fingerprint (`world-model.md` §3).
+  fingerprint (the structured-backing rule).
 - Declare freshness *state* (`valid_until`, `last_corroborated`, `confidence`) in
   `### Maintains` and freshness *policy* (the recheck cadence) in
   `### Continuity`. A lapsing `valid_until` flips a fact's status, moves that
-  facet's fingerprint, and propagates as ordinary surprise (`world-model.md` §6).
+  facet's fingerprint, and propagates as ordinary surprise.
 - State postconditions as conditions on the output (the folded-in `### Criteria`),
   not a separate judge beat. Deterministically-expressible postconditions are
   verified by the harness on commit; irreducibly-semantic ones are self-attested
@@ -276,10 +277,10 @@ subject: summarizer
 ## World-Model and Freshness Authoring
 
 A responsibility's persisted world-model **is** its memory: one canonical truth
-per node subsumes the old `### Memory` reads/writes ledger (`world-model.md`
-§9.4). There is no separate `### Memory` section. A `function` is stateless and
-has no world-model; a former helper that was genuinely stateful is really a
-responsibility, and its persisted state is its world-model.
+per node subsumes the old `### Memory` reads/writes ledger. There is no separate
+`### Memory` section. A `function` is stateless and has no world-model; a former
+helper that was genuinely stateful is really a responsibility, and its persisted
+state is its world-model.
 
 - Declare the durable shape — decision history, watermarks, cursors, and
   per-entity truth — in `### Maintains`, with facets so a downstream wakes only
@@ -289,11 +290,11 @@ responsibility, and its persisted state is its world-model.
   the run. For recurring workflows, keep cursors, high-water marks, and run ids
   as material fields of the maintained truth.
 - Treat the published world-model as the single canonical truth. SQL, vector, and
-  dashboard views over it are derived projections, never the truth
-  (`world-model.md` §1).
+  dashboard views over it are derived projections, never the truth (the
+  canonical-truth invariant in `state/README.md`).
 - The render writes the world-model and signs a receipt with its fingerprints by
   applying the compiled canonicalizer locally; this works standalone, with no
-  harness present (`architecture.md` §3.2).
+  harness present (the render harness contract in `primitives/session.md`).
 
 ## Repository Authoring
 

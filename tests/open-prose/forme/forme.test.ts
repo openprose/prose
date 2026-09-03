@@ -4,8 +4,8 @@
 // in BOTH scope (intra-`system` service wiring -> the responsibility DAG) and
 // layer (a SKILL-phase manifest compiler -> an SDK compile-phase render emitting
 // the topology world-model). This asserts the doc embodies that end-state
-// (delta.md Part B §B3/§B6 + Part F; plan.md §5; architecture.md §2/§3.1/§6.3;
-// world-model.md §1/§3). It is a doc-conformance test in the same style as
+// (compile-phase wiring, the diamond rule, diagnostics over guesses). It is a
+// doc-conformance test in the same style as
 // tests/open-prose/contract-markdown/contract-markdown.test.ts — it reads the
 // source doc and asserts on its content; no runtime.
 //
@@ -40,14 +40,14 @@ function frontmatter(): string {
 describe("forme.md — layer relocation: SKILL-phase compiler -> compile-phase render", () => {
 	it("declares Forme a compile-phase render, not a manifest compiler", () => {
 		const source = doc();
-		// architecture.md §2 L83-L91 / §3.1 L111; delta.md §B3 L304-L309.
+		// Forme is a compile-phase render; the manifest compiler it replaced is retired.
 		expect(source).toMatch(/compile-phase render/i);
 		expect(source).toMatch(/intelligent at compile.*dumb at run|compile.+intelligent.+run.+dumb/is);
 	});
 
 	it("splits the run into a compile (intelligent) and run (dumb) phase", () => {
 		const source = doc();
-		// architecture.md §2 L78-L97.
+		// Two phases: compile fires on contract-set change, run fires on every wake.
 		expect(source).toMatch(/Compile.*fires on contract-set change/i);
 		expect(source).toMatch(/Run.*fires on every wake/i);
 		expect(source).toMatch(/reconciler reads `topology\.edges`|reads `topology\.edges`/);
@@ -55,7 +55,7 @@ describe("forme.md — layer relocation: SKILL-phase compiler -> compile-phase r
 
 	it("frames Forme as a render with a contract, world-model, and receipt (auditable)", () => {
 		const source = doc();
-		// architecture.md §2 L90: each compile step is itself a render -> auditable.
+		// Each compile step is itself a render -> auditable.
 		expect(source).toMatch(/Forme is one of them|Forme is a render/i);
 		expect(source).toMatch(/signs a receipt/);
 		expect(source).toMatch(/auditable/i);
@@ -63,8 +63,8 @@ describe("forme.md — layer relocation: SKILL-phase compiler -> compile-phase r
 
 	it("breaks the bootstrap regress via a wiring-exempt registry read", () => {
 		const source = doc();
-		// architecture.md §3.1 L128-L132: Requires = all declared contracts, exempt
-		// from Forme's own wiring.
+		// Forme's own Requires is the set of all declared contracts, exempt from
+		// Forme's own wiring.
 		expect(source).toMatch(/set of all declared contracts/i);
 		expect(source).toMatch(/exempt from Forme's own wiring/i);
 		expect(source).toMatch(/bootstrap regress/i);
@@ -74,7 +74,7 @@ describe("forme.md — layer relocation: SKILL-phase compiler -> compile-phase r
 describe("forme.md — scope relocation: intra-system wiring -> the responsibility DAG", () => {
 	it("declares Forme wires the DAG only, not agents inside a node", () => {
 		const source = doc();
-		// plan.md §5 L141; architecture.md §3.1.
+		// Forme wires the responsibility DAG; intra-node composition is imperative call.
 		expect(source).toMatch(/Forme wires the DAG only/i);
 		expect(source).toMatch(/no intra-node autowiring/i);
 		expect(source).toMatch(/imperative.+`call`|`call`.+imperative/is);
@@ -82,7 +82,7 @@ describe("forme.md — scope relocation: intra-system wiring -> the responsibili
 
 	it("matches ### Requires facet-contract to ### Maintains facet semantically", () => {
 		const source = doc();
-		// architecture.md §3.1 L113-L114; plan.md §5 L137.
+		// Matching is semantic, never string-matching.
 		expect(source).toMatch(/### Requires.+### Maintains|### Maintains.+### Requires/s);
 		expect(source).toMatch(/semantically/i);
 		expect(source).toMatch(/not by string|never by string|string-match/i);
@@ -97,7 +97,7 @@ describe("forme.md — scope relocation: intra-system wiring -> the responsibili
 
 	it("honors deliberate fan-in as the diamond rule (one slot per producer)", () => {
 		const source = doc();
-		// plan.md §5 L137; architecture.md §3.1 L122; world-model.md §3 L148-L150.
+		// Fan-in is one slot per producer in the subscriber's input tuple.
 		expect(source).toMatch(/diamond rule/i);
 		expect(source).toMatch(/once per distinct input-fingerprint tuple/i);
 		expect(source).toMatch(/distinct slot|slot per producer/i);
@@ -105,7 +105,7 @@ describe("forme.md — scope relocation: intra-system wiring -> the responsibili
 
 	it("surfaces unsatisfied and ambiguous matches as diagnostics, never a silent guess", () => {
 		const source = doc();
-		// architecture.md §3.1 L120-L123; plan.md §5 L137.
+		// Unsatisfied and ambiguous matches are diagnostics, never guesses.
 		expect(source).toMatch(/never.+guess|guess.+never/is);
 		expect(source).toMatch(/[Uu]nsatisfied/);
 		expect(source).toMatch(/[Aa]mbiguous/);
@@ -116,7 +116,7 @@ describe("forme.md — scope relocation: intra-system wiring -> the responsibili
 describe("forme.md — the topology world-model (Forme's output)", () => {
 	it("emits the topology world-model with nodes/edges/entry_points/acyclic", () => {
 		const source = doc();
-		// architecture.md §6.3 L256-L261; SHAPES.md §6.
+		// The topology block of the compile-phase IR (compiler/ir-v0.md).
 		expect(source).toMatch(/topology world-model/i);
 		expect(source).toContain("nodes");
 		expect(source).toContain("edges");
@@ -126,7 +126,7 @@ describe("forme.md — the topology world-model (Forme's output)", () => {
 
 	it("draws each edge as subscriber.Requires.<facet> -> producer.Maintains.<facet>", () => {
 		const source = doc();
-		// architecture.md §6.3 L258; SHAPES.md §6 (TopologyEdge).
+		// An edge is subscriber.Requires.<facet> -> producer.Maintains.<facet>.
 		expect(source).toMatch(/subscriber/);
 		expect(source).toMatch(/producer/);
 		expect(source).toMatch(/Requires.+Maintains|Maintains.+Requires/s);
@@ -134,13 +134,14 @@ describe("forme.md — the topology world-model (Forme's output)", () => {
 
 	it("uses the atomic facet for a facet-less producer", () => {
 		const source = doc();
-		// SHAPES.md §1 (ATOMIC_FACET) / §6; architecture.md §3.1 L113.
+		// A producer with no #### parts exposes the reserved @atomic facet.
 		expect(source).toMatch(/@atomic|atomic.+facet|facet-less/i);
 	});
 
 	it("registers external-driven nodes (gateways) as entry points read from ### Continuity", () => {
 		const source = doc();
-		// plan.md §5 L133-L135; architecture.md §3.1 L121.
+		// Entry points come from an external-driven ### Continuity, never an
+		// inferred trigger.
 		expect(source).toMatch(/entry point/i);
 		expect(source).toMatch(/external-driven/);
 		expect(source).toMatch(/### Continuity/);
@@ -149,7 +150,7 @@ describe("forme.md — the topology world-model (Forme's output)", () => {
 
 	it("only responsibility and gateway kinds become topology nodes (not function)", () => {
 		const source = doc();
-		// plan.md §3 L92-L105; architecture.md §7.1.
+		// Only mounted kinds become nodes; a function is called, never mounted.
 		expect(source).toMatch(/`function`.+never.+node|never.+topology node/i);
 		expect(source).toMatch(/responsibility.+gateway|gateway.+responsibility/i);
 	});
@@ -158,7 +159,7 @@ describe("forme.md — the topology world-model (Forme's output)", () => {
 describe("forme.md — acyclicity as a postcondition; feedback is time, not an edge", () => {
 	it("makes acyclicity a postcondition on Forme's own ### Maintains", () => {
 		const source = doc();
-		// plan.md §5 L139; architecture.md §3.1 L116/L132-L133.
+		// Acyclicity is a postcondition on Forme's own ### Maintains.
 		expect(source).toMatch(/postcondition/i);
 		expect(source).toMatch(/acyclic/i);
 		expect(source).toMatch(/### Maintains/);
@@ -166,7 +167,7 @@ describe("forme.md — acyclicity as a postcondition; feedback is time, not an e
 
 	it("distinguishes a graph back-edge from self-driven feedback (loops live in time)", () => {
 		const source = doc();
-		// architecture.md §3.1 L124-L127; plan.md §5 L139.
+		// Self-driven feedback is time, not a graph back-edge.
 		expect(source).toMatch(/[Ll]oops live in time, not in edges/);
 		expect(source).toMatch(/self-driven `### Continuity`/);
 		expect(source).toMatch(/never subscribes to its own facet|not.+graph cycle/i);
@@ -174,24 +175,24 @@ describe("forme.md — acyclicity as a postcondition; feedback is time, not an e
 
 	it("reuses the reconciler's deterministic cycle detector for the check", () => {
 		const source = doc();
-		// delta.md §A4 L202: detectReceiptCycles moves to Forme as the acyclicity
+		// The reconciler's cycle detector is reused as the acyclicity
 		// postcondition.
 		expect(source).toMatch(/cycle det/i);
 		expect(source).toMatch(/reused|reuse/i);
 	});
 });
 
-describe("forme.md — what was retired (delta.md §B3 / Part F)", () => {
+describe("forme.md — what was retired", () => {
 	it("retires the system kind and gives the composition replacement", () => {
 		const source = doc();
-		// plan.md §3 L105; delta.md §B1.
+		// There is no system kind; composition is call or subscription.
 		expect(source).toMatch(/no `system` kind/);
 		expect(source).toMatch(/never a third/i);
 	});
 
 	it("retires ### Wiring and the Level-2/Level-3 author-control levels", () => {
 		const source = doc();
-		// delta.md §B3 L310-L312.
+		// The Level-2/Level-3 author-control levels and ### Wiring are retired.
 		expect(source).toMatch(/### Wiring/);
 		expect(source).toMatch(/Level-2|Level 2/);
 		expect(source).toMatch(/Level-3|Level 3/);
@@ -200,14 +201,14 @@ describe("forme.md — what was retired (delta.md §B3 / Part F)", () => {
 
 	it("retires the per-system manifest in favor of the topology world-model", () => {
 		const source = doc();
-		// delta.md §B3 L312; architecture.md §6.3.
+		// The topology world-model replaces the per-system manifest.
 		expect(source).toMatch(/manifest/i);
 		expect(source).toMatch(/per-system manifest.+retired|retired.+manifest|replaces it/i);
 	});
 
 	it("does NOT teach the old three-author-control / system-wiring algorithm as live", () => {
 		const source = doc();
-		// delta.md Part F: spec wins; the per-system manifest compiler is retired.
+		// The per-system manifest compiler is retired.
 		// The old doc emitted manifest.next.json / forme.manifest.json as the live
 		// output; the rewrite must not present those as the current output.
 		expect(source).not.toMatch(/Emit the compiled Forme manifest as structured JSON/);
@@ -217,7 +218,7 @@ describe("forme.md — what was retired (delta.md §B3 / Part F)", () => {
 
 	it("draws the clean boundary: author declares need + wake-source, Forme infers wiring", () => {
 		const source = doc();
-		// plan.md §5 L135: Forme infers the wiring; the author declares the wake-source.
+		// Forme infers the wiring; the author declares the wake-source.
 		expect(source).toMatch(/Forme infers the.+wiring|infers? the.+wiring/i);
 		expect(source).toMatch(/declares? the.+wake-source|wake-source.+author|author.+wake-source/i);
 	});
@@ -226,14 +227,14 @@ describe("forme.md — what was retired (delta.md §B3 / Part F)", () => {
 describe("forme.md — frontmatter + cross-doc seam", () => {
 	it("declares a topology-wiring role and points at the compile-phase IR seam", () => {
 		const fm = frontmatter();
-		// delta.md §B6: forme.md is consistent with compiler/ir-v0.md (the IR seam).
+		// forme.md is consistent with compiler/ir-v0.md (the IR seam).
 		expect(fm).toMatch(/role:\s*topology-wiring/);
 		expect(fm).toMatch(/compiler\/ir-v0\.md/);
 	});
 
 	it("places the topology inside the compile-phase IR alongside canonicalizers + validators", () => {
 		const source = doc();
-		// SHAPES.md §6 (CompilePhaseIR.topology); architecture.md §2 L86-L91.
+		// The topology sits inside the compile-phase IR (compiler/ir-v0.md).
 		expect(source).toMatch(/compile-phase IR/i);
 		expect(source).toMatch(/canonicalizer/i);
 		expect(source).toMatch(/postcondition (validator|compiler)|validator/i);

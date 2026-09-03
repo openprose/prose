@@ -4,7 +4,8 @@
 //
 // This is the module-1 (skill-examples-corpus) acceptance test: it proves the
 // whole public learning surface was re-cleaved onto the new kinds + sections
-// (delta.md Part B §B1/§B2/§B7), the `system` kind is gone, every `service`
+// (the kinds and sections contract-markdown.md defines), the `system` kind is
+// gone, every `service`
 // became a `function`, every judge-era `responsibility` gained Requires +
 // Maintains and dropped Criteria/Fulfillment, every gateway gained an explicit
 // `### Continuity: external-driven`, and the `### Memory` ledger folded into the
@@ -66,18 +67,18 @@ function kindOf(abs: string): string {
 
 const ALL = proseFiles();
 
-describe("examples corpus — the retired kinds are gone (delta.md §B1)", () => {
+describe("examples corpus — the retired kinds are gone", () => {
   it("declares no `service` or `system` kind in any owned example", () => {
     for (const f of ALL) {
       const fm = frontmatter(f);
-      // delta.md §B1 L275-L276: service -> function; system -> DELETE.
+      // service -> function; system -> deleted.
       expect(fm, f).not.toMatch(/kind:\s*service\b/);
       expect(fm, f).not.toMatch(/kind:\s*system\b/);
     }
   });
 
   it("uses only the five recognized kinds (responsibility/function/gateway/pattern/test)", () => {
-    // architecture.md §7.1 L268-L274: the kind taxonomy.
+    // The kind taxonomy from contract-markdown.md's frontmatter enum.
     const allowed = new Set([
       "responsibility",
       "function",
@@ -91,12 +92,12 @@ describe("examples corpus — the retired kinds are gone (delta.md §B1)", () =>
   });
 });
 
-describe("examples corpus — the retired sections are gone (delta.md §B2)", () => {
+describe("examples corpus — the retired sections are gone", () => {
   it("no `### Ensures`, `### Criteria`, `### Fulfillment`, `### Services`, `### Wiring`, `### Memory` headers", () => {
     for (const f of ALL) {
       const source = read(f);
-      // delta.md §B2 L286-L294: Ensures->Maintains/Returns; Criteria/Fulfillment
-      // folded; Services/Wiring deleted with system; Memory folds into the WM.
+      // Ensures -> Maintains/Returns; Criteria/Fulfillment folded; Services/Wiring
+      // deleted with system; Memory folds into the world-model.
       expect(source, f).not.toMatch(/^### Ensures\b/m);
       expect(source, f).not.toMatch(/^### Criteria\b/m);
       expect(source, f).not.toMatch(/^### Fulfillment\b/m);
@@ -108,19 +109,19 @@ describe("examples corpus — the retired sections are gone (delta.md §B2)", ()
   });
 });
 
-describe("examples corpus — functions declare Parameters -> Returns (plan.md §4)", () => {
+describe("examples corpus — functions declare Parameters -> Returns", () => {
   const functions = ALL.filter((f) => kindOf(f) === "function");
 
   it("there is at least one migrated function (the former services)", () => {
-    // delta.md §B7 L373-L375: the 43 `service` files become `function`s.
+    // The former `service` files became `function`s.
     expect(functions.length).toBeGreaterThan(0);
   });
 
   it("every function declares ### Returns and no subscription/wake sections (### Parameters optional for a nullary call)", () => {
     for (const f of functions) {
       const source = read(f);
-      // plan.md §4 L112-L113: callables declare Parameters -> Returns, no
-      // Requires/Maintains; architecture.md §7.2 L290 (no Continuity on a function).
+      // Callables declare Parameters -> Returns, no Requires/Maintains, and no
+      // Continuity (a function is never woken).
       // A nullary function (e.g. ensure-skills, which reads the workspace) may
       // omit ### Parameters, but it always returns a value.
       expect(source, f).toMatch(/^### Returns\b/m);
@@ -131,19 +132,19 @@ describe("examples corpus — functions declare Parameters -> Returns (plan.md �
   });
 });
 
-describe("examples corpus — responsibilities are mounted nodes (plan.md §3, delta.md §B1 inversion)", () => {
+describe("examples corpus — responsibilities are mounted nodes", () => {
   const responsibilities = ALL.filter((f) => kindOf(f) === "responsibility");
 
   it("there are exactly the seven re-authored responsibilities", () => {
     // One headline responsibility per non-trivial example (the spec's core
-    // inversion, delta.md §B1 L277 / §B7 L380-L381).
+    // inversion: the responsibility is the node, its helpers are called).
     expect(responsibilities.length).toBe(7);
   });
 
   it("each gains both halves of the interface: ### Requires AND ### Maintains", () => {
     for (const f of responsibilities) {
       const source = read(f);
-      // plan.md §3 L99 / §4 L110: responsibility interface is Requires -> Maintains.
+      // The responsibility interface is Requires -> Maintains.
       expect(source, f).toMatch(/^### Requires\b/m);
       expect(source, f).toMatch(/^### Maintains\b/m);
     }
@@ -152,7 +153,7 @@ describe("examples corpus — responsibilities are mounted nodes (plan.md §3, d
   it("each declares a ### Continuity wake-source (input/self/external)", () => {
     for (const f of responsibilities) {
       const source = read(f);
-      // architecture.md §7.2 L290-L291: Continuity is the intrinsic wake-source.
+      // Continuity is the intrinsic wake-source declaration.
       expect(source, f).toMatch(/^### Continuity\b/m);
       expect(read(f), f).toMatch(/input-driven|self-driven|external-driven/);
     }
@@ -161,7 +162,7 @@ describe("examples corpus — responsibilities are mounted nodes (plan.md §3, d
   it("each declares an ### Execution that calls its helper functions (intra-node `call`)", () => {
     for (const f of responsibilities) {
       const source = read(f);
-      // plan.md §7 L150-L159: inside a node, composition is imperative `call`.
+      // Inside a node, composition is imperative `call`.
       expect(source, f).toMatch(/^### Execution\b/m);
       expect(source, f).toMatch(/\bcall\s+[a-z-]+/);
     }
@@ -169,25 +170,25 @@ describe("examples corpus — responsibilities are mounted nodes (plan.md §3, d
 
   it("each ### Maintains carries a postcondition (the folded-in ### Criteria)", () => {
     for (const f of responsibilities) {
-      // world-model.md §2 L99-L100: Criteria fold into Maintains postconditions.
+      // Criteria fold into Maintains postconditions.
       expect(read(f), f).toMatch(/postcondition/i);
     }
   });
 });
 
-describe("examples corpus — gateways are external-driven responsibilities (plan.md §3/§5)", () => {
+describe("examples corpus — gateways are external-driven responsibilities", () => {
   const gateways = ALL.filter((f) => kindOf(f) === "gateway");
 
   it("there is one gateway per event-driven example", () => {
-    // delta.md §B7 L373-L374: the gateway files gain `### Continuity: external-driven`.
+    // The gateway files declare an external-driven `### Continuity`.
     expect(gateways.length).toBeGreaterThan(0);
   });
 
   it("each gateway declares explicit `### Continuity: external-driven`, no ### Requires, and a ### Maintains", () => {
     for (const f of gateways) {
       const source = read(f);
-      // delta.md §B1 L278 / architecture.md §7.1 L272: gateway = sugar for an
-      // external-driven responsibility; no Requires; maintains incoming truth.
+      // A gateway is sugar for an external-driven responsibility: no Requires,
+      // maintains the incoming truth.
       expect(source, f).toMatch(/^### Continuity\b/m);
       expect(read(f).replace(/\s+/g, " "), f).toMatch(
         /### Continuity\s*-?\s*external-driven/,
@@ -209,9 +210,9 @@ describe("examples corpus — gateways are external-driven responsibilities (pla
   });
 });
 
-describe("examples corpus — memory-fold (delta.md §B7 MEMORY-FOLD)", () => {
+describe("examples corpus — memory-fold", () => {
   it("the pure `*-ledger` / `record-*` writer services were folded away, not left as functions", () => {
-    // delta.md §B7 L383-L384: ledger-writer services fold into the parent
+    // Ledger-writer services fold into the parent
     // responsibility's world-model; they are not separate nodes anymore.
     const retiredWriters = [
       "customer-risk-radar/src/update-risk-ledger.prose.md",
@@ -225,8 +226,8 @@ describe("examples corpus — memory-fold (delta.md §B7 MEMORY-FOLD)", () => {
   });
 
   it("a responsibility that absorbed a ledger now keeps a durable `history`/register facet in its WM", () => {
-    // delta.md §B7 L385-L390: the ledger held decision history; that becomes a facet.
-    // delta.md Part G L548-L555: facets are declared as `#### <facet>` named parts.
+    // The ledger held decision history; that becomes a facet, declared as a
+    // `#### <facet>` named part (the named-parts rule in contract-markdown.md).
     const risk = read(
       join(
         examplesDir,
@@ -238,9 +239,9 @@ describe("examples corpus — memory-fold (delta.md §B7 MEMORY-FOLD)", () => {
   });
 });
 
-describe("examples corpus — the system orchestrators were deleted (plan.md §3)", () => {
+describe("examples corpus — the system orchestrators were deleted", () => {
   it("no `*-system` orchestration file survives where one existed", () => {
-    // plan.md §3 L105: composition is `call` or subscription, never a system kind.
+    // Composition is `call` or subscription, never a system kind.
     const deletedSystems = [
       "customer-risk-radar/src/risk-radar.prose.md",
       "research-inbox-triage/src/research-inbox-triage.prose.md",

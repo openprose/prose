@@ -24,7 +24,7 @@ change, the run phase (the reconciler) consumes it, and this doc authors to it.
 There is no judge, no verdict, no pressure, and no fulfillment activation in the
 IR. Commit-gating is compiled postcondition validators plus render
 self-attestation, never an LLM judging "did this change" at wake time
-(`world-model.md` §3; `architecture.md` §3.3).
+(see `concepts/reconciler.md`).
 
 This document is the IR contract: a `CompilePhaseIR` object wrapped in a thin
 doc envelope of `sources` and `diagnostics`. The `CompilePhaseIR` type the
@@ -67,12 +67,12 @@ absolute segments.
 ## Fingerprints
 
 A **fingerprint** is a string token that changes if and only if the
-semantically-material content changed (`world-model.md` §3). The reference
-computation is `sha256:<64 lowercase hex>` — a content address over a canonical
-serialization. The IR carries fingerprints as opaque strings; the reconciler
-only ever *compares* them.
+semantically-material content changed (the fingerprint rules in
+`concepts/reconciler.md`). The reference computation is `sha256:<64 lowercase
+hex>` — a content address over a canonical serialization. The IR carries
+fingerprints as opaque strings; the reconciler only ever *compares* them.
 
-Three fingerprints of meaning appear (`world-model.md` §4): the
+Three fingerprints of meaning appear: the
 **contract-fingerprint** of each node's own contract, the **input-fingerprint**
 of each upstream facet a node subscribes to, and the **world-model-fingerprint**
 of a node's own published truth. The compile phase freezes the first;
@@ -95,14 +95,14 @@ values: `responsibility`, `function`, `gateway`, `pattern`, `test`, `unknown`.
 
 There is no `system` kind and no `service` kind. Composition is intra-node
 ProseScript `call` or a cross-node subscription, never an internally-autowired
-graph kind (`plan.md` §3; `architecture.md` §7.1). A `kind: function` is a
+graph kind (the authored kinds in `contract-markdown.md`). A `kind: function` is a
 called helper with no world-model and no node identity; functions appear in
 `sources` only when discovered, and never appear as topology nodes.
 
 ## Topology
 
 The topology world-model is Forme's output: the resolved DAG drawn from the
-contract set (`architecture.md` §6.3, §3.1). It is a maintained truth like any
+contract set (`forme.md`). It is a maintained truth like any
 other. The reconciler reads `edges` to resolve propagation targets.
 
 ```json
@@ -133,10 +133,10 @@ fields: `node` (the mount identity; see "Node identity" below),
 `contract_fingerprint` (the frozen fingerprint of its contract/source), and
 `wake_source`.
 
-`wake_source` is one of `input`, `self`, or `external`
-(`world-model.md` §5): input-driven by default, self-driven when `### Continuity`
-declares a cadence, external-driven for a gateway. It is the node's intrinsic
-wake-source declaration, carried from `### Continuity`.
+`wake_source` is one of `input`, `self`, or `external`: input-driven by default,
+self-driven when `### Continuity` declares a cadence, external-driven for a
+gateway. It is the node's intrinsic wake-source declaration, carried from
+`### Continuity`.
 
 Functions are never nodes. Patterns expand into nodes at compile time; the
 expanded responsibilities appear here, the pattern source does not.
@@ -172,34 +172,33 @@ facets). `subscriber` and `producer` must be `node` ids present in `nodes`.
 
 Fan-in (one need, many producers) is several edges with the same `subscriber`
 and `facet`-contract but different `producer`s; each adds a slot to the
-subscriber's input tuple (`architecture.md` §3.1). Edges are not a step list and
-carry no ordering; propagation order falls out of the DAG.
+subscriber's input tuple (the diamond rule in `forme.md`). Edges are not a step
+list and carry no ordering; propagation order falls out of the DAG.
 
 ### entry_points
 
 `entry_points` lists the `node` ids that are external-driven ingress points
 (gateways) — the nodes a webhook / cron / manual trigger turns into an edge
-receipt at the system's edge (`world-model.md` §5). Every entry point must be a
+receipt at the system's edge. Every entry point must be a
 `node` with `wake_source: "external"`.
 
 ### acyclic
 
-`acyclic` is Forme's own acyclicity postcondition over `edges`
-(`architecture.md` §3.1). It is computed by the deterministic cycle check
-(the reference harness implements it as `detectReceiptCycles`, the kept-half
-kernel DFS).
-The acyclicity check rejects *graph* cycles only; legitimate feedback (a node's
-output shaping its *next* input) is self-driven `### Continuity`, not a
-back-edge — loops live in time, not in edges. When a contract set is
-irreducibly cyclic, `acyclic` is `false` and a `severity: error` diagnostic
-names the cycle; the compiler does not write the IR.
+`acyclic` is Forme's own acyclicity postcondition over `edges`. It is computed
+by the deterministic cycle check (the reference harness implements it as
+`detectReceiptCycles`, the kept-half kernel DFS). The acyclicity check rejects
+*graph* cycles only; legitimate feedback (a node's output shaping its *next*
+input) is self-driven `### Continuity`, not a back-edge — loops live in time,
+not in edges. When a contract set is irreducibly cyclic, `acyclic` is `false`
+and a `severity: error` diagnostic names the cycle; the compiler does not write
+the IR.
 
 ## Canonicalizers
 
 One canonicalizer per node. The canonicalizer is the compiled, deterministic
 lowering of the node's `### Maintains` canonicalization spec; it travels with
 the compiled contract and a standalone render applies it locally to fingerprint
-its own receipt (`architecture.md` §3.2, §1). `canonicalizer(world-model) →
+its own receipt. `canonicalizer(world-model) →
 fingerprints`.
 
 ### The `####`-part → facet lowering (the named-parts rule)
@@ -207,9 +206,8 @@ fingerprints`.
 The compile phase reads the **named parts** of `### Maintains` into the facet
 boundaries this canonicalizer emits. A `####` sub-heading inside `### Maintains`
 **is a facet**: its heading text is the facet name and its body's material field
-paths are that facet's `paths` (`architecture.md` §3.2 L154–L171, "a `####`
-sub-heading inside `### Maintains` is a facet; its body describes that part's
-fields and which are material"; `delta.md` Part G L576–L579). The lowering is:
+paths are that facet's `paths` (the named-parts rule in `contract-markdown.md`).
+The lowering is:
 
 - Each `#### <name>` part → one facet `<name>` whose fingerprint is computed over
   that part's **material** field paths. Materiality and normalization (text/sets/
@@ -219,11 +217,10 @@ fields and which are material"; `delta.md` Part G L576–L579). The lowering is:
 - Un-facetted top-level `### Maintains` fields (the shared truth sitting outside
   any `####` part — e.g. a node-wide `name` / `last_corroborated`) bind to the
   **atomic facet only**. They move only the always-on `"@atomic"` token, never a
-  declared facet's token (`architecture.md` §3.2 L194–L197, "The shared `name` /
-  `last_corroborated` sit outside any part, so they move only the atomic token").
+  declared facet's token.
 - **Name no parts → atomic-only.** A `### Maintains` with no `####` parts lowers
   to a single facet `["@atomic"]` over the whole material truth — the free
-  default and the leaf-node case (`architecture.md` §3.2 L171). This is
+  default and the leaf-node case. This is
   byte-identical to the pre-facet behaviour; faceting is purely additive.
 
 This is the JSON realization of the `CanonicalizationSpec.facets: FacetSpec[]`
@@ -244,8 +241,7 @@ emits, atomic always included.
 Here `competitor-monitor`'s `### Maintains` declared three `####` parts —
 `#### funding`, `#### hiring`, `#### product-launches` — so the canonicalizer
 emits three declared facets plus the always-on atomic token over the whole truth
-(`architecture.md` §3.2 L173–L197, the worked competitor-activity-monitor
-example).
+(the worked competitor-activity-monitor example in `contract-markdown.md`).
 
 Required fields: `node` (a node id present in `topology.nodes`), `artifact`
 (a root-relative locator for the compiled canonicalizer artifact), and `facets`
@@ -255,7 +251,7 @@ Required fields: `node` (a node id present in `topology.nodes`), `artifact`
 The `facets` listed here are the producer side of the `edges`: every
 `edge.facet` whose `producer` is this node must appear in this node's `facets`.
 
-The **structured-backing rule** (`architecture.md` §3.2; `world-model.md` §3):
+The **structured-backing rule** (stated for authors in `contract-markdown.md`):
 anything subscribed must have a structured, canonicalizable backing. Free-form
 rendered prose is a derived projection excluded from the fingerprint. The
 compiler lints subscribed fields without structured backing and surfaces them as
@@ -278,7 +274,7 @@ together or not at all. The same rule applies to the `artifact` field of every
 ## Postconditions
 
 One postcondition validator per node. The folded-in `### Criteria` compile to
-validators (`architecture.md` §3.3). There is no separate judge beat.
+validators. There is no separate judge beat.
 
 ```json
 {
@@ -304,15 +300,15 @@ Either way there is no LLM in the wake/commit decision.
 ## Contract Fingerprints
 
 `contract_fingerprints` is a `{ node → fingerprint }` map: the per-node contract
-fingerprints frozen at compile time (`architecture.md` §6.1; `world-model.md`
-§4). Every `node` id in `topology.nodes` must have an entry, and each entry must
-equal that node's `contract_fingerprint`. Editing a node's `### Maintains` (or
-any material part of its contract) moves its contract fingerprint, which causes
-a memo miss and a forced render at run time (`architecture.md` §8: "schema
-migration = a forced render").
+fingerprints frozen at compile time. Every `node` id in `topology.nodes` must
+have an entry, and each entry must equal that node's `contract_fingerprint`.
+Editing a node's `### Maintains` (or any material part of its contract) moves
+its contract fingerprint, which causes a memo miss and a forced render at run
+time (a schema migration is a forced render).
 
 These are the first half of the memo key `(contract_fingerprint,
-input_fingerprints)` — and nothing else is in the key (`world-model.md` §4).
+input_fingerprints)` — and nothing else is in the key (the memo key in
+`concepts/reconciler.md`).
 
 ## Diagnostics
 
@@ -334,7 +330,7 @@ written with a valid IR.
 
 A wiring failure is always a surfaced diagnostic, never a silent guess: no
 producer for a `### Requires` facet, or an ambiguous match between candidate
-producers, is reported (`architecture.md` §3.1).
+producers, is reported (the diagnostics step in `forme.md`).
 
 ## Compact Valid Example
 

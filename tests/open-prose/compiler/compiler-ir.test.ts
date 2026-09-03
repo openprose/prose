@@ -2,8 +2,7 @@
 //
 // Two halves:
 //  1) Doc conformance — asserts skills/open-prose/compiler/ir-v0.md embodies the
-//     Intelligent React end-state (delta.md §B6 "REWRITE … the compile-phase
-//     seam"; §A5; architecture.md §2/§3/§6.3; world-model.md §3/§4/§5). The IR
+//     Intelligent React end-state (the compile-phase seam). The IR
 //     carries topology + canonicalizers + postconditions + contract fingerprints
 //     and deletes the judge-era manifest (activations/criteria/formeManifests).
 //  2) Fixture conformance — a self-contained validator that encodes the doc's IR
@@ -243,14 +242,14 @@ function validateCompilePhaseIR(ir: unknown): string[] {
 // 1) Doc conformance
 // ---------------------------------------------------------------------------
 
-describe("compiler/ir-v0.md — carries compile-phase outputs (delta.md §A5/§B6)", () => {
+describe("compiler/ir-v0.md — carries compile-phase outputs", () => {
 	it("declares the compile-phase IR kind, not the judge-era repository IR", () => {
 		expect(doc()).toContain('"kind": "openprose.compile-phase-ir"');
 		expect(doc()).not.toContain("openprose.repository-ir");
 	});
 
 	it("documents the four compile-phase output sections", () => {
-		// architecture.md §6.3 / §3.2 / §3.3 / §6.1.
+		// Topology, canonicalizers, postconditions, contract fingerprints.
 		const f = flat();
 		expect(f).toContain("## Topology");
 		expect(f).toContain("## Canonicalizers");
@@ -258,7 +257,7 @@ describe("compiler/ir-v0.md — carries compile-phase outputs (delta.md §A5/§B
 		expect(f).toContain("## Contract Fingerprints");
 	});
 
-	it("deletes the judge-era manifest concepts entirely (delta.md Part F 'IR shape')", () => {
+	it("deletes the judge-era manifest concepts entirely", () => {
 		const f = flat();
 		// The retired manifest's per-system Forme object and its activation linkage.
 		expect(f).not.toContain("formeManifests");
@@ -271,7 +270,7 @@ describe("compiler/ir-v0.md — carries compile-phase outputs (delta.md §A5/§B
 		expect(f).not.toMatch(/"activations"\s*:/);
 	});
 
-	it("forbids the retired system and service source kinds (plan.md §3)", () => {
+	it("forbids the retired system and service source kinds", () => {
 		const f = flat();
 		expect(f).toContain("There is no `system` kind and no `service` kind");
 		expect(f).toContain(
@@ -279,23 +278,23 @@ describe("compiler/ir-v0.md — carries compile-phase outputs (delta.md §A5/§B
 		);
 	});
 
-	it("pins the memo key to (contract_fingerprint, input_fingerprints) only (world-model.md §4)", () => {
+	it("pins the memo key to (contract_fingerprint, input_fingerprints) only", () => {
 		expect(flat()).toContain(
 			"(contract_fingerprint, input_fingerprints)",
 		);
 	});
 
-	it("states commit-gating is validators + render self-attestation, not a judge (architecture.md §3.3)", () => {
+	it("states commit-gating is validators + render self-attestation, not a judge", () => {
 		const f = flat();
 		expect(f).toContain("render self-attestation");
 		expect(f).toContain("there is no LLM in the wake/commit decision");
 	});
 
-	it("declares the @atomic reserved whole-truth facet (architecture.md §6.1)", () => {
+	it("declares the @atomic reserved whole-truth facet", () => {
 		expect(flat()).toContain('"@atomic"');
 	});
 
-	it("documents the ####-part → facet lowering: name a part, get a facet (architecture.md §3.2, delta.md Part G)", () => {
+	it("documents the ####-part → facet lowering: name a part, get a facet", () => {
 		const f = flat();
 		// A #### sub-heading inside ### Maintains IS a facet (the named-parts rule).
 		expect(f).toContain("`####` sub-heading inside `### Maintains` **is a facet**");
@@ -384,7 +383,7 @@ describe("expected/stargazer.manifest.next.json — the mounted-DAG shape", () =
 		};
 	};
 
-	it("folds the former fulfillment-system services into kind: function (delta.md §B7)", () => {
+	it("folds the former fulfillment-system services into kind: function", () => {
 		const fnCount = ir.sources.filter((s) => s.kind === "function").length;
 		expect(fnCount).toBe(5);
 		// No system/service kinds survive.
@@ -421,7 +420,7 @@ describe("expected/ambiguous-fulfillment.manifest.next.json — surfaced wiring 
 		expect(ir.topology.edges).toEqual([]);
 	});
 
-	it("surfaces a wiring-ambiguity warning instead of a fulfillment guess (architecture.md §3.1)", () => {
+	it("surfaces a wiring-ambiguity warning instead of a fulfillment guess", () => {
 		const warn = ir.diagnostics.find((d) => d.severity === "warning");
 		expect(warn).toBeDefined();
 		expect(warn?.message).toMatch(/multiple producers/i);
@@ -429,8 +428,8 @@ describe("expected/ambiguous-fulfillment.manifest.next.json — surfaced wiring 
 });
 
 describe("expected/multi-facet.manifest.next.json — the named-parts (####) lowering", () => {
-	// The canonical multi-facet node (architecture.md §3.2 L173–L197 worked
-	// competitor-activity-monitor): `#### funding` / `#### hiring` /
+	// The canonical multi-facet node (the worked competitor-activity-monitor
+	// example in contract-markdown.md): `#### funding` / `#### hiring` /
 	// `#### product-launches` lower to one facet each, names = the heading text;
 	// shared un-facetted fields move only the atomic token; a subscriber that
 	// `### Requires` *funding* draws an edge carrying ONLY the funding facet.
@@ -465,16 +464,15 @@ describe("expected/multi-facet.manifest.next.json — the named-parts (####) low
 	it("lowers an atomic-only ### Maintains (no #### parts) to facets:[@atomic] — the free default", () => {
 		// `funding-brief` declares no #### parts, so its CanonicalizationSpec has
 		// facets:[] and the canonicalizer emits the lone atomic facet — byte
-		// identical to the pre-facet leaf case (delta.md Part G L578–L579,
-		// architecture.md §3.2 L171).
+		// identical to the pre-facet leaf case.
 		const brief = ir.canonicalizers.find((c) => c.node === "funding-brief");
 		expect(brief?.facets).toEqual([ATOMIC_FACET]);
 	});
 
 	it("draws a facet-granular edge: the funding subscriber consumes only the funding facet", () => {
-		// Requires.<facet> ↔ Maintains.<facet> (architecture.md §6.3): the edge
+		// Requires.<facet> ↔ Maintains.<facet>: the edge
 		// names `funding`, NOT `@atomic` — a move in hiring/product-launches must
-		// not wake this subscriber (the selector boundary, world-model.md §3).
+		// not wake this subscriber (the selector boundary).
 		expect(ir.topology.edges).toEqual([
 			{
 				subscriber: "funding-brief",

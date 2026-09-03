@@ -12,7 +12,7 @@ session id that can be resolved from local session roots.
 
 This is a sequential generation pipeline, so it flattens into a single called
 `function` whose `### Execution` drives the steps in order; each former service
-is now an inline `function` this render `call`s (`plan.md` §3, §7). The 15 steps
+is now an inline `function` this render `call`s. The 15 steps
 appear below as `## name` sections with `### Parameters` → `### Returns`.
 
 ### Parameters

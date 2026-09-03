@@ -10,7 +10,7 @@ id: 067NC4KG11RN54TMANB5EP2SBA
 > A downstream mounted node that subscribes to a single **facet** of the
 > assessor's truth — `recommendation` — so it wakes when a vendor's posture moves
 > and **not** when only the decision-history ledger churns. This is the facet
-> selector (`world-model.md` §3): atomic-only would wake the brief writer on every
+> selector: atomic-only would wake the brief writer on every
 > history append; a facet subscription wakes it exactly when the decision moved.
 
 ### Goal

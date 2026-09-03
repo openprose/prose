@@ -21,7 +21,7 @@ This workflow is a sequential pipeline, so it flattens into a single called
 `function` whose `### Execution` drives the steps in order. Each former
 service is now a `function` this render `call`s. Because order matters
 end-to-end, the choreography is imperative ProseScript rather than a wired
-DAG (`plan.md` §7).
+DAG.
 
 Names, vocabulary, and template structure are credited to Pocock and
 referenced verbatim against the public `mattpocock/skills` repo wherever

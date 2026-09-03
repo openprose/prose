@@ -13,7 +13,7 @@ This is a pinned ProseScript compiler program. It is not a mounted node and is
 not Forme-wired: the compiler itself owns its execution order and uses short,
 isolated sessions to keep each lowering step on a narrow context budget. It is
 the **intelligent compile phase**; the run phase that reads its output is dumb
-(`architecture.md` §2).
+(the two phases in `concepts/reconciler.md`).
 
 ### Parameters
 

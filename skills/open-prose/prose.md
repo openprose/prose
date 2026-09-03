@@ -321,12 +321,13 @@ and `PROSE_PREV_RECEIPT` (the prior receipt, by reference). Load the referenced
 compiled intent from the active OpenProse root before execution, then continue as
 a normal bounded render.
 
-There is no judge beat, no responsibility status enum, no pressure record. A node
-runs because the **reconciler** compared fingerprints and found that either the
-node's own `contract_fingerprint` or one of its subscribed `input_fingerprints`
-moved (`world-model.md` §3). The wake decision is deterministic and total — never
-an LLM judgment — and every wake, from any of the three sources, arrives as a
-receipt the render reads by reference.
+There is no judge beat, no responsibility status enum, no pressure record. A
+node runs because the **reconciler** compared fingerprints and found that either
+the node's own `contract_fingerprint` or one of its subscribed
+`input_fingerprints` moved (the fingerprint rules in `concepts/reconciler.md`).
+The wake decision is deterministic and total — never an LLM judgment — and every
+wake, from any of the three sources, arrives as a receipt the render reads by
+reference.
 
 ---
 
@@ -849,9 +850,10 @@ through the richer render-harness seam below — not a dumb copy.
 ## The Render Harness Seam
 
 A **responsibility node** maintains a canonical world-model — its standing,
-typed, subscribable truth (`world-model.md` §1). When the reconciler wakes a node
-(because its `contract_fingerprint` or an `input_fingerprint` moved), the VM
-runs a **render** under this harness contract:
+typed, subscribable truth (the canonical-truth invariant in `state/README.md`).
+When the reconciler wakes a node (because its `contract_fingerprint` or an
+`input_fingerprint` moved), the VM runs a **render** under this harness
+contract:
 
 1. **Locate the prior world-model by reference.** The render is *not* handed the
    world-model stuffed into context. The harness tells it *where* the prior truth

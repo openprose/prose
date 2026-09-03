@@ -12,7 +12,7 @@ id: 067NC4KG01RG50R40M30E20918
 > independently-subscribable facets — `#### funding`, `#### hiring`, and
 > `#### product-launches` — so a downstream that watches funding wakes only when
 > funding moves, not when hiring or launches move. This is React's selector
-> boundary made authorable (`architecture.md` §3.2, the named-parts rule).
+> boundary made authorable (the named-parts rule).
 
 ### Goal
 
@@ -67,7 +67,7 @@ on funding or launch moves.
 Announced or shipped products per competitor. Material: the launch set
 (unordered); a ship-date slipping past today flips each launch's `shipped`
 status, which is material — so "time becoming material" propagates as an ordinary
-fingerprint move (`world-model.md` §6).
+fingerprint move.
 
 **Postconditions** (self-policed by the render before it signs — no separate
 judge beat):

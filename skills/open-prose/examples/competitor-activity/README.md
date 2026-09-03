@@ -28,7 +28,7 @@ each as its own subscribable facet.
 `src/competitor-activity-monitor.prose.md` declares its facets by **naming the
 parts** of its truth: a `####` sub-heading inside `### Maintains` _is_ a facet.
 The author writes one name and gets three things at once
-(`architecture.md` §3.2, the named-parts rule):
+(the named-parts rule in `contract-markdown.md`):
 
 - the **fingerprint unit**: the compiled canonicalizer emits one token per
   `####` part, plus the always-on `@atomic` token over the whole truth;
@@ -45,7 +45,7 @@ level up: its three needs resolve, facet by facet, to the `signal-feeds`
 gateway's `#### funding-signals`, `#### hiring-signals`, and
 `#### launch-signals` parts. The shared `name` / `last_corroborated` sit outside
 any part, so they move only the `@atomic` token. This is React's selector
-boundary made authorable (`world-model.md` §3, "Declaring facets").
+boundary made authorable.
 
 ## Source Shape
 

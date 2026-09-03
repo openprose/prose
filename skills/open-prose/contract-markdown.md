@@ -22,7 +22,8 @@ language: contracts, the world-model schema, runtime hints, and the render body.
 
 Every authored file is **one render** — a declaration plus the bounded session
 that runs it. The `kind` field is sugar over that single render atom: each kind
-is the same render with different or missing sections (`plan.md` §1).
+is the same render with different or missing sections (the render atom in
+`concepts/reconciler.md`).
 
 The format optimizes for two readers:
 
@@ -39,7 +40,7 @@ The format optimizes for two readers:
   of the standing truth it keeps current (`### Maintains`), and is woken over
   time. Mounting (a harness act) gives it identity, a persisted world-model, and
   resolved subscriptions. A responsibility is a node because it is mounted as a
-  subscribable producer — **not** because it holds state (`plan.md` §2).
+  subscribable producer — **not** because it holds state.
 
 - **Function** — a *called* render: the library tier, and the replacement for the
   retired `service`. A function is stateless and ephemeral. Its interface is
@@ -65,7 +66,7 @@ The format optimizes for two readers:
 There is **no `system` kind**. Composition is imperative `call` *inside* a render
 (ProseScript `### Execution`) or a cross-node *subscription* across
 responsibilities (wired by Forme) — never a third "internally-autowired graph"
-kind in the middle (`plan.md` §3).
+kind in the middle.
 
 A run starts from the file the caller invokes, which is a responsibility,
 function, or gateway.
@@ -197,7 +198,7 @@ responsibilities or functions without ambiguous parsing. Contract sections use
 Inside `### Maintains` and `### Requires`, a `####` sub-heading is **not** free-form
 documentation — it is a facet (a named part of the truth) or a facet-need (a named
 subscription to one). Everywhere else `####` is plain nested prose
-(`architecture.md` §3.2 / §10.2; `delta.md` Part G).
+(the named-parts rule under `## Maintains` below).
 
 ## Canonical Sections
 
@@ -249,7 +250,7 @@ The judge-era responsibility vocabulary folds into the world-model model:
 | `### Services` / `### Wiring` | deleted with `system`; composition is `call` or subscription |
 
 `### Memory` is gone: one persisted world-model per node subsumes the old
-reads/writes ledger (`world-model.md` §9.4). A `function` is stateless and has no
+reads/writes ledger. A `function` is stateless and has no
 world-model, so it simply has no memory; a former `service`-with-memory that was
 genuinely stateful is really a `responsibility`, and its persisted state is its
 world-model.
@@ -373,8 +374,9 @@ What outreach has been sent. Material: each sent contact and its evidence basis.
 
 Forme matches each `### Requires` facet-contract to the `### Maintains` facet
 that satisfies it semantically, across all mounted responsibilities, and draws
-the subscription edge (`plan.md` §5). `### Requires` is the *need* (intent stays
-with the human); the resolved producer is Forme's choice (mechanism).
+the subscription edge (the wiring algorithm in `forme.md`). `### Requires` is
+the *need* (intent stays with the human); the resolved producer is Forme's
+choice (mechanism).
 
 Load `responsibility-runtime.md` and `concepts/responsibility.md` for the
 compile/run reconciler semantics.
@@ -383,8 +385,7 @@ compile/run reconciler semantics.
 
 `### Maintains` declares the **shape** of the world-model — the schema, not the
 instance. It is not just a renamed `### Ensures`: a maintained truth is a
-standing, typed, subscribable artifact, so its declaration does **four jobs**
-(`world-model.md` §2):
+standing, typed, subscribable artifact, so its declaration does **four jobs**:
 
 1. **A type** — the fields and their shapes, including any freshness fields
    (`valid_until`, `last_corroborated`, `confidence`; see [Continuity](#continuity)).
@@ -408,16 +409,17 @@ standing, typed, subscribable artifact, so its declaration does **four jobs**
 
 All four jobs live **inside** `### Maintains` — none gets its own block. The
 canonicalization spec and facet declarations may be written as semantically rich
-natural language, as long as they are unambiguous, because the spec is **compiled
-into a deterministic canonicalizer ahead of run time** (`world-model.md` §3). The
-compiled canonicalizer travels with the contract, so a standalone render computes
-its own fingerprints and signs a fingerprinted receipt with no harness present.
+natural language, as long as they are unambiguous, because the spec is
+**compiled into a deterministic canonicalizer ahead of run time** (the
+canonicalizers section of `compiler/ir-v0.md`). The compiled canonicalizer
+travels with the contract, so a standalone render computes its own fingerprints
+and signs a fingerprinted receipt with no harness present.
 
 **The structured-backing rule.** Anything *subscribed* must have a structured,
 canonicalizable backing. Free-form rendered prose is a derived projection excluded
 from the fingerprint — otherwise an LLM re-rendering the same paragraph hashes
 differently every time and falsely re-triggers downstreams. Rule: fingerprint the
-structured truth; render prose *from* it (`world-model.md` §3). The compiler lints
+structured truth; render prose *from* it. The compiler lints
 subscribed fields that lack a structured backing.
 
 The world-model itself — the materialized truth the render writes and commits —
@@ -431,20 +433,20 @@ simply by **naming the parts**: a `#### {name}` sub-heading inside `### Maintain
 **is** a facet, and its body describes that part's fields and which are material —
 in prose. Name no parts and the node has one truth: the **atomic facet**, the free
 default that costs nothing. Atomic-only — no `####` parts — is the v1 default and
-the leaf-node case (`world-model.md` §9.5; `architecture.md` §10.2 records the
-decision: *"a `####` sub-heading inside `### Maintains` declares a facet … Atomic-only
-(no `####`) stays the default"*).
+the leaf-node case; the `####`-part lowering in `compiler/ir-v0.md` says the same
+thing from the compiler's side.
 
 The name an author writes is the **same name in three places at once**
-(`architecture.md` §3.2, "the named-parts rule"; `delta.md` Part G):
+(the named-parts rule):
 
 1. **Fingerprint unit** — the compiled canonicalizer emits one token per `####`
    part, plus the always-on atomic token over the whole truth. A part moves only
    *its* token; fields that sit outside any part move only the atomic token.
 2. **Subscription symbol** — a consumer names the part in `### Requires`, and the
    reconciler wakes that consumer only when *that* part's token moves. The join is
-   `Requires.<facet>` ↔ `Maintains.<facet>` (`architecture.md` §6.3: edges are
-   `subscriber.Requires.<facet-contract>` → `producer.Maintains.<facet>`).
+   `Requires.<facet>` ↔ `Maintains.<facet>` (in the compiled topology of
+   `compiler/ir-v0.md`, an edge is `subscriber.Requires.<facet-contract>` →
+   `producer.Maintains.<facet>`).
 3. **World-model subtree** — the part is a named region of the content-addressed
    artifact, `published/<facet>/…`, so "the directory structure *is* the state"
    shows the facets literally (`state/filesystem.md`).
@@ -489,8 +491,7 @@ The symmetry is total: a producer's `#### funding` part under `### Maintains` is
 exactly the symbol a subscriber names in its `### Requires` (`Requires.funding`
 ↔ `Maintains.funding`). The memo key is unchanged — `(contract_fingerprint,
 input_fingerprints)`; facet granularity lives in *which* input-fingerprints a
-subscriber consumes (one per subscribed facet), not in the key shape
-(`delta.md` Part G).
+subscriber consumes (one per subscribed facet), not in the key shape.
 
 ### Facet families and per-entity mounts
 
@@ -531,7 +532,7 @@ that family, not a second copy of the contract.
 
 `### Continuity` is the node's **wake-source** declaration — *what can wake this
 node* — and is **intrinsic** to the responsibility: it travels with the contract,
-not the mount (`plan.md` §4; `architecture.md` §4.2). It has three modes:
+not the mount (the wake model in `concepts/reconciler.md`). It has three modes:
 
 - **input-driven** (the default) — woken by an upstream node's receipt whose
   subscribed facet-fingerprint moved. Falls out of `### Requires`, so it needs no
@@ -544,16 +545,16 @@ not the mount (`plan.md` §4; `architecture.md` §4.2). It has three modes:
 - **external-driven** — a declared outside trigger (webhook / cron / manual kick).
   This is the `gateway` case; its input arrives from outside the graph.
 
-Every wake is a receipt; the only variable is who emitted it (`world-model.md`
-§5). `### Continuity` declares *which* sources may wake a node — it never makes the
-wake decision intelligent; the reconciler stays dumb.
+Every wake is a receipt; the only variable is who emitted it. `### Continuity`
+declares *which* sources may wake a node — it never makes the wake decision
+intelligent; the reconciler stays dumb.
 
 **Freshness — state vs. policy.** Freshness *state* (`valid_until`,
 `last_corroborated`, `confidence`) lives **in the world-model** as data declared
 by `### Maintains`. Freshness *policy* — the recheck cadence — lives in
 `### Continuity`. The bridge: a `valid_until` lapsing flips a fact's status, which
 moves that facet's fingerprint, so "time becoming material" is just another change
-that propagates as surprise (`world-model.md` §6). `### Continuity` may *read* the
+that propagates as surprise. `### Continuity` may *read* the
 world-model's soonest `valid_until` to drive a data-driven recheck cadence, but
 the cadence rule stays in `### Continuity` and the expiry data stays in the
 world-model.
@@ -589,7 +590,7 @@ let s = call summarizer
 
 You author functions rarely and call them constantly; most ship pre-built in
 `std/`. They are the standard-library tier — the place the "unmounted" render
-actually lives (`plan.md` §3).
+actually lives.
 
 ## Patterns
 
@@ -854,7 +855,7 @@ return research
 `### Execution` is the intra-node render body: `call` (invoke a function),
 `session` / `agent` / `resume` (spawn ephemeral sub-agents), plus control flow.
 All of it is internal to producing this node's world-model, and **none of it is a
-node** (`plan.md` §7). Cross-node connection is only ever a subscription. When
+node**. Cross-node connection is only ever a subscription. When
 `### Execution` is present, Forme validates contracts and extracts the call graph,
 but the Prose VM follows the written order.
 
