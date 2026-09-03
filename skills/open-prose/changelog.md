@@ -47,6 +47,39 @@ plan.
 
 ## History
 
+- `v0.18.0`: **Example corpus made compiler-clean.** `id:` frontmatter is now
+  optional on responsibilities and gateways: the slug is the identity by
+  default, and a declared id is the source identity that survives filename and
+  `name:` renames. A missing `id:` is no longer a compile error. Where an id is
+  present it must be 26 characters of uppercase Crockford base32, minted by
+  `scripts/mint-contract-id.mjs` (which also repairs a malformed id in place)
+  and never hand-typed; the hand-typed slug ids in the examples were dropped,
+  not replaced, since they named nothing the slug does not. `version:`
+  frontmatter is documented as optional author-owned provenance in semver form,
+  ignored by the compiler. `contract-markdown.md` gains *Facet families and
+  per-entity mounts*: a `#### name:<placeholder>` heading under `### Maintains`
+  declares a family, a placeholder facet-need in `### Requires` subscribes to
+  one member, `# Title [instance]` marks a contract mounted once per entity, and
+  the harness binds members at mount time while the compiler emits the family.
+  Every `###` heading in the examples is now a canonical section
+  (`### Continuity: external-driven` became `### Continuity` with an
+  `- external-driven` bullet; `### Postconditions` and `### Facets` folded into
+  `### Maintains`; `### Watches` moved into `### Receives`), and every
+  `### Requires` names a producer in its own example (competitor-activity gains
+  a `signal-feeds` gateway, research-inbox-triage a `research-registry`
+  gateway). Example READMEs whose node and edge counts exceed what mounting
+  `src/` alone produces now attribute the count to the reference harness's
+  per-entity expansion. `compiler/ir-v0.md` specifies node identity (`node` is
+  mount identity, defaulting to the slug for a single mount) and `artifact`
+  locators (paths relative to the OpenProse root); `concepts/reconciler.md`
+  gives the receipt `cost` field its sub-shape
+  (`{ provider, model, tokens: { fresh, reused }, surprise_cause }`).
+  Implementation-status claims in `spec/01-Language.md` and
+  `spec/03-AuthoringPattern.md` name the reference harness version they
+  describe. `runtime_contract` is unchanged (2): no source rewrite is needed.
+  `prose upgrade` may drop an `id:` that merely repeats the slug; it must never
+  add one.
+
 - `v0.17.0`: introduced `prose init` / `prose compose` and the
   obligation-centered `std/ops/compose` directory package, including bounded
   architectural fronts, progressive Contract source, derived visual views,

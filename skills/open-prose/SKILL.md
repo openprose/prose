@@ -1,6 +1,6 @@
 ---
 name: open-prose
-version: 0.17.0
+version: 0.18.0
 runtime_contract: 2
 description: |
   Activate when the user types `prose ...`, opens a `.prose.md` file with
