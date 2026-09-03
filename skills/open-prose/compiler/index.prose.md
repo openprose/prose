@@ -98,9 +98,10 @@ agent responsibility_compiler:
   Preserve Goal, Requires, Maintains, and Continuity as the node's contract.
   Derive wake_source from Continuity: input-driven by default, self when a
   cadence is declared, external for a gateway.
-  Use frontmatter `id:` as the responsibility identity backing the node. Never
-  derive identity from `name:`, filepath, title, or a slug; those are display
-  and source-location fields only.
+  The node key in the topology is mount identity, assigned at mount; a single
+  mount of a contract defaults it to the slug. Frontmatter `id:`, when declared,
+  is the source identity behind that node and survives renames. Never treat
+  filepath or title as identity.
   Do not emit a judge activation, a verdict, pressure, or a fulfillment
   activation; commit-gating is compiled postconditions plus render
   self-attestation.
@@ -379,9 +380,10 @@ return write_result
 ```
 
 Before forwarding to the compiler harness, the deterministic CLI preflights
-the compile target source files for responsibility `id:` and required
-`### Tools` sections, then resolves declared tools only within that target
-(except `prose compile .`, which preserves whole-root preflight). After this
+the compile target source files for well-formed `id:` frontmatter where present
+and required `### Tools` sections, then resolves declared tools only within
+that target (except `prose compile .`, which preserves whole-root preflight).
+After this
 program returns, the CLI validates the written manifest. That host validation
 is the final guardrail; the compiler program should still treat `ir-v0.md` as
 binding before it writes.

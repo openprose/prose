@@ -401,12 +401,12 @@ Postconditions:
 input-driven; self-driven daily.
 ```
 
-A `kind: responsibility` file carries a required `id:` frontmatter field: a
-tooling-generated, UUIDv7-compatible identifier (rendered as uppercase Crockford
-base32) minted once by `prose` and preserved across `name:` and filename
-renames. `name:` is the human-facing slug; `id:` is the durable identity used to
-key world-model and receipt-ledger state under `state/world-model/{node}/`.
-Authors do not hand-write `id:`; tooling manages it.
+A `kind: responsibility` or `kind: gateway` file may carry an `id:` frontmatter
+field: a tooling-minted, UUIDv7-compatible identifier (rendered as 26 characters
+of uppercase Crockford base32) that gives the contract an identity surviving
+`name:` and filename renames. Without one, the slug is the identity. World-model
+and receipt-ledger state is keyed by the mounted node, which defaults to the
+slug. Authors do not hand-write `id:`; tooling mints it.
 
 The five current authored kinds are:
 

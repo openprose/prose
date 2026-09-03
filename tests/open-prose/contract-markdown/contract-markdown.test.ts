@@ -315,10 +315,29 @@ describe("contract-markdown format doc — composition + render body", () => {
 });
 
 describe("contract-markdown format doc — frontmatter + identity", () => {
-	it("requires id frontmatter only on responsibilities", () => {
+	it("makes id frontmatter optional on responsibilities and gateways, with the slug as default identity", () => {
 		expect(flat()).toMatch(
-			/A `kind: responsibility` file also declares required `id:`/,
+			/A `kind: responsibility` or `kind: gateway` file may declare `id:` frontmatter/,
 		);
+		expect(flat()).toMatch(/Without one, the slug is the identity/);
+		expect(flat()).not.toMatch(/declares required `id:`/);
+	});
+
+	it("spells out the rendered id format and the tool that mints one", () => {
+		// The corpus identity suite asserts exactly this shape on every id present,
+		// so the doc and the test cannot disagree about what a well-formed id is.
+		expect(flat()).toMatch(
+			/26 characters of uppercase Crockford base32 \(`0-9A-HJKMNP-TV-Z`\)/,
+		);
+		expect(flat()).toMatch(/`scripts\/mint-contract-id\.mjs`/);
+		expect(flat()).toMatch(/never hand-typed/);
+	});
+
+	it("documents version: as optional author-owned provenance the compiler ignores", () => {
+		expect(flat()).toMatch(
+			/`version:` is optional, author-owned provenance in semver form/,
+		);
+		expect(flat()).toMatch(/not the skill version/);
 	});
 
 	it("requires subject frontmatter on tests, naming a responsibility or function", () => {

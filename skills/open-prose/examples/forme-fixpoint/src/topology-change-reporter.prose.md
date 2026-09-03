@@ -2,7 +2,6 @@
 name: topology-change-reporter
 kind: responsibility
 version: 0.15.0
-id: topology-change-reporter
 ---
 
 # Topology Change Reporter

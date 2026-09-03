@@ -2,7 +2,6 @@
 name: operator-pins
 kind: gateway
 version: 0.15.0
-id: operator-pins
 ---
 
 # Operator Pins

@@ -15,9 +15,11 @@ plan.
 ## Current Conventions
 
 - Authored source files are `*.prose.md`.
-- `kind: responsibility` files declare stable `id:` frontmatter. The id is
-  generated once by tooling as UUIDv7-compatible bytes, rendered as uppercase
-  Crockford base32, and preserved across display-name and filepath renames.
+- `id:` frontmatter is optional on responsibilities and gateways: 26 characters
+  of uppercase Crockford base32 minted by `scripts/mint-contract-id.mjs`, for
+  identity that survives renames. The slug is the default identity.
+- `version:` frontmatter is optional, author-owned provenance in semver form.
+  The compiler ignores it; it is not the skill version.
 - `### Tools` applies to `function` and `responsibility`. Tool declarations
   support both `cli:<name>` and `mcp:<name>` and fail closed when the host
   cannot resolve a declared capability. Resolved responsibility tools are

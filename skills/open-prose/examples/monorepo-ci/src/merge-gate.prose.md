@@ -2,7 +2,6 @@
 name: merge-gate
 kind: responsibility
 version: 0.15.0
-id: gate.merge
 ---
 
 # Merge gate — the terminal verdict

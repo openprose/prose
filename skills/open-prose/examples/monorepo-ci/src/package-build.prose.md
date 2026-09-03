@@ -2,7 +2,6 @@
 name: package-build
 kind: responsibility
 version: 0.15.0
-id: build.pkg-core
 ---
 
 # Package build — compile one package

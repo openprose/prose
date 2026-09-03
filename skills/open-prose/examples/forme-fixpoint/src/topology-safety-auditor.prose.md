@@ -2,7 +2,6 @@
 name: topology-safety-auditor
 kind: responsibility
 version: 0.15.0
-id: topology-safety-auditor
 ---
 
 # Topology Safety Auditor

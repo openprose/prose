@@ -752,11 +752,14 @@ or discuss, it should usually be a `###` section.
 A `kind: test` file also declares `subject:` to name the responsibility or
 function it runs.
 
-A `kind: responsibility` file also declares required `id:` frontmatter to name the
-stable Markdown identity for the responsibility. The id is generated once by
-tooling as a UUIDv7-compatible 16-byte value, rendered as uppercase Crockford
-base32, and preserved across filename and `name:` renames. The slug is display;
-`id:` is identity.
+A `kind: responsibility` or `kind: gateway` file may declare `id:` frontmatter to
+give the contract an identity that survives filename and `name:` renames. Without
+one, the slug is the identity. An id is a UUIDv7-compatible 16-byte value rendered
+as 26 characters of uppercase Crockford base32 (`0-9A-HJKMNP-TV-Z`), minted once
+by `scripts/mint-contract-id.mjs` in the language repository and never hand-typed.
+
+`version:` is optional, author-owned provenance in semver form. The compiler
+ignores it; it is not the skill version.
 
 ## Contract Item Style
 

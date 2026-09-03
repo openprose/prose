@@ -2,7 +2,6 @@
 name: contract-source-files
 kind: gateway
 version: 0.15.0
-id: contract-source-files
 ---
 
 # Contract Source Files
