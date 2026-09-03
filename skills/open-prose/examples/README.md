@@ -178,4 +178,7 @@ Eleven examples carry a native run block (a `## Quick Start` or `## Run it` with
 content-performance-loop, customer-risk-radar, declared-skills, declared-tools,
 incident-briefing-room, release-readiness, research-inbox-triage,
 stargazer-outreach, and vendor-renewal-watch. The remaining examples are
-conformance corpora whose expanded topologies are produced by a harness.
+described topologies: mounting `src/` alone yields only the contracts an example
+authors, and where a README states a node or edge count that `src/` cannot mount
+by itself, that count is what the reference harness's expansion produces (see
+the Harnesses section of the repository README).

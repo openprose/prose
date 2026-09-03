@@ -21,8 +21,9 @@ lanes; verification and a report/signpost index close it out.
 
 - Work the six fixed lanes cannot own becomes `unassigned_work` on the work-plan's
   own truth (**never a 7th mounted node**). The expanded topology is frozen at
-  **16 nodes**. `src/` ships the 6 authored contracts; the 16-node topology is
-  what a harness's expansion produces from them.
+  **16 nodes**. `src/` ships the 6 authored contracts and mounts 6 nodes on its
+  own; the 16-node topology is what the reference harness's per-lane expansion
+  produces from them (see the Harnesses section of the repository README).
 - A change to ONE lane's contents lights **one lane**; the five siblings stay dark
   (independent per-lane facet tokens).
 - A change to the **foundation** fans out to **all six lanes once**: the
@@ -72,7 +73,7 @@ ingress edge, not a node.
 
 ## Conformance expectations
 
-A conforming harness proves the expanded topology stays at 16 nodes, extra work remains
+A conforming harness proves the expanded topology never grows, extra work remains
 `unassigned_work`, lane-local changes wake one lane, foundation changes wake all
 six lanes once, rejected work never integrates, and quiet replay adds no fresh
 cost.

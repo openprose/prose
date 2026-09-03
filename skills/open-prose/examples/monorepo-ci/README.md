@@ -10,8 +10,9 @@ gate goes BLOCKED while the rest of the graph stays cached.
 This is the **largest** example in the library (22 nodes / 48 edges) and the one
 that teaches **memoization + hub fan-out blast radius**: a single `pkg-core` hub
 edit fans out to its dependents, while a leaf edit lights only one lane.
-`src/` ships the 4 authored contracts; the 22-node / 48-edge topology is what a
-harness's expansion produces from them.
+`src/` ships the 4 authored contracts and mounts 4 nodes on its own; the
+22-node / 48-edge topology is what the reference harness's per-entity expansion
+produces from them (see the Harnesses section of the repository README).
 
 ## The DAG
 
