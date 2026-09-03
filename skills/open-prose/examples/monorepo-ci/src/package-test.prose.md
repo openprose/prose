@@ -27,15 +27,17 @@ subscribe to any other package's build.
 A test world-model: `{ pkg, rev, cases, passed }`. Fresh cost scales with the
 cases re-run (proportional to the changed lines the build recompiled).
 
-### Continuity: input-driven
+Postconditions, self-policed by the render before it signs:
+
+- postcondition: a passing run publishes `{ passed: true }` and lights its lane.
+- postcondition: a broken run produces a `failed` receipt (fresh 0), publishes
+  nothing, and the merge gate sees a non-passing job and goes BLOCKED.
+
+### Continuity
+
+- input-driven
 
 Woken only by an `input` wake from its build. A broken suite throws instead of
 publishing, so the test's own truth goes stale while the build's recorded
 `testStatus` is `RED` — which is exactly what drives the merge gate to BLOCKED on
 that tick.
-
-### Postconditions
-
-- A passing run publishes `{ passed: true }` and lights its lane.
-- A broken run produces a `failed` receipt (fresh 0), publishes nothing, and the
-  merge gate sees a non-passing job and goes BLOCKED.

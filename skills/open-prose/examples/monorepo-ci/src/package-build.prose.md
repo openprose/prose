@@ -41,16 +41,18 @@ package's job. The merge gate reads this recorded status rather than the test
 node's stale published truth, so a tick whose test render fails is still seen by
 the gate as a non-passing job.
 
-### Continuity: input-driven
+Postconditions, self-policed by the render before it signs:
+
+- postcondition: a single-package leaf diff rebuilds ONLY that package
+  (`build.pkg-ui` alone); the other five builds stay skipped.
+- postcondition: a hub (`pkg-core`) diff rebuilds core plus its three dependents
+  (`build.pkg-ui`, `build.pkg-api`, `build.pkg-auth`) and no more — `pkg-utils`
+  and `pkg-billing` stay dark.
+
+### Continuity
+
+- input-driven
 
 Woken only by an `input` wake from a producer whose facet it subscribes to.
 Fresh token cost scales with the lines of source this build had to recompile;
 nothing changed means a `skipped` receipt at zero fresh.
-
-### Postconditions
-
-- A single-package leaf diff rebuilds ONLY that package (`build.pkg-ui` alone);
-  the other five builds stay skipped.
-- A hub (`pkg-core`) diff rebuilds core plus its three dependents
-  (`build.pkg-ui`, `build.pkg-api`, `build.pkg-auth`) and no more — `pkg-utils`
-  and `pkg-billing` stay dark.

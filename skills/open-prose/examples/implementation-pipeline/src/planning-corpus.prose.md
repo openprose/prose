@@ -36,33 +36,29 @@ docs-only edit never perturbs the repo or config lanes downstream.
 ### Maintains
 
 The latest incoming planning truth, as three independently-fingerprinted feeds the
-`implementation-corpus` responsibility subscribes to:
-
-- `docs`: the planning documents in the run, each carrying its requested work
-  items (by lane).
-- `repo`: the target repo snapshot — branch, sha, and the shared shape the
-  foundation owns.
-- `config`: the run config — enabled lanes and the forbidden-operation policy.
+`implementation-corpus` responsibility subscribes to.
 
 **Canonicalization spec**: each feed slice is fingerprinted on its own. A
 docs-only edit moves ONLY the `docs` facet; the `repo` and `config` facets stay
 byte-identical, so a re-POST that changed nothing does not move the fingerprint.
 This is the root of the dark-lane: surprise is feed-local from the very edge.
 
-### Facets
-
-Named parts of this truth — each is a fingerprint unit and a subscription symbol.
+**Facets** — the three feeds are the named parts of this truth. Each `####`
+part below is a fingerprint unit and a subscription symbol.
 
 #### docs
 
-The planning documents and their requested work items. Material: the doc ids and
-their item lists; immaterial: transport request-ids and re-POST timestamps.
+The planning documents in the run, each carrying its requested work items (by
+lane). Material: the doc ids and their item lists; immaterial: transport
+request-ids and re-POST timestamps.
 
 #### repo
 
-The target repo snapshot. Material: branch, sha, and the shared shape; immaterial:
-the scan timestamp.
+The target repo snapshot — branch, sha, and the shared shape the foundation
+owns. Material: branch, sha, and the shared shape; immaterial: the scan
+timestamp.
 
 #### config
 
-The run config. Material: enabled lanes and forbidden paths.
+The run config — enabled lanes and the forbidden-operation policy. Material:
+enabled lanes and forbidden paths.

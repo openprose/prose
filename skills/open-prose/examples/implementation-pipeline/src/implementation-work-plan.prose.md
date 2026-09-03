@@ -47,41 +47,51 @@ own. A change to one lane's contents moves ONLY that lane's facet; the five
 sibling lane facets stay byte-identical, so the five sibling lanes never wake.
 `unassigned_work` + `ambiguous_work` move only the `diagnostics` facet.
 
-### Facets
-
-Named parts of this truth. Each `####` part is a facet: its name is at once the
-fingerprint unit, the subscription symbol (`Requires.<facet>` ↔ `Maintains.<facet>`),
-and the published subtree. A lane subscribes to ONLY its own facet, so a move in
-one lane does not wake a sibling lane.
+**Facets** — the named parts of this truth. Each `####` part below is a facet:
+its name is at once the fingerprint unit, the subscription symbol
+(`Requires.<facet>` ↔ `Maintains.<facet>`), and the published subtree. A lane
+subscribes to ONLY its own facet, so a move in one lane does not wake a sibling
+lane. Every lane part shares one material boundary: the set of work-item ids
+assigned to that lane, each item's owned paths and expected tests, and its
+cross-lane dependencies. Item ordering and wording-only edits to an item's
+source document are immaterial everywhere.
 
 #### lane:sdk-world-model
 
-The items assigned to the SDK World-Model construction lane.
+The items assigned to the SDK World-Model construction lane. Material: this
+lane's assigned item set with owned paths, expected tests, and dependencies.
 
 #### lane:sdk-runtime
 
-The items assigned to the SDK Runtime construction lane.
+The items assigned to the SDK Runtime construction lane. Material: this lane's
+assigned item set with owned paths, expected tests, and dependencies.
 
 #### lane:sdk-compile
 
-The items assigned to the SDK Compile construction lane.
+The items assigned to the SDK Compile construction lane. Material: this lane's
+assigned item set with owned paths, expected tests, and dependencies.
 
 #### lane:skill-contract
 
-The items assigned to the Skill Contract construction lane.
+The items assigned to the Skill Contract construction lane. Material: this
+lane's assigned item set with owned paths, expected tests, and dependencies.
 
 #### lane:examples-tests
 
-The items assigned to the Examples/Test construction lane.
+The items assigned to the Examples/Test construction lane. Material: this lane's
+assigned item set with owned paths, expected tests, and dependencies.
 
 #### lane:docs-signposts
 
-The items assigned to the Docs/Signpost construction lane.
+The items assigned to the Docs/Signpost construction lane. Material: this lane's
+assigned item set with owned paths, expected tests, and dependencies.
 
 #### diagnostics
 
 `unassigned_work` and `ambiguous_work` — the overflow surface. Extra work the six
-fixed lanes cannot cover is recorded HERE, never as a mounted node.
+fixed lanes cannot cover is recorded HERE, never as a mounted node. Material: the
+unassigned item set and the ambiguous item set, each item with the reason it
+could not be placed; immaterial: the order the items were discovered in.
 
 ### Continuity
 

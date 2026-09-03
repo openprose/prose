@@ -25,14 +25,20 @@ A gate world-model: `{ tests, review, typecheck, merge }` where `merge` is
 `GREEN` iff every recorded test status is `GREEN` and the review verdict is
 `approved`; otherwise `BLOCKED`.
 
-### Continuity: input-driven
+Postconditions, self-policed by the render before it signs:
+
+- postcondition: on the failing-`pkg-api`-test tick the gate renders
+  `merge: BLOCKED`.
+- postcondition: on the cold boot and after the fix lands the gate renders
+  `merge: GREEN`.
+- postcondition: a self-tick with no moved input is a `skipped` receipt that
+  lights no lane.
+
+### Continuity
+
+- input-driven
+- self-driven
 
 Woken by an `input` wake when any fan-in producer moves, and by a `self` wake on
 a bare re-tick. A `self` tick in a quiet world finds no moved input and writes a
 `skipped` receipt — the audit floor: no work, no cost.
-
-### Postconditions
-
-- On the failing-`pkg-api`-test tick the gate renders `merge: BLOCKED`.
-- On the cold boot and after the fix lands the gate renders `merge: GREEN`.
-- A self-tick with no moved input is a `skipped` receipt that lights no lane.

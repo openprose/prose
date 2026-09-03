@@ -7,8 +7,8 @@
 // that test asserts the LEGACY judge-era corpus shape: an EXACT
 // `responsibilities.length === 7` count and a universal `### Execution` + `call`
 // requirement. The Intelligent-React examples model larger DAGs with many
-// pure-subscriber responsibilities (no helper `call`), and several use the
-// `### Continuity: external-driven` colon form, so they need their own,
+// pure-subscriber responsibilities (no helper `call`) and gateways that declare
+// `### Continuity` with an `external-driven` bullet, so they need their own,
 // structurally-correct conformance assertions rather than being forced into the
 // legacy count + Execution shape.
 //
@@ -40,6 +40,10 @@ const OWNED_EXAMPLES = [
   // green, gated ledger-replay tests.
   "agent-observatory",
   "basic-unit-suite",
+  // The three inbound-email examples share this shape: one external-driven
+  // inbox gateway fanning out to input-driven (and, where a standing cadence
+  // applies, self-driven) responsibilities, no helper functions.
+  "feedback-pulse",
   "forme-fixpoint",
   "github-star-enricher",
   "implementation-pipeline",
@@ -47,8 +51,10 @@ const OWNED_EXAMPLES = [
   "masked-relay",
   "monorepo-ci",
   "oblique-weave",
+  "press-desk",
   "renewal-risk",
   "research-tree",
+  "support-inbox-router",
   "surprise-cost",
   "tamper-forge",
 ];

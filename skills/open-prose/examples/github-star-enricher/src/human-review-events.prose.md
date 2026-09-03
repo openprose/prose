@@ -12,7 +12,9 @@ version: 0.15.0
 > review-ledger truth that the `registry` and every `outreach-packet` subscribe
 > to; its `### Continuity` is **external-driven**.
 
-### Continuity: external-driven
+### Continuity
+
+- external-driven
 
 The system never sends outreach on its own. A packet only advances past
 `ready_for_review` when a *human* acts — and that action arrives as an external

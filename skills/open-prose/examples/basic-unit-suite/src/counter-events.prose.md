@@ -13,10 +13,13 @@ version: 0.15.0
 
 ### Continuity
 
-external-driven
+- external-driven: a webhook, a poll, or a manual kick becomes one external wake
+  at the system's edge.
+- self-driven: a weekday 09:00 self-kick may re-scan even when no webhook fires;
+  a byte-identical re-scan memo-skips, so the self-kick costs nothing when
+  nothing changed.
 
-A webhook, a poll, or a manual kick becomes one external wake at the system's
-edge. The gateway folds each accepted counter event into the canonical ledger and
+The gateway folds each accepted counter event into the canonical ledger and
 projects two **independent facets** so a downstream subscriber wakes only on the
 slice it actually depends on (U05). Replaying the same event id is a no-op — the
 ledger dedups by id, so a re-delivery produces a byte-identical world-model and
@@ -61,8 +64,3 @@ subscribes here.
 
 Forme keys the wake on the producing node; the subscribers above resolve their
 edges to this gateway's `counts` / `raw_events` facets.
-
-### Continuity recheck
-
-A weekday 09:00 self-kick may re-scan even when no webhook fires; a byte-identical
-re-scan memo-skips, so the self-kick costs nothing when nothing changed.

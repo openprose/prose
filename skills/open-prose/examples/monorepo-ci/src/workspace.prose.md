@@ -13,7 +13,9 @@ moves exactly one facet token; the other five tokens stay byte-identical, so the
 five sibling build/test/lint lanes never wake. That per-package split is the
 dark-lane boundary — it is what makes hub fan-out blast radius observable.
 
-### Continuity: external-driven
+### Continuity
+
+- external-driven
 
 This is the entry point: the working tree pushes new commits in from outside the
 graph. The gateway is woken by an `external` wake and never by an upstream node.
@@ -24,6 +26,13 @@ canonicalizer projects each package slice into its own facet.
 
 A `workspace` world-model: a `packages` map keyed by package name, each slice
 carrying `{ name, rev, diffLines, head, testBroken }`.
+
+Postconditions, self-policed by the render before it signs:
+
+- postcondition: exactly one package facet moves per single-package diff; the
+  sibling facets are byte-identical to the prior frame.
+- postcondition: a byte-identical re-scan moves no facet at all (the whole graph
+  memo-skips).
 
 #### pkg-core
 
@@ -53,9 +62,3 @@ A leaf-package facet and a hub dependent (rebuilds on a `pkg-core` change).
 #### pkg-billing
 
 An independent leaf facet — no hub dependency. Stays dark even on a hub diff.
-
-### Postconditions
-
-- Exactly one package facet moves per single-package diff; the sibling facets
-  are byte-identical to the prior frame.
-- A byte-identical re-scan moves no facet at all (the whole graph memo-skips).

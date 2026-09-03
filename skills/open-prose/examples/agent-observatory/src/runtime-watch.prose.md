@@ -22,16 +22,14 @@ bytes does not move any fingerprint, so the whole graph below memo-skips and the
 cost meter stays flat. This is the point: a cheap gateway can watch every runtime
 and the expensive synthesis only wakes when some session state actually changed.
 
-### Watches
-
-- `~/.claude/projects/**/*.jsonl`, `~/.claude/tasks/**/*`
-- `~/.codex/sessions/**/*`, `~/.codex/archived_sessions/**/*`
-- `~/.opencode/**/*`
-- `~/.pi/agent/sessions/**/*`
-
 ### Receives
 
-- file path, mtime, size, content-hash (or append-range hash)
+- The watched roots, scanned on a schedule or by a filesystem watcher:
+  - `~/.claude/projects/**/*.jsonl`, `~/.claude/tasks/**/*`
+  - `~/.codex/sessions/**/*`, `~/.codex/archived_sessions/**/*`
+  - `~/.opencode/**/*`
+  - `~/.pi/agent/sessions/**/*`
+- Per changed file: path, mtime, size, content-hash (or append-range hash)
 - `runtime`: one of `claude`, `codex`, `opencode`, `pi`
 
 ### Maintains

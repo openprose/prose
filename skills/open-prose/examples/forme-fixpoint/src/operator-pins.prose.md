@@ -28,7 +28,9 @@ OperatorPinLedger {
 }
 ```
 
-### Continuity: external-driven
+### Continuity
+
+- external-driven
 
 External. This gateway is an **entry point**: wake when an operator resolves
 ambiguity or overrides topology. No `### Requires`.

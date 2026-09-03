@@ -12,7 +12,9 @@ version: 0.15.0
 > `### Continuity` is **external-driven**, which is how Forme finds it as a DAG
 > entry point.
 
-### Continuity: external-driven
+### Continuity
+
+- external-driven
 
 A webhook, a scheduled poll, or a manual kick translates into a *receipt* at the
 edge of the system — one wake event type, an external source. The gateway turns

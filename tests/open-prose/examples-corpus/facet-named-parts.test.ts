@@ -98,6 +98,32 @@ const FACETED: { rel: string; facets: string[] }[] = [
     rel: "content-performance-loop/src/content-learning-cycle.prose.md",
     facets: ["brief", "actions", "history"],
   },
+  // implementation-pipeline declares its lane facets and feed facets as ####
+  // parts inside ### Maintains, each with its own material boundary.
+  {
+    rel: "implementation-pipeline/src/implementation-work-plan.prose.md",
+    facets: [
+      "lane:sdk-world-model",
+      "lane:sdk-runtime",
+      "lane:sdk-compile",
+      "lane:skill-contract",
+      "lane:examples-tests",
+      "lane:docs-signposts",
+      "diagnostics",
+    ],
+  },
+  {
+    rel: "implementation-pipeline/src/construction-review.prose.md",
+    facets: ["accepted"],
+  },
+  {
+    rel: "implementation-pipeline/src/planning-corpus.prose.md",
+    facets: ["docs", "repo", "config"],
+  },
+  {
+    rel: "implementation-pipeline/src/foundation-builder.prose.md",
+    facets: ["shared-shapes"],
+  },
 ];
 
 describe("canonical competitor-activity-monitor declares facets as #### named parts (delta.md Part G; architecture.md §3.2)", () => {
