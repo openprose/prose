@@ -249,6 +249,26 @@ describe("contract-markdown format doc — Maintains teaches #### facets (delta.
 		expect(m).toMatch(/\(contract_fingerprint, input_fingerprints\)/);
 	});
 
+	it("documents facet families: the contract declares the family, a harness instantiates the members", () => {
+		const m = maintains();
+		expect(m).toMatch(/^### Facet families and per-entity mounts$/m);
+		// A placeholder heading declares one facet per entity, shape shared.
+		expect(m).toMatch(/`#### user:<login>`/);
+		expect(m.replace(/\s+/g, " ")).toMatch(/declares one facet per entity/);
+		// A placeholder in a facet-need subscribes to one member of the family.
+		expect(m).toMatch(/`session:<id>`/);
+		expect(m.replace(/\s+/g, " ")).toMatch(/subscribes to one member/);
+		// The compiler emits the family; nothing in src/ enumerates instances.
+		expect(m.replace(/\s+/g, " ")).toMatch(/emits the family, never an enumeration/);
+		expect(m.replace(/\s+/g, " ")).toMatch(/`src\/` lists no instances/);
+	});
+
+	it("marks a bracketed title as a contract a harness mounts once per entity", () => {
+		const m = maintains().replace(/\s+/g, " ");
+		expect(m).toMatch(/`# Title \[instance\]`/);
+		expect(m).toMatch(/mounts this contract once per entity/);
+	});
+
 	it("retires the 'inline vs sub-block — open' ergonomics caveat", () => {
 		// delta.md Part G: replace the L396 open-ergonomics note. The decision is
 		// settled (named parts), so the doc must not call the syntax open anymore.

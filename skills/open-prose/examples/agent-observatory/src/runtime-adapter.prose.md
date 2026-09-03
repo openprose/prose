@@ -14,10 +14,12 @@ version: 0.15.0
 
 ### Requires
 
-- the `runtime` facet of `runtime-watch` (NOT `@atomic`) — the adapter for
-  `codex` wakes on `codex` only; a Claude change leaves it dark. This selective
-  subscription is the dark lane: the gateway moved one facet, so exactly one
-  adapter lane lights.
+- this runtime's `<runtime>` facet of `runtime-watch` (NOT `@atomic`) — one of
+  the gateway's per-runtime parts (`claude`, `codex`, `opencode`, `pi`), bound
+  to this mount's runtime by the harness. The adapter for `codex` wakes on
+  `codex` only; a Claude change leaves it dark. This selective subscription is
+  the dark lane: the gateway moved one facet, so exactly one adapter lane
+  lights.
 
 ### Maintains
 
@@ -30,10 +32,21 @@ The normalized sessions for this runtime, as the truth the session-ledger merges
 Parse only the changed append range when the format supports it; large
 transcripts do not require full re-summarization.
 
-**Canonicalization spec**: the adapter exposes its whole truth as `@atomic` (it
-has no named facets of its own). A facet-less producer subscribes via the
-exported `@atomic` token — never a `"*"` wildcard, which would silently never
-propagate.
+Each mount publishes its truth under one member of a facet family, so the
+ledger can fan in over every runtime by name and its receipt shows which
+runtime moved:
+
+#### runtime:<name>
+
+The normalized sessions of exactly one runtime — `runtime:codex` on the codex
+mount, `runtime:claude` on the Claude mount. Material: the session set keyed by
+session id, and each session's `rev`, `normalized_head`, and `workstream`;
+parse timestamps and file paths are immaterial. The session-ledger subscribes
+to every member of this family.
+
+**Canonicalization spec**: the whole truth is also exposed as `@atomic`, as
+always. A facet-less subscriber reads the exported `@atomic` token — never a
+`"*"` wildcard, which would silently never propagate.
 
 ### Continuity
 

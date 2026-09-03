@@ -40,6 +40,11 @@ const OWNED_EXAMPLES = [
   // green, gated ledger-replay tests.
   "agent-observatory",
   "basic-unit-suite",
+  // competitor-activity is the canonical named-parts example: one
+  // external-driven signal gateway feeding an input- and self-driven monitor
+  // facet by facet. It has no helper functions and no `### Execution`, so it
+  // fits this shape rather than the legacy count + Execution shape.
+  "competitor-activity",
   // The three inbound-email examples share this shape: one external-driven
   // inbox gateway fanning out to input-driven (and, where a standing cadence
   // applies, self-driven) responsibilities, no helper functions.

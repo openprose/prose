@@ -22,14 +22,16 @@ A current, corroborated view of each tracked competitor's material activity.
 
 Subscription contracts — Forme matches each entry to a producing node's
 `### Maintains` facet (`Requires.<facet> ↔ Maintains.<facet>`), and run time
-follows the resolved input-fingerprint tuple.
+follows the resolved input-fingerprint tuple. All three resolve to the
+`signal-feeds` gateway, facet by facet: Forme draws one edge per facet, so the
+input tuple carries one slot per signal and the receipt shows which one moved.
 
-- `funding-signals`: a current view of competitor funding events.
-  *(A funding feed/gateway maintains this.)*
-- `hiring-signals`: a current view of competitor hiring activity.
-  *(A hiring/jobs feed maintains this.)*
-- `launch-signals`: a current view of announced or shipped competitor products.
-  *(A product/press feed maintains this.)*
+- `funding-signals`: a current view of competitor funding events — the
+  `#### funding-signals` facet of `signal-feeds`.
+- `hiring-signals`: a current view of competitor hiring activity — the
+  `#### hiring-signals` facet of `signal-feeds`.
+- `launch-signals`: a current view of announced or shipped competitor products
+  — the `#### launch-signals` facet of `signal-feeds`.
 
 ### Maintains
 

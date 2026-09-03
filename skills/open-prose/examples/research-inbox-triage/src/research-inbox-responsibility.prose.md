@@ -15,10 +15,12 @@ next actions for the team's active questions.
 ### Requires
 
 - `inbox-items`: a current view of new papers, links, notes, or questions
-  awaiting triage
+  awaiting triage — the `inbox-items` truth of `inbox-gateway`
 - `active-questions`: research questions, initiatives, or watch areas that
-  should influence priority
-- `available-owners`: people or roles who can accept follow-up work
+  should influence priority — the `#### active-questions` facet of
+  `research-registry`
+- `available-owners`: people or roles who can accept follow-up work — the
+  `#### available-owners` facet of `research-registry`
 
 ### Maintains
 
@@ -54,7 +56,8 @@ repeated re-triage.
 ### Continuity
 
 - input-driven: new inbox items wake triage; they should be triaged before they
-  are more than one business day old
+  are more than one business day old. A registry change (a question re-scoped,
+  an owner added) re-ranks and re-assigns without waiting for new items.
 - self-driven: re-surface stale high-priority items when no owner has accepted
   the follow-up
 

@@ -14,9 +14,10 @@ version: 0.15.0
 
 ### Requires
 
-- `adapter-claude`, `adapter-codex`, `adapter-opencode`, `adapter-pi`
-  (each via `@atomic`) — a fan-in over all runtimes. Only the adapter that
-  actually moved contributes a change; the others reuse their prior truth.
+- every `runtime:<name>` facet of `runtime-adapter` — a deliberate fan-in over
+  the whole family, one slot per mounted runtime (`claude`, `codex`, `opencode`,
+  `pi`). Only the adapter that actually moved contributes a change; the others
+  reuse their prior truth.
 
 ### Maintains
 
@@ -52,8 +53,7 @@ unchanged ledger moves no session facet.
 
 ### Continuity
 
-- input-driven: a moved truth on any of the four runtime adapters
-  (`adapter-claude`, `adapter-codex`, `adapter-opencode`, `adapter-pi`) wakes
-  this fan-in merge.
+- input-driven: a moved `runtime:<name>` facet on any of the four runtime
+  adapters wakes this fan-in merge.
 - This is an incremental merge; it does not re-derive every historical session
   on each file change.

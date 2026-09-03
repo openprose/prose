@@ -492,6 +492,41 @@ input_fingerprints)`; facet granularity lives in *which* input-fingerprints a
 subscriber consumes (one per subscribed facet), not in the key shape
 (`delta.md` Part G).
 
+### Facet families and per-entity mounts
+
+Some truths have one part *per entity* — one facet per starring user, per
+inbound email, per agent session — and the entities are not known until run
+time. The format has no grammar for enumerating them, and it does not need one:
+the contract declares the **family**, and a harness instantiates the members.
+
+- **A placeholder heading declares a family.** `#### user:<login>` inside
+  `### Maintains` declares one facet per entity: every member shares the
+  heading's shape and material boundary, and the entity is named at run time.
+  The angle-bracket token is the placeholder; the prefix (`user:`) keeps the
+  family distinct from any literal `####` part beside it. A fixed, known set of
+  entities may instead be enumerated as literal parts (`#### claude`,
+  `#### codex`, …); the two forms differ only in whether the author or the
+  harness names the members.
+- **A placeholder in a facet-need subscribes to one member.** `session:<id>`
+  in a `### Requires` entry names a member of the family, not the whole family;
+  the harness binds the member when it mounts the subscriber, so the summary
+  for `claudeA` never wakes on a `codexA` edit. A need that asks for *every*
+  member is the diamond rule's deliberate fan-in — one slot per member — and
+  should say so.
+- **A bracketed title marks a per-entity mount.** `# Title [instance]` — as in
+  `# Runtime Adapter [runtime]` — says that a harness mounts this contract once
+  per entity, one adapter per runtime. Forme ignores the title as always; the
+  bracket is a cue to the reader and to the harness, and the per-mount node
+  name is the harness's to assign.
+
+The division of labor is the same as for any node: **the contract declares the
+family; a harness instantiates facets and mounts.** The compiler emits the
+family, never an enumeration — `src/` lists no instances, and a topology
+produced by mounting `src/` alone carries one node per contract. Forme matches
+a placeholder need against the family it names (`forme.md`, Step 2); the
+per-entity fan-out an example's README describes is a harness's expansion of
+that family, not a second copy of the contract.
+
 ## Continuity
 
 `### Continuity` is the node's **wake-source** declaration — *what can wake this

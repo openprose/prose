@@ -88,6 +88,13 @@ describe("forme.md — scope relocation: intra-system wiring -> the responsibili
 		expect(source).toMatch(/not by string|never by string|string-match/i);
 	});
 
+	it("matches a placeholder facet-need against the family it names, bound per mount by the harness", () => {
+		const source = doc();
+		expect(source).toMatch(/placeholder.+matches any member of the family it names/i);
+		expect(source).toMatch(/harness binds the member at mount time/i);
+		expect(source).toMatch(/never enumerates entities it cannot know at compile time/i);
+	});
+
 	it("honors deliberate fan-in as the diamond rule (one slot per producer)", () => {
 		const source = doc();
 		// plan.md §5 L137; architecture.md §3.1 L122; world-model.md §3 L148-L150.

@@ -66,6 +66,12 @@ const FACETED: { rel: string; facets: string[] }[] = [
     rel: "competitor-activity/src/competitor-activity-monitor.prose.md",
     facets: ["funding", "hiring", "product-launches"],
   },
+  // The monitor's upstream: a gateway whose three signal facets are exactly
+  // the symbols the monitor's three ### Requires needs resolve to.
+  {
+    rel: "competitor-activity/src/signal-feeds.prose.md",
+    facets: ["funding-signals", "hiring-signals", "launch-signals"],
+  },
   {
     rel: "vendor-renewal-watch/src/vendor-renewals-prepared.prose.md",
     facets: ["recommendation", "history", "ownership"],
@@ -77,6 +83,12 @@ const FACETED: { rel: string; facets: string[] }[] = [
   {
     rel: "research-inbox-triage/src/research-inbox-responsibility.prose.md",
     facets: ["report", "topics", "ignored"],
+  },
+  // The human-maintained registry the triage responsibility's active-questions
+  // and available-owners needs resolve to, one facet each.
+  {
+    rel: "research-inbox-triage/src/research-registry.prose.md",
+    facets: ["active-questions", "available-owners"],
   },
   {
     rel: "stargazer-outreach/src/high-intent-stargazer-outreach.prose.md",

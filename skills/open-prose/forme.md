@@ -172,6 +172,13 @@ For each matched need, draw a `TopologyEdge`:
 `subscriber.Requires.<facet-contract>` → `producer.Maintains.<facet>` (the
 matched facet, or `@atomic` when the producer declares none).
 
+A facet-need written with a placeholder (`session:<id>`, `eligible:<login>`)
+matches any member of the family it names — a producer's `#### session:<id>`
+part, or one of a literal set that shares the placeholder's shape; the harness
+binds the member at mount time. Forme draws the edge to the family and never
+enumerates entities it cannot know at compile time. A need for *every* member
+of a family is deliberate fan-in, handled in Step 3.
+
 ### Step 3: Honor deliberate fan-in (the diamond rule)
 
 When a contract deliberately asks for *many* producers of the same kind of truth
