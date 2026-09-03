@@ -17,8 +17,9 @@ meta-generator as a standing node, and dual MD + HTML artifacts.
 
 ## The DAG (14 nodes / 22 edges)
 
-`src/` ships the 9 authored contracts; the 14-node / 22-edge topology is what a
-harness's expansion produces from them.
+`src/` ships the 9 authored contracts and mounts 9 nodes on its own; the
+14-node / 22-edge topology is what the reference harness's per-entity expansion
+produces from them (see the Harnesses section of the repository README).
 
 ```text
                          Agent FS (external)

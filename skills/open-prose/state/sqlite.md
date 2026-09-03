@@ -48,7 +48,8 @@ SQLite state provides:
 
 ### SQL is a derived projection, not the truth
 
-The load-bearing invariant (`world-model.md` §1): **the canonical world-model is a
+The load-bearing invariant (the one `state/README.md` states for every backend):
+**the canonical world-model is a
 single content-addressable artifact, and SQL is a derived projection of it, never
 the truth.** SQLite under this backend holds two things that *are* canonical — the
 **append-only receipt ledger** and the **content-addressed world-model versioning**
@@ -637,7 +638,7 @@ SQLite state management:
 
 1. Uses a **single database file** per run
 2. Holds the **canonical** receipt ledger + content-addressed world-model versioning in tables
-3. Exposes **SQL query tables as derived projections** — never the canonical truth (`world-model.md` §1)
+3. Exposes **SQL query tables as derived projections** — never the canonical truth
 4. Has **no policy/responsibility-status/pressure registry** — the wake decision is the reconciler comparing fingerprints
 5. Uses **append-only writes** for the ledger
 6. Allows **flexible schema evolution** for projections as needed

@@ -2,7 +2,6 @@
 name: contract-source-files
 kind: gateway
 version: 0.15.0
-id: contract-source-files
 ---
 
 # Contract Source Files
@@ -34,7 +33,9 @@ immaterial edit (a reflowed comment, trailing whitespace) leaves
 `content_fingerprint` — and therefore `source_set_fingerprint` — unmoved, so the
 registry downstream memo-skips.
 
-### Continuity: external-driven
+### Continuity
+
+- external-driven
 
 External file watcher or scheduled scan. This gateway is an **entry point**:
 wake when contract source content changes. It has no `### Requires` — its truth

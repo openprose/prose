@@ -33,13 +33,14 @@ iff a positive total below threshold, else `quiet`. Self-policed before signing.
 Read `CountSummary` by reference, map it onto a status, and commit. If the read or
 mapping fails, sign a failure receipt and leave the prior `AlertState` untouched.
 
-### Failure containment
+### Invariants
 
-If the render fails after reading the summary, the harness signs a **failure
-receipt** (status `failed`, zero fresh tokens) and commits nothing. The last
-`rendered` `AlertState` stays active, `Executive Snapshot` reads that prior truth
-by reference, and a later retry resumes from it — the failure is visible and
-auditable without corrupting the world-model.
+- A render that fails after reading the summary commits nothing: the harness
+  signs a **failure receipt** (status `failed`, zero fresh tokens) and the last
+  `rendered` `AlertState` stays active.
+- No downstream node ever consumes a partial output. `Executive Snapshot` reads
+  the prior truth by reference, and a later retry resumes from it — the failure
+  is visible and auditable without corrupting the world-model.
 
 ### Continuity
 

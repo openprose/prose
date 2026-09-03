@@ -14,7 +14,9 @@ version: 0.15.0
 > same-epoch cycle back from the auditor). Its `### Continuity` is
 > **external-driven**.
 
-### Continuity: external-driven
+### Continuity
+
+- external-driven
 
 An operator edit, or a controller that lifts the Novelty Auditor's
 `recommended_viewport_shift` into an applied config, translates into a *receipt*

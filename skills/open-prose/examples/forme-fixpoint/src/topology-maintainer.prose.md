@@ -2,7 +2,6 @@
 name: topology-maintainer
 kind: responsibility
 version: 0.15.0
-id: topology-maintainer
 ---
 
 # Topology Maintainer (Forme)

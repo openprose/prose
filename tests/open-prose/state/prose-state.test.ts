@@ -2,14 +2,14 @@
 // (state/{README,filesystem,sqlite,postgres,in-context}.md).
 //
 // These assert the docs embody the Intelligent React end-state:
-//   - world-model.md §1: the canonical world-model is the truth; SQL/vector are
+//   - the canonical world-model is the truth; SQL/vector are
 //     DERIVED PROJECTIONS, never the truth; published is fingerprinted, workspace
 //     scratch never is.
-//   - delta.md Part B §B6 + Part F "State shape": re-point bindings/ to the
+//   - the state shape: re-point bindings/ to the
 //     canonical world-model artifact; add a canonical-serialization-before-
 //     fingerprint pass; reframe copy_binding -> "write world-model + sign
 //     receipt"; delete the policy/responsibility-status/pressure registry.
-//   - architecture.md §5.2/§10: deterministic canonical serialization.
+//   - deterministic canonical serialization.
 //
 // Doc-conformance only (read the source docs, assert on content), matching
 // tests/open-prose/contract-markdown/contract-markdown.test.ts.
@@ -36,7 +36,7 @@ const SQLITE = "state/sqlite.md";
 const PG = "state/postgres.md";
 const INCTX = "state/in-context.md";
 
-describe("the truth is canonical; SQL/vector are derived projections (world-model.md §1)", () => {
+describe("the truth is canonical; SQL/vector are derived projections", () => {
 	it("README frames SQL/vector/dashboards as derived projections, never the truth", () => {
 		const f = flat(README);
 		expect(f).toMatch(/derived projection/i);
@@ -64,7 +64,7 @@ describe("the truth is canonical; SQL/vector are derived projections (world-mode
 	});
 });
 
-describe("workspace vs published is fingerprint-materiality, not visibility (delta.md Part F)", () => {
+describe("workspace vs published is fingerprint-materiality, not visibility", () => {
 	it("filesystem reframes workspace as never-fingerprinted private scratch", () => {
 		const f = flat(FS);
 		expect(f).toMatch(/never fingerprinted/i);
@@ -85,7 +85,7 @@ describe("workspace vs published is fingerprint-materiality, not visibility (del
 	});
 });
 
-describe("canonical-serialization-before-fingerprint pass (architecture.md §5.2/§10)", () => {
+describe("canonical-serialization-before-fingerprint pass", () => {
 	it("filesystem documents the deterministic serialization + canonicalize + fingerprint pass", () => {
 		const f = flat(FS);
 		expect(f).toMatch(/Canonical-Serialization-Before-Fingerprint Pass/i);
@@ -102,7 +102,7 @@ describe("canonical-serialization-before-fingerprint pass (architecture.md §5.2
 	});
 });
 
-describe("copy_binding reframed to write-world-model + sign-receipt (delta.md §B6 prose.md)", () => {
+describe("copy_binding reframed to write-world-model + sign-receipt (prose.md)", () => {
 	it("prose.md replaces copy_binding with commit_world_model", () => {
 		const src = read(PROSE);
 		expect(src).toContain("commit_world_model");
@@ -122,7 +122,7 @@ describe("copy_binding reframed to write-world-model + sign-receipt (delta.md §
 	});
 });
 
-describe("render-harness seam: read prior WM by reference, scratch never fingerprinted (architecture.md §7.3)", () => {
+describe("render-harness seam: read prior WM by reference, scratch never fingerprinted", () => {
 	it("prose.md adds the render harness seam reading the prior WM by reference", () => {
 		const f = flat(PROSE);
 		expect(f).toMatch(/Render Harness Seam/i);
@@ -133,7 +133,7 @@ describe("render-harness seam: read prior WM by reference, scratch never fingerp
 	});
 });
 
-describe("the judge/pressure activation envelope is retired (delta.md §B4, Part F)", () => {
+describe("the judge/pressure activation envelope is retired", () => {
 	it("prose.md drops the judge/pressure status env vars", () => {
 		const src = read(PROSE);
 		expect(src).not.toContain("PROSE_RESPONSIBILITY_STATUS_LATEST");
@@ -156,7 +156,7 @@ describe("the judge/pressure activation envelope is retired (delta.md §B4, Part
 	});
 });
 
-describe("the policy / responsibility-status / pressure registry is deleted (Part F: State shape)", () => {
+describe("the policy / responsibility-status / pressure registry is deleted", () => {
 	it("filesystem layout no longer carries state/responsibilities with status/pressure files", () => {
 		const src = read(FS);
 		expect(src).not.toContain("state/responsibilities/");

@@ -1,20 +1,19 @@
 // Conformance test for the FACET named-parts model across the examples corpus.
 //
-// The facet-syntax decision is settled (delta.md Part G L548-L555: "a `####`
-// sub-heading inside `### Maintains` declares a facet; ... One name = fingerprint
-// unit + subscription symbol (`Requires.<facet>` <-> `Maintains.<facet>`) +
-// world-model subtree (`published/<facet>/...`)"). This test proves the public
+// The facet syntax is the named-parts rule in contract-markdown.md: a `####`
+// sub-heading inside `### Maintains` declares a facet, and one name is the
+// fingerprint unit + subscription symbol (`Requires.<facet>` <-> `Maintains.<facet>`)
+// + world-model subtree (`published/<facet>/...`). This test proves the public
 // learning surface authors facets THAT way:
 //   - the canonical competitor-activity-monitor declares its facets as
 //     `#### funding` / `#### hiring` / `#### product-launches` named parts
-//     (architecture.md §3.2 worked example L182-L191);
+//     (the worked example in contract-markdown.md);
 //   - each subscribed `####` part carries a structured material backing, the
-//     structured-backing rule (world-model.md §3 L177-L182; architecture.md §3.2
-//     L144-L148);
+//     structured-backing rule;
 //   - every migrated example replaced the old prose-bullet facet form
 //     ("`X` facet (material): ...") with `####` parts;
 //   - state/filesystem.md documents the `published/<facet>/...` on-disk layout
-//     (delta.md Part G L592; world-model.md §3 "Declaring facets").
+//     (one subtree per facet).
 //
 // It is a doc-conformance test in the same style as
 // tests/open-prose/examples-corpus/vendor-renewal-watch.test.ts: it reads the source
@@ -66,6 +65,12 @@ const FACETED: { rel: string; facets: string[] }[] = [
     rel: "competitor-activity/src/competitor-activity-monitor.prose.md",
     facets: ["funding", "hiring", "product-launches"],
   },
+  // The monitor's upstream: a gateway whose three signal facets are exactly
+  // the symbols the monitor's three ### Requires needs resolve to.
+  {
+    rel: "competitor-activity/src/signal-feeds.prose.md",
+    facets: ["funding-signals", "hiring-signals", "launch-signals"],
+  },
   {
     rel: "vendor-renewal-watch/src/vendor-renewals-prepared.prose.md",
     facets: ["recommendation", "history", "ownership"],
@@ -77,6 +82,12 @@ const FACETED: { rel: string; facets: string[] }[] = [
   {
     rel: "research-inbox-triage/src/research-inbox-responsibility.prose.md",
     facets: ["report", "topics", "ignored"],
+  },
+  // The human-maintained registry the triage responsibility's active-questions
+  // and available-owners needs resolve to, one facet each.
+  {
+    rel: "research-inbox-triage/src/research-registry.prose.md",
+    facets: ["active-questions", "available-owners"],
   },
   {
     rel: "stargazer-outreach/src/high-intent-stargazer-outreach.prose.md",
@@ -98,9 +109,35 @@ const FACETED: { rel: string; facets: string[] }[] = [
     rel: "content-performance-loop/src/content-learning-cycle.prose.md",
     facets: ["brief", "actions", "history"],
   },
+  // implementation-pipeline declares its lane facets and feed facets as ####
+  // parts inside ### Maintains, each with its own material boundary.
+  {
+    rel: "implementation-pipeline/src/implementation-work-plan.prose.md",
+    facets: [
+      "lane:sdk-world-model",
+      "lane:sdk-runtime",
+      "lane:sdk-compile",
+      "lane:skill-contract",
+      "lane:examples-tests",
+      "lane:docs-signposts",
+      "diagnostics",
+    ],
+  },
+  {
+    rel: "implementation-pipeline/src/construction-review.prose.md",
+    facets: ["accepted"],
+  },
+  {
+    rel: "implementation-pipeline/src/planning-corpus.prose.md",
+    facets: ["docs", "repo", "config"],
+  },
+  {
+    rel: "implementation-pipeline/src/foundation-builder.prose.md",
+    facets: ["shared-shapes"],
+  },
 ];
 
-describe("canonical competitor-activity-monitor declares facets as #### named parts (delta.md Part G; architecture.md §3.2)", () => {
+describe("canonical competitor-activity-monitor declares facets as #### named parts", () => {
   const rel = "competitor-activity/src/competitor-activity-monitor.prose.md";
 
   it("is a mounted responsibility whose ### Maintains contains #### facet parts", () => {
@@ -108,16 +145,16 @@ describe("canonical competitor-activity-monitor declares facets as #### named pa
     expect(source).toMatch(/kind:\s*responsibility/);
     const block = maintainsBlock(source);
     const parts = facetParts(block);
-    // architecture.md §3.2 L182-L191: the three named parts.
+    // The three named parts of the worked example.
     expect(parts).toEqual(["funding", "hiring", "product-launches"]);
   });
 
-  it("each subscribed facet part has a structured MATERIAL backing (the structured-backing rule, world-model.md §3)", () => {
+  it("each subscribed facet part has a structured MATERIAL backing (the structured-backing rule)", () => {
     const block = maintainsBlock(read(rel));
     const parts = block.split(/^#### /m).slice(1);
     // Each `#### <facet>` body must state what is material (its structured
     // backing) so the subscribed token is computed over real structure, not
-    // re-rendered prose (world-model.md §3 L177-L182).
+    // re-rendered prose.
     for (const part of parts) {
       expect(part).toMatch(/[Mm]aterial:/);
     }
@@ -125,7 +162,7 @@ describe("canonical competitor-activity-monitor declares facets as #### named pa
 
   it("names the funding / hiring / launch ### Requires inputs the facets join on", () => {
     const source = read(rel);
-    // Requires.<facet> <-> Maintains.<facet> (architecture.md §6.3; delta.md Part G L586-L587).
+    // Requires.<facet> <-> Maintains.<facet> is the subscription join.
     expect(source).toMatch(/^### Requires\b/m);
     expect(source).toMatch(/funding-signals/);
     expect(source).toMatch(/hiring-signals/);
@@ -134,13 +171,13 @@ describe("canonical competitor-activity-monitor declares facets as #### named pa
 
   it("keeps shared un-facetted fields (name / last_corroborated) outside any part — atomic-only", () => {
     const block = maintainsBlock(read(rel)).replace(/\s+/g, " ");
-    // architecture.md §3.2 L195-L196: shared fields move only the atomic token.
+    // Shared fields move only the atomic token.
     expect(block).toMatch(/last_corroborated/);
     expect(block).toMatch(/@atomic|atomic token/);
   });
 });
 
-describe("every faceted example uses #### named parts, not prose-bullet facets (delta.md Part G migration)", () => {
+describe("every faceted example uses #### named parts, not prose-bullet facets", () => {
   it("declares each facet as a #### sub-heading under ### Maintains", () => {
     for (const { rel, facets } of FACETED) {
       const block = maintainsBlock(read(rel));
@@ -183,7 +220,7 @@ describe("every faceted example uses #### named parts, not prose-bullet facets (
   });
 });
 
-describe("state/filesystem.md documents the published/<facet>/... layout (delta.md Part G L592; world-model.md §3)", () => {
+describe("state/filesystem.md documents the published/<facet>/... layout", () => {
   function fs(): string {
     return readFileSync(join(skillDir, "state/filesystem.md"), "utf8");
   }

@@ -400,9 +400,10 @@ What an ideal harness does with this:
   commits nothing, and leaves a `failed` receipt — the prior truth stands.
 
 Two of these are ideal harness behavior the contract is authored to, not yet
-delivered: forecast-paced freshness arming (today `serve` polls a flat interval)
-and the gateway's `### Schedule` cadence (today dropped by the compiler) are Part
-II deferrals — the contract above is correct; the harness climbs to it.
+delivered as of the reference harness 0.3.3 (see the repository README under
+*Harnesses*): forecast-paced freshness arming (that harness's `serve` polls a
+flat interval) and the gateway's `### Schedule` cadence (dropped by its compiler)
+are Part II deferrals — the contract above is correct; the harness climbs to it.
 
 No `kind: system`, no `### Services`, no judge, no ledger service: the render
 maintains the world-model, the canonicalizer senses change, `gateCommit` gates
@@ -485,11 +486,11 @@ kinds and sections Part I names, and only those.
 | `kind: pattern` / `kind: test` | Present; patterns expand at compile time, tests route to the in-session `prose test` semantic (a harness owns no test verb) |
 | Facets: `####` parts under `### Maintains` — name = fingerprint unit + subscription symbol; atomic default | Present and **facet-granular propagation is live in production** (the v2 named-parts model); a downstream subscribed to one facet does not wake when another moves |
 | `### Maintains` as the world-model schema doing four jobs (type, canonicalization spec, facets, postconditions) | Present; the postconditions live **inside `### Maintains`**, compiled to validators (there is no separate `### Criteria` section — it was removed) |
-| `### Continuity` as the structural wake-source declaration (input / self / external) | Present; self-driven recheck and the gateway entry point are both wired (Phase 4) |
+| `### Continuity` as the structural wake-source declaration (input / self / external) | Present; self-driven recheck and the gateway entry point are both wired |
 | `### Execution` ProseScript for variable-depth work inside one render | Present — an `if`-gated `call` to a `function` is the depth mechanism, not a judge tier |
 | Compile as SKILL-loaded sessions (Forme / canonicalizer / postcondition) → deterministic lowering → content-addressed IR cache | Present; a `.prose` set mounts without hand-authoring via a true semantic `Requires ↔ Maintains` match |
 | Run: dumb reconciler — memo-skip on unmoved `(contract_fp, input_fp)`, single-flight + coalescing, failure = no-commit, propagate only on a `rendered` moved fingerprint | Specified ([02-Harness.md](./02-Harness.md) *The canonical loop*); the reference harness realizes it, including restart survival (truth + ledger survive a fresh process) |
-| `gateCommit`: deterministic postcondition validators + render self-attestation of `### Maintains`; receipt status in `{rendered, skipped, failed}` | Partial; no judge, no verdict, no status enum — but the commit rides the render's **self-attestation** today: in the reference harness the deterministic `gateCommit(...)` validators are built and tested yet have **zero live callers** ([02-Harness.md](./02-Harness.md) invariant 6) |
+| `gateCommit`: deterministic postcondition validators + render self-attestation of `### Maintains`; receipt status in `{rendered, skipped, failed}` | Partial; no judge, no verdict, no status enum — but the commit rides the render's **self-attestation**: in the reference harness 0.3.3 the deterministic `gateCommit(...)` validators are built and tested yet have **zero live callers** ([02-Harness.md](./02-Harness.md) invariant 6) |
 | Content-addressed, chain-verifiable receipt ledger; cost = `tokens.fresh` vs `tokens.reused` + `surprise_cause` | Present (the reference harness chain-verifies and tamper-detects the ledger and renders "cost scales with surprise" from it) |
 | Composition: a downstream responsibility names an upstream facet in `### Requires`; Forme draws the subscription edge | Present; the reconciler reads the topology `edges` to resolve propagation |
 
@@ -516,20 +517,21 @@ reality is honest, rule by rule.
 | 4. Bounded activations | Conformant | Idiomatic; the "loop until done" anti-pattern is author error, not a skill gap |
 | 5. Written for memoization / variable depth | Conformant | The reconciler's skip on `(contract_fp, input_fp)` is live (cost scales with surprise, including an immaterial-churn re-poll that still skips); facet selectors are live; depth is an `if`-gated `call` in `### Execution`. The author's leverage is real today |
 | 6. Composition via a subscribed upstream facet | Conformant (meaning-layer) | A downstream names the upstream facet in `### Requires` and Forme wires the edge; receipts are content-addressed and the chain is verifiable. The **cryptographic** signer is a null-state — v1 "signed" is meaning-layer chain-consistency, not a byte-hash — so cross-trust-domain *pinning to a signer set* is not yet enforceable |
-| 7. Receipts as the audit / composition / exit unit | Conformant | The ledger is flat `<state-dir>/receipts.json`, content-addressed, chain-verifiable; `cost` (fresh/reused/surprise_cause) and `status` are first-class. No hand-rolled scratch log is needed |
+| 7. Receipts as the audit / composition / exit unit | Conformant | The ledger is a harness-chosen receipt ledger layout (the reference harness ships a flat `receipts.json`), content-addressed, chain-verifiable; `cost` (fresh/reused/surprise_cause) and `status` are first-class. No hand-rolled scratch log is needed |
 | 8. Replayable and exitable | Conformant | Contract + world-model + ledger are plain and portable; a replay viewer replays a saved run with no running harness and zero key |
 
 ### Honest current limits for authors
 
 - **`### Continuity` self-driven recheck exists, but `serve`'s freshness clock
   arms nothing by default.** The bridge is real (a lapsed `valid_until` flips a
-  fact's status, moves the facet fingerprint, and wakes the node — a **zero-token**
-  fingerprint move, not a model re-render), and the SDK computes each node's
-  soonest `next_self_recheck`. But the shipped `serve` daemon's freshness reader
-  defaults to none and no node emits `valid_until` by default, so it sleeps a flat
-  `--poll-interval` (default 60s) and does the fixed-interval work the ideal
-  forbids. Forecast-paced / adaptive idle is the deferred next step. Declare
-  `valid_until` now; the cadence tightens later without a source change.
+  fact's status, moves the facet fingerprint, and wakes the node — a
+  **zero-token** fingerprint move, not a model re-render), and the SDK computes
+  each node's soonest `next_self_recheck`. But as of the reference harness
+  0.3.3, its `serve` daemon's freshness reader defaults to none and no node
+  emits `valid_until` by default, so it sleeps a flat `--poll-interval` (default
+  60s) and does the fixed-interval work the ideal forbids. Forecast-paced /
+  adaptive idle is the deferred next step. Declare `valid_until` now; the
+  cadence tightens later without a source change.
 - **The `### Invariants` actuation boundary is authored, not enforced.** The
   authored rate/scope/prohibited-action quarantine is never lowered into the
   render — neither compiled, attested, nor harness-checked — so it constrains the
@@ -537,12 +539,14 @@ reality is honest, rule by rule.
   the turn cap. There is also no world-mutation actuation sink yet (render tools
   are fs/shell over a private workspace; connectors are read-only ingress).
 - **A gateway's `### Schedule` cadence is not yet honored.** Gateways poll
-  external sources, but a per-gateway `### Schedule` (e.g. "every 6h") is dropped
-  by the compiler today; cadence is the serve loop's flat poll interval. Declare
-  the intended schedule now; it binds once the compiler carries it.
+  external sources, but a per-gateway `### Schedule` (e.g. "every 6h") is
+  dropped by the compiler as of the reference harness 0.3.3; cadence is that
+  harness's flat serve poll interval. Declare the intended schedule now; it
+  binds once the compiler carries it.
 - **The deterministic commit gate is unwired.** `compilePostconditions(...)`
-  runs on the compile path, but the gate that evaluates it, `gateCommit(...)`, has
-  zero live callers; the commit rides the render's `### Maintains` self-attestation
+  runs on the compile path, but as of the reference harness 0.3.3 the gate that
+  evaluates it, `gateCommit(...)`, has zero live callers; the commit rides the
+  render's `### Maintains` self-attestation
   ([02-Harness.md](./02-Harness.md) invariant 6).
 - **Serve ingress is local cron-poll + HTTP only.** Gateway poll connectors and
   an HTTP trigger surface ship; **queues, file watches, and provider
@@ -626,13 +630,14 @@ grammar; there is no `.prose` parser to build.
 
 The author states satisfaction as postconditions inside `### Maintains`, and the
 compile phase lowers them to deterministic validators (`compilePostconditions`
-runs on the compile path). But the gate that would evaluate them at commit,
-`gateCommit(...)`, has zero live callers — the commit rides the render's own
-`### Maintains` self-attestation. So the author's postconditions are *compiled*
-but not yet the *enforced* commit gate. Threading the compiled validators onto
-the live commit step ([02-Harness.md](./02-Harness.md) invariant 6) makes Rule 3's "no attestation, no
-commit" a deterministic guarantee rather than a render self-report. The author
-writes postconditions to it now; the enforcement tightens harness-side.
+runs on the compile path). But as of the reference harness 0.3.3, the gate that
+would evaluate them at commit, `gateCommit(...)`, has zero live callers — the
+commit rides the render's own `### Maintains` self-attestation. So the author's
+postconditions are *compiled* but not yet the *enforced* commit gate. Threading
+the compiled validators onto the live commit step
+([02-Harness.md](./02-Harness.md) invariant 6) makes Rule 3's "no attestation,
+no commit" a deterministic guarantee rather than a render self-report. The
+author writes postconditions to it now; the enforcement tightens harness-side.
 
 ### 5. Lower and enforce the `### Invariants` actuation boundary
 
@@ -648,13 +653,14 @@ the harness lowers it.
 ### 6. Forecast-paced continuity cadence
 
 The self-driven recheck path is wired (freshness-lapse → synthetic self-receipt,
-a zero-token fingerprint move), but the reference harness's serve loop polls it
-on a flat interval. The deferred work is arming each node's soonest
+a zero-token fingerprint move), but the serve loop of the reference harness 0.3.3
+polls it on a flat interval. The deferred work is arming each node's soonest
 `next_self_recheck` off its freshness so an idle harness sleeps to the next real
 expiry instead of waking every interval — the *forecast-paced quiescence* Part I
 implies. The same step is owed for a gateway's declared `### Schedule`, which the
-compiler drops today (so the gateway runs on the flat serve poll, not its
-authored cadence); honoring it as a freshness-paced cadence rides with this work.
+compiler drops as of the reference harness 0.3.3 (so the gateway runs on the flat
+serve poll, not its authored cadence); honoring it as a freshness-paced cadence
+rides with this work.
 The author already writes the `valid_until` (and the `### Schedule`) that feeds
 it; the cadence tightens harness-side, without a source change.
 

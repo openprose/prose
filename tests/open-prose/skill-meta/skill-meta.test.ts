@@ -3,7 +3,7 @@
 // prosescript.md, deps.md, agent-onboarding.md).
 //
 // This asserts the docs embody the Intelligent React end-state versioning and
-// vocabulary (delta.md Part B §B5/§B6, Part C §C3/§C5/§C7; plan.md §3-§7). It is
+// vocabulary (the upgrade record in changelog.md names every move). It is
 // a doc-conformance test in the style of tests/open-prose/contract-markdown —
 // it reads the source docs and asserts on their content, no runtime.
 import { readFileSync } from "node:fs";
@@ -89,18 +89,20 @@ describe("skill-meta Markdown helpers", () => {
 	});
 });
 
-describe("SKILL.md frontmatter — versioning (delta.md §C7)", () => {
+describe("SKILL.md frontmatter — versioning", () => {
 	const fm = frontmatter(read("SKILL.md"));
 
-	it("pins version to 0.17.0", () => {
-		// 0.15.0 was the Intelligent React overhaul (delta.md Part C §C7 L465);
+	it("pins version to 0.18.0", () => {
+		// 0.15.0 was the Intelligent React overhaul;
 		// 0.16.0 removes the harness product surface from the skill.
 		// 0.17.0 introduces guided init/compose and the Compose std package.
-		expect(fm).toMatch(/^version:\s*0\.17\.0\s*$/m);
+		// 0.18.0 makes id: optional, documents facet families, and brings the
+		// example corpus into conformance with the compiler.
+		expect(fm).toMatch(/^version:\s*0\.18\.0\s*$/m);
 	});
 
 	it("bumps runtime_contract to 2", () => {
-		// delta.md §C7 L465-466: runtime_contract: 1 -> 2 gates the re-cleave;
+		// runtime_contract: 1 -> 2 gates the re-cleave;
 		// prose upgrade keys its applicability off it.
 		expect(fm).toMatch(/^runtime_contract:\s*2\s*$/m);
 	});
@@ -109,15 +111,17 @@ describe("SKILL.md frontmatter — versioning (delta.md §C7)", () => {
 		expect(fm).not.toMatch(/^runtime_contract:\s*1\s*$/m);
 		expect(fm).not.toMatch(/^version:\s*0\.14\.0\s*$/m);
 		expect(fm).not.toMatch(/^version:\s*0\.15\.0\s*$/m);
+		expect(fm).not.toMatch(/^version:\s*0\.17\.0\s*$/m);
 	});
 });
 
-describe("changelog.md — the upgrade mechanism (delta.md Part C)", () => {
+describe("changelog.md — the upgrade mechanism", () => {
 	const doc = read("changelog.md");
 	const f = flat(doc);
 
 	it("records the v0.15.0 overhaul entry with the runtime_contract bump", () => {
-		// delta.md §B6 changelog: EXTEND, bump runtime_contract (§C7).
+		// The changelog is extended, never rewritten; the entry records the
+		// runtime_contract bump.
 		expect(f).toMatch(/`v0\.15\.0`/);
 		expect(f).toMatch(/runtime_contract: 1 . 2/); // arrow may be unicode/ascii
 	});
@@ -138,50 +142,50 @@ describe("changelog.md — the upgrade mechanism (delta.md Part C)", () => {
 	});
 
 	it("names the retired judge loop in the overhaul entry", () => {
-		// delta.md §B4 / Part F: judge -> verdict -> pressure -> fulfillment retired.
+		// The judge -> verdict -> pressure -> fulfillment loop is retired.
 		expect(f).toMatch(/judge .*?(retired|is retired)/i);
 		expect(f).toMatch(/deterministic reconciler/i);
 		expect(f).toMatch(/no LLM in the wake\/commit decision|no .* LLM/i);
 	});
 
 	it("Migration Map: kind renames (service->function, system removed)", () => {
-		// delta.md §C3 L424-431 table.
+		// The Migration Map table records the kind renames.
 		expect(doc).toContain("kind: service");
 		expect(doc).toContain("kind: function");
 		expect(f).toMatch(/`kind: system`.*?\*\(removed\)\*/);
 	});
 
 	it("Migration Map: section renames (Ensures->Maintains, Memory removed)", () => {
-		// delta.md §C3 / §B2.
+		// The Migration Map table records the section renames.
 		expect(f).toMatch(/`### Ensures`\s*\|\s*`### Maintains`/);
 		expect(f).toMatch(/`### Memory`\s*\|\s*\*\(removed\)\*/);
 	});
 
 	it("Migration Map: Criteria folds into Maintains postconditions", () => {
-		// plan.md §4 L115: Criteria deleted, folds into Maintains postconditions.
+		// Criteria is deleted; it folds into Maintains postconditions.
 		expect(f).toMatch(/`### Criteria`.*?postcondition/i);
 	});
 
 	it("Migration Map: gateway gains explicit external-driven Continuity", () => {
-		// delta.md §B1 / §C3.
+		// A gateway is an external-driven responsibility; the map says so.
 		expect(doc).toContain("### Continuity: external-driven");
 	});
 
 	it("surfaces system/Wiring as a manual-review diagnostic, not an auto-guess", () => {
-		// delta.md §C3 L432-435 / §C4: mechanical where safe, surfaced where judgment needed.
+		// Mechanical where safe, surfaced where judgment is needed.
 		expect(f).toMatch(/manual-review diagnostic/i);
 		expect(f).toMatch(/flatten|split/i);
 	});
 
 	it("declares runtime data greenfield (no receipt-data migrator)", () => {
-		// delta.md §C5 L443-449: source text only; runtime data abandoned.
+		// Source text only; runtime data is abandoned, not migrated.
 		expect(f).toMatch(/greenfield/i);
 		expect(f).toMatch(/source text only|source text/i);
 		expect(f).toMatch(/no receipt-data migrator|abandoned, not (migrated|converted)/i);
 	});
 
 	it("retires the responsibility status/pressure store from Current Conventions", () => {
-		// delta.md §B4: no status enum, no pressure.
+		// No status enum, no pressure.
 		const conventions = doc.slice(
 			doc.indexOf("## Current Conventions"),
 			doc.indexOf("## History"),
@@ -191,12 +195,12 @@ describe("changelog.md — the upgrade mechanism (delta.md Part C)", () => {
 	});
 });
 
-describe("help.md — scrubbed of removed kinds (delta.md §B6)", () => {
+describe("help.md — scrubbed of removed kinds", () => {
 	const doc = read("help.md");
 	const f = flat(doc);
 
 	it("frontmatter-style kind enum no longer offers service or system", () => {
-		// delta.md §B1: service->function, system deleted.
+		// service -> function; system deleted.
 		const kindLine =
 			doc.split("\n").find((l) => l.includes("kind:") && l.includes("|")) ?? "";
 		expect(kindLine).not.toContain("service");
@@ -206,7 +210,8 @@ describe("help.md — scrubbed of removed kinds (delta.md §B6)", () => {
 	});
 
 	it("teaches the responsibility (Requires->Maintains) and function (Parameters->Returns) interfaces", () => {
-		// plan.md §4 L110-L112.
+		// The two interfaces contract-markdown.md defines: Requires -> Maintains
+		// and Parameters -> Returns.
 		expect(doc).toContain("### Maintains");
 		expect(doc).toContain("### Parameters");
 		expect(doc).toContain("### Returns");
@@ -214,32 +219,33 @@ describe("help.md — scrubbed of removed kinds (delta.md §B6)", () => {
 	});
 
 	it("states there is no system kind and gives the composition replacement", () => {
-		// plan.md §3 L105.
+		// Composition is intra-node call or cross-node subscription, never a
+		// system kind.
 		expect(f).toMatch(/no `kind: system`|There is no `kind: system`/);
 		expect(f).toMatch(/intra-node `call`|cross-node subscription/);
 	});
 
 	it("collapses three levels of author control to two", () => {
-		// delta.md §B6 help.md: three-levels -> two; ### Wiring removed.
+		// Three levels of author control became two; ### Wiring removed.
 		expect(f).toMatch(/Two levels of author control/i);
 		expect(doc).not.toContain("### Wiring");
 		expect(f).not.toMatch(/Three levels of author control/i);
 	});
 
 	it("does not present ### Ensures or ### Services as live authored sections", () => {
-		// delta.md §B2: Ensures->Maintains; Services deleted with system.
+		// Ensures -> Maintains; Services deleted with system.
 		// (### Maintains is now the data-flow output section.)
 		expect(doc).not.toContain("### Ensures\n");
 		expect(doc).not.toContain("- `report`: a concise answer with sources");
 	});
 });
 
-describe("prosescript.md — KEEP, but vocabulary scrubbed (delta.md §B5/§B6)", () => {
+describe("prosescript.md — kept, but vocabulary scrubbed", () => {
 	const doc = read("prosescript.md");
 	const f = flat(doc);
 
 	it("keeps the stable grammar core (the intra-node language is unchanged)", () => {
-		// delta.md §B5 L323: ProseScript stable, changes little.
+		// ProseScript is stable and changes little across the overhaul.
 		// Spot-check load-bearing grammar productions survive.
 		expect(doc).toContain("call_expr");
 		expect(doc).toContain("parallel_block");
@@ -249,13 +255,13 @@ describe("prosescript.md — KEEP, but vocabulary scrubbed (delta.md §B5/§B6)"
 	});
 
 	it("frames ProseScript as the intra-node layer (call a function, not cross-node)", () => {
-		// plan.md §7 L150-L159: call is intra-node; cross-node is subscription only.
+		// call is intra-node; cross-node is subscription only.
 		expect(f).toMatch(/intra-node/i);
 		expect(f).toMatch(/never made in ProseScript|Cross-node connections are never/i);
 	});
 
 	it("points the interface source at Maintains/Returns, not Ensures", () => {
-		// delta.md §B2.
+		// The interface sections are Maintains / Returns, never Ensures.
 		expect(doc).toContain("### Maintains");
 		expect(doc).toContain("### Returns");
 		expect(doc).toContain("### Parameters");
@@ -268,9 +274,9 @@ describe("prosescript.md — KEEP, but vocabulary scrubbed (delta.md §B5/§B6)"
 	});
 });
 
-describe("deps.md + agent-onboarding.md — KEEP, survive the overhaul (delta.md §B6)", () => {
+describe("deps.md + agent-onboarding.md — kept, survive the overhaul", () => {
 	it("deps.md keeps the disk-only, lockfile, cycle-checked resolution model", () => {
-		// delta.md §B6 L360: deps survives wholesale; orthogonal to the overhaul.
+		// deps survives wholesale; it is orthogonal to the overhaul.
 		const doc = read("deps.md");
 		const f = flat(doc);
 		expect(f).toMatch(/No network calls during resolution|disk only/i);
@@ -280,7 +286,7 @@ describe("deps.md + agent-onboarding.md — KEEP, survive the overhaul (delta.md
 	});
 
 	it("agent-onboarding.md teaches an outcome contract without pinning implementation choreography", () => {
-		// delta.md §B6 L361: KEEP (+links); narrative already aligns.
+		// Kept, with links; the narrative already aligns.
 		const doc = read("agent-onboarding.md");
 		const example = fencedMarkdownAfter(doc, "## What a contract looks like");
 
@@ -295,5 +301,19 @@ describe("deps.md + agent-onboarding.md — KEEP, survive the overhaul (delta.md
 
 		// The example must not teach the deleted `system` kind anywhere.
 		expect(doc).not.toContain("kind: system");
+	});
+});
+
+describe("README.md — the skill version of record lives in SKILL.md", () => {
+	const readme = readFileSync(join(repoRoot, "README.md"), "utf8");
+
+	it("does not hardcode a skill version", () => {
+		// A literal "version 0.x.y" in the README went stale one release after it
+		// was written. The README points at SKILL.md frontmatter instead, so the
+		// version of record has exactly one home.
+		expect(readme).not.toMatch(/\bversion[:\s]+`?\d+\.\d+\.\d+/);
+		expect(readme).toMatch(
+			/`version:` frontmatter in \[`skills\/open-prose\/SKILL\.md`\]\(skills\/open-prose\/SKILL\.md\)/,
+		);
 	});
 });

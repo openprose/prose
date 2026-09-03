@@ -38,13 +38,17 @@ The world-model schema — the shared foundation the lanes conform to.
 It moves when a canonical shape changes (e.g. `Receipt@v1` → `Receipt@v2`); that
 single move is the fanout that wakes every lane.
 
-### Facets
+**Facets** — one named part, the fanout spine. `vocabulary`, `deletion_list`,
+`migration_rules`, and `notes_for_lanes` sit outside it and move only the atomic
+token, so a note edit never wakes a lane.
 
 #### shared-shapes
 
 The canonical shapes + invariants the lanes conform to. This is the fanout spine:
 every construction lane subscribes to this facet, so when it moves, all six lanes
-wake exactly once — the intentional, auditable blast radius.
+wake exactly once — the intentional, auditable blast radius. Material: the
+canonical shape set (each shape's name and version, e.g. `Receipt@v2`) and the
+invariant list; immaterial: the wording of a shape's description.
 
 ### Continuity
 

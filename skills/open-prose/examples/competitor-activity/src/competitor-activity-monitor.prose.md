@@ -12,7 +12,7 @@ id: 067NC4KG01RG50R40M30E20918
 > independently-subscribable facets — `#### funding`, `#### hiring`, and
 > `#### product-launches` — so a downstream that watches funding wakes only when
 > funding moves, not when hiring or launches move. This is React's selector
-> boundary made authorable (`architecture.md` §3.2, the named-parts rule).
+> boundary made authorable (the named-parts rule).
 
 ### Goal
 
@@ -22,14 +22,16 @@ A current, corroborated view of each tracked competitor's material activity.
 
 Subscription contracts — Forme matches each entry to a producing node's
 `### Maintains` facet (`Requires.<facet> ↔ Maintains.<facet>`), and run time
-follows the resolved input-fingerprint tuple.
+follows the resolved input-fingerprint tuple. All three resolve to the
+`signal-feeds` gateway, facet by facet: Forme draws one edge per facet, so the
+input tuple carries one slot per signal and the receipt shows which one moved.
 
-- `funding-signals`: a current view of competitor funding events.
-  *(A funding feed/gateway maintains this.)*
-- `hiring-signals`: a current view of competitor hiring activity.
-  *(A hiring/jobs feed maintains this.)*
-- `launch-signals`: a current view of announced or shipped competitor products.
-  *(A product/press feed maintains this.)*
+- `funding-signals`: a current view of competitor funding events — the
+  `#### funding-signals` facet of `signal-feeds`.
+- `hiring-signals`: a current view of competitor hiring activity — the
+  `#### hiring-signals` facet of `signal-feeds`.
+- `launch-signals`: a current view of announced or shipped competitor products
+  — the `#### launch-signals` facet of `signal-feeds`.
 
 ### Maintains
 
@@ -65,7 +67,7 @@ on funding or launch moves.
 Announced or shipped products per competitor. Material: the launch set
 (unordered); a ship-date slipping past today flips each launch's `shipped`
 status, which is material — so "time becoming material" propagates as an ordinary
-fingerprint move (`world-model.md` §6).
+fingerprint move.
 
 **Postconditions** (self-policed by the render before it signs — no separate
 judge beat):

@@ -7,14 +7,14 @@
 // retired kind (`kind: service` / `kind: system`) is taught as LIVE behavior in
 // ANY SKILL doc — frontmatter `kind:` values, fenced code-block examples that
 // declare them, or prose that instructs using them as a current kind. The
-// retired kinds are deleted (delta.md §B1 L273-281, Part F L534-541):
+// retired kinds are deleted:
 // `service`->`function`, `system` removed.
 //
 // HARDENED (v1gaps-guard-harden): the prior version inspected ONLY leading
 // frontmatter (`^kind:`), so ~18 body-level retired-kind references survived
 // the wave-1 sweep undetected. This now scans the full text of every SKILL doc
 // with a precise allowlist so it does NOT flag the legitimate HISTORICAL /
-// NEGATION contexts that the migration record must keep (delta.md keep-rule):
+// NEGATION contexts that the migration record must keep:
 //   - ALLOWLISTED FILES: changelog.md (the migration map — it must name the
 //     retired kinds to record that they were removed).
 //   - NEGATION/MIGRATION LINES: any occurrence whose line (collapsed with its
@@ -31,8 +31,8 @@
 //
 // RUN: the repo-root vitest config discovers tests/open-prose/**/*.test.ts, so
 // `pnpm test:skill` picks this up.
-import { readdirSync, readFileSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
@@ -71,13 +71,13 @@ function allDocs(dir: string): string[] {
 	return out;
 }
 
-describe("compiler/index.prose.md — kind: service -> kind: function (delta.md §B1)", () => {
+describe("compiler/index.prose.md — kind: service -> kind: function", () => {
 	const doc = read("compiler/index.prose.md");
 	const fm = frontmatter(doc);
 	const f = flat(doc);
 
 	it("frontmatter declares kind: function", () => {
-		// delta.md §B1 L275: `service` -> `function`. The compiler IS a pinned
+		// `service` -> `function`. The compiler IS a pinned
 		// callable program with Parameters/Returns semantics.
 		expect(fm).toMatch(/^kind:\s*function\s*$/m);
 	});
@@ -88,20 +88,20 @@ describe("compiler/index.prose.md — kind: service -> kind: function (delta.md 
 	});
 
 	it("uses the function call interface (### Parameters -> ### Returns)", () => {
-		// delta.md §B2 L296 / plan.md §4 L112: callables declare Parameters -> Returns.
+		// Callables declare Parameters -> Returns.
 		expect(doc).toContain("### Parameters");
 		expect(doc).toContain("### Returns");
 		expect(doc).not.toContain("### Ensures");
 	});
 
 	it("frames itself as the intelligent compile phase, not a Forme-wired system", () => {
-		// architecture.md §2 L78-93: compile phase is intelligent; not a node.
+		// The compile phase is intelligent; it is not a node.
 		expect(f).toMatch(/intelligent compile phase/i);
 		expect(f).toMatch(/is not a mounted node|not Forme-wired/i);
 	});
 
 	it("emits the compile-phase IR (topology + canonicalizers + postconditions), not a judge-era manifest", () => {
-		// delta.md §B6 L338-339 / §A5 L219: topology + canonicalizers + validators;
+		// The compile-phase IR: topology + canonicalizers + validators;
 		// deletes activations/criteria/formeManifests.
 		expect(doc).toContain("topology");
 		expect(doc).toContain("canonicalizer");
@@ -115,25 +115,26 @@ describe("compiler/index.prose.md — kind: service -> kind: function (delta.md 
 	});
 
 	it("the source discoverer recognizes the new kind set only", () => {
-		// architecture.md §7.1 L267-278: no system kind, no service kind.
+		// No system kind, no service kind.
 		expect(f).toMatch(/Recognize responsibility, function, gateway, pattern, test, and unknown/);
 		expect(f).toMatch(/no system kind and no service kind/);
 	});
 
 	it("forbids reintroducing the retired judge/verdict/pressure/fulfillment beat", () => {
-		// world-model.md §3: do not reintroduce the judge; architecture.md §3.3.
+		// Do not reintroduce the judge; commit-gating is validators plus
+		// self-attestation.
 		expect(f).toMatch(/reintroducing a judge \/ verdict \/ pressure \/ fulfillment-activation beat/i);
 		expect(f).toMatch(/commit-gating is compiled postconditions plus render\s*self-attestation/i);
 	});
 
 	it("derives wake_source from ### Continuity (input/self/external)", () => {
-		// world-model.md §5: one event, three sources.
+		// One event, three sources.
 		expect(doc).toContain("wake_source");
 		expect(f).toMatch(/input-driven by default, self when a cadence is declared, external for a gateway/);
 	});
 });
 
-describe("guidance/authoring.md — reshaped to the new kind set (delta.md §B6 L357)", () => {
+describe("guidance/authoring.md — reshaped to the new kind set", () => {
 	const doc = read("guidance/authoring.md");
 	const fm = frontmatter(doc);
 	const f = flat(doc);
@@ -144,18 +145,18 @@ describe("guidance/authoring.md — reshaped to the new kind set (delta.md §B6 
 	});
 
 	it("opens by enumerating only the five live kinds", () => {
-		// delta.md §B1: responsibility / function / gateway / pattern / test.
+		// responsibility / function / gateway / pattern / test.
 		expect(f).toMatch(/`kind: responsibility`, `kind: function`, `kind: gateway`, `kind: test`, and\s*`kind: pattern`/);
 	});
 
 	it("states there is no system kind and no service kind, with the replacement", () => {
-		// plan.md §3 L105: composition is call (intra-node) or subscription (cross-node).
+		// Composition is call (intra-node) or subscription (cross-node).
 		expect(f).toMatch(/no\s*`kind: system`\*\* and \*\*no `kind: service`/);
 		expect(f).toMatch(/imperative `call` \*inside\* a render or a cross-node \*subscription\*/);
 	});
 
 	it("teaches the responsibility interface as ### Requires -> ### Maintains (+ ### Continuity)", () => {
-		// delta.md §B1/§B2: responsibility gains ### Requires -> ### Maintains.
+		// A responsibility's interface is ### Requires -> ### Maintains.
 		const section = doc.slice(
 			doc.indexOf("## Responsibility Authoring"),
 			doc.indexOf("## Function Authoring"),
@@ -168,7 +169,7 @@ describe("guidance/authoring.md — reshaped to the new kind set (delta.md §B6 
 	});
 
 	it("teaches the function interface as ### Parameters -> ### Returns (replacement for service)", () => {
-		// delta.md §B1 L275 / plan.md §6 L147.
+		// function replaces the retired service.
 		const section = doc.slice(
 			doc.indexOf("## Function Authoring"),
 			doc.indexOf("## Composition Authoring"),
@@ -180,20 +181,20 @@ describe("guidance/authoring.md — reshaped to the new kind set (delta.md §B6 
 	});
 
 	it("has no ### System Authoring section and no ### State and Memory section", () => {
-		// delta.md §B6 L357: delete system-authoring + the State and Memory section.
+		// System authoring and the State and Memory section are deleted.
 		expect(doc).not.toContain("## System Authoring");
 		expect(doc).not.toContain("## State and Memory Authoring");
 	});
 
 	it("folds memory into the persisted world-model (one truth per node), no ### Memory section", () => {
-		// delta.md §B2 L289 / world-model.md §9.4: ### Memory folds into the WM.
+		// ### Memory folds into the world-model.
 		expect(doc).toContain("## World-Model and Freshness Authoring");
 		expect(f).toMatch(/persisted world-model \*\*is\*\* its memory/);
 		expect(f).toMatch(/no separate `### Memory` section/);
 	});
 
 	it("gateway authoring frames it as an external-driven responsibility", () => {
-		// delta.md §B1 L278: gateway gains explicit ### Continuity: external-driven.
+		// A gateway declares an explicit external-driven ### Continuity.
 		const section = doc.slice(
 			doc.indexOf("## Gateway Authoring"),
 			doc.indexOf("## Pattern Authoring"),
@@ -203,14 +204,14 @@ describe("guidance/authoring.md — reshaped to the new kind set (delta.md §B6 
 	});
 
 	it("keeps the workspace-private / published-world-model-public core, with no-judge framing", () => {
-		// delta.md §B6 L357 keep core; world-model.md §3 / SHAPES §0: scratch never fingerprinted.
+		// The core survives; scratch is never fingerprinted.
 		expect(f).toMatch(/Author public contracts before choreography/);
 		expect(f).toMatch(/never fingerprinted/);
 		expect(f).toMatch(/Reintroducing a judge \/ verdict \/ pressure \/ fulfillment beat/);
 	});
 
 	it("drops the legacy ### Ensures-as-obligation framing in favor of Maintains/Returns", () => {
-		// delta.md §B2 L286: ### Ensures retired (re-purpose, not rename).
+		// ### Ensures retired (re-purposed, not renamed).
 		expect(doc).not.toContain("### Ensures");
 		expect(f).toMatch(/Make every `### Returns` \/ `### Maintains` item an obligation/);
 	});
@@ -227,7 +228,7 @@ describe("CORPUS GUARD — no retired kind is TAUGHT AS LIVE in any SKILL doc (f
 	const RETIRED = /kind:\s*`?(service|system)`?/gi;
 
 	// Files allowlisted wholesale: their JOB is to record the retired kinds.
-	// changelog.md is the migration map (delta.md §C3) — it must name
+	// changelog.md is the migration map — it must name
 	// `kind: service`/`kind: system` to document service->function and the
 	// system deletion. This is the historical record, not live teaching.
 	const ALLOWLIST_FILES = new Set(["changelog.md"]);
@@ -247,7 +248,7 @@ describe("CORPUS GUARD — no retired kind is TAUGHT AS LIVE in any SKILL doc (f
 	});
 
 	it("no SKILL doc teaches `kind: service` or `kind: system` as live behavior", () => {
-		// delta.md §B1 L273-281 + Part F L534-541: `service` and `system` are DELETED.
+		// `service` and `system` are DELETED.
 		// A doc-sweep miss (this is exactly what stranded body references in SKILL.md,
 		// prose.md, deps.md, and the examples) must fail here loudly. Scope: every *.md
 		// under the SKILL, full text — frontmatter AND body — except the allowlisted
@@ -284,5 +285,93 @@ describe("CORPUS GUARD — no retired kind is TAUGHT AS LIVE in any SKILL doc (f
 			offenders,
 			`retired kind taught as live:\n${offenders.join("\n")}`,
 		).toEqual([]);
+	});
+});
+
+// Every file under a directory, whatever its extension (test sources included).
+function allFiles(dir: string): string[] {
+	const out: string[] = [];
+	for (const entry of readdirSync(dir)) {
+		const full = join(dir, entry);
+		if (statSync(full).isDirectory()) out.push(...allFiles(full));
+		else out.push(full);
+	}
+	return out;
+}
+
+describe("no shipped file cites a private design document", () => {
+	// The design documents behind the Intelligent React overhaul live outside
+	// this repository. A citation such as "delta § B2" or "world-model § 3"
+	// points a reader at a file they cannot open, so shipped prose names an
+	// in-repo section instead. The pattern is assembled from parts so this
+	// file's own source does not trip the guard.
+	const PRIVATE_DOC_NAMES = ["delta", "architecture", "world-model", "plan"];
+	const PRIVATE_CITATION = new RegExp(
+		`\\b(?:${PRIVATE_DOC_NAMES.join("|")})\\.md\\b|\\bSHAPES(?:\\.md)?\\s*§`,
+	);
+	// The upgrade record may name whatever it needs to route a migration.
+	const EXEMPT = new Set(["skills/open-prose/changelog.md"]);
+	const SCANNED_EXTENSIONS = [".md", ".ts", ".mjs", ".sh", ".json"];
+
+	function targets(): string[] {
+		const files: string[] = [
+			...allDocs(skillDir),
+			...allDocs(join(repoRoot, "spec")),
+			...allFiles(join(repoRoot, "tests/open-prose")),
+			...allFiles(join(repoRoot, "scripts")),
+		];
+		for (const root of ["README.md", "CONTRIBUTING.md", "AGENTS.md"]) {
+			const full = join(repoRoot, root);
+			if (existsSync(full)) files.push(full);
+		}
+		return files.filter((f) => SCANNED_EXTENSIONS.some((ext) => f.endsWith(ext)));
+	}
+
+	it("finds the skill, the spec, the tests, and the root docs (sanity)", () => {
+		const rels = targets().map((f) => relative(repoRoot, f));
+		expect(rels).toContain("skills/open-prose/contract-markdown.md");
+		expect(rels).toContain("spec/01-Language.md");
+		expect(rels).toContain("tests/open-prose/stale-docs/stale-docs.test.ts");
+		expect(rels).toContain("README.md");
+	});
+
+	it("no skill doc, spec chapter, test, script, or root doc cites one", () => {
+		const offenders: string[] = [];
+		for (const path of targets()) {
+			const rel = relative(repoRoot, path);
+			if (EXEMPT.has(rel)) continue;
+			readFileSync(path, "utf8")
+				.split("\n")
+				.forEach((line, i) => {
+					if (PRIVATE_CITATION.test(line)) offenders.push(`${rel}:${i + 1} — ${line.trim()}`);
+				});
+		}
+		expect(offenders, `private design documents cited:\n${offenders.join("\n")}`).toEqual([]);
+	});
+});
+
+describe("relative markdown links in spec/ and skills/ resolve", () => {
+	// A link a stranger cannot follow is as bad as a private citation. Every
+	// `[text](path)` whose target is a relative path must name a file that
+	// exists in this repository; anchors, mail links, and absolute URLs are not
+	// checked here.
+	const LINK = /\[[^\]]*\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g;
+
+	it("every relative link target exists on disk", () => {
+		const offenders: string[] = [];
+		const docs = [...allDocs(join(repoRoot, "spec")), ...allDocs(skillDir)];
+		for (const path of docs) {
+			const text = readFileSync(path, "utf8");
+			for (const match of text.matchAll(LINK)) {
+				const target = match[1];
+				if (/^(?:[a-z]+:|#)/i.test(target)) continue;
+				const file = target.split("#")[0];
+				if (!file) continue;
+				if (!existsSync(resolve(dirname(path), decodeURIComponent(file)))) {
+					offenders.push(`${relative(repoRoot, path)}: ${target}`);
+				}
+			}
+		}
+		expect(offenders, `dangling relative links:\n${offenders.join("\n")}`).toEqual([]);
 	});
 });

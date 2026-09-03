@@ -53,8 +53,10 @@ email take the digest down.
 ```
 
 16 nodes / 27 edges. `gateway.inbox-stream` is the single entry point; the graph
-is acyclic. `src/` ships the 4 authored contracts; the 16-node / 27-edge topology
-is what a harness's expansion produces from them.
+is acyclic. `src/` ships the 4 authored contracts and mounts 4 nodes on its own;
+the 16-node / 27-edge topology is what the reference harness's per-entity
+expansion produces from them (see the Harnesses section of the repository
+README).
 
 ## Conformance expectations
 

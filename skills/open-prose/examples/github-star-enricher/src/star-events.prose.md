@@ -12,7 +12,9 @@ version: 0.15.0
 > subscribes to, and its `### Continuity` is **external-driven**, which is how
 > Forme finds it as a DAG entry point.
 
-### Continuity: external-driven
+### Continuity
+
+- external-driven
 
 A GitHub star webhook, or a scheduled poll of the stargazers API, translates into
 a *receipt* at the edge of the system — one wake event type, an external source.

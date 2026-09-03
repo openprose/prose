@@ -64,7 +64,8 @@ PostgreSQL state provides:
 
 ### SQL/vector are derived projections, not the truth
 
-The load-bearing invariant (`world-model.md` §1): **the canonical world-model is a
+The load-bearing invariant (the one `state/README.md` states for every backend):
+**the canonical world-model is a
 single content-addressable artifact, and PostgreSQL rows and vector indices are
 derived projections of it, never the truth.** Under this backend PostgreSQL holds
 two canonical things — the **append-only receipt ledger** and the
@@ -946,7 +947,7 @@ PostgreSQL state management:
 
 1. Uses a **shared PostgreSQL database** for all runs
 2. Holds the **canonical** receipt ledger + content-addressed world-model versioning in tables
-3. Exposes **SQL/JSONB + vector indices as derived projections** — never the canonical truth (`world-model.md` §1)
+3. Exposes **SQL/JSONB + vector indices as derived projections** — never the canonical truth
 4. Has **no policy/responsibility-status/pressure registry** — the wake decision is the reconciler comparing fingerprints
 5. Provides **true concurrent writes** via row-level locking; **network access** for dashboards; **team collaboration**
 6. Allows **flexible schema evolution** for projections with JSONB and custom tables

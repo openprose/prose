@@ -59,8 +59,9 @@ action a human must own, and no sender PII ever escapes into a public projection
 acyclic. (The `speaking` register facet is a *zero-consumer-until-it-moves* lane:
 no speaking inquiry is delivered in the scripted episode, so it never wakes — the
 same discipline that keeps the dark lanes still.) `src/` ships the 4 authored
-contracts; the 8-node / 14-edge topology is what a harness's expansion produces
-from them.
+contracts and mounts 4 nodes on its own; the 8-node / 14-edge topology is what
+the reference harness's per-entity expansion produces from them (see the
+Harnesses section of the repository README).
 
 ## Conformance expectations
 

@@ -66,8 +66,10 @@ and watch only its ancestor path re-synthesize.
 
 ## The state-dir a run produces
 
-`src/` ships the 4 authored contracts; the 13-node / 20-edge topology is what a
-harness's expansion produces from them. Below is one harness's replay layout;
+`src/` ships the 4 authored contracts and mounts 4 nodes on its own; the
+13-node / 20-edge topology is what the reference harness's per-entity expansion
+produces from them (see the Harnesses section of the repository README). Below
+is one harness's replay layout;
 the skill's native layout is `state/world-model/{node}/` with a per-node
 `receipts.jsonl` (`state/filesystem.md`).
 

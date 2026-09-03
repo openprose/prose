@@ -80,7 +80,7 @@ Expected shape:
 - lowers each `####` part into a facet (facet name = heading text, paths = the
   part's material fields), default-material within the part, and binds the shared
   un-facetted `name` / `last_corroborated` to the atomic facet only (the
-  named-parts rule, `architecture.md` §3.2)
+  named-parts rule)
 - emits the producer canonicalizer with
   `facets: ["@atomic", "funding", "hiring", "product-launches"]`
 - lowers the atomic-only subscriber `### Maintains` (no `####` parts) to

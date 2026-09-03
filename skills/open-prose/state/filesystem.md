@@ -34,7 +34,8 @@ File-based state persists all execution artifacts to disk. This enables:
 
 **Key principle:** Files are inspectable artifacts. The directory structure IS the execution state.
 
-**The load-bearing distinction** (`world-model.md` §1): a node's **published**
+**The load-bearing distinction** (the invariant `state/README.md` states for every
+backend): a node's **published**
 world-model is the canonical, deterministically-serialized, fingerprinted
 artifact — the truth downstreams subscribe to. The render's **workspace** is
 private scratch — intermediate reasoning, working notes — and is **never
@@ -214,15 +215,16 @@ world-model/
 
 Note: `report.md` here is the *structured* truth that backs the fingerprint.
 Free-form rendered prose is a **derived projection excluded from the
-fingerprint** (`world-model.md` §3, the structured-backing rule) — otherwise an
-LLM re-rendering the same paragraph hashes differently every time and falsely
-re-triggers downstreams. Fingerprint the structured truth; render prose *from* it.
+fingerprint** (the structured-backing rule in `contract-markdown.md`) —
+otherwise an LLM re-rendering the same paragraph hashes differently every time
+and falsely re-triggers downstreams. Fingerprint the structured truth; render
+prose *from* it.
 
 #### Faceted layout — one subtree per facet
 
 When a node's `### Maintains` declares facets by **naming the parts** (a `####`
-sub-heading inside `### Maintains` *is* a facet — the named-parts rule,
-`delta.md` Part G; `world-model.md` §3, "Declaring facets"), the published
+sub-heading inside `### Maintains` *is* a facet — the named-parts rule in
+`contract-markdown.md`), the published
 artifact lays each facet out as its own subtree under the node directory:
 `published/<facet>/…`. The directory structure *is* the subscription surface —
 the same name is the facet's fingerprint unit, its
@@ -245,8 +247,8 @@ world-model/
     └── .version                # ContentAddress of this committed version
 ```
 
-**The fingerprinting rule with facets** (`world-model.md` §3; the
-canonical-serialization pass below). The single authority for facet tokens is the
+**The fingerprinting rule with facets** (see the canonical-serialization pass
+below). The single authority for facet tokens is the
 **compiled canonicalizer** that travels with the contract: it reduces the
 node's *structured* material truth (the `### Maintains` canonicalization spec,
 frozen at compile, addressing material fields by their dotted structured paths)
@@ -264,7 +266,7 @@ canonicalizer computes over the facet's material structured content.
   that `### Requires` `funding` and resolves to `#### funding` subscribes to that
   facet's token: a move in the `hiring` facet advances the `hiring` token and the
   `@atomic` token but **not** the `funding` token, so the funding-only subscriber
-  does not wake (the selector boundary, `world-model.md` §3).
+  does not wake (the selector boundary).
 - Shared un-facetted fields (here `competitors.md`'s `name` /
   `last_corroborated`) belong to no facet's material content, so they move only
   the `@atomic` token.
@@ -288,7 +290,7 @@ canonicalize (drop immaterial) → fingerprint → sign receipt*:
    ordering (sorted by normalized path), path/encoding normalization, and
    sorted-key JSON for any structured records (reuses the receipt's canonical-JSON
    machinery). The same byte sequence must result regardless of write order or
-   filesystem enumeration order (`architecture.md` §5.2, §10).
+   filesystem enumeration order.
 3. **Apply the compiled canonicalizer** for this node (`### Maintains`
    canonicalization spec, frozen at compile time): drop immaterial fields
    (`fetched_at`, request ids, cosmetic ordering), normalize sets/numbers/text to
@@ -308,7 +310,7 @@ canonicalize (drop immaterial) → fingerprint → sign receipt*:
 
 The reconciler's wake decision is this fingerprint comparison — deterministic,
 total, no LLM. **Only a `rendered` receipt with a moved fingerprint propagates to
-downstreams** (`world-model.md` §8).
+downstreams** (the reconcile loop in `concepts/reconciler.md`).
 
 ---
 
@@ -522,7 +524,7 @@ To resume an interrupted run:
 1. Read the `receipts/` ledger — the append-only chain is the source of truth; find the last committed receipt per node
 2. Read the compiled intent — get the topology and propagation edges
 3. Scan `world-model/` — confirm published canonical artifacts (and their `.version`)
-4. Re-derive reconciler dirty/coalesce state from unconsumed upstream receipts and continue (`architecture.md` §8)
+4. Re-derive reconciler dirty/coalesce state from unconsumed upstream receipts and continue
 
 ---
 
@@ -576,7 +578,8 @@ If the render wrote `__error.md` instead:
 
 1. **VM reads** `workspace/{node}/__error.md`
 2. **VM emits a `failed` receipt** — a failed render commits nothing; the prior
-   world-model stands and no fingerprint moves (`architecture.md` §8: failure = no-commit)
+   world-model stands and no fingerprint moves (failure = no-commit; see
+   `concepts/reconciler.md`)
 3. **VM appends** error marker to `vm.log.md`
 
 ---
@@ -684,5 +687,5 @@ fingerprints — deterministic, total, no LLM. The render writes to workspace. T
 VM commits the canonical world-model through the
 canonical-serialization-before-fingerprint pass and signs a receipt — never a
 dumb copy. SQL/vector indices, when present, are **derived projections** of the
-canonical truth (`world-model.md` §1). Everything is on disk, everything is
+canonical truth. Everything is on disk, everything is
 inspectable, everything is auditable through the signed receipt chain.

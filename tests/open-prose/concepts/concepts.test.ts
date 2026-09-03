@@ -4,8 +4,8 @@
 // These assert the docs embody the Intelligent React end-state — the
 // render-atom / world-model=DOM / subscriptions=props / receipt=setState /
 // reconciler=runtime model — and that judge-centric language is gone
-// (delta.md Part B §B4/§B6; architecture.md §1/§2/§4/§6/§7; world-model.md
-// §1/§2/§3/§5/§6/§8). Doc-conformance style: read the source doc, assert on
+// (the run-phase model concepts/reconciler.md and concepts/responsibility.md
+// define). Doc-conformance style: read the source doc, assert on
 // content, no runtime.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -20,8 +20,8 @@ function doc(name: string): string {
 }
 
 // The retired judge-era vocabulary that must not survive in the run-phase
-// concept docs (delta.md §B4: "All of this is retired (no judge, no status
-// enum, no pressure, no fulfillment activation)").
+// concept docs: no judge, no status enum, no pressure, no fulfillment
+// activation.
 const RETIRED_TERMS = [
 	"judge drift",
 	"judge activation",
@@ -34,11 +34,11 @@ const RETIRED_TERMS = [
 	"recommended activation",
 ];
 
-describe("reconciler.md — the dumb reconciler (delta.md §B6, architecture.md §4)", () => {
+describe("reconciler.md — the dumb reconciler", () => {
 	const source = doc("reconciler.md");
 
 	it("frames the React mapping: world-model=DOM, subscriptions=props, receipt=setState, reconciler=runtime", () => {
-		// world-model.md §1 (L19): the world-model is the node's "DOM".
+		// The world-model is the node's "DOM".
 		expect(source).toContain("world-model");
 		expect(source).toContain("the **world-model**");
 		expect(source).toContain("**subscriptions**");
@@ -46,21 +46,21 @@ describe("reconciler.md — the dumb reconciler (delta.md §B6, architecture.md 
 		expect(source).toContain("the **reconciler**");
 	});
 
-	it("declares the two phases: intelligent compile, dumb run (architecture.md §2)", () => {
-		// architecture.md §2 (L84-92): compile intelligent / run dumb.
+	it("declares the two phases: intelligent compile, dumb run", () => {
+		// compile intelligent / run dumb.
 		expect(source).toMatch(/compile[\s\S]*intelligent/i);
 		expect(source).toMatch(/run[\s\S]*dumb/i);
 		expect(source).toContain("contract set");
 	});
 
-	it("states the render atom signature (architecture.md §1 L26-27)", () => {
+	it("states the render atom signature", () => {
 		expect(source).toContain(
 			"(contract, evidence, prior world-model) -> (new world-model, receipt)",
 		);
 	});
 
-	it("declares the three wake sources as one event (architecture.md §4.2, world-model.md §5)", () => {
-		// world-model.md §5 (L233-238): input / self / external.
+	it("declares the three wake sources as one event", () => {
+		// input / self / external.
 		expect(source).toContain("`input`");
 		expect(source).toContain("`self`");
 		expect(source).toContain("`external`");
@@ -69,19 +69,19 @@ describe("reconciler.md — the dumb reconciler (delta.md §B6, architecture.md 
 	});
 
 	it("makes the memo key exactly (contract_fingerprint, input_fingerprints) — nothing else", () => {
-		// world-model.md §4 (L195): "nothing else".
+		// The memo key is the pair and "nothing else".
 		expect(source).toContain("(contract_fingerprint, input_fingerprints)");
 		expect(source).toMatch(/nothing else/i);
 		expect(source).toMatch(/no judge/i);
 	});
 
-	it("requires single-flight + coalescing and the React batching analogy (world-model.md §8)", () => {
+	it("requires single-flight + coalescing and the React batching analogy", () => {
 		expect(source).toMatch(/single-flight/i);
 		expect(source).toMatch(/coalesc/i);
 		expect(source).toMatch(/dirty/i);
 	});
 
-	it("propagates only rendered-with-a-moved-fingerprint (world-model.md §8 L329-330)", () => {
+	it("propagates only rendered-with-a-moved-fingerprint", () => {
 		expect(source).toMatch(
 			/only\s+`?rendered`?\s+with a moved fingerprint propagates/i,
 		);
@@ -90,7 +90,7 @@ describe("reconciler.md — the dumb reconciler (delta.md §B6, architecture.md 
 		expect(source).toContain("`failed`");
 	});
 
-	it("lists the receipt fields including fingerprints map and semantic_diff (architecture.md §6.1)", () => {
+	it("lists the receipt fields including fingerprints map and semantic_diff", () => {
 		for (const field of [
 			"`node`",
 			"`contract_fingerprint`",
@@ -105,16 +105,29 @@ describe("reconciler.md — the dumb reconciler (delta.md §B6, architecture.md 
 		]) {
 			expect(source).toContain(field);
 		}
-		// semantic_diff is render input, never a wake signal (world-model.md §3 L174).
+		// semantic_diff is render input, never a wake signal.
 		expect(source).toMatch(/never a wake signal/i);
 	});
 
-	it("states the structured-backing rule (world-model.md §3 L167-172)", () => {
+	it("gives the receipt's cost block its sub-shape: fresh vs reused tokens and a surprise_cause equal to wake.source", () => {
+		expect(source).toContain(
+			"`{ provider, model, tokens: { fresh, reused }, surprise_cause }`",
+		);
+		expect(source).toContain("`tokens.fresh`");
+		expect(source).toContain("`tokens.reused`");
+		expect(source).toContain("`surprise_cause`");
+		// The cause of the spend is the wake source — the observable link between
+		// surprise and cost.
+		expect(source).toMatch(/`surprise_cause`[^|]*must equal `wake\.source`/);
+		expect(source).toMatch(/`skipped` receipt carries zero cost/i);
+	});
+
+	it("states the structured-backing rule", () => {
 		expect(source).toMatch(/structured[- ]backing/i);
 		expect(source).toMatch(/render prose \*from\* it/i);
 	});
 
-	it("explicitly retires the judge/status/pressure/fulfillment loop (delta.md §B4)", () => {
+	it("explicitly retires the judge/status/pressure/fulfillment loop", () => {
 		// The doc must call out that there is no judge and name the retired model.
 		expect(source).toMatch(/no judge/i);
 		expect(source).toMatch(/no status enum/i);
@@ -133,21 +146,21 @@ describe("reconciler.md — the dumb reconciler (delta.md §B6, architecture.md 
 	});
 });
 
-describe("responsibility.md — mounted reactive node (delta.md §B6, architecture.md §7)", () => {
+describe("responsibility.md — mounted reactive node", () => {
 	const source = doc("responsibility.md");
 
-	it("reframes a responsibility as a mounted node in the responsibility DAG (architecture.md §7.1)", () => {
+	it("reframes a responsibility as a mounted node in the responsibility DAG", () => {
 		expect(source).toMatch(/mounted node/i);
 		expect(source).toContain("### Requires");
 		expect(source).toContain("### Maintains");
 	});
 
-	it("adds the ### Requires / ### Maintains reactive interface (delta.md §B2)", () => {
-		// delta.md §B2: responsibility gains ### Requires + ### Maintains.
+	it("adds the ### Requires / ### Maintains reactive interface", () => {
+		// A responsibility's interface is ### Requires + ### Maintains.
 		expect(source).toContain("`Requires.<facet> ↔ Maintains.<facet>`");
 	});
 
-	it("teaches ### Maintains as the four-job schema (world-model.md §2 L61-77)", () => {
+	it("teaches ### Maintains as the four-job schema", () => {
 		expect(source).toMatch(/four jobs/i);
 		expect(source).toMatch(/\*\*Type\*\*/);
 		expect(source).toMatch(/\*\*Canonicalization spec\*\*/);
@@ -157,14 +170,14 @@ describe("responsibility.md — mounted reactive node (delta.md §B6, architectu
 		expect(source).toMatch(/false friend/i);
 	});
 
-	it("reshapes ### Continuity into a structural wake-source declaration (delta.md §B2, world-model.md §6)", () => {
+	it("reshapes ### Continuity into a structural wake-source declaration", () => {
 		expect(source).toMatch(/wake-source declaration/i);
 		expect(source).toMatch(/input-driven/);
 		expect(source).toMatch(/self-driven/);
 		expect(source).toMatch(/external-driven/);
 	});
 
-	it("folds Criteria/Constraints/Memory/Fulfillment per the crosswalk (delta.md §B2)", () => {
+	it("folds Criteria/Constraints/Memory/Fulfillment per the crosswalk", () => {
 		expect(source).toContain("### Criteria");
 		expect(source).toContain("### Memory");
 		expect(source).toContain("### Fulfillment");
@@ -173,13 +186,13 @@ describe("responsibility.md — mounted reactive node (delta.md §B6, architectu
 		expect(source).toMatch(/one world-model per node/i);
 	});
 
-	it("denies the system kind and judge file (delta.md §B1, plan.md §3)", () => {
+	it("denies the system kind and judge file", () => {
 		expect(source).toMatch(/no\s+`?system`? kind/i);
 		expect(source).toMatch(/no judge runtime exists/i);
 	});
 
 	it("describes the compile phase output (Forme topology + canonicalizer + validators)", () => {
-		// architecture.md §3.1-§3.3.
+		// The three compile artifacts: topology, canonicalizers, validators.
 		expect(source).toMatch(/topology world-model/i);
 		expect(source).toMatch(/canonicalizer/i);
 		expect(source).toMatch(/postcondition validators/i);
@@ -196,7 +209,7 @@ describe("responsibility.md — mounted reactive node (delta.md §B6, architectu
 	});
 });
 
-describe("concepts/README.md — index refresh (delta.md §B6 KEEP)", () => {
+describe("concepts/README.md — index refresh", () => {
 	const source = doc("README.md");
 
 	it("describes the reconciler as the dumb reconciler, not the pressure loop", () => {

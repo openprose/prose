@@ -2,7 +2,6 @@
 name: operator-pins
 kind: gateway
 version: 0.15.0
-id: operator-pins
 ---
 
 # Operator Pins
@@ -29,7 +28,9 @@ OperatorPinLedger {
 }
 ```
 
-### Continuity: external-driven
+### Continuity
+
+- external-driven
 
 External. This gateway is an **entry point**: wake when an operator resolves
 ambiguity or overrides topology. No `### Requires`.

@@ -36,7 +36,7 @@ repositories use the repository root, attached repositories use
 
 ## The truth is canonical; everything else is a projection
 
-The load-bearing invariant for every backend (`world-model.md` §1): the
+The load-bearing invariant for every backend: the
 **canonical world-model is a single content-addressable artifact** — by default a
 directory of files — that is deterministically serialized and fingerprinted on
 commit. SQLite tables, PostgreSQL rows, vector indices, and dashboards are

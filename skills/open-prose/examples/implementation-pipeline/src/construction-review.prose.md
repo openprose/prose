@@ -40,12 +40,17 @@ The world-model schema — the review verdict.
 `{ accepted_lanes, rejected_lanes }`, so the integration node wakes when the
 accept/reject SET changes, not on cosmetic churn.
 
-### Facets
+**Facets** — one named part, the verdict the integration node subscribes to.
+Everything outside it (`cross_lane_conflicts`, `missing_tests`,
+`export_requests`, `open_issues`, `ready_for_integration`) moves only the
+atomic token.
 
 #### accepted
 
 The accept/reject verdict the `integration-builder` subscribes to. A rejected
 lane appears here with its reason and is excluded downstream by construction.
+Material: the `accepted_lanes` set and the `rejected_lanes` set, each rejection
+with its `lane` and `reason`; immaterial: the order the lanes were reviewed in.
 
 ### Continuity
 

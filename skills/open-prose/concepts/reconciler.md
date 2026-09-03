@@ -160,7 +160,7 @@ ledger — a node's durable memory. Its fields:
 | `semantic_diff` | render-input context ("3 controls went stale") — never a wake signal |
 | `prev` | pointer to the prior receipt (chains the ledger) |
 | `status` | `rendered` \| `skipped` \| `failed` |
-| `cost` | mechanical token attribution — makes "cost scales with surprise" observable |
+| `cost` | mechanical token attribution: `{ provider, model, tokens: { fresh, reused }, surprise_cause }`. `tokens.fresh` is what this render newly spent and `tokens.reused` what it recovered from prior work; `surprise_cause` names the wake source that caused the spend (`input` / `self` / `external`) and must equal `wake.source`. A `skipped` receipt carries zero cost. This is what makes "cost scales with surprise" observable |
 | `sig` | v1 meaning-layer attestation; the `signer` is an explicit null state |
 
 **Only `rendered` with a moved fingerprint propagates.** A `skipped` receipt

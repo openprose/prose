@@ -2,7 +2,7 @@
 name: competitor-monitor
 kind: responsibility
 version: 0.15.0
-id: 067NC4KG01RG50R40M30E2FACE7
+id: 067NC4KG01RG50R40M3E2FACE7
 ---
 
 # Competitor Activity Monitor
