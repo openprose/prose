@@ -31,8 +31,8 @@
 //
 // RUN: the repo-root vitest config discovers tests/open-prose/**/*.test.ts, so
 // `pnpm test:skill` picks this up.
-import { readdirSync, readFileSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
@@ -285,5 +285,93 @@ describe("CORPUS GUARD — no retired kind is TAUGHT AS LIVE in any SKILL doc (f
 			offenders,
 			`retired kind taught as live:\n${offenders.join("\n")}`,
 		).toEqual([]);
+	});
+});
+
+// Every file under a directory, whatever its extension (test sources included).
+function allFiles(dir: string): string[] {
+	const out: string[] = [];
+	for (const entry of readdirSync(dir)) {
+		const full = join(dir, entry);
+		if (statSync(full).isDirectory()) out.push(...allFiles(full));
+		else out.push(full);
+	}
+	return out;
+}
+
+describe("no shipped file cites a private design document", () => {
+	// The design documents behind the Intelligent React overhaul live outside
+	// this repository. A citation such as "delta § B2" or "world-model § 3"
+	// points a reader at a file they cannot open, so shipped prose names an
+	// in-repo section instead. The pattern is assembled from parts so this
+	// file's own source does not trip the guard.
+	const PRIVATE_DOC_NAMES = ["delta", "architecture", "world-model", "plan"];
+	const PRIVATE_CITATION = new RegExp(
+		`\\b(?:${PRIVATE_DOC_NAMES.join("|")})\\.md\\b|\\bSHAPES(?:\\.md)?\\s*§`,
+	);
+	// The upgrade record may name whatever it needs to route a migration.
+	const EXEMPT = new Set(["skills/open-prose/changelog.md"]);
+	const SCANNED_EXTENSIONS = [".md", ".ts", ".mjs", ".sh", ".json"];
+
+	function targets(): string[] {
+		const files: string[] = [
+			...allDocs(skillDir),
+			...allDocs(join(repoRoot, "spec")),
+			...allFiles(join(repoRoot, "tests/open-prose")),
+			...allFiles(join(repoRoot, "scripts")),
+		];
+		for (const root of ["README.md", "CONTRIBUTING.md", "AGENTS.md"]) {
+			const full = join(repoRoot, root);
+			if (existsSync(full)) files.push(full);
+		}
+		return files.filter((f) => SCANNED_EXTENSIONS.some((ext) => f.endsWith(ext)));
+	}
+
+	it("finds the skill, the spec, the tests, and the root docs (sanity)", () => {
+		const rels = targets().map((f) => relative(repoRoot, f));
+		expect(rels).toContain("skills/open-prose/contract-markdown.md");
+		expect(rels).toContain("spec/01-Language.md");
+		expect(rels).toContain("tests/open-prose/stale-docs/stale-docs.test.ts");
+		expect(rels).toContain("README.md");
+	});
+
+	it("no skill doc, spec chapter, test, script, or root doc cites one", () => {
+		const offenders: string[] = [];
+		for (const path of targets()) {
+			const rel = relative(repoRoot, path);
+			if (EXEMPT.has(rel)) continue;
+			readFileSync(path, "utf8")
+				.split("\n")
+				.forEach((line, i) => {
+					if (PRIVATE_CITATION.test(line)) offenders.push(`${rel}:${i + 1} — ${line.trim()}`);
+				});
+		}
+		expect(offenders, `private design documents cited:\n${offenders.join("\n")}`).toEqual([]);
+	});
+});
+
+describe("relative markdown links in spec/ and skills/ resolve", () => {
+	// A link a stranger cannot follow is as bad as a private citation. Every
+	// `[text](path)` whose target is a relative path must name a file that
+	// exists in this repository; anchors, mail links, and absolute URLs are not
+	// checked here.
+	const LINK = /\[[^\]]*\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g;
+
+	it("every relative link target exists on disk", () => {
+		const offenders: string[] = [];
+		const docs = [...allDocs(join(repoRoot, "spec")), ...allDocs(skillDir)];
+		for (const path of docs) {
+			const text = readFileSync(path, "utf8");
+			for (const match of text.matchAll(LINK)) {
+				const target = match[1];
+				if (/^(?:[a-z]+:|#)/i.test(target)) continue;
+				const file = target.split("#")[0];
+				if (!file) continue;
+				if (!existsSync(resolve(dirname(path), decodeURIComponent(file)))) {
+					offenders.push(`${relative(repoRoot, path)}: ${target}`);
+				}
+			}
+		}
+		expect(offenders, `dangling relative links:\n${offenders.join("\n")}`).toEqual([]);
 	});
 });

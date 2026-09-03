@@ -69,7 +69,7 @@ The contracts in this repo are **harness-agnostic**: OpenProse Markdown runs on 
 ## Harnesses
 
 The contracts in this repo are harness-agnostic: any Prose-Complete agent host runs them, and the
-spec ([`spec/02-Harness.md`](spec/)) says what a conforming harness must do. The reference harness,
+spec ([`spec/02-Harness.md`](spec/02-Harness.md)) says what a conforming harness must do. The reference harness,
 **Reactor** (`@openprose/reactor`, `@openprose/reactor-cli`, `@openprose/reactor-devtools`, the `reactor`
 binary), now lives at **[github.com/openprose/reactor](https://github.com/openprose/reactor)** and is
 experimental (alpha): early software with no stability guarantees, to be evaluated on your own judgement.
@@ -79,7 +79,7 @@ Installs keep working under the same names.
 
 In the spirit of the receipts:
 
-- **The language:** the skill ships at `version 0.16.0`, `runtime_contract 2`; the spec ([`spec/`](spec/)) and the example corpus are migrated to the current vocabulary. The overhaul is recent: if you find a surface still speaking the old model, that's a bug, and we want the issue.
+- **The language:** the skill's version of record is the `version:` frontmatter in [`skills/open-prose/SKILL.md`](skills/open-prose/SKILL.md) (its `runtime_contract` carries machine compatibility separately); the spec ([`spec/`](spec/)) and the example corpus are migrated to the current vocabulary. The overhaul is recent: if you find a surface still speaking the old model, that's a bug, and we want the issue.
 - **Benchmarks are openly pending, on purpose.** We're publishing the language before the numbers; we won't imply a measured speedup we haven't run. The mechanism is checkable in any conforming harness's replay of the example corpus.
 - The **fixpoint** (topology-as-responsibility) is specified and deferred; facet inference and ledger compaction are named roadmap.
 - **Harness status** (what is built, what the receipts do and do not yet prove) is documented by each harness; for the reference harness see [Harnesses](#harnesses).

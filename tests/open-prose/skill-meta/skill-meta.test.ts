@@ -300,3 +300,17 @@ describe("deps.md + agent-onboarding.md — kept, survive the overhaul", () => {
 		expect(doc).not.toContain("kind: system");
 	});
 });
+
+describe("README.md — the skill version of record lives in SKILL.md", () => {
+	const readme = readFileSync(join(repoRoot, "README.md"), "utf8");
+
+	it("does not hardcode a skill version", () => {
+		// A literal "version 0.x.y" in the README went stale one release after it
+		// was written. The README points at SKILL.md frontmatter instead, so the
+		// version of record has exactly one home.
+		expect(readme).not.toMatch(/\bversion[:\s]+`?\d+\.\d+\.\d+/);
+		expect(readme).toMatch(
+			/`version:` frontmatter in \[`skills\/open-prose\/SKILL\.md`\]\(skills\/open-prose\/SKILL\.md\)/,
+		);
+	});
+});

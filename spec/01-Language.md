@@ -292,16 +292,14 @@ The current repository narrows the ground truth:
   reserved/inert. Current dependency resolution is explicit git-host based,
   with `std/` and `co/` shorthands.
 - The current repo does not specify a product/business platform surface like
-  Cloud billing, sprites, Constellation, or an investor narrative. The hosted
-  product, public/social surface, and go-to-market motion are sketched in
-  [ContinuousOutcomes.md](../ideation/ContinuousOutcomes.md) (stale
-  product ideation, not a live spec); the forward-looking subscription,
-  royalty, and dependency-graph economics are sketched in
-  [SubscriptionsHypothetical.md](../ideation/SubscriptionsHypothetical.md)
-  (hypothetical, not a live spec and not load-bearing); the brand and design
-  surface lives in `platform/apps/run/PRODUCT.md`. None of those documents are
-  live OpenProse language/runtime material; this file remains the language and
-  runtime spec only.
+  Cloud billing, sprites, Constellation, or an investor narrative. An earlier
+  ideation note explored the hosted product, public/social surface, and
+  go-to-market motion (stale product ideation, not a live spec); another
+  sketched forward-looking subscription, royalty, and dependency-graph
+  economics (hypothetical, not a live spec and not load-bearing); the brand and
+  design surface is a product concern kept outside this repository. None of
+  that is live OpenProse language/runtime material; this file remains the
+  language and runtime spec only.
 
 ### Prose Complete
 
@@ -353,7 +351,7 @@ The root layout is:
 | `runs/` | Activation receipts for bounded VM runs |
 | `state/` | Durable cross-run state |
 | `state/agents/` | Durable agent memory |
-| `state/world-model/{node}/` | Each responsibility's persisted canonical world-model, with its signed, append-only `receipts.jsonl` ledger — the language VM root layout (a harness may lay out its own state-dir differently, [02-Harness.md](./02-Harness.md)); no separate status/pressure store — the judge loop is retired |
+| `state/world-model/{node}/` | Each responsibility's persisted canonical world-model, with its signed, append-only receipt ledger in a harness-chosen receipt ledger layout (the reference harness ships a flat `receipts.json`) — this is the language VM root layout, and a harness may lay out its own state-dir differently ([02-Harness.md](./02-Harness.md)); no separate status/pressure store — the judge loop is retired |
 | `deps/` | Installed git-native dependencies |
 | `prose.lock` | Dependency lockfile |
 | `.env` | Local runtime environment |
@@ -956,31 +954,33 @@ on; a harness tracks its own engineering detail.
 
 Part I's self-driven continuity — a lapsed `valid_until` mechanically moves a
 facet fingerprint via the self-tick — needs a default projector in the served
-continuity loop. Today the reference harness's loop runs on a flat poll cadence
-and arms no per-facet `valid_until` by default, so
-`### Continuity: self-driven` runs at a fixed interval rather than the Ideal's
-"wake exactly when the soonest `valid_until` lapses." The author already writes
-the `valid_until`; the cadence tightens harness-side without a source change.
-([02-Harness.md](./02-Harness.md) *Open specification items* §6.)
+continuity loop. As of the reference harness 0.3.3 (see the repository README
+under *Harnesses*), its loop runs on a flat poll cadence and arms no per-facet
+`valid_until` by default, so `### Continuity: self-driven` runs at a fixed
+interval rather than the Ideal's "wake exactly when the soonest `valid_until`
+lapses." The author already writes the `valid_until`; the cadence tightens
+harness-side without a source change. ([02-Harness.md](./02-Harness.md) *Open
+specification items* §6.)
 
 ### 2. The deterministic commit gate, wired
 
-`### Maintains` postconditions lower to deterministic validators today
-(`compilePostconditions` runs on the compile path), but the gate that evaluates
-them at commit, `gateCommit`, is built and **unwired** — the live commit rides the
-render's own `### Maintains` self-attestation. The language promises "a render
-that cannot satisfy its postconditions commits nothing"; making that
-deterministic rather than self-attested is harness wiring, not a syntax change.
+`### Maintains` postconditions lower to deterministic validators (in the
+reference harness 0.3.3, `compilePostconditions` runs on the compile path), but
+the gate that evaluates them at commit, `gateCommit`, is built and **unwired**
+as of that release — the live commit rides the render's own `### Maintains`
+self-attestation. The language promises "a render that cannot satisfy its
+postconditions commits nothing"; making that deterministic rather than
+self-attested is harness wiring, not a syntax change.
 ([02-Harness.md](./02-Harness.md) invariant 6.)
 
 ### 3. The failed-receipt reason (durable receipt shape)
 
-The language promises a `failed` receipt "addressed to the author, naming exactly
-what it needs." The shipped v0 receipt is too thin to carry that — no `as_of`, no
-failure `reason`, no author-addressing field — so the naming is honored only
-in-render and dropped at commit. Widening the durable receipt is harness work the
-language's failed-receipt promise depends on. ([02-Harness.md](./02-Harness.md)
-*Open specification items* §1.)
+The language promises a `failed` receipt "addressed to the author, naming
+exactly what it needs." The v0 receipt the reference harness 0.3.3 ships is too
+thin to carry that — no `as_of`, no failure `reason`, no author-addressing field
+— so the naming is honored only in-render and dropped at commit. Widening the
+durable receipt is harness work the language's failed-receipt promise depends
+on. ([02-Harness.md](./02-Harness.md) *Open specification items* §1.)
 
 ### 4. The actuation boundary, enforced
 

@@ -58,7 +58,19 @@ write_field() {
   tmp="$(mktemp)"
   case "$kind" in
     json)
-      jq --arg v "$value" "$(json_expr "$field") = \$v" "$REPO_ROOT/$path" > "$tmp"
+      # Rewrite only the line that carries the field. Round-tripping the file
+      # through jq re-serializes the whole manifest (it once re-expanded a
+      # one-line array to four lines), so a bump must touch one line and leave
+      # the rest byte-identical. Reads and --check still go through jq.
+      local pattern="^([[:space:]]*\"${field}\"[[:space:]]*:[[:space:]]*\")[^\"]*(\")"
+      local hits
+      hits="$(grep -cE "$pattern" "$REPO_ROOT/$path" || true)"
+      if [[ "$hits" != "1" ]]; then
+        rm -f "$tmp"
+        echo "error: expected exactly one \"$field\" line in $path (found $hits)" >&2
+        exit 1
+      fi
+      sed -E "s/${pattern}/\1${value}\2/" "$REPO_ROOT/$path" > "$tmp"
       mv "$tmp" "$REPO_ROOT/$path"
       ;;
     shell-var)
