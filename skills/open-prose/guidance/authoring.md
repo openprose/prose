@@ -399,3 +399,9 @@ responsibility, and its persisted state is its world-model.
   check and a judged quality pass.
 - Over-tiering a one-shot or single-responsibility job — manufacturing
   classifier/facet machinery where one render would do.
+- Collapsing block invocations in parallel contexts into a single natural-language
+  subagent task instead of preserving discrete statement-by-statement session
+  execution and scoped checkpoints.
+- Batching intermediate ledger writes or state updates at the end of a parallel
+  block branch instead of committing them contemporaneously after each statement
+  completes.

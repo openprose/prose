@@ -535,6 +535,7 @@ To resume an interrupted run:
 | `sources/*.prose.md` | the compile phase | Before execution |
 | `world-model/caller/*.md` | VM | At entry / gateway boot |
 | `workspace/{node}/*` | the render | During the render |
+| `workspace/{node}/__scope/{execution_id}/*` | the render / sub-VM | Isolated frame for parallel block invocations |
 | `workspace/{node}/__delegate/{delegate}/{id}.md` | the render | Before delegation yield |
 | `workspace/{node}/__delegate/{delegate}/{id}-response.md` | VM | After delegate completes |
 | `world-model/{node}/*` + `.version` | VM (`commit_world_model`) | On a `rendered` receipt with a moved fingerprint |
@@ -578,6 +579,23 @@ If the render wrote `__error.md` instead:
 2. **VM emits a `failed` receipt** — a failed render commits nothing; the prior
    world-model stands and no fingerprint moves (`architecture.md` §8: failure = no-commit)
 3. **VM appends** error marker to `vm.log.md`
+
+---
+
+## Scoped Execution Frames
+
+When a render executes blocks or iterations within parallel constructs (`parallel:` or `parallel for`), concurrent branches require isolation for branch-local scratch files, iteration bindings, and sub-VM workspaces:
+
+```
+workspace/{node}/__scope/{execution_id}/
+├── scratch/             # Branch-local scratch files
+└── outputs/             # Intermediate values bound to local bindings
+```
+
+### Invariants
+1. **Per-Branch Isolation**: `{execution_id}` uniquely identifies the parallel iteration or branch (derived from iteration index or execution UUID). Local variable bindings and temporary working files are contained within this scoped path, preventing concurrent branches from clobbering one another.
+2. **Discrete Session and State Progression**: Nested `session:` or `call:` statements executed within the scoped frame commit their outputs and ledger/state entries contemporaneously as each statement finishes, maintaining distinct timestamps and observable progress throughout the branch's lifetime.
+3. **No Premature Clobbering**: Scoped working state remains isolated until the parallel construct joins and returns its aggregated result.
 
 ---
 
