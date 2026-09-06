@@ -1265,15 +1265,20 @@ A pattern file declares its pattern with Contract Markdown sections. Understandi
 
 ### Instantiation
 
-Authors instantiate patterns with explicit slot-filling: `pattern:` names the
-pattern, `with:` binds slots, and `config:` sets pattern parameters. Instances
+Authors instantiate patterns inside the canonical `### Patterns` section with
+explicit slot-filling: `name:` assigns the instance identifier, `pattern:` names
+the pattern, `with:` binds slots, and `config:` sets pattern parameters. Instances
 are declared in contract files and expanded by Forme at compile time into
-concrete nodes. Nested pattern declarations may appear only as
-slot values inside a pattern instance's `with:` block.
-For instantiation syntax, see `contract-markdown.md` (Patterns) and `forme.md`,
-Pattern Expansion. No shorthand pattern syntax is accepted at runtime.
+concrete nodes. Nested pattern declarations may appear only as slot values inside
+a pattern instance's `with:` block.
 
-Patterns nest — a slot can be filled by another pattern instantiation. Expansion proceeds inside-out. Recursive patterns are prohibited. For nesting examples, see `forme.md`, Pattern Expansion.
+For instantiation syntax, `use` aliases, and complete examples, see
+`contract-markdown.md` (Patterns) and `forme.md`, Pattern Expansion. No shorthand
+pattern syntax is accepted at runtime.
+
+Patterns nest — a slot can be filled by another pattern instantiation. Expansion
+proceeds inside-out. Recursive patterns are prohibited. For nesting examples and
+expansion rules, see `forme.md`, Pattern Expansion.
 
 ### Patterns in the Manifest
 

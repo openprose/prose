@@ -438,6 +438,7 @@ Canonical sections include:
 | `### Shape` | responsibility, function | Capability boundaries: self, delegates, prohibited work |
 | `### Execution` | responsibility, function | ProseScript render body that pins choreography |
 | `### Fixtures` / `### Expects` / `### Expects Not` | test | Test data and assertions |
+| `### Patterns` | responsibility, function | Pattern instantiation declarations (- name:, pattern:, with:, config:) |
 | `### Slots` / `### Config` / `### Delegation` | pattern | Pattern interface and algorithm |
 | `### Schedule` / `### Receives` / `### Emits` / `### Payload` | gateway | Time/event ingress declarations |
 
@@ -459,8 +460,11 @@ Header hierarchy is part of the language, and the `####` level is now load-beari
 Composition has exactly two forms (there is no `system` graph kind): **intra-node**
 choreography is a ProseScript `call` inside one render's `### Execution`;
 **cross-node** composition is a Forme-wired `### Requires` ↔ `### Maintains`
-subscription between responsibilities. Pattern instances remain current YAML
-syntax, declared in a responsibility's slots:
+subscription between responsibilities. Pattern instances are declared in the
+canonical `### Patterns` section with fenced YAML syntax:
+
+```markdown
+### Patterns
 
 ```yaml
 - name: reviewed-output
@@ -470,6 +474,7 @@ syntax, declared in a responsibility's slots:
     critic: reviewer
   config:
     max_rounds: 3
+```
 ```
 
 ### Forme
