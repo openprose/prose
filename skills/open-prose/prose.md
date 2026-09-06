@@ -754,16 +754,19 @@ The render writes its request payload to the specified path before yielding. The
 The VM:
 
 1. Reads the delegation request
-2. Spawns the delegate as a new session (same mechanics as Step 4b — the delegate's source, inputs, workspace, and output instructions come from the manifest)
-3. Passes the request file as the delegate's input
-4. Waits for the delegate to complete normally (writes outputs, returns confirmation)
-5. Writes the delegate's output to `workspace/{node}/__delegate/{delegate}/{id}-response.md`
-6. Resumes the original render with a pointer to the response:
+2. Writes a contemporaneous pre-dispatch handoff record to `workspace/{node}/__delegate/{delegate}/handoffs/{seq}.json` recording exact task identity, instructions, and supplied input versions (see `state/execution-provenance.md`)
+3. Spawns the delegate as a new session (same mechanics as Step 4b — the delegate's source, inputs, workspace, and output instructions come from the manifest)
+4. Passes the request file as the delegate's input
+5. Waits for the delegate to complete normally (writes outputs, records reported review scope, returns confirmation)
+6. Writes the delegate's output and reported review scope to `workspace/{node}/__delegate/{delegate}/{id}-response.md`
+7. Resumes the original render with a pointer to the response:
 
 ```
 Delegation complete: {delegate-name}/{id}
 Response: workspace/{node}/__delegate/{delegate}/{id}-response.md
 ```
+
+If follow-up or reassignment handoffs occur (such as supplying auxiliary input `D`), each subsequent handoff is recorded as a distinct, monotonically sequenced pre-dispatch record (`handoffs/002.json`) before dispatch. Retrospective summaries must never be labeled contemporaneous dispatch records.
 
 The render reads the response and continues execution.
 
@@ -778,7 +781,7 @@ Delegate: validator
 Request: workspace/server/__delegate/validator/req-001.md
 ```
 
-The VM spawns all delegates concurrently, waits for all to complete, and resumes the render once with all response paths.
+The VM writes a pre-dispatch record for each delegate, spawns all delegates concurrently, waits for all to complete, and resumes the render once with all response paths.
 
 ### State Markers
 
@@ -799,8 +802,12 @@ Delegation state lives in the delegating node's workspace:
 
 ```
 workspace/{node}/__delegate/{delegate}/
-├── {id}.md              # Request payload (written by render before yield)
-└── {id}-response.md     # Response payload (written by VM after delegate completes)
+├── handoffs/
+│   ├── 001.json             # Pre-dispatch record (supplied inputs + task)
+│   └── 002.json             # Permitted follow-up handoff (e.g. additional input D)
+├── {id}.md                  # Request payload (written by render before yield)
+├── {id}-response.md         # Response payload + reported review scope (written by VM)
+└── observed_access.jsonl    # Optional host tool telemetry (if supported)
 ```
 
 ### Interaction with Persistent Responsibilities
