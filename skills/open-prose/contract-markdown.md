@@ -225,6 +225,7 @@ Forme and the Prose VM recognize these `###` sections case-insensitively:
 | `### Fixtures` | test | Test inputs supplied without prompting |
 | `### Expects` | test | Positive natural-language assertions |
 | `### Expects Not` | test | Negative natural-language assertions |
+| `### Patterns` | responsibility, function | Instantiates patterns into named nodes via fenced yaml (- name, pattern:, with:, config:). Expanded by Forme at compile time |
 | `### Slots` | pattern | Responsibilities or functions a pattern requires from its caller |
 | `### Config` | pattern | Pattern-level parameters and defaults |
 | `### Delegation` | pattern | ProseScript or pseudocode describing slot interaction |
@@ -623,12 +624,26 @@ loop up to config.max_rounds:
 ```
 ````
 
-A pattern is instantiated with a fenced `yaml` declaration. Use `with:` for slot
-bindings and `config:` for pattern parameters:
+A pattern is instantiated inside the canonical **`### Patterns`** section of a
+responsibility or function using a fenced `yaml` block.
+
+### Canonical Instantiation Syntax (`### Patterns`)
+
+The declaration connects five elements:
+1. **`use`**: Imports an external or standard library pattern at the file header (e.g. `use "std/patterns/worker-critic"`). When imported, the pattern can be referenced by its local alias (`worker-critic`). Alternatively, specify the full path directly in `pattern:`.
+2. **`name:`**: Assigns a local identifier to the expanded node instance. This name is what ProseScript invokes via `call {name}` in `### Execution`, or what Forme wires as a node in the DAG.
+3. **`pattern:`**: Identifies the pattern contract (`kind: pattern`). Can be a local contract filename, an imported alias, a standard library shorthand (`std/patterns/...`), or a full git host URI.
+4. **`with:`**: Binds each slot declared in the pattern's `### Slots` to a concrete responsibility, function, or nested pattern instance. Forme validates that all required slots are filled.
+5. **`config:`**: Supplies parameters that override the defaults declared in the pattern's `### Config`.
+
+```markdown
+use "std/patterns/worker-critic"
+
+### Patterns
 
 ```yaml
 - name: reviewed-draft
-  pattern: std/patterns/worker-critic
+  pattern: worker-critic
   with:
     worker: writer
     critic: reviewer
@@ -636,10 +651,23 @@ bindings and `config:` for pattern parameters:
     max_rounds: 3
 ```
 
-`pattern:` names a `kind: pattern` file. `with:` binds slots to responsibilities,
-functions, or nested pattern instances. After expansion, the named instance
-behaves like a node. Nested pattern declarations are allowed only as slot values
-inside another pattern instance's `with:` block.
+### Execution
+
+```prose
+let final_doc = call reviewed-draft
+  topic: topic
+  guidelines: guidelines
+
+return { document: final_doc }
+```
+```
+
+### Slot Binding and Nesting
+
+- `with:` binds slots to responsibilities, functions, or nested pattern instances.
+- Nested pattern declarations are allowed only as slot values inside another pattern instance's `with:` block. Expansion proceeds inside-out.
+- Recursive patterns are strictly prohibited.
+- For compile-time resolution, slot validation, and expansion mechanics, see `forme.md#pattern-expansion`.
 
 ## Structured Blocks
 
