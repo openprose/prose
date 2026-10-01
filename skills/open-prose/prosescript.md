@@ -517,6 +517,29 @@ Validation:
 | Branch result read before join | Error |
 | Duplicate binding produced by two branches | Error |
 
+### Parallel Block Invocations
+
+When invoking reusable blocks inside `parallel:` or `parallel for`:
+
+```prose
+block process-item(item_id):
+  session: ledger
+    prompt: "Append 'phase-1-started' for {item_id}"
+  let step1_result = session "Do step 1"
+    prompt: "Process step 1 for {item_id}"
+  session: ledger
+    prompt: "Append 'phase-1-completed' for {item_id}"
+
+parallel for item in items:
+  do process-item(item)
+```
+
+Invariants:
+- **No statement collapsing**: Parallel block invocations execute each statement in the block body sequentially per branch. The VM never condenses the block into a single natural-language instruction or monolithic prompt.
+- **Discrete nested sessions**: Each `session:` or `call:` inside the block is invoked as a discrete session with its own prompt, execution turn, and completion boundary.
+- **Contemporaneous updates**: Intermediate side-effects, ledger entries, and state transitions are committed immediately upon statement completion, ensuring discrete timestamps and observable intermediate state across concurrent iterations.
+- **Isolated scope**: Each iteration or branch evaluates inside an isolated execution frame (`execution_id`), preventing variable binding or scratch collision.
+
 ## Loops
 
 Fixed repetition:
@@ -715,6 +738,12 @@ let result = do review-and-fix(draft, 3)
 Block definitions are collected before execution, so a block may be invoked
 before its definition. Parameters are immutable within the block call. Each
 block invocation has its own scope.
+
+When a block is invoked inside a parallel construct (`parallel:` or `parallel for`),
+the block's statement sequence is preserved for every branch. Nested `session:`
+or `call:` statements are dispatched as discrete sessions, and intermediate state
+or ledger updates occur contemporaneously; parallel execution never collapses
+a block into a single monolithic prompt (see [Parallel Block Invocations](#parallel-block-invocations)).
 
 Validation:
 

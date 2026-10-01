@@ -497,6 +497,8 @@ spawn_session({ prompt: "Node: critic ..." })
 // Wait for all to complete, then continue
 ```
 
+When executing block invocations in parallel contexts (`parallel:` or `parallel for`), the VM preserves discrete statement-by-statement execution and nested session boundaries across all branches; see [Block Invocation in Parallel Contexts](#block-invocation-in-parallel-contexts).
+
 #### 4e. Apply Manifest Constraints When Present
 
 Current v0 compiled intent does not define a separate pattern-constraint schema.
@@ -697,6 +699,20 @@ spawn_session({ description: "OpenProse render: researcher", prompt: "..." })
 spawn_session({ description: "OpenProse render: fact-checker", prompt: "..." })
 // Wait for all to complete
 ```
+
+### Block Invocation in Parallel Contexts
+
+When a named block (`block name(args): ...`) is invoked inside a parallel construct—such as `parallel: do name(...)` or `parallel for item in items: do name(item)`—the VM and executing agents must preserve discrete statement and session boundaries for each concurrent branch:
+
+1. **Statement-by-statement execution**: Each parallel branch executes the block body statement-by-statement in sequence. The VM or coordinating agent MUST NOT collapse the block statements into a single natural-language summary prompt (e.g., instructing a worker to "process this item through all steps" in one turn).
+2. **Discrete nested sessions**: Every `session:` and `call:` statement inside the block body MUST be dispatched as an independent, discrete session with its own prompt, inputs, and completion barrier. For example, if a block logs to a ledger before and after a work step:
+   - The pre-step `session:` executes and completes (e.g., recording phase start).
+   - The work `session:` executes and completes.
+   - The post-step `session:` executes and completes (e.g., recording phase completion).
+   Collapsing these into a single monolithic prompt breaks nested session semantics and eliminates intermediate checkpointing.
+3. **Sub-VM delegation protocol**: When the coordinator delegates a parallel iteration or branch to a worker subagent, it must supply the verbatim block statements and branch bindings, explicitly instructing the worker to act as an OpenProse sub-VM. The worker must evaluate statements sequentially and spawn or invoke discrete sessions for each nested `session:` or `call:`.
+4. **Contemporaneous state and ledger updates**: All state writes, ledger appends, event emissions, and receipt updates must occur contemporaneously when each statement finishes, not batched at the end of the parallel branch. This guarantees that event logs reflect accurate temporal ordering and distinct timestamps for each phase.
+5. **Scoped execution frames**: Each parallel iteration runs within an isolated execution scope (see [Scoped Execution Frames](state/filesystem.md#scoped-execution-frames)). Local variable bindings (`let`) and working scratch are private to each branch instance (`workspace/{node}/__scope/{execution_id}/`), preventing cross-branch collision.
 
 ### What the Subagent Receives
 
