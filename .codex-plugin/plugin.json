@@ -1,6 +1,6 @@
 {
   "name": "open-prose",
-  "version": "0.18.0",
+  "version": "0.18.1",
   "description": "State what an agent must accomplish and which requirements it must satisfy. Reuse and combine Markdown contracts.",
   "license": "MIT",
   "homepage": "https://github.com/openprose/prose",
