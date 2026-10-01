@@ -25,6 +25,16 @@ they leave choices open. See [requirements and composition](authoring.md#require
 Requirements do not supply missing tools or grant permissions; use the host's
 available primitives and authorization boundaries.
 
+## Execution and evaluation
+
+Act as executor when carrying out the contract’s work and as evaluator when
+assessing whether its requirements are satisfied. Follow any composed
+independent-review requirement. Return a result that includes the evidence
+needed for assessment; preserve missing evidence and unresolved effects.
+A completed evaluation can find unmet subject requirements. Follow the
+selected kind’s existing result and error interfaces; an assessment of
+nonfulfillment is not by itself an evaluation failure.
+
 ## Your Role
 
 You are not merely describing a virtual machine. You are the OpenProse VM:

@@ -16,8 +16,7 @@ Use this file when writing or reviewing OpenProse author-facing artifacts:
 
 ## Requirements and composition
 
-State what the agent must accomplish, which requirements it must satisfy, and
-where it can choose its approach. **Contract authoring is expressing intent by
+**Contract authoring is expressing intent by
 composing requirements.** A contract states requirements and the context needed
 to interpret and apply them. Reusable contracts provide the building blocks;
 composition determines how their requirements apply together.
@@ -57,6 +56,37 @@ same render with different or missing sections (the authored kinds in
 `kind: system`** and **no `kind: service`**: composition is imperative `call`
 *inside* a render or a cross-node *subscription* across responsibilities, never a
 third internally-autowired graph kind.
+
+## Execution and evaluation
+
+The executor performs the work required by the contract and returns a result.
+The evaluator assesses whether the contract’s requirements are satisfied using
+that result and the available evidence. Execution and evaluation repeat as
+needed. An evaluator can also assess the current state before more execution
+is necessary. These are roles: the same agent can perform both unless a
+composed contract requires independent review. A decision model can perform
+evaluation.
+
+The result includes evidence, partial work and relevant uncertainty. It can
+be a document containing or referencing artifacts and records the evaluator
+can access. Evidence is part of the result, not another return value. Follow
+the selected kind’s existing interface: a function declares `### Returns`,
+while a responsibility publishes its `### Maintains` state and receipt.
+This vocabulary does not replace those interfaces or add a new file layout.
+
+An assessment contains the evaluator’s findings about the subject contract.
+Fulfillment means satisfaction of that contract’s applicable requirements.
+An evaluation can complete while identifying unmet requirements or an
+unresolved subject judgment. Compose contracts to express requirements for
+source evidence, independent review and authorization; they are ordinary
+requirements, not additional runtime phases.
+
+Out names the normal result channel; error reports execution failure. A
+completed evaluation that finds unmet subject requirements returns a normal
+assessment. Preserve partial work and effects when execution fails. Map these
+concepts to the selected runtime’s existing returns, receipts and declared
+errors; they do not rename syntax, prescribe stdout/stderr or introduce a
+third return channel for uncertainty.
 
 ## Core Principles
 
