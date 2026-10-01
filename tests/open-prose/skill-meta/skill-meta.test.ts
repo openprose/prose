@@ -92,13 +92,13 @@ describe("skill-meta Markdown helpers", () => {
 describe("SKILL.md frontmatter — versioning", () => {
 	const fm = frontmatter(read("SKILL.md"));
 
-	it("pins version to 0.18.0", () => {
+	it("pins version to 0.18.1", () => {
 		// 0.15.0 was the Intelligent React overhaul;
 		// 0.16.0 removes the harness product surface from the skill.
 		// 0.17.0 introduces guided init/compose and the Compose std package.
 		// 0.18.0 makes id: optional, documents facet families, and brings the
 		// example corpus into conformance with the compiler.
-		expect(fm).toMatch(/^version:\s*0\.18\.0\s*$/m);
+		expect(fm).toMatch(/^version:\s*0\.18\.1\s*$/m);
 	});
 
 	it("bumps runtime_contract to 2", () => {
